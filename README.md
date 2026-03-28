@@ -124,5 +124,4 @@ This repo includes 3 sample domains (blocksworld, depots, counters). The paper e
 ```
 
 ## Origin
-
-Extracted from [SPL-BGU/pddl-copilot](https://github.com/SPL-BGU/pddl-copilot) to keep the marketplace repo focused on plugins.
+plugins implemented at [SPL-BGU/pddl-copilot](https://github.com/SPL-BGU/pddl-copilot). 
