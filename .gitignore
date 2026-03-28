@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.pyc
+.idea/
+.env
+.envrc
+.venv/
+*.egg-info/
+results/*.json
+.ipynb_checkpoints/
