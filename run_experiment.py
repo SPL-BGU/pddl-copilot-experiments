@@ -23,8 +23,10 @@ Usage:
 import argparse
 import asyncio
 import json
+import math
 import os
 import random
+import re
 import sys
 import time
 from collections import defaultdict
@@ -111,25 +113,25 @@ PROMPT_TEMPLATES: dict[str, list[str]] = {
         "Please solve this automated planning task and return the plan.\n\n{domain}\n\n{problem}",
     ],
     "validate_domain": [
-        "Check if this PDDL domain definition has valid syntax:\n\n{domain}",
-        "Validate the following PDDL domain for syntactic correctness:\n\n{domain}",
-        "Is this PDDL domain syntactically correct? Please check.\n\n{domain}",
-        "Analyze this domain definition and tell me if the PDDL syntax is valid:\n\n{domain}",
-        "Please verify the syntax of the following PDDL domain:\n\n{domain}",
+        "Check if this PDDL domain definition has valid syntax:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Validate the following PDDL domain for syntactic correctness:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Is this PDDL domain syntactically correct? Please check.\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Analyze this domain definition and tell me if the PDDL syntax is valid:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Please verify the syntax of the following PDDL domain:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
     ],
     "validate_problem": [
-        "Check if this PDDL problem has valid syntax given the domain.\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
-        "Validate the syntax of this PDDL problem against its domain:\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
-        "Is this PDDL problem file syntactically correct for the given domain?\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
-        "Verify the syntax of the following PDDL problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
-        "Check the following PDDL problem for syntax errors.\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
+        "Check if this PDDL problem has valid syntax given the domain.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Validate the syntax of this PDDL problem against its domain:\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Is this PDDL problem file syntactically correct for the given domain?\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Verify the syntax of the following PDDL problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Check the following PDDL problem for syntax errors.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
     ],
     "validate_plan": [
-        "Validate whether this plan is correct for the given domain and problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
-        "Check if the following plan solves the PDDL problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
-        "Is this plan valid for the given planning problem?\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
-        "Verify the correctness of this plan.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
-        "Does this plan achieve the goal? Validate it.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
+        "Validate whether this plan is correct for the given domain and problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Check if the following plan solves the PDDL problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Is this plan valid for the given planning problem?\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Verify the correctness of this plan.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        "Does this plan achieve the goal? Validate it.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
     ],
     "simulate": [
         "Simulate the execution of this plan and show the state transitions.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
@@ -332,6 +334,25 @@ def load_domains(domains_dir: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _parse_retcode_verdict(raw: str) -> bool | None:
+    """Parse a validate_pddl_syntax result string.
+
+    Returns True if retcode == 0 (valid), False if retcode != 0 (invalid),
+    None if the tool returned an error envelope or the result is unparseable.
+    """
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else raw
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    if data.get("error") is True:
+        return None
+    if "retcode" not in data:
+        return None
+    return data["retcode"] == 0
+
+
 async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
     """For each domain/problem, solve and validate using the MCP tools as oracle."""
     gt: dict = {}
@@ -340,54 +361,72 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
         planner = "classic_planner" if dinfo["type"] == "classical" else "numeric_planner"
         for pname, ppddl in dinfo["problems"].items():
             entry: dict = {
-                "domain_valid": True,
-                "problem_valid": True,
+                "domain_valid": None,
+                "problem_valid": None,
+                "plan_valid": None,
                 "solvable": False,
                 "plan": None,
                 "trace": None,
             }
 
-            # Validate domain
+            # Validate domain — parse retcode from VAL
             try:
                 raw = await mcp.call_tool("validate_pddl_syntax", {"domain": dinfo["domain"]})
                 entry["domain_validation_raw"] = raw
+                entry["domain_valid"] = _parse_retcode_verdict(raw)
             except Exception as exc:
                 entry["domain_validation_raw"] = str(exc)
 
-            # Validate problem
+            # Validate problem — parse retcode from VAL
             try:
                 raw = await mcp.call_tool(
                     "validate_pddl_syntax",
                     {"domain": dinfo["domain"], "problem": ppddl},
                 )
                 entry["problem_validation_raw"] = raw
+                entry["problem_valid"] = _parse_retcode_verdict(raw)
             except Exception as exc:
                 entry["problem_validation_raw"] = str(exc)
 
-            # Solve
+            # Solve — distinguish solvable (non-empty plan) from unsolvable (empty plan)
             try:
                 raw = await mcp.call_tool(planner, {"domain": dinfo["domain"], "problem": ppddl})
                 data = json.loads(raw) if isinstance(raw, str) else raw
-                if isinstance(data, dict) and "plan" in data:
+                if isinstance(data, dict) and isinstance(data.get("plan"), list) and data["plan"]:
                     entry["plan"] = data["plan"]
                     entry["solvable"] = True
             except Exception:
                 pass
 
-            # State trace
+            # State trace + plan-validity verdict (only if we have a plan)
             if entry["plan"]:
+                plan_str = "\n".join(entry["plan"]) if isinstance(entry["plan"], list) else entry["plan"]
                 try:
-                    plan_str = "\n".join(entry["plan"]) if isinstance(entry["plan"], list) else entry["plan"]
                     entry["trace"] = await mcp.call_tool(
                         "get_state_transition",
                         {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_str},
                     )
                 except Exception:
                     pass
+                # Validate the oracle plan against VAL so validate_plan has a verdict
+                try:
+                    raw = await mcp.call_tool(
+                        "validate_pddl_syntax",
+                        {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_str},
+                    )
+                    entry["plan_validation_raw"] = raw
+                    entry["plan_valid"] = _parse_retcode_verdict(raw)
+                except Exception as exc:
+                    entry["plan_validation_raw"] = str(exc)
 
             gt[dname][pname] = entry
             tag = "solvable" if entry["solvable"] else "unsolvable"
-            print(f"    {dname}/{pname}: {tag}")
+            print(
+                f"    {dname}/{pname}: {tag} "
+                f"(domain_valid={entry['domain_valid']} "
+                f"problem_valid={entry['problem_valid']} "
+                f"plan_valid={entry['plan_valid']})"
+            )
     return gt
 
 
@@ -400,38 +439,131 @@ def _used_tool(tool_calls: list[dict], name: str) -> bool:
     return any(tc["name"] == name for tc in tool_calls)
 
 
-def check_success(task: str, response: str, tool_calls: list[dict], gt: dict) -> bool:
-    """Decide whether a model response counts as task success."""
-    resp = (response or "").lower()
+# Matches `(action arg1 arg2 ...)` action lines, optionally with a leading step
+# number like "1." or "1:" and any surrounding whitespace. Conservatively
+# requires at least the action name as an identifier.
+_ACTION_LINE_RE = re.compile(
+    r"""
+    ^\s*
+    (?:\d+[.):]\s*)?            # optional step numbering
+    \(\s*
+        ([A-Za-z][\w-]*)        # action name
+        (?:\s+[\w\-?@.]+)*      # zero or more simple argument tokens
+    \s*\)
+    \s*$
+    """,
+    re.VERBOSE,
+)
+
+# Matches a VERDICT: VALID / INVALID line anywhere in the response.
+_VERDICT_RE = re.compile(r"VERDICT\s*:\s*(VALID|INVALID)\b", re.IGNORECASE)
+
+
+def extract_plan_lines(response: str) -> list[str]:
+    """Extract `(action args...)` lines from a model response.
+
+    Strips optional step-number prefixes and keeps one action per line. Returns
+    them normalized as `"(name arg1 arg2)"` (single spaces, lowercased).
+    """
+    if not response:
+        return []
+    # Strip common code-fence markers which don't contain plan actions.
+    plan: list[str] = []
+    for line in response.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("```"):
+            continue
+        m = _ACTION_LINE_RE.match(line)
+        if not m:
+            continue
+        # Re-normalize: keep only the `(...)` part, squeeze whitespace, lowercase.
+        inner = stripped
+        # Drop any leading "1." / "1:" prefix
+        paren_start = inner.find("(")
+        if paren_start > 0:
+            inner = inner[paren_start:]
+        inner = " ".join(inner.split()).lower()
+        plan.append(inner)
+    return plan
+
+
+def extract_verdict(response: str) -> bool | None:
+    """Return True for VALID, False for INVALID, None if no verdict line found.
+
+    Takes the last VERDICT: line in the response (model may discuss before it).
+    """
+    if not response:
+        return None
+    matches = _VERDICT_RE.findall(response)
+    if not matches:
+        return None
+    return matches[-1].upper() == "VALID"
+
+
+async def _validate_model_plan(
+    mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan_lines: list[str],
+) -> bool:
+    """Call validate_pddl_syntax on the model's extracted plan. True iff VAL retcode==0."""
+    if not plan_lines:
+        return False
+    plan_str = "\n".join(plan_lines)
+    try:
+        raw = await mcp.call_tool(
+            "validate_pddl_syntax",
+            {"domain": domain_pddl, "problem": problem_pddl, "plan": plan_str},
+        )
+    except Exception:
+        return False
+    verdict = _parse_retcode_verdict(raw)
+    return verdict is True
+
+
+async def check_success(
+    task: str,
+    response: str,
+    tool_calls: list[dict],
+    gt: dict,
+    mcp: MCPPlanner,
+    domain_pddl: str,
+    problem_pddl: str,
+) -> bool:
+    """Decide whether a model response counts as task success.
+
+    With-tools: require the model to have called the correct MCP tool.
+    Without-tools: validate the actual artifact the model produced:
+      - solve           → extract a plan, send it to VAL, require retcode==0
+      - validate_*      → extract VERDICT: VALID|INVALID, compare to ground truth
+      - simulate        → loose keyword check (state trace structure not graded here)
+    """
+    resp_lower = (response or "").lower()
 
     if task == "solve":
         if tool_calls:
             return _used_tool(tool_calls, "classic_planner") or _used_tool(tool_calls, "numeric_planner")
-        # Without tools: check if the response contains actions from the ground-truth plan
-        if gt.get("plan"):
-            actions = [a.lower().strip("() ").split()[0] for a in gt["plan"] if a.strip()]
-            return sum(1 for a in actions if a in resp) >= len(actions) // 2
-        return False
+        plan_lines = extract_plan_lines(response or "")
+        return await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
 
-    if task == "validate_domain":
+    if task in ("validate_domain", "validate_problem", "validate_plan"):
         if tool_calls:
             return _used_tool(tool_calls, "validate_pddl_syntax")
-        return "valid" in resp and "invalid" not in resp
-
-    if task == "validate_problem":
-        if tool_calls:
-            return _used_tool(tool_calls, "validate_pddl_syntax")
-        return "valid" in resp and "invalid" not in resp
-
-    if task == "validate_plan":
-        if tool_calls:
-            return _used_tool(tool_calls, "validate_pddl_syntax")
-        return "valid" in resp
+        verdict = extract_verdict(response or "")
+        if verdict is None:
+            return False
+        gt_key = {
+            "validate_domain": "domain_valid",
+            "validate_problem": "problem_valid",
+            "validate_plan": "plan_valid",
+        }[task]
+        truth = gt.get(gt_key)
+        if truth is None:
+            # Oracle couldn't determine ground truth for this item — skip scoring.
+            return False
+        return verdict == truth
 
     if task == "simulate":
         if tool_calls:
             return _used_tool(tool_calls, "get_state_transition")
-        return "state" in resp and ("after" in resp or "step" in resp)
+        return "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower)
 
     return False
 
@@ -485,7 +617,16 @@ async def evaluate_one(
         error = str(exc)
 
     duration = time.time() - t0
-    success = check_success(task, response_text, tool_calls, gt) if not error else False
+    if error:
+        success = False
+    else:
+        try:
+            success = await check_success(
+                task, response_text, tool_calls, gt, mcp, domain_pddl, problem_pddl,
+            )
+        except Exception as exc:
+            success = False
+            error = f"scoring error: {exc}"
 
     return TaskResult(
         model=model,
@@ -560,9 +701,12 @@ async def run_chain_experiment(
     chain_lengths: list[int] = [2, 3, 4, 5],
     samples: int = 20,
     tool_filter: str = "all",
+    with_tools: bool = True,
 ) -> list[dict]:
     results: list[dict] = []
     domain_items = list(domains.items())
+    system_prompt = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
+    cond_label = "tools" if with_tools else "no-tools"
 
     for model in models:
         for n in chain_lengths:
@@ -574,7 +718,7 @@ async def run_chain_experiment(
                 gt = ground_truth.get(dname, {}).get(pname, {})
 
                 chain_tasks = random.choices(TASKS, k=n)
-                messages: list[dict] = [{"role": "system", "content": WITH_TOOLS_SYSTEM}]
+                messages: list[dict] = [{"role": "system", "content": system_prompt}]
                 chain_ok = True
 
                 for task in chain_tasks:
@@ -591,10 +735,18 @@ async def run_chain_experiment(
 
                     allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
                     try:
-                        resp_text, tc = await chat_with_tools(
-                            model, messages, mcp, allowed_tools=allowed,
+                        if with_tools:
+                            resp_text, tc = await chat_with_tools(
+                                model, messages, mcp, allowed_tools=allowed,
+                            )
+                        else:
+                            resp_text = chat_without_tools(model, messages)
+                            tc = []
+                            messages.append({"role": "assistant", "content": resp_text})
+                        ok = await check_success(
+                            task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
                         )
-                        if not check_success(task, resp_text, tc, gt):
+                        if not ok:
                             chain_ok = False
                             break
                     except Exception:
@@ -604,10 +756,11 @@ async def run_chain_experiment(
                 if chain_ok:
                     successes += 1
                 mark = "OK" if chain_ok else "FAIL"
-                print(f"  {model} chain={n} [{i+1}/{samples}] {mark}")
+                print(f"  {model}|{cond_label} chain={n} [{i+1}/{samples}] {mark}")
 
             results.append({
                 "model": model,
+                "with_tools": with_tools,
                 "chain_length": n,
                 "samples": samples,
                 "successes": successes,
@@ -622,8 +775,19 @@ async def run_chain_experiment(
 # ---------------------------------------------------------------------------
 
 
-def print_single_task_table(results: list[TaskResult]):
-    """Reproduce Table 1 from the paper."""
+def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score confidence interval for a binomial proportion."""
+    if total == 0:
+        return (0.0, 0.0)
+    phat = successes / total
+    denom = 1 + z * z / total
+    center = (phat + z * z / (2 * total)) / denom
+    half = (z * math.sqrt((phat * (1 - phat) + z * z / (4 * total)) / total)) / denom
+    return (max(0.0, center - half), min(1.0, center + half))
+
+
+def summarize_single_task(results: list[TaskResult]) -> list[dict]:
+    """Aggregate single-task results into long-format rows with N and 95% CIs."""
     agg: dict = defaultdict(lambda: {"total": 0, "success": 0})
     for r in results:
         cond = "tools" if r.with_tools else "no-tools"
@@ -635,46 +799,83 @@ def print_single_task_table(results: list[TaskResult]):
     models = sorted(set(r.model for r in results))
     tasks_present = [t for t in TASKS if any(r.task == t for r in results)]
 
-    col_w = max(len(t) for t in tasks_present) + 2
-    row_fmt = "{:<28} {:<10}" + " {:<" + str(col_w) + "}" * len(tasks_present)
-
-    print("\n" + "=" * (42 + col_w * len(tasks_present)))
-    print("SINGLE-TASK SUCCESS RATES (Table 1 reproduction)")
-    print("=" * (42 + col_w * len(tasks_present)))
-    print(row_fmt.format("Model", "Condition", *tasks_present))
-    print("-" * (42 + col_w * len(tasks_present)))
-
+    rows: list[dict] = []
     for model in models:
         for cond in ("tools", "no-tools"):
-            rates = []
             for task in tasks_present:
                 d = agg[(model, cond, task)]
-                rate = d["success"] / d["total"] if d["total"] > 0 else 0.0
-                rates.append(f"{rate:.2f}")
-            print(row_fmt.format(model, cond, *rates))
+                n = d["total"]
+                s = d["success"]
+                rate = s / n if n > 0 else 0.0
+                lo, hi = wilson_ci(s, n)
+                rows.append({
+                    "model": model,
+                    "condition": cond,
+                    "task": task,
+                    "successes": s,
+                    "n": n,
+                    "success_rate": round(rate, 4),
+                    "ci_lo": round(lo, 4),
+                    "ci_hi": round(hi, 4),
+                })
+    return rows
 
-    print("=" * (42 + col_w * len(tasks_present)))
+
+def print_single_task_table(results: list[TaskResult]):
+    """Long-format table with success rate, N, and Wilson 95% CI."""
+    rows = summarize_single_task(results)
+    if not rows:
+        return
+
+    header = f"{'Model':<20} {'Condition':<9} {'Task':<18} {'Rate':>6}  {'N':>4}  {'95% CI':<16}"
+    bar = "=" * len(header)
+    print("\n" + bar)
+    print("SINGLE-TASK SUCCESS RATES (with Wilson 95% CI)")
+    print(bar)
+    print(header)
+    print("-" * len(header))
+    for r in rows:
+        ci_str = f"[{r['ci_lo']:.2f}, {r['ci_hi']:.2f}]"
+        print(
+            f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
+            f"{r['success_rate']:>6.2f}  {r['n']:>4}  {ci_str:<16}"
+        )
+    print(bar)
+
+
+def summarize_chains(chain_results: list[dict]) -> list[dict]:
+    """Attach Wilson CI to each chain result row."""
+    rows: list[dict] = []
+    for r in chain_results:
+        lo, hi = wilson_ci(r["successes"], r["samples"])
+        rows.append({**r, "ci_lo": round(lo, 4), "ci_hi": round(hi, 4)})
+    return rows
 
 
 def print_chain_table(chain_results: list[dict]):
     if not chain_results:
         return
-    models = sorted(set(r["model"] for r in chain_results))
-    lengths = sorted(set(r["chain_length"] for r in chain_results))
-
-    print("\n" + "=" * 60)
-    print("MULTI-TASK CHAIN SUCCESS RATES")
-    print("=" * 60)
-    header = f"{'Model':<28}" + "".join(f" {'n='+str(n):<10}" for n in lengths)
+    rows = summarize_chains(chain_results)
+    header = f"{'Model':<20} {'Condition':<9} {'Chain n':>7}  {'Rate':>6}  {'N':>4}  {'95% CI':<16}"
+    bar = "=" * len(header)
+    print("\n" + bar)
+    print("MULTI-TASK CHAIN SUCCESS RATES (with Wilson 95% CI)")
+    print(bar)
     print(header)
     print("-" * len(header))
-    for model in models:
-        row = f"{model:<28}"
-        for n in lengths:
-            match = [r for r in chain_results if r["model"] == model and r["chain_length"] == n]
-            row += f" {match[0]['success_rate']:<10.2f}" if match else f" {'--':<10}"
-        print(row)
-    print("=" * 60)
+    # Sort by (model, with_tools desc so tools comes first, chain_length)
+    rows_sorted = sorted(
+        rows,
+        key=lambda r: (r["model"], not r.get("with_tools", True), r["chain_length"]),
+    )
+    for r in rows_sorted:
+        cond = "tools" if r.get("with_tools", True) else "no-tools"
+        ci_str = f"[{r['ci_lo']:.2f}, {r['ci_hi']:.2f}]"
+        print(
+            f"{r['model']:<20} {cond:<9} {r['chain_length']:>7}  "
+            f"{r['success_rate']:>6.2f}  {r['samples']:>4}  {ci_str:<16}"
+        )
+    print(bar)
 
 
 # ---------------------------------------------------------------------------
@@ -698,6 +899,15 @@ def save_results(
         p2 = output_dir / f"chain_{ts}.json"
         p2.write_text(json.dumps(chains, indent=2))
         print(f"Saved chain results       -> {p2}")
+
+    # Aggregated summary with N and Wilson 95% CIs for downstream analysis.
+    summary = {
+        "single_task": summarize_single_task(single) if single else [],
+        "chains": summarize_chains(chains) if chains else [],
+    }
+    p3 = output_dir / f"summary_{ts}.json"
+    p3.write_text(json.dumps(summary, indent=2))
+    print(f"Saved summary              -> {p3}")
 
 
 # ---------------------------------------------------------------------------
@@ -758,15 +968,18 @@ async def async_main(args):
         # Multi-task chains
         if args.chains:
             print("\n--- Multi-Task Chain Evaluation ---")
-            chain_results = await run_chain_experiment(
-                models=args.models,
-                domains=domains,
-                ground_truth=ground_truth,
-                mcp=mcp,
-                chain_lengths=[2, 3, 4, 5],
-                samples=args.chain_samples,
-                tool_filter=args.tool_filter,
-            )
+            for cond_with_tools in (True, False):
+                print(f"\n  Condition: {'tools' if cond_with_tools else 'no-tools'}")
+                chain_results += await run_chain_experiment(
+                    models=args.models,
+                    domains=domains,
+                    ground_truth=ground_truth,
+                    mcp=mcp,
+                    chain_lengths=[2, 3, 4, 5],
+                    samples=args.chain_samples,
+                    tool_filter=args.tool_filter,
+                    with_tools=cond_with_tools,
+                )
             print_chain_table(chain_results)
 
     except KeyboardInterrupt:

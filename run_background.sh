@@ -57,23 +57,31 @@ done
 
 STAMP=$(date +%Y%m%d_%H%M%S)
 LOG="run_${TAG}_${STAMP}.log"
-OUT="results/${TAG}_${STAMP}"
+OUT_PREFIX="results/${TAG}_${STAMP}"
+FILTERS="per-task all"
 
 echo "Starting PDDL copilot experiment..."
 echo "  Models:      ${MODELS[*]}"
 echo "  Marketplace: $MARKETPLACE_PATH"
-echo "  Filter:      per-task"
+echo "  Filters:     $FILTERS (run sequentially)"
 echo "  Chains:      on"
-echo "  Output dir:  $OUT"
+echo "  Output dirs: ${OUT_PREFIX}_per-task/, ${OUT_PREFIX}_all/"
 echo "  Log file:    $LOG"
 
-caffeinate -i nice -n 19 nohup python3 run_experiment.py \
-    --marketplace-path "$MARKETPLACE_PATH" \
-    --models "${MODELS[@]}" \
-    --tool-filter per-task \
-    --chains \
-    --output-dir "$OUT" \
-    > "$LOG" 2>&1 &
+nohup caffeinate -i bash -c "
+cd \"$SCRIPT_DIR\"
+for FILTER in $FILTERS; do
+    echo \"===== filter=\$FILTER started \$(date) =====\"
+    nice -n 19 python3 run_experiment.py \
+        --marketplace-path \"$MARKETPLACE_PATH\" \
+        --models ${MODELS[*]} \
+        --tool-filter \"\$FILTER\" \
+        --chains \
+        --chain-samples 20 \
+        --output-dir \"${OUT_PREFIX}_\${FILTER}\"
+    echo \"===== filter=\$FILTER finished \$(date) =====\"
+done
+" > "$LOG" 2>&1 &
 
 PID=$!
 
