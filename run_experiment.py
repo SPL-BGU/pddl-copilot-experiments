@@ -69,6 +69,19 @@ TEMPERATURE = 0.0
 MAX_TOOL_LOOPS = 10
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
 
+# Per-task tool allowlists. When --tool-filter=per-task, only these tool names
+# are exposed to the model for the given task, controlling for tool-selection
+# noise when the connected MCP servers expose unrelated tools.
+TASK_TOOLS: dict[str, list[str]] = {
+    "solve":            ["classic_planner", "numeric_planner"],
+    "validate_domain":  ["validate_pddl_syntax"],
+    "validate_problem": ["validate_pddl_syntax"],
+    "validate_plan":    ["validate_pddl_syntax"],
+    "simulate":         ["get_state_transition"],
+}
+
+TOOL_FILTER_CHOICES = ("all", "per-task")
+
 # ---------------------------------------------------------------------------
 # System prompts (Section 4 of the paper)
 # ---------------------------------------------------------------------------
@@ -145,6 +158,7 @@ class TaskResult:
     tool_calls: list = field(default_factory=list)
     duration_s: float = 0.0
     error: str = ""
+    tool_filter: str = "all"
 
 
 # ---------------------------------------------------------------------------
@@ -215,17 +229,28 @@ async def chat_with_tools(
     model: str,
     messages: list[dict],
     mcp: MCPPlanner,
+    allowed_tools: list[str] | None = None,
     max_loops: int = MAX_TOOL_LOOPS,
     temperature: float = TEMPERATURE,
 ) -> tuple[str, list[dict]]:
-    """Send messages to Ollama, handle tool-call loops. Returns (text, tool_calls_log)."""
+    """Send messages to Ollama, handle tool-call loops. Returns (text, tool_calls_log).
+
+    If `allowed_tools` is provided, only tools whose name is in the list are
+    exposed to the model for this call.
+    """
     tool_calls_log: list[dict] = []
+
+    if allowed_tools is None:
+        tools_payload = mcp.tools
+    else:
+        allowed_set = set(allowed_tools)
+        tools_payload = [t for t in mcp.tools if t["function"]["name"] in allowed_set]
 
     for _ in range(max_loops):
         resp = ollama.chat(
             model=model,
             messages=messages,
-            tools=mcp.tools,
+            tools=tools_payload,
             options={"temperature": temperature},
         )
         msg = resp["message"]
@@ -427,6 +452,7 @@ async def evaluate_one(
     with_tools: bool,
     mcp: MCPPlanner,
     gt: dict,
+    tool_filter: str = "all",
 ) -> TaskResult:
     template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
@@ -446,9 +472,13 @@ async def evaluate_one(
     error = ""
     response_text = ""
 
+    allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
+
     try:
         if with_tools:
-            response_text, tool_calls = await chat_with_tools(model, messages, mcp)
+            response_text, tool_calls = await chat_with_tools(
+                model, messages, mcp, allowed_tools=allowed,
+            )
         else:
             response_text = chat_without_tools(model, messages)
     except Exception as exc:
@@ -469,6 +499,7 @@ async def evaluate_one(
         tool_calls=tool_calls,
         duration_s=round(duration, 2),
         error=error,
+        tool_filter=tool_filter,
     )
 
 
@@ -479,6 +510,7 @@ async def run_single_task_experiment(
     ground_truth: dict,
     mcp: MCPPlanner,
     num_variants: int = 5,
+    tool_filter: str = "all",
 ) -> list[TaskResult]:
     results: list[TaskResult] = []
     total = (
@@ -507,6 +539,7 @@ async def run_single_task_experiment(
                             r = await evaluate_one(
                                 model, task, dname, dinfo["domain"],
                                 pname, ppddl, pv, with_tools, mcp, gt,
+                                tool_filter=tool_filter,
                             )
                             results.append(r)
                             mark = "OK" if r.success else "FAIL"
@@ -526,6 +559,7 @@ async def run_chain_experiment(
     mcp: MCPPlanner,
     chain_lengths: list[int] = [2, 3, 4, 5],
     samples: int = 20,
+    tool_filter: str = "all",
 ) -> list[dict]:
     results: list[dict] = []
     domain_items = list(domains.items())
@@ -555,8 +589,11 @@ async def run_chain_experiment(
                     )
                     messages.append({"role": "user", "content": prompt})
 
+                    allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
                     try:
-                        resp_text, tc = await chat_with_tools(model, messages, mcp)
+                        resp_text, tc = await chat_with_tools(
+                            model, messages, mcp, allowed_tools=allowed,
+                        )
                         if not check_success(task, resp_text, tc, gt):
                             chain_ok = False
                             break
@@ -575,6 +612,7 @@ async def run_chain_experiment(
                 "samples": samples,
                 "successes": successes,
                 "success_rate": round(successes / samples, 2),
+                "tool_filter": tool_filter,
             })
     return results
 
@@ -678,6 +716,7 @@ async def async_main(args):
     print(f"  Domains:    {args.domains_dir}")
     print(f"  Variants:   {args.num_variants}")
     print(f"  Temperature:{args.temperature}")
+    print(f"  Tool filter:{args.tool_filter}")
 
     # Resolve plugins
     plugin_dirs = resolve_plugin_dirs(args.marketplace_path)
@@ -712,6 +751,7 @@ async def async_main(args):
             ground_truth=ground_truth,
             mcp=mcp,
             num_variants=args.num_variants,
+            tool_filter=args.tool_filter,
         )
         print_single_task_table(single_results)
 
@@ -725,6 +765,7 @@ async def async_main(args):
                 mcp=mcp,
                 chain_lengths=[2, 3, 4, 5],
                 samples=args.chain_samples,
+                tool_filter=args.tool_filter,
             )
             print_chain_table(chain_results)
 
@@ -757,6 +798,10 @@ def main():
                    help="Prompt variants per task (paper uses 5)")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
+    p.add_argument("--tool-filter", choices=list(TOOL_FILTER_CHOICES), default="all",
+                   help="'all' exposes every connected MCP tool every turn (reproduces paper). "
+                        "'per-task' restricts tools per task via TASK_TOOLS allowlist, reducing "
+                        "tool-selection noise from unrelated tools.")
     p.add_argument("--chains", action="store_true",
                    help="Also run multi-task chain evaluation")
     p.add_argument("--chain-samples", type=int, default=20,

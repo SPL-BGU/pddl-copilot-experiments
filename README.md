@@ -35,6 +35,33 @@ pip3 install -r requirements.txt
 
 ## Running (CLI)
 
+```bash
+cd ~/personal/pddl-copilot-experiments
+
+./run_background.sh small   # quick, low-impact (qwen3:0.5b only)
+./run_background.sh large   # heavier (qwen3:4b only) — overnight
+./run_background.sh         # both models (full overnight run, default)
+```
+
+## What it does
+
+- Activates `.venv` if present
+- Auto-locates `pddl-copilot` as a sibling dir (or reads `$PDDL_MARKETPLACE_PATH`)
+- Wraps with `caffeinate -i nice -n 19 nohup` so it survives terminal close, no sleep, low CPU priority
+- Timestamps log + results directories so runs don't collide
+- Prints PID + monitor commands
+
+## Quick monitoring
+
+After launch, the script prints exactly what you need:
+```
+Running in background, PID=12345
+  Watch progress:  tail -f run_full_20260405_142301.log
+  Check status:    ps -p 12345
+  Stop:            kill 12345
+```
+
+
 Point `--marketplace-path` at your local pddl-copilot clone:
 
 ```bash
