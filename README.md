@@ -26,7 +26,7 @@ Tests Ollama LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 
 ```bash
 # Pull models used in the paper
-ollama pull qwen3:0.5b
+ollama pull qwen3:0.6b
 ollama pull qwen3:4b
 
 # Install dependencies
@@ -38,7 +38,7 @@ pip3 install -r requirements.txt
 ```bash
 cd ~/personal/pddl-copilot-experiments
 
-./run_background.sh small   # quick, low-impact (qwen3:0.5b only)
+./run_background.sh small   # quick, low-impact (qwen3:0.6b only)
 ./run_background.sh large   # heavier (qwen3:4b only) — overnight
 ./run_background.sh         # both models (full overnight run, default)
 ```
@@ -81,7 +81,7 @@ Or set the environment variable to avoid repeating the path:
 
 ```bash
 export PDDL_MARKETPLACE_PATH=/path/to/pddl-copilot
-python3 run_experiment.py --models qwen3:0.5b qwen3:4b
+python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 ```
 
 ### CLI Options
@@ -89,7 +89,7 @@ python3 run_experiment.py --models qwen3:0.5b qwen3:4b
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--marketplace-path` | `$PDDL_MARKETPLACE_PATH` | Path to pddl-copilot marketplace clone |
-| `--models` | `qwen3:0.5b qwen3:4b` | Ollama model names to evaluate |
+| `--models` | `qwen3:0.6b qwen3:4b` | Ollama model names to evaluate |
 | `--tasks` | all 5 | Tasks to evaluate |
 | `--domains-dir` | `./domains` | Path to benchmark domains |
 | `--output-dir` | `./results` | Path to save result JSON files |

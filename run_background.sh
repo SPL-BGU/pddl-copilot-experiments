@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./run_background.sh             # both models (full overnight run)
-#   ./run_background.sh small       # just qwen3:0.5b (lightweight daytime run)
+#   ./run_background.sh small       # just qwen3:0.6b (lightweight daytime run)
 #   ./run_background.sh large       # just qwen3:4b (heavier, overnight)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,9 +41,9 @@ if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
 fi
 
 case "${1:-both}" in
-    small) MODELS=(qwen3:0.5b);            TAG="qwen05b" ;;
+    small) MODELS=(qwen3:0.6b);            TAG="qwen06b" ;;
     large) MODELS=(qwen3:4b);              TAG="qwen4b" ;;
-    both)  MODELS=(qwen3:0.5b qwen3:4b);   TAG="full" ;;
+    both)  MODELS=(qwen3:0.6b qwen3:4b);   TAG="full" ;;
     *)     echo "Usage: $0 [small|large|both]"; exit 1 ;;
 esac
 

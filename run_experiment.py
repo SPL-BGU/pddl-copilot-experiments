@@ -16,7 +16,7 @@ Clone https://github.com/SPL-BGU/pddl-copilot and point --marketplace-path at it
 
 Usage:
   pip3 install -r requirements.txt
-  python3 run_experiment.py --marketplace-path /path/to/pddl-copilot --models qwen3:0.5b qwen3:4b
+  python3 run_experiment.py --marketplace-path /path/to/pddl-copilot --models qwen3:0.6b qwen3:4b
   python3 run_experiment.py --marketplace-path /path/to/pddl-copilot --tasks solve validate_plan --chains
 """
 
@@ -64,7 +64,7 @@ def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
 # Defaults (from the paper)
 # ---------------------------------------------------------------------------
 
-DEFAULT_MODELS = ["qwen3:0.5b", "qwen3:4b"]
+DEFAULT_MODELS = ["qwen3:0.6b", "qwen3:4b"]
 TEMPERATURE = 0.0
 MAX_TOOL_LOOPS = 10
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
