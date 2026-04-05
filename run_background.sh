@@ -23,12 +23,37 @@ if [ ! -d "$MARKETPLACE_PATH/plugins" ]; then
     exit 1
 fi
 
+# Ensure Ollama is running (leave it running on exit — it's persistent laptop infra)
+if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
+    echo "Ollama not running — starting in background..."
+    ollama serve > "$SCRIPT_DIR/ollama_serve.log" 2>&1 &
+    for i in {1..15}; do
+        if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
+            echo "Ollama ready."
+            break
+        fi
+        sleep 1
+    done
+    if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
+        echo "Error: Ollama failed to start after 15s. Is it installed? (see ollama_serve.log)"
+        exit 1
+    fi
+fi
+
 case "${1:-both}" in
     small) MODELS=(qwen3:0.5b);            TAG="qwen05b" ;;
     large) MODELS=(qwen3:4b);              TAG="qwen4b" ;;
     both)  MODELS=(qwen3:0.5b qwen3:4b);   TAG="full" ;;
     *)     echo "Usage: $0 [small|large|both]"; exit 1 ;;
 esac
+
+# Ensure requested models are pulled
+for m in "${MODELS[@]}"; do
+    if ! ollama list 2>/dev/null | awk 'NR>1 {print $1}' | grep -qx "$m"; then
+        echo "Pulling $m..."
+        ollama pull "$m" || { echo "Error: failed to pull $m"; exit 1; }
+    fi
+done
 
 STAMP=$(date +%Y%m%d_%H%M%S)
 LOG="run_${TAG}_${STAMP}.log"
