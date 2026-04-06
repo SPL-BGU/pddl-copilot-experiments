@@ -156,7 +156,8 @@ class TaskResult:
     prompt_variant: int
     with_tools: bool
     success: bool
-    response: str
+    tool_selected: bool | None = None  # True/False for with-tools, None for no-tools
+    response: str = ""
     tool_calls: list = field(default_factory=list)
     duration_s: float = 0.0
     error: str = ""
@@ -265,12 +266,12 @@ async def chat_with_tools(
             fn = tc["function"]
             tool_name = fn["name"]
             tool_args = fn.get("arguments", {})
-            tool_calls_log.append({"name": tool_name, "arguments": tool_args})
-
             try:
                 result_text = await mcp.call_tool(tool_name, tool_args)
             except Exception as exc:
                 result_text = f"Tool error: {exc}"
+
+            tool_calls_log.append({"name": tool_name, "arguments": tool_args, "result": result_text})
 
             messages.append({"role": "tool", "content": result_text})
 
@@ -439,6 +440,22 @@ def _used_tool(tool_calls: list[dict], name: str) -> bool:
     return any(tc["name"] == name for tc in tool_calls)
 
 
+def _get_tool_results(tool_calls: list[dict], name: str) -> list[str]:
+    """Return result strings from all calls to *name*."""
+    return [tc["result"] for tc in tool_calls if tc["name"] == name and "result" in tc]
+
+
+def _extract_plan_from_tool_result(raw: str) -> list[str]:
+    """Extract plan action list from a planner tool's JSON result."""
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else raw
+    except (ValueError, TypeError):
+        return []
+    if isinstance(data, dict) and isinstance(data.get("plan"), list):
+        return data["plan"]
+    return []
+
+
 # Matches `(action arg1 arg2 ...)` action lines, optionally with a leading step
 # number like "1." or "1:" and any surrounding whitespace. Conservatively
 # requires at least the action name as an identifier.
@@ -526,10 +543,15 @@ async def check_success(
     mcp: MCPPlanner,
     domain_pddl: str,
     problem_pddl: str,
-) -> bool:
+) -> tuple[bool | None, bool]:
     """Decide whether a model response counts as task success.
 
-    With-tools: require the model to have called the correct MCP tool.
+    Returns (tool_selected, result_correct):
+      tool_selected  — True/False for with-tools, None for no-tools.
+      result_correct — end-to-end correctness of the produced artifact.
+
+    With-tools: check tool selection AND validate the tool result against
+    ground truth (plan validity, verdict match, non-error trace).
     Without-tools: validate the actual artifact the model produced:
       - solve           → extract a plan, send it to VAL, require retcode==0
       - validate_*      → extract VERDICT: VALID|INVALID, compare to ground truth
@@ -539,33 +561,60 @@ async def check_success(
 
     if task == "solve":
         if tool_calls:
-            return _used_tool(tool_calls, "classic_planner") or _used_tool(tool_calls, "numeric_planner")
+            selected = _used_tool(tool_calls, "classic_planner") or _used_tool(
+                tool_calls, "numeric_planner"
+            )
+            # Validate plan from tool result
+            planner_results = _get_tool_results(
+                tool_calls, "classic_planner"
+            ) + _get_tool_results(tool_calls, "numeric_planner")
+            correct = False
+            for raw in planner_results:
+                plan_lines = _extract_plan_from_tool_result(raw)
+                if plan_lines and await _validate_model_plan(
+                    mcp, domain_pddl, problem_pddl, plan_lines
+                ):
+                    correct = True
+                    break
+            return selected, correct
         plan_lines = extract_plan_lines(response or "")
-        return await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
+        return None, await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
 
     if task in ("validate_domain", "validate_problem", "validate_plan"):
-        if tool_calls:
-            return _used_tool(tool_calls, "validate_pddl_syntax")
-        verdict = extract_verdict(response or "")
-        if verdict is None:
-            return False
         gt_key = {
             "validate_domain": "domain_valid",
             "validate_problem": "problem_valid",
             "validate_plan": "plan_valid",
         }[task]
         truth = gt.get(gt_key)
-        if truth is None:
-            # Oracle couldn't determine ground truth for this item — skip scoring.
-            return False
-        return verdict == truth
+
+        if tool_calls:
+            selected = _used_tool(tool_calls, "validate_pddl_syntax")
+            correct = False
+            if truth is not None:
+                for raw in _get_tool_results(tool_calls, "validate_pddl_syntax"):
+                    verdict = _parse_retcode_verdict(raw)
+                    if verdict == truth:
+                        correct = True
+                        break
+            return selected, correct
+
+        verdict = extract_verdict(response or "")
+        if verdict is None or truth is None:
+            return None, False
+        return None, verdict == truth
 
     if task == "simulate":
         if tool_calls:
-            return _used_tool(tool_calls, "get_state_transition")
-        return "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower)
+            selected = _used_tool(tool_calls, "get_state_transition")
+            results = _get_tool_results(tool_calls, "get_state_transition")
+            correct = any(
+                r and not r.startswith("Tool error") for r in results
+            )
+            return selected, correct
+        return None, "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower)
 
-    return False
+    return None, False
 
 
 # ---------------------------------------------------------------------------
@@ -617,11 +666,12 @@ async def evaluate_one(
         error = str(exc)
 
     duration = time.time() - t0
+    tool_selected: bool | None = None
     if error:
         success = False
     else:
         try:
-            success = await check_success(
+            tool_selected, success = await check_success(
                 task, response_text, tool_calls, gt, mcp, domain_pddl, problem_pddl,
             )
         except Exception as exc:
@@ -636,6 +686,7 @@ async def evaluate_one(
         prompt_variant=prompt_variant,
         with_tools=with_tools,
         success=success,
+        tool_selected=tool_selected,
         response=response_text[:500],
         tool_calls=tool_calls,
         duration_s=round(duration, 2),
@@ -743,7 +794,7 @@ async def run_chain_experiment(
                             resp_text = chat_without_tools(model, messages)
                             tc = []
                             messages.append({"role": "assistant", "content": resp_text})
-                        ok = await check_success(
+                        _sel, ok = await check_success(
                             task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
                         )
                         if not ok:
@@ -787,14 +838,20 @@ def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float
 
 
 def summarize_single_task(results: list[TaskResult]) -> list[dict]:
-    """Aggregate single-task results into long-format rows with N and 95% CIs."""
-    agg: dict = defaultdict(lambda: {"total": 0, "success": 0})
+    """Aggregate single-task results into long-format rows with N and 95% CIs.
+
+    For the "tools" condition, also reports tool_selected count/rate — how often
+    the model called the correct MCP tool, independently of result correctness.
+    """
+    agg: dict = defaultdict(lambda: {"total": 0, "success": 0, "tool_selected": 0})
     for r in results:
         cond = "tools" if r.with_tools else "no-tools"
         key = (r.model, cond, r.task)
         agg[key]["total"] += 1
         if r.success:
             agg[key]["success"] += 1
+        if r.tool_selected:
+            agg[key]["tool_selected"] += 1
 
     models = sorted(set(r.model for r in results))
     tasks_present = [t for t in TASKS if any(r.task == t for r in results)]
@@ -808,7 +865,7 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
                 s = d["success"]
                 rate = s / n if n > 0 else 0.0
                 lo, hi = wilson_ci(s, n)
-                rows.append({
+                row: dict = {
                     "model": model,
                     "condition": cond,
                     "task": task,
@@ -817,7 +874,16 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
                     "success_rate": round(rate, 4),
                     "ci_lo": round(lo, 4),
                     "ci_hi": round(hi, 4),
-                })
+                }
+                if cond == "tools":
+                    ts = d["tool_selected"]
+                    ts_rate = ts / n if n > 0 else 0.0
+                    ts_lo, ts_hi = wilson_ci(ts, n)
+                    row["tool_selected"] = ts
+                    row["tool_selected_rate"] = round(ts_rate, 4)
+                    row["tool_selected_ci_lo"] = round(ts_lo, 4)
+                    row["tool_selected_ci_hi"] = round(ts_hi, 4)
+                rows.append(row)
     return rows
 
 
@@ -827,7 +893,10 @@ def print_single_task_table(results: list[TaskResult]):
     if not rows:
         return
 
-    header = f"{'Model':<20} {'Condition':<9} {'Task':<18} {'Rate':>6}  {'N':>4}  {'95% CI':<16}"
+    header = (
+        f"{'Model':<20} {'Condition':<9} {'Task':<18} "
+        f"{'Rate':>6}  {'N':>4}  {'95% CI':<16}  {'ToolSel':>7}"
+    )
     bar = "=" * len(header)
     print("\n" + bar)
     print("SINGLE-TASK SUCCESS RATES (with Wilson 95% CI)")
@@ -836,9 +905,10 @@ def print_single_task_table(results: list[TaskResult]):
     print("-" * len(header))
     for r in rows:
         ci_str = f"[{r['ci_lo']:.2f}, {r['ci_hi']:.2f}]"
+        ts_str = f"{r['tool_selected_rate']:.2f}" if "tool_selected_rate" in r else "   -"
         print(
             f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
-            f"{r['success_rate']:>6.2f}  {r['n']:>4}  {ci_str:<16}"
+            f"{r['success_rate']:>6.2f}  {r['n']:>4}  {ci_str:<16}  {ts_str:>7}"
         )
     print(bar)
 
