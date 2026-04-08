@@ -59,27 +59,32 @@ STAMP=$(date +%Y%m%d_%H%M%S)
 LOG="run_${TAG}_${STAMP}.log"
 OUT_PREFIX="results/${TAG}_${STAMP}"
 FILTERS="per-task all"
+PROMPT_STYLES="minimal guided"
 
 echo "Starting PDDL copilot experiment..."
 echo "  Models:      ${MODELS[*]}"
 echo "  Marketplace: $MARKETPLACE_PATH"
 echo "  Filters:     $FILTERS (run sequentially)"
+echo "  Prompts:     $PROMPT_STYLES (run sequentially)"
 echo "  Chains:      on"
-echo "  Output dirs: ${OUT_PREFIX}_per-task/, ${OUT_PREFIX}_all/"
+echo "  Output dirs: ${OUT_PREFIX}_{filter}_{prompt}/"
 echo "  Log file:    $LOG"
 
 nohup caffeinate -i bash -c "
 cd \"$SCRIPT_DIR\"
 for FILTER in $FILTERS; do
-    echo \"===== filter=\$FILTER started \$(date) =====\"
+  for PSTYLE in $PROMPT_STYLES; do
+    echo \"===== filter=\$FILTER prompt=\$PSTYLE started \$(date) =====\"
     nice -n 19 python3 run_experiment.py \
         --marketplace-path \"$MARKETPLACE_PATH\" \
         --models ${MODELS[*]} \
         --tool-filter \"\$FILTER\" \
+        --prompt-style \"\$PSTYLE\" \
         --chains \
         --chain-samples 20 \
-        --output-dir \"${OUT_PREFIX}_\${FILTER}\"
-    echo \"===== filter=\$FILTER finished \$(date) =====\"
+        --output-dir \"${OUT_PREFIX}_\${FILTER}_\${PSTYLE}\"
+    echo \"===== filter=\$FILTER prompt=\$PSTYLE finished \$(date) =====\"
+  done
 done
 " > "$LOG" 2>&1 &
 

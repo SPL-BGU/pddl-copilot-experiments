@@ -83,16 +83,28 @@ TASK_TOOLS: dict[str, list[str]] = {
 }
 
 TOOL_FILTER_CHOICES = ("all", "per-task")
+PROMPT_STYLE_CHOICES = ("minimal", "guided")
 
 # ---------------------------------------------------------------------------
 # System prompts (Section 4 of the paper)
 # ---------------------------------------------------------------------------
 
-WITH_TOOLS_SYSTEM = (
+_WITH_TOOLS_BASE = (
     "You are a PDDL planning assistant with access to planning tools. "
     "Your ONLY way to get information or solve problems is by calling the "
     "provided tools ONE AT A TIME — never guess or create plan details yourself."
 )
+
+_GUIDED_SUFFIX = (
+    "\nWhen calling tools, pass the complete PDDL text from the user message "
+    "(starting with '(define ...') as the 'domain' and 'problem' arguments — "
+    "not file names or domain names."
+)
+
+WITH_TOOLS_SYSTEM: dict[str, str] = {
+    "minimal": _WITH_TOOLS_BASE,
+    "guided": _WITH_TOOLS_BASE + _GUIDED_SUFFIX,
+}
 
 WITHOUT_TOOLS_SYSTEM = (
     "You are a PDDL planning assistant. You must analyze PDDL problems, "
@@ -162,6 +174,7 @@ class TaskResult:
     duration_s: float = 0.0
     error: str = ""
     tool_filter: str = "all"
+    prompt_style: str = "minimal"
 
 
 # ---------------------------------------------------------------------------
@@ -634,6 +647,7 @@ async def evaluate_one(
     mcp: MCPPlanner,
     gt: dict,
     tool_filter: str = "all",
+    prompt_style: str = "minimal",
 ) -> TaskResult:
     template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
@@ -642,7 +656,7 @@ async def evaluate_one(
         plan_str = "\n".join(gt["plan"]) if isinstance(gt["plan"], list) else gt["plan"]
 
     prompt = template.format(domain=domain_pddl, problem=problem_pddl, plan=plan_str)
-    system = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
+    system = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": prompt},
@@ -692,6 +706,7 @@ async def evaluate_one(
         duration_s=round(duration, 2),
         error=error,
         tool_filter=tool_filter,
+        prompt_style=prompt_style,
     )
 
 
@@ -703,6 +718,7 @@ async def run_single_task_experiment(
     mcp: MCPPlanner,
     num_variants: int = 5,
     tool_filter: str = "all",
+    prompt_style: str = "minimal",
 ) -> list[TaskResult]:
     results: list[TaskResult] = []
     total = (
@@ -732,6 +748,7 @@ async def run_single_task_experiment(
                                 model, task, dname, dinfo["domain"],
                                 pname, ppddl, pv, with_tools, mcp, gt,
                                 tool_filter=tool_filter,
+                                prompt_style=prompt_style,
                             )
                             results.append(r)
                             mark = "OK" if r.success else "FAIL"
@@ -753,10 +770,11 @@ async def run_chain_experiment(
     samples: int = 20,
     tool_filter: str = "all",
     with_tools: bool = True,
+    prompt_style: str = "minimal",
 ) -> list[dict]:
     results: list[dict] = []
     domain_items = list(domains.items())
-    system_prompt = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
+    system_prompt = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
     cond_label = "tools" if with_tools else "no-tools"
 
     for model in models:
@@ -817,6 +835,7 @@ async def run_chain_experiment(
                 "successes": successes,
                 "success_rate": round(successes / samples, 2),
                 "tool_filter": tool_filter,
+                "prompt_style": prompt_style,
             })
     return results
 
@@ -997,6 +1016,7 @@ async def async_main(args):
     print(f"  Variants:   {args.num_variants}")
     print(f"  Temperature:{args.temperature}")
     print(f"  Tool filter:{args.tool_filter}")
+    print(f"  Prompt:     {args.prompt_style}")
 
     # Resolve plugins
     plugin_dirs = resolve_plugin_dirs(args.marketplace_path)
@@ -1032,6 +1052,7 @@ async def async_main(args):
             mcp=mcp,
             num_variants=args.num_variants,
             tool_filter=args.tool_filter,
+            prompt_style=args.prompt_style,
         )
         print_single_task_table(single_results)
 
@@ -1049,6 +1070,7 @@ async def async_main(args):
                     samples=args.chain_samples,
                     tool_filter=args.tool_filter,
                     with_tools=cond_with_tools,
+                    prompt_style=args.prompt_style,
                 )
             print_chain_table(chain_results)
 
@@ -1085,6 +1107,10 @@ def main():
                    help="'all' exposes every connected MCP tool every turn (reproduces paper). "
                         "'per-task' restricts tools per task via TASK_TOOLS allowlist, reducing "
                         "tool-selection noise from unrelated tools.")
+    p.add_argument("--prompt-style", choices=list(PROMPT_STYLE_CHOICES), default="minimal",
+                   help="'minimal' uses the original system prompt (reproduces paper). "
+                        "'guided' adds a one-sentence hint about passing full PDDL content "
+                        "as tool arguments instead of file names.")
     p.add_argument("--chains", action="store_true",
                    help="Also run multi-task chain evaluation")
     p.add_argument("--chain-samples", type=int, default=20,
