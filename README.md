@@ -14,10 +14,10 @@ Tests Ollama LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 
 ## Prerequisites
 
-- **Docker** running (MCP planning servers run in Docker)
-- **Ollama** installed and running with desired models pulled
 - **Python 3.10+**
-- **pddl-copilot marketplace** cloned locally:
+- **Java 17+** (OpenJDK) — required by the `numeric_planner` tool (ENHSP runs on the JVM)
+- **Ollama** installed and running with desired models pulled
+- **pddl-copilot marketplace** cloned locally (v2.0.0 or later — pure pip, no Docker):
   ```bash
   git clone https://github.com/SPL-BGU/pddl-copilot.git
   ```

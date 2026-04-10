@@ -110,7 +110,7 @@ The with-tools condition reports two separate metrics:
    - `simulate`: called `get_state_transition`
 
 2. **success** (end-to-end) -- Was the tool result correct?
-   - `solve`: tool returned a plan that passes VAL validation
+   - `solve`: tool returned a plan that passes pyvalidator validation
    - `validate_*`: tool result verdict matches ground truth (VALID/INVALID)
    - `simulate`: tool returned a non-error trace
 
@@ -118,7 +118,7 @@ A model can have high tool_selected but low success (knows *what* to call but ca
 
 ### 4.2 Without-Tools
 
-- `solve`: Extract plan lines from response, validate via VAL (retcode == 0)
+- `solve`: Extract plan lines from response, validate via pyvalidator (`valid == true`)
 - `validate_*`: Extract `VERDICT: VALID` or `VERDICT: INVALID` from response, compare to ground truth
 - `simulate`: Response contains "state" and ("after" or "step") -- loose keyword check
 
@@ -172,7 +172,7 @@ These oracle results become the ground truth for scoring model responses.
 
 ## 8. MCP Tool API Contract
 
-Tools are served by two MCP plugin servers from the [pddl-copilot](https://github.com/SPL-BGU/pddl-copilot) marketplace, running in Docker.
+Tools are served by two MCP plugin servers from the [pddl-copilot](https://github.com/SPL-BGU/pddl-copilot) marketplace (v2.0.0+, pure pip — no Docker). The solver uses Fast Downward via `up-fast-downward` and ENHSP via `up-enhsp`; the validator uses `pddl-pyvalidator`. Numeric planning via ENHSP requires Java 17+.
 
 ### pddl-solver
 
@@ -185,8 +185,8 @@ Tools are served by two MCP plugin servers from the [pddl-copilot](https://githu
 
 | Tool | Parameters | Returns |
 |------|-----------|---------|
-| `validate_pddl_syntax` | `domain` (required), `problem` (optional), `plan` (optional) | `{retcode: int, stdout: str, stderr: str}` or `{error: true, message: str}` |
-| `get_state_transition` | `domain`, `problem`, `plan` (all required) | Same format |
+| `validate_pddl_syntax` | `domain` (required), `problem` (optional), `plan` (optional) | `{valid: bool, status: str, report: str, details: dict}` or `{error: true, message: str}` |
+| `get_state_transition` | `domain`, `problem`, `plan` (all required) | `{valid: bool, report: str, steps: list, trajectory: list, details: dict}` or `{error: true, message: str}` |
 
 **Input detection**: Tools check if an argument starts with `(` or `;` or contains `(define ` to detect inline PDDL content. Otherwise the argument is treated as a file path. This is why passing a domain name like `"blocksworld"` fails -- it's interpreted as a file path that doesn't exist.
 

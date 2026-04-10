@@ -23,6 +23,19 @@ if [ ! -d "$MARKETPLACE_PATH/plugins" ]; then
     exit 1
 fi
 
+# v2.0.0 numeric_planner (ENHSP) runs on the JVM — fail fast if Java is missing or too old
+if ! command -v java >/dev/null 2>&1; then
+    echo "Error: java not found on PATH. Numeric planning via ENHSP requires Java 17+."
+    echo "  macOS:  brew install openjdk@17"
+    echo "  Linux:  sudo apt install openjdk-17-jre-headless"
+    exit 1
+fi
+JAVA_MAJOR=$(java -version 2>&1 | awk -F'[".]' '/version/ {print $2; exit}')
+if ! [[ "$JAVA_MAJOR" =~ ^[0-9]+$ ]] || [ "$JAVA_MAJOR" -lt 17 ]; then
+    echo "Error: Java 17+ required for numeric_planner (ENHSP). Found: $(java -version 2>&1 | head -1)"
+    exit 1
+fi
+
 # Ensure Ollama is running (leave it running on exit — it's persistent laptop infra)
 if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
     echo "Ollama not running — starting in background..."

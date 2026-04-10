@@ -200,7 +200,7 @@ class MCPPlanner:
             server_params = StdioServerParameters(
                 command="bash",
                 args=[str(launch_script)],
-                env={**os.environ, "HOST_PWD": os.getcwd()},
+                env={**os.environ},
             )
             read_stream, write_stream = await self.stack.enter_async_context(
                 stdio_client(server_params)
@@ -348,11 +348,11 @@ def load_domains(domains_dir: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _parse_retcode_verdict(raw: str) -> bool | None:
+def _parse_validation_verdict(raw: str) -> bool | None:
     """Parse a validate_pddl_syntax result string.
 
-    Returns True if retcode == 0 (valid), False if retcode != 0 (invalid),
-    None if the tool returned an error envelope or the result is unparseable.
+    Expects the pyvalidator shape {"valid", "status", "report", "details"}.
+    Returns True if valid, False if invalid, None on error or unparseable.
     """
     try:
         data = json.loads(raw) if isinstance(raw, str) else raw
@@ -362,9 +362,9 @@ def _parse_retcode_verdict(raw: str) -> bool | None:
         return None
     if data.get("error") is True:
         return None
-    if "retcode" not in data:
+    if "valid" not in data:
         return None
-    return data["retcode"] == 0
+    return bool(data["valid"])
 
 
 async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
@@ -383,22 +383,22 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 "trace": None,
             }
 
-            # Validate domain — parse retcode from VAL
+            # Validate domain via pyvalidator
             try:
                 raw = await mcp.call_tool("validate_pddl_syntax", {"domain": dinfo["domain"]})
                 entry["domain_validation_raw"] = raw
-                entry["domain_valid"] = _parse_retcode_verdict(raw)
+                entry["domain_valid"] = _parse_validation_verdict(raw)
             except Exception as exc:
                 entry["domain_validation_raw"] = str(exc)
 
-            # Validate problem — parse retcode from VAL
+            # Validate problem via pyvalidator
             try:
                 raw = await mcp.call_tool(
                     "validate_pddl_syntax",
                     {"domain": dinfo["domain"], "problem": ppddl},
                 )
                 entry["problem_validation_raw"] = raw
-                entry["problem_valid"] = _parse_retcode_verdict(raw)
+                entry["problem_valid"] = _parse_validation_verdict(raw)
             except Exception as exc:
                 entry["problem_validation_raw"] = str(exc)
 
@@ -422,14 +422,14 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                     )
                 except Exception:
                     pass
-                # Validate the oracle plan against VAL so validate_plan has a verdict
+                # Validate the oracle plan so validate_plan has a verdict
                 try:
                     raw = await mcp.call_tool(
                         "validate_pddl_syntax",
                         {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_str},
                     )
                     entry["plan_validation_raw"] = raw
-                    entry["plan_valid"] = _parse_retcode_verdict(raw)
+                    entry["plan_valid"] = _parse_validation_verdict(raw)
                 except Exception as exc:
                     entry["plan_validation_raw"] = str(exc)
 
@@ -533,7 +533,7 @@ def extract_verdict(response: str) -> bool | None:
 async def _validate_model_plan(
     mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan_lines: list[str],
 ) -> bool:
-    """Call validate_pddl_syntax on the model's extracted plan. True iff VAL retcode==0."""
+    """Call validate_pddl_syntax on the model's extracted plan. True iff pyvalidator reports valid."""
     if not plan_lines:
         return False
     plan_str = "\n".join(plan_lines)
@@ -544,7 +544,7 @@ async def _validate_model_plan(
         )
     except Exception:
         return False
-    verdict = _parse_retcode_verdict(raw)
+    verdict = _parse_validation_verdict(raw)
     return verdict is True
 
 
@@ -566,7 +566,7 @@ async def check_success(
     With-tools: check tool selection AND validate the tool result against
     ground truth (plan validity, verdict match, non-error trace).
     Without-tools: validate the actual artifact the model produced:
-      - solve           → extract a plan, send it to VAL, require retcode==0
+      - solve           → extract a plan, send it to pyvalidator, require valid==True
       - validate_*      → extract VERDICT: VALID|INVALID, compare to ground truth
       - simulate        → loose keyword check (state trace structure not graded here)
     """
@@ -606,7 +606,7 @@ async def check_success(
             correct = False
             if truth is not None:
                 for raw in _get_tool_results(tool_calls, "validate_pddl_syntax"):
-                    verdict = _parse_retcode_verdict(raw)
+                    verdict = _parse_validation_verdict(raw)
                     if verdict == truth:
                         correct = True
                         break
