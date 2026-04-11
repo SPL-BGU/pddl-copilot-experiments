@@ -631,10 +631,30 @@ async def _validate_model_plan(
 
 
 def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
-    return any(
-        tc["name"] == name and str(tc.get("result", "")).startswith("Tool error")
-        for tc in tool_calls
-    )
+    """True if any call to *name* failed.
+
+    Two error shapes are recognized:
+      - MCP transport errors, surfaced as strings prefixed with "Tool error".
+      - Plugin-side errors, returned as JSON like {"error": true, "message": ...}.
+        The pddl-solver / pddl-validator plugins use this shape for things
+        like bad arguments, missing files, planner timeouts, etc.
+    """
+    for tc in tool_calls:
+        if tc.get("name") != name:
+            continue
+        raw = tc.get("result", "")
+        if isinstance(raw, str):
+            if raw.startswith("Tool error"):
+                return True
+            try:
+                parsed = json.loads(raw)
+            except (ValueError, TypeError):
+                continue
+        else:
+            parsed = raw
+        if isinstance(parsed, dict) and parsed.get("error"):
+            return True
+    return False
 
 
 async def check_success(
