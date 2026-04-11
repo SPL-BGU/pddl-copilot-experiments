@@ -71,6 +71,33 @@ TEMPERATURE = 0.0
 MAX_TOOL_LOOPS = 10
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
 
+# Per-task output caps. Chosen well above the longest legitimate plan/trace
+# seen in the domains set but low enough that a thinking-mode spiral is cut
+# off in seconds instead of minutes. Override via --num-predict.
+DEFAULT_NUM_PREDICT: dict[str, int] = {
+    "solve":            2048,
+    "validate_domain":  1024,
+    "validate_problem": 1024,
+    "validate_plan":    1024,
+    "simulate":         1536,
+}
+DEFAULT_NUM_CTX = 8192
+DEFAULT_CONCURRENCY = 4
+
+# Failure-reason vocabulary used on TaskResult.failure_reason. "ok" for success,
+# the rest tag which classifier rejected the run so a human (or the summary
+# table) can tell a plan-invalid from a tool-not-selected from a truncation.
+FR_OK = "ok"
+FR_EXCEPTION = "exception"
+FR_TRUNCATED_NO_ANSWER = "truncated_no_answer"
+FR_TOOL_NOT_SELECTED = "tool_not_selected"
+FR_TOOL_ERROR = "tool_error"
+FR_PLAN_INVALID = "plan_invalid"
+FR_VERDICT_MISMATCH = "verdict_mismatch"
+FR_NO_VERDICT_PARSED = "no_verdict_parsed"
+FR_SIMULATE_EMPTY = "simulate_empty"
+FR_UNKNOWN = "unknown"
+
 # Per-task tool allowlists. When --tool-filter=per-task, only these tool names
 # are exposed to the model for the given task, controlling for tool-selection
 # noise when the connected MCP servers expose unrelated tools.
@@ -175,6 +202,9 @@ class TaskResult:
     error: str = ""
     tool_filter: str = "all"
     prompt_style: str = "minimal"
+    failure_reason: str = FR_OK          # FR_* constant — "ok" iff success
+    truncated: bool = False              # done_reason == "length" on any turn
+    done_reason: str = ""                # raw done_reason from the last chat turn
 
 
 # ---------------------------------------------------------------------------
@@ -241,18 +271,57 @@ class MCPPlanner:
 # ---------------------------------------------------------------------------
 
 
+def _build_chat_kwargs(
+    num_predict: int,
+    num_ctx: int,
+    temperature: float,
+    think: bool | None,
+) -> tuple[dict, dict]:
+    """Return (options, extra_kwargs) for an ollama client chat() call.
+
+    `think` is a top-level kwarg on ollama>=0.6; when None it must be omitted
+    entirely so the model's default behaviour applies.
+    """
+    options = {
+        "temperature": temperature,
+        "num_predict": num_predict,
+        "num_ctx": num_ctx,
+    }
+    extra: dict = {}
+    if think is not None:
+        extra["think"] = think
+    return options, extra
+
+
+def _response_done_reason(resp) -> str:
+    """Extract done_reason from an ollama ChatResponse (dict or pydantic)."""
+    if resp is None:
+        return ""
+    if hasattr(resp, "done_reason"):
+        return getattr(resp, "done_reason") or ""
+    if isinstance(resp, dict):
+        return resp.get("done_reason") or ""
+    return ""
+
+
 async def chat_with_tools(
+    client: "ollama.AsyncClient",
     model: str,
     messages: list[dict],
     mcp: MCPPlanner,
+    num_predict: int,
+    num_ctx: int,
     allowed_tools: list[str] | None = None,
     max_loops: int = MAX_TOOL_LOOPS,
     temperature: float = TEMPERATURE,
-) -> tuple[str, list[dict]]:
-    """Send messages to Ollama, handle tool-call loops. Returns (text, tool_calls_log).
+    think: bool | None = None,
+) -> tuple[str, list[dict], str]:
+    """Send messages to Ollama, handle tool-call loops.
 
-    If `allowed_tools` is provided, only tools whose name is in the list are
-    exposed to the model for this call.
+    Returns (text, tool_calls_log, last_done_reason). The done_reason is taken
+    from the final turn — callers use it to detect num_predict truncation
+    ("length") vs. natural stop ("stop"). If `allowed_tools` is given, only
+    tools with those names are exposed to the model.
     """
     tool_calls_log: list[dict] = []
 
@@ -262,18 +331,23 @@ async def chat_with_tools(
         allowed_set = set(allowed_tools)
         tools_payload = [t for t in mcp.tools if t["function"]["name"] in allowed_set]
 
+    options, extra = _build_chat_kwargs(num_predict, num_ctx, temperature, think)
+    last_done_reason = ""
+
     for _ in range(max_loops):
-        resp = ollama.chat(
+        resp = await client.chat(
             model=model,
             messages=messages,
             tools=tools_payload,
-            options={"temperature": temperature},
+            options=options,
+            **extra,
         )
+        last_done_reason = _response_done_reason(resp)
         msg = resp["message"]
         messages.append(msg)
 
         if not msg.get("tool_calls"):
-            return msg.get("content", ""), tool_calls_log
+            return msg.get("content", ""), tool_calls_log, last_done_reason
 
         for tc in msg["tool_calls"]:
             fn = tc["function"]
@@ -290,20 +364,28 @@ async def chat_with_tools(
 
     # Exhausted loops — return last content
     last = messages[-1]
-    return last.get("content", "") if isinstance(last, dict) else "", tool_calls_log
+    text = last.get("content", "") if isinstance(last, dict) else ""
+    return text, tool_calls_log, last_done_reason
 
 
-def chat_without_tools(
+async def chat_without_tools(
+    client: "ollama.AsyncClient",
     model: str,
     messages: list[dict],
+    num_predict: int,
+    num_ctx: int,
     temperature: float = TEMPERATURE,
-) -> str:
-    resp = ollama.chat(
+    think: bool | None = None,
+) -> tuple[str, str]:
+    """Single-turn chat without tools. Returns (text, done_reason)."""
+    options, extra = _build_chat_kwargs(num_predict, num_ctx, temperature, think)
+    resp = await client.chat(
         model=model,
         messages=messages,
-        options={"temperature": temperature},
+        options=options,
+        **extra,
     )
-    return resp["message"].get("content", "")
+    return resp["message"].get("content", ""), _response_done_reason(resp)
 
 
 # ---------------------------------------------------------------------------
@@ -548,6 +630,13 @@ async def _validate_model_plan(
     return verdict is True
 
 
+def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
+    return any(
+        tc["name"] == name and str(tc.get("result", "")).startswith("Tool error")
+        for tc in tool_calls
+    )
+
+
 async def check_success(
     task: str,
     response: str,
@@ -556,12 +645,14 @@ async def check_success(
     mcp: MCPPlanner,
     domain_pddl: str,
     problem_pddl: str,
-) -> tuple[bool | None, bool]:
+) -> tuple[bool | None, bool, str]:
     """Decide whether a model response counts as task success.
 
-    Returns (tool_selected, result_correct):
+    Returns (tool_selected, result_correct, failure_reason):
       tool_selected  — True/False for with-tools, None for no-tools.
       result_correct — end-to-end correctness of the produced artifact.
+      failure_reason — FR_OK on success; one of the FR_* tags otherwise,
+                       naming which classifier rejected the run.
 
     With-tools: check tool selection AND validate the tool result against
     ground truth (plan validity, verdict match, non-error trace).
@@ -577,21 +668,27 @@ async def check_success(
             selected = _used_tool(tool_calls, "classic_planner") or _used_tool(
                 tool_calls, "numeric_planner"
             )
-            # Validate plan from tool result
+            if not selected:
+                return False, False, FR_TOOL_NOT_SELECTED
             planner_results = _get_tool_results(
                 tool_calls, "classic_planner"
             ) + _get_tool_results(tool_calls, "numeric_planner")
-            correct = False
             for raw in planner_results:
                 plan_lines = _extract_plan_from_tool_result(raw)
                 if plan_lines and await _validate_model_plan(
                     mcp, domain_pddl, problem_pddl, plan_lines
                 ):
-                    correct = True
-                    break
-            return selected, correct
+                    return True, True, FR_OK
+            if _tool_error_seen(tool_calls, "classic_planner") or _tool_error_seen(
+                tool_calls, "numeric_planner"
+            ):
+                return True, False, FR_TOOL_ERROR
+            return True, False, FR_PLAN_INVALID
         plan_lines = extract_plan_lines(response or "")
-        return None, await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
+        ok = await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
+        if ok:
+            return None, True, FR_OK
+        return None, False, FR_PLAN_INVALID
 
     if task in ("validate_domain", "validate_problem", "validate_plan"):
         gt_key = {
@@ -603,31 +700,41 @@ async def check_success(
 
         if tool_calls:
             selected = _used_tool(tool_calls, "validate_pddl_syntax")
-            correct = False
-            if truth is not None:
-                for raw in _get_tool_results(tool_calls, "validate_pddl_syntax"):
-                    verdict = _parse_validation_verdict(raw)
-                    if verdict == truth:
-                        correct = True
-                        break
-            return selected, correct
+            if not selected:
+                return False, False, FR_TOOL_NOT_SELECTED
+            if truth is None:
+                return True, False, FR_UNKNOWN
+            for raw in _get_tool_results(tool_calls, "validate_pddl_syntax"):
+                verdict = _parse_validation_verdict(raw)
+                if verdict == truth:
+                    return True, True, FR_OK
+            if _tool_error_seen(tool_calls, "validate_pddl_syntax"):
+                return True, False, FR_TOOL_ERROR
+            return True, False, FR_VERDICT_MISMATCH
 
         verdict = extract_verdict(response or "")
-        if verdict is None or truth is None:
-            return None, False
-        return None, verdict == truth
+        if verdict is None:
+            return None, False, FR_NO_VERDICT_PARSED
+        if truth is None:
+            return None, False, FR_UNKNOWN
+        if verdict == truth:
+            return None, True, FR_OK
+        return None, False, FR_VERDICT_MISMATCH
 
     if task == "simulate":
         if tool_calls:
             selected = _used_tool(tool_calls, "get_state_transition")
+            if not selected:
+                return False, False, FR_TOOL_NOT_SELECTED
             results = _get_tool_results(tool_calls, "get_state_transition")
-            correct = any(
-                r and not r.startswith("Tool error") for r in results
-            )
-            return selected, correct
-        return None, "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower)
+            if any(r and not r.startswith("Tool error") for r in results):
+                return True, True, FR_OK
+            return True, False, FR_TOOL_ERROR
+        if "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower):
+            return None, True, FR_OK
+        return None, False, FR_SIMULATE_EMPTY
 
-    return None, False
+    return None, False, FR_UNKNOWN
 
 
 # ---------------------------------------------------------------------------
@@ -636,6 +743,7 @@ async def check_success(
 
 
 async def evaluate_one(
+    client: "ollama.AsyncClient",
     model: str,
     task: str,
     domain_name: str,
@@ -646,6 +754,9 @@ async def evaluate_one(
     with_tools: bool,
     mcp: MCPPlanner,
     gt: dict,
+    num_predict: int,
+    num_ctx: int,
+    think: bool | None,
     tool_filter: str = "all",
     prompt_style: str = "minimal",
 ) -> TaskResult:
@@ -666,31 +777,50 @@ async def evaluate_one(
     tool_calls: list[dict] = []
     error = ""
     response_text = ""
+    done_reason = ""
 
     allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
 
     try:
         if with_tools:
-            response_text, tool_calls = await chat_with_tools(
-                model, messages, mcp, allowed_tools=allowed,
+            response_text, tool_calls, done_reason = await chat_with_tools(
+                client, model, messages, mcp,
+                num_predict=num_predict, num_ctx=num_ctx,
+                allowed_tools=allowed, think=think,
             )
         else:
-            response_text = chat_without_tools(model, messages)
+            response_text, done_reason = await chat_without_tools(
+                client, model, messages,
+                num_predict=num_predict, num_ctx=num_ctx, think=think,
+            )
     except Exception as exc:
         error = str(exc)
 
     duration = time.time() - t0
     tool_selected: bool | None = None
+    failure_reason = FR_OK
     if error:
         success = False
+        failure_reason = FR_EXCEPTION
     else:
         try:
-            tool_selected, success = await check_success(
+            tool_selected, success, failure_reason = await check_success(
                 task, response_text, tool_calls, gt, mcp, domain_pddl, problem_pddl,
             )
         except Exception as exc:
             success = False
             error = f"scoring error: {exc}"
+            failure_reason = FR_EXCEPTION
+
+    truncated = done_reason == "length"
+    # If the cap cut the model off mid-output and nothing survived scoring,
+    # surface that as the proximate cause rather than a downstream classifier
+    # result (plan_invalid / no_verdict_parsed) that was only empty because
+    # the model never finished speaking.
+    if not success and truncated and failure_reason in (
+        FR_PLAN_INVALID, FR_NO_VERDICT_PARSED, FR_SIMULATE_EMPTY, FR_UNKNOWN,
+    ):
+        failure_reason = FR_TRUNCATED_NO_ANSWER
 
     return TaskResult(
         model=model,
@@ -707,10 +837,31 @@ async def evaluate_one(
         error=error,
         tool_filter=tool_filter,
         prompt_style=prompt_style,
+        failure_reason=failure_reason,
+        truncated=truncated,
+        done_reason=done_reason,
+    )
+
+
+def _format_progress(done: int, total: int, scheduled_idx: int, r: TaskResult) -> str:
+    """One-line completion log entry, safe for concurrent out-of-order prints.
+
+    `done` is the running completion count; `scheduled_idx` is the 0-based
+    enumerate order from the jobs list so the label is stable across runs.
+    """
+    cond = "tools" if r.with_tools else "no-tools"
+    idx_width = len(str(total))
+    mark = "OK" if r.success else "FAIL"
+    suffix = "" if r.success else f" ({'truncated:' if r.truncated else ''}{r.failure_reason})"
+    return (
+        f"  [{done:>{idx_width}}/{total} | {r.duration_s:>6.1f}s | #{scheduled_idx}] "
+        f"{r.model} {cond} {r.task} {r.domain_name}/{r.problem_name} v{r.prompt_variant}"
+        f" -> {mark}{suffix}"
     )
 
 
 async def run_single_task_experiment(
+    client: "ollama.AsyncClient",
     models: list[str],
     tasks: list[str],
     domains: dict,
@@ -719,41 +870,83 @@ async def run_single_task_experiment(
     num_variants: int = 5,
     tool_filter: str = "all",
     prompt_style: str = "minimal",
+    num_predict_override: int | None = None,
+    num_ctx: int = DEFAULT_NUM_CTX,
+    think: bool | None = None,
+    concurrency: int = DEFAULT_CONCURRENCY,
 ) -> list[TaskResult]:
-    results: list[TaskResult] = []
-    total = (
-        len(models) * 2 * len(tasks)
-        * sum(len(d["problems"]) for d in domains.values())
-        * num_variants
-    )
-    done = 0
+    """Run the full single-task sweep with bounded Ollama concurrency.
 
+    Jobs are enumerated up-front so `[i/N]` numbering is stable across
+    reorderings; completions are printed as they finish via
+    `asyncio.as_completed`. Partial results can be collected by the caller
+    on KeyboardInterrupt — remaining tasks are cancelled and whatever
+    finished is returned.
+    """
+    # Build the full job list up-front. Skipping unsolvable validate_plan/
+    # simulate is cheaper here than inside the coroutine and keeps the
+    # denominator accurate.
+    Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv, with_tools, gt, np)
+    jobs: list[Job] = []
     for model in models:
         for with_tools in (True, False):
-            cond = "tools" if with_tools else "no-tools"
             for task in tasks:
+                np_for_task = (
+                    num_predict_override
+                    if num_predict_override is not None
+                    else DEFAULT_NUM_PREDICT[task]
+                )
                 for dname, dinfo in domains.items():
                     for pname, ppddl in dinfo["problems"].items():
                         gt = ground_truth.get(dname, {}).get(pname, {})
-                        # Skip plan/simulate tasks when problem is unsolvable
                         if task in ("validate_plan", "simulate") and not gt.get("plan"):
-                            done += num_variants
                             continue
                         for pv in range(num_variants):
-                            done += 1
-                            label = f"[{done}/{total}] {model}|{cond}|{task}|{dname}/{pname} v{pv}"
-                            print(f"  {label}", end="", flush=True)
-
-                            r = await evaluate_one(
+                            jobs.append((
                                 model, task, dname, dinfo["domain"],
-                                pname, ppddl, pv, with_tools, mcp, gt,
-                                tool_filter=tool_filter,
-                                prompt_style=prompt_style,
-                            )
-                            results.append(r)
-                            mark = "OK" if r.success else "FAIL"
-                            print(f" -> {mark} ({r.duration_s}s)")
-    return results
+                                pname, ppddl, pv, with_tools, gt, np_for_task,
+                            ))
+
+    total = len(jobs)
+    results: list[TaskResult | None] = [None] * total
+    if total == 0:
+        return []
+
+    sem = asyncio.Semaphore(max(1, concurrency))
+
+    async def run_one(idx: int) -> tuple[int, TaskResult]:
+        (
+            model, task, dname, dpddl, pname, ppddl, pv,
+            with_tools, gt, np_for_task,
+        ) = jobs[idx]
+        async with sem:
+            r = await evaluate_one(
+                client, model, task, dname, dpddl,
+                pname, ppddl, pv, with_tools, mcp, gt,
+                num_predict=np_for_task, num_ctx=num_ctx, think=think,
+                tool_filter=tool_filter, prompt_style=prompt_style,
+            )
+            return idx, r
+
+    aws = [asyncio.create_task(run_one(i)) for i in range(total)]
+    done_count = 0
+    try:
+        for coro in asyncio.as_completed(aws):
+            idx, r = await coro
+            results[idx] = r
+            done_count += 1
+            print(_format_progress(done_count, total, idx, r), flush=True)
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("\n  Cancelling pending tasks...", flush=True)
+        for t in aws:
+            if not t.done():
+                t.cancel()
+        # Drain cancellations so close paths don't hang; results already
+        # written to `results[idx]` via completed futures are kept.
+        await asyncio.gather(*aws, return_exceptions=True)
+        raise
+
+    return [r for r in results if r is not None]
 
 
 # ---------------------------------------------------------------------------
@@ -762,6 +955,7 @@ async def run_single_task_experiment(
 
 
 async def run_chain_experiment(
+    client: "ollama.AsyncClient",
     models: list[str],
     domains: dict,
     ground_truth: dict,
@@ -771,6 +965,9 @@ async def run_chain_experiment(
     tool_filter: str = "all",
     with_tools: bool = True,
     prompt_style: str = "minimal",
+    num_predict_override: int | None = None,
+    num_ctx: int = DEFAULT_NUM_CTX,
+    think: bool | None = None,
 ) -> list[dict]:
     results: list[dict] = []
     domain_items = list(domains.items())
@@ -802,17 +999,27 @@ async def run_chain_experiment(
                     )
                     messages.append({"role": "user", "content": prompt})
 
+                    np_for_task = (
+                        num_predict_override
+                        if num_predict_override is not None
+                        else DEFAULT_NUM_PREDICT[task]
+                    )
                     allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
                     try:
                         if with_tools:
-                            resp_text, tc = await chat_with_tools(
-                                model, messages, mcp, allowed_tools=allowed,
+                            resp_text, tc, _dr = await chat_with_tools(
+                                client, model, messages, mcp,
+                                num_predict=np_for_task, num_ctx=num_ctx,
+                                allowed_tools=allowed, think=think,
                             )
                         else:
-                            resp_text = chat_without_tools(model, messages)
+                            resp_text, _dr = await chat_without_tools(
+                                client, model, messages,
+                                num_predict=np_for_task, num_ctx=num_ctx, think=think,
+                            )
                             tc = []
                             messages.append({"role": "assistant", "content": resp_text})
-                        _sel, ok = await check_success(
+                        _sel, ok, _fr = await check_success(
                             task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
                         )
                         if not ok:
@@ -861,8 +1068,20 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
 
     For the "tools" condition, also reports tool_selected count/rate — how often
     the model called the correct MCP tool, independently of result correctness.
+    Each row also carries `truncated` (count where done_reason=="length") and
+    a `failure_reasons: {reason: count}` dict so the notebook can plot
+    failure-mode breakdowns without reparsing the raw JSON.
     """
-    agg: dict = defaultdict(lambda: {"total": 0, "success": 0, "tool_selected": 0})
+    def _new_agg() -> dict:
+        return {
+            "total": 0,
+            "success": 0,
+            "tool_selected": 0,
+            "truncated": 0,
+            "failure_reasons": defaultdict(int),
+        }
+
+    agg: dict = defaultdict(_new_agg)
     for r in results:
         cond = "tools" if r.with_tools else "no-tools"
         key = (r.model, cond, r.task)
@@ -871,6 +1090,9 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
             agg[key]["success"] += 1
         if r.tool_selected:
             agg[key]["tool_selected"] += 1
+        if r.truncated:
+            agg[key]["truncated"] += 1
+        agg[key]["failure_reasons"][r.failure_reason] += 1
 
     models = sorted(set(r.model for r in results))
     tasks_present = [t for t in TASKS if any(r.task == t for r in results)]
@@ -893,6 +1115,8 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
                     "success_rate": round(rate, 4),
                     "ci_lo": round(lo, 4),
                     "ci_hi": round(hi, 4),
+                    "truncated": d["truncated"],
+                    "failure_reasons": dict(d["failure_reasons"]),
                 }
                 if cond == "tools":
                     ts = d["tool_selected"]
@@ -904,6 +1128,40 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
                     row["tool_selected_ci_hi"] = round(ts_hi, 4)
                 rows.append(row)
     return rows
+
+
+def print_fail_reasons_table(results: list[TaskResult]):
+    """Per (model, condition, task) breakdown of the top failure reasons.
+
+    Complements the success-rate table by answering "why did the failures
+    fail?" at a glance — counts the top 3 FR_* tags per cell plus a
+    truncation count.
+    """
+    rows = summarize_single_task(results)
+    if not rows:
+        return
+
+    header = (
+        f"{'Model':<20} {'Condition':<9} {'Task':<18} "
+        f"{'N':>4}  {'Fails':>5}  {'Trunc':>5}  Top failure reasons"
+    )
+    bar = "=" * max(len(header), 92)
+    print("\n" + bar)
+    print("FAIL REASONS BY (model, condition, task)")
+    print(bar)
+    print(header)
+    print("-" * len(bar))
+    for r in rows:
+        n = r["n"]
+        fails = n - r["successes"]
+        reasons = {k: v for k, v in r["failure_reasons"].items() if k != FR_OK}
+        top = sorted(reasons.items(), key=lambda kv: -kv[1])[:3]
+        top_str = ", ".join(f"{k}:{v}" for k, v in top) if top else "-"
+        print(
+            f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
+            f"{n:>4}  {fails:>5}  {r['truncated']:>5}  {top_str}"
+        )
+    print(bar)
 
 
 def print_single_task_table(results: list[TaskResult]):
@@ -1005,6 +1263,18 @@ def save_results(
 
 
 async def async_main(args):
+    # Resolve the think-mode override once. "default" → None → don't pass
+    # the kwarg, preserving the model's default (= paper reproduction).
+    think_override: bool | None
+    if args.think == "on":
+        think_override = True
+    elif args.think == "off":
+        think_override = False
+    else:
+        think_override = None
+
+    num_parallel_env = os.environ.get("OLLAMA_NUM_PARALLEL", "unset")
+
     print("=" * 60)
     print("PDDL Planning Copilot — Experiment Runner")
     print("Reproducing: Benyamin et al., 2025 (arXiv:2509.12987)")
@@ -1017,6 +1287,14 @@ async def async_main(args):
     print(f"  Temperature:{args.temperature}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
+    print(f"  num_predict:{args.num_predict if args.num_predict is not None else 'per-task defaults'}")
+    print(f"  num_ctx:    {args.num_ctx}")
+    print(f"  think:      {args.think}")
+    print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
+    if args.concurrency > 1 and num_parallel_env == "unset":
+        print("  WARNING: OLLAMA_NUM_PARALLEL is not set — Ollama may queue "
+              "concurrent requests server-side, negating the speedup. "
+              "Export OLLAMA_NUM_PARALLEL>=concurrency before the run.")
 
     # Resolve plugins
     plugin_dirs = resolve_plugin_dirs(args.marketplace_path)
@@ -1035,6 +1313,8 @@ async def async_main(args):
     mcp = MCPPlanner()
     await mcp.connect(plugin_dirs)
 
+    client = ollama.AsyncClient()
+
     single_results: list[TaskResult] = []
     chain_results: list[dict] = []
     try:
@@ -1045,6 +1325,7 @@ async def async_main(args):
         # Single-task
         print("\n--- Single-Task Evaluation ---")
         single_results = await run_single_task_experiment(
+            client=client,
             models=args.models,
             tasks=args.tasks,
             domains=domains,
@@ -1053,8 +1334,13 @@ async def async_main(args):
             num_variants=args.num_variants,
             tool_filter=args.tool_filter,
             prompt_style=args.prompt_style,
+            num_predict_override=args.num_predict,
+            num_ctx=args.num_ctx,
+            think=think_override,
+            concurrency=args.concurrency,
         )
         print_single_task_table(single_results)
+        print_fail_reasons_table(single_results)
 
         # Multi-task chains
         if args.chains:
@@ -1062,6 +1348,7 @@ async def async_main(args):
             for cond_with_tools in (True, False):
                 print(f"\n  Condition: {'tools' if cond_with_tools else 'no-tools'}")
                 chain_results += await run_chain_experiment(
+                    client=client,
                     models=args.models,
                     domains=domains,
                     ground_truth=ground_truth,
@@ -1071,6 +1358,9 @@ async def async_main(args):
                     tool_filter=args.tool_filter,
                     with_tools=cond_with_tools,
                     prompt_style=args.prompt_style,
+                    num_predict_override=args.num_predict,
+                    num_ctx=args.num_ctx,
+                    think=think_override,
                 )
             print_chain_table(chain_results)
 
@@ -1081,6 +1371,15 @@ async def async_main(args):
         if single_results:
             save_results(single_results, chain_results, Path(args.output_dir))
         await mcp.close()
+        # ollama.AsyncClient wraps an httpx.AsyncClient; close it to release
+        # connections cleanly. Guarded because some builds expose
+        # aclose/close differently.
+        close = getattr(client, "aclose", None) or getattr(client, "close", None)
+        if close is not None:
+            try:
+                await close()
+            except Exception:
+                pass
 
 
 def main():
@@ -1111,6 +1410,21 @@ def main():
                    help="'minimal' uses the original system prompt (reproduces paper). "
                         "'guided' adds a one-sentence hint about passing full PDDL content "
                         "as tool arguments instead of file names.")
+    p.add_argument("--num-predict", type=int, default=None,
+                   help="Override max output tokens per chat turn for ALL tasks. "
+                        "Default: per-task caps (solve=2048, simulate=1536, validate_*=1024). "
+                        "Caps the qwen3 thinking-mode spiral that stalls runs for ~4 minutes.")
+    p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
+                   help=f"Ollama context window tokens. Default {DEFAULT_NUM_CTX}.")
+    p.add_argument("--think", choices=("on", "off", "default"), default="default",
+                   help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
+                        "model's default behaviour (reproduces paper). 'off' passes "
+                        "think=False, 'on' passes think=True. Ablation only — do NOT "
+                        "mix with reproduction runs.")
+    p.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
+                   help=f"Max concurrent Ollama chat requests during the single-task "
+                        f"sweep. Default {DEFAULT_CONCURRENCY}. Pair with "
+                        f"OLLAMA_NUM_PARALLEL>=concurrency on the server.")
     p.add_argument("--chains", action="store_true",
                    help="Also run multi-task chain evaluation")
     p.add_argument("--chain-samples", type=int, default=20,

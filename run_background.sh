@@ -74,6 +74,12 @@ OUT_PREFIX="results/${TAG}_${STAMP}"
 FILTERS="per-task all"
 PROMPT_STYLES="minimal guided"
 
+# Ensure Ollama serves concurrent chat requests instead of queueing them.
+# Must be >= the --concurrency flag passed to run_experiment.py (default 4).
+# Note: this takes effect for an ollama serve started AFTER this export; if a
+# server was already running, restart it or set the var in its environment.
+export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-4}"
+
 echo "Starting PDDL copilot experiment..."
 echo "  Models:      ${MODELS[*]}"
 echo "  Marketplace: $MARKETPLACE_PATH"
