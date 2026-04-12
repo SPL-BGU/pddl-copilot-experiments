@@ -747,7 +747,7 @@ async def check_success(
             if not selected:
                 return False, False, FR_TOOL_NOT_SELECTED
             results = _get_tool_results(tool_calls, "get_state_transition")
-            if any(r and not r.startswith("Tool error") for r in results):
+            if any(r for r in results) and not _tool_error_seen(tool_calls, "get_state_transition"):
                 return True, True, FR_OK
             return True, False, FR_TOOL_ERROR
         if "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower):
@@ -872,7 +872,7 @@ def _format_progress(done: int, total: int, scheduled_idx: int, r: TaskResult) -
     cond = "tools" if r.with_tools else "no-tools"
     idx_width = len(str(total))
     mark = "OK" if r.success else "FAIL"
-    suffix = "" if r.success else f" ({'truncated:' if r.truncated else ''}{r.failure_reason})"
+    suffix = "" if r.success else f" ({r.failure_reason})"
     return (
         f"  [{done:>{idx_width}}/{total} | {r.duration_s:>6.1f}s | #{scheduled_idx}] "
         f"{r.model} {cond} {r.task} {r.domain_name}/{r.problem_name} v{r.prompt_variant}"
@@ -1333,6 +1333,13 @@ async def async_main(args):
     mcp = MCPPlanner()
     await mcp.connect(plugin_dirs)
 
+    # Validate TASK_TOOLS against actual MCP tools (catch typos early)
+    available_tools = {t["function"]["name"] for t in mcp.tools}
+    for task, allowed in TASK_TOOLS.items():
+        missing = set(allowed) - available_tools
+        if missing:
+            sys.exit(f"TASK_TOOLS['{task}'] references unknown tools: {missing}")
+
     client = ollama.AsyncClient()
 
     single_results: list[TaskResult] = []
@@ -1432,7 +1439,7 @@ def main():
                         "as tool arguments instead of file names.")
     p.add_argument("--num-predict", type=int, default=None,
                    help="Override max output tokens per chat turn for ALL tasks. "
-                        "Default: per-task caps (solve=2048, simulate=1536, validate_*=1024). "
+                        "Default: per-task caps (solve=8192, simulate=1536, validate_*=1024). "
                         "Caps the qwen3 thinking-mode spiral that stalls runs for ~4 minutes.")
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
                    help=f"Ollama context window tokens. Default {DEFAULT_NUM_CTX}.")

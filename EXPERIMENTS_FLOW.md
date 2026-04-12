@@ -45,6 +45,7 @@ The experiment crosses four independent variables:
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all, per-task | Which tools the model sees |
 | **Prompt style** | minimal, guided | System prompt detail level |
+| **Think mode** | default, off | Qwen3 thinking-mode ablation (`--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity) |
 
 ### 2.1 Condition: with-tools vs without-tools
 

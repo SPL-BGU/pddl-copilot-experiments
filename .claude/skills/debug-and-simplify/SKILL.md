@@ -15,7 +15,7 @@ Systematically check each layer, stopping when the root cause is found:
 **Layer 0 — Runtime basics:**
 1. Is the virtual environment set up? (`source .venv/bin/activate && pip list`)
 2. Are required dependencies installed? (`pip install -r requirements.txt`)
-3. Can `run_experiment.py` import its dependencies? `python3 -c "import mcp, ollama, tabulate"`
+3. Can `run_experiment.py` import its dependencies? `python3 -c "import mcp, ollama"`
 4. Is Java 17+ available? (`java -version` — required for ENHSP numeric planner)
 
 **Layer 1 — Ollama service:**
