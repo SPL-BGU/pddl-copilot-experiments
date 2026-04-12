@@ -3,9 +3,16 @@
 # Detached, low CPU priority, no-sleep — continues while you work.
 #
 # Usage:
-#   ./run_background.sh             # both models (full overnight run)
-#   ./run_background.sh small       # just qwen3:0.6b (lightweight daytime run)
-#   ./run_background.sh large       # just qwen3:4b (heavier, overnight)
+#   ./run_background.sh                # both models (full overnight run)
+#   ./run_background.sh small          # just qwen3:0.6b (lightweight daytime run)
+#   ./run_background.sh large          # just qwen3:4b (heavier, overnight)
+#   ./run_background.sh small-nothink  # qwen3:0.6b with --think off (ablation:
+#                                      # is solve = ~0% caused by 0.6b's
+#                                      # thinking-mode token starvation, or
+#                                      # by raw model incapacity?)
+#   ./run_background.sh large-nothink  # qwen3:4b with --think off (ablation:
+#                                      # measures whether thinking helps or
+#                                      # hurts the larger model on this set)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -53,11 +60,16 @@ if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
     fi
 fi
 
+THINK_ARGS=()
 case "${1:-both}" in
-    small) MODELS=(qwen3:0.6b);            TAG="qwen06b" ;;
-    large) MODELS=(qwen3:4b);              TAG="qwen4b" ;;
-    both)  MODELS=(qwen3:0.6b qwen3:4b);   TAG="full" ;;
-    *)     echo "Usage: $0 [small|large|both]"; exit 1 ;;
+    small)         MODELS=(qwen3:0.6b);          TAG="qwen06b" ;;
+    large)         MODELS=(qwen3:4b);            TAG="qwen4b" ;;
+    both)          MODELS=(qwen3:0.6b qwen3:4b); TAG="full" ;;
+    small-nothink) MODELS=(qwen3:0.6b);          TAG="qwen06b_nothink"
+                   THINK_ARGS=(--think off) ;;
+    large-nothink) MODELS=(qwen3:4b);            TAG="qwen4b_nothink"
+                   THINK_ARGS=(--think off) ;;
+    *) echo "Usage: $0 [small|large|both|small-nothink|large-nothink]"; exit 1 ;;
 esac
 
 # Ensure requested models are pulled
@@ -86,6 +98,7 @@ echo "  Marketplace: $MARKETPLACE_PATH"
 echo "  Filters:     $FILTERS (run sequentially)"
 echo "  Prompts:     $PROMPT_STYLES (run sequentially)"
 echo "  Chains:      on"
+echo "  Think:       ${THINK_ARGS[*]:-default}"
 echo "  Output dirs: ${OUT_PREFIX}_{filter}_{prompt}/"
 echo "  Log file:    $LOG"
 
@@ -101,6 +114,7 @@ for FILTER in $FILTERS; do
         --prompt-style \"\$PSTYLE\" \
         --chains \
         --chain-samples 20 \
+        ${THINK_ARGS[*]} \
         --output-dir \"${OUT_PREFIX}_\${FILTER}_\${PSTYLE}\"
     echo \"===== filter=\$FILTER prompt=\$PSTYLE finished \$(date) =====\"
   done

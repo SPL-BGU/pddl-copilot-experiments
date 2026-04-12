@@ -75,7 +75,7 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # seen in the domains set but low enough that a thinking-mode spiral is cut
 # off in seconds instead of minutes. Override via --num-predict.
 DEFAULT_NUM_PREDICT: dict[str, int] = {
-    "solve":            2048,
+    "solve":            8192,
     "validate_domain":  1024,
     "validate_problem": 1024,
     "validate_plan":    1024,
