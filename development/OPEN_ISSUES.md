@@ -59,6 +59,20 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Fix.** Raise `num_predict` for validate_* to 2048–3072. Requires a reproduction-impact note since defaults reproduce the paper setting.
 **Files.** `run_experiment.py:77-83`, `EXPERIMENTS_FLOW.md` §5 + §11.
 
+### ISS-011 · Chain denominator unchanged when steps are skipped
+**Source.** Scoring audit, 2026-04-20.
+**Evidence.** `run_chain_experiment` now `continue`s past `validate_plan`/`simulate` steps when the oracle didn't produce a plan (`gt["plan"]` missing/empty). The denominator for chain success stays at `samples` regardless of how many skips occurred, and chains drawn against heavily-unsolvable problems look easier than they are. The `chain_*.json` output does not record per-sample effective length.
+**Impact.** Chain success rates across models are not strictly comparable when fixture polarity differs. ISS-001 (all-positive ground truth) masks this currently, but any broken-PDDL fixture work will expose the skew.
+**Fix.** Either (a) record `effective_chain_length` per sample and expose it in `chain_*.json` + `summary_*.json`, (b) resample when skipping so every sample executes exactly N steps, or (c) document the semantics and let ISS-001's fix eliminate skips organically.
+**Files.** `run_experiment.py::run_chain_experiment`, `save_results`, `EXPERIMENTS_FLOW.md` §4.3.
+
+### ISS-013 · Paper-diff audit vs arXiv:2509.12987
+**Source.** Scoring audit, 2026-04-20 (user direction).
+**Evidence.** PR #1 introduced several methodology deltas vs. the paper (explicit `VERDICT:` footer on validate_* prompts; two-metric with-tools grading; `FR_*` taxonomy; trajectory-equality simulate gate). `EXPERIMENTS_FLOW.md §11` lists some of these, but the mapping between our scorer paths and the paper's §3/§5 definitions has not been verified end-to-end.
+**Impact.** Unknown whether any of our scoring decisions silently diverge from the paper on a specific task branch.
+**Fix.** Read arXiv:2509.12987 §3 (benchmark construction) and §5 (evaluation protocol). Produce a per-task side-by-side diff table as an appendix to `EXPERIMENTS_FLOW.md`. Flag any discrepancy as a new ISS-###.
+**Files.** `EXPERIMENTS_FLOW.md`, possibly `run_experiment.py::check_success` if a discrepancy needs a fix.
+
 ---
 
 ## P3 — Reporting & polish
@@ -82,6 +96,13 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Impact.** Expected behaviour of the `all` filter and the point of the filter ablation — not a bug, but not currently surfaced in the headline table.
 **Fix.** Report `per-task vs all` delta in the analysis notebook as "tool-selection noise" and reference it in the paper diff.
 **Files.** `analyze_results.ipynb`, write-up.
+
+### ISS-012 · Truncation override skips `FR_VERDICT_MISMATCH`
+**Source.** Scoring audit, 2026-04-20.
+**Evidence.** `_apply_truncation_override` in `run_experiment.py` reclassifies a failure to `FR_TRUNCATED_NO_ANSWER` only when the downstream tag is `FR_PLAN_INVALID` / `FR_NO_VERDICT_PARSED` / `FR_SIMULATE_EMPTY` / `FR_UNKNOWN`. A model that emits `VERDICT: VALID` after a partial chain-of-thought that got cut off, and the verdict happens to be wrong, is tagged `FR_VERDICT_MISMATCH` — truncation-caused or not.
+**Impact.** Per-task truncation counts understate the cap's real effect on validate_* success. Minor; the failure is still counted as a failure, just with a different label.
+**Fix.** Decide: (a) leave as-is (current policy, pinned by `test_check_success::test_truncation_override`); (b) also override `FR_VERDICT_MISMATCH` when `done_reason=="length"`, treating any truncated+mismatched verdict as cap-driven. (b) would require explicit justification since the model *did* answer. Low priority until ISS-007 is addressed (the cap itself is the proximate problem).
+**Files.** `run_experiment.py::_apply_truncation_override`, `tests/test_check_success.py::test_truncation_override`.
 
 ---
 

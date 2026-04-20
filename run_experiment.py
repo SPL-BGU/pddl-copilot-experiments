@@ -102,6 +102,7 @@ FR_PLAN_INVALID = "plan_invalid"
 FR_VERDICT_MISMATCH = "verdict_mismatch"
 FR_NO_VERDICT_PARSED = "no_verdict_parsed"
 FR_SIMULATE_EMPTY = "simulate_empty"
+FR_RESULT_MISMATCH = "result_mismatch"
 FR_UNKNOWN = "unknown"
 
 # Per-task tool allowlists. When --tool-filter=per-task, only these tool names
@@ -583,13 +584,13 @@ def _extract_plan_from_tool_result(raw: str) -> list[str]:
     return []
 
 
-# Matches `(action arg1 arg2 ...)` action lines, optionally with a leading step
-# number like "1." or "1:" and any surrounding whitespace. Conservatively
+# Matches `(action arg1 arg2 ...)` action lines, optionally preceded by step
+# numbering like "1." / "1:" or a bullet ("- ", "* "). Conservatively
 # requires at least the action name as an identifier.
 _ACTION_LINE_RE = re.compile(
     r"""
     ^\s*
-    (?:\d+[.):]\s*)?            # optional step numbering
+    (?:\d+[.):]\s*|[-*]\s+)?    # optional step numbering OR bullet
     \(\s*
         ([A-Za-z][\w-]*)        # action name
         (?:\s+[\w\-?@.]+)*      # zero or more simple argument tokens
@@ -646,8 +647,15 @@ def extract_verdict(response: str) -> bool | None:
 
 async def _validate_model_plan(
     mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan_lines: list[str],
-) -> bool:
-    """Call validate_pddl_syntax on the model's extracted plan. True iff pyvalidator reports valid."""
+) -> bool | None:
+    """Call validate_pddl_syntax on the model's extracted plan.
+
+    Returns True iff pyvalidator reports valid, False if the plan is empty
+    or pyvalidator reports invalid, None if the MCP transport failed or the
+    tool returned an error-shape response. None lets callers distinguish a
+    genuinely invalid plan (FR_PLAN_INVALID) from a validator that could
+    not be reached (FR_TOOL_ERROR).
+    """
     if not plan_lines:
         return False
     plan_str = "\n".join(plan_lines)
@@ -657,9 +665,8 @@ async def _validate_model_plan(
             {"domain": domain_pddl, "problem": problem_pddl, "plan": plan_str},
         )
     except Exception:
-        return False
-    verdict = _parse_validation_verdict(raw)
-    return verdict is True
+        return None
+    return _parse_validation_verdict(raw)
 
 
 def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
@@ -734,21 +741,29 @@ async def check_success(
             planner_results = _get_tool_results(
                 tool_calls, "classic_planner"
             ) + _get_tool_results(tool_calls, "numeric_planner")
+            any_transport_error = False
             for raw in planner_results:
                 plan_lines = _extract_plan_from_tool_result(raw)
-                if plan_lines and await _validate_model_plan(
+                if not plan_lines:
+                    continue
+                verdict = await _validate_model_plan(
                     mcp, domain_pddl, problem_pddl, plan_lines
-                ):
+                )
+                if verdict is True:
                     return True, True, FR_OK
-            if _tool_error_seen(tool_calls, "classic_planner") or _tool_error_seen(
-                tool_calls, "numeric_planner"
-            ):
+                if verdict is None:
+                    any_transport_error = True
+            if any_transport_error or _tool_error_seen(
+                tool_calls, "classic_planner"
+            ) or _tool_error_seen(tool_calls, "numeric_planner"):
                 return True, False, FR_TOOL_ERROR
             return True, False, FR_PLAN_INVALID
         plan_lines = extract_plan_lines(response or "")
-        ok = await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
-        if ok:
+        verdict = await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
+        if verdict is True:
             return None, True, FR_OK
+        if verdict is None:
+            return None, False, FR_TOOL_ERROR
         return None, False, FR_PLAN_INVALID
 
     if task in ("validate_domain", "validate_problem", "validate_plan"):
@@ -803,10 +818,32 @@ async def check_success(
             selected = _used_tool(tool_calls, "get_state_transition")
             if not selected:
                 return False, False, FR_TOOL_NOT_SELECTED
-            results = _get_tool_results(tool_calls, "get_state_transition")
-            if any(r for r in results) and not _tool_error_seen(tool_calls, "get_state_transition"):
-                return True, True, FR_OK
-            return True, False, FR_TOOL_ERROR
+            # `valid` in the tool response is a PDDL-syntactic check, not a
+            # simulation-correctness signal — a partial trajectory with
+            # valid=false would satisfy it. Compare against the oracle
+            # trajectory from gt["trace"] (same plan, same plugin → dicts
+            # are byte-equal when the model passed identical inputs).
+            oracle_trace = gt.get("trace")
+            if isinstance(oracle_trace, str):
+                try:
+                    oracle_trace = json.loads(oracle_trace)
+                except (ValueError, TypeError):
+                    oracle_trace = None
+            oracle_traj = oracle_trace.get("trajectory") if isinstance(oracle_trace, dict) else None
+            if oracle_traj is None:
+                return True, False, FR_UNKNOWN
+            for raw in _get_tool_results(tool_calls, "get_state_transition"):
+                try:
+                    parsed = json.loads(raw) if isinstance(raw, str) else raw
+                except (ValueError, TypeError):
+                    continue
+                if not isinstance(parsed, dict) or parsed.get("error"):
+                    continue
+                if parsed.get("trajectory") == oracle_traj:
+                    return True, True, FR_OK
+            if _tool_error_seen(tool_calls, "get_state_transition"):
+                return True, False, FR_TOOL_ERROR
+            return True, False, FR_RESULT_MISMATCH
         if "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower):
             return None, True, FR_OK
         return None, False, FR_SIMULATE_EMPTY
@@ -817,6 +854,33 @@ async def check_success(
 # ---------------------------------------------------------------------------
 # Single-task evaluation
 # ---------------------------------------------------------------------------
+
+
+# Failure reasons that should be overridden to FR_TRUNCATED_NO_ANSWER when
+# the model hit its output-token cap. An "output was empty" classifier is
+# misleading when the model was simply cut off mid-sentence.
+_TRUNCATION_OVERRIDE_REASONS = (
+    FR_PLAN_INVALID,
+    FR_NO_VERDICT_PARSED,
+    FR_SIMULATE_EMPTY,
+    FR_UNKNOWN,
+)
+
+
+def _apply_truncation_override(success: bool, truncated: bool, failure_reason: str) -> str:
+    """Reclassify a failure as truncated when the cap cut the model off mid-output.
+
+    Only applies when the downstream classifier was one of the
+    empty-output-looking reasons. Already-informative tags like
+    FR_VERDICT_MISMATCH, FR_TOOL_ERROR, and FR_TOOL_NOT_SELECTED are
+    preserved — the model had enough output for the classifier to reach a
+    decision, so the truncation wasn't the proximate cause.
+    """
+    if success or not truncated:
+        return failure_reason
+    if failure_reason in _TRUNCATION_OVERRIDE_REASONS:
+        return FR_TRUNCATED_NO_ANSWER
+    return failure_reason
 
 
 async def evaluate_one(
@@ -891,14 +955,7 @@ async def evaluate_one(
             failure_reason = FR_EXCEPTION
 
     truncated = done_reason == "length"
-    # If the cap cut the model off mid-output and nothing survived scoring,
-    # surface that as the proximate cause rather than a downstream classifier
-    # result (plan_invalid / no_verdict_parsed) that was only empty because
-    # the model never finished speaking.
-    if not success and truncated and failure_reason in (
-        FR_PLAN_INVALID, FR_NO_VERDICT_PARSED, FR_SIMULATE_EMPTY, FR_UNKNOWN,
-    ):
-        failure_reason = FR_TRUNCATED_NO_ANSWER
+    failure_reason = _apply_truncation_override(success, truncated, failure_reason)
 
     return TaskResult(
         model=model,

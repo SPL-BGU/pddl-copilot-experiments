@@ -1,0 +1,99 @@
+{
+  "name": "counters_p01",
+  "domain_pddl": "(define (domain counters)\n  (:requirements :typing :numeric-fluents)\n  (:types counter)\n  (:functions\n    (value ?c - counter)\n    (max_int))\n\n  (:action increment\n    :parameters (?c - counter)\n    :precondition (< (value ?c) (max_int))\n    :effect (increase (value ?c) 1))\n\n  (:action decrement\n    :parameters (?c - counter)\n    :precondition (> (value ?c) 0)\n    :effect (decrease (value ?c) 1)))\n",
+  "problem_pddl": ";; 2 counters: make c0 > c1\n(define (problem counters-p01)\n  (:domain counters)\n  (:objects c0 c1 - counter)\n  (:init\n    (= (value c0) 0)\n    (= (value c1) 2)\n    (= (max_int) 5))\n  (:goal (> (value c0) (value c1))))\n",
+  "oracle_plan": ["(increment c0)", "(increment c0)", "(increment c0)"],
+  "bad_plan": ["(increment c0)"],
+  "gt": {
+    "domain_valid": true,
+    "problem_valid": true,
+    "plan_valid": true,
+    "solvable": true,
+    "plan": ["(increment c0)", "(increment c0)", "(increment c0)"],
+    "domain_validation_obj": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Syntax & Semantic Validation ===\n[WARNING] Numeric function 'max_int' has no initial value assigned\n\n=== Goal Check ===\nAll goals satisfied. Plan is VALID."
+    },
+    "problem_validation_obj": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Goal Check ===\nAll goals satisfied. Plan is VALID."
+    },
+    "plan_validation_obj": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Plan Execution ===\nStep 1: (increment c0) OK\nStep 2: (increment c0) OK\nStep 3: (increment c0) OK\n\n=== Goal Check ===\nAll goals satisfied. Plan is VALID."
+    },
+    "trace_obj": {
+      "valid": true,
+      "steps": [
+        {"index": 1, "action": "(increment c0)", "status": "OK", "changes": {"boolean": {}, "numeric": {"value(c0)": {"before": 0.0, "after": 1.0}}}},
+        {"index": 2, "action": "(increment c0)", "status": "OK", "changes": {"boolean": {}, "numeric": {"value(c0)": {"before": 1.0, "after": 2.0}}}},
+        {"index": 3, "action": "(increment c0)", "status": "OK", "changes": {"boolean": {}, "numeric": {"value(c0)": {"before": 2.0, "after": 3.0}}}}
+      ],
+      "trajectory": [
+        {"step": 0, "action": null, "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 0.0, "value(c1)": 2.0, "max_int": 5.0}},
+        {"step": 1, "action": "(increment c0)", "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 1.0, "value(c1)": 2.0, "max_int": 5.0}},
+        {"step": 2, "action": "(increment c0)", "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 2.0, "value(c1)": 2.0, "max_int": 5.0}},
+        {"step": 3, "action": "(increment c0)", "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 3.0, "value(c1)": 2.0, "max_int": 5.0}}
+      ]
+    }
+  },
+  "tool_output_objs": {
+    "numeric_planner_ok": {
+      "plan": ["(increment c0)", "(increment c0)", "(increment c0)"],
+      "solve_time": 0.213
+    },
+    "numeric_planner_bad": {
+      "plan": ["(increment c0)"],
+      "solve_time": 0.1
+    },
+    "numeric_planner_empty": {
+      "plan": [],
+      "solve_time": 0.01
+    },
+    "numeric_planner_error": {
+      "error": true,
+      "message": "PDDL file not found: 'counters'"
+    },
+    "validate_plan_ok": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Plan Execution ===\n...\nAll goals satisfied. Plan is VALID."
+    },
+    "validate_plan_bad": {
+      "valid": false,
+      "status": "INVALID",
+      "report": "=== Goal Check ===\nPlan executed but goals are NOT satisfied."
+    },
+    "get_state_transition_ok": {
+      "valid": true,
+      "steps": [
+        {"index": 1, "action": "(increment c0)", "status": "OK", "changes": {"boolean": {}, "numeric": {"value(c0)": {"before": 0.0, "after": 1.0}}}},
+        {"index": 2, "action": "(increment c0)", "status": "OK", "changes": {"boolean": {}, "numeric": {"value(c0)": {"before": 1.0, "after": 2.0}}}},
+        {"index": 3, "action": "(increment c0)", "status": "OK", "changes": {"boolean": {}, "numeric": {"value(c0)": {"before": 2.0, "after": 3.0}}}}
+      ],
+      "trajectory": [
+        {"step": 0, "action": null, "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 0.0, "value(c1)": 2.0, "max_int": 5.0}},
+        {"step": 1, "action": "(increment c0)", "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 1.0, "value(c1)": 2.0, "max_int": 5.0}},
+        {"step": 2, "action": "(increment c0)", "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 2.0, "value(c1)": 2.0, "max_int": 5.0}},
+        {"step": 3, "action": "(increment c0)", "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 3.0, "value(c1)": 2.0, "max_int": 5.0}}
+      ]
+    },
+    "get_state_transition_bad": {
+      "valid": false,
+      "steps": [
+        {"index": 1, "action": "(increment c0)", "status": "OK", "changes": {"boolean": {}, "numeric": {"value(c0)": {"before": 0.0, "after": 1.0}}}}
+      ],
+      "trajectory": [
+        {"step": 0, "action": null, "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 0.0, "value(c1)": 2.0, "max_int": 5.0}},
+        {"step": 1, "action": "(increment c0)", "boolean_fluents": {}, "numeric_fluents": {"value(c0)": 1.0, "value(c1)": 2.0, "max_int": 5.0}}
+      ]
+    },
+    "get_state_transition_error": {
+      "error": true,
+      "message": "PDDL file not found: 'counters'"
+    }
+  }
+}

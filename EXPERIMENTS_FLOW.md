@@ -111,9 +111,9 @@ The with-tools condition reports two separate metrics:
    - `simulate`: called `get_state_transition`
 
 2. **success** (end-to-end) -- Was the tool result correct?
-   - `solve`: tool returned a plan that passes pyvalidator validation
-   - `validate_*`: tool result verdict matches ground truth (VALID/INVALID)
-   - `simulate`: tool returned a non-error trace
+   - `solve`: tool returned a plan that passes pyvalidator validation (`valid == true`)
+   - `validate_*`: tool result verdict matches ground truth (VALID/INVALID), with the call's argument shape matching the task (e.g., `validate_plan` requires `plan` in args; a domain-only call is rejected)
+   - `simulate`: tool's `trajectory` equals the oracle's `gt["trace"].trajectory`. The plugin's `valid` field is a PDDL-syntactic signal, not a simulation-correctness signal — a partial trajectory with `valid=false` would pass a naive non-error check. Oracle and model calls go through the same bridged `get_state_transition(verbose=False)` with identical `(domain, problem, plan)` inputs, so a matching trajectory is deterministic. Mismatch → `FR_RESULT_MISMATCH`.
 
 A model can have high tool_selected but low success (knows *what* to call but can't construct valid arguments). This gap quantifies "tool-use competence" vs "tool awareness."
 
@@ -289,6 +289,7 @@ kill <PID>                  # Stop
 | Models | Qwen3, GPT-OSS (various sizes) | Ollama models (qwen3:0.6b, qwen3:4b) |
 | Domains | 10 IPC benchmarks | 3 sample domains (blocksworld, depots, counters) |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
-| Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. Scoring unaffected (uses only `valid` / non-empty checks). |
+| Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
+| Simulate success criterion | Non-error tool result | Trajectory deep-equality against oracle `gt["trace"]`. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.
