@@ -950,6 +950,7 @@ async def evaluate_one(
             )
     except Exception as exc:
         error = str(exc)
+        print(f"[exception] {type(exc).__name__}: {error}", file=sys.stderr, flush=True)
 
     duration = time.time() - t0
     tool_selected: bool | None = None
@@ -966,6 +967,7 @@ async def evaluate_one(
         except Exception as exc:
             success = False
             error = f"scoring error: {exc}"
+            print(f"[scoring exception] {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
             failure_reason = FR_EXCEPTION
 
     truncated = done_reason == "length"
