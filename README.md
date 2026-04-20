@@ -129,13 +129,14 @@ Results are saved as JSON in `results/`:
 ```
 domains/
   classical/<domain-name>/domain.pddl    # Domain definition
-                          p01.pddl       # Problem instances
-                          p02.pddl
+                          p01.pddl       # Problem instance(s)
+                          p01.plan       # Reference plan (manual cross-check)
   numeric/<domain-name>/domain.pddl
                         p01.pddl
+                        p01.plan
 ```
 
-This repo includes 3 sample domains (blocksworld, depots, counters). The paper evaluated 10 domains total -- full IPC benchmarks available from [downward-benchmarks](https://github.com/aibasel/downward-benchmarks).
+This repo ships all 10 paper-aligned domains (5 classical: barman, blocksworld, depots, rovers, satellite; 5 numeric: counters, depot, farmland, pogo_stick, sailing). See `domains/README.md` for provenance.
 
 ## How It Works
 
