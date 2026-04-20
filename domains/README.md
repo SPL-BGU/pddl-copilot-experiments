@@ -43,23 +43,19 @@ The paper's `plan.trajectory` (Lisp-like `(:init ... :state ...)` text) is delib
 
 ### Per-domain validation status (2026-04-20, via user-scoped pddl-copilot plugin)
 
-All 10 domains have `domain_valid=True`, `problem_valid=True`, and return a non-empty plan from the solver. Plan validity reported by the validator:
+All 10 domains have `domain_valid=True`, `problem_valid=True`, return a non-empty plan from the solver, and the shipped `p01.plan` passes plan validation (see CHANGELOG entry for `pyval` numeric goal-check fix).
 
-| Domain | Plan source | validator verdict | Arithmetic truth | Notes |
-|---|---|---|---|---|
-| classical/barman | fresh `classic_planner` | ✓ | ✓ | 28 actions |
-| classical/blocksworld | fresh `classic_planner` | ✓ | ✓ | 4 actions |
-| classical/depots | fresh `classic_planner` | ✓ | ✓ | 5 actions |
-| classical/rovers | fresh `classic_planner` | ✓ | ✓ | 12 actions |
-| classical/satellite | fresh `classic_planner` | ✓ | ✓ | 6 actions |
-| numeric/counters | paper + fresh | **✗** | **✓** | **Validator bug** — final state is strictly increasing with gaps ≥1; all four `<=` goals are arithmetically satisfied but validator reports all unmet. See `OPEN_ISSUES.md::ISS-014`. |
-| numeric/depot | fresh `numeric_planner` | ✓ | ✓ | 111 actions; boolean goals |
-| numeric/farmland | paper + fresh | **✗** | **✓** | **Validator bug** — all 15 `>= 1` goals met (every x≥1), weighted sum = 31.0 ≥ 30.8 requirement. Validator reports all 16 unmet. See `OPEN_ISSUES.md::ISS-014`. |
-| numeric/pogo_stick | fresh `numeric_planner` | ✓ | ✓ | 10 actions; boolean goal |
-| numeric/sailing | fresh `numeric_planner` | ✓ | ✓ | 82 actions; boolean goals |
-
-**Implication.** The oracle ground truth is wrong on `counters/p01` and `farmland/p01` because the `pyval`-backed validator miscomputes numeric `<=` / `>=` goals. The two fixtures are actually valid. Agents whose reasoning is correct on these problems will mismatch the (wrong) GT and be scored as failures. Until the upstream `pyval` bug is fixed (tracked in `ISS-014`), interpret counters / farmland numbers cautiously — they measure "agreement with the buggy validator" more than plan correctness.
-
-Pattern: the bug affects numeric `<=` / `>=` goal checks. Boolean goals (pogo_stick, sailing, depot, all classical) work correctly.
+| Domain | Actions | Goal kind |
+|---|---|---|
+| classical/barman | 30 | boolean |
+| classical/blocksworld | 4 | boolean |
+| classical/depots | 5 | boolean |
+| classical/rovers | 12 | boolean |
+| classical/satellite | 6 | boolean |
+| numeric/counters | 27 | numeric `<=` |
+| numeric/depot | 62 | boolean |
+| numeric/farmland | 19 | numeric `>=` + weighted sum |
+| numeric/pogo_stick | 12 | boolean |
+| numeric/sailing | 100 | boolean |
 
 Broken fixtures (for discriminating the no-tools `validate_*` baseline — see `development/OPEN_ISSUES.md::ISS-001`) are not yet added.
