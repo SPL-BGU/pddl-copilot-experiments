@@ -168,16 +168,23 @@ echo "  Filters:     $FILTERS (run sequentially)"
 echo "  Prompts:     $PROMPT_STYLES (run sequentially)"
 echo "  Chains:      on"
 echo "  Think:       ${THINK_ARGS[*]:-default}"
-echo "  Output dirs: ${OUT_PREFIX}_{filter}_{prompt}/"
+echo "  Output dirs: ${OUT_PREFIX}_no-tools/ + ${OUT_PREFIX}_tools_{filter}_{prompt}/"
 echo "  Log file:    $LOG"
 
 INNER_SCRIPT=$(cat <<EOF
 cd "$SCRIPT_DIR"
+# No-tools condition is invariant under tool_filter and prompt_style (filter
+# only gates with-tools tool exposure; style only edits WITH_TOOLS_SYSTEM).
+# Running it once up front avoids the 4x redundant no-tools pass the old
+# (FILTER, PSTYLE) loop produced — ISS-004.
+echo "===== conditions=no-tools started \$(date) ====="
+nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions no-tools --chains --chain-samples 20 ${THINK_ARGS[*]} ${HOST_ARGS[*]} --output-dir "${OUT_PREFIX}_no-tools"
+echo "===== conditions=no-tools finished \$(date) ====="
 for FILTER in $FILTERS; do
   for PSTYLE in $PROMPT_STYLES; do
-    echo "===== filter=\$FILTER prompt=\$PSTYLE started \$(date) ====="
-    nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --tool-filter "\$FILTER" --prompt-style "\$PSTYLE" --chains --chain-samples 20 ${THINK_ARGS[*]} ${HOST_ARGS[*]} --output-dir "${OUT_PREFIX}_\${FILTER}_\${PSTYLE}"
-    echo "===== filter=\$FILTER prompt=\$PSTYLE finished \$(date) ====="
+    echo "===== conditions=tools filter=\$FILTER prompt=\$PSTYLE started \$(date) ====="
+    nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions tools --tool-filter "\$FILTER" --prompt-style "\$PSTYLE" --chains --chain-samples 20 ${THINK_ARGS[*]} ${HOST_ARGS[*]} --output-dir "${OUT_PREFIX}_tools_\${FILTER}_\${PSTYLE}"
+    echo "===== conditions=tools filter=\$FILTER prompt=\$PSTYLE finished \$(date) ====="
   done
 done
 EOF

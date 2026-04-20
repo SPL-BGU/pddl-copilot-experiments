@@ -118,6 +118,20 @@ TASK_TOOLS: dict[str, list[str]] = {
 
 TOOL_FILTER_CHOICES = ("all", "per-task")
 PROMPT_STYLE_CHOICES = ("minimal", "guided")
+CONDITION_CHOICES = ("tools", "no-tools", "both")
+
+
+def _expand_conditions(conditions: str) -> tuple[bool, ...]:
+    """Map a --conditions value to the with_tools iteration order.
+
+    'both' keeps the (True, False) order that predated the flag so existing
+    run IDs and progress logs remain byte-comparable for reproductions.
+    """
+    if conditions == "tools":
+        return (True,)
+    if conditions == "no-tools":
+        return (False,)
+    return (True, False)
 
 # ---------------------------------------------------------------------------
 # System prompts (Section 4 of the paper)
@@ -1009,6 +1023,7 @@ async def run_single_task_experiment(
     num_ctx: int = DEFAULT_NUM_CTX,
     think: bool | None = None,
     concurrency: int = DEFAULT_CONCURRENCY,
+    conditions: str = "both",
 ) -> list[TaskResult]:
     """Run the full single-task sweep with bounded Ollama concurrency.
 
@@ -1023,8 +1038,9 @@ async def run_single_task_experiment(
     # denominator accurate.
     Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv, with_tools, gt, np)
     jobs: list[Job] = []
+    with_tools_values = _expand_conditions(conditions)
     for model in models:
-        for with_tools in (True, False):
+        for with_tools in with_tools_values:
             for task in tasks:
                 np_for_task = (
                     num_predict_override
@@ -1378,6 +1394,7 @@ def save_results(
     single: list[TaskResult],
     chains: list[dict],
     output_dir: Path,
+    meta: dict | None = None,
 ):
     output_dir.mkdir(parents=True, exist_ok=True)
     ts = time.strftime("%Y%m%d_%H%M%S")
@@ -1392,10 +1409,16 @@ def save_results(
         print(f"Saved chain results       -> {p2}")
 
     # Aggregated summary with N and Wilson 95% CIs for downstream analysis.
+    # `meta` records the CLI knobs that distinguish this run from others in
+    # the same results/ tree (host, condition split, filter, prompt, think).
+    # Without it, remote/local and tools/no-tools runs look identical at the
+    # summary level and can only be told apart by result-dir naming.
     summary = {
         "single_task": summarize_single_task(single) if single else [],
         "chains": summarize_chains(chains) if chains else [],
     }
+    if meta:
+        summary["meta"] = meta
     p3 = output_dir / f"summary_{ts}.json"
     p3.write_text(json.dumps(summary, indent=2))
     print(f"Saved summary              -> {p3}")
@@ -1439,6 +1462,7 @@ async def async_main(args):
     print(f"  Domains:    {args.domains_dir}")
     print(f"  Variants:   {args.num_variants}")
     print(f"  Temperature:{args.temperature}")
+    print(f"  Conditions: {args.conditions}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
     print(f"  num_predict:{args.num_predict if args.num_predict is not None else 'per-task defaults'}")
@@ -1509,6 +1533,7 @@ async def async_main(args):
             num_ctx=args.num_ctx,
             think=think_override,
             concurrency=args.concurrency,
+            conditions=args.conditions,
         )
         print_single_task_table(single_results)
         print_fail_reasons_table(single_results)
@@ -1516,7 +1541,7 @@ async def async_main(args):
         # Multi-task chains
         if args.chains:
             print("\n--- Multi-Task Chain Evaluation ---")
-            for cond_with_tools in (True, False):
+            for cond_with_tools in _expand_conditions(args.conditions):
                 print(f"\n  Condition: {'tools' if cond_with_tools else 'no-tools'}")
                 chain_results += await run_chain_experiment(
                     client=client,
@@ -1540,7 +1565,25 @@ async def async_main(args):
 
     finally:
         if single_results:
-            save_results(single_results, chain_results, Path(args.output_dir))
+            meta = {
+                "host": host or "localhost",
+                "is_remote": is_remote,
+                "conditions": args.conditions,
+                "models": args.models,
+                "tasks": args.tasks,
+                "num_variants": args.num_variants,
+                "temperature": args.temperature,
+                "num_ctx": args.num_ctx,
+                "num_predict": args.num_predict,
+                "think": args.think,
+            }
+            # tool_filter and prompt_style are with-tools-only knobs; record
+            # them only when with-tools actually ran, so a no-tools-only
+            # summary isn't mislabelled with a stale default.
+            if args.conditions in ("tools", "both"):
+                meta["tool_filter"] = args.tool_filter
+                meta["prompt_style"] = args.prompt_style
+            save_results(single_results, chain_results, Path(args.output_dir), meta=meta)
         await mcp.close()
         # ollama.AsyncClient wraps an httpx.AsyncClient; close it to release
         # connections cleanly. Guarded because some builds expose
@@ -1575,6 +1618,11 @@ def main():
                    help="Prompt variants per task (paper uses 5)")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
+    p.add_argument("--conditions", choices=list(CONDITION_CHOICES), default="both",
+                   help="Which conditions to run. 'both' (default) reproduces the paper. "
+                        "'tools'/'no-tools' split the sweep so the no-tools condition can be "
+                        "run once per model instead of redundantly for every (filter,style) "
+                        "combo — no-tools results are invariant under those knobs.")
     p.add_argument("--tool-filter", choices=list(TOOL_FILTER_CHOICES), default="all",
                    help="'all' exposes every connected MCP tool every turn (reproduces paper). "
                         "'per-task' restricts tools per task via TASK_TOOLS allowlist, reducing "

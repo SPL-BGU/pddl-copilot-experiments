@@ -149,6 +149,14 @@ def test_extract_verdict(r: TestResults):
                True)
 
 
+def test_expand_conditions(r: TestResults):
+    # 'both' must preserve (True, False) order so pre-ISS-004 reproductions
+    # that iterate conditions in the legacy order stay byte-comparable.
+    r.check_eq("both → (True, False)", rx._expand_conditions("both"), (True, False))
+    r.check_eq("tools → (True,)", rx._expand_conditions("tools"), (True,))
+    r.check_eq("no-tools → (False,)", rx._expand_conditions("no-tools"), (False,))
+
+
 def main():
     r = TestResults("test_scoring")
     test_wilson_ci(r)
@@ -159,6 +167,7 @@ def main():
     test_extract_plan_from_tool_result(r)
     test_extract_plan_lines(r)
     test_extract_verdict(r)
+    test_expand_conditions(r)
     r.report_and_exit()
 
 

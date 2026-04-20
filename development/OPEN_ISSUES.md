@@ -33,12 +33,6 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## P2 — Runtime & instrumentation
 
-### ISS-004 · No-tools condition duplicated 4× per model
-**Source.** Results review, issue 5.
-**Evidence.** No-tools summary rows are byte-identical across the four `tool_filter × prompt_style` configs. Each full sweep runs the no-tools condition 4 times for zero measurement benefit (~825 redundant Ollama calls per model).
-**Fix.** Factor the no-tools condition out of the filter × style loop; run it once per model and re-use across configs. Trivial orchestration change.
-**Files.** `run_experiment.py` sweep loop, `run_background.sh` if it drives multiple configs.
-
 ### ISS-005 · `FR_TOOL_ERROR` is overloaded
 **Source.** Results review, issue 6.
 **Evidence.** Current `FR_TOOL_ERROR` collapses (a) plugin argument rejections ("PDDL file not found: 'blocksworld'"), (b) PDDL parse errors ("Failed to parse domain: Expected ':parameters', found '.'"), and (c) transport/timeout errors.
@@ -106,9 +100,38 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ---
 
-## Priority order for next work
+## Planned batches (approved 2026-04-20)
 
-From the results reviewer's suggested-next-steps, ranked by impact:
+Landing order differs from raw impact ranking — front-load zero-risk wins, then unlock the P1 blocker. Raw impact ranking retained at the bottom.
+
+1. ~~**Batch 1 — ISS-004** + host-label stamp in `summary_*.json`.~~ Landed 2026-04-20 (see CHANGELOG).
+2. **Batch 2 — ISS-005** + `FR_TOOL_LOOP_EXCEEDED` fix in `chat_with_tools` exit path (`run_experiment.py:398-401` currently returns raw tool JSON as `content` after `MAX_TOOL_LOOPS`). Refines taxonomy without changing any success/fail verdict.
+3. **Batch 3 — ISS-001** + **ISS-011**. 2 invalid fixtures per domain (6 total): one syntax-level (e.g. corrupted parens), one semantic-level (e.g. missing `:parameters`, type mismatch). Invalidates prior `validate_*` numbers → new baseline required; label result dirs `{tag}_v2fixtures_*` and note in `EXPERIMENTS_FLOW.md §11`.
+4. **Batch 5 — ISS-006** + **ISS-007** num_predict bumps, landed together with the re-run triggered by Batch 3. Reproduction-default stays at paper setting; flag as ablation.
+5. **Batch 4 — ISS-002** resolution (see pending decision below).
+
+Dropped during the review pass:
+- `MCPPlanner.call_tool` assert on caller-supplied `verbose` — redundant with the schema stripping done in `connect()`; no path can deliver a `verbose` arg to `call_tool`.
+- Live-MCP smoke test in `tests/verify.sh` — duplicates `../pddl-copilot/plugins/*/tests/verify.sh`, which already exercises each tool end-to-end; any contract drift would surface there first.
+
+Deferred (P3, mostly `analyze_results.ipynb` work): **ISS-003, ISS-008, ISS-009, ISS-010, ISS-012, ISS-013**.
+
+---
+
+## Pending decisions
+
+### ISS-002 — simulate no-tools grader design
+Two resolution paths proposed in ISS-002, deferred until Batch 3 lands:
+- **(a)** Structured-trace grader: parse a state sequence from the model response and diff against `gt["state_trajectory"]`. ~60 LOC in `check_success` simulate branch + extend ground-truth emission to carry a canonical trajectory.
+- **(b)** Drop simulate from the no-tools headline numbers; document as a known limitation in `EXPERIMENTS_FLOW.md`.
+
+**Decision rule.** Run Batch 3 first. If the no-tools simulate row under the mixed-polarity fixture set still looks artifactual (e.g. success driven by vocabulary alone), land (b). If the mix makes simulate no-tools a plausibly informative row, build (a).
+
+---
+
+## Raw impact ranking (reference)
+
+From the results reviewer's suggested-next-steps, ranked by impact regardless of sequencing:
 
 1. **ISS-001** — broken-PDDL fixtures (unlocks meaningful validate_* numbers).
 2. **ISS-005** — split `FR_TOOL_ERROR` (directly quantifies the #1 failure mode).
