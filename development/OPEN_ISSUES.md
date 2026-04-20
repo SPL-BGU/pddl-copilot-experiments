@@ -11,8 +11,9 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 ### ISS-001 · `validate_*` ground truth is all-positive
 **Source.** Results review of `qwen06b_20260419_210436_*`, issue 4.
 **Evidence.** `gt["domain_valid"]=True` for every bundled problem (no-tools `validate_domain` = 55/55 across all configs). `gt["problem_valid"]=True` for all 55 (3 misses are model false-negatives). Oracle-generated plans are always valid.
+**Status (2026-04-20).** Partially addressed. The paper-aligned 10-domain dataset (CHANGELOG 2026-04-20) ships 10 fixtures that are expected to be all-valid; the startup ground-truth summary surfaces per-problem `{domain,problem,plan}_valid` flags for manual review. The core issue — no *invalid* fixtures for the no-tools verdict baseline — is unchanged.
 **Impact.** The `validate_*` benchmark has zero invalid examples, so a `VERDICT: VALID` prior trivially wins the no-tools condition. Absolute verdict-accuracy numbers cannot be compared to the paper.
-**Fix.** Inject broken fixtures into `domains/` — corrupted parens, missing `:parameters`, invalid goals — so `gt["{domain,problem}_valid"]` has a non-trivial False fraction. Balance polarity per task.
+**Fix (remaining).** Inject broken fixtures into `domains/` — corrupted parens, missing `:parameters`, invalid goals — so `gt["{domain,problem}_valid"]` has a non-trivial False fraction. Balance polarity per task.
 **Files.** `domains/**/*.pddl`, ground-truth generation in `run_experiment.py`.
 
 ### ISS-002 · `simulate` no-tools scorer is non-discriminative
@@ -63,9 +64,20 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 ### ISS-013 · Paper-diff audit vs arXiv:2509.12987
 **Source.** Scoring audit, 2026-04-20 (user direction).
 **Evidence.** PR #1 introduced several methodology deltas vs. the paper (explicit `VERDICT:` footer on validate_* prompts; two-metric with-tools grading; `FR_*` taxonomy; trajectory-equality simulate gate). `EXPERIMENTS_FLOW.md §11` lists some of these, but the mapping between our scorer paths and the paper's §3/§5 definitions has not been verified end-to-end.
+**Status (2026-04-20).** Domain-set prerequisite resolved: `domains/` now matches the paper's 10 (CHANGELOG 2026-04-20). The audit can now compare numbers on like-for-like coverage instead of mapping 3-vs-10.
 **Impact.** Unknown whether any of our scoring decisions silently diverge from the paper on a specific task branch.
 **Fix.** Read arXiv:2509.12987 §3 (benchmark construction) and §5 (evaluation protocol). Produce a per-task side-by-side diff table as an appendix to `EXPERIMENTS_FLOW.md`. Flag any discrepancy as a new ISS-###.
 **Files.** `EXPERIMENTS_FLOW.md`, possibly `run_experiment.py::check_success` if a discrepancy needs a fix.
+
+### ISS-014 · Paper-shipped plans for `counters` + `farmland` fail goal check
+**Source.** Manual per-domain GT validation via user-scoped pddl-copilot plugin, 2026-04-20.
+**Evidence.** After copying the paper dataset into `domains/`, validating each fixture with `mcp__plugin_pddl-validator_pddl-validator__validate_pddl_syntax(domain, problem, plan)`:
+- `numeric/counters/p01.plan` (paper's `plan.solution`): `valid=false`, 4 unmet goals — `c0<c1<c2<c3<c4` ordering never achieved. Fresh `numeric_planner` output also fails the same goal check.
+- `numeric/farmland/p01.plan` (paper's `plan.solution`): `valid=false`, 16 unmet goals including all `(1 <= x(farmN))`. Fresh planner output also fails.
+- The other 8 paper-shipped domains (barman, blocksworld, depots, rovers, satellite, depot, pogo_stick, sailing) all validate `plan_valid=True`.
+**Impact.** `gt["plan_valid"]=False` for counters/p01 and farmland/p01 on every run. These two are auto-skipped for `validate_plan`/`simulate` tasks (`run_experiment.py:1053`), but they inflate the "unsolvable" share in ground-truth logs and reduce effective coverage on numeric domains from 5 to 3. Results also cannot be aligned to the paper's §5 tables on counters/farmland without reconciling which plan the paper actually evaluated against.
+**Fix.** Three options: (a) patch the problem files (likely the paper's problem was re-edited after plan generation), (b) replace the paper `plan.solution` with a hand-verified plan, (c) mark these two as intended-invalid fixtures via a manifest so they can serve the broken-plan role ISS-001 needs. Whichever is chosen, reflect it in `domains/README.md`'s validation matrix.
+**Files.** `domains/numeric/{counters,farmland}/{p01.pddl,p01.plan}`, `domains/README.md`.
 
 ---
 
