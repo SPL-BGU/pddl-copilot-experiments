@@ -8,6 +8,41 @@ fan-out pattern used by `online_model_learning/.local/amlgym/submit_all_comparis
 5 conditions × 5 models = 25 independent SLURM jobs, running in parallel up to
 cluster capacity.
 
+## Quickstart (from the login node, `slurm-login-01` / `slurm.bgu.ac.il`)
+
+Copy-paste this whole block the first time:
+
+```bash
+# 1. Clone both repos under $HOME (siblings — the harness auto-locates the marketplace)
+cd ~
+git clone https://github.com/SPL-BGU/pddl-copilot-experiments.git
+git clone https://github.com/SPL-BGU/pddl-copilot.git
+
+# 2. Build conda env (pddl_copilot: py3.12 + openjdk17 + mcp + ollama)
+#    and pre-populate the two plugin .venvs. One-time, ~5 min.
+bash ~/pddl-copilot-experiments/cluster-experimenting/setup_env.sh
+
+# 3. Preview what the full sweep would submit (25 jobs). No submission yet.
+cd ~/pddl-copilot-experiments
+bash cluster-experimenting/submit_all.sh --dry-run
+
+# 4. Smoke-test: submit ONE small/cheap job first to catch env or Ollama issues
+#    before burning the queue on 25 of them.
+sbatch --export=ALL,MODEL=Qwen3.5:0.8B,CONDITION=no-tools \
+       cluster-experimenting/run_condition.sbatch
+squeue --me
+# Watch the log (replace <jobid> with the one sbatch printed):
+#   tail -f cluster-experimenting/logs/pddl_Qwen3_5_0_8B_no-tools-<jobid>.out
+
+# 5. If the smoke test finishes OK (exit 0, JSON written under results/),
+#    fire the full sweep:
+bash cluster-experimenting/submit_all.sh
+```
+
+Rerunning any step is safe: `git clone` can be replaced with `git -C <dir> pull`,
+`setup_env.sh` detects an existing conda env and reuses it, and `submit_all.sh`
+is idempotent (each submission gets a fresh `$SLURM_JOBID` in the output path).
+
 ## Why a dedicated cluster setup (vs. just `run_background.sh`)
 
 `run_background.sh` is laptop/macOS oriented: it wraps everything in `nohup` +
