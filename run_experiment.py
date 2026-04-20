@@ -27,6 +27,7 @@ import math
 import os
 import random
 import re
+import signal
 import sys
 import time
 from collections import defaultdict
@@ -1557,6 +1558,12 @@ def main():
     p.add_argument("--seed", type=int, default=42,
                    help="Random seed for chain sampling")
     args = p.parse_args()
+
+    # Route SIGTERM through the same path as Ctrl-C so a `kill` from
+    # run_background.sh triggers the KeyboardInterrupt cleanup branch in
+    # async_main (which tears down MCP subprocesses via AsyncExitStack).
+    # Without this, SIGTERM bypasses `finally` and MCP servers orphan.
+    signal.signal(signal.SIGTERM, signal.default_int_handler)
 
     random.seed(args.seed)
     asyncio.run(async_main(args))

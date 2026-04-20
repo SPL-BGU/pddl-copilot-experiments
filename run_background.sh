@@ -171,30 +171,32 @@ echo "  Think:       ${THINK_ARGS[*]:-default}"
 echo "  Output dirs: ${OUT_PREFIX}_{filter}_{prompt}/"
 echo "  Log file:    $LOG"
 
-nohup caffeinate -i bash -c "
-cd \"$SCRIPT_DIR\"
+INNER_SCRIPT=$(cat <<EOF
+cd "$SCRIPT_DIR"
 for FILTER in $FILTERS; do
   for PSTYLE in $PROMPT_STYLES; do
-    echo \"===== filter=\$FILTER prompt=\$PSTYLE started \$(date) =====\"
-    nice -n 19 python3 run_experiment.py \
-        --marketplace-path \"$MARKETPLACE_PATH\" \
-        --models ${MODELS[*]} \
-        --tool-filter \"\$FILTER\" \
-        --prompt-style \"\$PSTYLE\" \
-        --chains \
-        --chain-samples 20 \
-        ${THINK_ARGS[*]} \
-        ${HOST_ARGS[*]} \
-        --output-dir \"${OUT_PREFIX}_\${FILTER}_\${PSTYLE}\"
-    echo \"===== filter=\$FILTER prompt=\$PSTYLE finished \$(date) =====\"
+    echo "===== filter=\$FILTER prompt=\$PSTYLE started \$(date) ====="
+    nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --tool-filter "\$FILTER" --prompt-style "\$PSTYLE" --chains --chain-samples 20 ${THINK_ARGS[*]} ${HOST_ARGS[*]} --output-dir "${OUT_PREFIX}_\${FILTER}_\${PSTYLE}"
+    echo "===== filter=\$FILTER prompt=\$PSTYLE finished \$(date) ====="
   done
 done
-" > "$LOG" 2>&1 &
+EOF
+)
+
+# Run in a new session so the whole tree shares one PGID (== the leader's PID).
+# That lets `kill -TERM -- -$PID` reach bash + run_experiment.py + MCP servers
+# in one shot. macOS lacks util-linux `setsid`, so we use Python as a portable
+# shim: os.setsid() then execvp hands off to caffeinate with the same PID.
+nohup python3 -c '
+import os, sys
+os.setsid()
+os.execvp("caffeinate", ["caffeinate", "-i", "bash", "-c", sys.argv[1]])
+' "$INNER_SCRIPT" > "$LOG" 2>&1 &
 
 PID=$!
 
 echo ""
-echo "Running in background, PID=$PID"
+echo "Running in background, PGID=$PID"
 echo "  Watch progress:  tail -f $LOG"
 echo "  Check status:    ps -p $PID"
-echo "  Stop:            kill $PID"
+echo "  Stop:            kill -TERM -- -$PID   # negative = whole process group"
