@@ -1,0 +1,109 @@
+{
+  "name": "blocksworld_p01",
+  "domain_pddl": "(define (domain blocksworld)\n  (:requirements :strips)\n  (:predicates\n    (on ?x ?y)\n    (ontable ?x)\n    (clear ?x)\n    (handempty)\n    (holding ?x))\n\n  (:action pick-up\n    :parameters (?x)\n    :precondition (and (clear ?x) (ontable ?x) (handempty))\n    :effect (and (not (ontable ?x)) (not (clear ?x)) (not (handempty)) (holding ?x)))\n\n  (:action put-down\n    :parameters (?x)\n    :precondition (holding ?x)\n    :effect (and (not (holding ?x)) (clear ?x) (handempty) (ontable ?x)))\n\n  (:action stack\n    :parameters (?x ?y)\n    :precondition (and (holding ?x) (clear ?y))\n    :effect (and (not (holding ?x)) (not (clear ?y)) (clear ?x) (handempty) (on ?x ?y)))\n\n  (:action unstack\n    :parameters (?x ?y)\n    :precondition (and (on ?x ?y) (clear ?x) (handempty))\n    :effect (and (holding ?x) (clear ?y) (not (clear ?x)) (not (handempty)) (not (on ?x ?y)))))\n",
+  "problem_pddl": ";; 3 blocks: stack A on B on C\n(define (problem bw-p01)\n  (:domain blocksworld)\n  (:objects a b c)\n  (:init\n    (ontable a) (ontable b) (ontable c)\n    (clear a) (clear b) (clear c)\n    (handempty))\n  (:goal (and (on a b) (on b c))))\n",
+  "oracle_plan": ["(pick-up b)", "(stack b c)", "(pick-up a)", "(stack a b)"],
+  "bad_plan": ["(pick-up a)", "(stack a b)"],
+  "gt": {
+    "domain_valid": true,
+    "problem_valid": true,
+    "plan_valid": true,
+    "solvable": true,
+    "plan": ["(pick-up b)", "(stack b c)", "(pick-up a)", "(stack a b)"],
+    "domain_validation_obj": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Goal Check ===\nAll goals satisfied. Plan is VALID."
+    },
+    "problem_validation_obj": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Goal Check ===\nAll goals satisfied. Plan is VALID."
+    },
+    "plan_validation_obj": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Plan Execution ===\nStep 1: (pick-up b) OK\nStep 2: (stack b c) OK\nStep 3: (pick-up a) OK\nStep 4: (stack a b) OK\n\n=== Goal Check ===\nAll goals satisfied. Plan is VALID."
+    },
+    "trace_obj": {
+      "valid": true,
+      "steps": [
+        {"index": 1, "action": "(pick-up b)", "status": "OK", "changes": {"boolean": {"ontable(b)": false, "clear(b)": false, "handempty": false, "holding(b)": true}, "numeric": {}}},
+        {"index": 2, "action": "(stack b c)", "status": "OK", "changes": {"boolean": {"clear(b)": true, "clear(c)": false, "handempty": true, "on(b, c)": true, "holding(b)": false}, "numeric": {}}},
+        {"index": 3, "action": "(pick-up a)", "status": "OK", "changes": {"boolean": {"ontable(a)": false, "clear(a)": false, "handempty": false, "holding(a)": true}, "numeric": {}}},
+        {"index": 4, "action": "(stack a b)", "status": "OK", "changes": {"boolean": {"clear(a)": true, "clear(b)": false, "handempty": true, "on(a, b)": true, "holding(a)": false}, "numeric": {}}}
+      ],
+      "trajectory": [
+        {"step": 0, "action": null, "boolean_fluents": {"ontable(a)": true, "ontable(b)": true, "ontable(c)": true, "clear(a)": true, "clear(b)": true, "clear(c)": true, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": false, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 1, "action": "(pick-up b)", "boolean_fluents": {"ontable(a)": true, "ontable(b)": false, "ontable(c)": true, "clear(a)": true, "clear(b)": false, "clear(c)": true, "handempty": false, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": false, "on(c, c)": false, "holding(a)": false, "holding(b)": true, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 2, "action": "(stack b c)", "boolean_fluents": {"ontable(a)": true, "ontable(b)": false, "ontable(c)": true, "clear(a)": true, "clear(b)": true, "clear(c)": false, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": true, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 3, "action": "(pick-up a)", "boolean_fluents": {"ontable(a)": false, "ontable(b)": false, "ontable(c)": true, "clear(a)": false, "clear(b)": true, "clear(c)": false, "handempty": false, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": true, "on(c, c)": false, "holding(a)": true, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 4, "action": "(stack a b)", "boolean_fluents": {"ontable(a)": false, "ontable(b)": false, "ontable(c)": true, "clear(a)": true, "clear(b)": false, "clear(c)": false, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": true, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": true, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}}
+      ]
+    }
+  },
+  "tool_output_objs": {
+    "classic_planner_ok": {
+      "plan": ["(pick-up b)", "(stack b c)", "(pick-up a)", "(stack a b)"],
+      "solve_time": 0.125
+    },
+    "classic_planner_bad": {
+      "plan": ["(pick-up a)", "(stack a b)"],
+      "solve_time": 0.1
+    },
+    "classic_planner_empty": {
+      "plan": [],
+      "solve_time": 0.01
+    },
+    "classic_planner_error": {
+      "error": true,
+      "message": "PDDL file not found: 'blocksworld'"
+    },
+    "validate_plan_ok": {
+      "valid": true,
+      "status": "VALID",
+      "report": "=== Plan Execution ===\nStep 1: (pick-up b) OK\n\n=== Goal Check ===\nAll goals satisfied. Plan is VALID."
+    },
+    "validate_plan_bad": {
+      "valid": false,
+      "status": "INVALID",
+      "report": "=== Plan Execution ===\nStep 1: (pick-up a) OK\nStep 2: (stack a b) OK\n\n=== Goal Check ===\nPlan executed but goals are NOT satisfied.\n  Unmet goal: on(b, c)\nPlan length: 2 actions"
+    },
+    "validate_plan_error": {
+      "error": true,
+      "message": "Failed to parse domain: Expected ':parameters', found '.'"
+    },
+    "get_state_transition_ok": {
+      "valid": true,
+      "steps": [
+        {"index": 1, "action": "(pick-up b)", "status": "OK", "changes": {"boolean": {"ontable(b)": false, "clear(b)": false, "handempty": false, "holding(b)": true}, "numeric": {}}},
+        {"index": 2, "action": "(stack b c)", "status": "OK", "changes": {"boolean": {"clear(b)": true, "clear(c)": false, "handempty": true, "on(b, c)": true, "holding(b)": false}, "numeric": {}}},
+        {"index": 3, "action": "(pick-up a)", "status": "OK", "changes": {"boolean": {"ontable(a)": false, "clear(a)": false, "handempty": false, "holding(a)": true}, "numeric": {}}},
+        {"index": 4, "action": "(stack a b)", "status": "OK", "changes": {"boolean": {"clear(a)": true, "clear(b)": false, "handempty": true, "on(a, b)": true, "holding(a)": false}, "numeric": {}}}
+      ],
+      "trajectory": [
+        {"step": 0, "action": null, "boolean_fluents": {"ontable(a)": true, "ontable(b)": true, "ontable(c)": true, "clear(a)": true, "clear(b)": true, "clear(c)": true, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": false, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 1, "action": "(pick-up b)", "boolean_fluents": {"ontable(a)": true, "ontable(b)": false, "ontable(c)": true, "clear(a)": true, "clear(b)": false, "clear(c)": true, "handempty": false, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": false, "on(c, c)": false, "holding(a)": false, "holding(b)": true, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 2, "action": "(stack b c)", "boolean_fluents": {"ontable(a)": true, "ontable(b)": false, "ontable(c)": true, "clear(a)": true, "clear(b)": true, "clear(c)": false, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": true, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 3, "action": "(pick-up a)", "boolean_fluents": {"ontable(a)": false, "ontable(b)": false, "ontable(c)": true, "clear(a)": false, "clear(b)": true, "clear(c)": false, "handempty": false, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": true, "on(c, c)": false, "holding(a)": true, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 4, "action": "(stack a b)", "boolean_fluents": {"ontable(a)": false, "ontable(b)": false, "ontable(c)": true, "clear(a)": true, "clear(b)": false, "clear(c)": false, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": true, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": true, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}}
+      ]
+    },
+    "get_state_transition_bad": {
+      "valid": false,
+      "steps": [
+        {"index": 1, "action": "(pick-up a)", "status": "OK", "changes": {"boolean": {"ontable(a)": false, "clear(a)": false, "handempty": false, "holding(a)": true}, "numeric": {}}},
+        {"index": 2, "action": "(stack a b)", "status": "OK", "changes": {"boolean": {"clear(a)": true, "clear(b)": false, "handempty": true, "on(a, b)": true, "holding(a)": false}, "numeric": {}}}
+      ],
+      "trajectory": [
+        {"step": 0, "action": null, "boolean_fluents": {"ontable(a)": true, "ontable(b)": true, "ontable(c)": true, "clear(a)": true, "clear(b)": true, "clear(c)": true, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": false, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 1, "action": "(pick-up a)", "boolean_fluents": {"ontable(a)": false, "ontable(b)": true, "ontable(c)": true, "clear(a)": false, "clear(b)": true, "clear(c)": true, "handempty": false, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": false, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": false, "on(c, c)": false, "holding(a)": true, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}},
+        {"step": 2, "action": "(stack a b)", "boolean_fluents": {"ontable(a)": false, "ontable(b)": true, "ontable(c)": true, "clear(a)": true, "clear(b)": false, "clear(c)": true, "handempty": true, "on(a, a)": false, "on(b, a)": false, "on(c, a)": false, "on(a, b)": true, "on(b, b)": false, "on(c, b)": false, "on(a, c)": false, "on(b, c)": false, "on(c, c)": false, "holding(a)": false, "holding(b)": false, "holding(c)": false}, "numeric_fluents": {}}
+      ]
+    },
+    "get_state_transition_error": {
+      "error": true,
+      "message": "PDDL file not found: 'blocksworld'"
+    }
+  }
+}

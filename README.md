@@ -14,10 +14,10 @@ Tests Ollama LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 
 ## Prerequisites
 
-- **Docker** running (MCP planning servers run in Docker)
-- **Ollama** installed and running with desired models pulled
 - **Python 3.10+**
-- **pddl-copilot marketplace** cloned locally:
+- **Java 17+** (OpenJDK) — required by the `numeric_planner` tool (ENHSP runs on the JVM)
+- **Ollama** installed and running with desired models pulled
+- **pddl-copilot marketplace** cloned locally (v2.0.0 or later — pure pip, no Docker):
   ```bash
   git clone https://github.com/SPL-BGU/pddl-copilot.git
   ```
@@ -26,11 +26,37 @@ Tests Ollama LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 
 ```bash
 # Pull models used in the paper
-ollama pull qwen3:0.5b
+ollama pull qwen3:0.6b
 ollama pull qwen3:4b
 
 # Install dependencies
 pip3 install -r requirements.txt
+```
+
+## Running (Background)
+
+```bash
+cd ~/personal/pddl-copilot-experiments
+
+./run_background.sh small   # quick, low-impact (qwen3:0.6b only)
+./run_background.sh large   # heavier (qwen3:4b only) — overnight
+./run_background.sh         # both models (full overnight run, default)
+```
+
+What it does:
+- Activates `.venv` if present
+- Auto-locates `pddl-copilot` as a sibling dir (or reads `$PDDL_MARKETPLACE_PATH`)
+- Wraps with `caffeinate -i nice -n 19 nohup` so it survives terminal close, no sleep, low CPU priority
+- Loops over `tool_filter × prompt_style` combinations, each getting its own output directory
+- Timestamps log + results directories so runs don't collide
+- Prints PID + monitor commands
+
+After launch, the script prints exactly what you need:
+```
+Running in background, PID=12345
+  Watch progress:  tail -f run_full_20260405_142301.log
+  Check status:    ps -p 12345
+  Stop:            kill 12345
 ```
 
 ## Running (CLI)
@@ -54,7 +80,7 @@ Or set the environment variable to avoid repeating the path:
 
 ```bash
 export PDDL_MARKETPLACE_PATH=/path/to/pddl-copilot
-python3 run_experiment.py --models qwen3:0.5b qwen3:4b
+python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 ```
 
 ### CLI Options
@@ -62,7 +88,7 @@ python3 run_experiment.py --models qwen3:0.5b qwen3:4b
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--marketplace-path` | `$PDDL_MARKETPLACE_PATH` | Path to pddl-copilot marketplace clone |
-| `--models` | `qwen3:0.5b qwen3:4b` | Ollama model names to evaluate |
+| `--models` | `qwen3:0.6b qwen3:4b` | Ollama model names to evaluate |
 | `--tasks` | all 5 | Tasks to evaluate |
 | `--domains-dir` | `./domains` | Path to benchmark domains |
 | `--output-dir` | `./results` | Path to save result JSON files |
@@ -71,6 +97,12 @@ python3 run_experiment.py --models qwen3:0.5b qwen3:4b
 | `--chains` | off | Also run multi-task chain evaluation |
 | `--chain-samples` | 20 | Samples per chain length |
 | `--seed` | 42 | Random seed for chain sampling |
+| `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
+| `--prompt-style` | `minimal` | `minimal` reproduces paper; `guided` adds hint about passing PDDL content |
+| `--num-predict` | per-task | Override max output tokens (solve=8192, simulate=1536, validate=1024) |
+| `--num-ctx` | 8192 | Ollama context window tokens |
+| `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
+| `--concurrency` | 4 | Max concurrent Ollama requests in single-task sweep |
 
 ## Running (Jupyter)
 
@@ -90,6 +122,7 @@ Results are saved as JSON in `results/`:
 
 - `single_task_<timestamp>.json` -- Per-instance results with success, timing, tool calls
 - `chain_<timestamp>.json` -- Chain evaluation success rates
+- `summary_<timestamp>.json` -- Aggregated metrics with Wilson 95% confidence intervals
 
 ## Domain Structure
 
