@@ -43,6 +43,13 @@ if ! [[ "$JAVA_MAJOR" =~ ^[0-9]+$ ]] || [ "$JAVA_MAJOR" -lt 17 ]; then
     exit 1
 fi
 
+# Ensure Ollama serves concurrent chat requests instead of queueing them.
+# Must be >= the --concurrency flag passed to run_experiment.py (default 4).
+# Exported BEFORE the autostart below so a server we start here inherits it.
+# Note: if an ollama serve was already running when this script launched, it
+# won't pick up this var — restart it (or set the var in its environment).
+export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-4}"
+
 # Ensure Ollama is running (leave it running on exit — it's persistent laptop infra)
 if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
     echo "Ollama not running — starting in background..."
@@ -85,12 +92,6 @@ LOG="run_${TAG}_${STAMP}.log"
 OUT_PREFIX="results/${TAG}_${STAMP}"
 FILTERS="per-task all"
 PROMPT_STYLES="minimal guided"
-
-# Ensure Ollama serves concurrent chat requests instead of queueing them.
-# Must be >= the --concurrency flag passed to run_experiment.py (default 4).
-# Note: this takes effect for an ollama serve started AFTER this export; if a
-# server was already running, restart it or set the var in its environment.
-export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-4}"
 
 echo "Starting PDDL copilot experiment..."
 echo "  Models:      ${MODELS[*]}"

@@ -665,6 +665,7 @@ async def check_success(
     mcp: MCPPlanner,
     domain_pddl: str,
     problem_pddl: str,
+    with_tools: bool,
 ) -> tuple[bool | None, bool, str]:
     """Decide whether a model response counts as task success.
 
@@ -681,6 +682,14 @@ async def check_success(
       - validate_*      → extract VERDICT: VALID|INVALID, compare to ground truth
       - simulate        → loose keyword check (state trace structure not graded here)
     """
+    # With-tools but the model emitted zero tool calls → it answered from
+    # the text alone, which is tool_not_selected regardless of how plausible
+    # the text is. Without this short-circuit the per-task branches would
+    # fall through to the no-tools grading path and return tool_selected=None,
+    # violating the documented schema (EXPERIMENTS_FLOW.md §4.1/§9).
+    if with_tools and not tool_calls:
+        return False, False, FR_TOOL_NOT_SELECTED
+
     resp_lower = (response or "").lower()
 
     if task == "solve":
@@ -724,8 +733,24 @@ async def check_success(
                 return False, False, FR_TOOL_NOT_SELECTED
             if truth is None:
                 return True, False, FR_UNKNOWN
-            for raw in _get_tool_results(tool_calls, "validate_pddl_syntax"):
-                verdict = _parse_validation_verdict(raw)
+            # validate_pddl_syntax is polymorphic: the `valid` field answers
+            # whichever layer was supplied. A {domain}-only call returns the
+            # domain's verdict even when the model is graded on plan validity,
+            # so the verdict check must match the call's argument shape to the
+            # task — otherwise every solvable benchmark trivially scores FR_OK.
+            for tc in tool_calls:
+                if tc.get("name") != "validate_pddl_syntax":
+                    continue
+                args = tc.get("arguments", {}) or {}
+                has_problem = bool(args.get("problem"))
+                has_plan = bool(args.get("plan"))
+                if task == "validate_domain" and (has_problem or has_plan):
+                    continue
+                if task == "validate_problem" and (not has_problem or has_plan):
+                    continue
+                if task == "validate_plan" and not has_plan:
+                    continue
+                verdict = _parse_validation_verdict(tc.get("result", ""))
                 if verdict == truth:
                     return True, True, FR_OK
             if _tool_error_seen(tool_calls, "validate_pddl_syntax"):
@@ -826,6 +851,7 @@ async def evaluate_one(
         try:
             tool_selected, success, failure_reason = await check_success(
                 task, response_text, tool_calls, gt, mcp, domain_pddl, problem_pddl,
+                with_tools=with_tools,
             )
         except Exception as exc:
             success = False
@@ -1008,6 +1034,14 @@ async def run_chain_experiment(
                 chain_ok = True
 
                 for task in chain_tasks:
+                    # Mirror the single-task guard (run_single_task_experiment,
+                    # above): if the oracle never produced a plan for this
+                    # problem, validate_plan/simulate have no ground truth to
+                    # grade against and would deterministically fail the chain
+                    # as a ground-truth-coverage artifact rather than a model
+                    # signal. Skip the step and keep the chain alive.
+                    if task in ("validate_plan", "simulate") and not gt.get("plan"):
+                        continue
                     template = random.choice(PROMPT_TEMPLATES[task])
                     plan_str = ""
                     if task in ("validate_plan", "simulate") and gt.get("plan"):
@@ -1041,6 +1075,7 @@ async def run_chain_experiment(
                             messages.append({"role": "assistant", "content": resp_text})
                         _sel, ok, _fr = await check_success(
                             task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
+                            with_tools=with_tools,
                         )
                         if not ok:
                             chain_ok = False
