@@ -6,7 +6,7 @@
 # but parallelizes across conditions as independent SLURM jobs.
 #
 # Usage:
-#   bash cluster-experimenting/submit_all.sh                 # default: both models, all 5 conditions (10 jobs)
+#   bash cluster-experimenting/submit_all.sh                 # default: all 5 models, all 5 conditions (25 jobs)
 #   bash cluster-experimenting/submit_all.sh --small         # Qwen3.5:0.8B only       (5 jobs)
 #   bash cluster-experimenting/submit_all.sh --large         # gpt-oss:20b only        (5 jobs)
 #   bash cluster-experimenting/submit_all.sh --models a b c  # custom list

@@ -43,21 +43,23 @@ The paper's `plan.trajectory` (Lisp-like `(:init ... :state ...)` text) is delib
 
 ### Per-domain validation status (2026-04-20, via user-scoped pddl-copilot plugin)
 
-All 10 domains have `domain_valid=True`, `problem_valid=True`, and return a non-empty plan from the solver. Plan validity against the goal:
+All 10 domains have `domain_valid=True`, `problem_valid=True`, and return a non-empty plan from the solver. Plan validity reported by the validator:
 
-| Domain | Plan source checked | plan_valid | Notes |
-|---|---|---|---|
-| classical/barman | fresh `classic_planner` | ✓ | 28 actions, all goals satisfied |
-| classical/blocksworld | fresh `classic_planner` | ✓ | 4 actions |
-| classical/depots | fresh `classic_planner` | ✓ | 5 actions |
-| classical/rovers | fresh `classic_planner` | ✓ | 12 actions |
-| classical/satellite | fresh `classic_planner` | ✓ | 6 actions |
-| numeric/counters | **both paper `p01.plan` and fresh `numeric_planner`** | ✗ | Goal `c0<c1<c2<c3<c4` unmet. Paper-shipped `plan.solution` also fails the same goal check. |
-| numeric/depot | fresh `numeric_planner` | ✓ | 111 actions |
-| numeric/farmland | **both paper `p01.plan` and fresh `numeric_planner`** | ✗ | All `(1 <= x(farmN))` goals unmet. Paper-shipped `plan.solution` also fails. |
-| numeric/pogo_stick | fresh `numeric_planner` | ✓ | 10 actions, `have_pogo_stick` achieved |
-| numeric/sailing | fresh `numeric_planner` | ✓ | 82 actions, both people saved |
+| Domain | Plan source | validator verdict | Arithmetic truth | Notes |
+|---|---|---|---|---|
+| classical/barman | fresh `classic_planner` | ✓ | ✓ | 28 actions |
+| classical/blocksworld | fresh `classic_planner` | ✓ | ✓ | 4 actions |
+| classical/depots | fresh `classic_planner` | ✓ | ✓ | 5 actions |
+| classical/rovers | fresh `classic_planner` | ✓ | ✓ | 12 actions |
+| classical/satellite | fresh `classic_planner` | ✓ | ✓ | 6 actions |
+| numeric/counters | paper + fresh | **✗** | **✓** | **Validator bug** — final state is strictly increasing with gaps ≥1; all four `<=` goals are arithmetically satisfied but validator reports all unmet. See `OPEN_ISSUES.md::ISS-014`. |
+| numeric/depot | fresh `numeric_planner` | ✓ | ✓ | 111 actions; boolean goals |
+| numeric/farmland | paper + fresh | **✗** | **✓** | **Validator bug** — all 15 `>= 1` goals met (every x≥1), weighted sum = 31.0 ≥ 30.8 requirement. Validator reports all 16 unmet. See `OPEN_ISSUES.md::ISS-014`. |
+| numeric/pogo_stick | fresh `numeric_planner` | ✓ | ✓ | 10 actions; boolean goal |
+| numeric/sailing | fresh `numeric_planner` | ✓ | ✓ | 82 actions; boolean goals |
 
-**Implication.** `counters/p01` and `farmland/p01` produce `gt["plan_valid"]=False` on every run. The harness handles this gracefully — `run_single_task_experiment` skips `validate_plan`/`simulate` tasks for unsolvable-plan problems (`run_experiment.py:1053`) — but these two will also skew `validate_plan` evaluations when they run. See `development/OPEN_ISSUES.md::ISS-014` for the open question of whether to patch the problems, drop the two domains, or mark them as intended-invalid fixtures.
+**Implication.** The oracle ground truth is wrong on `counters/p01` and `farmland/p01` because the `pyval`-backed validator miscomputes numeric `<=` / `>=` goals. The two fixtures are actually valid. Agents whose reasoning is correct on these problems will mismatch the (wrong) GT and be scored as failures. Until the upstream `pyval` bug is fixed (tracked in `ISS-014`), interpret counters / farmland numbers cautiously — they measure "agreement with the buggy validator" more than plan correctness.
+
+Pattern: the bug affects numeric `<=` / `>=` goal checks. Boolean goals (pogo_stick, sailing, depot, all classical) work correctly.
 
 Broken fixtures (for discriminating the no-tools `validate_*` baseline — see `development/OPEN_ISSUES.md::ISS-001`) are not yet added.

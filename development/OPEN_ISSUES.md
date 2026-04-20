@@ -69,15 +69,20 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Fix.** Read arXiv:2509.12987 §3 (benchmark construction) and §5 (evaluation protocol). Produce a per-task side-by-side diff table as an appendix to `EXPERIMENTS_FLOW.md`. Flag any discrepancy as a new ISS-###.
 **Files.** `EXPERIMENTS_FLOW.md`, possibly `run_experiment.py::check_success` if a discrepancy needs a fix.
 
-### ISS-014 · Paper-shipped plans for `counters` + `farmland` fail goal check
-**Source.** Manual per-domain GT validation via user-scoped pddl-copilot plugin, 2026-04-20.
-**Evidence.** After copying the paper dataset into `domains/`, validating each fixture with `mcp__plugin_pddl-validator_pddl-validator__validate_pddl_syntax(domain, problem, plan)`:
-- `numeric/counters/p01.plan` (paper's `plan.solution`): `valid=false`, 4 unmet goals — `c0<c1<c2<c3<c4` ordering never achieved. Fresh `numeric_planner` output also fails the same goal check.
-- `numeric/farmland/p01.plan` (paper's `plan.solution`): `valid=false`, 16 unmet goals including all `(1 <= x(farmN))`. Fresh planner output also fails.
-- The other 8 paper-shipped domains (barman, blocksworld, depots, rovers, satellite, depot, pogo_stick, sailing) all validate `plan_valid=True`.
-**Impact.** `gt["plan_valid"]=False` for counters/p01 and farmland/p01 on every run. These two are auto-skipped for `validate_plan`/`simulate` tasks (`run_experiment.py:1053`), but they inflate the "unsolvable" share in ground-truth logs and reduce effective coverage on numeric domains from 5 to 3. Results also cannot be aligned to the paper's §5 tables on counters/farmland without reconciling which plan the paper actually evaluated against.
-**Fix.** Three options: (a) patch the problem files (likely the paper's problem was re-edited after plan generation), (b) replace the paper `plan.solution` with a hand-verified plan, (c) mark these two as intended-invalid fixtures via a manifest so they can serve the broken-plan role ISS-001 needs. Whichever is chosen, reflect it in `domains/README.md`'s validation matrix.
-**Files.** `domains/numeric/{counters,farmland}/{p01.pddl,p01.plan}`, `domains/README.md`.
+### ISS-014 · `pddl-validator` plugin miscomputes numeric `<=` / `>=` goal checks
+**Source.** Manual per-domain GT validation via user-scoped pddl-copilot plugin, 2026-04-20. Initial finding (wrongly) attributed the failure to paper-dataset defects; subsequent arithmetic check traced the root cause to the validator itself.
+**Evidence.** After copying the paper dataset into `domains/`, calling `mcp__plugin_pddl-validator_pddl-validator__validate_pddl_syntax(domain, problem, plan)` on each fixture:
+- `numeric/counters/p01.plan` (paper's `plan.solution`): validator reports `valid=false` with 4 unmet goals (`(<= (+ (value cN) 1) (value cN+1))`). **However** the reported final state is `c0=12, c1=49, c2=92, c3=93, c4=94` — arithmetic verification: `13<=49 ✓`, `50<=92 ✓`, `93<=93 ✓`, `94<=94 ✓`. All four goals are arithmetically satisfied. The fresh `numeric_planner` plan ends at `c0=12, c1=49, c2=50, c3=51, c4=79` — also satisfies all four goals (50<=50, 51<=51, 52<=79). Both are wrongly flagged invalid.
+- `numeric/farmland/p01.plan` (paper's `plan.solution`): validator reports 16 unmet goals. Final state shows x=[1,1,1,1,9,1,1,1,1,1,1,1,1,1,2]. The 15 `(>= (x farmN) 1)` goals are all satisfied (every value ≥ 1). Weighted-sum goal `>= 30.8`: hand-computed sum with weights `[1.3,1.4,1.4,1.1,1.0,1.3,1.1,1.3,1.0,1.8,1.9,1.1,1.9,1.6,1.9]` = **31.0** ≥ 30.8 ✓. All 16 satisfied; validator flags all 16 unmet.
+- By contrast, `pogo_stick` (boolean goal `have_pogo_stick=true`), `sailing` (booleans `saved(p0)`, `saved(p1)`), `depot` (boolean stacking), and all 5 classical domains validate as `valid=true`. Bug is **specific to numeric `<=` / `>=` comparison goals**.
+**Impact.** Oracle ground truth is wrong on counters/p01 and farmland/p01 (both get `gt["plan_valid"]=False` when the true value is `True`). Scoring is symmetric against GT, so:
+- For `validate_plan`: an agent that correctly reasons "plan IS valid" gets `FR_VERDICT_MISMATCH` against the (wrong) GT. An agent that calls the buggy validator tool and parrots "INVALID" matches GT and passes — the two wrong answers cancel.
+- For `solve`: `_validate_model_plan` uses the same buggy validator on the agent's plan, so any agent plan for counters or farmland will be marked `FR_PLAN_INVALID` regardless of quality.
+- For `simulate`: byte-equal trajectory comparison is symmetric across the same buggy validator, so this task is unaffected in principle (both sides wrong in sync).
+Net effect: scoring for counters/farmland rewards agreeing-with-the-bug over being-correct on any task that consults plan validity.
+**Root cause.** `plugins/pddl-validator/server/validator_server.py` imports `pyval.PDDLValidator` (line 16). Bug is upstream in `pyval`, not in the plugin wrapper.
+**Fix.** (a) File an issue / patch upstream in `pyval`; (b) bound the impact by documenting that numeric goal-check results are not trustworthy until fixed; (c) temporarily exclude counters + farmland from aggregate numeric-domain stats in `analyze_results.ipynb` with a footnote.
+**Files.** `../pddl-copilot/plugins/pddl-validator/` (wrapper), `pyval` upstream, `analyze_results.ipynb` (reporting workaround), `domains/README.md` (note).
 
 ---
 
