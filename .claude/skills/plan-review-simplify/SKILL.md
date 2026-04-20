@@ -1,6 +1,6 @@
 ---
 name: plan-review-simplify
-description: Create an execution plan with built-in review for correctness and simplification. Use for multi-file changes, refactoring, or any change spanning multiple files.
+description: Create an execution plan with built-in review for correctness and simplification. Use for multi-file changes, refactoring, MCP/plugin edits, or any change spanning multiple files in this experiment harness. Trigger whenever the user asks to plan, design, or think through an implementation before coding — especially if the change could alter experiment methodology, tool-call output shape, or result schemas.
 disable-model-invocation: true
 argument-hint: [task description]
 ---
@@ -10,12 +10,17 @@ argument-hint: [task description]
 For the task described in $ARGUMENTS:
 
 ### Phase 1: Explore
-1. Read all relevant existing code using Grep and Glob
-2. Identify existing patterns that can be reused — especially:
-   - `run_experiment.py` for experiment evaluation logic and MCP client patterns
-   - `run_background.sh` for execution orchestration
-   - `EXPERIMENTS_FLOW.md` for methodology and experimental design
-3. Check `domains/` for PDDL benchmark structure and `results/` for output format
+Read all relevant existing code using Grep and Glob. Identify reusable patterns and existing state so the plan doesn't reinvent them.
+
+Reference surface, in the order you typically need them:
+- `run_experiment.py` — experiment logic, `MCPPlanner` (MCP stdio client + `verbose` bridge stripping/injection), Ollama chat loop, scoring
+- `run_background.sh` — execution orchestration
+- `EXPERIMENTS_FLOW.md` — methodology, success criteria, MCP tool contract (§8), result schema (§9), paper-diff (§11)
+- `development/CHANGELOG.md` — dated record of framework + sibling-MCP changes; check here first to avoid re-solving something that's already landed
+- `development/OPEN_ISSUES.md` — known methodology gaps (`ISS-###`) with severity and fix sketches; many "should we fix X?" questions already have a written answer here
+- `domains/` — PDDL benchmark structure; `results/` — output format
+
+Why these matter: the harness is intentionally small (~4 CORE files). Most changes either land in `run_experiment.py` or cross into `../pddl-copilot` plugin servers. Checking CHANGELOG + OPEN_ISSUES up front prevents duplicate work and surfaces whether the ask is already tracked.
 
 ### Phase 2: Plan
 Design the implementation approach covering:
@@ -26,6 +31,7 @@ Design the implementation approach covering:
 - **Files to modify**: Table of file | action (create/modify/delete) | description
 - **Execution steps**: Numbered checklist
 - **Validation strategy**: How to verify the change works (test run, result comparison, etc.)
+- **Documentation**: Which entry belongs in `development/CHANGELOG.md`; does it resolve any `ISS-###` in `OPEN_ISSUES.md`?
 
 ### Phase 3: Review
 Before presenting the plan, review it for simplification and correctness:
@@ -39,8 +45,9 @@ Before presenting the plan, review it for simplification and correctness:
 **Experiment integrity:**
 - Does the change preserve compatibility with existing results in `results/`?
 - Are evaluation metrics and success criteria unchanged (or intentionally updated)?
-- Does the MCP client interface remain consistent with pddl-copilot plugin APIs?
-- Is the change documented in `EXPERIMENTS_FLOW.md` if it affects methodology?
+- Does the MCP client interface remain consistent with the pddl-copilot plugin contract in EXPERIMENTS_FLOW.md §8 (including the bridge-pinned `verbose=False` convention for validator tools)?
+- Is the change documented in `EXPERIMENTS_FLOW.md` if it affects methodology, and queued for `development/CHANGELOG.md`?
+- Does it close or partially address any open `ISS-###`?
 
 **Correctness:**
 - Are PDDL domain/problem paths resolved correctly?
@@ -60,7 +67,8 @@ Do NOT proceed until approved.
 Execute steps in order. After completion:
 1. Run a quick smoke test (e.g., single-task evaluation with smallest model)
 2. Verify output format matches expected structure in `results/`
-3. Summarize changes, key decisions, validation results
+3. Append an entry to `development/CHANGELOG.md` (date, motivation, files touched, compatibility notes). If the change closes or narrows an `ISS-###`, move or update the matching entry in `development/OPEN_ISSUES.md`.
+4. Summarize changes, key decisions, validation results
 
 ## Fast Mode
 If user says "fast mode", "just do it", or "skip planning" — execute immediately without the planning workflow.

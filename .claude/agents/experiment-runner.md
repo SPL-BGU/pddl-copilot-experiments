@@ -33,4 +33,5 @@ Run a minimal smoke-test experiment to verify the pipeline works end to end.
    - Ground truth: generated or failed
    - Model evaluation: success/failure counts from the summary output
    - Output files: list files created in `results/smoke_test/`
+   - **Bridge projection check**: `tool_calls[*]` entries that hit `validate_pddl_syntax` or `get_state_transition` should NOT contain `"details"` in the result JSON (bridge pins `verbose=False`). Parse one result string and report `keys present`. See EXPERIMENTS_FLOW.md §8.
    - If FAIL: include the relevant error trace

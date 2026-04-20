@@ -1,0 +1,98 @@
+# Open Issues
+
+Tracker for methodology / framework gaps surfaced by result reviews but not yet resolved. Each entry notes severity, evidence, and the minimal fix. Close an issue by moving its entry (with resolution date and commit) into `CHANGELOG.md`.
+
+Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpretation or wastes runtime. **P3** cosmetic / taxonomy.
+
+---
+
+## P1 — Methodology
+
+### ISS-001 · `validate_*` ground truth is all-positive
+**Source.** Results review of `qwen06b_20260419_210436_*`, issue 4.
+**Evidence.** `gt["domain_valid"]=True` for every bundled problem (no-tools `validate_domain` = 55/55 across all configs). `gt["problem_valid"]=True` for all 55 (3 misses are model false-negatives). Oracle-generated plans are always valid.
+**Impact.** The `validate_*` benchmark has zero invalid examples, so a `VERDICT: VALID` prior trivially wins the no-tools condition. Absolute verdict-accuracy numbers cannot be compared to the paper.
+**Fix.** Inject broken fixtures into `domains/` — corrupted parens, missing `:parameters`, invalid goals — so `gt["{domain,problem}_valid"]` has a non-trivial False fraction. Balance polarity per task.
+**Files.** `domains/**/*.pddl`, ground-truth generation in `run_experiment.py`.
+
+### ISS-002 · `simulate` no-tools scorer is non-discriminative
+**Source.** Results review, issue 7.
+**Evidence.** `check_success` in `run_experiment.py` passes a simulate response whenever `"state"` + (`"after"` or `"step"`) appear in lowercase. 29/55 `truncated_no_answer` still scored `ok:40`.
+**Impact.** Measures vocabulary, not simulation correctness.
+**Fix.** Replace with structured-trace grader: parse a state sequence from the response and diff against `gt["state_trajectory"]`. Alternatively, flag this as a known limitation in the write-up and drop simulate from the no-tools headline numbers.
+**Files.** `run_experiment.py` (simulate branch of `check_success`), ground-truth trajectory emission.
+
+### ISS-003 · Guided prompt is ineffective at 0.6b
+**Source.** Results review, issue 2.
+**Evidence.** `per-task_minimal` and `per-task_guided` both hit 6/55 on `validate_domain`. Guided reshuffles failures from `tool_error:3, verdict_mismatch:8` → `tool_error:0, verdict_mismatch:27` — never to success. Sampled tool-call payloads show the 0.6b model passing the literal string `"blocksworld"` (len=11) as domain content; the hint doesn't bite.
+**Impact.** Runs half the sweep for no information gain; inflates compute costs without producing a comparable data point.
+**Fix.** Drop `guided` from the qwen3:0.6b sweep. Keep guided only for qwen3:4b (and larger) where the prompt may plausibly change behaviour. Consider replacing the one-sentence hint with a one-shot example or a schema-enforced tool-call wrapper before re-enabling for small models.
+**Files.** `run_background.sh` or sweep-config call-sites.
+
+---
+
+## P2 — Runtime & instrumentation
+
+### ISS-004 · No-tools condition duplicated 4× per model
+**Source.** Results review, issue 5.
+**Evidence.** No-tools summary rows are byte-identical across the four `tool_filter × prompt_style` configs. Each full sweep runs the no-tools condition 4 times for zero measurement benefit (~825 redundant Ollama calls per model).
+**Fix.** Factor the no-tools condition out of the filter × style loop; run it once per model and re-use across configs. Trivial orchestration change.
+**Files.** `run_experiment.py` sweep loop, `run_background.sh` if it drives multiple configs.
+
+### ISS-005 · `FR_TOOL_ERROR` is overloaded
+**Source.** Results review, issue 6.
+**Evidence.** Current `FR_TOOL_ERROR` collapses (a) plugin argument rejections ("PDDL file not found: 'blocksworld'"), (b) PDDL parse errors ("Failed to parse domain: Expected ':parameters', found '.'"), and (c) transport/timeout errors.
+**Impact.** Cannot quantify the "passes names not content" failure mode directly — it's the paper's most interesting diagnostic.
+**Fix.** Split into `FR_TOOL_ARG_ERROR` (plugin rejection) / `FR_TOOL_PARSE_ERROR` (content rejection) / `FR_TOOL_TRANSPORT` (MCP failure). ~30 LOC in `_tool_error_seen` + failure-reason vocabulary. Backfill analysis notebook to decompose existing runs.
+**Files.** `run_experiment.py` (failure-reason constants, `_tool_error_seen`, `check_success`), `analyze_results.ipynb`.
+
+### ISS-006 · Truncation on no-tools `solve` (17/55, 31%)
+**Source.** Results review, issue 8.
+**Evidence.** `solve no-tools`: 17/55 truncated at the current `num_predict` default.
+**Impact.** 0/55 success rate may be a token-budget artefact, not a capability signal.
+**Fix.** Re-run `solve no-tools` at `--num-predict 16384` for qwen3:0.6b. Audit per-task median completion lengths against their caps (`DEFAULT_NUM_PREDICT` at `run_experiment.py:77-83`) and raise where medians approach the cap.
+**Files.** `run_experiment.py` per-task `num_predict` defaults, sweep scripts.
+
+### ISS-007 · `num_predict=1024` caps validate_* LLM reply
+**Source.** Separated concern (C) from the structured-projection plan; earlier analysis of `qwen4b_nothink_20260411_163217_all_guided/summary_20260417_003616.json`.
+**Evidence.** 52+/55 validate_* rows end with `done_reason="length"`. Even after the MCP projection fix, the model's reply is capped before it emits a verdict.
+**Fix.** Raise `num_predict` for validate_* to 2048–3072. Requires a reproduction-impact note since defaults reproduce the paper setting.
+**Files.** `run_experiment.py:77-83`, `EXPERIMENTS_FLOW.md` §5 + §11.
+
+---
+
+## P3 — Reporting & polish
+
+### ISS-008 · Domain-size cliff in `validate_domain` wins at 0.6b
+**Source.** Results review, issue 3.
+**Evidence.** All 6 per-task `validate_domain` successes land on `counters` (401 B) only, never `blocksworld` (862 B) or `depots` (1571 B).
+**Impact.** `tool_selected_rate=0.45` on `validate_domain` measures verbatim-PDDL-echoing capacity, not planning competence. Scales with model size and co-varies with domain selection.
+**Fix.** Add a domain-size-stratified breakdown to the analysis notebook. Re-run on qwen3:4b where echoing is less fragile. Report size as a controlled variable.
+**Files.** `analyze_results.ipynb`, sweep plan for 4b.
+
+### ISS-009 · Chain with-tools = 0% for 0.6b is uninformative
+**Source.** Results review, issue 9.
+**Evidence.** All chain (length × config) cells with tools score 0 for qwen3:0.6b. No-tools chains run 0.10–0.30.
+**Fix.** Skip 4- and 5-length chains for models where the per-step success rate is below ~0.3. Report only chain=2 as a floor estimate for such models.
+**Files.** `run_experiment.py` chain-loop gating, `EXPERIMENTS_FLOW.md`.
+
+### ISS-010 · Tool-name contamination under `tool_filter=all`
+**Source.** Results review, issue 10.
+**Evidence.** `all_minimal` invokes `save_plan` on `validate_plan` (×4), `simulate` (×17-18), `solve` (×19); `all_*` simulate additionally calls `validate_pddl_syntax` (×10-11).
+**Impact.** Expected behaviour of the `all` filter and the point of the filter ablation — not a bug, but not currently surfaced in the headline table.
+**Fix.** Report `per-task vs all` delta in the analysis notebook as "tool-selection noise" and reference it in the paper diff.
+**Files.** `analyze_results.ipynb`, write-up.
+
+---
+
+## Priority order for next work
+
+From the results reviewer's suggested-next-steps, ranked by impact:
+
+1. **ISS-001** — broken-PDDL fixtures (unlocks meaningful validate_* numbers).
+2. **ISS-005** — split `FR_TOOL_ERROR` (directly quantifies the #1 failure mode).
+3. **ISS-004** — factor no-tools out of filter × style loop (halves sweep runtime).
+4. **ISS-002** — replace or disable simulate no-tools scorer.
+5. **ISS-003** — drop `guided` from the 0.6b sweep.
+
+ISS-006 and ISS-007 are useful ablations that should accompany any re-run on the corresponding model size.

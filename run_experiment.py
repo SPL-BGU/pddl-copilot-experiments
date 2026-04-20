@@ -215,10 +215,31 @@ class TaskResult:
 class MCPPlanner:
     """Manages stdio connections to PDDL MCP servers (solver + validator)."""
 
+    # Validator tools expose a `verbose` param that toggles the large
+    # `details` / verbose `report` fields. The experiment bridge hides the
+    # param from the LLM and pins it to False so tool responses stay compact
+    # while preserving full fidelity for other MCP callers by default.
+    _PINNED_VERBOSE_FALSE = {"validate_pddl_syntax", "get_state_transition"}
+
     def __init__(self):
         self.stack = AsyncExitStack()
         self.tools: list[dict] = []
         self._tool_to_session: dict[str, ClientSession] = {}
+
+    @staticmethod
+    def _strip_verbose_from_schema(schema: dict) -> dict:
+        """Return a copy of an MCP inputSchema with the 'verbose' property hidden."""
+        if not isinstance(schema, dict):
+            return schema
+        out = dict(schema)
+        props = out.get("properties")
+        if isinstance(props, dict) and "verbose" in props:
+            new_props = {k: v for k, v in props.items() if k != "verbose"}
+            out["properties"] = new_props
+        req = out.get("required")
+        if isinstance(req, list) and "verbose" in req:
+            out["required"] = [r for r in req if r != "verbose"]
+        return out
 
     async def connect(self, plugin_dirs: list[Path]):
         for plugin_dir in plugin_dirs:
@@ -242,12 +263,15 @@ class MCPPlanner:
 
             tools_result = await session.list_tools()
             for t in tools_result.tools:
+                schema = t.inputSchema
+                if t.name in self._PINNED_VERBOSE_FALSE:
+                    schema = self._strip_verbose_from_schema(schema)
                 self.tools.append({
                     "type": "function",
                     "function": {
                         "name": t.name,
                         "description": t.description or "",
-                        "parameters": t.inputSchema,
+                        "parameters": schema,
                     },
                 })
                 self._tool_to_session[t.name] = session
@@ -259,6 +283,8 @@ class MCPPlanner:
         session = self._tool_to_session.get(name)
         if not session:
             raise ValueError(f"Tool '{name}' not found in any connected MCP server")
+        if name in self._PINNED_VERBOSE_FALSE:
+            arguments = {**(arguments or {}), "verbose": False}
         result = await session.call_tool(name, arguments=arguments)
         return result.content[0].text if result.content else ""
 

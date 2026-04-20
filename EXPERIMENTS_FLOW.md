@@ -186,10 +186,23 @@ Tools are served by two MCP plugin servers from the [pddl-copilot](https://githu
 
 | Tool | Parameters | Returns |
 |------|-----------|---------|
-| `validate_pddl_syntax` | `domain` (required), `problem` (optional), `plan` (optional) | `{valid: bool, status: str, report: str, details: dict}` or `{error: true, message: str}` |
-| `get_state_transition` | `domain`, `problem`, `plan` (all required) | `{valid: bool, report: str, steps: list, trajectory: list, details: dict}` or `{error: true, message: str}` |
+| `validate_pddl_syntax` | `domain` (required), `problem` (optional), `plan` (optional), `verbose` (optional, default `True`) | `verbose=True`: `{valid, status, report, details}`. `verbose=False`: `{valid, status, report}`. Error: `{error: true, message: str}` |
+| `get_state_transition` | `domain`, `problem`, `plan` (all required), `verbose` (optional, default `True`) | `verbose=True`: `{valid, report, steps, trajectory, details}`. `verbose=False`: `{valid, steps, trajectory}`. Error: `{error: true, message: str}` |
 
 **Input detection**: Tools check if an argument starts with `(` or `;` or contains `(define ` to detect inline PDDL content. Otherwise the argument is treated as a file path. This is why passing a domain name like `"blocksworld"` fails -- it's interpreted as a file path that doesn't exist.
+
+**Response-size policy (structured projection, no truncation).** Each validator tool accepts an optional `verbose` parameter that defaults to `True` so standalone MCP callers (Claude Desktop, `ollama_mcp_bridge.py`, future consumers) still receive the full pyvalidator fidelity by default. Setting `verbose=False` drops the redundant fields that re-serialize information already present elsewhere in the response: `details` on `validate_pddl_syntax`; `report` and `details` on `get_state_transition`. Kept fields — `status`, `report` (validate), `steps`, `trajectory` with full `boolean_fluents`/`numeric_fluents` per step — are returned in full; there is no item or character cap.
+
+**Experiment bridge enforces `verbose=False`.** `run_experiment.py::MCPPlanner` strips the `verbose` property from each validator tool's `inputSchema` before passing tools to Ollama, and injects `verbose=False` on every call (see `_PINNED_VERBOSE_FALSE`). The experiment agent cannot see or control the flag. This keeps tool responses compact for the LLM without changing the plugin's default contract for other callers. Prior `tool_calls[*].result` strings recorded in `results/` are not byte-comparable with post-change runs, but scoring (`_parse_validation_verdict`, simulate non-empty check) is unchanged.
+
+**Aligned cap hygiene in the MCP repo.** The existing caps in `../pddl-copilot` now follow a consistent `DEFAULT_*` module-constant + `PDDL_*` env override convention (defaults unchanged):
+
+| Cap | Env var | Default |
+|---|---|---|
+| Grounding attempts in `get_applicable_actions` | `PDDL_MAX_GROUNDING_ATTEMPTS` | 10000 |
+| Applicable-actions return list | `PDDL_MAX_APPLICABLE_ACTIONS` | 50 |
+| Planner failure-log tail length | `PDDL_MAX_LOG_CHARS` | 3000 |
+| Planner wall-clock timeout (s) | `PDDL_TIMEOUT` | 120 |
 
 ---
 
@@ -276,5 +289,6 @@ kill <PID>                  # Stop
 | Models | Qwen3, GPT-OSS (various sizes) | Ollama models (qwen3:0.6b, qwen3:4b) |
 | Domains | 10 IPC benchmarks | 3 sample domains (blocksworld, depots, counters) |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
+| Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. Scoring unaffected (uses only `valid` / non-empty checks). |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.

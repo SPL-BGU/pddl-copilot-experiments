@@ -1,6 +1,6 @@
 ---
 name: debug-and-simplify
-description: Diagnose and fix issues with experiment execution, MCP client connections, Ollama models, or result analysis. Use when something is broken or behaving unexpectedly.
+description: Diagnose and fix issues with experiment execution, MCP client connections, Ollama models, tool-call failures (truncation, JSON parse, tool_error), or result analysis. Use whenever the pipeline is broken, a run crashed, tool outputs look wrong, results JSON files are malformed, or `run_*.log` contains errors. Check `development/OPEN_ISSUES.md` before deep-diving — the symptom may already be a tracked `ISS-###` with a documented fix.
 disable-model-invocation: true
 argument-hint: [description of the issue or error message]
 ---
@@ -8,6 +8,9 @@ argument-hint: [description of the issue or error message]
 ## Debugging Workflow with Simplification Review
 
 For the issue described in $ARGUMENTS:
+
+### Phase 0: Known-issue scan
+Before layered debugging, grep `development/OPEN_ISSUES.md` for the symptom. If it matches an `ISS-###` entry, read that entry and `development/CHANGELOG.md` — the root cause, severity, and intended fix may already be documented. Save the user the cost of re-diagnosis.
 
 ### Phase 1: Diagnose
 Systematically check each layer, stopping when the root cause is found:
@@ -28,7 +31,10 @@ Systematically check each layer, stopping when the root cause is found:
 1. Is `PDDL_MARKETPLACE_PATH` set or does pddl-copilot exist at the expected sibling path?
 2. Can the MCP plugin servers start? Run the plugin's `launch-server.sh` directly
 3. Do individual MCP tool calls succeed? Test with inline PDDL content
-4. Are tool responses in the expected format (dict with error/success fields)?
+4. Are tool responses in the expected format?
+   - Standalone calls default to verbose: `validate_pddl_syntax` returns `{valid, status, report, details}`; `get_state_transition` returns `{valid, report, steps, trajectory, details}`.
+   - Through `MCPPlanner` the bridge injects `verbose=False` for both tools, so responses are projected: `{valid, status, report}` and `{valid, steps, trajectory}` respectively. See EXPERIMENTS_FLOW.md §8.
+   - If you see `details`/`report` keys in captured `tool_calls[*].result` strings from an experiment run, the bridge stripping is not happening — check `_PINNED_VERBOSE_FALSE` in `run_experiment.py::MCPPlanner` and the `inputSchema` handling in `connect()`.
 
 **Layer 3 — Experiment execution:**
 1. Does a single-task dry run work? (`python3 run_experiment.py --tasks solve --dry-run`)
@@ -70,3 +76,6 @@ Before committing the fix, review it:
 | Empty results JSON | Ground-truth generation failed silently | Check log file for upstream errors |
 | Background run dies | OOM or Ollama crash | Check `ollama_serve.log` and system memory |
 | Stale MCP connection | Plugin venv missing new deps | Delete plugin `.venv` and restart |
+| Validator tool result has `details`/verbose `report` inside `tool_calls[*].result` | Bridge not stripping `verbose` or not injecting `verbose=False` | Confirm `_PINNED_VERBOSE_FALSE` set and `inputSchema` mutation in `MCPPlanner.connect()` |
+| LLM reply cut with `done_reason="length"` on validate_* | `num_predict` cap (see `ISS-007`), not MCP output size | Raise `--num-predict` for validate tasks; do not chase MCP output fixes |
+| High `truncated_no_answer` on no-tools simulate | `ISS-002` — scorer is lenient; metric is vocabulary-only | Check scorer path in `check_success` before blaming the model |
