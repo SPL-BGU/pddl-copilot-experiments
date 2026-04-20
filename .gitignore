@@ -15,3 +15,6 @@ results/
 # these — but an older plugin checkout would still write them to this dir.
 output.sas
 sas_plan*
+
+# SLURM job logs (see cluster-experimenting/)
+cluster-experimenting/logs/
