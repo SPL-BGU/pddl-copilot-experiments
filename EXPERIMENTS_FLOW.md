@@ -147,13 +147,22 @@ A chain of length N picks N random tasks and executes them sequentially in a sin
 ```
 domains/
   classical/
-    blocksworld/   domain.pddl + p01..p05  (5 problems)
-    depots/        domain.pddl + p01..p03  (3 problems)
+    barman/        domain.pddl + p01
+    blocksworld/   domain.pddl + p01
+    depots/        domain.pddl + p01
+    rovers/        domain.pddl + p01
+    satellite/     domain.pddl + p01
   numeric/
-    counters/      domain.pddl + p01..p03  (3 problems)
+    counters/      domain.pddl + p01
+    depot/         domain.pddl + p01   (singular; paper's numeric split)
+    farmland/      domain.pddl + p01
+    pogo_stick/    domain.pddl + p01
+    sailing/       domain.pddl + p01
 ```
 
-3 domains, 11 problems total. The paper evaluated 10 domains from IPC benchmarks; this subset is used for faster iteration.
+10 domains, 10 problems total — copied verbatim from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). Each domain also ships `p01.plan` (paper's `plan.solution`) as a reference artifact for manual cross-check; it is **not** read at runtime — the MCP oracle regenerates plan + trace on every run.
+
+**Expected validity:** shipped fixtures are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. The startup ground-truth summary prints these flags per problem for manual review; drift is not currently auto-enforced. Broken fixtures for the no-tools verdict baseline (see `OPEN_ISSUES.md::ISS-001`) are not yet added.
 
 ---
 
@@ -287,7 +296,7 @@ kill <PID>                  # Stop
 | Tool filter | All tools exposed | Configurable: all or per-task |
 | Prompt style | Single prompt | Configurable: minimal or guided |
 | Models | Qwen3, GPT-OSS (various sizes) | Ollama models (qwen3:0.6b, qwen3:4b) |
-| Domains | 10 IPC benchmarks | 3 sample domains (blocksworld, depots, counters) |
+| Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
 | Simulate success criterion | Non-error tool result | Trajectory deep-equality against oracle `gt["trace"]`. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |

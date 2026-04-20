@@ -1,9 +1,20 @@
-;; 3 blocks: stack A on B on C
-(define (problem bw-p01)
-  (:domain blocksworld)
-  (:objects a b c)
-  (:init
-    (ontable a) (ontable b) (ontable c)
-    (clear a) (clear b) (clear c)
-    (handempty))
-  (:goal (and (on a b) (on b c))))
+
+
+(define (problem bw_rand_3)
+(:domain blocksworld)
+(:objects b1 b2 b3 - block)
+(:init
+(handempty)
+(ontable b1)
+(on b2 b1)
+(ontable b3)
+(clear b2)
+(clear b3)
+)
+(:goal
+(and
+(on b3 b1))
+)
+)
+
+

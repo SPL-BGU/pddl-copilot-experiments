@@ -130,7 +130,7 @@ bash cluster-experimenting/submit_all.sh --large
 # Custom model list (must match cis-ollama /api/tags names exactly)
 bash cluster-experimenting/submit_all.sh --models qwen3:latest gemma4:31b
 
-# A single condition across both models (sanity / debugging)
+# A single condition across all default models (sanity / debugging)
 bash cluster-experimenting/submit_all.sh --conditions no-tools
 
 # Single job, submit directly
