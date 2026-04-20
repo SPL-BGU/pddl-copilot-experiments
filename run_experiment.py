@@ -67,6 +67,11 @@ def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODELS = ["qwen3:0.6b", "qwen3:4b"]
+# Fallback set for the BGU shared Ollama server (cis-ollama), which does not
+# host the paper's qwen3:0.6b / qwen3:4b. Used only when --ollama-host points
+# at a non-localhost server AND --models was not passed explicitly. Runs
+# against this set are NOT paper reproductions — label result dirs accordingly.
+BGU_DEFAULT_MODELS = ["Qwen3.5:0.8B", "qwen3:latest", "gpt-oss:20b", "gemma4:31b"]
 TEMPERATURE = 0.0
 MAX_TOOL_LOOPS = 10
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
@@ -1354,6 +1359,16 @@ async def async_main(args):
     else:
         think_override = None
 
+    # "Remote" = any non-localhost host. Controls default-model fallback and
+    # is surfaced in the startup banner so result files can't be confused
+    # with local runs.
+    host = args.ollama_host or ""
+    is_remote = bool(host) and not any(
+        tok in host for tok in ("localhost", "127.0.0.1", "[::1]")
+    )
+    if args.models is None:
+        args.models = list(BGU_DEFAULT_MODELS if is_remote else DEFAULT_MODELS)
+
     num_parallel_env = os.environ.get("OLLAMA_NUM_PARALLEL", "unset")
 
     print("=" * 60)
@@ -1372,10 +1387,12 @@ async def async_main(args):
     print(f"  num_ctx:    {args.num_ctx}")
     print(f"  think:      {args.think}")
     print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
-    if args.concurrency > 1 and num_parallel_env == "unset":
+    if args.concurrency > 1 and num_parallel_env == "unset" and not is_remote:
         print("  WARNING: OLLAMA_NUM_PARALLEL is not set — Ollama may queue "
               "concurrent requests server-side, negating the speedup. "
               "Export OLLAMA_NUM_PARALLEL>=concurrency before the run.")
+    print(f"  Ollama host:{host or '(library default: http://localhost:11434)'}"
+          f"{' [remote, tls_verify=' + ('off' if args.ollama_insecure else 'on') + ']' if is_remote else ''}")
 
     # Resolve plugins
     plugin_dirs = resolve_plugin_dirs(args.marketplace_path)
@@ -1401,7 +1418,15 @@ async def async_main(args):
         if missing:
             sys.exit(f"TASK_TOOLS['{task}'] references unknown tools: {missing}")
 
-    client = ollama.AsyncClient()
+    # Unknown kwargs (verify=...) are forwarded by ollama.AsyncClient to its
+    # underlying httpx.AsyncClient — lets us tolerate the BGU server's
+    # self-signed cert without patching the ollama library.
+    client_kwargs: dict = {}
+    if args.ollama_host:
+        client_kwargs["host"] = args.ollama_host
+    if args.ollama_insecure:
+        client_kwargs["verify"] = False
+    client = ollama.AsyncClient(**client_kwargs)
 
     single_results: list[TaskResult] = []
     chain_results: list[dict] = []
@@ -1478,8 +1503,10 @@ def main():
                    default=os.environ.get("PDDL_MARKETPLACE_PATH"),
                    required="PDDL_MARKETPLACE_PATH" not in os.environ,
                    help="Path to cloned pddl-copilot marketplace repo (or set PDDL_MARKETPLACE_PATH)")
-    p.add_argument("--models", nargs="+", default=DEFAULT_MODELS,
-                   help="Ollama model names to evaluate")
+    p.add_argument("--models", nargs="+", default=None,
+                   help="Ollama model names to evaluate. Default: paper set "
+                        f"{DEFAULT_MODELS} when using localhost; BGU set "
+                        f"{BGU_DEFAULT_MODELS} when --ollama-host is non-localhost.")
     p.add_argument("--tasks", nargs="+", default=TASKS, choices=TASKS,
                    help="Tasks to evaluate")
     p.add_argument("--domains-dir", default=str(DOMAINS_DIR),
@@ -1513,6 +1540,16 @@ def main():
                    help=f"Max concurrent Ollama chat requests during the single-task "
                         f"sweep. Default {DEFAULT_CONCURRENCY}. Pair with "
                         f"OLLAMA_NUM_PARALLEL>=concurrency on the server.")
+    p.add_argument("--ollama-host",
+                   default=os.environ.get("OLLAMA_HOST"),
+                   help="Ollama base URL. Default: library default "
+                        "(http://localhost:11434). Example BGU shared server "
+                        "(VPN-only): https://cis-ollama.auth.ad.bgu.ac.il")
+    p.add_argument("--ollama-insecure", action="store_true",
+                   default=os.environ.get("OLLAMA_INSECURE", "").lower()
+                           in ("1", "true", "yes"),
+                   help="Disable TLS verification (needed for the BGU "
+                        "server's self-signed cert).")
     p.add_argument("--chains", action="store_true",
                    help="Also run multi-task chain evaluation")
     p.add_argument("--chain-samples", type=int, default=20,
