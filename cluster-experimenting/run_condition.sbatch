@@ -98,7 +98,7 @@ echo "Think mode:  $THINK_MODE"
 echo "Conditions:  $CONDITIONS"
 echo "Marketplace: $MARKETPLACE_PATH"
 echo "Ollama host: $OLLAMA_HOST  (insecure=${OLLAMA_INSECURE:-0})"
-echo "Chains:      on, --chain-samples $CHAIN_SAMPLES"
+echo "Chains:      tools-conditions only, --chain-samples $CHAIN_SAMPLES"
 echo "Concurrency: $CONCURRENCY"
 
 cd "$EXPT_ROOT"
@@ -124,9 +124,15 @@ for COND in $CONDITIONS; do
     echo "CONDITION: $COND   (model=$MODEL, think=$THINK_MODE)   started $(date)"
     echo "===================================================================="
 
+    # Chain phase is only meaningful in tools conditions. In no-tools, the
+    # LLM has no planner/validator access to propagate intermediate artifacts
+    # between chain steps, so chain samples collapse to N independent
+    # single-task attempts — signal already captured by the single-task phase.
+    CHAINS_ARGS=(--chains --chain-samples "$CHAIN_SAMPLES")
     case "$COND" in
         no-tools)
-            COND_ARGS=(--conditions no-tools) ;;
+            COND_ARGS=(--conditions no-tools)
+            CHAINS_ARGS=() ;;
         tools_per-task_minimal)
             COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
         tools_per-task_guided)
@@ -146,7 +152,7 @@ for COND in $CONDITIONS; do
         --models "$MODEL" \
         --ollama-host "$OLLAMA_HOST" \
         "${INSECURE_ARG[@]}" \
-        --chains --chain-samples "$CHAIN_SAMPLES" \
+        "${CHAINS_ARGS[@]}" \
         --concurrency "$CONCURRENCY" \
         "${THINK_ARG[@]}" \
         "${COND_ARGS[@]}" \
