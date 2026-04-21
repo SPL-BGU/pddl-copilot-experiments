@@ -1,30 +1,46 @@
 #!/bin/bash
-### Runs run_experiment.py for ONE (MODEL, CONDITION) pair.
-### Submit via cluster-experimenting/submit_all.sh (fan-out across models × conditions),
-### or directly:
-###   sbatch --export=ALL,MODEL=gpt-oss:20b,CONDITION=tools_all_minimal \
+### Runs run_experiment.py for ONE (MODEL, THINK_MODE) pair, looping over
+### all 5 conditions sequentially in a single SLURM job so the shared
+### cis-ollama server sees the same model's requests back-to-back (avoids
+### cross-model weight eviction).
+###
+### Submit via cluster-experimenting/submit_all.sh (fan-out across models ×
+### think modes, staged by wave with --dependency=afterok), or directly:
+###   sbatch --export=ALL,MODEL=gpt-oss:20b,THINK_MODE=off \
 ###          cluster-experimenting/run_condition.sbatch
 ###
-### Required env (set via --export=ALL,MODEL=...,CONDITION=...):
+### Required env (set via --export=ALL,MODEL=...,THINK_MODE=...):
 ###   MODEL       — Ollama model name (e.g. Qwen3.5:0.8B, gpt-oss:20b)
-###   CONDITION   — one of:
+###   THINK_MODE  — one of: on | off | default
+###                 'default' omits the think kwarg (model's native setting).
+###                 Gemma4 has no thinking concept → use 'default' only.
+###
+### Optional env (defaults shown):
+###   CONDITIONS  — space-separated list of condition labels, default = all 5:
 ###                   no-tools
 ###                   tools_per-task_minimal
 ###                   tools_per-task_guided
 ###                   tools_all_minimal
 ###                   tools_all_guided
-###
-### Optional env (defaults shown):
 ###   ENV_NAME=pddl_copilot
 ###   EXPT_ROOT=$HOME/pddl-copilot-experiments
 ###   PDDL_MARKETPLACE_PATH=$HOME/pddl-copilot
 ###   OLLAMA_HOST=https://cis-ollama.auth.ad.bgu.ac.il
 ###   OLLAMA_INSECURE=1                 (empty string disables)
-###   CHAIN_SAMPLES=20
+###   CHAIN_SAMPLES=100                 (paper-aligned; paper uses 100/100/100/50
+###                                      per chain length, we use 100 flat →
+###                                      2× oversample at n=5, harmless)
+###   CONCURRENCY=2                     (saturates cis-ollama's measured
+###                                      OLLAMA_NUM_PARALLEL=4 exactly when
+###                                      paired with 2 parallel jobs per wave;
+###                                      raising would queue half the requests
+###                                      and starve other users on the shared
+###                                      server. Server probe: CHANGELOG
+###                                      2026-04-21 entry.)
 ###
 ### sbatch config parameters must start with #SBATCH and precede any other command.
 #SBATCH --partition main
-#SBATCH --time 1-00:00:00
+#SBATCH --time 3-00:00:00
 #SBATCH --job-name pddl_copilot
 #SBATCH --output cluster-experimenting/logs/%x-%J.out
 #SBATCH --gpus=0
@@ -39,8 +55,13 @@ echo "SLURM_JOB_NODELIST=$SLURM_JOB_NODELIST"
 echo "Start time: $(date)"
 
 ### Required inputs ###
-: "${MODEL:?Error: export MODEL=... (e.g. Qwen3.5:0.8B). Submit via submit_all.sh or pass --export=ALL,MODEL=...,CONDITION=...}"
-: "${CONDITION:?Error: export CONDITION=... (one of: no-tools | tools_per-task_minimal | tools_per-task_guided | tools_all_minimal | tools_all_guided)}"
+: "${MODEL:?Error: export MODEL=... (e.g. Qwen3.5:0.8B). Submit via submit_all.sh or pass --export=ALL,MODEL=...,THINK_MODE=...}"
+: "${THINK_MODE:?Error: export THINK_MODE=... (one of: on | off | default)}"
+
+case "$THINK_MODE" in
+    on|off|default) ;;
+    *) echo "Error: invalid THINK_MODE=$THINK_MODE (must be on|off|default)"; exit 1 ;;
+esac
 
 ### Defaults ###
 ENV_NAME="${ENV_NAME:-pddl_copilot}"
@@ -48,7 +69,9 @@ EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 OLLAMA_HOST="${OLLAMA_HOST:-https://cis-ollama.auth.ad.bgu.ac.il}"
 OLLAMA_INSECURE="${OLLAMA_INSECURE:-1}"
-CHAIN_SAMPLES="${CHAIN_SAMPLES:-20}"
+CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
+CONCURRENCY="${CONCURRENCY:-2}"
+CONDITIONS="${CONDITIONS:-no-tools tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided}"
 
 export OLLAMA_HOST OLLAMA_INSECURE
 
@@ -56,40 +79,27 @@ export OLLAMA_HOST OLLAMA_INSECURE
 module load anaconda
 source activate "$ENV_NAME"
 
-### Parse CONDITION into run_experiment.py flags ###
-### Labels match run_background.sh output-dir naming so downstream analysis
-### notebooks (analyze_results.ipynb) pick them up uniformly.
-case "$CONDITION" in
-    no-tools)
-        COND_ARGS=(--conditions no-tools) ;;
-    tools_per-task_minimal)
-        COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
-    tools_per-task_guided)
-        COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
-    tools_all_minimal)
-        COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
-    tools_all_guided)
-        COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
-    *)
-        echo "Error: unknown CONDITION=$CONDITION"; exit 1 ;;
-esac
-
 ### Conditional --ollama-insecure (for BGU's self-signed cert) ###
 INSECURE_ARG=()
 if [ -n "$OLLAMA_INSECURE" ]; then
     INSECURE_ARG=(--ollama-insecure)
 fi
 
-### Output dir (matches run_background.sh convention: slurm_<tag>_<cond>_<jobid>) ###
+### Conditional --think flag (omit when THINK_MODE=default to preserve model native) ###
+THINK_ARG=()
+if [ "$THINK_MODE" != "default" ]; then
+    THINK_ARG=(--think "$THINK_MODE")
+fi
+
 MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
-OUT_DIR="${EXPT_ROOT}/results/slurm_${MODEL_TAG}_${CONDITION}_${SLURM_JOBID}"
 
 echo "Model:       $MODEL"
-echo "Condition:   $CONDITION  (args: ${COND_ARGS[*]})"
-echo "Output:      $OUT_DIR"
+echo "Think mode:  $THINK_MODE"
+echo "Conditions:  $CONDITIONS"
 echo "Marketplace: $MARKETPLACE_PATH"
 echo "Ollama host: $OLLAMA_HOST  (insecure=${OLLAMA_INSECURE:-0})"
 echo "Chains:      on, --chain-samples $CHAIN_SAMPLES"
+echo "Concurrency: $CONCURRENCY"
 
 cd "$EXPT_ROOT"
 
@@ -101,14 +111,61 @@ if ! curl ${OLLAMA_INSECURE:+-k} -sf --max-time 10 "${OLLAMA_HOST}/api/tags" > /
     exit 2
 fi
 
-### Run ###
-python3 run_experiment.py \
-    --marketplace-path "$MARKETPLACE_PATH" \
-    --models "$MODEL" \
-    --ollama-host "$OLLAMA_HOST" \
-    "${INSECURE_ARG[@]}" \
-    --chains --chain-samples "$CHAIN_SAMPLES" \
-    "${COND_ARGS[@]}" \
-    --output-dir "$OUT_DIR"
+### Loop over conditions sequentially. Each invocation is a fresh Python
+### process so MCP subprocesses are torn down between conditions; that's
+### cheap (~1-2s) and isolates any per-condition state. Within an
+### invocation, run_experiment.py uses its async Semaphore to issue
+### --concurrency chat requests in flight, all against the same model →
+### server keeps weights resident, no eviction.
+OVERALL_RC=0
+for COND in $CONDITIONS; do
+    echo ""
+    echo "===================================================================="
+    echo "CONDITION: $COND   (model=$MODEL, think=$THINK_MODE)   started $(date)"
+    echo "===================================================================="
 
-echo "End time: $(date)"
+    case "$COND" in
+        no-tools)
+            COND_ARGS=(--conditions no-tools) ;;
+        tools_per-task_minimal)
+            COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
+        tools_per-task_guided)
+            COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
+        tools_all_minimal)
+            COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
+        tools_all_guided)
+            COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
+        *)
+            echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
+    esac
+
+    OUT_DIR="${EXPT_ROOT}/results/slurm_${MODEL_TAG}_${THINK_MODE}_${COND}_${SLURM_JOBID}"
+
+    python3 run_experiment.py \
+        --marketplace-path "$MARKETPLACE_PATH" \
+        --models "$MODEL" \
+        --ollama-host "$OLLAMA_HOST" \
+        "${INSECURE_ARG[@]}" \
+        --chains --chain-samples "$CHAIN_SAMPLES" \
+        --concurrency "$CONCURRENCY" \
+        "${THINK_ARG[@]}" \
+        "${COND_ARGS[@]}" \
+        --output-dir "$OUT_DIR"
+    RC=$?
+
+    echo "===================================================================="
+    echo "CONDITION: $COND   finished $(date)   rc=$RC"
+    echo "===================================================================="
+
+    if [ "$RC" -ne 0 ]; then
+        OVERALL_RC=$RC
+        # Don't break — we want every condition attempted so a single
+        # late-stage hiccup doesn't starve earlier-condition results. But
+        # we do surface the non-zero rc at job exit so afterok on the next
+        # wave won't fire.
+    fi
+done
+
+echo ""
+echo "End time: $(date)   overall rc=$OVERALL_RC"
+exit $OVERALL_RC

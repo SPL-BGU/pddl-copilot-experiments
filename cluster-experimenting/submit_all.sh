@@ -1,103 +1,195 @@
 #!/usr/bin/env bash
 # Fan-out submission for pddl-copilot-experiments on BGU SLURM.
-# Submits one sbatch per (model × condition) pair — 5 conditions per model.
+# Submits 9 jobs across 5 waves keyed on (model, think_mode).
+# Each wave waits for the previous to succeed (--dependency=afterok) so
+# only one model family is live on the shared cis-ollama server at a time,
+# eliminating weight-eviction thrashing (see plan: ~/iridescent-meandering-nest.md).
 #
-# Mirrors run_background.sh's sweep (1 no-tools run + tools × {per-task,all} × {minimal,guided})
-# but parallelizes across conditions as independent SLURM jobs.
+# Within each wave, the think-on / think-off jobs for the same model run in
+# parallel — they share loaded weights, so OLLAMA_NUM_PARALLEL handles
+# both client sessions without eviction.
+#
+# Each SLURM job (run_condition.sbatch) loops over all 5 conditions
+# sequentially in a single process.
+#
+# Waves:
+#   1. Qwen3.5:0.8B   × {on, off}       (2 jobs)
+#   2. gpt-oss:20b    × {on, off}       (2 jobs, afterok wave 1)
+#   3. Qwen3.5:27b    × {on, off}       (2 jobs, afterok wave 2)
+#   4. gemma4:31b     × {default}       (1 job,  afterok wave 3; gemma has no thinking)
+#   5. gpt-oss:120b   × {on, off}       (2 jobs, afterok wave 4)
 #
 # Usage:
-#   bash cluster-experimenting/submit_all.sh                 # default: all 5 models, all 5 conditions (25 jobs)
-#   bash cluster-experimenting/submit_all.sh --small         # Qwen3.5:0.8B only       (5 jobs)
-#   bash cluster-experimenting/submit_all.sh --large         # gpt-oss:20b only        (5 jobs)
-#   bash cluster-experimenting/submit_all.sh --models a b c  # custom list
-#   bash cluster-experimenting/submit_all.sh --conditions no-tools tools_all_minimal
-#   bash cluster-experimenting/submit_all.sh --dry-run       # print sbatch commands, do not submit
+#   bash cluster-experimenting/submit_all.sh                       # submit all 5 waves (9 jobs)
+#   bash cluster-experimenting/submit_all.sh --dry-run             # print sbatch commands, do not submit
+#   bash cluster-experimenting/submit_all.sh --from-wave 3         # skip waves 1-2 (no dependency on them)
+#   bash cluster-experimenting/submit_all.sh --from-wave 3 --force # bypass preflight (use with care)
+#
+# Safety: --from-wave N>1 refuses to submit if any pddl_* jobs are already
+# RUNNING or PENDING on the queue, because resumed waves have no afterok
+# dependency on the live ones and would re-trigger the eviction thrashing
+# this wave design exists to prevent. Override with --force only after
+# inspecting `squeue --me` and deciding the concurrency is acceptable.
 
-set -euo pipefail
+set -eo pipefail
+# Note: deliberately NOT using `-u` (nounset). The wave submission logic
+# expands potentially-empty arrays (`dep_arg`, `IDS`) inside function calls,
+# which trips nounset under bash 3.2 on macOS. The script's own variables
+# are all set with defaults above, so nounset buys us nothing useful here.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SBATCH_FILE="$SCRIPT_DIR/run_condition.sbatch"
 
-# Defaults — all 5 confirmed present on cis-ollama/api/tags (checked 2026-04-20).
-# Qwen3.5:0.8B is the closest analog to the paper's qwen3:0.6b.
-# Qwen3.5:27b picks a large-qwen point that doesn't duplicate gpt-oss:120b's
-# scale or overlap gpt-oss:20b; it sits at ~same scale as gemma4:31b for a
-# clean cross-family comparison at ~30b.
-# The paper's qwen3:0.6b / qwen3:4b are NOT hosted on cis-ollama, so this is
-# a cluster-variant of the sweep, not a 1:1 paper reproduction.
-DEFAULT_MODELS=(Qwen3.5:0.8B Qwen3.5:27b gpt-oss:20b gpt-oss:120b gemma4:31b)
-
-DEFAULT_CONDITIONS=(
-    no-tools
-    tools_per-task_minimal
-    tools_per-task_guided
-    tools_all_minimal
-    tools_all_guided
-)
-
-MODELS=()
-CONDITIONS=()
 DRY_RUN=0
+FROM_WAVE=1
+FORCE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --small)
-            MODELS=(Qwen3.5:0.8B); shift ;;
-        --large)
-            MODELS=(gpt-oss:20b); shift ;;
-        --both)
-            MODELS=("${DEFAULT_MODELS[@]}"); shift ;;
-        --models)
-            shift
-            while [[ $# -gt 0 && "$1" != --* ]]; do MODELS+=("$1"); shift; done ;;
-        --conditions)
-            shift
-            while [[ $# -gt 0 && "$1" != --* ]]; do CONDITIONS+=("$1"); shift; done ;;
         --dry-run)
             DRY_RUN=1; shift ;;
+        --from-wave)
+            shift; FROM_WAVE="$1"; shift ;;
+        --force)
+            FORCE=1; shift ;;
         -h|--help)
-            sed -n '1,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            sed -n '1,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *)
             echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
-[ ${#MODELS[@]}     -eq 0 ] && MODELS=("${DEFAULT_MODELS[@]}")
-[ ${#CONDITIONS[@]} -eq 0 ] && CONDITIONS=("${DEFAULT_CONDITIONS[@]}")
-
-# sbatch --output uses 'cluster-experimenting/logs/' relative to the submit dir.
-# cd into the repo root so that path resolves regardless of where the user invoked us.
 cd "$REPO_ROOT"
 mkdir -p cluster-experimenting/logs
 
-TOTAL=$(( ${#MODELS[@]} * ${#CONDITIONS[@]} ))
-echo "Submitting $TOTAL jobs: ${#MODELS[@]} model(s) × ${#CONDITIONS[@]} condition(s)"
-echo "  Models:     ${MODELS[*]}"
-echo "  Conditions: ${CONDITIONS[*]}"
-echo "  Submit CWD: $PWD"
-echo "  sbatch:     $SBATCH_FILE"
-echo "---"
+# Preflight: refuse --from-wave N>1 while earlier-wave pddl_* jobs are still
+# live on the queue. The resumed waves are submitted with no afterok dep on
+# the live ones, so they would race and re-trigger cis-ollama weight eviction.
+if [ "$FROM_WAVE" -gt 1 ] && [ "$DRY_RUN" -eq 0 ] && [ "$FORCE" -eq 0 ]; then
+    live=$(squeue --me --states=R,PD --noheader --format=%j 2>/dev/null | grep -c '^pddl_' || true)
+    if [ "$live" -gt 0 ]; then
+        echo "ERROR: --from-wave $FROM_WAVE but $live pddl_* job(s) are still RUNNING or PENDING." >&2
+        echo "       Resuming now bypasses afterok serialization and re-triggers" >&2
+        echo "       weight-eviction thrashing on cis-ollama." >&2
+        echo "       Inspect:   squeue --me --noheader --format='%j %T' | grep '^pddl_'" >&2
+        echo "       Override:  bash $0 --from-wave $FROM_WAVE --force" >&2
+        exit 2
+    fi
+fi
 
-for model in "${MODELS[@]}"; do
-    for cond in "${CONDITIONS[@]}"; do
+# Wave definitions: each wave is a list of (model, think_mode) pairs encoded
+# as "MODEL|THINK_MODE" strings (|-separated so model names with ':' are safe).
+WAVE1=(
+    "Qwen3.5:0.8B|on"
+    "Qwen3.5:0.8B|off"
+)
+WAVE2=(
+    "gpt-oss:20b|on"
+    "gpt-oss:20b|off"
+)
+WAVE3=(
+    "Qwen3.5:27b|on"
+    "Qwen3.5:27b|off"
+)
+WAVE4=(
+    "gemma4:31b|default"
+)
+WAVE5=(
+    "gpt-oss:120b|on"
+    "gpt-oss:120b|off"
+)
+
+# Submit one wave, optionally with an afterok dependency on previous wave's
+# job IDs. Prints the newly-created job IDs (one per line) to stdout so the
+# caller can capture them. Progress chatter goes to stderr.
+submit_wave() {
+    local wave_num="$1"; shift
+    local dep_ids="$1"; shift
+    local jobs=("$@")
+
+    local dep_arg=()
+    if [ -n "$dep_ids" ]; then
+        dep_arg=(--dependency="afterok:${dep_ids}")
+    fi
+
+    echo "--- Wave $wave_num (${#jobs[@]} job(s))${dep_ids:+  depends on afterok:$dep_ids}" >&2
+
+    for entry in "${jobs[@]}"; do
+        local model="${entry%%|*}"
+        local think="${entry##*|}"
+        local model_tag
         model_tag=$(echo "$model" | tr '/:.' '___')
-        job_name="pddl_${model_tag}_${cond}"
-        cmd=(sbatch
+        local job_name="pddl_${model_tag}_${think}"
+
+        local cmd=(sbatch
+            --parsable
+            "${dep_arg[@]}"
             --job-name="$job_name"
-            --export="ALL,MODEL=${model},CONDITION=${cond}"
+            --export="ALL,MODEL=${model},THINK_MODE=${think}"
             "$SBATCH_FILE")
+
         if [ "$DRY_RUN" -eq 1 ]; then
-            printf '  DRY  %s\n' "${cmd[*]}"
+            echo "  DRY: ${cmd[*]}" >&2
+            # Emit a placeholder job id so downstream dep string construction
+            # still looks realistic in dry-run output.
+            echo "DRYRUN_w${wave_num}_${model_tag}_${think}"
         else
-            printf '  %s\n' "$job_name"
-            "${cmd[@]}"
+            echo "  submitting $job_name" >&2
+            local jid
+            jid=$("${cmd[@]}")
+            echo "  -> $jid" >&2
+            echo "$jid"
         fi
     done
-done
+}
 
-echo "---"
-echo "Monitor:   squeue --me"
-echo "Logs:      $REPO_ROOT/cluster-experimenting/logs/  (pddl_<model>_<cond>-<jobid>.out)"
-echo "Results:   $REPO_ROOT/results/  (slurm_<model>_<cond>_<jobid>/)"
-echo "Cancel:    scancel --name <job_name>   |  scancel -u \$USER"
+# Run the waves. Each wave captures its job ids into a colon-joined string
+# that becomes the next wave's afterok dependency list.
+join_colons() {
+    local IFS=:
+    echo "$*"
+}
+
+# read_wave_ids: portable substitute for `mapfile -t` (not available in
+# macOS bash 3.2). Populates the global IDS array with one entry per stdout
+# line from the given command.
+read_wave_ids() {
+    IDS=()
+    local line
+    while IFS= read -r line; do
+        IDS+=("$line")
+    done < <("$@")
+}
+
+DEP=""
+
+if [ "$FROM_WAVE" -le 1 ]; then
+    read_wave_ids submit_wave 1 "$DEP" "${WAVE1[@]}"
+    DEP=$(join_colons "${IDS[@]}")
+fi
+
+if [ "$FROM_WAVE" -le 2 ]; then
+    read_wave_ids submit_wave 2 "$DEP" "${WAVE2[@]}"
+    DEP=$(join_colons "${IDS[@]}")
+fi
+
+if [ "$FROM_WAVE" -le 3 ]; then
+    read_wave_ids submit_wave 3 "$DEP" "${WAVE3[@]}"
+    DEP=$(join_colons "${IDS[@]}")
+fi
+
+if [ "$FROM_WAVE" -le 4 ]; then
+    read_wave_ids submit_wave 4 "$DEP" "${WAVE4[@]}"
+    DEP=$(join_colons "${IDS[@]}")
+fi
+
+if [ "$FROM_WAVE" -le 5 ]; then
+    read_wave_ids submit_wave 5 "$DEP" "${WAVE5[@]}"
+fi
+
+echo "---" >&2
+echo "Monitor:   squeue --me" >&2
+echo "Logs:      $REPO_ROOT/cluster-experimenting/logs/  (pddl_<model>_<think>-<jobid>.out)" >&2
+echo "Results:   $REPO_ROOT/results/  (slurm_<model>_<think>_<cond>_<jobid>/)" >&2
+echo "Cancel:    scancel -u \$USER" >&2

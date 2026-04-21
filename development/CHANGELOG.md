@@ -6,6 +6,44 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-21 — Cluster sweep: serialize by model, align chains to paper, add think-mode axis
+
+**Motivation.** The 2026-04-20 resubmit of the full cluster sweep (25 jobs: 5 models × 5 conditions) stalled at 10+h/job despite a 200GB-VRAM server. Diagnostic (`curl cis-ollama/api/ps`) showed only 2 of 5 requested models loaded at a time. Post-hoc probe on 2026-04-21 (see "Server-probe evidence" below) confirmed `OLLAMA_MAX_LOADED_MODELS ≥ 3` on the same server, so the 2-loaded ceiling during the stalled sweep was VRAM pressure under mixed-user contention, not a hard server cap. Either way, 19 concurrent jobs round-robin across 4 model families caused continuous weight eviction. Signature: `gemma4:31b` running at 560s/sample while `gpt-oss:120b` ran at 291s/sample (smaller model slower than larger = textbook eviction churn). Additionally, `--chain-samples 20` was 4.4× below the paper's 100/100/100/50 methodology, and the `--think default` axis left thinking silently ON for Qwen but OFF for gpt-oss/gemma (mixed, unreported).
+
+**Changes.**
+- `run_experiment.py`: added `KEEP_ALIVE = "1h"` constant and pinned it in `_build_chat_kwargs`, so every `client.chat()` carries the hint. Blocks server-side weight eviction during within-job idle gaps. (commit `ca01252`)
+- `cluster-experimenting/run_condition.sbatch`: per-job axis changed from `(model, condition)` to `(model, think_mode)`; the 5 conditions now loop sequentially **in-process** inside a single SLURM job. Time limit raised from 1 to 3 days. Added `THINK_MODE=on|off|default` and `CONDITIONS=<space-separated>` env-var inputs. Each invocation of `run_experiment.py` runs at `--chain-samples 100 --concurrency 2`. (commit `1de6fc4`)
+- `cluster-experimenting/submit_all.sh`: replaced the 25-job fan-out with 9 jobs across 5 waves chained by `--dependency=afterok`:
+  1. `Qwen3.5:0.8B` × {on, off}
+  2. `gpt-oss:20b` × {on, off}
+  3. `Qwen3.5:27b` × {on, off}
+  4. `gemma4:31b` × {default} — no thinking mode on gemma
+  5. `gpt-oss:120b` × {on, off}
+
+  Within each wave the 2 think-mode jobs run in parallel (same loaded weights on the server, no eviction). Across waves, `afterok` halts the pipeline on any failure — user resubmits after diagnosing. `--dry-run` previews the sbatch commands; `--from-wave N` resumes from wave N with no dependency on earlier waves. (commit `1de6fc4`)
+
+**Why `afterok` not `afterany`.** Per-project preference: correctness over ship-through. A failed wave usually means broken infra (VPN, server restart, model removed from cis-ollama) — running dependents against broken infra just burns compute. `afterok` auto-halts at a known point; dependents sit in `PENDING (DependencyNeverSatisfied)` until `scancel -t PENDING -u $USER`.
+
+**Server-probe evidence (2026-04-21).** Measured `OLLAMA_NUM_PARALLEL=4` via concurrent-request timing against `Qwen3.5:0.8B` on `cis-ollama.auth.ad.bgu.ac.il` (Ollama 0.20.7): N=1→0.44s, N=2→0.51s (1.16×), N=4→0.64s (1.45×), N=8→0.98s (2.23×). N=4 ≈ 1× and N=8 ≈ 2× → server batches up to 4 in parallel, then queues. Implication: at `CONCURRENCY=2` per job × 2 parallel jobs per wave = 4 concurrent requests, the wave exactly saturates the server without queueing and without starving other users. Also observed: 3 models resident in VRAM (gemma4:31b + Qwen3.5:27b + Qwen3.5:0.8B = ~58GB) after loading a third one did not evict the existing two — confirms `MAX_LOADED_MODELS ≥ 3`, so 2026-04-20's 2-loaded ceiling was VRAM-pressure, not a hard cap.
+
+**Methodology impact.**
+- **Chain samples**: moved from 20 (flat, 4.4× below paper) to 100 (flat, 2× oversamples length=5 vs paper's 50). Wilson CIs now comparable to paper §5 tables.
+- **Think modes**: explicit `on` and `off` runs per model (except gemma4), matching the paper's "report better of thinking/no-thinking" protocol. Previous default-only runs are NOT comparable across models.
+- **Output directories**: new pattern `results/slurm_<model>_<think>_<cond>_<jobid>/` adds a `<think>` segment. Old results remain valid for their per-condition cell but can't aggregate with new runs without a dimension-reducing groupby.
+
+**Compatibility.**
+- Old result JSONs under `results/slurm_<model>_<cond>_<jobid>/` (no `<think>` segment) stay valid in isolation but are not apples-to-apples with new runs (different chain_samples, different keep_alive, unknown think-mode for some models).
+- `analyze_results.ipynb` cell 3 globs `results/single_task_*.json` at depth 1 only — pre-existing limitation, not introduced here. Update the glob to `results/**/single_task_*.json` with `recursive=True` to pick up SLURM subdirs.
+- `run_background.sh` (laptop path) untouched.
+
+**Files.**
+- `run_experiment.py` (`_build_chat_kwargs`, KEEP_ALIVE constant at ~line 91)
+- `cluster-experimenting/run_condition.sbatch` (full body rewrite)
+- `cluster-experimenting/submit_all.sh` (full rewrite: 5-wave dependency chain)
+- `cluster-experimenting/README.md` (quickstart, submitting, variants, monitoring, cancelling sections updated for new axis)
+
+---
+
 ## 2026-04-20 — ISS-014 resolved: `pyval` numeric goal-check fix verified
 
 **Resolution.** Re-ran `mcp__plugin_pddl-validator_pddl-validator__validate_pddl_syntax` against every `domains/**/p01.plan`. All 10 fixtures now report `valid=true`, including `numeric/counters/p01` and `numeric/farmland/p01` which previously failed on numeric `<=` / `>=` goal checks. The arithmetic results match the ones computed by hand in the original ISS-014 evidence block (counters final `c0=12,c1=49,c2=92,c3=93,c4=94`; farmland weighted sum `31.0 ≥ 30.8`).
