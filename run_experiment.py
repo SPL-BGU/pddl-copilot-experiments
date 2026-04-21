@@ -922,6 +922,7 @@ async def evaluate_one(
     think: bool | None,
     tool_filter: str = "all",
     prompt_style: str = "minimal",
+    temperature: float = TEMPERATURE,
 ) -> TaskResult:
     template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
@@ -950,11 +951,13 @@ async def evaluate_one(
                 client, model, messages, mcp,
                 num_predict=num_predict, num_ctx=num_ctx,
                 allowed_tools=allowed, think=think,
+                temperature=temperature,
             )
         else:
             response_text, done_reason = await chat_without_tools(
                 client, model, messages,
                 num_predict=num_predict, num_ctx=num_ctx, think=think,
+                temperature=temperature,
             )
     except Exception as exc:
         error = str(exc)
@@ -1034,6 +1037,7 @@ async def run_single_task_experiment(
     think: bool | None = None,
     concurrency: int = DEFAULT_CONCURRENCY,
     conditions: str = "both",
+    temperature: float = TEMPERATURE,
 ) -> list[TaskResult]:
     """Run the full single-task sweep with bounded Ollama concurrency.
 
@@ -1086,6 +1090,7 @@ async def run_single_task_experiment(
                 pname, ppddl, pv, with_tools, mcp, gt,
                 num_predict=np_for_task, num_ctx=num_ctx, think=think,
                 tool_filter=tool_filter, prompt_style=prompt_style,
+                temperature=temperature,
             )
             return idx, r
 
@@ -1129,6 +1134,7 @@ async def run_chain_experiment(
     num_predict_override: int | None = None,
     num_ctx: int = DEFAULT_NUM_CTX,
     think: bool | None = None,
+    temperature: float = TEMPERATURE,
 ) -> list[dict]:
     results: list[dict] = []
     domain_items = list(domains.items())
@@ -1180,11 +1186,13 @@ async def run_chain_experiment(
                                 client, model, messages, mcp,
                                 num_predict=np_for_task, num_ctx=num_ctx,
                                 allowed_tools=allowed, think=think,
+                                temperature=temperature,
                             )
                         else:
                             resp_text, _dr = await chat_without_tools(
                                 client, model, messages,
                                 num_predict=np_for_task, num_ctx=num_ctx, think=think,
+                                temperature=temperature,
                             )
                             tc = []
                             messages.append({"role": "assistant", "content": resp_text})
@@ -1544,6 +1552,7 @@ async def async_main(args):
             think=think_override,
             concurrency=args.concurrency,
             conditions=args.conditions,
+            temperature=args.temperature,
         )
         print_single_task_table(single_results)
         print_fail_reasons_table(single_results)
@@ -1567,6 +1576,7 @@ async def async_main(args):
                     num_predict_override=args.num_predict,
                     num_ctx=args.num_ctx,
                     think=think_override,
+                    temperature=args.temperature,
                 )
             print_chain_table(chain_results)
 
