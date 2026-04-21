@@ -2,12 +2,12 @@
 name: cluster-ops
 description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — query queue + progress, submit/cancel jobs, sync results locally, aggregate summary JSONs, render paper-style plots, and diagnose cis-ollama reachability. Trigger on "cluster status", "what's running", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama". Read this skill before running SSH/rsync/plot commands ad-hoc; it avoids re-deriving the grep patterns and result-dir conventions every session.
 disable-model-invocation: true
-argument-hint: [status | submit | cancel | sync | aggregate | plot | diag]
+argument-hint: [status | preflight | sync | aggregate | plot | diag]
 ---
 
 ## Why this skill exists
 
-Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, summary-JSON aggregations, and plot scripts. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 5 short helper scripts.
+Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, summary-JSON aggregations, and plot scripts. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 6 short helper scripts.
 
 Cluster & repo conventions that matter here:
 
@@ -23,7 +23,7 @@ Cluster & repo conventions that matter here:
 
 - **Destructive ops require explicit user consent**: `scancel -u omereliy` (kills all jobs), `rm` on logs or results. Confirm with the user before each.
 - **Never mutate** `run_experiment.py`, `run_condition.sbatch`, or `submit_all.sh` from this skill.
-- **Preflight before submit**: run `scripts/diag.sh` first to confirm cis-ollama is reachable; submitting against an unreachable server wastes the wave.
+- **Preflight before submit**: run `scripts/preflight.sh` first — it pulls both repos, refreshes the plugin venvs, and confirms cis-ollama reachability in one shot. Submitting against an unreachable server or a stale venv wastes the wave.
 
 ## Helper scripts (all live under `scripts/`)
 
@@ -92,7 +92,10 @@ bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat pi
 
 1. `bash .claude/skills/cluster-ops/scripts/status.sh` — table of all running jobs.
 2. If any job shows `>20%` gateway-timeout rate → queue is saturated (`ISS-015`), suggest narrowing the submit or waiting for the current wave to finish.
-3. If any job has been stuck at the same progress for >30 min → tail the `.out` file to see the last line and surface to the user.
+3. If any job has been stuck at the same progress for >30 min → tail the `.out` file to see the last line and surface to the user:
+   ```bash
+   ssh omereliy@slurm.bgu.ac.il 'tail -50 pddl-copilot-experiments/cluster-experimenting/logs/*-<jobid>.out'
+   ```
 
 ### "Sync and plot the results"
 
@@ -106,6 +109,8 @@ bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat pi
 1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes the two plugin venvs, confirms cis-ollama is reachable. Halts on any failure.
 2. `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_all.sh --dry-run'` — user reviews the 9-job wave plan.
 3. If approved, same command without `--dry-run`.
+
+**Resuming after a mid-sweep failure**: if an `afterok` chain halts and dependents land in `PENDING (DependencyNeverSatisfied)`, cancel the stuck chain (`scancel <ids>` after user confirms), diagnose, then resume with `bash cluster-experimenting/submit_all.sh --from-wave <N>`. The script's own preflight refuses if earlier-wave `pddl_*` jobs are still live; pass `--force` only after explicit user confirmation.
 
 ### "Cancel jobs"
 

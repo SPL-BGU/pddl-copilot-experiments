@@ -44,7 +44,7 @@ NEW_NAME = re.compile(r'_(on|off|default)$')
 BANNER = re.compile(r'^==== CONDITION: (.+) ====$', re.M)
 PROGRESS = re.compile(r'\[ *(\d+)/250 ')
 CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
-T1200 = re.compile(r'1200\.\d+s.*FAIL \(exception\)')
+T1200 = re.compile(r'(1199|1200|1201)\.\d+s.*FAIL \(exception\)')
 RESULT = re.compile(r' -> ')
 
 for line in queue_raw.splitlines():

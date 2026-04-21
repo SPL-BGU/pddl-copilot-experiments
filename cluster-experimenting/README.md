@@ -236,12 +236,7 @@ rsync -av <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_* \
          ~/personal/pddl-copilot-experiments/results/
 ```
 
-Then open `analyze_results.ipynb`. Note: the notebook's top cell currently
-globs `results/single_task_*.json` at depth 1, which doesn't descend into
-`slurm_*/` subdirs — you'll need to either flatten the JSONs up one level
-or change the glob to `results/**/single_task_*.json` with
-`recursive=True`. This is a pre-existing notebook limitation, not new
-here.
+Analyze synced results ad-hoc against `results/**/{single_task,chain,summary}_*.json` — the canonical schema for those files is `save_results` in `run_experiment.py`. Recent analyses live in the contributor's `.local/reports/` (not committed).
 
 ## Cancelling jobs
 

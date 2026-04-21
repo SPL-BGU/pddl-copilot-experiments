@@ -6,6 +6,34 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-21 — Harness observability fixes from cluster-run1 analysis
+
+**Motivation.** Results review of `results/full-cluster-run1/` (11/25 jobs — analysis kept locally under `.local/reports/`) surfaced four harness-side technical issues. This change-set addresses them without modifying the measurement pipeline — no prompt, skill-description, temperature, or scoring-semantics change.
+
+**Changes — `run_experiment.py`.**
+- Added `FR_OLLAMA_PARSE_ERROR` bucket for upstream Ollama tool-call parser failures (mostly gpt-oss at temp=0). Classification only; no retry (retries at `TEMPERATURE=0.0` mostly reproduce the same output, so the extra API call wasn't justified).
+- Added `FR_LOOP_EXHAUSTED` bucket. `chat_with_tools` now returns a 4-tuple `(text, tool_calls_log, done_reason, loop_exhausted)` — when the `MAX_TOOL_LOOPS=10` cap fires, `text=""` instead of the previous behaviour (which returned the last tool-output as assistant text, corrupting `response[:500]` on 177 records). `evaluate_one` relabels the failure as `FR_LOOP_EXHAUSTED` when `loop_exhausted and not success`.
+- `TaskResult.error` is now populated on `FR_TOOL_ERROR` from the first `tool_calls[i].result` carrying `{"error": true, "message": ...}` — previously those 202 records had `error=""` and required a nested walk to surface the tool's own error text.
+- `run_chain_experiment` now emits per-sample `samples_detail: list[dict]` alongside the existing aggregate fields. Each sample carries `{idx, domain, problem, chain_tasks, step_records, final_success, exception}`; `step_records` is per-step `{step_index, task, success, failure_reason, tool_calls_count, truncated, loop_exhausted}`. Chain steps now apply the same `_apply_truncation_override` as `evaluate_one`, so `step_records[*].failure_reason` is directly comparable to single-task `failure_reason` values (aggregate `success_rate` unaffected — only the label on already-failing steps changes). Typed exception capture (`exc_type`, `exc_message`, `is_ollama_parse_error`) replaces the previous bare `except Exception: break`. Skipped `validate_plan`/`simulate` steps (no-plan-oracle guard) are absent from `step_records`, making `len(step_records)` the effective chain length per ISS-011.
+- Lifted the Ollama tool-call parser signature (`"error parsing tool call"`) into a single `OLLAMA_TOOL_PARSE_SIGNATURE` module constant shared by `evaluate_one` and `run_chain_experiment` — one place to update if the upstream phrasing changes.
+
+**Closes / narrows.**
+- ISS-005 Batch-2 portion (`FR_TOOL_LOOP_EXCEEDED`) — landed as `FR_LOOP_EXHAUSTED`.
+- ISS-011 (chain per-sample denominator / effective chain length) — now computable from `step_records`; no further harness change required.
+
+**Reproducibility.**
+- Existing `results/**/single_task_*.json` and `chain_*.json` remain valid. The new `FR_*` constants and `samples_detail` field are additive.
+- No success/fail verdict changes. Fix #4 only relabels failures (177 records move from ambiguous buckets into `FR_LOOP_EXHAUSTED`). Fixes #1, #2, #3 are pure taxonomy / data-capture improvements.
+- `tests/verify.sh` — 84 tests pass unchanged. No scoring semantics altered.
+
+**Companion artefacts (local-only, under `.local/`).** The harness-side analysis report and the sibling-repo issues report (for `../pddl-copilot/`'s pddl-validator plugin + pyvalidator) are kept in the contributor's `.local/reports/` directory, not committed.
+
+**Files.**
+- `run_experiment.py` (FR_* additions; `chat_with_tools` signature; `evaluate_one` classification + error-copy + loop-exhausted override; `run_chain_experiment` per-sample capture).
+- `development/OPEN_ISSUES.md` (ISS-005 Batch-2 marked resolved; ISS-011 cross-referenced).
+
+---
+
 ## 2026-04-21 — Add `cluster-ops` skill for BGU SLURM workflow
 
 **Motivation.** Session-over-session repetition of SSH queue queries, `.out` log parsing, rsync, summary aggregation, and plot generation. Every interaction re-derived the same grep patterns and naming conventions. Consolidated into a narrative Claude Code skill + 5 helper scripts so future agents start from a known base. No methodology change.
@@ -59,7 +87,6 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 **Compatibility.**
 - Old result JSONs under `results/slurm_<model>_<cond>_<jobid>/` (no `<think>` segment) stay valid in isolation but are not apples-to-apples with new runs (different chain_samples, different keep_alive, unknown think-mode for some models).
-- `analyze_results.ipynb` cell 3 globs `results/single_task_*.json` at depth 1 only — pre-existing limitation, not introduced here. Update the glob to `results/**/single_task_*.json` with `recursive=True` to pick up SLURM subdirs.
 - `run_background.sh` (laptop path) untouched.
 
 **Files.**

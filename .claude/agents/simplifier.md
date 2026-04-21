@@ -37,7 +37,6 @@ This project is a ~4-file research evaluation harness that tests Ollama LLMs on 
 - `requirements.txt` — Dependencies; additions need justification
 
 ### ANALYSIS (low-risk):
-- `analyze_results.ipynb` — Result visualization
 - `experiment_notebook.ipynb` — Interactive experiment runner
 
 ## Review process

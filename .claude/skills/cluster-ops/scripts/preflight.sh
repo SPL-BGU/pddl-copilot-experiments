@@ -56,7 +56,7 @@ done
 
 echo
 echo "== plugin venvs (pip install --upgrade -r requirements.txt) =="
-for plugin in pddl-solver pddl-validator; do
+for plugin in pddl-solver pddl-validator pddl-parser; do
     plug_dir="$PLUG/plugins/$plugin"
     venv="$plug_dir/.venv"
     if [ ! -d "$venv" ]; then
