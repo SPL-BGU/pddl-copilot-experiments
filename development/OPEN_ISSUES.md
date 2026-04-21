@@ -37,6 +37,7 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 ### ISS-005 · `FR_TOOL_ERROR` is overloaded
 **Source.** Results review, issue 6.
 **Evidence.** Current `FR_TOOL_ERROR` collapses (a) plugin argument rejections ("PDDL file not found: 'blocksworld'"), (b) PDDL parse errors ("Failed to parse domain: Expected ':parameters', found '.'"), and (c) transport/timeout errors.
+**Status (2026-04-21).** Batch-2 portion landed — `FR_LOOP_EXHAUSTED` is now a distinct bucket (CHANGELOG 2026-04-21) and `TaskResult.error` is populated on `FR_TOOL_ERROR`, so the (a)/(b)/(c) split can now be derived by grep on the populated `error` string in the analysis notebook without further taxonomy splits. Remaining scope — formal `FR_TOOL_ARG_ERROR` / `FR_TOOL_PARSE_ERROR` / `FR_TOOL_TRANSPORT` constants — is optional polish; downgraded from P2 to P3.
 **Impact.** Cannot quantify the "passes names not content" failure mode directly — it's the paper's most interesting diagnostic.
 **Fix.** Split into `FR_TOOL_ARG_ERROR` (plugin rejection) / `FR_TOOL_PARSE_ERROR` (content rejection) / `FR_TOOL_TRANSPORT` (MCP failure). ~30 LOC in `_tool_error_seen` + failure-reason vocabulary. Backfill analysis notebook to decompose existing runs.
 **Files.** `run_experiment.py` (failure-reason constants, `_tool_error_seen`, `check_success`), `analyze_results.ipynb`.
@@ -56,9 +57,10 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ### ISS-011 · Chain denominator unchanged when steps are skipped
 **Source.** Scoring audit, 2026-04-20.
-**Evidence.** `run_chain_experiment` now `continue`s past `validate_plan`/`simulate` steps when the oracle didn't produce a plan (`gt["plan"]` missing/empty). The denominator for chain success stays at `samples` regardless of how many skips occurred, and chains drawn against heavily-unsolvable problems look easier than they are. The `chain_*.json` output does not record per-sample effective length.
+**Evidence.** `run_chain_experiment` now `continue`s past `validate_plan`/`simulate` steps when the oracle didn't produce a plan (`gt["plan"]` missing/empty). The denominator for chain success stays at `samples` regardless of how many skips occurred, and chains drawn against heavily-unsolvable problems look easier than they are.
+**Status (2026-04-21).** Data-capture prerequisite resolved — `chain_*.json` now records per-sample `samples_detail` with `step_records` per step (CHANGELOG 2026-04-21). `effective_chain_length = len(step_records)` is directly computable per sample. Remaining work is choosing the aggregation convention (record effective length vs. resample to N executed steps) and surfacing it in the analysis notebook; no further harness change required.
 **Impact.** Chain success rates across models are not strictly comparable when fixture polarity differs. ISS-001 (all-positive ground truth) masks this currently, but any broken-PDDL fixture work will expose the skew.
-**Fix.** Either (a) record `effective_chain_length` per sample and expose it in `chain_*.json` + `summary_*.json`, (b) resample when skipping so every sample executes exactly N steps, or (c) document the semantics and let ISS-001's fix eliminate skips organically.
+**Fix.** Either (a) record `effective_chain_length` per sample and expose it in `chain_*.json` + `summary_*.json`, (b) resample when skipping so every sample executes exactly N steps, or (c) document the semantics and let ISS-001's fix eliminate skips organically. (a)'s data prerequisite is now met.
 **Files.** `run_experiment.py::run_chain_experiment`, `save_results`, `EXPERIMENTS_FLOW.md` §4.3.
 
 ### ISS-013 · Paper-diff audit vs arXiv:2509.12987

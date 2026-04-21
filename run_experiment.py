@@ -103,9 +103,11 @@ KEEP_ALIVE = "1h"
 # table) can tell a plan-invalid from a tool-not-selected from a truncation.
 FR_OK = "ok"
 FR_EXCEPTION = "exception"
+FR_OLLAMA_PARSE_ERROR = "ollama_parse_error"
 FR_TRUNCATED_NO_ANSWER = "truncated_no_answer"
 FR_TOOL_NOT_SELECTED = "tool_not_selected"
 FR_TOOL_ERROR = "tool_error"
+FR_LOOP_EXHAUSTED = "loop_exhausted"
 FR_PLAN_INVALID = "plan_invalid"
 FR_VERDICT_MISMATCH = "verdict_mismatch"
 FR_NO_VERDICT_PARSED = "no_verdict_parsed"
@@ -370,13 +372,17 @@ async def chat_with_tools(
     max_loops: int = MAX_TOOL_LOOPS,
     temperature: float = TEMPERATURE,
     think: bool | None = None,
-) -> tuple[str, list[dict], str]:
+) -> tuple[str, list[dict], str, bool]:
     """Send messages to Ollama, handle tool-call loops.
 
-    Returns (text, tool_calls_log, last_done_reason). The done_reason is taken
-    from the final turn — callers use it to detect num_predict truncation
-    ("length") vs. natural stop ("stop"). If `allowed_tools` is given, only
-    tools with those names are exposed to the model.
+    Returns (text, tool_calls_log, last_done_reason, loop_exhausted). The
+    done_reason is taken from the final turn — callers use it to detect
+    num_predict truncation ("length") vs. natural stop ("stop"). The
+    loop_exhausted flag is True when we fell out of the max_loops cap without
+    the model emitting a tool-call-free assistant message — callers treat it
+    as a distinct failure mode (FR_LOOP_EXHAUSTED) because `text` is empty
+    by construction (the model never got to answer). If `allowed_tools` is
+    given, only tools with those names are exposed to the model.
     """
     tool_calls_log: list[dict] = []
 
@@ -402,7 +408,7 @@ async def chat_with_tools(
         messages.append(msg)
 
         if not msg.get("tool_calls"):
-            return msg.get("content", ""), tool_calls_log, last_done_reason
+            return msg.get("content", ""), tool_calls_log, last_done_reason, False
 
         for tc in msg["tool_calls"]:
             fn = tc["function"]
@@ -417,10 +423,12 @@ async def chat_with_tools(
 
             messages.append({"role": "tool", "content": result_text})
 
-    # Exhausted loops — return last content
-    last = messages[-1]
-    text = last.get("content", "") if isinstance(last, dict) else ""
-    return text, tool_calls_log, last_done_reason
+    # Exhausted loops — the model kept calling tools without ever producing an
+    # assistant-text answer. Returning the last tool output as `text` would
+    # corrupt the record's `response` field (it is tool output, not model
+    # text). Return empty text + loop_exhausted=True so the caller can label
+    # this as FR_LOOP_EXHAUSTED.
+    return "", tool_calls_log, last_done_reason, True
 
 
 async def chat_without_tools(
@@ -942,12 +950,13 @@ async def evaluate_one(
     error = ""
     response_text = ""
     done_reason = ""
+    loop_exhausted = False
 
     allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
 
     try:
         if with_tools:
-            response_text, tool_calls, done_reason = await chat_with_tools(
+            response_text, tool_calls, done_reason, loop_exhausted = await chat_with_tools(
                 client, model, messages, mcp,
                 num_predict=num_predict, num_ctx=num_ctx,
                 allowed_tools=allowed, think=think,
@@ -968,7 +977,14 @@ async def evaluate_one(
     failure_reason = FR_OK
     if error:
         success = False
-        failure_reason = FR_EXCEPTION
+        # Ollama's server-side tool-call JSON parser chokes on multi-line
+        # strings in tool arguments (observed heavily with gpt-oss on PDDL
+        # domains). Classify separately so analysis can quantify the upstream
+        # parser-bug rate instead of lumping it into generic exceptions.
+        if "error parsing tool call" in error:
+            failure_reason = FR_OLLAMA_PARSE_ERROR
+        else:
+            failure_reason = FR_EXCEPTION
     else:
         try:
             tool_selected, success, failure_reason = await check_success(
@@ -980,6 +996,32 @@ async def evaluate_one(
             error = f"scoring error: {exc}"
             print(f"[scoring exception] {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
             failure_reason = FR_EXCEPTION
+
+        # Populate the record's `error` field with the first tool-level error
+        # message when the run was rejected as FR_TOOL_ERROR. The information
+        # is already in `tool_calls[i].result` but leaving `error` empty makes
+        # downstream `df.groupby("error")` analyses blind to the 202 records
+        # in run #1 that landed here.
+        if failure_reason == FR_TOOL_ERROR and not error:
+            for tc in tool_calls:
+                raw = tc.get("result")
+                if not isinstance(raw, str):
+                    continue
+                try:
+                    parsed = json.loads(raw)
+                except (ValueError, TypeError):
+                    continue
+                if isinstance(parsed, dict) and parsed.get("error"):
+                    error = f"tool={tc.get('name')}: {parsed.get('message','')}"
+                    break
+
+    # The model kept tool-calling until the MAX_TOOL_LOOPS cap fired without
+    # emitting an assistant answer. `chat_with_tools` returned empty text in
+    # that case, so `response` is already correct. Relabel the failure so
+    # "gave up after 10 tool calls" is distinguishable from real capability
+    # failures (see ISS-005 Batch 2 / cluster-run1 analysis).
+    if loop_exhausted and not success:
+        failure_reason = FR_LOOP_EXHAUSTED
 
     truncated = done_reason == "length"
     failure_reason = _apply_truncation_override(success, truncated, failure_reason)
@@ -1144,6 +1186,7 @@ async def run_chain_experiment(
     for model in models:
         for n in chain_lengths:
             successes = 0
+            samples_detail: list[dict] = []
             for i in range(samples):
                 dname, dinfo = random.choice(domain_items)
                 pname = random.choice(list(dinfo["problems"].keys()))
@@ -1153,14 +1196,19 @@ async def run_chain_experiment(
                 chain_tasks = random.choices(TASKS, k=n)
                 messages: list[dict] = [{"role": "system", "content": system_prompt}]
                 chain_ok = True
+                step_records: list[dict] = []
+                sample_exception: dict | None = None
 
-                for task in chain_tasks:
+                for step_index, task in enumerate(chain_tasks):
                     # Mirror the single-task guard (run_single_task_experiment,
                     # above): if the oracle never produced a plan for this
                     # problem, validate_plan/simulate have no ground truth to
                     # grade against and would deterministically fail the chain
                     # as a ground-truth-coverage artifact rather than a model
-                    # signal. Skip the step and keep the chain alive.
+                    # signal. Skip the step and keep the chain alive. Skipped
+                    # steps are not appended to step_records, so
+                    # len(step_records) gives the effective chain length
+                    # (ISS-011).
                     if task in ("validate_plan", "simulate") and not gt.get("plan"):
                         continue
                     template = random.choice(PROMPT_TEMPLATES[task])
@@ -1180,30 +1228,58 @@ async def run_chain_experiment(
                         else DEFAULT_NUM_PREDICT[task]
                     )
                     allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
+                    step_loop_exhausted = False
                     try:
                         if with_tools:
-                            resp_text, tc, _dr = await chat_with_tools(
+                            resp_text, tc, step_done_reason, step_loop_exhausted = await chat_with_tools(
                                 client, model, messages, mcp,
                                 num_predict=np_for_task, num_ctx=num_ctx,
                                 allowed_tools=allowed, think=think,
                                 temperature=temperature,
                             )
                         else:
-                            resp_text, _dr = await chat_without_tools(
+                            resp_text, step_done_reason = await chat_without_tools(
                                 client, model, messages,
                                 num_predict=np_for_task, num_ctx=num_ctx, think=think,
                                 temperature=temperature,
                             )
                             tc = []
                             messages.append({"role": "assistant", "content": resp_text})
-                        _sel, ok, _fr = await check_success(
+                        _sel, step_ok, step_fr = await check_success(
                             task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
                             with_tools=with_tools,
                         )
-                        if not ok:
+                        if step_loop_exhausted and not step_ok:
+                            step_fr = FR_LOOP_EXHAUSTED
+                        step_records.append({
+                            "step_index": step_index,
+                            "task": task,
+                            "success": step_ok,
+                            "failure_reason": step_fr,
+                            "tool_calls_count": len(tc),
+                            "truncated": step_done_reason == "length",
+                            "loop_exhausted": step_loop_exhausted,
+                        })
+                        if not step_ok:
                             chain_ok = False
                             break
-                    except Exception:
+                    except Exception as exc:
+                        exc_text = str(exc)
+                        sample_exception = {
+                            "step_index": step_index,
+                            "task": task,
+                            "exc_type": type(exc).__name__,
+                            "exc_message": exc_text[:500],
+                            # Classify upstream Ollama tool-call JSON parser
+                            # failures so chain analysis can separate them
+                            # from other exception types (matches
+                            # FR_OLLAMA_PARSE_ERROR in evaluate_one).
+                            "is_ollama_parse_error": "error parsing tool call" in exc_text,
+                        }
+                        print(
+                            f"[chain exception] {type(exc).__name__}: {exc_text}",
+                            file=sys.stderr, flush=True,
+                        )
                         chain_ok = False
                         break
 
@@ -1211,6 +1287,16 @@ async def run_chain_experiment(
                     successes += 1
                 mark = "OK" if chain_ok else "FAIL"
                 print(f"  {model}|{cond_label} chain={n} [{i+1}/{samples}] {mark}")
+
+                samples_detail.append({
+                    "idx": i,
+                    "domain": dname,
+                    "problem": pname,
+                    "chain_tasks": chain_tasks,
+                    "step_records": step_records,
+                    "final_success": chain_ok,
+                    "exception": sample_exception,
+                })
 
             results.append({
                 "model": model,
@@ -1221,6 +1307,7 @@ async def run_chain_experiment(
                 "success_rate": round(successes / samples, 2),
                 "tool_filter": tool_filter,
                 "prompt_style": prompt_style,
+                "samples_detail": samples_detail,
             })
     return results
 
