@@ -69,6 +69,14 @@ python3 .claude/skills/cluster-ops/scripts/plot.py results/full-cluster-run1    
 python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --group-by think
 ```
 
+### `scripts/preflight.sh` — pre-submit cluster refresh
+
+Run this before every `submit_all.sh`. It does the non-obvious bit that `setup_env.sh` deliberately skips: once a plugin venv exists, `setup_env.sh` leaves it alone — so a pinned dependency bump in `../pddl-copilot/plugins/<plugin>/requirements.txt` is silently stale until someone explicitly runs `pip install -r` inside the venv. This script does that for both `pddl-solver` and `pddl-validator`, after pulling both repos, and confirms cis-ollama reachability at the end.
+
+```bash
+bash .claude/skills/cluster-ops/scripts/preflight.sh
+```
+
 ### `scripts/diag.sh` — cis-ollama diagnostic
 
 Reachability + loaded-models + TTLs. Optional cold-start ping to a named model.
@@ -95,10 +103,9 @@ bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat pi
 
 ### "Submit the sweep"
 
-1. **Always** run `scripts/diag.sh` first. Halt if unreachable.
-2. Preflight on the cluster: `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && git pull && cd ~/pddl-copilot && git pull'`. Mention venv refresh only if `pddl-validator/requirements.txt` has changed.
-3. `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_all.sh --dry-run'` — user reviews.
-4. If approved, same command without `--dry-run`.
+1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes the two plugin venvs, confirms cis-ollama is reachable. Halts on any failure.
+2. `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_all.sh --dry-run'` — user reviews the 9-job wave plan.
+3. If approved, same command without `--dry-run`.
 
 ### "Cancel jobs"
 

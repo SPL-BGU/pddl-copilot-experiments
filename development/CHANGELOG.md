@@ -17,6 +17,7 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 - `scripts/aggregate.py`: walks a results root, emits Markdown tables for single-task success, chain success, failure-reason totals. Handles both dir naming schemes; legacy dirs render as `think=default` with a header warning.
 - `scripts/plot.py`: generalization of `results/full-cluster-run1/make_plots.py`. Auto-discovers `(model, think, cond)` tuples from dir names, builds SERIES dynamically, colors by model family with hatches for tool condition.
 - `scripts/diag.sh`: `curl` `/api/tags` + `/api/ps` on cis-ollama, optional 10-token ping to a named model.
+- `scripts/preflight.sh`: pre-submit cluster refresh — pulls both repos and runs `pip install --upgrade -r requirements.txt` inside `pddl-solver/.venv` and `pddl-validator/.venv`, because `setup_env.sh` deliberately skips existing venvs and therefore leaves them stale after a dependency bump (we hit exactly this today with `pddl-pyvalidator>=0.1.4`). Ends with a cis-ollama reachability check.
 
 **Tests / validation**
 - `diag.sh`: reached cis-ollama, listed 19 hosted models and 2 loaded (Qwen3.5:27b + gemma4:31b).
