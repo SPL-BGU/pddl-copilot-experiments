@@ -90,6 +90,14 @@ DEFAULT_NUM_PREDICT: dict[str, int] = {
 DEFAULT_NUM_CTX = 8192
 DEFAULT_CONCURRENCY = 4
 
+# Ollama "keep this model loaded in VRAM" hint, sent on every chat() call.
+# The shared cis-ollama server's default keep_alive is 5 min, which caused
+# weight-eviction thrashing during the 2026-04-20 sweep when per-sample
+# latency spiked (e.g. smaller models ran slower than larger ones because
+# they kept getting evicted and reloaded between requests). "1h" comfortably
+# covers the longest within-job idle gap we see in practice.
+KEEP_ALIVE = "1h"
+
 # Failure-reason vocabulary used on TaskResult.failure_reason. "ok" for success,
 # the rest tag which classifier rejected the run so a human (or the summary
 # table) can tell a plan-invalid from a tool-not-selected from a truncation.
@@ -334,7 +342,7 @@ def _build_chat_kwargs(
         "num_predict": num_predict,
         "num_ctx": num_ctx,
     }
-    extra: dict = {}
+    extra: dict = {"keep_alive": KEEP_ALIVE}
     if think is not None:
         extra["think"] = think
     return options, extra
