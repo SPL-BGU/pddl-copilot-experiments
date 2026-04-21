@@ -48,14 +48,14 @@ MODEL="${1:-}"
 if [ -n "$MODEL" ]; then
     echo
     echo "== Ping ${MODEL} (10-token 'pong' reply, ≤120s) =="
-    python3 - "$MODEL" <<'PY'
+    python3 - "$MODEL" "$HOST" <<'PY'
 import json, ssl, sys, time, urllib.request
-model = sys.argv[1]
+model, host = sys.argv[1], sys.argv[2]
 payload = {"model": model,
            "messages": [{"role": "user", "content": "Reply: pong"}],
            "stream": False, "options": {"num_predict": 10}}
 req = urllib.request.Request(
-    "https://cis-ollama.auth.ad.bgu.ac.il/api/chat",
+    f"{host}/api/chat",
     data=json.dumps(payload).encode(),
     headers={"Content-Type": "application/json"})
 t0 = time.time()
