@@ -115,6 +115,12 @@ FR_SIMULATE_EMPTY = "simulate_empty"
 FR_RESULT_MISMATCH = "result_mismatch"
 FR_UNKNOWN = "unknown"
 
+# Substring signature of Ollama's server-side tool-call JSON parser failure
+# (emitted by ollama/server/routes.go when it can't parse tool-call arguments,
+# e.g. multi-line PDDL strings with gpt-oss). Matched against the exception
+# text to route these into FR_OLLAMA_PARSE_ERROR instead of generic FR_EXCEPTION.
+OLLAMA_TOOL_PARSE_SIGNATURE = "error parsing tool call"
+
 # Per-task tool allowlists. When --tool-filter=per-task, only these tool names
 # are exposed to the model for the given task, controlling for tool-selection
 # noise when the connected MCP servers expose unrelated tools.
@@ -981,7 +987,7 @@ async def evaluate_one(
         # strings in tool arguments (observed heavily with gpt-oss on PDDL
         # domains). Classify separately so analysis can quantify the upstream
         # parser-bug rate instead of lumping it into generic exceptions.
-        if "error parsing tool call" in error:
+        if OLLAMA_TOOL_PARSE_SIGNATURE in error:
             failure_reason = FR_OLLAMA_PARSE_ERROR
         else:
             failure_reason = FR_EXCEPTION
@@ -1251,13 +1257,21 @@ async def run_chain_experiment(
                         )
                         if step_loop_exhausted and not step_ok:
                             step_fr = FR_LOOP_EXHAUSTED
+                        step_truncated = step_done_reason == "length"
+                        # Mirror single-task semantics (evaluate_one): when the
+                        # cap cut the model off mid-output, relabel empty-output
+                        # reasons as FR_TRUNCATED_NO_ANSWER so step_records is
+                        # directly comparable to single_task_*.json failure
+                        # reasons. Aggregate success_rate is unaffected — only
+                        # the string on already-failing steps changes.
+                        step_fr = _apply_truncation_override(step_ok, step_truncated, step_fr)
                         step_records.append({
                             "step_index": step_index,
                             "task": task,
                             "success": step_ok,
                             "failure_reason": step_fr,
                             "tool_calls_count": len(tc),
-                            "truncated": step_done_reason == "length",
+                            "truncated": step_truncated,
                             "loop_exhausted": step_loop_exhausted,
                         })
                         if not step_ok:
@@ -1274,7 +1288,7 @@ async def run_chain_experiment(
                             # failures so chain analysis can separate them
                             # from other exception types (matches
                             # FR_OLLAMA_PARSE_ERROR in evaluate_one).
-                            "is_ollama_parse_error": "error parsing tool call" in exc_text,
+                            "is_ollama_parse_error": OLLAMA_TOOL_PARSE_SIGNATURE in exc_text,
                         }
                         print(
                             f"[chain exception] {type(exc).__name__}: {exc_text}",

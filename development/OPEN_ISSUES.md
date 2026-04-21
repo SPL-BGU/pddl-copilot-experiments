@@ -37,10 +37,10 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 ### ISS-005 · `FR_TOOL_ERROR` is overloaded
 **Source.** Results review, issue 6.
 **Evidence.** Current `FR_TOOL_ERROR` collapses (a) plugin argument rejections ("PDDL file not found: 'blocksworld'"), (b) PDDL parse errors ("Failed to parse domain: Expected ':parameters', found '.'"), and (c) transport/timeout errors.
-**Status (2026-04-21).** Batch-2 portion landed — `FR_LOOP_EXHAUSTED` is now a distinct bucket (CHANGELOG 2026-04-21) and `TaskResult.error` is populated on `FR_TOOL_ERROR`, so the (a)/(b)/(c) split can now be derived by grep on the populated `error` string in the analysis notebook without further taxonomy splits. Remaining scope — formal `FR_TOOL_ARG_ERROR` / `FR_TOOL_PARSE_ERROR` / `FR_TOOL_TRANSPORT` constants — is optional polish; downgraded from P2 to P3.
+**Status (2026-04-21).** Batch-2 portion landed — `FR_LOOP_EXHAUSTED` is now a distinct bucket (CHANGELOG 2026-04-21) and `TaskResult.error` is populated on `FR_TOOL_ERROR`, so the (a)/(b)/(c) split can now be derived by grep on the populated `error` string during analysis without further taxonomy splits. Remaining scope — formal `FR_TOOL_ARG_ERROR` / `FR_TOOL_PARSE_ERROR` / `FR_TOOL_TRANSPORT` constants — is optional polish; downgraded from P2 to P3.
 **Impact.** Cannot quantify the "passes names not content" failure mode directly — it's the paper's most interesting diagnostic.
-**Fix.** Split into `FR_TOOL_ARG_ERROR` (plugin rejection) / `FR_TOOL_PARSE_ERROR` (content rejection) / `FR_TOOL_TRANSPORT` (MCP failure). ~30 LOC in `_tool_error_seen` + failure-reason vocabulary. Backfill analysis notebook to decompose existing runs.
-**Files.** `run_experiment.py` (failure-reason constants, `_tool_error_seen`, `check_success`), `analyze_results.ipynb`.
+**Fix.** Split into `FR_TOOL_ARG_ERROR` (plugin rejection) / `FR_TOOL_PARSE_ERROR` (content rejection) / `FR_TOOL_TRANSPORT` (MCP failure). ~30 LOC in `_tool_error_seen` + failure-reason vocabulary. Decompose existing runs during follow-up analysis.
+**Files.** `run_experiment.py` (failure-reason constants, `_tool_error_seen`, `check_success`).
 
 ### ISS-006 · Truncation on no-tools `solve` (17/55, 31%)
 **Source.** Results review, issue 8.
@@ -58,7 +58,7 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 ### ISS-011 · Chain denominator unchanged when steps are skipped
 **Source.** Scoring audit, 2026-04-20.
 **Evidence.** `run_chain_experiment` now `continue`s past `validate_plan`/`simulate` steps when the oracle didn't produce a plan (`gt["plan"]` missing/empty). The denominator for chain success stays at `samples` regardless of how many skips occurred, and chains drawn against heavily-unsolvable problems look easier than they are.
-**Status (2026-04-21).** Data-capture prerequisite resolved — `chain_*.json` now records per-sample `samples_detail` with `step_records` per step (CHANGELOG 2026-04-21). `effective_chain_length = len(step_records)` is directly computable per sample. Remaining work is choosing the aggregation convention (record effective length vs. resample to N executed steps) and surfacing it in the analysis notebook; no further harness change required.
+**Status (2026-04-21).** Data-capture prerequisite resolved — `chain_*.json` now records per-sample `samples_detail` with `step_records` per step (CHANGELOG 2026-04-21). `effective_chain_length = len(step_records)` is directly computable per sample. Remaining work is choosing the aggregation convention (record effective length vs. resample to N executed steps) and surfacing it during analysis; no further harness change required.
 **Impact.** Chain success rates across models are not strictly comparable when fixture polarity differs. ISS-001 (all-positive ground truth) masks this currently, but any broken-PDDL fixture work will expose the skew.
 **Fix.** Either (a) record `effective_chain_length` per sample and expose it in `chain_*.json` + `summary_*.json`, (b) resample when skipping so every sample executes exactly N steps, or (c) document the semantics and let ISS-001's fix eliminate skips organically. (a)'s data prerequisite is now met.
 **Files.** `run_experiment.py::run_chain_experiment`, `save_results`, `EXPERIMENTS_FLOW.md` §4.3.
@@ -79,8 +79,8 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Source.** Results review, issue 3.
 **Evidence.** All 6 per-task `validate_domain` successes land on `counters` (401 B) only, never `blocksworld` (862 B) or `depots` (1571 B).
 **Impact.** `tool_selected_rate=0.45` on `validate_domain` measures verbatim-PDDL-echoing capacity, not planning competence. Scales with model size and co-varies with domain selection.
-**Fix.** Add a domain-size-stratified breakdown to the analysis notebook. Re-run on qwen3:4b where echoing is less fragile. Report size as a controlled variable.
-**Files.** `analyze_results.ipynb`, sweep plan for 4b.
+**Fix.** Add a domain-size-stratified breakdown during analysis. Re-run on qwen3:4b where echoing is less fragile. Report size as a controlled variable.
+**Files.** Analysis artefact (TBD), sweep plan for 4b.
 
 ### ISS-009 · Chain with-tools = 0% for 0.6b is uninformative
 **Source.** Results review, issue 9.
@@ -92,8 +92,8 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Source.** Results review, issue 10.
 **Evidence.** `all_minimal` invokes `save_plan` on `validate_plan` (×4), `simulate` (×17-18), `solve` (×19); `all_*` simulate additionally calls `validate_pddl_syntax` (×10-11).
 **Impact.** Expected behaviour of the `all` filter and the point of the filter ablation — not a bug, but not currently surfaced in the headline table.
-**Fix.** Report `per-task vs all` delta in the analysis notebook as "tool-selection noise" and reference it in the paper diff.
-**Files.** `analyze_results.ipynb`, write-up.
+**Fix.** Report `per-task vs all` delta during analysis as "tool-selection noise" and reference it in the paper diff.
+**Files.** Analysis artefact (TBD), write-up.
 
 ### ISS-012 · Truncation override skips `FR_VERDICT_MISMATCH`
 **Source.** Scoring audit, 2026-04-20.
@@ -118,7 +118,7 @@ Dropped during the review pass:
 - `MCPPlanner.call_tool` assert on caller-supplied `verbose` — redundant with the schema stripping done in `connect()`; no path can deliver a `verbose` arg to `call_tool`.
 - Live-MCP smoke test in `tests/verify.sh` — duplicates `../pddl-copilot/plugins/*/tests/verify.sh`, which already exercises each tool end-to-end; any contract drift would surface there first.
 
-Deferred (P3, mostly `analyze_results.ipynb` work): **ISS-003, ISS-008, ISS-009, ISS-010, ISS-012, ISS-013**.
+Deferred (P3, mostly analysis work): **ISS-003, ISS-008, ISS-009, ISS-010, ISS-012, ISS-013**.
 
 ---
 

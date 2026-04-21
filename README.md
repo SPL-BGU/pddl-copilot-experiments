@@ -114,7 +114,6 @@ jupyter notebook
 ```
 
 - **`experiment_notebook.ipynb`** -- Run experiments interactively, modify parameters per cell
-- **`analyze_results.ipynb`** -- Visualize results from `results/` (tables, bar charts, chain plots)
 
 ## Output
 
