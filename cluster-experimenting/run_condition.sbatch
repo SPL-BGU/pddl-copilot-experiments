@@ -30,8 +30,13 @@
 ###   CHAIN_SAMPLES=100                 (paper-aligned; paper uses 100/100/100/50
 ###                                      per chain length, we use 100 flat →
 ###                                      2× oversample at n=5, harmless)
-###   CONCURRENCY=2                     (conservative; cis-ollama's
-###                                      OLLAMA_NUM_PARALLEL is unknown)
+###   CONCURRENCY=2                     (saturates cis-ollama's measured
+###                                      OLLAMA_NUM_PARALLEL=4 exactly when
+###                                      paired with 2 parallel jobs per wave;
+###                                      raising would queue half the requests
+###                                      and starve other users on the shared
+###                                      server. Server probe: CHANGELOG
+###                                      2026-04-21 entry.)
 ###
 ### sbatch config parameters must start with #SBATCH and precede any other command.
 #SBATCH --partition main

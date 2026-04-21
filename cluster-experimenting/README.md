@@ -31,8 +31,11 @@ bash cluster-experimenting/submit_all.sh --dry-run
 
 # 4. Smoke-test: submit ONE small/cheap job first to catch env or Ollama issues
 #    before firing the dependency chain. Restrict CONDITIONS to a single
-#    condition (no-tools) so it finishes in minutes.
-sbatch --export=ALL,MODEL=Qwen3.5:0.8B,THINK_MODE=off,CONDITIONS=no-tools \
+#    condition (no-tools) so it finishes in minutes. Setting --job-name keeps
+#    the log path aligned with the tail command below; the submit_all.sh path
+#    sets it automatically, but direct sbatch invocations have to.
+sbatch --job-name=pddl_Qwen3_5_0_8B_off \
+       --export=ALL,MODEL=Qwen3.5:0.8B,THINK_MODE=off,CONDITIONS=no-tools \
        cluster-experimenting/run_condition.sbatch
 squeue --me
 # Watch the log (replace <jobid> with the one sbatch printed):
@@ -158,11 +161,13 @@ bash cluster-experimenting/submit_all.sh --from-wave 3
 bash cluster-experimenting/submit_all.sh --dry-run
 
 # Single job, submit directly (e.g. smoke-test, rerun one model)
-sbatch --export=ALL,MODEL=gpt-oss:20b,THINK_MODE=off \
+sbatch --job-name=pddl_gpt-oss_20b_off \
+       --export=ALL,MODEL=gpt-oss:20b,THINK_MODE=off \
        cluster-experimenting/run_condition.sbatch
 
 # Single job, only one condition
-sbatch --export=ALL,MODEL=Qwen3.5:0.8B,THINK_MODE=off,CONDITIONS=no-tools \
+sbatch --job-name=pddl_Qwen3_5_0_8B_off \
+       --export=ALL,MODEL=Qwen3.5:0.8B,THINK_MODE=off,CONDITIONS=no-tools \
        cluster-experimenting/run_condition.sbatch
 ```
 
@@ -179,13 +184,14 @@ Per sbatch defaults (`run_condition.sbatch`):
 | `--partition` | `main` | CPU partition — no local inference, LLM runs on cis-ollama |
 | `--constraint` | `cpu` | Same reason |
 | `--time` | `3-00:00:00` | Sized for `gpt-oss:120b` × 5 conditions × paper-aligned chain-samples=100. Partition `main` allows up to 7 days. Small models finish much sooner; SLURM charges actual wall time. |
-| `--cpus-per-task` | `8` | MCP server subprocesses + concurrent Ollama requests (in-job concurrency=2; conservative because cis-ollama's `OLLAMA_NUM_PARALLEL` is unknown) |
+| `--cpus-per-task` | `8` | MCP server subprocesses + concurrent Ollama requests. In-job `concurrency=2` × 2 parallel jobs per wave = 4 concurrent requests, exactly saturating the measured server `OLLAMA_NUM_PARALLEL=4` without queueing (probe 2026-04-21; see CHANGELOG). |
 | `--mem` | `16G` | ENHSP heap + Python overhead; well below BGU's 58G ceiling |
 | `--gpus` | `0` | Nothing GPU-accelerated runs on the node |
 
 Tighten `--time` / `--mem` for the small model to improve queue priority:
 ```bash
-sbatch --time=0-04:00:00 --mem=8G \
+sbatch --job-name=pddl_Qwen3_5_0_8B_off \
+       --time=0-04:00:00 --mem=8G \
        --export=ALL,MODEL=Qwen3.5:0.8B,THINK_MODE=off,CONDITIONS=no-tools \
        cluster-experimenting/run_condition.sbatch
 ```

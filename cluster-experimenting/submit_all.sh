@@ -20,9 +20,16 @@
 #   5. gpt-oss:120b   × {on, off}       (2 jobs, afterok wave 4)
 #
 # Usage:
-#   bash cluster-experimenting/submit_all.sh               # submit all 5 waves (9 jobs)
-#   bash cluster-experimenting/submit_all.sh --dry-run     # print sbatch commands, do not submit
-#   bash cluster-experimenting/submit_all.sh --from-wave 3 # skip waves 1-2 (no dependency on them)
+#   bash cluster-experimenting/submit_all.sh                       # submit all 5 waves (9 jobs)
+#   bash cluster-experimenting/submit_all.sh --dry-run             # print sbatch commands, do not submit
+#   bash cluster-experimenting/submit_all.sh --from-wave 3         # skip waves 1-2 (no dependency on them)
+#   bash cluster-experimenting/submit_all.sh --from-wave 3 --force # bypass preflight (use with care)
+#
+# Safety: --from-wave N>1 refuses to submit if any pddl_* jobs are already
+# RUNNING or PENDING on the queue, because resumed waves have no afterok
+# dependency on the live ones and would re-trigger the eviction thrashing
+# this wave design exists to prevent. Override with --force only after
+# inspecting `squeue --me` and deciding the concurrency is acceptable.
 
 set -eo pipefail
 # Note: deliberately NOT using `-u` (nounset). The wave submission logic
@@ -36,6 +43,7 @@ SBATCH_FILE="$SCRIPT_DIR/run_condition.sbatch"
 
 DRY_RUN=0
 FROM_WAVE=1
+FORCE=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -43,8 +51,10 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=1; shift ;;
         --from-wave)
             shift; FROM_WAVE="$1"; shift ;;
+        --force)
+            FORCE=1; shift ;;
         -h|--help)
-            sed -n '1,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            sed -n '1,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *)
             echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -52,6 +62,21 @@ done
 
 cd "$REPO_ROOT"
 mkdir -p cluster-experimenting/logs
+
+# Preflight: refuse --from-wave N>1 while earlier-wave pddl_* jobs are still
+# live on the queue. The resumed waves are submitted with no afterok dep on
+# the live ones, so they would race and re-trigger cis-ollama weight eviction.
+if [ "$FROM_WAVE" -gt 1 ] && [ "$DRY_RUN" -eq 0 ] && [ "$FORCE" -eq 0 ]; then
+    live=$(squeue --me --states=R,PD --noheader --format=%j 2>/dev/null | grep -c '^pddl_' || true)
+    if [ "$live" -gt 0 ]; then
+        echo "ERROR: --from-wave $FROM_WAVE but $live pddl_* job(s) are still RUNNING or PENDING." >&2
+        echo "       Resuming now bypasses afterok serialization and re-triggers" >&2
+        echo "       weight-eviction thrashing on cis-ollama." >&2
+        echo "       Inspect:   squeue --me --noheader --format='%j %T' | grep '^pddl_'" >&2
+        echo "       Override:  bash $0 --from-wave $FROM_WAVE --force" >&2
+        exit 2
+    fi
+fi
 
 # Wave definitions: each wave is a list of (model, think_mode) pairs encoded
 # as "MODEL|THINK_MODE" strings (|-separated so model names with ':' are safe).
