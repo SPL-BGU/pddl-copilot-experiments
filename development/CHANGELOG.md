@@ -6,6 +6,31 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-21 — Add `cluster-ops` skill for BGU SLURM workflow
+
+**Motivation.** Session-over-session repetition of SSH queue queries, `.out` log parsing, rsync, summary aggregation, and plot generation. Every interaction re-derived the same grep patterns and naming conventions. Consolidated into a narrative Claude Code skill + 5 helper scripts so future agents start from a known base. No methodology change.
+
+**Code change — `.claude/skills/cluster-ops/`**
+- `SKILL.md`: trigger phrases + recipes for status / submit / cancel / sync / aggregate / plot / diag. Matches the `disable-model-invocation: true` style of the existing two skills. Explicitly gates destructive ops (`scancel -u`, remote `rm`) behind user confirmation.
+- `scripts/status.sh`: one SSH call, server-side Python parse of `.out` files. Handles both legacy (`pddl_<model>_<cond>-<jobid>.out`) and current (`pddl_<model>_<think>-<jobid>.out`) layouts. Reports condition index (N/5), `ST N/250`, `chain k/400`, and 1200s-timeout rate per job.
+- `scripts/sync.sh`: `rsync -av --update` into `results/cluster-<YYYYMMDD>/` by default. Never deletes anything.
+- `scripts/aggregate.py`: walks a results root, emits Markdown tables for single-task success, chain success, failure-reason totals. Handles both dir naming schemes; legacy dirs render as `think=default` with a header warning.
+- `scripts/plot.py`: generalization of `results/full-cluster-run1/make_plots.py`. Auto-discovers `(model, think, cond)` tuples from dir names, builds SERIES dynamically, colors by model family with hatches for tool condition.
+- `scripts/diag.sh`: `curl` `/api/tags` + `/api/ps` on cis-ollama, optional 10-token ping to a named model.
+
+**Tests / validation**
+- `diag.sh`: reached cis-ollama, listed 19 hosted models and 2 loaded (Qwen3.5:27b + gemma4:31b).
+- `aggregate.py` over `results/full-cluster-run1/`: produced 15-row matrix identical to the manual table.
+- `plot.py` over `results/full-cluster-run1/`: wrote 3 PNGs at `plots/fig[1-3]_*.png`, backward-compatible with the hand-built plots from earlier today.
+- `status.sh`: against the 6 legacy jobs still running from the pre-overhaul sweep (`17116518-22`, `17116533`), matched the manual Markdown status reports within a few-instance drift expected from real-time progress.
+
+**Compatibility**
+- Read-only over experiment state. Does not touch `run_experiment.py`, `run_condition.sbatch`, `submit_all.sh`, or any scorer path.
+- Both legacy `slurm_<model>_<cond>_<jid>` and current `slurm_<model>_<think>_<cond>_<jid>` result-dir layouts are parsed; mixing them in one root produces a warning header in the aggregate output.
+- No `ISS-###` closed; `SKILL.md` references `ISS-015` (gateway 504) and `ISS-016` (FD stdout) in its diagnostic recipes.
+
+---
+
 ## 2026-04-21 — Cluster sweep: serialize by model, align chains to paper, add think-mode axis
 
 **Motivation.** The 2026-04-20 resubmit of the full cluster sweep (25 jobs: 5 models × 5 conditions) stalled at 10+h/job despite a 200GB-VRAM server. Diagnostic (`curl cis-ollama/api/ps`) showed only 2 of 5 requested models loaded at a time. Post-hoc probe on 2026-04-21 (see "Server-probe evidence" below) confirmed `OLLAMA_MAX_LOADED_MODELS ≥ 3` on the same server, so the 2-loaded ceiling during the stalled sweep was VRAM pressure under mixed-user contention, not a hard server cap. Either way, 19 concurrent jobs round-robin across 4 model families caused continuous weight eviction. Signature: `gemma4:31b` running at 560s/sample while `gpt-oss:120b` ran at 291s/sample (smaller model slower than larger = textbook eviction churn). Additionally, `--chain-samples 20` was 4.4× below the paper's 100/100/100/50 methodology, and the `--think default` axis left thinking silently ON for Qwen but OFF for gpt-oss/gemma (mixed, unreported).
