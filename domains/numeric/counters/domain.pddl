@@ -1,9 +1,9 @@
 (define (domain fo-counters-rnd)
     (:requirements :strips :typing :equality :adl :fluents)
     (:types counter)
-	(:predicates 
-		(nop ?x - counter)
-	)
+  (:predicates
+    (nop ?x - counter)
+  )
 
     (:functions
         (value ?c - counter);; - int  ;; The value shown in counter ?c

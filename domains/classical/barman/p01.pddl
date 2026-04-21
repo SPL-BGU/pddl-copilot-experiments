@@ -1,6 +1,6 @@
 (define (problem prob)
  (:domain barman)
- (:objects 
+ (:objects
       shaker1 - shaker
       left right - hand
       shot1 shot2 - shot
@@ -9,7 +9,7 @@
       dispenser1 dispenser2 dispenser3 - dispenser
       l0 l1 l2 - level
 )
- (:init 
+ (:init
   (ontable shaker1)
   (ontable shot1)
   (ontable shot2)

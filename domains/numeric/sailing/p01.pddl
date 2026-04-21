@@ -1,27 +1,27 @@
 ;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
 (define (problem instance_8_12)
 
-	(:domain sailing)
+  (:domain sailing)
 
-	(:objects
-		b1 - boat
-		p0 p1 - person
-	)
+  (:objects
+    b1 - boat
+    p0 p1 - person
+  )
 
-	(:init
-		(= (x b1) 3)
-		(= (y b1) 0)
+  (:init
+    (= (x b1) 3)
+    (= (y b1) 0)
 
-		(= (d p0) 120)
-		(= (d p1) 59)
+    (= (d p0) 120)
+    (= (d p1) 59)
 
-	)
+  )
 
-	(:goal
-		(and
-			(saved p0)
-			(saved p1)
+  (:goal
+    (and
+      (saved p0)
+      (saved p1)
 
-		)
-	)
+    )
+  )
 )

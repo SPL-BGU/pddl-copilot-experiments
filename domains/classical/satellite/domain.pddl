@@ -2,14 +2,14 @@
   (:requirements :strips :typing)
   (:types satellite direction instrument mode)
   (:predicates
-	(on_board ?i - instrument ?s - satellite)
-	(supports ?i - instrument ?m - mode)
-	(pointing ?s - satellite ?d - direction)
-	(power_avail ?s - satellite)
-	(power_on ?i - instrument)
-	(calibrated ?i - instrument)
-	(have_image ?d - direction ?m - mode)
-	(calibration_target ?i - instrument ?d - direction))
+  (on_board ?i - instrument ?s - satellite)
+  (supports ?i - instrument ?m - mode)
+  (pointing ?s - satellite ?d - direction)
+  (power_avail ?s - satellite)
+  (power_on ?i - instrument)
+  (calibrated ?i - instrument)
+  (have_image ?d - direction ?m - mode)
+  (calibration_target ?i - instrument ?d - direction))
 
   (:action turn_to
    :parameters (?s - satellite ?d_new - direction ?d_prev - direction)
@@ -35,7 +35,7 @@
   (:action calibrate
    :parameters (?s - satellite ?i - instrument ?d - direction)
    :precondition (and (on_board ?i ?s)
-		      (calibration_target ?i ?d)
+          (calibration_target ?i ?d)
                       (pointing ?s ?d)
                       (power_on ?i))
    :effect (calibrated ?i))

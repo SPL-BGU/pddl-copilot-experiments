@@ -1,7 +1,7 @@
 (define (domain depots)
 (:requirements :strips :typing)
 (:types place locatable - object
-	depot distributor - place
+  depot distributor - place
         truck hoist surface - locatable
         pallet crate - surface)
 
