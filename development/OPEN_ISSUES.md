@@ -30,6 +30,17 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Fix.** Drop `guided` from the qwen3:0.6b sweep. Keep guided only for qwen3:4b (and larger) where the prompt may plausibly change behaviour. Consider replacing the one-sentence hint with a one-shot example or a schema-enforced tool-call wrapper before re-enabling for small models.
 **Files.** `run_background.sh` or sweep-config call-sites.
 
+### ISS-017 · Grading bias inverts tools-vs-no-tools at small scales
+**Source.** Cluster-run1 analysis, 2026-04-22 (SLURM 17123867/8, Qwen3.5:0.8B, 6/10 conditions).
+**Evidence.** For Qwen3.5:0.8B (think=off, no-tools, n=50/task):
+- validate_domain 50/50 (100%), validate_problem 47/50 (94%), validate_plan 44/50 (88%), simulate 48/50 (96%).
+- Tools conditions on the same cells drop to 8–78% (`tool_not_selected` dominates failures: 71–150 of 250).
+- Direct inspection (`results/cluster-20260422/slurm_Qwen3_5_0_8B_off_no-tools_17123868/single_task_*.json`) shows the model emits `VERDICT: VALID` on 141/150 validate_* instances; all 150 gold verdicts are VALID (benchmark constructed from solvable problems).
+- Simulate responses begin with *"Here is the state transition trace..."* — always contains the `state`+`step`/`after` keywords that `check_success` (`run_experiment.py:883`) uses as the sole no-tools grader.
+**Impact.** The headline "tools help" narrative is **inverted** for the smallest model in the sweep: no-tools posts 88–100% on 4/5 tasks while tools post 8–44%. This is a paper-integrity risk — reporting the numbers as-is would let reviewers conclude "tools hurt small models", when in reality the no-tools baseline is inflated by grading bias (ISS-001, ISS-002), not a capability signal. Larger models (≥27b) likely escape the inversion because they select tools reliably, but the no-tools *absolute* numbers remain inflated across all model sizes under the same bias.
+**Fix.** Blocked on **ISS-001** (inject invalid fixtures) + **ISS-002** (structured simulate grader or drop from headline). No new harness work required here. When those land, re-run wave 1 (Qwen3.5:0.8B) as the regression case: expect no-tools validate_* to drop to near-chance, and tools to become the stronger condition once `tool_not_selected` stops being penalized relative to a trivial "always VALID" baseline.
+**Files.** Tracked upstream. This entry is a cross-reference + scope/severity note.
+
 ---
 
 ## P2 — Runtime & instrumentation
