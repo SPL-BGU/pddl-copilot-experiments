@@ -20,10 +20,16 @@
 #   5. gpt-oss:120b   × {on, off}       (2 jobs, afterok wave 4)
 #
 # Usage:
-#   bash cluster-experimenting/submit_all.sh                       # submit all 5 waves (9 jobs)
+#   bash cluster-experimenting/submit_all.sh                       # submit all 5 waves (9 jobs), all 5 conditions
 #   bash cluster-experimenting/submit_all.sh --dry-run             # print sbatch commands, do not submit
 #   bash cluster-experimenting/submit_all.sh --from-wave 3         # skip waves 1-2 (no dependency on them)
 #   bash cluster-experimenting/submit_all.sh --from-wave 3 --force # bypass preflight (use with care)
+#
+# Optional env override:
+#   CONDITIONS="tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided" \
+#     bash cluster-experimenting/submit_all.sh
+#   Forwarded to each sbatch via --export so run_condition.sbatch uses the restricted list.
+#   Unset → run_condition.sbatch's own default (all 5 conditions) applies.
 #
 # Safety: --from-wave N>1 refuses to submit if any pddl_* jobs are already
 # RUNNING or PENDING on the queue, because resumed waves have no afterok
@@ -122,11 +128,21 @@ submit_wave() {
         model_tag=$(echo "$model" | tr '/:.' '___')
         local job_name="pddl_${model_tag}_${think}"
 
+        # Forward the caller-set CONDITIONS env var when present, so the
+        # caller can restrict which conditions each job runs without touching
+        # run_condition.sbatch. When unset, sbatch's --export=ALL would still
+        # propagate CONDITIONS implicitly, but being explicit documents the
+        # contract and survives accidental removal of ALL.
+        local export_spec="ALL,MODEL=${model},THINK_MODE=${think}"
+        if [ -n "${CONDITIONS:-}" ]; then
+            export_spec="${export_spec},CONDITIONS=${CONDITIONS}"
+        fi
+
         local cmd=(sbatch
             --parsable
             "${dep_arg[@]}"
             --job-name="$job_name"
-            --export="ALL,MODEL=${model},THINK_MODE=${think}"
+            --export="$export_spec"
             "$SBATCH_FILE")
 
         if [ "$DRY_RUN" -eq 1 ]; then
