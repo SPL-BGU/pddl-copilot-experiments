@@ -1191,6 +1191,7 @@ async def run_chain_experiment(
     cond_label = "tools" if with_tools else "no-tools"
 
     async def run_sample(
+        model: str,
         i: int,
         dname: str,
         dinfo: dict,
@@ -1320,7 +1321,7 @@ async def run_chain_experiment(
                 ppddl = dinfo["problems"][pname]
                 chain_tasks = random.choices(TASKS, k=n)
                 step_templates = [random.choice(PROMPT_TEMPLATES[t]) for t in chain_tasks]
-                sample_plans.append((i, dname, dinfo, pname, ppddl, chain_tasks, step_templates))
+                sample_plans.append((model, i, dname, dinfo, pname, ppddl, chain_tasks, step_templates))
 
             sem = asyncio.Semaphore(max(1, concurrency))
 
