@@ -98,15 +98,13 @@ case "$GPU_TYPE" in
 esac
 
 # Auto-select think modes when not overridden.
+# All models (including gemma*) run both think=on and think=off by default.
+# Override with --think-modes "default" if a model does not support the
+# think kwarg.
 if [ -n "$THINK_MODES_OVERRIDE" ]; then
     THINK_MODES="$THINK_MODES_OVERRIDE"
 else
-    case "$MODEL" in
-        gemma4:*|gemma3:*|gemma2:*)
-            THINK_MODES="default" ;;
-        *)
-            THINK_MODES="on off" ;;
-    esac
+    THINK_MODES="on off"
 fi
 
 MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
