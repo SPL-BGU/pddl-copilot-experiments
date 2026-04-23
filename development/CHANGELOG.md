@@ -6,6 +6,29 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-23 — Parallelize chain-sample dispatch (match single-task concurrency)
+
+**Motivation.** Audit of the live cluster-20260423 sweep surfaced that `run_chain_experiment` iterated samples in a plain `for i in range(samples):` loop while `run_single_task_experiment` already used `Semaphore(concurrency) + create_task + as_completed`. With `--concurrency 2` per job and 2 parallel jobs/wave against cis-ollama's measured `OLLAMA_NUM_PARALLEL=4`, the server sat at ~50% utilization during the chain phase (2 in-flight vs 4-slot capacity). Measured on `slurm_Qwen3_5_0_8B_on_tools_per-task_minimal_17123867` (job 17123867): condition wall-time 4h 38m; single-task CPU sum 3.31h → single-task wall ≈ 1.65h @ c=2; inferred chain wall ≈ 2.98h, which matches the prediction for serial chain (≈3.3h for 400 samples × ~1.5 effective steps × ~20s/step) within 10%. (commit `ee5bc8d` on branch `async-fix`)
+
+**Changes — `run_experiment.py`.**
+- `run_chain_experiment` takes a new `concurrency: int = DEFAULT_CONCURRENCY` parameter. The per-sample body is lifted into an inner `run_sample(...)` coroutine; samples are dispatched via `asyncio.Semaphore(concurrency) + asyncio.create_task + asyncio.as_completed`, mirroring `run_single_task_experiment:1128–1163` exactly. Per-step sequencing inside a sample is unchanged — each step's messages still depend on the previous step's output, which is correctness-critical.
+- All `random.choice` draws (domain / problem / `chain_tasks` / `step_templates`) are pre-computed **before** fan-out so RNG order stays deterministic w.r.t. serial execution. Without pre-sampling, coroutine interleaving would non-deterministically reorder RNG calls. Minor drift vs. the previous code: `step_templates` is now drawn for every position in `chain_tasks` including positions later skipped by the no-plan-oracle guard — the old code only drew a template for non-skipped steps. Unseeded runs were already non-deterministic, so this does not change reproducibility behaviour in practice.
+- `samples_detail` is sorted by `idx` after collection so the JSON schema and sample ordering match the pre-fix output; downstream `aggregate.py` / `plot.py` / notebooks consume `samples_detail` by aggregate, not by index, so both orderings are compatible.
+- `main` caller at `:1709` now forwards `concurrency=args.concurrency` into the chain call.
+- `KeyboardInterrupt`/`asyncio.CancelledError` handling mirrors the single-task path: pending tasks are cancelled and awaited via `asyncio.gather(*aws, return_exceptions=True)` before reraise.
+
+**Reproducibility.**
+- `chain_*.json` schema is unchanged — same `{idx, domain, problem, chain_tasks, step_records, final_success, exception}` per sample, same `successes / samples / success_rate` aggregate fields.
+- Completed Qwen3.5:0.8B wave (`results/cluster-20260423/slurm_Qwen3_5_0_8B_*`) and in-flight gpt-oss:20b wave (job 17130166/7) remain directly comparable post-fix: success rates and failure-reason counts are expected to overlap within sampling noise (temperature=0.0 but unseeded RNG).
+- Chain-internal step sequencing and the `_apply_truncation_override` parity with single-task (landed 2026-04-21) are unchanged.
+
+**Expected wall-time impact.** Chain phase ~50% faster per job. Per-condition savings: ~1.5h for Qwen3.5:0.8B, ~2h for gpt-oss:20b, likely ~3–4h for 120b. Sweep-wide: a full wall-day recovered without methodology change. Pipeline safety (`afterok` wave serialization, `CONCURRENCY=2` default) is untouched — the fix only raises utilization inside a condition, not across waves.
+
+**Files.**
+- `run_experiment.py` (`run_chain_experiment` signature + body; caller at `main:1709`).
+
+---
+
 ## 2026-04-21 — Harness observability fixes from cluster-run1 analysis
 
 **Motivation.** Results review of `results/full-cluster-run1/` (11/25 jobs — analysis kept locally under `.local/reports/`) surfaced four harness-side technical issues. This change-set addresses them without modifying the measurement pipeline — no prompt, skill-description, temperature, or scoring-semantics change.
