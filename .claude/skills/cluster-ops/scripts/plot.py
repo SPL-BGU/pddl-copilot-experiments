@@ -50,11 +50,25 @@ MODEL_COLORS = {
 }
 COND_HATCH = {
     "no-tools":               None,
-    "tools_all_guided":       "///",
     "tools_all_minimal":      "///",
-    "tools_per-task_guided":  "xxx",
-    "tools_per-task_minimal": "xxx",
+    "tools_all_guided":       "\\\\\\",
+    "tools_per-task_minimal": "...",
+    "tools_per-task_guided":  "+++",
 }
+# think-mode shade: on → lighter tint of the model base color.
+# off / default keep the base color unchanged.
+THINK_LIGHTEN = {"off": 0.0, "default": 0.0, "on": 0.55}
+
+
+def _lighten(hex_color: str, factor: float) -> str:
+    """Blend `hex_color` toward white by `factor` ∈ [0, 1]."""
+    if factor <= 0.0:
+        return hex_color
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
+    r = int(r + (255 - r) * factor)
+    g = int(g + (255 - g) * factor)
+    b = int(b + (255 - b) * factor)
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def find_default_root() -> Path:
@@ -125,7 +139,8 @@ def label(info: dict, group_by: str) -> str:
 
 
 def style(info: dict) -> tuple[str, str | None]:
-    color = MODEL_COLORS.get(info["model"], "#888888")
+    base = MODEL_COLORS.get(info["model"], "#888888")
+    color = _lighten(base, THINK_LIGHTEN.get(info["think"], 0.0))
     hatch = COND_HATCH.get(info["cond"])
     return color, hatch
 
@@ -150,7 +165,7 @@ def grouped_bars(ax, x, series, width, get_vals, annotate=True):
 def fig1(series, out_path):
     x = np.arange(len(TASKS))
     n = max(1, len(series))
-    width = 0.85 / n
+    width = 0.95 / n
     fig, ax = plt.subplots(figsize=(max(9.0, 1.1 * n + 6), 4.3))
 
     def vals(s):
@@ -167,16 +182,17 @@ def fig1(series, out_path):
     ax.set_title("Single-task success rate")
     ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.set_axisbelow(True)
-    ax.legend(loc="upper right", fontsize=7, framealpha=0.9, ncol=max(1, n // 6))
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
+              fontsize=7, framealpha=0.9, ncol=1)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160)
+    fig.savefig(out_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
 
 
 def fig2(series, out_path):
     x = np.arange(5)  # chain length 1..5 (1 = ST mean)
     n = max(1, len(series))
-    width = 0.85 / n
+    width = 0.95 / n
     fig, ax = plt.subplots(figsize=(max(9.0, 1.1 * n + 6), 4.3))
 
     def vals(s):
@@ -196,9 +212,10 @@ def fig2(series, out_path):
     ax.set_title("Chained-task success (chain=1 is single-task mean)")
     ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.set_axisbelow(True)
-    ax.legend(loc="upper right", fontsize=7, framealpha=0.9, ncol=max(1, n // 6))
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
+              fontsize=7, framealpha=0.9, ncol=1)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160)
+    fig.savefig(out_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -208,7 +225,7 @@ def fig3(series, out_path):
         return
     x = np.arange(2)  # classical, numeric
     n = len(tool_series)
-    width = 0.85 / n
+    width = 0.95 / n
     fig, ax = plt.subplots(figsize=(max(7.5, 0.9 * n + 4), 4.3))
 
     def vals(s):
@@ -237,9 +254,10 @@ def fig3(series, out_path):
     ax.set_title("Correct-planner selection, classical vs numeric")
     ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.set_axisbelow(True)
-    ax.legend(loc="upper right", fontsize=7, framealpha=0.9, ncol=max(1, n // 6))
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
+              fontsize=7, framealpha=0.9, ncol=1)
     fig.tight_layout()
-    fig.savefig(out_path, dpi=160)
+    fig.savefig(out_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
 
 
