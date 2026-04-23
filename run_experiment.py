@@ -1183,134 +1183,177 @@ async def run_chain_experiment(
     num_ctx: int = DEFAULT_NUM_CTX,
     think: bool | None = None,
     temperature: float = TEMPERATURE,
+    concurrency: int = DEFAULT_CONCURRENCY,
 ) -> list[dict]:
     results: list[dict] = []
     domain_items = list(domains.items())
     system_prompt = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
     cond_label = "tools" if with_tools else "no-tools"
 
+    async def run_sample(
+        i: int,
+        dname: str,
+        dinfo: dict,
+        pname: str,
+        ppddl: str,
+        chain_tasks: list[str],
+        step_templates: list[str],
+    ) -> dict:
+        gt = ground_truth.get(dname, {}).get(pname, {})
+        messages: list[dict] = [{"role": "system", "content": system_prompt}]
+        chain_ok = True
+        step_records: list[dict] = []
+        sample_exception: dict | None = None
+
+        for step_index, task in enumerate(chain_tasks):
+            # Mirror the single-task guard (run_single_task_experiment,
+            # above): if the oracle never produced a plan for this
+            # problem, validate_plan/simulate have no ground truth to
+            # grade against and would deterministically fail the chain
+            # as a ground-truth-coverage artifact rather than a model
+            # signal. Skip the step and keep the chain alive. Skipped
+            # steps are not appended to step_records, so
+            # len(step_records) gives the effective chain length
+            # (ISS-011).
+            if task in ("validate_plan", "simulate") and not gt.get("plan"):
+                continue
+            template = step_templates[step_index]
+            plan_str = ""
+            if task in ("validate_plan", "simulate") and gt.get("plan"):
+                plan_str = (
+                    "\n".join(gt["plan"]) if isinstance(gt["plan"], list) else gt["plan"]
+                )
+            prompt = template.format(
+                domain=dinfo["domain"], problem=ppddl, plan=plan_str,
+            )
+            messages.append({"role": "user", "content": prompt})
+
+            np_for_task = (
+                num_predict_override
+                if num_predict_override is not None
+                else DEFAULT_NUM_PREDICT[task]
+            )
+            allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
+            step_loop_exhausted = False
+            try:
+                if with_tools:
+                    resp_text, tc, step_done_reason, step_loop_exhausted = await chat_with_tools(
+                        client, model, messages, mcp,
+                        num_predict=np_for_task, num_ctx=num_ctx,
+                        allowed_tools=allowed, think=think,
+                        temperature=temperature,
+                    )
+                else:
+                    resp_text, step_done_reason = await chat_without_tools(
+                        client, model, messages,
+                        num_predict=np_for_task, num_ctx=num_ctx, think=think,
+                        temperature=temperature,
+                    )
+                    tc = []
+                    messages.append({"role": "assistant", "content": resp_text})
+                _sel, step_ok, step_fr = await check_success(
+                    task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
+                    with_tools=with_tools,
+                )
+                if step_loop_exhausted and not step_ok:
+                    step_fr = FR_LOOP_EXHAUSTED
+                step_truncated = step_done_reason == "length"
+                # Mirror single-task semantics (evaluate_one): when the
+                # cap cut the model off mid-output, relabel empty-output
+                # reasons as FR_TRUNCATED_NO_ANSWER so step_records is
+                # directly comparable to single_task_*.json failure
+                # reasons. Aggregate success_rate is unaffected — only
+                # the string on already-failing steps changes.
+                step_fr = _apply_truncation_override(step_ok, step_truncated, step_fr)
+                step_records.append({
+                    "step_index": step_index,
+                    "task": task,
+                    "success": step_ok,
+                    "failure_reason": step_fr,
+                    "tool_calls_count": len(tc),
+                    "truncated": step_truncated,
+                    "loop_exhausted": step_loop_exhausted,
+                })
+                if not step_ok:
+                    chain_ok = False
+                    break
+            except Exception as exc:
+                exc_text = str(exc)
+                sample_exception = {
+                    "step_index": step_index,
+                    "task": task,
+                    "exc_type": type(exc).__name__,
+                    "exc_message": exc_text[:500],
+                    # Classify upstream Ollama tool-call JSON parser
+                    # failures so chain analysis can separate them
+                    # from other exception types (matches
+                    # FR_OLLAMA_PARSE_ERROR in evaluate_one).
+                    "is_ollama_parse_error": OLLAMA_TOOL_PARSE_SIGNATURE in exc_text,
+                }
+                print(
+                    f"[chain exception] {type(exc).__name__}: {exc_text}",
+                    file=sys.stderr, flush=True,
+                )
+                chain_ok = False
+                break
+
+        return {
+            "idx": i,
+            "domain": dname,
+            "problem": pname,
+            "chain_tasks": chain_tasks,
+            "step_records": step_records,
+            "final_success": chain_ok,
+            "exception": sample_exception,
+        }
+
     for model in models:
         for n in chain_lengths:
-            successes = 0
-            samples_detail: list[dict] = []
+            # Pre-sample all randomness before fan-out so RNG order is
+            # deterministic w.r.t. serial execution. Without this, coroutines
+            # interleave random.choice calls and runs become non-reproducible
+            # even at temperature=0.
+            sample_plans: list[tuple] = []
             for i in range(samples):
                 dname, dinfo = random.choice(domain_items)
                 pname = random.choice(list(dinfo["problems"].keys()))
                 ppddl = dinfo["problems"][pname]
-                gt = ground_truth.get(dname, {}).get(pname, {})
-
                 chain_tasks = random.choices(TASKS, k=n)
-                messages: list[dict] = [{"role": "system", "content": system_prompt}]
-                chain_ok = True
-                step_records: list[dict] = []
-                sample_exception: dict | None = None
+                step_templates = [random.choice(PROMPT_TEMPLATES[t]) for t in chain_tasks]
+                sample_plans.append((i, dname, dinfo, pname, ppddl, chain_tasks, step_templates))
 
-                for step_index, task in enumerate(chain_tasks):
-                    # Mirror the single-task guard (run_single_task_experiment,
-                    # above): if the oracle never produced a plan for this
-                    # problem, validate_plan/simulate have no ground truth to
-                    # grade against and would deterministically fail the chain
-                    # as a ground-truth-coverage artifact rather than a model
-                    # signal. Skip the step and keep the chain alive. Skipped
-                    # steps are not appended to step_records, so
-                    # len(step_records) gives the effective chain length
-                    # (ISS-011).
-                    if task in ("validate_plan", "simulate") and not gt.get("plan"):
-                        continue
-                    template = random.choice(PROMPT_TEMPLATES[task])
-                    plan_str = ""
-                    if task in ("validate_plan", "simulate") and gt.get("plan"):
-                        plan_str = (
-                            "\n".join(gt["plan"]) if isinstance(gt["plan"], list) else gt["plan"]
-                        )
-                    prompt = template.format(
-                        domain=dinfo["domain"], problem=ppddl, plan=plan_str,
+            sem = asyncio.Semaphore(max(1, concurrency))
+
+            async def bounded_sample(plan: tuple) -> dict:
+                async with sem:
+                    return await run_sample(*plan)
+
+            aws = [asyncio.create_task(bounded_sample(p)) for p in sample_plans]
+            samples_detail: list[dict] = []
+            successes = 0
+            try:
+                for coro in asyncio.as_completed(aws):
+                    detail = await coro
+                    samples_detail.append(detail)
+                    if detail["final_success"]:
+                        successes += 1
+                    mark = "OK" if detail["final_success"] else "FAIL"
+                    print(
+                        f"  {model}|{cond_label} chain={n} "
+                        f"[{len(samples_detail)}/{samples}] {mark}"
                     )
-                    messages.append({"role": "user", "content": prompt})
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                for t in aws:
+                    if not t.done():
+                        t.cancel()
+                await asyncio.gather(*aws, return_exceptions=True)
+                raise
 
-                    np_for_task = (
-                        num_predict_override
-                        if num_predict_override is not None
-                        else DEFAULT_NUM_PREDICT[task]
-                    )
-                    allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
-                    step_loop_exhausted = False
-                    try:
-                        if with_tools:
-                            resp_text, tc, step_done_reason, step_loop_exhausted = await chat_with_tools(
-                                client, model, messages, mcp,
-                                num_predict=np_for_task, num_ctx=num_ctx,
-                                allowed_tools=allowed, think=think,
-                                temperature=temperature,
-                            )
-                        else:
-                            resp_text, step_done_reason = await chat_without_tools(
-                                client, model, messages,
-                                num_predict=np_for_task, num_ctx=num_ctx, think=think,
-                                temperature=temperature,
-                            )
-                            tc = []
-                            messages.append({"role": "assistant", "content": resp_text})
-                        _sel, step_ok, step_fr = await check_success(
-                            task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
-                            with_tools=with_tools,
-                        )
-                        if step_loop_exhausted and not step_ok:
-                            step_fr = FR_LOOP_EXHAUSTED
-                        step_truncated = step_done_reason == "length"
-                        # Mirror single-task semantics (evaluate_one): when the
-                        # cap cut the model off mid-output, relabel empty-output
-                        # reasons as FR_TRUNCATED_NO_ANSWER so step_records is
-                        # directly comparable to single_task_*.json failure
-                        # reasons. Aggregate success_rate is unaffected — only
-                        # the string on already-failing steps changes.
-                        step_fr = _apply_truncation_override(step_ok, step_truncated, step_fr)
-                        step_records.append({
-                            "step_index": step_index,
-                            "task": task,
-                            "success": step_ok,
-                            "failure_reason": step_fr,
-                            "tool_calls_count": len(tc),
-                            "truncated": step_truncated,
-                            "loop_exhausted": step_loop_exhausted,
-                        })
-                        if not step_ok:
-                            chain_ok = False
-                            break
-                    except Exception as exc:
-                        exc_text = str(exc)
-                        sample_exception = {
-                            "step_index": step_index,
-                            "task": task,
-                            "exc_type": type(exc).__name__,
-                            "exc_message": exc_text[:500],
-                            # Classify upstream Ollama tool-call JSON parser
-                            # failures so chain analysis can separate them
-                            # from other exception types (matches
-                            # FR_OLLAMA_PARSE_ERROR in evaluate_one).
-                            "is_ollama_parse_error": OLLAMA_TOOL_PARSE_SIGNATURE in exc_text,
-                        }
-                        print(
-                            f"[chain exception] {type(exc).__name__}: {exc_text}",
-                            file=sys.stderr, flush=True,
-                        )
-                        chain_ok = False
-                        break
-
-                if chain_ok:
-                    successes += 1
-                mark = "OK" if chain_ok else "FAIL"
-                print(f"  {model}|{cond_label} chain={n} [{i+1}/{samples}] {mark}")
-
-                samples_detail.append({
-                    "idx": i,
-                    "domain": dname,
-                    "problem": pname,
-                    "chain_tasks": chain_tasks,
-                    "step_records": step_records,
-                    "final_success": chain_ok,
-                    "exception": sample_exception,
-                })
+            # Restore dispatch order so samples_detail indices are stable
+            # across runs (matters for any post-hoc analysis that joins by
+            # sample idx). as_completed yields in completion order, which
+            # is nondeterministic under concurrency.
+            samples_detail.sort(key=lambda d: d["idx"])
 
             results.append({
                 "model": model,
@@ -1678,6 +1721,7 @@ async def async_main(args):
                     num_ctx=args.num_ctx,
                     think=think_override,
                     temperature=args.temperature,
+                    concurrency=args.concurrency,
                 )
             print_chain_table(chain_results)
 
