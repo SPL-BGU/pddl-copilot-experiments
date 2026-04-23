@@ -96,7 +96,16 @@ else
 fi
 
 ### Start ollama serve (background) with conservative KV settings ###
-PORT=11434
+# Per-job unique port prevents collision when SLURM co-locates two rtx jobs
+# on the same node (apptainer defaults to host network namespace, so binding
+# 11434 from a second job silently fails and both jobs end up sharing the
+# first job's ollama server → MAX_LOADED=1 thrashing between models).
+PORT=$(( 11400 + (SLURM_JOBID % 100) ))
+# Fallback if chosen port is already in use (collision on mod-100 wraparound)
+while ss -Hltn "sport = :$PORT" 2>/dev/null | grep -q LISTEN; do
+    PORT=$(( PORT + 1 ))
+    [ "$PORT" -ge 11600 ] && { echo "Error: no free port in 11400-11599"; exit 4; }
+done
 echo "Starting ollama serve on localhost:$PORT (NUM_PARALLEL=4, MAX_LOADED=1, CTX_CAP=8192)"
 apptainer exec --nv \
     --bind "$WORK/models:/root/.ollama" \
