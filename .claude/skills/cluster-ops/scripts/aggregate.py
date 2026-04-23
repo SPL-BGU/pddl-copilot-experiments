@@ -76,6 +76,15 @@ def parse_dirname(name: str) -> dict:
     return {"raw": stem, "model": rest, "think": "?", "cond": "?", "jobid": jobid}
 
 
+def host_tag(meta: dict) -> str:
+    h = (meta or {}).get("host", "")
+    if "localhost" in h or "ise-" in h or "cs-" in h:
+        return "rtx"
+    if "cis-ollama" in h:
+        return "cis"
+    return h or "?"
+
+
 def load_summaries(root: Path):
     rows = []
     for d in sorted(root.glob("slurm_*")):
@@ -87,6 +96,7 @@ def load_summaries(root: Path):
         with sfs[-1].open() as f:
             data = json.load(f)
         info = parse_dirname(d.name)
+        info["host"] = host_tag(data.get("meta", {}))
         rows.append((info, data))
     return rows
 
@@ -97,12 +107,16 @@ def fmt_pct(num: int, n: int) -> str:
     return f"{(num / n) * 100:.0f}%"
 
 
+def row_prefix(info: dict) -> str:
+    return f"| {info['model']} | {info['think']} | {info['cond']} | {info['host']} | {info['jobid']} |"
+
+
 def print_single_task_table(rows):
     print("## Single-task success rates (n=50 per task)")
     print()
-    header = "| model | think | cond | " + " | ".join(TASKS) + " |"
+    header = "| model | think | cond | host | jobid | " + " | ".join(TASKS) + " |"
     print(header)
-    print("|" + "|".join(["---"] * (3 + len(TASKS))) + "|")
+    print("|" + "|".join(["---"] * (5 + len(TASKS))) + "|")
 
     for info, data in rows:
         cells = []
@@ -110,17 +124,16 @@ def print_single_task_table(rows):
             rec = next((r for r in data["single_task"]
                         if r["task"] == t and r["n"] > 0), None)
             cells.append(fmt_pct(rec["successes"], rec["n"]) if rec else "—")
-        print(f"| {info['model']} | {info['think']} | {info['cond']} | "
-              + " | ".join(cells) + " |")
+        print(f"{row_prefix(info)} " + " | ".join(cells) + " |")
     print()
 
 
 def print_chain_table(rows):
     print("## Chain success rates")
     print()
-    header = "| model | think | cond | " + " | ".join(f"L={L}" for L in CHAIN_LENGTHS) + " |"
+    header = "| model | think | cond | host | jobid | " + " | ".join(f"L={L}" for L in CHAIN_LENGTHS) + " |"
     print(header)
-    print("|" + "|".join(["---"] * (3 + len(CHAIN_LENGTHS))) + "|")
+    print("|" + "|".join(["---"] * (5 + len(CHAIN_LENGTHS))) + "|")
 
     for info, data in rows:
         cells = []
@@ -128,16 +141,15 @@ def print_chain_table(rows):
             rec = next((c for c in data.get("chains", [])
                         if c["chain_length"] == L and c.get("samples", 0) > 0), None)
             cells.append(fmt_pct(rec["successes"], rec["samples"]) if rec else "—")
-        print(f"| {info['model']} | {info['think']} | {info['cond']} | "
-              + " | ".join(cells) + " |")
+        print(f"{row_prefix(info)} " + " | ".join(cells) + " |")
     print()
 
 
 def print_failure_reasons(rows):
     print("## Failure reason totals (single-task, across all 5 tasks)")
     print()
-    print("| model | think | cond | top 3 reasons (count) |")
-    print("|---|---|---|---|")
+    print("| model | think | cond | host | jobid | top 3 reasons (count) |")
+    print("|---|---|---|---|---|---|")
     for info, data in rows:
         agg: dict[str, int] = {}
         for r in data["single_task"]:
@@ -149,7 +161,7 @@ def print_failure_reasons(rows):
                 agg[k] = agg.get(k, 0) + v
         top = sorted(agg.items(), key=lambda kv: -kv[1])[:3]
         top_s = ", ".join(f"{k}={v}" for k, v in top) if top else "(none)"
-        print(f"| {info['model']} | {info['think']} | {info['cond']} | {top_s} |")
+        print(f"{row_prefix(info)} {top_s} |")
     print()
 
 
