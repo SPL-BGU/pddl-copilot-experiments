@@ -13,10 +13,13 @@ Cluster & repo conventions that matter here:
 
 - **Login node**: `omereliy@slurm.bgu.ac.il` — SSH is pre-authed for the user.
 - **Remote repo root**: `~/pddl-copilot-experiments` on the login node.
-- **Job submission**: `cluster-experimenting/submit_all.sh` submits 9 jobs in 5 dependency-chained waves per `(model, think_mode)` (`run_condition.sbatch:2–5`). Each SLURM job loops all 5 conditions sequentially, so one job = 5×(single-task+chain) phases.
-- **Log file**: `cluster-experimenting/logs/pddl_<model>_<think>-<jobid>.out` (current) or `pddl_<model>_<cond>-<jobid>.out` (legacy, pre-2026-04-21).
-- **Results dir**: `results/slurm_<model>_<think>_<cond>_<jobid>/` (current) or `results/slurm_<model>_<cond>_<jobid>/` (legacy).
-- **Ollama server**: `https://cis-ollama.auth.ad.bgu.ac.il` — self-signed cert, always pass `-k` / `verify=False`.
+- **Job submission — two backends**:
+  - `cluster-experimenting/submit_all.sh` → CPU sbatch, requests against shared `cis-ollama`. 9 jobs in 5 `afterok`-chained waves per `(model, think_mode)` (`run_condition.sbatch:2–5`). Each SLURM job loops all 5 conditions sequentially.
+  - `cluster-experimenting/submit_with_rtx.sh <model>` → GPU sbatch, self-deploys Ollama via Apptainer on a single rtx_6000 (48 GB) or rtx_pro_6000 (96 GB). One job per model, loops `THINK_MODES × CONDITIONS` in-process so weights stay resident. Auto-routes `gpt-oss:120b` → rtx_pro_6000 (65 GB weights won't fit on rtx_6000); other models default to rtx_6000. Override with `--gpu-type rtx_pro_6000`.
+  - `cluster-experimenting/submit_120b_cis.sh` → fallback for gpt-oss:120b via cis-ollama when rtx_pro_6000 queue is saturated. Wraps `run_condition.sbatch`.
+- **Log file**: `cluster-experimenting/logs/pddl_<model>_<think>-<jobid>.out` (cis) or `pddl_rtx_<model>-<jobid>.out` (rtx self-deploy). Legacy (pre-2026-04-21): `pddl_<model>_<cond>-<jobid>.out`.
+- **Results dir**: `results/slurm_<model>_<think>_<cond>_<jobid>/` (same format for both backends — distinguish runs by the job's `ollama_host` in `summary.json`).
+- **Ollama server**: `https://cis-ollama.auth.ad.bgu.ac.il` for cis path (self-signed cert, always pass `-k` / `verify=False`). For rtx self-deploy, `http://localhost:11434` inside the allocated compute node (no TLS).
 - **Routing rules** (from `CLAUDE.md`): MCP-tool bugs → `../pddl-copilot/plugins/<name>/server/`. Scoring/prompt/GT → here. This skill is read-only over experiment state.
 
 ## Safety
@@ -104,13 +107,32 @@ bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat pi
 3. `python3 .claude/skills/cluster-ops/scripts/plot.py <that-dir>` — write PNGs.
 4. Report to user with the plot paths and 3-5 key numbers.
 
-### "Submit the sweep"
+### "Submit the sweep" (cis-ollama, full 9-job sweep)
 
 1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes the two plugin venvs, confirms cis-ollama is reachable. Halts on any failure.
 2. `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_all.sh --dry-run'` — user reviews the 9-job wave plan.
 3. If approved, same command without `--dry-run`.
 
 **Resuming after a mid-sweep failure**: if an `afterok` chain halts and dependents land in `PENDING (DependencyNeverSatisfied)`, cancel the stuck chain (`scancel <ids>` after user confirms), diagnose, then resume with `bash cluster-experimenting/submit_all.sh --from-wave <N>`. The script's own preflight refuses if earlier-wave `pddl_*` jobs are still live; pass `--force` only after explicit user confirmation.
+
+### "Submit one model via rtx self-deploy" (dedicated GPU, no cis)
+
+Use this when the cis-ollama path is saturated (eviction thrashing on 120b, other users competing for NUM_PARALLEL=4 slots), or when you want to compare rtx-dedicated vs cis throughput for a specific model.
+
+1. Commit + push any sbatch changes locally. The cluster repo must be in sync before submit: `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && git pull'`.
+2. Dry-run: `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b --dry-run'`.
+3. If approved, same command without `--dry-run`.
+
+**GPU auto-routing**: `gpt-oss:120b` → rtx_pro_6000:1 (96 GB), all others → rtx_6000:1 (48 GB). Force with `--gpu-type rtx_pro_6000` for any model. Think modes auto-select: `default` for gemma, `on off` otherwise (both run sequentially in one job).
+
+**VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=8192`. After warmup, a runtime guard aborts if VRAM usage > 85% — catches pathological KV-cache allocations (a 0.6B model at NUM_PARALLEL=8 × ctx=40960 allocated 37.8 GB in a 2026-04-23 probe). Never raise NUM_PARALLEL without re-measuring.
+
+**rtx_pro_6000 availability check** (before submitting 120b):
+```bash
+ssh omereliy@slurm.bgu.ac.il \
+    'for n in ise-6000p-0{1..6}; do scontrol show node $n 2>/dev/null | awk -v n=$n "/AllocTRES/{print n, \$0}"; done'
+```
+If all 6 nodes show `gpu:rtx_pro_6000=8`, the pool is saturated → use `submit_120b_cis.sh` fallback instead.
 
 ### "Cancel jobs"
 

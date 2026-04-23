@@ -1,0 +1,233 @@
+#!/bin/bash
+### Runs run_experiment.py for ONE model on a SELF-DEPLOYED Ollama server
+### running inside an Apptainer container on a single GPU node.
+### Loops over all THINK_MODES × CONDITIONS in the same job so weights stay
+### resident — no cross-invocation eviction, no shared-server contention.
+###
+### Default GPU: rtx_6000:1 (48 GB) — fits all paper models except gpt-oss:120b.
+### For gpt-oss:120b, override on the sbatch command line:
+###   sbatch --gpus=rtx_pro_6000:1 --mem=96G ... run_condition_rtx.sbatch
+### submit_with_rtx.sh handles this routing automatically.
+###
+### Model VRAM fit (weights + KV cache at NUM_PARALLEL=4, ctx=8192):
+###   Qwen3.5:0.8B  ~ 3 GB   → fits rtx_6000 (48 GB) easily
+###   gpt-oss:20b   ~18 GB   → fits rtx_6000
+###   Qwen3.5:27b   ~23 GB   → fits rtx_6000
+###   gemma4:31b    ~26 GB   → fits rtx_6000
+###   gpt-oss:120b  ~77 GB   → REQUIRES rtx_pro_6000 (96 GB)
+###
+### Submit via cluster-experimenting/submit_with_rtx.sh <model>, or directly:
+###   sbatch --export=ALL,MODEL=gpt-oss:20b,THINK_MODES="on off" \
+###          cluster-experimenting/run_condition_rtx.sbatch
+###
+### Required env:
+###   MODEL        — Ollama model name (e.g. Qwen3.5:0.8B, gpt-oss:20b)
+###   THINK_MODES  — space-separated think modes, e.g. "on off" or "default"
+###
+### Optional env (defaults shown):
+###   CONDITIONS   — see run_condition.sbatch; default = all 5
+###   CONCURRENCY=4              (matches self-deploy OLLAMA_NUM_PARALLEL=4)
+###   CHAIN_SAMPLES=100
+###
+### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=8192 (set per-request by
+### run_experiment.py) sizes KV pre-allocation to fit alongside any 20-31B
+### model in 48 GB. Do NOT raise NUM_PARALLEL without recomputing VRAM —
+### probe 2026-04-23 observed NUM_PARALLEL=8 × ctx=40960 allocating 37.8 GB
+### for a 0.6B model (pathological). A runtime VRAM guard aborts if usage
+### exceeds 85% after model warmup.
+###
+#SBATCH --partition=main
+#SBATCH --job-name=pddl_copilot_rtx
+#SBATCH --output=cluster-experimenting/logs/%x-%J.out
+#SBATCH --gpus=rtx_6000:1
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=48G
+#SBATCH --time=2-00:00:00
+
+set -eo pipefail
+
+### Job info ###
+echo "SLURM_JOBID=$SLURM_JOBID"
+echo "SLURM_JOB_NODELIST=$SLURM_JOB_NODELIST"
+echo "Node IP: $(hostname -i)"
+echo "Start time: $(date)"
+nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1
+
+### Required inputs ###
+: "${MODEL:?Error: export MODEL=... (e.g. Qwen3.5:0.8B). Submit via submit_with_rtx.sh}"
+: "${THINK_MODES:?Error: export THINK_MODES=... (e.g. \"on off\" or \"default\")}"
+
+# 120b requires rtx_pro_6000 (96 GB). The VRAM guard after warmup will catch
+# cases where this sbatch is submitted with the default --gpus=rtx_6000 and
+# the 48 GB VRAM can't hold 65 GB weights. submit_with_rtx.sh handles the
+# routing automatically.
+
+for tm in $THINK_MODES; do
+    case "$tm" in
+        on|off|default) ;;
+        *) echo "Error: invalid THINK_MODE=$tm (must be on|off|default)"; exit 1 ;;
+    esac
+done
+
+### Defaults ###
+ENV_NAME="${ENV_NAME:-pddl_copilot}"
+EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
+MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
+CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
+CONCURRENCY="${CONCURRENCY:-4}"
+CONDITIONS="${CONDITIONS:-no-tools tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided}"
+
+MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
+
+### Workspace on compute-node local disk ###
+WORK=/tmp/rtx-$SLURM_JOBID
+mkdir -p "$WORK/models"
+cd "$WORK"
+
+SIF=$WORK/ollama.sif
+if [ -f $HOME/ollama.sif ]; then
+    echo "Using cached .sif from \$HOME/ollama.sif"
+    cp $HOME/ollama.sif $SIF
+else
+    echo "Building ollama.sif from docker://ollama/ollama (first run, ~3 min)"
+    apptainer build --nv --force $SIF docker://ollama/ollama 2>&1 | tail -3
+    cp $SIF $HOME/ollama.sif
+    echo "Cached to \$HOME/ollama.sif for future jobs"
+fi
+
+### Start ollama serve (background) with conservative KV settings ###
+PORT=11434
+echo "Starting ollama serve on localhost:$PORT (NUM_PARALLEL=4, MAX_LOADED=1, CTX_CAP=8192)"
+apptainer exec --nv \
+    --bind "$WORK/models:/root/.ollama" \
+    --writable-tmpfs \
+    "$SIF" bash -c "
+        export OLLAMA_HOST=0.0.0.0:$PORT
+        export OLLAMA_NUM_PARALLEL=4
+        export OLLAMA_MAX_LOADED_MODELS=1
+        export OLLAMA_KEEP_ALIVE=1h
+        export OLLAMA_CONTEXT_LENGTH=8192
+        ollama serve
+    " > "$WORK/ollama-serve.log" 2>&1 &
+SERVE_PID=$!
+trap 'echo "Shutting down..."; kill $SERVE_PID 2>/dev/null || true; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT
+
+for i in $(seq 1 90); do
+    if curl -sf http://localhost:$PORT/ >/dev/null 2>&1; then
+        echo "ollama serve up after ${i}s"
+        break
+    fi
+    sleep 1
+done
+
+### Pull target model ###
+echo "Pulling $MODEL..."
+t0=$EPOCHREALTIME
+apptainer exec --nv --bind "$WORK/models:/root/.ollama" --writable-tmpfs "$SIF" \
+    bash -c "OLLAMA_HOST=http://localhost:$PORT ollama pull '$MODEL'" 2>&1 | tail -2
+t1=$EPOCHREALTIME
+awk -v m="$MODEL" "BEGIN{printf \"pull %s: %.1fs\n\", m, $t1-$t0}"
+
+### Warmup (load into VRAM at ctx=8192) ###
+echo "Warmup (load into VRAM with num_ctx=8192)..."
+curl -s --max-time 300 http://localhost:$PORT/api/chat \
+    -H "Content-Type: application/json" \
+    -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":false,\"keep_alive\":\"1h\",\"options\":{\"num_predict\":5,\"num_ctx\":8192}}" \
+    >/dev/null
+apptainer exec --bind "$WORK/models:/root/.ollama" "$SIF" \
+    bash -c "OLLAMA_HOST=http://localhost:$PORT ollama ps" 2>&1
+
+### VRAM sanity check: abort if > 85% used (likely KV-cache blowup) ###
+VRAM_USED=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1 | tr -d ' ')
+VRAM_TOTAL=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1 | tr -d ' ')
+VRAM_PCT=$(( VRAM_USED * 100 / VRAM_TOTAL ))
+echo "VRAM after warmup: ${VRAM_USED}/${VRAM_TOTAL} MiB (${VRAM_PCT}%)"
+if [ "$VRAM_PCT" -gt 85 ]; then
+    echo "ERROR: VRAM usage ${VRAM_PCT}% exceeds 85% safety threshold after loading $MODEL."
+    echo "       Likely cause: OLLAMA_NUM_PARALLEL or num_ctx too high for this model."
+    echo "       Check run_condition_rtx.sbatch OLLAMA_NUM_PARALLEL (currently 4) and"
+    echo "       run_experiment.py DEFAULT_NUM_CTX (currently 8192)."
+    exit 3
+fi
+
+### Activate conda env for run_experiment.py ###
+module load anaconda
+source activate "$ENV_NAME"
+
+### Main loop: THINK_MODES × CONDITIONS ###
+OLLAMA_HOST="http://localhost:$PORT"
+export OLLAMA_HOST
+# Explicit empty string so --ollama-insecure is NOT set (no TLS on localhost)
+unset OLLAMA_INSECURE
+
+echo
+echo "Model:       $MODEL"
+echo "Think modes: $THINK_MODES"
+echo "Conditions:  $CONDITIONS"
+echo "Marketplace: $MARKETPLACE_PATH"
+echo "Ollama host: $OLLAMA_HOST (self-deployed, $(hostname):$PORT)"
+echo "Concurrency: $CONCURRENCY"
+echo
+
+cd "$EXPT_ROOT"
+OVERALL_RC=0
+
+for THINK_MODE in $THINK_MODES; do
+    THINK_ARG=()
+    if [ "$THINK_MODE" != "default" ]; then
+        THINK_ARG=(--think "$THINK_MODE")
+    fi
+
+    for COND in $CONDITIONS; do
+        echo
+        echo "===================================================================="
+        echo "THINK: $THINK_MODE   CONDITION: $COND   started $(date)"
+        echo "===================================================================="
+
+        CHAINS_ARGS=(--chains --chain-samples "$CHAIN_SAMPLES")
+        case "$COND" in
+            no-tools)
+                COND_ARGS=(--conditions no-tools)
+                CHAINS_ARGS=() ;;
+            tools_per-task_minimal)
+                COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
+            tools_per-task_guided)
+                COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
+            tools_all_minimal)
+                COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
+            tools_all_guided)
+                COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
+            *)
+                echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
+        esac
+
+        # OUT_DIR name matches run_condition.sbatch format so aggregate.py /
+        # plot.py parse both cis-ollama and rtx self-deploy runs identically.
+        # Distinguish runs via the job name (pddl_rtx_* vs pddl_*) and the
+        # ollama-host recorded in summary.json.
+        OUT_DIR="${EXPT_ROOT}/results/slurm_${MODEL_TAG}_${THINK_MODE}_${COND}_${SLURM_JOBID}"
+
+        python3 run_experiment.py \
+            --marketplace-path "$MARKETPLACE_PATH" \
+            --models "$MODEL" \
+            --ollama-host "$OLLAMA_HOST" \
+            "${CHAINS_ARGS[@]}" \
+            --concurrency "$CONCURRENCY" \
+            "${THINK_ARG[@]}" \
+            "${COND_ARGS[@]}" \
+            --output-dir "$OUT_DIR"
+        RC=$?
+
+        echo "===================================================================="
+        echo "THINK: $THINK_MODE   CONDITION: $COND   finished $(date)   rc=$RC"
+        echo "===================================================================="
+
+        if [ "$RC" -ne 0 ]; then
+            OVERALL_RC=$RC
+        fi
+    done
+done
+
+echo
+echo "End time: $(date)   overall rc=$OVERALL_RC"
+exit $OVERALL_RC

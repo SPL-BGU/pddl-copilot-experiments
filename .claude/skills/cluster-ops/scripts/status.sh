@@ -41,7 +41,10 @@ rows = []
 
 # New layout: job name ends in _on|_off|_default
 NEW_NAME = re.compile(r'_(on|off|default)$')
-BANNER = re.compile(r'^==== CONDITION: (.+) ====$', re.M)
+# run_condition.sbatch emits "CONDITION: <cond>  ... started ..." per cond start.
+BANNER = re.compile(r'^CONDITION:\s+(\S+)\s+.*started', re.M)
+# run_condition.sbatch:98 → "Conditions:  cond1 cond2 ..." (space-separated list).
+CONDITIONS_LINE = re.compile(r'^Conditions:\s+(.+)$', re.M)
 PROGRESS = re.compile(r'\[ *(\d+)/250 ')
 CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
 T1200 = re.compile(r'(1199|1200|1201)\.\d+s.*FAIL \(exception\)')
@@ -66,9 +69,12 @@ for line in queue_raw.splitlines():
     text = open(f, errors='replace').read()
 
     if NEW_NAME.search(jname):
+        # Denominator from the job's own "Conditions:" line (respects CONDITIONS env override).
+        conds_m = CONDITIONS_LINE.search(text)
+        total_conds = len(conds_m.group(1).split()) if conds_m else 5
         # banners within one file; current cond is the last banner
         banners = list(BANNER.finditer(text))
-        total_banners = len(banners)
+        cur_idx = len(banners)
         if banners:
             cur_cond = banners[-1].group(1)
             slice_text = text[banners[-1].end():]
@@ -79,7 +85,7 @@ for line in queue_raw.splitlines():
         st = st_matches[-1] if st_matches else "0"
         chain_matches = CHAIN.findall(slice_text)
         chain_done = len(chain_matches)
-        phase = f"cond {total_banners}/5: {cur_cond}"
+        phase = f"cond {cur_idx}/{total_conds}: {cur_cond}"
     else:
         # legacy: one condition per file
         st_matches = PROGRESS.findall(text)
