@@ -25,7 +25,9 @@
 ###   THINK_MODES  — space-separated think modes, e.g. "on off" or "default"
 ###
 ### Optional env (defaults shown):
-###   CONDITIONS   — see run_condition.sbatch; default = all 5
+###   CONDITIONS   — default = 4 tools conditions (no-tools omitted; rerun
+###                  separately when wanted, matches Qwen3.5:0.8B reference set).
+###                  Override: CONDITIONS="no-tools" bash submit_with_rtx.sh ...
 ###   CONCURRENCY=4              (matches self-deploy OLLAMA_NUM_PARALLEL=4)
 ###   CHAIN_SAMPLES=100
 ###
@@ -75,7 +77,7 @@ EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
 CONCURRENCY="${CONCURRENCY:-4}"
-CONDITIONS="${CONDITIONS:-no-tools tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided}"
+CONDITIONS="${CONDITIONS:-tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided}"
 
 MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
 
