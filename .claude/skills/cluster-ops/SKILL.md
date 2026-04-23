@@ -123,7 +123,7 @@ Use this when the cis-ollama path is saturated (eviction thrashing on 120b, othe
 2. Dry-run: `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b --dry-run'`.
 3. If approved, same command without `--dry-run`.
 
-**GPU auto-routing**: `gpt-oss:120b` → rtx_pro_6000:1 (96 GB), all others → rtx_6000:1 (48 GB). Force with `--gpu-type rtx_pro_6000` for any model. Think modes auto-select: `default` for gemma, `on off` otherwise (both run sequentially in one job).
+**GPU auto-routing**: `gpt-oss:120b` → rtx_pro_6000:1 (96 GB), all others → rtx_6000:1 (48 GB). Force with `--gpu-type rtx_pro_6000` for any model. Think modes auto-select: `on off` for all models (both run sequentially in one job so weights stay resident). Override with `--think-modes "default"` for a model that lacks the think kwarg.
 
 **VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=8192`. After warmup, a runtime guard aborts if VRAM usage > 85% — catches pathological KV-cache allocations (a 0.6B model at NUM_PARALLEL=8 × ctx=40960 allocated 37.8 GB in a 2026-04-23 probe). Never raise NUM_PARALLEL without re-measuring.
 

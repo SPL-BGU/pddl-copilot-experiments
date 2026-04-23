@@ -39,12 +39,18 @@ import os, re, sys
 queue_raw = sys.argv[1]
 rows = []
 
-# New layout: job name ends in _on|_off|_default
-NEW_NAME = re.compile(r'_(on|off|default)$')
-# run_condition.sbatch emits "CONDITION: <cond>  ... started ..." per cond start.
-BANNER = re.compile(r'^CONDITION:\s+(\S+)\s+.*started', re.M)
-# run_condition.sbatch:98 → "Conditions:  cond1 cond2 ..." (space-separated list).
+# Banner matches both layouts:
+#   cis:  "CONDITION: <cond>   started ..."         (run_condition.sbatch)
+#   rtx:  "THINK: on   CONDITION: <cond>   started ..." (run_condition_rtx.sbatch)
+# Dropping the ^ anchor lets the regex match mid-line for the rtx layout.
+BANNER = re.compile(r'CONDITION:\s+(\S+)\s+.*started', re.M)
+# Both sbatches emit "Conditions:  cond1 cond2 ..." during setup; presence of
+# this line is the signal that the job loops multiple conditions in one file
+# (cis: single think × N conds, rtx: M thinks × N conds).
 CONDITIONS_LINE = re.compile(r'^Conditions:\s+(.+)$', re.M)
+# rtx sbatch prints "Think modes: on off"; cis sbatch prints the singular
+# "Think mode:  on|off|default" — match either so we count banners correctly.
+THINK_MODES_LINE = re.compile(r'^Think mode(?:s)?:\s+(.+)$', re.M)
 PROGRESS = re.compile(r'\[ *(\d+)/250 ')
 CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
 T1200 = re.compile(r'(1199|1200|1201)\.\d+s.*FAIL \(exception\)')
@@ -68,11 +74,17 @@ for line in queue_raw.splitlines():
 
     text = open(f, errors='replace').read()
 
-    if NEW_NAME.search(jname):
-        # Denominator from the job's own "Conditions:" line (respects CONDITIONS env override).
-        conds_m = CONDITIONS_LINE.search(text)
-        total_conds = len(conds_m.group(1).split()) if conds_m else 5
-        # banners within one file; current cond is the last banner
+    # Detect multi-cond layout by the presence of a "Conditions:" line.
+    # Covers both run_condition.sbatch (cis) and run_condition_rtx.sbatch,
+    # regardless of whether the job name ends with _on|_off|_default.
+    conds_m = CONDITIONS_LINE.search(text)
+    if conds_m:
+        total_conds = len(conds_m.group(1).split())
+        thinks_m = THINK_MODES_LINE.search(text)
+        n_thinks = len(thinks_m.group(1).split()) if thinks_m else 1
+        # Denominator = think_modes × conditions (rtx loops outer THINK_MODES;
+        # cis has a single think per job so n_thinks=1 and denom==total_conds).
+        total_banners = total_conds * n_thinks
         banners = list(BANNER.finditer(text))
         cur_idx = len(banners)
         if banners:
@@ -85,9 +97,9 @@ for line in queue_raw.splitlines():
         st = st_matches[-1] if st_matches else "0"
         chain_matches = CHAIN.findall(slice_text)
         chain_done = len(chain_matches)
-        phase = f"cond {cur_idx}/{total_conds}: {cur_cond}"
+        phase = f"cond {cur_idx}/{total_banners}: {cur_cond}"
     else:
-        # legacy: one condition per file
+        # Legacy layout: one condition per file, no "Conditions:" setup line.
         st_matches = PROGRESS.findall(text)
         st = st_matches[-1] if st_matches else "0"
         chain_matches = CHAIN.findall(text)
