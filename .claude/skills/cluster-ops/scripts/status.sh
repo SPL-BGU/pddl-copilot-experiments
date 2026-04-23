@@ -53,8 +53,6 @@ CONDITIONS_LINE = re.compile(r'^Conditions:\s+(.+)$', re.M)
 THINK_MODES_LINE = re.compile(r'^Think mode(?:s)?:\s+(.+)$', re.M)
 PROGRESS = re.compile(r'\[ *(\d+)/250 ')
 CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
-T1200 = re.compile(r'(1199|1200|1201)\.\d+s.*FAIL \(exception\)')
-RESULT = re.compile(r' -> ')
 
 for line in queue_raw.splitlines():
     line = line.strip()
@@ -106,15 +104,11 @@ for line in queue_raw.splitlines():
         chain_done = len(chain_matches)
         phase = "legacy single-cond"
 
-    total_done = len(RESULT.findall(text))
-    t1200_count = len(T1200.findall(text))
-    pct = f"{(t1200_count / total_done * 100):.0f}%" if total_done > 0 else "-"
-
     rows.append((f"{jid}:{jname}", phase, f"{st}/250",
-                 f"{chain_done}/400", f"{t1200_count} ({pct})", elapsed))
+                 f"{chain_done}/400", elapsed))
 
-print('| job | phase | ST | chain | 1200s-timeouts | elapsed |')
-print('|---|---|---|---|---|---|')
+print('| job | phase | ST | chain | elapsed |')
+print('|---|---|---|---|---|')
 for r in rows:
     print('| ' + ' | '.join(r) + ' |')
 PY

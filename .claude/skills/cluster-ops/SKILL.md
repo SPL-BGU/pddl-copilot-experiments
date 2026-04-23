@@ -34,7 +34,7 @@ All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-
 
 ### `scripts/status.sh` — cluster status snapshot
 
-Prints a Markdown table of every running job with: condition index (which of 5), single-task progress `N/250`, chain progress `k/400`, and gateway-timeout percentage. Handles both legacy (one condition per job) and current (5 conditions per job) `.out` layouts.
+Prints a Markdown table of every running job with: condition index (which of 5), single-task progress `N/250`, and chain progress `k/400`. Handles both legacy (one condition per job) and current (5 conditions per job) `.out` layouts.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/status.sh
@@ -94,8 +94,7 @@ bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat pi
 ### "What's the cluster status?"
 
 1. `bash .claude/skills/cluster-ops/scripts/status.sh` — table of all running jobs.
-2. If any job shows `>20%` gateway-timeout rate → queue is saturated (`ISS-015`), suggest narrowing the submit or waiting for the current wave to finish.
-3. If any job has been stuck at the same progress for >30 min → tail the `.out` file to see the last line and surface to the user:
+2. If any job has been stuck at the same progress for >30 min → tail the `.out` file to see the last line and surface to the user:
    ```bash
    ssh omereliy@slurm.bgu.ac.il 'tail -50 pddl-copilot-experiments/cluster-experimenting/logs/*-<jobid>.out'
    ```
@@ -146,10 +145,7 @@ ssh omereliy@slurm.bgu.ac.il 'scancel <id> <id> …'
 
 ### "Debug a FAIL (exception) cluster"
 
-The tag is overloaded (see `development/OPEN_ISSUES.md:ISS-015`, `ISS-016`). Classify by elapsed time in the `.out`:
-
-- `1200.0s ± 0.5`: BGU reverse-proxy 504 (queue saturation / model eviction). `ISS-015`. Not a code bug.
-- Any other elapsed: real MCP/chat failure, often FD-stdout pollution on tool use (`ISS-016`, fixed 2026-04-21 in `pddl-copilot` as `bb23ad0`).
+Real MCP/chat failure, often FD-stdout pollution on tool use (`ISS-016`, fixed 2026-04-21 in `pddl-copilot` as `bb23ad0`).
 
 The stderr lines added in commit `cea5ae0` (`run_experiment.py:951–971`) print the exception type + message live in the `.out`. For older jobs, the message only exists in `single_task_*.json`.
 
