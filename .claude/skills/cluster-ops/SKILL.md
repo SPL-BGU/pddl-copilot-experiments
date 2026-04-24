@@ -2,7 +2,7 @@
 name: cluster-ops
 description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — query queue + progress, submit/cancel jobs, sync results locally, aggregate summary JSONs, render paper-style plots, and diagnose cis-ollama reachability. Trigger on "cluster status", "what's running", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama". Read this skill before running SSH/rsync/plot commands ad-hoc; it avoids re-deriving the grep patterns and result-dir conventions every session.
 disable-model-invocation: true
-argument-hint: [status | preflight | sync | aggregate | plot | diag]
+argument-hint: [status | preflight | sync | aggregate | plot | table | diag]
 ---
 
 ## Why this skill exists
@@ -64,13 +64,39 @@ Legacy dirs (no `<think>` segment) are treated as `think=default` with a header 
 
 ### `scripts/plot.py` — paper-style plots
 
-Generalization of `results/full-cluster-run1/make_plots.py`. Auto-discovers series from dir names + summary meta; dynamically builds the SERIES list. Three figures (fig1 single-task, fig2 chain, fig3 planner-selection).
+Auto-discovers series from dir names + summary meta; dynamically builds the SERIES list. Seven figures in `<root>/plots/`:
+
+- `fig1_single_task.png` — task × series success-rate bars with Wilson 95% CI whiskers
+- `fig2_chain.png` — chain length × series bars (chain=1 is ST mean), CI whiskers on L=2..5
+- `fig3_tool_selection.png` — classical vs numeric planner-selection rate on `solve`
+- `fig4_failure_breakdown.png` — 1×5 grid of 100%-stacked failure-reason bars per task
+- `fig5_domain_heatmap.png` — 1×5 heatmap grid, rows=series × cols=10 domains, cell=`k/n`
+- `fig6_tool_adherence.png` — per-task `tool_selected_rate` with CI whiskers (with-tools only)
+- `fig7_chain_step_survival.png` — P(reach step k) per chain length L=2..5
 
 ```bash
-python3 .claude/skills/cluster-ops/scripts/plot.py                                  # auto-pick latest, plots → <root>/plots/
-python3 .claude/skills/cluster-ops/scripts/plot.py results/full-cluster-run1        # explicit root
+python3 .claude/skills/cluster-ops/scripts/plot.py                                     # auto-pick latest, plots → <root>/plots/
+python3 .claude/skills/cluster-ops/scripts/plot.py results/full-cluster-run1           # explicit root
 python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --group-by think
+python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --figs 1,4,5  # subset
+python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --no-ci       # drop CI whiskers
+python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --merge       # pooled (model, think) → plots/merged/
 ```
+
+`--figs` accepts `all` (default) or a comma list over `1..7`. `--no-ci` disables error bars on figs 1, 2, 6. `--merge` pools `tool_filter × prompt_style` into a single series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n) and writes to `<root>/plots/merged/` — run it alongside the default invocation to get both views.
+
+### `scripts/table.py` — master pivot (md + csv + tex)
+
+Emits one large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, host, jobid)`. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%}` × 5 tasks + chain `succ% [lo–hi]` × `L=2..5` + ST-mean + total n. The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`) for downstream analysis.
+
+```bash
+python3 .claude/skills/cluster-ops/scripts/table.py                                    # auto-pick latest, writes <root>/tables/master.{md,csv,tex}
+python3 .claude/skills/cluster-ops/scripts/table.py results/cluster-20260424           # explicit root
+python3 .claude/skills/cluster-ops/scripts/table.py results/cluster-20260424 --formats md,csv
+python3 .claude/skills/cluster-ops/scripts/table.py results/cluster-20260424 --out /tmp/tables
+```
+
+Reuses `parse_dirname`/`load_summaries`/`host_tag` from `aggregate.py` (same dir) — no duplicated logic.
 
 ### `scripts/preflight.sh` — pre-submit cluster refresh
 
@@ -103,8 +129,9 @@ bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat pi
 
 1. `bash .claude/skills/cluster-ops/scripts/sync.sh` — rsync into `results/cluster-<today>/`.
 2. `python3 .claude/skills/cluster-ops/scripts/aggregate.py <that-dir>` — print success-rate tables.
-3. `python3 .claude/skills/cluster-ops/scripts/plot.py <that-dir>` — write PNGs.
-4. Report to user with the plot paths and 3-5 key numbers.
+3. `python3 .claude/skills/cluster-ops/scripts/plot.py <that-dir>` — write the 7 PNG figures.
+4. `python3 .claude/skills/cluster-ops/scripts/table.py <that-dir>` — write `tables/master.{md,csv,tex}` for the paper.
+5. Report to user with the plot paths and 3-5 key numbers.
 
 ### "Submit the sweep" (cis-ollama, full 9-job sweep)
 
