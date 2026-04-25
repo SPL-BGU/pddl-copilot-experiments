@@ -192,18 +192,25 @@ def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float
 
 
 def merge_series(series: list[dict]) -> list[dict]:
-    """Pool series by (model, think); collapse tool_filter × prompt_style.
+    """Pool tools_* series by (model, think); pass no-tools through unchanged.
 
     Counts (successes, n, truncated, tool_selected, failure_reasons, chain
-    successes/samples) are summed across the condition variants and rates +
-    Wilson CIs are recomputed on the pooled totals — that gives proper CIs
-    at n≈4× per cell, which averaging rates would not.
+    successes/samples) are summed across the tools_* condition variants and
+    rates + Wilson CIs are recomputed on the pooled totals — that gives
+    proper CIs at n≈4× per cell, which averaging rates would not. no-tools
+    rows are passed through so they remain as the baseline alongside the
+    merged tools series; pooling them would be a no-op (one no-tools cond
+    per (model, think)) and would also mask the cond="no-tools" tag that
+    fig3 / fig6 use to filter the baseline out of tool-adherence panels.
     """
+    tools_runs        = [s for s in series if s["cond"] != "no-tools"]
+    no_tools_passthru = [dict(s) for s in series if s["cond"] == "no-tools"]
+
     groups: dict[tuple[str, str], list[dict]] = {}
-    for s in series:
+    for s in tools_runs:
         groups.setdefault((s["model"], s["think"]), []).append(s)
 
-    merged: list[dict] = []
+    merged: list[dict] = list(no_tools_passthru)
     for (model, think), group in groups.items():
         pooled_single: list[dict] = []
         for task in TASKS:
@@ -681,8 +688,10 @@ def main():
     ap.add_argument("--no-ci", dest="ci", action="store_false", default=True,
                     help="omit Wilson CI error bars on figs 1, 2, 6")
     ap.add_argument("--merge", action="store_true", default=False,
-                    help="pool tool_filter × prompt_style into one series per "
-                         "(model, think); writes to <root>/plots/merged/")
+                    help="pool tool_filter × prompt_style into one tools_merged "
+                         "series per (model, think); no-tools series pass "
+                         "through unchanged as baselines. writes to "
+                         "<root>/plots/merged/")
     args = ap.parse_args()
 
     root = args.root or find_default_root()
@@ -692,10 +701,18 @@ def main():
 
     if args.merge:
         series = merge_series(series)
-        series.sort(key=lambda s: (s["model"], s["think"]))
+        # Within a (model, think) the no-tools baseline reads first, then
+        # the merged tools row — keeps legend ordering natural.
+        series.sort(key=lambda s: (
+            s["model"], s["think"],
+            0 if s["cond"] == "no-tools" else 1,
+        ))
         for s in series:
-            s["_label"] = (s["model"] if s["think"] == "default"
-                           else f"{s['model']} · {s['think']}")
+            cond_short = "no-tools" if s["cond"] == "no-tools" else "tools"
+            if s["think"] == "default":
+                s["_label"] = f"{s['model']} · {cond_short}"
+            else:
+                s["_label"] = f"{s['model']} · {s['think']} · {cond_short}"
         out = root / "plots" / "merged"
     else:
         order_key = {

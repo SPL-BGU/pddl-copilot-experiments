@@ -44,6 +44,10 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 - `.claude/skills/cluster-ops/scripts/postmortem.sh` (new, ~115 LOC)
 - `.claude/skills/cluster-ops/SKILL.md` (description, recipes, REASON cheat sheet, cancel recipe)
 
+**PR #6 review fix — `merge_series` no-tools pooling (2026-04-25 same day).** `plot.py --merge` previously grouped by `(model, think)` only, silently pooling the `no-tools` baseline into the merged tools series and labelling everything `cond="tools_merged"` — turning the merged rate into "all conditions averaged" rather than "tools-on, averaged over `tool_filter × prompt_style`". Fix: `merge_series` now restricts pooling to `cond != "no-tools"` and passes no-tools rows through unchanged so they remain as the baseline; the post-merge sort places the no-tools row above the merged tools row per `(model, think)`, and `_label` carries an explicit `· no-tools` / `· tools` suffix so the two series are distinct in the legend. fig3 / fig6 already filter via `s["cond"] != "no-tools"`, so they correctly drop the passthrough baseline. SKILL.md `--merge` description updated to match. No `summary.json` schema change; existing unmerged figures are unaffected (the merge path is gated entirely behind `if args.merge:`).
+
+**Tracked separately:** `ISS-018` (open) — restrict `think=off` to single-task evaluation, mirroring the existing `no-tools → single-task-only` routing (commit 9574fd3).
+
 ---
 
 ## 2026-04-23 — Parallelize chain-sample dispatch (match single-task concurrency)

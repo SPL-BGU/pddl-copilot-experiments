@@ -90,7 +90,7 @@ python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --no
 python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --merge       # pooled (model, think) → plots/merged/
 ```
 
-`--figs` accepts `all` (default) or a comma list over `1..7`. `--no-ci` disables error bars on figs 1, 2, 6. `--merge` pools `tool_filter × prompt_style` into a single series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n) and writes to `<root>/plots/merged/` — run it alongside the default invocation to get both views.
+`--figs` accepts `all` (default) or a comma list over `1..7`. `--no-ci` disables error bars on figs 1, 2, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged so they remain as the baseline next to each merged tools row. Output → `<root>/plots/merged/` — run it alongside the default invocation to get both views.
 
 ### `scripts/table.py` — master pivot (md + csv + tex)
 
