@@ -190,6 +190,15 @@ for THINK_MODE in $THINK_MODES; do
     fi
 
     for COND in $CONDITIONS; do
+        # No-tools is reported only for think=off — its only honest task
+        # (`solve`) doesn't depend on the reasoning budget, and
+        # think=on/default cells aren't part of any planned comparison.
+        # See EXPERIMENTS_FLOW.md §5.
+        if [ "$COND" = "no-tools" ] && [ "$THINK_MODE" != "off" ]; then
+            echo "Skipping no-tools/think=$THINK_MODE per matrix gating (no-tools reported only for think=off)"
+            continue
+        fi
+
         echo
         echo "===================================================================="
         echo "THINK: $THINK_MODE   CONDITION: $COND   started $(date)"

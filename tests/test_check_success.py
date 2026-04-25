@@ -257,16 +257,10 @@ async def test_simulate(r: TestResults):
                    gt, mcp, dom, prob, True,
                    (True, False, rx.FR_TOOL_ERROR))
 
-    # no-tools, response contains "state" + "after"
-    await run_case("sim nt state+after", r, "simulate",
-                   "After step 1, the state is: ...", [],
-                   gt, mcp, dom, prob, False,
-                   (None, True, rx.FR_OK))
-
-    # no-tools, empty response
-    await run_case("sim nt empty", r, "simulate", "", [],
-                   gt, mcp, dom, prob, False,
-                   (None, False, rx.FR_SIMULATE_EMPTY))
+    # No-tools simulate tests removed: the production matrix no longer
+    # produces (no-tools, simulate) jobs (run_single_task_experiment filter,
+    # CHANGELOG 2026-04-25), so the keyword-check scorer is unreachable
+    # except as defensive code.
 
 
 # ---------------------------------------------------------------------------

@@ -6,6 +6,37 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-25 — no-tools sweep: honest evaluation + matrix gating
+
+**Motivation.** Two of the three no-tools scorer paths produced inflated success rates that didn't reflect capability:
+- `simulate` no-tools was a literal keyword check (`"state"` + `"after"|"step"` in lowercase), so any model that began *"Here is the state transition trace…"* scored success without producing a real trajectory.
+- `validate_*` no-tools compared the model's `VERDICT: VALID|INVALID` claim to ground truth, but the bundled fixtures are 100% valid, so a "VERDICT: VALID" prior trivially won. With-tools `validate_*` shares the verdict-match step but additionally requires real tool/argument competence to reach it.
+
+Result-review of cluster-run1 (Qwen3.5:0.8B think=off no-tools) showed 88–100% on 4/5 tasks driven entirely by these biases — a paper-integrity risk if reported as-is.
+
+The no-tools matrix was also wider than needed: chains-on-no-tools collapse to N independent single-task attempts (no artifact propagation between steps), and the think-mode axis doesn't bind on no-tools (no tool args to construct).
+
+**Changes.**
+- **`run_experiment.py`**:
+  - `run_single_task_experiment` job builder filters no-tools jobs to `task == "solve"` only — the only no-tools task whose output is a PDDL artifact we can re-validate via pyvalidator (mirroring the with-tools scorer).
+  - Chain dispatcher (`async_main`, ~line 1726-1745) skips iterations with `with_tools=False` with a one-line note.
+  - `async_main` early-gate: `--conditions=no-tools` with `--think` ≠ `off` exits with a warning; `--conditions=both` with `--think` ≠ `off` runs tools side and suppresses no-tools.
+- **`cluster-experimenting/run_condition.sbatch`** + **`run_condition_rtx.sbatch`**: the per-condition loop skips `COND=no-tools` iterations when `THINK_MODE != off`.
+- **`EXPERIMENTS_FLOW.md`**: §4.2 rewritten to state no-tools is `solve`-only (validate_*, simulate dropped); §5 documents the think=off + single-task gating; §11 adds two methodology-delta rows.
+- **`tests/test_check_success.py`**: removed the two simulate-no-tools test cases (`"sim nt state+after"`, `"sim nt empty"`) — those exercised a code path that's now unreachable from the production matrix. Other no-tools tests retained as defensive-code coverage.
+
+**Compatibility.** Existing `results/cluster-202604*/` rows for `(no-tools, simulate)` and `(no-tools, validate_*)` are not invalidated — they remain on disk and analyzable, but should be excluded from any new headline table since the scorers that produced them are now retired (simulate) or known-biased (validate_*). Aggregators in `aggregate.py` / `plot.py` already group by `(model, task, cond)` so missing cells just don't render. Result-schema (§9) unchanged. With-tools sweep behavior is unchanged.
+
+**Closes / narrows.**
+- **ISS-002** closed (path b: drop simulate from headline).
+- **ISS-017** narrowed — the no-tools side of the inversion is sidestepped; the with-tools `validate_*` baseline-bias remains contingent on **ISS-001** (invalid fixtures).
+- Mirrors the `think=off` single-task gating from **ISS-018** onto the no-tools axis.
+- **ISS-001** cross-referenced — invalid fixtures remain the prerequisite for any future re-introduction of no-tools `validate_*`.
+
+**Files.** `run_experiment.py`, `cluster-experimenting/run_condition.sbatch`, `cluster-experimenting/run_condition_rtx.sbatch`, `EXPERIMENTS_FLOW.md`, `tests/test_check_success.py`, `development/OPEN_ISSUES.md`.
+
+---
+
 ## 2026-04-25 — `run_experiment.py` internal refactor: dedupe + mirror-site alignment
 
 **Motivation.** Review pass over `run_experiment.py` flagged ~30 lines of mechanical duplication and several mirror sites that had quietly diverged in shape coverage. Goal: shrink the surface without touching methodology, and align the duplicates so they can't drift further. Result JSON is byte-identical for current MCP traffic; existing 84-test scoring-audit suite passes unchanged.

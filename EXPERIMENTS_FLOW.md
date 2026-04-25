@@ -119,9 +119,23 @@ A model can have high tool_selected but low success (knows *what* to call but ca
 
 ### 4.2 Without-Tools
 
+The without-tools sweep is restricted to `solve` only — the only task whose
+free-text output is a PDDL artifact we can pass through pyvalidator the same
+way we do for tool results, mirroring the with-tools scorer.
+
 - `solve`: Extract plan lines from response, validate via pyvalidator (`valid == true`)
-- `validate_*`: Extract `VERDICT: VALID` or `VERDICT: INVALID` from response, compare to ground truth
-- `simulate`: Response contains "state" and ("after" or "step") -- loose keyword check
+- `validate_*`: **Dropped from no-tools.** The model emits no PDDL artifact —
+  just a verdict string — and the bundled ground truth is 100% VALID
+  (ISS-001), so a "VERDICT: VALID" prior trivially wins. Until invalid
+  fixtures are added, no-tools `validate_*` would measure only "did the model
+  say VALID." With-tools `validate_*` is unaffected (it still measures tool
+  selection + argument-shape competence).
+- `simulate`: **Dropped from no-tools.** A free-text trajectory grader would
+  itself be a research artifact and a new source of bias (ISS-002 path b).
+  With-tools `simulate` is unaffected.
+
+`run_single_task_experiment` enforces the filter: jobs with `with_tools=False`
+are emitted only for `task == "solve"`.
 
 ### 4.3 Chains
 
@@ -139,6 +153,24 @@ A chain of length N picks N random tasks and executes them sequentially in a sin
 | Chain samples | 20 | Per chain length |
 | Chain lengths | 2, 3, 4, 5 | |
 | Random seed | 42 | For chain task sampling |
+
+### No-tools matrix gating
+
+No-tools is reported only for `--think off` and only for the single-task phase:
+
+- `--conditions=no-tools` with `--think` ≠ `off` → exits early with a warning;
+  the `solve` no-tools cell isn't comparable across reasoning budgets (no tool
+  arguments to construct) so think=on/default cells aren't part of any
+  planned comparison.
+- `--conditions=both` with `--think` ≠ `off` → tools side runs normally,
+  no-tools side is suppressed with a note.
+- `--chains` with `--conditions=no-tools|both` → chain phase skips
+  `with_tools=False` (chains require artifact propagation across steps,
+  which the model can't do honestly without tools).
+
+Both Python (`run_experiment.py::async_main`) and the cluster sbatch scripts
+(`cluster-experimenting/run_condition*.sbatch`) enforce these gates as
+defense-in-depth. Mirrors the `think=off` single-task rule from ISS-018.
 
 ---
 
@@ -311,5 +343,7 @@ kill <PID>                  # Stop
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
 | Simulate success criterion | Non-error tool result | Trajectory deep-equality against oracle `gt["trace"]`. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
+| No-tools task set | All 5 tasks scored | Restricted to `solve` only (the only task with an honest free-text grader given the all-positive ground truth). `validate_*` and `simulate` are dropped from no-tools pending invalid fixtures (ISS-001) and a structured-trajectory grader. With-tools task set unchanged. |
+| No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. See §5. |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.

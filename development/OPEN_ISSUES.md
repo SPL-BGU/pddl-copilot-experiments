@@ -11,17 +11,13 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 ### ISS-001 · `validate_*` ground truth is all-positive
 **Source.** Results review of `qwen06b_20260419_210436_*`, issue 4.
 **Evidence.** `gt["domain_valid"]=True` for every bundled problem (no-tools `validate_domain` = 55/55 across all configs). `gt["problem_valid"]=True` for all 55 (3 misses are model false-negatives). Oracle-generated plans are always valid.
-**Status (2026-04-20).** Partially addressed. The paper-aligned 10-domain dataset (CHANGELOG 2026-04-20) ships 10 fixtures that are expected to be all-valid; the startup ground-truth summary surfaces per-problem `{domain,problem,plan}_valid` flags for manual review. The core issue — no *invalid* fixtures for the no-tools verdict baseline — is unchanged.
-**Impact.** The `validate_*` benchmark has zero invalid examples, so a `VERDICT: VALID` prior trivially wins the no-tools condition. Absolute verdict-accuracy numbers cannot be compared to the paper.
-**Fix (remaining).** Inject broken fixtures into `domains/` — corrupted parens, missing `:parameters`, invalid goals — so `gt["{domain,problem}_valid"]` has a non-trivial False fraction. Balance polarity per task.
+**Status (2026-04-25).** No-tools `validate_*` was dropped from the production matrix (CHANGELOG 2026-04-25), so no-tools is no longer affected. The remaining bias is on the with-tools side: a successful `validate_pddl_syntax` call always satisfies the verdict-match step. With-tools `validate_*` still produces a meaningful signal via tool-selection / argument-shape failures (`FR_TOOL_NOT_SELECTED`, `FR_TOOL_ERROR`), but absolute verdict-accuracy numbers can't be compared to the paper without invalid fixtures.
+**Impact.** With-tools `validate_*` measures tool/argument competence, not validation capability. Paper-comparable absolute numbers require invalid fixtures.
+**Fix (remaining).** Inject broken fixtures into `domains/` — corrupted parens, missing `:parameters`, invalid goals — so `gt["{domain,problem}_valid"]` has a non-trivial False fraction. Balance polarity per task. **Re-introducing no-tools `validate_*` is gated on this fix** — without invalid fixtures, the no-tools verdict-match is degenerate.
 **Files.** `domains/**/*.pddl`, ground-truth generation in `run_experiment.py`.
 
-### ISS-002 · `simulate` no-tools scorer is non-discriminative
-**Source.** Results review, issue 7.
-**Evidence.** `check_success` in `run_experiment.py` passes a simulate response whenever `"state"` + (`"after"` or `"step"`) appear in lowercase. 29/55 `truncated_no_answer` still scored `ok:40`.
-**Impact.** Measures vocabulary, not simulation correctness.
-**Fix.** Replace with structured-trace grader: parse a state sequence from the response and diff against `gt["state_trajectory"]`. Alternatively, flag this as a known limitation in the write-up and drop simulate from the no-tools headline numbers.
-**Files.** `run_experiment.py` (simulate branch of `check_success`), ground-truth trajectory emission.
+### ~~ISS-002~~ · `simulate` no-tools scorer is non-discriminative
+**Closed 2026-04-25** (path b — drop simulate from no-tools headline). The `run_single_task_experiment` job builder no longer emits `(no-tools, simulate)` jobs; `check_success`'s simulate no-tools branch remains as defensive code but is unreachable from the production matrix. See CHANGELOG 2026-04-25 (no-tools sweep entry).
 
 ### ISS-003 · Guided prompt is ineffective at 0.6b
 **Source.** Results review, issue 2.
@@ -32,13 +28,14 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ### ISS-017 · Grading bias inverts tools-vs-no-tools at small scales
 **Source.** Cluster-run1 analysis, 2026-04-22 (SLURM 17123867/8, Qwen3.5:0.8B, 6/10 conditions).
-**Evidence.** For Qwen3.5:0.8B (think=off, no-tools, n=50/task):
+**Status (2026-04-25).** No-tools side **sidestepped** — `validate_*` and `simulate` are no longer emitted as no-tools jobs (CHANGELOG 2026-04-25). Remaining concern: with-tools `validate_*` still measures `verdict == truth` against an all-positive ground truth, so a successful `validate_pddl_syntax` call always satisfies the verdict step regardless of whether the model would correctly distinguish valid from invalid PDDL. The remaining signal in with-tools `validate_*` is tool-selection + argument-shape competence (the paper's headline diagnostic), not validation capability per se. Closing the residual baseline-bias requires **ISS-001** (invalid fixtures).
+**Original evidence.** For Qwen3.5:0.8B (think=off, no-tools, n=50/task):
 - validate_domain 50/50 (100%), validate_problem 47/50 (94%), validate_plan 44/50 (88%), simulate 48/50 (96%).
 - Tools conditions on the same cells drop to 8–78% (`tool_not_selected` dominates failures: 71–150 of 250).
 - Direct inspection (`results/cluster-20260422/slurm_Qwen3_5_0_8B_off_no-tools_17123868/single_task_*.json`) shows the model emits `VERDICT: VALID` on 141/150 validate_* instances; all 150 gold verdicts are VALID (benchmark constructed from solvable problems).
 - Simulate responses begin with *"Here is the state transition trace..."* — always contains the `state`+`step`/`after` keywords that `check_success` (`run_experiment.py:883`) uses as the sole no-tools grader.
-**Impact.** The headline "tools help" narrative is **inverted** for the smallest model in the sweep: no-tools posts 88–100% on 4/5 tasks while tools post 8–44%. This is a paper-integrity risk — reporting the numbers as-is would let reviewers conclude "tools hurt small models", when in reality the no-tools baseline is inflated by grading bias (ISS-001, ISS-002), not a capability signal. Larger models (≥27b) likely escape the inversion because they select tools reliably, but the no-tools *absolute* numbers remain inflated across all model sizes under the same bias.
-**Fix.** Blocked on **ISS-001** (inject invalid fixtures) + **ISS-002** (structured simulate grader or drop from headline). No new harness work required here. When those land, re-run wave 1 (Qwen3.5:0.8B) as the regression case: expect no-tools validate_* to drop to near-chance, and tools to become the stronger condition once `tool_not_selected` stops being penalized relative to a trivial "always VALID" baseline.
+**Impact (residual).** Reviewers cannot conclude "tools improve validation" from with-tools `validate_*` numbers without invalid fixtures — the verdict-match step is satisfied trivially. The "tool-use competence" framing remains valid for the with-tools side (it still measures tool selection + argument shape).
+**Fix (residual).** Blocked on **ISS-001** (inject invalid fixtures). When that lands, re-baseline with-tools `validate_*` and re-introduce no-tools `validate_*` for a fair comparison.
 **Files.** Tracked upstream. This entry is a cross-reference + scope/severity note.
 
 ---
