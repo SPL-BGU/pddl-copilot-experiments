@@ -179,12 +179,15 @@ Use this when the cis-ollama path is saturated (eviction thrashing on 120b, othe
 
 ### "Cancel jobs"
 
-Specific IDs first; sweep-name-scoped pattern is the safer middle ground when the user wants the whole sweep gone:
+Specific IDs first; pipe `squeue → awk → scancel` is the safer middle ground when the user wants the whole sweep gone:
 
 ```bash
-ssh omereliy@slurm.bgu.ac.il 'scancel <id> <id> …'                # specific jobs
-ssh omereliy@slurm.bgu.ac.il "scancel -u omereliy --name=pddl_*"  # only the pddl sweep, leaves other jobs alone
+ssh omereliy@slurm.bgu.ac.il 'scancel <id> <id> …'                                                # specific jobs
+ssh omereliy@slurm.bgu.ac.il "squeue --me -h -o '%i %j' | awk '\$2 ~ /^pddl_/ {print \$1}' \
+                              | xargs --no-run-if-empty scancel"                                  # only the pddl sweep
 ```
+
+**Do NOT use `scancel --name=pddl_*`** — verified 2026-04-25 on SLURM 25.11.4: `--name` is exact-string match (comma-separated list of literal names), not a glob/regex, so `pddl_*` silently matches zero jobs and the cancel is a no-op with no error. Use the squeue→awk→xargs pipe above to filter by name prefix.
 
 `scancel -u omereliy` (nuke all, no name filter) needs an explicit user request — it will terminate jobs that have been running for hours and may not be sweep-related. Confirm first.
 

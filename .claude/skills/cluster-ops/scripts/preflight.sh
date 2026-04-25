@@ -94,7 +94,12 @@ echo "== sres (cluster utilization) =="
 # GPU UTILIZATION block — its 5-column header (6000 4090 3090 2080 1080)
 # conflates rtx_6000 with rtx_pro_6000 under "6000", so trust the per-partition
 # count above for routing decisions; this is just a one-glance saturation view.
-sres 2>/dev/null | sed -n '/GPU UTILIZATION/,/Available Resources/p' | sed '$d' | sed 's/^/    /'
+sres_block=$(sres 2>/dev/null | sed -n '/GPU UTILIZATION/,/Available Resources/p' | sed '$d')
+if [ -z "$sres_block" ]; then
+    echo "    (sres GPU UTILIZATION section not found — output format may have changed)"
+else
+    printf '%s\n' "$sres_block" | sed 's/^/    /'
+fi
 
 echo
 echo "== cis-ollama reachability =="

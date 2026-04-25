@@ -42,6 +42,10 @@ else
 fi
 
 if [ -n "$JOBS" ]; then
+    # `--jobs=` overrides the default `--user=` scope: sacct will return
+    # those exact job ids regardless of who owns them. Fine for the
+    # documented use case (the user passes ids they already saw under
+    # their own queue), but worth knowing.
     SCOPE="--jobs=$JOBS"
     NAME_FILTER=""
 else
