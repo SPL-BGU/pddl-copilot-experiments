@@ -13,8 +13,7 @@
 # either fails fast on stale code, missing capacity, or stale network.
 #
 # Usage:
-#   bash preflight.sh            # interactive: show what would change, then apply
-#   bash preflight.sh --yes      # non-interactive: apply without prompting
+#   bash preflight.sh            # pulls repos, refreshes venvs, reports capacity
 #
 # Env overrides:
 #   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
@@ -23,20 +22,17 @@ set -eo pipefail
 
 REMOTE_USER="${REMOTE_USER:-omereliy}"
 REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
-YES=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --yes|-y) YES=1; shift ;;
         -h|--help)
-            sed -n '1,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
-ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$YES" <<'REMOTE'
+ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" <<'REMOTE'
 set -eo pipefail
-YES="$1"
 
 EXPT="$HOME/pddl-copilot-experiments"
 PLUG="$HOME/pddl-copilot"

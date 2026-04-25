@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
         --since) shift; SINCE="$1"; shift ;;
         --jobs)  shift; JOBS="$1"; shift ;;
         -h|--help)
-            sed -n '1,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
