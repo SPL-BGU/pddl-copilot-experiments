@@ -78,6 +78,11 @@ MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided}"
+TASKS="${TASKS:-}"
+TASKS_ARG=()
+if [ -n "$TASKS" ]; then
+    TASKS_ARG=(--tasks $TASKS)
+fi
 
 MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
 
@@ -235,6 +240,7 @@ for THINK_MODE in $THINK_MODES; do
             --concurrency "$CONCURRENCY" \
             "${THINK_ARG[@]}" \
             "${COND_ARGS[@]}" \
+            "${TASKS_ARG[@]}" \
             --output-dir "$OUT_DIR"
         RC=$?
 
