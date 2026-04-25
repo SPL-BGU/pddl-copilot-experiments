@@ -1,14 +1,18 @@
 ---
 name: cluster-ops
-description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — query queue + pending-reason, submit/cancel jobs, sync results locally, aggregate summary JSONs, render paper-style plots, diagnose cis-ollama reachability, and post-mortem completed jobs (sacct/MaxRSS for right-sizing --mem). Trigger on "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama", "postmortem", "memory headroom". Read this skill before running SSH/rsync/plot commands ad-hoc; it avoids re-deriving the grep patterns and result-dir conventions every session.
+description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, aggregate summaries, render paper plots, diagnose cis-ollama, post-mortem completed jobs (right-size --mem from sacct/MaxRSS).
 context: fork
 agent: cluster-ops
 argument-hint: [status | preflight | sync | aggregate | plot | table | diag | postmortem]
 ---
 
+> User asked for: $ARGUMENTS — pick the matching recipe below.
+
 ## Why this skill exists
 
-Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, summary-JSON aggregations, and plot scripts. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 6 short helper scripts.
+Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama", "postmortem", "memory headroom".
+
+Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, summary-JSON aggregations, and plot scripts. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 6 short helper scripts. Read it before running SSH/rsync/plot commands ad-hoc.
 
 Cluster & repo conventions that matter here:
 

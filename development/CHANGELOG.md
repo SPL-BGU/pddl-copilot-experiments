@@ -34,6 +34,10 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 - No `summary.json` schema change. No methodology change. No re-run of any prior result needed.
 - No `ISS-###` closed; no new `ISS-###` opened — these are operational additions, not methodology fixes.
 
+**PR #6 review fixes (2026-04-25 same day).**
+- `.claude/agents/cluster-ops.md`: added `skills: [cluster-ops]` frontmatter so the SKILL.md auto-loads into the subagent's system prompt at startup ([documented field](https://code.claude.com/docs/en/subagents.md)). Removed the manual "Read SKILL.md at start of turn" instruction — saved one tool turn against the `maxTurns: 15` budget on every invocation. Added a one-line `$ARGUMENTS`-handling rule so `/cluster-ops postmortem --since YYYY-MM-DD` etc. land on the right recipe.
+- `.claude/skills/cluster-ops/SKILL.md`: trimmed `description:` from ~720 chars to ~330 chars (capability summary only); moved the trigger-keyword list and "read this skill before…" imperative into the body's "Why this skill exists" section. Added `> User asked for: $ARGUMENTS — pick the matching recipe below.` near the top so slash-invocation arguments are no longer silently dropped (`argument-hint: [status | preflight | …]` was previously decorative).
+
 **Files.**
 - `.claude/skills/cluster-ops/scripts/status.sh` (PENDING section + REASON column)
 - `.claude/skills/cluster-ops/scripts/preflight.sh` (GPU pool + `sres`)
