@@ -1138,6 +1138,14 @@ async def run_single_task_experiment(
     for model in models:
         for with_tools in with_tools_values:
             for task in tasks:
+                # No-tools is graded only for `solve` — the model's plan
+                # goes through the same pyvalidator path as a tool-returned
+                # plan, mirroring the with-tools scorer. Other tasks lack
+                # an honest free-text grader (simulate) or compare a
+                # verdict string against all-positive ground truth
+                # (validate_*); see EXPERIMENTS_FLOW.md §4.2.
+                if not with_tools and task != "solve":
+                    continue
                 np_for_task = _resolve_num_predict(num_predict_override, task)
                 for dname, dinfo in domains.items():
                     for pname, ppddl in dinfo["problems"].items():
@@ -1623,6 +1631,25 @@ async def async_main(args):
     else:
         think_override = None
 
+    # No-tools is gated to think=off — its only honest task (`solve`) doesn't
+    # depend on the model's reasoning budget (no tool args to construct),
+    # so think=on/default cells aren't part of any planned comparison.
+    # Mirrors the single-task gating from ISS-018. See EXPERIMENTS_FLOW.md §5.
+    if args.conditions in ("no-tools", "both") and args.think != "off":
+        if args.conditions == "no-tools":
+            print(
+                f"\nWARNING: --conditions=no-tools with --think={args.think} is "
+                "not part of the run matrix (no-tools is reported only for "
+                "think=off). Exiting without running."
+            )
+            return
+        print(
+            f"\nNote: --conditions=both with --think={args.think} — the "
+            "no-tools cell is suppressed (reported only for think=off). "
+            "Running tools side only."
+        )
+        args.conditions = "tools"
+
     # "Remote" = any non-localhost host. Controls default-model fallback and
     # is surfaced in the startup banner so result files can't be confused
     # with local runs.
@@ -1726,6 +1753,12 @@ async def async_main(args):
         if args.chains:
             print("\n--- Multi-Task Chain Evaluation ---")
             for cond_with_tools in _expand_conditions(args.conditions):
+                # No-tools is single-task-only: chains require artifact
+                # propagation across steps, which the model can't do
+                # honestly without tools. See EXPERIMENTS_FLOW.md §4.3.
+                if not cond_with_tools:
+                    print("\n  Skipping chain phase for no-tools (single-task-only)")
+                    continue
                 print(f"\n  Condition: {'tools' if cond_with_tools else 'no-tools'}")
                 chain_results += await run_chain_experiment(
                     client=client,
