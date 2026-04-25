@@ -6,6 +6,38 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-25 — `run_experiment.py` internal refactor: dedupe + mirror-site alignment
+
+**Motivation.** Review pass over `run_experiment.py` flagged ~30 lines of mechanical duplication and several mirror sites that had quietly diverged in shape coverage. Goal: shrink the surface without touching methodology, and align the duplicates so they can't drift further. Result JSON is byte-identical for current MCP traffic; existing 84-test scoring-audit suite passes unchanged.
+
+**Changes — `run_experiment.py` (one file).**
+- New helpers in the existing helper block (no module/file reorg):
+  - `_safe_json_loads(raw)` (parse-or-passthrough; replaces 6 ad-hoc `json.loads(raw) if isinstance(raw, str) else raw / except (ValueError, TypeError)` blocks at `_parse_validation_verdict`, `_extract_plan_from_tool_result`, `_tool_error_seen`, the simulate path's oracle-trace + per-result loop, and `evaluate_one`'s tool-error message extraction).
+  - `_classify_step_failure(success, done_reason, loop_exhausted, failure_reason) -> (failure_reason, truncated)` — folds the `if loop_exhausted and not success: fr = FR_LOOP_EXHAUSTED` + `truncated = done_reason == "length"` + `_apply_truncation_override(...)` triplet shared by `evaluate_one` and the chain `run_sample`.
+  - `_resolve_num_predict(override, task)` — the `override if override is not None else DEFAULT_NUM_PREDICT[task]` resolver, used in both the single-task job builder and the chain step loop.
+  - `_build_plan_str(gt)` — the list-or-string-or-empty plan stringifier shared by `generate_ground_truth`, `evaluate_one`, and `run_sample`.
+- `RESPONSE_SNAPSHOT_LEN = 500` hoisted to the constants block; replaces magic `[:500]` slices in `evaluate_one` (response field) and `run_sample` (chain `exc_message`).
+- **I1 alignment**: `evaluate_one`'s tool-error message extraction now runs through `_safe_json_loads`, matching the string-or-dict shape coverage that `_tool_error_seen` already promised in its docstring. With current MCP traffic (always string) this is a no-op; if `MCPPlanner.call_tool` ever returns parsed dicts, both sides now agree on which records have an extractable error message instead of one flagging and the other silently dropping it.
+- **I3**: `extract_plan_lines` uses the regex match offset (`m.start()`) for paren location instead of a manual `stripped.find("(")` — fewer parallel parses, behavior unchanged on representative inputs (all-prefixes test set in dev probe passed).
+- **I5**: dropped the dead `chain_lengths=[2,3,4,5]` explicit override at `async_main`'s `run_chain_experiment` call site — the function default already matches; converted the default itself from `list` to `tuple` (mutable-default-arg smell gone).
+- **I10**: `chat_without_tools` now appends the assistant turn to `messages` internally, matching `chat_with_tools`'s post-call shape. Removed the manual `messages.append({"role": "assistant", ...})` in `run_sample`'s no-tools branch. `evaluate_one` discards `messages` immediately after, so the extra append is benign there.
+
+**Net effect.** ~30 lines shorter; six mirror-site duplications collapsed; one latent shape-coverage bug (I1) closed defensively; one mutable-default-arg smell (I5) fixed.
+
+**Tests / validation.**
+- `tests/verify.sh` (existing scoring-audit suite): 49/49 + 35/35 = 84/84 PASS, unchanged.
+- Forward-coverage probe for I1: `_tool_error_seen` and the new `_safe_json_loads`-based extraction agree on both string-shape and dict-shape `tc.result` inputs. Probe lives in dev-only verification — not added as a regression test since real traffic doesn't hit the dict path.
+- Helper unit checks (run inline during refactor): `_safe_json_loads` round-trips dict/list/str/None/int; `_classify_step_failure` correctly sequences LOOP_EXHAUSTED before truncation override and respects success-skips-override; `_resolve_num_predict` honours both branches; `_build_plan_str` handles list/str/missing/empty plan; `extract_plan_lines` matches prior output on prefix/bullet/code-fence/no-prefix inputs.
+- `python3 -c "import run_experiment"` and `python3 -m compileall` clean.
+
+**Compatibility.**
+- No methodology change. `TaskResult` JSON shape, `FR_*` vocabulary, verbose-bridge contract, `check_success` 5-path scoring rules, chain all-or-nothing semantics, RNG pre-sampling order — all preserved.
+- `summary.json` shape unchanged; result-file naming unchanged.
+- Existing `results/` are still directly comparable to fresh runs.
+- No `ISS-###` closed; one new `ISS-###` queued (deferred from this pass): `evaluate_one`'s tool-error message extraction walks all tool calls without filtering by the tool name that triggered `FR_TOOL_ERROR`, so with `--tool-filter=all` and a multi-tool `solve` task an unrelated planner error could be surfaced as the wrong tool's message. Edge-case; not currently observed in practice.
+
+---
+
 ## 2026-04-25 — Cluster-ops additions surfaced from BGU HPC user guide
 
 **Motivation.** Re-read the 45-page BGU ISE-CS-DT cluster guide (`.local/ISE_CS_DT_Jul-25-ClusterUserGuide.pdf`) against the existing `cluster-ops` skill. Three documented SLURM features were not surfaced anywhere in the skill, and each mapped to a recurring friction:

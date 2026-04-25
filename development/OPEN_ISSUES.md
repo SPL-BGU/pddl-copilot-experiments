@@ -113,6 +113,13 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Fix.** Report `per-task vs all` delta during analysis as "tool-selection noise" and reference it in the paper diff.
 **Files.** Analysis artefact (TBD), write-up.
 
+### ISS-019 · Tool-error message extraction is name-unscoped
+**Source.** Refactor review, 2026-04-25.
+**Evidence.** `evaluate_one`'s `if failure_reason == FR_TOOL_ERROR and not error:` loop walks every entry in `tool_calls` and surfaces the first `{"error": True, ...}` payload it finds, regardless of whether that tool is the one `check_success` flagged. `_tool_error_seen` (the function that decided `FR_TOOL_ERROR` in the first place) was called with a specific tool name (`"validate_pddl_syntax"`, `"classic_planner"`, etc.), so the two sides are scoped differently.
+**Impact.** Edge-case only. Triggers when (a) `--tool-filter=all` exposes multiple tools, and (b) the model calls a *different* tool that errors during the same evaluation. With the paper-default `solve` task and `--tool-filter=all`, both `classic_planner` and `numeric_planner` are valid; an error from the unused planner could be reported as the message even though `check_success` accepted the used planner's plan. Has not been observed in 2026-04-20/04-23 sweeps; surfaced as a latent inconsistency during the dedupe refactor.
+**Fix.** Either expand `check_success`'s return tuple to include the offending tool name when `FR_TOOL_ERROR` fires, or pass a per-task tool-name filter into the message-extraction loop (already known via `TASK_TOOLS[task]`). Methodology-neutral — the recorded `failure_reason` is already correct; only the `error` snippet is potentially mislabelled.
+**Files.** `run_experiment.py::check_success`, `run_experiment.py::evaluate_one` (the `FR_TOOL_ERROR` message-extraction block).
+
 ### ISS-012 · Truncation override skips `FR_VERDICT_MISMATCH`
 **Source.** Scoring audit, 2026-04-20.
 **Evidence.** `_apply_truncation_override` in `run_experiment.py` reclassifies a failure to `FR_TRUNCATED_NO_ANSWER` only when the downstream tag is `FR_PLAN_INVALID` / `FR_NO_VERDICT_PARSED` / `FR_SIMULATE_EMPTY` / `FR_UNKNOWN`. A model that emits `VERDICT: VALID` after a partial chain-of-thought that got cut off, and the verdict happens to be wrong, is tagged `FR_VERDICT_MISMATCH` — truncation-caused or not.

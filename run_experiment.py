@@ -115,6 +115,13 @@ FR_SIMULATE_EMPTY = "simulate_empty"
 FR_RESULT_MISMATCH = "result_mismatch"
 FR_UNKNOWN = "unknown"
 
+# Cap on stored response/exception strings in result records. The full text
+# is reproducible by re-running the prompt; the stored snippet only needs to
+# be enough for downstream analyses (df.groupby("error"), failure-mode
+# inspection). 500 chars is the empirically-sufficient cutoff observed
+# across qwen3 / gpt-oss / gemma traces in the 2026-04-20 sweep.
+RESPONSE_SNAPSHOT_LEN = 500
+
 # Substring signature of Ollama's server-side tool-call JSON parser failure
 # (emitted by ollama/server/routes.go when it can't parse tool-call arguments,
 # e.g. multi-line PDDL strings with gpt-oss). Matched against the exception
@@ -446,7 +453,13 @@ async def chat_without_tools(
     temperature: float = TEMPERATURE,
     think: bool | None = None,
 ) -> tuple[str, str]:
-    """Single-turn chat without tools. Returns (text, done_reason)."""
+    """Single-turn chat without tools. Returns (text, done_reason).
+
+    Appends the assistant turn to *messages* so the post-call shape matches
+    `chat_with_tools` (which appends internally). Lets multi-step callers
+    like the chain runner reuse the same `messages` list without manually
+    bookkeeping the assistant turn.
+    """
     options, extra = _build_chat_kwargs(num_predict, num_ctx, temperature, think)
     resp = await client.chat(
         model=model,
@@ -454,7 +467,9 @@ async def chat_without_tools(
         options=options,
         **extra,
     )
-    return resp["message"].get("content", ""), _response_done_reason(resp)
+    content = resp["message"].get("content", "")
+    messages.append({"role": "assistant", "content": content})
+    return content, _response_done_reason(resp)
 
 
 # ---------------------------------------------------------------------------
@@ -499,16 +514,30 @@ def load_domains(domains_dir: Path) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _safe_json_loads(raw):
+    """Parse JSON if *raw* is a string; pass through dicts/lists; None on failure.
+
+    Centralises the `json.loads(raw) if isinstance(raw, str) else raw` shape
+    used across scoring, ground-truth, and tool-error paths so they all
+    handle string-shape MCP results and pre-parsed dict shapes uniformly.
+    """
+    if isinstance(raw, (dict, list)):
+        return raw
+    if not isinstance(raw, str):
+        return None
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        return None
+
+
 def _parse_validation_verdict(raw: str) -> bool | None:
     """Parse a validate_pddl_syntax result string.
 
     Expects the pyvalidator shape {"valid", "status", "report", "details"}.
     Returns True if valid, False if invalid, None on error or unparseable.
     """
-    try:
-        data = json.loads(raw) if isinstance(raw, str) else raw
-    except (ValueError, TypeError):
-        return None
+    data = _safe_json_loads(raw)
     if not isinstance(data, dict):
         return None
     if data.get("error") is True:
@@ -556,7 +585,7 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
             # Solve — distinguish solvable (non-empty plan) from unsolvable (empty plan)
             try:
                 raw = await mcp.call_tool(planner, {"domain": dinfo["domain"], "problem": ppddl})
-                data = json.loads(raw) if isinstance(raw, str) else raw
+                data = _safe_json_loads(raw)
                 if isinstance(data, dict) and isinstance(data.get("plan"), list) and data["plan"]:
                     entry["plan"] = data["plan"]
                     entry["solvable"] = True
@@ -565,7 +594,7 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
 
             # State trace + plan-validity verdict (only if we have a plan)
             if entry["plan"]:
-                plan_str = "\n".join(entry["plan"]) if isinstance(entry["plan"], list) else entry["plan"]
+                plan_str = _build_plan_str(entry)
                 try:
                     entry["trace"] = await mcp.call_tool(
                         "get_state_transition",
@@ -609,12 +638,29 @@ def _get_tool_results(tool_calls: list[dict], name: str) -> list[str]:
     return [tc["result"] for tc in tool_calls if tc["name"] == name and "result" in tc]
 
 
+def _resolve_num_predict(override: int | None, task: str) -> int:
+    """Return the per-task num_predict cap, honouring the CLI override."""
+    return override if override is not None else DEFAULT_NUM_PREDICT[task]
+
+
+def _build_plan_str(gt: dict) -> str:
+    """Stringify a ground-truth plan for prompt/tool inputs.
+
+    Returns "" when no plan is recorded; otherwise newline-joins list plans
+    or passes through pre-stringified plans. Keeps the validate_plan and
+    simulate prompt-builders consistent with the oracle's format.
+    """
+    plan = gt.get("plan")
+    if not plan:
+        return ""
+    if isinstance(plan, list):
+        return "\n".join(plan)
+    return plan
+
+
 def _extract_plan_from_tool_result(raw: str) -> list[str]:
     """Extract plan action list from a planner tool's JSON result."""
-    try:
-        data = json.loads(raw) if isinstance(raw, str) else raw
-    except (ValueError, TypeError):
-        return []
+    data = _safe_json_loads(raw)
     if isinstance(data, dict) and isinstance(data.get("plan"), list):
         return data["plan"]
     return []
@@ -657,14 +703,9 @@ def extract_plan_lines(response: str) -> list[str]:
         m = _ACTION_LINE_RE.match(line)
         if not m:
             continue
-        # Re-normalize: keep only the `(...)` part, squeeze whitespace, lowercase.
-        inner = stripped
-        # Drop any leading "1." / "1:" prefix
-        paren_start = inner.find("(")
-        if paren_start > 0:
-            inner = inner[paren_start:]
-        inner = " ".join(inner.split()).lower()
-        plan.append(inner)
+        paren_start = line.find("(", m.start())
+        inner = line[paren_start:] if paren_start >= 0 else stripped
+        plan.append(" ".join(inner.split()).lower())
     return plan
 
 
@@ -718,15 +759,9 @@ def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
         if tc.get("name") != name:
             continue
         raw = tc.get("result", "")
-        if isinstance(raw, str):
-            if raw.startswith("Tool error"):
-                return True
-            try:
-                parsed = json.loads(raw)
-            except (ValueError, TypeError):
-                continue
-        else:
-            parsed = raw
+        if isinstance(raw, str) and raw.startswith("Tool error"):
+            return True
+        parsed = _safe_json_loads(raw)
         if isinstance(parsed, dict) and parsed.get("error"):
             return True
     return False
@@ -859,20 +894,12 @@ async def check_success(
             # valid=false would satisfy it. Compare against the oracle
             # trajectory from gt["trace"] (same plan, same plugin → dicts
             # are byte-equal when the model passed identical inputs).
-            oracle_trace = gt.get("trace")
-            if isinstance(oracle_trace, str):
-                try:
-                    oracle_trace = json.loads(oracle_trace)
-                except (ValueError, TypeError):
-                    oracle_trace = None
+            oracle_trace = _safe_json_loads(gt.get("trace"))
             oracle_traj = oracle_trace.get("trajectory") if isinstance(oracle_trace, dict) else None
             if oracle_traj is None:
                 return True, False, FR_UNKNOWN
             for raw in _get_tool_results(tool_calls, "get_state_transition"):
-                try:
-                    parsed = json.loads(raw) if isinstance(raw, str) else raw
-                except (ValueError, TypeError):
-                    continue
+                parsed = _safe_json_loads(raw)
                 if not isinstance(parsed, dict) or parsed.get("error"):
                     continue
                 if parsed.get("trajectory") == oracle_traj:
@@ -919,6 +946,23 @@ def _apply_truncation_override(success: bool, truncated: bool, failure_reason: s
     return failure_reason
 
 
+def _classify_step_failure(
+    success: bool, done_reason: str, loop_exhausted: bool, failure_reason: str,
+) -> tuple[str, bool]:
+    """Apply LOOP_EXHAUSTED + truncation overrides; return (failure_reason, truncated).
+
+    Order matters: LOOP_EXHAUSTED is applied first so the truncation override
+    sees it (and intentionally leaves it alone — FR_LOOP_EXHAUSTED is not in
+    _TRUNCATION_OVERRIDE_REASONS). Used by both the single-task and chain
+    paths so step records share failure-tag semantics.
+    """
+    if loop_exhausted and not success:
+        failure_reason = FR_LOOP_EXHAUSTED
+    truncated = done_reason == "length"
+    failure_reason = _apply_truncation_override(success, truncated, failure_reason)
+    return failure_reason, truncated
+
+
 async def evaluate_one(
     client: "ollama.AsyncClient",
     model: str,
@@ -940,9 +984,7 @@ async def evaluate_one(
 ) -> TaskResult:
     template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
-    plan_str = ""
-    if task in ("validate_plan", "simulate") and gt.get("plan"):
-        plan_str = "\n".join(gt["plan"]) if isinstance(gt["plan"], list) else gt["plan"]
+    plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
 
     prompt = template.format(domain=domain_pddl, problem=problem_pddl, plan=plan_str)
     system = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
@@ -1010,13 +1052,7 @@ async def evaluate_one(
         # in run #1 that landed here.
         if failure_reason == FR_TOOL_ERROR and not error:
             for tc in tool_calls:
-                raw = tc.get("result")
-                if not isinstance(raw, str):
-                    continue
-                try:
-                    parsed = json.loads(raw)
-                except (ValueError, TypeError):
-                    continue
+                parsed = _safe_json_loads(tc.get("result"))
                 if isinstance(parsed, dict) and parsed.get("error"):
                     error = f"tool={tc.get('name')}: {parsed.get('message','')}"
                     break
@@ -1026,11 +1062,9 @@ async def evaluate_one(
     # that case, so `response` is already correct. Relabel the failure so
     # "gave up after 10 tool calls" is distinguishable from real capability
     # failures (see ISS-005 Batch 2 / cluster-run1 analysis).
-    if loop_exhausted and not success:
-        failure_reason = FR_LOOP_EXHAUSTED
-
-    truncated = done_reason == "length"
-    failure_reason = _apply_truncation_override(success, truncated, failure_reason)
+    failure_reason, truncated = _classify_step_failure(
+        success, done_reason, loop_exhausted, failure_reason,
+    )
 
     return TaskResult(
         model=model,
@@ -1041,7 +1075,7 @@ async def evaluate_one(
         with_tools=with_tools,
         success=success,
         tool_selected=tool_selected,
-        response=response_text[:500],
+        response=response_text[:RESPONSE_SNAPSHOT_LEN],
         tool_calls=tool_calls,
         duration_s=round(duration, 2),
         error=error,
@@ -1104,11 +1138,7 @@ async def run_single_task_experiment(
     for model in models:
         for with_tools in with_tools_values:
             for task in tasks:
-                np_for_task = (
-                    num_predict_override
-                    if num_predict_override is not None
-                    else DEFAULT_NUM_PREDICT[task]
-                )
+                np_for_task = _resolve_num_predict(num_predict_override, task)
                 for dname, dinfo in domains.items():
                     for pname, ppddl in dinfo["problems"].items():
                         gt = ground_truth.get(dname, {}).get(pname, {})
@@ -1174,7 +1204,7 @@ async def run_chain_experiment(
     domains: dict,
     ground_truth: dict,
     mcp: MCPPlanner,
-    chain_lengths: list[int] = [2, 3, 4, 5],
+    chain_lengths: tuple[int, ...] = (2, 3, 4, 5),
     samples: int = 20,
     tool_filter: str = "all",
     with_tools: bool = True,
@@ -1219,21 +1249,13 @@ async def run_chain_experiment(
             if task in ("validate_plan", "simulate") and not gt.get("plan"):
                 continue
             template = step_templates[step_index]
-            plan_str = ""
-            if task in ("validate_plan", "simulate") and gt.get("plan"):
-                plan_str = (
-                    "\n".join(gt["plan"]) if isinstance(gt["plan"], list) else gt["plan"]
-                )
+            plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
             prompt = template.format(
                 domain=dinfo["domain"], problem=ppddl, plan=plan_str,
             )
             messages.append({"role": "user", "content": prompt})
 
-            np_for_task = (
-                num_predict_override
-                if num_predict_override is not None
-                else DEFAULT_NUM_PREDICT[task]
-            )
+            np_for_task = _resolve_num_predict(num_predict_override, task)
             allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
             step_loop_exhausted = False
             try:
@@ -1251,21 +1273,19 @@ async def run_chain_experiment(
                         temperature=temperature,
                     )
                     tc = []
-                    messages.append({"role": "assistant", "content": resp_text})
                 _sel, step_ok, step_fr = await check_success(
                     task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
                     with_tools=with_tools,
                 )
-                if step_loop_exhausted and not step_ok:
-                    step_fr = FR_LOOP_EXHAUSTED
-                step_truncated = step_done_reason == "length"
                 # Mirror single-task semantics (evaluate_one): when the
                 # cap cut the model off mid-output, relabel empty-output
                 # reasons as FR_TRUNCATED_NO_ANSWER so step_records is
                 # directly comparable to single_task_*.json failure
                 # reasons. Aggregate success_rate is unaffected — only
                 # the string on already-failing steps changes.
-                step_fr = _apply_truncation_override(step_ok, step_truncated, step_fr)
+                step_fr, step_truncated = _classify_step_failure(
+                    step_ok, step_done_reason, step_loop_exhausted, step_fr,
+                )
                 step_records.append({
                     "step_index": step_index,
                     "task": task,
@@ -1284,7 +1304,7 @@ async def run_chain_experiment(
                     "step_index": step_index,
                     "task": task,
                     "exc_type": type(exc).__name__,
-                    "exc_message": exc_text[:500],
+                    "exc_message": exc_text[:RESPONSE_SNAPSHOT_LEN],
                     # Classify upstream Ollama tool-call JSON parser
                     # failures so chain analysis can separate them
                     # from other exception types (matches
@@ -1713,7 +1733,6 @@ async def async_main(args):
                     domains=domains,
                     ground_truth=ground_truth,
                     mcp=mcp,
-                    chain_lengths=[2, 3, 4, 5],
                     samples=args.chain_samples,
                     tool_filter=args.tool_filter,
                     with_tools=cond_with_tools,
