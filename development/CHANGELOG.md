@@ -6,6 +6,42 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-25 — Cluster-ops additions surfaced from BGU HPC user guide
+
+**Motivation.** Re-read the 45-page BGU ISE-CS-DT cluster guide (`.local/ISE_CS_DT_Jul-25-ClusterUserGuide.pdf`) against the existing `cluster-ops` skill. Three documented SLURM features were not surfaced anywhere in the skill, and each mapped to a recurring friction:
+- **Pending REASON** (PDF p43–44): `status.sh` only parsed RUNNING jobs, so a stalled `afterok` wave or `Resources` queue showed up as an empty status table — required hand-running `squeue --me -t PD` to diagnose.
+- **`sres` + per-partition `sinfo`** (PDF p10): pre-submit GPU-pool capacity was an ad-hoc inline check in `SKILL.md`, copy-pasted before each `submit_with_rtx.sh` call.
+- **`sacct --format=...,MaxRSS,AllocTRES,...`** (PDF p10) + the "use minimum possible RAM" rule (PDF p9): no consolidated post-mortem of completed jobs; right-sizing `--mem` required per-job manual `sacct` invocations.
+
+**Changes — `.claude/skills/cluster-ops/`.**
+- `scripts/status.sh`: pulls `squeue %R` reason column, splits into Pending and Running tables. Pending table renders first so wave-blocking REASONs (e.g. `DependencyNeverSatisfied`, `Resources`) surface without a separate query.
+- `scripts/preflight.sh`: appends a "GPU pool capacity" section (`sinfo -p rtx6000` and `-p rtx_pro_6000`, free-or-mixed node count vs total) and an `sres` snapshot, ahead of the existing cis-ollama reachability check. Now covers both submit paths in one preflight.
+- `scripts/postmortem.sh` (new): single-SSH-call `sacct` for the user's `pddl_*` jobs in a window (default last 7 days via `--starttime=now-7days`; `--since YYYY-MM-DD` or `--jobs id,id` to scope). Merges parent + `.batch` step rows so each row carries State + Elapsed + MaxRSS + AllocTRES + ExitCode + DerivedExitcode + Comment. Concludes with a per-job-name memory headroom block (`pddl_rtx_gpt-oss_120b: peak 70.1GB of 96.0GB → safe --mem=87G`); per-name aggregation matters because the sweep is heterogeneous (Qwen3.5:0.8B uses ~2GB, gpt-oss:120b uses 70GB), so a single global recommendation would either OOM the big model or over-allocate every small one.
+- `SKILL.md`: postmortem section after diag; pending-REASON cheat sheet (6 codes mapped to actions); cancel recipe gains the safer `scancel -u $USER --name=pddl_*` middle ground; the postmortem step is folded into the standard "sync and plot" recipe; the redundant inline `rtx_pro_6000` availability check is removed in favor of preflight's GPU-pool section.
+
+**Implementation notes.**
+- `bash -s --` end-of-options marker is required when passing `--starttime=...` / `--user=...` as positional args via SSH (otherwise remote bash treats them as its own options).
+- `--user=` long-form is required (instead of `-u`) because ssh re-splits the joined-args string on whitespace, which would split `-u omereliy` into two tokens and trip the next sacct flag into being consumed as the username.
+- `python3 -c "$PY"` (with the python source captured into a variable via `$(cat <<'PY' ... PY)`) is required for the postmortem pipe — the `python3 - <<'PY' ... PY` form makes the heredoc become python's stdin, hijacking the pipe and starving sys.stdin of the sacct rows.
+
+**Tests / validation.**
+- `status.sh` against the live queue: 2 RUNNING jobs (gemma4:31b, Qwen3.5:27b) rendered correctly; no pending jobs at test time, so the Pending section was correctly omitted.
+- `postmortem.sh --since 2026-04-23`: 17 completed/running `pddl_*` jobs rendered with MaxRSS + alloc; per-job-name peaks revealed wide over-allocation (`pddl_rtx_Qwen3_5_27b` used 26.7GB of 96GB allocated — 72% slack; recommended `--mem=33G`). gpt-oss:120b peak was 70.1GB on rtx_pro_6000 (COMPLETED in 7h57m), recommendation `--mem=87G`.
+- `bash -n` syntax-check on all three scripts.
+
+**Compatibility.**
+- All three scripts remain read-only over experiment state. The skill's existing "no mutations to `run_experiment.py` / `run_condition.sbatch` / `submit_all.sh`" contract is preserved.
+- No `summary.json` schema change. No methodology change. No re-run of any prior result needed.
+- No `ISS-###` closed; no new `ISS-###` opened — these are operational additions, not methodology fixes.
+
+**Files.**
+- `.claude/skills/cluster-ops/scripts/status.sh` (PENDING section + REASON column)
+- `.claude/skills/cluster-ops/scripts/preflight.sh` (GPU pool + `sres`)
+- `.claude/skills/cluster-ops/scripts/postmortem.sh` (new, ~115 LOC)
+- `.claude/skills/cluster-ops/SKILL.md` (description, recipes, REASON cheat sheet, cancel recipe)
+
+---
+
 ## 2026-04-23 — Parallelize chain-sample dispatch (match single-task concurrency)
 
 **Motivation.** Audit of the live cluster-20260423 sweep surfaced that `run_chain_experiment` iterated samples in a plain `for i in range(samples):` loop while `run_single_task_experiment` already used `Semaphore(concurrency) + create_task + as_completed`. With `--concurrency 2` per job and 2 parallel jobs/wave against cis-ollama's measured `OLLAMA_NUM_PARALLEL=4`, the server sat at ~50% utilization during the chain phase (2 in-flight vs 4-slot capacity). Measured on `slurm_Qwen3_5_0_8B_on_tools_per-task_minimal_17123867` (job 17123867): condition wall-time 4h 38m; single-task CPU sum 3.31h → single-task wall ≈ 1.65h @ c=2; inferred chain wall ≈ 2.98h, which matches the prediction for serial chain (≈3.3h for 400 samples × ~1.5 effective steps × ~20s/step) within 10%. (commit `ee5bc8d` on branch `async-fix`)

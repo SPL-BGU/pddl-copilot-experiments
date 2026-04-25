@@ -1,9 +1,9 @@
 ---
 name: cluster-ops
-description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — query queue + progress, submit/cancel jobs, sync results locally, aggregate summary JSONs, render paper-style plots, and diagnose cis-ollama reachability. Trigger on "cluster status", "what's running", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama". Read this skill before running SSH/rsync/plot commands ad-hoc; it avoids re-deriving the grep patterns and result-dir conventions every session.
-disable-model-invocation: true
-argument-hint: [status | preflight | sync | aggregate | plot | table | diag]
-model: sonnet
+description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — query queue + pending-reason, submit/cancel jobs, sync results locally, aggregate summary JSONs, render paper-style plots, diagnose cis-ollama reachability, and post-mortem completed jobs (sacct/MaxRSS for right-sizing --mem). Trigger on "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama", "postmortem", "memory headroom". Read this skill before running SSH/rsync/plot commands ad-hoc; it avoids re-deriving the grep patterns and result-dir conventions every session.
+context: fork
+agent: cluster-ops
+argument-hint: [status | preflight | sync | aggregate | plot | table | diag | postmortem]
 ---
 
 ## Why this skill exists
@@ -35,7 +35,9 @@ All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-
 
 ### `scripts/status.sh` — cluster status snapshot
 
-Prints a Markdown table of every running job with: condition index (which of 5), single-task progress `N/250`, and chain progress `k/400`. Handles both legacy (one condition per job) and current (5 conditions per job) `.out` layouts.
+Prints two Markdown tables:
+- **Pending** — `job | name | reason | elapsed`. The `reason` column is `squeue %R` (e.g. `Resources`, `Priority`, `DependencyNeverSatisfied`). See the REASON cheat-sheet below for what each value means.
+- **Running** — `job | phase | ST | chain | elapsed`. Phase shows condition index (which of 5), single-task progress `N/250`, and chain progress `k/400`. Handles both legacy (one condition per job) and current (5 conditions per job) `.out` layouts.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/status.sh
@@ -99,9 +101,15 @@ python3 .claude/skills/cluster-ops/scripts/table.py results/cluster-20260424 --o
 
 Reuses `parse_dirname`/`load_summaries`/`host_tag` from `aggregate.py` (same dir) — no duplicated logic.
 
-### `scripts/preflight.sh` — pre-submit cluster refresh
+### `scripts/preflight.sh` — pre-submit cluster refresh + capacity
 
-Run this before every `submit_all.sh`. It does the non-obvious bit that `setup_env.sh` deliberately skips: once a plugin venv exists, `setup_env.sh` leaves it alone — so a pinned dependency bump in `../pddl-copilot/plugins/<plugin>/requirements.txt` is silently stale until someone explicitly runs `pip install -r` inside the venv. This script does that for both `pddl-solver` and `pddl-validator`, after pulling both repos, and confirms cis-ollama reachability at the end.
+Run this before every `submit_all.sh` or `submit_with_rtx.sh`. Does, in one SSH call:
+
+1. `git pull` both repos (this one + `../pddl-copilot`).
+2. `pip install --upgrade -r requirements.txt` in each plugin's `.venv` — `setup_env.sh` deliberately skips existing venvs, so a pinned dependency bump in `../pddl-copilot/plugins/<plugin>/requirements.txt` is silently stale until something explicitly upgrades.
+3. **GPU pool capacity** — `sinfo -p rtx6000 -t idle,mix` and same for `rtx_pro_6000`. The free-node count tells you whether `submit_with_rtx.sh` will queue immediately or sit in `PENDING(Resources)`. If `rtx_pro_6000` is 0/6, `gpt-oss:120b` will queue — use `submit_120b_cis.sh` instead.
+4. **`sres` snapshot** (PDF p10) — one-glance cluster utilization view. `sres`'s "6000" column conflates `rtx_6000` and `rtx_pro_6000`, so trust step 3 for routing decisions.
+5. **cis-ollama reachability** — `curl /api/tags`. Halts on failure so a stale-network state doesn't burn a wave.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/preflight.sh
@@ -114,6 +122,18 @@ Reachability + loaded-models + TTLs. Optional cold-start ping to a named model.
 ```bash
 bash .claude/skills/cluster-ops/scripts/diag.sh                # tags + ps
 bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat ping for latency
+```
+
+### `scripts/postmortem.sh` — completed-job introspection (`sacct`)
+
+Closes the loop on PDF p9's "use minimum possible RAM" rule. Pulls `sacct` for completed `pddl_*` jobs, merges parent + `.batch` step rows so MaxRSS lands in the same row as State/Elapsed/ExitCode, then computes a memory-headroom recommendation across the window.
+
+Use it after a sweep finishes to: spot OOMs (`Comment` = `OOM-Kill`), find jobs that approached `--time` (Elapsed close to 3-00:00:00), and right-size `--mem` for the next sweep without manual `sacct` per job.
+
+```bash
+bash .claude/skills/cluster-ops/scripts/postmortem.sh                          # last 7 days, all pddl_* jobs
+bash .claude/skills/cluster-ops/scripts/postmortem.sh --since 2026-04-22       # specific window
+bash .claude/skills/cluster-ops/scripts/postmortem.sh --jobs 17130166,17130167 # specific job ids
 ```
 
 ## Recipes
@@ -132,7 +152,8 @@ bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat pi
 2. `python3 .claude/skills/cluster-ops/scripts/aggregate.py <that-dir>` — print success-rate tables.
 3. `python3 .claude/skills/cluster-ops/scripts/plot.py <that-dir>` — write the 7 PNG figures.
 4. `python3 .claude/skills/cluster-ops/scripts/table.py <that-dir>` — write `tables/master.{md,csv,tex}` for the paper.
-5. Report to user with the plot paths and 3-5 key numbers.
+5. `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct table + memory-headroom recommendation. Surface any OOM rows or jobs that approached `--time` to the user.
+6. Report to user with the plot paths and 3-5 key numbers.
 
 ### "Submit the sweep" (cis-ollama, full 9-job sweep)
 
@@ -154,22 +175,31 @@ Use this when the cis-ollama path is saturated (eviction thrashing on 120b, othe
 
 **VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=8192`. After warmup, a runtime guard aborts if VRAM usage > 85% — catches pathological KV-cache allocations (a 0.6B model at NUM_PARALLEL=8 × ctx=40960 allocated 37.8 GB in a 2026-04-23 probe). Never raise NUM_PARALLEL without re-measuring.
 
-**rtx_pro_6000 availability check** (before submitting 120b):
-```bash
-ssh omereliy@slurm.bgu.ac.il \
-    'for n in ise-6000p-0{1..6}; do scontrol show node $n 2>/dev/null | awk -v n=$n "/AllocTRES/{print n, \$0}"; done'
-```
-If all 6 nodes show `gpu:rtx_pro_6000=8`, the pool is saturated → use `submit_120b_cis.sh` fallback instead.
+**rtx_pro_6000 availability check** (before submitting 120b): the GPU-pool section of `preflight.sh` reports `rtx_pro_6000  k/6 nodes idle-or-mixed`. If `k=0`, the pool is saturated → use `submit_120b_cis.sh` fallback instead.
 
 ### "Cancel jobs"
 
-Specific IDs only unless the user explicitly says "kill everything":
+Specific IDs first; sweep-name-scoped pattern is the safer middle ground when the user wants the whole sweep gone:
 
 ```bash
-ssh omereliy@slurm.bgu.ac.il 'scancel <id> <id> …'
+ssh omereliy@slurm.bgu.ac.il 'scancel <id> <id> …'                # specific jobs
+ssh omereliy@slurm.bgu.ac.il "scancel -u omereliy --name=pddl_*"  # only the pddl sweep, leaves other jobs alone
 ```
 
-`scancel -u omereliy` (nuke all) needs an explicit user request — it will terminate jobs that have been running for hours. Confirm first.
+`scancel -u omereliy` (nuke all, no name filter) needs an explicit user request — it will terminate jobs that have been running for hours and may not be sweep-related. Confirm first.
+
+### Pending REASON cheat sheet (PDF p43–44)
+
+When `status.sh`'s Pending table shows a non-trivial REASON, here's what to do:
+
+| REASON | What it means | Action |
+|---|---|---|
+| `DependencyNeverSatisfied` | An earlier `afterok` wave failed. Whole chain halted. | Cancel the dependent jobs, diagnose the failed wave, resume with `submit_all.sh --from-wave N`. |
+| `Resources` | The requested partition pool is full. | Wait, or switch path: rtx full → `submit_120b_cis.sh`; cis full → wait, no GPU alternative. |
+| `Priority` | Preempted by a Golden-Ticket QoS job (PDF p14). | Wait — usually clears in minutes. |
+| `QOSMaxJobsPerUserLimit` | Per-user concurrent-job cap reached. | Wait for one of your other jobs to finish, or scancel a low-priority one. |
+| `MaxGRESPerAccount` | Per-account GPU cap (relevant for high-priority QoS). | Wait. Not applicable on plain `--partition main`. |
+| `PartitionTimeLimit` | `--time` exceeds partition's max (`main` ≤ 7 days). | Edit the `#SBATCH --time` line in the sbatch and resubmit. |
 
 ### "Debug a FAIL (exception) cluster"
 
