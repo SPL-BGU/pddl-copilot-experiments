@@ -15,7 +15,7 @@
 #   bash postmortem.sh --jobs 17130166,17130167  # specific job ids
 #
 # Env overrides:
-#   REMOTE_USER (default omereliyahu), REMOTE_HOST (default slurm.bgu.ac.il)
+#   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
 
 set -eo pipefail
 
@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
         --since) shift; SINCE="$1"; shift ;;
         --jobs)  shift; JOBS="$1"; shift ;;
         -h|--help)
-            sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
