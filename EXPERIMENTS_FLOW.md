@@ -221,7 +221,7 @@ Each run produces three JSON files:
 
 ### summary_{ts}.json
 
-Aggregated statistics. Top-level object with `single_task` and `chains` arrays.
+Aggregated statistics. Top-level object with `single_task` and `chains` arrays, plus an optional `meta` dict.
 
 `single_task` entries:
 | Field | Description |
@@ -230,8 +230,19 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays.
 | successes, n, success_rate | End-to-end success |
 | ci_lo, ci_hi | 95% Wilson score CI |
 | tool_selected, tool_selected_rate, tool_selected_ci_lo, tool_selected_ci_hi | Tool selection (with-tools only) |
+| truncated | Count of evaluations where `done_reason == "length"` (token-cap hit) |
+| failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive) |
 
-`chains` entries: model, with_tools, chain_length, samples, successes, success_rate, tool_filter, prompt_style, ci_lo, ci_hi.
+`chains` entries: model, with_tools, chain_length, samples, successes, success_rate, tool_filter, prompt_style, ci_lo, ci_hi, plus `samples_detail` — a per-sample list of `{idx, domain, problem, chain_tasks, step_records, final_success, exception}` (each `step_records[*]` carries `step_index, task, success, failure_reason, tool_calls_count, truncated, loop_exhausted`). Effective chain length per sample = `len(step_records)` (skipped no-plan steps are absent).
+
+`meta` (present when `save_results` is called with metadata; written by `async_main`):
+| Field | Description |
+|-------|-------------|
+| host, is_remote | Where the run executed (`cis-ollama`, `localhost`, RTX node, etc.) |
+| conditions | `tools`, `no-tools`, or `both` |
+| models, tasks | CLI inputs that selected which models/tasks ran |
+| num_variants, num_ctx, num_predict, temperature, think | Reproducibility knobs |
+| tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json
 

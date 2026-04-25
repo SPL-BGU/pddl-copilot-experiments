@@ -2,7 +2,10 @@
 # Cluster status snapshot. One SSH call. Server-side parsing in Python to
 # dodge shell escaping issues around `->` and `[`.
 #
-# Output: Markdown table with one row per running job.
+# Output: Two markdown tables — Pending (with REASON column) and Running
+# (with progress columns). Pending is rendered first so wave-blocking
+# REASON values like DependencyNeverSatisfied / Resources / Priority surface
+# without a separate `squeue --me -t PD` round-trip.
 #
 # Env:
 #   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
@@ -27,9 +30,10 @@ fi
 cd "$HOME/$LOGS_DIR" 2>/dev/null || cd "$LOGS_DIR"
 
 # One squeue call, pipe its output into Python alongside file list.
-queue=$(squeue -u "$REMOTE_USER" -h -o '%i|%j|%T|%M' 2>/dev/null | sort || true)
+# %R is the REASON column (populated for PENDING jobs).
+queue=$(squeue -u "$REMOTE_USER" -h -o '%i|%j|%T|%M|%R' 2>/dev/null | sort || true)
 if [ -z "$queue" ]; then
-    echo '_no running jobs_'
+    echo '_no jobs_'
     exit 0
 fi
 
@@ -37,7 +41,8 @@ python3 - "$queue" <<'PY'
 import os, re, sys
 
 queue_raw = sys.argv[1]
-rows = []
+running = []
+pending = []
 
 # Banner matches both layouts:
 #   cis:  "CONDITION: <cond>   started ..."         (run_condition.sbatch)
@@ -58,16 +63,20 @@ for line in queue_raw.splitlines():
     line = line.strip()
     if not line:
         continue
-    jid, jname, state, elapsed = line.split('|')
+    jid, jname, state, elapsed, reason = line.split('|', 4)
 
-    # locate .out file
+    if state == 'PENDING':
+        pending.append((jid, jname, reason or '-', elapsed))
+        continue
+
+    # locate .out file (only RUNNING jobs have one)
     f = None
     for n in os.listdir('.'):
         if n.endswith(f'-{jid}.out'):
             f = n
             break
     if not f:
-        rows.append((f"{jid}:{jname}", "_no log_", "-", "-", "-", elapsed))
+        running.append((f"{jid}:{jname}", "_no log_", "-", "-", elapsed))
         continue
 
     text = open(f, errors='replace').read()
@@ -104,12 +113,22 @@ for line in queue_raw.splitlines():
         chain_done = len(chain_matches)
         phase = "legacy single-cond"
 
-    rows.append((f"{jid}:{jname}", phase, f"{st}/250",
-                 f"{chain_done}/400", elapsed))
+    running.append((f"{jid}:{jname}", phase, f"{st}/250",
+                    f"{chain_done}/400", elapsed))
 
-print('| job | phase | ST | chain | elapsed |')
-print('|---|---|---|---|---|')
-for r in rows:
-    print('| ' + ' | '.join(r) + ' |')
+if pending:
+    print('### Pending')
+    print('| job | name | reason | elapsed |')
+    print('|---|---|---|---|')
+    for jid, jname, reason, elapsed in pending:
+        print(f'| {jid} | {jname} | {reason} | {elapsed} |')
+    print()
+
+if running:
+    print('### Running')
+    print('| job | phase | ST | chain | elapsed |')
+    print('|---|---|---|---|---|')
+    for r in running:
+        print('| ' + ' | '.join(r) + ' |')
 PY
 REMOTE
