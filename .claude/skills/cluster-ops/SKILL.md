@@ -3,6 +3,7 @@ name: cluster-ops
 description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — query queue + progress, submit/cancel jobs, sync results locally, aggregate summary JSONs, render paper-style plots, and diagnose cis-ollama reachability. Trigger on "cluster status", "what's running", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama". Read this skill before running SSH/rsync/plot commands ad-hoc; it avoids re-deriving the grep patterns and result-dir conventions every session.
 disable-model-invocation: true
 argument-hint: [status | preflight | sync | aggregate | plot | table | diag]
+model: sonnet
 ---
 
 ## Why this skill exists
