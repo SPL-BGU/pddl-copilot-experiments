@@ -25,13 +25,20 @@ Tests Ollama LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 ## Setup
 
 ```bash
-# Pull models used in the paper
+# Pull models used in the paper (small enough to fit on a laptop GPU)
 ollama pull qwen3:0.6b
 ollama pull qwen3:4b
 
 # Install dependencies
 pip3 install -r requirements.txt
 ```
+
+The paper-aligned `qwen3:0.6b` / `qwen3:4b` are the **laptop default**. The
+**cluster sweep** (BGU rtx GPUs, see `cluster-experimenting/README.md`)
+runs a different set: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`,
+`gemma4:31b`, `gpt-oss:120b` — chosen because cis-ollama doesn't host the
+paper tags and the 5-model set spans the same parameter range across three
+families. See `EXPERIMENTS_FLOW.md §11` for the full deviations table.
 
 ## Running (Background)
 
@@ -95,7 +102,7 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--num-variants` | 5 | Prompt variants per task (paper uses 5) |
 | `--temperature` | 0.0 | LLM sampling temperature |
 | `--chains` | off | Also run multi-task chain evaluation |
-| `--chain-samples` | 20 | Samples per chain length |
+| `--chain-samples` | 20 | Samples per chain length. The cluster sbatch (`cluster-experimenting/run_condition_rtx.sbatch`) overrides this to 100 for paper alignment. |
 | `--seed` | 42 | Random seed for chain sampling |
 | `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
 | `--prompt-style` | `minimal` | `minimal` reproduces paper; `guided` adds hint about passing PDDL content |
@@ -103,6 +110,24 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--num-ctx` | 8192 | Ollama context window tokens |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
 | `--concurrency` | 4 | Max concurrent Ollama requests in single-task sweep |
+
+## Running (Cluster)
+
+Paper-grade sweeps run on the BGU ISE-CS-DT SLURM cluster, not on a laptop.
+Default path is `cluster-experimenting/submit_with_rtx.sh <model>` (one
+job per model on a dedicated rtx_6000 / rtx_pro_6000 GPU; jobs queue in
+parallel). See `cluster-experimenting/README.md` for the full submission
+flow and `.claude/skills/cluster-ops/SKILL.md` for monitoring helpers.
+
+```bash
+# Full 5-model sweep (from the login node)
+for m in Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b gpt-oss:120b; do
+    bash cluster-experimenting/submit_with_rtx.sh "$m"
+done
+
+# Baseline-only (no-tools / think=off / solve, ~15 min)
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
+```
 
 ## Running (Jupyter)
 
