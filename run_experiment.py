@@ -648,6 +648,11 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
         negs = dinfo.get("negatives") or {}
         positive_problems = dinfo["problems"]
         if positive_problems and any(v is not None for v in negs.values()):
+            # Pairing: validate_problem and validate_plan negatives need a
+            # *positive* domain/problem to attach to. The paper dataset
+            # ships a single positive per domain, so we just take the first
+            # one. Generalise to multi-problem datasets by carrying a
+            # designated "primary" problem in `dinfo`.
             positive_p01 = next(iter(positive_problems.values()))
             neg_slot: dict = {}
 
@@ -1267,6 +1272,11 @@ async def run_single_task_experiment(
                         )
                         if neg_slot is None:
                             continue
+                        # Single-positive-per-domain assumption (paper
+                        # dataset). Mirrors the choice in
+                        # `generate_ground_truth`'s negatives pass; if
+                        # multi-problem datasets ever land, swap this for
+                        # the designated-primary lookup proposed there.
                         positive_p01 = next(iter(dinfo["problems"].values()))
                         if kind == "domain":
                             d_pddl = neg_slot["domain_pddl"]

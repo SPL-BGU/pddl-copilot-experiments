@@ -209,6 +209,8 @@ domains/
 
 **Expected validity:** positives are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. The startup ground-truth summary prints these flags per positive problem for manual review; drift is not auto-enforced. Negatives, by contrast, are **strictly enforced** — `generate_ground_truth` aborts startup with `SystemExit` if any negative validates as anything other than False.
 
+**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair their negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + positive `p01.pddl`). The paper dataset ships one positive problem per domain, so the negative plan is always paired with `p01.pddl`. The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` (`run_experiment.py:989`) — so this isn't a leak channel. Multi-problem datasets would need a designated-primary lookup at the two `next(iter(dinfo["problems"].values()))` sites in `generate_ground_truth` and the job builder.
+
 ---
 
 ## 7. Ground Truth Generation
