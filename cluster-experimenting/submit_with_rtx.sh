@@ -25,12 +25,15 @@
 #   bash cluster-experimenting/submit_with_rtx.sh gpt-oss:120b          # auto → rtx_pro_6000
 #   bash cluster-experimenting/submit_with_rtx.sh gemma4:31b --gpu-type rtx_pro_6000
 #
-# --no-tools: shorthand for the baseline-only run. Pins THINK_MODES=off,
-#   CONDITIONS=no-tools, TASKS=solve (no-tools is only meaningful for solve
-#   with thinking off — chains and other tasks are skipped per the matrix
-#   gate in run_condition_rtx.sbatch). Also passes --time=1:00:00 because
-#   no-tools jobs measured 10–22 min wall on 2026-04-25 (default 2 days
-#   wastes fairshare priority).
+# --no-tools: shorthand for the single-task no-tools matrix. Pins
+#   THINK_MODES=off (or `default` if --think-modes default is also passed,
+#   for gemma4*), CONDITIONS=no-tools, and TASKS to the four discriminative
+#   single-task evals: solve + validate_domain + validate_problem +
+#   validate_plan. Negative fixtures (ISS-001, 2026-04-26) ride along the
+#   matching task automatically. `simulate` stays excluded (non-discriminative
+#   keyword grader). Chains are skipped by the matrix gate in
+#   run_condition_rtx.sbatch. Also passes --time=4:00:00 to give the wider
+#   matrix headroom while still tighter than the 2-day sbatch default.
 #
 # Think modes default to "on off" (both run sequentially in one job so
 # weights stay resident). Override with --think-modes "default" for models
@@ -139,31 +142,34 @@ case "$GPU_TYPE" in
         exit 1 ;;
 esac
 
-# --no-tools shorthand: pins a fast single-task baseline run.
+# --no-tools shorthand: pins the single-task no-tools baseline matrix.
 #   * THINK_MODES=off — no-tools/think=on is skipped by the matrix gate
 #     anyway; making it explicit avoids wasted scheduling of a no-op cell.
+#     `default` is also accepted for models without a think kwarg (gemma4*).
 #   * CONDITIONS=no-tools — single tools-off pass.
-#   * TASKS=solve — pinned to `solve` for backward-compat speed (50 evals,
-#     ~15 min). The job builder gate (run_experiment.py:1147) now permits
-#     no-tools `validate_*` as well (re-enabled 2026-04-26 alongside balanced
-#     negative fixtures, ISS-001), so widening this shorthand to cover
-#     validate_* is a one-line change — kept as solve-only here to preserve
-#     the "fast baseline" contract (~15 min); pass --tasks explicitly via
-#     `TASKS="solve validate_domain validate_problem validate_plan"` to the
-#     sbatch when you want the full no-tools matrix (~350 evals/model).
+#   * TASKS="solve validate_domain validate_problem validate_plan" — full
+#     single-task no-tools matrix (re-enabled 2026-04-26 alongside balanced
+#     negative fixtures, ISS-001). Each negative fixture rides along the
+#     matching task automatically via run_experiment.py's job builder, so
+#     positive + negative samples are both covered without extra plumbing.
+#     `simulate` stays excluded (its keyword grader is non-discriminative).
 # Conflicts with --think-modes are flagged.
 NO_TOOLS_EXPORTS=()
 TIME_ARG=()
 if [ "$NO_TOOLS" -eq 1 ]; then
-    if [ -n "$THINK_MODES_OVERRIDE" ] && [ "$THINK_MODES_OVERRIDE" != "off" ]; then
-        echo "Error: --no-tools forces THINK_MODES=off; got --think-modes \"$THINK_MODES_OVERRIDE\"" >&2
+    if [ -n "$THINK_MODES_OVERRIDE" ] \
+        && [ "$THINK_MODES_OVERRIDE" != "off" ] \
+        && [ "$THINK_MODES_OVERRIDE" != "default" ]; then
+        echo "Error: --no-tools forces THINK_MODES to off|default; got --think-modes \"$THINK_MODES_OVERRIDE\"" >&2
         exit 1
     fi
-    THINK_MODES="off"
-    NO_TOOLS_EXPORTS=(CONDITIONS=no-tools TASKS=solve)
-    # No-tools observed at 10–22 min wall (2026-04-25). 1 hour gives ≥3×
-    # headroom on the slowest run; tighter --time helps SLURM fairshare.
-    TIME_ARG=(--time=1:00:00)
+    THINK_MODES="${THINK_MODES_OVERRIDE:-off}"
+    NO_TOOLS_EXPORTS=(CONDITIONS=no-tools "TASKS=solve validate_domain validate_problem validate_plan")
+    # Solve-only no-tools measured 10–22 min wall (2026-04-25). Adding the
+    # three validate_* tasks scales to ~350 evals/model; 4h gives comfortable
+    # headroom on the slowest paper model while still tighter than the 2-day
+    # sbatch default (helps SLURM fairshare).
+    TIME_ARG=(--time=4:00:00)
 elif [ -n "$THINK_MODES_OVERRIDE" ]; then
     THINK_MODES="$THINK_MODES_OVERRIDE"
 else
@@ -200,7 +206,7 @@ echo "  think modes: $THINK_MODES" >&2
 echo "  GPU:         ${GPU_TYPE}:1" >&2
 echo "  job name:    $JOB_NAME" >&2
 if [ "$NO_TOOLS" -eq 1 ]; then
-    echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=solve, --time=1:00:00)" >&2
+    echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=\"solve validate_domain validate_problem validate_plan\", --time=4:00:00)" >&2
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
