@@ -1,0 +1,19 @@
+
+
+(define (problem bw_rand_3)
+(:domain blocksworld)
+(:objects b1 b2 b3 - block)
+(:init
+(handempty)
+(ontable b1)
+(on b2 b1)
+(ontable b3)
+(clear b2)
+(clear b3)
+(on b4 b1)
+)
+(:goal
+(and
+(on b3 b1))
+)
+)

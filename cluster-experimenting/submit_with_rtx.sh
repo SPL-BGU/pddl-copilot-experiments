@@ -139,12 +139,18 @@ case "$GPU_TYPE" in
         exit 1 ;;
 esac
 
-# --no-tools shorthand: pins single-task baseline-only run.
+# --no-tools shorthand: pins a fast single-task baseline run.
 #   * THINK_MODES=off — no-tools/think=on is skipped by the matrix gate
 #     anyway; making it explicit avoids wasted scheduling of a no-op cell.
 #   * CONDITIONS=no-tools — single tools-off pass.
-#   * TASKS=solve — no-tools is only meaningful for solve. The other 4
-#     tasks (validate_*, simulate) require tool calls to be honest.
+#   * TASKS=solve — pinned to `solve` for backward-compat speed (50 evals,
+#     ~15 min). The job builder gate (run_experiment.py:1147) now permits
+#     no-tools `validate_*` as well (re-enabled 2026-04-26 alongside balanced
+#     negative fixtures, ISS-001), so widening this shorthand to cover
+#     validate_* is a one-line change — kept as solve-only here to preserve
+#     the "fast baseline" contract (~15 min); pass --tasks explicitly via
+#     `TASKS="solve validate_domain validate_problem validate_plan"` to the
+#     sbatch when you want the full no-tools matrix (~350 evals/model).
 # Conflicts with --think-modes are flagged.
 NO_TOOLS_EXPORTS=()
 TIME_ARG=()

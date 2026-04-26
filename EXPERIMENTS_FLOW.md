@@ -132,23 +132,21 @@ A model can have high tool_selected but low success (knows *what* to call but ca
 
 ### 4.2 Without-Tools
 
-The without-tools sweep is restricted to `solve` only — the only task whose
-free-text output is a PDDL artifact we can pass through pyvalidator the same
-way we do for tool results, mirroring the with-tools scorer.
+The without-tools sweep covers `solve` plus the three `validate_*` tasks
+(re-enabled 2026-04-26 once balanced negative fixtures landed; ISS-001).
+`simulate` remains excluded.
 
 - `solve`: Extract plan lines from response, validate via pyvalidator (`valid == true`)
-- `validate_*`: **Dropped from no-tools.** The model emits no PDDL artifact —
-  just a verdict string — and the bundled ground truth is 100% VALID
-  (ISS-001), so a "VERDICT: VALID" prior trivially wins. Until invalid
-  fixtures are added, no-tools `validate_*` would measure only "did the model
-  say VALID." With-tools `validate_*` is unaffected (it still measures tool
-  selection + argument-shape competence).
-- `simulate`: **Dropped from no-tools.** A free-text trajectory grader would
-  itself be a research artifact and a new source of bias (ISS-002 path b).
+- `validate_*`: Extract `VERDICT: VALID|INVALID` and compare against ground truth.
+  With 1:1 balanced positives + negatives (`§6 Domains`), a constant-VALID prior
+  scores ~50% (not 100%), so the grader is now discriminative.
+- `simulate`: **Still dropped from no-tools.** Its grader is a literal keyword
+  check (`run_experiment.py:910-912`); a structured-trajectory free-text grader
+  would itself be a research artifact and a new source of bias (ISS-002 path b).
   With-tools `simulate` is unaffected.
 
 `run_single_task_experiment` enforces the filter: jobs with `with_tools=False`
-are emitted only for `task == "solve"`.
+are emitted for every task **except** `simulate`.
 
 ### 4.3 Chains
 
@@ -192,22 +190,26 @@ defense-in-depth. Mirrors the `think=off` single-task rule from ISS-018.
 ```
 domains/
   classical/
-    barman/        domain.pddl + p01
-    blocksworld/   domain.pddl + p01
-    depots/        domain.pddl + p01
-    rovers/        domain.pddl + p01
-    satellite/     domain.pddl + p01
+    barman/        domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
+    blocksworld/   domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
+    depots/        ... (same shape)
+    rovers/        ...
+    satellite/     ...
   numeric/
-    counters/      domain.pddl + p01
-    depot/         domain.pddl + p01   (singular; paper's numeric split)
-    farmland/      domain.pddl + p01
-    pogo_stick/    domain.pddl + p01
-    sailing/       domain.pddl + p01
+    counters/      domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
+    depot/         ... (singular; paper's numeric split)
+    farmland/      ...
+    pogo_stick/    ...
+    sailing/       ...
 ```
 
-10 domains, 10 problems total — copied verbatim from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). Each domain also ships `p01.plan` (paper's `plan.solution`) as a reference artifact for manual cross-check; it is **not** read at runtime — the MCP oracle regenerates plan + trace on every run.
+10 domains × 1 positive problem each — copied verbatim from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). Each domain also ships `p01.plan` (paper's `plan.solution`) as a reference artifact for manual cross-check; it is **not** read into prompts — the MCP oracle regenerates plan + trace on every run.
 
-**Expected validity:** shipped fixtures are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. The startup ground-truth summary prints these flags per problem for manual review; drift is not currently auto-enforced. Broken fixtures for the no-tools verdict baseline (see `OPEN_ISSUES.md::ISS-001`) are not yet added.
+**Negative fixtures (added 2026-04-26, ISS-001).** Each domain also ships three task-targeted negatives — `domain_0.pddl` (validate_domain only), `p01_0.pddl` (validate_problem only), `p01_0.plan` (validate_plan only). The `_0` suffix denotes "negative" but is validity-neutral: the LLM never sees a path (prompts pass content, not paths), and `_0` reads as a numeric variant index even if a path were ever leaked. Each negative joins exactly its target task, so per-task ground truth is now 1:1 balanced (10 positive + 10 negative). See `domains/README.md` for the bug taxonomy.
+
+**Expected validity:** positives are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. The startup ground-truth summary prints these flags per positive problem for manual review; drift is not auto-enforced. Negatives, by contrast, are **strictly enforced** — `generate_ground_truth` aborts startup with `SystemExit` if any negative validates as anything other than False.
+
+**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair their negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + positive `p01.pddl`). The paper dataset ships one positive problem per domain, so the negative plan is always paired with `p01.pddl`. The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` (`run_experiment.py:989`) — so this isn't a leak channel. Multi-problem datasets would need a designated-primary lookup at the two `next(iter(dinfo["problems"].values()))` sites in `generate_ground_truth` and the job builder.
 
 ---
 
@@ -380,7 +382,7 @@ squeue --me                 # All my running/pending jobs
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
 | Simulate success criterion | Non-error tool result | Trajectory deep-equality against oracle `gt["trace"]`. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
-| No-tools task set | All 5 tasks scored | Restricted to `solve` only (the only task with an honest free-text grader given the all-positive ground truth). `validate_*` and `simulate` are dropped from no-tools pending invalid fixtures (ISS-001) and a structured-trajectory grader. With-tools task set unchanged. |
+| No-tools task set | All 5 tasks scored | `solve` + three `validate_*` (the latter restored 2026-04-26 alongside balanced 1:1 ground truth; ISS-001 closed). `simulate` remains excluded — its keyword-check grader is non-discriminative regardless of negatives, and a structured-trajectory free-text grader would itself be a research artifact (ISS-002 path b). With-tools task set unchanged. |
 | No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. See §5. |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.
