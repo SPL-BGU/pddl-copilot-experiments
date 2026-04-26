@@ -18,3 +18,9 @@ sas_plan*
 
 # SLURM job logs (see cluster-experimenting/)
 cluster-experimenting/logs/
+
+# Checkpoint snapshots are stored as zip archives (results.zip, slurm_logs.zip).
+# If a user unzips them locally for inspection, ignore the extracted JSON/out
+# files so they aren't accidentally re-committed alongside the zips.
+checkpoints/**/*.json
+checkpoints/**/*.out
