@@ -7,27 +7,34 @@ Reproduces and extends the evaluation from Benyamin et al., 2025 (arXiv:2509.129
 
 ## 1. High-Level Pipeline
 
+The harness is `run_experiment.py`. It runs one model × one think-mode × one
+condition (4 tools-conditions or no-tools) per invocation, optionally
+followed by a chain phase. There are two driver paths:
+
+- **Local laptop** — `run_background.sh [small|large|both]` wraps `caffeinate`
+  + a local `ollama serve`, then loops `(tool_filter, prompt_style)` itself.
+- **BGU cluster** — `cluster-experimenting/submit_with_rtx.sh <model>`
+  (default, GPU-dedicated) or `submit_all.sh` (cis-ollama waves, fallback).
+  See `cluster-experimenting/README.md`. The sbatch loops
+  `THINK_MODES × CONDITIONS` in-process so weights stay resident on the
+  allocated GPU.
+
 ```
-run_background.sh [small|large|both]
+run_experiment.py
   |
-  +-- Activate .venv, start Ollama, pull models if needed
-  |
-  +-- FOR each tool_filter in {per-task, all}:
-        FOR each prompt_style in {minimal, guided}:
-          |
-          run_experiment.py
-            |
-            1. Load PDDL domains from domains/{classical,numeric}/
-            2. Connect to MCP servers (pddl-solver, pddl-validator)
-            3. Generate ground truth (oracle solves every problem)
-            4. Single-task evaluation (with-tools & without-tools)
-            5. Multi-task chain evaluation
-            6. Save results to output directory
+  1. Load PDDL domains from domains/{classical,numeric}/
+  2. Connect to MCP servers (pddl-solver, pddl-validator, pddl-parser)
+  3. Generate ground truth (oracle solves every problem)
+  4. Single-task evaluation (with-tools & without-tools)
+  5. Multi-task chain evaluation (skipped for no-tools)
+  6. Save results to output directory
 ```
 
-Each combination of `(tool_filter, prompt_style)` produces its own output directory:
+Each `(model, think, condition, tool_filter, prompt_style)` produces its
+own output directory:
 ```
-results/{tag}_{timestamp}_{filter}_{prompt}/
+results/slurm_<model>_<think>_<cond>_<jobid>/        # cluster
+results/{tag}_{timestamp}_{filter}_{prompt}/         # laptop
     single_task_{ts}.json
     chain_{ts}.json
     summary_{ts}.json
@@ -37,15 +44,21 @@ results/{tag}_{timestamp}_{filter}_{prompt}/
 
 ## 2. Experimental Dimensions
 
-The experiment crosses four independent variables:
+The experiment crosses five independent variables:
 
 | Dimension | Values | Controls |
 |-----------|--------|----------|
-| **Model** | qwen3:0.6b, qwen3:4b | Model capacity |
+| **Model** | Cluster sweep (default): `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `gemma4:31b`, `gpt-oss:120b`. Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b` | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all, per-task | Which tools the model sees |
 | **Prompt style** | minimal, guided | System prompt detail level |
-| **Think mode** | default, off | Qwen3 thinking-mode ablation (`--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity) |
+| **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, gpt-oss). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
+
+The cluster's model set differs from the paper's `qwen3:0.6b`/`qwen3:4b`
+because cis-ollama doesn't host those tags (verified 2026-04-20). The
+five-model set above spans the same parameter range (≤1B → 120B) and
+covers three families (Qwen, GPT-OSS, Gemma) — see §11 for the full
+deviations table.
 
 ### 2.1 Condition: with-tools vs without-tools
 
@@ -150,7 +163,7 @@ A chain of length N picks N random tasks and executes them sequentially in a sin
 | Temperature | 0.0 | Deterministic sampling |
 | Max tool loops | 10 | Per single evaluation |
 | Prompt variants | 5 | Per task, different phrasings |
-| Chain samples | 20 | Per chain length |
+| Chain samples | 20 (laptop default) / 100 (cluster default) | Per chain length. `run_experiment.py --chain-samples` defaults to 20; `cluster-experimenting/run_condition_rtx.sbatch` overrides to 100 (paper-aligned) via `CHAIN_SAMPLES` env. |
 | Chain lengths | 2, 3, 4, 5 | |
 | Random seed | 42 | For chain task sampling |
 
@@ -301,13 +314,34 @@ Per-configuration chain results (model, with_tools, chain_length, samples, succe
 
 ## 10. Running Experiments
 
-### Background (recommended)
+### Cluster (default for paper sweeps)
+
+The full 5-model sweep on the BGU rtx GPUs:
+
+```bash
+ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
+  for m in Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b gpt-oss:120b; do \
+    bash cluster-experimenting/submit_with_rtx.sh \"\$m\"; \
+  done"
+
+# Single-model baseline run (no-tools / think=off / solve only, ~15 min)
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
+```
+
+See `cluster-experimenting/README.md` for full submission flow,
+`.claude/skills/cluster-ops/SKILL.md` for status/preflight/postmortem
+helpers.
+
+### Laptop background
 
 ```bash
 ./run_background.sh small    # qwen3:0.6b -- ~4 runs (2 filters x 2 prompts)
 ./run_background.sh large    # qwen3:4b
 ./run_background.sh          # both models
 ```
+
+`run_background.sh` is macOS-oriented (uses `caffeinate`, expects local
+`ollama serve`). On Linux laptops, run `run_experiment.py` directly.
 
 ### Direct CLI
 
@@ -324,9 +358,12 @@ python3 run_experiment.py \
 ### Monitoring
 
 ```bash
-tail -f run_*.log           # Watch progress
-ps -p <PID>                 # Check if running
-kill <PID>                  # Stop
+tail -f run_*.log           # Laptop: watch progress
+ps -p <PID>                 # Laptop: check if running
+kill <PID>                  # Laptop: stop
+
+# Cluster: see cluster-experimenting/README.md "Monitoring" section
+squeue --me                 # All my running/pending jobs
 ```
 
 ---
@@ -338,7 +375,7 @@ kill <PID>                  # Stop
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
 | Tool filter | All tools exposed | Configurable: all or per-task |
 | Prompt style | Single prompt | Configurable: minimal or guided |
-| Models | Qwen3, GPT-OSS (various sizes) | Ollama models (qwen3:0.6b, qwen3:4b) |
+| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `gemma4:31b`, `gpt-oss:120b` (cis-ollama-hosted; spans 0.8B–120B and three families). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
