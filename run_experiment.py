@@ -483,7 +483,15 @@ def load_domains(domains_dir: Path) -> dict:
         domains/{classical,numeric}/<name>/domain.pddl
         domains/{classical,numeric}/<name>/p*.pddl
 
-    Returns {name: {"type": str, "domain": str, "problems": {pname: str}}}.
+    Optionally also picks up task-targeted negative fixtures with the `_0`
+    suffix (validity-neutral filenames; see `domains/README.md` and ISS-001):
+        domain_0.pddl  → validate_domain only
+        p01_0.pddl     → validate_problem only
+        p01_0.plan     → validate_plan only
+
+    Returns {name: {"type": str, "domain": str, "problems": {pname: str},
+                    "negatives": {"domain": str|None, "problem": str|None,
+                                  "plan": str|None}}}.
     """
     domains: dict = {}
     for dtype in ("classical", "numeric"):
@@ -496,15 +504,26 @@ def load_domains(domains_dir: Path) -> dict:
             domain_file = ddir / "domain.pddl"
             if not domain_file.exists():
                 continue
+            # Exclude `_0`-suffixed problem files: they are negative fixtures
+            # consumed via `negatives["problem"]`, not real positive problems.
             problems = {
                 pf.stem: pf.read_text()
                 for pf in sorted(ddir.glob("p*.pddl"))
+                if not pf.stem.endswith("_0")
             }
             if problems:
+                neg_domain = ddir / "domain_0.pddl"
+                neg_problem = ddir / "p01_0.pddl"
+                neg_plan = ddir / "p01_0.plan"
                 domains[ddir.name] = {
                     "type": dtype,
                     "domain": domain_file.read_text(),
                     "problems": problems,
+                    "negatives": {
+                        "domain": neg_domain.read_text() if neg_domain.exists() else None,
+                        "problem": neg_problem.read_text() if neg_problem.exists() else None,
+                        "plan": neg_plan.read_text() if neg_plan.exists() else None,
+                    },
                 }
     return domains
 
@@ -621,6 +640,74 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 f"problem_valid={entry['problem_valid']} "
                 f"plan_valid={entry['plan_valid']})"
             )
+
+        # Task-targeted negative fixtures (ISS-001). The `_negatives` slot is
+        # keyed on the negative *kind*, not a `pname`, to avoid colliding
+        # with the per-problem map above. The job builder reads from here
+        # and constructs each negative job's `gt` fragment inline.
+        negs = dinfo.get("negatives") or {}
+        positive_problems = dinfo["problems"]
+        if positive_problems and any(v is not None for v in negs.values()):
+            positive_p01 = next(iter(positive_problems.values()))
+            neg_slot: dict = {}
+
+            if negs.get("domain") is not None:
+                raw = await mcp.call_tool(
+                    "validate_pddl_syntax", {"domain": negs["domain"]}
+                )
+                verdict = _parse_validation_verdict(raw)
+                if verdict is not False:
+                    raise SystemExit(
+                        f"Negative fixture {dname}/domain_0.pddl validated as "
+                        f"{verdict!r} (expected False) — fix the fixture or "
+                        f"the validator before running the sweep."
+                    )
+                neg_slot["domain"] = {
+                    "domain_pddl": negs["domain"],
+                    "domain_valid": False,
+                }
+                print(f"    {dname}/domain_0.pddl: negative ✓ (domain_valid=False)")
+
+            if negs.get("problem") is not None:
+                raw = await mcp.call_tool(
+                    "validate_pddl_syntax",
+                    {"domain": dinfo["domain"], "problem": negs["problem"]},
+                )
+                verdict = _parse_validation_verdict(raw)
+                if verdict is not False:
+                    raise SystemExit(
+                        f"Negative fixture {dname}/p01_0.pddl validated as "
+                        f"{verdict!r} (expected False)."
+                    )
+                neg_slot["problem"] = {
+                    "problem_pddl": negs["problem"],
+                    "problem_valid": False,
+                }
+                print(f"    {dname}/p01_0.pddl: negative ✓ (problem_valid=False)")
+
+            if negs.get("plan") is not None:
+                raw = await mcp.call_tool(
+                    "validate_pddl_syntax",
+                    {
+                        "domain": dinfo["domain"],
+                        "problem": positive_p01,
+                        "plan": negs["plan"],
+                    },
+                )
+                verdict = _parse_validation_verdict(raw)
+                if verdict is not False:
+                    raise SystemExit(
+                        f"Negative fixture {dname}/p01_0.plan validated as "
+                        f"{verdict!r} (expected False)."
+                    )
+                neg_slot["plan"] = {
+                    "plan": negs["plan"],   # picked up by _build_plan_str
+                    "plan_valid": False,
+                }
+                print(f"    {dname}/p01_0.plan: negative ✓ (plan_valid=False)")
+
+            if neg_slot:
+                gt[dname]["_negatives"] = neg_slot
     return gt
 
 
@@ -1135,18 +1222,26 @@ async def run_single_task_experiment(
     Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv, with_tools, gt, np)
     jobs: list[Job] = []
     with_tools_values = _expand_conditions(conditions)
+    # Map each negative-fixture kind to the single task it tests. Keep this
+    # in sync with `generate_ground_truth`'s `_negatives` slot keys.
+    NEGATIVE_KINDS: tuple[tuple[str, str, str], ...] = (
+        ("domain",  "validate_domain",  "domain_0"),
+        ("problem", "validate_problem", "problem_0"),
+        ("plan",    "validate_plan",    "plan_0"),
+    )
     for model in models:
         for with_tools in with_tools_values:
             for task in tasks:
-                # No-tools is graded only for `solve` — the model's plan
-                # goes through the same pyvalidator path as a tool-returned
-                # plan, mirroring the with-tools scorer. Other tasks lack
-                # an honest free-text grader (simulate) or compare a
-                # verdict string against all-positive ground truth
-                # (validate_*); see EXPERIMENTS_FLOW.md §4.2.
-                if not with_tools and task != "solve":
+                # No-tools is graded for `solve` and `validate_*` (the
+                # latter became discriminative once balanced negative
+                # fixtures landed; see ISS-001). `simulate` no-tools
+                # stays excluded — its grader (a literal keyword check
+                # at `check_success` in this file) is non-discriminative
+                # regardless of negatives.
+                if not with_tools and task == "simulate":
                     continue
                 np_for_task = _resolve_num_predict(num_predict_override, task)
+                # ---- Positive jobs (one per (dname, pname, prompt-variant)) ----
                 for dname, dinfo in domains.items():
                     for pname, ppddl in dinfo["problems"].items():
                         gt = ground_truth.get(dname, {}).get(pname, {})
@@ -1156,6 +1251,52 @@ async def run_single_task_experiment(
                             jobs.append((
                                 model, task, dname, dinfo["domain"],
                                 pname, ppddl, pv, with_tools, gt, np_for_task,
+                            ))
+                # ---- Negative jobs (task-targeted; ISS-001) ----
+                # Each negative fixture joins exactly one task and carries
+                # an inline `gt` fragment so we sidestep the by-`pname` GT
+                # lookup above (two negatives could otherwise collide).
+                for kind, target_task, neg_pname in NEGATIVE_KINDS:
+                    if target_task != task:
+                        continue
+                    for dname, dinfo in domains.items():
+                        neg_slot = (
+                            ground_truth.get(dname, {})
+                            .get("_negatives", {})
+                            .get(kind)
+                        )
+                        if neg_slot is None:
+                            continue
+                        positive_p01 = next(iter(dinfo["problems"].values()))
+                        if kind == "domain":
+                            d_pddl = neg_slot["domain_pddl"]
+                            p_pddl = positive_p01
+                            gt_frag = {
+                                "domain_valid": False,
+                                "problem_valid": True,
+                                "plan_valid": None,
+                            }
+                        elif kind == "problem":
+                            d_pddl = dinfo["domain"]
+                            p_pddl = neg_slot["problem_pddl"]
+                            gt_frag = {
+                                "domain_valid": True,
+                                "problem_valid": False,
+                                "plan_valid": None,
+                            }
+                        else:  # kind == "plan"
+                            d_pddl = dinfo["domain"]
+                            p_pddl = positive_p01
+                            gt_frag = {
+                                "domain_valid": True,
+                                "problem_valid": True,
+                                "plan_valid": False,
+                                "plan": neg_slot["plan"],
+                            }
+                        for pv in range(num_variants):
+                            jobs.append((
+                                model, target_task, dname, d_pddl,
+                                neg_pname, p_pddl, pv, with_tools, gt_frag, np_for_task,
                             ))
 
     total = len(jobs)

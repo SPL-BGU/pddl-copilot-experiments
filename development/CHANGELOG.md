@@ -6,6 +6,37 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-26 — task-targeted negative fixtures + no-tools `validate_*` re-enable
+
+**Motivation.** ISS-001's residual half: every shipped fixture in `domains/` was positive (`gt["domain_valid"] = gt["problem_valid"] = gt["plan_valid"] = True` for every (domain, problem) pair). With-tools `validate_*` therefore measured only tool/argument competence — never validation *capability*, since the truth label never flipped. The same bias is what blocked no-tools `validate_*` on 2026-04-25 (the constant-VALID prior trivially won).
+
+**Changes.**
+- **`domains/<dtype>/<domain>/`** (10 domains × 3 new files = 30 files): added `domain_0.pddl`, `p01_0.pddl`, `p01_0.plan`. Each fixture is task-targeted — `domain_0.pddl` joins only `validate_domain`, `p01_0.pddl` only `validate_problem`, `p01_0.plan` only `validate_plan`. Filenames are validity-neutral (`_0` suffix reads as a numeric variant index, not a label, even though the LLM never sees a path). Bug categories distributed across the 10 domains so models can't pattern-match a single shape.
+- **`run_experiment.py`**:
+  - `load_domains` (lines 480-509): `p*.pddl` glob now excludes `_0`-suffixed files; sibling `domain_0.pddl` / `p01_0.pddl` / `p01_0.plan` are read into `entry["negatives"]`.
+  - `generate_ground_truth` (lines 550+): per-domain negative pass calls `validate_pddl_syntax` with the appropriate argument shape (domain / domain+problem / domain+problem+plan) for each kind, asserts the verdict is `False`, and stores `gt[dname]["_negatives"][kind]`. **Fail-fast (`SystemExit`)** if any negative validates True — silently broken negatives can't contaminate the dataset.
+  - `run_single_task_experiment` job builder: parallel negative-job loop emits `(model, target_task, dname, domain_pddl, pname, problem_pddl, pv, with_tools, gt_frag, np)` tuples per (domain, kind, prompt-variant). Each negative job's `gt_frag` is constructed inline (no by-`pname` GT lookup), sidestepping any key collision between the `validate_problem` and `validate_plan` negatives. Display `pname` is `domain_0` / `problem_0` / `plan_0`; aggregators detect via `problem_name.endswith("_0")`.
+  - **No-tools gate flipped** (`run_experiment.py:1147`): from `task != "solve"` to `task == "simulate"`. Re-enables no-tools `validate_*` (`solve` still in, `simulate` still out — its keyword-check grader at lines 910-912 is non-discriminative regardless of negatives).
+- **`tests/test_check_success.py`**: added `test_validate_negatives_no_tools` — four cases mirroring the existing `truth=True` no-tools cases with the truth bit flipped (`validate_domain` INVALID match, `validate_problem` VALID mismatch, `validate_plan` no-VERDICT, `validate_plan` INVALID match). Test suite now 37/37 (was 33).
+- **`EXPERIMENTS_FLOW.md`**: §4.2 rewritten to document the new no-tools task set (solve + validate_*; simulate stays excluded). §6 documents the negative-fixture contract, `_0` suffix, fail-fast enforcement. §11 paper-diff row updated.
+- **`domains/README.md`**: per-domain table extended to six files; added "Negative fixtures (task-targeted)" section with bug taxonomy table.
+- **`cluster-experimenting/submit_with_rtx.sh`**: `--no-tools` shorthand still pins `TASKS=solve` for the fast-baseline contract (~15 min), but the comment is updated to note that the matrix gate now permits `validate_*` and how to widen the shorthand if desired.
+
+**Schema / compatibility.** No `TaskResult` change. Existing `results/.../single_task_*.json` and `summary_*.json` files parse identically against the new code; positive (domain, problem, task) tuples produce identical evaluations (additive on the job set, not modifying). Aggregators that want to split positive vs negative success rates can do so via `problem_name.endswith("_0")` plus the `task` key — already the natural grouping. Per-task aggregators that don't split will simply average over both halves of the balanced ground truth.
+
+**Runtime cost.** Per (model, with-tools) cell: 250 → 400 evals (+60% — three task-targeted negatives × 10 domains × 5 prompt variants). Per (model, no-tools) cell: 50 → 350 evals (the +600% jump is mostly the re-enable of `validate_*`, not the negatives themselves). Combined per model: 300 → 750 evals (**2.5×**). User-acknowledged scope expansion in exchange for closing the validation-capability axis.
+
+**Closes / narrows.**
+- **ISS-001** closed entirely (both ground-truth-bias for with-tools `validate_*` and no-tools-discriminability sub-points addressed in the same PR).
+- **ISS-017** narrowed further — the no-tools side of the inversion was already sidestepped on 2026-04-25, and now the with-tools `validate_*` baseline-bias is also gone (mixed truth labels eliminate the constant-VALID trivial prior).
+- Existing 2026-04-25 entry's "ISS-001 cross-reference" is now satisfied (re-introduction of no-tools `validate_*` happened here, not deferred).
+
+**Verification.** All 30 negatives pass the fail-fast at startup against the live MCP validator (driven by a one-shot script that imports the real `load_domains` + `generate_ground_truth`). Plugin verify.sh (16 tests) and full test suite (49 + 37 = 86 tests) green.
+
+**Files.** `run_experiment.py`, `domains/<dtype>/<domain>/{domain_0.pddl,p01_0.pddl,p01_0.plan}` (×10 domains), `tests/test_check_success.py`, `domains/README.md`, `EXPERIMENTS_FLOW.md`, `cluster-experimenting/submit_with_rtx.sh`, `development/OPEN_ISSUES.md`.
+
+---
+
 ## 2026-04-25 — no-tools sweep: honest evaluation + matrix gating
 
 **Motivation.** Two of the three no-tools scorer paths produced inflated success rates that didn't reflect capability:

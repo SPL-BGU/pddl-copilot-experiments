@@ -8,13 +8,8 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## P1 — Methodology
 
-### ISS-001 · `validate_*` ground truth is all-positive
-**Source.** Results review of `qwen06b_20260419_210436_*`, issue 4.
-**Evidence.** `gt["domain_valid"]=True` for every bundled problem (no-tools `validate_domain` = 55/55 across all configs). `gt["problem_valid"]=True` for all 55 (3 misses are model false-negatives). Oracle-generated plans are always valid.
-**Status (2026-04-25).** No-tools `validate_*` was dropped from the production matrix (CHANGELOG 2026-04-25), so no-tools is no longer affected. The remaining bias is on the with-tools side: a successful `validate_pddl_syntax` call always satisfies the verdict-match step. With-tools `validate_*` still produces a meaningful signal via tool-selection / argument-shape failures (`FR_TOOL_NOT_SELECTED`, `FR_TOOL_ERROR`), but absolute verdict-accuracy numbers can't be compared to the paper without invalid fixtures.
-**Impact.** With-tools `validate_*` measures tool/argument competence, not validation capability. Paper-comparable absolute numbers require invalid fixtures.
-**Fix (remaining).** Inject broken fixtures into `domains/` — corrupted parens, missing `:parameters`, invalid goals — so `gt["{domain,problem}_valid"]` has a non-trivial False fraction. Balance polarity per task. **Re-introducing no-tools `validate_*` is gated on this fix** — without invalid fixtures, the no-tools verdict-match is degenerate.
-**Files.** `domains/**/*.pddl`, ground-truth generation in `run_experiment.py`.
+### ~~ISS-001~~ · `validate_*` ground truth is all-positive
+**Closed 2026-04-26** by the task-targeted negative fixtures pass. Each domain now ships three negatives — `domain_0.pddl` / `p01_0.pddl` / `p01_0.plan` — joining exactly its target task, giving 1:1 balanced ground truth (10 positive + 10 negative per `validate_*` task). With-tools `validate_*` now exercises true validation capability (the trivial verdict-match shortcut is gone). No-tools `validate_*` was simultaneously re-enabled (`run_experiment.py:1147` flipped from `task != "solve"` to `task == "simulate"`), so the production matrix again grades it. `generate_ground_truth` aborts startup with `SystemExit` if any negative validates True. See CHANGELOG 2026-04-26.
 
 ### ~~ISS-002~~ · `simulate` no-tools scorer is non-discriminative
 **Closed 2026-04-25** (path b — drop simulate from no-tools headline). The `run_single_task_experiment` job builder no longer emits `(no-tools, simulate)` jobs; `check_success`'s simulate no-tools branch remains as defensive code but is unreachable from the production matrix. See CHANGELOG 2026-04-25 (no-tools sweep entry).
@@ -28,14 +23,12 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ### ISS-017 · Grading bias inverts tools-vs-no-tools at small scales
 **Source.** Cluster-run1 analysis, 2026-04-22 (SLURM 17123867/8, Qwen3.5:0.8B, 6/10 conditions).
-**Status (2026-04-25).** No-tools side **sidestepped** — `validate_*` and `simulate` are no longer emitted as no-tools jobs (CHANGELOG 2026-04-25). Remaining concern: with-tools `validate_*` still measures `verdict == truth` against an all-positive ground truth, so a successful `validate_pddl_syntax` call always satisfies the verdict step regardless of whether the model would correctly distinguish valid from invalid PDDL. The remaining signal in with-tools `validate_*` is tool-selection + argument-shape competence (the paper's headline diagnostic), not validation capability per se. Closing the residual baseline-bias requires **ISS-001** (invalid fixtures).
-**Original evidence.** For Qwen3.5:0.8B (think=off, no-tools, n=50/task):
+**Status (2026-04-26).** **Largely closed** by the ISS-001 fix landing. With-tools `validate_*` now sees 1:1 balanced ground truth, so the trivial verdict-match shortcut is gone — a constant-VALID strategy scores ~50%, capability shows up above that. No-tools `validate_*` re-enabled in the same PR, also under balanced ground truth. Pre-ISS-001 result rows from cluster-run1 (Qwen3.5:0.8B, 2026-04-22) remain on disk but should not be quoted as headline numbers since the fixtures they were graded against are no longer the production set. Residual concern (P3 only): the simulate keyword-check grader at `run_experiment.py:910-912` is still non-discriminative, but `simulate` no-tools stays excluded from the matrix, so this is dormant. Re-baselining the with-tools `validate_*` cells under balanced ground truth is the remaining follow-up — tracked under the next sweep, not as a new ISS.
+**Original evidence (kept for archaeology).** For Qwen3.5:0.8B (think=off, no-tools, n=50/task):
 - validate_domain 50/50 (100%), validate_problem 47/50 (94%), validate_plan 44/50 (88%), simulate 48/50 (96%).
 - Tools conditions on the same cells drop to 8–78% (`tool_not_selected` dominates failures: 71–150 of 250).
 - Direct inspection (`results/cluster-20260422/slurm_Qwen3_5_0_8B_off_no-tools_17123868/single_task_*.json`) shows the model emits `VERDICT: VALID` on 141/150 validate_* instances; all 150 gold verdicts are VALID (benchmark constructed from solvable problems).
-- Simulate responses begin with *"Here is the state transition trace..."* — always contains the `state`+`step`/`after` keywords that `check_success` (`run_experiment.py:883`) uses as the sole no-tools grader.
-**Impact (residual).** Reviewers cannot conclude "tools improve validation" from with-tools `validate_*` numbers without invalid fixtures — the verdict-match step is satisfied trivially. The "tool-use competence" framing remains valid for the with-tools side (it still measures tool selection + argument shape).
-**Fix (residual).** Blocked on **ISS-001** (inject invalid fixtures). When that lands, re-baseline with-tools `validate_*` and re-introduce no-tools `validate_*` for a fair comparison.
+- Simulate responses begin with *"Here is the state transition trace..."* — always contains the `state`+`step`/`after` keywords that `check_success` (`run_experiment.py:910-912`) uses as the sole no-tools grader.
 **Files.** Tracked upstream. This entry is a cross-reference + scope/severity note.
 
 ---
@@ -132,9 +125,9 @@ Landing order differs from raw impact ranking — front-load zero-risk wins, the
 
 1. ~~**Batch 1 — ISS-004** + host-label stamp in `summary_*.json`.~~ Landed 2026-04-20 (see CHANGELOG).
 2. **Batch 2 — ISS-005** + `FR_TOOL_LOOP_EXCEEDED` fix in `chat_with_tools` exit path (`run_experiment.py:398-401` currently returns raw tool JSON as `content` after `MAX_TOOL_LOOPS`). Refines taxonomy without changing any success/fail verdict.
-3. **Batch 3 — ISS-001** + **ISS-011**. 2 invalid fixtures per domain (6 total): one syntax-level (e.g. corrupted parens), one semantic-level (e.g. missing `:parameters`, type mismatch). Invalidates prior `validate_*` numbers → new baseline required; label result dirs `{tag}_v2fixtures_*` and note in `EXPERIMENTS_FLOW.md §11`.
+3. ~~**Batch 3 — ISS-001** + **ISS-011**.~~ ISS-001 portion landed 2026-04-26 (task-targeted negatives, 30 fixtures, 1:1 balanced). ISS-011 (chain denominator) data-capture is already done and only needs an aggregation convention — see its entry above. With-tools `validate_*` cells now need a re-baseline against the balanced ground truth on the next sweep — label result dirs `{tag}_v2fixtures_*` and note in `EXPERIMENTS_FLOW.md §11` when re-running.
 4. **Batch 5 — ISS-006** + **ISS-007** num_predict bumps, landed together with the re-run triggered by Batch 3. Reproduction-default stays at paper setting; flag as ablation.
-5. **Batch 4 — ISS-002** resolution (see pending decision below).
+5. ~~**Batch 4 — ISS-002** resolution.~~ De-facto resolved 2026-04-25 (path b — drop simulate from no-tools headline); confirmed dormant 2026-04-26. See updated pending-decisions entry.
 
 Dropped during the review pass:
 - `MCPPlanner.call_tool` assert on caller-supplied `verbose` — redundant with the schema stripping done in `connect()`; no path can deliver a `verbose` arg to `call_tool`.
@@ -147,11 +140,11 @@ Deferred (P3, mostly analysis work): **ISS-003, ISS-008, ISS-009, ISS-010, ISS-0
 ## Pending decisions
 
 ### ISS-002 — simulate no-tools grader design
-Two resolution paths proposed in ISS-002, deferred until Batch 3 lands:
-- **(a)** Structured-trace grader: parse a state sequence from the model response and diff against `gt["state_trajectory"]`. ~60 LOC in `check_success` simulate branch + extend ground-truth emission to carry a canonical trajectory.
-- **(b)** Drop simulate from the no-tools headline numbers; document as a known limitation in `EXPERIMENTS_FLOW.md`.
+**Status (2026-04-26).** Batch 3 (ISS-001 invalid fixtures) landed but explicitly kept `simulate` no-tools excluded from the matrix — the keyword-check grader at `run_experiment.py:910-912` is non-discriminative regardless of fixture polarity (a model that says *"Here is the state transition trace…"* always passes). Path (b) (drop simulate from no-tools headline) was already closed on 2026-04-25 and remains the de-facto resolution. Path (a) (structured-trace grader) is dormant: only worth building if a future analysis specifically wants no-tools simulate as a research artifact. No action required for the next sweep.
 
-**Decision rule.** Run Batch 3 first. If the no-tools simulate row under the mixed-polarity fixture set still looks artifactual (e.g. success driven by vocabulary alone), land (b). If the mix makes simulate no-tools a plausibly informative row, build (a).
+Original options:
+- **(a)** Structured-trace grader: parse a state sequence from the model response and diff against `gt["state_trajectory"]`. ~60 LOC in `check_success` simulate branch + extend ground-truth emission to carry a canonical trajectory.
+- **(b)** Drop simulate from the no-tools headline numbers; document as a known limitation in `EXPERIMENTS_FLOW.md`. **Done 2026-04-25.**
 
 ---
 

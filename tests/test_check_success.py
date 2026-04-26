@@ -206,6 +206,53 @@ async def test_validate_domain(r: TestResults):
 
 
 # ---------------------------------------------------------------------------
+# Validate_* with negative ground truth (ISS-001 follow-up).
+# Mirrors the truth=True no-tools cases above, with the truth bit flipped:
+# the model is now graded against `*_valid=False` ground truth.
+# Re-enabled paths in run_experiment.py:878-885 (check_success no-tools
+# validate_* branch) are exercised here.
+# ---------------------------------------------------------------------------
+
+async def test_validate_negatives_no_tools(r: TestResults):
+    bw = load_fixture("blocksworld_p01")
+    gt_pos = build_gt_from_fixture(bw)
+    dom = bw["domain_pddl"]
+    prob = bw["problem_pddl"]
+    mcp = FakeMCP(plan_sensitive_validator(bw))
+
+    # Build the three negative gt fragments (one per task) the way the job
+    # builder does: copy the positive gt and flip the relevant *_valid bit.
+    gt_neg_dom = {**gt_pos, "domain_valid": False}
+    gt_neg_prob = {**gt_pos, "problem_valid": False}
+    gt_neg_plan = {**gt_pos, "plan_valid": False}
+
+    # validate_domain — INVALID matches truth=False → success
+    await run_case("vd nt verdict invalid match (gt=False)", r, "validate_domain",
+                   "Saw a missing paren.\nVERDICT: INVALID", [],
+                   gt_neg_dom, mcp, dom, prob, False,
+                   (None, True, rx.FR_OK))
+
+    # validate_problem — VALID mismatches truth=False
+    await run_case("vp(roblem) nt verdict valid mismatch (gt=False)", r, "validate_problem",
+                   "Looks fine to me.\nVERDICT: VALID", [],
+                   gt_neg_prob, mcp, dom, prob, False,
+                   (None, False, rx.FR_VERDICT_MISMATCH))
+
+    # validate_plan — no VERDICT line at all
+    await run_case("vp nt no verdict (gt=False)", r, "validate_plan",
+                   "I'm undecided about this plan.", [],
+                   gt_neg_plan, mcp, dom, prob, False,
+                   (None, False, rx.FR_NO_VERDICT_PARSED))
+
+    # validate_plan — INVALID matches truth=False → success (the bread-and-butter
+    # case: model correctly identifies a broken plan).
+    await run_case("vp nt verdict invalid match (gt=False)", r, "validate_plan",
+                   "Step 2 has unmet preconditions.\nVERDICT: INVALID", [],
+                   gt_neg_plan, mcp, dom, prob, False,
+                   (None, True, rx.FR_OK))
+
+
+# ---------------------------------------------------------------------------
 # Simulate — B1 target
 # ---------------------------------------------------------------------------
 
@@ -306,6 +353,7 @@ async def _async_main(r: TestResults):
     await test_solve(r)
     await test_validate_plan(r)
     await test_validate_domain(r)
+    await test_validate_negatives_no_tools(r)
     await test_simulate(r)
 
 
