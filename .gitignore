@@ -10,6 +10,11 @@ results/
 .ipynb_checkpoints/
 *.log
 
+# Developer-local scratch (anchors, runbooks, ad-hoc reports). Holds the
+# pre-refactor smoke-equality anchor (.local/anchors/) and the diff helper
+# (.local/scripts/diff_smoke.sh) used by the PR-1 merge gate.
+.local/
+
 # Fast Downward / ENHSP intermediates. The pddl-solver plugin pins CWD to a
 # per-request temp dir (pddl-copilot f4b8244), so current runs can't leak
 # these — but an older plugin checkout would still write them to this dir.

@@ -22,12 +22,14 @@ Usage:
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
 import random
 import re
 import signal
+import subprocess
 import sys
 import time
 from collections import defaultdict
@@ -48,6 +50,37 @@ DOMAINS_DIR = SCRIPT_DIR / "domains"
 RESULTS_DIR = SCRIPT_DIR / "results"
 
 REQUIRED_PLUGINS = ["pddl-solver", "pddl-validator"]
+
+
+def _git_short_sha_dirty() -> str:
+    # The smoke output dir uses `<short-sha>[-dirty]` so the diff harness
+    # can pair pre/post-refactor runs by commit. Falls back to "nogit" so
+    # the runner still works outside a git checkout (e.g. tarballed tests).
+    try:
+        sha = subprocess.run(
+            ["git", "-C", str(SCRIPT_DIR), "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, check=True, timeout=2,
+        ).stdout.strip()
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
+        return "nogit"
+    try:
+        dirty = subprocess.run(
+            ["git", "-C", str(SCRIPT_DIR), "status", "--porcelain"],
+            capture_output=True, text=True, check=True, timeout=2,
+        ).stdout.strip()
+    except (subprocess.SubprocessError, OSError, FileNotFoundError):
+        dirty = ""
+    return f"{sha}-dirty" if dirty else sha
+
+
+def _shard_filter(shard_i: int, shard_n: int, key_parts: tuple[str, ...]) -> bool:
+    # Returns True when the key belongs in shard `shard_i` of `shard_n`.
+    # Stable across hosts (sha256, not Python's PYTHONHASHSEED-salted hash).
+    if shard_n <= 1:
+        return True
+    key = "|".join(key_parts).encode()
+    bucket = int.from_bytes(hashlib.sha256(key).digest()[:8], "big") % shard_n
+    return bucket == shard_i
 
 
 def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
@@ -1241,6 +1274,9 @@ async def run_single_task_experiment(
     concurrency: int = DEFAULT_CONCURRENCY,
     conditions: str = "both",
     temperature: float = TEMPERATURE,
+    shard_i: int = 0,
+    shard_n: int = 1,
+    cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None,
 ) -> list[TaskResult]:
     """Run the full single-task sweep with bounded Ollama concurrency.
 
@@ -1275,13 +1311,43 @@ async def run_single_task_experiment(
                 if not with_tools and task == "simulate":
                     continue
                 np_for_task = _resolve_num_predict(num_predict_override, task)
+                # `--smoke-shuffle` constrains each (model, task) cell to a
+                # single random (domain, problem) pick; iterate only that
+                # pair instead of the full grid.
+                if cell_assignment is not None:
+                    pick = cell_assignment.get((model, task))
+                    if pick is None:
+                        continue
+                    pick_dname, pick_pname = pick
+                    domain_iter = (
+                        [(pick_dname, domains[pick_dname])]
+                        if pick_dname in domains else []
+                    )
+                else:
+                    domain_iter = list(domains.items())
                 # ---- Positive jobs (one per (dname, pname, prompt-variant)) ----
-                for dname, dinfo in domains.items():
-                    for pname, ppddl in dinfo["problems"].items():
+                for dname, dinfo in domain_iter:
+                    if cell_assignment is not None:
+                        ppddl = dinfo["problems"].get(pick_pname)
+                        problem_iter = (
+                            [(pick_pname, ppddl)] if ppddl is not None else []
+                        )
+                    else:
+                        problem_iter = list(dinfo["problems"].items())
+                    for pname, ppddl in problem_iter:
                         gt = ground_truth.get(dname, {}).get(pname, {})
                         if task in ("validate_plan", "simulate") and not gt.get("plan"):
                             continue
                         for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                            # `with_tools` is intentionally OUT of the shard
+                            # key so paired (tools / no-tools) comparisons
+                            # for the same (m, t, d, p, pv) land in the
+                            # same shard.
+                            if not _shard_filter(
+                                shard_i, shard_n,
+                                (model, task, dname, pname, str(pv)),
+                            ):
+                                continue
                             jobs.append((
                                 model, task, dname, dinfo["domain"],
                                 pname, ppddl, pv, with_tools, gt, np_for_task,
@@ -1293,7 +1359,21 @@ async def run_single_task_experiment(
                 for kind, target_task, neg_pname in NEGATIVE_KINDS:
                     if target_task != task:
                         continue
-                    for dname, dinfo in domains.items():
+                    # Mirror the (model, task) → (dname, pname) cell
+                    # assignment used by `--smoke-shuffle` for positive
+                    # jobs: one negative per cell, drawn from the assigned
+                    # domain's `_negatives` slot.
+                    if cell_assignment is not None:
+                        pick = cell_assignment.get((model, task))
+                        if pick is None:
+                            continue
+                        neg_domain_iter = (
+                            [(pick[0], domains[pick[0]])]
+                            if pick[0] in domains else []
+                        )
+                    else:
+                        neg_domain_iter = list(domains.items())
+                    for dname, dinfo in neg_domain_iter:
                         neg_slot = (
                             ground_truth.get(dname, {})
                             .get("_negatives", {})
@@ -1333,6 +1413,11 @@ async def run_single_task_experiment(
                                 "plan": neg_slot["plan"],
                             }
                         for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                            if not _shard_filter(
+                                shard_i, shard_n,
+                                (model, target_task, dname, neg_pname, str(pv)),
+                            ):
+                                continue
                             jobs.append((
                                 model, target_task, dname, d_pddl,
                                 neg_pname, p_pddl, pv, with_tools, gt_frag, np_for_task,
@@ -1893,8 +1978,13 @@ def save_results(
 
 
 async def async_main(args):
+    smoke_mode = bool(args.smoke or args.smoke_shuffle)
+
     # Resolve the think-mode override once. "default" → None → don't pass
     # the kwarg, preserving the model's default (= paper reproduction).
+    # In smoke mode the inner loop iterates think={on, off} explicitly;
+    # `think_override` here only matters as a fallback for the existing
+    # log lines.
     think_override: bool | None
     if args.think == "on":
         think_override = True
@@ -1907,7 +1997,8 @@ async def async_main(args):
     # depend on the model's reasoning budget (no tool args to construct),
     # so think=on/default cells aren't part of any planned comparison.
     # Mirrors the single-task gating from ISS-018. See EXPERIMENTS_FLOW.md §5.
-    if args.conditions in ("no-tools", "both") and args.think != "off":
+    # Smoke iterates think internally, so the gate is bypassed there.
+    if not smoke_mode and args.conditions in ("no-tools", "both") and args.think != "off":
         if args.conditions == "no-tools":
             print(
                 f"\nWARNING: --conditions=no-tools with --think={args.think} is "
@@ -1925,6 +2016,18 @@ async def async_main(args):
     host = args.ollama_host or ""
     if args.models is None:
         args.models = list(DEFAULT_MODELS)
+
+    # Smoke output dir is keyed on the source SHA + a wall-clock timestamp,
+    # so the diff harness can pair pre-/post-refactor runs by commit. Done
+    # here (after model resolution, before the banner) so the printed
+    # path matches what's eventually written.
+    if smoke_mode:
+        sha_tag = _git_short_sha_dirty()
+        ts_tag = time.strftime("%Y%m%d_%H%M%S")
+        smoke_label = "smoke_shuffle" if args.smoke_shuffle else "smoke"
+        args.output_dir = str(
+            RESULTS_DIR / f"{smoke_label}_{sha_tag}_{ts_tag}"
+        )
 
     num_parallel_env = os.environ.get("OLLAMA_NUM_PARALLEL", "unset")
 
@@ -1951,6 +2054,13 @@ async def async_main(args):
               "concurrent requests server-side, negating the speedup. "
               "Export OLLAMA_NUM_PARALLEL>=concurrency before the run.")
     print(f"  Ollama host:{host or '(library default: http://localhost:11434)'}")
+    if smoke_mode:
+        print(f"  Smoke:      "
+              f"{'shuffle (random per-cell d/p)' if args.smoke_shuffle else 'fixed (blocksworld/p01)'}"
+              f" → {args.output_dir}")
+    if args.shard_n > 1:
+        print(f"  Shard:      {args.shard_i}/{args.shard_n} "
+              "(SHA-256 partitioning of single-task jobs; chains run only on shard 0)")
 
     # Resolve plugins
     plugin_dirs = resolve_plugin_dirs(args.marketplace_path)
@@ -1959,6 +2069,24 @@ async def async_main(args):
     domains = load_domains(Path(args.domains_dir))
     if not domains:
         sys.exit(f"No domains found in {args.domains_dir}")
+    # Optional --domains / --problems filter (applied post-`load_domains`,
+    # so paths and ground_truth indices stay consistent). `--smoke` pins
+    # both flags to (blocksworld, p01) up front; `--smoke-shuffle` leaves
+    # them None so the shuffler sees the full grid.
+    if args.domains is not None:
+        domains = {d: dinfo for d, dinfo in domains.items() if d in set(args.domains)}
+    if args.problems is not None:
+        keep = set(args.problems)
+        domains = {
+            d: {**dinfo, "problems": {p: ppddl for p, ppddl in dinfo["problems"].items() if p in keep}}
+            for d, dinfo in domains.items()
+        }
+        domains = {d: dinfo for d, dinfo in domains.items() if dinfo["problems"]}
+    if not domains:
+        sys.exit(
+            f"No domains/problems remain after filtering "
+            f"(--domains={args.domains}, --problems={args.problems})"
+        )
     n_problems = sum(len(d["problems"]) for d in domains.values())
     print(f"\n  Loaded {len(domains)} domains, {n_problems} problems total")
     for dname, dinfo in domains.items():
@@ -1988,31 +2116,86 @@ async def async_main(args):
         print("\nGenerating ground truth (solving all problems with planners)...")
         ground_truth = await generate_ground_truth(mcp, domains)
 
-        # Single-task
+        # Build the (model, task) → (dname, pname) cell assignment for
+        # `--smoke-shuffle`. Drawn from the FULL filtered grid using the
+        # CLI seed so re-runs with the same seed reproduce the slice.
+        cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None
+        if args.smoke_shuffle:
+            full_keys = [
+                (d, p) for d, dinfo in domains.items() for p in dinfo["problems"]
+            ]
+            if not full_keys:
+                sys.exit("--smoke-shuffle: no (domain, problem) keys in the filtered grid")
+            rng = random.Random(args.seed)
+            cell_assignment = {
+                (m, t): rng.choice(full_keys)
+                for m in args.models
+                for t in args.tasks
+            }
+
+        # Single-task — smoke iterates think={on, off} explicitly so the
+        # output covers both reasoning regimes; non-smoke runs use the
+        # user-provided --think once.
         print("\n--- Single-Task Evaluation ---")
-        single_results = await run_single_task_experiment(
-            client=client,
-            models=args.models,
-            tasks=args.tasks,
-            domains=domains,
-            ground_truth=ground_truth,
-            mcp=mcp,
-            num_variants=args.num_variants,
-            tool_filter=args.tool_filter,
-            prompt_style=args.prompt_style,
-            num_predict_override=args.num_predict,
-            num_ctx=args.num_ctx,
-            think=think_override,
-            concurrency=args.concurrency,
-            conditions=args.conditions,
-            temperature=args.temperature,
-        )
+        if smoke_mode:
+            think_passes: list[tuple[str, bool, str]] = [
+                # (label, think_override, conditions)
+                # think=on : no-tools is matrix-gated out per ISS-018
+                # think=off: both conditions grade
+                ("on",  True,  "tools"),
+                ("off", False, "both"),
+            ]
+            for tm_label, tm_value, cond in think_passes:
+                print(f"\n  Smoke pass: think={tm_label}, conditions={cond}")
+                sub = await run_single_task_experiment(
+                    client=client,
+                    models=args.models,
+                    tasks=args.tasks,
+                    domains=domains,
+                    ground_truth=ground_truth,
+                    mcp=mcp,
+                    num_variants=args.num_variants,
+                    tool_filter=args.tool_filter,
+                    prompt_style=args.prompt_style,
+                    num_predict_override=args.num_predict,
+                    num_ctx=args.num_ctx,
+                    think=tm_value,
+                    concurrency=args.concurrency,
+                    conditions=cond,
+                    temperature=args.temperature,
+                    shard_i=args.shard_i,
+                    shard_n=args.shard_n,
+                    cell_assignment=cell_assignment,
+                )
+                single_results.extend(sub)
+        else:
+            single_results = await run_single_task_experiment(
+                client=client,
+                models=args.models,
+                tasks=args.tasks,
+                domains=domains,
+                ground_truth=ground_truth,
+                mcp=mcp,
+                num_variants=args.num_variants,
+                tool_filter=args.tool_filter,
+                prompt_style=args.prompt_style,
+                num_predict_override=args.num_predict,
+                num_ctx=args.num_ctx,
+                think=think_override,
+                concurrency=args.concurrency,
+                conditions=args.conditions,
+                temperature=args.temperature,
+                shard_i=args.shard_i,
+                shard_n=args.shard_n,
+                cell_assignment=cell_assignment,
+            )
         print_single_task_table(single_results)
         print_per_variant_table(single_results)
         print_fail_reasons_table(single_results)
 
-        # Multi-task chains
-        if args.chains:
+        # Multi-task chains. Skipped when sharding (chains run only on
+        # shard 0) or when --chain-samples=0 (smoke pre-sets this).
+        if args.chains and args.shard_i == 0 and args.chain_samples > 0:
             print("\n--- Multi-Task Chain Evaluation ---")
             for cond_with_tools in _expand_conditions(args.conditions):
                 # No-tools is single-task-only: chains require artifact
@@ -2146,7 +2329,38 @@ def main():
     p.add_argument("--chain-samples", type=int, default=20,
                    help="Samples per chain length")
     p.add_argument("--seed", type=int, default=42,
-                   help="Random seed for chain sampling")
+                   help="Random seed for chain sampling and --smoke-shuffle")
+    # Single-task domain/problem filters (applied post-`load_domains`). Used
+    # by `--smoke` to constrain to one problem; useful standalone for
+    # `--shard` debugging.
+    p.add_argument("--domains", nargs="+", default=None,
+                   help="Restrict to these domain names (subdir names under "
+                        "--domains-dir). Default: all domains found.")
+    p.add_argument("--problems", nargs="+", default=None,
+                   help="Restrict to these problem stems (e.g. 'p01'). "
+                        "Applied within each filtered domain. Default: all.")
+    # Smoke harness — fixed slice for the PR-1 byte-equal anchor gate.
+    # Auto-overrides several flags inside async_main; see EXPERIMENTS_FLOW
+    # / development/FRAMEWORK_EXTENSION_PLAN.md §3.1.
+    p.add_argument("--smoke", action="store_true",
+                   help="Run the smoke slice: 1 domain × 1 problem × 1 prompt "
+                        "variant × 5 tasks × 2 conditions × 2 think modes × "
+                        "current model set. Auto-sets --domains blocksworld "
+                        "--problems p01 --num-variants 1 --chain-samples 0 "
+                        "--conditions both, and iterates --think={on,off} "
+                        "internally. Output dir: results/smoke_<git-sha>_<ts>/.")
+    p.add_argument("--smoke-shuffle", action="store_true",
+                   help="Like --smoke but picks a random (domain, problem) "
+                        "per (model, task) cell using --seed; ~same eval "
+                        "count, broader coverage across runs. Mutually "
+                        "exclusive with --smoke.")
+    # Sharding — deterministic SHA-256 partitioner for cluster parallelism.
+    p.add_argument("--shard", default=None, metavar="i/N",
+                   help="Run only shard i of N (0-indexed). Hash is "
+                        "SHA-256 of (model|task|domain|problem|variant) "
+                        "modulo N; with_tools is excluded so paired "
+                        "comparisons stay together. Chains are emitted "
+                        "only when i==0. Default: no sharding.")
     args = p.parse_args()
 
     # Route SIGTERM through the same path as Ctrl-C so a `kill` from
@@ -2154,6 +2368,41 @@ def main():
     # async_main (which tears down MCP subprocesses via AsyncExitStack).
     # Without this, SIGTERM bypasses `finally` and MCP servers orphan.
     signal.signal(signal.SIGTERM, signal.default_int_handler)
+
+    if args.smoke and args.smoke_shuffle:
+        sys.exit("--smoke and --smoke-shuffle are mutually exclusive")
+
+    # Smoke pre-resolves several knobs before the num-variants range check.
+    # Setting --num-variants 1 here keeps the existing check trivially valid
+    # and saves the user from having to pass it explicitly with --smoke.
+    if args.smoke or args.smoke_shuffle:
+        args.num_variants = 1
+        args.chain_samples = 0
+        args.chains = False
+        # `--smoke` pins the slice to (blocksworld, p01); `--smoke-shuffle`
+        # leaves --domains/--problems unset so the shuffle picker sees the
+        # full grid.
+        if args.smoke:
+            if args.domains is None:
+                args.domains = ["blocksworld"]
+            if args.problems is None:
+                args.problems = ["p01"]
+        # Both modes want the full think × conditions cross-product; the
+        # existing think-conditions gate is bypassed for smoke inside
+        # async_main and the loop runs both think modes explicitly.
+        args.conditions = "both"
+
+    # Parse --shard "i/N" once, surface as args.shard_i / args.shard_n
+    # (defaults 0/1 = no filter).
+    args.shard_i, args.shard_n = 0, 1
+    if args.shard is not None:
+        m = re.fullmatch(r"\s*(\d+)\s*/\s*(\d+)\s*", args.shard)
+        if not m:
+            sys.exit(f"--shard must be 'i/N' (got: {args.shard!r})")
+        i, n = int(m.group(1)), int(m.group(2))
+        if n < 1 or not 0 <= i < n:
+            sys.exit(f"--shard {i}/{n}: need N>=1 and 0<=i<N")
+        args.shard_i, args.shard_n = i, n
 
     if not 1 <= args.num_variants <= len(ACTIVE_PROMPT_VARIANTS):
         sys.exit(

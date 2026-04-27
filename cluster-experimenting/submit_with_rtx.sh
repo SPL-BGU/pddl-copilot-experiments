@@ -74,6 +74,9 @@ GPU_TYPE=""
 THINK_MODES_OVERRIDE=""
 NO_TOOLS=0
 ALL=0
+SMOKE=0
+SMOKE_SHUFFLE=0
+SHARD=""
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -83,6 +86,9 @@ while [[ $# -gt 0 ]]; do
         --think-modes) shift; THINK_MODES_OVERRIDE="$1"; shift ;;
         --no-tools) NO_TOOLS=1; shift ;;
         --all) ALL=1; shift ;;
+        --smoke) SMOKE=1; shift ;;
+        --smoke-shuffle) SMOKE_SHUFFLE=1; shift ;;
+        --shard) shift; SHARD="$1"; shift ;;
         -h|--help)
             sed -n '1,68p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -91,6 +97,24 @@ while [[ $# -gt 0 ]]; do
             MODELS+=("$1"); shift ;;
     esac
 done
+
+# --smoke / --smoke-shuffle: pin the 5-model pack and full think × cond
+# matrix; run_experiment.py auto-overrides --num-variants/--chain-samples
+# and skips the inner THINK × CONDITIONS loop in the sbatch (the smoke
+# wrapper iterates think internally).
+if [ "$SMOKE" -eq 1 ] && [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+    echo "Error: --smoke and --smoke-shuffle are mutually exclusive" >&2
+    exit 1
+fi
+if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+    if [ "${#MODELS[@]}" -gt 0 ] || [ "$ALL" -eq 1 ] || [ "$NO_TOOLS" -eq 1 ] \
+        || [ -n "$THINK_MODES_OVERRIDE" ]; then
+        echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes/explicit-models" >&2
+        exit 1
+    fi
+    MODELS=(Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b Qwen3.5:35b gemma4:31b)
+    THINK_MODES_OVERRIDE="default"  # smoke iterates think internally
+fi
 
 # --all expands into a single 5-model pack on rtx_pro_6000.
 # All five fit in ≤30 GB resident under MAX_LOADED_MODELS=1 sequencing —
@@ -167,6 +191,12 @@ if [ "$NO_TOOLS" -eq 0 ] && [ "${#MODELS[@]}" -gt 1 ]; then
     TIME_ARG=(--time=4-00:00:00)
 fi
 
+# Smoke wallclock: ~100 evals across 5 models in one packed job, ~10–30 min.
+# A 2h budget covers Ollama startup + model warmup + the slowest cell.
+if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+    TIME_ARG=(--time=02:00:00)
+fi
+
 # Job name: single model uses the model tag; multi-model uses
 # pddl_rtx_pack<count>_<first-tag> so the .out file is searchable but
 # distinct from the prior single-model layout.
@@ -180,17 +210,33 @@ fi
 if [ "$NO_TOOLS" -eq 1 ]; then
     JOB_NAME="${JOB_NAME}_notools"
 fi
+if [ "$SMOKE" -eq 1 ]; then
+    JOB_NAME="${JOB_NAME}_smoke"
+fi
+if [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+    JOB_NAME="${JOB_NAME}_smoke-shuffle"
+fi
 
 cd "$REPO_ROOT"
 mkdir -p cluster-experimenting/logs
 
 # Compose --export list. ALL inherits caller env; we then layer MODELS,
-# THINK_MODES, and (when --no-tools) CONDITIONS + TASKS.
+# THINK_MODES, (when --no-tools) CONDITIONS + TASKS, and the smoke/shard
+# env vars consumed by run_condition_rtx.sbatch.
 MODELS_STR="${MODELS[*]}"
 EXPORT_LIST="ALL,MODELS=${MODELS_STR},THINK_MODES=${THINK_MODES}"
 for kv in "${NO_TOOLS_EXPORTS[@]}"; do
     EXPORT_LIST="${EXPORT_LIST},${kv}"
 done
+if [ "$SMOKE" -eq 1 ]; then
+    EXPORT_LIST="${EXPORT_LIST},SMOKE=1"
+fi
+if [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+    EXPORT_LIST="${EXPORT_LIST},SMOKE_SHUFFLE=1"
+fi
+if [ -n "$SHARD" ]; then
+    EXPORT_LIST="${EXPORT_LIST},SHARD=${SHARD}"
+fi
 
 cmd=(sbatch
     --job-name="$JOB_NAME"
@@ -211,6 +257,15 @@ fi
 echo "  job name:    $JOB_NAME" >&2
 if [ "$NO_TOOLS" -eq 1 ]; then
     echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=\"solve validate_domain validate_problem validate_plan\")" >&2
+fi
+if [ "$SMOKE" -eq 1 ]; then
+    echo "  mode:        --smoke (1 domain × 1 problem × 1 variant × 5 tasks × 2 conds × 2 think; output → results/smoke_<sha>_<ts>/)" >&2
+fi
+if [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+    echo "  mode:        --smoke-shuffle (per-(model,task) random domain pick; output → results/smoke_shuffle_<sha>_<ts>/)" >&2
+fi
+if [ -n "$SHARD" ]; then
+    echo "  shard:       $SHARD (SHA-256 partitioner; chains run only on shard 0)" >&2
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then

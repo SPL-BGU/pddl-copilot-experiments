@@ -207,6 +207,40 @@ for MODEL in $MODELS; do
         continue
     fi
 
+    ### Smoke fast-path — skip the THINK × CONDITIONS loop. The smoke
+    ### wrapper inside run_experiment.py iterates both think modes
+    ### internally and writes to results/smoke[_shuffle]_<sha>_<ts>/.
+    if [ "${SMOKE:-0}" = "1" ] || [ "${SMOKE_SHUFFLE:-0}" = "1" ]; then
+        if [ "${SMOKE_SHUFFLE:-0}" = "1" ]; then
+            SMOKE_FLAG="--smoke-shuffle"
+        else
+            SMOKE_FLAG="--smoke"
+        fi
+        SHARD_ARGS=()
+        if [ -n "${SHARD:-}" ]; then
+            SHARD_ARGS=(--shard "$SHARD")
+        fi
+        echo
+        echo "===================================================================="
+        echo "MODEL: $MODEL   smoke ($SMOKE_FLAG)   started $(date)"
+        echo "===================================================================="
+        python3 run_experiment.py \
+            --marketplace-path "$MARKETPLACE_PATH" \
+            --models "$MODEL" \
+            --ollama-host "$OLLAMA_HOST" \
+            --concurrency "$CONCURRENCY" \
+            "$SMOKE_FLAG" \
+            "${SHARD_ARGS[@]}"
+        RC=$?
+        echo "===================================================================="
+        echo "MODEL: $MODEL   smoke   finished $(date)   rc=$RC"
+        echo "===================================================================="
+        if [ "$RC" -ne 0 ]; then
+            OVERALL_RC=$RC
+        fi
+        continue
+    fi
+
     ### Inner loops: THINK_MODES × CONDITIONS for this model ###
     for THINK_MODE in $THINK_MODES; do
         THINK_ARG=()
@@ -263,6 +297,11 @@ for MODEL in $MODELS; do
             # identically. The cis path was retired 2026-04-27.
             OUT_DIR="${EXPT_ROOT}/results/slurm_${MODEL_TAG}_${THINK_MODE}_${COND}_${SLURM_JOBID}"
 
+            SHARD_ARGS=()
+            if [ -n "${SHARD:-}" ]; then
+                SHARD_ARGS=(--shard "$SHARD")
+            fi
+
             python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$MODEL" \
@@ -272,6 +311,7 @@ for MODEL in $MODELS; do
                 "${THINK_ARG[@]}" \
                 "${COND_ARGS[@]}" \
                 "${TASKS_ARG[@]}" \
+                "${SHARD_ARGS[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 
