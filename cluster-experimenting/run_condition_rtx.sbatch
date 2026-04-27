@@ -16,6 +16,7 @@
 ###   Qwen3.5:0.8B  ~ 3 GB   → fits rtx_6000 (48 GB) easily
 ###   gpt-oss:20b   ~18 GB   → fits rtx_6000
 ###   Qwen3.5:27b   ~23 GB   → fits rtx_6000
+###   Qwen3.5:35b   ~30 GB   → fits rtx_6000
 ###   gemma4:31b    ~26 GB   → fits rtx_6000
 ###   gpt-oss:120b  ~77 GB   → REQUIRES rtx_pro_6000 (96 GB)
 ### When packing multiple models in one job, ALL listed models must fit on the
