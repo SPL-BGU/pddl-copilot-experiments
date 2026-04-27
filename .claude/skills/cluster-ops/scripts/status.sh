@@ -45,16 +45,18 @@ running = []
 pending = []
 
 # Banner matches both layouts:
-#   cis:  "CONDITION: <cond>   started ..."         (run_condition.sbatch)
-#   rtx:  "THINK: on   CONDITION: <cond>   started ..." (run_condition_rtx.sbatch)
-# Dropping the ^ anchor lets the regex match mid-line for the rtx layout.
+#   current: "THINK: on   CONDITION: <cond>   started ..." (run_condition_rtx.sbatch)
+#   legacy:  "CONDITION: <cond>   started ..."             (retired cis sbatch; still
+#                                                           seen in archived logs)
+# Dropping the ^ anchor lets the regex match mid-line for the current layout.
 BANNER = re.compile(r'CONDITION:\s+(\S+)\s+.*started', re.M)
 # Both sbatches emit "Conditions:  cond1 cond2 ..." during setup; presence of
 # this line is the signal that the job loops multiple conditions in one file
-# (cis: single think × N conds, rtx: M thinks × N conds).
+# (current: M thinks × N conds; legacy: single think × N conds).
 CONDITIONS_LINE = re.compile(r'^Conditions:\s+(.+)$', re.M)
-# rtx sbatch prints "Think modes: on off"; cis sbatch prints the singular
-# "Think mode:  on|off|default" — match either so we count banners correctly.
+# Current rtx sbatch prints "Think modes: on off"; legacy cis sbatch printed
+# the singular "Think mode:  on|off|default" — match either so we count
+# banners correctly across archived and current logs.
 THINK_MODES_LINE = re.compile(r'^Think mode(?:s)?:\s+(.+)$', re.M)
 PROGRESS = re.compile(r'\[ *(\d+)/250 ')
 CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
@@ -82,15 +84,17 @@ for line in queue_raw.splitlines():
     text = open(f, errors='replace').read()
 
     # Detect multi-cond layout by the presence of a "Conditions:" line.
-    # Covers both run_condition.sbatch (cis) and run_condition_rtx.sbatch,
-    # regardless of whether the job name ends with _on|_off|_default.
+    # Covers both run_condition_rtx.sbatch (current) and the retired cis
+    # sbatch (still seen in archived logs), regardless of whether the job
+    # name ends with _on|_off|_default.
     conds_m = CONDITIONS_LINE.search(text)
     if conds_m:
         total_conds = len(conds_m.group(1).split())
         thinks_m = THINK_MODES_LINE.search(text)
         n_thinks = len(thinks_m.group(1).split()) if thinks_m else 1
-        # Denominator = think_modes × conditions (rtx loops outer THINK_MODES;
-        # cis has a single think per job so n_thinks=1 and denom==total_conds).
+        # Denominator = think_modes × conditions (current rtx loops outer
+        # THINK_MODES; legacy cis had a single think per job so n_thinks=1
+        # and denom==total_conds).
         total_banners = total_conds * n_thinks
         banners = list(BANNER.finditer(text))
         cur_idx = len(banners)

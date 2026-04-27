@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Cluster preflight before `bash cluster-experimenting/submit_all.sh` or
-# `bash cluster-experimenting/submit_with_rtx.sh <model>`.
+# Cluster preflight before `bash cluster-experimenting/submit_with_rtx.sh
+# <model>` (the sole submit path since 2026-04-27).
 #
 # Updates that `setup_env.sh` deliberately skips because its `if [ -d .venv ]`
 # guard avoids rebuilding existing venvs — great on first install, bad when a
