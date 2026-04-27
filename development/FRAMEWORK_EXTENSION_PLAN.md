@@ -142,6 +142,16 @@ cannot merge if any graded outcome (`success`, `failure_reason`,
 Estimated diff: ~2500 LOC moved + ~150 LOC new (CLI flags + smoke runner
 helper). Zero behavior change.
 
+##### PR-1 drift from spec (recorded 2026-04-27 during implementation)
+
+| Drift | Why | Where |
+|---|---|---|
+| Added `--domains DNAME ...` and `--problems PNAME ...` general filters | No domain-level filter existed in `run_experiment.py` before PR-1; without one, `--smoke` cannot constrain to (blocksworld, p01). General-purpose flag is more useful long-term than smoke-specific knobs and costs ~10 LOC. | `run_experiment.py:argparse + async_main` post-`load_domains` filter |
+| `--shard` skips chain phase entirely on shard ≠ 0 (chains run only on shard 0) | Chain units are trajectories, not the 5-tuple key; SHA-256 partitioning the trajectory by its first step would skew per-cell counts. PR-1 spec was silent on the interaction. | `run_experiment.py:async_main` (`if args.chains and args.shard_i == 0 ...`) |
+| `_safe_json_loads` and `_parse_validation_verdict` placed in `pddl_eval/chat.py` rather than `pddl_eval/domains.py` | Both helpers are consumed by `scoring.check_success` (4 sites) AND `domains.generate_ground_truth`. Putting them in `domains` would force a `scoring → domains` edge that risks a cycle when scoring helpers grow; placing them in `chat` (the lowest leaf in the package DAG) keeps `domains` and `scoring` as siblings. | `pddl_eval/chat.py` |
+| `TaskResult` dataclass placed in `pddl_eval/runner.py` (the producer module); `summary` imports it from `runner` | PR-1 spec was silent on placement. Alternative would have been a 7th `pddl_eval/types.py` module just for one dataclass; placing it with its producer keeps the DAG simpler. | `pddl_eval/runner.py` |
+| `run_experiment.py` is 626 LOC after the split (estimate was ~150) | The CLI shim retains: argparse (~150 LOC), validation/parsing (~50), smoke output-dir + git-sha helper (~40), the smoke think-mode loop wrapper inside `async_main` (~120 LOC), and the explicit re-export shim for `tests/test_*.py` (~100 LOC). Each section is the minimum needed for behaviour parity; merging them into submodules would push CLI logic out of `run_experiment.py`'s natural home. | `run_experiment.py` |
+
 #### PR-2 — Token + thinking instrumentation
 
 Changes:

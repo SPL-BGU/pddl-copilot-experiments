@@ -6,6 +6,32 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-27 — `run_experiment.py` split into `pddl_eval/` package; `--smoke`/`--smoke-shuffle`/`--shard`/`--domains`/`--problems` flags
+
+**Motivation.** PR-1 of the four-PR framework extension (see `development/FRAMEWORK_EXTENSION_PLAN.md` §3.2). The 2,171-LOC monolith was bottlenecking methodology iteration and the upcoming Paper-2 agent extension; the split preserves zero semantic change while unlocking a regression-anchor workflow (`--smoke`) and N-way cluster parallelism (`--shard`).
+
+**Changes.**
+
+- **New package `pddl_eval/`** (7 files, 2,007 LOC moved): `prompts.py`, `chat.py`, `domains.py`, `scoring.py`, `runner.py`, `summary.py`, `__init__.py`. Import DAG is one-directional (`prompts → none; chat → none; domains → chat; scoring → chat; runner → prompts/chat/domains/scoring; summary → prompts/runner/scoring`); no cycles.
+- **`run_experiment.py`** reduced from 2,171 → 626 LOC. Now CLI-only: argparse, `async_main`, `main`, plus `_git_short_sha_dirty()` and `resolve_plugin_dirs()` setup helpers, plus an explicit re-export shim so `tests/test_scoring.py` and `tests/test_check_success.py` keep working without edits.
+- **CLI flags.**
+  - `--smoke` — fixed slice (1 domain × 1 problem × 1 variant × 5 tasks × 2 conds × 2 think modes); auto-overrides `--domains blocksworld --problems p01 --num-variants 1 --chain-samples 0 --conditions both`; iterates `--think={on,off}` internally; output dir `results/smoke_<git-sha>_<ts>/`.
+  - `--smoke-shuffle` — same shape as `--smoke` but each `(model, task)` cell draws a random `(domain, problem)` from the full grid using `--seed`. Mutually exclusive with `--smoke`.
+  - `--shard i/N` — deterministic SHA-256 partitioner over `(model|task|domain|problem|variant)` for cluster parallelism. `with_tools` is excluded so paired comparisons stay together. Chains run only on shard 0.
+  - `--domains DNAME [...]` and `--problems PNAME [...]` — general-purpose post-`load_domains` filters (added because no domain-level filter existed; required by `--smoke`, useful standalone for `--shard` debugging).
+- **Cluster scripts.** `cluster-experimenting/submit_with_rtx.sh` accepts `--smoke`/`--smoke-shuffle`/`--shard` and exports `SMOKE`/`SMOKE_SHUFFLE`/`SHARD` env vars (with smoke pinning the 5-model pack and a 2h walltime). `run_condition_rtx.sbatch` reads those env vars: when `SMOKE=1`, it skips the inner `THINK_MODES × CONDITIONS` loop (the smoke wrapper iterates think internally) and runs a single packed `--smoke` invocation per model under the existing outer model loop; otherwise appends `--shard $SHARD` to the regular invocation.
+- **`.gitignore`** adds `.local/` (developer-local scratch — anchors, runbooks, the `diff_smoke.sh` helper).
+
+**Compatibility.** Result schema unchanged (same `TaskResult` fields, same `summary.json` shape, same MCP tool contract). Existing `results/` directories remain valid. `tests/verify.sh` reports 86/86 passes with the re-export shim (49/49 `test_scoring.py` + 37/37 `test_check_success.py`) — no test edits needed.
+
+**Drift from PR-1 spec** is recorded in `development/FRAMEWORK_EXTENSION_PLAN.md` §3.2 under "PR-1 drift from spec". Highlights: `_safe_json_loads`/`_parse_validation_verdict` placed in `chat.py` (not `domains.py`) to avoid `scoring → domains` cycle; `TaskResult` lives in `runner.py` (the producer module); the CLI shim is 626 LOC (estimate was ~150) due to the smoke think-loop wrapper and the explicit re-export shim.
+
+**Verification.** `bash tests/verify.sh` → 86/86 pass. `python3 -c "import pddl_eval.{prompts,chat,domains,scoring,runner,summary}"` → all clean. `python3 run_experiment.py --help` shows all new flags. The byte-equal anchor gate against pre-refactor `main` is run by the developer locally (cherry-pick the smoke-flag commit onto a throwaway branch off `main`, run `--smoke`, save anchor, then run `--smoke` post-refactor and `bash .local/scripts/diff_smoke.sh anchor.json new.json`); see `.local/ORCHESTRATION.md`.
+
+**Files.** Created: `pddl_eval/{prompts,chat,domains,scoring,runner,summary,__init__}.py`. Modified: `run_experiment.py`, `cluster-experimenting/{submit_with_rtx.sh, run_condition_rtx.sbatch}`, `.gitignore`, `development/{FRAMEWORK_EXTENSION_PLAN.md, CHANGELOG.md}`.
+
+---
+
 ## 2026-04-27 — cis-ollama path retired; sole submission is `rtx_pro_6000:1` self-deploy
 
 **Motivation.** Eliminate the last shared-resource axis. The cis-ollama transport (`submit_all.sh` waves against `https://cis-ollama.auth.ad.bgu.ac.il`) introduced contended `MAX_LOADED_MODELS`/`NUM_PARALLEL`, eviction thrashing on the 120b cell (560 s/sample shared vs 291 s isolated, CHANGELOG 2026-04-20), VPN/TLS coupling (`OLLAMA_INSECURE`, self-signed cert), and a different model inventory than the paper's. The rtx self-deploy was already production for the 5-model active sweep; the cis path was kept only as a fallback for `gpt-oss:120b`. With 120b out of the active sweep (substituted by `Qwen3.5:35b` in the large-model size band), the fallback is no longer load-bearing.
