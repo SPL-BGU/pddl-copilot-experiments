@@ -36,9 +36,13 @@ pip3 install -r requirements.txt
 The paper-aligned `qwen3:0.6b` / `qwen3:4b` are the **laptop default**. The
 **cluster sweep** (BGU rtx GPUs, see `cluster-experimenting/README.md`)
 runs a different set: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`,
-`gemma4:31b`, `gpt-oss:120b` — chosen because cis-ollama doesn't host the
-paper tags and the 5-model set spans the same parameter range across three
-families. See `EXPERIMENTS_FLOW.md §11` for the full deviations table.
+`Qwen3.5:35b`, `gemma4:31b` — chosen because the paper tags aren't all
+hosted on cis-ollama and the 5-model set spans the same parameter range
+across three families while fitting on a single rtx_6000 (48 GB) GPU
+under `MAX_LOADED_MODELS=1` sequencing. `gpt-oss:120b` can still be run
+individually via `submit_with_rtx.sh gpt-oss:120b` (auto-routes to
+rtx_pro_6000), but is no longer in the default `--all` sweep. See
+`EXPERIMENTS_FLOW.md §11` for the full deviations table.
 
 ## Running (Background)
 
@@ -99,13 +103,13 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--tasks` | all 5 | Tasks to evaluate |
 | `--domains-dir` | `./domains` | Path to benchmark domains |
 | `--output-dir` | `./results` | Path to save result JSON files |
-| `--num-variants` | 5 | Prompt variants per task (paper uses 5) |
+| `--num-variants` | 3 | First K of `ACTIVE_PROMPT_VARIANTS` (currently `(0, 1, 2)`). Capped at the tuple length; widen by editing `run_experiment.py`. Paper used 5; the 26042026 sensitivity analysis (`checkpoints/cluster-26042026/prompt_variant_stats.md`) showed v0/v1/v2 are within ~1pp of the 5-variant pooled mean. |
 | `--temperature` | 0.0 | LLM sampling temperature |
 | `--chains` | off | Also run multi-task chain evaluation |
 | `--chain-samples` | 20 | Samples per chain length. The cluster sbatch (`cluster-experimenting/run_condition_rtx.sbatch`) overrides this to 100 for paper alignment. |
 | `--seed` | 42 | Random seed for chain sampling |
 | `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
-| `--prompt-style` | `minimal` | `minimal` reproduces paper; `guided` adds hint about passing PDDL content |
+| `--prompt-style` | `minimal` | Only active value as of 2026-04-27 — `guided` was retired (the 26042026 sweep showed style shifts results by ≤4pp per model, every CI crossed zero). The `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are kept in `run_experiment.py` as documentation; re-enable by adding `"guided"` back to `PROMPT_STYLE_CHOICES`. |
 | `--num-predict` | per-task | Override max output tokens (solve=8192, simulate=1536, validate=1024) |
 | `--num-ctx` | 8192 | Ollama context window tokens |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
@@ -120,13 +124,14 @@ parallel). See `cluster-experimenting/README.md` for the full submission
 flow and `.claude/skills/cluster-ops/SKILL.md` for monitoring helpers.
 
 ```bash
-# Full 5-model sweep (from the login node)
-for m in Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b gpt-oss:120b; do
-    bash cluster-experimenting/submit_with_rtx.sh "$m"
-done
+# Full 5-model sweep packed in ONE job on rtx_6000
+bash cluster-experimenting/submit_with_rtx.sh --all
 
-# Baseline-only (no-tools / think=off / solve, ~15 min)
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
+# Or per-model (e.g. when iterating on one model's behaviour)
+bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b
+
+# Baseline-only no-tools sweep (4-task discriminative matrix, packed in one job)
+bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 ```
 
 ## Running (Jupyter)

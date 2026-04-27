@@ -140,7 +140,15 @@ TASK_TOOLS: dict[str, list[str]] = {
 }
 
 TOOL_FILTER_CHOICES = ("all", "per-task")
-PROMPT_STYLE_CHOICES = ("minimal", "guided")
+# `guided` retired from the active sweep on 2026-04-27 — the 26042026 sweep
+# (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed
+# minimal-vs-guided shifts results by ≤4pp per model with every CI crossing
+# zero. The 3 active prompt variants already cover paraphrase robustness;
+# the prompt-style axis was paying for ~0pp of additional signal. The
+# `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry below
+# are kept as code documentation so the suffix wording is preserved if a
+# future sweep wants to re-enable it (re-add "guided" to this tuple).
+PROMPT_STYLE_CHOICES = ("minimal",)
 CONDITION_CHOICES = ("tools", "no-tools", "both")
 
 
@@ -166,6 +174,10 @@ _WITH_TOOLS_BASE = (
     "provided tools ONE AT A TIME — never guess or create plan details yourself."
 )
 
+# `_GUIDED_SUFFIX` and the `"guided"` entry below are DISABLED from the
+# active sweep (see `PROMPT_STYLE_CHOICES` above). Kept in code so the exact
+# wording is preserved as documentation — re-enable by adding "guided" back
+# to `PROMPT_STYLE_CHOICES`.
 _GUIDED_SUFFIX = (
     "\nWhen calling tools, pass the complete PDDL text from the user message "
     "(starting with '(define ...') as the 'domain' and 'problem' arguments — "
@@ -174,7 +186,7 @@ _GUIDED_SUFFIX = (
 
 WITH_TOOLS_SYSTEM: dict[str, str] = {
     "minimal": _WITH_TOOLS_BASE,
-    "guided": _WITH_TOOLS_BASE + _GUIDED_SUFFIX,
+    "guided": _WITH_TOOLS_BASE + _GUIDED_SUFFIX,  # DISABLED 2026-04-27
 }
 
 WITHOUT_TOOLS_SYSTEM = (
@@ -185,42 +197,66 @@ WITHOUT_TOOLS_SYSTEM = (
 
 # ---------------------------------------------------------------------------
 # Prompt templates — 5 variants per task (robustness, Section 4.1)
+#
+# All five templates are kept so `prompt_variant` indices stay stable across
+# sweeps (a v2 trial today still uses the same paraphrase as a v2 trial in
+# the 26042026 sweep). `ACTIVE_PROMPT_VARIANTS` selects which subset actually
+# runs. The 2026-04-27 reduction (5 → 3, dropping v3 and v4) is justified by
+# `checkpoints/cluster-26042026/prompt_variant_stats.md`:
+#   * (v0, v1, v2) is the closest 3-variant truncation to the 5-variant mean —
+#     wins 4/5 tasks and 0.0045 mean |gap| vs 0.0051 for (v0, v1, v3).
+#   * v0/v1/v3 are all imperative-declarative paraphrases; v2 is the only
+#     question-form variant ("Is this PDDL domain syntactically correct?")
+#     so keeping v2 preserves linguistic diversity in the robustness story.
+#   * v4 is the outlier (driven mostly by its label-less solve prompt).
 # ---------------------------------------------------------------------------
+
+ACTIVE_PROMPT_VARIANTS: tuple[int, ...] = (0, 1, 2)
 
 PROMPT_TEMPLATES: dict[str, list[str]] = {
     "solve": [
         "Solve the following PDDL planning problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
         "Find a valid plan for this PDDL problem.\n\nDomain definition:\n{domain}\n\nProblem definition:\n{problem}",
         "Generate a plan that solves the following planning problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
+        # v3 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Given the PDDL domain and problem below, compute a solution plan.\n\nDomain:\n{domain}\n\nProblem:\n{problem}",
+        # v4 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Please solve this automated planning task and return the plan.\n\n{domain}\n\n{problem}",
     ],
     "validate_domain": [
         "Check if this PDDL domain definition has valid syntax:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
         "Validate the following PDDL domain for syntactic correctness:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
         "Is this PDDL domain syntactically correct? Please check.\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        # v3 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Analyze this domain definition and tell me if the PDDL syntax is valid:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        # v4 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Please verify the syntax of the following PDDL domain:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
     ],
     "validate_problem": [
         "Check if this PDDL problem has valid syntax given the domain.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
         "Validate the syntax of this PDDL problem against its domain:\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
         "Is this PDDL problem file syntactically correct for the given domain?\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        # v3 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Verify the syntax of the following PDDL problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        # v4 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Check the following PDDL problem for syntax errors.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
     ],
     "validate_plan": [
         "Validate whether this plan is correct for the given domain and problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
         "Check if the following plan solves the PDDL problem.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
         "Is this plan valid for the given planning problem?\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        # v3 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Verify the correctness of this plan.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
+        # v4 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Does this plan achieve the goal? Validate it.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
     ],
     "simulate": [
         "Simulate the execution of this plan and show the state transitions.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
         "Trace the state changes when executing this plan step by step.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
         "Show me the state after each action in this plan.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
+        # v3 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Execute this plan and provide the state transition trace.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
+        # v4 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Walk through this plan action by action and show each intermediate state.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
     ],
 }
@@ -1203,7 +1239,7 @@ async def run_single_task_experiment(
     domains: dict,
     ground_truth: dict,
     mcp: MCPPlanner,
-    num_variants: int = 5,
+    num_variants: int = len(ACTIVE_PROMPT_VARIANTS),
     tool_filter: str = "all",
     prompt_style: str = "minimal",
     num_predict_override: int | None = None,
@@ -1252,7 +1288,7 @@ async def run_single_task_experiment(
                         gt = ground_truth.get(dname, {}).get(pname, {})
                         if task in ("validate_plan", "simulate") and not gt.get("plan"):
                             continue
-                        for pv in range(num_variants):
+                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
                             jobs.append((
                                 model, task, dname, dinfo["domain"],
                                 pname, ppddl, pv, with_tools, gt, np_for_task,
@@ -1303,7 +1339,7 @@ async def run_single_task_experiment(
                                 "plan_valid": False,
                                 "plan": neg_slot["plan"],
                             }
-                        for pv in range(num_variants):
+                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
                             jobs.append((
                                 model, target_task, dname, d_pddl,
                                 neg_pname, p_pddl, pv, with_tools, gt_frag, np_for_task,
@@ -1499,7 +1535,22 @@ async def run_chain_experiment(
                 pname = random.choice(list(dinfo["problems"].keys()))
                 ppddl = dinfo["problems"][pname]
                 chain_tasks = random.choices(TASKS, k=n)
-                step_templates = [random.choice(PROMPT_TEMPLATES[t]) for t in chain_tasks]
+                # Sample only from ACTIVE_PROMPT_VARIANTS so chains use the
+                # same variant pool as the single-task sweep (otherwise random
+                # picks from disabled v3/v4 would reintroduce the variants we
+                # decided to drop on 2026-04-27).
+                #
+                # Compute-time-saving decision for the following iterations:
+                # the chain phase is intentionally left at the trimmed pool
+                # (3 paraphrases) rather than the full 5 so each chain step
+                # samples from the faster set. This shrinks chain-phase
+                # paraphrase variance slightly but keeps wall time bounded.
+                # Extend back to all 5 variants later (e.g. for the final
+                # paper sweep) by sampling from `range(len(PROMPT_TEMPLATES[t]))`.
+                step_templates = [
+                    PROMPT_TEMPLATES[t][random.choice(ACTIVE_PROMPT_VARIANTS)]
+                    for t in chain_tasks
+                ]
                 sample_plans.append((model, i, dname, dinfo, pname, ppddl, chain_tasks, step_templates))
 
             sem = asyncio.Semaphore(max(1, concurrency))
@@ -1573,6 +1624,11 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
     Each row also carries `truncated` (count where done_reason=="length") and
     a `failure_reasons: {reason: count}` dict so the notebook can plot
     failure-mode breakdowns without reparsing the raw JSON.
+
+    Each row also carries `per_variant`: a dict keyed by `prompt_variant`
+    (string) → {n, successes, success_rate, ci_lo, ci_hi[, tool_selected_*]}.
+    Lets the paper pick a single representative variant later without
+    re-aggregating the raw JSON.
     """
     def _new_agg() -> dict:
         return {
@@ -1581,6 +1637,7 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
             "tool_selected": 0,
             "truncated": 0,
             "failure_reasons": defaultdict(int),
+            "per_variant": defaultdict(lambda: {"n": 0, "succ": 0, "tool_sel": 0}),
         }
 
     agg: dict = defaultdict(_new_agg)
@@ -1595,6 +1652,12 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
         if r.truncated:
             agg[key]["truncated"] += 1
         agg[key]["failure_reasons"][r.failure_reason] += 1
+        pv = agg[key]["per_variant"][r.prompt_variant]
+        pv["n"] += 1
+        if r.success:
+            pv["succ"] += 1
+        if r.tool_selected:
+            pv["tool_sel"] += 1
 
     models = sorted(set(r.model for r in results))
     tasks_present = [t for t in TASKS if any(r.task == t for r in results)]
@@ -1628,6 +1691,28 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
                     row["tool_selected_rate"] = round(ts_rate, 4)
                     row["tool_selected_ci_lo"] = round(ts_lo, 4)
                     row["tool_selected_ci_hi"] = round(ts_hi, 4)
+                # Per-variant breakdown. Sorted-by-variant for stable JSON output.
+                per_variant: dict[str, dict] = {}
+                for pv_key in sorted(d["per_variant"].keys()):
+                    pv_d = d["per_variant"][pv_key]
+                    pv_n, pv_s = pv_d["n"], pv_d["succ"]
+                    pv_lo, pv_hi = wilson_ci(pv_s, pv_n)
+                    cell: dict = {
+                        "n": pv_n,
+                        "successes": pv_s,
+                        "success_rate": round(pv_s / pv_n, 4) if pv_n else 0.0,
+                        "ci_lo": round(pv_lo, 4),
+                        "ci_hi": round(pv_hi, 4),
+                    }
+                    if cond == "tools":
+                        pv_ts = pv_d["tool_sel"]
+                        pv_ts_lo, pv_ts_hi = wilson_ci(pv_ts, pv_n)
+                        cell["tool_selected"] = pv_ts
+                        cell["tool_selected_rate"] = round(pv_ts / pv_n, 4) if pv_n else 0.0
+                        cell["tool_selected_ci_lo"] = round(pv_ts_lo, 4)
+                        cell["tool_selected_ci_hi"] = round(pv_ts_hi, 4)
+                    per_variant[str(pv_key)] = cell
+                row["per_variant"] = per_variant
                 rows.append(row)
     return rows
 
@@ -1688,6 +1773,49 @@ def print_single_task_table(results: list[TaskResult]):
         print(
             f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
             f"{r['success_rate']:>6.2f}  {r['n']:>4}  {ci_str:<16}  {ts_str:>7}"
+        )
+    print(bar)
+
+
+def print_per_variant_table(results: list[TaskResult]):
+    """Per-(model, condition, task) success rate split across active variants.
+
+    The summary JSON's `per_variant` field carries the same numbers; this is
+    just a quick eyeball at the end of a run to spot variants that drift far
+    from their cell mean (a signal the variant pool may need adjusting).
+    """
+    rows = summarize_single_task(results)
+    if not rows:
+        return
+    variants = sorted({int(k) for r in rows for k in r.get("per_variant", {}).keys()})
+    if not variants:
+        return
+    var_cols = "  ".join(f"v{v:>1}".ljust(8) for v in variants)
+    header = (
+        f"{'Model':<20} {'Condition':<9} {'Task':<18} "
+        f"{var_cols}  {'Δ':>5}"
+    )
+    bar = "=" * len(header)
+    print("\n" + bar)
+    print(f"PER-VARIANT SUCCESS RATES (active variants: {list(ACTIVE_PROMPT_VARIANTS)})")
+    print(bar)
+    print(header)
+    print("-" * len(header))
+    for r in rows:
+        cells = []
+        rates: list[float] = []
+        for v in variants:
+            cell = r["per_variant"].get(str(v))
+            if not cell or cell["n"] == 0:
+                cells.append("  -    ")
+                continue
+            rates.append(cell["success_rate"])
+            cells.append(f"{cell['success_rate']:.2f}({cell['n']:>2})")
+        spread = (max(rates) - min(rates)) if rates else 0.0
+        cells_str = "  ".join(c.ljust(8) for c in cells)
+        print(
+            f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
+            f"{cells_str}  {spread:>5.2f}"
         )
     print(bar)
 
@@ -1821,7 +1949,8 @@ async def async_main(args):
     print(f"  Models:     {args.models}")
     print(f"  Tasks:      {args.tasks}")
     print(f"  Domains:    {args.domains_dir}")
-    print(f"  Variants:   {args.num_variants}")
+    active_variants = list(ACTIVE_PROMPT_VARIANTS[:args.num_variants])
+    print(f"  Variants:   {active_variants} (selected from {list(ACTIVE_PROMPT_VARIANTS)})")
     print(f"  Temperature:{args.temperature}")
     print(f"  Conditions: {args.conditions}")
     print(f"  Tool filter:{args.tool_filter}")
@@ -1898,6 +2027,7 @@ async def async_main(args):
             temperature=args.temperature,
         )
         print_single_task_table(single_results)
+        print_per_variant_table(single_results)
         print_fail_reasons_table(single_results)
 
         # Multi-task chains
@@ -1941,6 +2071,7 @@ async def async_main(args):
                 "models": args.models,
                 "tasks": args.tasks,
                 "num_variants": args.num_variants,
+                "prompt_variants_active": list(ACTIVE_PROMPT_VARIANTS[:args.num_variants]),
                 "temperature": args.temperature,
                 "num_ctx": args.num_ctx,
                 "num_predict": args.num_predict,
@@ -1983,8 +2114,16 @@ def main():
                    help="Path to domains directory")
     p.add_argument("--output-dir", default=str(RESULTS_DIR),
                    help="Path to save result JSON files")
-    p.add_argument("--num-variants", type=int, default=5,
-                   help="Prompt variants per task (paper uses 5)")
+    p.add_argument("--num-variants", type=int, default=len(ACTIVE_PROMPT_VARIANTS),
+                   help=f"How many of the active prompt variants to run, "
+                        f"taken from the front of ACTIVE_PROMPT_VARIANTS "
+                        f"={list(ACTIVE_PROMPT_VARIANTS)}. Must be in "
+                        f"[1, {len(ACTIVE_PROMPT_VARIANTS)}]. Default "
+                        f"{len(ACTIVE_PROMPT_VARIANTS)} (run all active "
+                        f"variants). To go above this cap, edit "
+                        f"ACTIVE_PROMPT_VARIANTS in this file. Paper sweep "
+                        f"used 5; the 26042026 sensitivity analysis "
+                        f"dropped v3/v4.")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
     p.add_argument("--conditions", choices=list(CONDITION_CHOICES), default="both",
@@ -1997,9 +2136,10 @@ def main():
                         "'per-task' restricts tools per task via TASK_TOOLS allowlist, reducing "
                         "tool-selection noise from unrelated tools.")
     p.add_argument("--prompt-style", choices=list(PROMPT_STYLE_CHOICES), default="minimal",
-                   help="'minimal' uses the original system prompt (reproduces paper). "
-                        "'guided' adds a one-sentence hint about passing full PDDL content "
-                        "as tool arguments instead of file names.")
+                   help="System prompt style. 'minimal' (paper-aligned) is the only "
+                        "active choice as of 2026-04-27 — 'guided' was retired "
+                        "(see PROMPT_STYLE_CHOICES comment in run_experiment.py). "
+                        "Re-enable by re-adding 'guided' to PROMPT_STYLE_CHOICES.")
     p.add_argument("--num-predict", type=int, default=None,
                    help="Override max output tokens per chat turn for ALL tasks. "
                         "Default: per-task caps (solve=8192, simulate=1536, validate_*=1024). "
@@ -2038,6 +2178,14 @@ def main():
     # async_main (which tears down MCP subprocesses via AsyncExitStack).
     # Without this, SIGTERM bypasses `finally` and MCP servers orphan.
     signal.signal(signal.SIGTERM, signal.default_int_handler)
+
+    if not 1 <= args.num_variants <= len(ACTIVE_PROMPT_VARIANTS):
+        sys.exit(
+            f"--num-variants={args.num_variants} out of range "
+            f"[1, {len(ACTIVE_PROMPT_VARIANTS)}]. ACTIVE_PROMPT_VARIANTS "
+            f"={list(ACTIVE_PROMPT_VARIANTS)}; edit that tuple in this "
+            f"file to widen the pool."
+        )
 
     random.seed(args.seed)
     asyncio.run(async_main(args))

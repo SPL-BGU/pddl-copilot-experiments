@@ -17,7 +17,7 @@
 #   2. gpt-oss:20b    × {on, off}       (2 jobs, afterok wave 1)
 #   3. Qwen3.5:27b    × {on, off}       (2 jobs, afterok wave 2)
 #   4. gemma4:31b     × {default}       (1 job,  afterok wave 3; gemma has no thinking)
-#   5. gpt-oss:120b   × {on, off}       (2 jobs, afterok wave 4)
+#   5. Qwen3.5:35b    × {on, off}       (2 jobs, afterok wave 4)
 #
 # Usage:
 #   bash cluster-experimenting/submit_all.sh                       # submit all 5 waves (9 jobs), all 5 conditions
@@ -26,10 +26,12 @@
 #   bash cluster-experimenting/submit_all.sh --from-wave 3 --force # bypass preflight (use with care)
 #
 # Optional env override:
-#   CONDITIONS="tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided" \
+#   CONDITIONS="tools_per-task_minimal tools_all_minimal" \
 #     bash cluster-experimenting/submit_all.sh
 #   Forwarded to each sbatch via --export so run_condition.sbatch uses the restricted list.
-#   Unset → run_condition.sbatch's own default (all 5 conditions) applies.
+#   Unset → run_condition.sbatch's own default (3 active conditions; the
+#   `*_guided` pair was retired 2026-04-27, see run_experiment.py
+#   PROMPT_STYLE_CHOICES) applies.
 #
 # Safety: --from-wave N>1 refuses to submit if any pddl_* jobs are already
 # RUNNING or PENDING on the queue, because resumed waves have no afterok
@@ -102,8 +104,8 @@ WAVE4=(
     "gemma4:31b|default"
 )
 WAVE5=(
-    "gpt-oss:120b|on"
-    "gpt-oss:120b|off"
+    "Qwen3.5:35b|on"
+    "Qwen3.5:35b|off"
 )
 
 # Submit one wave, optionally with an afterok dependency on previous wave's

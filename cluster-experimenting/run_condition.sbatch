@@ -16,12 +16,16 @@
 ###                 Gemma4 has no thinking concept → use 'default' only.
 ###
 ### Optional env (defaults shown):
-###   CONDITIONS  — space-separated list of condition labels, default = all 5:
+###   CONDITIONS  — space-separated list of condition labels. Default = 3
+###                 active conditions; the two `*_guided` variants were
+###                 retired 2026-04-27 (see run_experiment.py
+###                 PROMPT_STYLE_CHOICES) but are still recognised by the
+###                 case statement below if explicitly listed.
 ###                   no-tools
 ###                   tools_per-task_minimal
-###                   tools_per-task_guided
+###                   tools_per-task_guided   # DISABLED — retained for back-compat
 ###                   tools_all_minimal
-###                   tools_all_guided
+###                   tools_all_guided        # DISABLED — retained for back-compat
 ###   ENV_NAME=pddl_copilot
 ###   EXPT_ROOT=$HOME/pddl-copilot-experiments
 ###   PDDL_MARKETPLACE_PATH=$HOME/pddl-copilot
@@ -71,7 +75,9 @@ OLLAMA_HOST="${OLLAMA_HOST:-https://cis-ollama.auth.ad.bgu.ac.il}"
 OLLAMA_INSECURE="${OLLAMA_INSECURE:-1}"
 CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
 CONCURRENCY="${CONCURRENCY:-2}"
-CONDITIONS="${CONDITIONS:-no-tools tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided}"
+# `tools_*_guided` retired 2026-04-27 (see run_experiment.py
+# PROMPT_STYLE_CHOICES). Case branches kept below as code documentation.
+CONDITIONS="${CONDITIONS:-no-tools tools_per-task_minimal tools_all_minimal}"
 
 export OLLAMA_HOST OLLAMA_INSECURE
 
@@ -143,12 +149,12 @@ for COND in $CONDITIONS; do
             CHAINS_ARGS=() ;;
         tools_per-task_minimal)
             COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
-        tools_per-task_guided)
-            COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
+        # tools_per-task_guided)  # DISABLED 2026-04-27 — see run_experiment.py PROMPT_STYLE_CHOICES
+        #     COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
         tools_all_minimal)
             COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
-        tools_all_guided)
-            COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
+        # tools_all_guided)  # DISABLED 2026-04-27 — see run_experiment.py PROMPT_STYLE_CHOICES
+        #     COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
         *)
             echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
     esac
