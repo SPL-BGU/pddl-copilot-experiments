@@ -24,3 +24,5 @@ cluster-experimenting/logs/
 # files so they aren't accidentally re-committed alongside the zips.
 checkpoints/**/*.json
 checkpoints/**/*.out
+checkpoints/**/*.png
+checkpoints/**/*.md
