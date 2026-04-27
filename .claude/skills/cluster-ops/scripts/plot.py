@@ -45,7 +45,7 @@ DOMAINS = CLASSICAL + NUMERIC
 
 # Colors by family, hatching by tool condition.
 # Keys are the underscore-tagged model form produced by parse_dirname
-# (submit_all.sh does `tr '/:.' '___'`), which is what we see in dir names.
+# (submit_with_rtx.sh does `tr '/:.' '___'`), which is what we see in dir names.
 MODEL_COLORS = {
     "Qwen3_5_0_8B":  "#d4c96b",
     "Qwen3_5_27b":   "#b89d2a",

@@ -6,6 +6,38 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-27 — cis-ollama path retired; sole submission is `rtx_pro_6000:1` self-deploy
+
+**Motivation.** Eliminate the last shared-resource axis. The cis-ollama transport (`submit_all.sh` waves against `https://cis-ollama.auth.ad.bgu.ac.il`) introduced contended `MAX_LOADED_MODELS`/`NUM_PARALLEL`, eviction thrashing on the 120b cell (560 s/sample shared vs 291 s isolated, CHANGELOG 2026-04-20), VPN/TLS coupling (`OLLAMA_INSECURE`, self-signed cert), and a different model inventory than the paper's. The rtx self-deploy was already production for the 5-model active sweep; the cis path was kept only as a fallback for `gpt-oss:120b`. With 120b out of the active sweep (substituted by `Qwen3.5:35b` in the large-model size band), the fallback is no longer load-bearing.
+
+**Decision.** Hard-pin `rtx_pro_6000:1` (`--mem=80G` per IT 2026-04-27 cap) as the sole self-deploy GPU class. The 5-model `--all` pack peaks at `Qwen3.5:35b` (~30 GB resident), well inside 96 GB VRAM under `MAX_LOADED_MODELS=1` sequencing. `--gpu-type rtx_6000` survives as an opt-in escape hatch (48 GB, `--mem=48G`) for use only when `rtx_pro_6000` is queue-saturated; the prior `sinfo` auto-detection and `HAS_120B` routing branch are removed for "consistency and known variables".
+
+**Changes.**
+
+- **Deleted.** `cluster-experimenting/run_condition.sbatch` (cis CPU sbatch), `cluster-experimenting/submit_all.sh` (5-wave `afterok` orchestrator), `cluster-experimenting/submit_120b_cis.sh` (120b cis fallback), `remote_background.sh` (cis laptop driver), `.local/ollama/cis-cluster-ollama.md` (cis runbook), `.claude/skills/cluster-ops/scripts/diag.sh` (cis diagnostic).
+- **`run_experiment.py`.** Drop `BGU_DEFAULT_MODELS` constant and the `is_remote` model-fallback at startup. Drop `--ollama-insecure` flag and its `httpx` `verify=False` plumbing. Drop the `is_remote`-gated `tls_verify` segment in the startup banner and the `is_remote` field from `meta`. Strip cis-specific examples from `--ollama-host` help. The `KEEP_ALIVE` rationale comment generalizes — no longer cites cis-server defaults.
+- **`run_background.sh`.** Drop the `REMOTE_OLLAMA` detection block, the BGU model selection, the cis-side curl reachability check, and the per-condition `HOST_ARGS` injection. Becomes unambiguously local-only.
+- **`cluster-experimenting/run_condition_rtx.sbatch`.** Default GPU `rtx_6000:1 → rtx_pro_6000:1`; default mem `48G → 80G`. Header VRAM table drops the 120b row and reframes the size band around Qwen3.5:35b.
+- **`cluster-experimenting/submit_with_rtx.sh`.** Hard-pin `GPU_TYPE=rtx_pro_6000` as the default. Drop the `sinfo`-driven auto-detect, the `HAS_120B` routing branch, and the rtx_6000 `HAS_120B` defensive gate. Keep `--gpu-type` as opt-in override per user direction. `--all` model list unchanged (5 models without 120b).
+- **`.claude/skills/cluster-ops/`.** `SKILL.md` rewritten for single-backend submission; `scripts/preflight.sh` drops the cis reachability probe; `scripts/aggregate.py:host_tag()` drops the `cis` branch (old summaries with `host: cis-ollama.auth.ad.bgu.ac.il` now tag as `?` — correct given they predate the standardization).
+- **Docs.** `README.md`, `EXPERIMENTS_FLOW.md` (§1, §2, §9 meta, §10, §11), `cluster-experimenting/README.md` (full rewrite), `development/FRAMEWORK_EXTENSION_PLAN.md` (already-landed table + decision-log entry), `.local/ORCHESTRATION.md` (jq filter for hostname-independent meta diff).
+
+**Compatibility.** Result schema unchanged (`single_task_*.json`, `chain_*.json`, `summary_*.json`). Old summaries that recorded `meta.is_remote: true/false` and `meta.host: cis-ollama.auth.ad.bgu.ac.il` still parse — `host_tag()` now returns `?` for the cis bucket, and `is_remote` is simply a no-op key going forward. No `ISS-###` closed (no cis-ollama issue was tracked); the change is not a fix, it's a methodology pin.
+
+**Cost.** Single packed `--all` job: ~3.5 d wall for the full sweep (5 models × 4 tools-conditions × 2 think modes; ~17 h/model upper bound), ~24 h for `--no-tools` (5 models × 4h). Existing `submit_with_rtx.sh:212-214` time scaling (4d for N>1) covers both.
+
+**Verification.** Local dry-runs:
+- `bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --dry-run` → `rtx_pro_6000:1 --mem=80G`.
+- `bash cluster-experimenting/submit_with_rtx.sh --all --dry-run` → 5 models, `rtx_pro_6000:1`, `--time=4-00:00:00`.
+- `bash cluster-experimenting/submit_with_rtx.sh --all --no-tools --dry-run` → 5 models, `--time=20:00:00`.
+- `bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --gpu-type rtx_6000 --dry-run` → `rtx_6000:1 --mem=48G` (opt-in path still works).
+- `python3 run_experiment.py --help` → no `--ollama-insecure` in arg list; `--ollama-host` help text has no cis example.
+- `python3 -c "import ast; ast.parse(open('run_experiment.py').read())"` → AST clean.
+
+**Files.** Deleted: `cluster-experimenting/{run_condition.sbatch, submit_all.sh, submit_120b_cis.sh}`, `remote_background.sh`, `.local/ollama/cis-cluster-ollama.md`, `.claude/skills/cluster-ops/scripts/diag.sh`. Modified: `run_experiment.py`, `run_background.sh`, `cluster-experimenting/{run_condition_rtx.sbatch, submit_with_rtx.sh, README.md}`, `.claude/skills/cluster-ops/{SKILL.md, scripts/preflight.sh, scripts/aggregate.py}`, `.claude/agents/cluster-ops.md`, `README.md`, `EXPERIMENTS_FLOW.md`, `development/FRAMEWORK_EXTENSION_PLAN.md`, `.local/ORCHESTRATION.md`.
+
+---
+
 ## 2026-04-27 — `prompt_style` axis retired (`guided` disabled, `minimal` only)
 
 **Motivation.** Newcombe-Δ analysis on the 26042026 sweep (run during PR #18 review on the live trial JSONs under `checkpoints/cluster-26042026/results_extracted/`) confirmed `prompt_style` is the redundant axis in the design matrix:

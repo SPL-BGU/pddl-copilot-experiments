@@ -55,7 +55,8 @@ correctly against the current `experiment-expension` HEAD.
 |---|---|---|
 | `ACTIVE_PROMPT_VARIANTS = (0, 1, 2)` (was `(0, 1, 3)`) — keeps v2 for its question-form linguistic-diversity property | `run_experiment.py:202` | committed `b7af180` |
 | Per-variant summary metrics added to single-task table | `run_experiment.py:1788` | committed `b7af180` |
-| `gpt-oss:120b` removed from cluster pack; `Qwen3.5:35b` substituted (5-model rtx_6000-only pack at ≤36 GB resident) | `cluster-experimenting/submit_all.sh:WAVE5`, `submit_with_rtx.sh:--all` | uncommitted, to land before PR-1 |
+| `gpt-oss:120b` removed from cluster pack; `Qwen3.5:35b` substituted (5-model rtx_pro_6000 pack, peak ~30 GB resident) | `cluster-experimenting/submit_with_rtx.sh:--all` | landed 2026-04-27 alongside cis-ollama removal |
+| cis-ollama path retired; sole submit is `submit_with_rtx.sh` on hard-pinned `rtx_pro_6000:1` | `cluster-experimenting/`, `run_experiment.py`, `run_background.sh`, `.claude/skills/cluster-ops/` | landed 2026-04-27 |
 | Chain phase shortened from `chain_lengths = (2, 3, 4, 5)` to `(2, 3)` — length-3 chains are informative enough for the multi-task dynamic and cuts chain-phase wallclock ~50% | `run_experiment.py:1390`, `cluster-experimenting/run_condition_rtx.sbatch` | planned, not yet in tree |
 
 PR-1's smoke-equality gate runs against whatever is committed at the time of
@@ -301,8 +302,9 @@ Returns the existing nested dict shape with `negatives` extended to lists:
 ```
 
 `generate_ground_truth` runs validation across all 1240 fixtures; expected
-≈30s on cis-ollama. Any negative that validates True or any positive that
-validates False halts startup with `SystemExit` naming the offending file.
+≈30s on the cluster login node (validators run locally — no Ollama call
+needed). Any negative that validates True or any positive that validates
+False halts startup with `SystemExit` naming the offending file.
 
 ##### 3.3.7 Compute scaling
 
@@ -463,7 +465,7 @@ reconstruct the brainstorm.
 | `--num-ctx-thinking` separate from `--num-ctx` | Thinking models need ~2× context budget; non-thinking runs don't. Bifurcating the cap lets the same `num_predict` per-task limit hold across both modes without starving thinking models. |
 | 4-way sharding (`N=4`), not 8 or 16 | At ≈5520 evals/cell × ≈3s/eval, N=4 yields ≈70-min shards — comfortably under the 2h wallclock target with margin for slow models (gemma4:31b). N=8 doubles cluster job count without proportional speedup once Ollama serve startup amortizes. |
 | Chain phase pruned to lengths (2, 3) — not (2, 3, 4, 5) | Chain wallclock scales superlinearly with length (each step compounds context); length-3 captures the multi-task dynamic without the length-5 tail. Decision recorded by user 2026-04-27 on the back of cluster-26042026 chain results. Re-extend to (2, 3, 4, 5) for the final paper sweep if needed. |
-| `gpt-oss:120b` dropped from cluster pack; `Qwen3.5:35b` substituted | 120b requires `rtx_pro_6000` (96 GB), which is queue-saturated; Qwen3.5:35b fits all 5 models on `rtx_6000` (48 GB) with `MAX_LOADED_MODELS=1` sequencing. Cuts queue wait without losing the size-band coverage (35B is mid-large in the parameter range). |
+| `gpt-oss:120b` dropped from cluster pack; `Qwen3.5:35b` substituted | 120b's 65 GB weights forced rtx_pro_6000 routing and added queue contention against the other 5 models. With `Qwen3.5:35b` substituted, the pack peaks at ~30 GB and runs on a single rtx_pro_6000 job under `MAX_LOADED_MODELS=1`. Pairs with the 2026-04-27 cis-ollama retirement: `submit_with_rtx.sh` is now the sole submission path with `rtx_pro_6000:1` hard-pinned for "consistency and known variables". |
 | `ACTIVE_PROMPT_VARIANTS = (0, 1, 2)` not `(0, 1, 3)` | `(0, 1, 2)` wins 4/5 tasks on the closest-to-pooled-mean metric (mean abs gap 0.0045 vs 0.0051) per `checkpoints/cluster-26042026/prompt_variant_stats.md`. v2 is the only question-form variant ("Is this PDDL domain syntactically correct?"), so keeping it preserves linguistic diversity in the robustness story. |
 
 ---

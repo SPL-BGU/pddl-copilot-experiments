@@ -1,7 +1,7 @@
 ---
 name: cluster-ops
-description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, aggregate summaries, render paper plots, diagnose cis-ollama, post-mortem completed jobs (right-size --mem from sacct/MaxRSS).
-argument-hint: [status | preflight | sync | aggregate | plot | table | diag | postmortem]
+description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, aggregate summaries, render paper plots, post-mortem completed jobs (right-size --mem from sacct/MaxRSS).
+argument-hint: [status | preflight | sync | aggregate | plot | table | postmortem]
 ---
 
 > User asked for: $ARGUMENTS — pick the matching recipe below.
@@ -16,20 +16,19 @@ Cluster & repo conventions that matter here:
 
 - **Login node**: `omereliy@slurm.bgu.ac.il` — SSH is pre-authed for the user.
 - **Remote repo root**: `~/pddl-copilot-experiments` on the login node.
-- **Job submission — two backends, rtx is default**:
-  - `cluster-experimenting/submit_with_rtx.sh <model>` → **default**. GPU sbatch, self-deploys Ollama via Apptainer on a single rtx_6000 (48 GB) or rtx_pro_6000 (96 GB). One job per model, loops `THINK_MODES × CONDITIONS` in-process so weights stay resident. `gpt-oss:120b` is hard-pinned to rtx_pro_6000 (65 GB weights won't fit on rtx_6000); for everything else, the script queries `sinfo` at submit time and picks whichever pool (`rtx6000` vs `rtx_pro_6000`) has more idle nodes (tiebreak prefers pro). Override with `--gpu-type`. The `--no-tools` flag pins the run to the baseline cell (`CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS=solve`, `--time=1:00:00`).
-  - `cluster-experimenting/submit_all.sh` → fallback. CPU sbatch, requests against shared `cis-ollama`. 9 jobs in 5 `afterok`-chained waves per `(model, think_mode)` (`run_condition.sbatch:2–5`). Each SLURM job loops all 5 conditions sequentially. Use only when comparing cis-shared vs rtx-dedicated throughput head-to-head, or when the whole rtx pool is saturated.
-  - `cluster-experimenting/submit_120b_cis.sh` → fallback for `gpt-oss:120b` via cis-ollama when `rtx_pro_6000` queue is saturated. Wraps `run_condition.sbatch`.
-- **Log file**: `cluster-experimenting/logs/pddl_<model>_<think>-<jobid>.out` (cis) or `pddl_rtx_<model>-<jobid>.out` (rtx self-deploy). Legacy (pre-2026-04-21): `pddl_<model>_<cond>-<jobid>.out`.
-- **Results dir**: `results/slurm_<model>_<think>_<cond>_<jobid>/` (same format for both backends — distinguish runs by the job's `ollama_host` in `summary.json`).
-- **Ollama server**: `https://cis-ollama.auth.ad.bgu.ac.il` for cis path (self-signed cert, always pass `-k` / `verify=False`). For rtx self-deploy, `http://localhost:11434` inside the allocated compute node (no TLS).
+- **Job submission — single backend**:
+  - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch, self-deploys Ollama via Apptainer on a single dedicated GPU (default `rtx_pro_6000:1` 96 GB; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch). Loops `MODELS × THINK_MODES × CONDITIONS` in-process so weights stay resident. `--all` packs the 5 active models (Qwen3.5:0.8B, gpt-oss:20b, Qwen3.5:27b, Qwen3.5:35b, gemma4:31b) into one job under `MAX_LOADED_MODELS=1`. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS=solve+validate_*`, `--time=4h × N`).
+  - The cis-ollama path (`submit_all.sh` waves, `submit_120b_cis.sh`, `run_condition.sbatch`) was retired 2026-04-27. `gpt-oss:120b` is no longer in the active sweep — `Qwen3.5:35b` substitutes for it in the large-model size band.
+- **Log file**: `cluster-experimenting/logs/pddl_rtx_<model>-<jobid>.out`. Legacy formats from earlier sweeps: `pddl_<model>_<think>-<jobid>.out` (cis path, retired) and `pddl_<model>_<cond>-<jobid>.out` (pre-2026-04-21).
+- **Results dir**: `results/slurm_<model>_<think>_<cond>_<jobid>/` (schema unchanged — distinguish runs by the job's `meta.host` in `summary.json`).
+- **Ollama server**: `http://localhost:11434` inside the allocated compute node (Apptainer-served, no TLS, unique port per job set by the sbatch).
 - **Routing rules** (from `CLAUDE.md`): MCP-tool bugs → `../pddl-copilot/plugins/<name>/server/`. Scoring/prompt/GT → here. This skill is read-only over experiment state.
 
 ## Safety
 
 - **Destructive ops require explicit user consent**: `scancel -u omereliy` (kills all jobs), `rm` on logs or results. Confirm with the user before each.
-- **Never mutate** `run_experiment.py`, `run_condition.sbatch`, or `submit_all.sh` from this skill.
-- **Preflight before submit**: run `scripts/preflight.sh` first — it pulls both repos, refreshes the plugin venvs, and confirms cis-ollama reachability in one shot. Submitting against an unreachable server or a stale venv wastes the wave.
+- **Never mutate** `run_experiment.py`, `run_condition_rtx.sbatch`, or `submit_with_rtx.sh` from this skill.
+- **Preflight before submit**: run `scripts/preflight.sh` first — it pulls both repos, refreshes the plugin venvs, and surfaces GPU pool capacity in one shot. Submitting with a stale venv or against a saturated pool wastes time.
 
 ## Helper scripts (all live under `scripts/`)
 
@@ -105,25 +104,15 @@ Reuses `parse_dirname`/`load_summaries`/`host_tag` from `aggregate.py` (same dir
 
 ### `scripts/preflight.sh` — pre-submit cluster refresh + capacity
 
-Run this before every `submit_all.sh` or `submit_with_rtx.sh`. Does, in one SSH call:
+Run this before every `submit_with_rtx.sh`. Does, in one SSH call:
 
 1. `git pull` both repos (this one + `../pddl-copilot`).
 2. `pip install --upgrade -r requirements.txt` in each plugin's `.venv` — `setup_env.sh` deliberately skips existing venvs, so a pinned dependency bump in `../pddl-copilot/plugins/<plugin>/requirements.txt` is silently stale until something explicitly upgrades.
-3. **GPU pool capacity** — `sinfo -p rtx6000 -t idle,mix` and same for `rtx_pro_6000`. The free-node count tells you whether `submit_with_rtx.sh` will queue immediately or sit in `PENDING(Resources)`. If `rtx_pro_6000` is 0/6, `gpt-oss:120b` will queue — use `submit_120b_cis.sh` instead.
+3. **GPU pool capacity** — `sinfo -p rtx6000 -t idle,mix` and same for `rtx_pro_6000`. The free-node count tells you whether `submit_with_rtx.sh` will queue immediately or sit in `PENDING(Resources)`. If `rtx_pro_6000` is 0/6 and you can't wait, `--gpu-type rtx_6000` is the opt-in escape hatch.
 4. **`sres` snapshot** (PDF p10) — one-glance cluster utilization view. `sres`'s "6000" column conflates `rtx_6000` and `rtx_pro_6000`, so trust step 3 for routing decisions.
-5. **cis-ollama reachability** — `curl /api/tags`. Halts on failure so a stale-network state doesn't burn a wave.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/preflight.sh
-```
-
-### `scripts/diag.sh` — cis-ollama diagnostic
-
-Reachability + loaded-models + TTLs. Optional cold-start ping to a named model.
-
-```bash
-bash .claude/skills/cluster-ops/scripts/diag.sh                # tags + ps
-bash .claude/skills/cluster-ops/scripts/diag.sh gpt-oss:20b    # + small chat ping for latency
 ```
 
 ### `scripts/postmortem.sh` — completed-job introspection (`sacct`)
@@ -157,37 +146,23 @@ bash .claude/skills/cluster-ops/scripts/postmortem.sh --jobs 17130166,17130167 #
 5. `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct table + memory-headroom recommendation. Surface any OOM rows or jobs that approached `--time` to the user.
 6. Report to user with the plot paths and 3-5 key numbers.
 
-### "Submit the sweep" (rtx self-deploy — default)
+### "Submit the sweep"
 
-This is the path validated 2026-04-25: bulk jobs queued in 8 seconds, full 5-model sweep wall-time bounded by the slowest model (~10 h) instead of additive across 5 waves (24–36 h).
+The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 5-model sweep packed in ONE rtx_pro_6000 job under `MAX_LOADED_MODELS=1`.
 
 1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes plugin venvs, surfaces GPU pool capacity for `rtx6000` and `rtx_pro_6000`. Halts on any failure.
-2. Per-model dry-run, then submit. Each invocation submits ONE independent SLURM job (no `afterok` chain — they queue and start in parallel as GPUs free up):
+2. Dry-run, then submit. `--all` packs the 5 active models into one job; per-model invocations submit independent jobs that queue in parallel:
    ```bash
    ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
-     for m in Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b gpt-oss:120b; do \
-       bash cluster-experimenting/submit_with_rtx.sh \"\$m\" --dry-run; \
-     done"
+     bash cluster-experimenting/submit_with_rtx.sh --all --dry-run"
    ```
-3. If approved, same loop without `--dry-run`.
-
-**`--no-tools` shorthand**: for the baseline-only run, `bash submit_with_rtx.sh <model> --no-tools` pins `CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS=solve`, and passes `--time=1:00:00` (no-tools jobs measured 10–22 min on 2026-04-25; tighter wall improves fairshare).
-
-**GPU auto-routing**: `gpt-oss:120b` is hard-pinned to `rtx_pro_6000:1` (96 GB). For every other model, the script queries `sinfo` at submit time and picks whichever pool has more idle-or-mixed nodes (tiebreak prefers `rtx_pro_6000` since it tends to be less contended). Force with `--gpu-type rtx_6000` or `--gpu-type rtx_pro_6000`. Think modes auto-select to `on off` (both run sequentially in one job so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
-
-**VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=8192`. After warmup, a runtime guard aborts if VRAM usage > 85% — catches pathological KV-cache allocations (a 0.6B model at NUM_PARALLEL=8 × ctx=40960 allocated 37.8 GB in a 2026-04-23 probe). Never raise NUM_PARALLEL without re-measuring.
-
-**rtx_pro_6000 availability check** (before submitting 120b): the GPU-pool section of `preflight.sh` reports `rtx_pro_6000  k/6 nodes idle-or-mixed`. If `k=0`, the pool is saturated → use `submit_120b_cis.sh` fallback instead.
-
-### "Submit the sweep" (cis-ollama waves — fallback)
-
-Use this only when the entire rtx pool is saturated, or when you want a head-to-head comparison of cis-shared vs rtx-dedicated throughput for the same model. Otherwise prefer the rtx recipe above — it's strictly faster and avoids cis-ollama eviction thrashing.
-
-1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — same preflight as the rtx path; also confirms cis-ollama is reachable.
-2. `ssh omereliy@slurm.bgu.ac.il 'cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_all.sh --dry-run'` — user reviews the 9-job wave plan.
 3. If approved, same command without `--dry-run`.
 
-**Resuming after a mid-sweep failure**: if an `afterok` chain halts and dependents land in `PENDING (DependencyNeverSatisfied)`, cancel the stuck chain (`scancel <ids>` after user confirms), diagnose, then resume with `bash cluster-experimenting/submit_all.sh --from-wave <N>`. The script's own preflight refuses if earlier-wave `pddl_*` jobs are still live; pass `--force` only after explicit user confirmation.
+**`--no-tools` shorthand**: for the baseline-only run, `bash submit_with_rtx.sh --all --no-tools` pins `CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS="solve validate_domain validate_problem validate_plan"`, and scales `--time` linearly with model count (4h base + 4h per extra model).
+
+**GPU class**: default `rtx_pro_6000:1` (96 GB, `--mem=80G`). The sweep is hard-pinned to this class for consistency; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch (use only if `rtx_pro_6000` is saturated). Think modes auto-select to `on off` (both run sequentially in one job so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
+
+**VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=8192`. After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise NUM_PARALLEL without re-measuring KV-cache allocation.
 
 ### "Cancel jobs"
 
@@ -209,8 +184,7 @@ When `status.sh`'s Pending table shows a non-trivial REASON, here's what to do:
 
 | REASON | What it means | Action |
 |---|---|---|
-| `DependencyNeverSatisfied` | An earlier `afterok` wave failed. Whole chain halted. | Cancel the dependent jobs, diagnose the failed wave, resume with `submit_all.sh --from-wave N`. |
-| `Resources` | The requested partition pool is full. | Wait, or switch path: rtx full → `submit_120b_cis.sh`; cis full → wait, no GPU alternative. |
+| `Resources` | The requested partition pool is full. | Wait, or fall back to `--gpu-type rtx_6000` if `rtx_pro_6000` is saturated and the model set fits 48 GB. |
 | `Priority` | Preempted by a Golden-Ticket QoS job (PDF p14). | Wait — usually clears in minutes. |
 | `QOSMaxJobsPerUserLimit` | Per-user concurrent-job cap reached. | Wait for one of your other jobs to finish, or scancel a low-priority one. |
 | `MaxGRESPerAccount` | Per-account GPU cap (relevant for high-priority QoS). | Wait. Not applicable on plain `--partition main`. |

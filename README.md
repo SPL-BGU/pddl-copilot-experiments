@@ -36,12 +36,10 @@ pip3 install -r requirements.txt
 The paper-aligned `qwen3:0.6b` / `qwen3:4b` are the **laptop default**. The
 **cluster sweep** (BGU rtx GPUs, see `cluster-experimenting/README.md`)
 runs a different set: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`,
-`Qwen3.5:35b`, `gemma4:31b` — chosen because the paper tags aren't all
-hosted on cis-ollama and the 5-model set spans the same parameter range
-across three families while fitting on a single rtx_6000 (48 GB) GPU
-under `MAX_LOADED_MODELS=1` sequencing. `gpt-oss:120b` can still be run
-individually via `submit_with_rtx.sh gpt-oss:120b` (auto-routes to
-rtx_pro_6000), but is no longer in the default `--all` sweep. See
+`Qwen3.5:35b`, `gemma4:31b` — five models spanning the paper's parameter
+range across three families. All five run in a single packed job on
+`rtx_pro_6000:1` (96 GB) under `MAX_LOADED_MODELS=1` sequencing — peak
+resident weights are ~30 GB (Qwen3.5:35b). See
 `EXPERIMENTS_FLOW.md §11` for the full deviations table.
 
 ## Running (Background)

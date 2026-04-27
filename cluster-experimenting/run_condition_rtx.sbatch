@@ -7,21 +7,22 @@
 ### (Ollama's MAX_LOADED_MODELS=1 evicts the previous model before loading
 ### the next), sharing the apptainer/serve startup overhead across models.
 ###
-### Default GPU: rtx_6000:1 (48 GB) — fits all paper models except gpt-oss:120b.
-### For gpt-oss:120b, override on the sbatch command line:
-###   sbatch --gpus=rtx_pro_6000:1 --mem=80G ... run_condition_rtx.sbatch
-### submit_with_rtx.sh handles this routing automatically.
+### Default GPU: rtx_pro_6000:1 (96 GB) — single, hard-pinned class so peak
+### VRAM and host RAM are constant across the active sweep. The 5-model
+### pack peaks at Qwen3.5:35b (~30 GB), well inside 96 GB; the headroom
+### absorbs KV cache scaling without re-tuning. Override with --gpu-type
+### rtx_6000 (and --mem=48G) only as an emergency escape hatch.
 ###
 ### Model VRAM fit (weights + KV cache at NUM_PARALLEL=4, ctx=8192):
-###   Qwen3.5:0.8B  ~ 3 GB   → fits rtx_6000 (48 GB) easily
-###   gpt-oss:20b   ~18 GB   → fits rtx_6000
-###   Qwen3.5:27b   ~23 GB   → fits rtx_6000
-###   Qwen3.5:35b   ~30 GB   → fits rtx_6000
-###   gemma4:31b    ~26 GB   → fits rtx_6000
-###   gpt-oss:120b  ~77 GB   → REQUIRES rtx_pro_6000 (96 GB)
+###   Qwen3.5:0.8B  ~ 3 GB   → fits rtx_pro_6000 (96 GB)
+###   gpt-oss:20b   ~18 GB   → fits rtx_pro_6000
+###   Qwen3.5:27b   ~23 GB   → fits rtx_pro_6000
+###   Qwen3.5:35b   ~30 GB   → fits rtx_pro_6000 (peak; sets the floor on GPU class)
+###   gemma4:31b    ~26 GB   → fits rtx_pro_6000
 ### When packing multiple models in one job, ALL listed models must fit on the
-### chosen GPU (loaded one at a time). The submit script auto-routes to
-### rtx_pro_6000 if any of the requested models is gpt-oss:120b.
+### chosen GPU (loaded one at a time under MAX_LOADED_MODELS=1). gpt-oss:120b
+### is no longer in the active sweep — Qwen3.5:35b substitutes for it in the
+### large-model size band.
 ###
 ### Submit via cluster-experimenting/submit_with_rtx.sh <model> [<model>...],
 ### or directly:
@@ -44,24 +45,24 @@
 ###   * Do NOT set --cpus-per-task here. The cluster default cpus-per-gpu
 ###     handles CPU sizing. Setting cpus-per-task=12 was flagged as depriving
 ###     other users.
-###   * --mem cap: 48 GB on rtx_6000 jobs, 80 GB on rtx_pro_6000 jobs (per
-###     IT email 2026-04-27: "Use no more than 80GB RAM for rtx6000 GPUs").
+###   * --mem=80G on rtx_pro_6000 (the default). Override to --mem=48G when
+###     submit_with_rtx.sh is invoked with `--gpu-type rtx_6000`.
 ###     Actual host-RAM usage is dominated by node-local /tmp model cache
-###     (~26 GB peak for gemma4:31b weights, ~65 GB for gpt-oss:120b),
-###     well within these caps.
+###     (~30 GB peak for Qwen3.5:35b weights), well within either cap.
 ###
 ### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=8192 (set per-request by
-### run_experiment.py) sizes KV pre-allocation to fit alongside any 20-31B
-### model in 48 GB. Do NOT raise NUM_PARALLEL without recomputing VRAM —
-### probe 2026-04-23 observed NUM_PARALLEL=8 × ctx=40960 allocating 37.8 GB
-### for a 0.6B model (pathological). A runtime VRAM guard aborts if usage
-### exceeds 85% after each model's warmup.
+### run_experiment.py) sizes KV pre-allocation comfortably alongside any
+### model in the active 5-model pack on rtx_pro_6000. Do NOT raise
+### NUM_PARALLEL without recomputing VRAM — probe 2026-04-23 observed
+### NUM_PARALLEL=8 × ctx=40960 allocating 37.8 GB for a 0.6B model
+### (pathological). A runtime VRAM guard aborts if usage exceeds 85%
+### after each model's warmup.
 ###
 #SBATCH --partition=main
 #SBATCH --job-name=pddl_copilot_rtx
 #SBATCH --output=cluster-experimenting/logs/%x-%J.out
-#SBATCH --gpus=rtx_6000:1
-#SBATCH --mem=48G
+#SBATCH --gpus=rtx_pro_6000:1
+#SBATCH --mem=80G
 #SBATCH --time=2-00:00:00
 
 set -eo pipefail
@@ -80,11 +81,6 @@ if [ -z "${MODELS:-}" ]; then
     MODELS="$MODEL"
 fi
 : "${THINK_MODES:?Error: export THINK_MODES=... (e.g. \"on off\" or \"default\")}"
-
-# 120b requires rtx_pro_6000 (96 GB). The VRAM guard after warmup will catch
-# cases where this sbatch is submitted with the default --gpus=rtx_6000 and
-# the 48 GB VRAM can't hold 65 GB weights. submit_with_rtx.sh handles the
-# routing automatically.
 
 for tm in $THINK_MODES; do
     case "$tm" in
@@ -158,8 +154,6 @@ source activate "$ENV_NAME"
 
 OLLAMA_HOST="http://localhost:$PORT"
 export OLLAMA_HOST
-# Explicit empty string so --ollama-insecure is NOT set (no TLS on localhost)
-unset OLLAMA_INSECURE
 
 echo
 echo "Models:      $MODELS"
@@ -264,10 +258,9 @@ for MODEL in $MODELS; do
                     echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
             esac
 
-            # OUT_DIR name matches run_condition.sbatch format so aggregate.py /
-            # plot.py parse both cis-ollama and rtx self-deploy runs identically.
-            # Distinguish runs via the job name (pddl_rtx_* vs pddl_*) and the
-            # ollama-host recorded in summary.json.
+            # OUT_DIR name kept stable so aggregate.py / plot.py can read both
+            # historical cis-ollama runs and current rtx self-deploy runs
+            # identically. The cis path was retired 2026-04-27.
             OUT_DIR="${EXPT_ROOT}/results/slurm_${MODEL_TAG}_${THINK_MODE}_${COND}_${SLURM_JOBID}"
 
             python3 run_experiment.py \
