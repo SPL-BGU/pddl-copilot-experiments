@@ -38,15 +38,13 @@
 #   bash cluster-experimenting/submit_with_rtx.sh --all                  # full sweep, 2 jobs
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # full no-tools sweep, 2 jobs
 #   bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b --no-tools
-#   bash cluster-experimenting/submit_with_rtx.sh gpt-oss:120b           # auto → rtx_pro_6000
 #
-# --all: shorthand for the 5 paper models, submitted as TWO jobs:
-#   Job A: Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b on rtx_6000
-#   Job B: gpt-oss:120b on rtx_pro_6000
-# This packs the 4 small/mid models in one job (sharing serve startup) while
-# isolating 120b on the only pool that fits its 65 GB weights. Splits the
-# matrix into 2 jobs total instead of 5, while staying inside fairshare-
-# friendly time limits.
+# --all: shorthand for the 5 paper models, packed in ONE job:
+#   Pack: Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b Qwen3.5:35b gemma4:31b
+# All five fit in ≤36 GB resident, so MAX_LOADED_MODELS=1 sequencing keeps
+# everything on the rtx_6000 (48 GB) pool. One job (vs. previous 2-job split
+# for gpt-oss:120b) cuts queue wait while staying inside fairshare-friendly
+# time limits.
 #
 # --no-tools: shorthand for the single-task no-tools matrix. Pins
 #   THINK_MODES=off, CONDITIONS=no-tools, and TASKS to the four discriminative
@@ -95,8 +93,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# --all expands into two recursive submits: small/mid pack + 120b alone.
-# This keeps the 5-model sweep at 2 jobs while isolating 120b on rtx_pro_6000.
+# --all expands into a single 5-model pack on rtx_6000.
+# All paper models fit in ≤36 GB resident, so MAX_LOADED_MODELS=1 sequencing
+# keeps everything on the rtx_6000 (48 GB) pool with no need for rtx_pro_6000.
 if [ "$ALL" -eq 1 ]; then
     if [ "${#MODELS[@]}" -gt 0 ]; then
         echo "Error: --all is exclusive with explicit model args" >&2
@@ -106,8 +105,8 @@ if [ "$ALL" -eq 1 ]; then
     [ "$NO_TOOLS" -eq 1 ] && extra_args+=(--no-tools)
     [ "$DRY_RUN" -eq 1 ] && extra_args+=(--dry-run)
     [ -n "$THINK_MODES_OVERRIDE" ] && extra_args+=(--think-modes "$THINK_MODES_OVERRIDE")
-    bash "$0" Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b "${extra_args[@]}"
-    bash "$0" gpt-oss:120b "${extra_args[@]}"
+    [ -n "$GPU_TYPE" ] && extra_args+=(--gpu-type "$GPU_TYPE")
+    bash "$0" Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b Qwen3.5:35b gemma4:31b "${extra_args[@]}"
     exit 0
 fi
 

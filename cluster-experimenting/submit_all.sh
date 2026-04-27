@@ -17,7 +17,7 @@
 #   2. gpt-oss:20b    × {on, off}       (2 jobs, afterok wave 1)
 #   3. Qwen3.5:27b    × {on, off}       (2 jobs, afterok wave 2)
 #   4. gemma4:31b     × {default}       (1 job,  afterok wave 3; gemma has no thinking)
-#   5. gpt-oss:120b   × {on, off}       (2 jobs, afterok wave 4)
+#   5. Qwen3.5:35b    × {on, off}       (2 jobs, afterok wave 4)
 #
 # Usage:
 #   bash cluster-experimenting/submit_all.sh                       # submit all 5 waves (9 jobs), all 5 conditions
@@ -102,8 +102,8 @@ WAVE4=(
     "gemma4:31b|default"
 )
 WAVE5=(
-    "gpt-oss:120b|on"
-    "gpt-oss:120b|off"
+    "Qwen3.5:35b|on"
+    "Qwen3.5:35b|off"
 )
 
 # Submit one wave, optionally with an afterok dependency on previous wave's
