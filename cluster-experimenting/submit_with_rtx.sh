@@ -11,18 +11,17 @@
 # the set, not the sum.
 #
 # GPU routing:
-#   any of MODELS == gpt-oss:120b → rtx_pro_6000:1 (96 GB, required for 65 GB weights)
-#   everything else               → opportunistic: at submit time, queries `sinfo`
-#                                   for idle counts in `rtx6000` and `rtx_pro_6000`
-#                                   partitions and picks whichever has more idle-or-mixed
-#                                   nodes. Tiebreak prefers rtx_pro_6000.
-#                                   Fallback when sinfo is unavailable: rtx_6000.
-# Override with --gpu-type to force one pool.
+#   default → rtx_pro_6000:1 (96 GB, --mem=80G). Hard-pinned as the sole
+#             self-deploy GPU class so peak VRAM and host RAM are constant
+#             across the active sweep. The 5-model pack peaks at
+#             Qwen3.5:35b (~30 GB), well inside 96 GB.
+#   --gpu-type rtx_6000 → opt-in escape hatch (48 GB VRAM, --mem=48G).
+#                         Use only when rtx_pro_6000 is queue-saturated
+#                         and the requested models all fit.
 #
 # Resource policy (post 2026-04-27 IT request):
 #   * No --cpus-per-task — uses cluster default cpus-per-gpu.
-#   * --mem cap: 48G on rtx_6000, 80G on rtx_pro_6000 (was 96G; lowered
-#     per IT email "no more than 80GB RAM for rtx6000 GPUs").
+#   * --mem cap: 80G on rtx_pro_6000 (default), 48G on rtx_6000 (opt-in).
 #
 # Usage:
 #   bash cluster-experimenting/submit_with_rtx.sh <model> [<model>...]
@@ -35,16 +34,16 @@
 # Examples:
 #   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
 #   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b
-#   bash cluster-experimenting/submit_with_rtx.sh --all                  # full sweep, 2 jobs
-#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # full no-tools sweep, 2 jobs
+#   bash cluster-experimenting/submit_with_rtx.sh --all                  # full sweep, ONE packed job on rtx_pro_6000
+#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # full no-tools sweep, ONE packed job
 #   bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b --no-tools
 #
 # --all: shorthand for the 5 paper models, packed in ONE job:
 #   Pack: Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b Qwen3.5:35b gemma4:31b
-# All five fit in ≤36 GB resident, so MAX_LOADED_MODELS=1 sequencing keeps
-# everything on the rtx_6000 (48 GB) pool. One job (vs. previous 2-job split
-# for gpt-oss:120b) cuts queue wait while staying inside fairshare-friendly
-# time limits.
+# All five fit in ≤30 GB resident (Qwen3.5:35b sets the peak), so
+# MAX_LOADED_MODELS=1 sequencing keeps everything well within rtx_pro_6000's
+# 96 GB VRAM. gpt-oss:120b is no longer in the active sweep — Qwen3.5:35b
+# substitutes for it in the large-model size band.
 #
 # --no-tools: shorthand for the single-task no-tools matrix. Pins
 #   THINK_MODES=off, CONDITIONS=no-tools, and TASKS to the four discriminative
@@ -93,9 +92,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# --all expands into a single 5-model pack on rtx_6000.
-# All paper models fit in ≤36 GB resident, so MAX_LOADED_MODELS=1 sequencing
-# keeps everything on the rtx_6000 (48 GB) pool with no need for rtx_pro_6000.
+# --all expands into a single 5-model pack on rtx_pro_6000.
+# All five fit in ≤30 GB resident under MAX_LOADED_MODELS=1 sequencing —
+# Qwen3.5:35b (~30 GB) sets the peak. rtx_pro_6000's 96 GB VRAM has ample
+# headroom for KV cache scaling.
 if [ "$ALL" -eq 1 ]; then
     if [ "${#MODELS[@]}" -gt 0 ]; then
         echo "Error: --all is exclusive with explicit model args" >&2
@@ -115,67 +115,21 @@ if [ "${#MODELS[@]}" -eq 0 ]; then
     exit 1
 fi
 
-# Detect whether 120b is in the model set.
-HAS_120B=0
-for m in "${MODELS[@]}"; do
-    case "$m" in
-        gpt-oss:120b|gpt-oss:120B) HAS_120B=1 ;;
-    esac
-done
-
-# Auto-select GPU type when not overridden.
-#
-# 120b in the set is hard-pinned to rtx_pro_6000 (only pool with 96 GB).
-# Everything else: query sinfo for idle nodes in each pool and pick the more
-# available one. Observed 2026-04-25: rtx_pro_6000 frequently has idle nodes
-# while rtx6000 queues — opportunistic routing trims queue wait without
-# capacity loss (per-job throughput is identical on both).
-if [ -z "$GPU_TYPE" ]; then
-    if [ "$HAS_120B" -eq 1 ]; then
-        GPU_TYPE="rtx_pro_6000"
-        echo "[auto] gpt-oss:120b in MODELS → using rtx_pro_6000 (96 GB)" >&2
-    elif ! command -v sinfo >/dev/null 2>&1; then
-        # sinfo unavailable (e.g. --dry-run from laptop). Routing only
-        # matters at actual submit time on the login node, so fall
-        # back to historical default.
-        GPU_TYPE="rtx_6000"
-        echo "[auto] sinfo unavailable → falling back to rtx_6000 (routing decision deferred to submit)" >&2
-    else
-        # `set -e` + pipefail would abort on sinfo failure mid-pipe.
-        # Wrap each call so a missing/empty partition just yields 0.
-        free_6000=$( { sinfo -h -p rtx6000 -t idle,mix -o '%n' 2>/dev/null || true; } | wc -l | tr -d ' ')
-        free_pro=$( { sinfo -h -p rtx_pro_6000 -t idle,mix -o '%n' 2>/dev/null || true; } | wc -l | tr -d ' ')
-        if [ "${free_pro:-0}" -gt "${free_6000:-0}" ]; then
-            GPU_TYPE="rtx_pro_6000"
-            echo "[auto] rtx_pro_6000 (${free_pro} idle) > rtx6000 (${free_6000} idle) → routing to rtx_pro_6000" >&2
-        elif [ "${free_6000:-0}" -gt "${free_pro:-0}" ]; then
-            GPU_TYPE="rtx_6000"
-            echo "[auto] rtx6000 (${free_6000} idle) > rtx_pro_6000 (${free_pro} idle) → routing to rtx_6000" >&2
-        else
-            # Tiebreak: pro is typically less contended on this cluster.
-            GPU_TYPE="rtx_pro_6000"
-            echo "[auto] tie (${free_6000}=${free_pro}) → preferring rtx_pro_6000" >&2
-        fi
-    fi
-fi
+# Default GPU is rtx_pro_6000 (single, hard-pinned class). --gpu-type
+# rtx_6000 is the opt-in escape hatch. No auto-detection — keeping the
+# class fixed is what makes "consistency and known variables" hold across
+# the sweep.
+GPU_TYPE="${GPU_TYPE:-rtx_pro_6000}"
 
 case "$GPU_TYPE" in
     rtx_6000)
-        MEM_ARG="--mem=48G"
-        # Defensive gate: 120b (~65 GB weights) does not fit on rtx_6000 (48 GB).
-        if [ "$HAS_120B" -eq 1 ]; then
-            echo "Error: gpt-oss:120b does NOT fit on rtx_6000 (48 GB)." >&2
-            echo "       Options:" >&2
-            echo "         1. Use rtx_pro_6000 (96 GB):" >&2
-            echo "              bash $0 ${MODELS[*]} --gpu-type rtx_pro_6000" >&2
-            echo "         2. Drop 120b from the model list and submit it separately." >&2
-            exit 2
-        fi
-        ;;
+        # Opt-in only. 48 GB VRAM is enough for the active 5-model pack
+        # (peak Qwen3.5:35b ~30 GB) but the rtx_6000 pool is the more
+        # contended one historically; prefer rtx_pro_6000 unless that's
+        # blocked.
+        MEM_ARG="--mem=48G" ;;
     rtx_pro_6000)
-        # 80G cap per IT request 2026-04-27 (was 96G); host-RAM usage is
-        # dominated by node-local /tmp model cache (~65 GB peak for 120b)
-        # which fits inside 80G.
+        # Default. 80G mem cap per IT request 2026-04-27.
         MEM_ARG="--mem=80G" ;;
     *)
         echo "Error: --gpu-type must be rtx_6000 or rtx_pro_6000 (got: $GPU_TYPE)" >&2

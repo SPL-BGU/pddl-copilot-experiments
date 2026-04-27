@@ -80,8 +80,6 @@ def host_tag(meta: dict) -> str:
     h = (meta or {}).get("host", "")
     if "localhost" in h or "ise-" in h or "cs-" in h:
         return "rtx"
-    if "cis-ollama" in h:
-        return "cis"
     return h or "?"
 
 

@@ -7,10 +7,9 @@
 # plugin bumps a pinned dependency (2026-04-21 `pddl-pyvalidator>=0.1.4` was
 # silently stale in the plugin venv until we explicitly upgraded).
 #
-# Pulls both repos, refreshes the two plugin venvs, surfaces GPU pool
-# capacity for the rtx self-deploy partitions (`rtx6000`, `rtx_pro_6000`),
-# and confirms cis-ollama reachability — covering both submit paths so
-# either fails fast on stale code, missing capacity, or stale network.
+# Pulls both repos, refreshes the two plugin venvs, and surfaces GPU pool
+# capacity for the rtx self-deploy partitions (`rtx6000`, `rtx_pro_6000`)
+# so the next submit fails fast on stale code or missing capacity.
 #
 # Usage:
 #   bash preflight.sh            # pulls repos, refreshes venvs, reports capacity
@@ -98,14 +97,5 @@ else
 fi
 
 echo
-echo "== cis-ollama reachability =="
-if curl -k -sf --max-time 10 https://cis-ollama.auth.ad.bgu.ac.il/api/tags > /dev/null; then
-    echo "    OK"
-else
-    echo "    UNREACHABLE — abort before submitting a wave" >&2
-    exit 2
-fi
-
-echo
-echo "Preflight complete. Safe to run: bash cluster-experimenting/submit_all.sh --dry-run"
+echo "Preflight complete. Safe to run: bash cluster-experimenting/submit_with_rtx.sh --all --dry-run"
 REMOTE

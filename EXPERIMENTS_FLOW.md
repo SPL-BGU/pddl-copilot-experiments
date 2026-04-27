@@ -13,11 +13,11 @@ followed by a chain phase. There are two driver paths:
 
 - **Local laptop** — `run_background.sh [small|large|both]` wraps `caffeinate`
   + a local `ollama serve`, then loops `(tool_filter, prompt_style)` itself.
-- **BGU cluster** — `cluster-experimenting/submit_with_rtx.sh <model>`
-  (default, GPU-dedicated) or `submit_all.sh` (cis-ollama waves, fallback).
-  See `cluster-experimenting/README.md`. The sbatch loops
-  `THINK_MODES × CONDITIONS` in-process so weights stay resident on the
-  allocated GPU.
+- **BGU cluster** — `cluster-experimenting/submit_with_rtx.sh <model>...`
+  (single submit path; default GPU `rtx_pro_6000:1`). See
+  `cluster-experimenting/README.md`. The sbatch loops
+  `MODELS × THINK_MODES × CONDITIONS` in-process so weights stay resident
+  on the allocated GPU.
 
 ```
 run_experiment.py
@@ -48,17 +48,17 @@ The experiment crosses five independent variables:
 
 | Dimension | Values | Controls |
 |-----------|--------|----------|
-| **Model** | Cluster sweep (default): `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (all fit on rtx_6000 48 GB under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` can be run individually but is excluded from the default `--all` pack since its 65 GB weights need rtx_pro_6000 (96 GB) | Model capacity & family |
+| **Model** | Cluster sweep (default): `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (peak ~30 GB resident, packed in one rtx_pro_6000:1 job under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` is no longer in the active sweep — Qwen3.5:35b substitutes for it in the large-model size band | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all, per-task | Which tools the model sees |
 | **Prompt style** | minimal (active) — `guided` retired 2026-04-27 | System prompt detail level. Newcombe-Δ analysis on the 26042026 sweep (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed minimal-vs-guided shifts results by ≤4pp per model with every CI crossing zero. The `_GUIDED_SUFFIX` constant is preserved in code as documentation |
 | **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, gpt-oss). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
 
 The cluster's model set differs from the paper's `qwen3:0.6b`/`qwen3:4b`
-because cis-ollama doesn't host those tags (verified 2026-04-20). The
-five-model set above spans the same parameter range (≤1B → 120B) and
-covers three families (Qwen, GPT-OSS, Gemma) — see §11 for the full
-deviations table.
+because the BGU Ollama-on-cluster inventory does not host those tags
+(verified 2026-04-20). The five-model set above spans the same parameter
+range (≤1B → 35B) and covers three families (Qwen, GPT-OSS, Gemma) —
+see §11 for the full deviations table.
 
 ### 2.1 Condition: with-tools vs without-tools
 
@@ -285,7 +285,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 `meta` (present when `save_results` is called with metadata; written by `async_main`):
 | Field | Description |
 |-------|-------------|
-| host, is_remote | Where the run executed (`cis-ollama`, `localhost`, RTX node, etc.) |
+| host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
 | num_variants, prompt_variants_active, num_ctx, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. |
@@ -321,8 +321,8 @@ Per-configuration chain results (model, with_tools, chain_length, samples, succe
 The full 5-model sweep on the BGU rtx GPUs:
 
 ```bash
-# Full 5-model sweep packed in one rtx_6000 job (Qwen3.5:0.8B, gpt-oss:20b,
-# Qwen3.5:27b, Qwen3.5:35b, gemma4:31b — all ≤36 GB resident under
+# Full 5-model sweep packed in one rtx_pro_6000 job (Qwen3.5:0.8B, gpt-oss:20b,
+# Qwen3.5:27b, Qwen3.5:35b, gemma4:31b — peak ~30 GB resident under
 # MAX_LOADED_MODELS=1, so weights swap rather than co-reside).
 ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
   bash cluster-experimenting/submit_with_rtx.sh --all"
@@ -381,7 +381,7 @@ squeue --me                 # All my running/pending jobs
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
 | Tool filter | All tools exposed | Configurable: all or per-task |
 | Prompt style | Single prompt | `minimal` only (paper-aligned) as of 2026-04-27. `guided` was active during the 26042026 sweep but retired after the Newcombe-Δ analysis showed it didn't move outcomes outside CIs; `_GUIDED_SUFFIX` is preserved in `run_experiment.py` as documentation |
-| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (all ≤36 GB resident; rtx self-deploy on rtx_6000 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). `gpt-oss:120b` removed from the default sweep on 2026-04-27 (still available individually via `submit_with_rtx.sh gpt-oss:120b` → rtx_pro_6000). |
+| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (peak ~30 GB resident; rtx self-deploy on rtx_pro_6000:1 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). `gpt-oss:120b` was substituted by `Qwen3.5:35b` in the large-model size band (2026-04-27); it is no longer in the active sweep. The cis-ollama fallback path was retired the same day — rtx_pro_6000 self-deploy is the only cluster transport. |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
