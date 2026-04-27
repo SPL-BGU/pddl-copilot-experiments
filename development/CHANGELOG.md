@@ -6,6 +6,52 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-27 — prompt-variant trim (5→3), cluster pack overhaul, IT resource compliance
+
+**Motivation.** Three threads bundled in one PR (#18):
+1. Sweep wall time was 5× the active variants per (model, task) cell. The 26042026 sweep showed v0/v1/v2 are within ~1pp of the 5-variant pooled mean on every task; v4 is the labelless-prompt outlier and v3 is the least-representative survivor. Trimming to 3 variants saves ~40% wall-clock without losing the robustness story.
+2. HPC IT email 2026-04-27: single-model jobs were allocating 12 CPUs and >80 GB RAM each, depriving other users.
+3. Five-job sweeps were over-fragmenting queue priority. With `MAX_LOADED_MODELS=1`, the five small/mid models all fit one-at-a-time on a single rtx_6000 (≤36 GB resident), so packing them into one job shares the apptainer/serve startup overhead and reduces queue contention.
+
+**Changes.**
+
+- **`run_experiment.py`**:
+  - `ACTIVE_PROMPT_VARIANTS = (0, 1, 2)` (line ~198) gates both single-task job builder (positive + negative passes) and the chain-phase template sampler. All five paraphrases stay in `PROMPT_TEMPLATES` with `# DISABLED` markers above v3/v4 — `prompt_variant` indices stay byte-stable across sweeps so v2 today is the same paraphrase as v2 in the 26042026 sweep.
+  - **Justification artifact:** `cluster-experimenting/prompt_variant_stats_20260426.py` walks the 26042026 per-trial JSON and emits `prompt_variant_stats.{md,csv}` under `checkpoints/cluster-26042026/`. (v0, v1, v2) wins 4/5 tasks vs (v0, v1, v3) on the gap-from-5-variant-mean metric and is the only triple that mixes imperative with question-form paraphrases (v2 = "Is this PDDL domain syntactically correct?"). The tuple was initially shipped as (0, 1, 3) and switched to (0, 1, 2) on review.
+  - `summarize_single_task()` emits `per_variant.{n, successes, success_rate, ci_lo, ci_hi[, tool_selected_*]}` per (model, condition, task) row. Lets later analysis pick a single representative variant without re-aggregating raw JSON.
+  - New `print_per_variant_table()` runs after the existing single-task table so per-variant spread is visible at a glance during a run.
+  - `meta` records `prompt_variants_active` alongside `num_variants`.
+  - `--num-variants` flag repurposed: now means "first K of `ACTIVE_PROMPT_VARIANTS`" with default = `len(ACTIVE_PROMPT_VARIANTS)` = 3. Hard-fails on out-of-range with a message pointing at the tuple to widen — previous silent-cap behavior could mislead a researcher into thinking `--num-variants 5` reproduced the paper run.
+
+- **`cluster-experimenting/submit_with_rtx.sh`**:
+  - Multi-model packing: positional args accepted (`submit_with_rtx.sh m1 m2 ...`). Models run sequentially in one job sharing the apptainer/serve startup; `MAX_LOADED_MODELS=1` evicts the previous model before loading the next, so peak VRAM is bounded by the largest in the set.
+  - `--all` shorthand now packs the 5 paper models into ONE rtx_6000 job (`Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b`). `gpt-oss:120b` dropped from the default sweep — its 65 GB weights need rtx_pro_6000 (96 GB), and isolating it in a second job no longer pays off vs. submitting it individually when needed. `--gpu-type` propagates through `--all` to the recursive submit.
+  - `--no-tools` time scales linearly with model count: 4h base + 4h per extra model.
+  - `--mem` lowered from 96G → 80G on rtx_pro_6000 per IT cap (host-RAM peak for 120b weights cache is ~65 GB, comfortably inside 80G).
+
+- **`cluster-experimenting/run_condition_rtx.sbatch`**:
+  - Reads `MODELS` (space-separated) preferentially, falls back to `MODEL` for back-compat with direct sbatch invocations.
+  - Each model gets its own pull/warmup/VRAM-check before its inner THINK × COND loop. If the VRAM guard trips for one model the job continues with the next (sets `OVERALL_RC=3` at end) rather than aborting the whole pack.
+  - **`--cpus-per-task=12` removed** (cluster default `cpus-per-gpu` handles CPU sizing, per IT request).
+  - `--mem=48G` unchanged on rtx_6000 (already under the 80G cap).
+
+- **`cluster-experimenting/submit_all.sh`** (cis-ollama waves, fallback path): wave 5 swaps `gpt-oss:120b` → `Qwen3.5:35b` to match the rtx-deploy lineup.
+
+- **Documentation**: `README.md`, `EXPERIMENTS_FLOW.md` §2 / §10 / §11, `cluster-experimenting/README.md` (resource profile table, GPU routing table, quickstart, --no-tools shorthand, troubleshooting) updated to reflect the new model lineup, packing model, and resource caps.
+
+**Schema / compatibility.**
+- `summary_*.json` gains `meta.prompt_variants_active: list[int]` and per-row `per_variant: {pv → {...}}`. Existing analysis that ignores unknown fields (notebook `pd.read_json` flows) parses unchanged. Old `summary_*.json` lacking these fields parse identically against the new code.
+- `prompt_variant` integer in `single_task_*.json` rows is index-stable: v2 today == v2 in 26042026 sweep == v2 in any prior sweep. Old data remains directly comparable per-variant.
+- Per-cell `n` drops by 5/3 (since 2 of 5 variants are no longer sampled). Aggregators that read `n` rather than assuming a fixed denominator are unaffected; any hardcoded denominators in downstream scripts will need updating.
+
+**Runtime cost.** ~40% reduction on the single-task axis. Per (model, with-tools) cell: 400 → 240 evals; per (model, no-tools) cell: 350 → 210 evals. Combined per model: 750 → 450 evals (2.5× → 1.5× the pre-negatives baseline). Cluster wall: a 5-job sweep collapses to 1 packed job; queue priority improves and apptainer/serve cold-starts amortize across all five models in the pack.
+
+**Verification.** 86/86 tests pass (test_scoring 49 + test_check_success 37). Smoke test confirms `ACTIVE_PROMPT_VARIANTS=(0,1,2)`, all 5 templates remain in `PROMPT_TEMPLATES` per task, v2 is the question-form variant, indices are byte-stable. Cluster guide cross-checked (`.local/ISE_CS_DT_Jul-25-ClusterUserGuide.pdf`): 7-day cap on `main`, no `long` partition — 4-day allocation for the 5-model pack is well within bounds.
+
+**Files.** `run_experiment.py`, `cluster-experimenting/{submit_with_rtx.sh, run_condition_rtx.sbatch, submit_all.sh, prompt_variant_stats_20260426.py}`, `checkpoints/cluster-26042026/{prompt_variant_stats.csv, prompt_variant_stats.md}`, `README.md`, `EXPERIMENTS_FLOW.md`, `cluster-experimenting/README.md`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-04-26 — task-targeted negative fixtures + no-tools `validate_*` re-enable
 
 **Motivation.** ISS-001's residual half: every shipped fixture in `domains/` was positive (`gt["domain_valid"] = gt["problem_valid"] = gt["plan_valid"] = True` for every (domain, problem) pair). With-tools `validate_*` therefore measured only tool/argument competence — never validation *capability*, since the truth label never flipped. The same bias is what blocked no-tools `validate_*` on 2026-04-25 (the constant-VALID prior trivially won).

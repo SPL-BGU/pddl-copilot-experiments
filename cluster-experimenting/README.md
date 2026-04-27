@@ -12,8 +12,10 @@ parallel and start as soon as a GPU node frees up. The 2026-04-25 sweep
 (14 jobs) submitted at 17:31 had bulk jobs starting in 8 seconds.
 
 **Fallback path: cis-ollama waves (`submit_all.sh`).** Use only when:
-- the rtx_pro_6000 pool is saturated and `gpt-oss:120b` needs a GPU
-  alternative — see `submit_120b_cis.sh`, or
+- you need to run `gpt-oss:120b` and the rtx_pro_6000 pool is saturated
+  → use `submit_120b_cis.sh` (`submit_with_rtx.sh gpt-oss:120b` is the
+  preferred path when rtx_pro_6000 is available; 120b is excluded from
+  the default `--all` rtx pack since 2026-04-27), or
 - you want to compare cis vs. rtx-dedicated throughput for the same model.
 
 The cis path needs strict `afterok` serialization across 5 waves
@@ -44,11 +46,19 @@ cd ~/pddl-copilot-experiments
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
 
 # 5. If the smoke test finishes OK (exit 0, JSON written under results/),
-#    submit the rest. Each model is one independent job; they queue in
-#    parallel with no cross-job dependency.
-for m in Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b gpt-oss:120b; do
-    bash cluster-experimenting/submit_with_rtx.sh "$m"
-done
+#    submit the full sweep packed into ONE rtx_6000 job. The five models
+#    (Qwen3.5:0.8B, gpt-oss:20b, Qwen3.5:27b, Qwen3.5:35b, gemma4:31b) all
+#    fit ≤36 GB resident, so MAX_LOADED_MODELS=1 sequencing keeps each
+#    weight set on the GPU one at a time without VRAM blowup.
+bash cluster-experimenting/submit_with_rtx.sh --all
+```
+
+For per-model jobs (e.g. iterating on one model's behaviour, or running
+`gpt-oss:120b` which requires rtx_pro_6000), pass model names positionally:
+
+```bash
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
+bash cluster-experimenting/submit_with_rtx.sh gpt-oss:120b   # → rtx_pro_6000
 ```
 
 Rerunning any step is safe: `git clone` can be replaced with `git -C <dir> pull`,
@@ -105,55 +115,70 @@ ENV_NAME=my_env PYTHON_VERSION=3.11 bash cluster-experimenting/setup_env.sh
 ```bash
 cd ~/pddl-copilot-experiments
 
-# Per-model job: full think × condition matrix (4 tools-conditions × 2 think
-# modes = 8 condition-runs in one job).
+# Default: pack all 5 paper models in ONE rtx_6000 job. Each model gets the
+# full think × condition matrix (4 tools-conditions × 2 think modes = 8
+# condition-runs); models run sequentially with MAX_LOADED_MODELS=1 evicting
+# the previous weights. Wall: 4d allocation (well under main's 7d cap).
+bash cluster-experimenting/submit_with_rtx.sh --all
+
+# Per-model jobs (multiple positional args also pack into one job):
 bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:27b
-bash cluster-experimenting/submit_with_rtx.sh gemma4:31b
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b
 bash cluster-experimenting/submit_with_rtx.sh gpt-oss:120b   # → rtx_pro_6000
 
-# Baseline-only run: no-tools/think=off/solve, ~15 min, --time=1:00:00.
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
+# Baseline-only no-tools sweep: 4-task discriminative matrix
+# (solve + validate_*), packed in one job. --time scales with model count.
+bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 
 # Preview command without submitting.
 bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b --dry-run
 ```
 
-Each invocation submits one independent SLURM job. There's no `afterok`
-chain — SLURM queues them in parallel and they start as soon as a GPU
-node frees up. The 2026-04-25 sweep had bulk jobs starting in 8 seconds.
+`--all` issues one packed job; per-model invocations submit independent
+jobs that SLURM queues in parallel.
 
 ### GPU routing
 
 | Model | Default pool | Why |
 |---|---|---|
-| `gpt-oss:120b` | `rtx_pro_6000` (96 GB) | 65 GB weights don't fit on rtx_6000 (48 GB) |
+| `gpt-oss:120b` | `rtx_pro_6000` (96 GB) | 65 GB weights don't fit on rtx_6000 (48 GB). Submit individually — not part of `--all` |
+| `--all` pack (5 models, ≤36 GB resident) | `rtx_6000` (opportunistic via `sinfo`) | All five fit one-at-a-time on 48 GB under `MAX_LOADED_MODELS=1`; `rtx_6000` is typically less contended |
 | everything else | opportunistic | Queries `sinfo` at submit time and picks whichever pool has more idle nodes; tiebreak prefers rtx_pro_6000 |
 
 Force a specific pool with `--gpu-type rtx_6000` or `--gpu-type rtx_pro_6000`.
+With `--all`, `--gpu-type` is propagated to the recursive submit and
+overrides the opportunistic routing.
 
 If `rtx_pro_6000` is saturated when you submit `gpt-oss:120b`, fall back
 to the cis path: `bash cluster-experimenting/submit_120b_cis.sh`.
 
 ### `--no-tools` shorthand
 
-`--no-tools` pins the run to the baseline-only cell:
+`--no-tools` pins the run to the discriminative no-tools matrix:
 - `CONDITIONS=no-tools` (one tools-off pass)
 - `THINK_MODES=off` (no-tools/think=on is skipped by the matrix gate anyway)
-- `TASKS=solve` (no-tools is only meaningful for solve; the other 4 tasks
-  require tool calls to be honestly evaluated — see EXPERIMENTS_FLOW.md §5)
-- `--time=1:00:00` (3× headroom on the slowest no-tools run observed
-  2026-04-25; tighter wall time helps SLURM fairshare priority)
+- `TASKS="solve validate_domain validate_problem validate_plan"` —
+  the four discriminative no-tools tasks. Negative fixtures (ISS-001) ride
+  along the matching task automatically. `simulate` stays excluded — its
+  keyword grader is non-discriminative regardless of negatives. Chains are
+  skipped by the matrix gate.
+- `--time` scales linearly with model count: 4h base + 4h per extra model
+  (`--all --no-tools` → 20h for 5 models).
 
-Conflicts with `--think-modes` (any value other than `off`) are rejected.
+Conflicts with `--think-modes` (any value other than `off|default`) are
+rejected.
 
-### Models verified on cis-ollama (2026-04-20)
+### Models in the default sweep
 
 The paper's `qwen3:0.6b` / `qwen3:4b` are **not** hosted on cis-ollama, so
 this cluster run is a paper-variant, not a 1:1 reproduction (see
-`run_experiment.py:71-75`). The five models in this sweep —
-`Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `gemma4:31b`, `gpt-oss:120b`
-— have all been verified hosted. List currently-hosted models with:
+`run_experiment.py:71-75`). The five models in the default `--all` pack —
+`Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` —
+all fit ≤36 GB resident on rtx_6000 (48 GB) under `MAX_LOADED_MODELS=1`,
+so they sequence through one packed job. `gpt-oss:120b` was dropped from
+`--all` on 2026-04-27 (65 GB weights need rtx_pro_6000) but can still be
+submitted individually. The cis-hosted set was previously verified
+2026-04-20; list currently-hosted models with:
 
 ```bash
 curl -k -s https://cis-ollama.auth.ad.bgu.ac.il/api/tags \
@@ -168,8 +193,8 @@ container is cached at `$HOME/ollama.sif` after the first run (~3 min cold).
 ## Cis-ollama wave submission (fallback path)
 
 Use this only when:
-- the rtx_pro_6000 pool is saturated and you need `gpt-oss:120b` to
-  proceed → `bash cluster-experimenting/submit_120b_cis.sh`, or
+- you need `gpt-oss:120b` and the rtx_pro_6000 pool is saturated →
+  `bash cluster-experimenting/submit_120b_cis.sh`, or
 - you want to compare cis-shared vs. rtx-dedicated throughput head-to-head.
 
 ```bash
@@ -186,7 +211,7 @@ bash cluster-experimenting/submit_all.sh              # submit 9 jobs in 5 waves
 | 2 | `gpt-oss:20b` | `on`, `off` | 2 | `afterok:<wave1>` |
 | 3 | `Qwen3.5:27b` | `on`, `off` | 2 | `afterok:<wave2>` |
 | 4 | `gemma4:31b` | `default` | 1 | `afterok:<wave3>` |
-| 5 | `gpt-oss:120b` | `on`, `off` | 2 | `afterok:<wave4>` |
+| 5 | `Qwen3.5:35b` | `on`, `off` | 2 | `afterok:<wave4>` |
 
 Within each wave the think-on / think-off jobs run **in parallel** — they
 share the same loaded model weights on the server, so there's no eviction.
@@ -249,9 +274,9 @@ explicitly lets us reproduce that protocol systematically.
 |---|---|---|
 | `--partition` | `main` | rtx_6000 / rtx_pro_6000 GRES are accessible from `main` |
 | `--gpus` | `rtx_6000:1` or `rtx_pro_6000:1` | One dedicated GPU per job; weights stay resident across the inner think × condition loop |
-| `--time` | `2-00:00:00` (full sweep) / `1:00:00` (--no-tools) | Slowest tools job observed at ~10 h on 2026-04-25. No-tools runs at 10–22 min wall |
-| `--mem` | `48G` (rtx_6000) / `96G` (rtx_pro_6000) | Sized to GPU pool's host RAM expectation |
-| `--cpus-per-task` | `12` | MCP subprocesses + Ollama serve + concurrency=4 |
+| `--time` | `2-00:00:00` (single-model) / `4-00:00:00` (multi-model `--all` pack) / `4h × N` (`--no-tools`, N = model count) | Single-model tools job ~10 h observed 2026-04-25. Multi-model pack scales linearly with model count, capped well below `main`'s 7d limit. No-tools 4-task matrix: ~4 h per model |
+| `--mem` | `48G` (rtx_6000) / `80G` (rtx_pro_6000) | Sized to GPU pool's host RAM expectation. `80G` cap on rtx_pro_6000 added 2026-04-27 per IT request (was 96G); host-RAM peak for 120b weights cache is ~65 GB |
+| `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | Removed 2026-04-27 per IT request; explicit `12` was depriving other users |
 | Concurrency | `4` | Matches OLLAMA_NUM_PARALLEL=4; no shared-server contention so no need to under-provision |
 
 ### cis-ollama waves (`run_condition.sbatch`) — fallback
@@ -260,7 +285,7 @@ explicitly lets us reproduce that protocol systematically.
 |---|---|---|
 | `--partition` | `main` | CPU partition — no local inference, LLM runs on cis-ollama |
 | `--constraint` | `cpu` | Same reason |
-| `--time` | `3-00:00:00` | Sized for `gpt-oss:120b` × 5 conditions × paper-aligned chain-samples=100. Partition `main` allows up to 7 days. Small models finish much sooner; SLURM charges actual wall time. |
+| `--time` | `3-00:00:00` | Originally sized for `gpt-oss:120b` × 5 conditions × paper-aligned chain-samples=100. Wave 5 was swapped to `Qwen3.5:35b` on 2026-04-27 so the historical worst-case is no longer in the default sweep, but 3d still gives comfortable headroom. Partition `main` allows up to 7 days. SLURM charges actual wall time. |
 | `--cpus-per-task` | `8` | MCP server subprocesses + concurrent Ollama requests. In-job `concurrency=2` × 2 parallel jobs per wave = 4 concurrent requests, exactly saturating the measured server `OLLAMA_NUM_PARALLEL=4` without queueing (probe 2026-04-21; see CHANGELOG). |
 | `--mem` | `16G` | ENHSP heap + Python overhead; well below BGU's 58G ceiling |
 | `--gpus` | `0` | Nothing GPU-accelerated runs on the node |
@@ -346,8 +371,10 @@ path doesn't have this problem because there's no afterok chain.
 **rtx path: VRAM blowup after warmup (`exit 3`).** The runtime guard fired
 because VRAM > 85% post-warmup. Likely cause: `OLLAMA_NUM_PARALLEL` × `num_ctx`
 too high for the model. Check `run_condition_rtx.sbatch` — `NUM_PARALLEL=4`
-and `num_ctx=8192` are sized for ≤31B models on rtx_6000 (48 GB). For 120b,
-ensure you're on rtx_pro_6000.
+and `num_ctx=8192` are sized for the default `--all` pack (≤36 GB resident
+on rtx_6000 48 GB). For `gpt-oss:120b`, ensure you're on rtx_pro_6000.
+With multi-model packing, the guard skips the offending model and continues
+with the next (sets non-zero exit at the end).
 
 **rtx path: `apptainer: command not found`.** Apptainer module not loaded
 on the compute node. The sbatch assumes the cluster default has it on the

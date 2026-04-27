@@ -48,7 +48,7 @@ The experiment crosses five independent variables:
 
 | Dimension | Values | Controls |
 |-----------|--------|----------|
-| **Model** | Cluster sweep (default): `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `gemma4:31b`, `gpt-oss:120b`. Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b` | Model capacity & family |
+| **Model** | Cluster sweep (default): `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (all fit on rtx_6000 48 GB under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` can be run individually but is excluded from the default `--all` pack since its 65 GB weights need rtx_pro_6000 (96 GB) | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all, per-task | Which tools the model sees |
 | **Prompt style** | minimal, guided | System prompt detail level |
@@ -288,7 +288,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | host, is_remote | Where the run executed (`cis-ollama`, `localhost`, RTX node, etc.) |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, num_ctx, num_predict, temperature, think | Reproducibility knobs |
+| num_variants, prompt_variants_active, num_ctx, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json
@@ -321,13 +321,17 @@ Per-configuration chain results (model, with_tools, chain_length, samples, succe
 The full 5-model sweep on the BGU rtx GPUs:
 
 ```bash
+# Full 5-model sweep packed in one rtx_6000 job (Qwen3.5:0.8B, gpt-oss:20b,
+# Qwen3.5:27b, Qwen3.5:35b, gemma4:31b — all ≤36 GB resident under
+# MAX_LOADED_MODELS=1, so weights swap rather than co-reside).
 ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
-  for m in Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b gpt-oss:120b; do \
-    bash cluster-experimenting/submit_with_rtx.sh \"\$m\"; \
-  done"
+  bash cluster-experimenting/submit_with_rtx.sh --all"
 
-# Single-model baseline run (no-tools / think=off / solve only, ~15 min)
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
+# Single-model run (e.g. iterating on one model)
+bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b
+
+# Baseline-only no-tools sweep (4-task discriminative matrix, packed)
+bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 ```
 
 See `cluster-experimenting/README.md` for full submission flow,
@@ -377,7 +381,7 @@ squeue --me                 # All my running/pending jobs
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
 | Tool filter | All tools exposed | Configurable: all or per-task |
 | Prompt style | Single prompt | Configurable: minimal or guided |
-| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `gemma4:31b`, `gpt-oss:120b` (cis-ollama-hosted; spans 0.8B–120B and three families). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). |
+| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (all ≤36 GB resident; rtx self-deploy on rtx_6000 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). `gpt-oss:120b` removed from the default sweep on 2026-04-27 (still available individually via `submit_with_rtx.sh gpt-oss:120b` → rtx_pro_6000). |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
