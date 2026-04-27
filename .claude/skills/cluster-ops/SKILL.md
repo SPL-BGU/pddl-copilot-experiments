@@ -1,8 +1,6 @@
 ---
 name: cluster-ops
 description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, aggregate summaries, render paper plots, diagnose cis-ollama, post-mortem completed jobs (right-size --mem from sacct/MaxRSS).
-context: fork
-agent: cluster-ops
 argument-hint: [status | preflight | sync | aggregate | plot | table | diag | postmortem]
 ---
 
