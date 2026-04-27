@@ -26,10 +26,12 @@
 #   bash cluster-experimenting/submit_all.sh --from-wave 3 --force # bypass preflight (use with care)
 #
 # Optional env override:
-#   CONDITIONS="tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided" \
+#   CONDITIONS="tools_per-task_minimal tools_all_minimal" \
 #     bash cluster-experimenting/submit_all.sh
 #   Forwarded to each sbatch via --export so run_condition.sbatch uses the restricted list.
-#   Unset → run_condition.sbatch's own default (all 5 conditions) applies.
+#   Unset → run_condition.sbatch's own default (3 active conditions; the
+#   `*_guided` pair was retired 2026-04-27, see run_experiment.py
+#   PROMPT_STYLE_CHOICES) applies.
 #
 # Safety: --from-wave N>1 refuses to submit if any pddl_* jobs are already
 # RUNNING or PENDING on the queue, because resumed waves have no afterok

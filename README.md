@@ -109,7 +109,7 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--chain-samples` | 20 | Samples per chain length. The cluster sbatch (`cluster-experimenting/run_condition_rtx.sbatch`) overrides this to 100 for paper alignment. |
 | `--seed` | 42 | Random seed for chain sampling |
 | `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
-| `--prompt-style` | `minimal` | `minimal` reproduces paper; `guided` adds hint about passing PDDL content |
+| `--prompt-style` | `minimal` | Only active value as of 2026-04-27 — `guided` was retired (the 26042026 sweep showed style shifts results by ≤4pp per model, every CI crossed zero). The `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are kept in `run_experiment.py` as documentation; re-enable by adding `"guided"` back to `PROMPT_STYLE_CHOICES`. |
 | `--num-predict` | per-task | Override max output tokens (solve=8192, simulate=1536, validate=1024) |
 | `--num-ctx` | 8192 | Ollama context window tokens |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |

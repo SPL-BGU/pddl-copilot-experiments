@@ -254,12 +254,12 @@ for MODEL in $MODELS; do
                     fi ;;
                 tools_per-task_minimal)
                     COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
-                tools_per-task_guided)
-                    COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
+                # tools_per-task_guided)  # DISABLED 2026-04-27 — see run_experiment.py PROMPT_STYLE_CHOICES
+                #     COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
-                tools_all_guided)
-                    COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
+                # tools_all_guided)  # DISABLED 2026-04-27 — see run_experiment.py PROMPT_STYLE_CHOICES
+                #     COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
                 *)
                     echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
             esac

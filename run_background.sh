@@ -152,7 +152,9 @@ STAMP=$(date +%Y%m%d_%H%M%S)
 LOG="run_${TAG}_${STAMP}.log"
 OUT_PREFIX="results/${TAG}_${STAMP}"
 FILTERS="per-task all"
-PROMPT_STYLES="minimal guided"
+# `guided` retired 2026-04-27 (see run_experiment.py PROMPT_STYLE_CHOICES).
+# Re-enable by adding "guided" back here AND in PROMPT_STYLE_CHOICES.
+PROMPT_STYLES="minimal"
 
 HOST_ARGS=()
 if [ "$REMOTE_OLLAMA" -eq 1 ]; then

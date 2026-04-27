@@ -244,12 +244,19 @@ the top of `submit_all.sh`.
 
 ## Conditions and think modes (shared)
 
-### Conditions (5) — looped inside every job
-- `no-tools`                    — baseline, no MCP tools exposed (rtx path: only honest for `solve`/think=off; matrix gate skips other cells)
+### Conditions (3 active) — looped inside every job
+- `no-tools`                    — baseline, no MCP tools exposed (rtx path: matrix gate skips think=on cells; chain phase skipped)
 - `tools_per-task_minimal`      — tools on, filter=per-task allowlist, prompt=minimal
-- `tools_per-task_guided`       — tools on, filter=per-task, prompt=guided
 - `tools_all_minimal`           — tools on, filter=all, prompt=minimal
-- `tools_all_guided`            — tools on, filter=all, prompt=guided
+
+The two `*_guided` variants (`tools_per-task_guided`, `tools_all_guided`)
+were retired 2026-04-27 (Newcombe-Δ on the 26042026 sweep showed
+minimal-vs-guided shifts results by ≤4pp per model with every CI crossing
+zero). The case branches in `run_condition.sbatch` and
+`run_condition_rtx.sbatch` are commented out; explicitly listing the old
+labels in `CONDITIONS=` would now hit the `*)` error branch. Re-enable by
+uncommenting the case branches and adding `"guided"` back to
+`PROMPT_STYLE_CHOICES` in `run_experiment.py`.
 
 Each condition invokes `run_experiment.py` once, writing to its own output
 subdir. Conditions inside a job are independent: a late-stage condition

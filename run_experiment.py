@@ -140,7 +140,15 @@ TASK_TOOLS: dict[str, list[str]] = {
 }
 
 TOOL_FILTER_CHOICES = ("all", "per-task")
-PROMPT_STYLE_CHOICES = ("minimal", "guided")
+# `guided` retired from the active sweep on 2026-04-27 — the 26042026 sweep
+# (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed
+# minimal-vs-guided shifts results by ≤4pp per model with every CI crossing
+# zero. The 3 active prompt variants already cover paraphrase robustness;
+# the prompt-style axis was paying for ~0pp of additional signal. The
+# `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry below
+# are kept as code documentation so the suffix wording is preserved if a
+# future sweep wants to re-enable it (re-add "guided" to this tuple).
+PROMPT_STYLE_CHOICES = ("minimal",)
 CONDITION_CHOICES = ("tools", "no-tools", "both")
 
 
@@ -166,6 +174,10 @@ _WITH_TOOLS_BASE = (
     "provided tools ONE AT A TIME — never guess or create plan details yourself."
 )
 
+# `_GUIDED_SUFFIX` and the `"guided"` entry below are DISABLED from the
+# active sweep (see `PROMPT_STYLE_CHOICES` above). Kept in code so the exact
+# wording is preserved as documentation — re-enable by adding "guided" back
+# to `PROMPT_STYLE_CHOICES`.
 _GUIDED_SUFFIX = (
     "\nWhen calling tools, pass the complete PDDL text from the user message "
     "(starting with '(define ...') as the 'domain' and 'problem' arguments — "
@@ -174,7 +186,7 @@ _GUIDED_SUFFIX = (
 
 WITH_TOOLS_SYSTEM: dict[str, str] = {
     "minimal": _WITH_TOOLS_BASE,
-    "guided": _WITH_TOOLS_BASE + _GUIDED_SUFFIX,
+    "guided": _WITH_TOOLS_BASE + _GUIDED_SUFFIX,  # DISABLED 2026-04-27
 }
 
 WITHOUT_TOOLS_SYSTEM = (
@@ -2124,9 +2136,10 @@ def main():
                         "'per-task' restricts tools per task via TASK_TOOLS allowlist, reducing "
                         "tool-selection noise from unrelated tools.")
     p.add_argument("--prompt-style", choices=list(PROMPT_STYLE_CHOICES), default="minimal",
-                   help="'minimal' uses the original system prompt (reproduces paper). "
-                        "'guided' adds a one-sentence hint about passing full PDDL content "
-                        "as tool arguments instead of file names.")
+                   help="System prompt style. 'minimal' (paper-aligned) is the only "
+                        "active choice as of 2026-04-27 — 'guided' was retired "
+                        "(see PROMPT_STYLE_CHOICES comment in run_experiment.py). "
+                        "Re-enable by re-adding 'guided' to PROMPT_STYLE_CHOICES.")
     p.add_argument("--num-predict", type=int, default=None,
                    help="Override max output tokens per chat turn for ALL tasks. "
                         "Default: per-task caps (solve=8192, simulate=1536, validate_*=1024). "

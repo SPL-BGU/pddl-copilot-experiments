@@ -6,6 +6,43 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-27 — `prompt_style` axis retired (`guided` disabled, `minimal` only)
+
+**Motivation.** Newcombe-Δ analysis on the 26042026 sweep (run during PR #18 review on the live trial JSONs under `checkpoints/cluster-26042026/results_extracted/`) confirmed `prompt_style` is the redundant axis in the design matrix:
+
+| pooled per task | minimal | guided | Δ (guided−minimal) | 95% CI | sig |
+|---|---|---|---|---|---|
+| solve | 0.554 | 0.575 | +0.021 | [-0.022, +0.064] | NS |
+| validate_domain | 0.555 | 0.555 | 0.000 | … | NS |
+| validate_problem | 0.301 | 0.315 | +0.014 | … | NS |
+| validate_plan | 0.183 | 0.177 | -0.006 | … | NS |
+| simulate | 0.249 | 0.257 | +0.008 | … | NS |
+
+(See `prompt_variant_stats.md` §5 for the per-model breakdown — Qwen3.5:0.8B leans guided +4.3pp, Qwen3.5:27b leans minimal -2.7pp; every model's CI crosses zero.) Compared to `tool_filter` (mean |Δ|=6.1pp, 7/25 cells significant), `prompt_style` is paying for ~0pp of additional signal at the cost of doubling the tools-on cell count.
+
+**Decision.** Retire `guided`, keep `minimal` only. Three reasons:
+1. Paper-aligned — `minimal` reproduces Benyamin et al. 2025 §4.1; the deviation row in `EXPERIMENTS_FLOW.md §11` collapses to "Single prompt → `minimal` only".
+2. Cleaner methodology story — the harness contributes end-to-end validation, tool curation, and balanced negatives; adding prompt engineering on top would be off-thesis.
+3. Wall-clock — single-task tools-on cells halve (4 → 2 conditions per (model, think) cell).
+
+**Changes (code preserved as documentation).**
+- **`run_experiment.py:143`**: `PROMPT_STYLE_CHOICES = ("minimal",)` — single-element tuple; argparse rejects `--prompt-style guided` at parse time. Comment block explains the why.
+- **`run_experiment.py:170-180`**: `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` dict entry **kept in code** with `# DISABLED 2026-04-27` markers. Re-enable by re-adding `"guided"` to `PROMPT_STYLE_CHOICES` — no other code change needed.
+- **`cluster-experimenting/run_condition.sbatch`** + **`run_condition_rtx.sbatch`**: `CONDITIONS=` default drops `tools_per-task_guided` and `tools_all_guided`. Case branches for those labels are **commented out**, not deleted, so the wording is preserved as documentation.
+- **`cluster-experimenting/submit_all.sh`**: usage-example `CONDITIONS=` override updated.
+- **`run_background.sh:155`**: `PROMPT_STYLES="minimal"` (was `"minimal guided"`); two-line comment explains how to re-enable.
+- **`README.md`** CLI options table, **`EXPERIMENTS_FLOW.md` §2 / §11**, **`cluster-experimenting/README.md`** Conditions section: documentation reflects the single-active-style state and the analytic justification.
+
+**Schema / compatibility.** `prompt_style` field stays in `TaskResult` and result JSON; new sweeps will only ever record `"minimal"`. Existing 26042026 data with `prompt_style="guided"` rows remains directly analyzable (the analysis script `prompt_variant_stats_20260426.py` still computes the §5 split). Aggregators that filter by `prompt_style` will simply see one bucket going forward.
+
+**Runtime cost.** Per (model, with-tools) cell: 240 → 120 evals (further -50% on top of the variant trim). Combined with the prompt-variant trim earlier today, the single-task axis is now ~70% smaller than the pre-PR-#18 baseline (750 → 240 evals per model).
+
+**Verification.** Newcombe-Δ analysis was run inline against `results_extracted/` (10,000 tools-on trials). 86/86 unit tests still pass — `prompt_style="minimal"` is the existing default for the test fixtures, no test exercised `guided` directly.
+
+**Files.** `run_experiment.py`, `run_background.sh`, `cluster-experimenting/{run_condition.sbatch, run_condition_rtx.sbatch, submit_all.sh}`, `README.md`, `EXPERIMENTS_FLOW.md`, `cluster-experimenting/README.md`.
+
+---
+
 ## 2026-04-27 — prompt-variant trim (5→3), cluster pack overhaul, IT resource compliance
 
 **Motivation.** Three threads bundled in one PR (#18):
