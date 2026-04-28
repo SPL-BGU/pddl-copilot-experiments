@@ -230,14 +230,14 @@ async def async_main(args):
     print(f"  Variants:   {active_variants} (selected from {list(ACTIVE_PROMPT_VARIANTS)})")
     print(f"  Temperature:{args.temperature}")
     if smoke_mode:
-        print(f"  Conditions: smoke (think=on→both [num_ctx={args.num_ctx_thinking}], think=off→both [num_ctx={args.num_ctx}])")
+        print(f"  Conditions: smoke (think=on→both [tools 8192 / no-tools {args.num_ctx_thinking}, sub-pass split], think=off→both [8192 throughout])")
     else:
         print(f"  Conditions: {args.conditions}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
     print(f"  num_predict:{args.num_predict if args.num_predict is not None else 'per-task defaults'}")
     print(f"  num_ctx:    {args.num_ctx}")
-    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (active for all think!=off cells)")
+    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (active for think!=off + no-tools cells; sub-pass split)")
     print(f"  think:      {args.think}")
     print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
     if args.concurrency > 1 and num_parallel_env == "unset":
@@ -324,66 +324,57 @@ async def async_main(args):
                 for t in args.tasks
             }
 
-        # Single-task — smoke iterates think={on, off} explicitly so the
-        # output covers both reasoning regimes; non-smoke runs use the
-        # user-provided --think once.
+        # Single-task evaluation. When `think != off` AND both conditions
+        # are requested, we MUST split the call into (tools then no-tools)
+        # sub-passes — `evaluate_one` picks `effective_num_ctx` per
+        # condition (8192 for tools, num_ctx_thinking for no-tools), and
+        # flipping num_ctx mid-call deadlocks Ollama under concurrency
+        # (smoke job 17244356, 2026-04-28). With sequential sub-passes,
+        # the model reloads between them while no requests are in flight.
+        # Total wallclock is unchanged (same job count, same concurrency).
+        async def _run_single_task_split(
+            think_value: bool | None, cond: str, label: str = ""
+        ) -> list:
+            """Run single-task with sub-pass splitting if num_ctx would flip mid-call."""
+            sub_results: list = []
+            split_required = (cond == "both") and (think_value is not False)
+            sub_conditions = ("tools", "no-tools") if split_required else (cond,)
+            for sub_cond in sub_conditions:
+                if label:
+                    print(f"\n  {label} (conditions={sub_cond})")
+                rs = await run_single_task_experiment(
+                    client=client, models=args.models, tasks=args.tasks,
+                    domains=domains, ground_truth=ground_truth, mcp=mcp,
+                    num_variants=args.num_variants, tool_filter=args.tool_filter,
+                    prompt_style=args.prompt_style,
+                    num_predict_override=args.num_predict,
+                    num_ctx=args.num_ctx, num_ctx_thinking=args.num_ctx_thinking,
+                    think=think_value, concurrency=args.concurrency,
+                    conditions=sub_cond, temperature=args.temperature,
+                    shard_i=args.shard_i, shard_n=args.shard_n,
+                    cell_assignment=cell_assignment,
+                )
+                sub_results.extend(rs)
+            return sub_results
+
         print("\n--- Single-Task Evaluation ---")
         if smoke_mode:
-            # Both passes now use conditions="both" — the no-tools+think
-            # abort gate that this loop used to work around was lifted in
-            # PR-2 (FRAMEWORK_EXTENSION_PLAN.md §3.2 PR-2). The smoke run
-            # now exercises every (think × condition) cell so all four
-            # cells get smoke coverage.
+            # Smoke iterates think={on, off}. The think=on pass is split
+            # into (tools, no-tools) sub-passes by _run_single_task_split
+            # because num_ctx differs (8192 vs num_ctx_thinking). The
+            # think=off pass uses 8192 throughout so no split.
             think_passes: list[tuple[str, bool, str]] = [
                 ("on",  True,  "both"),
                 ("off", False, "both"),
             ]
             for tm_label, tm_value, cond in think_passes:
-                print(f"\n  Smoke pass: think={tm_label}, conditions={cond}")
-                sub = await run_single_task_experiment(
-                    client=client,
-                    models=args.models,
-                    tasks=args.tasks,
-                    domains=domains,
-                    ground_truth=ground_truth,
-                    mcp=mcp,
-                    num_variants=args.num_variants,
-                    tool_filter=args.tool_filter,
-                    prompt_style=args.prompt_style,
-                    num_predict_override=args.num_predict,
-                    num_ctx=args.num_ctx,
-                    num_ctx_thinking=args.num_ctx_thinking,
-                    think=tm_value,
-                    concurrency=args.concurrency,
-                    conditions=cond,
-                    temperature=args.temperature,
-                    shard_i=args.shard_i,
-                    shard_n=args.shard_n,
-                    cell_assignment=cell_assignment,
+                single_results.extend(
+                    await _run_single_task_split(
+                        tm_value, cond, label=f"Smoke pass: think={tm_label}, conditions={cond}",
+                    )
                 )
-                single_results.extend(sub)
         else:
-            single_results = await run_single_task_experiment(
-                client=client,
-                models=args.models,
-                tasks=args.tasks,
-                domains=domains,
-                ground_truth=ground_truth,
-                mcp=mcp,
-                num_variants=args.num_variants,
-                tool_filter=args.tool_filter,
-                prompt_style=args.prompt_style,
-                num_predict_override=args.num_predict,
-                num_ctx=args.num_ctx,
-                num_ctx_thinking=args.num_ctx_thinking,
-                think=think_override,
-                concurrency=args.concurrency,
-                conditions=args.conditions,
-                temperature=args.temperature,
-                shard_i=args.shard_i,
-                shard_n=args.shard_n,
-                cell_assignment=cell_assignment,
-            )
+            single_results = await _run_single_task_split(think_override, args.conditions)
         print_single_task_table(single_results)
         print_per_variant_table(single_results)
         print_fail_reasons_table(single_results)
@@ -515,12 +506,14 @@ def main():
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
                    help=f"Ollama context window tokens. Default {DEFAULT_NUM_CTX}.")
     p.add_argument("--num-ctx-thinking", type=int, default=DEFAULT_NUM_CTX_THINKING,
-                   help=f"Ollama context window tokens used when think!=off, "
-                        f"regardless of condition. Default "
-                        f"{DEFAULT_NUM_CTX_THINKING}. think=off keeps "
-                        f"--num-ctx (default {DEFAULT_NUM_CTX}). Constant "
-                        f"within a think-pass — flipping num_ctx mid-pass "
-                        f"deadlocks Ollama under concurrency.")
+                   help=f"Ollama context window tokens used ONLY when think!=off "
+                        f"AND condition=no-tools. Default "
+                        f"{DEFAULT_NUM_CTX_THINKING}. Tool-condition runs "
+                        f"and think=off use --num-ctx (default {DEFAULT_NUM_CTX}). "
+                        f"`async_main` runs tools and no-tools as separate "
+                        f"sub-passes when both apply — keeps num_ctx constant "
+                        f"per call (mid-call flips deadlock Ollama under "
+                        f"concurrency).")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "

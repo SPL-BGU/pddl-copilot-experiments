@@ -6,19 +6,23 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
-## 2026-04-28 — PR-2 hotfix: drop the condition axis from `effective_num_ctx`
+## 2026-04-28 — PR-2 hotfix: per-condition sub-pass split to keep `num_ctx` constant per call
 
-**Motivation.** Cluster smoke 17244356 (PR-2 head `0a78ae0`) deadlocked at the `tools→no-tools` boundary inside the `think=on` smoke pass — the very first `(no-tools, think=on)` job (the new PR-2 cell) never dispatched. py-spy on the stuck Python process showed `sched_count: 0`, `ready: []`, infinite `epoll`; GPU at 0% util / 0% mem util for 18+ min; 4 keep-alive ESTAB sockets to Ollama with no in-flight bytes; Ollama `/api/ps` reported `Qwen3.5:0.8B` loaded at `context_length: 8192` (never reloaded). The proximate cause: `effective_num_ctx` flipped from 8192 (tools side) to 12288 (no-tools side) MID-PASS, and Ollama's response to a concurrent num_ctx-mismatch reload is to deadlock all four pending requests.
+**Motivation.** Cluster smoke 17244356 (PR-2 head `0a78ae0`) deadlocked at the `tools→no-tools` boundary inside the `think=on` smoke pass. py-spy showed the asyncio loop idle, GPU at 0%, 4 keep-alive sockets with no in-flight bytes, and Ollama serving the model at the original `context_length: 8192` despite the no-tools coroutines requesting `num_ctx=12288`. Mid-call `num_ctx` flips deadlock Ollama under concurrency.
+
+**First attempt (`71dcff7`)** dropped the condition axis from `effective_num_ctx` — making tools+think=on use `num_ctx=12288` too, so num_ctx was constant within a pass. Smoke 17245419 ran clean (no deadlock) but the byte-equality diff against PR-1 anchor showed accuracy regression on tools-side think=on cells (e.g. `Qwen3.5:0.8B tools validate_plan`: PR-1 `2 OK + 1 verdict_mismatch + 1 loop_exhausted` → PR-2 `0 OK + 2 think_overflow + 2 loop_exhausted`, accuracy halved). The bigger context window changed the model's behaviour on tools-side runs that were graded fine in PR-1. This violated the spec, which required tools-side to keep 8192.
+
+**Final fix (this entry).** Reverted `effective_num_ctx` to the spec rule (`think!=off AND not with_tools`). Avoid the mid-call deadlock by splitting at the CALLER level: `async_main` runs `(--conditions=both, think!=off)` as two sequential `run_single_task_experiment` calls, one per condition. Each call has uniform `num_ctx`; the model can reload between calls because no requests are in flight at the boundary. Total wallclock is unchanged (same job count, same per-call concurrency).
 
 **Changes.**
 
-- `pddl_eval/runner.py` (`evaluate_one` and `run_chain_experiment`): `effective_num_ctx` now depends on `think` only, not on `with_tools`. Within a think-pass, `num_ctx` is constant. Tool-condition runs under `think!=off` use 12288 instead of 8192 (negligible KV-cache cost; ~16K extra tokens of cache for 4 concurrent requests of an 873M-param model).
-- `run_experiment.py`: `--num-ctx-thinking` help text and run-banner updated to drop the "AND condition=no-tools" qualifier.
-- `EXPERIMENTS_FLOW.md` §5: documented the rule change and the deadlock that drove it.
+- `pddl_eval/runner.py`: `effective_num_ctx` reverted to `(think is not False and not with_tools)` rule (matches PR-2 spec).
+- `run_experiment.py`: new `_run_single_task_split(think_value, cond)` helper inside `async_main`. When `cond=="both"` and `think_value is not False`, it splits into `("tools", "no-tools")` sub-passes. Both the smoke loop and the production path go through this helper; behaviour is identical for cases where no split is needed (`cond != "both"` or `think_value is False`).
+- `EXPERIMENTS_FLOW.md` §5 + §9: documented the per-condition rule (matches spec) plus the implementation mechanism (sub-pass split).
 
-**Verification.** Resubmit smoke after the patch; expected to clear all 15 jobs in the `think=on` pass without stalling. The fix is necessary even if the diagnosis was wrong about Ollama specifically — keeping `num_ctx` constant per pass removes the only mid-pass mutation that interacts with concurrency.
+**Verification.** Cluster smoke to be re-run on the new HEAD; expected outcome — diff against PR-1 anchor shows ONLY the gate-lift expansion (`(no-tools, think=on/default)` cells go from `n=2 → n=4` because the gate is lifted). Tools-side rows should be byte-equal on the calibrated projection (modulo T=0 nondeterminism per CHANGELOG 2026-04-28 calibration).
 
-**Compatibility.** Pre-fix PR-2 cluster runs (none yet — the smoke 17244356 was cancelled mid-run) are not affected. Local laptop runs at concurrency=4 were not exposed to the deadlock because `OLLAMA_NUM_PARALLEL` was unset, serializing requests at the Ollama layer.
+**Compatibility.** None of the partial cluster runs from today (cancelled job 17244356, completed job 17245419) become an anchor candidate — the next smoke (post-fix) IS the canonical post-PR-2 baseline. Local laptop runs at concurrency=4 were never exposed to the deadlock because `OLLAMA_NUM_PARALLEL` was unset, serializing requests at the Ollama layer.
 
 **Closes / narrows.** No `ISS-###`. Adjusts the same-day PR-2 entry below.
 

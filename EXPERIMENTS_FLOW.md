@@ -179,12 +179,13 @@ constraints that not every cell satisfies:
   against `think=on`/`think=default`; chain results under it aren't
   part of any planned comparison.
 - `--num-ctx-thinking` (default 12288) replaces `--num-ctx` (default
-  8192) for ALL cells where `think != off`, regardless of condition.
-  `think=off` keeps the smaller context budget. The condition axis was
-  dropped from this rule on 2026-04-28 — flipping `num_ctx` mid-pass
-  deadlocked Ollama under concurrency (smoke job 17244356), and a
-  constant `num_ctx` per pass costs only a few KB extra KV cache on
-  tool-condition runs.
+  8192) only for cells where `think != off` AND `condition=no-tools`.
+  Tool-condition runs and `think=off` keep the smaller context budget.
+  Implementation note: `async_main` splits a `(--conditions=both,
+  think!=off)` invocation into two sequential `run_single_task_experiment`
+  calls (one per condition), keeping `num_ctx` constant within each call.
+  Without the split, mid-call `num_ctx` flips deadlocked Ollama under
+  concurrency (smoke job 17244356, 2026-04-28).
 
 The PR-2 abort gate that previously exited early for
 `--conditions=no-tools|both` under `--think on/default` was lifted
@@ -297,7 +298,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for ALL cells where `think != off` (the condition axis was dropped after the cluster smoke deadlocked on the mid-pass num_ctx flip). |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json
