@@ -72,12 +72,8 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Fix.** Read arXiv:2509.12987 §3 (benchmark construction) and §5 (evaluation protocol). Produce a per-task side-by-side diff table as an appendix to `EXPERIMENTS_FLOW.md`. Flag any discrepancy as a new ISS-###.
 **Files.** `EXPERIMENTS_FLOW.md`, possibly `run_experiment.py::check_success` if a discrepancy needs a fix.
 
-### ISS-018 · `think=off` should be single-task-only (like `no-tools`)
-**Source.** PR #6 review follow-up, 2026-04-25 (user direction).
-**Evidence.** `no-tools` was already restricted to single-task in commit 9574fd3 (chain phase only meaningful in tools conditions). The same restriction has not been extended to `think=off` — it currently runs the chain phase, and any future experiment phase, alongside `think=on` / `think=default`.
-**Impact.** `think=off` exists as a single-task comparison point against `think=on` / `think=default` reasoning behaviour. Running it on chain or any other multi-step phase produces data that is not part of any planned comparison and burns sweep wall-time on cells that won't be reported.
-**Fix.** Mirror the no-tools routing: skip chain (and any non-single-task phase) when `think == "off"`. Update sweep submitters to elide `think=off` chain conditions instead of submitting them. No prior-run invalidation — affected cells were never part of a publication-ready comparison.
-**Files.** `run_experiment.py` (chain-phase guard, mirroring the existing `with_tools` skip), `cluster-experimenting/run_condition.sbatch`, `cluster-experimenting/run_condition_rtx.sbatch`, `cluster-experimenting/submit_*.sh`.
+### ~~ISS-018~~ · `think=off` should be single-task-only (like `no-tools`)
+**Closed 2026-04-28** by PR-2 (token + thinking instrumentation). `run_experiment.py::async_main` now skips the chain phase entirely when `args.think == "off"` (mirrors the existing no-tools chain skip). The cluster sbatch templates do not need a parallel guard — they invoke `run_experiment.py`, which now refuses to start chains under `think=off` regardless of the matrix axis values fed in. The PR-2 abort gate that previously refused `(no-tools, think=on/default)` runs was also lifted in the same PR; thinking content is captured into `TaskResult.thinking` separately so it does not contaminate `extract_verdict` / `extract_plan_lines`. See CHANGELOG 2026-04-28 (PR-2).
 
 ---
 
