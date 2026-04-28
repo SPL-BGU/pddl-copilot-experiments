@@ -6,6 +6,26 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-28 — PR-2 hotfix: drop the condition axis from `effective_num_ctx`
+
+**Motivation.** Cluster smoke 17244356 (PR-2 head `0a78ae0`) deadlocked at the `tools→no-tools` boundary inside the `think=on` smoke pass — the very first `(no-tools, think=on)` job (the new PR-2 cell) never dispatched. py-spy on the stuck Python process showed `sched_count: 0`, `ready: []`, infinite `epoll`; GPU at 0% util / 0% mem util for 18+ min; 4 keep-alive ESTAB sockets to Ollama with no in-flight bytes; Ollama `/api/ps` reported `Qwen3.5:0.8B` loaded at `context_length: 8192` (never reloaded). The proximate cause: `effective_num_ctx` flipped from 8192 (tools side) to 12288 (no-tools side) MID-PASS, and Ollama's response to a concurrent num_ctx-mismatch reload is to deadlock all four pending requests.
+
+**Changes.**
+
+- `pddl_eval/runner.py` (`evaluate_one` and `run_chain_experiment`): `effective_num_ctx` now depends on `think` only, not on `with_tools`. Within a think-pass, `num_ctx` is constant. Tool-condition runs under `think!=off` use 12288 instead of 8192 (negligible KV-cache cost; ~16K extra tokens of cache for 4 concurrent requests of an 873M-param model).
+- `run_experiment.py`: `--num-ctx-thinking` help text and run-banner updated to drop the "AND condition=no-tools" qualifier.
+- `EXPERIMENTS_FLOW.md` §5: documented the rule change and the deadlock that drove it.
+
+**Verification.** Resubmit smoke after the patch; expected to clear all 15 jobs in the `think=on` pass without stalling. The fix is necessary even if the diagnosis was wrong about Ollama specifically — keeping `num_ctx` constant per pass removes the only mid-pass mutation that interacts with concurrency.
+
+**Compatibility.** Pre-fix PR-2 cluster runs (none yet — the smoke 17244356 was cancelled mid-run) are not affected. Local laptop runs at concurrency=4 were not exposed to the deadlock because `OLLAMA_NUM_PARALLEL` was unset, serializing requests at the Ollama layer.
+
+**Closes / narrows.** No `ISS-###`. Adjusts the same-day PR-2 entry below.
+
+**Files.** `pddl_eval/runner.py`, `run_experiment.py`, `EXPERIMENTS_FLOW.md`.
+
+---
+
 ## 2026-04-28 — PR-2: token + thinking instrumentation; lift no-tools+think abort gate; close ISS-018
 
 **Motivation.** Three coupled needs from `development/FRAMEWORK_EXTENSION_PLAN.md` §3.2 PR-2:

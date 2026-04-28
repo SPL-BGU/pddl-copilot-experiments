@@ -230,14 +230,14 @@ async def async_main(args):
     print(f"  Variants:   {active_variants} (selected from {list(ACTIVE_PROMPT_VARIANTS)})")
     print(f"  Temperature:{args.temperature}")
     if smoke_mode:
-        print(f"  Conditions: smoke (think=on→both, think=off→both)")
+        print(f"  Conditions: smoke (think=on→both [num_ctx={args.num_ctx_thinking}], think=off→both [num_ctx={args.num_ctx}])")
     else:
         print(f"  Conditions: {args.conditions}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
     print(f"  num_predict:{args.num_predict if args.num_predict is not None else 'per-task defaults'}")
     print(f"  num_ctx:    {args.num_ctx}")
-    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (active for think!=off + no-tools cells)")
+    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (active for all think!=off cells)")
     print(f"  think:      {args.think}")
     print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
     if args.concurrency > 1 and num_parallel_env == "unset":
@@ -515,12 +515,12 @@ def main():
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
                    help=f"Ollama context window tokens. Default {DEFAULT_NUM_CTX}.")
     p.add_argument("--num-ctx-thinking", type=int, default=DEFAULT_NUM_CTX_THINKING,
-                   help=f"Ollama context window tokens used ONLY when think!=off "
-                        f"AND condition=no-tools (the cell where the model "
-                        f"inlines its reasoning instead of using PDDL tools). "
-                        f"Default {DEFAULT_NUM_CTX_THINKING}. Tool-condition "
-                        f"runs and think=off keep --num-ctx (default "
-                        f"{DEFAULT_NUM_CTX}).")
+                   help=f"Ollama context window tokens used when think!=off, "
+                        f"regardless of condition. Default "
+                        f"{DEFAULT_NUM_CTX_THINKING}. think=off keeps "
+                        f"--num-ctx (default {DEFAULT_NUM_CTX}). Constant "
+                        f"within a think-pass — flipping num_ctx mid-pass "
+                        f"deadlocks Ollama under concurrency.")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "

@@ -211,13 +211,15 @@ async def evaluate_one(
 
     allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
 
-    # Bigger context window only when (a) thinking is on (or default), AND
-    # (b) the model has no PDDL tools to externalise plan/state/verdict
-    # computation to. think values: True=on, False=off, None=model-default.
-    # The wider budget targets the no-PDDL-tools+think cell where the model
-    # inlines its reasoning into context; tool runs and think=off keep the
-    # paper-default 8192.
-    effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx
+    # Bigger context window when thinking is on (or default), regardless of
+    # condition. think values: True=on, False=off, None=model-default. The
+    # wider budget targets thinking spirals; flipping num_ctx WITHIN a
+    # think-pass causes Ollama to reload the model mid-batch, which
+    # deadlocks under concurrency (smoke job 17244356 hung at the
+    # tools→no-tools boundary on think=on, 2026-04-28). Keeping num_ctx
+    # constant within a pass costs a few extra KB of KV cache on
+    # tool-condition runs, well under the wallclock cost of a hang.
+    effective_num_ctx = num_ctx_thinking if (think is not False) else num_ctx
 
     try:
         if with_tools:
@@ -613,12 +615,10 @@ async def run_chain_experiment(
             np_for_task = _resolve_num_predict(num_predict_override, task)
             allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
             step_loop_exhausted = False
-            # Mirror evaluate_one's effective_num_ctx rule. Chain phase is
-            # currently tools-only (no-tools chains skipped; see ISS-018),
-            # so this expression resolves to `num_ctx` for every chain
-            # step today — but kept symmetric for the day chain-phase
-            # gating changes.
-            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx
+            # Mirror evaluate_one's effective_num_ctx rule (think-only,
+            # not condition-dependent — see the runner.py:evaluate_one
+            # comment for why mid-pass num_ctx flips deadlock Ollama).
+            effective_num_ctx = num_ctx_thinking if (think is not False) else num_ctx
             try:
                 if with_tools:
                     resp_text, tc, step_done_reason, step_loop_exhausted, _tokens, _thinking = await chat_with_tools(
