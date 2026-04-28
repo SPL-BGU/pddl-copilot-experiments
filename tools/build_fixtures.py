@@ -262,6 +262,14 @@ async def cmd_gen_valid_plans(
         plan = await _solve(mcp, domain_pddl, problem_pddl, planner)
         if plan:
             plans.append("\n".join(plan) + "\n")
+        # Fallback: if the planner produced nothing (e.g. ENHSP self-
+        # check failed on a numeric instance), use an existing
+        # `p<NN>_v1.plan` as the seed. The migrated paper-dataset plans
+        # are known-valid; they get re-validated below.
+        if not plans:
+            seed = ddir / f"{pname}_v1.plan"
+            if seed.exists():
+                plans.append(seed.read_text())
         # Strategy 2..N: try classical strategy variants. Numeric
         # planners (ENHSP) have fewer variants — duplicates are
         # accepted per spec §3.3.3.
