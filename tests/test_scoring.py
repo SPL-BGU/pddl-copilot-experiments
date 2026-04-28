@@ -132,6 +132,22 @@ def test_extract_plan_lines(r: TestResults):
     r.check_eq("empty string", rx.extract_plan_lines(""), [])
     r.check_eq("None", rx.extract_plan_lines(None), [])
 
+    # <think>...</think> blocks must be stripped before parsing (PR-2):
+    # a thinking-mode model that inlines its reasoning in `content` could
+    # otherwise leak action-shaped lines from inside the reasoning block.
+    r.check_eq("think block stripped",
+               rx.extract_plan_lines(
+                   "<think>I should call (pick-up x) first</think>\n(pick-up a)"),
+               ["(pick-up a)"])
+    r.check_eq("think block stripped (case-insensitive)",
+               rx.extract_plan_lines(
+                   "<THINK>(stack a b)</THINK>\n(pick-up a)"),
+               ["(pick-up a)"])
+    r.check_eq("think block stripped (multiline)",
+               rx.extract_plan_lines(
+                   "<think>\nLine 1\n(stack a b)\nLine 3\n</think>\n(pick-up a)"),
+               ["(pick-up a)"])
+
 
 def test_extract_verdict(r: TestResults):
     r.check_eq("VALID", rx.extract_verdict("VERDICT: VALID"), True)
@@ -147,6 +163,51 @@ def test_extract_verdict(r: TestResults):
     r.check_eq("embedded",
                rx.extract_verdict("The plan is fine.\nVERDICT: VALID\nEnd."),
                True)
+
+    # <think>...</think> blocks must be stripped before parsing (PR-2):
+    # if a thinking-mode model emits VERDICT: VALID inside its reasoning
+    # block but VERDICT: INVALID outside, the graded answer is INVALID.
+    r.check_eq("think block ignored, outer wins",
+               rx.extract_verdict(
+                   "<think>VERDICT: VALID looks right</think>\nVERDICT: INVALID"),
+               False)
+    r.check_eq("think block stripped, outer parses",
+               rx.extract_verdict(
+                   "<think>thinking...</think>\nVERDICT: VALID"),
+               True)
+    r.check_eq("think-only response → no verdict",
+               rx.extract_verdict("<think>VERDICT: VALID</think>"),
+               None)
+
+
+def test_classify_step_failure_think_overflow(r: TestResults):
+    # FR_THINK_OVERFLOW classification is inline in evaluate_one (PR-2);
+    # _classify_step_failure must NOT relabel it back to FR_TRUNCATED_NO_ANSWER
+    # via the truncation override, even though done_reason=="length".
+    fr, trunc = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_THINK_OVERFLOW,
+    )
+    r.check_eq("FR_THINK_OVERFLOW survives length-override", fr, rx.FR_THINK_OVERFLOW)
+    r.check_eq("FR_THINK_OVERFLOW marks truncated=True", trunc, True)
+
+    # Regression: FR_TRUNCATED_NO_ANSWER still applies to the legacy
+    # empty-output reasons under the same length cap.
+    fr2, trunc2 = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_PLAN_INVALID,
+    )
+    r.check_eq("FR_PLAN_INVALID still overrides to FR_TRUNCATED_NO_ANSWER",
+               fr2, rx.FR_TRUNCATED_NO_ANSWER)
+    r.check_eq("override marks truncated=True", trunc2, True)
+
+    # FR_LOOP_EXHAUSTED takes precedence over a length cap (it's the more
+    # specific tag for tool-loop cap-hit). PR-2 design decision #4.
+    fr3, trunc3 = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=True,
+        failure_reason=rx.FR_OK,  # would-be classifier output before override
+    )
+    r.check_eq("LOOP_EXHAUSTED beats truncation override", fr3, rx.FR_LOOP_EXHAUSTED)
 
 
 def test_expand_conditions(r: TestResults):
@@ -210,6 +271,7 @@ def main():
     test_extract_plan_from_tool_result(r)
     test_extract_plan_lines(r)
     test_extract_verdict(r)
+    test_classify_step_failure_think_overflow(r)
     test_expand_conditions(r)
     test_shard_filter(r)
     r.report_and_exit()

@@ -30,6 +30,7 @@ FR_OK = "ok"
 FR_EXCEPTION = "exception"
 FR_OLLAMA_PARSE_ERROR = "ollama_parse_error"
 FR_TRUNCATED_NO_ANSWER = "truncated_no_answer"
+FR_THINK_OVERFLOW = "think_overflow"
 FR_TOOL_NOT_SELECTED = "tool_not_selected"
 FR_TOOL_ERROR = "tool_error"
 FR_LOOP_EXHAUSTED = "loop_exhausted"
@@ -82,6 +83,13 @@ _ACTION_LINE_RE = re.compile(
 # Matches a VERDICT: VALID / INVALID line anywhere in the response.
 _VERDICT_RE = re.compile(r"VERDICT\s*:\s*(VALID|INVALID)\b", re.IGNORECASE)
 
+# Defensive: thinking-capable models occasionally inline a <think>...</think>
+# block in `message.content` rather than (or in addition to) routing it to
+# the structured `message.thinking` field. We strip it before parsing so
+# extractors don't trip on action-shaped lines or VERDICT: tokens that
+# appear inside the reasoning block.
+_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
 
 def extract_plan_lines(response: str) -> list[str]:
     """Extract `(action args...)` lines from a model response.
@@ -91,7 +99,7 @@ def extract_plan_lines(response: str) -> list[str]:
     """
     if not response:
         return []
-    # Strip common code-fence markers which don't contain plan actions.
+    response = _THINK_BLOCK_RE.sub("", response)
     plan: list[str] = []
     for line in response.splitlines():
         stripped = line.strip()
@@ -113,6 +121,7 @@ def extract_verdict(response: str) -> bool | None:
     """
     if not response:
         return None
+    response = _THINK_BLOCK_RE.sub("", response)
     matches = _VERDICT_RE.findall(response)
     if not matches:
         return None

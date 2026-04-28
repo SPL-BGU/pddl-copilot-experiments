@@ -38,6 +38,7 @@ from .scoring import (
     FR_EXCEPTION,
     FR_OK,
     FR_OLLAMA_PARSE_ERROR,
+    FR_THINK_OVERFLOW,
     FR_TOOL_ERROR,
     _classify_step_failure,
     _safe_json_loads,
@@ -65,6 +66,14 @@ DEFAULT_NUM_PREDICT: dict[str, int] = {
     "simulate":         1536,
 }
 DEFAULT_NUM_CTX = 8192
+# Larger context budget used only when (think != False AND with_tools=False)
+# — the no-PDDL-tools + thinking cell where the model has to inline its
+# reasoning instead of farming it out to MCP tools. Calibrated on
+# 2026-04-28 against blocksworld/p01 with qwen3:0.6b (max prompt+eval =
+# 8680, hit num_predict=8192 cap on solve) and qwen3:4b (max p+e = 6303);
+# 12288 gives ~1.4× headroom over the observed max without bloating KV
+# cache the way 16384 would. Override via --num-ctx-thinking.
+DEFAULT_NUM_CTX_THINKING = 12288
 DEFAULT_CONCURRENCY = 4
 
 # Cap on stored response/exception strings in result records. The full text
@@ -73,6 +82,13 @@ DEFAULT_CONCURRENCY = 4
 # inspection). 500 chars is the empirically-sufficient cutoff observed
 # across qwen3 / gpt-oss / gemma traces in the 2026-04-20 sweep.
 RESPONSE_SNAPSHOT_LEN = 500
+# Cap on stored `thinking` snippet in result records. Asymmetric vs
+# RESPONSE_SNAPSHOT_LEN (4096 vs 500) because thinking spirals are
+# structurally longer than graded responses (calibration 2026-04-28
+# observed thinking_chars up to ~30K on qwen3:0.6b solve); 4096 captures
+# the relevant tail for failure-mode inspection without bloating per-
+# record JSON. Full content is reproducible by re-running the prompt.
+THINKING_SNAPSHOT_LEN = 4096
 
 # Substring signature of Ollama's server-side tool-call JSON parser failure
 # (emitted by ollama/server/routes.go when it can't parse tool-call arguments,
@@ -136,7 +152,9 @@ class TaskResult:
     success: bool
     tool_selected: bool | None = None  # True/False for with-tools, None for no-tools
     response: str = ""
+    thinking: str = ""                   # last-turn message.thinking, capped at THINKING_SNAPSHOT_LEN
     tool_calls: list = field(default_factory=list)
+    tokens: dict = field(default_factory=dict)  # {prompt, completion, turns, total_duration_ns, eval_duration_ns}
     duration_s: float = 0.0
     error: str = ""
     tool_filter: str = "all"
@@ -165,6 +183,7 @@ async def evaluate_one(
     gt: dict,
     num_predict: int,
     num_ctx: int,
+    num_ctx_thinking: int,
     think: bool | None,
     tool_filter: str = "all",
     prompt_style: str = "minimal",
@@ -185,23 +204,33 @@ async def evaluate_one(
     tool_calls: list[dict] = []
     error = ""
     response_text = ""
+    thinking_text = ""
+    tokens: dict = {}
     done_reason = ""
     loop_exhausted = False
 
     allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
 
+    # Bigger context window only when (a) thinking is on (or default), AND
+    # (b) the model has no PDDL tools to externalise plan/state/verdict
+    # computation to. think values: True=on, False=off, None=model-default.
+    # The wider budget targets the no-PDDL-tools+think cell where the model
+    # inlines its reasoning into context; tool runs and think=off keep the
+    # paper-default 8192.
+    effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx
+
     try:
         if with_tools:
-            response_text, tool_calls, done_reason, loop_exhausted = await chat_with_tools(
+            response_text, tool_calls, done_reason, loop_exhausted, tokens, thinking_text = await chat_with_tools(
                 client, model, messages, mcp,
-                num_predict=num_predict, num_ctx=num_ctx,
+                num_predict=num_predict, num_ctx=effective_num_ctx,
                 allowed_tools=allowed, think=think,
                 temperature=temperature,
             )
         else:
-            response_text, done_reason = await chat_without_tools(
+            response_text, done_reason, tokens, thinking_text = await chat_without_tools(
                 client, model, messages,
-                num_predict=num_predict, num_ctx=num_ctx, think=think,
+                num_predict=num_predict, num_ctx=effective_num_ctx, think=think,
                 temperature=temperature,
             )
     except Exception as exc:
@@ -245,6 +274,20 @@ async def evaluate_one(
                     error = f"tool={tc.get('name')}: {parsed.get('message','')}"
                     break
 
+    # FR_THINK_OVERFLOW: thinking spiral consumed the completion budget,
+    # leaving an empty `content` string. More-specific tag than
+    # FR_TRUNCATED_NO_ANSWER. Detect inline (before _classify_step_failure)
+    # so the truncation override doesn't relabel it generically. Skip when
+    # loop_exhausted is set — that's a tool-loop cap-hit, not a thinking
+    # spiral, and FR_LOOP_EXHAUSTED is the more specific tag for that case
+    # (precedence taken inside _classify_step_failure).
+    if (not error
+        and not loop_exhausted
+        and done_reason == "length"
+        and thinking_text
+        and not response_text):
+        failure_reason = FR_THINK_OVERFLOW
+
     # The model kept tool-calling until the MAX_TOOL_LOOPS cap fired without
     # emitting an assistant answer. `chat_with_tools` returned empty text in
     # that case, so `response` is already correct. Relabel the failure so
@@ -264,7 +307,9 @@ async def evaluate_one(
         success=success,
         tool_selected=tool_selected,
         response=response_text[:RESPONSE_SNAPSHOT_LEN],
+        thinking=thinking_text[:THINKING_SNAPSHOT_LEN] if thinking_text else "",
         tool_calls=tool_calls,
+        tokens=tokens,
         duration_s=round(duration, 2),
         error=error,
         tool_filter=tool_filter,
@@ -304,6 +349,7 @@ async def run_single_task_experiment(
     prompt_style: str = "minimal",
     num_predict_override: int | None = None,
     num_ctx: int = DEFAULT_NUM_CTX,
+    num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
     think: bool | None = None,
     concurrency: int = DEFAULT_CONCURRENCY,
     conditions: str = "both",
@@ -473,7 +519,8 @@ async def run_single_task_experiment(
             r = await evaluate_one(
                 client, model, task, dname, dpddl,
                 pname, ppddl, pv, with_tools, mcp, gt,
-                num_predict=np_for_task, num_ctx=num_ctx, think=think,
+                num_predict=np_for_task, num_ctx=num_ctx,
+                num_ctx_thinking=num_ctx_thinking, think=think,
                 tool_filter=tool_filter, prompt_style=prompt_style,
                 temperature=temperature,
             )
@@ -518,6 +565,7 @@ async def run_chain_experiment(
     prompt_style: str = "minimal",
     num_predict_override: int | None = None,
     num_ctx: int = DEFAULT_NUM_CTX,
+    num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
     think: bool | None = None,
     temperature: float = TEMPERATURE,
     concurrency: int = DEFAULT_CONCURRENCY,
@@ -565,18 +613,24 @@ async def run_chain_experiment(
             np_for_task = _resolve_num_predict(num_predict_override, task)
             allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
             step_loop_exhausted = False
+            # Mirror evaluate_one's effective_num_ctx rule. Chain phase is
+            # currently tools-only (no-tools chains skipped; see ISS-018),
+            # so this expression resolves to `num_ctx` for every chain
+            # step today — but kept symmetric for the day chain-phase
+            # gating changes.
+            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx
             try:
                 if with_tools:
-                    resp_text, tc, step_done_reason, step_loop_exhausted = await chat_with_tools(
+                    resp_text, tc, step_done_reason, step_loop_exhausted, _tokens, _thinking = await chat_with_tools(
                         client, model, messages, mcp,
-                        num_predict=np_for_task, num_ctx=num_ctx,
+                        num_predict=np_for_task, num_ctx=effective_num_ctx,
                         allowed_tools=allowed, think=think,
                         temperature=temperature,
                     )
                 else:
-                    resp_text, step_done_reason = await chat_without_tools(
+                    resp_text, step_done_reason, _tokens, _thinking = await chat_without_tools(
                         client, model, messages,
-                        num_predict=np_for_task, num_ctx=num_ctx, think=think,
+                        num_predict=np_for_task, num_ctx=effective_num_ctx, think=think,
                         temperature=temperature,
                     )
                     tc = []
