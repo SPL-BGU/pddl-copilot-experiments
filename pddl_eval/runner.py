@@ -162,6 +162,12 @@ class TaskResult:
     failure_reason: str = FR_OK          # FR_* constant — "ok" iff success
     truncated: bool = False              # done_reason == "length" on any turn
     done_reason: str = ""                # raw done_reason from the last chat turn
+    # Plan-variant label for `validate_plan` jobs (PR-3): "v1".."v5" for
+    # the 5 valid plans per problem, "b1".."b5" for the 5 invalid plans.
+    # "" for tasks that don't take a plan input (solve, validate_domain,
+    # validate_problem) and for `simulate` (which uses only the canonical
+    # planner-generated plan + trace).
+    plan_label: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +194,7 @@ async def evaluate_one(
     tool_filter: str = "all",
     prompt_style: str = "minimal",
     temperature: float = TEMPERATURE,
+    plan_label: str = "",
 ) -> TaskResult:
     template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
@@ -321,6 +328,7 @@ async def evaluate_one(
         failure_reason=failure_reason,
         truncated=truncated,
         done_reason=done_reason,
+        plan_label=plan_label,
     )
 
 
@@ -334,9 +342,10 @@ def _format_progress(done: int, total: int, scheduled_idx: int, r: TaskResult) -
     idx_width = len(str(total))
     mark = "OK" if r.success else "FAIL"
     suffix = "" if r.success else f" ({r.failure_reason})"
+    plan_tag = f"/{r.plan_label}" if r.plan_label else ""
     return (
         f"  [{done:>{idx_width}}/{total} | {r.duration_s:>6.1f}s | #{scheduled_idx}] "
-        f"{r.model} {cond} {r.task} {r.domain_name}/{r.problem_name} v{r.prompt_variant}"
+        f"{r.model} {cond} {r.task} {r.domain_name}/{r.problem_name}{plan_tag} v{r.prompt_variant}"
         f" -> {mark}{suffix}"
     )
 
@@ -373,16 +382,30 @@ async def run_single_task_experiment(
     # Build the full job list up-front. Skipping unsolvable validate_plan/
     # simulate is cheaper here than inside the coroutine and keeps the
     # denominator accurate.
-    Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv, with_tools, gt, np)
+    # Job tuple shape (PR-3): adds plan_label as the last field.
+    Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv,
+                 #  with_tools, gt, np_for_task, plan_label)
     jobs: list[Job] = []
     with_tools_values = _expand_conditions(conditions)
-    # Map each negative-fixture kind to the single task it tests. Keep this
-    # in sync with `generate_ground_truth`'s `_negatives` slot keys.
-    NEGATIVE_KINDS: tuple[tuple[str, str, str], ...] = (
-        ("domain",  "validate_domain",  "domain_0"),
-        ("problem", "validate_problem", "problem_0"),
-        ("plan",    "validate_plan",    "plan_0"),
-    )
+
+    def _emit_job(
+        *, model, task, dname, dpddl, pname, ppddl, pv, with_tools,
+        gt_frag, np_for_task, plan_label,
+    ) -> None:
+        # `with_tools` is intentionally OUT of the shard key so paired
+        # (tools / no-tools) comparisons for the same logical key land
+        # in the same shard. `plan_label` IS in the key so v1..v5 / b1..b5
+        # spread across shards rather than clustering all in shard 0.
+        if not _shard_filter(
+            shard_i, shard_n,
+            (model, task, dname, pname, plan_label, str(pv)),
+        ):
+            return
+        jobs.append((
+            model, task, dname, dpddl, pname, ppddl, pv,
+            with_tools, gt_frag, np_for_task, plan_label,
+        ))
+
     for model in models:
         for with_tools in with_tools_values:
             for task in tasks:
@@ -409,7 +432,7 @@ async def run_single_task_experiment(
                     )
                 else:
                     domain_iter = list(domains.items())
-                # ---- Positive jobs (one per (dname, pname, prompt-variant)) ----
+                # ---- Positive jobs ----
                 for dname, dinfo in domain_iter:
                     if cell_assignment is not None:
                         ppddl = dinfo["problems"].get(pick_pname)
@@ -422,90 +445,119 @@ async def run_single_task_experiment(
                         gt = ground_truth.get(dname, {}).get(pname, {})
                         if task in ("validate_plan", "simulate") and not gt.get("plan"):
                             continue
-                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
-                            # `with_tools` is intentionally OUT of the shard
-                            # key so paired (tools / no-tools) comparisons
-                            # for the same (m, t, d, p, pv) land in the
-                            # same shard.
-                            if not _shard_filter(
-                                shard_i, shard_n,
-                                (model, task, dname, pname, str(pv)),
-                            ):
-                                continue
-                            jobs.append((
-                                model, task, dname, dinfo["domain"],
-                                pname, ppddl, pv, with_tools, gt, np_for_task,
-                            ))
+                        # `validate_plan` positive: emit one job per
+                        # committed valid plan (v1..vN). The plan
+                        # content overrides gt["plan"]/gt["plan_valid"]
+                        # via gt_frag so the grader sees the labelled
+                        # plan, not the planner's canonical one.
+                        # `simulate`: 1 job per problem, gt unchanged
+                        # (uses planner-canonical plan + trace).
+                        # Other tasks: 1 job per problem.
+                        if task == "validate_plan":
+                            valid_plans = gt.get("valid_plans") or []
+                            for i, plan_entry in enumerate(valid_plans):
+                                gt_frag = {
+                                    **gt,
+                                    "plan": plan_entry["plan"],
+                                    "plan_valid": plan_entry["plan_valid"],
+                                }
+                                for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                    _emit_job(
+                                        model=model, task=task, dname=dname,
+                                        dpddl=dinfo["domain"], pname=pname,
+                                        ppddl=ppddl, pv=pv,
+                                        with_tools=with_tools, gt_frag=gt_frag,
+                                        np_for_task=np_for_task,
+                                        plan_label=f"v{i+1}",
+                                    )
+                        else:
+                            for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                _emit_job(
+                                    model=model, task=task, dname=dname,
+                                    dpddl=dinfo["domain"], pname=pname,
+                                    ppddl=ppddl, pv=pv,
+                                    with_tools=with_tools, gt_frag=gt,
+                                    np_for_task=np_for_task, plan_label="",
+                                )
                 # ---- Negative jobs (task-targeted; ISS-001) ----
                 # Each negative fixture joins exactly one task and carries
                 # an inline `gt` fragment so we sidestep the by-`pname` GT
-                # lookup above (two negatives could otherwise collide).
-                for kind, target_task, neg_pname in NEGATIVE_KINDS:
-                    if target_task != task:
+                # lookup above (different negatives could otherwise collide).
+                if cell_assignment is not None:
+                    pick = cell_assignment.get((model, task))
+                    if pick is None:
                         continue
-                    # Mirror the (model, task) → (dname, pname) cell
-                    # assignment used by `--smoke-shuffle` for positive
-                    # jobs: one negative per cell, drawn from the assigned
-                    # domain's `_negatives` slot.
-                    if cell_assignment is not None:
-                        pick = cell_assignment.get((model, task))
-                        if pick is None:
+                    neg_domain_iter = (
+                        [(pick[0], domains[pick[0]])]
+                        if pick[0] in domains else []
+                    )
+                else:
+                    neg_domain_iter = list(domains.items())
+                for dname, dinfo in neg_domain_iter:
+                    negs = ground_truth.get(dname, {}).get("_negatives") or {}
+                    if not negs:
+                        continue
+                    if task == "validate_domain":
+                        neg = negs.get("domain")
+                        if neg is None:
                             continue
-                        neg_domain_iter = (
-                            [(pick[0], domains[pick[0]])]
-                            if pick[0] in domains else []
-                        )
-                    else:
-                        neg_domain_iter = list(domains.items())
-                    for dname, dinfo in neg_domain_iter:
-                        neg_slot = (
-                            ground_truth.get(dname, {})
-                            .get("_negatives", {})
-                            .get(kind)
-                        )
-                        if neg_slot is None:
-                            continue
-                        # Single-positive-per-domain assumption (paper
-                        # dataset). Mirrors the choice in
-                        # `generate_ground_truth`'s negatives pass; if
-                        # multi-problem datasets ever land, swap this for
-                        # the designated-primary lookup proposed there.
-                        positive_p01 = next(iter(dinfo["problems"].values()))
-                        if kind == "domain":
-                            d_pddl = neg_slot["domain_pddl"]
-                            p_pddl = positive_p01
-                            gt_frag = {
-                                "domain_valid": False,
-                                "problem_valid": True,
-                                "plan_valid": None,
-                            }
-                        elif kind == "problem":
-                            d_pddl = dinfo["domain"]
-                            p_pddl = neg_slot["problem_pddl"]
+                        # The negative-domain fixture pairs with any
+                        # positive problem (validator wants a problem
+                        # arg in some shapes); pick the first by
+                        # iteration order — same convention as the
+                        # generate_ground_truth pass.
+                        positive_first = next(iter(dinfo["problems"].values()))
+                        gt_frag = {
+                            "domain_valid": False,
+                            "problem_valid": True,
+                            "plan_valid": None,
+                        }
+                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                            _emit_job(
+                                model=model, task=task, dname=dname,
+                                dpddl=neg["domain_pddl"],
+                                pname="domain_neg", ppddl=positive_first, pv=pv,
+                                with_tools=with_tools, gt_frag=gt_frag,
+                                np_for_task=np_for_task, plan_label="",
+                            )
+                    elif task == "validate_problem":
+                        for i, neg in enumerate(negs.get("problems") or []):
                             gt_frag = {
                                 "domain_valid": True,
                                 "problem_valid": False,
                                 "plan_valid": None,
                             }
-                        else:  # kind == "plan"
-                            d_pddl = dinfo["domain"]
-                            p_pddl = positive_p01
-                            gt_frag = {
-                                "domain_valid": True,
-                                "problem_valid": True,
-                                "plan_valid": False,
-                                "plan": neg_slot["plan"],
-                            }
-                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
-                            if not _shard_filter(
-                                shard_i, shard_n,
-                                (model, target_task, dname, neg_pname, str(pv)),
-                            ):
+                            for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                _emit_job(
+                                    model=model, task=task, dname=dname,
+                                    dpddl=dinfo["domain"],
+                                    pname=f"n{i+1:02d}",
+                                    ppddl=neg["problem_pddl"], pv=pv,
+                                    with_tools=with_tools, gt_frag=gt_frag,
+                                    np_for_task=np_for_task, plan_label="",
+                                )
+                    elif task == "validate_plan":
+                        per_problem = negs.get("plans_per_problem") or {}
+                        for pname, neg_list in per_problem.items():
+                            ppddl = dinfo["problems"].get(pname)
+                            if ppddl is None:
                                 continue
-                            jobs.append((
-                                model, target_task, dname, d_pddl,
-                                neg_pname, p_pddl, pv, with_tools, gt_frag, np_for_task,
-                            ))
+                            for i, neg in enumerate(neg_list):
+                                gt_frag = {
+                                    "domain_valid": True,
+                                    "problem_valid": True,
+                                    "plan_valid": False,
+                                    "plan": neg["plan"],
+                                }
+                                for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                    _emit_job(
+                                        model=model, task=task, dname=dname,
+                                        dpddl=dinfo["domain"], pname=pname,
+                                        ppddl=ppddl, pv=pv,
+                                        with_tools=with_tools, gt_frag=gt_frag,
+                                        np_for_task=np_for_task,
+                                        plan_label=f"b{i+1}",
+                                    )
 
     total = len(jobs)
     results: list[TaskResult | None] = [None] * total
@@ -517,7 +569,7 @@ async def run_single_task_experiment(
     async def run_one(idx: int) -> tuple[int, TaskResult]:
         (
             model, task, dname, dpddl, pname, ppddl, pv,
-            with_tools, gt, np_for_task,
+            with_tools, gt, np_for_task, plan_label,
         ) = jobs[idx]
         async with sem:
             r = await evaluate_one(
@@ -527,6 +579,7 @@ async def run_single_task_experiment(
                 num_ctx_thinking=num_ctx_thinking, think=think,
                 tool_filter=tool_filter, prompt_style=prompt_style,
                 temperature=temperature,
+                plan_label=plan_label,
             )
             return idx, r
 

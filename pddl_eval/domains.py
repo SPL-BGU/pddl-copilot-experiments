@@ -1,10 +1,13 @@
 """PDDL domain/problem fixture loading + ground-truth oracle generation.
 
 `load_domains` walks `domains/{classical,numeric}/<name>/` to assemble the
-positive corpus + task-targeted negative fixtures (ISS-001).
+positive corpus + negative fixtures. Supports both the PR-3 flat layout
+(`domain_neg.pddl`, `n<NN>.pddl`, `p<NN>_v[1-5].plan`, `p<NN>_b[1-5].plan`)
+and the legacy `_0`-suffix layout for backward-compat during migration.
 
-`generate_ground_truth` runs the MCP validator + planner over every fixture
-to build the per-domain oracle that `runner.evaluate_one` compares against.
+`generate_ground_truth` runs the MCP validator + planner over every
+fixture to build the per-domain oracle that `runner.evaluate_one`
+compares against.
 """
 
 from pathlib import Path
@@ -14,19 +17,36 @@ from .chat import MCPPlanner, _parse_validation_verdict, _safe_json_loads
 
 def load_domains(domains_dir: Path) -> dict:
     """
-    Load PDDL domains from:
-        domains/{classical,numeric}/<name>/domain.pddl
-        domains/{classical,numeric}/<name>/p*.pddl
+    Load PDDL fixtures from the flat-file layout under
+    `domains/{classical,numeric}/<name>/`:
 
-    Optionally also picks up task-targeted negative fixtures with the `_0`
-    suffix (validity-neutral filenames; see `domains/README.md` and ISS-001):
-        domain_0.pddl  → validate_domain only
-        p01_0.pddl     → validate_problem only
-        p01_0.plan     → validate_plan only
+        domain.pddl                  - 1 valid domain
+        domain_neg.pddl              - 1 invalid domain (legacy: domain_0.pddl)
+        p<NN>.pddl ... × up to 5     - valid problems
+        n<NN>.pddl ... × up to 5     - invalid problems (legacy: p<NN>_0.pddl)
+        p<NN>_v[1-9].plan × up to 5  - valid plans per problem
+                                       (legacy: p<NN>.plan as v1)
+        p<NN>_b[1-9].plan × up to 5  - invalid plans per problem
+                                       (legacy: p<NN>_0.plan as b1)
 
-    Returns {name: {"type": str, "domain": str, "problems": {pname: str},
-                    "negatives": {"domain": str|None, "problem": str|None,
-                                  "plan": str|None}}}.
+    Backward-compat: when the new flat-layout files are absent, fall back
+    to the legacy single-fixture-per-slot layout. The compat branch is
+    dropped after Commit B of PR-3 (FRAMEWORK_EXTENSION_PLAN.md §3.3).
+
+    Returns:
+        {name: {
+            "type": str,
+            "domain": str,
+            "problems": dict[str, str],
+            "negatives": {
+                "domain": str | None,
+                "problems": list[str],
+                "plans_per_problem": dict[
+                    str,
+                    {"valid": list[str], "invalid": list[str]},
+                ],
+            },
+        }}
     """
     domains: dict = {}
     for dtype in ("classical", "numeric"):
@@ -39,27 +59,67 @@ def load_domains(domains_dir: Path) -> dict:
             domain_file = ddir / "domain.pddl"
             if not domain_file.exists():
                 continue
-            # Exclude `_0`-suffixed problem files: they are negative fixtures
-            # consumed via `negatives["problem"]`, not real positive problems.
+
+            # Valid problems: prefer p<NN>.pddl glob (excludes n<NN>.pddl
+            # and the legacy `p<NN>_0.pddl` negatives). The legacy layout
+            # could include `p01_0.pddl` matching `p*.pddl`, so the
+            # `_0` filter is load-bearing during migration.
             problems = {
                 pf.stem: pf.read_text()
-                for pf in sorted(ddir.glob("p*.pddl"))
+                for pf in sorted(ddir.glob("p[0-9]*.pddl"))
                 if not pf.stem.endswith("_0")
             }
-            if problems:
-                neg_domain = ddir / "domain_0.pddl"
-                neg_problem = ddir / "p01_0.pddl"
-                neg_plan = ddir / "p01_0.plan"
-                domains[ddir.name] = {
-                    "type": dtype,
-                    "domain": domain_file.read_text(),
-                    "problems": problems,
-                    "negatives": {
-                        "domain": neg_domain.read_text() if neg_domain.exists() else None,
-                        "problem": neg_problem.read_text() if neg_problem.exists() else None,
-                        "plan": neg_plan.read_text() if neg_plan.exists() else None,
-                    },
-                }
+            if not problems:
+                continue
+
+            # Invalid domain: prefer domain_neg.pddl, fall back to domain_0.pddl
+            neg_domain_file = ddir / "domain_neg.pddl"
+            if not neg_domain_file.exists():
+                neg_domain_file = ddir / "domain_0.pddl"
+            neg_domain = neg_domain_file.read_text() if neg_domain_file.exists() else None
+
+            # Invalid problems: prefer n<NN>.pddl glob, fall back to
+            # p<NN>_0.pddl (legacy single-fixture form).
+            neg_problem_files = sorted(ddir.glob("n[0-9]*.pddl"))
+            if not neg_problem_files:
+                neg_problem_files = sorted(ddir.glob("p[0-9]*_0.pddl"))
+            neg_problems = [f.read_text() for f in neg_problem_files]
+
+            # Plans per problem. Valid: prefer p<NN>_v[1-9].plan, fall
+            # back to p<NN>.plan as a single v1. Invalid: prefer
+            # p<NN>_b[1-9].plan, fall back to p<NN>_0.plan as a single b1.
+            plans_per_problem: dict = {}
+            for pname in problems:
+                valid_plan_files = sorted(ddir.glob(f"{pname}_v[0-9]*.plan"))
+                if not valid_plan_files:
+                    legacy_plan = ddir / f"{pname}.plan"
+                    valid_plan_files = [legacy_plan] if legacy_plan.exists() else []
+                valid_plans = [f.read_text() for f in valid_plan_files]
+
+                invalid_plan_files = sorted(ddir.glob(f"{pname}_b[0-9]*.plan"))
+                if not invalid_plan_files:
+                    legacy_neg_plan = ddir / f"{pname}_0.plan"
+                    invalid_plan_files = (
+                        [legacy_neg_plan] if legacy_neg_plan.exists() else []
+                    )
+                invalid_plans = [f.read_text() for f in invalid_plan_files]
+
+                if valid_plans or invalid_plans:
+                    plans_per_problem[pname] = {
+                        "valid": valid_plans,
+                        "invalid": invalid_plans,
+                    }
+
+            domains[ddir.name] = {
+                "type": dtype,
+                "domain": domain_file.read_text(),
+                "problems": problems,
+                "negatives": {
+                    "domain": neg_domain,
+                    "problems": neg_problems,
+                    "plans_per_problem": plans_per_problem,
+                },
+            }
     return domains
 
 
@@ -79,7 +139,29 @@ def _build_plan_str(gt: dict) -> str:
 
 
 async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
-    """For each domain/problem, solve and validate using the MCP tools as oracle."""
+    """For each domain/problem, solve and validate via MCP tools as oracle.
+
+    PR-3 ground-truth shape per problem:
+        gt[dname][pname] = {
+            "domain_valid": bool,
+            "problem_valid": bool,
+            "plan_valid": bool,        # validation of the planner's plan
+            "solvable": bool,
+            "plan": list[str] | str,   # canonical plan; used by simulate
+            "trace": dict | None,      # state trajectory of the canonical plan
+            "valid_plans": list[dict], # [{"plan": str, "plan_valid": bool}, ...]
+        }
+
+    Per-domain `_negatives` shape:
+        gt[dname]["_negatives"] = {
+            "domain":  {"domain_pddl": str, "domain_valid": False},
+            "problems": [{"problem_pddl": str, "problem_valid": False}, ...],
+            "plans_per_problem": {pname: [{"plan": str, "plan_valid": False}, ...]},
+        }
+
+    Aborts startup with SystemExit if any negative validates as True or
+    any committed valid_plan validates as False.
+    """
     gt: dict = {}
     for dname, dinfo in domains.items():
         gt[dname] = {}
@@ -92,9 +174,9 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 "solvable": False,
                 "plan": None,
                 "trace": None,
+                "valid_plans": [],
             }
 
-            # Validate domain via pyvalidator
             try:
                 raw = await mcp.call_tool("validate_pddl_syntax", {"domain": dinfo["domain"]})
                 entry["domain_validation_raw"] = raw
@@ -102,7 +184,6 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
             except Exception as exc:
                 entry["domain_validation_raw"] = str(exc)
 
-            # Validate problem via pyvalidator
             try:
                 raw = await mcp.call_tool(
                     "validate_pddl_syntax",
@@ -113,7 +194,6 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
             except Exception as exc:
                 entry["problem_validation_raw"] = str(exc)
 
-            # Solve — distinguish solvable (non-empty plan) from unsolvable (empty plan)
             try:
                 raw = await mcp.call_tool(planner, {"domain": dinfo["domain"], "problem": ppddl})
                 data = _safe_json_loads(raw)
@@ -123,7 +203,6 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
             except Exception:
                 pass
 
-            # State trace + plan-validity verdict (only if we have a plan)
             if entry["plan"]:
                 plan_str = _build_plan_str(entry)
                 try:
@@ -133,7 +212,6 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                     )
                 except Exception:
                     pass
-                # Validate the oracle plan so validate_plan has a verdict
                 try:
                     raw = await mcp.call_tool(
                         "validate_pddl_syntax",
@@ -144,28 +222,56 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 except Exception as exc:
                     entry["plan_validation_raw"] = str(exc)
 
+            # Validate each committed valid plan. The committed `_v[1-9]`
+            # plans are independent of the planner's canonical plan above;
+            # they are graded separately against `validate_pddl_syntax`.
+            committed_valid_plans = (
+                dinfo.get("negatives", {})
+                .get("plans_per_problem", {})
+                .get(pname, {})
+                .get("valid", [])
+            )
+            for i, plan_text in enumerate(committed_valid_plans):
+                try:
+                    raw = await mcp.call_tool(
+                        "validate_pddl_syntax",
+                        {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_text},
+                    )
+                    plan_valid = _parse_validation_verdict(raw)
+                except Exception:
+                    plan_valid = None
+                if plan_valid is False:
+                    raise SystemExit(
+                        f"Valid-plan fixture {dname}/{pname}_v{i+1}.plan validated as "
+                        f"valid=False (expected True) — fix the fixture or the validator."
+                    )
+                entry["valid_plans"].append({"plan": plan_text, "plan_valid": bool(plan_valid)})
+
             gt[dname][pname] = entry
             tag = "solvable" if entry["solvable"] else "unsolvable"
             print(
                 f"    {dname}/{pname}: {tag} "
                 f"(domain_valid={entry['domain_valid']} "
                 f"problem_valid={entry['problem_valid']} "
-                f"plan_valid={entry['plan_valid']})"
+                f"plan_valid={entry['plan_valid']} "
+                f"valid_plans={len(entry['valid_plans'])})"
             )
 
-        # Task-targeted negative fixtures (ISS-001). The `_negatives` slot is
-        # keyed on the negative *kind*, not a `pname`, to avoid colliding
-        # with the per-problem map above. The job builder reads from here
-        # and constructs each negative job's `gt` fragment inline.
+        # ---------------- Negative fixtures ----------------
+        # The `_negatives` slot is keyed on the negative *kind*. The
+        # job builder reads from here and constructs each negative
+        # job's gt fragment inline.
         negs = dinfo.get("negatives") or {}
         positive_problems = dinfo["problems"]
-        if positive_problems and any(v is not None for v in negs.values()):
-            # Pairing: validate_problem and validate_plan negatives need a
-            # *positive* domain/problem to attach to. The paper dataset
-            # ships a single positive per domain, so we just take the first
-            # one. Generalise to multi-problem datasets by carrying a
-            # designated "primary" problem in `dinfo`.
-            positive_p01 = next(iter(positive_problems.values()))
+        any_neg = (
+            negs.get("domain") is not None
+            or bool(negs.get("problems"))
+            or any(
+                bool(v.get("invalid"))
+                for v in (negs.get("plans_per_problem") or {}).values()
+            )
+        )
+        if positive_problems and any_neg:
             neg_slot: dict = {}
 
             if negs.get("domain") is not None:
@@ -175,53 +281,65 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 verdict = _parse_validation_verdict(raw)
                 if verdict is not False:
                     raise SystemExit(
-                        f"Negative fixture {dname}/domain_0.pddl validated as "
-                        f"{verdict!r} (expected False) — fix the fixture or "
+                        f"Negative fixture {dname}/domain_neg.pddl validated as "
+                        f"valid={verdict!r} (expected False) — fix the fixture or "
                         f"the validator before running the sweep."
                     )
                 neg_slot["domain"] = {
                     "domain_pddl": negs["domain"],
                     "domain_valid": False,
                 }
-                print(f"    {dname}/domain_0.pddl: negative ✓ (domain_valid=False)")
+                print(f"    {dname}/domain_neg.pddl: negative ✓ (domain_valid=False)")
 
-            if negs.get("problem") is not None:
+            neg_problems_list: list[dict] = []
+            for i, prob_text in enumerate(negs.get("problems") or []):
                 raw = await mcp.call_tool(
                     "validate_pddl_syntax",
-                    {"domain": dinfo["domain"], "problem": negs["problem"]},
+                    {"domain": dinfo["domain"], "problem": prob_text},
                 )
                 verdict = _parse_validation_verdict(raw)
                 if verdict is not False:
                     raise SystemExit(
-                        f"Negative fixture {dname}/p01_0.pddl validated as "
-                        f"{verdict!r} (expected False)."
+                        f"Negative fixture {dname}/n{i+1:02d}.pddl validated as "
+                        f"valid={verdict!r} (expected False)."
                     )
-                neg_slot["problem"] = {
-                    "problem_pddl": negs["problem"],
+                neg_problems_list.append({
+                    "problem_pddl": prob_text,
                     "problem_valid": False,
-                }
-                print(f"    {dname}/p01_0.pddl: negative ✓ (problem_valid=False)")
+                })
+                print(f"    {dname}/n{i+1:02d}.pddl: negative ✓ (problem_valid=False)")
+            if neg_problems_list:
+                neg_slot["problems"] = neg_problems_list
 
-            if negs.get("plan") is not None:
-                raw = await mcp.call_tool(
-                    "validate_pddl_syntax",
-                    {
-                        "domain": dinfo["domain"],
-                        "problem": positive_p01,
-                        "plan": negs["plan"],
-                    },
-                )
-                verdict = _parse_validation_verdict(raw)
-                if verdict is not False:
-                    raise SystemExit(
-                        f"Negative fixture {dname}/p01_0.plan validated as "
-                        f"{verdict!r} (expected False)."
+            neg_plans_per_problem: dict = {}
+            for pname, pp in (negs.get("plans_per_problem") or {}).items():
+                invalid_plans = pp.get("invalid") or []
+                pname_neg_list: list[dict] = []
+                positive_pddl = dinfo["problems"][pname]
+                for i, plan_text in enumerate(invalid_plans):
+                    raw = await mcp.call_tool(
+                        "validate_pddl_syntax",
+                        {
+                            "domain": dinfo["domain"],
+                            "problem": positive_pddl,
+                            "plan": plan_text,
+                        },
                     )
-                neg_slot["plan"] = {
-                    "plan": negs["plan"],   # picked up by _build_plan_str
-                    "plan_valid": False,
-                }
-                print(f"    {dname}/p01_0.plan: negative ✓ (plan_valid=False)")
+                    verdict = _parse_validation_verdict(raw)
+                    if verdict is not False:
+                        raise SystemExit(
+                            f"Negative fixture {dname}/{pname}_b{i+1}.plan validated as "
+                            f"valid={verdict!r} (expected False)."
+                        )
+                    pname_neg_list.append({
+                        "plan": plan_text,
+                        "plan_valid": False,
+                    })
+                    print(f"    {dname}/{pname}_b{i+1}.plan: negative ✓ (plan_valid=False)")
+                if pname_neg_list:
+                    neg_plans_per_problem[pname] = pname_neg_list
+            if neg_plans_per_problem:
+                neg_slot["plans_per_problem"] = neg_plans_per_problem
 
             if neg_slot:
                 gt[dname]["_negatives"] = neg_slot
