@@ -47,6 +47,30 @@ bash .local/scripts/diff_smoke.sh --include gpt-oss:20b \
 
 ---
 
+## 2026-04-28 — `status.sh` honest reporting for smoke jobs
+
+**Motivation.** Cross-referencing live smoke `.out` files against `status.sh` showed the reporter printing `cond 0/4`, `ST 0/250`, `chain 0/400` for jobs that were actually progressing. Three hardcoded assumptions in the parser broke for smoke runs:
+
+1. `PROGRESS = re.compile(r'\[ *(\d+)/250 ')` — the denominator was pinned to 250 (the per-condition single-task count for a paper sweep). Smoke totals are ~5–15 per pass; the regex matched 0 times → reported the hardcoded fallback.
+2. `BANNER` looks for `CONDITION: <cond> ... started`, the matrix-loop header that the smoke fast-path in `run_condition_rtx.sbatch` skips. Smoke prints `MODEL: ... smoke (--smoke) started` instead → 0 banners.
+3. The sbatch's setup `Conditions:` and `Think modes:` lines are still printed before the smoke fast-path branches, so `total_banners` got computed as `4 × 1 = 4` against a matrix that smoke is NOT running. The denominator was technically correct for the planned matrix but irrelevant to what the job was doing.
+
+**Changes.**
+
+- `.claude/skills/cluster-ops/scripts/status.sh`:
+  - **Smoke detection by job-name suffix** (`_smoke` / `_smoke-shuffle`, set by `submit_with_rtx.sh:213-218`). Cleaner than .out parsing and matches the queue line directly.
+  - **Smoke-specific reporting**: phase = `smoke pass {1,2}/2 (think={on,off})` from the last `Smoke pass: think=X, conditions=Y` line (printed by `run_experiment.async_main`); ST = the actual `[N/M]` from the last progress line; chain = `n/a` (smoke disables chains).
+  - **Generalized `PROGRESS` regex** to capture both numerator and denominator: `r'\[ *(\d+)/(\d+) '`. Output is `f"{n}/{m}"` instead of the hardcoded `f"{st}/250"`. Future-proofs against custom `--chain-samples`, task-subset sweeps, or any other non-paper run shape.
+  - **Chain output** drops the hardcoded `/400` — reports just the running count (`chain_done`) since the actual denominator (`chain_lengths × samples`) isn't in scope at parse time.
+
+**Compatibility.** Read-only reporter — no impact on results, sbatch behavior, or run_experiment.py. Production-sweep `.out` files still parse correctly through the existing matrix-job branch (the generalized PROGRESS regex strictly extends the old one — same numerator capture, plus the denominator).
+
+**Verification.** `bash -n` syntax-clean. Python regex check confirmed `SMOKE_PASS` matches the actual `Smoke pass: think=on, conditions=tools` lines emitted by `run_experiment.async_main`. Live cluster verification deferred — VPN unreachable at edit time; the parser logic was hand-traced against the actual .out structure (sbatch:160-161 setup lines + sbatch:223-226 smoke header + run_experiment.py:355 pass header + runner._format_progress `[N/M]` output).
+
+**Files.** `.claude/skills/cluster-ops/scripts/status.sh`.
+
+---
+
 ## 2026-04-28 — PR-1 review cleanup
 
 **Motivation.** Code review on PR #20 surfaced four minor cleanup items. All are <10 LOC each; none change behavior on graded outcomes.
