@@ -152,6 +152,22 @@ helper). Zero behavior change.
 | `TaskResult` dataclass placed in `pddl_eval/runner.py` (the producer module); `summary` imports it from `runner` | PR-1 spec was silent on placement. Alternative would have been a 7th `pddl_eval/types.py` module just for one dataclass; placing it with its producer keeps the DAG simpler. | `pddl_eval/runner.py` |
 | `run_experiment.py` is 626 LOC after the split (estimate was ~150) | The CLI shim retains: argparse (~150 LOC), validation/parsing (~50), smoke output-dir + git-sha helper (~40), the smoke think-mode loop wrapper inside `async_main` (~120 LOC), and the explicit re-export shim for `tests/test_*.py` (~100 LOC). Each section is the minimum needed for behaviour parity; merging them into submodules would push CLI logic out of `run_experiment.py`'s natural home. | `run_experiment.py` |
 
+##### PR-1 post-merge calibration (2026-04-28, after first gate run)
+
+The first production use of the gate uncovered two sources of T=0 token-stream
+noise that are NOT refactor regressions but DO break naïve byte-equality. The
+gate's projection was narrowed accordingly; this is now the load-bearing
+description for PR-2/PR-3/PR-4 gates as well.
+
+| Calibration | Why | Change |
+|---|---|---|
+| Exclude `gpt-oss:20b` from byte-equality by default | Confirmed model-side via `single_task_*.json` inspection: same prompt, same hardware, T=0 → structurally different responses (Markdown table vs prose narrative for `(no-tools, solve)`). Empirical confirmation of the `FR_OLLAMA_PARSE_ERROR` classification (CHANGELOG 2026-04-21). 4 of 5 models are byte-deterministic; gpt-oss:20b is not. | `.local/scripts/diff_smoke.sh` filters `model != "gpt-oss:20b"` by default; `--include gpt-oss:20b` puts it back for inspection. |
+| Drop standalone `truncated` count from byte-equality projection | Same model can produce identical `(success, failure_reasons, tool_selected)` while one record finishes at `done_reason=stop` and the corresponding record in another run finishes at `done_reason=length` (boundary token-stream noise on `Qwen3.5:0.8B/tools/validate_problem`). Truncation that affects grading still surfaces in `failure_reasons` as `truncated_no_answer`; the standalone count is redundant observability. | Final graded fields for the gate: `{model, condition, task, successes, n, failure_reasons, tool_selected}`. |
+
+Result: PR-1 smoke gate is GREEN. Refactor proven byte-equal on all 4
+byte-deterministic models with the calibrated projection. See CHANGELOG
+2026-04-28 "Smoke-gate calibration" for the full evidence trail.
+
 #### PR-2 — Token + thinking instrumentation
 
 Changes:
@@ -185,9 +201,11 @@ Changes:
 - Result schema docs: `EXPERIMENTS_FLOW.md §9` updated to document the
   new fields.
 
-Smoke gate for PR-2: existing graded fields (`success`, `failure_reason`,
-`tool_selected`, `truncated`, `done_reason`) byte-equal to PR-1's smoke;
-new fields (`tokens.*`, `thinking`) non-null on every row. Lifting the
+Smoke gate for PR-2: calibrated graded fields (`successes`, `n`,
+`failure_reasons`, `tool_selected` — see PR-1 post-merge calibration
+above) byte-equal to PR-1's smoke; new fields (`tokens.*`, `thinking`)
+non-null on every row. `gpt-oss:20b` excluded by default per the same
+calibration. Lifting the
 `--think off` gate is verified by adding `think=on, condition=no-tools`
 cells to the smoke run and asserting they produce non-zero `n` per cell.
 
