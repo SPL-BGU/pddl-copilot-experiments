@@ -58,8 +58,15 @@ CONDITIONS_LINE = re.compile(r'^Conditions:\s+(.+)$', re.M)
 # the singular "Think mode:  on|off|default" — match either so we count
 # banners correctly across archived and current logs.
 THINK_MODES_LINE = re.compile(r'^Think mode(?:s)?:\s+(.+)$', re.M)
-PROGRESS = re.compile(r'\[ *(\d+)/250 ')
+# Capture both numerator AND denominator. Smoke totals are ~5–15 per pass,
+# not 250; production sweeps with custom --chain-samples or task-subset
+# also break a hardcoded denominator.
+PROGRESS = re.compile(r'\[ *(\d+)/(\d+) ')
 CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
+# Smoke fast-path emits "Smoke pass: think=X, conditions=Y" headers from
+# run_experiment.async_main. There are exactly 2 passes (think=on/off) per
+# `python run_experiment.py --smoke` invocation.
+SMOKE_PASS = re.compile(r'^\s*Smoke pass:\s+think=(\S+),\s+conditions=(\S+)', re.M)
 
 for line in queue_raw.splitlines():
     line = line.strip()
@@ -83,6 +90,30 @@ for line in queue_raw.splitlines():
 
     text = open(f, errors='replace').read()
 
+    # Smoke jobs (jname ends with _smoke or _smoke-shuffle): the fast-path in
+    # run_condition_rtx.sbatch skips the inner THINK × CONDITIONS loop, so
+    # the BANNER regex matches 0 times and total_banners (computed from the
+    # setup-line "Conditions:" + "Think modes:") describes the planned matrix
+    # the smoke job is NOT running. Branch early and report what smoke
+    # actually emits: per-pass headers + dynamic-denominator progress.
+    if jname.endswith('_smoke') or jname.endswith('_smoke-shuffle'):
+        passes = list(SMOKE_PASS.finditer(text))
+        if passes:
+            last = passes[-1]
+            phase = f"smoke pass {len(passes)}/2 (think={last.group(1)})"
+            slice_text = text[last.end():]
+        else:
+            phase = "smoke setup"
+            slice_text = text
+        st_matches = PROGRESS.findall(slice_text)
+        if st_matches:
+            n, m = st_matches[-1]
+            st_label = f"{n}/{m}"
+        else:
+            st_label = "0/?"
+        running.append((f"{jid}:{jname}", phase, st_label, "n/a", elapsed))
+        continue
+
     # Detect multi-cond layout by the presence of a "Conditions:" line.
     # Covers both run_condition_rtx.sbatch (current) and the retired cis
     # sbatch (still seen in archived logs), regardless of whether the job
@@ -105,20 +136,28 @@ for line in queue_raw.splitlines():
             cur_cond = "init"
             slice_text = text
         st_matches = PROGRESS.findall(slice_text)
-        st = st_matches[-1] if st_matches else "0"
+        if st_matches:
+            n, m = st_matches[-1]
+            st_label = f"{n}/{m}"
+        else:
+            st_label = "0/?"
         chain_matches = CHAIN.findall(slice_text)
         chain_done = len(chain_matches)
         phase = f"cond {cur_idx}/{total_banners}: {cur_cond}"
     else:
         # Legacy layout: one condition per file, no "Conditions:" setup line.
         st_matches = PROGRESS.findall(text)
-        st = st_matches[-1] if st_matches else "0"
+        if st_matches:
+            n, m = st_matches[-1]
+            st_label = f"{n}/{m}"
+        else:
+            st_label = "0/?"
         chain_matches = CHAIN.findall(text)
         chain_done = len(chain_matches)
         phase = "legacy single-cond"
 
-    running.append((f"{jid}:{jname}", phase, f"{st}/250",
-                    f"{chain_done}/400", elapsed))
+    running.append((f"{jid}:{jname}", phase, st_label,
+                    f"{chain_done}", elapsed))
 
 if pending:
     print('### Pending')

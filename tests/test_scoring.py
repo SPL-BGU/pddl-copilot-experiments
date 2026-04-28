@@ -157,6 +157,49 @@ def test_expand_conditions(r: TestResults):
     r.check_eq("no-tools → (False,)", rx._expand_conditions("no-tools"), (False,))
 
 
+def test_shard_filter(r: TestResults):
+    # N=1 is the no-shard fast path: every key passes regardless of i.
+    r.check("N=1 always passes", rx._shard_filter(0, 1, ("Qwen3.5:0.8B", "solve", "blocksworld", "p01", "0")))
+    r.check("N=1 always passes (even i unused)", rx._shard_filter(7, 1, ("any",)))
+
+    # Determinism: same key → same bucket, repeatedly.
+    key = ("gemma4:31b", "validate_plan", "logistics", "p03", "1")
+    bucket = next(i for i in range(4) if rx._shard_filter(i, 4, key))
+    for _ in range(5):
+        b2 = next(i for i in range(4) if rx._shard_filter(i, 4, key))
+        r.check_eq(f"determinism N=4 key={key[1]}", b2, bucket)
+
+    # Stable across hosts: the SHA-256 bucket for a fixed key is the same
+    # number on every machine. Pin one as a regression guard.
+    pinned = ("Qwen3.5:0.8B", "solve", "blocksworld", "p01", "0")
+    pinned_bucket = next(i for i in range(4) if rx._shard_filter(i, 4, pinned))
+    import hashlib
+    expected = int.from_bytes(hashlib.sha256("|".join(pinned).encode()).digest()[:8], "big") % 4
+    r.check_eq("sha256 pinned bucket", pinned_bucket, expected)
+
+    # Disjointness + completeness over a non-trivial key set: every key
+    # lands in exactly one shard, and the union covers the whole set.
+    keys = [
+        (m, t, d, p, v)
+        for m in ("Qwen3.5:0.8B", "gpt-oss:20b", "Qwen3.5:27b")
+        for t in ("solve", "validate_domain", "validate_plan", "simulate")
+        for d in ("blocksworld", "logistics", "depot")
+        for p in ("p01", "p02")
+        for v in ("0", "1")
+    ]
+    N = 4
+    seen: set = set()
+    for k in keys:
+        matches = [i for i in range(N) if rx._shard_filter(i, N, k)]
+        r.check_eq(f"exactly-one-shard {k[0][:8]}|{k[1][:6]}", len(matches), 1)
+        seen.add(matches[0])
+    r.check("every shard saw at least one key", seen == set(range(N)), f"shards seen={sorted(seen)}")
+    # Rough balance check: each shard gets >12% of the 144 keys (chance of
+    # any shard < 12% under uniform sha256 is < 1e-6).
+    counts = [sum(1 for k in keys if rx._shard_filter(i, N, k)) for i in range(N)]
+    r.check(f"rough balance counts={counts}", all(c >= len(keys) * 0.12 for c in counts))
+
+
 def main():
     r = TestResults("test_scoring")
     test_wilson_ci(r)
@@ -168,6 +211,7 @@ def main():
     test_extract_plan_lines(r)
     test_extract_verdict(r)
     test_expand_conditions(r)
+    test_shard_filter(r)
     r.report_and_exit()
 
 
