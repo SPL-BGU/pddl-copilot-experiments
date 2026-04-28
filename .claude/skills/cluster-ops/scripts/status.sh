@@ -64,9 +64,15 @@ THINK_MODES_LINE = re.compile(r'^Think mode(?:s)?:\s+(.+)$', re.M)
 PROGRESS = re.compile(r'\[ *(\d+)/(\d+) ')
 CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
 # Smoke fast-path emits "Smoke pass: think=X, conditions=Y" headers from
-# run_experiment.async_main. There are exactly 2 passes (think=on/off) per
-# `python run_experiment.py --smoke` invocation.
+# run_experiment.async_main. After commit 9f894a6, each --smoke invocation
+# emits 3 headers: think=on splits into (tools, no-tools) sub-passes
+# (run_experiment.py:340-358), think=off is single.
 SMOKE_PASS = re.compile(r'^\s*Smoke pass:\s+think=(\S+),\s+conditions=(\S+)', re.M)
+# Pack jobs (run_condition_rtx.sbatch:171,225) loop multiple models in one
+# .out file, each emitting "MODEL: <name>   smoke (--smoke[-shuffle])
+# started <date>". Slice by the last banner so smoke pass counts are
+# per-model, not cumulative across the pack.
+MODEL_BANNER = re.compile(r'^MODEL:\s+(\S+)\s+smoke\b.*started', re.M)
 
 for line in queue_raw.splitlines():
     line = line.strip()
@@ -97,14 +103,27 @@ for line in queue_raw.splitlines():
     # the smoke job is NOT running. Branch early and report what smoke
     # actually emits: per-pass headers + dynamic-denominator progress.
     if jname.endswith('_smoke') or jname.endswith('_smoke-shuffle'):
-        passes = list(SMOKE_PASS.finditer(text))
+        # Slice to current model's section so per-model pass counter resets.
+        model_banners = list(MODEL_BANNER.finditer(text))
+        n_models = len(model_banners)
+        if model_banners:
+            cur_model = model_banners[-1].group(1)
+            section = text[model_banners[-1].end():]
+        else:
+            cur_model = "init"
+            section = text
+        passes = list(SMOKE_PASS.finditer(section))
+        # Smoke loop shape is fixed in run_experiment.py:366-375 — 3 sub-pass
+        # prints per --smoke invocation (think=on splits, think=off single).
+        SMOKE_PASSES_PER_MODEL = 3
         if passes:
             last = passes[-1]
-            phase = f"smoke pass {len(passes)}/2 (think={last.group(1)})"
-            slice_text = text[last.end():]
+            phase = (f"model {n_models}: smoke pass {len(passes)}"
+                     f"/{SMOKE_PASSES_PER_MODEL} (think={last.group(1)})")
+            slice_text = section[last.end():]
         else:
-            phase = "smoke setup"
-            slice_text = text
+            phase = f"model {n_models or 1}: smoke setup ({cur_model})"
+            slice_text = section
         st_matches = PROGRESS.findall(slice_text)
         if st_matches:
             n, m = st_matches[-1]
