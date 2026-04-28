@@ -194,6 +194,42 @@ def _response_done_reason(resp) -> str:
     return ""
 
 
+def _response_field(resp, name: str) -> int:
+    """Extract an int field from an ollama ChatResponse (dict or pydantic).
+
+    Used for accumulating prompt_eval_count / eval_count / total_duration /
+    eval_duration across tool-call turns. Returns 0 when missing so the
+    accumulator never trips on partial responses (some Ollama builds omit
+    counts on early-stop turns).
+    """
+    if resp is None:
+        return 0
+    if hasattr(resp, name):
+        v = getattr(resp, name)
+        return int(v) if v is not None else 0
+    if isinstance(resp, dict):
+        v = resp.get(name)
+        return int(v) if v is not None else 0
+    return 0
+
+
+def _response_thinking(resp) -> str:
+    """Extract message.thinking from an ollama ChatResponse (dict or pydantic).
+
+    Returns "" when the model did not emit structured thinking content.
+    Defensive against the inline `<think>...</think>` form (handled
+    downstream in scoring.extract_*).
+    """
+    if resp is None:
+        return ""
+    msg = resp.get("message") if isinstance(resp, dict) else getattr(resp, "message", None)
+    if msg is None:
+        return ""
+    if isinstance(msg, dict):
+        return msg.get("thinking") or ""
+    return getattr(msg, "thinking", "") or ""
+
+
 async def chat_with_tools(
     client: "ollama.AsyncClient",
     model: str,
@@ -205,11 +241,17 @@ async def chat_with_tools(
     max_loops: int = MAX_TOOL_LOOPS,
     temperature: float = TEMPERATURE,
     think: bool | None = None,
-) -> tuple[str, list[dict], str, bool]:
+) -> tuple[str, list[dict], str, bool, dict, str]:
     """Send messages to Ollama, handle tool-call loops.
 
-    Returns (text, tool_calls_log, last_done_reason, loop_exhausted). The
-    done_reason is taken from the final turn — callers use it to detect
+    Returns (text, tool_calls_log, last_done_reason, loop_exhausted, tokens,
+    thinking). `tokens` is a dict accumulating prompt_eval_count +
+    eval_count + total_duration_ns + eval_duration_ns + turns across every
+    chat() call in the loop. `thinking` is the LAST turn's structured
+    `message.thinking` content (empty for non-thinking models); earlier-turn
+    thinking is observable via `tool_calls[]`.
+
+    The done_reason is taken from the final turn — callers use it to detect
     num_predict truncation ("length") vs. natural stop ("stop"). The
     loop_exhausted flag is True when we fell out of the max_loops cap without
     the model emitting a tool-call-free assistant message — callers treat it
@@ -227,6 +269,14 @@ async def chat_with_tools(
 
     options, extra = _build_chat_kwargs(num_predict, num_ctx, temperature, think)
     last_done_reason = ""
+    tokens = {
+        "prompt": 0,
+        "completion": 0,
+        "turns": 0,
+        "total_duration_ns": 0,
+        "eval_duration_ns": 0,
+    }
+    thinking_text = ""
 
     for _ in range(max_loops):
         resp = await client.chat(
@@ -237,11 +287,17 @@ async def chat_with_tools(
             **extra,
         )
         last_done_reason = _response_done_reason(resp)
+        tokens["prompt"] += _response_field(resp, "prompt_eval_count")
+        tokens["completion"] += _response_field(resp, "eval_count")
+        tokens["total_duration_ns"] += _response_field(resp, "total_duration")
+        tokens["eval_duration_ns"] += _response_field(resp, "eval_duration")
+        tokens["turns"] += 1
+        thinking_text = _response_thinking(resp)
         msg = resp["message"]
         messages.append(msg)
 
         if not msg.get("tool_calls"):
-            return msg.get("content", ""), tool_calls_log, last_done_reason, False
+            return msg.get("content", ""), tool_calls_log, last_done_reason, False, tokens, thinking_text
 
         for tc in msg["tool_calls"]:
             fn = tc["function"]
@@ -261,7 +317,7 @@ async def chat_with_tools(
     # corrupt the record's `response` field (it is tool output, not model
     # text). Return empty text + loop_exhausted=True so the caller can label
     # this as FR_LOOP_EXHAUSTED.
-    return "", tool_calls_log, last_done_reason, True
+    return "", tool_calls_log, last_done_reason, True, tokens, thinking_text
 
 
 async def chat_without_tools(
@@ -272,8 +328,12 @@ async def chat_without_tools(
     num_ctx: int,
     temperature: float = TEMPERATURE,
     think: bool | None = None,
-) -> tuple[str, str]:
-    """Single-turn chat without tools. Returns (text, done_reason).
+) -> tuple[str, str, dict, str]:
+    """Single-turn chat without tools.
+
+    Returns (text, done_reason, tokens, thinking). `tokens` mirrors the
+    shape returned by `chat_with_tools` (turns is always 1 here). `thinking`
+    is the structured `message.thinking` content; "" when absent.
 
     Appends the assistant turn to *messages* so the post-call shape matches
     `chat_with_tools` (which appends internally). Lets multi-step callers
@@ -288,5 +348,13 @@ async def chat_without_tools(
         **extra,
     )
     content = resp["message"].get("content", "")
+    tokens = {
+        "prompt": _response_field(resp, "prompt_eval_count"),
+        "completion": _response_field(resp, "eval_count"),
+        "turns": 1,
+        "total_duration_ns": _response_field(resp, "total_duration"),
+        "eval_duration_ns": _response_field(resp, "eval_duration"),
+    }
+    thinking_text = _response_thinking(resp)
     messages.append({"role": "assistant", "content": content})
-    return content, _response_done_reason(resp)
+    return content, _response_done_reason(resp), tokens, thinking_text

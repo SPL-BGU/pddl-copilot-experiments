@@ -6,6 +6,64 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-28 — PR-2 hotfix: per-condition sub-pass split to keep `num_ctx` constant per call
+
+**Motivation.** Cluster smoke 17244356 (PR-2 head `0a78ae0`) deadlocked at the `tools→no-tools` boundary inside the `think=on` smoke pass. py-spy showed the asyncio loop idle, GPU at 0%, 4 keep-alive sockets with no in-flight bytes, and Ollama serving the model at the original `context_length: 8192` despite the no-tools coroutines requesting `num_ctx=12288`. Mid-call `num_ctx` flips deadlock Ollama under concurrency.
+
+**First attempt (`71dcff7`)** dropped the condition axis from `effective_num_ctx` — making tools+think=on use `num_ctx=12288` too, so num_ctx was constant within a pass. Smoke 17245419 ran clean (no deadlock) but the byte-equality diff against PR-1 anchor showed accuracy regression on tools-side think=on cells (e.g. `Qwen3.5:0.8B tools validate_plan`: PR-1 `2 OK + 1 verdict_mismatch + 1 loop_exhausted` → PR-2 `0 OK + 2 think_overflow + 2 loop_exhausted`, accuracy halved). The bigger context window changed the model's behaviour on tools-side runs that were graded fine in PR-1. This violated the spec, which required tools-side to keep 8192.
+
+**Final fix (this entry).** Reverted `effective_num_ctx` to the spec rule (`think!=off AND not with_tools`). Avoid the mid-call deadlock by splitting at the CALLER level: `async_main` runs `(--conditions=both, think!=off)` as two sequential `run_single_task_experiment` calls, one per condition. Each call has uniform `num_ctx`; the model can reload between calls because no requests are in flight at the boundary. Total wallclock is unchanged (same job count, same per-call concurrency).
+
+**Changes.**
+
+- `pddl_eval/runner.py`: `effective_num_ctx` reverted to `(think is not False and not with_tools)` rule (matches PR-2 spec).
+- `run_experiment.py`: new `_run_single_task_split(think_value, cond)` helper inside `async_main`. When `cond=="both"` and `think_value is not False`, it splits into `("tools", "no-tools")` sub-passes. Both the smoke loop and the production path go through this helper; behaviour is identical for cases where no split is needed (`cond != "both"` or `think_value is False`).
+- `EXPERIMENTS_FLOW.md` §5 + §9: documented the per-condition rule (matches spec) plus the implementation mechanism (sub-pass split).
+
+**Verification.** Cluster smoke to be re-run on the new HEAD; expected outcome — diff against PR-1 anchor shows ONLY the gate-lift expansion (`(no-tools, think=on/default)` cells go from `n=2 → n=4` because the gate is lifted). Tools-side rows should be byte-equal on the calibrated projection (modulo T=0 nondeterminism per CHANGELOG 2026-04-28 calibration).
+
+**Compatibility.** None of the partial cluster runs from today (cancelled job 17244356, completed job 17245419) become an anchor candidate — the next smoke (post-fix) IS the canonical post-PR-2 baseline. Local laptop runs at concurrency=4 were never exposed to the deadlock because `OLLAMA_NUM_PARALLEL` was unset, serializing requests at the Ollama layer.
+
+**Closes / narrows.** No `ISS-###`. Adjusts the same-day PR-2 entry below.
+
+**Files.** `pddl_eval/runner.py`, `run_experiment.py`, `EXPERIMENTS_FLOW.md`.
+
+---
+
+## 2026-04-28 — PR-2: token + thinking instrumentation; lift no-tools+think abort gate; close ISS-018
+
+**Motivation.** Three coupled needs from `development/FRAMEWORK_EXTENSION_PLAN.md` §3.2 PR-2:
+
+1. **Quantify the token-reduction story for the paper.** With-tools shrinks the model's prompt budget by externalising plan / state / verdict computation to MCP. We had no token data on disk — every `client.chat()` response carried `prompt_eval_count` + `eval_count` and we discarded them.
+2. **Make `(no-tools, think=on/default)` a valid run.** The previous `--think off` gate at `run_experiment.py:200-218` aborted any no-tools sweep under `--think on/default`. Lifting it requires capturing thinking content separately so it does not pollute `extract_verdict` / `extract_plan_lines` (a thinking model that emits `VERDICT: VALID` inside its `<think>` block but `VERDICT: INVALID` outside should grade INVALID).
+3. **Bound the thinking-spiral wallclock.** Calibration on 2026-04-28 (`.local/calibrate_num_ctx_thinking.py`) showed qwen3:0.6b solve hitting `done_reason=length` at p+e=8680 (over the existing `num_ctx=8192` cap); a separate `--num-ctx-thinking` flag lifts the budget for the thinking path without inflating it for tool-condition runs.
+
+**Changes.**
+
+- **`pddl_eval/scoring.py`**: added `FR_THINK_OVERFLOW = "think_overflow"` constant; added module-level `_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)`; applied it inline at the head of `extract_plan_lines` and `extract_verdict` so `<think>` blocks emitted in `message.content` (rather than the structured `message.thinking` field) cannot leak action-shaped lines or VERDICT tokens into the graded answer. `_classify_step_failure` signature unchanged — FR_THINK_OVERFLOW is classified inline in `evaluate_one`.
+- **`pddl_eval/chat.py`**: `chat_with_tools` and `chat_without_tools` extended to return `(..., tokens, thinking)`. Tokens are accumulated across tool-call turns (`prompt_eval_count`, `eval_count`, `total_duration`, `eval_duration`, `turns`); thinking is the LAST turn's `message.thinking` content (decision recorded in plan: tool-selection reasoning from earlier turns is observable via `tool_calls[]`; the thinking that produced the graded response is the last turn). New `_response_field` and `_response_thinking` helpers handle dict and pydantic ChatResponse shapes, mirroring `_response_done_reason`.
+- **`pddl_eval/runner.py`**: added `DEFAULT_NUM_CTX_THINKING = 12288` (1.4× headroom over the calibration max of 8680, decreased from the spec's 16384 to save ~25% KV-cache) and `THINKING_SNAPSHOT_LEN = 4096` (asymmetric vs `RESPONSE_SNAPSHOT_LEN=500`: thinking spirals are structurally longer than graded responses; calibration observed up to ~30K thinking chars on qwen3:0.6b). `TaskResult` gained `thinking: str = ""` and `tokens: dict = field(default_factory=dict)` fields. `evaluate_one` picks `effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx` — bigger budget only for the no-PDDL-tools+think cell. FR_THINK_OVERFLOW classification is inline before `_classify_step_failure` (precedence: FR_LOOP_EXHAUSTED > FR_THINK_OVERFLOW > generic length-override). `run_single_task_experiment` and `run_chain_experiment` thread `num_ctx_thinking` through.
+- **`run_experiment.py`**: removed the abort gate at lines 200-218 entirely; added `--num-ctx-thinking` CLI flag (default `DEFAULT_NUM_CTX_THINKING`); added `num_ctx_thinking` to the `meta` dict and the run-banner; updated the smoke `think_passes` table from `[("on", True, "tools"), ("off", False, "both")]` to `[("on", True, "both"), ("off", False, "both")]` so all four `(condition × think)` cells get smoke coverage. **ISS-018 closed**: chain phase is skipped entirely when `args.think == "off"` (mirrors the existing `not cond_with_tools → continue` chain skip), with an explicit print explaining the skip.
+- **`pddl_eval/summary.py`**: no change — `asdict(TaskResult)` picks up the new `tokens` + `thinking` fields automatically; the `failure_reasons` table aggregates whatever `FR_*` strings appear, so FR_THINK_OVERFLOW surfaces without code change.
+- **`tests/test_scoring.py`**: added think-block strip cases to `test_extract_plan_lines` and `test_extract_verdict`; new `test_classify_step_failure_think_overflow` verifies FR_THINK_OVERFLOW survives the truncation override and that FR_LOOP_EXHAUSTED still beats it on tool-loop cap-hit.
+- **`EXPERIMENTS_FLOW.md`**: §5 "No-tools matrix gating" replaced by "Single-task vs chain-phase gating" — the only surviving rules are (a) chain phase skips no-tools (artifact propagation), (b) chain phase skips think=off (ISS-018 closure). §9 per-record schema documents `tokens`, `thinking`, `failure_reason`, `truncated`, `done_reason`; meta schema adds `num_ctx_thinking`; `failure_reasons` description names FR_THINK_OVERFLOW.
+- **`development/OPEN_ISSUES.md`**: ISS-018 marked closed.
+
+**Verification.**
+
+- `bash tests/verify.sh` → all tests pass (test_scoring with new think-strip + think-overflow cases; test_check_success unchanged).
+- `python3 run_experiment.py --help` → shows `--num-ctx-thinking` with the corrected help text.
+- Local smoke (`PDDL_MARKETPLACE_PATH=../pddl-copilot python3 run_experiment.py --smoke --models qwen3:0.6b --tasks validate_domain validate_problem`): per-record JSON contains `tokens` (non-empty dict with `prompt > 0`, `completion > 0`, `turns >= 1`) and `thinking` (string, may be empty) on every row.
+- Cluster smoke gate vs PR-1 anchor (deferred to PR-2 review): graded fields byte-equal on intersection of `(model, condition, task)` keys for byte-deterministic models per the 2026-04-28 calibration; new `(no-tools, think=on/default)` rows are candidate-only with `n > 0` per cell.
+
+**Compatibility.** Existing 2026-04 result corpus (`results/cluster-2026042{6,7}/`) is unchanged in shape — new `tokens` and `thinking` fields are absent from those records and downstream consumers must use `r.get("tokens", {})` / `r.get("thinking", "")` patterns. `summary.py::asdict(r)` writes new fields when present; old summaries don't gain phantom fields. The `(no-tools, think=on/default)` cells were never produced before PR-2, so any future analysis comparing them against history needs a fresh baseline (next sweep). The `truncated` and graded outcomes on already-runnable cells are byte-equal post-PR-2 modulo the documented `gpt-oss:20b` and `truncated`-count noise sources from CHANGELOG 2026-04-28 (smoke-gate calibration).
+
+**Closes / narrows.** Closes ISS-018 (think=off chain skip). No other `ISS-###` closed.
+
+**Files.** `pddl_eval/scoring.py`, `pddl_eval/chat.py`, `pddl_eval/runner.py`, `run_experiment.py`, `tests/test_scoring.py`, `EXPERIMENTS_FLOW.md`, `development/OPEN_ISSUES.md`. `.local/calibrate_num_ctx_thinking.py` is gitignored (calibration artefact).
+
+---
+
 ## 2026-04-28 — Smoke-gate calibration: `gpt-oss:20b` and the `truncated` count are excluded from byte-equality
 
 **Motivation.** First production use of the PR-1 `--smoke` gate (anchor = pre-refactor `main` + cherry-picked flag commit; candidate = post-refactor `framework-ext-pr1`) flagged drift. Inspection showed 4 of 5 models (`Qwen3.5:0.8B`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b`) byte-equal on `{success, failure_reasons, tool_selected}`, with two sources of unrelated drift:
