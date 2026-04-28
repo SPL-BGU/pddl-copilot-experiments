@@ -109,8 +109,6 @@ from pddl_eval.summary import (
 # from-imports above; CLI-only constants (paths + choice tuples) live
 # below.
 
-__all__ = [name for name in globals() if not name.startswith("__")]
-
 
 # ---------------------------------------------------------------------------
 # Paths + plugin discovery (CLI-side)
@@ -248,7 +246,10 @@ async def async_main(args):
     active_variants = list(ACTIVE_PROMPT_VARIANTS[:args.num_variants])
     print(f"  Variants:   {active_variants} (selected from {list(ACTIVE_PROMPT_VARIANTS)})")
     print(f"  Temperature:{args.temperature}")
-    print(f"  Conditions: {args.conditions}")
+    if smoke_mode:
+        print(f"  Conditions: smoke (think=on→tools, think=off→both)")
+    else:
+        print(f"  Conditions: {args.conditions}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
     print(f"  num_predict:{args.num_predict if args.num_predict is not None else 'per-task defaults'}")

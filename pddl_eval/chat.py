@@ -16,7 +16,6 @@ import os
 from contextlib import AsyncExitStack
 from pathlib import Path
 
-import ollama  # noqa: F401  (re-export not needed; kept for type hint clarity)
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
