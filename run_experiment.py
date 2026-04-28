@@ -53,11 +53,13 @@ from pddl_eval.prompts import (
 from pddl_eval.runner import (
     DEFAULT_CONCURRENCY,
     DEFAULT_NUM_CTX,
+    DEFAULT_NUM_CTX_THINKING,
     DEFAULT_NUM_PREDICT,
     OLLAMA_TOOL_PARSE_SIGNATURE,
     RESPONSE_SNAPSHOT_LEN,
     TASK_TOOLS,
     TASKS,
+    THINKING_SNAPSHOT_LEN,
     TaskResult,
     _expand_conditions,
     _resolve_num_predict,
@@ -75,6 +77,7 @@ from pddl_eval.scoring import (
     FR_PLAN_INVALID,
     FR_RESULT_MISMATCH,
     FR_SIMULATE_EMPTY,
+    FR_THINK_OVERFLOW,
     FR_TOOL_ERROR,
     FR_TOOL_NOT_SELECTED,
     FR_TRUNCATED_NO_ANSWER,
@@ -197,26 +200,6 @@ async def async_main(args):
     else:
         think_override = None
 
-    # No-tools is gated to think=off — its only honest task (`solve`) doesn't
-    # depend on the model's reasoning budget (no tool args to construct),
-    # so think=on/default cells aren't part of any planned comparison.
-    # Mirrors the single-task gating from ISS-018. See EXPERIMENTS_FLOW.md §5.
-    # Smoke iterates think internally, so the gate is bypassed there.
-    if not smoke_mode and args.conditions in ("no-tools", "both") and args.think != "off":
-        if args.conditions == "no-tools":
-            print(
-                f"\nWARNING: --conditions=no-tools with --think={args.think} is "
-                "not part of the run matrix (no-tools is reported only for "
-                "think=off). Exiting without running."
-            )
-            return
-        print(
-            f"\nNote: --conditions=both with --think={args.think} — the "
-            "no-tools cell is suppressed (reported only for think=off). "
-            "Running tools side only."
-        )
-        args.conditions = "tools"
-
     host = args.ollama_host or ""
     if args.models is None:
         args.models = list(DEFAULT_MODELS)
@@ -247,13 +230,14 @@ async def async_main(args):
     print(f"  Variants:   {active_variants} (selected from {list(ACTIVE_PROMPT_VARIANTS)})")
     print(f"  Temperature:{args.temperature}")
     if smoke_mode:
-        print(f"  Conditions: smoke (think=on→tools, think=off→both)")
+        print(f"  Conditions: smoke (think=on→both [num_ctx={args.num_ctx_thinking}], think=off→both [num_ctx={args.num_ctx}])")
     else:
         print(f"  Conditions: {args.conditions}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
     print(f"  num_predict:{args.num_predict if args.num_predict is not None else 'per-task defaults'}")
     print(f"  num_ctx:    {args.num_ctx}")
+    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (active for all think!=off cells)")
     print(f"  think:      {args.think}")
     print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
     if args.concurrency > 1 and num_parallel_env == "unset":
@@ -345,11 +329,13 @@ async def async_main(args):
         # user-provided --think once.
         print("\n--- Single-Task Evaluation ---")
         if smoke_mode:
+            # Both passes now use conditions="both" — the no-tools+think
+            # abort gate that this loop used to work around was lifted in
+            # PR-2 (FRAMEWORK_EXTENSION_PLAN.md §3.2 PR-2). The smoke run
+            # now exercises every (think × condition) cell so all four
+            # cells get smoke coverage.
             think_passes: list[tuple[str, bool, str]] = [
-                # (label, think_override, conditions)
-                # think=on : no-tools is matrix-gated out per ISS-018
-                # think=off: both conditions grade
-                ("on",  True,  "tools"),
+                ("on",  True,  "both"),
                 ("off", False, "both"),
             ]
             for tm_label, tm_value, cond in think_passes:
@@ -366,6 +352,7 @@ async def async_main(args):
                     prompt_style=args.prompt_style,
                     num_predict_override=args.num_predict,
                     num_ctx=args.num_ctx,
+                    num_ctx_thinking=args.num_ctx_thinking,
                     think=tm_value,
                     concurrency=args.concurrency,
                     conditions=cond,
@@ -388,6 +375,7 @@ async def async_main(args):
                 prompt_style=args.prompt_style,
                 num_predict_override=args.num_predict,
                 num_ctx=args.num_ctx,
+                num_ctx_thinking=args.num_ctx_thinking,
                 think=think_override,
                 concurrency=args.concurrency,
                 conditions=args.conditions,
@@ -401,8 +389,11 @@ async def async_main(args):
         print_fail_reasons_table(single_results)
 
         # Multi-task chains. Skipped when sharding (chains run only on
-        # shard 0) or when --chain-samples=0 (smoke pre-sets this).
-        if args.chains and args.shard_i == 0 and args.chain_samples > 0:
+        # shard 0), when --chain-samples=0 (smoke pre-sets this), or when
+        # think=off (ISS-018: think=off is a single-task ablation against
+        # think=on/default — chain results under it aren't part of any
+        # planned comparison).
+        if args.chains and args.shard_i == 0 and args.chain_samples > 0 and args.think != "off":
             print("\n--- Multi-Task Chain Evaluation ---")
             for cond_with_tools in _expand_conditions(args.conditions):
                 # No-tools is single-task-only: chains require artifact
@@ -424,11 +415,17 @@ async def async_main(args):
                     prompt_style=args.prompt_style,
                     num_predict_override=args.num_predict,
                     num_ctx=args.num_ctx,
+                    num_ctx_thinking=args.num_ctx_thinking,
                     think=think_override,
                     temperature=args.temperature,
                     concurrency=args.concurrency,
                 )
             print_chain_table(chain_results)
+        elif args.chains and args.think == "off":
+            print("\n--- Multi-Task Chain Evaluation ---")
+            print("  Skipping chain phase: --think=off is single-task-only "
+                  "(ISS-018; mirrors the no-tools rule). Pass --think=on or "
+                  "--think=default to run chains.")
 
     except KeyboardInterrupt:
         print("\n\nInterrupted — saving partial results...")
@@ -444,6 +441,7 @@ async def async_main(args):
                 "prompt_variants_active": list(ACTIVE_PROMPT_VARIANTS[:args.num_variants]),
                 "temperature": args.temperature,
                 "num_ctx": args.num_ctx,
+                "num_ctx_thinking": args.num_ctx_thinking,
                 "num_predict": args.num_predict,
                 "think": args.think,
             }
@@ -516,6 +514,13 @@ def main():
                         "Caps the qwen3 thinking-mode spiral that stalls runs for ~4 minutes.")
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
                    help=f"Ollama context window tokens. Default {DEFAULT_NUM_CTX}.")
+    p.add_argument("--num-ctx-thinking", type=int, default=DEFAULT_NUM_CTX_THINKING,
+                   help=f"Ollama context window tokens used when think!=off, "
+                        f"regardless of condition. Default "
+                        f"{DEFAULT_NUM_CTX_THINKING}. think=off keeps "
+                        f"--num-ctx (default {DEFAULT_NUM_CTX}). Constant "
+                        f"within a think-pass — flipping num_ctx mid-pass "
+                        f"deadlocks Ollama under concurrency.")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "

@@ -165,23 +165,32 @@ A chain of length N picks N random tasks and executes them sequentially in a sin
 | Chain lengths | 2, 3, 4, 5 | |
 | Random seed | 42 | For chain task sampling |
 
-### No-tools matrix gating
+### Single-task vs chain-phase gating
 
-No-tools is reported only for `--think off` and only for the single-task phase:
+The single-task phase grades every cell of the (`condition` × `think`)
+matrix; the chain phase is restricted because chain trajectories carry
+constraints that not every cell satisfies:
 
-- `--conditions=no-tools` with `--think` ≠ `off` → exits early with a warning;
-  the `solve` no-tools cell isn't comparable across reasoning budgets (no tool
-  arguments to construct) so think=on/default cells aren't part of any
-  planned comparison.
-- `--conditions=both` with `--think` ≠ `off` → tools side runs normally,
-  no-tools side is suppressed with a note.
 - `--chains` with `--conditions=no-tools|both` → chain phase skips
   `with_tools=False` (chains require artifact propagation across steps,
   which the model can't do honestly without tools).
+- `--chains` with `--think=off` → chain phase is skipped entirely
+  (ISS-018, closed 2026-04-28). `think=off` is a single-task ablation
+  against `think=on`/`think=default`; chain results under it aren't
+  part of any planned comparison.
+- `--num-ctx-thinking` (default 12288) replaces `--num-ctx` (default
+  8192) for ALL cells where `think != off`, regardless of condition.
+  `think=off` keeps the smaller context budget. The condition axis was
+  dropped from this rule on 2026-04-28 — flipping `num_ctx` mid-pass
+  deadlocked Ollama under concurrency (smoke job 17244356), and a
+  constant `num_ctx` per pass costs only a few KB extra KV cache on
+  tool-condition runs.
 
-Both Python (`run_experiment.py::async_main`) and the cluster sbatch scripts
-(`cluster-experimenting/run_condition*.sbatch`) enforce these gates as
-defense-in-depth. Mirrors the `think=off` single-task rule from ISS-018.
+The PR-2 abort gate that previously exited early for
+`--conditions=no-tools|both` under `--think on/default` was lifted
+2026-04-28 — thinking content is now captured separately
+(`TaskResult.thinking`) so it does not contaminate the graded
+response. See CHANGELOG 2026-04-28 (PR-2).
 
 ---
 
@@ -278,7 +287,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | ci_lo, ci_hi | 95% Wilson score CI |
 | tool_selected, tool_selected_rate, tool_selected_ci_lo, tool_selected_ci_hi | Tool selection (with-tools only) |
 | truncated | Count of evaluations where `done_reason == "length"` (token-cap hit) |
-| failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive) |
+| failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive). Notable: `FR_THINK_OVERFLOW` (PR-2, 2026-04-28) — thinking spiral consumed the completion budget leaving empty `content`; more specific than `FR_TRUNCATED_NO_ANSWER`. |
 
 `chains` entries: model, with_tools, chain_length, samples, successes, success_rate, tool_filter, prompt_style, ci_lo, ci_hi, plus `samples_detail` — a per-sample list of `{idx, domain, problem, chain_tasks, step_records, final_success, exception}` (each `step_records[*]` carries `step_index, task, success, failure_reason, tool_calls_count, truncated, loop_exhausted`). Effective chain length per sample = `len(step_records)` (skipped no-plan steps are absent).
 
@@ -288,7 +297,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for ALL cells where `think != off` (the condition axis was dropped after the cluster smoke deadlocked on the mid-pass num_ctx flip). |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json
@@ -301,12 +310,17 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pro
 | with_tools | Condition |
 | success | End-to-end correctness |
 | tool_selected | Correct tool called (with-tools only, null otherwise) |
-| response | Model text response (truncated to 500 chars) |
+| response | Model text response (truncated to `RESPONSE_SNAPSHOT_LEN=500` chars) |
+| thinking | Last-turn structured `message.thinking` content (PR-2, truncated to `THINKING_SNAPSHOT_LEN=4096` chars). Empty string when the model didn't emit thinking. For multi-turn `with_tools` runs, only the last turn's thinking is recorded — earlier-turn reasoning is observable via `tool_calls[]`. |
 | tool_calls | List of `{name, arguments, result}` dicts |
-| duration_s | Wall-clock time |
+| tokens | Dict `{prompt, completion, turns, total_duration_ns, eval_duration_ns}` (PR-2). Counts are summed across `client.chat()` turns; `turns=1` for `with_tools=False`, up to `MAX_TOOL_LOOPS=10` otherwise. Durations are Ollama's server-side aggregates; `eval_duration_ns ≤ total_duration_ns`. Used for tokens-per-second and prompt-shrinkage analysis. |
+| duration_s | Wall-clock time around the chat helper (Python + MCP latency included; not the same as `tokens.total_duration_ns`) |
 | error | Error message if any |
+| failure_reason | `FR_*` constant from `pddl_eval/scoring.py` ("ok" iff `success=True`); see `failure_reasons` description above for the open-ended vocabulary |
+| truncated | `done_reason == "length"` on any turn (output-token cap hit) |
+| done_reason | Raw `done_reason` from the last chat turn (`"stop"`, `"length"`, etc.) |
 | tool_filter | "all" or "per-task" |
-| prompt_style | "minimal" or "guided" |
+| prompt_style | "minimal" (the `"guided"` retirement is recorded in `PROMPT_STYLE_CHOICES` in `run_experiment.py`) |
 
 ### chain_{ts}.json
 
