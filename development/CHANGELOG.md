@@ -6,6 +6,39 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 (review) — Address PR #22 review on `framework-ext-pr3`
+
+**Motivation.** The PR review flagged one correctness bug in ground-truth generation (`plan_valid is None` silent coerce on validator transport errors) and a dead-code sweep in the new fixture generator as ship blockers, plus several cheap follow-ups in the same code surface.
+
+**Changes.**
+
+- **`pddl_eval/domains.py`**:
+  - **Loop 1 (committed valid plans, ~line 209):** abort guard `if plan_valid is False:` → `if plan_valid is not True:`. Was: `_validate_capture` returns `(str(exc), None)` on transport error, then `bool(None) == False` recorded a fake `plan_valid=False` instead of aborting. Now: any non-`True` outcome (False or None) raises `SystemExit` with the raw response (which carries `str(exc)` on transport error) appended to the message. Recorded value simplified to literal `True` since the guard ensures it.
+  - **Loops 2 & 3 (negative problems, negative plans) + the `domain_neg.pddl` probe:** raw `mcp.call_tool("validate_pddl_syntax", ...)` + manual `_parse_validation_verdict(raw)` replaced with `raw, verdict = await _validate_capture(mcp, args)`. Same abort guard `if verdict is not False:` (already correct — catches both `None` and `True`); SystemExit messages now include the raw response so a transport blip names the file *and* surfaces the underlying exception text.
+  - **Loader glob (`load_domains`, ~line 58):** added `if not pf.stem.endswith("_0")` to the `p[0-9]*.pddl` dict comprehension. Defensive — no `_0` files exist post-PR-3 migration, but a stray legacy file would otherwise be silently loaded as a positive.
+
+- **`tools/build_fixtures.py`** (dead-code sweep):
+  - Deleted the `_problem_label` function (and its inline `import re`) — defined but never called.
+  - Deleted three `_0`-suffix filter blocks in `cmd_seed_problems` (single-`continue` form) and the `cmd_gen_valid_plans` / `cmd_gen_invalid_plans` problem-list comprehensions. Unreachable post-migration.
+
+- **`tests/test_runner.py` (new)**: 3 tests / 7 sub-checks pinning `_shard_filter` behaviour: (a) `plan_label` disperses v1..v5/b1..b5 across multiple shards (regression guard for the PR-3 shard-key change); (b) every key lands in exactly one shard for `shard_n ∈ {2,4,8}`; (c) `shard_n=1` is a pass-through. Added to `tests/verify.sh`.
+
+- **`development/CHANGELOG.md`**: added an explicit re-baselining checklist anchor under the same-day cap-bump entry (5 metrics that must be relabeled or redrawn for paper figures when crossing the 2026-04-29 boundary).
+
+- **`development/OPEN_ISSUES.md`**: tracked `ISS-020` (P3) for the deferred `validate_domain` neg-arm 5:1 → 5:5 pairing follow-up that the reviewer flagged as out-of-scope for PR #22.
+
+**Compatibility.** No methodology change. The `domains.py` fix only fires on validator-transport-error paths (which already crashed loudly in the negative loops) and on never-reached `bool(None)` records (no recorded sweep has actually consumed the buggy output, since the bug is exception-path). Existing `results/` directories are unaffected. The shard-key test pins existing behaviour rather than changing it.
+
+**Validation.**
+- `bash tests/verify.sh` — all 4 test files pass (`test_scoring.py`, `test_check_success.py`, `test_fixtures.py`, `test_runner.py`).
+- Grep: `grep -nF "_problem_label" tools/build_fixtures.py` and `grep -nE 'endswith\("_0"\)' tools/build_fixtures.py` → no matches.
+
+**Closes / narrows.** No `ISS-###`. Adds `ISS-020` (deferred follow-up). Addresses all PR #22 review blockers + cheap follow-ups; review's explicit deferrals (`_emit_job` dataclass, numeric plan-diversity callout, `num_ctx_thinking` branch simplification) intentionally not changed.
+
+**Files.** `pddl_eval/domains.py`, `tools/build_fixtures.py`, `tests/test_runner.py` (new), `tests/verify.sh`, `development/CHANGELOG.md`, `development/OPEN_ISSUES.md`.
+
+---
+
 ## 2026-04-29 (cluster) — Align cluster sbatch with the same-day num_ctx / num_predict bumps
 
 **Motivation.** Two same-day entries below raised `DEFAULT_NUM_CTX` 8192 → 16384, `DEFAULT_NUM_CTX_THINKING` 12288 → 16384, `DEFAULT_NUM_CTX_CHAIN` 12288 → 16384, and non-solve `DEFAULT_NUM_PREDICT` 1024/1536 → 4096. The cluster submission scripts were not adjusted in those commits and have two failure modes against the new caps:
@@ -88,6 +121,15 @@ The 1024/1536 caps were calibrated when "verdict + a sentence" was the expected 
 - `README.md` parameter table and `EXPERIMENTS_FLOW.md` §5 (knobs) + summary-meta — updated.
 
 **Compatibility.** Single-task results from prior sweeps (cluster-26042026 and earlier) remain valid for trend analysis but **truncation rates and success rates are not directly comparable** — the new caps will lower truncation counts and may shift success rates upward on `validate_plan`/`simulate`/`validate_problem` cells (the 33–41% truncated calls that previously couldn't emit a complete verdict now have room), and the wider `num_ctx` will reduce `FR_THINK_OVERFLOW` for thinking models. Most consequentially: any historical comparison of tools-vs-no-tools accuracy made under the old 8192/12288 asymmetry is no longer apples-to-apples with post-bump runs. Re-run sweeps under the new caps should label themselves as "post 2026-04-29 cap bump" in plots; the headline "tools save tokens" / "tools improve accuracy" claims should be redrawn from a fresh run that uses the equalized ctx. `solve` cells are unchanged.
+
+**Re-baselining checklist (anchor for paper figures).** Pre-2026-04-29 results — including `cluster-26042026` and the smoke job `17263071` — must be relabeled or redrawn for any of the following metrics:
+1. Per-task `truncation` rate (`done_reason == "length"`).
+2. `FR_THINK_OVERFLOW` rate per `(model, task)` cell.
+3. Tools-vs-no-tools accuracy gaps (the paper's headline) — old asymmetric ctx (`8192` tools / `12288` no-tools+think) confounds the comparison.
+4. `ollama_parse_error` counts on `validate_plan`/`simulate` (mid-emission truncation produced most of these under the old caps).
+5. Chain-step (`step-3`, `step-4`) `FR_THINK_OVERFLOW` rates — `num_ctx_chain` 12288 → 16384 in the same-day follow-up entry.
+
+`solve` (tools and no-tools) is unaffected by the non-solve `num_predict` bump but its `num_ctx` did change 8192 → 16384. Trends remain interpretable; absolute truncation counts and `FR_THINK_OVERFLOW` rates do not.
 
 **Cluster-side note.** Per-call KV cache approximately doubles vs the prior 8192 baseline (16384 single-task tools / 16384 single-task no-tools+think / 12288 chain). Existing `--mem` lines in `cluster-experimenting/run_condition_rtx.sbatch` were sized against the old ctx; first sweeps after this change should leave a margin and post-mortem `sacct/MaxRSS` to right-size if needed. The runtime VRAM guard (`>85% post-warmup → exit 3`) should still catch a blowup before it crashes the whole pack.
 
