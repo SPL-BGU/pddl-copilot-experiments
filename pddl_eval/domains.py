@@ -108,6 +108,23 @@ def _build_plan_str(gt: dict) -> str:
     return plan
 
 
+async def _validate_capture(
+    mcp: MCPPlanner, args: dict,
+) -> tuple[str, bool | None]:
+    """Call `validate_pddl_syntax(args)` and capture (raw, parsed_verdict).
+
+    On MCP exception, returns `(str(exc), None)` so the caller can stash
+    both in a single tuple assignment without an explicit try-block.
+    Mirrors the per-layer (domain / problem / plan) ground-truth probes
+    in `generate_ground_truth`.
+    """
+    try:
+        raw = await mcp.call_tool("validate_pddl_syntax", args)
+    except Exception as exc:
+        return str(exc), None
+    return raw, _parse_validation_verdict(raw)
+
+
 async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
     """For each domain/problem, solve and validate via MCP tools as oracle.
 
@@ -147,22 +164,12 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 "valid_plans": [],
             }
 
-            try:
-                raw = await mcp.call_tool("validate_pddl_syntax", {"domain": dinfo["domain"]})
-                entry["domain_validation_raw"] = raw
-                entry["domain_valid"] = _parse_validation_verdict(raw)
-            except Exception as exc:
-                entry["domain_validation_raw"] = str(exc)
-
-            try:
-                raw = await mcp.call_tool(
-                    "validate_pddl_syntax",
-                    {"domain": dinfo["domain"], "problem": ppddl},
-                )
-                entry["problem_validation_raw"] = raw
-                entry["problem_valid"] = _parse_validation_verdict(raw)
-            except Exception as exc:
-                entry["problem_validation_raw"] = str(exc)
+            entry["domain_validation_raw"], entry["domain_valid"] = await _validate_capture(
+                mcp, {"domain": dinfo["domain"]}
+            )
+            entry["problem_validation_raw"], entry["problem_valid"] = await _validate_capture(
+                mcp, {"domain": dinfo["domain"], "problem": ppddl}
+            )
 
             try:
                 raw = await mcp.call_tool(planner, {"domain": dinfo["domain"], "problem": ppddl})
@@ -182,15 +189,9 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                     )
                 except Exception:
                     pass
-                try:
-                    raw = await mcp.call_tool(
-                        "validate_pddl_syntax",
-                        {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_str},
-                    )
-                    entry["plan_validation_raw"] = raw
-                    entry["plan_valid"] = _parse_validation_verdict(raw)
-                except Exception as exc:
-                    entry["plan_validation_raw"] = str(exc)
+                entry["plan_validation_raw"], entry["plan_valid"] = await _validate_capture(
+                    mcp, {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_str}
+                )
 
             # Validate each committed valid plan. The committed `_v[1-9]`
             # plans are independent of the planner's canonical plan above;

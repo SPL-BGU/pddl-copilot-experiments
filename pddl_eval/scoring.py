@@ -56,6 +56,32 @@ def _get_tool_results(tool_calls: list[dict], name: str) -> list[str]:
     return [tc["result"] for tc in tool_calls if tc["name"] == name and "result" in tc]
 
 
+def _call_matches_validate_task(tc: dict, task: str) -> bool:
+    """True iff a `validate_pddl_syntax` call's argument shape matches *task*.
+
+    The tool is polymorphic — its `valid` field reflects whichever PDDL
+    layer was supplied. A {domain}-only call returns the domain's verdict
+    even when the model is being graded on plan validity; mismatch the
+    shape and every solvable benchmark trivially scores FR_OK. This
+    function is the gate. Caller is expected to have already filtered on
+    `tc["name"] == "validate_pddl_syntax"`.
+
+      validate_domain  — neither `problem` nor `plan` may be present.
+      validate_problem — `problem` required, `plan` forbidden.
+      validate_plan    — `plan` required.
+    """
+    args = tc.get("arguments", {}) or {}
+    has_problem = bool(args.get("problem"))
+    has_plan = bool(args.get("plan"))
+    if task == "validate_domain":
+        return not has_problem and not has_plan
+    if task == "validate_problem":
+        return has_problem and not has_plan
+    if task == "validate_plan":
+        return has_plan
+    return False
+
+
 def _extract_plan_from_tool_result(raw: str) -> list[str]:
     """Extract plan action list from a planner tool's JSON result."""
     data = _safe_json_loads(raw)
@@ -257,22 +283,12 @@ async def check_success(
                 return False, False, FR_TOOL_NOT_SELECTED
             if truth is None:
                 return True, False, FR_UNKNOWN
-            # validate_pddl_syntax is polymorphic: the `valid` field answers
-            # whichever layer was supplied. A {domain}-only call returns the
-            # domain's verdict even when the model is graded on plan validity,
-            # so the verdict check must match the call's argument shape to the
-            # task — otherwise every solvable benchmark trivially scores FR_OK.
+            # The verdict check must match the call's argument shape to the
+            # task — see _call_matches_validate_task for the rule and why.
             for tc in tool_calls:
                 if tc.get("name") != "validate_pddl_syntax":
                     continue
-                args = tc.get("arguments", {}) or {}
-                has_problem = bool(args.get("problem"))
-                has_plan = bool(args.get("plan"))
-                if task == "validate_domain" and (has_problem or has_plan):
-                    continue
-                if task == "validate_problem" and (not has_problem or has_plan):
-                    continue
-                if task == "validate_plan" and not has_plan:
+                if not _call_matches_validate_task(tc, task):
                     continue
                 verdict = _parse_validation_verdict(tc.get("result", ""))
                 if verdict == truth:
