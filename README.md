@@ -113,7 +113,7 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--num-predict` | per-task | Override max output tokens (solve=8192, simulate=4096, validate=4096). Non-solve caps raised from 1024/1536→4096 on 2026-04-29 after the cluster-26042026 sweep showed 33–41% truncation on `validate_plan`/`simulate`/`validate_problem`. |
 | `--num-ctx` | 16384 | Ollama context window tokens for single-task tools cells (raised from 8192 on 2026-04-29 after qwen3.6/nemotron smokes showed `think_overflow` at 12288). |
 | `--num-ctx-thinking` | 16384 | Context tokens for single-task no-tools cells when `think!=off`. **Held equal to `--num-ctx`** so the "tools save tokens" headline isn't confounded by ctx asymmetry across tools/no-tools branches. |
-| `--num-ctx-chain` | 12288 | Context tokens used during multi-task chain runs. Sized below the single-task ctx because chains are tools-only (ISS-018), so no tools-vs-no-tools fairness applies; chains accumulate full per-step history (~6–8K at step 4). |
+| `--num-ctx-chain` | 16384 | Context tokens used during multi-task chain runs. Held equal to `--num-ctx` because chain prompts accumulate full per-step history (~6–8K at step 4), so the single-task `think_overflow` evidence at 12288 translates *worse* to chains, not better. Raise to 20480 if step-4 surfaces overflow. |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
 | `--concurrency` | 4 | Max concurrent Ollama requests in single-task sweep |
 

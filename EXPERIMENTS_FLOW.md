@@ -202,17 +202,21 @@ constraints that not every cell satisfies:
   calls (one per condition), keeping `num_ctx` constant within each call.
   Without the split, mid-call `num_ctx` flips deadlocked Ollama under
   concurrency (smoke job 17244356, 2026-04-28).
-- `--num-ctx-chain` (default 12288, added 2026-04-29) replaces `--num-ctx`
+- `--num-ctx-chain` (default 16384, added 2026-04-29) replaces `--num-ctx`
   for every step of a multi-task chain run. Chains accumulate the full
   message history across steps (each step re-embeds domain + problem +
   plan in its user prompt, and prior assistant turns + tool-call results
   remain in context), so step-4 prompts on blocksworld-class problems
-  can reach ~6–8K tokens before generation. Sized below the single-task
-  16384 because chains are tools-only (ISS-018) — there is no
-  tools-vs-no-tools fairness comparison happening within a chain run,
-  so the asymmetry is acceptable. If a future thinking-model sweep
-  reproduces the single-task `think_overflow` pattern at chain step
-  level, raise `--num-ctx-chain` to match `--num-ctx-thinking`.
+  can reach ~6–8K tokens before generation. Held equal to `--num-ctx`
+  (16384) by the 2026-04-29 follow-up bump: applying the single-task
+  `FR_THINK_OVERFLOW` evidence (qwen3.6:27b / nemotron-3-nano:30b at
+  ctx=12288 hit overflow on 50% of `validate_problem` / `validate_plan`
+  cells) to a chain step running the same task gives **worse** headroom,
+  not better — chain step-3 think+output budget at ctx=12288 would be
+  ~8K vs ~11K in single-task (the regime that already failed). Raising
+  to 16384 brings chain step-3 to ~12K (comparable to the single-task
+  16384 envelope) and chain step-4 to ~8–10K (still tighter; raise to
+  20480 if a chain sweep surfaces step-4 overflow).
 - **Per-task `num_predict` caps** (`pddl_eval/runner.py`
   `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=4096`,
   `simulate=4096`. Non-solve caps were raised from 1024/1536 → 4096 on
@@ -365,7 +369,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_ctx_chain, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_ctx_chain` (added 2026-04-29) is the wider budget used for every step of a multi-task chain run — chains accumulate full per-step history, so 8192 is too tight once non-solve `num_predict` is at 4096. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_ctx_chain, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_ctx_chain` (added 2026-04-29, raised 12288 → 16384 same day) is the chain-step budget; held equal to `num_ctx` because chain prompts accumulate full per-step history, making the single-task think_overflow envelope tighter at chain step level rather than looser. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json

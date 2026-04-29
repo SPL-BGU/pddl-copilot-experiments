@@ -95,15 +95,19 @@ DEFAULT_NUM_CTX_THINKING = 16384
 # Context budget for multi-task chain runs. Chains accumulate the full
 # message history (system + N×(user+assistant+tool_calls+tool_results))
 # across steps, so step-4 prompts can reach ~6-8K tokens before generation
-# even on small problems. Sized at 12288 (vs single-task 16384) because
-# chains are tools-only (ISS-018) -- there's no tools-vs-no-tools fairness
-# comparison within chains, so the asymmetry is acceptable. With non-solve
-# `num_predict` at 4096, 12288 leaves ~4-6K of think+output headroom on
-# top of the accumulated history. If a future thinking-model sweep shows
-# chain-step `think_overflow` analogous to the single-task observation
-# that drove DEFAULT_NUM_CTX = 16384, raise this in lockstep.
-# Override via --num-ctx-chain.
-DEFAULT_NUM_CTX_CHAIN = 12288
+# even on small problems. Held equal to DEFAULT_NUM_CTX (16384) by the
+# 2026-04-29 follow-up bump: applying the single-task think_overflow
+# evidence (qwen3.6:27b / nemotron-3-nano:30b at 12288 ctx hit
+# FR_THINK_OVERFLOW on 50% of validate_problem/validate_plan cells) to a
+# chain step running the same task gives WORSE headroom, not better,
+# because chain prompts include accumulated history. At 12288 chain ctx,
+# step-3 validate_plan would have ~8K think+output budget vs ~11K in
+# single-task -- the regime that already failed. 16384 brings step-3 to
+# ~12K (comparable to single-task at 16384) and step-4 to ~8-10K (still
+# tighter than single-task; raise to 20480 if a chain sweep surfaces
+# step-4 think_overflow). Chains are tools-only (ISS-018), so this is
+# condition-independent. Override via --num-ctx-chain.
+DEFAULT_NUM_CTX_CHAIN = 16384
 DEFAULT_CONCURRENCY = 4
 
 # Cap on stored response/exception strings in result records. The full text

@@ -276,11 +276,14 @@ rtx_pro_6000 96 GB. With multi-model packing, the guard skips the
 offending model and continues with the next (sets non-zero exit at the end).
 Note (2026-04-29): single-task `num_ctx` was raised 8192 → 16384 (with
 `num_ctx_thinking` held equal at 16384 for tools/no-tools fairness in
-the "tools save tokens" headline) and `num_ctx_chain=12288` was added
-for chain runs. Per-call KV cache approximately doubles vs the prior
-8192 baseline. If a sweep trips the guard, post-mortem `sacct/MaxRSS`
-to right-size; lowering `--num-ctx-chain` or `--concurrency` is the
-fastest mitigation if the cap is hit only on chain runs.
+the "tools save tokens" headline) and `num_ctx_chain` was added for
+chain runs (initially 12288, raised same-day to 16384 since chain
+prompts accumulate history — the single-task think_overflow envelope
+tightens at chain step level rather than loosens). Per-call KV cache
+approximately doubles vs the prior 8192 baseline. If a sweep trips the
+guard, post-mortem `sacct/MaxRSS` to right-size; lowering
+`--num-ctx-chain` or `--concurrency` is the fastest mitigation if the
+cap is hit only on chain runs.
 
 **`apptainer: command not found`.** Apptainer module not loaded
 on the compute node. The sbatch assumes the cluster default has it on the

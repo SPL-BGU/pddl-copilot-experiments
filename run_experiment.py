@@ -541,16 +541,19 @@ def main():
                         f"concurrency).")
     p.add_argument("--num-ctx-chain", type=int, default=DEFAULT_NUM_CTX_CHAIN,
                    help=f"Ollama context window tokens used during multi-task "
-                        f"chain runs. Default {DEFAULT_NUM_CTX_CHAIN}. Chains "
-                        f"accumulate full message history across steps "
-                        f"(domain+problem re-embedded per step + prior tool "
-                        f"calls/results), so step-4 prompts reach ~6-8K tokens "
-                        f"before generation. Sized below --num-ctx "
-                        f"({DEFAULT_NUM_CTX}) because chains are tools-only "
-                        f"(ISS-018) -- no tools-vs-no-tools fairness "
-                        f"comparison applies, so the asymmetry is acceptable. "
-                        f"Raise in lockstep with --num-ctx-thinking if a "
-                        f"thinking-model sweep shows chain-step think_overflow.")
+                        f"chain runs. Default {DEFAULT_NUM_CTX_CHAIN} (held "
+                        f"equal to --num-ctx). Chains accumulate full message "
+                        f"history across steps (domain+problem re-embedded "
+                        f"per step + prior tool calls/results), so step-4 "
+                        f"prompts reach ~6-8K tokens before generation. "
+                        f"Held equal to --num-ctx ({DEFAULT_NUM_CTX}) because "
+                        f"the single-task think_overflow evidence at 12288 "
+                        f"translates worse to chains, not better -- chain "
+                        f"step-3 budget shrinks from ~11K (single-task) to "
+                        f"~8K (chain) at the same ctx. Chains are tools-only "
+                        f"(ISS-018), so no tools-vs-no-tools comparison is at "
+                        f"stake. Raise to 20480 if chain step-4 surfaces "
+                        f"think_overflow.")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "

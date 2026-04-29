@@ -6,6 +6,23 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 (follow-up) — Raise `num_ctx_chain` 12288 → 16384
+
+**Motivation.** The same-day prior entry left `num_ctx_chain` at 12288 with a "raise in lockstep if a chain sweep surfaces step-level `think_overflow`" trigger. Re-reading the single-task evidence shows that trigger is preemptively met by reasoning, not waiting on data: at ctx=12288 single-task `validate_problem`/`validate_plan` overflowed 50% of cells with qwen3.6:27b / nemotron-3-nano:30b, where the model had ~11K think+output budget on top of a ~1K prompt. The same task as a chain step-3 has ~4K of accumulated history before it starts thinking, so the budget at ctx=12288 collapses to ~8K — **worse** than the single-task regime that already failed. Sizing chain ctx below single-task ctx therefore reverses the safety margin, not preserves it.
+
+**Decision.** `DEFAULT_NUM_CTX_CHAIN` 12288 → 16384, matching `DEFAULT_NUM_CTX` and `DEFAULT_NUM_CTX_THINKING`. This restores chain step-3 to ~12K think+output budget (comparable to the single-task envelope at 16384) and chain step-4 to ~8–10K (still tighter than single-task by the prompt-accumulation overhead; raise to 20480 if a chain sweep surfaces step-4 `FR_THINK_OVERFLOW`).
+
+**Changes.**
+- `pddl_eval/runner.py`: `DEFAULT_NUM_CTX_CHAIN` 12288 → 16384, comment rewritten to explain the headroom math (chain budget at ctx=N is single-task budget at ctx=(N − accumulated history)).
+- `run_experiment.py`: `--num-ctx-chain` help text updated; banner unchanged (auto-pulls the new default).
+- `README.md`, `EXPERIMENTS_FLOW.md` §5 + summary-meta — documented.
+
+**Compatibility.** Re-baselining concerns from the prior same-day entry already cover this; no additional invalidation. Per-call KV cache for chain steps grows ~33% vs the (intermediate) 12288 baseline; on rtx_pro_6000 the active 5-model pack still fits inside the 80 GB `--mem` and 96 GB VRAM budget, but post-mortem `sacct/MaxRSS` after the first sweep on raised chain ctx.
+
+**Files.** `pddl_eval/runner.py`, `run_experiment.py`, `README.md`, `EXPERIMENTS_FLOW.md`, `development/OPEN_ISSUES.md`, `cluster-experimenting/README.md`, `cluster-experimenting/run_condition_rtx.sbatch`.
+
+---
+
 ## 2026-04-29 — Raise non-solve `num_predict` caps 1024/1536 → 4096; raise single-task `num_ctx`/`num_ctx_thinking` 8192/12288 → 16384 (held equal for tools/no-tools fairness); add `num_ctx_chain=12288` for chains
 
 **Motivation (output caps).** Aggregating `truncated` counts across the cluster-26042026 sweep (`done_reason == "length"` on the last chat turn) showed the per-task output caps were biting hard:

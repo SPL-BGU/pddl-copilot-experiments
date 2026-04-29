@@ -53,11 +53,14 @@
 ### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=16384 (single-task tools
 ### + think=off no-tools cells), num_ctx_thinking=16384 (no-tools+think_on
 ### cells, held equal to num_ctx for tools/no-tools fairness in the "tools
-### save tokens" headline), num_ctx_chain=12288 (chain runs, tools-only per
-### ISS-018) — all set per-request by run_experiment.py. Both single-task
-### ctx values were raised from 8192/12288 to 16384 on 2026-04-29 after
-### qwen3.6:27b / nemotron-3-nano:30b smokes showed think_overflow at
-### 12288 on validate_problem/validate_plan. Do NOT raise NUM_PARALLEL
+### save tokens" headline), num_ctx_chain=16384 (chain runs, tools-only per
+### ISS-018; held equal to num_ctx because chain prompts accumulate history
+### -- the single-task think_overflow envelope tightens at chain step level
+### rather than loosens) — all set per-request by run_experiment.py. The
+### single-task ctx values were raised from 8192/12288 to 16384 on
+### 2026-04-29 after qwen3.6:27b / nemotron-3-nano:30b smokes showed
+### think_overflow at 12288 on validate_problem/validate_plan; chain ctx
+### was raised 12288 → 16384 in the same-day follow-up. Do NOT raise NUM_PARALLEL
 ### without recomputing VRAM — probe 2026-04-23 observed NUM_PARALLEL=8 ×
 ### ctx=40960 allocating 37.8 GB for a 0.6B model (pathological). The
 ### 16384-ctx single-task budget approximately doubles per-call KV vs the
