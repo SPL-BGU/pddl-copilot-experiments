@@ -1,0 +1,4 @@
+(move_down_left agent1)
+(move_down_left agent1)
+(load agent1 tap1)
+(pour agent1 plant1)

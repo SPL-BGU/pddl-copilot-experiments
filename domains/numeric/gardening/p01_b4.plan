@@ -1,0 +1,4 @@
+(move_down_right agent1)
+(move_down agent1)
+(move_down agent1)
+(pour agent1 plant1)
