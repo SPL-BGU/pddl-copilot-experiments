@@ -6,6 +6,22 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 (PR-4 review fixes) — Address PR #25 review
+
+**Motivation.** Three follow-ups from the PR-4 code review, all on the same PR branch (`framework-ext-pr4`) before merge.
+
+- **`pddl_eval/scoring.py::check_success` (solve no-tools).** Distinguished "model emitted clean JSON with empty plan" (now `FR_PLAN_INVALID` — model gave up under a successful format constraint) from "couldn't parse anything from either path" (`FR_FORMAT_PARSE_FAIL`, unchanged). The pre-fix code conflated both into `FR_FORMAT_PARSE_FAIL`, distorting the failure-reason histogram in cells with frequent give-up behaviour.
+- **`pddl_eval/runner.py` (chain-runner no-tools branch).** Threaded `format=TASK_SCHEMAS.get(task)` through the chain runner's `chat_without_tools` call. Today the no-tools chain path is gated upstream by ISS-018, but if it ever returns the JSON-first grader in `check_success` would otherwise silently fall through to free-text fallbacks (or `FR_FORMAT_PARSE_FAIL` on simulate, which has no fallback). Removes the forward-compat hazard.
+- **`pddl_eval/scoring.py::_normalize_trajectory`.** A trajectory entry with a non-dict `state` field (malformed model output that escaped the format constraint) used to fall through to flat-shape lookup, find nothing, and silently canonicalise to an empty state — false-positive equality match against an empty oracle init. Now returns `None` (callers tag as `FR_FORMAT_PARSE_FAIL`).
+
+**Tests.** `tests/test_check_success.py` adds `solve nt json plan empty (PR-4 review fix)` (clean JSON, empty `plan` list → `FR_PLAN_INVALID`). `tests/test_scoring.py::test_normalize_trajectory` adds two non-dict-state cases (string and list). `bash tests/verify.sh` → 329/329 sub-checks pass (was 326 pre-fix, +3 from the new cases).
+
+**Compatibility.** Single-task with-tools rows untouched. No-PDDL-tools rows: the only behaviour change is on inputs that were already failing (mislabelled) — the success rate per cell is unchanged; only the failure-reason bucket on a tiny subset of failures shifts (`FR_FORMAT_PARSE_FAIL` → `FR_PLAN_INVALID`). JSON output schema unchanged.
+
+**Files.** `pddl_eval/scoring.py`, `pddl_eval/runner.py`, `tests/test_check_success.py`, `tests/test_scoring.py`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-04-29 (PR-4) — No-PDDL-tools = `format=<json_schema>`; lift simulate skip; shared trajectory normalizer
 
 **Motivation.** `FRAMEWORK_EXTENSION_PLAN.md` PR-4 — the methodologically-novel piece of the four-PR rollout. Before this change, the `with_tools=False` cell graded plans/verdicts via free-text regex extractors (`extract_plan_lines`, `extract_verdict`) and excluded `simulate` entirely (ISS-002 — its keyword grader was non-discriminative). PR-4 replaces the free-text-only path with Ollama `format=<json_schema>` constraint enforcement, restores `simulate` under the new structured grader, and switches the with-tools `simulate` branch onto the same canonical-form trajectory comparison so both sides share one equality rule.

@@ -720,10 +720,16 @@ async def run_chain_experiment(
                         temperature=temperature,
                     )
                 else:
+                    # PR-4: thread the per-task format schema through here
+                    # too so that if no-tools chains ever come back (today
+                    # gated upstream by ISS-018), `check_success`'s
+                    # JSON-first grader doesn't silently fall to the
+                    # free-text path / FR_FORMAT_PARSE_FAIL on simulate.
                     resp_text, step_done_reason, _tokens, _thinking = await chat_without_tools(
                         client, model, messages,
                         num_predict=np_for_task, num_ctx=effective_num_ctx, think=think,
                         temperature=temperature,
+                        format=TASK_SCHEMAS.get(task),
                     )
                     tc = []
                 _sel, step_ok, step_fr = await check_success(

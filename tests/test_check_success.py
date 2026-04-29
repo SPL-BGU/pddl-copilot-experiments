@@ -117,6 +117,16 @@ async def test_solve(r: TestResults):
                    gt, mcp_ok, dom, prob, False,
                    (None, False, rx.FR_PLAN_INVALID))
 
+    # no-tools, structured JSON with empty plan — the JSON parsed cleanly
+    # so this is the model giving up under a successful format constraint,
+    # not a parse failure. Tagged FR_PLAN_INVALID so the failure-reason
+    # histogram doesn't conflate "model gave up" with "couldn't parse"
+    # (post-review fix on PR-4).
+    empty_json = json.dumps({"plan": []})
+    await run_case("solve nt json plan empty (PR-4 review fix)", r, "solve", empty_json, [],
+                   gt, mcp_ok, dom, prob, False,
+                   (None, False, rx.FR_PLAN_INVALID))
+
     # no-tools, MCP transport fails (B3) — this will fail until B3 fix lands.
     # Under current code: returns (None, False, FR_PLAN_INVALID) because
     # _validate_model_plan swallows exception to False.

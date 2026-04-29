@@ -174,6 +174,13 @@ def _normalize_trajectory(traj) -> list[dict] | None:
     for entry in traj:
         if not isinstance(entry, dict):
             return None
+        # If a `state` key is present, it MUST be a dict (model schema is
+        # `state: StateSnapshot`). A non-dict `state` is malformed model
+        # output that the format constraint failed to reject — refuse to
+        # silently canonicalise it to an empty state, which would be a
+        # false-positive equality match against an empty oracle init.
+        if "state" in entry and not isinstance(entry["state"], dict):
+            return None
         nested = entry.get("state")
         if isinstance(nested, dict):
             booleans = nested.get("boolean")
@@ -383,7 +390,12 @@ async def check_success(
         if verdict is None:
             return None, False, FR_TOOL_ERROR
         if not plan_lines:
-            return None, False, FR_FORMAT_PARSE_FAIL
+            # Distinguish "couldn't extract anything" (parse failure on
+            # both JSON and free-text paths) from "model emitted clean
+            # JSON with an empty plan" (model gave up under a successful
+            # format constraint). The latter is a genuine plan invalidity
+            # signal, not a parse failure.
+            return None, False, FR_PLAN_INVALID if parsed is not None else FR_FORMAT_PARSE_FAIL
         return None, False, FR_PLAN_INVALID
 
     if task in ("validate_domain", "validate_problem", "validate_plan"):

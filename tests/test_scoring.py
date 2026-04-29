@@ -447,6 +447,19 @@ def test_normalize_trajectory(r: TestResults):
     ]
     r.check("boolean mismatch detected", f(diff_boolean) != oracle_canon)
 
+    # Malformed model output: `state` present but non-dict. Must return
+    # None instead of silently canonicalising to an empty state — the
+    # latter would false-positive against an empty oracle init (post-
+    # review fix on PR-4).
+    bad_state_str = [
+        {"step": 0, "action": None, "state": "oops"},
+    ]
+    r.check_eq("non-dict state returns None", f(bad_state_str), None)
+    bad_state_list = [
+        {"step": 0, "action": None, "state": ["clear(a)"]},
+    ]
+    r.check_eq("list state returns None", f(bad_state_list), None)
+
 
 def main():
     r = TestResults("test_scoring")
