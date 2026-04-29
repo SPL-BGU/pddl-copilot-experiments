@@ -65,18 +65,30 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # the old caps -- thinking-mode reasoning + tool-call XML emissions were
 # being cut mid-stream, biasing accuracy and producing the bulk of
 # `ollama_parse_error` records (Hermes/harmony XML parser fails on
-# truncated <function><parameter> tags). 4096 fits comfortably inside
-# DEFAULT_NUM_CTX (16384 post-2026-04-29 fairness bump) with single-task
-# PDDL prompts (~0.5-1.5K tokens), leaving ~10K of think+output headroom
-# for thinking models. Chain runs use DEFAULT_NUM_CTX_CHAIN below.
+# truncated <function><parameter> tags).
+#
+# Non-solve caps further raised 4096 -> 6144 on 2026-04-29 (same-day follow-
+# up) after the post-bump nemotron-3-nano:30b smoke (job 17266087) still
+# emitted 4 residual XML truncations on validate_problem/validate_plan in
+# think=off+tools cells (b1/b2/b4 negative-fixture variants + n01). All four
+# clipped within ~50-200 tokens of the 4096 boundary while emitting the full
+# PDDL parameter inside the Hermes <function><parameter> envelope. 6144
+# buys ~50% more emission headroom for the verbose XML envelope without
+# doubling worst-case wall-clock the way 8192 would; held uniform across
+# the validate_*/simulate family to preserve task-level symmetry and apply
+# uniformly across all roster models (the bump must not be model-specific
+# -- otherwise the headline tools-vs-no-tools comparison gains a confound).
+# 6144 still fits inside DEFAULT_NUM_CTX (16384) with single-task PDDL
+# prompts (~0.5-1.5K tokens), leaving ~8K of think+output headroom for
+# thinking models. Chain runs use DEFAULT_NUM_CTX_CHAIN below.
 # `solve` stays at 8192 (paper-default; raise alongside num_ctx if a
 # future model lineup hits the cap).
 DEFAULT_NUM_PREDICT: dict[str, int] = {
     "solve":            8192,
-    "validate_domain":  4096,
-    "validate_problem": 4096,
-    "validate_plan":    4096,
-    "simulate":         4096,
+    "validate_domain":  6144,
+    "validate_problem": 6144,
+    "validate_plan":    6144,
+    "simulate":         6144,
 }
 DEFAULT_NUM_CTX = 16384
 # Held equal to DEFAULT_NUM_CTX on 2026-04-29: the "tools save tokens"
