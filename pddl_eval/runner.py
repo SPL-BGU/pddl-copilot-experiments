@@ -90,11 +90,18 @@ RESPONSE_SNAPSHOT_LEN = 500
 # record JSON. Full content is reproducible by re-running the prompt.
 THINKING_SNAPSHOT_LEN = 4096
 
-# Substring signature of Ollama's server-side tool-call JSON parser failure
-# (emitted by ollama/server/routes.go when it can't parse tool-call arguments,
-# e.g. multi-line PDDL strings with gpt-oss). Matched against the exception
-# text to route these into FR_OLLAMA_PARSE_ERROR instead of generic FR_EXCEPTION.
-OLLAMA_TOOL_PARSE_SIGNATURE = "error parsing tool call"
+# Substring signatures of Ollama's server-side tool-call parser failures.
+# Matched against the exception text to route these into FR_OLLAMA_PARSE_ERROR
+# instead of generic FR_EXCEPTION. Two parser families produce the bucket:
+#   "error parsing tool call" — JSON tool-arg parser, emitted by
+#       ollama/server/routes.go on multi-line PDDL strings (gpt-oss, 2026-04-21).
+#   "XML syntax error"        — Hermes/harmony chat-template XML parser, emitted
+#       on malformed/truncated <function><parameter>... tool-call emissions
+#       (nemotron-3-nano:30b on validate_problem/validate_plan, 2026-04-29).
+OLLAMA_TOOL_PARSE_SIGNATURES: tuple[str, ...] = (
+    "error parsing tool call",
+    "XML syntax error",
+)
 
 # Per-task tool allowlists. When --tool-filter=per-task, only these tool names
 # are exposed to the model for the given task, controlling for tool-selection
@@ -257,7 +264,7 @@ async def evaluate_one(
         # strings in tool arguments (observed heavily with gpt-oss on PDDL
         # domains). Classify separately so analysis can quantify the upstream
         # parser-bug rate instead of lumping it into generic exceptions.
-        if OLLAMA_TOOL_PARSE_SIGNATURE in error:
+        if any(sig in error for sig in OLLAMA_TOOL_PARSE_SIGNATURES):
             failure_reason = FR_OLLAMA_PARSE_ERROR
         else:
             failure_reason = FR_EXCEPTION
@@ -725,7 +732,9 @@ async def run_chain_experiment(
                     # failures so chain analysis can separate them
                     # from other exception types (matches
                     # FR_OLLAMA_PARSE_ERROR in evaluate_one).
-                    "is_ollama_parse_error": OLLAMA_TOOL_PARSE_SIGNATURE in exc_text,
+                    "is_ollama_parse_error": any(
+                        sig in exc_text for sig in OLLAMA_TOOL_PARSE_SIGNATURES
+                    ),
                 }
                 print(
                     f"[chain exception] {type(exc).__name__}: {exc_text}",
