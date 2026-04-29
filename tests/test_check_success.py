@@ -94,8 +94,26 @@ async def test_solve(r: TestResults):
                    gt, mcp_ok, dom, prob, False,
                    (None, True, rx.FR_OK))
 
-    # no-tools, response has no plan
+    # no-tools, response has no plan and no JSON → both paths produce
+    # zero plan lines → FR_FORMAT_PARSE_FAIL (PR-4: distinguishes "the
+    # model didn't emit any structured/extractable plan" from "had a plan
+    # but it didn't pass pyvalidator", which keeps FR_PLAN_INVALID).
     await run_case("solve nt no plan", r, "solve", "I don't know how to solve this.", [],
+                   gt, mcp_ok, dom, prob, False,
+                   (None, False, rx.FR_FORMAT_PARSE_FAIL))
+
+    # no-tools, structured SolveResponse JSON → grades via Pydantic path
+    # (PR-4). Oracle plan returned in JSON wrapper → FR_OK.
+    plan_json = json.dumps({"plan": oracle})
+    await run_case("solve nt json plan oracle (PR-4)", r, "solve", plan_json, [],
+                   gt, mcp_ok, dom, prob, False,
+                   (None, True, rx.FR_OK))
+
+    # no-tools, structured JSON with bad plan → extracts plan, validator
+    # rejects it → FR_PLAN_INVALID (not FR_FORMAT_PARSE_FAIL because the
+    # plan WAS extracted; only validation failed).
+    bad_json = json.dumps({"plan": bad})
+    await run_case("solve nt json plan bad (PR-4)", r, "solve", bad_json, [],
                    gt, mcp_ok, dom, prob, False,
                    (None, False, rx.FR_PLAN_INVALID))
 
@@ -171,11 +189,21 @@ async def test_validate_plan(r: TestResults):
                    gt, mcp, dom, prob, False,
                    (None, False, rx.FR_VERDICT_MISMATCH))
 
-    # no-tools, no VERDICT: line
+    # no-tools, no VERDICT: line and no JSON → both paths fail
+    # → FR_FORMAT_PARSE_FAIL (PR-4: replaces FR_NO_VERDICT_PARSED for
+    # the JSON-first path; the latter is unreachable from check_success
+    # but stays as a constant for the truncation-override test).
     await run_case("vp nt no verdict", r, "validate_plan",
                    "I'm not sure if the plan is correct.", [],
                    gt, mcp, dom, prob, False,
-                   (None, False, rx.FR_NO_VERDICT_PARSED))
+                   (None, False, rx.FR_FORMAT_PARSE_FAIL))
+
+    # no-tools, structured ValidateResponse JSON → grades via Pydantic
+    # path (PR-4). VALID matches truth=True → FR_OK.
+    await run_case("vp nt json verdict valid (PR-4)", r, "validate_plan",
+                   '{"verdict": "VALID", "reason": "all preconds met"}', [],
+                   gt, mcp, dom, prob, False,
+                   (None, True, rx.FR_OK))
 
 
 # ---------------------------------------------------------------------------
@@ -238,11 +266,19 @@ async def test_validate_negatives_no_tools(r: TestResults):
                    gt_neg_prob, mcp, dom, prob, False,
                    (None, False, rx.FR_VERDICT_MISMATCH))
 
-    # validate_plan — no VERDICT line at all
+    # validate_plan — no VERDICT line at all and no JSON → both paths
+    # fail → FR_FORMAT_PARSE_FAIL (PR-4).
     await run_case("vp nt no verdict (gt=False)", r, "validate_plan",
                    "I'm undecided about this plan.", [],
                    gt_neg_plan, mcp, dom, prob, False,
-                   (None, False, rx.FR_NO_VERDICT_PARSED))
+                   (None, False, rx.FR_FORMAT_PARSE_FAIL))
+
+    # validate_plan — structured ValidateResponse JSON, INVALID matches
+    # truth=False → success (PR-4 JSON-first path).
+    await run_case("vp nt json verdict invalid match (PR-4, gt=False)", r, "validate_plan",
+                   '{"verdict": "INVALID", "reason": "step 2 broken"}', [],
+                   gt_neg_plan, mcp, dom, prob, False,
+                   (None, True, rx.FR_OK))
 
     # validate_plan — INVALID matches truth=False → success (the bread-and-butter
     # case: model correctly identifies a broken plan).
@@ -304,10 +340,44 @@ async def test_simulate(r: TestResults):
                    gt, mcp, dom, prob, True,
                    (True, False, rx.FR_TOOL_ERROR))
 
-    # No-tools simulate tests removed: the production matrix no longer
-    # produces (no-tools, simulate) jobs (run_single_task_experiment filter,
-    # CHANGELOG 2026-04-25), so the keyword-check scorer is unreachable
-    # except as defensive code.
+    # PR-4: no-PDDL-tools simulate restored. Grader is JSON-trajectory
+    # deep-equality against the oracle (same _normalize_trajectory both
+    # sides). Build a model-shaped SimulateResponse from the oracle
+    # trajectory so we exercise the round-trip cleanly.
+    oracle_traj_obj = bw["gt"]["trace_obj"]["trajectory"]
+
+    def _model_step(entry):
+        # Convert oracle step (boolean_fluents = dict[str, bool]) to
+        # the model schema (state.boolean = list of TRUE predicates).
+        boolean_true = [k for k, v in entry["boolean_fluents"].items() if v]
+        return {
+            "step": entry["step"],
+            "action": entry["action"] or "",
+            "state": {
+                "boolean": boolean_true,
+                "numeric": entry.get("numeric_fluents") or {},
+            },
+        }
+
+    model_traj_match = json.dumps({"trajectory": [_model_step(e) for e in oracle_traj_obj]})
+    await run_case("sim nt json trajectory matches oracle (PR-4)", r, "simulate",
+                   model_traj_match, [],
+                   gt, mcp, dom, prob, False,
+                   (None, True, rx.FR_OK))
+
+    # Mismatch: drop the last step.
+    model_traj_short = json.dumps({"trajectory": [_model_step(e) for e in oracle_traj_obj[:-1]]})
+    await run_case("sim nt json trajectory mismatch (PR-4)", r, "simulate",
+                   model_traj_short, [],
+                   gt, mcp, dom, prob, False,
+                   (None, False, rx.FR_RESULT_MISMATCH))
+
+    # Malformed JSON → FR_FORMAT_PARSE_FAIL (no free-text fallback for
+    # simulate; the keyword grader was the original ISS-002 problem).
+    await run_case("sim nt malformed json (PR-4)", r, "simulate",
+                   "Here is the state transition trace... step 0 ...", [],
+                   gt, mcp, dom, prob, False,
+                   (None, False, rx.FR_FORMAT_PARSE_FAIL))
 
 
 # ---------------------------------------------------------------------------

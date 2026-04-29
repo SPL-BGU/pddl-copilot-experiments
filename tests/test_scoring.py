@@ -369,6 +369,85 @@ def test_shard_filter(r: TestResults):
     r.check(f"rough balance counts={counts}", all(c >= len(keys) * 0.12 for c in counts))
 
 
+def test_normalize_trajectory(r: TestResults):
+    """PR-4: oracle (boolean_fluents dict) and model (state.boolean list)
+    shapes must collapse to the same canonical form, so the with-tools
+    and no-PDDL-tools simulate branches share one equality rule.
+    """
+    f = rx._normalize_trajectory
+
+    # Non-list input → None (tagged as parse-fail by callers).
+    r.check_eq("traj None", f(None), None)
+    r.check_eq("traj str", f("not a list"), None)
+
+    # Oracle shape: dict[predicate, bool], with action=None on step 0.
+    oracle = [
+        {
+            "step": 0,
+            "action": None,
+            "boolean_fluents": {"clear(a)": True, "on(a, b)": False, "handempty": True},
+            "numeric_fluents": {},
+        },
+        {
+            "step": 1,
+            "action": "(pick-up a)",
+            "boolean_fluents": {"clear(a)": False, "holding(a)": True},
+            "numeric_fluents": {"cost": 1.0},
+        },
+    ]
+    # Model shape: equivalent {true predicates as list} per step.
+    model = [
+        {
+            "step": 0,
+            "action": "",  # initial state
+            "state": {"boolean": ["handempty", "clear(a)"], "numeric": {}},
+        },
+        {
+            "step": 1,
+            "action": "(pick-up a)",
+            "state": {"boolean": ["holding(a)"], "numeric": {"cost": 1.0}},
+        },
+    ]
+    oracle_canon = f(oracle)
+    model_canon = f(model)
+    r.check_eq("oracle and model canonicalise to same shape",
+               oracle_canon, model_canon)
+
+    # Boolean ordering does not matter (sorted internally).
+    model_unsorted = [
+        {
+            "step": 0,
+            "action": None,
+            "state": {"boolean": ["clear(a)", "handempty"], "numeric": {}},
+        },
+        {
+            "step": 1,
+            "action": "(pick-up a)",
+            "state": {"boolean": ["holding(a)"], "numeric": {"cost": 1.0}},
+        },
+    ]
+    r.check_eq("boolean order independent",
+               f(model_unsorted), oracle_canon)
+
+    # Whitespace + case normalisation on action names.
+    spaced = [
+        {"step": 0, "action": None, "state": {"boolean": [], "numeric": {}}},
+        {"step": 1, "action": "  (PICK-UP   a)  ", "state": {"boolean": [], "numeric": {}}},
+    ]
+    canon_spaced = f(spaced)
+    r.check_eq("action whitespace + case canonical",
+               canon_spaced[1]["action"], "(pick-up a)")
+
+    # Mismatch: boolean differs → not equal.
+    diff_boolean = [
+        {"step": 0, "action": None,
+         "state": {"boolean": ["handempty"], "numeric": {}}},
+        {"step": 1, "action": "(pick-up a)",
+         "state": {"boolean": ["holding(b)"], "numeric": {"cost": 1.0}}},
+    ]
+    r.check("boolean mismatch detected", f(diff_boolean) != oracle_canon)
+
+
 def main():
     r = TestResults("test_scoring")
     test_wilson_ci(r)
@@ -383,6 +462,7 @@ def main():
     test_classify_step_failure_think_overflow(r)
     test_expand_conditions(r)
     test_shard_filter(r)
+    test_normalize_trajectory(r)
     r.report_and_exit()
 
 

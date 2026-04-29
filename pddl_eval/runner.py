@@ -34,6 +34,7 @@ from .prompts import (
     WITH_TOOLS_SYSTEM,
     WITHOUT_TOOLS_SYSTEM,
 )
+from .schemas import TASK_SCHEMAS
 from .scoring import (
     FR_EXCEPTION,
     FR_OK,
@@ -279,10 +280,15 @@ async def evaluate_one(
                 temperature=temperature,
             )
         else:
+            # PR-4: no-PDDL-tools = format-constrained sampling. Per-task
+            # JSON schema enforced via Ollama format=. Free-text fallback
+            # in scoring.check_success keeps tiny models scoring above
+            # zero when sampling degenerates under the constraint.
             response_text, done_reason, tokens, thinking_text = await chat_without_tools(
                 client, model, messages,
                 num_predict=num_predict, num_ctx=effective_num_ctx, think=think,
                 temperature=temperature,
+                format=TASK_SCHEMAS.get(task),
             )
     except Exception as exc:
         error = str(exc)
@@ -438,14 +444,11 @@ async def run_single_task_experiment(
     for model in models:
         for with_tools in with_tools_values:
             for task in tasks:
-                # No-tools is graded for `solve` and `validate_*` (the
-                # latter became discriminative once balanced negative
-                # fixtures landed; see ISS-001). `simulate` no-tools
-                # stays excluded — its grader (a literal keyword check
-                # at `check_success` in this file) is non-discriminative
-                # regardless of negatives.
-                if not with_tools and task == "simulate":
-                    continue
+                # PR-4: no-PDDL-tools simulate re-enabled. Grading is now
+                # JSON-trajectory deep-equality against the oracle (same
+                # canonical form as the with-tools branch via
+                # _normalize_trajectory), replacing the keyword-check
+                # grader that ISS-002 originally dropped.
                 np_for_task = _resolve_num_predict(num_predict_override, task)
                 # `--smoke-shuffle` constrains each (model, task) cell to a
                 # single random (domain, problem) pick; iterate only that

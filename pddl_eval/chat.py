@@ -328,6 +328,7 @@ async def chat_without_tools(
     num_ctx: int,
     temperature: float = TEMPERATURE,
     think: bool | None = None,
+    format: dict | str | None = None,
 ) -> tuple[str, str, dict, str]:
     """Single-turn chat without tools.
 
@@ -335,12 +336,21 @@ async def chat_without_tools(
     shape returned by `chat_with_tools` (turns is always 1 here). `thinking`
     is the structured `message.thinking` content; "" when absent.
 
+    `format` (PR-4) is forwarded to the Ollama `format=` kwarg. A dict is
+    treated as a JSON schema (sampler constrained to matching JSON);
+    "json" is the legacy free-form-JSON shape; None is the unconstrained
+    paper-default. Used by the no-PDDL-tools branch to enforce per-task
+    response shape so `check_success` can grade structurally instead of
+    via free-text regex.
+
     Appends the assistant turn to *messages* so the post-call shape matches
     `chat_with_tools` (which appends internally). Lets multi-step callers
     like the chain runner reuse the same `messages` list without manually
     bookkeeping the assistant turn.
     """
     options, extra = _build_chat_kwargs(num_predict, num_ctx, temperature, think)
+    if format is not None:
+        extra["format"] = format
     resp = await client.chat(
         model=model,
         messages=messages,

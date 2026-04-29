@@ -70,6 +70,7 @@ from pddl_eval.runner import (
 )
 from pddl_eval.scoring import (
     FR_EXCEPTION,
+    FR_FORMAT_PARSE_FAIL,
     FR_LOOP_EXHAUSTED,
     FR_NO_VERDICT_PARSED,
     FR_OK,
@@ -87,6 +88,7 @@ from pddl_eval.scoring import (
     _classify_step_failure,
     _extract_plan_from_tool_result,
     _get_tool_results,
+    _normalize_trajectory,
     _tool_error_seen,
     _used_tool,
     _validate_model_plan,
@@ -230,9 +232,14 @@ async def async_main(args):
     print(f"  Variants:   {active_variants} (selected from {list(ACTIVE_PROMPT_VARIANTS)})")
     print(f"  Temperature:{args.temperature}")
     if smoke_mode:
-        print(f"  Conditions: smoke (think=on→both [tools {args.num_ctx} / no-tools {args.num_ctx_thinking}, sub-pass split], think=off→both [{args.num_ctx} throughout])")
+        print(f"  Conditions: smoke (think=on→both [tools {args.num_ctx} / no-pddl-tools {args.num_ctx_thinking}, sub-pass split], think=off→both [{args.num_ctx} throughout])")
     else:
-        print(f"  Conditions: {args.conditions}")
+        # CLI flag value stays "no-tools" for back-compat; banner uses
+        # the user-facing "no-pddl-tools" label introduced in PR-4.
+        cond_display = (
+            "no-pddl-tools" if args.conditions == "no-tools" else args.conditions
+        )
+        print(f"  Conditions: {cond_display}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
     if args.num_predict is not None:
@@ -242,10 +249,10 @@ async def async_main(args):
                   f"validate_*={DEFAULT_NUM_PREDICT['validate_plan']}, "
                   f"simulate={DEFAULT_NUM_PREDICT['simulate']})")
     print(f"  num_predict:{np_str}")
-    print(f"  num_ctx:    {args.num_ctx} (single-task; tools cells + think=off no-tools)")
-    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (single-task no-tools when think!=off; sub-pass split)")
+    print(f"  num_ctx:    {args.num_ctx} (single-task; tools cells + think=off no-pddl-tools)")
+    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (single-task no-pddl-tools when think!=off; sub-pass split)")
     if args.num_ctx == args.num_ctx_thinking:
-        print(f"              ^ equal to num_ctx for tools/no-tools fairness in 'tools save tokens' headline")
+        print(f"              ^ equal to num_ctx for tools/no-pddl-tools fairness in 'tools save tokens' headline")
     print(f"  num_ctx_chain:{args.num_ctx_chain} (chain steps; tools-only per ISS-018)")
     print(f"  think:      {args.think}")
     print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")

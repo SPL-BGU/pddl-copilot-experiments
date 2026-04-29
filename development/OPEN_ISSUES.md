@@ -12,7 +12,7 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Closed 2026-04-26** by the task-targeted negative fixtures pass. Each domain now ships three negatives — `domain_0.pddl` / `p01_0.pddl` / `p01_0.plan` — joining exactly its target task, giving 1:1 balanced ground truth (10 positive + 10 negative per `validate_*` task). With-tools `validate_*` now exercises true validation capability (the trivial verdict-match shortcut is gone). No-tools `validate_*` was simultaneously re-enabled (`run_experiment.py:1147` flipped from `task != "solve"` to `task == "simulate"`), so the production matrix again grades it. `generate_ground_truth` aborts startup with `SystemExit` if any negative validates True. See CHANGELOG 2026-04-26.
 
 ### ~~ISS-002~~ · `simulate` no-tools scorer is non-discriminative
-**Closed 2026-04-25** (path b — drop simulate from no-tools headline). The `run_single_task_experiment` job builder no longer emits `(no-tools, simulate)` jobs; `check_success`'s simulate no-tools branch remains as defensive code but is unreachable from the production matrix. See CHANGELOG 2026-04-25 (no-tools sweep entry).
+**Closed 2026-04-29 (PR-4)** (path a — structured-trace grader). PR-4 introduces format-constrained sampling (`format=SimulateResponse`) on the no-PDDL-tools branch and grades by canonical-form trajectory deep-equality against the oracle via `_normalize_trajectory` (shared with the with-tools branch). The job-builder skip is removed; `check_success`'s simulate no-tools branch is now the production grader. The pre-2026-04-25 path-b resolution (drop from headline) is superseded. See CHANGELOG 2026-04-29 (PR-4).
 
 ### ISS-003 · Guided prompt is ineffective at 0.6b
 **Source.** Results review, issue 2.
@@ -142,12 +142,14 @@ Deferred (P3, mostly analysis work): **ISS-003, ISS-008, ISS-009, ISS-010, ISS-0
 
 ## Pending decisions
 
-### ISS-002 — simulate no-tools grader design
-**Status (2026-04-26).** Batch 3 (ISS-001 invalid fixtures) landed but explicitly kept `simulate` no-tools excluded from the matrix — the keyword-check grader at `run_experiment.py:910-912` is non-discriminative regardless of fixture polarity (a model that says *"Here is the state transition trace…"* always passes). Path (b) (drop simulate from no-tools headline) was already closed on 2026-04-25 and remains the de-facto resolution. Path (a) (structured-trace grader) is dormant: only worth building if a future analysis specifically wants no-tools simulate as a research artifact. No action required for the next sweep.
-
-Original options:
-- **(a)** Structured-trace grader: parse a state sequence from the model response and diff against `gt["state_trajectory"]`. ~60 LOC in `check_success` simulate branch + extend ground-truth emission to carry a canonical trajectory.
-- **(b)** Drop simulate from the no-tools headline numbers; document as a known limitation in `EXPERIMENTS_FLOW.md`. **Done 2026-04-25.**
+### ~~ISS-002~~ — simulate no-tools grader design
+**Closed 2026-04-29 (PR-4)** by path (a). Format-constrained sampling
+(`format=SimulateResponse`) on the no-PDDL-tools branch produces a
+structured trajectory that `_normalize_trajectory` canonicalises against
+the oracle's `gt["trace"].trajectory`. The same normalizer now grades
+both with-tools and no-PDDL-tools simulate, so the success criterion is
+shape-uniform across conditions. See CHANGELOG 2026-04-29 (PR-4) and
+the closed ISS-002 entry above.
 
 ---
 

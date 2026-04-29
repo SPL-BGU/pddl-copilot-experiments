@@ -110,7 +110,7 @@ Five tasks, each testing a different stage of the PDDL planning pipeline:
 | **validate_domain** | Judge whether a domain has valid PDDL syntax | `validate_pddl_syntax` oracle |
 | **validate_problem** | Judge whether a problem has valid syntax given its domain | `validate_pddl_syntax` oracle |
 | **validate_plan** | Verify a given plan is correct | `validate_pddl_syntax` oracle |
-| **simulate** | Produce a state-transition trace for a plan | `get_state_transition` oracle |
+| **simulate** | Produce a state-transition trajectory for a plan | `get_state_transition` oracle. With-tools and no-PDDL-tools both grade by canonical-form deep-equality of the produced trajectory against the oracle's (PR-4, 2026-04-29). |
 
 Each task uses 5 prompt template variants (different phrasings of the same request) for robustness.
 
@@ -134,23 +134,61 @@ The with-tools condition reports two separate metrics:
 
 A model can have high tool_selected but low success (knows *what* to call but can't construct valid arguments). This gap quantifies "tool-use competence" vs "tool awareness."
 
-### 4.2 Without-Tools
+### 4.2 No-PDDL-Tools (formerly "without-tools")
 
-The without-tools sweep covers `solve` plus the three `validate_*` tasks
-(re-enabled 2026-04-26 once balanced negative fixtures landed; ISS-001).
-`simulate` remains excluded.
+PR-4 (2026-04-29) reframes this condition. The model still has Ollama
+`format=<json_schema>` constraint enforcement available; what's removed
+is the PDDL-specific MCP tooling (planning, validation, simulation).
+The user-facing label is **no-PDDL-tools**. The internal field name
+(`with_tools: bool`) and JSON `condition: "no-tools"` value are unchanged
+for back-compat with the 2026-04 result corpus and downstream notebooks.
 
-- `solve`: Extract plan lines from response, validate via pyvalidator (`valid == true`)
-- `validate_*`: Extract `VERDICT: VALID|INVALID` and compare against ground truth.
-  With 1:1 balanced positives + negatives (`§6 Domains`), a constant-VALID prior
-  scores ~50% (not 100%), so the grader is now discriminative.
-- `simulate`: **Still dropped from no-tools.** Its grader is a literal keyword
-  check (`run_experiment.py:910-912`); a structured-trajectory free-text grader
-  would itself be a research artifact and a new source of bias (ISS-002 path b).
-  With-tools `simulate` is unaffected.
+The sweep covers all 5 tasks (`simulate` re-enabled in PR-4 alongside
+the format-constrained grader). Per-task grading:
 
-`run_single_task_experiment` enforces the filter: jobs with `with_tools=False`
-are emitted for every task **except** `simulate`.
+- `solve` — Sampler constrained to `SolveResponse = {plan: list[str]}`.
+  Extracted plan goes through pyvalidator; `valid == true` → success.
+  Free-text plan extractor (`extract_plan_lines`) remains as a fallback
+  if JSON parse fails.
+- `validate_*` — Sampler constrained to
+  `ValidateResponse = {verdict: Literal["VALID", "INVALID"], reason: str}`.
+  `verdict` is compared to ground truth; `reason` is recorded but
+  ungraded. Free-text `VERDICT: VALID|INVALID` extractor falls back when
+  JSON parse fails. With 1:1 balanced positives + negatives (`§6
+  Domains`), a constant-VALID prior scores ~50%, so the grader is
+  discriminative on both paths.
+- `simulate` — Sampler constrained to
+  `SimulateResponse = {trajectory: list[StateStep]}` where each step
+  carries `{step: int, action: str, state: {boolean: list[str], numeric:
+  dict[str, float]}}`. The model's trajectory and the oracle's
+  `gt["trace"].trajectory` are both passed through
+  `_normalize_trajectory` (see `pddl_eval/scoring.py`) which collapses
+  the oracle's `boolean_fluents: dict[str, bool]` shape and the model's
+  `state.boolean: list[str]` shape to the same canonical
+  `{step, action, boolean, numeric}` form (sorted, lower-cased,
+  whitespace-normalised). Equality of the two canonical lists →
+  `FR_OK`; non-parseable JSON → `FR_FORMAT_PARSE_FAIL`; parses but
+  trajectory differs → `FR_RESULT_MISMATCH`. No free-text fallback for
+  simulate — the pre-PR-4 keyword grader was non-discriminative
+  (ISS-002).
+
+`FR_FORMAT_PARSE_FAIL` (new PR-4 failure tag) fires only when both the
+JSON path and the free-text fallback (where applicable) fail to produce
+a usable artefact. It is included in `_TRUNCATION_OVERRIDE_REASONS`, so
+a cap-cut mid-JSON is re-tagged as `FR_TRUNCATED_NO_ANSWER` rather than
+masquerading as a sampling-degeneracy failure.
+
+**Re-baselining note.** Pre-PR-4 no-tools `validate_*` and `solve`
+results were graded via free-text-only paths and are not directly
+comparable to post-PR-4 no-PDDL-tools results: the format constraint
+both narrows the response space (potentially raising accuracy on
+structurally-honest models) and may degrade tiny-model output if the
+constraint conflicts with the model's natural shape. Flag any plot that
+mixes pre- and post-PR-4 no-tools rows. The with-tools branch is
+unchanged structurally; with-tools `simulate` switched to the shared
+`_normalize_trajectory` in PR-4 but the equality semantics are
+identical (both sides round-trip through the same plugin and produce
+byte-equal trajectory dicts on identical inputs).
 
 ### 4.3 Chains
 
@@ -359,7 +397,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | ci_lo, ci_hi | 95% Wilson score CI |
 | tool_selected, tool_selected_rate, tool_selected_ci_lo, tool_selected_ci_hi | Tool selection (with-tools only) |
 | truncated | Count of evaluations where `done_reason == "length"` (token-cap hit) |
-| failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive). Notable: `FR_THINK_OVERFLOW` (PR-2, 2026-04-28) — thinking spiral consumed the completion budget leaving empty `content`; more specific than `FR_TRUNCATED_NO_ANSWER`. |
+| failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive). Notable: `FR_THINK_OVERFLOW` (PR-2, 2026-04-28) — thinking spiral consumed the completion budget leaving empty `content`; more specific than `FR_TRUNCATED_NO_ANSWER`. `FR_FORMAT_PARSE_FAIL` (PR-4, 2026-04-29) — no-PDDL-tools branch: both the `format=<json_schema>` parse and the free-text fallback (where applicable) failed to produce a usable artefact. Treated as a truncation-eligible failure (re-tagged to `FR_TRUNCATED_NO_ANSWER` when `done_reason == "length"`), so a cap-cut mid-JSON does not inflate the parse-fail rate. |
 
 `chains` entries: model, with_tools, chain_length, samples, successes, success_rate, tool_filter, prompt_style, ci_lo, ci_hi, plus `samples_detail` — a per-sample list of `{idx, domain, problem, chain_tasks, step_records, final_success, exception}` (each `step_records[*]` carries `step_index, task, success, failure_reason, tool_calls_count, truncated, loop_exhausted`). Effective chain length per sample = `len(step_records)` (skipped no-plan steps are absent).
 
@@ -472,8 +510,9 @@ squeue --me                 # All my running/pending jobs
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
-| Simulate success criterion | Non-error tool result | Trajectory deep-equality against oracle `gt["trace"]`. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
-| No-tools task set | All 5 tasks scored | `solve` + three `validate_*` (the latter restored 2026-04-26 alongside balanced 1:1 ground truth; ISS-001 closed). `simulate` remains excluded — its keyword-check grader is non-discriminative regardless of negatives, and a structured-trajectory free-text grader would itself be a research artifact (ISS-002 path b). With-tools task set unchanged. |
+| Simulate success criterion | Non-error tool result | Canonical-form trajectory deep-equality against oracle `gt["trace"]` on both with-tools and no-PDDL-tools paths via `_normalize_trajectory` (PR-4, 2026-04-29) — bridges oracle (`boolean_fluents: dict[str, bool]`) and model (`state.boolean: list[str]`) shapes to a sorted/lower-cased canonical form. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
+| No-tools task set | All 5 tasks scored | All 5 tasks scored under PR-4 (2026-04-29) with format-constrained sampling — `simulate` re-enabled alongside the shared `_normalize_trajectory` grader, replacing the keyword-check that ISS-002 originally dropped. The user-facing label changed to **no-PDDL-tools** to reflect that format constraint is still available; only PDDL-specific MCP tools (planner/validator/simulator) are removed. Internal `with_tools: bool` and JSON `condition: "no-tools"` field unchanged for back-compat. |
+| No-tools grader | Free-text regex extractors (`extract_plan_lines`, `extract_verdict`, simulate keyword check) | Per-task Pydantic schema (`pddl_eval/schemas.py`) enforced via Ollama `format=<json_schema>` (PR-4, 2026-04-29). Free-text extractors retained as fallback for `solve` / `validate_*` when JSON parse fails; `simulate` has no fallback (parse failure → `FR_FORMAT_PARSE_FAIL`). Pre-PR-4 no-tools rows are NOT directly comparable to post-PR-4 no-PDDL-tools rows — the constraint narrows the response space and may regress tiny models that conflict with the schema; the new `FR_FORMAT_PARSE_FAIL` tag quantifies that rate per cell. |
 | No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. See §5. |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.
