@@ -203,14 +203,9 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 .get("valid", [])
             )
             for i, plan_text in enumerate(committed_valid_plans):
-                try:
-                    raw = await mcp.call_tool(
-                        "validate_pddl_syntax",
-                        {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_text},
-                    )
-                    plan_valid = _parse_validation_verdict(raw)
-                except Exception:
-                    plan_valid = None
+                _, plan_valid = await _validate_capture(
+                    mcp, {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_text}
+                )
                 if plan_valid is False:
                     raise SystemExit(
                         f"Valid-plan fixture {dname}/{pname}_v{i+1}.plan validated as "
