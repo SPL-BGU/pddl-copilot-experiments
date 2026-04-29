@@ -48,17 +48,21 @@ The experiment crosses five independent variables:
 
 | Dimension | Values | Controls |
 |-----------|--------|----------|
-| **Model** | Cluster sweep (default): `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (peak ~30 GB resident, packed in one rtx_pro_6000:1 job under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` is no longer in the active sweep — Qwen3.5:35b substitutes for it in the large-model size band | Model capacity & family |
+| **Model** | Cluster sweep (default, post 2026-04-29 roster refresh): `Qwen3.5:0.8B`, `nemotron-3-nano:30b`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~24 GB resident, packed in one rtx_pro_6000:1 job under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` was retired 2026-04-27; `gpt-oss:20b` and `Qwen3.5:27b/35b` were superseded 2026-04-29 by their successors above (see CHANGELOG). | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all, per-task | Which tools the model sees |
 | **Prompt style** | minimal (active) — `guided` retired 2026-04-27 | System prompt detail level. Newcombe-Δ analysis on the 26042026 sweep (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed minimal-vs-guided shifts results by ≤4pp per model with every CI crossing zero. The `_GUIDED_SUFFIX` constant is preserved in code as documentation |
-| **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, gpt-oss). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
+| **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, qwen3.6, nemotron-3-nano). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
 
 The cluster's model set differs from the paper's `qwen3:0.6b`/`qwen3:4b`
 because the BGU Ollama-on-cluster inventory does not host those tags
 (verified 2026-04-20). The five-model set above spans the same parameter
-range (≤1B → 35B) and covers three families (Qwen, GPT-OSS, Gemma) —
-see §11 for the full deviations table.
+range (≤1B → 35B) and covers three families (Qwen, NVIDIA, Gemma); the
+2026-04-29 roster refresh kept the family-diversity slot non-Qwen by
+swapping `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn).
+`qwen3.6:27b` is text-capable on the dense path; the Ollama tag bundles
+multimodal weights but text-only inference is unaffected. See §11 for
+the full deviations table.
 
 ### 2.1 Condition: with-tools vs without-tools
 
@@ -364,14 +368,15 @@ Per-configuration chain results (model, with_tools, chain_length, samples, succe
 The full 5-model sweep on the BGU rtx GPUs:
 
 ```bash
-# Full 5-model sweep packed in one rtx_pro_6000 job (Qwen3.5:0.8B, gpt-oss:20b,
-# Qwen3.5:27b, Qwen3.5:35b, gemma4:31b — peak ~30 GB resident under
-# MAX_LOADED_MODELS=1, so weights swap rather than co-reside).
+# Full 5-model sweep packed in one rtx_pro_6000 job (Qwen3.5:0.8B,
+# nemotron-3-nano:30b, qwen3.6:27b, qwen3.6:35b, gemma4:31b — peak
+# ~24 GB resident under MAX_LOADED_MODELS=1, so weights swap rather
+# than co-reside).
 ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
   bash cluster-experimenting/submit_with_rtx.sh --all"
 
 # Single-model run (e.g. iterating on one model)
-bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b
+bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b
 
 # Baseline-only no-tools sweep (4-task discriminative matrix, packed)
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
@@ -424,7 +429,7 @@ squeue --me                 # All my running/pending jobs
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
 | Tool filter | All tools exposed | Configurable: all or per-task |
 | Prompt style | Single prompt | `minimal` only (paper-aligned) as of 2026-04-27. `guided` was active during the 26042026 sweep but retired after the Newcombe-Δ analysis showed it didn't move outcomes outside CIs; `_GUIDED_SUFFIX` is preserved in `run_experiment.py` as documentation |
-| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`, `Qwen3.5:35b`, `gemma4:31b` (peak ~30 GB resident; rtx self-deploy on rtx_pro_6000:1 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). `gpt-oss:120b` was substituted by `Qwen3.5:35b` in the large-model size band (2026-04-27); it is no longer in the active sweep. The cis-ollama fallback path was retired the same day — rtx_pro_6000 self-deploy is the only cluster transport. |
+| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-04-29 roster refresh): `Qwen3.5:0.8B`, `nemotron-3-nano:30b`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~24 GB resident; rtx self-deploy on rtx_pro_6000:1 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). Roster history: `gpt-oss:120b` was substituted by `Qwen3.5:35b` in the large-model size band (2026-04-27); on 2026-04-29 `Qwen3.5:27b/35b` were updated to their `qwen3.6` successors and `gpt-oss:20b` was replaced by NVIDIA `nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn) to preserve non-Qwen/Gemma family diversity and resolve gpt-oss's documented T=0 flakiness. The cis-ollama fallback path was retired 2026-04-27 — rtx_pro_6000 self-deploy is the only cluster transport. |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |

@@ -35,12 +35,14 @@ pip3 install -r requirements.txt
 
 The paper-aligned `qwen3:0.6b` / `qwen3:4b` are the **laptop default**. The
 **cluster sweep** (BGU rtx GPUs, see `cluster-experimenting/README.md`)
-runs a different set: `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`,
-`Qwen3.5:35b`, `gemma4:31b` — five models spanning the paper's parameter
-range across three families. All five run in a single packed job on
-`rtx_pro_6000:1` (96 GB) under `MAX_LOADED_MODELS=1` sequencing — peak
-resident weights are ~30 GB (Qwen3.5:35b). See
-`EXPERIMENTS_FLOW.md §11` for the full deviations table.
+runs a different set (post 2026-04-29 roster refresh): `Qwen3.5:0.8B`,
+`nemotron-3-nano:30b`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` — five
+models spanning the paper's parameter range across three families (Qwen,
+NVIDIA, Gemma). All five run in a single packed job on `rtx_pro_6000:1`
+(96 GB) under `MAX_LOADED_MODELS=1` sequencing — peak resident weights
+are ~24 GB (`qwen3.6:35b` A3B MoE). See `EXPERIMENTS_FLOW.md §11` for
+the full deviations table and `development/CHANGELOG.md` 2026-04-29 for
+the roster-swap rationale.
 
 ## Running (Background)
 

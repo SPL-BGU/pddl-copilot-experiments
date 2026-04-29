@@ -35,6 +35,42 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 — Cluster roster refresh: Qwen3.6 medium/large + Nemotron-3-Nano replacing gpt-oss
+
+**Motivation.** Three concurrent prompts converged: (1) Qwen3.6 became available 2026-04-{16,22} as direct architectural successors to `Qwen3.5:27b` (dense 27B) and `Qwen3.5:35b` (35B-A3B MoE), both Apache-2.0 on Ollama with comparable or smaller VRAM footprints; (2) `gpt-oss:20b` had been the chronic source of methodology noise — CHANGELOG 2026-04-28 documents it producing structurally different responses at T=0 across deterministic runs, and the smoke-gate excludes it from byte-equality; (3) the swap risk-reward was favourable because the diversity slot (only non-Qwen/non-Gemma model in the roster) needed a non-Qwen replacement to preserve family coverage.
+
+**Decision.** Roster updated from
+```
+Qwen3.5:0.8B  gpt-oss:20b  Qwen3.5:27b  Qwen3.5:35b  gemma4:31b
+```
+to
+```
+Qwen3.5:0.8B  nemotron-3-nano:30b  qwen3.6:27b  qwen3.6:35b  gemma4:31b
+```
+- **Medium slot**: `Qwen3.5:27b` → `qwen3.6:27b` (dense 27.8B, 17 GB Q4_K_M, 256K context). Same size class.
+- **Large slot**: `Qwen3.5:35b` → `qwen3.6:35b` (35B-A3B MoE, 24 GB Q4_K_M, 256K context). Same A3B architecture as the prior 35B; ~6 GB smaller peak resident.
+- **Diversity slot**: `gpt-oss:20b` → `nemotron-3-nano:30b` (NVIDIA hybrid Mamba+MoE+Attn, 30B/3.5B-active, 24 GB, 1M context). NVIDIA's release blog benchmarks claim wins over `gpt-oss-20b` and `Qwen3-30B-A3B-Thinking`; ~2.2× gpt-oss inference throughput. Reasoning + non-reasoning unified, matching the existing `--think on/off` axis.
+- **Small slot**: `Qwen3.5:0.8B` unchanged (no Qwen3.6 small variant has been released yet).
+- **Gemma slot**: `gemma4:31b` unchanged (second non-Qwen anchor).
+
+**Net effect.** Pack peak VRAM drops from ~30 GB (`Qwen3.5:35b`) to ~24 GB (`qwen3.6:35b`). 96 GB rtx_pro_6000 headroom widens. Pulling `qwen3.6:27b` brings vision components inside the weight file (it's tagged `image-text-to-text`); text-only inference is unaffected and the size on disk is the standard Q4_K_M 17 GB.
+
+**Files touched.**
+- `cluster-experimenting/submit_with_rtx.sh`: `MODELS=(...)` at `--smoke` block, `--all` recursive call, and surrounding header / VRAM comments.
+- `cluster-experimenting/run_condition_rtx.sbatch`: VRAM-fit table, peak-resident notes, and direct-sbatch invocation example.
+- `cluster-experimenting/README.md`: large-band substitution paragraph, quickstart pack list, troubleshooting peak figure, scp example, and the per-section sweep description.
+- `EXPERIMENTS_FLOW.md` §2 (Experimental Dimensions), §10 (Running Experiments), §11 (Differences from the Original Paper).
+
+**No code changes.** `run_experiment.py`, `summary.py`, scoring, prompts, and result schema are untouched. This is a string-level roster swap.
+
+**Compatibility / drift framing.** The smoke-gate (CHANGELOG 2026-04-28's `diff_smoke.sh`) is byte-equality oriented and will fail on every swapped slot. The three swapped models join `gpt-oss:20b` on the "expected drift" list — the gate continues to run against `Qwen3.5:0.8B` and `gemma4:31b` (unchanged slots) for byte-equality regression detection. For the swapped slots, drift is interpreted via outcome-distribution comparison vs. the prior anchor in `results/cluster-202604{26,27,28,29}/`, with the expectation that drift trends toward improvement: higher success rate (especially on the cells flagged in ISS-006 and ISS-007), fewer `FR_OLLAMA_PARSE_ERROR` rows (the gpt-oss → Nemotron swap should eliminate this bucket), fewer `done_reason="length"` truncations (Qwen3.6's 256K context and Nemotron's 1M context give the harness much more headroom), and `tool_selected` rates that stay roughly comparable or improve. Existing rows for `Qwen3.5:27b`, `Qwen3.5:35b`, and `gpt-oss:20b` are preserved on disk as the drift anchor, not as ongoing headline numbers. The 2026-04-27 large-band substitution (`gpt-oss:120b` → `Qwen3.5:35b`) is now superseded by `qwen3.6:35b`.
+
+**Validation.** Cluster preflight to pull the three new tags (`ollama pull qwen3.6:27b qwen3.6:35b nemotron-3-nano:30b`) and a single-condition smoke per replacement model (`run_experiment.py --smoke --models <new> --tasks solve validate_domain`) before the next full sweep. The drift-direction check on `solve` and `validate_domain` (think=off) compares per-cell success / failure-reason / done_reason / tool_selected against the same cell from the most recent anchor; the swap passes if 3 of 4 metrics move in the expected direction across the three swapped slots.
+
+**Open issues.** No `ISS-###` is closed by this change; none opened — methodology is untouched.
+
+---
+
 ## 2026-04-28 — PR-2 hotfix: per-condition sub-pass split to keep `num_ctx` constant per call
 
 **Motivation.** Cluster smoke 17244356 (PR-2 head `0a78ae0`) deadlocked at the `tools→no-tools` boundary inside the `think=on` smoke pass. py-spy showed the asyncio loop idle, GPU at 0%, 4 keep-alive sockets with no in-flight bytes, and Ollama serving the model at the original `context_length: 8192` despite the no-tools coroutines requesting `num_ctx=12288`. Mid-call `num_ctx` flips deadlock Ollama under concurrency.

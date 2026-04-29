@@ -12,8 +12,8 @@ submission is self-contained on its own GPU node.
 
 The cis-ollama (BGU shared-server) path was retired 2026-04-27 along with
 its CPU-only `submit_all.sh` waves and `submit_120b_cis.sh` shortcut.
-`gpt-oss:120b` is no longer in the active sweep — `Qwen3.5:35b` substitutes
-for it in the large-model size band.
+`gpt-oss:120b` is no longer in the active sweep — `qwen3.6:35b` (A3B MoE)
+holds the large-model size band as of the 2026-04-29 roster refresh.
 
 ## Quickstart
 
@@ -39,8 +39,8 @@ bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
 
 # 5. If the smoke test finishes OK (exit 0, JSON written under results/),
 #    submit the full sweep packed into ONE rtx_pro_6000 job. The five models
-#    (Qwen3.5:0.8B, gpt-oss:20b, Qwen3.5:27b, Qwen3.5:35b, gemma4:31b) peak
-#    at ~30 GB resident, so MAX_LOADED_MODELS=1 sequencing keeps each
+#    (Qwen3.5:0.8B, nemotron-3-nano:30b, qwen3.6:27b, qwen3.6:35b, gemma4:31b)
+#    peak at ~24 GB resident, so MAX_LOADED_MODELS=1 sequencing keeps each
 #    weight set on the GPU one at a time without VRAM blowup.
 bash cluster-experimenting/submit_with_rtx.sh --all
 ```
@@ -101,15 +101,15 @@ cd ~/pddl-copilot-experiments
 bash cluster-experimenting/submit_with_rtx.sh --all
 
 # Per-model jobs (multiple positional args also pack into one job):
-bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b
+bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b
 
 # Baseline-only no-tools sweep: 4-task discriminative matrix
 # (solve + validate_*), packed in one job. --time scales with model count.
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 
 # Preview command without submitting.
-bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b --dry-run
+bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b --dry-run
 ```
 
 `--all` issues one packed job; per-model invocations submit independent
@@ -119,8 +119,8 @@ jobs that SLURM queues in parallel.
 
 Default: `rtx_pro_6000:1` (96 GB VRAM, `--mem=80G`). Hard-pinned as the
 sole self-deploy GPU class so peak VRAM and host RAM are constant across
-the sweep. The 5-model pack peaks at `Qwen3.5:35b` (~30 GB), well inside
-96 GB, leaving ample headroom for KV cache scaling.
+the sweep. The 5-model pack peaks at `qwen3.6:35b` A3B MoE (~24 GB), well
+inside 96 GB, leaving ample headroom for KV cache scaling.
 
 `--gpu-type rtx_6000` is the opt-in escape hatch (48 GB VRAM, `--mem=48G`)
 for use only when `rtx_pro_6000` is queue-saturated and the requested
@@ -148,11 +148,17 @@ rejected.
 The paper's `qwen3:0.6b` / `qwen3:4b` weren't a fit for the cluster's
 historical Ollama-on-cluster inventory, so this cluster run is a
 paper-variant, not a 1:1 reproduction. The five models in the default
-`--all` pack — `Qwen3.5:0.8B`, `gpt-oss:20b`, `Qwen3.5:27b`,
-`Qwen3.5:35b`, `gemma4:31b` — peak at ~30 GB resident on rtx_pro_6000
+`--all` pack — `Qwen3.5:0.8B`, `nemotron-3-nano:30b`, `qwen3.6:27b`,
+`qwen3.6:35b`, `gemma4:31b` — peak at ~24 GB resident on rtx_pro_6000
 under `MAX_LOADED_MODELS=1` and sequence through one packed job.
-`gpt-oss:120b` was substituted by `Qwen3.5:35b` in the large-model size
-band (2026-04-27); it is no longer in the active sweep.
+Roster refresh 2026-04-29: `Qwen3.5:27b` and `Qwen3.5:35b` were updated
+to their `qwen3.6` successors (dense 27B / 35B-A3B MoE, both Apache-2.0,
+released 2026-04-{16,22}); `gpt-oss:20b` was replaced by NVIDIA
+`nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn, 30B/3.5B-active) to
+preserve the non-Qwen/Gemma diversity slot and resolve gpt-oss's T=0
+flakiness (CHANGELOG 2026-04-28). `gpt-oss:120b` was previously
+substituted out by `Qwen3.5:35b` (2026-04-27) and is now superseded by
+`qwen3.6:35b` in the large-model size band.
 
 The rtx path pulls model weights from the public Ollama registry
 (`docker://ollama/ollama` + `ollama pull`), so the model name has to be
@@ -234,7 +240,7 @@ the SSH calls — see `.claude/skills/cluster-ops/SKILL.md`.
 From your laptop:
 ```bash
 # One condition's output
-scp -r <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_gpt-oss_20b_off_tools_all_minimal_12345 \
+scp -r <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_qwen3_6_27b_off_tools_all_minimal_12345 \
        ~/personal/pddl-copilot-experiments/results/
 
 # Everything from a run
@@ -265,7 +271,7 @@ squeue --me -h -o '%i %j' | awk '$2 ~ /^pddl_rtx_/ {print $1}' | xargs --no-run-
 **VRAM blowup after warmup (`exit 3`).** The runtime guard fired
 because VRAM > 85% post-warmup. Likely cause: `OLLAMA_NUM_PARALLEL` × `num_ctx`
 too high for the model. Check `run_condition_rtx.sbatch` — `NUM_PARALLEL=4`
-and `num_ctx=8192` are sized for the default `--all` pack (peak ~30 GB on
+and `num_ctx=8192` are sized for the default `--all` pack (peak ~24 GB on
 rtx_pro_6000 96 GB). With multi-model packing, the guard skips the
 offending model and continues with the next (sets non-zero exit at the end).
 
