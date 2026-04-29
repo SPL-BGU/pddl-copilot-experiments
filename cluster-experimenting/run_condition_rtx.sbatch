@@ -50,13 +50,21 @@
 ###     Actual host-RAM usage is dominated by node-local /tmp model cache
 ###     (~24 GB peak for qwen3.6:35b A3B weights), well within either cap.
 ###
-### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=8192 (set per-request by
-### run_experiment.py) sizes KV pre-allocation comfortably alongside any
-### model in the active 5-model pack on rtx_pro_6000. Do NOT raise
-### NUM_PARALLEL without recomputing VRAM — probe 2026-04-23 observed
-### NUM_PARALLEL=8 × ctx=40960 allocating 37.8 GB for a 0.6B model
-### (pathological). A runtime VRAM guard aborts if usage exceeds 85%
-### after each model's warmup.
+### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=16384 (single-task tools
+### + think=off no-tools cells), num_ctx_thinking=16384 (no-tools+think_on
+### cells, held equal to num_ctx for tools/no-tools fairness in the "tools
+### save tokens" headline), num_ctx_chain=12288 (chain runs, tools-only per
+### ISS-018) — all set per-request by run_experiment.py. Both single-task
+### ctx values were raised from 8192/12288 to 16384 on 2026-04-29 after
+### qwen3.6:27b / nemotron-3-nano:30b smokes showed think_overflow at
+### 12288 on validate_problem/validate_plan. Do NOT raise NUM_PARALLEL
+### without recomputing VRAM — probe 2026-04-23 observed NUM_PARALLEL=8 ×
+### ctx=40960 allocating 37.8 GB for a 0.6B model (pathological). The
+### 16384-ctx single-task budget approximately doubles per-call KV vs the
+### prior 8192 baseline; the 80 GB rtx_pro_6000 cap should still hold for
+### the active pack but post-mortem MaxRSS / nvidia-smi peak after the
+### first sweep on raised ctx and right-size --mem if needed.
+### A runtime VRAM guard aborts if usage exceeds 85% after each model's warmup.
 ###
 #SBATCH --partition=main
 #SBATCH --job-name=pddl_copilot_rtx

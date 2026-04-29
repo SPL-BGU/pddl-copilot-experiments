@@ -6,6 +6,41 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 — Raise non-solve `num_predict` caps 1024/1536 → 4096; raise single-task `num_ctx`/`num_ctx_thinking` 8192/12288 → 16384 (held equal for tools/no-tools fairness); add `num_ctx_chain=12288` for chains
+
+**Motivation (output caps).** Aggregating `truncated` counts across the cluster-26042026 sweep (`done_reason == "length"` on the last chat turn) showed the per-task output caps were biting hard:
+
+| task               | cap (old) | truncation rate | success rate |
+| ------------------ | --------: | --------------: | -----------: |
+| `validate_plan`    |      1024 |          40.9% |        18.0% |
+| `simulate`         |      1536 |          37.1% |        25.2% |
+| `validate_problem` |      1024 |          32.7% |        30.8% |
+| `validate_domain`  |      1024 |          17.4% |        55.5% |
+| `solve` (tools)    |      8192 |          12.3% |        60.0% |
+| `solve` (no-tools) |      8192 |          32.0% |        29.2% |
+
+The 1024/1536 caps were calibrated when "verdict + a sentence" was the expected output, but thinking-mode reasoning (`qwen3:thinking`, `gpt-oss`, `gemma`) inlines 2–6K tokens of chain-of-thought before the verdict, and tool-call XML/harmony emissions count against `num_predict` too. Mid-emission truncation also produced the bulk of `ollama_parse_error` records — the Hermes/harmony XML parser fails when a `<parameter>` tag opens but the cap fires before its `</parameter>` closes (observed across `nemotron-3-nano:30b` on `validate_plan` b1/b2/b4 in smoke job 17263071, 2026-04-29).
+
+**Motivation (context window).** A follow-up smoke against the new `qwen3.6:27b` and `nemotron-3-nano:30b` roster slots (also 2026-04-29) showed `FR_THINK_OVERFLOW` rates of 6/12 (tools cells) and 10/20 (no-tools cells) on `validate_problem`/`validate_plan` at `num_ctx=12288` — every miss was a thinking spiral that consumed the entire context window before emitting an answer. The pre-2026-04-28 calibration (12288 covered qwen3:0.6b max prompt+eval = 8680) does not hold for the qwen3.6/nemotron generation. More importantly, the old asymmetric setup (`num_ctx=8192` for tools, `num_ctx_thinking=12288` for no-tools+think_on) confounded the paper's headline comparison: the no-tools branch had 1.5× more think+output room than the tools branch, so any "tools save tokens" or "tools improve accuracy" claim was partly an artefact of the ctx asymmetry rather than a tool-effect signal.
+
+**Decision.**
+1. **Output caps:** non-solve `num_predict` 1024/1536 → 4096 uniformly; keep `solve=8192` (paper-default).
+2. **Single-task ctx:** `num_ctx` 8192 → 16384 AND `num_ctx_thinking` 12288 → 16384 — held equal so the tools and no-tools branches receive identical context budgets. The `num_ctx_thinking` constant is retained as a separate symbol so a future asymmetric experiment can override one without touching the other; today the asymmetric branch in `evaluate_one` is a no-op.
+3. **Chain ctx:** new `num_ctx_chain = 12288` for multi-task chain runs. Chains accumulate full per-step history (each step re-embeds domain + problem + plan, prior assistant turns + tool calls + tool results stay in context); step-4 prompts reach ~6–8K tokens before generation. Sized below the single-task 16384 because chains are tools-only (ISS-018) — no tools-vs-no-tools fairness comparison applies, so the asymmetry is acceptable. Raise to 16384 in lockstep if a future thinking-model sweep shows chain-step `think_overflow`.
+
+**Changes.**
+- `pddl_eval/runner.py`: `DEFAULT_NUM_PREDICT` non-solve entries 1024/1536 → 4096; `DEFAULT_NUM_CTX` 8192 → 16384; `DEFAULT_NUM_CTX_THINKING` 12288 → 16384; new constant `DEFAULT_NUM_CTX_CHAIN = 12288`. `run_chain_experiment` gains `num_ctx_chain` parameter; the `effective_num_ctx` formula in the chain-step path resolves to `num_ctx_chain` for the tools branch (chains are tools-only per ISS-018, so this fires unconditionally today; the `num_ctx_thinking` branch is preserved for forward-compat).
+- `run_experiment.py`: imports `DEFAULT_NUM_CTX_CHAIN`; new `--num-ctx-chain` CLI flag; threaded into `run_chain_experiment`; written to `meta.num_ctx_chain` in saved summaries; banner now prints all three context budgets, flags the tools/no-tools fairness invariant when `num_ctx == num_ctx_thinking`, and lists the per-task `num_predict` defaults explicitly.
+- `README.md` parameter table and `EXPERIMENTS_FLOW.md` §5 (knobs) + summary-meta — updated.
+
+**Compatibility.** Single-task results from prior sweeps (cluster-26042026 and earlier) remain valid for trend analysis but **truncation rates and success rates are not directly comparable** — the new caps will lower truncation counts and may shift success rates upward on `validate_plan`/`simulate`/`validate_problem` cells (the 33–41% truncated calls that previously couldn't emit a complete verdict now have room), and the wider `num_ctx` will reduce `FR_THINK_OVERFLOW` for thinking models. Most consequentially: any historical comparison of tools-vs-no-tools accuracy made under the old 8192/12288 asymmetry is no longer apples-to-apples with post-bump runs. Re-run sweeps under the new caps should label themselves as "post 2026-04-29 cap bump" in plots; the headline "tools save tokens" / "tools improve accuracy" claims should be redrawn from a fresh run that uses the equalized ctx. `solve` cells are unchanged.
+
+**Cluster-side note.** Per-call KV cache approximately doubles vs the prior 8192 baseline (16384 single-task tools / 16384 single-task no-tools+think / 12288 chain). Existing `--mem` lines in `cluster-experimenting/run_condition_rtx.sbatch` were sized against the old ctx; first sweeps after this change should leave a margin and post-mortem `sacct/MaxRSS` to right-size if needed. The runtime VRAM guard (`>85% post-warmup → exit 3`) should still catch a blowup before it crashes the whole pack.
+
+**Files.** `pddl_eval/runner.py`, `run_experiment.py`, `README.md`, `EXPERIMENTS_FLOW.md`, `cluster-experimenting/README.md`, `cluster-experimenting/run_condition_rtx.sbatch`, `development/OPEN_ISSUES.md` (closes ISS-007).
+
+---
+
 ## 2026-04-29 — PR-3: fixture buildout to 20 domains × 5 problems × (5 valid + 5 invalid) plans (1240 fixtures total)
 
 **Motivation.** `development/FRAMEWORK_EXTENSION_PLAN.md` §3.2 PR-3 — scale the fixture set from 10 domains × 1 problem × 1 plan (60 files total) to 20 domains × 5 problems × 5 valid + 5 invalid plans per problem (1240 files total) so per-task counts grow from ~80/cell to ~1840/cell, giving Wilson confidence intervals usable signal at moderate sweep budgets.

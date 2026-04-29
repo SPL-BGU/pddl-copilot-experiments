@@ -271,9 +271,16 @@ squeue --me -h -o '%i %j' | awk '$2 ~ /^pddl_rtx_/ {print $1}' | xargs --no-run-
 **VRAM blowup after warmup (`exit 3`).** The runtime guard fired
 because VRAM > 85% post-warmup. Likely cause: `OLLAMA_NUM_PARALLEL` × `num_ctx`
 too high for the model. Check `run_condition_rtx.sbatch` — `NUM_PARALLEL=4`
-and `num_ctx=8192` are sized for the default `--all` pack (peak ~24 GB on
-rtx_pro_6000 96 GB). With multi-model packing, the guard skips the
+and `num_ctx=16384` are sized for the default `--all` pack on
+rtx_pro_6000 96 GB. With multi-model packing, the guard skips the
 offending model and continues with the next (sets non-zero exit at the end).
+Note (2026-04-29): single-task `num_ctx` was raised 8192 → 16384 (with
+`num_ctx_thinking` held equal at 16384 for tools/no-tools fairness in
+the "tools save tokens" headline) and `num_ctx_chain=12288` was added
+for chain runs. Per-call KV cache approximately doubles vs the prior
+8192 baseline. If a sweep trips the guard, post-mortem `sacct/MaxRSS`
+to right-size; lowering `--num-ctx-chain` or `--concurrency` is the
+fastest mitigation if the cap is hit only on chain runs.
 
 **`apptainer: command not found`.** Apptainer module not loaded
 on the compute node. The sbatch assumes the cluster default has it on the

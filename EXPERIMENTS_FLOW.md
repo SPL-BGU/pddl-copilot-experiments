@@ -182,14 +182,49 @@ constraints that not every cell satisfies:
   (ISS-018, closed 2026-04-28). `think=off` is a single-task ablation
   against `think=on`/`think=default`; chain results under it aren't
   part of any planned comparison.
-- `--num-ctx-thinking` (default 12288) replaces `--num-ctx` (default
-  8192) only for cells where `think != off` AND `condition=no-tools`.
-  Tool-condition runs and `think=off` keep the smaller context budget.
+- `--num-ctx` (default 16384, raised from 8192 on 2026-04-29) is the
+  single-task context window for tools cells and for `think=off`
+  no-tools cells. Bumped after qwen3.6:27b / nemotron-3-nano:30b smokes
+  showed `think_overflow` at 12288 on `validate_problem`/`validate_plan`
+  (6/12 and 10/20 fail rates in both tools and no-tools cells; every
+  miss was `FR_THINK_OVERFLOW`). 16384 leaves ~10K of think+output
+  headroom on top of typical PDDL prompts.
+- `--num-ctx-thinking` (default 16384, raised from 12288 on 2026-04-29)
+  is used ONLY when `think != off` AND `condition=no-tools`. **Held
+  equal to `--num-ctx`** by default — the "tools save tokens" headline
+  comparison requires identical ctx budgets across the tools and
+  no-tools branches; otherwise the no-tools cell could appear better or
+  worse simply because it had more (or less) room to think. The
+  parameter is kept as a separate constant so future asymmetric
+  experiments can override one without touching the other.
   Implementation note: `async_main` splits a `(--conditions=both,
   think!=off)` invocation into two sequential `run_single_task_experiment`
   calls (one per condition), keeping `num_ctx` constant within each call.
   Without the split, mid-call `num_ctx` flips deadlocked Ollama under
   concurrency (smoke job 17244356, 2026-04-28).
+- `--num-ctx-chain` (default 12288, added 2026-04-29) replaces `--num-ctx`
+  for every step of a multi-task chain run. Chains accumulate the full
+  message history across steps (each step re-embeds domain + problem +
+  plan in its user prompt, and prior assistant turns + tool-call results
+  remain in context), so step-4 prompts on blocksworld-class problems
+  can reach ~6–8K tokens before generation. Sized below the single-task
+  16384 because chains are tools-only (ISS-018) — there is no
+  tools-vs-no-tools fairness comparison happening within a chain run,
+  so the asymmetry is acceptable. If a future thinking-model sweep
+  reproduces the single-task `think_overflow` pattern at chain step
+  level, raise `--num-ctx-chain` to match `--num-ctx-thinking`.
+- **Per-task `num_predict` caps** (`pddl_eval/runner.py`
+  `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=4096`,
+  `simulate=4096`. Non-solve caps were raised from 1024/1536 → 4096 on
+  2026-04-29 after the cluster-26042026 sweep showed truncation rates
+  (`done_reason == "length"`) of 40.9% on `validate_plan`, 37.1% on
+  `simulate`, 32.7% on `validate_problem`, and 17.4% on
+  `validate_domain` at the old caps — thinking-mode reasoning and
+  tool-call XML/harmony emissions were being cut mid-stream, biasing
+  accuracy and producing the bulk of `ollama_parse_error` records (the
+  Hermes/harmony XML parser fails on truncated `<function><parameter>`
+  tags). Override per-run with `--num-predict N` (applies uniformly to
+  all tasks).
 
 The PR-2 abort gate that previously exited early for
 `--conditions=no-tools|both` under `--think on/default` was lifted
@@ -330,7 +365,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_ctx_chain, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_ctx_chain` (added 2026-04-29) is the wider budget used for every step of a multi-task chain run — chains accumulate full per-step history, so 8192 is too tight once non-solve `num_predict` is at 4096. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json

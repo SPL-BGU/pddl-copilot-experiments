@@ -58,22 +58,52 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # Per-task output caps. Chosen well above the longest legitimate plan/trace
 # seen in the domains set but low enough that a thinking-mode spiral is cut
 # off in seconds instead of minutes. Override via --num-predict.
+#
+# Non-solve caps raised from 1024/1536 -> 4096 on 2026-04-29 after the
+# cluster-26042026 sweep showed truncation rates of 40.9% (validate_plan),
+# 37.1% (simulate), 32.7% (validate_problem), 17.4% (validate_domain) at
+# the old caps -- thinking-mode reasoning + tool-call XML emissions were
+# being cut mid-stream, biasing accuracy and producing the bulk of
+# `ollama_parse_error` records (Hermes/harmony XML parser fails on
+# truncated <function><parameter> tags). 4096 fits comfortably inside
+# DEFAULT_NUM_CTX (16384 post-2026-04-29 fairness bump) with single-task
+# PDDL prompts (~0.5-1.5K tokens), leaving ~10K of think+output headroom
+# for thinking models. Chain runs use DEFAULT_NUM_CTX_CHAIN below.
+# `solve` stays at 8192 (paper-default; raise alongside num_ctx if a
+# future model lineup hits the cap).
 DEFAULT_NUM_PREDICT: dict[str, int] = {
     "solve":            8192,
-    "validate_domain":  1024,
-    "validate_problem": 1024,
-    "validate_plan":    1024,
-    "simulate":         1536,
+    "validate_domain":  4096,
+    "validate_problem": 4096,
+    "validate_plan":    4096,
+    "simulate":         4096,
 }
-DEFAULT_NUM_CTX = 8192
-# Larger context budget used only when (think != False AND with_tools=False)
-# — the no-PDDL-tools + thinking cell where the model has to inline its
-# reasoning instead of farming it out to MCP tools. Calibrated on
-# 2026-04-28 against blocksworld/p01 with qwen3:0.6b (max prompt+eval =
-# 8680, hit num_predict=8192 cap on solve) and qwen3:4b (max p+e = 6303);
-# 12288 gives ~1.4× headroom over the observed max without bloating KV
-# cache the way 16384 would. Override via --num-ctx-thinking.
-DEFAULT_NUM_CTX_THINKING = 12288
+DEFAULT_NUM_CTX = 16384
+# Held equal to DEFAULT_NUM_CTX on 2026-04-29: the "tools save tokens"
+# headline requires identical ctx budgets across tools/no-tools, so
+# tools+think_on must not be starved of the headroom that no-tools+think_on
+# gets. Bumped from 8192/12288 to 16384 after qwen3.6:27b /
+# nemotron-3-nano:30b smokes (2026-04-29) showed think_overflow at 12288
+# on val_problem/val_plan (6/12 and 10/20 fail rates in both tools and
+# no-tools cells — every miss was think_overflow). The pre-2026-04-28
+# rationale (12288 covered qwen3:0.6b max p+e = 8680) no longer holds
+# for the new qwen3.6/nemotron generation. Kept as a separate constant
+# so the asymmetric branch in evaluate_one remains a no-op rather than
+# getting deleted; future asymmetric experiments can override one
+# without touching the other. Override via --num-ctx-thinking.
+DEFAULT_NUM_CTX_THINKING = 16384
+# Context budget for multi-task chain runs. Chains accumulate the full
+# message history (system + N×(user+assistant+tool_calls+tool_results))
+# across steps, so step-4 prompts can reach ~6-8K tokens before generation
+# even on small problems. Sized at 12288 (vs single-task 16384) because
+# chains are tools-only (ISS-018) -- there's no tools-vs-no-tools fairness
+# comparison within chains, so the asymmetry is acceptable. With non-solve
+# `num_predict` at 4096, 12288 leaves ~4-6K of think+output headroom on
+# top of the accumulated history. If a future thinking-model sweep shows
+# chain-step `think_overflow` analogous to the single-task observation
+# that drove DEFAULT_NUM_CTX = 16384, raise this in lockstep.
+# Override via --num-ctx-chain.
+DEFAULT_NUM_CTX_CHAIN = 12288
 DEFAULT_CONCURRENCY = 4
 
 # Cap on stored response/exception strings in result records. The full text
@@ -630,6 +660,7 @@ async def run_chain_experiment(
     num_predict_override: int | None = None,
     num_ctx: int = DEFAULT_NUM_CTX,
     num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
+    num_ctx_chain: int = DEFAULT_NUM_CTX_CHAIN,
     think: bool | None = None,
     temperature: float = TEMPERATURE,
     concurrency: int = DEFAULT_CONCURRENCY,
@@ -677,10 +708,14 @@ async def run_chain_experiment(
             np_for_task = _resolve_num_predict(num_predict_override, task)
             allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
             step_loop_exhausted = False
-            # Mirror evaluate_one's effective_num_ctx rule. Chains are
-            # tools-only (no-tools chains skipped; ISS-018), so this
-            # resolves to `num_ctx` for every chain step today.
-            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx
+            # Chains are tools-only (no-tools chains skipped; ISS-018), so
+            # this resolves to `num_ctx_chain` for every step today; the
+            # num_ctx_thinking branch is preserved for forward-compat if
+            # no-tools chains ever come back. `num_ctx_chain` (12288 by
+            # default) leaves prompt headroom after the 2026-04-29 bump of
+            # non-solve num_predict caps to 4096 -- step-4 prompts in
+            # chains accumulate ~6-8K tokens of history.
+            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx_chain
             try:
                 if with_tools:
                     resp_text, tc, step_done_reason, step_loop_exhausted, _tokens, _thinking = await chat_with_tools(
