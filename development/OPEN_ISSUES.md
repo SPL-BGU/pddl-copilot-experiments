@@ -113,6 +113,13 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Status (2026-04-29).** ISS-007 closed by the cap bump (1024/1536 → 4096); the pressure that motivated this issue is largely relieved. Recommend deferring (b) — at the new caps, `FR_VERDICT_MISMATCH` should overwhelmingly reflect actual model errors rather than truncation artefacts. Re-evaluate post the next sweep on raised caps.
 **Files.** `pddl_eval/scoring.py::_apply_truncation_override`, `tests/test_check_success.py::test_truncation_override`.
 
+### ISS-020 · `validate_domain` neg-arm pairs only the first positive (5:1 vs positive 5:5)
+**Source.** PR #22 review on `framework-ext-pr3`, 2026-04-29.
+**Evidence.** `pddl_eval/runner.py:533-538` (negative `validate_domain` job emission) uses `positive_first = next(iter(dinfo["problems"].values()))` and pairs the single `domain_neg.pddl` only with that first problem. Comment justifies it as "same convention as the generate_ground_truth pass." Post-PR-3 there are 5 positive problems per domain, so the validate_domain arm is now structurally imbalanced: positive arm emits 5 jobs (`p01..p05` × `domain.pddl`) while the negative arm emits 1 (`p01` × `domain_neg.pddl`).
+**Impact.** validate_domain n is 6 per domain (5 pos + 1 neg) instead of a balanced 10 (5 pos + 5 neg). At 20 domains × 5 models × 4 conditions ≈ 480 cells, this leaves the negative-arm headline statistic with 1/5 the sample size of the other validate_* tasks (which got balanced 5:5 at PR-3). Wilson CI widths on validate_domain neg are correspondingly ~√5× wider than necessary.
+**Fix.** Change the validate_domain negative-job emission loop to iterate over all 5 positives instead of `next(iter(...))`. ~3-line change in `_emit_job` site at `runner.py:533-538`. Ground-truth `_negatives.domain` already validates the standalone negative (independent of paired positive), so the additional jobs reuse the same `domain_neg.pddl` content with each positive's problem PDDL — no fixture change needed.
+**Files.** `pddl_eval/runner.py` (validate_domain neg-arm emission).
+
 ---
 
 ## Planned batches (approved 2026-04-20)

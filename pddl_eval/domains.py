@@ -56,6 +56,7 @@ def load_domains(domains_dir: Path) -> dict:
             problems = {
                 pf.stem: pf.read_text()
                 for pf in sorted(ddir.glob("p[0-9]*.pddl"))
+                if not pf.stem.endswith("_0")
             }
             if not problems:
                 continue
@@ -203,15 +204,16 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 .get("valid", [])
             )
             for i, plan_text in enumerate(committed_valid_plans):
-                _, plan_valid = await _validate_capture(
+                raw, plan_valid = await _validate_capture(
                     mcp, {"domain": dinfo["domain"], "problem": ppddl, "plan": plan_text}
                 )
-                if plan_valid is False:
+                if plan_valid is not True:
                     raise SystemExit(
                         f"Valid-plan fixture {dname}/{pname}_v{i+1}.plan validated as "
-                        f"valid=False (expected True) — fix the fixture or the validator."
+                        f"valid={plan_valid!r} (expected True) — fix the fixture or the "
+                        f"validator. Raw: {raw}"
                     )
-                entry["valid_plans"].append({"plan": plan_text, "plan_valid": bool(plan_valid)})
+                entry["valid_plans"].append({"plan": plan_text, "plan_valid": True})
 
             gt[dname][pname] = entry
             tag = "solvable" if entry["solvable"] else "unsolvable"
@@ -252,15 +254,14 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
             neg_slot: dict = {}
 
             if negs.get("domain") is not None:
-                raw = await mcp.call_tool(
-                    "validate_pddl_syntax", {"domain": negs["domain"]}
+                raw, verdict = await _validate_capture(
+                    mcp, {"domain": negs["domain"]}
                 )
-                verdict = _parse_validation_verdict(raw)
                 if verdict is not False:
                     raise SystemExit(
                         f"Negative fixture {dname}/domain_neg.pddl validated as "
                         f"valid={verdict!r} (expected False) — fix the fixture or "
-                        f"the validator before running the sweep."
+                        f"the validator before running the sweep. Raw: {raw}"
                     )
                 neg_slot["domain"] = {
                     "domain_pddl": negs["domain"],
@@ -270,15 +271,14 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
 
             neg_problems_list: list[dict] = []
             for i, prob_text in enumerate(negs.get("problems") or []):
-                raw = await mcp.call_tool(
-                    "validate_pddl_syntax",
+                raw, verdict = await _validate_capture(
+                    mcp,
                     {"domain": dinfo["domain"], "problem": prob_text},
                 )
-                verdict = _parse_validation_verdict(raw)
                 if verdict is not False:
                     raise SystemExit(
                         f"Negative fixture {dname}/n{i+1:02d}.pddl validated as "
-                        f"valid={verdict!r} (expected False)."
+                        f"valid={verdict!r} (expected False). Raw: {raw}"
                     )
                 neg_problems_list.append({
                     "problem_pddl": prob_text,
@@ -294,19 +294,18 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 pname_neg_list: list[dict] = []
                 positive_pddl = dinfo["problems"][pname]
                 for i, plan_text in enumerate(invalid_plans):
-                    raw = await mcp.call_tool(
-                        "validate_pddl_syntax",
+                    raw, verdict = await _validate_capture(
+                        mcp,
                         {
                             "domain": dinfo["domain"],
                             "problem": positive_pddl,
                             "plan": plan_text,
                         },
                     )
-                    verdict = _parse_validation_verdict(raw)
                     if verdict is not False:
                         raise SystemExit(
                             f"Negative fixture {dname}/{pname}_b{i+1}.plan validated as "
-                            f"valid={verdict!r} (expected False)."
+                            f"valid={verdict!r} (expected False). Raw: {raw}"
                         )
                     pname_neg_list.append({
                         "plan": plan_text,

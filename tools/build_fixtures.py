@@ -271,8 +271,6 @@ async def cmd_seed_problems(
     # `(problem prob)` or shared placeholder labels across instances).
     existing_contents: set[str] = set()
     for ex in ddir.glob("p[0-9]*.pddl"):
-        if ex.stem.endswith("_0"):
-            continue
         try:
             existing_contents.add(ex.read_text())
         except Exception:
@@ -309,13 +307,6 @@ async def cmd_seed_problems(
         print(f"  no problems seeded into {ddir.name}")
 
 
-def _problem_label(problem_pddl: str) -> str | None:
-    """Return the `(problem NAME)` label, or None if not parseable."""
-    import re
-    m = re.search(r"\(\s*problem\s+([\w-]+)", problem_pddl)
-    return m.group(1) if m else None
-
-
 # ---------------------------------------------------------------------------
 # Generate valid plans (planner with strategy variants)
 # ---------------------------------------------------------------------------
@@ -345,7 +336,6 @@ async def cmd_gen_valid_plans(
     domain_pddl = (ddir / "domain.pddl").read_text()
     planner = "classic_planner" if dtype == "classical" else "numeric_planner"
     problems = sorted(ddir.glob("p[0-9]*.pddl"))
-    problems = [p for p in problems if not p.stem.endswith("_0")]
     if problem:
         problems = [p for p in problems if p.stem == problem]
     print(f"gen-valid-plans: {ddir.relative_to(REPO_ROOT)} ({len(problems)} problems)")
@@ -445,7 +435,6 @@ async def cmd_gen_invalid_plans(
     ddir = _domain_dir(domain)
     domain_pddl = (ddir / "domain.pddl").read_text()
     problems = sorted(ddir.glob("p[0-9]*.pddl"))
-    problems = [p for p in problems if not p.stem.endswith("_0")]
     if problem:
         problems = [p for p in problems if p.stem == problem]
     print(f"gen-invalid-plans: {ddir.relative_to(REPO_ROOT)} ({len(problems)} problems)")
