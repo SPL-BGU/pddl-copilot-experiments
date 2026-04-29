@@ -9,24 +9,24 @@
 ###
 ### Default GPU: rtx_pro_6000:1 (96 GB) — single, hard-pinned class so peak
 ### VRAM and host RAM are constant across the active sweep. The 5-model
-### pack peaks at Qwen3.5:35b (~30 GB), well inside 96 GB; the headroom
-### absorbs KV cache scaling without re-tuning. Override with --gpu-type
-### rtx_6000 (and --mem=48G) only as an emergency escape hatch.
+### pack peaks at qwen3.6:35b A3B MoE (~24 GB), well inside 96 GB; the
+### headroom absorbs KV cache scaling without re-tuning. Override with
+### --gpu-type rtx_6000 (and --mem=48G) only as an emergency escape hatch.
 ###
 ### Model VRAM fit (weights + KV cache at NUM_PARALLEL=4, ctx=8192):
-###   Qwen3.5:0.8B  ~ 3 GB   → fits rtx_pro_6000 (96 GB)
-###   gpt-oss:20b   ~18 GB   → fits rtx_pro_6000
-###   Qwen3.5:27b   ~23 GB   → fits rtx_pro_6000
-###   Qwen3.5:35b   ~30 GB   → fits rtx_pro_6000 (peak; sets the floor on GPU class)
-###   gemma4:31b    ~26 GB   → fits rtx_pro_6000
+###   Qwen3.5:0.8B        ~ 3 GB   → fits rtx_pro_6000 (96 GB)
+###   nemotron-3-nano:30b ~24 GB   → fits rtx_pro_6000 (30B/3.5B-active hybrid)
+###   qwen3.6:27b         ~17 GB   → fits rtx_pro_6000 (dense 27.8B Q4_K_M)
+###   qwen3.6:35b         ~24 GB   → fits rtx_pro_6000 (35B-A3B MoE; peak)
+###   gemma4:31b          ~26 GB   → fits rtx_pro_6000
 ### When packing multiple models in one job, ALL listed models must fit on the
-### chosen GPU (loaded one at a time under MAX_LOADED_MODELS=1). gpt-oss:120b
-### is no longer in the active sweep — Qwen3.5:35b substitutes for it in the
-### large-model size band.
+### chosen GPU (loaded one at a time under MAX_LOADED_MODELS=1). Roster
+### refreshed 2026-04-29 (CHANGELOG): Qwen3.5:27b/35b → qwen3.6 successors;
+### gpt-oss:20b → nemotron-3-nano:30b for non-Qwen/Gemma diversity.
 ###
 ### Submit via cluster-experimenting/submit_with_rtx.sh <model> [<model>...],
 ### or directly:
-###   sbatch --export=ALL,MODELS="Qwen3.5:0.8B gpt-oss:20b",THINK_MODES="on off" \
+###   sbatch --export=ALL,MODELS="Qwen3.5:0.8B nemotron-3-nano:30b",THINK_MODES="on off" \
 ###          cluster-experimenting/run_condition_rtx.sbatch
 ###
 ### Required env (one of):
@@ -48,7 +48,7 @@
 ###   * --mem=80G on rtx_pro_6000 (the default). Override to --mem=48G when
 ###     submit_with_rtx.sh is invoked with `--gpu-type rtx_6000`.
 ###     Actual host-RAM usage is dominated by node-local /tmp model cache
-###     (~30 GB peak for Qwen3.5:35b weights), well within either cap.
+###     (~24 GB peak for qwen3.6:35b A3B weights), well within either cap.
 ###
 ### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=8192 (set per-request by
 ### run_experiment.py) sizes KV pre-allocation comfortably alongside any

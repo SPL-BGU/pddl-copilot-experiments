@@ -14,7 +14,7 @@
 #   default → rtx_pro_6000:1 (96 GB, --mem=80G). Hard-pinned as the sole
 #             self-deploy GPU class so peak VRAM and host RAM are constant
 #             across the active sweep. The 5-model pack peaks at
-#             Qwen3.5:35b (~30 GB), well inside 96 GB.
+#             qwen3.6:35b (~24 GB) under MAX_LOADED_MODELS=1, well inside 96 GB.
 #   --gpu-type rtx_6000 → opt-in escape hatch (48 GB VRAM, --mem=48G).
 #                         Use only when rtx_pro_6000 is queue-saturated
 #                         and the requested models all fit.
@@ -33,17 +33,18 @@
 #
 # Examples:
 #   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
-#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b gemma4:31b
+#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b gemma4:31b
 #   bash cluster-experimenting/submit_with_rtx.sh --all                  # full sweep, ONE packed job on rtx_pro_6000
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # full no-tools sweep, ONE packed job
-#   bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b --no-tools
+#   bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b --no-tools
 #
 # --all: shorthand for the 5 paper models, packed in ONE job:
-#   Pack: Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b Qwen3.5:35b gemma4:31b
-# All five fit in ≤30 GB resident (Qwen3.5:35b sets the peak), so
+#   Pack: Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b
+# All five fit in ≤24 GB resident (qwen3.6:35b A3B MoE sets the peak), so
 # MAX_LOADED_MODELS=1 sequencing keeps everything well within rtx_pro_6000's
-# 96 GB VRAM. gpt-oss:120b is no longer in the active sweep — Qwen3.5:35b
-# substitutes for it in the large-model size band.
+# 96 GB VRAM. Roster refresh 2026-04-29: Qwen3.5:27b/35b → qwen3.6 successors;
+# gpt-oss:20b → nemotron-3-nano:30b (NVIDIA hybrid Mamba+MoE+Attn) preserves
+# the non-Qwen/Gemma diversity slot. See development/CHANGELOG.md 2026-04-29.
 #
 # --no-tools: shorthand for the single-task no-tools matrix. Pins
 #   THINK_MODES=off, CONDITIONS=no-tools, and TASKS to the four discriminative
@@ -112,14 +113,14 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
         echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes/explicit-models" >&2
         exit 1
     fi
-    MODELS=(Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b Qwen3.5:35b gemma4:31b)
+    MODELS=(Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b)
     THINK_MODES_OVERRIDE="default"  # smoke iterates think internally
 fi
 
 # --all expands into a single 5-model pack on rtx_pro_6000.
-# All five fit in ≤30 GB resident under MAX_LOADED_MODELS=1 sequencing —
-# Qwen3.5:35b (~30 GB) sets the peak. rtx_pro_6000's 96 GB VRAM has ample
-# headroom for KV cache scaling.
+# All five fit in ≤24 GB resident under MAX_LOADED_MODELS=1 sequencing —
+# qwen3.6:35b A3B MoE (~24 GB) sets the peak. rtx_pro_6000's 96 GB VRAM has
+# ample headroom for KV cache scaling.
 if [ "$ALL" -eq 1 ]; then
     if [ "${#MODELS[@]}" -gt 0 ]; then
         echo "Error: --all is exclusive with explicit model args" >&2
@@ -130,7 +131,7 @@ if [ "$ALL" -eq 1 ]; then
     [ "$DRY_RUN" -eq 1 ] && extra_args+=(--dry-run)
     [ -n "$THINK_MODES_OVERRIDE" ] && extra_args+=(--think-modes "$THINK_MODES_OVERRIDE")
     [ -n "$GPU_TYPE" ] && extra_args+=(--gpu-type "$GPU_TYPE")
-    bash "$0" Qwen3.5:0.8B gpt-oss:20b Qwen3.5:27b Qwen3.5:35b gemma4:31b "${extra_args[@]}"
+    bash "$0" Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b "${extra_args[@]}"
     exit 0
 fi
 
@@ -148,7 +149,7 @@ GPU_TYPE="${GPU_TYPE:-rtx_pro_6000}"
 case "$GPU_TYPE" in
     rtx_6000)
         # Opt-in only. 48 GB VRAM is enough for the active 5-model pack
-        # (peak Qwen3.5:35b ~30 GB) but the rtx_6000 pool is the more
+        # (peak qwen3.6:35b ~24 GB) but the rtx_6000 pool is the more
         # contended one historically; prefer rtx_pro_6000 unless that's
         # blocked.
         MEM_ARG="--mem=48G" ;;
