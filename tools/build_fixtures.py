@@ -216,6 +216,107 @@ def cmd_migrate(domain: str, dry_run: bool = False) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Seed problems from an external benchmark dir
+# ---------------------------------------------------------------------------
+
+
+# Predicate-name rewrites applied during `seed-problems` to bridge
+# convention drift between source benchmarks and our domain definitions.
+# Format: domain → list of (from, to) string replacements applied to
+# each source problem file before MCP validation.
+#
+# Empty for domains where the source benchmark already matches; barman
+# needs olam-compatible's hyphen-form predicates rewritten to our
+# underscore-form (verified via MCP probe 2026-04-29).
+SEED_PREDICATE_REWRITES: dict[str, tuple[tuple[str, str], ...]] = {
+    "barman": (
+        ("shaker-empty-level", "shaker_empty_level"),
+        ("shaker-level", "shaker_level"),
+        ("cocktail-part1", "cocktail_part1"),
+        ("cocktail-part2", "cocktail_part2"),
+    ),
+}
+
+
+async def cmd_seed_problems(
+    mcp: MCPPlanner,
+    domain: str,
+    source_dir: Path,
+    target: int = 5,
+    pattern: str = "p[0-9]*.pddl",
+    force: bool = False,
+    dry_run: bool = False,
+) -> None:
+    """Copy `target` problem files from `source_dir` into the domain dir
+    as `p02..p<target>.pddl`, MCP-validating each against our domain.
+
+    Skips `p01` (already populated) and any size that fails validation.
+    The source's filename (e.g. olam-compatible's `p02.pddl`) is
+    discarded; we always rename to `p<NN>.pddl` in the target dir,
+    where NN runs from the first empty slot upward.
+
+    Idempotent: existing target files are not overwritten unless
+    --force.
+    """
+    ddir = _domain_dir(domain)
+    domain_pddl = (ddir / "domain.pddl").read_text()
+    if not source_dir.is_dir():
+        raise SystemExit(f"source dir not found: {source_dir}")
+    candidates = sorted(source_dir.glob(pattern))
+    if not candidates:
+        raise SystemExit(f"no problem files matching {pattern!r} in {source_dir}")
+    print(f"seed-problems: {ddir.relative_to(REPO_ROOT)} ← {source_dir}")
+    # Existing per-file content (byte-equal de-dup; label identity is
+    # not a uniqueness criterion since some IPC tracks reuse a generic
+    # `(problem prob)` or shared placeholder labels across instances).
+    existing_contents: set[str] = set()
+    for ex in ddir.glob("p[0-9]*.pddl"):
+        if ex.stem.endswith("_0"):
+            continue
+        try:
+            existing_contents.add(ex.read_text())
+        except Exception:
+            pass
+    # Find the first empty p<NN>.pddl slot in the target dir.
+    slot = 2
+    written = 0
+    for src in candidates:
+        if written >= (target - 1):  # we keep p01, fill p02..p<target>
+            break
+        src_text = src.read_text()
+        for k, v in SEED_PREDICATE_REWRITES.get(domain, ()):
+            src_text = src_text.replace(k, v)
+        if src_text in existing_contents:
+            continue
+        # Validate against our domain.
+        verdict = await _validate_problem(mcp, domain_pddl, src_text)
+        if verdict is not True:
+            print(f"  skip {src.name}: validation failed (verdict={verdict})")
+            continue
+        # Find next empty slot.
+        while (ddir / f"p{slot:02d}.pddl").exists() and not force:
+            slot += 1
+            if slot > target:
+                break
+        if slot > target:
+            break
+        out_path = ddir / f"p{slot:02d}.pddl"
+        _write_atomic(out_path, src_text, force=force, dry_run=dry_run)
+        existing_contents.add(src_text)
+        slot += 1
+        written += 1
+    if written == 0:
+        print(f"  no problems seeded into {ddir.name}")
+
+
+def _problem_label(problem_pddl: str) -> str | None:
+    """Return the `(problem NAME)` label, or None if not parseable."""
+    import re
+    m = re.search(r"\(\s*problem\s+([\w-]+)", problem_pddl)
+    return m.group(1) if m else None
+
+
+# ---------------------------------------------------------------------------
 # Generate valid plans (planner with strategy variants)
 # ---------------------------------------------------------------------------
 
@@ -525,6 +626,7 @@ def _parse_args() -> argparse.Namespace:
     sub = p.add_subparsers(dest="cmd", required=True)
     for name, helptext in (
         ("migrate", "rename legacy `_0` files in-place"),
+        ("seed-problems", "copy + MCP-validate p02..p<target> from a source benchmark dir"),
         ("gen-valid-plans", "produce up to --target valid plans per problem"),
         ("gen-invalid-plans", "mutate v1 plan into --target invalid plans per problem"),
         ("gen-invalid-problems", "mutate p01.pddl into --target invalid problems"),
@@ -535,6 +637,9 @@ def _parse_args() -> argparse.Namespace:
         sp.add_argument("domain", help="domain name (e.g. blocksworld)")
         if name in ("gen-valid-plans", "gen-invalid-plans"):
             sp.add_argument("--problem", help="restrict to a single problem name")
+        if name == "seed-problems":
+            sp.add_argument("--source", required=True, help="source dir (e.g. ~/personal/online_model_learning/benchmarks/olam-compatible/blocksworld)")
+            sp.add_argument("--pattern", default="p[0-9]*.pddl", help="glob pattern for source problem files")
     return p.parse_args()
 
 
@@ -546,6 +651,12 @@ async def _async_main(args: argparse.Namespace) -> None:
     try:
         if args.cmd == "migrate":
             cmd_migrate(args.domain, dry_run=args.dry_run)
+        elif args.cmd == "seed-problems":
+            await cmd_seed_problems(
+                mcp, args.domain, Path(args.source).expanduser(),
+                target=args.target, pattern=args.pattern,
+                force=args.force, dry_run=args.dry_run,
+            )
         elif args.cmd == "gen-valid-plans":
             await cmd_gen_valid_plans(
                 mcp, args.domain, target=args.target,
