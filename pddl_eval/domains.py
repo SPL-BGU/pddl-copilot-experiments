@@ -226,6 +226,17 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                 f"plan_valid={entry['plan_valid']} "
                 f"valid_plans={len(entry['valid_plans'])})"
             )
+            # Solvable cell with 0 committed valid plans → the runner's
+            # validate_plan positive arm silently emits 0 jobs for this
+            # (dname, pname). Surface it at startup so a missing
+            # `gen-valid-plans` step on a future domain addition can't
+            # slip past unnoticed.
+            if entry["solvable"] and not entry["valid_plans"]:
+                print(
+                    f"    [WARN] {dname}/{pname}: 0 committed valid plans — "
+                    "validate_plan positive arm will emit 0 jobs for this cell. "
+                    "Run `tools/build_fixtures.py gen-valid-plans` to populate."
+                )
 
         # ---------------- Negative fixtures ----------------
         # The `_negatives` slot is keyed on the negative *kind*. The
