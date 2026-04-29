@@ -510,6 +510,8 @@ PROBLEM_MUTATORS = (
     ("undefined-init-obj",   _taxonomies.problem_inject_undefined_object),
     ("undef-goal-pred",      _taxonomies.problem_undefined_goal_predicate),
     ("malformed-paren",      _taxonomies.problem_corrupt_paren),
+    ("missing-objects",      _taxonomies.problem_drop_objects),
+    ("missing-init",         _taxonomies.problem_drop_init),
 )
 
 

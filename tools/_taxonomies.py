@@ -178,6 +178,26 @@ def problem_corrupt_paren(problem_text: str, rng: random.Random | None = None) -
     return problem_text + ")"
 
 
+def problem_drop_objects(problem_text: str, rng: random.Random | None = None) -> str:
+    """Strip the entire `(:objects ...)` block.
+
+    Spec category 1 (objects in :init not in :objects) — pushed to the
+    extreme: ALL :init references become undefined since there are no
+    declared objects. The validator must reject the result.
+    """
+    return _strip_balanced_block(problem_text, ":objects")
+
+
+def problem_drop_init(problem_text: str, rng: random.Random | None = None) -> str:
+    """Strip the entire `(:init ...)` block.
+
+    Adjacent to category 5 (init references wrong type) — without an
+    init block, the goal is not achievable from any starting state and
+    validators that check init/goal consistency reject it.
+    """
+    return _strip_balanced_block(problem_text, ":init")
+
+
 def problem_undefined_goal_predicate(
     problem_text: str,
     fake: str = "undef_pred_xyz",
