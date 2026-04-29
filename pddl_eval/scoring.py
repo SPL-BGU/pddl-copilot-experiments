@@ -369,15 +369,43 @@ def _apply_truncation_override(success: bool, truncated: bool, failure_reason: s
 
 
 def _classify_step_failure(
-    success: bool, done_reason: str, loop_exhausted: bool, failure_reason: str,
+    success: bool,
+    done_reason: str,
+    loop_exhausted: bool,
+    failure_reason: str,
+    *,
+    thinking_text: str = "",
+    response_text: str = "",
+    error: str = "",
 ) -> tuple[str, bool]:
-    """Apply LOOP_EXHAUSTED + truncation overrides; return (failure_reason, truncated).
+    """Apply THINK_OVERFLOW / LOOP_EXHAUSTED / truncation overrides.
 
-    Order matters: LOOP_EXHAUSTED is applied first so the truncation override
-    sees it (and intentionally leaves it alone — FR_LOOP_EXHAUSTED is not in
-    _TRUNCATION_OVERRIDE_REASONS). Used by both the single-task and chain
-    paths so step records share failure-tag semantics.
+    Returns (failure_reason, truncated). Owns the full override-precedence
+    chain so callers don't have to interleave checks in the right order:
+
+      1. FR_THINK_OVERFLOW — set when the cap fired with non-empty thinking
+         and empty response, and no exception/tool-error already populated
+         `error`. Skipped under loop_exhausted (FR_LOOP_EXHAUSTED is the
+         more specific tag for tool-loop cap-hits).
+      2. FR_LOOP_EXHAUSTED — overrides whatever the classifier returned
+         when the tool loop ran out without producing an answer.
+      3. Truncation override — relabels empty-output reasons
+         (FR_PLAN_INVALID, FR_NO_VERDICT_PARSED, FR_SIMULATE_EMPTY,
+         FR_UNKNOWN) to FR_TRUNCATED_NO_ANSWER when done_reason=="length".
+
+    Used by both the single-task and chain paths so step records share
+    failure-tag semantics. The `thinking_text`/`response_text`/`error`
+    kwargs default to empty strings; chain callers that don't pass them
+    skip the FR_THINK_OVERFLOW step (matches pre-2026-04-29 behavior —
+    chain steps land in FR_TRUNCATED_NO_ANSWER instead).
     """
+    if (not success
+        and not error
+        and not loop_exhausted
+        and done_reason == "length"
+        and thinking_text
+        and not response_text):
+        failure_reason = FR_THINK_OVERFLOW
     if loop_exhausted and not success:
         failure_reason = FR_LOOP_EXHAUSTED
     truncated = done_reason == "length"

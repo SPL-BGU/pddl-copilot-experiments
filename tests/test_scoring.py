@@ -232,9 +232,9 @@ def test_extract_verdict(r: TestResults):
 
 
 def test_classify_step_failure_think_overflow(r: TestResults):
-    # FR_THINK_OVERFLOW classification is inline in evaluate_one (PR-2);
-    # _classify_step_failure must NOT relabel it back to FR_TRUNCATED_NO_ANSWER
-    # via the truncation override, even though done_reason=="length".
+    # _classify_step_failure must NOT relabel a pre-set FR_THINK_OVERFLOW
+    # back to FR_TRUNCATED_NO_ANSWER via the truncation override, even
+    # though done_reason=="length".
     fr, trunc = rx._classify_step_failure(
         success=False, done_reason="length", loop_exhausted=False,
         failure_reason=rx.FR_THINK_OVERFLOW,
@@ -259,6 +259,63 @@ def test_classify_step_failure_think_overflow(r: TestResults):
         failure_reason=rx.FR_OK,  # would-be classifier output before override
     )
     r.check_eq("LOOP_EXHAUSTED beats truncation override", fr3, rx.FR_LOOP_EXHAUSTED)
+
+    # New (post-fold-in): the classifier itself sets FR_THINK_OVERFLOW
+    # when given non-empty thinking and empty response under a length cap.
+    # Previously this override lived inline in evaluate_one with the
+    # ordering pinned only by a comment.
+    fr4, trunc4 = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_NO_VERDICT_PARSED,
+        thinking_text="rambling reasoning here", response_text="",
+    )
+    r.check_eq("classifier sets FR_THINK_OVERFLOW from texts",
+               fr4, rx.FR_THINK_OVERFLOW)
+    r.check_eq("FR_THINK_OVERFLOW (from texts) marks truncated=True",
+               trunc4, True)
+
+    # Guard: non-empty response_text means the model emitted *something*,
+    # so the cap isn't a thinking-spiral. Falls through to the truncation
+    # override (FR_NO_VERDICT_PARSED → FR_TRUNCATED_NO_ANSWER).
+    fr5, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_NO_VERDICT_PARSED,
+        thinking_text="thinking", response_text="VERDICT: VALID",
+    )
+    r.check_eq("non-empty response_text blocks think-overflow override",
+               fr5, rx.FR_TRUNCATED_NO_ANSWER)
+
+    # Guard: empty thinking_text → no spiral, no override. Falls through
+    # to the truncation override.
+    fr6, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_NO_VERDICT_PARSED,
+        thinking_text="", response_text="",
+    )
+    r.check_eq("empty thinking_text blocks think-overflow override",
+               fr6, rx.FR_TRUNCATED_NO_ANSWER)
+
+    # Precedence: FR_LOOP_EXHAUSTED beats FR_THINK_OVERFLOW even when the
+    # think-overflow conditions are satisfied. The tool-loop cap-hit is
+    # the more specific failure mode.
+    fr7, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=True,
+        failure_reason=rx.FR_OK,
+        thinking_text="thinking", response_text="",
+    )
+    r.check_eq("LOOP_EXHAUSTED beats THINK_OVERFLOW", fr7, rx.FR_LOOP_EXHAUSTED)
+
+    # Guard: a populated `error` string (exception path or extracted
+    # tool-error message) blocks the think-overflow override. The original
+    # failure_reason is preserved.
+    fr8, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_EXCEPTION,
+        thinking_text="thinking", response_text="",
+        error="ConnectionError: refused",
+    )
+    r.check_eq("non-empty error blocks think-overflow override",
+               fr8, rx.FR_EXCEPTION)
 
 
 def test_expand_conditions(r: TestResults):

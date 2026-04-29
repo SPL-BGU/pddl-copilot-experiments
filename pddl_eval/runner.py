@@ -38,7 +38,6 @@ from .scoring import (
     FR_EXCEPTION,
     FR_OK,
     FR_OLLAMA_PARSE_ERROR,
-    FR_THINK_OVERFLOW,
     FR_TOOL_ERROR,
     _classify_step_failure,
     _safe_json_loads,
@@ -326,27 +325,16 @@ async def evaluate_one(
                     error = f"tool={tc.get('name')}: {parsed.get('message','')}"
                     break
 
-    # FR_THINK_OVERFLOW: thinking spiral consumed the completion budget,
-    # leaving an empty `content` string. More-specific tag than
-    # FR_TRUNCATED_NO_ANSWER. Detect inline (before _classify_step_failure)
-    # so the truncation override doesn't relabel it generically. Skip when
-    # loop_exhausted is set — that's a tool-loop cap-hit, not a thinking
-    # spiral, and FR_LOOP_EXHAUSTED is the more specific tag for that case
-    # (precedence taken inside _classify_step_failure).
-    if (not error
-        and not loop_exhausted
-        and done_reason == "length"
-        and thinking_text
-        and not response_text):
-        failure_reason = FR_THINK_OVERFLOW
-
-    # The model kept tool-calling until the MAX_TOOL_LOOPS cap fired without
-    # emitting an assistant answer. `chat_with_tools` returned empty text in
-    # that case, so `response` is already correct. Relabel the failure so
-    # "gave up after 10 tool calls" is distinguishable from real capability
-    # failures (see ISS-005 Batch 2 / cluster-run1 analysis).
+    # `_classify_step_failure` owns the full override chain:
+    # FR_THINK_OVERFLOW → FR_LOOP_EXHAUSTED → truncation. Pass the texts so
+    # it can fire the think-overflow override; the chain step path doesn't
+    # pass them and stays on the legacy FR_TRUNCATED_NO_ANSWER tag for
+    # think-spiral steps (see ISS-005 Batch 2 / cluster-run1 analysis).
     failure_reason, truncated = _classify_step_failure(
         success, done_reason, loop_exhausted, failure_reason,
+        thinking_text=thinking_text,
+        response_text=response_text,
+        error=error,
     )
 
     return TaskResult(
