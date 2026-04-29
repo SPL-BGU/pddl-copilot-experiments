@@ -533,7 +533,10 @@ def main():
                         f"simulate={DEFAULT_NUM_PREDICT['simulate']}, "
                         f"validate_*={DEFAULT_NUM_PREDICT['validate_plan']}). "
                         f"Non-solve caps raised 1024->4096 on 2026-04-29 after "
-                        f"observing 33-41%% truncation in the cluster-26042026 sweep.")
+                        f"observing 33-41%% truncation in the cluster-26042026 sweep, "
+                        f"then 4096->6144 same-day after job 17266087 still showed "
+                        f"residual Hermes XML truncations on nemotron-3-nano:30b "
+                        f"validate_*/think=off cells (DEFAULT_NUM_PREDICT comment).")
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
                    help=f"Ollama context window tokens for single-task tools cells. "
                         f"Default {DEFAULT_NUM_CTX}.")
