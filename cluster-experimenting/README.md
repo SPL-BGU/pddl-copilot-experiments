@@ -258,6 +258,13 @@ scancel -u $USER                # nuke all of mine
 scancel -t PENDING -u $USER     # only pending
 ```
 
+**Don't `scancel` a job in CG (completing) state.** It's already past the
+workload and SLURM is just unwinding scratch dirs. A `scancel` during CG can
+race the natural completion and abort late-cell results that would otherwise
+have been written. Wait for it to clear naturally (verified 2026-04-29 on
+smoke job 17263071, where a CG-state cancel lost the qwen3.6:35b warmup and
+gemma4:31b cells).
+
 **Do NOT use `scancel --name=pddl_*`** — verified 2026-04-25 on SLURM 25.11.4:
 `--name` is exact-string match (comma-separated literal names), not a glob, so
 the cancel is a silent no-op. Filter by name prefix with squeue → awk → xargs:
@@ -271,9 +278,19 @@ squeue --me -h -o '%i %j' | awk '$2 ~ /^pddl_rtx_/ {print $1}' | xargs --no-run-
 **VRAM blowup after warmup (`exit 3`).** The runtime guard fired
 because VRAM > 85% post-warmup. Likely cause: `OLLAMA_NUM_PARALLEL` × `num_ctx`
 too high for the model. Check `run_condition_rtx.sbatch` — `NUM_PARALLEL=4`
-and `num_ctx=8192` are sized for the default `--all` pack (peak ~24 GB on
-rtx_pro_6000 96 GB). With multi-model packing, the guard skips the
+and `num_ctx=16384` are sized for the default `--all` pack on
+rtx_pro_6000 96 GB. With multi-model packing, the guard skips the
 offending model and continues with the next (sets non-zero exit at the end).
+Note (2026-04-29): single-task `num_ctx` was raised 8192 → 16384 (with
+`num_ctx_thinking` held equal at 16384 for tools/no-tools fairness in
+the "tools save tokens" headline) and `num_ctx_chain` was added for
+chain runs (initially 12288, raised same-day to 16384 since chain
+prompts accumulate history — the single-task think_overflow envelope
+tightens at chain step level rather than loosens). Per-call KV cache
+approximately doubles vs the prior 8192 baseline. If a sweep trips the
+guard, post-mortem `sacct/MaxRSS` to right-size; lowering
+`--num-ctx-chain` or `--concurrency` is the fastest mitigation if the
+cap is hit only on chain runs.
 
 **`apptainer: command not found`.** Apptainer module not loaded
 on the compute node. The sbatch assumes the cluster default has it on the

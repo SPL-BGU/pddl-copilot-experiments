@@ -1,0 +1,3 @@
+(unstack b2 b1)
+(pick_up b3)
+(stack b3 b1)

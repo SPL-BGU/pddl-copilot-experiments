@@ -56,6 +56,32 @@ def _get_tool_results(tool_calls: list[dict], name: str) -> list[str]:
     return [tc["result"] for tc in tool_calls if tc["name"] == name and "result" in tc]
 
 
+def _call_matches_validate_task(tc: dict, task: str) -> bool:
+    """True iff a `validate_pddl_syntax` call's argument shape matches *task*.
+
+    The tool is polymorphic — its `valid` field reflects whichever PDDL
+    layer was supplied. A {domain}-only call returns the domain's verdict
+    even when the model is being graded on plan validity; mismatch the
+    shape and every solvable benchmark trivially scores FR_OK. This
+    function is the gate. Caller is expected to have already filtered on
+    `tc["name"] == "validate_pddl_syntax"`.
+
+      validate_domain  — neither `problem` nor `plan` may be present.
+      validate_problem — `problem` required, `plan` forbidden.
+      validate_plan    — `plan` required.
+    """
+    args = tc.get("arguments", {}) or {}
+    has_problem = bool(args.get("problem"))
+    has_plan = bool(args.get("plan"))
+    if task == "validate_domain":
+        return not has_problem and not has_plan
+    if task == "validate_problem":
+        return has_problem and not has_plan
+    if task == "validate_plan":
+        return has_plan
+    return False
+
+
 def _extract_plan_from_tool_result(raw: str) -> list[str]:
     """Extract plan action list from a planner tool's JSON result."""
     data = _safe_json_loads(raw)
@@ -257,22 +283,12 @@ async def check_success(
                 return False, False, FR_TOOL_NOT_SELECTED
             if truth is None:
                 return True, False, FR_UNKNOWN
-            # validate_pddl_syntax is polymorphic: the `valid` field answers
-            # whichever layer was supplied. A {domain}-only call returns the
-            # domain's verdict even when the model is graded on plan validity,
-            # so the verdict check must match the call's argument shape to the
-            # task — otherwise every solvable benchmark trivially scores FR_OK.
+            # The verdict check must match the call's argument shape to the
+            # task — see _call_matches_validate_task for the rule and why.
             for tc in tool_calls:
                 if tc.get("name") != "validate_pddl_syntax":
                     continue
-                args = tc.get("arguments", {}) or {}
-                has_problem = bool(args.get("problem"))
-                has_plan = bool(args.get("plan"))
-                if task == "validate_domain" and (has_problem or has_plan):
-                    continue
-                if task == "validate_problem" and (not has_problem or has_plan):
-                    continue
-                if task == "validate_plan" and not has_plan:
+                if not _call_matches_validate_task(tc, task):
                     continue
                 verdict = _parse_validation_verdict(tc.get("result", ""))
                 if verdict == truth:
@@ -353,15 +369,43 @@ def _apply_truncation_override(success: bool, truncated: bool, failure_reason: s
 
 
 def _classify_step_failure(
-    success: bool, done_reason: str, loop_exhausted: bool, failure_reason: str,
+    success: bool,
+    done_reason: str,
+    loop_exhausted: bool,
+    failure_reason: str,
+    *,
+    thinking_text: str = "",
+    response_text: str = "",
+    error: str = "",
 ) -> tuple[str, bool]:
-    """Apply LOOP_EXHAUSTED + truncation overrides; return (failure_reason, truncated).
+    """Apply THINK_OVERFLOW / LOOP_EXHAUSTED / truncation overrides.
 
-    Order matters: LOOP_EXHAUSTED is applied first so the truncation override
-    sees it (and intentionally leaves it alone — FR_LOOP_EXHAUSTED is not in
-    _TRUNCATION_OVERRIDE_REASONS). Used by both the single-task and chain
-    paths so step records share failure-tag semantics.
+    Returns (failure_reason, truncated). Owns the full override-precedence
+    chain so callers don't have to interleave checks in the right order:
+
+      1. FR_THINK_OVERFLOW — set when the cap fired with non-empty thinking
+         and empty response, and no exception/tool-error already populated
+         `error`. Skipped under loop_exhausted (FR_LOOP_EXHAUSTED is the
+         more specific tag for tool-loop cap-hits).
+      2. FR_LOOP_EXHAUSTED — overrides whatever the classifier returned
+         when the tool loop ran out without producing an answer.
+      3. Truncation override — relabels empty-output reasons
+         (FR_PLAN_INVALID, FR_NO_VERDICT_PARSED, FR_SIMULATE_EMPTY,
+         FR_UNKNOWN) to FR_TRUNCATED_NO_ANSWER when done_reason=="length".
+
+    Used by both the single-task and chain paths so step records share
+    failure-tag semantics. The `thinking_text`/`response_text`/`error`
+    kwargs default to empty strings; chain callers that don't pass them
+    skip the FR_THINK_OVERFLOW step (matches pre-2026-04-29 behavior —
+    chain steps land in FR_TRUNCATED_NO_ANSWER instead).
     """
+    if (not success
+        and not error
+        and not loop_exhausted
+        and done_reason == "length"
+        and thinking_text
+        and not response_text):
+        failure_reason = FR_THINK_OVERFLOW
     if loop_exhausted and not success:
         failure_reason = FR_LOOP_EXHAUSTED
     truncated = done_reason == "length"

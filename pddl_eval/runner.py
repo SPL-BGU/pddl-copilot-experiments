@@ -38,7 +38,6 @@ from .scoring import (
     FR_EXCEPTION,
     FR_OK,
     FR_OLLAMA_PARSE_ERROR,
-    FR_THINK_OVERFLOW,
     FR_TOOL_ERROR,
     _classify_step_failure,
     _safe_json_loads,
@@ -58,22 +57,56 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # Per-task output caps. Chosen well above the longest legitimate plan/trace
 # seen in the domains set but low enough that a thinking-mode spiral is cut
 # off in seconds instead of minutes. Override via --num-predict.
+#
+# Non-solve caps raised from 1024/1536 -> 4096 on 2026-04-29 after the
+# cluster-26042026 sweep showed truncation rates of 40.9% (validate_plan),
+# 37.1% (simulate), 32.7% (validate_problem), 17.4% (validate_domain) at
+# the old caps -- thinking-mode reasoning + tool-call XML emissions were
+# being cut mid-stream, biasing accuracy and producing the bulk of
+# `ollama_parse_error` records (Hermes/harmony XML parser fails on
+# truncated <function><parameter> tags). 4096 fits comfortably inside
+# DEFAULT_NUM_CTX (16384 post-2026-04-29 fairness bump) with single-task
+# PDDL prompts (~0.5-1.5K tokens), leaving ~10K of think+output headroom
+# for thinking models. Chain runs use DEFAULT_NUM_CTX_CHAIN below.
+# `solve` stays at 8192 (paper-default; raise alongside num_ctx if a
+# future model lineup hits the cap).
 DEFAULT_NUM_PREDICT: dict[str, int] = {
     "solve":            8192,
-    "validate_domain":  1024,
-    "validate_problem": 1024,
-    "validate_plan":    1024,
-    "simulate":         1536,
+    "validate_domain":  4096,
+    "validate_problem": 4096,
+    "validate_plan":    4096,
+    "simulate":         4096,
 }
-DEFAULT_NUM_CTX = 8192
-# Larger context budget used only when (think != False AND with_tools=False)
-# — the no-PDDL-tools + thinking cell where the model has to inline its
-# reasoning instead of farming it out to MCP tools. Calibrated on
-# 2026-04-28 against blocksworld/p01 with qwen3:0.6b (max prompt+eval =
-# 8680, hit num_predict=8192 cap on solve) and qwen3:4b (max p+e = 6303);
-# 12288 gives ~1.4× headroom over the observed max without bloating KV
-# cache the way 16384 would. Override via --num-ctx-thinking.
-DEFAULT_NUM_CTX_THINKING = 12288
+DEFAULT_NUM_CTX = 16384
+# Held equal to DEFAULT_NUM_CTX on 2026-04-29: the "tools save tokens"
+# headline requires identical ctx budgets across tools/no-tools, so
+# tools+think_on must not be starved of the headroom that no-tools+think_on
+# gets. Bumped from 8192/12288 to 16384 after qwen3.6:27b /
+# nemotron-3-nano:30b smokes (2026-04-29) showed think_overflow at 12288
+# on val_problem/val_plan (6/12 and 10/20 fail rates in both tools and
+# no-tools cells — every miss was think_overflow). The pre-2026-04-28
+# rationale (12288 covered qwen3:0.6b max p+e = 8680) no longer holds
+# for the new qwen3.6/nemotron generation. Kept as a separate constant
+# so the asymmetric branch in evaluate_one remains a no-op rather than
+# getting deleted; future asymmetric experiments can override one
+# without touching the other. Override via --num-ctx-thinking.
+DEFAULT_NUM_CTX_THINKING = 16384
+# Context budget for multi-task chain runs. Chains accumulate the full
+# message history (system + N×(user+assistant+tool_calls+tool_results))
+# across steps, so step-4 prompts can reach ~6-8K tokens before generation
+# even on small problems. Held equal to DEFAULT_NUM_CTX (16384) by the
+# 2026-04-29 follow-up bump: applying the single-task think_overflow
+# evidence (qwen3.6:27b / nemotron-3-nano:30b at 12288 ctx hit
+# FR_THINK_OVERFLOW on 50% of validate_problem/validate_plan cells) to a
+# chain step running the same task gives WORSE headroom, not better,
+# because chain prompts include accumulated history. At 12288 chain ctx,
+# step-3 validate_plan would have ~8K think+output budget vs ~11K in
+# single-task -- the regime that already failed. 16384 brings step-3 to
+# ~12K (comparable to single-task at 16384) and step-4 to ~8-10K (still
+# tighter than single-task; raise to 20480 if a chain sweep surfaces
+# step-4 think_overflow). Chains are tools-only (ISS-018), so this is
+# condition-independent. Override via --num-ctx-chain.
+DEFAULT_NUM_CTX_CHAIN = 16384
 DEFAULT_CONCURRENCY = 4
 
 # Cap on stored response/exception strings in result records. The full text
@@ -90,11 +123,18 @@ RESPONSE_SNAPSHOT_LEN = 500
 # record JSON. Full content is reproducible by re-running the prompt.
 THINKING_SNAPSHOT_LEN = 4096
 
-# Substring signature of Ollama's server-side tool-call JSON parser failure
-# (emitted by ollama/server/routes.go when it can't parse tool-call arguments,
-# e.g. multi-line PDDL strings with gpt-oss). Matched against the exception
-# text to route these into FR_OLLAMA_PARSE_ERROR instead of generic FR_EXCEPTION.
-OLLAMA_TOOL_PARSE_SIGNATURE = "error parsing tool call"
+# Substring signatures of Ollama's server-side tool-call parser failures.
+# Matched against the exception text to route these into FR_OLLAMA_PARSE_ERROR
+# instead of generic FR_EXCEPTION. Two parser families produce the bucket:
+#   "error parsing tool call" — JSON tool-arg parser, emitted by
+#       ollama/server/routes.go on multi-line PDDL strings (gpt-oss, 2026-04-21).
+#   "XML syntax error"        — Hermes/harmony chat-template XML parser, emitted
+#       on malformed/truncated <function><parameter>... tool-call emissions
+#       (nemotron-3-nano:30b on validate_problem/validate_plan, 2026-04-29).
+OLLAMA_TOOL_PARSE_SIGNATURES: tuple[str, ...] = (
+    "error parsing tool call",
+    "XML syntax error",
+)
 
 # Per-task tool allowlists. When --tool-filter=per-task, only these tool names
 # are exposed to the model for the given task, controlling for tool-selection
@@ -162,6 +202,12 @@ class TaskResult:
     failure_reason: str = FR_OK          # FR_* constant — "ok" iff success
     truncated: bool = False              # done_reason == "length" on any turn
     done_reason: str = ""                # raw done_reason from the last chat turn
+    # Plan-variant label for `validate_plan` jobs (PR-3): "v1".."v5" for
+    # the 5 valid plans per problem, "b1".."b5" for the 5 invalid plans.
+    # "" for tasks that don't take a plan input (solve, validate_domain,
+    # validate_problem) and for `simulate` (which uses only the canonical
+    # planner-generated plan + trace).
+    plan_label: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +234,7 @@ async def evaluate_one(
     tool_filter: str = "all",
     prompt_style: str = "minimal",
     temperature: float = TEMPERATURE,
+    plan_label: str = "",
 ) -> TaskResult:
     template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
@@ -250,7 +297,7 @@ async def evaluate_one(
         # strings in tool arguments (observed heavily with gpt-oss on PDDL
         # domains). Classify separately so analysis can quantify the upstream
         # parser-bug rate instead of lumping it into generic exceptions.
-        if OLLAMA_TOOL_PARSE_SIGNATURE in error:
+        if any(sig in error for sig in OLLAMA_TOOL_PARSE_SIGNATURES):
             failure_reason = FR_OLLAMA_PARSE_ERROR
         else:
             failure_reason = FR_EXCEPTION
@@ -278,27 +325,16 @@ async def evaluate_one(
                     error = f"tool={tc.get('name')}: {parsed.get('message','')}"
                     break
 
-    # FR_THINK_OVERFLOW: thinking spiral consumed the completion budget,
-    # leaving an empty `content` string. More-specific tag than
-    # FR_TRUNCATED_NO_ANSWER. Detect inline (before _classify_step_failure)
-    # so the truncation override doesn't relabel it generically. Skip when
-    # loop_exhausted is set — that's a tool-loop cap-hit, not a thinking
-    # spiral, and FR_LOOP_EXHAUSTED is the more specific tag for that case
-    # (precedence taken inside _classify_step_failure).
-    if (not error
-        and not loop_exhausted
-        and done_reason == "length"
-        and thinking_text
-        and not response_text):
-        failure_reason = FR_THINK_OVERFLOW
-
-    # The model kept tool-calling until the MAX_TOOL_LOOPS cap fired without
-    # emitting an assistant answer. `chat_with_tools` returned empty text in
-    # that case, so `response` is already correct. Relabel the failure so
-    # "gave up after 10 tool calls" is distinguishable from real capability
-    # failures (see ISS-005 Batch 2 / cluster-run1 analysis).
+    # `_classify_step_failure` owns the full override chain:
+    # FR_THINK_OVERFLOW → FR_LOOP_EXHAUSTED → truncation. Pass the texts so
+    # it can fire the think-overflow override; the chain step path doesn't
+    # pass them and stays on the legacy FR_TRUNCATED_NO_ANSWER tag for
+    # think-spiral steps (see ISS-005 Batch 2 / cluster-run1 analysis).
     failure_reason, truncated = _classify_step_failure(
         success, done_reason, loop_exhausted, failure_reason,
+        thinking_text=thinking_text,
+        response_text=response_text,
+        error=error,
     )
 
     return TaskResult(
@@ -321,6 +357,7 @@ async def evaluate_one(
         failure_reason=failure_reason,
         truncated=truncated,
         done_reason=done_reason,
+        plan_label=plan_label,
     )
 
 
@@ -334,9 +371,10 @@ def _format_progress(done: int, total: int, scheduled_idx: int, r: TaskResult) -
     idx_width = len(str(total))
     mark = "OK" if r.success else "FAIL"
     suffix = "" if r.success else f" ({r.failure_reason})"
+    plan_tag = f"/{r.plan_label}" if r.plan_label else ""
     return (
         f"  [{done:>{idx_width}}/{total} | {r.duration_s:>6.1f}s | #{scheduled_idx}] "
-        f"{r.model} {cond} {r.task} {r.domain_name}/{r.problem_name} v{r.prompt_variant}"
+        f"{r.model} {cond} {r.task} {r.domain_name}/{r.problem_name}{plan_tag} v{r.prompt_variant}"
         f" -> {mark}{suffix}"
     )
 
@@ -373,16 +411,30 @@ async def run_single_task_experiment(
     # Build the full job list up-front. Skipping unsolvable validate_plan/
     # simulate is cheaper here than inside the coroutine and keeps the
     # denominator accurate.
-    Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv, with_tools, gt, np)
+    # Job tuple shape (PR-3): adds plan_label as the last field.
+    Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv,
+                 #  with_tools, gt, np_for_task, plan_label)
     jobs: list[Job] = []
     with_tools_values = _expand_conditions(conditions)
-    # Map each negative-fixture kind to the single task it tests. Keep this
-    # in sync with `generate_ground_truth`'s `_negatives` slot keys.
-    NEGATIVE_KINDS: tuple[tuple[str, str, str], ...] = (
-        ("domain",  "validate_domain",  "domain_0"),
-        ("problem", "validate_problem", "problem_0"),
-        ("plan",    "validate_plan",    "plan_0"),
-    )
+
+    def _emit_job(
+        *, model, task, dname, dpddl, pname, ppddl, pv, with_tools,
+        gt_frag, np_for_task, plan_label,
+    ) -> None:
+        # `with_tools` is intentionally OUT of the shard key so paired
+        # (tools / no-tools) comparisons for the same logical key land
+        # in the same shard. `plan_label` IS in the key so v1..v5 / b1..b5
+        # spread across shards rather than clustering all in shard 0.
+        if not _shard_filter(
+            shard_i, shard_n,
+            (model, task, dname, pname, plan_label, str(pv)),
+        ):
+            return
+        jobs.append((
+            model, task, dname, dpddl, pname, ppddl, pv,
+            with_tools, gt_frag, np_for_task, plan_label,
+        ))
+
     for model in models:
         for with_tools in with_tools_values:
             for task in tasks:
@@ -409,7 +461,7 @@ async def run_single_task_experiment(
                     )
                 else:
                     domain_iter = list(domains.items())
-                # ---- Positive jobs (one per (dname, pname, prompt-variant)) ----
+                # ---- Positive jobs ----
                 for dname, dinfo in domain_iter:
                     if cell_assignment is not None:
                         ppddl = dinfo["problems"].get(pick_pname)
@@ -422,90 +474,119 @@ async def run_single_task_experiment(
                         gt = ground_truth.get(dname, {}).get(pname, {})
                         if task in ("validate_plan", "simulate") and not gt.get("plan"):
                             continue
-                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
-                            # `with_tools` is intentionally OUT of the shard
-                            # key so paired (tools / no-tools) comparisons
-                            # for the same (m, t, d, p, pv) land in the
-                            # same shard.
-                            if not _shard_filter(
-                                shard_i, shard_n,
-                                (model, task, dname, pname, str(pv)),
-                            ):
-                                continue
-                            jobs.append((
-                                model, task, dname, dinfo["domain"],
-                                pname, ppddl, pv, with_tools, gt, np_for_task,
-                            ))
+                        # `validate_plan` positive: emit one job per
+                        # committed valid plan (v1..vN). The plan
+                        # content overrides gt["plan"]/gt["plan_valid"]
+                        # via gt_frag so the grader sees the labelled
+                        # plan, not the planner's canonical one.
+                        # `simulate`: 1 job per problem, gt unchanged
+                        # (uses planner-canonical plan + trace).
+                        # Other tasks: 1 job per problem.
+                        if task == "validate_plan":
+                            valid_plans = gt.get("valid_plans") or []
+                            for i, plan_entry in enumerate(valid_plans):
+                                gt_frag = {
+                                    **gt,
+                                    "plan": plan_entry["plan"],
+                                    "plan_valid": plan_entry["plan_valid"],
+                                }
+                                for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                    _emit_job(
+                                        model=model, task=task, dname=dname,
+                                        dpddl=dinfo["domain"], pname=pname,
+                                        ppddl=ppddl, pv=pv,
+                                        with_tools=with_tools, gt_frag=gt_frag,
+                                        np_for_task=np_for_task,
+                                        plan_label=f"v{i+1}",
+                                    )
+                        else:
+                            for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                _emit_job(
+                                    model=model, task=task, dname=dname,
+                                    dpddl=dinfo["domain"], pname=pname,
+                                    ppddl=ppddl, pv=pv,
+                                    with_tools=with_tools, gt_frag=gt,
+                                    np_for_task=np_for_task, plan_label="",
+                                )
                 # ---- Negative jobs (task-targeted; ISS-001) ----
                 # Each negative fixture joins exactly one task and carries
                 # an inline `gt` fragment so we sidestep the by-`pname` GT
-                # lookup above (two negatives could otherwise collide).
-                for kind, target_task, neg_pname in NEGATIVE_KINDS:
-                    if target_task != task:
+                # lookup above (different negatives could otherwise collide).
+                if cell_assignment is not None:
+                    pick = cell_assignment.get((model, task))
+                    if pick is None:
                         continue
-                    # Mirror the (model, task) → (dname, pname) cell
-                    # assignment used by `--smoke-shuffle` for positive
-                    # jobs: one negative per cell, drawn from the assigned
-                    # domain's `_negatives` slot.
-                    if cell_assignment is not None:
-                        pick = cell_assignment.get((model, task))
-                        if pick is None:
+                    neg_domain_iter = (
+                        [(pick[0], domains[pick[0]])]
+                        if pick[0] in domains else []
+                    )
+                else:
+                    neg_domain_iter = list(domains.items())
+                for dname, dinfo in neg_domain_iter:
+                    negs = ground_truth.get(dname, {}).get("_negatives") or {}
+                    if not negs:
+                        continue
+                    if task == "validate_domain":
+                        neg = negs.get("domain")
+                        if neg is None:
                             continue
-                        neg_domain_iter = (
-                            [(pick[0], domains[pick[0]])]
-                            if pick[0] in domains else []
-                        )
-                    else:
-                        neg_domain_iter = list(domains.items())
-                    for dname, dinfo in neg_domain_iter:
-                        neg_slot = (
-                            ground_truth.get(dname, {})
-                            .get("_negatives", {})
-                            .get(kind)
-                        )
-                        if neg_slot is None:
-                            continue
-                        # Single-positive-per-domain assumption (paper
-                        # dataset). Mirrors the choice in
-                        # `generate_ground_truth`'s negatives pass; if
-                        # multi-problem datasets ever land, swap this for
-                        # the designated-primary lookup proposed there.
-                        positive_p01 = next(iter(dinfo["problems"].values()))
-                        if kind == "domain":
-                            d_pddl = neg_slot["domain_pddl"]
-                            p_pddl = positive_p01
-                            gt_frag = {
-                                "domain_valid": False,
-                                "problem_valid": True,
-                                "plan_valid": None,
-                            }
-                        elif kind == "problem":
-                            d_pddl = dinfo["domain"]
-                            p_pddl = neg_slot["problem_pddl"]
+                        # The negative-domain fixture pairs with any
+                        # positive problem (validator wants a problem
+                        # arg in some shapes); pick the first by
+                        # iteration order — same convention as the
+                        # generate_ground_truth pass.
+                        positive_first = next(iter(dinfo["problems"].values()))
+                        gt_frag = {
+                            "domain_valid": False,
+                            "problem_valid": True,
+                            "plan_valid": None,
+                        }
+                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                            _emit_job(
+                                model=model, task=task, dname=dname,
+                                dpddl=neg["domain_pddl"],
+                                pname="domain_neg", ppddl=positive_first, pv=pv,
+                                with_tools=with_tools, gt_frag=gt_frag,
+                                np_for_task=np_for_task, plan_label="",
+                            )
+                    elif task == "validate_problem":
+                        for i, neg in enumerate(negs.get("problems") or []):
                             gt_frag = {
                                 "domain_valid": True,
                                 "problem_valid": False,
                                 "plan_valid": None,
                             }
-                        else:  # kind == "plan"
-                            d_pddl = dinfo["domain"]
-                            p_pddl = positive_p01
-                            gt_frag = {
-                                "domain_valid": True,
-                                "problem_valid": True,
-                                "plan_valid": False,
-                                "plan": neg_slot["plan"],
-                            }
-                        for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
-                            if not _shard_filter(
-                                shard_i, shard_n,
-                                (model, target_task, dname, neg_pname, str(pv)),
-                            ):
+                            for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                _emit_job(
+                                    model=model, task=task, dname=dname,
+                                    dpddl=dinfo["domain"],
+                                    pname=f"n{i+1:02d}",
+                                    ppddl=neg["problem_pddl"], pv=pv,
+                                    with_tools=with_tools, gt_frag=gt_frag,
+                                    np_for_task=np_for_task, plan_label="",
+                                )
+                    elif task == "validate_plan":
+                        per_problem = negs.get("plans_per_problem") or {}
+                        for pname, neg_list in per_problem.items():
+                            ppddl = dinfo["problems"].get(pname)
+                            if ppddl is None:
                                 continue
-                            jobs.append((
-                                model, target_task, dname, d_pddl,
-                                neg_pname, p_pddl, pv, with_tools, gt_frag, np_for_task,
-                            ))
+                            for i, neg in enumerate(neg_list):
+                                gt_frag = {
+                                    "domain_valid": True,
+                                    "problem_valid": True,
+                                    "plan_valid": False,
+                                    "plan": neg["plan"],
+                                }
+                                for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
+                                    _emit_job(
+                                        model=model, task=task, dname=dname,
+                                        dpddl=dinfo["domain"], pname=pname,
+                                        ppddl=ppddl, pv=pv,
+                                        with_tools=with_tools, gt_frag=gt_frag,
+                                        np_for_task=np_for_task,
+                                        plan_label=f"b{i+1}",
+                                    )
 
     total = len(jobs)
     results: list[TaskResult | None] = [None] * total
@@ -517,7 +598,7 @@ async def run_single_task_experiment(
     async def run_one(idx: int) -> tuple[int, TaskResult]:
         (
             model, task, dname, dpddl, pname, ppddl, pv,
-            with_tools, gt, np_for_task,
+            with_tools, gt, np_for_task, plan_label,
         ) = jobs[idx]
         async with sem:
             r = await evaluate_one(
@@ -527,6 +608,7 @@ async def run_single_task_experiment(
                 num_ctx_thinking=num_ctx_thinking, think=think,
                 tool_filter=tool_filter, prompt_style=prompt_style,
                 temperature=temperature,
+                plan_label=plan_label,
             )
             return idx, r
 
@@ -570,6 +652,7 @@ async def run_chain_experiment(
     num_predict_override: int | None = None,
     num_ctx: int = DEFAULT_NUM_CTX,
     num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
+    num_ctx_chain: int = DEFAULT_NUM_CTX_CHAIN,
     think: bool | None = None,
     temperature: float = TEMPERATURE,
     concurrency: int = DEFAULT_CONCURRENCY,
@@ -617,10 +700,14 @@ async def run_chain_experiment(
             np_for_task = _resolve_num_predict(num_predict_override, task)
             allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
             step_loop_exhausted = False
-            # Mirror evaluate_one's effective_num_ctx rule. Chains are
-            # tools-only (no-tools chains skipped; ISS-018), so this
-            # resolves to `num_ctx` for every chain step today.
-            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx
+            # Chains are tools-only (no-tools chains skipped; ISS-018), so
+            # this resolves to `num_ctx_chain` for every step today; the
+            # num_ctx_thinking branch is preserved for forward-compat if
+            # no-tools chains ever come back. `num_ctx_chain` (12288 by
+            # default) leaves prompt headroom after the 2026-04-29 bump of
+            # non-solve num_predict caps to 4096 -- step-4 prompts in
+            # chains accumulate ~6-8K tokens of history.
+            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx_chain
             try:
                 if with_tools:
                     resp_text, tc, step_done_reason, step_loop_exhausted, _tokens, _thinking = await chat_with_tools(
@@ -672,7 +759,9 @@ async def run_chain_experiment(
                     # failures so chain analysis can separate them
                     # from other exception types (matches
                     # FR_OLLAMA_PARSE_ERROR in evaluate_one).
-                    "is_ollama_parse_error": OLLAMA_TOOL_PARSE_SIGNATURE in exc_text,
+                    "is_ollama_parse_error": any(
+                        sig in exc_text for sig in OLLAMA_TOOL_PARSE_SIGNATURES
+                    ),
                 }
                 print(
                     f"[chain exception] {type(exc).__name__}: {exc_text}",

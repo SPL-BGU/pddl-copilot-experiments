@@ -1,0 +1,5 @@
+(go_north_west b0)
+(go_north_west b0)
+(go_north_west b0)
+(go_north_west b0)
+(save_person b0 p0)

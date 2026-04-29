@@ -182,14 +182,53 @@ constraints that not every cell satisfies:
   (ISS-018, closed 2026-04-28). `think=off` is a single-task ablation
   against `think=on`/`think=default`; chain results under it aren't
   part of any planned comparison.
-- `--num-ctx-thinking` (default 12288) replaces `--num-ctx` (default
-  8192) only for cells where `think != off` AND `condition=no-tools`.
-  Tool-condition runs and `think=off` keep the smaller context budget.
+- `--num-ctx` (default 16384, raised from 8192 on 2026-04-29) is the
+  single-task context window for tools cells and for `think=off`
+  no-tools cells. Bumped after qwen3.6:27b / nemotron-3-nano:30b smokes
+  showed `think_overflow` at 12288 on `validate_problem`/`validate_plan`
+  (6/12 and 10/20 fail rates in both tools and no-tools cells; every
+  miss was `FR_THINK_OVERFLOW`). 16384 leaves ~10K of think+output
+  headroom on top of typical PDDL prompts.
+- `--num-ctx-thinking` (default 16384, raised from 12288 on 2026-04-29)
+  is used ONLY when `think != off` AND `condition=no-tools`. **Held
+  equal to `--num-ctx`** by default — the "tools save tokens" headline
+  comparison requires identical ctx budgets across the tools and
+  no-tools branches; otherwise the no-tools cell could appear better or
+  worse simply because it had more (or less) room to think. The
+  parameter is kept as a separate constant so future asymmetric
+  experiments can override one without touching the other.
   Implementation note: `async_main` splits a `(--conditions=both,
   think!=off)` invocation into two sequential `run_single_task_experiment`
   calls (one per condition), keeping `num_ctx` constant within each call.
   Without the split, mid-call `num_ctx` flips deadlocked Ollama under
   concurrency (smoke job 17244356, 2026-04-28).
+- `--num-ctx-chain` (default 16384, added 2026-04-29) replaces `--num-ctx`
+  for every step of a multi-task chain run. Chains accumulate the full
+  message history across steps (each step re-embeds domain + problem +
+  plan in its user prompt, and prior assistant turns + tool-call results
+  remain in context), so step-4 prompts on blocksworld-class problems
+  can reach ~6–8K tokens before generation. Held equal to `--num-ctx`
+  (16384) by the 2026-04-29 follow-up bump: applying the single-task
+  `FR_THINK_OVERFLOW` evidence (qwen3.6:27b / nemotron-3-nano:30b at
+  ctx=12288 hit overflow on 50% of `validate_problem` / `validate_plan`
+  cells) to a chain step running the same task gives **worse** headroom,
+  not better — chain step-3 think+output budget at ctx=12288 would be
+  ~8K vs ~11K in single-task (the regime that already failed). Raising
+  to 16384 brings chain step-3 to ~12K (comparable to the single-task
+  16384 envelope) and chain step-4 to ~8–10K (still tighter; raise to
+  20480 if a chain sweep surfaces step-4 overflow).
+- **Per-task `num_predict` caps** (`pddl_eval/runner.py`
+  `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=4096`,
+  `simulate=4096`. Non-solve caps were raised from 1024/1536 → 4096 on
+  2026-04-29 after the cluster-26042026 sweep showed truncation rates
+  (`done_reason == "length"`) of 40.9% on `validate_plan`, 37.1% on
+  `simulate`, 32.7% on `validate_problem`, and 17.4% on
+  `validate_domain` at the old caps — thinking-mode reasoning and
+  tool-call XML/harmony emissions were being cut mid-stream, biasing
+  accuracy and producing the bulk of `ollama_parse_error` records (the
+  Hermes/harmony XML parser fails on truncated `<function><parameter>`
+  tags). Override per-run with `--num-predict N` (applies uniformly to
+  all tasks).
 
 The PR-2 abort gate that previously exited early for
 `--conditions=no-tools|both` under `--think on/default` was lifted
@@ -201,29 +240,57 @@ response. See CHANGELOG 2026-04-28 (PR-2).
 
 ## 6. Domains
 
+20 domains × 5 valid problems × (1 valid + 1 invalid) domain × (5 valid + 5 invalid) plans per problem = **1240 fixture files** (PR-3, 2026-04-29). Per-domain layout:
+
 ```
-domains/
-  classical/
-    barman/        domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
-    blocksworld/   domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
-    depots/        ... (same shape)
-    rovers/        ...
-    satellite/     ...
-  numeric/
-    counters/      domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
-    depot/         ... (singular; paper's numeric split)
-    farmland/      ...
-    pogo_stick/    ...
-    sailing/       ...
+domains/<type>/<domain>/
+  domain.pddl                       (1 valid)
+  domain_neg.pddl                   (1 invalid)
+  p01.pddl ... p05.pddl             (5 valid)
+  n01.pddl ... n05.pddl             (5 invalid)
+  p01_v1.plan ... p05_v5.plan       (25 valid plans = 5 per problem)
+  p01_b1.plan ... p05_b5.plan       (25 invalid plans = 5 per problem)
 ```
 
-10 domains × 1 positive problem each — copied verbatim from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). Each domain also ships `p01.plan` (paper's `plan.solution`) as a reference artifact for manual cross-check; it is **not** read into prompts — the MCP oracle regenerates plan + trace on every run.
+Domain set:
 
-**Negative fixtures (added 2026-04-26, ISS-001).** Each domain also ships three task-targeted negatives — `domain_0.pddl` (validate_domain only), `p01_0.pddl` (validate_problem only), `p01_0.plan` (validate_plan only). The `_0` suffix denotes "negative" but is validity-neutral: the LLM never sees a path (prompts pass content, not paths), and `_0` reads as a numeric variant index even if a path were ever leaked. Each negative joins exactly its target task, so per-task ground truth is now 1:1 balanced (10 positive + 10 negative). See `domains/README.md` for the bug taxonomy.
+| Type | Domain | Provenance | Goal kind |
+|---|---|---|---|
+| classical | barman | paper | boolean |
+| classical | blocksworld | paper | boolean |
+| classical | depots | paper | boolean |
+| classical | gripper | PR-3 (olam-compatible) | boolean |
+| classical | miconic | PR-3 (olam-compatible) | boolean |
+| classical | parking | PR-3 (olam-compatible) | boolean |
+| classical | rovers | paper | boolean |
+| classical | satellite | paper | boolean |
+| classical | tpp | PR-3 (olam-compatible) | boolean |
+| classical | zenotravel | PR-3 (olam-compatible; substitute for spec's "logistics") | boolean |
+| numeric | block-grouping | PR-3 (matteocarde/patty `files/`; substitute for spec's "settlers") | numeric |
+| numeric | counters | paper | numeric `<=` |
+| numeric | delivery | PR-3 (matteocarde/patty IPC-2023; substitute for spec's "transport-numeric") | numeric |
+| numeric | depot | paper (singular — distinct from classical `depots`) | boolean |
+| numeric | drone | PR-3 (matteocarde/patty IPC-2023) | numeric |
+| numeric | farmland | paper | numeric `>=` + weighted sum |
+| numeric | gardening | PR-3 (matteocarde/patty `files/`; substitute for spec's "plant-watering") | numeric |
+| numeric | pogo_stick | paper | boolean |
+| numeric | sailing | paper | boolean |
+| numeric | zenotravel-numeric | PR-3 (matteocarde/patty IPC-2023; p02-p05 hand-authored) | numeric |
 
-**Expected validity:** positives are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. The startup ground-truth summary prints these flags per positive problem for manual review; drift is not auto-enforced. Negatives, by contrast, are **strictly enforced** — `generate_ground_truth` aborts startup with `SystemExit` if any negative validates as anything other than False.
+The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). The 10 PR-3 domains were sourced from public benchmark suites and validated end-to-end by the build pipeline. Substitution rationale and per-domain caveats live in `development/FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec".
 
-**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair their negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + positive `p01.pddl`). The paper dataset ships one positive problem per domain, so the negative plan is always paired with `p01.pddl`. The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` (`run_experiment.py:989`) — so this isn't a leak channel. Multi-problem datasets would need a designated-primary lookup at the two `next(iter(dinfo["problems"].values()))` sites in `generate_ground_truth` and the job builder.
+**Negative fixtures.** Each domain ships:
+- `domain_neg.pddl` — joins `validate_domain` (negative arm) only
+- `n01..n05.pddl` — join `validate_problem` (negative arm) only
+- `p<NN>_b1..b5.plan` — join `validate_plan` (negative arm) for problem `pNN` only
+
+Bug taxonomies (3 domain-mutators, 6 problem-mutators, 4 plan-mutators) are documented in `domains/README.md`. All negatives must validate as `valid=False` against `validate_pddl_syntax` — `generate_ground_truth` aborts startup with `SystemExit` naming any drift.
+
+**Expected validity:** positives are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. Each committed `p<NN>_v[1-5].plan` is independently re-validated at startup; any committed valid plan that the validator rejects also aborts startup (symmetric fail-fast on both sides).
+
+**Plan diversity.** Classical domains achieve up to 3 distinct plans via Fast Downward search-strategy variants (`lazy_greedy_cea`, `astar_lmcut`, `lazy_greedy_ff`); numeric domains use ENHSP whose alternative search algorithms are limited, so v2..v5 may be duplicates of v1. The graded count remains 5 per problem; per-call grading robustness is preserved because each prompt variant grades the plan independently.
+
+**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair the negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + the matching positive `pNN.pddl` for that `pNN_bK.plan`). The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` — so this isn't a leak channel.
 
 ---
 
@@ -302,7 +369,7 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_ctx_chain, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_ctx_chain` (added 2026-04-29, raised 12288 → 16384 same day) is the chain-step budget; held equal to `num_ctx` because chain prompts accumulate full per-step history, making the single-task think_overflow envelope tighter at chain step level rather than looser. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json

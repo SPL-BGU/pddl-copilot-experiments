@@ -50,13 +50,24 @@
 ###     Actual host-RAM usage is dominated by node-local /tmp model cache
 ###     (~24 GB peak for qwen3.6:35b A3B weights), well within either cap.
 ###
-### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=8192 (set per-request by
-### run_experiment.py) sizes KV pre-allocation comfortably alongside any
-### model in the active 5-model pack on rtx_pro_6000. Do NOT raise
-### NUM_PARALLEL without recomputing VRAM — probe 2026-04-23 observed
-### NUM_PARALLEL=8 × ctx=40960 allocating 37.8 GB for a 0.6B model
-### (pathological). A runtime VRAM guard aborts if usage exceeds 85%
-### after each model's warmup.
+### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=16384 (single-task tools
+### + think=off no-tools cells), num_ctx_thinking=16384 (no-tools+think_on
+### cells, held equal to num_ctx for tools/no-tools fairness in the "tools
+### save tokens" headline), num_ctx_chain=16384 (chain runs, tools-only per
+### ISS-018; held equal to num_ctx because chain prompts accumulate history
+### -- the single-task think_overflow envelope tightens at chain step level
+### rather than loosens) — all set per-request by run_experiment.py. The
+### single-task ctx values were raised from 8192/12288 to 16384 on
+### 2026-04-29 after qwen3.6:27b / nemotron-3-nano:30b smokes showed
+### think_overflow at 12288 on validate_problem/validate_plan; chain ctx
+### was raised 12288 → 16384 in the same-day follow-up. Do NOT raise NUM_PARALLEL
+### without recomputing VRAM — probe 2026-04-23 observed NUM_PARALLEL=8 ×
+### ctx=40960 allocating 37.8 GB for a 0.6B model (pathological). The
+### 16384-ctx single-task budget approximately doubles per-call KV vs the
+### prior 8192 baseline; the 80 GB rtx_pro_6000 cap should still hold for
+### the active pack but post-mortem MaxRSS / nvidia-smi peak after the
+### first sweep on raised ctx and right-size --mem if needed.
+### A runtime VRAM guard aborts if usage exceeds 85% after each model's warmup.
 ###
 #SBATCH --partition=main
 #SBATCH --job-name=pddl_copilot_rtx
@@ -125,7 +136,7 @@ while ss -Hltn "sport = :$PORT" 2>/dev/null | grep -q LISTEN; do
     PORT=$(( PORT + 1 ))
     [ "$PORT" -ge 11600 ] && { echo "Error: no free port in 11400-11599"; exit 4; }
 done
-echo "Starting ollama serve on localhost:$PORT (NUM_PARALLEL=4, MAX_LOADED=1, CTX_CAP=8192)"
+echo "Starting ollama serve on localhost:$PORT (NUM_PARALLEL=4, MAX_LOADED=1, CTX_DEFAULT=16384)"
 apptainer exec --nv \
     --bind "$WORK/models:/root/.ollama" \
     --writable-tmpfs \
@@ -134,7 +145,7 @@ apptainer exec --nv \
         export OLLAMA_NUM_PARALLEL=4
         export OLLAMA_MAX_LOADED_MODELS=1
         export OLLAMA_KEEP_ALIVE=1h
-        export OLLAMA_CONTEXT_LENGTH=8192
+        export OLLAMA_CONTEXT_LENGTH=16384
         ollama serve
     " > "$WORK/ollama-serve.log" 2>&1 &
 SERVE_PID=$!
@@ -184,11 +195,13 @@ for MODEL in $MODELS; do
     t1=$EPOCHREALTIME
     awk -v m="$MODEL" "BEGIN{printf \"pull %s: %.1fs\n\", m, $t1-$t0}"
 
-    ### Warmup (load into VRAM at ctx=8192) ###
-    echo "Warmup (load $MODEL into VRAM with num_ctx=8192)..."
+    ### Warmup (load into VRAM at ctx=16384 — matches the per-request num_ctx ###
+    ### that single-task cells use post 2026-04-29 cap bump, so the model is  ###
+    ### resident at the run's ctx and the first real request doesn't reload). ###
+    echo "Warmup (load $MODEL into VRAM with num_ctx=16384)..."
     curl -s --max-time 300 http://localhost:$PORT/api/chat \
         -H "Content-Type: application/json" \
-        -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":false,\"keep_alive\":\"1h\",\"options\":{\"num_predict\":5,\"num_ctx\":8192}}" \
+        -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":false,\"keep_alive\":\"1h\",\"options\":{\"num_predict\":5,\"num_ctx\":16384}}" \
         >/dev/null
     apptainer exec --bind "$WORK/models:/root/.ollama" "$SIF" \
         bash -c "OLLAMA_HOST=http://localhost:$PORT ollama ps" 2>&1

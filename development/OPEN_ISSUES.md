@@ -43,18 +43,17 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Fix.** Split into `FR_TOOL_ARG_ERROR` (plugin rejection) / `FR_TOOL_PARSE_ERROR` (content rejection) / `FR_TOOL_TRANSPORT` (MCP failure). ~30 LOC in `_tool_error_seen` + failure-reason vocabulary. Decompose existing runs during follow-up analysis.
 **Files.** `run_experiment.py` (failure-reason constants, `_tool_error_seen`, `check_success`).
 
-### ISS-006 · Truncation on no-tools `solve` (17/55, 31%)
+### ~~ISS-006~~ · Truncation on no-tools `solve` (17/55, 31%) — partially addressed
 **Source.** Results review, issue 8.
 **Evidence.** `solve no-tools`: 17/55 truncated at the current `num_predict` default.
-**Impact.** 0/55 success rate may be a token-budget artefact, not a capability signal.
-**Fix.** Re-run `solve no-tools` at `--num-predict 16384` for qwen3:0.6b. Audit per-task median completion lengths against their caps (`DEFAULT_NUM_PREDICT` at `run_experiment.py:77-83`) and raise where medians approach the cap.
-**Files.** `run_experiment.py` per-task `num_predict` defaults, sweep scripts.
+**Status (2026-04-29).** Audit performed across the cluster-26042026 sweep (CHANGELOG 2026-04-29 cap-bump entry) — confirmed `solve no-tools` truncation at 32.0% across 5 cells with the 8192 cap. The **cap was not raised** because `solve` is already at the `num_ctx=8192` ceiling for tools cells, and raising it would require widening `num_ctx` everywhere with cluster-wide KV-cache cost. The mitigation that landed: non-solve caps were bumped 1024/1536 → 4096 (closing ISS-007 below) so the verdict tasks no longer share the same artefact. Remaining `solve no-tools` truncation at 8192 is a real model-capability signal worth reporting in the paper rather than chasing further; revisit only if a future model lineup pushes it past ~50%.
+**Files.** `run_experiment.py` per-task `num_predict` defaults (now in `pddl_eval/runner.py`), sweep scripts.
 
-### ISS-007 · `num_predict=1024` caps validate_* LLM reply
+### ~~ISS-007~~ · `num_predict=1024` caps validate_* LLM reply — closed 2026-04-29
 **Source.** Separated concern (C) from the structured-projection plan; earlier analysis of `qwen4b_nothink_20260411_163217_all_guided/summary_20260417_003616.json`.
-**Evidence.** 52+/55 validate_* rows end with `done_reason="length"`. Even after the MCP projection fix, the model's reply is capped before it emits a verdict.
-**Fix.** Raise `num_predict` for validate_* to 2048–3072. Requires a reproduction-impact note since defaults reproduce the paper setting.
-**Files.** `run_experiment.py:77-83`, `EXPERIMENTS_FLOW.md` §5 + §11.
+**Evidence.** 52+/55 validate_* rows end with `done_reason="length"`. Even after the MCP projection fix, the model's reply is capped before it emits a verdict. Cluster-26042026 confirmed: `validate_plan` 40.9%, `validate_problem` 32.7%, `validate_domain` 17.4%, `simulate` 37.1% truncation at the 1024/1536 caps.
+**Closed 2026-04-29.** `pddl_eval/runner.py::DEFAULT_NUM_PREDICT` non-solve entries raised 1024/1536 → 4096 (CHANGELOG 2026-04-29). In the same change, `DEFAULT_NUM_CTX` and `DEFAULT_NUM_CTX_THINKING` were raised 8192/12288 → 16384 (held equal for tools/no-tools fairness — the prior asymmetry confounded the "tools save tokens" headline) after qwen3.6/nemotron smokes showed `FR_THINK_OVERFLOW` at 12288 on the same `validate_*` cells. New `DEFAULT_NUM_CTX_CHAIN` and `--num-ctx-chain` CLI flag added (initially 12288, raised same day to 16384 in lockstep with `DEFAULT_NUM_CTX` after re-reading the single-task think_overflow evidence — chain prompts accumulate history, so the same ctx gives chains *less* think+output headroom, not more). Reproduction note: results from sweeps before this date are still valid for trend analysis but truncation rates, `FR_THINK_OVERFLOW` rates, and tools-vs-no-tools accuracy gaps are NOT directly comparable; flag any post-bump sweep as such in plots, and redraw the headline tools-vs-no-tools claim from a fresh equal-ctx run.
+**Files.** `pddl_eval/runner.py`, `run_experiment.py`, `EXPERIMENTS_FLOW.md` §5 + summary-meta, `README.md` parameter table.
 
 ### ISS-011 · Chain denominator unchanged when steps are skipped
 **Source.** Scoring audit, 2026-04-20.
@@ -110,8 +109,9 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Source.** Scoring audit, 2026-04-20.
 **Evidence.** `_apply_truncation_override` in `run_experiment.py` reclassifies a failure to `FR_TRUNCATED_NO_ANSWER` only when the downstream tag is `FR_PLAN_INVALID` / `FR_NO_VERDICT_PARSED` / `FR_SIMULATE_EMPTY` / `FR_UNKNOWN`. A model that emits `VERDICT: VALID` after a partial chain-of-thought that got cut off, and the verdict happens to be wrong, is tagged `FR_VERDICT_MISMATCH` — truncation-caused or not.
 **Impact.** Per-task truncation counts understate the cap's real effect on validate_* success. Minor; the failure is still counted as a failure, just with a different label.
-**Fix.** Decide: (a) leave as-is (current policy, pinned by `test_check_success::test_truncation_override`); (b) also override `FR_VERDICT_MISMATCH` when `done_reason=="length"`, treating any truncated+mismatched verdict as cap-driven. (b) would require explicit justification since the model *did* answer. Low priority until ISS-007 is addressed (the cap itself is the proximate problem).
-**Files.** `run_experiment.py::_apply_truncation_override`, `tests/test_check_success.py::test_truncation_override`.
+**Fix.** Decide: (a) leave as-is (current policy, pinned by `test_check_success::test_truncation_override`); (b) also override `FR_VERDICT_MISMATCH` when `done_reason=="length"`, treating any truncated+mismatched verdict as cap-driven. (b) would require explicit justification since the model *did* answer.
+**Status (2026-04-29).** ISS-007 closed by the cap bump (1024/1536 → 4096); the pressure that motivated this issue is largely relieved. Recommend deferring (b) — at the new caps, `FR_VERDICT_MISMATCH` should overwhelmingly reflect actual model errors rather than truncation artefacts. Re-evaluate post the next sweep on raised caps.
+**Files.** `pddl_eval/scoring.py::_apply_truncation_override`, `tests/test_check_success.py::test_truncation_override`.
 
 ---
 

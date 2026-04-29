@@ -6,6 +6,124 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 (cluster) — Align cluster sbatch with the same-day num_ctx / num_predict bumps
+
+**Motivation.** Two same-day entries below raised `DEFAULT_NUM_CTX` 8192 → 16384, `DEFAULT_NUM_CTX_THINKING` 12288 → 16384, `DEFAULT_NUM_CTX_CHAIN` 12288 → 16384, and non-solve `DEFAULT_NUM_PREDICT` 1024/1536 → 4096. The cluster submission scripts were not adjusted in those commits and have two failure modes against the new caps:
+
+1. **Walltime kills.** Per-call output now runs up to 4× longer on the 33–41% of non-solve trials that previously truncated mid-emission, and KV cache ~doubles. End-to-end per-model wall ~doubles. The existing caps (smoke 2h, multi-model 4d, no-tools `4 + 4*(N-1)`h) would kill multi-model sweeps before they finish.
+2. **Per-cell model reload.** `cluster-experimenting/run_condition_rtx.sbatch` set `OLLAMA_CONTEXT_LENGTH=8192` and warmed each model with `num_ctx=8192`, while every real experiment request now hits `num_ctx=16384`. Ollama 0.20.7 reloads the model on the first real request because the requested ctx differs from the resident value — wasting ~1 min/model × 5 models × 16 cells ≈ 80 min per packed sweep, plus a noisy log.
+
+**Changes.**
+
+- **`cluster-experimenting/submit_with_rtx.sh`** (walltime caps):
+  - Smoke: `--time=02:00:00` → `--time=03:00:00`. Per-model wall went from 12–14 min (job 17263071 baseline, pre-bump) to ~25–35 min projected; 5-model pack ~150 min, 3h leaves margin.
+  - Multi-model regular sweep: `--time=4-00:00:00` → `--time=6-00:00:00`. Pre-bump 50–85h for the 5-model pack → projected 100–175h post-bump; 6d (144h) covers it inside main partition's 7d cap.
+  - `--no-tools` per-model multiplier: `nt_hours = 4 + 4*(N-1)` → `nt_hours = 6 + 6*(N-1)`. `--all --no-tools` now requests 30h instead of 20h.
+  - Single-model regular sweep keeps the 2d sbatch default — projected ~20h post-bump fits.
+  - Comment blocks above each constant updated to cite the new arithmetic and the 2026-04-29 bump as the reason.
+
+- **`cluster-experimenting/run_condition_rtx.sbatch`** (Ollama default ctx alignment):
+  - `OLLAMA_CONTEXT_LENGTH=8192` → `16384`. Now matches the single-task per-request `num_ctx` so the server's KV-cache default doesn't contradict what experiments actually request.
+  - Warmup curl payload `num_ctx: 8192` → `num_ctx: 16384`. Loads the model at the run's ctx so the first real request doesn't trigger a reload. Comment refresh on the warmup block explains the rationale.
+  - Banner echo `CTX_CAP=8192` → `CTX_DEFAULT=16384`. The string was misleading regardless of the value (per-request `num_ctx` overrides, never caps).
+
+- **`cluster-experimenting/README.md`** (operational note, prompted by smoke 17263071):
+  - "Cancelling jobs" section now warns against `scancel`-ing a job in CG (completing) state. Wait for natural unwind; a CG-state cancel can race the on-disk write of late-cell results. Cites the 17263071 incident where the qwen3.6:35b warmup and gemma4:31b cells were lost to such a race.
+
+**Compatibility.** Result schema and scoring untouched. The same-day reproducibility framing in the upstream `num_ctx`/`num_predict` entries already covers the comparability story (post-bump runs are not directly comparable to pre-bump on truncation rate, `FR_THINK_OVERFLOW` rate, or tools-vs-no-tools accuracy gaps). Jobs that ran between the harness bump and this commit at the new caps would still produce correct outputs — they would just have eaten the per-cell model-reload overhead and risked walltime kills. None such are recorded in `results/`; the only post-bump cluster job to date is the smoke 17263071 which preempted before completion.
+
+**Verification.**
+- `bash -n` syntax-clean on both files.
+- `--dry-run` confirmed for: smoke (3h), `--all` (6d), `--all --no-tools` (30h), single-model (sbatch default 2d).
+- Cluster validation deferred to the next sweep submission. Expected outcomes: (a) `--smoke` finishes ≤150 min with rc=0; (b) `ollama-serve.log` shows no model-reload events on first real request after warmup; (c) `failure_reasons.think_overflow` drops materially on `validate_problem`/`validate_plan` vs the 17263071 baseline.
+
+**Closes / narrows.** No `ISS-###`. Operational companion to the same-day cap-bump entries.
+
+**Files.** `cluster-experimenting/submit_with_rtx.sh`, `cluster-experimenting/run_condition_rtx.sbatch`, `cluster-experimenting/README.md`.
+
+---
+
+## 2026-04-29 (follow-up) — Raise `num_ctx_chain` 12288 → 16384
+
+**Motivation.** The same-day prior entry left `num_ctx_chain` at 12288 with a "raise in lockstep if a chain sweep surfaces step-level `think_overflow`" trigger. Re-reading the single-task evidence shows that trigger is preemptively met by reasoning, not waiting on data: at ctx=12288 single-task `validate_problem`/`validate_plan` overflowed 50% of cells with qwen3.6:27b / nemotron-3-nano:30b, where the model had ~11K think+output budget on top of a ~1K prompt. The same task as a chain step-3 has ~4K of accumulated history before it starts thinking, so the budget at ctx=12288 collapses to ~8K — **worse** than the single-task regime that already failed. Sizing chain ctx below single-task ctx therefore reverses the safety margin, not preserves it.
+
+**Decision.** `DEFAULT_NUM_CTX_CHAIN` 12288 → 16384, matching `DEFAULT_NUM_CTX` and `DEFAULT_NUM_CTX_THINKING`. This restores chain step-3 to ~12K think+output budget (comparable to the single-task envelope at 16384) and chain step-4 to ~8–10K (still tighter than single-task by the prompt-accumulation overhead; raise to 20480 if a chain sweep surfaces step-4 `FR_THINK_OVERFLOW`).
+
+**Changes.**
+- `pddl_eval/runner.py`: `DEFAULT_NUM_CTX_CHAIN` 12288 → 16384, comment rewritten to explain the headroom math (chain budget at ctx=N is single-task budget at ctx=(N − accumulated history)).
+- `run_experiment.py`: `--num-ctx-chain` help text updated; banner unchanged (auto-pulls the new default).
+- `README.md`, `EXPERIMENTS_FLOW.md` §5 + summary-meta — documented.
+
+**Compatibility.** Re-baselining concerns from the prior same-day entry already cover this; no additional invalidation. Per-call KV cache for chain steps grows ~33% vs the (intermediate) 12288 baseline; on rtx_pro_6000 the active 5-model pack still fits inside the 80 GB `--mem` and 96 GB VRAM budget, but post-mortem `sacct/MaxRSS` after the first sweep on raised chain ctx.
+
+**Files.** `pddl_eval/runner.py`, `run_experiment.py`, `README.md`, `EXPERIMENTS_FLOW.md`, `development/OPEN_ISSUES.md`, `cluster-experimenting/README.md`, `cluster-experimenting/run_condition_rtx.sbatch`.
+
+---
+
+## 2026-04-29 — Raise non-solve `num_predict` caps 1024/1536 → 4096; raise single-task `num_ctx`/`num_ctx_thinking` 8192/12288 → 16384 (held equal for tools/no-tools fairness); add `num_ctx_chain=12288` for chains
+
+**Motivation (output caps).** Aggregating `truncated` counts across the cluster-26042026 sweep (`done_reason == "length"` on the last chat turn) showed the per-task output caps were biting hard:
+
+| task               | cap (old) | truncation rate | success rate |
+| ------------------ | --------: | --------------: | -----------: |
+| `validate_plan`    |      1024 |          40.9% |        18.0% |
+| `simulate`         |      1536 |          37.1% |        25.2% |
+| `validate_problem` |      1024 |          32.7% |        30.8% |
+| `validate_domain`  |      1024 |          17.4% |        55.5% |
+| `solve` (tools)    |      8192 |          12.3% |        60.0% |
+| `solve` (no-tools) |      8192 |          32.0% |        29.2% |
+
+The 1024/1536 caps were calibrated when "verdict + a sentence" was the expected output, but thinking-mode reasoning (`qwen3:thinking`, `gpt-oss`, `gemma`) inlines 2–6K tokens of chain-of-thought before the verdict, and tool-call XML/harmony emissions count against `num_predict` too. Mid-emission truncation also produced the bulk of `ollama_parse_error` records — the Hermes/harmony XML parser fails when a `<parameter>` tag opens but the cap fires before its `</parameter>` closes (observed across `nemotron-3-nano:30b` on `validate_plan` b1/b2/b4 in smoke job 17263071, 2026-04-29).
+
+**Motivation (context window).** A follow-up smoke against the new `qwen3.6:27b` and `nemotron-3-nano:30b` roster slots (also 2026-04-29) showed `FR_THINK_OVERFLOW` rates of 6/12 (tools cells) and 10/20 (no-tools cells) on `validate_problem`/`validate_plan` at `num_ctx=12288` — every miss was a thinking spiral that consumed the entire context window before emitting an answer. The pre-2026-04-28 calibration (12288 covered qwen3:0.6b max prompt+eval = 8680) does not hold for the qwen3.6/nemotron generation. More importantly, the old asymmetric setup (`num_ctx=8192` for tools, `num_ctx_thinking=12288` for no-tools+think_on) confounded the paper's headline comparison: the no-tools branch had 1.5× more think+output room than the tools branch, so any "tools save tokens" or "tools improve accuracy" claim was partly an artefact of the ctx asymmetry rather than a tool-effect signal.
+
+**Decision.**
+1. **Output caps:** non-solve `num_predict` 1024/1536 → 4096 uniformly; keep `solve=8192` (paper-default).
+2. **Single-task ctx:** `num_ctx` 8192 → 16384 AND `num_ctx_thinking` 12288 → 16384 — held equal so the tools and no-tools branches receive identical context budgets. The `num_ctx_thinking` constant is retained as a separate symbol so a future asymmetric experiment can override one without touching the other; today the asymmetric branch in `evaluate_one` is a no-op.
+3. **Chain ctx:** new `num_ctx_chain = 12288` for multi-task chain runs. Chains accumulate full per-step history (each step re-embeds domain + problem + plan, prior assistant turns + tool calls + tool results stay in context); step-4 prompts reach ~6–8K tokens before generation. Sized below the single-task 16384 because chains are tools-only (ISS-018) — no tools-vs-no-tools fairness comparison applies, so the asymmetry is acceptable. Raise to 16384 in lockstep if a future thinking-model sweep shows chain-step `think_overflow`.
+
+**Changes.**
+- `pddl_eval/runner.py`: `DEFAULT_NUM_PREDICT` non-solve entries 1024/1536 → 4096; `DEFAULT_NUM_CTX` 8192 → 16384; `DEFAULT_NUM_CTX_THINKING` 12288 → 16384; new constant `DEFAULT_NUM_CTX_CHAIN = 12288`. `run_chain_experiment` gains `num_ctx_chain` parameter; the `effective_num_ctx` formula in the chain-step path resolves to `num_ctx_chain` for the tools branch (chains are tools-only per ISS-018, so this fires unconditionally today; the `num_ctx_thinking` branch is preserved for forward-compat).
+- `run_experiment.py`: imports `DEFAULT_NUM_CTX_CHAIN`; new `--num-ctx-chain` CLI flag; threaded into `run_chain_experiment`; written to `meta.num_ctx_chain` in saved summaries; banner now prints all three context budgets, flags the tools/no-tools fairness invariant when `num_ctx == num_ctx_thinking`, and lists the per-task `num_predict` defaults explicitly.
+- `README.md` parameter table and `EXPERIMENTS_FLOW.md` §5 (knobs) + summary-meta — updated.
+
+**Compatibility.** Single-task results from prior sweeps (cluster-26042026 and earlier) remain valid for trend analysis but **truncation rates and success rates are not directly comparable** — the new caps will lower truncation counts and may shift success rates upward on `validate_plan`/`simulate`/`validate_problem` cells (the 33–41% truncated calls that previously couldn't emit a complete verdict now have room), and the wider `num_ctx` will reduce `FR_THINK_OVERFLOW` for thinking models. Most consequentially: any historical comparison of tools-vs-no-tools accuracy made under the old 8192/12288 asymmetry is no longer apples-to-apples with post-bump runs. Re-run sweeps under the new caps should label themselves as "post 2026-04-29 cap bump" in plots; the headline "tools save tokens" / "tools improve accuracy" claims should be redrawn from a fresh run that uses the equalized ctx. `solve` cells are unchanged.
+
+**Cluster-side note.** Per-call KV cache approximately doubles vs the prior 8192 baseline (16384 single-task tools / 16384 single-task no-tools+think / 12288 chain). Existing `--mem` lines in `cluster-experimenting/run_condition_rtx.sbatch` were sized against the old ctx; first sweeps after this change should leave a margin and post-mortem `sacct/MaxRSS` to right-size if needed. The runtime VRAM guard (`>85% post-warmup → exit 3`) should still catch a blowup before it crashes the whole pack.
+
+**Files.** `pddl_eval/runner.py`, `run_experiment.py`, `README.md`, `EXPERIMENTS_FLOW.md`, `cluster-experimenting/README.md`, `cluster-experimenting/run_condition_rtx.sbatch`, `development/OPEN_ISSUES.md` (closes ISS-007).
+
+---
+
+## 2026-04-29 — PR-3: fixture buildout to 20 domains × 5 problems × (5 valid + 5 invalid) plans (1240 fixtures total)
+
+**Motivation.** `development/FRAMEWORK_EXTENSION_PLAN.md` §3.2 PR-3 — scale the fixture set from 10 domains × 1 problem × 1 plan (60 files total) to 20 domains × 5 problems × 5 valid + 5 invalid plans per problem (1240 files total) so per-task counts grow from ~80/cell to ~1840/cell, giving Wilson confidence intervals usable signal at moderate sweep budgets.
+
+**Changes (4 commits on `framework-ext-pr3`).**
+
+- **C-A (loader/GT/runner schema + generator scaffolding).** New `pddl_eval/domains.py` schema returns `{type, domain, problems, negatives: {domain, problems[5], plans_per_problem: {pname: {valid[5], invalid[5]}}}}`. `generate_ground_truth` extends per-problem entry with `valid_plans: list[{plan, plan_valid}]` and adds a `_negatives` slot per domain validated 5-fixtures-per-kind. `pddl_eval/runner.py:TaskResult` gains `plan_label: str` field; the job builder generalizes the negative branch from one-per-kind to N-per-kind. `tools/_taxonomies.py` (new) ships pure-text mutators; `tools/build_fixtures.py` (new) drives the migrate + per-domain generator pipeline against MCP. 35 sub-checks in `tests/test_fixtures.py` cover the mutators + a loader-shape regression.
+- **C-B (existing 10 domains).** `git mv` rename the legacy `_0` suffix layout (`domain_0.pddl`→`domain_neg.pddl`, `p01_0.pddl`→`n01.pddl`, `p01_0.plan`→`p01_b1.plan`, `p01.plan`→`p01_v1.plan`); `seed-problems` from `~/personal/online_model_learning/benchmarks/olam-compatible/` for classical and from the bundled `dataset_4_numeric_domains` for numeric; per-domain `gen-valid-plans + gen-invalid-plans + gen-invalid-problems + gen-invalid-domain`. Hand-authored `domains/numeric/depot/p05.pddl` (dataset has only 3 unique instances) and `domains/numeric/farmland/p02..p05.pddl` (no public source).
+- **C-C (10 new domains).** 5 new classical (gripper, miconic, parking, tpp, zenotravel — substitute for spec's "logistics") sourced from olam-compatible. 5 new numeric (delivery, drone, gardening, block-grouping, zenotravel-numeric) sourced from matteocarde/patty (IPC-2023 mirror + `files/`); zenotravel-numeric p02-p05 hand-authored because IPC-2023 only had 1/8 ENHSP-solvable instance among the smallest. Substitution drift documented in `FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec".
+- **C-D (loader cleanup + docs).** `pddl_eval/domains.py`: drop legacy `_0`-suffix compat branches now that all 20 domains are on the flat layout. `tests/test_fixtures.py`: tighten loader-shape assertions to expect 20 domains, 5/5/5/5 fixture counts. `domains/README.md`, `EXPERIMENTS_FLOW.md` §6, `development/FRAMEWORK_EXTENSION_PLAN.md` (this entry's drift section) updated.
+
+**Validation.**
+- `tests/test_fixtures.py`: 33/33 passed (mutators + loader-shape).
+- `tools/build_fixtures.py all <domain>` ran end-to-end on all 20 domains; every committed fixture validated via `validate_pddl_syntax` at generation time (positives expected True, negatives expected False).
+- File count audit: `find domains/{classical,numeric}/ -type f` → 1240 files, exactly matching §3.3.7 target.
+- Smoke gate (deferred to post-merge): single-task `--smoke` on default `blocksworld` to be diffed against PR-2 anchor on the calibrated projection (`{model, condition, task, successes, n, failure_reasons, tool_selected}` excluding `gpt-oss:20b`); only the `p01`/`n01` rows are byte-comparable since `p02..p05`/`n02..n05` are first-time data points.
+
+**Bug-taxonomy expansions.**
+- Invalid-problem grew from 4 mutators (today's spec) to 6: added `problem_drop_objects` and `problem_drop_init` because `problem_corrupt_paren` validates as TRUE on `parking` (validator is permissive of trailing `)`). Spec's 5-bug intent is preserved at the per-domain output level.
+- Invalid-plan stays at 4 implemented mutators (vs spec's 5): spec's #4 (missing-action) is operationally `plan_drop_step_k`; #5 (extra-action) is approximated by `plan_duplicate_step` (re-inserts an action that typically violates its own precondition the second time). Padding with extra-truncation variants covers the gap.
+
+**Compatibility.** All existing PR-2 results in `results/` remain valid for the `p01`/`n01`/`v1`/`b1` rows (these are what was on disk before C-A landed; the migration was a `git mv` of the same content). New rows (`p02..p05`, `n02..n05`, `v2..v5`, `b2..b5`) are first-time data points with no anchor to compare against.
+
+**Closes / narrows.** No `ISS-###`. Closes the PR-3 milestone in `FRAMEWORK_EXTENSION_PLAN.md` §3.2.
+
+**Files.** `pddl_eval/domains.py`, `pddl_eval/runner.py`, `tools/_taxonomies.py` (new), `tools/build_fixtures.py` (new), `tests/test_fixtures.py` (new), 1240 files under `domains/{classical,numeric}/`, `domains/README.md`, `EXPERIMENTS_FLOW.md`, `development/FRAMEWORK_EXTENSION_PLAN.md`.
+
+---
+
 ## 2026-04-29 — Cluster roster refresh: Qwen3.6 medium/large + Nemotron-3-Nano replacing gpt-oss
 
 **Motivation.** Three concurrent prompts converged: (1) Qwen3.6 became available 2026-04-{16,22} as direct architectural successors to `Qwen3.5:27b` (dense 27B) and `Qwen3.5:35b` (35B-A3B MoE), both Apache-2.0 on Ollama with comparable or smaller VRAM footprints; (2) `gpt-oss:20b` had been the chronic source of methodology noise — CHANGELOG 2026-04-28 documents it producing structurally different responses at T=0 across deterministic runs, and the smoke-gate excludes it from byte-equality; (3) the swap risk-reward was favourable because the diversity slot (only non-Qwen/non-Gemma model in the roster) needed a non-Qwen replacement to preserve family coverage.

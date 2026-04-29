@@ -108,12 +108,16 @@ if [ "$SMOKE" -eq 1 ] && [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     exit 1
 fi
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
-    if [ "${#MODELS[@]}" -gt 0 ] || [ "$ALL" -eq 1 ] || [ "$NO_TOOLS" -eq 1 ] \
-        || [ -n "$THINK_MODES_OVERRIDE" ]; then
-        echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes/explicit-models" >&2
+    if [ "$ALL" -eq 1 ] || [ "$NO_TOOLS" -eq 1 ] || [ -n "$THINK_MODES_OVERRIDE" ]; then
+        echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes" >&2
         exit 1
     fi
-    MODELS=(Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b)
+    # No explicit models → default to the 5-model paper pack. Explicit
+    # models override the pack and smoke just those (used to retest a
+    # single model after a fix without re-running the full pack).
+    if [ "${#MODELS[@]}" -eq 0 ]; then
+        MODELS=(Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b)
+    fi
     THINK_MODES_OVERRIDE="default"  # smoke iterates think internally
 fi
 
@@ -174,9 +178,11 @@ if [ "$NO_TOOLS" -eq 1 ]; then
     THINK_MODES="${THINK_MODES_OVERRIDE:-off}"
     NO_TOOLS_EXPORTS=(CONDITIONS=no-tools "TASKS=solve validate_domain validate_problem validate_plan")
     # Solve-only no-tools measured 10–22 min wall (2026-04-25). Adding the
-    # three validate_* tasks scales to ~350 evals/model. With multi-model
-    # packing, scale time linearly: 4h base + 4h per extra model.
-    nt_hours=$(( 4 + 4 * (${#MODELS[@]} - 1) ))
+    # three validate_* tasks scales to ~350 evals/model. Post 2026-04-29
+    # num_predict 1024/1536→4096 + num_ctx 8192→16384 bump, per-model wall
+    # ~doubles (33–41% of non-solve trials previously truncated mid-emission
+    # now run up to 4× longer). Cap = 6h base + 6h per extra model.
+    nt_hours=$(( 6 + 6 * (${#MODELS[@]} - 1) ))
     TIME_ARG=(--time=${nt_hours}:00:00)
 elif [ -n "$THINK_MODES_OVERRIDE" ]; then
     THINK_MODES="$THINK_MODES_OVERRIDE"
@@ -185,17 +191,23 @@ else
 fi
 
 # Multi-model regular sweep needs more wall time than the 2d sbatch default.
-# Empirical wall: ~10–17h per model for full {on, off} × 4 tools_conds. With
-# 4 models packed, set 4d (still well under main partition's 7d cap).
-# Single-model regular sweep keeps the 2d default.
+# Empirical wall pre 2026-04-29: ~10–17h per model for full {on, off} ×
+# 4 tools_conds. Post-bump (num_predict 1024/1536→4096; num_ctx 8192→16384;
+# num_ctx_thinking 12288→16384), per-model wall ~doubles to ~20–35h. With
+# 5 models packed (--all), 6d (144h) covers the full pack with margin and
+# stays under main partition's 7d cap. Single-model regular sweep keeps
+# the 2d sbatch default — ~20h post-bump fits in 48h.
 if [ "$NO_TOOLS" -eq 0 ] && [ "${#MODELS[@]}" -gt 1 ]; then
-    TIME_ARG=(--time=4-00:00:00)
+    TIME_ARG=(--time=6-00:00:00)
 fi
 
-# Smoke wallclock: ~100 evals across 5 models in one packed job, ~10–30 min.
-# A 2h budget covers Ollama startup + model warmup + the slowest cell.
+# Smoke wallclock: ~100 evals across 5 models in one packed job. Pre-bump
+# (2026-04-29) measured 12–14 min/model on rtx_pro_6000 (ref: job 17263071).
+# Post num_predict/num_ctx bump, per-model wall lands ~25–35 min, so 5-model
+# pack ~150 min. 3h cap covers Ollama startup + model warmup + slowest cell
+# with margin.
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
-    TIME_ARG=(--time=02:00:00)
+    TIME_ARG=(--time=03:00:00)
 fi
 
 # Job name: single model uses the model tag; multi-model uses

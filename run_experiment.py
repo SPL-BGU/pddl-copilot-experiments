@@ -53,9 +53,9 @@ from pddl_eval.prompts import (
 from pddl_eval.runner import (
     DEFAULT_CONCURRENCY,
     DEFAULT_NUM_CTX,
+    DEFAULT_NUM_CTX_CHAIN,
     DEFAULT_NUM_CTX_THINKING,
     DEFAULT_NUM_PREDICT,
-    OLLAMA_TOOL_PARSE_SIGNATURE,
     RESPONSE_SNAPSHOT_LEN,
     TASK_TOOLS,
     TASKS,
@@ -230,14 +230,23 @@ async def async_main(args):
     print(f"  Variants:   {active_variants} (selected from {list(ACTIVE_PROMPT_VARIANTS)})")
     print(f"  Temperature:{args.temperature}")
     if smoke_mode:
-        print(f"  Conditions: smoke (think=on→both [tools 8192 / no-tools {args.num_ctx_thinking}, sub-pass split], think=off→both [8192 throughout])")
+        print(f"  Conditions: smoke (think=on→both [tools {args.num_ctx} / no-tools {args.num_ctx_thinking}, sub-pass split], think=off→both [{args.num_ctx} throughout])")
     else:
         print(f"  Conditions: {args.conditions}")
     print(f"  Tool filter:{args.tool_filter}")
     print(f"  Prompt:     {args.prompt_style}")
-    print(f"  num_predict:{args.num_predict if args.num_predict is not None else 'per-task defaults'}")
-    print(f"  num_ctx:    {args.num_ctx}")
-    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (active for think!=off + no-tools cells; sub-pass split)")
+    if args.num_predict is not None:
+        np_str = str(args.num_predict)
+    else:
+        np_str = (f"per-task defaults (solve={DEFAULT_NUM_PREDICT['solve']}, "
+                  f"validate_*={DEFAULT_NUM_PREDICT['validate_plan']}, "
+                  f"simulate={DEFAULT_NUM_PREDICT['simulate']})")
+    print(f"  num_predict:{np_str}")
+    print(f"  num_ctx:    {args.num_ctx} (single-task; tools cells + think=off no-tools)")
+    print(f"  num_ctx_thinking:{args.num_ctx_thinking} (single-task no-tools when think!=off; sub-pass split)")
+    if args.num_ctx == args.num_ctx_thinking:
+        print(f"              ^ equal to num_ctx for tools/no-tools fairness in 'tools save tokens' headline")
+    print(f"  num_ctx_chain:{args.num_ctx_chain} (chain steps; tools-only per ISS-018)")
     print(f"  think:      {args.think}")
     print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
     if args.concurrency > 1 and num_parallel_env == "unset":
@@ -268,11 +277,21 @@ async def async_main(args):
         domains = {d: dinfo for d, dinfo in domains.items() if d in set(args.domains)}
     if args.problems is not None:
         keep = set(args.problems)
-        domains = {
-            d: {**dinfo, "problems": {p: ppddl for p, ppddl in dinfo["problems"].items() if p in keep}}
-            for d, dinfo in domains.items()
-        }
-        domains = {d: dinfo for d, dinfo in domains.items() if dinfo["problems"]}
+        filtered: dict = {}
+        for d, dinfo in domains.items():
+            kept_problems = {p: ppddl for p, ppddl in dinfo["problems"].items() if p in keep}
+            if not kept_problems:
+                continue
+            negs = dinfo.get("negatives") or {}
+            kept_plans_per_problem = {
+                p: pp for p, pp in (negs.get("plans_per_problem") or {}).items() if p in keep
+            }
+            filtered[d] = {
+                **dinfo,
+                "problems": kept_problems,
+                "negatives": {**negs, "plans_per_problem": kept_plans_per_problem},
+            }
+        domains = filtered
     if not domains:
         sys.exit(
             f"No domains/problems remain after filtering "
@@ -407,6 +426,7 @@ async def async_main(args):
                     num_predict_override=args.num_predict,
                     num_ctx=args.num_ctx,
                     num_ctx_thinking=args.num_ctx_thinking,
+                    num_ctx_chain=args.num_ctx_chain,
                     think=think_override,
                     temperature=args.temperature,
                     concurrency=args.concurrency,
@@ -433,6 +453,7 @@ async def async_main(args):
                 "temperature": args.temperature,
                 "num_ctx": args.num_ctx,
                 "num_ctx_thinking": args.num_ctx_thinking,
+                "num_ctx_chain": args.num_ctx_chain,
                 "num_predict": args.num_predict,
                 "think": args.think,
             }
@@ -500,11 +521,15 @@ def main():
                         "(see PROMPT_STYLE_CHOICES comment in run_experiment.py). "
                         "Re-enable by re-adding 'guided' to PROMPT_STYLE_CHOICES.")
     p.add_argument("--num-predict", type=int, default=None,
-                   help="Override max output tokens per chat turn for ALL tasks. "
-                        "Default: per-task caps (solve=8192, simulate=1536, validate_*=1024). "
-                        "Caps the qwen3 thinking-mode spiral that stalls runs for ~4 minutes.")
+                   help=f"Override max output tokens per chat turn for ALL tasks. "
+                        f"Default: per-task caps (solve={DEFAULT_NUM_PREDICT['solve']}, "
+                        f"simulate={DEFAULT_NUM_PREDICT['simulate']}, "
+                        f"validate_*={DEFAULT_NUM_PREDICT['validate_plan']}). "
+                        f"Non-solve caps raised 1024->4096 on 2026-04-29 after "
+                        f"observing 33-41%% truncation in the cluster-26042026 sweep.")
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
-                   help=f"Ollama context window tokens. Default {DEFAULT_NUM_CTX}.")
+                   help=f"Ollama context window tokens for single-task tools cells. "
+                        f"Default {DEFAULT_NUM_CTX}.")
     p.add_argument("--num-ctx-thinking", type=int, default=DEFAULT_NUM_CTX_THINKING,
                    help=f"Ollama context window tokens used ONLY when think!=off "
                         f"AND condition=no-tools. Default "
@@ -514,6 +539,21 @@ def main():
                         f"sub-passes when both apply — keeps num_ctx constant "
                         f"per call (mid-call flips deadlock Ollama under "
                         f"concurrency).")
+    p.add_argument("--num-ctx-chain", type=int, default=DEFAULT_NUM_CTX_CHAIN,
+                   help=f"Ollama context window tokens used during multi-task "
+                        f"chain runs. Default {DEFAULT_NUM_CTX_CHAIN} (held "
+                        f"equal to --num-ctx). Chains accumulate full message "
+                        f"history across steps (domain+problem re-embedded "
+                        f"per step + prior tool calls/results), so step-4 "
+                        f"prompts reach ~6-8K tokens before generation. "
+                        f"Held equal to --num-ctx ({DEFAULT_NUM_CTX}) because "
+                        f"the single-task think_overflow evidence at 12288 "
+                        f"translates worse to chains, not better -- chain "
+                        f"step-3 budget shrinks from ~11K (single-task) to "
+                        f"~8K (chain) at the same ctx. Chains are tools-only "
+                        f"(ISS-018), so no tools-vs-no-tools comparison is at "
+                        f"stake. Raise to 20480 if chain step-4 surfaces "
+                        f"think_overflow.")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "

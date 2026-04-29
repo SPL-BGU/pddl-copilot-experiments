@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import run_experiment as rx
+from pddl_eval.scoring import _call_matches_validate_task
 from tests._helpers import TestResults
 
 
@@ -65,6 +66,56 @@ def test_used_tool(r: TestResults):
     r.check_eq("empty list", rx._used_tool([], "x"), False)
     r.check_eq("present", rx._used_tool([{"name": "x"}], "x"), True)
     r.check_eq("absent", rx._used_tool([{"name": "y"}], "x"), False)
+
+
+def test_call_matches_validate_task(r: TestResults):
+    # validate_domain — domain-only is the only acceptable shape.
+    domain_only = {"name": "validate_pddl_syntax", "arguments": {"domain": "(D)"}}
+    domain_with_problem = {"name": "validate_pddl_syntax",
+                           "arguments": {"domain": "(D)", "problem": "(P)"}}
+    domain_with_plan = {"name": "validate_pddl_syntax",
+                        "arguments": {"domain": "(D)", "plan": "(p)"}}
+    full_call = {"name": "validate_pddl_syntax",
+                 "arguments": {"domain": "(D)", "problem": "(P)", "plan": "(p)"}}
+
+    r.check("vd accepts domain-only",
+            _call_matches_validate_task(domain_only, "validate_domain"))
+    r.check("vd rejects when problem present",
+            not _call_matches_validate_task(domain_with_problem, "validate_domain"))
+    r.check("vd rejects when plan present",
+            not _call_matches_validate_task(domain_with_plan, "validate_domain"))
+
+    # validate_problem — problem required, plan forbidden.
+    r.check("vp(roblem) rejects domain-only",
+            not _call_matches_validate_task(domain_only, "validate_problem"))
+    r.check("vp(roblem) accepts domain+problem",
+            _call_matches_validate_task(domain_with_problem, "validate_problem"))
+    r.check("vp(roblem) rejects when plan present",
+            not _call_matches_validate_task(full_call, "validate_problem"))
+
+    # validate_plan — plan required (problem may or may not be present;
+    # the validator routes by presence of `plan`).
+    r.check("vp(lan) accepts full call",
+            _call_matches_validate_task(full_call, "validate_plan"))
+    r.check("vp(lan) accepts domain+plan",
+            _call_matches_validate_task(domain_with_plan, "validate_plan"))
+    r.check("vp(lan) rejects domain-only",
+            not _call_matches_validate_task(domain_only, "validate_plan"))
+
+    # Empty/missing `arguments` must not crash and must reject every task.
+    no_args = {"name": "validate_pddl_syntax"}
+    null_args = {"name": "validate_pddl_syntax", "arguments": None}
+    for label, tc_in in (("missing args", no_args), ("null args", null_args)):
+        r.check(f"{label} → vd accepts (no problem/plan)",
+                _call_matches_validate_task(tc_in, "validate_domain"))
+        r.check(f"{label} → vp(roblem) rejects",
+                not _call_matches_validate_task(tc_in, "validate_problem"))
+        r.check(f"{label} → vp(lan) rejects",
+                not _call_matches_validate_task(tc_in, "validate_plan"))
+
+    # Unknown task name → False (defensive default).
+    r.check("unknown task → False",
+            not _call_matches_validate_task(domain_only, "solve"))
 
 
 def test_get_tool_results(r: TestResults):
@@ -181,9 +232,9 @@ def test_extract_verdict(r: TestResults):
 
 
 def test_classify_step_failure_think_overflow(r: TestResults):
-    # FR_THINK_OVERFLOW classification is inline in evaluate_one (PR-2);
-    # _classify_step_failure must NOT relabel it back to FR_TRUNCATED_NO_ANSWER
-    # via the truncation override, even though done_reason=="length".
+    # _classify_step_failure must NOT relabel a pre-set FR_THINK_OVERFLOW
+    # back to FR_TRUNCATED_NO_ANSWER via the truncation override, even
+    # though done_reason=="length".
     fr, trunc = rx._classify_step_failure(
         success=False, done_reason="length", loop_exhausted=False,
         failure_reason=rx.FR_THINK_OVERFLOW,
@@ -208,6 +259,63 @@ def test_classify_step_failure_think_overflow(r: TestResults):
         failure_reason=rx.FR_OK,  # would-be classifier output before override
     )
     r.check_eq("LOOP_EXHAUSTED beats truncation override", fr3, rx.FR_LOOP_EXHAUSTED)
+
+    # New (post-fold-in): the classifier itself sets FR_THINK_OVERFLOW
+    # when given non-empty thinking and empty response under a length cap.
+    # Previously this override lived inline in evaluate_one with the
+    # ordering pinned only by a comment.
+    fr4, trunc4 = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_NO_VERDICT_PARSED,
+        thinking_text="rambling reasoning here", response_text="",
+    )
+    r.check_eq("classifier sets FR_THINK_OVERFLOW from texts",
+               fr4, rx.FR_THINK_OVERFLOW)
+    r.check_eq("FR_THINK_OVERFLOW (from texts) marks truncated=True",
+               trunc4, True)
+
+    # Guard: non-empty response_text means the model emitted *something*,
+    # so the cap isn't a thinking-spiral. Falls through to the truncation
+    # override (FR_NO_VERDICT_PARSED → FR_TRUNCATED_NO_ANSWER).
+    fr5, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_NO_VERDICT_PARSED,
+        thinking_text="thinking", response_text="VERDICT: VALID",
+    )
+    r.check_eq("non-empty response_text blocks think-overflow override",
+               fr5, rx.FR_TRUNCATED_NO_ANSWER)
+
+    # Guard: empty thinking_text → no spiral, no override. Falls through
+    # to the truncation override.
+    fr6, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_NO_VERDICT_PARSED,
+        thinking_text="", response_text="",
+    )
+    r.check_eq("empty thinking_text blocks think-overflow override",
+               fr6, rx.FR_TRUNCATED_NO_ANSWER)
+
+    # Precedence: FR_LOOP_EXHAUSTED beats FR_THINK_OVERFLOW even when the
+    # think-overflow conditions are satisfied. The tool-loop cap-hit is
+    # the more specific failure mode.
+    fr7, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=True,
+        failure_reason=rx.FR_OK,
+        thinking_text="thinking", response_text="",
+    )
+    r.check_eq("LOOP_EXHAUSTED beats THINK_OVERFLOW", fr7, rx.FR_LOOP_EXHAUSTED)
+
+    # Guard: a populated `error` string (exception path or extracted
+    # tool-error message) blocks the think-overflow override. The original
+    # failure_reason is preserved.
+    fr8, _ = rx._classify_step_failure(
+        success=False, done_reason="length", loop_exhausted=False,
+        failure_reason=rx.FR_EXCEPTION,
+        thinking_text="thinking", response_text="",
+        error="ConnectionError: refused",
+    )
+    r.check_eq("non-empty error blocks think-overflow override",
+               fr8, rx.FR_EXCEPTION)
 
 
 def test_expand_conditions(r: TestResults):
@@ -267,6 +375,7 @@ def main():
     test_parse_validation_verdict(r)
     test_tool_error_seen(r)
     test_used_tool(r)
+    test_call_matches_validate_task(r)
     test_get_tool_results(r)
     test_extract_plan_from_tool_result(r)
     test_extract_plan_lines(r)

@@ -1,0 +1,8 @@
+(board person1 plane1 city0)
+(fly-slow plane1 city0 city1)
+(board plane1 person2 city1)
+(fly-slow plane1 city1 city2)
+(refuel plane1)
+(debark person1 plane1 city2)
+(fly-slow plane1 city2 city0)
+(debark person2 plane1 city0)
