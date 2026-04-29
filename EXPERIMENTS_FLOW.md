@@ -197,29 +197,57 @@ response. See CHANGELOG 2026-04-28 (PR-2).
 
 ## 6. Domains
 
+20 domains × 5 valid problems × (1 valid + 1 invalid) domain × (5 valid + 5 invalid) plans per problem = **1240 fixture files** (PR-3, 2026-04-29). Per-domain layout:
+
 ```
-domains/
-  classical/
-    barman/        domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
-    blocksworld/   domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
-    depots/        ... (same shape)
-    rovers/        ...
-    satellite/     ...
-  numeric/
-    counters/      domain.pddl + p01[.pddl|.plan]   + domain_0.pddl + p01_0[.pddl|.plan]
-    depot/         ... (singular; paper's numeric split)
-    farmland/      ...
-    pogo_stick/    ...
-    sailing/       ...
+domains/<type>/<domain>/
+  domain.pddl                       (1 valid)
+  domain_neg.pddl                   (1 invalid)
+  p01.pddl ... p05.pddl             (5 valid)
+  n01.pddl ... n05.pddl             (5 invalid)
+  p01_v1.plan ... p05_v5.plan       (25 valid plans = 5 per problem)
+  p01_b1.plan ... p05_b5.plan       (25 invalid plans = 5 per problem)
 ```
 
-10 domains × 1 positive problem each — copied verbatim from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). Each domain also ships `p01.plan` (paper's `plan.solution`) as a reference artifact for manual cross-check; it is **not** read into prompts — the MCP oracle regenerates plan + trace on every run.
+Domain set:
 
-**Negative fixtures (added 2026-04-26, ISS-001).** Each domain also ships three task-targeted negatives — `domain_0.pddl` (validate_domain only), `p01_0.pddl` (validate_problem only), `p01_0.plan` (validate_plan only). The `_0` suffix denotes "negative" but is validity-neutral: the LLM never sees a path (prompts pass content, not paths), and `_0` reads as a numeric variant index even if a path were ever leaked. Each negative joins exactly its target task, so per-task ground truth is now 1:1 balanced (10 positive + 10 negative). See `domains/README.md` for the bug taxonomy.
+| Type | Domain | Provenance | Goal kind |
+|---|---|---|---|
+| classical | barman | paper | boolean |
+| classical | blocksworld | paper | boolean |
+| classical | depots | paper | boolean |
+| classical | gripper | PR-3 (olam-compatible) | boolean |
+| classical | miconic | PR-3 (olam-compatible) | boolean |
+| classical | parking | PR-3 (olam-compatible) | boolean |
+| classical | rovers | paper | boolean |
+| classical | satellite | paper | boolean |
+| classical | tpp | PR-3 (olam-compatible) | boolean |
+| classical | zenotravel | PR-3 (olam-compatible; substitute for spec's "logistics") | boolean |
+| numeric | block-grouping | PR-3 (matteocarde/patty `files/`; substitute for spec's "settlers") | numeric |
+| numeric | counters | paper | numeric `<=` |
+| numeric | delivery | PR-3 (matteocarde/patty IPC-2023; substitute for spec's "transport-numeric") | numeric |
+| numeric | depot | paper (singular — distinct from classical `depots`) | boolean |
+| numeric | drone | PR-3 (matteocarde/patty IPC-2023) | numeric |
+| numeric | farmland | paper | numeric `>=` + weighted sum |
+| numeric | gardening | PR-3 (matteocarde/patty `files/`; substitute for spec's "plant-watering") | numeric |
+| numeric | pogo_stick | paper | boolean |
+| numeric | sailing | paper | boolean |
+| numeric | zenotravel-numeric | PR-3 (matteocarde/patty IPC-2023; p02-p05 hand-authored) | numeric |
 
-**Expected validity:** positives are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. The startup ground-truth summary prints these flags per positive problem for manual review; drift is not auto-enforced. Negatives, by contrast, are **strictly enforced** — `generate_ground_truth` aborts startup with `SystemExit` if any negative validates as anything other than False.
+The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). The 10 PR-3 domains were sourced from public benchmark suites and validated end-to-end by the build pipeline. Substitution rationale and per-domain caveats live in `development/FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec".
 
-**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair their negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + positive `p01.pddl`). The paper dataset ships one positive problem per domain, so the negative plan is always paired with `p01.pddl`. The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` (`run_experiment.py:989`) — so this isn't a leak channel. Multi-problem datasets would need a designated-primary lookup at the two `next(iter(dinfo["problems"].values()))` sites in `generate_ground_truth` and the job builder.
+**Negative fixtures.** Each domain ships:
+- `domain_neg.pddl` — joins `validate_domain` (negative arm) only
+- `n01..n05.pddl` — join `validate_problem` (negative arm) only
+- `p<NN>_b1..b5.plan` — join `validate_plan` (negative arm) for problem `pNN` only
+
+Bug taxonomies (3 domain-mutators, 6 problem-mutators, 4 plan-mutators) are documented in `domains/README.md`. All negatives must validate as `valid=False` against `validate_pddl_syntax` — `generate_ground_truth` aborts startup with `SystemExit` naming any drift.
+
+**Expected validity:** positives are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. Each committed `p<NN>_v[1-5].plan` is independently re-validated at startup; any committed valid plan that the validator rejects also aborts startup (symmetric fail-fast on both sides).
+
+**Plan diversity.** Classical domains achieve up to 3 distinct plans via Fast Downward search-strategy variants (`lazy_greedy_cea`, `astar_lmcut`, `lazy_greedy_ff`); numeric domains use ENHSP whose alternative search algorithms are limited, so v2..v5 may be duplicates of v1. The graded count remains 5 per problem; per-call grading robustness is preserved because each prompt variant grades the plan independently.
+
+**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair the negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + the matching positive `pNN.pddl` for that `pNN_bK.plan`). The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` — so this isn't a leak channel.
 
 ---
 

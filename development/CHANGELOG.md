@@ -6,6 +6,35 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 — PR-3: fixture buildout to 20 domains × 5 problems × (5 valid + 5 invalid) plans (1240 fixtures total)
+
+**Motivation.** `development/FRAMEWORK_EXTENSION_PLAN.md` §3.2 PR-3 — scale the fixture set from 10 domains × 1 problem × 1 plan (60 files total) to 20 domains × 5 problems × 5 valid + 5 invalid plans per problem (1240 files total) so per-task counts grow from ~80/cell to ~1840/cell, giving Wilson confidence intervals usable signal at moderate sweep budgets.
+
+**Changes (4 commits on `framework-ext-pr3`).**
+
+- **C-A (loader/GT/runner schema + generator scaffolding).** New `pddl_eval/domains.py` schema returns `{type, domain, problems, negatives: {domain, problems[5], plans_per_problem: {pname: {valid[5], invalid[5]}}}}`. `generate_ground_truth` extends per-problem entry with `valid_plans: list[{plan, plan_valid}]` and adds a `_negatives` slot per domain validated 5-fixtures-per-kind. `pddl_eval/runner.py:TaskResult` gains `plan_label: str` field; the job builder generalizes the negative branch from one-per-kind to N-per-kind. `tools/_taxonomies.py` (new) ships pure-text mutators; `tools/build_fixtures.py` (new) drives the migrate + per-domain generator pipeline against MCP. 35 sub-checks in `tests/test_fixtures.py` cover the mutators + a loader-shape regression.
+- **C-B (existing 10 domains).** `git mv` rename the legacy `_0` suffix layout (`domain_0.pddl`→`domain_neg.pddl`, `p01_0.pddl`→`n01.pddl`, `p01_0.plan`→`p01_b1.plan`, `p01.plan`→`p01_v1.plan`); `seed-problems` from `~/personal/online_model_learning/benchmarks/olam-compatible/` for classical and from the bundled `dataset_4_numeric_domains` for numeric; per-domain `gen-valid-plans + gen-invalid-plans + gen-invalid-problems + gen-invalid-domain`. Hand-authored `domains/numeric/depot/p05.pddl` (dataset has only 3 unique instances) and `domains/numeric/farmland/p02..p05.pddl` (no public source).
+- **C-C (10 new domains).** 5 new classical (gripper, miconic, parking, tpp, zenotravel — substitute for spec's "logistics") sourced from olam-compatible. 5 new numeric (delivery, drone, gardening, block-grouping, zenotravel-numeric) sourced from matteocarde/patty (IPC-2023 mirror + `files/`); zenotravel-numeric p02-p05 hand-authored because IPC-2023 only had 1/8 ENHSP-solvable instance among the smallest. Substitution drift documented in `FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec".
+- **C-D (loader cleanup + docs).** `pddl_eval/domains.py`: drop legacy `_0`-suffix compat branches now that all 20 domains are on the flat layout. `tests/test_fixtures.py`: tighten loader-shape assertions to expect 20 domains, 5/5/5/5 fixture counts. `domains/README.md`, `EXPERIMENTS_FLOW.md` §6, `development/FRAMEWORK_EXTENSION_PLAN.md` (this entry's drift section) updated.
+
+**Validation.**
+- `tests/test_fixtures.py`: 33/33 passed (mutators + loader-shape).
+- `tools/build_fixtures.py all <domain>` ran end-to-end on all 20 domains; every committed fixture validated via `validate_pddl_syntax` at generation time (positives expected True, negatives expected False).
+- File count audit: `find domains/{classical,numeric}/ -type f` → 1240 files, exactly matching §3.3.7 target.
+- Smoke gate (deferred to post-merge): single-task `--smoke` on default `blocksworld` to be diffed against PR-2 anchor on the calibrated projection (`{model, condition, task, successes, n, failure_reasons, tool_selected}` excluding `gpt-oss:20b`); only the `p01`/`n01` rows are byte-comparable since `p02..p05`/`n02..n05` are first-time data points.
+
+**Bug-taxonomy expansions.**
+- Invalid-problem grew from 4 mutators (today's spec) to 6: added `problem_drop_objects` and `problem_drop_init` because `problem_corrupt_paren` validates as TRUE on `parking` (validator is permissive of trailing `)`). Spec's 5-bug intent is preserved at the per-domain output level.
+- Invalid-plan stays at 4 implemented mutators (vs spec's 5): spec's #4 (missing-action) is operationally `plan_drop_step_k`; #5 (extra-action) is approximated by `plan_duplicate_step` (re-inserts an action that typically violates its own precondition the second time). Padding with extra-truncation variants covers the gap.
+
+**Compatibility.** All existing PR-2 results in `results/` remain valid for the `p01`/`n01`/`v1`/`b1` rows (these are what was on disk before C-A landed; the migration was a `git mv` of the same content). New rows (`p02..p05`, `n02..n05`, `v2..v5`, `b2..b5`) are first-time data points with no anchor to compare against.
+
+**Closes / narrows.** No `ISS-###`. Closes the PR-3 milestone in `FRAMEWORK_EXTENSION_PLAN.md` §3.2.
+
+**Files.** `pddl_eval/domains.py`, `pddl_eval/runner.py`, `tools/_taxonomies.py` (new), `tools/build_fixtures.py` (new), `tests/test_fixtures.py` (new), 1240 files under `domains/{classical,numeric}/`, `domains/README.md`, `EXPERIMENTS_FLOW.md`, `development/FRAMEWORK_EXTENSION_PLAN.md`.
+
+---
+
 ## 2026-04-28 — PR-2 hotfix: per-condition sub-pass split to keep `num_ctx` constant per call
 
 **Motivation.** Cluster smoke 17244356 (PR-2 head `0a78ae0`) deadlocked at the `tools→no-tools` boundary inside the `think=on` smoke pass. py-spy showed the asyncio loop idle, GPU at 0%, 4 keep-alive sockets with no in-flight bytes, and Ollama serving the model at the original `context_length: 8192` despite the no-tools coroutines requesting `num_ctx=12288`. Mid-call `num_ctx` flips deadlock Ollama under concurrency.

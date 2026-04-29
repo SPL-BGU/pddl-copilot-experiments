@@ -366,6 +366,24 @@ Estimated diff: ~1180 new files in `domains/`, ≈50 LOC in
 `pddl_eval/runner.py` (negative-job builder generalization from
 single-fixture to 5-fixture per kind).
 
+##### PR-3 drift from spec (recorded 2026-04-29 during implementation)
+
+Final fixture set realized as 1240 files across 20 domains × 62 files (matches §3.3.7 target). Drift entries below capture *what changed from §3.3.1's domain table* and why.
+
+| Drift | Why | Where |
+|---|---|---|
+| Spec's `logistics` (classical) → `zenotravel` (olam-compatible) | olam-compatible's driverlog instances trip a Fast Downward INTERNAL_ERROR; zenotravel solved cleanly in the same source set with comparable transport semantics. Probed both before commit. | `domains/classical/zenotravel/` |
+| Spec's `transport-numeric` → `delivery` (IPC-2023) | IPC-2023 ships only `delivery` (capacity/weight semantics). The closest spec-name match. | `domains/numeric/delivery/` |
+| Spec's `settlers` → `block-grouping` (matteocarde/patty `files/`) | Settlers IPC-2023 was 0/8 ENHSP-solvable on the smallest instances; ENHSP either never finds a plan or returns an unstructured "True" reply. block-grouping is a numeric resource-grouping domain that's 8/8 solvable with plan-len 9-36 — small enough for cost-efficient eval. | `domains/numeric/block-grouping/` |
+| Spec's `plant-watering` → `gardening` (matteocarde/patty `files/`) | The IPC-2023 `ext-plant-watering` smallest 8 instances all returned 305-1149 action plans — too long for a context-bound LLM eval. `gardening` IS plant-watering: its domain symbol is `mt-plant-watering-constrained` (a constrained variant), with plan-len 5-46 on the smallest instances. | `domains/numeric/gardening/` |
+| `zenotravel-numeric` p02-p05 hand-authored | IPC-2023 `zenotravel/instances/pfile1.pddl` is the only ENHSP-solvable instance among the smallest 8; numeric-sam's zenotravel is also 0/12 solvable. The 4 hand-authored variants (1 plane × 1-2 people × 1-3 cities, plan-len 3-8) preserve the canonical `zenotravel` domain symbol with smaller object counts. | `domains/numeric/zenotravel-numeric/p0{2,3,4,5}.pddl` |
+| `domains/numeric/depot/p05.pddl` hand-authored | The paper dataset has only 3 unique `depot` instances across small/med/hard; `p02..p04` came from the bundled set, `p05` is hand-authored (1 depot × 1 distributor × 1 truck × 2 crates) to fill the 5-problem slot. | `domains/numeric/depot/p05.pddl` |
+| `domains/numeric/farmland/p02..p05.pddl` hand-authored | No public farmland dataset of small instances; hand-authored 4-7 farms × simple ≥1 goals to match the existing fixture's flavour. | `domains/numeric/farmland/p0{2,3,4,5}.pddl` |
+| 6-mutator invalid-problem taxonomy (vs §3.3.5's 5) | `problem_corrupt_paren` validates as TRUE on `parking` (the validator is permissive about a trailing `)`), so 4 of the spec's 5 mutators reduced to 4 effective categories on that domain. Added `problem_drop_objects` (whole `:objects` block stripped — every `:init` reference becomes undefined) and `problem_drop_init` (whole `:init` block stripped — goal unreachable from empty state) to broaden the candidate pool. The build-time fail-fast now succeeds across all 20 domains; spec's 5-bug intent is preserved at the per-domain output level. | `tools/_taxonomies.py` + `tools/build_fixtures.py:PROBLEM_MUTATORS` |
+| 4-mutator invalid-plan taxonomy (vs §3.3.4's 5) | Spec's #4 (missing-action) is operationally equivalent to `plan_drop_step_k` (drop a mid-plan action). Spec's #5 (extra-action — "no-op-equivalent insertion") is approximated by `plan_duplicate_step` (re-inserts an existing action that typically violates its own precondition the second time, e.g. unstacking a block twice). Padding with extra-truncation variants when the candidate pool exhausts on a given (domain, problem). | `tools/_taxonomies.py` + `tools/build_fixtures.py:PLAN_MUTATORS` |
+
+Smoke-gate calibration: PR-3 smoke gate uses the same projection as PR-1/PR-2 (`{model, condition, task, successes, n, failure_reasons, tool_selected}` excluding `gpt-oss:20b`). The new `p02..p05` and `n02..n05` rows are first-time data points, so the gate compares only `p01`/`n01` against the PR-2 anchor.
+
 #### PR-4 — No-PDDL-tools = `format=<json_schema>`; lift simulate skip
 
 The methodologically-novel piece. Lands last on stable infrastructure.
