@@ -108,12 +108,16 @@ if [ "$SMOKE" -eq 1 ] && [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     exit 1
 fi
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
-    if [ "${#MODELS[@]}" -gt 0 ] || [ "$ALL" -eq 1 ] || [ "$NO_TOOLS" -eq 1 ] \
-        || [ -n "$THINK_MODES_OVERRIDE" ]; then
-        echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes/explicit-models" >&2
+    if [ "$ALL" -eq 1 ] || [ "$NO_TOOLS" -eq 1 ] || [ -n "$THINK_MODES_OVERRIDE" ]; then
+        echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes" >&2
         exit 1
     fi
-    MODELS=(Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b)
+    # No explicit models → default to the 5-model paper pack. Explicit
+    # models override the pack and smoke just those (used to retest a
+    # single model after a fix without re-running the full pack).
+    if [ "${#MODELS[@]}" -eq 0 ]; then
+        MODELS=(Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b)
+    fi
     THINK_MODES_OVERRIDE="default"  # smoke iterates think internally
 fi
 
