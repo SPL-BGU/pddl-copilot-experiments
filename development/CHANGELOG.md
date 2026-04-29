@@ -6,6 +6,73 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 (PR-4 review fixes) — Address PR #25 review
+
+**Motivation.** Three follow-ups from the PR-4 code review, all on the same PR branch (`framework-ext-pr4`) before merge.
+
+- **`pddl_eval/scoring.py::check_success` (solve no-tools).** Distinguished "model emitted clean JSON with empty plan" (now `FR_PLAN_INVALID` — model gave up under a successful format constraint) from "couldn't parse anything from either path" (`FR_FORMAT_PARSE_FAIL`, unchanged). The pre-fix code conflated both into `FR_FORMAT_PARSE_FAIL`, distorting the failure-reason histogram in cells with frequent give-up behaviour.
+- **`pddl_eval/runner.py` (chain-runner no-tools branch).** Threaded `format=TASK_SCHEMAS.get(task)` through the chain runner's `chat_without_tools` call. Today the no-tools chain path is gated upstream by ISS-018, but if it ever returns the JSON-first grader in `check_success` would otherwise silently fall through to free-text fallbacks (or `FR_FORMAT_PARSE_FAIL` on simulate, which has no fallback). Removes the forward-compat hazard.
+- **`pddl_eval/scoring.py::_normalize_trajectory`.** A trajectory entry with a non-dict `state` field (malformed model output that escaped the format constraint) used to fall through to flat-shape lookup, find nothing, and silently canonicalise to an empty state — false-positive equality match against an empty oracle init. Now returns `None` (callers tag as `FR_FORMAT_PARSE_FAIL`).
+
+**Tests.** `tests/test_check_success.py` adds `solve nt json plan empty (PR-4 review fix)` (clean JSON, empty `plan` list → `FR_PLAN_INVALID`). `tests/test_scoring.py::test_normalize_trajectory` adds two non-dict-state cases (string and list). `bash tests/verify.sh` → 329/329 sub-checks pass (was 326 pre-fix, +3 from the new cases).
+
+**Compatibility.** Single-task with-tools rows untouched. No-PDDL-tools rows: the only behaviour change is on inputs that were already failing (mislabelled) — the success rate per cell is unchanged; only the failure-reason bucket on a tiny subset of failures shifts (`FR_FORMAT_PARSE_FAIL` → `FR_PLAN_INVALID`). JSON output schema unchanged.
+
+**Files.** `pddl_eval/scoring.py`, `pddl_eval/runner.py`, `tests/test_check_success.py`, `tests/test_scoring.py`, `development/CHANGELOG.md`.
+
+---
+
+## 2026-04-29 (PR-4) — No-PDDL-tools = `format=<json_schema>`; lift simulate skip; shared trajectory normalizer
+
+**Motivation.** `FRAMEWORK_EXTENSION_PLAN.md` PR-4 — the methodologically-novel piece of the four-PR rollout. Before this change, the `with_tools=False` cell graded plans/verdicts via free-text regex extractors (`extract_plan_lines`, `extract_verdict`) and excluded `simulate` entirely (ISS-002 — its keyword grader was non-discriminative). PR-4 replaces the free-text-only path with Ollama `format=<json_schema>` constraint enforcement, restores `simulate` under the new structured grader, and switches the with-tools `simulate` branch onto the same canonical-form trajectory comparison so both sides share one equality rule.
+
+**Changes.**
+
+- **`pddl_eval/schemas.py` (new, ~75 LOC).** Per-task Pydantic schemas: `SolveResponse`, `ValidateResponse`, `StateSnapshot`, `StateStep`, `SimulateResponse`. `TASK_SCHEMAS: dict[str, dict]` resolves task → JSON schema (`model_json_schema()`) for Ollama. Field-name choice (`boolean` / `numeric` on the model side, while the oracle plugin emits `boolean_fluents` / `numeric_fluents`) bridged by `_normalize_trajectory` rather than schema gymnastics — shorter names round-trip more reliably under format constraints on tiny models.
+
+- **`pddl_eval/scoring.py`**:
+  - `FR_FORMAT_PARSE_FAIL` constant added; appended to `_TRUNCATION_OVERRIDE_REASONS` so a cap-cut mid-JSON re-tags as `FR_TRUNCATED_NO_ANSWER` rather than masquerading as sampling-degeneracy.
+  - `_normalize_trajectory(traj)` helper canonicalises both shapes — oracle (`boolean_fluents: dict[str, bool]`, `action: None` on step 0) and model (`state: {boolean: list[str], numeric: dict}`) — to a single `{step, action, boolean (sorted true predicates), numeric}` form. Lower-cases action names, collapses whitespace, returns None on malformed input.
+  - `_safe_pydantic_validate(model_cls, raw)` helper attempts JSON parse + Pydantic validation, tolerating models that wrap output in markdown code fences. Returns the Pydantic instance or None.
+  - `check_success` no-tools branches rewritten:
+    - `solve` — try `SolveResponse.plan` via Pydantic; fall back to `extract_plan_lines`; route plan into `_validate_model_plan`. Empty plan from both paths → `FR_FORMAT_PARSE_FAIL` (distinct from `FR_PLAN_INVALID`, which is reserved for "plan extracted but failed validation").
+    - `validate_*` — try `ValidateResponse.verdict`; fall back to `extract_verdict`. Both fail → `FR_FORMAT_PARSE_FAIL` (replaces the prior `FR_NO_VERDICT_PARSED` exit; the constant stays in `_TRUNCATION_OVERRIDE_REASONS` for back-compat with existing `_classify_step_failure` tests).
+    - `simulate` (newly reachable) — try `SimulateResponse.trajectory` via Pydantic, normalise both sides through `_normalize_trajectory`, deep-equal. No free-text fallback (the pre-PR-4 keyword check was the original ISS-002 problem).
+  - `check_success` with-tools `simulate` branch switched to `_normalize_trajectory(parsed.get("trajectory")) == _normalize_trajectory(oracle_traj)` so both sides go through the same canonical form. Functionally byte-equal to the pre-PR-4 direct `==` on identical inputs (oracle and model call the same plugin with identical args), but bridges any future shape drift.
+  - Dead `resp_lower = (response or "").lower()` line removed (only consumer was the old simulate keyword check).
+
+- **`pddl_eval/chat.py::chat_without_tools`**: gains `format: dict | str | None = None` kwarg, threaded into `client.chat(format=...)`. None preserves pre-PR-4 unconstrained sampling (the with-tools branch and any direct callers).
+
+- **`pddl_eval/runner.py`**:
+  - `evaluate_one` passes `TASK_SCHEMAS.get(task)` as `format=` to `chat_without_tools` when `with_tools=False`. Chain path NOT touched — chains stay tools-only (ISS-018).
+  - The `if not with_tools and task == "simulate": continue` guard at the top of `run_single_task_experiment`'s task loop is removed. The production matrix now emits `(no-tools, simulate)` jobs.
+
+- **`run_experiment.py`**: re-exports `FR_FORMAT_PARSE_FAIL` and `_normalize_trajectory` for tests. CLI banner condition lines now display `no-pddl-tools` (the `--conditions no-tools` enum value is unchanged for back-compat).
+
+- **User-facing rename `no-tools` → `no-pddl-tools`**: scoped strictly to (a) printed table column in `pddl_eval/summary.py` (via a `_display_condition()` helper; column width widened 9 → 13), (b) CLI banner strings in `run_experiment.py`, (c) `EXPERIMENTS_FLOW.md` §3 / §4.2 / §11 narrative. Not touched: CLI flag (`--conditions no-tools`), bash flag (`--no-tools` in `cluster-experimenting/submit_with_rtx.sh`), JSON `condition` field in `summary_*.json`, internal `with_tools: bool`, `_format_progress` log lines (so log-tailing scripts stay stable), `.claude/` skill configs, historical CHANGELOG / OPEN_ISSUES entries, sibling-repo `pddl-copilot/`. The plan-of-record in `FRAMEWORK_EXTENSION_PLAN.md` §3.4.4 explicitly preserves the internal label so the 2026-04 result corpus parses identically under PR-4 analysis.
+
+- **Tests** (`tests/verify.sh` → all 4 files pass, 326 sub-checks):
+  - `tests/test_check_success.py`: 3 tests updated to expect `FR_FORMAT_PARSE_FAIL` where the response carries no JSON and no extractable free-text artefact (replacing the prior `FR_PLAN_INVALID` / `FR_NO_VERDICT_PARSED` expectations on the same inputs). Added 7 new cases covering the JSON paths: solve / validate_plan happy-path JSON, solve JSON with bad plan → `FR_PLAN_INVALID`, validate_plan negative-arm JSON match → success, simulate JSON trajectory match → `FR_OK`, simulate JSON trajectory mismatch → `FR_RESULT_MISMATCH`, simulate malformed JSON → `FR_FORMAT_PARSE_FAIL`.
+  - `tests/test_scoring.py`: new `test_normalize_trajectory` (5 sub-checks) pinning oracle ↔ model shape equivalence, ordering independence, action whitespace/case normalisation, and mismatch detection.
+
+- **`EXPERIMENTS_FLOW.md`** §3 simulate row, §4.2 (rewritten under "No-PDDL-Tools" heading with per-task grader description and re-baselining note), §9 `failure_reasons` row (documents `FR_FORMAT_PARSE_FAIL`), §11 paper-diff table (simulate criterion + no-tools task set + new no-tools grader row).
+
+- **`development/OPEN_ISSUES.md`**: ISS-002 closed (path a — structured-trace grader landed); ISS-013 paper-diff narrative narrowed since the no-tools task-set divergence from the paper now has a concrete grader behind it.
+
+**Compatibility / re-baselining.**
+- **With-tools rows are structurally unchanged.** `tool_calls[]`, `tool_selected`, `success`, all `FR_*` constants stable. With-tools `simulate` migrated to the shared `_normalize_trajectory` but byte-equality with prior simulate `FR_OK` outcomes is preserved (oracle and model side route through the same plugin with identical inputs).
+- **No-tools rows are NOT directly comparable to pre-PR-4.** The grading method changed: free-text regex → format-constrained JSON parse + free-text fallback. Treat any plot mixing pre/post-PR-4 no-tools cells as a re-baseline boundary; mark accordingly. The new `FR_FORMAT_PARSE_FAIL` rate per cell is the diagnostic for whether constraint enforcement degraded a tiny model.
+- **JSON output schema additive.** `FR_FORMAT_PARSE_FAIL` is a new bucket in `failure_reasons`. The `condition` field stays `"no-tools"` literal. Old `single_task_*.json` and `summary_*.json` parse under PR-4 analysis tools without migration.
+- **Smoke gate.** Per the user's 2026-04-29 instruction, the cross-PR byte-equality anchor against PR-3 is skipped (PR-3 smoke didn't complete before PR-3 merged). PR-4's own validation: full local test suite (326 sub-checks) green; cluster smoke deferred to the next sweep submission.
+
+**Closes / narrows.**
+- **Closes ISS-002** (simulate no-tools grader). Path a (structured-trajectory grader) landed; path b (drop simulate from no-tools headline) was the de-facto resolution since 2026-04-25 and is now superseded.
+- **Narrows ISS-013** (paper-diff audit) — the no-tools task-set divergence now has a concrete grader behind it; the per-task side-by-side diff in EXPERIMENTS_FLOW.md §11 rewrote the simulate / no-tools rows.
+
+**Files.** `pddl_eval/schemas.py` (new), `pddl_eval/scoring.py`, `pddl_eval/chat.py`, `pddl_eval/runner.py`, `pddl_eval/summary.py`, `run_experiment.py`, `tests/test_check_success.py`, `tests/test_scoring.py`, `EXPERIMENTS_FLOW.md`, `development/OPEN_ISSUES.md`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-04-29 (review) — Address PR #22 review on `framework-ext-pr3`
 
 **Motivation.** The PR review flagged one correctness bug in ground-truth generation (`plan_valid is None` silent coerce on validator transport errors) and a dead-code sweep in the new fixture generator as ship blockers, plus several cheap follow-ups in the same code surface.

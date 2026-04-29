@@ -17,6 +17,11 @@ from .chat import (
     _parse_validation_verdict,
     _safe_json_loads,
 )
+from .schemas import (
+    SimulateResponse,
+    SolveResponse,
+    ValidateResponse,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +44,7 @@ FR_VERDICT_MISMATCH = "verdict_mismatch"
 FR_NO_VERDICT_PARSED = "no_verdict_parsed"
 FR_SIMULATE_EMPTY = "simulate_empty"
 FR_RESULT_MISMATCH = "result_mismatch"
+FR_FORMAT_PARSE_FAIL = "format_parse_fail"
 FR_UNKNOWN = "unknown"
 
 
@@ -140,6 +146,114 @@ def extract_plan_lines(response: str) -> list[str]:
     return plan
 
 
+def _normalize_trajectory(traj) -> list[dict] | None:
+    """Canonicalise a trajectory list to a comparable shape.
+
+    Bridges three field-shape variants (PR-4):
+      - oracle (`get_state_transition` plugin): per step
+        `{step, action, boolean_fluents: dict[str, bool], numeric_fluents: dict}`.
+        `boolean_fluents` is the full predicate map; `action` is None on step 0.
+      - model (no-PDDL-tools `format=SimulateResponse`): per step
+        `{step, action, state: {boolean: list[str], numeric: dict}}`.
+        `boolean` is the list of TRUE predicates only.
+      - bare/legacy: per step `{step, action, boolean: list, numeric: dict}`.
+
+    All three collapse to `{step, action, boolean, numeric}` where
+    `boolean` is a sorted lower-cased list of TRUE predicate strings
+    (whitespace collapsed) and `numeric` is a dict[str, float] with
+    lower-cased keys. None or missing `action` becomes "". Equality of
+    two normalised trajectories is the grader's success signal.
+
+    Returns None when *traj* is not a list or any entry has the wrong
+    shape — callers tag this as FR_FORMAT_PARSE_FAIL (model side) or
+    FR_UNKNOWN (oracle side; see check_success).
+    """
+    if not isinstance(traj, list):
+        return None
+    out: list[dict] = []
+    for entry in traj:
+        if not isinstance(entry, dict):
+            return None
+        # If a `state` key is present, it MUST be a dict (model schema is
+        # `state: StateSnapshot`). A non-dict `state` is malformed model
+        # output that the format constraint failed to reject — refuse to
+        # silently canonicalise it to an empty state, which would be a
+        # false-positive equality match against an empty oracle init.
+        if "state" in entry and not isinstance(entry["state"], dict):
+            return None
+        nested = entry.get("state")
+        if isinstance(nested, dict):
+            booleans = nested.get("boolean")
+            numerics = nested.get("numeric") or {}
+        else:
+            booleans = entry.get("boolean_fluents")
+            if booleans is None:
+                booleans = entry.get("boolean")
+            numerics = entry.get("numeric_fluents")
+            if numerics is None:
+                numerics = entry.get("numeric") or {}
+
+        if isinstance(booleans, dict):
+            # Oracle shape: every predicate with its truth value. Keep only
+            # true entries to match the model-side {true predicates} list.
+            boolean_items = [k for k, v in booleans.items() if v]
+        elif isinstance(booleans, list):
+            boolean_items = booleans
+        elif booleans is None:
+            boolean_items = []
+        else:
+            return None
+        if not isinstance(numerics, dict):
+            return None
+
+        boolean_canon = sorted(" ".join(str(b).split()).lower() for b in boolean_items)
+        numeric_canon: dict[str, float] = {}
+        for k, v in numerics.items():
+            try:
+                numeric_canon[str(k).lower()] = float(v)
+            except (TypeError, ValueError):
+                return None
+        action_raw = entry.get("action")
+        action_canon = (
+            "" if action_raw is None
+            else " ".join(str(action_raw).split()).lower()
+        )
+        out.append({
+            "step": entry.get("step"),
+            "action": action_canon,
+            "boolean": boolean_canon,
+            "numeric": numeric_canon,
+        })
+    return out
+
+
+def _safe_pydantic_validate(model_cls, raw: str):
+    """Try to JSON-parse + pydantic-validate; return instance or None.
+
+    Used in no-PDDL-tools grading to attempt the structured path before
+    falling back to free-text extractors. Tolerates raw strings wrapped
+    in markdown code fences (```json ... ```), which some models emit
+    even under `format=` constraint.
+    """
+    if not isinstance(raw, str):
+        return None
+    text = raw.strip()
+    if text.startswith("```"):
+        # Strip the first fence line and any trailing fence.
+        nl = text.find("\n")
+        if nl >= 0:
+            text = text[nl + 1:]
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+    data = _safe_json_loads(text.strip())
+    if data is None:
+        return None
+    try:
+        return model_cls.model_validate(data)
+    except Exception:
+        return None
+
+
 def extract_verdict(response: str) -> bool | None:
     """Return True for VALID, False for INVALID, None if no verdict line found.
 
@@ -219,10 +333,15 @@ async def check_success(
 
     With-tools: check tool selection AND validate the tool result against
     ground truth (plan validity, verdict match, non-error trace).
-    Without-tools: validate the actual artifact the model produced:
-      - solve           → extract a plan, send it to pyvalidator, require valid==True
-      - validate_*      → extract VERDICT: VALID|INVALID, compare to ground truth
-      - simulate        → loose keyword check (state trace structure not graded here)
+    Without-tools (PR-4: now "no-PDDL-tools" — the model still has
+    Ollama `format=<json_schema>` constraint enforcement, but no
+    planning/validation/simulation MCP tools): grade the structured JSON
+    artifact when present, fall back to free-text extractors when JSON
+    parse fails (`FR_FORMAT_PARSE_FAIL` only when both paths fail):
+      - solve           → SolveResponse.plan → pyvalidator, require valid==True
+      - validate_*      → ValidateResponse.verdict → compare to ground truth
+      - simulate        → SimulateResponse.trajectory → normalize and deep-equal
+                          against oracle gt["trace"].trajectory
     """
     # With-tools but the model emitted zero tool calls → it answered from
     # the text alone, which is tool_not_selected regardless of how plausible
@@ -231,8 +350,6 @@ async def check_success(
     # violating the documented schema (EXPERIMENTS_FLOW.md §4.1/§9).
     if with_tools and not tool_calls:
         return False, False, FR_TOOL_NOT_SELECTED
-
-    resp_lower = (response or "").lower()
 
     if task == "solve":
         if tool_calls:
@@ -261,12 +378,24 @@ async def check_success(
             ) or _tool_error_seen(tool_calls, "numeric_planner"):
                 return True, False, FR_TOOL_ERROR
             return True, False, FR_PLAN_INVALID
-        plan_lines = extract_plan_lines(response or "")
+        # PR-4: structured-output path first (Ollama `format=SolveResponse`),
+        # free-text extractor as fallback. Both routed through the same
+        # _validate_model_plan call so the grading rule is identical to the
+        # pre-PR-4 behaviour once a plan list is in hand.
+        parsed = _safe_pydantic_validate(SolveResponse, response or "")
+        plan_lines = parsed.plan if parsed else extract_plan_lines(response or "")
         verdict = await _validate_model_plan(mcp, domain_pddl, problem_pddl, plan_lines)
         if verdict is True:
             return None, True, FR_OK
         if verdict is None:
             return None, False, FR_TOOL_ERROR
+        if not plan_lines:
+            # Distinguish "couldn't extract anything" (parse failure on
+            # both JSON and free-text paths) from "model emitted clean
+            # JSON with an empty plan" (model gave up under a successful
+            # format constraint). The latter is a genuine plan invalidity
+            # signal, not a parse failure.
+            return None, False, FR_PLAN_INVALID if parsed is not None else FR_FORMAT_PARSE_FAIL
         return None, False, FR_PLAN_INVALID
 
     if task in ("validate_domain", "validate_problem", "validate_plan"):
@@ -297,9 +426,16 @@ async def check_success(
                 return True, False, FR_TOOL_ERROR
             return True, False, FR_VERDICT_MISMATCH
 
-        verdict = extract_verdict(response or "")
-        if verdict is None:
-            return None, False, FR_NO_VERDICT_PARSED
+        # PR-4: try structured ValidateResponse.verdict first, then the
+        # free-text VERDICT: regex as fallback. FR_FORMAT_PARSE_FAIL only
+        # fires when neither path produces a verdict.
+        parsed = _safe_pydantic_validate(ValidateResponse, response or "")
+        if parsed is not None:
+            verdict: bool | None = parsed.verdict == "VALID"
+        else:
+            verdict = extract_verdict(response or "")
+            if verdict is None:
+                return None, False, FR_FORMAT_PARSE_FAIL
         if truth is None:
             return None, False, FR_UNKNOWN
         if verdict == truth:
@@ -307,31 +443,49 @@ async def check_success(
         return None, False, FR_VERDICT_MISMATCH
 
     if task == "simulate":
+        # Both branches normalise via _normalize_trajectory so the no-PDDL-
+        # tools (PR-4) and with-tools paths share one canonical-form
+        # equality rule (Risks list — "Simulate trajectory normalization
+        # mismatch" mitigation).
+        oracle_trace = _safe_json_loads(gt.get("trace"))
+        oracle_traj = oracle_trace.get("trajectory") if isinstance(oracle_trace, dict) else None
+        oracle_canon = _normalize_trajectory(oracle_traj)
+
         if tool_calls:
             selected = _used_tool(tool_calls, "get_state_transition")
             if not selected:
                 return False, False, FR_TOOL_NOT_SELECTED
             # `valid` in the tool response is a PDDL-syntactic check, not a
             # simulation-correctness signal — a partial trajectory with
-            # valid=false would satisfy it. Compare against the oracle
-            # trajectory from gt["trace"] (same plan, same plugin → dicts
-            # are byte-equal when the model passed identical inputs).
-            oracle_trace = _safe_json_loads(gt.get("trace"))
-            oracle_traj = oracle_trace.get("trajectory") if isinstance(oracle_trace, dict) else None
-            if oracle_traj is None:
+            # valid=false would satisfy it.
+            if oracle_canon is None:
                 return True, False, FR_UNKNOWN
             for raw in _get_tool_results(tool_calls, "get_state_transition"):
                 parsed = _safe_json_loads(raw)
                 if not isinstance(parsed, dict) or parsed.get("error"):
                     continue
-                if parsed.get("trajectory") == oracle_traj:
+                if _normalize_trajectory(parsed.get("trajectory")) == oracle_canon:
                     return True, True, FR_OK
             if _tool_error_seen(tool_calls, "get_state_transition"):
                 return True, False, FR_TOOL_ERROR
             return True, False, FR_RESULT_MISMATCH
-        if "state" in resp_lower and ("after" in resp_lower or "step" in resp_lower):
+
+        # PR-4: no-PDDL-tools simulate. Parse SimulateResponse, normalise,
+        # deep-equal against the oracle. No free-text fallback — the
+        # pre-PR-4 keyword check (resp_lower in {"state","after","step"})
+        # is non-discriminative (ISS-002), so failing the JSON path lands
+        # on FR_FORMAT_PARSE_FAIL rather than guessing from substrings.
+        if oracle_canon is None:
+            return None, False, FR_UNKNOWN
+        parsed = _safe_pydantic_validate(SimulateResponse, response or "")
+        if parsed is None:
+            return None, False, FR_FORMAT_PARSE_FAIL
+        model_canon = _normalize_trajectory([s.model_dump() for s in parsed.trajectory])
+        if model_canon is None:
+            return None, False, FR_FORMAT_PARSE_FAIL
+        if model_canon == oracle_canon:
             return None, True, FR_OK
-        return None, False, FR_SIMULATE_EMPTY
+        return None, False, FR_RESULT_MISMATCH
 
     return None, False, FR_UNKNOWN
 
@@ -348,6 +502,7 @@ _TRUNCATION_OVERRIDE_REASONS = (
     FR_PLAN_INVALID,
     FR_NO_VERDICT_PARSED,
     FR_SIMULATE_EMPTY,
+    FR_FORMAT_PARSE_FAIL,
     FR_UNKNOWN,
 )
 

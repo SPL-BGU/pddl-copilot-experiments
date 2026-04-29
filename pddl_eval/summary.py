@@ -133,6 +133,16 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
     return rows
 
 
+def _display_condition(cond: str) -> str:
+    """Map the internal condition tag ("tools"/"no-tools") to its
+    user-facing display string. PR-4 (2026-04-29) renames "no-tools" to
+    "no-pddl-tools" in printed tables and the CLI banner; the JSON
+    `condition` field stays "no-tools" so old result corpora parse
+    identically and downstream notebooks need no migration.
+    """
+    return "no-pddl-tools" if cond == "no-tools" else cond
+
+
 def print_fail_reasons_table(results: list[TaskResult]):
     """Per (model, condition, task) breakdown of the top failure reasons.
 
@@ -145,7 +155,7 @@ def print_fail_reasons_table(results: list[TaskResult]):
         return
 
     header = (
-        f"{'Model':<20} {'Condition':<9} {'Task':<18} "
+        f"{'Model':<20} {'Condition':<13} {'Task':<18} "
         f"{'N':>4}  {'Fails':>5}  {'Trunc':>5}  Top failure reasons"
     )
     bar = "=" * max(len(header), 92)
@@ -161,7 +171,7 @@ def print_fail_reasons_table(results: list[TaskResult]):
         top = sorted(reasons.items(), key=lambda kv: -kv[1])[:3]
         top_str = ", ".join(f"{k}:{v}" for k, v in top) if top else "-"
         print(
-            f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
+            f"{r['model']:<20} {_display_condition(r['condition']):<13} {r['task']:<18} "
             f"{n:>4}  {fails:>5}  {r['truncated']:>5}  {top_str}"
         )
     print(bar)
@@ -174,7 +184,7 @@ def print_single_task_table(results: list[TaskResult]):
         return
 
     header = (
-        f"{'Model':<20} {'Condition':<9} {'Task':<18} "
+        f"{'Model':<20} {'Condition':<13} {'Task':<18} "
         f"{'Rate':>6}  {'N':>4}  {'95% CI':<16}  {'ToolSel':>7}"
     )
     bar = "=" * len(header)
@@ -187,7 +197,7 @@ def print_single_task_table(results: list[TaskResult]):
         ci_str = f"[{r['ci_lo']:.2f}, {r['ci_hi']:.2f}]"
         ts_str = f"{r['tool_selected_rate']:.2f}" if "tool_selected_rate" in r else "   -"
         print(
-            f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
+            f"{r['model']:<20} {_display_condition(r['condition']):<13} {r['task']:<18} "
             f"{r['success_rate']:>6.2f}  {r['n']:>4}  {ci_str:<16}  {ts_str:>7}"
         )
     print(bar)
@@ -208,7 +218,7 @@ def print_per_variant_table(results: list[TaskResult]):
         return
     var_cols = "  ".join(f"v{v:>1}".ljust(8) for v in variants)
     header = (
-        f"{'Model':<20} {'Condition':<9} {'Task':<18} "
+        f"{'Model':<20} {'Condition':<13} {'Task':<18} "
         f"{var_cols}  {'Δ':>5}"
     )
     bar = "=" * len(header)
@@ -230,7 +240,7 @@ def print_per_variant_table(results: list[TaskResult]):
         spread = (max(rates) - min(rates)) if rates else 0.0
         cells_str = "  ".join(c.ljust(8) for c in cells)
         print(
-            f"{r['model']:<20} {r['condition']:<9} {r['task']:<18} "
+            f"{r['model']:<20} {_display_condition(r['condition']):<13} {r['task']:<18} "
             f"{cells_str}  {spread:>5.2f}"
         )
     print(bar)
@@ -249,7 +259,7 @@ def print_chain_table(chain_results: list[dict]):
     if not chain_results:
         return
     rows = summarize_chains(chain_results)
-    header = f"{'Model':<20} {'Condition':<9} {'Chain n':>7}  {'Rate':>6}  {'N':>4}  {'95% CI':<16}"
+    header = f"{'Model':<20} {'Condition':<13} {'Chain n':>7}  {'Rate':>6}  {'N':>4}  {'95% CI':<16}"
     bar = "=" * len(header)
     print("\n" + bar)
     print("MULTI-TASK CHAIN SUCCESS RATES (with Wilson 95% CI)")
@@ -265,7 +275,7 @@ def print_chain_table(chain_results: list[dict]):
         cond = "tools" if r.get("with_tools", True) else "no-tools"
         ci_str = f"[{r['ci_lo']:.2f}, {r['ci_hi']:.2f}]"
         print(
-            f"{r['model']:<20} {cond:<9} {r['chain_length']:>7}  "
+            f"{r['model']:<20} {_display_condition(cond):<13} {r['chain_length']:>7}  "
             f"{r['success_rate']:>6.2f}  {r['samples']:>4}  {ci_str:<16}"
         )
     print(bar)
