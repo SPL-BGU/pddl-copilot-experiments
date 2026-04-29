@@ -268,11 +268,21 @@ async def async_main(args):
         domains = {d: dinfo for d, dinfo in domains.items() if d in set(args.domains)}
     if args.problems is not None:
         keep = set(args.problems)
-        domains = {
-            d: {**dinfo, "problems": {p: ppddl for p, ppddl in dinfo["problems"].items() if p in keep}}
-            for d, dinfo in domains.items()
-        }
-        domains = {d: dinfo for d, dinfo in domains.items() if dinfo["problems"]}
+        filtered: dict = {}
+        for d, dinfo in domains.items():
+            kept_problems = {p: ppddl for p, ppddl in dinfo["problems"].items() if p in keep}
+            if not kept_problems:
+                continue
+            negs = dinfo.get("negatives") or {}
+            kept_plans_per_problem = {
+                p: pp for p, pp in (negs.get("plans_per_problem") or {}).items() if p in keep
+            }
+            filtered[d] = {
+                **dinfo,
+                "problems": kept_problems,
+                "negatives": {**negs, "plans_per_problem": kept_plans_per_problem},
+            }
+        domains = filtered
     if not domains:
         sys.exit(
             f"No domains/problems remain after filtering "
