@@ -157,41 +157,30 @@ def test_strip_balanced_block_no_match(r: TestResults):
 
 
 # ---------------------------------------------------------------------------
-# Loader smoke test — exercises the new flat-layout shape against the
-# legacy-fallback path so we catch shape regressions early.
+# Loader smoke test — exercises the PR-3 flat-layout shape against the
+# 20-domain corpus shipped on disk.
 # ---------------------------------------------------------------------------
 
 
-def test_loader_shape_legacy_layout(r: TestResults):
-    # The repo currently has the legacy layout for all 10 domains; the
-    # loader must normalize to the new shape (lists of length 1 for
-    # negatives.problems and plans_per_problem.<pname>.invalid; v1 single
-    # element in plans_per_problem.<pname>.valid).
+def test_loader_shape_flat_layout(r: TestResults):
     from pddl_eval.domains import load_domains  # local import: keep test module light
     domains_dir = Path(__file__).resolve().parent.parent / "domains"
     domains = load_domains(domains_dir)
-    r.check("loader returned at least 10 domains", len(domains) >= 10, f"got {len(domains)}")
+    r.check_eq("loader returned 20 domains", len(domains), 20)
     bw = domains.get("blocksworld")
     r.check("blocksworld present", bw is not None, "missing blocksworld")
     if not bw:
         return
     r.check_eq("blocksworld.type", bw["type"], "classical")
-    r.check("blocksworld.problems contains p01",
-            "p01" in bw["problems"], f"got {list(bw['problems'])}")
+    r.check_eq("blocksworld has 5 problems", len(bw["problems"]), 5)
     negs = bw["negatives"]
     r.check("blocksworld.negatives.domain populated",
             negs["domain"] is not None, "missing")
-    r.check("blocksworld.negatives.problems is list",
-            isinstance(negs["problems"], list), f"got {type(negs['problems'])}")
-    r.check_eq("blocksworld.negatives.problems len ≥ 1",
-               len(negs["problems"]) >= 1, True)
+    r.check_eq("blocksworld.negatives.problems has 5 entries",
+               len(negs["problems"]), 5)
     plans = negs["plans_per_problem"]
-    r.check("plans_per_problem keyed by pname",
-            "p01" in plans, f"got {list(plans)}")
-    r.check("p01 has at least 1 valid plan (legacy = 1)",
-            len(plans["p01"]["valid"]) >= 1, "got 0")
-    r.check("p01 has at least 1 invalid plan (legacy = 1)",
-            len(plans["p01"]["invalid"]) >= 1, "got 0")
+    r.check_eq("p01 has 5 valid plans", len(plans["p01"]["valid"]), 5)
+    r.check_eq("p01 has 5 invalid plans", len(plans["p01"]["invalid"]), 5)
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +202,7 @@ def main():
     test_domain_undefined_predicate_in_effect(r)
     test_domain_drop_predicates_block(r)
     test_strip_balanced_block_no_match(r)
-    test_loader_shape_legacy_layout(r)
+    test_loader_shape_flat_layout(r)
     r.report_and_exit()
 
 

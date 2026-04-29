@@ -1,9 +1,8 @@
 """PDDL domain/problem fixture loading + ground-truth oracle generation.
 
 `load_domains` walks `domains/{classical,numeric}/<name>/` to assemble the
-positive corpus + negative fixtures. Supports both the PR-3 flat layout
-(`domain_neg.pddl`, `n<NN>.pddl`, `p<NN>_v[1-5].plan`, `p<NN>_b[1-5].plan`)
-and the legacy `_0`-suffix layout for backward-compat during migration.
+positive corpus + negative fixtures from the PR-3 flat layout
+(`domain_neg.pddl`, `n<NN>.pddl`, `p<NN>_v[1-5].plan`, `p<NN>_b[1-5].plan`).
 
 `generate_ground_truth` runs the MCP validator + planner over every
 fixture to build the per-domain oracle that `runner.evaluate_one`
@@ -21,17 +20,11 @@ def load_domains(domains_dir: Path) -> dict:
     `domains/{classical,numeric}/<name>/`:
 
         domain.pddl                  - 1 valid domain
-        domain_neg.pddl              - 1 invalid domain (legacy: domain_0.pddl)
+        domain_neg.pddl              - 1 invalid domain
         p<NN>.pddl ... × up to 5     - valid problems
-        n<NN>.pddl ... × up to 5     - invalid problems (legacy: p<NN>_0.pddl)
+        n<NN>.pddl ... × up to 5     - invalid problems
         p<NN>_v[1-9].plan × up to 5  - valid plans per problem
-                                       (legacy: p<NN>.plan as v1)
         p<NN>_b[1-9].plan × up to 5  - invalid plans per problem
-                                       (legacy: p<NN>_0.plan as b1)
-
-    Backward-compat: when the new flat-layout files are absent, fall back
-    to the legacy single-fixture-per-slot layout. The compat branch is
-    dropped after Commit B of PR-3 (FRAMEWORK_EXTENSION_PLAN.md §3.3).
 
     Returns:
         {name: {
@@ -60,48 +53,25 @@ def load_domains(domains_dir: Path) -> dict:
             if not domain_file.exists():
                 continue
 
-            # Valid problems: prefer p<NN>.pddl glob (excludes n<NN>.pddl
-            # and the legacy `p<NN>_0.pddl` negatives). The legacy layout
-            # could include `p01_0.pddl` matching `p*.pddl`, so the
-            # `_0` filter is load-bearing during migration.
             problems = {
                 pf.stem: pf.read_text()
                 for pf in sorted(ddir.glob("p[0-9]*.pddl"))
-                if not pf.stem.endswith("_0")
             }
             if not problems:
                 continue
 
-            # Invalid domain: prefer domain_neg.pddl, fall back to domain_0.pddl
             neg_domain_file = ddir / "domain_neg.pddl"
-            if not neg_domain_file.exists():
-                neg_domain_file = ddir / "domain_0.pddl"
             neg_domain = neg_domain_file.read_text() if neg_domain_file.exists() else None
 
-            # Invalid problems: prefer n<NN>.pddl glob, fall back to
-            # p<NN>_0.pddl (legacy single-fixture form).
             neg_problem_files = sorted(ddir.glob("n[0-9]*.pddl"))
-            if not neg_problem_files:
-                neg_problem_files = sorted(ddir.glob("p[0-9]*_0.pddl"))
             neg_problems = [f.read_text() for f in neg_problem_files]
 
-            # Plans per problem. Valid: prefer p<NN>_v[1-9].plan, fall
-            # back to p<NN>.plan as a single v1. Invalid: prefer
-            # p<NN>_b[1-9].plan, fall back to p<NN>_0.plan as a single b1.
             plans_per_problem: dict = {}
             for pname in problems:
                 valid_plan_files = sorted(ddir.glob(f"{pname}_v[0-9]*.plan"))
-                if not valid_plan_files:
-                    legacy_plan = ddir / f"{pname}.plan"
-                    valid_plan_files = [legacy_plan] if legacy_plan.exists() else []
                 valid_plans = [f.read_text() for f in valid_plan_files]
 
                 invalid_plan_files = sorted(ddir.glob(f"{pname}_b[0-9]*.plan"))
-                if not invalid_plan_files:
-                    legacy_neg_plan = ddir / f"{pname}_0.plan"
-                    invalid_plan_files = (
-                        [legacy_neg_plan] if legacy_neg_plan.exists() else []
-                    )
                 invalid_plans = [f.read_text() for f in invalid_plan_files]
 
                 if valid_plans or invalid_plans:
