@@ -6,6 +6,43 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-29 (cluster) — Align cluster sbatch with the same-day num_ctx / num_predict bumps
+
+**Motivation.** Two same-day entries below raised `DEFAULT_NUM_CTX` 8192 → 16384, `DEFAULT_NUM_CTX_THINKING` 12288 → 16384, `DEFAULT_NUM_CTX_CHAIN` 12288 → 16384, and non-solve `DEFAULT_NUM_PREDICT` 1024/1536 → 4096. The cluster submission scripts were not adjusted in those commits and have two failure modes against the new caps:
+
+1. **Walltime kills.** Per-call output now runs up to 4× longer on the 33–41% of non-solve trials that previously truncated mid-emission, and KV cache ~doubles. End-to-end per-model wall ~doubles. The existing caps (smoke 2h, multi-model 4d, no-tools `4 + 4*(N-1)`h) would kill multi-model sweeps before they finish.
+2. **Per-cell model reload.** `cluster-experimenting/run_condition_rtx.sbatch` set `OLLAMA_CONTEXT_LENGTH=8192` and warmed each model with `num_ctx=8192`, while every real experiment request now hits `num_ctx=16384`. Ollama 0.20.7 reloads the model on the first real request because the requested ctx differs from the resident value — wasting ~1 min/model × 5 models × 16 cells ≈ 80 min per packed sweep, plus a noisy log.
+
+**Changes.**
+
+- **`cluster-experimenting/submit_with_rtx.sh`** (walltime caps):
+  - Smoke: `--time=02:00:00` → `--time=03:00:00`. Per-model wall went from 12–14 min (job 17263071 baseline, pre-bump) to ~25–35 min projected; 5-model pack ~150 min, 3h leaves margin.
+  - Multi-model regular sweep: `--time=4-00:00:00` → `--time=6-00:00:00`. Pre-bump 50–85h for the 5-model pack → projected 100–175h post-bump; 6d (144h) covers it inside main partition's 7d cap.
+  - `--no-tools` per-model multiplier: `nt_hours = 4 + 4*(N-1)` → `nt_hours = 6 + 6*(N-1)`. `--all --no-tools` now requests 30h instead of 20h.
+  - Single-model regular sweep keeps the 2d sbatch default — projected ~20h post-bump fits.
+  - Comment blocks above each constant updated to cite the new arithmetic and the 2026-04-29 bump as the reason.
+
+- **`cluster-experimenting/run_condition_rtx.sbatch`** (Ollama default ctx alignment):
+  - `OLLAMA_CONTEXT_LENGTH=8192` → `16384`. Now matches the single-task per-request `num_ctx` so the server's KV-cache default doesn't contradict what experiments actually request.
+  - Warmup curl payload `num_ctx: 8192` → `num_ctx: 16384`. Loads the model at the run's ctx so the first real request doesn't trigger a reload. Comment refresh on the warmup block explains the rationale.
+  - Banner echo `CTX_CAP=8192` → `CTX_DEFAULT=16384`. The string was misleading regardless of the value (per-request `num_ctx` overrides, never caps).
+
+- **`cluster-experimenting/README.md`** (operational note, prompted by smoke 17263071):
+  - "Cancelling jobs" section now warns against `scancel`-ing a job in CG (completing) state. Wait for natural unwind; a CG-state cancel can race the on-disk write of late-cell results. Cites the 17263071 incident where the qwen3.6:35b warmup and gemma4:31b cells were lost to such a race.
+
+**Compatibility.** Result schema and scoring untouched. The same-day reproducibility framing in the upstream `num_ctx`/`num_predict` entries already covers the comparability story (post-bump runs are not directly comparable to pre-bump on truncation rate, `FR_THINK_OVERFLOW` rate, or tools-vs-no-tools accuracy gaps). Jobs that ran between the harness bump and this commit at the new caps would still produce correct outputs — they would just have eaten the per-cell model-reload overhead and risked walltime kills. None such are recorded in `results/`; the only post-bump cluster job to date is the smoke 17263071 which preempted before completion.
+
+**Verification.**
+- `bash -n` syntax-clean on both files.
+- `--dry-run` confirmed for: smoke (3h), `--all` (6d), `--all --no-tools` (30h), single-model (sbatch default 2d).
+- Cluster validation deferred to the next sweep submission. Expected outcomes: (a) `--smoke` finishes ≤150 min with rc=0; (b) `ollama-serve.log` shows no model-reload events on first real request after warmup; (c) `failure_reasons.think_overflow` drops materially on `validate_problem`/`validate_plan` vs the 17263071 baseline.
+
+**Closes / narrows.** No `ISS-###`. Operational companion to the same-day cap-bump entries.
+
+**Files.** `cluster-experimenting/submit_with_rtx.sh`, `cluster-experimenting/run_condition_rtx.sbatch`, `cluster-experimenting/README.md`.
+
+---
+
 ## 2026-04-29 (follow-up) — Raise `num_ctx_chain` 12288 → 16384
 
 **Motivation.** The same-day prior entry left `num_ctx_chain` at 12288 with a "raise in lockstep if a chain sweep surfaces step-level `think_overflow`" trigger. Re-reading the single-task evidence shows that trigger is preemptively met by reasoning, not waiting on data: at ctx=12288 single-task `validate_problem`/`validate_plan` overflowed 50% of cells with qwen3.6:27b / nemotron-3-nano:30b, where the model had ~11K think+output budget on top of a ~1K prompt. The same task as a chain step-3 has ~4K of accumulated history before it starts thinking, so the budget at ctx=12288 collapses to ~8K — **worse** than the single-task regime that already failed. Sizing chain ctx below single-task ctx therefore reverses the safety margin, not preserves it.

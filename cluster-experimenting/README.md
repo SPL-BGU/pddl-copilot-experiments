@@ -258,6 +258,13 @@ scancel -u $USER                # nuke all of mine
 scancel -t PENDING -u $USER     # only pending
 ```
 
+**Don't `scancel` a job in CG (completing) state.** It's already past the
+workload and SLURM is just unwinding scratch dirs. A `scancel` during CG can
+race the natural completion and abort late-cell results that would otherwise
+have been written. Wait for it to clear naturally (verified 2026-04-29 on
+smoke job 17263071, where a CG-state cancel lost the qwen3.6:35b warmup and
+gemma4:31b cells).
+
 **Do NOT use `scancel --name=pddl_*`** — verified 2026-04-25 on SLURM 25.11.4:
 `--name` is exact-string match (comma-separated literal names), not a glob, so
 the cancel is a silent no-op. Filter by name prefix with squeue → awk → xargs:

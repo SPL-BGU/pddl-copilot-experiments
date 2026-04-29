@@ -136,7 +136,7 @@ while ss -Hltn "sport = :$PORT" 2>/dev/null | grep -q LISTEN; do
     PORT=$(( PORT + 1 ))
     [ "$PORT" -ge 11600 ] && { echo "Error: no free port in 11400-11599"; exit 4; }
 done
-echo "Starting ollama serve on localhost:$PORT (NUM_PARALLEL=4, MAX_LOADED=1, CTX_CAP=8192)"
+echo "Starting ollama serve on localhost:$PORT (NUM_PARALLEL=4, MAX_LOADED=1, CTX_DEFAULT=16384)"
 apptainer exec --nv \
     --bind "$WORK/models:/root/.ollama" \
     --writable-tmpfs \
@@ -145,7 +145,7 @@ apptainer exec --nv \
         export OLLAMA_NUM_PARALLEL=4
         export OLLAMA_MAX_LOADED_MODELS=1
         export OLLAMA_KEEP_ALIVE=1h
-        export OLLAMA_CONTEXT_LENGTH=8192
+        export OLLAMA_CONTEXT_LENGTH=16384
         ollama serve
     " > "$WORK/ollama-serve.log" 2>&1 &
 SERVE_PID=$!
@@ -195,11 +195,13 @@ for MODEL in $MODELS; do
     t1=$EPOCHREALTIME
     awk -v m="$MODEL" "BEGIN{printf \"pull %s: %.1fs\n\", m, $t1-$t0}"
 
-    ### Warmup (load into VRAM at ctx=8192) ###
-    echo "Warmup (load $MODEL into VRAM with num_ctx=8192)..."
+    ### Warmup (load into VRAM at ctx=16384 — matches the per-request num_ctx ###
+    ### that single-task cells use post 2026-04-29 cap bump, so the model is  ###
+    ### resident at the run's ctx and the first real request doesn't reload). ###
+    echo "Warmup (load $MODEL into VRAM with num_ctx=16384)..."
     curl -s --max-time 300 http://localhost:$PORT/api/chat \
         -H "Content-Type: application/json" \
-        -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":false,\"keep_alive\":\"1h\",\"options\":{\"num_predict\":5,\"num_ctx\":8192}}" \
+        -d "{\"model\":\"$MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],\"stream\":false,\"keep_alive\":\"1h\",\"options\":{\"num_predict\":5,\"num_ctx\":16384}}" \
         >/dev/null
     apptainer exec --bind "$WORK/models:/root/.ollama" "$SIF" \
         bash -c "OLLAMA_HOST=http://localhost:$PORT ollama ps" 2>&1
