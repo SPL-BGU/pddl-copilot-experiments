@@ -197,6 +197,13 @@ print(d.get('ssh_host',''), d.get('ssh_port',''), d.get('actual_status',''))
         log "Instance running at $SSH_HOST:$SSH_PORT (status=$STATUS)"
         break
     fi
+    # Heartbeat every 30s so log readers can distinguish "polling silently"
+    # from "process died". Without this, this loop is invisible for up to
+    # 10 min — easy to mistake for a hang and easy for an outer task wrapper
+    # to kill the process unnoticed.
+    if [ $((i % 3)) -eq 0 ]; then
+        log "  still waiting (status=${STATUS:-?}, ${i}0s elapsed)"
+    fi
     sleep 10
 done
 [ -n "$SSH_HOST" ] && [ -n "$SSH_PORT" ] || { log "ERROR: instance did not come up in 10 min"; exit 1; }
