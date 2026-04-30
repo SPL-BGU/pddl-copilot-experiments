@@ -24,6 +24,10 @@ sas_plan*
 # SLURM job logs (see cluster-experimenting/)
 cluster-experimenting/logs/
 
+# Vast.ai launch logs + per-run instance state (see cloud-experimenting/vast/)
+cloud-experimenting/vast/logs/*
+!cloud-experimenting/vast/logs/.gitkeep
+
 # Checkpoint snapshots are stored as zip archives (results.zip, slurm_logs.zip).
 # If a user unzips them locally for inspection, ignore the extracted JSON/out
 # files so they aren't accidentally re-committed alongside the zips.
