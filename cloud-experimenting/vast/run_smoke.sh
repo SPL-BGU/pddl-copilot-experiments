@@ -18,9 +18,15 @@ DEFAULT_MODELS="Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b"
 # 48GB+ GPU, single-GPU, reliability ≥0.99, dph_total ceiling, CUDA 12+.
 # Dropped vs. initial scaffold: datacenter=true (Vast field is null/missing
 # on most hosts; filter zeros out), inet_down/up thresholds (excluded too
-# many cheap reliable boxes for a 5GB weights pull). 21 offers match this
-# in the live pool as of 2026-04-30.
+# many cheap reliable boxes for a 5GB weights pull).
 OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=0.8 reliability>=0.99 cuda_max_good>=12.0'
+
+# GPU allowlist (Ampere or newer 48GB-class datacenter cards).
+# Vast filter syntax doesn't reliably express "compute_cap>=80", so we
+# post-filter the offer list in Python below. Excluded: Q RTX 8000
+# (Turing, ~30-40% slower on Q4 inference vs Ampere), RTX 4090 (consumer
+# 24GB; 48GB listings are non-standard configs).
+ALLOWED_GPUS="RTX A6000|A40|RTX 6000Ada|L40|L40S|A100 PCIE|A100 SXM4|A100X|H100 PCIE|H100 SXM5|H100 NVL"
 
 DOCKER_IMAGE="ollama/ollama:latest"   # Vast tag pinning is brittle; we capture
                                       # `ollama --version` into host_info.json.
@@ -77,14 +83,18 @@ log "Searching offers: $OFFER_FILTER"
 OFFER_RAW=$(vastai search offers "$OFFER_FILTER" --raw 2>/dev/null)
 [ -n "$OFFER_RAW" ] || { log "ERROR: vastai search offers returned nothing"; exit 1; }
 
-read -r OFFER_ID DPH GPU < <(echo "$OFFER_RAW" | python3 -c "
-import json, sys
+read -r OFFER_ID DPH GPU < <(echo "$OFFER_RAW" | ALLOWED_GPUS="$ALLOWED_GPUS" python3 -c "
+import json, os, sys
 offers = json.load(sys.stdin)
 if not offers:
     sys.exit('no offers')
+allow = set(os.environ.get('ALLOWED_GPUS','').split('|'))
+offers = [o for o in offers if o.get('gpu_name','').strip() in allow]
+if not offers:
+    sys.exit('no offers in GPU allowlist')
 offers.sort(key=lambda x: x.get('dph_total', 1e9))
 o = offers[0]
-print(o['id'], o['dph_total'], o.get('gpu_name','?').replace(' ','_'))
+print(o['id'], f\"{o['dph_total']:.4f}\", o.get('gpu_name','?').replace(' ','_'))
 ")
 
 ESTIMATED_COST=$(python3 -c "print(round($DPH * 1.5, 2))")
@@ -124,7 +134,9 @@ cleanup() {
         log "WARN: final sync failed"
     if [ "$KEEP_INSTANCE" = "0" ]; then
         log "Destroying instance $INSTANCE_ID ..."
-        vastai destroy instance "$INSTANCE_ID" 2>&1 | tee -a "$LOG" || \
+        # `vastai destroy instance` prompts for confirmation; pipe `y` so
+        # the trap completes without leaving the box alive.
+        echo y | vastai destroy instance "$INSTANCE_ID" 2>&1 | tee -a "$LOG" || \
             log "WARN: destroy command failed; verify at https://cloud.vast.ai/instances/"
     else
         log "KEEP: instance $INSTANCE_ID left running."
