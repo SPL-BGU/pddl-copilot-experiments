@@ -6,16 +6,23 @@ from "ISE-CS-DT" to "CIS" in the March 2026 user-guide refresh; hardware,
 partitions, and GRES names are unchanged.
 
 **Single submit path: `submit_with_rtx.sh` → `run_condition_rtx.sbatch`.**
-Each job allocates one dedicated `rtx_pro_6000:1` GPU (96 GB VRAM,
-`--mem=80G`), runs an isolated Apptainer Ollama server on the compute
-node, and loops `MODELS × THINK_MODES × CONDITIONS` in-process so weights
-stay resident. No shared-server contention, no `afterok` chain — every
-submission is self-contained on its own GPU node.
+The wrapper builds a list of `(model, think_mode, condition)` cells with
+the matrix-gate filter applied, then submits a SLURM **job array** with
+one task per cell. Each task allocates its own dedicated `rtx_pro_6000:1`
+GPU (96 GB VRAM, `--mem=80G`, `--tmp=50G`), runs an isolated Apptainer
+Ollama server on the compute node, and runs that single cell to
+completion. No shared-server contention, no `afterok` chain — every
+task is self-contained on its own GPU node and runs concurrently with
+the other tasks (subject to pool capacity).
 
-The cis-ollama (BGU shared-server) path was retired 2026-04-27 along with
-its CPU-only `submit_all.sh` waves and `submit_120b_cis.sh` shortcut.
-`gpt-oss:120b` is no longer in the active sweep — `qwen3.6:35b` (A3B MoE)
-holds the large-model size band as of the 2026-04-29 roster refresh.
+Submission topology history:
+- 2026-04-27 — cis-ollama (BGU shared-server) path retired along with
+  CPU-only `submit_all.sh` waves and `submit_120b_cis.sh` shortcut.
+- 2026-04-29 — `gpt-oss:120b` superseded by `qwen3.6:35b` (A3B MoE) in
+  the large-model size band.
+- 2026-04-30 — packed-job model retired in favour of per-cell SLURM job
+  arrays; each cell is now an independent array task. See
+  `development/CHANGELOG.md` for rationale.
 
 ## Quickstart
 
@@ -40,10 +47,10 @@ cd ~/pddl-copilot-experiments
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
 
 # 5. If the smoke test finishes OK (exit 0, JSON written under results/),
-#    submit the full sweep packed into ONE rtx_pro_6000 job. The four active
-#    models (Qwen3.5:0.8B, qwen3.6:27b, qwen3.6:35b, gemma4:31b) peak at
-#    ~26 GB resident (gemma4:31b), so MAX_LOADED_MODELS=1 sequencing keeps
-#    each weight set on the GPU one at a time without VRAM blowup.
+#    submit the full sweep as a 20-task SLURM array on rtx_pro_6000. Each
+#    task is one (model, think, cond) cell on its own GPU; tasks run
+#    concurrently as the pool has capacity. Wall ~8h max-of-cell vs prior
+#    ~6d packed model.
 bash cluster-experimenting/submit_with_rtx.sh --all
 ```
 
@@ -96,26 +103,29 @@ ENV_NAME=my_env PYTHON_VERSION=3.11 bash cluster-experimenting/setup_env.sh
 ```bash
 cd ~/pddl-copilot-experiments
 
-# Default: pack all 4 active models in ONE rtx_pro_6000 job. Each model gets
-# the full think × condition matrix (4 tools-conditions × 2 think modes = 8
-# condition-runs); models run sequentially with MAX_LOADED_MODELS=1 evicting
-# the previous weights. Wall: 4d allocation (well under main's 7d cap).
+# Default: 20-task SLURM array on rtx_pro_6000:1, one task per cell.
+# Cells = 4 models × {on, off} × {no-tools, tools_per-task_minimal,
+# tools_all_minimal} after the no-tools/think=on matrix-gate skip
+# (4 × 5 = 20 cells). Per-task --time=12h; concurrent fan-out unlimited.
 bash cluster-experimenting/submit_with_rtx.sh --all
 
-# Per-model jobs (multiple positional args also pack into one job):
+# Single-model invocation (5-cell array under defaults):
 bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
+
+# Multi-model invocation (3 models × 5 = 15-cell array):
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b
 
-# Baseline-only no-tools sweep: 4-task discriminative matrix
-# (solve + validate_*), packed in one job. --time scales with model count.
+# Baseline-only no-tools sweep (4-cell array, one cell per model).
+# --time=08:00:00 per task (no chain phase).
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 
-# Preview command without submitting.
+# Preview the sbatch command without submitting.
 bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b --dry-run
 ```
 
-`--all` issues one packed job; per-model invocations submit independent
-jobs that SLURM queues in parallel.
+All invocations build a CELLS list and submit as a job array (or a single
+sbatch when N=1). Multi-positional args are NOT packed into a single
+sequential job — they fan out as independent array tasks, one per cell.
 
 ### GPU class
 
@@ -139,8 +149,8 @@ auto-detection.
   along the matching task automatically. `simulate` stays excluded — its
   keyword grader is non-discriminative regardless of negatives. Chains are
   skipped by the matrix gate.
-- `--time` scales linearly with model count: 4h base + 4h per extra model
-  (`--all --no-tools` → 16h for 4 models).
+- Per-task wall: `--time=08:00:00`. Each model is one array task — no
+  cross-model serialization, so adding models adds parallelism, not wall.
 
 Conflicts with `--think-modes` (any value other than `off|default`) are
 rejected.
@@ -202,43 +212,68 @@ explicitly lets us reproduce that protocol systematically.
 
 ## Resource profile (`run_condition_rtx.sbatch`)
 
+Per-array-task allocation. Each task = one (model, think, cond) cell.
+
 | Field | Value | Rationale |
 |---|---|---|
-| `--partition` | `main` | rtx_pro_6000 (and the rtx_6000 opt-in) GRES are accessible from `main` |
-| `--gpus` | `rtx_pro_6000:1` (default) or `rtx_6000:1` (opt-in) | One dedicated GPU per job; weights stay resident across the inner think × condition loop |
-| `--time` | `2-00:00:00` (single-model) / `4-00:00:00` (multi-model `--all` pack) / `4h × N` (`--no-tools`, N = model count) | Single-model tools job ~10 h observed 2026-04-25. Multi-model pack scales linearly with model count, capped well below `main`'s 7d limit. No-tools 4-task matrix: ~4 h per model |
-| `--mem` | `80G` (rtx_pro_6000 default) / `48G` (rtx_6000 opt-in) | Sized to GPU pool's host RAM expectation. `80G` cap on rtx_pro_6000 added 2026-04-27 per IT request (was 96G); host-RAM peak for the 4-model pack is well under both caps |
-| `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | Removed 2026-04-27 per IT request; explicit `12` was depriving other users |
-| Concurrency | `4` | Matches OLLAMA_NUM_PARALLEL=4; isolated per-job server so no contention argument applies |
+| `--partition` | `main` | rtx_pro_6000 (and the rtx_6000 opt-in) GRES are accessible from `main`. Mar-26 guide §High-Priority: never use a non-`main` partition without QoS rights. |
+| `--gpus` | `rtx_pro_6000:1` (default) or `rtx_6000:1` (opt-in) | One dedicated GPU per array task; the cell's single model stays resident throughout |
+| `--array` | `0-(N-1)` when N > 1 (no `%N` cap by default) | Fan-out unlimited — SLURM runs as many tasks as the pool has capacity for. Override with `%N` post-submit (`scontrol update JobId=<master> ArrayTaskThrottle=N`) if politeness is desired |
+| `--time` | `12:00:00` (tools cells) / `08:00:00` (no-tools cells) / `03:00:00` (smoke) | Per-cell budget. Tools cell wall ~5-9h post 2026-04-29 cap-bump (single-task + chains); no-tools ~6h (4-task matrix, no chains) |
+| `--mem` | `80G` (rtx_pro_6000 default) / `48G` (rtx_6000 opt-in) | IT cap 2026-04-27. With one model per task, peak host RAM is ~26 GB (gemma4:31b weight cache) — comfortably under either cap |
+| `--tmp` | `50G` | Mar-26 guide §"SSD Drive". Reserves space on `/scratch/$USER/$JOBID`; covers ollama.sif (~3 GB) + one model (~26 GB peak). The sbatch falls back to `/tmp/rtx-$JOBID` if `/scratch` isn't writable on the allocated node |
+| `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | IT request 2026-04-27; explicit `12` was depriving other users |
+| Concurrency | `4` | Matches OLLAMA_NUM_PARALLEL=4; isolated per-task server so no contention argument applies |
 
 ## Monitoring
 
 ```bash
 squeue --me                                  # all my running/pending jobs
-sstat -j <jobid> --format=JobID,MaxRSS,MaxVMSize   # live memory usage
+                                             # array tasks appear as <master>_<task>
+sstat -j <jobid> --format=JobID,MaxRSS,MaxVMSize   # live memory usage (per task)
 scontrol show job <jobid>                    # full job spec
+scontrol show job <master>                   # array-master spec (counts queued/running tasks)
 
-# rtx self-deploy log
-tail -f cluster-experimenting/logs/pddl_rtx_<model>-<jobid>.out
+# Array task log (each task has its own .out)
+tail -f cluster-experimenting/logs/pddl_rtx_<model>-<task_jid>.out
 
-# Per-job ollama serve log on the compute node
-ssh <node> tail -f /tmp/rtx-<jobid>/ollama-serve.log
+# Per-task ollama serve log on the compute node (now under /scratch)
+ssh <node> tail -f /scratch/$USER/<task_jid>/rtx-work/ollama-serve.log
 ```
 
 After a job finishes:
 ```bash
 sacct -j <jobid> --format=JobName,MaxRSS,AllocTRES,State,Elapsed,Start,ExitCode
+sacct -j <master> --format=JobName,MaxRSS,State,Elapsed,Start,ExitCode  # all array tasks
 ```
 
 The cluster-ops skill bundles status/preflight/postmortem helpers that wrap
 the SSH calls — see `.claude/skills/cluster-ops/SKILL.md`.
 
+### Throttle a running array post-submission
+
+To cap the number of simultaneously-running tasks of an already-submitted
+array (e.g. cluster-IT politeness ask, or an array is starving other users):
+
+```bash
+scontrol update JobId=<master> ArrayTaskThrottle=2
+```
+
+To deprioritize the whole array without cancelling (Mar-26 guide §"Prioritize
+Your Own Jobs"):
+
+```bash
+scontrol update JobId=<master> Nice=500
+```
+
+Higher Nice → lower priority. Default 0. Resets to 0 if you bump it back.
+
 ## Where things go
 
 | Path | What |
 |---|---|
-| `results/slurm_<model>_<think>_<cond>_<jobid>/` | `run_experiment.py` JSON outputs (per-instance results, `summary_*.json`). Distinguish runs via `meta.host` recorded in `summary.json`. `results/` is gitignored. |
-| `cluster-experimenting/logs/pddl_rtx_<model>-<jobid>.out` | rtx self-deploy log. Covers the full think × condition matrix in one file. Directory is gitignored. |
+| `results/slurm_<model>_<think>_<cond>_<task_jid>/` | `run_experiment.py` JSON outputs for one cell (per-instance results, `summary_*.json`). Each array task uses its own `$SLURM_JOBID` (unique per array task), so dirs don't collide. `meta.host` records the compute node — varies per task post-2026-04-30. `results/` is gitignored. |
+| `cluster-experimenting/logs/pddl_rtx_<model>-<task_jid>.out` | rtx self-deploy log for one cell. Directory is gitignored. |
 
 ## Fetching results locally
 
@@ -258,12 +293,14 @@ Analyze synced results ad-hoc against `results/**/{single_task,chain,summary}_*.
 ## Cancelling jobs
 
 ```bash
-scancel <jobid>                 # by id
+scancel <task_jid>              # cancel one array task
+scancel <master>                # cancel the whole array (master + all tasks)
+scancel <master>_<task>         # cancel one task by array index
 scancel -u $USER                # nuke all of mine
 scancel -t PENDING -u $USER     # only pending
 ```
 
-**Don't `scancel` a job in CG (completing) state.** It's already past the
+**Don't `scancel` a task in CG (completing) state.** It's already past the
 workload and SLURM is just unwinding scratch dirs. A `scancel` during CG can
 race the natural completion and abort late-cell results that would otherwise
 have been written. Wait for it to clear naturally (verified 2026-04-29 on
