@@ -13,7 +13,7 @@
 # GPU routing:
 #   default → rtx_pro_6000:1 (96 GB, --mem=80G). Hard-pinned as the sole
 #             self-deploy GPU class so peak VRAM and host RAM are constant
-#             across the active sweep. The 5-model pack peaks at
+#             across the active sweep. The 4-model pack peaks at
 #             qwen3.6:35b (~24 GB) under MAX_LOADED_MODELS=1, well inside 96 GB.
 #   --gpu-type rtx_6000 → opt-in escape hatch (48 GB VRAM, --mem=48G).
 #                         Use only when rtx_pro_6000 is queue-saturated
@@ -33,18 +33,21 @@
 #
 # Examples:
 #   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
-#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b gemma4:31b
+#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b
 #   bash cluster-experimenting/submit_with_rtx.sh --all                  # full sweep, ONE packed job on rtx_pro_6000
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # full no-tools sweep, ONE packed job
-#   bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b --no-tools
+#   bash cluster-experimenting/submit_with_rtx.sh gemma4:31b --no-tools
 #
-# --all: shorthand for the 5 paper models, packed in ONE job:
-#   Pack: Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b
-# All five fit in ≤24 GB resident (qwen3.6:35b A3B MoE sets the peak), so
+# --all: shorthand for the 4 active models, packed in ONE job:
+#   Pack: Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b
+# All four fit in ≤26 GB resident (gemma4:31b sets the peak), so
 # MAX_LOADED_MODELS=1 sequencing keeps everything well within rtx_pro_6000's
-# 96 GB VRAM. Roster refresh 2026-04-29: Qwen3.5:27b/35b → qwen3.6 successors;
-# gpt-oss:20b → nemotron-3-nano:30b (NVIDIA hybrid Mamba+MoE+Attn) preserves
-# the non-Qwen/Gemma diversity slot. See development/CHANGELOG.md 2026-04-29.
+# 96 GB VRAM. Roster history: 2026-04-29 swap (Qwen3.5:27b/35b → qwen3.6
+# successors; gpt-oss:20b → nemotron-3-nano:30b for non-Qwen/Gemma diversity).
+# 2026-04-30 follow-up dropped nemotron-3-nano:30b after smoke 17274424
+# confirmed deterministic Hermes XML parse failures on the same 4 cells
+# pre- and post-num_predict bump (4096→6144), establishing the failure as
+# content-dependent, not budget-dependent. See development/CHANGELOG.md.
 #
 # --no-tools: shorthand for the single-task no-tools matrix. Pins
 #   THINK_MODES=off, CONDITIONS=no-tools, and TASKS to the four discriminative
@@ -99,7 +102,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# --smoke / --smoke-shuffle: pin the 5-model pack and full think × cond
+# --smoke / --smoke-shuffle: pin the 4-model pack and full think × cond
 # matrix; run_experiment.py auto-overrides --num-variants/--chain-samples
 # and skips the inner THINK × CONDITIONS loop in the sbatch (the smoke
 # wrapper iterates think internally).
@@ -112,16 +115,16 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
         echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes" >&2
         exit 1
     fi
-    # No explicit models → default to the 5-model paper pack. Explicit
+    # No explicit models → default to the 4-model paper pack. Explicit
     # models override the pack and smoke just those (used to retest a
     # single model after a fix without re-running the full pack).
     if [ "${#MODELS[@]}" -eq 0 ]; then
-        MODELS=(Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b)
+        MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
     fi
     THINK_MODES_OVERRIDE="default"  # smoke iterates think internally
 fi
 
-# --all expands into a single 5-model pack on rtx_pro_6000.
+# --all expands into a single 4-model pack on rtx_pro_6000.
 # All five fit in ≤24 GB resident under MAX_LOADED_MODELS=1 sequencing —
 # qwen3.6:35b A3B MoE (~24 GB) sets the peak. rtx_pro_6000's 96 GB VRAM has
 # ample headroom for KV cache scaling.
@@ -135,7 +138,7 @@ if [ "$ALL" -eq 1 ]; then
     [ "$DRY_RUN" -eq 1 ] && extra_args+=(--dry-run)
     [ -n "$THINK_MODES_OVERRIDE" ] && extra_args+=(--think-modes "$THINK_MODES_OVERRIDE")
     [ -n "$GPU_TYPE" ] && extra_args+=(--gpu-type "$GPU_TYPE")
-    bash "$0" Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b qwen3.6:35b gemma4:31b "${extra_args[@]}"
+    bash "$0" Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b "${extra_args[@]}"
     exit 0
 fi
 
@@ -152,7 +155,7 @@ GPU_TYPE="${GPU_TYPE:-rtx_pro_6000}"
 
 case "$GPU_TYPE" in
     rtx_6000)
-        # Opt-in only. 48 GB VRAM is enough for the active 5-model pack
+        # Opt-in only. 48 GB VRAM is enough for the active 4-model pack
         # (peak qwen3.6:35b ~24 GB) but the rtx_6000 pool is the more
         # contended one historically; prefer rtx_pro_6000 unless that's
         # blocked.
@@ -194,16 +197,16 @@ fi
 # Empirical wall pre 2026-04-29: ~10–17h per model for full {on, off} ×
 # 4 tools_conds. Post-bump (num_predict 1024/1536→4096; num_ctx 8192→16384;
 # num_ctx_thinking 12288→16384), per-model wall ~doubles to ~20–35h. With
-# 5 models packed (--all), 6d (144h) covers the full pack with margin and
+# 4 models packed (--all), 6d (144h) covers the full pack with margin and
 # stays under main partition's 7d cap. Single-model regular sweep keeps
 # the 2d sbatch default — ~20h post-bump fits in 48h.
 if [ "$NO_TOOLS" -eq 0 ] && [ "${#MODELS[@]}" -gt 1 ]; then
     TIME_ARG=(--time=6-00:00:00)
 fi
 
-# Smoke wallclock: ~100 evals across 5 models in one packed job. Pre-bump
+# Smoke wallclock: ~80 evals across 4 models in one packed job. Pre-bump
 # (2026-04-29) measured 12–14 min/model on rtx_pro_6000 (ref: job 17263071).
-# Post num_predict/num_ctx bump, per-model wall lands ~25–35 min, so 5-model
+# Post num_predict/num_ctx bump, per-model wall lands ~25–35 min, so 4-model
 # pack ~150 min. 3h cap covers Ollama startup + model warmup + slowest cell
 # with margin.
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then

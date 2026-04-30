@@ -6,6 +6,32 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-30 — Cluster roster trim: nemotron-3-nano:30b dropped
+
+**TL;DR.** `nemotron-3-nano:30b` removed from the active 5-model rtx pack. Active sweep is now 4 models: `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b`. The non-Qwen/Gemma family-diversity slot (held by gpt-oss:20b → nemotron-3-nano:30b through 2026-04-29) is now empty pending a viable replacement.
+
+**Motivation.** Smoke 17266087 (2026-04-29, pre-num_predict bump) flagged 4 deterministic `ollama_parse_error` rows on nemotron-3-nano:30b — Hermes/harmony XML tool-call template clipping mid-`<parameter>` on validate_problem/blocksworld/n01 + validate_plan/blocksworld/p01 b1, b2, b4 (think=off+tools cells). Hypothesised root cause: 4096 `num_predict` cliff on the verbose XML envelope wrapping the inlined PDDL parameter. Bump 4096→6144 shipped on `main` (PR #26, commit `464d0f6`) under that hypothesis. Smoke 17274424 (2026-04-30, post-bump) returned the **same 4 cells** with the **same failure signature** — falsifying the cliff hypothesis. The XML truncations are content-dependent (deterministic against the same prompts), not budget-dependent. Without a known root-cause fix at the harness/template layer, the model is unblocking work to drop and revisit.
+
+**What changed (active config).**
+- `cluster-experimenting/submit_with_rtx.sh`: `MODELS=(...)` arrays for `--all` and `--smoke`, usage examples, packing comment (`5-model` → `4-model`).
+- `cluster-experimenting/run_condition_rtx.sbatch`: VRAM fit table (peak now `gemma4:31b` ~26 GB instead of `qwen3.6:35b`/`nemotron-3-nano:30b` ~24 GB), example MODELS line, header roster history.
+- `cluster-experimenting/README.md`: model-count language (`five models` → `four active models`), example commands switched off nemotron, `--all --no-tools` wallclock recalculated (20h → 16h for 5 → 4 models), full roster-history paragraph extended.
+- `README.md`, `EXPERIMENTS_FLOW.md`: top-level model lists, dimension table, deviations §11, run-experiment code block.
+- `.claude/skills/cluster-ops/SKILL.md`: active-pack listing in the submit-path bullet and "submit the sweep" recipe.
+- `pddl_eval/runner.py`, `run_experiment.py`: comments and CLI `--num-predict` help text now flag the bump's stated motivation as falsified by smoke 17274424; 6144 retained as harmless headroom.
+
+**What did NOT change.**
+- `DEFAULT_NUM_PREDICT` validate_*/simulate stays at 6144. Reverting to 4096 is a separate methodology decision pending fresh post-trim wall measurements; the 6144 cap is harmless for the surviving 4 models.
+- `DEFAULT_NUM_CTX` (16384) and `DEFAULT_NUM_CTX_THINKING/CHAIN` are unchanged — the ctx evidence motivating the 8192/12288 → 16384 bump on 2026-04-29 still applies via qwen3.6:27b alone (nemotron was a co-anchor, not a sole anchor).
+- `OLLAMA_TOOL_PARSE_SIGNATURES` retains the `"XML syntax error"` Hermes signature so any future model with the same tool-call template family routes correctly into `FR_OLLAMA_PARSE_ERROR`.
+- All historical results/anchors (smoke 17266087 baseline, prior `cluster-2026042{6,7,8,9}/` dirs) are preserved on disk and remain valid for trend analysis. Headline numbers in plots/tables are recomputed fresh from post-trim sweeps.
+
+**Compatibility / drift framing.** This is the second consecutive same-week roster swap on the non-Qwen/Gemma slot (gpt-oss → nemotron 2026-04-29; nemotron → ∅ 2026-04-30). The smoke-gate (`diff_smoke.sh`) byte-equality runs are now anchored on Qwen3.5:0.8B + gemma4:31b (unchanged slots). The drop-and-leave-empty stance is intentional — re-filling the diversity slot would require ≥1 day of smoke + per-cell verification per candidate, time we are not paying right now. Future replacement candidate criteria: (a) Apache-2.0 or equivalently permissive, (b) does NOT emit Hermes/harmony XML tool calls (rules out most NVIDIA Nemotron and Mixtral-derivatives that ship with the harmony chat template), (c) fits in 48 GB to keep `--gpu-type rtx_6000` viable as an escape hatch.
+
+**Files.** `cluster-experimenting/submit_with_rtx.sh`, `cluster-experimenting/run_condition_rtx.sbatch`, `cluster-experimenting/README.md`, `README.md`, `EXPERIMENTS_FLOW.md`, `.claude/skills/cluster-ops/SKILL.md`, `pddl_eval/runner.py`, `run_experiment.py`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-04-29 (PR-4 review fixes) — Address PR #25 review
 
 **Motivation.** Three follow-ups from the PR-4 code review, all on the same PR branch (`framework-ext-pr4`) before merge.

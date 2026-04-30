@@ -35,14 +35,15 @@ pip3 install -r requirements.txt
 
 The paper-aligned `qwen3:0.6b` / `qwen3:4b` are the **laptop default**. The
 **cluster sweep** (BGU rtx GPUs, see `cluster-experimenting/README.md`)
-runs a different set (post 2026-04-29 roster refresh): `Qwen3.5:0.8B`,
-`nemotron-3-nano:30b`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` — five
-models spanning the paper's parameter range across three families (Qwen,
-NVIDIA, Gemma). All five run in a single packed job on `rtx_pro_6000:1`
-(96 GB) under `MAX_LOADED_MODELS=1` sequencing — peak resident weights
-are ~24 GB (`qwen3.6:35b` A3B MoE). See `EXPERIMENTS_FLOW.md §11` for
-the full deviations table and `development/CHANGELOG.md` 2026-04-29 for
-the roster-swap rationale.
+runs a different set (post 2026-04-30 roster trim): `Qwen3.5:0.8B`,
+`qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` — four models spanning the
+paper's parameter range across two families (Qwen, Gemma). All four run
+in a single packed job on `rtx_pro_6000:1` (96 GB) under
+`MAX_LOADED_MODELS=1` sequencing — peak resident weights are ~26 GB
+(`gemma4:31b`). See `EXPERIMENTS_FLOW.md §11` for the full deviations
+table and `development/CHANGELOG.md` for the roster history (including
+the 2026-04-30 nemotron-3-nano:30b drop after Hermes XML parse failures
+proved content-dependent rather than budget-dependent).
 
 ## Running (Background)
 
@@ -111,7 +112,7 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
 | `--prompt-style` | `minimal` | Only active value as of 2026-04-27 — `guided` was retired (the 26042026 sweep showed style shifts results by ≤4pp per model, every CI crossed zero). The `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are kept in `run_experiment.py` as documentation; re-enable by adding `"guided"` back to `PROMPT_STYLE_CHOICES`. |
 | `--num-predict` | per-task | Override max output tokens (solve=8192, simulate=4096, validate=4096). Non-solve caps raised from 1024/1536→4096 on 2026-04-29 after the cluster-26042026 sweep showed 33–41% truncation on `validate_plan`/`simulate`/`validate_problem`. |
-| `--num-ctx` | 16384 | Ollama context window tokens for single-task tools cells (raised from 8192 on 2026-04-29 after qwen3.6/nemotron smokes showed `think_overflow` at 12288). |
+| `--num-ctx` | 16384 | Ollama context window tokens for single-task tools cells (raised from 8192 on 2026-04-29 after qwen3.6:27b smokes showed `think_overflow` at 12288; nemotron-3-nano:30b shared the evidence but was later dropped 2026-04-30). |
 | `--num-ctx-thinking` | 16384 | Context tokens for single-task no-tools cells when `think!=off`. **Held equal to `--num-ctx`** so the "tools save tokens" headline isn't confounded by ctx asymmetry across tools/no-tools branches. |
 | `--num-ctx-chain` | 16384 | Context tokens used during multi-task chain runs. Held equal to `--num-ctx` because chain prompts accumulate full per-step history (~6–8K at step 4), so the single-task `think_overflow` evidence at 12288 translates *worse* to chains, not better. Raise to 20480 if step-4 surfaces overflow. |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
@@ -126,11 +127,11 @@ parallel). See `cluster-experimenting/README.md` for the full submission
 flow and `.claude/skills/cluster-ops/SKILL.md` for monitoring helpers.
 
 ```bash
-# Full 5-model sweep packed in ONE job on rtx_6000
+# Full 4-model sweep packed in ONE job on rtx_pro_6000
 bash cluster-experimenting/submit_with_rtx.sh --all
 
 # Or per-model (e.g. when iterating on one model's behaviour)
-bash cluster-experimenting/submit_with_rtx.sh gpt-oss:20b
+bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
 
 # Baseline-only no-tools sweep (4-task discriminative matrix, packed in one job)
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools

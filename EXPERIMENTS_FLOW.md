@@ -48,18 +48,23 @@ The experiment crosses five independent variables:
 
 | Dimension | Values | Controls |
 |-----------|--------|----------|
-| **Model** | Cluster sweep (default, post 2026-04-29 roster refresh): `Qwen3.5:0.8B`, `nemotron-3-nano:30b`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~24 GB resident, packed in one rtx_pro_6000:1 job under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` was retired 2026-04-27; `gpt-oss:20b` and `Qwen3.5:27b/35b` were superseded 2026-04-29 by their successors above (see CHANGELOG). | Model capacity & family |
+| **Model** | Cluster sweep (default, post 2026-04-30 roster trim): `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~26 GB resident, packed in one rtx_pro_6000:1 job under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` retired 2026-04-27; `gpt-oss:20b` and `Qwen3.5:27b/35b` superseded 2026-04-29; `nemotron-3-nano:30b` (the 2026-04-29 non-Qwen/Gemma slot) dropped 2026-04-30 after Hermes XML parse failures proved content-dependent (CHANGELOG). | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all, per-task | Which tools the model sees |
 | **Prompt style** | minimal (active) — `guided` retired 2026-04-27 | System prompt detail level. Newcombe-Δ analysis on the 26042026 sweep (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed minimal-vs-guided shifts results by ≤4pp per model with every CI crossing zero. The `_GUIDED_SUFFIX` constant is preserved in code as documentation |
-| **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, qwen3.6, nemotron-3-nano). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
+| **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, qwen3.6). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
 
 The cluster's model set differs from the paper's `qwen3:0.6b`/`qwen3:4b`
 because the BGU Ollama-on-cluster inventory does not host those tags
-(verified 2026-04-20). The five-model set above spans the same parameter
-range (≤1B → 35B) and covers three families (Qwen, NVIDIA, Gemma); the
-2026-04-29 roster refresh kept the family-diversity slot non-Qwen by
-swapping `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn).
+(verified 2026-04-20). The four-model set above spans the same parameter
+range (≤1B → 35B) and covers two families (Qwen, Gemma). The 2026-04-29
+roster refresh attempted to keep the family-diversity slot non-Qwen by
+swapping `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (hybrid
+Mamba+MoE+Attn), but smoke 17274424 (2026-04-30) showed Hermes XML
+tool-call parse failures persisting on the same 4 cells across the
+4096→6144 num_predict bump — confirming the failure mode as
+content-dependent, not budget-dependent — so nemotron was dropped from
+the active roster pending an alternate non-Qwen/Gemma replacement.
 `qwen3.6:27b` is text-capable on the dense path; the Ollama tag bundles
 multimodal weights but text-only inference is unaffected. See §11 for
 the full deviations table.
@@ -225,8 +230,9 @@ constraints that not every cell satisfies:
   no-tools cells. Bumped after qwen3.6:27b / nemotron-3-nano:30b smokes
   showed `think_overflow` at 12288 on `validate_problem`/`validate_plan`
   (6/12 and 10/20 fail rates in both tools and no-tools cells; every
-  miss was `FR_THINK_OVERFLOW`). 16384 leaves ~10K of think+output
-  headroom on top of typical PDDL prompts.
+  miss was `FR_THINK_OVERFLOW`). nemotron was dropped from the active
+  roster on 2026-04-30 but the ctx evidence still applies via qwen3.6:27b.
+  16384 leaves ~10K of think+output headroom on top of typical PDDL prompts.
 - `--num-ctx-thinking` (default 16384, raised from 12288 on 2026-04-29)
   is used ONLY when `think != off` AND `condition=no-tools`. **Held
   equal to `--num-ctx`** by default — the "tools save tokens" headline
@@ -249,7 +255,8 @@ constraints that not every cell satisfies:
   (16384) by the 2026-04-29 follow-up bump: applying the single-task
   `FR_THINK_OVERFLOW` evidence (qwen3.6:27b / nemotron-3-nano:30b at
   ctx=12288 hit overflow on 50% of `validate_problem` / `validate_plan`
-  cells) to a chain step running the same task gives **worse** headroom,
+  cells; nemotron later dropped 2026-04-30) to a chain step running the
+  same task gives **worse** headroom,
   not better — chain step-3 think+output budget at ctx=12288 would be
   ~8K vs ~11K in single-task (the regime that already failed). Raising
   to 16384 brings chain step-3 to ~12K (comparable to the single-task
@@ -442,18 +449,18 @@ Per-configuration chain results (model, with_tools, chain_length, samples, succe
 
 ### Cluster (default for paper sweeps)
 
-The full 5-model sweep on the BGU rtx GPUs:
+The full 4-model sweep on the BGU rtx GPUs:
 
 ```bash
-# Full 5-model sweep packed in one rtx_pro_6000 job (Qwen3.5:0.8B,
-# nemotron-3-nano:30b, qwen3.6:27b, qwen3.6:35b, gemma4:31b — peak
-# ~24 GB resident under MAX_LOADED_MODELS=1, so weights swap rather
+# Full 4-model sweep packed in one rtx_pro_6000 job (Qwen3.5:0.8B,
+# qwen3.6:27b, qwen3.6:35b, gemma4:31b — peak ~26 GB resident
+# (gemma4:31b) under MAX_LOADED_MODELS=1, so weights swap rather
 # than co-reside).
 ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
   bash cluster-experimenting/submit_with_rtx.sh --all"
 
 # Single-model run (e.g. iterating on one model)
-bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b
+bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
 
 # Baseline-only no-tools sweep (4-task discriminative matrix, packed)
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
@@ -506,7 +513,7 @@ squeue --me                 # All my running/pending jobs
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
 | Tool filter | All tools exposed | Configurable: all or per-task |
 | Prompt style | Single prompt | `minimal` only (paper-aligned) as of 2026-04-27. `guided` was active during the 26042026 sweep but retired after the Newcombe-Δ analysis showed it didn't move outcomes outside CIs; `_GUIDED_SUFFIX` is preserved in `run_experiment.py` as documentation |
-| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-04-29 roster refresh): `Qwen3.5:0.8B`, `nemotron-3-nano:30b`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~24 GB resident; rtx self-deploy on rtx_pro_6000:1 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). Roster history: `gpt-oss:120b` was substituted by `Qwen3.5:35b` in the large-model size band (2026-04-27); on 2026-04-29 `Qwen3.5:27b/35b` were updated to their `qwen3.6` successors and `gpt-oss:20b` was replaced by NVIDIA `nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn) to preserve non-Qwen/Gemma family diversity and resolve gpt-oss's documented T=0 flakiness. The cis-ollama fallback path was retired 2026-04-27 — rtx_pro_6000 self-deploy is the only cluster transport. |
+| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-04-30 roster trim): `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~26 GB resident; rtx self-deploy on rtx_pro_6000:1 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). Roster history: `gpt-oss:120b` was substituted by `Qwen3.5:35b` in the large-model size band (2026-04-27); on 2026-04-29 `Qwen3.5:27b/35b` were updated to their `qwen3.6` successors and `gpt-oss:20b` was replaced by NVIDIA `nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn) to preserve non-Qwen/Gemma family diversity and resolve gpt-oss's documented T=0 flakiness; on 2026-04-30 `nemotron-3-nano:30b` was dropped after smoke 17274424 confirmed deterministic Hermes XML parse failures on the same 4 cells across the 4096→6144 num_predict bump (failure is content-dependent, not budget-dependent). The cis-ollama fallback path was retired 2026-04-27 — rtx_pro_6000 self-deploy is the only cluster transport. |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |

@@ -68,16 +68,17 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # truncated <function><parameter> tags).
 #
 # Non-solve caps further raised 4096 -> 6144 on 2026-04-29 (same-day follow-
-# up) after the post-bump nemotron-3-nano:30b smoke (job 17266087) still
-# emitted 4 residual XML truncations on validate_problem/validate_plan in
-# think=off+tools cells (b1/b2/b4 negative-fixture variants + n01). All four
-# clipped within ~50-200 tokens of the 4096 boundary while emitting the full
-# PDDL parameter inside the Hermes <function><parameter> envelope. 6144
-# buys ~50% more emission headroom for the verbose XML envelope without
-# doubling worst-case wall-clock the way 8192 would; held uniform across
-# the validate_*/simulate family to preserve task-level symmetry and apply
-# uniformly across all roster models (the bump must not be model-specific
-# -- otherwise the headline tools-vs-no-tools comparison gains a confound).
+# up) after the post-bump nemotron-3-nano:30b smoke (job 17266087) emitted
+# 4 residual Hermes <function><parameter> XML truncations on
+# validate_problem/validate_plan in think=off+tools cells. The bump
+# hypothesised the failures were a num_predict cliff. Smoke 17274424
+# (2026-04-30, post-bump) returned the SAME 4 cells with the SAME failure
+# signature, falsifying the cliff hypothesis -- the failures are content-
+# dependent, not budget-dependent. nemotron-3-nano:30b was subsequently
+# dropped from the active roster (CHANGELOG 2026-04-30). 6144 is retained
+# as harmless additional emission headroom for the surviving 4 models
+# (Qwen3.5:0.8B, qwen3.6:27b, qwen3.6:35b, gemma4:31b); reverting to 4096
+# is a separate decision left for after fresh post-trim wall measurements.
 # 6144 still fits inside DEFAULT_NUM_CTX (16384) with single-task PDDL
 # prompts (~0.5-1.5K tokens), leaving ~8K of think+output headroom for
 # thinking models. Chain runs use DEFAULT_NUM_CTX_CHAIN below.
@@ -96,10 +97,11 @@ DEFAULT_NUM_CTX = 16384
 # tools+think_on must not be starved of the headroom that no-tools+think_on
 # gets. Bumped from 8192/12288 to 16384 after qwen3.6:27b /
 # nemotron-3-nano:30b smokes (2026-04-29) showed think_overflow at 12288
-# on val_problem/val_plan (6/12 and 10/20 fail rates in both tools and
+# (nemotron later dropped 2026-04-30; the ctx evidence still applies via
+# qwen3.6:27b) on val_problem/val_plan (6/12 and 10/20 fail rates in both tools and
 # no-tools cells — every miss was think_overflow). The pre-2026-04-28
 # rationale (12288 covered qwen3:0.6b max p+e = 8680) no longer holds
-# for the new qwen3.6/nemotron generation. Kept as a separate constant
+# for the new qwen3.6 generation. Kept as a separate constant
 # so the asymmetric branch in evaluate_one remains a no-op rather than
 # getting deleted; future asymmetric experiments can override one
 # without touching the other. Override via --num-ctx-thinking.
@@ -110,7 +112,8 @@ DEFAULT_NUM_CTX_THINKING = 16384
 # even on small problems. Held equal to DEFAULT_NUM_CTX (16384) by the
 # 2026-04-29 follow-up bump: applying the single-task think_overflow
 # evidence (qwen3.6:27b / nemotron-3-nano:30b at 12288 ctx hit
-# FR_THINK_OVERFLOW on 50% of validate_problem/validate_plan cells) to a
+# FR_THINK_OVERFLOW on 50% of validate_problem/validate_plan cells;
+# nemotron later dropped 2026-04-30) to a
 # chain step running the same task gives WORSE headroom, not better,
 # because chain prompts include accumulated history. At 12288 chain ctx,
 # step-3 validate_plan would have ~8K think+output budget vs ~11K in
@@ -143,7 +146,12 @@ THINKING_SNAPSHOT_LEN = 4096
 #       ollama/server/routes.go on multi-line PDDL strings (gpt-oss, 2026-04-21).
 #   "XML syntax error"        — Hermes/harmony chat-template XML parser, emitted
 #       on malformed/truncated <function><parameter>... tool-call emissions
-#       (nemotron-3-nano:30b on validate_problem/validate_plan, 2026-04-29).
+#       (nemotron-3-nano:30b on validate_problem/validate_plan, 2026-04-29;
+#       smoke 17274424 on 2026-04-30 confirmed identical 4-cell signature
+#       across the 4096->6144 num_predict bump, establishing the failure as
+#       content-dependent rather than budget-dependent — model dropped from
+#       active roster, signature retained for future models with the same
+#       tool-call template family).
 OLLAMA_TOOL_PARSE_SIGNATURES: tuple[str, ...] = (
     "error parsing tool call",
     "XML syntax error",

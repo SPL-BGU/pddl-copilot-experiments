@@ -8,25 +8,26 @@
 ### the next), sharing the apptainer/serve startup overhead across models.
 ###
 ### Default GPU: rtx_pro_6000:1 (96 GB) — single, hard-pinned class so peak
-### VRAM and host RAM are constant across the active sweep. The 5-model
-### pack peaks at qwen3.6:35b A3B MoE (~24 GB), well inside 96 GB; the
-### headroom absorbs KV cache scaling without re-tuning. Override with
+### VRAM and host RAM are constant across the active sweep. The 4-model
+### pack peaks at gemma4:31b (~26 GB), well inside 96 GB; the headroom
+### absorbs KV cache scaling without re-tuning. Override with
 ### --gpu-type rtx_6000 (and --mem=48G) only as an emergency escape hatch.
 ###
 ### Model VRAM fit (weights + KV cache at NUM_PARALLEL=4, ctx=8192):
 ###   Qwen3.5:0.8B        ~ 3 GB   → fits rtx_pro_6000 (96 GB)
-###   nemotron-3-nano:30b ~24 GB   → fits rtx_pro_6000 (30B/3.5B-active hybrid)
 ###   qwen3.6:27b         ~17 GB   → fits rtx_pro_6000 (dense 27.8B Q4_K_M)
-###   qwen3.6:35b         ~24 GB   → fits rtx_pro_6000 (35B-A3B MoE; peak)
-###   gemma4:31b          ~26 GB   → fits rtx_pro_6000
+###   qwen3.6:35b         ~24 GB   → fits rtx_pro_6000 (35B-A3B MoE)
+###   gemma4:31b          ~26 GB   → fits rtx_pro_6000 (peak)
 ### When packing multiple models in one job, ALL listed models must fit on the
 ### chosen GPU (loaded one at a time under MAX_LOADED_MODELS=1). Roster
-### refreshed 2026-04-29 (CHANGELOG): Qwen3.5:27b/35b → qwen3.6 successors;
-### gpt-oss:20b → nemotron-3-nano:30b for non-Qwen/Gemma diversity.
+### history (CHANGELOG): 2026-04-29 Qwen3.5:27b/35b → qwen3.6 successors,
+### gpt-oss:20b → nemotron-3-nano:30b. 2026-04-30 dropped nemotron-3-nano:30b
+### after smoke 17274424 confirmed deterministic Hermes XML parse failures
+### independent of num_predict (4096 vs 6144 yielded identical 4-cell signature).
 ###
 ### Submit via cluster-experimenting/submit_with_rtx.sh <model> [<model>...],
 ### or directly:
-###   sbatch --export=ALL,MODELS="Qwen3.5:0.8B nemotron-3-nano:30b",THINK_MODES="on off" \
+###   sbatch --export=ALL,MODELS="Qwen3.5:0.8B qwen3.6:27b",THINK_MODES="on off" \
 ###          cluster-experimenting/run_condition_rtx.sbatch
 ###
 ### Required env (one of):
@@ -59,7 +60,9 @@
 ### rather than loosens) — all set per-request by run_experiment.py. The
 ### single-task ctx values were raised from 8192/12288 to 16384 on
 ### 2026-04-29 after qwen3.6:27b / nemotron-3-nano:30b smokes showed
-### think_overflow at 12288 on validate_problem/validate_plan; chain ctx
+### think_overflow at 12288 on validate_problem/validate_plan (nemotron
+### was later dropped 2026-04-30; the ctx evidence still applies to the
+### remaining roster via qwen3.6:27b); chain ctx
 ### was raised 12288 → 16384 in the same-day follow-up. Do NOT raise NUM_PARALLEL
 ### without recomputing VRAM — probe 2026-04-23 observed NUM_PARALLEL=8 ×
 ### ctx=40960 allocating 37.8 GB for a 0.6B model (pathological). The

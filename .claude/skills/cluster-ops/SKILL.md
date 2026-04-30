@@ -17,7 +17,7 @@ Cluster & repo conventions that matter here:
 - **Login node**: `omereliy@slurm.bgu.ac.il` — SSH is pre-authed for the user.
 - **Remote repo root**: `~/pddl-copilot-experiments` on the login node.
 - **Job submission — single backend**:
-  - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch, self-deploys Ollama via Apptainer on a single dedicated GPU (default `rtx_pro_6000:1` 96 GB; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch). Loops `MODELS × THINK_MODES × CONDITIONS` in-process so weights stay resident. `--all` packs the 5 active models (Qwen3.5:0.8B, nemotron-3-nano:30b, qwen3.6:27b, qwen3.6:35b, gemma4:31b — post 2026-04-29 roster refresh) into one job under `MAX_LOADED_MODELS=1`. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS=solve+validate_*`, `--time=4h × N`).
+  - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch, self-deploys Ollama via Apptainer on a single dedicated GPU (default `rtx_pro_6000:1` 96 GB; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch). Loops `MODELS × THINK_MODES × CONDITIONS` in-process so weights stay resident. `--all` packs the 4 active models (Qwen3.5:0.8B, qwen3.6:27b, qwen3.6:35b, gemma4:31b — post 2026-04-30 roster trim; nemotron-3-nano:30b dropped after Hermes XML parse failures proved content-dependent) into one job under `MAX_LOADED_MODELS=1`. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS=solve+validate_*`, `--time=4h × N`).
   - The cis-ollama path (`submit_all.sh` waves, `submit_120b_cis.sh`, `run_condition.sbatch`) was retired 2026-04-27. `gpt-oss:120b` is no longer in the active sweep; the large-model band is held by `qwen3.6:35b` (A3B MoE) as of the 2026-04-29 refresh (previously `Qwen3.5:35b` since 2026-04-27).
 - **Log file**: `cluster-experimenting/logs/pddl_rtx_<model>-<jobid>.out`. Legacy formats from earlier sweeps: `pddl_<model>_<think>-<jobid>.out` (cis path, retired) and `pddl_<model>_<cond>-<jobid>.out` (pre-2026-04-21).
 - **Results dir**: `results/slurm_<model>_<think>_<cond>_<jobid>/` (schema unchanged — distinguish runs by the job's `meta.host` in `summary.json`).
@@ -148,10 +148,10 @@ bash .claude/skills/cluster-ops/scripts/postmortem.sh --jobs 17130166,17130167 #
 
 ### "Submit the sweep"
 
-The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 5-model sweep packed in ONE rtx_pro_6000 job under `MAX_LOADED_MODELS=1`.
+The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 4-model sweep packed in ONE rtx_pro_6000 job under `MAX_LOADED_MODELS=1`.
 
 1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes plugin venvs, surfaces GPU pool capacity for `rtx6000` and `rtx_pro_6000`. Halts on any failure.
-2. Dry-run, then submit. `--all` packs the 5 active models into one job; per-model invocations submit independent jobs that queue in parallel:
+2. Dry-run, then submit. `--all` packs the 4 active models into one job; per-model invocations submit independent jobs that queue in parallel:
    ```bash
    ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
      bash cluster-experimenting/submit_with_rtx.sh --all --dry-run"

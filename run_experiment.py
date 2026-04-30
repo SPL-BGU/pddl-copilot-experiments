@@ -536,7 +536,10 @@ def main():
                         f"observing 33-41%% truncation in the cluster-26042026 sweep, "
                         f"then 4096->6144 same-day after job 17266087 still showed "
                         f"residual Hermes XML truncations on nemotron-3-nano:30b "
-                        f"validate_*/think=off cells (DEFAULT_NUM_PREDICT comment).")
+                        f"validate_*/think=off cells. Smoke 17274424 (2026-04-30) "
+                        f"falsified the budget-cliff hypothesis (same 4 cells failed "
+                        f"post-bump); nemotron-3-nano:30b dropped from active roster, "
+                        f"6144 retained as harmless headroom (DEFAULT_NUM_PREDICT comment).")
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
                    help=f"Ollama context window tokens for single-task tools cells. "
                         f"Default {DEFAULT_NUM_CTX}.")

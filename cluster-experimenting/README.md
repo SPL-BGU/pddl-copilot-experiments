@@ -38,10 +38,10 @@ cd ~/pddl-copilot-experiments
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
 
 # 5. If the smoke test finishes OK (exit 0, JSON written under results/),
-#    submit the full sweep packed into ONE rtx_pro_6000 job. The five models
-#    (Qwen3.5:0.8B, nemotron-3-nano:30b, qwen3.6:27b, qwen3.6:35b, gemma4:31b)
-#    peak at ~24 GB resident, so MAX_LOADED_MODELS=1 sequencing keeps each
-#    weight set on the GPU one at a time without VRAM blowup.
+#    submit the full sweep packed into ONE rtx_pro_6000 job. The four active
+#    models (Qwen3.5:0.8B, qwen3.6:27b, qwen3.6:35b, gemma4:31b) peak at
+#    ~26 GB resident (gemma4:31b), so MAX_LOADED_MODELS=1 sequencing keeps
+#    each weight set on the GPU one at a time without VRAM blowup.
 bash cluster-experimenting/submit_with_rtx.sh --all
 ```
 
@@ -94,22 +94,22 @@ ENV_NAME=my_env PYTHON_VERSION=3.11 bash cluster-experimenting/setup_env.sh
 ```bash
 cd ~/pddl-copilot-experiments
 
-# Default: pack all 5 paper models in ONE rtx_pro_6000 job. Each model gets
+# Default: pack all 4 active models in ONE rtx_pro_6000 job. Each model gets
 # the full think × condition matrix (4 tools-conditions × 2 think modes = 8
 # condition-runs); models run sequentially with MAX_LOADED_MODELS=1 evicting
 # the previous weights. Wall: 4d allocation (well under main's 7d cap).
 bash cluster-experimenting/submit_with_rtx.sh --all
 
 # Per-model jobs (multiple positional args also pack into one job):
-bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B nemotron-3-nano:30b qwen3.6:27b
+bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b
 
 # Baseline-only no-tools sweep: 4-task discriminative matrix
 # (solve + validate_*), packed in one job. --time scales with model count.
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 
 # Preview command without submitting.
-bash cluster-experimenting/submit_with_rtx.sh nemotron-3-nano:30b --dry-run
+bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b --dry-run
 ```
 
 `--all` issues one packed job; per-model invocations submit independent
@@ -119,7 +119,7 @@ jobs that SLURM queues in parallel.
 
 Default: `rtx_pro_6000:1` (96 GB VRAM, `--mem=80G`). Hard-pinned as the
 sole self-deploy GPU class so peak VRAM and host RAM are constant across
-the sweep. The 5-model pack peaks at `qwen3.6:35b` A3B MoE (~24 GB), well
+the sweep. The 4-model pack peaks at `qwen3.6:35b` A3B MoE (~24 GB), well
 inside 96 GB, leaving ample headroom for KV cache scaling.
 
 `--gpu-type rtx_6000` is the opt-in escape hatch (48 GB VRAM, `--mem=48G`)
@@ -138,7 +138,7 @@ auto-detection.
   keyword grader is non-discriminative regardless of negatives. Chains are
   skipped by the matrix gate.
 - `--time` scales linearly with model count: 4h base + 4h per extra model
-  (`--all --no-tools` → 20h for 5 models).
+  (`--all --no-tools` → 16h for 4 models).
 
 Conflicts with `--think-modes` (any value other than `off|default`) are
 rejected.
@@ -147,18 +147,21 @@ rejected.
 
 The paper's `qwen3:0.6b` / `qwen3:4b` weren't a fit for the cluster's
 historical Ollama-on-cluster inventory, so this cluster run is a
-paper-variant, not a 1:1 reproduction. The five models in the default
-`--all` pack — `Qwen3.5:0.8B`, `nemotron-3-nano:30b`, `qwen3.6:27b`,
-`qwen3.6:35b`, `gemma4:31b` — peak at ~24 GB resident on rtx_pro_6000
-under `MAX_LOADED_MODELS=1` and sequence through one packed job.
-Roster refresh 2026-04-29: `Qwen3.5:27b` and `Qwen3.5:35b` were updated
-to their `qwen3.6` successors (dense 27B / 35B-A3B MoE, both Apache-2.0,
-released 2026-04-{16,22}); `gpt-oss:20b` was replaced by NVIDIA
-`nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn, 30B/3.5B-active) to
-preserve the non-Qwen/Gemma diversity slot and resolve gpt-oss's T=0
-flakiness (CHANGELOG 2026-04-28). `gpt-oss:120b` was previously
-substituted out by `Qwen3.5:35b` (2026-04-27) and is now superseded by
-`qwen3.6:35b` in the large-model size band.
+paper-variant, not a 1:1 reproduction. The four active models in the
+default `--all` pack — `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`,
+`gemma4:31b` — peak at ~26 GB resident on rtx_pro_6000 under
+`MAX_LOADED_MODELS=1` and sequence through one packed job.
+Roster history: 2026-04-29 refresh updated `Qwen3.5:27b/35b` to their
+`qwen3.6` successors (dense 27B / 35B-A3B MoE, both Apache-2.0, released
+2026-04-{16,22}) and replaced `gpt-oss:20b` with NVIDIA
+`nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn) for non-Qwen/Gemma
+diversity. 2026-04-30 dropped `nemotron-3-nano:30b` after smoke 17274424
+confirmed deterministic Hermes XML parse failures on the same 4 cells
+pre- and post-num_predict bump (4096→6144), establishing the failure as
+content-dependent rather than budget-dependent. `gpt-oss:120b` was
+previously substituted out by `Qwen3.5:35b` (2026-04-27) and is now
+superseded by `qwen3.6:35b` in the large-model size band. The roster
+no longer carries a non-Qwen/Gemma slot pending a viable replacement.
 
 The rtx path pulls model weights from the public Ollama registry
 (`docker://ollama/ollama` + `ollama pull`), so the model name has to be
@@ -202,7 +205,7 @@ explicitly lets us reproduce that protocol systematically.
 | `--partition` | `main` | rtx_pro_6000 (and the rtx_6000 opt-in) GRES are accessible from `main` |
 | `--gpus` | `rtx_pro_6000:1` (default) or `rtx_6000:1` (opt-in) | One dedicated GPU per job; weights stay resident across the inner think × condition loop |
 | `--time` | `2-00:00:00` (single-model) / `4-00:00:00` (multi-model `--all` pack) / `4h × N` (`--no-tools`, N = model count) | Single-model tools job ~10 h observed 2026-04-25. Multi-model pack scales linearly with model count, capped well below `main`'s 7d limit. No-tools 4-task matrix: ~4 h per model |
-| `--mem` | `80G` (rtx_pro_6000 default) / `48G` (rtx_6000 opt-in) | Sized to GPU pool's host RAM expectation. `80G` cap on rtx_pro_6000 added 2026-04-27 per IT request (was 96G); host-RAM peak for the 5-model pack is well under both caps |
+| `--mem` | `80G` (rtx_pro_6000 default) / `48G` (rtx_6000 opt-in) | Sized to GPU pool's host RAM expectation. `80G` cap on rtx_pro_6000 added 2026-04-27 per IT request (was 96G); host-RAM peak for the 4-model pack is well under both caps |
 | `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | Removed 2026-04-27 per IT request; explicit `12` was depriving other users |
 | Concurrency | `4` | Matches OLLAMA_NUM_PARALLEL=4; isolated per-job server so no contention argument applies |
 
