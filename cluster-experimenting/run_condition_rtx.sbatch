@@ -124,16 +124,17 @@ if [ -n "${CELLS_LIST:-}" ]; then
     # the original prefix — only live listings change.
     if [ -n "${SLURM_JOB_ID:-}" ] && command -v scontrol >/dev/null 2>&1; then
         _MTAG=$(echo "$CELL_MODEL" | tr '/:.' '___')
+        _TTAG="$CELL_THINK"
         case "$CELL_COND" in
             no-tools)               _CTAG="notools" ;;
             tools_per-task_minimal) _CTAG="tools-pt" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
-            @smoke@)                _CTAG="smoke" ;;
+            @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
         esac
         scontrol update jobid="$SLURM_JOB_ID" \
-            JobName="pddl_${_MTAG}_${CELL_THINK}_${_CTAG}" 2>/dev/null || true
-        unset _MTAG _CTAG
+            JobName="pddl_${_MTAG}_${_TTAG}_${_CTAG}" 2>/dev/null || true
+        unset _MTAG _TTAG _CTAG
     fi
 fi
 
