@@ -116,6 +116,25 @@ if [ -n "${CELLS_LIST:-}" ]; then
         CONDITIONS="$CELL_COND"
     fi
     echo "Cell-array task: IDX=$IDX  MODEL=$CELL_MODEL  THINK=$CELL_THINK  COND=$CELL_COND"
+
+    # Rename this array task at runtime so `squeue` / `sacct` show the actual
+    # (model, think, cond) cell instead of the static submit-time pack name
+    # (e.g. `pddl_rtx_pack4_Qwen3_5_0_8B`). Output filename %x-%J.out was
+    # already resolved at job-start using the submit-time name, so logs keep
+    # the original prefix — only live listings change.
+    if [ -n "${SLURM_JOB_ID:-}" ] && command -v scontrol >/dev/null 2>&1; then
+        _MTAG=$(echo "$CELL_MODEL" | tr '/:.' '___')
+        case "$CELL_COND" in
+            no-tools)               _CTAG="notools" ;;
+            tools_per-task_minimal) _CTAG="tools-pt" ;;
+            tools_all_minimal)      _CTAG="tools-all" ;;
+            @smoke@)                _CTAG="smoke" ;;
+            *)                      _CTAG="$CELL_COND" ;;
+        esac
+        scontrol update jobid="$SLURM_JOB_ID" \
+            JobName="pddl_${_MTAG}_${CELL_THINK}_${_CTAG}" 2>/dev/null || true
+        unset _MTAG _CTAG
+    fi
 fi
 
 ### Required inputs ###
