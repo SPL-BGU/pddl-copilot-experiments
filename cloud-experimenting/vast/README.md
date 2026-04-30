@@ -55,7 +55,8 @@ logs, never put it in a script in this repo.
 ## Usage
 
 ```bash
-# Default smoke: all 4 paper models on a single datacenter L40S 48GB.
+# Default smoke: all 4 paper models on the highest-priority GPU
+# offered (typically H100 NVL ~$2/h with our dph_total<=2.5 ceiling).
 bash cloud-experimenting/vast/run_smoke.sh
 
 # Dry-run: pick offer + print would-be-launched command, no instance creation.

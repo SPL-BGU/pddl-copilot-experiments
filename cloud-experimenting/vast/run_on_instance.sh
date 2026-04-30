@@ -34,6 +34,8 @@ tmux kill-session -t "exp-$RUN_ID" 2>/dev/null || true
 EXTRA_ARGS=("$@")
 
 CMD=$(cat <<INNER
+set -o pipefail   # tmux's default shell doesn't inherit pipefail; we
+                  # need it so PIPESTATUS captures python's exit, not tee's
 source $EXPT_DIR/.venv/bin/activate
 export PDDL_MARKETPLACE_PATH=$PDDL_DIR
 export OLLAMA_NUM_PARALLEL=4
@@ -45,7 +47,7 @@ python3 run_experiment.py \\
     ${EXTRA_ARGS[@]} \\
     --output-dir $LOG_DIR \\
     2>&1 | tee $LOG_DIR/run.log
-echo "EXIT=\$?" >> $LOG_DIR/run.log
+echo "EXIT=\${PIPESTATUS[0]}" >> $LOG_DIR/run.log
 INNER
 )
 

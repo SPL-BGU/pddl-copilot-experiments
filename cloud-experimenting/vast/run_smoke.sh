@@ -6,7 +6,9 @@
 # Usage:
 #   bash run_smoke.sh [--dry-run] [--keep] [--models "m1 m2 ..."]
 #
-# Cost (default 4-pack on datacenter L40S 48GB ~$0.55/h): ~$0.85 / 90 min.
+# Cost (default 4-pack on H100 NVL 80GB ~$2.0/h, our highest GPU_PRIORITY
+# tier with `dph_total<=2.5`): ~$3 / 90 min smoke. Falls back through
+# A100 80GB and Ampere when no H100 offers exist.
 
 set -euo pipefail
 
@@ -128,30 +130,19 @@ if [ "$DRY_RUN" = "1" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────────────────
-# Launch instance
+# EXIT trap: armed BEFORE `vastai create` so a parse failure between
+# instance-creation and the original arm-point can't leave a billable
+# orphan. Trap reads $INSTANCE_ID by reference; if the create call fails
+# before assignment, cleanup() is a no-op.
 # ──────────────────────────────────────────────────────────────────────────
-log "Launching instance ..."
-LAUNCH_RAW=$(vastai create instance "$OFFER_ID" \
-    --image "$DOCKER_IMAGE" \
-    --disk "$DISK_GB" \
-    --ssh --direct \
-    --onstart-cmd "touch /workspace/.vast-onstart.done" \
-    --raw)
+INSTANCE_ID=""
 
-INSTANCE_ID=$(echo "$LAUNCH_RAW" | python3 -c "
-import json, sys
-d = json.load(sys.stdin)
-print(d.get('new_contract') or d.get('id') or '')
-")
-[ -n "$INSTANCE_ID" ] || { log "ERROR: failed to parse instance id from create response"; exit 1; }
-log "Instance ID: $INSTANCE_ID"
-echo "INSTANCE_ID=$INSTANCE_ID" > "$LOCAL_LOGS/instance.env"
-
-# ──────────────────────────────────────────────────────────────────────────
-# EXIT trap: always sync + (unless --keep) destroy.
-# ──────────────────────────────────────────────────────────────────────────
 cleanup() {
     local rc=$?
+    if [ -z "$INSTANCE_ID" ]; then
+        log "EXIT trap (rc=$rc) — no INSTANCE_ID; if create succeeded, check https://cloud.vast.ai/instances/ for orphans"
+        return
+    fi
     log "EXIT trap (rc=$rc) — final sync ..."
     bash "$SCRIPT_DIR/sync_results.sh" "$INSTANCE_ID" || \
         log "WARN: final sync failed"
@@ -165,6 +156,30 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
+
+# ──────────────────────────────────────────────────────────────────────────
+# Launch instance
+# ──────────────────────────────────────────────────────────────────────────
+log "Launching instance ..."
+LAUNCH_RAW=$(vastai create instance "$OFFER_ID" \
+    --image "$DOCKER_IMAGE" \
+    --disk "$DISK_GB" \
+    --ssh --direct \
+    --raw)
+
+INSTANCE_ID=$(echo "$LAUNCH_RAW" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+print(d.get('new_contract') or d.get('id') or '')
+")
+if [ -z "$INSTANCE_ID" ]; then
+    log "ERROR: failed to parse instance id from create response"
+    log "  Raw: $LAUNCH_RAW"
+    log "  -> trap can't auto-destroy without an ID; check the Vast console manually"
+    exit 1
+fi
+log "Instance ID: $INSTANCE_ID"
+echo "INSTANCE_ID=$INSTANCE_ID" > "$LOCAL_LOGS/instance.env"
 
 # ──────────────────────────────────────────────────────────────────────────
 # Wait for instance to come up
