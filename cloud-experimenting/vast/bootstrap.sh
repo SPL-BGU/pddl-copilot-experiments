@@ -33,7 +33,7 @@ if ! command -v python3.11 >/dev/null && ! python3 -c 'import sys; assert sys.ve
     apt-get update -y -qq
     apt-get install -y -qq --no-install-recommends \
         python3 python3-venv python3-pip \
-        git curl rsync tmux ca-certificates \
+        git curl rsync tmux ca-certificates zstd \
         openjdk-17-jre-headless build-essential \
         cmake g++ make
 fi
