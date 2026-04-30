@@ -23,6 +23,22 @@ cluster's 0 sweeps in 7 days, this is the demo headline.
 demo win is queue elimination, always-on availability, and parallelism
 across boxes — not faster individual calls.
 
+## Base image (why `nvidia/cuda` and not `ollama/ollama`)
+
+We launch via Vast's `--ssh --direct` mode, which **injects an SSH daemon
+into the container and overrides the image's ENTRYPOINT** (per
+[docs.vast.ai/instances/launch-modes](https://docs.vast.ai/instances/launch-modes)).
+That requires a Ubuntu/Debian base where Vast's supervisord can install
+sshd. `ollama/ollama:latest` doesn't qualify (custom ENTRYPOINT, no sshd)
+— our 2026-04-30 attempts wedged 4/4 at the SSH-wait step before this was
+diagnosed. We use `nvidia/cuda:12.4.1-runtime-ubuntu22.04` (lightest
+SSH-compatible base with CUDA 12 runtime libs); `bootstrap.sh` installs
+Ollama via the official curl script.
+
+Offers are filtered with `direct_port_count>=1` so we always get direct
+SSH (the proxy `sshN.vast.ai:port` was the actual wedge — instances came
+up but the proxy never opened the backend port).
+
 ## Setup (one-time, manual)
 
 ```bash

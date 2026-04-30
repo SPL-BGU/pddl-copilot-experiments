@@ -17,8 +17,7 @@ bash "$SCRIPT_DIR/sync_results.sh" "$INSTANCE_ID" || \
     echo "[teardown] WARN: final sync failed; check $SCRIPT_DIR/logs/" >&2
 
 echo "[teardown] Destroying instance $INSTANCE_ID ..."
-# `vastai destroy instance` prompts; pipe `y` for non-interactive teardown.
-echo y | vastai destroy instance "$INSTANCE_ID" || {
+vastai destroy instance -y "$INSTANCE_ID" || {
     echo "[teardown] WARN: destroy command failed; check https://cloud.vast.ai/instances/" >&2
     exit 1
 }

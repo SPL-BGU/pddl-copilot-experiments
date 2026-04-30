@@ -6,6 +6,30 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-30 — Vast.ai self-deploy: SSH-compatible base + direct connections
+
+**TL;DR.** The `feat/vast-ai` scaffold from earlier 2026-04-30 wedged 4-of-4 real instance attempts at `ERROR: SSH never accepted` despite Vast reporting `actual_status: running`. Root cause: `ollama/ollama:latest` is incompatible with Vast's `--ssh` launch mode (no sshd, custom ENTRYPOINT, supervisord can't take over). Switched the base image to `nvidia/cuda:12.4.1-runtime-ubuntu22.04` (Ubuntu 22.04 + CUDA 12 runtime libs, supervisord-friendly), require `direct_port_count>=1` in offer search, pass `--ssh --direct` to bypass the `sshN.vast.ai` proxy, and install Ollama in-bootstrap via the official curl script. No methodology change — the harness CLI is invoked identically (cluster `run_condition_rtx.sbatch:289-295` ground truth preserved).
+
+**Motivation.** Vast.ai is the queue-free alternative to BGU CIS while the cluster's `rtx_pro_6000` pool is saturated. Per the failure-mode reconstruction across the 9 smoke attempts on 2026-04-30: 4 dry runs, 1 offer-search hang (pre-direct-port filter), and 4 instance launches that all timed out at SSH-wait — last attempt waited 10 min with the proxy never opening despite Vast's status_msg = "success, running ollama/ollama_latest/ssh". Three of those four also 404'd on destroy (Vast self-reaped the unhealthy container before our trap ran). Confirmed via `vastai create instance --help` (CLI 1.0.8) and `docs.vast.ai/instances/launch-modes`: SSH launch mode requires sshd-injection-compatible images.
+
+**What changed (`feat/vast-ai` branch).**
+- **`cloud-experimenting/vast/run_smoke.sh`** — `DOCKER_IMAGE` switched from `ollama/ollama:latest` → `nvidia/cuda:12.4.1-runtime-ubuntu22.04`. `OFFER_FILTER` gains `direct_port_count>=1`. `vastai create instance` invocation gains `--direct` and an `--onstart-cmd "touch /workspace/.vast-onstart.done"` heartbeat. `echo y | vastai destroy instance` replaced with `vastai destroy instance -y` (CLI 1.0.8 supports `-y` natively).
+- **`cloud-experimenting/vast/bootstrap.sh`** — added Ollama install step (`curl -fsSL https://ollama.com/install.sh | sh`) gated behind `command -v ollama`, since the new base image doesn't bundle it. Replaced the fixed-60s plugin-warmup kill with a 5-min poll for `$PLUGIN_DIR/.venv/pyvenv.cfg` readiness — prevents leaving venv half-built when Fast Downward compile takes longer than the kill timer.
+- **`cloud-experimenting/vast/teardown.sh`** — same `destroy -y` cleanup as run_smoke.
+- **`cloud-experimenting/vast/README.md`** — added a "Base image" section explaining the Vast SSH-injection requirement and linking the launch-modes docs.
+
+**What did NOT change.**
+- `run_experiment.py`, harness CLI, scoring, prompts, MCP contract, result schema — fully preserved. Cluster invocations untouched.
+- `host_info.json` capture (`bootstrap.sh` step 6) — still records GPU + Ollama version + per-model digests; the base-image swap shows up implicitly via `nvidia-smi` driver/CUDA fields.
+- Model roster (`Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b`) — unchanged. Public Ollama registry has all four; the existing `ollama pull` path works.
+- Cluster `cluster-experimenting/` — unaffected.
+
+**Cost / timing impact.** Boot delta is ~0: the new base is 2GB smaller than `ollama/ollama` but bootstrap now installs Ollama (~30s). Net +30s on cold boot, far below the 5+ min that direct SSH saves over the proxy.
+
+**No `ISS-###` resolved** — failure was infrastructure (image choice + SSH mode), not methodology.
+
+---
+
 ## 2026-04-30 — Cluster submission topology: per-cell SLURM job array
 
 **TL;DR.** The packed-job model (`--all` = one 6-day rtx_pro_6000:1 job that loops 4 models × 2 think × 3 conditions sequentially under `MAX_LOADED_MODELS=1`) is replaced by a **per-cell SLURM job array**: each (model, think_mode, condition) cell becomes one independent array task on its own rtx_pro_6000:1 GPU. `--all` now submits a 20-task array (4 models × 5 cells per model, after the no-tools/think=on matrix-gate skip). With unrestricted concurrency, max-of-cell wall is ~8h vs the prior ~140h serial pack — ~17× wall-clock speedup when the rtx_pro_6000 pool has capacity for the full fan-out, ~4× even when only 4 slots are free. Mar-26 BGU CIS guide §"Job Arrays" + §"SSD Drive" formalize the idioms used (no novelty). Methodology unchanged.

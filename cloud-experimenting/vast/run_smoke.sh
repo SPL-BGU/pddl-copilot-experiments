@@ -16,11 +16,14 @@ set -euo pipefail
 DEFAULT_MODELS="Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b"
 
 # 48GB+ GPU, single-GPU, reliability ≥0.99, dph_total ceiling, CUDA 12+.
+# direct_port_count>=1 enforces direct-SSH availability; without it Vast
+# falls back to the sshN.vast.ai proxy which silently wedged 4/4 attempts
+# on 2026-04-30 (instance reported `running` but proxy port never opened).
 # dph_total raised to <=2.5 to admit H100-class hosts (~$1.76/h).
 # Dropped vs. initial scaffold: datacenter=true (Vast field is null/missing
 # on most hosts; filter zeros out), inet_down/up thresholds (excluded too
 # many cheap reliable boxes for a 5GB weights pull).
-OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=2.5 reliability>=0.99 cuda_max_good>=12.0'
+OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=2.5 reliability>=0.99 cuda_max_good>=12.0 direct_port_count>=1'
 
 # GPU PRIORITY (highest tier first). The selection logic walks this list and
 # picks the cheapest offer in the highest-available tier — i.e., prefer
@@ -30,8 +33,21 @@ OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=2.5 reliability>=0.99 cuda_max_g
 # (consumer 24GB; 48GB listings are non-standard configs).
 GPU_PRIORITY="H100 NVL|H100 SXM5|H100 PCIE|A100 SXM4|A100 PCIE|A100X|RTX A6000|A40|RTX 6000Ada|L40|L40S"
 
-DOCKER_IMAGE="ollama/ollama:latest"   # Vast tag pinning is brittle; we capture
-                                      # `ollama --version` into host_info.json.
+# Vast `--ssh` launch mode INJECTS sshd into the container and overrides
+# the image's ENTRYPOINT (per docs.vast.ai/instances/launch-modes). The
+# image must therefore be sshd-injection-compatible — `ollama/ollama` is
+# not (no sshd binary, custom ENTRYPOINT). On 2026-04-30 that mismatch
+# wedged 4/4 instances at the SSH-wait step.
+#
+# `nvidia/cuda:*-runtime-ubuntu22.04` is the lightest standard Ubuntu base
+# Vast injects cleanly; Ollama bundles its own CUDA runtime libs so we
+# don't need cudnn-devel. Vast's docs example uses pytorch/pytorch but
+# torch wheels are 2GB of dead weight here.
+#
+# Tag pinning is intentionally loose at the patch level; we capture the
+# resolved digest indirectly via `nvidia-smi` + `ollama --version` lines
+# in host_info.json.
+DOCKER_IMAGE="nvidia/cuda:12.4.1-runtime-ubuntu22.04"
 DISK_GB=100
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -118,7 +134,8 @@ log "Launching instance ..."
 LAUNCH_RAW=$(vastai create instance "$OFFER_ID" \
     --image "$DOCKER_IMAGE" \
     --disk "$DISK_GB" \
-    --ssh \
+    --ssh --direct \
+    --onstart-cmd "touch /workspace/.vast-onstart.done" \
     --raw)
 
 INSTANCE_ID=$(echo "$LAUNCH_RAW" | python3 -c "
@@ -140,9 +157,7 @@ cleanup() {
         log "WARN: final sync failed"
     if [ "$KEEP_INSTANCE" = "0" ]; then
         log "Destroying instance $INSTANCE_ID ..."
-        # `vastai destroy instance` prompts for confirmation; pipe `y` so
-        # the trap completes without leaving the box alive.
-        echo y | vastai destroy instance "$INSTANCE_ID" 2>&1 | tee -a "$LOG" || \
+        vastai destroy instance -y "$INSTANCE_ID" 2>&1 | tee -a "$LOG" || \
             log "WARN: destroy command failed; verify at https://cloud.vast.ai/instances/"
     else
         log "KEEP: instance $INSTANCE_ID left running."

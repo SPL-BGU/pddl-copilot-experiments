@@ -38,6 +38,14 @@ if ! command -v python3.11 >/dev/null && ! python3 -c 'import sys; assert sys.ve
         cmake g++ make
 fi
 
+# 1b. Ollama -- the new base image (nvidia/cuda runtime) doesn't bundle it.
+# The official install script handles binary placement + systemd-style
+# launcher; ~30s on cold boot.
+if ! command -v ollama >/dev/null; then
+    log "Installing ollama (curl https://ollama.com/install.sh | sh) ..."
+    curl -fsSL https://ollama.com/install.sh | sh
+fi
+
 # 2. Repos ---------------------------------------------------------------
 if [ ! -d "$EXPT_DIR/.git" ]; then
     log "Cloning pddl-copilot-experiments@$EXPT_BRANCH ..."
@@ -58,17 +66,28 @@ if [ ! -d "$EXPT_DIR/.venv" ]; then
     "$EXPT_DIR/.venv/bin/pip" install --quiet -r "$EXPT_DIR/requirements.txt"
 fi
 
-# 4. Warm MCP plugin venvs (Fast Downward build can take ~3 min) ---------
+# 4. Warm MCP plugin venvs ------------------------------------------------
+# The launch script creates the plugin venv on first run; we just need the
+# venv populated so the experiment doesn't pay the cost on the first MCP
+# call. Solver-specific Fast Downward build still happens lazily on first
+# `solve` (same as cluster cold-start behaviour).
 for plugin in pddl-solver pddl-validator pddl-parser; do
     launcher="$PDDL_DIR/plugins/$plugin/scripts/launch-server.sh"
-    if [ -x "$launcher" ]; then
-        log "Warming $plugin venv ..."
-        # Launch then immediately kill — the launch script creates the venv +
-        # builds Fast Downward (solver) on first run; we don't need the server.
-        timeout 600 bash -c "'$launcher' </dev/null >/tmp/$plugin.log 2>&1 &
-            srv=\$!; sleep 60; kill \$srv 2>/dev/null || true; wait \$srv 2>/dev/null || true" || \
-            log "WARN: $plugin warmup hit 600s ceiling (Fast Downward compile?). Continuing."
+    venv="$PDDL_DIR/plugins/$plugin/.venv"
+    [ -x "$launcher" ] || continue
+    log "Warming $plugin venv ..."
+    "$launcher" </dev/null >/tmp/$plugin.log 2>&1 &
+    srv=$!
+    # Poll for venv readiness up to 5 min (60 × 5s).
+    for i in $(seq 1 60); do
+        [ -d "$venv" ] && [ -f "$venv/pyvenv.cfg" ] && break
+        sleep 5
+    done
+    if [ ! -f "$venv/pyvenv.cfg" ]; then
+        log "WARN: $plugin venv not ready after 5min; first MCP call will pay setup cost."
     fi
+    kill $srv 2>/dev/null || true
+    wait $srv 2>/dev/null || true
 done
 
 # 5. Ollama pull weights -------------------------------------------------
