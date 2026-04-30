@@ -279,7 +279,46 @@ ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "root@$SSH_HOST" \
     "MODELS='$MODELS' RUN_ID='$RUN_ID' bash /workspace/run_on_instance.sh --smoke"
 
 # ──────────────────────────────────────────────────────────────────────────
+# Verify the session actually came up. Without this guard, an instant crash
+# inside the heredoc (argparse error, missing venv, OOM, ...) is
+# indistinguishable from a clean completion in the polling loop below —
+# both look like `tmux has-session = false`. The 2026-04-30 smoke #5 died
+# this way: argparse exited 2 in <1s, the loop polled, saw no session,
+# logged "Smoke complete" and tore the instance down. Require the session
+# to appear within 30s of launch; if not, dump the inner crash log +
+# diagnostic and exit non-zero (the EXIT trap still destroys the instance,
+# but the user sees a failure instead of a fake success).
+# ──────────────────────────────────────────────────────────────────────────
+log "Verifying tmux session 'exp-$RUN_ID' is alive (up to 30s) ..."
+SESSION_ALIVE=0
+for i in $(seq 1 6); do
+    sleep 5
+    if ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "root@$SSH_HOST" \
+            "tmux has-session -t exp-$RUN_ID 2>/dev/null"; then
+        SESSION_ALIVE=1; break
+    fi
+done
+if [ "$SESSION_ALIVE" != "1" ]; then
+    log "ERROR: tmux session 'exp-$RUN_ID' never appeared in 30s — inner run probably crashed instantly."
+    log "Fetching crash log + diagnostic from instance ..."
+    REMOTE_LOG_DIR="/workspace/pddl-copilot-experiments/results/vast-$RUN_ID"
+    ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "root@$SSH_HOST" \
+        "echo '----- run.log (tail 200) -----'; \
+         tail -200 $REMOTE_LOG_DIR/run.log 2>/dev/null || echo '(missing)'; \
+         echo; \
+         echo '----- instance-diag.txt -----'; \
+         cat $REMOTE_LOG_DIR/instance-diag.txt 2>/dev/null || echo '(missing)'" \
+        2>&1 | tee -a "$LOG"
+    exit 1
+fi
+log "tmux session confirmed alive."
+
+# ──────────────────────────────────────────────────────────────────────────
 # Poll loop: incremental rsync every 5 min until tmux session ends.
+# Now that the startup guard above has confirmed the session existed at
+# least once, "no session" in this loop genuinely means the run finished
+# (clean exit or runtime crash; check $REMOTE_LOG_DIR/run.log for `EXIT=`
+# to distinguish in post-mortem).
 # ──────────────────────────────────────────────────────────────────────────
 log "Polling tmux for completion (sync every 5 min) ..."
 START_TS=$(date -u +%s)
