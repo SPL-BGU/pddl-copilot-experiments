@@ -16,17 +16,19 @@ set -euo pipefail
 DEFAULT_MODELS="Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b"
 
 # 48GB+ GPU, single-GPU, reliability ≥0.99, dph_total ceiling, CUDA 12+.
+# dph_total raised to <=2.5 to admit H100-class hosts (~$1.76/h).
 # Dropped vs. initial scaffold: datacenter=true (Vast field is null/missing
 # on most hosts; filter zeros out), inet_down/up thresholds (excluded too
 # many cheap reliable boxes for a 5GB weights pull).
-OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=0.8 reliability>=0.99 cuda_max_good>=12.0'
+OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=2.5 reliability>=0.99 cuda_max_good>=12.0'
 
-# GPU allowlist (Ampere or newer 48GB-class datacenter cards).
-# Vast filter syntax doesn't reliably express "compute_cap>=80", so we
-# post-filter the offer list in Python below. Excluded: Q RTX 8000
-# (Turing, ~30-40% slower on Q4 inference vs Ampere), RTX 4090 (consumer
-# 24GB; 48GB listings are non-standard configs).
-ALLOWED_GPUS="RTX A6000|A40|RTX 6000Ada|L40|L40S|A100 PCIE|A100 SXM4|A100X|H100 PCIE|H100 SXM5|H100 NVL"
+# GPU PRIORITY (highest tier first). The selection logic walks this list and
+# picks the cheapest offer in the highest-available tier — i.e., prefer
+# H100 NVL (Hopper, ~3-4× per-call vs Ampere); fall back through A100 80GB
+# (HBM2e, ~2×) to A6000 (Ampere GDDR6, baseline) only if no H100/A100
+# offers exist. Excluded everywhere: Q RTX 8000 (Turing), RTX 4090
+# (consumer 24GB; 48GB listings are non-standard configs).
+GPU_PRIORITY="H100 NVL|H100 SXM5|H100 PCIE|A100 SXM4|A100 PCIE|A100X|RTX A6000|A40|RTX 6000Ada|L40|L40S"
 
 DOCKER_IMAGE="ollama/ollama:latest"   # Vast tag pinning is brittle; we capture
                                       # `ollama --version` into host_info.json.
@@ -83,18 +85,22 @@ log "Searching offers: $OFFER_FILTER"
 OFFER_RAW=$(vastai search offers "$OFFER_FILTER" --raw 2>/dev/null)
 [ -n "$OFFER_RAW" ] || { log "ERROR: vastai search offers returned nothing"; exit 1; }
 
-read -r OFFER_ID DPH GPU < <(echo "$OFFER_RAW" | ALLOWED_GPUS="$ALLOWED_GPUS" python3 -c "
+read -r OFFER_ID DPH GPU < <(echo "$OFFER_RAW" | GPU_PRIORITY="$GPU_PRIORITY" python3 -c "
 import json, os, sys
 offers = json.load(sys.stdin)
 if not offers:
     sys.exit('no offers')
-allow = set(os.environ.get('ALLOWED_GPUS','').split('|'))
-offers = [o for o in offers if o.get('gpu_name','').strip() in allow]
-if not offers:
-    sys.exit('no offers in GPU allowlist')
-offers.sort(key=lambda x: x.get('dph_total', 1e9))
-o = offers[0]
-print(o['id'], f\"{o['dph_total']:.4f}\", o.get('gpu_name','?').replace(' ','_'))
+priority = os.environ.get('GPU_PRIORITY','').split('|')
+chosen = None
+for tier in priority:
+    in_tier = [o for o in offers if o.get('gpu_name','').strip() == tier]
+    if in_tier:
+        in_tier.sort(key=lambda x: x.get('dph_total', 1e9))
+        chosen = in_tier[0]
+        break
+if chosen is None:
+    sys.exit('no offers matched GPU priority list')
+print(chosen['id'], f\"{chosen['dph_total']:.4f}\", chosen.get('gpu_name','?').replace(' ','_'))
 ")
 
 ESTIMATED_COST=$(python3 -c "print(round($DPH * 1.5, 2))")
