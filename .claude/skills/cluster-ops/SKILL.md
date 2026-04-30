@@ -1,6 +1,6 @@
 ---
 name: cluster-ops
-description: Operate the BGU ISE-CS-DT SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, aggregate summaries, render paper plots, post-mortem completed jobs (right-size --mem from sacct/MaxRSS).
+description: Operate the BGU CIS (formerly ISE-CS-DT) SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, aggregate summaries, render paper plots, post-mortem completed jobs (right-size --mem from sacct/MaxRSS).
 argument-hint: [status | preflight | sync | aggregate | plot | table | postmortem]
 ---
 
@@ -109,7 +109,7 @@ Run this before every `submit_with_rtx.sh`. Does, in one SSH call:
 1. `git pull` both repos (this one + `../pddl-copilot`).
 2. `pip install --upgrade -r requirements.txt` in each plugin's `.venv` — `setup_env.sh` deliberately skips existing venvs, so a pinned dependency bump in `../pddl-copilot/plugins/<plugin>/requirements.txt` is silently stale until something explicitly upgrades.
 3. **GPU pool capacity** — `sinfo -p rtx6000 -t idle,mix` and same for `rtx_pro_6000`. The free-node count tells you whether `submit_with_rtx.sh` will queue immediately or sit in `PENDING(Resources)`. If `rtx_pro_6000` is 0/6 and you can't wait, `--gpu-type rtx_6000` is the opt-in escape hatch.
-4. **`sres` snapshot** (PDF p10) — one-glance cluster utilization view. `sres`'s "6000" column conflates `rtx_6000` and `rtx_pro_6000`, so trust step 3 for routing decisions.
+4. **`sres` snapshot** (Mar-26 guide §"Resources Usage") — one-glance cluster utilization view. `sres`'s "6000" column conflates `rtx_6000` and `rtx_pro_6000`, so trust step 3 for routing decisions.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/preflight.sh
@@ -117,7 +117,7 @@ bash .claude/skills/cluster-ops/scripts/preflight.sh
 
 ### `scripts/postmortem.sh` — completed-job introspection (`sacct`)
 
-Closes the loop on PDF p9's "use minimum possible RAM" rule. Pulls `sacct` for completed `pddl_*` jobs, merges parent + `.batch` step rows so MaxRSS lands in the same row as State/Elapsed/ExitCode, then computes a memory-headroom recommendation across the window.
+Closes the loop on the Mar-26 guide's "use minimum possible RAM" rule (§Allocating Resources). Pulls `sacct` for completed `pddl_*` jobs, merges parent + `.batch` step rows so MaxRSS lands in the same row as State/Elapsed/ExitCode, then computes a memory-headroom recommendation across the window.
 
 Use it after a sweep finishes to: spot OOMs (`Comment` = `OOM-Kill`), find jobs that approached `--time` (Elapsed close to 3-00:00:00), and right-size `--mem` for the next sweep without manual `sacct` per job.
 
@@ -162,7 +162,7 @@ The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 4-model sweep
 
 **GPU class**: default `rtx_pro_6000:1` (96 GB, `--mem=80G`). The sweep is hard-pinned to this class for consistency; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch (use only if `rtx_pro_6000` is saturated). Think modes auto-select to `on off` (both run sequentially in one job so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
 
-**VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=8192`. After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise NUM_PARALLEL without re-measuring KV-cache allocation.
+**VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=16384` (raised from 8192 on 2026-04-29). After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise NUM_PARALLEL without re-measuring KV-cache allocation.
 
 ### "Cancel jobs"
 
@@ -178,14 +178,14 @@ ssh omereliy@slurm.bgu.ac.il "squeue --me -h -o '%i %j' | awk '\$2 ~ /^pddl_/ {p
 
 `scancel -u omereliy` (nuke all, no name filter) needs an explicit user request — it will terminate jobs that have been running for hours and may not be sweep-related. Confirm first.
 
-### Pending REASON cheat sheet (PDF p43–44)
+### Pending REASON cheat sheet (Mar-26 guide §FAQ)
 
 When `status.sh`'s Pending table shows a non-trivial REASON, here's what to do:
 
 | REASON | What it means | Action |
 |---|---|---|
 | `Resources` | The requested partition pool is full. | Wait, or fall back to `--gpu-type rtx_6000` if `rtx_pro_6000` is saturated and the model set fits 48 GB. |
-| `Priority` | Preempted by a Golden-Ticket QoS job (PDF p14). | Wait — usually clears in minutes. |
+| `Priority` | Preempted by a Golden-Ticket QoS job (Mar-26 guide §"High Priority Jobs"). | Wait — usually clears in minutes. |
 | `QOSMaxJobsPerUserLimit` | Per-user concurrent-job cap reached. | Wait for one of your other jobs to finish, or scancel a low-priority one. |
 | `MaxGRESPerAccount` | Per-account GPU cap (relevant for high-priority QoS). | Wait. Not applicable on plain `--partition main`. |
 | `PartitionTimeLimit` | `--time` exceeds partition's max (`main` ≤ 7 days). | Edit the `#SBATCH --time` line in the sbatch and resubmit. |

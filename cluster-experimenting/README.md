@@ -1,7 +1,9 @@
-# Cluster-experimenting (BGU ISE-CS-DT)
+# Cluster-experimenting (BGU CIS)
 
 SLURM sbatch scripts for running the `pddl-copilot-experiments` sweep on the
-BGU ISE-CS-DT cluster (login node: `slurm.bgu.ac.il`).
+BGU CIS cluster (login node: `slurm.bgu.ac.il`). The cluster was rebranded
+from "ISE-CS-DT" to "CIS" in the March 2026 user-guide refresh; hardware,
+partitions, and GRES names are unchanged.
 
 **Single submit path: `submit_with_rtx.sh` → `run_condition_rtx.sbatch`.**
 Each job allocates one dedicated `rtx_pro_6000:1` GPU (96 GB VRAM,

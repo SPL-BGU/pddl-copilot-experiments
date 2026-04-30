@@ -6,6 +6,27 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-30 — Cluster guide refresh: Mar-26 PDF is sole source of truth
+
+**TL;DR.** The March 2026 BGU cluster user guide replaces the July 2025 edition (Jul-25 PDF deleted from `.local/`). Repo docs and the `cluster-ops` skill aligned to the new edition. The Mar-26 guide adds operational idioms (`srun --jobid --pty bash`, `scontrol update Nice=N`, `--cpus-per-gpu=8` for rtx_6000:2 multi-GPU, tmpfs `/dev/shm` workarounds) and renames the cluster from "ISE-CS-DT" to "CIS"; cluster hardware is unchanged.
+
+**Motivation.** Cluster naming and partition idioms had drifted between our docs (Jul-25 conventions) and the active guide. The IT-caps email of 2026-04-27 was already encoded in scripts and a memory; the Mar-26 refresh adds new gotchas (notably the rtx_6000:2 erratum) that aren't yet in any sbatch but should be retrievable when needed.
+
+**What changed (docs only — no code touched).**
+- `cluster-experimenting/README.md`: "BGU ISE-CS-DT" → "BGU CIS" with a one-line note explaining the rename is naming-only.
+- `.claude/skills/cluster-ops/SKILL.md`: skill description renamed; PDF page references replaced with named-section refs (`Mar-26 guide §FAQ`, etc.) so they don't drift on the next refresh; `CONTEXT_LENGTH=8192` line corrected to `=16384` (had drifted from the actual sbatch).
+- `reference_bgu_it_resource_caps.md` (memory): appended the rtx_6000:2 multi-GPU erratum (`--cpus-per-gpu=8`) since it's the only documented case where a `--cpus-*` flag is allowed on a GPU job.
+- `reference_bgu_cluster_guide_mar26.md` (memory, new): captures the 10 operational deltas of the Mar-26 edition (srun --jobid attach, scontrol Nice deprioritize, tmpfs OOM workarounds, course partition rename, NCCL_P2P_DISABLE for multi-RTX6000 DDP, etc.). Indexed in `MEMORY.md`.
+
+**What did NOT change.**
+- No edits to `run_condition_rtx.sbatch`, `submit_with_rtx.sh`, `run_experiment.py`, `EXPERIMENTS_FLOW.md`, or anything under `../pddl-copilot/`. Submission-script rethink (partition routing, runtime efficiency, deployment approach) is delegated to a separate fresh-agent task; the briefing prompt is at `.local/rethink-submission-and-deployment-prompt.md`, referencing the markdown ground truth at `.local/cluster_user_guide.md`. The fresh agent's deliverable is a written proposal at `.local/submission-strategy-v2.md` for user review before any script changes land.
+- No methodology, scoring, or results-schema impact. Existing `results/cluster-*` and `results/full-cluster-run*` dirs remain valid.
+- IT caps memory's binding constraints (rtx_pro_6000 ≤80G, rtx_6000 ≤48G, no `--cpus-per-task` on single-GPU jobs) carry forward unchanged.
+
+**Files.** `cluster-experimenting/README.md`, `.claude/skills/cluster-ops/SKILL.md`, `~/.claude/projects/.../memory/reference_bgu_it_resource_caps.md`, `~/.claude/projects/.../memory/reference_bgu_cluster_guide_mar26.md` (new), `~/.claude/projects/.../memory/MEMORY.md`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-04-30 — Cluster roster trim: nemotron-3-nano:30b dropped
 
 **TL;DR.** `nemotron-3-nano:30b` removed from the active 5-model rtx pack. Active sweep is now 4 models: `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b`. The non-Qwen/Gemma family-diversity slot (held by gpt-oss:20b → nemotron-3-nano:30b through 2026-04-29) is now empty pending a viable replacement.
