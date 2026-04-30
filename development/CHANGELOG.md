@@ -6,6 +6,48 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-04-30 — Cluster submission topology: per-cell SLURM job array
+
+**TL;DR.** The packed-job model (`--all` = one 6-day rtx_pro_6000:1 job that loops 4 models × 2 think × 3 conditions sequentially under `MAX_LOADED_MODELS=1`) is replaced by a **per-cell SLURM job array**: each (model, think_mode, condition) cell becomes one independent array task on its own rtx_pro_6000:1 GPU. `--all` now submits a 20-task array (4 models × 5 cells per model, after the no-tools/think=on matrix-gate skip). With unrestricted concurrency, max-of-cell wall is ~8h vs the prior ~140h serial pack — ~17× wall-clock speedup when the rtx_pro_6000 pool has capacity for the full fan-out, ~4× even when only 4 slots are free. Mar-26 BGU CIS guide §"Job Arrays" + §"SSD Drive" formalize the idioms used (no novelty). Methodology unchanged.
+
+**Motivation.** The packed rationale ("share apptainer/serve startup, dodge cis-ollama eviction") was set 2026-04-27 when cis-ollama was still in play. With cis retired and each job owning its GPU node, packing was paying ~20 min of saved warmup per pack against (a) ~140h serialized wall, (b) a single point of failure across the whole sweep (any node fault, VRAM trip, or scheduler hiccup at hour 100 wasted 100h of compute), (c) approaching the 7-day partition cap with no margin. The proposal at `development/SUBMISSION_STRATEGY_PROPOSAL.md` (committed 2026-04-30 in `a3271ab`) examined three lenses (partition routing, runtime efficiency, deployment) under the Mar-26 cluster guide; user approved per-cell arrays + explicit `/scratch` workspace + cosmetic guide-alignment.
+
+**What changed (`cluster/per-cell-array-submit` branch).**
+- **`cluster-experimenting/submit_with_rtx.sh`** — full rewrite of post-arg-parse logic. The wrapper now builds `CELLS=("model|think|cond" ...)` with the matrix-gate filter (no-tools/think=on cells dropped) applied, encodes as `^`-separated `CELLS_LIST`, and submits `sbatch --array=0-(N-1)` (or single sbatch when N=1). The recursive `--all` path (`bash "$0" m1 m2 m3 m4 ...`) is gone — `--all` directly populates `MODELS=(...)` and falls through. Multi-positional invocations also fan out as arrays. Per-task `--time` is now per-cell (12h tools / 8h no-tools / 3h smoke) instead of N-scaled.
+- **`cluster-experimenting/run_condition_rtx.sbatch`** — added cell-array picker block after `### Job info ###` that maps `$SLURM_ARRAY_TASK_ID` → one cell from `CELLS_LIST`, populating `MODELS`/`THINK_MODES`/`CONDITIONS` to one value each. The existing `for MODEL in $MODELS` outer loop and inner `THINK × CONDITIONS` loops still work unchanged — they now iterate exactly once per task. Added `#SBATCH --tmp=50G` (Mar-26 guide §"SSD Drive") and switched `WORK` from `/tmp/rtx-$JOBID` to `/scratch/$USER/$JOBID/rtx-work` with a `/tmp` fallback if `/scratch` isn't writable. Default `CONDITIONS` pruned (`tools_per-task_guided`, `tools_all_guided` removed; were retired 2026-04-27 but the default string still listed them, which would have caused legacy direct-sbatch invocations to error on `*)` branch). Cosmetic: dropped `--nv` from `apptainer build` (it's a runtime flag, harmless on build but absent from the Mar-26 guide example).
+- **`cluster-experimenting/README.md`** — rewritten Quickstart, Submission, Resource profile, Monitoring, Cancelling, and Where-things-go sections to reflect the array model. Added `--tmp=50G` row to the resource table, `scontrol update Nice=500` politeness recipe, `ArrayTaskThrottle` post-submit cap, and the `<master>_<task>` array task naming convention for `scancel`/`squeue`/`sacct`.
+
+**What did NOT change.**
+- `run_experiment.py`, `pddl_eval/`, `domains/`, `EXPERIMENTS_FLOW.md` §1-9 (methodology, scoring, prompts, schemas, result-file shape) — fully preserved. No re-baseline needed.
+- The 2026-04-27 IT caps (`--mem=80G` rtx_pro_6000, `--mem=48G` rtx_6000, no `--cpus-per-task` on single-GPU) remain binding and are preserved per-task.
+- Result dir naming `slurm_<model>_<think>_<cond>_<task_jid>` continues — each array task's `$SLURM_JOBID` is unique, so existing aggregators (`aggregate.py:host_tag()`, notebook globs) work unchanged. `meta.host` will now vary across the (model, think, cond) cells of one `--all` sweep instead of being constant within a packed job; this is cosmetic metadata, not a confounder.
+- Smoke matrix (`--smoke`/`--smoke-shuffle`) semantics unchanged — each model is one task that runs the full smoke iteration internally via `run_experiment.py`. Cell-picker maps `@smoke@` cond-marker to the existing SMOKE fast-path in the sbatch.
+- Legacy direct-sbatch invocations (`sbatch --export=ALL,MODELS=...,THINK_MODES=... run_condition_rtx.sbatch`) still work — the cell-picker only fires when `CELLS_LIST` is exported.
+
+**Cost.** Per-cell array (no `%N` cap): wall ≈ max-of-cell with full fan-out, fall-back to serial × pull-overhead under saturation.
+
+| sweep | array size | per-task --time | best-case wall | worst-case wall |
+|---|---|---|---|---|
+| `--all`               | 20 | 12h | ~8h  | ~160h (serial-1-slot) |
+| `--all --no-tools`    |  4 |  8h | ~6h  | ~24h  |
+| `<single-model>`      |  5 | 12h | ~8h  | ~40h  |
+| `--smoke`             |  4 |  3h | ~45m | ~3h   |
+
+Worst case is also ~the prior packed-job wall plus per-task pull overhead (~3 min × 20 ≈ 1h additive at the 20-cell scale). Total compute (GPU-hours) is unchanged vs packed.
+
+**Verification.** Local `--dry-run` smoke against four invocation patterns:
+- `--all --dry-run` → 20 cells, `--array=0-19`, `--time=12:00:00`, all 4 models in CELLS_LIST with matrix-gate filter applied (no `model|on|no-tools` triples present).
+- `--all --no-tools --dry-run` → 4 cells, `--array=0-3`, `--time=08:00:00`, each cell `model|off|no-tools`.
+- `Qwen3.5:0.8B --dry-run` → 5 cells, `--array=0-4`, `--time=12:00:00`, single-model matrix.
+- `--smoke --dry-run` → 4 cells, `--array=0-3`, `--time=03:00:00`, each cell `model|default|@smoke@`, `SMOKE=1` in export list.
+- `gemma4:31b --no-tools --dry-run` → 1 cell, single sbatch (no `--array` flag).
+
+Cell-picker isolation test (parsing `CELLS_LIST` with `IFS=^` then `IFS=|`) verified for both regular cells and `@smoke@` cells.
+
+**Files.** `cluster-experimenting/{submit_with_rtx.sh, run_condition_rtx.sbatch, README.md}`, `development/SUBMISSION_STRATEGY_PROPOSAL.md` (moved to `development/archive/`), `development/CHANGELOG.md`.
+
+---
+
 ## 2026-04-30 — Cluster guide refresh: Mar-26 PDF is sole source of truth
 
 **TL;DR.** The March 2026 BGU cluster user guide replaces the July 2025 edition (Jul-25 PDF deleted from `.local/`). Repo docs and the `cluster-ops` skill aligned to the new edition. The Mar-26 guide adds operational idioms (`srun --jobid --pty bash`, `scontrol update Nice=N`, `--cpus-per-gpu=8` for rtx_6000:2 multi-GPU, tmpfs `/dev/shm` workarounds) and renames the cluster from "ISE-CS-DT" to "CIS"; cluster hardware is unchanged.

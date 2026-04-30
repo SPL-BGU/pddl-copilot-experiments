@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Submit ONE rtx self-deploy job covering one OR MORE models on the BGU
-# cluster. Runs an isolated Apptainer Ollama server on a single GPU node,
-# then runs run_experiment.py against localhost:<port> (no cis-ollama
-# dependency).
+# Submit a SLURM job array on the BGU CIS cluster covering one or more
+# (model, think_mode, condition) cells. Each array task self-deploys an
+# isolated Apptainer Ollama on a single GPU node, then runs run_experiment.py
+# against localhost:<port> for that one cell.
 #
-# Multi-model packing: list multiple models as positional args and they will
-# be processed sequentially in the SAME job, sharing the apptainer/serve
-# startup overhead. Ollama's MAX_LOADED_MODELS=1 evicts the previous model
-# before loading the next, so peak VRAM is bounded by the largest model in
-# the set, not the sum.
+# Per-cell array model (replaces the prior packed-job topology, 2026-04-30):
+# the wrapper builds CELLS=( "model|think|cond" ... ) with the matrix-gate
+# filter (no-tools is reported only for think=off) applied, then submits a
+# single sbatch with --array=0-(N-1). Each task picks its cell via
+# $SLURM_ARRAY_TASK_ID. Up to N tasks run concurrently if the rtx_pro_6000
+# pool has capacity. No %N cap by default — full fan-out for fastest wall.
 #
 # GPU routing:
 #   default → rtx_pro_6000:1 (96 GB, --mem=80G). Hard-pinned as the sole
 #             self-deploy GPU class so peak VRAM and host RAM are constant
-#             across the active sweep. The 4-model pack peaks at
-#             qwen3.6:35b (~24 GB) under MAX_LOADED_MODELS=1, well inside 96 GB.
+#             across the active sweep.
 #   --gpu-type rtx_6000 → opt-in escape hatch (48 GB VRAM, --mem=48G).
 #                         Use only when rtx_pro_6000 is queue-saturated
 #                         and the requested models all fit.
@@ -22,6 +22,9 @@
 # Resource policy (post 2026-04-27 IT request):
 #   * No --cpus-per-task — uses cluster default cpus-per-gpu.
 #   * --mem cap: 80G on rtx_pro_6000 (default), 48G on rtx_6000 (opt-in).
+#   * --tmp=50G on every job — explicit /scratch/$USER/$JOBID per Mar-26
+#     guide §"SSD Drive". Covers ollama.sif (~3 GB) + one model (~26 GB
+#     peak for gemma4:31b in single-cell mode).
 #
 # Usage:
 #   bash cluster-experimenting/submit_with_rtx.sh <model> [<model>...]
@@ -32,35 +35,25 @@
 #   bash cluster-experimenting/submit_with_rtx.sh <model> --dry-run
 #
 # Examples:
-#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
-#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b
-#   bash cluster-experimenting/submit_with_rtx.sh --all                  # full sweep, ONE packed job on rtx_pro_6000
-#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # full no-tools sweep, ONE packed job
-#   bash cluster-experimenting/submit_with_rtx.sh gemma4:31b --no-tools
+#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B           # 5-cell array
+#   bash cluster-experimenting/submit_with_rtx.sh --all                  # 20-cell array (4 models × 5 cells)
+#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # 4-cell array (4 models × 1 cell)
+#   bash cluster-experimenting/submit_with_rtx.sh gemma4:31b --no-tools  # 1-cell job (no array)
 #
-# --all: shorthand for the 4 active models, packed in ONE job:
-#   Pack: Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b
-# All four fit in ≤26 GB resident (gemma4:31b sets the peak), so
-# MAX_LOADED_MODELS=1 sequencing keeps everything well within rtx_pro_6000's
-# 96 GB VRAM. Roster history: 2026-04-29 swap (Qwen3.5:27b/35b → qwen3.6
-# successors; gpt-oss:20b → nemotron-3-nano:30b for non-Qwen/Gemma diversity).
-# 2026-04-30 follow-up dropped nemotron-3-nano:30b after smoke 17274424
-# confirmed deterministic Hermes XML parse failures on the same 4 cells
-# pre- and post-num_predict bump (4096→6144), establishing the failure as
-# content-dependent, not budget-dependent. See development/CHANGELOG.md.
+# --all: shorthand for the 4 active models. Each model contributes 5 cells
+#   under the default think={on,off} × cond={no-tools, tools_per-task_minimal,
+#   tools_all_minimal} matrix with the no-tools/think=on gate (so 5 not 6).
+#   Total array size: 20. Roster history: 2026-04-29 swap, 2026-04-30 nemotron
+#   drop. See development/CHANGELOG.md.
 #
-# --no-tools: shorthand for the single-task no-tools matrix. Pins
-#   THINK_MODES=off, CONDITIONS=no-tools, and TASKS to the four discriminative
-#   single-task evals: solve + validate_domain + validate_problem +
-#   validate_plan. Negative fixtures (ISS-001, 2026-04-26) ride along the
-#   matching task automatically. `simulate` stays excluded (non-discriminative
-#   keyword grader). Chains are skipped by the matrix gate in
-#   run_condition_rtx.sbatch. --time scales linearly with model count
-#   (4h base + 4h per extra model).
+# --no-tools: pins THINK_MODES=off, CONDITIONS=no-tools. Each (model,) cell
+#   becomes one array task. Sbatch's case-branch sets TASKS to the 4-task
+#   discriminative matrix (solve + validate_*); simulate stays excluded;
+#   chains skipped by matrix gate.
 #
-# Think modes default to "on off" (both run sequentially in one job so
-# weights stay resident). Override with --think-modes "default" for models
-# without a think kwarg (e.g. gemma4*).
+# Think modes default to "on off" (both run as separate cells in the array).
+# Override with --think-modes "default" for models without a think kwarg
+# (e.g. gemma4*) or --think-modes "off" to skip thinking cells.
 
 set -eo pipefail
 
@@ -105,7 +98,7 @@ done
 # --smoke / --smoke-shuffle: pin the 4-model pack and full think × cond
 # matrix; run_experiment.py auto-overrides --num-variants/--chain-samples
 # and skips the inner THINK × CONDITIONS loop in the sbatch (the smoke
-# wrapper iterates think internally).
+# wrapper iterates think internally). One cell per model.
 if [ "$SMOKE" -eq 1 ] && [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     echo "Error: --smoke and --smoke-shuffle are mutually exclusive" >&2
     exit 1
@@ -115,31 +108,19 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
         echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes" >&2
         exit 1
     fi
-    # No explicit models → default to the 4-model paper pack. Explicit
-    # models override the pack and smoke just those (used to retest a
-    # single model after a fix without re-running the full pack).
     if [ "${#MODELS[@]}" -eq 0 ]; then
         MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
     fi
-    THINK_MODES_OVERRIDE="default"  # smoke iterates think internally
 fi
 
-# --all expands into a single 4-model pack on rtx_pro_6000.
-# All five fit in ≤24 GB resident under MAX_LOADED_MODELS=1 sequencing —
-# qwen3.6:35b A3B MoE (~24 GB) sets the peak. rtx_pro_6000's 96 GB VRAM has
-# ample headroom for KV cache scaling.
+# --all populates the 4-model paper roster. Each (model, think, cond) cell
+# becomes one array task on rtx_pro_6000:1.
 if [ "$ALL" -eq 1 ]; then
     if [ "${#MODELS[@]}" -gt 0 ]; then
         echo "Error: --all is exclusive with explicit model args" >&2
         exit 1
     fi
-    extra_args=()
-    [ "$NO_TOOLS" -eq 1 ] && extra_args+=(--no-tools)
-    [ "$DRY_RUN" -eq 1 ] && extra_args+=(--dry-run)
-    [ -n "$THINK_MODES_OVERRIDE" ] && extra_args+=(--think-modes "$THINK_MODES_OVERRIDE")
-    [ -n "$GPU_TYPE" ] && extra_args+=(--gpu-type "$GPU_TYPE")
-    bash "$0" Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b "${extra_args[@]}"
-    exit 0
+    MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
 fi
 
 if [ "${#MODELS[@]}" -eq 0 ]; then
@@ -156,7 +137,7 @@ GPU_TYPE="${GPU_TYPE:-rtx_pro_6000}"
 case "$GPU_TYPE" in
     rtx_6000)
         # Opt-in only. 48 GB VRAM is enough for the active 4-model pack
-        # (peak qwen3.6:35b ~24 GB) but the rtx_6000 pool is the more
+        # (peak gemma4:31b ~26 GB) but the rtx_6000 pool is the more
         # contended one historically; prefer rtx_pro_6000 unless that's
         # blocked.
         MEM_ARG="--mem=48G" ;;
@@ -168,9 +149,8 @@ case "$GPU_TYPE" in
         exit 1 ;;
 esac
 
-# --no-tools shorthand: pins the single-task no-tools baseline matrix.
-NO_TOOLS_EXPORTS=()
-TIME_ARG=()
+# --no-tools forces think=off (matrix-gate skips think=on/no-tools anyway)
+# and the cell-builder below pins CONDITIONS to no-tools alone.
 if [ "$NO_TOOLS" -eq 1 ]; then
     if [ -n "$THINK_MODES_OVERRIDE" ] \
         && [ "$THINK_MODES_OVERRIDE" != "off" ] \
@@ -178,44 +158,66 @@ if [ "$NO_TOOLS" -eq 1 ]; then
         echo "Error: --no-tools forces THINK_MODES to off|default; got --think-modes \"$THINK_MODES_OVERRIDE\"" >&2
         exit 1
     fi
-    THINK_MODES="${THINK_MODES_OVERRIDE:-off}"
-    NO_TOOLS_EXPORTS=(CONDITIONS=no-tools "TASKS=solve validate_domain validate_problem validate_plan")
-    # Solve-only no-tools measured 10–22 min wall (2026-04-25). Adding the
-    # three validate_* tasks scales to ~350 evals/model. Post 2026-04-29
-    # num_predict 1024/1536→4096 + num_ctx 8192→16384 bump, per-model wall
-    # ~doubles (33–41% of non-solve trials previously truncated mid-emission
-    # now run up to 4× longer). Cap = 6h base + 6h per extra model.
-    nt_hours=$(( 6 + 6 * (${#MODELS[@]} - 1) ))
-    TIME_ARG=(--time=${nt_hours}:00:00)
-elif [ -n "$THINK_MODES_OVERRIDE" ]; then
-    THINK_MODES="$THINK_MODES_OVERRIDE"
+fi
+
+# Resolve effective think × cond axis values for cell generation.
+DEFAULT_CONDITIONS=(no-tools tools_per-task_minimal tools_all_minimal)
+DEFAULT_THINK_MODES=(on off)
+
+if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+    # Smoke iterates think × conds inside run_experiment.py.
+    # One cell per model — sbatch SMOKE-fastpath consumes the cell.
+    EFF_THINK=("default")
+    EFF_COND=("@smoke@")
+elif [ "$NO_TOOLS" -eq 1 ]; then
+    EFF_THINK=("${THINK_MODES_OVERRIDE:-off}")
+    EFF_COND=("no-tools")
 else
-    THINK_MODES="on off"
+    if [ -n "$THINK_MODES_OVERRIDE" ]; then
+        read -ra EFF_THINK <<< "$THINK_MODES_OVERRIDE"
+    else
+        EFF_THINK=("${DEFAULT_THINK_MODES[@]}")
+    fi
+    EFF_COND=("${DEFAULT_CONDITIONS[@]}")
 fi
 
-# Multi-model regular sweep needs more wall time than the 2d sbatch default.
-# Empirical wall pre 2026-04-29: ~10–17h per model for full {on, off} ×
-# 4 tools_conds. Post-bump (num_predict 1024/1536→4096; num_ctx 8192→16384;
-# num_ctx_thinking 12288→16384), per-model wall ~doubles to ~20–35h. With
-# 4 models packed (--all), 6d (144h) covers the full pack with margin and
-# stays under main partition's 7d cap. Single-model regular sweep keeps
-# the 2d sbatch default — ~20h post-bump fits in 48h.
-if [ "$NO_TOOLS" -eq 0 ] && [ "${#MODELS[@]}" -gt 1 ]; then
-    TIME_ARG=(--time=6-00:00:00)
+# Build cells (model × think × cond) with matrix-gate skip:
+# no-tools is reported only for think=off — no-tools/think=on cells dropped.
+CELLS=()
+for m in "${MODELS[@]}"; do
+    for t in "${EFF_THINK[@]}"; do
+        for c in "${EFF_COND[@]}"; do
+            if [ "$c" = "no-tools" ] && [ "$t" != "off" ]; then
+                continue
+            fi
+            CELLS+=("${m}|${t}|${c}")
+        done
+    done
+done
+N_CELLS=${#CELLS[@]}
+if [ "$N_CELLS" -eq 0 ]; then
+    echo "Error: cell list is empty after matrix-gate filter (think_modes=${EFF_THINK[*]} conds=${EFF_COND[*]})" >&2
+    exit 1
 fi
+CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 
-# Smoke wallclock: ~80 evals across 4 models in one packed job. Pre-bump
-# (2026-04-29) measured 12–14 min/model on rtx_pro_6000 (ref: job 17263071).
-# Post num_predict/num_ctx bump, per-model wall lands ~25–35 min, so 4-model
-# pack ~150 min. 3h cap covers Ollama startup + model warmup + slowest cell
-# with margin.
+# Per-task --time. Each array task runs ONE (model, think, cond) cell, so
+# the prior packed 6-day budget no longer applies — cells are independent
+# and budgets are per-cell.
+#   tools cells: post 2026-04-29 cap-bump wall ~5-9h (single-task + chains).
+#   no-tools cells: ~6h (4-task discriminative matrix, no chains).
+#   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     TIME_ARG=(--time=03:00:00)
+elif [ "$NO_TOOLS" -eq 1 ]; then
+    TIME_ARG=(--time=08:00:00)
+else
+    TIME_ARG=(--time=12:00:00)
 fi
 
 # Job name: single model uses the model tag; multi-model uses
-# pddl_rtx_pack<count>_<first-tag> so the .out file is searchable but
-# distinct from the prior single-model layout.
+# pddl_rtx_pack<count>_<first-tag>. With per-cell arrays %x is the same
+# across array tasks of one submission and %J disambiguates per task.
 if [ "${#MODELS[@]}" -eq 1 ]; then
     MODEL_TAG=$(echo "${MODELS[0]}" | tr '/:.' '___')
     JOB_NAME="pddl_rtx_${MODEL_TAG}"
@@ -236,14 +238,10 @@ fi
 cd "$REPO_ROOT"
 mkdir -p cluster-experimenting/logs
 
-# Compose --export list. ALL inherits caller env; we then layer MODELS,
-# THINK_MODES, (when --no-tools) CONDITIONS + TASKS, and the smoke/shard
-# env vars consumed by run_condition_rtx.sbatch.
-MODELS_STR="${MODELS[*]}"
-EXPORT_LIST="ALL,MODELS=${MODELS_STR},THINK_MODES=${THINK_MODES}"
-for kv in "${NO_TOOLS_EXPORTS[@]}"; do
-    EXPORT_LIST="${EXPORT_LIST},${kv}"
-done
+# Compose --export list. ALL inherits caller env; we layer CELLS_LIST
+# (^-separated MODEL|THINK|COND triples; sbatch picks one per array task
+# via $SLURM_ARRAY_TASK_ID) and the smoke/shard env vars.
+EXPORT_LIST="ALL,CELLS_LIST=${CELLS_LIST}"
 if [ "$SMOKE" -eq 1 ]; then
     EXPORT_LIST="${EXPORT_LIST},SMOKE=1"
 fi
@@ -254,25 +252,34 @@ if [ -n "$SHARD" ]; then
     EXPORT_LIST="${EXPORT_LIST},SHARD=${SHARD}"
 fi
 
+# Add --array only when N>1; single-cell submissions remain plain sbatch.
+ARRAY_ARG=()
+if [ "$N_CELLS" -gt 1 ]; then
+    ARRAY_ARG=(--array="0-$((N_CELLS-1))")
+fi
+
 cmd=(sbatch
     --job-name="$JOB_NAME"
     --gpus="${GPU_TYPE}:1"
     "$MEM_ARG"
     "${TIME_ARG[@]}"
+    "${ARRAY_ARG[@]}"
     --export="$EXPORT_LIST"
     "$SBATCH_FILE")
 
 echo "--- rtx self-deploy submission ---" >&2
 echo "  models:      ${MODELS[*]}" >&2
-echo "  think modes: $THINK_MODES" >&2
+if [ "$N_CELLS" -gt 1 ]; then
+    echo "  cells:       $N_CELLS (array fan-out 0-$((N_CELLS-1)))" >&2
+else
+    echo "  cells:       1 (single sbatch, no array)" >&2
+fi
 echo "  GPU:         ${GPU_TYPE}:1" >&2
 echo "  mem:         $MEM_ARG" >&2
-if [ "${#TIME_ARG[@]}" -gt 0 ]; then
-    echo "  time:        ${TIME_ARG[*]}" >&2
-fi
+echo "  time/cell:   ${TIME_ARG[*]}" >&2
 echo "  job name:    $JOB_NAME" >&2
 if [ "$NO_TOOLS" -eq 1 ]; then
-    echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=\"solve validate_domain validate_problem validate_plan\")" >&2
+    echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=solve+validate_*)" >&2
 fi
 if [ "$SMOKE" -eq 1 ]; then
     echo "  mode:        --smoke (1 domain × 1 problem × 1 variant × 5 tasks × 2 conds × 2 think; output → results/smoke_<sha>_<ts>/)" >&2
@@ -292,6 +299,9 @@ else
     echo "$jid"
     echo "" >&2
     echo "Monitor:  squeue -j $jid" >&2
-    echo "Log:      $REPO_ROOT/cluster-experimenting/logs/${JOB_NAME}-${jid}.out" >&2
-    echo "Results:  $REPO_ROOT/results/slurm_<model>_<think>_<cond>_${jid}/  (one dir per (model,think,cond))" >&2
+    if [ "$N_CELLS" -gt 1 ]; then
+        echo "  (array tasks appear as ${jid}_0..${jid}_$((N_CELLS-1)))" >&2
+    fi
+    echo "Log:      $REPO_ROOT/cluster-experimenting/logs/${JOB_NAME}-<task_jid>.out" >&2
+    echo "Results:  $REPO_ROOT/results/slurm_<model>_<think>_<cond>_<task_jid>/  (one dir per cell)" >&2
 fi

@@ -1,44 +1,44 @@
 #!/bin/bash
-### Runs run_experiment.py for one OR MORE models on a SELF-DEPLOYED Ollama
-### server running inside an Apptainer container on a single GPU node.
-### For each model, loops over all THINK_MODES × CONDITIONS in the same job
-### so weights stay resident — no cross-invocation eviction, no shared-server
-### contention. With multiple models, models run sequentially on the same GPU
-### (Ollama's MAX_LOADED_MODELS=1 evicts the previous model before loading
-### the next), sharing the apptainer/serve startup overhead across models.
+### Runs run_experiment.py for ONE (model, think_mode, condition) cell on a
+### SELF-DEPLOYED Ollama server running inside an Apptainer container on a
+### single GPU node. Submitted as part of a SLURM array (one task per cell)
+### via cluster-experimenting/submit_with_rtx.sh; the wrapper builds the
+### CELLS_LIST and the cell-array picker block below maps SLURM_ARRAY_TASK_ID
+### to one cell. Single-cell submissions skip --array; the picker still fires
+### with IDX=0.
 ###
 ### Default GPU: rtx_pro_6000:1 (96 GB) — single, hard-pinned class so peak
-### VRAM and host RAM are constant across the active sweep. The 4-model
-### pack peaks at gemma4:31b (~26 GB), well inside 96 GB; the headroom
-### absorbs KV cache scaling without re-tuning. Override with
-### --gpu-type rtx_6000 (and --mem=48G) only as an emergency escape hatch.
+### VRAM and host RAM are constant across the active sweep. Each cell holds
+### exactly one model under MAX_LOADED_MODELS=1; the largest active model
+### (gemma4:31b ~26 GB) fits in 96 GB with ample KV cache headroom. Override
+### with --gpu-type rtx_6000 (and --mem=48G) only as an emergency escape.
 ###
-### Model VRAM fit (weights + KV cache at NUM_PARALLEL=4, ctx=8192):
+### Model VRAM fit (weights + KV cache at NUM_PARALLEL=4, ctx=16384):
 ###   Qwen3.5:0.8B        ~ 3 GB   → fits rtx_pro_6000 (96 GB)
 ###   qwen3.6:27b         ~17 GB   → fits rtx_pro_6000 (dense 27.8B Q4_K_M)
 ###   qwen3.6:35b         ~24 GB   → fits rtx_pro_6000 (35B-A3B MoE)
 ###   gemma4:31b          ~26 GB   → fits rtx_pro_6000 (peak)
-### When packing multiple models in one job, ALL listed models must fit on the
-### chosen GPU (loaded one at a time under MAX_LOADED_MODELS=1). Roster
-### history (CHANGELOG): 2026-04-29 Qwen3.5:27b/35b → qwen3.6 successors,
-### gpt-oss:20b → nemotron-3-nano:30b. 2026-04-30 dropped nemotron-3-nano:30b
-### after smoke 17274424 confirmed deterministic Hermes XML parse failures
-### independent of num_predict (4096 vs 6144 yielded identical 4-cell signature).
+### Roster history (CHANGELOG): 2026-04-29 Qwen3.5:27b/35b → qwen3.6
+### successors, gpt-oss:20b → nemotron-3-nano:30b. 2026-04-30 dropped
+### nemotron after smoke 17274424 confirmed Hermes XML parse failures
+### independent of num_predict.
 ###
 ### Submit via cluster-experimenting/submit_with_rtx.sh <model> [<model>...],
-### or directly:
-###   sbatch --export=ALL,MODELS="Qwen3.5:0.8B qwen3.6:27b",THINK_MODES="on off" \
+### or directly (legacy non-array path with old-style MODELS env):
+###   sbatch --export=ALL,MODELS="Qwen3.5:0.8B",THINK_MODES="on off" \
 ###          cluster-experimenting/run_condition_rtx.sbatch
 ###
 ### Required env (one of):
-###   MODELS       — space-separated Ollama model names (preferred for packing)
+###   CELLS_LIST   — ^-separated MODEL|THINK|COND triples (set by submit_with_rtx.sh)
+###   MODELS       — space-separated Ollama model names (legacy direct-sbatch)
 ###   MODEL        — single Ollama model name (back-compat fallback)
 ###   THINK_MODES  — space-separated think modes, e.g. "on off" or "default"
 ###
 ### Optional env (defaults shown):
-###   CONDITIONS   — default = 4 tools conditions (no-tools omitted; rerun
-###                  separately when wanted, matches Qwen3.5:0.8B reference set).
-###                  Override: CONDITIONS="no-tools" bash submit_with_rtx.sh ...
+###   CONDITIONS   — default = 2 active tools conditions (tools_per-task_minimal
+###                  + tools_all_minimal). When CELLS_LIST is set this is
+###                  overridden by the cell-array picker. The retired
+###                  *_guided variants are no longer in the default.
 ###   CONCURRENCY=4              (matches self-deploy OLLAMA_NUM_PARALLEL=4)
 ###   CHAIN_SAMPLES=100
 ###
@@ -77,6 +77,7 @@
 #SBATCH --output=cluster-experimenting/logs/%x-%J.out
 #SBATCH --gpus=rtx_pro_6000:1
 #SBATCH --mem=80G
+#SBATCH --tmp=50G
 #SBATCH --time=2-00:00:00
 
 set -eo pipefail
@@ -87,6 +88,35 @@ echo "SLURM_JOB_NODELIST=$SLURM_JOB_NODELIST"
 echo "Node IP: $(hostname -i)"
 echo "Start time: $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1
+
+### Cell-array picker ###
+# When invoked via submit_with_rtx.sh (the default path post-2026-04-30),
+# CELLS_LIST is exported as a ^-separated list of "MODEL|THINK|COND" triples.
+# Each array task picks its cell by $SLURM_ARRAY_TASK_ID (defaults to 0 for
+# single-cell submissions where --array isn't set).
+#
+# Legacy direct-sbatch invocations (with old-style MODELS/THINK_MODES env)
+# still work — the picker only fires when CELLS_LIST is set.
+if [ -n "${CELLS_LIST:-}" ]; then
+    IFS='^' read -ra _CELLS <<< "$CELLS_LIST"
+    IDX="${SLURM_ARRAY_TASK_ID:-0}"
+    SELECTED="${_CELLS[$IDX]:-}"
+    if [ -z "$SELECTED" ]; then
+        echo "Error: cell index $IDX out of range (0..$((${#_CELLS[@]}-1)))" >&2
+        exit 1
+    fi
+    IFS='|' read -r CELL_MODEL CELL_THINK CELL_COND <<< "$SELECTED"
+    if [ "$CELL_COND" = "@smoke@" ]; then
+        SMOKE="${SMOKE:-1}"
+        MODELS="$CELL_MODEL"
+        THINK_MODES="default"
+    else
+        MODELS="$CELL_MODEL"
+        THINK_MODES="$CELL_THINK"
+        CONDITIONS="$CELL_COND"
+    fi
+    echo "Cell-array task: IDX=$IDX  MODEL=$CELL_MODEL  THINK=$CELL_THINK  COND=$CELL_COND"
+fi
 
 ### Required inputs ###
 # MODELS (space-sep) is preferred. MODEL (single) is accepted for back-compat.
@@ -109,11 +139,25 @@ EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
 CONCURRENCY="${CONCURRENCY:-4}"
-CONDITIONS="${CONDITIONS:-tools_per-task_minimal tools_per-task_guided tools_all_minimal tools_all_guided}"
+CONDITIONS="${CONDITIONS:-tools_per-task_minimal tools_all_minimal}"
 TASKS_ENV_OVERRIDE="${TASKS:-}"
 
-### Workspace on compute-node local disk ###
-WORK=/tmp/rtx-$SLURM_JOBID
+### Workspace on compute-node SSD scratch (Mar-26 guide §"SSD Drive") ###
+# --tmp=50G reserves space on /scratch/$USER/$JOBID. We construct and export
+# SLURM_SCRATCH_DIR per the guide. Falls back to /tmp/rtx-$JOBID if /scratch
+# isn't writable on this node-type (functionally similar — node-local OS disk).
+if [ -n "${SLURM_JOB_USER:-}" ] && [ -n "${SLURM_JOB_ID:-}" ]; then
+    SCRATCH_BASE="/scratch/${SLURM_JOB_USER}/${SLURM_JOB_ID}"
+    if mkdir -p "$SCRATCH_BASE" 2>/dev/null; then
+        export SLURM_SCRATCH_DIR="$SCRATCH_BASE"
+        WORK="$SCRATCH_BASE/rtx-work"
+    else
+        echo "Note: $SCRATCH_BASE not writable, falling back to /tmp"
+        WORK="/tmp/rtx-${SLURM_JOB_ID}"
+    fi
+else
+    WORK="/tmp/rtx-${SLURM_JOB_ID:-$$}"
+fi
 mkdir -p "$WORK/models"
 cd "$WORK"
 
@@ -123,7 +167,7 @@ if [ -f $HOME/ollama.sif ]; then
     cp $HOME/ollama.sif $SIF
 else
     echo "Building ollama.sif from docker://ollama/ollama (first run, ~3 min)"
-    apptainer build --nv --force $SIF docker://ollama/ollama 2>&1 | tail -3
+    apptainer build --force $SIF docker://ollama/ollama 2>&1 | tail -3
     cp $SIF $HOME/ollama.sif
     echo "Cached to \$HOME/ollama.sif for future jobs"
 fi
@@ -181,7 +225,9 @@ echo
 cd "$EXPT_ROOT"
 OVERALL_RC=0
 
-### Outer loop: MODELS — sequential, share the apptainer/serve startup ###
+### Outer loop: MODELS — single iteration when invoked as a cell-array task
+### (CELLS_LIST sets MODELS to one model). Multi-iteration only on legacy
+### direct-sbatch invocations with old-style MODELS env.
 for MODEL in $MODELS; do
     MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
 
