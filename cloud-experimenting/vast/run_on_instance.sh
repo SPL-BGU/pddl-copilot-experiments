@@ -30,17 +30,18 @@ mkdir -p "$LOG_DIR"
 # Kill any prior tmux session under the same name (re-runs)
 tmux kill-session -t "exp-$RUN_ID" 2>/dev/null || true
 
-# Build the run command. We bake `--smoke` literally rather than splatting
-# `${EXTRA_ARGS[@]}` from the heredoc — array expansion inside an unquoted
-# heredoc was a fragile dance and the 2026-04-30 attempt died at argparse
-# with `unrecognized arguments: <whitespace>`, exit 2. Smoke is the only
-# thing this script gets invoked for today; if a non-smoke variant ever
-# needs it, parameterize via a SMOKE_FLAG env var instead of $@.
+# Build the run command. Keep the python invocation on ONE line — `\\<newline>`
+# line continuations inside an unquoted heredoc are interpreted differently by
+# the instance's bash 5.1.16 (Ubuntu 22.04) than by macOS bash 3.2/5.3: 5.1
+# strips the newline and joins the next line onto a literal `\`, producing
+# argv elements like `\    --ollama-host` that argparse rejects with
+# `unrecognized arguments: <whitespace>` exit=2 (2026-04-30 smokes #5–#7).
+# `--smoke` is also baked in literally rather than splatting `${EXTRA_ARGS[@]}`
+# from the heredoc; array expansion in heredocs is similarly fragile. If a
+# non-smoke variant is ever needed, parameterise via a SMOKE_FLAG env var.
 #
 # Pin LANG/LC_ALL because the apt step on the nvidia/cuda base image emits
-# `Setting locale failed` (no locales pkg). A broken locale on Python 3.11+
-# can mis-decode argv to control chars, which is one hypothesis for the
-# 'whitespace argv' failure mode.
+# `Setting locale failed` (no locales pkg).
 CMD=$(cat <<INNER
 set -o pipefail
 export LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -48,13 +49,7 @@ source $EXPT_DIR/.venv/bin/activate
 export PDDL_MARKETPLACE_PATH=$PDDL_DIR
 export OLLAMA_NUM_PARALLEL=4
 cd $EXPT_DIR
-python3 run_experiment.py \\
-    --ollama-host http://127.0.0.1:11434 \\
-    --concurrency 4 \\
-    --models $MODELS \\
-    --smoke \\
-    --output-dir $LOG_DIR \\
-    2>&1 | tee $LOG_DIR/run.log
+python3 run_experiment.py --ollama-host http://127.0.0.1:11434 --concurrency 4 --models $MODELS --smoke --output-dir $LOG_DIR 2>&1 | tee $LOG_DIR/run.log
 echo "EXIT=\${PIPESTATUS[0]}" >> $LOG_DIR/run.log
 INNER
 )
