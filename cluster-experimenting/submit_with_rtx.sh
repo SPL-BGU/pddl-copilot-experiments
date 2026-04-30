@@ -218,6 +218,11 @@ fi
 # Job name: single model uses the model tag; multi-model uses
 # pddl_rtx_pack<count>_<first-tag>. With per-cell arrays %x is the same
 # across array tasks of one submission and %J disambiguates per task.
+# Note: run_condition_rtx.sbatch renames each array task at runtime via
+# `scontrol update JobName=...` once it resolves its cell, so live `squeue`
+# listings show pddl_<model>_<think>_<cond_tag> per task. Log filenames
+# (%x-%J.out) keep the submit-time prefix below — they were resolved at
+# job start, before the rename.
 if [ "${#MODELS[@]}" -eq 1 ]; then
     MODEL_TAG=$(echo "${MODELS[0]}" | tr '/:.' '___')
     JOB_NAME="pddl_rtx_${MODEL_TAG}"
