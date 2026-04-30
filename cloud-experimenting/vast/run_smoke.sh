@@ -180,17 +180,38 @@ DPH=$DPH
 RUN_ID=$RUN_ID
 EOF
 
-# Wait for SSH to actually accept
-log "Waiting for SSH to accept connections ..."
+# Wait for SSH to actually accept (separate from Vast's actual_status).
+# Vast reports `running` once the container is up, but the in-container SSH
+# daemon and the ssh1/2/etc.vast.ai proxy routing can lag by several minutes
+# on busy hosts. Wait up to 10 min with progress logging.
+log "Waiting for SSH to accept connections (up to 10 min) ..."
 SSH_OK=0
-for i in $(seq 1 30); do
+SSH_MAX_ITERS=60          # 60 × 10s = 10 min total
+for i in $(seq 1 $SSH_MAX_ITERS); do
     if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -o BatchMode=yes \
             -p "$SSH_PORT" "root@$SSH_HOST" 'echo ok' 2>/dev/null | grep -q ok; then
         SSH_OK=1; break
     fi
+    # Log progress every 6 iterations (~60s) so the user knows we're alive
+    if [ $((i % 6)) -eq 0 ]; then
+        log "  still waiting for SSH ($((i*5))s elapsed; ${SSH_HOST}:${SSH_PORT})"
+    fi
     sleep 5
 done
-[ "$SSH_OK" = "1" ] || { log "ERROR: SSH never accepted in 150s"; exit 1; }
+if [ "$SSH_OK" != "1" ]; then
+    log "ERROR: SSH never accepted in $((SSH_MAX_ITERS*5))s"
+    log "Instance state at failure:"
+    vastai show instance "$INSTANCE_ID" --raw 2>/dev/null | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    for k in ('actual_status','intended_status','status_msg','ssh_host','ssh_port','ssh_idx','machine_id','public_ipaddr'):
+        print(f'    {k}: {d.get(k, \"?\")}')
+except Exception as e:
+    print(f'    (failed to parse instance state: {e})')
+" | tee -a "$LOG"
+    exit 1
+fi
 log "SSH OK."
 
 # ──────────────────────────────────────────────────────────────────────────
