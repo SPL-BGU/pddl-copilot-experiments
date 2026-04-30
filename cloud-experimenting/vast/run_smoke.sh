@@ -21,11 +21,18 @@ DEFAULT_MODELS="Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b"
 # direct_port_count>=1 enforces direct-SSH availability; without it Vast
 # falls back to the sshN.vast.ai proxy which silently wedged 4/4 attempts
 # on 2026-04-30 (instance reported `running` but proxy port never opened).
-# dph_total raised to <=2.5 to admit H100-class hosts (~$1.76/h).
+# disk_space>=150 — `--disk N` is silently capped at the host's free disk;
+# 4-model smoke needs ~67GB weights + ~10GB image/deps + ~24GB transient
+# 'partial' blob during pulls. The 2026-04-30 attempt failed at the third
+# model with 'no space left on device' on a 47GB host. Filtering at >=150
+# eliminates H100 NVL (small on-host SSDs) and lands on A100 SXM4 ~$0.91/h
+# with 1TB disk, or RTX A6000 ~$0.37/h with 500GB.
+# dph_total raised to <=2.5 to admit H100-class hosts (~$1.76/h) when their
+# disk is sufficient.
 # Dropped vs. initial scaffold: datacenter=true (Vast field is null/missing
 # on most hosts; filter zeros out), inet_down/up thresholds (excluded too
 # many cheap reliable boxes for a 5GB weights pull).
-OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=2.5 reliability>=0.99 cuda_max_good>=12.0 direct_port_count>=1'
+OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=2.5 reliability>=0.99 cuda_max_good>=12.0 direct_port_count>=1 disk_space>=150'
 
 # GPU PRIORITY (highest tier first). The selection logic walks this list and
 # picks the cheapest offer in the highest-available tier — i.e., prefer
@@ -50,7 +57,10 @@ GPU_PRIORITY="H100 NVL|H100 SXM5|H100 PCIE|A100 SXM4|A100 PCIE|A100X|RTX A6000|A
 # resolved digest indirectly via `nvidia-smi` + `ollama --version` lines
 # in host_info.json.
 DOCKER_IMAGE="nvidia/cuda:12.4.1-runtime-ubuntu22.04"
-DISK_GB=100
+# Peak disk during 4-model smoke: ~10GB image+deps + ~67GB model weights +
+# ~24GB transient 'partial' blob = ~100GB peak. Allocating 150GB gives
+# 50GB headroom; OFFER_FILTER ensures the host actually has it free.
+DISK_GB=150
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-smoke"
