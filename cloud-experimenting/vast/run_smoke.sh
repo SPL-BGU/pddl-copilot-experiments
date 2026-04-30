@@ -15,8 +15,12 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────────────────
 DEFAULT_MODELS="Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b"
 
-# Datacenter-only, reliability ≥0.99, 48GB+ GPU, cheap, decent network.
-OFFER_FILTER='reliability>=0.99 gpu_ram>=46 dph<=0.6 num_gpus=1 cuda_max_good>=12.0 datacenter=true inet_down>=300 inet_up>=100'
+# 48GB+ GPU, single-GPU, reliability ≥0.99, dph_total ceiling, CUDA 12+.
+# Dropped vs. initial scaffold: datacenter=true (Vast field is null/missing
+# on most hosts; filter zeros out), inet_down/up thresholds (excluded too
+# many cheap reliable boxes for a 5GB weights pull). 21 offers match this
+# in the live pool as of 2026-04-30.
+OFFER_FILTER='gpu_ram>=46 num_gpus=1 dph_total<=0.8 reliability>=0.99 cuda_max_good>=12.0'
 
 DOCKER_IMAGE="ollama/ollama:latest"   # Vast tag pinning is brittle; we capture
                                       # `ollama --version` into host_info.json.

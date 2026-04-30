@@ -8,10 +8,11 @@ rsync back to `results/vast-<instance-id>/` while the run is in flight.
 ## Why this exists
 
 Cluster burn rate has been zero completed sweeps since the 2026-04-29 roster
-refresh. Vast.ai gives us a queue-free path: ~$0.55/h for an L40S 48 GB
-datacenter host. A full smoke (~90 min, ~$0.85) validates the pipeline; a
-full sweep extrapolates to ~$25–$30 single-box sequential, or ~$28 across
-4 parallel boxes for ~10× wall-time savings.
+refresh. Vast.ai gives us a queue-free path: ~$0.20–$0.40/h for a 48 GB GPU
+host (Quadro RTX 8000 / A6000 / RTX 4090 48 GB / L40 / L40S — actual silicon
+captured into `host_info.json` per run). A full smoke (~90 min, ~$0.30–$0.60)
+validates the pipeline; a full sweep extrapolates to ~$10–$25 single-box
+sequential, or ~$12–$30 across 4 parallel boxes for ~10× wall-time savings.
 
 **Honest caveat:** the L40S is comparable to (or slower than) the cluster's
 `rtx_pro_6000` Blackwell. Vast.ai does not improve per-call latency. The
