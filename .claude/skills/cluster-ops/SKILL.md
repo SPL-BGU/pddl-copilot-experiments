@@ -32,9 +32,9 @@ Cluster & repo conventions that matter here:
 - **Never mutate** `run_experiment.py`, `run_condition_rtx.sbatch`, or `submit_with_rtx.sh` from this skill.
 - **Preflight before submit**: run `scripts/preflight.sh` first — it pulls both repos, refreshes the plugin venvs, and surfaces GPU pool capacity in one shot. Submitting with a stale venv or against a saturated pool wastes time.
 
-## Helper scripts (all live under `scripts/`)
+## Operations scripts (under `scripts/`)
 
-All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`. The four operations scripts (`status.sh`, `sync.sh`, `preflight.sh`, `postmortem.sh`) live here. The four analysis scripts (`aggregate.py`, `plot.py`, `plot_focused.py`, `table.py`) and `drift_check.py` were moved to `.claude/skills/analyzer/scripts/` on 2026-05-01 — see the `analyzer` skill for those.
+All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`. This skill retains the four operations scripts: `status.sh`, `sync.sh`, `preflight.sh`, `postmortem.sh`. The five analysis scripts (`aggregate.py`, `plot.py`, `plot_focused.py`, `table.py`, `drift_check.py`) moved to `.claude/skills/analyzer/scripts/` on 2026-05-01 — see the `analyzer` skill for those.
 
 ### `scripts/status.sh` — cluster status snapshot
 
