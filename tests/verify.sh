@@ -38,6 +38,7 @@ run_test test_scoring.py
 run_test test_check_success.py
 run_test test_fixtures.py
 run_test test_runner.py
+run_test test_drift_check.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"

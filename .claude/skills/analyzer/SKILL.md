@@ -24,7 +24,7 @@ All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-
   - Cell-keyed (current, post 2026-05-01): `slurm_<model>_<think>_<cond>` — one dir per cell, resubmits accumulate timestamped summaries inside.
   - With-jobid (pre 2026-05-01): `slurm_<model>_<think>_<cond>_<jobid>` — one dir per submission.
   - Pre-think-axis legacy: `slurm_<model>_<cond>_<jobid>` — treated as `think=default` with a header warning.
-- **Wilson 95% CIs** (`pddl_eval.summary.wilson_ci`, also re-implemented in `plot.py` and `drift_check.py`) are the standard interval everywhere — never raw stderrs.
+- **Wilson 95% CIs** are the standard interval everywhere — never raw stderrs. Canonical impl: `pddl_eval.summary.wilson_ci`. `plot.py` and `drift_check.py` import it directly (each adds the repo root to `sys.path` once at import time so they remain runnable as standalone scripts from the repo root).
 
 ## Helper scripts (all live under `scripts/`)
 

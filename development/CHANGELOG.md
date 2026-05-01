@@ -54,6 +54,13 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 **Files.** `pddl_eval/runner.py`, `run_experiment.py`, `tests/test_runner.py`, `cluster-experimenting/{run_condition_rtx.sbatch, submit_with_rtx.sh, README.md}`, `.claude/skills/cluster-ops/SKILL.md`, `.claude/skills/analyzer/{SKILL.md, scripts/{aggregate.py, plot.py, plot_focused.py, table.py, drift_check.py}}` (the four pre-existing scripts moved from `cluster-ops/scripts/`; `drift_check.py` is new), `development/CHANGELOG.md`.
 
+**Post-review fixes (follow-up commit).** Three nits surfaced during review of the PR were cleared on the same branch:
+- **`drift_check.py` test coverage.** `tests/test_drift_check.py` (new, 11 assertions) covers `wilson_ci` known values + zero-n, `_classify_drift` for all four verdicts (`none`/`below`/`above`/`no-data`), `_load_cell` precedence (summary > JSONL, JSONL fallback, empty → `None`), and `_aggregate_trials_jsonl` first-seen dedup. Registered in `tests/verify.sh`. The script's exit-code-1-on-`below` is consumed by scripted gating, so silent regressions in any of these paths could let a regressing sweep keep burning GPU-hours; tests close that gap.
+- **`wilson_ci` deduplicated.** `pddl_eval.summary.wilson_ci` is now the single canonical implementation. `.claude/skills/analyzer/scripts/{plot.py, drift_check.py}` import it directly (each adds the repo root to `sys.path` once at import time so they remain runnable as standalone scripts from the repo root). The two analyzer-local copies are deleted; the floats they returned were semantically equivalent, so all existing plots and drift outputs are byte-stable. SKILL.md "Conventions" line updated.
+- **`TRIAL_KEY_LEN` enforced in `_aggregate_trials_jsonl`.** Wrong-length key tuples (would surface if the trial-key shape ever changes after old JSONLs were written) are silently dropped — consistent with the surrounding malformed-line policy. Loud failure here would block drift checks against a cell whose `summary_*.json` is fine but whose `trials.jsonl` predates a shape change. The runner-side `_load_progress` keeps the loud-`RuntimeError` policy for the writer path; the reader-side analyzer degrades gracefully.
+
+**Files (post-review).** `tests/test_drift_check.py` (new), `tests/verify.sh`, `.claude/skills/analyzer/scripts/{drift_check.py, plot.py}`, `.claude/skills/analyzer/SKILL.md`, `development/CHANGELOG.md`.
+
 ---
 
 ## 2026-04-30 — Cluster submission topology: per-cell SLURM job array

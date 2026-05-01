@@ -28,6 +28,10 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Canonical wilson_ci lives in pddl_eval/summary.py. Run from repo root.
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from pddl_eval.summary import wilson_ci  # noqa: E402
+
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
 TASK_LABELS = {
     "solve": "Solve",
@@ -198,17 +202,6 @@ def style(info: dict) -> tuple[str, str | None]:
 def _wilson_err(rate: float, lo: float, hi: float) -> tuple[float, float]:
     """Return (err_lo, err_hi) for matplotlib errorbar yerr (always ≥0)."""
     return max(0.0, rate - lo), max(0.0, hi - rate)
-
-
-def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
-    """Wilson score interval at the given z (default 95%). Matches run_experiment.py."""
-    if total <= 0:
-        return 0.0, 0.0
-    p = successes / total
-    denom = 1 + z * z / total
-    center = (p + z * z / (2 * total)) / denom
-    half = (z * np.sqrt(p * (1 - p) / total + z * z / (4 * total * total))) / denom
-    return round(max(0.0, center - half), 4), round(min(1.0, center + half), 4)
 
 
 def merge_series(series: list[dict]) -> list[dict]:

@@ -30,26 +30,17 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# Reuse parse_dirname / load helpers from the sibling aggregate.py.
+# Sibling-script imports (parse_dirname) and harness imports (wilson_ci,
+# TRIAL_KEY_LEN). Both path inserts run unconditionally — the analyzer
+# scripts are designed to be invoked from the repo root, where pddl_eval/
+# is importable; aggregate.py sits next to this file.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from aggregate import parse_dirname  # noqa: E402
+from pddl_eval.runner import TRIAL_KEY_LEN  # noqa: E402
+from pddl_eval.summary import wilson_ci  # noqa: E402
 
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
-
-
-def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
-    """Wilson score 95% interval for a binomial proportion.
-
-    Self-contained so the script has no cross-skill imports beyond
-    `parse_dirname` (which is a small reusable helper, not a metric).
-    """
-    if n == 0:
-        return (0.0, 0.0)
-    p = k / n
-    denom = 1 + z * z / n
-    center = (p + z * z / (2 * n)) / denom
-    margin = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / denom
-    return (max(0.0, center - margin), min(1.0, center + margin))
 
 
 def _aggregate_trials_jsonl(path: Path) -> dict[str, dict[str, int]]:
@@ -59,6 +50,10 @@ def _aggregate_trials_jsonl(path: Path) -> dict[str, dict[str, int]]:
     JSONL is per-trial, so n/successes are exact for whatever trials
     have completed so far. Bad lines (partial tail, malformed) are
     dropped silently — same policy as run_experiment._load_progress.
+    Wrong-length keys are also dropped silently rather than raising
+    (the loader in run_experiment.py raises; here we degrade to
+    "summary_*.json wins" so an old JSONL doesn't block drift checks
+    on a cell that does have a current summary).
     """
     out: dict[str, dict[str, int]] = defaultdict(lambda: {"n": 0, "successes": 0})
     seen_keys: set[tuple] = set()
@@ -73,6 +68,8 @@ def _aggregate_trials_jsonl(path: Path) -> dict[str, dict[str, int]]:
                 result = rec["result"]
                 task = result["task"]
             except (json.JSONDecodeError, KeyError, TypeError):
+                continue
+            if len(key) != TRIAL_KEY_LEN:
                 continue
             if key in seen_keys:
                 continue
