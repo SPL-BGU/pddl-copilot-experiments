@@ -61,6 +61,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SBATCH_FILE="$SCRIPT_DIR/run_condition_rtx.sbatch"
 
+# shellcheck source=lib/defaults.sh
+source "$SCRIPT_DIR/lib/defaults.sh"
+
 if [ ! -f "$SBATCH_FILE" ]; then
     echo "Error: $SBATCH_FILE not found." >&2
     exit 1
@@ -109,7 +112,7 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
         exit 1
     fi
     if [ "${#MODELS[@]}" -eq 0 ]; then
-        MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
+        MODELS=("${PDDL_DEFAULT_MODELS[@]}")
     fi
 fi
 
@@ -120,7 +123,7 @@ if [ "$ALL" -eq 1 ]; then
         echo "Error: --all is exclusive with explicit model args" >&2
         exit 1
     fi
-    MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
+    MODELS=("${PDDL_DEFAULT_MODELS[@]}")
 fi
 
 if [ "${#MODELS[@]}" -eq 0 ]; then
@@ -161,8 +164,8 @@ if [ "$NO_TOOLS" -eq 1 ]; then
 fi
 
 # Resolve effective think × cond axis values for cell generation.
-DEFAULT_CONDITIONS=(no-tools tools_per-task_minimal tools_all_minimal)
-DEFAULT_THINK_MODES=(on off)
+DEFAULT_CONDITIONS=("${PDDL_DEFAULT_CONDITIONS[@]}")
+DEFAULT_THINK_MODES=("${PDDL_DEFAULT_THINK_MODES[@]}")
 
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     # Smoke iterates think × conds inside run_experiment.py.
@@ -204,7 +207,10 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 # Per-task --time. Each array task runs ONE (model, think, cond) cell, so
 # the prior packed 6-day budget no longer applies — cells are independent
 # and budgets are per-cell.
-#   tools cells: post 2026-04-29 cap-bump wall ~5-9h (single-task + chains).
+#   tools cells: 2026-05-01 measured ~40 s/trial × 4560 trials → ~50h wall.
+#                Set to 72h to leave headroom and complete in one shot
+#                (resume via trials.jsonl still works if a cell does TIMEOUT).
+#                Main partition cap is 7 days, so 72h is well within.
 #   no-tools cells: ~6h (4-task discriminative matrix, no chains).
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
@@ -212,7 +218,7 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
 elif [ "$NO_TOOLS" -eq 1 ]; then
     TIME_ARG=(--time=08:00:00)
 else
-    TIME_ARG=(--time=12:00:00)
+    TIME_ARG=(--time=72:00:00)
 fi
 
 # Job name: single model uses the model tag; multi-model uses
