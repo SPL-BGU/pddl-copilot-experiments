@@ -158,6 +158,19 @@ auto-detection.
 Conflicts with `--think-modes` (any value other than `off|default`) are
 rejected.
 
+### Resuming a TIMEOUT'd cell
+
+Each cell writes `results/slurm_<model>_<think>_<cond>/trials.jsonl` as it
+goes. Resubmitting `submit_with_rtx.sh <model> ...` for the same cell after
+a TIMEOUT or `scancel` lands in the same dir and resumes from
+`trials.jsonl` — only the in-flight trial is re-run. To start fresh, pass
+`--no-resume` to `run_experiment.py` (the wrapper doesn't currently pipe
+this through, so add the flag in the `python3 run_experiment.py …` line of
+`run_condition_rtx.sbatch` for that submission). Cell-keyed dir naming
+(no `$SLURM_JOBID` suffix) was added 2026-05-01 specifically so
+resubmissions land in the same dir; pre-2026-05-01 dirs still aggregate
+fine but each carries its own jobid.
+
 ### Models in the default sweep
 
 The paper's `qwen3:0.6b` / `qwen3:4b` weren't a fit for the cluster's
@@ -250,8 +263,11 @@ sacct -j <jobid> --format=JobName,MaxRSS,AllocTRES,State,Elapsed,Start,ExitCode
 sacct -j <master> --format=JobName,MaxRSS,State,Elapsed,Start,ExitCode  # all array tasks
 ```
 
-The cluster-ops skill bundles status/preflight/postmortem helpers that wrap
-the SSH calls — see `.claude/skills/cluster-ops/SKILL.md`.
+The `cluster-ops` skill bundles operations helpers (status / sync /
+preflight / postmortem) that wrap the SSH calls — see
+`.claude/skills/cluster-ops/SKILL.md`. After syncing results, the
+`analyzer` skill provides aggregation, plotting, master-table, and
+drift-check recipes — see `.claude/skills/analyzer/SKILL.md`.
 
 ### Throttle a running array post-submission
 
