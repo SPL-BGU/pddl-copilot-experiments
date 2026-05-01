@@ -413,9 +413,12 @@ def _format_progress(done: int, total: int, scheduled_idx: int, r: TaskResult) -
 # level coordinates (model, task, dname, pname, plan_label, pv, with_tools)
 # plus run-level coordinates (think_str, tool_filter, prompt_style) so
 # smoke-mode multi-think runs and tool_filter sweeps don't collide in the
-# same `trials.jsonl`. Keep this in sync with `_trial_key` below and the
-# loader in `run_experiment._load_progress`.
-TrialKey = tuple
+# same `trials.jsonl`. `_trial_key` is the single source of truth for the
+# tuple shape; `TRIAL_KEY_LEN` is asserted by the loader so a future
+# refactor that lengthens or reorders the tuple fails loudly on existing
+# JSONLs instead of silently re-running every trial.
+TrialKey = tuple[str, str, str, str, str, int, bool, str, str, str]
+TRIAL_KEY_LEN = 10
 
 
 def _think_str(think: bool | None) -> str:
@@ -425,6 +428,23 @@ def _think_str(think: bool | None) -> str:
     if think is False:
         return "off"
     return "default"
+
+
+def _trial_key(
+    model: str, task: str, dname: str, pname: str, plan_label: str,
+    pv: int, with_tools: bool,
+    think_tag: str, tool_filter: str, prompt_style: str,
+) -> TrialKey:
+    """Build the 10-tuple resume key. See `TrialKey` shape comment.
+
+    Module-level (not nested) so the loader and tests can reconstruct keys
+    via the same code path the writer uses — a refactor that breaks the
+    shape now breaks both call sites at once instead of silently desyncing.
+    """
+    return (
+        model, task, dname, pname, plan_label, int(pv), bool(with_tools),
+        think_tag, tool_filter, prompt_style,
+    )
 
 
 async def run_single_task_experiment(
@@ -477,19 +497,6 @@ async def run_single_task_experiment(
 
     think_tag = _think_str(think)
 
-    def _trial_key(
-        model: str, task: str, dname: str, pname: str, plan_label: str,
-        pv: int, with_tools: bool,
-    ) -> TrialKey:
-        # Mirrors the shape consumed by `run_experiment._load_progress`.
-        # See module-level comment on `TrialKey` for the discriminator
-        # rationale; lengthening or reordering this tuple invalidates
-        # existing `trials.jsonl` files.
-        return (
-            model, task, dname, pname, plan_label, int(pv), bool(with_tools),
-            think_tag, tool_filter, prompt_style,
-        )
-
     def _emit_job(
         *, model, task, dname, dpddl, pname, ppddl, pv, with_tools,
         gt_frag, np_for_task, plan_label,
@@ -504,7 +511,10 @@ async def run_single_task_experiment(
         ):
             return
         if done_keys is not None:
-            key = _trial_key(model, task, dname, pname, plan_label, pv, with_tools)
+            key = _trial_key(
+                model, task, dname, pname, plan_label, pv, with_tools,
+                think_tag, tool_filter, prompt_style,
+            )
             if key in done_keys:
                 return
         jobs.append((
@@ -720,6 +730,7 @@ async def run_single_task_experiment(
                 ) = jobs[idx]
                 key = _trial_key(
                     j_model, j_task, j_dname, j_pname, j_plan_label, j_pv, j_wt,
+                    think_tag, tool_filter, prompt_style,
                 )
                 progress_handle.write(
                     json.dumps({"key": list(key), "result": asdict(r)}) + "\n"

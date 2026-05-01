@@ -61,6 +61,7 @@ from pddl_eval.runner import (
     TASK_TOOLS,
     TASKS,
     THINKING_SNAPSHOT_LEN,
+    TRIAL_KEY_LEN,
     TaskResult,
     _expand_conditions,
     _resolve_num_predict,
@@ -193,6 +194,19 @@ def _load_progress(progress_path: Path) -> tuple[set[tuple], list[TaskResult]]:
                 result_dict = rec["result"]
             except (KeyError, TypeError):
                 continue
+            # Loud failure on key-shape drift: a future refactor that
+            # lengthens or reorders the trial key would otherwise leave
+            # this loader silently storing wrong-shape tuples that never
+            # match newly-built keys, so resume would re-run every trial.
+            # Match the TaskResult-drift policy below — force the user to
+            # move the file aside rather than silently abandoning data.
+            if len(key) != TRIAL_KEY_LEN:
+                raise RuntimeError(
+                    f"Incompatible trial-key shape in {progress_path} "
+                    f"(got len={len(key)}, expected {TRIAL_KEY_LEN}); the "
+                    f"key tuple changed since this file was written. "
+                    f"Move the file aside and rerun to start fresh."
+                )
             if key in done_keys:
                 continue
             done_keys.add(key)
@@ -381,14 +395,21 @@ async def async_main(args):
     # passes both into `run_single_task_experiment` so a TIMEOUT / scancel
     # / scratch-OOM only loses the trial that was in flight at the time
     # — every prior trial is replayed from the JSONL into `single_results`
-    # and only the missing trials are re-executed. Set
-    # `--no-resume` (or rm the file) to start fresh.
+    # and only the missing trials are re-executed. `--no-resume` deletes
+    # the JSONL up front so the run truly starts fresh — without that,
+    # the runner's append-mode writes would mix new trials into the old
+    # file, and a subsequent default-mode run would resurrect what
+    # --no-resume was meant to discard.
     output_dir_path = Path(args.output_dir)
     output_dir_path.mkdir(parents=True, exist_ok=True)
     progress_path = output_dir_path / "trials.jsonl"
     done_keys: set[tuple] = set()
     restored_results: list[TaskResult] = []
-    if not getattr(args, "no_resume", False):
+    if getattr(args, "no_resume", False):
+        if progress_path.exists():
+            progress_path.unlink()
+            print(f"\n  --no-resume: removed existing {progress_path}")
+    else:
         done_keys, restored_results = _load_progress(progress_path)
         if restored_results:
             print(
@@ -700,12 +721,11 @@ def main():
                         "comparisons stay together. Chains are emitted "
                         "only when i==0. Default: no sharding.")
     p.add_argument("--no-resume", action="store_true",
-                   help="Ignore any existing trials.jsonl in --output-dir "
+                   help="Delete any existing trials.jsonl in --output-dir "
                         "and start a fresh single-task sweep. Default: if "
                         "trials.jsonl exists, completed trials are loaded "
                         "and skipped on re-run, so a TIMEOUT/scancel only "
-                        "loses the trial in flight at the time. The JSONL "
-                        "is appended-to for both fresh and resumed runs.")
+                        "loses the trial in flight at the time.")
     args = p.parse_args()
 
     # Route SIGTERM through the same path as Ctrl-C so a `kill` from
