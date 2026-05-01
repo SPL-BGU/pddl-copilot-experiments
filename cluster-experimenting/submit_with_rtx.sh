@@ -204,7 +204,10 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 # Per-task --time. Each array task runs ONE (model, think, cond) cell, so
 # the prior packed 6-day budget no longer applies — cells are independent
 # and budgets are per-cell.
-#   tools cells: post 2026-04-29 cap-bump wall ~5-9h (single-task + chains).
+#   tools cells: 2026-05-01 measured ~40 s/trial × 4560 trials → ~50h wall.
+#                Set to 72h to leave headroom and complete in one shot
+#                (resume via trials.jsonl still works if a cell does TIMEOUT).
+#                Main partition cap is 7 days, so 72h is well within.
 #   no-tools cells: ~6h (4-task discriminative matrix, no chains).
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
@@ -212,7 +215,7 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
 elif [ "$NO_TOOLS" -eq 1 ]; then
     TIME_ARG=(--time=08:00:00)
 else
-    TIME_ARG=(--time=12:00:00)
+    TIME_ARG=(--time=72:00:00)
 fi
 
 # Job name: single model uses the model tag; multi-model uses
