@@ -12,6 +12,14 @@ Tests Ollama LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 | `validate_plan` | Verify a given plan is correct |
 | `simulate` | Produce a state-transition trace |
 
+## Quick navigation
+
+- First time? Continue reading (Setup, Running (Background)).
+- Cluster submission? See `cluster-experimenting/README.md`.
+- Methodology details? See `EXPERIMENTS_FLOW.md`.
+- Analyzing results? See `.claude/skills/analyzer/SKILL.md`.
+- Recent changes / open issues? See `development/CHANGELOG.md`, `development/OPEN_ISSUES.md`.
+
 ## Prerequisites
 
 - **Python 3.10+**
@@ -120,11 +128,11 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 
 ## Running (Cluster)
 
-Paper-grade sweeps run on the BGU ISE-CS-DT SLURM cluster, not on a laptop.
-Default path is `cluster-experimenting/submit_with_rtx.sh <model>` (one
-job per model on a dedicated rtx_6000 / rtx_pro_6000 GPU; jobs queue in
-parallel). See `cluster-experimenting/README.md` for the full submission
-flow and `.claude/skills/cluster-ops/SKILL.md` for monitoring helpers.
+Paper-grade sweeps run on the BGU CIS SLURM cluster. See
+`cluster-experimenting/README.md` for the full submission flow,
+`.claude/skills/cluster-ops/SKILL.md` for monitoring helpers (status /
+sync / preflight / postmortem), and `.claude/skills/analyzer/SKILL.md`
+for results analysis (aggregate / plot / table / drift detection).
 
 ```bash
 # Full 4-model sweep packed in ONE job on rtx_pro_6000
