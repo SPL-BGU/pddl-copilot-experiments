@@ -9,6 +9,7 @@ Module DAG (one-directional, no cycles):
     domains      → chat       — fixture loader + ground-truth generator
     scoring      → chat, domains  — verdict/plan extraction + check_success
     runner       → prompts, chat, domains, scoring  — evaluate_one + sweeps
+    resume       → runner     — load_progress for trials.jsonl resume
     summary      → runner     — Wilson CIs, tables, save_results
 
 Public API is intentionally lightweight: importers go through the submodules.

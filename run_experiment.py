@@ -22,7 +22,6 @@ Usage:
 
 import argparse
 import asyncio
-import json
 import os
 import random
 import re
@@ -51,6 +50,7 @@ from pddl_eval.prompts import (
     WITH_TOOLS_SYSTEM,
     WITHOUT_TOOLS_SYSTEM,
 )
+from pddl_eval.resume import load_progress
 from pddl_eval.runner import (
     DEFAULT_CONCURRENCY,
     DEFAULT_NUM_CTX,
@@ -61,7 +61,6 @@ from pddl_eval.runner import (
     TASK_TOOLS,
     TASKS,
     THINKING_SNAPSHOT_LEN,
-    TRIAL_KEY_LEN,
     TaskResult,
     _expand_conditions,
     _resolve_num_predict,
@@ -162,67 +161,6 @@ def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
             sys.exit(f"--marketplace-path: required plugin '{name}' missing under {plugins_dir}")
         found.append(candidate)
     return found
-
-
-def _load_progress(progress_path: Path) -> tuple[set[tuple], list[TaskResult]]:
-    """Load completed-trial JSONL written by `run_single_task_experiment`.
-
-    Returns (done_keys, restored_results). Skips silently if the file is
-    absent. A trailing partial line (TIMEOUT mid-write) is dropped: the
-    in-progress trial will be re-executed on resume, which is the
-    intended behaviour. Repeated keys are de-duplicated to first-seen,
-    which matches the runner's append-once-per-completion guarantee but
-    is defensive against accidental file concatenation.
-    """
-    if not progress_path.exists():
-        return set(), []
-    done_keys: set[tuple] = set()
-    restored: list[TaskResult] = []
-    with progress_path.open("r") as f:
-        for line in f:
-            line = line.rstrip("\n")
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                # Trailing partial line at the tail of an interrupted run;
-                # safe to drop — the trial will be re-run.
-                continue
-            try:
-                key = tuple(rec["key"])
-                result_dict = rec["result"]
-            except (KeyError, TypeError):
-                continue
-            # Loud failure on key-shape drift: a future refactor that
-            # lengthens or reorders the trial key would otherwise leave
-            # this loader silently storing wrong-shape tuples that never
-            # match newly-built keys, so resume would re-run every trial.
-            # Match the TaskResult-drift policy below — force the user to
-            # move the file aside rather than silently abandoning data.
-            if len(key) != TRIAL_KEY_LEN:
-                raise RuntimeError(
-                    f"Incompatible trial-key shape in {progress_path} "
-                    f"(got len={len(key)}, expected {TRIAL_KEY_LEN}); the "
-                    f"key tuple changed since this file was written. "
-                    f"Move the file aside and rerun to start fresh."
-                )
-            if key in done_keys:
-                continue
-            done_keys.add(key)
-            try:
-                restored.append(TaskResult(**result_dict))
-            except TypeError:
-                # Schema drift between dataclass and serialised record.
-                # Drop the incompatible JSONL: caller should rm the file
-                # and restart fresh. We surface this loudly rather than
-                # silently dropping data.
-                raise RuntimeError(
-                    f"Incompatible TaskResult shape in {progress_path}; "
-                    f"the dataclass changed since this file was written. "
-                    f"Move the file aside and rerun to start fresh."
-                )
-    return done_keys, restored
 
 
 # ---------------------------------------------------------------------------
@@ -410,7 +348,7 @@ async def async_main(args):
             progress_path.unlink()
             print(f"\n  --no-resume: removed existing {progress_path}")
     else:
-        done_keys, restored_results = _load_progress(progress_path)
+        done_keys, restored_results = load_progress(progress_path)
         if restored_results:
             print(
                 f"\n  Resume: loaded {len(restored_results)} previously-completed "
