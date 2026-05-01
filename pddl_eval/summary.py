@@ -32,6 +32,77 @@ def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float
     return (max(0.0, center - half), min(1.0, center + half))
 
 
+def _new_token_agg() -> dict:
+    """Per-cell accumulator for the `tokens` summary row (see `_token_row`)."""
+    return {
+        "n": 0,
+        "prompt_sum": 0,
+        "completion_sum": 0,
+        "turns_sum": 0,
+        "turns_max": 0,
+        "eval_duration_ns_sum": 0,
+    }
+
+
+def _add_tokens(agg: dict, tokens: dict) -> None:
+    """Fold one trial's `tokens` dict into a `_new_token_agg` accumulator.
+
+    Trials missing token data (e.g. errored before the chat call) are
+    skipped so means stay over the trials that actually consumed tokens;
+    `n` mirrors the count used in those means.
+    """
+    if not tokens:
+        return
+    agg["n"] += 1
+    agg["prompt_sum"] += tokens.get("prompt", 0) or 0
+    agg["completion_sum"] += tokens.get("completion", 0) or 0
+    turns = tokens.get("turns", 0) or 0
+    agg["turns_sum"] += turns
+    if turns > agg["turns_max"]:
+        agg["turns_max"] = turns
+    agg["eval_duration_ns_sum"] += tokens.get("eval_duration_ns", 0) or 0
+
+
+def _token_row(agg: dict) -> dict:
+    """Render a token-stats row from a `_new_token_agg` accumulator.
+
+    `completion_tokens_per_s` divides the summed completion tokens by the
+    summed eval-duration so it's robust to per-trial duration skew (a few
+    very-slow trials don't dominate the mean). Returns 0.0 when the cell
+    has no token-bearing trials so consumers can plot the field
+    unconditionally.
+    """
+    n = agg["n"]
+    if n == 0:
+        return {
+            "n": 0,
+            "prompt_sum": 0, "prompt_mean": 0.0,
+            "completion_sum": 0, "completion_mean": 0.0,
+            "total_sum": 0, "total_mean": 0.0,
+            "turns_mean": 0.0, "turns_max": 0,
+            "eval_duration_s_sum": 0.0, "eval_duration_s_mean": 0.0,
+            "completion_tokens_per_s": 0.0,
+        }
+    prompt_sum = agg["prompt_sum"]
+    completion_sum = agg["completion_sum"]
+    total_sum = prompt_sum + completion_sum
+    eval_dur_s = agg["eval_duration_ns_sum"] / 1e9
+    return {
+        "n": n,
+        "prompt_sum": prompt_sum,
+        "prompt_mean": round(prompt_sum / n, 2),
+        "completion_sum": completion_sum,
+        "completion_mean": round(completion_sum / n, 2),
+        "total_sum": total_sum,
+        "total_mean": round(total_sum / n, 2),
+        "turns_mean": round(agg["turns_sum"] / n, 3),
+        "turns_max": agg["turns_max"],
+        "eval_duration_s_sum": round(eval_dur_s, 2),
+        "eval_duration_s_mean": round(eval_dur_s / n, 3),
+        "completion_tokens_per_s": round(completion_sum / eval_dur_s, 2) if eval_dur_s > 0 else 0.0,
+    }
+
+
 def summarize_single_task(results: list[TaskResult]) -> list[dict]:
     """Aggregate single-task results into long-format rows with N and 95% CIs.
 
@@ -45,6 +116,12 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
     (string) → {n, successes, success_rate, ci_lo, ci_hi[, tool_selected_*]}.
     Lets the paper pick a single representative variant later without
     re-aggregating the raw JSON.
+
+    A `tokens` dict per row aggregates the per-trial `TaskResult.tokens`
+    into prompt/completion/turn/duration totals + means and a stable
+    completion-tokens-per-second rate (sum/sum, not mean of ratios).
+    Per-variant cells carry the same shape so analysis can compare
+    variants on token usage as well as success.
     """
     def _new_agg() -> dict:
         return {
@@ -53,7 +130,9 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
             "tool_selected": 0,
             "truncated": 0,
             "failure_reasons": defaultdict(int),
-            "per_variant": defaultdict(lambda: {"n": 0, "succ": 0, "tool_sel": 0}),
+            "per_variant": defaultdict(lambda: {"n": 0, "succ": 0, "tool_sel": 0,
+                                                "tokens": _new_token_agg()}),
+            "tokens": _new_token_agg(),
         }
 
     agg: dict = defaultdict(_new_agg)
@@ -68,12 +147,14 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
         if r.truncated:
             agg[key]["truncated"] += 1
         agg[key]["failure_reasons"][r.failure_reason] += 1
+        _add_tokens(agg[key]["tokens"], r.tokens)
         pv = agg[key]["per_variant"][r.prompt_variant]
         pv["n"] += 1
         if r.success:
             pv["succ"] += 1
         if r.tool_selected:
             pv["tool_sel"] += 1
+        _add_tokens(pv["tokens"], r.tokens)
 
     models = sorted(set(r.model for r in results))
     tasks_present = [t for t in TASKS if any(r.task == t for r in results)]
@@ -107,6 +188,7 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
                     row["tool_selected_rate"] = round(ts_rate, 4)
                     row["tool_selected_ci_lo"] = round(ts_lo, 4)
                     row["tool_selected_ci_hi"] = round(ts_hi, 4)
+                row["tokens"] = _token_row(d["tokens"])
                 # Per-variant breakdown. Sorted-by-variant for stable JSON output.
                 per_variant: dict[str, dict] = {}
                 for pv_key in sorted(d["per_variant"].keys()):
@@ -127,6 +209,7 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
                         cell["tool_selected_rate"] = round(pv_ts / pv_n, 4) if pv_n else 0.0
                         cell["tool_selected_ci_lo"] = round(pv_ts_lo, 4)
                         cell["tool_selected_ci_hi"] = round(pv_ts_hi, 4)
+                    cell["tokens"] = _token_row(pv_d["tokens"])
                     per_variant[str(pv_key)] = cell
                 row["per_variant"] = per_variant
                 rows.append(row)
