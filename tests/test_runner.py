@@ -89,7 +89,7 @@ def test_load_progress_roundtrip(r: TestResults) -> None:
     Validates the JSONL line shape against the loader so a key tuple
     written by the runner is recognised on resume.
     """
-    from run_experiment import _load_progress
+    from pddl_eval.resume import load_progress
 
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "trials.jsonl"
@@ -103,7 +103,7 @@ def test_load_progress_roundtrip(r: TestResults) -> None:
             },
         }
         p.write_text(json.dumps(rec) + "\n")
-        keys, results = _load_progress(p)
+        keys, results = load_progress(p)
         r.check_eq("loads 1 key", len(keys), 1)
         r.check_eq("loads 1 result", len(results), 1)
         r.check_eq("result.success preserved", results[0].success, True)
@@ -121,7 +121,7 @@ def test_load_progress_tolerates_partial_line(r: TestResults) -> None:
     refuse to resume — which would force the user to manually trim the
     file every TIMEOUT, defeating the purpose of resume.
     """
-    from run_experiment import _load_progress
+    from pddl_eval.resume import load_progress
 
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "trials.jsonl"
@@ -132,7 +132,7 @@ def test_load_progress_tolerates_partial_line(r: TestResults) -> None:
                        "with_tools": True, "success": True},
         }
         p.write_text(json.dumps(good) + "\n" + '{"partial": ')
-        keys, results = _load_progress(p)
+        keys, results = load_progress(p)
         r.check_eq("partial line dropped, good kept", len(keys), 1)
 
 
@@ -170,8 +170,8 @@ def test_partial_tail_does_not_corrupt_next_append(r: TestResults) -> None:
                     '"problem_name":"w","prompt_variant":0,"with_tools":true,'
                     '"success":false}}\n')
         # Loader should see 2 valid records, partial dropped.
-        from run_experiment import _load_progress
-        keys, results = _load_progress(p)
+        from pddl_eval.resume import load_progress
+        keys, results = load_progress(p)
         r.check_eq("heal preserves 2 valid records", len(keys), 2)
         r.check_eq("heal preserves both results", len(results), 2)
 
@@ -200,7 +200,7 @@ def test_load_progress_rejects_wrong_key_length(r: TestResults) -> None:
     be re-run instead of skipped — wasting hours of compute without a
     visible error.
     """
-    from run_experiment import _load_progress
+    from pddl_eval.resume import load_progress
 
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "trials.jsonl"
@@ -212,7 +212,7 @@ def test_load_progress_rejects_wrong_key_length(r: TestResults) -> None:
         }
         p.write_text(json.dumps(bad) + "\n")
         try:
-            _load_progress(p)
+            load_progress(p)
         except RuntimeError as exc:
             r.check(
                 "raised on wrong-length key",
@@ -240,7 +240,7 @@ def test_writer_emits_loadable_jsonl(r: TestResults) -> None:
     catching it.
     """
     from pddl_eval import runner as runner_mod
-    from run_experiment import _load_progress
+    from pddl_eval.resume import load_progress
 
     async def stub_evaluate_one(
         client, model, task, domain_name, domain_pddl,
@@ -278,7 +278,7 @@ def test_writer_emits_loadable_jsonl(r: TestResults) -> None:
                 f"{progress_path} not written",
             )
 
-            keys, restored = _load_progress(progress_path)
+            keys, restored = load_progress(progress_path)
             r.check_eq("loader sees 1 key", len(keys), 1)
             r.check_eq("loader sees 1 result", len(restored), 1)
             r.check_eq(
@@ -307,7 +307,7 @@ def test_load_progress_dedups_repeated_keys(r: TestResults) -> None:
     we want a deterministic resolution rather than crashing or silently
     double-counting in `summary_*.json`.
     """
-    from run_experiment import _load_progress
+    from pddl_eval.resume import load_progress
 
     with tempfile.TemporaryDirectory() as d:
         p = Path(d) / "trials.jsonl"
@@ -319,7 +319,7 @@ def test_load_progress_dedups_repeated_keys(r: TestResults) -> None:
                 "domain_name": "d", "problem_name": "p", "prompt_variant": 0,
                 "with_tools": True, "success": False}}  # different result
         p.write_text(json.dumps(rec1) + "\n" + json.dumps(rec2) + "\n")
-        keys, results = _load_progress(p)
+        keys, results = load_progress(p)
         r.check_eq("dedups to 1 key", len(keys), 1)
         r.check_eq("dedups to 1 result", len(results), 1)
         r.check_eq("first-seen wins", results[0].success, True)

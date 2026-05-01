@@ -49,9 +49,9 @@ def _aggregate_trials_jsonl(path: Path) -> dict[str, dict[str, int]]:
     Used as a mid-sweep fallback when no summary_*.json exists yet. The
     JSONL is per-trial, so n/successes are exact for whatever trials
     have completed so far. Bad lines (partial tail, malformed) are
-    dropped silently — same policy as run_experiment._load_progress.
+    dropped silently — same policy as pddl_eval.resume.load_progress.
     Wrong-length keys are also dropped silently rather than raising
-    (the loader in run_experiment.py raises; here we degrade to
+    (the loader in pddl_eval/resume.py raises; here we degrade to
     "summary_*.json wins" so an old JSONL doesn't block drift checks
     on a cell that does have a current summary).
     """
