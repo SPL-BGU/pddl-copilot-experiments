@@ -13,25 +13,22 @@ Run a minimal smoke-test experiment to verify the pipeline works end to end.
    - Model is available: `ollama list | grep qwen3:0.6b`
    - pddl-copilot marketplace exists at `../pddl-copilot` (or `$PDDL_MARKETPLACE_PATH`)
 
-2. Run a single-task smoke test:
+2. Run the canonical smoke slice (auto-pins domain/problem/variants/tasks/conditions/think modes; writes to `results/smoke_<git-sha>_<ts>/`):
    ```
    source .venv/bin/activate 2>/dev/null
    python3 run_experiment.py \
        --marketplace-path "${PDDL_MARKETPLACE_PATH:-../pddl-copilot}" \
        --models qwen3:0.6b \
-       --tasks validate_domain \
-       --num-variants 1 \
-       --tool-filter per-task \
-       --prompt-style minimal \
-       --think off \
-       --output-dir results/smoke_test/
+       --smoke
    ```
+   If `results/smoke_<git-sha>_<ts>/` already exists from a prior run on this commit, the harness resumes from `trials.jsonl` by default; pass `--no-resume` to start fresh.
 
 3. Report results as:
    - Pipeline status: PASS (results saved) or FAIL (with error)
    - MCP connections: which plugin servers connected successfully
    - Ground truth: generated or failed
    - Model evaluation: success/failure counts from the summary output
-   - Output files: list files created in `results/smoke_test/`
+   - Output files: list files created in `results/smoke_<git-sha>_<ts>/`
    - **Bridge projection check**: `tool_calls[*]` entries that hit `validate_pddl_syntax` or `get_state_transition` should NOT contain `"details"` in the result JSON (bridge pins `verbose=False`). Parse one result string and report `keys present`. See EXPERIMENTS_FLOW.md §8.
    - If FAIL: include the relevant error trace
+   - For deeper aggregation/plotting beyond this smoke check, hand off to the `analyzer` skill (`.claude/skills/analyzer/SKILL.md`).
