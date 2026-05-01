@@ -710,7 +710,7 @@ async def run_single_task_experiment(
         # mid-write, the file may end without "\n" and the next append would
         # concatenate onto that partial line, corrupting the next valid record.
         # Padding with one "\n" terminates the partial so it stays parseable
-        # as one JSONDecodeError (silently dropped by _load_progress) without
+        # as one JSONDecodeError (silently dropped by load_progress) without
         # taking the next-good record down with it.
         if progress_path.exists() and progress_path.stat().st_size > 0:
             with progress_path.open("rb") as _check:

@@ -61,7 +61,6 @@ from pddl_eval.runner import (
     TASK_TOOLS,
     TASKS,
     THINKING_SNAPSHOT_LEN,
-    TRIAL_KEY_LEN,
     TaskResult,
     _expand_conditions,
     _resolve_num_predict,

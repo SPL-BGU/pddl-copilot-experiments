@@ -148,7 +148,7 @@ def test_load_cell_returns_none_when_empty(r: TestResults) -> None:
 
 
 def test_aggregate_trials_jsonl_dedups_repeated_keys(r: TestResults) -> None:
-    """Same trial key twice → counted once; matches _load_progress policy.
+    """Same trial key twice → counted once; matches load_progress policy.
 
     Defensive against accidental file concatenation (cluster sync race,
     manual cat). First-seen wins; conflicting later records ignored.
@@ -171,7 +171,7 @@ def test_aggregate_trials_jsonl_drops_wrong_length_keys(r: TestResults) -> None:
 
     drift_check is a read-only analyzer; loud failure here would block
     drift checks against a cell that has a perfectly good summary
-    alongside a stale JSONL. _load_progress in run_experiment.py raises
+    alongside a stale JSONL. load_progress in pddl_eval/resume.py raises
     by design (writer-side); here we degrade gracefully.
     """
     with tempfile.TemporaryDirectory() as d:
