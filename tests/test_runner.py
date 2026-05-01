@@ -6,13 +6,15 @@ Or via the shell wrapper: `bash tests/verify.sh`
 Pure-Python tests: no MCP, no Ollama, no fixture I/O.
 """
 
+import json
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tests._helpers import TestResults
-from pddl_eval.runner import _shard_filter
+from pddl_eval.runner import _shard_filter, _think_str
 
 
 def test_plan_label_in_shard_key_spreads_across_shards(r: TestResults) -> None:
@@ -61,9 +63,145 @@ def test_shard_filter_single_shard_passes_all(r: TestResults) -> None:
         )
 
 
+def test_think_str_serialisation(r: TestResults) -> None:
+    """`_think_str` maps the 3-valued think flag for trial keys.
+
+    Resume keys discriminate think={on, off, default}; getting the
+    serialisation wrong would silently drop or duplicate trials when
+    smoke mode iterates think values into the same `trials.jsonl`.
+    """
+    r.check_eq("think=True -> 'on'", _think_str(True), "on")
+    r.check_eq("think=False -> 'off'", _think_str(False), "off")
+    r.check_eq("think=None -> 'default'", _think_str(None), "default")
+
+
+def test_load_progress_roundtrip(r: TestResults) -> None:
+    """`_load_progress` reads back what `run_single_task_experiment` wrote.
+
+    Validates the JSONL line shape against the loader so a key tuple
+    written by the runner is recognised on resume.
+    """
+    from run_experiment import _load_progress
+
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "trials.jsonl"
+        rec = {
+            "key": ["qwen3:0.6b", "solve", "blocks", "p01", "", 0, True,
+                    "on", "all", "minimal"],
+            "result": {
+                "model": "qwen3:0.6b", "task": "solve",
+                "domain_name": "blocks", "problem_name": "p01",
+                "prompt_variant": 0, "with_tools": True, "success": True,
+            },
+        }
+        p.write_text(json.dumps(rec) + "\n")
+        keys, results = _load_progress(p)
+        r.check_eq("loads 1 key", len(keys), 1)
+        r.check_eq("loads 1 result", len(results), 1)
+        r.check_eq("result.success preserved", results[0].success, True)
+        r.check(
+            "key tuple roundtrips",
+            tuple(rec["key"]) in keys,
+            f"expected {tuple(rec['key'])} in {keys}",
+        )
+
+
+def test_load_progress_tolerates_partial_line(r: TestResults) -> None:
+    """A TIMEOUT mid-write leaves a partial JSONL tail; loader drops it.
+
+    Without this tolerance, a run that crashed during a flush would
+    refuse to resume — which would force the user to manually trim the
+    file every TIMEOUT, defeating the purpose of resume.
+    """
+    from run_experiment import _load_progress
+
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "trials.jsonl"
+        good = {
+            "key": ["m", "t", "d", "p", "", 0, True, "on", "all", "minimal"],
+            "result": {"model": "m", "task": "t", "domain_name": "d",
+                       "problem_name": "p", "prompt_variant": 0,
+                       "with_tools": True, "success": True},
+        }
+        p.write_text(json.dumps(good) + "\n" + '{"partial": ')
+        keys, results = _load_progress(p)
+        r.check_eq("partial line dropped, good kept", len(keys), 1)
+
+
+def test_partial_tail_does_not_corrupt_next_append(r: TestResults) -> None:
+    """A partial trailing line must not concatenate onto the next append.
+
+    Regression: if `trials.jsonl` ends mid-write (no trailing "\\n"), the
+    runner's append-mode write would otherwise glue onto the partial,
+    corrupting BOTH that line and the new one. The heal step inside
+    `run_single_task_experiment` pads a trailing newline before opening
+    in append mode, isolating the partial so only it gets dropped.
+    """
+    # Direct unit check: simulate the heal logic on a partial-tail file.
+    # We don't invoke the async runner here (pure-Python guarantee) — we
+    # mirror the heal block from runner.py and verify behaviour. Failures
+    # here indicate the heal block in runner.py needs a matching update.
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "trials.jsonl"
+        p.write_text('{"key":["a","b","c","d","",0,true,"on","all","minimal"],'
+                     '"result":{"model":"a","task":"b","domain_name":"c",'
+                     '"problem_name":"d","prompt_variant":0,"with_tools":true,'
+                     '"success":true}}\n'
+                     '{"partial": ')
+        # Apply heal.
+        if p.exists() and p.stat().st_size > 0:
+            with p.open("rb") as f:
+                f.seek(-1, 2)
+                if f.read(1) != b"\n":
+                    with p.open("a") as f2:
+                        f2.write("\n")
+        # Append a new complete line.
+        with p.open("a") as f:
+            f.write('{"key":["x","y","z","w","",0,true,"on","all","minimal"],'
+                    '"result":{"model":"x","task":"y","domain_name":"z",'
+                    '"problem_name":"w","prompt_variant":0,"with_tools":true,'
+                    '"success":false}}\n')
+        # Loader should see 2 valid records, partial dropped.
+        from run_experiment import _load_progress
+        keys, results = _load_progress(p)
+        r.check_eq("heal preserves 2 valid records", len(keys), 2)
+        r.check_eq("heal preserves both results", len(results), 2)
+
+
+def test_load_progress_dedups_repeated_keys(r: TestResults) -> None:
+    """Defensive: two records for the same key keep the first only.
+
+    The runner appends once per completion so this shouldn't happen, but
+    if a JSONL gets concatenated (cluster sync race, manual cat, etc.)
+    we want a deterministic resolution rather than crashing or silently
+    double-counting in `summary_*.json`.
+    """
+    from run_experiment import _load_progress
+
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "trials.jsonl"
+        same_key = ["m", "t", "d", "p", "", 0, True, "on", "all", "minimal"]
+        rec1 = {"key": same_key, "result": {"model": "m", "task": "t",
+                "domain_name": "d", "problem_name": "p", "prompt_variant": 0,
+                "with_tools": True, "success": True}}
+        rec2 = {"key": same_key, "result": {"model": "m", "task": "t",
+                "domain_name": "d", "problem_name": "p", "prompt_variant": 0,
+                "with_tools": True, "success": False}}  # different result
+        p.write_text(json.dumps(rec1) + "\n" + json.dumps(rec2) + "\n")
+        keys, results = _load_progress(p)
+        r.check_eq("dedups to 1 key", len(keys), 1)
+        r.check_eq("dedups to 1 result", len(results), 1)
+        r.check_eq("first-seen wins", results[0].success, True)
+
+
 if __name__ == "__main__":
     r = TestResults("test_runner")
     test_plan_label_in_shard_key_spreads_across_shards(r)
     test_shard_filter_partitions_keys(r)
     test_shard_filter_single_shard_passes_all(r)
+    test_think_str_serialisation(r)
+    test_load_progress_roundtrip(r)
+    test_load_progress_tolerates_partial_line(r)
+    test_partial_tail_does_not_corrupt_next_append(r)
+    test_load_progress_dedups_repeated_keys(r)
     r.report_and_exit()

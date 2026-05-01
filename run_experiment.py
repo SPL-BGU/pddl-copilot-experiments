@@ -22,6 +22,7 @@ Usage:
 
 import argparse
 import asyncio
+import json
 import os
 import random
 import re
@@ -160,6 +161,54 @@ def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
             sys.exit(f"--marketplace-path: required plugin '{name}' missing under {plugins_dir}")
         found.append(candidate)
     return found
+
+
+def _load_progress(progress_path: Path) -> tuple[set[tuple], list[TaskResult]]:
+    """Load completed-trial JSONL written by `run_single_task_experiment`.
+
+    Returns (done_keys, restored_results). Skips silently if the file is
+    absent. A trailing partial line (TIMEOUT mid-write) is dropped: the
+    in-progress trial will be re-executed on resume, which is the
+    intended behaviour. Repeated keys are de-duplicated to first-seen,
+    which matches the runner's append-once-per-completion guarantee but
+    is defensive against accidental file concatenation.
+    """
+    if not progress_path.exists():
+        return set(), []
+    done_keys: set[tuple] = set()
+    restored: list[TaskResult] = []
+    with progress_path.open("r") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                # Trailing partial line at the tail of an interrupted run;
+                # safe to drop — the trial will be re-run.
+                continue
+            try:
+                key = tuple(rec["key"])
+                result_dict = rec["result"]
+            except (KeyError, TypeError):
+                continue
+            if key in done_keys:
+                continue
+            done_keys.add(key)
+            try:
+                restored.append(TaskResult(**result_dict))
+            except TypeError:
+                # Schema drift between dataclass and serialised record.
+                # Drop the incompatible JSONL: caller should rm the file
+                # and restart fresh. We surface this loudly rather than
+                # silently dropping data.
+                raise RuntimeError(
+                    f"Incompatible TaskResult shape in {progress_path}; "
+                    f"the dataclass changed since this file was written. "
+                    f"Move the file aside and rerun to start fresh."
+                )
+    return done_keys, restored
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +375,27 @@ async def async_main(args):
         client_kwargs["host"] = args.ollama_host
     client = ollama.AsyncClient(**client_kwargs)
 
+    # Resume / skip-existing setup. `trials.jsonl` lives next to the
+    # canonical end-of-run JSONs in `output_dir`. When it exists, the
+    # harness re-loads completed trials, builds a `done_keys` set, and
+    # passes both into `run_single_task_experiment` so a TIMEOUT / scancel
+    # / scratch-OOM only loses the trial that was in flight at the time
+    # — every prior trial is replayed from the JSONL into `single_results`
+    # and only the missing trials are re-executed. Set
+    # `--no-resume` (or rm the file) to start fresh.
+    output_dir_path = Path(args.output_dir)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+    progress_path = output_dir_path / "trials.jsonl"
+    done_keys: set[tuple] = set()
+    restored_results: list[TaskResult] = []
+    if not getattr(args, "no_resume", False):
+        done_keys, restored_results = _load_progress(progress_path)
+        if restored_results:
+            print(
+                f"\n  Resume: loaded {len(restored_results)} previously-completed "
+                f"trials from {progress_path}"
+            )
+
     single_results: list[TaskResult] = []
     chain_results: list[dict] = []
     try:
@@ -379,6 +449,8 @@ async def async_main(args):
                     conditions=sub_cond, temperature=args.temperature,
                     shard_i=args.shard_i, shard_n=args.shard_n,
                     cell_assignment=cell_assignment,
+                    progress_path=progress_path,
+                    done_keys=done_keys,
                 )
                 sub_results.extend(rs)
             return sub_results
@@ -449,7 +521,13 @@ async def async_main(args):
         print("\n\nInterrupted — saving partial results...")
 
     finally:
-        if single_results:
+        # Merge resumed-from-JSONL trials with the trials this process ran.
+        # Restored results come first so the final list ordering matches
+        # the JSONL append order (stable across resumed runs); newly-run
+        # appended after preserves the legacy "fresh-run" tail-ordering
+        # for non-resumed runs (restored is empty).
+        all_single = restored_results + single_results
+        if all_single:
             meta = {
                 "host": host or "localhost",
                 "conditions": args.conditions,
@@ -470,7 +548,9 @@ async def async_main(args):
             if args.conditions in ("tools", "both"):
                 meta["tool_filter"] = args.tool_filter
                 meta["prompt_style"] = args.prompt_style
-            save_results(single_results, chain_results, Path(args.output_dir), meta=meta)
+            if restored_results:
+                meta["resumed_count"] = len(restored_results)
+            save_results(all_single, chain_results, Path(args.output_dir), meta=meta)
         await mcp.close()
         # ollama.AsyncClient wraps an httpx.AsyncClient; close it to release
         # connections cleanly. Guarded because some builds expose
@@ -619,6 +699,13 @@ def main():
                         "modulo N; with_tools is excluded so paired "
                         "comparisons stay together. Chains are emitted "
                         "only when i==0. Default: no sharding.")
+    p.add_argument("--no-resume", action="store_true",
+                   help="Ignore any existing trials.jsonl in --output-dir "
+                        "and start a fresh single-task sweep. Default: if "
+                        "trials.jsonl exists, completed trials are loaded "
+                        "and skipped on re-run, so a TIMEOUT/scancel only "
+                        "loses the trial in flight at the time. The JSONL "
+                        "is appended-to for both fresh and resumed runs.")
     args = p.parse_args()
 
     # Route SIGTERM through the same path as Ctrl-C so a `kill` from

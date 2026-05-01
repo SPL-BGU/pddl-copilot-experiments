@@ -15,10 +15,12 @@ DAG: runner → prompts, chat, domains, scoring.
 
 import asyncio
 import hashlib
+import json
 import random
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .chat import (
@@ -405,6 +407,26 @@ def _format_progress(done: int, total: int, scheduled_idx: int, r: TaskResult) -
     )
 
 
+# Trial-key shape used by the resume / skip-existing path. The 10-tuple
+# is the minimal set of discriminators that uniquely identifies a single-
+# task trial across all run configurations the harness emits today: job-
+# level coordinates (model, task, dname, pname, plan_label, pv, with_tools)
+# plus run-level coordinates (think_str, tool_filter, prompt_style) so
+# smoke-mode multi-think runs and tool_filter sweeps don't collide in the
+# same `trials.jsonl`. Keep this in sync with `_trial_key` below and the
+# loader in `run_experiment._load_progress`.
+TrialKey = tuple
+
+
+def _think_str(think: bool | None) -> str:
+    """Serialise the 3-valued `think` flag for inclusion in trial keys."""
+    if think is True:
+        return "on"
+    if think is False:
+        return "off"
+    return "default"
+
+
 async def run_single_task_experiment(
     client: "ollama.AsyncClient",
     models: list[str],
@@ -425,6 +447,8 @@ async def run_single_task_experiment(
     shard_i: int = 0,
     shard_n: int = 1,
     cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None,
+    progress_path: Path | None = None,
+    done_keys: set[TrialKey] | None = None,
 ) -> list[TaskResult]:
     """Run the full single-task sweep with bounded Ollama concurrency.
 
@@ -433,6 +457,14 @@ async def run_single_task_experiment(
     `asyncio.as_completed`. Partial results can be collected by the caller
     on KeyboardInterrupt — remaining tasks are cancelled and whatever
     finished is returned.
+
+    Resume / skip-existing: when `progress_path` is set, every completed
+    trial is appended as one JSONL line `{"key": [...], "result": {...}}`
+    so a TIMEOUT/preempt/scancel doesn't lose mid-run trials. When
+    `done_keys` is provided (loaded by the caller from the same JSONL),
+    matching jobs are filtered out at job-list build time, so a resumed
+    run only re-executes the missing trials. Both args default to None,
+    which preserves the pre-resume behaviour byte-for-byte.
     """
     # Build the full job list up-front. Skipping unsolvable validate_plan/
     # simulate is cheaper here than inside the coroutine and keeps the
@@ -442,6 +474,21 @@ async def run_single_task_experiment(
                  #  with_tools, gt, np_for_task, plan_label)
     jobs: list[Job] = []
     with_tools_values = _expand_conditions(conditions)
+
+    think_tag = _think_str(think)
+
+    def _trial_key(
+        model: str, task: str, dname: str, pname: str, plan_label: str,
+        pv: int, with_tools: bool,
+    ) -> TrialKey:
+        # Mirrors the shape consumed by `run_experiment._load_progress`.
+        # See module-level comment on `TrialKey` for the discriminator
+        # rationale; lengthening or reordering this tuple invalidates
+        # existing `trials.jsonl` files.
+        return (
+            model, task, dname, pname, plan_label, int(pv), bool(with_tools),
+            think_tag, tool_filter, prompt_style,
+        )
 
     def _emit_job(
         *, model, task, dname, dpddl, pname, ppddl, pv, with_tools,
@@ -456,6 +503,10 @@ async def run_single_task_experiment(
             (model, task, dname, pname, plan_label, str(pv)),
         ):
             return
+        if done_keys is not None:
+            key = _trial_key(model, task, dname, pname, plan_label, pv, with_tools)
+            if key in done_keys:
+                return
         jobs.append((
             model, task, dname, dpddl, pname, ppddl, pv,
             with_tools, gt_frag, np_for_task, plan_label,
@@ -637,10 +688,43 @@ async def run_single_task_experiment(
 
     aws = [asyncio.create_task(run_one(i)) for i in range(total)]
     done_count = 0
+    # Open the resume JSONL once for the lifetime of this sweep call. asyncio
+    # is single-threaded, so writes between coroutine yields cannot interleave;
+    # line-buffered + flush per write is enough to make a TIMEOUT-mid-trial
+    # leave behind only complete prior lines (the in-progress trial is lost,
+    # which is fine — it'll be redone on resume).
+    progress_handle = None
+    if progress_path is not None:
+        progress_path.parent.mkdir(parents=True, exist_ok=True)
+        # Heal a missing trailing newline. If a previous run was killed while
+        # mid-write, the file may end without "\n" and the next append would
+        # concatenate onto that partial line, corrupting the next valid record.
+        # Padding with one "\n" terminates the partial so it stays parseable
+        # as one JSONDecodeError (silently dropped by _load_progress) without
+        # taking the next-good record down with it.
+        if progress_path.exists() and progress_path.stat().st_size > 0:
+            with progress_path.open("rb") as _check:
+                _check.seek(-1, 2)
+                if _check.read(1) != b"\n":
+                    with progress_path.open("a") as _heal:
+                        _heal.write("\n")
+        progress_handle = progress_path.open("a", buffering=1)
     try:
         for coro in asyncio.as_completed(aws):
             idx, r = await coro
             results[idx] = r
+            if progress_handle is not None:
+                (
+                    j_model, j_task, j_dname, _j_dpddl, j_pname, _j_ppddl,
+                    j_pv, j_wt, _j_gt, _j_np, j_plan_label,
+                ) = jobs[idx]
+                key = _trial_key(
+                    j_model, j_task, j_dname, j_pname, j_plan_label, j_pv, j_wt,
+                )
+                progress_handle.write(
+                    json.dumps({"key": list(key), "result": asdict(r)}) + "\n"
+                )
+                progress_handle.flush()
             done_count += 1
             print(_format_progress(done_count, total, idx, r), flush=True)
     except (KeyboardInterrupt, asyncio.CancelledError):
@@ -652,6 +736,9 @@ async def run_single_task_experiment(
         # written to `results[idx]` via completed futures are kept.
         await asyncio.gather(*aws, return_exceptions=True)
         raise
+    finally:
+        if progress_handle is not None:
+            progress_handle.close()
 
     return [r for r in results if r is not None]
 

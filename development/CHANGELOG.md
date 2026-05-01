@@ -6,6 +6,36 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-01 — Resumable single-task sweeps: per-trial JSONL + skip-existing
+
+**TL;DR.** `run_single_task_experiment` now writes one JSONL line per completed trial to `output_dir/trials.jsonl`, and `run_experiment.py` loads that file at startup to skip already-completed trials. A TIMEOUT / scancel / scratch-OOM no longer wipes the whole cell — only the trial in flight at the time is lost. Methodology unchanged: `single_task_*.json` and `summary_*.json` shapes are byte-compatible, `meta` gains a `resumed_count` field on resumed runs.
+
+**Motivation.** Mid-sweep TIMEOUTs were forfeiting full cells. The 27b row in the 2026-04-30 sweep projected 72-135h per cell at observed pace (`qwen3.6:27b` at 57-107 s/trial × 4560 trials), well past any walltime the QoS=`normal` cap allows on the `gpu` partition (12h hard cap on already-running jobs, confirmed by `scontrol update TimeLimit=...` rejection on `17275792_0` 2026-04-30 21:30 IDT). Without per-trial persistence, every TIMEOUT wasted up to 12h of GPU time × 4 cells. Bumping wall alone never lands the 27b cells; the matrix is deliberate (4560 = 5 tasks × 20 domains × 5 problems × 3 variants + negatives, post 2026-04-20 expansion) and shrinking it would invalidate paper-vs-harness comparability.
+
+**What changed (`feat/resumable-experiments` branch).**
+- **`pddl_eval/runner.py`** — `run_single_task_experiment` gains `progress_path: Path | None` and `done_keys: set[tuple] | None` kwargs. New `_trial_key` helper builds a 10-tuple `(model, task, dname, pname, plan_label, pv, with_tools, think_str, tool_filter, prompt_style)` per trial; `_emit_job` filters against `done_keys` alongside the existing shard filter. The `as_completed` loop appends `{"key": [...], "result": asdict(r)}` JSONL after each completion under line buffering + `flush()`. A heal step pads a missing trailing `\n` before opening in append mode so a partial-line tail (TIMEOUT mid-write) doesn't corrupt subsequent appends.
+- **`run_experiment.py`** — new `_load_progress(path) -> (set, list[TaskResult])` reads the JSONL, drops malformed/partial lines, deduplicates first-seen, and surfaces `RuntimeError` on schema drift (forces user to move file aside rather than silently dropping data). `async_main` builds the progress path, loads done_keys/restored_results, threads them through `_run_single_task_split`, and merges restored + freshly-run results before `save_results`. New `--no-resume` CLI flag bypasses the loader for forced fresh runs. `meta.resumed_count` records how many trials came from prior runs.
+- **`tests/test_runner.py`** — 5 new pure-Python tests covering `_think_str` serialisation, `_load_progress` roundtrip, partial-line tolerance, partial-tail heal, and key dedup. 20/20 pass via `bash tests/verify.sh`.
+
+**What did NOT change.**
+- `pddl_eval/scoring.py`, `pddl_eval/summary.py`, `pddl_eval/prompts.py`, `pddl_eval/schemas.py`, `domains/`, ground-truth pipeline, MCP plugin contracts — fully untouched.
+- `single_task_*.json` and `summary_*.json` field set and shape — `save_results` consumes the merged list identically. Existing aggregators (`aggregate.py`, notebooks) work unchanged.
+- Chain experiments (`run_chain_experiment`) — not made resumable in v1. Chains are tools-only (ISS-018), short, and weren't the TIMEOUT pain point. Add to v2 if needed.
+- `--shard`, `--smoke`, `--smoke-shuffle`, `--cell-assignment` — composable with resume; the skip filter applies after sharding so resumed shards converge to the same partition.
+
+**Cost.** Per-trial JSONL append is one `write()` + `flush()` ≈ 0.1ms; on the 4560-trial scale that's ~0.5s of added wall, dwarfed by even a single seconds-scale trial. JSONL file size is ~3MB at 4560 trials (same magnitude as `single_task_*.json`).
+
+**Caveats.**
+- The trial key includes `think_str`, `tool_filter`, `prompt_style` — different values write distinct keys to the SAME `trials.jsonl`. This lets smoke mode (`think={on, off}` into one output_dir) coexist correctly. Multi-config sweeps into the same `output_dir` accumulate trials across all configs; `meta` records only the last config, which is a pre-existing limitation of the smoke-mode merge (not a regression).
+- Schema drift in `TaskResult` (adding/removing/renaming fields) makes existing JSONLs unloadable. `_load_progress` raises a clear error directing the user to move the file aside; downstream code does not silently truncate.
+- Partial-tail heal pads a single `\n` before append. On disk the partial line lives forever (always drops on read) — this is benign but means a JSONL written across many crash-resume cycles can accumulate a small number of unparseable lines. None of them count as completed trials.
+
+**Verification.**
+- `bash tests/verify.sh` — 20/20 pass (was 7/7 pre-change).
+- E2E smoke with stubbed Ollama: round-1 5 trials → truncate to 3 + partial → round-2 resume executes 2 missing → final JSONL has 5 unique keys → round-3 idempotent rerun executes 0.
+
+---
+
 ## 2026-04-30 — Cluster submission topology: per-cell SLURM job array
 
 **TL;DR.** The packed-job model (`--all` = one 6-day rtx_pro_6000:1 job that loops 4 models × 2 think × 3 conditions sequentially under `MAX_LOADED_MODELS=1`) is replaced by a **per-cell SLURM job array**: each (model, think_mode, condition) cell becomes one independent array task on its own rtx_pro_6000:1 GPU. `--all` now submits a 20-task array (4 models × 5 cells per model, after the no-tools/think=on matrix-gate skip). With unrestricted concurrency, max-of-cell wall is ~8h vs the prior ~140h serial pack — ~17× wall-clock speedup when the rtx_pro_6000 pool has capacity for the full fan-out, ~4× even when only 4 slots are free. Mar-26 BGU CIS guide §"Job Arrays" + §"SSD Drive" formalize the idioms used (no novelty). Methodology unchanged.
