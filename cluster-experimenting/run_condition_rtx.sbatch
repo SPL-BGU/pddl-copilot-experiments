@@ -82,6 +82,9 @@
 
 set -eo pipefail
 
+# shellcheck source=lib/defaults.sh
+source "$(dirname "$0")/lib/defaults.sh"
+
 ### Job info ###
 echo "SLURM_JOBID=$SLURM_JOBID"
 echo "SLURM_JOB_NODELIST=$SLURM_JOB_NODELIST"
@@ -159,7 +162,7 @@ EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
 CONCURRENCY="${CONCURRENCY:-4}"
-CONDITIONS="${CONDITIONS:-tools_per-task_minimal tools_all_minimal}"
+CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
 TASKS_ENV_OVERRIDE="${TASKS:-}"
 
 ### Workspace on compute-node SSD scratch (Mar-26 guide §"SSD Drive") ###

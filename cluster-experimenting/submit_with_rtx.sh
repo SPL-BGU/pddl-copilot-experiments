@@ -61,6 +61,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SBATCH_FILE="$SCRIPT_DIR/run_condition_rtx.sbatch"
 
+# shellcheck source=lib/defaults.sh
+source "$SCRIPT_DIR/lib/defaults.sh"
+
 if [ ! -f "$SBATCH_FILE" ]; then
     echo "Error: $SBATCH_FILE not found." >&2
     exit 1
@@ -109,7 +112,7 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
         exit 1
     fi
     if [ "${#MODELS[@]}" -eq 0 ]; then
-        MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
+        MODELS=("${PDDL_DEFAULT_MODELS[@]}")
     fi
 fi
 
@@ -120,7 +123,7 @@ if [ "$ALL" -eq 1 ]; then
         echo "Error: --all is exclusive with explicit model args" >&2
         exit 1
     fi
-    MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
+    MODELS=("${PDDL_DEFAULT_MODELS[@]}")
 fi
 
 if [ "${#MODELS[@]}" -eq 0 ]; then
@@ -161,8 +164,8 @@ if [ "$NO_TOOLS" -eq 1 ]; then
 fi
 
 # Resolve effective think × cond axis values for cell generation.
-DEFAULT_CONDITIONS=(no-tools tools_per-task_minimal tools_all_minimal)
-DEFAULT_THINK_MODES=(on off)
+DEFAULT_CONDITIONS=("${PDDL_DEFAULT_CONDITIONS[@]}")
+DEFAULT_THINK_MODES=("${PDDL_DEFAULT_THINK_MODES[@]}")
 
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     # Smoke iterates think × conds inside run_experiment.py.
