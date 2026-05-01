@@ -374,10 +374,19 @@ for MODEL in $MODELS; do
                     echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
             esac
 
-            # OUT_DIR name kept stable so aggregate.py / plot.py can read both
-            # historical cis-ollama runs and current rtx self-deploy runs
-            # identically. The cis path was retired 2026-04-27.
-            OUT_DIR="${EXPT_ROOT}/results/slurm_${MODEL_TAG}_${THINK_MODE}_${COND}_${SLURM_JOBID}"
+            # OUT_DIR is keyed on (model, think, cond) only — the trailing
+            # _${SLURM_JOBID} suffix was dropped 2026-05-01 so a TIMEOUT'd
+            # cell that's resubmitted lands in the same dir and the resume
+            # path in run_experiment.py finds the prior trials.jsonl. With
+            # the per-cell array model, only one job per cell runs at a
+            # time, so the dir-collision concern that motivated the jobid
+            # suffix doesn't apply. aggregate.py / plot.py parse the
+            # cell-keyed shape natively and continue to read legacy jobid'd
+            # dirs unchanged. Pre-2026-05-01 dirs on the cluster are not
+            # rewritten; aggregators treat them as one row per resubmission
+            # (legacy behaviour). New-shape dirs collapse multiple
+            # resubmissions of the same cell into one logical row.
+            OUT_DIR="${EXPT_ROOT}/results/slurm_${MODEL_TAG}_${THINK_MODE}_${COND}"
 
             SHARD_ARGS=()
             if [ -n "${SHARD:-}" ]; then

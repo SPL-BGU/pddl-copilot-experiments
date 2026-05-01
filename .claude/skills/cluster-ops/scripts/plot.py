@@ -128,10 +128,15 @@ def find_default_root() -> Path:
 
 def parse_dirname(name: str) -> dict | None:
     stem = name.removeprefix("slurm_")
+    # Optional trailing _<jobid>: present in pre-2026-05-01 dirs, absent
+    # in cell-keyed dirs. When absent, fall through with the full stem so
+    # the suffix matchers still find <think>/<cond>. See aggregate.py
+    # docstring for the three layouts.
     m = re.match(r"^(.*)_(\d+)$", stem)
-    if not m:
-        return None
-    rest, jobid = m.group(1), m.group(2)
+    if m:
+        rest, jobid = m.group(1), m.group(2)
+    else:
+        rest, jobid = stem, ""
     for cond in CONDITIONS:
         suf = "_" + cond
         if rest.endswith(suf):
