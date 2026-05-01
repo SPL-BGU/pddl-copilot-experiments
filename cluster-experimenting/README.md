@@ -56,8 +56,11 @@ bash cluster-experimenting/submit_with_rtx.sh --all
 
 Rerunning any step is safe: `git clone` can be replaced with `git -C <dir> pull`,
 `setup_env.sh` detects an existing conda env and reuses it, and
-`submit_with_rtx.sh` is idempotent (each submission gets a fresh
-`$SLURM_JOBID` in the output path).
+`submit_with_rtx.sh` is idempotent. Resubmitting the same `(model, think,
+cond)` cell — e.g. after a TIMEOUT — lands in the same
+`results/slurm_<model>_<think>_<cond>/` dir and resumes from the
+previously-completed trials via the `trials.jsonl` mechanism in
+`run_experiment.py` (skip with `--no-resume`).
 
 ## Why a dedicated cluster setup (vs. just `run_background.sh`)
 
@@ -272,15 +275,15 @@ Higher Nice → lower priority. Default 0. Resets to 0 if you bump it back.
 
 | Path | What |
 |---|---|
-| `results/slurm_<model>_<think>_<cond>_<task_jid>/` | `run_experiment.py` JSON outputs for one cell (per-instance results, `summary_*.json`). Each array task uses its own `$SLURM_JOBID` (unique per array task), so dirs don't collide. `meta.host` records the compute node — varies per task post-2026-04-30. `results/` is gitignored. |
-| `cluster-experimenting/logs/pddl_rtx_<model>-<task_jid>.out` | rtx self-deploy log for one cell. Directory is gitignored. |
+| `results/slurm_<model>_<think>_<cond>/` | `run_experiment.py` JSON outputs for one cell (per-instance results, `summary_*.json`, `trials.jsonl`). Cell-keyed (no jobid suffix) post 2026-05-01 so resubmissions of the same cell land in the same dir and resume from the prior `trials.jsonl`; aggregators read either shape. Multiple resubmissions accumulate timestamped `single_task_*.json` / `summary_*.json` files; the latest summary wins on aggregation. `meta.host` reflects the latest run's compute node. `results/` is gitignored. |
+| `cluster-experimenting/logs/pddl_rtx_<model>-<task_jid>.out` | rtx self-deploy log for one cell. The log filename keeps `<task_jid>` because `%x-%J.out` is resolved by SLURM at job-start, so each (re)submission gets its own log file. Directory is gitignored. |
 
 ## Fetching results locally
 
 From your laptop:
 ```bash
-# One condition's output
-scp -r <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_qwen3_6_27b_off_tools_all_minimal_12345 \
+# One cell's output (cell-keyed, no jobid suffix post 2026-05-01)
+scp -r <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_qwen3_6_27b_off_tools_all_minimal \
        ~/personal/pddl-copilot-experiments/results/
 
 # Everything from a run

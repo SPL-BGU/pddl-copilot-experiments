@@ -3,9 +3,13 @@
 Default root = the most recent results/cluster-* or results/full-cluster-run*.
 Override with a positional arg.
 
-Handles both naming schemes:
-- Current: slurm_<model>_<think>_<cond>_<jobid>
-- Legacy:  slurm_<model>_<cond>_<jobid>   (treated as think=default with a header warning)
+Handles three naming schemes:
+- Cell-keyed (current, post 2026-05-01): slurm_<model>_<think>_<cond>
+  One dir per cell; resubmits accumulate timestamped summary_*.json files
+  inside, and the latest one wins (sorted glob).
+- With-jobid (pre 2026-05-01):           slurm_<model>_<think>_<cond>_<jobid>
+- Legacy (pre think axis):               slurm_<model>_<cond>_<jobid>
+  (treated as think=default with a header warning)
 
 Outputs (to stdout):
   1) Single-task success-rate matrix: (model, think, cond) × task
@@ -47,16 +51,21 @@ def find_default_root() -> Path:
 def parse_dirname(name: str) -> dict:
     """Extract (model, think, cond) from 'slurm_<…>' dir name.
 
-    Accepts both current (with <think>) and legacy (without) layouts. Model
-    tag is the dotted form with ':' → '_' → '.' restored as '_' (we can't
-    always recover exactly; store the raw tag and the reconstructed name).
+    Accepts the cell-keyed layout (no trailing jobid; current), the
+    pre-2026-05-01 with-jobid layout, and the pre-think-axis legacy
+    layout. Model tag is the dotted form with ':' → '_' → '.' restored
+    as '_' (we can't always recover exactly; store the raw tag and the
+    reconstructed name).
     """
     stem = name.removeprefix("slurm_")
-    # trailing _<jobid>
+    # Optional trailing _<jobid>: present in pre-cell-keyed dirs, absent
+    # in cell-keyed dirs (post 2026-05-01). When absent, fall through with
+    # the full stem so the same suffix-matching logic finds <think>/<cond>.
     m = re.match(r"^(.*)_(\d+)$", stem)
-    if not m:
-        return {"raw": stem, "model": stem, "think": "?", "cond": "?", "jobid": "?"}
-    rest, jobid = m.group(1), m.group(2)
+    if m:
+        rest, jobid = m.group(1), m.group(2)
+    else:
+        rest, jobid = stem, ""
 
     # Try current layout first: look for trailing _<cond> where cond ∈ CONDITIONS
     for cond in CONDITIONS:

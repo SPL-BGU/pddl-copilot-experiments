@@ -1,16 +1,18 @@
 ---
 name: cluster-ops
-description: Operate the BGU CIS (formerly ISE-CS-DT) SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, aggregate summaries, render paper plots, post-mortem completed jobs (right-size --mem from sacct/MaxRSS).
-argument-hint: [status | preflight | sync | aggregate | plot | table | postmortem]
+description: Operate the BGU CIS (formerly ISE-CS-DT) SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, post-mortem completed jobs (right-size --mem from sacct/MaxRSS). Operations only; aggregation, plotting, tables, and drift detection live in the sibling `analyzer` skill.
+argument-hint: [status | preflight | sync | postmortem]
 ---
 
 > User asked for: $ARGUMENTS — pick the matching recipe below.
 
 ## Why this skill exists
 
-Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "plot results", "aggregate summaries", "check ollama", "postmortem", "memory headroom".
+Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "check ollama", "postmortem", "memory headroom".
 
-Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, summary-JSON aggregations, and plot scripts. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 6 short helper scripts. Read it before running SSH/rsync/plot commands ad-hoc.
+Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, and sacct memory-headroom recipes. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 4 short helper scripts. Read it before running SSH/rsync commands ad-hoc.
+
+**Read this skill alongside `analyzer`** — cluster-ops gets results onto disk via `sync.sh` and tells you what's running via `status.sh`; `analyzer` (under `.claude/skills/analyzer/`) turns the synced results into Markdown tables, paper plots, the master pivot, and drift-vs-baseline checks. The two skills compose via the recipes below.
 
 Cluster & repo conventions that matter here:
 
@@ -32,7 +34,7 @@ Cluster & repo conventions that matter here:
 
 ## Helper scripts (all live under `scripts/`)
 
-All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`.
+All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`. The four operations scripts (`status.sh`, `sync.sh`, `preflight.sh`, `postmortem.sh`) live here. The four analysis scripts (`aggregate.py`, `plot.py`, `plot_focused.py`, `table.py`) and `drift_check.py` were moved to `.claude/skills/analyzer/scripts/` on 2026-05-01 — see the `analyzer` skill for those.
 
 ### `scripts/status.sh` — cluster status snapshot
 
@@ -54,53 +56,6 @@ bash .claude/skills/cluster-ops/scripts/sync.sh results/my-custom-run    # → e
 ```
 
 Never deletes anything. To clear cancelled-job `.out` files on the remote side, tell the user explicitly what IDs you intend to delete and wait for confirmation before `ssh … rm`.
-
-### `scripts/aggregate.py` — summary.json → Markdown
-
-Walks a results root (default: the most recent `results/cluster-*` or `results/full-cluster-run*`), loads every `summary_*.json`, emits Markdown tables: single-task success-rate matrix, chain success-rate matrix, failure-reason totals.
-
-```bash
-python3 .claude/skills/cluster-ops/scripts/aggregate.py                            # auto-pick latest
-python3 .claude/skills/cluster-ops/scripts/aggregate.py results/full-cluster-run1  # explicit
-```
-
-Legacy dirs (no `<think>` segment) are treated as `think=default` with a header warning.
-
-### `scripts/plot.py` — paper-style plots
-
-Auto-discovers series from dir names + summary meta; dynamically builds the SERIES list. Seven figures in `<root>/plots/`:
-
-- `fig1_single_task.png` — task × series success-rate bars with Wilson 95% CI whiskers
-- `fig2_chain.png` — chain length × series bars (chain=1 is ST mean), CI whiskers on L=2..5
-- `fig3_tool_selection.png` — classical vs numeric planner-selection rate on `solve`
-- `fig4_failure_breakdown.png` — 1×5 grid of 100%-stacked failure-reason bars per task
-- `fig5_domain_heatmap.png` — 1×5 heatmap grid, rows=series × cols=10 domains, cell=`k/n`
-- `fig6_tool_adherence.png` — per-task `tool_selected_rate` with CI whiskers (with-tools only)
-- `fig7_chain_step_survival.png` — P(reach step k) per chain length L=2..5
-
-```bash
-python3 .claude/skills/cluster-ops/scripts/plot.py                                     # auto-pick latest, plots → <root>/plots/
-python3 .claude/skills/cluster-ops/scripts/plot.py results/full-cluster-run1           # explicit root
-python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --group-by think
-python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --figs 1,4,5  # subset
-python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --no-ci       # drop CI whiskers
-python3 .claude/skills/cluster-ops/scripts/plot.py results/cluster-20260501 --merge       # pooled (model, think) → plots/merged/
-```
-
-`--figs` accepts `all` (default) or a comma list over `1..7`. `--no-ci` disables error bars on figs 1, 2, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged so they remain as the baseline next to each merged tools row. Output → `<root>/plots/merged/` — run it alongside the default invocation to get both views.
-
-### `scripts/table.py` — master pivot (md + csv + tex)
-
-Emits one large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, host, jobid)`. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%}` × 5 tasks + chain `succ% [lo–hi]` × `L=2..5` + ST-mean + total n. The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`) for downstream analysis.
-
-```bash
-python3 .claude/skills/cluster-ops/scripts/table.py                                    # auto-pick latest, writes <root>/tables/master.{md,csv,tex}
-python3 .claude/skills/cluster-ops/scripts/table.py results/cluster-20260424           # explicit root
-python3 .claude/skills/cluster-ops/scripts/table.py results/cluster-20260424 --formats md,csv
-python3 .claude/skills/cluster-ops/scripts/table.py results/cluster-20260424 --out /tmp/tables
-```
-
-Reuses `parse_dirname`/`load_summaries`/`host_tag` from `aggregate.py` (same dir) — no duplicated logic.
 
 ### `scripts/preflight.sh` — pre-submit cluster refresh + capacity
 
@@ -139,12 +94,20 @@ bash .claude/skills/cluster-ops/scripts/postmortem.sh --jobs 17130166,17130167 #
 
 ### "Sync and plot the results"
 
+This recipe spans both skills — sync + sacct here, aggregate + plot + table in `analyzer`.
+
 1. `bash .claude/skills/cluster-ops/scripts/sync.sh` — rsync into `results/cluster-<today>/`.
-2. `python3 .claude/skills/cluster-ops/scripts/aggregate.py <that-dir>` — print success-rate tables.
-3. `python3 .claude/skills/cluster-ops/scripts/plot.py <that-dir>` — write the 7 PNG figures.
-4. `python3 .claude/skills/cluster-ops/scripts/table.py <that-dir>` — write `tables/master.{md,csv,tex}` for the paper.
-5. `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct table + memory-headroom recommendation. Surface any OOM rows or jobs that approached `--time` to the user.
-6. Report to user with the plot paths and 3-5 key numbers.
+2. Hand off to the `analyzer` skill's "Sync, aggregate, plot, table" recipe for steps 3–5 (`aggregate.py`, `plot.py`, `table.py` against the synced dir).
+3. `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct table + memory-headroom recommendation. Surface any OOM rows or jobs that approached `--time` to the user.
+4. Report to user with the plot paths (from analyzer) and 3–5 key numbers.
+
+### "Is the in-flight sweep drifting?"
+
+After a sweep is submitted, periodically verify it's not regressing vs a baseline before letting it eat more GPU-hours. The drift logic lives in `analyzer/scripts/drift_check.py`; the status + sync glue is here.
+
+1. `bash .claude/skills/cluster-ops/scripts/status.sh` — confirm jobs are running (not stuck, not OOM-killed).
+2. `bash .claude/skills/cluster-ops/scripts/sync.sh results/cluster-<today>` — pull whatever cells have started writing. Cells without a `summary_*.json` yet still ship `trials.jsonl`, which `drift_check.py` aggregates as a fallback.
+3. Hand off to the `analyzer` skill's "Is the in-flight sweep consistent with the last one?" recipe — it picks a baseline and runs `drift_check.py`.
 
 ### "Submit the sweep"
 

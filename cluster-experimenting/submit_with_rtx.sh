@@ -308,5 +308,5 @@ else
         echo "  (array tasks appear as ${jid}_0..${jid}_$((N_CELLS-1)))" >&2
     fi
     echo "Log:      $REPO_ROOT/cluster-experimenting/logs/${JOB_NAME}-<task_jid>.out" >&2
-    echo "Results:  $REPO_ROOT/results/slurm_<model>_<think>_<cond>_<task_jid>/  (one dir per cell)" >&2
+    echo "Results:  $REPO_ROOT/results/slurm_<model>_<think>_<cond>/  (one dir per cell; resubmits resume from trials.jsonl)" >&2
 fi
