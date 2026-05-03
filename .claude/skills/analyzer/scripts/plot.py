@@ -448,7 +448,8 @@ def fig3(series, out_path):
     ax.set_xticklabels(["classical", "numeric"])
     ax.set_ylabel("Tool-selected rate on solve")
     ax.set_ylim(0, 1.0)
-    ax.set_title("Correct-planner selection, classical vs numeric")
+    ax.set_title("Correct-planner selection, classical vs numeric"
+                 "\n[tools-only — no-tools cells excluded]")
     ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.set_axisbelow(True)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
@@ -610,8 +611,9 @@ def fig6(series, out_path, draw_ci):
     ax.set_xticklabels([TASK_LABELS[t] for t in TASKS])
     ax.set_ylabel("Tool-selected rate")
     ax.set_ylim(0, 1.0)
-    ax.set_title("Per-task tool-adherence (with-tools runs)" +
-                 (" (Wilson 95% CI)" if draw_ci else ""))
+    ax.set_title("Per-task tool-adherence" +
+                 (" (Wilson 95% CI)" if draw_ci else "") +
+                 "\n[tools-only — no-tools cells excluded]")
     ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.set_axisbelow(True)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
@@ -662,7 +664,8 @@ def fig7(series, out_path):
     if handles:
         fig.legend(handles, labels_, loc="center right",
                    fontsize=6, framealpha=0.9, bbox_to_anchor=(1.02, 0.5))
-    fig.suptitle("Chain step survival (every earlier step must also succeed)",
+    fig.suptitle("Chain step survival (every earlier step must also succeed)"
+                 "\n[tools-only — no-tools cells excluded]",
                  fontsize=10)
     fig.tight_layout(rect=[0, 0, 0.85, 0.96])
     fig.savefig(out_path, dpi=160, bbox_inches="tight")
