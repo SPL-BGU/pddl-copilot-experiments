@@ -83,7 +83,10 @@
 set -eo pipefail
 
 # shellcheck source=lib/defaults.sh
-source "$(dirname "$0")/lib/defaults.sh"
+# SLURM stages this script to /var/spool/slurmd/jobNN/ so $(dirname "$0") loses
+# the project's lib/ unless the caller cd'd into the repo first. Hardcoding the
+# project path keeps sourcing safe regardless of submit cwd.
+source "$HOME/pddl-copilot-experiments/cluster-experimenting/lib/defaults.sh"
 
 ### Job info ###
 echo "SLURM_JOBID=$SLURM_JOBID"
