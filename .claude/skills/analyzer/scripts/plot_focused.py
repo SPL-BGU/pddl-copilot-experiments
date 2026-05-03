@@ -228,7 +228,7 @@ def fig1(records: list[dict], outdir: Path, draw_ci: bool):
                   fontsize=8, framealpha=0.9)
         _setup_rate_axes(ax, centers, models,
                          f"Task: {TASK_LABELS[task]} — does extended thinking help?\n"
-                         f"with-tools, pooled across tool-filter and prompt-style"
+                         f"[tools-only — no-tools excluded], pooled across tool-filter and prompt-style"
                          + ("  (Wilson 95% CI)" if draw_ci else ""))
         out = outdir / f"plot1_tools_think_vs_nothink__{task}.png"
         fig.tight_layout()
@@ -374,6 +374,7 @@ def fig3(root: Path, outdir: Path, draw_ci: bool):
     fig.legend(handles=handles, loc="lower center", ncol=2,
                bbox_to_anchor=(0.5, -0.04), fontsize=8, frameon=False)
     fig.suptitle("Chained-task success vs chain length — tools pooled, per model"
+                 "\n[tools-only — no-tools excluded]"
                  + ("  (Wilson 95% CI ribbons)" if draw_ci else ""),
                  fontsize=10)
     fig.tight_layout(rect=[0, 0.04, 1, 0.94])
@@ -414,7 +415,7 @@ def fig4(records: list[dict], outdir: Path, draw_ci: bool):
                   fontsize=8, framealpha=0.9)
         _setup_rate_axes(ax, centers, models,
                          f"Task: {TASK_LABELS[task]} — what tools is the agent exposed to?\n"
-                         f"all tools vs per-task allowlist (pooled across think and prompt-style)"
+                         f"all tools vs per-task allowlist [tools-only — no-tools excluded], pooled across think and prompt-style"
                          + ("  (Wilson 95% CI)" if draw_ci else ""))
         out = outdir / f"plot4_all_vs_pertask__{task}.png"
         fig.tight_layout()
@@ -475,6 +476,7 @@ def fig5(records: list[dict], outdir: Path, draw_ci: bool):
                bbox_to_anchor=(0.5, -0.02), fontsize=8, frameon=False)
     fig.suptitle("Correct planner selection on solve — classical needs classic_planner, "
                  "numeric needs numeric_planner"
+                 "\n[tools-only — no-tools excluded]"
                  + ("  (Wilson 95% CI)" if draw_ci else ""),
                  fontsize=10)
     fig.tight_layout(rect=[0, 0.04, 1, 0.94])
@@ -515,7 +517,7 @@ def fig6(records: list[dict], outdir: Path, draw_ci: bool):
                   fontsize=8, framealpha=0.9)
         _setup_rate_axes(ax, centers, models,
                          f"Task: {TASK_LABELS[task]} — does prompt nudging help?\n"
-                         f"minimal vs guided (pooled across think and tool-filter)"
+                         f"minimal vs guided [tools-only — no-tools excluded], pooled across think and tool-filter"
                          + ("  (Wilson 95% CI)" if draw_ci else ""))
         out = outdir / f"plot6_minimal_vs_guided__{task}.png"
         fig.tight_layout()
@@ -559,7 +561,8 @@ def fig7(records: list[dict], outdir: Path, draw_ci: bool):
     md_lines.append("Each cell shows `(off / on)`: number of trials (out of "
                     "100 per cell — 50 minimal + 50 guided × 2 tool-filters / 2) "
                     "in which the tool was invoked at least once. "
-                    "`+` = ≥1 trial used the tool; `−` = never used.")
+                    "`+` = ≥1 trial used the tool; `−` = never used. "
+                    "**[tools-only]** — no-tools cells contribute 0 invocations to every count.")
     md_lines.append("")
     md_lines.append("## Boolean view (+/−)")
     md_lines.append("")
@@ -609,7 +612,8 @@ def fig7(records: list[dict], outdir: Path, draw_ci: bool):
     ax.set_xticklabels(col_labels, rotation=30, ha="right", fontsize=7)
     ax.set_yticks(np.arange(len(rows)))
     ax.set_yticklabels(row_labels, fontsize=6.5)
-    ax.set_title("Tools invoked at least once — counts per (model × task) × (tool × think)",
+    ax.set_title("Tools invoked at least once — counts per (model × task) × (tool × think)"
+                 "\n[tools-only — no-tools cells contribute 0 to every count]",
                  fontsize=10)
     # Cell annotations: count, with +/- styling
     for i in range(len(rows)):
@@ -692,7 +696,8 @@ def fig8a(records: list[dict], outdir: Path, draw_ci: bool):
             ax.text(x, -0.83, TASK_LABELS[task][0:3], ha="center", va="top",
                     fontsize=5.5, color="#444")
     ax.set_title("Where does extended thinking actually pay off? "
-                 "Δ success per (model × task), tools pooled", fontsize=10)
+                 "Δ success per (model × task), tools pooled"
+                 "\n[tools-only — no-tools excluded]", fontsize=10)
     fig.tight_layout()
     out = outdir / "plot8a_think_benefit_delta.png"
     fig.savefig(out, dpi=160, bbox_inches="tight")
@@ -748,7 +753,8 @@ def fig8b(records: list[dict], outdir: Path, draw_ci: bool):
             ax.text(x, -0.83, TASK_LABELS[task][0:3], ha="center", va="top",
                     fontsize=5.5, color="#444")
     ax.set_title("Does the guided prompt nudge help? "
-                 "Δ success per (model × task), tool variants pooled", fontsize=10)
+                 "Δ success per (model × task), tool variants pooled"
+                 "\n[tools-only — no-tools excluded]", fontsize=10)
     fig.tight_layout()
     out = outdir / "plot8b_guided_benefit_delta.png"
     fig.savefig(out, dpi=160, bbox_inches="tight")
@@ -791,6 +797,7 @@ def fig8c(records: list[dict], outdir: Path, draw_ci: bool):
                bbox_to_anchor=(0.5, -0.02), fontsize=8, frameon=False)
     fig.suptitle("Planner-mismatch failures on solve "
                  "(classical → numeric_planner, numeric → classic_planner)"
+                 "\n[tools-only — no-tools excluded]"
                  + ("  (Wilson 95% CI)" if draw_ci else ""),
                  fontsize=10)
     fig.tight_layout(rect=[0, 0.04, 1, 0.94])
