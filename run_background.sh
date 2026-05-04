@@ -3,16 +3,16 @@
 # Detached, low CPU priority, no-sleep — continues while you work.
 #
 # Usage:
-#   ./run_background.sh                # both models (full overnight run)
-#   ./run_background.sh small          # just qwen3:0.6b (lightweight daytime run)
-#   ./run_background.sh large          # just qwen3:4b (heavier, overnight)
-#   ./run_background.sh small-nothink  # qwen3:0.6b with --think off (ablation:
-#                                      # is solve = ~0% caused by 0.6b's
-#                                      # thinking-mode token starvation, or
-#                                      # by raw model incapacity?)
-#   ./run_background.sh large-nothink  # qwen3:4b with --think off (ablation:
-#                                      # measures whether thinking helps or
-#                                      # hurts the larger model on this set)
+#   ./run_background.sh                       # both models (full overnight run)
+#   ./run_background.sh small                 # just qwen3:0.6b (lightweight daytime run)
+#   ./run_background.sh large                 # just qwen3:4b (heavier, overnight)
+#   ./run_background.sh small-nothink         # qwen3:0.6b with --think off (ablation)
+#   ./run_background.sh large-nothink         # qwen3:4b with --think off (ablation)
+#   ./run_background.sh partial               # fast feedback slice (--partial 2,
+#                                             # all domains, both models, single-task,
+#                                             # no chains; output → results/partial/)
+#   ./run_background.sh continue-partial PATH # full sweep that inherits PATH/trials.jsonl
+#                                             # from a partial run; output → results/full/
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -72,6 +72,10 @@ if ! curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
 fi
 
 THINK_ARGS=()
+PARTIAL_ARGS=()
+CONTINUE_PARTIAL_ARG=""
+SKIP_CHAINS=0
+BUCKET="full"
 case "${1:-both}" in
     small)         MODELS=(qwen3:0.6b);          TAG="qwen06b" ;;
     large)         MODELS=(qwen3:4b);            TAG="qwen4b" ;;
@@ -80,7 +84,22 @@ case "${1:-both}" in
                    THINK_ARGS=(--think off) ;;
     large-nothink) MODELS=(qwen3:4b);            TAG="qwen4b_nothink"
                    THINK_ARGS=(--think off) ;;
-    *) echo "Usage: $0 [small|large|both|small-nothink|large-nothink]"; exit 1 ;;
+    partial)       MODELS=(qwen3:0.6b qwen3:4b); TAG="partial2"
+                   PARTIAL_ARGS=(--partial 2)
+                   SKIP_CHAINS=1
+                   BUCKET="partial" ;;
+    continue-partial)
+                   if [ -z "${2:-}" ]; then
+                       echo "Usage: $0 continue-partial <path-to-partial-results-dir>" >&2
+                       exit 1
+                   fi
+                   if [ ! -f "${2}/trials.jsonl" ]; then
+                       echo "Error: ${2}/trials.jsonl not found" >&2
+                       exit 1
+                   fi
+                   MODELS=(qwen3:0.6b qwen3:4b); TAG="continue"
+                   CONTINUE_PARTIAL_ARG="$2" ;;
+    *) echo "Usage: $0 [small|large|both|small-nothink|large-nothink|partial|continue-partial PATH]"; exit 1 ;;
 esac
 
 # Ensure requested models are available — pull from ollama.com if missing.
@@ -93,11 +112,31 @@ done
 
 STAMP=$(date +%Y%m%d_%H%M%S)
 LOG="run_${TAG}_${STAMP}.log"
-OUT_PREFIX="results/${TAG}_${STAMP}"
+OUT_PREFIX="results/${BUCKET}/${TAG}_${STAMP}"
 FILTERS="per-task all"
 # `guided` retired 2026-04-27 (see run_experiment.py PROMPT_STYLE_CHOICES).
 # Re-enable by adding "guided" back here AND in PROMPT_STYLE_CHOICES.
 PROMPT_STYLES="minimal"
+
+# Chains gated off for the partial-sweep mode by spec (single-task only).
+# Other modes get the full chain phase. Cluster-side `submit_with_rtx.sh`
+# manages chains independently.
+if [ "$SKIP_CHAINS" -eq 1 ]; then
+    CHAIN_ARGS=()
+    CHAIN_ECHO="off (partial mode)"
+else
+    CHAIN_ARGS=(--chains --chain-samples 20)
+    CHAIN_ECHO="on"
+fi
+
+# `--continue-partial` is only meaningful for full sweeps that inherit a
+# partial run's trials.jsonl; tag mode == "continue" passes it once per
+# inner invocation so the resume key transfers across all (filter,prompt)
+# cells that match the partial run's meta-dimensions.
+CONTINUE_ARGS=()
+if [ -n "$CONTINUE_PARTIAL_ARG" ]; then
+    CONTINUE_ARGS=(--continue-partial "$CONTINUE_PARTIAL_ARG")
+fi
 
 echo "Starting PDDL copilot experiment..."
 echo "  Models:      ${MODELS[*]}"
@@ -105,8 +144,10 @@ echo "  Host:        localhost (default)"
 echo "  Marketplace: $MARKETPLACE_PATH"
 echo "  Filters:     $FILTERS (run sequentially)"
 echo "  Prompts:     $PROMPT_STYLES (run sequentially)"
-echo "  Chains:      on"
+echo "  Chains:      $CHAIN_ECHO"
 echo "  Think:       ${THINK_ARGS[*]:-default}"
+echo "  Partial:     ${PARTIAL_ARGS[*]:-off}"
+echo "  Continue:    ${CONTINUE_PARTIAL_ARG:-(none)}"
 echo "  Output dirs: ${OUT_PREFIX}_no-tools/ + ${OUT_PREFIX}_tools_{filter}_{prompt}/"
 echo "  Log file:    $LOG"
 
@@ -117,12 +158,12 @@ cd "$SCRIPT_DIR"
 # Running it once up front avoids the 4x redundant no-tools pass the old
 # (FILTER, PSTYLE) loop produced — ISS-004.
 echo "===== conditions=no-tools started \$(date) ====="
-nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions no-tools --chains --chain-samples 20 ${THINK_ARGS[*]} --output-dir "${OUT_PREFIX}_no-tools"
+nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions no-tools ${CHAIN_ARGS[*]} ${THINK_ARGS[*]} ${PARTIAL_ARGS[*]} ${CONTINUE_ARGS[*]} --output-dir "${OUT_PREFIX}_no-tools"
 echo "===== conditions=no-tools finished \$(date) ====="
 for FILTER in $FILTERS; do
   for PSTYLE in $PROMPT_STYLES; do
     echo "===== conditions=tools filter=\$FILTER prompt=\$PSTYLE started \$(date) ====="
-    nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions tools --tool-filter "\$FILTER" --prompt-style "\$PSTYLE" --chains --chain-samples 20 ${THINK_ARGS[*]} --output-dir "${OUT_PREFIX}_tools_\${FILTER}_\${PSTYLE}"
+    nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions tools --tool-filter "\$FILTER" --prompt-style "\$PSTYLE" ${CHAIN_ARGS[*]} ${THINK_ARGS[*]} ${PARTIAL_ARGS[*]} ${CONTINUE_ARGS[*]} --output-dir "${OUT_PREFIX}_tools_\${FILTER}_\${PSTYLE}"
     echo "===== conditions=tools filter=\$FILTER prompt=\$PSTYLE finished \$(date) ====="
   done
 done

@@ -6,6 +6,26 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-04 — Fast partial sweep + `--continue-partial` for full sweep
+
+**TL;DR.** Two new CLI flags on `run_experiment.py`. `--partial K` caps each domain to first-K positive problems, first-K negative problems, and first-K valid + first-K invalid plans per kept positive problem (single-task-only fast feedback slice). `--continue-partial PARTIAL_DIR` seeds `args.output_dir/trials.jsonl` with the partial run's progress file before the existing resume logic kicks in, so partial trials transfer into a follow-up full sweep via the existing 10-tuple resume key. `results/` reorganised into `partial/`, `full/`, and `smoke/` buckets; default output dirs now land under the appropriate bucket. Pre-existing flat result dirs untouched. **No methodology change** — scoring, prompts, fixture content, and the resume-key shape are unchanged; existing results stay valid.
+
+**Motivation.** The full sweep is too slow to use as a feedback loop while iterating on the harness or methodology. `--partial 2` produces an informative slice across all domains and all models in roughly 1/4 the wall time of the full sweep. `--continue-partial` makes that slice a launchpad: when the partial looks reasonable, the follow-up full run only executes the cells the partial didn't cover, instead of starting from scratch.
+
+**What changed (`feature/partial-sweep-and-continue-partial` branch).**
+
+- **`run_experiment.py`** — added `--partial K` (int, default 0) and `--continue-partial PATH` argparse entries; new `_apply_partial_subset(domains, k)` helper called after the existing `--domains` / `--problems` filters; the smoke output-dir block generalised to a `partial`/`smoke`/`full` bucket prefix that fires when `--output-dir` is left at its default; `--continue-partial` copies `PATH/trials.jsonl` into `args.output_dir/trials.jsonl` before `load_progress` runs, refusing if the dest is already non-empty unless `--no-resume` is also set.
+- **`run_background.sh`** — new `partial` mode (calls `--partial 2 --conditions both`, no chains, output under `results/partial/`) and `continue-partial PATH` mode (passes `--continue-partial PATH`, output under `results/full/`). Existing modes (`small`, `large`, `both`, `*-nothink`) now write to `results/full/` instead of `results/` flat.
+- **`cluster-experimenting/submit_with_rtx.sh`** — new `--continue-partial PATH` flag exports `CONTINUE_PARTIAL` to the array sbatch env so every cell seeds its own `OUT_DIR/trials.jsonl` from `PATH/trials.jsonl` on first submission. Source path is validated up front so a typo fails before the cluster pulls a slot. Echo strings also updated to reference the new smoke path (`results/smoke/{fixed,shuffle}_<sha>_<ts>/`). Array fan-out is unchanged — every (model, think, cond) cell still runs concurrently on its own GPU node.
+- **`cluster-experimenting/run_condition_rtx.sbatch`** — added a 4-line guard before the python invocation: when `CONTINUE_PARTIAL` is set AND `OUT_DIR/trials.jsonl` is empty, pass `--continue-partial $CONTINUE_PARTIAL` to `run_experiment.py`. The empty-dir guard prevents a TIMEOUT-resubmitted cell from re-seeding (which would clobber trials accumulated since the first seed); subsequent resubmissions just resume from the existing JSONL.
+- No `pddl_eval/runner.py` change. The 10-tuple resume key is unchanged; `--partial` ships a strict subset of cells with the same keys, so partial trials transfer to a follow-up full run without any schema work.
+
+**Methodology note.** Partial → full transfer requires identical meta-dimensions (`tool_filter`, `prompt_style`, `think`, `conditions`) between the two runs, since those dimensions are part of the resume key. Mismatched cells re-run silently (correctness preserved, throughput cost only). Documented in the `--continue-partial` argparse help.
+
+**Files.** `run_experiment.py`, `run_background.sh`, `cluster-experimenting/submit_with_rtx.sh`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-05-04 — Whitespace normalization on the 10 newer paper-aligned domains
 
 **TL;DR.** Apply the same `expand -t 2` + trailing-whitespace strip + final-newline pass that `f3aac57` (2026-04-21) ran on the original 10 domains, now to the 10 added in `b7960da` (PR-3). 114/120 `.pddl` files rewritten across `domains/{classical,numeric}/{gripper,miconic,parking,tpp,zenotravel,block-grouping,delivery,drone,gardening,zenotravel-numeric}/`. Tabs → 2 spaces, trailing whitespace stripped, trailing blank lines collapsed, exactly one final `\n`. **No semantic changes** — non-whitespace byte stream (`''.join(s.split())`) preserved on every file (the normalizer asserts this and aborts the write if it would drift).

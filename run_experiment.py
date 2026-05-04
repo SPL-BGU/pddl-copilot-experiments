@@ -25,6 +25,7 @@ import asyncio
 import os
 import random
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -182,6 +183,51 @@ PROMPT_STYLE_CHOICES = ("minimal",)
 CONDITION_CHOICES = ("tools", "no-tools", "both")
 
 
+def _apply_partial_subset(domains: dict, k: int) -> dict:
+    """Cap each domain to first-K positive + first-K negative fixtures.
+
+    Used by `--partial K` to produce a fast feedback slice across all domains
+    without touching scoring or the resume-key shape. The helper rebuilds the
+    `domains` dict so a `dict.copy()` of caller state is unaffected; ground
+    truth is generated against the returned subset, so partial sweeps don't
+    pay GT-generation cost on dropped fixtures.
+
+    Resume-key invariant: the 10-tuple `(model, task, dname, pname,
+    plan_label, ...)` is meta-dim agnostic, so a partial run's trials.jsonl
+    transfers cleanly into a full run via `--continue-partial`, provided the
+    meta-dimensions (`tool_filter`, `prompt_style`, `think`, `conditions`)
+    match. Mismatched cells re-run silently.
+    """
+    if k <= 0:
+        return domains
+    out: dict = {}
+    for dname, dinfo in domains.items():
+        kept_pnames = list(dinfo["problems"].keys())[:k]
+        if not kept_pnames:
+            continue
+        kept_set = set(kept_pnames)
+        new_problems = {p: dinfo["problems"][p] for p in kept_pnames}
+        new_negatives = None
+        negs = dinfo.get("negatives")
+        if negs is not None:
+            new_negatives = {
+                "domain": negs.get("domain"),
+                "problems": (negs.get("problems") or [])[:k],
+                "plans_per_problem": {
+                    p: {
+                        "valid": (v.get("valid") or [])[:k],
+                        "invalid": (v.get("invalid") or [])[:k],
+                    }
+                    for p, v in (negs.get("plans_per_problem") or {}).items()
+                    if p in kept_set
+                },
+            }
+        out[dname] = {**dinfo, "problems": new_problems}
+        if new_negatives is not None:
+            out[dname]["negatives"] = new_negatives
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Main async entry
 # ---------------------------------------------------------------------------
@@ -207,17 +253,22 @@ async def async_main(args):
     if args.models is None:
         args.models = list(DEFAULT_MODELS)
 
-    # Smoke output dir is keyed on the source SHA + a wall-clock timestamp,
-    # so the diff harness can pair pre-/post-refactor runs by commit. Done
-    # here (after model resolution, before the banner) so the printed
-    # path matches what's eventually written.
-    if smoke_mode:
+    # Auto-name the output dir for bare invocations (`--output-dir` left at
+    # its default `RESULTS_DIR`). Sweeps land under one of three buckets
+    # depending on flags: `partial/` for `--partial K`, `smoke/` for
+    # `--smoke[-shuffle]`, `full/` otherwise. Cluster + laptop driver
+    # scripts pass an explicit `--output-dir` and bypass this block.
+    if args.output_dir == str(RESULTS_DIR):
         sha_tag = _git_short_sha_dirty()
         ts_tag = time.strftime("%Y%m%d_%H%M%S")
-        smoke_label = "smoke_shuffle" if args.smoke_shuffle else "smoke"
-        args.output_dir = str(
-            RESULTS_DIR / f"{smoke_label}_{sha_tag}_{ts_tag}"
-        )
+        if args.partial > 0:
+            bucket, name = "partial", f"{sha_tag}_{ts_tag}"
+        elif smoke_mode:
+            smoke_label = "shuffle" if args.smoke_shuffle else "fixed"
+            bucket, name = "smoke", f"{smoke_label}_{sha_tag}_{ts_tag}"
+        else:
+            bucket, name = "full", f"{sha_tag}_{ts_tag}"
+        args.output_dir = str(RESULTS_DIR / bucket / name)
 
     num_parallel_env = os.environ.get("OLLAMA_NUM_PARALLEL", "unset")
 
@@ -300,12 +351,20 @@ async def async_main(args):
                 "negatives": {**negs, "plans_per_problem": kept_plans_per_problem},
             }
         domains = filtered
+    # `--partial K` is the last filter: caps each remaining domain to first-K
+    # positives, first-K negatives, and first-K valid/invalid plans per kept
+    # positive. Applied here so ground truth is generated only for the subset.
+    if args.partial > 0:
+        domains = _apply_partial_subset(domains, args.partial)
     if not domains:
         sys.exit(
             f"No domains/problems remain after filtering "
-            f"(--domains={args.domains}, --problems={args.problems})"
+            f"(--domains={args.domains}, --problems={args.problems}, "
+            f"--partial={args.partial})"
         )
     n_problems = sum(len(d["problems"]) for d in domains.values())
+    if args.partial > 0:
+        print(f"\n  --partial {args.partial}: subsetting to first-K fixtures per domain")
     print(f"\n  Loaded {len(domains)} domains, {n_problems} problems total")
     for dname, dinfo in domains.items():
         print(f"    {dname} ({dinfo['type']}): {len(dinfo['problems'])} problems")
@@ -347,13 +406,27 @@ async def async_main(args):
         if progress_path.exists():
             progress_path.unlink()
             print(f"\n  --no-resume: removed existing {progress_path}")
-    else:
-        done_keys, restored_results = load_progress(progress_path)
-        if restored_results:
-            print(
-                f"\n  Resume: loaded {len(restored_results)} previously-completed "
-                f"trials from {progress_path}"
+    # `--continue-partial` seeds the new sweep's trials.jsonl with a previous
+    # partial sweep's progress file so its completed trials transfer into
+    # this run via the existing 10-tuple resume key. Strictly sugar over
+    # `cp` + `--resume`, but with named UX + error semantics.
+    if args.continue_partial:
+        src = Path(args.continue_partial) / "trials.jsonl"
+        if not src.exists():
+            sys.exit(f"--continue-partial: {src} not found")
+        if progress_path.exists() and progress_path.stat().st_size > 0:
+            sys.exit(
+                f"--continue-partial: {progress_path} already non-empty; "
+                f"pass --no-resume to overwrite"
             )
+        shutil.copy2(src, progress_path)
+        print(f"\n  --continue-partial: seeded {progress_path} from {src}")
+    done_keys, restored_results = load_progress(progress_path)
+    if restored_results:
+        print(
+            f"\n  Resume: loaded {len(restored_results)} previously-completed "
+            f"trials from {progress_path}"
+        )
 
     single_results: list[TaskResult] = []
     chain_results: list[dict] = []
@@ -645,7 +718,7 @@ def main():
                         "current model set. Auto-sets --domains blocksworld "
                         "--problems p01 --num-variants 1 --chain-samples 0 "
                         "--conditions both, and iterates --think={on,off} "
-                        "internally. Output dir: results/smoke_<git-sha>_<ts>/.")
+                        "internally. Output dir: results/smoke/fixed_<git-sha>_<ts>/.")
     p.add_argument("--smoke-shuffle", action="store_true",
                    help="Like --smoke but picks a random (domain, problem) "
                         "per (model, task) cell using --seed; ~same eval "
@@ -664,6 +737,27 @@ def main():
                         "trials.jsonl exists, completed trials are loaded "
                         "and skipped on re-run, so a TIMEOUT/scancel only "
                         "loses the trial in flight at the time.")
+    # Partial-sweep flags. `--partial K` produces a fast feedback slice
+    # (first-K positives / negatives / valid-plans / invalid-plans per
+    # domain). `--continue-partial PATH` seeds a full-sweep run with that
+    # slice's trials.jsonl so completed trials transfer via the resume key.
+    p.add_argument("--partial", type=int, default=0, metavar="K",
+                   help="Subset each domain to first-K positive problems, "
+                        "first-K negative problems, and first-K valid + "
+                        "first-K invalid plans per kept positive problem. "
+                        "Default 0 (off, full set). Single-task only by "
+                        "convention; pair with `--conditions both` for the "
+                        "fast feedback grid. Default --output-dir lands "
+                        "under results/partial/.")
+    p.add_argument("--continue-partial", type=str, default=None, metavar="PATH",
+                   help="Seed --output-dir/trials.jsonl with PATH/trials.jsonl "
+                        "before resume kicks in, so a partial sweep's "
+                        "completed trials transfer into a follow-up full "
+                        "sweep. Required: identical meta-dimensions "
+                        "(--tool-filter, --prompt-style, --think, "
+                        "--conditions) between the two runs — mismatched "
+                        "cells re-run silently. Refuses if dest already "
+                        "non-empty unless --no-resume is also set.")
     args = p.parse_args()
 
     # Route SIGTERM through the same path as Ctrl-C so a `kill` from

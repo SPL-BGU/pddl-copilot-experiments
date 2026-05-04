@@ -399,6 +399,28 @@ for MODEL in $MODELS; do
                 SHARD_ARGS=(--shard "$SHARD")
             fi
 
+            # `--continue-partial` (env CONTINUE_PARTIAL): seed OUT_DIR/trials.jsonl
+            # from CONTINUE_PARTIAL/trials.jsonl on the cell's FIRST submission.
+            # The `[ ! -s OUT_DIR/trials.jsonl ]` guard ensures a TIMEOUT'd cell
+            # that's resubmitted does NOT re-seed — re-seeding would either
+            # fail-fast (run_experiment.py refuses non-empty dest) or wipe
+            # trials accumulated since the first seed. Per-cell independent;
+            # no cross-array-task coordination needed.
+            CONTINUE_ARG=()
+            if [ -n "${CONTINUE_PARTIAL:-}" ] && [ ! -s "$OUT_DIR/trials.jsonl" ]; then
+                CONTINUE_ARG=(--continue-partial "$CONTINUE_PARTIAL")
+            fi
+
+            # `--partial K` (env PARTIAL_K): cap each domain to first-K
+            # positives + first-K negatives + first-K valid + first-K invalid
+            # plans per kept positive. Single-task fast-feedback slice. Pairs
+            # with --continue-partial to produce partial-style outputs from
+            # pre-existing full-sweep cluster data without re-running trials.
+            PARTIAL_ARG=()
+            if [ -n "${PARTIAL_K:-}" ]; then
+                PARTIAL_ARG=(--partial "$PARTIAL_K")
+            fi
+
             python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$MODEL" \
@@ -409,6 +431,8 @@ for MODEL in $MODELS; do
                 "${COND_ARGS[@]}" \
                 "${TASKS_ARG[@]}" \
                 "${SHARD_ARGS[@]}" \
+                "${CONTINUE_ARG[@]}" \
+                "${PARTIAL_ARG[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 
