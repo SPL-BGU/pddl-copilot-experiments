@@ -5,7 +5,7 @@
     x0y0z0 - location
     x0y0z1 - location
   )
-  
+
   (:goal
     (and
       (visited x0y0z0)

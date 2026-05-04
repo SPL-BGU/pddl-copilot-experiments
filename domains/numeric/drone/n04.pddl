@@ -1,7 +1,7 @@
 ;;Instance with 1x1x2 points
 (define (problem name)
   (:domain drone)
-  
+
   (:init
     (= (x) 0)
     (= (y) 0)

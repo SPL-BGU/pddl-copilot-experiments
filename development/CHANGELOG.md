@@ -6,6 +6,25 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-04 — Whitespace normalization on the 10 newer paper-aligned domains
+
+**TL;DR.** Apply the same `expand -t 2` + trailing-whitespace strip + final-newline pass that `f3aac57` (2026-04-21) ran on the original 10 domains, now to the 10 added in `b7960da` (PR-3). 114/120 `.pddl` files rewritten across `domains/{classical,numeric}/{gripper,miconic,parking,tpp,zenotravel,block-grouping,delivery,drone,gardening,zenotravel-numeric}/`. Tabs → 2 spaces, trailing whitespace stripped, trailing blank lines collapsed, exactly one final `\n`. **No semantic changes** — non-whitespace byte stream (`''.join(s.split())`) preserved on every file (the normalizer asserts this and aborts the write if it would drift).
+
+**Motivation.** The 2026-05-04 diagnostic on `qwen3.6:35b validate_plan` showed that under per-task tools the model never passes the file verbatim — it re-emits the domain inline as a tool argument and corrupts deeply nested numeric expressions (paren miscount on `zenotravel-numeric/domain.pddl::fly-slow`'s `:effect` block, 145/145 `SYNTAX_ERROR`s downstream). The cleanup we ran on the original 10 domains in `f3aac57` was for the same class of model-side fragility — uniform whitespace makes the file's token sequence less surprising. The 10 newer domains skipped that pass; this entry brings them to parity. See `development/qwen3_6_35b_validate_plan_tool_inversion.md` for the full diagnosis.
+
+**Verification.** All 10 `domain.pddl` parse `valid: true` standalone via `mcp__plugin_pddl-validator__validate_pddl_syntax`. All 10 `(domain, p01, p01_v1.plan)` triples round-trip with full plan-execution traces and goal satisfaction. Sampled `b*` plans still classify INVALID with the correct rejection reason; `domain_neg.pddl` and `n01.pddl` negative fixtures still report SYNTAX_ERROR for the right cause. So both positive and negative ground truth survived the cleanup — no `gt["plan_valid"]` flip risk for downstream sweeps.
+
+**Followup.** Whether this whitespace cleanup actually moves the needle on the `qwen3.6:35b validate_plan` tools-vs-no-tools inversion (−2.7pp on cluster-20260504) is an open empirical question. The hypothesis we're banking on: cleaner whitespace gives the model a more regular token sequence to copy, reducing paren-balance errors when re-emitting as a tool argument. The hypothesis we're hedging against: the model's content-fidelity loss is structural and won't shift no matter how clean the source is. **Next sweep on the cleaned files is the test.** Recheck the per-domain table from the prior diagnosis after the next per-task tools run on `qwen3.6:35b` lands; if `zenotravel-numeric` tools-condition stays at ~47% and the aggregate validate_plan delta stays at −3pp, the inversion is model-layer (won't be fixable by file hygiene). If `zenotravel-numeric` recovers and the aggregate flips positive, the cleanup was the missing piece.
+
+**Files.**
+- `domains/classical/{gripper,miconic,parking,tpp,zenotravel}/{domain,domain_neg,p01..p05,n01..n05}.pddl` — 60 files, 56 rewritten.
+- `domains/numeric/{block-grouping,delivery,drone,gardening,zenotravel-numeric}/{domain,domain_neg,p01..p05,n01..n05}.pddl` — 60 files, 58 rewritten.
+- 6 already-clean files left untouched (`gripper/n04`, `gripper/n05`, `miconic/n04`, `miconic/n05`, `block-grouping/domain.pddl`, `block-grouping/domain_neg.pddl`).
+- Plan files (`*.plan`) untouched.
+- The original 10 domains (`barman`, `blocksworld`, `depots`, `satellite`, `rovers`, `counters`, `depot`, `farmland`, `sailing`, `pogo_stick`) untouched — they were already cleaned in `f3aac57`.
+
+---
+
 ## 2026-05-01 — Resumable single-task sweeps: per-trial JSONL + cell-keyed OUT_DIR
 
 **TL;DR.** `run_single_task_experiment` writes one JSONL line per completed trial to `output_dir/trials.jsonl`, and `run_experiment.py` loads that file at startup to skip already-completed trials. A TIMEOUT / scancel / scratch-OOM no longer wipes the whole cell — only the trial in flight at the time is lost. On the cluster, `run_condition_rtx.sbatch`'s `OUT_DIR` is keyed on `(model, think, cond)` only (drops `_$SLURM_JOBID`), so a TIMEOUT'd resubmission lands in the same dir and the resume path finds the prior `trials.jsonl`. Methodology unchanged: `single_task_*.json` and `summary_*.json` shapes byte-compatible, `meta` gains `resumed_count` on resumed runs.

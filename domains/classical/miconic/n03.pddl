@@ -28,5 +28,3 @@
 (undef_pred_xyz p0)
 ))
 )
-
-

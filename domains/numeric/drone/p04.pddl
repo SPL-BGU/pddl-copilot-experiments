@@ -1,6 +1,6 @@
 ;;Instance with 8x1x2 points
 (define (problem name) (:domain drone)
-(:objects 
+(:objects
 x0y0z0 - location
 x0y0z1 - location
 x1y0z0 - location
@@ -17,11 +17,11 @@ x6y0z0 - location
 x6y0z1 - location
 x7y0z0 - location
 x7y0z1 - location
-) 
+)
 (:init (= (x) 0) (= (y) 0) (= (z) 0)
- (= (min_x) 0)  (= (max_x) 8) 
- (= (min_y) 0)  (= (max_y) 1) 
- (= (min_z) 0)  (= (max_z) 2) 
+ (= (min_x) 0)  (= (max_x) 8)
+ (= (min_y) 0)  (= (max_y) 1)
+ (= (min_z) 0)  (= (max_z) 2)
 (= (xl x0y0z0) 0)
 (= (yl x0y0z0) 0)
 (= (zl x0y0z0) 0)
@@ -73,7 +73,7 @@ x7y0z1 - location
 (= (battery-level) 23)
 (= (battery-level-full) 23)
 )
-(:goal (and 
+(:goal (and
 (visited x0y0z0)
 (visited x0y0z1)
 (visited x1y0z0)

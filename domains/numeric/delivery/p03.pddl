@@ -20,7 +20,7 @@
           (at item3 rooma)
           (at item2 rooma)
           (at item1 rooma)
-          
+
           (at-bot bot1 rooma)
           (at-bot bot2 rooma)
           (free left1)
@@ -31,18 +31,18 @@
           (mount right1 bot1)
           (mount left2 bot2)
           (mount right2 bot2)
-          
+
           (door rooma roomb)
           (door roomb rooma)
           (door rooma roomc)
           (door roomc rooma)
-            
+
           (= (current_load bot1) 0)
           (= (load_limit bot1) 4)
           (= (current_load bot2) 0)
           (= (load_limit bot2) 4)
-          (= (cost) 0))  
-          
+          (= (cost) 0))
+
    (:goal (and (at item8 roomb)
                (at item7 roomb)
                (at item6 roomb)
@@ -51,6 +51,6 @@
                (at item3 roomc)
                (at item2 roomc)
                (at item1 roomc)))
-               
+
    (:metric minimize (cost))
 )

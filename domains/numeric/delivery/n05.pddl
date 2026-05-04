@@ -1,6 +1,6 @@
 (define (problem delivery-x-1)
    (:domain delivery)
-   
+
    (:init (= (weight item4) 1)
           (= (weight item3) 1)
           (= (weight item2) 1)
@@ -19,22 +19,22 @@
           (at item3 rooma)
           (at item2 rooma)
           (at item1 rooma)
-          
+
           (door rooma roomb)
           (door roomb rooma)
           (door rooma roomc)
           (door roomc rooma)
-          
+
           (= (current_load bot1) 0)
           (= (load_limit bot1) 4)
           (= (current_load bot2) 0)
           (= (load_limit bot2) 4)
           (= (cost) 0))
-          
+
    (:goal (and (at item4 roomb)
                (at item3 roomb)
                (at item2 roomc)
                (at item1 roomc)))
-               
+
    (:metric minimize (cost))
 )
