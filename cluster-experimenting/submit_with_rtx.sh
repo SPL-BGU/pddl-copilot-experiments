@@ -33,6 +33,24 @@
 #   bash cluster-experimenting/submit_with_rtx.sh <m1> <m2> --gpu-type rtx_pro_6000
 #   bash cluster-experimenting/submit_with_rtx.sh <model> --think-modes "on off"
 #   bash cluster-experimenting/submit_with_rtx.sh <model> --dry-run
+#   bash cluster-experimenting/submit_with_rtx.sh --all --continue-partial /path/to/seed_dir
+#   bash cluster-experimenting/submit_with_rtx.sh --all --partial 2 --continue-partial /path/to/seed_dir
+#
+# --continue-partial PATH: every array cell seeds its OUT_DIR/trials.jsonl
+#   from PATH/trials.jsonl on FIRST submission (sbatch-side guard skips the
+#   seeding if OUT_DIR/trials.jsonl is already non-empty, so a TIMEOUT'd
+#   cell that's resubmitted just resumes from where it left off). PATH must
+#   contain a trials.jsonl; merge multiple cells with
+#   `cat results/slurm_*/trials.jsonl > /tmp/seed/trials.jsonl` if needed.
+#   Array fan-out is unchanged; each cell copies independently from PATH.
+#
+# --partial K: pass `--partial K` to every cell's run_experiment.py. Caps
+#   each domain to first-K positive + first-K negative problems and first-K
+#   valid + first-K invalid plans per kept positive — the same fast-feedback
+#   slice as the local `run_background.sh partial` mode. Combine with
+#   --continue-partial to instantly produce partial-style results from a
+#   pre-existing full-sweep cluster directory (resume skips every matching
+#   cell, output is the partial-fixture summary).
 #
 # Examples:
 #   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B           # 5-cell array
@@ -77,6 +95,8 @@ ALL=0
 SMOKE=0
 SMOKE_SHUFFLE=0
 SHARD=""
+CONTINUE_PARTIAL=""
+PARTIAL_K=""
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -89,14 +109,35 @@ while [[ $# -gt 0 ]]; do
         --smoke) SMOKE=1; shift ;;
         --smoke-shuffle) SMOKE_SHUFFLE=1; shift ;;
         --shard) shift; SHARD="$1"; shift ;;
+        --continue-partial) shift; CONTINUE_PARTIAL="$1"; shift ;;
+        --partial) shift; PARTIAL_K="$1"; shift ;;
         -h|--help)
-            sed -n '1,68p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            sed -n '1,80p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
             echo "Unknown option: $1" >&2; exit 1 ;;
         *)
             MODELS+=("$1"); shift ;;
     esac
 done
+
+if [ -n "$PARTIAL_K" ] && ! [[ "$PARTIAL_K" =~ ^[0-9]+$ ]]; then
+    echo "Error: --partial expects a non-negative integer (got: $PARTIAL_K)" >&2
+    exit 1
+fi
+
+# `--continue-partial PATH` opt-in: per array cell, seed OUT_DIR/trials.jsonl
+# from PATH/trials.jsonl IF that cell's OUT_DIR is empty. The sbatch enforces
+# the empty-dir guard so a TIMEOUT'd cell that's resubmitted does not re-seed
+# (which would clobber trials accumulated since the first seeding). Array
+# semantics unchanged — every cell still fans out concurrently, each seeds
+# its own OUT_DIR independently from the same source. Validate up front so a
+# typo'd path fails before the cluster pulls the slot.
+if [ -n "$CONTINUE_PARTIAL" ]; then
+    if [ ! -f "${CONTINUE_PARTIAL}/trials.jsonl" ]; then
+        echo "Error: --continue-partial: ${CONTINUE_PARTIAL}/trials.jsonl not found" >&2
+        exit 1
+    fi
+fi
 
 # --smoke / --smoke-shuffle: pin the 4-model pack and full think × cond
 # matrix; run_experiment.py auto-overrides --num-variants/--chain-samples
@@ -262,6 +303,12 @@ fi
 if [ -n "$SHARD" ]; then
     EXPORT_LIST="${EXPORT_LIST},SHARD=${SHARD}"
 fi
+if [ -n "$CONTINUE_PARTIAL" ]; then
+    EXPORT_LIST="${EXPORT_LIST},CONTINUE_PARTIAL=${CONTINUE_PARTIAL}"
+fi
+if [ -n "$PARTIAL_K" ]; then
+    EXPORT_LIST="${EXPORT_LIST},PARTIAL_K=${PARTIAL_K}"
+fi
 
 # Add --array only when N>1; single-cell submissions remain plain sbatch.
 ARRAY_ARG=()
@@ -293,13 +340,19 @@ if [ "$NO_TOOLS" -eq 1 ]; then
     echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=solve+validate_*)" >&2
 fi
 if [ "$SMOKE" -eq 1 ]; then
-    echo "  mode:        --smoke (1 domain × 1 problem × 1 variant × 5 tasks × 2 conds × 2 think; output → results/smoke_<sha>_<ts>/)" >&2
+    echo "  mode:        --smoke (1 domain × 1 problem × 1 variant × 5 tasks × 2 conds × 2 think; output → results/smoke/fixed_<sha>_<ts>/)" >&2
 fi
 if [ "$SMOKE_SHUFFLE" -eq 1 ]; then
-    echo "  mode:        --smoke-shuffle (per-(model,task) random domain pick; output → results/smoke_shuffle_<sha>_<ts>/)" >&2
+    echo "  mode:        --smoke-shuffle (per-(model,task) random domain pick; output → results/smoke/shuffle_<sha>_<ts>/)" >&2
 fi
 if [ -n "$SHARD" ]; then
     echo "  shard:       $SHARD (SHA-256 partitioner; chains run only on shard 0)" >&2
+fi
+if [ -n "$CONTINUE_PARTIAL" ]; then
+    echo "  cont-from:   $CONTINUE_PARTIAL (each cell seeds its OUT_DIR/trials.jsonl on first run only)" >&2
+fi
+if [ -n "$PARTIAL_K" ]; then
+    echo "  partial:     K=$PARTIAL_K (per-domain fixture cap; single-task fast feedback slice)" >&2
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
