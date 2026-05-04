@@ -33,8 +33,9 @@ run_experiment.py
 Each `(model, think, condition, tool_filter, prompt_style)` produces its
 own output directory:
 ```
-results/slurm_<model>_<think>_<cond>_<jobid>/        # cluster
-results/{tag}_{timestamp}_{filter}_{prompt}/         # laptop
+results/slurm_<model>_<think>_<cond>_<jobid>/                    # cluster
+results/{full,partial}/{tag}_{timestamp}_{filter}_{prompt}/      # laptop
+results/smoke/{fixed,shuffle}_<sha>_<ts>/                        # --smoke
     single_task_{ts}.json
     chain_{ts}.json
     summary_{ts}.json
