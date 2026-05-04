@@ -145,17 +145,6 @@ bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 ```
 
-## Running (Jupyter)
-
-For interactive exploration:
-
-```bash
-pip3 install -r requirements.txt  # includes jupyter, matplotlib, pandas
-jupyter notebook
-```
-
-- **`experiment_notebook.ipynb`** -- Run experiments interactively, modify parameters per cell
-
 ## Output
 
 Results are saved as JSON in `results/`:
