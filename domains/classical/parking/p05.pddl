@@ -32,18 +32,18 @@
   )
 (:metric minimize (total-cost))
 )
-; =========== INIT =========== 
-;  curb_0: car_0 car_2 
-;  curb_1: car_3 
-;  curb_2: car_1 
-;  curb_3: car_4 
-;  curb_4: 
-; ========== /INIT =========== 
+; =========== INIT ===========
+;  curb_0: car_0 car_2
+;  curb_1: car_3
+;  curb_2: car_1
+;  curb_3: car_4
+;  curb_4:
+; ========== /INIT ===========
 
-; =========== GOAL =========== 
-;  curb_0: car_0 
-;  curb_1: car_1 
-;  curb_2: car_2 
-;  curb_3: car_3 
-;  curb_4: car_4 
-; =========== /GOAL =========== 
+; =========== GOAL ===========
+;  curb_0: car_0
+;  curb_1: car_1
+;  curb_2: car_2
+;  curb_3: car_3
+;  curb_4: car_4
+; =========== /GOAL ===========

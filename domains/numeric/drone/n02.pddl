@@ -23,7 +23,7 @@
     (= (zl x0y0z1) 1)
     (= (battery-level) 9)
     (= (battery-level-full) 9)
-  
+
     (x undef_obj_xyz))
   (:goal
     (and

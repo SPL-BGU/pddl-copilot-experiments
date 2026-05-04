@@ -2,7 +2,7 @@
 (define (domain zenotravel)
 ;(:requirements :typing :fluents)
 (:types locatable city - object
-	aircraft person - locatable)
+  aircraft person - locatable)
 (:predicates (located ?x - locatable  ?c - city)
              (in ?p - person ?a - aircraft))
 (:functions (fuel ?a - aircraft)
@@ -11,7 +11,7 @@
             (fast-burn ?a - aircraft)
             (capacity ?a - aircraft)
             (total-fuel-used)
-	    (onboard ?a - aircraft)
+      (onboard ?a - aircraft)
             (zoom-limit ?a - aircraft)
             )
 
@@ -22,7 +22,7 @@
                  (located ?a ?c))
  :effect (and (not (located ?p ?c))
               (in ?p ?a)
-		(increase (onboard ?a) 1)))
+    (increase (onboard ?a) 1)))
 
 
 (:action debark
@@ -31,40 +31,40 @@
                  (located ?a ?c))
  :effect (and (not (in ?p ?a))
               (located ?p ?c)
-		(decrease (onboard ?a) 1)))
+    (decrease (onboard ?a) 1)))
 
 (:action fly-slow
  :parameters (?a - aircraft ?c1 ?c2 - city)
  :precondition (and (located ?a ?c1)
-                 (>= (fuel ?a) 
+                 (>= (fuel ?a)
                          (* (distance ?c1 ?c2) (slow-burn ?a))))
  :effect (and (not (located ?a ?c1))
               (located ?a ?c2)
               (increase (total-fuel-used)
                          (* (distance ?c1 ?c2) (slow-burn ?a)))
-              (decrease (fuel ?a) 
+              (decrease (fuel ?a)
                          (* (distance ?c1 ?c2) (slow-burn ?a)))))
-                                  
+
 (:action fly-fast
  :parameters (?a - aircraft ?c1 ?c2 - city)
  :precondition (and (located ?a ?c1)
-                 (>= (fuel ?a) 
+                 (>= (fuel ?a)
                          (* (distance ?c1 ?c2) (fast-burn ?a)))
                  (<= (onboard ?a) (zoom-limit ?a)))
  :effect (and (not (located ?a ?c1))
               (located ?a ?c2)
               (increase (total-fuel-used)
                          (* (distance ?c1 ?c2) (fast-burn ?a)))
-              (decrease (fuel ?a) 
+              (decrease (fuel ?a)
                          (* (distance ?c1 ?c2) (fast-burn ?a)))
-	)
-) 
+  )
+)
 
-(:action refuel	
+(:action refuel
  :parameters (?a - aircraft)
  :precondition (and (> (capacity ?a) (fuel ?a))
 
-		)
+    )
  :effect (and (assign (fuel ?a) (capacity ?a)))
 )
 

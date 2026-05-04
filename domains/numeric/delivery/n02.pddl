@@ -22,23 +22,23 @@
           (at item3 rooma)
           (at item2 rooma)
           (at item1 rooma)
-          
+
           (door rooma roomb)
           (door roomb rooma)
           (door rooma roomc)
           (door roomc rooma)
-          
+
           (= (current_load bot1) 0)
           (= (load_limit bot1) 4)
           (= (current_load bot2) 0)
           (= (load_limit bot2) 4)
           (= (cost) 0)
     (weight undef_obj_xyz))
-          
+
    (:goal (and (at item4 roomb)
                (at item3 roomb)
                (at item2 roomc)
                (at item1 roomc)))
-               
+
    (:metric minimize (cost))
 )

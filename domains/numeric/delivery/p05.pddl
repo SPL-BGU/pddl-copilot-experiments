@@ -1,8 +1,8 @@
 (define (problem delivery-x-5)
    (:domain delivery)
-   (:objects rooma roomb roomc - room 
+   (:objects rooma roomb roomc - room
              item12 item11 item10
-             item9 item8 item7 item6 item5 item4 item3 item2 item1 - item 
+             item9 item8 item7 item6 item5 item4 item3 item2 item1 - item
              bot1 bot2 - bot
              left1 right1 left2 right2 - arm)
    (:init (= (weight item12) 2)
@@ -30,7 +30,7 @@
           (at item3 rooma)
           (at item2 rooma)
           (at item1 rooma)
-          
+
           (at-bot bot1 rooma)
           (at-bot bot2 rooma)
           (free left1)
@@ -41,12 +41,12 @@
           (mount right1 bot1)
           (mount left2 bot2)
           (mount right2 bot2)
-          
+
           (door rooma roomb)
           (door roomb rooma)
           (door rooma roomc)
           (door roomc rooma)
-          
+
           (= (current_load bot1) 0)
           (= (load_limit bot1) 4)
           (= (current_load bot2) 0)
@@ -65,7 +65,7 @@
                (at item3 roomc)
                (at item2 roomc)
                (at item1 roomc)))
-               
+
                (:metric minimize (cost))
-               
+
 )

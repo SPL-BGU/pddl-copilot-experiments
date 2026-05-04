@@ -20,5 +20,3 @@ ball1 - object)
 )
 )
 )
-
-

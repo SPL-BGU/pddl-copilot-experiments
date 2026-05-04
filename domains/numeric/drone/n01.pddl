@@ -24,5 +24,5 @@
     (= (battery-level) 9)
     (= (battery-level-full) 9)
   )
-  
+
 );; end of the problem instance

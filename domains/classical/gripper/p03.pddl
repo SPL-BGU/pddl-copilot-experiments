@@ -26,5 +26,3 @@ ball1 ball2 ball3 - object)
 )
 )
 )
-
-
