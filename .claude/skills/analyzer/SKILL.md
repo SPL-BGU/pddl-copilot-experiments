@@ -19,7 +19,7 @@ This skill is **read-only** over experiment state — it never edits `run_experi
 All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`.
 
 - **Results root**: directories under `results/`, typically `results/cluster-YYYYMMDD/` (synced) or `results/full-cluster-run*/` (older). Each contains one `slurm_<model>_<think>_<cond>[_<jobid>]/` subdir per cell.
-- **Per-cell layout**: `summary_*.json` (aggregated single_task + chains) is the canonical analysis input. `trials.jsonl` (per-trial JSONL, post 2026-05-01) is read by `drift_check.py` as a mid-sweep fallback when no `summary_*.json` exists yet.
+- **Per-cell layout**: `summary_*.json` (aggregated single_task; the legacy `chains` array is empty under the active flow as of 2026-05-05) is the canonical analysis input. `trials.jsonl` (per-trial JSONL, post 2026-05-01) is read by `drift_check.py` as a mid-sweep fallback when no `summary_*.json` exists yet.
 - **Cell dirname shapes** (handled transparently by `parse_dirname`):
   - Cell-keyed (current, post 2026-05-01): `slurm_<model>_<think>_<cond>` — one dir per cell, resubmits accumulate timestamped summaries inside.
   - With-jobid (pre 2026-05-01): `slurm_<model>_<think>_<cond>_<jobid>` — one dir per submission.
@@ -30,7 +30,7 @@ All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-
 
 ### `scripts/aggregate.py` — summary.json → Markdown
 
-Walks a results root (default: most recent `results/cluster-*` or `results/full-cluster-run*`), loads every `summary_*.json`, emits Markdown tables: single-task success-rate matrix, chain success-rate matrix, failure-reason totals.
+Walks a results root (default: most recent `results/cluster-*` or `results/full-cluster-run*`), loads every `summary_*.json`, emits Markdown tables: single-task success-rate matrix and failure-reason totals.
 
 ```bash
 python3 .claude/skills/analyzer/scripts/aggregate.py                            # auto-pick latest
@@ -41,15 +41,13 @@ Legacy dirs (no `<think>` segment) are treated as `think=default` with a header 
 
 ### `scripts/plot.py` — paper-style plots
 
-Auto-discovers series from dir names + summary meta; dynamically builds the SERIES list. Seven figures in `<root>/plots/`:
+Auto-discovers series from dir names + summary meta; dynamically builds the SERIES list. Five figures in `<root>/plots/` (chain-phase fig2 + fig7 archived 2026-05-05; numeric IDs preserved):
 
 - `fig1_single_task.png` — task × series success-rate bars with Wilson 95% CI whiskers
-- `fig2_chain.png` — chain length × series bars (chain=1 is ST mean), CI whiskers on L=2..5
 - `fig3_tool_selection.png` — classical vs numeric planner-selection rate on `solve`
 - `fig4_failure_breakdown.png` — 1×5 grid of 100%-stacked failure-reason bars per task
 - `fig5_domain_heatmap.png` — 1×5 heatmap grid, rows=series × cols=10 domains, cell=`k/n`
 - `fig6_tool_adherence.png` — per-task `tool_selected_rate` with CI whiskers (with-tools only)
-- `fig7_chain_step_survival.png` — P(reach step k) per chain length L=2..5
 
 ```bash
 python3 .claude/skills/analyzer/scripts/plot.py                                     # auto-pick latest, plots → <root>/plots/
@@ -60,7 +58,7 @@ python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --no-ci
 python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --merge       # pooled (model, think) → plots/merged/
 ```
 
-`--figs` accepts `all` (default) or a comma list over `1..7`. `--no-ci` disables error bars on figs 1, 2, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged.
+`--figs` accepts `all` (default) or a comma list over `1, 3, 4, 5, 6` (chain figures `2`/`7` archived 2026-05-05; passing them is a hard error). `--no-ci` disables error bars on figs 1, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged.
 
 ### `scripts/plot_focused.py` — supervisor-friendly subset
 
@@ -73,7 +71,7 @@ python3 .claude/skills/analyzer/scripts/plot_focused.py <root> --figs 1,5,7
 
 ### `scripts/table.py` — master pivot (md + csv + tex)
 
-One large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, host, jobid)`. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%}` × 5 tasks + chain `succ% [lo–hi]` × `L=2..5` + ST-mean + total n. The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`).
+One large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, host, jobid)`. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%}` × 5 tasks + ST-mean + total n. Chain `L=2..5` columns were dropped 2026-05-05 with the chain-phase archive. The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`).
 
 ```bash
 python3 .claude/skills/analyzer/scripts/table.py                                    # auto-pick latest

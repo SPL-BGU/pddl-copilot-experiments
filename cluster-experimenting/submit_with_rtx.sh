@@ -72,8 +72,7 @@
 #
 # --no-tools: pins THINK_MODES=off, CONDITIONS=no-tools. Each (model,) cell
 #   becomes one array task. Sbatch's case-branch sets TASKS to the 4-task
-#   discriminative matrix (solve + validate_*); simulate stays excluded;
-#   chains skipped by matrix gate.
+#   discriminative matrix (solve + validate_*); simulate stays excluded.
 #
 # Think modes default to "on off" (both run as separate cells in the array).
 # Override with --think-modes "default" for models without a think kwarg
@@ -148,9 +147,9 @@ if [ -n "$CONTINUE_PARTIAL" ]; then
 fi
 
 # --smoke / --smoke-shuffle: pin the 4-model pack and full think × cond
-# matrix; run_experiment.py auto-overrides --num-variants/--chain-samples
-# and skips the inner THINK × CONDITIONS loop in the sbatch (the smoke
-# wrapper iterates think internally). One cell per model.
+# matrix; run_experiment.py auto-overrides --num-variants and skips the
+# inner THINK × CONDITIONS loop in the sbatch (the smoke wrapper iterates
+# think internally). One cell per model.
 if [ "$SMOKE" -eq 1 ] && [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     echo "Error: --smoke and --smoke-shuffle are mutually exclusive" >&2
     exit 1
@@ -260,7 +259,7 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 #                Set to 72h to leave headroom and complete in one shot
 #                (resume via trials.jsonl still works if a cell does TIMEOUT).
 #                Main partition cap is 7 days, so 72h is well within.
-#   no-tools cells: ~6h (4-task discriminative matrix, no chains).
+#   no-tools cells: ~6h (4-task discriminative matrix).
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     TIME_ARG=(--time=03:00:00)
@@ -360,7 +359,7 @@ if [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     echo "  mode:        --smoke-shuffle (per-(model,task) random domain pick; output → results/smoke/shuffle_<sha>_<ts>/)" >&2
 fi
 if [ -n "$SHARD" ]; then
-    echo "  shard:       $SHARD (SHA-256 partitioner; chains run only on shard 0)" >&2
+    echo "  shard:       $SHARD (SHA-256 partitioner)" >&2
 fi
 if [ -n "$CONTINUE_PARTIAL" ]; then
     echo "  cont-from:   $CONTINUE_PARTIAL (each cell seeds its OUT_DIR/trials.jsonl on first run only)" >&2

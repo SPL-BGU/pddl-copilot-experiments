@@ -90,10 +90,6 @@ python3 run_experiment.py --marketplace-path /path/to/pddl-copilot
 # Specific models and tasks
 python3 run_experiment.py --marketplace-path /path/to/pddl-copilot \
     --models qwen3:4b --tasks solve validate_plan
-
-# Include multi-task chain evaluation
-python3 run_experiment.py --marketplace-path /path/to/pddl-copilot \
-    --models qwen3:4b --chains --chain-samples 20
 ```
 
 Or set the environment variable to avoid repeating the path:
@@ -114,15 +110,12 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--output-dir` | `./results` | Path to save result JSON files |
 | `--num-variants` | 3 | First K of `ACTIVE_PROMPT_VARIANTS` (currently `(0, 1, 2)`). Capped at the tuple length; widen by editing `run_experiment.py`. Paper used 5; the 26042026 sensitivity analysis (`checkpoints/cluster-26042026/prompt_variant_stats.md`) showed v0/v1/v2 are within ~1pp of the 5-variant pooled mean. |
 | `--temperature` | 0.0 | LLM sampling temperature |
-| `--chains` | off | Also run multi-task chain evaluation |
-| `--chain-samples` | 20 | Samples per chain length. The cluster sbatch (`cluster-experimenting/run_condition_rtx.sbatch`) overrides this to 100 for paper alignment. |
-| `--seed` | 42 | Random seed for chain sampling |
+| `--seed` | 42 | Random seed for `--smoke-shuffle` cell assignment |
 | `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
 | `--prompt-style` | `minimal` | Only active value as of 2026-04-27 — `guided` was retired (the 26042026 sweep showed style shifts results by ≤4pp per model, every CI crossed zero). The `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are kept in `run_experiment.py` as documentation; re-enable by adding `"guided"` back to `PROMPT_STYLE_CHOICES`. |
 | `--num-predict` | per-task | Override max output tokens (solve=8192, simulate=4096, validate=4096). Non-solve caps raised from 1024/1536→4096 on 2026-04-29 after the cluster-26042026 sweep showed 33–41% truncation on `validate_plan`/`simulate`/`validate_problem`. |
 | `--num-ctx` | 16384 | Ollama context window tokens for single-task tools cells (raised from 8192 on 2026-04-29 after qwen3.6:27b smokes showed `think_overflow` at 12288; nemotron-3-nano:30b shared the evidence but was later dropped 2026-04-30). |
 | `--num-ctx-thinking` | 16384 | Context tokens for single-task no-tools cells when `think!=off`. **Held equal to `--num-ctx`** so the "tools save tokens" headline isn't confounded by ctx asymmetry across tools/no-tools branches. |
-| `--num-ctx-chain` | 16384 | Context tokens used during multi-task chain runs. Held equal to `--num-ctx` because chain prompts accumulate full per-step history (~6–8K at step 4), so the single-task `think_overflow` evidence at 12288 translates *worse* to chains, not better. Raise to 20480 if step-4 surfaces overflow. |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
 | `--concurrency` | 4 | Max concurrent Ollama requests in single-task sweep |
 
@@ -150,8 +143,9 @@ bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 Results are saved as JSON in `results/`:
 
 - `single_task_<timestamp>.json` -- Per-instance results with success, timing, tool calls
-- `chain_<timestamp>.json` -- Chain evaluation success rates
 - `summary_<timestamp>.json` -- Aggregated metrics with Wilson 95% confidence intervals
+
+`chain_<timestamp>.json` was emitted by the pre-2026-05-05 chain phase and is no longer produced by the active flow (see `development/CHANGELOG.md`).
 
 ## Domain Structure
 
@@ -173,7 +167,6 @@ This repo ships all 10 paper-aligned domains (5 classical: barman, blocksworld, 
 2. **With-tools condition**: Model gets MCP tool descriptions, can call planners/validators
 3. **Without-tools condition**: Baseline -- model must answer from its own knowledge
 4. **Success criteria**: Did the model call the correct tool (with-tools) or match ground truth (without-tools)?
-5. **Chain evaluation**: Random sequences of n tasks; all must succeed for the chain to count
 
 ## Citation
 

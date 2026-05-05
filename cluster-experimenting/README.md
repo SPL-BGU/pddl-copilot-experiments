@@ -119,7 +119,7 @@ bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b
 
 # Baseline-only no-tools sweep (4-cell array, one cell per model).
-# --time=08:00:00 per task (no chain phase).
+# --time=08:00:00 per task.
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 
 # Preview the sbatch command without submitting.
@@ -150,8 +150,7 @@ auto-detection.
 - `TASKS="solve validate_domain validate_problem validate_plan"` —
   the four discriminative no-tools tasks. Negative fixtures (ISS-001) ride
   along the matching task automatically. `simulate` stays excluded — its
-  keyword grader is non-discriminative regardless of negatives. Chains are
-  skipped by the matrix gate.
+  keyword grader is non-discriminative regardless of negatives.
 - Per-task wall: `--time=08:00:00`. Each model is one array task — no
   cross-model serialization, so adding models adds parallelism, not wall.
 
@@ -199,7 +198,7 @@ the first run (~3 min cold).
 ## Conditions and think modes
 
 ### Conditions (3 active) — looped inside every job
-- `no-tools`                    — baseline, no MCP tools exposed (matrix gate skips think=on cells; chain phase skipped)
+- `no-tools`                    — baseline, no MCP tools exposed (matrix gate skips think=on cells)
 - `tools_per-task_minimal`      — tools on, filter=per-task allowlist, prompt=minimal
 - `tools_all_minimal`           — tools on, filter=all, prompt=minimal
 
@@ -235,7 +234,7 @@ Per-array-task allocation. Each task = one (model, think, cond) cell.
 | `--partition` | `main` | rtx_pro_6000 (and the rtx_6000 opt-in) GRES are accessible from `main`. Mar-26 guide §High-Priority: never use a non-`main` partition without QoS rights. |
 | `--gpus` | `rtx_pro_6000:1` (default) or `rtx_6000:1` (opt-in) | One dedicated GPU per array task; the cell's single model stays resident throughout |
 | `--array` | `0-(N-1)` when N > 1 (no `%N` cap by default) | Fan-out unlimited — SLURM runs as many tasks as the pool has capacity for. Override with `%N` post-submit (`scontrol update JobId=<master> ArrayTaskThrottle=N`) if politeness is desired |
-| `--time` | `12:00:00` (tools cells) / `08:00:00` (no-tools cells) / `03:00:00` (smoke) | Per-cell budget. Tools cell wall ~5-9h post 2026-04-29 cap-bump (single-task + chains); no-tools ~6h (4-task matrix, no chains) |
+| `--time` | `12:00:00` (tools cells) / `08:00:00` (no-tools cells) / `03:00:00` (smoke) | Per-cell budget. Tools cell wall ~5-9h post 2026-04-29 cap-bump (single-task only after the 2026-05-05 chain archive); no-tools ~6h (4-task matrix) |
 | `--mem` | `80G` (rtx_pro_6000 default) / `48G` (rtx_6000 opt-in) | IT cap 2026-04-27. With one model per task, peak host RAM is ~26 GB (gemma4:31b weight cache) — comfortably under either cap |
 | `--tmp` | `50G` | Mar-26 guide §"SSD Drive". Reserves space on `/scratch/$USER/$JOBID`; covers ollama.sif (~3 GB) + one model (~26 GB peak). The sbatch falls back to `/tmp/rtx-$JOBID` if `/scratch` isn't writable on the allocated node |
 | `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | IT request 2026-04-27; explicit `12` was depriving other users |
@@ -307,7 +306,7 @@ rsync -av <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_* \
          ~/personal/pddl-copilot-experiments/results/
 ```
 
-Analyze synced results ad-hoc against `results/**/{single_task,chain,summary}_*.json` — the canonical schema for those files is `save_results` in `run_experiment.py`. Recent analyses live in the contributor's `.local/reports/` (not committed).
+Analyze synced results ad-hoc against `results/**/{single_task,summary}_*.json` (legacy `chain_*.json` files from pre-2026-05-05 sweeps still parse but the active flow no longer emits them) — the canonical schema for those files is `save_results` in `pddl_eval/summary.py`. Recent analyses live in the contributor's `.local/reports/` (not committed).
 
 ## Cancelling jobs
 
@@ -344,14 +343,11 @@ rtx_pro_6000 96 GB. With multi-model packing, the guard skips the
 offending model and continues with the next (sets non-zero exit at the end).
 Note (2026-04-29): single-task `num_ctx` was raised 8192 → 16384 (with
 `num_ctx_thinking` held equal at 16384 for tools/no-tools fairness in
-the "tools save tokens" headline) and `num_ctx_chain` was added for
-chain runs (initially 12288, raised same-day to 16384 since chain
-prompts accumulate history — the single-task think_overflow envelope
-tightens at chain step level rather than loosens). Per-call KV cache
-approximately doubles vs the prior 8192 baseline. If a sweep trips the
-guard, post-mortem `sacct/MaxRSS` to right-size; lowering
-`--num-ctx-chain` or `--concurrency` is the fastest mitigation if the
-cap is hit only on chain runs.
+the "tools save tokens" headline). Per-call KV cache approximately
+doubles vs the prior 8192 baseline. If a sweep trips the guard,
+post-mortem `sacct/MaxRSS` to right-size; lowering `--num-ctx` or
+`--concurrency` is the fastest mitigation. The chain-phase ctx knob
+(`--num-ctx-chain`) was retired 2026-05-05 with the chain archive.
 
 **`apptainer: command not found`.** Apptainer module not loaded
 on the compute node. The sbatch assumes the cluster default has it on the

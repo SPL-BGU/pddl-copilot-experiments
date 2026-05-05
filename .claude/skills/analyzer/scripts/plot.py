@@ -9,12 +9,15 @@ Usage:
 
 Figures written to <root>/plots/:
     fig1_single_task.png       — tasks × series bars (Wilson CI whiskers)
-    fig2_chain.png             — chain length × series bars (chain=1 is ST mean)
     fig3_tool_selection.png    — classical vs numeric planner-selection rate
     fig4_failure_breakdown.png — 100%-stacked failure reasons per task × series
     fig5_domain_heatmap.png    — (series × 10 domains) heatmap per task
     fig6_tool_adherence.png    — per-task tool_selected_rate (with-tools only)
-    fig7_chain_step_survival.png — P(reach step k) per chain length L=2..5
+
+Chain-phase figures (fig2_chain, fig7_chain_step_survival) were dropped
+2026-05-05 when the chain phase was archived from the active flow.
+Numeric --figs IDs preserve their original meaning so old shell snippets
+(`--figs 1,4,5`) keep working; passing `2` or `7` is a hard error.
 """
 from __future__ import annotations
 
@@ -207,9 +210,9 @@ def _wilson_err(rate: float, lo: float, hi: float) -> tuple[float, float]:
 def merge_series(series: list[dict]) -> list[dict]:
     """Pool tools_* series by (model, think); pass no-tools through unchanged.
 
-    Counts (successes, n, truncated, tool_selected, failure_reasons, chain
-    successes/samples) are summed across the tools_* condition variants and
-    rates + Wilson CIs are recomputed on the pooled totals — that gives
+    Counts (successes, n, truncated, tool_selected, failure_reasons) are
+    summed across the tools_* condition variants and rates + Wilson CIs are
+    recomputed on the pooled totals — that gives
     proper CIs at n≈4× per cell, which averaging rates would not. no-tools
     rows are passed through so they remain as the baseline alongside the
     merged tools series; pooling them would be a no-op (one no-tools cond
@@ -257,30 +260,6 @@ def merge_series(series: list[dict]) -> list[dict]:
                 "tool_selected_ci_hi": ts_hi,
             })
 
-        pooled_chains: list[dict] = []
-        for L in (2, 3, 4, 5):
-            k = total = 0
-            details: list = []
-            for s in group:
-                c = next((c for c in s["summary"].get("chains", [])
-                          if c.get("chain_length") == L and c.get("samples", 0) > 0), None)
-                if c is None:
-                    continue
-                k += c["successes"]
-                total += c["samples"]
-                details += c.get("samples_detail", [])
-            if total == 0:
-                continue
-            lo, hi = wilson_ci(k, total)
-            pooled_chains.append({
-                "model": model, "with_tools": True,
-                "chain_length": L, "samples": total, "successes": k,
-                "success_rate": round(k / total, 4),
-                "ci_lo": lo, "ci_hi": hi,
-                "tool_filter": "merged", "prompt_style": "merged",
-                "samples_detail": details,
-            })
-
         instances: list = []
         for s in group:
             instances += s.get("instances", [])
@@ -292,7 +271,7 @@ def merge_series(series: list[dict]) -> list[dict]:
             "cond": "tools_merged",
             "jobid": "merged",
             "summary": {"single_task": pooled_single,
-                        "chains": pooled_chains, "meta": {}},
+                        "chains": [], "meta": {}},
             "instances": instances,
         })
     return merged
@@ -361,50 +340,6 @@ def fig1(series, out_path, draw_ci):
     ax.set_ylabel("Success rate")
     ax.set_ylim(0, 1.0)
     ax.set_title("Single-task success rate" + (" (Wilson 95% CI)" if draw_ci else ""))
-    ax.yaxis.grid(True, linestyle=":", alpha=0.5)
-    ax.set_axisbelow(True)
-    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
-              fontsize=7, framealpha=0.9, ncol=1)
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
-    plt.close(fig)
-
-
-def fig2(series, out_path, draw_ci):
-    x = np.arange(5)  # chain length 1..5 (1 = ST mean)
-    n = max(1, len(series))
-    width = 0.95 / n
-    fig, ax = plt.subplots(figsize=(max(9.0, 1.1 * n + 6), 4.3))
-
-    def vals(s):
-        st_rates = [r["success_rate"] for r in s["summary"]["single_task"] if r["n"] > 0]
-        l1 = float(np.mean(st_rates)) if st_rates else 0.0
-        chains = {c["chain_length"]: c["success_rate"]
-                  for c in s["summary"].get("chains", []) if c.get("samples", 0) > 0}
-        return [l1] + [chains.get(k, 0.0) for k in (2, 3, 4, 5)]
-
-    def err(s):
-        # L=1 is a mean of rates, not a binomial — skip CI there.
-        chains = {c["chain_length"]: c for c in s["summary"].get("chains", [])
-                  if c.get("samples", 0) > 0}
-        lo = [0.0]; hi = [0.0]
-        for k in (2, 3, 4, 5):
-            c = chains.get(k)
-            if c is None:
-                lo.append(0.0); hi.append(0.0)
-            else:
-                el, eh = _wilson_err(c["success_rate"], c["ci_lo"], c["ci_hi"])
-                lo.append(el); hi.append(eh)
-        return lo, hi
-
-    grouped_bars(ax, x, series, width, vals, get_err=err if draw_ci else None)
-    ax.set_xticks(x)
-    ax.set_xticklabels(["1", "2", "3", "4", "5"])
-    ax.set_xlabel("Number of tasks in chain")
-    ax.set_ylabel("Success rate")
-    ax.set_ylim(0, 1.0)
-    ax.set_title("Chained-task success (chain=1 is single-task mean)" +
-                 (" (Wilson 95% CI)" if draw_ci else ""))
     ax.yaxis.grid(True, linestyle=":", alpha=0.5)
     ax.set_axisbelow(True)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
@@ -623,58 +558,12 @@ def fig6(series, out_path, draw_ci):
     plt.close(fig)
 
 
-def fig7(series, out_path):
-    """Chain-step survival: P(step k succeeded & all earlier steps succeeded)."""
-    chain_series = [s for s in series if any(
-        c.get("samples", 0) > 0 for c in s["summary"].get("chains", []))]
-    if not chain_series:
-        return
-    fig, axes = plt.subplots(2, 2, figsize=(10.5, 7.0), sharey=True)
-    lengths = [2, 3, 4, 5]
-
-    for ax, L in zip(axes.flat, lengths):
-        ax.set_title(f"Chain length L={L}", fontsize=9)
-        ax.set_xlabel("step index k (1-based)")
-        ax.set_ylabel("P(survive through step k)")
-        ax.set_ylim(-0.02, 1.02)
-        ax.set_xticks(list(range(1, L + 1)))
-        ax.grid(True, linestyle=":", alpha=0.5)
-        ax.set_axisbelow(True)
-        for s in chain_series:
-            chain = next((c for c in s["summary"].get("chains", [])
-                          if c.get("chain_length") == L and c.get("samples", 0) > 0), None)
-            if chain is None:
-                continue
-            total = chain["samples"]
-            details = chain.get("samples_detail", [])
-            survival = []
-            for k in range(1, L + 1):
-                count = 0
-                for sample in details:
-                    steps = sample.get("step_records", [])
-                    if len(steps) >= k and all(
-                            steps[j].get("success", False) for j in range(k)):
-                        count += 1
-                survival.append(count / total if total else 0.0)
-            color, _ = style(s)
-            ax.plot(range(1, L + 1), survival,
-                    marker="o", markersize=4, linewidth=1.2,
-                    color=color, label=s["_label"])
-    handles, labels_ = axes[0, 0].get_legend_handles_labels()
-    if handles:
-        fig.legend(handles, labels_, loc="center right",
-                   fontsize=6, framealpha=0.9, bbox_to_anchor=(1.02, 0.5))
-    fig.suptitle("Chain step survival (every earlier step must also succeed)"
-                 "\n[tools-only — no-tools cells excluded]",
-                 fontsize=10)
-    fig.tight_layout(rect=[0, 0, 0.85, 0.96])
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
-    plt.close(fig)
-
-
 def _parse_figs(spec: str) -> set[int]:
+    # Numeric IDs preserve their pre-2026-05-05 meaning so old shell snippets
+    # still work. 2 and 7 (chain figures) were removed when the chain phase
+    # was archived; passing them is a hard error rather than a silent skip.
     if spec == "all":
-        return {1, 2, 3, 4, 5, 6, 7}
+        return {1, 3, 4, 5, 6}
     out = set()
     for piece in spec.split(","):
         piece = piece.strip()
@@ -684,8 +573,13 @@ def _parse_figs(spec: str) -> set[int]:
             n = int(piece)
         except ValueError:
             sys.exit(f"--figs: expected 'all' or comma-separated ints, got {spec!r}")
-        if n not in (1, 2, 3, 4, 5, 6, 7):
-            sys.exit(f"--figs: unknown fig number {n}; valid: 1..7")
+        if n in (2, 7):
+            sys.exit(
+                f"--figs: chain figure {n} archived 2026-05-05 (see CHANGELOG); "
+                f"valid: 1, 3, 4, 5, 6"
+            )
+        if n not in (1, 3, 4, 5, 6):
+            sys.exit(f"--figs: unknown fig number {n}; valid: 1, 3, 4, 5, 6")
         out.add(n)
     if not out:
         sys.exit("--figs: no figure numbers parsed")
@@ -700,9 +594,10 @@ def main():
     ap.add_argument("--include-legacy", action="store_true", default=True,
                     help="include legacy (no-think) dirs as think=default (default: on)")
     ap.add_argument("--figs", default="all",
-                    help="comma list of fig numbers to render (1..7), or 'all' (default)")
+                    help="comma list of fig numbers to render (1, 3, 4, 5, 6), "
+                         "or 'all' (default)")
     ap.add_argument("--no-ci", dest="ci", action="store_false", default=True,
-                    help="omit Wilson CI error bars on figs 1, 2, 6")
+                    help="omit Wilson CI error bars on figs 1, 6")
     ap.add_argument("--merge", action="store_true", default=False,
                     help="pool tool_filter × prompt_style into one tools_merged "
                          "series per (model, think); no-tools series pass "
@@ -745,8 +640,6 @@ def main():
     written = []
     if 1 in figs:
         fig1(series, out / "fig1_single_task.png", args.ci); written.append("fig1")
-    if 2 in figs:
-        fig2(series, out / "fig2_chain.png", args.ci); written.append("fig2")
     if 3 in figs:
         fig3(series, out / "fig3_tool_selection.png"); written.append("fig3")
     if 4 in figs:
@@ -755,8 +648,6 @@ def main():
         fig5(series, out / "fig5_domain_heatmap.png"); written.append("fig5")
     if 6 in figs:
         fig6(series, out / "fig6_tool_adherence.png", args.ci); written.append("fig6")
-    if 7 in figs:
-        fig7(series, out / "fig7_chain_step_survival.png"); written.append("fig7")
     print(f"wrote {len(series)} series → {out}/[{','.join(written)}]")
 
 

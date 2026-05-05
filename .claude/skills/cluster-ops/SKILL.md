@@ -40,7 +40,7 @@ All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilo
 
 Prints two Markdown tables:
 - **Pending** — `job | name | reason | elapsed`. The `reason` column is `squeue %R` (e.g. `Resources`, `Priority`, `DependencyNeverSatisfied`). See the REASON cheat-sheet below for what each value means.
-- **Running** — `job | phase | ST | chain | elapsed`. Phase shows condition index (which of 5), single-task progress `N/250`, and chain progress `k/400`. Handles both legacy (one condition per job) and current (5 conditions per job) `.out` layouts.
+- **Running** — `job | phase | ST | elapsed`. Phase shows condition index (which of 5) and single-task progress `N/250`. Handles both legacy (one condition per job) and current (5 conditions per job) `.out` layouts. Chain progress column was dropped 2026-05-05 when the chain phase was archived from the active flow.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/status.sh

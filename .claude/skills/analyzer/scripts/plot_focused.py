@@ -9,6 +9,7 @@ Usage:
     python3 plot_focused.py                               # auto: cluster-26042026
     python3 plot_focused.py checkpoints/cluster-26042026
     python3 plot_focused.py <root> --figs 1,5,7
+    # (chain-focused fig3 was removed 2026-05-05; numeric IDs preserve meaning)
     python3 plot_focused.py <root> --no-ci
 
 Outputs go to <root>/plots/focused/.
@@ -293,95 +294,10 @@ def fig2(records: list[dict], outdir: Path, draw_ci: bool):
 
 
 # ---------------------------------------------------------------------------
-# fig 3: chain success, focused — 1×5 panels per model
+# fig 3: chain-focused panel — archived 2026-05-05 (chain phase removed
+# from the active flow; see CHANGELOG). The numeric ID is reserved so
+# `--figs` keeps its pre-archive meaning for adjacent plots.
 # ---------------------------------------------------------------------------
-
-def fig3(root: Path, outdir: Path, draw_ci: bool):
-    """Re-load summary chain data per (model, think). Pool across tool variants.
-    Drop no-tools (no chain data exists). x = chain length 1..5; lines for
-    think on/off. L=1 is the single-task mean rate."""
-    series = load_series(root, include_legacy=False)
-    # Pool tool_* by (model, think) for chains and ST.
-    bucket: dict[tuple[str, str], dict] = defaultdict(lambda: {
-        "st_k": {t: 0 for t in TASKS}, "st_n": {t: 0 for t in TASKS},
-        "ch_k": {L: 0 for L in (2, 3, 4, 5)},
-        "ch_n": {L: 0 for L in (2, 3, 4, 5)},
-    })
-    for s in series:
-        if s["cond"] == "no-tools":
-            continue
-        key = (s["model"], s["think"])
-        b = bucket[key]
-        for r in s["summary"]["single_task"]:
-            t = r["task"]
-            if t in b["st_k"]:
-                b["st_k"][t] += r["successes"]
-                b["st_n"][t] += r["n"]
-        for c in s["summary"].get("chains", []):
-            L = c.get("chain_length")
-            if L in b["ch_k"]:
-                b["ch_k"][L] += c["successes"]
-                b["ch_n"][L] += c["samples"]
-
-    models = [m for m in MODEL_ORDER if any(m == k[0] for k in bucket)]
-    if not models:
-        print("  plot3: no chain data, skipping", file=sys.stderr)
-        return []
-    fig, axes = plt.subplots(1, len(models), figsize=(2.6 * len(models) + 0.6, 4.0),
-                             sharey=True)
-    if len(models) == 1:
-        axes = [axes]
-    Lx = [1, 2, 3, 4, 5]
-    for ax, m in zip(axes, models):
-        for think in ("off", "on"):
-            b = bucket.get((m, think))
-            if b is None:
-                continue
-            # L=1 from ST mean of rates (counts unequal across tasks; use mean
-            # of per-task rates to match existing fig2 semantics)
-            l1_rates = [b["st_k"][t] / b["st_n"][t] for t in TASKS if b["st_n"][t] > 0]
-            l1 = float(np.mean(l1_rates)) if l1_rates else 0.0
-            ys = [l1] + [
-                (b["ch_k"][L] / b["ch_n"][L]) if b["ch_n"][L] > 0 else 0.0
-                for L in (2, 3, 4, 5)
-            ]
-            color = _color_for(m, think)
-            ax.plot(Lx, ys, marker="o", markersize=5, linewidth=1.5,
-                    color=color, label=f"think = {think}")
-            if draw_ci:
-                lo_ys, hi_ys = [0.0], [0.0]
-                for L in (2, 3, 4, 5):
-                    if b["ch_n"][L] > 0:
-                        lo, hi = wilson_ci(b["ch_k"][L], b["ch_n"][L])
-                        lo_ys.append(lo); hi_ys.append(hi)
-                    else:
-                        lo_ys.append(0.0); hi_ys.append(0.0)
-                ax.fill_between(Lx, lo_ys, hi_ys, color=color, alpha=0.13,
-                                edgecolor="none")
-        ax.set_xticks(Lx)
-        ax.set_xlim(0.7, 5.3)
-        ax.set_ylim(0, 1.0)
-        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
-        ax.set_title(MODEL_LABELS[m], fontsize=9)
-        ax.set_xlabel("chain length L", fontsize=8)
-        ax.grid(True, linestyle=":", alpha=0.5)
-        ax.set_axisbelow(True)
-    axes[0].set_ylabel("Success rate", fontsize=9)
-    handles = [
-        _legend_handle("#555555", "think = off  (saturated)"),
-        _legend_handle("#bbbbbb", "think = on   (lightened)"),
-    ]
-    fig.legend(handles=handles, loc="lower center", ncol=2,
-               bbox_to_anchor=(0.5, -0.04), fontsize=8, frameon=False)
-    fig.suptitle("Chained-task success vs chain length — tools pooled, per model"
-                 "\n[tools-only — no-tools excluded]"
-                 + ("  (Wilson 95% CI ribbons)" if draw_ci else ""),
-                 fontsize=10)
-    fig.tight_layout(rect=[0, 0.04, 1, 0.94])
-    out = outdir / "plot3_chain_focused.png"
-    fig.savefig(out, dpi=160, bbox_inches="tight")
-    plt.close(fig)
-    return [out.name]
 
 
 # ---------------------------------------------------------------------------
@@ -811,12 +727,12 @@ def fig8c(records: list[dict], outdir: Path, draw_ci: bool):
 # CLI
 # ---------------------------------------------------------------------------
 
-FIG_KEYS = ("1", "2", "3", "4", "5", "6", "7", "8a", "8b", "8c", "8")
+FIG_KEYS = ("1", "2", "4", "5", "6", "7", "8a", "8b", "8c", "8")
 
 
 def _parse_figs(spec: str) -> set[str]:
     if spec == "all":
-        out = {"1", "2", "3", "4", "5", "6", "7", "8a", "8b", "8c"}
+        out = {"1", "2", "4", "5", "6", "7", "8a", "8b", "8c"}
         return out
     out: set[str] = set()
     for piece in spec.split(","):
@@ -825,6 +741,11 @@ def _parse_figs(spec: str) -> set[str]:
             continue
         if piece == "8":
             out.update({"8a", "8b", "8c"})
+        elif piece == "3":
+            sys.exit(
+                "--figs: chain-focused fig 3 archived 2026-05-05 (see CHANGELOG); "
+                f"valid: {sorted(FIG_KEYS)} or 'all'"
+            )
         elif piece in FIG_KEYS:
             out.add(piece)
         else:
@@ -840,7 +761,8 @@ def main():
     ap.add_argument("root", nargs="?", type=Path, default=None,
                     help=f"results root (default: <repo>/{DEFAULT_CHECKPOINT})")
     ap.add_argument("--figs", default="all",
-                    help="comma list (1,2,3,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'")
+                    help="comma list (1,2,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'. "
+                         "Chain-focused fig 3 was removed 2026-05-05.")
     ap.add_argument("--no-ci", dest="ci", action="store_false", default=True,
                     help="omit Wilson 95%% CI whiskers / ribbons")
     args = ap.parse_args()
@@ -868,7 +790,6 @@ def main():
 
     if "1" in figs: written += fig1(records, outdir, args.ci)
     if "2" in figs: written += fig2(records, outdir, args.ci)
-    if "3" in figs: written += fig3(root,    outdir, args.ci)
     if "4" in figs: written += fig4(records, outdir, args.ci)
     if "5" in figs: written += fig5(records, outdir, args.ci)
     if "6" in figs: written += fig6(records, outdir, args.ci)
