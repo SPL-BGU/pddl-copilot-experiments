@@ -17,7 +17,7 @@ Clone https://github.com/SPL-BGU/pddl-copilot and point --marketplace-path at it
 Usage:
   pip3 install -r requirements.txt
   python3 run_experiment.py --marketplace-path /path/to/pddl-copilot --models qwen3:0.6b qwen3:4b
-  python3 run_experiment.py --marketplace-path /path/to/pddl-copilot --tasks solve validate_plan --chains
+  python3 run_experiment.py --marketplace-path /path/to/pddl-copilot --tasks solve validate_plan
 """
 
 import argparse
@@ -55,7 +55,6 @@ from pddl_eval.resume import load_progress
 from pddl_eval.runner import (
     DEFAULT_CONCURRENCY,
     DEFAULT_NUM_CTX,
-    DEFAULT_NUM_CTX_CHAIN,
     DEFAULT_NUM_CTX_THINKING,
     DEFAULT_NUM_PREDICT,
     RESPONSE_SNAPSHOT_LEN,
@@ -67,7 +66,6 @@ from pddl_eval.runner import (
     _resolve_num_predict,
     _shard_filter,
     evaluate_one,
-    run_chain_experiment,
     run_single_task_experiment,
 )
 from pddl_eval.scoring import (
@@ -99,12 +97,10 @@ from pddl_eval.scoring import (
     extract_verdict,
 )
 from pddl_eval.summary import (
-    print_chain_table,
     print_fail_reasons_table,
     print_per_variant_table,
     print_single_task_table,
     save_results,
-    summarize_chains,
     summarize_single_task,
     wilson_ci,
 )
@@ -305,7 +301,6 @@ async def async_main(args):
     print(f"  num_ctx_thinking:{args.num_ctx_thinking} (single-task no-pddl-tools when think!=off; sub-pass split)")
     if args.num_ctx == args.num_ctx_thinking:
         print(f"              ^ equal to num_ctx for tools/no-pddl-tools fairness in 'tools save tokens' headline")
-    print(f"  num_ctx_chain:{args.num_ctx_chain} (chain steps; tools-only per ISS-018)")
     print(f"  think:      {args.think}")
     print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
     if args.concurrency > 1 and num_parallel_env == "unset":
@@ -319,7 +314,7 @@ async def async_main(args):
               f" → {args.output_dir}")
     if args.shard_n > 1:
         print(f"  Shard:      {args.shard_i}/{args.shard_n} "
-              "(SHA-256 partitioning of single-task jobs; chains run only on shard 0)")
+              "(SHA-256 partitioning of single-task jobs)")
 
     # Resolve plugins
     plugin_dirs = resolve_plugin_dirs(args.marketplace_path)
@@ -432,7 +427,6 @@ async def async_main(args):
         )
 
     single_results: list[TaskResult] = []
-    chain_results: list[dict] = []
     try:
         # Ground truth
         print("\nGenerating ground truth (solving all problems with planners)...")
@@ -512,46 +506,6 @@ async def async_main(args):
         print_per_variant_table(single_results)
         print_fail_reasons_table(single_results)
 
-        # Multi-task chains. Skipped when sharding (chains run only on
-        # shard 0), when --chain-samples=0 (smoke pre-sets this), or when
-        # think=off (ISS-018: think=off is a single-task ablation against
-        # think=on/default — chain results under it aren't part of any
-        # planned comparison).
-        if args.chains and args.shard_i == 0 and args.chain_samples > 0 and args.think != "off":
-            print("\n--- Multi-Task Chain Evaluation ---")
-            for cond_with_tools in _expand_conditions(args.conditions):
-                # No-tools is single-task-only: chains require artifact
-                # propagation across steps, which the model can't do
-                # honestly without tools. See EXPERIMENTS_FLOW.md §4.3.
-                if not cond_with_tools:
-                    print("\n  Skipping chain phase for no-tools (single-task-only)")
-                    continue
-                print(f"\n  Condition: {'tools' if cond_with_tools else 'no-tools'}")
-                chain_results += await run_chain_experiment(
-                    client=client,
-                    models=args.models,
-                    domains=domains,
-                    ground_truth=ground_truth,
-                    mcp=mcp,
-                    samples=args.chain_samples,
-                    tool_filter=args.tool_filter,
-                    with_tools=cond_with_tools,
-                    prompt_style=args.prompt_style,
-                    num_predict_override=args.num_predict,
-                    num_ctx=args.num_ctx,
-                    num_ctx_thinking=args.num_ctx_thinking,
-                    num_ctx_chain=args.num_ctx_chain,
-                    think=think_override,
-                    temperature=args.temperature,
-                    concurrency=args.concurrency,
-                )
-            print_chain_table(chain_results)
-        elif args.chains and args.think == "off":
-            print("\n--- Multi-Task Chain Evaluation ---")
-            print("  Skipping chain phase: --think=off is single-task-only "
-                  "(ISS-018; mirrors the no-tools rule). Pass --think=on or "
-                  "--think=default to run chains.")
-
     except KeyboardInterrupt:
         print("\n\nInterrupted — saving partial results...")
 
@@ -576,7 +530,6 @@ async def async_main(args):
                 "temperature": args.temperature,
                 "num_ctx": args.num_ctx,
                 "num_ctx_thinking": args.num_ctx_thinking,
-                "num_ctx_chain": args.num_ctx_chain,
                 "num_predict": args.num_predict,
                 "think": args.think,
             }
@@ -599,7 +552,11 @@ async def async_main(args):
                 resumed = sum(1 for r in all_single if id(r) in restored_ids)
                 if resumed:
                     meta["resumed_count"] = resumed
-            save_results(all_single, chain_results, Path(args.output_dir), meta=meta)
+            # `save_results` retains its `chains` parameter for back-compat with
+            # the dead-but-importable chain code path (see CHANGELOG 2026-05-05);
+            # the active flow always passes [] so emitted summaries carry an
+            # empty `chains` array.
+            save_results(all_single, [], Path(args.output_dir), meta=meta)
         await mcp.close()
         # ollama.AsyncClient wraps an httpx.AsyncClient; close it to release
         # connections cleanly. Guarded because some builds expose
@@ -681,21 +638,6 @@ def main():
                         f"sub-passes when both apply — keeps num_ctx constant "
                         f"per call (mid-call flips deadlock Ollama under "
                         f"concurrency).")
-    p.add_argument("--num-ctx-chain", type=int, default=DEFAULT_NUM_CTX_CHAIN,
-                   help=f"Ollama context window tokens used during multi-task "
-                        f"chain runs. Default {DEFAULT_NUM_CTX_CHAIN} (held "
-                        f"equal to --num-ctx). Chains accumulate full message "
-                        f"history across steps (domain+problem re-embedded "
-                        f"per step + prior tool calls/results), so step-4 "
-                        f"prompts reach ~6-8K tokens before generation. "
-                        f"Held equal to --num-ctx ({DEFAULT_NUM_CTX}) because "
-                        f"the single-task think_overflow evidence at 12288 "
-                        f"translates worse to chains, not better -- chain "
-                        f"step-3 budget shrinks from ~11K (single-task) to "
-                        f"~8K (chain) at the same ctx. Chains are tools-only "
-                        f"(ISS-018), so no tools-vs-no-tools comparison is at "
-                        f"stake. Raise to 20480 if chain step-4 surfaces "
-                        f"think_overflow.")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "
@@ -711,12 +653,8 @@ def main():
                         "(http://localhost:11434). Cluster runs use the "
                         "self-deployed Apptainer Ollama on a unique port "
                         "set by run_condition_rtx.sbatch.")
-    p.add_argument("--chains", action="store_true",
-                   help="Also run multi-task chain evaluation")
-    p.add_argument("--chain-samples", type=int, default=20,
-                   help="Samples per chain length")
     p.add_argument("--seed", type=int, default=42,
-                   help="Random seed for chain sampling and --smoke-shuffle")
+                   help="Random seed for --smoke-shuffle cell assignment")
     # Single-task domain/problem filters (applied post-`load_domains`). Used
     # by `--smoke` to constrain to one problem; useful standalone for
     # `--shard` debugging.
@@ -733,9 +671,9 @@ def main():
                    help="Run the smoke slice: 1 domain × 1 problem × 1 prompt "
                         "variant × 5 tasks × 2 conditions × 2 think modes × "
                         "current model set. Auto-sets --domains blocksworld "
-                        "--problems p01 --num-variants 1 --chain-samples 0 "
-                        "--conditions both, and iterates --think={on,off} "
-                        "internally. Output dir: results/smoke/fixed_<git-sha>_<ts>/.")
+                        "--problems p01 --num-variants 1 --conditions both, "
+                        "and iterates --think={on,off} internally. "
+                        "Output dir: results/smoke/fixed_<git-sha>_<ts>/.")
     p.add_argument("--smoke-shuffle", action="store_true",
                    help="Like --smoke but picks a random (domain, problem) "
                         "per (model, task) cell using --seed; ~same eval "
@@ -746,8 +684,7 @@ def main():
                    help="Run only shard i of N (0-indexed). Hash is "
                         "SHA-256 of (model|task|domain|problem|variant) "
                         "modulo N; with_tools is excluded so paired "
-                        "comparisons stay together. Chains are emitted "
-                        "only when i==0. Default: no sharding.")
+                        "comparisons stay together. Default: no sharding.")
     p.add_argument("--no-resume", action="store_true",
                    help="Delete any existing trials.jsonl in --output-dir "
                         "and start a fresh single-task sweep. Default: if "
@@ -791,8 +728,6 @@ def main():
     # and saves the user from having to pass it explicitly with --smoke.
     if args.smoke or args.smoke_shuffle:
         args.num_variants = 1
-        args.chain_samples = 0
-        args.chains = False
         # `--smoke` pins the slice to (blocksworld, p01); `--smoke-shuffle`
         # leaves --domains/--problems unset so the shuffle picker sees the
         # full grid.

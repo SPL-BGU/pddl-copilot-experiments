@@ -3,13 +3,17 @@
 Methodology reference for the PDDL Copilot experiment suite.
 Reproduces and extends the evaluation from Benyamin et al., 2025 (arXiv:2509.12987).
 
+> **Multi-task chain phase archived 2026-05-05.** The active flow is single-task
+> only; chain code is preserved in `pddl_eval/{runner,summary}.py` for possible
+> future revival. See `development/CHANGELOG.md` for the rationale.
+
 ---
 
 ## 1. High-Level Pipeline
 
 The harness is `run_experiment.py`. It runs one model × one think-mode × one
-condition (4 tools-conditions or no-tools) per invocation, optionally
-followed by a chain phase. There are two driver paths:
+condition (4 tools-conditions or no-tools) per invocation. There are two
+driver paths:
 
 - **Local laptop** — `run_background.sh [small|large|both]` wraps `caffeinate`
   + a local `ollama serve`, then loops `(tool_filter, prompt_style)` itself.
@@ -26,8 +30,7 @@ run_experiment.py
   2. Connect to MCP servers (pddl-solver, pddl-validator, pddl-parser)
   3. Generate ground truth (oracle solves every problem)
   4. Single-task evaluation (with-tools & without-tools)
-  5. Multi-task chain evaluation (skipped for no-tools)
-  6. Save results to output directory
+  5. Save results to output directory
 ```
 
 Each `(model, think, condition, tool_filter, prompt_style)` produces its
@@ -37,9 +40,12 @@ results/slurm_<model>_<think>_<cond>_<jobid>/                    # cluster
 results/{full,partial}/{tag}_{timestamp}_{filter}_{prompt}/      # laptop
 results/smoke/{fixed,shuffle}_<sha>_<ts>/                        # --smoke
     single_task_{ts}.json
-    chain_{ts}.json
     summary_{ts}.json
 ```
+
+`chain_{ts}.json` is no longer emitted by the active flow (chain phase
+archived 2026-05-05). Pre-archive sweeps still have the file on disk; the
+schema is unchanged.
 
 ---
 
@@ -196,9 +202,12 @@ unchanged structurally; with-tools `simulate` switched to the shared
 identical (both sides round-trip through the same plugin and produce
 byte-equal trajectory dicts on identical inputs).
 
-### 4.3 Chains
+### 4.3 Chains — archived 2026-05-05
 
-A chain of length N picks N random tasks and executes them sequentially in a single conversation. The chain succeeds only if **every** task in the sequence succeeds (all-or-nothing).
+Multi-task chains are no longer executed by the active flow. The implementation
+remains in `pddl_eval.runner.run_chain_experiment` (unwired) and
+`pddl_eval.summary.{summarize_chains, print_chain_table}` for archival reference.
+See `development/CHANGELOG.md` for the rationale.
 
 ---
 
@@ -209,23 +218,13 @@ A chain of length N picks N random tasks and executes them sequentially in a sin
 | Temperature | 0.0 | Deterministic sampling |
 | Max tool loops | 10 | Per single evaluation |
 | Prompt variants | 5 | Per task, different phrasings |
-| Chain samples | 20 (laptop default) / 100 (cluster default) | Per chain length. `run_experiment.py --chain-samples` defaults to 20; `cluster-experimenting/run_condition_rtx.sbatch` overrides to 100 (paper-aligned) via `CHAIN_SAMPLES` env. |
-| Chain lengths | 2, 3, 4, 5 | |
-| Random seed | 42 | For chain task sampling |
+| Random seed | 42 | For `--smoke-shuffle` cell assignment |
 
-### Single-task vs chain-phase gating
+### Single-task gating
 
 The single-task phase grades every cell of the (`condition` × `think`)
-matrix; the chain phase is restricted because chain trajectories carry
-constraints that not every cell satisfies:
+matrix:
 
-- `--chains` with `--conditions=no-tools|both` → chain phase skips
-  `with_tools=False` (chains require artifact propagation across steps,
-  which the model can't do honestly without tools).
-- `--chains` with `--think=off` → chain phase is skipped entirely
-  (ISS-018, closed 2026-04-28). `think=off` is a single-task ablation
-  against `think=on`/`think=default`; chain results under it aren't
-  part of any planned comparison.
 - `--num-ctx` (default 16384, raised from 8192 on 2026-04-29) is the
   single-task context window for tools cells and for `think=off`
   no-tools cells. Bumped after qwen3.6:27b / nemotron-3-nano:30b smokes
@@ -247,22 +246,6 @@ constraints that not every cell satisfies:
   calls (one per condition), keeping `num_ctx` constant within each call.
   Without the split, mid-call `num_ctx` flips deadlocked Ollama under
   concurrency (smoke job 17244356, 2026-04-28).
-- `--num-ctx-chain` (default 16384, added 2026-04-29) replaces `--num-ctx`
-  for every step of a multi-task chain run. Chains accumulate the full
-  message history across steps (each step re-embeds domain + problem +
-  plan in its user prompt, and prior assistant turns + tool-call results
-  remain in context), so step-4 prompts on blocksworld-class problems
-  can reach ~6–8K tokens before generation. Held equal to `--num-ctx`
-  (16384) by the 2026-04-29 follow-up bump: applying the single-task
-  `FR_THINK_OVERFLOW` evidence (qwen3.6:27b / nemotron-3-nano:30b at
-  ctx=12288 hit overflow on 50% of `validate_problem` / `validate_plan`
-  cells; nemotron later dropped 2026-04-30) to a chain step running the
-  same task gives **worse** headroom,
-  not better — chain step-3 think+output budget at ctx=12288 would be
-  ~8K vs ~11K in single-task (the regime that already failed). Raising
-  to 16384 brings chain step-3 to ~12K (comparable to the single-task
-  16384 envelope) and chain step-4 to ~8–10K (still tighter; raise to
-  20480 if a chain sweep surfaces step-4 overflow).
 - **Per-task `num_predict` caps** (`pddl_eval/runner.py`
   `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=4096`,
   `simulate=4096`. Non-solve caps were raised from 1024/1536 → 4096 on
@@ -391,11 +374,15 @@ Tools are served by two MCP plugin servers from the [pddl-copilot](https://githu
 
 ## 9. Output Files
 
-Each run produces three JSON files:
+Each run produces two JSON files (`single_task_*.json` + `summary_*.json`).
+A third file (`chain_*.json`) was emitted by the pre-2026-05-05 chain phase;
+it is no longer produced under the active flow.
 
 ### summary_{ts}.json
 
-Aggregated statistics. Top-level object with `single_task` and `chains` arrays, plus an optional `meta` dict.
+Aggregated statistics. Top-level object with `single_task` and `chains`
+arrays plus an optional `meta` dict. The `chains` array is always `[]` under
+the active flow (kept for back-compat with pre-2026-05-05 corpora).
 
 `single_task` entries:
 | Field | Description |
@@ -407,15 +394,13 @@ Aggregated statistics. Top-level object with `single_task` and `chains` arrays, 
 | truncated | Count of evaluations where `done_reason == "length"` (token-cap hit) |
 | failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive). Notable: `FR_THINK_OVERFLOW` (PR-2, 2026-04-28) — thinking spiral consumed the completion budget leaving empty `content`; more specific than `FR_TRUNCATED_NO_ANSWER`. `FR_FORMAT_PARSE_FAIL` (PR-4, 2026-04-29) — no-PDDL-tools branch: both the `format=<json_schema>` parse and the free-text fallback (where applicable) failed to produce a usable artefact. Treated as a truncation-eligible failure (re-tagged to `FR_TRUNCATED_NO_ANSWER` when `done_reason == "length"`), so a cap-cut mid-JSON does not inflate the parse-fail rate. |
 
-`chains` entries: model, with_tools, chain_length, samples, successes, success_rate, tool_filter, prompt_style, ci_lo, ci_hi, plus `samples_detail` — a per-sample list of `{idx, domain, problem, chain_tasks, step_records, final_success, exception}` (each `step_records[*]` carries `step_index, task, success, failure_reason, tool_calls_count, truncated, loop_exhausted`). Effective chain length per sample = `len(step_records)` (skipped no-plan steps are absent).
-
 `meta` (present when `save_results` is called with metadata; written by `async_main`):
 | Field | Description |
 |-------|-------------|
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_ctx_chain, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_ctx_chain` (added 2026-04-29, raised 12288 → 16384 same day) is the chain-step budget; held equal to `num_ctx` because chain prompts accumulate full per-step history, making the single-task think_overflow envelope tighter at chain step level rather than looser. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. The `num_ctx_chain` field was emitted 2026-04-29 → 2026-05-05; pre-archive runs still carry it, post-archive runs do not. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json
@@ -440,9 +425,12 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pro
 | tool_filter | "all" or "per-task" |
 | prompt_style | "minimal" (the `"guided"` retirement is recorded in `PROMPT_STYLE_CHOICES` in `run_experiment.py`) |
 
-### chain_{ts}.json
+### chain_{ts}.json — archived 2026-05-05
 
-Per-configuration chain results (model, with_tools, chain_length, samples, successes, success_rate, tool_filter, prompt_style).
+No longer emitted by the active flow. Pre-archive sweeps may still carry the
+file; per-configuration shape was (model, with_tools, chain_length, samples,
+successes, success_rate, tool_filter, prompt_style) plus a `samples_detail`
+array. Aggregators (`aggregate.py`, `plot.py`, `table.py`) ignore the file.
 
 ---
 
@@ -490,7 +478,6 @@ python3 run_experiment.py \
     --models qwen3:0.6b \
     --tool-filter all \
     --prompt-style guided \
-    --chains \
     --output-dir results/my_run/
 ```
 
@@ -521,6 +508,6 @@ squeue --me                 # All my running/pending jobs
 | Simulate success criterion | Non-error tool result | Canonical-form trajectory deep-equality against oracle `gt["trace"]` on both with-tools and no-PDDL-tools paths via `_normalize_trajectory` (PR-4, 2026-04-29) — bridges oracle (`boolean_fluents: dict[str, bool]`) and model (`state.boolean: list[str]`) shapes to a sorted/lower-cased canonical form. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
 | No-tools task set | All 5 tasks scored | All 5 tasks scored under PR-4 (2026-04-29) with format-constrained sampling — `simulate` re-enabled alongside the shared `_normalize_trajectory` grader, replacing the keyword-check that ISS-002 originally dropped. The user-facing label changed to **no-PDDL-tools** to reflect that format constraint is still available; only PDDL-specific MCP tools (planner/validator/simulator) are removed. Internal `with_tools: bool` and JSON `condition: "no-tools"` field unchanged for back-compat. |
 | No-tools grader | Free-text regex extractors (`extract_plan_lines`, `extract_verdict`, simulate keyword check) | Per-task Pydantic schema (`pddl_eval/schemas.py`) enforced via Ollama `format=<json_schema>` (PR-4, 2026-04-29). Free-text extractors retained as fallback for `solve` / `validate_*` when JSON parse fails; `simulate` has no fallback (parse failure → `FR_FORMAT_PARSE_FAIL`). Pre-PR-4 no-tools rows are NOT directly comparable to post-PR-4 no-PDDL-tools rows — the constraint narrows the response space and may regress tiny models that conflict with the schema; the new `FR_FORMAT_PARSE_FAIL` tag quantifies that rate per cell. |
-| No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. See §5. |
+| No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. The chain phase itself was archived 2026-05-05 (see §4.3). |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.

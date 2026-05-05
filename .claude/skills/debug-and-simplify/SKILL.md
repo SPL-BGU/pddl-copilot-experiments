@@ -45,7 +45,6 @@ Systematically check each layer, stopping when the root cause is found:
 **Layer 4 — Results and analysis:**
 1. Are output JSON files valid? (`python3 -m json.tool results/<dir>/summary_*.json`)
 2. Do result schemas match what notebooks expect?
-3. Are chain evaluation results consistent with single-task results?
 
 ### Phase 2: Fix
 Apply the **minimal change** that resolves the root cause:

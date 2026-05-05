@@ -6,6 +6,56 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-05 — Archive multi-task chain phase from active flow
+
+**TL;DR.** The chain phase (random-length task sequences, all-or-nothing scoring) is dropped from `run_experiment.py`'s dispatch, the cluster + laptop drivers, the analyzer (aggregate / plot / table / focused), and `cluster-ops/status.sh`. The implementation in `pddl_eval/runner.py::run_chain_experiment` and the helpers in `pddl_eval/summary.py::{summarize_chains, print_chain_table}` are **preserved verbatim** as dead-but-importable code, marked with one-line `# Archived 2026-05-05` headers. `summary_*.json` continues to emit `"chains": []` so downstream notebooks reading both pre- and post-archive corpora don't branch. The CLI flags `--chains`, `--chain-samples`, and `--num-ctx-chain` are removed (no deprecation shim; old shell snippets fail loudly). **No methodology change for single-task** — scoring, prompts, fixtures, num_ctx, num_predict, ground truth all unchanged.
+
+**Motivation.** The paper's first-layer findings (Paper 1 in the two-paper plan, see `project_paper_strategy.md` memory) are tools-vs-no-PDDL-tools comparisons on the 5 single-task evaluations. The chain phase was a multi-task layer on top, useful for second-layer claims about agentic behaviour but adding compute cost (chain cells extend wall by ~30-50% on tools cells) without contributing to the active write-up. Keeping the chain code wired created a pull on every documentation edit and analysis script — every SKILL.md mentioned chains, every plot file had chain branches, every status table had a chain column. Archiving the dispatch removes that maintenance pull while keeping the implementation reachable for any future revival.
+
+**What changed (`feat/archive-chain-experiment` branch).**
+
+- **`run_experiment.py`** — drops `run_chain_experiment` / `DEFAULT_NUM_CTX_CHAIN` / `print_chain_table` / `summarize_chains` from imports; removes `--chains`, `--chain-samples`, `--num-ctx-chain` argparse entries; deletes the chain dispatch block (the gate "skip chain phase when sharding to non-zero shard / when `--chain-samples=0` / when `--think=off`" is moot once the flag is gone); drops `args.chain_samples=0; args.chains=False` from the smoke override; removes `num_ctx_chain` from the run banner and `meta`; passes a literal `[]` as the second arg of `save_results`. `--seed` help text updated to point at `--smoke-shuffle` only. Smoke and shard help text trimmed of chain references. The example in the module docstring drops the `--chains` line.
+- **`pddl_eval/runner.py`** — single-line `# Archived 2026-05-05` markers above `DEFAULT_NUM_CTX_CHAIN` and `run_chain_experiment`. Function body unchanged so a future re-wiring needs only to re-add the dispatch in `run_experiment.async_main`.
+- **`pddl_eval/summary.py`** — module docstring updated to reflect that the active flow always passes `chains=[]`; archive marker above `summarize_chains` / `print_chain_table`. The chain branch in `save_results` (writes `chain_*.json` when called with a non-empty list) is preserved untouched.
+- **`run_background.sh`** — removes `SKIP_CHAINS`, `CHAIN_ARGS`, `CHAIN_ECHO`; drops `${CHAIN_ARGS[*]}` from both `python3 run_experiment.py` invocations; drops the `Chains:` line from the startup echo; drops the `partial`-mode chain-skip branch (now redundant).
+- **`cluster-experimenting/run_condition_rtx.sbatch`** — drops `CHAIN_SAMPLES` env default; removes `CHAINS_ARGS=(--chains --chain-samples ...)` line and the no-tools `CHAINS_ARGS=()` override; removes `${CHAINS_ARGS[@]}` from the python invocation. Header comments rewritten to drop the `num_ctx_chain` justification.
+- **`cluster-experimenting/submit_with_rtx.sh`** — removes chain references from the help comments (`--all` cell counts, no-tools mode description, per-task wall-time table, `--shard` echo). Cell count math is unchanged — chains never were per-cell.
+- **`.claude/skills/analyzer/scripts/aggregate.py`** — drops `CHAIN_LENGTHS`, the `print_chain_table` function, and the chain-related legacy warning. `main()` no longer prints the chain table.
+- **`.claude/skills/analyzer/scripts/plot.py`** — drops `fig2_chain` and `fig7_chain_step_survival` (function bodies + dispatch); chain pooling block in `merge_series` deleted (the merged series carries `"chains": []`); `_parse_figs` rejects numeric IDs `2` and `7` with a clear error pointing at this CHANGELOG; `--figs all` resolves to `{1, 3, 4, 5, 6}`. Figs `1, 3, 4, 5, 6` retain their pre-archive numeric IDs so existing shell snippets like `--figs 1,4,5` keep working.
+- **`.claude/skills/analyzer/scripts/plot_focused.py`** — drops `fig3` (chain-focused per-model panels). `FIG_KEYS` tuple removes `"3"`; `_parse_figs` rejects `"3"` with an archive-note error. Other focused figures retain their numeric IDs.
+- **`.claude/skills/analyzer/scripts/table.py`** — drops `CHAIN_LENGTHS` constant and `_chain_cells` helper; `build_rows`, `write_md`, `write_csv`, `write_tex` no longer emit chain columns. The LaTeX `col_spec` and `\multicolumn` group headers shrink correspondingly.
+- **`.claude/skills/cluster-ops/scripts/status.sh`** — drops the `CHAIN` regex, the `chain_done` accumulator across both multi-cond and legacy code paths, and the `chain` column from the running-jobs table. Smoke fast-path no longer emits `"n/a"` placeholder.
+- **`.claude/skills/{analyzer,cluster-ops,debug-and-simplify}/SKILL.md`** — chain mentions removed from running-table column lists, figure inventories, master-pivot column descriptions, and Layer-4 debugging questions.
+- **`EXPERIMENTS_FLOW.md`** — top-of-file callout pointing at this CHANGELOG; §1 pipeline drops chain step; §4.3 collapsed to a one-paragraph archive notice; §5 evaluation parameters table loses chain rows; §5 gating bullets renamed "Single-task gating" and stripped of chain conditions; §9 output schema notes `chains: []` always emitted, per-task `num_ctx_chain` field annotation marks the date range it was emitted; the `chain_{ts}.json` subsection becomes an archive notice; §10 Direct CLI example drops `--chains \`; §11 paper-diff "no-tools matrix" row gains a chain-archive parenthetical.
+- **`README.md`** — removes the chain CLI rows (`--chains`, `--chain-samples`, `--num-ctx-chain`), the "Include multi-task chain evaluation" code example, the "Chain evaluation" bullet from "How It Works", and the `chain_<timestamp>.json` line from the output list (replaced with an archive note pointing here). `--seed` help repurposed to `--smoke-shuffle`.
+- **`cluster-experimenting/README.md`** — chain references trimmed from the no-tools quickstart wall, the Conditions list, the resource-profile `--time` table, the "Where things go" / "Fetching results" sections (file glob updated to `{single_task,summary}_*.json` with a back-compat note), and the troubleshooting `--num-ctx-chain` mitigation. The unrelated SLURM `afterok` dependency-chain idiom remains.
+- **`CLAUDE.md`** — top-level note: "active flow is single-task only as of 2026-05-05; chain phase archived in `pddl_eval/{runner,summary}.py`."
+- **`development/OPEN_ISSUES.md`** — `ISS-009` (chain with-tools=0% for 0.6b is uninformative) and `ISS-011` (chain denominator unchanged when steps are skipped) closed with this date and a pointer here.
+
+**What did NOT change.**
+
+- `pddl_eval/runner.py::run_chain_experiment` body — preserved verbatim.
+- `pddl_eval/summary.py::{summarize_chains, print_chain_table, save_results chain branch}` — preserved verbatim.
+- `pddl_eval/{chat.py, scoring.py}` — chain-related comments are about shared codepaths and are accurate; left as-is.
+- `tests/*` — no chain references existed pre-archive (verified by grep before this PR); test suites unchanged.
+- `single_task_*.json` and `summary_*.json` schemas — `summary["chains"]` still present (always `[]` in new outputs); pre-archive rows on disk parse identically.
+- Pre-2026-05-05 result corpora (`checkpoints/cluster-26042026/`, `results/cluster-*/`) — files untouched. **Note**: their populated `chains` arrays no longer render in `aggregate.py` / `plot.py` / `table.py` after this change. If you need a chain-rendering aggregator for archaeology, revert this commit on a branch.
+- `development/archive/{SUBMISSION_STRATEGY_PROPOSAL,FRAMEWORK_EXTENSION_PLAN}.md` — historical snapshots, untouched.
+
+**Compatibility.**
+
+- Existing `summary_*.json` files load unchanged in the trimmed analyzer (chain rows are ignored, not erroring).
+- Old shell scripts that pass `--chains`, `--chain-samples N`, or `--num-ctx-chain N` to `run_experiment.py` will fail loudly with argparse "unrecognized arguments" — this is the intended back-compat boundary.
+- The cluster sbatch's `CHAIN_SAMPLES` env var is no longer consumed; setting it has no effect (no warning either — silent ignore).
+
+**Re-wiring the chain phase later.** The minimum patch to revive chains is: re-export the four names in `run_experiment.py`'s import block, re-add the three argparse flags, paste the dispatch block back into `async_main`, restore the smoke override, and pass `chain_results` (not `[]`) to `save_results`. No changes to `pddl_eval/` are needed because the bodies are intact. Analyzer / cluster-ops / docs would re-grow on their own as needed.
+
+**Closes / narrows.** Closes `ISS-009`, `ISS-011` (both chain-specific and now moot under the archive policy). `ISS-013` (paper-diff audit) is left open — its scope spans single-task too.
+
+**Files.** `run_experiment.py`, `pddl_eval/{runner,summary}.py`, `run_background.sh`, `cluster-experimenting/{submit_with_rtx.sh, run_condition_rtx.sbatch, README.md}`, `.claude/skills/analyzer/{SKILL.md, scripts/{aggregate,plot,plot_focused,table}.py}`, `.claude/skills/cluster-ops/{SKILL.md, scripts/status.sh}`, `.claude/skills/debug-and-simplify/SKILL.md`, `EXPERIMENTS_FLOW.md`, `README.md`, `CLAUDE.md`, `development/{CHANGELOG.md, OPEN_ISSUES.md}`.
+
+---
+
 ## 2026-05-05 — Record `partial` in summary meta
 
 **TL;DR.** When `--partial K > 0`, `summary_*.json`'s `meta` block now records `"partial": K`. Existing summaries on disk are unaffected; new writes only. Lets a reader of a synced summary tell at a glance whether the cell's `n` reflects partial- or full-scope, without back-deriving from `n` and the domain count.

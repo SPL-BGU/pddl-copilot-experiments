@@ -108,6 +108,10 @@ DEFAULT_NUM_CTX = 16384
 # getting deleted; future asymmetric experiments can override one
 # without touching the other. Override via --num-ctx-thinking.
 DEFAULT_NUM_CTX_THINKING = 16384
+# Archived 2026-05-05 — chain phase is no longer wired into the active
+# experiment flow (see CHANGELOG). Constant kept importable for any future
+# resurrection of `run_chain_experiment` below.
+#
 # Context budget for multi-task chain runs. Chains accumulate the full
 # message history (system + N×(user+assistant+tool_calls+tool_results))
 # across steps, so step-4 prompts can reach ~6-8K tokens before generation
@@ -123,7 +127,7 @@ DEFAULT_NUM_CTX_THINKING = 16384
 # ~12K (comparable to single-task at 16384) and step-4 to ~8-10K (still
 # tighter than single-task; raise to 20480 if a chain sweep surfaces
 # step-4 think_overflow). Chains are tools-only (ISS-018), so this is
-# condition-independent. Override via --num-ctx-chain.
+# condition-independent.
 DEFAULT_NUM_CTX_CHAIN = 16384
 DEFAULT_CONCURRENCY = 4
 
@@ -786,6 +790,10 @@ async def run_single_task_experiment(
 
 # ---------------------------------------------------------------------------
 # Multi-task chain evaluation (Section 4.4)
+#
+# Archived 2026-05-05 — `run_experiment.py` no longer dispatches into this
+# function. Body preserved verbatim so the chain phase can be re-wired without
+# rebuilding the orchestration; see CHANGELOG 2026-05-05 for context.
 # ---------------------------------------------------------------------------
 
 
