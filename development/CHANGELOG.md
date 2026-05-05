@@ -6,6 +6,14 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-05 — Record `partial` in summary meta
+
+**TL;DR.** When `--partial K > 0`, `summary_*.json`'s `meta` block now records `"partial": K`. Existing summaries on disk are unaffected; new writes only. Lets a reader of a synced summary tell at a glance whether the cell's `n` reflects partial- or full-scope, without back-deriving from `n` and the domain count.
+
+**Files.** `run_experiment.py`.
+
+---
+
 ## 2026-05-04 — Fast partial sweep + `--continue-partial` for full sweep
 
 **TL;DR.** Two new CLI flags on `run_experiment.py`. `--partial K` caps each domain to first-K positive problems, first-K negative problems, and first-K valid + first-K invalid plans per kept positive problem (single-task-only fast feedback slice). `--continue-partial PARTIAL_DIR` seeds `args.output_dir/trials.jsonl` with the partial run's progress file before the existing resume logic kicks in, so partial trials transfer into a follow-up full sweep via the existing 10-tuple resume key. `results/` reorganised into `partial/`, `full/`, and `smoke/` buckets; default output dirs now land under the appropriate bucket. Pre-existing flat result dirs untouched. **No methodology change** — scoring, prompts, fixture content, and the resume-key shape are unchanged; existing results stay valid.
