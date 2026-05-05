@@ -22,6 +22,17 @@ REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REMOTE_RESULTS="${REMOTE_RESULTS:-~/pddl-copilot-experiments/results}"
 
 DEST="${1:-$REPO_ROOT/results/cluster-$(date +%Y%m%d)}"
+
+# Refuse to dump slurm_* dirs flat into results/ — every sync must land in a
+# named subdir so different sweeps stay separable. The default already does
+# this; the guard catches an explicit `bash sync.sh results/` or `bash
+# sync.sh $REPO_ROOT/results`.
+DEST_ABS="$(cd "$(dirname "$DEST")" && pwd)/$(basename "$DEST")"
+if [ "$DEST_ABS" = "$REPO_ROOT/results" ]; then
+    echo "ERROR: refusing to sync into bare results/ — pass a subdir like results/cluster-DATE" >&2
+    exit 2
+fi
+
 mkdir -p "$DEST"
 
 echo "Syncing ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/slurm_* → $DEST"
