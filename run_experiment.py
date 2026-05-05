@@ -586,6 +586,8 @@ async def async_main(args):
             if args.conditions in ("tools", "both"):
                 meta["tool_filter"] = args.tool_filter
                 meta["prompt_style"] = args.prompt_style
+            if args.partial > 0:
+                meta["partial"] = args.partial
             # `resumed_count` is the count of in-scope restored trials
             # actually folded into this run's saved output, not the raw
             # JSONL line count — the latter over-counts when the JSONL
