@@ -400,8 +400,6 @@ async def async_main(args):
     output_dir_path = Path(args.output_dir)
     output_dir_path.mkdir(parents=True, exist_ok=True)
     progress_path = output_dir_path / "trials.jsonl"
-    done_keys: set[tuple] = set()
-    restored_results: list[TaskResult] = []
     if getattr(args, "no_resume", False):
         if progress_path.exists():
             progress_path.unlink()
@@ -421,11 +419,16 @@ async def async_main(args):
             )
         shutil.copy2(src, progress_path)
         print(f"\n  --continue-partial: seeded {progress_path} from {src}")
-    done_keys, restored_results = load_progress(progress_path)
-    if restored_results:
+    # Load all prior trials as `dict[TrialKey, TaskResult]`. The runner
+    # filters this to in-scope (matching this run's meta-dims + post-partial
+    # fixture set) before merging into the saved results, so trials seeded
+    # from a multi-cell merged source don't pollute the cell's summary.
+    restored_by_key = load_progress(progress_path)
+    if restored_by_key:
         print(
-            f"\n  Resume: loaded {len(restored_results)} previously-completed "
-            f"trials from {progress_path}"
+            f"\n  Resume: loaded {len(restored_by_key)} previously-completed "
+            f"trials from {progress_path} (in-scope subset will be filtered "
+            f"by the runner)"
         )
 
     single_results: list[TaskResult] = []
@@ -482,7 +485,7 @@ async def async_main(args):
                     shard_i=args.shard_i, shard_n=args.shard_n,
                     cell_assignment=cell_assignment,
                     progress_path=progress_path,
-                    done_keys=done_keys,
+                    restored_by_key=restored_by_key,
                 )
                 sub_results.extend(rs)
             return sub_results
@@ -553,12 +556,15 @@ async def async_main(args):
         print("\n\nInterrupted — saving partial results...")
 
     finally:
-        # Merge resumed-from-JSONL trials with the trials this process ran.
-        # Restored results come first so the final list ordering matches
-        # the JSONL append order (stable across resumed runs); newly-run
-        # appended after preserves the legacy "fresh-run" tail-ordering
-        # for non-resumed runs (restored is empty).
-        all_single = restored_results + single_results
+        # `single_results` already contains the in-scope restored trials
+        # (returned by `run_single_task_experiment`, in JSONL append order)
+        # followed by trials newly run this process. Restored trials whose
+        # 10-tuple key falls outside this run's scope (different model /
+        # think mode / prompt style / dropped fixture under --partial K)
+        # were filtered out by the runner — preventing per-cell summary
+        # pollution when a cell's `trials.jsonl` was seeded from a
+        # multi-cell merged source.
+        all_single = single_results
         if all_single:
             meta = {
                 "host": host or "localhost",
@@ -580,8 +586,17 @@ async def async_main(args):
             if args.conditions in ("tools", "both"):
                 meta["tool_filter"] = args.tool_filter
                 meta["prompt_style"] = args.prompt_style
-            if restored_results:
-                meta["resumed_count"] = len(restored_results)
+            # `resumed_count` is the count of in-scope restored trials
+            # actually folded into this run's saved output, not the raw
+            # JSONL line count — the latter over-counts when the JSONL
+            # was seeded from a multi-cell merged source. The runner
+            # passed the same TaskResult instances through, so identity
+            # checks against the loaded values suffice.
+            if restored_by_key:
+                restored_ids = {id(v) for v in restored_by_key.values()}
+                resumed = sum(1 for r in all_single if id(r) in restored_ids)
+                if resumed:
+                    meta["resumed_count"] = resumed
             save_results(all_single, chain_results, Path(args.output_dir), meta=meta)
         await mcp.close()
         # ollama.AsyncClient wraps an httpx.AsyncClient; close it to release

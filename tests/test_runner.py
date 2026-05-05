@@ -103,7 +103,9 @@ def test_load_progress_roundtrip(r: TestResults) -> None:
             },
         }
         p.write_text(json.dumps(rec) + "\n")
-        keys, results = load_progress(p)
+        loaded = load_progress(p)
+        keys = set(loaded.keys())
+        results = list(loaded.values())
         r.check_eq("loads 1 key", len(keys), 1)
         r.check_eq("loads 1 result", len(results), 1)
         r.check_eq("result.success preserved", results[0].success, True)
@@ -132,7 +134,9 @@ def test_load_progress_tolerates_partial_line(r: TestResults) -> None:
                        "with_tools": True, "success": True},
         }
         p.write_text(json.dumps(good) + "\n" + '{"partial": ')
-        keys, results = load_progress(p)
+        loaded = load_progress(p)
+        keys = set(loaded.keys())
+        results = list(loaded.values())
         r.check_eq("partial line dropped, good kept", len(keys), 1)
 
 
@@ -171,7 +175,9 @@ def test_partial_tail_does_not_corrupt_next_append(r: TestResults) -> None:
                     '"success":false}}\n')
         # Loader should see 2 valid records, partial dropped.
         from pddl_eval.resume import load_progress
-        keys, results = load_progress(p)
+        loaded = load_progress(p)
+        keys = set(loaded.keys())
+        results = list(loaded.values())
         r.check_eq("heal preserves 2 valid records", len(keys), 2)
         r.check_eq("heal preserves both results", len(results), 2)
 
@@ -278,7 +284,9 @@ def test_writer_emits_loadable_jsonl(r: TestResults) -> None:
                 f"{progress_path} not written",
             )
 
-            keys, restored = load_progress(progress_path)
+            loaded = load_progress(progress_path)
+            keys = set(loaded.keys())
+            restored = list(loaded.values())
             r.check_eq("loader sees 1 key", len(keys), 1)
             r.check_eq("loader sees 1 result", len(restored), 1)
             r.check_eq(
@@ -294,6 +302,166 @@ def test_writer_emits_loadable_jsonl(r: TestResults) -> None:
                 "writer key matches _trial_key",
                 expected_key in keys,
                 f"expected {expected_key} in {keys}",
+            )
+    finally:
+        runner_mod.evaluate_one = original
+
+
+def test_runner_filters_out_of_scope_restored(r: TestResults) -> None:
+    """Restored trials outside this run's scope (different model, different
+    think mode, dropped fixture) must NOT appear in the returned results.
+
+    Regression guard for the merged-seed pollution case: when a cell's
+    `trials.jsonl` was seeded from a multi-cell merged source, the cell's
+    final summary was including trials from OTHER cells, polluting per-
+    cell aggregates. Fix lives in `run_single_task_experiment`, which
+    builds an `in_scope_keys` set during job emission and filters the
+    `restored_by_key` dict by membership before merging.
+    """
+    from pddl_eval import runner as runner_mod
+    from pddl_eval.resume import load_progress
+
+    async def stub_evaluate_one(
+        client, model, task, domain_name, domain_pddl,
+        problem_name, problem_pddl, prompt_variant, with_tools,
+        mcp, gt, **kwargs,
+    ):
+        return TaskResult(
+            model=model, task=task, domain_name=domain_name,
+            problem_name=problem_name, prompt_variant=prompt_variant,
+            with_tools=with_tools, success=True,
+            tool_filter=kwargs.get("tool_filter", "all"),
+            prompt_style=kwargs.get("prompt_style", "minimal"),
+            plan_label=kwargs.get("plan_label", ""),
+        )
+
+    original = runner_mod.evaluate_one
+    runner_mod.evaluate_one = stub_evaluate_one
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            progress_path = Path(d) / "trials.jsonl"
+            # Pre-seed with two records: one in-scope (model="m1"), one
+            # out-of-scope (model="other-model" — not in the run's models
+            # list). The out-of-scope record simulates a multi-cell merged
+            # seed where another cell's trials snuck in.
+            in_scope_rec = {
+                "key": ["m1", "solve", "d1", "p1", "", 0, True,
+                        "default", "all", "minimal"],
+                "result": {"model": "m1", "task": "solve", "domain_name": "d1",
+                           "problem_name": "p1", "prompt_variant": 0,
+                           "with_tools": True, "success": True,
+                           "tool_filter": "all", "prompt_style": "minimal"},
+            }
+            out_of_scope_rec = {
+                "key": ["other-model", "solve", "d1", "p1", "", 0, True,
+                        "default", "all", "minimal"],
+                "result": {"model": "other-model", "task": "solve",
+                           "domain_name": "d1", "problem_name": "p1",
+                           "prompt_variant": 0, "with_tools": True,
+                           "success": False, "tool_filter": "all",
+                           "prompt_style": "minimal"},
+            }
+            progress_path.write_text(
+                json.dumps(in_scope_rec) + "\n"
+                + json.dumps(out_of_scope_rec) + "\n"
+            )
+            restored_by_key = load_progress(progress_path)
+            r.check_eq("loader saw both records", len(restored_by_key), 2)
+
+            domains = {
+                "d1": {"domain": "(d)", "problems": {"p1": "(p)"}, "type": "test"},
+            }
+            ground_truth = {"d1": {"p1": {}}}
+            results = asyncio.run(run_single_task_experiment(
+                client=None, models=["m1"], tasks=["solve"],
+                domains=domains, ground_truth=ground_truth, mcp=None,
+                num_variants=1, conditions="tools",
+                progress_path=progress_path,
+                restored_by_key=restored_by_key,
+            ))
+            r.check_eq("returned exactly 1 result (in-scope only)", len(results), 1)
+            r.check_eq("kept the in-scope model", results[0].model, "m1")
+            r.check(
+                "out-of-scope model did NOT leak through",
+                all(rr.model != "other-model" for rr in results),
+                f"found other-model in results: {[rr.model for rr in results]}",
+            )
+    finally:
+        runner_mod.evaluate_one = original
+
+
+def test_runner_filters_out_partial_dropped_fixtures(r: TestResults) -> None:
+    """Restored trials for fixtures dropped by `--partial K` (e.g. p03 when
+    K=2) must NOT appear in the returned results.
+
+    This is the second leg of the scope-filter contract: even when the
+    meta-dims (model/think/cond/filter/prompt) match, a restored trial
+    targeting a fixture that's no longer in `domains` after the partial
+    subset is out-of-scope and must be dropped.
+    """
+    from pddl_eval import runner as runner_mod
+    from pddl_eval.resume import load_progress
+
+    async def stub_evaluate_one(
+        client, model, task, domain_name, domain_pddl,
+        problem_name, problem_pddl, prompt_variant, with_tools,
+        mcp, gt, **kwargs,
+    ):
+        return TaskResult(
+            model=model, task=task, domain_name=domain_name,
+            problem_name=problem_name, prompt_variant=prompt_variant,
+            with_tools=with_tools, success=True,
+            tool_filter=kwargs.get("tool_filter", "all"),
+            prompt_style=kwargs.get("prompt_style", "minimal"),
+            plan_label=kwargs.get("plan_label", ""),
+        )
+
+    original = runner_mod.evaluate_one
+    runner_mod.evaluate_one = stub_evaluate_one
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            progress_path = Path(d) / "trials.jsonl"
+            # Two records: p1 (kept) and p3 (dropped — caller passes only
+            # {p1: ...} in `domains`, simulating --partial 2 having
+            # dropped p3 upstream).
+            kept_rec = {
+                "key": ["m1", "solve", "d1", "p1", "", 0, True,
+                        "default", "all", "minimal"],
+                "result": {"model": "m1", "task": "solve", "domain_name": "d1",
+                           "problem_name": "p1", "prompt_variant": 0,
+                           "with_tools": True, "success": True,
+                           "tool_filter": "all", "prompt_style": "minimal"},
+            }
+            dropped_rec = {
+                "key": ["m1", "solve", "d1", "p3", "", 0, True,
+                        "default", "all", "minimal"],
+                "result": {"model": "m1", "task": "solve", "domain_name": "d1",
+                           "problem_name": "p3", "prompt_variant": 0,
+                           "with_tools": True, "success": False,
+                           "tool_filter": "all", "prompt_style": "minimal"},
+            }
+            progress_path.write_text(
+                json.dumps(kept_rec) + "\n"
+                + json.dumps(dropped_rec) + "\n"
+            )
+            restored_by_key = load_progress(progress_path)
+            domains = {
+                "d1": {"domain": "(d)", "problems": {"p1": "(p)"}, "type": "test"},
+            }
+            ground_truth = {"d1": {"p1": {}}}
+            results = asyncio.run(run_single_task_experiment(
+                client=None, models=["m1"], tasks=["solve"],
+                domains=domains, ground_truth=ground_truth, mcp=None,
+                num_variants=1, conditions="tools",
+                progress_path=progress_path,
+                restored_by_key=restored_by_key,
+            ))
+            r.check_eq("returned exactly 1 result (kept fixture only)", len(results), 1)
+            r.check_eq("problem name kept", results[0].problem_name, "p1")
+            r.check(
+                "dropped fixture p3 did NOT leak through",
+                all(rr.problem_name != "p3" for rr in results),
+                f"found p3 in results: {[rr.problem_name for rr in results]}",
             )
     finally:
         runner_mod.evaluate_one = original
@@ -319,7 +487,9 @@ def test_load_progress_dedups_repeated_keys(r: TestResults) -> None:
                 "domain_name": "d", "problem_name": "p", "prompt_variant": 0,
                 "with_tools": True, "success": False}}  # different result
         p.write_text(json.dumps(rec1) + "\n" + json.dumps(rec2) + "\n")
-        keys, results = load_progress(p)
+        loaded = load_progress(p)
+        keys = set(loaded.keys())
+        results = list(loaded.values())
         r.check_eq("dedups to 1 key", len(keys), 1)
         r.check_eq("dedups to 1 result", len(results), 1)
         r.check_eq("first-seen wins", results[0].success, True)
@@ -337,5 +507,7 @@ if __name__ == "__main__":
     test_trial_key_shape_matches_loader_constant(r)
     test_load_progress_rejects_wrong_key_length(r)
     test_writer_emits_loadable_jsonl(r)
+    test_runner_filters_out_of_scope_restored(r)
+    test_runner_filters_out_partial_dropped_fixtures(r)
     test_load_progress_dedups_repeated_keys(r)
     r.report_and_exit()

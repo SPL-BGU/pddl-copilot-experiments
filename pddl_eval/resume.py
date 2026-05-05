@@ -12,20 +12,31 @@ from pathlib import Path
 from pddl_eval.runner import TRIAL_KEY_LEN, TaskResult
 
 
-def load_progress(progress_path: Path) -> tuple[set[tuple], list[TaskResult]]:
+def load_progress(progress_path: Path) -> dict[tuple, TaskResult]:
     """Load completed-trial JSONL written by `run_single_task_experiment`.
 
-    Returns (done_keys, restored_results). Skips silently if the file is
-    absent. A trailing partial line (TIMEOUT mid-write) is dropped: the
-    in-progress trial will be re-executed on resume, which is the
-    intended behaviour. Repeated keys are de-duplicated to first-seen,
-    which matches the runner's append-once-per-completion guarantee but
-    is defensive against accidental file concatenation.
+    Returns an ordered dict mapping the 10-tuple resume key to its
+    TaskResult, in JSONL append order (which matches first-completion
+    order across all prior runs). Callers derive `done_keys = set(d)` and
+    `restored_results = list(d.values())`. Returns an empty dict if the
+    file is absent.
+
+    The dict is the right shape for two distinct uses: (1) skip-existing
+    via `key in restored_by_key`, and (2) the post-`--partial` filter in
+    `run_single_task_experiment` that keeps only restored trials whose
+    key matches the run's intended scope (meta-dims + post-subset
+    fixtures), preventing per-cell summary pollution when a cell's
+    `trials.jsonl` was seeded from a multi-cell merged source.
+
+    A trailing partial line (TIMEOUT mid-write) is dropped silently: the
+    in-progress trial is re-executed on resume. Repeated keys are
+    de-duplicated to first-seen, matching the runner's
+    append-once-per-completion guarantee while staying defensive against
+    accidental file concatenation.
     """
+    out: dict[tuple, TaskResult] = {}
     if not progress_path.exists():
-        return set(), []
-    done_keys: set[tuple] = set()
-    restored: list[TaskResult] = []
+        return out
     with progress_path.open("r") as f:
         for line in f:
             line = line.rstrip("\n")
@@ -55,11 +66,10 @@ def load_progress(progress_path: Path) -> tuple[set[tuple], list[TaskResult]]:
                     f"key tuple changed since this file was written. "
                     f"Move the file aside and rerun to start fresh."
                 )
-            if key in done_keys:
+            if key in out:
                 continue
-            done_keys.add(key)
             try:
-                restored.append(TaskResult(**result_dict))
+                out[key] = TaskResult(**result_dict)
             except TypeError:
                 # Schema drift between dataclass and serialised record.
                 # Drop the incompatible JSONL: caller should rm the file
@@ -70,4 +80,4 @@ def load_progress(progress_path: Path) -> tuple[set[tuple], list[TaskResult]]:
                     f"the dataclass changed since this file was written. "
                     f"Move the file aside and rerun to start fresh."
                 )
-    return done_keys, restored
+    return out

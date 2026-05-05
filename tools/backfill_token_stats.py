@@ -50,7 +50,7 @@ def backfill_dir(cell_dir: Path) -> str:
     if not trials.exists():
         return f"  skip {cell_dir.name}: no trials.jsonl"
 
-    _, restored = load_progress(trials)
+    restored = list(load_progress(trials).values())
     if not restored:
         return f"  skip {cell_dir.name}: trials.jsonl empty"
 

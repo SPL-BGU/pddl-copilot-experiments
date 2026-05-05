@@ -35,6 +35,12 @@
 #   bash cluster-experimenting/submit_with_rtx.sh <model> --dry-run
 #   bash cluster-experimenting/submit_with_rtx.sh --all --continue-partial /path/to/seed_dir
 #   bash cluster-experimenting/submit_with_rtx.sh --all --partial 2 --continue-partial /path/to/seed_dir
+#   bash cluster-experimenting/submit_with_rtx.sh --all --exclude ise-6000p-04          # skip a sick node
+#
+# --exclude NODELIST: passed straight to sbatch's --exclude. Use when a
+#   compute node is in a degraded state (e.g. /scratch full, GPU stuck)
+#   and the SLURM scheduler would otherwise repeatedly land array tasks
+#   on it. Comma-separated list, e.g. `ise-6000p-04,ise-6000p-05`.
 #
 # --continue-partial PATH: every array cell seeds its OUT_DIR/trials.jsonl
 #   from PATH/trials.jsonl on FIRST submission (sbatch-side guard skips the
@@ -97,6 +103,7 @@ SMOKE_SHUFFLE=0
 SHARD=""
 CONTINUE_PARTIAL=""
 PARTIAL_K=""
+EXCLUDE_NODES=""
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -111,6 +118,7 @@ while [[ $# -gt 0 ]]; do
         --shard) shift; SHARD="$1"; shift ;;
         --continue-partial) shift; CONTINUE_PARTIAL="$1"; shift ;;
         --partial) shift; PARTIAL_K="$1"; shift ;;
+        --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
         -h|--help)
             sed -n '1,80p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -316,12 +324,18 @@ if [ "$N_CELLS" -gt 1 ]; then
     ARRAY_ARG=(--array="0-$((N_CELLS-1))")
 fi
 
+EXCLUDE_ARG=()
+if [ -n "$EXCLUDE_NODES" ]; then
+    EXCLUDE_ARG=(--exclude="$EXCLUDE_NODES")
+fi
+
 cmd=(sbatch
     --job-name="$JOB_NAME"
     --gpus="${GPU_TYPE}:1"
     "$MEM_ARG"
     "${TIME_ARG[@]}"
     "${ARRAY_ARG[@]}"
+    "${EXCLUDE_ARG[@]}"
     --export="$EXPORT_LIST"
     "$SBATCH_FILE")
 
@@ -353,6 +367,9 @@ if [ -n "$CONTINUE_PARTIAL" ]; then
 fi
 if [ -n "$PARTIAL_K" ]; then
     echo "  partial:     K=$PARTIAL_K (per-domain fixture cap; single-task fast feedback slice)" >&2
+fi
+if [ -n "$EXCLUDE_NODES" ]; then
+    echo "  exclude:     $EXCLUDE_NODES" >&2
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then

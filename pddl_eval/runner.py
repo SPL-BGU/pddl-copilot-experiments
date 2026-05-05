@@ -468,7 +468,7 @@ async def run_single_task_experiment(
     shard_n: int = 1,
     cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None,
     progress_path: Path | None = None,
-    done_keys: set[TrialKey] | None = None,
+    restored_by_key: dict[TrialKey, TaskResult] | None = None,
 ) -> list[TaskResult]:
     """Run the full single-task sweep with bounded Ollama concurrency.
 
@@ -478,13 +478,19 @@ async def run_single_task_experiment(
     on KeyboardInterrupt — remaining tasks are cancelled and whatever
     finished is returned.
 
-    Resume / skip-existing: when `progress_path` is set, every completed
-    trial is appended as one JSONL line `{"key": [...], "result": {...}}`
-    so a TIMEOUT/preempt/scancel doesn't lose mid-run trials. When
-    `done_keys` is provided (loaded by the caller from the same JSONL),
-    matching jobs are filtered out at job-list build time, so a resumed
-    run only re-executes the missing trials. Both args default to None,
-    which preserves the pre-resume behaviour byte-for-byte.
+    Resume / skip-existing + scope filter: when `progress_path` is set,
+    every completed trial is appended as one JSONL line
+    `{"key": [...], "result": {...}}` so a TIMEOUT/preempt/scancel doesn't
+    lose mid-run trials. When `restored_by_key` is provided (loaded by the
+    caller from the same JSONL), each emission key is checked against the
+    dict; matching jobs are skipped (not re-executed) and the restored
+    TaskResult is captured for the return list. Restored trials whose key
+    falls OUTSIDE this run's intended scope (different model, different
+    think mode, dropped fixture under `--partial K`, etc.) are silently
+    omitted — preventing per-cell summary pollution when a cell's
+    `trials.jsonl` was seeded from a multi-cell merged source. The return
+    list is ordered: restored-in-scope first (in JSONL append order),
+    then newly-run trials (in completion order).
     """
     # Build the full job list up-front. Skipping unsolvable validate_plan/
     # simulate is cheaper here than inside the coroutine and keeps the
@@ -496,6 +502,14 @@ async def run_single_task_experiment(
     with_tools_values = _expand_conditions(conditions)
 
     think_tag = _think_str(think)
+
+    # In-scope keys this emission would have produced if there were no
+    # resume. Used to filter `restored_by_key` to only those trials that
+    # belong to the current run's slice (same meta-dims, same post-partial
+    # fixture set, same shard). Out-of-scope restored trials are dropped
+    # so the cell's final summary doesn't get polluted by trials seeded
+    # from a multi-cell merged source.
+    in_scope_keys: set[TrialKey] = set()
 
     def _emit_job(
         *, model, task, dname, dpddl, pname, ppddl, pv, with_tools,
@@ -510,13 +524,13 @@ async def run_single_task_experiment(
             (model, task, dname, pname, plan_label, str(pv)),
         ):
             return
-        if done_keys is not None:
-            key = _trial_key(
-                model, task, dname, pname, plan_label, pv, with_tools,
-                think_tag, tool_filter, prompt_style,
-            )
-            if key in done_keys:
-                return
+        key = _trial_key(
+            model, task, dname, pname, plan_label, pv, with_tools,
+            think_tag, tool_filter, prompt_style,
+        )
+        in_scope_keys.add(key)
+        if restored_by_key is not None and key in restored_by_key:
+            return
         jobs.append((
             model, task, dname, dpddl, pname, ppddl, pv,
             with_tools, gt_frag, np_for_task, plan_label,
@@ -675,6 +689,11 @@ async def run_single_task_experiment(
     total = len(jobs)
     results: list[TaskResult | None] = [None] * total
     if total == 0:
+        # No jobs to run, but in-scope restored trials still need to be
+        # surfaced (e.g. a fully-resumed cell where every trial in
+        # `restored_by_key` matched a skipped emission).
+        if restored_by_key:
+            return [tr for k, tr in restored_by_key.items() if k in in_scope_keys]
         return []
 
     sem = asyncio.Semaphore(max(1, concurrency))
@@ -751,7 +770,18 @@ async def run_single_task_experiment(
         if progress_handle is not None:
             progress_handle.close()
 
-    return [r for r in results if r is not None]
+    # Filter `restored_by_key` to in-scope and prepend in JSONL append order
+    # (dict iteration preserves insertion order = first-completion order),
+    # then append newly-run trials in completion order. Restored-first
+    # ordering matches the pre-refactor merge semantics so downstream
+    # `single_task_*.json` byte-stability across resumes is preserved.
+    new_results = [r for r in results if r is not None]
+    if restored_by_key:
+        in_scope_restored = [
+            tr for k, tr in restored_by_key.items() if k in in_scope_keys
+        ]
+        return in_scope_restored + new_results
+    return new_results
 
 
 # ---------------------------------------------------------------------------
