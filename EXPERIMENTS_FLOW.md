@@ -459,6 +459,17 @@ See `cluster-experimenting/README.md` for full submission flow,
 `.claude/skills/cluster-ops/SKILL.md` for status/preflight/postmortem
 helpers.
 
+A parallel **remote-Ollama** path was added 2026-05-06 for cases where the
+`rtx_pro_6000` queue is saturated: `cluster-experimenting/submit_with_remote.sh`
++ `cluster-experimenting/vast/` provision a pool of Vast.ai GPU boxes
+running Ollama behind Caddy + a bearer token, so cluster jobs offload model
+serving and don't request a GPU. The remote path runs with
+`OLLAMA_KEEP_ALIVE=24h` and `OLLAMA_MAX_LOADED_MODELS=3` (vs `1h` / `1` on
+the rtx self-deploy) — both differences are serving-economics knobs that
+do not affect token outputs at `temperature=0.0`, so the result rows
+written by the two paths are interchangeable. See
+`cluster-experimenting/vast/README.md` for the lifecycle.
+
 ### Laptop background
 
 ```bash
