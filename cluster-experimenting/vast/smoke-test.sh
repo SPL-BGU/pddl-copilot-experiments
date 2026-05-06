@@ -16,6 +16,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POOL_FILE="${POOL_FILE:-$SCRIPT_DIR/pool.txt}"
 TOKEN_FILE="${TOKEN_FILE:-$SCRIPT_DIR/.token}"
 
+# shellcheck source=../lib/defaults.sh
+source "$SCRIPT_DIR/../lib/defaults.sh"
+
 if [ ! -s "$TOKEN_FILE" ]; then
 	echo "Error: $TOKEN_FILE missing. Run vast/deploy-ollama.sh first." >&2
 	exit 1
@@ -74,8 +77,10 @@ for m in d.get('models', []):
 	fi
 
 	# 2. tiny chat() against the smallest expected model — confirms the
-	#    request path actually works, not just /api/tags.
-	PROBE_MODEL="${PROBE_MODEL:-Qwen3.5:0.8B}"
+	#    request path actually works, not just /api/tags. Default probe is
+	#    the first entry of the cluster-side roster (PDDL_DEFAULT_MODELS[0],
+	#    currently Qwen3.5:0.8B — the smallest, fastest model in the pack).
+	PROBE_MODEL="${PROBE_MODEL:-${PDDL_DEFAULT_MODELS[0]}}"
 	if echo "$MODELS_JSON" | grep -qx "$PROBE_MODEL"; then
 		REPLY="$("${CURL[@]}" --max-time 60 "$URL/api/chat" \
 			-H "Content-Type: application/json" \

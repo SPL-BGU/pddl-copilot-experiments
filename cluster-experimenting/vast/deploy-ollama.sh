@@ -29,18 +29,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POOL_FILE="${POOL_FILE:-$SCRIPT_DIR/pool.txt}"
 TOKEN_FILE="${TOKEN_FILE:-$SCRIPT_DIR/.token}"
 
+# Single source of truth for the active model roster lives in lib/defaults.sh
+# (PDDL_DEFAULT_MODELS). Sourcing it here keeps the on-start preload list in
+# lockstep with the rtx variant without manual triple-bookkeeping.
+# shellcheck source=../lib/defaults.sh
+source "$SCRIPT_DIR/../lib/defaults.sh"
+
 N="${N:-1}"
 
 # A100 80GB / H100 80GB co-resides 35B + 0.8b + one mid-class model without
 # Ollama having to swap. The reliability+disk filters skip cheap boxes that
 # cause "Ollama starts but model download stalls" failure modes.
-GPU_QUERY="${GPU_QUERY:-gpu_total_ram>=80 reliability>=0.95 disk_space>=100 inet_down>=200}"
+# `direct_port_count>=1` is critical: Vast hosts without direct port mapping
+# silently drop the `-p 8443:8443` request, so the on-start succeeds but the
+# public endpoint is unreachable. Skipping those hosts up front prevents the
+# 5-min poll-then-WARN failure mode in the create loop.
+GPU_QUERY="${GPU_QUERY:-gpu_total_ram>=80 reliability>=0.95 disk_space>=100 inet_down>=200 direct_port_count>=1}"
 
 # Image: official Ollama. The on-start script below installs Caddy on top.
 IMAGE="${IMAGE:-ollama/ollama:latest}"
 
-# Models the box should preload at boot. Override via MODELS env.
-MODELS="${MODELS:-Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b}"
+# Models the box should preload at boot. Default reuses the cluster-side
+# 4-model roster (PDDL_DEFAULT_MODELS from lib/defaults.sh). Override via env.
+MODELS="${MODELS:-${PDDL_DEFAULT_MODELS[*]}}"
 
 if ! command -v vastai >/dev/null 2>&1; then
 	echo "Error: vastai CLI not found. Install with 'pip install vastai' and 'vastai set api-key <KEY>'." >&2
@@ -143,7 +154,13 @@ for i in $(seq 1 "$N"); do
 	done
 	if [ -z "$URL" ]; then
 		echo "[$i/$N] WARN: instance $INSTANCE_ID did not surface a public 8443 mapping in 5min." >&2
-		echo "[$i/$N] check: vastai show instance $INSTANCE_ID" >&2
+		# Tear the orphan down so it doesn't keep billing. The instance was
+		# created (line ~123) but never made it into pool.txt, so a later
+		# teardown-pool.sh would not see it. Best-effort destroy + a clear
+		# log line so the user can confirm in the Vast dashboard.
+		echo "[$i/$N] destroying orphan instance $INSTANCE_ID to stop billing..." >&2
+		vastai destroy instance "$INSTANCE_ID" >&2 || \
+			echo "[$i/$N] WARN: vastai destroy failed for $INSTANCE_ID — verify manually with: vastai show instance $INSTANCE_ID" >&2
 		continue
 	fi
 

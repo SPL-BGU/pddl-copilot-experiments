@@ -383,8 +383,14 @@ async def async_main(args):
     # Used when the server sits behind a reverse-proxy auth gate (e.g. the
     # Vast.ai remote Ollama deploy in cluster-experimenting/vast/). Plain
     # localhost runs leave it unset and the header is omitted.
+    # `verify=False` is paired with the token: the Vast pool fronts Ollama
+    # with Caddy `tls internal` (self-signed CA) and the cluster nodes don't
+    # trust that CA. The bearer token is the actual auth gate; httpx default
+    # verify=True would reject the cert and break every chat() call. Local
+    # http:// runs leave both unset.
     if token := os.environ.get("OLLAMA_AUTH_TOKEN"):
         client_kwargs["headers"] = {"Authorization": f"Bearer {token}"}
+        client_kwargs["verify"] = False
     client = ollama.AsyncClient(**client_kwargs)
 
     # Resume / skip-existing setup. `trials.jsonl` lives next to the

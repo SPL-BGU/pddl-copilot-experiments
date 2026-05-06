@@ -134,8 +134,29 @@ if [ "${#POOL[@]}" -eq 0 ]; then
     exit 2
 fi
 
+# Slot picker. Two strategies, in order of preference:
+#   1) MODELS_LIST set (preferred, set by submit_with_remote.sh): map each
+#      cell to a box by the cell's model index. With pool size >= number of
+#      distinct models, each box stays on one model and never swaps; even
+#      with pool size < model count the swap is bounded by the per-box model
+#      subset rather than the full roster, which `task_id % POOL` would
+#      otherwise interleave.
+#   2) Fallback: `SLURM_ARRAY_TASK_ID % POOL` (legacy direct-sbatch path).
+#      This is the only knob available when CELL_MODEL is the lone signal,
+#      e.g. a manual sbatch without MODELS_LIST.
 SLOT_KEY="${SLURM_ARRAY_TASK_ID:-${SLURM_JOBID:-$$}}"
 SLOT=$(( SLOT_KEY % ${#POOL[@]} ))
+if [ -n "${MODELS_LIST:-}" ] && [ -n "${CELL_MODEL:-}" ]; then
+    IFS=' ' read -ra _MODELS_LIST <<< "$MODELS_LIST"
+    for _idx in "${!_MODELS_LIST[@]}"; do
+        if [ "${_MODELS_LIST[$_idx]}" = "$CELL_MODEL" ]; then
+            SLOT=$(( _idx % ${#POOL[@]} ))
+            echo "Routing: model $CELL_MODEL → MODELS_LIST idx=$_idx → pool slot $SLOT"
+            break
+        fi
+    done
+    unset _MODELS_LIST _idx
+fi
 OLLAMA_HOST="${POOL[$SLOT]}"
 export OLLAMA_HOST
 

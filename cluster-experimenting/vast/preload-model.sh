@@ -9,7 +9,11 @@
 
 set -euo pipefail
 
-MODELS="${MODELS:-Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b}"
+# MODELS is set inline by deploy-ollama.sh on-start (`MODELS='$MODELS'
+# /opt/preload/preload.sh ...`). No fallback default here — the cluster-side
+# default lives in lib/defaults.sh and is propagated through deploy-ollama.sh
+# so this script never has to know the active roster.
+: "${MODELS:?MODELS env required (set by deploy-ollama.sh on-start command)}"
 OLLAMA_LOCAL="${OLLAMA_LOCAL:-http://127.0.0.1:11434}"
 
 echo "preload: waiting for ollama on $OLLAMA_LOCAL..."
@@ -24,7 +28,10 @@ done
 for m in $MODELS; do
 	echo "preload: pulling $m..."
 	t0=$EPOCHREALTIME
-	curl -sf "$OLLAMA_LOCAL/api/pull" \
+	# --max-time 1800 (30 min) is a generous ceiling for a 35B-class pull on
+	# a Vast box; without it a stalled pull blocks the on-start indefinitely
+	# and the box keeps billing without ever serving a request.
+	curl -sf --max-time 1800 "$OLLAMA_LOCAL/api/pull" \
 		-H "Content-Type: application/json" \
 		-d "{\"name\":\"$m\",\"stream\":false}" \
 		>/dev/null

@@ -78,9 +78,15 @@ Same flags as `submit_with_rtx.sh` (--all, --no-tools, --think-modes,
 --smoke, --continue-partial, --partial, --shard, --exclude, --dry-run), minus
 GPU-allocation flags (the cluster job no longer needs a GPU).
 
-Each array task selects a pool slot by `SLURM_ARRAY_TASK_ID % N`, sets
-`OLLAMA_HOST` and `OLLAMA_AUTH_TOKEN` from `pool.txt` + `.token`, runs a
-preflight curl, and then calls `run_experiment.py` exactly as before.
+Each array task selects a pool slot by **model index** (the cell's model's
+position in `--all` / the explicit model args), so each box stays on one
+model when `N >= len(models)`. When `N < len(models)`, multiple models share
+a box and Ollama swaps under `OLLAMA_MAX_LOADED_MODELS=3` — the pool warning
+in `submit_with_remote.sh` flags this. The slot picker also accepts a manual
+`SLURM_ARRAY_TASK_ID % N` fallback for legacy direct-sbatch invocations
+(when `MODELS_LIST` isn't exported). Each task then sets `OLLAMA_HOST` and
+`OLLAMA_AUTH_TOKEN` from `pool.txt` + `.token`, runs a preflight curl, and
+calls `run_experiment.py` exactly as before.
 
 ## Tearing down
 
@@ -106,6 +112,25 @@ A100 80GB on Vast typically runs ~$1.20-1.80 / hr / box. A 24h sweep with a
 pool of 4 ≈ $115-170. Cheaper boxes (A6000 48GB, ~$0.40-0.80/hr) work only if
 you partition by model class — a 48GB GPU cannot co-resident the 35B with a
 mid-class model, so Ollama would swap on every cell change.
+
+## Known limitations
+
+- **TLS uses `tls internal` (self-signed via Caddy's local CA).** `run_experiment.py`
+  passes `verify=False` to httpx whenever `OLLAMA_AUTH_TOKEN` is set, so the
+  bearer token is the actual auth gate, not the cert. The token still rides
+  TLS-encrypted on the wire, just without cert-chain verification. If you
+  want full chain validation, swap `tls internal` in `Caddyfile.tmpl` for an
+  automatic-HTTPS line backed by a domain you control.
+- **Result methodology vs the rtx self-deploy variant.** The Vast pool runs
+  `OLLAMA_KEEP_ALIVE=24h` and `OLLAMA_MAX_LOADED_MODELS=3` (vs `1h` / `1` on
+  rtx). At `temperature=0.0` neither setting affects token outputs — they
+  only change which models stay resident in VRAM and for how long. Result
+  rows are interchangeable with the rtx path; latency-cost numbers are not.
+- **Ollama version drift.** `IMAGE=ollama/ollama:latest` pulls whatever's
+  current on Docker Hub at deploy time. The cluster's rtx Apptainer build
+  pins via the cached `~/ollama.sif` from the first run, so the two paths
+  can drift on Ollama micro-version. Pin `IMAGE` to a tag (e.g.
+  `ollama/ollama:0.20.7`) for tight reproducibility.
 
 ## Troubleshooting
 

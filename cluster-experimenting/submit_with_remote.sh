@@ -208,7 +208,16 @@ fi
 cd "$REPO_ROOT"
 mkdir -p cluster-experimenting/logs
 
-EXPORT_LIST="ALL,CELLS_LIST=${CELLS_LIST},POOL_FILE=${POOL_FILE},TOKEN_FILE=${TOKEN_FILE}"
+# MODELS_LIST is consumed by run_condition_remote.sbatch's slot picker: it
+# routes each cell to the pool slot dedicated to that cell's model, instead
+# of the naive `SLURM_ARRAY_TASK_ID % POOL_N` (which interleaves models on
+# every box and forces Ollama to swap when the model count exceeds
+# OLLAMA_MAX_LOADED_MODELS=3). Sticky model→slot assignment keeps each box
+# on one model when POOL_N >= len(MODELS); when POOL_N < len(MODELS) some
+# boxes serve multiple models, which is unavoidable. Space-separated to
+# match the sbatch's `read -ra` parser.
+MODELS_LIST="${MODELS[*]}"
+EXPORT_LIST="ALL,CELLS_LIST=${CELLS_LIST},MODELS_LIST=${MODELS_LIST},POOL_FILE=${POOL_FILE},TOKEN_FILE=${TOKEN_FILE}"
 if [ "$SMOKE" -eq 1 ]; then
     EXPORT_LIST="${EXPORT_LIST},SMOKE=1"
 fi
