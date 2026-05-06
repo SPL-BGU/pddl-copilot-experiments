@@ -384,6 +384,12 @@ async def async_main(args):
     client_kwargs: dict = {}
     if args.ollama_host:
         client_kwargs["host"] = args.ollama_host
+    # OLLAMA_AUTH_TOKEN: bearer header forwarded to the Ollama HTTP endpoint.
+    # Used when the server sits behind a reverse-proxy auth gate (e.g. the
+    # Vast.ai remote Ollama deploy in cluster-experimenting/vast/). Plain
+    # localhost runs leave it unset and the header is omitted.
+    if token := os.environ.get("OLLAMA_AUTH_TOKEN"):
+        client_kwargs["headers"] = {"Authorization": f"Bearer {token}"}
     client = ollama.AsyncClient(**client_kwargs)
 
     # Resume / skip-existing setup. `trials.jsonl` lives next to the
