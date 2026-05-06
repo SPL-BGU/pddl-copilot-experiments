@@ -3,9 +3,12 @@
 # dodge shell escaping issues around `->` and `[`.
 #
 # Output: Two markdown tables — Pending (with REASON column) and Running
-# (with progress columns). Pending is rendered first so wave-blocking
-# REASON values like DependencyNeverSatisfied / Resources / Priority surface
-# without a separate `squeue --me -t PD` round-trip.
+# (with single-task progress + elapsed). Pending is rendered first so
+# wave-blocking REASON values like DependencyNeverSatisfied / Resources /
+# Priority surface without a separate `squeue --me -t PD` round-trip.
+# Chain progress column was dropped 2026-05-05 when the chain phase was
+# archived from the active flow; legacy chain markers in old .out files
+# are ignored here.
 #
 # Env:
 #   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
@@ -59,10 +62,8 @@ CONDITIONS_LINE = re.compile(r'^Conditions:\s+(.+)$', re.M)
 # banners correctly across archived and current logs.
 THINK_MODES_LINE = re.compile(r'^Think mode(?:s)?:\s+(.+)$', re.M)
 # Capture both numerator AND denominator. Smoke totals are ~5–15 per pass,
-# not 250; production sweeps with custom --chain-samples or task-subset
-# also break a hardcoded denominator.
+# not 250; production sweeps with task-subset also break a hardcoded denominator.
 PROGRESS = re.compile(r'\[ *(\d+)/(\d+) ')
-CHAIN = re.compile(r'chain=(\d+) \[(\d+)/\d+\]')
 # Smoke fast-path emits "Smoke pass: think=X, conditions=Y" headers from
 # run_experiment.async_main. After commit 9f894a6, each --smoke invocation
 # emits 3 headers: think=on splits into (tools, no-tools) sub-passes
@@ -91,7 +92,7 @@ for line in queue_raw.splitlines():
             f = n
             break
     if not f:
-        running.append((f"{jid}:{jname}", "_no log_", "-", "-", elapsed))
+        running.append((f"{jid}:{jname}", "_no log_", "-", elapsed))
         continue
 
     text = open(f, errors='replace').read()
@@ -130,7 +131,7 @@ for line in queue_raw.splitlines():
             st_label = f"{n}/{m}"
         else:
             st_label = "0/?"
-        running.append((f"{jid}:{jname}", phase, st_label, "n/a", elapsed))
+        running.append((f"{jid}:{jname}", phase, st_label, elapsed))
         continue
 
     # Detect multi-cond layout by the presence of a "Conditions:" line.
@@ -160,8 +161,6 @@ for line in queue_raw.splitlines():
             st_label = f"{n}/{m}"
         else:
             st_label = "0/?"
-        chain_matches = CHAIN.findall(slice_text)
-        chain_done = len(chain_matches)
         phase = f"cond {cur_idx}/{total_banners}: {cur_cond}"
     else:
         # Legacy layout: one condition per file, no "Conditions:" setup line.
@@ -171,12 +170,9 @@ for line in queue_raw.splitlines():
             st_label = f"{n}/{m}"
         else:
             st_label = "0/?"
-        chain_matches = CHAIN.findall(text)
-        chain_done = len(chain_matches)
         phase = "legacy single-cond"
 
-    running.append((f"{jid}:{jname}", phase, st_label,
-                    f"{chain_done}", elapsed))
+    running.append((f"{jid}:{jname}", phase, st_label, elapsed))
 
 if pending:
     print('### Pending')
@@ -188,8 +184,8 @@ if pending:
 
 if running:
     print('### Running')
-    print('| job | phase | ST | chain | elapsed |')
-    print('|---|---|---|---|---|')
+    print('| job | phase | ST | elapsed |')
+    print('|---|---|---|---|')
     for r in running:
         print('| ' + ' | '.join(r) + ' |')
 PY

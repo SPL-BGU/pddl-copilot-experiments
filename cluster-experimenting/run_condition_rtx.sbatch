@@ -40,7 +40,6 @@
 ###                  overridden by the cell-array picker. The retired
 ###                  *_guided variants are no longer in the default.
 ###   CONCURRENCY=4              (matches self-deploy OLLAMA_NUM_PARALLEL=4)
-###   CHAIN_SAMPLES=100
 ###
 ### Resource policy (post 2026-04-27 IT request):
 ###   * Do NOT set --cpus-per-task here. The cluster default cpus-per-gpu
@@ -54,16 +53,12 @@
 ### KV cache safety: OLLAMA_NUM_PARALLEL=4 + num_ctx=16384 (single-task tools
 ### + think=off no-tools cells), num_ctx_thinking=16384 (no-tools+think_on
 ### cells, held equal to num_ctx for tools/no-tools fairness in the "tools
-### save tokens" headline), num_ctx_chain=16384 (chain runs, tools-only per
-### ISS-018; held equal to num_ctx because chain prompts accumulate history
-### -- the single-task think_overflow envelope tightens at chain step level
-### rather than loosens) — all set per-request by run_experiment.py. The
+### save tokens" headline) — all set per-request by run_experiment.py. The
 ### single-task ctx values were raised from 8192/12288 to 16384 on
 ### 2026-04-29 after qwen3.6:27b / nemotron-3-nano:30b smokes showed
 ### think_overflow at 12288 on validate_problem/validate_plan (nemotron
 ### was later dropped 2026-04-30; the ctx evidence still applies to the
-### remaining roster via qwen3.6:27b); chain ctx
-### was raised 12288 → 16384 in the same-day follow-up. Do NOT raise NUM_PARALLEL
+### remaining roster via qwen3.6:27b). Do NOT raise NUM_PARALLEL
 ### without recomputing VRAM — probe 2026-04-23 observed NUM_PARALLEL=8 ×
 ### ctx=40960 allocating 37.8 GB for a 0.6B model (pathological). The
 ### 16384-ctx single-task budget approximately doubles per-call KV vs the
@@ -163,7 +158,6 @@ done
 ENV_NAME="${ENV_NAME:-pddl_copilot}"
 EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
-CHAIN_SAMPLES="${CHAIN_SAMPLES:-100}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
 TASKS_ENV_OVERRIDE="${TASKS:-}"
@@ -351,7 +345,6 @@ for MODEL in $MODELS; do
             echo "MODEL: $MODEL   THINK: $THINK_MODE   CONDITION: $COND   started $(date)"
             echo "===================================================================="
 
-            CHAINS_ARGS=(--chains --chain-samples "$CHAIN_SAMPLES")
             # Per-condition TASKS: no-tools uses the 4 single-task no-tools matrix
             # (solve + validate_*); tools_* uses run_experiment.py's default (all 5).
             # If TASKS env was set explicitly at submit time, that override wins.
@@ -364,7 +357,6 @@ for MODEL in $MODELS; do
             case "$COND" in
                 no-tools)
                     COND_ARGS=(--conditions no-tools)
-                    CHAINS_ARGS=()
                     if [ -z "$TASKS_ENV_OVERRIDE" ]; then
                         TASKS_ARG=(--tasks solve validate_domain validate_problem validate_plan)
                     fi ;;
@@ -425,7 +417,6 @@ for MODEL in $MODELS; do
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$MODEL" \
                 --ollama-host "$OLLAMA_HOST" \
-                "${CHAINS_ARGS[@]}" \
                 --concurrency "$CONCURRENCY" \
                 "${THINK_ARG[@]}" \
                 "${COND_ARGS[@]}" \

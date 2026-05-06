@@ -13,8 +13,10 @@ Handles three naming schemes:
 
 Outputs (to stdout):
   1) Single-task success-rate matrix: (model, think, cond) × task
-  2) Chain success-rate matrix:       (model, think, cond) × chain_length
-  3) Failure-reason totals per cell
+  2) Failure-reason totals per cell
+
+Chain-phase tables were dropped 2026-05-05 (chain phase archived from the
+active flow; legacy `chains` rows in old summary_*.json are ignored here).
 """
 from __future__ import annotations
 
@@ -29,7 +31,6 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 CONDITIONS = ["no-tools",
               "tools_per-task_minimal", "tools_per-task_guided",
               "tools_all_minimal", "tools_all_guided"]
-CHAIN_LENGTHS = [2, 3, 4, 5]
 
 # Filter/prompt encoded in the `condition` summary field for with-tools runs;
 # we reconstruct the original condition label from dir name.
@@ -135,23 +136,6 @@ def print_single_task_table(rows):
     print()
 
 
-def print_chain_table(rows):
-    print("## Chain success rates")
-    print()
-    header = "| model | think | cond | host | jobid | " + " | ".join(f"L={L}" for L in CHAIN_LENGTHS) + " |"
-    print(header)
-    print("|" + "|".join(["---"] * (5 + len(CHAIN_LENGTHS))) + "|")
-
-    for info, data in rows:
-        cells = []
-        for L in CHAIN_LENGTHS:
-            rec = next((c for c in data.get("chains", [])
-                        if c["chain_length"] == L and c.get("samples", 0) > 0), None)
-            cells.append(fmt_pct(rec["successes"], rec["samples"]) if rec else "—")
-        print(f"{row_prefix(info)} " + " | ".join(cells) + " |")
-    print()
-
-
 def print_failure_reasons(rows):
     print("## Failure reason totals (single-task, across all 5 tasks)")
     print()
@@ -184,11 +168,9 @@ def main():
     print(f"_{len(rows)} completed job(s)_")
     if has_legacy:
         print()
-        print("> ⚠︎ Mixed legacy results present (no `<think>` segment). Legacy rows show as `think=default`. "
-              "Chain sample counts may differ (legacy=20, current=100).")
+        print("> ⚠︎ Mixed legacy results present (no `<think>` segment). Legacy rows show as `think=default`.")
     print()
     print_single_task_table(rows)
-    print_chain_table(rows)
     print_failure_reasons(rows)
 
 

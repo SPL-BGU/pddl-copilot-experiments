@@ -9,8 +9,8 @@
 #   ./run_background.sh small-nothink         # qwen3:0.6b with --think off (ablation)
 #   ./run_background.sh large-nothink         # qwen3:4b with --think off (ablation)
 #   ./run_background.sh partial               # fast feedback slice (--partial 2,
-#                                             # all domains, both models, single-task,
-#                                             # no chains; output → results/partial/)
+#                                             # all domains, both models, single-task;
+#                                             # output → results/partial/)
 #   ./run_background.sh continue-partial PATH # full sweep that inherits PATH/trials.jsonl
 #                                             # from a partial run; output → results/full/
 
@@ -74,7 +74,6 @@ fi
 THINK_ARGS=()
 PARTIAL_ARGS=()
 CONTINUE_PARTIAL_ARG=""
-SKIP_CHAINS=0
 BUCKET="full"
 case "${1:-both}" in
     small)         MODELS=(qwen3:0.6b);          TAG="qwen06b" ;;
@@ -86,7 +85,6 @@ case "${1:-both}" in
                    THINK_ARGS=(--think off) ;;
     partial)       MODELS=(qwen3:0.6b qwen3:4b); TAG="partial2"
                    PARTIAL_ARGS=(--partial 2)
-                   SKIP_CHAINS=1
                    BUCKET="partial" ;;
     continue-partial)
                    if [ -z "${2:-}" ]; then
@@ -118,17 +116,6 @@ FILTERS="per-task all"
 # Re-enable by adding "guided" back here AND in PROMPT_STYLE_CHOICES.
 PROMPT_STYLES="minimal"
 
-# Chains gated off for the partial-sweep mode by spec (single-task only).
-# Other modes get the full chain phase. Cluster-side `submit_with_rtx.sh`
-# manages chains independently.
-if [ "$SKIP_CHAINS" -eq 1 ]; then
-    CHAIN_ARGS=()
-    CHAIN_ECHO="off (partial mode)"
-else
-    CHAIN_ARGS=(--chains --chain-samples 20)
-    CHAIN_ECHO="on"
-fi
-
 # `--continue-partial` is only meaningful for full sweeps that inherit a
 # partial run's trials.jsonl; tag mode == "continue" passes it once per
 # inner invocation so the resume key transfers across all (filter,prompt)
@@ -144,7 +131,6 @@ echo "  Host:        localhost (default)"
 echo "  Marketplace: $MARKETPLACE_PATH"
 echo "  Filters:     $FILTERS (run sequentially)"
 echo "  Prompts:     $PROMPT_STYLES (run sequentially)"
-echo "  Chains:      $CHAIN_ECHO"
 echo "  Think:       ${THINK_ARGS[*]:-default}"
 echo "  Partial:     ${PARTIAL_ARGS[*]:-off}"
 echo "  Continue:    ${CONTINUE_PARTIAL_ARG:-(none)}"
@@ -158,12 +144,12 @@ cd "$SCRIPT_DIR"
 # Running it once up front avoids the 4x redundant no-tools pass the old
 # (FILTER, PSTYLE) loop produced — ISS-004.
 echo "===== conditions=no-tools started \$(date) ====="
-nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions no-tools ${CHAIN_ARGS[*]} ${THINK_ARGS[*]} ${PARTIAL_ARGS[*]} ${CONTINUE_ARGS[*]} --output-dir "${OUT_PREFIX}_no-tools"
+nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions no-tools ${THINK_ARGS[*]} ${PARTIAL_ARGS[*]} ${CONTINUE_ARGS[*]} --output-dir "${OUT_PREFIX}_no-tools"
 echo "===== conditions=no-tools finished \$(date) ====="
 for FILTER in $FILTERS; do
   for PSTYLE in $PROMPT_STYLES; do
     echo "===== conditions=tools filter=\$FILTER prompt=\$PSTYLE started \$(date) ====="
-    nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions tools --tool-filter "\$FILTER" --prompt-style "\$PSTYLE" ${CHAIN_ARGS[*]} ${THINK_ARGS[*]} ${PARTIAL_ARGS[*]} ${CONTINUE_ARGS[*]} --output-dir "${OUT_PREFIX}_tools_\${FILTER}_\${PSTYLE}"
+    nice -n 19 python3 run_experiment.py --marketplace-path "$MARKETPLACE_PATH" --models ${MODELS[*]} --conditions tools --tool-filter "\$FILTER" --prompt-style "\$PSTYLE" ${THINK_ARGS[*]} ${PARTIAL_ARGS[*]} ${CONTINUE_ARGS[*]} --output-dir "${OUT_PREFIX}_tools_\${FILTER}_\${PSTYLE}"
     echo "===== conditions=tools filter=\$FILTER prompt=\$PSTYLE finished \$(date) ====="
   done
 done

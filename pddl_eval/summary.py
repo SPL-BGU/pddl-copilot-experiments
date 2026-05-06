@@ -3,8 +3,10 @@
 `summarize_single_task` produces the long-format rows with N, success rate,
 Wilson 95% CIs, per-variant breakdowns, and failure-reason counts. The
 `print_*` helpers render those rows for end-of-run inspection. `save_results`
-writes the trio (single_task_*.json + chain_*.json + summary_*.json) under
-the output dir.
+writes the pair (single_task_*.json + summary_*.json) under the output dir;
+when called with a non-empty `chains` list it also writes `chain_*.json`,
+but the active flow always passes `chains=[]` after the 2026-05-05 chain
+archive (see CHANGELOG).
 
 DAG: summary → runner. (For `TaskResult`, `TASKS`, `ACTIVE_PROMPT_VARIANTS`.)
 """
@@ -329,6 +331,11 @@ def print_per_variant_table(results: list[TaskResult]):
     print(bar)
 
 
+# Archived 2026-05-05 — chain phase no longer wired into run_experiment.py.
+# `summarize_chains` and `print_chain_table` kept importable for any future
+# resurrection. `save_results` still emits an empty `chains` array under the
+# active flow (callers pass []); when called with a populated list the chain
+# branch below remains functional.
 def summarize_chains(chain_results: list[dict]) -> list[dict]:
     """Attach Wilson CI to each chain result row."""
     rows: list[dict] = []

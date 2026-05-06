@@ -55,13 +55,8 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Closed 2026-04-29.** `pddl_eval/runner.py::DEFAULT_NUM_PREDICT` non-solve entries raised 1024/1536 → 4096 (CHANGELOG 2026-04-29). In the same change, `DEFAULT_NUM_CTX` and `DEFAULT_NUM_CTX_THINKING` were raised 8192/12288 → 16384 (held equal for tools/no-tools fairness — the prior asymmetry confounded the "tools save tokens" headline) after qwen3.6/nemotron smokes showed `FR_THINK_OVERFLOW` at 12288 on the same `validate_*` cells. New `DEFAULT_NUM_CTX_CHAIN` and `--num-ctx-chain` CLI flag added (initially 12288, raised same day to 16384 in lockstep with `DEFAULT_NUM_CTX` after re-reading the single-task think_overflow evidence — chain prompts accumulate history, so the same ctx gives chains *less* think+output headroom, not more). Reproduction note: results from sweeps before this date are still valid for trend analysis but truncation rates, `FR_THINK_OVERFLOW` rates, and tools-vs-no-tools accuracy gaps are NOT directly comparable; flag any post-bump sweep as such in plots, and redraw the headline tools-vs-no-tools claim from a fresh equal-ctx run.
 **Files.** `pddl_eval/runner.py`, `run_experiment.py`, `EXPERIMENTS_FLOW.md` §5 + summary-meta, `README.md` parameter table.
 
-### ISS-011 · Chain denominator unchanged when steps are skipped
-**Source.** Scoring audit, 2026-04-20.
-**Evidence.** `run_chain_experiment` now `continue`s past `validate_plan`/`simulate` steps when the oracle didn't produce a plan (`gt["plan"]` missing/empty). The denominator for chain success stays at `samples` regardless of how many skips occurred, and chains drawn against heavily-unsolvable problems look easier than they are.
-**Status (2026-04-21).** Data-capture prerequisite resolved — `chain_*.json` now records per-sample `samples_detail` with `step_records` per step (CHANGELOG 2026-04-21). `effective_chain_length = len(step_records)` is directly computable per sample. Remaining work is choosing the aggregation convention (record effective length vs. resample to N executed steps) and surfacing it during analysis; no further harness change required.
-**Impact.** Chain success rates across models are not strictly comparable when fixture polarity differs. ISS-001 (all-positive ground truth) masks this currently, but any broken-PDDL fixture work will expose the skew.
-**Fix.** Either (a) record `effective_chain_length` per sample and expose it in `chain_*.json` + `summary_*.json`, (b) resample when skipping so every sample executes exactly N steps, or (c) document the semantics and let ISS-001's fix eliminate skips organically. (a)'s data prerequisite is now met.
-**Files.** `run_experiment.py::run_chain_experiment`, `save_results`, `EXPERIMENTS_FLOW.md` §4.3.
+### ~~ISS-011~~ · Chain denominator unchanged when steps are skipped
+**Closed 2026-05-05** by the chain-phase archive (CHANGELOG 2026-05-05). The chain dispatch is no longer wired into `run_experiment.py`, so the denominator-vs-skipped-steps tension is moot under the active flow. The `samples_detail` capture from the 2026-04-21 patch is preserved in pre-archive corpora (`checkpoints/cluster-26042026/chain_*.json`); a future revival of the chain phase would need to choose the aggregation convention before re-baselining.
 
 ### ISS-013 · Paper-diff audit vs arXiv:2509.12987
 **Source.** Scoring audit, 2026-04-20 (user direction).
@@ -85,11 +80,8 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Fix.** Add a domain-size-stratified breakdown during analysis. Re-run on qwen3:4b where echoing is less fragile. Report size as a controlled variable.
 **Files.** Analysis artefact (TBD), sweep plan for 4b.
 
-### ISS-009 · Chain with-tools = 0% for 0.6b is uninformative
-**Source.** Results review, issue 9.
-**Evidence.** All chain (length × config) cells with tools score 0 for qwen3:0.6b. No-tools chains run 0.10–0.30.
-**Fix.** Skip 4- and 5-length chains for models where the per-step success rate is below ~0.3. Report only chain=2 as a floor estimate for such models.
-**Files.** `run_experiment.py` chain-loop gating, `EXPERIMENTS_FLOW.md`.
+### ~~ISS-009~~ · Chain with-tools = 0% for 0.6b is uninformative
+**Closed 2026-05-05** by the chain-phase archive (CHANGELOG 2026-05-05). The chain phase is no longer dispatched, so the floor-CI gating concern is moot. If chain phase is revived, this gating recommendation should be reconsidered alongside whatever the new model roster looks like at that point.
 
 ### ISS-010 · Tool-name contamination under `tool_filter=all`
 **Source.** Results review, issue 10.
