@@ -30,8 +30,13 @@ the Ollama URL in `pddl_eval/chat.py`, so they don't move.
    vastai set api-key <YOUR_API_KEY>
    ```
 
-2. Copy `.gitignore` is already in this directory; the generated `pool.txt`
-   and `.token` won't be committed.
+   In a GitHub Codespace the `VASTAI_API_KEY` repository secret is exposed as
+   an env var; `deploy-ollama.sh` and `teardown-pool.sh` auto-pickup that env
+   into `~/.vast_api_key` on first run, so step 1 reduces to
+   `pip install --user vastai`.
+
+2. The `.gitignore` in this directory excludes the generated `pool.txt` and
+   `.token` from commits.
 
 ## Deploying the pool
 

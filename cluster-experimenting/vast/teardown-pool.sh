@@ -23,6 +23,13 @@ if ! command -v vastai >/dev/null 2>&1; then
 	exit 1
 fi
 
+# Same env-pickup as deploy-ollama.sh — lets a fresh Codespace tear down a
+# pool deployed from a different machine without manual `vastai set api-key`.
+if [ -n "${VASTAI_API_KEY:-}" ] && [ ! -s "$HOME/.vast_api_key" ]; then
+	vastai set api-key "$VASTAI_API_KEY" >/dev/null
+	echo "vastai: persisted API key from VASTAI_API_KEY env to $HOME/.vast_api_key"
+fi
+
 while read -r line; do
 	# Lines look like:  https://host:port # instance=12345
 	id="$(echo "$line" | sed -n 's/.*instance=\([0-9]\+\).*/\1/p')"

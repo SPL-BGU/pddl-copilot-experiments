@@ -58,6 +58,16 @@ if ! command -v vastai >/dev/null 2>&1; then
 	exit 1
 fi
 
+# Auto-pickup of VASTAI_API_KEY from env (e.g. GitHub Codespaces secret) into
+# the CLI's persisted-key file. Only runs when the file isn't already populated
+# so existing laptop setups (where `vastai set api-key` has been done by hand)
+# are untouched. The CLI reads ~/.vast_api_key on every call; without this
+# bridge a fresh Codespace would 401 on the first `vastai search offers`.
+if [ -n "${VASTAI_API_KEY:-}" ] && [ ! -s "$HOME/.vast_api_key" ]; then
+	vastai set api-key "$VASTAI_API_KEY" >/dev/null
+	echo "vastai: persisted API key from VASTAI_API_KEY env to $HOME/.vast_api_key"
+fi
+
 # Generate a single shared bearer token for the whole pool (so cluster jobs
 # only need one secret). Reused across re-runs of this script — first run
 # creates it, later runs reuse it.
