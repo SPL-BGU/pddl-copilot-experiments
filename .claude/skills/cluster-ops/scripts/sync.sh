@@ -5,7 +5,7 @@
 # with the user.
 #
 # Usage:
-#   bash sync.sh                          # → results/cluster-YYYYMMDD/
+#   bash sync.sh                          # → results/sweep3-cluster-YYYYMMDD/
 #   bash sync.sh results/my-run           # → explicit path
 #
 # Env overrides:
@@ -21,7 +21,7 @@ REMOTE_USER="${REMOTE_USER:-omereliy}"
 REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REMOTE_RESULTS="${REMOTE_RESULTS:-~/pddl-copilot-experiments/results}"
 
-DEST="${1:-$REPO_ROOT/results/cluster-$(date +%Y%m%d)}"
+DEST="${1:-$REPO_ROOT/results/sweep3-cluster-$(date +%Y%m%d)}"
 
 # Refuse to dump slurm_* dirs flat into results/ — every sync must land in a
 # named subdir so different sweeps stay separable. The default already does
