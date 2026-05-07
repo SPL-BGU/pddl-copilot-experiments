@@ -38,9 +38,18 @@ All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilo
 
 ### `scripts/status.sh` — cluster status snapshot
 
-Prints two Markdown tables:
-- **Pending** — `job | name | reason | elapsed`. The `reason` column is `squeue %R` (e.g. `Resources`, `Priority`, `DependencyNeverSatisfied`). See the REASON cheat-sheet below for what each value means.
-- **Running** — `job | phase | ST | elapsed`. Phase shows condition index (which of 5) and single-task progress `N/250`. Handles both legacy (one condition per job) and current (5 conditions per job) `.out` layouts. Chain progress column was dropped 2026-05-05 when the chain phase was archived from the active flow.
+One SSH call (`squeue` + per-cell `wc -l trials.jsonl`). Local Python diffs against `~/.cache/cluster-ops-status.json` (overridable via `STATE_FILE` env) and renders five sections, in this order:
+
+1. **Header** — `## Status — ~Xh since last check` (or `first run` when the cache file is absent).
+2. **What changed** — bullets for cells that flipped to ✓ this window and cells that newly started accumulating trials. Omitted if nothing changed.
+3. **Per-cell progress matrix** — 4 active models × 5 think×cond cells. Each cell shows `N/D (P%)` plus an icon: ✓ done · ▶ growing · ⏸ has trials but no growth · `PD↻` pending rerun (count > 0) · `PD` pending fresh · `_-_` empty/no match.
+4. **Δ since last status** — only cells whose count grew this window. Columns: `Cell | Prev → Now | Δ | pace (s/trial) | ETA`. Pace is window-averaged, so a cell that started mid-window will appear slower than reality.
+5. **Roll-up** — Done X/20 · Trial coverage % · Running N cells (job IDs) · Watch list (cells where `elapsed + ETA > 0.9 × 72h --time`).
+6. **Queue** (compact) — Running job IDs, Pending grouped by REASON. See the REASON cheat-sheet below.
+
+The cache file is local-only and pure scratch — `rm ~/.cache/cluster-ops-status.json` to reset (next run will be a "first run" with no Δ).
+
+Pending array tasks whose per-cell name hasn't materialised yet (still showing the parent template like `pddl_rtx_qwen3_6_27b`) are matched to all 5 cells of that model — so `PD` icons appear before the array fans out.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/status.sh
