@@ -6,6 +6,16 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-07 — Add Colab/Kaggle single-model notebook driver
+
+**TL;DR.** New `notebooks/run_single_model.ipynb` drives `run_experiment.py` for one model on a free-tier T4 (Colab or Kaggle, auto-detected). Persists results + run log to Google Drive (Colab) or `/kaggle/working/` (Kaggle). Pure driver — **no methodology, scoring, prompt, or schema change**; existing `results/` corpora and the analyzer skill remain valid.
+
+**Motivation.** Lower-friction path for collaborators / readers without laptop GPU access; complements the laptop driver (`run_background.sh`) and cluster driver (`cluster-experimenting/`).
+
+**Files.** `notebooks/run_single_model.ipynb` (new), `README.md` (one-line pointer under quick-nav).
+
+---
+
 ## 2026-05-07 — Revert Vast.ai remote-Ollama path
 
 **TL;DR.** Reverts the 2026-05-06 entry below. The Vast.ai pool transport (`cluster-experimenting/vast/`, `run_condition_remote.sbatch`, `submit_with_remote.sh`) and its hooks in `run_experiment.py` (`OLLAMA_AUTH_TOKEN` bearer + `verify=False`) and `pddl_eval/chat.py` (MCP env scrub) are removed. The rtx self-deploy (`run_condition_rtx.sbatch`, `submit_with_rtx.sh`) is again the sole cluster transport. **No methodology or result-schema change** — the reverted hooks were env-gated and inactive on the rtx and laptop paths; no canonical results came from the Vast path.

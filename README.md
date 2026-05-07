@@ -15,6 +15,7 @@ Tests Ollama LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 ## Quick navigation
 
 - First time? Continue reading (Setup, Running (Background)).
+- Free-tier GPU (Colab / Kaggle)? See `notebooks/run_single_model.ipynb`.
 - Cluster submission? See `cluster-experimenting/README.md`.
 - Methodology details? See `EXPERIMENTS_FLOW.md`.
 - Analyzing results? See `.claude/skills/analyzer/SKILL.md`.
