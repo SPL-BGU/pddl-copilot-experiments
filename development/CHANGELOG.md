@@ -6,45 +6,19 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
-## 2026-05-06 — Vast.ai remote-Ollama path + correctness fixes
+## 2026-05-07 — Revert Vast.ai remote-Ollama path
 
-**TL;DR.** Adds a parallel cluster-experimenting path (`cluster-experimenting/vast/` + `run_condition_remote.sbatch` + `submit_with_remote.sh`) that offloads Ollama serving to a pre-provisioned pool of Vast.ai GPU boxes behind Caddy + a bearer token, so cluster jobs no longer need a GPU. The local-Apptainer rtx variant is untouched and remains the default. Same commit lands the correctness fixes from the `vast-ollama` plan-review: TLS cert verification disabled on the python client when the bearer is in use (Caddy `tls internal` issues an internally-trusted cert that httpx would otherwise reject), orphan-instance teardown when Vast port-mapping polling times out, model-index slot routing so each box stays on one model when pool size matches the active roster, MCP subprocess env scrubbed of the bearer token, and `direct_port_count>=1` added to the Vast offer filter. **No methodology change** — `temperature=0.0`, all per-task `num_predict` / `num_ctx` defaults, scoring, and the result schema are unchanged. The remote path runs with `OLLAMA_KEEP_ALIVE=24h` and `OLLAMA_MAX_LOADED_MODELS=3` (vs `1h` / `1` on rtx); at `temperature=0.0` neither setting affects token outputs.
+**TL;DR.** Reverts the 2026-05-06 entry below. The Vast.ai pool transport (`cluster-experimenting/vast/`, `run_condition_remote.sbatch`, `submit_with_remote.sh`) and its hooks in `run_experiment.py` (`OLLAMA_AUTH_TOKEN` bearer + `verify=False`) and `pddl_eval/chat.py` (MCP env scrub) are removed. The rtx self-deploy (`run_condition_rtx.sbatch`, `submit_with_rtx.sh`) is again the sole cluster transport. **No methodology or result-schema change** — the reverted hooks were env-gated and inactive on the rtx and laptop paths; no canonical results came from the Vast path.
 
-**Motivation.** The `rtx_pro_6000` self-deploy is the only cluster transport since the cis-ollama path was retired (2026-04-27), and the queue is contended enough that 20-cell `--all` sweeps can sit pending for hours. Offloading the model-serve to rented Vast boxes turns the cluster job into a CPU-only Python + MCP-stdio shell that schedules on the `main` partition without GPU competition. The pool model (provision once per sweep, tear down at the end) avoids both per-job startup tax and orphan-billing concerns under SLURM cancellation.
+**Motivation.** The Vast pool didn't perform reliably enough to be worth carrying as a parallel transport.
 
-**What changed (`vast-ollama` branch).**
+**Files.** Removed `cluster-experimenting/vast/` (all contents), `cluster-experimenting/{run_condition_remote.sbatch,submit_with_remote.sh}`. Reverted `run_experiment.py`, `pddl_eval/chat.py`, `EXPERIMENTS_FLOW.md` to their pre-2026-05-06 shape.
 
-- **`cluster-experimenting/vast/`** — new directory.
-  - `deploy-ollama.sh` provisions N Vast instances with the official `ollama/ollama:latest` image, installs Caddy on top via the on-start command, exposes `:8443` publicly, generates a single shared bearer token to `.token`, and appends each instance's URL+id to `pool.txt`. Default offer filter requires `direct_port_count>=1` so hosts that silently drop port mappings are skipped up front. On poll-timeout for the public 8443 mapping, the orphan instance is destroyed before the loop continues — without that, the box would keep billing untracked.
-  - `Caddyfile.tmpl` reverse-proxies `127.0.0.1:11434` (Ollama) and gates on `Authorization: Bearer {$OLLAMA_AUTH_TOKEN}`. `tls internal` is used (self-signed via Caddy's local CA) — see "Compatibility" below for the implications.
-  - `preload-model.sh` runs ON the Vast box (invoked by deploy-ollama.sh's on-start), pulls and warms the active 4-model pack, with a 30-min `--max-time` ceiling on each `/api/pull` so a stalled pull can't block the on-start indefinitely.
-  - `smoke-test.sh` runs FROM the cluster login node, hits `/api/tags` + a tiny `/api/chat` against the smallest model on every URL in `pool.txt`. Required gate before any sbatch.
-  - `teardown-pool.sh` destroys every instance in `pool.txt` and renames the file aside.
-  - The active model roster + the smoke probe model both come from `cluster-experimenting/lib/defaults.sh::PDDL_DEFAULT_MODELS` — sourced from `deploy-ollama.sh` and `smoke-test.sh` so a roster change in defaults.sh propagates to the Vast path without manual triple-bookkeeping. `preload-model.sh` requires `MODELS` env (set by deploy's on-start) and has no fallback default of its own.
-- **`cluster-experimenting/run_condition_remote.sbatch`** — mirrors `run_condition_rtx.sbatch` minus the `--gpus` directive, the Apptainer/.sif build, the tmpfs scratch model cache, and the VRAM safety check. Same cell-array picker, scontrol JobName rename, smoke fast-path, THINK × CONDITIONS loop, and `--continue-partial` / `--partial` / `--shard` semantics. Reads `pool.txt` + `.token` from `cluster-experimenting/vast/`, runs a preflight `curl -k` against `<host>/api/tags` to fail fast before activating conda, and sets `OLLAMA_AUTH_TOKEN` for `run_experiment.py`. **Slot picker uses `MODELS_LIST`** (set by submit_with_remote.sh) so each cell maps to the pool slot for its model — keeps each box on one model when `pool_size >= len(MODELS)`. Falls back to the legacy `SLURM_ARRAY_TASK_ID % POOL_N` when `MODELS_LIST` is unset (manual direct-sbatch).
-- **`cluster-experimenting/submit_with_remote.sh`** — mirrors `submit_with_rtx.sh` minus the GPU-allocation flags. Validates that `pool.txt` and `.token` exist before queueing. Warns when `N_CELLS > POOL_N` (cells will share boxes, models swap). Exports `MODELS_LIST=${MODELS[*]}` so the sbatch's slot picker can route by model index.
-- **`cluster-experimenting/vast/README.md`** — full lifecycle (deploy → smoke → submit → teardown) plus a "Known limitations" section flagging the `tls internal` cert behaviour, the methodology deltas vs rtx (KEEP_ALIVE / MAX_LOADED), and the un-pinned `ollama/ollama:latest` image.
-- **`run_experiment.py`** — `OLLAMA_AUTH_TOKEN` env var forwarded as `Authorization: Bearer …` on `ollama.AsyncClient`. **Sets `verify=False` on the same gate** because Caddy `tls internal` issues from a CA the cluster nodes don't trust; without this, the first `client.chat()` raises `SSLCertVerificationError` and every cell fails. The bearer is the actual auth gate, the cert just provides transport TLS. Localhost runs leave `OLLAMA_AUTH_TOKEN` unset and both header + verify=False are skipped, so the rtx self-deploy path is untouched.
-- **`pddl_eval/chat.py`** — MCP stdio subprocess env is built as `{k: v for k, v in os.environ.items() if k != "OLLAMA_AUTH_TOKEN"}` instead of `{**os.environ}`, so the bearer doesn't leak to plugin processes. Plugins don't currently consume the token, but stripping at the boundary keeps the secret scoped to the Ollama HTTP path.
-- **`EXPERIMENTS_FLOW.md`** — §10 cluster sweep section gains a paragraph noting the remote path exists, the methodology deltas (`KEEP_ALIVE`, `MAX_LOADED_MODELS`), and that result rows are interchangeable at `temperature=0.0`.
+---
 
-**What did NOT change.**
+## 2026-05-06 — Vast.ai remote-Ollama path (REVERTED 2026-05-07)
 
-- The rtx self-deploy path (`run_condition_rtx.sbatch`, `submit_with_rtx.sh`) — same files, same defaults, same `--all` semantics.
-- Result schema, scoring, prompts, ground truth, `num_predict` / `num_ctx` defaults, matrix gating.
-- The MCP tool contract (`verbose=False` bridge, plugin schemas) and the `pddl-copilot` marketplace.
-- `pddl_eval/runner.py`, `pddl_eval/summary.py`, `pddl_eval/scoring.py` — not touched.
-
-**Compatibility.**
-
-- Existing rtx-produced `summary_*.json` and `single_task_*.json` files load unchanged in the analyzer. New remote-produced files use the same `slurm_<model>_<think>_<cond>` directory shape, so aggregation / plotting / pivot tables are uniform.
-- `verify=False` is gated on `OLLAMA_AUTH_TOKEN` presence: anyone running locally without the bearer (the laptop and rtx-self-deploy paths) gets the unchanged httpx default. There is no behavioural change on either of those paths.
-- The `tls internal` choice means token-on-the-wire rides TLS-encrypted but without cert-chain verification. Adequate for academic low-stakes traffic; if a real-CA cert is needed, swap `Caddyfile.tmpl`'s `tls internal` for an automatic-HTTPS line backed by a domain.
-- Pre-existing pool.txt entries from a prior deploy are reused on a re-run of `deploy-ollama.sh`; `.token` is regenerated only if empty/missing, so cluster jobs that already have the bearer keep working.
-
-**Closes / narrows.** None — this is a green-field feature plus its initial review fixes, not an entry on `OPEN_ISSUES`.
-
-**Files.** `cluster-experimenting/vast/{deploy-ollama.sh,Caddyfile.tmpl,preload-model.sh,smoke-test.sh,teardown-pool.sh,README.md,.gitignore}`, `cluster-experimenting/{run_condition_remote.sbatch,submit_with_remote.sh}`, `run_experiment.py`, `pddl_eval/chat.py`, `EXPERIMENTS_FLOW.md`.
+Added a parallel cluster transport that offloaded Ollama serving to a pool of Vast.ai GPU boxes behind Caddy + a bearer token, so cluster jobs scheduled on the `main` partition without competing for `rtx_pro_6000`. New files: `cluster-experimenting/vast/{deploy-ollama.sh,Caddyfile.tmpl,preload-model.sh,smoke-test.sh,teardown-pool.sh,README.md,.gitignore}`, `cluster-experimenting/{run_condition_remote.sbatch,submit_with_remote.sh}`. Hooks added to `run_experiment.py` (`OLLAMA_AUTH_TOKEN` → `Authorization: Bearer …` + `verify=False` for Caddy `tls internal`) and `pddl_eval/chat.py` (strip the bearer from MCP subprocess env). The rtx self-deploy was untouched and remained the default. **No methodology change** at the time. Reverted on 2026-05-07 due to unreliable performance — see entry above. Retained here for traceability.
 
 ---
 

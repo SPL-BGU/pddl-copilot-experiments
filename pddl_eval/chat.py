@@ -112,14 +112,10 @@ class MCPPlanner:
                 print(f"  Warning: launch script not found: {launch_script}, skipping")
                 continue
 
-            # OLLAMA_AUTH_TOKEN is the cluster→Vast auth bearer; MCP plugins
-            # are local stdio talking to PDDL parsers/solvers, so they have
-            # no use for the token and shouldn't see it in their env.
-            mcp_env = {k: v for k, v in os.environ.items() if k != "OLLAMA_AUTH_TOKEN"}
             server_params = StdioServerParameters(
                 command="bash",
                 args=[str(launch_script)],
-                env=mcp_env,
+                env={**os.environ},
             )
             read_stream, write_stream = await self.stack.enter_async_context(
                 stdio_client(server_params)
