@@ -45,12 +45,14 @@ The paper-aligned `qwen3:0.6b` / `qwen3:4b` are the **laptop default**. The
 **cluster sweep** (BGU rtx GPUs, see `cluster-experimenting/README.md`)
 runs a different set (post 2026-04-30 roster trim): `Qwen3.5:0.8B`,
 `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` — four models spanning the
-paper's parameter range across two families (Qwen, Gemma). All four run
-in a single packed job on `rtx_pro_6000:1` (96 GB) under
-`MAX_LOADED_MODELS=1` sequencing — peak resident weights are ~26 GB
-(`gemma4:31b`). See `EXPERIMENTS_FLOW.md §11` for the full deviations
-table and `development/CHANGELOG.md` for the roster history (including
-the 2026-04-30 nemotron-3-nano:30b drop after Hermes XML parse failures
+paper's parameter range across two families (Qwen, Gemma). Since
+2026-04-30 each `(model, think, condition)` cell runs as its own SLURM
+array task on a dedicated `rtx_pro_6000:1` node (96 GB VRAM, peak
+resident ~26 GB on `gemma4:31b`); cells run concurrently subject to
+pool capacity, with no shared-server contention. See
+`EXPERIMENTS_FLOW.md §11` for the full deviations table and
+`development/CHANGELOG.md` for the roster history (including the
+2026-04-30 nemotron-3-nano:30b drop after Hermes XML parse failures
 proved content-dependent rather than budget-dependent).
 
 ## Running (Background)
@@ -58,9 +60,18 @@ proved content-dependent rather than budget-dependent).
 ```bash
 cd ~/personal/pddl-copilot-experiments
 
-./run_background.sh small   # quick, low-impact (qwen3:0.6b only)
-./run_background.sh large   # heavier (qwen3:4b only) — overnight
-./run_background.sh         # both models (full overnight run, default)
+./run_background.sh small              # quick, low-impact (qwen3:0.6b only)
+./run_background.sh large              # heavier (qwen3:4b only) — overnight
+./run_background.sh                    # both models (full overnight run, default)
+./run_background.sh small-nothink      # qwen3:0.6b with --think off (ablation)
+./run_background.sh large-nothink      # qwen3:4b with --think off (ablation)
+./run_background.sh partial            # fast feedback slice: --partial 2 across all
+                                       # domains, both models, single-task only;
+                                       # output → results/partial/
+./run_background.sh continue-partial PATH
+                                       # full sweep that inherits PATH/trials.jsonl
+                                       # from a prior partial run; only un-covered
+                                       # cells re-execute. Output → results/full/
 ```
 
 What it does:
@@ -73,10 +84,10 @@ What it does:
 
 After launch, the script prints exactly what you need:
 ```
-Running in background, PID=12345
+Running in background, PGID=12345
   Watch progress:  tail -f run_full_20260405_142301.log
   Check status:    ps -p 12345
-  Stop:            kill 12345
+  Stop:            kill -TERM -- -12345   # negative = whole process group (bash + python + MCP servers)
 ```
 
 ## Running (CLI)
@@ -113,11 +124,14 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--seed` | 42 | Random seed for `--smoke-shuffle` cell assignment |
 | `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
 | `--prompt-style` | `minimal` | Only active value as of 2026-04-27 — `guided` was retired (the 26042026 sweep showed style shifts results by ≤4pp per model, every CI crossed zero). The `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are kept in `run_experiment.py` as documentation; re-enable by adding `"guided"` back to `PROMPT_STYLE_CHOICES`. |
-| `--num-predict` | per-task | Override max output tokens (solve=8192, simulate=4096, validate=4096). Non-solve caps raised from 1024/1536→4096 on 2026-04-29 after the cluster-26042026 sweep showed 33–41% truncation on `validate_plan`/`simulate`/`validate_problem`. |
+| `--conditions` | `both` | Which conditions to run: `tools`, `no-tools`, or `both`. |
+| `--num-predict` | per-task | Override max output tokens (solve=8192, validate_*=6144, simulate=6144). Non-solve caps were raised 1024/1536→4096 on 2026-04-29, then 4096→6144 on 2026-04-30. The 2026-04-30 bump's stated motivation (Hermes XML mid-tag truncation on nemotron-3-nano:30b) was falsified by smoke 17274424 — the 6144 cap is retained as harmless headroom. |
 | `--num-ctx` | 16384 | Ollama context window tokens for single-task tools cells (raised from 8192 on 2026-04-29 after qwen3.6:27b smokes showed `think_overflow` at 12288; nemotron-3-nano:30b shared the evidence but was later dropped 2026-04-30). |
 | `--num-ctx-thinking` | 16384 | Context tokens for single-task no-tools cells when `think!=off`. **Held equal to `--num-ctx`** so the "tools save tokens" headline isn't confounded by ctx asymmetry across tools/no-tools branches. |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
 | `--concurrency` | 4 | Max concurrent Ollama requests in single-task sweep |
+| `--partial` | `0` | If `K>0`, cap each domain to first-K positive + first-K negative fixtures (and first-K valid + first-K invalid plans per kept positive). Fast feedback slice; resume-key shape unchanged so trials transfer to a follow-up full run. |
+| `--continue-partial` | unset | Path to a prior run's `trials.jsonl` (or its parent dir). Seeds `--output-dir/trials.jsonl` before resume kicks in, so a follow-up full sweep inherits the partial's progress. Requires identical meta-dimensions (`tool_filter`, `prompt_style`, `think`, `conditions`); mismatched cells silently re-run. |
 
 ## Running (Cluster)
 
@@ -128,24 +142,35 @@ sync / preflight / postmortem), and `.claude/skills/analyzer/SKILL.md`
 for results analysis (aggregate / plot / table / drift detection).
 
 ```bash
-# Full 4-model sweep packed in ONE job on rtx_pro_6000
+# Full 4-model sweep — submitted as a 20-task SLURM job array
+# (4 models × 5 (think,cond) cells), one rtx_pro_6000:1 GPU per task
 bash cluster-experimenting/submit_with_rtx.sh --all
 
 # Or per-model (e.g. when iterating on one model's behaviour)
 bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
 
-# Baseline-only no-tools sweep (4-task discriminative matrix, packed in one job)
+# Baseline-only no-tools sweep (one cell per model, 4-task array)
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
+
+# Inherit a partial run's trials.jsonl into the full sweep
+bash cluster-experimenting/submit_with_rtx.sh --all --continue-partial /path/to/seed_dir
 ```
 
 ## Output
 
-Results are saved as JSON in `results/`:
+Results are saved as JSON under `results/`, bucketed by run scope (since 2026-05-04):
 
-- `single_task_<timestamp>.json` -- Per-instance results with success, timing, tool calls
-- `summary_<timestamp>.json` -- Aggregated metrics with Wilson 95% confidence intervals
+- `results/full/<run-tag>_<timestamp>_…/` — full sweeps (`run_background.sh` `small`/`large`/`both`/`*-nothink`/`continue-partial`)
+- `results/partial/<run-tag>_<timestamp>_…/` — fast feedback slice (`run_background.sh partial`, `--partial K>0`)
+- `results/smoke/{fixed,shuffle}_<sha>_<ts>/` — smoke runs (`--smoke`, `--smoke-shuffle`)
 
-`chain_<timestamp>.json` was emitted by the pre-2026-05-05 chain phase and is no longer produced by the active flow (see `development/CHANGELOG.md`).
+Per-run files:
+
+- `single_task_<timestamp>.json` — per-instance results with success, timing, tool calls
+- `summary_<timestamp>.json` — aggregated metrics with Wilson 95% confidence intervals; `meta.partial=K` is recorded when `--partial K>0`
+- `trials.jsonl` — append-only progress log used for resume and `--continue-partial`
+
+`chain_<timestamp>.json` was emitted by the pre-2026-05-05 chain phase and is no longer produced by the active flow (see `development/CHANGELOG.md`). Pre-bucket runs (flat `results/<tag>_<ts>_…/` directories) are untouched and still parseable by the analyzer.
 
 ## Domain Structure
 
