@@ -51,9 +51,16 @@ The cache file is local-only and pure scratch — `rm ~/.cache/cluster-ops-statu
 
 Pending array tasks whose per-cell name hasn't materialised yet (still showing the parent template like `pddl_rtx_qwen3_6_27b`) are matched to all 5 cells of that model — so `PD` icons appear before the array fans out.
 
+**Output mode** auto-selects from stdout TTY-detect: ANSI-coloured aligned text in a real terminal, GitHub-flavoured markdown when piped or run via the Bash tool. Override with flags:
+
 ```bash
-bash .claude/skills/cluster-ops/scripts/status.sh
+bash .claude/skills/cluster-ops/scripts/status.sh                 # auto (terminal in zsh, md in pipes)
+bash .claude/skills/cluster-ops/scripts/status.sh --md            # force markdown (paste into chat)
+bash .claude/skills/cluster-ops/scripts/status.sh --terminal      # force pretty (e.g. `… | less -R`)
+bash .claude/skills/cluster-ops/scripts/status.sh --no-color      # strip ANSI from terminal mode
 ```
+
+The two modes share data computation; they differ only in rendering, so the metrics, Δ window, and watch-list logic are identical.
 
 ### `scripts/sync.sh` — pull results locally
 

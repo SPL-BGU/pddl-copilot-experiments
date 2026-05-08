@@ -11,6 +11,11 @@
 #   5. Roll-up (done X/20, coverage %, running cells, --time watch list)
 #   6. Queue (compact pending+running summary; useful when REASON ≠ normal)
 #
+# Output mode (auto by stdout TTY-detect; override with flags):
+#   --terminal / --pretty   ANSI-coloured aligned text (default when TTY)
+#   --md                    GitHub-flavoured markdown (default when piped)
+#   --no-color              suppress ANSI codes in terminal mode
+#
 # Cache: ~/.cache/cluster-ops-status.json is local-only state. Safe to
 # `rm` to reset (next run will be a "first run" with no Δ table).
 #
@@ -22,6 +27,21 @@ REMOTE_USER="${REMOTE_USER:-omereliy}"
 REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 STATE_FILE="${STATE_FILE:-$HOME/.cache/cluster-ops-status.json}"
+
+# Output-mode flags (parsed before SSH so --help works offline).
+mode="auto"
+color="auto"
+for arg in "$@"; do
+    case "$arg" in
+        --md|--markdown)        mode="md" ;;
+        --terminal|--pretty)    mode="terminal" ;;
+        --no-color)             color="off" ;;
+        -h|--help)
+            sed -n '2,18p' "$0"; exit 0 ;;
+        *)
+            printf 'unknown flag: %s\n' "$arg" >&2; exit 2 ;;
+    esac
+done
 
 mkdir -p "$(dirname "$STATE_FILE")"
 
@@ -45,10 +65,10 @@ echo "=== end ==="
 REMOTE
 )
 
-python3 - "$remote_payload" "$STATE_FILE" <<'PY'
+python3 - "$remote_payload" "$STATE_FILE" "$mode" "$color" <<'PY'
 import json, os, re, sys, time
 
-payload, state_file = sys.argv[1], sys.argv[2]
+payload, state_file, mode_arg, color_arg = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 # ---- Roster + dimensions (matches submit_with_rtx.sh --all roster) ----
 ROSTER = ["Qwen3_5_0_8B", "gemma4_31b", "qwen3_6_27b", "qwen3_6_35b"]
@@ -177,25 +197,21 @@ if prev_ts:
         elif d["prev"] == 0 and d["now"] > 0:
             started_now.append((cell, d["now"]))
 
-# ---- Render ----
-def cell_text(cell):
+# ---- Cell-status classification (shared by both renderers) ----
+# Returns one of: done, growing, stalled, pending_rerun, pending_fresh, empty.
+def cell_status(cell):
     if cell not in counts:
-        # cell with no dir: pending if its model has a pending parent-name task
-        return "0/—" + (" PD" if cell[0] in {p for p,_ in CELLS} and cell in cell_pending else
-                       (" PD" if cell[0]+"_meta" in [] else " _-_"))
+        if cell in cell_pending or cell[0] in model_pending:
+            return "pending_fresh"
+        return "empty"
     n = counts[cell]; denom = DENOM[cell[2]]
-    pct = 100*n/denom if denom else 0
-    # Only treat positive delta as "growing" when we have prior state to diff
-    # against — otherwise on first run every non-empty cell looks like ▶.
+    if n >= denom:                                 return "done"
     grew = prev_ts is not None and deltas.get(cell, {}).get("delta", 0) > 0
-    txt = f"{n}/{denom} (**{pct:.1f}%**)"
-    if   n >= denom:                                icon = "✓"
-    elif grew or cell in cell_running:              icon = "▶"
-    elif cell in cell_pending:                      icon = "PD↻" if n > 0 else "PD"
-    elif cell[0] in model_pending:                  icon = "PD↻" if n > 0 else "PD"
-    elif n > 0:                                     icon = "⏸"
-    else:                                           icon = "_-_"
-    return f"{txt} {icon}"
+    if grew or cell in cell_running:               return "growing"
+    if cell in cell_pending or cell[0] in model_pending:
+        return "pending_rerun" if n > 0 else "pending_fresh"
+    if n > 0:                                      return "stalled"
+    return "empty"
 
 def cell_label(cell):
     m, th, c = cell
@@ -214,52 +230,7 @@ def parse_elapsed_h(s):
     else: return 0.0
     return days*24 + int(h) + int(mi)/60 + int(se)/3600
 
-out = []
-
-# Header
-if window_str is not None:
-    out.append(f"## Status — ~{window_str} since last check\n")
-else:
-    out.append("## Status — first run (no prior state)\n")
-
-# What changed
-if done_now or started_now:
-    out.append("### What changed")
-    for cell, prev in done_now:
-        out.append(f"- ✓ **{cell_label(cell)}** flipped to 100% (was {prev}/{DENOM[cell[2]]})")
-    for cell, n in started_now:
-        out.append(f"- ▶🆕 **{cell_label(cell)}** started ({n}/{DENOM[cell[2]]} trials)")
-    out.append("")
-
-# Matrix
-out.append("### Per-cell progress (denominators 4260 / 4560)")
-out.append("| Model | " + " | ".join(COL_HEADERS) + " |")
-out.append("|" + "|".join(["---"] * (1 + len(COL_HEADERS))) + "|")
-for m in ROSTER:
-    row = [f"**{DISPLAY[m]}**"]
-    for th, c in CELLS:
-        row.append(cell_text((m, th, c)))
-    out.append("| " + " | ".join(row) + " |")
-out.append("")
-
-# Δ — first run has no real delta (every cell would look new), so skip the table.
-hdr = f" (window: ~{window_str})" if window_str else " (first run — no delta)"
-out.append(f"### Δ since last status{hdr}")
-growing = sorted(((c,d) for c,d in deltas.items() if d["delta"] > 0),
-                 key=lambda x: x[1]["pct"], reverse=True) if prev_ts else []
-if growing:
-    out.append("| Cell | Prev → Now | Δ | pace | ETA |")
-    out.append("|---|---|---|---|---|")
-    for cell, d in growing:
-        prev_now = f"{d['prev']} → **{d['now']}**" + (" ✓" if d['now'] >= d['denom'] else "")
-        pace = f"~{d['pace_s']:.0f} s/trial" if d["pace_s"] else "—"
-        eta  = "**DONE**" if d['now'] >= d['denom'] else (f"~{d['eta_h']:.1f}h" if d['eta_h'] is not None else "—")
-        out.append(f"| {cell_label(cell)} | {prev_now} | +{d['delta']} | {pace} | {eta} |")
-else:
-    out.append("_no cells advanced this window_")
-out.append("")
-
-# Roll-up
+# ---- Roll-up totals (shared by both renderers) ----
 done_cnt = sum(1 for d in deltas.values() if d["now"] >= d["denom"])
 total_expected = len(ROSTER) * len(CELLS)
 total_now = sum(d["now"] for d in deltas.values())
@@ -274,34 +245,241 @@ for cell, d in deltas.items():
         watch.append(f"{cell_label(cell)} ({elapsed_h:.0f}h+{d['eta_h']:.0f}h ETA → over 0.9×{TIME_LIMIT_H}h)")
 
 run_jids = sorted({q["jid"] for q in cell_running.values()})
-out.append("### Roll-up")
-out.append(f"- **Done**: {done_cnt} / {total_expected} cells ({100*done_cnt//total_expected if total_expected else 0}%)")
-out.append(f"- **Trial coverage**: {total_now/1000:.1f}K / {total_denom/1000:.0f}K ≈ **{coverage:.0f}%**")
-out.append(f"- **Running**: {len(cell_running)} cells" + (f" (jobs {', '.join(run_jids)})" if run_jids else ""))
-out.append(f"- **Watch list**: {'; '.join(watch) if watch else 'none'}")
-
-# Queue (compact)
 running_jobs = [q for q in queue if q["state"] == "RUNNING"]
 pending_jobs = [q for q in queue if q["state"] == "PENDING"]
-if running_jobs or pending_jobs:
+growing_cells = sorted(((c,d) for c,d in deltas.items() if d["delta"] > 0),
+                       key=lambda x: x[1]["pct"], reverse=True) if prev_ts else []
+
+# =========================================================================
+#                          MARKDOWN RENDERER
+# =========================================================================
+def render_markdown():
+    out = []
+    if window_str is not None:
+        out.append(f"## Status — ~{window_str} since last check\n")
+    else:
+        out.append("## Status — first run (no prior state)\n")
+
+    if done_now or started_now:
+        out.append("### What changed")
+        for cell, prev in done_now:
+            out.append(f"- ✓ **{cell_label(cell)}** flipped to 100% (was {prev}/{DENOM[cell[2]]})")
+        for cell, n in started_now:
+            out.append(f"- ▶🆕 **{cell_label(cell)}** started ({n}/{DENOM[cell[2]]} trials)")
+        out.append("")
+
+    out.append("### Per-cell progress (denominators 4260 / 4560)")
+    out.append("| Model | " + " | ".join(COL_HEADERS) + " |")
+    out.append("|" + "|".join(["---"] * (1 + len(COL_HEADERS))) + "|")
+    icon_md = {"done":"✓", "growing":"▶", "stalled":"⏸",
+               "pending_rerun":"PD↻", "pending_fresh":"PD", "empty":"_-_"}
+    for m in ROSTER:
+        row = [f"**{DISPLAY[m]}**"]
+        for th, c in CELLS:
+            cell = (m, th, c)
+            st = cell_status(cell)
+            if cell in counts:
+                n = counts[cell]; denom = DENOM[c]
+                pct = 100*n/denom if denom else 0
+                row.append(f"{n}/{denom} (**{pct:.1f}%**) {icon_md[st]}")
+            elif st == "pending_fresh":
+                row.append("0/— PD")
+            else:
+                row.append("0/— _-_")
+        out.append("| " + " | ".join(row) + " |")
     out.append("")
-    out.append("### Queue")
-    if running_jobs:
-        out.append(f"- **Running** ({len(running_jobs)}): " + ", ".join(q["jid"] for q in running_jobs))
-    if pending_jobs:
-        by_reason = {}
-        for q in pending_jobs:
-            by_reason.setdefault(q["reason"], []).append(q["jid"])
-        out.append(f"- **Pending** ({len(pending_jobs)}): " +
-                   ", ".join(f"{r} ×{len(jids)}" for r, jids in by_reason.items()))
 
-if unknown:
+    hdr = f" (window: ~{window_str})" if window_str else " (first run — no delta)"
+    out.append(f"### Δ since last status{hdr}")
+    if growing_cells:
+        out.append("| Cell | Prev → Now | Δ | pace | ETA |")
+        out.append("|---|---|---|---|---|")
+        for cell, d in growing_cells:
+            prev_now = f"{d['prev']} → **{d['now']}**" + (" ✓" if d['now'] >= d['denom'] else "")
+            pace = f"~{d['pace_s']:.0f} s/trial" if d["pace_s"] else "—"
+            eta  = "**DONE**" if d['now'] >= d['denom'] else (f"~{d['eta_h']:.1f}h" if d['eta_h'] is not None else "—")
+            out.append(f"| {cell_label(cell)} | {prev_now} | +{d['delta']} | {pace} | {eta} |")
+    else:
+        out.append("_no cells advanced this window_")
     out.append("")
-    out.append(f"_(skipped {len(unknown)} unmatched dirs: {', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''})_")
 
-print("\n".join(out))
+    out.append("### Roll-up")
+    out.append(f"- **Done**: {done_cnt} / {total_expected} cells ({100*done_cnt//total_expected if total_expected else 0}%)")
+    out.append(f"- **Trial coverage**: {total_now/1000:.1f}K / {total_denom/1000:.0f}K ≈ **{coverage:.0f}%**")
+    out.append(f"- **Running**: {len(cell_running)} cells" + (f" (jobs {', '.join(run_jids)})" if run_jids else ""))
+    out.append(f"- **Watch list**: {'; '.join(watch) if watch else 'none'}")
 
-# Save state for next invocation
+    if running_jobs or pending_jobs:
+        out.append("")
+        out.append("### Queue")
+        if running_jobs:
+            out.append(f"- **Running** ({len(running_jobs)}): " + ", ".join(q["jid"] for q in running_jobs))
+        if pending_jobs:
+            by_reason = {}
+            for q in pending_jobs:
+                by_reason.setdefault(q["reason"], []).append(q["jid"])
+            out.append(f"- **Pending** ({len(pending_jobs)}): " +
+                       ", ".join(f"{r} ×{len(jids)}" for r, jids in by_reason.items()))
+
+    if unknown:
+        out.append("")
+        out.append(f"_(skipped {len(unknown)} unmatched dirs: {', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''})_")
+
+    return "\n".join(out)
+
+# =========================================================================
+#                          TERMINAL RENDERER
+# =========================================================================
+# ANSI helpers — visible-width-aware padding so colours don't break columns.
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+def _vlen(s):  return len(ANSI_RE.sub("", s))
+def _pad(s, w, align="left"):
+    pad = w - _vlen(s)
+    if pad <= 0: return s
+    return (" "*pad + s) if align == "right" else (s + " "*pad)
+
+def render_terminal(use_color):
+    if use_color:
+        BOLD, DIM, RESET = "\x1b[1m", "\x1b[2m", "\x1b[0m"
+        GREEN, CYAN, YELLOW, RED, GREY = "\x1b[32m","\x1b[36m","\x1b[33m","\x1b[31m","\x1b[90m"
+    else:
+        BOLD = DIM = RESET = GREEN = CYAN = YELLOW = RED = GREY = ""
+
+    # Status → (icon, colour) — single-glyph icons keep alignment honest.
+    ICONS = {
+        "done":          ("✓",   GREEN),
+        "growing":       ("▶",   CYAN),
+        "stalled":       ("⏸",   RED),
+        "pending_rerun": ("↻",   YELLOW),
+        "pending_fresh": ("·",   GREY),
+        "empty":         ("—",   GREY),
+    }
+
+    def H1(s): return f"{BOLD}{s}{RESET}"
+    def H2(s): return f"{BOLD}{CYAN}{s}{RESET}"
+    out = []
+
+    # -- Header
+    if window_str is not None:
+        out.append(H1(f"Cluster Status") + DIM + f"  ~{window_str} since last check" + RESET)
+    else:
+        out.append(H1(f"Cluster Status") + DIM + "  first run (no prior state)" + RESET)
+    out.append("")
+
+    # -- What changed
+    if done_now or started_now:
+        out.append(H2("What changed"))
+        for cell, prev in done_now:
+            icon, col = ICONS["done"]
+            out.append(f"  {col}{icon}{RESET} {cell_label(cell)} → 100% "
+                       + DIM + f"(was {prev}/{DENOM[cell[2]]})" + RESET)
+        for cell, n in started_now:
+            icon, col = ICONS["growing"]
+            out.append(f"  {col}{icon}{RESET} {cell_label(cell)} started "
+                       + DIM + f"({n}/{DENOM[cell[2]]} trials)" + RESET)
+        out.append("")
+
+    # -- Per-cell progress matrix
+    out.append(H2("Per-cell progress") + DIM + "  (denoms 4260 / 4560)" + RESET)
+    short_hdrs = ["on/tools_pt", "on/tools_all", "off/no-tools", "off/tools_pt", "off/tools_all"]
+    MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
+    CELL_W  = 14   # " ✓  100.0%  " ≈ 11–12 chars; pad to 14 for separation
+    header = _pad("Model", MODEL_W) + "".join(_pad(h, CELL_W, "left") for h in short_hdrs)
+    out.append("  " + DIM + header + RESET)
+    out.append("  " + DIM + "─" * _vlen(header) + RESET)
+    for m in ROSTER:
+        row = _pad(DISPLAY[m], MODEL_W)
+        for th, c in CELLS:
+            cell = (m, th, c)
+            st = cell_status(cell)
+            icon, col = ICONS[st]
+            if cell in counts:
+                n = counts[cell]; denom = DENOM[c]
+                pct = 100*n/denom if denom else 0
+                txt = f"{col}{icon}{RESET} {pct:5.1f}%"
+            elif st == "pending_fresh":
+                txt = f"{col}{icon}{RESET} {DIM}pending{RESET}"
+            else:
+                txt = f"{col}{icon}{RESET} {DIM}—{RESET}"
+            row += _pad(txt, CELL_W)
+        out.append("  " + row)
+    out.append("")
+    out.append("  " + DIM + "Legend: " + RESET +
+               f"{GREEN}✓{RESET} done · {CYAN}▶{RESET} running · {RED}⏸{RESET} stalled · "
+               f"{YELLOW}↻{RESET} pending rerun · {GREY}·{RESET} pending fresh")
+    out.append("")
+
+    # -- Δ table
+    if window_str:
+        out.append(H2("Δ since last status") + DIM + f"  (~{window_str})" + RESET)
+    else:
+        out.append(H2("Δ since last status") + DIM + "  (first run — no delta)" + RESET)
+    if growing_cells:
+        # Columns: Cell | Prev → Now | Δ | pace | ETA
+        cw = (32, 18, 7, 14, 8)
+        hdr = (_pad("Cell", cw[0]) + _pad("Prev → Now", cw[1])
+               + _pad("Δ", cw[2], "right") + " "
+               + _pad("pace", cw[3]) + _pad("ETA", cw[4], "right"))
+        out.append("  " + DIM + hdr + RESET)
+        out.append("  " + DIM + "─" * _vlen(hdr) + RESET)
+        for cell, d in growing_cells:
+            done_mark = (" " + GREEN + "✓" + RESET) if d['now'] >= d['denom'] else ""
+            prev_now = f"{d['prev']} → {BOLD}{d['now']}{RESET}{done_mark}"
+            pace = f"~{d['pace_s']:.0f} s/trial" if d["pace_s"] else "—"
+            eta  = (f"{BOLD}{GREEN}DONE{RESET}" if d['now'] >= d['denom']
+                    else (f"~{d['eta_h']:.1f}h" if d['eta_h'] is not None else "—"))
+            row = (_pad(cell_label(cell), cw[0]) + _pad(prev_now, cw[1])
+                   + _pad(f"+{d['delta']}", cw[2], "right") + " "
+                   + _pad(pace, cw[3]) + _pad(eta, cw[4], "right"))
+            out.append("  " + row)
+    else:
+        out.append("  " + DIM + "no cells advanced this window" + RESET)
+    out.append("")
+
+    # -- Roll-up
+    out.append(H2("Roll-up"))
+    pct_done = (100*done_cnt//total_expected) if total_expected else 0
+    out.append(f"  {DIM}Done           {RESET}{BOLD}{done_cnt}/{total_expected}{RESET} cells ({pct_done}%)")
+    out.append(f"  {DIM}Trial coverage {RESET}{BOLD}{total_now/1000:.1f}K{RESET} / {total_denom/1000:.0f}K (~{coverage:.0f}%)")
+    run_str = f"{len(cell_running)} cells" + (f"  {DIM}jobs {', '.join(run_jids)}{RESET}" if run_jids else "")
+    out.append(f"  {DIM}Running        {RESET}{run_str}")
+    if watch:
+        out.append(f"  {DIM}Watch list     {RESET}{YELLOW}{'; '.join(watch)}{RESET}")
+    else:
+        out.append(f"  {DIM}Watch list     none{RESET}")
+    out.append("")
+
+    # -- Queue
+    if running_jobs or pending_jobs:
+        out.append(H2("Queue"))
+        if running_jobs:
+            out.append(f"  {DIM}Running ({len(running_jobs)}){RESET}  "
+                       + ", ".join(q["jid"] for q in running_jobs))
+        if pending_jobs:
+            by_reason = {}
+            for q in pending_jobs:
+                by_reason.setdefault(q["reason"], []).append(q["jid"])
+            out.append(f"  {DIM}Pending ({len(pending_jobs)}){RESET}  "
+                       + ", ".join(f"{r} {DIM}×{RESET}{len(jids)}" for r, jids in by_reason.items()))
+
+    if unknown:
+        out.append("")
+        out.append(f"  {DIM}(skipped {len(unknown)} unmatched dirs: "
+                   f"{', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''}){RESET}")
+
+    return "\n".join(out)
+
+# ---- Mode selection ----
+if mode_arg == "auto":
+    mode_arg = "terminal" if sys.stdout.isatty() else "md"
+use_color = (color_arg != "off") and sys.stdout.isatty()
+
+if mode_arg == "md":
+    print(render_markdown())
+else:
+    print(render_terminal(use_color=use_color))
+
+# Save state for next invocation (regardless of render mode).
 new_state = {"timestamp": now_ts,
              "counts": {f"{m}|{t}|{c}": n for (m,t,c), n in counts.items()}}
 with open(state_file, "w") as f:
