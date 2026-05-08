@@ -7,6 +7,15 @@
 # for roster history. Update here to change the --all default.
 PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
 
+# Heavy/slow models — kept at Nice=0 by the auto-prioritize logic in
+# submit_with_rtx.sh and the cluster-ops `prioritize.sh` skill script.
+# Any model in PDDL_DEFAULT_MODELS but NOT in this list is treated as
+# fast/cheap and gets Nice=500 so the heavy cells grab the next free GPU
+# slot first when there's queue contention. Negative Nice (raise priority
+# above default) requires admin on this cluster, so this is the only
+# direction we have without a Golden-Ticket QoS.
+PDDL_SLOW_MODELS=(gemma4:31b qwen3.6:35b)
+
 # Default think × cond axes. The matrix-gate (no-tools is reported only for
 # think=off) is applied where the cells are built, NOT here.
 PDDL_DEFAULT_THINK_MODES=(on off)

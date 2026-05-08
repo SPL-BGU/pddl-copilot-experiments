@@ -36,6 +36,22 @@
 #   bash cluster-experimenting/submit_with_rtx.sh --all --continue-partial /path/to/seed_dir
 #   bash cluster-experimenting/submit_with_rtx.sh --all --partial 2 --continue-partial /path/to/seed_dir
 #   bash cluster-experimenting/submit_with_rtx.sh --all --exclude ise-6000p-04          # skip a sick node
+#   bash cluster-experimenting/submit_with_rtx.sh --all --no-auto-prioritize             # don't deprioritize fast cells
+#
+# --no-auto-prioritize: skips the post-submit `scontrol update Nice=500`
+#   that the wrapper otherwise applies to every cell whose model is NOT
+#   in PDDL_SLOW_MODELS (gemma4:31b, qwen3.6:35b). The auto-gate fires
+#   only on a fresh `--all` submit (NO --continue-partial / --partial /
+#   --smoke / --smoke-shuffle); for resubmits or single-model invocations
+#   it doesn't fire to begin with, so this flag is a no-op there. Use the
+#   `prioritize.sh` skill script in `.claude/skills/cluster-ops/scripts/`
+#   to apply Nice values manually after the fact.
+#
+# Multi-cell array submissions also write a manifest at
+# `cluster-experimenting/logs/<jobid>.cells.tsv` (idx<TAB>model<TAB>think
+# <TAB>cond). The cluster-ops `prioritize.sh` skill script reads this to
+# map array indices back to cells without re-deriving the matrix-gate
+# logic. Single-cell submissions skip — nothing to reorder.
 #
 # --exclude NODELIST: passed straight to sbatch's --exclude. Use when a
 #   compute node is in a degraded state (e.g. /scratch full, GPU stuck)
@@ -103,6 +119,7 @@ SHARD=""
 CONTINUE_PARTIAL=""
 PARTIAL_K=""
 EXCLUDE_NODES=""
+NO_AUTO_PRIORITIZE=0
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -118,8 +135,9 @@ while [[ $# -gt 0 ]]; do
         --continue-partial) shift; CONTINUE_PARTIAL="$1"; shift ;;
         --partial) shift; PARTIAL_K="$1"; shift ;;
         --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
+        --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
         -h|--help)
-            sed -n '1,80p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+            sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
             echo "Unknown option: $1" >&2; exit 1 ;;
         *)
@@ -384,4 +402,47 @@ else
     fi
     echo "Log:      $REPO_ROOT/cluster-experimenting/logs/${JOB_NAME}-<task_jid>.out" >&2
     echo "Results:  $REPO_ROOT/results/slurm_<model>_<think>_<cond>/  (one dir per cell; resubmits resume from trials.jsonl)" >&2
+
+    # Manifest: idx<TAB>model<TAB>think<TAB>cond. Written for every
+    # multi-cell array submission so the cluster-ops `prioritize.sh`
+    # skill script can map array indices → cells without re-deriving
+    # the matrix-gate logic. Single-cell jobs skip — nothing to reorder.
+    if [ "$N_CELLS" -gt 1 ]; then
+        manifest="cluster-experimenting/logs/${jid}.cells.tsv"
+        : > "$manifest"
+        for i in "${!CELLS[@]}"; do
+            IFS='|' read -r cm ct cc <<< "${CELLS[$i]}"
+            printf '%s\t%s\t%s\t%s\n' "$i" "$cm" "$ct" "$cc" >> "$manifest"
+        done
+        echo "Manifest: $REPO_ROOT/$manifest" >&2
+
+        # Auto-deprioritize fast cells on a fresh `--all` submission so
+        # the heavy models (PDDL_SLOW_MODELS) grab the next free GPU
+        # slot first. Gate: ALL=1 and not a resume/partial/smoke run.
+        # `--no-auto-prioritize` opts out. `|| true` because a task that
+        # raced PENDING→RUNNING in the half-second since sbatch returned
+        # rejects the Nice update — that's fine, the running cell is
+        # already past the scheduling decision.
+        if [ "$NO_AUTO_PRIORITIZE" -eq 0 ] \
+            && [ "$ALL" -eq 1 ] \
+            && [ -z "$CONTINUE_PARTIAL" ] \
+            && [ -z "$PARTIAL_K" ] \
+            && [ "$SMOKE" -eq 0 ] \
+            && [ "$SMOKE_SHUFFLE" -eq 0 ]; then
+            slow_re=$(IFS='|'; echo "${PDDL_SLOW_MODELS[*]}")
+            deprio=()
+            for i in "${!CELLS[@]}"; do
+                IFS='|' read -r cm _ _ <<< "${CELLS[$i]}"
+                if ! [[ "|${slow_re}|" == *"|${cm}|"* ]]; then
+                    deprio+=("${jid}_${i}")
+                fi
+            done
+            if [ "${#deprio[@]}" -gt 0 ]; then
+                echo "Auto-prioritize: keeping ${PDDL_SLOW_MODELS[*]} at Nice=0; deprioritizing ${#deprio[@]} fast cells (Nice=500)" >&2
+                for j in "${deprio[@]}"; do
+                    scontrol update "JobId=${j}" Nice=500 || true
+                done
+            fi
+        fi
+    fi
 fi

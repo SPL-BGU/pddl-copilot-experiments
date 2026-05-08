@@ -1,14 +1,14 @@
 ---
 name: cluster-ops
-description: Operate the BGU CIS (formerly ISE-CS-DT) SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, post-mortem completed jobs (right-size --mem from sacct/MaxRSS). Operations only; aggregation, plotting, tables, and drift detection live in the sibling `analyzer` skill.
-argument-hint: [status | preflight | sync | postmortem]
+description: Operate the BGU CIS (formerly ISE-CS-DT) SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, post-mortem completed jobs (right-size --mem from sacct/MaxRSS), prioritize pending cells via per-task Nice. Operations only; aggregation, plotting, tables, and drift detection live in the sibling `analyzer` skill.
+argument-hint: [status | preflight | sync | postmortem | prioritize]
 ---
 
 > User asked for: $ARGUMENTS — pick the matching recipe below.
 
 ## Why this skill exists
 
-Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "check ollama", "postmortem", "memory headroom".
+Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "check ollama", "postmortem", "memory headroom", "prioritize", "deprioritize", "nice value", "let cell X finish first".
 
 Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, and sacct memory-headroom recipes. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 4 short helper scripts. Read it before running SSH/rsync commands ad-hoc.
 
@@ -34,7 +34,7 @@ Cluster & repo conventions that matter here:
 
 ## Operations scripts (under `scripts/`)
 
-All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`. This skill retains the four operations scripts: `status.sh`, `sync.sh`, `preflight.sh`, `postmortem.sh`. The five analysis scripts (`aggregate.py`, `plot.py`, `plot_focused.py`, `table.py`, `drift_check.py`) moved to `.claude/skills/analyzer/scripts/` on 2026-05-01 — see the `analyzer` skill for those.
+All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`. This skill retains five operations scripts: `status.sh`, `sync.sh`, `preflight.sh`, `postmortem.sh`, `prioritize.sh`. The five analysis scripts (`aggregate.py`, `plot.py`, `plot_focused.py`, `table.py`, `drift_check.py`) moved to `.claude/skills/analyzer/scripts/` on 2026-05-01 — see the `analyzer` skill for those.
 
 ### `scripts/status.sh` — cluster status snapshot
 
@@ -78,6 +78,25 @@ Run this before every `submit_with_rtx.sh`. Does, in one SSH call:
 ```bash
 bash .claude/skills/cluster-ops/scripts/preflight.sh
 ```
+
+### `scripts/prioritize.sh` — bias which pending cells run next
+
+Per-array-task `scontrol update Nice=N` driven by the manifest written at submit time (`cluster-experimenting/logs/<jobid>.cells.tsv`, idx<TAB>model<TAB>think<TAB>cond). Listed models keep `Nice=0`; every other pending cell gets `Nice=500` so the listed cells grab the next free GPU slot. Already-running tasks are skipped (Nice has no effect once dispatched).
+
+Direction is one-way: negative Nice (raise priority above default) is admin-only on this cluster — verified by probe 2026-05-08 (`nice=100` accepted, `nice=-1000` denied). The only lever is *deprioritizing the rest*.
+
+`submit_with_rtx.sh` already auto-applies this on a fresh `--all` submission (deprioritizes everything outside `PDDL_SLOW_MODELS`={gemma4:31b, qwen3.6:35b}). The skill script is the manual lever for: (a) `--continue-partial` / single-model resubmits where the auto-gate intentionally doesn't fire, and (b) mid-sweep when you want one specific high-progress cell to finish next so partial results are ready for analyst handoff.
+
+```bash
+bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid>                       # default slow set
+bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> gemma4:31b            # only gemma at Nice=0
+bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> --reset               # all cells back to Nice=0
+bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> --dry-run gemma4:31b  # show plan without applying
+```
+
+Idempotent — safe to re-run with a different keep-list. If the manifest is missing (job submitted before the prioritize feature landed), the script exits 2 and tells you so; in that case fall back to manual `scontrol update JobId=<master>_<idx> Nice=500` per `cluster-experimenting/README.md:280-287`.
+
+If you want progress-aware ordering (rank pending cells by current `trials.jsonl` count and apply a Nice ladder so the closest-to-done cell wins ties), do it manually for now: pull progress with `status.sh`, then `scontrol update JobId=<master>_<idx> Nice=N` per task with N rising as progress falls (e.g. 0 / 100 / 200 / … / 700 — Nice values up to 700 are accepted unprivileged). Codifying it into the script is on the table when there's a second concrete need.
 
 ### `scripts/postmortem.sh` — completed-job introspection (`sacct`)
 
@@ -135,6 +154,21 @@ The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 4-model sweep
 **GPU class**: default `rtx_pro_6000:1` (96 GB, `--mem=80G`). The sweep is hard-pinned to this class for consistency; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch (use only if `rtx_pro_6000` is saturated). Think modes auto-select to `on off` (both run sequentially in one job so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
 
 **VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=16384` (raised from 8192 on 2026-04-29). After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise NUM_PARALLEL without re-measuring KV-cache allocation.
+
+### "Prioritize a cell during a contended sweep"
+
+The auto-prioritize logic in `submit_with_rtx.sh` covers the common case (fresh `--all` → heavy models grab slots first). For everything else:
+
+1. `bash .claude/skills/cluster-ops/scripts/status.sh` — identify which pending cell you want to win the next free slot. Note its model.
+2. Decide the keep-list. Examples:
+   - "let qwen3.6:35b finish for the Friday meeting" → `prioritize.sh <jid> qwen3.6:35b`
+   - "this resubmit, just keep the slow set up front" → `prioritize.sh <jid>` (default = `PDDL_SLOW_MODELS`)
+   - "I want everything back to default after the contention clears" → `prioritize.sh <jid> --reset`
+3. Run `--dry-run` first if you want to inspect the plan; then re-run without `--dry-run` to apply.
+
+Caveats:
+- Nice ordering only matters while tasks are PENDING. RUNNING tasks are past the scheduling decision; the script skips them and reports the count.
+- If pending tasks are stuck on a node-specific reservation (REASON=`ReqNodeNotAvail`/`Reservation`), Nice ordering changes who-goes-first but doesn't dislodge the reservation. Check `status.sh`'s queue table and the Pending REASON cheat-sheet below.
 
 ### "Cancel jobs"
 
