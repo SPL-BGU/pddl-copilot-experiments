@@ -73,6 +73,13 @@ GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
 ENFORCE_EAGER="${ENFORCE_EAGER:-0}"
 EAGER_FLAG=""
 [ "$ENFORCE_EAGER" = "1" ] && EAGER_FLAG="--enforce-eager"
+# Override harness per-task num_predict caps (solve=8192, validate_*=6144) to
+# fit under a tight MAX_MODEL_LEN. vLLM rejects max_tokens > max_model_len with
+# HTTP 400, so without this override every tools-cell trial 400-errors before
+# the model generates a token. Empty (default) keeps the harness defaults.
+NUM_PREDICT="${NUM_PREDICT:-}"
+NUM_PREDICT_FLAG=""
+[ -n "$NUM_PREDICT" ] && NUM_PREDICT_FLAG="--num-predict $NUM_PREDICT"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -193,6 +200,7 @@ python3 run_experiment.py \
     --concurrency "$CONCURRENCY" \
     --inference-backend vllm \
     --smoke \
+    $NUM_PREDICT_FLAG \
     --output-dir "$OUT_VLLM/$M_TAG"
 t1=$EPOCHREALTIME
 awk -v m="$HF_LARGE" "BEGIN{printf \"VLLM SMOKE WALL %s: %.1fs\n\", m, $t1-$t0}"
