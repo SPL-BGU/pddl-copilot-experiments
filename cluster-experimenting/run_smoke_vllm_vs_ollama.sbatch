@@ -50,11 +50,17 @@ CONCURRENCY="${CONCURRENCY:-4}"
 # "OLLAMA_NUM_PARALLEL is not set" warning otherwise. vLLM doesn't read it.
 export OLLAMA_NUM_PARALLEL="$CONCURRENCY"
 
-# 27B-only — the closest apples-to-apples to Ollama's Q4_K_M is the
-# community AWQ-INT4 quant (~17 GB on disk for both). BF16 (54 GB) won't
-# fit, FP8 (28 GB) is a different precision class than Q4_K_M.
-OLLAMA_TAG="qwen3.6:27b"
-HF_LARGE="cyankiwi/Qwen3.6-27B-AWQ-INT4"
+# Default: 27B AWQ-INT4 (closest apples-to-apples to Ollama's Q4_K_M,
+# ~17 GB on disk for both). BF16 (54 GB) won't fit, FP8 (28 GB) is a
+# different precision class than Q4_K_M.
+#
+# Override at submit time via env-var to probe a different model on the
+# same script — e.g. for a 0.8B sanity run on rtx_6000:
+#   sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-0.8B",OLLAMA_TAG="Qwen3.5:0.8B" \
+#          --gpus=rtx_6000:1 --mem=48G --job-name=vllm_0_8b_smoke \
+#          cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+OLLAMA_TAG="${OLLAMA_TAG:-qwen3.6:27b}"
+HF_LARGE="${HF_MODEL:-cyankiwi/Qwen3.6-27B-AWQ-INT4}"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
