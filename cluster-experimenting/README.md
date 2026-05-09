@@ -144,13 +144,14 @@ auto-detection.
 
 ### `--no-tools` shorthand
 
-`--no-tools` pins the run to the discriminative no-tools matrix:
+`--no-tools` pins the run to the no-tools matrix:
 - `CONDITIONS=no-tools` (one tools-off pass)
 - `THINK_MODES=off` (no-tools/think=on is skipped by the matrix gate anyway)
-- `TASKS="solve validate_domain validate_problem validate_plan"` —
-  the four discriminative no-tools tasks. Negative fixtures (ISS-001) ride
-  along the matching task automatically. `simulate` stays excluded — its
-  keyword grader is non-discriminative regardless of negatives.
+- `TASKS=` runner default (all 5: solve, validate_domain, validate_problem,
+  validate_plan, simulate). PR-4 re-enabled no-tools `simulate` via JSON-
+  trajectory grading against the oracle (`SimulateResponse` schema in
+  `pddl_eval/schemas.py`); the prior 4-task gate was retired in this fix.
+  Negative fixtures (ISS-001) ride along the matching task automatically.
 - Per-task wall: `--time=08:00:00`. Each model is one array task — no
   cross-model serialization, so adding models adds parallelism, not wall.
 
@@ -234,7 +235,7 @@ Per-array-task allocation. Each task = one (model, think, cond) cell.
 | `--partition` | `main` | rtx_pro_6000 (and the rtx_6000 opt-in) GRES are accessible from `main`. Mar-26 guide §High-Priority: never use a non-`main` partition without QoS rights. |
 | `--gpus` | `rtx_pro_6000:1` (default) or `rtx_6000:1` (opt-in) | One dedicated GPU per array task; the cell's single model stays resident throughout |
 | `--array` | `0-(N-1)` when N > 1 (no `%N` cap by default) | Fan-out unlimited — SLURM runs as many tasks as the pool has capacity for. Override with `%N` post-submit (`scontrol update JobId=<master> ArrayTaskThrottle=N`) if politeness is desired |
-| `--time` | `12:00:00` (tools cells) / `08:00:00` (no-tools cells) / `03:00:00` (smoke) | Per-cell budget. Tools cell wall ~5-9h post 2026-04-29 cap-bump (single-task only after the 2026-05-05 chain archive); no-tools ~6h (4-task matrix) |
+| `--time` | `12:00:00` (tools cells) / `08:00:00` (no-tools cells) / `03:00:00` (smoke) | Per-cell budget. Tools cell wall ~5-9h post 2026-04-29 cap-bump (single-task only after the 2026-05-05 chain archive); no-tools ~6-7h (5-task matrix incl. simulate after PR-4 / no-tools-simulate-task fix) |
 | `--mem` | `80G` (rtx_pro_6000 default) / `48G` (rtx_6000 opt-in) | IT cap 2026-04-27. With one model per task, peak host RAM is ~26 GB (gemma4:31b weight cache) — comfortably under either cap |
 | `--tmp` | `50G` | Mar-26 guide §"SSD Drive". Reserves space on `/scratch/$USER/$JOBID`; covers ollama.sif (~3 GB) + one model (~26 GB peak). The sbatch falls back to `/tmp/rtx-$JOBID` if `/scratch` isn't writable on the allocated node |
 | `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | IT request 2026-04-27; explicit `12` was depriving other users |
