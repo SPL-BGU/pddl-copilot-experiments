@@ -6,6 +6,36 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-09 — vLLM inference-backend smoke probe
+
+**TL;DR.** Adds an opt-in `--inference-backend vllm` path that points the existing harness at vLLM's OpenAI-compatible `/v1/chat/completions` endpoint via a thin adapter (`pddl_eval/vllm_client.py`). Default is unchanged (`ollama`). New cluster sbatch `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch` runs the existing `--smoke` matrix on both backends sequentially on one `rtx_pro_6000:1` node and writes analyzer-readable summaries under `results/smoke/probe_{ollama,vllm}_<sha>_<ts>/`. **No methodology change** — same prompts, fixtures, tools, scoring, num_ctx, num_predict; production sweep (`run_condition_rtx.sbatch`) untouched. Existing results in `results/` remain valid.
+
+**Motivation.** The 27B Ollama cells in the 2026-04-30 sweep ran 57–107 s/trial × 4560 trials = 72–135 h per cell. vLLM's continuous-batching could compress that, but only if real tool-calling and thinking-mode plumbing survive the wire-format swap. A 2-hour smoke that exercises the full 2 (think) × 2 (cond) × 5 (task) × 2 (model) matrix on both backends gates the migration on both wall-time AND tool-call pass-rate parity — pure tok/s benchmarks would miss a Hermes-parser misfire that silently drops to 0% tool use.
+
+**Decision rule.** Migrate only if vLLM wall ≤ 0.7× Ollama wall on the `qwen3.6:27b tools×off` cell **and** per-cell pass rates are within parity. Below either bar, stay on Ollama.
+
+**What changed (`feat/vllm-smoke-probe` branch).**
+
+- **`pddl_eval/vllm_client.py`** (new). `VLLMOllamaClient` exposes the `chat()` / `aclose()` shape `run_experiment.py` calls on `ollama.AsyncClient`. Returns Ollama-shaped response dicts so `pddl_eval/chat.py` (`chat_with_tools`, `chat_without_tools`) and downstream scoring work without edits. Translations: `tool_calls[].function.arguments` JSON-string ↔ dict; `message.reasoning_content` → `message.thinking` (vLLM `--reasoning-parser qwen3`); `finish_reason` → `done_reason`; `usage.{prompt,completion}_tokens` → `prompt_eval_count`/`eval_count`; `total_duration` synthesised from `time.perf_counter_ns`. Multi-turn tool replay re-attaches synthetic `tool_call_id`s in FIFO order so vLLM's OpenAI server accepts the harness's id-less tool messages. Streaming is forced off (sidesteps vllm-project/vllm#31871 Qwen3-hermes streaming bug).
+- **`run_experiment.py`**. Adds `--inference-backend {ollama,vllm}` (default `ollama`); branches the client construction. Banner prints the selected backend. `--ollama-host` help updated to "LLM server base URL".
+- **`requirements.txt`**. Adds `openai>=1.40.0` for the OpenAI-compatible client.
+- **`cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`** (new). Single sbatch on `rtx_pro_6000:1`, `--mem=80G`, `--time=02:30:00`. Phase A: builds/uses cached `ollama.sif`, runs `--smoke` per model. Phase B: builds/uses cached `vllm.sif` (from `docker://vllm/vllm-openai:latest`), serves each HF model on a fresh port with `--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3 --gpu-memory-utilization 0.85`, runs `--smoke --inference-backend vllm`. 27B served from `cyankiwi/Qwen3.6-27B-AWQ-INT4` (`--quantization awq`) — the closest apples-to-apples to Ollama's Q4_K_M (~17 GB on disk for both); 0.8B from `Qwen/Qwen3.5-0.8B` BF16. Both phases write to `results/smoke/probe_{ollama,vllm}_<sha>_<ts>/<model_tag>/`.
+
+**What did NOT change.**
+
+- `pddl_eval/{chat,runner,scoring,domains,prompts,resume,schemas,summary}.py` — adapter returns Ollama-shaped objects so the chat loop and tool-call extraction work unchanged.
+- `cluster-experimenting/run_condition_rtx.sbatch`, `submit_with_rtx.sh`, `lib/defaults.sh` — production sweep path is untouched. The smoke sbatch is independent.
+- `domains/`, `tests/`, `EXPERIMENTS_FLOW.md` — methodology, fixtures, and the experiment-flow spec are unchanged.
+- Existing `results/` corpora — no schema change.
+
+**Compatibility.** `--inference-backend` defaults to `ollama`; existing scripts and analysis pipelines see identical behaviour. The vLLM path requires `openai>=1.40.0` to be installed (`requirements.txt` updated); environments that haven't `pip install -r requirements.txt`-d will only fail when `--inference-backend vllm` is actually requested.
+
+**Open / pending.** No analyzer change yet — the smoke results land in the existing summary shape, comparison is by hand for now. If the smoke clears the 0.7× wall + parity gate, follow-ups would be: full-sweep cluster sbatch fork (vLLM analog of `run_condition_rtx.sbatch`), tool-call parity audit, and analyzer cross-backend pivot.
+
+**Files.** `pddl_eval/vllm_client.py` (new), `run_experiment.py`, `requirements.txt`, `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch` (new), `development/CHANGELOG.md`.
+
+---
+
 ## 2026-05-07 — Add Colab/Kaggle single-model notebook driver
 
 **TL;DR.** New `notebooks/run_single_model.ipynb` drives `run_experiment.py` for one model on a free-tier T4 (Colab or Kaggle, auto-detected). Persists results + run log to Google Drive (Colab) or `/kaggle/working/` (Kaggle). Pure driver — **no methodology, scoring, prompt, or schema change**; existing `results/` corpora and the analyzer skill remain valid.
