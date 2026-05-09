@@ -145,6 +145,10 @@ nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader
 for C in $CONCURRENCIES; do
     OUT="$EXPT_ROOT/results/smoke/probe_vllm_c${C}_${GIT_SHA}_${TS}/${OLLAMA_LARGE_TAG}"
     mkdir -p "$OUT"
+    # Surface concurrency to run_experiment.py — vLLM doesn't read this, but
+    # the harness logs a misleading "OLLAMA_NUM_PARALLEL is not set" banner
+    # otherwise. Set per-cell so the printout matches the active C.
+    export OLLAMA_NUM_PARALLEL="$C"
     echo
     echo "=== smoke c=${C} → $OUT ==="
     t0=$EPOCHREALTIME

@@ -37,6 +37,10 @@ ENV_NAME="${ENV_NAME:-pddl_copilot}"
 EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
+# Surface concurrency to run_experiment.py too — the apptainer subshell exports
+# OLLAMA_NUM_PARALLEL for the server, but the outer Python shell would otherwise
+# log a misleading "OLLAMA_NUM_PARALLEL is not set" warning.
+export OLLAMA_NUM_PARALLEL="$CONCURRENCY"
 
 # Models: Ollama tag (Phase A) + matching HuggingFace repo (Phase B).
 # qwen3.6:27b on Ollama is Q4_K_M; the closest apples-to-apples on vLLM is
