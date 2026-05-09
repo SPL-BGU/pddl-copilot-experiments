@@ -74,7 +74,21 @@ else
     WORK="/tmp/vllm-probe-${SLURM_JOB_ID:-$$}"
 fi
 mkdir -p "$WORK/hf-cache"
-trap 'echo "Cleanup..."; jobs -p | xargs -r kill 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT
+
+# Preserve vLLM serve logs to the persistent log dir on EXIT — the actual
+# root cause of an EngineCore failure lives in the per-cell vllm-*.log
+# inside $WORK, and the trap below would otherwise rm -rf it before we
+# could read it. Filename prefixed with $SLURM_JOBID so concurrent or
+# resubmitted runs don't collide.
+preserve_serve_logs() {
+    local logs_dir="$EXPT_ROOT/cluster-experimenting/logs"
+    [ -d "$WORK" ] || return 0
+    for f in "$WORK"/vllm-*.log; do
+        [ -f "$f" ] || continue
+        cp -a "$f" "$logs_dir/${SLURM_JOBID:-local}-$(basename "$f")" 2>/dev/null || true
+    done
+}
+trap 'echo "Cleanup..."; jobs -p | xargs -r kill 2>/dev/null || true; preserve_serve_logs; cd ~; rm -rf "$WORK"' EXIT
 
 module load anaconda
 source activate "$ENV_NAME"
