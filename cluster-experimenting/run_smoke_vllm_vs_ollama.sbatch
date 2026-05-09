@@ -66,6 +66,13 @@ HF_LARGE="${HF_MODEL:-cyankiwi/Qwen3.6-27B-AWQ-INT4}"
 # below preserve the rtx_pro_6000 tuning so existing submissions don't shift.
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-16384}"
 GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
+# Skip CUDA graph capture+profiling on memory-tight hosts. Profiling itself
+# needs ~1.5 GiB headroom which 27B AWQ on a 24 GB rtx_3090 can't spare.
+# Cost: slower per-token inference (no cudagraph reuse). Toggle with
+# ENFORCE_EAGER=1 in the submit's --export list.
+ENFORCE_EAGER="${ENFORCE_EAGER:-0}"
+EAGER_FLAG=""
+[ "$ENFORCE_EAGER" = "1" ] && EAGER_FLAG="--enforce-eager"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -146,6 +153,7 @@ apptainer exec --nv \
         --tool-call-parser hermes \
         --reasoning-parser qwen3 \
         --gpu-memory-utilization "$GPU_MEM_UTIL" \
+        $EAGER_FLAG \
         > "$SERVE_LOG" 2>&1 &
 VLLM_PID=$!
 
