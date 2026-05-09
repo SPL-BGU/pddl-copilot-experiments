@@ -277,7 +277,7 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 #                Set to 72h to leave headroom and complete in one shot
 #                (resume via trials.jsonl still works if a cell does TIMEOUT).
 #                Main partition cap is 7 days, so 72h is well within.
-#   no-tools cells: ~6h (4-task discriminative matrix).
+#   no-tools cells: ~6-7h (5-task matrix incl. simulate after PR-4).
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     TIME_ARG=(--time=03:00:00)
@@ -368,7 +368,7 @@ echo "  mem:         $MEM_ARG" >&2
 echo "  time/cell:   ${TIME_ARG[*]}" >&2
 echo "  job name:    $JOB_NAME" >&2
 if [ "$NO_TOOLS" -eq 1 ]; then
-    echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=solve+validate_*)" >&2
+    echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=all 5 incl. simulate)" >&2
 fi
 if [ "$SMOKE" -eq 1 ]; then
     echo "  mode:        --smoke (1 domain × 1 problem × 1 variant × 5 tasks × 2 conds × 2 think; output → results/smoke/fixed_<sha>_<ts>/)" >&2

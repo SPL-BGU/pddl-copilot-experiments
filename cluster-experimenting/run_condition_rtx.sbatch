@@ -345,9 +345,12 @@ for MODEL in $MODELS; do
             echo "MODEL: $MODEL   THINK: $THINK_MODE   CONDITION: $COND   started $(date)"
             echo "===================================================================="
 
-            # Per-condition TASKS: no-tools uses the 4 single-task no-tools matrix
-            # (solve + validate_*); tools_* uses run_experiment.py's default (all 5).
-            # If TASKS env was set explicitly at submit time, that override wins.
+            # Per-condition TASKS: all conditions default to run_experiment.py's
+            # full 5-task matrix (solve + validate_* + simulate). PR-4 re-enabled
+            # no-tools simulate via JSON-trajectory grading (SimulateResponse
+            # schema in pddl_eval/schemas.py), so the historic 4-task gate for
+            # no-tools is obsolete. If TASKS env was set explicitly at submit
+            # time, that override wins for any condition.
             if [ -n "$TASKS_ENV_OVERRIDE" ]; then
                 TASKS_ARG=(--tasks $TASKS_ENV_OVERRIDE)
             else
@@ -356,10 +359,7 @@ for MODEL in $MODELS; do
 
             case "$COND" in
                 no-tools)
-                    COND_ARGS=(--conditions no-tools)
-                    if [ -z "$TASKS_ENV_OVERRIDE" ]; then
-                        TASKS_ARG=(--tasks solve validate_domain validate_problem validate_plan)
-                    fi ;;
+                    COND_ARGS=(--conditions no-tools) ;;
                 tools_per-task_minimal)
                     COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
                 # tools_per-task_guided)  # DISABLED 2026-04-27 — see run_experiment.py PROMPT_STYLE_CHOICES
