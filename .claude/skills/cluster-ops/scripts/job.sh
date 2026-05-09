@@ -119,26 +119,31 @@ if [ "$STATE" = "PENDING" ]; then
         fi
     fi
 
-    # ETA — translate StartTime to "starts in ~X". GNU date supports ISO 8601.
+    # SLURM "StartTime" is the earliest backfill-window slot the scheduler
+    # can verify assuming our job is next in line. Higher-priority jobs can
+    # leapfrog it, so the value is a best-case lower bound, not a
+    # commitment — re-computed each scheduler cycle and frequently slips.
+    # In practice it's almost always "now-ish" for any pending job, which
+    # is why we frame it as a window-marker rather than an ETA.
     ST=$(squeue -j "$JOBID" -h -O 'StartTime:24' 2>/dev/null | tr -d ' ')
     if [ -n "$ST" ] && [ "$ST" != "Unknown" ] && [ "$ST" != "N/A" ]; then
         NOW=$(date +%s)
         SE=$(date -d "$ST" +%s 2>/dev/null || echo 0)
         D=$(( SE - NOW ))
-        if [ "$D" -le 0 ]; then
-            ETA="imminent — should flip to RUNNING any second"
+        if [ "$D" -le 60 ]; then
+            ETA="next backfill window (best-case lower bound, not a guarantee)"
         elif [ "$D" -lt 300 ]; then
-            ETA="<5 min ($((D/60))m $((D%60))s)"
+            ETA="best-case ~$((D/60))m $((D%60))s"
         elif [ "$D" -lt 3600 ]; then
-            ETA="~$((D/60)) min away"
+            ETA="best-case ~$((D/60))m"
         elif [ "$D" -lt 86400 ]; then
-            ETA="~$((D/3600))h $(((D%3600)/60))m away"
+            ETA="best-case ~$((D/3600))h $(((D%3600)/60))m"
         else
-            ETA="~$((D/86400))d $(((D%86400)/3600))h away"
+            ETA="best-case ~$((D/86400))d $(((D%86400)/3600))h"
         fi
-        echo "- Projected start: $ST → **$ETA**"
+        echo "- SLURM earliest-slot estimate: $ST → $ETA"
     else
-        echo "- Projected start: scheduler hasn't placed yet — re-check in 1-2 min"
+        echo "- SLURM earliest-slot estimate: not yet computed — re-check in 1-2 min"
     fi
     echo
 fi

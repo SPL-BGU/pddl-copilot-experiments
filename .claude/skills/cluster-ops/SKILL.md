@@ -79,9 +79,9 @@ Handles three states gracefully: pending (squeue table + queue assessment, see b
 - **Priority** — `sprio` total priority value. Compare with peers to see whether you're scheduled to win contention.
 - **Same-class queue rank** — `#N of M` pending jobs requesting the same GPU class as yours (derived from your job's `tres-per-job`). Filter is anchored on the colon (`gpu:rtx_6000:` ≠ `gpu:rtx_pro_6000:`) so the two classes don't cross-contaminate.
 - **REASON breakdown for jobs ahead** — `JobArrayTaskLimit=6 Priority=2 …`. Crucial for interpreting rank: a high #N can still translate to a quick start if most ahead are blocked on `MaxGRESPerAccount`, `JobArrayTaskLimit`, or `Dependency` rather than competing for free GPUs.
-- **Humanised ETA** — `Projected start: <ISO> → ~3 min away`. Computed from SLURM's `StartTime` field via `date -d`. When SLURM returns `Unknown`/`N/A`, prints "scheduler hasn't placed yet — re-check in 1-2 min" instead of a fake number.
+- **SLURM earliest-slot estimate** — `<ISO> → best-case ~Xm` or `next backfill window (best-case lower bound, not a guarantee)`. Computed from SLURM's `StartTime` via `date -d`. The estimate is the earliest slot the backfill scheduler can verify *assuming our job is next in line*; higher-priority arrivals can leapfrog it, so it's a lower bound that frequently slips. When SLURM returns `Unknown`/`N/A`, prints "not yet computed — re-check in 1-2 min".
 
-Caveats: rank ≠ when-it-runs. SLURM's backfill scheduler can leapfrog ahead-of-us jobs that need more resources than the next free slot, so rank is informational; the `Projected start` line is the load-bearing number when concrete. Non-GPU jobs skip the same-class filter and just get priority + ETA.
+Caveats: neither rank nor SLURM's earliest-slot estimate is a real ETA. Rank counts jobs ahead by priority; many of them are blocked on QoS / array-throttle / dependencies and won't compete. The estimate is a backfill window, not a commitment. The honest signal is the *combination*: rank tells you who's ahead and why (REASON breakdown), and the estimate tells you when SLURM next plans to even look at your job. Non-GPU jobs skip the same-class filter and just get priority + estimate.
 
 ### `scripts/sync.sh` — pull results locally
 
