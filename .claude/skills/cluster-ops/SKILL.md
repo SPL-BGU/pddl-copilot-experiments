@@ -1,7 +1,7 @@
 ---
 name: cluster-ops
 description: Operate the BGU CIS (formerly ISE-CS-DT) SLURM cluster for the PDDL copilot sweep — queue + pending-reason, submit/cancel, sync results, post-mortem completed jobs (right-size --mem from sacct/MaxRSS), prioritize pending cells via per-task Nice. Operations only; aggregation, plotting, tables, and drift detection live in the sibling `analyzer` skill.
-argument-hint: [status | preflight | sync | postmortem | prioritize]
+argument-hint: [status | job | preflight | sync | postmortem | prioritize]
 ---
 
 > User asked for: $ARGUMENTS — pick the matching recipe below.
@@ -34,7 +34,7 @@ Cluster & repo conventions that matter here:
 
 ## Operations scripts (under `scripts/`)
 
-All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`. This skill retains five operations scripts: `status.sh`, `sync.sh`, `preflight.sh`, `postmortem.sh`, `prioritize.sh`. The five analysis scripts (`aggregate.py`, `plot.py`, `plot_focused.py`, `table.py`, `drift_check.py`) moved to `.claude/skills/analyzer/scripts/` on 2026-05-01 — see the `analyzer` skill for those.
+All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`. This skill retains six operations scripts: `status.sh`, `job.sh`, `sync.sh`, `preflight.sh`, `postmortem.sh`, `prioritize.sh`. The five analysis scripts (`aggregate.py`, `plot.py`, `plot_focused.py`, `table.py`, `drift_check.py`) moved to `.claude/skills/analyzer/scripts/` on 2026-05-01 — see the `analyzer` skill for those.
 
 ### `scripts/status.sh` — cluster status snapshot
 
@@ -62,16 +62,28 @@ bash .claude/skills/cluster-ops/scripts/status.sh --no-color      # strip ANSI f
 
 The two modes share data computation; they differ only in rendering, so the metrics, Δ window, and watch-list logic are identical.
 
-### `scripts/sync.sh` — pull results locally
+### `scripts/job.sh` — single-job inspection
 
-`rsync -av --update` from the cluster `results/slurm_*` into a local subdir under `results/`.
+Use when `status.sh`'s sweep-matrix rendering doesn't fit — one-off probes / smoke sbatches with non-`pddl_*` names, or drilling into one specific cell of a sweep. One SSH call: `squeue -j <id>` + `sacct -j <id>` + log tail (`cluster-experimenting/logs/*-<jobid>.out`, glob covers all naming patterns including probes). Markdown output, pastes cleanly into chat.
 
 ```bash
-bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/cluster-YYYYMMDD/
+bash .claude/skills/cluster-ops/scripts/job.sh <jobid>                # squeue + sacct + last 25 log lines
+bash .claude/skills/cluster-ops/scripts/job.sh <jobid> --lines 100    # custom tail size
+bash .claude/skills/cluster-ops/scripts/job.sh <jobid> --no-log       # squeue/sacct only (skip log)
+```
+
+Handles three states gracefully: pending (squeue table, "no log file yet" message), running (live tail), completed/cancelled (squeue empty + helpful message, sacct shows terminal state with `.batch`/`.extern` step rows). Numeric-jobid guard catches the easy mistake of typing a script name instead.
+
+### `scripts/sync.sh` — pull results locally
+
+`rsync -av --update` from the cluster's `results/slurm_*` AND `results/smoke/probe_*` into a local subdir under `results/`. Two rsync calls — sweep cells (must succeed) and probe outputs (`|| true` since they're often empty on a fresh cluster).
+
+```bash
+bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/sweep3-cluster-YYYYMMDD/
 bash .claude/skills/cluster-ops/scripts/sync.sh results/my-custom-run    # → explicit dir
 ```
 
-Never deletes anything. To clear cancelled-job `.out` files on the remote side, tell the user explicitly what IDs you intend to delete and wait for confirmation before `ssh … rm`.
+Reports per-class dir-count delta (sweep cells / probe outputs) so you can tell whether the probe added anything. Never deletes anything. To clear cancelled-job `.out` files on the remote side, tell the user explicitly what IDs you intend to delete and wait for confirmation before `ssh … rm`.
 
 ### `scripts/preflight.sh` — pre-submit cluster refresh + capacity
 
@@ -161,6 +173,23 @@ The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 4-model sweep
 **GPU class**: default `rtx_pro_6000:1` (96 GB, `--mem=80G`). The sweep is hard-pinned to this class for consistency; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch (use only if `rtx_pro_6000` is saturated). Think modes auto-select to `on off` (both run sequentially in one job so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
 
 **VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=16384` (raised from 8192 on 2026-04-29). After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise NUM_PARALLEL without re-measuring KV-cache allocation.
+
+### "Submit a one-off probe / smoke sbatch"
+
+For sbatches that aren't sweep cells — vLLM probes, concurrency-saturation tests, smoke runs of an unrelated experiment, anything submitted as plain `sbatch <file>` rather than via `submit_with_rtx.sh`. The pattern:
+
+1. Edit the sbatch locally on a feature branch. Commit + push (the cluster reads from `origin`, never your laptop).
+2. SSH to the cluster, fast-forward the matching branch, submit:
+   ```bash
+   ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
+     git fetch --quiet && git checkout <branch> && git pull --ff-only --quiet && \
+     sbatch <path/to/your.sbatch>"
+   ```
+   Capture the printed `Submitted batch job <jobid>`. The `GPU Parameter Set ! Using GPU Partition` line under it is informational, not an error.
+3. Inspect with `bash .claude/skills/cluster-ops/scripts/job.sh <jobid>` — pending state shows queue position + estimated start; running state shows live log tail.
+4. When the probe completes, `bash .claude/skills/cluster-ops/scripts/sync.sh` already pulls `results/smoke/probe_*` alongside sweep cells, so the data lands under `results/sweep3-cluster-<today>/probe_*/`.
+
+This path explicitly bypasses `submit_with_rtx.sh` (no CELLS_LIST manifest, no auto-prioritize, no `pddl_*` job-name) — fine because the recipe is for one-off experiments, not sweep cells. Don't use it for sweep work.
 
 ### "Prioritize a cell during a contended sweep"
 
