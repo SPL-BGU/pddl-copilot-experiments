@@ -61,6 +61,11 @@ export OLLAMA_NUM_PARALLEL="$CONCURRENCY"
 #          cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
 OLLAMA_TAG="${OLLAMA_TAG:-qwen3.6:27b}"
 HF_LARGE="${HF_MODEL:-cyankiwi/Qwen3.6-27B-AWQ-INT4}"
+# vLLM serve sizing — overridable for tighter VRAM (e.g. running 27B AWQ on a
+# 24 GB rtx_3090 instead of the 96 GB rtx_pro_6000 default). The defaults
+# below preserve the rtx_pro_6000 tuning so existing submissions don't shift.
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-16384}"
+GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -136,11 +141,11 @@ apptainer exec --nv \
         --model "$HF_LARGE" \
         --host 0.0.0.0 \
         --port "$PORT" \
-        --max-model-len 16384 \
+        --max-model-len "$MAX_MODEL_LEN" \
         --enable-auto-tool-choice \
         --tool-call-parser hermes \
         --reasoning-parser qwen3 \
-        --gpu-memory-utilization 0.85 \
+        --gpu-memory-utilization "$GPU_MEM_UTIL" \
         > "$SERVE_LOG" 2>&1 &
 VLLM_PID=$!
 
