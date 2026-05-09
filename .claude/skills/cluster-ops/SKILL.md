@@ -8,7 +8,7 @@ argument-hint: [status | job | preflight | sync | postmortem | prioritize]
 
 ## Why this skill exists
 
-Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "submit sweep", "cancel jobs", "sync results", "check ollama", "postmortem", "memory headroom", "prioritize", "deprioritize", "nice value", "let cell X finish first".
+Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "when will it run", "queue position", "queue rank", "ETA for job", "submit sweep", "cancel jobs", "sync results", "check ollama", "postmortem", "memory headroom", "prioritize", "deprioritize", "nice value", "let cell X finish first".
 
 Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, and sacct memory-headroom recipes. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 4 short helper scripts. Read it before running SSH/rsync commands ad-hoc.
 
@@ -64,15 +64,24 @@ The two modes share data computation; they differ only in rendering, so the metr
 
 ### `scripts/job.sh` — single-job inspection
 
-Use when `status.sh`'s sweep-matrix rendering doesn't fit — one-off probes / smoke sbatches with non-`pddl_*` names, or drilling into one specific cell of a sweep. One SSH call: `squeue -j <id>` + `sacct -j <id>` + log tail (`cluster-experimenting/logs/*-<jobid>.out`, glob covers all naming patterns including probes). Markdown output, pastes cleanly into chat.
+Use when `status.sh`'s sweep-matrix rendering doesn't fit — one-off probes / smoke sbatches with non-`pddl_*` names, or drilling into one specific cell of a sweep. One SSH call: `squeue -j <id>` + `sacct -j <id>` + (when STATE=PENDING) queue assessment + log tail (`cluster-experimenting/logs/*-<jobid>.out`, glob covers all naming patterns including probes). Markdown output, pastes cleanly into chat.
 
 ```bash
-bash .claude/skills/cluster-ops/scripts/job.sh <jobid>                # squeue + sacct + last 25 log lines
+bash .claude/skills/cluster-ops/scripts/job.sh <jobid>                # squeue + sacct + queue assessment + last 25 log lines
 bash .claude/skills/cluster-ops/scripts/job.sh <jobid> --lines 100    # custom tail size
-bash .claude/skills/cluster-ops/scripts/job.sh <jobid> --no-log       # squeue/sacct only (skip log)
+bash .claude/skills/cluster-ops/scripts/job.sh <jobid> --no-log       # squeue/sacct + queue assessment only (skip log)
 ```
 
-Handles three states gracefully: pending (squeue table, "no log file yet" message), running (live tail), completed/cancelled (squeue empty + helpful message, sacct shows terminal state with `.batch`/`.extern` step rows). Numeric-jobid guard catches the easy mistake of typing a script name instead.
+Handles three states gracefully: pending (squeue table + queue assessment, see below), running (live tail), completed/cancelled (squeue empty + helpful message, sacct shows terminal state with `.batch`/`.extern` step rows). Numeric-jobid guard catches the easy mistake of typing a script name instead.
+
+**Queue assessment** (auto-renders when STATE=PENDING) answers "when does this move from PD to RUNNING?":
+
+- **Priority** — `sprio` total priority value. Compare with peers to see whether you're scheduled to win contention.
+- **Same-class queue rank** — `#N of M` pending jobs requesting the same GPU class as yours (derived from your job's `tres-per-job`). Filter is anchored on the colon (`gpu:rtx_6000:` ≠ `gpu:rtx_pro_6000:`) so the two classes don't cross-contaminate.
+- **REASON breakdown for jobs ahead** — `JobArrayTaskLimit=6 Priority=2 …`. Crucial for interpreting rank: a high #N can still translate to a quick start if most ahead are blocked on `MaxGRESPerAccount`, `JobArrayTaskLimit`, or `Dependency` rather than competing for free GPUs.
+- **Humanised ETA** — `Projected start: <ISO> → ~3 min away`. Computed from SLURM's `StartTime` field via `date -d`. When SLURM returns `Unknown`/`N/A`, prints "scheduler hasn't placed yet — re-check in 1-2 min" instead of a fake number.
+
+Caveats: rank ≠ when-it-runs. SLURM's backfill scheduler can leapfrog ahead-of-us jobs that need more resources than the next free slot, so rank is informational; the `Projected start` line is the load-bearing number when concrete. Non-GPU jobs skip the same-class filter and just get priority + ETA.
 
 ### `scripts/sync.sh` — pull results locally
 

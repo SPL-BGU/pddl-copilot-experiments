@@ -80,6 +80,69 @@ sacct -j "$JOBID" \
 echo '```'
 echo
 
+# --- Queue assessment (PENDING only) ---
+# Answers "when does this move from PD to R?" via priority value, same-GPU-class
+# rank, REASON breakdown for jobs ahead, and SLURM's StartTime translated into
+# a humanised ETA. Skipped for non-pending jobs.
+STATE=$(squeue -j "$JOBID" -h -o '%T' 2>/dev/null | head -1)
+if [ "$STATE" = "PENDING" ]; then
+    echo "### Queue assessment"
+
+    # Priority value (sprio column 3 = PRIORITY; -h drops the header).
+    PRIO=$(sprio -j "$JOBID" -h 2>/dev/null | awk '{print $3}' | head -1)
+    echo "- Priority: ${PRIO:-?}"
+
+    # GPU class from the job's tres-per-job (e.g. "gres/gpu:rtx_6000:1" → rtx_6000).
+    GPU_CLASS=$(squeue -j "$JOBID" -h -O 'tres-per-job:64' 2>/dev/null \
+        | grep -oE 'gres/gpu:[^:[:space:]]+:' | head -1 | cut -d: -f2)
+
+    if [ -n "$GPU_CLASS" ]; then
+        # Same-class pending list, sorted by priority desc. Anchored colon in the
+        # awk regex avoids matching the rtx_6000 substring of rtx_pro_6000.
+        SAMECLASS=$(squeue -t PD -h --sort=-p -O 'JobID:14,tres-per-job:36,Reason:24' 2>/dev/null \
+            | awk -v cls="$GPU_CLASS" '$2 ~ ("gpu:"cls":")')
+        if [ -n "$SAMECLASS" ]; then
+            TOTAL=$(echo "$SAMECLASS" | wc -l | tr -d ' ')
+            RANK=$(echo "$SAMECLASS" | nl -ba | awk -v jid="$JOBID" '$2 == jid {print $1; exit}')
+            echo "- Same-class queue: #${RANK:-?} of $TOTAL pending requesting $GPU_CLASS"
+
+            # REASON breakdown for jobs ahead. Many "ahead" jobs are blocked on
+            # MaxGRESPerAccount, Dependency, etc. and won't all clear before us
+            # — this explains why rank doesn't predict timing linearly.
+            if [ -n "$RANK" ] && [ "$RANK" -gt 1 ]; then
+                AHEAD=$(( RANK - 1 ))
+                BR=$(echo "$SAMECLASS" | head -n "$AHEAD" | awk '{print $3}' \
+                     | sort | uniq -c | sort -rn \
+                     | awk '{printf "%s=%d ", $2, $1}')
+                [ -n "$BR" ] && echo "- $AHEAD ahead by REASON: $BR"
+            fi
+        fi
+    fi
+
+    # ETA — translate StartTime to "starts in ~X". GNU date supports ISO 8601.
+    ST=$(squeue -j "$JOBID" -h -O 'StartTime:24' 2>/dev/null | tr -d ' ')
+    if [ -n "$ST" ] && [ "$ST" != "Unknown" ] && [ "$ST" != "N/A" ]; then
+        NOW=$(date +%s)
+        SE=$(date -d "$ST" +%s 2>/dev/null || echo 0)
+        D=$(( SE - NOW ))
+        if [ "$D" -le 0 ]; then
+            ETA="imminent — should flip to RUNNING any second"
+        elif [ "$D" -lt 300 ]; then
+            ETA="<5 min ($((D/60))m $((D%60))s)"
+        elif [ "$D" -lt 3600 ]; then
+            ETA="~$((D/60)) min away"
+        elif [ "$D" -lt 86400 ]; then
+            ETA="~$((D/3600))h $(((D%3600)/60))m away"
+        else
+            ETA="~$((D/86400))d $(((D%86400)/3600))h away"
+        fi
+        echo "- Projected start: $ST → **$ETA**"
+    else
+        echo "- Projected start: scheduler hasn't placed yet — re-check in 1-2 min"
+    fi
+    echo
+fi
+
 if [ "$NO_LOG" = "0" ]; then
     # Glob covers all log naming patterns: pddl_rtx_<model>-<jid>.out (current),
     # pddl_<model>_<think>-<jid>.out (cis-retired), <jobname>-<jid>.out (probes).
