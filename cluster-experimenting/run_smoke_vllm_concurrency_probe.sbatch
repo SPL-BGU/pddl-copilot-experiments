@@ -45,9 +45,11 @@ MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 
 # 27B only — the 0.8B is fast enough that concurrency improvements on it
 # wouldn't change the production-sweep migration calculus.
+# Quantization is auto-detected from config.json (cyankiwi declares
+# quant_method="compressed-tensors", NOT pure "awq"). Passing
+# --quantization awq would have been wrong; let vLLM auto-detect.
 HF_LARGE="cyankiwi/Qwen3.6-27B-AWQ-INT4"
 OLLAMA_LARGE_TAG="qwen3.6_27b"
-HF_LARGE_QUANT="awq"
 
 # Override the c-grid via env if you want a finer/coarser sweep.
 CONCURRENCIES="${CONCURRENCIES:-4 8 16}"
@@ -112,7 +114,6 @@ apptainer exec --nv \
         --tool-call-parser hermes \
         --reasoning-parser qwen3 \
         --gpu-memory-utilization 0.85 \
-        --quantization "$HF_LARGE_QUANT" \
         > "$SERVE_LOG" 2>&1 &
 VLLM_PID=$!
 
