@@ -530,6 +530,7 @@ async def async_main(args):
         if all_single:
             meta = {
                 "host": host or "localhost",
+                "inference_backend": args.inference_backend,
                 "conditions": args.conditions,
                 "models": args.models,
                 "tasks": args.tasks,
