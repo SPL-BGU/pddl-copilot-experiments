@@ -157,7 +157,7 @@ apptainer exec --nv \
         --port "$PORT" \
         --max-model-len "$MAX_MODEL_LEN" \
         --enable-auto-tool-choice \
-        --tool-call-parser hermes \
+        --tool-call-parser qwen3_xml \
         --reasoning-parser qwen3 \
         --gpu-memory-utilization "$GPU_MEM_UTIL" \
         $EAGER_FLAG \
