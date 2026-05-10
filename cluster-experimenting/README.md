@@ -196,6 +196,69 @@ The rtx path pulls model weights from the public Ollama registry
 valid there. The `.sif` container is cached at `$HOME/ollama.sif` after
 the first run (~3 min cold).
 
+## vLLM smoke probes (parser verification)
+
+The Ollama production sweep is the canonical path; vLLM is an opt-in
+inference backend exercised through `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`.
+A vLLM analog of `run_condition_rtx.sbatch` for the **full sweep** is
+**not yet built** — see the 2026-05-09 / 2026-05-10 entries in
+`development/CHANGELOG.md` for the open-pending list.
+
+### Per-model parser table (verified 2026-05-10 unless noted)
+
+vLLM's `--tool-call-parser` regex must match the model's emit format. A
+mismatch silently drops every tools-trial extraction → 0% tool-selection
+with no startup error (we hit this on the original 27B AWQ probe). The
+sbatch knob is `TOOL_CALL_PARSER` (env-overridable; default `qwen3_xml`).
+
+| Ollama tag       | HF id                                      | Quant                | TOOL_CALL_PARSER | GPU class               | Status         |
+| ---------------- | ------------------------------------------ | -------------------- | ---------------- | ----------------------- | -------------- |
+| `Qwen3.5:0.8B`   | `Qwen/Qwen3.5-0.8B`                        | BF16 (~1.6 GB)       | `qwen3_xml`      | rtx_3090:1              | Pending verify |
+| `qwen3.6:27b`    | `cyankiwi/Qwen3.6-27B-AWQ-INT4`            | AWQ-4bit (~17 GB)    | `qwen3_xml`      | rtx_6000:1 / rtx_pro_6000:1 | **Verified**   |
+| `qwen3.6:35b`    | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`        | AWQ-4bit MoE (~17 GB)| `qwen3_xml`      | rtx_6000:1              | Pending verify |
+| `gemma4:31b`     | `cyankiwi/gemma-4-31B-it-AWQ-4bit`         | AWQ-4bit (~16 GB)    | `gemma4`         | rtx_6000:1              | Pending verify |
+
+For vanilla Qwen3 sizes (e.g. `Qwen/Qwen3-0.6B`), use `TOOL_CALL_PARSER=hermes`
+— vanilla Qwen3 emits Hermes JSON inside `<tool_call>`, not Llama-XML.
+
+### Submit recipe
+
+```bash
+# 27B AWQ on rtx_6000:1 — verified
+sbatch --export=ALL,HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4",OLLAMA_TAG="qwen3.6:27b" \
+       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
+       --job-name=vllm_27b_smoke \
+       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+
+# Gemma 31B on rtx_6000:1 — note the parser override
+sbatch --export=ALL,HF_MODEL="cyankiwi/gemma-4-31B-it-AWQ-4bit",OLLAMA_TAG="gemma4:31b",TOOL_CALL_PARSER="gemma4" \
+       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
+       --job-name=vllm_gemma_smoke \
+       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+
+# Tight VRAM (rtx_3090 24 GB serving 27B AWQ) — see CHANGELOG 2026-05-10 caveat
+sbatch --export=ALL,HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4",OLLAMA_TAG="qwen3.6:27b",MAX_MODEL_LEN=7168,GPU_MEM_UTIL=0.85,ENFORCE_EAGER=1,NUM_PREDICT=4096 \
+       --gpus=rtx_3090:1 --mem=32G --time=01:00:00 \
+       --job-name=vllm_27b_smoke_tight \
+       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+```
+
+### Operational caveats
+
+- **Stale `~/vllm.sif`.** The sbatch caches the apptainer SIF in `$HOME/vllm.sif`
+  after first build. If `vllm-serve` rejects `--tool-call-parser <name>` at
+  startup with "unknown tool-call-parser", the cached SIF predates that
+  parser's addition: `rm ~/vllm.sif` and resubmit; the next run rebuilds
+  from `docker://vllm/vllm-openai:latest`.
+- **`max_tokens > max_model_len` HTTP 400.** vLLM rejects any request where
+  `max_tokens > max_model_len` (harness per-task defaults are `solve=8192`,
+  `validate_*=6144`, `simulate=6144`). When using `MAX_MODEL_LEN < 8192`,
+  set `NUM_PREDICT=4096` (or any value safely below `MAX_MODEL_LEN`).
+- **`ENFORCE_EAGER=1` on tight VRAM.** Skips CUDA graph capture+profiling
+  (~1.5 GiB headroom) at ~10–15% throughput cost. Recipe: 27B AWQ on
+  rtx_3090 24 GB → `MAX_MODEL_LEN=7168 GPU_MEM_UTIL=0.85 ENFORCE_EAGER=1
+  NUM_PREDICT=4096`.
+
 ## Conditions and think modes
 
 ### Conditions (3 active) — looped inside every job

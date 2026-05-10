@@ -80,6 +80,12 @@ EAGER_FLAG=""
 NUM_PREDICT="${NUM_PREDICT:-}"
 NUM_PREDICT_FLAG=""
 [ -n "$NUM_PREDICT" ] && NUM_PREDICT_FLAG="--num-predict $NUM_PREDICT"
+# vLLM tool-call parser must match the model's emit format (verified empirically
+# in 2026-05-10 smokes; see development/CHANGELOG.md). Defaults to qwen3_xml
+# (Qwen3.5/3.6 family Llama-XML <function=NAME><parameter=KEY>VAL</parameter>
+# </function>); override to `gemma4` for Gemma-4, `hermes` for vanilla Qwen3
+# (Hermes JSON-in-XML), or any other registered parser.
+TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-qwen3_xml}"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -157,7 +163,7 @@ apptainer exec --nv \
         --port "$PORT" \
         --max-model-len "$MAX_MODEL_LEN" \
         --enable-auto-tool-choice \
-        --tool-call-parser qwen3_xml \
+        --tool-call-parser "$TOOL_CALL_PARSER" \
         --reasoning-parser qwen3 \
         --gpu-memory-utilization "$GPU_MEM_UTIL" \
         $EAGER_FLAG \
