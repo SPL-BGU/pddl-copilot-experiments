@@ -63,11 +63,18 @@ _CTX_OVERFLOW_RE = re.compile(
     re.DOTALL,
 )
 # Slack between (max_model_len − prompt_tokens) and the clipped max_tokens
-# we re-send. Guards against rare 1-token drift between the server-side
-# tokenizer count and the count it used when computing the budget. 8
-# covers tokenizer-version skew across vllm-openai:latest refreshes; the
-# observed drift is ±1 token, so this is ~4σ of headroom for ~0 cost.
-_CTX_RETRY_SAFETY = 8
+# we re-send. vLLM's 400 error body reports prompt-token count as a LOWER
+# bound — "your prompt contains at least N input tokens" — because the
+# pre-flight check fires before final template additions (generation
+# prefix, BOS, prefix-caching block-padding) are appended. The real
+# served prompt is consistently higher than the reported N. Empirical
+# measurement over 374 retry failures on the 17478753 sweep showed an
+# exact +9 token delta between attempt-1 reported prompt and attempt-2
+# reported prompt, leaving (new_max + new_prompt) == max_model_len + 1
+# every single time. Setting safety = 32 absorbs +9 with ~3× headroom
+# for future vLLM versions / different chat templates at ~0 cost (the
+# output-token budget loss is < 0.4% of the 8192-token solve cap).
+_CTX_RETRY_SAFETY = 32
 
 
 class VLLMOllamaClient:

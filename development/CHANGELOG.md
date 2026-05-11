@@ -6,6 +6,22 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-11 — vLLM context-overflow retry: bump `_CTX_RETRY_SAFETY` 8 → 32
+
+**TL;DR.** The earlier vLLM context-overflow retry patch (CHANGELOG 2026-05-11 entry below) caught the first 400 and retried with a clipped `max_tokens`, but the retry was *also* 400'ing at a non-trivial rate on the 17478753 sweep (qwen3.6:27b 2.8% of trials, Qwen3.5:0.8B `on/tools_*` 7–11%, `off/no-tools` 0%). Forensic count over 374 retry failures showed an exact and consistent **+9-token delta** between the prompt-token count reported in the attempt-1 error body and the prompt-token count reported in the attempt-2 error body, leaving `new_max + new_prompt = max_model_len + 1` every single time. Root cause: vLLM's 400 error message reports `"prompt contains at least N input tokens"` — `N` is a LOWER bound. The pre-flight check fires before final template additions (generation prefix, BOS, prefix-caching block-padding) are appended, and the real served prompt is consistently higher than the reported `N`. The original `_CTX_RETRY_SAFETY = 8` was undersized by exactly 1 token relative to that +9 drift.
+
+**Fix.** `_CTX_RETRY_SAFETY` bumped 8 → 32. Absorbs the observed +9 with ~3× headroom for future vLLM versions / different chat templates. Output-budget cost is < 0.4% of the 8192-token `solve` cap, negligible. Comment in `pddl_eval/vllm_client.py` rewritten with the empirical evidence so the next maintainer doesn't have to re-derive the +9 figure from `trials.jsonl`.
+
+**Methodology stance.** The previous 374 retry-failure trials are now permanently in `slurm_vllm_*/trials.jsonl` as `exception` rows on the 17478753 sweep. With the safety bump applied via a fresh resubmit, ≥99% of future overflow trials will instead land as `done_reason="length"` truncations (Ollama-parity bucket). Whether to cancel + clean + resubmit again, or let 17478753 finish and tolerate the ~7% exception contamination in the affected 0.8B cells, is a sweep-level decision tracked outside this entry.
+
+**Why not a retry loop instead of bumping safety.** A retry loop only converges if the +9 drift dampens after the first retry. Empirically the drift is constant across attempts (vLLM's `"at least N"` is the *same* low-bound formula on every error), so a naive loop would diverge — each retry would 400 by the same +1 margin until max retries was hit, then bubble. Bumping safety to absorb the constant drift in one retry is the closed-form fix.
+
+**What changed.**
+
+- `pddl_eval/vllm_client.py`. `_CTX_RETRY_SAFETY` 8 → 32 and updated docstring comment.
+
+---
+
 ## 2026-05-11 — vLLM smoke scripts: parameterize `--reasoning-parser`
 
 **TL;DR.** Both vLLM smoke sbatch scripts (`run_smoke_vllm_vs_ollama.sbatch`, `run_smoke_vllm_concurrency_probe.sbatch`) hardcoded `--reasoning-parser qwen3`, even though `TOOL_CALL_PARSER` was already overridable. The gemma4:31b smoke (job 17468317) inherited that hardcoded flag and vLLM crashed at startup with `Qwen3ReasoningParser reasoning parser could not locate think start/end tokens in the tokenizer!` — Gemma's tokenizer has no `<think>` tokens. Now `REASONING_PARSER` is an env var (default `qwen3` to preserve verified Qwen3.x behaviour); pass `REASONING_PARSER=none` to omit the flag for families without a reasoning trace. No methodology change — verified Qwen3.x probes get the same flags as before. Header comment in `run_smoke_vllm_vs_ollama.sbatch` gains an explicit Gemma-4 submit example.
