@@ -6,6 +6,136 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-10 — vLLM tool-call parser fix + smoke decision-gate PASS
+
+**TL;DR.** The Qwen3.5/3.6 family emits tool calls in **Llama-3 XML** format
+(`<tool_call><function=NAME><parameter=KEY>VAL</parameter></function></tool_call>`),
+not Hermes JSON. The 2026-05-09 smoke sbatch picked `--tool-call-parser hermes`,
+which silently dropped every tools-trial extraction (`tool_calls=[]` → harness
+short-circuits `FR_TOOL_NOT_SELECTED` at `pddl_eval/scoring.py:351`). Original
+27B AWQ probe (job 17453988 on rtx_3090) showed 0/40 tools cells extracted;
+post-fix 27B AWQ probe (job 17461801 on rtx_6000:1) shows **40/40 tools cells
+extracted, 100% tool-selection across all 5 tasks, ~0.22× the matching Ollama
+walltime — decision gate clears, migrate-go.**
+
+Also: parameterized `TOOL_CALL_PARSER` as a sbatch env var so per-model
+overrides are one flag away.
+
+**Smoke results (apples-to-apples; blocksworld/p01, n=80 trials, c=4).**
+
+| metric                  | vLLM 27B AWQ-INT4 (rtx_6000:1, qwen3_xml) | Ollama qwen3.6:27b (cs-6000-01, Q4_K_M) |
+| ----------------------- | ----------------------------------------- | --------------------------------------- |
+| tools trials extracted  | 40/40 (100%)                              | 40/40 (100%)                            |
+| tools success           | 40/40 (100%)                              | 40/40 (100%)                            |
+| no-tools success        | 35/40 (88%)                               | 33/40 (82%)                             |
+| sum trial duration      | 3,189 s                                   | 14,604 s                                |
+| reported wall (vLLM log)| 888.7 s                                   | n/a                                     |
+| effective speedup       | **~4.6×**                                 | —                                       |
+
+**Decision rule (from `run_smoke_vllm_vs_ollama.sbatch` header).** vLLM wall
+≤ 0.7× Ollama wall on `qwen3.6:27b tools×off` cell AND per-cell pass rates
+within parity. Both bars cleared.
+
+**Per-model parser mapping (canonical reference; mirrored in `cluster-experimenting/README.md`).**
+
+| Ollama tag       | HF id                                      | Quant                | TOOL_CALL_PARSER | GPU class                   | Status         |
+| ---------------- | ------------------------------------------ | -------------------- | ---------------- | --------------------------- | -------------- |
+| `Qwen3.5:0.8B`   | `Qwen/Qwen3.5-0.8B`                        | BF16                 | `qwen3_xml`      | rtx_3090:1                  | Pending verify |
+| `qwen3.6:27b`    | `cyankiwi/Qwen3.6-27B-AWQ-INT4`            | AWQ-4bit             | `qwen3_xml`      | rtx_6000:1 / rtx_pro_6000:1 | **Verified**   |
+| `qwen3.6:35b`    | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`        | AWQ-4bit MoE         | `qwen3_xml`      | rtx_6000:1                  | Pending verify |
+| `gemma4:31b`     | `cyankiwi/gemma-4-31B-it-AWQ-4bit`         | AWQ-4bit             | `gemma4`         | rtx_6000:1                  | Pending verify |
+| `Qwen/Qwen3-0.6B` (vanilla) | `Qwen/Qwen3-0.6B`              | BF16                 | `hermes`         | any                         | Verified (smoke 17461442 confirmed Hermes JSON-in-XML emit format; parity-anti-example for Qwen3.5/3.6) |
+
+The empirical signal that distinguishes the two Qwen formats: dump
+`results/.../trials.jsonl[*].response` for any tools-trial. If the body
+is `<tool_call>{"name":..., "arguments":{...}}</tool_call>` → use `hermes`.
+If the body is `<tool_call><function=NAME><parameter=KEY>VAL</parameter>
+</function></tool_call>` → use `qwen3_xml`. There is no in-band autodetect.
+
+**Operational caveats (cluster).**
+
+- `~/vllm.sif` may predate parser additions. If `vllm-serve` rejects
+  `--tool-call-parser <name>` at startup with "unknown tool-call-parser",
+  `rm ~/vllm.sif` and resubmit; the next run rebuilds from
+  `docker://vllm/vllm-openai:latest`.
+- vLLM enforces `max_tokens ≤ max_model_len` (HTTP 400 otherwise). When
+  using `MAX_MODEL_LEN < 8192`, set `NUM_PREDICT=4096` via
+  `--export=ALL,NUM_PREDICT=4096`. Harness per-task defaults are
+  `solve=8192`, `validate_*=6144`, `simulate=6144`.
+- Tight-VRAM recipe (rtx_3090 24 GB serving 27B AWQ): `MAX_MODEL_LEN=7168
+  GPU_MEM_UTIL=0.85 ENFORCE_EAGER=1 NUM_PREDICT=4096`. The eager flag
+  skips CUDA graph profiling (~1.5 GiB headroom) at ~10–15% throughput cost.
+
+**What changed.**
+
+- `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`: `--tool-call-parser
+  hermes` → `qwen3_xml` (commit `f563ce3`); then parameterized as
+  `TOOL_CALL_PARSER` env var (this commit).
+- `notebooks/run_vllm_vs_ollama_smoke.ipynb`: retargeted at parser
+  verification — tools-only scope, headline metric is tool-extraction
+  rate, sbatch knob parity (commit `ca7a307`).
+- `cluster-experimenting/README.md`: new "vLLM smoke probes (parser
+  verification)" section with per-model table, submit recipes, and
+  operational caveats.
+
+**What did NOT change.**
+
+- `pddl_eval/{vllm_client,scoring,...}.py`, `domains/`, `EXPERIMENTS_FLOW.md`,
+  `tests/` — methodology, fixtures, scoring unchanged. The fix is purely
+  vLLM-serve flag wiring.
+- Production sweep `run_condition_rtx.sbatch` is untouched. Ollama remains
+  the sole production backend until the vLLM full-sweep sbatch lands.
+- Existing `results/` corpora — no schema change.
+
+**Open / pending (closing the migration).**
+
+1. Parser-verification smokes for `Qwen3.5:0.8B`, `qwen3.6:35b`, `gemma4:31b`
+   (queued today on rtx_3090:1 / rtx_6000:1 with 1-hour walltime). Expected
+   outcome: `qwen3_xml` clean for the two Qwen entries; `gemma4` clean for
+   the Gemma entry. Failure modes are debuggable from
+   `trials.jsonl[*].response` per the recipe above.
+2. Full-sweep vLLM sbatch — vLLM analog of `run_condition_rtx.sbatch` with
+   per-model parser flag + per-model HF-id mapping (probably a new
+   `cluster-experimenting/lib/defaults_vllm.sh` table). Blocked on (1).
+3. Cross-backend analyzer pivot (per-model walltime + tool-extraction
+   parity rollup). Blocked on (2).
+
+**Files.** `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`,
+`cluster-experimenting/README.md`, `development/CHANGELOG.md`,
+`notebooks/run_vllm_vs_ollama_smoke.ipynb`.
+
+---
+
+## 2026-05-09 — vLLM inference-backend smoke probe
+
+**TL;DR.** Adds an opt-in `--inference-backend vllm` path that points the existing harness at vLLM's OpenAI-compatible `/v1/chat/completions` endpoint via a thin adapter (`pddl_eval/vllm_client.py`). Default is unchanged (`ollama`). New cluster sbatch `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch` runs the existing `--smoke` matrix on both backends sequentially on one `rtx_pro_6000:1` node and writes analyzer-readable summaries under `results/smoke/probe_{ollama,vllm}_<sha>_<ts>/`. **No methodology change** — same prompts, fixtures, tools, scoring, num_ctx, num_predict; production sweep (`run_condition_rtx.sbatch`) untouched. Existing results in `results/` remain valid.
+
+**Motivation.** The 27B Ollama cells in the 2026-04-30 sweep ran 57–107 s/trial × 4560 trials = 72–135 h per cell. vLLM's continuous-batching could compress that, but only if real tool-calling and thinking-mode plumbing survive the wire-format swap. A 2-hour smoke that exercises the full 2 (think) × 2 (cond) × 5 (task) × 2 (model) matrix on both backends gates the migration on both wall-time AND tool-call pass-rate parity — pure tok/s benchmarks would miss a Hermes-parser misfire that silently drops to 0% tool use.
+
+**Decision rule.** Migrate only if vLLM wall ≤ 0.7× Ollama wall on the `qwen3.6:27b tools×off` cell **and** per-cell pass rates are within parity. Below either bar, stay on Ollama.
+
+**What changed (`feat/vllm-smoke-probe` branch).**
+
+- **`pddl_eval/vllm_client.py`** (new). `VLLMOllamaClient` exposes the `chat()` / `aclose()` shape `run_experiment.py` calls on `ollama.AsyncClient`. Returns Ollama-shaped response dicts so `pddl_eval/chat.py` (`chat_with_tools`, `chat_without_tools`) and downstream scoring work without edits. Translations: `tool_calls[].function.arguments` JSON-string ↔ dict; `message.reasoning_content` → `message.thinking` (vLLM `--reasoning-parser qwen3`); `finish_reason` → `done_reason`; `usage.{prompt,completion}_tokens` → `prompt_eval_count`/`eval_count`; `total_duration` synthesised from `time.perf_counter_ns`. Multi-turn tool replay re-attaches synthetic `tool_call_id`s in FIFO order so vLLM's OpenAI server accepts the harness's id-less tool messages. Streaming is forced off (sidesteps vllm-project/vllm#31871 Qwen3-hermes streaming bug).
+- **`run_experiment.py`**. Adds `--inference-backend {ollama,vllm}` (default `ollama`); branches the client construction. Banner prints the selected backend. `--ollama-host` help updated to "LLM server base URL".
+- **`requirements.txt`**. Adds `openai>=1.40.0` for the OpenAI-compatible client.
+- **`cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`** (new). Single sbatch on `rtx_pro_6000:1`, `--mem=80G`, `--time=02:30:00`. Phase A: builds/uses cached `ollama.sif`, runs `--smoke` per model. Phase B: builds/uses cached `vllm.sif` (from `docker://vllm/vllm-openai:latest`), serves each HF model on a fresh port with `--enable-auto-tool-choice --tool-call-parser hermes --reasoning-parser qwen3 --gpu-memory-utilization 0.85`, runs `--smoke --inference-backend vllm`. 27B served from `cyankiwi/Qwen3.6-27B-AWQ-INT4` (`--quantization awq`) — the closest apples-to-apples to Ollama's Q4_K_M (~17 GB on disk for both); 0.8B from `Qwen/Qwen3.5-0.8B` BF16. Both phases write to `results/smoke/probe_{ollama,vllm}_<sha>_<ts>/<model_tag>/`.
+
+**What did NOT change.**
+
+- `pddl_eval/{chat,runner,scoring,domains,prompts,resume,schemas,summary}.py` — adapter returns Ollama-shaped objects so the chat loop and tool-call extraction work unchanged.
+- `cluster-experimenting/run_condition_rtx.sbatch`, `submit_with_rtx.sh`, `lib/defaults.sh` — production sweep path is untouched. The smoke sbatch is independent.
+- `domains/`, `tests/`, `EXPERIMENTS_FLOW.md` — methodology, fixtures, and the experiment-flow spec are unchanged.
+- Existing `results/` corpora — no schema change.
+
+**Compatibility.** `--inference-backend` defaults to `ollama`; existing scripts and analysis pipelines see identical behaviour. The vLLM path requires `openai>=1.40.0` to be installed (`requirements.txt` updated); environments that haven't `pip install -r requirements.txt`-d will only fail when `--inference-backend vllm` is actually requested.
+
+**Open / pending.** No analyzer change yet — the smoke results land in the existing summary shape, comparison is by hand for now. If the smoke clears the 0.7× wall + parity gate, follow-ups would be: full-sweep cluster sbatch fork (vLLM analog of `run_condition_rtx.sbatch`), tool-call parity audit, and analyzer cross-backend pivot.
+
+**Files.** `pddl_eval/vllm_client.py` (new), `run_experiment.py`, `requirements.txt`, `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch` (new), `development/CHANGELOG.md`.
+
+---
+
 ## 2026-05-07 — Add Colab/Kaggle single-model notebook driver
 
 **TL;DR.** New `notebooks/run_single_model.ipynb` drives `run_experiment.py` for one model on a free-tier T4 (Colab or Kaggle, auto-detected). Persists results + run log to Google Drive (Colab) or `/kaggle/working/` (Kaggle). Pure driver — **no methodology, scoring, prompt, or schema change**; existing `results/` corpora and the analyzer skill remain valid.

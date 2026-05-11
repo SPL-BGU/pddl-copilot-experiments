@@ -307,7 +307,8 @@ async def async_main(args):
         print("  WARNING: OLLAMA_NUM_PARALLEL is not set — Ollama may queue "
               "concurrent requests server-side, negating the speedup. "
               "Export OLLAMA_NUM_PARALLEL>=concurrency before the run.")
-    print(f"  Ollama host:{host or '(library default: http://localhost:11434)'}")
+    print(f"  Backend:    {args.inference_backend}")
+    print(f"  LLM host:   {host or '(library default: http://localhost:11434)'}")
     if smoke_mode:
         print(f"  Smoke:      "
               f"{'shuffle (random per-cell d/p)' if args.smoke_shuffle else 'fixed (blocksworld/p01)'}"
@@ -376,10 +377,17 @@ async def async_main(args):
         if missing:
             sys.exit(f"TASK_TOOLS['{task}'] references unknown tools: {missing}")
 
-    client_kwargs: dict = {}
-    if args.ollama_host:
-        client_kwargs["host"] = args.ollama_host
-    client = ollama.AsyncClient(**client_kwargs)
+    if args.inference_backend == "vllm":
+        # Smoke-probe path (2026-05-09). vllm_client.VLLMOllamaClient adapts
+        # the OpenAI chat-completions API to the Ollama response shape the
+        # harness reads. --ollama-host is reused as the vLLM base URL.
+        from pddl_eval.vllm_client import VLLMOllamaClient
+        client = VLLMOllamaClient(host=args.ollama_host)
+    else:
+        client_kwargs: dict = {}
+        if args.ollama_host:
+            client_kwargs["host"] = args.ollama_host
+        client = ollama.AsyncClient(**client_kwargs)
 
     # Resume / skip-existing setup. `trials.jsonl` lives next to the
     # canonical end-of-run JSONs in `output_dir`. When it exists, the
@@ -522,6 +530,7 @@ async def async_main(args):
         if all_single:
             meta = {
                 "host": host or "localhost",
+                "inference_backend": args.inference_backend,
                 "conditions": args.conditions,
                 "models": args.models,
                 "tasks": args.tasks,
@@ -649,10 +658,21 @@ def main():
                         f"OLLAMA_NUM_PARALLEL>=concurrency on the server.")
     p.add_argument("--ollama-host",
                    default=os.environ.get("OLLAMA_HOST"),
-                   help="Ollama base URL. Default: library default "
+                   help="LLM server base URL (Ollama or vLLM, depending on "
+                        "--inference-backend). Default: library default "
                         "(http://localhost:11434). Cluster runs use the "
                         "self-deployed Apptainer Ollama on a unique port "
                         "set by run_condition_rtx.sbatch.")
+    p.add_argument("--inference-backend", choices=("ollama", "vllm"),
+                   default="ollama",
+                   help="Which inference server to talk to. 'ollama' "
+                        "(default, paper-aligned, production cluster path). "
+                        "'vllm' uses vLLM's OpenAI-compatible "
+                        "/v1/chat/completions via "
+                        "pddl_eval.vllm_client.VLLMOllamaClient. Smoke-probe "
+                        "only as of 2026-05-09; production sweep stays on "
+                        "ollama until ≥30%% wall-time savings on full sweep "
+                        "are demonstrated (see development/CHANGELOG.md).")
     p.add_argument("--seed", type=int, default=42,
                    help="Random seed for --smoke-shuffle cell assignment")
     # Single-task domain/problem filters (applied post-`load_domains`). Used

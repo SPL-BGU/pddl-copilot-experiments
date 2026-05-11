@@ -37,17 +37,26 @@ fi
 
 mkdir -p "$DEST"
 
-echo "Syncing ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/slurm_* → $DEST"
+echo "Syncing ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/{slurm_*, smoke/probe_*} → $DEST"
 
-before=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_*' 2>/dev/null | wc -l | tr -d ' ')
+before_slurm=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_*' 2>/dev/null | wc -l | tr -d ' ')
+before_probe=$(find "$DEST" -maxdepth 1 -type d -name 'probe_*' 2>/dev/null | wc -l | tr -d ' ')
 
 # --update: only copy when the source is newer; --info=stats2 gives us a compact summary
 rsync -av --update "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/slurm_*" "$DEST/" 2>&1 \
     | tail -5
 
-after=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_*' 2>/dev/null | wc -l | tr -d ' ')
-
-added=$(( after - before ))
+# Probe outputs (one-off vLLM/smoke sbatches). Often empty on a fresh cluster
+# or between probes — `|| true` so a no-match doesn't fail the whole sync.
+# The dir-count diagnostic below reports whatever actually arrived.
 echo "---"
-echo "Dir count: before=${before} → after=${after} (+${added} new)"
+rsync -av --update "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/smoke/probe_*" "$DEST/" 2>&1 \
+    | tail -5 || true
+
+after_slurm=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_*' 2>/dev/null | wc -l | tr -d ' ')
+after_probe=$(find "$DEST" -maxdepth 1 -type d -name 'probe_*' 2>/dev/null | wc -l | tr -d ' ')
+
+echo "---"
+echo "Sweep cells:   before=${before_slurm} → after=${after_slurm} (+$((after_slurm - before_slurm)) new)"
+echo "Probe outputs: before=${before_probe} → after=${after_probe} (+$((after_probe - before_probe)) new)"
 echo "Local path: $DEST"

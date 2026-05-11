@@ -78,7 +78,7 @@ DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "gemma4_31b":"gemma4:31b",
 CELLS = [("on","tools_per-task_minimal"),("on","tools_all_minimal"),
          ("off","no-tools"),("off","tools_per-task_minimal"),("off","tools_all_minimal")]
 COL_HEADERS = ["on / tools_pt","on / tools_all","off / no-tools","off / tools_pt","off / tools_all"]
-DENOM = {"no-tools":4260, "tools_per-task_minimal":4560, "tools_all_minimal":4560}
+DENOM = {"no-tools":4560, "tools_per-task_minimal":4560, "tools_all_minimal":4560}
 TIME_LIMIT_H = 72  # current --time per cell
 
 # Job-name short-cond → full cond (used when array tasks have per-cell names).
@@ -268,7 +268,7 @@ def render_markdown():
             out.append(f"- ▶🆕 **{cell_label(cell)}** started ({n}/{DENOM[cell[2]]} trials)")
         out.append("")
 
-    out.append("### Per-cell progress (denominators 4260 / 4560)")
+    out.append("### Per-cell progress (denominator 4560)")
     out.append("| Model | " + " | ".join(COL_HEADERS) + " |")
     out.append("|" + "|".join(["---"] * (1 + len(COL_HEADERS))) + "|")
     icon_md = {"done":"✓", "growing":"▶", "stalled":"⏸",
@@ -380,7 +380,7 @@ def render_terminal(use_color):
         out.append("")
 
     # -- Per-cell progress matrix
-    out.append(H2("Per-cell progress") + DIM + "  (denoms 4260 / 4560)" + RESET)
+    out.append(H2("Per-cell progress") + DIM + "  (denom 4560)" + RESET)
     short_hdrs = ["on/tools_pt", "on/tools_all", "off/no-tools", "off/tools_pt", "off/tools_all"]
     MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
     CELL_W  = 14   # " ✓  100.0%  " ≈ 11–12 chars; pad to 14 for separation
