@@ -31,15 +31,41 @@ Streaming is forced off — tracks vLLM/Qwen3 hermes streaming bug
 vllm-project/vllm#31871 (May 2026) where partial tool_call XML can be
 mis-extracted on token boundaries. The harness never reads streamed deltas
 either, so non-streaming is the safe default.
+
+Context-overflow handling: vLLM rejects prompt_tokens + max_tokens >
+max_model_len with HTTP 400 BadRequestError, where Ollama silently
+truncates or returns done_reason="length". chat() catches the specific
+overflow body, clips max_tokens to the remaining budget, and retries —
+restoring response-shape parity with the Ollama corpus. The degenerate
+prompt ≥ max_model_len case returns a synthetic length-truncation
+response with empty content (see `_synthesize_overflow_response`).
 """
 
 import json
+import re
 import time
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, BadRequestError
 
 
 _DEFAULT_BASE_URL = "http://localhost:8000"
+
+# Match vLLM's context-overflow rejection so we can retry with a clipped
+# max_tokens instead of bubbling a BadRequestError up as an `exception`
+# trial. Example body:
+#   "This model's maximum context length is 16384 tokens. However, you
+#    requested 8192 output tokens and your prompt contains at least 8193
+#    input tokens, for a total of at least 16385 tokens."
+# Group 1 = max_model_len; group 2 = prompt_tokens reported by the server.
+_CTX_OVERFLOW_RE = re.compile(
+    r"maximum context length is (\d+) tokens.*?"
+    r"prompt contains at least (\d+) input tokens",
+    re.DOTALL,
+)
+# Slack between (max_model_len − prompt_tokens) and the clipped max_tokens
+# we re-send. Guards against rare 1-token drift between the server-side
+# tokenizer count and the count it used when computing the budget.
+_CTX_RETRY_SAFETY = 8
 
 
 class VLLMOllamaClient:
@@ -92,7 +118,29 @@ class VLLMOllamaClient:
             kwargs["extra_body"] = extra_body
 
         t0 = time.perf_counter_ns()
-        resp = await self._client.chat.completions.create(**kwargs)
+        try:
+            resp = await self._client.chat.completions.create(**kwargs)
+        except BadRequestError as e:
+            # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
+            # and rejects with HTTP 400. Ollama silently truncates / returns
+            # done_reason="length" on the same overflow. To keep response-shape
+            # parity across backends, catch the specific context-overflow body,
+            # clip max_tokens to the remaining headroom, and retry.
+            parsed = _parse_ctx_overflow(e)
+            if parsed is None:
+                raise
+            max_ctx, prompt_tokens = parsed
+            new_max = max_ctx - prompt_tokens - _CTX_RETRY_SAFETY
+            if new_max <= 0:
+                # Prompt alone consumes (or exceeds) max_model_len — no output
+                # budget to negotiate. Surface as a length-truncation response
+                # with empty content; the harness already buckets done_reason
+                # ="length" as truncation, matching how Ollama would treat a
+                # context window fully consumed by the prompt.
+                wall_ns = time.perf_counter_ns() - t0
+                return _synthesize_overflow_response(prompt_tokens, wall_ns)
+            kwargs["max_tokens"] = new_max
+            resp = await self._client.chat.completions.create(**kwargs)
         wall_ns = time.perf_counter_ns() - t0
         return _to_ollama_response(resp, wall_ns)
 
@@ -204,6 +252,32 @@ def _to_ollama_response(resp, wall_ns: int) -> dict:
         # endpoint. Synthesising both from wallclock loses the ability to
         # compute pure decode tok/s downstream — analyzers that derive it
         # should clamp to (eval_count / wall_s) on this backend.
+        "total_duration": int(wall_ns),
+        "eval_duration": int(wall_ns),
+    }
+
+
+def _parse_ctx_overflow(err: BadRequestError) -> tuple[int, int] | None:
+    """Return (max_model_len, prompt_tokens) if `err` is vLLM's context-overflow
+    rejection, else None so the caller re-raises unrelated 400s untouched."""
+    m = _CTX_OVERFLOW_RE.search(str(err))
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2))
+
+
+def _synthesize_overflow_response(prompt_tokens: int, wall_ns: int) -> dict:
+    """Ollama-shaped response for the degenerate prompt ≥ max_model_len case.
+
+    Same shape as `_to_ollama_response` with empty content and
+    done_reason="length". Mirrors Ollama's behaviour when num_ctx is fully
+    consumed by the prompt — the trial completes but the model produces no
+    output, so grading sees a truncation rather than an exception."""
+    return {
+        "message": {"role": "assistant", "content": "", "thinking": ""},
+        "done_reason": "length",
+        "prompt_eval_count": int(prompt_tokens),
+        "eval_count": 0,
         "total_duration": int(wall_ns),
         "eval_duration": int(wall_ns),
     }

@@ -21,6 +21,22 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-11 — vLLM client catches context-overflow 400 and retries with clipped max_tokens
+
+**TL;DR.** vLLM's OpenAI server strictly rejects `prompt_tokens + max_tokens > max_model_len` with HTTP 400 BadRequestError before any generation, where Ollama silently truncates from the front (or returns `done_reason="length"`) on the same overflow. The first in-flight vLLM qwen3.6:27b production sweep (array `17478276`) hit this on `tools_all × on × solve` trials at ~55% rate — multi-turn tool replay accumulated past the `16384 − 8192 = 8192` input budget. Those exceptions are NOT comparable to Ollama's silent-truncation behaviour on the same overflow, so they contaminated the failure-mode breakdown. `pddl_eval/vllm_client.py::VLLMOllamaClient.chat()` now catches the specific overflow body, parses `(max_model_len, prompt_tokens)` from it, clips `max_tokens = max_model_len − prompt_tokens − 8` (safety margin), and retries on the same connection. Restores response-shape parity with the Ollama corpus. The degenerate prompt ≥ max_model_len case (no output budget left) returns a synthetic Ollama-shaped response with `done_reason="length"` and empty content, mirroring how Ollama would treat a num_ctx fully consumed by the prompt.
+
+**Sweep impact.** The 5 in-flight qwen3.6:27b vLLM array tasks (`17478276_{0..4}`) were scancelled and their 4 partial result dirs (`results/slurm_vllm_qwen3_6_27b_*`, 266 trials total) removed from the cluster before this patch landed — mid-sweep behaviour shifts violate the corpus-identity rule. Resubmit happens against this branch. The 0.8B vLLM array tasks (`17478276_{5..9}`) were left running; the 0.8B model rarely if ever hits the overflow (no multi-turn accumulation past 8K tokens in the cells observed so far), so cancelling them would have been more wasteful than the marginal corpus-mix risk.
+
+**Why catch+retry rather than pre-flight tokenize.** Reactive is simpler — the BadRequestError body already reports `prompt_tokens`, so no extra tokenize round-trip is needed on the (vast majority) happy path. Cost: overflow trials pay one wasted round-trip + queue delay before the retry. vLLM `total_duration` is already wallclock-synthesised (not server-reported decode-only), so the inflation falls inside an already-lossy field; the per-trial wall comparison vs Ollama remains a fair upper bound.
+
+**Why not raise `--max-model-len`.** Two reasons: (1) 27B AWQ peaked at 83% VRAM on rtx_6000:1 at 16384 ctx; 24576 likely won't fit, forcing rtx_pro_6000:1 + queue pressure. (2) Diverges from the Ollama corpus that ran at `num_ctx=16384`, breaking the like-for-like comparison the `slurm_vllm_` namespace was set up for.
+
+**What changed.**
+
+- `pddl_eval/vllm_client.py`. New `_CTX_OVERFLOW_RE` regex + `_CTX_RETRY_SAFETY` constant. `chat()` wraps `chat.completions.create` in try/except over `openai.BadRequestError`; only matches on the specific overflow body (other 400s — e.g. malformed `tool_choice` — propagate untouched). New helpers `_parse_ctx_overflow` and `_synthesize_overflow_response`. Module docstring updated.
+
+---
+
 ## 2026-05-11 — vLLM production sbatch + submit-with-resume wrapper
 
 **TL;DR.** Land a vLLM-flavoured production sbatch (`run_condition_vllm_rtx.sbatch`) and add a `--backend vllm` flag to `submit_with_rtx.sh`. Scope is **partial migration**: `qwen3.6:27b` + `Qwen3.5:0.8B` move to vLLM (parser-verified smokes 2026-05-10); `gemma4:31b` + `qwen3.6:35b` stay on Ollama to preserve their ~9/10 already-complete cells (~36K trials in `results/slurm_*` from the sweep3-20260510 sync). New `submit_with_resume.sh` sequences both backends in one command. **No methodology change** — prompts, fixtures, scoring, num_ctx, num_predict, think axis, cond axis, matrix gate, and concurrency=4 are all unchanged. vLLM cells write to a new `results/slurm_vllm_<canonical>_<think>_<cond>/` namespace to isolate from prior Ollama trials.jsonl.
