@@ -54,6 +54,12 @@ OLLAMA_LARGE_TAG="qwen3.6_27b"
 # Override the c-grid via env if you want a finer/coarser sweep.
 CONCURRENCIES="${CONCURRENCIES:-4 8 16}"
 
+# vLLM tool-call parser must match the model's emit format. Default matches the
+# parent smoke sbatch (qwen3_xml for Qwen3.5/3.6 Llama-XML); override to gemma4
+# or hermes per the table in cluster-experimenting/README.md. Mismatch silently
+# drops every tools-trial extraction.
+TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-qwen3_xml}"
+
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
 
@@ -123,7 +129,7 @@ apptainer exec --nv \
         --port "$VLLM_PORT" \
         --max-model-len 16384 \
         --enable-auto-tool-choice \
-        --tool-call-parser hermes \
+        --tool-call-parser "$TOOL_CALL_PARSER" \
         --reasoning-parser qwen3 \
         --gpu-memory-utilization 0.85 \
         > "$SERVE_LOG" 2>&1 &
