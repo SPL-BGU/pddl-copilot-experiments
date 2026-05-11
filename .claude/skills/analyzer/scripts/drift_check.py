@@ -109,7 +109,16 @@ def _load_cell(cell_dir: Path) -> tuple[str, dict[str, dict[str, int]]] | None:
 
 
 def _load_root(root: Path) -> dict[tuple, tuple[str, dict[str, dict[str, int]]]]:
-    """Walk root, return {(model, think, cond): (source, {task: counts})}."""
+    """Walk root, return {(model, think, cond, backend): (source, {task: counts})}.
+
+    Backend is part of the key (2026-05-11): with `slurm_vllm_<…>` cells
+    landing alongside the original `slurm_<…>` Ollama cells, the same
+    (model, think, cond) can exist for both backends. Keying without
+    backend silently overwrites whichever pair sorts last and drift
+    against a single-backend baseline would compare apples-to-oranges.
+    A backend-agnostic baseline simply has no key counterpart for the
+    other backend's rows, which is the methodologically correct skip.
+    """
     rows: dict[tuple, tuple[str, dict[str, dict[str, int]]]] = {}
     for d in sorted(root.glob("slurm_*")):
         if not d.is_dir():
@@ -120,7 +129,8 @@ def _load_root(root: Path) -> dict[tuple, tuple[str, dict[str, dict[str, int]]]]
         cell_data = _load_cell(d)
         if cell_data is None:
             continue
-        rows[(info["model"], info["think"], info["cond"])] = cell_data
+        rows[(info["model"], info["think"], info["cond"],
+              info.get("backend", "ollama"))] = cell_data
     return rows
 
 
@@ -202,12 +212,12 @@ def main() -> int:
 
     print(f"**{len(drifted)} drifted (cell, task) pair(s)** — current point estimate "
           f"outside baseline 95% CI.\n")
-    print("| model | think | cond | task | src | baseline (n) | baseline 95% CI | current (n) | direction |")
-    print("|---|---|---|---|---|---|---|---|---|")
+    print("| model | think | cond | backend | task | src | baseline (n) | baseline 95% CI | current (n) | direction |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
     for d in drifted:
-        m, th, c = d["cell"]
+        m, th, c, be = d["cell"]
         print(
-            f"| {m} | {th} | {c} | {d['task']} | {d['src']} | "
+            f"| {m} | {th} | {c} | {be} | {d['task']} | {d['src']} | "
             f"{d['base_p']*100:.0f}% (n={d['base_n']}) | "
             f"[{d['base_lo']*100:.0f}%–{d['base_hi']*100:.0f}%] | "
             f"{d['cur_p']*100:.0f}% (n={d['cur_n']}) | "

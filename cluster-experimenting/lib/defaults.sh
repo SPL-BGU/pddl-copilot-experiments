@@ -24,3 +24,35 @@ PDDL_DEFAULT_CONDITIONS=(no-tools tools_per-task_minimal tools_all_minimal)
 # Default sbatch CONDITIONS env (space-separated, used when run_condition_rtx.sbatch
 # is invoked WITHOUT CELLS_LIST — legacy direct-sbatch path).
 PDDL_DEFAULT_SBATCH_CONDITIONS="tools_per-task_minimal tools_all_minimal"
+
+# vLLM production roster. Mirrored by the wrapper's --backend vllm gate
+# and by `vllm_lookup` below. Append a model only after its parser has
+# been verified via cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+# (2026-05-10 hermes→qwen3_xml fix landed here as a result of skipping
+# verification on the original 27B AWQ probe). The lookup table is the
+# single source of truth for OLLAMA_TAG → (HF id, parser flags) used by
+# both run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
+PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:27b Qwen3.5:0.8B)
+
+# Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
+# Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success;
+# returns non-zero with a clear error otherwise so callers can bail.
+vllm_lookup() {
+    case "$1" in
+        qwen3.6:27b)
+            HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4"
+            TOOL_CALL_PARSER="qwen3_xml"
+            REASONING_PARSER="qwen3"
+            ;;
+        Qwen3.5:0.8B)
+            HF_MODEL="Qwen/Qwen3.5-0.8B"
+            TOOL_CALL_PARSER="qwen3_xml"
+            REASONING_PARSER="qwen3"
+            ;;
+        *)
+            echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
+            echo "       Verify the parser via run_smoke_vllm_vs_ollama.sbatch before adding it." >&2
+            return 1
+            ;;
+    esac
+}

@@ -6,6 +6,71 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-11 — vLLM production sbatch + submit-with-resume wrapper
+
+**TL;DR.** Land a vLLM-flavoured production sbatch (`run_condition_vllm_rtx.sbatch`) and add a `--backend vllm` flag to `submit_with_rtx.sh`. Scope is **partial migration**: `qwen3.6:27b` + `Qwen3.5:0.8B` move to vLLM (parser-verified smokes 2026-05-10); `gemma4:31b` + `qwen3.6:35b` stay on Ollama to preserve their ~9/10 already-complete cells (~36K trials in `results/slurm_*` from the sweep3-20260510 sync). New `submit_with_resume.sh` sequences both backends in one command. **No methodology change** — prompts, fixtures, scoring, num_ctx, num_predict, think axis, cond axis, matrix gate, and concurrency=4 are all unchanged. vLLM cells write to a new `results/slurm_vllm_<canonical>_<think>_<cond>/` namespace to isolate from prior Ollama trials.jsonl.
+
+**OUT_DIR namespace decision (load-bearing).** The 10-tuple resume key in `pddl_eval/runner.py:424` includes `model` as a literal string. Ollama runs emit `model="qwen3.6:27b"`; vLLM emits `model="cyankiwi/Qwen3.6-27B-AWQ-INT4"`. If vLLM trials shared a `trials.jsonl` with prior Ollama trials, every vLLM key would mismatch on resume → silent zero-skip with the file polluted by two backends' rows. The `slurm_vllm_` prefix on OUT_DIR (set in the new sbatch line ~280) keeps each backend's corpora self-consistent. `meta.inference_backend` is also recorded (commit 3044258, 2026-05-09); the analyzer can pivot on either field.
+
+**Scope split rationale.** vllm-production-plan.md 2026-05-09 locked "all four models to vLLM" but the user has since redirected: rtx_pro_6000 pool is queue-saturated and the 35B + 31B Ollama corpora are 9/10 cells complete in the latest sync (only `gemma4:31b/on/tools_per-task_minimal` is incomplete at 2211 trials). Moving them now would discard ~36K trials of prior compute. The 2-model vLLM scope captures the cells with the worst Ollama wall (27B took 50–135 h/cell pre-migration) where vLLM's 4.6× speedup is most valuable.
+
+**Verified vLLM serve command (lifted verbatim from preserved cluster serve logs of jobs 17461801 / 17468314 / 17468315, all exit 0:0).**
+
+```
+python3 -m vllm.entrypoints.openai.api_server \
+    --host 0.0.0.0 --port <PORT> --model <HF_MODEL> \
+    --max-model-len 16384 --enable-auto-tool-choice \
+    --tool-call-parser qwen3_xml --reasoning-parser qwen3 \
+    --gpu-memory-utilization 0.85
+```
+
+No NUM_PREDICT override, no ENFORCE_EAGER, no MAX_MODEL_LEN tweak — all three smokes ran on rtx_6000:1 with VRAM peaks 83–84% (27B 40808/49140 MiB, 35B 41328/49140 MiB, 0.8B on rtx_3090 at 20572/24576 MiB).
+
+**Parser status update.** Three of the four production models are now parser-verified on vLLM:
+
+| Ollama tag       | HF id                                      | TOOL_CALL_PARSER | Status                              |
+| ---------------- | ------------------------------------------ | ---------------- | ----------------------------------- |
+| `Qwen3.5:0.8B`   | `Qwen/Qwen3.5-0.8B`                        | `qwen3_xml`      | **Verified** (job 17468314)         |
+| `qwen3.6:27b`    | `cyankiwi/Qwen3.6-27B-AWQ-INT4`            | `qwen3_xml`      | **Verified** (job 17461801)         |
+| `qwen3.6:35b`    | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`        | `qwen3_xml`      | **Verified** (job 17468315)         |
+| `gemma4:31b`     | `cyankiwi/gemma-4-31B-it-AWQ-4bit`         | `gemma4`         | Pending verify                      |
+
+Only the two production-vLLM models are in the `vllm_lookup()` case and `PDDL_VLLM_VERIFIED_MODELS` array. Both live in `cluster-experimenting/lib/defaults.sh` (single source of truth), sourced by the sbatch + both wrappers. 35B is verified at the smoke level but not wired for production this round (stays on Ollama per the scope split above). To add 35B / gemma4 later, extend the two entries together in `lib/defaults.sh` — the wrapper rejects unverified vLLM models with a clear error pointing at `run_smoke_vllm_vs_ollama.sbatch`.
+
+**Wall-time budget (`submit_with_rtx.sh`).** vLLM submissions get `--time=06:00:00` (tools) / `05:00:00` (no-tools), down from the Ollama 72h / 8h. The verified smoke measured 888.7s for one model's tools cell, so ~1–2h per production cell is realistic; the 6h ceiling adds 3–6× headroom while keeping the SLURM backfill window short enough for fast scheduling. Ollama paths are unchanged.
+
+**GPU class.** vLLM default is `rtx_6000:1 + --mem=48G` (matches the verified smoke; 27B AWQ peaks at 83% VRAM, well inside the cap). The `--gpu-type rtx_pro_6000` escape hatch routes to `rtx_pro_6000:1 + --mem=80G` if rtx_6000 is also contested. Ollama default remains `rtx_pro_6000:1 + --mem=80G`.
+
+**What changed.**
+
+- `cluster-experimenting/lib/defaults.sh`. Adds `PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:27b Qwen3.5:0.8B)` and the `vllm_lookup()` function (canonical Ollama tag → HF id + parser flags). Single source of truth — both wrappers and the sbatch source this file.
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch` (new). vLLM analog of `run_condition_rtx.sbatch`. Same `CELLS_LIST` picker, scratch logic, condition switch, matrix-gate skip, VRAM-85% guard, `preserve_serve_logs` trap. Inner serve loop swaps `ollama serve`+`ollama pull` for the verified vLLM command above. Calls `vllm_lookup` (sourced from `lib/defaults.sh`). OUT_DIR prefixed `slurm_vllm_`.
+- `cluster-experimenting/submit_with_rtx.sh`. New `--backend ollama|vllm` flag (default `ollama`). vLLM gate consumes `PDDL_VLLM_VERIFIED_MODELS` from `lib/defaults.sh` to reject unverified models before sbatch. Backend-specific defaults: GPU `rtx_6000:1` (vLLM) vs `rtx_pro_6000:1` (Ollama); time `06:00:00`/`05:00:00` (vLLM) vs `72:00:00`/`08:00:00` (Ollama). Job name suffixed `_vllm`. BACKEND threaded through `--export`.
+- `cluster-experimenting/submit_with_resume.sh` (new). Wrapper that sequences `submit_with_rtx.sh gemma4:31b qwen3.6:35b` (Ollama, naturally resumes from existing trials.jsonl) and `submit_with_rtx.sh "${PDDL_VLLM_VERIFIED_MODELS[@]}" --backend vllm` (vLLM, fresh `slurm_vllm_` corpora — roster consumed from `lib/defaults.sh`). Echoes both jobids + `squeue` / status.sh recipes. Pass-through args (`--dry-run`, `--exclude`, ...) apply to both submissions.
+- `.claude/skills/analyzer/scripts/aggregate.py`, `plot.py`, `drift_check.py`. `parse_dirname` strips the `slurm_vllm_` prefix and adds a `backend` field to each parsed dict (without this fix the analyzer would silently mis-parse a vLLM cell as `model="vllm_<tag>"`). `drift_check._load_root` extends its key tuple to `(model, think, cond, backend)` so an Ollama and a vLLM cell of the same model don't collide; the rendered drift table grows a `backend` column. A vLLM cell with no Ollama-baseline counterpart now lands in the standard `skipped_no_baseline` count (correct behaviour — there's no Ollama 27B vLLM baseline to drift against).
+- `cluster-experimenting/README.md` (entry-point + Production vLLM sweep section). Documents `--backend vllm`, the verified parser table for production, the OUT_DIR prefix, the wall budgets, and the `submit_with_resume.sh` recipe.
+
+**What did NOT change.**
+
+- `run_experiment.py`, `pddl_eval/*.py` (`--inference-backend vllm` already exists from the 2026-05-09 smoke probe).
+- `cluster-experimenting/run_condition_rtx.sbatch` (Ollama production path untouched).
+- `EXPERIMENTS_FLOW.md` §8 MCP tool contract, prompts, fixtures, scoring.
+- `domains/`, `tests/`, ground truth.
+- Existing `results/slurm_<model>_*` Ollama corpora (gemma + 35B cells resume in place; 27B + 0.8B partial trials abandoned on disk under their original prefix for archaeology).
+
+**Open / pending.**
+
+1. **Pilot before fanning.** Submit one vLLM cell (`qwen3.6:27b --backend vllm --think-modes off`) and confirm `slurm_vllm_qwen3_6_27b_off_no-tools/trials.jsonl` is being populated + `meta.inference_backend == "vllm"` before running the full 10-cell array. ~30 min smoke against the production sbatch.
+2. **gemma4:31b parser verification** (still Pending — only one of the four production models lacks a vLLM verification).
+3. **Analyzer cross-backend pivot.** `analyzer` skill needs to scan both `slurm_*` and `slurm_vllm_*` prefixes; deferred until both backends have full corpora.
+4. **Concurrency saturation probe** (`run_smoke_vllm_concurrency_probe.sbatch` exists at c=4/8/16 but never executed). c=4 is the production-safe value pending that data.
+
+**Reproducibility.** Existing `results/slurm_<model>_*` Ollama corpora unchanged. New vLLM cells write to a non-overlapping namespace. `meta.inference_backend` disambiguates aggregation. Closes no `ISS-###`; not blocked on any.
+
+**Files.** `cluster-experimenting/lib/defaults.sh`, `cluster-experimenting/run_condition_vllm_rtx.sbatch` (new), `cluster-experimenting/submit_with_rtx.sh`, `cluster-experimenting/submit_with_resume.sh` (new), `cluster-experimenting/README.md`, `.claude/skills/analyzer/scripts/{aggregate,plot,drift_check}.py`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-05-10 — vLLM tool-call parser fix + smoke decision-gate PASS
 
 **TL;DR.** The Qwen3.5/3.6 family emits tool calls in **Llama-3 XML** format

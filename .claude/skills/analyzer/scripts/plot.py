@@ -135,10 +135,14 @@ def find_default_root() -> Path:
 
 def parse_dirname(name: str) -> dict | None:
     stem = name.removeprefix("slurm_")
-    # Optional trailing _<jobid>: present in pre-2026-05-01 dirs, absent
-    # in cell-keyed dirs. When absent, fall through with the full stem so
-    # the suffix matchers still find <think>/<cond>. See aggregate.py
-    # docstring for the three layouts.
+    # `slurm_vllm_<…>` prefix from the 2026-05-11 vLLM production sbatch.
+    # Strip before suffix-matching so model isn't silently captured with
+    # the prefix attached. See aggregate.py docstring for full layout list.
+    if stem.startswith("vllm_"):
+        backend = "vllm"
+        stem = stem.removeprefix("vllm_")
+    else:
+        backend = "ollama"
     m = re.match(r"^(.*)_(\d+)$", stem)
     if m:
         rest, jobid = m.group(1), m.group(2)
@@ -152,8 +156,10 @@ def parse_dirname(name: str) -> dict | None:
                 s = "_" + think
                 if pre.endswith(s):
                     model = pre[: -len(s)]
-                    return {"model": model, "think": think, "cond": cond, "jobid": jobid}
-            return {"model": pre, "think": "default", "cond": cond, "jobid": jobid, "legacy": True}
+                    return {"model": model, "think": think, "cond": cond,
+                            "jobid": jobid, "backend": backend}
+            return {"model": pre, "think": "default", "cond": cond,
+                    "jobid": jobid, "backend": backend, "legacy": True}
     return None
 
 
