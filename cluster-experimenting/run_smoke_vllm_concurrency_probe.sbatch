@@ -59,6 +59,14 @@ CONCURRENCIES="${CONCURRENCIES:-4 8 16}"
 # or hermes per the table in cluster-experimenting/README.md. Mismatch silently
 # drops every tools-trial extraction.
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-qwen3_xml}"
+# vLLM reasoning parser must match the model's reasoning-trace tokens. Defaults
+# to qwen3 (Qwen3.x <think> tokens). Pass REASONING_PARSER=none (or empty) to
+# omit the flag for families without a reasoning trace (e.g. Gemma-4), where
+# qwen3 crashes at startup with "could not locate think start/end tokens".
+REASONING_PARSER="${REASONING_PARSER:-qwen3}"
+REASONING_PARSER_FLAG=""
+[ -n "$REASONING_PARSER" ] && [ "$REASONING_PARSER" != "none" ] \
+    && REASONING_PARSER_FLAG="--reasoning-parser $REASONING_PARSER"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -130,7 +138,7 @@ apptainer exec --nv \
         --max-model-len 16384 \
         --enable-auto-tool-choice \
         --tool-call-parser "$TOOL_CALL_PARSER" \
-        --reasoning-parser qwen3 \
+        $REASONING_PARSER_FLAG \
         --gpu-memory-utilization 0.85 \
         > "$SERVE_LOG" 2>&1 &
 VLLM_PID=$!

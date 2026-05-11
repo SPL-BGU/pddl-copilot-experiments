@@ -6,6 +6,21 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-11 — vLLM smoke scripts: parameterize `--reasoning-parser`
+
+**TL;DR.** Both vLLM smoke sbatch scripts (`run_smoke_vllm_vs_ollama.sbatch`, `run_smoke_vllm_concurrency_probe.sbatch`) hardcoded `--reasoning-parser qwen3`, even though `TOOL_CALL_PARSER` was already overridable. The gemma4:31b smoke (job 17468317) inherited that hardcoded flag and vLLM crashed at startup with `Qwen3ReasoningParser reasoning parser could not locate think start/end tokens in the tokenizer!` — Gemma's tokenizer has no `<think>` tokens. Now `REASONING_PARSER` is an env var (default `qwen3` to preserve verified Qwen3.x behaviour); pass `REASONING_PARSER=none` to omit the flag for families without a reasoning trace. No methodology change — verified Qwen3.x probes get the same flags as before. Header comment in `run_smoke_vllm_vs_ollama.sbatch` gains an explicit Gemma-4 submit example.
+
+**Why this slipped past.** The production sbatch (`run_condition_vllm_rtx.sbatch:196`) already takes `$REASONING_PARSER` from `vllm_lookup()` (sourced from `lib/defaults.sh`). The smoke scripts were written before that lookup existed and never got back-fixed when `TOOL_CALL_PARSER` was parameterized in commit f79fa46. Gemma-4 is the first non-Qwen family probed since, which is when the gap surfaced.
+
+**What changed.**
+
+- `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`. New `REASONING_PARSER` env var (default `qwen3`). Builds `REASONING_PARSER_FLAG`, empty when value is `none` or empty. Apptainer command drops the hardcoded literal in favour of the flag var. Header gains a Gemma-4 override example alongside the existing 0.8B one.
+- `cluster-experimenting/run_smoke_vllm_concurrency_probe.sbatch`. Same env-var + flag-builder pattern.
+
+**Reference logs.** `cluster-experimenting/logs/427849349/17468317-vllm-gemma4_31b.log` (vLLM startup traceback) and `cluster-experimenting/logs/84560442/vllm_gemma4_31b_smoke-17468317.out` (preserved tail in the sbatch out file).
+
+---
+
 ## 2026-05-11 — vLLM production sbatch + submit-with-resume wrapper
 
 **TL;DR.** Land a vLLM-flavoured production sbatch (`run_condition_vllm_rtx.sbatch`) and add a `--backend vllm` flag to `submit_with_rtx.sh`. Scope is **partial migration**: `qwen3.6:27b` + `Qwen3.5:0.8B` move to vLLM (parser-verified smokes 2026-05-10); `gemma4:31b` + `qwen3.6:35b` stay on Ollama to preserve their ~9/10 already-complete cells (~36K trials in `results/slurm_*` from the sweep3-20260510 sync). New `submit_with_resume.sh` sequences both backends in one command. **No methodology change** — prompts, fixtures, scoring, num_ctx, num_predict, think axis, cond axis, matrix gate, and concurrency=4 are all unchanged. vLLM cells write to a new `results/slurm_vllm_<canonical>_<think>_<cond>/` namespace to isolate from prior Ollama trials.jsonl.
