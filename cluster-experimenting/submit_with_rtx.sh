@@ -98,15 +98,9 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SBATCH_FILE="$SCRIPT_DIR/run_condition_rtx.sbatch"
 
 # shellcheck source=lib/defaults.sh
 source "$SCRIPT_DIR/lib/defaults.sh"
-
-if [ ! -f "$SBATCH_FILE" ]; then
-    echo "Error: $SBATCH_FILE not found." >&2
-    exit 1
-fi
 
 DRY_RUN=0
 GPU_TYPE=""
@@ -120,6 +114,7 @@ CONTINUE_PARTIAL=""
 PARTIAL_K=""
 EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
+BACKEND="ollama"
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -136,6 +131,7 @@ while [[ $# -gt 0 ]]; do
         --partial) shift; PARTIAL_K="$1"; shift ;;
         --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
+        --backend) shift; BACKEND="$1"; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -193,15 +189,32 @@ if [ "$ALL" -eq 1 ]; then
 fi
 
 if [ "${#MODELS[@]}" -eq 0 ]; then
-    echo "Usage: bash $0 <model> [<model>...] [--all] [--no-tools] [--gpu-type rtx_6000|rtx_pro_6000] [--think-modes \"on off\"] [--dry-run]" >&2
+    echo "Usage: bash $0 <model> [<model>...] [--all] [--no-tools] [--backend ollama|vllm] [--gpu-type rtx_6000|rtx_pro_6000] [--think-modes \"on off\"] [--dry-run]" >&2
     exit 1
 fi
 
-# Default GPU is rtx_pro_6000 (single, hard-pinned class). --gpu-type
-# rtx_6000 is the opt-in escape hatch. No auto-detection — keeping the
-# class fixed is what makes "consistency and known variables" hold across
-# the sweep.
-GPU_TYPE="${GPU_TYPE:-rtx_pro_6000}"
+# Backend gate. vLLM fails fast on unverified models via vllm_lookup
+# (single source of truth in lib/defaults.sh). The sbatch re-runs the
+# same lookup at runtime for defense-in-depth.
+case "$BACKEND" in
+    ollama) SBATCH_FILE="$SCRIPT_DIR/run_condition_rtx.sbatch" ;;
+    vllm)
+        SBATCH_FILE="$SCRIPT_DIR/run_condition_vllm_rtx.sbatch"
+        for m in "${MODELS[@]}"; do
+            vllm_lookup "$m" >/dev/null || exit 1
+        done
+        ;;
+    *) echo "Error: --backend must be ollama or vllm (got: $BACKEND)" >&2; exit 1 ;;
+esac
+
+# Default GPU. Ollama: rtx_pro_6000 (96 GB, single hard-pinned class).
+# vLLM: rtx_6000 (48 GB, smoke-verified — 27B AWQ peaks 83% VRAM, 0.8B
+# well below). Both have --gpu-type as the opt-in override.
+if [ "$BACKEND" = "vllm" ]; then
+    GPU_TYPE="${GPU_TYPE:-rtx_6000}"
+else
+    GPU_TYPE="${GPU_TYPE:-rtx_pro_6000}"
+fi
 
 case "$GPU_TYPE" in
     rtx_6000)
@@ -281,6 +294,18 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     TIME_ARG=(--time=03:00:00)
+elif [ "$BACKEND" = "vllm" ]; then
+    # vLLM smoke 2026-05-10 measured 4.6× speedup on 27B tools×off (vLLM
+    # wall ~888s vs Ollama 14604s sum-trial). Per-cell wall extrapolates
+    # to ~1-2h for tools cells. The vllm-production-plan.md 2026-05-09
+    # locked --time=06:00:00 (tools) / 05:00:00 (no-tools) as production
+    # ceilings with headroom. Mixed-condition submissions use the larger
+    # of the two so the slowest cell-type fits.
+    if [ "$NO_TOOLS" -eq 1 ]; then
+        TIME_ARG=(--time=05:00:00)
+    else
+        TIME_ARG=(--time=06:00:00)
+    fi
 elif [ "$NO_TOOLS" -eq 1 ]; then
     TIME_ARG=(--time=08:00:00)
 else
@@ -302,6 +327,9 @@ else
     FIRST_TAG=$(echo "${MODELS[0]}" | tr '/:.' '___')
     JOB_NAME="pddl_rtx_pack${#MODELS[@]}_${FIRST_TAG}"
 fi
+if [ "$BACKEND" = "vllm" ]; then
+    JOB_NAME="${JOB_NAME}_vllm"
+fi
 if [ "$NO_TOOLS" -eq 1 ]; then
     JOB_NAME="${JOB_NAME}_notools"
 fi
@@ -318,7 +346,7 @@ mkdir -p cluster-experimenting/logs
 # Compose --export list. ALL inherits caller env; we layer CELLS_LIST
 # (^-separated MODEL|THINK|COND triples; sbatch picks one per array task
 # via $SLURM_ARRAY_TASK_ID) and the smoke/shard env vars.
-EXPORT_LIST="ALL,CELLS_LIST=${CELLS_LIST}"
+EXPORT_LIST="ALL,CELLS_LIST=${CELLS_LIST},BACKEND=${BACKEND}"
 if [ "$SMOKE" -eq 1 ]; then
     EXPORT_LIST="${EXPORT_LIST},SMOKE=1"
 fi
@@ -357,6 +385,7 @@ cmd=(sbatch
     "$SBATCH_FILE")
 
 echo "--- rtx self-deploy submission ---" >&2
+echo "  backend:     $BACKEND" >&2
 echo "  models:      ${MODELS[*]}" >&2
 if [ "$N_CELLS" -gt 1 ]; then
     echo "  cells:       $N_CELLS (array fan-out 0-$((N_CELLS-1)))" >&2
@@ -367,6 +396,7 @@ echo "  GPU:         ${GPU_TYPE}:1" >&2
 echo "  mem:         $MEM_ARG" >&2
 echo "  time/cell:   ${TIME_ARG[*]}" >&2
 echo "  job name:    $JOB_NAME" >&2
+echo "  sbatch:      $(basename "$SBATCH_FILE")" >&2
 if [ "$NO_TOOLS" -eq 1 ]; then
     echo "  mode:        --no-tools (CONDITIONS=no-tools, TASKS=all 5 incl. simulate)" >&2
 fi

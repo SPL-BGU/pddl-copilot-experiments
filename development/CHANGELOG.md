@@ -6,6 +6,85 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-11 — vLLM context-overflow retry: bump `_CTX_RETRY_SAFETY` 8 → 32
+
+**TL;DR.** The earlier vLLM context-overflow retry patch (CHANGELOG 2026-05-11 entry below) caught the first 400 and retried with a clipped `max_tokens`, but the retry was *also* 400'ing at a non-trivial rate on the 17478753 sweep (qwen3.6:27b 2.8% of trials, Qwen3.5:0.8B `on/tools_*` 7–11%, `off/no-tools` 0%). Forensic count over 374 retry failures showed an exact and consistent **+9-token delta** between the prompt-token count reported in the attempt-1 error body and the prompt-token count reported in the attempt-2 error body, leaving `new_max + new_prompt = max_model_len + 1` every single time. Root cause: vLLM's 400 error message reports `"prompt contains at least N input tokens"` — `N` is a LOWER bound. The pre-flight check fires before final template additions (generation prefix, BOS, prefix-caching block-padding) are appended, and the real served prompt is consistently higher than the reported `N`. The original `_CTX_RETRY_SAFETY = 8` was undersized by exactly 1 token relative to that +9 drift.
+
+**Fix.** `_CTX_RETRY_SAFETY` bumped 8 → 32. Absorbs the observed +9 with ~3× headroom for future vLLM versions / different chat templates. Output-budget cost is < 0.4% of the 8192-token `solve` cap, negligible. Comment in `pddl_eval/vllm_client.py` rewritten with the empirical evidence so the next maintainer doesn't have to re-derive the +9 figure from `trials.jsonl`.
+
+**Methodology stance.** The previous 374 retry-failure trials are now permanently in `slurm_vllm_*/trials.jsonl` as `exception` rows on the 17478753 sweep. With the safety bump applied via a fresh resubmit, ≥99% of future overflow trials will instead land as `done_reason="length"` truncations (Ollama-parity bucket). Whether to cancel + clean + resubmit again, or let 17478753 finish and tolerate the ~7% exception contamination in the affected 0.8B cells, is a sweep-level decision tracked outside this entry.
+
+**Why not a retry loop instead of bumping safety.** A retry loop only converges if the +9 drift dampens after the first retry. Empirically the drift is constant across attempts (vLLM's `"at least N"` is the *same* low-bound formula on every error), so a naive loop would diverge — each retry would 400 by the same +1 margin until max retries was hit, then bubble. Bumping safety to absorb the constant drift in one retry is the closed-form fix.
+
+**What changed.**
+
+- `pddl_eval/vllm_client.py`. `_CTX_RETRY_SAFETY` 8 → 32 and updated docstring comment.
+
+---
+
+## 2026-05-11 — vLLM smoke scripts: parameterize `--reasoning-parser`
+
+**TL;DR.** Both vLLM smoke sbatch scripts (`run_smoke_vllm_vs_ollama.sbatch`, `run_smoke_vllm_concurrency_probe.sbatch`) hardcoded `--reasoning-parser qwen3`, even though `TOOL_CALL_PARSER` was already overridable. The gemma4:31b smoke (job 17468317) inherited that hardcoded flag and vLLM crashed at startup with `Qwen3ReasoningParser reasoning parser could not locate think start/end tokens in the tokenizer!` — Gemma's tokenizer has no `<think>` tokens. Now `REASONING_PARSER` is an env var (default `qwen3` to preserve verified Qwen3.x behaviour); pass `REASONING_PARSER=none` to omit the flag for families without a reasoning trace. No methodology change — verified Qwen3.x probes get the same flags as before. Header comment in `run_smoke_vllm_vs_ollama.sbatch` gains an explicit Gemma-4 submit example.
+
+**Why this slipped past.** The production sbatch (`run_condition_vllm_rtx.sbatch:196`) already takes `$REASONING_PARSER` from `vllm_lookup()` (sourced from `lib/defaults.sh`). The smoke scripts were written before that lookup existed and never got back-fixed when `TOOL_CALL_PARSER` was parameterized in commit f79fa46. Gemma-4 is the first non-Qwen family probed since, which is when the gap surfaced.
+
+**What changed.**
+
+- `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`. New `REASONING_PARSER` env var (default `qwen3`). Builds `REASONING_PARSER_FLAG`, empty when value is `none` or empty. Apptainer command drops the hardcoded literal in favour of the flag var. Header gains a Gemma-4 override example alongside the existing 0.8B one.
+- `cluster-experimenting/run_smoke_vllm_concurrency_probe.sbatch`. Same env-var + flag-builder pattern.
+
+**Reference logs.** `cluster-experimenting/logs/427849349/17468317-vllm-gemma4_31b.log` (vLLM startup traceback) and `cluster-experimenting/logs/84560442/vllm_gemma4_31b_smoke-17468317.out` (preserved tail in the sbatch out file).
+
+---
+
+## 2026-05-11 — vLLM client catches context-overflow 400 and retries with clipped max_tokens
+
+**TL;DR.** vLLM's OpenAI server strictly rejects `prompt_tokens + max_tokens > max_model_len` with HTTP 400 BadRequestError before any generation, where Ollama silently truncates from the front (or returns `done_reason="length"`) on the same overflow. The first in-flight vLLM qwen3.6:27b production sweep (array `17478276`) hit this on `tools_all × on × solve` trials at ~55% rate — multi-turn tool replay accumulated past the `16384 − 8192 = 8192` input budget. Those exceptions are NOT comparable to Ollama's silent-truncation behaviour on the same overflow, so they contaminated the failure-mode breakdown. `pddl_eval/vllm_client.py::VLLMOllamaClient.chat()` now catches the specific overflow body, parses `(max_model_len, prompt_tokens)` from it, clips `max_tokens = max_model_len − prompt_tokens − 8` (safety margin), and retries on the same connection. Restores response-shape parity with the Ollama corpus. The degenerate prompt ≥ max_model_len case (no output budget left) returns a synthetic Ollama-shaped response with `done_reason="length"` and empty content, mirroring how Ollama would treat a num_ctx fully consumed by the prompt.
+
+**Sweep impact.** The 5 in-flight qwen3.6:27b vLLM array tasks (`17478276_{0..4}`) were scancelled and their 4 partial result dirs (`results/slurm_vllm_qwen3_6_27b_*`, 266 trials total) removed from the cluster before this patch landed — mid-sweep behaviour shifts violate the corpus-identity rule. Resubmit happens against this branch. The 0.8B vLLM array tasks (`17478276_{5..9}`) were left running; the 0.8B model rarely if ever hits the overflow (no multi-turn accumulation past 8K tokens in the cells observed so far), so cancelling them would have been more wasteful than the marginal corpus-mix risk.
+
+**Why catch+retry rather than pre-flight tokenize.** Reactive is simpler — the BadRequestError body already reports `prompt_tokens`, so no extra tokenize round-trip is needed on the (vast majority) happy path. Cost: overflow trials pay one wasted round-trip + queue delay before the retry. vLLM `total_duration` is already wallclock-synthesised (not server-reported decode-only), so the inflation falls inside an already-lossy field; the per-trial wall comparison vs Ollama remains a fair upper bound.
+
+**Why not raise `--max-model-len`.** Two reasons: (1) 27B AWQ peaked at 83% VRAM on rtx_6000:1 at 16384 ctx; 24576 likely won't fit, forcing rtx_pro_6000:1 + queue pressure. (2) Diverges from the Ollama corpus that ran at `num_ctx=16384`, breaking the like-for-like comparison the `slurm_vllm_` namespace was set up for.
+
+**What changed.**
+
+- `pddl_eval/vllm_client.py`. New `_CTX_OVERFLOW_RE` regex + `_CTX_RETRY_SAFETY` constant. `chat()` wraps `chat.completions.create` in try/except over `openai.BadRequestError`; only matches on the specific overflow body (other 400s — e.g. malformed `tool_choice` — propagate untouched). New helpers `_parse_ctx_overflow` and `_synthesize_overflow_response`. Module docstring updated.
+
+---
+
+## 2026-05-11 — vLLM production sbatch + submit-with-resume wrapper (PR #58)
+
+**TL;DR.** Land a vLLM production sbatch (`run_condition_vllm_rtx.sbatch`) and a `--backend vllm` flag on `submit_with_rtx.sh`. Partial migration: `qwen3.6:27b` + `Qwen3.5:0.8B` move to vLLM; `gemma4:31b` + `qwen3.6:35b` stay on Ollama to preserve ~36K already-complete trials. New `submit_with_resume.sh` sequences both backends. No methodology change. vLLM cells write to `results/slurm_vllm_<canonical>_<think>_<cond>/` — the prefix isolates corpora because the 10-tuple resume key in `pddl_eval/runner.py:424` includes the model string (Ollama `qwen3.6:27b` vs vLLM `cyankiwi/Qwen3.6-27B-AWQ-INT4` would silently mismatch on resume). Operator-facing details + verified serve command + scope-split rationale + parser table live in `cluster-experimenting/README.md` "Production vLLM sweep"; this entry is the diff-of-record.
+
+**Files.**
+
+- `cluster-experimenting/lib/defaults.sh` — `PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:27b Qwen3.5:0.8B)` + `vllm_lookup()` (canonical Ollama tag → HF id + parser flags).
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch` (new) — vLLM analog of `run_condition_rtx.sbatch`. Same cell-array picker, scratch, VRAM-85% guard, `preserve_serve_logs` trap. Calls `vllm_lookup`. OUT_DIR prefixed `slurm_vllm_`.
+- `cluster-experimenting/submit_with_rtx.sh` — `--backend ollama|vllm` (default ollama). Backend-specific GPU/mem/time defaults; vLLM gate calls `vllm_lookup` to reject unverified models. Job name suffixed `_vllm`.
+- `cluster-experimenting/submit_with_resume.sh` (new) — sequences Ollama submission for the residual models and vLLM submission for `PDDL_VLLM_VERIFIED_MODELS`.
+- `.claude/skills/analyzer/scripts/{aggregate,plot,drift_check}.py` — `parse_dirname` strips `slurm_vllm_` prefix + adds `backend` field; `drift_check._load_root` keys on `(model, think, cond, backend)`; drift table grows a `backend` column.
+- `cluster-experimenting/README.md` — new "Production vLLM sweep" section.
+
+**Open / pending.**
+
+1. Pilot one vLLM cell + verify `meta.inference_backend == "vllm"` before fanning out.
+2. `gemma4:31b` parser verification.
+3. Analyzer cross-backend pivot (both prefixes).
+4. Concurrency saturation probe (c=4/8/16, unrun).
+
+**Reproducibility.** Existing Ollama corpora unchanged. vLLM cells write to a non-overlapping namespace. `meta.inference_backend` disambiguates aggregation.
+
+---
+
+## 2026-05-11 — PR #58 cleanup: shell de-duplication + doc trim
+
+**TL;DR.** Pure-refactor follow-up to the four 2026-05-11 vLLM commits. No behavior change. Three reductions: (1) `submit_with_rtx.sh` drops the inline substring-match verified-models gate and calls `vllm_lookup` directly (single source of truth already in `lib/defaults.sh`); the dual `SBATCH_OLLAMA`/`SBATCH_VLLM` vars collapse into one `case`. (2) Both smoke sbatches stop duplicating the 4-line `REASONING_PARSER_FLAG` builder — new `vllm_reasoning_parser_flag()` helper in `lib/defaults.sh` is the single emitter. (3) Header comments on `run_condition_vllm_rtx.sbatch` and `submit_with_resume.sh` trimmed; the verbatim serve-command copy + scope-split prose live only in the README + the entry above. `pddl_eval/vllm_client.py:_CTX_RETRY_SAFETY` gains a one-line justification.
+
+**Files.** `cluster-experimenting/lib/defaults.sh`, `cluster-experimenting/submit_with_rtx.sh`, `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`, `cluster-experimenting/run_smoke_vllm_concurrency_probe.sbatch`, `cluster-experimenting/run_condition_vllm_rtx.sbatch`, `cluster-experimenting/submit_with_resume.sh`, `pddl_eval/vllm_client.py`, `development/CHANGELOG.md`.
+
+---
+
 ## 2026-05-10 — vLLM tool-call parser fix + smoke decision-gate PASS
 
 **TL;DR.** The Qwen3.5/3.6 family emits tool calls in **Llama-3 XML** format

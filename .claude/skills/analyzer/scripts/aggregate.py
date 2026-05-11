@@ -50,15 +50,25 @@ def find_default_root() -> Path:
 
 
 def parse_dirname(name: str) -> dict:
-    """Extract (model, think, cond) from 'slurm_<…>' dir name.
+    """Extract (model, think, cond, backend) from 'slurm_<…>' dir name.
 
     Accepts the cell-keyed layout (no trailing jobid; current), the
     pre-2026-05-01 with-jobid layout, and the pre-think-axis legacy
     layout. Model tag is the dotted form with ':' → '_' → '.' restored
     as '_' (we can't always recover exactly; store the raw tag and the
     reconstructed name).
+
+    Backend prefix: 2026-05-11 added `slurm_vllm_<model>_<think>_<cond>/`
+    for vLLM-served cells (see CHANGELOG). Strip the `vllm_` prefix
+    BEFORE the cond/think suffix-match so model isn't silently captured
+    with the prefix attached. Absent prefix → backend="ollama".
     """
     stem = name.removeprefix("slurm_")
+    if stem.startswith("vllm_"):
+        backend = "vllm"
+        stem = stem.removeprefix("vllm_")
+    else:
+        backend = "ollama"
     # Optional trailing _<jobid>: present in pre-cell-keyed dirs, absent
     # in cell-keyed dirs (post 2026-05-01). When absent, fall through with
     # the full stem so the same suffix-matching logic finds <think>/<cond>.
@@ -79,11 +89,13 @@ def parse_dirname(name: str) -> dict:
                 if pre.endswith(s):
                     model = pre[: -len(s)]
                     return {"raw": stem, "model": model, "think": think,
-                            "cond": cond, "jobid": jobid}
+                            "cond": cond, "jobid": jobid, "backend": backend}
             # legacy: no think segment
             return {"raw": stem, "model": pre, "think": "default",
-                    "cond": cond, "jobid": jobid, "_legacy": True}
-    return {"raw": stem, "model": rest, "think": "?", "cond": "?", "jobid": jobid}
+                    "cond": cond, "jobid": jobid, "backend": backend,
+                    "_legacy": True}
+    return {"raw": stem, "model": rest, "think": "?", "cond": "?",
+            "jobid": jobid, "backend": backend}
 
 
 def host_tag(meta: dict) -> str:

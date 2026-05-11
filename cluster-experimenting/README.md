@@ -196,6 +196,71 @@ The rtx path pulls model weights from the public Ollama registry
 valid there. The `.sif` container is cached at `$HOME/ollama.sif` after
 the first run (~3 min cold).
 
+## Production vLLM sweep (`--backend vllm`)
+
+The vLLM analog of the Ollama production sbatch, landed 2026-05-11 (see
+`development/CHANGELOG.md`). Reuses the per-cell SLURM job array, matrix
+gate, Nice auto-prioritization, and cell-keyed OUT_DIR shape from
+`submit_with_rtx.sh` — the new flag picks `run_condition_vllm_rtx.sbatch`
+in place of the Ollama sbatch.
+
+### Scope (2026-05-11)
+
+Two-model vLLM scope: `qwen3.6:27b` + `Qwen3.5:0.8B` (both
+parser-verified on smokes 17461801 / 17468314). `qwen3.6:35b` +
+`gemma4:31b` stay on Ollama — the 35B + 31B Ollama corpora are 9/10
+cells complete in the latest sync, so the migration cost (discarded
+trials) exceeds the wall-time saved. `qwen3.6:35b` is parser-verified
+at the smoke level (job 17468315) and can be promoted to vLLM by
+extending the inline lookup table; `gemma4:31b` still needs its parser
+verified before promotion.
+
+### Submit recipes
+
+```bash
+# Both backends in one go: 10-cell Ollama array (gemma + 35B, resume
+# existing trials.jsonl) + 10-cell vLLM array (27B + 0.8B, fresh
+# slurm_vllm_ corpora).
+bash cluster-experimenting/submit_with_resume.sh
+
+# Preview without submitting.
+bash cluster-experimenting/submit_with_resume.sh --dry-run
+
+# vLLM-only invocation (e.g. one-cell pilot).
+bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b --backend vllm --think-modes off
+```
+
+The vLLM wrapper rejects any model not in `PDDL_VLLM_VERIFIED_MODELS`
+before SLURM pulls the slot. To add a model: verify its parser via
+`run_smoke_vllm_vs_ollama.sbatch`, then extend both the array constant
+in `submit_with_rtx.sh` AND the `vllm_lookup()` case in
+`run_condition_vllm_rtx.sbatch`.
+
+### OUT_DIR namespace
+
+vLLM cells write to `results/slurm_vllm_<canonical_tag>_<think>_<cond>/`
+(prefix `slurm_vllm_`), not the Ollama `slurm_<canonical_tag>_*/`. The
+resume key in `pddl_eval/runner.py:424` includes the `model` field as a
+literal string — Ollama emits `qwen3.6:27b`, vLLM emits
+`cyankiwi/Qwen3.6-27B-AWQ-INT4`, so commingling both backends' trials
+in one trials.jsonl would silently re-run every cell from zero.
+`meta.inference_backend` is also recorded (commit 3044258).
+
+### Resource profile
+
+| Field | vLLM (default) | Ollama (default) |
+|---|---|---|
+| `--gpus` | `rtx_6000:1` (smoke-verified) | `rtx_pro_6000:1` |
+| `--mem` | `48G` | `80G` |
+| `--time` tools | `06:00:00` | `72:00:00` |
+| `--time` no-tools | `05:00:00` | `08:00:00` |
+| Concurrency | 4 (smoke-verified) | 4 |
+| VRAM peak (27B AWQ, smoke) | 83% (40808/49140 MiB) | — |
+| VRAM peak (35B AWQ MoE, smoke) | 84% (41328/49140 MiB) | — |
+
+`--gpu-type rtx_pro_6000` escape hatch routes vLLM to the 96 GB class
++ `--mem=80G` if rtx_6000 is queue-saturated.
+
 ## vLLM smoke probes (parser verification)
 
 The Ollama production sweep is the canonical path; vLLM is an opt-in

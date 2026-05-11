@@ -59,6 +59,14 @@ export OLLAMA_NUM_PARALLEL="$CONCURRENCY"
 #   sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-0.8B",OLLAMA_TAG="Qwen3.5:0.8B" \
 #          --gpus=rtx_6000:1 --mem=48G --job-name=vllm_0_8b_smoke \
 #          cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+#
+# Probing a non-Qwen family (no <think> reasoning trace) — e.g. Gemma-4 —
+# requires disabling the default qwen3 reasoning parser (it crashes at
+# startup against Gemma's tokenizer; see smoke 17468317, 2026-05-11):
+#   sbatch --export=ALL,HF_MODEL="cyankiwi/gemma-4-31B-it-AWQ-4bit",\
+# OLLAMA_TAG="gemma4:31b",TOOL_CALL_PARSER=gemma4,REASONING_PARSER=none \
+#          --gpus=rtx_6000:1 --mem=48G --job-name=vllm_gemma4_31b_smoke \
+#          cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
 OLLAMA_TAG="${OLLAMA_TAG:-qwen3.6:27b}"
 HF_LARGE="${HF_MODEL:-cyankiwi/Qwen3.6-27B-AWQ-INT4}"
 # vLLM serve sizing — overridable for tighter VRAM (e.g. running 27B AWQ on a
@@ -86,6 +94,11 @@ NUM_PREDICT_FLAG=""
 # </function>); override to `gemma4` for Gemma-4, `hermes` for vanilla Qwen3
 # (Hermes JSON-in-XML), or any other registered parser.
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-qwen3_xml}"
+# vLLM reasoning parser must match the model's reasoning-trace tokens. Pass
+# REASONING_PARSER=none (or empty) to omit the flag entirely — required for
+# Gemma-4 and other families without <think> tokens (qwen3 default would
+# crash). vllm_reasoning_parser_flag is sourced from lib/defaults.sh.
+REASONING_PARSER_FLAG="$(vllm_reasoning_parser_flag)"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -164,7 +177,7 @@ apptainer exec --nv \
         --max-model-len "$MAX_MODEL_LEN" \
         --enable-auto-tool-choice \
         --tool-call-parser "$TOOL_CALL_PARSER" \
-        --reasoning-parser qwen3 \
+        $REASONING_PARSER_FLAG \
         --gpu-memory-utilization "$GPU_MEM_UTIL" \
         $EAGER_FLAG \
         > "$SERVE_LOG" 2>&1 &

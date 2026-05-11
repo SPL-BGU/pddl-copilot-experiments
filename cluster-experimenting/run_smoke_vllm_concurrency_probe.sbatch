@@ -59,6 +59,9 @@ CONCURRENCIES="${CONCURRENCIES:-4 8 16}"
 # or hermes per the table in cluster-experimenting/README.md. Mismatch silently
 # drops every tools-trial extraction.
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-qwen3_xml}"
+# REASONING_PARSER=none (or empty) → omit the --reasoning-parser flag, required
+# for Gemma-4 and other families without <think> tokens. Helper from lib/defaults.sh.
+REASONING_PARSER_FLAG="$(vllm_reasoning_parser_flag)"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -130,7 +133,7 @@ apptainer exec --nv \
         --max-model-len 16384 \
         --enable-auto-tool-choice \
         --tool-call-parser "$TOOL_CALL_PARSER" \
-        --reasoning-parser qwen3 \
+        $REASONING_PARSER_FLAG \
         --gpu-memory-utilization 0.85 \
         > "$SERVE_LOG" 2>&1 &
 VLLM_PID=$!
