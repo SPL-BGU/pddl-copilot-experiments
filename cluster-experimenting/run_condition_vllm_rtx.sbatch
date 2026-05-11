@@ -10,7 +10,7 @@
 ### still fires with IDX=0.
 ###
 ### Verified vLLM serve command (smokes 17461801 / 17468314 / 17468315,
-### 2026-05-10, all exit 0:0). The flags below are NOT a guess — they are
+### 2026-05-10, all exit 0:0). The non-prefix-caching flags below match
 ### exactly the line printed by vllm's "non-default args" startup log on
 ### the three successful smokes:
 ###
@@ -19,6 +19,12 @@
 ###       --max-model-len 16384 --enable-auto-tool-choice \
 ###       --tool-call-parser qwen3_xml --reasoning-parser qwen3 \
 ###       --gpu-memory-utilization 0.85
+###
+### `--enable-prefix-caching` is added explicitly: vLLM V1 (default in
+### vllm-openai:latest) already enables APC by default and therefore omits
+### it from "non-default args", but stating it pins the behavior against
+### a future image refresh and documents that the sweep relies on it for
+### the shared {domain} prefix in solve/validate/simulate templates.
 ###
 ### Scope (2026-05-11): vLLM in production for qwen3.6:27b + Qwen3.5:0.8B
 ### only. gemma4:31b + qwen3.6:35b stay on Ollama (resource-contention
@@ -195,6 +201,7 @@ for MODEL in $MODELS; do
             --tool-call-parser "$TOOL_CALL_PARSER" \
             --reasoning-parser "$REASONING_PARSER" \
             --gpu-memory-utilization 0.85 \
+            --enable-prefix-caching \
             > "$SERVE_LOG" 2>&1 &
     VLLM_PID=$!
     trap 'echo "Shutting down..."; kill $VLLM_PID 2>/dev/null || true; preserve_serve_logs; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT
