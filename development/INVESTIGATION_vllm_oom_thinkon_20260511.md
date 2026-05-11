@@ -37,35 +37,69 @@ The 3.6 GiB visible-memory delta is the difference between fitting and OOM. Comb
 - **C. Lower `gpu_memory_utilization` 0.85 → 0.78** — defense in depth; works on both 44 and 48 GiB GPUs. Costs throughput on real rtx_6000 (smaller KV cache → fewer concurrent sequences).
 - **D. Drop `--enable-prefix-caching`** — reverts the `8a7c1e8` pin. Restores the smoke-baseline behaviour. Loses the prefix-caching win on shared `{domain}` prefixes across the 5 tasks.
 
-**Recommended combo:** A (exclude) for the immediate fix, plus document the constraint in `lib/defaults.sh` so any future GPU-class addition has to be vetted before getting picked up. Don't reach for C/D yet — they trade off speed/quality for headroom we don't actually need on real rtx_6000.
+**Chosen fix (2026-05-11): B (`--constraint=rtx_6000`).**
+
+Live `sinfo -h -N -o '%N %f %G'` confirms both L40S nodes carry the `l40s` feature while every real rtx_6000 node carries `rtx_6000`:
+```
+cs-6000-{01..04}      gpu,rtx_6000   gpu:rtx_6000:8
+cs-cpu256-01          gpu,rtx_6000   gpu:rtx_6000:1
+ee-l40s-{01,02}       gpu,l40s       gpu:rtx_6000:8     ← mislabel
+ise-6000-{01..07}     gpu,rtx_6000   gpu:rtx_6000:8
+…
+```
+
+`--constraint=rtx_6000` is strictly stronger than `--exclude=ee-l40s-02`:
+1. Covers BOTH `ee-l40s-{01,02}`, not just the one we observed land today.
+2. Future-proof: any new GPU class that gets a `gpu:rtx_6000:N` GRES mislabel without the `rtx_6000` feature is filtered out automatically.
+3. Self-contained — lives in the sbatch header (one line) with no operator memory required.
+
+Implementation: add `#SBATCH --constraint=rtx_6000` to `run_condition_vllm_rtx.sbatch` (vLLM path only; Ollama path defaults to `rtx_pro_6000` which is unaffected). Defense-in-depth knobs C/D remain available if a future real-rtx_6000 OOM appears.
 
 ---
 
-## Failure mode 2 — Qwen3.5:0.8B think-on cells fast-fail at 2s
+## Failure mode 2 — `/scratch` exhaustion on `ise-cpu256-27` (think-on hypothesis FALSIFIED)
 
-**Symptom.** Cells `17480288_{6,9}` (the two think-ON 0.8B cells: `on/tools_per-task_minimal` and `on/tools_all_minimal`) failed with `ExitCode 1:0` after ~2 seconds. Too fast for OOM or model-load. Different node (`ise-cpu256-27`, real rtx_6000) — NOT an L40S issue.
+**Updated 2026-05-11 after reading the per-cell .out evidence — original hypothesis (Qwen3.5 chat-template kwarg) is wrong.**
 
-The other three 0.8B cells (think-OFF: `off/no-tools`, `off/tools_per-task`, `off/tools_all`) ran fine and accumulated trials. So the failure is specific to **Qwen3.5:0.8B + think=on**.
+**Symptom.** Cells `17480288_{6,9}` failed with `ExitCode 1:0` after ~2 seconds on `ise-cpu256-27` (real rtx_6000 node, NOT L40S). Verbatim error from both:
 
-**Hypothesis to test.** The harness passes `enable_thinking=true` to vLLM via `extra_body.chat_template_kwargs` (see `pddl_eval/vllm_client.py:113-114`):
-```python
-if think is not None:
-    extra_body["chat_template_kwargs"] = {"enable_thinking": bool(think)}
+```
+mkdir: cannot create directory '/scratch/omereliy/<JOBID>/vllm-work': No space left on device
 ```
 
-Qwen3.5 (vs Qwen3.6) may not support the `enable_thinking` chat-template kwarg, or its chat template may raise on `enable_thinking=True`. The 2-second exit suggests a startup-time chat-template validation failure before the first generation.
+Source: `cluster-experimenting/logs/_dirty_2026-05-11_vllm/pddl_rtx_pack2_qwen3_6_27b_vllm-17480300.out` (IDX=6, on/tools_all_minimal) and `pddl_rtx_pack2_qwen3_6_27b_vllm-17480288.out` (IDX=9, off/tools_all_minimal).
 
-**Confirm via:** read the per-cell `.out` files (`17480288_6` and `17480288_9` — file names follow `pddl_rtx_pack2_*-<JOBID>_<TASKID>.out` or similar; sort by mtime in the quarantine dir). The actual error line should pinpoint chat-template rejection vs vLLM-server error vs harness-side exception.
+**Falsifying observations vs the original "think-on" hypothesis.**
 
-**Also check:** the Qwen3.5 tokenizer's chat template content — `Qwen/Qwen3.5-0.8B`'s `tokenizer_config.json` on HF. If `enable_thinking` isn't a recognised kwarg in the template, vLLM raises on first message format.
+1. **The two failing cells span think∈{on, off}**, not a single think value. Per `17480288.cells.tsv`: IDX=6 is `Qwen3.5:0.8B|on|tools_all_minimal`, IDX=9 is `Qwen3.5:0.8B|off|tools_all_minimal`.
+2. **The other think-on 0.8B cell (IDX=5 = on/tools_per-task) did NOT fast-fail** — it ran for 25:56 before being cancelled by the operator (on `ee-l40s-02`). If the chat-template kwarg were rejected, IDX=5 would have failed identically.
+3. **The 2s exit is sub-startup** — vLLM cold-load for 0.8B is ~30-60s. Failing at 2s means we never reached `apptainer exec`, let alone the chat-template path.
+4. **The error line is `mkdir`, not Python.** Comes from bash, not from vLLM or the harness.
 
-**Fix candidates:**
+**Root cause.** `cluster-experimenting/run_condition_vllm_rtx.sbatch:82-95` resolves `WORK="$SCRATCH_BASE/vllm-work"` only when the bare `mkdir -p "$SCRATCH_BASE"` succeeds. But `mkdir -p` on an EXISTING (or otherwise empty) directory entry returns 0 even when the underlying filesystem is full; the very next `mkdir -p "$WORK/hf-cache"` then fails with `ENOSPC`, and `set -eo pipefail` aborts the script with exit 1 before the trap can fire.
 
-- **A. Gate `enable_thinking` per model family** — only pass it for Qwen3.6+ (or whichever family advertises the thinking template). Add a model-aware check in `pddl_eval/vllm_client.py::chat()` or in the harness's think-axis dispatch.
-- **B. Drop think-on for Qwen3.5 in the matrix-gate** — exclude (`Qwen3.5:0.8B`, `on`) cells from the sweep. Methodology-wise this is a finding ("0.8B in this generation doesn't support reasoning trace") more than a workaround.
-- **C. Probe an alternative knob** — Qwen3.5 might use a different mechanism (e.g., a system-prompt prefix rather than a template kwarg). HF model card or transformers docs would say.
+`ise-cpu256-27` had `/scratch` exhausted at the time array tasks 6 and 9 landed there. The fallback-to-`/tmp` branch never engaged because the first mkdir succeeded misleadingly.
 
-**Recommended:** read the actual error first. The 2-second exit means the error line is in the .out file — characterise before patching.
+**Fix.** Atomicize the writability test — try `mkdir -p` on the FULL target path (`$SCRATCH_BASE/vllm-work/hf-cache`) inside the test, and fall back to `/tmp` if any step fails. This catches both "base unwritable" and "base creatable, deeper levels fail (ENOSPC)" in one branch.
+
+```bash
+# Proposed replacement for run_condition_vllm_rtx.sbatch:82-95
+WORK=""
+SCRATCH_BASE="/scratch/${SLURM_JOB_USER:-$USER}/${SLURM_JOB_ID:-$$}"
+if mkdir -p "$SCRATCH_BASE/vllm-work/hf-cache" 2>/dev/null; then
+    export SLURM_SCRATCH_DIR="$SCRATCH_BASE"
+    WORK="$SCRATCH_BASE/vllm-work"
+else
+    echo "Note: $SCRATCH_BASE unwritable or out of space, falling back to /tmp"
+    WORK="/tmp/vllm-${SLURM_JOB_ID:-$$}"
+    mkdir -p "$WORK/hf-cache" || { echo "ERROR: cannot create $WORK/hf-cache on /tmp either"; exit 1; }
+fi
+cd "$WORK"
+```
+
+**Why this is the right fix (vs node-exclude).** `ise-cpu256-27`'s `/scratch` exhaustion is a node-side condition (likely a leak from a prior job's epilog). Excluding the node permanently is overkill — we want graceful degradation on transient operator-side conditions. The `/tmp` fallback already existed for unwritable-base; we're just closing a hole where ENOSPC slips past the gate.
+
+**Does NOT change response shape.** This fix only affects where the model weights are cached on local disk; the wire format, model, sampling, and chat-template paths are untouched. No fresh `slurm_vllm_*` namespace required if all that changes is scratch routing.
 
 ---
 
@@ -174,8 +208,9 @@ sbatch --export=ALL,CELLS_LIST='Qwen3.5:0.8B|on|no-tools',CONCURRENCY=4 \
 
 ## Open questions for the new agent to resolve
 
-1. Is there a feature flag in `sinfo -h -N -o '%N %f'` that distinguishes real rtx_6000 from L40S? If yes, prefer `--constraint=<feature>` over `--exclude=ee-l40s-02` (more future-proof).
-2. Does the Qwen3.5 chat template raise on `enable_thinking=True`, or does it silently ignore it (in which case the 2s exit is from something else)?
-3. Are there OTHER L40S nodes mislabelled as `rtx_6000` in the BGU pool, or just `ee-l40s-02`?
-4. Should the `gpu_memory_utilization=0.85` default be lowered to give headroom for future GPU-class additions, or is the per-class exclude policy enough?
-5. Should `submit_with_rtx.sh --backend vllm` route different models to different GPU classes (e.g., 0.8B → `rtx_3090:1`, 27B → real `rtx_6000:1`) via the `vllm_lookup` table?
+1. ~~Is there a feature flag in `sinfo -h -N -o '%N %f'` that distinguishes real rtx_6000 from L40S?~~ **Resolved 2026-05-11**: yes, `rtx_6000` vs `l40s`. `--constraint=rtx_6000` adopted.
+2. ~~Does the Qwen3.5 chat template raise on `enable_thinking=True`~~ **Resolved 2026-05-11**: irrelevant — the 2s exit was `mkdir: No space left on device` on `/scratch` of `ise-cpu256-27`, not a chat-template error. See "Failure mode 2" above for the falsifying evidence.
+3. ~~Are there OTHER L40S nodes mislabelled as `rtx_6000`?~~ **Resolved 2026-05-11**: yes — `ee-l40s-01` AND `ee-l40s-02`. Both filtered by `--constraint=rtx_6000`.
+4. Should the `gpu_memory_utilization=0.85` default be lowered to give headroom for future GPU-class additions, or is the per-class constraint policy enough? **Decision deferred**: constraint policy is currently sufficient. Revisit if a future real-rtx_6000 OOM appears or if BGU adds another mislabelled class.
+5. Should `submit_with_rtx.sh --backend vllm` route different models to different GPU classes? Still open — not blocking the current sweep.
+6. **NEW**: Is `ise-cpu256-27`'s `/scratch` exhaustion recurring (operator should clean) or a one-off? Worth a ping to cluster IT if it reappears. The fallback-to-`/tmp` patch makes us robust either way.
