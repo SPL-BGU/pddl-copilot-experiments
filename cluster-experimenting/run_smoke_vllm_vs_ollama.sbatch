@@ -94,15 +94,11 @@ NUM_PREDICT_FLAG=""
 # </function>); override to `gemma4` for Gemma-4, `hermes` for vanilla Qwen3
 # (Hermes JSON-in-XML), or any other registered parser.
 TOOL_CALL_PARSER="${TOOL_CALL_PARSER:-qwen3_xml}"
-# vLLM reasoning parser must match the model's reasoning-trace tokens. Defaults
-# to qwen3 (<think>…</think> tokens present in Qwen3.x tokenizers). Pass
+# vLLM reasoning parser must match the model's reasoning-trace tokens. Pass
 # REASONING_PARSER=none (or empty) to omit the flag entirely — required for
-# families without a reasoning trace (e.g. Gemma-4), where qwen3 crashes at
-# startup with "could not locate think start/end tokens in the tokenizer".
-REASONING_PARSER="${REASONING_PARSER:-qwen3}"
-REASONING_PARSER_FLAG=""
-[ -n "$REASONING_PARSER" ] && [ "$REASONING_PARSER" != "none" ] \
-    && REASONING_PARSER_FLAG="--reasoning-parser $REASONING_PARSER"
+# Gemma-4 and other families without <think> tokens (qwen3 default would
+# crash). vllm_reasoning_parser_flag is sourced from lib/defaults.sh.
+REASONING_PARSER_FLAG="$(vllm_reasoning_parser_flag)"
 
 GIT_SHA="$(git -C "$EXPT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
 TS="$(date +%Y%m%d_%H%M%S)"

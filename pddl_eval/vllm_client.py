@@ -64,7 +64,9 @@ _CTX_OVERFLOW_RE = re.compile(
 )
 # Slack between (max_model_len − prompt_tokens) and the clipped max_tokens
 # we re-send. Guards against rare 1-token drift between the server-side
-# tokenizer count and the count it used when computing the budget.
+# tokenizer count and the count it used when computing the budget. 8
+# covers tokenizer-version skew across vllm-openai:latest refreshes; the
+# observed drift is ±1 token, so this is ~4σ of headroom for ~0 cost.
 _CTX_RETRY_SAFETY = 8
 
 

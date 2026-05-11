@@ -98,13 +98,9 @@ set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SBATCH_OLLAMA="$SCRIPT_DIR/run_condition_rtx.sbatch"
-SBATCH_VLLM="$SCRIPT_DIR/run_condition_vllm_rtx.sbatch"
 
 # shellcheck source=lib/defaults.sh
 source "$SCRIPT_DIR/lib/defaults.sh"
-# PDDL_VLLM_VERIFIED_MODELS + vllm_lookup are defined in lib/defaults.sh
-# (single source of truth for the vLLM model roster + HF/parser table).
 
 DRY_RUN=0
 GPU_TYPE=""
@@ -197,35 +193,19 @@ if [ "${#MODELS[@]}" -eq 0 ]; then
     exit 1
 fi
 
-# Backend gate: vLLM only accepts parser-verified models. Cross-checking
-# here (not in the sbatch) lets the wrapper fail fast before SLURM pulls
-# the slot. The sbatch has its own vllm_lookup that re-checks at runtime.
+# Backend gate. vLLM fails fast on unverified models via vllm_lookup
+# (single source of truth in lib/defaults.sh). The sbatch re-runs the
+# same lookup at runtime for defense-in-depth.
 case "$BACKEND" in
-    ollama|vllm) ;;
+    ollama) SBATCH_FILE="$SCRIPT_DIR/run_condition_rtx.sbatch" ;;
+    vllm)
+        SBATCH_FILE="$SCRIPT_DIR/run_condition_vllm_rtx.sbatch"
+        for m in "${MODELS[@]}"; do
+            vllm_lookup "$m" >/dev/null || exit 1
+        done
+        ;;
     *) echo "Error: --backend must be ollama or vllm (got: $BACKEND)" >&2; exit 1 ;;
 esac
-if [ "$BACKEND" = "vllm" ]; then
-    verified_re=$(IFS='|'; echo "${PDDL_VLLM_VERIFIED_MODELS[*]}")
-    for m in "${MODELS[@]}"; do
-        if ! [[ "|${verified_re}|" == *"|${m}|"* ]]; then
-            echo "Error: --backend vllm: model '$m' not in PDDL_VLLM_VERIFIED_MODELS" >&2
-            echo "       Current verified roster: ${PDDL_VLLM_VERIFIED_MODELS[*]}" >&2
-            echo "       Verify a new model via run_smoke_vllm_vs_ollama.sbatch then add it to PDDL_VLLM_VERIFIED_MODELS AND vllm_lookup() in cluster-experimenting/lib/defaults.sh." >&2
-            exit 1
-        fi
-    done
-fi
-
-# Pick the sbatch file by backend.
-if [ "$BACKEND" = "vllm" ]; then
-    SBATCH_FILE="$SBATCH_VLLM"
-else
-    SBATCH_FILE="$SBATCH_OLLAMA"
-fi
-if [ ! -f "$SBATCH_FILE" ]; then
-    echo "Error: $SBATCH_FILE not found." >&2
-    exit 1
-fi
 
 # Default GPU. Ollama: rtx_pro_6000 (96 GB, single hard-pinned class).
 # vLLM: rtx_6000 (48 GB, smoke-verified — 27B AWQ peaks 83% VRAM, 0.8B

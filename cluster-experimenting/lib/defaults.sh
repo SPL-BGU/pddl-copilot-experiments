@@ -56,3 +56,15 @@ vllm_lookup() {
             ;;
     esac
 }
+
+# Build the `--reasoning-parser X` flag from $REASONING_PARSER. Unset or
+# empty defaults to `qwen3`; pass `none` to omit the flag (required for
+# families with no <think> tokens, e.g. Gemma-4 — qwen3 crashes against
+# their tokenizer at vLLM startup). Echoes the flag; callers splice with
+# `$(...)`. No quoting on splice site so the empty case expands to nothing.
+vllm_reasoning_parser_flag() {
+    local p="${REASONING_PARSER:-qwen3}"
+    if [ -n "$p" ] && [ "$p" != "none" ]; then
+        echo "--reasoning-parser $p"
+    fi
+}

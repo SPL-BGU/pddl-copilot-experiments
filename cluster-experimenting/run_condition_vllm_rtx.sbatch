@@ -1,52 +1,11 @@
 #!/bin/bash
-### vLLM analog of run_condition_rtx.sbatch. Runs run_experiment.py for ONE
-### (model, think_mode, condition) cell against a SELF-DEPLOYED vLLM
-### OpenAI-API server in an Apptainer container on a single GPU node.
-###
-### Submitted as part of a SLURM array (one task per cell) via
-### `submit_with_rtx.sh --backend vllm`. The cell-array picker maps
-### $SLURM_ARRAY_TASK_ID to one cell via the ^-separated CELLS_LIST that
-### the wrapper exports. Single-cell submissions skip --array; the picker
-### still fires with IDX=0.
-###
-### Verified vLLM serve command (smokes 17461801 / 17468314 / 17468315,
-### 2026-05-10, all exit 0:0). The non-prefix-caching flags below match
-### exactly the line printed by vllm's "non-default args" startup log on
-### the three successful smokes:
-###
-###   python3 -m vllm.entrypoints.openai.api_server \
-###       --host 0.0.0.0 --port <PORT> --model <HF_MODEL> \
-###       --max-model-len 16384 --enable-auto-tool-choice \
-###       --tool-call-parser qwen3_xml --reasoning-parser qwen3 \
-###       --gpu-memory-utilization 0.85
-###
-### `--enable-prefix-caching` is added explicitly: vLLM V1 (default in
-### vllm-openai:latest) already enables APC by default and therefore omits
-### it from "non-default args", but stating it pins the behavior against
-### a future image refresh and documents that the sweep relies on it for
-### the shared {domain} prefix in solve/validate/simulate templates.
-###
-### Scope (2026-05-11): vLLM in production for qwen3.6:27b + Qwen3.5:0.8B
-### only. gemma4:31b + qwen3.6:35b stay on Ollama (resource-contention
-### split — see CHANGELOG 2026-05-11). The inline lookup table below has
-### two entries; add more when those models move over.
-###
-### OUT_DIR: results/slurm_vllm_<canonical_tag>_<think>_<cond>/. The
-### `slurm_vllm_` prefix isolates vLLM corpora from prior Ollama
-### trials.jsonl. The 10-tuple resume key in pddl_eval/runner.py:424
-### includes the `model` field as a literal string, so commingling
-### Ollama (model="qwen3.6:27b") and vLLM (model="cyankiwi/...") trials
-### in one trials.jsonl would silently re-run every cell from zero.
-### Separate prefix is the methodology-correct disambiguator.
-###
-### Resource policy:
-###   * GPU: rtx_6000:1 (48 GB, smoke-verified — 27B peaks 83% VRAM,
-###     0.8B comfortably below). The wrapper's --gpu-type escape hatch
-###     still routes to rtx_pro_6000:1 + --mem=80G if needed.
-###   * --mem=48G to match rtx_6000.
-###   * --tmp=80G — HF cache for the 27B AWQ snapshot (~17 GB) + vllm.sif
-###     (~5 GB) + headroom.
-###   * No --cpus-per-task per IT request 2026-04-27.
+### vLLM analog of run_condition_rtx.sbatch — runs one (model, think, cond)
+### cell against a self-deployed vLLM OpenAI server. Submitted via
+### `submit_with_rtx.sh --backend vllm`; CELLS_LIST cell-array picker
+### matches run_condition_rtx.sbatch. OUT_DIR is `slurm_vllm_<…>` to
+### isolate from Ollama trials.jsonl (model-string mismatch on resume).
+### Operator docs + verified serve-flag rationale live in
+### cluster-experimenting/README.md "Production vLLM sweep".
 ###
 #SBATCH --partition=main
 #SBATCH --job-name=pddl_copilot_vllm
