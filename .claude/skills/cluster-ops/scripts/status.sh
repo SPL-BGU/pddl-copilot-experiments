@@ -74,6 +74,18 @@ payload, state_file, mode_arg, color_arg = sys.argv[1], sys.argv[2], sys.argv[3]
 ROSTER = ["Qwen3_5_0_8B", "gemma4_31b", "qwen3_6_27b", "qwen3_6_35b"]
 DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "gemma4_31b":"gemma4:31b",
            "qwen3_6_27b":"qwen3.6:27b", "qwen3_6_35b":"qwen3.6:35b"}
+# Canonical backend per model (2026-05-12). Dirs from the OTHER backend
+# are skipped during counting — a model is fully owned by one backend so
+# the matrix reflects the paper-corpus choice and partial runs on the
+# wrong backend don't pollute progress. vLLM cells live under
+# `slurm_vllm_<model>_<think>_<cond>/`; Ollama cells under
+# `slurm_<model>_<think>_<cond>/`.
+# TODO: flip qwen3_6_35b "ollama" → "vllm" after the planned 35B vLLM
+# sweep completes (vllm_lookup gained the qwen3.6:35b entry on this
+# branch; the Ollama 35B corpus stays canonical until the vLLM 35B
+# corpus reaches parity).
+BACKEND = {"Qwen3_5_0_8B":"vllm", "qwen3_6_27b":"vllm",
+           "gemma4_31b":"ollama", "qwen3_6_35b":"ollama"}
 # Matrix-gate (no-tools/think=on excluded): 5 cells per model.
 CELLS = [("on","tools_per-task_minimal"),("on","tools_all_minimal"),
          ("off","no-tools"),("off","tools_per-task_minimal"),("off","tools_all_minimal")]
@@ -98,16 +110,34 @@ queue_raw  = [l for l in sections.get("queue",  []) if l.strip()]
 count_raw  = [l for l in sections.get("counts", []) if l.strip()]
 
 # ---- Counts: dirname → (model, think, cond) ----
-counts, unknown = {}, []
+# Two dir families exist on disk:
+#   * `slurm_<model>_<think>_<cond>/`        Ollama backend
+#   * `slurm_vllm_<model>_<think>_<cond>/`   vLLM backend
+# We strip the optional "vllm_" prefix, classify the dir's backend, then
+# count it only if it matches BACKEND[model] — the canonical backend for
+# the paper corpus. Dirs on the non-canonical backend (e.g. an Ollama
+# slurm_qwen3_6_27b_* from a prior sweep, when 27B is now owned by vLLM)
+# are reported under "skipped (wrong backend)" instead of polluting the
+# matrix or the unknown list.
+counts, unknown, wrong_backend = {}, [], []
 for line in count_raw:
     n_str, _, dirname = line.partition("\t")
     if not dirname.startswith("slurm_"): continue
     try: n = int(n_str)
     except ValueError: continue
     rem = dirname[len("slurm_"):]
+    if rem.startswith("vllm_"):
+        rem = rem[len("vllm_"):]
+        dir_backend = "vllm"
+    else:
+        dir_backend = "ollama"
     matched = None
+    backend_mismatch = False
     for m in ROSTER:
         if rem.startswith(m + "_"):
+            if BACKEND.get(m) != dir_backend:
+                backend_mismatch = True
+                break
             tail = rem[len(m)+1:]
             for th in ("on","off","default"):
                 if tail.startswith(th + "_"):
@@ -116,8 +146,9 @@ for line in count_raw:
                         matched = (m, th, cond)
                     break
             break
-    if matched: counts[matched] = n
-    else:       unknown.append(dirname)
+    if matched:                  counts[matched] = n
+    elif backend_mismatch:       wrong_backend.append(dirname)
+    else:                        unknown.append(dirname)
 
 # ---- Queue ----
 queue = []
@@ -324,6 +355,8 @@ def render_markdown():
     if unknown:
         out.append("")
         out.append(f"_(skipped {len(unknown)} unmatched dirs: {', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''})_")
+    if wrong_backend:
+        out.append(f"_(skipped {len(wrong_backend)} dirs on non-canonical backend per BACKEND map: {', '.join(wrong_backend[:3])}{'…' if len(wrong_backend)>3 else ''})_")
 
     return "\n".join(out)
 
@@ -466,6 +499,9 @@ def render_terminal(use_color):
         out.append("")
         out.append(f"  {DIM}(skipped {len(unknown)} unmatched dirs: "
                    f"{', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''}){RESET}")
+    if wrong_backend:
+        out.append(f"  {DIM}(skipped {len(wrong_backend)} dirs on non-canonical backend: "
+                   f"{', '.join(wrong_backend[:3])}{'…' if len(wrong_backend)>3 else ''}){RESET}")
 
     return "\n".join(out)
 
