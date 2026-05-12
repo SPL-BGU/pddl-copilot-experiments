@@ -152,9 +152,12 @@ OVERALL_RC=0
 for MODEL in $MODELS; do
     MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
 
-    # vllm_lookup is sourced from lib/defaults.sh; exports HF_MODEL +
-    # TOOL_CALL_PARSER + REASONING_PARSER. Unverified models bail before
-    # the SIF is staged.
+    # vllm_lookup is sourced from lib/defaults.sh; exports HF_MODEL,
+    # TOOL_CALL_PARSER, REASONING_PARSER, and PREFIX_CACHE_FLAG.
+    # PREFIX_CACHE_FLAG is "" for Mamba-attention hybrids (Qwen3.5/3.6)
+    # since the 784-token block-size override makes APC inert at our
+    # prompt sizes — see lib/defaults.sh:vllm_lookup. Unverified models
+    # bail before the SIF is staged.
     vllm_lookup "$MODEL" || exit 1
     echo
     echo "####################################################################"
@@ -178,7 +181,7 @@ for MODEL in $MODELS; do
             --tool-call-parser "$TOOL_CALL_PARSER" \
             --reasoning-parser "$REASONING_PARSER" \
             --gpu-memory-utilization 0.85 \
-            --enable-prefix-caching \
+            $PREFIX_CACHE_FLAG \
             > "$SERVE_LOG" 2>&1 &
     VLLM_PID=$!
     trap 'echo "Shutting down..."; kill $VLLM_PID 2>/dev/null || true; preserve_serve_logs; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT

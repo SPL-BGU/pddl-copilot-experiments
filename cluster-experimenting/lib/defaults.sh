@@ -34,20 +34,32 @@ PDDL_DEFAULT_SBATCH_CONDITIONS="tools_per-task_minimal tools_all_minimal"
 # both run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
 PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:27b Qwen3.5:0.8B)
 
-# Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
-# Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success;
-# returns non-zero with a clear error otherwise so callers can bail.
+# Resolve canonical Ollama tag → (HF id, parser flags, prefix-cache flag) for
+# vLLM serve. Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER, and
+# PREFIX_CACHE_FLAG on success; returns non-zero with a clear error otherwise
+# so callers can bail.
+#
+# PREFIX_CACHE_FLAG is "--enable-prefix-caching" for non-Mamba architectures
+# and "" for Mamba-attention hybrids (Qwen3.5/3.6). The hybrids force the
+# attention block size to 784 tokens to match Mamba page size (logged by
+# vLLM as "Setting attention block size to 784 tokens"), so a prompt under
+# 784 tokens of shared prefix produces zero cached blocks. Verified via
+# run_smoke_prefix_cache_probe_v2.sbatch (job 17490152, 2026-05-12):
+# 5 sequential requests at 336-347 prompt_tokens → 0 hits across the
+# full sweep. Gemma4 (non-Mamba) probe 17492376 hit 93% on the same shape.
 vllm_lookup() {
     case "$1" in
         qwen3.6:27b)
             HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
+            PREFIX_CACHE_FLAG=""
             ;;
         Qwen3.5:0.8B)
             HF_MODEL="Qwen/Qwen3.5-0.8B"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
+            PREFIX_CACHE_FLAG=""
             ;;
         *)
             echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
