@@ -6,6 +6,29 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-11 — vLLM sbatch: `--constraint=rtx_6000` + ENOSPC fallback for `/scratch`
+
+**TL;DR.** Sweep 17480288 broke in two distinct ways. Both were SLURM/node-side conditions that slipped past the existing sbatch gates; fixes are surgical and local to `cluster-experimenting/run_condition_vllm_rtx.sbatch`. No changes to `pddl_eval/`, no response-shape changes, no fresh `slurm_vllm_*` corpus namespace required. Full evidence in `development/INVESTIGATION_vllm_oom_thinkon_20260511.md`.
+
+**Failure mode 1 — qwen3.6:27b OOM on L40S nodes (3 cells: `17480288_{2,3,4}`).** SLURM's `gpu:rtx_6000` GRES label is shared by two physical GPU classes at BGU CIS: real RTX 6000 Ada (48 GiB visible) and L40S (44.39 GiB visible, on `ee-l40s-{01,02}`). The recently pinned `--enable-prefix-caching` + `gpu_memory_utilization=0.85` budget needs the full 48 GiB for 27B; the 3.6 GiB delta on L40S OOMs at `_initialize_kv_caches`. `sinfo -h -N -o '%N %f %G'` confirms real rtx_6000 nodes carry feature `rtx_6000` while both L40S nodes carry feature `l40s`, so `--constraint=rtx_6000` is a clean, future-proof filter.
+
+**Fix 1.** `#SBATCH --constraint=rtx_6000` added to `run_condition_vllm_rtx.sbatch` header. Filters out `ee-l40s-{01,02}` AND any future GPU class that gets a `gpu:rtx_6000:N` GRES mislabel without the matching feature flag.
+
+**Failure mode 2 — `/scratch` exhaustion on `ise-cpu256-27` (2 cells: `17480288_{6,9}`, both Qwen3.5:0.8B `tools_all_minimal`).** Original handoff hypothesised a Qwen3.5 chat-template kwarg rejection (`enable_thinking=true`). **Falsified by primary-source evidence** in the .out files: verbatim error is `mkdir: cannot create directory '/scratch/omereliy/<JOBID>/vllm-work': No space left on device` — bash mkdir failing on ENOSPC, not a Python or vLLM error. The pre-existing scratch-fallback branch never engaged because `mkdir -p "$SCRATCH_BASE"` returned 0 (directory entry fits) even though the deeper `mkdir -p "$WORK/hf-cache"` then failed with ENOSPC; `set -eo pipefail` aborted at 2s before the trap fired. The hypothesis is additionally falsified by IDX=5 (Qwen3.5 on/tools_per-task) running 25:56 fine on `ee-l40s-02` before being operator-cancelled — if `enable_thinking=true` were rejected, IDX=5 would have failed identically.
+
+**Fix 2.** Atomicized the `/scratch` writability test in `run_condition_vllm_rtx.sbatch`: try `mkdir -p "$SCRATCH_BASE/vllm-work/hf-cache"` (full target path) in one shot; fall back to `/tmp` if ANY step fails (including ENOSPC at deeper levels). `pddl_eval/vllm_client.py` is **NOT** touched — the harness was never wrong; the bug was bash short-circuiting before the harness loaded.
+
+**Why no node exclusion.** `ise-cpu256-27`'s `/scratch` exhaustion is a transient operator-side condition (likely a leak from a prior job's epilog). Permanent exclusion is overkill; graceful `/tmp` fallback handles both this incident and any future recurrence on any node.
+
+**Smoke-test posture.** The mode-2 fix's smoke run validates "no regression on a healthy `/scratch`-available node" — it does NOT reproduce the original ENOSPC condition (that requires the node-side state). The mode-1 smoke run requires landing on a real rtx_6000 node, which the new constraint enforces, so its smoke directly verifies the fix path.
+
+**What changed.**
+
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch`: `#SBATCH --constraint=rtx_6000` added (failure mode 1); `/scratch` workspace block atomicized with ENOSPC-safe fallback to `/tmp` (failure mode 2).
+- `development/INVESTIGATION_vllm_oom_thinkon_20260511.md`: "Failure mode 2" section rewritten with the verbatim `mkdir` error from the .out files and the falsification of the original chat-template hypothesis; "Failure mode 1" updated with the live `sinfo` evidence and the chosen `--constraint=rtx_6000` fix; open-questions list resolved where applicable.
+
+---
+
 ## 2026-05-11 — vLLM context-overflow retry: bump `_CTX_RETRY_SAFETY` 8 → 32
 
 **TL;DR.** The earlier vLLM context-overflow retry patch (CHANGELOG 2026-05-11 entry below) caught the first 400 and retried with a clipped `max_tokens`, but the retry was *also* 400'ing at a non-trivial rate on the 17478753 sweep (qwen3.6:27b 2.8% of trials, Qwen3.5:0.8B `on/tools_*` 7–11%, `off/no-tools` 0%). Forensic count over 374 retry failures showed an exact and consistent **+9-token delta** between the prompt-token count reported in the attempt-1 error body and the prompt-token count reported in the attempt-2 error body, leaving `new_max + new_prompt = max_model_len + 1` every single time. Root cause: vLLM's 400 error message reports `"prompt contains at least N input tokens"` — `N` is a LOWER bound. The pre-flight check fires before final template additions (generation prefix, BOS, prefix-caching block-padding) are appended, and the real served prompt is consistently higher than the reported `N`. The original `_CTX_RETRY_SAFETY = 8` was undersized by exactly 1 token relative to that +9 drift.

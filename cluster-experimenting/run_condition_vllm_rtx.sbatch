@@ -11,9 +11,18 @@
 #SBATCH --job-name=pddl_copilot_vllm
 #SBATCH --output=cluster-experimenting/logs/%x-%J.out
 #SBATCH --gpus=rtx_6000:1
+#SBATCH --constraint=rtx_6000
 #SBATCH --mem=48G
 #SBATCH --tmp=80G
 #SBATCH --time=2-00:00:00
+
+# --constraint=rtx_6000 filters out ee-l40s-{01,02}, which carry the
+# `l40s` feature but are mislabelled as `gpu:rtx_6000:8` in SLURM's GRES
+# table. Their visible VRAM (44.39 GiB vs the real 48 GiB) is 3.6 GiB
+# short of what `--enable-prefix-caching` + `gpu_memory_utilization=0.85`
+# needs for qwen3.6:27b's KV cache. Sweep 17480288 OOM-failed three 27B
+# cells on ee-l40s-02 for exactly this reason. See
+# development/INVESTIGATION_vllm_oom_thinkon_20260511.md "Failure mode 1".
 
 set -eo pipefail
 
@@ -79,20 +88,29 @@ CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
 TASKS_ENV_OVERRIDE="${TASKS:-}"
 
-### Workspace on /scratch ###
+### Workspace on /scratch — with ENOSPC fallback to /tmp ###
+# Test the FULL target path (vllm-work/hf-cache) in one mkdir -p so an
+# ENOSPC on a deeper level triggers the /tmp fallback. The prior
+# `mkdir -p "$SCRATCH_BASE"` then `mkdir -p "$WORK/hf-cache"` split
+# returned 0 on a creatable-but-full /scratch (the base dir entry fits;
+# the subdirs don't), causing `set -eo pipefail` to bail with exit 1 on
+# the second mkdir before the trap could fire. Sweep 17480288 cells
+# {6,9} hit this on ise-cpu256-27 at 2 s wall — see
+# development/INVESTIGATION_vllm_oom_thinkon_20260511.md "Failure mode 2".
+WORK=""
 if [ -n "${SLURM_JOB_USER:-}" ] && [ -n "${SLURM_JOB_ID:-}" ]; then
     SCRATCH_BASE="/scratch/${SLURM_JOB_USER}/${SLURM_JOB_ID}"
-    if mkdir -p "$SCRATCH_BASE" 2>/dev/null; then
+    if mkdir -p "$SCRATCH_BASE/vllm-work/hf-cache" 2>/dev/null; then
         export SLURM_SCRATCH_DIR="$SCRATCH_BASE"
         WORK="$SCRATCH_BASE/vllm-work"
     else
-        echo "Note: $SCRATCH_BASE not writable, falling back to /tmp"
-        WORK="/tmp/vllm-${SLURM_JOB_ID}"
+        echo "Note: $SCRATCH_BASE unwritable or out of space, falling back to /tmp"
     fi
-else
-    WORK="/tmp/vllm-${SLURM_JOB_ID:-$$}"
 fi
-mkdir -p "$WORK/hf-cache"
+if [ -z "$WORK" ]; then
+    WORK="/tmp/vllm-${SLURM_JOB_ID:-$$}"
+    mkdir -p "$WORK/hf-cache" || { echo "ERROR: cannot create $WORK/hf-cache on /tmp either"; exit 1; }
+fi
 cd "$WORK"
 
 ### Preserve vLLM serve logs on EXIT — the trap below would rm -rf the ###
