@@ -6,6 +6,29 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-12 — vLLM: register `qwen3.6:35b` + per-cell-class `--time` override + full-sweep orchestrator
+
+**TL;DR.** Three operations-side changes consolidate the 4-model production sweep into a single dispatch:
+(1) `qwen3.6:35b` joins the verified vLLM roster after a parser smoke;
+(2) `submit_with_rtx.sh` gains a `--time` CLI flag so heavy Qwen cells (27B/35B) don't TIMEOUT under the hardcoded 06:00:00 vLLM tools ceiling;
+(3) `cluster-experimenting/submit_full_sweep.sh` (new orchestrator) emits three sbatch submissions — the three vLLM Qwens on `rtx_6000:1` and `gemma4:31b` on `rtx_pro_6000:1` via Ollama — each on the GPU class and walltime that fits. No methodology change: identical `CELLS_LIST` builder, identical `OUT_DIR` resolution, identical `vllm_lookup` contract.
+
+**Smoke.** `run_smoke_vllm_vs_ollama.sbatch` job 17494176 (2026-05-12, `rtx_6000:1`, vLLM 0.20.2, `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`, 10:02 wall): zero parser-extraction failures across the full tools × no-tools × 5-task matrix. The 2-3 `verdict_mismatch` records under `validate_problem` are model behaviour, not parser errors. First attempt 17494173 ENOSPC'd at 2s on `ise-cpu256-27` (`/scratch` full); resubmit with `--exclude=ise-cpu256-27` landed on `cs-6000-02`. The smoke sbatch's `/scratch` setup still lacks the ENOSPC-safe fallback that the 2026-05-11 entry added to `run_condition_vllm_rtx.sbatch`; out-of-scope for this commit but worth porting later.
+
+**Why `--time` and not a tighter default.** The wrapper's 06:00:00 vLLM tools ceiling was locked by `vllm-production-plan.md` 2026-05-09 with the 27B AWQ in mind, where it was tight but adequate. Production-scale 27B/35B tools cells extrapolate to ~19h. Encoding model→walltime inside `vllm_lookup` would conflate "verified parser table" with "scheduling policy" — the override flag is the conservative split.
+
+**Why an orchestrator and not just two commands.** `submit_with_rtx.sh` accepts one `--backend` per invocation, so a single command can't mix vLLM + Ollama. The orchestrator wraps three calls, rejects flags it owns (`--backend`, `--gpu-type`, `--time`, `--all`, `--smoke*`) up front so the operator can't accidentally pin all three submissions to one backend, and forwards everything else (`--no-tools`, `--think-modes`, `--dry-run`) to all three. ~30 LOC of real logic; no duplication of cell-builder, sbatch composition, manifest writing, or auto-prioritize.
+
+**Prefix-caching probes (closed as docs-only).** Same-day probes verified that `--enable-prefix-caching` is inert on Qwen3.x cells (Mamba 784-tok block override → cumulative block hash diverges at byte 0 of every distinct prompt) and effective on a non-Mamba Gemma4 variant (93% hit rate on byte-identical replay). vLLM 0.20.2 V1 also doesn't populate `usage.prompt_tokens_details.cached_tokens` (vllm-project/vllm#16162). The flag is left on in `run_condition_vllm_rtx.sbatch` — inert but harmless beyond a cosmetic "Mamba cache 'align' mode is experimental" warning — and PR #61 (per-model conditional) was closed as no-op. Finding preserved in personal memory; revisit when a non-Mamba model joins `vllm_lookup`. Probe sbatches were drafted on the closed branch and are recoverable via `git show 38821bc -- 'cluster-experimenting/run_smoke_prefix_cache_probe*'` if needed.
+
+**What changed.**
+
+- `cluster-experimenting/lib/defaults.sh`: `qwen3.6:35b` added to `PDDL_VLLM_VERIFIED_MODELS` and `vllm_lookup` (HF id `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`, parsers `qwen3_xml` + `qwen3`).
+- `cluster-experimenting/submit_with_rtx.sh`: new `--time HH:MM:SS` (or `D-HH:MM:SS`) CLI flag overrides the auto-computed `TIME_ARG`. Auto defaults unchanged for callers that don't pass `--time`.
+- `cluster-experimenting/submit_full_sweep.sh`: new orchestrator. Three independent sbatch submissions — vLLM `rtx_6000:1` 06:00:00 for `Qwen3.5:0.8B`, vLLM `rtx_6000:1` 48:00:00 for `qwen3.6:27b` + `qwen3.6:35b` (packed array), Ollama `rtx_pro_6000:1` 72:00:00 for `gemma4:31b`.
+
+---
+
 ## 2026-05-11 — vLLM sbatch: `--constraint=rtx_6000` + ENOSPC fallback for `/scratch`
 
 **TL;DR.** Sweep 17480288 broke in two distinct ways. Both were SLURM/node-side conditions that slipped past the existing sbatch gates; fixes are surgical and local to `cluster-experimenting/run_condition_vllm_rtx.sbatch`. No changes to `pddl_eval/`, no response-shape changes, no fresh `slurm_vllm_*` corpus namespace required. Full evidence in `development/INVESTIGATION_vllm_oom_thinkon_20260511.md`.

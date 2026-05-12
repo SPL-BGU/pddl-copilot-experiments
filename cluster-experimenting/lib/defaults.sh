@@ -32,7 +32,7 @@ PDDL_DEFAULT_SBATCH_CONDITIONS="tools_per-task_minimal tools_all_minimal"
 # verification on the original 27B AWQ probe). The lookup table is the
 # single source of truth for OLLAMA_TAG → (HF id, parser flags) used by
 # both run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
-PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:27b Qwen3.5:0.8B)
+PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:27b qwen3.6:35b Qwen3.5:0.8B)
 
 # Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
 # Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success;
@@ -41,6 +41,16 @@ vllm_lookup() {
     case "$1" in
         qwen3.6:27b)
             HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4"
+            TOOL_CALL_PARSER="qwen3_xml"
+            REASONING_PARSER="qwen3"
+            ;;
+        qwen3.6:35b)
+            # Same architecture family + parsers as 27B (qwen3_5_moe,
+            # compressed-tensors AWQ-INT4). 35B A3B MoE: ~17 GB on disk,
+            # fits rtx_6000:1 with ~30 GB KV-cache headroom under
+            # gpu-memory-utilization=0.85. Parser verified via
+            # run_smoke_vllm_vs_ollama.sbatch job 17494173, 2026-05-12.
+            HF_MODEL="cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
             ;;
