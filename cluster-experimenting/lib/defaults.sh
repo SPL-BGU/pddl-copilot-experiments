@@ -49,7 +49,7 @@ vllm_lookup() {
             # compressed-tensors AWQ-INT4). 35B A3B MoE: ~17 GB on disk,
             # fits rtx_6000:1 with ~30 GB KV-cache headroom under
             # gpu-memory-utilization=0.85. Parser verified via
-            # run_smoke_vllm_vs_ollama.sbatch job 17494173, 2026-05-12.
+            # run_smoke_vllm_vs_ollama.sbatch job 17494176, 2026-05-12.
             HF_MODEL="cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"

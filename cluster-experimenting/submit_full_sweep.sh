@@ -56,7 +56,7 @@ while [[ $# -gt 0 ]]; do
             echo "Error: --time is set per-cell-class by this script." >&2
             exit 1 ;;
         -h|--help)
-            sed -n '1,40p' "$0" | sed 's/^### \{0,1\}//'; exit 0 ;;
+            sed -n '1,34p' "$0" | sed 's/^### \{0,1\}//'; exit 0 ;;
         *)
             FORWARDED+=("$1"); shift ;;
     esac
