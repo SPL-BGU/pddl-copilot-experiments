@@ -54,12 +54,32 @@ echo "=== queue ==="
 # -r expands array ranges so each pending task is a separate row (otherwise
 # squeue collapses pending arrays like 17389411_[6-9] into one row, breaking
 # the per-cell count and the "Pending (N)" total).
-squeue -u "$USER" -r -h -o '%i|%j|%T|%M|%R' 2>/dev/null | sort || true
+queue_lines=$(squeue -u "$USER" -r -h -o '%i|%j|%T|%M|%R' 2>/dev/null | sort || true)
+printf '%s\n' "$queue_lines"
 echo "=== counts ==="
 shopt -s nullglob
 for d in "$HOME/$REPO/results/"slurm_*/; do
-    n=$(wc -l < "$d/trials.jsonl" 2>/dev/null || echo 0)
+    if [ -f "$d/trials.jsonl" ]; then
+        n=$(wc -l < "$d/trials.jsonl")
+    else
+        n=0
+    fi
     printf '%s\t%s\n' "$n" "$(basename "$d")"
+done
+echo "=== manifests ==="
+# Emit `<arrayjid>\t<idx>\t<model>\t<think>\t<cond>` rows for every cells.tsv
+# whose ArrayJobId currently appears in the queue. This lets the local
+# parser resolve packed-array job names (e.g. pddl_rtx_pack2_gemma4_31b_*
+# covers gemma4 AND qwen3.6:35b — the parent name only mentions one model)
+# back to the precise (model, think, cond) cell per array task.
+array_jids=$(printf '%s\n' "$queue_lines" | awk -F'|' '{split($1,a,"_"); print a[1]}' | sort -u)
+for jid in $array_jids; do
+    manifest="$HOME/$REPO/cluster-experimenting/logs/${jid}.cells.tsv"
+    [ -f "$manifest" ] || continue
+    while IFS=$'\t' read -r idx model think cond; do
+        [ -n "$idx" ] || continue
+        printf '%s\t%s\t%s\t%s\t%s\n' "$jid" "$idx" "$model" "$think" "$cond"
+    done < "$manifest"
 done
 echo "=== end ==="
 REMOTE
@@ -108,6 +128,23 @@ for line in payload.splitlines():
         sections[cur].append(line)
 queue_raw  = [l for l in sections.get("queue",  []) if l.strip()]
 count_raw  = [l for l in sections.get("counts", []) if l.strip()]
+manifest_raw = [l for l in sections.get("manifests", []) if l.strip()]
+
+# ---- Manifests: (array_jid, idx) → (model_token, think, cond) ----
+# Lets us resolve packed-pending array tasks back to their precise cell
+# even when the parent template name only mentions one of the packed models
+# (e.g. pddl_rtx_pack2_gemma4_31b_notools covers both gemma4:31b and
+# qwen3.6:35b — the parent jname only mentions gemma4).
+MODEL_TAG_TO_ROSTER = {"Qwen3.5:0.8B":"Qwen3_5_0_8B", "gemma4:31b":"gemma4_31b",
+                       "qwen3.6:27b":"qwen3_6_27b", "qwen3.6:35b":"qwen3_6_35b"}
+manifest_index = {}
+for line in manifest_raw:
+    parts = line.split("\t")
+    if len(parts) != 5: continue
+    jid, idx, model_tag, think, cond = parts
+    m = MODEL_TAG_TO_ROSTER.get(model_tag)
+    if m and cond in DENOM:
+        manifest_index[(jid, idx)] = (m, think, cond)
 
 # ---- Counts: dirname → (model, think, cond) ----
 # Two dir families exist on disk:
@@ -158,9 +195,14 @@ for line in queue_raw:
     queue.append(dict(zip(("jid","jname","state","elapsed","reason"), parts)))
 
 def jname_to_cell(jname):
-    """Per-cell array task name → (model,think,cond), e.g. pddl_gemma4_31b_on_tools-pt."""
+    """Per-cell array task name → (model,think,cond).
+    Ollama: pddl_gemma4_31b_on_tools-pt
+    vLLM:   pddl_vllm_qwen3_6_27b_on_notools
+    """
     if not jname.startswith("pddl_"): return None
     rem = jname[len("pddl_"):]
+    if rem.startswith("vllm_"):
+        rem = rem[len("vllm_"):]
     for m in ROSTER:
         if rem.startswith(m + "_"):
             tail = rem[len(m)+1:]
@@ -181,6 +223,11 @@ def jname_model(jname):
 cell_running, cell_pending, model_pending = {}, {}, set()
 for q in queue:
     cell = jname_to_cell(q["jname"])
+    if not (cell and cell[2] in DENOM):
+        # Fall back to the manifest: ArrayJobId + ArrayTaskId → cell.
+        jid_parts = q["jid"].split("_", 1)
+        if len(jid_parts) == 2:
+            cell = manifest_index.get((jid_parts[0], jid_parts[1]))
     if cell and cell[2] in DENOM:
         if q["state"] == "RUNNING":   cell_running[cell] = q
         elif q["state"] == "PENDING": cell_pending[cell] = q
@@ -232,6 +279,8 @@ if prev_ts:
 # Returns one of: done, growing, stalled, pending_rerun, pending_fresh, empty.
 def cell_status(cell):
     if cell not in counts:
+        if cell in cell_running:
+            return "growing"   # RUNNING but trials.jsonl not yet created (e.g. vLLM warmup)
         if cell in cell_pending or cell[0] in model_pending:
             return "pending_fresh"
         return "empty"
@@ -414,7 +463,8 @@ def render_terminal(use_color):
 
     # -- Per-cell progress matrix
     out.append(H2("Per-cell progress") + DIM + "  (denom 4560)" + RESET)
-    short_hdrs = ["on/tools_pt", "on/tools_all", "off/no-tools", "off/tools_pt", "off/tools_all"]
+    short_hdrs = ["on/no-tools", "on/tools_pt", "on/tools_all",
+                  "off/no-tools", "off/tools_pt", "off/tools_all"]
     MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
     CELL_W  = 14   # " ✓  100.0%  " ≈ 11–12 chars; pad to 14 for separation
     header = _pad("Model", MODEL_W) + "".join(_pad(h, CELL_W, "left") for h in short_hdrs)
