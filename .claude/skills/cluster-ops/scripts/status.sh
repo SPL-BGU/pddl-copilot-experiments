@@ -106,10 +106,15 @@ DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "gemma4_31b":"gemma4:31b",
 # corpus reaches parity).
 BACKEND = {"Qwen3_5_0_8B":"vllm", "qwen3_6_27b":"vllm",
            "gemma4_31b":"ollama", "qwen3_6_35b":"ollama"}
-# Matrix-gate (no-tools/think=on excluded): 5 cells per model.
-CELLS = [("on","tools_per-task_minimal"),("on","tools_all_minimal"),
+# Full 6-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools, tools_pt,
+# tools_all}). The legacy no-tools/think=on gate was lifted 2026-05-12
+# (commit fe1c061) to complete the ablation dimension. Order matches
+# `short_hdrs` in render_terminal so the markdown and terminal renderers
+# render the same column sequence.
+CELLS = [("on","no-tools"),("on","tools_per-task_minimal"),("on","tools_all_minimal"),
          ("off","no-tools"),("off","tools_per-task_minimal"),("off","tools_all_minimal")]
-COL_HEADERS = ["on / tools_pt","on / tools_all","off / no-tools","off / tools_pt","off / tools_all"]
+COL_HEADERS = ["on / no-tools","on / tools_pt","on / tools_all",
+               "off / no-tools","off / tools_pt","off / tools_all"]
 DENOM = {"no-tools":4560, "tools_per-task_minimal":4560, "tools_all_minimal":4560}
 TIME_LIMIT_H = 72  # current --time per cell
 
