@@ -115,6 +115,7 @@ PARTIAL_K=""
 EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
 BACKEND="ollama"
+TIME_OVERRIDE=""
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -132,6 +133,7 @@ while [[ $# -gt 0 ]]; do
         --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
         --backend) shift; BACKEND="$1"; shift ;;
+        --time) shift; TIME_OVERRIDE="$1"; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -292,7 +294,13 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 #                Main partition cap is 7 days, so 72h is well within.
 #   no-tools cells: ~6-7h (5-task matrix incl. simulate after PR-4).
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
-if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+if [ -n "$TIME_OVERRIDE" ]; then
+    # Explicit --time wins over all auto-computed defaults. Required when the
+    # built-in vLLM ceiling (06:00:00 tools) is too tight for heavy cells —
+    # 27B/35B tools cells empirically extrapolate to ~19h and silently
+    # TIMEOUT at the wrapper default. Pass an HH:MM:SS or D-HH:MM:SS value.
+    TIME_ARG=(--time="$TIME_OVERRIDE")
+elif [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     TIME_ARG=(--time=03:00:00)
 elif [ "$BACKEND" = "vllm" ]; then
     # vLLM smoke 2026-05-10 measured 4.6× speedup on 27B tools×off (vLLM
@@ -300,7 +308,8 @@ elif [ "$BACKEND" = "vllm" ]; then
     # to ~1-2h for tools cells. The vllm-production-plan.md 2026-05-09
     # locked --time=06:00:00 (tools) / 05:00:00 (no-tools) as production
     # ceilings with headroom. Mixed-condition submissions use the larger
-    # of the two so the slowest cell-type fits.
+    # of the two so the slowest cell-type fits. Heavy models (27B/35B)
+    # blow past these — override with --time when packing them.
     if [ "$NO_TOOLS" -eq 1 ]; then
         TIME_ARG=(--time=05:00:00)
     else
