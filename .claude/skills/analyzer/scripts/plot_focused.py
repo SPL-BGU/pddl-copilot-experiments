@@ -45,11 +45,14 @@ from plot import (  # noqa: E402
     wilson_ci,
 )
 
-MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_27b", "gemma4_31b", "gpt-oss_20b", "gpt-oss_120b"]
+MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_27b", "qwen3_6_27b", "gemma4_31b",
+               "qwen3_6_35b", "gpt-oss_20b", "gpt-oss_120b"]
 MODEL_LABELS = {
     "Qwen3_5_0_8B":  "Qwen3.5:0.8B",
     "Qwen3_5_27b":   "Qwen3.5:27B",
+    "qwen3_6_27b":   "Qwen3.6:27B",
     "gemma4_31b":    "Gemma4:31B",
+    "qwen3_6_35b":   "Qwen3.6:35B",
     "gpt-oss_20b":   "gpt-oss:20B",
     "gpt-oss_120b":  "gpt-oss:120B",
 }

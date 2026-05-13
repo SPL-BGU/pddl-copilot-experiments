@@ -56,6 +56,8 @@ DOMAINS = CLASSICAL + NUMERIC
 MODEL_COLORS = {
     "Qwen3_5_0_8B":  "#d4c96b",
     "Qwen3_5_27b":   "#b89d2a",
+    "qwen3_6_27b":   "#c97d3b",
+    "qwen3_6_35b":   "#7b3f1d",
     "gpt-oss_20b":   "#5c7fb3",
     "gpt-oss_120b":  "#1a2e4f",
     "gemma4_31b":    "#6f4a8a",
@@ -68,6 +70,8 @@ MODEL_COLORS = {
 MODEL_COLORS_NO_TOOLS = {
     "Qwen3_5_0_8B":  "#8a7d2e",
     "Qwen3_5_27b":   "#6e5d10",
+    "qwen3_6_27b":   "#8a4c1f",
+    "qwen3_6_35b":   "#4d2310",
     "gpt-oss_20b":   "#2e4d7a",
     "gpt-oss_120b":  "#5d7aa3",
     "gemma4_31b":    "#3d2750",
