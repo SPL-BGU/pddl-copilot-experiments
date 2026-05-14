@@ -5,11 +5,12 @@
 # against localhost:<port> for that one cell.
 #
 # Per-cell array model (replaces the prior packed-job topology, 2026-04-30):
-# the wrapper builds CELLS=( "model|think|cond" ... ) with the matrix-gate
-# filter (no-tools is reported only for think=off) applied, then submits a
-# single sbatch with --array=0-(N-1). Each task picks its cell via
-# $SLURM_ARRAY_TASK_ID. Up to N tasks run concurrently if the rtx_pro_6000
-# pool has capacity. No %N cap by default — full fan-out for fastest wall.
+# the wrapper builds CELLS=( "model|think|cond" ... ) over the full
+# think × cond product (no-tools/think=on matrix-gate lifted 2026-05-12),
+# then submits a single sbatch with --array=0-(N-1). Each task picks its
+# cell via $SLURM_ARRAY_TASK_ID. Up to N tasks run concurrently if the
+# rtx_pro_6000 pool has capacity. No %N cap by default — full fan-out for
+# fastest wall.
 #
 # GPU routing:
 #   default → rtx_pro_6000:1 (96 GB, --mem=80G). Hard-pinned as the sole
@@ -50,7 +51,7 @@
 # Multi-cell array submissions also write a manifest at
 # `cluster-experimenting/logs/<jobid>.cells.tsv` (idx<TAB>model<TAB>think
 # <TAB>cond). The cluster-ops `prioritize.sh` skill script reads this to
-# map array indices back to cells without re-deriving the matrix-gate
+# map array indices back to cells without re-deriving the cell-product
 # logic. Single-cell submissions skip — nothing to reorder.
 #
 # --exclude NODELIST: passed straight to sbatch's --exclude. Use when a
@@ -75,20 +76,24 @@
 #   cell, output is the partial-fixture summary).
 #
 # Examples:
-#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B           # 5-cell array
-#   bash cluster-experimenting/submit_with_rtx.sh --all                  # 20-cell array (4 models × 5 cells)
-#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # 4-cell array (4 models × 1 cell)
-#   bash cluster-experimenting/submit_with_rtx.sh gemma4:31b --no-tools  # 1-cell job (no array)
+#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B           # 6-cell array
+#   bash cluster-experimenting/submit_with_rtx.sh --all                  # 24-cell array (4 models × 6 cells)
+#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # 8-cell array (4 models × 2 cells: think on+off)
+#   bash cluster-experimenting/submit_with_rtx.sh gemma4:31b --no-tools  # 2-cell array (think on+off)
 #
-# --all: shorthand for the 4 active models. Each model contributes 5 cells
-#   under the default think={on,off} × cond={no-tools, tools_per-task_minimal,
-#   tools_all_minimal} matrix with the no-tools/think=on gate (so 5 not 6).
-#   Total array size: 20. Roster history: 2026-04-29 swap, 2026-04-30 nemotron
-#   drop. See development/CHANGELOG.md.
+# --all: shorthand for the 4 active models. Each model contributes 6 cells
+#   under the full think={on,off} × cond={no-tools, tools_per-task_minimal,
+#   tools_all_minimal} matrix. Total array size: 24. Roster history:
+#   2026-04-29 swap, 2026-04-30 nemotron drop. The (think=on, no-tools) cell
+#   was added 2026-05-12 after ISS-018 (PR-2, 2026-04-28) lifted the runtime
+#   abort and routed thinking content into TaskResult.thinking — verdict /
+#   plan extraction is no longer contaminated, so the cell is now a valid
+#   ablation column. See development/CHANGELOG.md.
 #
-# --no-tools: pins THINK_MODES=off, CONDITIONS=no-tools. Each (model,) cell
-#   becomes one array task. Sbatch's case-branch sets TASKS to the 4-task
-#   discriminative matrix (solve + validate_*); simulate stays excluded.
+# --no-tools: pins CONDITIONS=no-tools, defaults THINK_MODES=(on off). Each
+#   (model, think) cell becomes one array task. Sbatch's case-branch sets
+#   TASKS to the 4-task discriminative matrix (solve + validate_*); simulate
+#   stays excluded.
 #
 # Think modes default to "on off" (both run as separate cells in the array).
 # Override with --think-modes "default" for models without a think kwarg
@@ -233,18 +238,13 @@ case "$GPU_TYPE" in
         exit 1 ;;
 esac
 
-# --no-tools forces think=off (matrix-gate skips think=on/no-tools anyway)
-# and the cell-builder below pins CONDITIONS to no-tools alone.
-if [ "$NO_TOOLS" -eq 1 ]; then
-    if [ -n "$THINK_MODES_OVERRIDE" ] \
-        && [ "$THINK_MODES_OVERRIDE" != "off" ] \
-        && [ "$THINK_MODES_OVERRIDE" != "default" ]; then
-        echo "Error: --no-tools forces THINK_MODES to off|default; got --think-modes \"$THINK_MODES_OVERRIDE\"" >&2
-        exit 1
-    fi
-fi
-
 # Resolve effective think × cond axis values for cell generation.
+# --no-tools pins CONDITIONS=no-tools and otherwise lets the default
+# (on off) think axis run both cells per model. The legacy think=off-only
+# restriction was lifted 2026-05-12 alongside the cell-builder gate (see
+# below) — ISS-018 (PR-2, 2026-04-28) had already lifted the runtime abort
+# and routed thinking into TaskResult.thinking, so verdict/plan extraction
+# is no longer contaminated when think=on/no-tools.
 DEFAULT_CONDITIONS=("${PDDL_DEFAULT_CONDITIONS[@]}")
 DEFAULT_THINK_MODES=("${PDDL_DEFAULT_THINK_MODES[@]}")
 
@@ -254,7 +254,11 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     EFF_THINK=("default")
     EFF_COND=("@smoke@")
 elif [ "$NO_TOOLS" -eq 1 ]; then
-    EFF_THINK=("${THINK_MODES_OVERRIDE:-off}")
+    if [ -n "$THINK_MODES_OVERRIDE" ]; then
+        read -ra EFF_THINK <<< "$THINK_MODES_OVERRIDE"
+    else
+        EFF_THINK=("${DEFAULT_THINK_MODES[@]}")
+    fi
     EFF_COND=("no-tools")
 else
     if [ -n "$THINK_MODES_OVERRIDE" ]; then
@@ -265,22 +269,22 @@ else
     EFF_COND=("${DEFAULT_CONDITIONS[@]}")
 fi
 
-# Build cells (model × think × cond) with matrix-gate skip:
-# no-tools is reported only for think=off — no-tools/think=on cells dropped.
+# Build cells (model × think × cond). The legacy no-tools/think=on gate was
+# lifted 2026-05-12 to complete the ablation dimension (4 missing cells per
+# `--all` sweep, one per model). Default `--all` now expands to 4×6 = 24
+# cells. The runtime-side abort that previously refused this combination was
+# already lifted in PR-2 (2026-04-28, ISS-018 closure).
 CELLS=()
 for m in "${MODELS[@]}"; do
     for t in "${EFF_THINK[@]}"; do
         for c in "${EFF_COND[@]}"; do
-            if [ "$c" = "no-tools" ] && [ "$t" != "off" ]; then
-                continue
-            fi
             CELLS+=("${m}|${t}|${c}")
         done
     done
 done
 N_CELLS=${#CELLS[@]}
 if [ "$N_CELLS" -eq 0 ]; then
-    echo "Error: cell list is empty after matrix-gate filter (think_modes=${EFF_THINK[*]} conds=${EFF_COND[*]})" >&2
+    echo "Error: cell list is empty (think_modes=${EFF_THINK[*]} conds=${EFF_COND[*]})" >&2
     exit 1
 fi
 CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")

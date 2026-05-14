@@ -16,8 +16,8 @@ PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
 # direction we have without a Golden-Ticket QoS.
 PDDL_SLOW_MODELS=(gemma4:31b qwen3.6:35b)
 
-# Default think × cond axes. The matrix-gate (no-tools is reported only for
-# think=off) is applied where the cells are built, NOT here.
+# Default think × cond axes. The full Cartesian product is built; the legacy
+# no-tools/think=on matrix-gate was lifted 2026-05-12 in submit_with_rtx.sh.
 PDDL_DEFAULT_THINK_MODES=(on off)
 PDDL_DEFAULT_CONDITIONS=(no-tools tools_per-task_minimal tools_all_minimal)
 
