@@ -62,26 +62,16 @@ MODEL_COLORS = {
     "gpt-oss_120b":  "#1a2e4f",
     "gemma4_31b":    "#6f4a8a",
 }
-# no-tools baseline gets a per-model variant so it doesn't collide with the
-# same model's `off · tools` bar (same think → same lighten factor, and the
-# merged tools cond has no hatch). 4 of 5 are darker shades; gpt-oss_120b is
-# lightened because the tools base is already near-black and would crush to
-# invisible if darkened.
-MODEL_COLORS_NO_TOOLS = {
-    "Qwen3_5_0_8B":  "#8a7d2e",
-    "Qwen3_5_27b":   "#6e5d10",
-    "qwen3_6_27b":   "#8a4c1f",
-    "qwen3_6_35b":   "#4d2310",
-    "gpt-oss_20b":   "#2e4d7a",
-    "gpt-oss_120b":  "#5d7aa3",
-    "gemma4_31b":    "#3d2750",
-}
 COND_HATCH = {
-    "no-tools":               None,
-    "tools_all_minimal":      "///",
-    "tools_all_guided":       "\\\\\\",
-    "tools_per-task_minimal": "...",
-    "tools_per-task_guided":  "+++",
+    "no-tools":               "////",
+    "tools_all_minimal":      None,
+    "tools_per-task_minimal": "....",
+    # Retained for back-compat re-plots of pre-2026-05 checkpoints; the active
+    # sweep dropped the guided variants. Mapping to None keeps them rendering
+    # cleanly (indistinguishable from tools_all_minimal — fine since they
+    # don't co-occur with it in any live cell set).
+    "tools_all_guided":       None,
+    "tools_per-task_guided":  None,
 }
 # think-mode shade: on → lighter tint of the model base color.
 # off / default keep the base color unchanged.
@@ -203,10 +193,9 @@ def label(info: dict, group_by: str) -> str:
 
 
 def style(info: dict) -> tuple[str, str | None]:
-    if info["cond"] == "no-tools":
-        base = MODEL_COLORS_NO_TOOLS.get(info["model"], "#666666")
-    else:
-        base = MODEL_COLORS.get(info["model"], "#888888")
+    # One base color per model across all conds; cond is encoded by hatch
+    # (no-tools=stripes, per-task=dots, all=solid). think modulates lightness.
+    base = MODEL_COLORS.get(info["model"], "#888888")
     color = _lighten(base, THINK_LIGHTEN.get(info["think"], 0.0))
     hatch = COND_HATCH.get(info["cond"])
     return color, hatch

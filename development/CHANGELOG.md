@@ -6,6 +6,29 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-17 — Plotting: ablation-friendly bar encoding + roster swap (drop 27B, add 4B/9B, flip 35B to vLLM)
+
+**TL;DR.** Two unrelated changes shipped together:
+(1) restyle of the analyzer's grouped-bar plots so the three ablation axes — model, thinking on/off, tool exposure — sit on three independent visual channels;
+(2) `status.sh` roster realignment to the 2026-05-17 sweep: drop `qwen3.6:27b` (slowest cell, ~19h tools×on), add `Qwen3.5:4B` and `Qwen3.5:9B` to fill the 0.8B → 35B param gap, and flip `qwen3.6:35b`'s canonical backend Ollama → vLLM.
+
+**Plotting — `plot.py` (style change only; numbers bit-identical to prior checkpoint):**
+- `.claude/skills/analyzer/scripts/plot.py` — `COND_HATCH` rewritten: `no-tools` → `////` (striped), `tools_per-task_minimal` → `....` (dotted), `tools_all_minimal` → `None` (solid). The retired `tools_*_guided` keys are kept mapped to `None` so re-plotting pre-2026-05 checkpoints still works (mirrors the comment-don't-delete policy in `run_condition_rtx.sbatch`).
+- `style()` simplified to a single per-model base color from `MODEL_COLORS` regardless of cond; the `if cond=="no-tools"` branch is removed, and the now-orphaned `MODEL_COLORS_NO_TOOLS` constant + its `plot_focused._color_for` `with_tools=False` branch are deleted (no live caller).
+- `THINK_LIGHTEN` semantics unchanged (off=saturated, on=lightened).
+
+**Plotting — `plot_focused.py` (data change, not just style):**
+- `fig1` and `fig4` drop their `tools = [r for r in records if r["with_tools_dir"]]` pre-filter and now include a **no-tools bar series alongside the with-tools bars** — `fig1` becomes 4 bars/model (no-tools × {off,on} + with-tools × {off,on}, hatch separates tool exposure), `fig4` becomes 3 bars/model (no-tools / per-task / all). New bars are new data on the plot, not a re-color of existing bars.
+- `fig2` swaps from dual color palettes (per-model dark variant for no-tools) to single per-model color + hatch (`////` for no-tools, solid for with-tools), matching the main-plot encoding.
+- Output re-renders visible at `checkpoints/cluster-20260517-ablation/`.
+
+**Operations — `status.sh` roster swap:**
+- `.claude/skills/cluster-ops/scripts/status.sh` — `ROSTER`, `DISPLAY`, `BACKEND`, `MODEL_TAG_TO_ROSTER` updated to `[Qwen3_5_0_8B, Qwen3_5_4B, Qwen3_5_9B, gemma4_31b, qwen3_6_35b]`. All four dicts list the same 5 keys.
+- `qwen3_6_35b` canonical backend flipped `ollama` → `vllm`; the prior Ollama 35B corpus is checkpointed under `checkpoints/cluster-2026{0514,0517}/`. Dirs from the now-non-canonical backend report under "skipped (wrong backend)" rather than polluting the progress matrix.
+- `jname_to_cell` / `jname_model` docstring examples refreshed to the new roster.
+
+---
+
 ## 2026-05-12 — vLLM: register `qwen3.6:35b` + per-cell-class `--time` override + full-sweep orchestrator
 
 **TL;DR.** Three operations-side changes consolidate the 4-model production sweep into a single dispatch:

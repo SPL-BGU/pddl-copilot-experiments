@@ -33,7 +33,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from plot import (  # noqa: E402
     CLASSICAL,
     MODEL_COLORS,
-    MODEL_COLORS_NO_TOOLS,
     NUMERIC,
     TASK_LABELS,
     TASKS,
@@ -198,8 +197,8 @@ def _legend_handle(color, label, hatch=None):
                  hatch=hatch, label=label)
 
 
-def _color_for(model: str, think: str = "off", with_tools: bool = True) -> str:
-    base = (MODEL_COLORS if with_tools else MODEL_COLORS_NO_TOOLS).get(model, "#888888")
+def _color_for(model: str, think: str = "off") -> str:
+    base = MODEL_COLORS.get(model, "#888888")
     return _lighten(base, THINK_LIGHTEN.get(think, 0.0))
 
 
@@ -208,42 +207,51 @@ def _color_for(model: str, think: str = "off", with_tools: bool = True) -> str:
 # ---------------------------------------------------------------------------
 
 def fig1(records: list[dict], outdir: Path, draw_ci: bool):
-    tools = [r for r in records if r["with_tools_dir"]]
-    models = _models_present(tools)
-    width = 0.40
+    """Per task, 4 bars per model: (no-tools, with-tools) × (think=off, think=on).
+    Hatch = stripes for no-tools, none for with-tools (matches fig1 main plot).
+    Lightness = think (off=saturated, on=lightened).
+    """
+    models = _models_present(records)
+    width = 0.20
     written = []
     for task in TASKS:
-        sub = [r for r in tools if r["task"] == task]
-        fig, ax = plt.subplots(figsize=(8.5, 4.4))
+        sub = [r for r in records if r["task"] == task]
+        fig, ax = plt.subplots(figsize=(9.0, 4.4))
         centers = []
         for i, m in enumerate(models):
-            for j, think in enumerate(("off", "on")):
-                cell = [r for r in sub if r["model_dir"] == m and r["think"] == think]
-                k, n = _agg_rate(cell)
-                x = i + (j - 0.5) * width * 1.05
-                color = _color_for(m, think, with_tools=True)
-                _bar_with_ci(ax, x, k, n, color, label=None, width=width, draw_ci=draw_ci)
+            j = 0
+            for with_tools in (False, True):       # no-tools first, then with-tools
+                for think in ("off", "on"):
+                    cell = [r for r in sub
+                            if r["model_dir"] == m
+                            and r["think"] == think
+                            and r["with_tools_dir"] == with_tools]
+                    k, n = _agg_rate(cell)
+                    x = i + (j - 1.5) * width * 1.05
+                    color = _color_for(m, think)  # base color always; hatch carries cond
+                    hatch = "////" if not with_tools else None
+                    _bar_with_ci(ax, x, k, n, color, hatch=hatch,
+                                 label=None, width=width, draw_ci=draw_ci)
+                    j += 1
             centers.append(i)
         handles = [
-            _legend_handle("#555555", "think = off  (saturated)"),
-            _legend_handle("#bbbbbb", "think = on   (lightened)"),
+            _legend_handle("#555555", "no-tools, think=off",   hatch="////"),
+            _legend_handle("#bbbbbb", "no-tools, think=on",    hatch="////"),
+            _legend_handle("#555555", "with-tools, think=off", hatch=None),
+            _legend_handle("#bbbbbb", "with-tools, think=on",  hatch=None),
         ]
         ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0),
-                  fontsize=8, framealpha=0.9)
+                  fontsize=7, framealpha=0.9)
         _setup_rate_axes(ax, centers, models,
                          f"Task: {TASK_LABELS[task]} — does extended thinking help?\n"
-                         f"[tools-only — no-tools excluded], pooled across tool-filter and prompt-style"
+                         f"4 bars/model: no-tools (striped) vs with-tools (solid), think off (dark) vs on (light), "
+                         f"with-tools pooled across tool-filter and prompt-style"
                          + ("  (Wilson 95% CI)" if draw_ci else ""))
         out = outdir / f"plot1_tools_think_vs_nothink__{task}.png"
         fig.tight_layout()
         fig.savefig(out, dpi=160, bbox_inches="tight")
         plt.close(fig)
         written.append(out.name)
-        # stderr report of n's used
-        ns = [(m, len([r for r in sub if r["model_dir"] == m and r["think"] == "off"]),
-                  len([r for r in sub if r["model_dir"] == m and r["think"] == "on"]))
-              for m in models]
-        print(f"  plot1[{task}] n(off,on) per model: {ns}", file=sys.stderr)
     return written
 
 
@@ -271,12 +279,14 @@ def fig2(records: list[dict], outdir: Path, draw_ci: bool):
             for j, (cell, with_tools) in enumerate(((nt_cell, False), (wt_cell, True))):
                 k, n = _agg_rate(cell)
                 x = i + (j - 0.5) * width * 1.05
-                color = _color_for(m, "off", with_tools=with_tools)
-                _bar_with_ci(ax, x, k, n, color, label=None, width=width, draw_ci=draw_ci)
+                color = _color_for(m, "off")  # same base color; hatch separates
+                hatch = "////" if not with_tools else None
+                _bar_with_ci(ax, x, k, n, color, hatch=hatch,
+                             label=None, width=width, draw_ci=draw_ci)
             centers.append(i)
         handles = [
-            _legend_handle("#777777", "no-tools     (per-model dark variant)"),
-            _legend_handle("#444477", "with-tools   (per-model base color)"),
+            _legend_handle("#777777", "no-tools",   hatch="////"),
+            _legend_handle("#777777", "with-tools", hatch=None),
         ]
         ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0),
                   fontsize=8, framealpha=0.9)
@@ -308,33 +318,41 @@ def fig2(records: list[dict], outdir: Path, draw_ci: bool):
 # ---------------------------------------------------------------------------
 
 def fig4(records: list[dict], outdir: Path, draw_ci: bool):
-    tools = [r for r in records if r["with_tools_dir"]]
-    models = _models_present(tools)
-    width = 0.40
+    """3 bars per model: no-tools (striped), per-task (dotted), all (solid).
+    Same hatch encoding as fig1 main plot. Pooled across think and prompt-style.
+    """
+    models = _models_present(records)
+    width = 0.27
     written = []
+    # (cond_label, hatch, filter_fn) — order matches fig1 main encoding
+    series_defs = [
+        ("no-tools", "////", lambda r: not r["with_tools_dir"]),
+        ("per-task", "....", lambda r: r["with_tools_dir"] and r["tool_filter_dir"] == "per-task"),
+        ("all",      None,   lambda r: r["with_tools_dir"] and r["tool_filter_dir"] == "all"),
+    ]
     for task in TASKS:
-        sub = [r for r in tools if r["task"] == task]
+        sub = [r for r in records if r["task"] == task]
         fig, ax = plt.subplots(figsize=(8.5, 4.4))
         centers = []
         for i, m in enumerate(models):
-            for j, tf in enumerate(("all", "per-task")):
-                cell = [r for r in sub if r["model_dir"] == m and r["tool_filter_dir"] == tf]
+            for j, (label, hatch, pred) in enumerate(series_defs):
+                cell = [r for r in sub if r["model_dir"] == m and pred(r)]
                 k, n = _agg_rate(cell)
-                x = i + (j - 0.5) * width * 1.05
-                color = _color_for(m, "off")  # neutral think; tool_filter shown via hatch
-                hatch = None if tf == "all" else "...."
+                x = i + (j - 1) * width * 1.05
+                color = _color_for(m, "off")  # neutral think; cond shown via hatch
                 _bar_with_ci(ax, x, k, n, color, hatch=hatch, label=None,
                              width=width, draw_ci=draw_ci)
             centers.append(i)
         handles = [
-            _legend_handle("#888888", "all tools",          hatch=None),
-            _legend_handle("#888888", "per-task allowlist", hatch="...."),
+            _legend_handle("#888888", "no-tools",            hatch="////"),
+            _legend_handle("#888888", "per-task allowlist",  hatch="...."),
+            _legend_handle("#888888", "all tools",           hatch=None),
         ]
         ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0),
                   fontsize=8, framealpha=0.9)
         _setup_rate_axes(ax, centers, models,
                          f"Task: {TASK_LABELS[task]} — what tools is the agent exposed to?\n"
-                         f"all tools vs per-task allowlist [tools-only — no-tools excluded], pooled across think and prompt-style"
+                         f"no-tools baseline (striped) vs per-task allowlist (dotted) vs all tools (solid), pooled across think and prompt-style"
                          + ("  (Wilson 95% CI)" if draw_ci else ""))
         out = outdir / f"plot4_all_vs_pertask__{task}.png"
         fig.tight_layout()
