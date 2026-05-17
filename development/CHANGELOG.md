@@ -6,6 +6,17 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-17 — Plotting: ablation-friendly bar encoding (hatch=cond, lightness=think)
+
+**TL;DR.** Restyle of the analyzer's grouped-bar plots so the three ablation axes — model, thinking on/off, tool exposure — sit on three independent visual channels. Presentation-only; no schema, sweep, or result change.
+
+- `.claude/skills/analyzer/scripts/plot.py:79-89` — `COND_HATCH` rewritten: `no-tools` → `////` (striped), `tools_per-task_minimal` → `....` (dotted), `tools_all_minimal` → `None` (solid). The retired `tools_*_guided` keys are kept mapped to `None` so re-plotting pre-2026-05 checkpoints still works (mirrors the comment-don't-delete policy in `run_condition_rtx.sbatch`).
+- `.claude/skills/analyzer/scripts/plot.py:205-213` — `style()` simplified to use a single per-model base color from `MODEL_COLORS` regardless of cond; the `if cond=="no-tools"` branch and its `MODEL_COLORS_NO_TOOLS` lookup are removed from the main path. The `MODEL_COLORS_NO_TOOLS` constant is retained in the module because `plot_focused.fig2` still uses it for a local 2-bar comparison.
+- `THINK_LIGHTEN` semantics unchanged (off=saturated, on=lightened), so legend strings in `plot_focused.py` need no update.
+- Output: re-renders `fig1`/`fig5` and the focused subset under the new encoding. Numbers are bit-identical to the prior checkpoint; only the PNG style changes. Visible at `checkpoints/cluster-20260517-ablation/`.
+
+---
+
 ## 2026-05-12 — vLLM: register `qwen3.6:35b` + per-cell-class `--time` override + full-sweep orchestrator
 
 **TL;DR.** Three operations-side changes consolidate the 4-model production sweep into a single dispatch:
