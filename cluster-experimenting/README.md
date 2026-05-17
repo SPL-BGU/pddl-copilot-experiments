@@ -107,23 +107,23 @@ ENV_NAME=my_env PYTHON_VERSION=3.11 bash cluster-experimenting/setup_env.sh
 cd ~/pddl-copilot-experiments
 
 # Default: 20-task SLURM array on rtx_pro_6000:1, one task per cell.
-# Cells = 4 models × {on, off} × {no-tools, tools_per-task_minimal,
-# tools_all_minimal} after the no-tools/think=on matrix-gate skip
-# (4 × 5 = 20 cells). Per-task --time=12h; concurrent fan-out unlimited.
+# Cells = 5 models × {on, off} × {no-tools, tools_per-task_minimal,
+# tools_all_minimal} = 5 × 6 = 30 cells (post 2026-05-12 matrix-gate lift).
+# Per-task --time=12h; concurrent fan-out unlimited.
 bash cluster-experimenting/submit_with_rtx.sh --all
 
-# Single-model invocation (5-cell array under defaults):
-bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b
+# Single-model invocation (6-cell array under defaults):
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B
 
-# Multi-model invocation (3 models × 5 = 15-cell array):
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b
+# Multi-model invocation (3 models × 6 = 18-cell array):
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B
 
-# Baseline-only no-tools sweep (4-cell array, one cell per model).
+# Baseline-only no-tools sweep (5-cell array, one cell per model).
 # --time=08:00:00 per task.
 bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
 
 # Preview the sbatch command without submitting.
-bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b --dry-run
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B --dry-run
 ```
 
 All invocations build a CELLS list and submit as a job array (or a single
@@ -175,10 +175,10 @@ fine but each carries its own jobid.
 
 The paper's `qwen3:0.6b` / `qwen3:4b` weren't a fit for the cluster's
 historical Ollama-on-cluster inventory, so this cluster run is a
-paper-variant, not a 1:1 reproduction. The four active models in the
-default `--all` pack — `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`,
-`gemma4:31b` — peak at ~26 GB resident on rtx_pro_6000 under
-`MAX_LOADED_MODELS=1` and sequence through one packed job.
+paper-variant, not a 1:1 reproduction. The five active models in the
+default `--all` pack — `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`,
+`qwen3.6:35b`, `gemma4:31b` — peak at ~26 GB resident on rtx_pro_6000
+under `MAX_LOADED_MODELS=1` and sequence through one packed job.
 Roster history: 2026-04-29 refresh updated `Qwen3.5:27b/35b` to their
 `qwen3.6` successors (dense 27B / 35B-A3B MoE, both Apache-2.0, released
 2026-04-{16,22}) and replaced `gpt-oss:20b` with NVIDIA
@@ -188,8 +188,12 @@ confirmed deterministic Hermes XML parse failures on the same 4 cells
 pre- and post-num_predict bump (4096→6144), establishing the failure as
 content-dependent rather than budget-dependent. `gpt-oss:120b` was
 previously substituted out by `Qwen3.5:35b` (2026-04-27) and is now
-superseded by `qwen3.6:35b` in the large-model size band. The roster
-no longer carries a non-Qwen/Gemma slot pending a viable replacement.
+superseded by `qwen3.6:35b` in the large-model size band. 2026-05-17
+dropped `qwen3.6:27b` (slowest cell in the sweep, ~19h tools×on) and
+added `Qwen3.5:4B` + `Qwen3.5:9B` to fill the 0.8B → 35B-A3B param gap
+with a dense, fast mid-band — same `qwen3_xml` parser family as the
+rest of the Qwen3.5/3.6 lineup. The roster no longer carries a
+non-Qwen/Gemma slot pending a viable replacement.
 
 The rtx path pulls model weights from the public Ollama registry
 (`docker://ollama/ollama` + `ollama pull`), so the model name has to be
@@ -204,30 +208,29 @@ gate, Nice auto-prioritization, and cell-keyed OUT_DIR shape from
 `submit_with_rtx.sh` — the new flag picks `run_condition_vllm_rtx.sbatch`
 in place of the Ollama sbatch.
 
-### Scope (2026-05-11)
+### Scope (2026-05-17)
 
-Two-model vLLM scope: `qwen3.6:27b` + `Qwen3.5:0.8B` (both
-parser-verified on smokes 17461801 / 17468314). `qwen3.6:35b` +
-`gemma4:31b` stay on Ollama — the 35B + 31B Ollama corpora are 9/10
-cells complete in the latest sync, so the migration cost (discarded
-trials) exceeds the wall-time saved. `qwen3.6:35b` is parser-verified
-at the smoke level (job 17468315) and can be promoted to vLLM by
-extending the inline lookup table; `gemma4:31b` still needs its parser
-verified before promotion.
+Four-model vLLM scope: `Qwen3.5:0.8B` + `Qwen3.5:4B` + `Qwen3.5:9B` +
+`qwen3.6:35b` (all share `qwen3_xml`/`qwen3` parsers; 0.8B and 35B
+parser-verified on smokes 17468314 / 17494176; 4B/9B added 2026-05-17
+and need smoke verification before promotion — see
+`run_smoke_vllm_vs_ollama.sbatch`). `gemma4:31b` stays on Ollama — the
+gemma4 parser hasn't been verified at the vLLM smoke level. Prior 27B
+slot was retired 2026-05-17 (slowest cell at ~19h tools×on).
 
 ### Submit recipes
 
 ```bash
-# Both backends in one go: 10-cell Ollama array (gemma + 35B, resume
-# existing trials.jsonl) + 10-cell vLLM array (27B + 0.8B, fresh
-# slurm_vllm_ corpora).
+# Both backends in one go: Ollama array (gemma4:31b + qwen3.6:35b, resume
+# existing trials.jsonl) + vLLM array (PDDL_VLLM_VERIFIED_MODELS — currently
+# Qwen3.5:0.8B/4B/9B + qwen3.6:35b, fresh slurm_vllm_ corpora).
 bash cluster-experimenting/submit_with_resume.sh
 
 # Preview without submitting.
 bash cluster-experimenting/submit_with_resume.sh --dry-run
 
 # vLLM-only invocation (e.g. one-cell pilot).
-bash cluster-experimenting/submit_with_rtx.sh qwen3.6:27b --backend vllm --think-modes off
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B --backend vllm --think-modes off
 ```
 
 The vLLM wrapper rejects any model not in `PDDL_VLLM_VERIFIED_MODELS`
@@ -241,9 +244,9 @@ in `submit_with_rtx.sh` AND the `vllm_lookup()` case in
 vLLM cells write to `results/slurm_vllm_<canonical_tag>_<think>_<cond>/`
 (prefix `slurm_vllm_`), not the Ollama `slurm_<canonical_tag>_*/`. The
 resume key in `pddl_eval/runner.py:424` includes the `model` field as a
-literal string — Ollama emits `qwen3.6:27b`, vLLM emits
-`cyankiwi/Qwen3.6-27B-AWQ-INT4`, so commingling both backends' trials
-in one trials.jsonl would silently re-run every cell from zero.
+literal string — Ollama emits `Qwen3.5:9B`, vLLM emits the HF id from
+`vllm_lookup` (e.g. `Qwen/Qwen3.5-9B`), so commingling both backends'
+trials in one trials.jsonl would silently re-run every cell from zero.
 `meta.inference_backend` is also recorded (commit 3044258).
 
 ### Resource profile
@@ -276,12 +279,17 @@ mismatch silently drops every tools-trial extraction → 0% tool-selection
 with no startup error (we hit this on the original 27B AWQ probe). The
 sbatch knob is `TOOL_CALL_PARSER` (env-overridable; default `qwen3_xml`).
 
-| Ollama tag       | HF id                                      | Quant                | TOOL_CALL_PARSER | GPU class               | Status         |
-| ---------------- | ------------------------------------------ | -------------------- | ---------------- | ----------------------- | -------------- |
-| `Qwen3.5:0.8B`   | `Qwen/Qwen3.5-0.8B`                        | BF16 (~1.6 GB)       | `qwen3_xml`      | rtx_3090:1              | Pending verify |
-| `qwen3.6:27b`    | `cyankiwi/Qwen3.6-27B-AWQ-INT4`            | AWQ-4bit (~17 GB)    | `qwen3_xml`      | rtx_6000:1 / rtx_pro_6000:1 | **Verified**   |
-| `qwen3.6:35b`    | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`        | AWQ-4bit MoE (~17 GB)| `qwen3_xml`      | rtx_6000:1              | Pending verify |
-| `gemma4:31b`     | `cyankiwi/gemma-4-31B-it-AWQ-4bit`         | AWQ-4bit (~16 GB)    | `gemma4`         | rtx_6000:1              | Pending verify |
+| Ollama tag       | HF id                                      | Quant                | TOOL_CALL_PARSER | GPU class               | Status                       |
+| ---------------- | ------------------------------------------ | -------------------- | ---------------- | ----------------------- | ---------------------------- |
+| `Qwen3.5:0.8B`   | `Qwen/Qwen3.5-0.8B`                        | FP16 (~1.6 GB)       | `qwen3_xml`      | rtx_6000:1              | **Verified** (job 17468314)  |
+| `Qwen3.5:4B`     | `Qwen/Qwen3.5-4B`                          | FP16 (~9 GB)         | `qwen3_xml`      | rtx_6000:1              | Pending verify (2026-05-17)  |
+| `Qwen3.5:9B`     | `Qwen/Qwen3.5-9B`                          | FP16 (~18 GB)        | `qwen3_xml`      | rtx_6000:1              | Pending verify (2026-05-17)  |
+| `qwen3.6:35b`    | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`        | AWQ-4bit MoE (~17 GB)| `qwen3_xml`      | rtx_6000:1              | **Verified** (job 17494176)  |
+| `gemma4:31b`     | `cyankiwi/gemma-4-31B-it-AWQ-4bit`         | AWQ-4bit (~16 GB)    | `gemma4`         | rtx_6000:1              | Pending verify               |
+
+Retired 2026-05-17: `qwen3.6:27b` / `cyankiwi/Qwen3.6-27B-AWQ-INT4` —
+slowest cell in the sweep (~19h tools×on on rtx_6000); replaced by
+`Qwen3.5:4B` + `Qwen3.5:9B` in the param-ladder mid-band.
 
 For vanilla Qwen3 sizes (e.g. `Qwen/Qwen3-0.6B`), use `TOOL_CALL_PARSER=hermes`
 — vanilla Qwen3 emits Hermes JSON inside `<tool_call>`, not Llama-XML.
@@ -289,10 +297,16 @@ For vanilla Qwen3 sizes (e.g. `Qwen/Qwen3-0.6B`), use `TOOL_CALL_PARSER=hermes`
 ### Submit recipe
 
 ```bash
-# 27B AWQ on rtx_6000:1 — verified
-sbatch --export=ALL,HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4",OLLAMA_TAG="qwen3.6:27b" \
+# Qwen3.5:9B on rtx_6000:1 — verify before promoting to production
+sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-9B",OLLAMA_TAG="Qwen3.5:9B" \
        --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
-       --job-name=vllm_27b_smoke \
+       --job-name=vllm_qwen35_9b_smoke \
+       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+
+# Qwen3.5:4B on rtx_6000:1 — verify before promoting to production
+sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-4B",OLLAMA_TAG="Qwen3.5:4B" \
+       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
+       --job-name=vllm_qwen35_4b_smoke \
        cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
 
 # Gemma 31B on rtx_6000:1 — note the parser override

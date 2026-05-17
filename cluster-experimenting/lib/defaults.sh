@@ -3,9 +3,11 @@
 # run_condition_rtx.sbatch. Update here to change the active model roster
 # or the default think × cond axes — both wrappers pick up the change.
 
-# Default 4-model roster (post 2026-04-30 trim). See development/CHANGELOG.md
-# for roster history. Update here to change the --all default.
-PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B qwen3.6:27b qwen3.6:35b gemma4:31b)
+# Default 5-model roster (post 2026-05-17 swap: dropped qwen3.6:27b, added
+# Qwen3.5:4B + Qwen3.5:9B to fill the 0.8B → 35B-A3B param gap with a
+# faster, dense mid-band). See development/CHANGELOG.md for roster history.
+# Update here to change the --all default.
+PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B qwen3.6:35b gemma4:31b)
 
 # Heavy/slow models — kept at Nice=0 by the auto-prioritize logic in
 # submit_with_rtx.sh and the cluster-ops `prioritize.sh` skill script.
@@ -32,23 +34,17 @@ PDDL_DEFAULT_SBATCH_CONDITIONS="tools_per-task_minimal tools_all_minimal"
 # verification on the original 27B AWQ probe). The lookup table is the
 # single source of truth for OLLAMA_TAG → (HF id, parser flags) used by
 # both run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
-PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:27b qwen3.6:35b Qwen3.5:0.8B)
+PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B)
 
 # Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
 # Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success;
 # returns non-zero with a clear error otherwise so callers can bail.
 vllm_lookup() {
     case "$1" in
-        qwen3.6:27b)
-            HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4"
-            TOOL_CALL_PARSER="qwen3_xml"
-            REASONING_PARSER="qwen3"
-            ;;
         qwen3.6:35b)
-            # Same architecture family + parsers as 27B (qwen3_5_moe,
-            # compressed-tensors AWQ-INT4). 35B A3B MoE: ~17 GB on disk,
-            # fits rtx_6000:1 with ~30 GB KV-cache headroom under
-            # gpu-memory-utilization=0.85. Parser verified via
+            # qwen3_5_moe arch, compressed-tensors AWQ-INT4. 35B A3B MoE:
+            # ~17 GB on disk, fits rtx_6000:1 with ~30 GB KV-cache headroom
+            # under gpu-memory-utilization=0.85. Parser verified via
             # run_smoke_vllm_vs_ollama.sbatch job 17494176, 2026-05-12.
             HF_MODEL="cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit"
             TOOL_CALL_PARSER="qwen3_xml"
@@ -56,6 +52,24 @@ vllm_lookup() {
             ;;
         Qwen3.5:0.8B)
             HF_MODEL="Qwen/Qwen3.5-0.8B"
+            TOOL_CALL_PARSER="qwen3_xml"
+            REASONING_PARSER="qwen3"
+            ;;
+        Qwen3.5:4B)
+            # qwen3_5 dense arch, FP16. ~9 GB weights on rtx_6000:1 leaves
+            # ample KV headroom. Parsers inherited from the Qwen3.5 family
+            # (same as 0.8B/9B). Smoke-verify via run_smoke_vllm_vs_ollama
+            # before flipping the production sweep.
+            HF_MODEL="Qwen/Qwen3.5-4B"
+            TOOL_CALL_PARSER="qwen3_xml"
+            REASONING_PARSER="qwen3"
+            ;;
+        Qwen3.5:9B)
+            # qwen3_5 dense arch, FP16. ~18 GB weights on rtx_6000:1.
+            # Note: Qwen3.5 ladder skips 8B; 9B is the next dense size
+            # above 4B (HF id Qwen/Qwen3.5-9B, NOT Qwen3.5-8B which
+            # does not exist). Smoke-verify before production.
+            HF_MODEL="Qwen/Qwen3.5-9B"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
             ;;
