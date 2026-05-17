@@ -33,7 +33,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from plot import (  # noqa: E402
     CLASSICAL,
     MODEL_COLORS,
-    MODEL_COLORS_NO_TOOLS,
     NUMERIC,
     TASK_LABELS,
     TASKS,
@@ -198,8 +197,8 @@ def _legend_handle(color, label, hatch=None):
                  hatch=hatch, label=label)
 
 
-def _color_for(model: str, think: str = "off", with_tools: bool = True) -> str:
-    base = (MODEL_COLORS if with_tools else MODEL_COLORS_NO_TOOLS).get(model, "#888888")
+def _color_for(model: str, think: str = "off") -> str:
+    base = MODEL_COLORS.get(model, "#888888")
     return _lighten(base, THINK_LIGHTEN.get(think, 0.0))
 
 
@@ -229,7 +228,7 @@ def fig1(records: list[dict], outdir: Path, draw_ci: bool):
                             and r["with_tools_dir"] == with_tools]
                     k, n = _agg_rate(cell)
                     x = i + (j - 1.5) * width * 1.05
-                    color = _color_for(m, think, with_tools=True)  # base color always; hatch carries cond
+                    color = _color_for(m, think)  # base color always; hatch carries cond
                     hatch = "////" if not with_tools else None
                     _bar_with_ci(ax, x, k, n, color, hatch=hatch,
                                  label=None, width=width, draw_ci=draw_ci)
@@ -280,7 +279,7 @@ def fig2(records: list[dict], outdir: Path, draw_ci: bool):
             for j, (cell, with_tools) in enumerate(((nt_cell, False), (wt_cell, True))):
                 k, n = _agg_rate(cell)
                 x = i + (j - 0.5) * width * 1.05
-                color = _color_for(m, "off", with_tools=True)  # same base color; hatch separates
+                color = _color_for(m, "off")  # same base color; hatch separates
                 hatch = "////" if not with_tools else None
                 _bar_with_ci(ax, x, k, n, color, hatch=hatch,
                              label=None, width=width, draw_ci=draw_ci)
