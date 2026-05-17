@@ -91,21 +91,22 @@ import json, os, re, sys, time
 payload, state_file, mode_arg, color_arg = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 # ---- Roster + dimensions (matches submit_with_rtx.sh --all roster) ----
-ROSTER = ["Qwen3_5_0_8B", "gemma4_31b", "qwen3_6_27b", "qwen3_6_35b"]
-DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "gemma4_31b":"gemma4:31b",
-           "qwen3_6_27b":"qwen3.6:27b", "qwen3_6_35b":"qwen3.6:35b"}
-# Canonical backend per model (2026-05-12). Dirs from the OTHER backend
+# 2026-05-17 swap: dropped qwen3_6_27b (slowest cell, ~19h tools×on);
+# added Qwen3_5_4B and Qwen3_5_9B to fill the 0.8B → 35B param gap.
+ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_31b", "qwen3_6_35b"]
+DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "Qwen3_5_4B":"Qwen3.5:4B",
+           "Qwen3_5_9B":"Qwen3.5:9B", "gemma4_31b":"gemma4:31b",
+           "qwen3_6_35b":"qwen3.6:35b"}
+# Canonical backend per model (2026-05-17). Dirs from the OTHER backend
 # are skipped during counting — a model is fully owned by one backend so
 # the matrix reflects the paper-corpus choice and partial runs on the
 # wrong backend don't pollute progress. vLLM cells live under
 # `slurm_vllm_<model>_<think>_<cond>/`; Ollama cells under
-# `slurm_<model>_<think>_<cond>/`.
-# TODO: flip qwen3_6_35b "ollama" → "vllm" after the planned 35B vLLM
-# sweep completes (vllm_lookup gained the qwen3.6:35b entry on this
-# branch; the Ollama 35B corpus stays canonical until the vLLM 35B
-# corpus reaches parity).
-BACKEND = {"Qwen3_5_0_8B":"vllm", "qwen3_6_27b":"vllm",
-           "gemma4_31b":"ollama", "qwen3_6_35b":"ollama"}
+# `slurm_<model>_<think>_<cond>/`. qwen3_6_35b flipped ollama → vllm on
+# 2026-05-17 alongside the roster swap; the prior Ollama 35B corpus is
+# checkpointed under `checkpoints/cluster-2026{0514,0517}/`.
+BACKEND = {"Qwen3_5_0_8B":"vllm", "Qwen3_5_4B":"vllm", "Qwen3_5_9B":"vllm",
+           "qwen3_6_35b":"vllm", "gemma4_31b":"ollama"}
 # Full 6-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools, tools_pt,
 # tools_all}). The legacy no-tools/think=on gate was lifted 2026-05-12
 # (commit fe1c061) to complete the ablation dimension. Order matches
@@ -140,8 +141,9 @@ manifest_raw = [l for l in sections.get("manifests", []) if l.strip()]
 # even when the parent template name only mentions one of the packed models
 # (e.g. pddl_rtx_pack2_gemma4_31b_notools covers both gemma4:31b and
 # qwen3.6:35b — the parent jname only mentions gemma4).
-MODEL_TAG_TO_ROSTER = {"Qwen3.5:0.8B":"Qwen3_5_0_8B", "gemma4:31b":"gemma4_31b",
-                       "qwen3.6:27b":"qwen3_6_27b", "qwen3.6:35b":"qwen3_6_35b"}
+MODEL_TAG_TO_ROSTER = {"Qwen3.5:0.8B":"Qwen3_5_0_8B", "Qwen3.5:4B":"Qwen3_5_4B",
+                       "Qwen3.5:9B":"Qwen3_5_9B", "gemma4:31b":"gemma4_31b",
+                       "qwen3.6:35b":"qwen3_6_35b"}
 manifest_index = {}
 for line in manifest_raw:
     parts = line.split("\t")
@@ -158,9 +160,9 @@ for line in manifest_raw:
 # We strip the optional "vllm_" prefix, classify the dir's backend, then
 # count it only if it matches BACKEND[model] — the canonical backend for
 # the paper corpus. Dirs on the non-canonical backend (e.g. an Ollama
-# slurm_qwen3_6_27b_* from a prior sweep, when 27B is now owned by vLLM)
-# are reported under "skipped (wrong backend)" instead of polluting the
-# matrix or the unknown list.
+# slurm_qwen3_6_35b_* from the prior corpus, now that 35B is owned by
+# vLLM) are reported under "skipped (wrong backend)" instead of polluting
+# the matrix or the unknown list.
 counts, unknown, wrong_backend = {}, [], []
 for line in count_raw:
     n_str, _, dirname = line.partition("\t")
@@ -202,7 +204,7 @@ for line in queue_raw:
 def jname_to_cell(jname):
     """Per-cell array task name → (model,think,cond).
     Ollama: pddl_gemma4_31b_on_tools-pt
-    vLLM:   pddl_vllm_qwen3_6_27b_on_notools
+    vLLM:   pddl_vllm_Qwen3_5_9B_on_notools
     """
     if not jname.startswith("pddl_"): return None
     rem = jname[len("pddl_"):]
@@ -220,7 +222,8 @@ def jname_to_cell(jname):
 def jname_model(jname):
     """Parent-template array name → model token, or None.
     Used for pending tasks whose per-cell name hasn't materialised yet
-    (e.g. 'pddl_rtx_pack2_qwen3_6_27b' covers all 5 cells of qwen3.6:27b)."""
+    (e.g. 'pddl_rtx_pack3_Qwen3_5_0_8B' covers all 6 cells of each model
+    in the small/mid pack — manifest resolves to the precise cell)."""
     for m in ROSTER:
         if m in jname: return m
     return None
