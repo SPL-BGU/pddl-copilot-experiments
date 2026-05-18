@@ -6,6 +6,57 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-18 — Roster: gemma4:31b dense Ollama → gemma4:26b-a4b MoE vLLM (backend split retired)
+
+**TL;DR.** Replaces the dense `gemma4:31b` (Ollama-only, parser pending vLLM verification) with `gemma4:26b-a4b` (MoE A4B, ~4B active of 26.5B total, AWQ-INT4) served on vLLM. Same publisher and quant pipeline as the verified `qwen3.6:35b` (`cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit`). Full 5-model `PDDL_DEFAULT_MODELS` roster now runs on a single backend (vLLM, `rtx_6000:1`) — retires the 2026-05-12 → 2026-05-18 backend split. Active sweep roster: `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`.
+
+**Phase A — smoke verification.**
+- Phase A.1 (`7106f68`) added `gemma4:26b-a4b` to `vllm_lookup` (HF id, `TOOL_CALL_PARSER=gemma4`, `REASONING_PARSER=none`) and refreshed the Gemma-4 example block in `run_smoke_vllm_vs_ollama.sbatch`. Not yet in `PDDL_VLLM_VERIFIED_MODELS` — `submit_with_rtx.sh --backend vllm` refused the tag until smoke cleared the gate.
+- Smoke `17633538` crashed at vLLM startup: `ValueError: Chunked MM input disabled but max_tokens_per_mm_item (2496) is larger than max_num_batched_tokens (2048)`. The HF task tag `image-text-to-text` triggers vLLM's auto-load of Gemma-4's multimodal vision tower; the per-MM-item budget exceeds vLLM's default 2048-token batch ceiling.
+- Phase A.2 (`59be812`) added a `MAX_NUM_BATCHED_TOKENS` env-var-conditional flag to the smoke sbatch (mirrors `EAGER_FLAG`/`NUM_PREDICT_FLAG`), threaded `MAX_NUM_BATCHED_TOKENS=4096` into the `gemma4:26b-a4b` `vllm_lookup` case, and updated the `vllm_lookup()` header to document the new export.
+- Resubmit smoke `17638752` passed: `vllm ready (344s)`, VRAM 42218/49140 MiB (85%), 80 trials at concurrency=4. Tools cells: solve/validate_domain/validate_problem/simulate ToolSel = 1.00 (N=2/4/12/2); validate_plan 0.95 (N=20, 1 `tool_not_selected`). No-tools think=on shows systemic `truncated_no_answer` failures on validate_plan / validate_problem (CoT eats the 6144-token cap before VERDICT) — expected pre-rewrite behavior and falls into sweep-4's v5/v6/v7 prompt work scope.
+
+**Phase B — roster swap (this commit).**
+- `cluster-experimenting/lib/defaults.sh`: `PDDL_DEFAULT_MODELS` and `PDDL_SLOW_MODELS` swap `gemma4:31b` → `gemma4:26b-a4b`; `PDDL_VLLM_VERIFIED_MODELS` appends `gemma4:26b-a4b`. Phase-A candidate marker comment removed (no pending candidates). `gemma4:26b-a4b` `vllm_lookup` case doc-comment updated with smoke-17638752 VRAM peak.
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch`: consumer for `MAX_NUM_BATCHED_TOKENS` — `unset` before each `vllm_lookup` call (prevents leftover bleed if a multi-model job ever pairs MM and text-only models), build conditional flag, splice into the apptainer `python3 -m vllm.entrypoints.openai.api_server` invocation after `--enable-prefix-caching`.
+- `cluster-experimenting/submit_with_resume.sh`: `OLLAMA_MODELS=()`; both echo lines and the squeue tail gate on a non-empty Ollama job id. Header doc rewritten to record that the script now collapses to a single vLLM submission post-backend-unification; Ollama branch is the extension point.
+- `cluster-experimenting/submit_full_sweep.sh`: step `[3/3]` flips from `--backend ollama gemma4:31b` (rtx_pro_6000:1, 72h) to `--backend vllm gemma4:26b-a4b` (rtx_6000:1, 48h). All three steps are now vLLM.
+- `cluster-experimenting/submit_with_rtx.sh`: comment refs to `gemma4:31b` and `PDDL_SLOW_MODELS=(gemma4:31b, ...)` swap to `gemma4:26b-a4b`. The `--no-tools` example, the `--no-auto-prioritize` slow-set list, and the `rtx_6000` case comment (peak VRAM 26 GB → 24 GB; reframed as the default for vLLM, not an emergency escape) all updated. The `gemma4*` think-mode carveout comment is reworded (it only applied to gemma2-era tags).
+- `cluster-experimenting/run_condition_rtx.sbatch`: legacy Ollama sbatch header rewritten — no active model uses it post 2026-05-18; retained for re-running archived `slurm_gemma4_31b_*` corpora as drift anchors. VRAM-fit table reframed as historical reference; gemma4:31b row tagged retired.
+- `.claude/skills/cluster-ops/scripts/status.sh`: `ROSTER`, `DISPLAY`, `BACKEND`, `MODEL_TAG_TO_ROSTER` swap `gemma4_31b` → `gemma4_26b_a4b` (with `BACKEND` flipping to `vllm`). Comments updated. `jname_to_cell` docstring drops the Ollama gemma example (kept as a generic legacy-pattern note).
+- `.claude/skills/cluster-ops/scripts/prioritize.sh`: `DEFAULT_SLOW_MODELS` swap; usage example refreshed.
+- `.claude/skills/analyzer/scripts/plot.py` + `plot_focused.py`: `gemma4_26b_a4b` added to `MODEL_COLORS` (`#9173b0`, a tint of the gemma4_31b purple), `MODEL_ORDER`, and `MODEL_LABELS`. `gemma4_31b` entries retained as drift-anchor support for re-plotting older corpora. Also added missing `Qwen3_5_4B` / `Qwen3_5_9B` color entries (post 2026-05-17 swap had left them as default-color fallbacks).
+- `tests/test_scoring.py:335`: determinism-test fixture key swap `gemma4:31b` → `gemma4:26b-a4b`. The pinned bucket regression check uses `Qwen3.5:0.8B`, unaffected.
+- `EXPERIMENTS_FLOW.md:504`: roster description updated to the post-swap five-model vLLM-only roster; roster-history narrative gains the 2026-05-18 unification.
+- `cluster-experimenting/README.md`: topology table swap (line 14-16) + roster table swap (line 214-220) + verified-parser table swap (line 336) + production-vLLM scope rewrite (line 253-267) + GPU-class section + mem-cap row + `submit_with_resume.sh` description + legacy CG-cancel example. The 2026-05-18 entry in the submission-topology-history list now reads as two same-day events (backend split landed, then retired by the gemma swap).
+
+**Methodology framing.** Treated as plain operational drift (no paper-baseline comparison). The `gemma4:31b` Ollama corpora at `results/slurm_gemma4_31b_*` stay on disk untouched as drift anchors — never mixed with the new `slurm_vllm_gemma4_26b_a4b_*` corpora per the `feedback_pushback_on_methodology_shortcuts.md` corpus-isolation rule. Resume-key isolation is automatic: the 10-tuple at `pddl_eval/runner.py:441–451` includes the model string and OUT_DIR prefix.
+
+**Compatibility / drift framing.** Five-model roster size unchanged; the gemma slot's identity changes from "dense 31B Ollama Q4_K_M" to "MoE 26.5B A4B vLLM AWQ-INT4." Drift expectation: smoke 17638752 already shows tools-cell ToolSel parity with the verified Qwen3.5/3.6 ladder. No-tools think=on truncation rate is high — explicitly an expected pre-rewrite behavior (sweep-4's v5/v6/v7 prompt work).
+
+**Files touched (Phase B).**
+- `cluster-experimenting/lib/defaults.sh`
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch`
+- `cluster-experimenting/run_condition_rtx.sbatch`
+- `cluster-experimenting/submit_with_resume.sh`
+- `cluster-experimenting/submit_full_sweep.sh`
+- `cluster-experimenting/submit_with_rtx.sh`
+- `cluster-experimenting/README.md`
+- `.claude/skills/cluster-ops/scripts/status.sh`
+- `.claude/skills/cluster-ops/scripts/prioritize.sh`
+- `.claude/skills/analyzer/scripts/plot.py`
+- `.claude/skills/analyzer/scripts/plot_focused.py`
+- `tests/test_scoring.py`
+- `EXPERIMENTS_FLOW.md`
+- `development/CHANGELOG.md` (this entry)
+
+**Reference logs / commits.**
+- Smoke 17633538 (MM-tower startup crash): `cluster-experimenting/logs/vllm_gemma4_26b_a4b_smoke-17633538.out`.
+- Smoke 17638752 (passed): `cluster-experimenting/logs/vllm_gemma4_26b_a4b_smoke-17638752.out`, results at `results/smoke/probe_vllm_59be812_20260518_222456/gemma4_26b-a4b/summary_20260518_223823.json`.
+- Phase-A commits: `7106f68` (vllm_lookup add), `59be812` (MAX_NUM_BATCHED_TOKENS fix).
+
+---
+
 ## 2026-05-17 — Plotting: ablation-friendly bar encoding + roster swap (drop 27B, add 4B/9B, flip 35B to vLLM)
 
 **TL;DR.** Two unrelated changes shipped together:

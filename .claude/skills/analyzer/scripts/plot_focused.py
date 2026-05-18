@@ -44,16 +44,20 @@ from plot import (  # noqa: E402
     wilson_ci,
 )
 
-MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_27b", "qwen3_6_27b", "gemma4_31b",
+MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "Qwen3_5_27b",
+               "qwen3_6_27b", "gemma4_31b", "gemma4_26b_a4b",
                "qwen3_6_35b", "gpt-oss_20b", "gpt-oss_120b"]
 MODEL_LABELS = {
-    "Qwen3_5_0_8B":  "Qwen3.5:0.8B",
-    "Qwen3_5_27b":   "Qwen3.5:27B",
-    "qwen3_6_27b":   "Qwen3.6:27B",
-    "gemma4_31b":    "Gemma4:31B",
-    "qwen3_6_35b":   "Qwen3.6:35B",
-    "gpt-oss_20b":   "gpt-oss:20B",
-    "gpt-oss_120b":  "gpt-oss:120B",
+    "Qwen3_5_0_8B":   "Qwen3.5:0.8B",
+    "Qwen3_5_4B":     "Qwen3.5:4B",
+    "Qwen3_5_9B":     "Qwen3.5:9B",
+    "Qwen3_5_27b":    "Qwen3.5:27B",
+    "qwen3_6_27b":    "Qwen3.6:27B",
+    "gemma4_31b":     "Gemma4:31B",
+    "gemma4_26b_a4b": "Gemma4:26B-A4B",
+    "qwen3_6_35b":    "Qwen3.6:35B",
+    "gpt-oss_20b":    "gpt-oss:20B",
+    "gpt-oss_120b":   "gpt-oss:120B",
 }
 MCP_TOOLS = ["classic_planner", "numeric_planner", "validate_pddl_syntax",
              "get_state_transition", "save_plan"]

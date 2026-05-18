@@ -332,7 +332,7 @@ def test_shard_filter(r: TestResults):
     r.check("N=1 always passes (even i unused)", rx._shard_filter(7, 1, ("any",)))
 
     # Determinism: same key → same bucket, repeatedly.
-    key = ("gemma4:31b", "validate_plan", "logistics", "p03", "1")
+    key = ("gemma4:26b-a4b", "validate_plan", "logistics", "p03", "1")
     bucket = next(i for i in range(4) if rx._shard_filter(i, 4, key))
     for _ in range(5):
         b2 = next(i for i in range(4) if rx._shard_filter(i, 4, key))

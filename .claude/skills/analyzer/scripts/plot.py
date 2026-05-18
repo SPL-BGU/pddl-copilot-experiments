@@ -54,13 +54,16 @@ DOMAINS = CLASSICAL + NUMERIC
 # Keys are the underscore-tagged model form produced by parse_dirname
 # (submit_with_rtx.sh does `tr '/:.' '___'`), which is what we see in dir names.
 MODEL_COLORS = {
-    "Qwen3_5_0_8B":  "#d4c96b",
-    "Qwen3_5_27b":   "#b89d2a",
-    "qwen3_6_27b":   "#c97d3b",
-    "qwen3_6_35b":   "#7b3f1d",
-    "gpt-oss_20b":   "#5c7fb3",
-    "gpt-oss_120b":  "#1a2e4f",
-    "gemma4_31b":    "#6f4a8a",
+    "Qwen3_5_0_8B":   "#d4c96b",
+    "Qwen3_5_4B":     "#a89535",
+    "Qwen3_5_9B":     "#7a6b1c",
+    "Qwen3_5_27b":    "#b89d2a",
+    "qwen3_6_27b":    "#c97d3b",
+    "qwen3_6_35b":    "#7b3f1d",
+    "gpt-oss_20b":    "#5c7fb3",
+    "gpt-oss_120b":   "#1a2e4f",
+    "gemma4_31b":     "#6f4a8a",
+    "gemma4_26b_a4b": "#9173b0",
 }
 COND_HATCH = {
     "no-tools":               "////",

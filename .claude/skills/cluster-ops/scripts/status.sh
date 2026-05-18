@@ -69,7 +69,7 @@ done
 echo "=== manifests ==="
 # Emit `<arrayjid>\t<idx>\t<model>\t<think>\t<cond>` rows for every cells.tsv
 # whose ArrayJobId currently appears in the queue. This lets the local
-# parser resolve packed-array job names (e.g. pddl_rtx_pack2_gemma4_31b_*
+# parser resolve packed-array job names (e.g. pddl_rtx_pack2_gemma4_26b_a4b_*
 # covers gemma4 AND qwen3.6:35b — the parent name only mentions one model)
 # back to the precise (model, think, cond) cell per array task.
 array_jids=$(printf '%s\n' "$queue_lines" | awk -F'|' '{split($1,a,"_"); print a[1]}' | sort -u)
@@ -91,22 +91,24 @@ import json, os, re, sys, time
 payload, state_file, mode_arg, color_arg = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 # ---- Roster + dimensions (matches submit_with_rtx.sh --all roster) ----
-# 2026-05-17 swap: dropped qwen3_6_27b (slowest cell, ~19h tools×on);
+# 2026-05-18 swap: dropped gemma4_31b dense Ollama, added gemma4_26b_a4b
+# MoE on vLLM; full roster now backend-unified on vLLM (smoke 17638752).
+# 2026-05-17 swap (prior): dropped qwen3_6_27b (slowest cell, ~19h tools×on);
 # added Qwen3_5_4B and Qwen3_5_9B to fill the 0.8B → 35B param gap.
-ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_31b", "qwen3_6_35b"]
+ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_26b_a4b", "qwen3_6_35b"]
 DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "Qwen3_5_4B":"Qwen3.5:4B",
-           "Qwen3_5_9B":"Qwen3.5:9B", "gemma4_31b":"gemma4:31b",
+           "Qwen3_5_9B":"Qwen3.5:9B", "gemma4_26b_a4b":"gemma4:26b-a4b",
            "qwen3_6_35b":"qwen3.6:35b"}
-# Canonical backend per model (2026-05-17). Dirs from the OTHER backend
+# Canonical backend per model (2026-05-18). Dirs from the OTHER backend
 # are skipped during counting — a model is fully owned by one backend so
-# the matrix reflects the paper-corpus choice and partial runs on the
+# the matrix reflects the active corpus choice and partial runs on the
 # wrong backend don't pollute progress. vLLM cells live under
 # `slurm_vllm_<model>_<think>_<cond>/`; Ollama cells under
-# `slurm_<model>_<think>_<cond>/`. qwen3_6_35b flipped ollama → vllm on
-# 2026-05-17 alongside the roster swap; the prior Ollama 35B corpus is
-# checkpointed under `checkpoints/cluster-2026{0514,0517}/`.
+# `slurm_<model>_<think>_<cond>/`. Full roster is vLLM post 2026-05-18;
+# the prior Ollama gemma4_31b corpus stays on disk as drift anchor and
+# is counted as "skipped (wrong backend)" against the active roster.
 BACKEND = {"Qwen3_5_0_8B":"vllm", "Qwen3_5_4B":"vllm", "Qwen3_5_9B":"vllm",
-           "qwen3_6_35b":"vllm", "gemma4_31b":"ollama"}
+           "qwen3_6_35b":"vllm", "gemma4_26b_a4b":"vllm"}
 # Full 6-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools, tools_pt,
 # tools_all}). The legacy no-tools/think=on gate was lifted 2026-05-12
 # (commit fe1c061) to complete the ablation dimension. Order matches
@@ -139,10 +141,10 @@ manifest_raw = [l for l in sections.get("manifests", []) if l.strip()]
 # ---- Manifests: (array_jid, idx) → (model_token, think, cond) ----
 # Lets us resolve packed-pending array tasks back to their precise cell
 # even when the parent template name only mentions one of the packed models
-# (e.g. pddl_rtx_pack2_gemma4_31b_notools covers both gemma4:31b and
-# qwen3.6:35b — the parent jname only mentions gemma4).
+# (e.g. pddl_rtx_pack2_gemma4_26b_a4b_notools covers both gemma4:26b-a4b
+# and qwen3.6:35b — the parent jname only mentions gemma4).
 MODEL_TAG_TO_ROSTER = {"Qwen3.5:0.8B":"Qwen3_5_0_8B", "Qwen3.5:4B":"Qwen3_5_4B",
-                       "Qwen3.5:9B":"Qwen3_5_9B", "gemma4:31b":"gemma4_31b",
+                       "Qwen3.5:9B":"Qwen3_5_9B", "gemma4:26b-a4b":"gemma4_26b_a4b",
                        "qwen3.6:35b":"qwen3_6_35b"}
 manifest_index = {}
 for line in manifest_raw:
@@ -203,8 +205,8 @@ for line in queue_raw:
 
 def jname_to_cell(jname):
     """Per-cell array task name → (model,think,cond).
-    Ollama: pddl_gemma4_31b_on_tools-pt
     vLLM:   pddl_vllm_Qwen3_5_9B_on_notools
+    Ollama (legacy): pddl_<model>_<think>_<cond> — no `vllm_` infix.
     """
     if not jname.startswith("pddl_"): return None
     rem = jname[len("pddl_"):]

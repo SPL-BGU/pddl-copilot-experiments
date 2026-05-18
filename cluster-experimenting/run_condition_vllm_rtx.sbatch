@@ -153,9 +153,15 @@ for MODEL in $MODELS; do
     MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
 
     # vllm_lookup is sourced from lib/defaults.sh; exports HF_MODEL +
-    # TOOL_CALL_PARSER + REASONING_PARSER. Unverified models bail before
-    # the SIF is staged.
+    # TOOL_CALL_PARSER + REASONING_PARSER + (optionally)
+    # MAX_NUM_BATCHED_TOKENS. Unset between iterations so a leftover
+    # MM-aware value from a previous model doesn't bleed into a
+    # text-only model's serve command.
+    unset MAX_NUM_BATCHED_TOKENS
     vllm_lookup "$MODEL" || exit 1
+    MAX_NUM_BATCHED_TOKENS_FLAG=""
+    [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
+        MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
     echo
     echo "####################################################################"
     echo "# MODEL: $MODEL  (HF: $HF_MODEL)   started $(date)"
@@ -179,6 +185,7 @@ for MODEL in $MODELS; do
             --reasoning-parser "$REASONING_PARSER" \
             --gpu-memory-utilization 0.85 \
             --enable-prefix-caching \
+            $MAX_NUM_BATCHED_TOKENS_FLAG \
             > "$SERVE_LOG" 2>&1 &
     VLLM_PID=$!
     trap 'echo "Shutting down..."; kill $VLLM_PID 2>/dev/null || true; preserve_serve_logs; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT

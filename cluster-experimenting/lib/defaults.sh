@@ -3,11 +3,12 @@
 # run_condition_rtx.sbatch. Update here to change the active model roster
 # or the default think × cond axes — both wrappers pick up the change.
 
-# Default 5-model roster (post 2026-05-17 swap: dropped qwen3.6:27b, added
-# Qwen3.5:4B + Qwen3.5:9B to fill the 0.8B → 35B-A3B param gap with a
-# faster, dense mid-band). See development/CHANGELOG.md for roster history.
+# Default 5-model roster (post 2026-05-18 swap: dropped gemma4:31b dense
+# Ollama, added gemma4:26b-a4b MoE on vLLM — the whole roster now runs
+# under a single backend, retiring the backend split). See
+# development/CHANGELOG.md for full roster history.
 # Update here to change the --all default.
-PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B qwen3.6:35b gemma4:31b)
+PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B qwen3.6:35b gemma4:26b-a4b)
 
 # Heavy/slow models — kept at Nice=0 by the auto-prioritize logic in
 # submit_with_rtx.sh and the cluster-ops `prioritize.sh` skill script.
@@ -16,7 +17,7 @@ PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B qwen3.6:35b gemma4:31b)
 # slot first when there's queue contention. Negative Nice (raise priority
 # above default) requires admin on this cluster, so this is the only
 # direction we have without a Golden-Ticket QoS.
-PDDL_SLOW_MODELS=(gemma4:31b qwen3.6:35b)
+PDDL_SLOW_MODELS=(gemma4:26b-a4b qwen3.6:35b)
 
 # Default think × cond axes. The full Cartesian product is built; the legacy
 # no-tools/think=on matrix-gate was lifted 2026-05-12 in submit_with_rtx.sh.
@@ -34,12 +35,7 @@ PDDL_DEFAULT_SBATCH_CONDITIONS="tools_per-task_minimal tools_all_minimal"
 # verification on the original 27B AWQ probe). The lookup table is the
 # single source of truth for OLLAMA_TAG → (HF id, parser flags) used by
 # both run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
-PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B)
-# Phase-A candidates (in vllm_lookup but NOT yet promoted into VERIFIED_MODELS).
-# `submit_with_rtx.sh --backend vllm` will refuse these until the smoke
-# verifies the parser + serve path; add by name to VERIFIED_MODELS once
-# `run_smoke_vllm_vs_ollama.sbatch` returns a non-empty summary_*.json.
-#   gemma4:26b-a4b — google/gemma-4-26B-A4B-it AWQ-4bit, smoke pending.
+PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B gemma4:26b-a4b)
 
 # Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
 # Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success, plus
@@ -85,15 +81,17 @@ vllm_lookup() {
             # gemma4 arch, MoE A4B (~4B active of 26.5B total),
             # compressed-tensors AWQ-INT4 from the same publisher as
             # qwen3.6:35b's verified vLLM quant. ~16 GB weights on disk,
-            # fits rtx_6000:1 with KV-cache headroom under
+            # peaks ~85% on rtx_6000:1 (42218/49140 MiB) under
             # gpu-memory-utilization=0.85. Gemma's tokenizer has no
             # <think> tokens → REASONING_PARSER=none (omits the flag);
             # tool-call format is the gemma4 family parser (verified
-            # registered in vLLM 0.20.x via the 2026-05-12 smoke fix).
+            # registered in vLLM 0.20.x via the 2026-05-12 smoke fix;
+            # tools-cell ToolSel ≥0.95 in smoke 17638752).
             # HF tag is image-text-to-text — vLLM auto-loads the vision
             # tower whose per-MM-item budget (2496 tok) exceeds the
             # default --max-num-batched-tokens=2048 and crashes startup
-            # without MAX_NUM_BATCHED_TOKENS≥2496 (ref smoke 17633538).
+            # without MAX_NUM_BATCHED_TOKENS≥2496 (smoke 17633538 →
+            # 17638752 confirmed 4096 is sufficient).
             HF_MODEL="cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit"
             TOOL_CALL_PARSER="gemma4"
             REASONING_PARSER="none"

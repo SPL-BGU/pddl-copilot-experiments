@@ -1,13 +1,16 @@
 #!/bin/bash
-### Submit the 5-model production sweep with per-model backend + GPU dispatch:
+### Submit the 5-model production sweep with per-model GPU dispatch:
 ###
-###   vLLM,   rtx_6000:1, 12:00:00 → Qwen3.5:0.8B + 4B + 9B      (small/mid, packed)
-###   vLLM,   rtx_6000:1, 48:00:00 → qwen3.6:35b                 (heavy MoE)
-###   Ollama, rtx_pro_6000:1, 72h  → gemma4:31b                  (paper default)
+###   vLLM, rtx_6000:1, 12:00:00 → Qwen3.5:0.8B + 4B + 9B  (small/mid, packed)
+###   vLLM, rtx_6000:1, 48:00:00 → qwen3.6:35b             (heavy MoE)
+###   vLLM, rtx_6000:1, 48:00:00 → gemma4:26b-a4b          (MoE A4B; replaced
+###                                                         the dense 31B
+###                                                         Ollama 2026-05-18)
 ###
-### Three independent sbatch submissions. Each model lands on the GPU class
-### and walltime that fits it, and the backend per model matches what's
-### actually been verified (see lib/defaults.sh:PDDL_VLLM_VERIFIED_MODELS).
+### Three independent sbatch submissions, all on vLLM after the
+### 2026-05-18 backend unification (gemma4:31b dense Ollama swapped for
+### gemma4:26b-a4b MoE vLLM via smoke 17638752). Each model lands on the
+### walltime that fits it (see lib/defaults.sh:PDDL_VLLM_VERIFIED_MODELS).
 ###
 ### Why this script exists:
 ###   * submit_with_rtx.sh accepts ONE backend per invocation, so a single
@@ -76,8 +79,8 @@ echo "==> [2/3] vLLM, rtx_6000:1, 48:00:00 — qwen3.6:35b"
 bash "$HERE/submit_with_rtx.sh" --backend vllm --time 48:00:00 qwen3.6:35b "${FORWARDED[@]}"
 
 echo
-echo "==> [3/3] Ollama, rtx_pro_6000:1, 72:00:00 — gemma4:31b"
-bash "$HERE/submit_with_rtx.sh" --backend ollama gemma4:31b "${FORWARDED[@]}"
+echo "==> [3/3] vLLM, rtx_6000:1, 48:00:00 — gemma4:26b-a4b"
+bash "$HERE/submit_with_rtx.sh" --backend vllm --time 48:00:00 gemma4:26b-a4b "${FORWARDED[@]}"
 
 echo
 echo "Full sweep submitted. Track via: bash .claude/skills/cluster-ops/scripts/status.sh"
