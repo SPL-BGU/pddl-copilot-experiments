@@ -511,3 +511,72 @@ squeue --me                 # All my running/pending jobs
 | No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. The chain phase itself was archived 2026-05-05 (see §4.3). |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.
+
+---
+
+## 12. PlanBench Arm (added 2026-05-18)
+
+A second, parallel evaluation arm that runs the PlanBench benchmark on the same model fleet, alongside (not replacing) the 5-task `run_experiment.py` matrix above. **v1 = vanilla leaderboard only** — no MCP tools used during response generation; the tool-using arm is tracked as ISS-021. See `planbench/README.md` for operator-level usage; this section is the methodology reference.
+
+### 12.1 Why a second arm
+
+The 5-task matrix grades (solve / validate_* / simulate) against our own domain corpus with `MCPPlanner`-bridged ground truth. PlanBench grades a complementary axis: NL-prompted plan generation on canonical IPC domains, against PlanBench's own VAL/PR2-based scorer. Reporting both lets the paper compare to PlanBench's published baselines (gpt-4_chat etc.) without recomputing them — we read their committed `results/<config>/<engine>/` JSONs directly.
+
+PlanBench's `INTEGRATION.md` is explicit: `send_query` is single-turn from the framework's perspective. A multi-turn MCP-tool-using agent inside the call is a **distinct method** (LLM-Modulo, per INTEGRATION §3 "Note on tools"), not the vanilla leaderboard. v1 does the vanilla path only.
+
+### 12.2 Scope
+
+- **Tasks**: all 10 — t1 (plan generation), t2 (cost-optimal planning), t3 (plan verification), t4 (plan reuse), t5 (plan generalization), t6 (replanning), t7 (reasoning about plan execution), t8_1 / t8_2 / t8_3 (goal-reformulation variants).
+- **Configs**: canonical Blocksworld + Logistics + Depots. Mystery / Obfuscated configs deferred (would require the parser `nl_to_pddl` MCP tool dropped from v2 scope).
+- **Models**: deferred to per-sweep choice. v1 smoke validated on qwen3:0.6b (local); cluster runs use the same `PDDL_DEFAULT_MODELS` roster as the 5-task sweep by default.
+
+### 12.3 Integration architecture
+
+LLMs-Planning is cloned per-host into `external/LLMs-Planning/` and patched idempotently:
+
+1. **`utils/__init__.py`**: tolerate missing `OPENAI_API_KEY` at import (PlanBench's `utils/__init__.py:9` hard-codes `os.environ["OPENAI_API_KEY"]` at module load).
+2. **`utils/llm_utils.py`**: tolerate missing transformers/openai imports + add a dispatch branch
+   ```python
+   elif engine.startswith('pddl_copilot__'):
+       from planbench.engine import pddl_copilot_send_query
+       return pddl_copilot_send_query(query, engine, max_tokens, model=model, stop=stop)
+   ```
+
+Patches live in `planbench/apply_patches.py` (anchored on stable strings, not line numbers — survives most upstream churn).
+
+### 12.4 Engine name format
+
+`pddl_copilot__<backend>__<model>`
+
+- `<backend>` ∈ `{ollama, vllm}`
+- `<model>` is the model tag, colons preserved by the double-underscore separator (`qwen3:0.6b`, `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`, etc.).
+
+### 12.5 Non-obvious adapter behaviour
+
+Two corrections made during the 2026-05-18 smoke that deviate from the naive port of PlanBench's openai-style `send_query`:
+
+- **`num_predict` floor.** PlanBench passes `self.max_gpt_response_length = 500` (a legacy OpenAI-completion cap). On thinking-capable models (qwen3.x, qwen3.6, gpt-oss when re-added) the reasoning trace eats the entire 500-token budget and content emits empty. The adapter floors at 4096 (matches `pddl_eval/runner.py::DEFAULT_NUM_PREDICT` non-solve defaults).
+- **No `[PLAN END]` in the stop list.** Ollama stop strings match against the model's *hidden* thinking trace. PlanBench's prompts include `[PLAN END]` as instruction text; thinking-capable models echo it while reasoning about the prompt, generation halts before any content emits. The adapter passes only the caller-supplied `stop` (PlanBench passes `"[STATEMENT]"`, the few-shot delimiter). PlanBench's parser extracts the `[PLAN]…[PLAN END]` block from full output anyway.
+
+### 12.6 Scoring + reproducibility
+
+PlanBench writes per-instance JSON to `external/LLMs-Planning/plan-bench/results/<config>/<engine>/task_*.json` — fields include `instance_id`, `llm_raw_response`, `extracted_llm_plan`, `llm_correct`, and per-task extras (`llm_correct_binary` / `_w_type` / `_w_expl` for t3; `actual_cost_of_llm_plan` / `cost_by_llm` for t2). The cluster sbatch rsyncs these into `results/planbench/slurm_<model_tag>_<jobid>/` so our existing `sync.sh` carries them down, and `status.sh --bench planbench` renders a model × config completion matrix.
+
+PlanBench's pre-shipped `prompts/<config>/task_*.json` files are deterministic (seeded random.seed(10) in `utils/__init__.py`), so our adapter's only contribution to non-determinism is the underlying Ollama/vLLM call. We use `temperature=0.0` matching the 5-task matrix.
+
+### 12.7 What this arm does NOT change
+
+- `pddl_eval/` — zero touches. Existing 5-task `results/<run-dir>/single_task_*.json` schemas, scoring, and Wilson CIs are byte-comparable across the 2026-05-18 commit.
+- MCP plugin contract (`MCPPlanner._PINNED_VERBOSE_FALSE`, schema-strip behaviour) — unchanged. PlanBench engine doesn't talk to MCP in v1.
+- The chain phase remains archived (§4.3). PlanBench's per-task design is single-turn from PlanBench's perspective regardless of internal multi-turn agentic logic, so even the v2 tool-using arm doesn't re-introduce chain-style multi-task contamination.
+
+### 12.8 v2 — tool-using arm (tracked: ISS-021)
+
+The v2 arm reuses the same engine adapter but routes through `pddl_eval.chat.MCPPlanner` for tool-loop multi-turn calls before returning the final assistant text to PlanBench. Two upstream MCP plugin extensions are required and scoped in `../pddl-copilot/specs-for-plan-bench.md` (sibling repo branch `planbench-integration`):
+
+1. **`validate_plan_structured`** in pddl-validator — for t3 error-type + NL-explanation grading. Returns `{valid, failed_step_index, failed_action, failed_precondition, error_type}`.
+2. **`optimal_plan`** in pddl-solver — for t2 cost-optimal scoring. Returns `{plan, cost, is_optimal}` via Fast Downward's `seq-opt-lmcut`.
+
+Engine name for the v2 arm would be `pddl_copilot_tools__<backend>__<model>` (or similar) to keep the two arms separable in `responses/<config>/<engine>/` and `results/<config>/<engine>/` namespaces.
+
+The agentic-author (pddl-author) and NL↔PDDL parser tools were dropped from v2 scope: no PlanBench task exercises domain authoring, and Mystery/Obfuscated configs are excluded. Both remain mentioned in `specs-for-plan-bench.md` for future extension benchmarks.
