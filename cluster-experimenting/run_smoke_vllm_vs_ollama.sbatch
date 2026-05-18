@@ -62,10 +62,12 @@ export OLLAMA_NUM_PARALLEL="$CONCURRENCY"
 #
 # Probing a non-Qwen family (no <think> reasoning trace) — e.g. Gemma-4 —
 # requires disabling the default qwen3 reasoning parser (it crashes at
-# startup against Gemma's tokenizer; see smoke 17468317, 2026-05-11):
-#   sbatch --export=ALL,HF_MODEL="cyankiwi/gemma-4-31B-it-AWQ-4bit",\
-# OLLAMA_TAG="gemma4:31b",TOOL_CALL_PARSER=gemma4,REASONING_PARSER=none \
-#          --gpus=rtx_6000:1 --mem=48G --job-name=vllm_gemma4_31b_smoke \
+# startup against Gemma's tokenizer; see smoke 17468317, 2026-05-11).
+# Active Phase-A candidate is the MoE 26B-A4B variant (replaces the
+# dense 31B in PDDL_DEFAULT_MODELS once smoke passes):
+#   sbatch --export=ALL,HF_MODEL="cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit",\
+# OLLAMA_TAG="gemma4:26b-a4b",TOOL_CALL_PARSER=gemma4,REASONING_PARSER=none \
+#          --gpus=rtx_6000:1 --mem=48G --job-name=vllm_gemma4_26b_a4b_smoke \
 #          cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
 OLLAMA_TAG="${OLLAMA_TAG:-qwen3.6:27b}"
 HF_LARGE="${HF_MODEL:-cyankiwi/Qwen3.6-27B-AWQ-INT4}"

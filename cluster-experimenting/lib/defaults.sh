@@ -35,6 +35,11 @@ PDDL_DEFAULT_SBATCH_CONDITIONS="tools_per-task_minimal tools_all_minimal"
 # single source of truth for OLLAMA_TAG → (HF id, parser flags) used by
 # both run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
 PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B)
+# Phase-A candidates (in vllm_lookup but NOT yet promoted into VERIFIED_MODELS).
+# `submit_with_rtx.sh --backend vllm` will refuse these until the smoke
+# verifies the parser + serve path; add by name to VERIFIED_MODELS once
+# `run_smoke_vllm_vs_ollama.sbatch` returns a non-empty summary_*.json.
+#   gemma4:26b-a4b — google/gemma-4-26B-A4B-it AWQ-4bit, smoke pending.
 
 # Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
 # Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success;
@@ -72,6 +77,22 @@ vllm_lookup() {
             HF_MODEL="Qwen/Qwen3.5-9B"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
+            ;;
+        gemma4:26b-a4b)
+            # gemma4 arch, MoE A4B (~4B active of 26.5B total),
+            # compressed-tensors AWQ-INT4 from the same publisher as
+            # qwen3.6:35b's verified vLLM quant. ~16 GB weights on disk,
+            # fits rtx_6000:1 with KV-cache headroom under
+            # gpu-memory-utilization=0.85. Gemma's tokenizer has no
+            # <think> tokens → REASONING_PARSER=none (omits the flag);
+            # tool-call format is the gemma4 family parser (verified
+            # registered in vLLM 0.20.x via the 2026-05-12 smoke fix).
+            # HF tag is image-text-to-text — Phase A smoke must confirm
+            # vLLM serves it text-only without crashing on the unused
+            # vision tower.
+            HF_MODEL="cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit"
+            TOOL_CALL_PARSER="gemma4"
+            REASONING_PARSER="none"
             ;;
         *)
             echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
