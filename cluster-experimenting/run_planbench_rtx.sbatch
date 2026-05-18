@@ -43,12 +43,18 @@ nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1
 
 ### Required + defaults ###
 : "${MODEL:?Error: export MODEL=... (submit via submit_planbench.sh)}"
+echo "[env-debug] raw PLANBENCH_TASKS=\"${PLANBENCH_TASKS:-<unset>}\""
+echo "[env-debug] raw PLANBENCH_CONFIGS=\"${PLANBENCH_CONFIGS:-<unset>}\""
+echo "[env-debug] raw PLANBENCH_INSTANCES=\"${PLANBENCH_INSTANCES:-<unset>}\""
 # submit_planbench.sh encodes space-separated multi-values as ^-joined to
 # survive SLURM's comma-parsing --export. Decode here. The default values
 # are already space-separated (literal), so the tr is a no-op for them.
 PLANBENCH_TASKS="$(echo "${PLANBENCH_TASKS:-$PDDL_PLANBENCH_DEFAULT_TASKS}" | tr '^' ' ')"
 PLANBENCH_CONFIGS="$(echo "${PLANBENCH_CONFIGS:-$PDDL_PLANBENCH_DEFAULT_CONFIGS}" | tr '^' ' ')"
 PLANBENCH_INSTANCES="$(echo "${PLANBENCH_INSTANCES:-}" | tr '^' ' ')"
+echo "[env-debug] decoded PLANBENCH_TASKS=\"$PLANBENCH_TASKS\""
+echo "[env-debug] decoded PLANBENCH_CONFIGS=\"$PLANBENCH_CONFIGS\""
+echo "[env-debug] decoded PLANBENCH_INSTANCES=\"$PLANBENCH_INSTANCES\""
 THINK="${THINK:-off}"
 EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 PLANBENCH_ROOT="$EXPT_ROOT/external/LLMs-Planning"
@@ -161,6 +167,8 @@ for TASK in $PLANBENCH_TASKS; do
             # shellcheck disable=SC2086  # we want word-splitting here
             INSTANCE_ARGS=(--specific_instances $PLANBENCH_INSTANCES)
         fi
+        echo "[env-debug] INSTANCE_ARGS=(${INSTANCE_ARGS[*]})"
+        echo "[env-debug] python invocation: response_generation.py --task $TASK --config $CONFIG --engine $ENGINE --verbose False ${INSTANCE_ARGS[*]}"
 
         # Stage 2 — response generation against our engine. We call this
         # directly (rather than llm_plan_pipeline.py) because that pipeline
