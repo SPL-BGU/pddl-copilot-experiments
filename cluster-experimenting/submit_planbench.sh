@@ -93,19 +93,31 @@ for MODEL in "${MODELS[@]}"; do
     MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
     JOB_NAME="pddl_planbench_${MODEL_TAG}"
 
-    EXPORTS="ALL,MODEL=$MODEL,THINK=$THINK,PLANBENCH_TASKS=$TASKS,PLANBENCH_CONFIGS=$CONFIGS"
-    if [[ -n "$INSTANCES" ]]; then
-        EXPORTS="$EXPORTS,PLANBENCH_INSTANCES=$INSTANCES"
-    fi
+    # SLURM's `--export=KEY=VAL,KEY2=VAL2,...` form uses comma as separator
+    # and does NOT support quoting individual values. A value containing
+    # spaces (e.g. PLANBENCH_INSTANCES="2 3 4" or PLANBENCH_TASKS="t1 t2")
+    # is parsed as the first whitespace-delimited token only — the rest
+    # become stray positional args to sbatch (silently dropped). Job
+    # 17627831 hit this and ran a 500-instance t1/blocksworld sweep instead
+    # of the intended 3-instance smoke. Fix: pre-export the vars into the
+    # current environment and rely on the default `--export=ALL`, which
+    # snapshots the full env into the job without comma-parsing.
+    export MODEL THINK PLANBENCH_TASKS PLANBENCH_CONFIGS PLANBENCH_INSTANCES
+    MODEL="$MODEL"
+    THINK="$THINK"
+    PLANBENCH_TASKS="$TASKS"
+    PLANBENCH_CONFIGS="$CONFIGS"
+    PLANBENCH_INSTANCES="$INSTANCES"
 
     CMD=(sbatch
         --job-name="$JOB_NAME"
-        --export="$EXPORTS"
+        --export=ALL
         "$SCRIPT_DIR/run_planbench_rtx.sbatch")
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
         echo
         echo "  ${CMD[*]}"
+        echo "    (with exported env: MODEL=$MODEL THINK=$THINK TASKS=\"$TASKS\" CONFIGS=\"$CONFIGS\" INSTANCES=\"$INSTANCES\")"
     else
         echo
         echo "Submitting $MODEL..."
