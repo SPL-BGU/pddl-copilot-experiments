@@ -64,9 +64,13 @@ export OLLAMA_NUM_PARALLEL="$CONCURRENCY"
 # requires disabling the default qwen3 reasoning parser (it crashes at
 # startup against Gemma's tokenizer; see smoke 17468317, 2026-05-11).
 # Active Phase-A candidate is the MoE 26B-A4B variant (replaces the
-# dense 31B in PDDL_DEFAULT_MODELS once smoke passes):
+# dense 31B in PDDL_DEFAULT_MODELS once smoke passes). Gemma-4 ships a
+# multimodal vision tower that vLLM auto-loads; its per-MM-item budget
+# (2496 tokens) exceeds the default --max-num-batched-tokens=2048 and
+# crashes startup unless bumped (ref smoke 17633538):
 #   sbatch --export=ALL,HF_MODEL="cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit",\
-# OLLAMA_TAG="gemma4:26b-a4b",TOOL_CALL_PARSER=gemma4,REASONING_PARSER=none \
+# OLLAMA_TAG="gemma4:26b-a4b",TOOL_CALL_PARSER=gemma4,REASONING_PARSER=none,\
+# MAX_NUM_BATCHED_TOKENS=4096 \
 #          --gpus=rtx_6000:1 --mem=48G --job-name=vllm_gemma4_26b_a4b_smoke \
 #          cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
 OLLAMA_TAG="${OLLAMA_TAG:-qwen3.6:27b}"
@@ -90,6 +94,17 @@ EAGER_FLAG=""
 NUM_PREDICT="${NUM_PREDICT:-}"
 NUM_PREDICT_FLAG=""
 [ -n "$NUM_PREDICT" ] && NUM_PREDICT_FLAG="--num-predict $NUM_PREDICT"
+# Multimodal-aware models (e.g. gemma4:26b-a4b) declare a per-image MM-item
+# token budget larger than the default --max-num-batched-tokens=2048 and vLLM
+# refuses to start with `ValueError: Chunked MM input disabled but
+# max_tokens_per_mm_item (N) is larger than max_num_batched_tokens (2048)`
+# (gemma4:26b-a4b reports N=2496; ref smoke 17633538 traceback). Bump to the
+# error-reported N (or higher) for those families; empty for text-only models
+# preserves vLLM's default batching behavior.
+MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-}"
+MAX_NUM_BATCHED_TOKENS_FLAG=""
+[ -n "$MAX_NUM_BATCHED_TOKENS" ] && \
+    MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
 # vLLM tool-call parser must match the model's emit format (verified empirically
 # in 2026-05-10 smokes; see development/CHANGELOG.md). Defaults to qwen3_xml
 # (Qwen3.5/3.6 family Llama-XML <function=NAME><parameter=KEY>VAL</parameter>
@@ -182,6 +197,7 @@ apptainer exec --nv \
         $REASONING_PARSER_FLAG \
         --gpu-memory-utilization "$GPU_MEM_UTIL" \
         $EAGER_FLAG \
+        $MAX_NUM_BATCHED_TOKENS_FLAG \
         > "$SERVE_LOG" 2>&1 &
 VLLM_PID=$!
 

@@ -42,7 +42,10 @@ PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B)
 #   gemma4:26b-a4b — google/gemma-4-26B-A4B-it AWQ-4bit, smoke pending.
 
 # Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
-# Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success;
+# Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success, plus
+# MAX_NUM_BATCHED_TOKENS for multimodal-aware cases where vLLM's default
+# 2048-token batch budget is too small for the model's per-MM-item
+# (left unset for text-only models → callers fall through to vLLM default);
 # returns non-zero with a clear error otherwise so callers can bail.
 vllm_lookup() {
     case "$1" in
@@ -87,12 +90,14 @@ vllm_lookup() {
             # <think> tokens → REASONING_PARSER=none (omits the flag);
             # tool-call format is the gemma4 family parser (verified
             # registered in vLLM 0.20.x via the 2026-05-12 smoke fix).
-            # HF tag is image-text-to-text — Phase A smoke must confirm
-            # vLLM serves it text-only without crashing on the unused
-            # vision tower.
+            # HF tag is image-text-to-text — vLLM auto-loads the vision
+            # tower whose per-MM-item budget (2496 tok) exceeds the
+            # default --max-num-batched-tokens=2048 and crashes startup
+            # without MAX_NUM_BATCHED_TOKENS≥2496 (ref smoke 17633538).
             HF_MODEL="cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit"
             TOOL_CALL_PARSER="gemma4"
             REASONING_PARSER="none"
+            MAX_NUM_BATCHED_TOKENS="4096"
             ;;
         *)
             echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
