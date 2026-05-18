@@ -232,6 +232,13 @@ ssh omereliy@slurm.bgu.ac.il "squeue --me -h -o '%i %j' | awk '\$2 ~ /^pddl_/ {p
 
 `scancel -u omereliy` (nuke all, no name filter) needs an explicit user request — it will terminate jobs that have been running for hours and may not be sweep-related. Confirm first.
 
+### "Clean up after a wrong submission / cancel"
+
+Two distinct flavours — see **[`cleanup.md`](cleanup.md)** in this skill dir for full recipes, predicates, and the worked 2026-05-18 Qwen3.5:4B/9B Ollama-contamination example.
+
+- **Misconfigured deployment** (wrong sbatch wrote rows to non-canonical paths). Detect via `status.sh`'s "skipped N dirs on non-canonical backend" footer; verify with `scontrol show job <jid> | grep Command` vs the `BACKEND` map; quarantine the whole affected `slurm_*` dirs to `checkpoints/cluster-<UTC-date>-<reason>/`; resubmit with the right `--backend`. Note: `submit_with_rtx.sh:122` defaults to `ollama` regardless of `PDDL_VLLM_VERIFIED_MODELS` membership — pass `--backend vllm` explicitly for vLLM-only models.
+- **Cancel-induced error rows** (a `scancel`'d cell left `FR_*` rows in `trials.jsonl` that aren't real model errors). Back up to `trials.jsonl.bak-precleanup<N>-<UTC-timestamp>`, prune by **jid + failure_reason**, never by `failure_reason` alone.
+
 ### Pending REASON cheat sheet (Mar-26 guide §FAQ)
 
 When `status.sh`'s Pending table shows a non-trivial REASON, here's what to do:
