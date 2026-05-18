@@ -230,17 +230,12 @@ def jname_model(jname):
 
 cell_running, cell_pending, model_pending = {}, {}, set()
 for q in queue:
-    # Manifest takes precedence: packed-array tasks all share one parent
-    # jname (e.g. pddl_rtx_pack2_Qwen3_5_4B covers 12 tasks across two
-    # models × 6 cells), so jname_to_cell() would collapse every sibling
-    # onto a single cell and `cell_running[cell] = q` would overwrite
-    # itself, leaving only one task visible in the rollup.
-    cell = None
-    jid_parts = q["jid"].split("_", 1)
-    if len(jid_parts) == 2:
-        cell = manifest_index.get((jid_parts[0], jid_parts[1]))
+    cell = jname_to_cell(q["jname"])
     if not (cell and cell[2] in DENOM):
-        cell = jname_to_cell(q["jname"])
+        # Fall back to the manifest: ArrayJobId + ArrayTaskId → cell.
+        jid_parts = q["jid"].split("_", 1)
+        if len(jid_parts) == 2:
+            cell = manifest_index.get((jid_parts[0], jid_parts[1]))
     if cell and cell[2] in DENOM:
         if q["state"] == "RUNNING":   cell_running[cell] = q
         elif q["state"] == "PENDING": cell_pending[cell] = q
