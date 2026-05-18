@@ -103,6 +103,59 @@ def patch_llm_utils(pb_root: Path) -> None:
     print(f"[patch] {f.relative_to(pb_root)}: tolerant imports + pddl_copilot dispatch")
 
 
+def patch_response_generation(pb_root: Path) -> None:
+    """Fix the self-destructing --specific_instances filter.
+
+    Upstream's loop pops matched ids off the input list, so once the LAST
+    match is consumed `if len(specified_instances) > 0:` flips False and
+    every remaining instance falls through to send_query (smoke 17628268,
+    2026-05-18: filter for [2, 3, 4] correctly processed those 3 then ran
+    all 497 remaining BW instances). Snapshot to a set at function entry
+    and use immutable membership tests in the loop.
+    """
+    f = pb_root / "plan-bench" / "response_generation.py"
+    text = f.read_text()
+    if PATCH_MARKER in text:
+        print(f"[patch] {f.relative_to(pb_root)}: already applied")
+        return
+
+    init_anchor = (
+        "    def get_responses(self, task_name, specified_instances = [], run_till_completion=False):\n"
+        "        output_dir = f\"responses/{self.data['domain_name']}/{self.engine}/\"\n"
+    )
+    init_new = (
+        "    def get_responses(self, task_name, specified_instances = [], run_till_completion=False):\n"
+        f"        # {PATCH_MARKER}: snapshot to a set so the inner filter doesn't\n"
+        "        # mutate state — the upstream `.remove()` pattern emptied the list\n"
+        "        # after the last match, flipping `if len(...) > 0` False and letting\n"
+        "        # every remaining instance fall through to send_query.\n"
+        "        _specified_instances_set = set(specified_instances or [])\n"
+        "        output_dir = f\"responses/{self.data['domain_name']}/{self.engine}/\"\n"
+    )
+    if init_anchor not in text:
+        sys.exit(f"[patch] {f.relative_to(pb_root)}: get_responses init anchor not found")
+    text = text.replace(init_anchor, init_new)
+
+    old_filter = (
+        "                if len(specified_instances) > 0:\n"
+        "                    if instance['instance_id'] not in specified_instances:\n"
+        "                        continue\n"
+        "                    else:\n"
+        "                        specified_instances.remove(instance['instance_id'])                   \n"
+    )
+    new_filter = (
+        f"                # {PATCH_MARKER}: see _specified_instances_set above.\n"
+        "                if _specified_instances_set and instance['instance_id'] not in _specified_instances_set:\n"
+        "                    continue\n"
+    )
+    if old_filter not in text:
+        sys.exit(f"[patch] {f.relative_to(pb_root)}: filter-block anchor not found")
+    text = text.replace(old_filter, new_filter)
+
+    f.write_text(text)
+    print(f"[patch] {f.relative_to(pb_root)}: filter no-mutate fix")
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("usage: apply_patches.py <LLMs-Planning checkout>")
@@ -111,6 +164,7 @@ def main() -> None:
         sys.exit(f"not a PlanBench checkout: {pb_root}")
     patch_init(pb_root)
     patch_llm_utils(pb_root)
+    patch_response_generation(pb_root)
 
 
 if __name__ == "__main__":
