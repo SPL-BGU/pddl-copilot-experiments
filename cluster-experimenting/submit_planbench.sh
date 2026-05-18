@@ -93,31 +93,36 @@ for MODEL in "${MODELS[@]}"; do
     MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
     JOB_NAME="pddl_planbench_${MODEL_TAG}"
 
-    # SLURM's `--export=KEY=VAL,KEY2=VAL2,...` form uses comma as separator
-    # and does NOT support quoting individual values. A value containing
-    # spaces (e.g. PLANBENCH_INSTANCES="2 3 4" or PLANBENCH_TASKS="t1 t2")
-    # is parsed as the first whitespace-delimited token only — the rest
-    # become stray positional args to sbatch (silently dropped). Job
-    # 17627831 hit this and ran a 500-instance t1/blocksworld sweep instead
-    # of the intended 3-instance smoke. Fix: pre-export the vars into the
-    # current environment and rely on the default `--export=ALL`, which
-    # snapshots the full env into the job without comma-parsing.
-    export MODEL THINK PLANBENCH_TASKS PLANBENCH_CONFIGS PLANBENCH_INSTANCES
-    MODEL="$MODEL"
-    THINK="$THINK"
-    PLANBENCH_TASKS="$TASKS"
-    PLANBENCH_CONFIGS="$CONFIGS"
-    PLANBENCH_INSTANCES="$INSTANCES"
+    # SLURM `--export` semantics on this cluster:
+    #   * Comma-separated KEY=VAL list. Values are NOT quotable; the parser
+    #     splits on whitespace, dropping anything after the first space (job
+    #     17627831 hit this — PLANBENCH_INSTANCES="2 3 4" became "2" + two
+    #     stray sbatch positional args silently dropped).
+    #   * `--export=ALL` alone does NOT carry user-defined env vars on this
+    #     SLURM (confirmed via `srun --overlap` into a live job: vars set in
+    #     the calling shell read back empty inside the allocation). Site
+    #     policy presumably strips them. Same finding as why
+    #     submit_with_rtx.sh encodes its CELLS_LIST as ^-separated tokens.
+    # Workaround: encode multi-value lists with '^' separators so no value
+    # contains a space; pass them inline in the comma-separated --export.
+    # The sbatch script splits ^ back into spaces before use.
+    TASKS_ENC="${TASKS// /^}"
+    CONFIGS_ENC="${CONFIGS// /^}"
+    INSTANCES_ENC="${INSTANCES// /^}"
+
+    EXPORTS="ALL,MODEL=$MODEL,THINK=$THINK,PLANBENCH_TASKS=$TASKS_ENC,PLANBENCH_CONFIGS=$CONFIGS_ENC"
+    if [[ -n "$INSTANCES_ENC" ]]; then
+        EXPORTS="$EXPORTS,PLANBENCH_INSTANCES=$INSTANCES_ENC"
+    fi
 
     CMD=(sbatch
         --job-name="$JOB_NAME"
-        --export=ALL
+        --export="$EXPORTS"
         "$SCRIPT_DIR/run_planbench_rtx.sbatch")
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
         echo
         echo "  ${CMD[*]}"
-        echo "    (with exported env: MODEL=$MODEL THINK=$THINK TASKS=\"$TASKS\" CONFIGS=\"$CONFIGS\" INSTANCES=\"$INSTANCES\")"
     else
         echo
         echo "Submitting $MODEL..."

@@ -43,9 +43,12 @@ nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1
 
 ### Required + defaults ###
 : "${MODEL:?Error: export MODEL=... (submit via submit_planbench.sh)}"
-PLANBENCH_TASKS="${PLANBENCH_TASKS:-$PDDL_PLANBENCH_DEFAULT_TASKS}"
-PLANBENCH_CONFIGS="${PLANBENCH_CONFIGS:-$PDDL_PLANBENCH_DEFAULT_CONFIGS}"
-PLANBENCH_INSTANCES="${PLANBENCH_INSTANCES:-}"
+# submit_planbench.sh encodes space-separated multi-values as ^-joined to
+# survive SLURM's comma-parsing --export. Decode here. The default values
+# are already space-separated (literal), so the tr is a no-op for them.
+PLANBENCH_TASKS="$(echo "${PLANBENCH_TASKS:-$PDDL_PLANBENCH_DEFAULT_TASKS}" | tr '^' ' ')"
+PLANBENCH_CONFIGS="$(echo "${PLANBENCH_CONFIGS:-$PDDL_PLANBENCH_DEFAULT_CONFIGS}" | tr '^' ' ')"
+PLANBENCH_INSTANCES="$(echo "${PLANBENCH_INSTANCES:-}" | tr '^' ' ')"
 THINK="${THINK:-off}"
 EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 PLANBENCH_ROOT="$EXPT_ROOT/external/LLMs-Planning"
