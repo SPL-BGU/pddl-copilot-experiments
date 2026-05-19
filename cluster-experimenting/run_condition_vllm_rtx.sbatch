@@ -162,6 +162,12 @@ for MODEL in $MODELS; do
     MAX_NUM_BATCHED_TOKENS_FLAG=""
     [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
         MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
+    # Build --reasoning-parser flag via the shared helper. Families with
+    # no reasoning trace (gemma4, REASONING_PARSER=none) get an empty
+    # string so the flag is omitted — passing `--reasoning-parser none`
+    # crashes vLLM with `KeyError: Reasoning parser 'none' not found`
+    # (verified on array job 17638961 task 17638977, 2026-05-18).
+    REASONING_PARSER_FLAG="$(vllm_reasoning_parser_flag)"
     echo
     echo "####################################################################"
     echo "# MODEL: $MODEL  (HF: $HF_MODEL)   started $(date)"
@@ -182,7 +188,7 @@ for MODEL in $MODELS; do
             --max-model-len 16384 \
             --enable-auto-tool-choice \
             --tool-call-parser "$TOOL_CALL_PARSER" \
-            --reasoning-parser "$REASONING_PARSER" \
+            $REASONING_PARSER_FLAG \
             --gpu-memory-utilization 0.85 \
             --enable-prefix-caching \
             $MAX_NUM_BATCHED_TOKENS_FLAG \
