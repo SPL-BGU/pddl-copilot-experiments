@@ -58,9 +58,12 @@ bash .claude/skills/cluster-ops/scripts/status.sh                 # auto (termin
 bash .claude/skills/cluster-ops/scripts/status.sh --md            # force markdown (paste into chat)
 bash .claude/skills/cluster-ops/scripts/status.sh --terminal      # force pretty (e.g. `… | less -R`)
 bash .claude/skills/cluster-ops/scripts/status.sh --no-color      # strip ANSI from terminal mode
+bash .claude/skills/cluster-ops/scripts/status.sh --bench planbench  # PlanBench arm (model × task × config)
 ```
 
 The two modes share data computation; they differ only in rendering, so the metrics, Δ window, and watch-list logic are identical.
+
+**`--bench planbench`** delegates to `scripts/status_planbench.sh`, which renders a model × config matrix counting completed `task_*.json` files per cell (10 tasks expected per cell). Minimal v1: no Δ-table, no pace/ETA. Reads `results/planbench/slurm_<model>_<jobid>/` on the cluster. The native 5-task renderer is unchanged when `--bench 5task` (default) is used or no flag is passed.
 
 ### `scripts/job.sh` — single-job inspection
 

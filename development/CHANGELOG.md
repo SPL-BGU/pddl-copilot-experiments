@@ -6,6 +6,44 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-18 — PlanBench arm v1 (vanilla leaderboard, no MCP tools)
+
+**TL;DR.** Adds a second evaluation arm that runs the [PlanBench](https://github.com/karthikv792/LLMs-Planning) benchmark (10 tasks × canonical Blocksworld + Logistics + Depots) against our existing Ollama + vLLM model fleet, alongside (not replacing) the 5-task `run_experiment.py` matrix. Engine name format: `pddl_copilot__<backend>__<model>`. Zero changes to `pddl_eval/`, zero changes to the MCP plugin set — existing `results/` are byte-comparable across this commit.
+
+**Why.** Per the two-paper strategy (memory `project_paper_strategy.md`), the tools/eval paper needs a direct comparison to PlanBench's published baselines (gpt-4_chat etc.) to support the "our small open models compete" narrative. PlanBench's `INTEGRATION.md` is explicit: `send_query` is single-turn from the framework's perspective, so a multi-turn MCP-tool-using agent inside the call is a distinct method, not the vanilla leaderboard. v1 only does the vanilla path; the tool-using arm is tracked as ISS-021.
+
+**Architecture.**
+- LLMs-Planning is cloned into `external/LLMs-Planning/` (gitignored), then patched idempotently by `planbench/apply_patches.py` to (a) tolerate a missing `OPENAI_API_KEY` env var at import time and (b) add an `elif engine.startswith('pddl_copilot__'):` dispatch branch in `plan-bench/utils/llm_utils.py::send_query`.
+- The dispatch routes to `planbench/engine.py`'s sync `pddl_copilot_send_query`: `ollama.Client` for `backend=ollama`, `httpx` POST for `backend=vllm`. Engine name uses `__` double-underscore separators so Ollama tags' colons (`qwen3:0.6b`) survive `.split('__')`.
+- VAL builds from the LLMs-Planning vendored sources; Fast Downward clones from `aibasel/downward` and builds via `./build.py`; PR2 ships as a pre-built Linux ELF (no source distribution available). macOS skips Linux-binary builds with a clear WARN — laptops are engine-smoke-only; full pipeline runs on the cluster.
+
+**Why option B (build from source) over the SPL-BGU `pddl-sandbox` container.** Subagent probe confirmed (a) the ghcr image is private (requires PAT with `read:packages` scope), (b) the image carries FD + VAL + METRIC-FF but **not PR2**, so the build-something-from-source step doesn't disappear, (c) the image's entrypoint is an MCP server, not a CLI — using FD/VAL as plain binaries would need `apptainer exec` override gymnastics per call. Going fully self-contained from public sources removes the auth dependency and is one uniform provisioning path. The sandbox-container path stays available as an optional v2 alternative if the SPL-BGU org flips visibility to public.
+
+**Why no MCP plugin extensions in this commit.** PlanBench's evaluator owns its own VAL + PR2 + FD grading; none of v1 needs an MCP call. The two MCP tools that the future tool-using arm DOES need (`validate_plan_structured` for t3, `optimal_plan` for t2) are scoped in the sibling repo branch `planbench-integration` at `../pddl-copilot/specs-for-plan-bench.md` — a parallel doc-only commit that defers the actual plugin work until ISS-021 is picked up. The other two extensions originally on the table (`nl_to_pddl` for Mystery and `pddl-author` MCP exposure) are dropped from v2 scope: Mystery/Obfuscated configs aren't in the v1 sweep, and no PlanBench task exercises domain authoring.
+
+**Smoke (local laptop, qwen3:0.6b, macOS).** Engine adapter validated in two stages: (1) direct `pddl_copilot_send_query` call returns non-empty text with `[PLAN END]` marker after fixing two non-obvious adapter bugs — (i) raise `num_predict` floor from PlanBench's default 500 to 4096 because qwen3.x thinking models exhaust the 500-token budget on the CoT trace and emit empty content, and (ii) drop `[PLAN END]` from the Ollama stop-string list because stop strings match against the model's hidden thinking trace, halting generation before any content emits when the prompt contains `[PLAN END]` as instruction text. (2) End-to-end via `llm_plan_pipeline.py` ran 79/500 instances of t1/blocksworld in ~10 min before manual stop — PlanBench's pipeline accepts our engine name, calls our adapter per instance, and gets back well-formed responses. Full evaluation stage (VAL) deferred to cluster Linux.
+
+**Cluster.** `cluster-experimenting/run_planbench_rtx.sbatch` mirrors `run_condition_rtx.sbatch`'s Ollama-self-deploy bootstrap (apptainer SIF + `ollama serve` + warmup + VRAM guard) and replaces the `(think × cond)` inner loop with PlanBench's `(task × config)` loop. One sbatch per model. Post-run rsyncs PlanBench's `results/<config>/<engine>/` into our `results/planbench/slurm_<model_tag>_<jobid>/` namespace so existing `sync.sh` carries it down with no client-side change. `submit_planbench.sh` is the parallel of `submit_with_rtx.sh`.
+
+**Status tooling.** `cluster-ops/scripts/status.sh` gains a `--bench {5task,planbench}` selector. Default (`5task`) is bit-identical to pre-commit behaviour; `--bench planbench` delegates to a new sibling `status_planbench.sh` rendering a minimal model × config matrix (with done/total task counts per cell). No Δ-table / pace / ETA in v1 — the 5task renderer's machinery isn't worth porting until a richer corpus exists.
+
+**Upstream PlanBench quirk worth recording.** `llm_plan_pipeline.py` does **not** forward `--specific_instances` to `response_generation.get_responses` (line 98 of upstream), so passing `--specific_instances 2` filters prompt generation but still runs response generation on all 500 instances. The cluster sbatch sidesteps this by calling `response_generation.py` and `response_evaluation.py` as standalone scripts (their `__main__` blocks DO forward the flag). PlanBench's `--specific_instances 1` is also buggy upstream because the few-shot example index is `instance - n_examples = 0`, but `instance-0.pddl` doesn't exist (instances are 1-indexed). Smoke with `--specific_instances >= 2`.
+
+**What changed (this repo).**
+- `planbench/` — new directory: `__init__.py`, `engine.py` (sync adapter), `setup.sh` (clone + build + patch + venv), `apply_patches.py` (idempotent in-place edits to PlanBench's tree), `README.md`.
+- `cluster-experimenting/run_planbench_rtx.sbatch`, `cluster-experimenting/submit_planbench.sh` — new cluster scripts.
+- `cluster-experimenting/lib/defaults.sh` — added `PDDL_PLANBENCH_DEFAULT_TASKS`, `PDDL_PLANBENCH_DEFAULT_CONFIGS`, `PDDL_PLANBENCH_PATH`.
+- `.claude/skills/cluster-ops/scripts/status.sh` — added `--bench {5task,planbench}` flag with default preserving existing behaviour; new `status_planbench.sh` sibling for the PlanBench matrix.
+- `.claude/skills/cluster-ops/SKILL.md` — documents the new flag.
+- `.gitignore` — added `external/` (PlanBench + FD clones live there per-host).
+- `EXPERIMENTS_FLOW.md` — new §12.
+- `development/OPEN_ISSUES.md` — new ISS-021.
+
+**What changed (sibling repo, `planbench-integration` branch).**
+- `specs-for-plan-bench.md` — scopes the v2 tool-using arm's two MCP plugin extensions. Doc-only commit; plugin code unchanged.
+
+---
+
 ## 2026-05-17 — Plotting: ablation-friendly bar encoding + roster swap (drop 27B, add 4B/9B, flip 35B to vLLM)
 
 **TL;DR.** Two unrelated changes shipped together:
