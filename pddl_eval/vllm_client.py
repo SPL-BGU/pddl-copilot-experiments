@@ -67,14 +67,34 @@ _CTX_OVERFLOW_RE = re.compile(
 # bound — "your prompt contains at least N input tokens" — because the
 # pre-flight check fires before final template additions (generation
 # prefix, BOS, prefix-caching block-padding) are appended. The real
-# served prompt is consistently higher than the reported N. Empirical
-# measurement over 374 retry failures on the 17478753 sweep showed an
-# exact +9 token delta between attempt-1 reported prompt and attempt-2
-# reported prompt, leaving (new_max + new_prompt) == max_model_len + 1
-# every single time. Setting safety = 32 absorbs +9 with ~3× headroom
-# for future vLLM versions / different chat templates at ~0 cost (the
-# output-token budget loss is < 0.4% of the 8192-token solve cap).
-_CTX_RETRY_SAFETY = 32
+# served prompt is consistently higher than the reported N.
+#
+# Drift history (attempt-1 reported prompt → attempt-2 reported prompt):
+#   * 17478753 sweep (sweep-3, qwen3.6:27b + Qwen3.5:0.8B, v0/v1/v2
+#     prompts): exact and consistent +9 over 374 failures. safety = 32
+#     absorbed this with ~3× headroom.
+#   * sweep4-cluster-20260519 (Qwen3.5 4B/9B + v5/v6/v7 prompts under
+#     the new prompt variants): drift jumped to +33 (8193 → 8226 on
+#     solve, 10241 → 10274 on validate-style), so safety = 32 was off
+#     by exactly +1 and every retry 400'd. ~7,400 trials (up to 31% on
+#     Qwen3.5-4B off tools_all) landed as `failure_reason=exception`
+#     with empty content rather than Ollama-parity `done_reason=length`.
+#
+# Defense is now layered:
+#   1. safety = 128 absorbs the observed +33 with ~4× headroom for the
+#      next prompt-template change. Output-budget cost is 96/8192 ≈ 1.2%
+#      on solve, ~0.5% on smaller `num_predict` tasks.
+#   2. The chat() retry path also retries a SECOND time (see MAX_RETRIES)
+#      using whatever prompt-token count the previous error reported, so
+#      a drift larger than safety still converges instead of bubbling a
+#      BadRequestError. After max retries, falls through to
+#      _synthesize_overflow_response to keep Ollama parity (done_reason
+#      = "length", empty content) rather than raising.
+_CTX_RETRY_SAFETY = 128
+# Max number of clip-and-retry attempts AFTER the initial request. Two
+# retries cover any drift smaller than ~3 × safety; bigger drifts fall
+# through to the synthetic length-truncation response.
+_CTX_MAX_RETRIES = 2
 
 
 class VLLMOllamaClient:
@@ -126,30 +146,34 @@ class VLLMOllamaClient:
         if extra_body:
             kwargs["extra_body"] = extra_body
 
+        # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
+        # and rejects with HTTP 400. Ollama silently truncates / returns
+        # done_reason="length" on the same overflow. To keep response-shape
+        # parity across backends we catch the specific context-overflow body,
+        # clip max_tokens to the remaining headroom from the latest reported
+        # prompt count, and retry up to _CTX_MAX_RETRIES times before falling
+        # through to a synthetic length-truncation response.
         t0 = time.perf_counter_ns()
-        try:
-            resp = await self._client.chat.completions.create(**kwargs)
-        except BadRequestError as e:
-            # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
-            # and rejects with HTTP 400. Ollama silently truncates / returns
-            # done_reason="length" on the same overflow. To keep response-shape
-            # parity across backends, catch the specific context-overflow body,
-            # clip max_tokens to the remaining headroom, and retry.
-            parsed = _parse_ctx_overflow(e)
-            if parsed is None:
-                raise
-            max_ctx, prompt_tokens = parsed
-            new_max = max_ctx - prompt_tokens - _CTX_RETRY_SAFETY
-            if new_max <= 0:
-                # Prompt alone consumes (or exceeds) max_model_len — no output
-                # budget to negotiate. Surface as a length-truncation response
-                # with empty content; the harness already buckets done_reason
-                # ="length" as truncation, matching how Ollama would treat a
-                # context window fully consumed by the prompt.
-                wall_ns = time.perf_counter_ns() - t0
-                return _synthesize_overflow_response(prompt_tokens, wall_ns)
-            kwargs["max_tokens"] = new_max
-            resp = await self._client.chat.completions.create(**kwargs)
+        resp = None
+        for attempt in range(_CTX_MAX_RETRIES + 1):
+            try:
+                resp = await self._client.chat.completions.create(**kwargs)
+                break
+            except BadRequestError as e:
+                parsed = _parse_ctx_overflow(e)
+                if parsed is None:
+                    raise
+                max_ctx, prompt_tokens = parsed
+                new_max = max_ctx - prompt_tokens - _CTX_RETRY_SAFETY
+                if new_max <= 0 or attempt == _CTX_MAX_RETRIES:
+                    # Either the prompt alone consumes (or nearly consumes)
+                    # max_model_len, or we've exhausted retries. Surface as
+                    # a length-truncation response with empty content; the
+                    # harness already buckets done_reason="length" as
+                    # truncation, matching Ollama parity.
+                    wall_ns = time.perf_counter_ns() - t0
+                    return _synthesize_overflow_response(prompt_tokens, wall_ns)
+                kwargs["max_tokens"] = new_max
         wall_ns = time.perf_counter_ns() - t0
         return _to_ollama_response(resp, wall_ns)
 
