@@ -6,10 +6,17 @@
 # and renders five sections:
 #   1. Header (~hours since last check, or "first run")
 #   2. What changed (cells flipped to ✓ this window, new running cells)
-#   3. Per-cell progress matrix (4 active models × 5 think×cond cells)
+#   3. Per-cell progress matrix (5 active models × 4 think×cond cells in sweep-4)
 #   4. Δ since last status (only cells whose count grew, with pace + ETA)
 #   5. Roll-up (done X/20, coverage %, running cells, --time watch list)
 #   6. Queue (compact pending+running summary; useful when REASON ≠ normal)
+#
+# Sweep-4 matrix (active 2026-05-19): {no-tools, tools_all_minimal} ×
+# {think on, off} = 4 cells per model. tools_per-task_minimal was retired
+# from the active sweep with the prompt rewrite (see development/
+# CHANGELOG.md 2026-05-19 sweep-4 entries). Sweep-3 per-task result dirs
+# remain on disk and surface in the "skipped (unmatched)" footer; query
+# them via the analyzer skill if needed for baseline framing.
 #
 # Output mode (auto by stdout TTY-detect; override with flags):
 #   --terminal / --pretty   ANSI-coloured aligned text (default when TTY)
@@ -27,6 +34,14 @@ REMOTE_USER="${REMOTE_USER:-omereliy}"
 REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 STATE_FILE="${STATE_FILE:-$HOME/.cache/cluster-ops-status.json}"
+# Active prompt variants for the in-flight sweep. Trials.jsonl files can
+# carry rows from multiple sweeps (sweep-4 variant 5/6/7 trials append
+# alongside sweep-3 variant 0/1/2 trials in the same per-cell file since
+# the resume key includes prompt_variant — see pddl_eval/runner.py:441-451).
+# This regex character class filters the cluster-side trial count so the
+# progress matrix reflects ONLY the active sweep. Default = sweep-4
+# active set; override for sweep-5+ or for sweep-3 reproduction.
+ACTIVE_VARIANTS_RE="${ACTIVE_VARIANTS_RE:-[567]}"
 
 # Output-mode flags (parsed before SSH so --help works offline).
 mode="auto"
@@ -46,10 +61,11 @@ done
 mkdir -p "$(dirname "$STATE_FILE")"
 
 # Single SSH: dump queue + per-cell trial counts as two delimited blocks.
-remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" <<'REMOTE'
+remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" <<'REMOTE'
 set -eo pipefail
 USER="$1"
 REPO="$2"
+VARIANTS_RE="$3"
 echo "=== queue ==="
 # -r expands array ranges so each pending task is a separate row (otherwise
 # squeue collapses pending arrays like 17389411_[6-9] into one row, breaking
@@ -57,10 +73,13 @@ echo "=== queue ==="
 queue_lines=$(squeue -u "$USER" -r -h -o '%i|%j|%T|%M|%R' 2>/dev/null | sort || true)
 printf '%s\n' "$queue_lines"
 echo "=== counts ==="
+# Count only trials whose result.prompt_variant matches VARIANTS_RE
+# (sweep-isolation; see ACTIVE_VARIANTS_RE comment in the wrapper).
+# grep -c returns 0 on no-match (exit code 1) — silenced via `|| echo 0`.
 shopt -s nullglob
 for d in "$HOME/$REPO/results/"slurm_*/; do
     if [ -f "$d/trials.jsonl" ]; then
-        n=$(wc -l < "$d/trials.jsonl")
+        n=$(grep -cE "\"prompt_variant\": $VARIANTS_RE" "$d/trials.jsonl" 2>/dev/null || echo 0)
     else
         n=0
     fi
@@ -109,19 +128,33 @@ DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "Qwen3_5_4B":"Qwen3.5:4B",
 # is counted as "skipped (wrong backend)" against the active roster.
 BACKEND = {"Qwen3_5_0_8B":"vllm", "Qwen3_5_4B":"vllm", "Qwen3_5_9B":"vllm",
            "qwen3_6_35b":"vllm", "gemma4_26b-a4b":"vllm"}
-# Full 6-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools, tools_pt,
-# tools_all}). The legacy no-tools/think=on gate was lifted 2026-05-12
-# (commit fe1c061) to complete the ablation dimension. Order matches
-# `short_hdrs` in render_terminal so the markdown and terminal renderers
-# render the same column sequence.
-CELLS = [("on","no-tools"),("on","tools_per-task_minimal"),("on","tools_all_minimal"),
-         ("off","no-tools"),("off","tools_per-task_minimal"),("off","tools_all_minimal")]
-COL_HEADERS = ["on / no-tools","on / tools_pt","on / tools_all",
-               "off / no-tools","off / tools_pt","off / tools_all"]
-DENOM = {"no-tools":4560, "tools_per-task_minimal":4560, "tools_all_minimal":4560}
-TIME_LIMIT_H = 72  # current --time per cell
+# Sweep-4 4-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools,
+# tools_all}). tools_per-task_minimal was retired 2026-05-19 with the
+# prompt-rewrite branch (PDDL_DEFAULT_CONDITIONS in lib/defaults.sh).
+# The legacy no-tools/think=on gate was lifted 2026-05-12 (commit fe1c061).
+# Order matches `short_hdrs` in render_terminal so the markdown and
+# terminal renderers render the same column sequence.
+CELLS = [("on","no-tools"),("on","tools_all_minimal"),
+         ("off","no-tools"),("off","tools_all_minimal")]
+COL_HEADERS = ["on / no-tools","on / tools_all",
+               "off / no-tools","off / tools_all"]
+DENOM = {"no-tools":4560, "tools_all_minimal":4560}
+# Per-model --time pin in submit_full_sweep.sh (2026-05-19):
+#   pack3 (Qwen3.5:0.8B/4B/9B): 12h
+#   slow models (qwen3.6:35b, gemma4:26b-a4b): 48h
+# Used by the watch-list heuristic to flag cells whose elapsed + ETA
+# exceed 0.9 × the model's wall-time budget. Fallback: 48h.
+TIME_LIMIT_H_BY_MODEL = {
+    "Qwen3_5_0_8B": 12, "Qwen3_5_4B": 12, "Qwen3_5_9B": 12,
+    "qwen3_6_35b": 48, "gemma4_26b-a4b": 48,
+}
+TIME_LIMIT_H_DEFAULT = 48
 
 # Job-name short-cond → full cond (used when array tasks have per-cell names).
+# `tools-pt`/`tools_pt` keys retained for backwards-compatibility with
+# pre-2026-05-19 sweep-3 cells that may still surface in the queue (e.g.
+# a resume of a sweep-3 job); they map to the retired condition string
+# so the parser doesn't silently classify them as unknown.
 SHORT_COND = {"tools-pt":"tools_per-task_minimal","tools_pt":"tools_per-task_minimal",
               "tools-all":"tools_all_minimal","tools_all":"tools_all_minimal",
               "notools":"no-tools","no-tools":"no-tools"}
@@ -331,8 +364,9 @@ watch = []
 for cell, d in deltas.items():
     if cell not in cell_running: continue
     elapsed_h = parse_elapsed_h(cell_running[cell]["elapsed"])
-    if d["eta_h"] is not None and elapsed_h + d["eta_h"] > 0.9 * TIME_LIMIT_H:
-        watch.append(f"{cell_label(cell)} ({elapsed_h:.0f}h+{d['eta_h']:.0f}h ETA → over 0.9×{TIME_LIMIT_H}h)")
+    budget_h = TIME_LIMIT_H_BY_MODEL.get(cell[0], TIME_LIMIT_H_DEFAULT)
+    if d["eta_h"] is not None and elapsed_h + d["eta_h"] > 0.9 * budget_h:
+        watch.append(f"{cell_label(cell)} ({elapsed_h:.0f}h+{d['eta_h']:.0f}h ETA → over 0.9×{budget_h}h)")
 
 run_jids = sorted({q["jid"] for q in cell_running.values()})
 running_jobs = [q for q in queue if q["state"] == "RUNNING"]
@@ -473,8 +507,8 @@ def render_terminal(use_color):
 
     # -- Per-cell progress matrix
     out.append(H2("Per-cell progress") + DIM + "  (denom 4560)" + RESET)
-    short_hdrs = ["on/no-tools", "on/tools_pt", "on/tools_all",
-                  "off/no-tools", "off/tools_pt", "off/tools_all"]
+    short_hdrs = ["on/no-tools", "on/tools_all",
+                  "off/no-tools", "off/tools_all"]
     MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
     CELL_W  = 14   # " ✓  100.0%  " ≈ 11–12 chars; pad to 14 for separation
     header = _pad("Model", MODEL_W) + "".join(_pad(h, CELL_W, "left") for h in short_hdrs)
