@@ -44,6 +44,28 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-19 — Sweep-4 finalisation: PR-#66 review fixes + per-task retirement pulled forward
+
+**TL;DR.** Three follow-ups to the prompt-rewrite commit (`dce5e29`) before the cluster sweep launches:
+
+1. **Simulate v5/v6/v7 no-tools** now embed a one-step schema-shaped example (`{"step": ..., "action": ..., "state": {"boolean": [...], "numeric": {}}}`) — closes finding 5's secondary leak that the reviewer flagged ("wire format described but not shown"). The example matches `SimulateResponse → StateStep → StateSnapshot` (nested `state.boolean`/`state.numeric` per `pddl_eval/schemas.py:45-67`); the surrounding text was also updated from bare `boolean`/`numeric` to `state.boolean`/`state.numeric` so the prompt names what the format constraint actually enforces.
+2. **`tools_per-task_minimal` retired from sweep-4** (was originally deferred to sweep-5 per `development/sweep4_plan_new_prompts.md`). Sweep-4 cluster matrix is now `{no-tools, tools_all_minimal} × {think on, think off}` = 4 cells/model. Sweep-3 ran 3 conditions × 2 think = 6 cells/model — so sweep-4 vs sweep-3 now differs on TWO axes: (a) v0/v1/v2 → v5/v6/v7 prompts (the headline differential), AND (b) per-task condition retirement. Writeup will need to attribute outcome shifts to both effects, with PR-50's tool-surface delta as a third (empirically silent at smoke scale per `development/sweep4_fr_pivot.md`).
+3. **Stale `run_smoke_vllm_vs_ollama.sbatch` references** swept from `cluster-experimenting/README.md`, `lib/defaults.sh` (including the runtime-visible stderr at the `vllm_lookup` refused-model branch), `submit_full_sweep.sh`, and `run_condition_vllm_rtx.sbatch`. Operators following the README or hitting a refused-model error are now pointed at `submit_with_rtx.sh --backend vllm --smoke <model>` (the vLLM smoke fastpath added in `4f50a5b`). The script itself was deleted in `06f2b4b`; CHANGELOG historical entries are deliberately left untouched.
+
+**Why pull the per-task retirement forward.** The plan-doc rationale for keeping it through sweep-4 was "hold the matrix constant so sweep-3 vs sweep-4 cleanly isolates the prompt change." Trading that isolation off against (i) ~33% fewer GPU-hours per sweep, (ii) one fewer condition for the analyzer to plot, (iii) the per-task arm was already slated for retirement anyway in sweep-5, and (iv) the sweep-3 `tools_per-task_minimal` results stay on disk for post-hoc 2-condition-vs-3-condition framing if needed. Net: simpler matrix, faster turnaround, deferred attribution work absorbs the cost.
+
+**Files touched.**
+- `pddl_eval/prompts.py` — v5/v6/v7 `simulate` no-tools entries updated (additions only — still no in-place edits to v0–v4).
+- `cluster-experimenting/lib/defaults.sh` — `PDDL_DEFAULT_CONDITIONS` drops `tools_per-task_minimal`; `PDDL_DEFAULT_SBATCH_CONDITIONS` follows; 4 stale `run_smoke_vllm_vs_ollama.sbatch` references rewritten.
+- `cluster-experimenting/README.md` — vLLM-smoke section rewritten around `submit_with_rtx.sh --backend vllm --smoke`; recipe block uses the wrapper, not raw sbatch.
+- `cluster-experimenting/submit_full_sweep.sh` — prereqs comment updated.
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch` — log-preservation idiom comment updated.
+- `development/CHANGELOG.md` — this entry.
+
+**Not touched.** `pddl_eval/runner.py`, `pddl_eval/scoring.py`, `pddl_eval/schemas.py`, the v0–v4 prompt strings (sweep-3 corpus identity preserved), any sbatch resource budget. The cluster matrix change is data-only (defaults.sh constant); the wrapper's cell-builder logic and per-cell `--time` ceilings are unchanged.
+
+---
+
 ## 2026-05-19 — Sweep-4 prompt rewrite: append v5/v6/v7, flip ACTIVE_PROMPT_VARIANTS to (5, 6, 7)
 
 **TL;DR.** Phase 1 of sweep-4 lands per `development/sweep4_plan_new_prompts.md`. Three new prompt variants (v5/v6/v7) are appended to each of the 5 task lists in `pddl_eval/prompts.py`; a sparse with-tools override dict `PROMPT_TEMPLATES_TOOLS_OVERRIDE` adds per-condition divergence for v5–v7 only; `ACTIVE_PROMPT_VARIANTS` flips from `(0, 1, 2)` to `(5, 6, 7)`. v0–v4 strings are byte-identical to sweep-3 — corpus identity for variant indices 0–2 is preserved (see `feedback_pushback_on_methodology_shortcuts` and the resume-key reproduction guarantee at `pddl_eval/runner.py:441–451`).

@@ -128,7 +128,7 @@ fi
 cd "$WORK"
 
 ### Preserve vLLM serve logs on EXIT — the trap below would rm -rf the ###
-### per-cell vllm-*.log otherwise (lifted from run_smoke_vllm_vs_ollama.sbatch). ###
+### per-cell vllm-*.log otherwise (idiom inherited from the retired vLLM smoke sbatch, see CHANGELOG 06f2b4b). ###
 preserve_serve_logs() {
     local logs_dir="$EXPT_ROOT/cluster-experimenting/logs"
     [ -d "$WORK" ] || return 0

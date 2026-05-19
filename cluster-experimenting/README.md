@@ -291,8 +291,10 @@ bash cluster-experimenting/submit_with_rtx.sh --backend vllm Qwen3.5:9B --think-
 
 The vLLM wrapper rejects any model not in `PDDL_VLLM_VERIFIED_MODELS`
 before SLURM pulls the slot. To add a model: verify its parser via
-`run_smoke_vllm_vs_ollama.sbatch`, then extend the array constant in
-`lib/defaults.sh` AND the `vllm_lookup()` case in the same file.
+`submit_with_rtx.sh --backend vllm --smoke <model>` (one-cell smoke
+that exercises the prod sbatch with `run_experiment.py --smoke`), then
+extend the array constant in `lib/defaults.sh` AND the `vllm_lookup()`
+case in the same file.
 
 `submit_with_resume.sh` was the orchestrator for the historical
 backend-split layout; post 2026-05-18 backend unification its
@@ -328,11 +330,15 @@ trials in one trials.jsonl would silently re-run every cell from zero.
 
 ## vLLM smoke probes (parser verification)
 
-The Ollama production sweep is the canonical path; vLLM is an opt-in
-inference backend exercised through `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`.
-A vLLM analog of `run_condition_rtx.sbatch` for the **full sweep** is
-**not yet built** — see the 2026-05-09 / 2026-05-10 entries in
-`development/CHANGELOG.md` for the open-pending list.
+Post 2026-05-18 backend unification, vLLM is the production inference
+backend (`run_condition_vllm_rtx.sbatch`). Parser verification is now a
+one-cell smoke exercised through the prod sbatch via
+`submit_with_rtx.sh --backend vllm --smoke <model>` — the smoke
+fastpath added 2026-05-19 (commit `4f50a5b`) routes the `@smoke@`
+sentinel into `run_experiment.py --smoke --inference-backend vllm`. The
+dedicated `run_smoke_vllm_vs_ollama.sbatch` was retired in commit
+`06f2b4b` (2026-05-19); see `development/CHANGELOG.md` for the
+parser-verification history.
 
 ### Per-model parser table (verified 2026-05-10 unless noted)
 
@@ -358,31 +364,27 @@ For vanilla Qwen3 sizes (e.g. `Qwen/Qwen3-0.6B`), use `TOOL_CALL_PARSER=hermes`
 
 ### Submit recipe
 
+The smoke fastpath in `run_condition_vllm_rtx.sbatch` (2026-05-19,
+commit `4f50a5b`) consumes the `@smoke@` sentinel and runs
+`run_experiment.py --smoke --inference-backend vllm` with the verified
+parser flags from `vllm_lookup`. Use the wrapper rather than calling
+`run_condition_vllm_rtx.sbatch` directly — it picks the right GPU,
+mem, and time budget per model.
+
 ```bash
-# Qwen3.5:9B on rtx_6000:1 — verify before promoting to production
-sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-9B",OLLAMA_TAG="Qwen3.5:9B" \
-       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
-       --job-name=vllm_qwen35_9b_smoke \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+# One-cell smoke for any verified model.
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke Qwen3.5:9B
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke Qwen3.5:4B
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke gemma4:26b-a4b
 
-# Qwen3.5:4B on rtx_6000:1 — verify before promoting to production
-sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-4B",OLLAMA_TAG="Qwen3.5:4B" \
-       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
-       --job-name=vllm_qwen35_4b_smoke \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
-
-# Gemma 26B-A4B MoE on rtx_6000:1 — parser override + MM batched-tokens bump
-sbatch --export=ALL,HF_MODEL="cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit",OLLAMA_TAG="gemma4:26b-a4b",TOOL_CALL_PARSER="gemma4",REASONING_PARSER=none,MAX_NUM_BATCHED_TOKENS=4096 \
-       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
-       --job-name=vllm_gemma4_26b_a4b_smoke \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
-
-# Tight VRAM (rtx_3090 24 GB serving 27B AWQ) — see CHANGELOG 2026-05-10 caveat
-sbatch --export=ALL,HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4",OLLAMA_TAG="qwen3.6:27b",MAX_MODEL_LEN=7168,GPU_MEM_UTIL=0.85,ENFORCE_EAGER=1,NUM_PREDICT=4096 \
-       --gpus=rtx_3090:1 --mem=32G --time=01:00:00 \
-       --job-name=vllm_27b_smoke_tight \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+# Override walltime if the default smoke window is wrong for a slow model
+# (feedback_smoke_full_run_resources: smoke gets full-run resources).
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke --time 24:00:00 qwen3.6:35b
 ```
+
+To add a NEW vLLM model: extend `PDDL_VLLM_VERIFIED_MODELS` AND the
+`vllm_lookup()` case in `lib/defaults.sh`, then run the smoke recipe
+above; the wrapper will refuse the tag until both edits are in place.
 
 ### Operational caveats
 

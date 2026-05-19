@@ -123,11 +123,13 @@ PROMPT_TEMPLATES: dict[str, list[str]] = {
         # v4 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Walk through this plan action by action and show each intermediate state.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
         # v5 — sweep-4 no-tools (teaches the `_normalize_trajectory` wire format).
-        "Simulate this plan and return the trajectory. Step 0 is the initial state from the problem (`action` empty). Each later step records the action executed. `boolean` lists EVERY predicate that holds in that state, each as a parenthesised lowercase form, e.g. `(on a b)`.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
+        # Example shape matches SimulateResponse → StateStep → StateSnapshot
+        # (nested state.boolean / state.numeric, per pddl_eval/schemas.py:45-67).
+        "Simulate this plan and return the trajectory. Step 0 is the initial state from the problem with `action` empty. Each later step records the action executed. `state.boolean` lists EVERY predicate that holds in that state, each as a parenthesised lowercase form, e.g. `(on a b)`; `state.numeric` is the fluents map.\nExample step: {{\"step\": 0, \"action\": \"\", \"state\": {{\"boolean\": [\"(on a b)\", \"(clear c)\"], \"numeric\": {{}}}}}}\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
         # v6 — sweep-4 no-tools.
-        "Step through this plan action by action. For each step output the action just executed (or empty for step 0) and the full set of currently-true predicates in parenthesised PDDL form, e.g. `(on a b)`.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
+        "Step through this plan action by action. For each step emit `action` (the action just executed, or empty for step 0) and `state.boolean` listing every currently-true predicate in parenthesised PDDL form, e.g. `(on a b)`.\nExample step: {{\"step\": 1, \"action\": \"(unstack a b)\", \"state\": {{\"boolean\": [\"(holding a)\", \"(clear b)\"], \"numeric\": {{}}}}}}\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
         # v7 — sweep-4 no-tools.
-        "Show the state at each step of this plan. Step 0 = initial state, `action=\"\" `. Each `boolean` entry lists every predicate that holds in that state, parenthesised and lowercase. `numeric` is the fluents map.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
+        "Show the state at each step of this plan. Step 0 = initial state with empty `action`. Each `state.boolean` entry lists every predicate that holds in that state, parenthesised and lowercase; `state.numeric` is the fluents map (empty for purely-symbolic domains).\nExample step: {{\"step\": 0, \"action\": \"\", \"state\": {{\"boolean\": [\"(ontable a)\", \"(clear a)\"], \"numeric\": {{}}}}}}\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
     ],
 }
 

@@ -22,19 +22,26 @@ PDDL_SLOW_MODELS=(gemma4:26b-a4b qwen3.6:35b)
 # Default think × cond axes. The full Cartesian product is built; the legacy
 # no-tools/think=on matrix-gate was lifted 2026-05-12 in submit_with_rtx.sh.
 PDDL_DEFAULT_THINK_MODES=(on off)
-PDDL_DEFAULT_CONDITIONS=(no-tools tools_per-task_minimal tools_all_minimal)
+# tools_per-task_minimal RETIRED 2026-05-19 (sweep-4 onward). The planned
+# retirement was deferred to sweep-5 in development/sweep4_plan_new_prompts.md;
+# pulled forward into sweep-4 by user directive after the PR-#66 code review
+# closed the prompt-rewrite branch. Sweep-3 (3 conditions) and sweep-4
+# (2 conditions) therefore differ on this axis in addition to v0/v1/v2 →
+# v5/v6/v7. See development/CHANGELOG.md 2026-05-19 sweep-4 prompt entry.
+PDDL_DEFAULT_CONDITIONS=(no-tools tools_all_minimal)
 
 # Default sbatch CONDITIONS env (space-separated, used when run_condition_rtx.sbatch
 # is invoked WITHOUT CELLS_LIST — legacy direct-sbatch path).
-PDDL_DEFAULT_SBATCH_CONDITIONS="tools_per-task_minimal tools_all_minimal"
+PDDL_DEFAULT_SBATCH_CONDITIONS="tools_all_minimal"
 
 # vLLM production roster. Mirrored by the wrapper's --backend vllm gate
 # and by `vllm_lookup` below. Append a model only after its parser has
-# been verified via cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
-# (2026-05-10 hermes→qwen3_xml fix landed here as a result of skipping
-# verification on the original 27B AWQ probe). The lookup table is the
-# single source of truth for OLLAMA_TAG → (HF id, parser flags) used by
-# both run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
+# been verified via `submit_with_rtx.sh --backend vllm --smoke <model>`
+# (one-cell smoke that exercises the prod sbatch's smoke fastpath; the
+# 2026-05-10 hermes→qwen3_xml fix landed because the original 27B AWQ
+# probe skipped this step). The lookup table is the single source of
+# truth for OLLAMA_TAG → (HF id, parser flags) used by both
+# run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
 PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B gemma4:26b-a4b)
 
 # Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
@@ -49,7 +56,7 @@ vllm_lookup() {
             # qwen3_5_moe arch, compressed-tensors AWQ-INT4. 35B A3B MoE:
             # ~17 GB on disk, fits rtx_6000:1 with ~30 GB KV-cache headroom
             # under gpu-memory-utilization=0.85. Parser verified via
-            # run_smoke_vllm_vs_ollama.sbatch job 17494176, 2026-05-12.
+            # the vLLM smoke path in job 17494176, 2026-05-12.
             HF_MODEL="cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
@@ -62,8 +69,9 @@ vllm_lookup() {
         Qwen3.5:4B)
             # qwen3_5 dense arch, FP16. ~9 GB weights on rtx_6000:1 leaves
             # ample KV headroom. Parsers inherited from the Qwen3.5 family
-            # (same as 0.8B/9B). Smoke-verify via run_smoke_vllm_vs_ollama
-            # before flipping the production sweep.
+            # (same as 0.8B/9B). Smoke-verify via
+            # `submit_with_rtx.sh --backend vllm --smoke <model>` before
+            # flipping the production sweep.
             HF_MODEL="Qwen/Qwen3.5-4B"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
@@ -72,7 +80,9 @@ vllm_lookup() {
             # qwen3_5 dense arch, FP16. ~18 GB weights on rtx_6000:1.
             # Note: Qwen3.5 ladder skips 8B; 9B is the next dense size
             # above 4B (HF id Qwen/Qwen3.5-9B, NOT Qwen3.5-8B which
-            # does not exist). Smoke-verify before production.
+            # does not exist). Smoke-verify via
+            # `submit_with_rtx.sh --backend vllm --smoke <model>` before
+            # production.
             HF_MODEL="Qwen/Qwen3.5-9B"
             TOOL_CALL_PARSER="qwen3_xml"
             REASONING_PARSER="qwen3"
@@ -99,7 +109,7 @@ vllm_lookup() {
             ;;
         *)
             echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
-            echo "       Verify the parser via run_smoke_vllm_vs_ollama.sbatch before adding it." >&2
+            echo "       Verify the parser via 'submit_with_rtx.sh --backend vllm --smoke <model>' before adding it." >&2
             return 1
             ;;
     esac

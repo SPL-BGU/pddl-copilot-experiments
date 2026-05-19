@@ -23,13 +23,14 @@
 ###     the small/mid pack gets --time 12:00:00 as a safe ceiling.
 ###
 ### Prereqs:
-###   * qwen3.6:35b parser verified via run_smoke_vllm_vs_ollama.sbatch
-###     (post-edit on 2026-05-12; check sacct on the smoke job before
-###     trusting this script's heavy-pack submission).
-###   * Qwen3.5:4B and Qwen3.5:9B parsers verified via
-###     run_smoke_vllm_vs_ollama.sbatch (2026-05-17 swap; same qwen3_xml
-###     parser as 0.8B but a missing/mismatched parser silently produces
-###     0% tool extraction, so verify before the production sweep).
+###   * qwen3.6:35b parser verified via submit_with_rtx.sh --backend vllm
+###     --smoke (smoke fastpath landed 2026-05-19, commit 4f50a5b; the
+###     2026-05-12 verification ran the predecessor sbatch — check sacct on
+###     the smoke job before trusting this script's heavy-pack submission).
+###   * Qwen3.5:4B and Qwen3.5:9B parsers verified via the same smoke path
+###     (2026-05-17 swap; same qwen3_xml parser as 0.8B but a
+###     missing/mismatched parser silently produces 0% tool extraction, so
+###     verify before the production sweep).
 ###   * Both backends are non-overlapping GPU classes (rtx_6000 vs
 ###     rtx_pro_6000), so the four sbatch jobs don't contend.
 ###
