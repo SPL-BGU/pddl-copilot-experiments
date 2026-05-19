@@ -44,6 +44,38 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-19 — Sweep-4 prompt rewrite: append v5/v6/v7, flip ACTIVE_PROMPT_VARIANTS to (5, 6, 7)
+
+**TL;DR.** Phase 1 of sweep-4 lands per `development/sweep4_plan_new_prompts.md`. Three new prompt variants (v5/v6/v7) are appended to each of the 5 task lists in `pddl_eval/prompts.py`; a sparse with-tools override dict `PROMPT_TEMPLATES_TOOLS_OVERRIDE` adds per-condition divergence for v5–v7 only; `ACTIVE_PROMPT_VARIANTS` flips from `(0, 1, 2)` to `(5, 6, 7)`. v0–v4 strings are byte-identical to sweep-3 — corpus identity for variant indices 0–2 is preserved (see `feedback_pushback_on_methodology_shortcuts` and the resume-key reproduction guarantee at `pddl_eval/runner.py:441–451`).
+
+**The six leaks (see `.local/prompts_review.md`) and how v5–v7 address them.**
+1. `validate_*` VERDICT trailer fighting the with-tools system prompt → trailer dropped in both branches; with-tools branch tells the model to call the validation tool, no-tools branch relies on `format=ValidateResponse` (`pddl_eval/schemas.py:35–42`) and `_VERDICT_RE` as a fallback.
+2. `validate_plan` with-tools dropping the `plan` argument (the dominant FR_VERDICT_MISMATCH leak per `development/sweep4_fr_pivot.md`) → every v5/v6/v7 with-tools template explicitly names `domain`, `problem`, AND `plan` as required arguments.
+3. `_GUIDED_SUFFIX` (disabled) being the only place tool-arg shape was taught → arg names now baked into per-task with-tools templates; `_GUIDED_SUFFIX` stays disabled.
+4. `solve` / `simulate` user prompts feeling textually satisfiable → with-tools branch names a "planner tool" / "state-transition tool" by category (not by exact tool name — that's deferred to the sweep-5 skill-task arm).
+5. `simulate` no-tools not teaching `_normalize_trajectory`'s wire format (`pddl_eval/scoring.py:149–227`) → v5/v6/v7 no-tools encode the three invariants: step 0 = initial state with empty action, EVERY currently-true predicate, parenthesised lowercase form.
+6. `solve` no-tools not teaching action wire format → v5/v6/v7 no-tools spell out single parenthesised PDDL actions with concrete examples (`(pick-up a)`, `(unstack a b)`, `(stack a b)`).
+
+**Active call site.** `pddl_eval/runner.py:266` becomes override-aware: when `with_tools=True` and `prompt_variant ∈ override[task]`, the override template wins; otherwise the base `PROMPT_TEMPLATES[task]` lookup is used. For v0–v4 the override dict is empty per task, so the with-tools branch falls through to base — sweep-3 wire-equivalence preserved. Archived chain call site at `runner.py:821` deliberately untouched (CLAUDE.md `single-task only` rule).
+
+**Drift safety.** v5/v6/v7 are disjoint from any sweep-3 resume key (variants 0–4 only). v3/v4 stay disabled (kept in the lists to preserve index reservation, matching the existing comment pattern). No new prompt-style choice introduced — `WITH_TOOLS_SYSTEM`, `PROMPT_STYLE_CHOICES`, and `TOOL_FILTER_CHOICES` are byte-identical to sweep-3; `skill-task` and per-task retirement are deferred to sweep-5.
+
+**Baselines (canonical).**
+- **Sweep-3 baseline** (pre-rewrite + pre-PR-50): variants `(0, 1, 2)`, marketplace 1.2.0, e.g. `results/cluster-20260517/`. Reproducible by checking out the sweep-3 sha tag.
+- **Sweep-4** (this entry): variants `(5, 6, 7)`, marketplace 1.3.0 (post-PR-50). The prompt rewrite is the headline differential; the marketplace 1.3.0 tool-surface delta is empirically silent at smoke scale per `development/sweep4_fr_pivot.md` (drift verdict 2026-05-19) and folded into a single-line caveat in the eventual writeup.
+
+**Files touched (this repo).**
+- `pddl_eval/prompts.py` — docstring rewritten; v5/v6/v7 appended to all 5 task lists; new `PROMPT_TEMPLATES_TOOLS_OVERRIDE` dict; `ACTIVE_PROMPT_VARIANTS = (5, 6, 7)`.
+- `pddl_eval/runner.py` — single import addition (`PROMPT_TEMPLATES_TOOLS_OVERRIDE`) and override-aware template lookup at `:266`. Archived chain path at `:821` untouched.
+- `run_experiment.py` — argparse help for `--num-variants` mentions the sweep-4 active set; signature and default unchanged (default reads `len(ACTIVE_PROMPT_VARIANTS)`).
+- `development/CHANGELOG.md` — this entry.
+
+**Files NOT touched.** `pddl_eval/scoring.py`, `pddl_eval/schemas.py`, `pddl_eval/summary.py`, `pddl_eval/resume.py`, `WITH_TOOLS_SYSTEM`, `PROMPT_STYLE_CHOICES`, `TOOL_FILTER_CHOICES`, any sbatch script, the analyzer skill. The cluster matrix for sweep-4 is held identical to sweep-3 (same condition slugs, models, think modes); only variant indices differ.
+
+**Up next.** Local smoke (`python run_experiment.py --partial 1 --models qwen3:0.6b --conditions both --tool-filter all`) eyeballs one trial per task to confirm the override wiring before the cluster submission. After PR review, push branch `sweep4-new-prompts` to `main` and proceed to Phase 2 (cluster sweep) per the plan.
+
+---
+
 ## 2026-05-18 — Roster: gemma4:31b dense Ollama → gemma4:26b-a4b MoE vLLM (backend split retired)
 
 **TL;DR.** Replaces the dense `gemma4:31b` (Ollama-only, parser pending vLLM verification) with `gemma4:26b-a4b` (MoE A4B, ~4B active of 26.5B total, AWQ-INT4) served on vLLM. Same publisher and quant pipeline as the verified `qwen3.6:35b` (`cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit`). Full 5-model `PDDL_DEFAULT_MODELS` roster now runs on a single backend (vLLM, `rtx_6000:1`) — retires the 2026-05-12 → 2026-05-18 backend split. Active sweep roster: `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`.

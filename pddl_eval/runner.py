@@ -33,6 +33,7 @@ from .domains import _build_plan_str
 from .prompts import (
     ACTIVE_PROMPT_VARIANTS,
     PROMPT_TEMPLATES,
+    PROMPT_TEMPLATES_TOOLS_OVERRIDE,
     WITH_TOOLS_SYSTEM,
     WITHOUT_TOOLS_SYSTEM,
 )
@@ -263,7 +264,11 @@ async def evaluate_one(
     temperature: float = TEMPERATURE,
     plan_label: str = "",
 ) -> TaskResult:
-    template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
+    override = PROMPT_TEMPLATES_TOOLS_OVERRIDE.get(task, {})
+    if with_tools and prompt_variant in override:
+        template = override[prompt_variant]
+    else:
+        template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
     plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
 
