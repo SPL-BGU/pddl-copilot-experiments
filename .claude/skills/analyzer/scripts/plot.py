@@ -63,7 +63,7 @@ MODEL_COLORS = {
     "gpt-oss_20b":    "#5c7fb3",
     "gpt-oss_120b":   "#1a2e4f",
     "gemma4_31b":     "#6f4a8a",
-    "gemma4_26b_a4b": "#9173b0",
+    "gemma4_26b-a4b": "#9173b0",
 }
 COND_HATCH = {
     "no-tools":               "////",

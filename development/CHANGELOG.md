@@ -23,14 +23,14 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 - `cluster-experimenting/submit_full_sweep.sh`: step `[3/3]` flips from `--backend ollama gemma4:31b` (rtx_pro_6000:1, 72h) to `--backend vllm gemma4:26b-a4b` (rtx_6000:1, 48h). All three steps are now vLLM.
 - `cluster-experimenting/submit_with_rtx.sh`: comment refs to `gemma4:31b` and `PDDL_SLOW_MODELS=(gemma4:31b, ...)` swap to `gemma4:26b-a4b`. The `--no-tools` example, the `--no-auto-prioritize` slow-set list, and the `rtx_6000` case comment (peak VRAM 26 GB → 24 GB; reframed as the default for vLLM, not an emergency escape) all updated. The `gemma4*` think-mode carveout comment is reworded (it only applied to gemma2-era tags).
 - `cluster-experimenting/run_condition_rtx.sbatch`: legacy Ollama sbatch header rewritten — no active model uses it post 2026-05-18; retained for re-running archived `slurm_gemma4_31b_*` corpora as drift anchors. VRAM-fit table reframed as historical reference; gemma4:31b row tagged retired.
-- `.claude/skills/cluster-ops/scripts/status.sh`: `ROSTER`, `DISPLAY`, `BACKEND`, `MODEL_TAG_TO_ROSTER` swap `gemma4_31b` → `gemma4_26b_a4b` (with `BACKEND` flipping to `vllm`). Comments updated. `jname_to_cell` docstring drops the Ollama gemma example (kept as a generic legacy-pattern note).
+- `.claude/skills/cluster-ops/scripts/status.sh`: `ROSTER`, `DISPLAY`, `BACKEND`, `MODEL_TAG_TO_ROSTER` swap `gemma4_31b` → `gemma4_26b-a4b` (with `BACKEND` flipping to `vllm`). Comments updated. `jname_to_cell` docstring drops the Ollama gemma example (kept as a generic legacy-pattern note).
 - `.claude/skills/cluster-ops/scripts/prioritize.sh`: `DEFAULT_SLOW_MODELS` swap; usage example refreshed.
-- `.claude/skills/analyzer/scripts/plot.py` + `plot_focused.py`: `gemma4_26b_a4b` added to `MODEL_COLORS` (`#9173b0`, a tint of the gemma4_31b purple), `MODEL_ORDER`, and `MODEL_LABELS`. `gemma4_31b` entries retained as drift-anchor support for re-plotting older corpora. Also added missing `Qwen3_5_4B` / `Qwen3_5_9B` color entries (post 2026-05-17 swap had left them as default-color fallbacks).
+- `.claude/skills/analyzer/scripts/plot.py` + `plot_focused.py`: `gemma4_26b-a4b` added to `MODEL_COLORS` (`#9173b0`, a tint of the gemma4_31b purple), `MODEL_ORDER`, and `MODEL_LABELS`. `gemma4_31b` entries retained as drift-anchor support for re-plotting older corpora. Also added missing `Qwen3_5_4B` / `Qwen3_5_9B` color entries (post 2026-05-17 swap had left them as default-color fallbacks).
 - `tests/test_scoring.py:335`: determinism-test fixture key swap `gemma4:31b` → `gemma4:26b-a4b`. The pinned bucket regression check uses `Qwen3.5:0.8B`, unaffected.
 - `EXPERIMENTS_FLOW.md:504`: roster description updated to the post-swap five-model vLLM-only roster; roster-history narrative gains the 2026-05-18 unification.
 - `cluster-experimenting/README.md`: topology table swap (line 14-16) + roster table swap (line 214-220) + verified-parser table swap (line 336) + production-vLLM scope rewrite (line 253-267) + GPU-class section + mem-cap row + `submit_with_resume.sh` description + legacy CG-cancel example. The 2026-05-18 entry in the submission-topology-history list now reads as two same-day events (backend split landed, then retired by the gemma swap).
 
-**Methodology framing.** Treated as plain operational drift (no paper-baseline comparison). The `gemma4:31b` Ollama corpora at `results/slurm_gemma4_31b_*` stay on disk untouched as drift anchors — never mixed with the new `slurm_vllm_gemma4_26b_a4b_*` corpora per the `feedback_pushback_on_methodology_shortcuts.md` corpus-isolation rule. Resume-key isolation is automatic: the 10-tuple at `pddl_eval/runner.py:441–451` includes the model string and OUT_DIR prefix.
+**Methodology framing.** Treated as plain operational drift (no paper-baseline comparison). The `gemma4:31b` Ollama corpora at `results/slurm_gemma4_31b_*` stay on disk untouched as drift anchors — never mixed with the new `slurm_vllm_gemma4_26b-a4b_*` corpora per the `feedback_pushback_on_methodology_shortcuts.md` corpus-isolation rule. Resume-key isolation is automatic: the 10-tuple at `pddl_eval/runner.py:441–451` includes the model string and OUT_DIR prefix.
 
 **Compatibility / drift framing.** Five-model roster size unchanged; the gemma slot's identity changes from "dense 31B Ollama Q4_K_M" to "MoE 26.5B A4B vLLM AWQ-INT4." Drift expectation: smoke 17638752 already shows tools-cell ToolSel parity with the verified Qwen3.5/3.6 ladder. No-tools think=on truncation rate is high — explicitly an expected pre-rewrite behavior (sweep-4's v5/v6/v7 prompt work).
 
@@ -51,8 +51,8 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 - `development/CHANGELOG.md` (this entry)
 
 **Reference logs / commits.**
-- Smoke 17633538 (MM-tower startup crash): `cluster-experimenting/logs/vllm_gemma4_26b_a4b_smoke-17633538.out`.
-- Smoke 17638752 (passed): `cluster-experimenting/logs/vllm_gemma4_26b_a4b_smoke-17638752.out`, results at `results/smoke/probe_vllm_59be812_20260518_222456/gemma4_26b-a4b/summary_20260518_223823.json`.
+- Smoke 17633538 (MM-tower startup crash): `cluster-experimenting/logs/vllm_gemma4_26b-a4b_smoke-17633538.out`.
+- Smoke 17638752 (passed): `cluster-experimenting/logs/vllm_gemma4_26b-a4b_smoke-17638752.out`, results at `results/smoke/probe_vllm_59be812_20260518_222456/gemma4_26b-a4b/summary_20260518_223823.json`.
 - Phase-A commits: `7106f68` (vllm_lookup add), `59be812` (MAX_NUM_BATCHED_TOKENS fix).
 
 ---
