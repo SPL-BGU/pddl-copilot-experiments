@@ -46,9 +46,22 @@ if [ -n "${CELLS_LIST:-}" ]; then
         exit 1
     fi
     IFS='|' read -r CELL_MODEL CELL_THINK CELL_COND <<< "$SELECTED"
-    MODELS="$CELL_MODEL"
-    THINK_MODES="$CELL_THINK"
-    CONDITIONS="$CELL_COND"
+    # Smoke sentinel: submit_with_rtx.sh sends `@smoke@` as the COND token
+    # when invoked with --smoke. Intercept it here (mirrors
+    # run_condition_rtx.sbatch:114-122) so the inner think/cond loop is
+    # bypassed in favor of the smoke fastpath below, which delegates think×
+    # cond iteration to run_experiment.py --smoke. Without this branch,
+    # `@smoke@` propagates to `--conditions @smoke@` and argparse rejects
+    # it before any work runs (job 17653267 all 5 cells, 2026-05-19).
+    if [ "$CELL_COND" = "@smoke@" ]; then
+        SMOKE="${SMOKE:-1}"
+        MODELS="$CELL_MODEL"
+        THINK_MODES="default"
+    else
+        MODELS="$CELL_MODEL"
+        THINK_MODES="$CELL_THINK"
+        CONDITIONS="$CELL_COND"
+    fi
     echo "Cell-array task: IDX=$IDX  MODEL=$CELL_MODEL  THINK=$CELL_THINK  COND=$CELL_COND"
 
     # Rename array task at runtime so squeue / sacct show the actual cell.
@@ -59,6 +72,7 @@ if [ -n "${CELLS_LIST:-}" ]; then
             no-tools)               _CTAG="notools" ;;
             tools_per-task_minimal) _CTAG="tools-pt" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
+            @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
         esac
         scontrol update jobid="$SLURM_JOB_ID" \
@@ -242,6 +256,46 @@ for MODEL in $MODELS; do
     echo "Marketplace: $MARKETPLACE_PATH"
     echo "Server:      $OLLAMA_HOST"
     echo "Concurrency: $CONCURRENCY"
+
+    ### Smoke fast-path — skip the inner THINK × CONDITIONS loop. The
+    ### --smoke flag tells run_experiment.py to iterate think×cond
+    ### internally and write to results/smoke/fixed_<sha>_<ts>/<model>/.
+    ### Mirrors run_condition_rtx.sbatch:296-328; vLLM-specific only in
+    ### the --inference-backend vllm flag and the HF_MODEL string passed
+    ### to --models (matches the regular path at line 303).
+    if [ "${SMOKE:-0}" = "1" ] || [ "${SMOKE_SHUFFLE:-0}" = "1" ]; then
+        if [ "${SMOKE_SHUFFLE:-0}" = "1" ]; then
+            SMOKE_FLAG="--smoke-shuffle"
+        else
+            SMOKE_FLAG="--smoke"
+        fi
+        SHARD_ARGS=()
+        if [ -n "${SHARD:-}" ]; then
+            SHARD_ARGS=(--shard "$SHARD")
+        fi
+        echo
+        echo "===================================================================="
+        echo "MODEL: $MODEL   smoke ($SMOKE_FLAG)   started $(date)"
+        echo "===================================================================="
+        python3 run_experiment.py \
+            --marketplace-path "$MARKETPLACE_PATH" \
+            --models "$HF_MODEL" \
+            --ollama-host "$OLLAMA_HOST" \
+            --concurrency "$CONCURRENCY" \
+            --inference-backend vllm \
+            "$SMOKE_FLAG" \
+            "${SHARD_ARGS[@]}"
+        RC=$?
+        echo "===================================================================="
+        echo "MODEL: $MODEL   smoke   finished $(date)   rc=$RC"
+        echo "===================================================================="
+        if [ "$RC" -ne 0 ]; then
+            OVERALL_RC=$RC
+        fi
+        kill "$VLLM_PID" 2>/dev/null || true
+        wait "$VLLM_PID" 2>/dev/null || true
+        continue
+    fi
 
     for THINK_MODE in $THINK_MODES; do
         THINK_ARG=()
