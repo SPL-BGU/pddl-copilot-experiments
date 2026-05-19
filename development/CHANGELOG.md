@@ -6,6 +6,44 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-19 — Adopt pddl-copilot marketplace 1.3.0 (PR-50 merged as `a259a38`)
+
+**TL;DR.** Sibling marketplace bumped to 1.3.0 (solver 2.1.1→2.2.0, validator 2.1.1→2.2.1, parser 1.4.0→1.5.0). Two real bugs fixed upstream: solver crashes (INTERNAL_ERROR / UNSUPPORTED_PROBLEM / INTERMEDIATE / Java-missing) now surface as `{"error": True, ...}` instead of silently masquerading as empty-plan no-finds; validator `report` no longer leaks the misleading `"Plan is VALID"` / `"Plan is INVALID"` line on domain-only / domain+problem calls (fix lives in pyvalidator 0.1.5 upstream). **Zero code change required in this repo** — the framework bridge already (a) reads `valid` not `report` in `_parse_validation_verdict` (chat.py:58-71), (b) detects `{error: True}` in `_tool_error_seen` (scoring.py:295-313), and (c) connects only `pddl-solver` + `pddl-validator`, so every pddl-parser change in PR-50 is out of scope. PR description's sibling-agent validator pass and an independent re-read both returned SAFE.
+
+**Methodology consequence (the headline).** Pre-PR-50, solver crashes were classified as `FR_PLAN_INVALID` on the `solve` task (scoring.py:380): the model was charged with a failure that was actually the planner blowing up. Post-PR-50 the same crashes correctly route to `FR_TOOL_ERROR` via the existing `_tool_error_seen` path (scoring.py:376-379). **`solve` pass% does not move** — both buckets are `result_correct=False` — but the attribution is now honest. Java-missing ENHSP runs especially benefit (was silently invisible).
+
+**Possible second-order effects on sweep-4 (deliberately measured before lock-in).**
+- `validate_domain` / `validate_problem` with-tools: clean `report` may marginally shift VERDICT accuracy on small models that were parroting the leaked "Plan is VALID" line. Direction is not predictable a priori — the leak either helped (lucky parroting on actually-valid cases) or hurt (parroting on actually-invalid cases).
+- `solve` with-tools FR-histogram: small `FR_PLAN_INVALID` → `FR_TOOL_ERROR` shift on cells where solver crashes occurred.
+- All other cells: expected zero drift.
+
+**Reproducibility / byte-equality.**
+- Aggregate metrics: stable.
+- `tool_calls[*].result` strings recorded in pre-PR-50 `results/` are **not byte-comparable** with post-upgrade trial logs on (i) `validate_pddl_syntax` calls without a plan (report-text change) and (ii) failing `classic_planner` / `numeric_planner` calls (error-shape change). Same accepted-degradation precedent as the original `verbose=False` bridge (EXPERIMENTS_FLOW.md §11).
+- Canonical signals (`valid` field, `error` boolean, `trajectory` shape) unchanged.
+
+**Out-of-scope changes documented for completeness.**
+- pddl-parser 1.5.0 (Literal `parser` arg, `normalize_pddl` file-path widening + `errors` field, `inspect_domain.types` drops implicit `"object"` root, `:requirements` preserves source order, `get_applicable_actions` cross-backend deterministic lex-sort, `get_trajectory` list[str]): the parser plugin is not in `REQUIRED_PLUGINS`, so none of these reach our LLM or scorer.
+- `validate_pddl_syntax` + `get_state_transition` `plan` now accept `list[str]`: additive, we still pass a joined string in `_validate_model_plan` (scoring.py:284).
+- `get_state_transition.trajectory` shape (the `simulate` byte-equality oracle, EXPERIMENTS_FLOW.md:145): **explicitly deferred** in PR-50 `docs/breaking-changes.md` to avoid oracle-fixture regeneration. Safe.
+
+**Operational steps taken.**
+- Local validator venv at `../pddl-copilot/plugins/pddl-validator/.venv` deleted so pyvalidator>=0.1.5 pin is picked up on next launch.
+- Cluster-side validator venv to be wiped during the smoke-submission step (delegated to cluster-ops).
+- Smoke submitted across the full vLLM roster (`Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`) on the new marketplace to measure the actual drift magnitude vs the most recent comparable `checkpoints/cluster-20260517/` corpus before locking sweep-4's tool surface.
+
+**ISS-005 status nudge.** PR-50 widens the set of failure modes that route into `FR_TOOL_ERROR` (was: transport / timeout / arg-rejection / parse-error; now: + INTERNAL_ERROR / UNSUPPORTED_PROBLEM / INTERMEDIATE / Java-missing). The (a)/(b)/(c) split that ISS-005 deferred to post-hoc grep on `TaskResult.error` is now modestly more valuable as a diagnostic. See OPEN_ISSUES.md ISS-005 addendum.
+
+**Files touched (this repo).**
+- `development/CHANGELOG.md` (this entry)
+- `development/OPEN_ISSUES.md` (ISS-005 addendum)
+
+**Files NOT touched.** No source change in `pddl_eval/`, `run_experiment.py`, `tests/`, or any cluster-experimenting sbatch — the upstream fix is consumed by the existing bridge logic without modification.
+
+**Sweep-4 framing.** Adopting PR-50 ahead of sweep-4 (vs pinning to pre-PR-50 marketplace) means sweep-4's prompt v5/v6/v7 ablation is run against a slightly cleaner tool surface than sweep-3. The drift smoke submitted with this change sizes the perturbation; if material, the sweep-4 results will be noted as having a small tool-surface confound on top of the prompt-rewrite effect. Sweep-3 results stay on disk as drift anchors per the `feedback_pushback_on_methodology_shortcuts` corpus-isolation rule.
+
+---
+
 ## 2026-05-18 — Roster: gemma4:31b dense Ollama → gemma4:26b-a4b MoE vLLM (backend split retired)
 
 **TL;DR.** Replaces the dense `gemma4:31b` (Ollama-only, parser pending vLLM verification) with `gemma4:26b-a4b` (MoE A4B, ~4B active of 26.5B total, AWQ-INT4) served on vLLM. Same publisher and quant pipeline as the verified `qwen3.6:35b` (`cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit`). Full 5-model `PDDL_DEFAULT_MODELS` roster now runs on a single backend (vLLM, `rtx_6000:1`) — retires the 2026-05-12 → 2026-05-18 backend split. Active sweep roster: `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`.
