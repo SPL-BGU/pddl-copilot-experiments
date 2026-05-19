@@ -1,7 +1,14 @@
 # Sweep-4 plan — new prompts (corpus-isolated rewrite)
 
-Dated 2026-05-18. Branch: `sweep4-new-prompts` (worktree at
-`../pddl-copilot-experiments-sweep4`, branched off `main` @ `6b3be80`).
+Dated 2026-05-18, refreshed 2026-05-19 after PR-50 adoption. Branch: `sweep4-new-prompts` working directly on the main tree (no separate worktree — the original `../pddl-copilot-experiments-sweep4` worktree idea was dropped; isolation comes from the branch + the v5/v6/v7 variant indices alone).
+
+## Status snapshot (2026-05-19)
+
+- **Branch HEAD:** `e247af4` ("docs: adopt pddl-copilot marketplace 1.3.0 (PR-50)"). Originally branched off `main` @ `6b3be80`; carries one doc-only commit on top.
+- **Sibling marketplace:** `../pddl-copilot` at `a259a38` (post-PR-50, marketplace 1.3.0; solver 2.2.0; validator 2.2.1; parser 1.5.0). Validator venv refreshed locally + on cluster so pyvalidator≥0.1.5 is live.
+- **Tool surface for sweep-4:** marketplace 1.3.0 (NOT sweep-3's 1.2.0). Adoption rationale + zero-code-change justification documented in `development/CHANGELOG.md` 2026-05-19 entry. **This is a small tool-surface confound on top of the prompt-rewrite effect** — see Risks section for handling.
+- **Drift calibration (PASSED 2026-05-19):** SLURM array `17654766` ran the full 5-model vLLM roster against the smoke slice (blocksworld/p01) on the new marketplace; drift diff vs `results/cluster-20260517/` (sweep-3, marketplace 1.2.0) shows aggregate FR-bucket shifts all <3pp, `tool_error` ticked +0.3pp (1 trial of 226), and the predicted FR_PLAN_INVALID → FR_TOOL_ERROR migration on `solve` did NOT appear on classical blocksworld (as expected — no Java/INTERNAL_ERROR path). See `development/sweep4_fr_pivot.md` for the full table + verdict. **Result: PR-50 adoption is empirically silent at smoke scale; sweep-4 needs only a one-line caveat in the writeup, not a full confound analysis.**
+- **Phase 0 verification (`development/sweep4_fr_pivot.md`):** drift-half written 2026-05-19. The FR-prevalence-pivot half (which of the six prompt-review leaks dominates the FR distribution in sweep-3) is still pending — required before drafting v5–v7 in code per Phase 0 below.
 
 ## Scope shift from earlier draft
 
@@ -123,7 +130,7 @@ Addresses finding 5 (no-tools wire format) and 4 (tools-branch explicit tool nam
 
 ## Files to touch
 
-All edits in the worktree (`../pddl-copilot-experiments-sweep4`):
+All edits on the `sweep4-new-prompts` branch (no separate worktree):
 
 1. **`pddl_eval/prompts.py`**
    - Append v5/v6/v7 to each of the 5 task lists in `PROMPT_TEMPLATES` (no-tools branch, unchanged structure). Mark v3/v4 as still-disabled in the existing comments.
@@ -135,7 +142,7 @@ All edits in the worktree (`../pddl-copilot-experiments-sweep4`):
 
 3. **`run_experiment.py`** — no signature change. Argparse help text at `:599–606` should mention the new active variants. `num_variants` default already reads from `len(ACTIVE_PROMPT_VARIANTS)`, so flipping to `(5,6,7)` just works.
 
-4. **`development/CHANGELOG.md`** — 2026-05-18 entry: sweep-4 rationale, link to `.local/prompts_review.md`, list of v5/v6/v7 indices, note that sweep-3 (v0/v1/v2) remains the canonical pre-rewrite baseline.
+4. **`development/CHANGELOG.md`** — new dated entry (post the existing 2026-05-19 PR-50 entry): sweep-4 rationale, link to `.local/prompts_review.md`, list of v5/v6/v7 indices, note that sweep-3 (v0/v1/v2, marketplace 1.2.0) remains the canonical pre-rewrite baseline AND pre-PR-50 baseline, sweep-4 (v5/v6/v7, marketplace 1.3.0) is the new active set.
 
 **Not touched** in sweep-4: `scoring.py`, `schemas.py`, `summary.py`, `resume.py`, `WITH_TOOLS_SYSTEM`, `PROMPT_STYLE_CHOICES`, `TOOL_FILTER_CHOICES`, cluster sbatch scripts, analyzer skill. Resume keys for sweep-3 trials (variant ∈ {0,1,2}) remain untouched; sweep-4 trials (variant ∈ {5,6,7}) are a disjoint slice.
 
@@ -166,10 +173,11 @@ If the breakdown reveals a different dominant failure mode than the review predi
 
 ## Phase 2 — cluster sweep-4
 
-1. Push branch, open PR against `main` for review.
-2. After merge: cluster matrix unchanged from sweep-3. Same condition slugs (`tools_per-task_minimal`, `tools_all_minimal`, `no-tools`), same models, same think modes. Only the variant indices differ — the sbatch scripts read `--num-variants` not the variant integers, so no sbatch edits needed.
-3. Submit via `cluster-experimenting/submit_full_sweep.sh` as usual.
-4. Land results under `results/full/<sha>_<ts>/` and tag the directory `sweep4-cluster-<date>` for analyzer compatibility.
+1. **Gate: drift smoke `17653267` results in.** Diff `results/smoke/fixed_e247af4_<ts>/<model>/` against the matched cells in `checkpoints/cluster-20260517/`. Quantify per-task FR-bucket shift. If `solve` shows any FR_PLAN_INVALID → FR_TOOL_ERROR migration (expected on cells that hit planner crashes) or `validate_*` shows a >2pp pass% movement (NOT expected — the `report` leak shouldn't have driven much), note the magnitude in `development/sweep4_fr_pivot.md` so the eventual sweep-4 writeup can disambiguate "prompt rewrite effect" from "marketplace 1.3.0 tool surface effect."
+2. Push branch, open PR against `main` for review.
+3. After merge: cluster matrix unchanged from sweep-3. Same condition slugs (`tools_per-task_minimal`, `tools_all_minimal`, `no-tools`), same models, same think modes. Only the variant indices differ — the sbatch scripts read `--num-variants` not the variant integers, so no sbatch edits needed. **Pin: `../pddl-copilot` must be at `a259a38` (post-PR-50) for the entire sweep-4 submission window.** No marketplace drift mid-sweep.
+4. Submit via `cluster-experimenting/submit_full_sweep.sh` as usual.
+5. Land results under `results/full/<sha>_<ts>/` and tag the directory `sweep4-cluster-<date>` for analyzer compatibility. Record the marketplace SHA (`a259a38`) and pddl-copilot tag (`v2.0.0-9-ga259a38`) in the run's `meta` block so future re-comparisons can resolve the tool surface unambiguously.
 
 ## Phase 3 — analysis
 
@@ -194,3 +202,4 @@ After sweep-4 lands:
 - **Schema drift from dropping VERDICT trailer in no-tools**: `format=ValidateResponse` does the work, and `_VERDICT_RE` is a fallback path. Tiny-model degradation would show up in the local smoke step.
 - **Prompt rewrite over-claims the win**: if sweep-4 closes the tool/no-tool gap, attribute carefully — both findings 1 and 2 affect with-tools but only finding 5 affects no-tools. The FR breakdown is the receipts.
 - **Cluster matrix mismatch with sweep-3**: explicitly held identical except for variant indices. If anyone "improves" the matrix during sweep-4, the comparison is broken.
+- **Tool-surface drift from PR-50 adoption**: sweep-4 runs against marketplace 1.3.0; sweep-3 ran against 1.2.0. Two observable deltas: (a) `solve` task FR_PLAN_INVALID → FR_TOOL_ERROR re-attribution on planner-crash cells (no pass% movement, just bucket relabel); (b) `validate_*` with-tools `report` text no longer contains the spurious "Plan is VALID" line on domain-only/domain+problem calls (could marginally shift VERDICT accuracy on small models that parroted it; direction unpredictable). Drift smoke `17653267` sizes the magnitude. If material (say >2pp on any `validate_*` cell or >5pp FR migration on `solve`), the sweep-4 writeup must call out the confound separately from the prompt-rewrite effect; if immaterial, fold into a single-line caveat.
