@@ -922,6 +922,24 @@ def main():
     TITLE = cfg.TITLE
     SUBTITLE = cfg.SUBTITLE
 
+    # Fail loud, not silent. A cell whose model slug isn't in MODEL_DISP would
+    # KeyError deep in models_present() — we'd rather catch it at config load
+    # and tell the user exactly which cells / slugs need adding. Silent drop
+    # is the failure mode this skill is supposed to prevent post 2026-05.
+    cell_models = {m for (m, _, _) in CELLS}
+    unknown = sorted(cell_models - set(MODEL_DISP))
+    if unknown:
+        offending_cells = sorted(
+            f"{m}/{th}/{c}" for (m, th, c) in CELLS if m in unknown
+        )
+        raise SystemExit(
+            f"deck_config {args.config} is missing MODEL_DISP entries for "
+            f"{len(unknown)} model slug(s) present in {results_root.relative_to(REPO)}:\n"
+            + "\n".join(f"  - {m}" for m in unknown)
+            + "\noffending cells:\n"
+            + "\n".join(f"  - {c}" for c in offending_cells)
+        )
+
     print(f"loaded {len(CELLS)} cells from {results_root.relative_to(REPO)}")
     print(f"models: {MODEL_ORDER}")
     print(f"conds:  {COND_ORDER}")

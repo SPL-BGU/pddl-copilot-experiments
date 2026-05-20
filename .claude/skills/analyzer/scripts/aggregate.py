@@ -112,7 +112,14 @@ def host_tag(meta: dict) -> str:
     return h or "?"
 
 
-def load_summaries(root: Path):
+def load_summaries(root: Path, include_retired: bool = False):
+    """Load every cell's latest `summary_*.json` into (info, data) tuples.
+
+    `include_retired=True` re-includes pre-2026-05 checkpoints that legitimately
+    contain `tools_per-task_*` / `tools_all_guided` cells — matches the
+    signature of `plot.load_series`. `drift_check` re-aggregating a sweep-3
+    baseline should set this to True so per-task cells aren't silently dropped.
+    """
     rows = []
     for d in sorted(root.glob("slurm_*")):
         if not d.is_dir():
@@ -121,7 +128,7 @@ def load_summaries(root: Path):
         if not sfs:
             continue
         info = parse_dirname(d.name)
-        if info.get("cond") in RETIRED_CONDS:
+        if not include_retired and info.get("cond") in RETIRED_CONDS:
             continue
         with sfs[-1].open() as f:
             data = json.load(f)

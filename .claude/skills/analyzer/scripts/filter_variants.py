@@ -46,22 +46,33 @@ def _trial_to_task_result(t: dict) -> TaskResult:
     return TaskResult(**kept)
 
 
-def filter_cell(src_dir: Path, dst_dir: Path, active: set[int]) -> tuple[int, int]:
-    dst_dir.mkdir(parents=True, exist_ok=True)
+def _scan_trials(src_dir: Path, active: set[int]
+                 ) -> tuple[int, int, list[str], list[TaskResult]]:
+    """Single-pass read of trials.jsonl. Returns (n_in, n_out, kept_lines, kept_trials).
+    No write side effects — caller decides whether to skip or commit to disk."""
     kept_trials: list[TaskResult] = []
+    kept_lines: list[str] = []
     n_in = n_out = 0
-    out_lines: list[str] = []
     with (src_dir / "trials.jsonl").open() as f:
         for line in f:
             n_in += 1
             t = json.loads(line)
-            pv = t["result"].get("prompt_variant")
-            if pv not in active:
+            if t["result"].get("prompt_variant") not in active:
                 continue
             n_out += 1
             kept_trials.append(_trial_to_task_result(t))
-            out_lines.append(line.rstrip("\n"))
-    (dst_dir / "trials.jsonl").write_text("\n".join(out_lines) + ("\n" if out_lines else ""))
+            kept_lines.append(line.rstrip("\n"))
+    return n_in, n_out, kept_lines, kept_trials
+
+
+def write_filtered_cell(src_dir: Path, dst_dir: Path,
+                        kept_lines: list[str], kept_trials: list[TaskResult],
+                        n_in: int, active: set[int]) -> None:
+    """Materialize the kept rows + regenerate summary + single_task on disk."""
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    (dst_dir / "trials.jsonl").write_text(
+        "\n".join(kept_lines) + ("\n" if kept_lines else "")
+    )
 
     ts = time.strftime("%Y%m%d_%H%M%S")
     (dst_dir / f"single_task_{ts}.json").write_text(
@@ -85,11 +96,10 @@ def filter_cell(src_dir: Path, dst_dir: Path, active: set[int]) -> tuple[int, in
             "filtered_from": str(src_dir.relative_to(REPO)),
             "filter": f"prompt_variant in {sorted(active)}",
             "source_n_trials": n_in,
-            "filtered_n_trials": n_out,
+            "filtered_n_trials": len(kept_lines),
         },
     }
     (dst_dir / f"summary_{ts}.json").write_text(json.dumps(summary, indent=2))
-    return n_in, n_out
 
 
 # Cells to skip: per-task tools and guided prompt style are retired axes
@@ -152,20 +162,17 @@ def main():
     for c in cells:
         src = src_root / c
         dst = dst_root / c
-        n_in_probe = sum(1 for _ in (src / "trials.jsonl").open())
-        n_out_probe = sum(1 for line in (src / "trials.jsonl").open()
-                          if json.loads(line)["result"].get("prompt_variant") in args.variants)
-        status = "WRITE"
-        if args.min_out and n_out_probe < args.min_out:
+        n_in, n_out, kept_lines, kept_trials = _scan_trials(src, args.variants)
+        if args.min_out and n_out < args.min_out:
             status = f"skip<{args.min_out}"
             n_skipped += 1
-            print(f"{c:<55} {n_in_probe:>7} {n_out_probe:>7} {status:<10}")
+            print(f"{c:<55} {n_in:>7} {n_out:>7} {status:<10}")
             continue
-        n_in, n_out = filter_cell(src, dst, args.variants)
+        write_filtered_cell(src, dst, kept_lines, kept_trials, n_in, args.variants)
         total_in += n_in
         total_out += n_out
         n_written += 1
-        print(f"{c:<55} {n_in:>7} {n_out:>7} {status:<10}")
+        print(f"{c:<55} {n_in:>7} {n_out:>7} {'WRITE':<10}")
     print("-" * 86)
     print(f"{'TOTAL (written):':<55} {total_in:>7} {total_out:>7} "
           f"({n_written} cells, {n_skipped} skipped)")
