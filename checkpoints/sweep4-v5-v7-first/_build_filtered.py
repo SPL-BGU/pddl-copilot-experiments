@@ -1,8 +1,18 @@
-"""One-off: filter sweep-4 qwen0.8B trials.jsonl to prompt_variant ∈ {5,6,7}
-and regenerate summary_*.json per cell, into a synthetic results root.
+"""Filter sweep-4 trials.jsonl to prompt_variant ∈ {5,6,7} and regenerate
+summary + single_task per cell, into a synthetic results root.
 
-Reads:  results/sweep4-cluster-20260519/slurm_vllm_Qwen3_5_0_8B_*/trials.jsonl
-Writes: results/sweep4-v5-v7-first-qwen0_8B/<same dir>/trials.jsonl + summary_*.json
+Examples:
+  # Single model (default behavior, qwen0.8B):
+  python _build_filtered.py
+
+  # Multiple models into one combined root, skip cells below 4560 v5/v6/v7:
+  python _build_filtered.py \
+      --dst sweep4-v5-v7-first \
+      --model-glob 'slurm_vllm_Qwen3_5_0_8B_*,slurm_vllm_qwen3_6_35b_*' \
+      --min-out 4560
+
+Reads:  results/<--src>/<cell>/trials.jsonl
+Writes: results/<--dst>/<cell>/{trials.jsonl, summary_*.json, single_task_*.json}
 """
 from __future__ import annotations
 import argparse
@@ -95,34 +105,58 @@ def main():
     p.add_argument("--dst", default="sweep4-v5-v7-first-qwen0_8B",
                    help="output results subdir name (under results/)")
     p.add_argument("--model-glob", default="slurm_vllm_Qwen3_5_0_8B_*",
-                   help="glob matching the cells to filter (default: qwen0.8B vLLM)")
+                   help="comma-separated globs matching cells to filter")
+    p.add_argument("--min-out", type=int, default=0,
+                   help="skip cells where n_out (v5+v6+v7 trials) is below this "
+                        "threshold; useful for restricting to completed cells "
+                        "(typical: 4560 = 3 variants × 1520 trials/variant)")
     args = p.parse_args()
     src_root = REPO / "results" / args.src
     dst_root = REPO / "results" / args.dst
     dst_root.mkdir(parents=True, exist_ok=True)
 
-    cells = sorted(d.name for d in src_root.glob(args.model_glob)
-                   if d.is_dir() and not _is_retired(d.name))
+    globs = [g.strip() for g in args.model_glob.split(",") if g.strip()]
+    cell_set: set[str] = set()
+    for g in globs:
+        for d in src_root.glob(g):
+            if d.is_dir() and not _is_retired(d.name):
+                cell_set.add(d.name)
+    cells = sorted(cell_set)
     if not cells:
         sys.exit(f"no cells matched {args.model_glob!r} under {src_root}")
 
     print(f"Filtering trials → prompt_variant ∈ {sorted(ACTIVE)}")
     print(f"Source: {src_root.relative_to(REPO)}")
     print(f"Dest:   {dst_root.relative_to(REPO)}")
-    print(f"Model glob: {args.model_glob}  (retired-axis cells excluded)")
+    print(f"Model globs: {globs}  (retired-axis cells excluded)")
+    if args.min_out:
+        print(f"Skip threshold: n_out < {args.min_out}")
     print()
     total_in = total_out = 0
-    print(f"{'cell':<55} {'n_in':>7} {'n_out':>7}")
-    print("-" * 75)
+    n_written = n_skipped = 0
+    print(f"{'cell':<55} {'n_in':>7} {'n_out':>7} {'status':<10}")
+    print("-" * 86)
     for c in cells:
         src = src_root / c
         dst = dst_root / c
+        # Count first to decide whether to write at all.
+        n_in_probe = sum(1 for _ in (src / "trials.jsonl").open())
+        n_out_probe = sum(1 for line in (src / "trials.jsonl").open()
+                          if json.loads(line)["result"].get("prompt_variant") in ACTIVE)
+        status = "WRITE"
+        if args.min_out and n_out_probe < args.min_out:
+            status = f"skip<{args.min_out}"
+            n_skipped += 1
+            print(f"{c:<55} {n_in_probe:>7} {n_out_probe:>7} {status:<10}")
+            continue
         n_in, n_out = filter_cell(src, dst)
         total_in += n_in
         total_out += n_out
-        print(f"{c:<55} {n_in:>7} {n_out:>7}")
-    print("-" * 75)
-    print(f"{'TOTAL':<55} {total_in:>7} {total_out:>7}")
+        n_written += 1
+        print(f"{c:<55} {n_in:>7} {n_out:>7} {status:<10}")
+    print("-" * 86)
+    print(f"{'TOTAL (written):':<55} {total_in:>7} {total_out:>7} "
+          f"({n_written} cells, {n_skipped} skipped)")
 
 
 if __name__ == "__main__":
