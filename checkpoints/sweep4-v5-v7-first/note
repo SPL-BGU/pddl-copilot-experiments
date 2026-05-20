@@ -1,0 +1,4 @@
+this sweep is different than other=s till now regarding the prompt.
+models with tools were prompted with explicit mention of 'use the tool'. its a good base line for tool activation
+
+the next sweep (second) shall use the same prompt for both configurations.
