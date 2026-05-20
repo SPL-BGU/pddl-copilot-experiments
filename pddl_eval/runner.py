@@ -23,6 +23,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from openai import APIConnectionError
+
 from .chat import (
     MCPPlanner,
     TEMPERATURE,
@@ -236,6 +238,13 @@ class TaskResult:
     # validate_problem) and for `simulate` (which uses only the canonical
     # planner-generated plan + trace).
     plan_label: str = ""
+    # Set when the trial could not produce a real model attempt due to an
+    # infra/transport event (e.g. vLLM server died mid-call as SLURM sent
+    # SIGTERM near TIMEOUT, surfacing as openai.APIConnectionError). The
+    # writer in `run_single_task_experiment` SKIPS appending such records
+    # to `trials.jsonl` so resume re-attempts the key on the next run
+    # instead of treating the infra blip as a completed trial.
+    infra_failure: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -321,9 +330,23 @@ async def evaluate_one(
                 temperature=temperature,
                 format=TASK_SCHEMAS.get(task),
             )
+    except APIConnectionError as exc:
+        # vLLM transport drop — most commonly fires when SLURM sends SIGTERM
+        # near a TIMEOUT'd job and the sbatch's EXIT trap kills vLLM while
+        # this chat() call is in flight. The openai SDK raises
+        # APIConnectionError with .message == "Connection error.". Tag the
+        # record `infra_failure=True` so the writer skips it; resume will
+        # re-attempt the key on the next run instead of treating a half-
+        # second of transport unavailability as a completed trial.
+        error = str(exc) or "Connection error."
+        infra_failure = True
+        print(f"[infra-skip] {type(exc).__name__}: {error}", file=sys.stderr, flush=True)
     except Exception as exc:
         error = str(exc)
+        infra_failure = False
         print(f"[exception] {type(exc).__name__}: {error}", file=sys.stderr, flush=True)
+    else:
+        infra_failure = False
 
     duration = time.time() - t0
     tool_selected: bool | None = None
@@ -395,6 +418,7 @@ async def evaluate_one(
         truncated=truncated,
         done_reason=done_reason,
         plan_label=plan_label,
+        infra_failure=infra_failure,
     )
 
 
@@ -751,7 +775,12 @@ async def run_single_task_experiment(
         for coro in asyncio.as_completed(aws):
             idx, r = await coro
             results[idx] = r
-            if progress_handle is not None:
+            if progress_handle is not None and not r.infra_failure:
+                # `infra_failure=True` records are produced for transport-
+                # class events (e.g. SLURM SIGTERM killing vLLM mid-call).
+                # We deliberately do NOT append them so resume re-attempts
+                # the key on the next run instead of treating the blip as
+                # a completed trial.
                 (
                     j_model, j_task, j_dname, _j_dpddl, j_pname, _j_ppddl,
                     j_pv, j_wt, _j_gt, _j_np, j_plan_label,
