@@ -82,6 +82,32 @@ python3 .claude/skills/analyzer/scripts/table.py results/cluster-20260424 --out 
 
 Reuses `parse_dirname` / `load_summaries` / `host_tag` from `aggregate.py` (same dir).
 
+### `scripts/filter_variants.py` — restrict trials.jsonl to a prompt-variant set
+
+When the on-cluster `trials.jsonl` files mix variants across sweeps (e.g. sweep-4 cells resumed sweep-3 in place; v0/v1/v2 carry-over rows sit alongside v5/v6/v7), this script projects to one variant set and regenerates `summary_*.json` + `single_task_*.json` per cell into a fresh synthetic results root. Cell dirs whose names contain retired-axis substrings (`per-task`, `guided`) are skipped automatically. `--min-out` gates cells below a kept-trial threshold so partials don't enter a published checkpoint.
+
+```bash
+# Sweep-4 multi-model corpus (canonical 4560-trial cells only):
+python3 .claude/skills/analyzer/scripts/filter_variants.py \
+    --src sweep4-cluster-20260519 --dst sweep4-v5-v7-first \
+    --model-glob 'slurm_vllm_Qwen3_5_0_8B_*,slurm_vllm_qwen3_6_35b_*' \
+    --min-out 4560
+
+# Different variant set:
+python3 .claude/skills/analyzer/scripts/filter_variants.py \
+    --src <sync> --dst <out> --model-glob 'slurm_vllm_*' --variants 8,9,10
+```
+
+### `scripts/build_deck.py` — render a paper-talk PPTX from a filtered root
+
+Reads a small `deck_config.py` (model order, condition order, captions, results path) and writes a self-contained 18–21 slide deck: success-by-condition (off/on), tool-selection per task, tool-selection vs successful-tool-use, confusion-matrix grids, validation-metric tables, simulate failure-proof slides, token-accounting note + 7 token slides, and 2 latency slides. Chart functions and slide order are baked into the script — per-checkpoint customization is config-only. See `checkpoints/sweep4-v5-v7-first/deck_config.py` for a worked example.
+
+```bash
+python3 .claude/skills/analyzer/scripts/build_deck.py \
+    --config checkpoints/<name>/deck_config.py \
+    --out    checkpoints/<name>/pddl_copilot_<name>.pptx     # --out overrides config.OUT_PPTX
+```
+
 ### `scripts/drift_check.py` — flag cells diverging from a baseline
 
 Compares a `--current` results root (in-flight or finished) against a `--baseline` root, aligns per-cell rows by `(model, think, cond, task)`, and flags any cell where the current point estimate falls outside the baseline's Wilson 95% CI. For each current cell, prefers the latest `summary_*.json`; falls back to aggregating `trials.jsonl` so mid-sweep cells (no `save_results` yet) still surface a current estimate.
@@ -113,6 +139,53 @@ The standard end-of-sweep flow. Step 1 lives in `cluster-ops`; the rest in this 
 4. `python3 .claude/skills/analyzer/scripts/table.py <that-dir>` — write `tables/master.{md,csv,tex}` for the paper.
 5. (Optional) `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct memory headroom; surface OOMs / near-`--time` jobs.
 6. Report to user with the plot paths and 3–5 key numbers from the aggregate table. Frame against the paper headline (arXiv:2509.12987) when possible.
+
+### "Checkpoint a sweep (in-flight or finished)"
+
+End-to-end recipe that turns a cluster sync into a tracked `checkpoints/<name>/` artifact bundle: per-model trial zips, master pivot, plots, deck. Use when a sweep with a new prompt set lands its first complete cells and you want a snapshot to share with collaborators.
+
+Variables: `<sync>` = synced cluster dirname (e.g. `sweep4-cluster-20260519`); `<name>` = checkpoint name (e.g. `sweep4-v5-v7-first`); `<variants>` = active prompt-variant ids (e.g. `5,6,7`).
+
+```bash
+# 1. Sync from cluster
+bash .claude/skills/cluster-ops/scripts/sync.sh results/<sync>
+
+# 2. Filter to active variants + regen summaries; skip cells below 4560 trials.
+#    For sweep-4 the default --variants 5,6,7 applies; for other sweeps pass --variants.
+python3 .claude/skills/analyzer/scripts/filter_variants.py \
+    --src <sync> --dst <name> \
+    --model-glob 'slurm_vllm_*' --min-out 4560
+
+# 3. Aggregate / plot / table on the filtered root
+mkdir -p checkpoints/<name>/{plots,tables}
+python3 .claude/skills/analyzer/scripts/aggregate.py     results/<name> > checkpoints/<name>/aggregate.md
+python3 .claude/skills/analyzer/scripts/plot.py          results/<name>
+python3 .claude/skills/analyzer/scripts/plot_focused.py  results/<name>
+python3 .claude/skills/analyzer/scripts/table.py         results/<name>
+cp -r results/<name>/plots/* checkpoints/<name>/plots/
+cp    results/<name>/tables/* checkpoints/<name>/tables/
+
+# 4. One trials.zip per model (sweep-4+ rule — see sweep4-v5-v7-first FOOTNOTE)
+for model in $(ls results/<name> | sed -E 's/^slurm_(vllm_)?(.+)_(on|off)_.*$/\2/' | sort -u); do
+    safe=$(echo "$model" | tr ':' '_' | tr '-' '_')
+    (cd results/<name> && zip -r ../../checkpoints/<name>/${safe}_trials.zip \
+        slurm_*${model}_*/{trials.jsonl,summary_*.json,single_task_*.json})
+done
+
+# 5. Deck — first checkpoint needs a deck_config.py; copy from a previous one and edit
+#    MODEL_ORDER / MODEL_DISP / COND_ORDER / TITLE / SUBTITLE / SLIDE_CAPTIONS.
+python3 .claude/skills/analyzer/scripts/build_deck.py \
+    --config checkpoints/<name>/deck_config.py \
+    --out    checkpoints/<name>/pddl_copilot_<name>.pptx
+(cd checkpoints/<name> && zip pddl_copilot_<name>.pptx.zip pddl_copilot_<name>.pptx \
+    && rm pddl_copilot_<name>.pptx)
+
+# 6. Hand-write FOOTNOTE.md — scope, headline findings, caveats.
+#    NO template; reference checkpoints/sweep4-v5-v7-first/FOOTNOTE.md for the shape.
+
+# 7. Commit tracked files (zip + csv + tex + deck_config + the .pptx.zip).
+#    .png and .md under checkpoints/** are gitignored by design — they rebuild from the zip + scripts.
+```
 
 ### "Is the in-flight sweep consistent with the last one?"
 
