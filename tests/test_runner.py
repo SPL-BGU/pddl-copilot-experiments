@@ -15,6 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tests._helpers import TestResults
+from pddl_eval.prompts import ACTIVE_PROMPT_VARIANTS
 from pddl_eval.runner import (
     TRIAL_KEY_LEN,
     TaskResult,
@@ -23,6 +24,13 @@ from pddl_eval.runner import (
     _trial_key,
     run_single_task_experiment,
 )
+
+# Tests that round-trip through `run_single_task_experiment` (which derives
+# its variant from `ACTIVE_PROMPT_VARIANTS[:num_variants]`) must use the
+# active set's first entry rather than a hardcoded 0; otherwise flipping
+# the active set (e.g. (0,1,2) → (5,6,7) at sweep-4) silently breaks the
+# scope-filter contract these tests are meant to guard.
+_ACTIVE_V0 = ACTIVE_PROMPT_VARIANTS[0]
 
 
 def test_plan_label_in_shard_key_spreads_across_shards(r: TestResults) -> None:
@@ -295,7 +303,7 @@ def test_writer_emits_loadable_jsonl(r: TestResults) -> None:
             )
 
             expected_key = _trial_key(
-                "m", "solve", "d1", "p1", "", 0, True,
+                "m", "solve", "d1", "p1", "", _ACTIVE_V0, True,
                 "default", "all", "minimal",
             )
             r.check(
@@ -345,19 +353,19 @@ def test_runner_filters_out_of_scope_restored(r: TestResults) -> None:
             # list). The out-of-scope record simulates a multi-cell merged
             # seed where another cell's trials snuck in.
             in_scope_rec = {
-                "key": ["m1", "solve", "d1", "p1", "", 0, True,
+                "key": ["m1", "solve", "d1", "p1", "", _ACTIVE_V0, True,
                         "default", "all", "minimal"],
                 "result": {"model": "m1", "task": "solve", "domain_name": "d1",
-                           "problem_name": "p1", "prompt_variant": 0,
+                           "problem_name": "p1", "prompt_variant": _ACTIVE_V0,
                            "with_tools": True, "success": True,
                            "tool_filter": "all", "prompt_style": "minimal"},
             }
             out_of_scope_rec = {
-                "key": ["other-model", "solve", "d1", "p1", "", 0, True,
+                "key": ["other-model", "solve", "d1", "p1", "", _ACTIVE_V0, True,
                         "default", "all", "minimal"],
                 "result": {"model": "other-model", "task": "solve",
                            "domain_name": "d1", "problem_name": "p1",
-                           "prompt_variant": 0, "with_tools": True,
+                           "prompt_variant": _ACTIVE_V0, "with_tools": True,
                            "success": False, "tool_filter": "all",
                            "prompt_style": "minimal"},
             }
@@ -425,18 +433,18 @@ def test_runner_filters_out_partial_dropped_fixtures(r: TestResults) -> None:
             # {p1: ...} in `domains`, simulating --partial 2 having
             # dropped p3 upstream).
             kept_rec = {
-                "key": ["m1", "solve", "d1", "p1", "", 0, True,
+                "key": ["m1", "solve", "d1", "p1", "", _ACTIVE_V0, True,
                         "default", "all", "minimal"],
                 "result": {"model": "m1", "task": "solve", "domain_name": "d1",
-                           "problem_name": "p1", "prompt_variant": 0,
+                           "problem_name": "p1", "prompt_variant": _ACTIVE_V0,
                            "with_tools": True, "success": True,
                            "tool_filter": "all", "prompt_style": "minimal"},
             }
             dropped_rec = {
-                "key": ["m1", "solve", "d1", "p3", "", 0, True,
+                "key": ["m1", "solve", "d1", "p3", "", _ACTIVE_V0, True,
                         "default", "all", "minimal"],
                 "result": {"model": "m1", "task": "solve", "domain_name": "d1",
-                           "problem_name": "p3", "prompt_variant": 0,
+                           "problem_name": "p3", "prompt_variant": _ACTIVE_V0,
                            "with_tools": True, "success": False,
                            "tool_filter": "all", "prompt_style": "minimal"},
             }

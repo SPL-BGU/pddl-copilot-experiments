@@ -6,10 +6,17 @@
 # and renders five sections:
 #   1. Header (~hours since last check, or "first run")
 #   2. What changed (cells flipped to ✓ this window, new running cells)
-#   3. Per-cell progress matrix (4 active models × 5 think×cond cells)
+#   3. Per-cell progress matrix (5 active models × 4 think×cond cells in sweep-4)
 #   4. Δ since last status (only cells whose count grew, with pace + ETA)
 #   5. Roll-up (done X/20, coverage %, running cells, --time watch list)
 #   6. Queue (compact pending+running summary; useful when REASON ≠ normal)
+#
+# Sweep-4 matrix (active 2026-05-19): {no-tools, tools_all_minimal} ×
+# {think on, off} = 4 cells per model. tools_per-task_minimal was retired
+# from the active sweep with the prompt rewrite (see development/
+# CHANGELOG.md 2026-05-19 sweep-4 entries). Sweep-3 per-task result dirs
+# remain on disk and surface in the "skipped (unmatched)" footer; query
+# them via the analyzer skill if needed for baseline framing.
 #
 # Output mode (auto by stdout TTY-detect; override with flags):
 #   --terminal / --pretty   ANSI-coloured aligned text (default when TTY)
@@ -27,6 +34,14 @@ REMOTE_USER="${REMOTE_USER:-omereliy}"
 REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 STATE_FILE="${STATE_FILE:-$HOME/.cache/cluster-ops-status.json}"
+# Active prompt variants for the in-flight sweep. Trials.jsonl files can
+# carry rows from multiple sweeps (sweep-4 variant 5/6/7 trials append
+# alongside sweep-3 variant 0/1/2 trials in the same per-cell file since
+# the resume key includes prompt_variant — see pddl_eval/runner.py:441-451).
+# This regex character class filters the cluster-side trial count so the
+# progress matrix reflects ONLY the active sweep. Default = sweep-4
+# active set; override for sweep-5+ or for sweep-3 reproduction.
+ACTIVE_VARIANTS_RE="${ACTIVE_VARIANTS_RE:-[567]}"
 
 # Output-mode flags (parsed before SSH so --help works offline).
 mode="auto"
@@ -46,10 +61,11 @@ done
 mkdir -p "$(dirname "$STATE_FILE")"
 
 # Single SSH: dump queue + per-cell trial counts as two delimited blocks.
-remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" <<'REMOTE'
+remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" <<'REMOTE'
 set -eo pipefail
 USER="$1"
 REPO="$2"
+VARIANTS_RE="$3"
 echo "=== queue ==="
 # -r expands array ranges so each pending task is a separate row (otherwise
 # squeue collapses pending arrays like 17389411_[6-9] into one row, breaking
@@ -57,10 +73,29 @@ echo "=== queue ==="
 queue_lines=$(squeue -u "$USER" -r -h -o '%i|%j|%T|%M|%R' 2>/dev/null | sort || true)
 printf '%s\n' "$queue_lines"
 echo "=== counts ==="
+# Count only trials whose result.prompt_variant matches VARIANTS_RE
+# (sweep-isolation; see ACTIVE_VARIANTS_RE comment in the wrapper). The
+# trailing [^0-9] anchors the character class so VARIANTS_RE="[5-9]"
+# would match v5..v9 but not the first digit of v10/v15/v50. grep exit
+# codes: 0=match, 1=no-match (→ count 0), ≥2=real I/O error (warn + 0
+# so the matrix renders but the underlying problem surfaces in stderr).
 shopt -s nullglob
 for d in "$HOME/$REPO/results/"slurm_*/; do
     if [ -f "$d/trials.jsonl" ]; then
-        n=$(wc -l < "$d/trials.jsonl")
+        # Run grep inside an `if` so `set -eo pipefail` doesn't kill the
+        # whole remote heredoc on rc=1 (no match — common for cells with
+        # no active-sweep trials yet). The then-branch (rc=0) keeps the
+        # match count grep already printed; the else-branch discriminates
+        # no-match (rc=1, n=0) from a real I/O error (rc≥2, warn + 0).
+        if n=$(grep -cE "\"prompt_variant\": $VARIANTS_RE[^0-9]" "$d/trials.jsonl" 2>/dev/null); then
+            :
+        else
+            rc=$?
+            if [ "$rc" -gt 1 ]; then
+                echo "warn: grep rc=$rc on $d/trials.jsonl" >&2
+            fi
+            n=0
+        fi
     else
         n=0
     fi
@@ -69,7 +104,7 @@ done
 echo "=== manifests ==="
 # Emit `<arrayjid>\t<idx>\t<model>\t<think>\t<cond>` rows for every cells.tsv
 # whose ArrayJobId currently appears in the queue. This lets the local
-# parser resolve packed-array job names (e.g. pddl_rtx_pack2_gemma4_31b_*
+# parser resolve packed-array job names (e.g. pddl_rtx_pack2_gemma4_26b-a4b_*
 # covers gemma4 AND qwen3.6:35b — the parent name only mentions one model)
 # back to the precise (model, think, cond) cell per array task.
 array_jids=$(printf '%s\n' "$queue_lines" | awk -F'|' '{split($1,a,"_"); print a[1]}' | sort -u)
@@ -91,35 +126,51 @@ import json, os, re, sys, time
 payload, state_file, mode_arg, color_arg = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 # ---- Roster + dimensions (matches submit_with_rtx.sh --all roster) ----
-# 2026-05-17 swap: dropped qwen3_6_27b (slowest cell, ~19h tools×on);
+# 2026-05-18 swap: dropped gemma4_31b dense Ollama, added gemma4_26b-a4b
+# MoE on vLLM; full roster now backend-unified on vLLM (smoke 17638752).
+# 2026-05-17 swap (prior): dropped qwen3_6_27b (slowest cell, ~19h tools×on);
 # added Qwen3_5_4B and Qwen3_5_9B to fill the 0.8B → 35B param gap.
-ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_31b", "qwen3_6_35b"]
+ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]
 DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "Qwen3_5_4B":"Qwen3.5:4B",
-           "Qwen3_5_9B":"Qwen3.5:9B", "gemma4_31b":"gemma4:31b",
+           "Qwen3_5_9B":"Qwen3.5:9B", "gemma4_26b-a4b":"gemma4:26b-a4b",
            "qwen3_6_35b":"qwen3.6:35b"}
-# Canonical backend per model (2026-05-17). Dirs from the OTHER backend
+# Canonical backend per model (2026-05-18). Dirs from the OTHER backend
 # are skipped during counting — a model is fully owned by one backend so
-# the matrix reflects the paper-corpus choice and partial runs on the
+# the matrix reflects the active corpus choice and partial runs on the
 # wrong backend don't pollute progress. vLLM cells live under
 # `slurm_vllm_<model>_<think>_<cond>/`; Ollama cells under
-# `slurm_<model>_<think>_<cond>/`. qwen3_6_35b flipped ollama → vllm on
-# 2026-05-17 alongside the roster swap; the prior Ollama 35B corpus is
-# checkpointed under `checkpoints/cluster-2026{0514,0517}/`.
+# `slurm_<model>_<think>_<cond>/`. Full roster is vLLM post 2026-05-18;
+# the prior Ollama gemma4_31b corpus stays on disk as drift anchor and
+# is counted as "skipped (wrong backend)" against the active roster.
 BACKEND = {"Qwen3_5_0_8B":"vllm", "Qwen3_5_4B":"vllm", "Qwen3_5_9B":"vllm",
-           "qwen3_6_35b":"vllm", "gemma4_31b":"ollama"}
-# Full 6-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools, tools_pt,
-# tools_all}). The legacy no-tools/think=on gate was lifted 2026-05-12
-# (commit fe1c061) to complete the ablation dimension. Order matches
-# `short_hdrs` in render_terminal so the markdown and terminal renderers
-# render the same column sequence.
-CELLS = [("on","no-tools"),("on","tools_per-task_minimal"),("on","tools_all_minimal"),
-         ("off","no-tools"),("off","tools_per-task_minimal"),("off","tools_all_minimal")]
-COL_HEADERS = ["on / no-tools","on / tools_pt","on / tools_all",
-               "off / no-tools","off / tools_pt","off / tools_all"]
-DENOM = {"no-tools":4560, "tools_per-task_minimal":4560, "tools_all_minimal":4560}
-TIME_LIMIT_H = 72  # current --time per cell
+           "qwen3_6_35b":"vllm", "gemma4_26b-a4b":"vllm"}
+# Sweep-4 4-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools,
+# tools_all}). tools_per-task_minimal was retired 2026-05-19 with the
+# prompt-rewrite branch (PDDL_DEFAULT_CONDITIONS in lib/defaults.sh).
+# The legacy no-tools/think=on gate was lifted 2026-05-12 (commit fe1c061).
+# Order matches `short_hdrs` in render_terminal so the markdown and
+# terminal renderers render the same column sequence.
+CELLS = [("on","no-tools"),("on","tools_all_minimal"),
+         ("off","no-tools"),("off","tools_all_minimal")]
+COL_HEADERS = ["on / no-tools","on / tools_all",
+               "off / no-tools","off / tools_all"]
+DENOM = {"no-tools":4560, "tools_all_minimal":4560}
+# Per-model --time pin in submit_full_sweep.sh (2026-05-19):
+#   pack3 (Qwen3.5:0.8B/4B/9B): 12h
+#   slow models (qwen3.6:35b, gemma4:26b-a4b): 48h
+# Used by the watch-list heuristic to flag cells whose elapsed + ETA
+# exceed 0.9 × the model's wall-time budget. Fallback: 48h.
+TIME_LIMIT_H_BY_MODEL = {
+    "Qwen3_5_0_8B": 12, "Qwen3_5_4B": 12, "Qwen3_5_9B": 12,
+    "qwen3_6_35b": 48, "gemma4_26b-a4b": 48,
+}
+TIME_LIMIT_H_DEFAULT = 48
 
 # Job-name short-cond → full cond (used when array tasks have per-cell names).
+# `tools-pt`/`tools_pt` keys retained for backwards-compatibility with
+# pre-2026-05-19 sweep-3 cells that may still surface in the queue (e.g.
+# a resume of a sweep-3 job); they map to the retired condition string
+# so the parser doesn't silently classify them as unknown.
 SHORT_COND = {"tools-pt":"tools_per-task_minimal","tools_pt":"tools_per-task_minimal",
               "tools-all":"tools_all_minimal","tools_all":"tools_all_minimal",
               "notools":"no-tools","no-tools":"no-tools"}
@@ -139,10 +190,10 @@ manifest_raw = [l for l in sections.get("manifests", []) if l.strip()]
 # ---- Manifests: (array_jid, idx) → (model_token, think, cond) ----
 # Lets us resolve packed-pending array tasks back to their precise cell
 # even when the parent template name only mentions one of the packed models
-# (e.g. pddl_rtx_pack2_gemma4_31b_notools covers both gemma4:31b and
-# qwen3.6:35b — the parent jname only mentions gemma4).
+# (e.g. pddl_rtx_pack2_gemma4_26b-a4b_notools covers both gemma4:26b-a4b
+# and qwen3.6:35b — the parent jname only mentions gemma4).
 MODEL_TAG_TO_ROSTER = {"Qwen3.5:0.8B":"Qwen3_5_0_8B", "Qwen3.5:4B":"Qwen3_5_4B",
-                       "Qwen3.5:9B":"Qwen3_5_9B", "gemma4:31b":"gemma4_31b",
+                       "Qwen3.5:9B":"Qwen3_5_9B", "gemma4:26b-a4b":"gemma4_26b-a4b",
                        "qwen3.6:35b":"qwen3_6_35b"}
 manifest_index = {}
 for line in manifest_raw:
@@ -203,8 +254,8 @@ for line in queue_raw:
 
 def jname_to_cell(jname):
     """Per-cell array task name → (model,think,cond).
-    Ollama: pddl_gemma4_31b_on_tools-pt
     vLLM:   pddl_vllm_Qwen3_5_9B_on_notools
+    Ollama (legacy): pddl_<model>_<think>_<cond> — no `vllm_` infix.
     """
     if not jname.startswith("pddl_"): return None
     rem = jname[len("pddl_"):]
@@ -329,8 +380,9 @@ watch = []
 for cell, d in deltas.items():
     if cell not in cell_running: continue
     elapsed_h = parse_elapsed_h(cell_running[cell]["elapsed"])
-    if d["eta_h"] is not None and elapsed_h + d["eta_h"] > 0.9 * TIME_LIMIT_H:
-        watch.append(f"{cell_label(cell)} ({elapsed_h:.0f}h+{d['eta_h']:.0f}h ETA → over 0.9×{TIME_LIMIT_H}h)")
+    budget_h = TIME_LIMIT_H_BY_MODEL.get(cell[0], TIME_LIMIT_H_DEFAULT)
+    if d["eta_h"] is not None and elapsed_h + d["eta_h"] > 0.9 * budget_h:
+        watch.append(f"{cell_label(cell)} ({elapsed_h:.0f}h+{d['eta_h']:.0f}h ETA → over 0.9×{budget_h}h)")
 
 run_jids = sorted({q["jid"] for q in cell_running.values()})
 running_jobs = [q for q in queue if q["state"] == "RUNNING"]
@@ -471,8 +523,8 @@ def render_terminal(use_color):
 
     # -- Per-cell progress matrix
     out.append(H2("Per-cell progress") + DIM + "  (denom 4560)" + RESET)
-    short_hdrs = ["on/no-tools", "on/tools_pt", "on/tools_all",
-                  "off/no-tools", "off/tools_pt", "off/tools_all"]
+    short_hdrs = ["on/no-tools", "on/tools_all",
+                  "off/no-tools", "off/tools_all"]
     MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
     CELL_W  = 14   # " ✓  100.0%  " ≈ 11–12 chars; pad to 14 for separation
     header = _pad("Model", MODEL_W) + "".join(_pad(h, CELL_W, "left") for h in short_hdrs)

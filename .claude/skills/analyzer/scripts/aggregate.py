@@ -31,6 +31,13 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 CONDITIONS = ["no-tools",
               "tools_per-task_minimal", "tools_per-task_guided",
               "tools_all_minimal", "tools_all_guided"]
+# Active analysis ignores retired axes (per-task → sweep-5 retirement;
+# guided → disabled in runner). `load_summaries` skips these by default.
+RETIRED_CONDS = {
+    "tools_per-task_minimal",
+    "tools_per-task_guided",
+    "tools_all_guided",
+}
 
 # Filter/prompt encoded in the `condition` summary field for with-tools runs;
 # we reconstruct the original condition label from dir name.
@@ -113,9 +120,11 @@ def load_summaries(root: Path):
         sfs = sorted(d.glob("summary_*.json"))
         if not sfs:
             continue
+        info = parse_dirname(d.name)
+        if info.get("cond") in RETIRED_CONDS:
+            continue
         with sfs[-1].open() as f:
             data = json.load(f)
-        info = parse_dirname(d.name)
         info["host"] = host_tag(data.get("meta", {}))
         rows.append((info, data))
     return rows

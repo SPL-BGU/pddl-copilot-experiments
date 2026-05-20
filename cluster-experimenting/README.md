@@ -13,7 +13,7 @@ splitting by backend and per-cell walltime:
 | ----------------------------------- | ------- | ----------------- | ------------- |
 | `Qwen3.5:0.8B` + `4B` + `9B`        | vLLM    | `rtx_6000:1`      | 12 h          |
 | `qwen3.6:35b`                       | vLLM    | `rtx_6000:1`      | 48 h          |
-| `gemma4:31b`                        | Ollama  | `rtx_pro_6000:1`  | 72 h          |
+| `gemma4:26b-a4b`                    | vLLM    | `rtx_6000:1`      | 48 h          |
 
 Each model contributes one cell per `(think_mode, condition)` combination
 under the 2 × 3 matrix. Every array task allocates its own dedicated GPU
@@ -35,11 +35,14 @@ Submission topology history:
   `development/CHANGELOG.md` for rationale.
 - 2026-05-17 — `qwen3.6:27b` retired (slowest cell, ~19h tools×on);
   `Qwen3.5:4B` + `Qwen3.5:9B` added to fill the 0.8B → 35B-A3B param gap.
-- 2026-05-18 — backend split: `gemma4:31b` stays on Ollama; the four
-  Qwens (0.8B / 4B / 9B / 35B) all move to vLLM. `submit_full_sweep.sh`
-  is the new primary entrypoint, supersedes `submit_with_resume.sh`
-  (which still works for the older 2-backend layout but no longer
-  reflects the production dispatch).
+- 2026-05-18 — backend split LANDED: four Qwens (0.8B / 4B / 9B / 35B)
+  on vLLM, `gemma4:31b` on Ollama. `submit_full_sweep.sh` became the
+  new primary entrypoint, superseding `submit_with_resume.sh`.
+- 2026-05-18 (same day) — backend split RETIRED via the gemma swap:
+  `gemma4:31b` dense Ollama replaced with `gemma4:26b-a4b` MoE on vLLM
+  (smoke 17638752). Full 5-model roster now single-backend on vLLM
+  `rtx_6000:1`. `submit_with_resume.sh`'s Ollama branch is now empty
+  (kept as the extension point in case a non-vLLM model rejoins).
 
 ## Quickstart
 
@@ -161,9 +164,11 @@ each with its own dedicated GPU allocation.
 `submit_with_rtx.sh` picks GPU class by backend:
 
 - **Ollama (default backend)** → `rtx_pro_6000:1` (96 GB VRAM, `--mem=80G`).
-  Used by `gemma4:31b` in the production sweep.
+  No active model uses it post 2026-05-18; retained for re-running
+  archived `slurm_gemma4_31b_*` corpora as drift anchors.
 - **vLLM (`--backend vllm`)** → `rtx_6000:1` (48 GB VRAM, `--mem=48G`).
-  Used by the four Qwens. AWQ quants for 35B fit at ~83% VRAM under
+  Used by the full active roster. AWQ quants for `qwen3.6:35b` fit at
+  ~83% VRAM and `gemma4:26b-a4b` at ~85% under
   `gpu-memory-utilization=0.85`; the FP16 Qwens (0.8B/4B/9B) sit well
   below.
 
@@ -214,7 +219,7 @@ production-sweep backend and GPU class:
 | `Qwen3.5:4B`     | vLLM    | `rtx_6000:1`      | FP16, ~9 GB weights |
 | `Qwen3.5:9B`     | vLLM    | `rtx_6000:1`      | FP16, ~18 GB weights |
 | `qwen3.6:35b`    | vLLM    | `rtx_6000:1`      | AWQ-4bit MoE (~17 GB), A3B |
-| `gemma4:31b`     | Ollama  | `rtx_pro_6000:1`  | Paper default; gemma4 parser not yet vLLM-verified |
+| `gemma4:26b-a4b` | vLLM    | `rtx_6000:1`      | AWQ-4bit MoE (~16 GB), A4B. Multimodal-aware; needs `MAX_NUM_BATCHED_TOKENS=4096`. |
 
 Roster history: 2026-04-29 refresh updated `Qwen3.5:27b/35b` to their
 `qwen3.6` successors (dense 27B / 35B-A3B MoE, both Apache-2.0, released
@@ -230,14 +235,17 @@ dropped `qwen3.6:27b` (slowest cell in the sweep, ~19h tools×on) and
 added `Qwen3.5:4B` + `Qwen3.5:9B` to fill the 0.8B → 35B-A3B param gap
 with a dense, fast mid-band — same `qwen3_xml` parser family as the
 rest of the Qwen3.5/3.6 lineup. 2026-05-18 moved the four Qwens to vLLM
-in the production sweep; `gemma4:31b` stays on Ollama (its parser is
-not yet vLLM-smoke-verified). The roster no longer carries a
+in the production sweep (initially with `gemma4:31b` retained on
+Ollama), then same-day retired the backend split by replacing
+`gemma4:31b` dense Ollama with `gemma4:26b-a4b` MoE on vLLM (smoke
+17638752 verified the gemma4 parser path + the multimodal-tower
+`MAX_NUM_BATCHED_TOKENS=4096` requirement). Full roster now
+single-backend on vLLM `rtx_6000:1`. The roster no longer carries a
 non-Qwen/Gemma slot pending a viable replacement.
 
-The rtx path pulls model weights from the public Ollama registry
-(`docker://ollama/ollama` + `ollama pull`), so the model name has to be
-valid there. The `.sif` container is cached at `$HOME/ollama.sif` after
-the first run (~3 min cold).
+The legacy Ollama rtx path (`run_condition_rtx.sbatch`) is retained for
+re-running archived `slurm_gemma4_31b_*` corpora as drift anchors, but
+no active model in `PDDL_DEFAULT_MODELS` uses it.
 
 ## Production vLLM sweep (`--backend vllm`)
 
@@ -247,28 +255,31 @@ gate, Nice auto-prioritization, and cell-keyed OUT_DIR shape from
 `submit_with_rtx.sh` — the new flag picks `run_condition_vllm_rtx.sbatch`
 in place of the Ollama sbatch.
 
-### Scope (2026-05-18)
+### Scope (2026-05-18, backend unified)
 
-Four-model vLLM scope: `Qwen3.5:0.8B` + `Qwen3.5:4B` + `Qwen3.5:9B` +
-`qwen3.6:35b` (all share `qwen3_xml`/`qwen3` parsers; 0.8B and 35B
-parser-verified on smokes 17468314 / 17494176; 4B/9B added 2026-05-17 —
-parser inherited from the shared Qwen3.5 family but a dedicated smoke
-verification is still owed, see `run_smoke_vllm_vs_ollama.sbatch`).
-`gemma4:31b` stays on Ollama — the gemma4 parser hasn't been verified
-at the vLLM smoke level. Prior 27B slot was retired 2026-05-17 (slowest
-cell at ~19h tools×on). The four vLLM cells each run on their own
-dedicated `rtx_6000:1` allocation — `submit_full_sweep.sh` packs the
-three smaller Qwens (0.8B/4B/9B) into one sbatch job array and 35B into
-a second sbatch (separate walltimes), but within each array every cell
-is one SLURM task with its own GPU; vLLM does not cross-share a GPU
-between cells.
+Five-model vLLM scope: `Qwen3.5:0.8B` + `Qwen3.5:4B` + `Qwen3.5:9B` +
+`qwen3.6:35b` + `gemma4:26b-a4b`. Qwen lineup shares `qwen3_xml`/`qwen3`
+parsers (0.8B and 35B parser-verified on smokes 17468314 / 17494176;
+4B/9B parser inherited from the shared family — dedicated smoke still
+owed). `gemma4:26b-a4b` uses the `gemma4` tool-call parser with no
+reasoning parser (Gemma has no `<think>` tokens) — verified on smoke
+17638752 (2026-05-18) with `MAX_NUM_BATCHED_TOKENS=4096` (the model's
+multimodal vision tower auto-loads and its per-MM-item budget exceeds
+vLLM's default 2048-token batch ceiling). Prior 27B slot was retired
+2026-05-17; the gemma4:31b dense Ollama slot was retired 2026-05-18.
+The five vLLM cells each run on their own dedicated `rtx_6000:1`
+allocation — `submit_full_sweep.sh` packs the three smaller Qwens
+(0.8B/4B/9B) into one sbatch job array, 35B into a second sbatch, and
+gemma4:26b-a4b into a third (separate walltimes), but within each array
+every cell is one SLURM task with its own GPU; vLLM does not
+cross-share a GPU between cells.
 
 ### Submit recipes
 
 ```bash
-# Full production sweep (gemma → Ollama + four Qwens → vLLM, dispatched
-# as three sbatch arrays per the topology table). See submit_full_sweep.sh
-# for the exact per-pack walltime/GPU-class assignment.
+# Full production sweep — three vLLM sbatch arrays per the topology
+# table (small/mid Qwens packed, qwen3.6:35b solo, gemma4:26b-a4b solo).
+# See submit_full_sweep.sh for the exact per-pack walltime assignment.
 bash cluster-experimenting/submit_full_sweep.sh
 
 # Preview without submitting.
@@ -280,12 +291,17 @@ bash cluster-experimenting/submit_with_rtx.sh --backend vllm Qwen3.5:9B --think-
 
 The vLLM wrapper rejects any model not in `PDDL_VLLM_VERIFIED_MODELS`
 before SLURM pulls the slot. To add a model: verify its parser via
-`run_smoke_vllm_vs_ollama.sbatch`, then extend the array constant in
-`lib/defaults.sh` AND the `vllm_lookup()` case in the same file.
+`submit_with_rtx.sh --backend vllm --smoke <model>` (one-cell smoke
+that exercises the prod sbatch with `run_experiment.py --smoke`), then
+extend the array constant in `lib/defaults.sh` AND the `vllm_lookup()`
+case in the same file.
 
-The older `submit_with_resume.sh` orchestrator still works for the
-pre-2026-05-18 layout (gemma + 35B on Ollama, 0.8B/4B/9B on vLLM) but
-does not reflect the current production dispatch.
+`submit_with_resume.sh` was the orchestrator for the historical
+backend-split layout; post 2026-05-18 backend unification its
+`OLLAMA_MODELS` list is empty and it functionally just forwards to the
+vLLM submission. Re-enable an Ollama branch by appending model tags
+to that list — the script gates the Ollama submission on a non-empty
+list and works exactly like before for that subset.
 
 ### OUT_DIR namespace
 
@@ -314,11 +330,15 @@ trials in one trials.jsonl would silently re-run every cell from zero.
 
 ## vLLM smoke probes (parser verification)
 
-The Ollama production sweep is the canonical path; vLLM is an opt-in
-inference backend exercised through `cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch`.
-A vLLM analog of `run_condition_rtx.sbatch` for the **full sweep** is
-**not yet built** — see the 2026-05-09 / 2026-05-10 entries in
-`development/CHANGELOG.md` for the open-pending list.
+Post 2026-05-18 backend unification, vLLM is the production inference
+backend (`run_condition_vllm_rtx.sbatch`). Parser verification is now a
+one-cell smoke exercised through the prod sbatch via
+`submit_with_rtx.sh --backend vllm --smoke <model>` — the smoke
+fastpath added 2026-05-19 (commit `4f50a5b`) routes the `@smoke@`
+sentinel into `run_experiment.py --smoke --inference-backend vllm`. The
+dedicated `run_smoke_vllm_vs_ollama.sbatch` was retired in commit
+`06f2b4b` (2026-05-19); see `development/CHANGELOG.md` for the
+parser-verification history.
 
 ### Per-model parser table (verified 2026-05-10 unless noted)
 
@@ -333,7 +353,7 @@ sbatch knob is `TOOL_CALL_PARSER` (env-overridable; default `qwen3_xml`).
 | `Qwen3.5:4B`     | `Qwen/Qwen3.5-4B`                          | FP16 (~9 GB)         | `qwen3_xml`      | rtx_6000:1              | Production-running 2026-05-18 (dedicated smoke still owed) |
 | `Qwen3.5:9B`     | `Qwen/Qwen3.5-9B`                          | FP16 (~18 GB)        | `qwen3_xml`      | rtx_6000:1              | Production-running 2026-05-18 (dedicated smoke still owed) |
 | `qwen3.6:35b`    | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`        | AWQ-4bit MoE (~17 GB)| `qwen3_xml`      | rtx_6000:1              | **Verified** (job 17494176)  |
-| `gemma4:31b`     | `cyankiwi/gemma-4-31B-it-AWQ-4bit`         | AWQ-4bit (~16 GB)    | `gemma4`         | rtx_6000:1              | Pending verify (stays on Ollama in production) |
+| `gemma4:26b-a4b` | `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit`     | AWQ-4bit MoE A4B (~16 GB) | `gemma4`         | rtx_6000:1              | **Verified** (smoke 17638752, 2026-05-18). MM-aware → requires `MAX_NUM_BATCHED_TOKENS=4096` (exported by `vllm_lookup`). Replaced `gemma4:31b` dense Ollama. |
 
 Retired 2026-05-17: `qwen3.6:27b` / `cyankiwi/Qwen3.6-27B-AWQ-INT4` —
 slowest cell in the sweep (~19h tools×on on rtx_6000); replaced by
@@ -344,31 +364,27 @@ For vanilla Qwen3 sizes (e.g. `Qwen/Qwen3-0.6B`), use `TOOL_CALL_PARSER=hermes`
 
 ### Submit recipe
 
+The smoke fastpath in `run_condition_vllm_rtx.sbatch` (2026-05-19,
+commit `4f50a5b`) consumes the `@smoke@` sentinel and runs
+`run_experiment.py --smoke --inference-backend vllm` with the verified
+parser flags from `vllm_lookup`. Use the wrapper rather than calling
+`run_condition_vllm_rtx.sbatch` directly — it picks the right GPU,
+mem, and time budget per model.
+
 ```bash
-# Qwen3.5:9B on rtx_6000:1 — verify before promoting to production
-sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-9B",OLLAMA_TAG="Qwen3.5:9B" \
-       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
-       --job-name=vllm_qwen35_9b_smoke \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+# One-cell smoke for any verified model.
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke Qwen3.5:9B
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke Qwen3.5:4B
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke gemma4:26b-a4b
 
-# Qwen3.5:4B on rtx_6000:1 — verify before promoting to production
-sbatch --export=ALL,HF_MODEL="Qwen/Qwen3.5-4B",OLLAMA_TAG="Qwen3.5:4B" \
-       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
-       --job-name=vllm_qwen35_4b_smoke \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
-
-# Gemma 31B on rtx_6000:1 — note the parser override
-sbatch --export=ALL,HF_MODEL="cyankiwi/gemma-4-31B-it-AWQ-4bit",OLLAMA_TAG="gemma4:31b",TOOL_CALL_PARSER="gemma4" \
-       --gpus=rtx_6000:1 --mem=48G --time=01:00:00 \
-       --job-name=vllm_gemma_smoke \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
-
-# Tight VRAM (rtx_3090 24 GB serving 27B AWQ) — see CHANGELOG 2026-05-10 caveat
-sbatch --export=ALL,HF_MODEL="cyankiwi/Qwen3.6-27B-AWQ-INT4",OLLAMA_TAG="qwen3.6:27b",MAX_MODEL_LEN=7168,GPU_MEM_UTIL=0.85,ENFORCE_EAGER=1,NUM_PREDICT=4096 \
-       --gpus=rtx_3090:1 --mem=32G --time=01:00:00 \
-       --job-name=vllm_27b_smoke_tight \
-       cluster-experimenting/run_smoke_vllm_vs_ollama.sbatch
+# Override walltime if the default smoke window is wrong for a slow model
+# (feedback_smoke_full_run_resources: smoke gets full-run resources).
+bash cluster-experimenting/submit_with_rtx.sh --backend vllm --smoke --time 24:00:00 qwen3.6:35b
 ```
+
+To add a NEW vLLM model: extend `PDDL_VLLM_VERIFIED_MODELS` AND the
+`vllm_lookup()` case in `lib/defaults.sh`, then run the smoke recipe
+above; the wrapper will refuse the tag until both edits are in place.
 
 ### Operational caveats
 
@@ -426,8 +442,8 @@ Per-array-task allocation. Each task = one (model, think, cond) cell.
 | `--gpus` | `rtx_pro_6000:1` (default) or `rtx_6000:1` (opt-in) | One dedicated GPU per array task; the cell's single model stays resident throughout |
 | `--array` | `0-(N-1)` when N > 1 (no `%N` cap by default) | Fan-out unlimited — SLURM runs as many tasks as the pool has capacity for. Override with `%N` post-submit (`scontrol update JobId=<master> ArrayTaskThrottle=N`) if politeness is desired |
 | `--time` | `12:00:00` (tools cells) / `08:00:00` (no-tools cells) / `03:00:00` (smoke) | Per-cell budget. Tools cell wall ~5-9h post 2026-04-29 cap-bump (single-task only after the 2026-05-05 chain archive); no-tools ~6-7h (5-task matrix incl. simulate after PR-4 / no-tools-simulate-task fix) |
-| `--mem` | `80G` (rtx_pro_6000 default) / `48G` (rtx_6000 opt-in) | IT cap 2026-04-27. With one model per task, peak host RAM is ~26 GB (gemma4:31b weight cache) — comfortably under either cap |
-| `--tmp` | `50G` | Mar-26 guide §"SSD Drive". Reserves space on `/scratch/$USER/$JOBID`; covers ollama.sif (~3 GB) + one model (~26 GB peak). The sbatch falls back to `/tmp/rtx-$JOBID` if `/scratch` isn't writable on the allocated node |
+| `--mem` | `48G` (rtx_6000 default for vLLM) / `80G` (rtx_pro_6000 opt-in) | IT cap 2026-04-27. With one model per task, peak host RAM is ~24 GB (qwen3.6:35b weight cache) — comfortably under either cap |
+| `--tmp` | `50G` | Mar-26 guide §"SSD Drive". Reserves space on `/scratch/$USER/$JOBID`; covers ollama.sif/vllm.sif (~3-5 GB) + one model (~24 GB peak). The sbatch falls back to `/tmp/rtx-$JOBID` if `/scratch` isn't writable on the allocated node |
 | `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | IT request 2026-04-27; explicit `12` was depriving other users |
 | Concurrency | `4` | Matches OLLAMA_NUM_PARALLEL=4; isolated per-task server so no contention argument applies |
 
@@ -514,7 +530,7 @@ workload and SLURM is just unwinding scratch dirs. A `scancel` during CG can
 race the natural completion and abort late-cell results that would otherwise
 have been written. Wait for it to clear naturally (verified 2026-04-29 on
 smoke job 17263071, where a CG-state cancel lost the qwen3.6:35b warmup and
-gemma4:31b cells).
+gemma cells).
 
 **Do NOT use `scancel --name=pddl_*`** — verified 2026-04-25 on SLURM 25.11.4:
 `--name` is exact-string match (comma-separated literal names), not a glob, so

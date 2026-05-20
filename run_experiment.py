@@ -605,7 +605,10 @@ def main():
                         f"variants). To go above this cap, edit "
                         f"ACTIVE_PROMPT_VARIANTS in pddl_eval/prompts.py. Paper "
                         f"sweep used 5; the 26042026 sensitivity analysis "
-                        f"dropped v3/v4.")
+                        f"dropped v3/v4. Sweep-4 (current) active set is "
+                        f"v5/v6/v7 — the prompt rewrite addressing the six "
+                        f"leaks in .local/prompts_review.md; sweep-3 used "
+                        f"v0/v1/v2.")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
     p.add_argument("--conditions", choices=list(CONDITION_CHOICES), default="both",

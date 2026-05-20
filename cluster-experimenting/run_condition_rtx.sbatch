@@ -9,19 +9,23 @@
 ###
 ### Default GPU: rtx_pro_6000:1 (96 GB) — single, hard-pinned class so peak
 ### VRAM and host RAM are constant across the active sweep. Each cell holds
-### exactly one model under MAX_LOADED_MODELS=1; the largest active model
-### (gemma4:31b ~26 GB) fits in 96 GB with ample KV cache headroom. Override
-### with --gpu-type rtx_6000 (and --mem=48G) only as an emergency escape.
+### exactly one model under MAX_LOADED_MODELS=1; the active vLLM roster
+### fits comfortably in 48 GB rtx_6000 (post 2026-05-18 backend unification),
+### but this Ollama sbatch is retained for legacy resubmission of older
+### gemma4:31b corpora if ever needed (Ollama has no active models in
+### PDDL_DEFAULT_MODELS as of 2026-05-18). Override with --gpu-type
+### rtx_6000 (and --mem=48G) only as an emergency escape.
 ###
-### Model VRAM fit (weights + KV cache at NUM_PARALLEL=4, ctx=16384):
-###   Qwen3.5:0.8B        ~ 3 GB   → fits rtx_pro_6000 (96 GB)
-###   qwen3.6:27b         ~17 GB   → fits rtx_pro_6000 (dense 27.8B Q4_K_M)
-###   qwen3.6:35b         ~24 GB   → fits rtx_pro_6000 (35B-A3B MoE)
-###   gemma4:31b          ~26 GB   → fits rtx_pro_6000 (peak)
+### Historical Ollama VRAM fit (legacy reference for archived runs):
+###   Qwen3.5:0.8B        ~ 3 GB
+###   qwen3.6:27b         ~17 GB   (dense 27.8B Q4_K_M, retired 2026-05-17)
+###   qwen3.6:35b         ~24 GB   (35B-A3B MoE, moved to vLLM 2026-05-17)
+###   gemma4:31b          ~26 GB   (retired 2026-05-18 → gemma4:26b-a4b vLLM)
 ### Roster history (CHANGELOG): 2026-04-29 Qwen3.5:27b/35b → qwen3.6
 ### successors, gpt-oss:20b → nemotron-3-nano:30b. 2026-04-30 dropped
 ### nemotron after smoke 17274424 confirmed Hermes XML parse failures
-### independent of num_predict.
+### independent of num_predict. 2026-05-18 dropped gemma4:31b dense in
+### favor of gemma4:26b-a4b MoE on vLLM (smoke 17638752).
 ###
 ### Submit via cluster-experimenting/submit_with_rtx.sh <model> [<model>...],
 ### or directly (legacy non-array path with old-style MODELS env):
