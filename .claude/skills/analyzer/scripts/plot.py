@@ -46,6 +46,15 @@ TASK_LABELS = {
 CONDITIONS = ["no-tools",
               "tools_per-task_minimal", "tools_per-task_guided",
               "tools_all_minimal", "tools_all_guided"]
+# Conds the active analysis pipeline ignores (retired axes). `per-task` is
+# being retired in sweep-5; `guided` is already disabled in the runner.
+# `load_series` filters these out by default; pass `include_retired=True`
+# to re-include them when re-rendering pre-2026-05 checkpoints.
+RETIRED_CONDS = {
+    "tools_per-task_minimal",
+    "tools_per-task_guided",
+    "tools_all_guided",
+}
 CLASSICAL = ["barman", "blocksworld", "depots", "rovers", "satellite"]
 NUMERIC = ["counters", "depot", "farmland", "pogo_stick", "sailing"]
 DOMAINS = CLASSICAL + NUMERIC
@@ -160,7 +169,8 @@ def parse_dirname(name: str) -> dict | None:
     return None
 
 
-def load_series(root: Path, include_legacy: bool) -> list[dict]:
+def load_series(root: Path, include_legacy: bool,
+                include_retired: bool = False) -> list[dict]:
     entries = []
     for d in sorted(root.glob("slurm_*")):
         if not d.is_dir():
@@ -169,6 +179,8 @@ def load_series(root: Path, include_legacy: bool) -> list[dict]:
         if info is None:
             continue
         if info.get("legacy") and not include_legacy:
+            continue
+        if not include_retired and info.get("cond") in RETIRED_CONDS:
             continue
         sfs = sorted(d.glob("summary_*.json"))
         if not sfs:
@@ -466,10 +478,12 @@ def fig5(series, out_path):
     labels = [s["_label"] for s in series]
     y = np.arange(len(series))
     x = np.arange(len(DOMAINS))
+    # Width formula bumped to ~22+ inches so 10-domain × 5-task cells are
+    # wide enough that the "k/n" annotation doesn't run into the next column.
     fig, axes = plt.subplots(
         1, len(TASKS),
-        figsize=(max(16.0, 1.8 * len(TASKS) + 6),
-                 max(4.5, 0.22 * len(series) + 3.0)),
+        figsize=(max(22.0, 3.2 * len(TASKS) + 6),
+                 max(4.5, 0.32 * len(series) + 3.0)),
         sharey=True,
     )
     if len(TASKS) == 1:
@@ -494,9 +508,9 @@ def fig5(series, out_path):
                     counts[i][j] = (k, n)
         im = ax.imshow(grid, cmap="viridis", vmin=0.0, vmax=1.0, aspect="auto")
         ax.set_xticks(x)
-        ax.set_xticklabels(DOMAINS, rotation=60, ha="right", fontsize=6)
+        ax.set_xticklabels(DOMAINS, rotation=60, ha="right", fontsize=7)
         ax.set_yticks(y)
-        ax.set_yticklabels(labels, fontsize=6)
+        ax.set_yticklabels(labels, fontsize=7)
         ax.set_title(TASK_LABELS[task], fontsize=9)
         for i in range(len(series)):
             for j in range(len(DOMAINS)):
@@ -505,12 +519,20 @@ def fig5(series, out_path):
                     continue
                 k, n = c
                 cell = grid[i, j]
+                # Three-channel text: pct on the top line for at-a-glance read,
+                # raw k/n on a second line so the sample size is visible.
+                pct = int(round(cell * 100))
+                # White on dark (low rate), black on bright (high rate).
                 color = "white" if cell < 0.45 else "black"
-                ax.text(j, i, f"{k}/{n}", ha="center", va="center",
-                        color=color, fontsize=5)
+                ax.text(j, i - 0.18, f"{pct}%", ha="center", va="center",
+                        color=color, fontsize=7, fontweight="bold")
+                ax.text(j, i + 0.22, f"{k}/{n}", ha="center", va="center",
+                        color=color, fontsize=5.5)
     if im is not None:
-        fig.colorbar(im, ax=axes, shrink=0.7, pad=0.02, label="success rate")
-    fig.suptitle("Per-domain success rate (rows=series, cols=domain)", fontsize=11)
+        fig.colorbar(im, ax=axes, shrink=0.7, pad=0.02, label="success rate (0=purple → 1=yellow)")
+    fig.suptitle("Per-domain success rate (rows=series, cols=domain)"
+                 "\nEach cell: top = pass% (bold); bottom = k / n. Color: viridis 0→1.",
+                 fontsize=11)
     fig.savefig(out_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
 
