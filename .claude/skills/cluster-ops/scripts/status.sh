@@ -82,10 +82,18 @@ echo "=== counts ==="
 shopt -s nullglob
 for d in "$HOME/$REPO/results/"slurm_*/; do
     if [ -f "$d/trials.jsonl" ]; then
-        n=$(grep -cE "\"prompt_variant\": $VARIANTS_RE[^0-9]" "$d/trials.jsonl" 2>/dev/null)
-        rc=$?
-        if [ "$rc" -gt 1 ]; then
-            echo "warn: grep rc=$rc on $d/trials.jsonl" >&2
+        # Run grep inside an `if` so `set -eo pipefail` doesn't kill the
+        # whole remote heredoc on rc=1 (no match — common for cells with
+        # no active-sweep trials yet). The then-branch (rc=0) keeps the
+        # match count grep already printed; the else-branch discriminates
+        # no-match (rc=1, n=0) from a real I/O error (rc≥2, warn + 0).
+        if n=$(grep -cE "\"prompt_variant\": $VARIANTS_RE[^0-9]" "$d/trials.jsonl" 2>/dev/null); then
+            :
+        else
+            rc=$?
+            if [ "$rc" -gt 1 ]; then
+                echo "warn: grep rc=$rc on $d/trials.jsonl" >&2
+            fi
             n=0
         fi
     else
