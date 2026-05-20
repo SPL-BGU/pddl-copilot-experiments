@@ -6,6 +6,30 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-20 — PR-#66 review fixes: infra_failure summary filter, bounded retry abort, status.sh anchoring
+
+**TL;DR.** Four small follow-ups on top of `dce5e29` / `6350c0c` / `b74bdd1` / `fba91e5` / `a8c09a4`, addressing items raised in the second PR-#66 review pass:
+
+1. **`infra_failure` records now filtered from the runner's returned list** (`pddl_eval/runner.py:843`). Previously the JSONL writer correctly skipped these (so `trials.jsonl` stayed canonical and resume was correct), but `run_single_task_experiment` returned the in-memory list unfiltered. Downstream `save_results` → `summarize_single_task` therefore wrote per-cell summary JSONs that counted transport-blip records (e.g. SLURM SIGTERM races) toward `total` / `failure_reasons`. On-disk corpora are unaffected — the analyzer aggregates from `trials.jsonl` — but a truncated run could persist a misleading per-cell summary. Docstring at `runner.py:241–247` corrected (writer lives in `run_one`, not `run_single_task_experiment`).
+
+2. **Bounded consecutive-`infra_failure` abort** (`pddl_eval/runner.py:_INFRA_FAIL_ABORT = 7`). The broad `APIConnectionError` catch added in `a8c09a4` correctly treats SLURM-SIGTERM-near-TIMEOUT races as infra blips, but blindly silently-skipping every connection error could mask a wedged vLLM (wrong port, OOM-loop, crashed at startup). After 7 consecutive infra fails the runner now raises `RuntimeError`, propagating up to `main`'s `KeyboardInterrupt`-style "save partial results" path. SLURM gets a non-zero exit; resume re-attempts the in-flight keys on rerun. Counter resets on any successful trial so transient bursts don't compound across the cell.
+
+3. **`status.sh` regex anchored + grep I/O errors surfaced** (`.claude/skills/cluster-ops/scripts/status.sh:80–94`). The variant filter `"prompt_variant": $VARIANTS_RE` (default `[567]`) would silently match the first digit of a two-digit variant if sweep-5+ ever introduced v10/v15/etc.; now anchored with a trailing `[^0-9]` so the character class binds to the JSON value's terminator (comma). Separately, `2>/dev/null || echo 0` was swallowing real grep errors (rc≥2) as zero counts; now explicit on exit code so rc=1 (no match) → 0 silently but rc≥2 (real I/O error) prints a warn line to stderr.
+
+4. **`development/sweep4_plan_new_prompts.md` stale table marked.** The plan-doc table at lines 17–22 said `tools_per-task_minimal` retirement was "deferred to sweep-5," contradicting `cluster-experimenting/lib/defaults.sh:32` and the 2026-05-19 sweep-4 finalisation entry which pulled the retirement forward. One-line revised stripe added above the table so readers landing on the plan-doc first see the current standing policy.
+
+**Methodology / reproducibility.** No change to trial wire format; `TaskResult.infra_failure` already populated. Sweep-4 data on disk is fine — analyzer reads `trials.jsonl`, never the polluted summary JSONs. The bounded-abort flips an in-progress wedge from "silently produce an empty corpus" to "fail loud with a non-zero SLURM exit," which is the correct posture for an unattended cluster sweep.
+
+**Files touched.**
+- `pddl_eval/runner.py` — `_INFRA_FAIL_ABORT` constant; consecutive-fail counter in the `asyncio.as_completed` loop; `new_results` filter; docstring fix.
+- `.claude/skills/cluster-ops/scripts/status.sh` — anchored regex; explicit rc=2+ warn path.
+- `development/sweep4_plan_new_prompts.md` — revised-stripe note above the deferred-retirement table.
+- `development/CHANGELOG.md` — this entry.
+
+**Files NOT touched.** `pddl_eval/summary.py` (defense-in-depth filter intentionally skipped — runner-boundary filter is the actual fix and is sufficient); `pddl_eval/vllm_client.py`; any sbatch.
+
+---
+
 ## 2026-05-19 — Adopt pddl-copilot marketplace 1.3.0 (PR-50 merged as `a259a38`)
 
 **TL;DR.** Sibling marketplace bumped to 1.3.0 (solver 2.1.1→2.2.0, validator 2.1.1→2.2.1, parser 1.4.0→1.5.0). Two real bugs fixed upstream: solver crashes (INTERNAL_ERROR / UNSUPPORTED_PROBLEM / INTERMEDIATE / Java-missing) now surface as `{"error": True, ...}` instead of silently masquerading as empty-plan no-finds; validator `report` no longer leaks the misleading `"Plan is VALID"` / `"Plan is INVALID"` line on domain-only / domain+problem calls (fix lives in pyvalidator 0.1.5 upstream). **Zero code change required in this repo** — the framework bridge already (a) reads `valid` not `report` in `_parse_validation_verdict` (chat.py:58-71), (b) detects `{error: True}` in `_tool_error_seen` (scoring.py:295-313), and (c) connects only `pddl-solver` + `pddl-validator`, so every pddl-parser change in PR-50 is out of scope. PR description's sibling-agent validator pass and an independent re-read both returned SAFE.

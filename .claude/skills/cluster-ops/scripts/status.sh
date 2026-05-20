@@ -74,12 +74,20 @@ queue_lines=$(squeue -u "$USER" -r -h -o '%i|%j|%T|%M|%R' 2>/dev/null | sort || 
 printf '%s\n' "$queue_lines"
 echo "=== counts ==="
 # Count only trials whose result.prompt_variant matches VARIANTS_RE
-# (sweep-isolation; see ACTIVE_VARIANTS_RE comment in the wrapper).
-# grep -c returns 0 on no-match (exit code 1) — silenced via `|| echo 0`.
+# (sweep-isolation; see ACTIVE_VARIANTS_RE comment in the wrapper). The
+# trailing [^0-9] anchors the character class so VARIANTS_RE="[5-9]"
+# would match v5..v9 but not the first digit of v10/v15/v50. grep exit
+# codes: 0=match, 1=no-match (→ count 0), ≥2=real I/O error (warn + 0
+# so the matrix renders but the underlying problem surfaces in stderr).
 shopt -s nullglob
 for d in "$HOME/$REPO/results/"slurm_*/; do
     if [ -f "$d/trials.jsonl" ]; then
-        n=$(grep -cE "\"prompt_variant\": $VARIANTS_RE" "$d/trials.jsonl" 2>/dev/null || echo 0)
+        n=$(grep -cE "\"prompt_variant\": $VARIANTS_RE[^0-9]" "$d/trials.jsonl" 2>/dev/null)
+        rc=$?
+        if [ "$rc" -gt 1 ]; then
+            echo "warn: grep rc=$rc on $d/trials.jsonl" >&2
+            n=0
+        fi
     else
         n=0
     fi

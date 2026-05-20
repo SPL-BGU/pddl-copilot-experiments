@@ -134,6 +134,14 @@ DEFAULT_NUM_CTX_THINKING = 16384
 DEFAULT_NUM_CTX_CHAIN = 16384
 DEFAULT_CONCURRENCY = 4
 
+# Abort a single-task cell after this many consecutive trials fail with
+# `infra_failure=True`. One blip is a SLURM-SIGTERM-near-TIMEOUT race; a
+# run of N in a row means the inference server is wedged (vLLM crash-loop,
+# wrong port, OOM, etc.) and the cell would otherwise produce an empty
+# corpus instead of failing loud. Resume re-attempts the in-flight keys
+# on the next run.
+_INFRA_FAIL_ABORT = 7
+
 # Cap on stored response/exception strings in result records. The full text
 # is reproducible by re-running the prompt; the stored snippet only needs to
 # be enough for downstream analyses (df.groupby("error"), failure-mode
@@ -241,9 +249,12 @@ class TaskResult:
     # Set when the trial could not produce a real model attempt due to an
     # infra/transport event (e.g. vLLM server died mid-call as SLURM sent
     # SIGTERM near TIMEOUT, surfacing as openai.APIConnectionError). The
-    # writer in `run_single_task_experiment` SKIPS appending such records
-    # to `trials.jsonl` so resume re-attempts the key on the next run
-    # instead of treating the infra blip as a completed trial.
+    # writer in `run_one` SKIPS appending such records to `trials.jsonl`,
+    # AND `run_single_task_experiment` filters them out of the returned
+    # list, so resume re-attempts the key on the next run and the in-memory
+    # per-cell summary is not polluted with empty records. Cells where
+    # `_INFRA_FAIL_ABORT` consecutive infra failures fire abort the run
+    # entirely on the assumption that the inference server is wedged.
     infra_failure: bool = False
 
 
@@ -771,10 +782,21 @@ async def run_single_task_experiment(
                     with progress_path.open("a") as _heal:
                         _heal.write("\n")
         progress_handle = progress_path.open("a", buffering=1)
+    consecutive_infra_fails = 0
     try:
         for coro in asyncio.as_completed(aws):
             idx, r = await coro
             results[idx] = r
+            if r.infra_failure:
+                consecutive_infra_fails += 1
+                if consecutive_infra_fails >= _INFRA_FAIL_ABORT:
+                    raise RuntimeError(
+                        f"Aborting cell: {_INFRA_FAIL_ABORT} consecutive "
+                        f"APIConnectionErrors — inference server likely "
+                        f"wedged, not a transient blip. Resume on rerun."
+                    )
+            else:
+                consecutive_infra_fails = 0
             if progress_handle is not None and not r.infra_failure:
                 # `infra_failure=True` records are produced for transport-
                 # class events (e.g. SLURM SIGTERM killing vLLM mid-call).
@@ -813,7 +835,12 @@ async def run_single_task_experiment(
     # then append newly-run trials in completion order. Restored-first
     # ordering matches the pre-refactor merge semantics so downstream
     # `single_task_*.json` byte-stability across resumes is preserved.
-    new_results = [r for r in results if r is not None]
+    # Filter out infra_failure records — they were skipped from trials.jsonl
+    # so resume re-attempts the key, and they must also be skipped from the
+    # in-memory list returned to run_experiment.py so per-cell summaries
+    # (save_results / print_*_table / summarize_single_task) are not
+    # polluted by empty transport-blip trials.
+    new_results = [r for r in results if r is not None and not r.infra_failure]
     if restored_by_key:
         in_scope_restored = [
             tr for k, tr in restored_by_key.items() if k in in_scope_keys
