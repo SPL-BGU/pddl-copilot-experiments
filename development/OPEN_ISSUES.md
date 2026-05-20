@@ -106,6 +106,16 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Status (2026-04-29).** ISS-007 closed by the cap bump (1024/1536 → 4096); the pressure that motivated this issue is largely relieved. Recommend deferring (b) — at the new caps, `FR_VERDICT_MISMATCH` should overwhelmingly reflect actual model errors rather than truncation artefacts. Re-evaluate post the next sweep on raised caps.
 **Files.** `pddl_eval/scoring.py::_apply_truncation_override`, `tests/test_check_success.py::test_truncation_override`.
 
+### ISS-021 · gemma4:26b-a4b · `simulate` prompts exceed 16K context on large classical problems
+**Source.** PR-#66 contamfix audit, 2026-05-20.
+**Evidence.** `cluster-experimenting/run_condition_vllm_rtx.sbatch:202` sets `--max-model-len 16384` for every vLLM serve in the sweep. gemma4:26b-a4b's `simulate` task on 8 specific (domain, problem) pairs — `barman/{p04,p05}`, `rovers/{p04,p05}`, `tpp/p05`, `delivery/p04`, `depot/p01`, `drone/p05` — produces input prompts of ~106K tokens (407 867 characters), well above the 16 384-token cap. vLLM rejects with HTTP 400. With the `_CTX_OVERFLOW_RE` fix landed in this same commit, those trials now route through `_synthesize_overflow_response` (`pddl_eval/vllm_client.py:312`) and are written as `FR_TRUNCATED_NO_ANSWER` with empty content + `done_reason="length"` — **caught, accountable, but uninformative** (the model never gets to attempt the task).
+**Impact.** 24 trials per affected cell (8 (domain, problem) × 3 prompt variants). On `gemma4_26b-a4b/on/tools_all_minimal` the cleanup-induced gap (4536/4560) refills on resubmit but the 24 new rows will all carry `FR_TRUNCATED_NO_ANSWER`. **Not a bug** — this is a documented model-capacity limitation given the current cluster context cap. Will reoccur identically on every resubmit until either (a) `--max-model-len` is raised (requires gemma weight-compat verification + a Phase-A vLLM smoke gate), (b) those 8 problems are skipped for gemma, or (c) prompt truncation is added runner-side (alters corpus identity).
+**Decision.** Accept the limitation. Do not change `--max-model-len`. Mark the 24 affected cells in any downstream deck/table caption as containing 24 model-capacity-limited rows.
+**Fix.** None — keep documenting the limitation. If a future paper run needs honest gemma simulate numbers on these problems, revisit option (a) with a smoke gate.
+**Files.** `pddl_eval/vllm_client.py:60-64` (the regex fix routes these correctly; no further code change).
+
+---
+
 ### ISS-020 · `validate_domain` neg-arm pairs only the first positive (5:1 vs positive 5:5)
 **Source.** PR #22 review on `framework-ext-pr3`, 2026-04-29.
 **Evidence.** `pddl_eval/runner.py:533-538` (negative `validate_domain` job emission) uses `positive_first = next(iter(dinfo["problems"].values()))` and pairs the single `domain_neg.pddl` only with that first problem. Comment justifies it as "same convention as the generate_ground_truth pass." Post-PR-3 there are 5 positive problems per domain, so the validate_domain arm is now structurally imbalanced: positive arm emits 5 jobs (`p01..p05` × `domain.pddl`) while the negative arm emits 1 (`p01` × `domain_neg.pddl`).

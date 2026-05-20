@@ -199,10 +199,14 @@ def task_success_rate(rows: list[dict], task: str) -> tuple[float, int, int]:
 
 
 def tool_selected_rate(rows: list[dict], task: str) -> tuple[float, int, int]:
-    sub = [r for r in rows if r["task"] == task and r.get("with_tools") and r.get("tool_selected") is not None]
+    # Denominator = every with_tools trial in the cell, mirroring summary.py:186-188.
+    # Filtering on `tool_selected is not None` here previously inflated the rate
+    # by silently dropping trials that crashed before selection could be classified
+    # (PR-#66 Zone-B audit: 100% reported vs 92% canonical on gemma simulate).
+    sub = [r for r in rows if r["task"] == task and r.get("with_tools")]
     if not sub:
         return float("nan"), 0, 0
-    s = sum(1 for r in sub if r["tool_selected"])
+    s = sum(1 for r in sub if r.get("tool_selected"))
     return s / len(sub), s, len(sub)
 
 
@@ -263,27 +267,35 @@ def metrics_from_cm(cm: dict) -> dict:
 
 def token_stats(rows: list[dict], task: str | None = None,
                 only_success: bool = False) -> dict:
-    sub = [r for r in rows if (task is None or r["task"] == task)]
+    # Canonical aggregation in summary.py:_add_tokens skips trials with an
+    # empty `tokens` dict — counters in those rows are not real, only a
+    # placeholder from infra-failure paths. Filter the same way here.
+    # `base` is the full task subset (used for fail_pct denominator);
+    # `sub` is the token-bearing subset (used for means + n).
+    base = [r for r in rows if (task is None or r["task"] == task)]
     if only_success:
-        sub = [r for r in sub if r.get("success")]
+        base = [r for r in base if r.get("success")]
+    sub = [r for r in base if r.get("tokens")]
     if not sub:
         return dict(prompt=float("nan"), completion=float("nan"),
                     total=float("nan"), per_turn_prompt=float("nan"),
                     per_turn_total=float("nan"), turns=float("nan"),
                     fail_pct=float("nan"), n=0)
-    p = [r.get("tokens", {}).get("prompt", 0) or 0 for r in sub]
-    c = [r.get("tokens", {}).get("completion", 0) or 0 for r in sub]
-    t = [r.get("tokens", {}).get("turns", 1) or 1 for r in sub]
-    per_turn_p = [pi / ti for pi, ti in zip(p, t)]
-    per_turn_pc = [(pi + ci) / ti for pi, ci, ti in zip(p, c, t)]
-    base = [r for r in rows if (task is None or r["task"] == task)]
+    p = [r["tokens"].get("prompt", 0) or 0 for r in sub]
+    c = [r["tokens"].get("completion", 0) or 0 for r in sub]
+    # Default `turns` = 0 not 1; canonical _add_tokens uses the same default,
+    # then divides by `agg["n"]` (token-bearing count). Per-turn ratios
+    # below skip trials with turns==0 to avoid div-by-zero.
+    t = [r["tokens"].get("turns", 0) or 0 for r in sub]
+    per_turn_p = [pi / ti for pi, ti in zip(p, t) if ti > 0]
+    per_turn_pc = [(pi + ci) / ti for pi, ci, ti in zip(p, c, t) if ti > 0]
     n_fail = sum(1 for r in base if not r.get("success"))
     fail_pct = (n_fail / len(base) * 100) if base else float("nan")
     return dict(
         prompt=float(np.mean(p)), completion=float(np.mean(c)),
         total=float(np.mean(p) + np.mean(c)),
-        per_turn_prompt=float(np.mean(per_turn_p)),
-        per_turn_total=float(np.mean(per_turn_pc)),
+        per_turn_prompt=float(np.mean(per_turn_p)) if per_turn_p else float("nan"),
+        per_turn_total=float(np.mean(per_turn_pc)) if per_turn_pc else float("nan"),
         turns=float(np.mean(t)),
         fail_pct=fail_pct,
         n=len(sub),

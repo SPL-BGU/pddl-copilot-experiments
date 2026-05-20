@@ -52,14 +52,24 @@ _DEFAULT_BASE_URL = "http://localhost:8000"
 
 # Match vLLM's context-overflow rejection so we can retry with a clipped
 # max_tokens instead of bubbling a BadRequestError up as an `exception`
-# trial. Example body:
-#   "This model's maximum context length is 16384 tokens. However, you
-#    requested 8192 output tokens and your prompt contains at least 8193
-#    input tokens, for a total of at least 16385 tokens."
+# trial. Two body shapes observed in the wild:
+#   Old (pre-mid-2026):
+#     "prompt contains at least 8193 input tokens"
+#   New (current vLLM):
+#     "your prompt contains 407867 characters (more than 317440 characters,
+#      which is the upper bound for 10240 input tokens)"
 # Group 1 = max_model_len; group 2 = prompt_tokens reported by the server.
+#
+# Drift history (PR-#66 contamfix, 2026-05-20):
+#   * The single-quantifier regex `prompt contains at least N` silently
+#     missed the new format. Every overflow bubbled up as `FR_EXCEPTION`
+#     with `tokens={}` instead of being retry-clipped or synthesized as a
+#     length-truncated response. The audit found 24 600 such rows across
+#     the corpus. The `(?:at least|upper bound for)` alternation below
+#     matches both shapes; regression test in tests/test_vllm_client.py.
 _CTX_OVERFLOW_RE = re.compile(
     r"maximum context length is (\d+) tokens.*?"
-    r"prompt contains at least (\d+) input tokens",
+    r"(?:at least|upper bound for) (\d+) input tokens",
     re.DOTALL,
 )
 # Slack between (max_model_len − prompt_tokens) and the clipped max_tokens

@@ -6,6 +6,40 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-20 — PR-#66 contamfix: `_CTX_OVERFLOW_RE` regex + analyzer denominator drifts + gemma context limitation
+
+**TL;DR.** Six-agent audit (PR-#66) of the sweep-4 corpus surfaced four root issues. One was the dominant data-quality problem (24 600 corrupted trials across the corpus; 24 in the active checkpoint). Three were latent analyzer denominator bugs that mask themselves on clean data but mis-aggregate on edge-case rows. All four addressed in one commit.
+
+1. **`pddl_eval/vllm_client.py` `_CTX_OVERFLOW_RE` regex didn't match the new vLLM error body** ("upper bound for N input tokens" vs the old "at least N input tokens"). When the parser returned None the BadRequestError re-raised out of `chat()`, the runner's generic `except Exception` caught it, and the trial landed as `FR_EXCEPTION` with `tokens={}` and `tool_selected=None` — exactly the corruption pattern the existing retry-and-synthesize path was designed to prevent. Single-line regex extension `(?:at least|upper bound for) (\d+) input tokens` matches both shapes; verified empirically against contaminated rows. New `tests/test_vllm_client.py` pins both shapes so the next vLLM-message-text change trips a unit-test failure instead of silently corrupting a sweep.
+
+2. **`.claude/skills/analyzer/scripts/build_deck.py:201-209` `tool_selected_rate` denominator** filtered `r.get("tool_selected") is not None`, dropping trials that crashed before tool-selection could be classified. On a cell with 24 such rows (gemma4 simulate, the cleanup target above), the function reported **100% tool-selection vs the canonical 92%** — an 8-point inflation. Canonical denominator in `summary.py:186-188` is every with-tools trial in the cell. Fix mirrors canonical.
+
+3. **`build_deck.py:268-300` `token_stats` denominator** included rows with empty `tokens={}` (numerator contributes 0, denominator inflated by 1). On the same gemma simulate cell every token mean was biased downward by exactly 8% (`prompt_mean` 10979 reported vs 11934 canonical). Canonical `_add_tokens` in `summary.py:49-65` skips empty-tokens trials. Also: `turns` default fixed from `1` to `0` to match canonical; per-turn ratios now skip turns==0 trials to avoid div-by-zero. `base` subset still drives `fail_pct` (all trials), `sub` drives means (token-bearing only).
+
+4. **`.claude/skills/analyzer/scripts/plot.py:94-99` `FAILURE_REASONS` whitelist** was missing `format_parse_fail` and `think_overflow`. Trials with these tags were silently bucketed into the unnamed grey "other" slice on `fig4_failure_breakdown`. On the Qwen3.5-0.8B off/no-tools cell, **85.6% of validate_domain failures and 69.9% of validate_plan failures** rendered as anonymous "other" — the dominant failure mode for no-tools cells with the v5/v6/v7 prompt rewrite was unattributed. Added both to `FAILURE_REASONS` + `FAILURE_COLORS`.
+
+**Contamfix cleanup (separate from this commit, local only).** 24 corrupted rows dropped from both source and filtered gemma `on/tools_all_minimal` cells; summaries regenerated; `checkpoints/sweep4-v5-v7-first/gemma4_26b_a4b_trials.zip` refreshed. `.bak_contamfix` files preserved next to each cleaned `trials.jsonl` for one-cycle reversibility. Source-dir sweep-3 residue (52 rows, `prompt_variant=1`, `APIConnectionError` from pre-`a8c09a4` runs) deliberately not touched per user direction (already excluded by the `{5,6,7}` filter).
+
+**Methodology finding — gemma4:26b-a4b context limitation (ISS-021).** With the regex fix landed, the 24 gemma `simulate` trials that previously corrupted will now land as `FR_TRUNCATED_NO_ANSWER` — caught and accountable, but the model never gets to attempt those tasks (prompt is 6× the 16 384-token cap). Will reoccur identically on every resubmit. **Accepted as a documented limitation; `--max-model-len` is NOT being changed.** Affected (domain, problem) pairs documented in OPEN_ISSUES ISS-021.
+
+**Verification cancelled cluster jobs (separate cluster-ops step).** All 11 running + pending sweep-4 jobs were cancelled prior to this commit landing so the resubmit (gated on a separate explicit go) runs against the fixed runner. Resubmit will refill the gemma cell to 4560 with 24 `FR_TRUNCATED_NO_ANSWER` rows in the previously-corrupted slots.
+
+**Files touched.**
+- `pddl_eval/vllm_client.py:60-78` — regex extension + drift-history doc-block.
+- `tests/test_vllm_client.py` — new file; 3 regression tests (old body, new body, unrelated-400 negative).
+- `.claude/skills/analyzer/scripts/build_deck.py` — `tool_selected_rate` denominator (line 201); `token_stats` denominator + turns default (lines 268-300).
+- `.claude/skills/analyzer/scripts/plot.py:94-122` — `FAILURE_REASONS` + `FAILURE_COLORS` add 2 entries.
+- `development/OPEN_ISSUES.md` — new ISS-021 entry for the gemma context limitation.
+- `development/CHANGELOG.md` — this entry.
+
+**Files NOT touched.**
+- `pddl_eval/runner.py` — no need; the regex fix routes context-overflow back through the existing `_synthesize_overflow_response` path. Adding a `BadRequestError` catch in the runner would have masked unrelated 400s.
+- `pddl_eval/summary.py` — already canonical; the audit confirmed it as the reference.
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch:202` — `--max-model-len 16384` retained per ISS-021 decision; gemma simulate failures on big problems documented, not engineered around.
+- Sweep-3 source corpus — out of scope per user direction.
+
+---
+
 ## 2026-05-20 — PR-#66 review fixes: infra_failure summary filter, bounded retry abort, status.sh anchoring
 
 **TL;DR.** Four small follow-ups on top of `dce5e29` / `6350c0c` / `b74bdd1` / `fba91e5` / `a8c09a4`, addressing items raised in the second PR-#66 review pass:

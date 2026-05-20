@@ -95,7 +95,8 @@ FAILURE_REASONS = [
     "ok", "tool_not_selected", "tool_error", "ollama_parse_error",
     "loop_exhausted", "verdict_mismatch", "result_mismatch",
     "no_verdict_parsed", "simulate_empty", "plan_invalid",
-    "truncated_no_answer", "exception", "unknown", "other",
+    "truncated_no_answer", "format_parse_fail", "think_overflow",
+    "exception", "unknown", "other",
 ]
 FAILURE_COLORS = {
     "ok":                  "#2ca02c",
@@ -109,6 +110,12 @@ FAILURE_COLORS = {
     "simulate_empty":      "#17becf",
     "plan_invalid":        "#1f77b4",
     "truncated_no_answer": "#aec7e8",
+    # Added 2026-05-20 (PR-#66 Zone-E audit): both were silently bucketed
+    # into the unnamed grey "other" slice. format_parse_fail is the dominant
+    # FR on no-tools cells with the v5/v6/v7 prompt rewrite (85.6% of
+    # validate_domain failures on Qwen3.5-0.8B no-tools).
+    "format_parse_fail":   "#c49c94",
+    "think_overflow":      "#f7b6d2",
     "exception":           "#ff9896",
     "unknown":             "#c5b0d5",
     "other":               "#dddddd",
