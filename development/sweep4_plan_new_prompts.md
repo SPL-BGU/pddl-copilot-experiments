@@ -1,5 +1,14 @@
 # Sweep-4 plan — new prompts (corpus-isolated rewrite)
 
+> **STATUS (2026-05-21): this plan is historical context only.**
+> Sweep-4 (v5/v6/v7) revealed the prompt-engineering work has been
+> under-invested. A full redesign of system and per-task prompts is
+> now in progress — see
+> `development/sweep_prompt_redesign_handoff.md` for the live briefing.
+> Sweep-3 backward-compatibility (v0–v2) is no longer load-bearing per
+> user direction. Phase 1/2/3 sections below describe the sweep-4 plan
+> as executed; treat them as record, not direction.
+
 Dated 2026-05-18, refreshed 2026-05-19 after PR-50 adoption. Branch: `sweep4-new-prompts` working directly on the main tree (no separate worktree — the original `../pddl-copilot-experiments-sweep4` worktree idea was dropped; isolation comes from the branch + the v5/v6/v7 variant indices alone).
 
 ## Status snapshot (2026-05-19)
@@ -205,6 +214,17 @@ If the breakdown reveals a different dominant failure mode than the review predi
 **Marketplace pin:** must match sweep-4 exactly. Record the `../pddl-copilot` commit SHA in every trial's `meta` block; if pddl-copilot has advanced past sweep-4's pin by the time sweep-4.1 runs, *either* roll pddl-copilot back to the sweep-4 SHA *or* re-run sweep-4 on the newer pin first. Never let sweep-4 and sweep-4.1 see different tool surfaces — that defeats the whole point.
 
 **Reporting:** present sweep-4 (v5/v6/v7, steered) and sweep-4.1 (v0/v1/v2, neutral) as paired arms in the paper. The gap is itself a finding ("light prompt engineering closes X pp of the tool-utility gap; Y pp remains as intrinsic model limitation"). Sweep-3 v0–v2 numbers stay in the appendix as the historical / pre-1.3.0 reference.
+
+## Next sweep — see separate handoff
+
+Sweep-4 (v5/v6/v7) revealed prompt-engineering problems that go beyond the scope of this plan:
+
+- `validate_*` no-tools cells produced elevated `FR_FORMAT_PARSE_FAIL` rates after the v5–v7 redesign dropped the `VERDICT: VALID|INVALID` trailer that the `extract_verdict` regex fallback relies on.
+- The with-tools override and no-tools base prompts in v5–v7 are wholly different strings, confounding "prompt content" with "tool steering" in the with-tools vs no-tools comparison.
+
+User direction (2026-05-21): redesign all prompts from scratch with literature-grounded rationale; sweep-3 backward-compatibility is no longer load-bearing. Three-arm matrix: `(no-tools, neutral)`, `(with-tools, neutral)`, `(with-tools, steered)`. SKILL.md system-prompt injection is on the table for this sweep (originally deferred to sweep-5).
+
+See `development/sweep_prompt_redesign_handoff.md` for the full briefing. Concrete design decisions (variant indices, prompt wording, system-prompt structure, SKILL.md inclusion) are open and require user sign-off.
 
 ## Sweep-5 preview (not in this plan)
 

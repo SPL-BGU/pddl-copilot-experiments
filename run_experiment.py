@@ -48,8 +48,6 @@ from pddl_eval.domains import (
 from pddl_eval.prompts import (
     ACTIVE_PROMPT_VARIANTS,
     PROMPT_TEMPLATES,
-    WITH_TOOLS_SYSTEM,
-    WITHOUT_TOOLS_SYSTEM,
 )
 from pddl_eval.resume import load_progress
 from pddl_eval.runner import (
@@ -58,7 +56,6 @@ from pddl_eval.runner import (
     DEFAULT_NUM_CTX_THINKING,
     DEFAULT_NUM_PREDICT,
     RESPONSE_SNAPSHOT_LEN,
-    TASK_TOOLS,
     TASKS,
     THINKING_SNAPSHOT_LEN,
     TaskResult,
@@ -166,15 +163,7 @@ def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
 
 DEFAULT_MODELS = ["qwen3:0.6b", "qwen3:4b"]
 
-TOOL_FILTER_CHOICES = ("all", "per-task")
-# `guided` retired from the active sweep on 2026-04-27 — the 26042026 sweep
-# (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed
-# minimal-vs-guided shifts results by ≤4pp per model with every CI crossing
-# zero. The 3 active prompt variants already cover paraphrase robustness;
-# the prompt-style axis was paying for ~0pp of additional signal. The
-# `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are
-# kept as code documentation so the suffix wording is preserved if a
-# future sweep wants to re-enable it (re-add "guided" to this tuple).
+TOOL_FILTER_CHOICES = ("all",)
 PROMPT_STYLE_CHOICES = ("minimal",)
 CONDITION_CHOICES = ("tools", "no-tools", "both")
 
@@ -369,13 +358,6 @@ async def async_main(args):
     print("\nConnecting to MCP servers...")
     mcp = MCPPlanner()
     await mcp.connect(plugin_dirs)
-
-    # Validate TASK_TOOLS against actual MCP tools (catch typos early)
-    available_tools = {t["function"]["name"] for t in mcp.tools}
-    for task, allowed in TASK_TOOLS.items():
-        missing = set(allowed) - available_tools
-        if missing:
-            sys.exit(f"TASK_TOOLS['{task}'] references unknown tools: {missing}")
 
     if args.inference_backend == "vllm":
         # Smoke-probe path (2026-05-09). vllm_client.VLLMOllamaClient adapts
@@ -617,14 +599,9 @@ def main():
                         "run once per model instead of redundantly for every (filter,style) "
                         "combo — no-tools results are invariant under those knobs.")
     p.add_argument("--tool-filter", choices=list(TOOL_FILTER_CHOICES), default="all",
-                   help="'all' exposes every connected MCP tool every turn (reproduces paper). "
-                        "'per-task' restricts tools per task via TASK_TOOLS allowlist, reducing "
-                        "tool-selection noise from unrelated tools.")
+                   help="'all' exposes every connected MCP tool every turn (paper-aligned).")
     p.add_argument("--prompt-style", choices=list(PROMPT_STYLE_CHOICES), default="minimal",
-                   help="System prompt style. 'minimal' (paper-aligned) is the only "
-                        "active choice as of 2026-04-27 — 'guided' was retired "
-                        "(see PROMPT_STYLE_CHOICES comment in run_experiment.py). "
-                        "Re-enable by re-adding 'guided' to PROMPT_STYLE_CHOICES.")
+                   help="System prompt style. 'minimal' is the active choice.")
     p.add_argument("--num-predict", type=int, default=None,
                    help=f"Override max output tokens per chat turn for ALL tasks. "
                         f"Default: per-task caps (solve={DEFAULT_NUM_PREDICT['solve']}, "

@@ -70,7 +70,6 @@ if [ -n "${CELLS_LIST:-}" ]; then
         _TTAG="$CELL_THINK"
         case "$CELL_COND" in
             no-tools)               _CTAG="notools" ;;
-            tools_per-task_minimal) _CTAG="tools-pt" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
             @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
@@ -323,8 +322,6 @@ for MODEL in $MODELS; do
             case "$COND" in
                 no-tools)
                     COND_ARGS=(--conditions no-tools) ;;
-                tools_per-task_minimal)
-                    COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
                 *)

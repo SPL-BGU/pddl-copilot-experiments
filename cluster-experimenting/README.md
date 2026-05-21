@@ -404,18 +404,9 @@ above; the wrapper will refuse the tag until both edits are in place.
 
 ## Conditions and think modes
 
-### Conditions (3 active) — looped inside every job
-- `no-tools`                    — baseline, no MCP tools exposed (matrix gate skips think=on cells)
-- `tools_per-task_minimal`      — tools on, filter=per-task allowlist, prompt=minimal
+### Conditions (2 active) — looped inside every job
+- `no-tools`                    — baseline, no MCP tools exposed
 - `tools_all_minimal`           — tools on, filter=all, prompt=minimal
-
-The two `*_guided` variants (`tools_per-task_guided`, `tools_all_guided`)
-were retired 2026-04-27 (Newcombe-Δ on the 26042026 sweep showed
-minimal-vs-guided shifts results by ≤4pp per model with every CI crossing
-zero). The case branches in `run_condition_rtx.sbatch` are commented out;
-explicitly listing the old labels in `CONDITIONS=` would now hit the `*)`
-error branch. Re-enable by uncommenting the case branches and adding
-`"guided"` back to `PROMPT_STYLE_CHOICES` in `run_experiment.py`.
 
 Each condition invokes `run_experiment.py` once, writing to its own output
 subdir. Conditions inside a job are independent: a late-stage condition

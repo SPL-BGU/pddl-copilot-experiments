@@ -39,10 +39,8 @@
 ###   THINK_MODES  — space-separated think modes, e.g. "on off" or "default"
 ###
 ### Optional env (defaults shown):
-###   CONDITIONS   — default = 2 active tools conditions (tools_per-task_minimal
-###                  + tools_all_minimal). When CELLS_LIST is set this is
-###                  overridden by the cell-array picker. The retired
-###                  *_guided variants are no longer in the default.
+###   CONDITIONS   — default = tools_all_minimal. When CELLS_LIST is set
+###                  this is overridden by the cell-array picker.
 ###   CONCURRENCY=4              (matches self-deploy OLLAMA_NUM_PARALLEL=4)
 ###
 ### Resource policy (post 2026-04-27 IT request):
@@ -132,7 +130,6 @@ if [ -n "${CELLS_LIST:-}" ]; then
         _TTAG="$CELL_THINK"
         case "$CELL_COND" in
             no-tools)               _CTAG="notools" ;;
-            tools_per-task_minimal) _CTAG="tools-pt" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
             @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
@@ -360,14 +357,8 @@ for MODEL in $MODELS; do
             case "$COND" in
                 no-tools)
                     COND_ARGS=(--conditions no-tools) ;;
-                tools_per-task_minimal)
-                    COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
-                # tools_per-task_guided)  # DISABLED 2026-04-27 — see run_experiment.py PROMPT_STYLE_CHOICES
-                #     COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style guided) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
-                # tools_all_guided)  # DISABLED 2026-04-27 — see run_experiment.py PROMPT_STYLE_CHOICES
-                #     COND_ARGS=(--conditions tools --tool-filter all --prompt-style guided) ;;
                 *)
                     echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
             esac

@@ -1,13 +1,31 @@
 """System prompts + per-task templates (Section 4 of the paper).
 
-Sweep-4 active set is v5/v6/v7; sweep-3 used v0/v1/v2. The v5/v6/v7
-templates address the six prompt-review leaks (see
-`.local/prompts_review.md` and `development/sweep4_plan_new_prompts.md`):
-they drop the VERDICT trailer in `validate_*`, teach the `plan` argument
-for `validate_plan`, name a planner / state-transition tool by category
-for `solve` / `simulate`, and (no-tools branch) teach the wire format
-expected by `_normalize_trajectory`. v5–v7 are appended (not in-place
-edits) so v0–v2 indices remain byte-stable with the sweep-3 corpus.
+STATUS (2026-05-21): the active set v5/v6/v7 is under review. Sweep-4
+revealed that dropping the VERDICT trailer from v5–v7 `validate_*`
+no-tools templates regressed `FR_FORMAT_PARSE_FAIL` — the
+`format=ValidateResponse` JSON-schema constraint is a soft logit bias,
+not a hard grammar gate, and the regex fallback (`scoring.extract_verdict`)
+that the trailer fed was the safety net for malformed-JSON cases. A
+prompt-engineering redesign is in progress; see
+`development/sweep_prompt_redesign_handoff.md` for the briefing and
+the open design questions (variant indexing, three-arm matrix, optional
+SKILL.md system-prompt injection). Do not treat v5/v6/v7 as the
+final design.
+
+History (preserved verbatim for trial-replay byte-stability):
+
+  * v0/v1/v2 — sweep-3 active set.
+  * v3/v4 — disabled; kept to preserve index reservation.
+  * v5/v6/v7 — sweep-4 active set. Intended to address the six prompt-
+    review leaks (`.local/prompts_review.md`): drop VERDICT trailer in
+    `validate_*`, teach the `plan` argument for `validate_plan`, name a
+    planner / state-transition tool by category, and (no-tools branch)
+    teach the wire format expected by `_normalize_trajectory`. The
+    trailer-drop in `validate_*` no-tools is the change now being
+    re-evaluated.
+
+v5–v7 are appended (not in-place edits) so v0–v2 indices remain
+byte-stable with the sweep-3 corpus.
 
 `ACTIVE_PROMPT_VARIANTS` selects which subset of templates per task
 actually runs. The 2026-04-27 reduction (5 → 3, dropping v3 and v4) is
@@ -21,26 +39,11 @@ justified by checkpoints/cluster-26042026/prompt_variant_stats.md:
 """
 
 
-_WITH_TOOLS_BASE = (
+WITH_TOOLS_SYSTEM: str = (
     "You are a PDDL planning assistant with access to planning tools. "
     "Your ONLY way to get information or solve problems is by calling the "
     "provided tools ONE AT A TIME — never guess or create plan details yourself."
 )
-
-# `_GUIDED_SUFFIX` and the `"guided"` entry below are DISABLED from the
-# active sweep (see PROMPT_STYLE_CHOICES in run_experiment.py). Kept in
-# code so the exact wording is preserved as documentation — re-enable by
-# adding "guided" back to PROMPT_STYLE_CHOICES.
-_GUIDED_SUFFIX = (
-    "\nWhen calling tools, pass the complete PDDL text from the user message "
-    "(starting with '(define ...') as the 'domain' and 'problem' arguments — "
-    "not file names or domain names."
-)
-
-WITH_TOOLS_SYSTEM: dict[str, str] = {
-    "minimal": _WITH_TOOLS_BASE,
-    "guided": _WITH_TOOLS_BASE + _GUIDED_SUFFIX,  # DISABLED 2026-04-27
-}
 
 WITHOUT_TOOLS_SYSTEM = (
     "You are a PDDL planning assistant. You must analyze PDDL problems, "
@@ -77,7 +80,13 @@ PROMPT_TEMPLATES: dict[str, list[str]] = {
         "Analyze this domain definition and tell me if the PDDL syntax is valid:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
         # v4 DISABLED — see ACTIVE_PROMPT_VARIANTS (kept in list to preserve indices).
         "Please verify the syntax of the following PDDL domain:\n\n{domain}\n\nEnd your response with exactly one line: VERDICT: VALID or VERDICT: INVALID",
-        # v5 — sweep-4 no-tools (VERDICT trailer dropped; format=ValidateResponse drives the verdict).
+        # v5 — sweep-4 no-tools. Intentionally lacked the VERDICT trailer
+        # so `format=ValidateResponse` (`schemas.py:35–42`) would drive the
+        # verdict. Empirical regression: the format constraint is a soft
+        # logit bias and the regex fallback (`scoring.extract_verdict`)
+        # has nothing to match when the JSON path fails on small / hybrid /
+        # thinking-mode cells. Redesign in progress — see
+        # `development/sweep_prompt_redesign_handoff.md`.
         "Check if this PDDL domain definition has valid syntax:\n\n{domain}",
         # v6 — sweep-4 no-tools.
         "Validate the following PDDL domain for syntactic correctness:\n\n{domain}",

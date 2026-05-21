@@ -81,9 +81,9 @@
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # 8-cell array (4 models × 2 cells: think on+off)
 #   bash cluster-experimenting/submit_with_rtx.sh gemma4:26b-a4b --no-tools  # 2-cell array (think on+off)
 #
-# --all: shorthand for the 4 active models. Each model contributes 6 cells
-#   under the full think={on,off} × cond={no-tools, tools_per-task_minimal,
-#   tools_all_minimal} matrix. Total array size: 24. Roster history:
+# --all: shorthand for the 4 active models. Each model contributes 4 cells
+#   under the full think={on,off} × cond={no-tools, tools_all_minimal}
+#   matrix. Total array size: 16. Roster history:
 #   2026-04-29 swap, 2026-04-30 nemotron drop. The (think=on, no-tools) cell
 #   was added 2026-05-12 after ISS-018 (PR-2, 2026-04-28) lifted the runtime
 #   abort and routed thinking content into TaskResult.thinking — verdict /

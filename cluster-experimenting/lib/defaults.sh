@@ -22,12 +22,6 @@ PDDL_SLOW_MODELS=(gemma4:26b-a4b qwen3.6:35b)
 # Default think × cond axes. The full Cartesian product is built; the legacy
 # no-tools/think=on matrix-gate was lifted 2026-05-12 in submit_with_rtx.sh.
 PDDL_DEFAULT_THINK_MODES=(on off)
-# tools_per-task_minimal RETIRED 2026-05-19 (sweep-4 onward). The planned
-# retirement was deferred to sweep-5 in development/sweep4_plan_new_prompts.md;
-# pulled forward into sweep-4 by user directive after the PR-#66 code review
-# closed the prompt-rewrite branch. Sweep-3 (3 conditions) and sweep-4
-# (2 conditions) therefore differ on this axis in addition to v0/v1/v2 →
-# v5/v6/v7. See development/CHANGELOG.md 2026-05-19 sweep-4 prompt entry.
 PDDL_DEFAULT_CONDITIONS=(no-tools tools_all_minimal)
 
 # Default sbatch CONDITIONS env (space-separated, used when run_condition_rtx.sbatch

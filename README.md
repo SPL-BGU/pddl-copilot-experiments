@@ -123,8 +123,8 @@ python3 run_experiment.py --models qwen3:0.6b qwen3:4b
 | `--num-variants` | 3 | First K of `ACTIVE_PROMPT_VARIANTS` (currently `(0, 1, 2)`). Capped at the tuple length; widen by editing `run_experiment.py`. Paper used 5; the 26042026 sensitivity analysis (`checkpoints/cluster-26042026/prompt_variant_stats.md`) showed v0/v1/v2 are within ~1pp of the 5-variant pooled mean. |
 | `--temperature` | 0.0 | LLM sampling temperature |
 | `--seed` | 42 | Random seed for `--smoke-shuffle` cell assignment |
-| `--tool-filter` | `all` | `all` exposes every MCP tool; `per-task` restricts per TASK_TOOLS allowlist |
-| `--prompt-style` | `minimal` | Only active value as of 2026-04-27 — `guided` was retired (the 26042026 sweep showed style shifts results by ≤4pp per model, every CI crossed zero). The `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are kept in `run_experiment.py` as documentation; re-enable by adding `"guided"` back to `PROMPT_STYLE_CHOICES`. |
+| `--tool-filter` | `all` | `all` exposes every MCP tool (only active value). |
+| `--prompt-style` | `minimal` | Only active value. |
 | `--conditions` | `both` | Which conditions to run: `tools`, `no-tools`, or `both`. |
 | `--num-predict` | per-task | Override max output tokens (solve=8192, validate_*=6144, simulate=6144). Non-solve caps were raised 1024/1536→4096 on 2026-04-29, then 4096→6144 on 2026-04-30. The 2026-04-30 bump's stated motivation (Hermes XML mid-tag truncation on nemotron-3-nano:30b) was falsified by smoke 17274424 — the 6144 cap is retained as harmless headroom. |
 | `--num-ctx` | 16384 | Ollama context window tokens for single-task tools cells (raised from 8192 on 2026-04-29 after qwen3.6:27b smokes showed `think_overflow` at 12288; nemotron-3-nano:30b shared the evidence but was later dropped 2026-04-30). |

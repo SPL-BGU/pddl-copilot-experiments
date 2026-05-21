@@ -174,18 +174,6 @@ OLLAMA_TOOL_PARSE_SIGNATURES: tuple[str, ...] = (
     "XML syntax error",
 )
 
-# Per-task tool allowlists. When --tool-filter=per-task, only these tool names
-# are exposed to the model for the given task, controlling for tool-selection
-# noise when the connected MCP servers expose unrelated tools.
-TASK_TOOLS: dict[str, list[str]] = {
-    "solve":            ["classic_planner", "numeric_planner"],
-    "validate_domain":  ["validate_pddl_syntax"],
-    "validate_problem": ["validate_pddl_syntax"],
-    "validate_plan":    ["validate_pddl_syntax"],
-    "simulate":         ["get_state_transition"],
-}
-
-
 def _expand_conditions(conditions: str) -> tuple[bool, ...]:
     """Map a --conditions value to the with_tools iteration order.
 
@@ -293,7 +281,7 @@ async def evaluate_one(
     plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
 
     prompt = template.format(domain=domain_pddl, problem=problem_pddl, plan=plan_str)
-    system = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
+    system = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": prompt},
@@ -308,7 +296,7 @@ async def evaluate_one(
     done_reason = ""
     loop_exhausted = False
 
-    allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
+    allowed = None
 
     # Bigger context window only when (a) thinking is on (or default), AND
     # (b) the model has no PDDL tools to externalise plan/state/verdict
@@ -879,7 +867,7 @@ async def run_chain_experiment(
 ) -> list[dict]:
     results: list[dict] = []
     domain_items = list(domains.items())
-    system_prompt = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
+    system_prompt = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
     cond_label = "tools" if with_tools else "no-tools"
 
     async def run_sample(
@@ -918,7 +906,7 @@ async def run_chain_experiment(
             messages.append({"role": "user", "content": prompt})
 
             np_for_task = _resolve_num_predict(num_predict_override, task)
-            allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
+            allowed = None
             step_loop_exhausted = False
             # Chains are tools-only (no-tools chains skipped; ISS-018), so
             # this resolves to `num_ctx_chain` for every step today; the
