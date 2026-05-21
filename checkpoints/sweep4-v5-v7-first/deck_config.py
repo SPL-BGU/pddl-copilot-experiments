@@ -12,10 +12,11 @@ and rerun:
 RESULTS = "results/sweep4-v5-v7-first"
 OUT_PPTX = "checkpoints/sweep4-v5-v7-first/pddl_copilot_sweep4_v5_v7_first.pptx"
 
-MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "gemma4_26b-a4b", "qwen3_6_35b"]
+MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]
 MODEL_DISP = {
     "Qwen3_5_0_8B":   "Qwen3.5-0.8B",
     "Qwen3_5_4B":     "Qwen3.5-4B",
+    "Qwen3_5_9B":     "Qwen3.5-9B",
     "gemma4_26b-a4b": "Gemma4-26B-A4B",
     "qwen3_6_35b":    "Qwen3.6-35B-A3B",
 }
@@ -28,12 +29,12 @@ COND_DISP = {
     "no-tools": "no-tools",
 }
 
-TITLE = "PDDL Copilot — sweep4-v5-v7-first (in-progress, 4 models)"
+TITLE = "PDDL Copilot — sweep4-v5-v7-first (5 models, 18/20 cells)"
 SUBTITLE = (
-    "Qwen3.5:0.8B (all 4 cells) · Qwen3.5:4B (off/no-tools) · "
-    "gemma4:26b-a4b (2 cells) · qwen3.6:35b (3 cells) · "
+    "Qwen3.5:0.8B / 4B / 9B (think=on only) · gemma4:26b-a4b · qwen3.6:35b · "
     "sweep-4 prompts v5/v6/v7 ('part 1 — explicit tool call') · "
-    "all-tools vs no-tools · think on/off"
+    "all-tools vs no-tools · think on/off · "
+    "Qwen3.5:9B off-cells still partial — show on-cells only"
 )
 
 SLIDE_CAPTIONS = {
@@ -42,11 +43,12 @@ SLIDE_CAPTIONS = {
         "Multi-model view of the v5/v6/v7 prompt rewrite. Larger models (qwen3.6:35b, gemma4:26b-a4b) "
         "reach near-ceiling with-tools across all 5 tasks; no-tools validate_* collapsed for every model "
         "(VERDICT-trailer drop in the v5/v6/v7 no-tools template — finding 1 in sweep4_plan_new_prompts.md). "
-        "Missing bars = cell not yet complete.",
+        "Qwen3.5:9B off-cells are still in-flight; their bars will appear once 4560 trials land.",
     "success_on":
-        "Same chart, think=on. Only Qwen3.5:0.8B (both cells), gemma4 (on/tools_all only), and "
-        "qwen3.6:35b (on/tools_all only) have completed on-cells in the current sync. "
-        "Note: qwen3.6:35b on/tools_all and gemma4 on/tools_all rival or beat their off counterparts on most tasks.",
+        "Same chart, think=on. All 5 models have both on-cells (on/no-tools and on/tools_all) at the canonical "
+        "4560-trial corpus. With-tools think=on for the larger models (gemma4, qwen3.6:35b) is at or near "
+        "ceiling on every task; for Qwen3.5 sizes the on/tools_all numbers track the off counterparts within "
+        "a few pp — no systematic 'thinking lift' from the on-toggle on this prompt set.",
     "tool_selection":
         "% of with-tools trials where the model invoked the expected planner/validator tool. "
         "v5/v6/v7 prompts explicitly name the tool arguments — selection sits at the ceiling for every task "
