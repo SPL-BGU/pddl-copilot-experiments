@@ -198,22 +198,31 @@ If the breakdown reveals a different dominant failure mode than the review predi
 4. If `simulate` no-tools moves regardless of tools branch, finding 5 was real and we under-credited no-tools previously.
 5. Results inform sweep-5 design (skill-task arm + per-task retirement).
 
-## Sweep-4.1 — re-establish v0–v2 baseline under marketplace 1.3.0
+## Sweep-4.1 — un-steered with-tools baseline under marketplace 1.3.0
 
-**Goal (added 2026-05-19):** after sweep-4 (v5/v6/v7) lands, run an identical sweep with `ACTIVE_PROMPT_VARIANTS = (0, 1, 2)` against the **same** marketplace 1.3.0 + improved-type-hints pddl-copilot pin used by sweep-4. This re-establishes the "neutral prompt" arm under the new tool surface so cross-sweep comparisons are not confounded by the 1.2.0 → 1.3.0 marketplace bump plus subsequent tool-schema / type-hint improvements in pddl-copilot.
+**Goal (added 2026-05-19, revised same day):** after sweep-4 (v5/v6/v7) lands, run an identical sweep with `ACTIVE_PROMPT_VARIANTS = (8, 9, 10)` against the **same** marketplace 1.3.0 + improved-type-hints pddl-copilot pin used by sweep-4. v8/v9/v10 are byte-identical aliases of v5/v6/v7's no-tools templates, with NO entries in `PROMPT_TEMPLATES_TOOLS_OVERRIDE` — so the with-tools branch falls through to the un-steered base prompt (no tool-name hint, no arg-shape hint, VERDICT trailer absent). This isolates the contribution of `PROMPT_TEMPLATES_TOOLS_OVERRIDE` itself.
 
-**Why this is needed (per 2026-05-19 methodology discussion):**
+**Why this design (chosen over re-running v0–v2; per 2026-05-19 methodology discussion):**
 
-- v0–v2 currently only exist in the sweep-3 corpus (`results/cluster-20260517/`, marketplace 1.2.0, pre-PR-50, pre-type-hint-improvements).
-- v5/v6/v7 are explicit/steered ("call a planner tool", "include the `plan` argument", etc.). They isolate **tool utility** by removing prompt-shape leaks — but they no longer measure **spontaneous tool affordance** (whether models choose tools given a neutral request).
-- Without a v0–v2 re-baseline under the new tool surface, the paper's "tool affordance" headline depends on sweep-3 numbers that mix prompt-leak effects with an older tool surface. Drift smoke `17654766` showed marketplace drift is empirically <3pp on blocksworld/p01 (`development/sweep4_fr_pivot.md`), so the confound is small — but it is non-zero, and a reviewer can legitimately press on it.
-- Re-running v0–v2 on marketplace 1.3.0 (post-PR-50, post-type-hint improvements) gives the paper a **clean 2-arm design**: same plumbing under each arm, only the prompt differs. The (steered − neutral) gap then attributes cleanly to prompt engineering.
+- v0–v2 currently only exist in the sweep-3 corpus (marketplace 1.2.0, pre-PR-50, pre-type-hint improvements). They mix three confounds when compared to sweep-4: prompt rewrite, VERDICT-trailer-fights-tools (leak L1), and marketplace bump.
+- v5/v6/v7 are explicit/steered ("call a planner tool", "include the `plan` argument"). They isolate **tool utility** by removing prompt-shape leaks — but no longer measure the contribution of the override edits themselves vs. the rest of the prompt cleanup.
+- v8/v9/v10 hold *everything* equal except the override: same no-tools wire-format hints, same VERDICT-trailer-absent validate prompts, same marketplace 1.3.0. The (sweep-4 − sweep-4.1) with-tools delta then attributes cleanly to the override edits alone — tool-name naming + arg-shape teaching.
+- Sweep-3 v0–v2 stays in the appendix as the "naive prompt + old tool surface" historical reference; we do not re-run it on 1.3.0 because the marketplace drift on blocksworld/p01 is empirically <3pp (`development/sweep4_fr_pivot.md`) and a third arm adds cost without sharpening the contribution claim.
 
-**Matrix:** identical to sweep-4 — same models × same conditions × same think modes × same tasks × same problems. Only `ACTIVE_PROMPT_VARIANTS` flips back to `(0, 1, 2)`. No code edits to templates (v0–v2 strings are immutable per the methodology guardrail above); just the active-set flag and a fresh cluster submission.
+**Why new indices (not "just disable the override" via flag):** the override is part of the prompt definition for a given index, not a runtime knob. If `(variant=5, with_tools=True)` means one prompt in sweep-4 and a different prompt in sweep-4.1, any aggregation that joins on `(model, task, condition, variant)` silently averages two different prompts together — the exact silent-drift mode the v0–v2 byte-stability guardrail forbids. v8/v9/v10 give every trial a unique resume key that unambiguously identifies the prompt used.
+
+**Implementation (landed on `sweep4-new-prompts` branch):**
+
+- `pddl_eval/prompts.py` appends v8/v9/v10 as reference-aliases of v5/v6/v7 (a `for _task in PROMPT_TEMPLATES: PROMPT_TEMPLATES[_task].extend([...][5,6,7])` loop). No new prompt strings — slots 8/9/10 share the same string objects as 5/6/7 *at module load*. Long-term byte-equality relies on the existing no-in-place-edit rule for v0–v7 (any later reassignment of slot 5 would leave slot 8 stale); the rule already holds by methodology, so this is safe in practice but is not a Python-level guarantee.
+- `PROMPT_TEMPLATES_TOOLS_OVERRIDE` is **not** touched. v8/v9/v10 have no override → with-tools falls through to the base.
+- `ACTIVE_PROMPT_VARIANTS = (5, 6, 7)` is **not** flipped on this branch — sweep-4 stays the active sweep. Sweep-4.1 will flip to `(8, 9, 10)` at submission time.
+- Runner code at `pddl_eval/runner.py:275–279` is already override-aware; no runner change needed.
+
+**Matrix:** identical to sweep-4 — same models × same conditions × same think modes × same tasks × same problems. Only `ACTIVE_PROMPT_VARIANTS` differs at submit time.
 
 **Marketplace pin:** must match sweep-4 exactly. Record the `../pddl-copilot` commit SHA in every trial's `meta` block; if pddl-copilot has advanced past sweep-4's pin by the time sweep-4.1 runs, *either* roll pddl-copilot back to the sweep-4 SHA *or* re-run sweep-4 on the newer pin first. Never let sweep-4 and sweep-4.1 see different tool surfaces — that defeats the whole point.
 
-**Reporting:** present sweep-4 (v5/v6/v7, steered) and sweep-4.1 (v0/v1/v2, neutral) as paired arms in the paper. The gap is itself a finding ("light prompt engineering closes X pp of the tool-utility gap; Y pp remains as intrinsic model limitation"). Sweep-3 v0–v2 numbers stay in the appendix as the historical / pre-1.3.0 reference.
+**Reporting:** present sweep-4 (steered with-tools, v5/v6/v7) and sweep-4.1 (un-steered with-tools, v8/v9/v10) as paired arms. The with-tools gap is the **steering effect**; the no-tools arms are byte-identical by construction so should differ only by run-to-run noise (a useful self-consistency check). Sweep-3 v0–v2 stays as the historical / pre-1.3.0 / pre-prompt-rewrite reference.
 
 ## Next sweep — see separate handoff
 

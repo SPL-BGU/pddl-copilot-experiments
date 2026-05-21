@@ -23,8 +23,12 @@ History (preserved verbatim for trial-replay byte-stability):
     teach the wire format expected by `_normalize_trajectory`. The
     trailer-drop in `validate_*` no-tools is the change now being
     re-evaluated.
+  * v8/v9/v10 — sweep-4.1 reserved indices, byte-identical aliases of
+    v5/v6/v7's no-tools with NO entries in
+    `PROMPT_TEMPLATES_TOOLS_OVERRIDE` (un-steered baseline). Inherit the
+    same trailer-drop regression as v5–v7.
 
-v5–v7 are appended (not in-place edits) so v0–v2 indices remain
+v5–v10 are appended (not in-place edits) so v0–v2 indices remain
 byte-stable with the sweep-3 corpus.
 
 `ACTIVE_PROMPT_VARIANTS` selects which subset of templates per task
@@ -174,3 +178,20 @@ PROMPT_TEMPLATES_TOOLS_OVERRIDE: dict[str, dict[int, str]] = {
         7: "Show me the trajectory after applying this plan. Call the state-transition tool with the full PDDL texts (`domain`, `problem`, `plan`) below.\n\nDomain:\n{domain}\n\nProblem:\n{problem}\n\nPlan:\n{plan}",
     },
 }
+
+# Sweep-4.1 un-steered baseline: v8/v9/v10 are byte-identical aliases of
+# v5/v6/v7 at module load. The .extend() puts the same string objects in
+# slots 8/9/10 as live in 5/6/7 — but list slots are independent, so any
+# later reassignment of PROMPT_TEMPLATES[task][5] would leave slot 8 stale.
+# Long-term byte-equality therefore relies on the same no-in-place-edit
+# rule that protects v0–v7 (see module docstring), not on Python semantics.
+# No entries are added to PROMPT_TEMPLATES_TOOLS_OVERRIDE — the with-tools
+# branch falls through to the base (no tool-name hint, no arg-shape hint).
+# The no-tools branch is byte-equal to v5/v6/v7's no-tools.
+for _task in PROMPT_TEMPLATES:
+    PROMPT_TEMPLATES[_task].extend([
+        PROMPT_TEMPLATES[_task][5],   # v8 ← v5
+        PROMPT_TEMPLATES[_task][6],   # v9 ← v6
+        PROMPT_TEMPLATES[_task][7],   # v10 ← v7
+    ])
+del _task
