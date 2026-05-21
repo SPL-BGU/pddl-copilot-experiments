@@ -29,12 +29,12 @@ COND_DISP = {
     "no-tools": "no-tools",
 }
 
-TITLE = "PDDL Copilot — sweep4-v5-v7-first (5 models, 18/20 cells)"
+TITLE = "PDDL Copilot — sweep4-v5-v7-first (5 models, 20/20 cells complete)"
 SUBTITLE = (
-    "Qwen3.5:0.8B / 4B / 9B (think=on only) · gemma4:26b-a4b · qwen3.6:35b · "
+    "Qwen3.5:0.8B / 4B / 9B · gemma4:26b-a4b · qwen3.6:35b · "
     "sweep-4 prompts v5/v6/v7 ('part 1 — explicit tool call') · "
     "all-tools vs no-tools · think on/off · "
-    "Qwen3.5:9B off-cells still partial — show on-cells only"
+    "4560 trials per cell · 91 203 trials total"
 )
 
 SLIDE_CAPTIONS = {
@@ -43,7 +43,7 @@ SLIDE_CAPTIONS = {
         "Multi-model view of the v5/v6/v7 prompt rewrite. Larger models (qwen3.6:35b, gemma4:26b-a4b) "
         "reach near-ceiling with-tools across all 5 tasks; no-tools validate_* collapsed for every model "
         "(VERDICT-trailer drop in the v5/v6/v7 no-tools template — finding 1 in sweep4_plan_new_prompts.md). "
-        "Qwen3.5:9B off-cells are still in-flight; their bars will appear once 4560 trials land.",
+        "All 5 models now have complete off-cells at the canonical 4560-trial corpus.",
     "success_on":
         "Same chart, think=on. All 5 models have both on-cells (on/no-tools and on/tools_all) at the canonical "
         "4560-trial corpus. With-tools think=on for the larger models (gemma4, qwen3.6:35b) is at or near "
