@@ -69,53 +69,58 @@ def test_used_tool(r: TestResults):
 
 
 def test_call_matches_validate_task(r: TestResults):
-    # validate_domain — domain-only is the only acceptable shape.
-    domain_only = {"name": "validate_pddl_syntax", "arguments": {"domain": "(D)"}}
-    domain_with_problem = {"name": "validate_pddl_syntax",
-                           "arguments": {"domain": "(D)", "problem": "(P)"}}
-    domain_with_plan = {"name": "validate_pddl_syntax",
-                        "arguments": {"domain": "(D)", "plan": "(p)"}}
-    full_call = {"name": "validate_pddl_syntax",
-                 "arguments": {"domain": "(D)", "problem": "(P)", "plan": "(p)"}}
+    """Post-marketplace-1.4.0: matcher collapses to a tool-name == task check.
 
-    r.check("vd accepts domain-only",
-            _call_matches_validate_task(domain_only, "validate_domain"))
-    r.check("vd rejects when problem present",
-            not _call_matches_validate_task(domain_with_problem, "validate_domain"))
-    r.check("vd rejects when plan present",
-            not _call_matches_validate_task(domain_with_plan, "validate_domain"))
+    The polymorphic `validate_pddl_syntax` was split into three task-aligned
+    tools (`validate_domain`, `validate_problem`, `validate_plan`) whose
+    JSON schemas enforce their required arguments. The matcher's old job —
+    rejecting domain-only calls when grading `validate_plan` — is now a
+    trivial name match because wrong-shape calls cannot happen.
+    """
+    vd_call = {"name": "validate_domain", "arguments": {"domain": "(D)"}}
+    vp_call = {"name": "validate_problem",
+               "arguments": {"domain": "(D)", "problem": "(P)"}}
+    vplan_call = {"name": "validate_plan",
+                  "arguments": {"domain": "(D)", "problem": "(P)", "plan": "(p)"}}
 
-    # validate_problem — problem required, plan forbidden.
-    r.check("vp(roblem) rejects domain-only",
-            not _call_matches_validate_task(domain_only, "validate_problem"))
-    r.check("vp(roblem) accepts domain+problem",
-            _call_matches_validate_task(domain_with_problem, "validate_problem"))
-    r.check("vp(roblem) rejects when plan present",
-            not _call_matches_validate_task(full_call, "validate_problem"))
+    # Each task accepts only the matching tool name.
+    r.check("vd accepts validate_domain",
+            _call_matches_validate_task(vd_call, "validate_domain"))
+    r.check("vd rejects validate_problem",
+            not _call_matches_validate_task(vp_call, "validate_domain"))
+    r.check("vd rejects validate_plan",
+            not _call_matches_validate_task(vplan_call, "validate_domain"))
 
-    # validate_plan — plan required (problem may or may not be present;
-    # the validator routes by presence of `plan`).
-    r.check("vp(lan) accepts full call",
-            _call_matches_validate_task(full_call, "validate_plan"))
-    r.check("vp(lan) accepts domain+plan",
-            _call_matches_validate_task(domain_with_plan, "validate_plan"))
-    r.check("vp(lan) rejects domain-only",
-            not _call_matches_validate_task(domain_only, "validate_plan"))
+    r.check("vp(roblem) accepts validate_problem",
+            _call_matches_validate_task(vp_call, "validate_problem"))
+    r.check("vp(roblem) rejects validate_domain",
+            not _call_matches_validate_task(vd_call, "validate_problem"))
+    r.check("vp(roblem) rejects validate_plan",
+            not _call_matches_validate_task(vplan_call, "validate_problem"))
 
-    # Empty/missing `arguments` must not crash and must reject every task.
-    no_args = {"name": "validate_pddl_syntax"}
-    null_args = {"name": "validate_pddl_syntax", "arguments": None}
-    for label, tc_in in (("missing args", no_args), ("null args", null_args)):
-        r.check(f"{label} → vd accepts (no problem/plan)",
-                _call_matches_validate_task(tc_in, "validate_domain"))
-        r.check(f"{label} → vp(roblem) rejects",
-                not _call_matches_validate_task(tc_in, "validate_problem"))
-        r.check(f"{label} → vp(lan) rejects",
-                not _call_matches_validate_task(tc_in, "validate_plan"))
+    r.check("vp(lan) accepts validate_plan",
+            _call_matches_validate_task(vplan_call, "validate_plan"))
+    r.check("vp(lan) rejects validate_domain",
+            not _call_matches_validate_task(vd_call, "validate_plan"))
+    r.check("vp(lan) rejects validate_problem",
+            not _call_matches_validate_task(vp_call, "validate_plan"))
+
+    # Missing/null arguments must not crash — the matcher reads only `name`.
+    no_args = {"name": "validate_domain"}
+    null_args = {"name": "validate_plan", "arguments": None}
+    r.check("missing args → vd accepts validate_domain",
+            _call_matches_validate_task(no_args, "validate_domain"))
+    r.check("null args → vp(lan) accepts validate_plan",
+            _call_matches_validate_task(null_args, "validate_plan"))
 
     # Unknown task name → False (defensive default).
     r.check("unknown task → False",
-            not _call_matches_validate_task(domain_only, "solve"))
+            not _call_matches_validate_task(vd_call, "solve"))
+    # Legacy polymorphic tool name → False on every task (the tool no longer
+    # exists in the marketplace; should never appear in a recorded tool_call).
+    legacy = {"name": "validate_pddl_syntax", "arguments": {"domain": "(D)"}}
+    r.check("legacy tool name → vd rejects",
+            not _call_matches_validate_task(legacy, "validate_domain"))
 
 
 def test_get_tool_results(r: TestResults):

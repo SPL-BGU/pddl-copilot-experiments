@@ -103,13 +103,13 @@ async def _connect_mcp() -> MCPPlanner:
 
 
 async def _validate_domain(mcp: MCPPlanner, domain_pddl: str) -> bool | None:
-    raw = await mcp.call_tool("validate_pddl_syntax", {"domain": domain_pddl})
+    raw = await mcp.call_tool("validate_domain", {"domain": domain_pddl})
     return _parse_validation_verdict(raw)
 
 
 async def _validate_problem(mcp: MCPPlanner, domain_pddl: str, problem_pddl: str) -> bool | None:
     raw = await mcp.call_tool(
-        "validate_pddl_syntax",
+        "validate_problem",
         {"domain": domain_pddl, "problem": problem_pddl},
     )
     return _parse_validation_verdict(raw)
@@ -119,7 +119,7 @@ async def _validate_plan(
     mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan: str,
 ) -> bool | None:
     raw = await mcp.call_tool(
-        "validate_pddl_syntax",
+        "validate_plan",
         {"domain": domain_pddl, "problem": problem_pddl, "plan": plan},
     )
     return _parse_validation_verdict(raw)

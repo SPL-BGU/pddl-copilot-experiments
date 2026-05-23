@@ -6,6 +6,37 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-23 — Marketplace 1.4.0 adoption: validator tool split (sweep-5 foundation)
+
+**Branch:** `sweep5-new-prompts`. **Marketplace pin:** post-PR-52 (pddl-copilot @ `2850bc4`, marketplace `1.4.0`).
+
+**TL;DR.** Sibling-repo PR-#52 split the polymorphic `validate_pddl_syntax` into three task-aligned tools — `validate_domain`, `validate_problem`, `validate_plan` — whose JSON schemas enforce their required arguments. The dominant sweep-3/sweep-4 `validate_plan` failure mode (model calls validator with only `domain`+`problem`, tool returns the consistency verdict instead of the plan verdict, scorer tags `FR_VERDICT_MISMATCH`) is now structurally unreachable — the model can no longer call a polymorphic tool with wrong-shape arguments. Cross-repo migration in this commit; no prompt-bank changes yet (those land in a follow-up commit on the same branch).
+
+**Files touched (this repo):**
+- `pddl_eval/chat.py:86` — `_PINNED_VERBOSE_FALSE` updated from `{"validate_pddl_syntax", "get_state_transition"}` to `{"validate_domain", "validate_problem", "validate_plan", "get_state_transition"}`. Docstring at `:58` updated to reference the split.
+- `pddl_eval/scoring.py:65-88` — `_call_matches_validate_task` collapses from an argument-shape dispatcher to a name match: `tc["name"] == task` for the three `validate_*` tasks. The old polymorphism gate (rejecting domain-only calls when grading `validate_plan`) is no longer needed.
+- `pddl_eval/scoring.py:271-292` — `_validate_model_plan` routes to `validate_plan` directly (was `validate_pddl_syntax`).
+- `pddl_eval/scoring.py:408-426` — `check_success` validate branch uses `_used_tool(tool_calls, task)` (task-name == tool-name) instead of looking up the legacy polymorphic tool name.
+- `pddl_eval/domains.py:112-130` — `_validate_capture` routes by args to the correct task-aligned tool (presence of `plan` → `validate_plan`; `problem` → `validate_problem`; else → `validate_domain`). Keeps the six call sites in `generate_ground_truth` uniform.
+- `tools/build_fixtures.py:105-125` — `_validate_domain` / `_validate_problem` / `_validate_plan` helpers route to their matching tools.
+- `tests/_helpers.py:64-99` — `plan_sensitive_validator` handler dispatches by tool name (not arg shape); `validate_plan` still matches plan-text against the fixture's oracle/bad plan.
+- `tests/test_check_success.py` — two cases recharacterized: the old "wrong arg shape" failures (which grade as `FR_VERDICT_MISMATCH` under the polymorphic tool) become "wrong tool name" failures (graded as `FR_TOOL_NOT_SELECTED`). The model can no longer call the same tool with wrong-shape args; calling a different validator tool is the residual error.
+- `tests/test_scoring.py::test_call_matches_validate_task` — rewritten to assert the simplified name-match semantics. Includes a defensive case for the legacy `validate_pddl_syntax` tool name (always returns False).
+- `EXPERIMENTS_FLOW.md` — §3 task table, §4.1 metrics list, §6 ground-truth list, §8 MCP API table, §11 paper-diff row updated to the three-tool surface.
+
+**Verification.** `bash tests/verify.sh` — 6 test files, 401/401 assertions pass.
+
+**Compatibility notes.**
+- v0–v10 prompt strings are byte-stable (no edits). Replay-by-rerun of sweep-3 / sweep-4 / sweep-4.1 cells against the new marketplace pin will fail: the model can no longer call `validate_pddl_syntax` (tool removed). This is intentional per user direction (`feedback_pushback_on_methodology_shortcuts`); sweep-3/4/4.1 results in `results/` and `checkpoints/` remain valid as historical snapshots tied to their respective marketplace pins.
+- Recorded `tool_calls[*].name` in old `trials.jsonl` continues to read `"validate_pddl_syntax"`; the grader still parses these files for analysis (the `_call_matches_validate_task` check now returns False for that name, but legacy trials were graded at write-time and stored their `failure_reason` in the record — re-grading is not re-run by analysis).
+- Sweep-5 starts fresh on the marketplace 1.4.0 pin. Trial-key shape unchanged (10-tuple); no `runner.py` resume-key edits.
+
+**Sources of the split design (per PR-52 description):** Anthropic "Define tools" docs (3-4 sentence per-tool descriptions, schema-in-`tools=[]` convention), Anthropic engineering "Writing tools for agents" (consolidation, namespacing, "implicit context explicit"), BFCL methodology (relevance / selection / parameter-filling decomposition).
+
+**Next on branch `sweep5-new-prompts`:** rewrite `development/sweep_prompt_bank_design.md` to reflect (a) Option C thin per-task system prompts, (b) post-split simplified one-sentence steered directives, (c) sweep-5 as full (no-tools, steered) backed-up arm — then implement in `pddl_eval/prompts.py` + `pddl_eval/runner.py`.
+
+---
+
 ## 2026-05-20 — PR-#66 contamfix: `_CTX_OVERFLOW_RE` regex + analyzer denominator drifts + gemma context limitation
 
 **TL;DR.** Six-agent audit (PR-#66) of the sweep-4 corpus surfaced four root issues. One was the dominant data-quality problem (24 600 corrupted trials across the corpus; 24 in the active checkpoint). Three were latent analyzer denominator bugs that mask themselves on clean data but mis-aggregate on edge-case rows. All four addressed in one commit.

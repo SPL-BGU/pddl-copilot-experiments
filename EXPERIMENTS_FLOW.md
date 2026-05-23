@@ -103,9 +103,9 @@ Five tasks, each testing a different stage of the PDDL planning pipeline:
 | Task | What the model must do | Ground truth source |
 |------|----------------------|---------------------|
 | **solve** | Find a valid plan for a domain + problem | `classic_planner` / `numeric_planner` oracle |
-| **validate_domain** | Judge whether a domain has valid PDDL syntax | `validate_pddl_syntax` oracle |
-| **validate_problem** | Judge whether a problem has valid syntax given its domain | `validate_pddl_syntax` oracle |
-| **validate_plan** | Verify a given plan is correct | `validate_pddl_syntax` oracle |
+| **validate_domain** | Judge whether a domain has valid PDDL syntax | `validate_domain` oracle (since marketplace 1.4.0; previously the polymorphic `validate_pddl_syntax`) |
+| **validate_problem** | Judge whether a problem has valid syntax given its domain | `validate_problem` oracle |
+| **validate_plan** | Verify a given plan is correct | `validate_plan` oracle |
 | **simulate** | Produce a state-transition trajectory for a plan | `get_state_transition` oracle. With-tools and no-PDDL-tools both grade by canonical-form deep-equality of the produced trajectory against the oracle's (PR-4, 2026-04-29). |
 
 Each task uses 5 prompt template variants (different phrasings of the same request) for robustness.
@@ -120,12 +120,12 @@ The with-tools condition reports two separate metrics:
 
 1. **tool_selected** -- Did the model call the *correct* MCP tool?
    - `solve`: called `classic_planner` or `numeric_planner`
-   - `validate_*`: called `validate_pddl_syntax`
+   - `validate_domain` / `validate_problem` / `validate_plan`: called the matching task-aligned tool of the same name (marketplace 1.4.0 split the legacy polymorphic `validate_pddl_syntax` into three; task name == tool name)
    - `simulate`: called `get_state_transition`
 
 2. **success** (end-to-end) -- Was the tool result correct?
-   - `solve`: tool returned a plan that passes pyvalidator validation (`valid == true`)
-   - `validate_*`: tool result verdict matches ground truth (VALID/INVALID), with the call's argument shape matching the task (e.g., `validate_plan` requires `plan` in args; a domain-only call is rejected)
+   - `solve`: tool returned a plan that passes `validate_plan` (`valid == true`)
+   - `validate_*`: tool result verdict matches ground truth (VALID/INVALID). The "wrong argument-shape" failure mode that existed under the polymorphic predecessor is now structurally unreachable — each tool's JSON schema enforces its required arguments, so a wrong call name (rather than wrong args) is the residual error, scored as `FR_TOOL_NOT_SELECTED`.
    - `simulate`: tool's `trajectory` equals the oracle's `gt["trace"].trajectory`. The plugin's `valid` field is a PDDL-syntactic signal, not a simulation-correctness signal — a partial trajectory with `valid=false` would pass a naive non-error check. Oracle and model calls go through the same bridged `get_state_transition(verbose=False)` with identical `(domain, problem, plan)` inputs, so a matching trajectory is deterministic. Mismatch → `FR_RESULT_MISMATCH`.
 
 A model can have high tool_selected but low success (knows *what* to call but can't construct valid arguments). This gap quantifies "tool-use competence" vs "tool awareness."
@@ -297,7 +297,7 @@ The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_da
 - `n01..n05.pddl` — join `validate_problem` (negative arm) only
 - `p<NN>_b1..b5.plan` — join `validate_plan` (negative arm) for problem `pNN` only
 
-Bug taxonomies (3 domain-mutators, 6 problem-mutators, 4 plan-mutators) are documented in `domains/README.md`. All negatives must validate as `valid=False` against `validate_pddl_syntax` — `generate_ground_truth` aborts startup with `SystemExit` naming any drift.
+Bug taxonomies (3 domain-mutators, 6 problem-mutators, 4 plan-mutators) are documented in `domains/README.md`. All negatives must validate as `valid=False` against the matching validator tool (`validate_domain` / `validate_problem` / `validate_plan`, per marketplace 1.4.0) — `generate_ground_truth` aborts startup with `SystemExit` naming any drift.
 
 **Expected validity:** positives are expected to pass `domain_valid == problem_valid == plan_valid == solvable == True`. Each committed `p<NN>_v[1-5].plan` is independently re-validated at startup; any committed valid plan that the validator rejects also aborts startup (symmetric fail-fast on both sides).
 
@@ -311,10 +311,10 @@ Bug taxonomies (3 domain-mutators, 6 problem-mutators, 4 plan-mutators) are docu
 
 Before any model evaluation, the experiment generates oracle answers by calling the MCP tools directly:
 
-1. **validate_pddl_syntax**(domain) -- domain validity verdict
-2. **validate_pddl_syntax**(domain, problem) -- problem validity verdict
+1. **validate_domain**(domain) -- domain validity verdict
+2. **validate_problem**(domain, problem) -- problem validity verdict
 3. **classic_planner** or **numeric_planner**(domain, problem) -- oracle plan
-4. **validate_pddl_syntax**(domain, problem, plan) -- plan validity verdict
+4. **validate_plan**(domain, problem, plan) -- plan validity verdict
 5. **get_state_transition**(domain, problem, plan) -- oracle state trace
 
 These oracle results become the ground truth for scoring model responses.
@@ -336,14 +336,16 @@ Tools are served by two MCP plugin servers from the [pddl-copilot](https://githu
 
 | Tool | Parameters | Returns |
 |------|-----------|---------|
-| `validate_pddl_syntax` | `domain` (required), `problem` (optional), `plan` (optional), `verbose` (optional, default `True`) | `verbose=True`: `{valid, status, report, details}`. `verbose=False`: `{valid, status, report}`. Error: `{error: true, message: str}` |
-| `get_state_transition` | `domain`, `problem`, `plan` (all required), `verbose` (optional, default `True`) | `verbose=True`: `{valid, report, steps, trajectory, details}`. `verbose=False`: `{valid, steps, trajectory}`. Error: `{error: true, message: str}` |
+| `validate_domain` | `domain` (required), `verbose` (optional, default `True`) | `verbose=True`: `{valid, status, report, details}`. `verbose=False`: `{valid, status, report}` (drops `details` only). Error: `{error: true, message: str}` |
+| `validate_problem` | `domain`, `problem` (both required), `verbose` (optional, default `True`) | Same response shape as `validate_domain`. |
+| `validate_plan` | `domain`, `problem`, `plan` (all required), `verbose` (optional, default `True`) | Same response shape — `valid` reflects PLAN CORRECTNESS (preconditions hold + goal satisfied), not just syntax. |
+| `get_state_transition` | `domain`, `problem`, `plan` (all required), `verbose` (optional, default `True`) | `verbose=True`: `{valid, report, steps, trajectory, details}`. `verbose=False`: `{valid, steps, trajectory}` (drops BOTH `report` and `details` — asymmetric with `validate_*`). Error: `{error: true, message: str}` |
 
 **Input detection**: Tools check if an argument starts with `(` or `;` or contains `(define ` to detect inline PDDL content. Otherwise the argument is treated as a file path. This is why passing a domain name like `"blocksworld"` fails -- it's interpreted as a file path that doesn't exist.
 
-**Response-size policy (structured projection, no truncation).** Each validator tool accepts an optional `verbose` parameter that defaults to `True` so standalone MCP callers (Claude Desktop, `ollama_mcp_bridge.py`, future consumers) still receive the full pyvalidator fidelity by default. Setting `verbose=False` drops the redundant fields that re-serialize information already present elsewhere in the response: `details` on `validate_pddl_syntax`; `report` and `details` on `get_state_transition`. Kept fields — `status`, `report` (validate), `steps`, `trajectory` with full `boolean_fluents`/`numeric_fluents` per step — are returned in full; there is no item or character cap.
+**Response-size policy (structured projection, no truncation).** Each validator tool accepts an optional `verbose` parameter that defaults to `True` so standalone MCP callers (Claude Desktop, `ollama_mcp_bridge.py`, future consumers) still receive the full pyvalidator fidelity by default. Setting `verbose=False` drops the redundant fields that re-serialize information already present elsewhere in the response: `details` on the three `validate_*` tools; `report` and `details` on `get_state_transition`. Kept fields — `status`, `report` (validate), `steps`, `trajectory` with full `boolean_fluents`/`numeric_fluents` per step — are returned in full; there is no item or character cap.
 
-**Experiment bridge enforces `verbose=False`.** `run_experiment.py::MCPPlanner` strips the `verbose` property from each validator tool's `inputSchema` before passing tools to Ollama, and injects `verbose=False` on every call (see `_PINNED_VERBOSE_FALSE`). The experiment agent cannot see or control the flag. This keeps tool responses compact for the LLM without changing the plugin's default contract for other callers. Prior `tool_calls[*].result` strings recorded in `results/` are not byte-comparable with post-change runs, but scoring (`_parse_validation_verdict`, simulate non-empty check) is unchanged.
+**Experiment bridge enforces `verbose=False`.** `run_experiment.py::MCPPlanner` strips the `verbose` property from each validator tool's `inputSchema` before passing tools to Ollama, and injects `verbose=False` on every call (see `_PINNED_VERBOSE_FALSE = {"validate_domain", "validate_problem", "validate_plan", "get_state_transition"}` in `pddl_eval/chat.py:86`). The experiment agent cannot see or control the flag. This keeps tool responses compact for the LLM without changing the plugin's default contract for other callers. Prior `tool_calls[*].result` strings recorded in `results/` are not byte-comparable with post-change runs, but scoring (`_parse_validation_verdict`, simulate non-empty check) is unchanged.
 
 **Aligned cap hygiene in the MCP repo.** The existing caps in `../pddl-copilot` now follow a consistent `DEFAULT_*` module-constant + `PDDL_*` env override convention (defaults unchanged):
 
@@ -488,7 +490,7 @@ squeue --me                 # All my running/pending jobs
 | Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-05-18 backend unification): `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` — full roster on vLLM `rtx_6000:1`. Laptop default: `qwen3:0.6b`, `qwen3:4b`. Roster history: `gpt-oss:120b` → `Qwen3.5:35b` (large-band, 2026-04-27); `Qwen3.5:27b/35b` → `qwen3.6` successors and `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (2026-04-29); `nemotron-3-nano:30b` dropped (2026-04-30, smoke 17274424 confirmed deterministic Hermes XML parse failures); `qwen3.6:27b` retired and `Qwen3.5:4B` + `Qwen3.5:9B` added (2026-05-17, mid-band ladder); `gemma4:31b` dense Ollama replaced with `gemma4:26b-a4b` MoE on vLLM (2026-05-18, smoke 17638752 — retires the backend-split, full roster now single-backend). The cis-ollama fallback path was retired 2026-04-27. |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
-| Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |
+| Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on every validator tool) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for the three `validate_*` tools and `{valid, steps, trajectory}` for `get_state_transition`. |
 | Simulate success criterion | Non-error tool result | Canonical-form trajectory deep-equality against oracle `gt["trace"]` on both with-tools and no-PDDL-tools paths via `_normalize_trajectory` (PR-4, 2026-04-29) — bridges oracle (`boolean_fluents: dict[str, bool]`) and model (`state.boolean: list[str]`) shapes to a sorted/lower-cased canonical form. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
 | No-tools task set | All 5 tasks scored | All 5 tasks scored under PR-4 (2026-04-29) with format-constrained sampling — `simulate` re-enabled alongside the shared `_normalize_trajectory` grader, replacing the keyword-check that ISS-002 originally dropped. The user-facing label changed to **no-PDDL-tools** to reflect that format constraint is still available; only PDDL-specific MCP tools (planner/validator/simulator) are removed. Internal `with_tools: bool` and JSON `condition: "no-tools"` field unchanged for back-compat. |
 | No-tools grader | Free-text regex extractors (`extract_plan_lines`, `extract_verdict`, simulate keyword check) | Per-task Pydantic schema (`pddl_eval/schemas.py`) enforced via Ollama `format=<json_schema>` (PR-4, 2026-04-29). Free-text extractors retained as fallback for `solve` / `validate_*` when JSON parse fails; `simulate` has no fallback (parse failure → `FR_FORMAT_PARSE_FAIL`). Pre-PR-4 no-tools rows are NOT directly comparable to post-PR-4 no-PDDL-tools rows — the constraint narrows the response space and may regress tiny models that conflict with the schema; the new `FR_FORMAT_PARSE_FAIL` tag quantifies that rate per cell. |

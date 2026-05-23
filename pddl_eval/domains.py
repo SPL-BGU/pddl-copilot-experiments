@@ -112,15 +112,28 @@ def _build_plan_str(gt: dict) -> str:
 async def _validate_capture(
     mcp: MCPPlanner, args: dict,
 ) -> tuple[str, bool | None]:
-    """Call `validate_pddl_syntax(args)` and capture (raw, parsed_verdict).
+    """Route to the appropriate validator tool by args, capture (raw, verdict).
+
+    Marketplace 1.4.0 (pddl-validator 3.0.0) split `validate_pddl_syntax`
+    into three task-aligned tools whose required-argument schemas are 1:1
+    with the grader task taxonomy:
+      - `validate_domain(domain)`
+      - `validate_problem(domain, problem)`
+      - `validate_plan(domain, problem, plan)`
+    `_validate_capture` picks the tool by which args are present so the six
+    per-layer call sites in `generate_ground_truth` stay uniform.
 
     On MCP exception, returns `(str(exc), None)` so the caller can stash
     both in a single tuple assignment without an explicit try-block.
-    Mirrors the per-layer (domain / problem / plan) ground-truth probes
-    in `generate_ground_truth`.
     """
+    if "plan" in args:
+        tool = "validate_plan"
+    elif "problem" in args:
+        tool = "validate_problem"
+    else:
+        tool = "validate_domain"
     try:
-        raw = await mcp.call_tool("validate_pddl_syntax", args)
+        raw = await mcp.call_tool(tool, args)
     except Exception as exc:
         return str(exc), None
     return raw, _parse_validation_verdict(raw)
@@ -196,7 +209,8 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
 
             # Validate each committed valid plan. The committed `_v[1-9]`
             # plans are independent of the planner's canonical plan above;
-            # they are graded separately against `validate_pddl_syntax`.
+            # they are graded separately against `validate_plan` (the
+            # successor of polymorphic `validate_pddl_syntax`).
             committed_valid_plans = (
                 dinfo.get("negatives", {})
                 .get("plans_per_problem", {})

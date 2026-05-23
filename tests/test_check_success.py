@@ -154,25 +154,29 @@ async def test_validate_plan(r: TestResults):
     await run_case("vp wt no-calls", r, "validate_plan", "", [], gt, mcp, dom, prob, True,
                    (False, False, rx.FR_TOOL_NOT_SELECTED))
 
-    # with-tools, validate called with wrong shape (no plan arg)
+    # with-tools, model called wrong tool (validate_problem instead of
+    # validate_plan). Marketplace 1.4.0 split the polymorphic validator into
+    # three task-aligned tools; the old "wrong-arg-shape" failure mode is
+    # now "wrong tool name", graded as FR_TOOL_NOT_SELECTED.
     ok_plan_raw = json.dumps(bw["tool_output_objs"]["validate_plan_ok"])
-    await run_case("vp wt wrong arg shape", r, "validate_plan", "",
-                   [tc("validate_pddl_syntax", {"domain": dom, "problem": prob}, ok_plan_raw)],
+    prob_raw_for_wrong = json.dumps(bw["gt"]["problem_validation_obj"])
+    await run_case("vp wt wrong tool (called validate_problem)", r, "validate_plan", "",
+                   [tc("validate_problem", {"domain": dom, "problem": prob}, prob_raw_for_wrong)],
                    gt, mcp, dom, prob, True,
-                   (True, False, rx.FR_VERDICT_MISMATCH))
+                   (False, False, rx.FR_TOOL_NOT_SELECTED))
 
-    # with-tools, correct shape, verdict matches gt (gt.plan_valid = True)
-    await run_case("vp wt correct shape match gt", r, "validate_plan", "",
-                   [tc("validate_pddl_syntax",
+    # with-tools, correct tool, verdict matches gt (gt.plan_valid = True)
+    await run_case("vp wt correct tool match gt", r, "validate_plan", "",
+                   [tc("validate_plan",
                        {"domain": dom, "problem": prob, "plan": oracle_plan_str},
                        ok_plan_raw)],
                    gt, mcp, dom, prob, True,
                    (True, True, rx.FR_OK))
 
-    # with-tools, correct shape, verdict mismatches gt
+    # with-tools, correct tool, verdict mismatches gt
     bad_plan_raw = json.dumps(bw["tool_output_objs"]["validate_plan_bad"])
     await run_case("vp wt verdict mismatch", r, "validate_plan", "",
-                   [tc("validate_pddl_syntax",
+                   [tc("validate_plan",
                        {"domain": dom, "problem": prob, "plan": bad_plan_str},
                        bad_plan_raw)],
                    gt, mcp, dom, prob, True,
@@ -181,7 +185,7 @@ async def test_validate_plan(r: TestResults):
     # with-tools, tool returns {"error": true}
     err_raw = json.dumps({"error": True, "message": "PDDL file not found: 'blocksworld'"})
     await run_case("vp wt tool error", r, "validate_plan", "",
-                   [tc("validate_pddl_syntax",
+                   [tc("validate_plan",
                        {"domain": dom, "problem": prob, "plan": oracle_plan_str},
                        err_raw)],
                    gt, mcp, dom, prob, True,
@@ -229,18 +233,21 @@ async def test_validate_domain(r: TestResults):
 
     dom_raw = json.dumps(bw["gt"]["domain_validation_obj"])
 
-    # Domain-only call, verdict matches gt.domain_valid=True
-    await run_case("vd wt domain-only ok", r, "validate_domain", "",
-                   [tc("validate_pddl_syntax", {"domain": dom}, dom_raw)],
+    # Correct tool, verdict matches gt.domain_valid=True
+    await run_case("vd wt correct tool ok", r, "validate_domain", "",
+                   [tc("validate_domain", {"domain": dom}, dom_raw)],
                    gt, mcp, dom, prob, True,
                    (True, True, rx.FR_OK))
 
-    # Wrong shape — call includes problem, should be skipped by task-shape filter
+    # Wrong tool — model called validate_problem when task is validate_domain.
+    # Under marketplace 1.4.0 the validator split makes argument-shape errors
+    # impossible (each tool's schema enforces its required args); the residual
+    # failure mode is calling the wrong tool name, scored as FR_TOOL_NOT_SELECTED.
     prob_raw = json.dumps(bw["gt"]["problem_validation_obj"])
-    await run_case("vd wt wrong shape (has problem)", r, "validate_domain", "",
-                   [tc("validate_pddl_syntax", {"domain": dom, "problem": prob}, prob_raw)],
+    await run_case("vd wt wrong tool (called validate_problem)", r, "validate_domain", "",
+                   [tc("validate_problem", {"domain": dom, "problem": prob}, prob_raw)],
                    gt, mcp, dom, prob, True,
-                   (True, False, rx.FR_VERDICT_MISMATCH))
+                   (False, False, rx.FR_TOOL_NOT_SELECTED))
 
 
 # ---------------------------------------------------------------------------

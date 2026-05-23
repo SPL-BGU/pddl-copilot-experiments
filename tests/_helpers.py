@@ -62,12 +62,15 @@ class FakeMCP:
 
 
 def plan_sensitive_validator(fx: dict, error: bool = False):
-    """Return a handler that routes validate_pddl_syntax by plan argument match.
+    """Return a handler that routes the three split validator tools.
 
-    If the plan argument (joined by \\n) matches fx["oracle_plan"], returns the
-    "valid=true" fixture response; otherwise returns the "valid=false" one.
-    Domain-only and domain+problem calls get their respective raw responses.
-    If `error` is True, every validate call returns the {"error": true} shape.
+    Marketplace 1.4.0 (pddl-validator 3.0.0) split `validate_pddl_syntax`
+    into `validate_domain` / `validate_problem` / `validate_plan`. The
+    handler dispatches by tool name; for `validate_plan` it also matches
+    the joined plan string against fx["oracle_plan"] vs fx["bad_plan"]
+    to pick the corresponding fixture response.
+
+    If `error` is True, every validator call returns the {"error": true} shape.
     """
     oracle_plan_str = "\n".join(fx["oracle_plan"])
     bad_plan_str = "\n".join(fx["bad_plan"])
@@ -80,21 +83,19 @@ def plan_sensitive_validator(fx: dict, error: bool = False):
     prob_resp = json.dumps(fx["gt"]["problem_validation_obj"])
 
     def handler(name: str, args: dict) -> str:
-        if name != "validate_pddl_syntax":
+        if name not in {"validate_domain", "validate_problem", "validate_plan"}:
             return "{}"
         if error:
             return err_resp
-        plan_arg = (args.get("plan") or "").strip()
-        problem_arg = args.get("problem")
-        if plan_arg:
-            if plan_arg == oracle_plan_str:
-                return ok_plan_resp
-            if plan_arg == bad_plan_str:
-                return bad_plan_resp
-            return bad_plan_resp
-        if problem_arg:
+        if name == "validate_domain":
+            return dom_resp
+        if name == "validate_problem":
             return prob_resp
-        return dom_resp
+        # validate_plan — match the plan text against the fixture's oracle.
+        plan_arg = (args.get("plan") or "").strip()
+        if plan_arg == oracle_plan_str:
+            return ok_plan_resp
+        return bad_plan_resp
 
     return handler
 

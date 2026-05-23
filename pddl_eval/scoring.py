@@ -63,29 +63,21 @@ def _get_tool_results(tool_calls: list[dict], name: str) -> list[str]:
 
 
 def _call_matches_validate_task(tc: dict, task: str) -> bool:
-    """True iff a `validate_pddl_syntax` call's argument shape matches *task*.
+    """True iff a validator-tool call's name matches *task*.
 
-    The tool is polymorphic — its `valid` field reflects whichever PDDL
-    layer was supplied. A {domain}-only call returns the domain's verdict
-    even when the model is being graded on plan validity; mismatch the
-    shape and every solvable benchmark trivially scores FR_OK. This
-    function is the gate. Caller is expected to have already filtered on
-    `tc["name"] == "validate_pddl_syntax"`.
-
-      validate_domain  — neither `problem` nor `plan` may be present.
-      validate_problem — `problem` required, `plan` forbidden.
-      validate_plan    — `plan` required.
+    After pddl-validator 3.0.0 (marketplace 1.4.0), the polymorphic
+    `validate_pddl_syntax` was split into three task-aligned tools whose
+    names are 1:1 with the grader task names: `validate_domain`,
+    `validate_problem`, `validate_plan`. The old argument-shape dispatch
+    (which had to reject domain-only calls when grading `validate_plan`)
+    collapses to a name match — wrong-shape calls are now impossible
+    because each tool's JSON schema enforces its required arguments.
     """
-    args = tc.get("arguments", {}) or {}
-    has_problem = bool(args.get("problem"))
-    has_plan = bool(args.get("plan"))
-    if task == "validate_domain":
-        return not has_problem and not has_plan
-    if task == "validate_problem":
-        return has_problem and not has_plan
-    if task == "validate_plan":
-        return has_plan
-    return False
+    return tc.get("name") == task and task in {
+        "validate_domain",
+        "validate_problem",
+        "validate_plan",
+    }
 
 
 def _extract_plan_from_tool_result(raw: str) -> list[str]:
@@ -271,7 +263,7 @@ def extract_verdict(response: str) -> bool | None:
 async def _validate_model_plan(
     mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan_lines: list[str],
 ) -> bool | None:
-    """Call validate_pddl_syntax on the model's extracted plan.
+    """Call validate_plan on the model's extracted plan.
 
     Returns True iff pyvalidator reports valid, False if the plan is empty
     or pyvalidator reports invalid, None if the MCP transport failed or the
@@ -284,7 +276,7 @@ async def _validate_model_plan(
     plan_str = "\n".join(plan_lines)
     try:
         raw = await mcp.call_tool(
-            "validate_pddl_syntax",
+            "validate_plan",
             {"domain": domain_pddl, "problem": problem_pddl, "plan": plan_str},
         )
     except Exception:
@@ -407,22 +399,19 @@ async def check_success(
         truth = gt.get(gt_key)
 
         if tool_calls:
-            selected = _used_tool(tool_calls, "validate_pddl_syntax")
+            # marketplace 1.4.0: task name == expected tool name (1:1 split).
+            selected = _used_tool(tool_calls, task)
             if not selected:
                 return False, False, FR_TOOL_NOT_SELECTED
             if truth is None:
                 return True, False, FR_UNKNOWN
-            # The verdict check must match the call's argument shape to the
-            # task — see _call_matches_validate_task for the rule and why.
             for tc in tool_calls:
-                if tc.get("name") != "validate_pddl_syntax":
-                    continue
-                if not _call_matches_validate_task(tc, task):
+                if tc.get("name") != task:
                     continue
                 verdict = _parse_validation_verdict(tc.get("result", ""))
                 if verdict == truth:
                     return True, True, FR_OK
-            if _tool_error_seen(tool_calls, "validate_pddl_syntax"):
+            if _tool_error_seen(tool_calls, task):
                 return True, False, FR_TOOL_ERROR
             return True, False, FR_VERDICT_MISMATCH
 
