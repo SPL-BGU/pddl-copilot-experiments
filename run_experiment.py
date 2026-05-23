@@ -685,9 +685,9 @@ def main():
                         "non-empty unless --no-resume is also set.")
     args = p.parse_args()
 
-    # Route SIGTERM through the same path as Ctrl-C so a `kill` from
-    # run_background.sh triggers the KeyboardInterrupt cleanup branch in
-    # async_main (which tears down MCP subprocesses via AsyncExitStack).
+    # Route SIGTERM through the same path as Ctrl-C so a `scancel` /
+    # SLURM TIMEOUT SIGTERM triggers the KeyboardInterrupt cleanup branch
+    # in async_main (which tears down MCP subprocesses via AsyncExitStack).
     # Without this, SIGTERM bypasses `finally` and MCP servers orphan.
     signal.signal(signal.SIGTERM, signal.default_int_handler)
 

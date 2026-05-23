@@ -6,6 +6,48 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-23 — Retire the Ollama inference backend
+
+**Branch:** `sweep5-new-prompts`. Commit `9cdf2da` (the backend cut) plus this entry's follow-up.
+
+**TL;DR.** Removes the entire Ollama path from the harness after the 2026-05-18 cluster backend unification. Single inference client is now `pddl_eval.vllm_client.VLLMClient` (renamed from `VLLMOllamaClient`). No-op for active sweeps — sweep-4/5 have been vLLM-only since the cluster swap.
+
+**Files touched (commit `9cdf2da`):**
+- `requirements.txt` — drop `ollama>=0.4.0`. `openai>=1.40.0` is the live runtime dep.
+- `pddl_eval/vllm_client.py` — class rename `VLLMOllamaClient → VLLMClient`; ctor kwarg `host=` → `base_url=`; docstring rewritten to describe the OpenAI↔harness-shape adapter without claiming to "mimic Ollama".
+- `pddl_eval/chat.py`, `pddl_eval/runner.py` — drop `import ollama` (TYPE_CHECKING), retype `client: "ollama.AsyncClient"` forward-refs to `"VLLMClient"`, reword comments. `FR_OLLAMA_PARSE_ERROR = "ollama_parse_error"` and `is_ollama_parse_error` JSON key retained as stable corpus identifiers (per `scoring.py:30-31` policy). `OLLAMA_TOOL_PARSE_SIGNATURES` variable name kept (internal, unchanged semantics); comment notes the signatures now catch vLLM tool-call parser failures (hermes / qwen3_xml / gemma4) too.
+- `run_experiment.py` — drop `import ollama`, `--inference-backend`, `--ollama-host` (replaced by `--llm-base-url`, env `LLM_BASE_URL`), and the `OLLAMA_NUM_PARALLEL` warning print. `meta.inference_backend` no longer written to summary JSON. Help text refreshed.
+- `cluster-experimenting/submit_with_rtx.sh` — drop `--backend ollama|vllm` flag; single sbatch path (`run_condition_vllm_rtx.sbatch`). Default GPU now `rtx_6000:1`; `--gpu-type rtx_pro_6000` remains the opt-in escape.
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch` — exported env var rename `OLLAMA_HOST → LLM_BASE_URL`; drop `--inference-backend vllm` flag from the inner `run_experiment.py` invocations (no longer recognized).
+- `cluster-experimenting/submit_full_sweep.sh`, `submit_with_resume.sh` — drop `--backend vllm` forwarding; collapse the Ollama branch in the resume orchestrator.
+- `cluster-experimenting/setup_env.sh` — import probe `mcp + ollama` → `mcp + openai`.
+- `cluster-experimenting/run_condition_rtx.sbatch` — DELETED (Ollama sbatch).
+- `run_background.sh` — DELETED (macOS laptop driver that ran `ollama serve`).
+- `notebooks/run_single_model.ipynb`, `notebooks/run_vllm_vs_ollama_smoke.ipynb` — DELETED.
+- Docs: `README.md`, `CLAUDE.md`, `EXPERIMENTS_FLOW.md`, `cluster-experimenting/README.md`, `.claude/agents/{experiment-runner,simplifier}.md`, `.claude/skills/{cluster-ops/{SKILL,cleanup},debug-and-simplify/SKILL,simplify/SKILL,plan-review-simplify/SKILL}.md` — sweep misleading present-tense Ollama references; preserve historical context with date stamps where the history is load-bearing.
+
+**Follow-up commit (`<current>`):**
+- `development/CHANGELOG.md` — this entry (missing from `9cdf2da`, the simplifier review flagged).
+- `.claude/skills/cluster-ops/scripts/status.sh` — drop the per-model `BACKEND = {…}` map, the `dir_backend = "ollama"` branch, and the "skipped N dirs on non-canonical backend" diagnostic. Single-backend now means the BACKEND check is permanently dead-code. Replaced with a one-line informational "archived pre-vLLM dirs ignored" footer.
+- `.claude/skills/plan-review-simplify/SKILL.md` — drop `run_background.sh` reference; "Ollama chat loop" → "vLLM chat loop" (the parallel `simplify/SKILL.md` update from `9cdf2da` didn't reach this sibling).
+- `run_experiment.py:687-690`, `cluster-experimenting/submit_with_rtx.sh:313-319`, `.claude/skills/cluster-ops/cleanup.md:42` — three stale comments citing the deleted `run_background.sh` / `run_condition_rtx.sbatch`.
+
+**Verification:**
+- `python3 -c "from pddl_eval import chat, runner, vllm_client, scoring, summary, prompts, resume, domains"` — all imports clean.
+- `python3 run_experiment.py --help` — argparse renders, `--inference-backend` and `--ollama-host` gone, `--llm-base-url` present.
+- `python3 -m pytest tests/test_vllm_client.py` — 3/3 pass. Wider `pytest tests/` total identical pre- and post-refactor (pre-existing `TestResults`-as-class collection issue in `tests/_helpers.py:110` unrelated to this change).
+- `grep -rn "VLLMOllamaClient\|--inference-backend\|--ollama-host\|import ollama\b" pddl_eval/ run_experiment.py cluster-experimenting/` — empty.
+
+**Compatibility:**
+- Active sweeps: no-op. Sweep-4/5 invocations went through `submit_with_rtx.sh` with the vLLM defaults that this commit codifies.
+- Archived `slurm_<model>_*` (Ollama-era) corpora in `results/` and `checkpoints/`: read-only. Their `meta.inference_backend = "ollama"` field is still parsed by JSON loaders; nothing in the analyzer pipeline consumes it (verified across `.claude/skills/analyzer/scripts/{aggregate,filter_variants,plot,build_deck,drift_check}.py`).
+- Forward-only: new summaries omit `meta.inference_backend`.
+- Single inference backend means the `slurm_vllm_<…>` OUT_DIR prefix is now historical (originally introduced to disambiguate vLLM cells from parallel Ollama cells). Renaming would invalidate resume keys mid-sweep, so the prefix stays.
+
+**Memory updates** (off-tree, in the user's auto-memory store): `reference_bgu_ollama.md`, `reference_bgu_self_deploy_ollama.md` marked as retired/historical; `feedback_status_backend_first.md` repositioned around parser-mismatch as the new contamination class; new `project_ollama_retired.md` entry summarising the cut.
+
+---
+
 ## 2026-05-23 — Sweep-5 phase A.1: `FR_WRONG_TOOL` + helper inline + cleanup
 
 **Branch:** `sweep5-new-prompts`. Follow-up to the Phase A migration (`beab87a`).

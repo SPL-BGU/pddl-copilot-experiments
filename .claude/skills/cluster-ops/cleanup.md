@@ -36,13 +36,14 @@ directories come out.
 
 ```bash
 ssh omereliy@slurm.bgu.ac.il 'scontrol show job <jid> | grep -E "Command|JobName"'
-grep -A2 "^BACKEND = {" .claude/skills/cluster-ops/scripts/status.sh
 ```
 
-- `Command=run_condition_rtx.sbatch` → Ollama, writes `slurm_<model>_*`
-- `Command=run_condition_vllm_rtx.sbatch` → vLLM, writes `slurm_vllm_<model>_*`
-
-If `BACKEND[model]` and the sbatch path disagree, the submission is wrong.
+Post 2026-05-23 there is one sbatch (`run_condition_vllm_rtx.sbatch`,
+writes `slurm_vllm_<model>_*`); a `Command` other than this means the
+sbatch was edited or a stale file was resurrected on the cluster.
+Historical context (dual-backend era): `Command=run_condition_rtx.sbatch`
+was the Ollama sbatch and wrote `slurm_<model>_*` — those archives are
+ignored by `status.sh` ("ignored N archived pre-vLLM dirs" footer).
 
 ### Quarantine + resubmit
 

@@ -13,8 +13,8 @@ For the task described in $ARGUMENTS:
 Read all relevant existing code using Grep and Glob. Identify reusable patterns and existing state so the plan doesn't reinvent them.
 
 Reference surface, in the order you typically need them:
-- `run_experiment.py` — experiment logic, `MCPPlanner` (MCP stdio client + `verbose` bridge stripping/injection), Ollama chat loop, scoring
-- `run_background.sh` — execution orchestration
+- `run_experiment.py` + `pddl_eval/` — experiment logic, `MCPPlanner` (MCP stdio client + `verbose` bridge stripping/injection), vLLM chat loop, scoring
+- `cluster-experimenting/` — execution orchestration (sbatch + submit wrappers)
 - `EXPERIMENTS_FLOW.md` — methodology, success criteria, MCP tool contract (§8), result schema (§9), paper-diff (§11)
 - `development/CHANGELOG.md` — dated record of framework + sibling-MCP changes; check here first to avoid re-solving something that's already landed
 - `development/OPEN_ISSUES.md` — known methodology gaps (`ISS-###`) with severity and fix sketches; many "should we fix X?" questions already have a written answer here
@@ -51,7 +51,7 @@ Before presenting the plan, review it for simplification and correctness:
 
 **Correctness:**
 - Are PDDL domain/problem paths resolved correctly?
-- Are Ollama model names and parameters correct?
+- Are model tags and `vllm_lookup` parameters correct?
 - Does error handling cover MCP connection failures and tool timeouts?
 
 If concerns found: revise the plan. Note what changed and why.

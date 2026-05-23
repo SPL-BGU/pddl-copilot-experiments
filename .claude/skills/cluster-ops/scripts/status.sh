@@ -134,16 +134,12 @@ ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6
 DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "Qwen3_5_4B":"Qwen3.5:4B",
            "Qwen3_5_9B":"Qwen3.5:9B", "gemma4_26b-a4b":"gemma4:26b-a4b",
            "qwen3_6_35b":"qwen3.6:35b"}
-# Canonical backend per model (2026-05-18). Dirs from the OTHER backend
-# are skipped during counting — a model is fully owned by one backend so
-# the matrix reflects the active corpus choice and partial runs on the
-# wrong backend don't pollute progress. vLLM cells live under
-# `slurm_vllm_<model>_<think>_<cond>/`; Ollama cells under
-# `slurm_<model>_<think>_<cond>/`. Full roster is vLLM post 2026-05-18;
-# the prior Ollama gemma4_31b corpus stays on disk as drift anchor and
-# is counted as "skipped (wrong backend)" against the active roster.
-BACKEND = {"Qwen3_5_0_8B":"vllm", "Qwen3_5_4B":"vllm", "Qwen3_5_9B":"vllm",
-           "qwen3_6_35b":"vllm", "gemma4_26b-a4b":"vllm"}
+# Post 2026-05-23 the harness writes a single OUT_DIR shape:
+# `slurm_vllm_<model>_<think>_<cond>/`. Legacy `slurm_<model>_<think>_<cond>/`
+# dirs (pre-vLLM-unification Ollama corpora — kept as drift anchors) are
+# counted in a separate "archived (pre-vLLM)" footer below; they never
+# affect the active matrix. The per-model BACKEND map that gated this
+# routing in the dual-backend era was retired with the Ollama backend.
 # Sweep-4 4-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools,
 # tools_all}). tools_per-task_minimal was retired 2026-05-19 with the
 # prompt-rewrite branch (PDDL_DEFAULT_CONDITIONS in lib/defaults.sh).
@@ -205,16 +201,11 @@ for line in manifest_raw:
         manifest_index[(jid, idx)] = (m, think, cond)
 
 # ---- Counts: dirname → (model, think, cond) ----
-# Two dir families exist on disk:
-#   * `slurm_<model>_<think>_<cond>/`        Ollama backend
-#   * `slurm_vllm_<model>_<think>_<cond>/`   vLLM backend
-# We strip the optional "vllm_" prefix, classify the dir's backend, then
-# count it only if it matches BACKEND[model] — the canonical backend for
-# the paper corpus. Dirs on the non-canonical backend (e.g. an Ollama
-# slurm_qwen3_6_35b_* from the prior corpus, now that 35B is owned by
-# vLLM) are reported under "skipped (wrong backend)" instead of polluting
-# the matrix or the unknown list.
-counts, unknown, wrong_backend = {}, [], []
+# Active dirs: `slurm_vllm_<model>_<think>_<cond>/`. Legacy
+# `slurm_<model>_<think>_<cond>/` (no `vllm_` infix) are archived
+# pre-vLLM-unification corpora — counted in a separate footer so the
+# active matrix isn't polluted by drift-anchor history.
+counts, unknown, archived_legacy = {}, [], []
 for line in count_raw:
     n_str, _, dirname = line.partition("\t")
     if not dirname.startswith("slurm_"): continue
@@ -223,16 +214,12 @@ for line in count_raw:
     rem = dirname[len("slurm_"):]
     if rem.startswith("vllm_"):
         rem = rem[len("vllm_"):]
-        dir_backend = "vllm"
     else:
-        dir_backend = "ollama"
+        archived_legacy.append(dirname)
+        continue
     matched = None
-    backend_mismatch = False
     for m in ROSTER:
         if rem.startswith(m + "_"):
-            if BACKEND.get(m) != dir_backend:
-                backend_mismatch = True
-                break
             tail = rem[len(m)+1:]
             for th in ("on","off","default"):
                 if tail.startswith(th + "_"):
@@ -241,9 +228,8 @@ for line in count_raw:
                         matched = (m, th, cond)
                     break
             break
-    if matched:                  counts[matched] = n
-    elif backend_mismatch:       wrong_backend.append(dirname)
-    else:                        unknown.append(dirname)
+    if matched: counts[matched] = n
+    else:       unknown.append(dirname)
 
 # ---- Queue ----
 queue = []
@@ -464,8 +450,8 @@ def render_markdown():
     if unknown:
         out.append("")
         out.append(f"_(skipped {len(unknown)} unmatched dirs: {', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''})_")
-    if wrong_backend:
-        out.append(f"_(skipped {len(wrong_backend)} dirs on non-canonical backend per BACKEND map: {', '.join(wrong_backend[:3])}{'…' if len(wrong_backend)>3 else ''})_")
+    if archived_legacy:
+        out.append(f"_(ignored {len(archived_legacy)} archived pre-vLLM dirs: {', '.join(archived_legacy[:3])}{'…' if len(archived_legacy)>3 else ''})_")
 
     return "\n".join(out)
 
@@ -609,9 +595,9 @@ def render_terminal(use_color):
         out.append("")
         out.append(f"  {DIM}(skipped {len(unknown)} unmatched dirs: "
                    f"{', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''}){RESET}")
-    if wrong_backend:
-        out.append(f"  {DIM}(skipped {len(wrong_backend)} dirs on non-canonical backend: "
-                   f"{', '.join(wrong_backend[:3])}{'…' if len(wrong_backend)>3 else ''}){RESET}")
+    if archived_legacy:
+        out.append(f"  {DIM}(ignored {len(archived_legacy)} archived pre-vLLM dirs: "
+                   f"{', '.join(archived_legacy[:3])}{'…' if len(archived_legacy)>3 else ''}){RESET}")
 
     return "\n".join(out)
 
