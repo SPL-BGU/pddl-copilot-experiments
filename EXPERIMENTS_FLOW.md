@@ -528,6 +528,8 @@ Marketplace 1.4.0 (pddl-copilot @ 2850bc4) split the polymorphic `validate_pddl_
 
 Sweep-3 / sweep-4 / sweep-4.1 used the polymorphic predecessor and remain comparable only as historical pin-locked snapshots in `results/` and `checkpoints/`. Re-running their trials against the marketplace 1.4.0 pin would fail (the legacy tool no longer exists).
 
+The `tool_selected` metric definition also tightened with the split. Pre-1.4.0, a `validate_*` trial with a `validate_pddl_syntax` call was `tool_selected=True` regardless of which task it served (the polymorphic tool was the only validator). Post-1.4.0, `tool_selected=True` requires the task-matching tool name (e.g. `validate_plan` for a `validate_plan` task); a wrong-tool call now records `FR_WRONG_TOOL` with `tool_selected=False`. Direct cross-sweep panels of `tool_selected_rate` are therefore on different denominators by construction — when comparing sweep-3/4 baselines to sweep-5, treat the legacy rate as the union `tool_selected + FR_WRONG_TOOL` (a "validator-family invoked" rate) rather than plotting the raw column.
+
 ### 12.7 System-prompt design (Option C — thin per-task policy stubs)
 
 Sweep-5 system prompts are 3-sentence policy stubs per task (`WITH_TOOLS_SYSTEM_BY_TASK` / `WITHOUT_TOOLS_SYSTEM_BY_TASK` in `pddl_eval/prompts.py`). Tool signatures, argument descriptions, and status enumerations are NOT in the system prompt — those live in `tools=[]` per Anthropic's documented contract, and marketplace 1.4.0 raised the per-tool description bar at that source. The `WITHOUT` per-task dict is a structural mirror of `WITH` (same role-framing first sentence, same sentence count); this preserves the H1 attribution to tool availability rather than instruction-surface differential.

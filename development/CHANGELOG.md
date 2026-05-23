@@ -6,6 +6,41 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-23 — PR-67 follow-up: runner restore-key, ETA denom, sbatch flag plumbing, focused-plots tools
+
+**Branch:** `sweep5-new-prompts`. Closes the four real-risk findings from the PR-67 `code-review` pass; the two low-severity findings (legacy-corpus rescoring and `filter_variants --arm both` asymmetric `--min-out`) are intentionally not addressed — see Triage below.
+
+**Fixes:**
+- **runner.py emit-skip ordering** (`pddl_eval/runner.py:_emit_job`). The `(no-tools, v_steered)` skip-gate now sits BELOW `in_scope_keys.add(key)` and the restored-trial early-return, so trials already on disk from a prior `--include-no-tools-steered` submit are surfaced in this run's summary even when the flag is now off. Only new job enqueue is suppressed. Pre-fix, a control submit's on-disk v14-16 no-tools rows silently disappeared from per-cell summaries on any rerun launched without the flag.
+- **status.sh dir_totals activity-gate** (`.claude/skills/cluster-ops/scripts/status.sh`). The dir-level denom for `pace_s` / `eta_h` previously summed both arms' denoms unconditionally (4560 + 4560 = 9120), inflating ETA ~2× for any no-tools cell when the steered arm was dormant (i.e. main-only sweep with no `--include-no-tools-steered` control submit). Now `tools_all_minimal` dirs always sum both arms (one sbatch always emits v11..v16 together), while `no-tools` dirs include the steered arm's denom only when that arm has on-disk evidence. Spurious "over 0.9×budget" watch lines disappear.
+- **`--include-no-tools-steered` plumbing** (`cluster-experimenting/submit_with_rtx.sh`, `run_condition_vllm_rtx.sbatch`). New wrapper flag exports `INCLUDE_NO_TOOLS_STEERED=1` into the sbatch env, which appends `--include-no-tools-steered` to both the smoke fastpath and the inner-loop `python3 run_experiment.py` invocation. `submit_full_sweep.sh` and `submit_with_resume.sh` already forward arguments verbatim, so the flag reaches the wrapper unchanged. Without this, the sweep-5 control arm could only be launched by manual sbatch surgery — the `nt-ster` column in `status.sh` had no producer.
+- **plot_focused.py validator vocabulary** (`.claude/skills/analyzer/scripts/plot_focused.py`). `MCP_TOOLS` and `MCP_TOOL_LABELS` extended with the three marketplace-1.4.0 names (`validate_domain` / `validate_problem` / `validate_plan`). Legacy `validate_pddl_syntax` retained for pre-1.4.0 corpus replay. Sweep-5 focused plots now bucket validator calls correctly instead of dropping them.
+
+**Doc:**
+- **EXPERIMENTS_FLOW.md §12.6** gained a paragraph on the `tool_selected` definition shift between sweep-3/4 and sweep-5: pre-1.4.0 `tool_selected=True` whenever the polymorphic validator was called regardless of argument shape; post-1.4.0, `tool_selected=True` requires the task-matching name (wrong-tool call → `FR_WRONG_TOOL`, `tool_selected=False`). Cross-sweep panels should treat the legacy rate as `tool_selected + FR_WRONG_TOOL` (a "validator-family invoked" union) when plotting sweep-3/4 alongside sweep-5.
+
+**Triage (dropped):**
+- Legacy `validate_pddl_syntax` calls rescored under new code grade as `FR_TOOL_NOT_SELECTED` (no compat shim). PR is forward-only on scoring per §12.6; pre-1.4.0 corpora stay as pin-locked snapshots, not rescored.
+- `filter_variants --arm both --min-out N` cannot gate asymmetric per-cell budgets (9120 with-tools vs 4560 no-tools) with one threshold. The two-pass recipe in `analyzer/SKILL.md` ("Checkpoint a sweep") already mitigates; adding a guard would block a flag invocation that nobody runs against single-arm sweeps in practice.
+
+**Files touched:**
+- `pddl_eval/runner.py` (emit-skip ordering)
+- `.claude/skills/cluster-ops/scripts/status.sh` (dir_totals activity-gate)
+- `cluster-experimenting/submit_with_rtx.sh` (flag parsing + export)
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch` (flag forwarding to both invocation paths)
+- `.claude/skills/analyzer/scripts/plot_focused.py` (validator vocabulary)
+- `EXPERIMENTS_FLOW.md` (§12.6 tool_selected disclosure)
+- `development/CHANGELOG.md` (this entry)
+
+**Compatibility.** No experiment-result impact. Trial-key 10-tuple shape unchanged → existing checkpoints from sweep-3/4/4.1/5-smokes remain resume-compatible. Status cache schema unchanged. `filter_variants.py` defaults unchanged. The `--include-no-tools-steered` flag was already harness-side; this only unlocks the wrapper path.
+
+**Verification.**
+- `bash -n` on `submit_with_rtx.sh`, `run_condition_vllm_rtx.sbatch`, `status.sh` — all clean.
+- `python3 -m py_compile pddl_eval/runner.py .claude/skills/analyzer/scripts/plot_focused.py` — clean.
+- `bash tests/verify.sh` — green (covers runner.py emit-skip dispatch + scoring `wrong_tool` paths).
+
+---
+
 ## 2026-05-23 — Code-review fixes to the sweep-5 matrix propagation
 
 **Branch:** `sweep5-new-prompts`. Follows the two same-day matrix entries below (`Make sweep-5 neutral/steered split explicit` and `Propagate sweep-5 matrix to ops layers`). Triggered by an extra-high-effort `code-review` pass over the unstaged matrix work; 12 findings landed, all surgical, no methodology impact.

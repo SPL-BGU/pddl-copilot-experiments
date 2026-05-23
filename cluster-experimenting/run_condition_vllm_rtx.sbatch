@@ -267,6 +267,10 @@ for MODEL in $MODELS; do
         if [ -n "${SHARD:-}" ]; then
             SHARD_ARGS=(--shard "$SHARD")
         fi
+        STEERED_ARG=()
+        if [ "${INCLUDE_NO_TOOLS_STEERED:-0}" = "1" ]; then
+            STEERED_ARG=(--include-no-tools-steered)
+        fi
         echo
         echo "===================================================================="
         echo "MODEL: $MODEL   smoke ($SMOKE_FLAG)   started $(date)"
@@ -277,7 +281,8 @@ for MODEL in $MODELS; do
             --llm-base-url "$LLM_BASE_URL" \
             --concurrency "$CONCURRENCY" \
             "$SMOKE_FLAG" \
-            "${SHARD_ARGS[@]}"
+            "${SHARD_ARGS[@]}" \
+            "${STEERED_ARG[@]}"
         RC=$?
         echo "===================================================================="
         echo "MODEL: $MODEL   smoke   finished $(date)   rc=$RC"
@@ -344,6 +349,11 @@ for MODEL in $MODELS; do
                 PARTIAL_ARG=(--partial "$PARTIAL_K")
             fi
 
+            STEERED_ARG=()
+            if [ "${INCLUDE_NO_TOOLS_STEERED:-0}" = "1" ]; then
+                STEERED_ARG=(--include-no-tools-steered)
+            fi
+
             python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
@@ -355,6 +365,7 @@ for MODEL in $MODELS; do
                 "${SHARD_ARGS[@]}" \
                 "${CONTINUE_ARG[@]}" \
                 "${PARTIAL_ARG[@]}" \
+                "${STEERED_ARG[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 

@@ -38,6 +38,12 @@
 #   bash cluster-experimenting/submit_with_rtx.sh --all --partial 2 --continue-partial /path/to/seed_dir
 #   bash cluster-experimenting/submit_with_rtx.sh --all --exclude ise-6000p-04          # skip a sick node
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-auto-prioritize             # don't deprioritize fast cells
+#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools --include-no-tools-steered  # sweep-5 control arm
+#
+# --include-no-tools-steered: enables the sweep-5 control arm by emitting
+#   v14/v15/v16 in no-tools cells (the harness otherwise skips them — see
+#   runner.py:_emit_job emit-skip gate). Pairs with the `nt-ster` column
+#   in status.sh; without this flag that column stays empty by design.
 #
 # --no-auto-prioritize: skips the post-submit `scontrol update Nice=500`
 #   that the wrapper otherwise applies to every cell whose model is NOT
@@ -125,6 +131,7 @@ PARTIAL_K=""
 EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
 TIME_OVERRIDE=""
+INCLUDE_NO_TOOLS_STEERED=0
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -142,6 +149,7 @@ while [[ $# -gt 0 ]]; do
         --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
         --time) shift; TIME_OVERRIDE="$1"; shift ;;
+        --include-no-tools-steered) INCLUDE_NO_TOOLS_STEERED=1; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -361,6 +369,9 @@ if [ -n "$CONTINUE_PARTIAL" ]; then
 fi
 if [ -n "$PARTIAL_K" ]; then
     EXPORT_LIST="${EXPORT_LIST},PARTIAL_K=${PARTIAL_K}"
+fi
+if [ "$INCLUDE_NO_TOOLS_STEERED" -eq 1 ]; then
+    EXPORT_LIST="${EXPORT_LIST},INCLUDE_NO_TOOLS_STEERED=1"
 fi
 
 # Add --array only when N>1; single-cell submissions remain plain sbatch.

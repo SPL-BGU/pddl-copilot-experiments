@@ -59,11 +59,16 @@ MODEL_LABELS = {
     "gpt-oss_20b":    "gpt-oss:20B",
     "gpt-oss_120b":   "gpt-oss:120B",
 }
-MCP_TOOLS = ["classic_planner", "numeric_planner", "validate_pddl_syntax",
+MCP_TOOLS = ["classic_planner", "numeric_planner",
+             "validate_domain", "validate_problem", "validate_plan",
+             "validate_pddl_syntax",
              "get_state_transition", "save_plan"]
 MCP_TOOL_LABELS = {
     "classic_planner":      "classic_planner",
     "numeric_planner":      "numeric_planner",
+    "validate_domain":      "validate_domain",
+    "validate_problem":     "validate_problem",
+    "validate_plan":        "validate_plan",
     "validate_pddl_syntax": "validate_syntax",
     "get_state_transition": "state_transition",
     "save_plan":            "save_plan",

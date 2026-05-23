@@ -442,11 +442,23 @@ for cell, n in counts.items():
 dir_totals = {}
 for cell, d in deltas.items():
     m, th, c = cell
-    dir_key = (m, th, LOGICAL_TO_DIR_COND[c])
+    dir_cond = LOGICAL_TO_DIR_COND[c]
+    dir_key = (m, th, dir_cond)
     t = dir_totals.setdefault(dir_key, {"delta": 0, "now": 0, "denom": 0})
     t["delta"] += d["delta"]
     t["now"] += d["now"]
-    t["denom"] += d["denom"]
+    # Only fold a logical column's denom into the dir-level total when
+    # that arm is actually active in the current submit. Without this,
+    # main-only no-tools cells (steered arm dormant unless
+    # `--include-no-tools-steered` ran) doubled their dir denom from
+    # 4560 to 9120, halving `pace_s` and inflating `eta_h` ~2×.
+    # tools_all sbatch always emits both arms together (one with-tools
+    # cell produces v11..v16 in a single trials.jsonl), so for that
+    # dir_cond we always sum. no-tools dirs sum a sibling's denom only
+    # when that arm has on-disk evidence — the steered arm only fills
+    # under `--include-no-tools-steered`.
+    if dir_cond == "tools_all_minimal" or d["now"] > 0:
+        t["denom"] += d["denom"]
 for cell, d in deltas.items():
     m, th, c = cell
     t = dir_totals[(m, th, LOGICAL_TO_DIR_COND[c])]

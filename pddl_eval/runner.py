@@ -579,12 +579,6 @@ async def run_single_task_experiment(
         # in the same shard. `plan_label` IS in the key so v1..v5 / b1..b5
         # spread across shards rather than clustering all in shard 0.
         #
-        # Sweep-5 emit-skip gate: `(no-tools, v_steered)` cells are skipped
-        # in the main 3-arm sweep. Flip `--include-no-tools-steered`
-        # (threaded via `include_no_tools_steered`) to emit them as the
-        # 4th control arm (sweep-5 control).
-        if not with_tools and pv in STEERED_VARIANTS and not include_no_tools_steered:
-            return
         if not _shard_filter(
             shard_i, shard_n,
             (model, task, dname, pname, plan_label, str(pv)),
@@ -596,6 +590,16 @@ async def run_single_task_experiment(
         )
         in_scope_keys.add(key)
         if restored_by_key is not None and key in restored_by_key:
+            return
+        # Sweep-5 emit-skip gate: `(no-tools, v_steered)` cells are skipped
+        # in the main 3-arm sweep. Flip `--include-no-tools-steered`
+        # (threaded via `include_no_tools_steered`) to emit them as the
+        # 4th control arm (sweep-5 control). The skip lives BELOW
+        # `in_scope_keys.add` and the restored-trial early-return so that
+        # trials already on disk from a prior control submit are surfaced
+        # in this run's summary even when the flag is now off — only new
+        # job enqueue is suppressed.
+        if not with_tools and pv in STEERED_VARIANTS and not include_no_tools_steered:
             return
         jobs.append((
             model, task, dname, dpddl, pname, ppddl, pv,
