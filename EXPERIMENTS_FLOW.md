@@ -57,8 +57,8 @@ The experiment crosses five independent variables:
 |-----------|--------|----------|
 | **Model** | Cluster sweep (default, post 2026-04-30 roster trim): `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~26 GB resident, packed in one rtx_pro_6000:1 job under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` retired 2026-04-27; `gpt-oss:20b` and `Qwen3.5:27b/35b` superseded 2026-04-29; `nemotron-3-nano:30b` (the 2026-04-29 non-Qwen/Gemma slot) dropped 2026-04-30 after Hermes XML parse failures proved content-dependent (CHANGELOG). | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
-| **Tool filter** | all, per-task | Which tools the model sees |
-| **Prompt style** | minimal (active) — `guided` retired 2026-04-27 | System prompt detail level. Newcombe-Δ analysis on the 26042026 sweep (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed minimal-vs-guided shifts results by ≤4pp per model with every CI crossing zero. The `_GUIDED_SUFFIX` constant is preserved in code as documentation |
+| **Tool filter** | all | Which tools the model sees (single active value) |
+| **Prompt style** | minimal | System prompt detail level (single active value) |
 | **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, qwen3.6). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
 
 The cluster's model set differs from the paper's `qwen3:0.6b`/`qwen3:4b`
@@ -85,30 +85,14 @@ the full deviations table.
 
 Controls which MCP tools the model sees during with-tools evaluations.
 
-- **all**: Every tool from all connected MCP servers is exposed every turn. This is the condition closest to the original paper and to real-world copilot usage where the model sees the full tool catalogue.
-- **per-task**: Only tools relevant to the current task are exposed, via the `TASK_TOOLS` allowlist:
-
-  | Task | Exposed Tools |
-  |------|---------------|
-  | solve | `classic_planner`, `numeric_planner` |
-  | validate_domain | `validate_pddl_syntax` |
-  | validate_problem | `validate_pddl_syntax` |
-  | validate_plan | `validate_pddl_syntax` |
-  | simulate | `get_state_transition` |
-
-This dimension measures whether tool-selection noise from unrelated tools degrades performance.
+- **all**: Every tool from all connected MCP servers is exposed every turn. This is the only active value.
 
 ### 2.3 Prompt Style
 
-Controls how much guidance the system prompt gives about tool argument formatting.
+System prompt presented to the model when tools are available.
 
-- **minimal**: Original system prompt from the paper. Tells the model to use tools but says nothing about how to format arguments:
+- **minimal**: Tells the model to use tools but says nothing about how to format arguments:
   > *"You are a PDDL planning assistant with access to planning tools. Your ONLY way to get information or solve problems is by calling the provided tools ONE AT A TIME -- never guess or create plan details yourself."*
-
-- **guided**: Appends one sentence instructing the model to pass full PDDL content as tool arguments:
-  > *"When calling tools, pass the complete PDDL text from the user message (starting with '(define ...') as the 'domain' and 'problem' arguments -- not file names or domain names."*
-
-**Motivation**: Small models (0.6b) were observed to pass domain names (e.g., `"blocksworld"`) instead of PDDL content strings as tool arguments, causing 100% tool execution failure on the `solve` task despite 74.5% correct tool selection. This dimension isolates whether a minimal prompt nudge recovers tool-use competence.
 
 ---
 
@@ -422,8 +406,8 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pro
 | failure_reason | `FR_*` constant from `pddl_eval/scoring.py` ("ok" iff `success=True`); see `failure_reasons` description above for the open-ended vocabulary |
 | truncated | `done_reason == "length"` on any turn (output-token cap hit) |
 | done_reason | Raw `done_reason` from the last chat turn (`"stop"`, `"length"`, etc.) |
-| tool_filter | "all" or "per-task" |
-| prompt_style | "minimal" (the `"guided"` retirement is recorded in `PROMPT_STYLE_CHOICES` in `run_experiment.py`) |
+| tool_filter | "all" |
+| prompt_style | "minimal" |
 
 ### chain_{ts}.json — archived 2026-05-05
 
@@ -477,7 +461,7 @@ python3 run_experiment.py \
     --marketplace-path ../pddl-copilot \
     --models qwen3:0.6b \
     --tool-filter all \
-    --prompt-style guided \
+    --prompt-style minimal \
     --output-dir results/my_run/
 ```
 
@@ -499,9 +483,9 @@ squeue --me                 # All my running/pending jobs
 | Aspect | Paper (Benyamin et al., 2025) | This Framework |
 |--------|-------------------------------|----------------|
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
-| Tool filter | All tools exposed | Configurable: all or per-task |
-| Prompt style | Single prompt | `minimal` only (paper-aligned) as of 2026-04-27. `guided` was active during the 26042026 sweep but retired after the Newcombe-Δ analysis showed it didn't move outcomes outside CIs; `_GUIDED_SUFFIX` is preserved in `run_experiment.py` as documentation |
-| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-04-30 roster trim): `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~26 GB resident; rtx self-deploy on rtx_pro_6000:1 with `MAX_LOADED_MODELS=1`). Laptop default: `qwen3:0.6b`, `qwen3:4b` (paper-aligned). Roster history: `gpt-oss:120b` was substituted by `Qwen3.5:35b` in the large-model size band (2026-04-27); on 2026-04-29 `Qwen3.5:27b/35b` were updated to their `qwen3.6` successors and `gpt-oss:20b` was replaced by NVIDIA `nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn) to preserve non-Qwen/Gemma family diversity and resolve gpt-oss's documented T=0 flakiness; on 2026-04-30 `nemotron-3-nano:30b` was dropped after smoke 17274424 confirmed deterministic Hermes XML parse failures on the same 4 cells across the 4096→6144 num_predict bump (failure is content-dependent, not budget-dependent). The cis-ollama fallback path was retired 2026-04-27 — rtx_pro_6000 self-deploy is the only cluster transport. |
+| Tool filter | All tools exposed | All tools exposed (paper-aligned) |
+| Prompt style | Single prompt | `minimal` only (paper-aligned) |
+| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-05-18 backend unification): `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` — full roster on vLLM `rtx_6000:1`. Laptop default: `qwen3:0.6b`, `qwen3:4b`. Roster history: `gpt-oss:120b` → `Qwen3.5:35b` (large-band, 2026-04-27); `Qwen3.5:27b/35b` → `qwen3.6` successors and `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (2026-04-29); `nemotron-3-nano:30b` dropped (2026-04-30, smoke 17274424 confirmed deterministic Hermes XML parse failures); `qwen3.6:27b` retired and `Qwen3.5:4B` + `Qwen3.5:9B` added (2026-05-17, mid-band ladder); `gemma4:31b` dense Ollama replaced with `gemma4:26b-a4b` MoE on vLLM (2026-05-18, smoke 17638752 — retires the backend-split, full roster now single-backend). The cis-ollama fallback path was retired 2026-04-27. |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on both tools) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for `validate_pddl_syntax` and `{valid, steps, trajectory}` for `get_state_transition`. |

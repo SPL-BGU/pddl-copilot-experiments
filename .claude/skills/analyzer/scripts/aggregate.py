@@ -31,6 +31,13 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 CONDITIONS = ["no-tools",
               "tools_per-task_minimal", "tools_per-task_guided",
               "tools_all_minimal", "tools_all_guided"]
+# Active analysis ignores retired axes (per-task → sweep-5 retirement;
+# guided → disabled in runner). `load_summaries` skips these by default.
+RETIRED_CONDS = {
+    "tools_per-task_minimal",
+    "tools_per-task_guided",
+    "tools_all_guided",
+}
 
 # Filter/prompt encoded in the `condition` summary field for with-tools runs;
 # we reconstruct the original condition label from dir name.
@@ -105,7 +112,14 @@ def host_tag(meta: dict) -> str:
     return h or "?"
 
 
-def load_summaries(root: Path):
+def load_summaries(root: Path, include_retired: bool = False):
+    """Load every cell's latest `summary_*.json` into (info, data) tuples.
+
+    `include_retired=True` re-includes pre-2026-05 checkpoints that legitimately
+    contain `tools_per-task_*` / `tools_all_guided` cells — matches the
+    signature of `plot.load_series`. `drift_check` re-aggregating a sweep-3
+    baseline should set this to True so per-task cells aren't silently dropped.
+    """
     rows = []
     for d in sorted(root.glob("slurm_*")):
         if not d.is_dir():
@@ -113,9 +127,11 @@ def load_summaries(root: Path):
         sfs = sorted(d.glob("summary_*.json"))
         if not sfs:
             continue
+        info = parse_dirname(d.name)
+        if not include_retired and info.get("cond") in RETIRED_CONDS:
+            continue
         with sfs[-1].open() as f:
             data = json.load(f)
-        info = parse_dirname(d.name)
         info["host"] = host_tag(data.get("meta", {}))
         rows.append((info, data))
     return rows

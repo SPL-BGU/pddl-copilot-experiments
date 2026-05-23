@@ -24,8 +24,8 @@
 #   * No --cpus-per-task — uses cluster default cpus-per-gpu.
 #   * --mem cap: 80G on rtx_pro_6000 (default), 48G on rtx_6000 (opt-in).
 #   * --tmp=50G on every job — explicit /scratch/$USER/$JOBID per Mar-26
-#     guide §"SSD Drive". Covers ollama.sif (~3 GB) + one model (~26 GB
-#     peak for gemma4:31b in single-cell mode).
+#     guide §"SSD Drive". Covers ollama.sif (~3 GB) + one model (~24 GB
+#     peak for qwen3.6:35b in single-cell mode; gemma4:26b-a4b ~16 GB).
 #
 # Usage:
 #   bash cluster-experimenting/submit_with_rtx.sh <model> [<model>...]
@@ -41,7 +41,7 @@
 #
 # --no-auto-prioritize: skips the post-submit `scontrol update Nice=500`
 #   that the wrapper otherwise applies to every cell whose model is NOT
-#   in PDDL_SLOW_MODELS (gemma4:31b, qwen3.6:35b). The auto-gate fires
+#   in PDDL_SLOW_MODELS (gemma4:26b-a4b, qwen3.6:35b). The auto-gate fires
 #   only on a fresh `--all` submit (NO --continue-partial / --partial /
 #   --smoke / --smoke-shuffle); for resubmits or single-model invocations
 #   it doesn't fire to begin with, so this flag is a no-op there. Use the
@@ -79,11 +79,11 @@
 #   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B           # 6-cell array
 #   bash cluster-experimenting/submit_with_rtx.sh --all                  # 24-cell array (4 models × 6 cells)
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # 8-cell array (4 models × 2 cells: think on+off)
-#   bash cluster-experimenting/submit_with_rtx.sh gemma4:31b --no-tools  # 2-cell array (think on+off)
+#   bash cluster-experimenting/submit_with_rtx.sh gemma4:26b-a4b --no-tools  # 2-cell array (think on+off)
 #
-# --all: shorthand for the 4 active models. Each model contributes 6 cells
-#   under the full think={on,off} × cond={no-tools, tools_per-task_minimal,
-#   tools_all_minimal} matrix. Total array size: 24. Roster history:
+# --all: shorthand for the 4 active models. Each model contributes 4 cells
+#   under the full think={on,off} × cond={no-tools, tools_all_minimal}
+#   matrix. Total array size: 16. Roster history:
 #   2026-04-29 swap, 2026-04-30 nemotron drop. The (think=on, no-tools) cell
 #   was added 2026-05-12 after ISS-018 (PR-2, 2026-04-28) lifted the runtime
 #   abort and routed thinking content into TaskResult.thinking — verdict /
@@ -97,7 +97,9 @@
 #
 # Think modes default to "on off" (both run as separate cells in the array).
 # Override with --think-modes "default" for models without a think kwarg
-# (e.g. gemma4*) or --think-modes "off" to skip thinking cells.
+# or --think-modes "off" to skip thinking cells. (Note: gemma4:26b-a4b does
+# emit reasoning; the historical "gemma4* no-think" carveout only applied
+# to gemma2-era tags and is no longer load-bearing.)
 
 set -eo pipefail
 
@@ -225,10 +227,11 @@ fi
 
 case "$GPU_TYPE" in
     rtx_6000)
-        # Opt-in only. 48 GB VRAM is enough for the active 4-model pack
-        # (peak gemma4:31b ~26 GB) but the rtx_6000 pool is the more
-        # contended one historically; prefer rtx_pro_6000 unless that's
-        # blocked.
+        # Default for vLLM after the 2026-05-18 backend unification — the
+        # full roster (peak qwen3.6:35b ~24 GB, gemma4:26b-a4b ~16 GB +
+        # vision tower) fits comfortably in 48 GB under
+        # gpu-memory-utilization=0.85. rtx_pro_6000 remains an opt-in
+        # escape for tools×on cells that need extra headroom.
         MEM_ARG="--mem=48G" ;;
     rtx_pro_6000)
         # Default. 80G mem cap per IT request 2026-04-27.
