@@ -3,6 +3,7 @@ name: simplifier
 description: Reviews plans and code for unnecessary complexity, methodology drift, and result compatibility issues. Use after planning or before committing changes to experiment code.
 tools: Read, Grep, Glob
 model: opus
+effort: xhigh
 permissionMode: plan
 maxTurns: 10
 ---
