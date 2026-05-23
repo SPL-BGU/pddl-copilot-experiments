@@ -1,6 +1,6 @@
 ---
 name: experiment-runner
-description: Run a quick smoke-test experiment to verify the pipeline works (Ollama, MCP connections, evaluation, result saving). Use after code changes.
+description: Run a quick smoke-test experiment to verify the pipeline works (vLLM server, MCP connections, evaluation, result saving). Use after code changes.
 tools: Bash, Read, Grep
 model: haiku
 maxTurns: 6
@@ -9,8 +9,7 @@ maxTurns: 6
 Run a minimal smoke-test experiment to verify the pipeline works end to end.
 
 1. Check prerequisites:
-   - Ollama is running: `curl -sf http://localhost:11434/api/tags`
-   - Model is available: `ollama list | grep qwen3:0.6b`
+   - vLLM server reachable: `curl -sf "${LLM_BASE_URL:-http://localhost:8000}/v1/models"`
    - pddl-copilot marketplace exists at `../pddl-copilot` (or `$PDDL_MARKETPLACE_PATH`)
 
 2. Run the canonical smoke slice (auto-pins domain/problem/variants/tasks/conditions/think modes; writes to `results/smoke/fixed_<git-sha>_<ts>/`):
@@ -18,7 +17,8 @@ Run a minimal smoke-test experiment to verify the pipeline works end to end.
    source .venv/bin/activate 2>/dev/null
    python3 run_experiment.py \
        --marketplace-path "${PDDL_MARKETPLACE_PATH:-../pddl-copilot}" \
-       --models qwen3:0.6b \
+       --llm-base-url "${LLM_BASE_URL:-http://localhost:8000}" \
+       --models Qwen3.5:0.8B \
        --smoke
    ```
    If `results/smoke/fixed_<git-sha>_<ts>/` already exists from a prior run on this commit, the harness resumes from `trials.jsonl` by default; pass `--no-resume` to start fresh.

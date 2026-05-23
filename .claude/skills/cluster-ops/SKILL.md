@@ -8,7 +8,7 @@ argument-hint: [status | job | preflight | sync | postmortem | prioritize]
 
 ## Why this skill exists
 
-Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "when will it run", "queue position", "queue rank", "ETA for job", "submit sweep", "cancel jobs", "sync results", "check ollama", "postmortem", "memory headroom", "prioritize", "deprioritize", "nice value", "let cell X finish first".
+Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "when will it run", "queue position", "queue rank", "ETA for job", "submit sweep", "cancel jobs", "sync results", "check vllm", "postmortem", "memory headroom", "prioritize", "deprioritize", "nice value", "let cell X finish first".
 
 Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, and sacct memory-headroom recipes. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 4 short helper scripts. Read it before running SSH/rsync commands ad-hoc.
 
@@ -18,18 +18,18 @@ Cluster & repo conventions that matter here:
 
 - **Login node**: `omereliy@slurm.bgu.ac.il` — SSH is pre-authed for the user.
 - **Remote repo root**: `~/pddl-copilot-experiments` on the login node.
-- **Job submission — single backend**:
-  - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch, self-deploys Ollama via Apptainer on a single dedicated GPU (default `rtx_pro_6000:1` 96 GB; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch). Loops `MODELS × THINK_MODES × CONDITIONS` in-process so weights stay resident. `--all` packs the 4 active models (Qwen3.5:0.8B, qwen3.6:27b, qwen3.6:35b, gemma4:31b — post 2026-04-30 roster trim; nemotron-3-nano:30b dropped after Hermes XML parse failures proved content-dependent) into one job under `MAX_LOADED_MODELS=1`. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS=solve+validate_*`, `--time=4h × N`).
-  - The cis-ollama path (`submit_all.sh` waves, `submit_120b_cis.sh`, `run_condition.sbatch`) was retired 2026-04-27. `gpt-oss:120b` is no longer in the active sweep; the large-model band is held by `qwen3.6:35b` (A3B MoE) as of the 2026-04-29 refresh (previously `Qwen3.5:35b` since 2026-04-27).
+- **Job submission**:
+  - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch self-deploys a vLLM OpenAI server via Apptainer on a single dedicated GPU (default `rtx_6000:1` 48 GB; `--gpu-type rtx_pro_6000` is the opt-in 96 GB escape hatch). Each array task is one (model, think, cond) cell with weights resident throughout. `--all` expands to the 5 active models (`Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`) × think × cond. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES={on,off}`, `--time=05:00:00`).
+  - Historical: the cis-ollama path was retired 2026-04-27; the Ollama backend was retired 2026-05-18 (`run_condition_rtx.sbatch` removed 2026-05-23). `gpt-oss:120b` is no longer in the active sweep; the large-model band is held by `qwen3.6:35b` (A3B MoE).
 - **Log file**: `cluster-experimenting/logs/pddl_rtx_<model>-<jobid>.out`. Legacy formats from earlier sweeps: `pddl_<model>_<think>-<jobid>.out` (cis path, retired) and `pddl_<model>_<cond>-<jobid>.out` (pre-2026-04-21).
-- **Results dir**: `results/slurm_<model>_<think>_<cond>_<jobid>/` (schema unchanged — distinguish runs by the job's `meta.host` in `summary.json`).
-- **Ollama server**: `http://localhost:11434` inside the allocated compute node (Apptainer-served, no TLS, unique port per job set by the sbatch).
+- **Results dir**: `results/slurm_vllm_<model>_<think>_<cond>/` (cell-keyed, no jobid suffix post 2026-05-01; `slurm_vllm_` prefix retained from the era when it disambiguated vLLM cells from parallel Ollama cells).
+- **vLLM server**: per-job unique port on the allocated compute node (Apptainer-served, no TLS), exported as `LLM_BASE_URL` by `run_condition_vllm_rtx.sbatch`.
 - **Routing rules** (from `CLAUDE.md`): MCP-tool bugs → `../pddl-copilot/plugins/<name>/server/`. Scoring/prompt/GT → here. This skill is read-only over experiment state.
 
 ## Safety
 
 - **Destructive ops require explicit user consent**: `scancel -u omereliy` (kills all jobs), `rm` on logs or results. Confirm with the user before each.
-- **Never mutate** `run_experiment.py`, `run_condition_rtx.sbatch`, or `submit_with_rtx.sh` from this skill.
+- **Never mutate** `run_experiment.py`, `run_condition_vllm_rtx.sbatch`, or `submit_with_rtx.sh` from this skill.
 - **Preflight before submit**: run `scripts/preflight.sh` first — it pulls both repos, refreshes the plugin venvs, and surfaces GPU pool capacity in one shot. Submitting with a stale venv or against a saturated pool wastes time.
 
 ## Operations scripts (under `scripts/`)
@@ -177,11 +177,11 @@ The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 4-model sweep
    ```
 3. If approved, same command without `--dry-run`.
 
-**`--no-tools` shorthand**: for the baseline-only run, `bash submit_with_rtx.sh --all --no-tools` pins `CONDITIONS=no-tools`, `THINK_MODES=off`, `TASKS="solve validate_domain validate_problem validate_plan"`, and scales `--time` linearly with model count (4h base + 4h per extra model).
+**`--no-tools` shorthand**: for the baseline-only run, `bash submit_with_rtx.sh --all --no-tools` pins `CONDITIONS=no-tools` and `THINK_MODES={on,off}`, with `--time=05:00:00` per cell.
 
-**GPU class**: default `rtx_pro_6000:1` (96 GB, `--mem=80G`). The sweep is hard-pinned to this class for consistency; `--gpu-type rtx_6000` is the opt-in 48 GB escape hatch (use only if `rtx_pro_6000` is saturated). Think modes auto-select to `on off` (both run sequentially in one job so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
+**GPU class**: default `rtx_6000:1` (48 GB, `--mem=48G`). `--gpu-type rtx_pro_6000` is the opt-in 96 GB escape hatch (use only if `rtx_6000` is saturated). Think modes auto-select to `on off` (both run sequentially in one cell so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
 
-**VRAM safety**: the sbatch pins `OLLAMA_NUM_PARALLEL=4`, `MAX_LOADED_MODELS=1`, `CONTEXT_LENGTH=16384` (raised from 8192 on 2026-04-29). After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise NUM_PARALLEL without re-measuring KV-cache allocation.
+**VRAM safety**: the sbatch pins `gpu-memory-utilization=0.85`, `max-num-seqs=4`, `max-model-len=16384`. After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise `max-num-seqs` without re-measuring KV-cache allocation.
 
 ### "Submit a one-off probe / smoke sbatch"
 
@@ -233,7 +233,7 @@ ssh omereliy@slurm.bgu.ac.il "squeue --me -h -o '%i %j' | awk '\$2 ~ /^pddl_/ {p
 
 Two distinct flavours — see **[`cleanup.md`](cleanup.md)** in this skill dir for full recipes, predicates, and the worked 2026-05-18 Qwen3.5:4B/9B Ollama-contamination example.
 
-- **Misconfigured deployment** (wrong sbatch wrote rows to non-canonical paths). Detect via `status.sh`'s "skipped N dirs on non-canonical backend" footer; verify with `scontrol show job <jid> | grep Command` vs the `BACKEND` map; quarantine the whole affected `slurm_*` dirs to `checkpoints/cluster-<UTC-date>-<reason>/`; resubmit with the right `--backend`. Note: `submit_with_rtx.sh:122` defaults to `ollama` regardless of `PDDL_VLLM_VERIFIED_MODELS` membership — pass `--backend vllm` explicitly for vLLM-only models.
+- **Misconfigured deployment** (wrong sbatch wrote rows to non-canonical paths). Historical; post 2026-05-23 there is only one sbatch (`run_condition_vllm_rtx.sbatch`), so backend-routing contamination is no longer possible. Parser-mismatch contamination (wrong `TOOL_CALL_PARSER` for a model) is still possible — detect via 0% tool-selection in `summary.json`, quarantine the affected `slurm_vllm_*` dirs to `checkpoints/cluster-<UTC-date>-<reason>/`, fix `vllm_lookup()` in `cluster-experimenting/lib/defaults.sh`, resubmit.
 - **Cancel-induced error rows** (a `scancel`'d cell left `FR_*` rows in `trials.jsonl` that aren't real model errors). Back up to `trials.jsonl.bak-precleanup<N>-<UTC-timestamp>`, prune by **jid + failure_reason**, never by `failure_reason` alone.
 
 ### Pending REASON cheat sheet (Mar-26 guide §FAQ)

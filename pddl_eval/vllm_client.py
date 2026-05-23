@@ -1,12 +1,16 @@
-"""vLLM OpenAI-compatible client adapter that mimics ollama.AsyncClient.
+"""vLLM client that exposes the wire shape pddl_eval.chat consumes.
 
-Smoke-probe scaffold (2026-05-09) — see development/CHANGELOG.md. The harness
-in pddl_eval/{chat,runner,scoring}.py reads Ollama-shaped response dicts
-(message.tool_calls with dict-form arguments, message.thinking, top-level
-prompt_eval_count / eval_count / done_reason / total_duration). vLLM speaks
+The harness in pddl_eval/{chat,runner,scoring}.py reads response dicts with
+dict-form tool_call arguments, message.thinking, and top-level
+prompt_eval_count / eval_count / done_reason / total_duration. vLLM speaks
 OpenAI's chat-completions shape (string-form tool_call arguments,
 finish_reason, usage.prompt_tokens, optional reasoning_content). This module
 adapts the wire formats so the existing chat loop works unchanged.
+
+Historical: the field names (prompt_eval_count, done_reason, …) are
+inherited from the Ollama backend that was retired in 2026-05; they are the
+internal contract chat.py was built around, kept stable for corpus
+comparability.
 
 Wire-format adaptations:
   * tool_calls[].function.arguments: JSON string  ↔  dict
@@ -33,12 +37,12 @@ mis-extracted on token boundaries. The harness never reads streamed deltas
 either, so non-streaming is the safe default.
 
 Context-overflow handling: vLLM rejects prompt_tokens + max_tokens >
-max_model_len with HTTP 400 BadRequestError, where Ollama silently
-truncates or returns done_reason="length". chat() catches the specific
-overflow body, clips max_tokens to the remaining budget, and retries —
-restoring response-shape parity with the Ollama corpus. The degenerate
-prompt ≥ max_model_len case returns a synthetic length-truncation
-response with empty content (see `_synthesize_overflow_response`).
+max_model_len with HTTP 400 BadRequestError. chat() catches the specific
+overflow body, clips max_tokens to the remaining budget, and retries.
+The degenerate prompt ≥ max_model_len case returns a synthetic
+length-truncation response with empty content (see
+`_synthesize_overflow_response`), preserving the existing chat.py
+classifier for `done_reason="length"` truncation.
 """
 
 import json
@@ -107,11 +111,11 @@ _CTX_RETRY_SAFETY = 128
 _CTX_MAX_RETRIES = 2
 
 
-class VLLMOllamaClient:
-    """Async client exposing ollama.AsyncClient.chat() / aclose() shape."""
+class VLLMClient:
+    """Async vLLM client exposing chat() / aclose()."""
 
-    def __init__(self, host: str | None = None):
-        base_url = (host or _DEFAULT_BASE_URL).rstrip("/")
+    def __init__(self, base_url: str | None = None):
+        base_url = (base_url or _DEFAULT_BASE_URL).rstrip("/")
         if not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
         # api_key is required by the openai client but vLLM's OpenAI server
@@ -157,12 +161,10 @@ class VLLMOllamaClient:
             kwargs["extra_body"] = extra_body
 
         # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
-        # and rejects with HTTP 400. Ollama silently truncates / returns
-        # done_reason="length" on the same overflow. To keep response-shape
-        # parity across backends we catch the specific context-overflow body,
-        # clip max_tokens to the remaining headroom from the latest reported
-        # prompt count, and retry up to _CTX_MAX_RETRIES times before falling
-        # through to a synthetic length-truncation response.
+        # and rejects with HTTP 400. We catch the specific context-overflow
+        # body, clip max_tokens to the remaining headroom from the latest
+        # reported prompt count, and retry up to _CTX_MAX_RETRIES times
+        # before falling through to a synthetic length-truncation response.
         t0 = time.perf_counter_ns()
         resp = None
         for attempt in range(_CTX_MAX_RETRIES + 1):
@@ -180,7 +182,7 @@ class VLLMOllamaClient:
                     # max_model_len, or we've exhausted retries. Surface as
                     # a length-truncation response with empty content; the
                     # harness already buckets done_reason="length" as
-                    # truncation, matching Ollama parity.
+                    # truncation.
                     wall_ns = time.perf_counter_ns() - t0
                     return _synthesize_overflow_response(prompt_tokens, wall_ns)
                 kwargs["max_tokens"] = new_max
@@ -189,10 +191,6 @@ class VLLMOllamaClient:
 
     async def aclose(self) -> None:
         await self._client.close()
-
-    # ollama.AsyncClient also exposes a sync close() alias on some builds —
-    # run_experiment.py guards getattr(client, "aclose", None) or
-    # getattr(client, "close", None), so providing aclose alone suffices.
 
 
 def _to_openai_messages(messages: list) -> list:

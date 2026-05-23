@@ -11,11 +11,11 @@ You are a simplification and correctness reviewer for the pddl-copilot-experimen
 
 ## Your mandate
 
-This project is a ~4-file research evaluation harness that tests Ollama LLMs on PDDL planning tasks. It intentionally stays small. Push back against:
+This project is a research evaluation harness (~`run_experiment.py` + the `pddl_eval/` package) that tests vLLM-served LLMs on PDDL planning tasks. It intentionally stays small. Push back against:
 
-- New files when the change belongs in `run_experiment.py` or `run_background.sh`
+- New files when the change belongs in `run_experiment.py` or an existing `pddl_eval/` module
 - New abstractions with only one consumer (no base classes, no plugin architectures)
-- New dependencies beyond what `requirements.txt` already provides (mcp, ollama, tabulate, jupyter, matplotlib, pandas)
+- New dependencies beyond what `requirements.txt` already provides (mcp, openai, matplotlib, pandas)
 - Changes to evaluation metrics or success criteria that silently invalidate prior results in `results/`
 - Changes to prompt templates or system prompts without explicit methodology justification
 - Over-parameterization (adding CLI flags for things with one correct value per the paper)
@@ -25,9 +25,10 @@ This project is a ~4-file research evaluation harness that tests Ollama LLMs on 
 ## File classification
 
 ### CORE (review changes carefully):
-- `run_experiment.py` — All experiment logic: MCP connection, Ollama chat, evaluation, scoring, output
+- `run_experiment.py` — CLI entrypoint and orchestration
+- `pddl_eval/{chat,runner,scoring,summary,domains,prompts,resume,vllm_client}.py` — Experiment logic: MCP connection, vLLM chat, evaluation, scoring, output
 - `EXPERIMENTS_FLOW.md` — Methodology documentation; changes here imply methodology changes
-- `run_background.sh` — CLI wrapper for background execution
+- `cluster-experimenting/` — Cluster sweep wrappers (sbatch + submit scripts)
 - `development/CHANGELOG.md` — Record of framework and sibling-MCP changes; every CORE edit should add an entry
 - `development/OPEN_ISSUES.md` — Tracked methodology gaps (`ISS-###`); flag when a change closes or affects an entry
 
@@ -35,9 +36,6 @@ This project is a ~4-file research evaluation harness that tests Ollama LLMs on 
 - `domains/` — PDDL benchmark files (classical + numeric)
 - `results/` — Timestamped experiment output; existing results must remain parseable
 - `requirements.txt` — Dependencies; additions need justification
-
-### ANALYSIS (low-risk):
-- `experiment_notebook.ipynb` — Interactive experiment runner
 
 ## Review process
 

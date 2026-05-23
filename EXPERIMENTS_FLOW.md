@@ -12,16 +12,13 @@ Reproduces and extends the evaluation from Benyamin et al., 2025 (arXiv:2509.129
 ## 1. High-Level Pipeline
 
 The harness is `run_experiment.py`. It runs one model × one think-mode × one
-condition (4 tools-conditions or no-tools) per invocation. There are two
-driver paths:
-
-- **Local laptop** — `run_background.sh [small|large|both]` wraps `caffeinate`
-  + a local `ollama serve`, then loops `(tool_filter, prompt_style)` itself.
-- **BGU cluster** — `cluster-experimenting/submit_with_rtx.sh <model>...`
-  (single submit path; default GPU `rtx_pro_6000:1`). See
-  `cluster-experimenting/README.md`. The sbatch loops
-  `MODELS × THINK_MODES × CONDITIONS` in-process so weights stay resident
-  on the allocated GPU.
+condition (4 tools-conditions or no-tools) per invocation. The only active
+driver path is the BGU cluster — `cluster-experimenting/submit_with_rtx.sh
+<model>...` (single submit path; default GPU `rtx_6000:1`). See
+`cluster-experimenting/README.md`. Each array task self-deploys a vLLM
+server, then loops `THINK_MODES × CONDITIONS` for the assigned cell.
+The pre-2026-05-18 laptop driver (`run_background.sh` over a local
+`ollama serve`) was retired alongside the Ollama backend.
 
 ```
 run_experiment.py
@@ -36,8 +33,8 @@ run_experiment.py
 Each `(model, think, condition, tool_filter, prompt_style)` produces its
 own output directory:
 ```
-results/slurm_<model>_<think>_<cond>_<jobid>/                    # cluster
-results/{full,partial}/{tag}_{timestamp}_{filter}_{prompt}/      # laptop
+results/slurm_vllm_<model>_<think>_<cond>/                       # cluster
+results/{full,partial}/<run-tag>_<timestamp>/                    # local CLI (--output-dir auto)
 results/smoke/{fixed,shuffle}_<sha>_<ts>/                        # --smoke
     single_task_{ts}.json
     summary_{ts}.json
@@ -55,30 +52,28 @@ The experiment crosses five independent variables:
 
 | Dimension | Values | Controls |
 |-----------|--------|----------|
-| **Model** | Cluster sweep (default, post 2026-04-30 roster trim): `Qwen3.5:0.8B`, `qwen3.6:27b`, `qwen3.6:35b`, `gemma4:31b` (peak ~26 GB resident, packed in one rtx_pro_6000:1 job under `MAX_LOADED_MODELS=1`). Paper-aligned (laptop): `qwen3:0.6b`, `qwen3:4b`. `gpt-oss:120b` retired 2026-04-27; `gpt-oss:20b` and `Qwen3.5:27b/35b` superseded 2026-04-29; `nemotron-3-nano:30b` (the 2026-04-29 non-Qwen/Gemma slot) dropped 2026-04-30 after Hermes XML parse failures proved content-dependent (CHANGELOG). | Model capacity & family |
+| **Model** | Cluster sweep (default, post 2026-05-18 backend unification): `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` — full roster on vLLM `rtx_6000:1`. `gpt-oss:120b` retired 2026-04-27; `gpt-oss:20b` and `Qwen3.5:27b/35b` superseded 2026-04-29; `nemotron-3-nano:30b` dropped 2026-04-30 (Hermes XML parse failures proved content-dependent); `qwen3.6:27b` retired and `Qwen3.5:4B`/`Qwen3.5:9B` added 2026-05-17; `gemma4:31b` dense (Ollama) replaced with `gemma4:26b-a4b` MoE (vLLM) 2026-05-18 (CHANGELOG). | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all | Which tools the model sees (single active value) |
 | **Prompt style** | minimal | System prompt detail level (single active value) |
-| **Think mode** | on, off, default | `on`/`off` toggles the Ollama `think` kwarg for models that support it (Qwen3.x, qwen3.6). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
+| **Think mode** | on, off, default | `on`/`off` toggles the `think` kwarg (forwarded as vLLM `chat_template_kwargs.enable_thinking`) for models that support it (Qwen3.x, qwen3.6). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
 
 The cluster's model set differs from the paper's `qwen3:0.6b`/`qwen3:4b`
-because the BGU Ollama-on-cluster inventory does not host those tags
-(verified 2026-04-20). The four-model set above spans the same parameter
-range (≤1B → 35B) and covers two families (Qwen, Gemma). The 2026-04-29
-roster refresh attempted to keep the family-diversity slot non-Qwen by
-swapping `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (hybrid
+because the original BGU model inventory (2026-04-20) did not host those
+tags, and the active roster has since drifted further as the backend
+migrated to vLLM (2026-05-18). The five-model set above spans the same
+parameter range (≤1B → 35B) and covers two families (Qwen, Gemma). The
+2026-04-29 roster refresh attempted to keep the family-diversity slot
+non-Qwen by swapping `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (hybrid
 Mamba+MoE+Attn), but smoke 17274424 (2026-04-30) showed Hermes XML
 tool-call parse failures persisting on the same 4 cells across the
 4096→6144 num_predict bump — confirming the failure mode as
-content-dependent, not budget-dependent — so nemotron was dropped from
-the active roster pending an alternate non-Qwen/Gemma replacement.
-`qwen3.6:27b` is text-capable on the dense path; the Ollama tag bundles
-multimodal weights but text-only inference is unaffected. See §11 for
-the full deviations table.
+content-dependent, not budget-dependent — so nemotron was dropped.
+See §11 for the full deviations table.
 
 ### 2.1 Condition: with-tools vs without-tools
 
-- **with-tools**: The model has MCP tool descriptions injected into the Ollama `tools` parameter. It can call tools in a loop (up to 10 iterations). The system prompt instructs it to use tools.
+- **with-tools**: The model has MCP tool descriptions injected into the OpenAI `tools` parameter on the vLLM chat-completions request. It can call tools in a loop (up to 10 iterations). The system prompt instructs it to use tools.
 - **without-tools**: No tools available. The model must answer from its parametric knowledge. The system prompt says to work without external tools.
 
 ### 2.2 Tool Filter
@@ -132,9 +127,10 @@ A model can have high tool_selected but low success (knows *what* to call but ca
 
 ### 4.2 No-PDDL-Tools (formerly "without-tools")
 
-PR-4 (2026-04-29) reframes this condition. The model still has Ollama
-`format=<json_schema>` constraint enforcement available; what's removed
-is the PDDL-specific MCP tooling (planning, validation, simulation).
+PR-4 (2026-04-29) reframes this condition. The model still has
+`format=<json_schema>` constraint enforcement available (forwarded as
+vLLM `guided_json`); what's removed is the PDDL-specific MCP tooling
+(planning, validation, simulation).
 The user-facing label is **no-PDDL-tools**. The internal field name
 (`with_tools: bool`) and JSON `condition: "no-tools"` value are unchanged
 for back-compat with the 2026-04 result corpus and downstream notebooks.
@@ -228,8 +224,9 @@ matrix:
   Implementation note: `async_main` splits a `(--conditions=both,
   think!=off)` invocation into two sequential `run_single_task_experiment`
   calls (one per condition), keeping `num_ctx` constant within each call.
-  Without the split, mid-call `num_ctx` flips deadlocked Ollama under
-  concurrency (smoke job 17244356, 2026-04-28).
+  Without the split, mid-call `num_ctx` flips deadlocked the retired
+  Ollama backend under concurrency (smoke job 17244356, 2026-04-28); the
+  per-call invariant is preserved for corpus comparability under vLLM.
 - **Per-task `num_predict` caps** (`pddl_eval/runner.py`
   `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=4096`,
   `simulate=4096`. Non-solve caps were raised from 1024/1536 → 4096 on
@@ -343,9 +340,9 @@ Tools are served by two MCP plugin servers from the [pddl-copilot](https://githu
 
 **Input detection**: Tools check if an argument starts with `(` or `;` or contains `(define ` to detect inline PDDL content. Otherwise the argument is treated as a file path. This is why passing a domain name like `"blocksworld"` fails -- it's interpreted as a file path that doesn't exist.
 
-**Response-size policy (structured projection, no truncation).** Each validator tool accepts an optional `verbose` parameter that defaults to `True` so standalone MCP callers (Claude Desktop, `ollama_mcp_bridge.py`, future consumers) still receive the full pyvalidator fidelity by default. Setting `verbose=False` drops the redundant fields that re-serialize information already present elsewhere in the response: `details` on the three `validate_*` tools; `report` and `details` on `get_state_transition`. Kept fields — `status`, `report` (validate), `steps`, `trajectory` with full `boolean_fluents`/`numeric_fluents` per step — are returned in full; there is no item or character cap.
+**Response-size policy (structured projection, no truncation).** Each validator tool accepts an optional `verbose` parameter that defaults to `True` so standalone MCP callers (Claude Desktop, future consumers) still receive the full pyvalidator fidelity by default. Setting `verbose=False` drops the redundant fields that re-serialize information already present elsewhere in the response: `details` on the three `validate_*` tools; `report` and `details` on `get_state_transition`. Kept fields — `status`, `report` (validate), `steps`, `trajectory` with full `boolean_fluents`/`numeric_fluents` per step — are returned in full; there is no item or character cap.
 
-**Experiment bridge enforces `verbose=False`.** `run_experiment.py::MCPPlanner` strips the `verbose` property from each validator tool's `inputSchema` before passing tools to Ollama, and injects `verbose=False` on every call (see `_PINNED_VERBOSE_FALSE = {"validate_domain", "validate_problem", "validate_plan", "get_state_transition"}` in `pddl_eval/chat.py:86`). The experiment agent cannot see or control the flag. This keeps tool responses compact for the LLM without changing the plugin's default contract for other callers. Prior `tool_calls[*].result` strings recorded in `results/` are not byte-comparable with post-change runs, but scoring (`_parse_validation_verdict`, simulate non-empty check) is unchanged.
+**Experiment bridge enforces `verbose=False`.** `run_experiment.py::MCPPlanner` strips the `verbose` property from each validator tool's `inputSchema` before passing tools to the LLM, and injects `verbose=False` on every call (see `_PINNED_VERBOSE_FALSE = {"validate_domain", "validate_problem", "validate_plan", "get_state_transition"}` in `pddl_eval/chat.py:86`). The experiment agent cannot see or control the flag. This keeps tool responses compact for the LLM without changing the plugin's default contract for other callers. Prior `tool_calls[*].result` strings recorded in `results/` are not byte-comparable with post-change runs, but scoring (`_parse_validation_verdict`, simulate non-empty check) is unchanged.
 
 **Aligned cap hygiene in the MCP repo.** The existing caps in `../pddl-copilot` now follow a consistent `DEFAULT_*` module-constant + `PDDL_*` env override convention (defaults unchanged):
 
@@ -402,7 +399,7 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pro
 | response | Model text response (truncated to `RESPONSE_SNAPSHOT_LEN=500` chars) |
 | thinking | Last-turn structured `message.thinking` content (PR-2, truncated to `THINKING_SNAPSHOT_LEN=4096` chars). Empty string when the model didn't emit thinking. For multi-turn `with_tools` runs, only the last turn's thinking is recorded — earlier-turn reasoning is observable via `tool_calls[]`. |
 | tool_calls | List of `{name, arguments, result}` dicts |
-| tokens | Dict `{prompt, completion, turns, total_duration_ns, eval_duration_ns}` (PR-2). Counts are summed across `client.chat()` turns; `turns=1` for `with_tools=False`, up to `MAX_TOOL_LOOPS=10` otherwise. Durations are Ollama's server-side aggregates; `eval_duration_ns ≤ total_duration_ns`. Used for tokens-per-second and prompt-shrinkage analysis. |
+| tokens | Dict `{prompt, completion, turns, total_duration_ns, eval_duration_ns}` (PR-2). Counts are summed across `client.chat()` turns; `turns=1` for `with_tools=False`, up to `MAX_TOOL_LOOPS=10` otherwise. Durations are synthesized client-side from `perf_counter_ns` around the vLLM call (legacy: Ollama backend reported server-side aggregates); `eval_duration_ns ≤ total_duration_ns`. Used for tokens-per-second and prompt-shrinkage analysis. |
 | duration_s | Wall-clock time around the chat helper (Python + MCP latency included; not the same as `tokens.total_duration_ns`) |
 | error | Error message if any |
 | failure_reason | `FR_*` constant from `pddl_eval/scoring.py` ("ok" iff `success=True`); see `failure_reasons` description above for the open-ended vocabulary |
@@ -445,23 +442,13 @@ See `cluster-experimenting/README.md` for full submission flow,
 `.claude/skills/cluster-ops/SKILL.md` for status/preflight/postmortem
 helpers.
 
-### Laptop background
-
-```bash
-./run_background.sh small    # qwen3:0.6b -- ~4 runs (2 filters x 2 prompts)
-./run_background.sh large    # qwen3:4b
-./run_background.sh          # both models
-```
-
-`run_background.sh` is macOS-oriented (uses `caffeinate`, expects local
-`ollama serve`). On Linux laptops, run `run_experiment.py` directly.
-
 ### Direct CLI
 
 ```bash
 python3 run_experiment.py \
     --marketplace-path ../pddl-copilot \
-    --models qwen3:0.6b \
+    --llm-base-url http://localhost:8000 \
+    --models Qwen3.5:0.8B \
     --tool-filter all \
     --prompt-style minimal \
     --output-dir results/my_run/
@@ -487,13 +474,13 @@ squeue --me                 # All my running/pending jobs
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
 | Tool filter | All tools exposed | All tools exposed (paper-aligned) |
 | Prompt style | Single prompt | `minimal` only (paper-aligned) |
-| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-05-18 backend unification): `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` — full roster on vLLM `rtx_6000:1`. Laptop default: `qwen3:0.6b`, `qwen3:4b`. Roster history: `gpt-oss:120b` → `Qwen3.5:35b` (large-band, 2026-04-27); `Qwen3.5:27b/35b` → `qwen3.6` successors and `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (2026-04-29); `nemotron-3-nano:30b` dropped (2026-04-30, smoke 17274424 confirmed deterministic Hermes XML parse failures); `qwen3.6:27b` retired and `Qwen3.5:4B` + `Qwen3.5:9B` added (2026-05-17, mid-band ladder); `gemma4:31b` dense Ollama replaced with `gemma4:26b-a4b` MoE on vLLM (2026-05-18, smoke 17638752 — retires the backend-split, full roster now single-backend). The cis-ollama fallback path was retired 2026-04-27. |
+| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-05-18 backend unification): `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` — full roster on vLLM `rtx_6000:1`. Roster history: `gpt-oss:120b` → `Qwen3.5:35b` (large-band, 2026-04-27); `Qwen3.5:27b/35b` → `qwen3.6` successors and `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (2026-04-29); `nemotron-3-nano:30b` dropped (2026-04-30, smoke 17274424 confirmed deterministic Hermes XML parse failures); `qwen3.6:27b` retired and `Qwen3.5:4B` + `Qwen3.5:9B` added (2026-05-17, mid-band ladder); `gemma4:31b` dense Ollama replaced with `gemma4:26b-a4b` MoE on vLLM (2026-05-18, smoke 17638752 — retired the backend split, full roster now single-backend). The cis-ollama fallback path was retired 2026-04-27. |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on every validator tool) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for the three `validate_*` tools and `{valid, steps, trajectory}` for `get_state_transition`. |
 | Simulate success criterion | Non-error tool result | Canonical-form trajectory deep-equality against oracle `gt["trace"]` on both with-tools and no-PDDL-tools paths via `_normalize_trajectory` (PR-4, 2026-04-29) — bridges oracle (`boolean_fluents: dict[str, bool]`) and model (`state.boolean: list[str]`) shapes to a sorted/lower-cased canonical form. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
 | No-tools task set | All 5 tasks scored | All 5 tasks scored under PR-4 (2026-04-29) with format-constrained sampling — `simulate` re-enabled alongside the shared `_normalize_trajectory` grader, replacing the keyword-check that ISS-002 originally dropped. The user-facing label changed to **no-PDDL-tools** to reflect that format constraint is still available; only PDDL-specific MCP tools (planner/validator/simulator) are removed. Internal `with_tools: bool` and JSON `condition: "no-tools"` field unchanged for back-compat. |
-| No-tools grader | Free-text regex extractors (`extract_plan_lines`, `extract_verdict`, simulate keyword check) | Per-task Pydantic schema (`pddl_eval/schemas.py`) enforced via Ollama `format=<json_schema>` (PR-4, 2026-04-29). Free-text extractors retained as fallback for `solve` / `validate_*` when JSON parse fails; `simulate` has no fallback (parse failure → `FR_FORMAT_PARSE_FAIL`). Pre-PR-4 no-tools rows are NOT directly comparable to post-PR-4 no-PDDL-tools rows — the constraint narrows the response space and may regress tiny models that conflict with the schema; the new `FR_FORMAT_PARSE_FAIL` tag quantifies that rate per cell. |
+| No-tools grader | Free-text regex extractors (`extract_plan_lines`, `extract_verdict`, simulate keyword check) | Per-task Pydantic schema (`pddl_eval/schemas.py`) enforced via `format=<json_schema>` → vLLM `guided_json` (PR-4, 2026-04-29). Free-text extractors retained as fallback for `solve` / `validate_*` when JSON parse fails; `simulate` has no fallback (parse failure → `FR_FORMAT_PARSE_FAIL`). Pre-PR-4 no-tools rows are NOT directly comparable to post-PR-4 no-PDDL-tools rows — the constraint narrows the response space and may regress tiny models that conflict with the schema; the new `FR_FORMAT_PARSE_FAIL` tag quantifies that rate per cell. |
 | No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. The chain phase itself was archived 2026-05-05 (see §4.3). |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.

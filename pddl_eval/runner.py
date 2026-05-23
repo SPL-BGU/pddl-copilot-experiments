@@ -6,8 +6,8 @@ Owns:
   * `evaluate_one` — produce one TaskResult for (model, task, domain,
     problem, prompt_variant, with_tools).
   * `run_single_task_experiment` — full single-task sweep with bounded
-    Ollama concurrency, --shard partitioning, and --smoke-shuffle cell
-    assignment.
+    client-side concurrency, --shard partitioning, and --smoke-shuffle
+    cell assignment.
   * `run_chain_experiment` — multi-task chain sweep (Section 4.4).
 
 DAG: runner → prompts, chat, domains, scoring.
@@ -51,7 +51,7 @@ from .scoring import (
 )
 
 if TYPE_CHECKING:
-    import ollama
+    from pddl_eval.vllm_client import VLLMClient
 
 
 # ---------------------------------------------------------------------------
@@ -69,8 +69,10 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # 37.1% (simulate), 32.7% (validate_problem), 17.4% (validate_domain) at
 # the old caps -- thinking-mode reasoning + tool-call XML emissions were
 # being cut mid-stream, biasing accuracy and producing the bulk of
-# `ollama_parse_error` records (Hermes/harmony XML parser fails on
-# truncated <function><parameter> tags).
+# `ollama_parse_error` records (failure-reason value retained for corpus
+# stability; classifies Hermes/harmony XML parser fails on truncated
+# <function><parameter> tags — same parser family is in vLLM via
+# --tool-call-parser hermes/qwen3_xml).
 #
 # Non-solve caps further raised 4096 -> 6144 on 2026-04-29 (same-day follow-
 # up) after the post-bump nemotron-3-nano:30b smoke (job 17266087) emitted
@@ -156,19 +158,21 @@ RESPONSE_SNAPSHOT_LEN = 500
 # record JSON. Full content is reproducible by re-running the prompt.
 THINKING_SNAPSHOT_LEN = 4096
 
-# Substring signatures of Ollama's server-side tool-call parser failures.
-# Matched against the exception text to route these into FR_OLLAMA_PARSE_ERROR
-# instead of generic FR_EXCEPTION. Two parser families produce the bucket:
-#   "error parsing tool call" — JSON tool-arg parser, emitted by
-#       ollama/server/routes.go on multi-line PDDL strings (gpt-oss, 2026-04-21).
-#   "XML syntax error"        — Hermes/harmony chat-template XML parser, emitted
-#       on malformed/truncated <function><parameter>... tool-call emissions
-#       (nemotron-3-nano:30b on validate_problem/validate_plan, 2026-04-29;
-#       smoke 17274424 on 2026-04-30 confirmed identical 4-cell signature
-#       across the 4096->6144 num_predict bump, establishing the failure as
-#       content-dependent rather than budget-dependent — model dropped from
-#       active roster, signature retained for future models with the same
-#       tool-call template family).
+# Substring signatures of server-side tool-call parser failures. Matched
+# against the exception text to route these into FR_OLLAMA_PARSE_ERROR
+# (failure-reason value retained for corpus stability) instead of generic
+# FR_EXCEPTION. Two parser families produce the bucket:
+#   "error parsing tool call" — JSON tool-arg parser, originally observed
+#       from ollama/server/routes.go on multi-line PDDL strings (gpt-oss,
+#       2026-04-21); same wording surfaces from vLLM tool-call parsers.
+#   "XML syntax error"        — Hermes/harmony chat-template XML parser,
+#       emitted on malformed/truncated <function><parameter>... tool-call
+#       emissions (nemotron-3-nano:30b on validate_problem/validate_plan,
+#       2026-04-29; smoke 17274424 on 2026-04-30 confirmed identical 4-cell
+#       signature across the 4096->6144 num_predict bump, establishing the
+#       failure as content-dependent rather than budget-dependent — model
+#       dropped from active roster, signature retained for future models
+#       with the same tool-call template family).
 OLLAMA_TOOL_PARSE_SIGNATURES: tuple[str, ...] = (
     "error parsing tool call",
     "XML syntax error",
@@ -252,7 +256,7 @@ class TaskResult:
 
 
 async def evaluate_one(
-    client: "ollama.AsyncClient",
+    client: "VLLMClient",
     model: str,
     task: str,
     domain_name: str,
@@ -320,7 +324,7 @@ async def evaluate_one(
             )
         else:
             # PR-4: no-PDDL-tools = format-constrained sampling. Per-task
-            # JSON schema enforced via Ollama format=. Free-text fallback
+            # JSON schema enforced via format= (vLLM guided_json). Free-text fallback
             # in scoring.check_success keeps tiny models scoring above
             # zero when sampling degenerates under the constraint.
             response_text, done_reason, tokens, thinking_text = await chat_without_tools(
@@ -352,9 +356,10 @@ async def evaluate_one(
     failure_reason = FR_OK
     if error:
         success = False
-        # Ollama's server-side tool-call JSON parser chokes on multi-line
-        # strings in tool arguments (observed heavily with gpt-oss on PDDL
-        # domains). Classify separately so analysis can quantify the upstream
+        # Tool-call JSON/XML parsers (originally observed in Ollama, now
+        # vLLM tool-call parsers) choke on multi-line strings in tool
+        # arguments (observed heavily with gpt-oss on PDDL domains).
+        # Classify separately so analysis can quantify the upstream
         # parser-bug rate instead of lumping it into generic exceptions.
         if any(sig in error for sig in OLLAMA_TOOL_PARSE_SIGNATURES):
             failure_reason = FR_OLLAMA_PARSE_ERROR
@@ -480,7 +485,7 @@ def _trial_key(
 
 
 async def run_single_task_experiment(
-    client: "ollama.AsyncClient",
+    client: "VLLMClient",
     models: list[str],
     tasks: list[str],
     domains: dict,
@@ -502,7 +507,7 @@ async def run_single_task_experiment(
     progress_path: Path | None = None,
     restored_by_key: dict[TrialKey, TaskResult] | None = None,
 ) -> list[TaskResult]:
-    """Run the full single-task sweep with bounded Ollama concurrency.
+    """Run the full single-task sweep with bounded client-side concurrency.
 
     Jobs are enumerated up-front so `[i/N]` numbering is stable across
     reorderings; completions are printed as they finish via
@@ -847,7 +852,7 @@ async def run_single_task_experiment(
 
 
 async def run_chain_experiment(
-    client: "ollama.AsyncClient",
+    client: "VLLMClient",
     models: list[str],
     domains: dict,
     ground_truth: dict,
@@ -969,10 +974,11 @@ async def run_chain_experiment(
                     "task": task,
                     "exc_type": type(exc).__name__,
                     "exc_message": exc_text[:RESPONSE_SNAPSHOT_LEN],
-                    # Classify upstream Ollama tool-call JSON parser
+                    # Classify upstream tool-call JSON/XML parser
                     # failures so chain analysis can separate them
                     # from other exception types (matches
-                    # FR_OLLAMA_PARSE_ERROR in evaluate_one).
+                    # FR_OLLAMA_PARSE_ERROR in evaluate_one — value
+                    # retained for corpus stability).
                     "is_ollama_parse_error": any(
                         sig in exc_text for sig in OLLAMA_TOOL_PARSE_SIGNATURES
                     ),

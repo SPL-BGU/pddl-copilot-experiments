@@ -1,12 +1,11 @@
 # shellcheck shell=bash
 # Shared cluster-experimenting defaults sourced by submit_with_rtx.sh and
-# run_condition_rtx.sbatch. Update here to change the active model roster
-# or the default think × cond axes — both wrappers pick up the change.
+# run_condition_vllm_rtx.sbatch. Update here to change the active model
+# roster or the default think × cond axes — both wrappers pick up the change.
 
-# Default 5-model roster (post 2026-05-18 swap: dropped gemma4:31b dense
-# Ollama, added gemma4:26b-a4b MoE on vLLM — the whole roster now runs
-# under a single backend, retiring the backend split). See
-# development/CHANGELOG.md for full roster history.
+# Default 5-model roster (post 2026-05-18: backend unified on vLLM —
+# gemma4:31b dense was swapped for gemma4:26b-a4b MoE, completing the
+# Ollama retirement). See development/CHANGELOG.md for full roster history.
 # Update here to change the --all default.
 PDDL_DEFAULT_MODELS=(Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B qwen3.6:35b gemma4:26b-a4b)
 
@@ -24,21 +23,22 @@ PDDL_SLOW_MODELS=(gemma4:26b-a4b qwen3.6:35b)
 PDDL_DEFAULT_THINK_MODES=(on off)
 PDDL_DEFAULT_CONDITIONS=(no-tools tools_all_minimal)
 
-# Default sbatch CONDITIONS env (space-separated, used when run_condition_rtx.sbatch
-# is invoked WITHOUT CELLS_LIST — legacy direct-sbatch path).
+# Default sbatch CONDITIONS env (space-separated, used when
+# run_condition_vllm_rtx.sbatch is invoked WITHOUT CELLS_LIST — legacy
+# direct-sbatch path).
 PDDL_DEFAULT_SBATCH_CONDITIONS="tools_all_minimal"
 
-# vLLM production roster. Mirrored by the wrapper's --backend vllm gate
-# and by `vllm_lookup` below. Append a model only after its parser has
-# been verified via `submit_with_rtx.sh --backend vllm --smoke <model>`
-# (one-cell smoke that exercises the prod sbatch's smoke fastpath; the
-# 2026-05-10 hermes→qwen3_xml fix landed because the original 27B AWQ
-# probe skipped this step). The lookup table is the single source of
-# truth for OLLAMA_TAG → (HF id, parser flags) used by both
-# run_condition_vllm_rtx.sbatch and submit_with_rtx.sh.
+# vLLM production roster. Mirrored by `vllm_lookup` below. Append a model
+# only after its parser has been verified via
+# `submit_with_rtx.sh --smoke <model>` (one-cell smoke that exercises
+# the prod sbatch's smoke fastpath; the 2026-05-10 hermes→qwen3_xml fix
+# landed because the original 27B AWQ probe skipped this step). The
+# lookup table is the single source of truth for canonical-tag →
+# (HF id, parser flags) used by both run_condition_vllm_rtx.sbatch and
+# submit_with_rtx.sh.
 PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B gemma4:26b-a4b)
 
-# Resolve canonical Ollama tag → (HF id, parser flags) for vLLM serve.
+# Resolve canonical model tag → (HF id, parser flags) for vLLM serve.
 # Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success, plus
 # MAX_NUM_BATCHED_TOKENS for multimodal-aware cases where vLLM's default
 # 2048-token batch budget is too small for the model's per-MM-item
@@ -64,7 +64,7 @@ vllm_lookup() {
             # qwen3_5 dense arch, FP16. ~9 GB weights on rtx_6000:1 leaves
             # ample KV headroom. Parsers inherited from the Qwen3.5 family
             # (same as 0.8B/9B). Smoke-verify via
-            # `submit_with_rtx.sh --backend vllm --smoke <model>` before
+            # `submit_with_rtx.sh --smoke <model>` before
             # flipping the production sweep.
             HF_MODEL="Qwen/Qwen3.5-4B"
             TOOL_CALL_PARSER="qwen3_xml"
@@ -75,7 +75,7 @@ vllm_lookup() {
             # Note: Qwen3.5 ladder skips 8B; 9B is the next dense size
             # above 4B (HF id Qwen/Qwen3.5-9B, NOT Qwen3.5-8B which
             # does not exist). Smoke-verify via
-            # `submit_with_rtx.sh --backend vllm --smoke <model>` before
+            # `submit_with_rtx.sh --smoke <model>` before
             # production.
             HF_MODEL="Qwen/Qwen3.5-9B"
             TOOL_CALL_PARSER="qwen3_xml"
@@ -103,7 +103,7 @@ vllm_lookup() {
             ;;
         *)
             echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
-            echo "       Verify the parser via 'submit_with_rtx.sh --backend vllm --smoke <model>' before adding it." >&2
+            echo "       Verify the parser via 'submit_with_rtx.sh --smoke <model>' before adding it." >&2
             return 1
             ;;
     esac

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Submit a SLURM job array on the BGU CIS cluster covering one or more
 # (model, think_mode, condition) cells. Each array task self-deploys an
-# isolated Apptainer Ollama on a single GPU node, then runs run_experiment.py
+# isolated vLLM server on a single GPU node, then runs run_experiment.py
 # against localhost:<port> for that one cell.
 #
 # Per-cell array model (replaces the prior packed-job topology, 2026-04-30):
@@ -24,7 +24,7 @@
 #   * No --cpus-per-task — uses cluster default cpus-per-gpu.
 #   * --mem cap: 80G on rtx_pro_6000 (default), 48G on rtx_6000 (opt-in).
 #   * --tmp=50G on every job — explicit /scratch/$USER/$JOBID per Mar-26
-#     guide §"SSD Drive". Covers ollama.sif (~3 GB) + one model (~24 GB
+#     guide §"SSD Drive". Covers vLLM image + one HF model snapshot (~24 GB
 #     peak for qwen3.6:35b in single-cell mode; gemma4:26b-a4b ~16 GB).
 #
 # Usage:
@@ -121,7 +121,6 @@ CONTINUE_PARTIAL=""
 PARTIAL_K=""
 EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
-BACKEND="ollama"
 TIME_OVERRIDE=""
 MODELS=()
 
@@ -139,7 +138,6 @@ while [[ $# -gt 0 ]]; do
         --partial) shift; PARTIAL_K="$1"; shift ;;
         --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
-        --backend) shift; BACKEND="$1"; shift ;;
         --time) shift; TIME_OVERRIDE="$1"; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -198,32 +196,22 @@ if [ "$ALL" -eq 1 ]; then
 fi
 
 if [ "${#MODELS[@]}" -eq 0 ]; then
-    echo "Usage: bash $0 <model> [<model>...] [--all] [--no-tools] [--backend ollama|vllm] [--gpu-type rtx_6000|rtx_pro_6000] [--think-modes \"on off\"] [--dry-run]" >&2
+    echo "Usage: bash $0 <model> [<model>...] [--all] [--no-tools] [--gpu-type rtx_6000|rtx_pro_6000] [--think-modes \"on off\"] [--dry-run]" >&2
     exit 1
 fi
 
-# Backend gate. vLLM fails fast on unverified models via vllm_lookup
-# (single source of truth in lib/defaults.sh). The sbatch re-runs the
-# same lookup at runtime for defense-in-depth.
-case "$BACKEND" in
-    ollama) SBATCH_FILE="$SCRIPT_DIR/run_condition_rtx.sbatch" ;;
-    vllm)
-        SBATCH_FILE="$SCRIPT_DIR/run_condition_vllm_rtx.sbatch"
-        for m in "${MODELS[@]}"; do
-            vllm_lookup "$m" >/dev/null || exit 1
-        done
-        ;;
-    *) echo "Error: --backend must be ollama or vllm (got: $BACKEND)" >&2; exit 1 ;;
-esac
+# Model gate. vllm_lookup is the single source of truth for which
+# (HF id, parser flags) we'll launch with; fail fast on unverified models.
+# The sbatch re-runs the same lookup at runtime for defense-in-depth.
+SBATCH_FILE="$SCRIPT_DIR/run_condition_vllm_rtx.sbatch"
+for m in "${MODELS[@]}"; do
+    vllm_lookup "$m" >/dev/null || exit 1
+done
 
-# Default GPU. Ollama: rtx_pro_6000 (96 GB, single hard-pinned class).
-# vLLM: rtx_6000 (48 GB, smoke-verified — 27B AWQ peaks 83% VRAM, 0.8B
-# well below). Both have --gpu-type as the opt-in override.
-if [ "$BACKEND" = "vllm" ]; then
-    GPU_TYPE="${GPU_TYPE:-rtx_6000}"
-else
-    GPU_TYPE="${GPU_TYPE:-rtx_pro_6000}"
-fi
+# Default GPU: rtx_6000 (48 GB) — smoke-verified for the full active
+# roster (27B AWQ peaks 83% VRAM, 0.8B well below). rtx_pro_6000 (96 GB)
+# is the opt-in escape for tools×on cells that need extra headroom.
+GPU_TYPE="${GPU_TYPE:-rtx_6000}"
 
 case "$GPU_TYPE" in
     rtx_6000)
@@ -302,30 +290,24 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 #   no-tools cells: ~6-7h (5-task matrix incl. simulate after PR-4).
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ -n "$TIME_OVERRIDE" ]; then
-    # Explicit --time wins over all auto-computed defaults. Required when the
-    # built-in vLLM ceiling (06:00:00 tools) is too tight for heavy cells —
+    # Explicit --time wins over all auto-computed defaults. Required when
+    # the built-in ceiling (06:00:00 tools) is too tight for heavy cells —
     # 27B/35B tools cells empirically extrapolate to ~19h and silently
-    # TIMEOUT at the wrapper default. Pass an HH:MM:SS or D-HH:MM:SS value.
+    # TIMEOUT at the wrapper default. Pass HH:MM:SS or D-HH:MM:SS.
     TIME_ARG=(--time="$TIME_OVERRIDE")
 elif [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     TIME_ARG=(--time=03:00:00)
-elif [ "$BACKEND" = "vllm" ]; then
-    # vLLM smoke 2026-05-10 measured 4.6× speedup on 27B tools×off (vLLM
-    # wall ~888s vs Ollama 14604s sum-trial). Per-cell wall extrapolates
-    # to ~1-2h for tools cells. The vllm-production-plan.md 2026-05-09
-    # locked --time=06:00:00 (tools) / 05:00:00 (no-tools) as production
-    # ceilings with headroom. Mixed-condition submissions use the larger
-    # of the two so the slowest cell-type fits. Heavy models (27B/35B)
-    # blow past these — override with --time when packing them.
+else
+    # vLLM smoke 2026-05-10 measured ~1-2h per tools cell (4.6× speedup
+    # over the retired Ollama backend on 27B tools×off — historical context
+    # only). vllm-production-plan.md 2026-05-09 locked --time=06:00:00
+    # (tools) / 05:00:00 (no-tools) as production ceilings. Heavy models
+    # (27B/35B) blow past these — override with --time when packing them.
     if [ "$NO_TOOLS" -eq 1 ]; then
         TIME_ARG=(--time=05:00:00)
     else
         TIME_ARG=(--time=06:00:00)
     fi
-elif [ "$NO_TOOLS" -eq 1 ]; then
-    TIME_ARG=(--time=08:00:00)
-else
-    TIME_ARG=(--time=72:00:00)
 fi
 
 # Job name: single model uses the model tag; multi-model uses
@@ -343,9 +325,6 @@ else
     FIRST_TAG=$(echo "${MODELS[0]}" | tr '/:.' '___')
     JOB_NAME="pddl_rtx_pack${#MODELS[@]}_${FIRST_TAG}"
 fi
-if [ "$BACKEND" = "vllm" ]; then
-    JOB_NAME="${JOB_NAME}_vllm"
-fi
 if [ "$NO_TOOLS" -eq 1 ]; then
     JOB_NAME="${JOB_NAME}_notools"
 fi
@@ -362,7 +341,7 @@ mkdir -p cluster-experimenting/logs
 # Compose --export list. ALL inherits caller env; we layer CELLS_LIST
 # (^-separated MODEL|THINK|COND triples; sbatch picks one per array task
 # via $SLURM_ARRAY_TASK_ID) and the smoke/shard env vars.
-EXPORT_LIST="ALL,CELLS_LIST=${CELLS_LIST},BACKEND=${BACKEND}"
+EXPORT_LIST="ALL,CELLS_LIST=${CELLS_LIST}"
 if [ "$SMOKE" -eq 1 ]; then
     EXPORT_LIST="${EXPORT_LIST},SMOKE=1"
 fi
@@ -400,8 +379,7 @@ cmd=(sbatch
     --export="$EXPORT_LIST"
     "$SBATCH_FILE")
 
-echo "--- rtx self-deploy submission ---" >&2
-echo "  backend:     $BACKEND" >&2
+echo "--- rtx self-deploy submission (vLLM) ---" >&2
 echo "  models:      ${MODELS[*]}" >&2
 if [ "$N_CELLS" -gt 1 ]; then
     echo "  cells:       $N_CELLS (array fan-out 0-$((N_CELLS-1)))" >&2

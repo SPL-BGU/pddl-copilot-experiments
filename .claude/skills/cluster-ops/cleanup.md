@@ -9,9 +9,18 @@ gets `rm`'d from `results/` directly; whole-dir moves go to
 
 ## Scenario A — Misconfigured deployment
 
-A job ran on the wrong backend (e.g. Ollama sbatch dispatched a vLLM-only
-model). Every row in the affected `trials.jsonl` files is corpus-identity
-contamination; whole directories come out.
+**Historical (pre 2026-05-23).** When two backends coexisted (Ollama and
+vLLM), a job could run on the wrong sbatch and emit rows to a
+non-canonical path. The recipe and worked example below are retained
+because the **quarantine-then-prune** pattern still applies to any
+analogous contamination — most importantly, a model running with the
+wrong `TOOL_CALL_PARSER` (e.g. `hermes` instead of `qwen3_xml`), which
+silently produces 0% tool-selection on the affected cells.
+
+Original wording (pre-vLLM-unification): A job ran on the wrong backend
+(e.g. Ollama sbatch dispatched a vLLM-only model). Every row in the
+affected `trials.jsonl` files is corpus-identity contamination; whole
+directories come out.
 
 ### Detect
 
@@ -60,12 +69,11 @@ EOF'
 # 3. Verify removal
 ssh omereliy@slurm.bgu.ac.il 'ls -d ~/pddl-copilot-experiments/results/slurm_<model>_* 2>&1'
 
-# 4. Resubmit on the right backend — --backend is REQUIRED
-#    (submit_with_rtx.sh:122 defaults to ollama, ignoring PDDL_VLLM_VERIFIED_MODELS)
+# 4. Resubmit (single vLLM backend post 2026-05-23)
 ssh omereliy@slurm.bgu.ac.il '
   cd ~/pddl-copilot-experiments \
   && bash cluster-experimenting/submit_with_rtx.sh \
-        --backend <correct> --gpu-type <gpu> <models>'
+        --gpu-type <gpu> <models>'
 ```
 
 ### Worked example — 2026-05-18 Qwen3.5:4B/9B Ollama contamination

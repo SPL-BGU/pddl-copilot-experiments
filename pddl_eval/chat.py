@@ -1,8 +1,9 @@
-"""Ollama chat loop, MCPPlanner, and shared JSON / verdict helpers.
+"""LLM chat loop, MCPPlanner, and shared JSON / verdict helpers.
 
 Owns the LLM-side primitives:
   * `MCPPlanner` — stdio connection manager for solver + validator MCP servers.
-  * `chat_with_tools`, `chat_without_tools` — Ollama chat-loop helpers.
+  * `chat_with_tools`, `chat_without_tools` — chat-loop helpers driving the
+    VLLMClient (pddl_eval.vllm_client).
   * `_safe_json_loads`, `_parse_validation_verdict` — JSON / verdict helpers.
 
 Why JSON helpers live here (not in `domains.py`): they're consumed by both
@@ -26,10 +27,9 @@ from mcp.client.stdio import stdio_client
 
 TEMPERATURE = 0.0
 MAX_TOOL_LOOPS = 10
-# Ollama "keep this model loaded in VRAM" hint, sent on every chat() call.
-# Ollama's default keep_alive is 5 min; "1h" comfortably covers the longest
-# within-job idle gap we see in practice and prevents the model from being
-# evicted between consecutive requests in the same condition.
+# Legacy "keep this model loaded" hint. VLLMClient ignores keep_alive
+# (vLLM has no model unload between requests), but `_build_chat_kwargs`
+# still surfaces it in the extra-kwargs dict for shape stability.
 KEEP_ALIVE = "1h"
 
 
@@ -72,7 +72,7 @@ def _parse_validation_verdict(raw: str) -> bool | None:
 
 
 # ---------------------------------------------------------------------------
-# MCP connection (mirrors ollama_mcp_bridge.py patterns)
+# MCP connection
 # ---------------------------------------------------------------------------
 
 
@@ -162,7 +162,7 @@ class MCPPlanner:
 
 
 # ---------------------------------------------------------------------------
-# Ollama chat helpers
+# Chat helpers
 # ---------------------------------------------------------------------------
 
 
@@ -172,10 +172,10 @@ def _build_chat_kwargs(
     temperature: float,
     think: bool | None,
 ) -> tuple[dict, dict]:
-    """Return (options, extra_kwargs) for an ollama client chat() call.
+    """Return (options, extra_kwargs) for a VLLMClient.chat() call.
 
-    `think` is a top-level kwarg on ollama>=0.6; when None it must be omitted
-    entirely so the model's default behaviour applies.
+    `think` is a top-level kwarg; when None it must be omitted entirely so
+    the model's default behaviour applies.
     """
     options = {
         "temperature": temperature,
@@ -189,7 +189,7 @@ def _build_chat_kwargs(
 
 
 def _response_done_reason(resp) -> str:
-    """Extract done_reason from an ollama ChatResponse (dict or pydantic)."""
+    """Extract done_reason from a VLLMClient response (dict-shaped)."""
     if resp is None:
         return ""
     if hasattr(resp, "done_reason"):
@@ -200,12 +200,12 @@ def _response_done_reason(resp) -> str:
 
 
 def _response_field(resp, name: str) -> int:
-    """Extract an int field from an ollama ChatResponse (dict or pydantic).
+    """Extract an int field from a VLLMClient response (dict-shaped).
 
     Used for accumulating prompt_eval_count / eval_count / total_duration /
     eval_duration across tool-call turns. Returns 0 when missing so the
-    accumulator never trips on partial responses (some Ollama builds omit
-    counts on early-stop turns).
+    accumulator never trips on partial responses (synthesised overflow
+    responses omit counts).
     """
     if resp is None:
         return 0
@@ -219,7 +219,7 @@ def _response_field(resp, name: str) -> int:
 
 
 def _response_thinking(resp) -> str:
-    """Extract message.thinking from an ollama ChatResponse (dict or pydantic).
+    """Extract message.thinking from a VLLMClient response (dict-shaped).
 
     Returns "" when the model did not emit structured thinking content.
     Defensive against the inline `<think>...</think>` form (handled
@@ -236,7 +236,7 @@ def _response_thinking(resp) -> str:
 
 
 async def chat_with_tools(
-    client: "ollama.AsyncClient",
+    client: "VLLMClient",
     model: str,
     messages: list[dict],
     mcp: MCPPlanner,
@@ -247,7 +247,7 @@ async def chat_with_tools(
     temperature: float = TEMPERATURE,
     think: bool | None = None,
 ) -> tuple[str, list[dict], str, bool, dict, str]:
-    """Send messages to Ollama, handle tool-call loops.
+    """Send messages to the vLLM server, handle tool-call loops.
 
     Returns (text, tool_calls_log, last_done_reason, loop_exhausted, tokens,
     thinking). `tokens` is a dict accumulating prompt_eval_count +
@@ -326,7 +326,7 @@ async def chat_with_tools(
 
 
 async def chat_without_tools(
-    client: "ollama.AsyncClient",
+    client: "VLLMClient",
     model: str,
     messages: list[dict],
     num_predict: int,
@@ -341,12 +341,11 @@ async def chat_without_tools(
     shape returned by `chat_with_tools` (turns is always 1 here). `thinking`
     is the structured `message.thinking` content; "" when absent.
 
-    `format` (PR-4) is forwarded to the Ollama `format=` kwarg. A dict is
-    treated as a JSON schema (sampler constrained to matching JSON);
-    "json" is the legacy free-form-JSON shape; None is the unconstrained
-    paper-default. Used by the no-PDDL-tools branch to enforce per-task
-    response shape so `check_success` can grade structurally instead of
-    via free-text regex.
+    `format` (PR-4) is forwarded as the `format=` kwarg. A dict is treated
+    as a JSON schema (vLLM `guided_json`); "json" requests JSON-object
+    mode; None is the unconstrained paper-default. Used by the
+    no-PDDL-tools branch to enforce per-task response shape so
+    `check_success` can grade structurally instead of via free-text regex.
 
     Appends the assistant turn to *messages* so the post-call shape matches
     `chat_with_tools` (which appends internally). Lets multi-step callers

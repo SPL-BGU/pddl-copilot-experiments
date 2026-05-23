@@ -38,7 +38,7 @@ Before presenting the plan, review it for simplification and correctness:
 
 **Simplification:**
 - Can any proposed new file be merged into an existing file?
-- Can any proposed new script reuse existing logic from `run_experiment.py` or `run_background.sh`?
+- Can any proposed new script reuse existing logic from `run_experiment.py` or `cluster-experimenting/`?
 - Would a senior engineer say "this is more code than necessary"?
 - Does the change avoid adding abstractions with only one consumer?
 

@@ -4,7 +4,7 @@ Reproduce experiments from:
   "Toward PDDL Planning Copilot" (Benyamin et al., 2025)
   https://arxiv.org/abs/2509.12987
 
-Evaluates Ollama LLMs with and without MCP planning tools on 5 PDDL tasks:
+Evaluates vLLM-served LLMs with and without MCP planning tools on 5 PDDL tasks:
   1. solve           — find a plan for a domain+problem
   2. validate_domain — check domain PDDL syntax
   3. validate_problem— check problem PDDL syntax
@@ -31,8 +31,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-
-import ollama
 
 from pddl_eval.chat import (
     MCPPlanner,
@@ -235,7 +233,7 @@ async def async_main(args):
     else:
         think_override = None
 
-    host = args.ollama_host or ""
+    host = args.llm_base_url or ""
     if args.models is None:
         args.models = list(DEFAULT_MODELS)
 
@@ -255,8 +253,6 @@ async def async_main(args):
         else:
             bucket, name = "full", f"{sha_tag}_{ts_tag}"
         args.output_dir = str(RESULTS_DIR / bucket / name)
-
-    num_parallel_env = os.environ.get("OLLAMA_NUM_PARALLEL", "unset")
 
     print("=" * 60)
     print("PDDL Planning Copilot — Experiment Runner")
@@ -292,13 +288,8 @@ async def async_main(args):
     if args.num_ctx == args.num_ctx_thinking:
         print(f"              ^ equal to num_ctx for tools/no-pddl-tools fairness in 'tools save tokens' headline")
     print(f"  think:      {args.think}")
-    print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
-    if args.concurrency > 1 and num_parallel_env == "unset":
-        print("  WARNING: OLLAMA_NUM_PARALLEL is not set — Ollama may queue "
-              "concurrent requests server-side, negating the speedup. "
-              "Export OLLAMA_NUM_PARALLEL>=concurrency before the run.")
-    print(f"  Backend:    {args.inference_backend}")
-    print(f"  LLM host:   {host or '(library default: http://localhost:11434)'}")
+    print(f"  Concurrency:{args.concurrency}")
+    print(f"  vLLM URL:   {host or '(default: http://localhost:8000)'}")
     if smoke_mode:
         print(f"  Smoke:      "
               f"{'shuffle (random per-cell d/p)' if args.smoke_shuffle else 'fixed (blocksworld/p01)'}"
@@ -360,17 +351,11 @@ async def async_main(args):
     mcp = MCPPlanner()
     await mcp.connect(plugin_dirs)
 
-    if args.inference_backend == "vllm":
-        # Smoke-probe path (2026-05-09). vllm_client.VLLMOllamaClient adapts
-        # the OpenAI chat-completions API to the Ollama response shape the
-        # harness reads. --ollama-host is reused as the vLLM base URL.
-        from pddl_eval.vllm_client import VLLMOllamaClient
-        client = VLLMOllamaClient(host=args.ollama_host)
-    else:
-        client_kwargs: dict = {}
-        if args.ollama_host:
-            client_kwargs["host"] = args.ollama_host
-        client = ollama.AsyncClient(**client_kwargs)
+    # vllm_client.VLLMClient adapts vLLM's OpenAI /v1/chat/completions to
+    # the wire shape pddl_eval.chat consumes (dict-form tool_call args,
+    # message.thinking, done_reason, prompt_eval_count, …).
+    from pddl_eval.vllm_client import VLLMClient
+    client = VLLMClient(base_url=args.llm_base_url)
 
     # Resume / skip-existing setup. `trials.jsonl` lives next to the
     # canonical end-of-run JSONs in `output_dir`. When it exists, the
@@ -513,7 +498,6 @@ async def async_main(args):
         if all_single:
             meta = {
                 "host": host or "localhost",
-                "inference_backend": args.inference_backend,
                 "conditions": args.conditions,
                 "models": args.models,
                 "tasks": args.tasks,
@@ -550,9 +534,7 @@ async def async_main(args):
             # empty `chains` array.
             save_results(all_single, [], Path(args.output_dir), meta=meta)
         await mcp.close()
-        # ollama.AsyncClient wraps an httpx.AsyncClient; close it to release
-        # connections cleanly. Guarded because some builds expose
-        # aclose/close differently.
+        # VLLMClient wraps openai.AsyncOpenAI's httpx pool; close to release.
         close = getattr(client, "aclose", None) or getattr(client, "close", None)
         if close is not None:
             try:
@@ -570,9 +552,9 @@ def main():
                    required="PDDL_MARKETPLACE_PATH" not in os.environ,
                    help="Path to cloned pddl-copilot marketplace repo (or set PDDL_MARKETPLACE_PATH)")
     p.add_argument("--models", nargs="+", default=None,
-                   help=f"Ollama model names to evaluate. Default: paper set {DEFAULT_MODELS}. "
-                        "Cluster sweeps pass an explicit list via --models or the MODELS env "
-                        "in run_condition_rtx.sbatch.")
+                   help=f"Model tags (matched in cluster-experimenting/lib/defaults.sh:vllm_lookup). "
+                        f"Default: paper set {DEFAULT_MODELS}. Cluster sweeps pass an explicit "
+                        "list via --models or the MODELS env in run_condition_vllm_rtx.sbatch.")
     p.add_argument("--tasks", nargs="+", default=TASKS, choices=TASKS,
                    help="Tasks to evaluate")
     p.add_argument("--domains-dir", default=str(DOMAINS_DIR),
@@ -620,40 +602,28 @@ def main():
                    help=f"Ollama context window tokens for single-task tools cells. "
                         f"Default {DEFAULT_NUM_CTX}.")
     p.add_argument("--num-ctx-thinking", type=int, default=DEFAULT_NUM_CTX_THINKING,
-                   help=f"Ollama context window tokens used ONLY when think!=off "
+                   help=f"Context window tokens used ONLY when think!=off "
                         f"AND condition=no-tools. Default "
                         f"{DEFAULT_NUM_CTX_THINKING}. Tool-condition runs "
                         f"and think=off use --num-ctx (default {DEFAULT_NUM_CTX}). "
                         f"`async_main` runs tools and no-tools as separate "
-                        f"sub-passes when both apply — keeps num_ctx constant "
-                        f"per call (mid-call flips deadlock Ollama under "
-                        f"concurrency).")
+                        f"sub-passes when both apply so num_ctx stays constant "
+                        f"per call (legacy Ollama-era invariant, preserved for "
+                        f"corpus comparability).")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "
                         "think=False, 'on' passes think=True. Ablation only — do NOT "
                         "mix with reproduction runs.")
     p.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
-                   help=f"Max concurrent Ollama chat requests during the single-task "
+                   help=f"Max concurrent chat requests during the single-task "
                         f"sweep. Default {DEFAULT_CONCURRENCY}. Pair with "
-                        f"OLLAMA_NUM_PARALLEL>=concurrency on the server.")
-    p.add_argument("--ollama-host",
-                   default=os.environ.get("OLLAMA_HOST"),
-                   help="LLM server base URL (Ollama or vLLM, depending on "
-                        "--inference-backend). Default: library default "
-                        "(http://localhost:11434). Cluster runs use the "
-                        "self-deployed Apptainer Ollama on a unique port "
-                        "set by run_condition_rtx.sbatch.")
-    p.add_argument("--inference-backend", choices=("ollama", "vllm"),
-                   default="ollama",
-                   help="Which inference server to talk to. 'ollama' "
-                        "(default, paper-aligned, production cluster path). "
-                        "'vllm' uses vLLM's OpenAI-compatible "
-                        "/v1/chat/completions via "
-                        "pddl_eval.vllm_client.VLLMOllamaClient. Smoke-probe "
-                        "only as of 2026-05-09; production sweep stays on "
-                        "ollama until ≥30%% wall-time savings on full sweep "
-                        "are demonstrated (see development/CHANGELOG.md).")
+                        f"vLLM `--max-num-seqs>=concurrency` on the server.")
+    p.add_argument("--llm-base-url",
+                   default=os.environ.get("LLM_BASE_URL"),
+                   help="vLLM /v1 base URL. Default: http://localhost:8000. "
+                        "Cluster runs use a per-job port set by "
+                        "run_condition_vllm_rtx.sbatch.")
     p.add_argument("--seed", type=int, default=42,
                    help="Random seed for --smoke-shuffle cell assignment")
     # Single-task domain/problem filters (applied post-`load_domains`). Used

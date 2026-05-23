@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-time cluster env setup for pddl-copilot-experiments.
-# Run on the BGU ISE-CS-DT login node (slurm.bgu.ac.il) after cloning both repos.
+# Run on the BGU CIS login node (slurm.bgu.ac.il) after cloning both repos.
 #
 # Prereqs:
 #   ssh <user>@slurm.bgu.ac.il
@@ -67,7 +67,7 @@ done
 
 echo "== Verification =="
 java -version 2>&1 | head -1
-python3 -c "import mcp, ollama; print('python deps: mcp + ollama OK')"
+python3 -c "import mcp, openai; print('python deps: mcp + openai OK')"
 
 echo ""
 echo "Done. Activate later with:"
