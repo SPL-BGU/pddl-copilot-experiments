@@ -612,7 +612,7 @@ def main():
                         f"post-bump); nemotron-3-nano:30b dropped from active roster, "
                         f"6144 retained as harmless headroom (DEFAULT_NUM_PREDICT comment).")
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
-                   help=f"Ollama context window tokens for single-task tools cells. "
+                   help=f"Context window tokens for single-task tools cells. "
                         f"Default {DEFAULT_NUM_CTX}.")
     p.add_argument("--num-ctx-thinking", type=int, default=DEFAULT_NUM_CTX_THINKING,
                    help=f"Context window tokens used ONLY when think!=off "

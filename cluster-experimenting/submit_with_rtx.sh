@@ -75,8 +75,8 @@
 #
 # --partial K: pass `--partial K` to every cell's run_experiment.py. Caps
 #   each domain to first-K positive + first-K negative problems and first-K
-#   valid + first-K invalid plans per kept positive — the same fast-feedback
-#   slice as the local `run_background.sh partial` mode. Combine with
+#   valid + first-K invalid plans per kept positive — a fast-feedback
+#   slice of the full sweep. Combine with
 #   --continue-partial to instantly produce partial-style results from a
 #   pre-existing full-sweep cluster directory (resume skips every matching
 #   cell, output is the partial-fixture summary).
