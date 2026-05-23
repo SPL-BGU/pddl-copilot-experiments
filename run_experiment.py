@@ -575,14 +575,17 @@ def main():
                         f"(neutral) + v14/v15/v16 (steered) under marketplace "
                         f"1.4.0; sweep-4 used v5/v6/v7; sweep-3 used v0/v1/v2.")
     p.add_argument("--include-no-tools-steered", action="store_true", default=False,
-                   help="Sweep-5 control flag. By default (False) the "
-                        "(no-tools, v14/v15/v16) cells are skipped at emit "
-                        "(steered directives reference tools that aren't "
-                        "available — incoherent in the main sweep). Set this "
-                        "flag for the sweep-5 control submit to emit those "
-                        "cells as the 4th arm — the H4 falsification check "
-                        "that the steered directive alone does not move the "
-                        "no-tools floor. See "
+                   help="Sweep-5 control flag. Why this arm exists: the "
+                        "steered prompt tells the model 'use the tool', but "
+                        "if no tool is actually available, does just adding "
+                        "that sentence still change the answer? We need to "
+                        "know — otherwise we can't tell whether the "
+                        "with-tools steering benefit comes from the tool "
+                        "being callable or just from the prompt wording. "
+                        "By default (False) the (no-tools, v14/v15/v16) "
+                        "cells are skipped at emit. Set this flag for the "
+                        "sweep-5 control submit to emit those cells as the "
+                        "4th arm (H4 falsification check). See "
                         "development/sweep_prompt_bank_design.md §0 / §2.6.")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
