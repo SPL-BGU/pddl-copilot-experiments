@@ -456,6 +456,7 @@ async def async_main(args):
                     cell_assignment=cell_assignment,
                     progress_path=progress_path,
                     restored_by_key=restored_by_key,
+                    include_no_tools_steered=args.include_no_tools_steered,
                 )
                 sub_results.extend(rs)
             return sub_results
@@ -503,6 +504,7 @@ async def async_main(args):
                 "tasks": args.tasks,
                 "num_variants": args.num_variants,
                 "prompt_variants_active": list(ACTIVE_PROMPT_VARIANTS[:args.num_variants]),
+                "include_no_tools_steered": args.include_no_tools_steered,
                 "temperature": args.temperature,
                 "num_ctx": args.num_ctx,
                 "num_ctx_thinking": args.num_ctx_thinking,
@@ -568,12 +570,20 @@ def main():
                         f"[1, {len(ACTIVE_PROMPT_VARIANTS)}]. Default "
                         f"{len(ACTIVE_PROMPT_VARIANTS)} (run all active "
                         f"variants). To go above this cap, edit "
-                        f"ACTIVE_PROMPT_VARIANTS in pddl_eval/prompts.py. Paper "
-                        f"sweep used 5; the 26042026 sensitivity analysis "
-                        f"dropped v3/v4. Sweep-4 (current) active set is "
-                        f"v5/v6/v7 — the prompt rewrite addressing the six "
-                        f"leaks in .local/prompts_review.md; sweep-3 used "
-                        f"v0/v1/v2.")
+                        f"ACTIVE_PROMPT_VARIANTS in pddl_eval/prompts.py. "
+                        f"Sweep-5 (current) active set is v11/v12/v13 "
+                        f"(neutral) + v14/v15/v16 (steered) under marketplace "
+                        f"1.4.0; sweep-4 used v5/v6/v7; sweep-3 used v0/v1/v2.")
+    p.add_argument("--include-no-tools-steered", action="store_true", default=False,
+                   help="Sweep-5 control flag. By default (False) the "
+                        "(no-tools, v14/v15/v16) cells are skipped at emit "
+                        "(steered directives reference tools that aren't "
+                        "available — incoherent in the main sweep). Set this "
+                        "flag for the sweep-5 control submit to emit those "
+                        "cells as the 4th arm — the H4 falsification check "
+                        "that the steered directive alone does not move the "
+                        "no-tools floor. See "
+                        "development/sweep_prompt_bank_design.md §0 / §2.6.")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
     p.add_argument("--conditions", choices=list(CONDITION_CHOICES), default="both",

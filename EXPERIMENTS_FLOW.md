@@ -103,7 +103,7 @@ Five tasks, each testing a different stage of the PDDL planning pipeline:
 | **validate_plan** | Verify a given plan is correct | `validate_plan` oracle |
 | **simulate** | Produce a state-transition trajectory for a plan | `get_state_transition` oracle. With-tools and no-PDDL-tools both grade by canonical-form deep-equality of the produced trajectory against the oracle's (PR-4, 2026-04-29). |
 
-Each task uses 5 prompt template variants (different phrasings of the same request) for robustness.
+Each task uses 3 paraphrases per arm for robustness. Sweep-5 (current) active set is `v11/v12/v13` (neutral, imperative/declarative/interrogative) plus `v14/v15/v16` (steered — neutral text with one appended tool-directive sentence). See `development/sweep_prompt_bank_design.md` for the full prompt bank, hypothesis pre-registration, and per-task rationale.
 
 ---
 
@@ -484,3 +484,54 @@ squeue --me                 # All my running/pending jobs
 | No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. The chain phase itself was archived 2026-05-05 (see §4.3). |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.
+
+---
+
+## 12. Methodology Disclosures (sweep-5)
+
+Disclosures required for reviewer-defense of the sweep-5 three-arm matrix + control. Full design rationale and literature anchors live in `development/sweep_prompt_bank_design.md`; this section is the abridged reference for the paper.
+
+### 12.1 Three-arm matrix and the control arm
+
+The headline sweep-5 design is a three-arm matrix over `(model × task × think × paraphrase)`:
+
+| Arm | Condition | Variants | Measures |
+|---|---|---|---|
+| Neutral no-tools | `no-tools` | v11/v12/v13 | Floor — model's unaided capability under a format-constrained prompt. |
+| Neutral with-tools | `with-tools` | v11/v12/v13 | BFCL **relevance detection** — does the model spontaneously call the right tool when its existence is known but not steered? |
+| Steered with-tools | `with-tools` | v14/v15/v16 | BFCL **function selection** — with explicit steering, does the model select the right tool? Parameter filling is schema-enforced under marketplace 1.4.0, so this isolates selection. |
+
+A fourth arm — **`(no-tools, v14/v15/v16)`, the sweep-5 control** — runs as a separate cluster submit gated by `--include-no-tools-steered`. It tests hypothesis H4 (the steered directive alone does not move the no-tools floor); reported in §Results as a control, not as a primary outcome.
+
+### 12.2 BFCL divergence
+
+BFCL (Berkeley Function-Calling Leaderboard) benchmarks function-calling correctness in isolation and does not include a no-tools baseline. We include one because our research question is tool *utility* for symbolic reasoning (the PDDL Copilot paper's headline claim), not function-calling correctness alone. The no-tools arm is therefore additive to BFCL's design, not a divergence from it.
+
+### 12.3 Fusion novelty
+
+Our three-arm matrix combines two prior methodologies: PDDL Copilot's `(tools | no-tools)` split and BFCL's within-tools decomposition (relevance / selection / parameter-filling). Neither source endorses the exact 3-arm shape we use. We acknowledge this is a novel combination, motivated by the need to attribute the headline tool-utility claim cleanly while still measuring tool-selection behavior.
+
+### 12.4 Paraphrase-axis asymmetry
+
+The paraphrase axis (3 per task) varies only the neutral task-framing clause. The steered directive is held byte-identical across the three paraphrases per task (v14, v15, v16 differ only in the neutral-paraphrase prefix). This isolates steering variance from paraphrase variance; varying both would dilute the H2 measurement. The neutral arm's paraphrase axis remains a linguistic-robustness probe for H1.
+
+### 12.5 VERDICT trailer rationale (post-vLLM-only justification)
+
+The VERDICT trailer in `validate_*` no-tools prompts (v11–v13) is an empirical safety belt against `FR_FORMAT_PARSE_FAIL` events on hybrid-architecture models (Qwen3.5/3.6 Mamba hybrid). Sweep-4 dropped the trailer from `validate_*` v5/v6/v7 and observed a regression in `FR_FORMAT_PARSE_FAIL` rates even under vLLM `guided_json` enforcement; sweep-5 restores it. The trailer adds ~6 tokens per trial and serves as a cross-architecture fallback that the `extract_verdict` regex (`pddl_eval/scoring.py`) can anchor on when JSON parsing fails.
+
+### 12.6 Marketplace 1.4.0 effects on FR taxonomy
+
+Marketplace 1.4.0 (pddl-copilot @ 2850bc4) split the polymorphic `validate_pddl_syntax` into three task-aligned tools whose JSON schemas enforce required arguments. As a result:
+- The previous `FR_VERDICT_MISMATCH` masquerade (model calls validator without `plan`, tool returns the consistency verdict instead of plan verdict) is structurally unreachable.
+- `FR_WRONG_TOOL` is introduced as a distinct failure mode (model called a non-matching validator tool, e.g., `validate_problem` when task = `validate_plan`).
+- The `validate_plan` steered directive simplifies to one sentence — the polymorphism warning the sweep-4 redesign needed no longer applies.
+
+Sweep-3 / sweep-4 / sweep-4.1 used the polymorphic predecessor and remain comparable only as historical pin-locked snapshots in `results/` and `checkpoints/`. Re-running their trials against the marketplace 1.4.0 pin would fail (the legacy tool no longer exists).
+
+### 12.7 System-prompt design (Option C — thin per-task policy stubs)
+
+Sweep-5 system prompts are 3-sentence policy stubs per task (`WITH_TOOLS_SYSTEM_BY_TASK` / `WITHOUT_TOOLS_SYSTEM_BY_TASK` in `pddl_eval/prompts.py`). Tool signatures, argument descriptions, and status enumerations are NOT in the system prompt — those live in `tools=[]` per Anthropic's documented contract, and marketplace 1.4.0 raised the per-tool description bar at that source. The `WITHOUT` per-task dict is a structural mirror of `WITH` (same role-framing first sentence, same sentence count); this preserves the H1 attribution to tool availability rather than instruction-surface differential.
+
+### 12.8 v0–v10 byte-stability
+
+The legacy `WITH_TOOLS_SYSTEM` / `WITHOUT_TOOLS_SYSTEM` flat constants and v0–v10 prompt strings are preserved byte-stable in `pddl_eval/prompts.py`. `runner.py:evaluate_one` uses a variant-gated dispatch: cells with `prompt_variant < 11` route to the legacy constants; `prompt_variant >= 11` route to the sweep-5 per-task dicts. This keeps any v0–v10 replay byte-identical to its original run.

@@ -36,8 +36,11 @@ from .prompts import (
     ACTIVE_PROMPT_VARIANTS,
     PROMPT_TEMPLATES,
     PROMPT_TEMPLATES_TOOLS_OVERRIDE,
+    STEERED_VARIANTS,
     WITH_TOOLS_SYSTEM,
+    WITH_TOOLS_SYSTEM_BY_TASK,
     WITHOUT_TOOLS_SYSTEM,
+    WITHOUT_TOOLS_SYSTEM_BY_TASK,
 )
 from .schemas import TASK_SCHEMAS
 from .scoring import (
@@ -276,8 +279,16 @@ async def evaluate_one(
     temperature: float = TEMPERATURE,
     plan_label: str = "",
 ) -> TaskResult:
+    # Template lookup. Two override semantics by variant range:
+    #   * v5/v6/v7 (sweep-4): override fires only under with_tools=True.
+    #     Preserves sweep-4 replay byte-stability (no override under no-tools).
+    #   * v14/v15/v16 (sweep-5 STEERED_VARIANTS): override fires regardless
+    #     of with_tools. The (no-tools, steered) control arm needs to see
+    #     the steered text — that's the H4 falsification check
+    #     ("steered directive alone does not move the no-tools floor").
     override = PROMPT_TEMPLATES_TOOLS_OVERRIDE.get(task, {})
-    if with_tools and prompt_variant in override:
+    override_applies = prompt_variant in STEERED_VARIANTS or with_tools
+    if override_applies and prompt_variant in override:
         template = override[prompt_variant]
     else:
         template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
@@ -285,7 +296,17 @@ async def evaluate_one(
     plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
 
     prompt = template.format(domain=domain_pddl, problem=problem_pddl, plan=plan_str)
-    system = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
+    # Variant-gated system prompt:
+    #   * v11..v16 (sweep-5): per-task dicts (thin policy stubs, Option C).
+    #   * v0..v10 (legacy): unchanged flat WITH/WITHOUT_TOOLS_SYSTEM constants.
+    if prompt_variant >= 11:
+        system = (
+            WITH_TOOLS_SYSTEM_BY_TASK[task]
+            if with_tools
+            else WITHOUT_TOOLS_SYSTEM_BY_TASK[task]
+        )
+    else:
+        system = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": prompt},
@@ -506,6 +527,7 @@ async def run_single_task_experiment(
     cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None,
     progress_path: Path | None = None,
     restored_by_key: dict[TrialKey, TaskResult] | None = None,
+    include_no_tools_steered: bool = False,
 ) -> list[TaskResult]:
     """Run the full single-task sweep with bounded client-side concurrency.
 
@@ -556,6 +578,13 @@ async def run_single_task_experiment(
         # (tools / no-tools) comparisons for the same logical key land
         # in the same shard. `plan_label` IS in the key so v1..v5 / b1..b5
         # spread across shards rather than clustering all in shard 0.
+        #
+        # Sweep-5 emit-skip gate: `(no-tools, v_steered)` cells are skipped
+        # in the main 3-arm sweep. Flip `--include-no-tools-steered`
+        # (threaded via `include_no_tools_steered`) to emit them as the
+        # 4th control arm (sweep-5 control).
+        if not with_tools and pv in STEERED_VARIANTS and not include_no_tools_steered:
+            return
         if not _shard_filter(
             shard_i, shard_n,
             (model, task, dname, pname, plan_label, str(pv)),
