@@ -429,10 +429,13 @@ async def async_main(args):
         # are requested, we MUST split the call into (tools then no-tools)
         # sub-passes — `evaluate_one` picks `effective_num_ctx` per
         # condition (8192 for tools, num_ctx_thinking for no-tools), and
-        # flipping num_ctx mid-call deadlocks Ollama under concurrency
-        # (smoke job 17244356, 2026-04-28). With sequential sub-passes,
-        # the model reloads between them while no requests are in flight.
-        # Total wallclock is unchanged (same job count, same concurrency).
+        # num_ctx must stay constant per call to keep the sub-pass
+        # architecture sound (historical trigger: smoke job 17244356,
+        # 2026-04-28, where flipping num_ctx mid-call deadlocked the
+        # then-active Ollama backend under concurrency). With sequential
+        # sub-passes, the server reloads between them while no requests
+        # are in flight. Total wallclock is unchanged (same job count,
+        # same concurrency).
         async def _run_single_task_split(
             think_value: bool | None, cond: str, label: str = ""
         ) -> list:
@@ -621,8 +624,8 @@ def main():
                         f"and think=off use --num-ctx (default {DEFAULT_NUM_CTX}). "
                         f"`async_main` runs tools and no-tools as separate "
                         f"sub-passes when both apply so num_ctx stays constant "
-                        f"per call (legacy Ollama-era invariant, preserved for "
-                        f"corpus comparability).")
+                        f"per call (sub-pass isolation; preserved for corpus "
+                        f"comparability).")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "

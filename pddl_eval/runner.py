@@ -1,4 +1,4 @@
-"""Per-eval runner + single-task / chain sweep orchestration.
+"""Per-eval runner + single-task sweep orchestration.
 
 Owns:
   * `TaskResult` — the universal record; everything downstream just reads
@@ -8,7 +8,9 @@ Owns:
   * `run_single_task_experiment` — full single-task sweep with bounded
     client-side concurrency, --shard partitioning, and --smoke-shuffle
     cell assignment.
-  * `run_chain_experiment` — multi-task chain sweep (Section 4.4).
+  * `run_chain_experiment` — ARCHIVED 2026-05-05 (multi-task chain
+    sweep, Section 4.4). Body preserved for future resurrection but no
+    longer dispatched from run_experiment.py.
 
 DAG: runner → prompts, chat, domains, scoring.
 """

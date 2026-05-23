@@ -303,23 +303,21 @@ CELLS_LIST=$(IFS='^'; echo "${CELLS[*]}")
 #   no-tools cells: ~6-7h (5-task matrix incl. simulate after PR-4).
 #   smoke cells: ~30-45 min (matrix iteration internal to run_experiment.py).
 if [ -n "$TIME_OVERRIDE" ]; then
-    # Explicit --time wins over all auto-computed defaults. Required when
-    # the built-in ceiling (06:00:00 tools) is too tight for heavy cells —
-    # 27B/35B tools cells empirically extrapolate to ~19h and silently
-    # TIMEOUT at the wrapper default. Pass HH:MM:SS or D-HH:MM:SS.
+    # Explicit --time wins over all auto-computed defaults. Pass HH:MM:SS
+    # or D-HH:MM:SS.
     TIME_ARG=(--time="$TIME_OVERRIDE")
 elif [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     TIME_ARG=(--time=03:00:00)
 else
-    # vLLM smoke 2026-05-10 measured ~1-2h per tools cell (4.6× speedup
-    # over the retired Ollama backend on 27B tools×off — historical context
-    # only). vllm-production-plan.md 2026-05-09 locked --time=06:00:00
-    # (tools) / 05:00:00 (no-tools) as production ceilings. Heavy models
-    # (27B/35B) blow past these — override with --time when packing them.
+    # Defaults match the documented per-cell budgets above (tools=72h,
+    # no-tools=12h). SLURM bills actual usage, not the wall budget, so
+    # generous fallbacks just prevent silent TIMEOUTs on ad-hoc
+    # invocations of heavy models without --time. Production sweeps via
+    # submit_full_sweep.sh always pass --time explicitly.
     if [ "$NO_TOOLS" -eq 1 ]; then
-        TIME_ARG=(--time=05:00:00)
+        TIME_ARG=(--time=12:00:00)
     else
-        TIME_ARG=(--time=06:00:00)
+        TIME_ARG=(--time=72:00:00)
     fi
 fi
 
