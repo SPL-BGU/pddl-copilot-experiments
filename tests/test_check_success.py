@@ -154,16 +154,25 @@ async def test_validate_plan(r: TestResults):
     await run_case("vp wt no-calls", r, "validate_plan", "", [], gt, mcp, dom, prob, True,
                    (False, False, rx.FR_TOOL_NOT_SELECTED))
 
-    # with-tools, model called wrong tool (validate_problem instead of
-    # validate_plan). Marketplace 1.4.0 split the polymorphic validator into
-    # three task-aligned tools; the old "wrong-arg-shape" failure mode is
-    # now "wrong tool name", graded as FR_TOOL_NOT_SELECTED.
+    # with-tools, model called a non-validator-family tool (classic_planner).
+    # No validator was invoked at all → FR_TOOL_NOT_SELECTED, distinct from
+    # FR_WRONG_TOOL (which is reserved for validator-family wrong picks).
+    planner_raw = json.dumps({"plan": ["(noop)"], "solve_time": 0.001})
+    await run_case("vp wt non-validator tool (classic_planner)", r, "validate_plan", "",
+                   [tc("classic_planner", {"domain": dom, "problem": prob}, planner_raw)],
+                   gt, mcp, dom, prob, True,
+                   (False, False, rx.FR_TOOL_NOT_SELECTED))
+
+    # with-tools, model called the wrong validator (validate_problem instead
+    # of validate_plan). The model picked a validator-family tool but not
+    # the task-matching one — graded as FR_WRONG_TOOL, distinct from
+    # FR_TOOL_NOT_SELECTED (no validator-family call at all).
     ok_plan_raw = json.dumps(bw["tool_output_objs"]["validate_plan_ok"])
     prob_raw_for_wrong = json.dumps(bw["gt"]["problem_validation_obj"])
     await run_case("vp wt wrong tool (called validate_problem)", r, "validate_plan", "",
                    [tc("validate_problem", {"domain": dom, "problem": prob}, prob_raw_for_wrong)],
                    gt, mcp, dom, prob, True,
-                   (False, False, rx.FR_TOOL_NOT_SELECTED))
+                   (False, False, rx.FR_WRONG_TOOL))
 
     # with-tools, correct tool, verdict matches gt (gt.plan_valid = True)
     await run_case("vp wt correct tool match gt", r, "validate_plan", "",
@@ -240,14 +249,12 @@ async def test_validate_domain(r: TestResults):
                    (True, True, rx.FR_OK))
 
     # Wrong tool — model called validate_problem when task is validate_domain.
-    # Under marketplace 1.4.0 the validator split makes argument-shape errors
-    # impossible (each tool's schema enforces its required args); the residual
-    # failure mode is calling the wrong tool name, scored as FR_TOOL_NOT_SELECTED.
+    # Validator-family but not task-matching → FR_WRONG_TOOL.
     prob_raw = json.dumps(bw["gt"]["problem_validation_obj"])
     await run_case("vd wt wrong tool (called validate_problem)", r, "validate_domain", "",
                    [tc("validate_problem", {"domain": dom, "problem": prob}, prob_raw)],
                    gt, mcp, dom, prob, True,
-                   (False, False, rx.FR_TOOL_NOT_SELECTED))
+                   (False, False, rx.FR_WRONG_TOOL))
 
 
 # ---------------------------------------------------------------------------

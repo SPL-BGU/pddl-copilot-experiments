@@ -62,14 +62,11 @@ class FakeMCP:
 
 
 def plan_sensitive_validator(fx: dict, error: bool = False):
-    """Return a handler that routes the three split validator tools.
+    """Return a handler dispatching the three task-aligned validator tools.
 
-    Marketplace 1.4.0 (pddl-validator 3.0.0) split `validate_pddl_syntax`
-    into `validate_domain` / `validate_problem` / `validate_plan`. The
-    handler dispatches by tool name; for `validate_plan` it also matches
-    the joined plan string against fx["oracle_plan"] vs fx["bad_plan"]
-    to pick the corresponding fixture response.
-
+    `validate_domain` and `validate_problem` return their fixture responses.
+    `validate_plan` matches the joined plan string against
+    `fx["oracle_plan"]` vs `fx["bad_plan"]` to pick the OK / BAD response.
     If `error` is True, every validator call returns the {"error": true} shape.
     """
     oracle_plan_str = "\n".join(fx["oracle_plan"])

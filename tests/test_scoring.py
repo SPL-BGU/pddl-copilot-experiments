@@ -11,7 +11,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import run_experiment as rx
-from pddl_eval.scoring import _call_matches_validate_task
 from tests._helpers import TestResults
 
 
@@ -66,61 +65,6 @@ def test_used_tool(r: TestResults):
     r.check_eq("empty list", rx._used_tool([], "x"), False)
     r.check_eq("present", rx._used_tool([{"name": "x"}], "x"), True)
     r.check_eq("absent", rx._used_tool([{"name": "y"}], "x"), False)
-
-
-def test_call_matches_validate_task(r: TestResults):
-    """Post-marketplace-1.4.0: matcher collapses to a tool-name == task check.
-
-    The polymorphic `validate_pddl_syntax` was split into three task-aligned
-    tools (`validate_domain`, `validate_problem`, `validate_plan`) whose
-    JSON schemas enforce their required arguments. The matcher's old job —
-    rejecting domain-only calls when grading `validate_plan` — is now a
-    trivial name match because wrong-shape calls cannot happen.
-    """
-    vd_call = {"name": "validate_domain", "arguments": {"domain": "(D)"}}
-    vp_call = {"name": "validate_problem",
-               "arguments": {"domain": "(D)", "problem": "(P)"}}
-    vplan_call = {"name": "validate_plan",
-                  "arguments": {"domain": "(D)", "problem": "(P)", "plan": "(p)"}}
-
-    # Each task accepts only the matching tool name.
-    r.check("vd accepts validate_domain",
-            _call_matches_validate_task(vd_call, "validate_domain"))
-    r.check("vd rejects validate_problem",
-            not _call_matches_validate_task(vp_call, "validate_domain"))
-    r.check("vd rejects validate_plan",
-            not _call_matches_validate_task(vplan_call, "validate_domain"))
-
-    r.check("vp(roblem) accepts validate_problem",
-            _call_matches_validate_task(vp_call, "validate_problem"))
-    r.check("vp(roblem) rejects validate_domain",
-            not _call_matches_validate_task(vd_call, "validate_problem"))
-    r.check("vp(roblem) rejects validate_plan",
-            not _call_matches_validate_task(vplan_call, "validate_problem"))
-
-    r.check("vp(lan) accepts validate_plan",
-            _call_matches_validate_task(vplan_call, "validate_plan"))
-    r.check("vp(lan) rejects validate_domain",
-            not _call_matches_validate_task(vd_call, "validate_plan"))
-    r.check("vp(lan) rejects validate_problem",
-            not _call_matches_validate_task(vp_call, "validate_plan"))
-
-    # Missing/null arguments must not crash — the matcher reads only `name`.
-    no_args = {"name": "validate_domain"}
-    null_args = {"name": "validate_plan", "arguments": None}
-    r.check("missing args → vd accepts validate_domain",
-            _call_matches_validate_task(no_args, "validate_domain"))
-    r.check("null args → vp(lan) accepts validate_plan",
-            _call_matches_validate_task(null_args, "validate_plan"))
-
-    # Unknown task name → False (defensive default).
-    r.check("unknown task → False",
-            not _call_matches_validate_task(vd_call, "solve"))
-    # Legacy polymorphic tool name → False on every task (the tool no longer
-    # exists in the marketplace; should never appear in a recorded tool_call).
-    legacy = {"name": "validate_pddl_syntax", "arguments": {"domain": "(D)"}}
-    r.check("legacy tool name → vd rejects",
-            not _call_matches_validate_task(legacy, "validate_domain"))
 
 
 def test_get_tool_results(r: TestResults):
@@ -472,7 +416,6 @@ def main():
     test_parse_validation_verdict(r)
     test_tool_error_seen(r)
     test_used_tool(r)
-    test_call_matches_validate_task(r)
     test_get_tool_results(r)
     test_extract_plan_from_tool_result(r)
     test_extract_plan_lines(r)

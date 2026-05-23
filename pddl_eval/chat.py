@@ -58,9 +58,7 @@ def _safe_json_loads(raw):
 def _parse_validation_verdict(raw: str) -> bool | None:
     """Parse a validator-tool result string.
 
-    Expects the pyvalidator shape {"valid", "status", "report", "details"}
-    emitted by the three split tools (`validate_domain`, `validate_problem`,
-    `validate_plan`) introduced in pddl-validator 3.0.0.
+    Expects the pyvalidator shape {"valid", "status", "report", "details"}.
     Returns True if valid, False if invalid, None on error or unparseable.
     """
     data = _safe_json_loads(raw)
@@ -85,9 +83,6 @@ class MCPPlanner:
     # `details` / verbose `report` fields. The experiment bridge hides the
     # param from the LLM and pins it to False so tool responses stay compact
     # while preserving full fidelity for other MCP callers by default.
-    # Updated for pddl-validator 3.0.0 (marketplace 1.4.0): the polymorphic
-    # validate_pddl_syntax was split into three task-aligned tools — see
-    # `../pddl-copilot/docs/breaking-changes.md` 2026-05-23 entry.
     _PINNED_VERBOSE_FALSE = {
         "validate_domain",
         "validate_problem",

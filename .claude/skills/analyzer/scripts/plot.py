@@ -92,7 +92,7 @@ THINK_LIGHTEN = {"off": 0.0, "default": 0.0, "on": 0.55}
 # Canonical order + color for failure reasons in fig4. Unknown reasons
 # bucket into 'other'. Keep in sync with FR_* constants in run_experiment.py.
 FAILURE_REASONS = [
-    "ok", "tool_not_selected", "tool_error", "ollama_parse_error",
+    "ok", "tool_not_selected", "wrong_tool", "tool_error", "ollama_parse_error",
     "loop_exhausted", "verdict_mismatch", "result_mismatch",
     "no_verdict_parsed", "simulate_empty", "plan_invalid",
     "truncated_no_answer", "format_parse_fail", "think_overflow",
@@ -101,6 +101,11 @@ FAILURE_REASONS = [
 FAILURE_COLORS = {
     "ok":                  "#2ca02c",
     "tool_not_selected":   "#d62728",
+    # Added 2026-05-23 (sweep-5 phase A.1): the marketplace 1.4.0 validator
+    # split distinguishes "called a validator-family tool but not the
+    # task-matching one" (FR_WRONG_TOOL) from "called no validator at all"
+    # (FR_TOOL_NOT_SELECTED). Pre-1.4.0 trials never carry this tag.
+    "wrong_tool":          "#e7969c",
     "tool_error":          "#ff7f0e",
     "ollama_parse_error":  "#9467bd",
     "loop_exhausted":      "#8c564b",

@@ -81,6 +81,7 @@ from pddl_eval.scoring import (
     FR_TRUNCATED_NO_ANSWER,
     FR_UNKNOWN,
     FR_VERDICT_MISMATCH,
+    FR_WRONG_TOOL,
     _apply_truncation_override,
     _classify_step_failure,
     _extract_plan_from_tool_result,

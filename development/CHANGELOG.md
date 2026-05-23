@@ -6,6 +6,31 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-23 — Sweep-5 phase A.1: `FR_WRONG_TOOL` + helper inline + cleanup
+
+**Branch:** `sweep5-new-prompts`. Follow-up to the Phase A migration (`beab87a`).
+
+**TL;DR.** Phase A's mechanical migration silently shifted the `FR_TOOL_NOT_SELECTED` bucket: under the polymorphic predecessor it meant "no `validate_pddl_syntax` call at all", but Phase A also routed wrong-validator-tool calls (e.g. `validate_problem` invoked on a `validate_plan` task) into the same bucket. Cross-sweep selection-rate comparisons would have conflated these. Phase A.1 introduces `FR_WRONG_TOOL` so the three failure modes (no validator family / wrong validator / right validator wrong verdict) are reported separately — strictly more informative than the polymorphic predecessor allowed.
+
+**Files touched:**
+- `pddl_eval/scoring.py` — new `FR_WRONG_TOOL = "wrong_tool"` constant + `_VALIDATE_TOOL_NAMES` frozenset; three-way split in `check_success` validate branch (right tool → existing verdict-grading path; validator-family but not task-matching → `FR_WRONG_TOOL`; nothing validator-family at all → `FR_TOOL_NOT_SELECTED`); `_call_matches_validate_task` deleted (production-dead after Phase A — `check_success` had collapsed to inline `tc["name"] == task`).
+- `run_experiment.py:66-93` — re-export `FR_WRONG_TOOL` from scoring.
+- `tests/test_scoring.py::test_call_matches_validate_task` — deleted along with the helper. Behavior coverage moved to `test_check_success.py` (the three FR outcomes are exercised against `validate_plan` and `validate_domain` tasks).
+- `tests/test_check_success.py` — two existing "wrong tool" cases now assert `FR_WRONG_TOOL`. New explicit `FR_TOOL_NOT_SELECTED` case where the model called `classic_planner` (non-validator-family) so the three-way split is fully exercised.
+- `.claude/skills/analyzer/scripts/plot.py` — `wrong_tool` added to `FAILURE_REASONS` + `FAILURE_COLORS`. Prevents the sweep-4 audit's "anonymous grey 'other' slice" bug from recurring on `validate_*` cells.
+- `EXPERIMENTS_FLOW.md` — §4.1 metrics note rewritten to enumerate the three FR outcomes; §9 `failure_reasons` description adds `FR_WRONG_TOOL` to the notable-tags list with its semantics + provenance ("never appears in pre-marketplace-1.4.0 trials").
+- `pddl_eval/{scoring,chat,domains}.py` + `tests/_helpers.py` — migration-narrative docstring boilerplate trimmed from five sites. The migration story belongs in this CHANGELOG, not in docstrings that should describe current behavior.
+- `development/CHANGELOG.md` — fixed misleading parenthetical in the 2026-05-23 Phase A entry that claimed `_call_matches_validate_task` was called by `check_success` (it wasn't, post-Phase-A).
+
+**Verification:** `bash tests/verify.sh` — 6 test files, all pass.
+
+**Compatibility:**
+- Pre-marketplace-1.4.0 trials in `results/` and `checkpoints/` never carry `FR_WRONG_TOOL` (the marketplace surface couldn't produce it). The analyzer whitelist addition is forward-only; historical plots are byte-identical.
+- Cross-sweep aggregation: `(FR_TOOL_NOT_SELECTED + FR_WRONG_TOOL)` in sweep-5 is the apples-to-apples counterpart of `(FR_TOOL_NOT_SELECTED + wrong-shape subset of FR_VERDICT_MISMATCH)` in sweep-3/4. The latter is recoverable from stored `tool_calls[*].arguments` if direct comparison is needed in the paper.
+- No prompt-bank work yet (still on `sweep5-new-prompts` branch; Phase B is the design-doc rewrite + Phase C the `prompts.py` / `runner.py` implementation).
+
+---
+
 ## 2026-05-23 — Marketplace 1.4.0 adoption: validator tool split (sweep-5 foundation)
 
 **Branch:** `sweep5-new-prompts`. **Marketplace pin:** post-PR-52 (pddl-copilot @ `2850bc4`, marketplace `1.4.0`).
@@ -28,7 +53,7 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 **Compatibility notes.**
 - v0–v10 prompt strings are byte-stable (no edits). Replay-by-rerun of sweep-3 / sweep-4 / sweep-4.1 cells against the new marketplace pin will fail: the model can no longer call `validate_pddl_syntax` (tool removed). This is intentional per user direction (`feedback_pushback_on_methodology_shortcuts`); sweep-3/4/4.1 results in `results/` and `checkpoints/` remain valid as historical snapshots tied to their respective marketplace pins.
-- Recorded `tool_calls[*].name` in old `trials.jsonl` continues to read `"validate_pddl_syntax"`; the grader still parses these files for analysis (the `_call_matches_validate_task` check now returns False for that name, but legacy trials were graded at write-time and stored their `failure_reason` in the record — re-grading is not re-run by analysis).
+- Recorded `tool_calls[*].name` in old `trials.jsonl` continues to read `"validate_pddl_syntax"`. Legacy trials were graded at write-time and stored their `failure_reason` in the record; analysis paths read the stored field rather than re-running `check_success`, so the new tool-name expectations don't disturb historical aggregation.
 - Sweep-5 starts fresh on the marketplace 1.4.0 pin. Trial-key shape unchanged (10-tuple); no `runner.py` resume-key edits.
 
 **Sources of the split design (per PR-52 description):** Anthropic "Define tools" docs (3-4 sentence per-tool descriptions, schema-in-`tools=[]` convention), Anthropic engineering "Writing tools for agents" (consolidation, namespacing, "implicit context explicit"), BFCL methodology (relevance / selection / parameter-filling decomposition).

@@ -37,6 +37,7 @@ FR_OLLAMA_PARSE_ERROR = "ollama_parse_error"
 FR_TRUNCATED_NO_ANSWER = "truncated_no_answer"
 FR_THINK_OVERFLOW = "think_overflow"
 FR_TOOL_NOT_SELECTED = "tool_not_selected"
+FR_WRONG_TOOL = "wrong_tool"
 FR_TOOL_ERROR = "tool_error"
 FR_LOOP_EXHAUSTED = "loop_exhausted"
 FR_PLAN_INVALID = "plan_invalid"
@@ -46,6 +47,16 @@ FR_SIMULATE_EMPTY = "simulate_empty"
 FR_RESULT_MISMATCH = "result_mismatch"
 FR_FORMAT_PARSE_FAIL = "format_parse_fail"
 FR_UNKNOWN = "unknown"
+
+# The three task-aligned validator tools (marketplace 1.4.0). A `validate_*`
+# trial that invoked one of these but not the task-matching one is graded
+# FR_WRONG_TOOL — distinct from FR_TOOL_NOT_SELECTED (no validator-family
+# call at all) and FR_VERDICT_MISMATCH (right tool, wrong verdict).
+_VALIDATE_TOOL_NAMES = frozenset({
+    "validate_domain",
+    "validate_problem",
+    "validate_plan",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -60,24 +71,6 @@ def _used_tool(tool_calls: list[dict], name: str) -> bool:
 def _get_tool_results(tool_calls: list[dict], name: str) -> list[str]:
     """Return result strings from all calls to *name*."""
     return [tc["result"] for tc in tool_calls if tc["name"] == name and "result" in tc]
-
-
-def _call_matches_validate_task(tc: dict, task: str) -> bool:
-    """True iff a validator-tool call's name matches *task*.
-
-    After pddl-validator 3.0.0 (marketplace 1.4.0), the polymorphic
-    `validate_pddl_syntax` was split into three task-aligned tools whose
-    names are 1:1 with the grader task names: `validate_domain`,
-    `validate_problem`, `validate_plan`. The old argument-shape dispatch
-    (which had to reject domain-only calls when grading `validate_plan`)
-    collapses to a name match — wrong-shape calls are now impossible
-    because each tool's JSON schema enforces its required arguments.
-    """
-    return tc.get("name") == task and task in {
-        "validate_domain",
-        "validate_problem",
-        "validate_plan",
-    }
 
 
 def _extract_plan_from_tool_result(raw: str) -> list[str]:
@@ -263,7 +256,7 @@ def extract_verdict(response: str) -> bool | None:
 async def _validate_model_plan(
     mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan_lines: list[str],
 ) -> bool | None:
-    """Call validate_plan on the model's extracted plan.
+    """Validate a model-emitted plan via the validator MCP tool.
 
     Returns True iff pyvalidator reports valid, False if the plan is empty
     or pyvalidator reports invalid, None if the MCP transport failed or the
@@ -399,21 +392,24 @@ async def check_success(
         truth = gt.get(gt_key)
 
         if tool_calls:
-            # marketplace 1.4.0: task name == expected tool name (1:1 split).
-            selected = _used_tool(tool_calls, task)
-            if not selected:
-                return False, False, FR_TOOL_NOT_SELECTED
-            if truth is None:
-                return True, False, FR_UNKNOWN
-            for tc in tool_calls:
-                if tc.get("name") != task:
-                    continue
-                verdict = _parse_validation_verdict(tc.get("result", ""))
-                if verdict == truth:
-                    return True, True, FR_OK
-            if _tool_error_seen(tool_calls, task):
-                return True, False, FR_TOOL_ERROR
-            return True, False, FR_VERDICT_MISMATCH
+            # Task name == expected validator-tool name (1:1 since the
+            # marketplace 1.4.0 split). Three failure modes are now
+            # distinguished — see the FR vocabulary comment block above.
+            if _used_tool(tool_calls, task):
+                if truth is None:
+                    return True, False, FR_UNKNOWN
+                for tc in tool_calls:
+                    if tc.get("name") != task:
+                        continue
+                    verdict = _parse_validation_verdict(tc.get("result", ""))
+                    if verdict == truth:
+                        return True, True, FR_OK
+                if _tool_error_seen(tool_calls, task):
+                    return True, False, FR_TOOL_ERROR
+                return True, False, FR_VERDICT_MISMATCH
+            if any(tc.get("name") in _VALIDATE_TOOL_NAMES for tc in tool_calls):
+                return False, False, FR_WRONG_TOOL
+            return False, False, FR_TOOL_NOT_SELECTED
 
         # PR-4: try structured ValidateResponse.verdict first, then the
         # free-text VERDICT: regex as fallback. FR_FORMAT_PARSE_FAIL only
