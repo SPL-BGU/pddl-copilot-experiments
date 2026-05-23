@@ -38,18 +38,33 @@ All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilo
 
 ### `scripts/status.sh` — cluster status snapshot
 
-One SSH call (`squeue` + per-cell `wc -l trials.jsonl`). Local Python diffs against `~/.cache/cluster-ops-status.json` (overridable via `STATE_FILE` env) and renders five sections, in this order:
+One SSH call (`squeue` + per-cell `wc -l trials.jsonl`, two greps per cell — full v11-16 active set and the v14-16 steered subset, so every dir is split into a neutral and steered logical column). Local Python diffs against `~/.cache/cluster-ops-status.json` (overridable via `STATE_FILE` env) and renders five sections, in this order:
 
 1. **Header** — `## Status — ~Xh since last check` (or `first run` when the cache file is absent).
 2. **What changed** — bullets for cells that flipped to ✓ this window and cells that newly started accumulating trials. Omitted if nothing changed.
-3. **Per-cell progress matrix** — 4 active models × 5 think×cond cells. Each cell shows `N/D (P%)` plus an icon: ✓ done · ▶ growing · ⏸ has trials but no growth · `PD↻` pending rerun (count > 0) · `PD` pending fresh · `_-_` empty/no match.
+3. **Per-cell progress matrix** — 5 active models × **8 logical columns**: `think × {no-tools, tools_all} × {neutral v11-13, steered v14-16}`. The neutral/steered split is **explicit**: every column shows exactly one of the four arms, so H1 (`tl-neut` vs `nt-neut`) and H2 (`tl-ster` vs `tl-neut`) are directly readable. Column headers: `on/nt-neut`, `on/nt-ster`, `on/tl-neut`, `on/tl-ster`, then the same four for `off/`. Every logical column has a **uniform 4560-trial denominator** (3 variants × 1520 trials/variant). The `nt-ster` column is the only one that doesn't inherit queue/running attribution from its sibling sbatch — main and control submits share `cond=no-tools` jnames, so status can't tell them apart at the queue layer. Each cell shows `N/D (P%)` plus an icon: ✓ done · ▶ growing · ⏸ has trials but no growth · `PD↻` pending rerun (count > 0) · `PD` pending fresh · `_-_` empty/no match.
 4. **Δ since last status** — only cells whose count grew this window. Columns: `Cell | Prev → Now | Δ | pace (s/trial) | ETA`. Pace is window-averaged, so a cell that started mid-window will appear slower than reality.
-5. **Roll-up** — Done X/20 · Trial coverage % · Running N cells (job IDs) · Watch list (cells where `elapsed + ETA > 0.9 × 72h --time`).
+5. **Roll-up** — Done X/40 (5 models × 8 columns; `nt-ster` cells stay "empty" until the control submits) · Trial coverage % · Running N cells (job IDs) · Watch list (cells where `elapsed + ETA > 0.9 × --time` budget).
 6. **Queue** (compact) — Running job IDs, Pending grouped by REASON. See the REASON cheat-sheet below.
 
-The cache file is local-only and pure scratch — `rm ~/.cache/cluster-ops-status.json` to reset (next run will be a "first run" with no Δ).
+**Arm semantics** (which submit fills which column):
 
-Pending array tasks whose per-cell name hasn't materialised yet (still showing the parent template like `pddl_rtx_qwen3_6_27b`) are matched to all 5 cells of that model — so `PD` icons appear before the array fans out.
+| Column      | Variants | Filled by                                         |
+|-------------|----------|---------------------------------------------------|
+| `nt-neut`   | v11-13   | sweep-5 main `submit_with_rtx.sh` no-tools cells  |
+| `nt-ster`   | v14-16   | sweep-5 control `--include-no-tools-steered` run  |
+| `tl-neut`   | v11-13   | sweep-5 main with-tools cells (same run as below) |
+| `tl-ster`   | v14-16   | sweep-5 main with-tools cells (emits both arms)   |
+
+For sweep-4 or sweep-3 replay, override the variant regexes:
+```bash
+ACTIVE_VARIANTS_RE='[567]' STEERED_VARIANTS_RE='' bash status.sh   # sweep-4 (steered cols stay empty)
+ACTIVE_VARIANTS_RE='[012]' STEERED_VARIANTS_RE='' bash status.sh   # sweep-3
+```
+
+The cache file is local-only and pure scratch — `rm ~/.cache/cluster-ops-status.json` to reset (next run will be a "first run" with no Δ). After the 2026-05-23 column-split, the first run against an older cache will treat every cell as freshly-started — expected.
+
+Pending array tasks whose per-cell name hasn't materialised yet (still showing the parent template like `pddl_rtx_qwen3_6_35b`) are matched to all main-arm cells of that model via the manifest — so `PD` icons appear before the array fans out.
 
 **Output mode** auto-selects from stdout TTY-detect: ANSI-coloured aligned text in a real terminal, GitHub-flavoured markdown when piped or run via the Bash tool. Override with flags:
 
@@ -88,7 +103,7 @@ Caveats: neither rank nor SLURM's earliest-slot estimate is a real ETA. Rank cou
 `rsync -av --update` from the cluster's `results/slurm_*` AND `results/smoke/probe_*` into a local subdir under `results/`. Two rsync calls — sweep cells (must succeed) and probe outputs (`|| true` since they're often empty on a fresh cluster).
 
 ```bash
-bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/sweep3-cluster-YYYYMMDD/
+bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/sweep5-cluster-YYYYMMDD/
 bash .claude/skills/cluster-ops/scripts/sync.sh results/my-custom-run    # → explicit dir
 ```
 
@@ -167,15 +182,17 @@ After a sweep is submitted, periodically verify it's not regressing vs a baselin
 
 ### "Submit the sweep"
 
-The path validated 2026-04-25: bulk jobs queued in 8 seconds, full 4-model sweep packed in ONE rtx_pro_6000 job under `MAX_LOADED_MODELS=1`.
+Sweep-5 (active 2026-05-23): the production submit is `submit_full_sweep.sh` (3 sbatch arrays — small Qwens / 35B / gemma4 — total 20 cells, 5 models × 4 think×cond cells). Per-cell trial denominator is asymmetric: no-tools = 4560 (v11-13), tools_all_minimal = 9120 (v11-16 — with-tools cells emit both neutral and steered variants in one run).
 
 1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes plugin venvs, surfaces GPU pool capacity for `rtx6000` and `rtx_pro_6000`. Halts on any failure.
-2. Dry-run, then submit. `--all` packs the 4 active models into one job; per-model invocations submit independent jobs that queue in parallel:
+2. Dry-run, then submit. `submit_full_sweep.sh` dispatches the production pack:
    ```bash
    ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
-     bash cluster-experimenting/submit_with_rtx.sh --all --dry-run"
+     bash cluster-experimenting/submit_full_sweep.sh --dry-run"
    ```
+   For single-model pilots, fall back to `submit_with_rtx.sh <model>`.
 3. If approved, same command without `--dry-run`.
+4. **Sweep-5 control arm** (separate submit after main completes): the 4th arm `(no-tools × v14-16)` runs via `run_experiment.py --include-no-tools-steered`. Trials land in the SAME `slurm_vllm_<model>_<think>_no-tools/` dirs as the main no-tools cells; the analyzer separates them at row-level by `prompt_variant`. `status.sh`'s `nt-ctrl` column tracks the control fill rate (0% until that submit lands).
 
 **`--no-tools` shorthand**: for the baseline-only run, `bash submit_with_rtx.sh --all --no-tools` pins `CONDITIONS=no-tools` and `THINK_MODES={on,off}`, with `--time=05:00:00` per cell.
 
@@ -196,7 +213,7 @@ For sbatches that aren't sweep cells — vLLM probes, concurrency-saturation tes
    ```
    Capture the printed `Submitted batch job <jobid>`. The `GPU Parameter Set ! Using GPU Partition` line under it is informational, not an error.
 3. Inspect with `bash .claude/skills/cluster-ops/scripts/job.sh <jobid>` — pending state shows queue position + estimated start; running state shows live log tail.
-4. When the probe completes, `bash .claude/skills/cluster-ops/scripts/sync.sh` already pulls `results/smoke/probe_*` alongside sweep cells, so the data lands under `results/sweep3-cluster-<today>/probe_*/`.
+4. When the probe completes, `bash .claude/skills/cluster-ops/scripts/sync.sh` already pulls `results/smoke/probe_*` alongside sweep cells, so the data lands under `results/sweep5-cluster-<today>/probe_*/`.
 
 This path explicitly bypasses `submit_with_rtx.sh` (no CELLS_LIST manifest, no auto-prioritize, no `pddl_*` job-name) — fine because the recipe is for one-off experiments, not sweep cells. Don't use it for sweep work.
 

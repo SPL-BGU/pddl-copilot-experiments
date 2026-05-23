@@ -16,7 +16,14 @@ splitting by per-cell walltime:
 | `gemma4:26b-a4b`                    | `rtx_6000:1`      | 48 h          |
 
 Each model contributes one cell per `(think_mode, condition)` combination
-under the 2 × 3 matrix. Every array task allocates its own dedicated GPU
+under the 2 × 2 matrix (`think ∈ {on, off}` × `cond ∈ {no-tools,
+tools_all_minimal}`). Sweep-5 introduces an asymmetric per-cell denominator:
+no-tools cells emit v11/v12/v13 only (3 variants); with-tools cells emit
+v11/v12/v13 + v14/v15/v16 (6 variants). The control arm
+`(no-tools × v14/v15/v16)` lands in the same per-cell dir via
+`--include-no-tools-steered` on `run_experiment.py` — its trials are
+distinguished at row-level by `prompt_variant`. Every array task allocates
+its own dedicated GPU
 — no GPU sharing across cells; the small-Qwen pack and the 35B pack are
 separate sbatch submissions only because they need different walltimes,
 not because of GPU contention. Within each pack, cells fan out
@@ -122,9 +129,10 @@ wrapper; use it directly for single-model pilots or one-off cells.
 ```bash
 cd ~/pddl-copilot-experiments
 
-# Full production sweep: 3 sbatch arrays (small Qwens × 18 cells,
-# 35B × 6 cells, gemma4:26b-a4b × 6 cells = 30 cells total). Each
-# array task runs on its own dedicated GPU; fan-out concurrent.
+# Full production sweep: 3 sbatch arrays (small Qwens × 12 cells,
+# 35B × 4 cells, gemma4:26b-a4b × 4 cells = 20 cells total — 5 models
+# × 2 think × 2 cond). Each array task runs on its own dedicated GPU;
+# fan-out concurrent.
 bash cluster-experimenting/submit_full_sweep.sh
 
 # Preview the full-sweep dispatch without submitting.
@@ -137,7 +145,7 @@ bash cluster-experimenting/submit_full_sweep.sh --no-tools
 # class is rtx_6000:1; --gpu-type rtx_pro_6000 is the opt-in escape).
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B
 
-# Multi-model invocation (3 models × 6 = 18-cell array, each cell
+# Multi-model invocation (3 models × 4 = 12-cell array, each cell
 # on its own rtx_6000:1 — no GPU packing across cells).
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B
 
@@ -166,7 +174,9 @@ Pass either `rtx_pro_6000` or `rtx_6000`; everything else errors.
 
 `--no-tools` pins the run to the no-tools matrix:
 - `CONDITIONS=no-tools` (one tools-off pass)
-- `THINK_MODES=off` (no-tools/think=on is skipped by the matrix gate anyway)
+- `THINK_MODES=off` (think=on is a valid no-tools cell — the legacy
+  no-tools/think=on matrix gate was lifted 2026-05-12; pass
+  `--think-modes "on off"` to include it)
 - `TASKS=` runner default (all 5: solve, validate_domain, validate_problem,
   validate_plan, simulate). PR-4 re-enabled no-tools `simulate` via JSON-
   trajectory grading against the oracle (`SimulateResponse` schema in
@@ -385,6 +395,15 @@ above; the wrapper will refuse the tag until both edits are in place.
 ### Conditions (2 active) — looped inside every job
 - `no-tools`                    — baseline, no MCP tools exposed
 - `tools_all_minimal`           — tools on, filter=all, prompt=minimal
+
+Sweep-5 (active 2026-05-23) adds the prompt-variant axis as a within-cell
+loop: with-tools cells emit v11/v12/v13 (neutral) + v14/v15/v16 (steered);
+no-tools cells emit v11/v12/v13 only. The 4th-arm control
+`(no-tools × v14-v16)` runs via `run_experiment.py --include-no-tools-steered`
+and lands in the same per-cell dir, distinguished at row-level by
+`prompt_variant`. See `development/sweep_prompt_bank_design.md` for the
+full matrix + arm mapping. Retired axes: `tools_per-task_minimal` (sweep-5
+retirement 2026-05-19), `tools_*_guided` (earlier).
 
 Each condition invokes `run_experiment.py` once, writing to its own output
 subdir. Conditions inside a job are independent: a late-stage condition

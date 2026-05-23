@@ -6,6 +6,122 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-23 — Code-review fixes to the sweep-5 matrix propagation
+
+**Branch:** `sweep5-new-prompts`. Follows the two same-day matrix entries below (`Make sweep-5 neutral/steered split explicit` and `Propagate sweep-5 matrix to ops layers`). Triggered by an extra-high-effort `code-review` pass over the unstaged matrix work; 12 findings landed, all surgical, no methodology impact.
+
+**Status.sh fixes:**
+- **#1 Watch-list dedupe** — `watch` loop now tracks a `seen_dirs` set keyed by `dir_cell` so each underlying tools_all sbatch produces at most one watch row. Pre-fix, `tl-neut` and `tl-ster` both mapped to the same dir and each emitted an entry for one physical job. Watch labels now name the dir-level sbatch (e.g. `qwen3.6:35b on/tools_all_minimal`) since the ETA covers both halves of the run.
+- **#3 Dir-level pace/eta** — `deltas[cell]["pace_s"]` and `["eta_h"]` were computed from per-logical-column deltas, giving ~2× too-slow pace and ~2× too-pessimistic ETA for any `tools_all` cell. Now aggregated by `LOGICAL_TO_DIR_COND[c]` into a `dir_totals` dict, then written back to each logical child. Siblings show identical pace/eta as a "same sbatch" visual cue. Δ-table rows still split by logical column for visibility.
+- **#4 `--help` truncation** — header docstring extended past the prior `sed -n '2,18p'` window after the matrix-doc rewrite; bumped to `2,40p`.
+- **#5 `started_now` gate** — the `prev == 0 → started_now` branch now also requires `now < denom`. Without it, cells that arrived already-complete (post-upgrade cache key mismatch → `prev=0`) would mis-render as `▶🆕 started (4560/4560)` instead of silently passing through. The post-upgrade noise floor is otherwise ~30 fake bullets per first run.
+- **#6 Sweep-4 replay** — new `steered_enabled` flag (mirrored from `STEERED_VARIANTS_RE`) threaded into the embedded Python via `sys.argv[5]`. When False, the four `*-steered` columns drop from `CELLS` and `COL_HEADERS`, and the steered counts aren't written into `counts`. Replay collapses cleanly to 4 columns × 5 models = 20 cells, no phantom `tl-ster ▶` at 0%.
+- **#8 `n_neutral` clamp warning** — `n_steered > n_active` (caused by overlapping/misconfigured regexes) now emits a single stderr `warn:` line summarizing the discrepancy across affected dirs. Run still completes.
+- **#9 Dead legacy keys** — `cell_label` shed the legacy `tools_per-task_minimal` / `tools_all_minimal` / `no-tools` entries and the misleading "kept so Δ renders meaningfully" comment. `.get(c, c)` fallback retained for unmapped keys.
+- **#10 Malformed-line warning** — counts parser now counts dropped lines (bad shape, non-int) and emits a stderr `warn:` if `count_raw` was non-empty but the matrix was empty. Catches a remote-heredoc wire-format regression instead of silently rendering 0% everywhere.
+
+**filter_variants.py fixes:**
+- **#7 `_ARM_VARIANTS` mutation hazard** — presets switched from `set` to `frozenset` so a future `args.variants.add(...)` (latent today, plausible tomorrow) can't silently corrupt the module-level dict.
+- **#12 Mutex error consistency** — `--arm` / `--variants` mutex now calls `p.error(...)` (argparse standard exit 2 + usage banner) instead of `sys.exit("error: ...")` (exit 1, no banner). Matches `_parse_variants`'s `ArgumentTypeError` path.
+
+**SKILL.md fix:**
+- **#2 Recipe correctness** — the "Checkpoint a sweep" recipe used a single `--arm both` + `--min-out 4560` call that admitted half-finished with-tools cells (4560-9119 of 9120 trials) into the published checkpoint. Rewritten to two passes (`--arm neutral --min-out 4560` + `--arm steered --min-out 4560`), with the result roots named `<name>-neutral` and `<name>-steered`. Sweep-4 replay still uses the single-pass `--variants 5,6,7 --min-out 4560` path.
+
+**CHANGELOG fix:**
+- **#11 Compatibility paragraph** — the prior 8-col entry described first-run-after-upgrade as "Δ first-renders every cell as freshly-started" — accurate for the empty-Δ case but understating the wider misclassification. Rewritten to acknowledge fix #5's role in narrowing the impact and to keep the `rm` workaround front-of-mind for unfixed deployments.
+
+**Files touched (this commit):**
+- `.claude/skills/cluster-ops/scripts/status.sh` (sys.argv threading, `steered_enabled` filter, malformed warning, oversteered warning, dir_totals pace/eta, watch-list dedup, started_now gate, cell_label cleanup, --help range).
+- `.claude/skills/analyzer/scripts/filter_variants.py` (`frozenset` presets, `parser.error` mutex).
+- `.claude/skills/analyzer/SKILL.md` (Checkpoint recipe → two-pass arm-aware).
+- `development/CHANGELOG.md` (this entry + Compatibility-paragraph rewrite on the entry below).
+
+**Compatibility.** No experiment-result impact. Status cache behaviour: fix #5 narrows the upgrade-cycle mis-classification (no more fake `started_now` for already-complete cells). The `rm ~/.cache/cluster-ops-status.json` workaround is no longer required, but remains the most conservative path. `filter_variants.py` defaults unchanged; the `frozenset` change is API-compatible at every call site (membership + `sorted()` only — verified).
+
+**Verification.**
+- `bash -n status.sh` + `ast.parse` on embedded PY — both pass.
+- `python3 -m py_compile filter_variants.py` — clean.
+- Synthetic-payload smoke covering: (a) sweep-5 main with running with-tools sbatch (verify single watch row, identical sibling pace/eta), (b) sweep-4 replay with `STEERED_VARIANTS_RE=''` (verify 4-column collapse, no phantom rows), (c) pre-split cache (verify completed cells don't mis-render as started_now). All pass.
+- `filter_variants.py --arm neutral --variants 14,15,16 ... → argparse banner + exit 2.
+
+---
+
+## 2026-05-23 — Make sweep-5 neutral/steered split explicit in status + analyzer
+
+**Branch:** `sweep5-new-prompts`. Follow-up to the same-day matrix-propagation entry below (user feedback: "isn't there a steered vs neutral? … it should be explicit not implicit").
+
+**TL;DR.** The first cut split only the no-tools arm into a main (neutral) and a control (steered) column; the with-tools column kept a 9120-trial pooled denom that hid the v11-13 vs v14-16 breakdown. This commit splits BOTH arms — every dir's trials are now classified into a neutral or steered logical column, so H1 (tl-neut vs nt-neut) and H2 (tl-ster vs tl-neut) are directly readable from the status board.
+
+**Schema change.**
+- `status.sh` matrix: 6 logical columns → **8 logical columns**. CELLS now covers `{no-tools-neutral, no-tools-steered, tools_all-neutral, tools_all-steered} × {on, off}`. All four logical conds have uniform `DENOM=4560`. New `LOGICAL_TO_DIR_COND` map handles queue/running attribution from the dir-level cond back out to its logical children (with-tools sbatch fills both `tl-neut` and `tl-ster` siblings simultaneously). `no-tools-steered` remains the one column without queue inheritance — main and control sbatches share `cond=no-tools` jnames.
+- Watch-list iteration now maps logical cells through `LOGICAL_TO_DIR_COND` before looking up `cell_running`; previously the logical-vs-dir mismatch would have silently skipped every cell.
+- `total_expected` rolls up to 40 (5 models × 8 columns); coverage caps at 75% on a main-only sweep (control fills the remaining 25%).
+
+**Analyzer ergonomics.**
+- `filter_variants.py` gains an `--arm {neutral,steered,both}` flag (mutually exclusive with `--variants`). `--arm neutral` = {11,12,13}, `--arm steered` = {14,15,16}, `--arm both` = full active set (default). `--variants` stays available for sweep-4 replay and ad-hoc subsets.
+- `.claude/skills/analyzer/SKILL.md` checkpoint recipe rewritten around `--arm`; sweep-4 replay example kept on `--variants 5,6,7`.
+
+**Doc updates.**
+- `.claude/skills/cluster-ops/SKILL.md` — status section now describes the 8-column matrix with an arm-semantics table.
+- `.claude/skills/cluster-ops/scripts/status.sh` — header comment block rewritten; `cell_label` short-tag dict adds the four split conds; markdown + terminal renderers use the new 8-col `short_hdrs`.
+
+**Files touched (this commit, on top of the earlier propagation):**
+- `.claude/skills/cluster-ops/scripts/status.sh` — CELLS, DENOM, COND_SPLIT, LOGICAL_TO_DIR_COND, cell_status, cell_label, watch list, short_hdrs / CELL_W, header docstring.
+- `.claude/skills/cluster-ops/SKILL.md` — 8-column status doc + arm-semantics table.
+- `.claude/skills/analyzer/scripts/filter_variants.py` — `--arm` flag + `_ARM_VARIANTS` presets; docstring rewritten around `--arm`.
+- `.claude/skills/analyzer/SKILL.md` — `filter_variants` examples switch to `--arm` (explicit-not-implicit framing).
+- `development/CHANGELOG.md` — this entry.
+
+**Compatibility.** Status cache from before the 8-col split is read but its keys (`no-tools`, `tools_all_minimal`, `no-tools-steered`) don't match the new logical keys, so `prev_counts.get(cell, 0)` returns 0 for every new logical cell. On the first post-upgrade run, `d["prev"] == 0` for every populated cell — without the follow-up `now < denom` gate (see the same-day "Code-review fixes" entry above), even already-100%-complete cells would mis-render as `▶🆕 started_now`. Recommended workaround: `rm ~/.cache/cluster-ops-status.json` before the first post-upgrade run; the follow-up fix narrows the impact for sessions where the rm is forgotten. No harness change. `filter_variants.py --variants` still accepts arbitrary sets; `--arm` is purely additive.
+
+**Verification.**
+- `bash -n` + `ast.parse` on `status.sh` — both pass.
+- Smoke-test of `status.sh`'s Python parser against a synthetic 2-dir payload (no-tools 3000/1000 + tools_all 4500/1500) — emits the 8-col table with correct per-column splits (2000/1000/3000/1500 of 4560).
+- `python3 -m py_compile` + `--help` on `filter_variants.py` — `--arm` choices render.
+
+---
+
+## 2026-05-23 — Propagate sweep-5 matrix to ops layers (status / submit docs / analyzer defaults)
+
+**Branch:** `sweep5-new-prompts`. Follows commit `ed3a46e` (the prompt-bank + variant-gated dispatch landing) — this entry is the operational propagation of the new matrix into the cluster wrappers and the two `.claude/skills/` skills, so the next status check + submit + analysis don't silently use sweep-4 settings.
+
+**TL;DR.** The harness-side sweep-5 work shipped in `ed3a46e` (v11/v12/v13 neutral + v14/v15/v16 steered; `STEERED_VARIANTS` emit-skip gated by `run_experiment.py --include-no-tools-steered` for the 4th-arm control). This follow-up updates everything *around* the harness:
+
+- **`status.sh`** — `ACTIVE_VARIANTS_RE` default flips from the single-char `[567]` to `1[1-6]` (sweep-5 active set). New `STEERED_VARIANTS_RE` (default `1[4-6]`) splits per-cell no-tools counts into a main column and a synthetic `no-tools-steered` (nt-ctrl) column showing the 4th-arm control fill rate. Per-cell denominators turn asymmetric: `no-tools` and `no-tools-steered` = 4560 each; `tools_all_minimal` = 9120 (sweep-5 with-tools emits 6 variants vs 3 for no-tools; 1520 trials/variant from sweep-3 corpus per `CHANGELOG.md:714`). The remote grep loop now emits `<n_active>\t<n_steered>\t<dirname>` so the local parser can split. Sweep-4 replay is preserved as `ACTIVE_VARIANTS_RE='[567]' STEERED_VARIANTS_RE='' bash status.sh`. The `nt-ctrl` cell never inherits queue/running attribution from its sibling no-tools row (both submits share `cond=no-tools` jnames — status can't distinguish queue state).
+- **`sync.sh`** — default DEST renamed `results/sweep3-cluster-…/` → `results/sweep5-cluster-…/`.
+- **`.claude/skills/cluster-ops/SKILL.md`** — status doc rewritten to describe the 6-column matrix, asymmetric denominators, and the `--include-no-tools-steered` control workflow. Submit recipe reframed around `submit_full_sweep.sh` with the 20-cell main / control split called out.
+- **`.claude/skills/analyzer/scripts/filter_variants.py`** — default `--variants` flips from `{5, 6, 7}` to `{11, 12, 13, 14, 15, 16}`; help text + module docstring rewritten with sweep-5 neutral-only (H1) / steered-only (H2) / sweep-4-replay recipes.
+- **`.claude/skills/analyzer/SKILL.md`** — `filter_variants` section + "Checkpoint a sweep" recipe rewritten around sweep-5 defaults and asymmetric `--min-out` (no-tools 4560 vs with-tools 9120); sweep-4-replay example kept alongside as known-good reference per user direction.
+- **`cluster-experimenting/README.md`** — `2 × 3 matrix` → `2 × 2 matrix` (sweep-3-era third cond was already gone), cell-count math `30 → 20`, stale `no-tools/think=on gate` sentence corrected, sweep-5 within-cell variant axis + control submit pattern documented in §Conditions.
+- **`cluster-experimenting/submit_with_rtx.sh`** — `--all` doc math corrected (`4 models × 6 cells = 24` → `5 models × 4 cells = 20`); smoke-block "4-model pack" → "default model pack (5 models)".
+- **`cluster-experimenting/setup_env.sh`** — "submit 4-model pack as ONE rtx_pro_6000 job" → `submit_full_sweep.sh` (20 cells across 3 sbatch arrays).
+- **`.claude/skills/analyzer/scripts/plot_focused.py`** — header docstring decouples `DEFAULT_CHECKPOINT` from the (still-valid) historical baseline; explicit comment that current-sweep figures need `<root>` passed.
+- **`.claude/skills/analyzer/scripts/build_deck.py`** — docstring reframes `sweep4-v5-v7-first/deck_config.py` as the worked example to copy + edit for a sweep-5 deck.
+
+**Files touched (this commit):**
+- `.claude/skills/cluster-ops/scripts/status.sh` (regex defaults, remote heredoc, parsing, render, comments).
+- `.claude/skills/cluster-ops/scripts/sync.sh` (default DEST).
+- `.claude/skills/cluster-ops/SKILL.md` (matrix doc + submit recipe).
+- `.claude/skills/analyzer/scripts/filter_variants.py` (default + docstring).
+- `.claude/skills/analyzer/scripts/plot_focused.py` (`DEFAULT_CHECKPOINT` comment + usage doc).
+- `.claude/skills/analyzer/scripts/build_deck.py` (docstring).
+- `.claude/skills/analyzer/SKILL.md` (`filter_variants` section + Checkpoint recipe).
+- `cluster-experimenting/README.md` (matrix shape, cell counts, conditions section).
+- `cluster-experimenting/submit_with_rtx.sh` (--all examples + smoke + --all comments).
+- `cluster-experimenting/setup_env.sh` (post-install hint).
+- `development/CHANGELOG.md` (this entry).
+
+**Compatibility.** No harness behaviour change — only docs, defaults, and a status.sh data-shape extension. Sweep-3/4/4.1 replay paths preserved (override `ACTIVE_VARIANTS_RE` + `STEERED_VARIANTS_RE` on the wrapper side; `filter_variants.py --variants 5,6,7` works as before). Status cache file (`~/.cache/cluster-ops-status.json`) format unchanged at the file level — new sweep-5 cells just add `no-tools-steered` keys; pre-existing keys remain readable. Closes no `ISS-###`.
+
+**Verification.**
+- `bash -n .claude/skills/cluster-ops/scripts/status.sh` — bash parses.
+- The embedded Python block in `status.sh` parses (ast.parse).
+- `python3 -m py_compile` on all touched analyzer scripts.
+- `python3 .claude/skills/analyzer/scripts/filter_variants.py --help` — new default + example text renders.
+- Live `status.sh` against the cluster — deferred to next user-initiated run; output shape change is purely additive (new columns and labels).
+
+---
+
 ## 2026-05-23 — Retire the Ollama inference backend
 
 **Branch:** `sweep5-new-prompts`. Commit `9cdf2da` (the backend cut) plus this entry's follow-up.

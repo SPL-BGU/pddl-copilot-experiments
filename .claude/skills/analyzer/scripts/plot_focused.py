@@ -6,8 +6,8 @@ for a non-specialist audience. Each focused figure here answers ONE question
 with at most two bars per model.
 
 Usage:
-    python3 plot_focused.py                               # auto: cluster-26042026
-    python3 plot_focused.py checkpoints/cluster-26042026
+    python3 plot_focused.py                               # auto: DEFAULT_CHECKPOINT
+    python3 plot_focused.py checkpoints/sweep5-main       # explicit checkpoint
     python3 plot_focused.py <root> --figs 1,5,7
     # (chain-focused fig3 was removed 2026-05-05; numeric IDs preserve meaning)
     python3 plot_focused.py <root> --no-ci
@@ -68,6 +68,10 @@ MCP_TOOL_LABELS = {
     "get_state_transition": "state_transition",
     "save_plan":            "save_plan",
 }
+# Historical sweep-3 baseline checkpoint kept as the no-arg default for
+# replay parity. Pass an explicit `<root>` (e.g. `checkpoints/sweep5-main`)
+# for current-sweep figures — the no-arg form should not be relied on
+# for paper-current numbers.
 DEFAULT_CHECKPOINT = "checkpoints/cluster-26042026"
 
 CLASSICAL_SET = set(CLASSICAL)

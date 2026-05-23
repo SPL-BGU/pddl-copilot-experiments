@@ -76,14 +76,17 @@
 #   cell, output is the partial-fixture summary).
 #
 # Examples:
-#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B           # 6-cell array
-#   bash cluster-experimenting/submit_with_rtx.sh --all                  # 24-cell array (4 models × 6 cells)
-#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # 8-cell array (4 models × 2 cells: think on+off)
+#   bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B           # 4-cell array (think × cond)
+#   bash cluster-experimenting/submit_with_rtx.sh --all                  # 20-cell array (5 models × 4 cells)
+#   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools       # 10-cell array (5 models × 2 cells: think on+off)
 #   bash cluster-experimenting/submit_with_rtx.sh gemma4:26b-a4b --no-tools  # 2-cell array (think on+off)
 #
-# --all: shorthand for the 4 active models. Each model contributes 4 cells
-#   under the full think={on,off} × cond={no-tools, tools_all_minimal}
-#   matrix. Total array size: 16. Roster history:
+# --all: shorthand for the 5 active models in PDDL_DEFAULT_MODELS. Each
+#   model contributes 4 cells under the full think={on,off} ×
+#   cond={no-tools, tools_all_minimal} matrix. Total array size: 20.
+#   Sweep-5 (2026-05-23) keeps the same cell topology but emits 6 prompt
+#   variants per with-tools cell (v11-16) vs 3 per no-tools cell (v11-13);
+#   the per-cell denominator is asymmetric. Roster history:
 #   2026-04-29 swap, 2026-04-30 nemotron drop. The (think=on, no-tools) cell
 #   was added 2026-05-12 after ISS-018 (PR-2, 2026-04-28) lifted the runtime
 #   abort and routed thinking content into TaskResult.thinking — verdict /
@@ -167,10 +170,11 @@ if [ -n "$CONTINUE_PARTIAL" ]; then
     fi
 fi
 
-# --smoke / --smoke-shuffle: pin the 4-model pack and full think × cond
-# matrix; run_experiment.py auto-overrides --num-variants and skips the
-# inner THINK × CONDITIONS loop in the sbatch (the smoke wrapper iterates
-# think internally). One cell per model.
+# --smoke / --smoke-shuffle: pin the default model pack (5 models in
+# PDDL_DEFAULT_MODELS) and full think × cond matrix; run_experiment.py
+# auto-overrides --num-variants and skips the inner THINK × CONDITIONS
+# loop in the sbatch (the smoke wrapper iterates think internally). One
+# cell per model.
 if [ "$SMOKE" -eq 1 ] && [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     echo "Error: --smoke and --smoke-shuffle are mutually exclusive" >&2
     exit 1
@@ -185,8 +189,9 @@ if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     fi
 fi
 
-# --all populates the 4-model paper roster. Each (model, think, cond) cell
-# becomes one array task on rtx_pro_6000:1.
+# --all populates the 5-model paper roster (PDDL_DEFAULT_MODELS). Each
+# (model, think, cond) cell becomes one array task; default GPU class is
+# rtx_6000:1 (see GPU routing in the header).
 if [ "$ALL" -eq 1 ]; then
     if [ "${#MODELS[@]}" -gt 0 ]; then
         echo "Error: --all is exclusive with explicit model args" >&2

@@ -5,21 +5,31 @@ Promoted from checkpoints/sweep4-v5-v7-first/_build_filtered.py — same semanti
 plus a `--variants` flag so future sweeps can pick their own variant set.
 
 Examples:
-  # Sweep-4 single model (default variants 5,6,7):
+  # Sweep-5 main checkpoint (default: --arm both = {11..16} full active set;
+  # asymmetric per-cell denominators — with-tools cells gate at 9120 trials,
+  # no-tools at 4560 — filter arm-by-arm if uniform --min-out matters):
   python3 .claude/skills/analyzer/scripts/filter_variants.py \\
-      --src sweep4-cluster-20260519 --dst sweep4-v5-v7-first-qwen0_8B \\
-      --model-glob 'slurm_vllm_Qwen3_5_0_8B_*'
+      --src sweep5-cluster-20260601 --dst sweep5-main \\
+      --model-glob 'slurm_vllm_*'
 
-  # Sweep-4 multi-model into one root, gate on completed cells (4560 trials):
+  # Sweep-5 neutral arm (H1 isolation: tools-vs-no-tools at byte-identical
+  # prompt content). 4560 trials/cell completed.
+  python3 .claude/skills/analyzer/scripts/filter_variants.py \\
+      --src sweep5-cluster-20260601 --dst sweep5-neutral \\
+      --model-glob 'slurm_vllm_*' --arm neutral --min-out 4560
+
+  # Sweep-5 steered arm (H2 isolation: steering effect within with-tools,
+  # AND the 4th-arm control if its --include-no-tools-steered trials have
+  # been merged into the no-tools dirs). 4560 trials/cell completed.
+  python3 .claude/skills/analyzer/scripts/filter_variants.py \\
+      --src sweep5-cluster-20260601 --dst sweep5-steered \\
+      --model-glob 'slurm_vllm_*' --arm steered --min-out 4560
+
+  # Sweep-4 replay (historical — explicit --variants since --arm presets
+  # only encode sweep-5 indices):
   python3 .claude/skills/analyzer/scripts/filter_variants.py \\
       --src sweep4-cluster-20260519 --dst sweep4-v5-v7-first \\
-      --model-glob 'slurm_vllm_Qwen3_5_0_8B_*,slurm_vllm_qwen3_6_35b_*' \\
-      --min-out 4560
-
-  # Future sweep with a different variant set:
-  python3 .claude/skills/analyzer/scripts/filter_variants.py \\
-      --src sweep5-cluster-20260601 --dst sweep5-v8-v10 \\
-      --model-glob 'slurm_vllm_*' --variants 8,9,10 --min-out 4560
+      --model-glob 'slurm_vllm_*' --variants 5,6,7 --min-out 4560
 
 Reads:  results/<--src>/<cell>/trials.jsonl
 Writes: results/<--dst>/<cell>/{trials.jsonl, summary_*.json, single_task_*.json}
@@ -118,6 +128,19 @@ def _parse_variants(s: str) -> set[int]:
         raise argparse.ArgumentTypeError(f"--variants must be comma-separated ints, got {s!r}") from e
 
 
+# Sweep-5 arm presets. --arm is the ergonomic front door; --variants stays
+# available for sweep-4 replay and ad-hoc combinations. The presets match
+# STEERED_VARIANTS in pddl_eval/prompts.py and the design doc §0 matrix.
+# Declared as frozenset so a future caller that does
+# `args.variants.add(...)` can't silently mutate the module-level preset
+# (and break the next call within the same process / test session).
+_ARM_VARIANTS: dict[str, frozenset[int]] = {
+    "neutral": frozenset({11, 12, 13}),  # sweep-5 v11-13 — neutral prompts (H1 floor / with-tools-neutral arm)
+    "steered": frozenset({14, 15, 16}),  # sweep-5 v14-16 — steered prompts (H2 / control arm)
+    "both":    frozenset({11, 12, 13, 14, 15, 16}),  # sweep-5 full active set
+}
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--src", required=True,
@@ -127,13 +150,33 @@ def main():
     p.add_argument("--model-glob", required=True,
                    help="comma-separated globs matching cells to filter, "
                         "e.g. 'slurm_vllm_Qwen3_5_0_8B_*,slurm_vllm_qwen3_6_35b_*'")
-    p.add_argument("--variants", type=_parse_variants, default={5, 6, 7},
-                   help="comma-separated prompt_variant ids to keep (default: 5,6,7 = sweep-4)")
+    p.add_argument("--arm", choices=("neutral", "steered", "both"), default=None,
+                   help="sweep-5 arm preset: 'neutral' = {11,12,13} (H1 floor / "
+                        "with-tools-neutral), 'steered' = {14,15,16} (H2 / control), "
+                        "'both' = {11..16} (full active set). Mutually exclusive "
+                        "with --variants. Default is None → falls through to --variants.")
+    p.add_argument("--variants", type=_parse_variants, default=None,
+                   help="comma-separated prompt_variant ids to keep. Use this "
+                        "for sweep-4 replay (--variants 5,6,7) or ad-hoc subsets. "
+                        "Default when neither --arm nor --variants is given: "
+                        "the sweep-5 full active set {11,12,13,14,15,16}.")
     p.add_argument("--min-out", type=int, default=0,
                    help="skip cells where n_out (kept-variant trials) is below this "
-                        "threshold; useful for restricting to completed cells "
-                        "(typical: 4560 = 3 variants × 1520 trials/variant for sweep-4)")
+                        "threshold; useful for restricting to completed cells. "
+                        "Sweep-5 per-arm completed-cell count = 4560 (3 variants × "
+                        "1520 trials/variant). For --arm both, with-tools cells "
+                        "complete at 9120 while no-tools cells complete at 4560 — "
+                        "filter arm-by-arm if you want a uniform threshold.")
     args = p.parse_args()
+    if args.arm is not None and args.variants is not None:
+        # parser.error → argparse's standard usage banner + exit 2 (matches
+        # _parse_variants' ArgumentTypeError path). sys.exit would exit 1
+        # with no banner — inconsistent with the rest of the flag surface.
+        p.error("--arm and --variants are mutually exclusive")
+    if args.arm is not None:
+        args.variants = _ARM_VARIANTS[args.arm]
+    elif args.variants is None:
+        args.variants = _ARM_VARIANTS["both"]
     src_root = REPO / "results" / args.src
     dst_root = REPO / "results" / args.dst
     dst_root.mkdir(parents=True, exist_ok=True)

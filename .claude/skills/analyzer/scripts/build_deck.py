@@ -10,8 +10,9 @@ Usage:
         --config checkpoints/<name>/deck_config.py \\
         --out    checkpoints/<name>/pddl_copilot_<name>.pptx
 
-Config module contract (see checkpoints/sweep4-v5-v7-first/deck_config.py
-for a worked example):
+Config module contract (`checkpoints/sweep4-v5-v7-first/deck_config.py`
+is the canonical worked example; copy + edit `RESULTS` / `MODEL_ORDER` /
+`COND_ORDER` / captions for a sweep-5 deck):
 
   REQUIRED attributes
     RESULTS       : str | Path  — results root (relative to repo or absolute)
