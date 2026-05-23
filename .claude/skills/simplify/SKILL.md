@@ -4,9 +4,12 @@ description: Review current plan or code changes for unnecessary complexity, met
 context: fork
 agent: simplifier
 argument-hint: [description of what to review]
+paths: run_experiment.py, pddl_eval/**, cluster-experimenting/**
 ---
 
 Review the current work for unnecessary complexity and correctness.
+
+> **Layering with bundled `/code-review`:** As of Claude Code v2.1.147, bundled `/code-review` (formerly `/simplify`) handles general correctness at the chosen effort level (e.g. `/code-review high`). This skill adds experiment-specific concerns the bundled reviewer cannot know: methodology drift, result schema compatibility with `results/`, the bridge-pinned `verbose=False` convention (`_PINNED_VERBOSE_FALSE`), and EXPERIMENTS_FLOW.md §8/§9 contracts. Run both — `/code-review high` first or in parallel — before merging changes that touch `run_experiment.py` or `pddl_eval/`.
 
 $ARGUMENTS
 
