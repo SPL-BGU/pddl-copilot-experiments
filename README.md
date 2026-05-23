@@ -1,7 +1,5 @@
 # PDDL Copilot Experiments
 
-Reproduction suite for the evaluation in [Benyamin et al., 2025 (arXiv:2509.12987)](https://arxiv.org/abs/2509.12987).
-
 Tests vLLM-served LLMs **with** and **without** MCP planning tools on 5 PDDL tasks:
 
 | Task | Description |
