@@ -4,6 +4,13 @@
 # .out files, do it in a separate explicit ssh call after confirming IDs
 # with the user.
 #
+# Scope: only `slurm_vllm_*/` cells (active vLLM-era sweep matrix) + any
+# `smoke/probe_*/` artefacts. Pre-vLLM legacy `slurm_<model>_<think>_<cond>/`
+# dirs on the cluster are intentionally skipped so the local results/ tree
+# stays scoped to the in-flight sweep. Each invocation lands in its own
+# dated subdir under results/ (default `sweep5-cluster-YYYYMMDD`) so
+# checkpoints don't pollute the top level.
+#
 # Usage:
 #   bash sync.sh                          # → results/sweep5-cluster-YYYYMMDD/
 #   bash sync.sh results/my-run           # → explicit path
@@ -37,13 +44,19 @@ fi
 
 mkdir -p "$DEST"
 
-echo "Syncing ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/{slurm_*, smoke/probe_*} → $DEST"
+echo "Syncing ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/{slurm_vllm_*, smoke/probe_*} → $DEST"
 
-before_slurm=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_*' 2>/dev/null | wc -l | tr -d ' ')
+# Active sweep matrix lives in `slurm_vllm_<model>_<think>_<cond>/` (post
+# 2026-05-23 backend unification). Pre-vLLM `slurm_<model>_<think>_<cond>/`
+# legacy corpora are explicitly skipped — they're drift-anchors held on the
+# cluster for retrospective comparison, not part of the in-flight sweep
+# checkpoint. To pull them anyway, pass an explicit DEST and run a separate
+# `rsync` outside this script.
+before_slurm=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_vllm_*' 2>/dev/null | wc -l | tr -d ' ')
 before_probe=$(find "$DEST" -maxdepth 1 -type d -name 'probe_*' 2>/dev/null | wc -l | tr -d ' ')
 
 # --update: only copy when the source is newer; --info=stats2 gives us a compact summary
-rsync -av --update "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/slurm_*" "$DEST/" 2>&1 \
+rsync -av --update "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/slurm_vllm_*" "$DEST/" 2>&1 \
     | tail -5
 
 # Probe outputs (one-off vLLM/smoke sbatches). Often empty on a fresh cluster
@@ -53,7 +66,7 @@ echo "---"
 rsync -av --update "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_RESULTS}/smoke/probe_*" "$DEST/" 2>&1 \
     | tail -5 || true
 
-after_slurm=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_*' 2>/dev/null | wc -l | tr -d ' ')
+after_slurm=$(find "$DEST" -maxdepth 1 -type d -name 'slurm_vllm_*' 2>/dev/null | wc -l | tr -d ' ')
 after_probe=$(find "$DEST" -maxdepth 1 -type d -name 'probe_*' 2>/dev/null | wc -l | tr -d ' ')
 
 echo "---"

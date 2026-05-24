@@ -6,6 +6,54 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-24 — Arm-aware analyzer for the sweep-5 four-arm matrix
+
+**Branch:** `sweep5-new-prompts`. Driven by `development/sweep_prompt_bank_design.md` §0 — the analyzer (build_deck / plot / aggregate / table / plot_focused) now renders and tabulates the sweep-5 arms `(nt-neut, nt-ster, tl-neut, tl-ster)` explicitly rather than collapsing them into the pre-sweep-5 `(no-tools, tools_all_minimal)` cond axis.
+
+**TL;DR.** One shared arm classifier (`pddl_eval.summary.arm_for`) is the single source of truth for every analyzer script; all five scripts agree on what an arm is and how legacy (sweep-3/4, v0-v10) corpora map to `*-legacy` arms. `summary._token_row` gains `completion_median` (a sweep-5 H3 primary outcome per the design doc §0). build_deck adds H1 and H2 isolation slides, drops the 5 per-task input-token slides + collapses the input column from `fig_tokens`. plot.py gains `--by-arm` + `--arms <subset>` flags; table.py gains an `arm` column; aggregate.py emits per-arm rows from `per_variant`. plot_focused.py adds `--figs h1` for the supervisor-friendly H1 panel.
+
+**Design-doc anchor (must read before tuning the analyzer further).** The four-arm matrix and H1/H2/H3/H4 hypotheses live in `development/sweep_prompt_bank_design.md` §0. The analyzer surfaces the **primary outcomes** (`result_correct`, `tool_selected`, output-token median/mean, `FR_*` distribution including the new `FR_WRONG_TOOL`); Bonferroni correction is paper-side, not analyzer-side. H3/H4 dedicated plots are deferred — the data is readable off the existing per-arm panels.
+
+**Shared classifier.** `pddl_eval.summary.arm_for(with_tools: bool, prompt_variant: int) -> str` returns one of `{nt-neut, nt-ster, tl-neut, tl-ster, nt-legacy, tl-legacy}`. Imported by `plot.py`, `aggregate.py`, `table.py`, `build_deck.py`, and `plot_focused.py`. Reuses `STEERED_VARIANTS` from `pddl_eval.prompts`; the new `NEUTRAL_VARIANTS = frozenset({11, 12, 13})` lives in `summary.py` (the split is an analysis concept, not a runner emit/dispatch concept).
+
+**Token-median schema bump.** `_new_token_agg` gains an internal `completion_samples: list[int]`; `_add_tokens` appends each trial; `_token_row` emits `completion_median` (stdlib `statistics.median`). The list is never serialized — only the median surfaces in `summary_*.json`. Memory cost ~70KB/cell, negligible. `filter_variants.py` regen surfaces the new field for in-flight sweep-5 cells; consumers default to `0.0` when the field is absent (pre-bump summaries).
+
+**Analyzer changes per script:**
+- **`pddl_eval/summary.py`** — adds `arm_for()`, `NEUTRAL_VARIANTS`, `completion_median`. `_token_row` schema is additive (existing consumers unaffected).
+- **`.claude/skills/analyzer/scripts/aggregate.py`** — adds an `arm` column to the success-rate matrix; rows synthesized by pooling each `single_task` record's `per_variant` cells. Pre-`per_variant` corpora fall through to a single `*-legacy` row. The failure-reason table keeps its whole-cell prefix (FR isn't arm-tagged in `summary_*.json`); per-arm FR breakdowns live in `build_deck` / `plot_focused`.
+- **`.claude/skills/analyzer/scripts/plot.py`** — `--by-arm` adds `split_series_by_arm()` which produces one synthetic series per `(dir, arm)` with Wilson CIs recomputed on the pooled arm n. `--arms <subset>` filters to a chosen pair for H1 (`nt-neut,tl-neut`) or H2 (`tl-neut,tl-ster`). `--merge` and `--by-arm` are mutually exclusive. `fig4` (failure breakdown) auto-skips under `--by-arm` because per-arm FR can't be derived from `summary_*.json` without re-aggregating from trials.jsonl. `fig3` / `fig6` "no-tools exclude" filters generalized to `cond == "no-tools" or cond.startswith("nt-")`.
+- **`.claude/skills/analyzer/scripts/table.py`** — adds `arm` to `META_COLS`; one row per `(cell × arm)`; legacy corpora collapse to a single `*-legacy` row. Wilson CIs recomputed on pooled arm n via the shared helpers. Adds a `out-med` column per task (n-weighted mean of per-variant output-token medians — see Risks below for the weighting caveat) so the H3 metric surfaces alongside succ%/tool%/trunc%.
+- **`.claude/skills/analyzer/scripts/build_deck.py`** — `CELLS` re-keyed from `(model, think, cond)` to `(model, think, arm)` via row-level `arm_for()`. New `ARM_ORDER` / `ARM_DISP` globals (legacy `COND_ORDER` / `COND_DISP` kept as optional deck_config fields for back-compat). `fig_tokens` is now 1-column (output only, was 2-column input + output); 5 per-task input-token slides removed; per-bar label is `mean (m:median)`. New `fig_h1_isolation` + `fig_h2_isolation` slides (sweep-5 H1 / H2 headline); both return `None` and the slide is skipped when the relevant arms are absent (e.g. sweep-3/4 replay), so legacy decks don't ship empty bar charts. Confusion-grid pinned to `nt-neut` (sweep-5) / `nt-legacy` (sweep-3/4) via `_pick_no_tools_neutral_arm`. `TOKEN_NOTE_BULLETS` rewritten for output-only accounting. `find_malformed_simulate_samples` re-anchored to the H1 baseline arm. Dead `_color_for_cond` alias removed (all callers migrated to `_color_for_arm`).
+- **`.claude/skills/analyzer/scripts/plot_focused.py`** — adds `fig_h1` (`--figs h1`): 2-bars-per-model × 5-task panels for the H1 isolation read. Existing fig1/fig2/fig4-8 unchanged.
+- **`tests/test_summary_arm.py`** — new file. 45 assertions: `arm_for()` matrix (legacy + neutral + steered boundary), `NEUTRAL_VARIANTS` ∩ `STEERED_VARIANTS` disjoint, `completion_median` round-trip + empty-cell handling + empty-tokens skipping, per_variant arm-pooling invariant (no silent cross-arm aggregation at source). Registered in `tests/verify.sh`.
+
+**Files touched.**
+- `pddl_eval/summary.py` (arm_for, NEUTRAL_VARIANTS, completion_median).
+- `.claude/skills/analyzer/scripts/{aggregate,plot,table,build_deck,plot_focused}.py`.
+- `.claude/skills/analyzer/SKILL.md` (--by-arm / --arms / --figs h1 docs).
+- `tests/test_summary_arm.py` (new) + `tests/verify.sh` (registration).
+
+**Compatibility.**
+- **Sweep-3/4 corpora** continue to render unchanged via `*-legacy` arms. Smoke-tested against `results/sweep4-v5-v7-first`: aggregate, plot, table, build_deck all produce the same shape as before (one row/series per cell, arm=`nt-legacy`/`tl-legacy`).
+- **Sweep-3/4 deck_configs** load unchanged (`COND_ORDER` / `COND_DISP` made optional; `ARM_ORDER` derived from data when absent).
+- **`filter_variants.py` is unchanged** — it remains the single-arm-root tool; the arm-aware analyzer is the complementary one-shot view. Existing `sweep5-{neutral,steered,both}` checkpoints continue to work.
+- **`summary_*.json` schema** is additive (`completion_median`); consumers default to `0.0` when absent. `_new_token_agg` schema gains an internal `completion_samples` list but never serializes it. No existing consumer breaks.
+- **No experiment-result impact.** Trial-key 10-tuple unchanged; no runner / sbatch / scoring change.
+
+**Tests.**
+- `bash tests/verify.sh` — green across all 8 test files (test_scoring, test_check_success, test_fixtures, test_runner, test_drift_check, test_partial_subset, test_prompts, test_summary_arm).
+- `python3 -m py_compile` on all five analyzer scripts — clean.
+- Smoke renders: `results/sweep5-live` deck produces H1 + H2 + by-arm token slides (arms detected: `nt-neut, tl-neut, tl-ster`; nt-ster control not yet submitted, slot dropped per user direction). `results/sweep4-v5-v7-first` legacy deck produces `nt-legacy + tl-legacy` arms — no crashes.
+- `plot.py --by-arm --arms nt-neut,tl-neut` (H1) and `--arms tl-neut,tl-ster` (H2) both render to suffixed output dirs (`plots/by_arm_<arms>/`).
+
+**Risks / known limitations.**
+- The `out-med` cell in `table.py` is an n-weighted mean of per-variant medians, not a true arm-level median. Medians don't compose by averaging; for sweep-5 each arm has 3 variants with similar n so the approximation is close, but for paper headline numbers, recompute the median from `trials.jsonl` via `build_deck`'s `_completion_median` (which has access to the raw per-trial values). Documented in the `out-med` `_pool_per_variant` docstring.
+- H3 / H4 don't have dedicated isolation figures yet. H3 (token efficiency, with-tools < no-tools on per-success output tokens) is readable off the existing per-arm token panel; H4 (control falsification) becomes relevant only when the `(no-tools, steered)` 4th-arm control is submitted — flagged for a future pass when that data lands.
+
+Closes no `ISS-###`. This is the design-doc implementation, not an open-issue triage.
+
+---
+
 ## 2026-05-23 — PR-67 follow-up: runner restore-key, ETA denom, sbatch flag plumbing, focused-plots tools
 
 **Branch:** `sweep5-new-prompts`. Closes the four real-risk findings from the PR-67 `code-review` pass; the two low-severity findings (legacy-corpus rescoring and `filter_variants --arm both` asymmetric `--min-out`) are intentionally not addressed — see Triage below.

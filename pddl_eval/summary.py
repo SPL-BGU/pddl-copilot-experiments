@@ -13,14 +13,36 @@ DAG: summary → runner. (For `TaskResult`, `TASKS`, `ACTIVE_PROMPT_VARIANTS`.)
 
 import json
 import math
+import statistics
 import time
 from collections import defaultdict
 from dataclasses import asdict
 from pathlib import Path
 
-from .prompts import ACTIVE_PROMPT_VARIANTS
+from .prompts import ACTIVE_PROMPT_VARIANTS, STEERED_VARIANTS
 from .runner import TASKS, TaskResult
 from .scoring import FR_OK
+
+
+# Sweep-5 neutral variants — paired with STEERED_VARIANTS for the analyzer's
+# four-arm split. v0-v10 (legacy sweep-3/4) map to *-legacy so the analyzer
+# can still render historical corpora; see development/sweep_prompt_bank_design.md.
+NEUTRAL_VARIANTS: frozenset[int] = frozenset({11, 12, 13})
+
+
+def arm_for(with_tools: bool, prompt_variant: int) -> str:
+    """Classify a trial into one of six analysis arms.
+
+    Sweep-5 active arms: nt-neut / tl-neut (v11-13) and nt-ster / tl-ster
+    (v14-16). Sweep-3/4 corpora map to nt-legacy / tl-legacy so the analyzer
+    renders them under a 2-arm view without crashing.
+    """
+    side = "tl" if with_tools else "nt"
+    if prompt_variant in STEERED_VARIANTS:
+        return f"{side}-ster"
+    if prompt_variant in NEUTRAL_VARIANTS:
+        return f"{side}-neut"
+    return f"{side}-legacy"
 
 
 def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
@@ -35,11 +57,19 @@ def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float
 
 
 def _new_token_agg() -> dict:
-    """Per-cell accumulator for the `tokens` summary row (see `_token_row`)."""
+    """Per-cell accumulator for the `tokens` summary row (see `_token_row`).
+
+    `completion_samples` buffers per-trial completion counts so the row can
+    emit `completion_median` (a sweep-5 primary outcome per
+    development/sweep_prompt_bank_design.md §0). The list itself is internal —
+    it is never serialized into summary_*.json; only the computed median is.
+    Memory cost is ~8 bytes/trial × ≤9120 trials/cell = <80KB/cell, negligible.
+    """
     return {
         "n": 0,
         "prompt_sum": 0,
         "completion_sum": 0,
+        "completion_samples": [],
         "turns_sum": 0,
         "turns_max": 0,
         "eval_duration_ns_sum": 0,
@@ -57,7 +87,9 @@ def _add_tokens(agg: dict, tokens: dict) -> None:
         return
     agg["n"] += 1
     agg["prompt_sum"] += tokens.get("prompt", 0) or 0
-    agg["completion_sum"] += tokens.get("completion", 0) or 0
+    completion = tokens.get("completion", 0) or 0
+    agg["completion_sum"] += completion
+    agg["completion_samples"].append(completion)
     turns = tokens.get("turns", 0) or 0
     agg["turns_sum"] += turns
     if turns > agg["turns_max"]:
@@ -80,6 +112,7 @@ def _token_row(agg: dict) -> dict:
             "n": 0,
             "prompt_sum": 0, "prompt_mean": 0.0,
             "completion_sum": 0, "completion_mean": 0.0,
+            "completion_median": 0.0,
             "total_sum": 0, "total_mean": 0.0,
             "turns_mean": 0.0, "turns_max": 0,
             "eval_duration_s_sum": 0.0, "eval_duration_s_mean": 0.0,
@@ -95,6 +128,10 @@ def _token_row(agg: dict) -> dict:
         "prompt_mean": round(prompt_sum / n, 2),
         "completion_sum": completion_sum,
         "completion_mean": round(completion_sum / n, 2),
+        # completion_median is a sweep-5 primary outcome (token efficiency, H3).
+        # Mean alone can be skewed by truncation outliers; median is the
+        # robust paper-comparable number.
+        "completion_median": round(statistics.median(agg["completion_samples"]), 2),
         "total_sum": total_sum,
         "total_mean": round(total_sum / n, 2),
         "turns_mean": round(agg["turns_sum"] / n, 3),

@@ -2,7 +2,7 @@
 name: cluster-ops
 description: Operate the BGU SLURM cluster for the PDDL copilot sweep — check job queue + progress, sync results, aggregate summaries, render plots/tables, run preflight, post-mortem completed jobs. Delegate here when the user asks about cluster state, job status, results sync, or plot/table generation, especially when the SSH/script output would otherwise bloat the main conversation. Returns a concise summary, not raw stdout dumps.
 tools: Bash, Read, Grep, Glob
-maxTurns: 15
+maxTurns: 40
 skills:
   - cluster-ops
 ---

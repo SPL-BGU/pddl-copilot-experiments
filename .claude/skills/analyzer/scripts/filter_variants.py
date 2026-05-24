@@ -59,19 +59,38 @@ def _trial_to_task_result(t: dict) -> TaskResult:
 def _scan_trials(src_dir: Path, active: set[int]
                  ) -> tuple[int, int, list[str], list[TaskResult]]:
     """Single-pass read of trials.jsonl. Returns (n_in, n_out, kept_lines, kept_trials).
-    No write side effects — caller decides whether to skip or commit to disk."""
+    No write side effects — caller decides whether to skip or commit to disk.
+
+    Malformed lines (partial flushes leaving null-byte blocks; concurrent-
+    write tears) are skipped with a stderr warning rather than aborting the
+    filter — corruption sits in <0.5% of trials and the rest of the cell is
+    still load-bearing. The skipped lines are tallied so the user sees them.
+    """
+    import sys
     kept_trials: list[TaskResult] = []
     kept_lines: list[str] = []
-    n_in = n_out = 0
+    n_in = n_out = n_bad = 0
     with (src_dir / "trials.jsonl").open() as f:
         for line in f:
             n_in += 1
-            t = json.loads(line)
-            if t["result"].get("prompt_variant") not in active:
+            try:
+                t = json.loads(line)
+            except json.JSONDecodeError:
+                n_bad += 1
+                continue
+            try:
+                pv = t["result"].get("prompt_variant")
+            except (KeyError, AttributeError, TypeError):
+                n_bad += 1
+                continue
+            if pv not in active:
                 continue
             n_out += 1
             kept_trials.append(_trial_to_task_result(t))
             kept_lines.append(line.rstrip("\n"))
+    if n_bad:
+        print(f"  warn: skipped {n_bad} malformed lines in {src_dir.name}/trials.jsonl",
+              file=sys.stderr)
     return n_in, n_out, kept_lines, kept_trials
 
 

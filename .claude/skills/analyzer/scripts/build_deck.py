@@ -36,6 +36,8 @@ import argparse
 import importlib.util
 import json
 import re
+import statistics
+import sys
 from collections import Counter
 from pathlib import Path
 from types import ModuleType
@@ -50,6 +52,35 @@ from pptx.dml.color import RGBColor
 
 REPO = Path(__file__).resolve().parents[4]
 
+# Shared sweep-5 arm classifier — used to split each cell's trials into one of
+# four arms (nt-neut / nt-ster / tl-neut / tl-ster) or the legacy fallback.
+sys.path.insert(0, str(REPO))
+from pddl_eval.summary import arm_for  # noqa: E402
+
+# Canonical arm display order for sweep-5 decks. Two-pass cells (post-filter)
+# contain both nt-neut + tl-neut + tl-ster; the 4th-arm (nt-ster) is the
+# control submit and shows up only when --include-no-tools-steered has been
+# run. Empty arms are dropped at iteration time (no reserved slot). Legacy
+# arms appear only for sweep-3/4 replay decks.
+ARM_ORDER_DEFAULT = ("nt-neut", "tl-neut", "tl-ster", "nt-ster",
+                     "nt-legacy", "tl-legacy")
+ARM_DISP_DEFAULT = {
+    "nt-neut":   "no-tools (neut)",
+    "nt-ster":   "no-tools (steered)",
+    "tl-neut":   "tools (neut)",
+    "tl-ster":   "tools (steered)",
+    "nt-legacy": "no-tools (legacy)",
+    "tl-legacy": "tools (legacy)",
+}
+ARM_COLOR = {
+    "nt-neut":   "#888888",   # grey: baseline no-tools, neutral
+    "nt-ster":   "#5a5a5a",   # darker grey: no-tools steered control
+    "tl-neut":   "#2E86AB",   # blue: tools, neutral prompt
+    "tl-ster":   "#E07B39",   # orange: tools, steered prompt
+    "nt-legacy": "#888888",
+    "tl-legacy": "#2E86AB",
+}
+
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
 TASK_LABEL = {
     "solve": "solve",
@@ -60,45 +91,59 @@ TASK_LABEL = {
 }
 
 # Caption key → default text. Override any of these by setting SLIDE_CAPTIONS
-# in the deck_config module.
+# in the deck_config module. Sweep-5 (2026-05-24) refit for the four-arm
+# matrix: bars are grouped by arm (nt-neut / nt-ster / tl-neut / tl-ster)
+# rather than by condition; the H1 and H2 slides isolate the headline
+# hypotheses; input-token slides were dropped per user direction.
 DEFAULT_CAPTIONS = {
-    "success_off": "Per-task success per cell. Multi-model view. Missing bars = cell not yet complete.",
+    "success_off": "Per-task success per cell, grouped by arm. Missing bars = arm not present in this checkpoint.",
     "success_on":  "Same chart, think=on.",
-    "tool_selection": "% of with-tools trials where the model invoked the expected planner/validator tool.",
+    "h1_isolation":
+        "H1 — tool utility at byte-identical prompt content. "
+        "Grey = no-tools (neut), blue = with-tools (neut). The (blue − grey) gap is the headline tool-utility "
+        "claim from arXiv:2509.12987 under sweep-5's controlled comparison (same prompt text on both sides).",
+    "h2_isolation":
+        "H2 — steering effect on tool selection. Blue = with-tools (neut), orange = with-tools (steered). "
+        "Bar height = tool_selected%. `wt:NN%` annotation above each bar = FR_WRONG_TOOL share "
+        "(marketplace 1.4.0 distinguishes wrong-tool from no-tool-call). H2 predicts blue → orange "
+        "raises selection AND lowers wt%.",
+    "tool_selection":
+        "% of with-tools trials where the model invoked the expected planner/validator tool, "
+        "split by arm (tl-neut vs tl-ster). Hatching marks the steered arm.",
     "successful_tool_use":
         "Light bar = % of with-tools trials where the model called the matching tool. "
         "Dark bar = % where both (a) the right tool was called AND (b) the result was scored success. "
         "The (sel% − dark%) gap is the failure mode after tool selection: "
-        "verdict_mismatch / tool_error / loop_exhausted.",
+        "verdict_mismatch / tool_error / loop_exhausted / wrong_tool. Split per arm.",
     "confusion_off":
         "One row per model; columns = validate_domain, validate_problem, validate_plan. "
+        "Data source: nt-neut (no-tools, neutral) — the H1 baseline arm. "
         "TP = correctly predicted VALID, TN = correctly predicted INVALID. "
         "'no-ans' counts truncated / parse-fail trials excluded from prec/rec/acc.",
     "confusion_on":
         "think=on bloats output budget — note the no-ans count: at this corpus the entire response is "
         "reasoning text with no JSON verdict (truncated_no_answer + format_parse_fail dominate).",
     "tokens_all":
-        "Left column = INPUT tokens (prompt_eval_count), right column = OUTPUT tokens (eval_count). "
-        "Bar label = % of trials in that cell with success=False. "
-        "With-tools cells run ~2 turns so input is roughly 2× no-tools — expected (per-turn cost is comparable).",
+        "Output (completion) tokens per trial, grouped by arm × think. "
+        "Bar label = mean (m:median). Inset `f:NN%` = cell failure%. "
+        "Input tokens were dropped from this deck (2026-05-24) — the 2-turn input premium is "
+        "structural, not informative for the per-arm reading.",
     "tokens_succ":
-        "Same metric, but the mean is computed only on success=True trials. "
-        "Side label is still the FULL-cell failure rate so you can see how much data is excluded.",
+        "Same metric on successful trials only. Side label still shows the FULL-cell failure% "
+        "so the data-exclusion size is visible.",
     "tokens_solve":
-        "Bars = mean input / output tokens per `solve` trial. Bar label = failure%. "
-        "no-tools is cheap but solves almost nothing; with-tools pays a ~2× input premium for the planner round-trip.",
+        "Output tokens per `solve` trial. Bar label = mean (m:median).",
     "tokens_validate_domain":
-        "Bars = mean input / output tokens per `validate_domain` trial. Bar label = failure%.",
+        "Output tokens per `validate_domain` trial. Bar label = mean (m:median).",
     "tokens_validate_problem":
-        "Bars = mean input / output tokens per `validate_problem` trial. Bar label = failure%.",
+        "Output tokens per `validate_problem` trial. Bar label = mean (m:median).",
     "tokens_validate_plan":
-        "Bars = mean input / output tokens per `validate_plan` trial. Bar label = failure%. "
-        "Larger plans inflate the input prompt; think=on roughly doubles output tokens.",
+        "Output tokens per `validate_plan` trial. Bar label = mean (m:median).",
     "tokens_simulate":
-        "Bars = mean input / output tokens per `simulate` trial. Bar label = failure%. "
+        "Output tokens per `simulate` trial. Bar label = mean (m:median). "
         "Long step-by-step traces drive output; no-tools failure% is ~100% across the board.",
     "latency_all":
-        "Bar height = mean wall-clock seconds per trial. "
+        "Bar height = mean wall-clock seconds per trial, by arm. "
         "Bar-top label = % of trials with success=False (whatever the reason).",
     "latency_succ":
         "Same chart but the mean is computed on trials that succeeded. "
@@ -106,26 +151,27 @@ DEFAULT_CAPTIONS = {
 }
 
 TOKEN_NOTE_BULLETS = [
-    "• Definitions:  input tokens = Ollama `prompt_eval_count` (the prompt the model reads).  "
-    "output tokens = Ollama `eval_count` (tokens the model generates).",
-    "• A `trial` = one harness call for one (model, task, problem, prompt-variant). "
-    "For with-tools cells the harness runs a 2-turn agent loop: turn-1 asks the model, "
-    "turn-2 feeds the tool result back.",
-    "• The per-trial input/output numbers shown are SUMMED across every turn of that trial "
-    "(pddl_eval/chat.py:290 — the counters are `+=`).  They are NOT per single prompt.",
-    "• A with-tools trial doing 2 turns naturally costs ~2× the no-tools input figure: "
-    "Ollama re-evaluates the growing chat history end-to-end on each call.",
-    "• Bar labels on the next slides = full-cell failure% so you can tell whether expensive cells "
-    "are actually delivering successful trials.",
-    "• For a per-single-prompt view, divide each bar by `tokens.turns` (≈1 for no-tools, "
-    "≈2 for tools). Per-turn cost is roughly comparable; the tool-loop multiplier is structural.",
+    "• This section reports OUTPUT (completion) tokens only.  Input tokens are dropped from the deck "
+    "(2026-05-24): the 2-turn with-tools input premium is structural and not informative for arm comparison.",
+    "• Output tokens = vLLM `completion_tokens` per trial.  A `trial` = one harness call for one "
+    "(model, task, problem, prompt-variant).  For with-tools trials the harness runs a 2-turn agent loop; "
+    "the per-trial output is SUMMED across both turns (pddl_eval/chat.py).",
+    "• Each bar carries TWO numbers: the mean (the bar height) and the median (the `(m:NN)` parenthetical).  "
+    "The median is robust to truncation outliers — preferred when one model truncates heavily and another doesn't.",
+    "• Bar-internal label `f:NN%` is the cell failure% so expensive cells with low utility surface visibly.",
+    "• Sweep-5 H3 predicts with-tools < no-tools on per-successful-trial output tokens (the tool short-circuits "
+    "long reasoning).  Compare tl-* arms against nt-* arms at the same model × think.",
 ]
 
 
 # ---------------- Config loader ----------------
 
 REQUIRED_CONFIG = ("RESULTS", "MODEL_ORDER", "MODEL_DISP",
-                   "COND_ORDER", "COND_DISP", "TITLE", "SUBTITLE")
+                   "TITLE", "SUBTITLE")
+# COND_ORDER / COND_DISP are no longer required (sweep-5 arm-axis rewrite);
+# they're read if present so legacy decks keep loading verbatim, but the
+# engine now drives off ARM_ORDER / ARM_DISP (both optional — derived from
+# data + DEFAULT mappings when omitted).
 
 
 def _load_config(path: Path) -> ModuleType:
@@ -156,24 +202,40 @@ def _cell_name(d: str) -> tuple[str, str, str] | None:
 
 
 def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
+    """Load every trial.jsonl under `results_root`, keyed by (model, think, arm).
+
+    Each cell dir contributes its trials to up to two arm buckets (e.g. a
+    `tools_all_minimal` dir splits into `tl-neut` (v11/12/13) and `tl-ster`
+    (v14/15/16)). Trials missing `prompt_variant` are skipped — they
+    cannot be classified into an arm without inventing a default.
+    """
     out: dict[tuple[str, str, str], list[dict]] = {}
+    skipped_no_pv = 0
     for child in sorted(results_root.iterdir()):
         if not child.is_dir() or not child.name.startswith("slurm_"):
             continue
         parsed = _cell_name(child.name)
         if not parsed:
             continue
+        model, think, _cond_ignored = parsed
         fp = child / "trials.jsonl"
         if not fp.exists():
             continue
-        rows: list[dict] = []
         with fp.open() as f:
             for line in f:
                 try:
-                    rows.append(json.loads(line)["result"])
+                    r = json.loads(line)["result"]
                 except (json.JSONDecodeError, KeyError):
-                    pass
-        out[parsed] = rows
+                    continue
+                pv = r.get("prompt_variant")
+                if pv is None:
+                    skipped_no_pv += 1
+                    continue
+                arm = arm_for(bool(r.get("with_tools")), int(pv))
+                out.setdefault((model, think, arm), []).append(r)
+    if skipped_no_pv:
+        print(f"  warn: skipped {skipped_no_pv} trials without prompt_variant",
+              file=sys.stderr)
     return out
 
 
@@ -187,8 +249,13 @@ def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
 CELLS: dict[tuple[str, str, str], list[dict]] = {}
 MODEL_ORDER: list[str] = []
 MODEL_DISP: dict[str, str] = {}
+# COND_ORDER/COND_DISP are accepted from deck_config for legacy decks; the
+# engine drives off ARM_ORDER/ARM_DISP, which are derived from data unless the
+# config overrides them explicitly (see _resolve_arms in main()).
 COND_ORDER: list[str] = []
 COND_DISP: dict[str, str] = {}
+ARM_ORDER: list[str] = []
+ARM_DISP: dict[str, str] = {}
 
 
 def task_success_rate(rows: list[dict], task: str) -> tuple[float, int, int]:
@@ -350,35 +417,40 @@ def _annotate_bars(ax, bars, primary_vals, secondary_vals,
 
 
 def models_present(think: str) -> list[str]:
-    return [m for m in MODEL_ORDER if any((m, think, c) in CELLS for c in COND_ORDER)]
+    return [m for m in MODEL_ORDER if any((m, think, a) in CELLS for a in ARM_ORDER)]
 
 
-_COND_COLORS = {
-    "tools_all_minimal": "#2E86AB",
-    "tools_per-task_minimal": "#A23B72",
-    "no-tools": "#888888",
-}
+def _arms_present(think: str) -> list[str]:
+    """ARM_ORDER restricted to arms with at least one cell at this think level.
+    Drop-empty rule (user direction): missing arms are omitted, not slotted."""
+    return [a for a in ARM_ORDER
+            if any((m, think, a) in CELLS for m in MODEL_ORDER)]
 
 
-def _color_for_cond(cond: str) -> str:
-    return _COND_COLORS.get(cond, "#1f77b4")
+def _color_for_arm(arm: str) -> str:
+    return ARM_COLOR.get(arm, "#1f77b4")
 
 
 def fig_success_by_cond_per_task(think: str, save_path: Path) -> Path:
+    """Per-task success by arm. One subplot per model; up to 4 bars per task
+    (one per arm present). Arms with no data at this think level are dropped
+    so the legend matches what's actually rendered."""
     models = models_present(think)
+    arms = _arms_present(think)
     n = len(models)
     cols = min(3, n)
     rows = int(np.ceil(n / cols))
     fig, axes = plt.subplots(rows, cols, figsize=(4.6 * cols, 3.4 * rows), squeeze=False)
-    width = 0.25
+    width = 0.8 / max(1, len(arms))
     x = np.arange(len(TASKS))
     for i, m in enumerate(models):
         ax = axes[i // cols][i % cols]
-        for j, cond in enumerate(COND_ORDER):
-            rows_ = CELLS.get((m, think, cond), [])
+        for j, arm in enumerate(arms):
+            rows_ = CELLS.get((m, think, arm), [])
             vals = [task_success_rate(rows_, t)[0] * 100 for t in TASKS]
-            ax.bar(x + (j - 1) * width, vals, width,
-                   label=COND_DISP[cond], color=_color_for_cond(cond))
+            offset = (j - (len(arms) - 1) / 2) * width
+            ax.bar(x + offset, vals, width,
+                   label=ARM_DISP.get(arm, arm), color=_color_for_arm(arm))
         ax.set_xticks(x)
         ax.set_xticklabels([TASK_LABEL[t] for t in TASKS], rotation=20, ha="right")
         ax.set_ylim(0, 105)
@@ -387,73 +459,170 @@ def fig_success_by_cond_per_task(think: str, save_path: Path) -> Path:
         ax.grid(axis="y", linestyle=":", alpha=0.4)
     for k in range(n, rows * cols):
         axes[k // cols][k % cols].axis("off")
-    handles = [plt.Rectangle((0, 0), 1, 1, color=_color_for_cond(c)) for c in COND_ORDER]
-    labels = [COND_DISP[c] for c in COND_ORDER]
-    fig.legend(handles, labels, loc="lower center", ncol=len(COND_ORDER),
+    handles = [plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a)) for a in arms]
+    labels = [ARM_DISP.get(a, a) for a in arms]
+    fig.legend(handles, labels, loc="lower center", ncol=max(1, len(arms)),
                bbox_to_anchor=(0.5, -0.02))
-    fig.suptitle(f"Single-task success by condition (think={think})", y=0.995, fontsize=12)
+    fig.suptitle(f"Single-task success by arm (think={think})", y=0.995, fontsize=12)
     fig.tight_layout(rect=[0, 0.04, 1, 0.97])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     return save_path
 
 
+def _tools_arms_present(think: str) -> list[str]:
+    """With-tools arms present at this think level, in canonical order."""
+    return [a for a in ARM_ORDER
+            if a.startswith("tl-") and any((m, think, a) in CELLS for m in MODEL_ORDER)]
+
+
 def fig_tool_selection(save_path: Path) -> Path:
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.4), sharey=True)
-    for ax, think in zip(axes, ["off", "on"]):
-        models = models_present(think)
-        x = np.arange(len(TASKS))
-        width = 0.6 / max(1, len(models))
-        for k, m in enumerate(models):
-            rows_ = CELLS.get((m, think, "tools_all_minimal"), [])
-            vals = [tool_selected_rate(rows_, t)[0] * 100 if rows_ else float("nan")
-                    for t in TASKS]
-            offset = (k - (len(models) - 1) / 2) * width
-            ax.bar(x + offset, vals, width, label=MODEL_DISP[m])
-        ax.set_xticks(x)
-        ax.set_xticklabels([TASK_LABEL[t] for t in TASKS], rotation=20, ha="right")
-        ax.set_title(f"think={think}")
-        ax.set_ylim(0, 105)
-        ax.set_ylabel("tool_selected %")
-        ax.grid(axis="y", linestyle=":", alpha=0.4)
-        if think == "off" and len(models) > 1:
-            ax.legend(fontsize=8, loc="lower right")
-    fig.suptitle("Tool-selection rate per task — all-tools condition", fontsize=12)
-    fig.tight_layout()
+    """Tool-selection rate per task — one subplot per (model × think).
+
+    Earlier 1×2 layout grouped 10 bars per task (5 models × 2 arms) and the
+    model dimension collapsed visually into "two patterns". This grid view
+    puts each model in its own row so per-model H2 (tl-neut vs tl-ster) is
+    legible task-by-task; per-think columns let the reader compare the
+    reasoning-mode effect side by side.
+    """
+    # Use the union of models present at either think level so the grid
+    # has consistent rows; rows where the cell is absent just render empty.
+    models = [m for m in MODEL_ORDER
+              if any((m, t, a) in CELLS
+                     for t in ("off", "on")
+                     for a in (_tools_arms_present("off") + _tools_arms_present("on")))]
+    arms_off = _tools_arms_present("off")
+    arms_on = _tools_arms_present("on")
+    all_arms = sorted(set(arms_off) | set(arms_on),
+                      key=lambda a: ARM_ORDER.index(a) if a in ARM_ORDER else 99)
+    if not models or not all_arms:
+        fig, ax = plt.subplots(figsize=(6, 2))
+        ax.axis("off")
+        ax.text(0.5, 0.5, "(no with-tools cells)", ha="center", va="center",
+                fontsize=12, color="#888")
+        fig.savefig(save_path, dpi=160, bbox_inches="tight")
+        plt.close(fig)
+        return save_path
+    n_rows = len(models)
+    fig, axes = plt.subplots(n_rows, 2, figsize=(13, 2.4 * n_rows + 0.6),
+                              sharey=True, squeeze=False)
+    x = np.arange(len(TASKS))
+    width = 0.8 / max(1, len(all_arms))
+    for i, m in enumerate(models):
+        for col, think in enumerate(("off", "on")):
+            ax = axes[i, col]
+            for j, arm in enumerate(all_arms):
+                rows_ = CELLS.get((m, think, arm), [])
+                vals = [tool_selected_rate(rows_, t)[0] * 100 if rows_ else float("nan")
+                        for t in TASKS]
+                offset = (j - (len(all_arms) - 1) / 2) * width
+                ax.bar(x + offset, vals, width,
+                       color=_color_for_arm(arm),
+                       edgecolor="black", linewidth=0.4)
+            ax.set_xticks(x)
+            if i == n_rows - 1:
+                ax.set_xticklabels([TASK_LABEL[t] for t in TASKS],
+                                   rotation=20, ha="right", fontsize=8)
+            else:
+                ax.set_xticklabels([])
+            ax.set_ylim(0, 105)
+            if col == 0:
+                ax.set_ylabel(f"{MODEL_DISP[m]}\ntool_selected %", fontsize=9)
+            if i == 0:
+                ax.set_title(f"think={think}", fontsize=11)
+            ax.grid(axis="y", linestyle=":", alpha=0.4)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a),
+                              edgecolor="black", linewidth=0.4)
+               for a in all_arms]
+    labels = [ARM_DISP.get(a, a) for a in all_arms]
+    fig.legend(handles, labels, loc="lower center", ncol=len(handles),
+               bbox_to_anchor=(0.5, 0.0), fontsize=10)
+    fig.suptitle("Tool-selection rate per task — by model × think × arm",
+                 fontsize=13)
+    fig.tight_layout(rect=[0, 0.03, 1, 0.97])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     return save_path
 
 
 def fig_successful_tool_use(save_path: Path) -> Path:
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.4), sharey=True)
+    """Tool selection vs selected∧success — pooled across 5 tasks, by model × arm.
+
+    Per (model, arm): light bar = tool_selected%, dark bar = (selected ∧ success)%.
+    The light−dark gap is the post-selection failure (verdict_mismatch /
+    tool_error / loop_exhausted / wrong_tool). x-axis = models so the model
+    dimension is explicit; arms group within each model.
+    """
+    arms_off = _tools_arms_present("off")
+    arms_on = _tools_arms_present("on")
+    all_arms = sorted(set(arms_off) | set(arms_on),
+                      key=lambda a: ARM_ORDER.index(a) if a in ARM_ORDER else 99)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8), sharey=True)
     for ax, think in zip(axes, ["off", "on"]):
         models = models_present(think)
+        if not models or not all_arms:
+            ax.axis("off")
+            ax.set_title(f"(no with-tools cells, think={think})", fontsize=10)
+            continue
+        # 2 sub-bars (sel, succ) × len(all_arms) per model group.
+        per_model = 2 * len(all_arms)
+        width = 0.8 / per_model
         x = np.arange(len(models))
-        width = 0.4
-        all_vals, sel_vals = [], []
-        for m in models:
-            rows_ = CELLS.get((m, think, "tools_all_minimal"), [])
-            n_total = sum(1 for r in rows_ if r.get("with_tools"))
-            n_succ = sum(1 for r in rows_ if r.get("with_tools") and r.get("tool_selected") and r.get("success"))
-            n_sel  = sum(1 for r in rows_ if r.get("with_tools") and r.get("tool_selected"))
-            all_vals.append(n_succ / n_total * 100 if n_total else float("nan"))
-            sel_vals.append(n_sel / n_total * 100 if n_total else float("nan"))
-        ax.bar(x - width / 2, sel_vals, width, label="tool_selected%", color="#A6CEE3")
-        ax.bar(x + width / 2, all_vals, width, label="selected ∧ success%", color="#1F78B4")
+        for i, m in enumerate(models):
+            for j, arm in enumerate(all_arms):
+                rows_ = CELLS.get((m, think, arm), [])
+                n_total = sum(1 for r in rows_ if r.get("with_tools"))
+                n_succ = sum(1 for r in rows_ if r.get("with_tools")
+                             and r.get("tool_selected") and r.get("success"))
+                n_sel  = sum(1 for r in rows_ if r.get("with_tools")
+                             and r.get("tool_selected"))
+                sel_val = n_sel / n_total * 100 if n_total else float("nan")
+                succ_val = n_succ / n_total * 100 if n_total else float("nan")
+                slot_sel  = j * 2
+                slot_succ = j * 2 + 1
+                off_sel  = (slot_sel  - (per_model - 1) / 2) * width
+                off_succ = (slot_succ - (per_model - 1) / 2) * width
+                ax.bar(i + off_sel, sel_val, width,
+                       color=_color_for_arm(arm), alpha=0.45,
+                       edgecolor="black", linewidth=0.4)
+                ax.bar(i + off_succ, succ_val, width,
+                       color=_color_for_arm(arm),
+                       edgecolor="black", linewidth=0.4)
         ax.set_xticks(x)
-        ax.set_xticklabels([MODEL_DISP[m] for m in models], rotation=20, ha="right")
+        ax.set_xticklabels([MODEL_DISP[m] for m in models],
+                           rotation=20, ha="right", fontsize=9)
         ax.set_ylim(0, 110)
         ax.set_ylabel("% of with-tools trials")
-        ax.set_title(f"think={think}")
+        ax.set_title(f"think={think}", fontsize=11)
         ax.grid(axis="y", linestyle=":", alpha=0.4)
-        ax.legend(fontsize=8)
-    fig.suptitle("Tool-selection vs successful tool use — pooled across 5 tasks (all-tools cond)",
-                 fontsize=11)
-    fig.tight_layout()
+    handles = []
+    labels = []
+    if all_arms:
+        for a in all_arms:
+            handles.append(plt.Rectangle((0, 0), 1, 1,
+                                          color=_color_for_arm(a), alpha=0.45,
+                                          edgecolor="black", linewidth=0.4))
+            handles.append(plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a),
+                                          edgecolor="black", linewidth=0.4))
+            labels.append(f"{ARM_DISP.get(a, a)} · tool_selected%")
+            labels.append(f"{ARM_DISP.get(a, a)} · selected∧success%")
+        fig.legend(handles, labels, loc="lower center",
+                   ncol=min(4, len(handles)), bbox_to_anchor=(0.5, 0.0),
+                   fontsize=9)
+    fig.suptitle("Tool-selection vs successful tool use — pooled across 5 tasks, by model × arm",
+                 fontsize=12)
+    fig.tight_layout(rect=[0, 0.07, 1, 0.96])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     return save_path
+
+
+def _pick_no_tools_neutral_arm() -> str:
+    """The no-tools arm that backs the confusion grid. Prefers nt-neut (sweep-5
+    H1 baseline); falls back to nt-legacy for pre-sweep-5 decks."""
+    if any(k[2] == "nt-neut" for k in CELLS):
+        return "nt-neut"
+    return "nt-legacy"
 
 
 def fig_confusion_grid(save_path: Path, think: str) -> Path:
@@ -467,11 +636,17 @@ def fig_confusion_grid(save_path: Path, think: str) -> Path:
         fig.savefig(save_path, dpi=160, bbox_inches="tight")
         plt.close(fig)
         return save_path
-    fig, axes = plt.subplots(len(models), 3, figsize=(11, 3.0 * len(models)))
+    nt_arm = _pick_no_tools_neutral_arm()
+    # Each cell labels the count with the canonical TP/FN/FP/TN tag so the
+    # reader doesn't have to map quadrants → metric type by memory. White
+    # gridlines between cells make the 2×2 boundary explicit; wider
+    # wspace/hspace separates per-task panels so labels don't crowd.
+    fig, axes = plt.subplots(len(models), 3, figsize=(12, 3.4 * len(models)))
     if len(models) == 1:
         axes = axes[None, :]
+    cell_tags = np.array([["TP", "FN"], ["FP", "TN"]])
     for i, m in enumerate(models):
-        rows_ = CELLS.get((m, think, "no-tools"), [])
+        rows_ = CELLS.get((m, think, nt_arm), [])
         for j, task in enumerate(["validate_domain", "validate_problem", "validate_plan"]):
             ax = axes[i, j]
             cm = confusion(rows_, task)
@@ -479,60 +654,141 @@ def fig_confusion_grid(save_path: Path, think: str) -> Path:
             ax.imshow(mx, cmap="Blues")
             ax.set_xticks([0, 1])
             ax.set_yticks([0, 1])
-            ax.set_xticklabels(["pred VALID", "pred INVALID"])
-            ax.set_yticklabels(["true VALID", "true INVALID"])
+            ax.set_xticklabels(["pred VALID", "pred INVALID"], fontsize=9)
+            ax.set_yticklabels(["true VALID", "true INVALID"], fontsize=9)
+            # White gridlines between the 4 quadrants — separates TP/FP/FN/TN
+            # visually. Set on minor ticks so the major axis labels stay clean.
+            ax.set_xticks([0.5], minor=True)
+            ax.set_yticks([0.5], minor=True)
+            ax.grid(which="minor", color="white", linewidth=3)
+            ax.tick_params(which="minor", bottom=False, left=False)
             metr = metrics_from_cm(cm)
             for (r_, c_), v in np.ndenumerate(mx):
                 color = "white" if v > mx.max() / 2 else "black"
-                ax.text(c_, r_, str(v), ha="center", va="center", color=color)
+                ax.text(c_, r_ - 0.18, cell_tags[r_, c_],
+                        ha="center", va="center", color=color,
+                        fontsize=11, fontweight="bold")
+                ax.text(c_, r_ + 0.18, str(v),
+                        ha="center", va="center", color=color, fontsize=11)
             ax.set_title(
                 f"{MODEL_DISP[m]} · {task}\n"
                 f"prec={metr['precision']:.2f} rec={metr['recall']:.2f} "
                 f"acc={metr['accuracy_all']:.2f}  no-ans={cm['no_ans']}",
-                fontsize=8,
+                fontsize=9,
             )
-    fig.suptitle(f"Confusion matrices · validation tasks · no-tools · think={think}", fontsize=12)
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    fig.suptitle(f"Confusion matrices · validation tasks · no-tools · think={think}",
+                 fontsize=13)
+    fig.subplots_adjust(wspace=0.45, hspace=0.55)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     return save_path
 
 
+def _completion_median(rows: list[dict], task: str | None,
+                       only_success: bool) -> float:
+    """Per-arm completion-token median computed lazily from trials.jsonl.
+
+    Mirrors summary._token_row's median (sweep-5 H3) but at arm granularity:
+    build_deck operates on per-arm CELLS so it doesn't need the schema-bumped
+    summary field — keeps the two ingest paths independent. Trials missing a
+    `tokens` dict (infra failures) are excluded, matching _add_tokens.
+    """
+    sub = [r for r in rows if (task is None or r.get("task") == task)]
+    if only_success:
+        sub = [r for r in sub if r.get("success")]
+    samples = [int((r.get("tokens") or {}).get("completion", 0) or 0)
+               for r in sub if r.get("tokens")]
+    if not samples:
+        return float("nan")
+    return float(statistics.median(samples))
+
+
 def fig_tokens(save_path: Path, only_success: bool = False,
                task: str | None = None) -> Path:
-    fig, axes = plt.subplots(2, 2, figsize=(13, 8))
-    kinds = [("prompt", "input"), ("completion", "output")]
-    for col, (key, disp) in enumerate(kinds):
-        for row, think in enumerate(["off", "on"]):
-            ax = axes[row, col]
-            models = models_present(think)
-            x = np.arange(len(models))
-            width = 0.25
-            for j, cond in enumerate(COND_ORDER):
-                vals, fails = [], []
-                for m in models:
-                    rows_ = CELLS.get((m, think, cond), [])
-                    ts = token_stats(rows_, task=task, only_success=only_success) if rows_ else None
-                    vals.append(ts[key] if ts else float("nan"))
-                    fails.append(ts["fail_pct"] if ts else float("nan"))
-                bars = ax.bar(x + (j - 1) * width, vals, width,
-                              label=COND_DISP[cond], color=_color_for_cond(cond))
-                _annotate_bars(ax, bars, vals, fails)
-            ax.set_xticks(x)
-            ax.set_xticklabels([MODEL_DISP[m] for m in models], rotation=20, ha="right")
-            ax.set_title(f"mean {disp} tokens · think={think}")
-            ax.set_ylabel(f"{disp} tokens per trial")
-            ax.margins(y=0.10)
-            ax.grid(axis="y", linestyle=":", alpha=0.4)
-            if row == 0 and col == 0:
-                ax.legend(fontsize=8)
+    """Output (completion) tokens per trial, grouped by arm × think.
+
+    Input tokens dropped per user direction (2026-05-24): the with-tools 2-turn
+    structural multiplier on prompt tokens is documented in the token-note
+    slide bullet but no longer plotted. The output-token bar primarily reads
+    "how verbose is the model under this arm".
+
+    Each bar carries a top label `mean (m:NN)` where `m:NN` is the median —
+    a sweep-5 design-doc primary outcome (development/sweep_prompt_bank_design.md
+    §0) that's robust to truncation outliers. The inset (`f:NN%`) remains the
+    full-cell failure rate.
+    """
+    # Wider figure + vertically-stacked two-line labels (mean above, m:median
+    # below) so per-bar text no longer overlaps with neighboring bars. The
+    # inset failure% was dropped — the same number is already on fig4 /
+    # aggregate and crowded these bars when they were short.
+    fig, axes = plt.subplots(1, 2, figsize=(16, 5.0))
+    for col, think in enumerate(["off", "on"]):
+        ax = axes[col]
+        models = models_present(think)
+        arms = _arms_present(think)
+        x = np.arange(len(models))
+        width = 0.8 / max(1, len(arms))
+        for j, arm in enumerate(arms):
+            vals, medians = [], []
+            for m in models:
+                rows_ = CELLS.get((m, think, arm), [])
+                ts = token_stats(rows_, task=task, only_success=only_success) if rows_ else None
+                vals.append(ts["completion"] if ts else float("nan"))
+                medians.append(_completion_median(rows_, task=task,
+                                                   only_success=only_success)
+                               if rows_ else float("nan"))
+            offset = (j - (len(arms) - 1) / 2) * width
+            bars = ax.bar(x + offset, vals, width,
+                          label=ARM_DISP.get(arm, arm),
+                          color=_color_for_arm(arm),
+                          edgecolor="black", linewidth=0.4)
+            for b, v, med in zip(bars, vals, medians):
+                h = b.get_height()
+                if np.isnan(h):
+                    continue
+                # Mirror the latency annotation pattern (`_annotate_bars`):
+                # primary metric (mean) above the bar tip in black; secondary
+                # metric (median) inside the bar near the top in white. The
+                # previous two-lines-above layout had the median bbox stacking
+                # behind the mean bbox at the same anchor — hiding it from view.
+                mean_str = _fmt_tokens(v) if not np.isnan(v) else ""
+                med_str = f"m:{_fmt_tokens(med)}" if not np.isnan(med) else ""
+                if mean_str:
+                    ax.text(b.get_x() + b.get_width() / 2, h, mean_str,
+                            ha="center", va="bottom", fontsize=7.5,
+                            color="#222", fontweight="bold")
+                if med_str and h > 0:
+                    # Tall bars: median sits inside the bar, white text, near
+                    # the top. Short bars (h below ~6% of axis range): the
+                    # white inset would be unreadable, so fall back to a black
+                    # label below the bar tip outside the bar.
+                    y_top = ax.get_ylim()[1]
+                    if h >= 0.10 * y_top:
+                        ax.text(b.get_x() + b.get_width() / 2,
+                                h * 0.92, med_str,
+                                ha="center", va="top", fontsize=6.5,
+                                color="white")
+                    else:
+                        ax.text(b.get_x() + b.get_width() / 2,
+                                h * 0.5, med_str,
+                                ha="center", va="center", fontsize=6.5,
+                                color="#555")
+        ax.set_xticks(x)
+        ax.set_xticklabels([MODEL_DISP[m] for m in models], rotation=20, ha="right",
+                           fontsize=9)
+        ax.set_title(f"think={think}", fontsize=11)
+        ax.set_ylabel("output tokens per trial", fontsize=10)
+        ax.margins(y=0.18)
+        ax.grid(axis="y", linestyle=":", alpha=0.4)
+        if col == 0 and arms:
+            ax.legend(fontsize=9, loc="upper left")
     sub = "successful trials only" if only_success else "all trials"
     scope = f"task = {task}" if task else "pooled across all 5 tasks"
     fig.suptitle(
-        f"Input / output tokens per trial · {scope} · {sub}.  "
-        f"Bar height = tokens (label on top).  Inset `f:NN%` = cell failure% (side metric).  "
-        f"With-tools trials run a 2-turn agent loop so values are summed across both turns.",
-        fontsize=10,
+        f"Output tokens per trial · {scope} · {sub}.  "
+        f"Black label above bar = mean.  Inset `m:NN` = median.",
+        fontsize=11,
     )
     fig.tight_layout()
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
@@ -544,20 +800,24 @@ def fig_latency(save_path: Path, exclude_failures: bool) -> Path:
     fig, axes = plt.subplots(1, 2, figsize=(13, 5), sharey=True)
     for ax, think in zip(axes, ["off", "on"]):
         models = models_present(think)
+        arms = _arms_present(think)
         x = np.arange(len(models))
-        width = 0.25
-        for j, cond in enumerate(COND_ORDER):
+        width = 0.8 / max(1, len(arms))
+        for j, arm in enumerate(arms):
             vals, frates = [], []
             for m in models:
-                rows_ = CELLS.get((m, think, cond), [])
+                rows_ = CELLS.get((m, think, arm), [])
                 ls = latency_stats(rows_)
                 if exclude_failures:
                     vals.append(ls["mean_succ"])
                 else:
                     vals.append(ls["mean_all"])
                 frates.append((ls["n_fail"] / ls["n"]) * 100 if ls["n"] else float("nan"))
-            bars = ax.bar(x + (j - 1) * width, vals, width,
-                          label=COND_DISP[cond], color=_color_for_cond(cond))
+            offset = (j - (len(arms) - 1) / 2) * width
+            bars = ax.bar(x + offset, vals, width,
+                          label=ARM_DISP.get(arm, arm),
+                          color=_color_for_arm(arm),
+                          edgecolor="black", linewidth=0.4)
             _annotate_bars(ax, bars, vals, frates,
                            primary_fmt=lambda v: f"{v:.0f}s")
         ax.margins(y=0.10)
@@ -566,7 +826,7 @@ def fig_latency(save_path: Path, exclude_failures: bool) -> Path:
         ax.set_title(f"think={think}")
         ax.set_ylabel("seconds (mean)")
         ax.grid(axis="y", linestyle=":", alpha=0.4)
-        if think == "off":
+        if think == "off" and arms:
             ax.legend(fontsize=8)
     sub = "errors+failures excluded" if exclude_failures else "all trials, failures included"
     fig.suptitle(
@@ -580,10 +840,197 @@ def fig_latency(save_path: Path, exclude_failures: bool) -> Path:
     return save_path
 
 
+def fig_h1_isolation(save_path: Path) -> Path | None:
+    """H1 isolation: nt-neut vs tl-neut on `result_correct` at byte-identical
+    prompt content. The headline tool-utility claim from the PDDL Copilot paper
+    (arXiv:2509.12987) restated under the sweep-5 design doc §0 H1.
+
+    Two bars per (model, think) across 5 task panels. Wilson 95% CIs implicit
+    in the Δ readout — kept off the bars to keep the chart legible.
+
+    Returns None when neither arm has data (e.g. sweep-3/4 replay where every
+    cell is *-legacy). Caller skips the slide in that case rather than emitting
+    a chart of empty bars.
+    """
+    arms = ("nt-neut", "tl-neut")
+    has_data = any((m, t, a) in CELLS
+                   for m in MODEL_ORDER for t in ("off", "on") for a in arms)
+    if not has_data:
+        return None
+    # 2-row layout (was 1 × 5) so each task panel reads at a usable size on a
+    # 13×7.5" slide. 5 tasks → 2×3 grid with the trailing cell hidden. Wider +
+    # taller per-panel footprint (was 2.8×4.4, now 4.6×4.0 each) so bar labels
+    # stay legible.
+    n_cols = 3
+    n_rows = (len(TASKS) + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols,
+                              figsize=(4.6 * n_cols, 4.0 * n_rows),
+                              sharey=True, squeeze=False)
+    axes_flat = axes.ravel()
+    for ax, task in zip(axes_flat, TASKS):
+        # Stack think modes onto x: one model gets two grouped pairs.
+        models = [m for m in MODEL_ORDER
+                  if any((m, t, a) in CELLS for t in ("off", "on") for a in arms)]
+        if not models:
+            ax.axis("off")
+            ax.set_title(TASK_LABEL[task], fontsize=10)
+            continue
+        labels = []
+        widths = 0.35
+        positions = []
+        nt_vals = []
+        tl_vals = []
+        for i, m in enumerate(models):
+            for k, think in enumerate(("off", "on")):
+                pos = i * 2.5 + k
+                positions.append(pos)
+                labels.append(f"{MODEL_DISP[m]}·{think}")
+                nt_rows = CELLS.get((m, think, "nt-neut"), [])
+                tl_rows = CELLS.get((m, think, "tl-neut"), [])
+                nt_vals.append(task_success_rate(nt_rows, task)[0] * 100)
+                tl_vals.append(task_success_rate(tl_rows, task)[0] * 100)
+        positions = np.array(positions)
+        ax.bar(positions - widths / 2, nt_vals, widths,
+               color=_color_for_arm("nt-neut"), edgecolor="black", linewidth=0.4,
+               label=ARM_DISP.get("nt-neut", "nt-neut"))
+        ax.bar(positions + widths / 2, tl_vals, widths,
+               color=_color_for_arm("tl-neut"), edgecolor="black", linewidth=0.4,
+               label=ARM_DISP.get("tl-neut", "tl-neut"))
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, rotation=70, ha="right", fontsize=7)
+        ax.set_ylim(0, 105)
+        ax.set_title(TASK_LABEL[task], fontsize=10)
+        ax.grid(axis="y", linestyle=":", alpha=0.4)
+    # Hide trailing empty cells (5 tasks in a 2×3 grid → one slot unused).
+    for ax in axes_flat[len(TASKS):]:
+        ax.axis("off")
+    # success% y-label on the leftmost subplot of each row.
+    for row in range(n_rows):
+        axes[row, 0].set_ylabel("success %", fontsize=10)
+    fig.suptitle(
+        "H1 isolation — tool utility at byte-identical prompts (nt-neut vs tl-neut).",
+        fontsize=12)
+    fig.legend([plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a)) for a in arms],
+               [ARM_DISP.get(a, a) for a in arms],
+               loc="lower center", ncol=2, bbox_to_anchor=(0.5, 0.0), fontsize=10)
+    fig.tight_layout(rect=[0, 0.04, 1, 0.96])
+    fig.savefig(save_path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    return save_path
+
+
+def _wrong_tool_share(rows: list[dict], task: str) -> float:
+    """Per-task FR_WRONG_TOOL rate among with-tools trials in this cell.
+
+    Marketplace 1.4.0 introduced FR_WRONG_TOOL as a distinct failure mode —
+    sweep-5 H2 predicts the steered arm reduces it. Computed here from
+    trials.jsonl rather than summary fields so the per-arm split is
+    self-contained in build_deck.
+    """
+    sub = [r for r in rows if r.get("task") == task and r.get("with_tools")]
+    if not sub:
+        return float("nan")
+    return sum(1 for r in sub if r.get("failure_reason") == "wrong_tool") / len(sub) * 100
+
+
+def fig_h2_isolation(save_path: Path) -> Path | None:
+    """H2 isolation: tl-neut vs tl-ster on `tool_selected` + FR_WRONG_TOOL share.
+
+    Two grouped bars per (model, think) per task: tool_selected% (bar height)
+    with the FR_WRONG_TOOL share annotated above. Sweep-5 H2 predicts steered
+    raises tool_selected AND lowers FR_WRONG_TOOL.
+
+    Returns None when neither arm has data (e.g. sweep-3/4 replay) so build()
+    can skip the slide rather than emit a chart of zero bars.
+    """
+    arms = ("tl-neut", "tl-ster")
+    has_data = any((m, t, a) in CELLS
+                   for m in MODEL_ORDER for t in ("off", "on") for a in arms)
+    if not has_data:
+        return None
+    # Mirror H1: 2x3 grid (was 1x5) so each task panel renders at usable size.
+    n_cols = 3
+    n_rows = (len(TASKS) + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols,
+                              figsize=(4.6 * n_cols, 4.0 * n_rows),
+                              sharey=True, squeeze=False)
+    axes_flat = axes.ravel()
+    for ax, task in zip(axes_flat, TASKS):
+        models = [m for m in MODEL_ORDER
+                  if any((m, t, a) in CELLS for t in ("off", "on") for a in arms)]
+        if not models:
+            ax.axis("off")
+            ax.set_title(TASK_LABEL[task], fontsize=10)
+            continue
+        labels = []
+        widths = 0.35
+        positions = []
+        neut_vals = []
+        ster_vals = []
+        neut_wt = []
+        ster_wt = []
+        for i, m in enumerate(models):
+            for k, think in enumerate(("off", "on")):
+                pos = i * 2.5 + k
+                positions.append(pos)
+                labels.append(f"{MODEL_DISP[m]}·{think}")
+                neut_rows = CELLS.get((m, think, "tl-neut"), [])
+                ster_rows = CELLS.get((m, think, "tl-ster"), [])
+                neut_vals.append(tool_selected_rate(neut_rows, task)[0] * 100)
+                ster_vals.append(tool_selected_rate(ster_rows, task)[0] * 100)
+                neut_wt.append(_wrong_tool_share(neut_rows, task))
+                ster_wt.append(_wrong_tool_share(ster_rows, task))
+        positions = np.array(positions)
+        bars_n = ax.bar(positions - widths / 2, neut_vals, widths,
+                        color=_color_for_arm("tl-neut"), edgecolor="black",
+                        linewidth=0.4, label=ARM_DISP.get("tl-neut", "tl-neut"))
+        bars_s = ax.bar(positions + widths / 2, ster_vals, widths,
+                        color=_color_for_arm("tl-ster"), edgecolor="black",
+                        linewidth=0.4, label=ARM_DISP.get("tl-ster", "tl-ster"))
+        # Annotate FR_WRONG_TOOL share above each bar (red text) so the reader
+        # sees the H2 secondary outcome alongside the primary (selection rate).
+        for b, wt in zip(bars_n, neut_wt):
+            if np.isnan(b.get_height()) or np.isnan(wt):
+                continue
+            ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 1.5,
+                    f"wt:{wt:.0f}%", ha="center", va="bottom", fontsize=6.5,
+                    color="#a23b1d")
+        for b, wt in zip(bars_s, ster_wt):
+            if np.isnan(b.get_height()) or np.isnan(wt):
+                continue
+            ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 1.5,
+                    f"wt:{wt:.0f}%", ha="center", va="bottom", fontsize=6.5,
+                    color="#a23b1d")
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels, rotation=70, ha="right", fontsize=7)
+        ax.set_ylim(0, 115)
+        ax.set_title(TASK_LABEL[task], fontsize=10)
+        ax.grid(axis="y", linestyle=":", alpha=0.4)
+    for ax in axes_flat[len(TASKS):]:
+        ax.axis("off")
+    for row in range(n_rows):
+        axes[row, 0].set_ylabel(
+            "tool_selected %  (wt:N% = FR_WRONG_TOOL share)", fontsize=9)
+    fig.suptitle(
+        "H2 isolation — steering effect on tool selection (tl-neut vs tl-ster).",
+        fontsize=12)
+    fig.legend([plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a)) for a in arms],
+               [ARM_DISP.get(a, a) for a in arms],
+               loc="lower center", ncol=2, bbox_to_anchor=(0.5, 0.0), fontsize=10)
+    fig.tight_layout(rect=[0, 0.04, 1, 0.96])
+    fig.savefig(save_path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    return save_path
+
+
 def find_malformed_simulate_samples() -> dict[tuple[str, str], dict]:
+    """Pick one malformed `simulate` response per (model, think) from the
+    no-tools neutral arm — the H1 baseline that the deck headlines.
+    """
+    nt_arm = _pick_no_tools_neutral_arm()
     out: dict[tuple[str, str], dict] = {}
     for (m, t, c), rows_ in CELLS.items():
-        if c != "no-tools":
+        if c != nt_arm:
             continue
         sims = [r for r in rows_ if r["task"] == "simulate"]
         if not sims:
@@ -662,7 +1109,7 @@ def add_image_slide(prs: Presentation, title: str, image_path: Path,
     from PIL import Image
     with Image.open(image_path) as im:
         w_px, h_px = im.size
-    max_w, max_h = 12.7, 6.2 if caption else 6.6
+    max_w, max_h = 12.7, 5.7 if caption else 6.6
     aspect = w_px / h_px
     if max_w / aspect <= max_h:
         w_in = max_w
@@ -674,7 +1121,7 @@ def add_image_slide(prs: Presentation, title: str, image_path: Path,
     top = Inches(0.75)
     slide.shapes.add_picture(str(image_path), left, top, width=Inches(w_in), height=Inches(h_in))
     if caption:
-        cb = slide.shapes.add_textbox(Inches(0.4), prs.slide_height - Inches(0.85),
+        cb = slide.shapes.add_textbox(Inches(0.4), prs.slide_height - Inches(0.75),
                                       Inches(12.5), Inches(0.7))
         ctf = cb.text_frame
         ctf.word_wrap = True
@@ -822,20 +1269,36 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
 
     add_title_slide(prs, TITLE, SUBTITLE)
 
-    p_off = fig_success_by_cond_per_task("off", fig_dir / "success_by_cond_off.png")
-    p_on  = fig_success_by_cond_per_task("on",  fig_dir / "success_by_cond_on.png")
-    add_image_slide(prs, "Success rates: by condition (think=off)", p_off,
+    p_off = fig_success_by_cond_per_task("off", fig_dir / "success_by_arm_off.png")
+    p_on  = fig_success_by_cond_per_task("on",  fig_dir / "success_by_arm_on.png")
+    add_image_slide(prs, "Success rates: by arm (think=off)", p_off,
                     caption=captions["success_off"])
-    add_image_slide(prs, "Success rates: by condition (think=on)", p_on,
+    add_image_slide(prs, "Success rates: by arm (think=on)", p_on,
                     caption=captions["success_on"])
 
+    # H1 & H2 isolation slides — sweep-5 design doc §0 headline hypotheses.
+    # H1 reads tool utility under byte-identical prompts; H2 reads steering
+    # effect on tool selection. Placed early so the headline answers appear
+    # before the supporting drill-downs. Both figs return None on sweep-3/4
+    # replays (no v11-16 records, only *-legacy arms); the slide is omitted
+    # in that case rather than rendering empty bars.
+    h1_path = fig_h1_isolation(fig_dir / "h1_isolation.png")
+    if h1_path is not None:
+        add_image_slide(prs, "H1 — tool utility (byte-identical prompts)", h1_path,
+                        caption=captions["h1_isolation"])
+    h2_path = fig_h2_isolation(fig_dir / "h2_isolation.png")
+    if h2_path is not None:
+        add_image_slide(prs, "H2 — steering effect on tool selection", h2_path,
+                        caption=captions["h2_isolation"])
+
     ts_path = fig_tool_selection(fig_dir / "tool_selection.png")
-    add_image_slide(prs, "Tool selection rate (tool_selected_rate) per task", ts_path,
+    add_image_slide(prs, "Tool selection rate per task — by arm", ts_path,
                     caption=captions["tool_selection"])
 
-    su_path = fig_successful_tool_use(fig_dir / "successful_tool_use.png")
-    add_image_slide(prs, "Tool-selection vs successful tool use (pooled across 5 tasks)", su_path,
-                    caption=captions["successful_tool_use"])
+    # Pooled-across-tasks slides removed 2026-05-24 (user direction): when
+    # five tasks have wildly different token / time / selection profiles the
+    # "pooled across 5 tasks" aggregate has no pre-decided metric that
+    # reflects the data. The reader is sent to the per-task slides below.
 
     cm_off = fig_confusion_grid(fig_dir / "confusion_no_tools_off.png", "off")
     cm_on  = fig_confusion_grid(fig_dir / "confusion_no_tools_on.png", "on")
@@ -844,12 +1307,13 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
     add_image_slide(prs, "Validation tasks · no-tools · confusion matrices (think=on)", cm_on,
                     caption=captions["confusion_on"])
 
+    nt_arm_for_table = _pick_no_tools_neutral_arm()
     for think in ["off", "on"]:
         headers = ["model", "task", "TP", "FP", "FN", "TN", "no-ans", "prec", "rec", "acc"]
         rows_out = []
         for m in models_present(think):
             for task in ["validate_domain", "validate_problem", "validate_plan"]:
-                cm = confusion(CELLS.get((m, think, "no-tools"), []), task)
+                cm = confusion(CELLS.get((m, think, nt_arm_for_table), []), task)
                 metr = metrics_from_cm(cm)
                 rows_out.append([
                     MODEL_DISP[m], TASK_LABEL[task],
@@ -873,27 +1337,22 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
             "Simulate · no-tools · failure proofs (think=on) — raw model output",
             picks, all_models_with_data, "on")
 
-    add_text_slide(prs, "Note on token accounting (read before the next 6 slides)", TOKEN_NOTE_BULLETS)
+    add_text_slide(prs, "Note on token accounting (output only)", TOKEN_NOTE_BULLETS)
 
-    tok_path    = fig_tokens(fig_dir / "tokens.png", only_success=False)
-    tok_ok_path = fig_tokens(fig_dir / "tokens_success_only.png", only_success=True)
-    add_image_slide(prs, "Input / output tokens per trial · all trials (failures included)", tok_path,
-                    caption=captions["tokens_all"])
-    add_image_slide(prs, "Input / output tokens per trial · successful trials only", tok_ok_path,
-                    caption=captions["tokens_succ"])
-
+    # Per-task output-token slides only. The previously-rendered pooled
+    # versions (`tokens.png` / `tokens_success_only.png`) were removed
+    # 2026-05-24 because a token-budget number averaged across solve +
+    # validate_* + simulate has no clean interpretation — task scale varies
+    # 5-10x.
     for task in TASKS:
         fp = fig_dir / f"tokens_task_{task}.png"
         fig_tokens(fp, only_success=False, task=task)
-        add_image_slide(prs, f"Tokens · {TASK_LABEL[task]} (input / output per trial)", fp,
+        add_image_slide(prs, f"Output tokens · {TASK_LABEL[task]}", fp,
                         caption=captions[f"tokens_{task}"])
 
-    lat_all = fig_latency(fig_dir / "latency_all.png", exclude_failures=False)
-    lat_ok  = fig_latency(fig_dir / "latency_ok.png",  exclude_failures=True)
-    add_image_slide(prs, "Time-to-response · all trials (failures included)", lat_all,
-                    caption=captions["latency_all"])
-    add_image_slide(prs, "Time-to-response · successes only", lat_ok,
-                    caption=captions["latency_succ"])
+    # Pooled-across-tasks latency slides removed for the same reason as the
+    # pooled token slides. If a per-task latency view is wanted later,
+    # `fig_latency` accepts a `task=` arg the same way `fig_tokens` does.
 
     prs.save(out_pptx)
     return prs
@@ -927,13 +1386,30 @@ def main():
 
     # Populate module globals consumed by figure builders.
     global CELLS, MODEL_ORDER, MODEL_DISP, COND_ORDER, COND_DISP, TITLE, SUBTITLE
+    global ARM_ORDER, ARM_DISP
     CELLS = load_all(results_root)
     MODEL_ORDER = list(cfg.MODEL_ORDER)
     MODEL_DISP = dict(cfg.MODEL_DISP)
-    COND_ORDER = list(cfg.COND_ORDER)
-    COND_DISP = dict(cfg.COND_DISP)
+    # COND_ORDER / COND_DISP kept for backward compatibility — pre-sweep-5
+    # deck_configs ship them; the sweep-5 build engine no longer consumes
+    # them, but reading them keeps `_load_config` validation honest and
+    # lets old configs load unchanged.
+    COND_ORDER = list(getattr(cfg, "COND_ORDER", []))
+    COND_DISP = dict(getattr(cfg, "COND_DISP", {}))
     TITLE = cfg.TITLE
     SUBTITLE = cfg.SUBTITLE
+
+    # Arm order: take it from cfg.ARM_ORDER if present (lets a config pin an
+    # explicit display order); otherwise drop missing arms from the default
+    # canonical order (3 arms when nt-ster control is absent, etc).
+    cell_arms = {a for (_, _, a) in CELLS}
+    cfg_arm_order = getattr(cfg, "ARM_ORDER", None)
+    if cfg_arm_order:
+        ARM_ORDER = [a for a in cfg_arm_order if a in cell_arms]
+    else:
+        ARM_ORDER = [a for a in ARM_ORDER_DEFAULT if a in cell_arms]
+    ARM_DISP = dict(ARM_DISP_DEFAULT)
+    ARM_DISP.update(getattr(cfg, "ARM_DISP", {}) or {})
 
     # Fail loud, not silent. A cell whose model slug isn't in MODEL_DISP would
     # KeyError deep in models_present() — we'd rather catch it at config load
@@ -955,7 +1431,7 @@ def main():
 
     print(f"loaded {len(CELLS)} cells from {results_root.relative_to(REPO)}")
     print(f"models: {MODEL_ORDER}")
-    print(f"conds:  {COND_ORDER}")
+    print(f"arms:   {ARM_ORDER}")
     print(f"output: {out_pptx.relative_to(REPO) if out_pptx.is_relative_to(REPO) else out_pptx}")
 
     build(out_pptx, fig_dir, captions)

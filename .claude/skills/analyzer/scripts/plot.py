@@ -31,9 +31,15 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Canonical wilson_ci lives in pddl_eval/summary.py. Run from repo root.
+# Canonical wilson_ci + arm classifier live in pddl_eval/summary.py.
+# Run from repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-from pddl_eval.summary import wilson_ci  # noqa: E402
+from pddl_eval.summary import NEUTRAL_VARIANTS, arm_for, wilson_ci  # noqa: E402
+from pddl_eval.prompts import STEERED_VARIANTS  # noqa: E402
+
+ACTIVE_ARMS = ("nt-neut", "nt-ster", "tl-neut", "tl-ster")
+LEGACY_ARMS = ("nt-legacy", "tl-legacy")
+ALL_ARMS = ACTIVE_ARMS + LEGACY_ARMS
 
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
 TASK_LABELS = {
@@ -84,6 +90,16 @@ COND_HATCH = {
     # don't co-occur with it in any live cell set).
     "tools_all_guided":       None,
     "tools_per-task_guided":  None,
+    # Sweep-5 arms (used when split_series_by_arm replaces cond with an arm
+    # tag). Stripes encode the prompt steering axis; dot density encodes
+    # neutral vs steered within with-tools. Picked to be visually distinct
+    # without colliding with the legacy hatches above.
+    "nt-neut":   "////",
+    "nt-ster":   "xx",
+    "tl-neut":   None,
+    "tl-ster":   "...",
+    "nt-legacy": "////",
+    "tl-legacy": None,
 }
 # think-mode shade: on → lighter tint of the model base color.
 # off / default keep the base color unchanged.
@@ -233,6 +249,147 @@ def _wilson_err(rate: float, lo: float, hi: float) -> tuple[float, float]:
     return max(0.0, rate - lo), max(0.0, hi - rate)
 
 
+def _arm_side(cond: str) -> str:
+    return "nt" if cond == "no-tools" else "tl"
+
+
+def _arm_variant_set(suffix: str) -> set[int] | None:
+    """Variant set for an arm suffix. None == 'legacy' (any v0-v10)."""
+    if suffix == "neut":
+        return set(NEUTRAL_VARIANTS)
+    if suffix == "ster":
+        return set(STEERED_VARIANTS)
+    return None
+
+
+def split_series_by_arm(series: list[dict]) -> list[dict]:
+    """Split each loaded series into per-arm series by pooling per_variant
+    cells and filtering instances.
+
+    Sweep-5 design (development/sweep_prompt_bank_design.md §0) frames result
+    comparisons by arm — `(no-tools|with-tools) × (neutral|steered)`. The
+    existing series is one-per-dir (i.e. per condition); after this split it
+    becomes one-per-(dir, arm). Wilson CIs are recomputed on the pooled
+    arm-level counts, NOT averaged from per-variant CIs (proper interval at
+    n=pooled).
+
+    Legacy corpora (sweep-3/4: v0-v10) collapse to a single `*-legacy` arm
+    so the existing fig1/3/4/5/6 stay renderable.
+    """
+    out: list[dict] = []
+    for s in series:
+        side = _arm_side(s["cond"])
+        summary = s.get("summary", {}) or {}
+        st_rows = summary.get("single_task", []) or []
+        # Collect variants present in this cell.
+        variants_present: set[int] = set()
+        for rec in st_rows:
+            for vk in (rec.get("per_variant", {}) or {}).keys():
+                try:
+                    variants_present.add(int(vk))
+                except (TypeError, ValueError):
+                    continue
+        # Determine which arm suffixes apply.
+        suffixes: list[str] = []
+        if variants_present & NEUTRAL_VARIANTS:
+            suffixes.append("neut")
+        if variants_present & STEERED_VARIANTS:
+            suffixes.append("ster")
+        if variants_present and not (variants_present & (NEUTRAL_VARIANTS | STEERED_VARIANTS)):
+            suffixes.append("legacy")
+        if not suffixes:
+            # No per_variant data at all (very-old corpus). Treat the whole
+            # cell as a single legacy arm so the plot still renders.
+            suffixes.append("legacy")
+        for suffix in suffixes:
+            arm = f"{side}-{suffix}"
+            target = _arm_variant_set(suffix)
+            pooled_single: list[dict] = []
+            for rec in st_rows:
+                if rec.get("n", 0) == 0:
+                    continue
+                pv = rec.get("per_variant", {}) or {}
+                # Pool successes / n / tool_selected / truncated across the
+                # arm-matching per_variant cells.
+                if pv:
+                    k = n = trunc = tool_k = 0
+                    for vk, cell in pv.items():
+                        try:
+                            v = int(vk)
+                        except (TypeError, ValueError):
+                            continue
+                        if target is None:
+                            if v in (NEUTRAL_VARIANTS | STEERED_VARIANTS):
+                                continue
+                        elif v not in target:
+                            continue
+                        k += cell.get("successes", 0)
+                        n += cell.get("n", 0)
+                        trunc += cell.get("truncated", 0)
+                        tool_k += cell.get("tool_selected", 0) or 0
+                else:
+                    # Pre-per_variant corpus: legacy arm consumes the whole cell;
+                    # active arms see zero data (skipped via continue below).
+                    if suffix != "legacy":
+                        continue
+                    k = rec.get("successes", 0)
+                    n = rec.get("n", 0)
+                    trunc = rec.get("truncated", 0)
+                    tool_k = rec.get("tool_selected", 0) or 0
+                if n == 0:
+                    continue
+                lo, hi = wilson_ci(k, n)
+                ts_lo, ts_hi = wilson_ci(tool_k, n)
+                pooled = {
+                    "model": s["model"], "task": rec["task"], "condition": arm,
+                    "successes": k, "n": n,
+                    "success_rate": round(k / n, 4),
+                    "ci_lo": lo, "ci_hi": hi,
+                    "truncated": trunc,
+                    # Failure-reason counts are not arm-tagged in summary_*.json
+                    # (the per_variant cells don't carry them). Synthesizing
+                    # arm-level FR shares from the whole-cell counts would be a
+                    # silent mis-attribution — leave empty so fig4 falls through
+                    # to "other" rather than mis-bucketing. Per-arm FR breakdowns
+                    # require trials.jsonl (build_deck / plot_focused path).
+                    "failure_reasons": {},
+                    "tool_selected": tool_k,
+                    "tool_selected_rate": round(tool_k / n, 4),
+                    "tool_selected_ci_lo": ts_lo,
+                    "tool_selected_ci_hi": ts_hi,
+                }
+                pooled_single.append(pooled)
+            if not pooled_single:
+                continue
+            # Filter instances by arm so fig3/fig5 (which read trial rows)
+            # also see arm-isolated data. Legacy arm gets v0-v10 instances;
+            # active arms get their variant set.
+            kept_instances = []
+            for inst in s.get("instances", []):
+                pv = inst.get("prompt_variant")
+                if pv is None:
+                    continue
+                if target is None:
+                    if pv in (NEUTRAL_VARIANTS | STEERED_VARIANTS):
+                        continue
+                elif pv not in target:
+                    continue
+                kept_instances.append(inst)
+            out.append({
+                "model": s["model"], "think": s["think"],
+                # Putting the arm in the `cond` slot keeps every existing
+                # fig builder (which keys off `s["cond"]`) operational
+                # without a deeper rewrite. The legend / hatch maps already
+                # include the arm tags above.
+                "cond": arm,
+                "jobid": s.get("jobid", ""),
+                "summary": {"single_task": pooled_single,
+                            "chains": [], "meta": summary.get("meta", {})},
+                "instances": kept_instances,
+            })
+    return out
+
+
 def merge_series(series: list[dict]) -> list[dict]:
     """Pool tools_* series by (model, think); pass no-tools through unchanged.
 
@@ -375,8 +532,17 @@ def fig1(series, out_path, draw_ci):
     plt.close(fig)
 
 
+def _is_no_tools_series(s: dict) -> bool:
+    """True if this series is a no-tools cell or a no-tools arm. Handles
+    both the legacy cond shape ('no-tools') and the arm-split cond shape
+    ('nt-neut' / 'nt-ster' / 'nt-legacy').
+    """
+    c = s.get("cond", "")
+    return c == "no-tools" or c.startswith("nt-")
+
+
 def fig3(series, out_path):
-    tool_series = [s for s in series if s["cond"] != "no-tools"]
+    tool_series = [s for s in series if not _is_no_tools_series(s)]
     if not tool_series:
         return
     x = np.arange(2)  # classical, numeric
@@ -430,6 +596,15 @@ def fig4(series, out_path):
         for r in s["summary"]["single_task"]:
             if r["n"] > 0:
                 reasons_seen.update(r.get("failure_reasons", {}).keys())
+    if not reasons_seen:
+        # Per-arm series synthesized by split_series_by_arm carry empty
+        # failure_reasons by design (the per_variant cells in summary_*.json
+        # don't store arm-tagged FR counts). Skip fig4 in that mode rather
+        # than calling fig.legend(ncol=0). Per-arm FR breakdowns live in
+        # build_deck / plot_focused, which read trials.jsonl directly.
+        print(f"  fig4 skipped: empty failure_reasons across all series",
+              file=sys.stderr)
+        return
     known = set(FAILURE_REASONS)
     order = [fr for fr in FAILURE_REASONS if fr in reasons_seen]
     if reasons_seen - known:
@@ -551,7 +726,7 @@ def fig5(series, out_path):
 
 def fig6(series, out_path, draw_ci):
     """Per-task tool_selected_rate across with-tools series."""
-    tool_series = [s for s in series if s["cond"] != "no-tools"]
+    tool_series = [s for s in series if not _is_no_tools_series(s)]
     if not tool_series:
         return
     x = np.arange(len(TASKS))
@@ -639,14 +814,59 @@ def main():
                          "series per (model, think); no-tools series pass "
                          "through unchanged as baselines. writes to "
                          "<root>/plots/merged/")
+    ap.add_argument("--by-arm", action="store_true", default=False,
+                    help="split each cell into per-arm series (sweep-5 four-arm "
+                         "matrix: nt-neut/nt-ster/tl-neut/tl-ster). Pools "
+                         "per_variant cells into arm-level counts, recomputing "
+                         "Wilson CIs on the pooled n. Legacy v0-v10 corpora "
+                         "collapse to *-legacy arms. Mutually exclusive with "
+                         "--merge. Writes to <root>/plots/by_arm/")
+    ap.add_argument("--arms", default=None,
+                    help="comma-separated arm filter applied after --by-arm "
+                         "(e.g. 'nt-neut,tl-neut' for the H1 isolation view "
+                         "or 'tl-neut,tl-ster' for H2). Requires --by-arm; "
+                         "see development/sweep_prompt_bank_design.md §0 for "
+                         "the hypothesis mapping.")
     args = ap.parse_args()
+
+    if args.arms and not args.by_arm:
+        sys.exit("--arms requires --by-arm")
+    if args.merge and args.by_arm:
+        sys.exit("--merge and --by-arm are mutually exclusive")
 
     root = args.root or find_default_root()
     series = load_series(root, args.include_legacy)
     if not series:
         sys.exit(f"no parseable slurm_* dirs under {root}")
 
-    if args.merge:
+    if args.by_arm:
+        series = split_series_by_arm(series)
+        if args.arms:
+            wanted = {a.strip() for a in args.arms.split(",") if a.strip()}
+            unknown = wanted - set(ALL_ARMS)
+            if unknown:
+                sys.exit(f"--arms: unknown arm tag(s) {sorted(unknown)}; "
+                         f"valid: {list(ALL_ARMS)}")
+            series = [s for s in series if s["cond"] in wanted]
+        if not series:
+            sys.exit(f"no arm-tagged series under {root} "
+                     f"(arms filter: {args.arms or 'none'})")
+        # Stable legend ordering: model → think → arm.
+        arm_rank = {a: i for i, a in enumerate(ALL_ARMS)}
+        series.sort(key=lambda s: (s["model"], s["think"],
+                                    arm_rank.get(s["cond"], 99)))
+        for s in series:
+            if s["think"] == "default":
+                s["_label"] = f"{s['model']} · {s['cond']}"
+            else:
+                s["_label"] = f"{s['model']} · {s['think']} · {s['cond']}"
+        # Suffix the output dir by the H1/H2 filter so back-to-back runs
+        # don't overwrite each other (a common analyzer pattern).
+        sub = "by_arm"
+        if args.arms:
+            sub = "by_arm_" + "_".join(sorted(wanted))
+        out = root / "plots" / sub
+    elif args.merge:
         series = merge_series(series)
         # Within a (model, think) the no-tools baseline reads first, then
         # the merged tools row — keeps legend ordering natural.
