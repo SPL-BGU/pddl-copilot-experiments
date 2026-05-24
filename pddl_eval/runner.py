@@ -372,7 +372,14 @@ async def evaluate_one(
         infra_failure = False
         print(f"[exception] {type(exc).__name__}: {error}", file=sys.stderr, flush=True)
     else:
-        infra_failure = False
+        # vLLM emits finish_reason="abort" on HTTP 200 (not APIConnectionError)
+        # when the request is aborted mid-stream — most often SIGTERM hitting
+        # the serving process near SLURM TIMEOUT. Same skip+resume semantics
+        # as the APIConnectionError branch above.
+        infra_failure = done_reason == "abort"
+        if infra_failure:
+            error = "vLLM finish_reason=abort"
+            print("[infra-skip] vLLM finish_reason=abort", file=sys.stderr, flush=True)
 
     duration = time.time() - t0
     tool_selected: bool | None = None
