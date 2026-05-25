@@ -24,101 +24,23 @@ import re
 import sys
 from pathlib import Path
 
-# Canonical arm classifier lives in pddl_eval/summary.py. Run from repo root.
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-from pddl_eval.summary import NEUTRAL_VARIANTS  # noqa: E402
-from pddl_eval.prompts import STEERED_VARIANTS  # noqa: E402
-
-TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
-CONDITIONS = ["no-tools",
-              "tools_per-task_minimal", "tools_per-task_guided",
-              "tools_all_minimal", "tools_all_guided"]
-# Active analysis ignores retired axes (per-task → sweep-5 retirement;
-# guided → disabled in runner). `load_summaries` skips these by default.
-RETIRED_CONDS = {
-    "tools_per-task_minimal",
-    "tools_per-task_guided",
-    "tools_all_guided",
-}
+from _constants import (  # noqa: E402
+    CONDITIONS,
+    NEUTRAL_VARIANTS,
+    RETIRED_CONDS,
+    STEERED_VARIANTS,
+    TASKS,
+    arm_side as _arm_side,
+    arm_variant_set as _arm_variant_set,
+    find_default_root,
+    host_tag,
+    parse_dirname_full as parse_dirname,
+)
 
 # Maps an analyzer arm suffix → the prompt_variant set whose per_variant cells
 # pool into that arm. Pairs with the side prefix (nt/tl) derived from the cell
-# dir's condition. Kept here instead of importing because `aggregate.py` is
-# imported by `table.py` and we want the two to share one definition;
-# legacy = "anything not in v11..v16" (sweep-3/4 corpora).
+# dir's condition. `legacy` = "anything not in v11..v16" (sweep-3/4 corpora).
 ARM_SUFFIXES = ("neut", "ster", "legacy")
-
-# Filter/prompt encoded in the `condition` summary field for with-tools runs;
-# we reconstruct the original condition label from dir name.
-
-
-def find_default_root() -> Path:
-    repo = Path(__file__).resolve().parents[4]
-    results = repo / "results"
-    candidates = sorted(
-        list(results.glob("cluster-*")) + list(results.glob("full-cluster-run*")),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    if not candidates:
-        sys.exit(f"no results/cluster-* or results/full-cluster-run* dirs under {results}")
-    return candidates[0]
-
-
-def parse_dirname(name: str) -> dict:
-    """Extract (model, think, cond, backend) from 'slurm_<…>' dir name.
-
-    Accepts the cell-keyed layout (no trailing jobid; current), the
-    pre-2026-05-01 with-jobid layout, and the pre-think-axis legacy
-    layout. Model tag is the dotted form with ':' → '_' → '.' restored
-    as '_' (we can't always recover exactly; store the raw tag and the
-    reconstructed name).
-
-    Backend prefix: 2026-05-11 added `slurm_vllm_<model>_<think>_<cond>/`
-    for vLLM-served cells (see CHANGELOG). Strip the `vllm_` prefix
-    BEFORE the cond/think suffix-match so model isn't silently captured
-    with the prefix attached. Absent prefix → backend="ollama".
-    """
-    stem = name.removeprefix("slurm_")
-    if stem.startswith("vllm_"):
-        backend = "vllm"
-        stem = stem.removeprefix("vllm_")
-    else:
-        backend = "ollama"
-    # Optional trailing _<jobid>: present in pre-cell-keyed dirs, absent
-    # in cell-keyed dirs (post 2026-05-01). When absent, fall through with
-    # the full stem so the same suffix-matching logic finds <think>/<cond>.
-    m = re.match(r"^(.*)_(\d+)$", stem)
-    if m:
-        rest, jobid = m.group(1), m.group(2)
-    else:
-        rest, jobid = stem, ""
-
-    # Try current layout first: look for trailing _<cond> where cond ∈ CONDITIONS
-    for cond in CONDITIONS:
-        suf = "_" + cond
-        if rest.endswith(suf):
-            pre = rest[: -len(suf)]
-            # remaining pre is <model>_<think> or <model>
-            for think in ("on", "off", "default"):
-                s = "_" + think
-                if pre.endswith(s):
-                    model = pre[: -len(s)]
-                    return {"raw": stem, "model": model, "think": think,
-                            "cond": cond, "jobid": jobid, "backend": backend}
-            # legacy: no think segment
-            return {"raw": stem, "model": pre, "think": "default",
-                    "cond": cond, "jobid": jobid, "backend": backend,
-                    "_legacy": True}
-    return {"raw": stem, "model": rest, "think": "?", "cond": "?",
-            "jobid": jobid, "backend": backend}
-
-
-def host_tag(meta: dict) -> str:
-    h = (meta or {}).get("host", "")
-    if "localhost" in h or "ise-" in h or "cs-" in h:
-        return "rtx"
-    return h or "?"
 
 
 def load_summaries(root: Path, include_retired: bool = False):
@@ -152,11 +74,6 @@ def fmt_pct(num: int, n: int) -> str:
     return f"{(num / n) * 100:.0f}%"
 
 
-def _arm_side(cond: str) -> str:
-    """Map condition dir name → arm side prefix (nt | tl)."""
-    return "nt" if cond == "no-tools" else "tl"
-
-
 def _variants_present(data: dict) -> set[int]:
     """Union of prompt_variant keys across every per_variant cell in the summary.
 
@@ -171,15 +88,6 @@ def _variants_present(data: dict) -> set[int]:
             except (TypeError, ValueError):
                 continue
     return out
-
-
-def _arm_variant_set(suffix: str) -> set[int] | None:
-    """Variant set behind an arm suffix. None for 'legacy' (any non-active variant)."""
-    if suffix == "neut":
-        return set(NEUTRAL_VARIANTS)
-    if suffix == "ster":
-        return set(STEERED_VARIANTS)
-    return None  # legacy = everything not in the active sets
 
 
 def _arms_present(data: dict, cond: str) -> list[str]:

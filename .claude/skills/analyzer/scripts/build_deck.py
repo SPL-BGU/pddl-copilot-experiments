@@ -52,10 +52,24 @@ from pptx.dml.color import RGBColor
 
 REPO = Path(__file__).resolve().parents[4]
 
-# Shared sweep-5 arm classifier — used to split each cell's trials into one of
-# four arms (nt-neut / nt-ster / tl-neut / tl-ster) or the legacy fallback.
-sys.path.insert(0, str(REPO))
-from pddl_eval.summary import arm_for, wilson_ci  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _constants import (  # noqa: E402
+    FAILURE_COLORS as _FR_COLORS,
+    FAILURE_REASONS as _FR_ORDER,
+    TASKS,
+    arm_for,
+    wilson_ci,
+)
+
+# Deck-specific short labels (lowercase, hyphenated); plot.py uses a different
+# title-case style.
+TASK_LABEL = {
+    "solve": "solve",
+    "validate_domain": "val-dom",
+    "validate_problem": "val-prob",
+    "validate_plan": "val-plan",
+    "simulate": "simulate",
+}
 from pddl_eval.scoring import (  # noqa: E402
     relabel_tool_arg_error_taxonomy,
     relabel_truncated_taxonomy,
@@ -85,14 +99,6 @@ ARM_COLOR = {
     "tl-legacy": "#2E86AB",
 }
 
-TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
-TASK_LABEL = {
-    "solve": "solve",
-    "validate_domain": "val-dom",
-    "validate_problem": "val-prob",
-    "validate_plan": "val-plan",
-    "simulate": "simulate",
-}
 
 # Caption key → default text. Override any of these by setting SLIDE_CAPTIONS
 # in the deck_config module. Sweep-5 (2026-05-24) refit for the four-arm
@@ -606,37 +612,6 @@ def fig_tool_selection(save_path: Path) -> Path:
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     return save_path
-
-
-# Failure-reason palette + display order for fig_failure_breakdown.
-# Mirrors plot.py:FAILURE_REASONS/REASON_COLORS to keep the deck and the
-# analyzer fig4 visually consistent; the relabel work (2026-05-25) makes
-# think_overflow a first-class slab here.
-_FR_ORDER = [
-    "ok", "think_overflow", "truncated_no_answer", "format_parse_fail",
-    "verdict_mismatch", "result_mismatch", "no_verdict_parsed",
-    "plan_invalid", "simulate_empty",
-    "tool_not_selected", "tool_error", "wrong_tool", "loop_exhausted",
-    "exception", "unknown",
-]
-_FR_COLORS = {
-    "ok":                  "#2ca02c",
-    "think_overflow":      "#f7b6d2",
-    "truncated_no_answer": "#aec7e8",
-    "format_parse_fail":   "#c49c94",
-    "verdict_mismatch":    "#e377c2",
-    "result_mismatch":     "#7f7f7f",
-    "no_verdict_parsed":   "#9edae5",
-    "plan_invalid":        "#1f77b4",
-    "simulate_empty":      "#bcbd22",
-    "tool_not_selected":   "#d62728",
-    "tool_error":          "#ff7f0e",
-    "wrong_tool":          "#fbb4b9",
-    "loop_exhausted":      "#8c564b",
-    "exception":           "#17becf",
-    "unknown":             "#cccccc",
-    "other":               "#dddddd",
-}
 
 
 def fig_failure_breakdown(think: str, save_path: Path) -> Path:

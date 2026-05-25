@@ -28,170 +28,31 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Canonical wilson_ci + arm classifier live in pddl_eval/summary.py.
-# Run from repo root.
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-from pddl_eval.summary import NEUTRAL_VARIANTS, arm_for, wilson_ci  # noqa: E402
-from pddl_eval.prompts import STEERED_VARIANTS  # noqa: E402
-
-ACTIVE_ARMS = ("nt-neut", "nt-ster", "tl-neut", "tl-ster")
-LEGACY_ARMS = ("nt-legacy", "tl-legacy")
-ALL_ARMS = ACTIVE_ARMS + LEGACY_ARMS
-
-TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
-TASK_LABELS = {
-    "solve": "Solve",
-    "validate_domain": "Val-Dom",
-    "validate_problem": "Val-Prob",
-    "validate_plan": "Val-Plan",
-    "simulate": "Simulate",
-}
-CONDITIONS = ["no-tools",
-              "tools_per-task_minimal", "tools_per-task_guided",
-              "tools_all_minimal", "tools_all_guided"]
-# Conds the active analysis pipeline ignores (retired axes). `per-task` is
-# being retired in sweep-5; `guided` is already disabled in the runner.
-# `load_series` filters these out by default; pass `include_retired=True`
-# to re-include them when re-rendering pre-2026-05 checkpoints.
-RETIRED_CONDS = {
-    "tools_per-task_minimal",
-    "tools_per-task_guided",
-    "tools_all_guided",
-}
-CLASSICAL = ["barman", "blocksworld", "depots", "rovers", "satellite"]
-NUMERIC = ["counters", "depot", "farmland", "pogo_stick", "sailing"]
-DOMAINS = CLASSICAL + NUMERIC
-
-# Colors by family, hatching by tool condition.
-# Keys are the underscore-tagged model form produced by parse_dirname
-# (submit_with_rtx.sh does `tr '/:.' '___'`), which is what we see in dir names.
-MODEL_COLORS = {
-    "Qwen3_5_0_8B":   "#d4c96b",
-    "Qwen3_5_4B":     "#a89535",
-    "Qwen3_5_9B":     "#7a6b1c",
-    "Qwen3_5_27b":    "#b89d2a",
-    "qwen3_6_27b":    "#c97d3b",
-    "qwen3_6_35b":    "#7b3f1d",
-    "gpt-oss_20b":    "#5c7fb3",
-    "gpt-oss_120b":   "#1a2e4f",
-    "gemma4_31b":     "#6f4a8a",
-    "gemma4_26b-a4b": "#9173b0",
-}
-COND_HATCH = {
-    "no-tools":               "////",
-    "tools_all_minimal":      None,
-    "tools_per-task_minimal": "....",
-    # Retained for back-compat re-plots of pre-2026-05 checkpoints; the active
-    # sweep dropped the guided variants. Mapping to None keeps them rendering
-    # cleanly (indistinguishable from tools_all_minimal — fine since they
-    # don't co-occur with it in any live cell set).
-    "tools_all_guided":       None,
-    "tools_per-task_guided":  None,
-    # Sweep-5 arms (used when split_series_by_arm replaces cond with an arm
-    # tag). Stripes encode the prompt steering axis; dot density encodes
-    # neutral vs steered within with-tools. Picked to be visually distinct
-    # without colliding with the legacy hatches above.
-    "nt-neut":   "////",
-    "nt-ster":   "xx",
-    "tl-neut":   None,
-    "tl-ster":   "...",
-    "nt-legacy": "////",
-    "tl-legacy": None,
-}
-# think-mode shade: on → lighter tint of the model base color.
-# off / default keep the base color unchanged.
-THINK_LIGHTEN = {"off": 0.0, "default": 0.0, "on": 0.55}
-
-# Canonical order + color for failure reasons in fig4. Unknown reasons
-# bucket into 'other'. Keep in sync with FR_* constants in run_experiment.py.
-FAILURE_REASONS = [
-    "ok", "tool_not_selected", "wrong_tool", "tool_error", "ollama_parse_error",
-    "loop_exhausted", "verdict_mismatch", "result_mismatch",
-    "no_verdict_parsed", "simulate_empty", "plan_invalid",
-    "truncated_no_answer", "format_parse_fail", "think_overflow",
-    "exception", "unknown", "other",
-]
-FAILURE_COLORS = {
-    "ok":                  "#2ca02c",
-    "tool_not_selected":   "#d62728",
-    # Added 2026-05-23 (sweep-5 phase A.1): the marketplace 1.4.0 validator
-    # split distinguishes "called a validator-family tool but not the
-    # task-matching one" (FR_WRONG_TOOL) from "called no validator at all"
-    # (FR_TOOL_NOT_SELECTED). Pre-1.4.0 trials never carry this tag.
-    "wrong_tool":          "#e7969c",
-    "tool_error":          "#ff7f0e",
-    "ollama_parse_error":  "#9467bd",
-    "loop_exhausted":      "#8c564b",
-    "verdict_mismatch":    "#e377c2",
-    "result_mismatch":     "#7f7f7f",
-    "no_verdict_parsed":   "#bcbd22",
-    "simulate_empty":      "#17becf",
-    "plan_invalid":        "#1f77b4",
-    "truncated_no_answer": "#aec7e8",
-    # Added 2026-05-20 (PR-#66 Zone-E audit): both were silently bucketed
-    # into the unnamed grey "other" slice. format_parse_fail is the dominant
-    # FR on no-tools cells with the v5/v6/v7 prompt rewrite (85.6% of
-    # validate_domain failures on Qwen3.5-0.8B no-tools).
-    "format_parse_fail":   "#c49c94",
-    "think_overflow":      "#f7b6d2",
-    "exception":           "#ff9896",
-    "unknown":             "#c5b0d5",
-    "other":               "#dddddd",
-}
-
-
-def _lighten(hex_color: str, factor: float) -> str:
-    """Blend `hex_color` toward white by `factor` ∈ [0, 1]."""
-    if factor <= 0.0:
-        return hex_color
-    r, g, b = (int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
-    r = int(r + (255 - r) * factor)
-    g = int(g + (255 - g) * factor)
-    b = int(b + (255 - b) * factor)
-    return f"#{r:02x}{g:02x}{b:02x}"
-
-
-def find_default_root() -> Path:
-    repo = Path(__file__).resolve().parents[4]
-    results = repo / "results"
-    candidates = sorted(
-        list(results.glob("cluster-*")) + list(results.glob("full-cluster-run*")),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    if not candidates:
-        sys.exit(f"no results/cluster-* or results/full-cluster-run* dirs under {results}")
-    return candidates[0]
-
-
-def parse_dirname(name: str) -> dict | None:
-    stem = name.removeprefix("slurm_")
-    # `slurm_vllm_<…>` prefix from the 2026-05-11 vLLM production sbatch.
-    # Strip before suffix-matching so model isn't silently captured with
-    # the prefix attached. See aggregate.py docstring for full layout list.
-    if stem.startswith("vllm_"):
-        backend = "vllm"
-        stem = stem.removeprefix("vllm_")
-    else:
-        backend = "ollama"
-    m = re.match(r"^(.*)_(\d+)$", stem)
-    if m:
-        rest, jobid = m.group(1), m.group(2)
-    else:
-        rest, jobid = stem, ""
-    for cond in CONDITIONS:
-        suf = "_" + cond
-        if rest.endswith(suf):
-            pre = rest[: -len(suf)]
-            for think in ("on", "off", "default"):
-                s = "_" + think
-                if pre.endswith(s):
-                    model = pre[: -len(s)]
-                    return {"model": model, "think": think, "cond": cond,
-                            "jobid": jobid, "backend": backend}
-            return {"model": pre, "think": "default", "cond": cond,
-                    "jobid": jobid, "backend": backend, "legacy": True}
-    return None
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _constants import (  # noqa: E402,F401
+    ACTIVE_ARMS,
+    ALL_ARMS,
+    CLASSICAL,
+    COND_HATCH,
+    CONDITIONS,
+    DOMAINS,
+    FAILURE_COLORS,
+    FAILURE_REASONS,
+    LEGACY_ARMS,
+    MODEL_COLORS,
+    NEUTRAL_VARIANTS,
+    NUMERIC,
+    RETIRED_CONDS,
+    STEERED_VARIANTS,
+    TASK_LABELS,
+    TASKS,
+    THINK_LIGHTEN,
+    _lighten,
+    arm_for,
+    find_default_root,
+    parse_dirname_plotshape as parse_dirname,
+    wilson_ci,
+)
 
 
 def load_series(root: Path, include_legacy: bool,
@@ -246,17 +107,10 @@ def _wilson_err(rate: float, lo: float, hi: float) -> tuple[float, float]:
     return max(0.0, rate - lo), max(0.0, hi - rate)
 
 
-def _arm_side(cond: str) -> str:
-    return "nt" if cond == "no-tools" else "tl"
-
-
-def _arm_variant_set(suffix: str) -> set[int] | None:
-    """Variant set for an arm suffix. None == 'legacy' (any v0-v10)."""
-    if suffix == "neut":
-        return set(NEUTRAL_VARIANTS)
-    if suffix == "ster":
-        return set(STEERED_VARIANTS)
-    return None
+from _constants import (  # noqa: E402
+    arm_side as _arm_side,
+    arm_variant_set as _arm_variant_set,
+)
 
 
 def split_series_by_arm(series: list[dict]) -> list[dict]:
@@ -614,8 +468,6 @@ def fig4(series, out_path):
         figsize=(max(14.0, 2.6 * len(TASKS)), max(4.5, 0.22 * len(series) + 3.0)),
         sharey=True,
     )
-    if len(TASKS) == 1:
-        axes = [axes]
 
     for ax, task in zip(axes, TASKS):
         left = np.zeros(len(series))
@@ -670,8 +522,6 @@ def fig5(series, out_path):
                  max(4.5, 0.32 * len(series) + 3.0)),
         sharey=True,
     )
-    if len(TASKS) == 1:
-        axes = [axes]
 
     im = None
     for ax, task in zip(axes, TASKS):
