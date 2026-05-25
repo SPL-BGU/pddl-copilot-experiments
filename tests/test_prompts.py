@@ -25,7 +25,7 @@ from pddl_eval.prompts import (
     WITHOUT_TOOLS_SYSTEM,
     WITHOUT_TOOLS_SYSTEM_BY_TASK,
 )
-from tests._helpers import TestResults
+from tests._helpers import TestResults, make_stub_evaluate_one, stubbed_evaluate_one
 
 
 TASKS = ("solve", "validate_domain", "validate_problem", "validate_plan", "simulate")
@@ -317,29 +317,11 @@ def test_config_constants(r: TestResults):
 def test_emit_skip_gate(r: TestResults):
     """The (no-tools, steered) cells skip under default; emit under control flag."""
     import asyncio
-    from pddl_eval import runner as runner_mod
-    from pddl_eval.runner import run_single_task_experiment, TaskResult
+    from pddl_eval.runner import run_single_task_experiment
 
     captured: list[tuple[bool, int]] = []
 
-    async def stub_evaluate_one(
-        client, model, task, domain_name, domain_pddl,
-        problem_name, problem_pddl, prompt_variant, with_tools,
-        mcp, gt, **kwargs,
-    ):
-        captured.append((with_tools, prompt_variant))
-        return TaskResult(
-            model=model, task=task, domain_name=domain_name,
-            problem_name=problem_name, prompt_variant=prompt_variant,
-            with_tools=with_tools, success=True,
-            tool_filter=kwargs.get("tool_filter", "all"),
-            prompt_style=kwargs.get("prompt_style", "minimal"),
-            plan_label=kwargs.get("plan_label", ""),
-        )
-
-    original = runner_mod.evaluate_one
-    runner_mod.evaluate_one = stub_evaluate_one
-    try:
+    with stubbed_evaluate_one(make_stub_evaluate_one(captured=captured)):
         domains = {
             "d1": {"domain": "(d)", "problems": {"p1": "(p)"}, "type": "test"},
         }
@@ -403,8 +385,6 @@ def test_emit_skip_gate(r: TestResults):
                 f"control: (True, v{pv}) IS emitted",
                 (True, pv) in pairs_control,
             )
-    finally:
-        runner_mod.evaluate_one = original
 
 
 def main():
