@@ -145,24 +145,26 @@ DEFAULT_CAPTIONS = {
         "Long step-by-step traces drive output; no-tools failure% is ~100% across the board.",
     "tokens_vs_success_solve":
         "Per-cell scatter for `solve`. Each marker = one (model, arm) cell; "
-        "x = median completion tokens, y = success% with Wilson 95% CI. "
-        "Lines connect the same model across arms — reads H3 directly: "
-        "moving along the line from nt-* (circle/diamond) to tl-* (square/triangle) "
-        "should drop x AND raise y if tools help.",
+        "color = arm, marker shape = model. Lines connect the 5 model markers "
+        "WITHIN an arm, sorted by x — so each line traces the within-arm "
+        "correlation between token spend and success across model sizes. "
+        "Compare line altitudes: tl-* arms sitting above nt-neut at lower x is "
+        "the H3 read.",
     "tokens_vs_success_validate_domain":
-        "Per-cell scatter for `validate_domain`. Same axes/encoding as solve. "
-        "Note the y range collapses here — most no-tools cells sit at 0–10% success "
-        "and most with-tools cells sit at 60–95%, with token-budget consumption "
-        "varying across models more than across arms.",
+        "Per-cell scatter for `validate_domain`. Same encoding. Lines connect "
+        "models within an arm (sorted by x), so the within-arm slope reads as "
+        "'do verbose cells do better or worse?' for that condition.",
     "tokens_vs_success_validate_problem":
-        "Per-cell scatter for `validate_problem`. Look for arms whose marker moves "
-        "LEFT (fewer tokens) AND UP (more success) — this is the H3 win quadrant.",
+        "Per-cell scatter for `validate_problem`. Within-arm correlation across "
+        "model sizes. The arm whose line sits highest AND leftmost is the "
+        "Pareto-best configuration on this task.",
     "tokens_vs_success_validate_plan":
-        "Per-cell scatter for `validate_plan`. Same axes/encoding.",
+        "Per-cell scatter for `validate_plan`. Same encoding.",
     "tokens_vs_success_simulate":
         "Per-cell scatter for `simulate`. The most expensive task per output-token "
         "budget; no-tools cells often sit at ~0% across the board (long step-by-step "
-        "traces). The tools-arm step-down on x is the simulate-tool short-circuit.",
+        "traces). Tools-arm lines vault above the no-tools line at lower x — the "
+        "simulate-tool short-circuit replacing reasoning.",
     "latency_all":
         "Bar height = mean wall-clock seconds per trial, by arm. "
         "Bar-top label = % of trials with success=False (whatever the reason).",
@@ -947,33 +949,23 @@ def fig_tokens(save_path: Path, only_success: bool = False,
     return save_path
 
 
-_MODEL_COLOR_FALLBACK = [
-    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
-    "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
-]
-_ARM_MARKER = {
-    "nt-neut":   "o",
-    "nt-ster":   "D",
-    "tl-neut":   "s",
-    "tl-ster":   "^",
-    "nt-legacy": "o",
-    "tl-legacy": "s",
-}
+_MODEL_MARKER_FALLBACK = ["o", "s", "^", "D", "v", "P", "X", "*", "<", ">"]
 
 
-def _model_color(m: str) -> str:
-    return _MODEL_COLOR_FALLBACK[MODEL_ORDER.index(m) % len(_MODEL_COLOR_FALLBACK)]
+def _model_marker(m: str) -> str:
+    return _MODEL_MARKER_FALLBACK[MODEL_ORDER.index(m) % len(_MODEL_MARKER_FALLBACK)]
 
 
 def fig_tokens_vs_success(save_path: Path, task: str) -> Path:
-    """Per-cell scatter of (median output tokens, success%), arms connected by a
-    line within each model. One figure per task; 1×2 subplots (think off / on).
+    """Per-cell scatter of (median output tokens, success%), per arm.
+    One figure per task; 1×2 subplots (think off / on).
 
-    Each marker = one (model, think, arm) cell. Marker shape encodes arm
-    (circle=nt-neut, square=tl-neut, triangle=tl-ster, diamond=nt-ster); marker
-    color encodes model. A line connects the arms of the same model in
-    ARM_ORDER, so the eye reads "as we move from no-tools to with-tools, did
-    tokens drop AND success rise?" (sweep-5 H3).
+    Each marker = one (model, think, arm) cell. Marker color encodes arm
+    (matches the rest of the deck via ARM_COLOR); marker shape encodes
+    model. Per arm, the model markers are connected by a line sorted by
+    median tokens (x), so the line traces "within this arm, does success
+    rise or fall as the cell's verbosity grows across model sizes?" rather
+    than imposing an arbitrary ARM_ORDER traversal within each model.
 
     Wilson 95% CI on success% drawn as a vertical whisker per marker. x-axis
     has no CI — it's the cell's empirical median, not an estimate of a
@@ -992,9 +984,10 @@ def fig_tokens_vs_success(save_path: Path, task: str) -> Path:
         arms = _arms_present(think)
         x_all: list[float] = []
         any_data = False
-        for m in models:
-            xs, ys, los, his, marker_shapes = [], [], [], [], []
-            for arm in arms:
+        for arm in arms:
+            color = _color_for_arm(arm)
+            pts: list[tuple[float, float, float, float, str]] = []
+            for m in models:
                 rows_ = CELLS.get((m, think, arm), [])
                 if not rows_:
                     continue
@@ -1005,21 +998,21 @@ def fig_tokens_vs_success(save_path: Path, task: str) -> Path:
                 if np.isnan(med):
                     continue
                 lo, hi = wilson_ci(succ, n)
-                xs.append(med)
-                ys.append(rate * 100)
-                los.append((rate - lo) * 100)
-                his.append((hi - rate) * 100)
-                marker_shapes.append(_ARM_MARKER.get(arm, "o"))
-            if not xs:
+                pts.append((med, rate * 100, (rate - lo) * 100,
+                            (hi - rate) * 100, m))
+            if not pts:
                 continue
             any_data = True
+            pts.sort(key=lambda t: t[0])
+            xs = [p[0] for p in pts]
+            ys = [p[1] for p in pts]
             x_all.extend(xs)
-            color = _model_color(m)
-            ax.plot(xs, ys, "-", color=color, alpha=0.55, linewidth=1.2, zorder=1)
-            for xi, yi, lo_i, hi_i, mk in zip(xs, ys, los, his, marker_shapes):
+            ax.plot(xs, ys, "-", color=color, alpha=0.65, linewidth=1.4,
+                    zorder=1)
+            for xi, yi, lo_i, hi_i, m in pts:
                 ax.errorbar(xi, yi, yerr=[[lo_i], [hi_i]],
-                            fmt=mk, color=color, ecolor=color,
-                            markersize=8, markeredgecolor="black",
+                            fmt=_model_marker(m), color=color, ecolor=color,
+                            markersize=9, markeredgecolor="black",
                             markeredgewidth=0.5, elinewidth=0.8,
                             capsize=2.5, alpha=0.95, zorder=3)
         if not any_data:
@@ -1036,36 +1029,36 @@ def fig_tokens_vs_success(save_path: Path, task: str) -> Path:
             ax.set_xlim(left=max(0, min(x_all) * 0.85 - 30),
                         right=xmax * 1.08 + 30)
 
-    # Build a combined legend: models on the left (color), arms on the right
+    # Combined legend: arms on the left (color = line), models on the right
     # (marker shape). Drawn on the right subplot so the data panels stay clean.
-    model_handles = [plt.Line2D([0], [0], marker="o", linestyle="-",
-                                color=_model_color(m), markersize=7,
-                                markeredgecolor="black", markeredgewidth=0.4,
+    arms_for_legend = [a for a in ARM_ORDER
+                       if any((m, t, a) in CELLS
+                              for m in MODEL_ORDER for t in ("off", "on"))]
+    arm_handles = [plt.Line2D([0], [0], marker="o", linestyle="-",
+                              color=_color_for_arm(a), markersize=8,
+                              markeredgecolor="black", markeredgewidth=0.4,
+                              label=ARM_DISP.get(a, a))
+                   for a in arms_for_legend]
+    model_handles = [plt.Line2D([0], [0], marker=_model_marker(m),
+                                linestyle="", color="#444",
+                                markersize=9, markeredgecolor="black",
+                                markeredgewidth=0.4,
                                 label=MODEL_DISP[m])
                      for m in MODEL_ORDER
                      if any((m, t, a) in CELLS
                             for t in ("off", "on") for a in ARM_ORDER)]
-    arms_for_legend = [a for a in ARM_ORDER
-                       if any((m, t, a) in CELLS
-                              for m in MODEL_ORDER for t in ("off", "on"))]
-    arm_handles = [plt.Line2D([0], [0], marker=_ARM_MARKER.get(a, "o"),
-                              linestyle="", color="#444",
-                              markersize=8, markeredgecolor="black",
-                              markeredgewidth=0.4,
-                              label=ARM_DISP.get(a, a))
-                   for a in arms_for_legend]
-    first_legend = axes[1].legend(handles=model_handles, fontsize=8,
-                                   loc="lower left", title="model",
+    first_legend = axes[1].legend(handles=arm_handles, fontsize=8,
+                                   loc="lower left", title="arm (color)",
                                    title_fontsize=8, framealpha=0.92)
     axes[1].add_artist(first_legend)
-    axes[1].legend(handles=arm_handles, fontsize=8, loc="lower right",
-                   title="arm (marker)", title_fontsize=8, framealpha=0.92)
+    axes[1].legend(handles=model_handles, fontsize=8, loc="lower right",
+                   title="model (marker)", title_fontsize=8, framealpha=0.92)
 
     fig.suptitle(
         f"Output tokens vs success — task = {task}.  "
         f"One marker per (model, arm) cell.  "
         f"x = median completion tokens; y = success% (Wilson 95% CI).  "
-        f"Lines connect the same model across arms.",
+        f"Lines connect models within an arm, sorted by x.",
         fontsize=11,
     )
     fig.tight_layout(rect=[0, 0, 1, 0.95])
