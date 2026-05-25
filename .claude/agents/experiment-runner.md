@@ -17,7 +17,7 @@ Run a minimal smoke-test experiment to verify the pipeline works end to end.
    source .venv/bin/activate 2>/dev/null
    python3 run_experiment.py --smoke --models Qwen3.5:0.8B
    ```
-   `--marketplace-path` defaults to `$PDDL_MARKETPLACE_PATH` (else `../pddl-copilot`); `--llm-base-url` defaults to `$LLM_BASE_URL`. If the smoke output dir for this commit exists, the harness resumes from `trials.jsonl`; pass `--no-resume` to start fresh.
+   `--marketplace-path` defaults to `$PDDL_MARKETPLACE_PATH` (required when the env var is unset — pass `--marketplace-path ../pddl-copilot` explicitly in that case); `--llm-base-url` defaults to `$LLM_BASE_URL`. If the smoke output dir for this commit exists, the harness resumes from `trials.jsonl`; pass `--no-resume` to start fresh.
 
 3. Report results as:
    - Pipeline status: PASS (results saved) or FAIL (with error)
