@@ -8,9 +8,6 @@ Owns:
   * `run_single_task_experiment` — full single-task sweep with bounded
     client-side concurrency, --shard partitioning, and --smoke-shuffle
     cell assignment.
-  * `run_chain_experiment` — ARCHIVED 2026-05-05 (multi-task chain
-    sweep, Section 4.4). Body preserved for future resurrection but no
-    longer dispatched from run_experiment.py.
 
 DAG: runner → prompts, chat, domains, scoring.
 """
@@ -93,7 +90,7 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # is a separate decision left for after fresh post-trim wall measurements.
 # 6144 still fits inside DEFAULT_NUM_CTX (16384) with single-task PDDL
 # prompts (~0.5-1.5K tokens), leaving ~8K of think+output headroom for
-# thinking models. Chain runs use DEFAULT_NUM_CTX_CHAIN below.
+# thinking models.
 # `solve` stays at 8192 (paper-default; raise alongside num_ctx if a
 # future model lineup hits the cap).
 DEFAULT_NUM_PREDICT: dict[str, int] = {
@@ -118,27 +115,6 @@ DEFAULT_NUM_CTX = 16384
 # getting deleted; future asymmetric experiments can override one
 # without touching the other. Override via --num-ctx-thinking.
 DEFAULT_NUM_CTX_THINKING = 16384
-# Archived 2026-05-05 — chain phase is no longer wired into the active
-# experiment flow (see CHANGELOG). Constant kept importable for any future
-# resurrection of `run_chain_experiment` below.
-#
-# Context budget for multi-task chain runs. Chains accumulate the full
-# message history (system + N×(user+assistant+tool_calls+tool_results))
-# across steps, so step-4 prompts can reach ~6-8K tokens before generation
-# even on small problems. Held equal to DEFAULT_NUM_CTX (16384) by the
-# 2026-04-29 follow-up bump: applying the single-task think_overflow
-# evidence (qwen3.6:27b / nemotron-3-nano:30b at 12288 ctx hit
-# FR_THINK_OVERFLOW on 50% of validate_problem/validate_plan cells;
-# nemotron later dropped 2026-04-30) to a
-# chain step running the same task gives WORSE headroom, not better,
-# because chain prompts include accumulated history. At 12288 chain ctx,
-# step-3 validate_plan would have ~8K think+output budget vs ~11K in
-# single-task -- the regime that already failed. 16384 brings step-3 to
-# ~12K (comparable to single-task at 16384) and step-4 to ~8-10K (still
-# tighter than single-task; raise to 20480 if a chain sweep surfaces
-# step-4 think_overflow). Chains are tools-only (ISS-018), so this is
-# condition-independent.
-DEFAULT_NUM_CTX_CHAIN = 16384
 DEFAULT_CONCURRENCY = 4
 
 # Abort a single-task cell after this many consecutive trials fail with
@@ -421,9 +397,8 @@ async def evaluate_one(
 
     # `_classify_step_failure` owns the full override chain:
     # FR_THINK_OVERFLOW → FR_LOOP_EXHAUSTED → truncation. Pass the texts so
-    # it can fire the think-overflow override; the chain step path doesn't
-    # pass them and stays on the legacy FR_TRUNCATED_NO_ANSWER tag for
-    # think-spiral steps (see ISS-005 Batch 2 / cluster-run1 analysis).
+    # it can fire the think-overflow override (see ISS-005 Batch 2 /
+    # cluster-run1 analysis).
     failure_reason, truncated = _classify_step_failure(
         success, done_reason, loop_exhausted, failure_reason,
         thinking_text=thinking_text,
@@ -883,237 +858,3 @@ async def run_single_task_experiment(
         return in_scope_restored + new_results
     return new_results
 
-
-# ---------------------------------------------------------------------------
-# Multi-task chain evaluation (Section 4.4)
-#
-# Archived 2026-05-05 — `run_experiment.py` no longer dispatches into this
-# function. Body preserved verbatim so the chain phase can be re-wired without
-# rebuilding the orchestration; see CHANGELOG 2026-05-05 for context.
-# ---------------------------------------------------------------------------
-
-
-async def run_chain_experiment(
-    client: "VLLMClient",
-    models: list[str],
-    domains: dict,
-    ground_truth: dict,
-    mcp: MCPPlanner,
-    chain_lengths: tuple[int, ...] = (2, 3, 4, 5),
-    samples: int = 20,
-    tool_filter: str = "all",
-    with_tools: bool = True,
-    prompt_style: str = "minimal",
-    num_predict_override: int | None = None,
-    num_ctx: int = DEFAULT_NUM_CTX,
-    num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
-    num_ctx_chain: int = DEFAULT_NUM_CTX_CHAIN,
-    think: bool | None = None,
-    temperature: float = TEMPERATURE,
-    concurrency: int = DEFAULT_CONCURRENCY,
-) -> list[dict]:
-    results: list[dict] = []
-    domain_items = list(domains.items())
-    system_prompt = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
-    cond_label = "tools" if with_tools else "no-tools"
-
-    async def run_sample(
-        model: str,
-        i: int,
-        dname: str,
-        dinfo: dict,
-        pname: str,
-        ppddl: str,
-        chain_tasks: list[str],
-        step_templates: list[str],
-    ) -> dict:
-        gt = ground_truth.get(dname, {}).get(pname, {})
-        messages: list[dict] = [{"role": "system", "content": system_prompt}]
-        chain_ok = True
-        step_records: list[dict] = []
-        sample_exception: dict | None = None
-
-        for step_index, task in enumerate(chain_tasks):
-            # Mirror the single-task guard (run_single_task_experiment,
-            # above): if the oracle never produced a plan for this
-            # problem, validate_plan/simulate have no ground truth to
-            # grade against and would deterministically fail the chain
-            # as a ground-truth-coverage artifact rather than a model
-            # signal. Skip the step and keep the chain alive. Skipped
-            # steps are not appended to step_records, so
-            # len(step_records) gives the effective chain length
-            # (ISS-011).
-            if task in ("validate_plan", "simulate") and not gt.get("plan"):
-                continue
-            template = step_templates[step_index]
-            plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
-            prompt = template.format(
-                domain=dinfo["domain"], problem=ppddl, plan=plan_str,
-            )
-            messages.append({"role": "user", "content": prompt})
-
-            np_for_task = _resolve_num_predict(num_predict_override, task)
-            allowed = None
-            step_loop_exhausted = False
-            # Chains are tools-only (no-tools chains skipped; ISS-018), so
-            # this resolves to `num_ctx_chain` for every step today; the
-            # num_ctx_thinking branch is preserved for forward-compat if
-            # no-tools chains ever come back. `num_ctx_chain` (12288 by
-            # default) leaves prompt headroom after the 2026-04-29 bump of
-            # non-solve num_predict caps to 4096 -- step-4 prompts in
-            # chains accumulate ~6-8K tokens of history.
-            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx_chain
-            try:
-                if with_tools:
-                    resp_text, tc, step_done_reason, step_loop_exhausted, _tokens, _thinking = await chat_with_tools(
-                        client, model, messages, mcp,
-                        num_predict=np_for_task, num_ctx=effective_num_ctx,
-                        allowed_tools=allowed, think=think,
-                        temperature=temperature,
-                    )
-                else:
-                    # PR-4: thread the per-task format schema through here
-                    # too so that if no-tools chains ever come back (today
-                    # gated upstream by ISS-018), `check_success`'s
-                    # JSON-first grader doesn't silently fall to the
-                    # free-text path / FR_FORMAT_PARSE_FAIL on simulate.
-                    resp_text, step_done_reason, _tokens, _thinking = await chat_without_tools(
-                        client, model, messages,
-                        num_predict=np_for_task, num_ctx=effective_num_ctx, think=think,
-                        temperature=temperature,
-                        format=TASK_SCHEMAS.get(task),
-                    )
-                    tc = []
-                _sel, step_ok, step_fr = await check_success(
-                    task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
-                    with_tools=with_tools,
-                )
-                # Mirror single-task semantics (evaluate_one): when the
-                # cap cut the model off mid-output, relabel empty-output
-                # reasons as FR_TRUNCATED_NO_ANSWER so step_records is
-                # directly comparable to single_task_*.json failure
-                # reasons. Aggregate success_rate is unaffected — only
-                # the string on already-failing steps changes.
-                step_fr, step_truncated = _classify_step_failure(
-                    step_ok, step_done_reason, step_loop_exhausted, step_fr,
-                )
-                step_records.append({
-                    "step_index": step_index,
-                    "task": task,
-                    "success": step_ok,
-                    "failure_reason": step_fr,
-                    "tool_calls_count": len(tc),
-                    "truncated": step_truncated,
-                    "loop_exhausted": step_loop_exhausted,
-                })
-                if not step_ok:
-                    chain_ok = False
-                    break
-            except Exception as exc:
-                exc_text = str(exc)
-                sample_exception = {
-                    "step_index": step_index,
-                    "task": task,
-                    "exc_type": type(exc).__name__,
-                    "exc_message": exc_text[:RESPONSE_SNAPSHOT_LEN],
-                    # Classify upstream tool-call JSON/XML parser
-                    # failures so chain analysis can separate them
-                    # from other exception types (matches
-                    # FR_OLLAMA_PARSE_ERROR in evaluate_one — value
-                    # retained for corpus stability).
-                    "is_ollama_parse_error": any(
-                        sig in exc_text for sig in OLLAMA_TOOL_PARSE_SIGNATURES
-                    ),
-                }
-                print(
-                    f"[chain exception] {type(exc).__name__}: {exc_text}",
-                    file=sys.stderr, flush=True,
-                )
-                chain_ok = False
-                break
-
-        return {
-            "idx": i,
-            "domain": dname,
-            "problem": pname,
-            "chain_tasks": chain_tasks,
-            "step_records": step_records,
-            "final_success": chain_ok,
-            "exception": sample_exception,
-        }
-
-    for model in models:
-        for n in chain_lengths:
-            # Pre-sample all randomness before fan-out so RNG order is
-            # deterministic w.r.t. serial execution. Without this, coroutines
-            # interleave random.choice calls and runs become non-reproducible
-            # even at temperature=0.
-            sample_plans: list[tuple] = []
-            for i in range(samples):
-                dname, dinfo = random.choice(domain_items)
-                pname = random.choice(list(dinfo["problems"].keys()))
-                ppddl = dinfo["problems"][pname]
-                chain_tasks = random.choices(TASKS, k=n)
-                # Sample only from ACTIVE_PROMPT_VARIANTS so chains use the
-                # same variant pool as the single-task sweep (otherwise random
-                # picks from disabled v3/v4 would reintroduce the variants we
-                # decided to drop on 2026-04-27).
-                #
-                # Compute-time-saving decision for the following iterations:
-                # the chain phase is intentionally left at the trimmed pool
-                # (3 paraphrases) rather than the full 5 so each chain step
-                # samples from the faster set. This shrinks chain-phase
-                # paraphrase variance slightly but keeps wall time bounded.
-                # Extend back to all 5 variants later (e.g. for the final
-                # paper sweep) by sampling from `range(len(PROMPT_TEMPLATES[t]))`.
-                step_templates = [
-                    PROMPT_TEMPLATES[t][random.choice(ACTIVE_PROMPT_VARIANTS)]
-                    for t in chain_tasks
-                ]
-                sample_plans.append((model, i, dname, dinfo, pname, ppddl, chain_tasks, step_templates))
-
-            sem = asyncio.Semaphore(max(1, concurrency))
-
-            async def bounded_sample(plan: tuple) -> dict:
-                async with sem:
-                    return await run_sample(*plan)
-
-            aws = [asyncio.create_task(bounded_sample(p)) for p in sample_plans]
-            samples_detail: list[dict] = []
-            successes = 0
-            try:
-                for coro in asyncio.as_completed(aws):
-                    detail = await coro
-                    samples_detail.append(detail)
-                    if detail["final_success"]:
-                        successes += 1
-                    mark = "OK" if detail["final_success"] else "FAIL"
-                    print(
-                        f"  {model}|{cond_label} chain={n} "
-                        f"[{len(samples_detail)}/{samples}] {mark}"
-                    )
-            except (KeyboardInterrupt, asyncio.CancelledError):
-                for t in aws:
-                    if not t.done():
-                        t.cancel()
-                await asyncio.gather(*aws, return_exceptions=True)
-                raise
-
-            # Restore dispatch order so samples_detail indices are stable
-            # across runs (matters for any post-hoc analysis that joins by
-            # sample idx). as_completed yields in completion order, which
-            # is nondeterministic under concurrency.
-            samples_detail.sort(key=lambda d: d["idx"])
-
-            results.append({
-                "model": model,
-                "with_tools": with_tools,
-                "chain_length": n,
-                "samples": samples,
-                "successes": successes,
-                "success_rate": round(successes / samples, 2),
-                "tool_filter": tool_filter,
-                "prompt_style": prompt_style,
-                "samples_detail": samples_detail,
-            })
-    return results

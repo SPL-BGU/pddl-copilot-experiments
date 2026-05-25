@@ -7,10 +7,6 @@ Column groups:
   * per-task × 5 tasks: succ% [lo–hi], tool_sel%, trunc%
   * aggregate: ST mean %, total n
 
-Chain-phase columns (L=2..5) were dropped 2026-05-05 when the chain phase
-was archived from the active flow; legacy `chains` rows in old summary_*.json
-are ignored here.
-
 Outputs default to <root>/tables/master.{md,csv,tex}.
 
 Imports `parse_dirname`, `find_default_root`, `load_summaries`, `host_tag`

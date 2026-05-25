@@ -637,11 +637,8 @@ def _classify_step_failure(
          (FR_PLAN_INVALID, FR_NO_VERDICT_PARSED, FR_SIMULATE_EMPTY,
          FR_UNKNOWN) to FR_TRUNCATED_NO_ANSWER when done_reason=="length".
 
-    Used by both the single-task and chain paths so step records share
-    failure-tag semantics. The `thinking_text`/`response_text`/`error`
-    kwargs default to empty strings; chain callers that don't pass them
-    skip the FR_THINK_OVERFLOW step (matches pre-2026-04-29 behavior —
-    chain steps land in FR_TRUNCATED_NO_ANSWER instead).
+    The `thinking_text`/`response_text`/`error` kwargs default to empty
+    strings; callers that don't pass them skip the FR_THINK_OVERFLOW step.
     """
     if (not success
         and not error

@@ -14,9 +14,6 @@ Handles three naming schemes:
 Outputs (to stdout):
   1) Single-task success-rate matrix: (model, think, cond) × task
   2) Failure-reason totals per cell
-
-Chain-phase tables were dropped 2026-05-05 (chain phase archived from the
-active flow; legacy `chains` rows in old summary_*.json are ignored here).
 """
 from __future__ import annotations
 

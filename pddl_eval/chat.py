@@ -348,9 +348,7 @@ async def chat_without_tools(
     `check_success` can grade structurally instead of via free-text regex.
 
     Appends the assistant turn to *messages* so the post-call shape matches
-    `chat_with_tools` (which appends internally). Lets multi-step callers
-    like the chain runner reuse the same `messages` list without manually
-    bookkeeping the assistant turn.
+    `chat_with_tools` (which appends internally).
     """
     options, extra = _build_chat_kwargs(num_predict, num_ctx, temperature, think)
     if format is not None:

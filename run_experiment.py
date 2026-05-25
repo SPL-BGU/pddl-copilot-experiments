@@ -533,11 +533,7 @@ async def async_main(args):
                 resumed = sum(1 for r in all_single if id(r) in restored_ids)
                 if resumed:
                     meta["resumed_count"] = resumed
-            # `save_results` retains its `chains` parameter for back-compat with
-            # the dead-but-importable chain code path (see CHANGELOG 2026-05-05);
-            # the active flow always passes [] so emitted summaries carry an
-            # empty `chains` array.
-            save_results(all_single, [], Path(args.output_dir), meta=meta)
+            save_results(all_single, Path(args.output_dir), meta=meta)
         await mcp.close()
         # VLLMClient wraps openai.AsyncOpenAI's httpx pool; close to release.
         close = getattr(client, "aclose", None) or getattr(client, "close", None)

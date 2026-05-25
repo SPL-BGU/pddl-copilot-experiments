@@ -14,10 +14,7 @@ Figures written to <root>/plots/:
     fig5_domain_heatmap.png    — (series × 10 domains) heatmap per task
     fig6_tool_adherence.png    — per-task tool_selected_rate (with-tools only)
 
-Chain-phase figures (fig2_chain, fig7_chain_step_survival) were dropped
-2026-05-05 when the chain phase was archived from the active flow.
-Numeric --figs IDs preserve their original meaning so old shell snippets
-(`--figs 1,4,5`) keep working; passing `2` or `7` is a hard error.
+Valid --figs: 1, 3, 4, 5, 6 (2 and 7 are reserved gaps).
 """
 from __future__ import annotations
 
@@ -384,7 +381,7 @@ def split_series_by_arm(series: list[dict]) -> list[dict]:
                 "cond": arm,
                 "jobid": s.get("jobid", ""),
                 "summary": {"single_task": pooled_single,
-                            "chains": [], "meta": summary.get("meta", {})},
+                            "meta": summary.get("meta", {})},
                 "instances": kept_instances,
             })
     return out
@@ -454,7 +451,7 @@ def merge_series(series: list[dict]) -> list[dict]:
             "cond": "tools_merged",
             "jobid": "merged",
             "summary": {"single_task": pooled_single,
-                        "chains": [], "meta": {}},
+                        "meta": {}},
             "instances": instances,
         })
     return merged
@@ -770,9 +767,6 @@ def fig6(series, out_path, draw_ci):
 
 
 def _parse_figs(spec: str) -> set[int]:
-    # Numeric IDs preserve their pre-2026-05-05 meaning so old shell snippets
-    # still work. 2 and 7 (chain figures) were removed when the chain phase
-    # was archived; passing them is a hard error rather than a silent skip.
     if spec == "all":
         return {1, 3, 4, 5, 6}
     out = set()
@@ -784,11 +778,6 @@ def _parse_figs(spec: str) -> set[int]:
             n = int(piece)
         except ValueError:
             sys.exit(f"--figs: expected 'all' or comma-separated ints, got {spec!r}")
-        if n in (2, 7):
-            sys.exit(
-                f"--figs: chain figure {n} archived 2026-05-05 (see CHANGELOG); "
-                f"valid: 1, 3, 4, 5, 6"
-            )
         if n not in (1, 3, 4, 5, 6):
             sys.exit(f"--figs: unknown fig number {n}; valid: 1, 3, 4, 5, 6")
         out.add(n)
