@@ -12,23 +12,19 @@ Run a minimal smoke-test experiment to verify the pipeline works end to end.
    - vLLM server reachable: `curl -sf "${LLM_BASE_URL:-http://localhost:8000}/v1/models"`
    - pddl-copilot marketplace exists at `../pddl-copilot` (or `$PDDL_MARKETPLACE_PATH`)
 
-2. Run the canonical smoke slice (auto-pins domain/problem/variants/tasks/conditions/think modes; writes to `results/smoke/fixed_<git-sha>_<ts>/`):
+2. Run the canonical smoke slice (auto-pins domain/problem/variants/tasks/conditions/think modes; writes to `results/smoke/fixed_<git-sha>_<ts>/`). See `python3 run_experiment.py --help` for the full flag list; typical invocation:
    ```
    source .venv/bin/activate 2>/dev/null
-   python3 run_experiment.py \
-       --marketplace-path "${PDDL_MARKETPLACE_PATH:-../pddl-copilot}" \
-       --llm-base-url "${LLM_BASE_URL:-http://localhost:8000}" \
-       --models Qwen3.5:0.8B \
-       --smoke
+   python3 run_experiment.py --smoke --models Qwen3.5:0.8B
    ```
-   If `results/smoke/fixed_<git-sha>_<ts>/` already exists from a prior run on this commit, the harness resumes from `trials.jsonl` by default; pass `--no-resume` to start fresh.
+   `--marketplace-path` defaults to `$PDDL_MARKETPLACE_PATH` (else `../pddl-copilot`); `--llm-base-url` defaults to `$LLM_BASE_URL`. If the smoke output dir for this commit exists, the harness resumes from `trials.jsonl`; pass `--no-resume` to start fresh.
 
 3. Report results as:
    - Pipeline status: PASS (results saved) or FAIL (with error)
    - MCP connections: which plugin servers connected successfully
    - Ground truth: generated or failed
    - Model evaluation: success/failure counts from the summary output
-   - Output files: list files created in `results/smoke/fixed_<git-sha>_<ts>/`
-   - **Bridge projection check**: `tool_calls[*]` entries that hit `validate_pddl_syntax` or `get_state_transition` should NOT contain `"details"` in the result JSON (bridge pins `verbose=False`). Parse one result string and report `keys present`. See EXPERIMENTS_FLOW.md §8.
-   - If FAIL: include the relevant error trace
-   - For deeper aggregation/plotting beyond this smoke check, hand off to the `analyzer` skill (`.claude/skills/analyzer/SKILL.md`).
+   - Output files: list files created under the smoke dir
+   - **Bridge projection check**: validator + `get_state_transition` tool results should NOT contain `"details"` (see EXPERIMENTS_FLOW.md §8). Report `keys present` from one parsed result.
+   - If FAIL: include the relevant error trace, then hand off to the `debug-and-simplify` skill (`.claude/skills/debug-and-simplify/SKILL.md`).
+   - For deeper aggregation/plotting beyond this smoke, hand off to the `analyzer` skill (`.claude/skills/analyzer/SKILL.md`).
