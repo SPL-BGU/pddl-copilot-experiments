@@ -6,6 +6,8 @@ The active flow is **single-task only** as of 2026-05-05; the multi-task chain p
 
 See `README.md` for the sibling-project (`../pddl-copilot/`) background, marketplace discovery, and additionalDirectories permission. The rules below are agent-routing guidance not duplicated elsewhere.
 
+Paper-related decisions and bottom-line conclusions from our discussions are logged in `development/paper_notes_discussions.md` — append a dated, bulleted entry whenever a paper-related topic is decided.
+
 ## Routing — where does a fix belong?
 
 - MCP tool returns `{"error": ...}` or wrong-shape output → fix in `../pddl-copilot/plugins/<name>/server/` and rerun `bash ../pddl-copilot/plugins/<name>/tests/verify.sh`
