@@ -6,6 +6,53 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-25 — Recover FastMCP arg-validation errors via `_tool_error_seen` extension + read-time relabel
+
+**Branch:** `sweep5-new-prompts`. Surfaced by a fan-out audit of the sweep-5-live with-tools `validate_plan` confusion-matrix FP column. 3,718 with-tools `validate_plan` rows across the 5 model cells were tagged `FR_VERDICT_MISMATCH` for plans labeled `b*` (INVALID truth); the analyzer's `confusion()` treats that as `pred = NOT truth` → counts the row as a confident wrong prediction (FP). Empirical breakdown showed 90.7% (3,373) of those rows had every `validate_plan` tool call return a FastMCP pydantic argument-validation error string of the shape `"Error executing tool validate_plan: N validation errors for validate_planArguments\n  problem\n    Field required ..."` (typical causes: model omits the `problem` field, wraps args as `_raw_arguments`). `pddl_eval.scoring._tool_error_seen` only recognized two error prefixes — `"Tool error"` (transport) and `{"error":true}` (plugin-side JSON) — so this third FastMCP prefix escaped both and the scorer fell through to `FR_VERDICT_MISMATCH` (and analogous `FR_RESULT_MISMATCH` / `FR_PLAN_INVALID` paths for `simulate` / `solve`).
+
+**Two-prong fix mirroring the 2026-05-25 `think_overflow` change.** (i) Forward fix in `_tool_error_seen` so new trials land in `FR_TOOL_ERROR`. (ii) Read-time relabel at analyzer load time so existing sweep-5 corpora recover the bucket without mutating `trials.jsonl`. Sweep-5 is still in flight on some arms; a one-shot in-place re-score would split a single `trials.jsonl` across two classification regimes (corpus-identity hazard per `feedback_pushback_on_methodology_shortcuts`).
+
+**Files touched.**
+- `pddl_eval/scoring.py` — extracted `_TOOL_ERROR_PREFIXES = ("Tool error", "Error executing tool")` tuple; `_tool_error_seen` now uses it. Added pure helper `relabel_tool_arg_error_taxonomy(failure_reason, *, task, tool_calls) -> str` co-located with `relabel_truncated_taxonomy`. `check_success` is unchanged.
+- `.claude/skills/analyzer/scripts/build_deck.py` — imports and applies the new relabel immediately after `relabel_truncated_taxonomy` in the `load_all` per-trial loop. In-memory mutation only.
+
+**Relabel predicate (read-time).**
+
+```
+if  failure_reason ∈ {verdict_mismatch, result_mismatch, plan_invalid}
+AND task ∈ {validate_plan, validate_domain, validate_problem, simulate, solve}
+AND some tool_call.name matches the task's tool(s) AND its result starts with
+    "Tool error" or "Error executing tool"
+THEN failure_reason = tool_error
+ELSE failure_reason unchanged
+```
+
+Task→tool map in `_ARG_ERROR_TOOL_NAMES_BY_TASK`: validate_* → eponymous tool; simulate → `get_state_transition`; solve → `classic_planner` or `numeric_planner`.
+
+**Empirical validation** (on `results/sweep5-live`, with-tools `validate_plan`, FP-as-defined-by-analyzer = `failure_reason==verdict_mismatch AND plan_label.startswith("b")`):
+
+| Cell | FP before | FP relabel→tool_error | residual genuine FP |
+|---|---:|---:|---:|
+| Qwen3.5-0.8B think=off | 1592 | 1589 (99.8%) | 3 |
+| Qwen3.5-0.8B think=on  | 1140 | 1134 (99.5%) | 6 |
+| Qwen3.5-4B   think=off |  285 |  285 (100%)  | 0 |
+| Qwen3.5-4B   think=on  |  516 |  344 (66.7%) | 172 |
+| Qwen3.5-9B   think=off |   72 |   17 (23.6%) | 55 |
+| Qwen3.5-9B   think=on  |   41 |    1 (2.4%)  | 40 |
+| gemma4-26b   think=off |   17 |    0 (0%)    | 17 |
+| gemma4-26b   think=on  |   13 |    0 (0%)    | 13 |
+| qwen3.6-35b  think=off |   26 |    0 (0%)    | 26 |
+| qwen3.6-35b  think=on  |   16 |    3 (18.8%) | 13 |
+| **TOTAL**              | **3718** | **3373 (90.7%)** | **345** |
+
+The 345 residual FPs are the genuine `tool ratified broken plan as VALID` cases. They concentrate in Qwen3.5-4B think=on (172) and Qwen3.5-9B (55 think=off + 40 think=on) — both small-Qwen think-on cells that pre-audit had little think-on data; subsequent appends grew them. The audit reproduced 5 such cases against pyvalidator directly and found 0 cases where pyvalidator and the MCP validate_plan plugin disagreed on the actual `b*` fixture — in every "tool says VALID" case the model had repaired the plan (added a missing action) before passing it to the tool, and the tool legitimately accepted the repaired plan.
+
+**Compatibility note.** `trials.jsonl` files are unchanged. Decks built before this change remain valid as pre-relabel snapshots. Decks built after will show: per-cell with-tools `validate_plan` FP / FN counts drop; `tool_error` (no_ans) counts rise by the same amount; FR_OK counts unchanged; aggregate precision / recall / accuracy values shift accordingly. Same relabel applies to `validate_domain`, `validate_problem`, `simulate`, and `solve` rows that exhibit the same FastMCP arg-validation shape; sweep-5 numerics for those tasks should be re-skimmed.
+
+Partially closes ISS-005 — the `(d) FastMCP arg-validation` sub-pattern (added 2026-05-19 with PR-50 adoption) is now correctly in-bucket as `FR_TOOL_ERROR` rather than absorbed into `FR_VERDICT_MISMATCH` / `FR_RESULT_MISMATCH` / `FR_PLAN_INVALID`. The longer-term `FR_TOOL_ARG_ERROR` / `FR_TOOL_PARSE_ERROR` / `FR_TOOL_TRANSPORT` split remains optional polish (P3) and is not included here.
+
+---
+
 ## 2026-05-25 — Recover `think_overflow` via read-time taxonomy relabel
 
 **Branch:** `sweep5-new-prompts`. Surfaced while building the sweep-5-live checkpoint deck: fig4 showed `truncated_no_answer` as the only post-cap failure bar on Qwen3.5 think=on cells, with zero `think_overflow` rows across 106k trials. Empirical probe pinpointed the cause: `pddl_eval.scoring._classify_step_failure` (the FR_THINK_OVERFLOW predicate) requires `thinking_text != ""` AND `response_text == ""` AND `done_reason == "length"`, but vLLM's `--reasoning-parser qwen3` only flushes `reasoning_content` after seeing a complete `<think>…</think>` block — so when the output-token cap fires mid-`<think>`, both the `thinking` and `response` fields come back empty and the predicate's middle conjunct fails. The truncation override at `scoring._apply_truncation_override` then tagged all such rows `FR_TRUNCATED_NO_ANSWER`, conflating "reasoning spiral consumed the budget" with "response was cut off mid-output."

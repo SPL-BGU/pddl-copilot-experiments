@@ -56,7 +56,10 @@ REPO = Path(__file__).resolve().parents[4]
 # four arms (nt-neut / nt-ster / tl-neut / tl-ster) or the legacy fallback.
 sys.path.insert(0, str(REPO))
 from pddl_eval.summary import arm_for, wilson_ci  # noqa: E402
-from pddl_eval.scoring import relabel_truncated_taxonomy  # noqa: E402
+from pddl_eval.scoring import (  # noqa: E402
+    relabel_tool_arg_error_taxonomy,
+    relabel_truncated_taxonomy,
+)
 
 # Canonical arm display order for sweep-5 decks. Two-pass cells (post-filter)
 # contain both nt-neut + tl-neut + tl-ster; the 4th-arm (nt-ster) is the
@@ -276,6 +279,17 @@ def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
                     response=r.get("response") or "",
                     think_mode=think,
                 )
+                # Read-time taxonomy fix: FastMCP "Error executing tool ..."
+                # arg-validation strings that pre-date the _tool_error_seen
+                # prefix extension land in verdict_mismatch / result_mismatch
+                # / plan_invalid. Relabel to FR_TOOL_ERROR so confusion
+                # matrices don't credit malformed-args calls as confident
+                # wrong predictions. trials.jsonl is unchanged.
+                r["failure_reason"] = relabel_tool_arg_error_taxonomy(
+                    r["failure_reason"],
+                    task=r.get("task", ""),
+                    tool_calls=r.get("tool_calls") or [],
+                )
                 out.setdefault((model, think, arm), []).append(r)
     if skipped_no_pv:
         print(f"  warn: skipped {skipped_no_pv} trials without prompt_variant",
@@ -478,9 +492,14 @@ def _color_for_arm(arm: str) -> str:
 def fig_success_by_cond_per_task(think: str, save_path: Path) -> Path:
     """Per-task success by arm. One subplot per model; up to 4 bars per task
     (one per arm present). Arms with no data at this think level are dropped
-    so the legend matches what's actually rendered."""
+    so the legend matches what's actually rendered. The think=on slide also
+    drops `*-legacy` arms — sweep-3/4 replay data adds clutter without
+    contributing to the sweep-5 think=on story (per user direction
+    2026-05-25)."""
     models = models_present(think)
     arms = _arms_present(think)
+    if think == "on":
+        arms = [a for a in arms if not a.endswith("-legacy")]
     n = len(models)
     cols = min(3, n)
     rows = int(np.ceil(n / cols))

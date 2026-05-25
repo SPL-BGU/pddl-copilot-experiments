@@ -277,11 +277,19 @@ async def _validate_model_plan(
     return _parse_validation_verdict(raw)
 
 
+_TOOL_ERROR_PREFIXES = ("Tool error", "Error executing tool")
+
+
 def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
     """True if any call to *name* failed.
 
-    Two error shapes are recognized:
+    Three error shapes are recognized:
       - MCP transport errors, surfaced as strings prefixed with "Tool error".
+      - FastMCP argument-validation errors, surfaced as strings prefixed with
+        "Error executing tool" (e.g. model omits a required pydantic field,
+        or wraps args as `_raw_arguments`). Without this branch the unparseable
+        result falls through to FR_VERDICT_MISMATCH / FR_RESULT_MISMATCH and
+        gets credited to the model as a confident-wrong prediction.
       - Plugin-side errors, returned as JSON like {"error": true, "message": ...}.
         The pddl-solver / pddl-validator plugins use this shape for things
         like bad arguments, missing files, planner timeouts, etc.
@@ -290,7 +298,7 @@ def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
         if tc.get("name") != name:
             continue
         raw = tc.get("result", "")
-        if isinstance(raw, str) and raw.startswith("Tool error"):
+        if isinstance(raw, str) and raw.startswith(_TOOL_ERROR_PREFIXES):
             return True
         parsed = _safe_json_loads(raw)
         if isinstance(parsed, dict) and parsed.get("error"):
@@ -549,6 +557,59 @@ def relabel_truncated_taxonomy(
     if think_mode != "on":
         return failure_reason
     return FR_THINK_OVERFLOW
+
+
+_ARG_ERROR_RELABEL_CANDIDATES = frozenset({
+    FR_VERDICT_MISMATCH,
+    FR_RESULT_MISMATCH,
+    FR_PLAN_INVALID,
+})
+
+_ARG_ERROR_TOOL_NAMES_BY_TASK: dict[str, tuple[str, ...]] = {
+    "validate_plan": ("validate_plan",),
+    "validate_domain": ("validate_domain",),
+    "validate_problem": ("validate_problem",),
+    "simulate": ("get_state_transition",),
+    "solve": ("classic_planner", "numeric_planner"),
+}
+
+
+def relabel_tool_arg_error_taxonomy(
+    failure_reason: str,
+    *,
+    task: str,
+    tool_calls: list[dict],
+) -> str:
+    """Read-time relabel: FastMCP arg-validation errors mis-binned as
+    FR_VERDICT_MISMATCH / FR_RESULT_MISMATCH / FR_PLAN_INVALID get moved to
+    FR_TOOL_ERROR.
+
+    Mirrors `relabel_truncated_taxonomy`: pure, side-effect-free, used by
+    analyzers (build_deck.py) to recover trials emitted before the runtime
+    `_tool_error_seen` recognized the "Error executing tool ..." prefix. Does
+    NOT mutate trials.jsonl. The runtime classifier in `check_success` now
+    bins the same shape as FR_TOOL_ERROR going forward; this relabel is for
+    in-flight / legacy corpora only.
+
+    Predicate:
+        failure_reason ∈ {verdict_mismatch, result_mismatch, plan_invalid}
+        AND task is in the known task→tool map
+        AND some tool_call for one of the task-relevant tool names has a
+            result string prefixed with one of `_TOOL_ERROR_PREFIXES`
+        → FR_TOOL_ERROR
+    """
+    if failure_reason not in _ARG_ERROR_RELABEL_CANDIDATES:
+        return failure_reason
+    names = _ARG_ERROR_TOOL_NAMES_BY_TASK.get(task)
+    if not names:
+        return failure_reason
+    for tc in tool_calls or ():
+        if tc.get("name") not in names:
+            continue
+        raw = tc.get("result", "")
+        if isinstance(raw, str) and raw.startswith(_TOOL_ERROR_PREFIXES):
+            return FR_TOOL_ERROR
+    return failure_reason
 
 
 def _classify_step_failure(
