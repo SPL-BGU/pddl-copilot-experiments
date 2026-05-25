@@ -6,6 +6,52 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-25 — Recover `think_overflow` via read-time taxonomy relabel
+
+**Branch:** `sweep5-new-prompts`. Surfaced while building the sweep-5-live checkpoint deck: fig4 showed `truncated_no_answer` as the only post-cap failure bar on Qwen3.5 think=on cells, with zero `think_overflow` rows across 106k trials. Empirical probe pinpointed the cause: `pddl_eval.scoring._classify_step_failure` (the FR_THINK_OVERFLOW predicate) requires `thinking_text != ""` AND `response_text == ""` AND `done_reason == "length"`, but vLLM's `--reasoning-parser qwen3` only flushes `reasoning_content` after seeing a complete `<think>…</think>` block — so when the output-token cap fires mid-`<think>`, both the `thinking` and `response` fields come back empty and the predicate's middle conjunct fails. The truncation override at `scoring._apply_truncation_override` then tagged all such rows `FR_TRUNCATED_NO_ANSWER`, conflating "reasoning spiral consumed the budget" with "response was cut off mid-output."
+
+**Scope of this change: ANALYZER ONLY.** Sweep-5 is still in flight (multiple cells partial; control arm not yet submitted). Modifying the runtime classifier now would split a single `trials.jsonl` across two classification regimes — a corpus-identity hazard. Instead, the fix is a *read-time relabel* on values already present in the saved rows; `trials.jsonl` files are unchanged. The runtime predicate fix is deferred until sweep-5 completes and lands as a separate clean change.
+
+**Files touched.**
+- `pddl_eval/scoring.py` — added `relabel_truncated_taxonomy(failure_reason, *, truncated, response, think_mode) -> str` pure helper. `_classify_step_failure` and `_apply_truncation_override` are intentionally unchanged.
+- `pddl_eval/summary.py` — `summarize_single_task` gains a `think_mode: str | None = None` kwarg, threaded into the aggregation loop so the relabel runs at FR-counting time. `save_results` pulls `think_mode` from `meta["think"]` and passes it through. Print helpers (`print_*_table`) are unchanged — they're console diagnostics, not analysis artifacts, and stay backward-compatible via the default-`None` kwarg.
+- `.claude/skills/analyzer/scripts/filter_variants.py` — pulls `think_mode` from source meta first, with a `_think_from_dirname` fallback that parses `slurm_vllm_<model>_<think>_<cond>` cell directories.
+- `.claude/skills/analyzer/scripts/build_deck.py` — applies the relabel at `load_all` (in-memory mutation of each loaded trial's `failure_reason` field). All downstream FR consumers (confusion grids, simulate FR slabs, per-cell FR Counters) inherit the corrected tag without further code changes.
+
+**Relabel predicate (read-time).**
+
+```
+if   truncated == True
+AND  failure_reason ∈ {truncated_no_answer, plan_invalid, no_verdict_parsed,
+                       simulate_empty, format_parse_fail, unknown}
+AND  response == ""
+AND  think_mode == "on"
+THEN failure_reason = think_overflow
+ELSE failure_reason unchanged
+```
+
+The `think_mode == "on"` gate honors honesty: a probe across all 30 sweep-5 cells found 364 think=off Qwen3.5-with-tools rows that would otherwise be mis-labeled as think_overflow (the small Qwen3.5 sizes occasionally emit `<think>` blocks even under think=off; the vLLM parser eats them, leaving empty fields). The gate keeps those as `truncated_no_answer`. gemma4 (no reasoning parser) has zero empty-response truncations across all cells, so it's auto-safe.
+
+**Empirical validation** (on `results/sweep5-live` post-relabel):
+
+| Cell                              | Task           | n   | think_overflow | truncated_no_answer | Notes |
+|----------------------------------|----------------|----:|---------------:|--------------------:|-------|
+| Qwen3.5-0.8B on/no-tools          | solve          | 300 | 299            | 0                   | reasoning ate budget |
+| Qwen3.5-0.8B on/no-tools          | validate_plan  |3000 | 3000           | 0                   |  |
+| gemma4-26B on/no-tools            | solve          | 300 | 0              | 266                 | gemma has no think block — stays truncated |
+| Qwen3.5-0.8B off/tools_all_minimal| solve          | 600 | 0              | 344                 | honesty gate held |
+| Qwen3.5-4B off/no-tools           | validate_plan  |3000 | 0              | 53                  | verdict_mismatch=726 preserved (informative tag wins) |
+
+ST success rates are unchanged across all 30 cells — the relabel only moves counts inside the failure buckets.
+
+**Reproducibility.** Pre-2026-05-25 `summary_*.json` files in checkpoints have the old taxonomy. Re-running `filter_variants.py` (with no other arg changes) regenerates them with the corrected taxonomy. `trials.jsonl` files are the canonical raw record and remain bit-identical. The relabel helper is a pure read-time function — analyses can be re-aggregated to either taxonomy by toggling the call site, although the post-fix taxonomy is the recommended default.
+
+**Risks / follow-ups.**
+- The runtime `_classify_step_failure` predicate still ships the (now-known-unsatisfiable) `thinking_text` conjunct. Production runs continue to write `FR_TRUNCATED_NO_ANSWER` to `trials.jsonl` for would-be `FR_THINK_OVERFLOW` rows; analyzers correct this at read time. Once sweep-5 finishes, lift the relabel logic into `_apply_truncation_override` (drop the `thinking_text` conjunct, gate by `response_text == ""` instead). The read-time helper then becomes a no-op on fresh data but stays for historical sweeps.
+- Pre-existing `tests/test_summary_arm.py` fixture errors are unrelated to this change (TestResults class with __init__ blocks pytest collection — surfaced before this branch).
+
+---
+
 ## 2026-05-24 — Arm-aware analyzer for the sweep-5 four-arm matrix
 
 **Branch:** `sweep5-new-prompts`. Driven by `development/sweep_prompt_bank_design.md` §0 — the analyzer (build_deck / plot / aggregate / table / plot_focused) now renders and tabulates the sweep-5 arms `(nt-neut, nt-ster, tl-neut, tl-ster)` explicitly rather than collapsing them into the pre-sweep-5 `(no-tools, tools_all_minimal)` cond axis.

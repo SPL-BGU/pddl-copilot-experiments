@@ -55,7 +55,8 @@ REPO = Path(__file__).resolve().parents[4]
 # Shared sweep-5 arm classifier — used to split each cell's trials into one of
 # four arms (nt-neut / nt-ster / tl-neut / tl-ster) or the legacy fallback.
 sys.path.insert(0, str(REPO))
-from pddl_eval.summary import arm_for  # noqa: E402
+from pddl_eval.summary import arm_for, wilson_ci  # noqa: E402
+from pddl_eval.scoring import relabel_truncated_taxonomy  # noqa: E402
 
 # Canonical arm display order for sweep-5 decks. Two-pass cells (post-filter)
 # contain both nt-neut + tl-neut + tl-ster; the 4th-arm (nt-ster) is the
@@ -142,6 +143,26 @@ DEFAULT_CAPTIONS = {
     "tokens_simulate":
         "Output tokens per `simulate` trial. Bar label = mean (m:median). "
         "Long step-by-step traces drive output; no-tools failure% is ~100% across the board.",
+    "tokens_vs_success_solve":
+        "Per-cell scatter for `solve`. Each marker = one (model, arm) cell; "
+        "x = median completion tokens, y = success% with Wilson 95% CI. "
+        "Lines connect the same model across arms — reads H3 directly: "
+        "moving along the line from nt-* (circle/diamond) to tl-* (square/triangle) "
+        "should drop x AND raise y if tools help.",
+    "tokens_vs_success_validate_domain":
+        "Per-cell scatter for `validate_domain`. Same axes/encoding as solve. "
+        "Note the y range collapses here — most no-tools cells sit at 0–10% success "
+        "and most with-tools cells sit at 60–95%, with token-budget consumption "
+        "varying across models more than across arms.",
+    "tokens_vs_success_validate_problem":
+        "Per-cell scatter for `validate_problem`. Look for arms whose marker moves "
+        "LEFT (fewer tokens) AND UP (more success) — this is the H3 win quadrant.",
+    "tokens_vs_success_validate_plan":
+        "Per-cell scatter for `validate_plan`. Same axes/encoding.",
+    "tokens_vs_success_simulate":
+        "Per-cell scatter for `simulate`. The most expensive task per output-token "
+        "budget; no-tools cells often sit at ~0% across the board (long step-by-step "
+        "traces). The tools-arm step-down on x is the simulate-tool short-circuit.",
     "latency_all":
         "Bar height = mean wall-clock seconds per trial, by arm. "
         "Bar-top label = % of trials with success=False (whatever the reason).",
@@ -232,6 +253,15 @@ def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
                     skipped_no_pv += 1
                     continue
                 arm = arm_for(bool(r.get("with_tools")), int(pv))
+                # Read-time taxonomy fix: split FR_TRUNCATED_NO_ANSWER into
+                # FR_THINK_OVERFLOW when response was empty under think=on.
+                # Mutates the in-memory record only; trials.jsonl is unchanged.
+                r["failure_reason"] = relabel_truncated_taxonomy(
+                    r.get("failure_reason", ""),
+                    truncated=bool(r.get("truncated")),
+                    response=r.get("response") or "",
+                    think_mode=think,
+                )
                 out.setdefault((model, think, arm), []).append(r)
     if skipped_no_pv:
         print(f"  warn: skipped {skipped_no_pv} trials without prompt_variant",
@@ -545,6 +575,127 @@ def fig_tool_selection(save_path: Path) -> Path:
     return save_path
 
 
+# Failure-reason palette + display order for fig_failure_breakdown.
+# Mirrors plot.py:FAILURE_REASONS/REASON_COLORS to keep the deck and the
+# analyzer fig4 visually consistent; the relabel work (2026-05-25) makes
+# think_overflow a first-class slab here.
+_FR_ORDER = [
+    "ok", "think_overflow", "truncated_no_answer", "format_parse_fail",
+    "verdict_mismatch", "result_mismatch", "no_verdict_parsed",
+    "plan_invalid", "simulate_empty",
+    "tool_not_selected", "tool_error", "wrong_tool", "loop_exhausted",
+    "exception", "unknown",
+]
+_FR_COLORS = {
+    "ok":                  "#2ca02c",
+    "think_overflow":      "#f7b6d2",
+    "truncated_no_answer": "#aec7e8",
+    "format_parse_fail":   "#c49c94",
+    "verdict_mismatch":    "#e377c2",
+    "result_mismatch":     "#7f7f7f",
+    "no_verdict_parsed":   "#9edae5",
+    "plan_invalid":        "#1f77b4",
+    "simulate_empty":      "#bcbd22",
+    "tool_not_selected":   "#d62728",
+    "tool_error":          "#ff7f0e",
+    "wrong_tool":          "#fbb4b9",
+    "loop_exhausted":      "#8c564b",
+    "exception":           "#17becf",
+    "unknown":             "#cccccc",
+    "other":               "#dddddd",
+}
+
+
+def fig_failure_breakdown(think: str, save_path: Path) -> Path:
+    """1×5 grid of 100%-stacked horizontal bars: failure-reason share per task × arm.
+
+    Reads from the in-memory CELLS dict, which has already had the read-time
+    taxonomy relabel applied at load (FR_TRUNCATED_NO_ANSWER → FR_THINK_OVERFLOW
+    when response was empty under think=on). Renders the breakdown for one
+    think mode at a time so the per-think story is legible — think=on slides
+    surface the think_overflow slabs that motivated the relabel; think=off
+    slides are the control where think_overflow stays empty by gate.
+
+    Bars: one per (model × arm), 5 tasks across columns. A bar with no
+    trials in that (model, arm, task) cell is rendered blank (no fill, no
+    label) so partial-sweep gaps are visually obvious.
+    """
+    models = [m for m in MODEL_ORDER if any((m, think, a) in CELLS for a in ARM_ORDER)]
+    if not models:
+        fig, ax = plt.subplots(figsize=(6, 2))
+        ax.axis("off")
+        ax.text(0.5, 0.5, f"(no cells for think={think})", ha="center",
+                va="center", fontsize=12, color="#888")
+        fig.savefig(save_path, dpi=160, bbox_inches="tight")
+        plt.close(fig)
+        return save_path
+
+    arms = [a for a in ARM_ORDER if any((m, think, a) in CELLS for m in models)]
+    # one logical "series" per (model, arm)
+    series: list[tuple[str, str]] = [(m, a) for m in models for a in arms]
+    labels = [f"{MODEL_DISP[m]} · {ARM_DISP.get(a, a)}" for m, a in series]
+
+    # Discover reasons that actually appear
+    reasons_seen: set[str] = set()
+    for (m, a) in series:
+        rows_ = CELLS.get((m, think, a), [])
+        for r in rows_:
+            reasons_seen.add(r.get("failure_reason") or "unknown")
+    order = [fr for fr in _FR_ORDER if fr in reasons_seen]
+    extras = sorted(reasons_seen - set(_FR_ORDER))
+    if extras:
+        order.append("other")
+
+    y = np.arange(len(series))
+    fig, axes = plt.subplots(
+        1, len(TASKS),
+        figsize=(2.8 * len(TASKS), max(4.0, 0.35 * len(series) + 1.5)),
+        sharey=True, squeeze=False,
+    )
+    axes = axes[0]
+
+    for ax, task in zip(axes, TASKS):
+        left = np.zeros(len(series))
+        for fr in order:
+            vals = []
+            for (m, a) in series:
+                rows_ = [r for r in CELLS.get((m, think, a), []) if r["task"] == task]
+                n = len(rows_)
+                if n == 0:
+                    vals.append(0.0)
+                    continue
+                if fr == "other":
+                    cnt = sum(1 for r in rows_
+                              if (r.get("failure_reason") or "unknown") not in set(_FR_ORDER))
+                else:
+                    cnt = sum(1 for r in rows_ if (r.get("failure_reason") or "unknown") == fr)
+                vals.append(cnt / n)
+            vals_np = np.array(vals)
+            ax.barh(y, vals_np, left=left, color=_FR_COLORS.get(fr, "#999"),
+                    edgecolor="white", linewidth=0.3, label=fr)
+            left += vals_np
+        ax.set_xlim(0, 1.0)
+        ax.set_xlabel("share", fontsize=9)
+        ax.set_title(TASK_LABEL[task], fontsize=10)
+        ax.set_xticks([0.0, 0.25, 0.5, 0.75, 1.0])
+        ax.grid(axis="x", linestyle=":", alpha=0.4)
+
+    axes[0].set_yticks(y)
+    axes[0].set_yticklabels(labels, fontsize=8)
+    axes[0].invert_yaxis()
+
+    handles = [plt.Rectangle((0, 0), 1, 1, color=_FR_COLORS.get(fr, "#999"))
+               for fr in order]
+    fig.legend(handles, order, loc="lower center", ncol=min(8, len(order)),
+               bbox_to_anchor=(0.5, -0.02), fontsize=8)
+    fig.suptitle(f"Failure-reason breakdown per task — think={think}",
+                 fontsize=12)
+    fig.tight_layout(rect=[0, 0.05, 1, 0.96])
+    fig.savefig(save_path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    return save_path
+
+
 def fig_successful_tool_use(save_path: Path) -> Path:
     """Tool selection vs selected∧success — pooled across 5 tasks, by model × arm.
 
@@ -791,6 +942,133 @@ def fig_tokens(save_path: Path, only_success: bool = False,
         fontsize=11,
     )
     fig.tight_layout()
+    fig.savefig(save_path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    return save_path
+
+
+_MODEL_COLOR_FALLBACK = [
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+    "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+]
+_ARM_MARKER = {
+    "nt-neut":   "o",
+    "nt-ster":   "D",
+    "tl-neut":   "s",
+    "tl-ster":   "^",
+    "nt-legacy": "o",
+    "tl-legacy": "s",
+}
+
+
+def _model_color(m: str) -> str:
+    return _MODEL_COLOR_FALLBACK[MODEL_ORDER.index(m) % len(_MODEL_COLOR_FALLBACK)]
+
+
+def fig_tokens_vs_success(save_path: Path, task: str) -> Path:
+    """Per-cell scatter of (median output tokens, success%), arms connected by a
+    line within each model. One figure per task; 1×2 subplots (think off / on).
+
+    Each marker = one (model, think, arm) cell. Marker shape encodes arm
+    (circle=nt-neut, square=tl-neut, triangle=tl-ster, diamond=nt-ster); marker
+    color encodes model. A line connects the arms of the same model in
+    ARM_ORDER, so the eye reads "as we move from no-tools to with-tools, did
+    tokens drop AND success rise?" (sweep-5 H3).
+
+    Wilson 95% CI on success% drawn as a vertical whisker per marker. x-axis
+    has no CI — it's the cell's empirical median, not an estimate of a
+    population parameter.
+
+    Methodology note: this is the per-cell aggregation, NOT a within-cell
+    binned curve. The binned-by-token form would mostly visualize problem
+    difficulty (harder problem → more tokens + more failure) plus the
+    truncation cliff at the token budget. Per-cell scatter sidesteps both
+    by keeping each marker self-contained.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.4), sharey=True)
+    for col, think in enumerate(["off", "on"]):
+        ax = axes[col]
+        models = models_present(think)
+        arms = _arms_present(think)
+        x_all: list[float] = []
+        any_data = False
+        for m in models:
+            xs, ys, los, his, marker_shapes = [], [], [], [], []
+            for arm in arms:
+                rows_ = CELLS.get((m, think, arm), [])
+                if not rows_:
+                    continue
+                rate, succ, n = task_success_rate(rows_, task)
+                if n == 0:
+                    continue
+                med = _completion_median(rows_, task=task, only_success=False)
+                if np.isnan(med):
+                    continue
+                lo, hi = wilson_ci(succ, n)
+                xs.append(med)
+                ys.append(rate * 100)
+                los.append((rate - lo) * 100)
+                his.append((hi - rate) * 100)
+                marker_shapes.append(_ARM_MARKER.get(arm, "o"))
+            if not xs:
+                continue
+            any_data = True
+            x_all.extend(xs)
+            color = _model_color(m)
+            ax.plot(xs, ys, "-", color=color, alpha=0.55, linewidth=1.2, zorder=1)
+            for xi, yi, lo_i, hi_i, mk in zip(xs, ys, los, his, marker_shapes):
+                ax.errorbar(xi, yi, yerr=[[lo_i], [hi_i]],
+                            fmt=mk, color=color, ecolor=color,
+                            markersize=8, markeredgecolor="black",
+                            markeredgewidth=0.5, elinewidth=0.8,
+                            capsize=2.5, alpha=0.95, zorder=3)
+        if not any_data:
+            ax.text(0.5, 0.5, "(no data)", ha="center", va="center",
+                    transform=ax.transAxes, color="#888")
+        ax.set_xlabel("median output tokens per trial", fontsize=10)
+        if col == 0:
+            ax.set_ylabel("success %  (Wilson 95% CI)", fontsize=10)
+        ax.set_title(f"think={think}", fontsize=11)
+        ax.set_ylim(-3, 105)
+        ax.grid(linestyle=":", alpha=0.4)
+        if x_all:
+            xmax = max(x_all)
+            ax.set_xlim(left=max(0, min(x_all) * 0.85 - 30),
+                        right=xmax * 1.08 + 30)
+
+    # Build a combined legend: models on the left (color), arms on the right
+    # (marker shape). Drawn on the right subplot so the data panels stay clean.
+    model_handles = [plt.Line2D([0], [0], marker="o", linestyle="-",
+                                color=_model_color(m), markersize=7,
+                                markeredgecolor="black", markeredgewidth=0.4,
+                                label=MODEL_DISP[m])
+                     for m in MODEL_ORDER
+                     if any((m, t, a) in CELLS
+                            for t in ("off", "on") for a in ARM_ORDER)]
+    arms_for_legend = [a for a in ARM_ORDER
+                       if any((m, t, a) in CELLS
+                              for m in MODEL_ORDER for t in ("off", "on"))]
+    arm_handles = [plt.Line2D([0], [0], marker=_ARM_MARKER.get(a, "o"),
+                              linestyle="", color="#444",
+                              markersize=8, markeredgecolor="black",
+                              markeredgewidth=0.4,
+                              label=ARM_DISP.get(a, a))
+                   for a in arms_for_legend]
+    first_legend = axes[1].legend(handles=model_handles, fontsize=8,
+                                   loc="lower left", title="model",
+                                   title_fontsize=8, framealpha=0.92)
+    axes[1].add_artist(first_legend)
+    axes[1].legend(handles=arm_handles, fontsize=8, loc="lower right",
+                   title="arm (marker)", title_fontsize=8, framealpha=0.92)
+
+    fig.suptitle(
+        f"Output tokens vs success — task = {task}.  "
+        f"One marker per (model, arm) cell.  "
+        f"x = median completion tokens; y = success% (Wilson 95% CI).  "
+        f"Lines connect the same model across arms.",
+        fontsize=11,
+    )
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     return save_path
@@ -1295,6 +1573,18 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
     add_image_slide(prs, "Tool selection rate per task — by arm", ts_path,
                     caption=captions["tool_selection"])
 
+    # Failure-reason breakdown per task × arm — one slide per think mode.
+    # think=on surfaces the FR_THINK_OVERFLOW slabs that the 2026-05-25
+    # read-time relabel recovers (vLLM qwen3 reasoning-parser eats partial
+    # `<think>` content under length-truncation); think=off is the control
+    # where think_overflow stays empty by design.
+    fb_off = fig_failure_breakdown("off", fig_dir / "failure_breakdown_off.png")
+    fb_on  = fig_failure_breakdown("on",  fig_dir / "failure_breakdown_on.png")
+    add_image_slide(prs, "Failure-reason breakdown per task (think=off)", fb_off,
+                    caption=captions.get("failure_breakdown_off", ""))
+    add_image_slide(prs, "Failure-reason breakdown per task (think=on)", fb_on,
+                    caption=captions.get("failure_breakdown_on", ""))
+
     # Pooled-across-tasks slides removed 2026-05-24 (user direction): when
     # five tasks have wildly different token / time / selection profiles the
     # "pooled across 5 tasks" aggregate has no pre-decided metric that
@@ -1349,6 +1639,15 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
         fig_tokens(fp, only_success=False, task=task)
         add_image_slide(prs, f"Output tokens · {TASK_LABEL[task]}", fp,
                         caption=captions[f"tokens_{task}"])
+
+    # Tokens-vs-success scatter — one slide per task, after the per-task
+    # token bar slides. Reads H3 (with-tools should drop tokens AND raise
+    # success) as a line trajectory per model across arms.
+    for task in TASKS:
+        fp = fig_dir / f"tokens_vs_success_{task}.png"
+        fig_tokens_vs_success(fp, task=task)
+        add_image_slide(prs, f"Output tokens vs success · {TASK_LABEL[task]}", fp,
+                        caption=captions[f"tokens_vs_success_{task}"])
 
     # Pooled-across-tasks latency slides removed for the same reason as the
     # pooled token slides. If a per-task latency view is wanted later,

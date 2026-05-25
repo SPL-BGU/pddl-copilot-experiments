@@ -21,7 +21,7 @@ from pathlib import Path
 
 from .prompts import ACTIVE_PROMPT_VARIANTS, STEERED_VARIANTS
 from .runner import TASKS, TaskResult
-from .scoring import FR_OK
+from .scoring import FR_OK, relabel_truncated_taxonomy
 
 
 # Sweep-5 neutral variants — paired with STEERED_VARIANTS for the analyzer's
@@ -142,7 +142,11 @@ def _token_row(agg: dict) -> dict:
     }
 
 
-def summarize_single_task(results: list[TaskResult]) -> list[dict]:
+def summarize_single_task(
+    results: list[TaskResult],
+    *,
+    think_mode: str | None = None,
+) -> list[dict]:
     """Aggregate single-task results into long-format rows with N and 95% CIs.
 
     For the "tools" condition, also reports tool_selected count/rate — how often
@@ -185,7 +189,13 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
             agg[key]["tool_selected"] += 1
         if r.truncated:
             agg[key]["truncated"] += 1
-        agg[key]["failure_reasons"][r.failure_reason] += 1
+        fr = relabel_truncated_taxonomy(
+            r.failure_reason,
+            truncated=r.truncated,
+            response=r.response,
+            think_mode=think_mode or "",
+        )
+        agg[key]["failure_reasons"][fr] += 1
         _add_tokens(agg[key]["tokens"], r.tokens)
         pv = agg[key]["per_variant"][r.prompt_variant]
         pv["n"] += 1
@@ -431,8 +441,11 @@ def save_results(
     # the same results/ tree (host, condition split, filter, prompt, think).
     # Without it, remote/local and tools/no-tools runs look identical at the
     # summary level and can only be told apart by result-dir naming.
+    think_mode = (meta or {}).get("think")
     summary = {
-        "single_task": summarize_single_task(single) if single else [],
+        "single_task": (
+            summarize_single_task(single, think_mode=think_mode) if single else []
+        ),
         "chains": summarize_chains(chains) if chains else [],
     }
     if meta:

@@ -508,6 +508,49 @@ def _apply_truncation_override(success: bool, truncated: bool, failure_reason: s
     return failure_reason
 
 
+# Reasons that *could* be the legacy-empty-output bucket — the runtime
+# classifier emits FR_TRUNCATED_NO_ANSWER for these via _apply_truncation_override,
+# so they're the only ones a read-time relabel can confidently re-bucket.
+_LEGACY_RELABEL_CANDIDATES = (FR_TRUNCATED_NO_ANSWER,) + _TRUNCATION_OVERRIDE_REASONS
+
+
+def relabel_truncated_taxonomy(
+    failure_reason: str,
+    *,
+    truncated: bool,
+    response: str,
+    think_mode: str,
+) -> str:
+    """Read-time relabel: split FR_TRUNCATED_NO_ANSWER into think_overflow vs
+    truncated_no_answer based on whether the model emitted any visible response.
+
+    Pure, side-effect-free. Used by analyzers (summary.py, build_deck.py) to
+    re-bucket counts when reading legacy trials produced before the runtime
+    predicate fix lands. Does NOT mutate trials.jsonl. The runtime classifier
+    in `_classify_step_failure` is intentionally unchanged here so a sweep
+    that's still in flight keeps a homogeneous corpus identity.
+
+    Predicate:
+        truncated AND failure_reason ∈ {truncated_no_answer, plan_invalid,
+            no_verdict_parsed, simulate_empty, format_parse_fail, unknown}
+        AND response == "" AND think_mode == "on"
+        → FR_THINK_OVERFLOW
+
+    The think_mode gate avoids tagging think=off rows where an empty-response
+    truncation has no reasoning-spiral explanation (the small Qwen3.5 sizes
+    occasionally hit this; ~0.34% of trials).
+    """
+    if not truncated:
+        return failure_reason
+    if failure_reason not in _LEGACY_RELABEL_CANDIDATES:
+        return failure_reason
+    if (response or "").strip():
+        return failure_reason
+    if think_mode != "on":
+        return failure_reason
+    return FR_THINK_OVERFLOW
+
+
 def _classify_step_failure(
     success: bool,
     done_reason: str,

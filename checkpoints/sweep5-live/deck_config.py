@@ -52,6 +52,17 @@ SLIDE_CAPTIONS = {
     "tool_selection":
         "% of with-tools trials where the model invoked the expected planner/validator tool, "
         "over v11-v16 partial cells.",
+    "failure_breakdown_off":
+        "100%-stacked share of failure reasons per (model × arm × task) at think=off. "
+        "verdict_mismatch and format_parse_fail dominate; truncated_no_answer present on the "
+        "few rows that did hit the output cap. think_overflow is empty by gate — only think=on "
+        "rows can carry it.",
+    "failure_breakdown_on":
+        "Same chart at think=on. The light-pink think_overflow slab is the 2026-05-25 read-time "
+        "relabel: rows where the model exhausted the output budget without emitting a visible "
+        "response (vLLM qwen3 reasoning-parser eats partial `<think>` content on length-truncation). "
+        "Qwen3.5 sizes are dominated by think_overflow on no-tools tasks; gemma4 (no reasoning parser) "
+        "stays on truncated_no_answer because its response field is non-empty.",
     "successful_tool_use":
         "Light bar = % of with-tools trials where the model called the matching tool. "
         "Dark bar = % where both (a) the right tool was called AND (b) the result was scored success. "

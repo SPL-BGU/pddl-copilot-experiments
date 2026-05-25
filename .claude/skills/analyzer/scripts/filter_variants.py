@@ -49,6 +49,14 @@ from pddl_eval.summary import summarize_single_task  # noqa: E402
 from pddl_eval.runner import TaskResult  # noqa: E402
 
 
+def _think_from_dirname(name: str) -> str:
+    """Extract think segment from `slurm_vllm_<model>_<think>_<cond>` cell dirs."""
+    for tok in ("_on_", "_off_", "_default_"):
+        if tok in name:
+            return tok.strip("_")
+    return ""
+
+
 def _trial_to_task_result(t: dict) -> TaskResult:
     r = t["result"]
     allowed = set(TaskResult.__dataclass_fields__.keys())
@@ -116,7 +124,11 @@ def write_filtered_cell(src_dir: Path, dst_dir: Path,
         except Exception:
             continue
 
-    rows = summarize_single_task(kept_trials)
+    # think_mode threads through the relabel for read-time taxonomy fix
+    # (FR_TRUNCATED_NO_ANSWER → FR_THINK_OVERFLOW when response was empty
+    # and think=on). Prefer the source meta; fall back to the cell dirname.
+    think_mode = src_meta.get("think") or _think_from_dirname(src_dir.name)
+    rows = summarize_single_task(kept_trials, think_mode=think_mode)
     summary = {
         "single_task": rows,
         "chains": [],
