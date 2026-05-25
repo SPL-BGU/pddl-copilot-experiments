@@ -34,10 +34,11 @@ pip3 install -r requirements.txt
 ```
 
 The supported reproduction path is the BGU CIS SLURM cluster
-(`cluster-experimenting/submit_with_rtx.sh`), which self-deploys a per-job
-vLLM server on a `rtx_6000:1` (48 GB) or `rtx_pro_6000:1` (96 GB) node.
-Local laptop runs are not supported — vLLM requires CUDA and the active
-roster does not fit in consumer-GPU VRAM.
+(`cluster-experimenting/submit_full_sweep.sh`), which dispatches the full
+roster as SLURM job arrays and self-deploys per-job vLLM servers on
+`rtx_6000:1` (48 GB) or `rtx_pro_6000:1` (96 GB) nodes. Local laptop runs
+are not supported — vLLM requires CUDA and the active roster does not fit
+in consumer-GPU VRAM.
 
 ## Running (CLI)
 
@@ -103,18 +104,14 @@ The active 5-model roster (post 2026-05-18 unification on vLLM) is
 — set in `cluster-experimenting/lib/defaults.sh`.
 
 ```bash
-# Full roster — submitted as a SLURM job array
-# (one rtx_6000:1 GPU per (model, think, condition) cell)
-bash cluster-experimenting/submit_with_rtx.sh --all
-
-# Or per-model (e.g. when iterating on one model's behaviour)
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
+# Full roster — primary entrypoint, dispatches the per-cell SLURM array
+bash cluster-experimenting/submit_full_sweep.sh
 
 # Baseline-only no-tools sweep
-bash cluster-experimenting/submit_with_rtx.sh --all --no-tools
+bash cluster-experimenting/submit_full_sweep.sh --no-tools
 
-# Inherit a partial run's trials.jsonl into the full sweep
-bash cluster-experimenting/submit_with_rtx.sh --all --continue-partial /path/to/seed_dir
+# Per-cell wrapper (e.g. when iterating on one model's behaviour)
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
 ```
 
 ## Output
@@ -131,7 +128,7 @@ Per-run files:
 - `summary_<timestamp>.json` — aggregated metrics with Wilson 95% confidence intervals
 - `trials.jsonl` — append-only progress log used for resume and `--continue-partial`
 
-`chain_<timestamp>.json` was emitted by the pre-2026-05-05 chain phase and is no longer produced by the active flow (see `development/CHANGELOG.md`). Pre-bucket runs (flat `results/<tag>_<ts>_…/` directories) are untouched and still parseable by the analyzer.
+Pre-bucket runs (flat `results/<tag>_<ts>_…/` directories) and legacy `chain_<timestamp>.json` files from pre-2026-05-05 sweeps are untouched and still parseable by the analyzer.
 
 ## Domain Structure
 
