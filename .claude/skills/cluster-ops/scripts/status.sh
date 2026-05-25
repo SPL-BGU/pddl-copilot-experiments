@@ -109,21 +109,30 @@ echo "=== counts ==="
 # n_steered=0 unconditionally (sweep-4 replay mode collapses to a single
 # count per cell).
 #
-# Match anchor: `"prompt_variant": <RE>[^0-9]` keeps two-digit ids
-# (v11/v16) from spuriously matching as `v1` under a `[1]` class.
-# grep exit codes: 0=match, 1=no-match (→ 0), ≥2=I/O error (warn + 0).
+# Parse trials.jsonl as JSON and dedup by the row-level `key` tuple — the
+# harness's resume path can append the same trial twice (timing race between
+# completion + checkpoint flush), so raw line counts overstate progress.
+# Matches the analyzer's dedup convention so status and analyzer agree.
 grep_count() {
-    local re="$1" path="$2" n rc
+    local re="$1" path="$2"
     if [ -z "$re" ]; then echo 0; return; fi
-    if n=$(grep -cE "\"prompt_variant\": ${re}[^0-9]" "$path" 2>/dev/null); then
-        echo "$n"
-    else
-        rc=$?
-        if [ "$rc" -gt 1 ]; then
-            echo "warn: grep rc=$rc on $path" >&2
-        fi
-        echo 0
-    fi
+    [ -f "$path" ] || { echo 0; return; }
+    python3 - "$re" "$path" <<'PY' 2>/dev/null || echo 0
+import json, re, sys
+pat = re.compile(sys.argv[1])
+seen = set()
+with open(sys.argv[2]) as f:
+    for line in f:
+        try:
+            r = json.loads(line)
+        except Exception:
+            continue
+        pv = r.get('result', {}).get('prompt_variant')
+        if pv is None: continue
+        if not pat.fullmatch(str(pv)): continue
+        seen.add(tuple(r.get('key', [])))
+print(len(seen))
+PY
 }
 shopt -s nullglob
 for d in "$HOME/$REPO/results/"slurm_*/; do

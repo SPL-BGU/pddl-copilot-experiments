@@ -104,10 +104,15 @@ DEFAULT_CAPTIONS = {
         "Grey = no-tools (neut), blue = with-tools (neut). The (blue − grey) gap is the headline tool-utility "
         "claim from arXiv:2509.12987 under sweep-5's controlled comparison (same prompt text on both sides).",
     "h2_isolation":
-        "H2 — steering effect on tool selection. Blue = with-tools (neut), orange = with-tools (steered). "
-        "Bar height = tool_selected%. `wt:NN%` annotation above each bar = FR_WRONG_TOOL share "
-        "(marketplace 1.4.0 distinguishes wrong-tool from no-tool-call). H2 predicts blue → orange "
-        "raises selection AND lowers wt%.",
+        "H2 — steering effect on tool selection, isolated to this model. "
+        "Blue = with-tools (neut), orange = with-tools (steered). Bar height = "
+        "tool_selected%; black label above bar = selection mean. H2 predicts "
+        "blue → orange raises selection. Per-model slides — H2 is a "
+        "within-model claim (does steering shift *this* model's selection), so "
+        "each model stands alone rather than competing on a shared axis. "
+        "FR_WRONG_TOOL share is 0% across this sweep (marketplace 1.4.0 "
+        "classifier separates no-tool-call from wrong-tool) so its inset was "
+        "dropped from the bars.",
     "tool_selection":
         "% of with-tools trials where the model invoked the expected planner/validator tool, "
         "split by arm (tl-neut vs tl-ster). Hatching marks the steered arm.",
@@ -117,13 +122,20 @@ DEFAULT_CAPTIONS = {
         "The (sel% − dark%) gap is the failure mode after tool selection: "
         "verdict_mismatch / tool_error / loop_exhausted / wrong_tool. Split per arm.",
     "confusion_off":
-        "One row per model; columns = validate_domain, validate_problem, validate_plan. "
-        "Data source: nt-neut (no-tools, neutral) — the H1 baseline arm. "
-        "TP = correctly predicted VALID, TN = correctly predicted INVALID. "
-        "'no-ans' counts truncated / parse-fail trials excluded from prec/rec/acc.",
+        "Rows = no-tools (nt-neut) vs with-tools (tl-neut); columns = "
+        "validate_domain / _problem / _plan. Cell colour is row-normalised: "
+        "green diagonal = correct, red off-diagonal = error mode "
+        "(intensity ∝ row-%). Each cell shows tag (TP/FN/FP/TN), count, "
+        "and row-%. Footer monospace: prec / rec / acc / no-ans. tl-ster "
+        "omitted — steering is isolated by the H2 slides; here we compare "
+        "classification under tool access alone. 'no-ans' counts "
+        "truncated / parse-fail trials and is excluded from prec/rec.",
     "confusion_on":
-        "think=on bloats output budget — note the no-ans count: at this corpus the entire response is "
-        "reasoning text with no JSON verdict (truncated_no_answer + format_parse_fail dominate).",
+        "Same layout as think=off. think=on bloats output budget — watch "
+        "the no-ans count: at this corpus much of the response is "
+        "reasoning text with no JSON verdict (truncated_no_answer + "
+        "format_parse_fail dominate), so the matrix counts get sparse "
+        "even when row-% colouring stays vivid.",
     "tokens_all":
         "Output (completion) tokens per trial, grouped by arm × think. "
         "Bar label = mean (m:median). Inset `f:NN%` = cell failure%. "
@@ -778,61 +790,128 @@ def _pick_no_tools_neutral_arm() -> str:
     return "nt-legacy"
 
 
-def fig_confusion_grid(save_path: Path, think: str) -> Path:
-    models = models_present(think)
-    if not models:
-        # Empty figure rather than crash on a checkpoint with no cells for this think.
-        fig, ax = plt.subplots(figsize=(6, 2))
-        ax.axis("off")
-        ax.text(0.5, 0.5, f"(no cells for think={think})",
-                ha="center", va="center", fontsize=12, color="#888")
-        fig.savefig(save_path, dpi=160, bbox_inches="tight")
-        plt.close(fig)
-        return save_path
+VAL_TASKS = ("validate_domain", "validate_problem", "validate_plan")
+CELL_TAGS = np.array([["TP", "FN"], ["FP", "TN"]])
+GREENS = plt.get_cmap("Greens")
+REDS = plt.get_cmap("Reds")
+
+
+def _pick_with_tools_neutral_arm() -> str | None:
+    """Mirror of _pick_no_tools_neutral_arm for the with-tools side. Returns
+    None when no tl-* arm is present (e.g. sweep-3/4 replays) so the caller
+    can skip the with-tools row instead of rendering an empty panel."""
+    if any(k[2] == "tl-neut" for k in CELLS):
+        return "tl-neut"
+    return None
+
+
+def _draw_cm_panel(ax, cm: dict, *, task: str, condition_label: str) -> None:
+    """Render one 2x2 confusion matrix into `ax` with the deck's house style:
+    diagonal cells (correct) shaded Greens by row-%; off-diagonal cells
+    (errors) shaded Reds by row-%; cell text is TP/FN/FP/TN tag + count +
+    row-%; the per-panel footer prints prec / rec / acc / no-ans in monospace.
+
+    Row normalisation (not column, not global) so each `true X` row reads as a
+    distribution over predictions — "of the trials where the truth was VALID,
+    what % did the model predict VALID?". Diagonal-as-accuracy, off-diagonal-
+    as-error-mode is the H1/H2 reading we care about.
+    """
+    mx = np.array([[cm["tp"], cm["fn"]], [cm["fp"], cm["tn"]]], dtype=float)
+    row_sums = mx.sum(axis=1, keepdims=True)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        row_pct = np.where(row_sums > 0, mx / row_sums * 100.0, np.nan)
+    # Build an RGB image — Greens on the diagonal, Reds off-diagonal — so the
+    # reader sees "good vs bad" as colour family, not just intensity.
+    img = np.ones((2, 2, 3))
+    for (r_, c_), v in np.ndenumerate(row_pct):
+        if np.isnan(v):
+            continue
+        # Scale 0..100 → 0.15..0.85 so even small counts get visible shade
+        # and full rows don't max out to unreadable near-black.
+        shade = 0.15 + (v / 100.0) * 0.70
+        cmap = GREENS if r_ == c_ else REDS
+        img[r_, c_] = cmap(shade)[:3]
+    ax.imshow(img, aspect="equal")
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(["pred VALID", "pred INVALID"], fontsize=9)
+    ax.set_yticklabels(["true VALID", "true INVALID"], fontsize=9)
+    ax.set_xticks([0.5], minor=True)
+    ax.set_yticks([0.5], minor=True)
+    ax.grid(which="minor", color="white", linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    for (r_, c_), v in np.ndenumerate(mx):
+        pct = row_pct[r_, c_]
+        # Text colour: dark cells get white text, light cells get black.
+        is_dark = (not np.isnan(pct)) and pct >= 55
+        text_color = "white" if is_dark else "#111"
+        ax.text(c_, r_ - 0.30, CELL_TAGS[r_, c_],
+                ha="center", va="center", color=text_color,
+                fontsize=10, fontweight="bold")
+        ax.text(c_, r_ + 0.02, f"{int(v)}",
+                ha="center", va="center", color=text_color,
+                fontsize=15, fontweight="bold")
+        if not np.isnan(pct):
+            ax.text(c_, r_ + 0.30, f"{pct:.0f}%",
+                    ha="center", va="center", color=text_color,
+                    fontsize=8)
+    metr = metrics_from_cm(cm)
+    def _f(x: float) -> str:
+        return f"{x:.2f}" if not np.isnan(x) else "—"
+    footer = (f"prec={_f(metr['precision'])}  rec={_f(metr['recall'])}  "
+              f"acc={_f(metr['accuracy_all'])}  no-ans={cm['no_ans']}")
+    ax.set_title(f"{condition_label} · {TASK_LABEL.get(task, task)}",
+                 fontsize=10, fontweight="bold")
+    ax.text(0.5, -0.30, footer, transform=ax.transAxes,
+            ha="center", va="top", fontsize=8, family="monospace",
+            color="#444")
+
+
+def fig_confusion_per_model(model: str, think: str,
+                            save_path: Path) -> Path | None:
+    """Per-model · per-think-mode confusion-matrix slide.
+
+    Replaces the all-models grid (5 × 3 = 15 panels per slide, cramped) with
+    a 2 × 3 layout: rows = no-tools (nt-neut) vs with-tools (tl-neut); cols
+    = validate_domain / validate_problem / validate_plan. Lets the reader
+    do the nt → tl read in one vertical saccade per task. Drops tl-ster on
+    purpose — steering acts on the upstream "use the tool?" decision and is
+    already covered by the H2 slides; confusion stays a clean nt vs tl
+    classification contrast.
+
+    Returns None when the model has no nt-neut AND no tl-neut data for this
+    think mode, so build() skips the slide rather than emitting blanks.
+    """
     nt_arm = _pick_no_tools_neutral_arm()
-    # Each cell labels the count with the canonical TP/FN/FP/TN tag so the
-    # reader doesn't have to map quadrants → metric type by memory. White
-    # gridlines between cells make the 2×2 boundary explicit; wider
-    # wspace/hspace separates per-task panels so labels don't crowd.
-    fig, axes = plt.subplots(len(models), 3, figsize=(12, 3.4 * len(models)))
-    if len(models) == 1:
-        axes = axes[None, :]
-    cell_tags = np.array([["TP", "FN"], ["FP", "TN"]])
-    for i, m in enumerate(models):
-        rows_ = CELLS.get((m, think, nt_arm), [])
-        for j, task in enumerate(["validate_domain", "validate_problem", "validate_plan"]):
+    tl_arm = _pick_with_tools_neutral_arm()
+    nt_rows = CELLS.get((model, think, nt_arm), []) if nt_arm else []
+    tl_rows = CELLS.get((model, think, tl_arm), []) if tl_arm else []
+    if not nt_rows and not tl_rows:
+        return None
+
+    fig, axes = plt.subplots(2, 3, figsize=(13.5, 8.0))
+    rows_def = [
+        ("no-tools", nt_rows, nt_arm),
+        ("with-tools", tl_rows, tl_arm),
+    ]
+    for i, (label, rows_, arm) in enumerate(rows_def):
+        for j, task in enumerate(VAL_TASKS):
             ax = axes[i, j]
+            if not rows_:
+                ax.axis("off")
+                ax.text(0.5, 0.5,
+                        f"(no {arm or label} data)",
+                        ha="center", va="center", fontsize=11, color="#888",
+                        transform=ax.transAxes)
+                continue
             cm = confusion(rows_, task)
-            mx = np.array([[cm["tp"], cm["fn"]], [cm["fp"], cm["tn"]]])
-            ax.imshow(mx, cmap="Blues")
-            ax.set_xticks([0, 1])
-            ax.set_yticks([0, 1])
-            ax.set_xticklabels(["pred VALID", "pred INVALID"], fontsize=9)
-            ax.set_yticklabels(["true VALID", "true INVALID"], fontsize=9)
-            # White gridlines between the 4 quadrants — separates TP/FP/FN/TN
-            # visually. Set on minor ticks so the major axis labels stay clean.
-            ax.set_xticks([0.5], minor=True)
-            ax.set_yticks([0.5], minor=True)
-            ax.grid(which="minor", color="white", linewidth=3)
-            ax.tick_params(which="minor", bottom=False, left=False)
-            metr = metrics_from_cm(cm)
-            for (r_, c_), v in np.ndenumerate(mx):
-                color = "white" if v > mx.max() / 2 else "black"
-                ax.text(c_, r_ - 0.18, cell_tags[r_, c_],
-                        ha="center", va="center", color=color,
-                        fontsize=11, fontweight="bold")
-                ax.text(c_, r_ + 0.18, str(v),
-                        ha="center", va="center", color=color, fontsize=11)
-            ax.set_title(
-                f"{MODEL_DISP[m]} · {task}\n"
-                f"prec={metr['precision']:.2f} rec={metr['recall']:.2f} "
-                f"acc={metr['accuracy_all']:.2f}  no-ans={cm['no_ans']}",
-                fontsize=9,
-            )
-    fig.suptitle(f"Confusion matrices · validation tasks · no-tools · think={think}",
-                 fontsize=13)
-    fig.subplots_adjust(wspace=0.45, hspace=0.55)
-    fig.tight_layout(rect=[0, 0, 1, 0.96])
+            _draw_cm_panel(ax, cm, task=task, condition_label=label)
+    fig.suptitle(
+        f"Validation tasks · confusion · {MODEL_DISP.get(model, model)} · "
+        f"think={think}",
+        fontsize=14, fontweight="bold")
+    fig.subplots_adjust(wspace=0.45, hspace=0.75)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
     return save_path
@@ -1204,86 +1283,73 @@ def _wrong_tool_share(rows: list[dict], task: str) -> float:
     return sum(1 for r in sub if r.get("failure_reason") == "wrong_tool") / len(sub) * 100
 
 
-def fig_h2_isolation(save_path: Path) -> Path | None:
-    """H2 isolation: tl-neut vs tl-ster on `tool_selected` + FR_WRONG_TOOL share.
+def fig_h2_isolation_for_model(model: str, save_path: Path) -> Path | None:
+    """H2 isolation, isolated to one model: tl-neut vs tl-ster on `tool_selected`.
+    One slide per model — the previous all-models grid crammed 4 bars × N
+    models per panel. H2 is a within-model claim (does steering shift *this*
+    model's selection?), so a shared x-axis across models adds no signal.
 
-    Two grouped bars per (model, think) per task: tool_selected% (bar height)
-    with the FR_WRONG_TOOL share annotated above. Sweep-5 H2 predicts steered
-    raises tool_selected AND lowers FR_WRONG_TOOL.
+    Per-task panel (2x3 grid). x-axis = think mode (off, on); two grouped bars
+    per think (neut, ster). Label format mirrors fig_tokens / fig_latency:
+    bar mean (`NN%`) in black above the bar tip. The earlier `wt:N%` inset
+    (FR_WRONG_TOOL share) was dropped 2026-05-25 — marketplace 1.4.0 cleanly
+    separates no-tool-call from wrong-tool, share is 0% across the sweep, the
+    inset only crowded short bars.
 
-    Returns None when neither arm has data (e.g. sweep-3/4 replay) so build()
-    can skip the slide rather than emit a chart of zero bars.
+    Returns None when this model has no tl-* data in either think mode (e.g.
+    sweep-3/4 replays without v11-16 records) so build() skips the slide
+    rather than emitting an all-NaN chart.
     """
     arms = ("tl-neut", "tl-ster")
-    has_data = any((m, t, a) in CELLS
-                   for m in MODEL_ORDER for t in ("off", "on") for a in arms)
+    has_data = any((model, t, a) in CELLS for t in ("off", "on") for a in arms)
     if not has_data:
         return None
-    # Mirror H1: 2x3 grid (was 1x5) so each task panel renders at usable size.
+
     n_cols = 3
     n_rows = (len(TASKS) + n_cols - 1) // n_cols
     fig, axes = plt.subplots(n_rows, n_cols,
                               figsize=(4.6 * n_cols, 4.0 * n_rows),
                               sharey=True, squeeze=False)
     axes_flat = axes.ravel()
+    widths = 0.35
+    thinks = ("off", "on")
     for ax, task in zip(axes_flat, TASKS):
-        models = [m for m in MODEL_ORDER
-                  if any((m, t, a) in CELLS for t in ("off", "on") for a in arms)]
-        if not models:
-            ax.axis("off")
-            ax.set_title(TASK_LABEL[task], fontsize=10)
-            continue
-        labels = []
-        widths = 0.35
-        positions = []
+        x = np.arange(len(thinks))
         neut_vals = []
         ster_vals = []
-        neut_wt = []
-        ster_wt = []
-        for i, m in enumerate(models):
-            for k, think in enumerate(("off", "on")):
-                pos = i * 2.5 + k
-                positions.append(pos)
-                labels.append(f"{MODEL_DISP[m]}·{think}")
-                neut_rows = CELLS.get((m, think, "tl-neut"), [])
-                ster_rows = CELLS.get((m, think, "tl-ster"), [])
-                neut_vals.append(tool_selected_rate(neut_rows, task)[0] * 100)
-                ster_vals.append(tool_selected_rate(ster_rows, task)[0] * 100)
-                neut_wt.append(_wrong_tool_share(neut_rows, task))
-                ster_wt.append(_wrong_tool_share(ster_rows, task))
-        positions = np.array(positions)
-        bars_n = ax.bar(positions - widths / 2, neut_vals, widths,
+        for think in thinks:
+            neut_rows = CELLS.get((model, think, "tl-neut"), [])
+            ster_rows = CELLS.get((model, think, "tl-ster"), [])
+            neut_vals.append(tool_selected_rate(neut_rows, task)[0] * 100
+                             if neut_rows else float("nan"))
+            ster_vals.append(tool_selected_rate(ster_rows, task)[0] * 100
+                             if ster_rows else float("nan"))
+        bars_n = ax.bar(x - widths / 2, neut_vals, widths,
                         color=_color_for_arm("tl-neut"), edgecolor="black",
                         linewidth=0.4, label=ARM_DISP.get("tl-neut", "tl-neut"))
-        bars_s = ax.bar(positions + widths / 2, ster_vals, widths,
+        bars_s = ax.bar(x + widths / 2, ster_vals, widths,
                         color=_color_for_arm("tl-ster"), edgecolor="black",
                         linewidth=0.4, label=ARM_DISP.get("tl-ster", "tl-ster"))
-        # Annotate FR_WRONG_TOOL share above each bar (red text) so the reader
-        # sees the H2 secondary outcome alongside the primary (selection rate).
-        for b, wt in zip(bars_n, neut_wt):
-            if np.isnan(b.get_height()) or np.isnan(wt):
-                continue
-            ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 1.5,
-                    f"wt:{wt:.0f}%", ha="center", va="bottom", fontsize=6.5,
-                    color="#a23b1d")
-        for b, wt in zip(bars_s, ster_wt):
-            if np.isnan(b.get_height()) or np.isnan(wt):
-                continue
-            ax.text(b.get_x() + b.get_width() / 2, b.get_height() + 1.5,
-                    f"wt:{wt:.0f}%", ha="center", va="bottom", fontsize=6.5,
-                    color="#a23b1d")
-        ax.set_xticks(positions)
-        ax.set_xticklabels(labels, rotation=70, ha="right", fontsize=7)
         ax.set_ylim(0, 115)
+        for bars, vals in ((bars_n, neut_vals), (bars_s, ster_vals)):
+            for b, v in zip(bars, vals):
+                h = b.get_height()
+                if np.isnan(h):
+                    continue
+                ax.text(b.get_x() + b.get_width() / 2, h, f"{v:.0f}%",
+                        ha="center", va="bottom", fontsize=8,
+                        color="#222", fontweight="bold")
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"think={t}" for t in thinks], fontsize=9)
         ax.set_title(TASK_LABEL[task], fontsize=10)
         ax.grid(axis="y", linestyle=":", alpha=0.4)
     for ax in axes_flat[len(TASKS):]:
         ax.axis("off")
     for row in range(n_rows):
-        axes[row, 0].set_ylabel(
-            "tool_selected %  (wt:N% = FR_WRONG_TOOL share)", fontsize=9)
+        axes[row, 0].set_ylabel("tool_selected %", fontsize=9)
     fig.suptitle(
-        "H2 isolation — steering effect on tool selection (tl-neut vs tl-ster).",
+        f"H2 isolation — {MODEL_DISP.get(model, model)} · steering effect on "
+        f"tool selection (tl-neut vs tl-ster).",
         fontsize=12)
     fig.legend([plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a)) for a in arms],
                [ARM_DISP.get(a, a) for a in arms],
@@ -1557,10 +1623,19 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
     if h1_path is not None:
         add_image_slide(prs, "H1 — tool utility (byte-identical prompts)", h1_path,
                         caption=captions["h1_isolation"])
-    h2_path = fig_h2_isolation(fig_dir / "h2_isolation.png")
-    if h2_path is not None:
-        add_image_slide(prs, "H2 — steering effect on tool selection", h2_path,
-                        caption=captions["h2_isolation"])
+    # H2 is a within-model claim (does steering shift *this* model's
+    # selection); the old all-models grid crammed 4 bars × N models per task
+    # panel and the `wt:N%` callouts overlapped neighboring bars. One slide
+    # per model — each fig returns None when that model has no tl-* data.
+    for m in MODEL_ORDER:
+        h2_path = fig_h2_isolation_for_model(
+            m, fig_dir / f"h2_isolation_{m}.png")
+        if h2_path is None:
+            continue
+        add_image_slide(
+            prs,
+            f"H2 — steering effect on tool selection · {MODEL_DISP.get(m, m)}",
+            h2_path, caption=captions["h2_isolation"])
 
     ts_path = fig_tool_selection(fig_dir / "tool_selection.png")
     add_image_slide(prs, "Tool selection rate per task — by arm", ts_path,
@@ -1583,31 +1658,50 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
     # "pooled across 5 tasks" aggregate has no pre-decided metric that
     # reflects the data. The reader is sent to the per-task slides below.
 
-    cm_off = fig_confusion_grid(fig_dir / "confusion_no_tools_off.png", "off")
-    cm_on  = fig_confusion_grid(fig_dir / "confusion_no_tools_on.png", "on")
-    add_image_slide(prs, "Validation tasks · no-tools · confusion matrices (think=off)", cm_off,
-                    caption=captions["confusion_off"])
-    add_image_slide(prs, "Validation tasks · no-tools · confusion matrices (think=on)", cm_on,
-                    caption=captions["confusion_on"])
+    # Confusion: per-model slides comparing nt-neut (no-tools) vs tl-neut
+    # (with-tools) on the 3 validation tasks. The previous all-models grid
+    # (5 × 3 panels per slide) was unreadable; per-model lets the reader do
+    # the nt → tl read in one vertical saccade. tl-ster is intentionally
+    # dropped — steering is already isolated by the H2 slides.
+    for think in ("off", "on"):
+        for m in MODEL_ORDER:
+            cm_path = fig_confusion_per_model(
+                m, think, fig_dir / f"confusion_{m}_{think}.png")
+            if cm_path is None:
+                continue
+            add_image_slide(
+                prs,
+                f"Validation confusion · {MODEL_DISP.get(m, m)} · think={think}",
+                cm_path,
+                caption=captions[f"confusion_{think}"])
 
     nt_arm_for_table = _pick_no_tools_neutral_arm()
+    tl_arm_for_table = _pick_with_tools_neutral_arm()
+    table_arms: list[tuple[str, str | None]] = [("no-tools", nt_arm_for_table)]
+    if tl_arm_for_table is not None:
+        table_arms.append(("with-tools", tl_arm_for_table))
     for think in ["off", "on"]:
-        headers = ["model", "task", "TP", "FP", "FN", "TN", "no-ans", "prec", "rec", "acc"]
-        rows_out = []
-        for m in models_present(think):
-            for task in ["validate_domain", "validate_problem", "validate_plan"]:
-                cm = confusion(CELLS.get((m, think, nt_arm_for_table), []), task)
-                metr = metrics_from_cm(cm)
-                rows_out.append([
-                    MODEL_DISP[m], TASK_LABEL[task],
-                    str(cm["tp"]), str(cm["fp"]), str(cm["fn"]), str(cm["tn"]), str(cm["no_ans"]),
-                    f"{metr['precision']:.2f}" if not np.isnan(metr['precision']) else "—",
-                    f"{metr['recall']:.2f}" if not np.isnan(metr['recall']) else "—",
-                    f"{metr['accuracy_all']:.2f}" if not np.isnan(metr['accuracy_all']) else "—",
-                ])
-        add_table_slide(prs, f"Validation-task metrics · no-tools · think={think}",
-                        headers, rows_out,
-                        notes="prec=TP/(TP+FP), rec=TP/(TP+FN), acc=(TP+TN)/all trials including no-ans.")
+        for cond_label, arm in table_arms:
+            headers = ["model", "task", "TP", "FP", "FN", "TN", "no-ans", "prec", "rec", "acc"]
+            rows_out = []
+            for m in models_present(think):
+                if (m, think, arm) not in CELLS:
+                    continue
+                for task in ["validate_domain", "validate_problem", "validate_plan"]:
+                    cm = confusion(CELLS.get((m, think, arm), []), task)
+                    metr = metrics_from_cm(cm)
+                    rows_out.append([
+                        MODEL_DISP[m], TASK_LABEL[task],
+                        str(cm["tp"]), str(cm["fp"]), str(cm["fn"]), str(cm["tn"]), str(cm["no_ans"]),
+                        f"{metr['precision']:.2f}" if not np.isnan(metr['precision']) else "—",
+                        f"{metr['recall']:.2f}" if not np.isnan(metr['recall']) else "—",
+                        f"{metr['accuracy_all']:.2f}" if not np.isnan(metr['accuracy_all']) else "—",
+                    ])
+            if not rows_out:
+                continue
+            add_table_slide(prs, f"Validation-task metrics · {cond_label} · think={think}",
+                            headers, rows_out,
+                            notes="prec=TP/(TP+FP), rec=TP/(TP+FN), acc=(TP+TN)/all trials including no-ans.")
 
     picks = find_malformed_simulate_samples()
     all_models_with_data = [m for m in MODEL_ORDER
