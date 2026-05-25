@@ -17,10 +17,8 @@
 # Env overrides:
 #   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
 
-set -eo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
-REMOTE_USER="${REMOTE_USER:-omereliy}"
-REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 SINCE=""
 JOBS=""
 
@@ -28,8 +26,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --since) shift; SINCE="$1"; shift ;;
         --jobs)  shift; JOBS="$1"; shift ;;
-        -h|--help)
-            sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) _show_help 2 18; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -107,11 +104,14 @@ def parse_mem_alloc(tres):
 # batch step's MaxRSS but the parent step's State / ExitCode / Elapsed. Group
 # by parent job id and merge.
 jobs = {}
+malformed = 0
 for line in sys.stdin:
     line = line.rstrip('\n')
     if not line: continue
     parts = line.split('|')
-    if len(parts) < 10: continue
+    if len(parts) < 10:
+        malformed += 1
+        continue
     jid_raw, jname, state, elapsed, maxrss, reqmem, alloctres, exitcode, dexit, comment = parts[:10]
     is_step = '.' in jid_raw
     parent = jid_raw.split('.')[0]
@@ -164,6 +164,10 @@ if mem_used_per_job:
         slack = (alloc - peak_rss) * 100 / alloc
         print(f'- `{jname}`: peak {fmt_rss(peak_rss)} of {fmt_rss(alloc)} '
               f'({slack:.0f}% slack) → safe `--mem={recommended}G`')
+
+if malformed:
+    print(f'WARN: {malformed} sacct line(s) had <10 fields and were skipped.',
+          file=sys.stderr)
 PY
 )
 

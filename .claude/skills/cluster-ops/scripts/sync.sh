@@ -19,13 +19,10 @@
 #   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
 #   REMOTE_RESULTS (default ~/pddl-copilot-experiments/results)
 
-set -eo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_lib.sh"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
-REMOTE_USER="${REMOTE_USER:-omereliy}"
-REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REMOTE_RESULTS="${REMOTE_RESULTS:-~/pddl-copilot-experiments/results}"
 
 DEST="${1:-$REPO_ROOT/results/sweep5-cluster-$(date +%Y%m%d)}"
