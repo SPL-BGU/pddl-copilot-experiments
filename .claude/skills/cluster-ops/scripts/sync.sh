@@ -21,6 +21,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_lib.sh"
+set -eo pipefail
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 REMOTE_RESULTS="${REMOTE_RESULTS:-~/pddl-copilot-experiments/results}"

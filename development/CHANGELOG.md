@@ -6,6 +6,20 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-25 — PR-69 review follow-up: palette + bash safety + table fallback
+
+Three small fixes surfaced by a high-effort code review of the simplification PR.
+
+- **`.claude/skills/analyzer/scripts/_constants.py`** — restored `ollama_parse_error` to `FAILURE_REASONS` (between `wrong_tool` and `loop_exhausted`) and its historical color `#9467bd` to `FAILURE_COLORS`. The previous claim that the rows were "legacy pre-vLLM corpora only" was wrong: `pddl_eval.runner` still emits the tag for live vLLM hermes/qwen3_xml/gemma4 parser failures (runner.py:74 documents the retention), so fig4 was silently rebucketing a named failure mode into the gray `'other'` slab. Reverses the corresponding fragment of the 2026-05-25 ANALYZER batch.
+- **`.claude/skills/analyzer/scripts/_constants.py`** — `decompose_cond` now returns `("-","-")` on both unparseable branches (non-`tools_*`/non-`no-tools` cond, and `tools_<token>` without an inner underscore), matching the sentinel contract of the deleted inline `_cond_parts` in table.py. Dormant on the active corpus but protects the `tool_filter` column meaning when a malformed cond slips through.
+- **`.claude/skills/cluster-ops/scripts/sync.sh`** — added `set -eo pipefail` after the `source _lib.sh` line, matching the belt-and-suspenders pattern in the five sibling scripts. `sync.sh` was the lone holdout, leaving its `SCRIPT_DIR` resolution unprotected.
+
+**Dismissed without fix** (CLAUDE.md "no shims, no hypotheticals"): analyzer import-order brittleness (auto-sort would shuffle `_constants` after `pddl_eval`; relies on documented ordering + `# noqa: E402`, never observed in the wild), and `save_results` 4→3-arg signature break for hypothetical out-of-tree callers (chain-archive deletion was intentional; the in-tree caller is updated).
+
+**Reproducibility.** No corpus migration. Plot fidelity on any results dir with `ollama_parse_error` rows improves (gray slab → named purple slice). Master pivot rows for malformed conds now print `-` in `tool_filter`.
+
+---
+
 ## 2026-05-25 — Cross-repo simplification pass (PR: `simplifications` → `sweep5-new-prompts`)
 
 **Branch:** `simplifications`, opened against `sweep5-new-prompts` for a lighter diff. Six independently-reviewable commits driven by a fan-out audit that found dead code, duplicated constants, redundant skill/agent definitions, scattered doc references, and a 2093-line CHANGELOG. No methodology change; existing `results/` corpora remain valid.

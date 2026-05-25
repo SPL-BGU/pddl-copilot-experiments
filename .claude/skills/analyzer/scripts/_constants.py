@@ -122,13 +122,15 @@ _lighten = lighten
 # ---------------------------------------------------------------------------
 
 # Canonical display order. Unknown reasons fall into 'other' / 'unknown'.
-# Legacy `ollama_parse_error` rows from pre-vLLM corpora bucket into 'other'.
+# `ollama_parse_error` is still emitted by the active vLLM runner for
+# hermes/qwen3_xml/gemma4 tool-call-parser failures (see runner.py:74) — the
+# tag name was retained for corpus continuity, not deprecated.
 FAILURE_REASONS = [
     "ok", "think_overflow", "truncated_no_answer", "format_parse_fail",
     "verdict_mismatch", "result_mismatch", "no_verdict_parsed",
     "plan_invalid", "simulate_empty",
-    "tool_not_selected", "tool_error", "wrong_tool", "loop_exhausted",
-    "exception", "unknown",
+    "tool_not_selected", "tool_error", "wrong_tool", "ollama_parse_error",
+    "loop_exhausted", "exception", "unknown",
 ]
 
 FAILURE_COLORS = {
@@ -144,6 +146,7 @@ FAILURE_COLORS = {
     "tool_not_selected":   "#d62728",
     "tool_error":          "#ff7f0e",
     "wrong_tool":          "#fbb4b9",
+    "ollama_parse_error":  "#9467bd",
     "loop_exhausted":      "#8c564b",
     "exception":           "#17becf",
     "unknown":             "#cccccc",
@@ -292,5 +295,5 @@ def decompose_cond(cond: str) -> tuple[str, str]:
         idx = rest.rfind("_")
         if idx > 0:
             return (rest[:idx], rest[idx + 1:])
-        return (rest, "-")
-    return (cond, "-")
+        return ("-", "-")
+    return ("-", "-")
