@@ -102,27 +102,33 @@ async def _connect_mcp() -> MCPPlanner:
 # ---------------------------------------------------------------------------
 
 
-async def _validate_domain(mcp: MCPPlanner, domain_pddl: str) -> bool | None:
-    raw = await mcp.call_tool("validate_pddl_syntax", {"domain": domain_pddl})
+_MUTATOR_RETRIES = 4
+_PLAN_TRUNCATE_PAD_MAX = 10
+
+
+async def _validate(mcp: MCPPlanner, tool_name: str, **args: str) -> bool | None:
+    """Generic MCP validator call. `tool_name` is `validate_domain` /
+    `validate_problem` / `validate_plan`; `args` are the tool's required
+    fields (domain, problem, plan).
+    """
+    raw = await mcp.call_tool(tool_name, args)
     return _parse_validation_verdict(raw)
+
+
+async def _validate_domain(mcp: MCPPlanner, domain_pddl: str) -> bool | None:
+    return await _validate(mcp, "validate_domain", domain=domain_pddl)
 
 
 async def _validate_problem(mcp: MCPPlanner, domain_pddl: str, problem_pddl: str) -> bool | None:
-    raw = await mcp.call_tool(
-        "validate_pddl_syntax",
-        {"domain": domain_pddl, "problem": problem_pddl},
-    )
-    return _parse_validation_verdict(raw)
+    return await _validate(mcp, "validate_problem",
+                           domain=domain_pddl, problem=problem_pddl)
 
 
 async def _validate_plan(
     mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan: str,
 ) -> bool | None:
-    raw = await mcp.call_tool(
-        "validate_pddl_syntax",
-        {"domain": domain_pddl, "problem": problem_pddl, "plan": plan},
-    )
-    return _parse_validation_verdict(raw)
+    return await _validate(mcp, "validate_plan",
+                           domain=domain_pddl, problem=problem_pddl, plan=plan)
 
 
 async def _solve(
@@ -225,9 +231,11 @@ def cmd_migrate(domain: str, dry_run: bool = False) -> None:
 # Format: domain → list of (from, to) string replacements applied to
 # each source problem file before MCP validation.
 #
-# Empty for domains where the source benchmark already matches; barman
-# needs olam-compatible's hyphen-form predicates rewritten to our
-# underscore-form (verified via MCP probe 2026-04-29).
+# Empty for domains where the source benchmark already matches MCP probe
+# parity. Only barman currently requires rewrites (olam-compatible's
+# hyphen-form predicates → our underscore-form, verified via MCP probe
+# 2026-04-29). Keep the dict-of-tuples shape so future domains can be added
+# without changing the call site in cmd_seed_problems.
 SEED_PREDICATE_REWRITES: dict[str, tuple[tuple[str, str], ...]] = {
     "barman": (
         ("shaker-empty-level", "shaker_empty_level"),
@@ -457,7 +465,7 @@ async def cmd_gen_invalid_plans(
         # mutator before falling through. Total candidate budget per
         # problem: ~16 attempts before raising.
         for mut_name, mut_fn in PLAN_MUTATORS:
-            for _ in range(4):
+            for _ in range(_MUTATOR_RETRIES):
                 if len(mutated) >= target:
                     break
                 candidate = mut_fn(v1_text, rng=rng)
@@ -471,7 +479,7 @@ async def cmd_gen_invalid_plans(
         # Pad with extra truncations of varying length when the
         # mutator pool exhausts itself before reaching `target`.
         n_drop = 1
-        while len(mutated) < target and n_drop < 10:
+        while len(mutated) < target and n_drop < _PLAN_TRUNCATE_PAD_MAX:
             candidate = _taxonomies.plan_truncate(v1_text, n_drop=n_drop)
             n_drop += 1
             if not candidate or candidate == v1_text or candidate in mutated:

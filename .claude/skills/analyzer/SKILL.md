@@ -10,9 +10,7 @@ argument-hint: [aggregate | plot | table | drift | observations]
 
 Triggers (so the skill auto-matches): "aggregate summaries", "plot results", "render figures", "make the paper table", "compare sweeps", "drift check", "is this run consistent with last week", "spot-check ongoing run", "what's the headline number", "summarize results".
 
-Operations (queue queries, rsync, preflight, sacct postmortem) live in the `cluster-ops` skill. Analysis (Markdown tables, figures, drift detection) lives here. The split exists because the two have different consumers: cluster-ops is invoked while a sweep is queued/running and the user wants knobs to turn; analyzer is invoked after results land and the user wants numbers and pictures. Mixing the two surfaces in one skill made each unfocused.
-
-This skill is **read-only** over experiment state — it never edits `run_experiment.py`, sbatch scripts, or result JSONs. It only emits Markdown / PNG / CSV / TeX into output dirs under each results root.
+**Skill boundary.** This skill is **read-only** over experiment state — it produces Markdown / PNG / CSV / TeX into output dirs under each results root and never edits `run_experiment.py`, sbatch scripts, or result JSONs. For queue queries, rsync, preflight, sacct postmortem, and destructive cleanup, delegate to the sibling `cluster-ops` skill.
 
 ## Conventions
 
@@ -56,9 +54,14 @@ python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --group
 python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --figs 1,4,5  # subset
 python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --no-ci       # drop CI whiskers
 python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --merge       # pooled (model, think) → plots/merged/
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5-live --by-arm           # four-arm split → plots/by_arm/
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5-live --by-arm --arms nt-neut,tl-neut  # H1 isolation
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5-live --by-arm --arms tl-neut,tl-ster  # H2 isolation
 ```
 
 `--figs` accepts `all` (default) or a comma list over `1, 3, 4, 5, 6` (chain figures `2`/`7` archived 2026-05-05; passing them is a hard error). `--no-ci` disables error bars on figs 1, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged.
+
+`--by-arm` (sweep-5 arm-aware mode) re-derives one series per `(cell, arm)` from each summary's `per_variant` dict. Arms come from `pddl_eval.summary.arm_for(with_tools, prompt_variant)`: `nt-neut` / `nt-ster` / `tl-neut` / `tl-ster` for sweep-5 (v11-v16); `nt-legacy` / `tl-legacy` for sweep-3/4 (v0-v10). Wilson CIs are recomputed on the pooled arm n. The `--arms` filter accepts a comma list of arm tags and is the H1/H2 isolation lever (development/sweep_prompt_bank_design.md §0 H1 → `nt-neut,tl-neut`; H2 → `tl-neut,tl-ster`). `fig4` (failure breakdown) auto-skips under `--by-arm` because per-variant cells in `summary_*.json` don't carry arm-tagged FR counts — use `build_deck.py` / `plot_focused.py` (which read trials.jsonl directly) for per-arm FR breakdowns.
 
 ### `scripts/plot_focused.py` — supervisor-friendly subset
 
@@ -67,11 +70,16 @@ Companion to `plot.py`: each focused figure answers ONE question with at most tw
 ```bash
 python3 .claude/skills/analyzer/scripts/plot_focused.py                # auto-pick latest
 python3 .claude/skills/analyzer/scripts/plot_focused.py <root> --figs 1,5,7
+python3 .claude/skills/analyzer/scripts/plot_focused.py <root> --figs h1   # sweep-5 H1 isolation
 ```
+
+`--figs h1` renders the sweep-5 H1 isolation per task: two bars per model (nt-neut vs tl-neut on `result_correct`) at byte-identical prompt content. Skipped silently on sweep-3/4 corpora (no v11-v13 records). Use the build_deck path or `plot.py --by-arm --arms tl-neut,tl-ster` for H2 (the H2 panel lives in plot.py because it carries the FR_WRONG_TOOL secondary outcome, not a one-question read).
 
 ### `scripts/table.py` — master pivot (md + csv + tex)
 
-One large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, host, jobid)`. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%}` × 5 tasks + ST-mean + total n. Chain `L=2..5` columns were dropped 2026-05-05 with the chain-phase archive. The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`).
+One large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, arm, host, jobid)` — one per `(cell × arm)` so the sweep-5 four-arm matrix reads directly as 3 rows per `(model, think)` for a main-only sweep (nt-neut + tl-neut + tl-ster) or 4 with the control. Wilson 95% CIs are recomputed on the arm-pooled n. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%, out-med}` × 5 tasks + ST-mean + total n. `out-med` is the output-token median (sweep-5 H3, n-weighted across the arm's variants — see CHANGELOG 2026-05-24). The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`) and adds `_out_med`.
+
+Sweep-3/4 corpora collapse to `*-legacy` arm rows, so the table renders unchanged from pre-arm-axis times (one row per cell, arm=`nt-legacy` or `tl-legacy`).
 
 ```bash
 python3 .claude/skills/analyzer/scripts/table.py                                    # auto-pick latest
@@ -84,23 +92,44 @@ Reuses `parse_dirname` / `load_summaries` / `host_tag` from `aggregate.py` (same
 
 ### `scripts/filter_variants.py` — restrict trials.jsonl to a prompt-variant set
 
-When the on-cluster `trials.jsonl` files mix variants across sweeps (e.g. sweep-4 cells resumed sweep-3 in place; v0/v1/v2 carry-over rows sit alongside v5/v6/v7), this script projects to one variant set and regenerates `summary_*.json` + `single_task_*.json` per cell into a fresh synthetic results root. Cell dirs whose names contain retired-axis substrings (`per-task`, `guided`) are skipped automatically. `--min-out` gates cells below a kept-trial threshold so partials don't enter a published checkpoint.
+When the on-cluster `trials.jsonl` files mix variants across sweeps (e.g. sweep-5 cells resumed sweep-4 in place; v5/v6/v7 carry-over rows sit alongside v11..v16, and the sweep-5 control `(no-tools × v14-16)` lands in the same no-tools cell dirs as the main sweep), this script projects to one variant set and regenerates `summary_*.json` + `single_task_*.json` per cell into a fresh synthetic results root. Cell dirs whose names contain retired-axis substrings (`per-task`, `guided`) are skipped automatically. `--min-out` gates cells below a kept-trial threshold so partials don't enter a published checkpoint.
+
+**Sweep-5 split is explicit, not implicit.** The `--arm` flag is the ergonomic front door: `--arm neutral` (v11-13) for H1 isolation, `--arm steered` (v14-16) for H2 / control, `--arm both` (default) for the full active set. Per-arm cells complete at 4560 trials; the with-tools full-active cell completes at 9120 (3 variants per arm × 1520 trials/variant × 2 arms = 9120).
 
 ```bash
-# Sweep-4 multi-model corpus (canonical 4560-trial cells only):
+# Sweep-5 full active set (default --arm both); useful for getting all rows
+# in one place. Apply --arm-specific filters below for hypothesis-isolating
+# checkpoints.
+python3 .claude/skills/analyzer/scripts/filter_variants.py \
+    --src sweep5-cluster-20260601 --dst sweep5-main \
+    --model-glob 'slurm_vllm_*'
+
+# Sweep-5 H1 isolation (neutral arm only — byte-identical prompt across
+# no-tools and with-tools, the headline tool-utility comparison):
+python3 .claude/skills/analyzer/scripts/filter_variants.py \
+    --src sweep5-cluster-20260601 --dst sweep5-neutral \
+    --model-glob 'slurm_vllm_*' --arm neutral --min-out 4560
+
+# Sweep-5 H2 isolation (steered arm — measures the steering effect within
+# with-tools; also use this filter to extract the 4th-arm control submit
+# if its trials were merged into the main no-tools dirs):
+python3 .claude/skills/analyzer/scripts/filter_variants.py \
+    --src sweep5-cluster-20260601 --dst sweep5-steered \
+    --model-glob 'slurm_vllm_*' --arm steered --min-out 4560
+
+# Sweep-4 replay (historical — explicit --variants since --arm presets
+# only encode sweep-5 indices):
 python3 .claude/skills/analyzer/scripts/filter_variants.py \
     --src sweep4-cluster-20260519 --dst sweep4-v5-v7-first \
     --model-glob 'slurm_vllm_Qwen3_5_0_8B_*,slurm_vllm_qwen3_6_35b_*' \
-    --min-out 4560
-
-# Different variant set:
-python3 .claude/skills/analyzer/scripts/filter_variants.py \
-    --src <sync> --dst <out> --model-glob 'slurm_vllm_*' --variants 8,9,10
+    --variants 5,6,7 --min-out 4560
 ```
 
 ### `scripts/build_deck.py` — render a paper-talk PPTX from a filtered root
 
-Reads a small `deck_config.py` (model order, condition order, captions, results path) and writes a self-contained 18–21 slide deck: success-by-condition (off/on), tool-selection per task, tool-selection vs successful-tool-use, confusion-matrix grids, validation-metric tables, simulate failure-proof slides, token-accounting note + 7 token slides, and 2 latency slides. Chart functions and slide order are baked into the script — per-checkpoint customization is config-only. See `checkpoints/sweep4-v5-v7-first/deck_config.py` for a worked example.
+Reads a small `deck_config.py` (model order, captions, results path) and writes a self-contained ~16-slide deck on a sweep-5 corpus (~14 slides on a sweep-3/4 replay — H1/H2 slides are skipped when the relevant arms are absent): success-by-arm (off/on), H1 isolation slide (nt-neut vs tl-neut on result_correct at byte-identical prompts), H2 isolation slide (tl-neut vs tl-ster on tool_selected with FR_WRONG_TOOL share annotation), tool-selection per task, tool-selection vs successful-tool-use, confusion-matrix grids (nt-neut), validation-metric tables, simulate failure-proof slides, output-token note + 7 output-token slides (input tokens dropped 2026-05-24), and 2 latency slides. Chart functions and slide order are baked into the script — per-checkpoint customization is config-only. See `checkpoints/sweep5-live/deck_config.py` for the worked sweep-5 example (or `checkpoints/sweep4-v5-v7-first/deck_config.py` for the sweep-3/4 replay form).
+
+**Arm-axis behavior.** `build_deck.py` re-keys each cell's trials.jsonl into `(model, think, arm)` buckets via `pddl_eval.summary.arm_for()`. A sweep-5 `tools_all_minimal` dir splits into two arm buckets (`tl-neut` from v11-13, `tl-ster` from v14-16); a sweep-3/4 dir collapses into one `tl-legacy` bucket. `ARM_ORDER` is derived from data unless the deck_config sets it explicitly; empty arms are dropped (no reserved slot). Input tokens are no longer plotted — `TOKEN_NOTE_BULLETS` documents the policy and the 2-turn structural multiplier.
 
 ```bash
 python3 .claude/skills/analyzer/scripts/build_deck.py \
@@ -144,19 +173,29 @@ The standard end-of-sweep flow. Step 1 lives in `cluster-ops`; the rest in this 
 
 End-to-end recipe that turns a cluster sync into a tracked `checkpoints/<name>/` artifact bundle: per-model trial zips, master pivot, plots, deck. Use when a sweep with a new prompt set lands its first complete cells and you want a snapshot to share with collaborators.
 
-Variables: `<sync>` = synced cluster dirname (e.g. `sweep4-cluster-20260519`); `<name>` = checkpoint name (e.g. `sweep4-v5-v7-first`); `<variants>` = active prompt-variant ids (e.g. `5,6,7`).
+Variables: `<sync>` = synced cluster dirname (e.g. `sweep5-cluster-20260601`); `<name>` = checkpoint name (e.g. `sweep5-main`); `<variants>` = active prompt-variant ids (sweep-5 default: `11,12,13,14,15,16`; sweep-4 replay: `5,6,7`).
 
 ```bash
 # 1. Sync from cluster
 bash .claude/skills/cluster-ops/scripts/sync.sh results/<sync>
 
-# 2. Filter to active variants + regen summaries; skip cells below 4560 trials.
-#    For sweep-4 the default --variants 5,6,7 applies; for other sweeps pass --variants.
+# 2. Filter to active variants + regen summaries. Sweep-5 has asymmetric
+#    completion thresholds within a single dir: a complete with-tools cell
+#    holds v11-13 (4560 trials) AND v14-16 (4560), so `--arm both` +
+#    `--min-out 4560` would admit half-finished cells (4560-9119 trials).
+#    Run the filter TWICE — once per arm with uniform 4560 — and merge
+#    the resulting roots, or analyze the two arms independently.
 python3 .claude/skills/analyzer/scripts/filter_variants.py \
-    --src <sync> --dst <name> \
-    --model-glob 'slurm_vllm_*' --min-out 4560
+    --src <sync> --dst <name>-neutral \
+    --model-glob 'slurm_vllm_*' --arm neutral --min-out 4560
+python3 .claude/skills/analyzer/scripts/filter_variants.py \
+    --src <sync> --dst <name>-steered \
+    --model-glob 'slurm_vllm_*' --arm steered --min-out 4560
+# Sweep-4 replay: --variants 5,6,7 --min-out 4560 (single pass; no arm split).
 
-# 3. Aggregate / plot / table on the filtered root
+# 3. Aggregate / plot / table on EACH filtered root. Repeat for <name>-neutral
+#    and <name>-steered (steps below shown for one — substitute the other to
+#    produce the paired checkpoint). For a sweep-4 replay, drop the suffix.
 mkdir -p checkpoints/<name>/{plots,tables}
 python3 .claude/skills/analyzer/scripts/aggregate.py     results/<name> > checkpoints/<name>/aggregate.md
 python3 .claude/skills/analyzer/scripts/plot.py          results/<name>

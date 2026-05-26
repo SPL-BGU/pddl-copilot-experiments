@@ -13,8 +13,8 @@ For the task described in $ARGUMENTS:
 Read all relevant existing code using Grep and Glob. Identify reusable patterns and existing state so the plan doesn't reinvent them.
 
 Reference surface, in the order you typically need them:
-- `run_experiment.py` — experiment logic, `MCPPlanner` (MCP stdio client + `verbose` bridge stripping/injection), Ollama chat loop, scoring
-- `run_background.sh` — execution orchestration
+- `run_experiment.py` + `pddl_eval/` — experiment logic, MCPPlanner / vLLM chat loop / scoring. Bridge contract: EXPERIMENTS_FLOW.md §8.
+- `cluster-experimenting/` — execution orchestration (sbatch + submit wrappers)
 - `EXPERIMENTS_FLOW.md` — methodology, success criteria, MCP tool contract (§8), result schema (§9), paper-diff (§11)
 - `development/CHANGELOG.md` — dated record of framework + sibling-MCP changes; check here first to avoid re-solving something that's already landed
 - `development/OPEN_ISSUES.md` — known methodology gaps (`ISS-###`) with severity and fix sketches; many "should we fix X?" questions already have a written answer here
@@ -38,20 +38,20 @@ Before presenting the plan, review it for simplification and correctness:
 
 **Simplification:**
 - Can any proposed new file be merged into an existing file?
-- Can any proposed new script reuse existing logic from `run_experiment.py` or `run_background.sh`?
+- Can any proposed new script reuse existing logic from `run_experiment.py` or `cluster-experimenting/`?
 - Would a senior engineer say "this is more code than necessary"?
 - Does the change avoid adding abstractions with only one consumer?
 
 **Experiment integrity:**
 - Does the change preserve compatibility with existing results in `results/`?
 - Are evaluation metrics and success criteria unchanged (or intentionally updated)?
-- Does the MCP client interface remain consistent with the pddl-copilot plugin contract in EXPERIMENTS_FLOW.md §8 (including the bridge-pinned `verbose=False` convention for validator tools)?
+- Does the MCP client interface remain consistent with EXPERIMENTS_FLOW.md §8?
 - Is the change documented in `EXPERIMENTS_FLOW.md` if it affects methodology, and queued for `development/CHANGELOG.md`?
 - Does it close or partially address any open `ISS-###`?
 
 **Correctness:**
 - Are PDDL domain/problem paths resolved correctly?
-- Are Ollama model names and parameters correct?
+- Are model tags and `vllm_lookup` parameters correct?
 - Does error handling cover MCP connection failures and tool timeouts?
 
 If concerns found: revise the plan. Note what changed and why.

@@ -3,7 +3,7 @@
 Run standalone: `python3 tests/test_runner.py`
 Or via the shell wrapper: `bash tests/verify.sh`
 
-Pure-Python tests: no MCP, no Ollama, no fixture I/O.
+Pure-Python tests: no MCP, no live inference backend, no fixture I/O.
 """
 
 import asyncio
@@ -14,7 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tests._helpers import TestResults
+from tests._helpers import (
+    TestResults,
+    make_stub_evaluate_one,
+    make_stub_result,
+    stubbed_evaluate_one,
+)
 from pddl_eval.prompts import ACTIVE_PROMPT_VARIANTS
 from pddl_eval.runner import (
     TRIAL_KEY_LEN,
@@ -245,34 +250,17 @@ def test_writer_emits_loadable_jsonl(r: TestResults) -> None:
     """End-to-end: run_single_task_experiment writes JSONL the loader reads back.
 
     Stubs `evaluate_one` with a canned `TaskResult` so this test stays
-    pure-Python (no MCP, no Ollama). Verifies (a) the writer emits one
-    JSONL line per completed trial, (b) the line shape is what
+    pure-Python (no MCP, no live inference backend). Verifies (a) the writer
+    emits one JSONL line per completed trial, (b) the line shape is what
     `_load_progress` expects, (c) the key in the line matches what
     `_trial_key` would produce for the same trial — closing the gap
     where a writer-only refactor (e.g. swapping field order in the
     appended JSON) would silently break resume without any test
     catching it.
     """
-    from pddl_eval import runner as runner_mod
     from pddl_eval.resume import load_progress
 
-    async def stub_evaluate_one(
-        client, model, task, domain_name, domain_pddl,
-        problem_name, problem_pddl, prompt_variant, with_tools,
-        mcp, gt, **kwargs,
-    ):
-        return TaskResult(
-            model=model, task=task, domain_name=domain_name,
-            problem_name=problem_name, prompt_variant=prompt_variant,
-            with_tools=with_tools, success=True,
-            tool_filter=kwargs.get("tool_filter", "all"),
-            prompt_style=kwargs.get("prompt_style", "minimal"),
-            plan_label=kwargs.get("plan_label", ""),
-        )
-
-    original = runner_mod.evaluate_one
-    runner_mod.evaluate_one = stub_evaluate_one
-    try:
+    with stubbed_evaluate_one(make_stub_evaluate_one()):
         with tempfile.TemporaryDirectory() as d:
             progress_path = Path(d) / "trials.jsonl"
             domains = {
@@ -311,8 +299,6 @@ def test_writer_emits_loadable_jsonl(r: TestResults) -> None:
                 expected_key in keys,
                 f"expected {expected_key} in {keys}",
             )
-    finally:
-        runner_mod.evaluate_one = original
 
 
 def test_runner_filters_out_of_scope_restored(r: TestResults) -> None:
@@ -326,26 +312,9 @@ def test_runner_filters_out_of_scope_restored(r: TestResults) -> None:
     builds an `in_scope_keys` set during job emission and filters the
     `restored_by_key` dict by membership before merging.
     """
-    from pddl_eval import runner as runner_mod
     from pddl_eval.resume import load_progress
 
-    async def stub_evaluate_one(
-        client, model, task, domain_name, domain_pddl,
-        problem_name, problem_pddl, prompt_variant, with_tools,
-        mcp, gt, **kwargs,
-    ):
-        return TaskResult(
-            model=model, task=task, domain_name=domain_name,
-            problem_name=problem_name, prompt_variant=prompt_variant,
-            with_tools=with_tools, success=True,
-            tool_filter=kwargs.get("tool_filter", "all"),
-            prompt_style=kwargs.get("prompt_style", "minimal"),
-            plan_label=kwargs.get("plan_label", ""),
-        )
-
-    original = runner_mod.evaluate_one
-    runner_mod.evaluate_one = stub_evaluate_one
-    try:
+    with stubbed_evaluate_one(make_stub_evaluate_one()):
         with tempfile.TemporaryDirectory() as d:
             progress_path = Path(d) / "trials.jsonl"
             # Pre-seed with two records: one in-scope (model="m1"), one
@@ -394,8 +363,6 @@ def test_runner_filters_out_of_scope_restored(r: TestResults) -> None:
                 all(rr.model != "other-model" for rr in results),
                 f"found other-model in results: {[rr.model for rr in results]}",
             )
-    finally:
-        runner_mod.evaluate_one = original
 
 
 def test_runner_filters_out_partial_dropped_fixtures(r: TestResults) -> None:
@@ -407,26 +374,9 @@ def test_runner_filters_out_partial_dropped_fixtures(r: TestResults) -> None:
     targeting a fixture that's no longer in `domains` after the partial
     subset is out-of-scope and must be dropped.
     """
-    from pddl_eval import runner as runner_mod
     from pddl_eval.resume import load_progress
 
-    async def stub_evaluate_one(
-        client, model, task, domain_name, domain_pddl,
-        problem_name, problem_pddl, prompt_variant, with_tools,
-        mcp, gt, **kwargs,
-    ):
-        return TaskResult(
-            model=model, task=task, domain_name=domain_name,
-            problem_name=problem_name, prompt_variant=prompt_variant,
-            with_tools=with_tools, success=True,
-            tool_filter=kwargs.get("tool_filter", "all"),
-            prompt_style=kwargs.get("prompt_style", "minimal"),
-            plan_label=kwargs.get("plan_label", ""),
-        )
-
-    original = runner_mod.evaluate_one
-    runner_mod.evaluate_one = stub_evaluate_one
-    try:
+    with stubbed_evaluate_one(make_stub_evaluate_one()):
         with tempfile.TemporaryDirectory() as d:
             progress_path = Path(d) / "trials.jsonl"
             # Two records: p1 (kept) and p3 (dropped — caller passes only
@@ -471,8 +421,6 @@ def test_runner_filters_out_partial_dropped_fixtures(r: TestResults) -> None:
                 all(rr.problem_name != "p3" for rr in results),
                 f"found p3 in results: {[rr.problem_name for rr in results]}",
             )
-    finally:
-        runner_mod.evaluate_one = original
 
 
 def test_load_progress_dedups_repeated_keys(r: TestResults) -> None:

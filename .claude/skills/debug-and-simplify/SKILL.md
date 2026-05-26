@@ -1,6 +1,6 @@
 ---
 name: debug-and-simplify
-description: Diagnose and fix issues with experiment execution, MCP client connections, Ollama models, tool-call failures (truncation, JSON parse, tool_error), or result analysis. Use whenever the pipeline is broken, a run crashed, tool outputs look wrong, results JSON files are malformed, or `run_*.log` contains errors. Check `development/OPEN_ISSUES.md` before deep-diving — the symptom may already be a tracked `ISS-###` with a documented fix.
+description: Diagnose and fix issues with experiment execution, MCP client connections, vLLM server, tool-call failures (truncation, JSON parse, tool_error), or result analysis. Use whenever the pipeline is broken, a run crashed, tool outputs look wrong, results JSON files are malformed, or `run_*.log` contains errors. Check `development/OPEN_ISSUES.md` before deep-diving — the symptom may already be a tracked `ISS-###` with a documented fix.
 disable-model-invocation: true
 argument-hint: [description of the issue or error message]
 ---
@@ -18,14 +18,14 @@ Systematically check each layer, stopping when the root cause is found:
 **Layer 0 — Runtime basics:**
 1. Is the virtual environment set up? (`source .venv/bin/activate && pip list`)
 2. Are required dependencies installed? (`pip install -r requirements.txt`)
-3. Can `run_experiment.py` import its dependencies? `python3 -c "import mcp, ollama"`
+3. Can `run_experiment.py` import its dependencies? `python3 -c "import mcp, openai"`
 4. Is Java 17+ available? (`java -version` — required for ENHSP numeric planner)
 
-**Layer 1 — Ollama service:**
-1. Is Ollama running? (`curl -s http://localhost:11434/api/tags`)
-2. Is the target model pulled? (`ollama list`)
-3. Does a simple prompt work? (`ollama run <model> "test" --verbose`)
-4. Check `ollama_serve.log` for service errors
+**Layer 1 — vLLM service:**
+1. Is the vLLM server reachable? (`curl -s "${LLM_BASE_URL:-http://localhost:8000}/v1/models"`)
+2. Is the target HF model loaded? (the `/v1/models` response lists served IDs)
+3. Does a simple chat request work? (`curl "$LLM_BASE_URL/v1/chat/completions" -H 'Content-Type: application/json' -d '{"model":"<id>","messages":[{"role":"user","content":"hi"}]}'`)
+4. Check the vLLM serve log on the compute node (cluster) or local `vllm-serve.log`.
 
 **Layer 2 — MCP client connections:**
 1. Is `PDDL_MARKETPLACE_PATH` set or does pddl-copilot exist at the expected sibling path?
@@ -33,8 +33,8 @@ Systematically check each layer, stopping when the root cause is found:
 3. Do individual MCP tool calls succeed? Test with inline PDDL content
 4. Are tool responses in the expected format?
    - Standalone calls default to verbose: `validate_pddl_syntax` returns `{valid, status, report, details}`; `get_state_transition` returns `{valid, report, steps, trajectory, details}`.
-   - Through `MCPPlanner` the bridge injects `verbose=False` for both tools, so responses are projected: `{valid, status, report}` and `{valid, steps, trajectory}` respectively. See EXPERIMENTS_FLOW.md §8.
-   - If you see `details`/`report` keys in captured `tool_calls[*].result` strings from an experiment run, the bridge stripping is not happening — check `_PINNED_VERBOSE_FALSE` in `run_experiment.py::MCPPlanner` and the `inputSchema` handling in `connect()`.
+   - Through `MCPPlanner` the bridge projects validator + `get_state_transition` responses (see EXPERIMENTS_FLOW.md §8 for the contract).
+   - If captured `tool_calls[*].result` strings still carry `details`, the bridge isn't stripping `verbose` — check `_PINNED_VERBOSE_FALSE` and the `inputSchema` mutation in `MCPPlanner.connect()`.
 
 **Layer 3 — Experiment execution:**
 1. Does a single-task dry run work? (`python3 run_experiment.py --tasks solve --dry-run`)
@@ -67,13 +67,13 @@ Before committing the fix, review it:
 
 | Symptom | Likely cause | Quick check |
 |---------|-------------|-------------|
-| "ConnectionRefusedError" | Ollama not running | `curl localhost:11434/api/tags` |
+| "ConnectionRefusedError" / `APIConnectionError` | vLLM server not running or wrong URL | `curl $LLM_BASE_URL/v1/models` |
 | "ModuleNotFoundError" | Missing pip dependency | `pip install -r requirements.txt` |
 | MCP tool returns error dict | Plugin server issue or bad PDDL input | Test tool directly with known-good input |
-| "model not found" | Model not pulled | `ollama pull <model>` |
+| "model not found" / 404 from vLLM | Server not serving the requested HF id | Check `vllm_lookup()` and the `--model` arg on the serve command |
 | Numeric task fails | Java not installed or wrong version | `java -version` (need 17+) |
 | Empty results JSON | Ground-truth generation failed silently | Check log file for upstream errors |
-| Background run dies | OOM or Ollama crash | Check `ollama_serve.log` and system memory |
+| Background run dies | OOM or vLLM crash | Check the vLLM serve log and system memory |
 | Stale MCP connection | Plugin venv missing new deps | Delete plugin `.venv` and restart |
 | Validator tool result has `details`/verbose `report` inside `tool_calls[*].result` | Bridge not stripping `verbose` or not injecting `verbose=False` | Confirm `_PINNED_VERBOSE_FALSE` set and `inputSchema` mutation in `MCPPlanner.connect()` |
 | LLM reply cut with `done_reason="length"` on validate_* | `num_predict` cap (see `ISS-007`), not MCP output size | Raise `--num-predict` for validate tasks; do not chase MCP output fixes |

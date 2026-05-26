@@ -6,10 +6,9 @@ for a non-specialist audience. Each focused figure here answers ONE question
 with at most two bars per model.
 
 Usage:
-    python3 plot_focused.py                               # auto: cluster-26042026
-    python3 plot_focused.py checkpoints/cluster-26042026
+    python3 plot_focused.py                               # auto: DEFAULT_CHECKPOINT
+    python3 plot_focused.py checkpoints/sweep5-main       # explicit checkpoint
     python3 plot_focused.py <root> --figs 1,5,7
-    # (chain-focused fig3 was removed 2026-05-05; numeric IDs preserve meaning)
     python3 plot_focused.py <root> --no-ci
 
 Outputs go to <root>/plots/focused/.
@@ -43,6 +42,9 @@ from plot import (  # noqa: E402
     parse_dirname,
     wilson_ci,
 )
+# Arm classifier — used by fig_h1 to split records into the H1 isolation pair.
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from pddl_eval.summary import arm_for  # noqa: E402
 
 MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "Qwen3_5_27b",
                "qwen3_6_27b", "gemma4_31b", "gemma4_26b-a4b",
@@ -59,15 +61,24 @@ MODEL_LABELS = {
     "gpt-oss_20b":    "gpt-oss:20B",
     "gpt-oss_120b":   "gpt-oss:120B",
 }
-MCP_TOOLS = ["classic_planner", "numeric_planner", "validate_pddl_syntax",
+MCP_TOOLS = ["classic_planner", "numeric_planner",
+             "validate_domain", "validate_problem", "validate_plan",
+             "validate_pddl_syntax",
              "get_state_transition", "save_plan"]
 MCP_TOOL_LABELS = {
     "classic_planner":      "classic_planner",
     "numeric_planner":      "numeric_planner",
+    "validate_domain":      "validate_domain",
+    "validate_problem":     "validate_problem",
+    "validate_plan":        "validate_plan",
     "validate_pddl_syntax": "validate_syntax",
     "get_state_transition": "state_transition",
     "save_plan":            "save_plan",
 }
+# Historical sweep-3 baseline checkpoint kept as the no-arg default for
+# replay parity. Pass an explicit `<root>` (e.g. `checkpoints/sweep5-main`)
+# for current-sweep figures — the no-arg form should not be relied on
+# for paper-current numbers.
 DEFAULT_CHECKPOINT = "checkpoints/cluster-26042026"
 
 CLASSICAL_SET = set(CLASSICAL)
@@ -308,13 +319,6 @@ def fig2(records: list[dict], outdir: Path, draw_ci: bool):
               for m in models]
         print(f"  plot2[{task}] n(no-tools,with-tools) per model: {ns}", file=sys.stderr)
     return written
-
-
-# ---------------------------------------------------------------------------
-# fig 3: chain-focused panel — archived 2026-05-05 (chain phase removed
-# from the active flow; see CHANGELOG). The numeric ID is reserved so
-# `--figs` keeps its pre-archive meaning for adjacent plots.
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -792,12 +796,70 @@ def fig8c(records: list[dict], outdir: Path, draw_ci: bool):
 # CLI
 # ---------------------------------------------------------------------------
 
-FIG_KEYS = ("1", "2", "4", "5", "6", "7", "8a", "8b", "8c", "8")
+FIG_KEYS = ("1", "2", "4", "5", "6", "7", "8a", "8b", "8c", "8", "h1")
+
+
+def fig_h1(records: list[dict], outdir: Path, draw_ci: bool):
+    """Sweep-5 H1 isolation: nt-neut vs tl-neut on `result_correct` at
+    byte-identical prompt content. One PNG per task — two bars per model.
+
+    Lives in plot_focused (rather than plot.py) because it answers a single,
+    paper-headline question with at most two bars per model — the
+    'supervisor-friendly' shape this script was built for. plot.py handles
+    the panel-grid views; this one is for the one-slide read.
+
+    Skipped (returns []) on corpora whose nt-neut or tl-neut arm is empty —
+    sweep-3/4 replays will not produce a useful chart.
+    """
+    arms = ("nt-neut", "tl-neut")
+    relevant = [r for r in records
+                if arm_for(bool(r.get("with_tools_dir")),
+                           int(r["prompt_variant"])) in arms]
+    if not relevant:
+        print("  fig_h1 skipped: no nt-neut/tl-neut records", file=sys.stderr)
+        return []
+    # Tag each record with its arm to avoid recomputing in the inner loop.
+    for r in relevant:
+        r["_arm_h1"] = arm_for(bool(r["with_tools_dir"]),
+                                int(r["prompt_variant"]))
+    models = _models_present(relevant)
+    width = 0.40
+    written = []
+    arm_color = {"nt-neut": "#888888", "tl-neut": "#2E86AB"}
+    arm_label = {"nt-neut": "no-tools (neut)", "tl-neut": "tools (neut)"}
+    for task in TASKS:
+        sub = [r for r in relevant if r["task"] == task]
+        if not sub:
+            print(f"  fig_h1[{task}] skipped (no records)", file=sys.stderr)
+            continue
+        fig, ax = plt.subplots(figsize=(max(7.5, 0.95 * len(models) + 4.0), 4.4))
+        centers = []
+        for i, m in enumerate(models):
+            for j, arm in enumerate(arms):
+                cell = [r for r in sub if r["model_dir"] == m and r["_arm_h1"] == arm]
+                k, n = _agg_rate(cell)
+                x = i + (j - 0.5) * width * 1.05
+                _bar_with_ci(ax, x, k, n, arm_color[arm], hatch=None,
+                             label=None, width=width, draw_ci=draw_ci)
+            centers.append(i)
+        handles = [_legend_handle(arm_color[a], arm_label[a]) for a in arms]
+        ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0),
+                  fontsize=8, framealpha=0.9)
+        _setup_rate_axes(ax, centers, models,
+                         f"H1 isolation · {TASK_LABELS[task]}: tool utility at "
+                         f"byte-identical prompts (sweep-5 v11-v13)"
+                         + ("  (Wilson 95% CI)" if draw_ci else ""))
+        out = outdir / f"plot_h1_isolation__{task}.png"
+        fig.tight_layout()
+        fig.savefig(out, dpi=160, bbox_inches="tight")
+        plt.close(fig)
+        written.append(out.name)
+    return written
 
 
 def _parse_figs(spec: str) -> set[str]:
     if spec == "all":
-        out = {"1", "2", "4", "5", "6", "7", "8a", "8b", "8c"}
+        out = {"1", "2", "4", "5", "6", "7", "8a", "8b", "8c", "h1"}
         return out
     out: set[str] = set()
     for piece in spec.split(","):
@@ -806,11 +868,6 @@ def _parse_figs(spec: str) -> set[str]:
             continue
         if piece == "8":
             out.update({"8a", "8b", "8c"})
-        elif piece == "3":
-            sys.exit(
-                "--figs: chain-focused fig 3 archived 2026-05-05 (see CHANGELOG); "
-                f"valid: {sorted(FIG_KEYS)} or 'all'"
-            )
         elif piece in FIG_KEYS:
             out.add(piece)
         else:
@@ -826,8 +883,7 @@ def main():
     ap.add_argument("root", nargs="?", type=Path, default=None,
                     help=f"results root (default: <repo>/{DEFAULT_CHECKPOINT})")
     ap.add_argument("--figs", default="all",
-                    help="comma list (1,2,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'. "
-                         "Chain-focused fig 3 was removed 2026-05-05.")
+                    help="comma list (1,2,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'.")
     ap.add_argument("--no-ci", dest="ci", action="store_false", default=True,
                     help="omit Wilson 95%% CI whiskers / ribbons")
     args = ap.parse_args()
@@ -862,6 +918,7 @@ def main():
     if "8a" in figs: written += fig8a(records, outdir, args.ci)
     if "8b" in figs: written += fig8b(records, outdir, args.ci)
     if "8c" in figs: written += fig8c(records, outdir, args.ci)
+    if "h1" in figs: written += fig_h1(records, outdir, args.ci)
 
     print(f"wrote {len(written)} files → {outdir}", file=sys.stderr)
     for f in written:

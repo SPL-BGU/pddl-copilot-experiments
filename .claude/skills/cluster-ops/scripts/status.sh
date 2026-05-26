@@ -6,17 +6,35 @@
 # and renders five sections:
 #   1. Header (~hours since last check, or "first run")
 #   2. What changed (cells flipped to ✓ this window, new running cells)
-#   3. Per-cell progress matrix (5 active models × 4 think×cond cells in sweep-4)
+#   3. Per-cell progress matrix (5 active models × 8 logical columns —
+#      think × {no-tools, tools_all} × {neutral v11-13, steered v14-16})
 #   4. Δ since last status (only cells whose count grew, with pace + ETA)
-#   5. Roll-up (done X/20, coverage %, running cells, --time watch list)
+#   5. Roll-up (done X/40, coverage %, running cells, --time watch list)
 #   6. Queue (compact pending+running summary; useful when REASON ≠ normal)
 #
-# Sweep-4 matrix (active 2026-05-19): {no-tools, tools_all_minimal} ×
-# {think on, off} = 4 cells per model. tools_per-task_minimal was retired
-# from the active sweep with the prompt rewrite (see development/
-# CHANGELOG.md 2026-05-19 sweep-4 entries). Sweep-3 per-task result dirs
-# remain on disk and surface in the "skipped (unmatched)" footer; query
-# them via the analyzer skill if needed for baseline framing.
+# Sweep-5 matrix (active 2026-05-23): {no-tools, tools_all_minimal} ×
+# {think on, off} = 4 sbatch cells per model. The prompt-variant axis
+# (v11-13 neutral / v14-16 steered) lives WITHIN each cell, but status
+# splits it out as an explicit 8-column view so the neutral-vs-steered
+# breakdown is visible at a glance. Each logical column has a uniform
+# 4560-trial denominator (3 variants × 1520 trials/variant).
+#
+# Arm semantics (which cells get filled by which submit):
+#   no-tools-neutral    (v11-13) — main sweep-5 submit (always)
+#   no-tools-steered    (v14-16) — 4th-arm control submit
+#                                   (run_experiment.py --include-no-tools-steered)
+#   tools_all-neutral   (v11-13) — main sweep-5 submit (always)
+#   tools_all-steered   (v14-16) — main sweep-5 submit (always, same run as neutral)
+#
+# Both `tools_all-*` columns are filled by the same sbatch task that
+# writes the underlying `slurm_vllm_<model>_<think>_tools_all_minimal/`
+# trials.jsonl; the split is a row-level grep on STEERED_VARIANTS_RE.
+# `no-tools-steered` is the ONLY column that doesn't inherit queue/
+# running attribution from its sibling — main and control submits share
+# `cond=no-tools` jnames, so status can't tell them apart at the queue
+# layer. tools_per-task_minimal (retired 2026-05-19) and tools_*_guided
+# (earlier) result dirs surface in the "skipped (unmatched)" footer;
+# query via the analyzer skill if needed.
 #
 # Output mode (auto by stdout TTY-detect; override with flags):
 #   --terminal / --pretty   ANSI-coloured aligned text (default when TTY)
@@ -28,20 +46,29 @@
 #
 # Env: REMOTE_USER, REMOTE_HOST, REPO_REMOTE, STATE_FILE.
 
-set -eo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
-REMOTE_USER="${REMOTE_USER:-omereliy}"
-REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 STATE_FILE="${STATE_FILE:-$HOME/.cache/cluster-ops-status.json}"
 # Active prompt variants for the in-flight sweep. Trials.jsonl files can
-# carry rows from multiple sweeps (sweep-4 variant 5/6/7 trials append
-# alongside sweep-3 variant 0/1/2 trials in the same per-cell file since
-# the resume key includes prompt_variant — see pddl_eval/runner.py:441-451).
-# This regex character class filters the cluster-side trial count so the
-# progress matrix reflects ONLY the active sweep. Default = sweep-4
-# active set; override for sweep-5+ or for sweep-3 reproduction.
-ACTIVE_VARIANTS_RE="${ACTIVE_VARIANTS_RE:-[567]}"
+# carry rows from multiple sweeps (sweep-5 v11-16 append alongside
+# sweep-4 v5-7 and sweep-3 v0-2 in the same per-cell file since the
+# resume key includes prompt_variant — see pddl_eval/runner.py:441-451).
+# These regexes filter cluster-side trial counts so the progress matrix
+# reflects ONLY the active sweep.
+#
+#   ACTIVE_VARIANTS_RE  — full active set (default sweep-5: `1[1-6]`)
+#   STEERED_VARIANTS_RE — subset that lands in the steered/control
+#                         column (default sweep-5: `1[4-6]`). Set to ''
+#                         to disable splitting (sweep-4 replay mode).
+#
+# Both regexes feed into a `"prompt_variant": <RE>[^0-9]` grep pattern,
+# so multi-digit variant ids match correctly. For sweep-4 replay, run:
+#   ACTIVE_VARIANTS_RE='[567]' STEERED_VARIANTS_RE='' bash status.sh
+# For sweep-3 replay:
+#   ACTIVE_VARIANTS_RE='[012]' STEERED_VARIANTS_RE='' bash status.sh
+ACTIVE_VARIANTS_RE="${ACTIVE_VARIANTS_RE:-1[1-6]}"
+STEERED_VARIANTS_RE="${STEERED_VARIANTS_RE-1[4-6]}"
 
 # Output-mode flags (parsed before SSH so --help works offline).
 mode="auto"
@@ -51,8 +78,7 @@ for arg in "$@"; do
         --md|--markdown)        mode="md" ;;
         --terminal|--pretty)    mode="terminal" ;;
         --no-color)             color="off" ;;
-        -h|--help)
-            sed -n '2,18p' "$0"; exit 0 ;;
+        -h|--help) _show_help 2 40; exit 0 ;;
         *)
             printf 'unknown flag: %s\n' "$arg" >&2; exit 2 ;;
     esac
@@ -61,11 +87,12 @@ done
 mkdir -p "$(dirname "$STATE_FILE")"
 
 # Single SSH: dump queue + per-cell trial counts as two delimited blocks.
-remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" <<'REMOTE'
+remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" "$STEERED_VARIANTS_RE" <<'REMOTE'
 set -eo pipefail
 USER="$1"
 REPO="$2"
 VARIANTS_RE="$3"
+STEERED_RE="$4"
 echo "=== queue ==="
 # -r expands array ranges so each pending task is a separate row (otherwise
 # squeue collapses pending arrays like 17389411_[6-9] into one row, breaking
@@ -73,33 +100,47 @@ echo "=== queue ==="
 queue_lines=$(squeue -u "$USER" -r -h -o '%i|%j|%T|%M|%R' 2>/dev/null | sort || true)
 printf '%s\n' "$queue_lines"
 echo "=== counts ==="
-# Count only trials whose result.prompt_variant matches VARIANTS_RE
-# (sweep-isolation; see ACTIVE_VARIANTS_RE comment in the wrapper). The
-# trailing [^0-9] anchors the character class so VARIANTS_RE="[5-9]"
-# would match v5..v9 but not the first digit of v10/v15/v50. grep exit
-# codes: 0=match, 1=no-match (→ count 0), ≥2=real I/O error (warn + 0
-# so the matrix renders but the underlying problem surfaces in stderr).
+# Per dir, emit `<n_active>\t<n_steered>\t<basename>`. The local parser
+# derives neutral = active - steered so sweep-5 can split no-tools cells
+# into a main (v11-13) and control (v14-16) column. STEERED_RE empty →
+# n_steered=0 unconditionally (sweep-4 replay mode collapses to a single
+# count per cell).
+#
+# Parse trials.jsonl as JSON and dedup by the row-level `key` tuple — the
+# harness's resume path can append the same trial twice (timing race between
+# completion + checkpoint flush), so raw line counts overstate progress.
+# Matches the analyzer's dedup convention so status and analyzer agree.
+grep_count() {
+    local re="$1" path="$2"
+    if [ -z "$re" ]; then echo 0; return; fi
+    [ -f "$path" ] || { echo 0; return; }
+    python3 - "$re" "$path" <<'PY' 2>/dev/null || echo 0
+import json, re, sys
+pat = re.compile(sys.argv[1])
+seen = set()
+with open(sys.argv[2]) as f:
+    for line in f:
+        try:
+            r = json.loads(line)
+        except Exception:
+            continue
+        pv = r.get('result', {}).get('prompt_variant')
+        if pv is None: continue
+        if not pat.fullmatch(str(pv)): continue
+        seen.add(tuple(r.get('key', [])))
+print(len(seen))
+PY
+}
 shopt -s nullglob
 for d in "$HOME/$REPO/results/"slurm_*/; do
     if [ -f "$d/trials.jsonl" ]; then
-        # Run grep inside an `if` so `set -eo pipefail` doesn't kill the
-        # whole remote heredoc on rc=1 (no match — common for cells with
-        # no active-sweep trials yet). The then-branch (rc=0) keeps the
-        # match count grep already printed; the else-branch discriminates
-        # no-match (rc=1, n=0) from a real I/O error (rc≥2, warn + 0).
-        if n=$(grep -cE "\"prompt_variant\": $VARIANTS_RE[^0-9]" "$d/trials.jsonl" 2>/dev/null); then
-            :
-        else
-            rc=$?
-            if [ "$rc" -gt 1 ]; then
-                echo "warn: grep rc=$rc on $d/trials.jsonl" >&2
-            fi
-            n=0
-        fi
+        n_active=$(grep_count "$VARIANTS_RE" "$d/trials.jsonl")
+        n_steered=$(grep_count "$STEERED_RE" "$d/trials.jsonl")
     else
-        n=0
+        n_active=0
+        n_steered=0
     fi
-    printf '%s\t%s\n' "$n" "$(basename "$d")"
+    printf '%s\t%s\t%s\n' "$n_active" "$n_steered" "$(basename "$d")"
 done
 echo "=== manifests ==="
 # Emit `<arrayjid>\t<idx>\t<model>\t<think>\t<cond>` rows for every cells.tsv
@@ -120,10 +161,21 @@ echo "=== end ==="
 REMOTE
 )
 
-python3 - "$remote_payload" "$STATE_FILE" "$mode" "$color" <<'PY'
+# `steered_enabled` mirrors the bash STEERED_VARIANTS_RE state. When the
+# user disables steered tracking (sweep-4 replay: STEERED_VARIANTS_RE=''),
+# the Python renderer drops the four `*-steered` logical columns entirely
+# so the matrix collapses cleanly to 4 columns × 5 models = 20 cells.
+if [ -n "$STEERED_VARIANTS_RE" ]; then
+    steered_enabled=1
+else
+    steered_enabled=0
+fi
+
+python3 - "$remote_payload" "$STATE_FILE" "$mode" "$color" "$steered_enabled" <<'PY'
 import json, os, re, sys, time
 
 payload, state_file, mode_arg, color_arg = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+steered_enabled = (sys.argv[5] == "1") if len(sys.argv) > 5 else True
 
 # ---- Roster + dimensions (matches submit_with_rtx.sh --all roster) ----
 # 2026-05-18 swap: dropped gemma4_31b dense Ollama, added gemma4_26b-a4b
@@ -134,27 +186,57 @@ ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6
 DISPLAY = {"Qwen3_5_0_8B":"Qwen3.5:0.8B", "Qwen3_5_4B":"Qwen3.5:4B",
            "Qwen3_5_9B":"Qwen3.5:9B", "gemma4_26b-a4b":"gemma4:26b-a4b",
            "qwen3_6_35b":"qwen3.6:35b"}
-# Canonical backend per model (2026-05-18). Dirs from the OTHER backend
-# are skipped during counting — a model is fully owned by one backend so
-# the matrix reflects the active corpus choice and partial runs on the
-# wrong backend don't pollute progress. vLLM cells live under
-# `slurm_vllm_<model>_<think>_<cond>/`; Ollama cells under
-# `slurm_<model>_<think>_<cond>/`. Full roster is vLLM post 2026-05-18;
-# the prior Ollama gemma4_31b corpus stays on disk as drift anchor and
-# is counted as "skipped (wrong backend)" against the active roster.
-BACKEND = {"Qwen3_5_0_8B":"vllm", "Qwen3_5_4B":"vllm", "Qwen3_5_9B":"vllm",
-           "qwen3_6_35b":"vllm", "gemma4_26b-a4b":"vllm"}
-# Sweep-4 4-cell matrix per model (think ∈ {on,off} × cond ∈ {no-tools,
-# tools_all}). tools_per-task_minimal was retired 2026-05-19 with the
-# prompt-rewrite branch (PDDL_DEFAULT_CONDITIONS in lib/defaults.sh).
-# The legacy no-tools/think=on gate was lifted 2026-05-12 (commit fe1c061).
-# Order matches `short_hdrs` in render_terminal so the markdown and
-# terminal renderers render the same column sequence.
-CELLS = [("on","no-tools"),("on","tools_all_minimal"),
-         ("off","no-tools"),("off","tools_all_minimal")]
-COL_HEADERS = ["on / no-tools","on / tools_all",
-               "off / no-tools","off / tools_all"]
-DENOM = {"no-tools":4560, "tools_all_minimal":4560}
+# Post 2026-05-23 the harness writes a single OUT_DIR shape:
+# `slurm_vllm_<model>_<think>_<cond>/`. Legacy `slurm_<model>_<think>_<cond>/`
+# dirs (pre-vLLM-unification Ollama corpora — kept as drift anchors) are
+# counted in a separate "archived (pre-vLLM)" footer below; they never
+# affect the active matrix. The per-model BACKEND map that gated this
+# routing in the dual-backend era was retired with the Ollama backend.
+# Sweep-5 8-column matrix per model (think ∈ {on,off} × cond ∈
+# {no-tools-neutral, no-tools-steered, tools_all-neutral, tools_all-steered}).
+# The sbatch-level cond axis is still {no-tools, tools_all_minimal}, but
+# each underlying dir's trials are split into a neutral (v11-13) and a
+# steered (v14-16) subset by re-grepping on STEERED_VARIANTS_RE. The
+# split makes H1 (tools vs no-tools at byte-identical neutral prompt)
+# and H2 (steered vs neutral within with-tools) directly readable from
+# the status board. tools_per-task_minimal (retired 2026-05-19) and
+# tools_*_guided (earlier) no longer appear. The legacy no-tools/think=on
+# matrix-gate was lifted 2026-05-12 (commit fe1c061). Order matches
+# `short_hdrs` in render_terminal so markdown and terminal renderers
+# stay in lock-step.
+CELLS = [("on","no-tools-neutral"),("on","no-tools-steered"),
+         ("on","tools_all-neutral"),("on","tools_all-steered"),
+         ("off","no-tools-neutral"),("off","no-tools-steered"),
+         ("off","tools_all-neutral"),("off","tools_all-steered")]
+COL_HEADERS = ["on / nt-neut","on / nt-ster","on / tl-neut","on / tl-ster",
+               "off / nt-neut","off / nt-ster","off / tl-neut","off / tl-ster"]
+# Sweep-4/3 replay mode collapses to neutral-only (4 columns × 5 models = 20
+# cells). Steered grep was disabled (STEERED_VARIANTS_RE=''), so steered
+# counts would all be 0 and would render as phantom growing rows when the
+# underlying sbatch is RUNNING. Filter them out at the source.
+if not steered_enabled:
+    CELLS = [c for c in CELLS if not c[1].endswith("-steered")]
+    COL_HEADERS = [h for h in COL_HEADERS if "-ster" not in h]
+# Uniform per-column denominator: each logical column covers 3 variants ×
+# 1520 trials/variant = 4560. 1520 trials/variant is the sweep-3-onward
+# corpus (CHANGELOG.md:714).
+DENOM = {"no-tools-neutral":4560, "no-tools-steered":4560,
+         "tools_all-neutral":4560, "tools_all-steered":4560}
+# Maps a logical (split) cond to the underlying dirname cond so queue/
+# running attribution from the sbatch layer can fan back out to its
+# logical children. `no-tools-steered` is the only column that doesn't
+# inherit queue state — its sibling main submit shares the same
+# `cond=no-tools` jname.
+LOGICAL_TO_DIR_COND = {
+    "no-tools-neutral":  "no-tools",
+    "no-tools-steered":  "no-tools",   # special-cased in cell_status (no queue inheritance)
+    "tools_all-neutral": "tools_all_minimal",
+    "tools_all-steered": "tools_all_minimal",
+}
+# Dir-level conds (the actual sbatch/dirname/jname strings). Queue and
+# manifest attribution uses this set; the rendered matrix uses the
+# logical (split) conds via the COND_SPLIT mapping in the counts loop.
+DIR_CONDS = set(LOGICAL_TO_DIR_COND.values())
 # Per-model --time pin in submit_full_sweep.sh (2026-05-19):
 #   pack3 (Qwen3.5:0.8B/4B/9B): 12h
 #   slow models (qwen3.6:35b, gemma4:26b-a4b): 48h
@@ -170,7 +252,11 @@ TIME_LIMIT_H_DEFAULT = 48
 # `tools-pt`/`tools_pt` keys retained for backwards-compatibility with
 # pre-2026-05-19 sweep-3 cells that may still surface in the queue (e.g.
 # a resume of a sweep-3 job); they map to the retired condition string
-# so the parser doesn't silently classify them as unknown.
+# so the parser doesn't silently classify them as unknown. The split
+# `no-tools-steered` logical cond is NOT a sbatch-level cond and never
+# appears in jnames — it's a status-side view derived from prompt_variant
+# counts; queue rows for `no-tools` jobs always attribute to the main
+# (`no-tools`) column.
 SHORT_COND = {"tools-pt":"tools_per-task_minimal","tools_pt":"tools_per-task_minimal",
               "tools-all":"tools_all_minimal","tools_all":"tools_all_minimal",
               "notools":"no-tools","no-tools":"no-tools"}
@@ -201,49 +287,80 @@ for line in manifest_raw:
     if len(parts) != 5: continue
     jid, idx, model_tag, think, cond = parts
     m = MODEL_TAG_TO_ROSTER.get(model_tag)
-    if m and cond in DENOM:
+    if m and cond in DIR_CONDS:
         manifest_index[(jid, idx)] = (m, think, cond)
 
 # ---- Counts: dirname → (model, think, cond) ----
-# Two dir families exist on disk:
-#   * `slurm_<model>_<think>_<cond>/`        Ollama backend
-#   * `slurm_vllm_<model>_<think>_<cond>/`   vLLM backend
-# We strip the optional "vllm_" prefix, classify the dir's backend, then
-# count it only if it matches BACKEND[model] — the canonical backend for
-# the paper corpus. Dirs on the non-canonical backend (e.g. an Ollama
-# slurm_qwen3_6_35b_* from the prior corpus, now that 35B is owned by
-# vLLM) are reported under "skipped (wrong backend)" instead of polluting
-# the matrix or the unknown list.
-counts, unknown, wrong_backend = {}, [], []
+# Active dirs: `slurm_vllm_<model>_<think>_<cond>/`. Legacy
+# `slurm_<model>_<think>_<cond>/` (no `vllm_` infix) are archived
+# pre-vLLM-unification corpora — counted in a separate footer so the
+# active matrix isn't polluted by drift-anchor history.
+#
+# Each count line is `<n_active>\t<n_steered>\t<dirname>`. Every dir
+# (both no-tools and tools_all_minimal) is split into a neutral and a
+# steered logical column: neutral = active - steered. With STEERED_RE=''
+# on the wrapper, n_steered=0 unconditionally → all rows count as
+# neutral (sweep-4 replay behaviour, where the steered columns stay
+# empty).
+COND_SPLIT = {
+    "no-tools":          ("no-tools-neutral",  "no-tools-steered"),
+    "tools_all_minimal": ("tools_all-neutral", "tools_all-steered"),
+}
+counts, unknown, archived_legacy = {}, [], []
+malformed = 0   # finding #10: count silently-dropped count_raw lines and warn at end.
+oversteered = []   # finding #8: dirs where n_steered > n_active (regex misconfig).
 for line in count_raw:
-    n_str, _, dirname = line.partition("\t")
+    parts = line.split("\t", 2)
+    if len(parts) != 3:
+        malformed += 1
+        continue
+    n_active_str, n_steered_str, dirname = parts
     if not dirname.startswith("slurm_"): continue
-    try: n = int(n_str)
-    except ValueError: continue
+    try:
+        n_active = int(n_active_str)
+        n_steered = int(n_steered_str)
+    except ValueError:
+        malformed += 1
+        continue
     rem = dirname[len("slurm_"):]
     if rem.startswith("vllm_"):
         rem = rem[len("vllm_"):]
-        dir_backend = "vllm"
     else:
-        dir_backend = "ollama"
+        archived_legacy.append(dirname)
+        continue
     matched = None
-    backend_mismatch = False
     for m in ROSTER:
         if rem.startswith(m + "_"):
-            if BACKEND.get(m) != dir_backend:
-                backend_mismatch = True
-                break
             tail = rem[len(m)+1:]
             for th in ("on","off","default"):
                 if tail.startswith(th + "_"):
-                    cond = tail[len(th)+1:]
-                    if cond in DENOM:
-                        matched = (m, th, cond)
+                    dir_cond = tail[len(th)+1:]
+                    if dir_cond in COND_SPLIT:
+                        matched = (m, th, dir_cond)
                     break
             break
-    if matched:                  counts[matched] = n
-    elif backend_mismatch:       wrong_backend.append(dirname)
-    else:                        unknown.append(dirname)
+    if not matched:
+        unknown.append(dirname); continue
+    m, th, dir_cond = matched
+    neutral_col, steered_col = COND_SPLIT[dir_cond]
+    if n_steered > n_active:
+        oversteered.append((dirname, n_active, n_steered))
+    n_neutral = max(0, n_active - n_steered)
+    counts[(m, th, neutral_col)] = n_neutral
+    if steered_enabled:
+        counts[(m, th, steered_col)] = n_steered
+
+# Surface bash → Python wire-format / regex-config issues to stderr without
+# failing the run. Both are advisory: the matrix still renders, but the
+# operator may be looking at degraded data.
+if malformed and count_raw:
+    print(f"warn: dropped {malformed} malformed count_raw line(s); check remote heredoc wire format",
+          file=sys.stderr)
+if oversteered:
+    sample = ", ".join(f"{d}({a}/{s})" for d, a, s in oversteered[:3])
+    print(f"warn: STEERED_VARIANTS_RE matched more rows than ACTIVE_VARIANTS_RE in "
+          f"{len(oversteered)} dir(s) (e.g. {sample}); check regex overlap "
+          f"(neutral counts clamped to 0)", file=sys.stderr)
 
 # ---- Queue ----
 queue = []
@@ -252,13 +369,16 @@ for line in queue_raw:
     if len(parts) != 5: continue
     queue.append(dict(zip(("jid","jname","state","elapsed","reason"), parts)))
 
-def jname_to_cell(jname):
-    """Per-cell array task name → (model,think,cond).
-    vLLM:   pddl_vllm_Qwen3_5_9B_on_notools
-    Ollama (legacy): pddl_<model>_<think>_<cond> — no `vllm_` infix.
+def parse_jname(jname):
+    """Decode a SLURM job-name into (model, think, cond).
+
+    Per-cell array task name (vLLM: `pddl_vllm_<model>_<think>_<cond>` /
+    legacy Ollama: `pddl_<model>_<think>_<cond>`) decodes the full triple.
+    Parent-template names (pending pack jobs like `pddl_rtx_pack3_<model>`)
+    decode only the model; think/cond come back as None. Returns None if
+    no roster model is recognisable in the name.
     """
-    if not jname.startswith("pddl_"): return None
-    rem = jname[len("pddl_"):]
+    rem = jname[len("pddl_"):] if jname.startswith("pddl_") else jname
     if rem.startswith("vllm_"):
         rem = rem[len("vllm_"):]
     for m in ROSTER:
@@ -267,27 +387,42 @@ def jname_to_cell(jname):
             for th in ("on","off","default"):
                 if tail.startswith(th + "_"):
                     return (m, th, SHORT_COND.get(tail[len(th)+1:]))
-            break
+            return (m, None, None)
+    for m in ROSTER:
+        if m in jname:
+            return (m, None, None)
     return None
 
+def jname_to_cell(jname):
+    """Per-cell triple, or None for parent-template / unknown names."""
+    parsed = parse_jname(jname)
+    if parsed is None or parsed[1] is None:
+        return None
+    return parsed
+
 def jname_model(jname):
-    """Parent-template array name → model token, or None.
-    Used for pending tasks whose per-cell name hasn't materialised yet
-    (e.g. 'pddl_rtx_pack3_Qwen3_5_0_8B' covers all 6 cells of each model
-    in the small/mid pack — manifest resolves to the precise cell)."""
-    for m in ROSTER:
-        if m in jname: return m
-    return None
+    """Roster-model token, or None."""
+    parsed = parse_jname(jname)
+    return parsed[0] if parsed else None
+
+def is_queue_attributed_cell(cond):
+    """True iff queue rows for `cond` reliably attribute to THIS logical cell.
+
+    `no-tools-steered` shares cond=no-tools jnames with `no-tools-neutral`
+    (main + control submits emit the same dir-level cond), so queue rows
+    can't be split between the two arms — classify on counts only.
+    """
+    return cond != "no-tools-steered"
 
 cell_running, cell_pending, model_pending = {}, {}, set()
 for q in queue:
     cell = jname_to_cell(q["jname"])
-    if not (cell and cell[2] in DENOM):
+    if not (cell and cell[2] in DIR_CONDS):
         # Fall back to the manifest: ArrayJobId + ArrayTaskId → cell.
         jid_parts = q["jid"].split("_", 1)
         if len(jid_parts) == 2:
             cell = manifest_index.get((jid_parts[0], jid_parts[1]))
-    if cell and cell[2] in DENOM:
+    if cell and cell[2] in DIR_CONDS:
         if q["state"] == "RUNNING":   cell_running[cell] = q
         elif q["state"] == "PENDING": cell_pending[cell] = q
     elif q["state"] == "PENDING":
@@ -318,10 +453,43 @@ for cell, n in counts.items():
     prev = prev_counts.get(cell, 0)
     d = n - prev
     denom = DENOM[cell[2]]
-    pace_s = (window_s / d) if (d > 0 and window_s) else None
-    eta_h = ((denom - n) * pace_s / 3600) if (pace_s and n < denom) else None
     deltas[cell] = {"now":n, "prev":prev, "delta":d, "denom":denom,
-                    "pct":100*n/denom if denom else 0, "pace_s":pace_s, "eta_h":eta_h}
+                    "pct":100*n/denom if denom else 0, "pace_s":None, "eta_h":None}
+
+# Finding #3: pace_s / eta_h must be computed at the underlying sbatch
+# level, not per logical column. tl-neut and tl-ster share the same
+# physical sbatch (the with-tools dir's trials.jsonl). Aggregating
+# (delta, now, denom) by dir_cell and writing the result back to both
+# logical children gives correct per-trial pace and a true ETA for the
+# underlying job. Siblings will show identical pace/eta — visually
+# signalling "these belong to the same sbatch".
+dir_totals = {}
+for cell, d in deltas.items():
+    m, th, c = cell
+    dir_cond = LOGICAL_TO_DIR_COND[c]
+    dir_key = (m, th, dir_cond)
+    t = dir_totals.setdefault(dir_key, {"delta": 0, "now": 0, "denom": 0})
+    t["delta"] += d["delta"]
+    t["now"] += d["now"]
+    # Only fold a logical column's denom into the dir-level total when
+    # that arm is actually active in the current submit. Without this,
+    # main-only no-tools cells (steered arm dormant unless
+    # `--include-no-tools-steered` ran) doubled their dir denom from
+    # 4560 to 9120, halving `pace_s` and inflating `eta_h` ~2×.
+    # tools_all sbatch always emits both arms together (one with-tools
+    # cell produces v11..v16 in a single trials.jsonl), so for that
+    # dir_cond we always sum. no-tools dirs sum a sibling's denom only
+    # when that arm has on-disk evidence — the steered arm only fills
+    # under `--include-no-tools-steered`.
+    if dir_cond == "tools_all_minimal" or d["now"] > 0:
+        t["denom"] += d["denom"]
+for cell, d in deltas.items():
+    m, th, c = cell
+    t = dir_totals[(m, th, LOGICAL_TO_DIR_COND[c])]
+    pace_s = (window_s / t["delta"]) if (t["delta"] > 0 and window_s) else None
+    eta_h = ((t["denom"] - t["now"]) * pace_s / 3600) if (pace_s and t["now"] < t["denom"]) else None
+    d["pace_s"] = pace_s
+    d["eta_h"] = eta_h
 
 # ---- "What changed" since last invocation ----
 # Only meaningful when we have a prior cache to diff against; on first run
@@ -331,30 +499,51 @@ if prev_ts:
     for cell, d in deltas.items():
         if d["now"] >= d["denom"] and 0 < d["prev"] < d["denom"]:
             done_now.append((cell, d["prev"]))
-        elif d["prev"] == 0 and d["now"] > 0:
+        # Finding #5: the prev=0 → now>0 branch must ALSO require now<denom.
+        # Without it, a cell that arrived already-complete (e.g. from a
+        # pre-split cache where the prev key didn't match the new logical
+        # key, so prev=0) gets mislabelled as "newly started" instead of
+        # silently passed over. The post-upgrade noisefloor is otherwise
+        # ~30 fake ▶🆕 bullets per first run.
+        elif d["prev"] == 0 and 0 < d["now"] < d["denom"]:
             started_now.append((cell, d["now"]))
 
 # ---- Cell-status classification (shared by both renderers) ----
 # Returns one of: done, growing, stalled, pending_rerun, pending_fresh, empty.
+# Logical cells are split (neutral/steered); queue + pending attribution
+# is derived from the underlying dir-level cond via LOGICAL_TO_DIR_COND.
+# no-tools-steered is the one exception: main and control submits share
+# cond=no-tools jnames, so we can't tell which arm a queue row belongs
+# to → classify on counts only.
 def cell_status(cell):
+    m, th, c = cell
+    skip_queue = not is_queue_attributed_cell(c)
+    dir_cell = (m, th, LOGICAL_TO_DIR_COND[c])
+    n = counts.get(cell, 0); denom = DENOM[c]
+    grew = prev_ts is not None and deltas.get(cell, {}).get("delta", 0) > 0
     if cell not in counts:
-        if cell in cell_running:
-            return "growing"   # RUNNING but trials.jsonl not yet created (e.g. vLLM warmup)
-        if cell in cell_pending or cell[0] in model_pending:
+        # RUNNING but trials.jsonl not yet created (vLLM warmup).
+        if not skip_queue and dir_cell in cell_running:
+            return "growing"
+        if not skip_queue and (dir_cell in cell_pending or m in model_pending):
             return "pending_fresh"
         return "empty"
-    n = counts[cell]; denom = DENOM[cell[2]]
-    if n >= denom:                                 return "done"
-    grew = prev_ts is not None and deltas.get(cell, {}).get("delta", 0) > 0
-    if grew or cell in cell_running:               return "growing"
-    if cell in cell_pending or cell[0] in model_pending:
+    if n >= denom:                                                 return "done"
+    if grew:                                                       return "growing"
+    if not skip_queue and dir_cell in cell_running:                return "growing"
+    if not skip_queue and (dir_cell in cell_pending or m in model_pending):
         return "pending_rerun" if n > 0 else "pending_fresh"
-    if n > 0:                                      return "stalled"
+    if n > 0:                                                      return "stalled"
     return "empty"
 
 def cell_label(cell):
     m, th, c = cell
-    short = {"tools_per-task_minimal":"tools_pt","tools_all_minimal":"tools_all","no-tools":"no-tools"}[c]
+    # The `.get(c, c)` fallback prints any unmapped cond as-is — safe for
+    # an unexpected cache key (renders as itself instead of crashing).
+    short = {"no-tools-neutral":  "nt-neut",
+             "no-tools-steered":  "nt-ster",
+             "tools_all-neutral": "tl-neut",
+             "tools_all-steered": "tl-ster"}.get(c, c)
     return f"{DISPLAY[m]} {th}/{short}"
 
 def parse_elapsed_h(s):
@@ -377,12 +566,27 @@ total_denom = len(ROSTER) * sum(DENOM[c] for _, c in CELLS)
 coverage = (100*total_now/total_denom) if total_denom else 0
 
 watch = []
+# Finding #1: cell_running is keyed by dir-level cond, deltas by logical
+# (split) cond. Without dedup, every RUNNING tools_all sbatch emits TWO
+# watch entries (one per tl-neut / tl-ster sibling). De-dupe by dir_cell
+# so each physical sbatch produces at most one watch line. The no-tools-
+# steered skip stays — control-arm runs in a separate submit whose
+# elapsed isn't what cell_running has for the main no-tools sbatch.
+seen_dirs = set()
 for cell, d in deltas.items():
-    if cell not in cell_running: continue
-    elapsed_h = parse_elapsed_h(cell_running[cell]["elapsed"])
-    budget_h = TIME_LIMIT_H_BY_MODEL.get(cell[0], TIME_LIMIT_H_DEFAULT)
+    m, th, c = cell
+    if not is_queue_attributed_cell(c): continue
+    dir_cell = (m, th, LOGICAL_TO_DIR_COND.get(c, c))
+    if dir_cell in seen_dirs: continue
+    if dir_cell not in cell_running: continue
+    seen_dirs.add(dir_cell)
+    elapsed_h = parse_elapsed_h(cell_running[dir_cell]["elapsed"])
+    budget_h = TIME_LIMIT_H_BY_MODEL.get(m, TIME_LIMIT_H_DEFAULT)
+    # Watch lines now name the dir-level sbatch (e.g. "Qwen3.5:9B on/tools_all")
+    # since the ETA covers BOTH neutral and steered halves of that run.
+    dir_label = f"{DISPLAY[m]} {th}/{LOGICAL_TO_DIR_COND.get(c, c)}"
     if d["eta_h"] is not None and elapsed_h + d["eta_h"] > 0.9 * budget_h:
-        watch.append(f"{cell_label(cell)} ({elapsed_h:.0f}h+{d['eta_h']:.0f}h ETA → over 0.9×{budget_h}h)")
+        watch.append(f"{dir_label} ({elapsed_h:.0f}h+{d['eta_h']:.0f}h ETA → over 0.9×{budget_h}h)")
 
 run_jids = sorted({q["jid"] for q in cell_running.values()})
 running_jobs = [q for q in queue if q["state"] == "RUNNING"]
@@ -408,7 +612,7 @@ def render_markdown():
             out.append(f"- ▶🆕 **{cell_label(cell)}** started ({n}/{DENOM[cell[2]]} trials)")
         out.append("")
 
-    out.append("### Per-cell progress (denominator 4560)")
+    out.append("### Per-cell progress (denom 4560 per column · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16)")
     out.append("| Model | " + " | ".join(COL_HEADERS) + " |")
     out.append("|" + "|".join(["---"] * (1 + len(COL_HEADERS))) + "|")
     icon_md = {"done":"✓", "growing":"▶", "stalled":"⏸",
@@ -464,8 +668,8 @@ def render_markdown():
     if unknown:
         out.append("")
         out.append(f"_(skipped {len(unknown)} unmatched dirs: {', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''})_")
-    if wrong_backend:
-        out.append(f"_(skipped {len(wrong_backend)} dirs on non-canonical backend per BACKEND map: {', '.join(wrong_backend[:3])}{'…' if len(wrong_backend)>3 else ''})_")
+    if archived_legacy:
+        out.append(f"_(ignored {len(archived_legacy)} archived pre-vLLM dirs: {', '.join(archived_legacy[:3])}{'…' if len(archived_legacy)>3 else ''})_")
 
     return "\n".join(out)
 
@@ -522,11 +726,12 @@ def render_terminal(use_color):
         out.append("")
 
     # -- Per-cell progress matrix
-    out.append(H2("Per-cell progress") + DIM + "  (denom 4560)" + RESET)
-    short_hdrs = ["on/no-tools", "on/tools_all",
-                  "off/no-tools", "off/tools_all"]
+    out.append(H2("Per-cell progress")
+               + DIM + "  (denom 4560/col · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16)" + RESET)
+    short_hdrs = ["on/nt-neut", "on/nt-ster", "on/tl-neut", "on/tl-ster",
+                  "off/nt-neut","off/nt-ster","off/tl-neut","off/tl-ster"]
     MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
-    CELL_W  = 14   # " ✓  100.0%  " ≈ 11–12 chars; pad to 14 for separation
+    CELL_W  = 12   # tighter to fit 8 cells without wrapping a wide terminal
     header = _pad("Model", MODEL_W) + "".join(_pad(h, CELL_W, "left") for h in short_hdrs)
     out.append("  " + DIM + header + RESET)
     out.append("  " + DIM + "─" * _vlen(header) + RESET)
@@ -609,9 +814,9 @@ def render_terminal(use_color):
         out.append("")
         out.append(f"  {DIM}(skipped {len(unknown)} unmatched dirs: "
                    f"{', '.join(unknown[:3])}{'…' if len(unknown)>3 else ''}){RESET}")
-    if wrong_backend:
-        out.append(f"  {DIM}(skipped {len(wrong_backend)} dirs on non-canonical backend: "
-                   f"{', '.join(wrong_backend[:3])}{'…' if len(wrong_backend)>3 else ''}){RESET}")
+    if archived_legacy:
+        out.append(f"  {DIM}(ignored {len(archived_legacy)} archived pre-vLLM dirs: "
+                   f"{', '.join(archived_legacy[:3])}{'…' if len(archived_legacy)>3 else ''}){RESET}")
 
     return "\n".join(out)
 

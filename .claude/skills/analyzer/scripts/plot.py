@@ -14,15 +14,11 @@ Figures written to <root>/plots/:
     fig5_domain_heatmap.png    — (series × 10 domains) heatmap per task
     fig6_tool_adherence.png    — per-task tool_selected_rate (with-tools only)
 
-Chain-phase figures (fig2_chain, fig7_chain_step_survival) were dropped
-2026-05-05 when the chain phase was archived from the active flow.
-Numeric --figs IDs preserve their original meaning so old shell snippets
-(`--figs 1,4,5`) keep working; passing `2` or `7` is a hard error.
+Valid --figs: 1, 3, 4, 5, 6 (2 and 7 are reserved gaps).
 """
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
@@ -31,176 +27,47 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Canonical wilson_ci lives in pddl_eval/summary.py. Run from repo root.
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
-from pddl_eval.summary import wilson_ci  # noqa: E402
-
-TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
-TASK_LABELS = {
-    "solve": "Solve",
-    "validate_domain": "Val-Dom",
-    "validate_problem": "Val-Prob",
-    "validate_plan": "Val-Plan",
-    "simulate": "Simulate",
-}
-CONDITIONS = ["no-tools",
-              "tools_per-task_minimal", "tools_per-task_guided",
-              "tools_all_minimal", "tools_all_guided"]
-# Conds the active analysis pipeline ignores (retired axes). `per-task` is
-# being retired in sweep-5; `guided` is already disabled in the runner.
-# `load_series` filters these out by default; pass `include_retired=True`
-# to re-include them when re-rendering pre-2026-05 checkpoints.
-RETIRED_CONDS = {
-    "tools_per-task_minimal",
-    "tools_per-task_guided",
-    "tools_all_guided",
-}
-CLASSICAL = ["barman", "blocksworld", "depots", "rovers", "satellite"]
-NUMERIC = ["counters", "depot", "farmland", "pogo_stick", "sailing"]
-DOMAINS = CLASSICAL + NUMERIC
-
-# Colors by family, hatching by tool condition.
-# Keys are the underscore-tagged model form produced by parse_dirname
-# (submit_with_rtx.sh does `tr '/:.' '___'`), which is what we see in dir names.
-MODEL_COLORS = {
-    "Qwen3_5_0_8B":   "#d4c96b",
-    "Qwen3_5_4B":     "#a89535",
-    "Qwen3_5_9B":     "#7a6b1c",
-    "Qwen3_5_27b":    "#b89d2a",
-    "qwen3_6_27b":    "#c97d3b",
-    "qwen3_6_35b":    "#7b3f1d",
-    "gpt-oss_20b":    "#5c7fb3",
-    "gpt-oss_120b":   "#1a2e4f",
-    "gemma4_31b":     "#6f4a8a",
-    "gemma4_26b-a4b": "#9173b0",
-}
-COND_HATCH = {
-    "no-tools":               "////",
-    "tools_all_minimal":      None,
-    "tools_per-task_minimal": "....",
-    # Retained for back-compat re-plots of pre-2026-05 checkpoints; the active
-    # sweep dropped the guided variants. Mapping to None keeps them rendering
-    # cleanly (indistinguishable from tools_all_minimal — fine since they
-    # don't co-occur with it in any live cell set).
-    "tools_all_guided":       None,
-    "tools_per-task_guided":  None,
-}
-# think-mode shade: on → lighter tint of the model base color.
-# off / default keep the base color unchanged.
-THINK_LIGHTEN = {"off": 0.0, "default": 0.0, "on": 0.55}
-
-# Canonical order + color for failure reasons in fig4. Unknown reasons
-# bucket into 'other'. Keep in sync with FR_* constants in run_experiment.py.
-FAILURE_REASONS = [
-    "ok", "tool_not_selected", "tool_error", "ollama_parse_error",
-    "loop_exhausted", "verdict_mismatch", "result_mismatch",
-    "no_verdict_parsed", "simulate_empty", "plan_invalid",
-    "truncated_no_answer", "format_parse_fail", "think_overflow",
-    "exception", "unknown", "other",
-]
-FAILURE_COLORS = {
-    "ok":                  "#2ca02c",
-    "tool_not_selected":   "#d62728",
-    "tool_error":          "#ff7f0e",
-    "ollama_parse_error":  "#9467bd",
-    "loop_exhausted":      "#8c564b",
-    "verdict_mismatch":    "#e377c2",
-    "result_mismatch":     "#7f7f7f",
-    "no_verdict_parsed":   "#bcbd22",
-    "simulate_empty":      "#17becf",
-    "plan_invalid":        "#1f77b4",
-    "truncated_no_answer": "#aec7e8",
-    # Added 2026-05-20 (PR-#66 Zone-E audit): both were silently bucketed
-    # into the unnamed grey "other" slice. format_parse_fail is the dominant
-    # FR on no-tools cells with the v5/v6/v7 prompt rewrite (85.6% of
-    # validate_domain failures on Qwen3.5-0.8B no-tools).
-    "format_parse_fail":   "#c49c94",
-    "think_overflow":      "#f7b6d2",
-    "exception":           "#ff9896",
-    "unknown":             "#c5b0d5",
-    "other":               "#dddddd",
-}
-
-
-def _lighten(hex_color: str, factor: float) -> str:
-    """Blend `hex_color` toward white by `factor` ∈ [0, 1]."""
-    if factor <= 0.0:
-        return hex_color
-    r, g, b = (int(hex_color[i:i + 2], 16) for i in (1, 3, 5))
-    r = int(r + (255 - r) * factor)
-    g = int(g + (255 - g) * factor)
-    b = int(b + (255 - b) * factor)
-    return f"#{r:02x}{g:02x}{b:02x}"
-
-
-def find_default_root() -> Path:
-    repo = Path(__file__).resolve().parents[4]
-    results = repo / "results"
-    candidates = sorted(
-        list(results.glob("cluster-*")) + list(results.glob("full-cluster-run*")),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    if not candidates:
-        sys.exit(f"no results/cluster-* or results/full-cluster-run* dirs under {results}")
-    return candidates[0]
-
-
-def parse_dirname(name: str) -> dict | None:
-    stem = name.removeprefix("slurm_")
-    # `slurm_vllm_<…>` prefix from the 2026-05-11 vLLM production sbatch.
-    # Strip before suffix-matching so model isn't silently captured with
-    # the prefix attached. See aggregate.py docstring for full layout list.
-    if stem.startswith("vllm_"):
-        backend = "vllm"
-        stem = stem.removeprefix("vllm_")
-    else:
-        backend = "ollama"
-    m = re.match(r"^(.*)_(\d+)$", stem)
-    if m:
-        rest, jobid = m.group(1), m.group(2)
-    else:
-        rest, jobid = stem, ""
-    for cond in CONDITIONS:
-        suf = "_" + cond
-        if rest.endswith(suf):
-            pre = rest[: -len(suf)]
-            for think in ("on", "off", "default"):
-                s = "_" + think
-                if pre.endswith(s):
-                    model = pre[: -len(s)]
-                    return {"model": model, "think": think, "cond": cond,
-                            "jobid": jobid, "backend": backend}
-            return {"model": pre, "think": "default", "cond": cond,
-                    "jobid": jobid, "backend": backend, "legacy": True}
-    return None
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _constants import (  # noqa: E402,F401
+    ACTIVE_ARMS,
+    ALL_ARMS,
+    CLASSICAL,
+    COND_HATCH,
+    CONDITIONS,
+    DOMAINS,
+    FAILURE_COLORS,
+    FAILURE_REASONS,
+    LEGACY_ARMS,
+    MODEL_COLORS,
+    NEUTRAL_VARIANTS,
+    NUMERIC,
+    RETIRED_CONDS,
+    STEERED_VARIANTS,
+    TASK_LABELS,
+    TASKS,
+    THINK_LIGHTEN,
+    _lighten,
+    arm_for,
+    find_default_root,
+    iter_cells,
+    latest_single_task,
+    latest_summary,
+    parse_dirname_plotshape as parse_dirname,
+    wilson_ci,
+)
 
 
 def load_series(root: Path, include_legacy: bool,
                 include_retired: bool = False) -> list[dict]:
     entries = []
-    for d in sorted(root.glob("slurm_*")):
-        if not d.is_dir():
+    for d, info in iter_cells(root, include_retired=include_retired,
+                               include_legacy=include_legacy,
+                               parser="plotshape"):
+        summary = latest_summary(d)
+        if summary is None:
             continue
-        info = parse_dirname(d.name)
-        if info is None:
-            continue
-        if info.get("legacy") and not include_legacy:
-            continue
-        if not include_retired and info.get("cond") in RETIRED_CONDS:
-            continue
-        sfs = sorted(d.glob("summary_*.json"))
-        if not sfs:
-            continue
-        stfs = sorted(d.glob("single_task_*.json"))
-        with sfs[-1].open() as f:
-            summary = json.load(f)
-        instances = []
-        if stfs:
-            with stfs[-1].open() as f:
-                instances = json.load(f)
         info["summary"] = summary
-        info["instances"] = instances
+        info["instances"] = latest_single_task(d) or []
         info["dir"] = d
         entries.append(info)
     return entries
@@ -226,6 +93,140 @@ def style(info: dict) -> tuple[str, str | None]:
 def _wilson_err(rate: float, lo: float, hi: float) -> tuple[float, float]:
     """Return (err_lo, err_hi) for matplotlib errorbar yerr (always ≥0)."""
     return max(0.0, rate - lo), max(0.0, hi - rate)
+
+
+from _constants import (  # noqa: E402
+    arm_side as _arm_side,
+    arm_variant_set as _arm_variant_set,
+)
+
+
+def split_series_by_arm(series: list[dict]) -> list[dict]:
+    """Split each loaded series into per-arm series by pooling per_variant
+    cells and filtering instances.
+
+    Sweep-5 design (development/sweep_prompt_bank_design.md §0) frames result
+    comparisons by arm — `(no-tools|with-tools) × (neutral|steered)`. The
+    existing series is one-per-dir (i.e. per condition); after this split it
+    becomes one-per-(dir, arm). Wilson CIs are recomputed on the pooled
+    arm-level counts, NOT averaged from per-variant CIs (proper interval at
+    n=pooled).
+
+    Legacy corpora (sweep-3/4: v0-v10) collapse to a single `*-legacy` arm
+    so the existing fig1/3/4/5/6 stay renderable.
+    """
+    out: list[dict] = []
+    for s in series:
+        side = _arm_side(s["cond"])
+        summary = s.get("summary", {}) or {}
+        st_rows = summary.get("single_task", []) or []
+        # Collect variants present in this cell.
+        variants_present: set[int] = set()
+        for rec in st_rows:
+            for vk in (rec.get("per_variant", {}) or {}).keys():
+                try:
+                    variants_present.add(int(vk))
+                except (TypeError, ValueError):
+                    continue
+        # Determine which arm suffixes apply.
+        suffixes: list[str] = []
+        if variants_present & NEUTRAL_VARIANTS:
+            suffixes.append("neut")
+        if variants_present & STEERED_VARIANTS:
+            suffixes.append("ster")
+        if variants_present and not (variants_present & (NEUTRAL_VARIANTS | STEERED_VARIANTS)):
+            suffixes.append("legacy")
+        if not suffixes:
+            # No per_variant data at all (very-old corpus). Treat the whole
+            # cell as a single legacy arm so the plot still renders.
+            suffixes.append("legacy")
+        for suffix in suffixes:
+            arm = f"{side}-{suffix}"
+            target = _arm_variant_set(suffix)
+            pooled_single: list[dict] = []
+            for rec in st_rows:
+                if rec.get("n", 0) == 0:
+                    continue
+                pv = rec.get("per_variant", {}) or {}
+                # Pool successes / n / tool_selected / truncated across the
+                # arm-matching per_variant cells.
+                if pv:
+                    k = n = trunc = tool_k = 0
+                    for vk, cell in pv.items():
+                        try:
+                            v = int(vk)
+                        except (TypeError, ValueError):
+                            continue
+                        if target is None:
+                            if v in (NEUTRAL_VARIANTS | STEERED_VARIANTS):
+                                continue
+                        elif v not in target:
+                            continue
+                        k += cell.get("successes", 0)
+                        n += cell.get("n", 0)
+                        trunc += cell.get("truncated", 0)
+                        tool_k += cell.get("tool_selected", 0) or 0
+                else:
+                    # Pre-per_variant corpus: legacy arm consumes the whole cell;
+                    # active arms see zero data (skipped via continue below).
+                    if suffix != "legacy":
+                        continue
+                    k = rec.get("successes", 0)
+                    n = rec.get("n", 0)
+                    trunc = rec.get("truncated", 0)
+                    tool_k = rec.get("tool_selected", 0) or 0
+                if n == 0:
+                    continue
+                lo, hi = wilson_ci(k, n)
+                ts_lo, ts_hi = wilson_ci(tool_k, n)
+                pooled = {
+                    "model": s["model"], "task": rec["task"], "condition": arm,
+                    "successes": k, "n": n,
+                    "success_rate": round(k / n, 4),
+                    "ci_lo": lo, "ci_hi": hi,
+                    "truncated": trunc,
+                    # Failure-reason counts are not arm-tagged in summary_*.json
+                    # (the per_variant cells don't carry them). Synthesizing
+                    # arm-level FR shares from the whole-cell counts would be a
+                    # silent mis-attribution — leave empty so fig4 falls through
+                    # to "other" rather than mis-bucketing. Per-arm FR breakdowns
+                    # require trials.jsonl (build_deck / plot_focused path).
+                    "failure_reasons": {},
+                    "tool_selected": tool_k,
+                    "tool_selected_rate": round(tool_k / n, 4),
+                    "tool_selected_ci_lo": ts_lo,
+                    "tool_selected_ci_hi": ts_hi,
+                }
+                pooled_single.append(pooled)
+            if not pooled_single:
+                continue
+            # Filter instances by arm so fig3/fig5 (which read trial rows)
+            # also see arm-isolated data. Legacy arm gets v0-v10 instances;
+            # active arms get their variant set.
+            kept_instances = []
+            for inst in s.get("instances", []):
+                pv = inst.get("prompt_variant")
+                if pv is None:
+                    continue
+                if target is None:
+                    if pv in (NEUTRAL_VARIANTS | STEERED_VARIANTS):
+                        continue
+                elif pv not in target:
+                    continue
+                kept_instances.append(inst)
+            out.append({
+                "model": s["model"], "think": s["think"],
+                # Putting the arm in the `cond` slot keeps every existing
+                # fig builder (which keys off `s["cond"]`) operational
+                # without a deeper rewrite. The legend / hatch maps already
+                # include the arm tags above.
+                "cond": arm,
+                "jobid": s.get("jobid", ""),
+                "summary": {"single_task": pooled_single,
+                            "meta": summary.get("meta", {})},
+                "instances": kept_instances,
+            })
+    return out
 
 
 def merge_series(series: list[dict]) -> list[dict]:
@@ -292,7 +293,7 @@ def merge_series(series: list[dict]) -> list[dict]:
             "cond": "tools_merged",
             "jobid": "merged",
             "summary": {"single_task": pooled_single,
-                        "chains": [], "meta": {}},
+                        "meta": {}},
             "instances": instances,
         })
     return merged
@@ -370,8 +371,17 @@ def fig1(series, out_path, draw_ci):
     plt.close(fig)
 
 
+def _is_no_tools_series(s: dict) -> bool:
+    """True if this series is a no-tools cell or a no-tools arm. Handles
+    both the legacy cond shape ('no-tools') and the arm-split cond shape
+    ('nt-neut' / 'nt-ster' / 'nt-legacy').
+    """
+    c = s.get("cond", "")
+    return c == "no-tools" or c.startswith("nt-")
+
+
 def fig3(series, out_path):
-    tool_series = [s for s in series if s["cond"] != "no-tools"]
+    tool_series = [s for s in series if not _is_no_tools_series(s)]
     if not tool_series:
         return
     x = np.arange(2)  # classical, numeric
@@ -425,6 +435,15 @@ def fig4(series, out_path):
         for r in s["summary"]["single_task"]:
             if r["n"] > 0:
                 reasons_seen.update(r.get("failure_reasons", {}).keys())
+    if not reasons_seen:
+        # Per-arm series synthesized by split_series_by_arm carry empty
+        # failure_reasons by design (the per_variant cells in summary_*.json
+        # don't store arm-tagged FR counts). Skip fig4 in that mode rather
+        # than calling fig.legend(ncol=0). Per-arm FR breakdowns live in
+        # build_deck / plot_focused, which read trials.jsonl directly.
+        print(f"  fig4 skipped: empty failure_reasons across all series",
+              file=sys.stderr)
+        return
     known = set(FAILURE_REASONS)
     order = [fr for fr in FAILURE_REASONS if fr in reasons_seen]
     if reasons_seen - known:
@@ -437,8 +456,6 @@ def fig4(series, out_path):
         figsize=(max(14.0, 2.6 * len(TASKS)), max(4.5, 0.22 * len(series) + 3.0)),
         sharey=True,
     )
-    if len(TASKS) == 1:
-        axes = [axes]
 
     for ax, task in zip(axes, TASKS):
         left = np.zeros(len(series))
@@ -493,8 +510,6 @@ def fig5(series, out_path):
                  max(4.5, 0.32 * len(series) + 3.0)),
         sharey=True,
     )
-    if len(TASKS) == 1:
-        axes = [axes]
 
     im = None
     for ax, task in zip(axes, TASKS):
@@ -546,7 +561,7 @@ def fig5(series, out_path):
 
 def fig6(series, out_path, draw_ci):
     """Per-task tool_selected_rate across with-tools series."""
-    tool_series = [s for s in series if s["cond"] != "no-tools"]
+    tool_series = [s for s in series if not _is_no_tools_series(s)]
     if not tool_series:
         return
     x = np.arange(len(TASKS))
@@ -590,9 +605,6 @@ def fig6(series, out_path, draw_ci):
 
 
 def _parse_figs(spec: str) -> set[int]:
-    # Numeric IDs preserve their pre-2026-05-05 meaning so old shell snippets
-    # still work. 2 and 7 (chain figures) were removed when the chain phase
-    # was archived; passing them is a hard error rather than a silent skip.
     if spec == "all":
         return {1, 3, 4, 5, 6}
     out = set()
@@ -604,11 +616,6 @@ def _parse_figs(spec: str) -> set[int]:
             n = int(piece)
         except ValueError:
             sys.exit(f"--figs: expected 'all' or comma-separated ints, got {spec!r}")
-        if n in (2, 7):
-            sys.exit(
-                f"--figs: chain figure {n} archived 2026-05-05 (see CHANGELOG); "
-                f"valid: 1, 3, 4, 5, 6"
-            )
         if n not in (1, 3, 4, 5, 6):
             sys.exit(f"--figs: unknown fig number {n}; valid: 1, 3, 4, 5, 6")
         out.add(n)
@@ -634,14 +641,59 @@ def main():
                          "series per (model, think); no-tools series pass "
                          "through unchanged as baselines. writes to "
                          "<root>/plots/merged/")
+    ap.add_argument("--by-arm", action="store_true", default=False,
+                    help="split each cell into per-arm series (sweep-5 four-arm "
+                         "matrix: nt-neut/nt-ster/tl-neut/tl-ster). Pools "
+                         "per_variant cells into arm-level counts, recomputing "
+                         "Wilson CIs on the pooled n. Legacy v0-v10 corpora "
+                         "collapse to *-legacy arms. Mutually exclusive with "
+                         "--merge. Writes to <root>/plots/by_arm/")
+    ap.add_argument("--arms", default=None,
+                    help="comma-separated arm filter applied after --by-arm "
+                         "(e.g. 'nt-neut,tl-neut' for the H1 isolation view "
+                         "or 'tl-neut,tl-ster' for H2). Requires --by-arm; "
+                         "see development/sweep_prompt_bank_design.md §0 for "
+                         "the hypothesis mapping.")
     args = ap.parse_args()
+
+    if args.arms and not args.by_arm:
+        sys.exit("--arms requires --by-arm")
+    if args.merge and args.by_arm:
+        sys.exit("--merge and --by-arm are mutually exclusive")
 
     root = args.root or find_default_root()
     series = load_series(root, args.include_legacy)
     if not series:
         sys.exit(f"no parseable slurm_* dirs under {root}")
 
-    if args.merge:
+    if args.by_arm:
+        series = split_series_by_arm(series)
+        if args.arms:
+            wanted = {a.strip() for a in args.arms.split(",") if a.strip()}
+            unknown = wanted - set(ALL_ARMS)
+            if unknown:
+                sys.exit(f"--arms: unknown arm tag(s) {sorted(unknown)}; "
+                         f"valid: {list(ALL_ARMS)}")
+            series = [s for s in series if s["cond"] in wanted]
+        if not series:
+            sys.exit(f"no arm-tagged series under {root} "
+                     f"(arms filter: {args.arms or 'none'})")
+        # Stable legend ordering: model → think → arm.
+        arm_rank = {a: i for i, a in enumerate(ALL_ARMS)}
+        series.sort(key=lambda s: (s["model"], s["think"],
+                                    arm_rank.get(s["cond"], 99)))
+        for s in series:
+            if s["think"] == "default":
+                s["_label"] = f"{s['model']} · {s['cond']}"
+            else:
+                s["_label"] = f"{s['model']} · {s['think']} · {s['cond']}"
+        # Suffix the output dir by the H1/H2 filter so back-to-back runs
+        # don't overwrite each other (a common analyzer pattern).
+        sub = "by_arm"
+        if args.arms:
+            sub = "by_arm_" + "_".join(sorted(wanted))
+        out = root / "plots" / sub
+    elif args.merge:
         series = merge_series(series)
         # Within a (model, think) the no-tools baseline reads first, then
         # the merged tools row — keeps legend ordering natural.

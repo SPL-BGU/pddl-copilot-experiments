@@ -3,24 +3,43 @@
 `summarize_single_task` produces the long-format rows with N, success rate,
 Wilson 95% CIs, per-variant breakdowns, and failure-reason counts. The
 `print_*` helpers render those rows for end-of-run inspection. `save_results`
-writes the pair (single_task_*.json + summary_*.json) under the output dir;
-when called with a non-empty `chains` list it also writes `chain_*.json`,
-but the active flow always passes `chains=[]` after the 2026-05-05 chain
-archive (see CHANGELOG).
+writes the pair (single_task_*.json + summary_*.json) under the output dir.
 
 DAG: summary → runner. (For `TaskResult`, `TASKS`, `ACTIVE_PROMPT_VARIANTS`.)
 """
 
 import json
 import math
+import statistics
 import time
 from collections import defaultdict
 from dataclasses import asdict
 from pathlib import Path
 
-from .prompts import ACTIVE_PROMPT_VARIANTS
+from .prompts import ACTIVE_PROMPT_VARIANTS, STEERED_VARIANTS
 from .runner import TASKS, TaskResult
-from .scoring import FR_OK
+from .scoring import FR_OK, relabel_truncated_taxonomy
+
+
+# Sweep-5 neutral variants — paired with STEERED_VARIANTS for the analyzer's
+# four-arm split. v0-v10 (legacy sweep-3/4) map to *-legacy so the analyzer
+# can still render historical corpora; see development/sweep_prompt_bank_design.md.
+NEUTRAL_VARIANTS: frozenset[int] = frozenset({11, 12, 13})
+
+
+def arm_for(with_tools: bool, prompt_variant: int) -> str:
+    """Classify a trial into one of six analysis arms.
+
+    Sweep-5 active arms: nt-neut / tl-neut (v11-13) and nt-ster / tl-ster
+    (v14-16). Sweep-3/4 corpora map to nt-legacy / tl-legacy so the analyzer
+    renders them under a 2-arm view without crashing.
+    """
+    side = "tl" if with_tools else "nt"
+    if prompt_variant in STEERED_VARIANTS:
+        return f"{side}-ster"
+    if prompt_variant in NEUTRAL_VARIANTS:
+        return f"{side}-neut"
+    return f"{side}-legacy"
 
 
 def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
@@ -35,11 +54,19 @@ def wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float
 
 
 def _new_token_agg() -> dict:
-    """Per-cell accumulator for the `tokens` summary row (see `_token_row`)."""
+    """Per-cell accumulator for the `tokens` summary row (see `_token_row`).
+
+    `completion_samples` buffers per-trial completion counts so the row can
+    emit `completion_median` (a sweep-5 primary outcome per
+    development/sweep_prompt_bank_design.md §0). The list itself is internal —
+    it is never serialized into summary_*.json; only the computed median is.
+    Memory cost is ~8 bytes/trial × ≤9120 trials/cell = <80KB/cell, negligible.
+    """
     return {
         "n": 0,
         "prompt_sum": 0,
         "completion_sum": 0,
+        "completion_samples": [],
         "turns_sum": 0,
         "turns_max": 0,
         "eval_duration_ns_sum": 0,
@@ -57,7 +84,9 @@ def _add_tokens(agg: dict, tokens: dict) -> None:
         return
     agg["n"] += 1
     agg["prompt_sum"] += tokens.get("prompt", 0) or 0
-    agg["completion_sum"] += tokens.get("completion", 0) or 0
+    completion = tokens.get("completion", 0) or 0
+    agg["completion_sum"] += completion
+    agg["completion_samples"].append(completion)
     turns = tokens.get("turns", 0) or 0
     agg["turns_sum"] += turns
     if turns > agg["turns_max"]:
@@ -80,6 +109,7 @@ def _token_row(agg: dict) -> dict:
             "n": 0,
             "prompt_sum": 0, "prompt_mean": 0.0,
             "completion_sum": 0, "completion_mean": 0.0,
+            "completion_median": 0.0,
             "total_sum": 0, "total_mean": 0.0,
             "turns_mean": 0.0, "turns_max": 0,
             "eval_duration_s_sum": 0.0, "eval_duration_s_mean": 0.0,
@@ -95,6 +125,10 @@ def _token_row(agg: dict) -> dict:
         "prompt_mean": round(prompt_sum / n, 2),
         "completion_sum": completion_sum,
         "completion_mean": round(completion_sum / n, 2),
+        # completion_median is a sweep-5 primary outcome (token efficiency, H3).
+        # Mean alone can be skewed by truncation outliers; median is the
+        # robust paper-comparable number.
+        "completion_median": round(statistics.median(agg["completion_samples"]), 2),
         "total_sum": total_sum,
         "total_mean": round(total_sum / n, 2),
         "turns_mean": round(agg["turns_sum"] / n, 3),
@@ -105,7 +139,11 @@ def _token_row(agg: dict) -> dict:
     }
 
 
-def summarize_single_task(results: list[TaskResult]) -> list[dict]:
+def summarize_single_task(
+    results: list[TaskResult],
+    *,
+    think_mode: str | None = None,
+) -> list[dict]:
     """Aggregate single-task results into long-format rows with N and 95% CIs.
 
     For the "tools" condition, also reports tool_selected count/rate — how often
@@ -148,7 +186,13 @@ def summarize_single_task(results: list[TaskResult]) -> list[dict]:
             agg[key]["tool_selected"] += 1
         if r.truncated:
             agg[key]["truncated"] += 1
-        agg[key]["failure_reasons"][r.failure_reason] += 1
+        fr = relabel_truncated_taxonomy(
+            r.failure_reason,
+            truncated=r.truncated,
+            response=r.response,
+            think_mode=think_mode or "",
+        )
+        agg[key]["failure_reasons"][fr] += 1
         _add_tokens(agg[key]["tokens"], r.tokens)
         pv = agg[key]["per_variant"][r.prompt_variant]
         pv["n"] += 1
@@ -331,49 +375,8 @@ def print_per_variant_table(results: list[TaskResult]):
     print(bar)
 
 
-# Archived 2026-05-05 — chain phase no longer wired into run_experiment.py.
-# `summarize_chains` and `print_chain_table` kept importable for any future
-# resurrection. `save_results` still emits an empty `chains` array under the
-# active flow (callers pass []); when called with a populated list the chain
-# branch below remains functional.
-def summarize_chains(chain_results: list[dict]) -> list[dict]:
-    """Attach Wilson CI to each chain result row."""
-    rows: list[dict] = []
-    for r in chain_results:
-        lo, hi = wilson_ci(r["successes"], r["samples"])
-        rows.append({**r, "ci_lo": round(lo, 4), "ci_hi": round(hi, 4)})
-    return rows
-
-
-def print_chain_table(chain_results: list[dict]):
-    if not chain_results:
-        return
-    rows = summarize_chains(chain_results)
-    header = f"{'Model':<20} {'Condition':<13} {'Chain n':>7}  {'Rate':>6}  {'N':>4}  {'95% CI':<16}"
-    bar = "=" * len(header)
-    print("\n" + bar)
-    print("MULTI-TASK CHAIN SUCCESS RATES (with Wilson 95% CI)")
-    print(bar)
-    print(header)
-    print("-" * len(header))
-    # Sort by (model, with_tools desc so tools comes first, chain_length)
-    rows_sorted = sorted(
-        rows,
-        key=lambda r: (r["model"], not r.get("with_tools", True), r["chain_length"]),
-    )
-    for r in rows_sorted:
-        cond = "tools" if r.get("with_tools", True) else "no-tools"
-        ci_str = f"[{r['ci_lo']:.2f}, {r['ci_hi']:.2f}]"
-        print(
-            f"{r['model']:<20} {_display_condition(cond):<13} {r['chain_length']:>7}  "
-            f"{r['success_rate']:>6.2f}  {r['samples']:>4}  {ci_str:<16}"
-        )
-    print(bar)
-
-
 def save_results(
     single: list[TaskResult],
-    chains: list[dict],
     output_dir: Path,
     meta: dict | None = None,
 ):
@@ -384,19 +387,16 @@ def save_results(
     p1.write_text(json.dumps([asdict(r) for r in single], indent=2))
     print(f"\nSaved single-task results -> {p1}")
 
-    if chains:
-        p2 = output_dir / f"chain_{ts}.json"
-        p2.write_text(json.dumps(chains, indent=2))
-        print(f"Saved chain results       -> {p2}")
-
     # Aggregated summary with N and Wilson 95% CIs for downstream analysis.
     # `meta` records the CLI knobs that distinguish this run from others in
     # the same results/ tree (host, condition split, filter, prompt, think).
     # Without it, remote/local and tools/no-tools runs look identical at the
     # summary level and can only be told apart by result-dir naming.
+    think_mode = (meta or {}).get("think")
     summary = {
-        "single_task": summarize_single_task(single) if single else [],
-        "chains": summarize_chains(chains) if chains else [],
+        "single_task": (
+            summarize_single_task(single, think_mode=think_mode) if single else []
+        ),
     }
     if meta:
         summary["meta"] = meta
