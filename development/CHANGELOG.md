@@ -24,6 +24,14 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 **Reproducibility.** No methodology change. Phase-A pilot results were not yet on disk, so no result invalidation. Harness reads fixtures by file path, never by `(problem X)` token. Plan files don't reference the problem identifier. EXPERIMENTS_FLOW.md unaffected.
 
+**Review follow-up (same date, same branch).** PR #72 review surfaced four refinements that landed as a second commit on the same branch:
+- **Audit-field semantics.** `original_problem_name` in `_rename.log` is now extracted from the *source* text before `rewrite_text` runs, rather than from the post-walk form. Eliminates a hypothetical-but-possible misleading audit value if a future YAML accidentally puts a problem identifier into the identifier_table. Also drops the list-cell closure (`nonlocal` would have been cleaner — but with the extraction moved out, no closure is needed at all).
+- **Header-shape audit baked into the rewriter.** `_audit_problem_headers` walks every staged `[pn]\d{2}.pddl` in the tmp dir before atomic-promote and asserts each header matches `\(define\s+\(problem\s+[a-z][a-z0-9_-]*-[pn]\d{2}\)`. Defence-in-depth: a regression in `_apply_problem_name_pass` aborts the rewrite atomically, so the previous `domains-anon/` stays untouched.
+- **`re.IGNORECASE` intent documented.** One-line comment on `_PROBLEM_NAME_HEADER_RE` noting that case-insensitivity is for the identifier (mixed-case canonical names like `ZTRAVEL-2-1`), not the lowercase `define`/`problem` keywords.
+- **Plan §3.2 clarification.** Embedded renamed-domain token in the synthetic name is deliberate — `(:domain X)` on the next line already exposes the same token, so the prefix carries no separate leak signal.
+
+Concern #2 from the review (defensive check on `rename["domain_name"]` emptiness) was **dropped**: the invariant is enforced by adjacent code (`_attach_domain_name_pair`) and adding a check would be needless defensive programming. File contents in `domains-anon/` are byte-identical to the first commit (the semantic fix changes only how the audit-log field is computed; for the 7 leaky cases the canonical was already untouched by `rewrite_text`, so the recorded values are the same).
+
 ---
 
 ## 2026-05-26 — Analyzer simplification follow-up (ANALYZER-10 + ANALYZER-13)

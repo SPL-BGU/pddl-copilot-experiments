@@ -737,6 +737,9 @@ _DOMAIN_NAME_REF_RE_TEMPLATE = (
 # `(define (problem X))` header — wholesale renamed via
 # `_apply_problem_name_pass`. Three capture groups so the original
 # whitespace between `define` / `problem` / closing-paren is preserved.
+# `re.IGNORECASE` here is for the IDENTIFIER (group 2): canonical problem
+# names like `ZTRAVEL-2-1` or `BW-rand-3` carry uppercase letters. The
+# `define`/`problem` keywords themselves are lowercase by PDDL convention.
 _PROBLEM_NAME_HEADER_RE = re.compile(
     r"(\(\s*define\s*\(\s*problem\s+)([A-Za-z][A-Za-z0-9_\-]*)(\s*\))",
     re.IGNORECASE,
@@ -747,32 +750,32 @@ def _apply_problem_name_pass(
     text: str,
     file_stem: str,
     target_domain_token: str,
-) -> tuple[str, str | None]:
+) -> str:
     """Wholesale rewrite of `(define (problem X))` headers.
 
     Replaces the problem identifier with the deterministic synthetic name
     `<target_domain_token>-<file_stem>` (e.g. `apiary-p01`). Run as a
     POST-pass — after the identifier char-walk and the object-prefix
-    regex — so the synthetic name is opaque to both. Returns
-    ``(rewritten_text, original_problem_name)``; ``(text, None)`` when no
-    `(define (problem ...))` header is present (domain.pddl, domain_neg.pddl,
-    .plan files).
+    regex — so the synthetic name is opaque to both. Returns the rewritten
+    text unchanged when no `(define (problem ...))` header is present
+    (domain.pddl, domain_neg.pddl, .plan files).
+
+    The canonical problem name (for audit logging and round-trip restore)
+    is the caller's responsibility — extract it from the pre-rewrite source
+    via `_extract_canonical_problem_name` so the audit log reflects the
+    true canonical, never a post-walk form.
 
     Closes the lexical-leak weak spot where canonical (or canonical-substring)
     tokens survived in the problem identifier — see
     `development/contamination_probe_plan.md` §3.2.
     """
     new_name = f"{target_domain_token}-{file_stem}".lower()
-    original_holder: list[str | None] = [None]
 
     def _sub(m: re.Match[str]) -> str:
-        original_holder[0] = m.group(2).lower()
         return f"{m.group(1)}{new_name}{m.group(3)}"
 
-    rewritten, hits = _PROBLEM_NAME_HEADER_RE.subn(_sub, text, count=1)
-    if hits == 0:
-        return text, None
-    return rewritten, original_holder[0]
+    rewritten, _ = _PROBLEM_NAME_HEADER_RE.subn(_sub, text, count=1)
+    return rewritten
 
 
 def _apply_problem_name_pass_inverse(
@@ -795,6 +798,14 @@ def _apply_problem_name_pass_inverse(
 
 _PROBLEM_FILE_RE = re.compile(r"^[pn]\d{2}$")
 
+# Audit invariant: every renamed problem file's header must match this
+# pattern after `_apply_problem_name_pass`. Pin via `_audit_problem_headers`
+# at the end of `rewrite_corpus` so a regression aborts the rewrite
+# atomically (before the tmp dir is promoted to `domains-anon/`).
+_PROBLEM_HEADER_SYNTH_RE = re.compile(
+    r"\(\s*define\s*\(\s*problem\s+[a-z][a-z0-9_\-]*-[pn]\d{2}\s*\)",
+)
+
 
 def _extract_canonical_problem_name(text: str) -> str | None:
     """Pull the `X` from `(define (problem X))`, lowercased, or None."""
@@ -802,6 +813,39 @@ def _extract_canonical_problem_name(text: str) -> str | None:
     if m is None:
         return None
     return m.group(2).lower()
+
+
+def _audit_problem_headers(corpus_root: Path) -> list[str]:
+    """Walk every `[pn]\\d{2}.pddl` under `corpus_root` and assert each
+    `(define (problem X))` header matches the synthetic
+    `<renamed_domain_token>-[pn]\\d{2}` pattern. Returns a list of
+    violation messages (empty when the corpus is clean).
+
+    Called from `rewrite_corpus` after all files are staged in the tmp dir
+    but before atomic-promote. A non-empty list aborts the rewrite — the
+    previous `domains-anon/` is preserved untouched. Defence-in-depth
+    against future regressions in `_apply_problem_name_pass`.
+    """
+    violations: list[str] = []
+    for family in ("classical", "numeric"):
+        family_root = corpus_root / family
+        if not family_root.is_dir():
+            continue
+        for dir_path in sorted(family_root.iterdir()):
+            if not dir_path.is_dir():
+                continue
+            for entry in sorted(os.listdir(dir_path)):
+                stem = entry[:-5] if entry.endswith(".pddl") else entry
+                if not _PROBLEM_FILE_RE.fullmatch(stem):
+                    continue
+                fpath = dir_path / entry
+                with fpath.open("r", encoding="utf-8") as fh:
+                    text = fh.read()
+                if _PROBLEM_HEADER_SYNTH_RE.search(text) is None:
+                    m = _PROBLEM_NAME_HEADER_RE.search(text)
+                    actual = m.group(0) if m else "<no problem header found>"
+                    violations.append(f"{fpath}: header does not match synthetic pattern; got {actual!r}")
+    return violations
 
 
 def _apply_domain_name_pass(
@@ -1355,10 +1399,16 @@ def rewrite_corpus(
         for src_path in iter_domain_files(source_dir, dir_stem):
             with src_path.open("r", encoding="utf-8") as fh:
                 text = fh.read()
-            rewritten, counts = rewrite_text(text, rename)
+            # Extract the canonical problem name from the SOURCE text before
+            # `rewrite_text` runs, so the audit log records the true canonical
+            # even if a future YAML accidentally puts a problem identifier
+            # into the identifier_table. None for non-problem files.
             original_problem_name: str | None = None
             if _PROBLEM_FILE_RE.fullmatch(src_path.stem):
-                rewritten, original_problem_name = _apply_problem_name_pass(
+                original_problem_name = _extract_canonical_problem_name(text)
+            rewritten, counts = rewrite_text(text, rename)
+            if _PROBLEM_FILE_RE.fullmatch(src_path.stem):
+                rewritten = _apply_problem_name_pass(
                     rewritten, src_path.stem, target_domain_token,
                 )
             dst_path = out_root / src_path.name
@@ -1388,6 +1438,23 @@ def rewrite_corpus(
     with (tmp_dir / "_rename.log").open("w", encoding="utf-8") as fh:
         for line in log_lines:
             fh.write(line + "\n")
+
+    # Defence-in-depth: assert every problem header in the staged corpus
+    # matches the synthetic `<target>-[pn]NN` pattern. A regression in
+    # `_apply_problem_name_pass` would surface here BEFORE the existing
+    # `domains-anon/` is replaced; we abort and the previous corpus stays
+    # untouched. Today this is invariant by construction (the pass fires
+    # on every p0N/n0N file), but the audit guards against silent breakage
+    # in future refactors.
+    audit_violations = _audit_problem_headers(tmp_dir)
+    if audit_violations:
+        for v in audit_violations:
+            print(v, file=sys.stderr)
+        raise SystemExit(
+            f"FATAL: {len(audit_violations)} problem-header audit "
+            f"violation(s) in staged corpus; refusing to promote {tmp_dir} "
+            f"to {output_dir}"
+        )
 
     # Atomic-ish promotion: bak swap then tmp -> output.
     if output_dir.exists():

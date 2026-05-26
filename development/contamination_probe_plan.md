@@ -163,6 +163,17 @@ For each PDDL file (domain, problem, plan):
   matches inside atomic PDDL identifiers; partial substitution would have
   been unsafe). The original problem name is recorded in `_rename.log` and
   restored by the round-trip-check via the canonical source.
+  **Embedded renamed-domain token is deliberate**, not a separate leak:
+  `(:domain X)` on the very next line already exposes the renamed-domain
+  identifier, so the synthetic header's `<renamed_domain_token>-…` prefix
+  carries no additional signal. The rename target is the unit of
+  identification within the renamed corpus, by design.
+- **Header-shape audit (added 2026-05-26):** `rewrite_corpus` runs an
+  invariant check on the staged tmp directory before atomic-promote — every
+  `p0N.pddl` / `n0N.pddl` header must match
+  `\(define\s+\(problem\s+[a-z][a-z0-9_-]*-[pn]\d{2}\)`. A regression in the
+  problem-name pass aborts the rewrite atomically; the previous
+  `domains-anon/` stays untouched.
 
 **Implementation note.** Write this as a single Python script
 `tools/anon_rename.py` that consumes a per-domain `anon_map.yaml` and a
