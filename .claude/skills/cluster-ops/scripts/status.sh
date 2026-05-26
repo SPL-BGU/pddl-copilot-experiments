@@ -46,10 +46,8 @@
 #
 # Env: REMOTE_USER, REMOTE_HOST, REPO_REMOTE, STATE_FILE.
 
-set -eo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
-REMOTE_USER="${REMOTE_USER:-omereliy}"
-REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 STATE_FILE="${STATE_FILE:-$HOME/.cache/cluster-ops-status.json}"
 # Active prompt variants for the in-flight sweep. Trials.jsonl files can
@@ -80,8 +78,7 @@ for arg in "$@"; do
         --md|--markdown)        mode="md" ;;
         --terminal|--pretty)    mode="terminal" ;;
         --no-color)             color="off" ;;
-        -h|--help)
-            sed -n '2,40p' "$0"; exit 0 ;;
+        -h|--help) _show_help 2 40; exit 0 ;;
         *)
             printf 'unknown flag: %s\n' "$arg" >&2; exit 2 ;;
     esac
@@ -372,13 +369,16 @@ for line in queue_raw:
     if len(parts) != 5: continue
     queue.append(dict(zip(("jid","jname","state","elapsed","reason"), parts)))
 
-def jname_to_cell(jname):
-    """Per-cell array task name → (model,think,cond).
-    vLLM:   pddl_vllm_Qwen3_5_9B_on_notools
-    Ollama (legacy): pddl_<model>_<think>_<cond> — no `vllm_` infix.
+def parse_jname(jname):
+    """Decode a SLURM job-name into (model, think, cond).
+
+    Per-cell array task name (vLLM: `pddl_vllm_<model>_<think>_<cond>` /
+    legacy Ollama: `pddl_<model>_<think>_<cond>`) decodes the full triple.
+    Parent-template names (pending pack jobs like `pddl_rtx_pack3_<model>`)
+    decode only the model; think/cond come back as None. Returns None if
+    no roster model is recognisable in the name.
     """
-    if not jname.startswith("pddl_"): return None
-    rem = jname[len("pddl_"):]
+    rem = jname[len("pddl_"):] if jname.startswith("pddl_") else jname
     if rem.startswith("vllm_"):
         rem = rem[len("vllm_"):]
     for m in ROSTER:
@@ -387,17 +387,32 @@ def jname_to_cell(jname):
             for th in ("on","off","default"):
                 if tail.startswith(th + "_"):
                     return (m, th, SHORT_COND.get(tail[len(th)+1:]))
-            break
+            return (m, None, None)
+    for m in ROSTER:
+        if m in jname:
+            return (m, None, None)
     return None
 
+def jname_to_cell(jname):
+    """Per-cell triple, or None for parent-template / unknown names."""
+    parsed = parse_jname(jname)
+    if parsed is None or parsed[1] is None:
+        return None
+    return parsed
+
 def jname_model(jname):
-    """Parent-template array name → model token, or None.
-    Used for pending tasks whose per-cell name hasn't materialised yet
-    (e.g. 'pddl_rtx_pack3_Qwen3_5_0_8B' covers all 6 cells of each model
-    in the small/mid pack — manifest resolves to the precise cell)."""
-    for m in ROSTER:
-        if m in jname: return m
-    return None
+    """Roster-model token, or None."""
+    parsed = parse_jname(jname)
+    return parsed[0] if parsed else None
+
+def is_queue_attributed_cell(cond):
+    """True iff queue rows for `cond` reliably attribute to THIS logical cell.
+
+    `no-tools-steered` shares cond=no-tools jnames with `no-tools-neutral`
+    (main + control submits emit the same dir-level cond), so queue rows
+    can't be split between the two arms — classify on counts only.
+    """
+    return cond != "no-tools-steered"
 
 cell_running, cell_pending, model_pending = {}, {}, set()
 for q in queue:
@@ -502,7 +517,7 @@ if prev_ts:
 # to → classify on counts only.
 def cell_status(cell):
     m, th, c = cell
-    skip_queue = (c == "no-tools-steered")
+    skip_queue = not is_queue_attributed_cell(c)
     dir_cell = (m, th, LOGICAL_TO_DIR_COND[c])
     n = counts.get(cell, 0); denom = DENOM[c]
     grew = prev_ts is not None and deltas.get(cell, {}).get("delta", 0) > 0
@@ -560,7 +575,7 @@ watch = []
 seen_dirs = set()
 for cell, d in deltas.items():
     m, th, c = cell
-    if c == "no-tools-steered": continue
+    if not is_queue_attributed_cell(c): continue
     dir_cell = (m, th, LOGICAL_TO_DIR_COND.get(c, c))
     if dir_cell in seen_dirs: continue
     if dir_cell not in cell_running: continue

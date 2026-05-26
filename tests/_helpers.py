@@ -1,11 +1,14 @@
 """Test helpers for the scoring-audit suite.
 
 Not a pytest conftest — just a plain module imported by test_*.py files.
-Provides FakeMCP (stub for MCPPlanner.call_tool) and a fixture loader that
-reads tests/fixtures/*.json produced from real MCP oracle calls.
+Provides FakeMCP (stub for MCPPlanner.call_tool), a fixture loader that
+reads tests/fixtures/*.json produced from real MCP oracle calls, and
+async-stub helpers used by the runner tests to replace `evaluate_one` with
+a canned `TaskResult`.
 """
 
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -140,3 +143,66 @@ class TestResults:
                 print(f"  - {label}: {detail}")
             raise SystemExit(1)
         raise SystemExit(0)
+
+
+def make_stub_result(*, model, task, domain_name, problem_name, prompt_variant,
+                     with_tools, success=True, **overrides):
+    """Build a TaskResult with the runner-test default fields filled in.
+
+    Imports TaskResult lazily so this module doesn't drag pddl_eval at import
+    time. `overrides` lets a caller poke specific fields without restating
+    the whole call.
+    """
+    from pddl_eval.runner import TaskResult
+    kwargs = dict(
+        model=model, task=task, domain_name=domain_name,
+        problem_name=problem_name, prompt_variant=prompt_variant,
+        with_tools=with_tools, success=success,
+        tool_filter=overrides.pop("tool_filter", "all"),
+        prompt_style=overrides.pop("prompt_style", "minimal"),
+        plan_label=overrides.pop("plan_label", ""),
+    )
+    kwargs.update(overrides)
+    return TaskResult(**kwargs)
+
+
+def make_stub_evaluate_one(captured=None):
+    """Return an async stub matching `evaluate_one`'s signature.
+
+    Emits a canned `TaskResult` whose identity fields mirror the call args, so
+    the writer + loader round-trip preserves the per-trial key. When
+    `captured` is a list, the stub appends `(with_tools, prompt_variant)`
+    for each call — used by skip-gate tests in test_prompts.py.
+    """
+    async def stub(
+        client, model, task, domain_name, domain_pddl,
+        problem_name, problem_pddl, prompt_variant, with_tools,
+        mcp, gt, **kwargs,
+    ):
+        if captured is not None:
+            captured.append((with_tools, prompt_variant))
+        return make_stub_result(
+            model=model, task=task, domain_name=domain_name,
+            problem_name=problem_name, prompt_variant=prompt_variant,
+            with_tools=with_tools,
+            tool_filter=kwargs.get("tool_filter", "all"),
+            prompt_style=kwargs.get("prompt_style", "minimal"),
+            plan_label=kwargs.get("plan_label", ""),
+        )
+    return stub
+
+
+@contextmanager
+def stubbed_evaluate_one(stub):
+    """Swap in `stub` for `pddl_eval.runner.evaluate_one` for the block's body.
+
+    Restores the original on exit even on exception. Imported lazily so any
+    test that doesn't use it doesn't pull pddl_eval at module import.
+    """
+    from pddl_eval import runner as runner_mod
+    original = runner_mod.evaluate_one
+    runner_mod.evaluate_one = stub
+    try:
+        yield runner_mod
+    finally:
+        runner_mod.evaluate_one = original

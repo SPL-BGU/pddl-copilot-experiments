@@ -10,9 +10,7 @@ argument-hint: [aggregate | plot | table | drift | observations]
 
 Triggers (so the skill auto-matches): "aggregate summaries", "plot results", "render figures", "make the paper table", "compare sweeps", "drift check", "is this run consistent with last week", "spot-check ongoing run", "what's the headline number", "summarize results".
 
-Operations (queue queries, rsync, preflight, sacct postmortem) live in the `cluster-ops` skill. Analysis (Markdown tables, figures, drift detection) lives here. The split exists because the two have different consumers: cluster-ops is invoked while a sweep is queued/running and the user wants knobs to turn; analyzer is invoked after results land and the user wants numbers and pictures. Mixing the two surfaces in one skill made each unfocused.
-
-This skill is **read-only** over experiment state — it never edits `run_experiment.py`, sbatch scripts, or result JSONs. It only emits Markdown / PNG / CSV / TeX into output dirs under each results root.
+**Skill boundary.** This skill is **read-only** over experiment state — it produces Markdown / PNG / CSV / TeX into output dirs under each results root and never edits `run_experiment.py`, sbatch scripts, or result JSONs. For queue queries, rsync, preflight, sacct postmortem, and destructive cleanup, delegate to the sibling `cluster-ops` skill.
 
 ## Conventions
 
@@ -79,7 +77,7 @@ python3 .claude/skills/analyzer/scripts/plot_focused.py <root> --figs h1   # swe
 
 ### `scripts/table.py` — master pivot (md + csv + tex)
 
-One large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, arm, host, jobid)` — one per `(cell × arm)` so the sweep-5 four-arm matrix reads directly as 3 rows per `(model, think)` for a main-only sweep (nt-neut + tl-neut + tl-ster) or 4 with the control. Wilson 95% CIs are recomputed on the arm-pooled n. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%, out-med}` × 5 tasks + ST-mean + total n. `out-med` is the output-token median (sweep-5 H3, n-weighted across the arm's variants — see CHANGELOG 2026-05-24). Chain `L=2..5` columns were dropped 2026-05-05 with the chain-phase archive. The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`) and adds `_out_med`.
+One large pivot per run root covering all measured axes. Rows: `(model, think, tool_filter, prompt_style, cond, arm, host, jobid)` — one per `(cell × arm)` so the sweep-5 four-arm matrix reads directly as 3 rows per `(model, think)` for a main-only sweep (nt-neut + tl-neut + tl-ster) or 4 with the control. Wilson 95% CIs are recomputed on the arm-pooled n. Columns: per-task `{succ% [lo–hi], tool_sel%, trunc%, out-med}` × 5 tasks + ST-mean + total n. `out-med` is the output-token median (sweep-5 H3, n-weighted across the arm's variants — see CHANGELOG 2026-05-24). The `.tex` output uses `booktabs` + `\multicolumn` group headers and is paper-appendix drop-in; the `.csv` flattens CI cells to three columns per task (`_succ`, `_ci_lo`, `_ci_hi`) and adds `_out_med`.
 
 Sweep-3/4 corpora collapse to `*-legacy` arm rows, so the table renders unchanged from pre-arm-axis times (one row per cell, arm=`nt-legacy` or `tl-legacy`).
 

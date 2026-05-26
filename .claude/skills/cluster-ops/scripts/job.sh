@@ -13,10 +13,8 @@
 # Env overrides:
 #   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
 
-set -eo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
-REMOTE_USER="${REMOTE_USER:-omereliy}"
-REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 LINES=25
 NO_LOG=0
 JOBID=""
@@ -25,8 +23,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --lines) shift; LINES="$1"; shift ;;
         --no-log) NO_LOG=1; shift ;;
-        -h|--help)
-            sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) _show_help 2 15; exit 0 ;;
         *)
             if [ -z "$JOBID" ]; then
                 JOBID="$1"; shift

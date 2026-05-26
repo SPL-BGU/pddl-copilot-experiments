@@ -9,7 +9,6 @@ Usage:
     python3 plot_focused.py                               # auto: DEFAULT_CHECKPOINT
     python3 plot_focused.py checkpoints/sweep5-main       # explicit checkpoint
     python3 plot_focused.py <root> --figs 1,5,7
-    # (chain-focused fig3 was removed 2026-05-05; numeric IDs preserve meaning)
     python3 plot_focused.py <root> --no-ci
 
 Outputs go to <root>/plots/focused/.
@@ -320,13 +319,6 @@ def fig2(records: list[dict], outdir: Path, draw_ci: bool):
               for m in models]
         print(f"  plot2[{task}] n(no-tools,with-tools) per model: {ns}", file=sys.stderr)
     return written
-
-
-# ---------------------------------------------------------------------------
-# fig 3: chain-focused panel — archived 2026-05-05 (chain phase removed
-# from the active flow; see CHANGELOG). The numeric ID is reserved so
-# `--figs` keeps its pre-archive meaning for adjacent plots.
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -876,11 +868,6 @@ def _parse_figs(spec: str) -> set[str]:
             continue
         if piece == "8":
             out.update({"8a", "8b", "8c"})
-        elif piece == "3":
-            sys.exit(
-                "--figs: chain-focused fig 3 archived 2026-05-05 (see CHANGELOG); "
-                f"valid: {sorted(FIG_KEYS)} or 'all'"
-            )
         elif piece in FIG_KEYS:
             out.add(piece)
         else:
@@ -896,8 +883,7 @@ def main():
     ap.add_argument("root", nargs="?", type=Path, default=None,
                     help=f"results root (default: <repo>/{DEFAULT_CHECKPOINT})")
     ap.add_argument("--figs", default="all",
-                    help="comma list (1,2,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'. "
-                         "Chain-focused fig 3 was removed 2026-05-05.")
+                    help="comma list (1,2,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'.")
     ap.add_argument("--no-ci", dest="ci", action="store_false", default=True,
                     help="omit Wilson 95%% CI whiskers / ribbons")
     args = ap.parse_args()

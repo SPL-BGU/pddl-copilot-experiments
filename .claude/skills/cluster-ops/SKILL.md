@@ -12,7 +12,7 @@ Triggers (so the skill auto-matches): "cluster status", "what's running", "why i
 
 Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, and sacct memory-headroom recipes. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 4 short helper scripts. Read it before running SSH/rsync commands ad-hoc.
 
-**Read this skill alongside `analyzer`** — cluster-ops gets results onto disk via `sync.sh` and tells you what's running via `status.sh`; `analyzer` (under `.claude/skills/analyzer/`) turns the synced results into Markdown tables, paper plots, the master pivot, and drift-vs-baseline checks. The two skills compose via the recipes below.
+**Skill boundary.** This skill owns cluster operations: queue inspection, submit/cancel, sync, preflight, postmortem, prioritization, and the destructive scenarios in `cleanup.md`. For result analysis (Markdown tables, paper plots, the master pivot, drift detection), delegate to the sibling `analyzer` skill. The two compose via the recipes below.
 
 Cluster & repo conventions that matter here:
 

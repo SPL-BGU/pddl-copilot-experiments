@@ -32,15 +32,11 @@ from pathlib import Path
 
 # Sibling-script imports (parse_dirname) and harness imports (wilson_ci,
 # TRIAL_KEY_LEN). Both path inserts run unconditionally — the analyzer
-# scripts are designed to be invoked from the repo root, where pddl_eval/
-# is importable; aggregate.py sits next to this file.
+# Repo-root bootstrap happens inside _constants on import.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from _constants import TASKS, wilson_ci  # noqa: E402
 from aggregate import parse_dirname  # noqa: E402
 from pddl_eval.runner import TRIAL_KEY_LEN  # noqa: E402
-from pddl_eval.summary import wilson_ci  # noqa: E402
-
-TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
 
 
 def _aggregate_trials_jsonl(path: Path) -> dict[str, dict[str, int]]:

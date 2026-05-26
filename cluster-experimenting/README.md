@@ -32,24 +32,11 @@ single sbatch is `run_condition_vllm_rtx.sbatch`. `submit_full_sweep.sh`
 is a thin orchestrator over `submit_with_rtx.sh`, which is the
 lower-level wrapper.
 
-Submission topology history:
-- 2026-04-27 — cis-ollama (BGU shared-server) path retired along with
-  CPU-only `submit_all.sh` waves and `submit_120b_cis.sh` shortcut.
-- 2026-04-29 — `gpt-oss:120b` superseded by `qwen3.6:35b` (A3B MoE) in
-  the large-model size band.
-- 2026-04-30 — packed-job model retired in favour of per-cell SLURM job
-  arrays; each cell is now an independent array task. See
-  `development/CHANGELOG.md` for rationale.
-- 2026-05-17 — `qwen3.6:27b` retired (slowest cell, ~19h tools×on);
-  `Qwen3.5:4B` + `Qwen3.5:9B` added to fill the 0.8B → 35B-A3B param gap.
-- 2026-05-18 — backend split LANDED: four Qwens (0.8B / 4B / 9B / 35B)
-  on vLLM, `gemma4:31b` on Ollama. `submit_full_sweep.sh` became the
-  new primary entrypoint, superseding `submit_with_resume.sh`.
-- 2026-05-18 (same day) — backend split RETIRED via the gemma swap:
-  `gemma4:31b` dense Ollama replaced with `gemma4:26b-a4b` MoE on vLLM
-  (smoke 17638752). Full 5-model roster now single-backend on vLLM
-  `rtx_6000:1`. `submit_with_resume.sh`'s Ollama branch is now empty
-  (kept as the extension point in case a non-vLLM model rejoins).
+Submission topology history (see `development/CHANGELOG.md` for full
+rationale): cis-ollama path retired 2026-04-27; per-cell SLURM arrays
+landed 2026-04-30 (replacing the packed-job model); roster trimmed and
+Qwen3.5:4B/9B added 2026-05-17; full unification on vLLM `rtx_6000:1`
+2026-05-18; Ollama backend retired 2026-05-23.
 
 ## Quickstart
 
@@ -307,8 +294,7 @@ trials from the parallel Ollama corpora). The resume key in
 |---|---|---|
 | `--gpus` | `rtx_6000:1` (smoke-verified) | `rtx_pro_6000:1` |
 | `--mem` | `48G` | `80G` |
-| `--time` tools | `06:00:00` | — |
-| `--time` no-tools | `05:00:00` | — |
+| `--time` | see Resource profile table below | — |
 | Concurrency | 4 (smoke-verified) | 4 |
 | VRAM peak (27B AWQ, smoke) | 83% (40808/49140 MiB) | — |
 | VRAM peak (35B AWQ MoE, smoke) | 84% (41328/49140 MiB) | — |
@@ -501,7 +487,7 @@ rsync -av <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_* \
          ~/personal/pddl-copilot-experiments/results/
 ```
 
-Analyze synced results ad-hoc against `results/**/{single_task,summary}_*.json` (legacy `chain_*.json` files from pre-2026-05-05 sweeps still parse but the active flow no longer emits them) — the canonical schema for those files is `save_results` in `pddl_eval/summary.py`. Recent analyses live in the contributor's `.local/reports/` (not committed).
+Analyze synced results ad-hoc against `results/**/{single_task,summary}_*.json` — the canonical schema for those files is `save_results` in `pddl_eval/summary.py`. Recent analyses live in the contributor's `.local/reports/` (not committed).
 
 ## Cancelling jobs
 
@@ -533,14 +519,9 @@ squeue --me -h -o '%i %j' | awk '$2 ~ /^pddl_rtx_/ {print $1}' | xargs --no-run-
 **VRAM blowup after warmup (`exit 3`).** The runtime guard fired because
 VRAM > 85% post-warmup. Check `run_condition_vllm_rtx.sbatch` —
 `gpu-memory-utilization=0.85` and `num_ctx=16384` are sized for the
-active roster on rtx_6000 48 GB. With one model per cell on its own GPU,
-the guard fires per-cell. Note (2026-04-29): single-task `num_ctx` was
-raised 8192 → 16384 (with `num_ctx_thinking` held equal at 16384 for
-tools/no-tools fairness in the "tools save tokens" headline). If a sweep
-trips the guard, post-mortem `sacct/MaxRSS` to right-size; lowering
-`--num-ctx` or `--concurrency` is the fastest mitigation. The
-chain-phase ctx knob (`--num-ctx-chain`) was retired 2026-05-05 with the
-chain archive.
+active roster on rtx_6000 48 GB. If a sweep trips the guard, post-mortem
+`sacct/MaxRSS` to right-size; lowering `--num-ctx` or `--concurrency` is
+the fastest mitigation. Per-task num_ctx rationale: see `EXPERIMENTS_FLOW.md` §5.
 
 **`apptainer: command not found`.** Apptainer module not loaded on the
 compute node. The sbatch assumes the cluster default has it on the PATH;

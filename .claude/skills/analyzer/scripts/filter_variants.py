@@ -131,7 +131,6 @@ def write_filtered_cell(src_dir: Path, dst_dir: Path,
     rows = summarize_single_task(kept_trials, think_mode=think_mode)
     summary = {
         "single_task": rows,
-        "chains": [],
         "meta": {
             **src_meta,
             "filtered_from": str(src_dir.relative_to(REPO)),

@@ -3,9 +3,8 @@
 Methodology reference for the PDDL Copilot experiment suite.
 Reproduces and extends the evaluation from Benyamin et al., 2025 (arXiv:2509.12987).
 
-> **Multi-task chain phase archived 2026-05-05.** The active flow is single-task
-> only; chain code is preserved in `pddl_eval/{runner,summary}.py` for possible
-> future revival. See `development/CHANGELOG.md` for the rationale.
+> **Single-task only.** The multi-task chain phase was archived 2026-05-05 and
+> the implementation removed. See `development/CHANGELOG.md` for the rationale.
 
 ---
 
@@ -13,12 +12,12 @@ Reproduces and extends the evaluation from Benyamin et al., 2025 (arXiv:2509.129
 
 The harness is `run_experiment.py`. It runs one model × one think-mode × one
 condition (4 tools-conditions or no-tools) per invocation. The only active
-driver path is the BGU cluster — `cluster-experimenting/submit_with_rtx.sh
-<model>...` (single submit path; default GPU `rtx_6000:1`). See
-`cluster-experimenting/README.md`. Each array task self-deploys a vLLM
-server, then loops `THINK_MODES × CONDITIONS` for the assigned cell.
-The pre-2026-05-18 laptop driver (`run_background.sh` over a local
-`ollama serve`) was retired alongside the Ollama backend.
+driver path is the BGU cluster — primary entrypoint
+`cluster-experimenting/submit_full_sweep.sh` (per-cell wrapper:
+`submit_with_rtx.sh`). See `cluster-experimenting/README.md`. Each array
+task self-deploys a vLLM server, then loops `THINK_MODES × CONDITIONS` for
+the assigned cell. The Ollama backend was retired 2026-05-23 (single
+inference client: VLLMClient; see CHANGELOG).
 
 ```
 run_experiment.py
@@ -40,9 +39,8 @@ results/smoke/{fixed,shuffle}_<sha>_<ts>/                        # --smoke
     summary_{ts}.json
 ```
 
-`chain_{ts}.json` is no longer emitted by the active flow (chain phase
-archived 2026-05-05). Pre-archive sweeps still have the file on disk; the
-schema is unchanged.
+Pre-archive sweeps still have `chain_{ts}.json` on disk; the analyzer
+ignores it.
 
 ---
 
@@ -52,7 +50,7 @@ The experiment crosses five independent variables:
 
 | Dimension | Values | Controls |
 |-----------|--------|----------|
-| **Model** | Cluster sweep (default, post 2026-05-18 backend unification): `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` — full roster on vLLM `rtx_6000:1`. `gpt-oss:120b` retired 2026-04-27; `gpt-oss:20b` and `Qwen3.5:27b/35b` superseded 2026-04-29; `nemotron-3-nano:30b` dropped 2026-04-30 (Hermes XML parse failures proved content-dependent); `qwen3.6:27b` retired and `Qwen3.5:4B`/`Qwen3.5:9B` added 2026-05-17; `gemma4:31b` dense (Ollama) replaced with `gemma4:26b-a4b` MoE (vLLM) 2026-05-18 (CHANGELOG). | Model capacity & family |
+| **Model** | `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` (vLLM `rtx_6000:1`). Roster history in `cluster-experimenting/README.md` "Models in the default sweep". | Model capacity & family |
 | **Condition** | with-tools, without-tools | Whether MCP tools are available |
 | **Tool filter** | all | Which tools the model sees (single active value) |
 | **Prompt style** | minimal | System prompt detail level (single active value) |
@@ -182,13 +180,6 @@ unchanged structurally; with-tools `simulate` switched to the shared
 identical (both sides round-trip through the same plugin and produce
 byte-equal trajectory dicts on identical inputs).
 
-### 4.3 Chains — archived 2026-05-05
-
-Multi-task chains are no longer executed by the active flow. The implementation
-remains in `pddl_eval.runner.run_chain_experiment` (unwired) and
-`pddl_eval.summary.{summarize_chains, print_chain_table}` for archival reference.
-See `development/CHANGELOG.md` for the rationale.
-
 ---
 
 ## 5. Evaluation Parameters
@@ -300,7 +291,7 @@ Bug taxonomies (3 domain-mutators, 6 problem-mutators, 4 plan-mutators) are docu
 
 **Plan diversity.** Classical domains achieve up to 3 distinct plans via Fast Downward search-strategy variants (`lazy_greedy_cea`, `astar_lmcut`, `lazy_greedy_ff`); numeric domains use ENHSP whose alternative search algorithms are limited, so v2..v5 may be duplicates of v1. The graded count remains 5 per problem; per-call grading robustness is preserved because each prompt variant grades the plan independently.
 
-**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair the negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + the matching positive `pNN.pddl` for that `pNN_bK.plan`). The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` — so this isn't a leak channel.
+**Pairing convention (known limitation).** `validate_problem` and `validate_plan` negative jobs always pair the negative file with the *positive* counterparts of the other layers (the `validate_problem` negative uses positive `domain.pddl`; the `validate_plan` negative uses positive `domain.pddl` + the matching positive `pNN.pddl` for that `pNN_bK.plan`). The LLM never sees a filename — prompts interpolate content via `.format(domain=…, problem=…, plan=…)` — so this isn't a leak channel. See `development/OPEN_ISSUES.md` ISS-020 for the related 5:1 negative-vs-positive sample-size imbalance on `validate_domain`.
 
 ---
 
@@ -319,6 +310,11 @@ These oracle results become the ground truth for scoring model responses.
 ---
 
 ## 8. MCP Tool API Contract
+
+**Marketplace compatibility:** sweep-5 requires marketplace 1.4.0+ (per-task
+`validate_domain` / `validate_problem` / `validate_plan` tools). Sweep-3/4
+used the polymorphic predecessor `validate_pddl_syntax`; see CHANGELOG
+2026-05-23.
 
 Tools are served by two MCP plugin servers from the [pddl-copilot](https://github.com/SPL-BGU/pddl-copilot) marketplace (v2.0.0+, pure pip — no Docker). The solver uses Fast Downward via `up-fast-downward` and ENHSP via `up-enhsp`; the validator uses `pddl-pyvalidator`. Numeric planning via ENHSP requires Java 17+.
 
@@ -358,14 +354,11 @@ Tools are served by two MCP plugin servers from the [pddl-copilot](https://githu
 ## 9. Output Files
 
 Each run produces two JSON files (`single_task_*.json` + `summary_*.json`).
-A third file (`chain_*.json`) was emitted by the pre-2026-05-05 chain phase;
-it is no longer produced under the active flow.
 
 ### summary_{ts}.json
 
-Aggregated statistics. Top-level object with `single_task` and `chains`
-arrays plus an optional `meta` dict. The `chains` array is always `[]` under
-the active flow (kept for back-compat with pre-2026-05-05 corpora).
+Aggregated statistics. Top-level object with a `single_task` array plus an
+optional `meta` dict.
 
 `single_task` entries:
 | Field | Description |
@@ -375,7 +368,7 @@ the active flow (kept for back-compat with pre-2026-05-05 corpora).
 | ci_lo, ci_hi | 95% Wilson score CI |
 | tool_selected, tool_selected_rate, tool_selected_ci_lo, tool_selected_ci_hi | Tool selection (with-tools only) |
 | truncated | Count of evaluations where `done_reason == "length"` (token-cap hit) |
-| failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive). Notable: `FR_THINK_OVERFLOW` (PR-2, 2026-04-28) — thinking spiral consumed the completion budget leaving empty `content`; more specific than `FR_TRUNCATED_NO_ANSWER`. `FR_FORMAT_PARSE_FAIL` (PR-4, 2026-04-29) — no-PDDL-tools branch: both the `format=<json_schema>` parse and the free-text fallback (where applicable) failed to produce a usable artefact. Treated as a truncation-eligible failure (re-tagged to `FR_TRUNCATED_NO_ANSWER` when `done_reason == "length"`), so a cap-cut mid-JSON does not inflate the parse-fail rate. `FR_WRONG_TOOL` (sweep-5, 2026-05-23) — `validate_*` with-tools branch only: model called a validator-family tool (`validate_domain` / `validate_problem` / `validate_plan`) but not the task-matching one. Distinct from `FR_TOOL_NOT_SELECTED` (no validator-family call at all) and `FR_VERDICT_MISMATCH` (right tool, wrong verdict). Never appears in pre-marketplace-1.4.0 trials. |
+| failure_reasons | Dict of `FR_*` reason → count (open-ended; new buckets are additive). Paper-cited tags: `FR_OK`, `FR_THINK_OVERFLOW`, `FR_FORMAT_PARSE_FAIL`, `FR_WRONG_TOOL`. See `development/OPEN_ISSUES.md` ISS-005 for the full vocabulary and sub-pattern audit. |
 
 `meta` (present when `save_results` is called with metadata; written by `async_main`):
 | Field | Description |
@@ -383,7 +376,7 @@ the active flow (kept for back-compat with pre-2026-05-05 corpora).
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. The `num_ctx_chain` field was emitted 2026-04-29 → 2026-05-05; pre-archive runs still carry it, post-archive runs do not. |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json
@@ -407,13 +400,6 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pro
 | done_reason | Raw `done_reason` from the last chat turn (`"stop"`, `"length"`, etc.) |
 | tool_filter | "all" |
 | prompt_style | "minimal" |
-
-### chain_{ts}.json — archived 2026-05-05
-
-No longer emitted by the active flow. Pre-archive sweeps may still carry the
-file; per-configuration shape was (model, with_tools, chain_length, samples,
-successes, success_rate, tool_filter, prompt_style) plus a `samples_detail`
-array. Aggregators (`aggregate.py`, `plot.py`, `table.py`) ignore the file.
 
 ---
 
@@ -474,14 +460,14 @@ squeue --me                 # All my running/pending jobs
 | Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
 | Tool filter | All tools exposed | All tools exposed (paper-aligned) |
 | Prompt style | Single prompt | `minimal` only (paper-aligned) |
-| Models | Qwen3, GPT-OSS (various sizes) | Cluster sweep (post 2026-05-18 backend unification): `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` — full roster on vLLM `rtx_6000:1`. Roster history: `gpt-oss:120b` → `Qwen3.5:35b` (large-band, 2026-04-27); `Qwen3.5:27b/35b` → `qwen3.6` successors and `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (2026-04-29); `nemotron-3-nano:30b` dropped (2026-04-30, smoke 17274424 confirmed deterministic Hermes XML parse failures); `qwen3.6:27b` retired and `Qwen3.5:4B` + `Qwen3.5:9B` added (2026-05-17, mid-band ladder); `gemma4:31b` dense Ollama replaced with `gemma4:26b-a4b` MoE on vLLM (2026-05-18, smoke 17638752 — retired the backend split, full roster now single-backend). The cis-ollama fallback path was retired 2026-04-27. |
+| Models | Qwen3, GPT-OSS (various sizes) | `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` on vLLM `rtx_6000:1`. Roster history in `cluster-experimenting/README.md`. |
 | Domains | 10 IPC benchmarks | Same 10 IPC benchmarks (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing) — copied from the paper's published dataset |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
 | Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on every validator tool) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for the three `validate_*` tools and `{valid, steps, trajectory}` for `get_state_transition`. |
 | Simulate success criterion | Non-error tool result | Canonical-form trajectory deep-equality against oracle `gt["trace"]` on both with-tools and no-PDDL-tools paths via `_normalize_trajectory` (PR-4, 2026-04-29) — bridges oracle (`boolean_fluents: dict[str, bool]`) and model (`state.boolean: list[str]`) shapes to a sorted/lower-cased canonical form. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
 | No-tools task set | All 5 tasks scored | All 5 tasks scored under PR-4 (2026-04-29) with format-constrained sampling — `simulate` re-enabled alongside the shared `_normalize_trajectory` grader, replacing the keyword-check that ISS-002 originally dropped. The user-facing label changed to **no-PDDL-tools** to reflect that format constraint is still available; only PDDL-specific MCP tools (planner/validator/simulator) are removed. Internal `with_tools: bool` and JSON `condition: "no-tools"` field unchanged for back-compat. |
 | No-tools grader | Free-text regex extractors (`extract_plan_lines`, `extract_verdict`, simulate keyword check) | Per-task Pydantic schema (`pddl_eval/schemas.py`) enforced via `format=<json_schema>` → vLLM `guided_json` (PR-4, 2026-04-29). Free-text extractors retained as fallback for `solve` / `validate_*` when JSON parse fails; `simulate` has no fallback (parse failure → `FR_FORMAT_PARSE_FAIL`). Pre-PR-4 no-tools rows are NOT directly comparable to post-PR-4 no-PDDL-tools rows — the constraint narrows the response space and may regress tiny models that conflict with the schema; the new `FR_FORMAT_PARSE_FAIL` tag quantifies that rate per cell. |
-| No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. The chain phase itself was archived 2026-05-05 (see §4.3). |
+| No-tools matrix | Crossed with all think modes + chains | Gated to `--think off` + single-task only. The chain phase was archived 2026-05-05 and the code removed (see CHANGELOG). |
 
 The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.
 

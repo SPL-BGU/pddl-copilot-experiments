@@ -7,10 +7,6 @@ Column groups:
   * per-task × 5 tasks: succ% [lo–hi], tool_sel%, trunc%
   * aggregate: ST mean %, total n
 
-Chain-phase columns (L=2..5) were dropped 2026-05-05 when the chain phase
-was archived from the active flow; legacy `chains` rows in old summary_*.json
-are ignored here.
-
 Outputs default to <root>/tables/master.{md,csv,tex}.
 
 Imports `parse_dirname`, `find_default_root`, `load_summaries`, `host_tag`
@@ -32,37 +28,19 @@ from aggregate import (  # type: ignore[import-not-found]
     load_summaries,
 )
 
-# Wilson CI lives in pddl_eval/summary.py; re-export through the same sys.path
-# entry aggregate.py already set up.
-from pddl_eval.summary import wilson_ci  # type: ignore[import-not-found]  # noqa: E402
-from pddl_eval.prompts import STEERED_VARIANTS  # type: ignore[import-not-found]  # noqa: E402
-from pddl_eval.summary import NEUTRAL_VARIANTS  # type: ignore[import-not-found]  # noqa: E402
+from _constants import (  # noqa: E402
+    NEUTRAL_VARIANTS,
+    STEERED_VARIANTS,
+    TASK_LABELS,
+    TASKS,
+    decompose_cond as _cond_parts,
+    wilson_ci,
+)
 
-TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
-TASK_LABELS = {
-    "solve": "Solve",
-    "validate_domain": "Val-Dom",
-    "validate_problem": "Val-Prob",
-    "validate_plan": "Val-Plan",
-    "simulate": "Simulate",
-}
 # `arm` is the sweep-5 four-arm dimension (nt-neut/nt-ster/tl-neut/tl-ster +
 # *-legacy fallback for sweep-3/4 corpora). One pivot row per (cell × arm).
 META_COLS = ["model", "think", "tool_filter", "prompt_style", "cond", "arm",
              "host", "jobid"]
-
-
-def _cond_parts(cond: str) -> tuple[str, str]:
-    """Extract (tool_filter, prompt_style) from a dir-name cond string.
-
-    Fallback only — prefer summary.meta values when present.
-    """
-    if cond == "no-tools" or not cond.startswith("tools_"):
-        return "-", "-"
-    parts = cond[len("tools_"):].rsplit("_", 1)
-    if len(parts) != 2:
-        return "-", "-"
-    return parts[0], parts[1]
 
 
 def _row_meta(info: dict, data: dict, arm: str) -> dict:
