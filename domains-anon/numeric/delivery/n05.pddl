@@ -1,4 +1,4 @@
-(define (problem delivery-x-1)
+(define (problem mailrun-n05)
    (:domain mailrun)
 
    (:init (= (mass scroll4) 1)

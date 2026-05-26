@@ -734,6 +734,75 @@ _DOMAIN_NAME_REF_RE_TEMPLATE = (
     r"(\(\s*:domain\s+){token}(?![A-Za-z0-9_\-])"
 )
 
+# `(define (problem X))` header — wholesale renamed via
+# `_apply_problem_name_pass`. Three capture groups so the original
+# whitespace between `define` / `problem` / closing-paren is preserved.
+_PROBLEM_NAME_HEADER_RE = re.compile(
+    r"(\(\s*define\s*\(\s*problem\s+)([A-Za-z][A-Za-z0-9_\-]*)(\s*\))",
+    re.IGNORECASE,
+)
+
+
+def _apply_problem_name_pass(
+    text: str,
+    file_stem: str,
+    target_domain_token: str,
+) -> tuple[str, str | None]:
+    """Wholesale rewrite of `(define (problem X))` headers.
+
+    Replaces the problem identifier with the deterministic synthetic name
+    `<target_domain_token>-<file_stem>` (e.g. `apiary-p01`). Run as a
+    POST-pass — after the identifier char-walk and the object-prefix
+    regex — so the synthetic name is opaque to both. Returns
+    ``(rewritten_text, original_problem_name)``; ``(text, None)`` when no
+    `(define (problem ...))` header is present (domain.pddl, domain_neg.pddl,
+    .plan files).
+
+    Closes the lexical-leak weak spot where canonical (or canonical-substring)
+    tokens survived in the problem identifier — see
+    `development/contamination_probe_plan.md` §3.2.
+    """
+    new_name = f"{target_domain_token}-{file_stem}".lower()
+    original_holder: list[str | None] = [None]
+
+    def _sub(m: re.Match[str]) -> str:
+        original_holder[0] = m.group(2).lower()
+        return f"{m.group(1)}{new_name}{m.group(3)}"
+
+    rewritten, hits = _PROBLEM_NAME_HEADER_RE.subn(_sub, text, count=1)
+    if hits == 0:
+        return text, None
+    return rewritten, original_holder[0]
+
+
+def _apply_problem_name_pass_inverse(
+    text: str,
+    canonical_problem_name: str,
+) -> str:
+    """Restore the canonical `(define (problem X))` from the synthetic name.
+
+    Used by `round_trip_check` to re-establish strict byte-equality after
+    inverse rewrite. The forward pass is one-way (file_stem -> synthetic
+    name) so inverse needs the canonical name from the source file rather
+    than deriving it from the synthetic form.
+    """
+    def _sub(m: re.Match[str]) -> str:
+        return f"{m.group(1)}{canonical_problem_name}{m.group(3)}"
+
+    rewritten, _ = _PROBLEM_NAME_HEADER_RE.subn(_sub, text, count=1)
+    return rewritten
+
+
+_PROBLEM_FILE_RE = re.compile(r"^[pn]\d{2}$")
+
+
+def _extract_canonical_problem_name(text: str) -> str | None:
+    """Pull the `X` from `(define (problem X))`, lowercased, or None."""
+    m = _PROBLEM_NAME_HEADER_RE.search(text)
+    if m is None:
+        return None
+    return m.group(2).lower()
+
 
 def _apply_domain_name_pass(
     text: str,
@@ -1181,6 +1250,21 @@ def round_trip_check(
             with anon_path.open("r", encoding="utf-8") as fh:
                 anon_text = fh.read()
             restored = rewrite_text_inverse(anon_text, rename)
+            # Problem-name pass is one-way (synthetic `<target>-<file_stem>`
+            # carries no record of the canonical X). For problem files,
+            # extract X from the canonical source and rewrite the synthetic
+            # header back to it before byte-compare. Non-problem files
+            # (domain.pddl, plans) skip this step — they have no problem
+            # header to restore.
+            if _PROBLEM_FILE_RE.fullmatch(Path(entry).stem):
+                canonical_problem_name = _extract_canonical_problem_name(canonical_text)
+                if canonical_problem_name is None:
+                    mismatches.append(
+                        f"{dir_stem}/{entry}: canonical file has no "
+                        f"`(define (problem X))` header — cannot round-trip"
+                    )
+                    continue
+                restored = _apply_problem_name_pass_inverse(restored, canonical_problem_name)
             # Renamed tokens are always emitted lowercase (spec). Tokens the
             # inverse pass doesn't substitute (e.g. problem identifiers like
             # `BW-rand-3`) keep their original casing — so case-normalise
@@ -1260,10 +1344,23 @@ def rewrite_corpus(
         out_root = tmp_dir / family / dir_stem
         out_root.mkdir(parents=True, exist_ok=True)
 
+        # Pull the renamed domain token once per domain — used to build the
+        # synthetic problem identifier `<target>-<file_stem>`. Reading from
+        # rename["domain_name"].values() (not yaml_domain) keeps the source
+        # of truth aligned with the actual rewrite target, which may differ
+        # from the YAML `domain:` field when the canonical token carries a
+        # suffix (e.g. `gripper-strips`).
+        target_domain_token = next(iter(rename["domain_name"].values()))
+
         for src_path in iter_domain_files(source_dir, dir_stem):
             with src_path.open("r", encoding="utf-8") as fh:
                 text = fh.read()
             rewritten, counts = rewrite_text(text, rename)
+            original_problem_name: str | None = None
+            if _PROBLEM_FILE_RE.fullmatch(src_path.stem):
+                rewritten, original_problem_name = _apply_problem_name_pass(
+                    rewritten, src_path.stem, target_domain_token,
+                )
             dst_path = out_root / src_path.name
             with dst_path.open("w", encoding="utf-8") as fh:
                 fh.write(rewritten)
@@ -1271,7 +1368,9 @@ def rewrite_corpus(
             # `domain_name` appears as its own key in `counts` (a separate
             # audit-log section, per fix 3) so reviewers can verify
             # domain.pddl had exactly 1 hit, problem files 1 hit each,
-            # plan files 0 hits.
+            # plan files 0 hits. `original_problem_name` is logged outside
+            # `substitutions` because the problem-name pass is one-way
+            # (synthetic name not derived from canonical-token rename).
             log_lines.append(json.dumps({
                 "dir_stem": dir_stem,
                 "domain": yaml_domain,
@@ -1279,10 +1378,12 @@ def rewrite_corpus(
                 "family": family,
                 "file": src_path.name,
                 "substitutions": counts,
+                "original_problem_name": original_problem_name,
                 "sha256": digest,
             }, sort_keys=True))
             if verbose:
-                print(f"  {family}/{dir_stem}/{src_path.name}: {counts}")
+                print(f"  {family}/{dir_stem}/{src_path.name}: {counts}"
+                      f" problem_name={original_problem_name!r}")
 
     with (tmp_dir / "_rename.log").open("w", encoding="utf-8") as fh:
         for line in log_lines:

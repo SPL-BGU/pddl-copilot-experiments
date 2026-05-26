@@ -1,5 +1,5 @@
 ;;Instance with 1x1x2 points
-(define (problem name)
+(define (problem dragonfly-n04)
   (:domain dragonfly)
 
   (:init

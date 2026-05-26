@@ -1,4 +1,4 @@
-(define   (problem parking)
+(define   (problem apiary-n04)
   (:domain apiary)
 
   (:init

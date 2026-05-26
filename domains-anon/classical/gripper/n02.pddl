@@ -1,7 +1,7 @@
 
 
 
-(define (problem gripper-1-3-1)
+(define (problem mailfloor-n02)
 (:domain mailfloor)
 (:objects carrier1 - carrier
 righthand1 lefthand1 - hand

@@ -152,6 +152,17 @@ For each PDDL file (domain, problem, plan):
   → `(<renamed-type-name>)\g<2>` (numeric suffix preserved).
 - Plan files: the `(<action> <args…>)` lines are rewritten with both the
   action rename and the object-name remap.
+- **Problem-name post-pass (added 2026-05-26):** every `(define (problem X))`
+  header in `p0N.pddl` / `n0N.pddl` is wholesale-replaced with the deterministic
+  synthetic identifier `<renamed_domain_token>-<file_stem>` (e.g.
+  `apiary-p01`, `tearoom-n02`). Runs *after* the identifier char-walk and
+  object-prefix regex so the synthetic name is opaque to both. Closes the
+  leak class where canonical (or canonical-substring) tokens survived in the
+  problem identifier — `parking` (literal match), `delivery-x-1`, `depotprob81`,
+  `roverprob511`, `bw_rand_3`, `ZTRAVEL-2-1`, `gripper-1-3-1` (substring
+  matches inside atomic PDDL identifiers; partial substitution would have
+  been unsafe). The original problem name is recorded in `_rename.log` and
+  restored by the round-trip-check via the canonical source.
 
 **Implementation note.** Write this as a single Python script
 `tools/anon_rename.py` that consumes a per-domain `anon_map.yaml` and a

@@ -1,5 +1,5 @@
 ;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
-(define (problem instance_3_100)
+(define (problem tankyard-p02)
 	(:domain tankyard)
 	(:objects
 		tank0 tank1 tank2 - tank

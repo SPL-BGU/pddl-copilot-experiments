@@ -1,5 +1,5 @@
 ;;Instance with 1x1x2 points
-(define (problem name)
+(define (problem dragonfly-n05)
   (:domain dragonfly)
   (:objects
     pad_0_0_0 - lilypad

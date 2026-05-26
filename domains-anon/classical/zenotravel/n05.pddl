@@ -1,4 +1,4 @@
-(define (problem ZTRAVEL-2-1)
+(define (problem bush-expedition-n05)
 (:domain bush-expedition)
 
 (:init

@@ -1,6 +1,6 @@
 
 
-(define (problem BW-rand-6)
+(define (problem tearoom-p05)
 (:domain tearoom)
 (:objects bowl1 bowl2 bowl3 bowl4 bowl5 bowl6  - bowl)
 (:init

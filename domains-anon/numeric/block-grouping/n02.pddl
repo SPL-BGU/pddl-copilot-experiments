@@ -1,5 +1,5 @@
 ;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
-(define (problem instance_15_5_2_3)
+(define (problem mt-bonbon-tray-n02)
   (:domain mt-bonbon-tray)
   (:objects
     bonbon1 bonbon2 bonbon3 bonbon4 bonbon5 - bonbon

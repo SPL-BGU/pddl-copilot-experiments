@@ -1,4 +1,4 @@
-(define (problem strips_sat_x_1)
+(define (problem kitchen-line-p01)
 (:domain kitchen-line)
 (:objects
   chef0 - chef

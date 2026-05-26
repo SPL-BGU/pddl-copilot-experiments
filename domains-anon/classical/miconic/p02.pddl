@@ -1,7 +1,7 @@
 
 
 
-(define (problem mixed-f2-p2-u0-v0-d0-a0-n0-A0-B0-N0-F0)
+(define (problem submersible-p02)
    (:domain submersible)
    (:objects diver0 diver1 - diver
              deck0 deck1 - deck)
