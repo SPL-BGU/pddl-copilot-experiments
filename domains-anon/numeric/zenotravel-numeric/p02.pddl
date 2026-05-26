@@ -1,4 +1,4 @@
-(define (problem ZTRAVEL-1-1-2c)
+(define (problem lunar-logistics-p02)
 (:domain lunar-logistics)
 (:objects
   rover1 - rover

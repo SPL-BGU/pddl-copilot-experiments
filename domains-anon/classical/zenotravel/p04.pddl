@@ -1,4 +1,4 @@
-(define (problem ZTRAVEL-4-3)
+(define (problem bush-expedition-p04)
 (:domain bush-expedition)
 (:objects
   jeep1 - jeep

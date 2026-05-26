@@ -1,5 +1,5 @@
 ;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
-(define (problem instance_8_1_1)
+(define (problem assembly-line-constrained-p04)
   (:domain assembly-line-constrained)
   (:objects
     robot_arm1 - robot_arm

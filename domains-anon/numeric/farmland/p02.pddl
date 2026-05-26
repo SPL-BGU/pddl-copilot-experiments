@@ -1,4 +1,4 @@
-(define (problem farmland_4_chain)
+(define (problem orbital-p02)
   (:domain orbital)
   (:objects
     module0 module1 module2 module3 - module

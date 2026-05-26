@@ -1,5 +1,5 @@
 ;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
-(define (problem instance_7_1_1)
+(define (problem assembly-line-constrained-n05)
   (:domain assembly-line-constrained)
 
 

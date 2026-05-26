@@ -1,4 +1,4 @@
-(define (problem prob)
+(define (problem astrolabe-n04)
  (:domain astrolabe)
  (:objects
       prism1 - prism

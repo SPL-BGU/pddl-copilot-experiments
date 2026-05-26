@@ -1,4 +1,4 @@
-(define   (problem parking)
+(define   (problem apiary-p01)
   (:domain apiary)
   (:objects
      bee_0  bee_1  bee_2 - bee

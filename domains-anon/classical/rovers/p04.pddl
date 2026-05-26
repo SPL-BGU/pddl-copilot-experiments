@@ -1,4 +1,4 @@
-(define (problem roverprob0) (:domain arable-farm)
+(define (problem arable-farm-p04) (:domain arable-farm)
 (:objects
 	homestead - silo
 	golden prime_grade bulk_grade - variety

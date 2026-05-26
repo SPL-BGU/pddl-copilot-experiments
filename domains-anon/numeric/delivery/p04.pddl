@@ -1,4 +1,4 @@
-(define (problem delivery-x-4)
+(define (problem mailrun-p04)
    (:domain mailrun)
    (:objects hamleta hamletb hamletc hamletd - hamlet
              scroll12 scroll11 scroll10

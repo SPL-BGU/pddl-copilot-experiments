@@ -1,5 +1,5 @@
 ;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
-(define (problem instance_1_2)
+(define (problem ballooning-p05)
 
 	(:domain ballooning)
 

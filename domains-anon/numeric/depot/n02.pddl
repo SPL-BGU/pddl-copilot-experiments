@@ -1,4 +1,4 @@
-(define (problem depotprob81) (:domain ranchyard)
+(define (problem ranchyard-n02) (:domain ranchyard)
 (:objects
   homestead0 - homestead
   outpost0 outpost1 - outpost

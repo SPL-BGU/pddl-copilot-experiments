@@ -1,5 +1,5 @@
 
-(define (problem instance_15_22)
+(define (problem orbital-n02)
   (:domain orbital)
   (:objects
     module0  module1  module2  module3  module4  module5  module6  module7  module8  module9  module10  module11  module12  module13  module14  - module

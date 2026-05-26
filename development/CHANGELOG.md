@@ -6,6 +6,34 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-26 — Contamination probe: problem-header leak fix (`tools/anon_rename.py`)
+
+**Branch:** `fix/anon-problem-name-leak`. Follow-up to the Phase-A/B contamination probe PR (#71). Post-merge audit surfaced one hard leak and six substring leaks in `(define (problem X))` headers that the original rewriter design left untouched — its `domain_name` pass scoped to `(define (domain X))` and `(:domain X)` contexts only.
+
+**Affected domains (7).** `parking` (literal canonical match: `(define (problem parking))` in all 10 files); `delivery` (`delivery-x-1`), `depot` (`depotprob81`), `rovers` (`roverprob511`), `blocksworld` (`bw_rand_3`), `zenotravel` (`ZTRAVEL-2-1`), `gripper` (`gripper-1-3-1`) — substring leaks inside atomic PDDL identifiers (hyphen / underscore is part of the token), so partial substitution was unsafe.
+
+**Fix.** New `_apply_problem_name_pass(text, file_stem, target_domain_token)` post-pass in `tools/anon_rename.py` wholesale-replaces every `(define (problem X))` header in `p0N.pddl` / `n0N.pddl` with the deterministic synthetic identifier `<renamed_domain_token>-<file_stem>` (e.g. `apiary-p01`, `tearoom-n02`). Applied uniformly to all 20 domains, not just the leaky 7 — keeps the audit invariant trivially checkable: every problem header must match `\(define\s+\(problem\s+[a-z][a-z0-9_-]*-[pn]\d{2}\)`. Runs after the identifier char-walk + object-prefix regex so the synthetic name is opaque to both. The original canonical problem name is recorded per file in `_rename.log` (new `original_problem_name` field) and restored by `round_trip_check` via the canonical source.
+
+**Validation.** `--self-test` 20/20 PASS (unchanged). `--round-trip-check` 1240/1240 byte-equal (preserved via the new inverse-restore path). Leak grep against the seven canonical tokens / substrings: 0 hits across 1240 files. Header-shape audit: 200/200 problem files match the synthetic pattern. MCP gates on `parking` (the highest-severity case, all 10 files literal canonical): 11/11 PASS via `tools/anon_validate.py`.
+
+**Files touched.**
+- `tools/anon_rename.py` — `_apply_problem_name_pass`, `_apply_problem_name_pass_inverse`, `_extract_canonical_problem_name`, `_PROBLEM_FILE_RE`; threaded into `rewrite_corpus` (forward + audit log) and `round_trip_check` (inverse-restore). `_PROBLEM_NAME_HEADER_RE` reused by both directions.
+- `domains-anon/` — regenerated; 1240 files, of which 200 problem files carry new synthetic headers (the other 1040 are byte-identical to the previous Phase-B output).
+- `domains-anon/_rename.log` — new `original_problem_name` field per row (null for `domain.pddl` / `domain_neg.pddl` / `.plan`; canonical X for `p0N` / `n0N`).
+- `development/contamination_probe_plan.md` §3.2 — note the new post-pass.
+
+**Reproducibility.** No methodology change. Phase-A pilot results were not yet on disk, so no result invalidation. Harness reads fixtures by file path, never by `(problem X)` token. Plan files don't reference the problem identifier. EXPERIMENTS_FLOW.md unaffected.
+
+**Review follow-up (same date, same branch).** PR #72 review surfaced four refinements that landed as a second commit on the same branch:
+- **Audit-field semantics.** `original_problem_name` in `_rename.log` is now extracted from the *source* text before `rewrite_text` runs, rather than from the post-walk form. Eliminates a hypothetical-but-possible misleading audit value if a future YAML accidentally puts a problem identifier into the identifier_table. Also drops the list-cell closure (`nonlocal` would have been cleaner — but with the extraction moved out, no closure is needed at all).
+- **Header-shape audit baked into the rewriter.** `_audit_problem_headers` walks every staged `[pn]\d{2}.pddl` in the tmp dir before atomic-promote and asserts each header matches `\(define\s+\(problem\s+[a-z][a-z0-9_-]*-[pn]\d{2}\)`. Defence-in-depth: a regression in `_apply_problem_name_pass` aborts the rewrite atomically, so the previous `domains-anon/` stays untouched.
+- **`re.IGNORECASE` intent documented.** One-line comment on `_PROBLEM_NAME_HEADER_RE` noting that case-insensitivity is for the identifier (mixed-case canonical names like `ZTRAVEL-2-1`), not the lowercase `define`/`problem` keywords.
+- **Plan §3.2 clarification.** Embedded renamed-domain token in the synthetic name is deliberate — `(:domain X)` on the next line already exposes the same token, so the prefix carries no separate leak signal.
+
+Concern #2 from the review (defensive check on `rename["domain_name"]` emptiness) was **dropped**: the invariant is enforced by adjacent code (`_attach_domain_name_pair`) and adding a check would be needless defensive programming. File contents in `domains-anon/` are byte-identical to the first commit (the semantic fix changes only how the audit-log field is computed; for the 7 leaky cases the canonical was already untouched by `rewrite_text`, so the recorded values are the same).
+
+---
+
 ## 2026-05-26 — Analyzer simplification follow-up (ANALYZER-10 + ANALYZER-13)
 
 **Branch:** `analyzer-10-13-17-simplifications`, opened against `sweep5-new-prompts`. Picks up the two tickets PR-69 deferred (loader unification + figure-builder helpers). ANALYZER-17 (build_deck slide-submodule split) was evaluated and dropped — ANALYZER-13's actual LOC reduction was modest enough that the structural split would have been cosmetic.

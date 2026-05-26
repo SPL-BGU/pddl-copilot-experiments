@@ -1,4 +1,4 @@
-(define (problem depot_2_2_2_4_4_2) (:domain seaport)
+(define (problem seaport-n05) (:domain seaport)
 (:objects
   dock0 dock1 - dock
   wharf0 wharf1 - wharf
