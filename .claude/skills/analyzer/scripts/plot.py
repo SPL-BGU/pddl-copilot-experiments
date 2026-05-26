@@ -19,7 +19,6 @@ Valid --figs: 1, 3, 4, 5, 6 (2 and 7 are reserved gaps).
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
@@ -50,6 +49,9 @@ from _constants import (  # noqa: E402,F401
     _lighten,
     arm_for,
     find_default_root,
+    iter_cells,
+    latest_single_task,
+    latest_summary,
     parse_dirname_plotshape as parse_dirname,
     wilson_ci,
 )
@@ -58,28 +60,14 @@ from _constants import (  # noqa: E402,F401
 def load_series(root: Path, include_legacy: bool,
                 include_retired: bool = False) -> list[dict]:
     entries = []
-    for d in sorted(root.glob("slurm_*")):
-        if not d.is_dir():
+    for d, info in iter_cells(root, include_retired=include_retired,
+                               include_legacy=include_legacy,
+                               parser="plotshape"):
+        summary = latest_summary(d)
+        if summary is None:
             continue
-        info = parse_dirname(d.name)
-        if info is None:
-            continue
-        if info.get("legacy") and not include_legacy:
-            continue
-        if not include_retired and info.get("cond") in RETIRED_CONDS:
-            continue
-        sfs = sorted(d.glob("summary_*.json"))
-        if not sfs:
-            continue
-        stfs = sorted(d.glob("single_task_*.json"))
-        with sfs[-1].open() as f:
-            summary = json.load(f)
-        instances = []
-        if stfs:
-            with stfs[-1].open() as f:
-                instances = json.load(f)
         info["summary"] = summary
-        info["instances"] = instances
+        info["instances"] = latest_single_task(d) or []
         info["dir"] = d
         entries.append(info)
     return entries

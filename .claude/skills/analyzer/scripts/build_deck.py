@@ -58,6 +58,8 @@ from _constants import (  # noqa: E402
     FAILURE_REASONS as _FR_ORDER,
     TASKS,
     arm_for,
+    iter_cells,
+    iter_trials,
     wilson_ci,
 )
 
@@ -70,11 +72,6 @@ TASK_LABEL = {
     "validate_plan": "val-plan",
     "simulate": "simulate",
 }
-from pddl_eval.scoring import (  # noqa: E402
-    relabel_tool_arg_error_taxonomy,
-    relabel_truncated_taxonomy,
-)
-
 # Canonical arm display order for sweep-5 decks. Two-pass cells (post-filter)
 # contain both nt-neut + tl-neut + tl-ster; the 4th-arm (nt-ster) is the
 # control submit and shows up only when --include-no-tools-steered has been
@@ -237,14 +234,6 @@ def _resolve_path(p: str | Path) -> Path:
 
 # ---------------- Loading ----------------
 
-def _cell_name(d: str) -> tuple[str, str, str] | None:
-    """Parse slurm cell directory name into (model, think, cond)."""
-    m = re.match(r"slurm_(?:vllm_)?(?P<model>.+?)_(?P<think>on|off)_(?P<cond>.+)$", d)
-    if not m:
-        return None
-    return m.group("model"), m.group("think"), m.group("cond")
-
-
 def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
     """Load every trial.jsonl under `results_root`, keyed by (model, think, arm).
 
@@ -252,51 +241,30 @@ def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
     `tools_all_minimal` dir splits into `tl-neut` (v11/12/13) and `tl-ster`
     (v14/15/16)). Trials missing `prompt_variant` are skipped — they
     cannot be classified into an arm without inventing a default.
+
+    Trial streaming + the two read-time taxonomy fixes
+    (FR_TRUNCATED_NO_ANSWER → FR_THINK_OVERFLOW, FastMCP arg-validation →
+    FR_TOOL_ERROR) live in `_constants.iter_trials(relabel=True)` and
+    mutate the in-memory dict only; trials.jsonl is never rewritten.
     """
     out: dict[tuple[str, str, str], list[dict]] = {}
     skipped_no_pv = 0
-    for child in sorted(results_root.iterdir()):
-        if not child.is_dir() or not child.name.startswith("slurm_"):
+    for cell_dir, info in iter_cells(results_root, include_retired=True,
+                                      include_legacy=True, parser="plotshape"):
+        # build_deck only handles cells with an on/off think axis; sweep-3/4
+        # legacy cells with think=default would key (model, "default", arm)
+        # buckets that no figure consumer expects.
+        think = info["think"]
+        if think not in ("on", "off"):
             continue
-        parsed = _cell_name(child.name)
-        if not parsed:
-            continue
-        model, think, _cond_ignored = parsed
-        fp = child / "trials.jsonl"
-        if not fp.exists():
-            continue
-        with fp.open() as f:
-            for line in f:
-                try:
-                    r = json.loads(line)["result"]
-                except (json.JSONDecodeError, KeyError):
-                    continue
-                pv = r.get("prompt_variant")
-                if pv is None:
-                    skipped_no_pv += 1
-                    continue
-                arm = arm_for(bool(r.get("with_tools")), int(pv))
-                # Read-time taxonomy fix: split FR_TRUNCATED_NO_ANSWER into
-                # FR_THINK_OVERFLOW when response was empty under think=on.
-                # Mutates the in-memory record only; trials.jsonl is unchanged.
-                r["failure_reason"] = relabel_truncated_taxonomy(
-                    r.get("failure_reason", ""),
-                    truncated=bool(r.get("truncated")),
-                    response=r.get("response") or "",
-                    think_mode=think,
-                )
-                # Read-time taxonomy fix: FastMCP "Error executing tool ..."
-                # arg-validation strings that pre-date the _tool_error_seen
-                # prefix extension land in verdict_mismatch / result_mismatch
-                # / plan_invalid. Relabel to FR_TOOL_ERROR so confusion
-                # matrices don't credit malformed-args calls as confident
-                # wrong predictions. trials.jsonl is unchanged.
-                r["failure_reason"] = relabel_tool_arg_error_taxonomy(
-                    r["failure_reason"],
-                    task=r.get("task", ""),
-                    tool_calls=r.get("tool_calls") or [],
-                )
-                out.setdefault((model, think, arm), []).append(r)
+        model = info["model"]
+        for r in iter_trials(cell_dir, relabel=True, think_mode=think):
+            pv = r.get("prompt_variant")
+            if pv is None:
+                skipped_no_pv += 1
+                continue
+            arm = arm_for(bool(r.get("with_tools")), int(pv))
+            out.setdefault((model, think, arm), []).append(r)
     if skipped_no_pv:
         print(f"  warn: skipped {skipped_no_pv} trials without prompt_variant",
               file=sys.stderr)
