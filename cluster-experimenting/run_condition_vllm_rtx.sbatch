@@ -271,6 +271,10 @@ for MODEL in $MODELS; do
         if [ "${INCLUDE_NO_TOOLS_STEERED:-0}" = "1" ]; then
             STEERED_ARG=(--include-no-tools-steered)
         fi
+        DOMAINS_DIR_ARG=()
+        if [ -n "${DOMAINS_DIR:-}" ]; then
+            DOMAINS_DIR_ARG=(--domains-dir "$DOMAINS_DIR")
+        fi
         echo
         echo "===================================================================="
         echo "MODEL: $MODEL   smoke ($SMOKE_FLAG)   started $(date)"
@@ -282,7 +286,8 @@ for MODEL in $MODELS; do
             --concurrency "$CONCURRENCY" \
             "$SMOKE_FLAG" \
             "${SHARD_ARGS[@]}" \
-            "${STEERED_ARG[@]}"
+            "${STEERED_ARG[@]}" \
+            "${DOMAINS_DIR_ARG[@]}"
         RC=$?
         echo "===================================================================="
         echo "MODEL: $MODEL   smoke   finished $(date)   rc=$RC"
@@ -332,7 +337,12 @@ for MODEL in $MODELS; do
             # retired Ollama-backend trials.jsonl in the matching
             # `slurm_<model>_<think>_<cond>/` dir); retained for corpus
             # comparability across sweeps.
-            OUT_DIR="${EXPT_ROOT}/results/slurm_vllm_${MODEL_TAG}_${THINK_MODE}_${COND}"
+            # ${RUN_TAG:+_$RUN_TAG} appends `_<tag>` only when RUN_TAG is
+            # exported by the wrapper (--run-tag); unset → byte-equivalent
+            # to the pre-change OUT_DIR. Used to isolate non-canonical
+            # corpus runs (e.g. --domains-dir domains-anon) from canonical
+            # results/slurm_vllm_*/ trees.
+            OUT_DIR="${EXPT_ROOT}/results/slurm_vllm_${MODEL_TAG}_${THINK_MODE}_${COND}${RUN_TAG:+_$RUN_TAG}"
 
             SHARD_ARGS=()
             if [ -n "${SHARD:-}" ]; then
@@ -354,6 +364,11 @@ for MODEL in $MODELS; do
                 STEERED_ARG=(--include-no-tools-steered)
             fi
 
+            DOMAINS_DIR_ARG=()
+            if [ -n "${DOMAINS_DIR:-}" ]; then
+                DOMAINS_DIR_ARG=(--domains-dir "$DOMAINS_DIR")
+            fi
+
             python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
@@ -366,6 +381,7 @@ for MODEL in $MODELS; do
                 "${CONTINUE_ARG[@]}" \
                 "${PARTIAL_ARG[@]}" \
                 "${STEERED_ARG[@]}" \
+                "${DOMAINS_DIR_ARG[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 

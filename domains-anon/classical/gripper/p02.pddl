@@ -1,0 +1,23 @@
+
+
+
+(define (problem gripper-1-4-2)
+(:domain mailfloor)
+(:objects carrier1 - carrier
+righthand1 lefthand1 - hand
+bay1 bay2 bay3 bay4 - bay
+parcel1 parcel2 - parcel)
+(:init
+(stationed-at carrier1 bay1)
+(vacant carrier1 righthand1)
+(vacant carrier1 lefthand1)
+(posted parcel1 bay1)
+(posted parcel2 bay4)
+)
+(:goal
+(and
+(posted parcel1 bay4)
+(posted parcel2 bay3)
+)
+)
+)

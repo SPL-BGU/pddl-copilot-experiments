@@ -1,0 +1,7 @@
+(walk carrier1 bay1 bay4)
+(collect carrier1 parcel2 bay4 righthand1)
+(collect carrier1 parcel1 bay1 lefthand1)
+(walk carrier1 bay1 bay3)
+(deposit carrier1 parcel2 bay3 righthand1)
+(walk carrier1 bay3 bay4)
+(deposit carrier1 parcel1 bay4 lefthand1)
