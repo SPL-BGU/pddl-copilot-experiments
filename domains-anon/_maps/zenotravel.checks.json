@@ -1,0 +1,14 @@
+{
+  "canonical_domain_token": "zeno-travel",
+  "dir_stem": "zenotravel",
+  "domain": "zeno-travel",
+  "gates": {
+    "bijective_merged": "pass",
+    "bijective_per_section": "pass",
+    "completeness": "pass",
+    "keyword_guard": "pass",
+    "reserved_name_collision": "pass",
+    "source_coverage": "pass"
+  },
+  "yaml_domain": "zeno-travel"
+}

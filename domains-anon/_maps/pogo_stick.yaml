@@ -1,0 +1,60 @@
+# Contamination-probe rename map — pogo_stick (numeric) domain.
+# Theme: pottery / ceramics studio (clay, kiln, coils, glaze).
+# All targets share a ceramics-craft semantic field while being lexically
+# distant from the canonical Minecraft / polycraft vocabulary.
+#
+# Theme rationale: canonical is a crafting skeleton (5 craft_* + place + break
+# actions, inventory-count functions). Pottery preserves the craft / build /
+# inventory shape; canonical "pogo_stick" suggests hopping but the action set
+# is purely crafting.
+#
+# Canonical symbols extracted from domains/numeric/pogo_stick/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section.
+
+domain: polycraft
+theme: pottery
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: ceramicsstudio
+
+  types:
+    cell: tile
+
+  predicates:
+    position: standing_on
+    tree_cell: clay_tile
+    air_cell: empty_tile
+    crafting_table_cell: kiln_tile
+    have_pogo_stick: have_fired_vase
+
+  functions:
+    count_log_in_inventory: count_raw_clay_on_shelf
+    count_planks_in_inventory: count_wedged_clay_on_shelf
+    count_stick_in_inventory: count_coils_on_shelf
+    count_sack_polyisoprene_pellets_in_inventory: count_glaze_jar_on_shelf
+    count_tree_tap_in_inventory: count_bisque_mold_on_shelf
+
+  actions:
+    # Source `tp_to` is lowercase in domain.pddl despite being declared as
+    # `:action TP_TO` (case-insensitive per PDDL rules; canonical uses both).
+    tp_to: walk_to
+    break: dig_clay
+    craft_plank: wedge_clay
+    craft_stick: roll_coil
+    craft_tree_tap: shape_bisque_mold
+    craft_wooden_pogo: throw_vase
+    place_tree_tap: apply_glaze
+
+  # Object name prefix observed in p01..p05 / n01..n05 (`cell0`..`cellNN`).
+  object_prefixes:
+    cell: tile
+
+  # PDDL `(:constants crafting_table - cell)` is declared at the domain
+  # level — a bare-token constant with no digit/letter suffix; renamed via
+  # exact-token substitution in this section.
+  constants:
+    crafting_table: kiln_block

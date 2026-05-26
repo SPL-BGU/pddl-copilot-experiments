@@ -1,0 +1,43 @@
+# Contamination-probe rename map — farmland (numeric) domain.
+# Theme: space-station (modules linked by airlocks, oxygen as transferable
+# resource, power drain as transit cost).
+# All targets share an orbital-habitat semantic field while being lexically
+# distant from the canonical farmland / agriculture vocabulary.
+#
+# Canonical symbols extracted from domains/numeric/farmland/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section with one 1-arg fluent
+# (`x` per farm) and one 0-arity counter (`cost`).
+
+domain: farmland
+theme: space-station
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Canonical `farmland` is a single token (no hyphen); rename preserves
+  # single-token style.
+  domain_name: orbital
+
+  types:
+    farm: module
+
+  predicates:
+    adj: linked
+
+  functions:
+    # `x` here is a 1-arg fluent on a farm (resource/production level) —
+    # NOT a coordinate. Renamed to `oxygen` (transferable resource on a
+    # space-station module).
+    x: oxygen
+    # 0-arity numeric counter.
+    cost: power_drain
+
+  actions:
+    # Hyphenated canonical action names keep their hyphen style.
+    move-fast: vent-fast
+    move-slow: vent-slow
+
+  # Object name prefix observed in p01..p05 / n01..n05 (`farm0`..`farm14`).
+  object_prefixes:
+    farm: module

@@ -1,0 +1,46 @@
+# Contamination-probe rename map — block-grouping (numeric) domain.
+# Theme: confectionery (bonbons on a tray, arranged by lane and tier).
+# All targets share a confectionery / tray-layout semantic field while being
+# lexically distant from the canonical "block / grid / position" vocabulary.
+#
+# Canonical symbols extracted from domains/numeric/block-grouping/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section. Canonical has NO predicates;
+# the predicates field is therefore omitted (an empty map would also be
+# correct — we omit for parity with how absence is encoded elsewhere).
+
+domain: mt-block-grouping
+theme: confectionery
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Canonical preserves the `mt-` prefix; rename does the same.
+  domain_name: mt-bonbon-tray
+
+  types:
+    block: bonbon
+
+  functions:
+    # `x` / `y` are 1-arg coordinate fluents on a block; `lane` / `tier`
+    # is the standard confectionery-tray geometry (horizontal lane,
+    # vertical tier).
+    x: lane
+    y: tier
+    # `max_*` / `min_*` are 0-arity numeric grid bounds.
+    max_x: max_lane
+    min_x: min_lane
+    max_y: max_tier
+    min_y: min_tier
+
+  actions:
+    move_block_up: slide_bonbon_up
+    move_block_down: slide_bonbon_down
+    move_block_right: slide_bonbon_right
+    move_block_left: slide_bonbon_left
+
+  # Object name prefix observed in p01..p05 / n01..n05 (`b1`..`b5`).
+  # Canonical is a single letter; we use the full `bonbon` token to avoid
+  # one-letter visual collisions with PDDL operators / parameter sigils.
+  object_prefixes:
+    b: bonbon

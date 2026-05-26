@@ -1,0 +1,49 @@
+# Contamination-probe rename map — gripper domain.
+# Theme: postal mail-sorting (carriers, parcels, sorting bays).
+# All targets share a postal / mail-handling semantic field while being
+# lexically distant from the canonical robotics vocabulary.
+#
+# Canonical symbols extracted from domains/classical/gripper/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Note: in gripper, `object` is a user-declared type (the form
+# `(:types room object robot gripper)` has no `- supertype`, so all four
+# are subtypes of the implicit root). It IS renamed here.
+
+domain: gripper-strips
+theme: postal
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: mailfloor
+
+  types:
+    room: bay
+    object: parcel
+    robot: carrier
+    gripper: hand
+
+  predicates:
+    # `at-robby` keeps its hyphen separator (matches canonical style).
+    # `at` is single-token in canonical; we keep the target single-token too.
+    at-robby: stationed-at
+    at: posted
+    free: vacant
+    carry: bearing
+
+  actions:
+    move: walk
+    pick: collect
+    drop: deposit
+
+  # Object name prefixes observed in p01..p05 / n01..n05. The `gripper`
+  # type has TWO distinct object-name prefixes (`rgripper`, `lgripper`)
+  # representing right- and left-hand grippers; both are mapped, preserving
+  # the laterality distinction in the renamed theme.
+  object_prefixes:
+    robot: carrier
+    rgripper: righthand
+    lgripper: lefthand
+    room: bay
+    ball: parcel

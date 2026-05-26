@@ -1,0 +1,5 @@
+(rope_up lariat1 bale1 skid1 outpost0)
+(wrangle_in lariat1 bale1 wagon0 outpost0)
+(mosey wagon0 outpost0 homestead0)
+(wrangle_out lariat0 bale1 wagon0 homestead0)
+(rope_down bale1 lariat0 bale2 homestead0)

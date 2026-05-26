@@ -132,6 +132,8 @@ EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
 TIME_OVERRIDE=""
 INCLUDE_NO_TOOLS_STEERED=0
+DOMAINS_DIR=""
+RUN_TAG=""
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -150,6 +152,8 @@ while [[ $# -gt 0 ]]; do
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
         --time) shift; TIME_OVERRIDE="$1"; shift ;;
         --include-no-tools-steered) INCLUDE_NO_TOOLS_STEERED=1; shift ;;
+        --domains-dir) shift; DOMAINS_DIR="$1"; shift ;;
+        --run-tag) shift; RUN_TAG="$1"; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -176,6 +180,55 @@ if [ -n "$CONTINUE_PARTIAL" ]; then
         echo "Error: --continue-partial: ${CONTINUE_PARTIAL}/trials.jsonl not found" >&2
         exit 1
     fi
+fi
+
+# --domains-dir defence-in-depth: per contamination_probe_plan.md §6/§7,
+# the canonical fixtures under $REPO_ROOT/domains must never be re-run
+# under a contamination-probe banner via a submit-time typo. Resolve the
+# supplied path (tolerating not-yet-existing dirs) and refuse if it
+# resolves to the canonical domains/ root or anything inside it. Relative
+# paths are resolved against $REPO_ROOT (NOT the caller's CWD), matching
+# the sbatch which also `cd`s to $EXPT_ROOT before invoking
+# run_experiment.py. The resolved absolute path is stored back into
+# DOMAINS_DIR so the env-var hop to sbatch is CWD-independent.
+#
+# Why python3 instead of `realpath -m`: BSD realpath on macOS submission
+# hosts lacks `-m` and errors on not-yet-existing paths. python3's
+# os.path.realpath is portable across macOS and Linux login nodes and
+# tolerates absent leaf dirs (we may submit before the rewriter has
+# materialized domains-anon/).
+if [ -n "$DOMAINS_DIR" ]; then
+    _domains_canonical=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$REPO_ROOT/domains")
+    case "$DOMAINS_DIR" in
+        /*) _domains_resolved=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$DOMAINS_DIR") ;;
+        *)  _domains_resolved=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$REPO_ROOT/$DOMAINS_DIR") ;;
+    esac
+    # Strip a single trailing slash so `domains/` and `domains` compare
+    # identically against the canonical root.
+    _domains_resolved="${_domains_resolved%/}"
+    _domains_canonical="${_domains_canonical%/}"
+    if [ "$_domains_resolved" = "$_domains_canonical" ] || \
+       [[ "$_domains_resolved" == "$_domains_canonical"/* ]]; then
+        echo "Error: --domains-dir resolves into the canonical fixtures tree." >&2
+        echo "  supplied:  $DOMAINS_DIR" >&2
+        echo "  resolved:  $_domains_resolved" >&2
+        echo "  canonical: $_domains_canonical (forbidden as target)" >&2
+        echo "Refusing to re-run canonical fixtures under a non-baseline run." >&2
+        echo "Use a sibling directory (e.g. domains-anon/) per development/contamination_probe_plan.md §6." >&2
+        exit 1
+    fi
+    DOMAINS_DIR="$_domains_resolved"
+    unset _domains_canonical _domains_resolved
+fi
+
+# --run-tag: optional suffix appended to per-cell OUT_DIR in the sbatch so
+# a non-canonical corpus run (e.g. --domains-dir domains-anon) doesn't
+# clobber the canonical results/slurm_vllm_<model>_<think>_<cond>/ trees.
+# Wrapper-only concept; no equivalent existed prior. Constrained to a
+# filename-safe alphabet to keep OUT_DIR predictable.
+if [ -n "$RUN_TAG" ] && ! [[ "$RUN_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "Error: --run-tag must match [A-Za-z0-9._-]+ (got: $RUN_TAG)" >&2
+    exit 1
 fi
 
 # --smoke / --smoke-shuffle: pin the default model pack (5 models in
@@ -371,6 +424,12 @@ fi
 if [ "$INCLUDE_NO_TOOLS_STEERED" -eq 1 ]; then
     EXPORT_LIST="${EXPORT_LIST},INCLUDE_NO_TOOLS_STEERED=1"
 fi
+if [ -n "$DOMAINS_DIR" ]; then
+    EXPORT_LIST="${EXPORT_LIST},DOMAINS_DIR=${DOMAINS_DIR}"
+fi
+if [ -n "$RUN_TAG" ]; then
+    EXPORT_LIST="${EXPORT_LIST},RUN_TAG=${RUN_TAG}"
+fi
 
 # Add --array only when N>1; single-cell submissions remain plain sbatch.
 ARRAY_ARG=()
@@ -425,6 +484,12 @@ if [ -n "$PARTIAL_K" ]; then
 fi
 if [ -n "$EXCLUDE_NODES" ]; then
     echo "  exclude:     $EXCLUDE_NODES" >&2
+fi
+if [ -n "$DOMAINS_DIR" ]; then
+    echo "  domains:     $DOMAINS_DIR (non-canonical corpus; per-cell OUT_DIR suffix via --run-tag recommended)" >&2
+fi
+if [ -n "$RUN_TAG" ]; then
+    echo "  run tag:     $RUN_TAG (suffixed onto per-cell OUT_DIR)" >&2
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then

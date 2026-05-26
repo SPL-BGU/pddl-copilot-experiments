@@ -1,0 +1,66 @@
+# Contamination-probe rename map — satellite domain.
+# Theme: culinary (chefs, recipes, utensils, garnishes, plating).
+# All targets share a culinary / restaurant-kitchen semantic field while
+# being lexically distant from the canonical Earth-observation-satellite
+# vocabulary.
+#
+# Canonical symbols extracted from domains/classical/satellite/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks via inspect_domain /
+# inspect_problem (MCP pddl-parser).
+#
+# Notes for the rewriter author:
+#   * PDDL identifiers are case-insensitive. The canonical p02..p05 use
+#     mixed casing (`GroundStation1`, `Star0`, `Phenomenon2`, `Planet3`)
+#     while p01 / n01..n05 use lowercase. Each object-prefix entry below
+#     is the lowercase canonical form; the rewriter MUST match
+#     case-insensitively and emit the target lowercased (no information
+#     loss — PDDL semantics are case-insensitive).
+#   * Mode and direction types each have multiple distinct object prefixes
+#     (cf. gripper's `rgripper` / `lgripper` for the gripper type).
+
+domain: satellite
+theme: culinary
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  domain_name: kitchen-line
+
+  types:
+    satellite: chef
+    direction: recipe
+    instrument: utensil
+    mode: garnish
+
+  predicates:
+    on_board: carries
+    supports: prepares
+    pointing: focused_on
+    power_avail: energy_spare
+    power_on: energy_active
+    calibrated: sharpened
+    have_image: have_dish
+    calibration_target: sharpening_recipe
+
+  actions:
+    turn_to: switch_focus
+    switch_on: fire_up
+    switch_off: cool_down
+    calibrate: sharpen
+    take_image: plate_dish
+
+  # Object name prefixes observed in p01..p05 / n01..n05. PDDL is
+  # case-insensitive — keys are lowercase canonical; rewriter must match
+  # case-insensitively. Three mode prefixes (one per canonical mode name)
+  # and four direction prefixes (one per canonical direction name).
+  object_prefixes:
+    satellite: chef
+    instrument: utensil
+    # Mode prefixes (type `mode` -> `garnish`).
+    spectrograph: broiler
+    thermograph: griddle
+    image: plating
+    # Direction prefixes (type `direction` -> `recipe`).
+    groundstation: pantry
+    star: entree
+    planet: dessert
+    phenomenon: appetiser

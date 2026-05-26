@@ -1,0 +1,58 @@
+# Contamination-probe rename map — zenotravel-numeric domain.
+# Theme: lunar rover logistics (rovers, crew, lunar outposts, regolith fuel).
+# All targets share a lunar-surface-exploration semantic field while being
+# lexically distant from the canonical zeno / aviation vocabulary, AND
+# distinct from the classical zenotravel's expected safari theme (batch 2).
+#
+# Canonical symbols extracted from domains/numeric/zenotravel-numeric/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section.
+#
+# Hyphen / underscore convention (constraint 10): canonical mixes both —
+#   hyphenated:   fly-slow, fly-fast, slow-burn, fast-burn, total-fuel-used,
+#                 zoom-limit
+#   single-token: board, debark, refuel, located, in, fuel, distance,
+#                 capacity, onboard
+# Each rename target preserves the per-symbol style of its source.
+
+domain: zenotravel
+theme: lunar-rover
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: lunar-logistics
+
+  types:
+    locatable: surface_unit
+    city: outpost
+    aircraft: rover
+    person: crew
+
+  predicates:
+    located: stationed
+    in: aboard
+
+  functions:
+    fuel: regolith
+    distance: gap
+    slow-burn: idle-draw
+    fast-burn: rush-draw
+    capacity: hopper
+    total-fuel-used: total-regolith-spent
+    onboard: occupants
+    zoom-limit: rush-cap
+
+  actions:
+    board: embark_crew
+    debark: disembark_crew
+    fly-slow: traverse-idle
+    fly-fast: traverse-rush
+    refuel: refill_regolith
+
+  # Object name prefixes observed in p01..p05 / n01..n05.
+  object_prefixes:
+    plane: rover
+    person: crew
+    city: outpost

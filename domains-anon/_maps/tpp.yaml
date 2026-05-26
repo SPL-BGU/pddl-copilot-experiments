@@ -1,0 +1,59 @@
+# Contamination-probe rename map — tpp (Truck-Package-Place) domain.
+# Theme: medieval-tournament (knights, jousts, trophies, keeps, pavilions).
+# All targets share a medieval-tournament / chivalric semantic field while
+# being lexically distant from the canonical truck-and-market vocabulary.
+#
+# Canonical symbols extracted from domains/classical/tpp/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks via inspect_domain /
+# inspect_problem (MCP pddl-parser).
+#
+# Notes for the rewriter author:
+#   * Canonical domain identifier is `TPP-Propositional` (mixed case +
+#     hyphen); PDDL is case-insensitive. Domain-name target is lowercased
+#     with the canonical hyphen style.
+#   * Type hierarchy: place / locatable / level are top-level user types;
+#     depot, market are subtypes of place; truck, goods are subtypes of
+#     locatable. All 7 user-declared types are renamed below.
+#   * Predicate and action names in this domain use HYPHEN separators
+#     (`ready-to-load`, `on-sale`); targets preserve the hyphen style.
+
+domain: TPP-Propositional
+theme: medieval-tournament
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  domain_name: joust-circuit
+
+  types:
+    place: arena
+    locatable: competitor
+    level: rank
+    depot: keep
+    market: pavilion
+    truck: knight
+    goods: trophy
+
+  predicates:
+    loaded: carried
+    ready-to-load: for-claim
+    stored: kept
+    on-sale: offered
+    next: succeeds
+    at: posted-at
+    connected: linked-to
+
+  actions:
+    drive: ride
+    load: claim
+    unload: stash
+    buy: seize
+
+  # Object name prefixes observed in p01..p05 / n01..n05. All prefixes are
+  # clean `<type-name><digit>` patterns; targets match the corresponding
+  # type rename for legibility.
+  object_prefixes:
+    goods: trophy
+    truck: knight
+    market: pavilion
+    depot: keep
+    level: rank

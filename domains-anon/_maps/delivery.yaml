@@ -1,0 +1,62 @@
+# Contamination-probe rename map — delivery (numeric) domain.
+# Theme: medieval-mail (couriers carrying scrolls in satchels between hamlets).
+# All targets share a medieval-postal semantic field while being lexically
+# distant from the canonical robotics / delivery vocabulary.
+#
+# Canonical symbols extracted from domains/numeric/delivery/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section.
+
+domain: delivery
+theme: medieval-mail
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  domain_name: mailrun
+
+  types:
+    room: hamlet
+    item: scroll
+    arm: satchel
+    bot: courier
+
+  predicates:
+    # Hyphenated canonical names keep their hyphen style in the rename.
+    at-bot: posted-at
+    at: resting
+    door: road
+    free: idle
+    in-arm: held-in
+    in-tray: stowed-in
+    mount: attached
+
+  functions:
+    load_limit: pouch_limit
+    current_load: current_pouch
+    weight: mass
+    # 0-arity numeric counter (canonical `cost`).
+    cost: toll
+
+  actions:
+    move: ride
+    pick: grab
+    drop: place
+    # Hyphenated canonical action names keep their hyphen style.
+    to-tray: to-pouch
+    from-tray: from-pouch
+
+  # Object name prefixes observed in p01..p05 / n01..n05.
+  # Note: canonical `room` objects use LETTER suffixes (rooma, roomb,
+  # roomc, roomd) rather than digits — divergent from the `<prefix><digits>`
+  # convention used by other numeric domains. Listed here as the canonical
+  # lowercase prefix; rewriter implementation handles the suffix style.
+  # `left` / `right` are two distinct object prefixes both representing
+  # the `arm` type (left- and right-side satchels per bot); both are
+  # mapped to preserve the laterality distinction.
+  object_prefixes:
+    room: hamlet
+    item: scroll
+    bot: courier
+    left: leftstrap
+    right: rightstrap

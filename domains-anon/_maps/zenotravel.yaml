@@ -1,0 +1,60 @@
+# Contamination-probe rename map — zenotravel domain.
+# Theme: safari (jeeps, tourists, waterholes, savannah crossings).
+# All targets share a safari / game-park semantic field while being
+# lexically distant from the canonical airline-passenger vocabulary.
+#
+# Canonical symbols extracted from domains/classical/zenotravel/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks via inspect_domain /
+# inspect_problem (MCP pddl-parser).
+#
+# Notes for the rewriter author:
+#   * Canonical domain identifier is `zeno-travel` (lowercase + hyphen);
+#     target preserves the hyphen style.
+#   * `either_aircraft_person` is a user-declared umbrella supertype
+#     (NOT the PDDL `(either ...)` keyword construct — it is a single
+#     identifier). It MUST be renamed in the types section. The PDDL
+#     reserved word `either` itself appears in the keyword guard
+#     (constraint 4) — the target name MUST NOT start with `either`.
+#   * Object prefix / type-name mismatch (cf. counters' `c` -> `tank`):
+#     - `aircraft` type has object prefix `plane` (not `aircraft`).
+#     - `flevel` type has object prefix `fl`   (not `flevel`).
+#     The object-prefix namespace is independent of the types namespace
+#     per §3.1 constraint 6; targets here are chosen for legibility.
+#   * Predicate `fuel-level` uses a HYPHEN separator; `either_aircraft_person`
+#     uses UNDERSCORES. Targets preserve each separator style per-symbol.
+
+domain: zeno-travel
+theme: safari
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  domain_name: bush-expedition
+
+  types:
+    either_aircraft_person: safari_entity
+    aircraft: jeep
+    person: tourist
+    city: waterhole
+    flevel: range
+
+  predicates:
+    at: resting-at
+    in: riding-in
+    fuel-level: tank-level
+    next: follows
+
+  actions:
+    board: mount
+    debark: dismount
+    fly: cruise
+    zoom: dash
+    refuel: replenish
+
+  # Object name prefixes observed in p01..p05 / n01..n05. All clean
+  # `<prefix><digit>` patterns. Prefixes are independent of type names
+  # (e.g. `plane` is the prefix for type `aircraft`).
+  object_prefixes:
+    plane: jeep
+    person: tourist
+    city: waterhole
+    fl: range

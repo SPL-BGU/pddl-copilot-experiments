@@ -1,0 +1,3 @@
+(flit-flower-to-flower bee_4 flower_3 flower_4)
+(flit-flower-to-flower bee_3 flower_1 flower_3)
+(flit-bee-to-flower bee_2 bee_0 flower_2)
