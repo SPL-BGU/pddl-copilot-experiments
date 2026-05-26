@@ -1,0 +1,5 @@
+(sharpen chef2 utensil2 pantry0)
+(switch_focus chef1 pantry0 dessert1)
+(switch_focus chef2 dessert1 pantry0)
+(plate_dish chef2 dessert1 utensil2 broiler0)
+(switch_focus chef2 pantry0 dessert1)

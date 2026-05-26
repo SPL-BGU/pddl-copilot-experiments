@@ -1,0 +1,4 @@
+(cruise jeep2 waterhole0 waterhole1 range6 range5)
+(mount tourist1 jeep2 waterhole1)
+(dash waterhole1 jeep2 waterhole0 range5 range4 range3)
+(dismount tourist1 jeep2 waterhole0)

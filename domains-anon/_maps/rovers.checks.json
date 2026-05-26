@@ -1,0 +1,14 @@
+{
+  "canonical_domain_token": "rover",
+  "dir_stem": "rovers",
+  "domain": "rover",
+  "gates": {
+    "bijective_merged": "pass",
+    "bijective_per_section": "pass",
+    "completeness": "pass",
+    "keyword_guard": "pass",
+    "reserved_name_collision": "pass",
+    "source_coverage": "pass"
+  },
+  "yaml_domain": "rover"
+}

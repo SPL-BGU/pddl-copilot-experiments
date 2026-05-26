@@ -1,0 +1,4 @@
+(separate_atop bowl1 bowl2)
+(place_bowl bowl2)
+(lift_bowl bowl3)
+(nest_atop bowl3 bowl1)

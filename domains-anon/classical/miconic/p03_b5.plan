@@ -1,0 +1,6 @@
+(pressurize diver0 deck0)
+(pressurize deck0 diver1)
+(ascend deck0 deck1)
+(egress deck1 diver1)
+(ascend deck1 deck2)
+(egress deck2 diver0)

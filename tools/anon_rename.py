@@ -87,8 +87,15 @@ PDDL_RESERVED_KEYWORDS: frozenset[str] = frozenset(
 # In the YAML it's a scalar (`domain_name: <new-id>`); load_map normalises
 # it to a single-pair dict {canonical_domain_token: target} once the
 # canonical token is known (see _attach_domain_name_pair).
+#
+# `constants` (Phase-B extension) renames bare exact-token names — both
+# entries from `(:constants ...)` domain blocks (e.g. pogo_stick's
+# `crafting_table`) and compound / unprefixed object names that can't be
+# captured by the `<prefix>(\d+|[a-z])$` object-prefix pattern (e.g. rovers'
+# `rover0store`, drone's `x0y0z0`). Substituted before the object_prefix
+# pass so a `rover` prefix-rename doesn't see `rover0store`.
 RENAME_SECTIONS: tuple[str, ...] = (
-    "domain_name", "types", "predicates", "functions", "actions",
+    "domain_name", "constants", "types", "predicates", "functions", "actions",
 )
 ALL_SECTIONS: tuple[str, ...] = RENAME_SECTIONS + ("object_prefixes",)
 
@@ -98,7 +105,15 @@ ALL_SECTIONS: tuple[str, ...] = RENAME_SECTIONS + ("object_prefixes",)
 _IDENT_RE = re.compile(r"[A-Za-z][A-Za-z0-9_\-]*")
 _LINE_COMMENT_RE = re.compile(r";[^\n]*")
 
-# Object-prefix pass: the full token must be <prefix><digits>. Compiled per map.
+# Object-prefix pass: the full token must be <prefix>(\d+|[a-z]). One or more
+# trailing digits OR a single trailing lowercase letter. Letter-suffix support
+# rescues corpora like delivery (`rooma`, `roomb`, …). Compiled per map.
+# NOTE: this regex is used at SUBSTITUTION time against DECLARED prefixes in
+# the YAML. `extract_object_prefixes` is intentionally narrower (digit-only)
+# to avoid spurious extraction from singleton tokens like `general` (which
+# would otherwise parse as `genera` + `l`). Letter-suffix coverage at the
+# completeness gate is object-centric: every problem object must be covered
+# by some declared prefix OR by `constants:` (see validate_map gate 7).
 
 
 # ---------- YAML loading ----------------------------------------------------
@@ -317,7 +332,10 @@ def extract_domain_name(domain_text: str) -> str:
 
 
 def extract_canonical_symbols(domain_text: str) -> dict[str, list[str]]:
-    """Return canonical {types, predicates, functions, actions} from a domain."""
+    """Return canonical {domain_name, constants, types, predicates, functions,
+    actions} from a domain. Every value is a list of lowercased identifiers
+    in declaration / sorted order.
+    """
     types_body = _find_section(domain_text, "types")
     types: list[str] = []
     parents: list[str] = []
@@ -337,8 +355,10 @@ def extract_canonical_symbols(domain_text: str) -> dict[str, list[str]]:
 
     actions = _extract_action_names(domain_text)
     domain_name = extract_domain_name(domain_text)
+    constants = extract_canonical_constants(domain_text)
     return {
         "domain_name": [domain_name],
+        "constants": constants,
         "types": types_sorted,
         "predicates": predicates,
         "functions": functions,
@@ -352,6 +372,13 @@ def extract_object_prefixes(problem_text: str) -> set[str]:
     A prefix is the leading `[A-Za-z][A-Za-z0-9_\\-]*?` of any object name that
     ends in one or more digits; e.g. `truck1` → `truck`, `lgripper1` → `lgripper`.
     Objects without a trailing-digit suffix are ignored (no prefix to extract).
+
+    DESIGN: This intentionally extracts ONLY digit-suffix prefixes — broadening
+    to single-letter suffix would over-extract spurious prefixes from singleton
+    tokens (e.g. `general` → `genera`, `colour` → `colou`). Letter-suffix
+    objects like delivery's `rooma..d` are handled at the substitution layer
+    (`_build_object_prefix_re` accepts `(\\d+|[a-z])`) against the declared
+    YAML prefixes; the completeness gate is object-centric, not prefix-centric.
     """
     body = _find_section(problem_text, "objects")
     if body is None:
@@ -364,6 +391,91 @@ def extract_object_prefixes(problem_text: str) -> set[str]:
         if m:
             prefixes.add(m.group(1).lower())
     return prefixes
+
+
+def extract_object_names(problem_text: str) -> list[str]:
+    """Return ALL object names from `:objects`, in declaration order, lowered."""
+    body = _find_section(problem_text, "objects")
+    if body is None:
+        return []
+    return list(_extract_idents_from_typed_list(body))
+
+
+def extract_canonical_constants(domain_text: str) -> list[str]:
+    """Return bare-token names declared in the domain's `(:constants ...)`
+    block, lowered, in declaration order.
+
+    The `:constants` block has the same typed-list shape as `:objects` so we
+    reuse `_extract_idents_from_typed_list`. Returns [] when the domain has
+    no `:constants` block (the common case) or when the block is empty.
+
+    Defensive note: a `(:constants foo bar)` block WITHOUT a `- supertype`
+    annotation is technically legal PDDL (defaults to type `object`). Without
+    a dash, `_extract_idents_from_typed_list` returns every token as a name
+    — which is the correct behaviour here. The only failure mode is a
+    malformed dash-only token or an unterminated paren block; both surface
+    as parse errors in downstream parser gates rather than silently swallow.
+    """
+    body = _find_section(domain_text, "constants")
+    if body is None:
+        return []
+    return list(_extract_idents_from_typed_list(body))
+
+
+def _make_declared_prefix_match_re(prefixes: Iterable[str]) -> re.Pattern[str] | None:
+    """Build the SUBSTITUTION-time matcher for declared YAML prefixes.
+
+    Matches `<prefix>(\\d+|[a-z])$` — same regex used by
+    `_build_object_prefix_re` for the rewriter. Returned re may be `None`
+    when no prefixes are declared.
+    """
+    keys = sorted(prefixes, key=len, reverse=True)
+    if not keys:
+        return None
+    alternation = "|".join(re.escape(k) for k in keys)
+    return re.compile(rf"^({alternation})(\d+|[a-z])$", re.IGNORECASE)
+
+
+def extract_unprefixed_objects_from_names(
+    names: Iterable[str],
+    declared_prefixes: Iterable[str],
+) -> list[str]:
+    """Name-level twin of `extract_unprefixed_objects`. Given a pre-extracted
+    list of object names, return those not matched by any declared YAML
+    `object_prefix` key under the relaxed `<prefix>(\\d+|[a-z])$` pattern.
+    Used by `validate_map` where `problem_objects` already holds the parsed
+    name lists per problem file.
+    """
+    matcher = _make_declared_prefix_match_re(declared_prefixes)
+    seen: set[str] = set()
+    out: list[str] = []
+    for n in names:
+        if matcher is not None and matcher.match(n):
+            continue
+        if n in seen:
+            continue
+        seen.add(n)
+        out.append(n)
+    return out
+
+
+def extract_unprefixed_objects(
+    problem_text: str,
+    declared_prefixes: Iterable[str],
+) -> list[str]:
+    """Return object names from `:objects` that are NOT matched by any of the
+    declared YAML object_prefix keys under the relaxed `<prefix>(\\d+|[a-z])$`
+    pattern. Order-preserving, lowered, deduplicated.
+
+    Objects in the returned list MUST appear as keys in the YAML's `constants`
+    section — otherwise they would leak unchanged into the renamed corpus.
+    Helper used by the source-coverage gate (constants validation) and the
+    object-centric completeness gate.
+    """
+    return extract_unprefixed_objects_from_names(
+        extract_object_names(problem_text),
+        declared_prefixes,
+    )
 
 
 # ---------- Map validation -------------------------------------------------
@@ -387,14 +499,24 @@ def validate_map(
     map_data: dict,
     canonical: dict[str, list[str]],
     canonical_object_prefixes: set[str],
+    problem_objects: dict[str, list[str]] | None = None,
 ) -> dict:
     """Run all gate checks against a single domain's rename map.
 
     Returns a checks-result dict (serialisable). Raises ValueError on any gate
     failure with a message identifying the violation.
+
+    ``problem_objects`` (Phase-B extension) is ``{filename: [object_names]}``
+    from every ``p0N`` / ``n0N`` PDDL. Required to validate the new
+    ``constants`` section: every object not matched by any YAML-declared
+    ``object_prefix`` under the relaxed pattern MUST appear as a constants
+    key (else it would leak unchanged). Pre-extension callers may pass
+    ``None`` (treated as an empty dict).
     """
     domain = map_data["domain"]
     rename = map_data["rename"]
+    if problem_objects is None:
+        problem_objects = {}
     results: dict = {"domain": domain, "gates": {}}
 
     # Gate 1: keyword guard + target token shape, per section.
@@ -418,8 +540,12 @@ def validate_map(
     results["gates"]["bijective_per_section"] = "pass"
 
     # Gate 3: bijective across the merged identifier-token table
-    # (types ∪ predicates ∪ functions ∪ actions). object_prefixes deliberately
-    # excluded — they apply via a separate regex and may safely collide.
+    # (types ∪ predicates ∪ functions ∪ actions ∪ constants). object_prefixes
+    # deliberately excluded — they apply via a separate regex and use a
+    # disjoint token shape that can't collide with bare identifiers in the
+    # rewriter's char-walk. The brief is explicit that `constants` joins the
+    # merged-bijection check so a constant rename target can't collide with
+    # a type/predicate/function/action target, and vice-versa.
     merged: dict[str, tuple[str, str]] = {}
     for section in RENAME_SECTIONS:
         for src, tgt in rename[section].items():
@@ -432,8 +558,28 @@ def validate_map(
             merged[tgt] = (section, src)
     results["gates"]["bijective_merged"] = "pass"
 
+    # Cross-section key collision: a YAML key may appear in at most one
+    # section unless the canonical genuinely reuses the name across
+    # namespaces (rare). Surface a clear error so the YAML author can split
+    # the entries explicitly. domain_name is single-entry by construction;
+    # exclude it from the loop.
+    key_locations: dict[str, list[str]] = {}
+    for section in RENAME_SECTIONS:
+        if section == "domain_name":
+            continue
+        for src in rename[section]:
+            key_locations.setdefault(src, []).append(section)
+    for src, locs in key_locations.items():
+        if len(locs) > 1:
+            raise ValueError(
+                f"[{domain}] key {src!r} appears in multiple rename sections "
+                f"{locs!r}; split into distinct keys or remove the duplicate"
+            )
+
     # Gate 4: source-coverage — every YAML key must be a real canonical symbol.
     for section in RENAME_SECTIONS:
+        if section == "constants":
+            continue  # constants has dual provenance — handled below
         canon_set = set(canonical[section])
         for src in rename[section]:
             if src not in canon_set:
@@ -441,17 +587,51 @@ def validate_map(
                     f"[{domain}] rename.{section}: key {src!r} not found in canonical "
                     f"{section}; known canonical {section} = {sorted(canon_set)}"
                 )
-    for src in rename["object_prefixes"]:
-        if src not in canonical_object_prefixes:
+    # Constants source-coverage: every YAML constants key must appear EITHER
+    # in the domain's `(:constants ...)` block OR as a problem-level object
+    # that is NOT matched by any declared YAML object_prefix under the
+    # relaxed `<prefix>(\d+|[a-z])$` pattern (object-centric: a constant key
+    # rewrites tokens the prefix machinery can't reach).
+    declared_op_keys = list(rename["object_prefixes"].keys())
+    canon_constants = set(canonical.get("constants", []))
+    legal_constants_sources: set[str] = set(canon_constants)
+    for fname, names in problem_objects.items():
+        for n in extract_unprefixed_objects_from_names(names, declared_op_keys):
+            legal_constants_sources.add(n)
+    for src in rename["constants"]:
+        if src not in legal_constants_sources:
             raise ValueError(
-                f"[{domain}] rename.object_prefixes: prefix {src!r} not found in any "
-                f"problem :objects block; known canonical prefixes = "
-                f"{sorted(canonical_object_prefixes)}"
+                f"[{domain}] rename.constants: key {src!r} not found in canonical "
+                f"`(:constants …)` (= {sorted(canon_constants)}) nor among the "
+                f"unprefixed object names of any p0N/n0N.pddl. Either add the "
+                f"object to the corpus or remove the constants entry."
+            )
+    # object_prefixes source-coverage: a YAML key is valid if there exists
+    # at least one canonical object name matching `^<key>(\d+|[a-z])$` across
+    # all p0N/n0N problems. Accepts both digit-suffix families (depots `truck`)
+    # and letter-suffix-only families (delivery `rooma..d`).
+    for src in rename["object_prefixes"]:
+        match_re = re.compile(rf"^{re.escape(src)}(\d+|[a-z])$", re.IGNORECASE)
+        matched = any(
+            match_re.match(name)
+            for names in problem_objects.values()
+            for name in names
+        )
+        if not matched:
+            raise ValueError(
+                f"[{domain}] rename.object_prefixes: prefix {src!r} matches no "
+                f"object in any p0N/n0N.pddl under `<prefix>(\\d+|[a-z])$`. "
+                f"Known digit-suffix prefixes = {sorted(canonical_object_prefixes)}; "
+                f"letter-suffix families are accepted but must match at least one object."
             )
     results["gates"]["source_coverage"] = "pass"
 
     # Gate 5: completeness — every canonical non-keyword symbol must be a key.
+    # For domain_name/types/predicates/functions/actions: every canonical
+    # symbol must be renamed (object/either supertypes excepted).
     for section in RENAME_SECTIONS:
+        if section == "constants":
+            continue  # constants completeness handled below (dual source)
         keys = set(rename[section])
         for sym in canonical[section]:
             if sym in PDDL_RESERVED_KEYWORDS:
@@ -461,22 +641,51 @@ def validate_map(
                     f"[{domain}] rename.{section} is missing canonical symbol "
                     f"{sym!r}; every canonical {section[:-1]} must be renamed"
                 )
-    # Object-prefix completeness: every canonical prefix must be in the map.
-    op_keys = set(rename["object_prefixes"])
-    for p in canonical_object_prefixes:
-        if p not in op_keys:
+    # Constants completeness (two halves):
+    #   (a) every canonical `(:constants ...)` symbol must be a constants key.
+    #   (b) every unprefixed problem object (not matched by any declared
+    #       object_prefix under the relaxed regex) must be a constants key.
+    #       Without (b), the rewriter would leak the canonical token to the
+    #       renamed corpus unchanged — observable contamination signal.
+    constants_keys = set(rename["constants"])
+    for sym in canon_constants:
+        if sym in PDDL_RESERVED_KEYWORDS:
+            continue
+        if sym not in constants_keys:
             raise ValueError(
-                f"[{domain}] rename.object_prefixes is missing canonical prefix {p!r}"
+                f"[{domain}] rename.constants is missing canonical `(:constants …)` "
+                f"symbol {sym!r}; every domain-level constant must be renamed"
             )
+    for fname, names in problem_objects.items():
+        leaked: list[str] = []
+        for n in extract_unprefixed_objects_from_names(names, declared_op_keys):
+            if n not in constants_keys:
+                leaked.append(n)
+        if leaked:
+            raise ValueError(
+                f"[{domain}] {fname}: object name(s) {sorted(set(leaked))!r} are "
+                f"not covered by any rename.object_prefixes key (relaxed pattern: "
+                f"`<prefix>(\\d+|[a-z])$`) NOR by rename.constants. They would "
+                f"leak unchanged to the renamed corpus. Add them under "
+                f"rename.constants: (or expand object_prefixes if they share a "
+                f"family with a declared prefix)."
+            )
+    # Object-prefix completeness intentionally removed: the object-centric
+    # gate above already ensures every canonical object is covered by EITHER
+    # an object_prefix match OR a constants entry. A redundant prefix-centric
+    # check would falsely reject domains (e.g. drone) where ALL objects in a
+    # prefix family are exact-enumerated under constants instead.
     results["gates"]["completeness"] = "pass"
 
     # Gate 6: reserved-name collision — a rename target must not equal an
     # unrenamed canonical symbol in the same domain (would create transient
     # parser ambiguity during the rewrite or in downstream re-parsing).
+    # Includes constants (a constants target colliding with an unrenamed
+    # type or predicate would still create the same ambiguity).
     unrenamed: set[str] = set()
     for section in RENAME_SECTIONS:
         keys = set(rename[section])
-        for sym in canonical[section]:
+        for sym in canonical.get(section, []):
             if sym not in keys and sym not in PDDL_RESERVED_KEYWORDS:
                 unrenamed.add(sym)
     for section in RENAME_SECTIONS:
@@ -495,11 +704,23 @@ def validate_map(
 
 
 def _build_object_prefix_re(prefixes: Iterable[str]) -> re.Pattern[str] | None:
+    """Compile the substitution regex `^(<prefix>)(\\d+|[a-z])$`.
+
+    `(\\d+|[a-z])` accepts EITHER one-or-more trailing digits (the original
+    behaviour: `truck0`, `lgripper1`) OR a SINGLE trailing lowercase letter
+    (rescues `rooma`, `roomb`, … in the delivery corpus). The substitution
+    handler reattaches the captured suffix verbatim so `rooma` -> `hamleta`,
+    `room0` -> `hamlet0` regardless of which alternative fired.
+
+    Compound suffixes like `rover0store` and composite tokens like `x0y0z0`
+    deliberately do NOT match; they are routed through the new `constants:`
+    section so the prefix-pass never sees them.
+    """
     keys = sorted(prefixes, key=len, reverse=True)  # longest-first to avoid greedy issues
     if not keys:
         return None
     alternation = "|".join(re.escape(k) for k in keys)
-    return re.compile(rf"^({alternation})(\d+)$", re.IGNORECASE)
+    return re.compile(rf"^({alternation})(\d+|[a-z])$", re.IGNORECASE)
 
 
 _DOMAIN_NAME_HEADER_RE_TEMPLATE = (
@@ -584,7 +805,7 @@ def rewrite_text(
     identifier_table: dict[str, tuple[str, str]] = {}
     for section in RENAME_SECTIONS:
         if section == "domain_name":
-            continue  # handled by the context-bound post-pass
+            continue  # handled by the context-bound PRE-pass below
         for src, tgt in rename[section].items():
             identifier_table[src.lower()] = (section, tgt)
 
@@ -592,6 +813,15 @@ def rewrite_text(
     op_table = {k.lower(): v for k, v in rename["object_prefixes"].items()}
 
     counts: dict[str, int] = {s: 0 for s in ALL_SECTIONS}
+
+    # PRE-pass: domain-name context-bound rewrite must run BEFORE the
+    # char-walk. The relaxed object-prefix regex `<prefix>(\d+|[a-z])$`
+    # would otherwise match the canonical domain identifier as a prefix +
+    # letter pair (e.g. `depots` → prefix `depot` + suffix `s` → `docks`).
+    # Running domain-name first replaces `depots` with the target (e.g.
+    # `seaport`), leaving nothing for the prefix pass to wrongly match.
+    text, dn_count = _apply_domain_name_pass(text, rename["domain_name"])
+    counts["domain_name"] = dn_count
 
     # We walk the text character-by-character so comments and variable/keyword
     # refs are preserved verbatim. Identifier tokens are matched with _IDENT_RE.
@@ -644,13 +874,6 @@ def rewrite_text(
         out.append(c)
         i += 1
     rewritten = "".join(out)
-
-    # Pass C: context-bound domain-name rewrite. Applied after passes A/B
-    # because the search anchors `(define (domain` and `(:domain` are not
-    # identifier tokens themselves — they survive the char-walk verbatim.
-    rewritten, dn_count = _apply_domain_name_pass(rewritten, rename["domain_name"])
-    counts["domain_name"] = dn_count
-
     return rewritten, counts
 
 
@@ -734,7 +957,7 @@ def discover_canonical(
     source_dir: Path,
     dir_stem: str,
     yaml_domain: str | None = None,
-) -> tuple[dict[str, list[str]], set[str]]:
+) -> tuple[dict[str, list[str]], set[str], dict[str, list[str]]]:
     """Parse the canonical `domain.pddl` under `<source-dir>/<family>/<dir_stem>/`
     and (optionally) cross-check the YAML `domain:` field against the parsed
     `(define (domain X))` identifier.
@@ -743,6 +966,18 @@ def discover_canonical(
     (one source token, one target token), so the gate IS this equality
     check — there's no list-comparison to do. If `yaml_domain` is provided
     and doesn't match the parsed token, fail fast with a clear message.
+
+    Returns a triple ``(canonical, object_prefixes, problem_objects)``:
+      * ``canonical`` -- dict from `extract_canonical_symbols`, including the
+        new `constants` key.
+      * ``object_prefixes`` -- set of digit-suffix prefixes extracted from
+        every ``p0N.pddl`` / ``n0N.pddl``. Letter-suffix objects are NOT
+        contributed here (see `extract_object_prefixes` design note); they
+        are surfaced through `problem_objects` instead.
+      * ``problem_objects`` -- ``{filename: [object_names_in_decl_order]}``
+        across every ``p0N.pddl`` / ``n0N.pddl``. Used by the constants
+        validation gates to compute "unprefixed objects" relative to the
+        YAML's declared prefixes (object-centric completeness).
     """
     root = find_domain_root(source_dir, dir_stem)
     with (root / "domain.pddl").open("r", encoding="utf-8") as fh:
@@ -755,11 +990,14 @@ def discover_canonical(
             f"`(define (domain {parsed_token}))` in {root / 'domain.pddl'}"
         )
     prefixes: set[str] = set()
+    problem_objects: dict[str, list[str]] = {}
     for fname in sorted(os.listdir(root)):
         if re.fullmatch(r"[pn]\d{2}\.pddl", fname):
             with (root / fname).open("r", encoding="utf-8") as fh:
-                prefixes |= extract_object_prefixes(fh.read())
-    return canonical, prefixes
+                ptext = fh.read()
+            prefixes |= extract_object_prefixes(ptext)
+            problem_objects[fname] = extract_object_names(ptext)
+    return canonical, prefixes, problem_objects
 
 
 def iter_domain_files(source_dir: Path, dir_stem: str) -> Iterable[Path]:
@@ -835,9 +1073,9 @@ def _self_test_domain_name_substitution(
         print("  (skipped fix-5 depots integration spot-check — depots not in --domain set)")
         return
     data = load_map(depots_path)
-    canonical, prefixes = discover_canonical(source_dir, depots_path.stem, data["domain"])
+    canonical, prefixes, problem_objects = discover_canonical(source_dir, depots_path.stem, data["domain"])
     _attach_domain_name_pair(data, canonical["domain_name"][0])
-    validate_map(data, canonical, prefixes)
+    validate_map(data, canonical, prefixes, problem_objects)
     domain_pddl = source_dir / "classical" / "depots" / "domain.pddl"
     with domain_pddl.open("r", encoding="utf-8") as fh:
         rewritten, counts = rewrite_text(fh.read(), data["rename"])
@@ -875,7 +1113,7 @@ def self_test(maps_dir: Path, source_dir: Path, requested: list[str]) -> int:
             data = load_map(mp)
             yaml_domain = data["domain"]
             dir_stem = mp.stem
-            canonical, prefixes = discover_canonical(source_dir, dir_stem, yaml_domain)
+            canonical, prefixes, problem_objects = discover_canonical(source_dir, dir_stem, yaml_domain)
             _attach_domain_name_pair(data, canonical["domain_name"][0])
             # Extra fix-4 check (2): rename.domain_name target must be a
             # non-empty identifier — load_map enforces non-empty; here we
@@ -885,7 +1123,7 @@ def self_test(maps_dir: Path, source_dir: Path, requested: list[str]) -> int:
                 all(v for v in dn_pair.values()), (
                     f"rename.domain_name promoted to malformed dict: {dn_pair!r}"
                 )
-            validate_map(data, canonical, prefixes)
+            validate_map(data, canonical, prefixes, problem_objects)
             print(f"OK  {mp.name}  (yaml domain={yaml_domain}, dir={dir_stem}, "
                   f"canonical_token={canonical['domain_name'][0]} -> "
                   f"{dn_pair[canonical['domain_name'][0]]})")
@@ -921,7 +1159,7 @@ def round_trip_check(
         dir_stem = mp.stem
         # Promote rename.domain_name from scalar to {src: tgt} dict so the
         # inverse rewriter can build a coherent inverse table.
-        canonical, _ = discover_canonical(source_dir, dir_stem, yaml_domain)
+        canonical, _, _ = discover_canonical(source_dir, dir_stem, yaml_domain)
         _attach_domain_name_pair(data, canonical["domain_name"][0])
         rename = data["rename"]
         family = domain_family(source_dir, dir_stem)
@@ -943,16 +1181,19 @@ def round_trip_check(
             with anon_path.open("r", encoding="utf-8") as fh:
                 anon_text = fh.read()
             restored = rewrite_text_inverse(anon_text, rename)
-            # Renamed tokens are always emitted lowercase (spec), so we compare
-            # against a case-normalised canonical. Comments are preserved
-            # case-as-is on both sides.
+            # Renamed tokens are always emitted lowercase (spec). Tokens the
+            # inverse pass doesn't substitute (e.g. problem identifiers like
+            # `BW-rand-3`) keep their original casing — so case-normalise
+            # BOTH sides for the byte-compare. Comments stay case-as-is on
+            # both sides (lowercase_identifiers skips comment regions).
             canon_norm = lowercase_identifiers(canonical_text)
-            if restored != canon_norm:
+            restored_norm = lowercase_identifiers(restored)
+            if restored_norm != canon_norm:
                 diff = "".join(difflib.unified_diff(
                     canon_norm.splitlines(keepends=True),
-                    restored.splitlines(keepends=True),
+                    restored_norm.splitlines(keepends=True),
                     fromfile=f"{canon_path} (case-normalised)",
-                    tofile=f"inverse({anon_path})",
+                    tofile=f"inverse({anon_path}) (case-normalised)",
                 ))
                 mismatches.append(f"{dir_stem}/{entry}:\n{diff}")
     # Fix-5 bonus: depots/domain.pddl must contain the renamed domain_name
@@ -996,10 +1237,10 @@ def rewrite_corpus(
         yaml_domain = data["domain"]
         dir_stem = mp.stem
         family = domain_family(source_dir, dir_stem)
-        canonical, prefixes = discover_canonical(source_dir, dir_stem, yaml_domain)
+        canonical, prefixes, problem_objects = discover_canonical(source_dir, dir_stem, yaml_domain)
         _attach_domain_name_pair(data, canonical["domain_name"][0])
         rename = data["rename"]
-        checks = validate_map(data, canonical, prefixes)
+        checks = validate_map(data, canonical, prefixes, problem_objects)
         # Surface the three identifiers in the checks artefact so a future
         # debugger doesn't have to re-derive them.
         checks["dir_stem"] = dir_stem

@@ -1,0 +1,59 @@
+# Contamination-probe rename map — parking domain.
+# Theme: beekeeping (bees, flowers, foraging, hives). All targets share an
+# apiary / pollination semantic field while being lexically distant from
+# the canonical car-parking vocabulary (car / curb / behind / move-to).
+#
+# Canonical symbols extracted from domains/classical/parking/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Notes:
+#  - The domain declares `(:functions (total-cost) - number)` for the
+#    :action-costs requirement. `total-cost` is a PDDL reserved keyword
+#    (per anon_rename.PDDL_RESERVED_KEYWORDS) and is intentionally NOT
+#    renamed — the rewriter's completeness gate explicitly skips reserved
+#    symbols. Therefore this YAML carries NO `functions:` section: the
+#    only function is the reserved one. The rewriter will copy
+#    `total-cost` through verbatim.
+#  - All hyphenated canonical predicate / action names keep their hyphen
+#    separator in the target (per the Phase-A `at-robby -> stationed-at`
+#    convention).
+#  - Object prefixes carry a trailing underscore in canonical (`car_0`,
+#    `curb_0`); the rewriter's prefix regex (non-greedy `[A-Za-z][...]*?`
+#    followed by `\d+`) captures the full `car_` / `curb_` literal as the
+#    prefix, which we map to `bee_` / `flower_` to preserve the
+#    underscore-before-digit visual form.
+
+domain: parking
+theme: beekeeping
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: apiary
+
+  types:
+    car: bee
+    curb: flower
+
+  predicates:
+    # Hyphens preserved per canonical style.
+    at-curb: at-flower
+    at-curb-num: at-flower-id
+    behind-car: behind-bee
+    car-clear: bee-clear
+    curb-clear: flower-clear
+
+  actions:
+    # All four move actions are hyphenated in canonical; target also hyphenated.
+    move-curb-to-curb: flit-flower-to-flower
+    move-curb-to-car: flit-flower-to-bee
+    move-car-to-curb: flit-bee-to-flower
+    move-car-to-car: flit-bee-to-bee
+
+  # Object name prefixes observed in p01..p05 / n01..n05. Canonical object
+  # names are `car_0`, `curb_3`, etc.; the rewriter's prefix regex pulls
+  # `car_` / `curb_` as the literal prefix (trailing underscore included).
+  # Targets match the corresponding type renames + `_` for legibility.
+  object_prefixes:
+    car_: bee_
+    curb_: flower_

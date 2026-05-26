@@ -1,0 +1,89 @@
+# Contamination-probe rename map — barman domain.
+# Theme: astronomy / optical-instrumentation (telescopes, prisms, lenses,
+# spectra, wavelengths). All targets share an observational-astronomy
+# semantic field while being lexically distant from the canonical
+# bartending vocabulary (shot / shaker / cocktail / ingredient / dispenser).
+#
+# Canonical symbols extracted from domains/classical/barman/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Notes:
+#  - `object` is the implicit PDDL root supertype (not user-declared in
+#    barman's `(:types hand level beverage dispenser container - object ...)`
+#    — the dash makes `object` the parent of the listed leaf types) and is
+#    NOT renamed here. The rewriter's completeness gate skips it as a
+#    reserved keyword.
+#  - `hand` objects in p01..p05 are literal-name objects `left` and `right`
+#    (no trailing digits), so they do NOT appear as object prefixes. The
+#    rewriter's prefix matcher requires `<prefix><digits>`; literal hand
+#    names survive verbatim in the rewritten corpus. This is a known
+#    consequence of the §3.2 spec; flagged in the Phase B report.
+
+domain: barman
+theme: astronomy
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: astrolabe
+
+  # User-declared types only. `object` (PDDL implicit supertype) is omitted.
+  types:
+    hand: mount
+    level: magnitude
+    beverage: signal
+    dispenser: beacon
+    container: instrument
+    ingredient: wavelength
+    cocktail: spectrum
+    shot: lens
+    shaker: prism
+
+  predicates:
+    ontable: mounted
+    holding: gripping
+    handempty: mount_free
+    empty: vacant
+    contains: carries
+    clean: calibrated
+    used: imprinted
+    dispenses: beams
+    shaker_empty_level: prism_empty_magnitude
+    shaker_level: prism_magnitude
+    next: precedes
+    unshaked: unrefracted
+    shaked: refracted
+    cocktail_part1: spectrum_band1
+    cocktail_part2: spectrum_band2
+
+  actions:
+    grasp: latch
+    leave: release
+    fill_shot: charge_lens
+    refill_shot: recharge_lens
+    empty_shot: discharge_lens
+    clean_shot: polish_lens
+    pour_shot_to_clean_shaker: feed_lens_to_clean_prism
+    pour_shot_to_used_shaker: feed_lens_to_used_prism
+    empty_shaker: discharge_prism
+    clean_shaker: polish_prism
+    shake: refract
+    pour_shaker_to_shot: feed_prism_to_lens
+
+  # Object name prefixes observed in p01..p05 / n01..n05.
+  # Each listed prefix's target matches the corresponding type rename so
+  # the renamed corpus stays internally legible.
+  object_prefixes:
+    shaker: prism
+    shot: lens
+    ingredient: wavelength
+    cocktail: spectrum
+    dispenser: beacon
+    l: magnitude
+
+  # `hand` objects are literal names (`left`, `right`) — exact-token rewrite
+  # under constants. Picked theme-cohesive renames (mount sides on a
+  # telescope mounting).
+  constants:
+    left: east_mount
+    right: west_mount

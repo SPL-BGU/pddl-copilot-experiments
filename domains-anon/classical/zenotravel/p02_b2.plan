@@ -1,0 +1,3 @@
+(replenish jeep3 waterhole1 range0 range1)
+(mount tourist2 jeep3 waterhole1)
+(dismount tourist2 jeep3 waterhole0)

@@ -1,0 +1,30 @@
+(define (problem farmland_5_star)
+  (:domain orbital)
+  (:objects
+    module0 module1 module2 module3 module4 - module
+  )
+  (:init
+    (= (power_drain) 0)
+    (= (oxygen module0) 12)
+    (= (oxygen module1) 0)
+    (= (oxygen module2) 0)
+    (= (oxygen module3) 0)
+    (= (oxygen module4) 0)
+    (linked module0 module1)
+    (linked module1 module0)
+    (linked module0 module2)
+    (linked module2 module0)
+    (linked module0 module3)
+    (linked module3 module0)
+    (linked module0 module4)
+    (linked module4 module0)
+  )
+  (:goal
+    (and
+      (>= (oxygen module1) 1)
+      (>= (oxygen module2) 1)
+      (>= (oxygen module3) 1)
+      (>= (oxygen module4) 1)
+    )
+  )
+)

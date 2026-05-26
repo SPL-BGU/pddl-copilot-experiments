@@ -1,0 +1,42 @@
+# Contamination-probe rename map — blocksworld domain.
+# Theme: Japanese tea-ceremony (bowls on tatami, hands cradling vessels).
+# All targets share a chanoyu / tea-ceremony semantic field while being
+# lexically distant from the canonical block-stacking vocabulary
+# (block / stack / unstack / pick_up / put_down).
+#
+# Canonical symbols extracted from domains/classical/blocksworld/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Note: blocksworld has a single user-declared type (`block`); `object` is
+# the implicit PDDL supertype and is not renamed. The 0-arg `handempty`
+# predicate has no parameters but is still a normal renameable predicate.
+
+domain: blocksworld
+theme: tea-ceremony
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: tearoom
+
+  types:
+    block: bowl
+
+  predicates:
+    on: set_on
+    ontable: on_tatami
+    clear: unstacked
+    handempty: hands_idle
+    holding: cradling
+
+  actions:
+    pick_up: lift_bowl
+    put_down: place_bowl
+    stack: nest_atop
+    unstack: separate_atop
+
+  # Object name prefix observed in p01..p05 / n01..n05: single letter `b`.
+  # Target matches the type rename (`block` -> `bowl`) for legibility,
+  # following the counters convention (`c` -> `tank`).
+  object_prefixes:
+    b: bowl
