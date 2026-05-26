@@ -517,10 +517,10 @@ def _arm_legend(target, arms, *, light=False, location="lower center",
     `light=True` paints the rectangles with alpha=0.45 to match
     `_grouped_arm_bars(light=True)` sub-bars.
     """
-    rect_kwargs = dict(edgecolor="black", linewidth=0.4)
+    rect_kwargs: dict = {}
     if light:
         rect_kwargs["alpha"] = 0.45
-    handles = [plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a), **rect_kwargs)
+    handles = [plt.Rectangle((0, 0), 1, 1, facecolor=_color_for_arm(a), **rect_kwargs)
                for a in arms]
     labels = [ARM_DISP.get(a, a) for a in arms]
     if ncol is None:
