@@ -6,6 +6,20 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-05-26 — Analyzer simplification follow-up (ANALYZER-10 + ANALYZER-13)
+
+**Branch:** `analyzer-10-13-17-simplifications`, opened against `sweep5-new-prompts`. Picks up the two tickets PR-69 deferred (loader unification + figure-builder helpers). ANALYZER-17 (build_deck slide-submodule split) was evaluated and dropped — ANALYZER-13's actual LOC reduction was modest enough that the structural split would have been cosmetic.
+
+- **ANALYZER-10 (loader unification)** — added `iter_cells`, `latest_summary`, `latest_single_task`, `iter_trials` to `_constants.py`. The directory walk + file picker + trial streaming patterns now live once. Rewired call sites: `aggregate.load_summaries`, `plot.load_series`, `drift_check._load_cell`, `drift_check._load_root`, `build_deck.load_all`. `drift_check._aggregate_trials_jsonl` deliberately keeps its own inline JSONL loop — it dedups by trial key and validates `TRIAL_KEY_LEN`, neither of which fits `iter_trials`'s simple `result`-stream shape. The two read-time taxonomy fixes (`FR_TRUNCATED_NO_ANSWER → FR_THINK_OVERFLOW`, FastMCP arg-validation → `FR_TOOL_ERROR`) moved from inline code in `build_deck.load_all` into `iter_trials(relabel=True)`. `drift_check` now imports `parse_dirname_full` directly from `_constants` (the sibling-import from `aggregate` is gone).
+- **ANALYZER-13 (figure-builder helpers)** — added `_grouped_arm_bars`, `_arm_legend`, `_panel_grid`, `_label_bars`, `_no_data_panel` to `build_deck.py`. The 7 long figures (fig_tool_selection / fig_failure_breakdown / fig_successful_tool_use / fig_tokens / fig_tokens_vs_success / fig_h1_isolation / fig_h2_isolation_for_model) drop from **576 → 525 lines (−9%)**; the helpers themselves add ~110 lines so `build_deck.py` overall is roughly unchanged in size (1822 → 1843). The win is structural deduplication — arm bar grids, arm legends, and 2×3 panel scaffolding are expressed once. The 30% target stated up front was aspirational; bespoke chart-specific text/annotation/layout code resists further extraction without obscuring intent.
+- **ANALYZER-17 (build_deck slide-submodule split)** — **not done**. Premise was that build_deck.py is too long; after ANALYZER-13 it's still 1843 lines, but the figure bodies didn't shrink enough to make a 5-file package split materially easier to navigate. The structural separation argument (state vs stats vs figures vs slides) doesn't outweigh the cost of fragmenting cross-figure helper sharing.
+
+**Validation.** Two reference roots (`results/sweep5-live` exercising per-variant arms, `results/sweep4-v5-v7-first` exercising `*-legacy` fallback) captured pre-refactor to `/tmp/analyzer-refactor-baseline/`. Per-commit gate: sweep5 + sweep4 `aggregate` stdout / `master.{md,csv,tex}` / `drift_check` stdout all byte-equal vs baseline; sweep5 deck structural fingerprint (39 slides; slide titles, captions, image filenames, table cell content) byte-equal. 31 sweep5 deck figure PNGs: 22 byte-equal post-refactor, 9 differ at the sub-pixel level (h1 + h2 legend anti-aliasing, success_by_arm tight_layout 1px height shift from `label_arms=True` legend metadata, tokens_task_validate_problem median-label anti-aliasing). Visual inspection confirmed all 9 are sub-pixel rendering noise, not chart-content regressions. Sweep4 deck build was already broken pre-refactor by an unrelated yerr-negative error in matplotlib's errorbar call (filed mentally; out of scope for this PR).
+
+**Reproducibility.** No methodology change. Existing `results/` corpora load and aggregate to byte-identical Markdown / CSV / TeX outputs. The two read-time taxonomy fixes are unchanged; only their call site moved.
+
+---
+
 ## 2026-05-25 — PR-69 review follow-up: palette + bash safety + table fallback
 
 Three small fixes surfaced by a high-effort code review of the simplification PR.

@@ -30,12 +30,17 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# Sibling-script imports (parse_dirname) and harness imports (wilson_ci,
-# TRIAL_KEY_LEN). Both path inserts run unconditionally — the analyzer
-# Repo-root bootstrap happens inside _constants on import.
+# Path bootstrap so `from _constants import …` resolves whether drift_check is
+# invoked as a script or imported by tests. The analyzer repo-root bootstrap
+# happens inside `_constants` on import (so pddl_eval is importable below).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _constants import TASKS, wilson_ci  # noqa: E402
-from aggregate import parse_dirname  # noqa: E402
+from _constants import (  # noqa: E402
+    TASKS,
+    iter_cells,
+    latest_summary,
+    parse_dirname_full as parse_dirname,
+    wilson_ci,
+)
 from pddl_eval.runner import TRIAL_KEY_LEN  # noqa: E402
 
 
@@ -83,10 +88,8 @@ def _load_cell(cell_dir: Path) -> tuple[str, dict[str, dict[str, int]]] | None:
     JSONL was aggregated, "empty" if neither yields any data. Returns
     None when the dir contains nothing aggregable.
     """
-    summaries = sorted(cell_dir.glob("summary_*.json"))
-    if summaries:
-        with summaries[-1].open() as f:
-            data = json.load(f)
+    data = latest_summary(cell_dir)
+    if data is not None:
         per_task: dict[str, dict[str, int]] = {}
         for r in data.get("single_task", []):
             t = r.get("task")
@@ -114,13 +117,15 @@ def _load_root(root: Path) -> dict[tuple, tuple[str, dict[str, dict[str, int]]]]
     against a single-backend baseline would compare apples-to-oranges.
     A backend-agnostic baseline simply has no key counterpart for the
     other backend's rows, which is the methodologically correct skip.
+
+    Uses `include_retired=True` because drift_check legitimately reaches
+    into retired conds when re-aggregating a sweep-3/4 baseline; the
+    cond-`"?"` / model-`"?"` filter below drops parse misses inline (the
+    full parser returns those rather than skipping).
     """
     rows: dict[tuple, tuple[str, dict[str, dict[str, int]]]] = {}
-    for d in sorted(root.glob("slurm_*")):
-        if not d.is_dir():
-            continue
-        info = parse_dirname(d.name)
-        if not info or info.get("model") in ("?", None) or info.get("cond") == "?":
+    for d, info in iter_cells(root, include_retired=True, parser="full"):
+        if info.get("model") in ("?", None) or info.get("cond") == "?":
             continue
         cell_data = _load_cell(d)
         if cell_data is None:

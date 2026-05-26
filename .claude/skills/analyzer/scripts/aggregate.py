@@ -17,7 +17,6 @@ Outputs (to stdout):
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -31,6 +30,8 @@ from _constants import (  # noqa: E402
     arm_variant_set as _arm_variant_set,
     find_default_root,
     host_tag,
+    iter_cells,
+    latest_summary,
     parse_dirname_full as parse_dirname,
 )
 
@@ -49,17 +50,11 @@ def load_summaries(root: Path, include_retired: bool = False):
     baseline should set this to True so per-task cells aren't silently dropped.
     """
     rows = []
-    for d in sorted(root.glob("slurm_*")):
-        if not d.is_dir():
+    for d, info in iter_cells(root, include_retired=include_retired,
+                              parser="full"):
+        data = latest_summary(d)
+        if data is None:
             continue
-        sfs = sorted(d.glob("summary_*.json"))
-        if not sfs:
-            continue
-        info = parse_dirname(d.name)
-        if not include_retired and info.get("cond") in RETIRED_CONDS:
-            continue
-        with sfs[-1].open() as f:
-            data = json.load(f)
         info["host"] = host_tag(data.get("meta", {}))
         rows.append((info, data))
     return rows

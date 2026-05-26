@@ -58,6 +58,8 @@ from _constants import (  # noqa: E402
     FAILURE_REASONS as _FR_ORDER,
     TASKS,
     arm_for,
+    iter_cells,
+    iter_trials,
     wilson_ci,
 )
 
@@ -70,11 +72,6 @@ TASK_LABEL = {
     "validate_plan": "val-plan",
     "simulate": "simulate",
 }
-from pddl_eval.scoring import (  # noqa: E402
-    relabel_tool_arg_error_taxonomy,
-    relabel_truncated_taxonomy,
-)
-
 # Canonical arm display order for sweep-5 decks. Two-pass cells (post-filter)
 # contain both nt-neut + tl-neut + tl-ster; the 4th-arm (nt-ster) is the
 # control submit and shows up only when --include-no-tools-steered has been
@@ -237,14 +234,6 @@ def _resolve_path(p: str | Path) -> Path:
 
 # ---------------- Loading ----------------
 
-def _cell_name(d: str) -> tuple[str, str, str] | None:
-    """Parse slurm cell directory name into (model, think, cond)."""
-    m = re.match(r"slurm_(?:vllm_)?(?P<model>.+?)_(?P<think>on|off)_(?P<cond>.+)$", d)
-    if not m:
-        return None
-    return m.group("model"), m.group("think"), m.group("cond")
-
-
 def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
     """Load every trial.jsonl under `results_root`, keyed by (model, think, arm).
 
@@ -252,51 +241,30 @@ def load_all(results_root: Path) -> dict[tuple[str, str, str], list[dict]]:
     `tools_all_minimal` dir splits into `tl-neut` (v11/12/13) and `tl-ster`
     (v14/15/16)). Trials missing `prompt_variant` are skipped — they
     cannot be classified into an arm without inventing a default.
+
+    Trial streaming + the two read-time taxonomy fixes
+    (FR_TRUNCATED_NO_ANSWER → FR_THINK_OVERFLOW, FastMCP arg-validation →
+    FR_TOOL_ERROR) live in `_constants.iter_trials(relabel=True)` and
+    mutate the in-memory dict only; trials.jsonl is never rewritten.
     """
     out: dict[tuple[str, str, str], list[dict]] = {}
     skipped_no_pv = 0
-    for child in sorted(results_root.iterdir()):
-        if not child.is_dir() or not child.name.startswith("slurm_"):
+    for cell_dir, info in iter_cells(results_root, include_retired=True,
+                                      include_legacy=True, parser="plotshape"):
+        # build_deck only handles cells with an on/off think axis; sweep-3/4
+        # legacy cells with think=default would key (model, "default", arm)
+        # buckets that no figure consumer expects.
+        think = info["think"]
+        if think not in ("on", "off"):
             continue
-        parsed = _cell_name(child.name)
-        if not parsed:
-            continue
-        model, think, _cond_ignored = parsed
-        fp = child / "trials.jsonl"
-        if not fp.exists():
-            continue
-        with fp.open() as f:
-            for line in f:
-                try:
-                    r = json.loads(line)["result"]
-                except (json.JSONDecodeError, KeyError):
-                    continue
-                pv = r.get("prompt_variant")
-                if pv is None:
-                    skipped_no_pv += 1
-                    continue
-                arm = arm_for(bool(r.get("with_tools")), int(pv))
-                # Read-time taxonomy fix: split FR_TRUNCATED_NO_ANSWER into
-                # FR_THINK_OVERFLOW when response was empty under think=on.
-                # Mutates the in-memory record only; trials.jsonl is unchanged.
-                r["failure_reason"] = relabel_truncated_taxonomy(
-                    r.get("failure_reason", ""),
-                    truncated=bool(r.get("truncated")),
-                    response=r.get("response") or "",
-                    think_mode=think,
-                )
-                # Read-time taxonomy fix: FastMCP "Error executing tool ..."
-                # arg-validation strings that pre-date the _tool_error_seen
-                # prefix extension land in verdict_mismatch / result_mismatch
-                # / plan_invalid. Relabel to FR_TOOL_ERROR so confusion
-                # matrices don't credit malformed-args calls as confident
-                # wrong predictions. trials.jsonl is unchanged.
-                r["failure_reason"] = relabel_tool_arg_error_taxonomy(
-                    r["failure_reason"],
-                    task=r.get("task", ""),
-                    tool_calls=r.get("tool_calls") or [],
-                )
-                out.setdefault((model, think, arm), []).append(r)
+        model = info["model"]
+        for r in iter_trials(cell_dir, relabel=True, think_mode=think):
+            pv = r.get("prompt_variant")
+            if pv is None:
+                skipped_no_pv += 1
+                continue
+            arm = arm_for(bool(r.get("with_tools")), int(pv))
+            out.setdefault((model, think, arm), []).append(r)
     if skipped_no_pv:
         print(f"  warn: skipped {skipped_no_pv} trials without prompt_variant",
               file=sys.stderr)
@@ -495,6 +463,129 @@ def _color_for_arm(arm: str) -> str:
     return ARM_COLOR.get(arm, "#1f77b4")
 
 
+# ---- Shared figure-building helpers ---------------------------------------
+#
+# `_grouped_arm_bars`, `_arm_legend`, `_panel_grid`, `_label_bars`, and
+# `_no_data_panel` capture patterns that recur across 5+ of the figure
+# builders below. Per-figure differences are passed in as kwargs (`width`,
+# `light` for alpha=0.45 sub-bars, fmt callables, etc.). Each helper is
+# deliberately shallow — figures with idiosyncratic geometry (the 2-sub-bar
+# fig_successful_tool_use, the per-cell fig_tokens_vs_success scatter) still
+# carry bespoke drawing code where extracting a helper would obscure intent.
+
+def _grouped_arm_bars(ax, x_centers, arms, get_arm_vals,
+                      width=None, light=False, edgecolor="black",
+                      linewidth=0.4, label_arms=True):
+    """Draw a grouped-by-arm bar set at `x_centers`.
+
+    `get_arm_vals(arm)` returns one value per x_center (np.nan for missing
+    cells; matplotlib will draw an empty slot). Returns `{arm: (bars, vals)}`
+    so callers can annotate per-bar afterward.
+
+    The `light=True` flag turns the bars semi-transparent (alpha=0.45) — used
+    by fig_successful_tool_use for its outer "selected" bars sitting next to
+    fully-opaque "selected ∧ success" bars.
+
+    `label_arms=True` attaches the ARM_DISP label to each BarContainer so a
+    subsequent `ax.legend()` call collects one entry per arm without the
+    caller constructing rectangle handles by hand. Pass False when the caller
+    is using `_arm_legend(fig, ...)` for a figure-level legend instead.
+    """
+    if width is None:
+        width = 0.8 / max(1, len(arms))
+    x_arr = np.asarray(x_centers, dtype=float)
+    n = len(arms)
+    out: dict[str, tuple] = {}
+    for j, arm in enumerate(arms):
+        offset = (j - (n - 1) / 2) * width
+        vals = list(get_arm_vals(arm))
+        kwargs = dict(color=_color_for_arm(arm),
+                       edgecolor=edgecolor, linewidth=linewidth)
+        if light:
+            kwargs["alpha"] = 0.45
+        if label_arms:
+            kwargs["label"] = ARM_DISP.get(arm, arm)
+        bars = ax.bar(x_arr + offset, vals, width, **kwargs)
+        out[arm] = (bars, vals)
+    return out
+
+
+def _arm_legend(target, arms, *, light=False, location="lower center",
+                 anchor=(0.5, 0.0), ncol=None, fontsize=10):
+    """Place an arm-rectangle legend on `target` (a Figure or Axes).
+
+    `light=True` paints the rectangles with alpha=0.45 to match
+    `_grouped_arm_bars(light=True)` sub-bars.
+    """
+    rect_kwargs: dict = {}
+    if light:
+        rect_kwargs["alpha"] = 0.45
+    handles = [plt.Rectangle((0, 0), 1, 1, facecolor=_color_for_arm(a), **rect_kwargs)
+               for a in arms]
+    labels = [ARM_DISP.get(a, a) for a in arms]
+    if ncol is None:
+        ncol = max(1, len(arms))
+    target.legend(handles, labels, loc=location, ncol=ncol,
+                   bbox_to_anchor=anchor, fontsize=fontsize)
+
+
+def _panel_grid(n_panels: int, *, cols: int = 3, per_panel_w: float = 4.6,
+                per_panel_h: float = 4.0, sharey: bool = True):
+    """Build the (n_rows × cols) figure used by fig_h1 / fig_h2.
+
+    Returns `(fig, axes_flat, n_rows)`. Trailing axes beyond `n_panels` are
+    left as visible Axes for the caller to `.axis("off")` themselves — the
+    callers also use that loop to keep TASK_LABEL set on hidden panels so
+    the eye traces the grid uniformly.
+    """
+    n_rows = (n_panels + cols - 1) // cols
+    fig, axes = plt.subplots(n_rows, cols,
+                              figsize=(per_panel_w * cols,
+                                       per_panel_h * n_rows),
+                              sharey=sharey, squeeze=False)
+    return fig, axes.ravel(), n_rows
+
+
+def _label_bars(ax, bars, vals, fmt, *, position: str = "above",
+                fontsize: float = 7.0, color: str = "#222",
+                fontweight: str | None = None):
+    """Annotate each bar with `fmt(val)`. `position`:
+      - "above": text just above the bar tip (skipped for NaN).
+      - "inside": text inside the bar near the top, drawn in white. Skipped
+        when the bar is empty (height NaN or 0).
+    """
+    for b, v in zip(bars, vals):
+        h = b.get_height()
+        if np.isnan(h):
+            continue
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            continue
+        text = fmt(v)
+        if not text:
+            continue
+        x = b.get_x() + b.get_width() / 2
+        if position == "above":
+            ax.text(x, h, text, ha="center", va="bottom",
+                    fontsize=fontsize, color=color,
+                    fontweight=fontweight or "normal")
+        elif position == "inside":
+            if h <= 0:
+                continue
+            ax.text(x, h * 0.92, text, ha="center", va="top",
+                    fontsize=fontsize, color="white")
+
+
+def _no_data_panel(save_path: Path, msg: str, *, figsize=(6, 2)) -> Path:
+    """Emit a placeholder PNG when a figure has no data to render."""
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.axis("off")
+    ax.text(0.5, 0.5, msg, ha="center", va="center", fontsize=12,
+            color="#888")
+    fig.savefig(save_path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    return save_path
+
+
 def fig_success_by_cond_per_task(think: str, save_path: Path) -> Path:
     """Per-task success by arm. One subplot per model; up to 4 bars per task
     (one per arm present). Arms with no data at this think level are dropped
@@ -510,16 +601,15 @@ def fig_success_by_cond_per_task(think: str, save_path: Path) -> Path:
     cols = min(3, n)
     rows = int(np.ceil(n / cols))
     fig, axes = plt.subplots(rows, cols, figsize=(4.6 * cols, 3.4 * rows), squeeze=False)
-    width = 0.8 / max(1, len(arms))
     x = np.arange(len(TASKS))
     for i, m in enumerate(models):
         ax = axes[i // cols][i % cols]
-        for j, arm in enumerate(arms):
-            rows_ = CELLS.get((m, think, arm), [])
-            vals = [task_success_rate(rows_, t)[0] * 100 for t in TASKS]
-            offset = (j - (len(arms) - 1) / 2) * width
-            ax.bar(x + offset, vals, width,
-                   label=ARM_DISP.get(arm, arm), color=_color_for_arm(arm))
+        _grouped_arm_bars(
+            ax, x, arms,
+            lambda a, m=m: [task_success_rate(CELLS.get((m, think, a), []), t)[0] * 100
+                            for t in TASKS],
+            edgecolor="none",
+        )
         ax.set_xticks(x)
         ax.set_xticklabels([TASK_LABEL[t] for t in TASKS], rotation=20, ha="right")
         ax.set_ylim(0, 105)
@@ -528,10 +618,7 @@ def fig_success_by_cond_per_task(think: str, save_path: Path) -> Path:
         ax.grid(axis="y", linestyle=":", alpha=0.4)
     for k in range(n, rows * cols):
         axes[k // cols][k % cols].axis("off")
-    handles = [plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a)) for a in arms]
-    labels = [ARM_DISP.get(a, a) for a in arms]
-    fig.legend(handles, labels, loc="lower center", ncol=max(1, len(arms)),
-               bbox_to_anchor=(0.5, -0.02))
+    _arm_legend(fig, arms, anchor=(0.5, -0.02))
     fig.suptitle(f"Single-task success by arm (think={think})", y=0.995, fontsize=12)
     fig.tight_layout(rect=[0, 0.04, 1, 0.97])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
@@ -554,40 +641,30 @@ def fig_tool_selection(save_path: Path) -> Path:
     legible task-by-task; per-think columns let the reader compare the
     reasoning-mode effect side by side.
     """
-    # Use the union of models present at either think level so the grid
-    # has consistent rows; rows where the cell is absent just render empty.
-    models = [m for m in MODEL_ORDER
-              if any((m, t, a) in CELLS
-                     for t in ("off", "on")
-                     for a in (_tools_arms_present("off") + _tools_arms_present("on")))]
     arms_off = _tools_arms_present("off")
     arms_on = _tools_arms_present("on")
     all_arms = sorted(set(arms_off) | set(arms_on),
                       key=lambda a: ARM_ORDER.index(a) if a in ARM_ORDER else 99)
+    # Use the union of models present at either think level so the grid
+    # has consistent rows; rows where the cell is absent just render empty.
+    models = [m for m in MODEL_ORDER
+              if any((m, t, a) in CELLS for t in ("off", "on") for a in all_arms)]
     if not models or not all_arms:
-        fig, ax = plt.subplots(figsize=(6, 2))
-        ax.axis("off")
-        ax.text(0.5, 0.5, "(no with-tools cells)", ha="center", va="center",
-                fontsize=12, color="#888")
-        fig.savefig(save_path, dpi=160, bbox_inches="tight")
-        plt.close(fig)
-        return save_path
+        return _no_data_panel(save_path, "(no with-tools cells)")
     n_rows = len(models)
     fig, axes = plt.subplots(n_rows, 2, figsize=(13, 2.4 * n_rows + 0.6),
                               sharey=True, squeeze=False)
     x = np.arange(len(TASKS))
-    width = 0.8 / max(1, len(all_arms))
     for i, m in enumerate(models):
         for col, think in enumerate(("off", "on")):
             ax = axes[i, col]
-            for j, arm in enumerate(all_arms):
-                rows_ = CELLS.get((m, think, arm), [])
-                vals = [tool_selected_rate(rows_, t)[0] * 100 if rows_ else float("nan")
-                        for t in TASKS]
-                offset = (j - (len(all_arms) - 1) / 2) * width
-                ax.bar(x + offset, vals, width,
-                       color=_color_for_arm(arm),
-                       edgecolor="black", linewidth=0.4)
+            _grouped_arm_bars(
+                ax, x, all_arms,
+                lambda a, m=m, think=think: [
+                    tool_selected_rate(CELLS.get((m, think, a), []), t)[0] * 100
+                    if CELLS.get((m, think, a)) else float("nan")
+                    for t in TASKS],
+            )
             ax.set_xticks(x)
             if i == n_rows - 1:
                 ax.set_xticklabels([TASK_LABEL[t] for t in TASKS],
@@ -600,12 +677,7 @@ def fig_tool_selection(save_path: Path) -> Path:
             if i == 0:
                 ax.set_title(f"think={think}", fontsize=11)
             ax.grid(axis="y", linestyle=":", alpha=0.4)
-    handles = [plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a),
-                              edgecolor="black", linewidth=0.4)
-               for a in all_arms]
-    labels = [ARM_DISP.get(a, a) for a in all_arms]
-    fig.legend(handles, labels, loc="lower center", ncol=len(handles),
-               bbox_to_anchor=(0.5, 0.0), fontsize=10)
+    _arm_legend(fig, all_arms, ncol=len(all_arms))
     fig.suptitle("Tool-selection rate per task — by model × think × arm",
                  fontsize=13)
     fig.tight_layout(rect=[0, 0.03, 1, 0.97])
@@ -630,13 +702,7 @@ def fig_failure_breakdown(think: str, save_path: Path) -> Path:
     """
     models = [m for m in MODEL_ORDER if any((m, think, a) in CELLS for a in ARM_ORDER)]
     if not models:
-        fig, ax = plt.subplots(figsize=(6, 2))
-        ax.axis("off")
-        ax.text(0.5, 0.5, f"(no cells for think={think})", ha="center",
-                va="center", fontsize=12, color="#888")
-        fig.savefig(save_path, dpi=160, bbox_inches="tight")
-        plt.close(fig)
-        return save_path
+        return _no_data_panel(save_path, f"(no cells for think={think})")
 
     arms = [a for a in ARM_ORDER if any((m, think, a) in CELLS for m in models)]
     # one logical "series" per (model, arm)
@@ -954,52 +1020,42 @@ def fig_tokens(save_path: Path, only_success: bool = False,
         models = models_present(think)
         arms = _arms_present(think)
         x = np.arange(len(models))
-        width = 0.8 / max(1, len(arms))
-        for j, arm in enumerate(arms):
-            vals, medians = [], []
-            for m in models:
-                rows_ = CELLS.get((m, think, arm), [])
-                ts = token_stats(rows_, task=task, only_success=only_success) if rows_ else None
-                vals.append(ts["completion"] if ts else float("nan"))
-                medians.append(_completion_median(rows_, task=task,
-                                                   only_success=only_success)
-                               if rows_ else float("nan"))
-            offset = (j - (len(arms) - 1) / 2) * width
-            bars = ax.bar(x + offset, vals, width,
-                          label=ARM_DISP.get(arm, arm),
-                          color=_color_for_arm(arm),
-                          edgecolor="black", linewidth=0.4)
+
+        def _mean(arm: str, think: str = think) -> list[float]:
+            return [(token_stats(CELLS.get((m, think, arm), []),
+                                  task=task, only_success=only_success)["completion"]
+                     if CELLS.get((m, think, arm)) else float("nan"))
+                    for m in models]
+        bars_by_arm = _grouped_arm_bars(ax, x, arms, _mean)
+        # Per-bar mean + median annotation interleaved so the matplotlib text
+        # draw order matches the pre-refactor figure byte-for-byte. Hoisting
+        # mean labels into _label_bars and drawing median afterward reorders
+        # overlapping anti-aliased glyphs near bar tips; the deck-fingerprint
+        # validation flagged that as a sub-pixel rendering change.
+        for arm, (bars, vals) in bars_by_arm.items():
+            medians = [(_completion_median(CELLS.get((m, think, arm), []),
+                                            task=task, only_success=only_success)
+                         if CELLS.get((m, think, arm)) else float("nan"))
+                        for m in models]
             for b, v, med in zip(bars, vals, medians):
                 h = b.get_height()
                 if np.isnan(h):
                     continue
-                # Mirror the latency annotation pattern (`_annotate_bars`):
-                # primary metric (mean) above the bar tip in black; secondary
-                # metric (median) inside the bar near the top in white. The
-                # previous two-lines-above layout had the median bbox stacking
-                # behind the mean bbox at the same anchor — hiding it from view.
                 mean_str = _fmt_tokens(v) if not np.isnan(v) else ""
                 med_str = f"m:{_fmt_tokens(med)}" if not np.isnan(med) else ""
+                x_mid = b.get_x() + b.get_width() / 2
                 if mean_str:
-                    ax.text(b.get_x() + b.get_width() / 2, h, mean_str,
+                    ax.text(x_mid, h, mean_str,
                             ha="center", va="bottom", fontsize=7.5,
                             color="#222", fontweight="bold")
                 if med_str and h > 0:
-                    # Tall bars: median sits inside the bar, white text, near
-                    # the top. Short bars (h below ~6% of axis range): the
-                    # white inset would be unreadable, so fall back to a black
-                    # label below the bar tip outside the bar.
                     y_top = ax.get_ylim()[1]
                     if h >= 0.10 * y_top:
-                        ax.text(b.get_x() + b.get_width() / 2,
-                                h * 0.92, med_str,
-                                ha="center", va="top", fontsize=6.5,
-                                color="white")
+                        ax.text(x_mid, h * 0.92, med_str,
+                                ha="center", va="top", fontsize=6.5, color="white")
                     else:
-                        ax.text(b.get_x() + b.get_width() / 2,
-                                h * 0.5, med_str,
-                                ha="center", va="center", fontsize=6.5,
-                                color="#555")
+                        ax.text(x_mid, h * 0.5, med_str,
+                                ha="center", va="center", fontsize=6.5, color="#555")
         ax.set_xticks(x)
         ax.set_xticklabels([MODEL_DISP[m] for m in models], rotation=20, ha="right",
                            fontsize=9)
@@ -1142,26 +1198,25 @@ def fig_tokens_vs_success(save_path: Path, task: str) -> Path:
 
 def fig_latency(save_path: Path, exclude_failures: bool) -> Path:
     fig, axes = plt.subplots(1, 2, figsize=(13, 5), sharey=True)
+    mean_key = "mean_succ" if exclude_failures else "mean_all"
     for ax, think in zip(axes, ["off", "on"]):
         models = models_present(think)
         arms = _arms_present(think)
         x = np.arange(len(models))
-        width = 0.8 / max(1, len(arms))
-        for j, arm in enumerate(arms):
-            vals, frates = [], []
-            for m in models:
-                rows_ = CELLS.get((m, think, arm), [])
-                ls = latency_stats(rows_)
-                if exclude_failures:
-                    vals.append(ls["mean_succ"])
-                else:
-                    vals.append(ls["mean_all"])
-                frates.append((ls["n_fail"] / ls["n"]) * 100 if ls["n"] else float("nan"))
-            offset = (j - (len(arms) - 1) / 2) * width
-            bars = ax.bar(x + offset, vals, width,
-                          label=ARM_DISP.get(arm, arm),
-                          color=_color_for_arm(arm),
-                          edgecolor="black", linewidth=0.4)
+
+        def _stats(arm: str, think: str = think) -> list[dict]:
+            return [latency_stats(CELLS.get((m, think, arm), [])) for m in models]
+
+        # _grouped_arm_bars handles drawing; we still need the per-bar failure
+        # rate for the inset annotation, so cache stats here.
+        per_arm_stats = {a: _stats(a) for a in arms}
+        bars_by_arm = _grouped_arm_bars(
+            ax, x, arms,
+            lambda a: [s[mean_key] for s in per_arm_stats[a]])
+        for arm, (bars, vals) in bars_by_arm.items():
+            stats = per_arm_stats[arm]
+            frates = [(s["n_fail"] / s["n"]) * 100 if s["n"] else float("nan")
+                      for s in stats]
             _annotate_bars(ax, bars, vals, frates,
                            primary_fmt=lambda v: f"{v:.0f}s")
         ax.margins(y=0.10)
@@ -1201,18 +1256,14 @@ def fig_h1_isolation(save_path: Path) -> Path | None:
                    for m in MODEL_ORDER for t in ("off", "on") for a in arms)
     if not has_data:
         return None
-    # 2-row layout (was 1 × 5) so each task panel reads at a usable size on a
-    # 13×7.5" slide. 5 tasks → 2×3 grid with the trailing cell hidden. Wider +
-    # taller per-panel footprint (was 2.8×4.4, now 4.6×4.0 each) so bar labels
-    # stay legible.
+    # 2×3 panel grid (5 tasks + 1 hidden) so each task reads at usable size on
+    # a 13×7.5" slide. Per-panel x-positions stack think modes onto the model
+    # axis (model·off / model·on grouped pairs) — bespoke geometry that can't
+    # share _grouped_arm_bars because both arms occupy the same x-slot here.
+    fig, axes_flat, n_rows = _panel_grid(len(TASKS))
     n_cols = 3
-    n_rows = (len(TASKS) + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(n_rows, n_cols,
-                              figsize=(4.6 * n_cols, 4.0 * n_rows),
-                              sharey=True, squeeze=False)
-    axes_flat = axes.ravel()
+    widths = 0.35
     for ax, task in zip(axes_flat, TASKS):
-        # Stack think modes onto x: one model gets two grouped pairs.
         models = [m for m in MODEL_ORDER
                   if any((m, t, a) in CELLS for t in ("off", "on") for a in arms)]
         if not models:
@@ -1220,43 +1271,35 @@ def fig_h1_isolation(save_path: Path) -> Path | None:
             ax.set_title(TASK_LABEL[task], fontsize=10)
             continue
         labels = []
-        widths = 0.35
         positions = []
         nt_vals = []
         tl_vals = []
         for i, m in enumerate(models):
             for k, think in enumerate(("off", "on")):
-                pos = i * 2.5 + k
-                positions.append(pos)
+                positions.append(i * 2.5 + k)
                 labels.append(f"{MODEL_DISP[m]}·{think}")
-                nt_rows = CELLS.get((m, think, "nt-neut"), [])
-                tl_rows = CELLS.get((m, think, "tl-neut"), [])
-                nt_vals.append(task_success_rate(nt_rows, task)[0] * 100)
-                tl_vals.append(task_success_rate(tl_rows, task)[0] * 100)
+                nt_vals.append(task_success_rate(
+                    CELLS.get((m, think, "nt-neut"), []), task)[0] * 100)
+                tl_vals.append(task_success_rate(
+                    CELLS.get((m, think, "tl-neut"), []), task)[0] * 100)
         positions = np.array(positions)
         ax.bar(positions - widths / 2, nt_vals, widths,
-               color=_color_for_arm("nt-neut"), edgecolor="black", linewidth=0.4,
-               label=ARM_DISP.get("nt-neut", "nt-neut"))
+               color=_color_for_arm("nt-neut"), edgecolor="black", linewidth=0.4)
         ax.bar(positions + widths / 2, tl_vals, widths,
-               color=_color_for_arm("tl-neut"), edgecolor="black", linewidth=0.4,
-               label=ARM_DISP.get("tl-neut", "tl-neut"))
+               color=_color_for_arm("tl-neut"), edgecolor="black", linewidth=0.4)
         ax.set_xticks(positions)
         ax.set_xticklabels(labels, rotation=70, ha="right", fontsize=7)
         ax.set_ylim(0, 105)
         ax.set_title(TASK_LABEL[task], fontsize=10)
         ax.grid(axis="y", linestyle=":", alpha=0.4)
-    # Hide trailing empty cells (5 tasks in a 2×3 grid → one slot unused).
     for ax in axes_flat[len(TASKS):]:
         ax.axis("off")
-    # success% y-label on the leftmost subplot of each row.
     for row in range(n_rows):
-        axes[row, 0].set_ylabel("success %", fontsize=10)
+        axes_flat[row * n_cols].set_ylabel("success %", fontsize=10)
     fig.suptitle(
         "H1 isolation — tool utility at byte-identical prompts (nt-neut vs tl-neut).",
         fontsize=12)
-    fig.legend([plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a)) for a in arms],
-               [ARM_DISP.get(a, a) for a in arms],
-               loc="lower center", ncol=2, bbox_to_anchor=(0.5, 0.0), fontsize=10)
+    _arm_legend(fig, arms, ncol=2)
     fig.tight_layout(rect=[0, 0.04, 1, 0.96])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)
@@ -1299,40 +1342,20 @@ def fig_h2_isolation_for_model(model: str, save_path: Path) -> Path | None:
     if not has_data:
         return None
 
+    fig, axes_flat, n_rows = _panel_grid(len(TASKS))
     n_cols = 3
-    n_rows = (len(TASKS) + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(n_rows, n_cols,
-                              figsize=(4.6 * n_cols, 4.0 * n_rows),
-                              sharey=True, squeeze=False)
-    axes_flat = axes.ravel()
-    widths = 0.35
     thinks = ("off", "on")
+    x = np.arange(len(thinks))
     for ax, task in zip(axes_flat, TASKS):
-        x = np.arange(len(thinks))
-        neut_vals = []
-        ster_vals = []
-        for think in thinks:
-            neut_rows = CELLS.get((model, think, "tl-neut"), [])
-            ster_rows = CELLS.get((model, think, "tl-ster"), [])
-            neut_vals.append(tool_selected_rate(neut_rows, task)[0] * 100
-                             if neut_rows else float("nan"))
-            ster_vals.append(tool_selected_rate(ster_rows, task)[0] * 100
-                             if ster_rows else float("nan"))
-        bars_n = ax.bar(x - widths / 2, neut_vals, widths,
-                        color=_color_for_arm("tl-neut"), edgecolor="black",
-                        linewidth=0.4, label=ARM_DISP.get("tl-neut", "tl-neut"))
-        bars_s = ax.bar(x + widths / 2, ster_vals, widths,
-                        color=_color_for_arm("tl-ster"), edgecolor="black",
-                        linewidth=0.4, label=ARM_DISP.get("tl-ster", "tl-ster"))
+        def _vals(arm: str, task: str = task) -> list[float]:
+            return [tool_selected_rate(CELLS.get((model, t, arm), []), task)[0] * 100
+                    if CELLS.get((model, t, arm)) else float("nan")
+                    for t in thinks]
+        bars_by_arm = _grouped_arm_bars(ax, x, arms, _vals, width=0.35)
+        for bars, vals in bars_by_arm.values():
+            _label_bars(ax, bars, vals, lambda v: f"{v:.0f}%",
+                        position="above", fontsize=8, fontweight="bold")
         ax.set_ylim(0, 115)
-        for bars, vals in ((bars_n, neut_vals), (bars_s, ster_vals)):
-            for b, v in zip(bars, vals):
-                h = b.get_height()
-                if np.isnan(h):
-                    continue
-                ax.text(b.get_x() + b.get_width() / 2, h, f"{v:.0f}%",
-                        ha="center", va="bottom", fontsize=8,
-                        color="#222", fontweight="bold")
         ax.set_xticks(x)
         ax.set_xticklabels([f"think={t}" for t in thinks], fontsize=9)
         ax.set_title(TASK_LABEL[task], fontsize=10)
@@ -1340,14 +1363,12 @@ def fig_h2_isolation_for_model(model: str, save_path: Path) -> Path | None:
     for ax in axes_flat[len(TASKS):]:
         ax.axis("off")
     for row in range(n_rows):
-        axes[row, 0].set_ylabel("tool_selected %", fontsize=9)
+        axes_flat[row * n_cols].set_ylabel("tool_selected %", fontsize=9)
     fig.suptitle(
         f"H2 isolation — {MODEL_DISP.get(model, model)} · steering effect on "
         f"tool selection (tl-neut vs tl-ster).",
         fontsize=12)
-    fig.legend([plt.Rectangle((0, 0), 1, 1, color=_color_for_arm(a)) for a in arms],
-               [ARM_DISP.get(a, a) for a in arms],
-               loc="lower center", ncol=2, bbox_to_anchor=(0.5, 0.0), fontsize=10)
+    _arm_legend(fig, arms, ncol=2)
     fig.tight_layout(rect=[0, 0.04, 1, 0.96])
     fig.savefig(save_path, dpi=160, bbox_inches="tight")
     plt.close(fig)

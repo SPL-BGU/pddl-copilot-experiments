@@ -7,6 +7,7 @@ divergent return shapes — see each docstring.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -19,6 +20,10 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from pddl_eval.prompts import STEERED_VARIANTS  # noqa: E402,F401
+from pddl_eval.scoring import (  # noqa: E402,F401
+    relabel_tool_arg_error_taxonomy,
+    relabel_truncated_taxonomy,
+)
 from pddl_eval.summary import NEUTRAL_VARIANTS, arm_for, wilson_ci  # noqa: E402,F401
 
 
@@ -278,6 +283,117 @@ def arm_variant_set(suffix: str) -> set[int] | None:
 # Aliases for legacy imports.
 _arm_side = arm_side
 _arm_variant_set = arm_variant_set
+
+
+# ---------------------------------------------------------------------------
+# Loader helpers — shared `slurm_*` directory walk + file pickers
+# ---------------------------------------------------------------------------
+#
+# Four loaders walk `<root>/slurm_*` cells and read summary_*.json /
+# single_task_*.json / trials.jsonl with subtly different filters. The
+# helpers below cover the directory walk + file picking + trial streaming
+# so each script only owns the part of the shape it actually needs.
+# `drift_check._aggregate_trials_jsonl` deliberately keeps its own inline
+# loop — it dedups by trial key and validates TRIAL_KEY_LEN, neither of
+# which fits the simple `result`-stream shape of `iter_trials`.
+
+
+def iter_cells(root: Path, *, include_retired: bool = False,
+               include_legacy: bool = True, parser: str = "full"):
+    """Yield `(cell_dir, info)` for every `slurm_*` subdirectory of `root`.
+
+    Parameters mirror the per-script signatures the loaders previously used
+    inline:
+
+    - `parser`: which `parse_dirname_*` variant to apply.
+      - `"full"` (default) → `parse_dirname_full`; misses come back with
+        `cond="?"` and the caller can warn.
+      - `"plotshape"` → `parse_dirname_plotshape`; misses are skipped silently
+        (loader convention in plot.py / plot_focused.py).
+    - `include_retired`: when False (default), drops cells whose `cond` is in
+      `RETIRED_CONDS` (per-task / guided arms retired in sweep-5).
+    - `include_legacy`: when False, drops cells flagged with `legacy=True`
+      from the plotshape parser (pre-think axis).
+
+    The walk uses `sorted(root.glob("slurm_*"))` to keep output deterministic
+    across callers.
+    """
+    for d in sorted(root.glob("slurm_*")):
+        if not d.is_dir():
+            continue
+        if parser == "full":
+            info = parse_dirname_full(d.name)
+            if not include_retired and info.get("cond") in RETIRED_CONDS:
+                continue
+        elif parser == "plotshape":
+            info = parse_dirname_plotshape(d.name)
+            if info is None:
+                continue
+            if info.get("legacy") and not include_legacy:
+                continue
+            if not include_retired and info.get("cond") in RETIRED_CONDS:
+                continue
+        else:
+            raise ValueError(f"unknown parser: {parser!r}")
+        yield d, info
+
+
+def latest_summary(cell_dir: Path) -> dict | None:
+    """Load the newest `summary_*.json` in `cell_dir`, or None if absent."""
+    sfs = sorted(cell_dir.glob("summary_*.json"))
+    if not sfs:
+        return None
+    with sfs[-1].open() as f:
+        return json.load(f)
+
+
+def latest_single_task(cell_dir: Path) -> list | None:
+    """Load the newest `single_task_*.json` in `cell_dir`, or None if absent."""
+    stfs = sorted(cell_dir.glob("single_task_*.json"))
+    if not stfs:
+        return None
+    with stfs[-1].open() as f:
+        return json.load(f)
+
+
+def iter_trials(cell_dir: Path, *, relabel: bool = False,
+                think_mode: str | None = None):
+    """Stream parsed `result` dicts from `cell_dir/trials.jsonl`.
+
+    Bad lines (partial tail, malformed JSON, missing `result` key) are
+    dropped silently — same policy as `pddl_eval.resume.load_progress`.
+
+    When `relabel=True`, applies the two read-time taxonomy fixes that
+    `build_deck.load_all` historically did inline:
+      1. FR_TRUNCATED_NO_ANSWER → FR_THINK_OVERFLOW when response was empty
+         under think=on (requires `think_mode`; pass the cell's think tag).
+      2. FastMCP arg-validation strings → FR_TOOL_ERROR (pre-`_tool_error_seen`
+         corpora).
+    trials.jsonl is never mutated; the relabel mutates the in-memory dict
+    only.
+    """
+    fp = cell_dir / "trials.jsonl"
+    if not fp.exists():
+        return
+    with fp.open() as f:
+        for line in f:
+            try:
+                r = json.loads(line)["result"]
+            except (json.JSONDecodeError, KeyError):
+                continue
+            if relabel:
+                r["failure_reason"] = relabel_truncated_taxonomy(
+                    r.get("failure_reason", ""),
+                    truncated=bool(r.get("truncated")),
+                    response=r.get("response") or "",
+                    think_mode=think_mode or r.get("think", ""),
+                )
+                r["failure_reason"] = relabel_tool_arg_error_taxonomy(
+                    r["failure_reason"],
+                    task=r.get("task", ""),
+                    tool_calls=r.get("tool_calls") or [],
+                )
+            yield r
 
 
 def decompose_cond(cond: str) -> tuple[str, str]:
