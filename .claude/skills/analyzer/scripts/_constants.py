@@ -7,6 +7,7 @@ divergent return shapes — see each docstring.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -288,12 +289,13 @@ _arm_variant_set = arm_variant_set
 # Loader helpers — shared `slurm_*` directory walk + file pickers
 # ---------------------------------------------------------------------------
 #
-# Five scripts walk `<root>/slurm_*` cells and read summary_*.json /
+# Four loaders walk `<root>/slurm_*` cells and read summary_*.json /
 # single_task_*.json / trials.jsonl with subtly different filters. The
 # helpers below cover the directory walk + file picking + trial streaming
 # so each script only owns the part of the shape it actually needs.
-
-import json  # noqa: E402
+# `drift_check._aggregate_trials_jsonl` deliberately keeps its own inline
+# loop — it dedups by trial key and validates TRIAL_KEY_LEN, neither of
+# which fits the simple `result`-stream shape of `iter_trials`.
 
 
 def iter_cells(root: Path, *, include_retired: bool = False,
