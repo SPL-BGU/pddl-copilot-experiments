@@ -104,6 +104,12 @@
 #   TASKS to the 4-task discriminative matrix (solve + validate_*); simulate
 #   stays excluded.
 #
+# --tools-only: complement of --no-tools — pins CONDITIONS=tools_all_minimal,
+#   defaults THINK_MODES=(on off). Used by the sweep5v2 / sweep6 contamination
+#   split where the no-tools baseline is reused (sweep5v2) or run separately
+#   (sweep6), so only the with-tools arm needs (re-)running against the
+#   updated MCP server. Mutually exclusive with --no-tools.
+#
 # Think modes default to "on off" (both run as separate cells in the array).
 # Override with --think-modes "default" for models without a think kwarg
 # or --think-modes "off" to skip thinking cells. (Note: gemma4:26b-a4b does
@@ -122,6 +128,7 @@ DRY_RUN=0
 GPU_TYPE=""
 THINK_MODES_OVERRIDE=""
 NO_TOOLS=0
+TOOLS_ONLY=0
 ALL=0
 SMOKE=0
 SMOKE_SHUFFLE=0
@@ -142,6 +149,7 @@ while [[ $# -gt 0 ]]; do
         --gpu-type) shift; GPU_TYPE="$1"; shift ;;
         --think-modes) shift; THINK_MODES_OVERRIDE="$1"; shift ;;
         --no-tools) NO_TOOLS=1; shift ;;
+        --tools-only) TOOLS_ONLY=1; shift ;;
         --all) ALL=1; shift ;;
         --smoke) SMOKE=1; shift ;;
         --smoke-shuffle) SMOKE_SHUFFLE=1; shift ;;
@@ -165,6 +173,15 @@ done
 
 if [ -n "$PARTIAL_K" ] && ! [[ "$PARTIAL_K" =~ ^[0-9]+$ ]]; then
     echo "Error: --partial expects a non-negative integer (got: $PARTIAL_K)" >&2
+    exit 1
+fi
+
+# --no-tools and --tools-only are complementary halves of the cond axis;
+# setting both is contradictory. --tools-only pins CONDITIONS=tools_all_minimal
+# (the with-tools-only sweep used by the sweep5v2 / sweep6 contamination split,
+# where the no-tools baseline is reused rather than re-run).
+if [ "$NO_TOOLS" -eq 1 ] && [ "$TOOLS_ONLY" -eq 1 ]; then
+    echo "Error: --no-tools and --tools-only are mutually exclusive" >&2
     exit 1
 fi
 
@@ -241,8 +258,8 @@ if [ "$SMOKE" -eq 1 ] && [ "$SMOKE_SHUFFLE" -eq 1 ]; then
     exit 1
 fi
 if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
-    if [ "$ALL" -eq 1 ] || [ "$NO_TOOLS" -eq 1 ] || [ -n "$THINK_MODES_OVERRIDE" ]; then
-        echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--think-modes" >&2
+    if [ "$ALL" -eq 1 ] || [ "$NO_TOOLS" -eq 1 ] || [ "$TOOLS_ONLY" -eq 1 ] || [ -n "$THINK_MODES_OVERRIDE" ]; then
+        echo "Error: --smoke[-shuffle] is exclusive with --all/--no-tools/--tools-only/--think-modes" >&2
         exit 1
     fi
     if [ "${#MODELS[@]}" -eq 0 ]; then
@@ -262,7 +279,7 @@ if [ "$ALL" -eq 1 ]; then
 fi
 
 if [ "${#MODELS[@]}" -eq 0 ]; then
-    echo "Usage: bash $0 <model> [<model>...] [--all] [--no-tools] [--gpu-type rtx_6000|rtx_pro_6000] [--think-modes \"on off\"] [--dry-run]" >&2
+    echo "Usage: bash $0 <model> [<model>...] [--all] [--no-tools|--tools-only] [--gpu-type rtx_6000|rtx_pro_6000] [--think-modes \"on off\"] [--dry-run]" >&2
     exit 1
 fi
 
@@ -317,6 +334,13 @@ elif [ "$NO_TOOLS" -eq 1 ]; then
         EFF_THINK=("${DEFAULT_THINK_MODES[@]}")
     fi
     EFF_COND=("no-tools")
+elif [ "$TOOLS_ONLY" -eq 1 ]; then
+    if [ -n "$THINK_MODES_OVERRIDE" ]; then
+        read -ra EFF_THINK <<< "$THINK_MODES_OVERRIDE"
+    else
+        EFF_THINK=("${DEFAULT_THINK_MODES[@]}")
+    fi
+    EFF_COND=("tools_all_minimal")
 else
     if [ -n "$THINK_MODES_OVERRIDE" ]; then
         read -ra EFF_THINK <<< "$THINK_MODES_OVERRIDE"
@@ -391,6 +415,9 @@ else
 fi
 if [ "$NO_TOOLS" -eq 1 ]; then
     JOB_NAME="${JOB_NAME}_notools"
+fi
+if [ "$TOOLS_ONLY" -eq 1 ]; then
+    JOB_NAME="${JOB_NAME}_toolsonly"
 fi
 if [ "$SMOKE" -eq 1 ]; then
     JOB_NAME="${JOB_NAME}_smoke"
