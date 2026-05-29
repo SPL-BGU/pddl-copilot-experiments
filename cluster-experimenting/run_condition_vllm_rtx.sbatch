@@ -142,13 +142,21 @@ preserve_serve_logs() {
     done
 }
 
+# vLLM container image. PINNED to v0.20.2 (env-overridable) — the version
+# the production fleet is serving. Previously `:latest`, which is a
+# corpus-identity hazard: it stayed consistent only because the cached
+# $HOME/vllm.sif happened to survive; the moment the cache is absent, a
+# fresh build silently pulls whatever `:latest` has drifted to, mixing vLLM
+# versions across a single sweep. Pinning makes a cache-miss reproducible.
+# v0.20.2 also supports gpt-oss (mainlined since 0.10.1).
+VLLM_IMAGE="${VLLM_IMAGE:-docker://vllm/vllm-openai:v0.20.2}"
 SIF_VLLM="$WORK/vllm.sif"
 if [ -f "$HOME/vllm.sif" ]; then
     echo "Using cached vllm.sif from \$HOME/vllm.sif"
     cp "$HOME/vllm.sif" "$SIF_VLLM"
 else
-    echo "Building vllm.sif from docker://vllm/vllm-openai:latest (first run, ~5 min)"
-    apptainer build --force "$SIF_VLLM" docker://vllm/vllm-openai:latest 2>&1 | tail -3
+    echo "Building vllm.sif from $VLLM_IMAGE (first run, ~5 min)"
+    apptainer build --force "$SIF_VLLM" "$VLLM_IMAGE" 2>&1 | tail -3
     cp "$SIF_VLLM" "$HOME/vllm.sif"
 fi
 
