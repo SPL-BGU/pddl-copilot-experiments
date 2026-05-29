@@ -32,3 +32,4 @@ checkpoints/**/*.jsonl
 checkpoints/**/*.out
 checkpoints/**/*.png
 checkpoints/**/*.md
+checkpoints/**/*.pptx
