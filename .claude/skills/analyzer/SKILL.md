@@ -137,6 +137,23 @@ python3 .claude/skills/analyzer/scripts/build_deck.py \
     --out    checkpoints/<name>/pddl_copilot_<name>.pptx     # --out overrides config.OUT_PPTX
 ```
 
+**Run-tag gotcha (applies to `build_deck.py`, `plot.py`, `table.py`, `plot_focused.py`).** The cell-name parser expects `slurm_vllm_<model>_<think>_<cond>[_<jobid>]` and locates `<cond>` only at the END (or before a numeric jobid). A `--run-tag` suffix (`slurm_vllm_..._<cond>_<runtag>`, e.g. `_sweep5v2` / `_sweep6`) sits *after* cond → no cond matches → cells are **silently dropped** (deck builds 0 cells, no error). After `filter_variants` (each synthetic root is single-experiment so the tag is redundant), strip it from the dst cell dirnames before any deck/plot/table build:
+
+```bash
+for d in results/<root>/slurm_vllm_*; do mv "$d" "$(echo "$d" | sed -E 's/_(sweep5v2|sweep6)$//')"; done
+```
+
+### `scripts/build_compare_deck.py` — canonical-vs-anon contamination deck
+
+Compares **two** filtered roots (a canonical corpus vs an anonymised one) cell-by-cell over `(model, think, arm, task)` and renders the canonical−anon success delta: a Δ heatmap per think, per-task paired bars (canonical vs anon, Wilson CIs, `*` = CI-disjoint), and an ST-mean summary table. Imports `build_deck`'s `load_all` / `task_success_rate` so the metric is byte-identical to the per-experiment decks. Metric is the runner-scored `success` (each trial judged against its OWN corpus's ground truth) — never re-derive `truth_for` on the anon side, which renames `problem_name`/`plan_label`. Δ>0 = canonical advantage = consistent with memorisation of the non-anonymised domains; the clean probe is the `nt-neut` arm (with-tools arms can still carry an edge — read the failure-reason split before attributing it to leakage). Dumps the matched / canonical-only / anon-only `(model, think, arm)` key sets to stdout so silent mispairing surfaces. No config module — driven entirely by CLI args.
+
+```bash
+python3 .claude/skills/analyzer/scripts/build_compare_deck.py \
+    --canon results/sweep5v2-live --anon results/sweep6-live \
+    --out   checkpoints/contamination-live/pddl_copilot_contamination_live.pptx \
+    --canon-label "canonical (sweep-5v2)" --anon-label "anon (sweep-6)" --min-n 50
+```
+
 ### `scripts/drift_check.py` — flag cells diverging from a baseline
 
 Compares a `--current` results root (in-flight or finished) against a `--baseline` root, aligns per-cell rows by `(model, think, cond, task)`, and flags any cell where the current point estimate falls outside the baseline's Wilson 95% CI. For each current cell, prefers the latest `summary_*.json`; falls back to aggregating `trials.jsonl` so mid-sweep cells (no `save_results` yet) still surface a current estimate.

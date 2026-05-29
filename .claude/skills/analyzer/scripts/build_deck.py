@@ -1127,8 +1127,11 @@ def fig_tokens_vs_success(save_path: Path, task: str) -> Path:
                 if np.isnan(med):
                     continue
                 lo, hi = wilson_ci(succ, n)
-                pts.append((med, rate * 100, (rate - lo) * 100,
-                            (hi - rate) * 100, m))
+                # Clamp whisker lengths to >=0: a zero-success cell yields
+                # lo==rate==0 where float error can make (rate-lo) a tiny
+                # negative (e.g. -1e-17), which matplotlib's errorbar rejects.
+                pts.append((med, rate * 100, max(0.0, (rate - lo) * 100),
+                            max(0.0, (hi - rate) * 100), m))
             if not pts:
                 continue
             any_data = True

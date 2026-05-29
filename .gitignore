@@ -32,6 +32,8 @@ external/
 # If a user unzips them locally for inspection, ignore the extracted JSON/out
 # files so they aren't accidentally re-committed alongside the zips.
 checkpoints/**/*.json
+checkpoints/**/*.jsonl
 checkpoints/**/*.out
 checkpoints/**/*.png
 checkpoints/**/*.md
+checkpoints/**/*.pptx
