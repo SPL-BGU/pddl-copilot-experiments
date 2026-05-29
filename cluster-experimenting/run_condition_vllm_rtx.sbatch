@@ -95,6 +95,12 @@ done
 ### Defaults ###
 ENV_NAME="${ENV_NAME:-pddl_copilot}"
 EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
+# vLLM KV-cache budget as a fraction of VRAM. Default 0.85 keeps the active
+# roster byte-identical to prior sweeps; env-overridable (propagated by the
+# wrapper via --export=ALL) so a model that lands on the VRAM-85%-guard
+# knife-edge can request a lower fraction. The gpt-oss:120b wrapper passes
+# 0.82 to leave the guard ~6 pts of headroom on rtx_pro_6000 (96 GB).
+GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
@@ -189,6 +195,11 @@ for MODEL in $MODELS; do
     SERVE_LOG="$WORK/vllm-${MODEL_TAG}.log"
 
     echo "Starting vLLM on localhost:$PORT serving $HF_MODEL"
+    # Echo the resolved serve flags into job stdout so a smoke/post-mortem
+    # can confirm WHICH parsers + VRAM fraction actually loaded without
+    # parsing vLLM's startup verbosity — a wrong --tool-call-parser silently
+    # yields 0% tool extraction (memory reference_vllm_parser_per_model).
+    echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-}"
     apptainer exec --nv \
         --bind "$WORK/hf-cache:/root/.cache/huggingface" \
         --writable-tmpfs \
@@ -201,7 +212,7 @@ for MODEL in $MODELS; do
             --enable-auto-tool-choice \
             --tool-call-parser "$TOOL_CALL_PARSER" \
             $REASONING_PARSER_FLAG \
-            --gpu-memory-utilization 0.85 \
+            --gpu-memory-utilization "$GPU_MEM_UTIL" \
             --enable-prefix-caching \
             $MAX_NUM_BATCHED_TOKENS_FLAG \
             > "$SERVE_LOG" 2>&1 &

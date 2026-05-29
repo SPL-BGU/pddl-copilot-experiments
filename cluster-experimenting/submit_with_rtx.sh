@@ -138,6 +138,7 @@ PARTIAL_K=""
 EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
 TIME_OVERRIDE=""
+TMP_OVERRIDE=""
 INCLUDE_NO_TOOLS_STEERED=0
 DOMAINS_DIR=""
 RUN_TAG=""
@@ -159,6 +160,7 @@ while [[ $# -gt 0 ]]; do
         --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
         --time) shift; TIME_OVERRIDE="$1"; shift ;;
+        --tmp) shift; TMP_OVERRIDE="$1"; shift ;;
         --include-no-tools-steered) INCLUDE_NO_TOOLS_STEERED=1; shift ;;
         --domains-dir) shift; DOMAINS_DIR="$1"; shift ;;
         --run-tag) shift; RUN_TAG="$1"; shift ;;
@@ -457,6 +459,12 @@ fi
 if [ -n "$RUN_TAG" ]; then
     EXPORT_LIST="${EXPORT_LIST},RUN_TAG=${RUN_TAG}"
 fi
+# GPU_MEM_UTIL is a correctness param (the VRAM-85%-guard headroom for big
+# models like gpt-oss:120b). Thread it explicitly to match the SMOKE/SHARD
+# convention rather than relying on --export=ALL inheritance alone.
+if [ -n "${GPU_MEM_UTIL:-}" ]; then
+    EXPORT_LIST="${EXPORT_LIST},GPU_MEM_UTIL=${GPU_MEM_UTIL}"
+fi
 
 # Add --array only when N>1; single-cell submissions remain plain sbatch.
 ARRAY_ARG=()
@@ -469,11 +477,22 @@ if [ -n "$EXCLUDE_NODES" ]; then
     EXCLUDE_ARG=(--exclude="$EXCLUDE_NODES")
 fi
 
+# --tmp passthrough: overrides the sbatch's `#SBATCH --tmp=80G` directive
+# (CLI options win over script directives). The 80G default was sized for
+# ~24 GB HF snapshots; a large model (e.g. gpt-oss:120b ~63 GB weights +
+# the ~10-15 GB vllm.sif copied to scratch) needs more headroom or the
+# /scratch mkdir ENOSPC-bails before the trap fires. Unset → directive stands.
+TMP_ARG=()
+if [ -n "$TMP_OVERRIDE" ]; then
+    TMP_ARG=(--tmp="$TMP_OVERRIDE")
+fi
+
 cmd=(sbatch
     --job-name="$JOB_NAME"
     --gpus="${GPU_TYPE}:1"
     "$MEM_ARG"
     "${TIME_ARG[@]}"
+    "${TMP_ARG[@]}"
     "${ARRAY_ARG[@]}"
     "${EXCLUDE_ARG[@]}"
     --export="$EXPORT_LIST"
