@@ -1,0 +1,54 @@
+# Contamination-probe rename map — sailing (numeric) domain.
+# Theme: hot-air ballooning (balloons, passengers, drift on a wind grid).
+# All targets share a ballooning / aerial-rescue semantic field while
+# being lexically distant from the canonical sailing / nautical vocabulary.
+#
+# Canonical symbols extracted from domains/numeric/sailing/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section.
+#
+# Note on canonical typos preserved as source keys:
+#   `go_est`   is a misspelling of `go_east` in domain.pddl — kept as source
+#              key verbatim; target uses the correctly-spelled `drift_east`.
+
+domain: sailing
+theme: ballooning
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: ballooning
+
+  types:
+    boat: balloon
+    person: passenger
+
+  predicates:
+    saved: rescued
+
+  functions:
+    # 2D coordinates of the balloon on the wind grid; `d` is a per-passenger
+    # diagonal-band parameter (distance from origin, used by the save
+    # precondition). Renames stay one-token to mirror canonical style.
+    x: col
+    y: row
+    d: band
+
+  actions:
+    go_north_east: drift_northeast
+    go_north_west: drift_northwest
+    go_est: drift_east
+    go_west: drift_west
+    go_south_west: drift_southwest
+    go_south_east: drift_southeast
+    go_south: drift_south
+    save_person: rescue_passenger
+
+  # Object name prefixes observed in p01..p05 / n01..n05.
+  # Both `b0` and `b1` appear across files (single-letter prefix `b`);
+  # passengers use prefix `p`. Renames stay one-letter to keep the
+  # short-prefix convention.
+  object_prefixes:
+    b: g
+    p: r

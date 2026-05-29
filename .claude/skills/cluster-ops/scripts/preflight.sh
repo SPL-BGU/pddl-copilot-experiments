@@ -17,15 +17,11 @@
 # Env overrides:
 #   REMOTE_USER (default omereliy), REMOTE_HOST (default slurm.bgu.ac.il)
 
-set -eo pipefail
-
-REMOTE_USER="${REMOTE_USER:-omereliy}"
-REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -h|--help)
-            sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) _show_help 2 19; exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done

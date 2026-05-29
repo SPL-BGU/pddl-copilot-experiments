@@ -1,0 +1,3 @@
+(fire_up utensil2 chef2)
+(sharpen chef2 utensil2 pantry0)
+(plate_dish chef2 pantry0 utensil2 broiler0)

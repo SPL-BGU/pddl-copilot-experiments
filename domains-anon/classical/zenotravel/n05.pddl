@@ -1,0 +1,21 @@
+(define (problem bush-expedition-n05)
+(:domain bush-expedition)
+
+(:init
+  (resting-at jeep1 waterhole0)
+  (tank-level jeep1 range1)
+  (resting-at jeep2 waterhole0)
+  (tank-level jeep2 range6)
+  (resting-at tourist1 waterhole1)
+  (follows range0 range1)
+  (follows range1 range2)
+  (follows range2 range3)
+  (follows range3 range4)
+  (follows range4 range5)
+  (follows range5 range6)
+)
+(:goal (and
+  (resting-at tourist1 waterhole0)
+  ))
+
+)

@@ -1,0 +1,67 @@
+# Contamination-probe rename map — depot (numeric, singular) domain.
+# Theme: ranch (cattle ranges, homesteads, wagons hauling bales).
+# All targets share a ranch / livestock semantic field while being lexically
+# distant from the canonical depot vocabulary AND from the Phase-A maritime
+# theme used for the *classical* depots (plural) domain.
+#
+# Canonical symbols extracted from domains/numeric/depot/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# This is the NUMERIC depot (singular) — distinct from the classical depots
+# (plural) renamed under the maritime theme in domains-anon/_maps/depots.yaml.
+# It additionally carries a `functions` section for load_limit / current_load
+# / weight / fuel-cost.
+
+domain: depot
+theme: ranch
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  domain_name: ranchyard
+
+  types:
+    # Two-level type hierarchy: place / locatable are direct subtypes of
+    # object; depot / distributor inherit from place, and truck / hoist /
+    # surface from locatable, with pallet / crate further inheriting from
+    # surface. All nine user-declared types are renamed bijectively.
+    place: range
+    locatable: range_asset
+    depot: homestead
+    distributor: outpost
+    truck: wagon
+    hoist: lariat
+    surface: platform
+    pallet: skid
+    crate: bale
+
+  predicates:
+    at: grazing_at
+    on: stacked_on
+    in: loaded_in
+    lifting: hauling
+    available: ready
+    clear: bare
+
+  functions:
+    load_limit: wagon_cap
+    current_load: current_haul
+    weight: mass
+    # `fuel-cost` is a 0-arity numeric counter; hyphen preserved in the
+    # rename (`feed-cost`).
+    fuel-cost: feed-cost
+
+  actions:
+    drive: mosey
+    lift: rope_up
+    drop: rope_down
+    load: wrangle_in
+    unload: wrangle_out
+
+  # Object name prefixes observed in p01..p05 / n01..n05.
+  object_prefixes:
+    depot: homestead
+    distributor: outpost
+    truck: wagon
+    pallet: skid
+    crate: bale
+    hoist: lariat

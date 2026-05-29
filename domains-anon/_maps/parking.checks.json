@@ -1,0 +1,14 @@
+{
+  "canonical_domain_token": "parking",
+  "dir_stem": "parking",
+  "domain": "parking",
+  "gates": {
+    "bijective_merged": "pass",
+    "bijective_per_section": "pass",
+    "completeness": "pass",
+    "keyword_guard": "pass",
+    "reserved_name_collision": "pass",
+    "source_coverage": "pass"
+  },
+  "yaml_domain": "parking"
+}

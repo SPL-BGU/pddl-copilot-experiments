@@ -1,0 +1,80 @@
+;; Alexander Shleyfman (shleyfman.alexander@gmail.com) and Ryo Kuroiwa (mhgeoe@gmail.com)
+(define (domain mailrun)
+    (:types
+        hamlet scroll satchel courier - object
+    )
+    (:predicates
+        (posted-at ?b - courier ?x - hamlet)
+        (resting ?i - scroll ?x - hamlet)
+        (road ?x - hamlet ?y - hamlet)
+        (idle ?a - satchel)
+        (held-in ?i - scroll ?a - satchel)
+        (stowed-in ?i - scroll ?b - courier)
+        (attached ?a - satchel ?b - courier)
+    )
+
+    (:functions
+        (pouch_limit ?b - courier)
+        (current_pouch ?b - courier)
+        (mass ?i - scroll)
+        (toll)
+    )
+
+    (:action ride
+        :parameters (?b - courier ?x - hamlet ?y - hamlet)
+        :precondition (and (posted-at ?b ?x)
+            (road ?x ?y))
+        :effect (and (posted-at ?b ?y)
+            (not (posted-at ?b ?x))
+            (increase (toll) 3)
+        )
+    )
+
+    (:action grab
+        :parameters (?i - scroll ?x - hamlet ?a - satchel ?b - courier)
+        :precondition (and (resting ?i ?x) (posted-at ?b ?x) (idle ?a) (attached ?a ?b)
+            (<= (+ (current_pouch ?b) (mass ?i)) (pouch_limit ?b)))
+        :effect (and (held-in ?i ?a)
+            (not (resting ?i ?x))
+            (not (idle ?a))
+            (increase (current_pouch ?b) (mass ?i))
+            (increase (toll) 2)
+        )
+    )
+
+    (:action place
+        :parameters (?i - scroll ?x - hamlet ?a - satchel ?b - courier)
+        :precondition (and (held-in ?i ?a)
+            (posted-at ?b ?x)
+            (attached ?a ?b))
+        :effect (and (idle ?a)
+            (resting ?i ?x)
+            (not (held-in ?i ?a))
+            (decrease (current_pouch ?b) (mass ?i))
+            (increase (toll) 2)
+        )
+    )
+
+    (:action to-pouch
+        :parameters (?i - scroll ?a - satchel ?b - courier)
+        :precondition (and (held-in ?i ?a)
+            (attached ?a ?b))
+        :effect (and (idle ?a)
+            (not (held-in ?i ?a))
+            (stowed-in ?i ?b)
+            (increase (toll) 1)
+        )
+    )
+
+    (:action from-pouch
+        :parameters (?i - scroll ?a - satchel ?b - courier)
+        :precondition (and (stowed-in ?i ?b)
+            (attached ?a ?b)
+            (idle ?a))
+        :effect (and (not (idle ?a))
+            (held-in ?i ?a)
+            (not (stowed-in ?i ?b))
+            (increase (toll) 1)
+        )
+    )
+)

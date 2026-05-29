@@ -7,7 +7,7 @@ Ollama + vLLM model fleet, alongside the existing 5-task evaluation in
 
 **v1 = vanilla leaderboard only.** No MCP tools used during response
 generation. The tool-using arm (LLM-Modulo style, per PlanBench
-INTEGRATION.md §3) is tracked as ISS-021 and depends on two MCP plugin
+INTEGRATION.md §3) is tracked as ISS-022 and depends on two MCP plugin
 extensions specified in
 `../../pddl-copilot/specs-for-plan-bench.md` (sibling repo,
 `planbench-integration` branch).
@@ -120,4 +120,4 @@ The cloned PlanBench tree lives at `external/LLMs-Planning/` and is gitignored
 - MCP bridge contract (`MCPPlanner._PINNED_VERBOSE_FALSE` etc.) — unchanged.
 
 See `development/CHANGELOG.md` (entry dated 2026-05-18) and
-`EXPERIMENTS_FLOW.md` §12 for the full scope.
+`EXPERIMENTS_FLOW.md` §13 for the full scope.

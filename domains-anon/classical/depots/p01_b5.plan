@@ -1,0 +1,5 @@
+(hoist_up derrick0 bale0 pontoon0 dock0)
+(stow derrick0 bale0 barge1 dock0)
+(sail dock0 barge1 wharf1)
+(unstow derrick3 bale0 barge1 wharf1)
+(lower_down derrick3 bale0 pontoon3 wharf1)

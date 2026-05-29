@@ -1,0 +1,95 @@
+# Contamination-probe rename map — drone (numeric) domain.
+# Theme: dragonfly (lily-pads on a pond, nectar-powered flight).
+# All targets share an entomological / wetland semantic field while being
+# lexically distant from the canonical drone / aviation vocabulary.
+#
+# Canonical symbols extracted from domains/numeric/drone/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section with 0-arity state fluents
+# (x, y, z, battery-level, battery-level-full) and 1-arg coordinate fluents
+# (xl, yl, zl) on locations.
+
+domain: drone
+theme: dragonfly
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  domain_name: dragonfly
+
+  types:
+    location: lilypad
+
+  predicates:
+    visited: alighted
+
+  functions:
+    # 0-arity current-position fluents.
+    x: north
+    y: east
+    z: up
+    # 1-arg per-location coordinate fluents (xl / yl / zl).
+    xl: pad_north
+    yl: pad_east
+    zl: pad_up
+    # 0-arity battery fluents.
+    battery-level: nectar-level
+    battery-level-full: nectar-level-full
+    # 0-arity grid bounds.
+    min_x: min_north
+    max_x: max_north
+    min_y: min_east
+    max_y: max_east
+    min_z: min_up
+    max_z: max_up
+
+  actions:
+    increase_x: fly_north
+    decrease_x: fly_south
+    increase_y: fly_east
+    decrease_y: fly_west
+    increase_z: fly_up
+    decrease_z: fly_down
+    visit: alight
+    recharge: refuel_nectar
+
+  # Canonical drone object names are composite encodings of 3D coordinates
+  # (e.g. `x0y0z0`, `x0y1z2`) — neither <prefix><digits> nor <prefix><letter>
+  # fit the object_prefixes regex. Enumerated here as exact-token rewrites
+  # under `constants:`; the `_y_z` separators in the target are intentional
+  # so the embedded `y`/`z` letters from canonical do not survive.
+  constants:
+    x0y0z0: pad_0_0_0
+    x0y0z1: pad_0_0_1
+    x0y0z2: pad_0_0_2
+    x0y0z3: pad_0_0_3
+    x0y1z0: pad_0_1_0
+    x0y2z0: pad_0_2_0
+    x0y3z0: pad_0_3_0
+    x0y4z0: pad_0_4_0
+    x0y5z0: pad_0_5_0
+    x0y6z0: pad_0_6_0
+    x0y7z0: pad_0_7_0
+    x0y8z0: pad_0_8_0
+    x1y0z0: pad_1_0_0
+    x1y0z1: pad_1_0_1
+    x1y1z0: pad_1_1_0
+    x1y2z0: pad_1_2_0
+    x1y3z0: pad_1_3_0
+    x1y4z0: pad_1_4_0
+    x1y5z0: pad_1_5_0
+    x1y6z0: pad_1_6_0
+    x1y7z0: pad_1_7_0
+    x1y8z0: pad_1_8_0
+    x2y0z0: pad_2_0_0
+    x2y0z1: pad_2_0_1
+    x3y0z0: pad_3_0_0
+    x3y0z1: pad_3_0_1
+    x4y0z0: pad_4_0_0
+    x4y0z1: pad_4_0_1
+    x5y0z0: pad_5_0_0
+    x5y0z1: pad_5_0_1
+    x6y0z0: pad_6_0_0
+    x6y0z1: pad_6_0_1
+    x7y0z0: pad_7_0_0
+    x7y0z1: pad_7_0_1

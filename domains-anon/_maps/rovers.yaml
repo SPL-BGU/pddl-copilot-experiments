@@ -1,0 +1,94 @@
+# Contamination-probe rename map — rovers domain.
+# Theme: agriculture (tractors, fields, crops, harvests, silos).
+# All targets share an agricultural / arable-farming semantic field while
+# being lexically distant from the canonical Mars-rover vocabulary.
+#
+# Canonical symbols extracted from domains/classical/rovers/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks via inspect_domain /
+# inspect_problem (MCP pddl-parser).
+#
+# Notes for the rewriter author:
+#   * `object` is NOT a user-declared type here (the canonical :types line
+#     has no `- object` parent); skip it per §3.1 constraint 9.
+#   * Object names include compound prefixes `rover0store` / `rover1store`
+#     for the `store` type. These must be rewritten by LONGEST-MATCH-FIRST,
+#     ahead of the bare `rover` prefix, otherwise `rover0store` would parse
+#     as `rover` + `0` + dangling `store`. They are listed explicitly below.
+#   * Singleton object names `general` (lander) and `colour`, `high_res`,
+#     `low_res` (mode) lack a numeric suffix; they are listed as literal
+#     full-token entries.
+
+domain: rover
+theme: agriculture
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  domain_name: arable-farm
+
+  # User-declared types only. Rovers' canonical :types is flat (all are
+  # subtypes of the implicit PDDL root `object`).
+  types:
+    rover: tractor
+    waypoint: field
+    store: hopper
+    camera: gauge
+    mode: variety
+    lander: silo
+    objective: plot
+
+  predicates:
+    at: ploughing
+    at_lander: anchored_at
+    can_traverse: can_furrow
+    equipped_for_soil_analysis: fitted_for_seed_sampling
+    equipped_for_rock_analysis: fitted_for_root_sampling
+    equipped_for_imaging: fitted_for_gauging
+    empty: unfilled
+    have_rock_analysis: have_root_sample
+    have_soil_analysis: have_seed_sample
+    full: filled
+    calibrated: tuned
+    supports: handles
+    available: ready
+    visible: reachable
+    have_image: have_reading
+    communicated_soil_data: reported_seed_data
+    communicated_rock_data: reported_root_data
+    communicated_image_data: reported_reading_data
+    at_soil_sample: has_seed_clump
+    at_rock_sample: has_root_clump
+    visible_from: reachable_from
+    store_of: hopper_of
+    calibration_target: tuning_plot
+    on_board: mounted_on
+    channel_free: relay_open
+
+  actions:
+    navigate: furrow_to
+    sample_soil: gather_seed
+    sample_rock: gather_root
+    drop: empty_out
+    calibrate: tune
+    take_image: take_reading
+    communicate_soil_data: report_seed_data
+    communicate_rock_data: report_root_data
+    communicate_image_data: report_reading_data
+
+  # Object name prefixes observed in p01..p05 / n01..n05 — only the
+  # genuine <prefix><digits> shapes.
+  object_prefixes:
+    rover: tractor
+    waypoint: field
+    camera: gauge
+    objective: plot
+
+  # Exact-token constants: compound objects (`rover0store` / `rover1store`)
+  # and singleton named objects (`general`, `colour`, `high_res`, `low_res`)
+  # — none of which fit the <prefix><digits|letter> pattern.
+  constants:
+    rover0store: tractor0hopper
+    rover1store: tractor1hopper
+    general: homestead
+    colour: golden
+    high_res: prime_grade
+    low_res: bulk_grade

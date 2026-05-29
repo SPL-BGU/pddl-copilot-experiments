@@ -14,9 +14,9 @@
 #     gate in submit_with_rtx.sh deliberately did NOT fire.
 #
 # Usage:
-#   bash prioritize.sh <jobid>                       # default slow set
-#   bash prioritize.sh <jobid> gemma4:31b            # only gemma stays at Nice=0
-#   bash prioritize.sh <jobid> gemma4:31b qwen3.6:35b
+#   bash prioritize.sh <jobid>                            # default slow set
+#   bash prioritize.sh <jobid> gemma4:26b-a4b             # only gemma stays at Nice=0
+#   bash prioritize.sh <jobid> gemma4:26b-a4b qwen3.6:35b
 #   bash prioritize.sh <jobid> --reset               # reset all cells to Nice=0
 #   bash prioritize.sh <jobid> --dry-run [models...] # show what would change
 #
@@ -28,20 +28,18 @@
 #
 # Env: REMOTE_USER, REMOTE_HOST, REPO_REMOTE, NICE_VALUE (default 500).
 
-set -eo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 
-REMOTE_USER="${REMOTE_USER:-omereliy}"
-REMOTE_HOST="${REMOTE_HOST:-slurm.bgu.ac.il}"
 REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 NICE_VALUE="${NICE_VALUE:-500}"
 
 # Slow-set defaults — kept in sync with cluster-experimenting/lib/defaults.sh
 # PDDL_SLOW_MODELS. Hardcoded here so the skill script can run without
 # sourcing the remote defaults file. If you update one, update the other.
-DEFAULT_SLOW_MODELS=(gemma4:31b qwen3.6:35b)
+DEFAULT_SLOW_MODELS=(gemma4:26b-a4b qwen3.6:35b)
 
 if [ "$#" -lt 1 ]; then
-    sed -n '1,30p' "$0" | sed 's/^# \{0,1\}//' >&2
+    _show_help 1 30 >&2
     exit 1
 fi
 
@@ -58,7 +56,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run) DRY_RUN=1; shift ;;
         --reset) RESET=1; shift ;;
-        -h|--help) sed -n '1,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) _show_help 1 30; exit 0 ;;
         -*) echo "Unknown option: $1" >&2; exit 1 ;;
         *) KEEP_MODELS+=("$1"); shift ;;
     esac

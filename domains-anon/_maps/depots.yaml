@@ -1,0 +1,53 @@
+# Contamination-probe rename map — depots domain.
+# Theme: maritime (harbours, docks, barges, derricks).
+# All targets share a maritime / port-logistics semantic field while being
+# lexically distant from the canonical depots vocabulary.
+#
+# Canonical symbols extracted from domains/classical/depots/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+
+domain: depots
+theme: maritime
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: seaport
+
+  # User-declared types only. `object` is the implicit PDDL root supertype
+  # and does NOT appear here.
+  types:
+    place: harbour
+    locatable: harbour_asset
+    depot: dock
+    distributor: wharf
+    truck: barge
+    hoist: derrick
+    surface: deck
+    pallet: pontoon
+    crate: bale
+
+  predicates:
+    at: moored_at
+    on: stowed_on
+    in: loaded_in
+    lifting: hoisting
+    available: ready
+    clear: empty
+
+  actions:
+    drive: sail
+    lift: hoist_up
+    drop: lower_down
+    load: stow
+    unload: unstow
+
+  # Object name prefixes observed in p01..p05 / n01..n05. The rewriter
+  # rewrites tokens matching `<prefix><digits>` (e.g. `truck0` -> `barge0`).
+  object_prefixes:
+    depot: dock
+    distributor: wharf
+    truck: barge
+    pallet: pontoon
+    crate: bale
+    hoist: derrick

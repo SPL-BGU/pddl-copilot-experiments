@@ -1,0 +1,8 @@
+(fire_up utensil2 chef1)
+(switch_focus chef1 appetiser2 pantry1)
+(switch_focus chef1 entree0 appetiser2)
+(sharpen chef1 utensil2 entree0)
+(plate_dish chef1 appetiser2 utensil2 griddle0)
+(switch_focus chef1 entree3 appetiser2)
+(plate_dish chef1 entree3 utensil2 griddle0)
+(switch_focus chef0 pantry1 entree0)

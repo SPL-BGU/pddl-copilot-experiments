@@ -4,7 +4,7 @@ Reproduce experiments from:
   "Toward PDDL Planning Copilot" (Benyamin et al., 2025)
   https://arxiv.org/abs/2509.12987
 
-Evaluates Ollama LLMs with and without MCP planning tools on 5 PDDL tasks:
+Evaluates vLLM-served LLMs with and without MCP planning tools on 5 PDDL tasks:
   1. solve           — find a plan for a domain+problem
   2. validate_domain — check domain PDDL syntax
   3. validate_problem— check problem PDDL syntax
@@ -32,8 +32,6 @@ import sys
 import time
 from pathlib import Path
 
-import ollama
-
 from pddl_eval.chat import (
     MCPPlanner,
     TEMPERATURE,
@@ -48,8 +46,6 @@ from pddl_eval.domains import (
 from pddl_eval.prompts import (
     ACTIVE_PROMPT_VARIANTS,
     PROMPT_TEMPLATES,
-    WITH_TOOLS_SYSTEM,
-    WITHOUT_TOOLS_SYSTEM,
 )
 from pddl_eval.resume import load_progress
 from pddl_eval.runner import (
@@ -58,7 +54,6 @@ from pddl_eval.runner import (
     DEFAULT_NUM_CTX_THINKING,
     DEFAULT_NUM_PREDICT,
     RESPONSE_SNAPSHOT_LEN,
-    TASK_TOOLS,
     TASKS,
     THINKING_SNAPSHOT_LEN,
     TaskResult,
@@ -84,6 +79,7 @@ from pddl_eval.scoring import (
     FR_TRUNCATED_NO_ANSWER,
     FR_UNKNOWN,
     FR_VERDICT_MISMATCH,
+    FR_WRONG_TOOL,
     _apply_truncation_override,
     _classify_step_failure,
     _extract_plan_from_tool_result,
@@ -166,15 +162,7 @@ def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
 
 DEFAULT_MODELS = ["qwen3:0.6b", "qwen3:4b"]
 
-TOOL_FILTER_CHOICES = ("all", "per-task")
-# `guided` retired from the active sweep on 2026-04-27 — the 26042026 sweep
-# (`checkpoints/cluster-26042026/prompt_variant_stats.md` §5) showed
-# minimal-vs-guided shifts results by ≤4pp per model with every CI crossing
-# zero. The 3 active prompt variants already cover paraphrase robustness;
-# the prompt-style axis was paying for ~0pp of additional signal. The
-# `_GUIDED_SUFFIX` constant and `WITH_TOOLS_SYSTEM["guided"]` entry are
-# kept as code documentation so the suffix wording is preserved if a
-# future sweep wants to re-enable it (re-add "guided" to this tuple).
+TOOL_FILTER_CHOICES = ("all",)
 PROMPT_STYLE_CHOICES = ("minimal",)
 CONDITION_CHOICES = ("tools", "no-tools", "both")
 
@@ -245,7 +233,7 @@ async def async_main(args):
     else:
         think_override = None
 
-    host = args.ollama_host or ""
+    host = args.llm_base_url or ""
     if args.models is None:
         args.models = list(DEFAULT_MODELS)
 
@@ -265,8 +253,6 @@ async def async_main(args):
         else:
             bucket, name = "full", f"{sha_tag}_{ts_tag}"
         args.output_dir = str(RESULTS_DIR / bucket / name)
-
-    num_parallel_env = os.environ.get("OLLAMA_NUM_PARALLEL", "unset")
 
     print("=" * 60)
     print("PDDL Planning Copilot — Experiment Runner")
@@ -302,13 +288,8 @@ async def async_main(args):
     if args.num_ctx == args.num_ctx_thinking:
         print(f"              ^ equal to num_ctx for tools/no-pddl-tools fairness in 'tools save tokens' headline")
     print(f"  think:      {args.think}")
-    print(f"  Concurrency:{args.concurrency} (OLLAMA_NUM_PARALLEL={num_parallel_env})")
-    if args.concurrency > 1 and num_parallel_env == "unset":
-        print("  WARNING: OLLAMA_NUM_PARALLEL is not set — Ollama may queue "
-              "concurrent requests server-side, negating the speedup. "
-              "Export OLLAMA_NUM_PARALLEL>=concurrency before the run.")
-    print(f"  Backend:    {args.inference_backend}")
-    print(f"  LLM host:   {host or '(library default: http://localhost:11434)'}")
+    print(f"  Concurrency:{args.concurrency}")
+    print(f"  vLLM URL:   {host or '(default: http://localhost:8000)'}")
     if smoke_mode:
         print(f"  Smoke:      "
               f"{'shuffle (random per-cell d/p)' if args.smoke_shuffle else 'fixed (blocksworld/p01)'}"
@@ -370,24 +351,11 @@ async def async_main(args):
     mcp = MCPPlanner()
     await mcp.connect(plugin_dirs)
 
-    # Validate TASK_TOOLS against actual MCP tools (catch typos early)
-    available_tools = {t["function"]["name"] for t in mcp.tools}
-    for task, allowed in TASK_TOOLS.items():
-        missing = set(allowed) - available_tools
-        if missing:
-            sys.exit(f"TASK_TOOLS['{task}'] references unknown tools: {missing}")
-
-    if args.inference_backend == "vllm":
-        # Smoke-probe path (2026-05-09). vllm_client.VLLMOllamaClient adapts
-        # the OpenAI chat-completions API to the Ollama response shape the
-        # harness reads. --ollama-host is reused as the vLLM base URL.
-        from pddl_eval.vllm_client import VLLMOllamaClient
-        client = VLLMOllamaClient(host=args.ollama_host)
-    else:
-        client_kwargs: dict = {}
-        if args.ollama_host:
-            client_kwargs["host"] = args.ollama_host
-        client = ollama.AsyncClient(**client_kwargs)
+    # vllm_client.VLLMClient adapts vLLM's OpenAI /v1/chat/completions to
+    # the wire shape pddl_eval.chat consumes (dict-form tool_call args,
+    # message.thinking, done_reason, prompt_eval_count, …).
+    from pddl_eval.vllm_client import VLLMClient
+    client = VLLMClient(base_url=args.llm_base_url)
 
     # Resume / skip-existing setup. `trials.jsonl` lives next to the
     # canonical end-of-run JSONs in `output_dir`. When it exists, the
@@ -461,10 +429,13 @@ async def async_main(args):
         # are requested, we MUST split the call into (tools then no-tools)
         # sub-passes — `evaluate_one` picks `effective_num_ctx` per
         # condition (8192 for tools, num_ctx_thinking for no-tools), and
-        # flipping num_ctx mid-call deadlocks Ollama under concurrency
-        # (smoke job 17244356, 2026-04-28). With sequential sub-passes,
-        # the model reloads between them while no requests are in flight.
-        # Total wallclock is unchanged (same job count, same concurrency).
+        # num_ctx must stay constant per call to keep the sub-pass
+        # architecture sound (historical trigger: smoke job 17244356,
+        # 2026-04-28, where flipping num_ctx mid-call deadlocked the
+        # then-active Ollama backend under concurrency). With sequential
+        # sub-passes, the server reloads between them while no requests
+        # are in flight. Total wallclock is unchanged (same job count,
+        # same concurrency).
         async def _run_single_task_split(
             think_value: bool | None, cond: str, label: str = ""
         ) -> list:
@@ -488,6 +459,7 @@ async def async_main(args):
                     cell_assignment=cell_assignment,
                     progress_path=progress_path,
                     restored_by_key=restored_by_key,
+                    include_no_tools_steered=args.include_no_tools_steered,
                 )
                 sub_results.extend(rs)
             return sub_results
@@ -530,12 +502,12 @@ async def async_main(args):
         if all_single:
             meta = {
                 "host": host or "localhost",
-                "inference_backend": args.inference_backend,
                 "conditions": args.conditions,
                 "models": args.models,
                 "tasks": args.tasks,
                 "num_variants": args.num_variants,
                 "prompt_variants_active": list(ACTIVE_PROMPT_VARIANTS[:args.num_variants]),
+                "include_no_tools_steered": args.include_no_tools_steered,
                 "temperature": args.temperature,
                 "num_ctx": args.num_ctx,
                 "num_ctx_thinking": args.num_ctx_thinking,
@@ -561,15 +533,9 @@ async def async_main(args):
                 resumed = sum(1 for r in all_single if id(r) in restored_ids)
                 if resumed:
                     meta["resumed_count"] = resumed
-            # `save_results` retains its `chains` parameter for back-compat with
-            # the dead-but-importable chain code path (see CHANGELOG 2026-05-05);
-            # the active flow always passes [] so emitted summaries carry an
-            # empty `chains` array.
-            save_results(all_single, [], Path(args.output_dir), meta=meta)
+            save_results(all_single, Path(args.output_dir), meta=meta)
         await mcp.close()
-        # ollama.AsyncClient wraps an httpx.AsyncClient; close it to release
-        # connections cleanly. Guarded because some builds expose
-        # aclose/close differently.
+        # VLLMClient wraps openai.AsyncOpenAI's httpx pool; close to release.
         close = getattr(client, "aclose", None) or getattr(client, "close", None)
         if close is not None:
             try:
@@ -587,9 +553,9 @@ def main():
                    required="PDDL_MARKETPLACE_PATH" not in os.environ,
                    help="Path to cloned pddl-copilot marketplace repo (or set PDDL_MARKETPLACE_PATH)")
     p.add_argument("--models", nargs="+", default=None,
-                   help=f"Ollama model names to evaluate. Default: paper set {DEFAULT_MODELS}. "
-                        "Cluster sweeps pass an explicit list via --models or the MODELS env "
-                        "in run_condition_rtx.sbatch.")
+                   help=f"Model tags (matched in cluster-experimenting/lib/defaults.sh:vllm_lookup). "
+                        f"Default: paper set {DEFAULT_MODELS}. Cluster sweeps pass an explicit "
+                        "list via --models or the MODELS env in run_condition_vllm_rtx.sbatch.")
     p.add_argument("--tasks", nargs="+", default=TASKS, choices=TASKS,
                    help="Tasks to evaluate")
     p.add_argument("--domains-dir", default=str(DOMAINS_DIR),
@@ -603,9 +569,23 @@ def main():
                         f"[1, {len(ACTIVE_PROMPT_VARIANTS)}]. Default "
                         f"{len(ACTIVE_PROMPT_VARIANTS)} (run all active "
                         f"variants). To go above this cap, edit "
-                        f"ACTIVE_PROMPT_VARIANTS in pddl_eval/prompts.py. Paper "
-                        f"sweep used 5; the 26042026 sensitivity analysis "
-                        f"dropped v3/v4.")
+                        f"ACTIVE_PROMPT_VARIANTS in pddl_eval/prompts.py. "
+                        f"Sweep-5 (current) active set is v11/v12/v13 "
+                        f"(neutral) + v14/v15/v16 (steered) under marketplace "
+                        f"1.4.0; sweep-4 used v5/v6/v7; sweep-3 used v0/v1/v2.")
+    p.add_argument("--include-no-tools-steered", action="store_true", default=False,
+                   help="Sweep-5 control flag. Why this arm exists: the "
+                        "steered prompt tells the model 'use the tool', but "
+                        "if no tool is actually available, does just adding "
+                        "that sentence still change the answer? We need to "
+                        "know — otherwise we can't tell whether the "
+                        "with-tools steering benefit comes from the tool "
+                        "being callable or just from the prompt wording. "
+                        "By default (False) the (no-tools, v14/v15/v16) "
+                        "cells are skipped at emit. Set this flag for the "
+                        "sweep-5 control submit to emit those cells as the "
+                        "4th arm (H4 falsification check). See "
+                        "development/sweep_prompt_bank_design.md §0 / §2.6.")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
     p.add_argument("--conditions", choices=list(CONDITION_CHOICES), default="both",
@@ -614,14 +594,9 @@ def main():
                         "run once per model instead of redundantly for every (filter,style) "
                         "combo — no-tools results are invariant under those knobs.")
     p.add_argument("--tool-filter", choices=list(TOOL_FILTER_CHOICES), default="all",
-                   help="'all' exposes every connected MCP tool every turn (reproduces paper). "
-                        "'per-task' restricts tools per task via TASK_TOOLS allowlist, reducing "
-                        "tool-selection noise from unrelated tools.")
+                   help="'all' exposes every connected MCP tool every turn (paper-aligned).")
     p.add_argument("--prompt-style", choices=list(PROMPT_STYLE_CHOICES), default="minimal",
-                   help="System prompt style. 'minimal' (paper-aligned) is the only "
-                        "active choice as of 2026-04-27 — 'guided' was retired "
-                        "(see PROMPT_STYLE_CHOICES comment in run_experiment.py). "
-                        "Re-enable by re-adding 'guided' to PROMPT_STYLE_CHOICES.")
+                   help="System prompt style. 'minimal' is the active choice.")
     p.add_argument("--num-predict", type=int, default=None,
                    help=f"Override max output tokens per chat turn for ALL tasks. "
                         f"Default: per-task caps (solve={DEFAULT_NUM_PREDICT['solve']}, "
@@ -636,43 +611,31 @@ def main():
                         f"post-bump); nemotron-3-nano:30b dropped from active roster, "
                         f"6144 retained as harmless headroom (DEFAULT_NUM_PREDICT comment).")
     p.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX,
-                   help=f"Ollama context window tokens for single-task tools cells. "
+                   help=f"Context window tokens for single-task tools cells. "
                         f"Default {DEFAULT_NUM_CTX}.")
     p.add_argument("--num-ctx-thinking", type=int, default=DEFAULT_NUM_CTX_THINKING,
-                   help=f"Ollama context window tokens used ONLY when think!=off "
+                   help=f"Context window tokens used ONLY when think!=off "
                         f"AND condition=no-tools. Default "
                         f"{DEFAULT_NUM_CTX_THINKING}. Tool-condition runs "
                         f"and think=off use --num-ctx (default {DEFAULT_NUM_CTX}). "
                         f"`async_main` runs tools and no-tools as separate "
-                        f"sub-passes when both apply — keeps num_ctx constant "
-                        f"per call (mid-call flips deadlock Ollama under "
-                        f"concurrency).")
+                        f"sub-passes when both apply so num_ctx stays constant "
+                        f"per call (sub-pass isolation; preserved for corpus "
+                        f"comparability).")
     p.add_argument("--think", choices=("on", "off", "default"), default="default",
                    help="Override qwen3/DeepSeek thinking mode. 'default' leaves the "
                         "model's default behaviour (reproduces paper). 'off' passes "
                         "think=False, 'on' passes think=True. Ablation only — do NOT "
                         "mix with reproduction runs.")
     p.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
-                   help=f"Max concurrent Ollama chat requests during the single-task "
+                   help=f"Max concurrent chat requests during the single-task "
                         f"sweep. Default {DEFAULT_CONCURRENCY}. Pair with "
-                        f"OLLAMA_NUM_PARALLEL>=concurrency on the server.")
-    p.add_argument("--ollama-host",
-                   default=os.environ.get("OLLAMA_HOST"),
-                   help="LLM server base URL (Ollama or vLLM, depending on "
-                        "--inference-backend). Default: library default "
-                        "(http://localhost:11434). Cluster runs use the "
-                        "self-deployed Apptainer Ollama on a unique port "
-                        "set by run_condition_rtx.sbatch.")
-    p.add_argument("--inference-backend", choices=("ollama", "vllm"),
-                   default="ollama",
-                   help="Which inference server to talk to. 'ollama' "
-                        "(default, paper-aligned, production cluster path). "
-                        "'vllm' uses vLLM's OpenAI-compatible "
-                        "/v1/chat/completions via "
-                        "pddl_eval.vllm_client.VLLMOllamaClient. Smoke-probe "
-                        "only as of 2026-05-09; production sweep stays on "
-                        "ollama until ≥30%% wall-time savings on full sweep "
-                        "are demonstrated (see development/CHANGELOG.md).")
+                        f"vLLM `--max-num-seqs>=concurrency` on the server.")
+    p.add_argument("--llm-base-url",
+                   default=os.environ.get("LLM_BASE_URL"),
+                   help="vLLM /v1 base URL. Default: http://localhost:8000. "
+                        "Cluster runs use a per-job port set by "
+                        "run_condition_vllm_rtx.sbatch.")
     p.add_argument("--seed", type=int, default=42,
                    help="Random seed for --smoke-shuffle cell assignment")
     # Single-task domain/problem filters (applied post-`load_domains`). Used
@@ -734,9 +697,9 @@ def main():
                         "non-empty unless --no-resume is also set.")
     args = p.parse_args()
 
-    # Route SIGTERM through the same path as Ctrl-C so a `kill` from
-    # run_background.sh triggers the KeyboardInterrupt cleanup branch in
-    # async_main (which tears down MCP subprocesses via AsyncExitStack).
+    # Route SIGTERM through the same path as Ctrl-C so a `scancel` /
+    # SLURM TIMEOUT SIGTERM triggers the KeyboardInterrupt cleanup branch
+    # in async_main (which tears down MCP subprocesses via AsyncExitStack).
     # Without this, SIGTERM bypasses `finally` and MCP servers orphan.
     signal.signal(signal.SIGTERM, signal.default_int_handler)
 

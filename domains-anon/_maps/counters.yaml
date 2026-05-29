@@ -1,0 +1,44 @@
+# Contamination-probe rename map — counters (numeric) domain.
+# Theme: reservoir / tank levels (tanks, valves, fill / drain).
+# All targets share a fluid-storage semantic field while being lexically
+# distant from the canonical "counter / increment / decrement" vocabulary.
+#
+# Canonical symbols extracted from domains/numeric/counters/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section (absent in the classical
+# rename maps).
+
+domain: fo-counters-rnd
+theme: reservoir
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: tankyard
+
+  types:
+    counter: tank
+
+  predicates:
+    # `nop` is a 1-arg state predicate (vestigial in canonical); kept as a
+    # state-adjective in the rename.
+    nop: idle
+
+  functions:
+    value: level
+    rate_value: flowrate
+    # `max_int` is a 0-arity numeric constant (the static cap).
+    max_int: capacity
+
+  actions:
+    increment: fill
+    decrement: drain
+    increase_rate: open_valve
+    decrement_rate: close_valve
+
+  # Object name prefix observed in p01..p05 / n01..n05. Canonical is the
+  # single letter `c`; we use the full `tank` token to avoid one-letter
+  # visual collisions with PDDL operators.
+  object_prefixes:
+    c: tank

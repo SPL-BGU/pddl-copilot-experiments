@@ -11,7 +11,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import run_experiment as rx
-from pddl_eval.scoring import _call_matches_validate_task
 from tests._helpers import TestResults
 
 
@@ -66,56 +65,6 @@ def test_used_tool(r: TestResults):
     r.check_eq("empty list", rx._used_tool([], "x"), False)
     r.check_eq("present", rx._used_tool([{"name": "x"}], "x"), True)
     r.check_eq("absent", rx._used_tool([{"name": "y"}], "x"), False)
-
-
-def test_call_matches_validate_task(r: TestResults):
-    # validate_domain — domain-only is the only acceptable shape.
-    domain_only = {"name": "validate_pddl_syntax", "arguments": {"domain": "(D)"}}
-    domain_with_problem = {"name": "validate_pddl_syntax",
-                           "arguments": {"domain": "(D)", "problem": "(P)"}}
-    domain_with_plan = {"name": "validate_pddl_syntax",
-                        "arguments": {"domain": "(D)", "plan": "(p)"}}
-    full_call = {"name": "validate_pddl_syntax",
-                 "arguments": {"domain": "(D)", "problem": "(P)", "plan": "(p)"}}
-
-    r.check("vd accepts domain-only",
-            _call_matches_validate_task(domain_only, "validate_domain"))
-    r.check("vd rejects when problem present",
-            not _call_matches_validate_task(domain_with_problem, "validate_domain"))
-    r.check("vd rejects when plan present",
-            not _call_matches_validate_task(domain_with_plan, "validate_domain"))
-
-    # validate_problem — problem required, plan forbidden.
-    r.check("vp(roblem) rejects domain-only",
-            not _call_matches_validate_task(domain_only, "validate_problem"))
-    r.check("vp(roblem) accepts domain+problem",
-            _call_matches_validate_task(domain_with_problem, "validate_problem"))
-    r.check("vp(roblem) rejects when plan present",
-            not _call_matches_validate_task(full_call, "validate_problem"))
-
-    # validate_plan — plan required (problem may or may not be present;
-    # the validator routes by presence of `plan`).
-    r.check("vp(lan) accepts full call",
-            _call_matches_validate_task(full_call, "validate_plan"))
-    r.check("vp(lan) accepts domain+plan",
-            _call_matches_validate_task(domain_with_plan, "validate_plan"))
-    r.check("vp(lan) rejects domain-only",
-            not _call_matches_validate_task(domain_only, "validate_plan"))
-
-    # Empty/missing `arguments` must not crash and must reject every task.
-    no_args = {"name": "validate_pddl_syntax"}
-    null_args = {"name": "validate_pddl_syntax", "arguments": None}
-    for label, tc_in in (("missing args", no_args), ("null args", null_args)):
-        r.check(f"{label} → vd accepts (no problem/plan)",
-                _call_matches_validate_task(tc_in, "validate_domain"))
-        r.check(f"{label} → vp(roblem) rejects",
-                not _call_matches_validate_task(tc_in, "validate_problem"))
-        r.check(f"{label} → vp(lan) rejects",
-                not _call_matches_validate_task(tc_in, "validate_plan"))
-
-    # Unknown task name → False (defensive default).
-    r.check("unknown task → False",
-            not _call_matches_validate_task(domain_only, "solve"))
 
 
 def test_get_tool_results(r: TestResults):
@@ -332,7 +281,7 @@ def test_shard_filter(r: TestResults):
     r.check("N=1 always passes (even i unused)", rx._shard_filter(7, 1, ("any",)))
 
     # Determinism: same key → same bucket, repeatedly.
-    key = ("gemma4:31b", "validate_plan", "logistics", "p03", "1")
+    key = ("gemma4:26b-a4b", "validate_plan", "logistics", "p03", "1")
     bucket = next(i for i in range(4) if rx._shard_filter(i, 4, key))
     for _ in range(5):
         b2 = next(i for i in range(4) if rx._shard_filter(i, 4, key))
@@ -467,7 +416,6 @@ def main():
     test_parse_validation_verdict(r)
     test_tool_error_seen(r)
     test_used_tool(r)
-    test_call_matches_validate_task(r)
     test_get_tool_results(r)
     test_extract_plan_from_tool_result(r)
     test_extract_plan_lines(r)

@@ -2,16 +2,14 @@
 name: cluster-ops
 description: Operate the BGU SLURM cluster for the PDDL copilot sweep — check job queue + progress, sync results, aggregate summaries, render plots/tables, run preflight, post-mortem completed jobs. Delegate here when the user asks about cluster state, job status, results sync, or plot/table generation, especially when the SSH/script output would otherwise bloat the main conversation. Returns a concise summary, not raw stdout dumps.
 tools: Bash, Read, Grep, Glob
-maxTurns: 15
+maxTurns: 40
 skills:
   - cluster-ops
 ---
 
-The scripts under `.claude/skills/cluster-ops/scripts/` are the canonical interface — prefer them over ad-hoc `ssh` commands. The cluster-ops skill is preloaded; follow its recipes exactly.
+This agent implements the `cluster-ops` skill — read `.claude/skills/cluster-ops/SKILL.md` for the full recipe set, then run the matching script and return a concise summary.
 
-Operating rules:
-- You are running in an isolated context. The main agent delegated to you to keep its context clean. **Return a concise summary** (what was checked, what was found, anomalies, next-step suggestion). Do NOT echo full queue dumps, log tails, or rsync logs back — quote at most a handful of relevant lines.
-- Read-only by default. For destructive ops (`scancel`, `rm`, force-resync), stop and ask the user via the parent agent before executing.
-- Never mutate experiment code (`run_experiment.py`, `domains/`, plugin source). Routing rules in `CLAUDE.md` apply.
-- If a script fails, surface the exact command + first/last 20 lines of stderr in your summary; do not retry blindly.
-- If the invocation includes arguments (e.g. `postmortem --since 2026-04-22`), treat them as the task focus and select the matching recipe + flags from the skill.
+- Brief is one focused task (queue check, sync, postmortem, etc.). Don't chain 3+ atomic actions per delegation.
+- Return what was checked, what was found, anomalies, suggested next step. Quote at most a handful of relevant log lines — do NOT echo full queue dumps, log tails, or rsync output.
+- Read-only by default. For `scancel`, `rm`, or force-resync, stop and ask the parent agent for explicit user consent before running.
+- On script failure: surface the exact command + first/last 20 lines of stderr; do not retry blindly.

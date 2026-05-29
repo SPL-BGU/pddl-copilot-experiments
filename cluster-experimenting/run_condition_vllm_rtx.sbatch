@@ -1,11 +1,10 @@
 #!/bin/bash
-### vLLM analog of run_condition_rtx.sbatch — runs one (model, think, cond)
-### cell against a self-deployed vLLM OpenAI server. Submitted via
-### `submit_with_rtx.sh --backend vllm`; CELLS_LIST cell-array picker
-### matches run_condition_rtx.sbatch. OUT_DIR is `slurm_vllm_<…>` to
-### isolate from Ollama trials.jsonl (model-string mismatch on resume).
-### Operator docs + verified serve-flag rationale live in
-### cluster-experimenting/README.md "Production vLLM sweep".
+### Runs one (model, think, cond) cell against a self-deployed vLLM
+### OpenAI server. Submitted via `submit_with_rtx.sh`; CELLS_LIST is the
+### cell-array picker. OUT_DIR is `slurm_vllm_<…>` (prefix retained for
+### corpus comparability with prior sweeps). Operator docs + verified
+### serve-flag rationale live in cluster-experimenting/README.md
+### "Production vLLM sweep".
 ###
 #SBATCH --partition=main
 #SBATCH --job-name=pddl_copilot_vllm
@@ -36,7 +35,7 @@ echo "Node IP: $(hostname -i)"
 echo "Start time: $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1
 
-### Cell-array picker (mirrors run_condition_rtx.sbatch) ###
+### Cell-array picker ###
 if [ -n "${CELLS_LIST:-}" ]; then
     IFS='^' read -ra _CELLS <<< "$CELLS_LIST"
     IDX="${SLURM_ARRAY_TASK_ID:-0}"
@@ -46,9 +45,22 @@ if [ -n "${CELLS_LIST:-}" ]; then
         exit 1
     fi
     IFS='|' read -r CELL_MODEL CELL_THINK CELL_COND <<< "$SELECTED"
-    MODELS="$CELL_MODEL"
-    THINK_MODES="$CELL_THINK"
-    CONDITIONS="$CELL_COND"
+    # Smoke sentinel: submit_with_rtx.sh sends `@smoke@` as the COND token
+    # when invoked with --smoke. Intercept it here so the inner think/cond
+    # loop is bypassed in favor of the smoke fastpath below, which
+    # delegates think×cond iteration to run_experiment.py --smoke. Without
+    # this branch, `@smoke@` propagates to `--conditions @smoke@` and
+    # argparse rejects it before any work runs (job 17653267 all 5 cells,
+    # 2026-05-19).
+    if [ "$CELL_COND" = "@smoke@" ]; then
+        SMOKE="${SMOKE:-1}"
+        MODELS="$CELL_MODEL"
+        THINK_MODES="default"
+    else
+        MODELS="$CELL_MODEL"
+        THINK_MODES="$CELL_THINK"
+        CONDITIONS="$CELL_COND"
+    fi
     echo "Cell-array task: IDX=$IDX  MODEL=$CELL_MODEL  THINK=$CELL_THINK  COND=$CELL_COND"
 
     # Rename array task at runtime so squeue / sacct show the actual cell.
@@ -57,8 +69,8 @@ if [ -n "${CELLS_LIST:-}" ]; then
         _TTAG="$CELL_THINK"
         case "$CELL_COND" in
             no-tools)               _CTAG="notools" ;;
-            tools_per-task_minimal) _CTAG="tools-pt" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
+            @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
         esac
         scontrol update jobid="$SLURM_JOB_ID" \
@@ -68,7 +80,7 @@ if [ -n "${CELLS_LIST:-}" ]; then
 fi
 
 if [ -z "${MODELS:-}" ]; then
-    : "${MODEL:?Error: export MODELS=... Submit via submit_with_rtx.sh --backend vllm}"
+    : "${MODEL:?Error: export MODELS=... Submit via submit_with_rtx.sh}"
     MODELS="$MODEL"
 fi
 : "${THINK_MODES:?Error: export THINK_MODES=... (e.g. \"on off\" or \"default\")}"
@@ -114,7 +126,7 @@ fi
 cd "$WORK"
 
 ### Preserve vLLM serve logs on EXIT — the trap below would rm -rf the ###
-### per-cell vllm-*.log otherwise (lifted from run_smoke_vllm_vs_ollama.sbatch). ###
+### per-cell vllm-*.log otherwise (idiom inherited from the retired vLLM smoke sbatch, see CHANGELOG 06f2b4b). ###
 preserve_serve_logs() {
     local logs_dir="$EXPT_ROOT/cluster-experimenting/logs"
     [ -d "$WORK" ] || return 0
@@ -153,9 +165,21 @@ for MODEL in $MODELS; do
     MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
 
     # vllm_lookup is sourced from lib/defaults.sh; exports HF_MODEL +
-    # TOOL_CALL_PARSER + REASONING_PARSER. Unverified models bail before
-    # the SIF is staged.
+    # TOOL_CALL_PARSER + REASONING_PARSER + (optionally)
+    # MAX_NUM_BATCHED_TOKENS. Unset between iterations so a leftover
+    # MM-aware value from a previous model doesn't bleed into a
+    # text-only model's serve command.
+    unset MAX_NUM_BATCHED_TOKENS
     vllm_lookup "$MODEL" || exit 1
+    MAX_NUM_BATCHED_TOKENS_FLAG=""
+    [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
+        MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
+    # Build --reasoning-parser flag via the shared helper. Families with
+    # no reasoning trace (gemma4, REASONING_PARSER=none) get an empty
+    # string so the flag is omitted — passing `--reasoning-parser none`
+    # crashes vLLM with `KeyError: Reasoning parser 'none' not found`
+    # (verified on array job 17638961 task 17638977, 2026-05-18).
+    REASONING_PARSER_FLAG="$(vllm_reasoning_parser_flag)"
     echo
     echo "####################################################################"
     echo "# MODEL: $MODEL  (HF: $HF_MODEL)   started $(date)"
@@ -176,9 +200,10 @@ for MODEL in $MODELS; do
             --max-model-len 16384 \
             --enable-auto-tool-choice \
             --tool-call-parser "$TOOL_CALL_PARSER" \
-            --reasoning-parser "$REASONING_PARSER" \
+            $REASONING_PARSER_FLAG \
             --gpu-memory-utilization 0.85 \
             --enable-prefix-caching \
+            $MAX_NUM_BATCHED_TOKENS_FLAG \
             > "$SERVE_LOG" 2>&1 &
     VLLM_PID=$!
     trap 'echo "Shutting down..."; kill $VLLM_PID 2>/dev/null || true; preserve_serve_logs; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT
@@ -205,9 +230,9 @@ for MODEL in $MODELS; do
         continue
     fi
 
-    # VRAM 85% guard (matches Ollama path). Smokes peaked at 83-84%; a
-    # >85% read means KV cache won't fit and continuous batching will
-    # back-pressure to single-stream serving.
+    # VRAM 85% guard. Smokes peaked at 83-84%; a >85% read means KV
+    # cache won't fit and continuous batching will back-pressure to
+    # single-stream serving.
     VRAM_USED=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1 | tr -d ' ')
     VRAM_TOTAL=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1 | tr -d ' ')
     VRAM_PCT=$(( VRAM_USED * 100 / VRAM_TOTAL ))
@@ -219,16 +244,61 @@ for MODEL in $MODELS; do
         continue
     fi
 
-    OLLAMA_HOST="http://localhost:$PORT"
-    export OLLAMA_HOST
+    LLM_BASE_URL="http://localhost:$PORT"
+    export LLM_BASE_URL
 
-    echo "Backend:     vllm"
     echo "Models:      $MODELS  (HF: $HF_MODEL)"
     echo "Think modes: $THINK_MODES"
     echo "Conditions:  $CONDITIONS"
     echo "Marketplace: $MARKETPLACE_PATH"
-    echo "Server:      $OLLAMA_HOST"
+    echo "Server:      $LLM_BASE_URL"
     echo "Concurrency: $CONCURRENCY"
+
+    ### Smoke fast-path — skip the inner THINK × CONDITIONS loop. The
+    ### --smoke flag tells run_experiment.py to iterate think×cond
+    ### internally and write to results/smoke/fixed_<sha>_<ts>/<model>/.
+    if [ "${SMOKE:-0}" = "1" ] || [ "${SMOKE_SHUFFLE:-0}" = "1" ]; then
+        if [ "${SMOKE_SHUFFLE:-0}" = "1" ]; then
+            SMOKE_FLAG="--smoke-shuffle"
+        else
+            SMOKE_FLAG="--smoke"
+        fi
+        SHARD_ARGS=()
+        if [ -n "${SHARD:-}" ]; then
+            SHARD_ARGS=(--shard "$SHARD")
+        fi
+        STEERED_ARG=()
+        if [ "${INCLUDE_NO_TOOLS_STEERED:-0}" = "1" ]; then
+            STEERED_ARG=(--include-no-tools-steered)
+        fi
+        DOMAINS_DIR_ARG=()
+        if [ -n "${DOMAINS_DIR:-}" ]; then
+            DOMAINS_DIR_ARG=(--domains-dir "$DOMAINS_DIR")
+        fi
+        echo
+        echo "===================================================================="
+        echo "MODEL: $MODEL   smoke ($SMOKE_FLAG)   started $(date)"
+        echo "===================================================================="
+        python3 run_experiment.py \
+            --marketplace-path "$MARKETPLACE_PATH" \
+            --models "$HF_MODEL" \
+            --llm-base-url "$LLM_BASE_URL" \
+            --concurrency "$CONCURRENCY" \
+            "$SMOKE_FLAG" \
+            "${SHARD_ARGS[@]}" \
+            "${STEERED_ARG[@]}" \
+            "${DOMAINS_DIR_ARG[@]}"
+        RC=$?
+        echo "===================================================================="
+        echo "MODEL: $MODEL   smoke   finished $(date)   rc=$RC"
+        echo "===================================================================="
+        if [ "$RC" -ne 0 ]; then
+            OVERALL_RC=$RC
+        fi
+        kill "$VLLM_PID" 2>/dev/null || true
+        wait "$VLLM_PID" 2>/dev/null || true
+        continue
+    fi
 
     for THINK_MODE in $THINK_MODES; do
         THINK_ARG=()
@@ -256,19 +326,23 @@ for MODEL in $MODELS; do
             case "$COND" in
                 no-tools)
                     COND_ARGS=(--conditions no-tools) ;;
-                tools_per-task_minimal)
-                    COND_ARGS=(--conditions tools --tool-filter per-task --prompt-style minimal) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
                 *)
                     echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
             esac
 
-            # OUT_DIR keyed on (model, think, cond) with `slurm_vllm_` prefix
-            # — isolates vLLM corpora from any prior Ollama trials.jsonl in
-            # the matching `slurm_<model>_<think>_<cond>/` dir. See header
-            # comment for rationale.
-            OUT_DIR="${EXPT_ROOT}/results/slurm_vllm_${MODEL_TAG}_${THINK_MODE}_${COND}"
+            # OUT_DIR keyed on (model, think, cond). The `slurm_vllm_`
+            # prefix is historical (originally to isolate vLLM corpora from
+            # retired Ollama-backend trials.jsonl in the matching
+            # `slurm_<model>_<think>_<cond>/` dir); retained for corpus
+            # comparability across sweeps.
+            # ${RUN_TAG:+_$RUN_TAG} appends `_<tag>` only when RUN_TAG is
+            # exported by the wrapper (--run-tag); unset → byte-equivalent
+            # to the pre-change OUT_DIR. Used to isolate non-canonical
+            # corpus runs (e.g. --domains-dir domains-anon) from canonical
+            # results/slurm_vllm_*/ trees.
+            OUT_DIR="${EXPT_ROOT}/results/slurm_vllm_${MODEL_TAG}_${THINK_MODE}_${COND}${RUN_TAG:+_$RUN_TAG}"
 
             SHARD_ARGS=()
             if [ -n "${SHARD:-}" ]; then
@@ -285,18 +359,29 @@ for MODEL in $MODELS; do
                 PARTIAL_ARG=(--partial "$PARTIAL_K")
             fi
 
+            STEERED_ARG=()
+            if [ "${INCLUDE_NO_TOOLS_STEERED:-0}" = "1" ]; then
+                STEERED_ARG=(--include-no-tools-steered)
+            fi
+
+            DOMAINS_DIR_ARG=()
+            if [ -n "${DOMAINS_DIR:-}" ]; then
+                DOMAINS_DIR_ARG=(--domains-dir "$DOMAINS_DIR")
+            fi
+
             python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
-                --ollama-host "$OLLAMA_HOST" \
+                --llm-base-url "$LLM_BASE_URL" \
                 --concurrency "$CONCURRENCY" \
-                --inference-backend vllm \
                 "${THINK_ARG[@]}" \
                 "${COND_ARGS[@]}" \
                 "${TASKS_ARG[@]}" \
                 "${SHARD_ARGS[@]}" \
                 "${CONTINUE_ARG[@]}" \
                 "${PARTIAL_ARG[@]}" \
+                "${STEERED_ARG[@]}" \
+                "${DOMAINS_DIR_ARG[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 

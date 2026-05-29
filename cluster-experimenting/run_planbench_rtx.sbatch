@@ -4,7 +4,7 @@
 ### model warm across cells (10 tasks × 3 configs = 30 cells per model).
 ###
 ### v1 = vanilla leaderboard (no MCP tools). MCP-tool-using arm is tracked
-### as ISS-021 — depends on sibling-repo MCP work documented in
+### as ISS-022 — depends on sibling-repo MCP work documented in
 ### ../pddl-copilot/specs-for-plan-bench.md (branch: planbench-integration).
 ###
 ### Required env (set by cluster-experimenting/submit_planbench.sh):

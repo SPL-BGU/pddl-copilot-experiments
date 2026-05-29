@@ -1,0 +1,3 @@
+(embark_crew crew1 rover1 outpost0)
+(traverse-idle rover1 outpost0 outpost1)
+(disembark_crew crew1 rover1 outpost1)

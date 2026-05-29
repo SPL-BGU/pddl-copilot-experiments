@@ -1,0 +1,4 @@
+(roll_southwest robot_arm1)
+(roll_southwest robot_arm1)
+(roll_northeast robot_arm1)
+(deliver_stock robot_arm1 workstation1)

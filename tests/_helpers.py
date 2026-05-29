@@ -1,11 +1,14 @@
 """Test helpers for the scoring-audit suite.
 
 Not a pytest conftest — just a plain module imported by test_*.py files.
-Provides FakeMCP (stub for MCPPlanner.call_tool) and a fixture loader that
-reads tests/fixtures/*.json produced from real MCP oracle calls.
+Provides FakeMCP (stub for MCPPlanner.call_tool), a fixture loader that
+reads tests/fixtures/*.json produced from real MCP oracle calls, and
+async-stub helpers used by the runner tests to replace `evaluate_one` with
+a canned `TaskResult`.
 """
 
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -62,12 +65,12 @@ class FakeMCP:
 
 
 def plan_sensitive_validator(fx: dict, error: bool = False):
-    """Return a handler that routes validate_pddl_syntax by plan argument match.
+    """Return a handler dispatching the three task-aligned validator tools.
 
-    If the plan argument (joined by \\n) matches fx["oracle_plan"], returns the
-    "valid=true" fixture response; otherwise returns the "valid=false" one.
-    Domain-only and domain+problem calls get their respective raw responses.
-    If `error` is True, every validate call returns the {"error": true} shape.
+    `validate_domain` and `validate_problem` return their fixture responses.
+    `validate_plan` matches the joined plan string against
+    `fx["oracle_plan"]` vs `fx["bad_plan"]` to pick the OK / BAD response.
+    If `error` is True, every validator call returns the {"error": true} shape.
     """
     oracle_plan_str = "\n".join(fx["oracle_plan"])
     bad_plan_str = "\n".join(fx["bad_plan"])
@@ -80,21 +83,19 @@ def plan_sensitive_validator(fx: dict, error: bool = False):
     prob_resp = json.dumps(fx["gt"]["problem_validation_obj"])
 
     def handler(name: str, args: dict) -> str:
-        if name != "validate_pddl_syntax":
+        if name not in {"validate_domain", "validate_problem", "validate_plan"}:
             return "{}"
         if error:
             return err_resp
-        plan_arg = (args.get("plan") or "").strip()
-        problem_arg = args.get("problem")
-        if plan_arg:
-            if plan_arg == oracle_plan_str:
-                return ok_plan_resp
-            if plan_arg == bad_plan_str:
-                return bad_plan_resp
-            return bad_plan_resp
-        if problem_arg:
+        if name == "validate_domain":
+            return dom_resp
+        if name == "validate_problem":
             return prob_resp
-        return dom_resp
+        # validate_plan — match the plan text against the fixture's oracle.
+        plan_arg = (args.get("plan") or "").strip()
+        if plan_arg == oracle_plan_str:
+            return ok_plan_resp
+        return bad_plan_resp
 
     return handler
 
@@ -142,3 +143,66 @@ class TestResults:
                 print(f"  - {label}: {detail}")
             raise SystemExit(1)
         raise SystemExit(0)
+
+
+def make_stub_result(*, model, task, domain_name, problem_name, prompt_variant,
+                     with_tools, success=True, **overrides):
+    """Build a TaskResult with the runner-test default fields filled in.
+
+    Imports TaskResult lazily so this module doesn't drag pddl_eval at import
+    time. `overrides` lets a caller poke specific fields without restating
+    the whole call.
+    """
+    from pddl_eval.runner import TaskResult
+    kwargs = dict(
+        model=model, task=task, domain_name=domain_name,
+        problem_name=problem_name, prompt_variant=prompt_variant,
+        with_tools=with_tools, success=success,
+        tool_filter=overrides.pop("tool_filter", "all"),
+        prompt_style=overrides.pop("prompt_style", "minimal"),
+        plan_label=overrides.pop("plan_label", ""),
+    )
+    kwargs.update(overrides)
+    return TaskResult(**kwargs)
+
+
+def make_stub_evaluate_one(captured=None):
+    """Return an async stub matching `evaluate_one`'s signature.
+
+    Emits a canned `TaskResult` whose identity fields mirror the call args, so
+    the writer + loader round-trip preserves the per-trial key. When
+    `captured` is a list, the stub appends `(with_tools, prompt_variant)`
+    for each call — used by skip-gate tests in test_prompts.py.
+    """
+    async def stub(
+        client, model, task, domain_name, domain_pddl,
+        problem_name, problem_pddl, prompt_variant, with_tools,
+        mcp, gt, **kwargs,
+    ):
+        if captured is not None:
+            captured.append((with_tools, prompt_variant))
+        return make_stub_result(
+            model=model, task=task, domain_name=domain_name,
+            problem_name=problem_name, prompt_variant=prompt_variant,
+            with_tools=with_tools,
+            tool_filter=kwargs.get("tool_filter", "all"),
+            prompt_style=kwargs.get("prompt_style", "minimal"),
+            plan_label=kwargs.get("plan_label", ""),
+        )
+    return stub
+
+
+@contextmanager
+def stubbed_evaluate_one(stub):
+    """Swap in `stub` for `pddl_eval.runner.evaluate_one` for the block's body.
+
+    Restores the original on exit even on exception. Imported lazily so any
+    test that doesn't use it doesn't pull pddl_eval at module import.
+    """
+    from pddl_eval import runner as runner_mod
+    original = runner_mod.evaluate_one
+    runner_mod.evaluate_one = stub
+    try:
+        yield runner_mod
+    finally:
+        runner_mod.evaluate_one = original

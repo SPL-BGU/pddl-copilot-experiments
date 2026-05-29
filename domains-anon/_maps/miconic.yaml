@@ -1,0 +1,47 @@
+# Contamination-probe rename map — miconic domain.
+# Theme: submarine / deep-sea (decks, divers, hatches, depths). All targets
+# share an undersea-vessel semantic field while being lexically distant
+# from the canonical elevator-transport vocabulary (floor / passenger /
+# lift / board / depart).
+#
+# Canonical symbols extracted from domains/classical/miconic/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Note: `above` is a partial order over floors; renaming to `shallower_than`
+# preserves the same partial-order semantics (f1 above f2 == f1 closer to
+# the surface than f2 == f1 shallower than f2). `lift-at` retains its
+# hyphen separator per the Phase-A `at-robby -> stationed-at` convention.
+
+domain: miconic
+theme: submarine
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: submersible
+
+  types:
+    floor: deck
+    passenger: diver
+
+  predicates:
+    origin: embarks_at
+    destin: disembarks_at
+    above: shallower_than
+    boarded: submerged
+    served: delivered
+    # `lift-at` keeps its hyphen separator (matches canonical style).
+    lift-at: pod-at
+
+  actions:
+    board: pressurize
+    depart: egress
+    up: ascend
+    down: descend
+
+  # Object name prefixes observed in p01..p05 / n01..n05.
+  # Targets match the corresponding type renames so the renamed corpus
+  # stays internally legible.
+  object_prefixes:
+    p: diver
+    f: deck

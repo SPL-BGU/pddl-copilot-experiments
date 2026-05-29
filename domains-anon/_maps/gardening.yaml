@@ -1,0 +1,67 @@
+# Contamination-probe rename map — gardening (numeric) domain.
+# Theme: factory floor / assembly line (machines, bins, conveyors, stock).
+# All targets share an industrial-assembly semantic field while being
+# lexically distant from the canonical garden / watering vocabulary.
+#
+# Canonical symbols extracted from domains/numeric/gardening/domain.pddl
+# and p01..p05.pddl / n01..n05.pddl :objects blocks.
+#
+# Numeric domain: includes a `functions` section. `location` and `thing`
+# are declared in :types but unused by actions/objects; both are still
+# renamed per the §3.1 completeness constraint.
+
+domain: mt-plant-watering-constrained
+theme: factory
+
+rename:
+  # PDDL domain identifier in `(define (domain X))` and `(:domain X)`.
+  # Rewritten in context-bound positions only.
+  domain_name: assembly-line-constrained
+
+  # User-declared types only. `object` is the implicit PDDL root and is
+  # NOT redeclared by this domain. `thing` is the local root supertype.
+  types:
+    thing: unit
+    location: zone
+    agent: robot_arm
+    plant: workstation
+    tap: stock_bin
+
+  # The gardening domain declares no predicates.
+  predicates: {}
+
+  functions:
+    # Grid bounds.
+    maxx: east_edge
+    maxy: north_edge
+    minx: west_edge
+    miny: south_edge
+    # Per-thing coordinates.
+    x: col
+    y: row
+    # Resource flow.
+    carrying: held_stock
+    poured: delivered_to
+    total_poured: total_delivered
+    total_loaded: total_drawn
+    # Static numeric cap.
+    max_int: ceiling
+
+  actions:
+    move_up: roll_north
+    move_down: roll_south
+    move_right: roll_east
+    move_left: roll_west
+    move_up_left: roll_northwest
+    move_up_right: roll_northeast
+    move_down_left: roll_southwest
+    move_down_right: roll_southeast
+    load: draw_stock
+    pour: deliver_stock
+
+  # Object name prefixes observed in p01..p05 / n01..n05. All three
+  # canonical prefixes use a numeric suffix (agent1, tap1, plant1).
+  object_prefixes:
+    agent: robot_arm
+    tap: stock_bin
+    plant: workstation

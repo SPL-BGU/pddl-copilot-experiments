@@ -1,0 +1,60 @@
+(define (problem arable-farm-p03) (:domain arable-farm)
+(:objects
+	homestead - silo
+	golden prime_grade bulk_grade - variety
+	tractor0 - tractor
+	tractor0hopper - hopper
+	field0 field1 field2 field3 - field
+	gauge0 - gauge
+	plot0 plot1 - plot
+	)
+(:init
+	(reachable field0 field1)
+	(reachable field1 field0)
+	(reachable field0 field2)
+	(reachable field2 field0)
+	(reachable field1 field2)
+	(reachable field2 field1)
+	(reachable field2 field3)
+	(reachable field3 field2)
+	(reachable field3 field0)
+	(reachable field0 field3)
+	(reachable field3 field1)
+	(reachable field1 field3)
+	(has_seed_clump field0)
+	(has_root_clump field0)
+	(has_seed_clump field2)
+	(has_seed_clump field3)
+	(has_root_clump field3)
+	(anchored_at homestead field3)
+	(relay_open homestead)
+	(ploughing tractor0 field1)
+	(ready tractor0)
+	(hopper_of tractor0hopper tractor0)
+	(unfilled tractor0hopper)
+	(fitted_for_root_sampling tractor0)
+	(fitted_for_gauging tractor0)
+	(can_furrow tractor0 field1 field0)
+	(can_furrow tractor0 field0 field1)
+	(can_furrow tractor0 field1 field2)
+	(can_furrow tractor0 field2 field1)
+	(can_furrow tractor0 field0 field3)
+	(can_furrow tractor0 field3 field0)
+	(mounted_on gauge0 tractor0)
+	(tuning_plot gauge0 plot1)
+	(handles gauge0 prime_grade)
+	(handles gauge0 bulk_grade)
+	(reachable_from plot0 field0)
+	(reachable_from plot0 field1)
+	(reachable_from plot0 field2)
+	(reachable_from plot1 field0)
+)
+
+(:goal (and
+(reported_root_data field3)
+(reported_root_data field0)
+(reported_reading_data plot1 prime_grade)
+(reported_reading_data plot0 prime_grade)
+	)
+)
+)

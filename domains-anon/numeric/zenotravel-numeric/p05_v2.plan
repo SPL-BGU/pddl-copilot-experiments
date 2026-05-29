@@ -1,0 +1,7 @@
+(embark_crew crew1 rover1 outpost0)
+(traverse-idle rover1 outpost0 outpost1)
+(embark_crew crew2 rover2 outpost1)
+(traverse-idle rover2 outpost1 outpost0)
+(refill_regolith rover2)
+(disembark_crew crew1 rover1 outpost1)
+(disembark_crew crew2 rover2 outpost0)

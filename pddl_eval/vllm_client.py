@@ -1,12 +1,16 @@
-"""vLLM OpenAI-compatible client adapter that mimics ollama.AsyncClient.
+"""vLLM client that exposes the wire shape pddl_eval.chat consumes.
 
-Smoke-probe scaffold (2026-05-09) — see development/CHANGELOG.md. The harness
-in pddl_eval/{chat,runner,scoring}.py reads Ollama-shaped response dicts
-(message.tool_calls with dict-form arguments, message.thinking, top-level
-prompt_eval_count / eval_count / done_reason / total_duration). vLLM speaks
+The harness in pddl_eval/{chat,runner,scoring}.py reads response dicts with
+dict-form tool_call arguments, message.thinking, and top-level
+prompt_eval_count / eval_count / done_reason / total_duration. vLLM speaks
 OpenAI's chat-completions shape (string-form tool_call arguments,
 finish_reason, usage.prompt_tokens, optional reasoning_content). This module
 adapts the wire formats so the existing chat loop works unchanged.
+
+Historical: the field names (prompt_eval_count, done_reason, …) are
+inherited from the Ollama backend that was retired in 2026-05; they are the
+internal contract chat.py was built around, kept stable for corpus
+comparability.
 
 Wire-format adaptations:
   * tool_calls[].function.arguments: JSON string  ↔  dict
@@ -33,12 +37,12 @@ mis-extracted on token boundaries. The harness never reads streamed deltas
 either, so non-streaming is the safe default.
 
 Context-overflow handling: vLLM rejects prompt_tokens + max_tokens >
-max_model_len with HTTP 400 BadRequestError, where Ollama silently
-truncates or returns done_reason="length". chat() catches the specific
-overflow body, clips max_tokens to the remaining budget, and retries —
-restoring response-shape parity with the Ollama corpus. The degenerate
-prompt ≥ max_model_len case returns a synthetic length-truncation
-response with empty content (see `_synthesize_overflow_response`).
+max_model_len with HTTP 400 BadRequestError. chat() catches the specific
+overflow body, clips max_tokens to the remaining budget, and retries.
+The degenerate prompt ≥ max_model_len case returns a synthetic
+length-truncation response with empty content (see
+`_synthesize_overflow_response`), preserving the existing chat.py
+classifier for `done_reason="length"` truncation.
 """
 
 import json
@@ -52,14 +56,24 @@ _DEFAULT_BASE_URL = "http://localhost:8000"
 
 # Match vLLM's context-overflow rejection so we can retry with a clipped
 # max_tokens instead of bubbling a BadRequestError up as an `exception`
-# trial. Example body:
-#   "This model's maximum context length is 16384 tokens. However, you
-#    requested 8192 output tokens and your prompt contains at least 8193
-#    input tokens, for a total of at least 16385 tokens."
+# trial. Two body shapes observed in the wild:
+#   Old (pre-mid-2026):
+#     "prompt contains at least 8193 input tokens"
+#   New (current vLLM):
+#     "your prompt contains 407867 characters (more than 317440 characters,
+#      which is the upper bound for 10240 input tokens)"
 # Group 1 = max_model_len; group 2 = prompt_tokens reported by the server.
+#
+# Drift history (PR-#66 contamfix, 2026-05-20):
+#   * The single-quantifier regex `prompt contains at least N` silently
+#     missed the new format. Every overflow bubbled up as `FR_EXCEPTION`
+#     with `tokens={}` instead of being retry-clipped or synthesized as a
+#     length-truncated response. The audit found 24 600 such rows across
+#     the corpus. The `(?:at least|upper bound for)` alternation below
+#     matches both shapes; regression test in tests/test_vllm_client.py.
 _CTX_OVERFLOW_RE = re.compile(
     r"maximum context length is (\d+) tokens.*?"
-    r"prompt contains at least (\d+) input tokens",
+    r"(?:at least|upper bound for) (\d+) input tokens",
     re.DOTALL,
 )
 # Slack between (max_model_len − prompt_tokens) and the clipped max_tokens
@@ -67,21 +81,41 @@ _CTX_OVERFLOW_RE = re.compile(
 # bound — "your prompt contains at least N input tokens" — because the
 # pre-flight check fires before final template additions (generation
 # prefix, BOS, prefix-caching block-padding) are appended. The real
-# served prompt is consistently higher than the reported N. Empirical
-# measurement over 374 retry failures on the 17478753 sweep showed an
-# exact +9 token delta between attempt-1 reported prompt and attempt-2
-# reported prompt, leaving (new_max + new_prompt) == max_model_len + 1
-# every single time. Setting safety = 32 absorbs +9 with ~3× headroom
-# for future vLLM versions / different chat templates at ~0 cost (the
-# output-token budget loss is < 0.4% of the 8192-token solve cap).
-_CTX_RETRY_SAFETY = 32
+# served prompt is consistently higher than the reported N.
+#
+# Drift history (attempt-1 reported prompt → attempt-2 reported prompt):
+#   * 17478753 sweep (sweep-3, qwen3.6:27b + Qwen3.5:0.8B, v0/v1/v2
+#     prompts): exact and consistent +9 over 374 failures. safety = 32
+#     absorbed this with ~3× headroom.
+#   * sweep4-cluster-20260519 (Qwen3.5 4B/9B + v5/v6/v7 prompts under
+#     the new prompt variants): drift jumped to +33 (8193 → 8226 on
+#     solve, 10241 → 10274 on validate-style), so safety = 32 was off
+#     by exactly +1 and every retry 400'd. ~7,400 trials (up to 31% on
+#     Qwen3.5-4B off tools_all) landed as `failure_reason=exception`
+#     with empty content rather than Ollama-parity `done_reason=length`.
+#
+# Defense is now layered:
+#   1. safety = 128 absorbs the observed +33 with ~4× headroom for the
+#      next prompt-template change. Output-budget cost is 96/8192 ≈ 1.2%
+#      on solve, ~0.5% on smaller `num_predict` tasks.
+#   2. The chat() retry path also retries a SECOND time (see MAX_RETRIES)
+#      using whatever prompt-token count the previous error reported, so
+#      a drift larger than safety still converges instead of bubbling a
+#      BadRequestError. After max retries, falls through to
+#      _synthesize_overflow_response to keep Ollama parity (done_reason
+#      = "length", empty content) rather than raising.
+_CTX_RETRY_SAFETY = 128
+# Max number of clip-and-retry attempts AFTER the initial request. Two
+# retries cover any drift smaller than ~3 × safety; bigger drifts fall
+# through to the synthetic length-truncation response.
+_CTX_MAX_RETRIES = 2
 
 
-class VLLMOllamaClient:
-    """Async client exposing ollama.AsyncClient.chat() / aclose() shape."""
+class VLLMClient:
+    """Async vLLM client exposing chat() / aclose()."""
 
-    def __init__(self, host: str | None = None):
-        base_url = (host or _DEFAULT_BASE_URL).rstrip("/")
+    def __init__(self, base_url: str | None = None):
+        base_url = (base_url or _DEFAULT_BASE_URL).rstrip("/")
         if not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
         # api_key is required by the openai client but vLLM's OpenAI server
@@ -126,39 +160,37 @@ class VLLMOllamaClient:
         if extra_body:
             kwargs["extra_body"] = extra_body
 
+        # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
+        # and rejects with HTTP 400. We catch the specific context-overflow
+        # body, clip max_tokens to the remaining headroom from the latest
+        # reported prompt count, and retry up to _CTX_MAX_RETRIES times
+        # before falling through to a synthetic length-truncation response.
         t0 = time.perf_counter_ns()
-        try:
-            resp = await self._client.chat.completions.create(**kwargs)
-        except BadRequestError as e:
-            # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
-            # and rejects with HTTP 400. Ollama silently truncates / returns
-            # done_reason="length" on the same overflow. To keep response-shape
-            # parity across backends, catch the specific context-overflow body,
-            # clip max_tokens to the remaining headroom, and retry.
-            parsed = _parse_ctx_overflow(e)
-            if parsed is None:
-                raise
-            max_ctx, prompt_tokens = parsed
-            new_max = max_ctx - prompt_tokens - _CTX_RETRY_SAFETY
-            if new_max <= 0:
-                # Prompt alone consumes (or exceeds) max_model_len — no output
-                # budget to negotiate. Surface as a length-truncation response
-                # with empty content; the harness already buckets done_reason
-                # ="length" as truncation, matching how Ollama would treat a
-                # context window fully consumed by the prompt.
-                wall_ns = time.perf_counter_ns() - t0
-                return _synthesize_overflow_response(prompt_tokens, wall_ns)
-            kwargs["max_tokens"] = new_max
-            resp = await self._client.chat.completions.create(**kwargs)
+        resp = None
+        for attempt in range(_CTX_MAX_RETRIES + 1):
+            try:
+                resp = await self._client.chat.completions.create(**kwargs)
+                break
+            except BadRequestError as e:
+                parsed = _parse_ctx_overflow(e)
+                if parsed is None:
+                    raise
+                max_ctx, prompt_tokens = parsed
+                new_max = max_ctx - prompt_tokens - _CTX_RETRY_SAFETY
+                if new_max <= 0 or attempt == _CTX_MAX_RETRIES:
+                    # Either the prompt alone consumes (or nearly consumes)
+                    # max_model_len, or we've exhausted retries. Surface as
+                    # a length-truncation response with empty content; the
+                    # harness already buckets done_reason="length" as
+                    # truncation.
+                    wall_ns = time.perf_counter_ns() - t0
+                    return _synthesize_overflow_response(prompt_tokens, wall_ns)
+                kwargs["max_tokens"] = new_max
         wall_ns = time.perf_counter_ns() - t0
         return _to_ollama_response(resp, wall_ns)
 
     async def aclose(self) -> None:
         await self._client.close()
-
-    # ollama.AsyncClient also exposes a sync close() alias on some builds —
-    # run_experiment.py guards getattr(client, "aclose", None) or
-    # getattr(client, "close", None), so providing aclose alone suffices.
 
 
 def _to_openai_messages(messages: list) -> list:

@@ -1,4 +1,4 @@
-"""Per-eval runner + single-task / chain sweep orchestration.
+"""Per-eval runner + single-task sweep orchestration.
 
 Owns:
   * `TaskResult` — the universal record; everything downstream just reads
@@ -6,9 +6,8 @@ Owns:
   * `evaluate_one` — produce one TaskResult for (model, task, domain,
     problem, prompt_variant, with_tools).
   * `run_single_task_experiment` — full single-task sweep with bounded
-    Ollama concurrency, --shard partitioning, and --smoke-shuffle cell
-    assignment.
-  * `run_chain_experiment` — multi-task chain sweep (Section 4.4).
+    client-side concurrency, --shard partitioning, and --smoke-shuffle
+    cell assignment.
 
 DAG: runner → prompts, chat, domains, scoring.
 """
@@ -23,6 +22,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from openai import APIConnectionError
+
 from .chat import (
     MCPPlanner,
     TEMPERATURE,
@@ -33,8 +34,12 @@ from .domains import _build_plan_str
 from .prompts import (
     ACTIVE_PROMPT_VARIANTS,
     PROMPT_TEMPLATES,
+    PROMPT_TEMPLATES_TOOLS_OVERRIDE,
+    STEERED_VARIANTS,
     WITH_TOOLS_SYSTEM,
+    WITH_TOOLS_SYSTEM_BY_TASK,
     WITHOUT_TOOLS_SYSTEM,
+    WITHOUT_TOOLS_SYSTEM_BY_TASK,
 )
 from .schemas import TASK_SCHEMAS
 from .scoring import (
@@ -48,7 +53,7 @@ from .scoring import (
 )
 
 if TYPE_CHECKING:
-    import ollama
+    from pddl_eval.vllm_client import VLLMClient
 
 
 # ---------------------------------------------------------------------------
@@ -66,8 +71,10 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # 37.1% (simulate), 32.7% (validate_problem), 17.4% (validate_domain) at
 # the old caps -- thinking-mode reasoning + tool-call XML emissions were
 # being cut mid-stream, biasing accuracy and producing the bulk of
-# `ollama_parse_error` records (Hermes/harmony XML parser fails on
-# truncated <function><parameter> tags).
+# `ollama_parse_error` records (failure-reason value retained for corpus
+# stability; classifies Hermes/harmony XML parser fails on truncated
+# <function><parameter> tags — same parser family is in vLLM via
+# --tool-call-parser hermes/qwen3_xml).
 #
 # Non-solve caps further raised 4096 -> 6144 on 2026-04-29 (same-day follow-
 # up) after the post-bump nemotron-3-nano:30b smoke (job 17266087) emitted
@@ -83,7 +90,7 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simul
 # is a separate decision left for after fresh post-trim wall measurements.
 # 6144 still fits inside DEFAULT_NUM_CTX (16384) with single-task PDDL
 # prompts (~0.5-1.5K tokens), leaving ~8K of think+output headroom for
-# thinking models. Chain runs use DEFAULT_NUM_CTX_CHAIN below.
+# thinking models.
 # `solve` stays at 8192 (paper-default; raise alongside num_ctx if a
 # future model lineup hits the cap).
 DEFAULT_NUM_PREDICT: dict[str, int] = {
@@ -108,28 +115,15 @@ DEFAULT_NUM_CTX = 16384
 # getting deleted; future asymmetric experiments can override one
 # without touching the other. Override via --num-ctx-thinking.
 DEFAULT_NUM_CTX_THINKING = 16384
-# Archived 2026-05-05 — chain phase is no longer wired into the active
-# experiment flow (see CHANGELOG). Constant kept importable for any future
-# resurrection of `run_chain_experiment` below.
-#
-# Context budget for multi-task chain runs. Chains accumulate the full
-# message history (system + N×(user+assistant+tool_calls+tool_results))
-# across steps, so step-4 prompts can reach ~6-8K tokens before generation
-# even on small problems. Held equal to DEFAULT_NUM_CTX (16384) by the
-# 2026-04-29 follow-up bump: applying the single-task think_overflow
-# evidence (qwen3.6:27b / nemotron-3-nano:30b at 12288 ctx hit
-# FR_THINK_OVERFLOW on 50% of validate_problem/validate_plan cells;
-# nemotron later dropped 2026-04-30) to a
-# chain step running the same task gives WORSE headroom, not better,
-# because chain prompts include accumulated history. At 12288 chain ctx,
-# step-3 validate_plan would have ~8K think+output budget vs ~11K in
-# single-task -- the regime that already failed. 16384 brings step-3 to
-# ~12K (comparable to single-task at 16384) and step-4 to ~8-10K (still
-# tighter than single-task; raise to 20480 if a chain sweep surfaces
-# step-4 think_overflow). Chains are tools-only (ISS-018), so this is
-# condition-independent.
-DEFAULT_NUM_CTX_CHAIN = 16384
 DEFAULT_CONCURRENCY = 4
+
+# Abort a single-task cell after this many consecutive trials fail with
+# `infra_failure=True`. One blip is a SLURM-SIGTERM-near-TIMEOUT race; a
+# run of N in a row means the inference server is wedged (vLLM crash-loop,
+# wrong port, OOM, etc.) and the cell would otherwise produce an empty
+# corpus instead of failing loud. Resume re-attempts the in-flight keys
+# on the next run.
+_INFRA_FAIL_ABORT = 7
 
 # Cap on stored response/exception strings in result records. The full text
 # is reproducible by re-running the prompt; the stored snippet only needs to
@@ -145,35 +139,25 @@ RESPONSE_SNAPSHOT_LEN = 500
 # record JSON. Full content is reproducible by re-running the prompt.
 THINKING_SNAPSHOT_LEN = 4096
 
-# Substring signatures of Ollama's server-side tool-call parser failures.
-# Matched against the exception text to route these into FR_OLLAMA_PARSE_ERROR
-# instead of generic FR_EXCEPTION. Two parser families produce the bucket:
-#   "error parsing tool call" — JSON tool-arg parser, emitted by
-#       ollama/server/routes.go on multi-line PDDL strings (gpt-oss, 2026-04-21).
-#   "XML syntax error"        — Hermes/harmony chat-template XML parser, emitted
-#       on malformed/truncated <function><parameter>... tool-call emissions
-#       (nemotron-3-nano:30b on validate_problem/validate_plan, 2026-04-29;
-#       smoke 17274424 on 2026-04-30 confirmed identical 4-cell signature
-#       across the 4096->6144 num_predict bump, establishing the failure as
-#       content-dependent rather than budget-dependent — model dropped from
-#       active roster, signature retained for future models with the same
-#       tool-call template family).
+# Substring signatures of server-side tool-call parser failures. Matched
+# against the exception text to route these into FR_OLLAMA_PARSE_ERROR
+# (failure-reason value retained for corpus stability) instead of generic
+# FR_EXCEPTION. Two parser families produce the bucket:
+#   "error parsing tool call" — JSON tool-arg parser, originally observed
+#       from ollama/server/routes.go on multi-line PDDL strings (gpt-oss,
+#       2026-04-21); same wording surfaces from vLLM tool-call parsers.
+#   "XML syntax error"        — Hermes/harmony chat-template XML parser,
+#       emitted on malformed/truncated <function><parameter>... tool-call
+#       emissions (nemotron-3-nano:30b on validate_problem/validate_plan,
+#       2026-04-29; smoke 17274424 on 2026-04-30 confirmed identical 4-cell
+#       signature across the 4096->6144 num_predict bump, establishing the
+#       failure as content-dependent rather than budget-dependent — model
+#       dropped from active roster, signature retained for future models
+#       with the same tool-call template family).
 OLLAMA_TOOL_PARSE_SIGNATURES: tuple[str, ...] = (
     "error parsing tool call",
     "XML syntax error",
 )
-
-# Per-task tool allowlists. When --tool-filter=per-task, only these tool names
-# are exposed to the model for the given task, controlling for tool-selection
-# noise when the connected MCP servers expose unrelated tools.
-TASK_TOOLS: dict[str, list[str]] = {
-    "solve":            ["classic_planner", "numeric_planner"],
-    "validate_domain":  ["validate_pddl_syntax"],
-    "validate_problem": ["validate_pddl_syntax"],
-    "validate_plan":    ["validate_pddl_syntax"],
-    "simulate":         ["get_state_transition"],
-}
-
 
 def _expand_conditions(conditions: str) -> tuple[bool, ...]:
     """Map a --conditions value to the with_tools iteration order.
@@ -235,6 +219,16 @@ class TaskResult:
     # validate_problem) and for `simulate` (which uses only the canonical
     # planner-generated plan + trace).
     plan_label: str = ""
+    # Set when the trial could not produce a real model attempt due to an
+    # infra/transport event (e.g. vLLM server died mid-call as SLURM sent
+    # SIGTERM near TIMEOUT, surfacing as openai.APIConnectionError). The
+    # writer in `run_one` SKIPS appending such records to `trials.jsonl`,
+    # AND `run_single_task_experiment` filters them out of the returned
+    # list, so resume re-attempts the key on the next run and the in-memory
+    # per-cell summary is not polluted with empty records. Cells where
+    # `_INFRA_FAIL_ABORT` consecutive infra failures fire abort the run
+    # entirely on the assumption that the inference server is wedged.
+    infra_failure: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +237,7 @@ class TaskResult:
 
 
 async def evaluate_one(
-    client: "ollama.AsyncClient",
+    client: "VLLMClient",
     model: str,
     task: str,
     domain_name: str,
@@ -263,12 +257,34 @@ async def evaluate_one(
     temperature: float = TEMPERATURE,
     plan_label: str = "",
 ) -> TaskResult:
-    template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
+    # Template lookup. Two override semantics by variant range:
+    #   * v5/v6/v7 (sweep-4): override fires only under with_tools=True.
+    #     Preserves sweep-4 replay byte-stability (no override under no-tools).
+    #   * v14/v15/v16 (sweep-5 STEERED_VARIANTS): override fires regardless
+    #     of with_tools. The (no-tools, steered) control arm needs to see
+    #     the steered text — that's the H4 falsification check
+    #     ("steered directive alone does not move the no-tools floor").
+    override = PROMPT_TEMPLATES_TOOLS_OVERRIDE.get(task, {})
+    override_applies = prompt_variant in STEERED_VARIANTS or with_tools
+    if override_applies and prompt_variant in override:
+        template = override[prompt_variant]
+    else:
+        template = PROMPT_TEMPLATES[task][prompt_variant % len(PROMPT_TEMPLATES[task])]
 
     plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
 
     prompt = template.format(domain=domain_pddl, problem=problem_pddl, plan=plan_str)
-    system = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
+    # Variant-gated system prompt:
+    #   * v11..v16 (sweep-5): per-task dicts (thin policy stubs, Option C).
+    #   * v0..v10 (legacy): unchanged flat WITH/WITHOUT_TOOLS_SYSTEM constants.
+    if prompt_variant >= 11:
+        system = (
+            WITH_TOOLS_SYSTEM_BY_TASK[task]
+            if with_tools
+            else WITHOUT_TOOLS_SYSTEM_BY_TASK[task]
+        )
+    else:
+        system = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
     messages = [
         {"role": "system", "content": system},
         {"role": "user", "content": prompt},
@@ -283,7 +299,7 @@ async def evaluate_one(
     done_reason = ""
     loop_exhausted = False
 
-    allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
+    allowed = None
 
     # Bigger context window only when (a) thinking is on (or default), AND
     # (b) the model has no PDDL tools to externalise plan/state/verdict
@@ -307,7 +323,7 @@ async def evaluate_one(
             )
         else:
             # PR-4: no-PDDL-tools = format-constrained sampling. Per-task
-            # JSON schema enforced via Ollama format=. Free-text fallback
+            # JSON schema enforced via format= (vLLM guided_json). Free-text fallback
             # in scoring.check_success keeps tiny models scoring above
             # zero when sampling degenerates under the constraint.
             response_text, done_reason, tokens, thinking_text = await chat_without_tools(
@@ -316,18 +332,40 @@ async def evaluate_one(
                 temperature=temperature,
                 format=TASK_SCHEMAS.get(task),
             )
+    except APIConnectionError as exc:
+        # vLLM transport drop — most commonly fires when SLURM sends SIGTERM
+        # near a TIMEOUT'd job and the sbatch's EXIT trap kills vLLM while
+        # this chat() call is in flight. The openai SDK raises
+        # APIConnectionError with .message == "Connection error.". Tag the
+        # record `infra_failure=True` so the writer skips it; resume will
+        # re-attempt the key on the next run instead of treating a half-
+        # second of transport unavailability as a completed trial.
+        error = str(exc) or "Connection error."
+        infra_failure = True
+        print(f"[infra-skip] {type(exc).__name__}: {error}", file=sys.stderr, flush=True)
     except Exception as exc:
         error = str(exc)
+        infra_failure = False
         print(f"[exception] {type(exc).__name__}: {error}", file=sys.stderr, flush=True)
+    else:
+        # vLLM emits finish_reason="abort" on HTTP 200 (not APIConnectionError)
+        # when the request is aborted mid-stream — most often SIGTERM hitting
+        # the serving process near SLURM TIMEOUT. Same skip+resume semantics
+        # as the APIConnectionError branch above.
+        infra_failure = done_reason == "abort"
+        if infra_failure:
+            error = "vLLM finish_reason=abort"
+            print("[infra-skip] vLLM finish_reason=abort", file=sys.stderr, flush=True)
 
     duration = time.time() - t0
     tool_selected: bool | None = None
     failure_reason = FR_OK
     if error:
         success = False
-        # Ollama's server-side tool-call JSON parser chokes on multi-line
-        # strings in tool arguments (observed heavily with gpt-oss on PDDL
-        # domains). Classify separately so analysis can quantify the upstream
+        # Tool-call JSON/XML parsers (originally observed in Ollama, now
+        # vLLM tool-call parsers) choke on multi-line strings in tool
+        # arguments (observed heavily with gpt-oss on PDDL domains).
+        # Classify separately so analysis can quantify the upstream
         # parser-bug rate instead of lumping it into generic exceptions.
         if any(sig in error for sig in OLLAMA_TOOL_PARSE_SIGNATURES):
             failure_reason = FR_OLLAMA_PARSE_ERROR
@@ -359,9 +397,8 @@ async def evaluate_one(
 
     # `_classify_step_failure` owns the full override chain:
     # FR_THINK_OVERFLOW → FR_LOOP_EXHAUSTED → truncation. Pass the texts so
-    # it can fire the think-overflow override; the chain step path doesn't
-    # pass them and stays on the legacy FR_TRUNCATED_NO_ANSWER tag for
-    # think-spiral steps (see ISS-005 Batch 2 / cluster-run1 analysis).
+    # it can fire the think-overflow override (see ISS-005 Batch 2 /
+    # cluster-run1 analysis).
     failure_reason, truncated = _classify_step_failure(
         success, done_reason, loop_exhausted, failure_reason,
         thinking_text=thinking_text,
@@ -390,6 +427,7 @@ async def evaluate_one(
         truncated=truncated,
         done_reason=done_reason,
         plan_label=plan_label,
+        infra_failure=infra_failure,
     )
 
 
@@ -452,7 +490,7 @@ def _trial_key(
 
 
 async def run_single_task_experiment(
-    client: "ollama.AsyncClient",
+    client: "VLLMClient",
     models: list[str],
     tasks: list[str],
     domains: dict,
@@ -473,8 +511,9 @@ async def run_single_task_experiment(
     cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None,
     progress_path: Path | None = None,
     restored_by_key: dict[TrialKey, TaskResult] | None = None,
+    include_no_tools_steered: bool = False,
 ) -> list[TaskResult]:
-    """Run the full single-task sweep with bounded Ollama concurrency.
+    """Run the full single-task sweep with bounded client-side concurrency.
 
     Jobs are enumerated up-front so `[i/N]` numbering is stable across
     reorderings; completions are printed as they finish via
@@ -523,6 +562,7 @@ async def run_single_task_experiment(
         # (tools / no-tools) comparisons for the same logical key land
         # in the same shard. `plan_label` IS in the key so v1..v5 / b1..b5
         # spread across shards rather than clustering all in shard 0.
+        #
         if not _shard_filter(
             shard_i, shard_n,
             (model, task, dname, pname, plan_label, str(pv)),
@@ -534,6 +574,16 @@ async def run_single_task_experiment(
         )
         in_scope_keys.add(key)
         if restored_by_key is not None and key in restored_by_key:
+            return
+        # Sweep-5 emit-skip gate: `(no-tools, v_steered)` cells are skipped
+        # in the main 3-arm sweep. Flip `--include-no-tools-steered`
+        # (threaded via `include_no_tools_steered`) to emit them as the
+        # 4th control arm (sweep-5 control). The skip lives BELOW
+        # `in_scope_keys.add` and the restored-trial early-return so that
+        # trials already on disk from a prior control submit are surfaced
+        # in this run's summary even when the flag is now off — only new
+        # job enqueue is suppressed.
+        if not with_tools and pv in STEERED_VARIANTS and not include_no_tools_steered:
             return
         jobs.append((
             model, task, dname, dpddl, pname, ppddl, pv,
@@ -742,11 +792,27 @@ async def run_single_task_experiment(
                     with progress_path.open("a") as _heal:
                         _heal.write("\n")
         progress_handle = progress_path.open("a", buffering=1)
+    consecutive_infra_fails = 0
     try:
         for coro in asyncio.as_completed(aws):
             idx, r = await coro
             results[idx] = r
-            if progress_handle is not None:
+            if r.infra_failure:
+                consecutive_infra_fails += 1
+                if consecutive_infra_fails >= _INFRA_FAIL_ABORT:
+                    raise RuntimeError(
+                        f"Aborting cell: {_INFRA_FAIL_ABORT} consecutive "
+                        f"APIConnectionErrors — inference server likely "
+                        f"wedged, not a transient blip. Resume on rerun."
+                    )
+            else:
+                consecutive_infra_fails = 0
+            if progress_handle is not None and not r.infra_failure:
+                # `infra_failure=True` records are produced for transport-
+                # class events (e.g. SLURM SIGTERM killing vLLM mid-call).
+                # We deliberately do NOT append them so resume re-attempts
+                # the key on the next run instead of treating the blip as
+                # a completed trial.
                 (
                     j_model, j_task, j_dname, _j_dpddl, j_pname, _j_ppddl,
                     j_pv, j_wt, _j_gt, _j_np, j_plan_label,
@@ -779,7 +845,12 @@ async def run_single_task_experiment(
     # then append newly-run trials in completion order. Restored-first
     # ordering matches the pre-refactor merge semantics so downstream
     # `single_task_*.json` byte-stability across resumes is preserved.
-    new_results = [r for r in results if r is not None]
+    # Filter out infra_failure records — they were skipped from trials.jsonl
+    # so resume re-attempts the key, and they must also be skipped from the
+    # in-memory list returned to run_experiment.py so per-cell summaries
+    # (save_results / print_*_table / summarize_single_task) are not
+    # polluted by empty transport-blip trials.
+    new_results = [r for r in results if r is not None and not r.infra_failure]
     if restored_by_key:
         in_scope_restored = [
             tr for k, tr in restored_by_key.items() if k in in_scope_keys
@@ -787,236 +858,3 @@ async def run_single_task_experiment(
         return in_scope_restored + new_results
     return new_results
 
-
-# ---------------------------------------------------------------------------
-# Multi-task chain evaluation (Section 4.4)
-#
-# Archived 2026-05-05 — `run_experiment.py` no longer dispatches into this
-# function. Body preserved verbatim so the chain phase can be re-wired without
-# rebuilding the orchestration; see CHANGELOG 2026-05-05 for context.
-# ---------------------------------------------------------------------------
-
-
-async def run_chain_experiment(
-    client: "ollama.AsyncClient",
-    models: list[str],
-    domains: dict,
-    ground_truth: dict,
-    mcp: MCPPlanner,
-    chain_lengths: tuple[int, ...] = (2, 3, 4, 5),
-    samples: int = 20,
-    tool_filter: str = "all",
-    with_tools: bool = True,
-    prompt_style: str = "minimal",
-    num_predict_override: int | None = None,
-    num_ctx: int = DEFAULT_NUM_CTX,
-    num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
-    num_ctx_chain: int = DEFAULT_NUM_CTX_CHAIN,
-    think: bool | None = None,
-    temperature: float = TEMPERATURE,
-    concurrency: int = DEFAULT_CONCURRENCY,
-) -> list[dict]:
-    results: list[dict] = []
-    domain_items = list(domains.items())
-    system_prompt = WITH_TOOLS_SYSTEM[prompt_style] if with_tools else WITHOUT_TOOLS_SYSTEM
-    cond_label = "tools" if with_tools else "no-tools"
-
-    async def run_sample(
-        model: str,
-        i: int,
-        dname: str,
-        dinfo: dict,
-        pname: str,
-        ppddl: str,
-        chain_tasks: list[str],
-        step_templates: list[str],
-    ) -> dict:
-        gt = ground_truth.get(dname, {}).get(pname, {})
-        messages: list[dict] = [{"role": "system", "content": system_prompt}]
-        chain_ok = True
-        step_records: list[dict] = []
-        sample_exception: dict | None = None
-
-        for step_index, task in enumerate(chain_tasks):
-            # Mirror the single-task guard (run_single_task_experiment,
-            # above): if the oracle never produced a plan for this
-            # problem, validate_plan/simulate have no ground truth to
-            # grade against and would deterministically fail the chain
-            # as a ground-truth-coverage artifact rather than a model
-            # signal. Skip the step and keep the chain alive. Skipped
-            # steps are not appended to step_records, so
-            # len(step_records) gives the effective chain length
-            # (ISS-011).
-            if task in ("validate_plan", "simulate") and not gt.get("plan"):
-                continue
-            template = step_templates[step_index]
-            plan_str = _build_plan_str(gt) if task in ("validate_plan", "simulate") else ""
-            prompt = template.format(
-                domain=dinfo["domain"], problem=ppddl, plan=plan_str,
-            )
-            messages.append({"role": "user", "content": prompt})
-
-            np_for_task = _resolve_num_predict(num_predict_override, task)
-            allowed = TASK_TOOLS.get(task) if tool_filter == "per-task" else None
-            step_loop_exhausted = False
-            # Chains are tools-only (no-tools chains skipped; ISS-018), so
-            # this resolves to `num_ctx_chain` for every step today; the
-            # num_ctx_thinking branch is preserved for forward-compat if
-            # no-tools chains ever come back. `num_ctx_chain` (12288 by
-            # default) leaves prompt headroom after the 2026-04-29 bump of
-            # non-solve num_predict caps to 4096 -- step-4 prompts in
-            # chains accumulate ~6-8K tokens of history.
-            effective_num_ctx = num_ctx_thinking if (think is not False and not with_tools) else num_ctx_chain
-            try:
-                if with_tools:
-                    resp_text, tc, step_done_reason, step_loop_exhausted, _tokens, _thinking = await chat_with_tools(
-                        client, model, messages, mcp,
-                        num_predict=np_for_task, num_ctx=effective_num_ctx,
-                        allowed_tools=allowed, think=think,
-                        temperature=temperature,
-                    )
-                else:
-                    # PR-4: thread the per-task format schema through here
-                    # too so that if no-tools chains ever come back (today
-                    # gated upstream by ISS-018), `check_success`'s
-                    # JSON-first grader doesn't silently fall to the
-                    # free-text path / FR_FORMAT_PARSE_FAIL on simulate.
-                    resp_text, step_done_reason, _tokens, _thinking = await chat_without_tools(
-                        client, model, messages,
-                        num_predict=np_for_task, num_ctx=effective_num_ctx, think=think,
-                        temperature=temperature,
-                        format=TASK_SCHEMAS.get(task),
-                    )
-                    tc = []
-                _sel, step_ok, step_fr = await check_success(
-                    task, resp_text, tc, gt, mcp, dinfo["domain"], ppddl,
-                    with_tools=with_tools,
-                )
-                # Mirror single-task semantics (evaluate_one): when the
-                # cap cut the model off mid-output, relabel empty-output
-                # reasons as FR_TRUNCATED_NO_ANSWER so step_records is
-                # directly comparable to single_task_*.json failure
-                # reasons. Aggregate success_rate is unaffected — only
-                # the string on already-failing steps changes.
-                step_fr, step_truncated = _classify_step_failure(
-                    step_ok, step_done_reason, step_loop_exhausted, step_fr,
-                )
-                step_records.append({
-                    "step_index": step_index,
-                    "task": task,
-                    "success": step_ok,
-                    "failure_reason": step_fr,
-                    "tool_calls_count": len(tc),
-                    "truncated": step_truncated,
-                    "loop_exhausted": step_loop_exhausted,
-                })
-                if not step_ok:
-                    chain_ok = False
-                    break
-            except Exception as exc:
-                exc_text = str(exc)
-                sample_exception = {
-                    "step_index": step_index,
-                    "task": task,
-                    "exc_type": type(exc).__name__,
-                    "exc_message": exc_text[:RESPONSE_SNAPSHOT_LEN],
-                    # Classify upstream Ollama tool-call JSON parser
-                    # failures so chain analysis can separate them
-                    # from other exception types (matches
-                    # FR_OLLAMA_PARSE_ERROR in evaluate_one).
-                    "is_ollama_parse_error": any(
-                        sig in exc_text for sig in OLLAMA_TOOL_PARSE_SIGNATURES
-                    ),
-                }
-                print(
-                    f"[chain exception] {type(exc).__name__}: {exc_text}",
-                    file=sys.stderr, flush=True,
-                )
-                chain_ok = False
-                break
-
-        return {
-            "idx": i,
-            "domain": dname,
-            "problem": pname,
-            "chain_tasks": chain_tasks,
-            "step_records": step_records,
-            "final_success": chain_ok,
-            "exception": sample_exception,
-        }
-
-    for model in models:
-        for n in chain_lengths:
-            # Pre-sample all randomness before fan-out so RNG order is
-            # deterministic w.r.t. serial execution. Without this, coroutines
-            # interleave random.choice calls and runs become non-reproducible
-            # even at temperature=0.
-            sample_plans: list[tuple] = []
-            for i in range(samples):
-                dname, dinfo = random.choice(domain_items)
-                pname = random.choice(list(dinfo["problems"].keys()))
-                ppddl = dinfo["problems"][pname]
-                chain_tasks = random.choices(TASKS, k=n)
-                # Sample only from ACTIVE_PROMPT_VARIANTS so chains use the
-                # same variant pool as the single-task sweep (otherwise random
-                # picks from disabled v3/v4 would reintroduce the variants we
-                # decided to drop on 2026-04-27).
-                #
-                # Compute-time-saving decision for the following iterations:
-                # the chain phase is intentionally left at the trimmed pool
-                # (3 paraphrases) rather than the full 5 so each chain step
-                # samples from the faster set. This shrinks chain-phase
-                # paraphrase variance slightly but keeps wall time bounded.
-                # Extend back to all 5 variants later (e.g. for the final
-                # paper sweep) by sampling from `range(len(PROMPT_TEMPLATES[t]))`.
-                step_templates = [
-                    PROMPT_TEMPLATES[t][random.choice(ACTIVE_PROMPT_VARIANTS)]
-                    for t in chain_tasks
-                ]
-                sample_plans.append((model, i, dname, dinfo, pname, ppddl, chain_tasks, step_templates))
-
-            sem = asyncio.Semaphore(max(1, concurrency))
-
-            async def bounded_sample(plan: tuple) -> dict:
-                async with sem:
-                    return await run_sample(*plan)
-
-            aws = [asyncio.create_task(bounded_sample(p)) for p in sample_plans]
-            samples_detail: list[dict] = []
-            successes = 0
-            try:
-                for coro in asyncio.as_completed(aws):
-                    detail = await coro
-                    samples_detail.append(detail)
-                    if detail["final_success"]:
-                        successes += 1
-                    mark = "OK" if detail["final_success"] else "FAIL"
-                    print(
-                        f"  {model}|{cond_label} chain={n} "
-                        f"[{len(samples_detail)}/{samples}] {mark}"
-                    )
-            except (KeyboardInterrupt, asyncio.CancelledError):
-                for t in aws:
-                    if not t.done():
-                        t.cancel()
-                await asyncio.gather(*aws, return_exceptions=True)
-                raise
-
-            # Restore dispatch order so samples_detail indices are stable
-            # across runs (matters for any post-hoc analysis that joins by
-            # sample idx). as_completed yields in completion order, which
-            # is nondeterministic under concurrency.
-            samples_detail.sort(key=lambda d: d["idx"])
-
-            results.append({
-                "model": model,
-                "with_tools": with_tools,
-                "chain_length": n,
-                "samples": samples,
-                "successes": successes,
-                "success_rate": round(successes / samples, 2),
-                "tool_filter": tool_filter,
-                "prompt_style": prompt_style,
-                "samples_detail": samples_detail,
-            })
-    return results

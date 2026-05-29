@@ -112,15 +112,21 @@ def _build_plan_str(gt: dict) -> str:
 async def _validate_capture(
     mcp: MCPPlanner, args: dict,
 ) -> tuple[str, bool | None]:
-    """Call `validate_pddl_syntax(args)` and capture (raw, parsed_verdict).
+    """Route by args to the matching validator tool, capture (raw, verdict).
 
-    On MCP exception, returns `(str(exc), None)` so the caller can stash
-    both in a single tuple assignment without an explicit try-block.
-    Mirrors the per-layer (domain / problem / plan) ground-truth probes
-    in `generate_ground_truth`.
+    Presence of `plan` → `validate_plan`; `problem` → `validate_problem`;
+    else → `validate_domain`. Keeps the six per-layer call sites in
+    `generate_ground_truth` uniform. On MCP exception returns
+    `(str(exc), None)` so the caller can capture both in a single tuple.
     """
+    if "plan" in args:
+        tool = "validate_plan"
+    elif "problem" in args:
+        tool = "validate_problem"
+    else:
+        tool = "validate_domain"
     try:
-        raw = await mcp.call_tool("validate_pddl_syntax", args)
+        raw = await mcp.call_tool(tool, args)
     except Exception as exc:
         return str(exc), None
     return raw, _parse_validation_verdict(raw)
@@ -196,7 +202,7 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
 
             # Validate each committed valid plan. The committed `_v[1-9]`
             # plans are independent of the planner's canonical plan above;
-            # they are graded separately against `validate_pddl_syntax`.
+            # they are graded separately against `validate_plan`.
             committed_valid_plans = (
                 dinfo.get("negatives", {})
                 .get("plans_per_problem", {})

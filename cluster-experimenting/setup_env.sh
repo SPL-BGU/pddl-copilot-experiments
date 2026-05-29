@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-time cluster env setup for pddl-copilot-experiments.
-# Run on the BGU ISE-CS-DT login node (slurm.bgu.ac.il) after cloning both repos.
+# Run on the BGU CIS login node (slurm.bgu.ac.il) after cloning both repos.
 #
 # Prereqs:
 #   ssh <user>@slurm.bgu.ac.il
@@ -67,7 +67,7 @@ done
 
 echo "== Verification =="
 java -version 2>&1 | head -1
-python3 -c "import mcp, ollama; print('python deps: mcp + ollama OK')"
+python3 -c "import mcp, openai; print('python deps: mcp + openai OK')"
 
 echo ""
 echo "Done. Activate later with:"
@@ -76,4 +76,4 @@ echo "  source activate $ENV_NAME"
 echo ""
 echo "Next: submit jobs via"
 echo "  bash $EXPT_ROOT/cluster-experimenting/submit_with_rtx.sh --all --dry-run   # preview"
-echo "  bash $EXPT_ROOT/cluster-experimenting/submit_with_rtx.sh --all             # submit 4-model pack as ONE rtx_pro_6000 job"
+echo "  bash $EXPT_ROOT/cluster-experimenting/submit_full_sweep.sh                 # submit 5-model production sweep (3 sbatch arrays, 20 cells)"

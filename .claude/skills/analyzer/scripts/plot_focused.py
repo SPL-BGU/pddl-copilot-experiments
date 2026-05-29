@@ -6,10 +6,9 @@ for a non-specialist audience. Each focused figure here answers ONE question
 with at most two bars per model.
 
 Usage:
-    python3 plot_focused.py                               # auto: cluster-26042026
-    python3 plot_focused.py checkpoints/cluster-26042026
+    python3 plot_focused.py                               # auto: DEFAULT_CHECKPOINT
+    python3 plot_focused.py checkpoints/sweep5-main       # explicit checkpoint
     python3 plot_focused.py <root> --figs 1,5,7
-    # (chain-focused fig3 was removed 2026-05-05; numeric IDs preserve meaning)
     python3 plot_focused.py <root> --no-ci
 
 Outputs go to <root>/plots/focused/.
@@ -43,27 +42,43 @@ from plot import (  # noqa: E402
     parse_dirname,
     wilson_ci,
 )
+# Arm classifier — used by fig_h1 to split records into the H1 isolation pair.
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from pddl_eval.summary import arm_for  # noqa: E402
 
-MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_27b", "qwen3_6_27b", "gemma4_31b",
+MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "Qwen3_5_27b",
+               "qwen3_6_27b", "gemma4_31b", "gemma4_26b-a4b",
                "qwen3_6_35b", "gpt-oss_20b", "gpt-oss_120b"]
 MODEL_LABELS = {
-    "Qwen3_5_0_8B":  "Qwen3.5:0.8B",
-    "Qwen3_5_27b":   "Qwen3.5:27B",
-    "qwen3_6_27b":   "Qwen3.6:27B",
-    "gemma4_31b":    "Gemma4:31B",
-    "qwen3_6_35b":   "Qwen3.6:35B",
-    "gpt-oss_20b":   "gpt-oss:20B",
-    "gpt-oss_120b":  "gpt-oss:120B",
+    "Qwen3_5_0_8B":   "Qwen3.5:0.8B",
+    "Qwen3_5_4B":     "Qwen3.5:4B",
+    "Qwen3_5_9B":     "Qwen3.5:9B",
+    "Qwen3_5_27b":    "Qwen3.5:27B",
+    "qwen3_6_27b":    "Qwen3.6:27B",
+    "gemma4_31b":     "Gemma4:31B",
+    "gemma4_26b-a4b": "Gemma4:26B-A4B",
+    "qwen3_6_35b":    "Qwen3.6:35B",
+    "gpt-oss_20b":    "gpt-oss:20B",
+    "gpt-oss_120b":   "gpt-oss:120B",
 }
-MCP_TOOLS = ["classic_planner", "numeric_planner", "validate_pddl_syntax",
+MCP_TOOLS = ["classic_planner", "numeric_planner",
+             "validate_domain", "validate_problem", "validate_plan",
+             "validate_pddl_syntax",
              "get_state_transition", "save_plan"]
 MCP_TOOL_LABELS = {
     "classic_planner":      "classic_planner",
     "numeric_planner":      "numeric_planner",
+    "validate_domain":      "validate_domain",
+    "validate_problem":     "validate_problem",
+    "validate_plan":        "validate_plan",
     "validate_pddl_syntax": "validate_syntax",
     "get_state_transition": "state_transition",
     "save_plan":            "save_plan",
 }
+# Historical sweep-3 baseline checkpoint kept as the no-arg default for
+# replay parity. Pass an explicit `<root>` (e.g. `checkpoints/sweep5-main`)
+# for current-sweep figures — the no-arg form should not be relied on
+# for paper-current numbers.
 DEFAULT_CHECKPOINT = "checkpoints/cluster-26042026"
 
 CLASSICAL_SET = set(CLASSICAL)
@@ -307,20 +322,17 @@ def fig2(records: list[dict], outdir: Path, draw_ci: bool):
 
 
 # ---------------------------------------------------------------------------
-# fig 3: chain-focused panel — archived 2026-05-05 (chain phase removed
-# from the active flow; see CHANGELOG). The numeric ID is reserved so
-# `--figs` keeps its pre-archive meaning for adjacent plots.
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
 # fig 4: tool_filter all vs per-task, per task
 # ---------------------------------------------------------------------------
 
 def fig4(records: list[dict], outdir: Path, draw_ci: bool):
-    """3 bars per model: no-tools (striped), per-task (dotted), all (solid).
-    Same hatch encoding as fig1 main plot. Pooled across think and prompt-style.
-    """
+    """Retired: per-task tool-filter arm is no longer in the active matrix
+    (sweep-5 retirement). Return without writing — fig4 only made sense
+    when per-task was a live cond. Re-enable by reverting this guard and
+    passing `include_retired=True` to load_series upstream."""
+    if not any(r.get("tool_filter_dir") == "per-task" and r.get("with_tools_dir")
+               for r in records):
+        return []
     models = _models_present(records)
     width = 0.27
     written = []
@@ -428,6 +440,12 @@ def fig5(records: list[dict], outdir: Path, draw_ci: bool):
 # ---------------------------------------------------------------------------
 
 def fig6(records: list[dict], outdir: Path, draw_ci: bool):
+    """Retired: `guided` prompt-style is disabled in the active runner — the
+    comparison degenerates to a single-bar panel. Early-return when no
+    guided trials are present in the corpus."""
+    if not any(r.get("prompt_style_dir") == "guided" and r.get("with_tools_dir")
+               for r in records):
+        return []
     tools = [r for r in records if r["with_tools_dir"]]
     models = _models_present(tools)
     width = 0.40
@@ -491,15 +509,23 @@ def fig7(records: list[dict], outdir: Path, draw_ci: bool):
     counts = _tool_invocations_per_cell(records)
     models = _models_present([r for r in records if r["with_tools_dir"]])
 
+    # Per-(model, task) cell n: number of with-tools trials in the active matrix.
+    # Used to denominate each cell so the reader knows what the count is out of.
+    cell_n: dict[tuple[str, str, str], int] = defaultdict(int)
+    for r in records:
+        if not r["with_tools_dir"]:
+            continue
+        cell_n[(r["model_dir"], r["task"], r["think"])] += 1
+
     # Markdown table
     md_lines = []
     md_lines.append("# Plot 7 — Tools used per (model, task), think on vs off")
     md_lines.append("")
-    md_lines.append("Each cell shows `(off / on)`: number of trials (out of "
-                    "100 per cell — 50 minimal + 50 guided × 2 tool-filters / 2) "
-                    "in which the tool was invoked at least once. "
-                    "`+` = ≥1 trial used the tool; `−` = never used. "
-                    "**[tools-only]** — no-tools cells contribute 0 invocations to every count.")
+    md_lines.append("Each cell shows `off / on`: count of trials in which the named tool was invoked at least once.")
+    md_lines.append("`+` = ≥1 trial used the tool; `−` = never used. Denominator is the cell's with-tools trial count (varies by task — see the per-task `n` column below). **[tools-only]** — no-tools cells contribute 0 invocations to every count.")
+    md_lines.append("")
+    md_lines.append("**Example reading.** A cell `294 / 195` for `Solve · classic_planner` means the classical planner was invoked at least once in 294 of the trials with `think=off` and 195 with `think=on`. A `+` in the boolean view = at least one trial in the cell invoked the tool; `−` = the cell never did. The boolean view collapses count → presence so retired-axis differences don't dominate the visual.")
+    md_lines.append("")
     md_lines.append("")
     md_lines.append("## Boolean view (+/−)")
     md_lines.append("")
@@ -516,17 +542,23 @@ def fig7(records: list[dict], outdir: Path, draw_ci: bool):
             md_lines.append(f"| {MODEL_LABELS[m]} | {TASK_LABELS[task]} | "
                             + " | ".join(cells) + " |")
     md_lines.append("")
-    md_lines.append("## Count view (off / on)")
+    md_lines.append("## Count view (off / on, with cell n)")
     md_lines.append("")
-    md_lines.append(header); md_lines.append(sep)
+    count_header = ("| model | task | n (off / on) | "
+                    + " | ".join(MCP_TOOL_LABELS[t] for t in MCP_TOOLS) + " |")
+    count_sep    = "|---|---|---|" + "|".join("---" for _ in MCP_TOOLS) + "|"
+    md_lines.append(count_header); md_lines.append(count_sep)
     for m in models:
         for task in TASKS:
+            n_off = cell_n.get((m, task, "off"), 0)
+            n_on  = cell_n.get((m, task, "on"), 0)
             cells = []
             for t in MCP_TOOLS:
                 off = counts[(m, task, "off")].get(t, 0)
                 on  = counts[(m, task, "on")].get(t, 0)
                 cells.append(f"{off} / {on}")
             md_lines.append(f"| {MODEL_LABELS[m]} | {TASK_LABELS[task]} | "
+                            f"{n_off} / {n_on} | "
                             + " | ".join(cells) + " |")
     md_path = outdir / "plot7_tools_used_think_vs_nothink.md"
     md_path.write_text("\n".join(md_lines) + "\n")
@@ -541,7 +573,13 @@ def fig7(records: list[dict], outdir: Path, draw_ci: bool):
             grid[i, j] = counts[(m, task, th)].get(tool, 0)
     fig, ax = plt.subplots(figsize=(11.0, max(5.0, 0.30 * len(rows) + 1.2)))
     vmax = max(1.0, float(grid.max()))
-    im = ax.imshow(grid, cmap="Blues", aspect="auto", vmin=0, vmax=vmax)
+    # Log-scale color: linear `Blues` collapses 1-200 invocations into a near-
+    # white band whenever a single cell hits the thousands (e.g. val_plan
+    # `validate_syntax` at n=3000). SymLogNorm with linthresh=1 keeps zero
+    # as the lightest shade and makes counts of 10/100/1000 visually distinct.
+    from matplotlib.colors import SymLogNorm
+    norm = SymLogNorm(linthresh=1.0, linscale=1.0, vmin=0.0, vmax=vmax, base=10)
+    im = ax.imshow(grid, cmap="Blues", aspect="auto", norm=norm)
     # Tick labels
     row_labels = [f"{MODEL_LABELS[m]} · {TASK_LABELS[t]}" for m, t in rows]
     col_labels = [f"{MCP_TOOL_LABELS[tool]}\n(think={th})" for tool, th in cols]
@@ -550,9 +588,13 @@ def fig7(records: list[dict], outdir: Path, draw_ci: bool):
     ax.set_yticks(np.arange(len(rows)))
     ax.set_yticklabels(row_labels, fontsize=6.5)
     ax.set_title("Tools invoked at least once — counts per (model × task) × (tool × think)"
-                 "\n[tools-only — no-tools cells contribute 0 to every count]",
+                 "\n[tools-only — no-tools cells contribute 0 to every count;"
+                 " color is log-scaled so small counts remain visible]",
                  fontsize=10)
-    # Cell annotations: count, with +/- styling
+    # Cell annotations: count, with +/- styling. Text color follows the LOG of
+    # the value, not the raw value, to match the SymLogNorm shading.
+    import math
+    log_vmax = math.log10(max(2.0, vmax))
     for i in range(len(rows)):
         for j in range(len(cols)):
             v = int(grid[i, j])
@@ -561,7 +603,8 @@ def fig7(records: list[dict], outdir: Path, draw_ci: bool):
                 color = "#888"
             else:
                 txt = str(v)
-                color = "white" if v > vmax * 0.5 else "black"
+                log_v = math.log10(max(1, v))
+                color = "white" if log_v > log_vmax * 0.55 else "black"
             ax.text(j, i, txt, ha="center", va="center", fontsize=6, color=color)
     # Group separators between tools
     for k in range(1, len(MCP_TOOLS)):
@@ -643,7 +686,12 @@ def fig8a(records: list[dict], outdir: Path, draw_ci: bool):
 
 
 def fig8b(records: list[dict], outdir: Path, draw_ci: bool):
-    """Δ = success(guided) − success(minimal), tools pooled, per (model, task)."""
+    """Δ = success(guided) − success(minimal), tools pooled, per (model, task).
+    Retired: `guided` is disabled in the active runner; the panel is meaningless
+    without a guided arm. Early-return when no guided trials are present."""
+    if not any(r.get("prompt_style_dir") == "guided" and r.get("with_tools_dir")
+               for r in records):
+        return []
     tools = [r for r in records if r["with_tools_dir"]]
     models = _models_present(tools)
     fig, ax = plt.subplots(figsize=(11.5, 4.6))
@@ -748,12 +796,70 @@ def fig8c(records: list[dict], outdir: Path, draw_ci: bool):
 # CLI
 # ---------------------------------------------------------------------------
 
-FIG_KEYS = ("1", "2", "4", "5", "6", "7", "8a", "8b", "8c", "8")
+FIG_KEYS = ("1", "2", "4", "5", "6", "7", "8a", "8b", "8c", "8", "h1")
+
+
+def fig_h1(records: list[dict], outdir: Path, draw_ci: bool):
+    """Sweep-5 H1 isolation: nt-neut vs tl-neut on `result_correct` at
+    byte-identical prompt content. One PNG per task — two bars per model.
+
+    Lives in plot_focused (rather than plot.py) because it answers a single,
+    paper-headline question with at most two bars per model — the
+    'supervisor-friendly' shape this script was built for. plot.py handles
+    the panel-grid views; this one is for the one-slide read.
+
+    Skipped (returns []) on corpora whose nt-neut or tl-neut arm is empty —
+    sweep-3/4 replays will not produce a useful chart.
+    """
+    arms = ("nt-neut", "tl-neut")
+    relevant = [r for r in records
+                if arm_for(bool(r.get("with_tools_dir")),
+                           int(r["prompt_variant"])) in arms]
+    if not relevant:
+        print("  fig_h1 skipped: no nt-neut/tl-neut records", file=sys.stderr)
+        return []
+    # Tag each record with its arm to avoid recomputing in the inner loop.
+    for r in relevant:
+        r["_arm_h1"] = arm_for(bool(r["with_tools_dir"]),
+                                int(r["prompt_variant"]))
+    models = _models_present(relevant)
+    width = 0.40
+    written = []
+    arm_color = {"nt-neut": "#888888", "tl-neut": "#2E86AB"}
+    arm_label = {"nt-neut": "no-tools (neut)", "tl-neut": "tools (neut)"}
+    for task in TASKS:
+        sub = [r for r in relevant if r["task"] == task]
+        if not sub:
+            print(f"  fig_h1[{task}] skipped (no records)", file=sys.stderr)
+            continue
+        fig, ax = plt.subplots(figsize=(max(7.5, 0.95 * len(models) + 4.0), 4.4))
+        centers = []
+        for i, m in enumerate(models):
+            for j, arm in enumerate(arms):
+                cell = [r for r in sub if r["model_dir"] == m and r["_arm_h1"] == arm]
+                k, n = _agg_rate(cell)
+                x = i + (j - 0.5) * width * 1.05
+                _bar_with_ci(ax, x, k, n, arm_color[arm], hatch=None,
+                             label=None, width=width, draw_ci=draw_ci)
+            centers.append(i)
+        handles = [_legend_handle(arm_color[a], arm_label[a]) for a in arms]
+        ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0),
+                  fontsize=8, framealpha=0.9)
+        _setup_rate_axes(ax, centers, models,
+                         f"H1 isolation · {TASK_LABELS[task]}: tool utility at "
+                         f"byte-identical prompts (sweep-5 v11-v13)"
+                         + ("  (Wilson 95% CI)" if draw_ci else ""))
+        out = outdir / f"plot_h1_isolation__{task}.png"
+        fig.tight_layout()
+        fig.savefig(out, dpi=160, bbox_inches="tight")
+        plt.close(fig)
+        written.append(out.name)
+    return written
 
 
 def _parse_figs(spec: str) -> set[str]:
     if spec == "all":
-        out = {"1", "2", "4", "5", "6", "7", "8a", "8b", "8c"}
+        out = {"1", "2", "4", "5", "6", "7", "8a", "8b", "8c", "h1"}
         return out
     out: set[str] = set()
     for piece in spec.split(","):
@@ -762,11 +868,6 @@ def _parse_figs(spec: str) -> set[str]:
             continue
         if piece == "8":
             out.update({"8a", "8b", "8c"})
-        elif piece == "3":
-            sys.exit(
-                "--figs: chain-focused fig 3 archived 2026-05-05 (see CHANGELOG); "
-                f"valid: {sorted(FIG_KEYS)} or 'all'"
-            )
         elif piece in FIG_KEYS:
             out.add(piece)
         else:
@@ -782,8 +883,7 @@ def main():
     ap.add_argument("root", nargs="?", type=Path, default=None,
                     help=f"results root (default: <repo>/{DEFAULT_CHECKPOINT})")
     ap.add_argument("--figs", default="all",
-                    help="comma list (1,2,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'. "
-                         "Chain-focused fig 3 was removed 2026-05-05.")
+                    help="comma list (1,2,4,5,6,7,8a,8b,8c or 8 for all 8x); 'all'.")
     ap.add_argument("--no-ci", dest="ci", action="store_false", default=True,
                     help="omit Wilson 95%% CI whiskers / ribbons")
     args = ap.parse_args()
@@ -818,6 +918,7 @@ def main():
     if "8a" in figs: written += fig8a(records, outdir, args.ci)
     if "8b" in figs: written += fig8b(records, outdir, args.ci)
     if "8c" in figs: written += fig8c(records, outdir, args.ci)
+    if "h1" in figs: written += fig_h1(records, outdir, args.ci)
 
     print(f"wrote {len(written)} files → {outdir}", file=sys.stderr)
     for f in written:

@@ -1,6 +1,6 @@
 # PlanBench arm — session handoff (2026-05-18)
 
-Snapshot of where the PlanBench integration stands so the next session can resume cleanly. This is a working doc; once the smoke validates and the first real sweep lands, fold the resolved sections into `EXPERIMENTS_FLOW.md §12` / `CHANGELOG.md` and either delete this file or archive it.
+Snapshot of where the PlanBench integration stands so the next session can resume cleanly. This is a working doc; once the smoke validates and the first real sweep lands, fold the resolved sections into `EXPERIMENTS_FLOW.md §13` / `CHANGELOG.md` and either delete this file or archive it.
 
 ---
 
@@ -14,9 +14,9 @@ Snapshot of where the PlanBench integration stands so the next session can resum
 
 ## What this work is
 
-`pddl-copilot-experiments` gets a second evaluation arm running the [PlanBench](https://github.com/karthikv792/LLMs-Planning) benchmark alongside (not replacing) the existing 5-task `run_experiment.py` matrix. Scope: all 10 PlanBench tasks × canonical Blocksworld + Logistics + Depots × our existing Ollama + vLLM model fleet. v1 is the vanilla leaderboard (no MCP tools during response generation); the tool-using arm is tracked as ISS-021 in OPEN_ISSUES.md.
+`pddl-copilot-experiments` gets a second evaluation arm running the [PlanBench](https://github.com/karthikv792/LLMs-Planning) benchmark alongside (not replacing) the existing 5-task `run_experiment.py` matrix. Scope: all 10 PlanBench tasks × canonical Blocksworld + Logistics + Depots × our existing Ollama + vLLM model fleet. v1 is the vanilla leaderboard (no MCP tools during response generation); the tool-using arm is tracked as ISS-022 in OPEN_ISSUES.md.
 
-Full methodology is in `EXPERIMENTS_FLOW.md §12`. Operator usage is in `planbench/README.md`.
+Full methodology is in `EXPERIMENTS_FLOW.md §13`. Operator usage is in `planbench/README.md`.
 
 Original brainstorm + plan-review-simplify ran 2026-05-17 → 2026-05-18 in the same session.
 
@@ -41,9 +41,9 @@ Original brainstorm + plan-review-simplify ran 2026-05-17 → 2026-05-18 in the 
 - `.claude/skills/cluster-ops/scripts/status_planbench.sh` — minimal model × config completion-count matrix (no Δ-table / pace / ETA yet).
 - `.claude/skills/cluster-ops/SKILL.md` — documents the new flag.
 - `.gitignore` — adds `external/`.
-- `EXPERIMENTS_FLOW.md` — new §12 (PlanBench arm methodology).
+- `EXPERIMENTS_FLOW.md` — new §13 (PlanBench arm methodology).
 - `development/CHANGELOG.md` — 2026-05-18 entry.
-- `development/OPEN_ISSUES.md` — new ISS-021 (v2 tool-using arm).
+- `development/OPEN_ISSUES.md` — new ISS-022 (v2 tool-using arm).
 - `development/PLANBENCH_HANDOFF.md` — this file.
 
 **Sibling repo (`SPL-BGU/pddl-copilot`, branch `planbench-integration`):**
@@ -153,9 +153,9 @@ Note the `apply_patches.py` re-run is required — the existing cluster checkout
 
 ### Open follow-ups (not blocking v1 smoke)
 
-- **ISS-021: v2 tool-using arm.** Gated on the two MCP plugin extensions in the sibling repo's `planbench-integration` branch (`specs-for-plan-bench.md`). Sequencing: sibling repo lands `validate_plan_structured` + `optimal_plan`, then this repo adds `pddl_copilot_tools__*` engine using `pddl_eval.chat.MCPPlanner`.
-- **`llm_plan_pipeline.py` upstream quirk (documented, not patched).** The pipeline script doesn't forward `--specific_instances` to `response_generation.get_responses`. Our cluster sbatch sidesteps this by calling `response_generation.py` and `response_evaluation.py` as standalone scripts. Not a blocker; documented in `EXPERIMENTS_FLOW.md §12`.
-- **`--specific_instances 1` upstream quirk.** Requires `instance-0.pddl` (few-shot index = `i - n_examples = 0`) which doesn't exist. Smoke with `>= 2`. Not a blocker; documented in `EXPERIMENTS_FLOW.md §12`.
+- **ISS-022: v2 tool-using arm.** Gated on the two MCP plugin extensions in the sibling repo's `planbench-integration` branch (`specs-for-plan-bench.md`). Sequencing: sibling repo lands `validate_plan_structured` + `optimal_plan`, then this repo adds `pddl_copilot_tools__*` engine using `pddl_eval.chat.MCPPlanner`.
+- **`llm_plan_pipeline.py` upstream quirk (documented, not patched).** The pipeline script doesn't forward `--specific_instances` to `response_generation.get_responses`. Our cluster sbatch sidesteps this by calling `response_generation.py` and `response_evaluation.py` as standalone scripts. Not a blocker; documented in `EXPERIMENTS_FLOW.md §13`.
+- **`--specific_instances 1` upstream quirk.** Requires `instance-0.pddl` (few-shot index = `i - n_examples = 0`) which doesn't exist. Smoke with `>= 2`. Not a blocker; documented in `EXPERIMENTS_FLOW.md §13`.
 - **PlanBench upstream PR.** The filter mutation fix (bug #3 above) is worth proposing upstream once we have a settled corpus. File against `karthikv792/LLMs-Planning`.
 - **`status_planbench.sh` Δ-table.** Current renderer is minimal (model × config done counts). Once the PlanBench corpus is substantial, port the 5task renderer's Δ-table / pace / ETA machinery.
 

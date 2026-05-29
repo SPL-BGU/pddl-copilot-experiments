@@ -37,6 +37,7 @@ FR_OLLAMA_PARSE_ERROR = "ollama_parse_error"
 FR_TRUNCATED_NO_ANSWER = "truncated_no_answer"
 FR_THINK_OVERFLOW = "think_overflow"
 FR_TOOL_NOT_SELECTED = "tool_not_selected"
+FR_WRONG_TOOL = "wrong_tool"
 FR_TOOL_ERROR = "tool_error"
 FR_LOOP_EXHAUSTED = "loop_exhausted"
 FR_PLAN_INVALID = "plan_invalid"
@@ -46,6 +47,16 @@ FR_SIMULATE_EMPTY = "simulate_empty"
 FR_RESULT_MISMATCH = "result_mismatch"
 FR_FORMAT_PARSE_FAIL = "format_parse_fail"
 FR_UNKNOWN = "unknown"
+
+# The three task-aligned validator tools (marketplace 1.4.0). A `validate_*`
+# trial that invoked one of these but not the task-matching one is graded
+# FR_WRONG_TOOL — distinct from FR_TOOL_NOT_SELECTED (no validator-family
+# call at all) and FR_VERDICT_MISMATCH (right tool, wrong verdict).
+_VALIDATE_TOOL_NAMES = frozenset({
+    "validate_domain",
+    "validate_problem",
+    "validate_plan",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -60,32 +71,6 @@ def _used_tool(tool_calls: list[dict], name: str) -> bool:
 def _get_tool_results(tool_calls: list[dict], name: str) -> list[str]:
     """Return result strings from all calls to *name*."""
     return [tc["result"] for tc in tool_calls if tc["name"] == name and "result" in tc]
-
-
-def _call_matches_validate_task(tc: dict, task: str) -> bool:
-    """True iff a `validate_pddl_syntax` call's argument shape matches *task*.
-
-    The tool is polymorphic — its `valid` field reflects whichever PDDL
-    layer was supplied. A {domain}-only call returns the domain's verdict
-    even when the model is being graded on plan validity; mismatch the
-    shape and every solvable benchmark trivially scores FR_OK. This
-    function is the gate. Caller is expected to have already filtered on
-    `tc["name"] == "validate_pddl_syntax"`.
-
-      validate_domain  — neither `problem` nor `plan` may be present.
-      validate_problem — `problem` required, `plan` forbidden.
-      validate_plan    — `plan` required.
-    """
-    args = tc.get("arguments", {}) or {}
-    has_problem = bool(args.get("problem"))
-    has_plan = bool(args.get("plan"))
-    if task == "validate_domain":
-        return not has_problem and not has_plan
-    if task == "validate_problem":
-        return has_problem and not has_plan
-    if task == "validate_plan":
-        return has_plan
-    return False
 
 
 def _extract_plan_from_tool_result(raw: str) -> list[str]:
@@ -271,7 +256,7 @@ def extract_verdict(response: str) -> bool | None:
 async def _validate_model_plan(
     mcp: MCPPlanner, domain_pddl: str, problem_pddl: str, plan_lines: list[str],
 ) -> bool | None:
-    """Call validate_pddl_syntax on the model's extracted plan.
+    """Validate a model-emitted plan via the validator MCP tool.
 
     Returns True iff pyvalidator reports valid, False if the plan is empty
     or pyvalidator reports invalid, None if the MCP transport failed or the
@@ -284,7 +269,7 @@ async def _validate_model_plan(
     plan_str = "\n".join(plan_lines)
     try:
         raw = await mcp.call_tool(
-            "validate_pddl_syntax",
+            "validate_plan",
             {"domain": domain_pddl, "problem": problem_pddl, "plan": plan_str},
         )
     except Exception:
@@ -292,11 +277,19 @@ async def _validate_model_plan(
     return _parse_validation_verdict(raw)
 
 
+_TOOL_ERROR_PREFIXES = ("Tool error", "Error executing tool")
+
+
 def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
     """True if any call to *name* failed.
 
-    Two error shapes are recognized:
+    Three error shapes are recognized:
       - MCP transport errors, surfaced as strings prefixed with "Tool error".
+      - FastMCP argument-validation errors, surfaced as strings prefixed with
+        "Error executing tool" (e.g. model omits a required pydantic field,
+        or wraps args as `_raw_arguments`). Without this branch the unparseable
+        result falls through to FR_VERDICT_MISMATCH / FR_RESULT_MISMATCH and
+        gets credited to the model as a confident-wrong prediction.
       - Plugin-side errors, returned as JSON like {"error": true, "message": ...}.
         The pddl-solver / pddl-validator plugins use this shape for things
         like bad arguments, missing files, planner timeouts, etc.
@@ -305,7 +298,7 @@ def _tool_error_seen(tool_calls: list[dict], name: str) -> bool:
         if tc.get("name") != name:
             continue
         raw = tc.get("result", "")
-        if isinstance(raw, str) and raw.startswith("Tool error"):
+        if isinstance(raw, str) and raw.startswith(_TOOL_ERROR_PREFIXES):
             return True
         parsed = _safe_json_loads(raw)
         if isinstance(parsed, dict) and parsed.get("error"):
@@ -407,24 +400,24 @@ async def check_success(
         truth = gt.get(gt_key)
 
         if tool_calls:
-            selected = _used_tool(tool_calls, "validate_pddl_syntax")
-            if not selected:
-                return False, False, FR_TOOL_NOT_SELECTED
-            if truth is None:
-                return True, False, FR_UNKNOWN
-            # The verdict check must match the call's argument shape to the
-            # task — see _call_matches_validate_task for the rule and why.
-            for tc in tool_calls:
-                if tc.get("name") != "validate_pddl_syntax":
-                    continue
-                if not _call_matches_validate_task(tc, task):
-                    continue
-                verdict = _parse_validation_verdict(tc.get("result", ""))
-                if verdict == truth:
-                    return True, True, FR_OK
-            if _tool_error_seen(tool_calls, "validate_pddl_syntax"):
-                return True, False, FR_TOOL_ERROR
-            return True, False, FR_VERDICT_MISMATCH
+            # Task name == expected validator-tool name (1:1 since the
+            # marketplace 1.4.0 split). Three failure modes are now
+            # distinguished — see the FR vocabulary comment block above.
+            if _used_tool(tool_calls, task):
+                if truth is None:
+                    return True, False, FR_UNKNOWN
+                for tc in tool_calls:
+                    if tc.get("name") != task:
+                        continue
+                    verdict = _parse_validation_verdict(tc.get("result", ""))
+                    if verdict == truth:
+                        return True, True, FR_OK
+                if _tool_error_seen(tool_calls, task):
+                    return True, False, FR_TOOL_ERROR
+                return True, False, FR_VERDICT_MISMATCH
+            if any(tc.get("name") in _VALIDATE_TOOL_NAMES for tc in tool_calls):
+                return False, False, FR_WRONG_TOOL
+            return False, False, FR_TOOL_NOT_SELECTED
 
         # PR-4: try structured ValidateResponse.verdict first, then the
         # free-text VERDICT: regex as fallback. FR_FORMAT_PARSE_FAIL only
@@ -523,6 +516,102 @@ def _apply_truncation_override(success: bool, truncated: bool, failure_reason: s
     return failure_reason
 
 
+# Reasons that *could* be the legacy-empty-output bucket — the runtime
+# classifier emits FR_TRUNCATED_NO_ANSWER for these via _apply_truncation_override,
+# so they're the only ones a read-time relabel can confidently re-bucket.
+_LEGACY_RELABEL_CANDIDATES = (FR_TRUNCATED_NO_ANSWER,) + _TRUNCATION_OVERRIDE_REASONS
+
+
+def relabel_truncated_taxonomy(
+    failure_reason: str,
+    *,
+    truncated: bool,
+    response: str,
+    think_mode: str,
+) -> str:
+    """Read-time relabel: split FR_TRUNCATED_NO_ANSWER into think_overflow vs
+    truncated_no_answer based on whether the model emitted any visible response.
+
+    Pure, side-effect-free. Used by analyzers (summary.py, build_deck.py) to
+    re-bucket counts when reading legacy trials produced before the runtime
+    predicate fix lands. Does NOT mutate trials.jsonl. The runtime classifier
+    in `_classify_step_failure` is intentionally unchanged here so a sweep
+    that's still in flight keeps a homogeneous corpus identity.
+
+    Predicate:
+        truncated AND failure_reason ∈ {truncated_no_answer, plan_invalid,
+            no_verdict_parsed, simulate_empty, format_parse_fail, unknown}
+        AND response == "" AND think_mode == "on"
+        → FR_THINK_OVERFLOW
+
+    The think_mode gate avoids tagging think=off rows where an empty-response
+    truncation has no reasoning-spiral explanation (the small Qwen3.5 sizes
+    occasionally hit this; ~0.34% of trials).
+    """
+    if not truncated:
+        return failure_reason
+    if failure_reason not in _LEGACY_RELABEL_CANDIDATES:
+        return failure_reason
+    if (response or "").strip():
+        return failure_reason
+    if think_mode != "on":
+        return failure_reason
+    return FR_THINK_OVERFLOW
+
+
+_ARG_ERROR_RELABEL_CANDIDATES = frozenset({
+    FR_VERDICT_MISMATCH,
+    FR_RESULT_MISMATCH,
+    FR_PLAN_INVALID,
+})
+
+_ARG_ERROR_TOOL_NAMES_BY_TASK: dict[str, tuple[str, ...]] = {
+    "validate_plan": ("validate_plan",),
+    "validate_domain": ("validate_domain",),
+    "validate_problem": ("validate_problem",),
+    "simulate": ("get_state_transition",),
+    "solve": ("classic_planner", "numeric_planner"),
+}
+
+
+def relabel_tool_arg_error_taxonomy(
+    failure_reason: str,
+    *,
+    task: str,
+    tool_calls: list[dict],
+) -> str:
+    """Read-time relabel: FastMCP arg-validation errors mis-binned as
+    FR_VERDICT_MISMATCH / FR_RESULT_MISMATCH / FR_PLAN_INVALID get moved to
+    FR_TOOL_ERROR.
+
+    Mirrors `relabel_truncated_taxonomy`: pure, side-effect-free, used by
+    analyzers (build_deck.py) to recover trials emitted before the runtime
+    `_tool_error_seen` recognized the "Error executing tool ..." prefix. Does
+    NOT mutate trials.jsonl. The runtime classifier in `check_success` now
+    bins the same shape as FR_TOOL_ERROR going forward; this relabel is for
+    in-flight / legacy corpora only.
+
+    Predicate:
+        failure_reason ∈ {verdict_mismatch, result_mismatch, plan_invalid}
+        AND task is in the known task→tool map
+        AND some tool_call for one of the task-relevant tool names has a
+            result string prefixed with one of `_TOOL_ERROR_PREFIXES`
+        → FR_TOOL_ERROR
+    """
+    if failure_reason not in _ARG_ERROR_RELABEL_CANDIDATES:
+        return failure_reason
+    names = _ARG_ERROR_TOOL_NAMES_BY_TASK.get(task)
+    if not names:
+        return failure_reason
+    for tc in tool_calls or ():
+        if tc.get("name") not in names:
+            continue
+        raw = tc.get("result", "")
+        if isinstance(raw, str) and raw.startswith(_TOOL_ERROR_PREFIXES):
+            return FR_TOOL_ERROR
+    return failure_reason
+
+
 def _classify_step_failure(
     success: bool,
     done_reason: str,
@@ -548,11 +637,8 @@ def _classify_step_failure(
          (FR_PLAN_INVALID, FR_NO_VERDICT_PARSED, FR_SIMULATE_EMPTY,
          FR_UNKNOWN) to FR_TRUNCATED_NO_ANSWER when done_reason=="length".
 
-    Used by both the single-task and chain paths so step records share
-    failure-tag semantics. The `thinking_text`/`response_text`/`error`
-    kwargs default to empty strings; chain callers that don't pass them
-    skip the FR_THINK_OVERFLOW step (matches pre-2026-04-29 behavior —
-    chain steps land in FR_TRUNCATED_NO_ANSWER instead).
+    The `thinking_text`/`response_text`/`error` kwargs default to empty
+    strings; callers that don't pass them skip the FR_THINK_OVERFLOW step.
     """
     if (not success
         and not error
