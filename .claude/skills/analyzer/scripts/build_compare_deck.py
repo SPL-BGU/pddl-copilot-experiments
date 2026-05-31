@@ -134,7 +134,7 @@ def fig_delta_heatmap(CANON, ANON, think, min_n, canon_label, anon_label, out_pn
 
 def fig_task_paired(CANON, ANON, task, min_n, canon_label, anon_label, out_png):
     """1×2 (think off/on); paired canonical vs anon bars per matched (arm, model)."""
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5.6), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(15, 6.2), sharey=True)
     for col, think in enumerate(["off", "on"]):
         ax = axes[col]
         cells = []  # (arm, model, sc, nc, sa, na)
@@ -174,12 +174,26 @@ def fig_task_paired(CANON, ANON, task, min_n, canon_label, anon_label, out_png):
             if prev_arm is not None and arm != prev_arm:
                 ax.axvline(xi - 0.5, color="#ccc", linewidth=0.8, linestyle="--")
             prev_arm = arm
+        # x-axis: only the (rotated) model name + n sits on the ticks; the arm is
+        # lifted into a centered second-tier group label below each contiguous arm
+        # run (the dashed separators above already mark the boundaries). This stops
+        # the long "no-tools(neut)" strings from colliding with their neighbours.
         ax.set_xticks(x)
         ax.set_xticklabels(
             [f"{MODEL_DISP[m].replace('Qwen3.5-', 'Q3.5-').replace('Qwen3.6-', 'Q3.6-').replace('Gemma4-', 'G4-')}\n"
-             f"{ARM_DISP[arm]}\nn={nc}/{na}"
+             f"n={nc}/{na}"
              for (arm, m, sc, nc, sa, na) in cells],
-            fontsize=6.5)
+            rotation=30, ha="right", rotation_mode="anchor", fontsize=7)
+        trans = ax.get_xaxis_transform()  # x = data coords, y = axes fraction
+        run_start = 0
+        for i in range(len(cells) + 1):
+            if i == len(cells) or cells[i][0] != cells[run_start][0]:
+                arm = cells[run_start][0]
+                center = (x[run_start] + x[i - 1]) / 2.0
+                ax.text(center, -0.205, ARM_DISP[arm], transform=trans,
+                        ha="center", va="top", fontsize=9, fontweight="bold",
+                        color="#444")
+                run_start = i
         ax.set_title(f"think={think}", fontsize=11)
         ax.set_ylim(0, 105)
         ax.grid(axis="y", linestyle=":", alpha=0.4)
@@ -191,7 +205,7 @@ def fig_task_paired(CANON, ANON, task, min_n, canon_label, anon_label, out_png):
                fontsize=10, frameon=False, bbox_to_anchor=(0.5, 1.02))
     fig.suptitle(f"{TASK_LABELS[task]} — success: {canon_label} vs {anon_label}  "
                  f"(Δ = canonical − anon; * = CI-disjoint)", fontsize=12, y=1.06)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0, 0.10, 1, 1])  # reserve bottom band for the arm-tier labels
     fig.savefig(out_png, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
