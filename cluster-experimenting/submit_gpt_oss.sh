@@ -62,6 +62,12 @@ MODEL="gpt-oss:120b"
 # slack (gpt-oss is MXFP4 on a card the guard was never tuned for).
 # Propagated to the job via submit_with_rtx.sh's `sbatch --export=ALL`.
 export GPU_MEM_UTIL="0.82"
+# Write the vLLM serve log directly to the persistent logs dir. gpt-oss:120b
+# is large enough to risk a host-RAM cgroup OOM during cold-load (smoke
+# 17951156 died at ~95% of the 80G cap); that's a SIGKILL the sbatch's EXIT
+# trap can't catch, so the scratch-then-copy path loses the log. Persisting
+# it inline is what makes a failure diagnosable (host-OOM vs vLLM crash).
+export PERSIST_SERVE_LOG="1"
 
 FORWARD=()
 HAS_TMP=0

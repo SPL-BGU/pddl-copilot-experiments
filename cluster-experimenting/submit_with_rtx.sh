@@ -467,6 +467,11 @@ fi
 if [ -n "${GPU_MEM_UTIL:-}" ]; then
     EXPORT_LIST="${EXPORT_LIST},GPU_MEM_UTIL=${GPU_MEM_UTIL}"
 fi
+# PERSIST_SERVE_LOG=1 tells the sbatch to write the vLLM serve log straight
+# into the persistent logs dir (survives a SIGKILL/OOM the EXIT trap can't).
+if [ -n "${PERSIST_SERVE_LOG:-}" ]; then
+    EXPORT_LIST="${EXPORT_LIST},PERSIST_SERVE_LOG=${PERSIST_SERVE_LOG}"
+fi
 
 # Add --array only when N>1; single-cell submissions remain plain sbatch.
 ARRAY_ARG=()

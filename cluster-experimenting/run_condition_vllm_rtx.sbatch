@@ -200,7 +200,18 @@ for MODEL in $MODELS; do
     echo "####################################################################"
 
     PORT="$(free_port $(( 11500 + (${SLURM_JOBID:-0} % 100) )))"
-    SERVE_LOG="$WORK/vllm-${MODEL_TAG}.log"
+    # Serve log normally lives on scratch and is copied to the persistent
+    # logs dir by the EXIT trap. But a cgroup OOM-kill is SIGKILL, which bash
+    # cannot trap → the copy never runs and scratch is reaped with the log
+    # (exactly how the gpt-oss:120b smoke 17951156 lost its serve log). When
+    # PERSIST_SERVE_LOG=1, write the serve log DIRECTLY into the persistent
+    # logs dir so it survives any kill, including SIGKILL. Default path
+    # (unset) is byte-identical to before.
+    if [ "${PERSIST_SERVE_LOG:-0}" = "1" ]; then
+        SERVE_LOG="$EXPT_ROOT/cluster-experimenting/logs/${SLURM_JOBID:-local}-vllm-${MODEL_TAG}.log"
+    else
+        SERVE_LOG="$WORK/vllm-${MODEL_TAG}.log"
+    fi
 
     echo "Starting vLLM on localhost:$PORT serving $HF_MODEL"
     # Echo the resolved serve flags into job stdout so a smoke/post-mortem
