@@ -45,15 +45,14 @@ SUBTITLE = (
     "sweep-5v2 = CANONICAL corpus (regular domains/, NOT anonymised) · "
     "active arms: neutral v11-v13 + steered v14-v16 · all-tools vs no-tools · think on/off · "
     "no-tools REUSED from sweep-5 (complete, 4560/cell); with-tools rerun fresh under updated MCP server · "
-    "PRELIMINARY rebuild 2026-05-29 (~1 day into 48h jobs). with-tools coverage = gemma4 + qwen3.6:35b "
-    "only (Qwen3.5 with-tools cells still PENDING). min-out 100 trials; missing bars = cell not yet at threshold."
+    "rebuild 2026-05-31 — CANONICAL corpus now COMPLETE: all 20 cells (no-tools 4560/cell, "
+    "with-tools 9120/cell) across all 5 models. min-out 100 retained for parity with the anon (sweep-6) deck."
 )
 
 SLIDE_CAPTIONS = {
     "success_off":
-        "PRELIMINARY view (2026-05-29): per-task success on sweep-5v2 CANONICAL cells (v11-v16, min-out 100). "
-        "no-tools bars are complete (reused sweep-5, 4560/cell); with-tools arms exist only for gemma4 + "
-        "qwen3.6:35b so far (the Qwen3.5 with-tools cells are still queued, so those models show no-tools bars only). "
+        "Per-task success on sweep-5v2 CANONICAL cells (v11-v16). 2026-05-31: COMPLETE — no-tools 4560/cell "
+        "(reused sweep-5), with-tools 9120/cell, all 5 models. "
         "Pair against the sweep-6 (anon) deck for the contamination delta.",
     "success_on":
         "Same chart, think=on. Note Qwen3.5-0.8B on/no-tools is dominated by truncated_no_answer "
@@ -61,7 +60,7 @@ SLIDE_CAPTIONS = {
         "deck shows the same cells on the lexically-renamed corpus.",
     "tool_selection":
         "% of with-tools trials where the model invoked the expected planner/validator tool, "
-        "over v11-v16 partial cells (gemma4 + qwen3.6:35b only at this rebuild).",
+        "over v11-v16 cells (all 5 models, complete).",
     "failure_breakdown_off":
         "100%-stacked share of failure reasons per (model × arm × task) at think=off, CANONICAL corpus. "
         "verdict_mismatch and format_parse_fail dominate; truncated_no_answer present on rows that hit the "

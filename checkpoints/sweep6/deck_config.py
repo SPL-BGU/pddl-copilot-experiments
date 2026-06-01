@@ -38,24 +38,24 @@ SUBTITLE = (
     "sweep-6 = anon-probe (domains-anon/, lexically renamed corpus) · "
     "sweep-6 active arms: neutral v11-v13 + steered v14-v16 · "
     "all-tools vs no-tools · think on/off · "
-    "PRELIMINARY rebuild 2026-05-29 (~1 day into 48h jobs). with-tools coverage = gemma4 + "
-    "qwen3.6:35b only (Qwen3.5 with-tools cells still PENDING); no-tools missing 9B-off (unstarted) "
-    "and only-partial on 4B. min-out 100 trials; missing bars = cell not yet at threshold."
+    "rebuild 2026-05-31 — anon corpus 17/20 cells COMPLETE; all no-tools complete (4560/cell). "
+    "3 with-tools cells still in flight: Qwen3.5-4B off (~8.7k/9120), 4B on (~7.9k), 9B on (~5.0k) — "
+    "their bars/CIs are provisional. min-out 100 trials."
 )
 
 SLIDE_CAPTIONS = {
     "success_off":
-        "PRELIMINARY view (2026-05-29): per-task success on partial sweep-6 ANON cells (v11-v16, min-out 100). "
-        "Missing bars = cell not yet at threshold. with-tools arms exist only for gemma4 + qwen3.6:35b so far; "
-        "the Qwen3.5 sizes show no-tools bars only (their with-tools cells are still queued). 4B no-tools is "
-        "very early (~150 trials) so its CIs are wide.",
+        "Per-task success on sweep-6 ANON cells (v11-v16). 2026-05-31: all no-tools complete (4560/cell); "
+        "with-tools complete for 0.8B, 9B-off, gemma4, qwen3.6:35b. The 3 in-flight with-tools cells "
+        "(Qwen3.5-4B off/on, 9B on) are still accumulating, so their bars are provisional. "
+        "Pair against the sweep5v2 (canonical) deck for the contamination delta.",
     "success_on":
         "Same chart, think=on. Note Qwen3.5-0.8B on/no-tools is dominated by truncated_no_answer "
         "(reasoning consumes the entire output budget). Pair against the sweep5v2 (canonical) deck — "
         "the anon-vs-canonical gap on these same cells is the contamination signal.",
     "tool_selection":
         "% of with-tools trials where the model invoked the expected planner/validator tool, "
-        "over v11-v16 partial cells.",
+        "over v11-v16 cells (Qwen3.5-4B off/on and 9B on still in flight).",
     "failure_breakdown_off":
         "100%-stacked share of failure reasons per (model × arm × task) at think=off. "
         "verdict_mismatch and format_parse_fail dominate; truncated_no_answer present on the "
