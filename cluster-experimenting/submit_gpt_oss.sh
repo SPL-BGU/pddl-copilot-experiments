@@ -78,6 +78,7 @@ while [[ $# -gt 0 ]]; do
             exit 1 ;;
         --tmp) HAS_TMP=1; FORWARD+=("$1" "$2"); shift 2 ;;
         --time) HAS_TIME=1; FORWARD+=("$1" "$2"); shift 2 ;;
+        --dependency) FORWARD+=("$1" "$2"); shift 2 ;;
         --smoke|--smoke-shuffle) IS_SMOKE=1; FORWARD+=("$1"); shift ;;
         -*) FORWARD+=("$1"); shift ;;
         *)

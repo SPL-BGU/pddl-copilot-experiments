@@ -139,6 +139,7 @@ EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
 TIME_OVERRIDE=""
 TMP_OVERRIDE=""
+DEP_OVERRIDE=""
 INCLUDE_NO_TOOLS_STEERED=0
 DOMAINS_DIR=""
 RUN_TAG=""
@@ -161,6 +162,7 @@ while [[ $# -gt 0 ]]; do
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
         --time) shift; TIME_OVERRIDE="$1"; shift ;;
         --tmp) shift; TMP_OVERRIDE="$1"; shift ;;
+        --dependency) shift; DEP_OVERRIDE="$1"; shift ;;
         --include-no-tools-steered) INCLUDE_NO_TOOLS_STEERED=1; shift ;;
         --domains-dir) shift; DOMAINS_DIR="$1"; shift ;;
         --run-tag) shift; RUN_TAG="$1"; shift ;;
@@ -487,12 +489,22 @@ if [ -n "$TMP_OVERRIDE" ]; then
     TMP_ARG=(--tmp="$TMP_OVERRIDE")
 fi
 
+# --dependency passthrough: schedule this submission to start only after
+# another job reaches the given state (e.g. afterany:JID, afterok:JID).
+# Used to chain the gpt-oss smoke behind the Qwen rerun so they don't
+# contend and run in a defined order. Unset → no dependency.
+DEP_ARG=()
+if [ -n "$DEP_OVERRIDE" ]; then
+    DEP_ARG=(--dependency="$DEP_OVERRIDE")
+fi
+
 cmd=(sbatch
     --job-name="$JOB_NAME"
     --gpus="${GPU_TYPE}:1"
     "$MEM_ARG"
     "${TIME_ARG[@]}"
     "${TMP_ARG[@]}"
+    "${DEP_ARG[@]}"
     "${ARRAY_ARG[@]}"
     "${EXCLUDE_ARG[@]}"
     --export="$EXPORT_LIST"
