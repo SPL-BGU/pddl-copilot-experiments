@@ -498,9 +498,20 @@ if [ -n "$DEP_OVERRIDE" ]; then
     DEP_ARG=(--dependency="$DEP_OVERRIDE")
 fi
 
+# The sbatch hardcodes `#SBATCH --constraint=rtx_6000` (filters the
+# mislabeled ee-l40s nodes for the rtx_6000 path). That directive is NOT
+# overridden by `--gpus=rtx_pro_6000:1`, so a rtx_pro_6000 request asks for
+# a pro GPU on a node that must carry the `rtx_6000` feature → impossible
+# ("Requested node configuration is not available"). Emit the matching
+# constraint on the CLI (overrides the directive). The SLURM feature name
+# equals the GPU-type token for both classes (verified: pro nodes carry
+# feature `rtx_pro_6000`, 48GB nodes carry `rtx_6000`, mutually exclusive),
+# so `--constraint=$GPU_TYPE` is correct for both — and byte-identical to the
+# directive on the rtx_6000 path (no behavior change there).
 cmd=(sbatch
     --job-name="$JOB_NAME"
     --gpus="${GPU_TYPE}:1"
+    --constraint="$GPU_TYPE"
     "$MEM_ARG"
     "${TIME_ARG[@]}"
     "${TMP_ARG[@]}"
