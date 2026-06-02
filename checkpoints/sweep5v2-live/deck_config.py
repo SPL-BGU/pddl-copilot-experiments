@@ -45,8 +45,9 @@ SUBTITLE = (
     "sweep-5v2 = CANONICAL corpus (regular domains/, NOT anonymised) · "
     "active arms: neutral v11-v13 + steered v14-v16 · all-tools vs no-tools · think on/off · "
     "no-tools REUSED from sweep-5 (complete, 4560/cell); with-tools rerun fresh under updated MCP server · "
-    "rebuild 2026-05-31 — CANONICAL corpus now COMPLETE: all 20 cells (no-tools 4560/cell, "
-    "with-tools 9120/cell) across all 5 models. min-out 100 retained for parity with the anon (sweep-6) deck."
+    "rebuild 2026-06-01 — CANONICAL corpus COMPLETE: all 20 cells (no-tools 4560/cell, "
+    "with-tools 9120/cell) across all 5 models; Qwen3.5-0.8B with-tools rerun completed, verified clean + "
+    "deduped (9120) 2026-06-01. min-out 100 retained for parity with the anon (sweep-6) deck."
 )
 
 SLIDE_CAPTIONS = {

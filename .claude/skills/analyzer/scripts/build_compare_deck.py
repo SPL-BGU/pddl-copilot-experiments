@@ -232,6 +232,11 @@ def main():
         f"with-tools mostly complete (Qwen3.5-4B / 9B-on anon cells slightly under-filled)",
     )
 
+    # Glossary first (defines neutral/steered/canonical/anonymised + the arm
+    # labels) so a reader without the presenter can decode the tables; the
+    # "How to read this deck" slide below then covers the Δ comparison method.
+    bd.add_terminology_slide(prs)
+
     bd.add_text_slide(prs, "How to read this deck", [
         f"• Two corpora, same matrix: {args.canon_label} uses the regular domains/; {args.anon_label} "
         f"uses domains-anon/ — the SAME domains, lexically renamed (predicates/types/objects scrambled).",
