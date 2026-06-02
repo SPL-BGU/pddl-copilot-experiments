@@ -1,20 +1,27 @@
 #!/usr/bin/env bash
 # submit_planbench.sh — dispatch the PlanBench arm sbatch one-per-model.
 #
-# Each model gets its own sbatch on rtx_pro_6000:1 that walks
-# (task × config) in-process for cache locality. Mirrors the shape of
-# submit_with_rtx.sh but with PlanBench's (task, config) axes instead of
-# (think, condition).
+# Each model gets its own sbatch on rtx_6000:1 (same GPU class as the
+# 5-task arm) that walks (task × config) in-process for cache locality.
+# Mirrors the shape of submit_with_rtx.sh but with PlanBench's (task,
+# config) axes instead of (think, condition).
 #
 # Models are canonical tags resolved to HF ids by vllm_lookup
 # (lib/defaults.sh) — must be in PDDL_VLLM_VERIFIED_MODELS. The vLLM server
 # is self-deployed per-job by run_planbench_rtx.sbatch (Ollama retired
 # 2026-05-18; see CHANGELOG 2026-06-02).
 #
+# Walltime is passed on the CLI (overrides the sbatch's #SBATCH --time),
+# mirroring submit_with_rtx.sh. --smoke defaults to a SHORT 03:00:00 so the
+# job backfills into idle-GPU gaps instead of pending on (Priority) behind
+# higher-priority reservations (a 48h request can't slot into a busy
+# rtx_6000 partition). Full runs default to 2-00:00:00; override with --time.
+#
 # Usage:
 #   bash submit_planbench.sh --models Qwen3.5:0.8B Qwen3.5:4B
 #   bash submit_planbench.sh --models Qwen3.5:0.8B --tasks t1 t3 --configs blocksworld
 #   bash submit_planbench.sh --smoke              # 1 model × 1 task × 1 config × 3 instances
+#   bash submit_planbench.sh --time 12:00:00 --models Qwen3.5:0.8B
 #   bash submit_planbench.sh --dry-run --models Qwen3.5:0.8B
 
 set -euo pipefail
@@ -28,11 +35,12 @@ TASKS=""
 CONFIGS=""
 INSTANCES=""
 THINK="off"
+TIME_OVERRIDE=""
 SMOKE=0
 DRY_RUN=0
 
 usage() {
-    sed -n '2,12p' "$0" >&2
+    sed -n '2,25p' "$0" >&2
     exit 1
 }
 
@@ -66,6 +74,7 @@ while [[ $# -gt 0 ]]; do
             INSTANCES="${INSTANCES# }"
             ;;
         --think) THINK="$2"; shift 2 ;;
+        --time) TIME_OVERRIDE="$2"; shift 2 ;;
         --smoke) SMOKE=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         -h|--help) usage ;;
@@ -85,12 +94,23 @@ fi
 TASKS="${TASKS:-$PDDL_PLANBENCH_DEFAULT_TASKS}"
 CONFIGS="${CONFIGS:-$PDDL_PLANBENCH_DEFAULT_CONFIGS}"
 
+# Walltime, passed --time on the CLI (overrides the sbatch directive). Short
+# for smoke so it backfills; explicit override always wins.
+if [[ -n "$TIME_OVERRIDE" ]]; then
+    TIME="$TIME_OVERRIDE"
+elif [[ "$SMOKE" -eq 1 ]]; then
+    TIME="03:00:00"
+else
+    TIME="2-00:00:00"
+fi
+
 echo "PlanBench dispatch:"
 echo "  models   = ${MODELS[*]}"
 echo "  tasks    = $TASKS"
 echo "  configs  = $CONFIGS"
 echo "  instances= ${INSTANCES:-<full>}"
 echo "  think    = $THINK"
+echo "  time     = $TIME"
 echo "  smoke    = $SMOKE"
 [[ "$DRY_RUN" -eq 1 ]] && echo "  (dry-run — not submitting)"
 
@@ -122,6 +142,7 @@ for MODEL in "${MODELS[@]}"; do
 
     CMD=(sbatch
         --job-name="$JOB_NAME"
+        --time="$TIME"
         --export="$EXPORTS"
         "$SCRIPT_DIR/run_planbench_rtx.sbatch")
 
