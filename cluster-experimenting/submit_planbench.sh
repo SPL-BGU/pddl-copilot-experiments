@@ -17,10 +17,16 @@
 # higher-priority reservations (a 48h request can't slot into a busy
 # rtx_6000 partition). Full runs default to 2-00:00:00; override with --time.
 #
+# --gpu picks the GPU class (default rtx_6000, same as the 5-task arm). The
+# small smoke models (Qwen3.5:0.8B/4B) fit on a 24GB rtx_3090/rtx_4090 — use
+# --gpu rtx_3090 --gpu-mem-util 0.80 to run on free 3090/4090 capacity when
+# the rtx_6000 pool is saturated. Big AWQ models still need rtx_6000.
+#
 # Usage:
 #   bash submit_planbench.sh --models Qwen3.5:0.8B Qwen3.5:4B
 #   bash submit_planbench.sh --models Qwen3.5:0.8B --tasks t1 t3 --configs blocksworld
 #   bash submit_planbench.sh --smoke              # 1 model × 1 task × 1 config × 3 instances
+#   bash submit_planbench.sh --smoke --gpu rtx_3090 --gpu-mem-util 0.80
 #   bash submit_planbench.sh --time 12:00:00 --models Qwen3.5:0.8B
 #   bash submit_planbench.sh --dry-run --models Qwen3.5:0.8B
 
@@ -36,11 +42,13 @@ CONFIGS=""
 INSTANCES=""
 THINK="off"
 TIME_OVERRIDE=""
+GPU_TYPE="rtx_6000"
+GPU_MEM_UTIL_OVERRIDE=""
 SMOKE=0
 DRY_RUN=0
 
 usage() {
-    sed -n '2,25p' "$0" >&2
+    sed -n '2,31p' "$0" >&2
     exit 1
 }
 
@@ -75,6 +83,8 @@ while [[ $# -gt 0 ]]; do
             ;;
         --think) THINK="$2"; shift 2 ;;
         --time) TIME_OVERRIDE="$2"; shift 2 ;;
+        --gpu) GPU_TYPE="$2"; shift 2 ;;
+        --gpu-mem-util) GPU_MEM_UTIL_OVERRIDE="$2"; shift 2 ;;
         --smoke) SMOKE=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         -h|--help) usage ;;
@@ -111,6 +121,7 @@ echo "  configs  = $CONFIGS"
 echo "  instances= ${INSTANCES:-<full>}"
 echo "  think    = $THINK"
 echo "  time     = $TIME"
+echo "  gpu      = ${GPU_TYPE}:1${GPU_MEM_UTIL_OVERRIDE:+  (mem-util=$GPU_MEM_UTIL_OVERRIDE)}"
 echo "  smoke    = $SMOKE"
 [[ "$DRY_RUN" -eq 1 ]] && echo "  (dry-run — not submitting)"
 
@@ -139,10 +150,23 @@ for MODEL in "${MODELS[@]}"; do
     if [[ -n "$INSTANCES_ENC" ]]; then
         EXPORTS="$EXPORTS,PLANBENCH_INSTANCES=$INSTANCES_ENC"
     fi
+    # GPU_MEM_UTIL override (run_planbench_rtx.sbatch reads it, default 0.85).
+    # Lower it for 24GB cards (rtx_3090/4090) so the VRAM-85% guard has
+    # headroom on the larger smoke models.
+    if [[ -n "$GPU_MEM_UTIL_OVERRIDE" ]]; then
+        EXPORTS="$EXPORTS,GPU_MEM_UTIL=$GPU_MEM_UTIL_OVERRIDE"
+    fi
 
+    # --gpus + --constraint on the CLI override the sbatch's
+    # #SBATCH --gpus=rtx_6000:1 / --constraint=rtx_6000 directives (same idiom
+    # as submit_with_rtx.sh's GPU_TYPE). The SLURM feature name equals the
+    # GPU-type token, so --constraint=$GPU_TYPE is correct for any class
+    # (rtx_6000, rtx_pro_6000, rtx_3090, rtx_4090, ...).
     CMD=(sbatch
         --job-name="$JOB_NAME"
         --time="$TIME"
+        --gpus="${GPU_TYPE}:1"
+        --constraint="$GPU_TYPE"
         --export="$EXPORTS"
         "$SCRIPT_DIR/run_planbench_rtx.sbatch")
 
