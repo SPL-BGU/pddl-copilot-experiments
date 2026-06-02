@@ -95,6 +95,11 @@ done
 ### Defaults ###
 ENV_NAME="${ENV_NAME:-pddl_copilot}"
 EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
+# vLLM KV-cache budget as a fraction of VRAM. Default 0.85 keeps the active
+# roster byte-identical to prior sweeps; env-overridable (propagated by the
+# wrapper via --export=ALL) so a model that lands on the VRAM-85%-guard
+# knife-edge can request a lower fraction.
+GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
@@ -136,13 +141,20 @@ preserve_serve_logs() {
     done
 }
 
+# vLLM container image. PINNED to v0.20.2 (env-overridable) — the version
+# the production fleet is serving. Previously `:latest`, which is a
+# corpus-identity hazard: it stayed consistent only because the cached
+# $HOME/vllm.sif happened to survive; the moment the cache is absent, a
+# fresh build silently pulls whatever `:latest` has drifted to, mixing vLLM
+# versions across a single sweep. Pinning makes a cache-miss reproducible.
+VLLM_IMAGE="${VLLM_IMAGE:-docker://vllm/vllm-openai:v0.20.2}"
 SIF_VLLM="$WORK/vllm.sif"
 if [ -f "$HOME/vllm.sif" ]; then
     echo "Using cached vllm.sif from \$HOME/vllm.sif"
     cp "$HOME/vllm.sif" "$SIF_VLLM"
 else
-    echo "Building vllm.sif from docker://vllm/vllm-openai:latest (first run, ~5 min)"
-    apptainer build --force "$SIF_VLLM" docker://vllm/vllm-openai:latest 2>&1 | tail -3
+    echo "Building vllm.sif from $VLLM_IMAGE (first run, ~5 min)"
+    apptainer build --force "$SIF_VLLM" "$VLLM_IMAGE" 2>&1 | tail -3
     cp "$SIF_VLLM" "$HOME/vllm.sif"
 fi
 
@@ -186,9 +198,25 @@ for MODEL in $MODELS; do
     echo "####################################################################"
 
     PORT="$(free_port $(( 11500 + (${SLURM_JOBID:-0} % 100) )))"
-    SERVE_LOG="$WORK/vllm-${MODEL_TAG}.log"
+    # Serve log normally lives on scratch and is copied to the persistent
+    # logs dir by the EXIT trap. But a cgroup OOM-kill is SIGKILL, which bash
+    # cannot trap → the copy never runs and scratch is reaped with the log
+    # (a large model can OOM the host-RAM cgroup during cold-load this way).
+    # When PERSIST_SERVE_LOG=1, write the serve log DIRECTLY into the persistent
+    # logs dir so it survives any kill, including SIGKILL. Default path
+    # (unset) is byte-identical to before.
+    if [ "${PERSIST_SERVE_LOG:-0}" = "1" ]; then
+        SERVE_LOG="$EXPT_ROOT/cluster-experimenting/logs/${SLURM_JOBID:-local}-vllm-${MODEL_TAG}.log"
+    else
+        SERVE_LOG="$WORK/vllm-${MODEL_TAG}.log"
+    fi
 
     echo "Starting vLLM on localhost:$PORT serving $HF_MODEL"
+    # Echo the resolved serve flags into job stdout so a smoke/post-mortem
+    # can confirm WHICH parsers + VRAM fraction actually loaded without
+    # parsing vLLM's startup verbosity — a wrong --tool-call-parser silently
+    # yields 0% tool extraction (memory reference_vllm_parser_per_model).
+    echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-}"
     apptainer exec --nv \
         --bind "$WORK/hf-cache:/root/.cache/huggingface" \
         --writable-tmpfs \
@@ -201,7 +229,7 @@ for MODEL in $MODELS; do
             --enable-auto-tool-choice \
             --tool-call-parser "$TOOL_CALL_PARSER" \
             $REASONING_PARSER_FLAG \
-            --gpu-memory-utilization 0.85 \
+            --gpu-memory-utilization "$GPU_MEM_UTIL" \
             --enable-prefix-caching \
             $MAX_NUM_BATCHED_TOKENS_FLAG \
             > "$SERVE_LOG" 2>&1 &

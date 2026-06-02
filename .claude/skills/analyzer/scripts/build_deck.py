@@ -1505,6 +1505,51 @@ def add_text_slide(prs: Presentation, title: str, bullets: list[str]) -> None:
             run.font.size = Pt(14)
 
 
+def add_terminology_slide(prs: Presentation) -> None:
+    """Stand-alone glossary so a reader with no presenter can decode the
+    arm / corpus labels used throughout the deck: neutral vs steered prompts,
+    canonical vs anonymised corpus, and the think axis. Kept text-only and
+    jargon-light on purpose — the charts already say "H1"/"nt-neut", this is
+    the decoder for them."""
+    add_text_slide(prs, "Terminology — prompt arms & corpora", [
+        "• Each trial = one model answering one PDDL task (solve / validate_domain / "
+        "validate_problem / validate_plan / simulate). Every trial varies four things: "
+        "tools on/off, prompt style (neutral vs steered), reasoning (think on/off), and which corpus.",
+        "• NEUTRAL prompt (variants v11–v13) — asks the model to do the task in plain language and "
+        "never names a tool. The text is identical whether or not tools are available.",
+        "• STEERED prompt (variants v14–v16) — the neutral prompt PLUS one appended sentence that "
+        "explicitly tells the model to call the matching tool, e.g. “Use the validate_plan tool with the "
+        "domain, problem, and plan as arguments.” That one sentence is the only difference from neutral.",
+        "• CANONICAL corpus (“regular”, non-anonymised) — the real, published PDDL domains "
+        "(blocksworld, depots, gripper, …) with their original predicate / type / object names.",
+        "• ANONYMISED corpus — the SAME domains, structurally identical (same arity, preconditions, effects), "
+        "but every surface name lexically renamed to an unrelated theme (truck→barge, depot→dock). "
+        "Controls for the model having memorised the published domains during pre-training.",
+        "• THINK on/off — whether the model gets an explicit reasoning phase before answering; run as a separate axis.",
+    ])
+
+
+def add_design_slide(prs: Presentation) -> None:
+    """Stand-alone description of how the experiment is run and what each
+    headline comparison (H1 / H2 / contamination probe) isolates. Pairs with
+    add_terminology_slide; both are placed right after the title slide."""
+    add_text_slide(prs, "How the experiment was run — the comparison methods", [
+        "• Combining tools × prompt style gives the “arms” the charts compare (a 4th no-tools-steered "
+        "control arm also exists but is usually omitted):",
+        "      – no-tools (neut) [nt-neut] — neutral prompt, NO tools; the model answers from its own knowledge. The baseline.",
+        "      – tools (neut) [tl-neut] — same neutral prompt, but the planner / validator tools are available to call.",
+        "      – tools (steered) [tl-ster] — tools available AND the steered prompt nudging the model to use them.",
+        "• H1 (tool utility) — nt-neut vs tl-neut: the prompt text is byte-identical, the only difference is whether "
+        "tools exist, so the gap between the two bars is the value the tools add.",
+        "• H2 (steering effect) — tl-neut vs tl-ster: tools are available in both, the only difference is the one "
+        "steering sentence; this measures whether nudging raises how often the model actually calls the tool.",
+        "• Contamination probe — run the whole matrix on BOTH corpora and take Δ = canonical − anon success on "
+        "matched cells. Δ≈0 = no memorisation; a canonical advantage on the no-tools-neutral arm would be the "
+        "clean memorisation signal (this deck is one half of that pair).",
+        "• Scoring — every answer is checked against ground truth; success rates are reported with Wilson 95% confidence intervals.",
+    ])
+
+
 def add_table_slide(prs: Presentation, title: str, headers: list[str],
                     rows: list[list[str]], notes: str | None = None) -> None:
     BLANK = prs.slide_layouts[6]
@@ -1623,6 +1668,12 @@ def build(out_pptx: Path, fig_dir: Path, captions: dict[str, str]) -> Presentati
     prs = _make_pptx()
 
     add_title_slide(prs, TITLE, SUBTITLE)
+
+    # Stand-alone glossary + design slides so a reader without the presenter
+    # can decode the arm/corpus labels (neutral/steered, canonical/anonymised)
+    # and the H1/H2/contamination comparisons the charts and captions reference.
+    add_terminology_slide(prs)
+    add_design_slide(prs)
 
     p_off = fig_success_by_cond_per_task("off", fig_dir / "success_by_arm_off.png")
     p_on  = fig_success_by_cond_per_task("on",  fig_dir / "success_by_arm_on.png")

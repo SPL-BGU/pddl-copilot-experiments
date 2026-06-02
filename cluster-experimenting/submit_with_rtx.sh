@@ -138,6 +138,8 @@ PARTIAL_K=""
 EXCLUDE_NODES=""
 NO_AUTO_PRIORITIZE=0
 TIME_OVERRIDE=""
+TMP_OVERRIDE=""
+DEP_OVERRIDE=""
 INCLUDE_NO_TOOLS_STEERED=0
 DOMAINS_DIR=""
 RUN_TAG=""
@@ -159,6 +161,8 @@ while [[ $# -gt 0 ]]; do
         --exclude) shift; EXCLUDE_NODES="$1"; shift ;;
         --no-auto-prioritize) NO_AUTO_PRIORITIZE=1; shift ;;
         --time) shift; TIME_OVERRIDE="$1"; shift ;;
+        --tmp) shift; TMP_OVERRIDE="$1"; shift ;;
+        --dependency) shift; DEP_OVERRIDE="$1"; shift ;;
         --include-no-tools-steered) INCLUDE_NO_TOOLS_STEERED=1; shift ;;
         --domains-dir) shift; DOMAINS_DIR="$1"; shift ;;
         --run-tag) shift; RUN_TAG="$1"; shift ;;
@@ -457,6 +461,17 @@ fi
 if [ -n "$RUN_TAG" ]; then
     EXPORT_LIST="${EXPORT_LIST},RUN_TAG=${RUN_TAG}"
 fi
+# GPU_MEM_UTIL is a correctness param (the VRAM-85%-guard headroom for big
+# models). Thread it explicitly to match the SMOKE/SHARD convention rather
+# than relying on --export=ALL inheritance alone.
+if [ -n "${GPU_MEM_UTIL:-}" ]; then
+    EXPORT_LIST="${EXPORT_LIST},GPU_MEM_UTIL=${GPU_MEM_UTIL}"
+fi
+# PERSIST_SERVE_LOG=1 tells the sbatch to write the vLLM serve log straight
+# into the persistent logs dir (survives a SIGKILL/OOM the EXIT trap can't).
+if [ -n "${PERSIST_SERVE_LOG:-}" ]; then
+    EXPORT_LIST="${EXPORT_LIST},PERSIST_SERVE_LOG=${PERSIST_SERVE_LOG}"
+fi
 
 # Add --array only when N>1; single-cell submissions remain plain sbatch.
 ARRAY_ARG=()
@@ -469,11 +484,43 @@ if [ -n "$EXCLUDE_NODES" ]; then
     EXCLUDE_ARG=(--exclude="$EXCLUDE_NODES")
 fi
 
+# --tmp passthrough: overrides the sbatch's `#SBATCH --tmp=80G` directive
+# (CLI options win over script directives). The 80G default was sized for
+# ~24 GB HF snapshots; a large model (big weights + the ~10-15 GB vllm.sif
+# copied to scratch) needs more headroom or the /scratch mkdir ENOSPC-bails
+# before the trap fires. Unset → directive stands.
+TMP_ARG=()
+if [ -n "$TMP_OVERRIDE" ]; then
+    TMP_ARG=(--tmp="$TMP_OVERRIDE")
+fi
+
+# --dependency passthrough: schedule this submission to start only after
+# another job reaches the given state (e.g. afterany:JID, afterok:JID).
+# Used to chain submissions behind one another so they don't contend and
+# run in a defined order. Unset → no dependency.
+DEP_ARG=()
+if [ -n "$DEP_OVERRIDE" ]; then
+    DEP_ARG=(--dependency="$DEP_OVERRIDE")
+fi
+
+# The sbatch hardcodes `#SBATCH --constraint=rtx_6000` (filters the
+# mislabeled ee-l40s nodes for the rtx_6000 path). That directive is NOT
+# overridden by `--gpus=rtx_pro_6000:1`, so a rtx_pro_6000 request asks for
+# a pro GPU on a node that must carry the `rtx_6000` feature → impossible
+# ("Requested node configuration is not available"). Emit the matching
+# constraint on the CLI (overrides the directive). The SLURM feature name
+# equals the GPU-type token for both classes (verified: pro nodes carry
+# feature `rtx_pro_6000`, 48GB nodes carry `rtx_6000`, mutually exclusive),
+# so `--constraint=$GPU_TYPE` is correct for both — and byte-identical to the
+# directive on the rtx_6000 path (no behavior change there).
 cmd=(sbatch
     --job-name="$JOB_NAME"
     --gpus="${GPU_TYPE}:1"
+    --constraint="$GPU_TYPE"
     "$MEM_ARG"
     "${TIME_ARG[@]}"
+    "${TMP_ARG[@]}"
+    "${DEP_ARG[@]}"
     "${ARRAY_ARG[@]}"
     "${EXCLUDE_ARG[@]}"
     --export="$EXPORT_LIST"

@@ -6,6 +6,38 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-02 — Remove the gpt-oss:120b standalone vLLM setup
+
+**Motivation.** Decided not to pursue the gpt-oss-120b reference cell (added on `feat/gpt-oss-120b-vllm`, commit `efe7af4`). Pulled all of its live setup/config so the model is no longer a runnable option.
+
+**Removed.**
+- `cluster-experimenting/submit_gpt_oss.sh` — the dedicated submit wrapper (deleted).
+- `cluster-experimenting/lib/defaults.sh` — the `gpt-oss:120b)` `vllm_lookup` case (HF id + `--tool-call-parser openai` / `--reasoning-parser openai_gptoss`). It was never in `PDDL_DEFAULT_MODELS` / `PDDL_VLLM_VERIFIED_MODELS`, so removal is self-contained.
+- `.claude/skills/analyzer/scripts/{_constants.py,plot_focused.py}` — the `gpt-oss_120b` color/label/order entries (dead — no such corpus will exist).
+
+**Kept (model-neutral infra, gpt-oss mention scrubbed from comments only).** The `GPU_MEM_UTIL` env-driven `--gpu-memory-utilization` knob (default `0.85` = byte-identical to prior sweeps), the `--tmp` passthrough in `submit_with_rtx.sh`, and the resolved-serve-flags echo in `run_condition_vllm_rtx.sbatch` are general-purpose and stay. Only their gpt-oss references were edited out.
+
+**Left alone (out of scope).** `gpt-oss:20b` references (a *different* model, predates the branch — `tests/test_scoring.py`, roster history in `cluster-experimenting/README.md`), the `gpt-oss-120B` competitor figure in `development/baseline_comparison_tool_use_benchmarks.md` (external published benchmark), `development/CHANGELOG-archive.md` (immutable history), and descriptive comments in `pddl_eval/runner.py` / `EXPERIMENTS_FLOW.md` / `cluster-ops/SKILL.md`.
+
+**Reproducibility.** No effect on the active 5-model roster — behaviour is byte-identical (the kept knob defaults to the prior hardcoded `0.85`).
+
+## 2026-06-01 — Contamination deck: complete-data rebuild + figure/prose rework (`build_compare_deck.py`)
+
+**Motivation.** The `contamination-live` deck's figures were current (21:54 rebuild picked up complete corpora) but its **hardcoded prose was stale and contradicted by the data** — it still asserted "PRELIMINARY / Qwen3.5-9B uncomparable / 4B ~150 trials" and a "small but *consistent* canonical advantage (+2 to +5pp)" with a verdict_mismatch (+1.7pp) "reasoning-degradation" mechanism. Those last two were artifacts of only Gemma4+Qwen3.6 being complete at the earlier build; with the 4B/9B cells filled in the pattern is mixed.
+
+**Figure rework (per supervisor request: "a table where each cell is just the delta; highlight noticeable drifts").** Replaced the two think-split Δ heatmaps + five per-task paired-bar slides with **three per-arm Δ tables** (`fig_delta_table`): one matrix per arm (`nt-neut` / `tl-neut` / `tl-ster`), rows = model × think, cols = the 5 tasks + an ST-mean column, cell = per-task `canonical − anon` success (pp), RdBu-colored, **CI-disjoint cells boxed+bold** as the drift highlight. `nt-neut` is flagged the clean contamination probe. Deck is now 7 slides (was ~12). `fig_delta_heatmap` / `fig_task_paired` removed.
+
+**Prose corrected to the complete-data verdict** (title/how-to-read/observed-pattern + captions): clean no-tools probe is **null — no contamination**. think=off is null on every task/model (0 CI-disjoint); the only CI-disjoint cells (`validate_plan` × think=on, 4B +6.3 / 9B +4.0 / Q3.6 +4.3) are a **tokenisation artifact**, not memorisation — anon names tokenise ~5% longer (in-tok median 1309 vs 1249) → more think=on truncation; trunc Δ tracks success Δ ~1:1 and success-given-completion is ~equal (advisor-caught confound). With-tools deltas are small and **provisional** (not yet stable — 2 cells in flight; validate_plan overlaps the FastMCP binning bug); deliberately left qualitative, no pinned numbers.
+
+**Re-sync 2026-06-01.** Final owed re-sync. Renamed `results/sweep5-cluster-20260531` → `…-20260601` so `sync.sh`'s `rsync -av --update` transferred only finished cells (speedup 7.2). 4B with-tools completed; 9B-on anon → 7240 and 0.8B-off canon mid-rerun (7954, `--update` pulled partial-over-complete; two `.v0220-bak` backups at 9120 exist on cluster, excluded by the `_sweep5v2$`/`_sweep6$` filter globs). Re-filtered both live roots (`--arm both --min-out 100`), stripped run-tag suffix, rebuilt deck (30/30 matched, 0 orphans). All 20 no-tools clean-probe cells verified intact at 4560/4560 → headline unaffected.
+
+**Validation.** Rebuilt from `results/sweep5v2-live` (canon) vs `results/sweep6-live` (anon), `--min-n 50`: 30/30 cells matched, 0 canon-only/anon-only; clean `nt-neut` probe complete 4560/side both corpora. Stale-phrase audit on the rendered `.pptx`: "uncomparable", "~150", "1 day into" all gone; "preliminary"/"consistent canonical" survive only as explicit references to the retracted claim.
+
+**Reproducibility.** Analysis-only; reads `results/` read-only, no experiment state touched. `success`-rate metric unchanged (imports `build_deck.task_success_rate`). The `validate_plan` finding is on the **no-tools** arm (no tool calls), so it is independent of the with-tools `validate_plan` FastMCP arg-error binning bug (`project_validate_plan_fp_scoring_bug`; relabel touches FR bins, not `success`). Deck artifact (`checkpoints/contamination-live/**`) is gitignored; only the skill script is tracked.
+
+**Files touched.**
+- `.claude/skills/analyzer/scripts/build_compare_deck.py` — new `fig_delta_table`; removed `fig_delta_heatmap`/`fig_task_paired`; rewrote `main()` slide order + all hardcoded prose; updated module docstring.
+
 ## 2026-05-26 — Contamination probe: problem-header leak fix (`tools/anon_rename.py`)
 
 **Branch:** `fix/anon-problem-name-leak`. Follow-up to the Phase-A/B contamination probe PR (#71). Post-merge audit surfaced one hard leak and six substring leaks in `(define (problem X))` headers that the original rewriter design left untouched — its `domain_name` pass scoped to `(define (domain X))` and `(:domain X)` contexts only.

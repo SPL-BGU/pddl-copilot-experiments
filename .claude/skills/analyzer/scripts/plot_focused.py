@@ -48,7 +48,7 @@ from pddl_eval.summary import arm_for  # noqa: E402
 
 MODEL_ORDER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "Qwen3_5_27b",
                "qwen3_6_27b", "gemma4_31b", "gemma4_26b-a4b",
-               "qwen3_6_35b", "gpt-oss_20b", "gpt-oss_120b"]
+               "qwen3_6_35b", "gpt-oss_20b"]
 MODEL_LABELS = {
     "Qwen3_5_0_8B":   "Qwen3.5:0.8B",
     "Qwen3_5_4B":     "Qwen3.5:4B",
@@ -59,7 +59,6 @@ MODEL_LABELS = {
     "gemma4_26b-a4b": "Gemma4:26B-A4B",
     "qwen3_6_35b":    "Qwen3.6:35B",
     "gpt-oss_20b":    "gpt-oss:20B",
-    "gpt-oss_120b":   "gpt-oss:120B",
 }
 MCP_TOOLS = ["classic_planner", "numeric_planner",
              "validate_domain", "validate_problem", "validate_plan",

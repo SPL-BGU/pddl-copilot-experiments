@@ -5,7 +5,8 @@ computes per-cell success — runner-scored `r["success"]`, NOT a re-derived
 ground truth (the anon corpus renames problem_name/plan_label, so `truth_for`
 would be wrong on that side; the runner already scored each trial against its
 own corpus) — with Wilson 95% CIs on each side, and renders the
-canonical−anon delta as a Δ heatmap, per-task paired bars, and a summary table.
+canonical−anon delta as a per-arm Δ table (per-task cells, CI-disjoint cells
+boxed as the "noticeable drift" highlight) plus an ST-mean summary table.
 
   Δ>0  (red)  = canonical better than anon = consistent with the model having
                 MEMORISED the canonical (non-anonymised) domains.
@@ -53,8 +54,8 @@ MODEL_DISP = {
 ARM_ORDER = ["nt-neut", "tl-neut", "tl-ster"]
 ARM_DISP = {"nt-neut": "no-tools(neut)", "tl-neut": "tools(neut)", "tl-ster": "tools(steer)"}
 
-CANON_COLOR = "#2E86AB"   # blue
-ANON_COLOR = "#E07B39"    # orange
+# A cell whose canonical/anon CIs are disjoint is boxed; this is the
+# "noticeable drift" highlight the deck leads with.
 
 
 def _model_idx(m: str) -> int:
@@ -74,123 +75,79 @@ def _disjoint(succ_c, n_c, succ_a, n_a):
 
 
 # ---------------------------------------------------------------------------
-# Figures
+# Figure — one colored Δ table per arm
 # ---------------------------------------------------------------------------
 
-def fig_delta_heatmap(CANON, ANON, think, min_n, canon_label, anon_label, out_png):
-    """Rows = matched (model, arm) for this think; cols = tasks; cell = Δpp."""
-    rows_keys = []
-    for arm in ARM_ORDER:
-        for m in MODEL_ORDER:
-            k = (m, think, arm)
-            if k in CANON and k in ANON:
-                rows_keys.append((m, arm))
+def fig_delta_table(CANON, ANON, arm, min_n, canon_label, anon_label, out_png):
+    """Colored Δ matrix for ONE arm.
+
+    Rows = (model, think); cols = the 5 tasks + an ST-mean summary column.
+    Cell = canonical − anon success (pp). A boxed, bold cell = the canonical
+    and anon Wilson 95% CIs are DISJOINT — a real drift, not noise (the
+    "noticeable drift" highlight). '—' = a side below `min_n` trials.
+    """
+    rows_keys = [(m, th) for m in MODEL_ORDER for th in ("off", "on")
+                 if (m, th, arm) in CANON and (m, th, arm) in ANON]
     n_rows = len(rows_keys)
-    grid = np.full((max(n_rows, 1), len(TASKS)), np.nan)
-    sig = np.zeros((max(n_rows, 1), len(TASKS)), dtype=bool)
-    for i, (m, arm) in enumerate(rows_keys):
-        kc, ka = (m, think, arm), (m, think, arm)
+    cols = TASKS + ["ST"]
+    grid = np.full((max(n_rows, 1), len(cols)), np.nan)
+    sig = np.zeros((max(n_rows, 1), len(cols)), dtype=bool)
+    for i, (m, th) in enumerate(rows_keys):
+        k = (m, th, arm)
+        deltas = []
         for j, task in enumerate(TASKS):
-            _, sc, nc = _cell_stats(CANON[kc], task)
-            _, sa, na = _cell_stats(ANON[ka], task)
+            _, sc, nc = _cell_stats(CANON[k], task)
+            _, sa, na = _cell_stats(ANON[k], task)
             if nc >= min_n and na >= min_n:
                 grid[i, j] = (sc / nc - sa / na) * 100.0
                 sig[i, j] = _disjoint(sc, nc, sa, na)
+                deltas.append(grid[i, j])
+        if deltas:
+            grid[i, len(TASKS)] = float(np.mean(deltas))
 
-    fig, ax = plt.subplots(figsize=(9.5, max(2.2, 0.52 * n_rows + 1.6)))
+    fig, ax = plt.subplots(figsize=(9.8, max(2.4, 0.55 * n_rows + 1.7)))
     if n_rows == 0:
-        ax.text(0.5, 0.5, "(no matched cells for this think mode)",
-                ha="center", va="center", transform=ax.transAxes, color="#888")
+        ax.text(0.5, 0.5, "(no matched cells for this arm)", ha="center",
+                va="center", transform=ax.transAxes, color="#888")
         ax.axis("off")
         fig.savefig(out_png, dpi=150, bbox_inches="tight")
         plt.close(fig)
         return
-    vmax = max(10.0, float(np.nanmax(np.abs(grid))) if np.isfinite(grid).any() else 10.0)
+
+    # Color scale from the per-task cells only, so one averaged ST cell can't
+    # compress the task palette.
+    task_vals = grid[:, :len(TASKS)]
+    vmax = max(10.0, float(np.nanmax(np.abs(task_vals))) if np.isfinite(task_vals).any() else 10.0)
     im = ax.imshow(grid, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
-    ax.set_xticks(range(len(TASKS)))
-    ax.set_xticklabels([TASK_LABELS[t] for t in TASKS], fontsize=9)
+    ax.set_xticks(range(len(cols)))
+    ax.set_xticklabels([TASK_LABELS.get(c, c) for c in cols], fontsize=9)
     ax.set_yticks(range(n_rows))
-    ax.set_yticklabels([f"{MODEL_DISP[m]} · {ARM_DISP[a]}" for m, a in rows_keys], fontsize=8)
+    ax.set_yticklabels([f"{MODEL_DISP[m]} · think={th}" for m, th in rows_keys], fontsize=8)
+    # Thin separators: between models (rows) and before the ST summary column.
+    for i in range(1, n_rows):
+        if rows_keys[i][0] != rows_keys[i - 1][0]:
+            ax.axhline(i - 0.5, color="#999", linewidth=1.0)
+    ax.axvline(len(TASKS) - 0.5, color="#999", linewidth=1.0)
     for i in range(n_rows):
-        for j in range(len(TASKS)):
+        for j in range(len(cols)):
             v = grid[i, j]
             if np.isnan(v):
                 ax.text(j, i, "—", ha="center", va="center", color="#bbb", fontsize=9)
-            else:
-                star = "*" if sig[i, j] else ""
-                ax.text(j, i, f"{v:+.0f}{star}", ha="center", va="center",
-                        fontsize=8, fontweight="bold" if sig[i, j] else "normal",
-                        color="white" if abs(v) > vmax * 0.55 else "black")
+                continue
+            boxed = bool(sig[i, j])
+            ax.text(j, i, f"{v:+.0f}", ha="center", va="center", fontsize=8,
+                    fontweight="bold" if boxed else "normal",
+                    color="white" if abs(v) > vmax * 0.55 else "black")
+            if boxed:
+                ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False,
+                                           edgecolor="black", linewidth=2.0))
     cb = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
     cb.set_label(f"Δ success (pp):  {canon_label} − {anon_label}\n"
-                 f"red = canonical advantage (contamination)   ·   * = CI-disjoint",
+                 f"red = canonical advantage (contamination)   ·   boxed = CI-disjoint",
                  fontsize=8)
-    ax.set_title(f"Contamination Δ heatmap · think={think}  (— = a side below {min_n} trials)",
-                 fontsize=11)
-    fig.tight_layout()
-    fig.savefig(out_png, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-
-
-def fig_task_paired(CANON, ANON, task, min_n, canon_label, anon_label, out_png):
-    """1×2 (think off/on); paired canonical vs anon bars per matched (arm, model)."""
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5.6), sharey=True)
-    for col, think in enumerate(["off", "on"]):
-        ax = axes[col]
-        cells = []  # (arm, model, sc, nc, sa, na)
-        for arm in ARM_ORDER:
-            for m in MODEL_ORDER:
-                k = (m, think, arm)
-                if k in CANON and k in ANON:
-                    _, sc, nc = _cell_stats(CANON[k], task)
-                    _, sa, na = _cell_stats(ANON[k], task)
-                    if nc >= min_n and na >= min_n:
-                        cells.append((arm, m, sc, nc, sa, na))
-        if not cells:
-            ax.text(0.5, 0.5, f"(no matched cells ≥ {min_n}/side)", ha="center",
-                    va="center", transform=ax.transAxes, color="#888")
-            ax.set_title(f"think={think}", fontsize=11)
-            ax.set_ylim(0, 105)
-            continue
-        x = np.arange(len(cells))
-        w = 0.38
-        for xi, (arm, m, sc, nc, sa, na) in zip(x, cells):
-            pc, pa = sc / nc * 100, sa / na * 100
-            lo_c, hi_c = wilson_ci(sc, nc)
-            lo_a, hi_a = wilson_ci(sa, na)
-            ax.bar(xi - w / 2, pc, w, color=CANON_COLOR,
-                   yerr=[[max(0.0, (pc / 100 - lo_c) * 100)], [max(0.0, (hi_c - pc / 100) * 100)]],
-                   capsize=2.5, error_kw=dict(elinewidth=0.8))
-            ax.bar(xi + w / 2, pa, w, color=ANON_COLOR,
-                   yerr=[[max(0.0, (pa / 100 - lo_a) * 100)], [max(0.0, (hi_a - pa / 100) * 100)]],
-                   capsize=2.5, error_kw=dict(elinewidth=0.8))
-            d = pc - pa
-            star = "*" if _disjoint(sc, nc, sa, na) else ""
-            ax.text(xi, max(pc, pa) + 3, f"Δ{d:+.0f}{star}", ha="center",
-                    fontsize=7.5, fontweight="bold" if star else "normal")
-        # arm-group separators
-        prev_arm = None
-        for xi, (arm, *_rest) in zip(x, cells):
-            if prev_arm is not None and arm != prev_arm:
-                ax.axvline(xi - 0.5, color="#ccc", linewidth=0.8, linestyle="--")
-            prev_arm = arm
-        ax.set_xticks(x)
-        ax.set_xticklabels(
-            [f"{MODEL_DISP[m].replace('Qwen3.5-', 'Q3.5-').replace('Qwen3.6-', 'Q3.6-').replace('Gemma4-', 'G4-')}\n"
-             f"{ARM_DISP[arm]}\nn={nc}/{na}"
-             for (arm, m, sc, nc, sa, na) in cells],
-            fontsize=6.5)
-        ax.set_title(f"think={think}", fontsize=11)
-        ax.set_ylim(0, 105)
-        ax.grid(axis="y", linestyle=":", alpha=0.4)
-        if col == 0:
-            ax.set_ylabel("success %  (Wilson 95% CI)", fontsize=10)
-    fig.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=CANON_COLOR),
-                        plt.Rectangle((0, 0), 1, 1, color=ANON_COLOR)],
-               labels=[canon_label, anon_label], loc="upper center", ncol=2,
-               fontsize=10, frameon=False, bbox_to_anchor=(0.5, 1.02))
-    fig.suptitle(f"{TASK_LABELS[task]} — success: {canon_label} vs {anon_label}  "
-                 f"(Δ = canonical − anon; * = CI-disjoint)", fontsize=12, y=1.06)
+    clean = "   —   CLEAN CONTAMINATION PROBE" if arm == "nt-neut" else ""
+    ax.set_title(f"Per-task Δ success · {ARM_DISP[arm]}{clean}   "
+                 f"(ST = mean of the task Δ; — = a side below {min_n} trials)", fontsize=11)
     fig.tight_layout()
     fig.savefig(out_png, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -271,46 +228,45 @@ def main():
         prs,
         "PDDL Copilot — Contamination Probe: canonical vs anonymised corpus",
         f"{args.canon_label}  vs  {args.anon_label}  ·  Δ = canonical − anon success (pp)  ·  "
-        f"clean probe = no-tools neutral arm  ·  PRELIMINARY 2026-05-29 (partial in-flight cells, "
-        f"per-side min-n {args.min_n}/task)",
+        f"clean probe = no-tools neutral arm  ·  complete corpora: no-tools 4560/side both corpora; "
+        f"with-tools mostly complete (Qwen3.5-4B / 9B-on anon cells slightly under-filled)",
     )
+
+    # Glossary first (defines neutral/steered/canonical/anonymised + the arm
+    # labels) so a reader without the presenter can decode the tables; the
+    # "How to read this deck" slide below then covers the Δ comparison method.
+    bd.add_terminology_slide(prs)
 
     bd.add_text_slide(prs, "How to read this deck", [
         f"• Two corpora, same matrix: {args.canon_label} uses the regular domains/; {args.anon_label} "
-        f"uses domains-anon/ — the SAME domains lexically renamed (predicates/types/objects scrambled).",
-        "• Δ = canonical success − anon success (percentage points). Δ>0 (red in the heatmap) = the model "
-        "does better when domains carry their real names = consistent with MEMORISATION of the canonical "
-        "domains during pre-training (contamination).",
-        "• The CLEAN probe is the no-tools neutral arm (nt-neut): with no tools, success depends purely on "
-        "the model's own knowledge of the domain, so memorisation shows up most starkly there.",
-        "• A PRIORI one might expect with-tools arms (tl-neut / tl-ster) to show Δ≈0 — the planner/validator "
-        "solves the task regardless of domain names. The data does NOT bear that out (see the observed-pattern "
-        "note on the final slide), so read the with-tools rows as a finding, not a sanity check.",
+        f"uses domains-anon/ — the SAME domains, lexically renamed (predicates/types/objects scrambled).",
+        "• Δ = canonical success − anon success (percentage points). Δ>0 (RED) = the model does better when "
+        "domains carry their real names = consistent with MEMORISATION of the canonical domains during "
+        "pre-training (contamination). Δ<0 (BLUE) = anon scored higher.",
+        "• ONE table per arm. Rows = model × think; the 5 left columns are the per-task Δ; the right ST "
+        "column is the mean of that row's task Δ. A BOXED, bold cell = the canonical and anon Wilson 95% "
+        "CIs are DISJOINT — a real drift, not noise. '—' = a side below the min-n threshold.",
+        "• The CLEAN probe is the no-tools neutral arm (nt-neut): with no tools, success rides purely on the "
+        "model's own knowledge of the domain, so memorisation would surface most starkly there. Lead with it.",
+        "• With-tools arms (tl-neut / tl-ster) measure tool-assisted success — the planner/validator can solve "
+        "regardless of domain names, so Δ there reflects reasoning / tool-use variance, not pure recall. Read "
+        "those tables as a secondary finding, not a contamination probe.",
         "• Metric = runner-scored success (each trial judged against its OWN corpus's ground truth). "
-        "Wilson 95% CIs throughout; '*' marks a Δ whose canonical/anon CIs do not overlap.",
-        f"• PRELIMINARY: jobs are ~1 day into 48h. Only cells with ≥{args.min_n} trials/side/task are plotted. "
-        "Stable Δ (complete both sides): Qwen3.5-0.8B / Gemma4 / Qwen3.6-35B nt-neut. Provisional: Qwen3.5-4B "
-        "anon nt-neut (~150 trials). UNCOMPARABLE: Qwen3.5-9B — its anon no-tools cell has not started "
-        "(off missing, on=9 trials), so 9B is absent here; its blank is missing data, NOT a null result.",
+        "Wilson 95% CIs throughout.",
     ])
 
-    for think in ("off", "on"):
-        png = fig_dir / f"delta_heatmap_{think}.png"
-        fig_delta_heatmap(CANON, ANON, think, args.min_n, args.canon_label, args.anon_label, png)
+    for arm in ARM_ORDER:
+        png = fig_dir / f"delta_table_{arm}.png"
+        fig_delta_table(CANON, ANON, arm, args.min_n, args.canon_label, args.anon_label, png)
+        clean = "  (clean contamination probe)" if arm == "nt-neut" else "  (secondary — tool-assisted)"
+        extra = (" The only boxed cells (validate_plan × think=on) are a TOKENISATION artifact — anon prompts "
+                 "tokenise ~5% longer → more think=on truncation; see the final slide.") if arm == "nt-neut" else ""
         bd.add_image_slide(
-            prs, f"Contamination Δ heatmap · think={think}", png,
-            caption=f"Cell = {args.canon_label} − {args.anon_label} success (pp). Red = canonical "
-                    f"advantage (contamination); blue = anon higher. '*' = CI-disjoint; '—' = a side "
-                    f"below {args.min_n} trials. nt-neut rows are the clean probe; with-tools rows ~0 by design.")
-
-    for task in TASKS:
-        png = fig_dir / f"paired_{task}.png"
-        fig_task_paired(CANON, ANON, task, args.min_n, args.canon_label, args.anon_label, png)
-        bd.add_image_slide(
-            prs, f"{TASK_LABELS[task]} — canonical vs anon", png,
-            caption=f"Paired success per matched cell, grouped by arm (dashed = arm boundary). Blue = "
-                    f"{args.canon_label}, orange = {args.anon_label}. n shown as n_canon/n_anon per cell. "
-                    f"Δ above each pair; '*' = CI-disjoint.")
+            prs, f"Δ success table · {ARM_DISP[arm]}{clean}", png,
+            caption=f"Per-task Δ = {args.canon_label} − {args.anon_label} success (pp) for the "
+                    f"{ARM_DISP[arm]} arm. Rows = model × think; right ST column = mean of the task Δ. "
+                    f"Red = canonical advantage; blue = anon higher. Boxed+bold = CI-disjoint. "
+                    f"'—' = a side below {args.min_n} trials.{extra}")
 
     rows = summary_rows(CANON, ANON, args.min_n)
     bd.add_table_slide(
@@ -323,29 +279,43 @@ def main():
               "have non-overlapping canonical/anon Wilson CIs.")
 
     bd.add_text_slide(prs, "Observed pattern, coverage & next steps", [
-        "OBSERVED PATTERN (preliminary, complete cells only): the CLEAN no-tools probe (nt-neut) shows ~NULL "
-        "contamination — |ΔST| ≤ 1.5pp with ZERO CI-disjoint tasks for the three complete models "
-        "(Qwen3.5-0.8B, Gemma4, Qwen3.6-35B). The WITH-TOOLS arms instead carry a small but CONSISTENT "
-        "canonical advantage (+2 to +5pp ST-mean; up to +11pp on a single task; several tasks CI-disjoint), "
-        "strongest on solve / simulate / validate_plan.",
-        "WHERE THE no-tools NULL IS INFORMATIVE: the null is meaningful only where no-tools isn't floored — "
-        "Gemma4-off and Qwen3.6-off sit at ~49% (ample headroom for a gap, and none appears). At the floor "
-        "(e.g. Qwen3.5-0.8B-on ≈0%) a null is uninformative — no room for a gap either way.",
-        "MECHANISM OF THE with-tools EDGE (measured, not assumed): on the complete off with-tools cells "
-        "(n=18,240/side), anon loses −3.0pp success vs canonical. That deficit is dominated by "
-        "verdict_mismatch (+1.7pp: right tool called, valid output, WRONG conclusion) and tool_not_selected "
-        "(+0.8pp); tool_error / parse failures barely move (+0.3pp). So the edge is a REASONING degradation "
-        "over tool output when domain names are scrambled — NOT parsing friction. Modest (+1.7pp) and "
-        "preliminary, but it points at semantic interpretation, not surface parsing.",
-        "COVERAGE (this rebuild): no-tools nt-neut matched for Qwen3.5-0.8B, Gemma4, Qwen3.6-35B (complete "
-        "both sides) and Qwen3.5-4B (anon partial ~150 trials, wide CIs). With-tools (tl-neut/tl-ster) matched "
-        "for Gemma4 + Qwen3.6-35B only — the Qwen3.5 with-tools cells are still PENDING on the cluster.",
-        "Qwen3.5-9B is UNCOMPARABLE: its anon no-tools cell had not started at sync (off missing, on=9 trials, "
-        "below threshold). Re-sync once it fills in.",
-        "NEXT (stronger view, once cells fill): per-DOMAIN Δ (canonical-blocksworld vs anon-blocksworld) — "
-        "contamination is domain-specific, so a per-domain heatmap localises which domains the model memorised. "
-        "Requires the anon↔canonical domain-name mapping; defer until both corpora complete.",
-        "Rebuild after the next sync: re-run filter_variants for both roots, then re-run this script.",
+        "HEADLINE — the CLEAN no-tools neutral probe is essentially NULL: ST-mean |Δ| ≤ 1.3pp (think=off) and "
+        "≤ 2.6pp (on) across all 5 models, and think=off has ZERO CI-disjoint task cells. This now INCLUDES "
+        "Qwen3.5-9B and Qwen3.5-4B, which were missing / partial in the earlier preliminary build.",
+        "THE ONLY CLEAN-PROBE DRIFT IS A TOKENISATION ARTIFACT, not contamination. The sole CI-disjoint nt-neut "
+        "cells are validate_plan × think=on (Qwen3.5-4B +6.3, 9B +4.0, Qwen3.6-35B +4.3pp canonical). But anon "
+        "domain names tokenise ~5% LONGER (input-token median 1309 vs 1249), so anon trials hit the think=on "
+        "decode-budget cliff MORE: truncation Δ (+6.2 / +3.8 / +4.3pp) tracks the success Δ (+6.3 / +4.0 / "
+        "+4.3pp) almost 1:1, and success GIVEN completion is ~equal (Qwen3.6 94.9% anon vs 95.2% canon; ~95-97% "
+        "for 4B/9B). The 'edge' is the extra truncation, not better domain knowledge — and Qwen3.6 is confounded "
+        "too, so it is NOT a clean carrier. Net: no genuine contamination survives on the clean probe.",
+        "WHERE THE NULL IS INFORMATIVE: it is meaningful only where no-tools isn't floored — Gemma4-off "
+        "(~50%) and Qwen3.6-off (~49%) have ample headroom for a memorisation gap, and none appears. At the "
+        "floor (small models with think=on, ~0%) a null is uninformative — no room for a gap either way.",
+        "WITH-TOOLS (tl-neut / tl-ster) — a small canonical-leaning edge, concentrated in simulate and "
+        "validate_plan, but NOT YET STABLE, so read these tables as PROVISIONAL and secondary. Two cells are "
+        "still in flight (Qwen3.5-9B think-on anon; Qwen3.5-0.8B think-off canonical was mid-rerun on the "
+        "cluster, so this sync pulled partial-over-complete data for it), and the validate_plan component "
+        "overlaps the known FastMCP arg-error binning artifact (see project_validate_plan_fp_scoring_bug). The "
+        "per-cell numbers have shifted across syncs and will move again — do not pin a with-tools magnitude or "
+        "mechanism from this build. With tools the planner/validator solves regardless of domain names, so any "
+        "edge here is tool-interaction, not model recall.",
+        "CORRECTION vs the preliminary build: the earlier verdict_mismatch (+1.7pp) 'reasoning-degradation' "
+        "mechanism is RETRACTED — it was an artifact of only Gemma4 + Qwen3.6 being complete, and the "
+        "with-tools deficit is not in verdict_mismatch. The exact with-tools magnitude/mechanism is deferred "
+        "until the in-flight cells finish.",
+        "COVERAGE (sync 2026-06-01): the clean no-tools probe is complete (4560 trials/side, all 5 models, "
+        "both corpora) — the conclusion rests here. With-tools: Qwen3.5-4B is now complete; STILL in flight = "
+        "Qwen3.5-9B think-on anon (~7.2k/9.1k) and Qwen3.5-0.8B think-off canonical (mid-rerun, ~8.0k). Those "
+        "with-tools rows are provisional; re-sync to finalise them.",
+        "BOTTOM LINE: NO evidence of train-set contamination. The clean no-tools probe is null on every "
+        "task/model under think=off, and the only think=on CI-disjoint cells (validate_plan) are fully "
+        "explained by a differential-truncation artifact (anon prompts ~5% longer → more decode-cliff "
+        "truncation), NOT recall. The with-tools deltas are small, secondary (the planner/validator solves "
+        "regardless of names) and not yet stable — they do not support a contamination claim either.",
+        "NEXT: a per-DOMAIN Δ (canonical-blocksworld vs anon-blocksworld) localises which specific domains, "
+        "if any, a model memorised; it needs the anon↔canonical name mapping. Rebuild after any further sync: "
+        "re-run filter_variants on both roots, then re-run this script.",
     ])
 
     prs.save(str(out_pptx))
