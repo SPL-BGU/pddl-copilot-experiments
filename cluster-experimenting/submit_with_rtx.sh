@@ -462,8 +462,8 @@ if [ -n "$RUN_TAG" ]; then
     EXPORT_LIST="${EXPORT_LIST},RUN_TAG=${RUN_TAG}"
 fi
 # GPU_MEM_UTIL is a correctness param (the VRAM-85%-guard headroom for big
-# models like gpt-oss:120b). Thread it explicitly to match the SMOKE/SHARD
-# convention rather than relying on --export=ALL inheritance alone.
+# models). Thread it explicitly to match the SMOKE/SHARD convention rather
+# than relying on --export=ALL inheritance alone.
 if [ -n "${GPU_MEM_UTIL:-}" ]; then
     EXPORT_LIST="${EXPORT_LIST},GPU_MEM_UTIL=${GPU_MEM_UTIL}"
 fi
@@ -486,9 +486,9 @@ fi
 
 # --tmp passthrough: overrides the sbatch's `#SBATCH --tmp=80G` directive
 # (CLI options win over script directives). The 80G default was sized for
-# ~24 GB HF snapshots; a large model (e.g. gpt-oss:120b ~63 GB weights +
-# the ~10-15 GB vllm.sif copied to scratch) needs more headroom or the
-# /scratch mkdir ENOSPC-bails before the trap fires. Unset → directive stands.
+# ~24 GB HF snapshots; a large model (big weights + the ~10-15 GB vllm.sif
+# copied to scratch) needs more headroom or the /scratch mkdir ENOSPC-bails
+# before the trap fires. Unset → directive stands.
 TMP_ARG=()
 if [ -n "$TMP_OVERRIDE" ]; then
     TMP_ARG=(--tmp="$TMP_OVERRIDE")
@@ -496,8 +496,8 @@ fi
 
 # --dependency passthrough: schedule this submission to start only after
 # another job reaches the given state (e.g. afterany:JID, afterok:JID).
-# Used to chain the gpt-oss smoke behind the Qwen rerun so they don't
-# contend and run in a defined order. Unset → no dependency.
+# Used to chain submissions behind one another so they don't contend and
+# run in a defined order. Unset → no dependency.
 DEP_ARG=()
 if [ -n "$DEP_OVERRIDE" ]; then
     DEP_ARG=(--dependency="$DEP_OVERRIDE")

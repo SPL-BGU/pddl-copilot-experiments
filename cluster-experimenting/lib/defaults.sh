@@ -101,41 +101,6 @@ vllm_lookup() {
             REASONING_PARSER="none"
             MAX_NUM_BATCHED_TOKENS="4096"
             ;;
-        gpt-oss:120b)
-            # OpenAI gpt-oss-120b. MoE, 117B total / 5.1B active, native
-            # MXFP4 (~63 GB weights) — loads out of the box, no quant flag.
-            # STANDALONE model: NOT in PDDL_DEFAULT_MODELS / --all. Submit
-            # only via the dedicated `submit_gpt_oss.sh` wrapper, which pins
-            # rtx_pro_6000 (the 63 GB weights do NOT fit the 48 GB rtx_6000)
-            # and --think-modes default.
-            #
-            # Thinking: gpt-oss has NO on/off toggle — only a reasoning_effort
-            # level (low|medium|high, default medium) carried in the harmony
-            # system message. The harness only injects enable_thinking when
-            # `think is not None` (vllm_client.py:154), so think=default
-            # (→ think=None) is correct and leaves the native medium effort
-            # untouched. Never run this model with --think on/off: it would
-            # splice a Qwen-style chat_template_kwargs.enable_thinking that
-            # gpt-oss's harmony template does not honor.
-            #
-            # Parsers (verified from vLLM source, stable 0.10.x→0.13.x; a
-            # wrong name silently yields 0% extraction):
-            #   --tool-call-parser openai     (OpenAIToolParser; NOT
-            #                                  openai_gptoss/harmony) + the
-            #                                  sbatch's --enable-auto-tool-choice
-            #   --reasoning-parser openai_gptoss  (GptOssReasoningParser; the
-            #                                  registered name is openai_gptoss
-            #                                  even though the file is gptoss_*)
-            # Needs vLLM >=0.10.1 (mainlined); the prod sbatch's
-            # docker://vllm/vllm-openai:latest is well past that — but a STALE
-            # cached $HOME/vllm.sif on the cluster may predate gpt-oss support,
-            # so rebuild it (rm $HOME/vllm.sif) before the first smoke.
-            # PENDING vLLM smoke verification before promotion to
-            # PDDL_VLLM_VERIFIED_MODELS.
-            HF_MODEL="openai/gpt-oss-120b"
-            TOOL_CALL_PARSER="openai"
-            REASONING_PARSER="openai_gptoss"
-            ;;
         *)
             echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
             echo "       Verify the parser via 'submit_with_rtx.sh --smoke <model>' before adding it." >&2

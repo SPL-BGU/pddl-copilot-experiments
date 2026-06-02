@@ -6,6 +6,21 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-02 — Remove the gpt-oss:120b standalone vLLM setup
+
+**Motivation.** Decided not to pursue the gpt-oss-120b reference cell (added on `feat/gpt-oss-120b-vllm`, commit `efe7af4`). Pulled all of its live setup/config so the model is no longer a runnable option.
+
+**Removed.**
+- `cluster-experimenting/submit_gpt_oss.sh` — the dedicated submit wrapper (deleted).
+- `cluster-experimenting/lib/defaults.sh` — the `gpt-oss:120b)` `vllm_lookup` case (HF id + `--tool-call-parser openai` / `--reasoning-parser openai_gptoss`). It was never in `PDDL_DEFAULT_MODELS` / `PDDL_VLLM_VERIFIED_MODELS`, so removal is self-contained.
+- `.claude/skills/analyzer/scripts/{_constants.py,plot_focused.py}` — the `gpt-oss_120b` color/label/order entries (dead — no such corpus will exist).
+
+**Kept (model-neutral infra, gpt-oss mention scrubbed from comments only).** The `GPU_MEM_UTIL` env-driven `--gpu-memory-utilization` knob (default `0.85` = byte-identical to prior sweeps), the `--tmp` passthrough in `submit_with_rtx.sh`, and the resolved-serve-flags echo in `run_condition_vllm_rtx.sbatch` are general-purpose and stay. Only their gpt-oss references were edited out.
+
+**Left alone (out of scope).** `gpt-oss:20b` references (a *different* model, predates the branch — `tests/test_scoring.py`, roster history in `cluster-experimenting/README.md`), the `gpt-oss-120B` competitor figure in `development/baseline_comparison_tool_use_benchmarks.md` (external published benchmark), `development/CHANGELOG-archive.md` (immutable history), and descriptive comments in `pddl_eval/runner.py` / `EXPERIMENTS_FLOW.md` / `cluster-ops/SKILL.md`.
+
+**Reproducibility.** No effect on the active 5-model roster — behaviour is byte-identical (the kept knob defaults to the prior hardcoded `0.85`).
+
 ## 2026-06-01 — Contamination deck: complete-data rebuild + figure/prose rework (`build_compare_deck.py`)
 
 **Motivation.** The `contamination-live` deck's figures were current (21:54 rebuild picked up complete corpora) but its **hardcoded prose was stale and contradicted by the data** — it still asserted "PRELIMINARY / Qwen3.5-9B uncomparable / 4B ~150 trials" and a "small but *consistent* canonical advantage (+2 to +5pp)" with a verdict_mismatch (+1.7pp) "reasoning-degradation" mechanism. Those last two were artifacts of only Gemma4+Qwen3.6 being complete at the earlier build; with the 4B/9B cells filled in the pattern is mixed.

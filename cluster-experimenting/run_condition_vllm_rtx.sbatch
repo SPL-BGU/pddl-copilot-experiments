@@ -98,8 +98,7 @@ EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 # vLLM KV-cache budget as a fraction of VRAM. Default 0.85 keeps the active
 # roster byte-identical to prior sweeps; env-overridable (propagated by the
 # wrapper via --export=ALL) so a model that lands on the VRAM-85%-guard
-# knife-edge can request a lower fraction. The gpt-oss:120b wrapper passes
-# 0.82 to leave the guard ~6 pts of headroom on rtx_pro_6000 (96 GB).
+# knife-edge can request a lower fraction.
 GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
@@ -148,7 +147,6 @@ preserve_serve_logs() {
 # $HOME/vllm.sif happened to survive; the moment the cache is absent, a
 # fresh build silently pulls whatever `:latest` has drifted to, mixing vLLM
 # versions across a single sweep. Pinning makes a cache-miss reproducible.
-# v0.20.2 also supports gpt-oss (mainlined since 0.10.1).
 VLLM_IMAGE="${VLLM_IMAGE:-docker://vllm/vllm-openai:v0.20.2}"
 SIF_VLLM="$WORK/vllm.sif"
 if [ -f "$HOME/vllm.sif" ]; then
@@ -203,8 +201,8 @@ for MODEL in $MODELS; do
     # Serve log normally lives on scratch and is copied to the persistent
     # logs dir by the EXIT trap. But a cgroup OOM-kill is SIGKILL, which bash
     # cannot trap → the copy never runs and scratch is reaped with the log
-    # (exactly how the gpt-oss:120b smoke 17951156 lost its serve log). When
-    # PERSIST_SERVE_LOG=1, write the serve log DIRECTLY into the persistent
+    # (a large model can OOM the host-RAM cgroup during cold-load this way).
+    # When PERSIST_SERVE_LOG=1, write the serve log DIRECTLY into the persistent
     # logs dir so it survives any kill, including SIGKILL. Default path
     # (unset) is byte-identical to before.
     if [ "${PERSIST_SERVE_LOG:-0}" = "1" ]; then
