@@ -2,8 +2,10 @@
 
 Runs the [PlanBench](https://github.com/karthikv792/LLMs-Planning) benchmark
 (10 tasks × canonical Blocksworld / Logistics / Depots domains) against our
-Ollama + vLLM model fleet, alongside the existing 5-task evaluation in
-`run_experiment.py`.
+vLLM model fleet — the **same models, served the same way** as the existing
+5-task evaluation in `run_experiment.py`, for corpus identity between the two
+arms. The cluster sbatch self-deploys vLLM per job (Ollama backend retired
+2026-05-18; the arm was migrated off it 2026-06-02 — see CHANGELOG).
 
 **v1 = vanilla leaderboard only.** No MCP tools used during response
 generation. The tool-using arm (LLM-Modulo style, per PlanBench
@@ -25,17 +27,22 @@ bash planbench/setup.sh
 source <(bash planbench/setup.sh --print-env-only)
 source external/LLMs-Planning/.venv/bin/activate
 
-# 3. Smoke test (assumes a local Ollama with qwen3:0.6b loaded).
+# 3. Smoke test. Needs a vLLM server reachable at $VLLM_BASE. The laptop is
+#    engine-smoke-only (no VAL/PR2/FD binaries on macOS); point VLLM_BASE at
+#    any running OpenAI-compatible vLLM serving the model under its tag.
 cd external/LLMs-Planning/plan-bench
+export VLLM_BASE="http://localhost:8000/v1"
 python3 llm_plan_pipeline.py --task t1 --config blocksworld \
-    --engine pddl_copilot__ollama__qwen3:0.6b \
-    --specific_instances 1 2 3 --verbose True
+    --engine pddl_copilot__vllm__Qwen3.5:0.8B \
+    --specific_instances 2 3 4 --verbose True
 ```
 
-After the smoke run, three JSON stages should exist:
+The real validation surface is the cluster (`submit_planbench.sh --smoke`),
+which self-deploys vLLM and runs the VAL evaluation stage. After a run, three
+JSON stages should exist (engine name = `pddl_copilot__vllm__Qwen3.5:0.8B`):
 - `external/LLMs-Planning/plan-bench/prompts/blocksworld/task_1_plan_generation.json`
-- `external/LLMs-Planning/plan-bench/responses/blocksworld/pddl_copilot__ollama__qwen3:0.6b/task_1_plan_generation.json`
-- `external/LLMs-Planning/plan-bench/results/blocksworld/pddl_copilot__ollama__qwen3:0.6b/task_1_plan_generation.json`
+- `external/LLMs-Planning/plan-bench/responses/blocksworld/pddl_copilot__vllm__Qwen3.5:0.8B/task_1_plan_generation.json`
+- `external/LLMs-Planning/plan-bench/results/blocksworld/pddl_copilot__vllm__Qwen3.5:0.8B/task_1_plan_generation.json`
 
 The third file contains per-instance `llm_correct` plus an aggregate accuracy.
 
@@ -45,14 +52,19 @@ The third file contains per-instance `llm_correct` plus an aggregate accuracy.
 
 `pddl_copilot__<backend>__<model>`
 
-- `<backend>` ∈ `{ollama, vllm}`
-- `<model>` is the model tag, e.g. `qwen3:0.6b`. The double-underscore separator
-  means colons inside model tags survive `.split('__')`.
+- `<backend>` ∈ `{vllm, ollama}`. **vllm** is the active path; `ollama` is
+  retained in `engine.py` for archaeology only (backend retired 2026-05-18).
+- `<model>` is the canonical model tag, e.g. `Qwen3.5:0.8B`. The
+  double-underscore separator means colons inside model tags survive
+  `.split('__')`. For vLLM the tag must match the server's
+  `--served-model-name`; `run_planbench_rtx.sbatch` sets that to the canonical
+  tag (not the HF id) so the engine name — and PlanBench's results dir — stays
+  slash-free.
 
-Examples:
-- `pddl_copilot__ollama__qwen3:0.6b`
-- `pddl_copilot__ollama__gemma4:31b`
-- `pddl_copilot__vllm__cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`
+Examples (active vLLM roster):
+- `pddl_copilot__vllm__Qwen3.5:0.8B`
+- `pddl_copilot__vllm__qwen3.6:35b`
+- `pddl_copilot__vllm__gemma4:26b-a4b`
 
 ---
 
@@ -66,9 +78,10 @@ Examples:
 | `PLANBENCH_PATH` | LLMs-Planning checkout | `external/LLMs-Planning` |
 | `PDDL_COPILOT_EXPERIMENTS_ROOT` | This repo root | auto-detected by the patch |
 | `OPENAI_API_KEY` | PlanBench imports openai at module level; a stub is fine for our engine | `__planbench_stub__` |
-| `OLLAMA_HOST` | Ollama server URL | `http://localhost:11434` |
-| `VLLM_BASE` | vLLM `/v1` base URL | unset (required when backend=vllm) |
+| `VLLM_BASE` | vLLM `/v1` base URL (active backend) | unset (required when backend=vllm) |
 | `VLLM_API_KEY` | optional vLLM bearer token | unset |
+| `PDDL_COPILOT_THINK` | `on`/`off`/`default` — toggles qwen3 thinking via `chat_template_kwargs.enable_thinking` | `off` (baselines are non-thinking) |
+| `OLLAMA_HOST` | Ollama server URL (retired backend; archaeology only) | `http://localhost:11434` |
 
 `bash planbench/setup.sh --print-env-only` emits the full export block after
 a successful setup.
@@ -80,11 +93,12 @@ a successful setup.
 ```bash
 ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
     bash planbench/setup.sh && \
-    bash cluster-experimenting/submit_planbench.sh --models qwen3:0.6b qwen3:4b"
+    bash cluster-experimenting/submit_planbench.sh --models Qwen3.5:0.8B Qwen3.5:4B"
 ```
 
 Sweep cells are `(task, config, model)`. Each model gets one sbatch that
-loops the `task × config` matrix in-process to keep Ollama warm.
+self-deploys vLLM and loops the `task × config` matrix in-process to keep the
+server warm. Models must be in `PDDL_VLLM_VERIFIED_MODELS` (lib/defaults.sh).
 
 Per-run results land in `results/planbench/slurm_<model>_<jobid>/` (rsynced
 from `external/LLMs-Planning/plan-bench/results/` post-run). The cluster-ops
@@ -97,12 +111,14 @@ from `external/LLMs-Planning/plan-bench/results/` post-run). The cluster-ops
 ```
 planbench/
 ├── __init__.py
-├── engine.py             — sync Ollama + vLLM adapter exposed to PlanBench
-├── setup.sh              — clone + build + patch (idempotent)
-├── README.md             — this file
-└── patches/
-    ├── llm_utils.patch       — adds pddl_copilot__* dispatch in PlanBench
-    └── utils_init.patch      — tolerate missing OPENAI_API_KEY at import
+├── engine.py             — sync vLLM adapter exposed to PlanBench (active);
+│                           retired Ollama branch kept for archaeology
+├── setup.sh              — clone + build + patch + venv (idempotent)
+├── apply_patches.py      — idempotent in-place edits to the LLMs-Planning
+│                           tree: tolerate missing OPENAI_API_KEY, add the
+│                           pddl_copilot__* dispatch, fix the upstream
+│                           --specific_instances self-destructing filter
+└── README.md             — this file
 ```
 
 The cloned PlanBench tree lives at `external/LLMs-Planning/` and is gitignored
@@ -119,5 +135,5 @@ The cloned PlanBench tree lives at `external/LLMs-Planning/` and is gitignored
   branch of the sibling repo (see `specs-for-plan-bench.md`).
 - MCP bridge contract (`MCPPlanner._PINNED_VERBOSE_FALSE` etc.) — unchanged.
 
-See `development/CHANGELOG.md` (entry dated 2026-05-18) and
+See `development/CHANGELOG.md` (entries dated 2026-05-18 and 2026-06-02) and
 `EXPERIMENTS_FLOW.md` §13 for the full scope.

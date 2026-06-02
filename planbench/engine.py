@@ -7,8 +7,13 @@ Engine name format: ``pddl_copilot__<backend>__<model>``
 
 Env vars:
   ``OLLAMA_HOST`` — Ollama server URL (default ``http://localhost:11434``).
+                    Ollama backend retired 2026-05-18; kept for archaeology.
   ``VLLM_BASE``   — vLLM ``/v1`` base URL (required when backend is ``vllm``).
   ``VLLM_API_KEY``— optional bearer token for vLLM.
+  ``PDDL_COPILOT_THINK`` — ``on`` | ``off`` | ``default`` (default ``off``).
+                    Toggles qwen3 thinking on the vLLM backend via
+                    ``chat_template_kwargs.enable_thinking``; ``default``
+                    omits the kwarg. PlanBench baselines are non-thinking.
 
 PlanBench's ``send_query`` is sync; this is sync too. PlanBench iterates
 instances itself — one request per call.
@@ -105,6 +110,15 @@ def _vllm_chat(query: str, model: str, max_tokens: int, stop: str) -> str:
         "max_tokens": _effective_num_predict(max_tokens),
         "stop": stops,
     }
+    # PlanBench's published baselines are non-thinking. PDDL_COPILOT_THINK
+    # (set by run_planbench_rtx.sbatch from THINK) toggles qwen3's reasoning
+    # trace through the chat template, mirroring pddl_eval.vllm_client's
+    # extra_body.chat_template_kwargs.enable_thinking. "default" omits the
+    # kwarg (model default); gemma4 has no <think> tokens and silently
+    # ignores it. The kwarg is a vLLM extra-body field on the OpenAI API.
+    think = os.environ.get("PDDL_COPILOT_THINK", "off").strip().lower()
+    if think in ("on", "off"):
+        payload["chat_template_kwargs"] = {"enable_thinking": think == "on"}
     url = base.rstrip("/") + "/chat/completions"
     with httpx.Client(timeout=_DEFAULT_TIMEOUT_S) as client:
         r = client.post(url, headers=headers, content=json.dumps(payload))

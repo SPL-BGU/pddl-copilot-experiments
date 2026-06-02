@@ -6,9 +6,14 @@
 # submit_with_rtx.sh but with PlanBench's (task, config) axes instead of
 # (think, condition).
 #
+# Models are canonical tags resolved to HF ids by vllm_lookup
+# (lib/defaults.sh) — must be in PDDL_VLLM_VERIFIED_MODELS. The vLLM server
+# is self-deployed per-job by run_planbench_rtx.sbatch (Ollama retired
+# 2026-05-18; see CHANGELOG 2026-06-02).
+#
 # Usage:
 #   bash submit_planbench.sh --models Qwen3.5:0.8B Qwen3.5:4B
-#   bash submit_planbench.sh --models qwen3:0.6b --tasks t1 t3 --configs blocksworld
+#   bash submit_planbench.sh --models Qwen3.5:0.8B --tasks t1 t3 --configs blocksworld
 #   bash submit_planbench.sh --smoke              # 1 model × 1 task × 1 config × 3 instances
 #   bash submit_planbench.sh --dry-run --models Qwen3.5:0.8B
 

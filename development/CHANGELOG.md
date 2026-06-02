@@ -6,6 +6,21 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-02 — PlanBench arm: migrate run-path from retired Ollama to self-deployed vLLM
+
+**Motivation.** The PlanBench arm v1 (CHANGELOG 2026-05-18) was built on the Ollama backend and landed the **same day** Ollama was retired harness-wide. Its smoke was never validated, and the run-path is now orphaned: (1) `run_condition_rtx.sbatch` — the Ollama self-deploy template `run_planbench_rtx.sbatch` mirrored — was **deleted** in the retirement (`b82f590`, #67); (2) the current roster's `gemma4:26b-a4b` is `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit`, a vLLM-only AWQ quant that `ollama pull` cannot serve at all; (3) `planbench/README.md` still referenced the retired `gemma4:31b` dense tag. Corpus identity ("same models as the 5-task arm") forces vLLM. `engine.py` already had a working `_vllm_chat` branch — this commit wires the run-path to it.
+
+**What changed.**
+- `cluster-experimenting/run_planbench_rtx.sbatch` — rewritten to mirror `run_condition_vllm_rtx.sbatch`'s bootstrap instead of the deleted Ollama one: `rtx_6000:1` + `--constraint=rtx_6000` (same GPU class as the 5-task arm), `--mem=48G --tmp=80G`, pinned `vllm/vllm-openai:v0.20.2` SIF (cached at `$HOME/vllm.sif`), `vllm_lookup`-resolved serve flags, the 20-min readiness probe + die-detection, and the VRAM-85% guard. The Ollama `serve`/`pull`/warmup block is gone.
+- **Engine-name / served-name wiring.** The 5-task serve uses `--model "$HF_MODEL"` with no `--served-model-name`, so it registers under the HF id (slash-bearing). PlanBench uses the engine name as a results-dir, so a slash would nest the tree. Fix: the PlanBench serve adds `--served-model-name "$MODEL"` (canonical tag), the engine name stays `pddl_copilot__vllm__<tag>`, and `engine.py` sends `model=<tag>` matching the served name. Tool-call + reasoning parsers are kept in the serve (inert in v1 — no `tools` sent) so the two arms share an identical server/VRAM profile.
+- `planbench/engine.py::_vllm_chat` — honors `PDDL_COPILOT_THINK` (`on`/`off`/`default`, set by the sbatch from `THINK`) via `chat_template_kwargs.enable_thinking`, mirroring `pddl_eval.vllm_client`. PlanBench baselines are non-thinking → default `off`. `gemma4` has no `<think>` tokens and ignores the kwarg. The Ollama branch is untouched (archaeology).
+- `planbench/setup.sh` — dropped the dead `ollama` pip dep (httpx is the only client engine.py needs now); smoke hint updated to the vLLM engine + `VLLM_BASE`.
+- `cluster-experimenting/submit_planbench.sh`, `planbench/README.md` — doc-only: `MODEL` is a canonical tag resolved by `vllm_lookup` (must be in `PDDL_VLLM_VERIFIED_MODELS`); env table marks `OLLAMA_HOST` retired and adds `PDDL_COPILOT_THINK`; corrected the stale `gemma4:31b` references and the `patches/*.patch` file-layout claim (the mechanism is `apply_patches.py`).
+
+**Validation.** `engine.py` vLLM branch unit-checked locally (engine-name parse preserves the colon tag; `model` field = served tag; `max_tokens` floored to 4096; `/chat/completions` URL; `enable_thinking` toggles off→False / on→True / default→omitted). The cluster smoke (`submit_planbench.sh --smoke`) is the next field-validation step — first real numbers pending.
+
+**Reproducibility.** No effect on the 5-task arm or any existing `results/` — only the PlanBench arm's serving backend changed, and it had produced no corpus yet (no `results/planbench/` on disk). PlanBench-side patches (incl. the `--specific_instances` filter fix) are backend-independent and validate on the vLLM path.
+
 ## 2026-06-02 — Remove the gpt-oss:120b standalone vLLM setup
 
 **Motivation.** Decided not to pursue the gpt-oss-120b reference cell (added on `feat/gpt-oss-120b-vllm`, commit `efe7af4`). Pulled all of its live setup/config so the model is no longer a runnable option.

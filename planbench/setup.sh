@@ -127,9 +127,10 @@ fi
 # 6. Slim Python venv --------------------------------------------------------
 # PlanBench's pinned requirements.txt is from 2022 (tarski==0.7.0,
 # pddl==0.2.0). Those pins are real — PlanBench's code uses tarski 0.7.0
-# specific APIs. We only need the import-time deps plus our two HTTP
-# clients (ollama, httpx). Prefer python3.12 (widely compatible with the
-# old pins); fall back to whatever python3 we find.
+# specific APIs. We only need the import-time deps plus httpx (the HTTP
+# client engine.py uses to reach the self-deployed vLLM server; the Ollama
+# backend was retired 2026-05-18). Prefer python3.12 (widely compatible
+# with the old pins); fall back to whatever python3 we find.
 PYTHON_BIN="${PLANBENCH_PYTHON:-}"
 if [[ -z "$PYTHON_BIN" ]]; then
     for candidate in python3.12 python3.11 python3.10 python3; do
@@ -150,19 +151,21 @@ fi
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
 "$VENV_DIR/bin/pip" install --quiet \
     pyyaml 'tarski==0.7.0' 'pddl==0.2.0' numpy \
-    'openai<1.0' transformers ollama httpx
+    'openai<1.0' transformers httpx
 
 # 7. Print env ---------------------------------------------------------------
 print_env "$VAL_DIR" "$PR2_DIR" "$FD_DIR" "$VENV_DIR" "$PB_DIR"
 
 cat <<EOF
 
-[planbench setup] DONE. Smoke test:
+[planbench setup] DONE. Smoke test (needs a vLLM server reachable at
+\$VLLM_BASE — e.g. cluster: submit via submit_planbench.sh --smoke):
 
   source <(bash $REPO_ROOT/planbench/setup.sh --print-env-only)
   source "$VENV_DIR/bin/activate"
+  export VLLM_BASE="http://localhost:8000/v1"   # point at a running vLLM
   cd "$PB_DIR/plan-bench"
   python3 llm_plan_pipeline.py --task t1 --config blocksworld \\
-      --engine pddl_copilot__ollama__qwen3:0.6b \\
-      --specific_instances 1 2 3 --verbose True
+      --engine pddl_copilot__vllm__Qwen3.5:0.8B \\
+      --specific_instances 2 3 4 --verbose True
 EOF

@@ -4,6 +4,23 @@ Snapshot of where the PlanBench integration stands so the next session can resum
 
 ---
 
+## UPDATE 2026-06-02 — run-path migrated Ollama → vLLM (supersedes the Ollama sections below)
+
+The 2026-05-18 arm was Ollama-based and landed the same day Ollama was retired harness-wide, so the run-path was orphaned (the `run_condition_rtx.sbatch` template it mirrored was deleted; the roster's `gemma4:26b-a4b` is a vLLM-only AWQ quant). **The smoke described below was never validated on Ollama and should not be.** The run-path was migrated to self-deployed vLLM — see CHANGELOG 2026-06-02. Everything below about the *PlanBench-side* bugs/patches (esp. the `--specific_instances` filter fix, bug #3) still stands — those are backend-independent.
+
+**New immediate next action (validate on the cluster):**
+
+```bash
+ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments \
+    && git pull --ff-only origin planbench-integration \
+    && python3 planbench/apply_patches.py external/LLMs-Planning \
+    && bash cluster-experimenting/submit_planbench.sh --smoke"
+```
+
+`submit_planbench.sh --smoke` now self-deploys vLLM (`Qwen3.5:0.8B`, `--served-model-name` = canonical tag) on `rtx_6000:1`, engine name `pddl_copilot__vllm__Qwen3.5:0.8B`. Before submitting, verify cluster state: the checkout is on `planbench-integration` and `external/LLMs-Planning` is built (run `bash planbench/setup.sh` — idempotent — if unsure). The Ollama-specific resume commands below are obsolete.
+
+---
+
 ## TL;DR
 
 - **What's done:** PlanBench arm v1 (vanilla leaderboard, no MCP tools) is wired up end-to-end on cluster Linux. Adapter + setup + sbatch + cluster-ops status hook all committed on branch `planbench-integration` (both repos, pushed). Setup verified locally (engine smoke) and on the cluster (setup.sh ran clean, FD built, VAL+PR2 pre-built binaries work, slim venv up).
@@ -137,17 +154,20 @@ ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments \
 
 Note the `apply_patches.py` re-run is required — the existing cluster checkout already has the first two patches applied; without re-running, the third patch (filter fix) won't be in `response_generation.py`. The script is idempotent; the first two will report "already applied", the third will apply fresh.
 
-**Expected runtime:** ~2-3 min total (Ollama bootstrap ~60s + 3 instances × ~14s + VAL eval on 3 instances ~5s).
+**Expected runtime (vLLM path):** ~10-15 min total (vLLM cold-load of `Qwen/Qwen3.5-0.8B` ~3-5 min + 3 instances × a few s + VAL eval on 3 instances ~5s). Longer than the old Ollama estimate because the SIF build (first run) + HF download dominate.
 
-**Validation criteria:**
-- `squeue` clears within ~3 min.
-- `~/pddl-copilot-experiments/cluster-experimenting/logs/pddl_planbench_Qwen3_5_0_8B-<jobid>.out` shows progress bar reaches `3/500` quickly, then accelerates through skips (sub-second/iter) for the remaining 497.
-- `results/planbench/slurm_Qwen3_5_0_8B_<jobid>/results/blocksworld/pddl_copilot__ollama__Qwen3.5:0.8B/task_1_plan_generation.json` contains exactly 3 `llm_correct` entries (or 500 total entries with 3 having an `llm_raw_response` filled).
+**Validation criteria (vLLM-aware — the smoke is ALSO the first-ever test of two unvalidated things on this backend: the `--specific_instances` filter fix (bug #3, which burned the last 3 Ollama smokes by running all 500) and the empty-content failure mode that drove the num_predict-floor + stop-list fixes):**
+1. **Serve healthy** — log shows `vllm ready (Ns)` and `VRAM after vLLM load ... (<85%)`.
+2. **Filter fix holds** — only **3 instances actually ran**, not 500. The log's response_generation progress should hit 3 generated then skip the rest sub-second. (If 500 ran, patch #3 didn't apply — re-check the `apply_patches.py` re-run.)
+3. **Non-empty content** — `results/planbench/slurm_Qwen3_5_0_8B_<jobid>/responses/blocksworld/pddl_copilot__vllm__Qwen3.5:0.8B/task_1_plan_generation.json` has 3 entries with **non-empty `llm_raw_response`** (the empty-content mode, now re-exposed under vLLM with `enable_thinking=false`).
+4. **VAL ran** — the sibling `results/.../results/blocksworld/.../task_1_plan_generation.json` has `llm_correct` populated on those 3.
+
+If content is empty or 500 ran, you know exactly which of the two histories repeated.
 
 ### After smoke validates
 
 1. Remove the `[env-debug]` echoes from `run_planbench_rtx.sbatch` (commit `7d8662e`) once we're confident the pipeline is stable. They're informative but they were added explicitly to diagnose the filter bug — keep them if you like the production log being verbose, drop them for clean operator output.
-2. Launch the full sweep on the active 5-model roster (`PDDL_DEFAULT_MODELS`) across all 10 tasks × 3 configs. Per-model runtime estimate: ~3-4h for Qwen3.5:0.8B → ~24h+ for gemma4:31b and qwen3.6:35b. Submit serialized (per memory `feedback_experiment_pipeline_safety.md`) or sharded across models.
+2. Launch the full sweep on the active 5-model roster (`PDDL_DEFAULT_MODELS`) across all 10 tasks × 3 configs. The AWQ quants (`gemma4:26b-a4b`, `qwen3.6:35b`) are public on HF and pull with no token — same no-auth mechanism the 5-task arm uses. Per-model runtime estimate: ~3-4h for Qwen3.5:0.8B → ~24h+ for the two heavy models. Submit serialized (per memory `feedback_experiment_pipeline_safety.md`) or sharded across models.
 3. Run `status.sh --bench planbench` from laptop to validate the new selector against real data.
 4. Read the per-task accuracy and compare to PlanBench's committed baselines (gpt-4_chat etc. in `external/LLMs-Planning/plan-bench/results/<config>/<engine>/`).
 
