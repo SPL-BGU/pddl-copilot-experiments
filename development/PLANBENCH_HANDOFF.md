@@ -8,6 +8,12 @@ Snapshot of where the PlanBench integration stands so the next session can resum
 
 The 2026-05-18 arm was Ollama-based and landed the same day Ollama was retired harness-wide, so the run-path was orphaned (the `run_condition_rtx.sbatch` template it mirrored was deleted; the roster's `gemma4:26b-a4b` is a vLLM-only AWQ quant). **The smoke described below was never validated on Ollama and should not be.** The run-path was migrated to self-deployed vLLM — see CHANGELOG 2026-06-02. Everything below about the *PlanBench-side* bugs/patches (esp. the `--specific_instances` filter fix, bug #3) still stands — those are backend-independent.
 
+**✅ ALL THREE SMOKES VALIDATED 2026-06-02 — migration fully field-validated; full vanilla sweep gate CLEARED.** Each passed all four criteria (vLLM ready + VRAM<guard; exactly 3 instances ran not 500 — filter fix #3's first-ever validation, after it burned all 3 Ollama smokes; non-empty `llm_raw_response`; `llm_correct` populated by VAL; `Overall rc: 0`). `--served-model-name`=canonical-tag wiring confirmed in serve logs.
+- **Qwen3.5:0.8B** (job 17963891, rtx_3090, 78% VRAM) and **Qwen3.5:4B** (job 17963892, rtx_3090, 76% VRAM) — ran on free rtx_3090 via `--gpu rtx_3090 --gpu-mem-util 0.80` because the rtx_6000/pro pools were 100% allocated (sternron fairshare depleted).
+- **gemma4:26b-a4b** (job 17964393, rtx_6000 ise-6000-02, pended ~5h then ran 7:21). Validated the divergent serve config: `--tool-call-parser gemma4 (no reasoning-parser) --max-num-batched-tokens 4096`, VRAM 42218/49140 (85%, guard edge). Confirms gemma needs rtx_6000 (won't fit a 24GB card).
+
+**Next action: launch the full v1 vanilla sweep** (user decision 2026-06-02: land v1 before v2 tools-on arm). All 5 models × 10 tasks × 3 configs × full instance set, rtx_6000. **Runtime caveat:** ~15k generations/model (10×3×~500) — the heavy models (gemma4:26b-a4b, qwen3.6:35b) may exceed the 48h `--time` default; consider per-model or per-task sharding, or a longer `--time`. Submit per `submit_planbench.sh` (one sbatch per model); jobs will pend on the saturated rtx_6000 pool and run as capacity frees.
+
 **New immediate next action (validate on the cluster):**
 
 ```bash
