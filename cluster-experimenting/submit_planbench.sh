@@ -53,6 +53,7 @@ GPU_MEM_UTIL_OVERRIDE=""
 SMOKE=0
 DRY_RUN=0
 TOOLS=0
+BASE=0
 NUM_PREDICT_OVERRIDE=""
 
 usage() {
@@ -95,6 +96,7 @@ while [[ $# -gt 0 ]]; do
         --gpu-mem-util) GPU_MEM_UTIL_OVERRIDE="$2"; shift 2 ;;
         --smoke) SMOKE=1; shift ;;
         --tools) TOOLS=1; shift ;;
+        --base) BASE=1; shift ;;
         --num-predict) NUM_PREDICT_OVERRIDE="$2"; shift 2 ;;
         --dry-run) DRY_RUN=1; shift ;;
         -h|--help) usage ;;
@@ -134,13 +136,22 @@ echo "  time     = $TIME"
 echo "  gpu      = ${GPU_TYPE}:1${GPU_MEM_UTIL_OVERRIDE:+  (mem-util=$GPU_MEM_UTIL_OVERRIDE)}"
 echo "  smoke    = $SMOKE"
 echo "  tools    = $TOOLS"
+echo "  base     = $BASE"
 echo "  num_pred = ${NUM_PREDICT_OVERRIDE:-<engine default 4096>}"
 [[ "$DRY_RUN" -eq 1 ]] && echo "  (dry-run — not submitting)"
 
-# --tools picks the v2 MCP-tools-on sbatch; otherwise the v1 vanilla sbatch.
+if [[ "$TOOLS" -eq 1 && "$BASE" -eq 1 ]]; then
+    echo "Error: --tools and --base are mutually exclusive" >&2; exit 1
+fi
+# --tools → v2 MCP-tools-on sbatch (engine vllm-tools). --base → v1 sbatch but
+# engine vllm-base (the v2 no-tools baseline, own results dir, v1 vllm__ corpus
+# untouched). Neither → the v1 vanilla leaderboard sbatch (engine vllm).
 if [[ "$TOOLS" -eq 1 ]]; then
     SBATCH_FILE="$SCRIPT_DIR/run_planbench_tools_rtx.sbatch"
     JOB_KIND="tools_"
+elif [[ "$BASE" -eq 1 ]]; then
+    SBATCH_FILE="$SCRIPT_DIR/run_planbench_rtx.sbatch"
+    JOB_KIND="base_"
 else
     SBATCH_FILE="$SCRIPT_DIR/run_planbench_rtx.sbatch"
     JOB_KIND=""
@@ -184,6 +195,10 @@ for MODEL in "${MODELS[@]}"; do
     # 18019718). Same value for both arms = clean tools-vs-no-tools baseline.
     if [[ -n "$NUM_PREDICT_OVERRIDE" ]]; then
         EXPORTS="$EXPORTS,NUM_PREDICT=$NUM_PREDICT_OVERRIDE"
+    fi
+    # --base → vllm-base engine (v2 no-tools baseline, own results dir).
+    if [[ "$BASE" -eq 1 ]]; then
+        EXPORTS="$EXPORTS,ENGINE_BACKEND=vllm-base"
     fi
 
     # --gpus + --constraint on the CLI override the sbatch's

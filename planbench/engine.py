@@ -92,9 +92,10 @@ def _parse_engine_name(engine: str) -> tuple[str, str]:
             f"engine name must be 'pddl_copilot__<backend>__<model>': {engine!r}"
         )
     backend, model = parts
-    if backend not in {"ollama", "vllm", "vllm-tools"}:
+    if backend not in {"ollama", "vllm", "vllm-base", "vllm-tools"}:
         raise ValueError(
-            f"unsupported backend {backend!r}; expected 'ollama', 'vllm', or 'vllm-tools'"
+            f"unsupported backend {backend!r}; expected 'ollama', 'vllm', "
+            f"'vllm-base', or 'vllm-tools'"
         )
     return backend, model
 
@@ -391,6 +392,10 @@ def pddl_copilot_send_query(
             return _ollama_chat(query, model_tag, max_tokens, stop)
         if backend == "vllm-tools":
             return _vllm_tools_chat(query, model_tag, max_tokens)
+        # vllm-base is byte-identical no-tools inference to vllm; it exists only
+        # to give the v2 no-tools-at-higher-num_predict baseline its OWN engine
+        # name / results dir so it never collides with v1's frozen vllm__ 4096
+        # leaderboard corpus (the GPT-4-comparable anchor).
         return _vllm_chat(query, model_tag, max_tokens, stop)
     except Exception as exc:
         print(f"[-] pddl_copilot engine failed for {engine!r}: {exc}", file=sys.stderr)

@@ -209,7 +209,11 @@ export PDDL_COPILOT_THINK="$THINK"
 # a clean tools-vs-no-tools baseline (e.g. 8192 = single-task sweep solve cap).
 [ -n "${NUM_PREDICT:-}" ] && export PDDL_COPILOT_NUM_PREDICT="$NUM_PREDICT"
 
-ENGINE="pddl_copilot__vllm__${MODEL}"
+# ENGINE_BACKEND defaults to `vllm` (the v1 leaderboard corpus). Set to
+# `vllm-base` (submit_planbench.sh --base) for the v2 no-tools baseline so it
+# writes to its OWN results dir and leaves the frozen v1 vllm__ corpus intact.
+ENGINE_BACKEND="${ENGINE_BACKEND:-vllm}"
+ENGINE="pddl_copilot__${ENGINE_BACKEND}__${MODEL}"
 echo "Engine:    $ENGINE"
 echo "VLLM_BASE: $VLLM_BASE"
 echo "Tasks:     $PLANBENCH_TASKS"
