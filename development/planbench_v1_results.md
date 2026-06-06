@@ -47,6 +47,19 @@ works (non-zero for both engines), so the result is robust to the grading
 confound below. This is the "small open models compete with closed baselines"
 evidence Paper 1 wants (memory `project_paper_strategy`).
 
+**Prompt-parity caveat (checked, near-identical).** For a shared instance the
+task is identical (same initial conditions, goal, `[PLAN]` markers, and same
+one-shot count) — our prompt differs from the committed gpt-4 prompt by exactly
+**one extra blocksworld domain-rule sentence** ("Once you stack a block on top
+of a second block, the second block is no longer clear."), a PlanBench
+prompt-version drift. A single correct domain-clarification can't account for
+the large wins (t5/t8_3 +29, t2 +9), so the headline holds — but the **closest
+win, t1 (+5), is the most exposed to it**; treat t1 as "near-parity" rather
+than a clean win. Cross-version caveat: our cells were graded now (2026, with
+the patched grader/VAL); gpt-4's were graded by PlanBench at publish time, so a
+VAL-version drift is also possible (not expected to matter for VAL's
+plan-validity verdict, but stated once for honesty).
+
 **Clean capability ladder** with model size on every task (0.8B → 4B → 9B →
 35B monotone increasing on essentially all columns, both configs).
 
