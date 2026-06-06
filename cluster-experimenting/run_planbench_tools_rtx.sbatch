@@ -237,6 +237,10 @@ export PDDL_COPILOT_THINK="$THINK"
 export PDDL_MARKETPLACE_PATH="$MARKETPLACE_PATH"
 export PDDL_PLANBENCH_PLUGINS="$PLANBENCH_PLUGINS"
 export PDDL_COPILOT_TOOLLOG="$EXPT_ROOT/cluster-experimenting/logs/${SLURM_JOBID:-local}-toolcalls-${MODEL_TAG}.jsonl"
+# Raise the per-instance output cap (engine.py floors at 4096). Set NUM_PREDICT
+# to the single-task sweep's solve cap (8192) so plan-generation answers don't
+# truncate; same value as the no-tools arm for a clean baseline.
+[ -n "${NUM_PREDICT:-}" ] && export PDDL_COPILOT_NUM_PREDICT="$NUM_PREDICT"
 
 ENGINE="pddl_copilot__vllm-tools__${MODEL}"
 echo "Engine:      $ENGINE"

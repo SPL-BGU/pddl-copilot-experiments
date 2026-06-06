@@ -60,8 +60,25 @@ def _effective_num_predict(planbench_max_tokens: int) -> int:
     OpenAI-completion cap). Thinking-capable models (qwen3.x, qwen3.6) eat
     most of that budget on the reasoning trace and emit empty content —
     smoke against qwen3:0.6b at 500 returned ``""``. Use 500 as a floor;
-    fall back to 4096 (matches `pddl_eval/runner.py` non-solve defaults)."""
-    return max(int(planbench_max_tokens or 0), _DEFAULT_NUM_PREDICT)
+    fall back to 4096 (matches `pddl_eval/runner.py` non-solve defaults).
+
+    ``PDDL_COPILOT_NUM_PREDICT`` overrides the 4096 floor (BOTH the ``vllm``
+    and ``vllm-tools`` paths flow through here). The t1 tools smoke (job
+    18019718) truncated final answers at 4096 (``done_reason=length``); set
+    this to the single-task sweep's ``solve`` cap (8192; sweep5v2/sweep6) so
+    plan-generation answers complete and the tools/no-tools comparison shares
+    one budget."""
+    floor = _DEFAULT_NUM_PREDICT
+    override = os.environ.get("PDDL_COPILOT_NUM_PREDICT")
+    if override:
+        try:
+            floor = int(override)
+        except ValueError:
+            print(
+                f"[pddl_copilot] ignoring non-int PDDL_COPILOT_NUM_PREDICT={override!r}",
+                file=sys.stderr,
+            )
+    return max(int(planbench_max_tokens or 0), floor)
 
 
 def _parse_engine_name(engine: str) -> tuple[str, str]:

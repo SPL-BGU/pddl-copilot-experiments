@@ -204,6 +204,10 @@ source "$PLANBENCH_ROOT/.venv/bin/activate"
 # qwen3 thinking via chat_template_kwargs.enable_thinking.
 export VLLM_BASE="http://localhost:$PORT/v1"
 export PDDL_COPILOT_THINK="$THINK"
+# Optional output-cap override (engine.py floors num_predict at 4096). Set
+# NUM_PREDICT via submit_planbench.sh --num-predict to match the tools arm for
+# a clean tools-vs-no-tools baseline (e.g. 8192 = single-task sweep solve cap).
+[ -n "${NUM_PREDICT:-}" ] && export PDDL_COPILOT_NUM_PREDICT="$NUM_PREDICT"
 
 ENGINE="pddl_copilot__vllm__${MODEL}"
 echo "Engine:    $ENGINE"

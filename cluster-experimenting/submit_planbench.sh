@@ -53,6 +53,7 @@ GPU_MEM_UTIL_OVERRIDE=""
 SMOKE=0
 DRY_RUN=0
 TOOLS=0
+NUM_PREDICT_OVERRIDE=""
 
 usage() {
     sed -n '2,37p' "$0" >&2
@@ -94,6 +95,7 @@ while [[ $# -gt 0 ]]; do
         --gpu-mem-util) GPU_MEM_UTIL_OVERRIDE="$2"; shift 2 ;;
         --smoke) SMOKE=1; shift ;;
         --tools) TOOLS=1; shift ;;
+        --num-predict) NUM_PREDICT_OVERRIDE="$2"; shift 2 ;;
         --dry-run) DRY_RUN=1; shift ;;
         -h|--help) usage ;;
         *) echo "Unknown arg: $1" >&2; usage ;;
@@ -132,6 +134,7 @@ echo "  time     = $TIME"
 echo "  gpu      = ${GPU_TYPE}:1${GPU_MEM_UTIL_OVERRIDE:+  (mem-util=$GPU_MEM_UTIL_OVERRIDE)}"
 echo "  smoke    = $SMOKE"
 echo "  tools    = $TOOLS"
+echo "  num_pred = ${NUM_PREDICT_OVERRIDE:-<engine default 4096>}"
 [[ "$DRY_RUN" -eq 1 ]] && echo "  (dry-run — not submitting)"
 
 # --tools picks the v2 MCP-tools-on sbatch; otherwise the v1 vanilla sbatch.
@@ -173,6 +176,14 @@ for MODEL in "${MODELS[@]}"; do
     # headroom on the larger smoke models.
     if [[ -n "$GPU_MEM_UTIL_OVERRIDE" ]]; then
         EXPORTS="$EXPORTS,GPU_MEM_UTIL=$GPU_MEM_UTIL_OVERRIDE"
+    fi
+    # NUM_PREDICT override — both sbatches export it as PDDL_COPILOT_NUM_PREDICT,
+    # which engine.py's _effective_num_predict reads (applies to vllm AND
+    # vllm-tools). Set to the single-task sweep's solve cap (8192) for t1 so
+    # plan-generation answers don't truncate (the 4096 floor truncated job
+    # 18019718). Same value for both arms = clean tools-vs-no-tools baseline.
+    if [[ -n "$NUM_PREDICT_OVERRIDE" ]]; then
+        EXPORTS="$EXPORTS,NUM_PREDICT=$NUM_PREDICT_OVERRIDE"
     fi
 
     # --gpus + --constraint on the CLI override the sbatch's
