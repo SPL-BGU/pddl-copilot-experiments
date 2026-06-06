@@ -183,32 +183,64 @@ def patch_response_evaluation(pb_root: Path) -> None:
     """
     f = pb_root / "plan-bench" / "response_evaluation.py"
     text = f.read_text()
-    if PATCH_MARKER in text:
+    did = []
+
+    # --- Edit A: default 'valid' to None at the end of parse_output ---
+    # A response with no "plan is (in)valid" phrase otherwise leaves 'valid'
+    # unset → evaluate_verification KeyErrors and crashes the whole t3 eval.
+    sentinel_a = "output_dict.setdefault('valid', None)"
+    if sentinel_a not in text:
+        anchor_a = (
+            "                    precond_act_flag = False\n"
+            "\n"
+            "        return output_dict\n"
+        )
+        new_a = (
+            "                    precond_act_flag = False\n"
+            "\n"
+            f"        # {PATCH_MARKER}: guarantee 'valid' is always set so a response with\n"
+            "        # no \"plan is (in)valid\" verdict (model non-adherence) scores\n"
+            "        # correct_binary=False instead of KeyError-crashing the whole t3 eval.\n"
+            "        # Comparability-preserving: emitters keep their True/False verdict; a\n"
+            "        # None verdict never equals the ground truth's. Emission rate is\n"
+            "        # recoverable from extracted_llm_plan['valid'] (None => non-adherent).\n"
+            "        output_dict.setdefault('valid', None)\n"
+            "        return output_dict\n"
+        )
+        if anchor_a not in text:
+            sys.exit(f"[patch] {f.relative_to(pb_root)}: parse_output return anchor not found")
+        text = text.replace(anchor_a, new_a)
+        did.append("'valid' default")
+
+    # --- Edit B: tolerate parser exceptions on the LLM response ---
+    # parse_output can crash on a malformed non-adherent action line (e.g.
+    # logistics text_to_plan IndexError objs[1] on a bad load/unload claim,
+    # qwen3.5:9B t3/logistics, sweep 18003849). One bad response otherwise
+    # kills the entire cell mid-loop. Wrap the LLM parse so a crash scores the
+    # instance no-verdict → correct_binary=False (the ground-truth parse stays
+    # unwrapped — a GT crash is a real bug worth surfacing).
+    sentinel_b = "parsed_llm_response = {'valid': None}"
+    if sentinel_b not in text:
+        anchor_b = (
+            "                parsed_llm_response = self.parse_output(problem.actions, llm_response)\n"
+        )
+        new_b = (
+            f"                # {PATCH_MARKER}: tolerate parser crashes on malformed responses.\n"
+            "                try:\n"
+            "                    parsed_llm_response = self.parse_output(problem.actions, llm_response)\n"
+            "                except Exception:\n"
+            "                    parsed_llm_response = {'valid': None}\n"
+        )
+        if anchor_b not in text:
+            sys.exit(f"[patch] {f.relative_to(pb_root)}: parsed_llm_response anchor not found")
+        text = text.replace(anchor_b, new_b)
+        did.append("LLM-parse try/except")
+
+    if not did:
         print(f"[patch] {f.relative_to(pb_root)}: already applied")
         return
-
-    anchor = (
-        "                    precond_act_flag = False\n"
-        "\n"
-        "        return output_dict\n"
-    )
-    new = (
-        "                    precond_act_flag = False\n"
-        "\n"
-        f"        # {PATCH_MARKER}: guarantee 'valid' is always set so a response with\n"
-        "        # no \"plan is (in)valid\" verdict (model non-adherence) scores\n"
-        "        # correct_binary=False instead of KeyError-crashing the whole t3 eval.\n"
-        "        # Comparability-preserving: emitters keep their True/False verdict; a\n"
-        "        # None verdict never equals the ground truth's. Emission rate is\n"
-        "        # recoverable from extracted_llm_plan['valid'] (None => non-adherent).\n"
-        "        output_dict.setdefault('valid', None)\n"
-        "        return output_dict\n"
-    )
-    if anchor not in text:
-        sys.exit(f"[patch] {f.relative_to(pb_root)}: parse_output return anchor not found")
-    text = text.replace(anchor, new)
     f.write_text(text)
-    print(f"[patch] {f.relative_to(pb_root)}: t3 parse_output 'valid' default")
+    print(f"[patch] {f.relative_to(pb_root)}: t3 grader robustness ({', '.join(did)})")
 
 
 def main() -> None:
