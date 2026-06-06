@@ -17,9 +17,11 @@ DOWNWARD_REMOTE="${DOWNWARD_REMOTE:-https://github.com/aibasel/downward.git}"
 DOWNWARD_REF="${DOWNWARD_REF:-release-23.06.0}"
 
 PRINT_ENV_ONLY=0
+TOOLS=0
 for arg in "$@"; do
     case "$arg" in
         --print-env-only) PRINT_ENV_ONLY=1 ;;
+        --tools) TOOLS=1 ;;
         -h|--help)
             sed -n '2,9p' "$0"
             exit 0
@@ -36,6 +38,8 @@ export VAL="$val_dir"
 export PR2="$pr2_dir"
 export FAST_DOWNWARD="$fd_dir"
 export PLANBENCH_PATH="$pb_dir"
+export PLANBENCH_VENV="$venv_dir"
+export PLANBENCH_TOOLS_VENV="$pb_dir/.venv-tools"
 export PDDL_COPILOT_EXPERIMENTS_ROOT="$REPO_ROOT"
 export PYTHONPATH="$REPO_ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
 # Stub key so PlanBench's utils/__init__.py imports cleanly without an
@@ -152,6 +156,28 @@ fi
 "$VENV_DIR/bin/pip" install --quiet \
     pyyaml 'tarski==0.7.0' 'pddl==0.2.0' numpy \
     'openai<1.0' transformers httpx
+
+# 6b. Tools venv (--tools) — v2 MCP-tools-on arm (ISS-022) -------------------
+# Kept SEPARATE from the v1 .venv so its frozen openai<1.0 corpus stays
+# byte-reproducible. Same PlanBench deps, but openai>=1.0 (the
+# pddl_eval.vllm_client.VLLMClient / AsyncOpenAI the tool-loop reuses) plus
+# mcp (the MCP stdio client). Validated under python3.12 that openai 2.x,
+# tarski 0.7.0 and pddl 0.2.0 coexist and that PlanBench's patched load path
+# tolerates openai>=1.0 (it only ASSIGNS openai.api_key; the removed-in-v1
+# openai.Completion.create is in the dispatch `else` we never reach with a
+# pddl_copilot__ engine).
+if [[ "$TOOLS" -eq 1 ]]; then
+    TOOLS_VENV_DIR="$PB_DIR/.venv-tools"
+    if [[ ! -d "$TOOLS_VENV_DIR" ]]; then
+        echo "[planbench setup] creating PlanBench TOOLS venv ($PYTHON_BIN)..."
+        "$PYTHON_BIN" -m venv "$TOOLS_VENV_DIR"
+    fi
+    "$TOOLS_VENV_DIR/bin/pip" install --quiet --upgrade pip
+    "$TOOLS_VENV_DIR/bin/pip" install --quiet \
+        pyyaml 'tarski==0.7.0' 'pddl==0.2.0' numpy \
+        'openai>=1.0' transformers httpx mcp
+    echo "[planbench setup] tools venv ready: $TOOLS_VENV_DIR"
+fi
 
 # 7. Print env ---------------------------------------------------------------
 print_env "$VAL_DIR" "$PR2_DIR" "$FD_DIR" "$VENV_DIR" "$PB_DIR"

@@ -22,11 +22,17 @@
 # --gpu rtx_3090 --gpu-mem-util 0.80 to run on free 3090/4090 capacity when
 # the rtx_6000 pool is saturated. Big AWQ models still need rtx_6000.
 #
+# --tools selects the v2 MCP-tools-on arm (ISS-022): the model consults the
+# pddl-copilot MCP planner/validator before answering. It runs
+# run_planbench_tools_rtx.sbatch (engine pddl_copilot__vllm-tools__<tag>,
+# .venv-tools, plugin pre-warm) instead of the v1 vanilla sbatch.
+#
 # Usage:
 #   bash submit_planbench.sh --models Qwen3.5:0.8B Qwen3.5:4B
 #   bash submit_planbench.sh --models Qwen3.5:0.8B --tasks t1 t3 --configs blocksworld
 #   bash submit_planbench.sh --smoke              # 1 model × 1 task × 1 config × 3 instances
 #   bash submit_planbench.sh --smoke --gpu rtx_3090 --gpu-mem-util 0.80
+#   bash submit_planbench.sh --tools --smoke --gpu rtx_3090 --gpu-mem-util 0.80  # v2 tools smoke
 #   bash submit_planbench.sh --time 12:00:00 --models Qwen3.5:0.8B
 #   bash submit_planbench.sh --dry-run --models Qwen3.5:0.8B
 
@@ -46,9 +52,10 @@ GPU_TYPE="rtx_6000"
 GPU_MEM_UTIL_OVERRIDE=""
 SMOKE=0
 DRY_RUN=0
+TOOLS=0
 
 usage() {
-    sed -n '2,31p' "$0" >&2
+    sed -n '2,37p' "$0" >&2
     exit 1
 }
 
@@ -86,6 +93,7 @@ while [[ $# -gt 0 ]]; do
         --gpu) GPU_TYPE="$2"; shift 2 ;;
         --gpu-mem-util) GPU_MEM_UTIL_OVERRIDE="$2"; shift 2 ;;
         --smoke) SMOKE=1; shift ;;
+        --tools) TOOLS=1; shift ;;
         --dry-run) DRY_RUN=1; shift ;;
         -h|--help) usage ;;
         *) echo "Unknown arg: $1" >&2; usage ;;
@@ -123,11 +131,21 @@ echo "  think    = $THINK"
 echo "  time     = $TIME"
 echo "  gpu      = ${GPU_TYPE}:1${GPU_MEM_UTIL_OVERRIDE:+  (mem-util=$GPU_MEM_UTIL_OVERRIDE)}"
 echo "  smoke    = $SMOKE"
+echo "  tools    = $TOOLS"
 [[ "$DRY_RUN" -eq 1 ]] && echo "  (dry-run — not submitting)"
+
+# --tools picks the v2 MCP-tools-on sbatch; otherwise the v1 vanilla sbatch.
+if [[ "$TOOLS" -eq 1 ]]; then
+    SBATCH_FILE="$SCRIPT_DIR/run_planbench_tools_rtx.sbatch"
+    JOB_KIND="tools_"
+else
+    SBATCH_FILE="$SCRIPT_DIR/run_planbench_rtx.sbatch"
+    JOB_KIND=""
+fi
 
 for MODEL in "${MODELS[@]}"; do
     MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
-    JOB_NAME="pddl_planbench_${MODEL_TAG}"
+    JOB_NAME="pddl_planbench_${JOB_KIND}${MODEL_TAG}"
 
     # SLURM `--export` semantics on this cluster:
     #   * Comma-separated KEY=VAL list. Values are NOT quotable; the parser
@@ -168,7 +186,7 @@ for MODEL in "${MODELS[@]}"; do
         --gpus="${GPU_TYPE}:1"
         --constraint="$GPU_TYPE"
         --export="$EXPORTS"
-        "$SCRIPT_DIR/run_planbench_rtx.sbatch")
+        "$SBATCH_FILE")
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
         echo
