@@ -8,6 +8,44 @@ Branch: `planbench-integration` @ `7e2c0e0` (both repos). Pull before starting.
 
 ---
 
+## ✅ v2 STATUS — updated 2026-06-06 (engine built + t1 smoke VALIDATED)
+
+The v2 engine + cluster wiring are **built and the t1 tools-on smoke passed
+(plumbing).** Commits `6ec3171` + `fea64ee` on `planbench-integration` (pushed).
+What's on disk now (beyond the v1 tooling listed below):
+- `planbench/engine.py` — `vllm-tools` backend (engine
+  `pddl_copilot__vllm-tools__<tag>`; the backend token, NOT the handoff's
+  literal `pddl_copilot_tools__`, so PlanBench's already-patched dispatch
+  catches it with no re-clone). Persistent module-level loop + lazy
+  `MCPPlanner` (connect once) + `chat_with_tools` + `VLLMClient`; per-instance
+  tool-call side-log (`PDDL_COPILOT_TOOLLOG`).
+- `planbench/setup.sh --tools` → separate `.venv-tools` (openai≥1.0 + mcp);
+  v1 `.venv` (openai<1.0) frozen.
+- `cluster-experimenting/run_planbench_tools_rtx.sbatch` + `submit_planbench.sh
+  --tools`.
+- **Cluster env gotcha:** no system python≥3.10 (`/usr/bin/python3`=3.9, no uv);
+  `mcp` needs ≥3.10. The python≥3.10 is the 5-task arm's conda env
+  `pddl_copilot` (3.12) — the tools sbatch `module load anaconda && source
+  activate $ENV_NAME` before building `.venv-tools`.
+
+**Smoke (job 18019718, Qwen3.5:4B, t1/blocksworld, COMPLETED):** MCP connected
+once, `classic_planner`/`validate_domain`/`validate_problem` fired, model PDDL
+reached the tools verbatim, multi-turn replay held, grading produced
+`llm_correct`. Plumbing only — 0/3 correct (weak model).
+
+### ⛔ Before launching the FULL v2 sweep — fix both (see paper_notes 2026-06-06):
+1. **Answer truncation** — tools-arm final answers hit `num_predict=4096`
+   (`_DEFAULT_NUM_PREDICT`); both answered smoke instances were `done_reason=
+   length`. Raise cap / add stop / tighten final-answer prompt.
+2. **Denominator** — `build_table.py:67` divides by instances with
+   `llm_correct` set; loop-exhausted/empty instances have NO such field →
+   dropped → tools-arm accuracy overstated. Make the denominator tools-aware
+   (attempted-but-empty = incorrect).
+
+Plus the still-open sibling-repo MCP extensions for the full 10 tasks (below).
+
+---
+
 ## TL;DR
 
 - **v1 done:** 4 Qwen models × 10 PlanBench tasks × {blocksworld, logistics},
