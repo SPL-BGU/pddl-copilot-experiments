@@ -167,6 +167,16 @@ fi
 # openai.Completion.create is in the dispatch `else` we never reach with a
 # pddl_copilot__ engine).
 if [[ "$TOOLS" -eq 1 ]]; then
+    # mcp requires python>=3.10; the BGU cluster's system python3 is 3.9 (no uv
+    # / python3.1x on PATH). Fail loudly with the fix rather than a cryptic
+    # "No matching distribution found for mcp" from a 3.9 venv.
+    if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)'; then
+        PYVER="$("$PYTHON_BIN" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+        echo "[planbench setup] ERROR: --tools needs python>=3.10 for mcp; got $PYTHON_BIN ($PYVER)." >&2
+        echo "  BGU cluster: 'module load anaconda && source activate pddl_copilot' first," >&2
+        echo "  or pass PLANBENCH_PYTHON=<a python3.10+ binary>." >&2
+        exit 1
+    fi
     TOOLS_VENV_DIR="$PB_DIR/.venv-tools"
     if [[ ! -d "$TOOLS_VENV_DIR" ]]; then
         echo "[planbench setup] creating PlanBench TOOLS venv ($PYTHON_BIN)..."

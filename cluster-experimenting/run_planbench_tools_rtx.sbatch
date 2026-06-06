@@ -175,6 +175,18 @@ if [ "$VRAM_PCT" -gt 85 ]; then
     exit 3
 fi
 
+### Conda env (python3.12 + Java) — mirrors run_condition_vllm_rtx.sbatch ----
+# The cluster has no system python>=3.10 (/usr/bin/python3 is 3.9, no uv on
+# PATH); `mcp` needs >=3.10. The 5-task arm's conda env `pddl_copilot`
+# (python=3.12, openjdk=17) is the python>=3.10 source — and what built the
+# plugin venvs. Activating it makes `python3` 3.12 so setup.sh --tools builds
+# .venv-tools on a 3.12 base (mcp installs); Java stays on PATH after the venv
+# layers on top. WITHOUT this the tools venv silently falls back to 3.9 and
+# `pip install mcp` fails with "No matching distribution".
+ENV_NAME="${ENV_NAME:-pddl_copilot}"
+module load anaconda
+source activate "$ENV_NAME"
+
 ### Provision PlanBench + the TOOLS venv (idempotent) -----------------------
 # setup.sh --tools clones/patches the checkout, builds VAL/PR2/FD, and creates
 # BOTH .venv (v1, frozen) and .venv-tools (v2: openai>=1.0 + mcp). Guarded on
