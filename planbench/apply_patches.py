@@ -2,11 +2,15 @@
 """Idempotent in-place edits to make a fresh LLMs-Planning checkout host
 the ``pddl_copilot__<backend>__<model>`` engine.
 
-Three edits, anchored on stable strings (not line numbers):
+Five edits, anchored on stable strings (not line numbers):
 
 1. ``utils/__init__.py`` — tolerate missing ``OPENAI_API_KEY``.
 2. ``utils/llm_utils.py`` — tolerant imports of transformers / openai.
 3. ``utils/llm_utils.py`` — dispatch branch for ``pddl_copilot__*`` engines.
+4. ``response_generation.py`` — fix the self-destructing ``--specific_instances`` filter.
+5. ``response_evaluation.py`` — make the t3 verification parser robust to
+   responses that omit the ``plan is (in)valid`` verdict (non-adherence →
+   ``correct_binary=False`` instead of a ``KeyError`` that crashes the whole eval).
 
 Each edit checks for both the original anchor (apply) and the patched form
 (skip). Exits 1 if neither is found — that means upstream moved and the
@@ -156,6 +160,57 @@ def patch_response_generation(pb_root: Path) -> None:
     print(f"[patch] {f.relative_to(pb_root)}: filter no-mutate fix")
 
 
+def patch_response_evaluation(pb_root: Path) -> None:
+    """Make the t3 verification grader robust to non-adherent responses.
+
+    ``evaluate_verification`` compares ``parsed_llm_response['valid']`` to the
+    ground truth's, but ``parse_output`` only sets ``'valid'`` when the
+    response contains the literal phrase ``plan is valid`` / ``plan is
+    invalid``. Models that don't follow PlanBench's verdict template (e.g.
+    qwen3.5 emits free-form prose) leave ``'valid'`` unset, so the comparison
+    raises ``KeyError`` and crashes the ENTIRE t3/config evaluation — zero
+    numbers even for the adherent instances in the same file (sweep
+    18003827-18003866, 2026-06-05: every t3 cell crashed).
+
+    Fix: default ``'valid'`` to ``None`` at the end of ``parse_output``. A
+    ``None`` verdict never equals the ground truth's ``True``/``False``, so a
+    non-adherent instance scores ``correct_binary=False`` ("no verdict ->
+    incorrect"). Comparability-preserving: responses that DO emit the verdict
+    are graded exactly as upstream — and exactly as PlanBench's published
+    gpt-4 baseline was (gpt-4 followed the template, so it never hit this).
+    The verdict-emission rate is recoverable post-hoc from
+    ``extracted_llm_plan['valid']`` (``None`` => the model emitted no verdict).
+    """
+    f = pb_root / "plan-bench" / "response_evaluation.py"
+    text = f.read_text()
+    if PATCH_MARKER in text:
+        print(f"[patch] {f.relative_to(pb_root)}: already applied")
+        return
+
+    anchor = (
+        "                    precond_act_flag = False\n"
+        "\n"
+        "        return output_dict\n"
+    )
+    new = (
+        "                    precond_act_flag = False\n"
+        "\n"
+        f"        # {PATCH_MARKER}: guarantee 'valid' is always set so a response with\n"
+        "        # no \"plan is (in)valid\" verdict (model non-adherence) scores\n"
+        "        # correct_binary=False instead of KeyError-crashing the whole t3 eval.\n"
+        "        # Comparability-preserving: emitters keep their True/False verdict; a\n"
+        "        # None verdict never equals the ground truth's. Emission rate is\n"
+        "        # recoverable from extracted_llm_plan['valid'] (None => non-adherent).\n"
+        "        output_dict.setdefault('valid', None)\n"
+        "        return output_dict\n"
+    )
+    if anchor not in text:
+        sys.exit(f"[patch] {f.relative_to(pb_root)}: parse_output return anchor not found")
+    text = text.replace(anchor, new)
+    f.write_text(text)
+    print(f"[patch] {f.relative_to(pb_root)}: t3 parse_output 'valid' default")
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("usage: apply_patches.py <LLMs-Planning checkout>")
@@ -165,6 +220,7 @@ def main() -> None:
     patch_init(pb_root)
     patch_llm_utils(pb_root)
     patch_response_generation(pb_root)
+    patch_response_evaluation(pb_root)
 
 
 if __name__ == "__main__":
