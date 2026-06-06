@@ -73,6 +73,19 @@ leaderboard, not (only) a capability gap, and it is the cleanest motivation for
 the v2 tools arm (ISS-022): tools consume structured output, bypassing the
 regex-format penalty entirely.
 
+**The prompts specify the output format ONLY by in-context example
+(completion-style), with no explicit instruction.** Verified on the t7 prompt:
+it gives the domain rules + one worked `[STATEMENT]…[RESULTING STATE]` example
+ending in a bare-sentence answer, then leaves the query hanging at
+`[RESULTING STATE]` for the model to *complete* — no "respond only with…" /
+format directive anywhere. text-davinci-002 / gpt-4_chat pattern-match and
+complete in the bare form; our instruct/reasoning Qwen models *elaborate*
+(markdown, "**1. Analyze…**") because nothing instructs them not to. So the low
+vanilla scores are a **completion-prompt-vs-chat-model mismatch** (PlanBench's
+prompts are GPT-3/davinci-era completion prompts), not stated-format
+disobedience — a benchmark-staleness effect as much as a model one, and another
+reason the structured-output v2 arm is the principled comparison.
+
 Three places it bites, in descending severity:
 
 1. **t7 (plan_execution) — EXCLUDED from the table.** Uniform 0.0 for all four
