@@ -261,6 +261,10 @@ for TASK in $PLANBENCH_TASKS; do
         echo "TASK=$TASK CONFIG=$CONFIG ENGINE=$ENGINE   started $(date)"
         echo "===================================================================="
 
+        # engine.py's _tools_system_prompt() reads this to pick the task's
+        # forcing tool prompt + output format (t3 verdict / t7 state / else plan).
+        export PDDL_COPILOT_TASK="$TASK"
+
         INSTANCE_ARGS=()
         if [ -n "$PLANBENCH_INSTANCES" ]; then
             # shellcheck disable=SC2086  # we want word-splitting here

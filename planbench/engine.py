@@ -182,20 +182,55 @@ def _vllm_chat(query: str, model: str, max_tokens: int, stop: str) -> str:
 # sbatch); VLLMClient ignores num_ctx, so this value is documentary only.
 _NUM_CTX = 16384
 
-# Minimal tool-use nudge. Deliberately does NOT inject the PDDL domain/problem
-# (that would test "given PDDL" not "given a planner" and confound the
-# tools-vs-no-tools comparison). The model formalises the NL task itself
-# (LLM-as-formalizer), calls the planner/validator, then renders the answer in
-# the task's own format. Kept task-general; t1 is plan-generation ([PLAN]…).
-_TOOLS_SYSTEM_PROMPT = (
-    "You have access to PDDL planning tools: a classical planner and PDDL "
-    "validators. To solve the task you may translate it into a PDDL domain and "
-    "problem, call the planner to obtain a verified plan, and validate it "
-    "before answering. Then give your FINAL answer in the exact format the "
-    "task asks for — matching the wording and layout of the in-context "
-    "example (for plan-generation tasks, the plan enclosed between [PLAN] and "
-    "[PLAN END])."
+# FORCING tool-use directive (smoke 2026-06-06 finding: a soft "you may use
+# tools" nudge let 9B/35B ignore the tools and answer t1 directly). We reuse
+# the paper's exact validated directive (pddl_eval.prompts.WITH_TOOLS_SYSTEM)
+# for methodological consistency with the 5-task tools arm, then add the step
+# the paper's arm doesn't need: PlanBench hands the model NATURAL LANGUAGE, so
+# it must formalise NL→PDDL before it can call a tool. Still NO PDDL injection
+# (LLM-as-formalizer; keeps tools-vs-no-tools unconfounded).
+#
+# Per-task output-format clause, keyed on PDDL_COPILOT_TASK (set per task by
+# the sbatch loop) — the answer must match what PlanBench's grader parses:
+#   t3 (plan verification) → "plan is (in)valid" verdict (validate_plan)
+#   t7 (plan execution)    → the resulting state    (get_state_transition)
+#   else (plan generation) → [PLAN]…[PLAN END]       (classic_planner)
+_TOOLS_NL_FORMALIZE = (
+    " The task is given in natural language: first translate the relevant "
+    "parts into PDDL (domain, problem, and the plan where one is given), then "
+    "call the appropriate tool, and base your FINAL answer ONLY on the tool's "
+    "result."
 )
+_TOOLS_TASK_FORMAT: dict[str, str] = {
+    "t3": (
+        " This is a plan-verification task: use validate_plan to check whether "
+        "the given plan solves the problem, then answer with exactly "
+        "'The plan is valid.' or 'The plan is invalid.'"
+    ),
+    "t7": (
+        " This is a plan-execution task: use the state-transition tool to "
+        "compute the state reached after executing the plan, then report that "
+        "resulting state using the same wording and format as the example in "
+        "the task."
+    ),
+}
+_TOOLS_DEFAULT_FORMAT = (
+    " Use classic_planner to produce the plan, then give the plan between "
+    "[PLAN] and [PLAN END], matching the action wording of the in-context "
+    "example."
+)
+
+
+def _tools_system_prompt() -> str:
+    """Forcing tool-use system prompt for the current PlanBench task.
+
+    Paper's WITH_TOOLS_SYSTEM (byte-identical) + NL→PDDL formalisation step +
+    a task-specific output-format clause (PDDL_COPILOT_TASK)."""
+    from pddl_eval.prompts import WITH_TOOLS_SYSTEM
+
+    task = os.environ.get("PDDL_COPILOT_TASK", "").strip().lower()
+    fmt = _TOOLS_TASK_FORMAT.get(task, _TOOLS_DEFAULT_FORMAT)
+    return WITH_TOOLS_SYSTEM + _TOOLS_NL_FORMALIZE + fmt
 
 # (loop, mcp, client) singleton — built once on first vllm-tools call so the
 # MCP connection (and its launched plugin server subprocesses) persists across
@@ -349,7 +384,7 @@ def _vllm_tools_chat(query: str, model: str, max_tokens: int) -> str:
 
     loop, mcp, client = _get_tools_runtime()
     messages = [
-        {"role": "system", "content": _TOOLS_SYSTEM_PROMPT},
+        {"role": "system", "content": _tools_system_prompt()},
         {"role": "user", "content": query},
     ]
     think = os.environ.get("PDDL_COPILOT_THINK", "off").strip().lower()
