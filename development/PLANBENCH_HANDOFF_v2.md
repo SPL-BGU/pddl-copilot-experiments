@@ -10,6 +10,11 @@ Branch: `planbench-integration` @ `7e2c0e0` (both repos). Pull before starting.
 
 ## ✅ v2 STATUS — updated 2026-06-06 (engine built + t1 smoke VALIDATED)
 
+> **➡️ SUPERSEDED for next steps by `development/PLANBENCH_HANDOFF_v3.md`**
+> (2026-06-07): v2 is built AND characterized across model sizes (t3 works on
+> 35B; small models hit the NL→PDDL formalization wall). v3 is the chosen next
+> direction — rescue the small open models via a workflow framework. Start there.
+
 The v2 engine + cluster wiring are **built and the t1 tools-on smoke passed
 (plumbing).** Commits `6ec3171` + `fea64ee` on `planbench-integration` (pushed).
 What's on disk now (beyond the v1 tooling listed below):
