@@ -1253,11 +1253,18 @@ def _delta_tint(text: str):
 
 
 def S_table_slide(prs, title: str, headers: list[str], rows: list[list[str]],
-                  notes: str | None = None) -> None:
+                  notes: str | None = None, caption: str | None = None) -> None:
+    """`notes` → speaker-notes pane (presenter context). `caption` → a VISIBLE
+    textbox under the table — use it when the table needs on-slide evidence or
+    a reading rule the audience must see (the unified deck's honesty captions:
+    0.8B mechanism, censoring asymmetry)."""
     slide = _blank(prs)
     _chrome(slide, title)
     n_rows, n_cols = len(rows) + 1, len(headers)
-    table_h = Inches(min(5.4, 0.34 * n_rows + 0.3))
+    # with a visible caption the table yields it room above the footer
+    max_h_in = 4.7 if caption else 5.4
+    table_h_in = min(max_h_in, 0.34 * n_rows + 0.3)
+    table_h = Inches(table_h_in)
     gfx = slide.shapes.add_table(n_rows, n_cols, MARGIN, BODY_TOP,
                                  SLIDE_W - 2 * MARGIN, table_h)
     table = gfx.table
@@ -1311,6 +1318,21 @@ def S_table_slide(prs, title: str, headers: list[str], rows: list[list[str]],
             r.font.color.rgb = ink
             if j == 0 or tint:
                 r.font.bold = True
+    if caption:
+        # LibreOffice floors table rows at ~0.29–0.31" regardless of the
+        # requested height — place the caption below the FLOORED height, not
+        # the requested one, or tall tables overrun it.
+        rendered_h_in = max(table_h_in, 0.31 * n_rows)
+        cap_top_in = min(BODY_TOP_IN + rendered_h_in + 0.12, FOOTER_Y_IN - 0.55)
+        cb = slide.shapes.add_textbox(MARGIN, Inches(cap_top_in),
+                                      SLIDE_W - 2 * MARGIN, Inches(0.7))
+        ctf = cb.text_frame
+        ctf.word_wrap = True
+        p = ctf.paragraphs[0]
+        r = p.add_run()
+        r.text = caption
+        r.font.size = Pt(10.5)
+        r.font.color.rgb = SOFT
     if notes:
         slide.notes_slide.notes_text_frame.text = notes
 
@@ -1379,6 +1401,51 @@ def _small_model_table() -> tuple[list[str], list[list[str]]]:
         sv = signed_gap(SMALL_MODEL, task, "tl-neut", "tl-ster")
         rows.append([TASK_DISP[task], _cf(nt), _cf(pl), _cf(st), _gf(av), _gf(sv)])
     return headers, rows
+
+
+def _simulate_fail_decomp(think: str | None = None) -> dict[str, float]:
+    """What the simulate no-tools 0% is made of — failure_reason shares (% of
+    all trials), ≥9B pooled. An all-zero cell over 1,500 trials/mode invites
+    'is the grader broken?'; this is the on-slide answer (it is not: the
+    failures decompose into unparseable trajectory JSON, cap truncation, and a
+    small parsed-but-wrong remainder)."""
+    rows = [r for r in _pooled_rows(MODELS_9B, "nt-neut", think)
+            if r["task"] == "simulate"]
+    n = len(rows)
+    out: dict[str, float] = {}
+    for r in rows:
+        if not r["success"]:
+            fr = r.get("failure_reason") or "unknown"
+            out[fr] = out.get(fr, 0.0) + 1
+    return {k: v / n * 100 for k, v in out.items()} if n else {}
+
+
+def _small_model_mech_note() -> str:
+    """The evidence behind '0.8B mishandles the tool' — computed from the
+    trial-level failure_reason breakdown over the two availability-reversal
+    tasks (validate_problem, validate_plan) × both tool arms, think=off.
+    Verified 2026-06-10: 98% of its tool_error trials carry errcode
+    missing_required_arg (calls the right tool, omits a required argument)."""
+    sel_rates: list[float] = []
+    err = loop = n_tot = 0
+    for task in ("validate_problem", "validate_plan"):
+        for arm in ("tl-neut", "tl-ster"):
+            rows = [r for r in bd.CELLS.get((SMALL_MODEL, "off", arm), [])
+                    if r["task"] == task]
+            if not rows:
+                continue
+            sel_rates.append(
+                sum(1 for r in rows if r.get("tool_selected")) / len(rows) * 100)
+            err += sum(1 for r in rows if r.get("failure_reason") == "tool_error")
+            loop += sum(1 for r in rows if r.get("failure_reason") == "loop_exhausted")
+            n_tot += len(rows)
+    if not n_tot:
+        return ""
+    return (f"Mechanism (trial-level failure_reason, both reversal tasks × both tool arms, think=off): "
+            f"it SELECTS the tool in {min(sel_rates):.0f}–{max(sel_rates):.0f}% of trials but cannot drive "
+            f"it — {err / n_tot * 100:.0f}% of all trials end in tool_error (98% of those are "
+            f"missing_required_arg: the right tool called with a required argument omitted) and a further "
+            f"{loop / n_tot * 100:.0f}% exhaust the turn loop without an answer.")
 
 
 def _rq_head_task(rq: str) -> str:
@@ -1620,7 +1687,8 @@ def build_pptx(summary: dict, gate_lines: list[str]) -> Path:
         sm_h, sm_r,
         notes=("The smallest model is the only one where tool AVAILABILITY reverses sign "
                "(validate_problem −25pp*, validate_plan −27pp*): it cannot drive the tool-call "
-               "protocol, so the tool becomes a distraction. Every headline conclusion is ≥9B; "
+               "protocol, so the tool becomes a distraction. " + _small_model_mech_note()
+               + " Every headline conclusion is ≥9B; "
                "the YES verdicts hold from 4B up." if not on else
                "Under think=on the 0.8B no-tools baseline is at the floor on every task (it reasons "
                "past the budget), so the think=off availability REVERSALS disappear — there is no "
@@ -1738,7 +1806,15 @@ def _add_gate_slide(prs, gate_lines: list[str]) -> None:
 
 
 def _add_phase1_rq(prs, rq: str, tasks: list[str], summary: dict,
-                   gate_lines: list[str]) -> None:
+                   gate_lines: list[str], *,
+                   defer_tables: bool = False,
+                   mech_rqs: set[str] | None = None) -> list[tuple[str, str]]:
+    """One phase-1 RQ block. `defer_tables=True` skips the inline success
+    tables and returns their (rq, task) specs for a backup section (unified
+    deck: RQ0.1's two tables move to backup, the chart carries the slide).
+    `mech_rqs` restricts the mechanism slide to the listed RQs (None keeps the
+    data-driven default: emit wherever +tool(plain) under-calls the tool)."""
+    deferred: list[tuple[str, str]] = []
     task_label = " + ".join(TASK_DISP[t] for t in tasks)
     question = {
         "RQ0.1": "Does giving the model a validation tool help it validate PDDL domains and problems?",
@@ -1772,10 +1848,14 @@ def _add_phase1_rq(prs, rq: str, tasks: list[str], summary: dict,
         S_image_slide(
             prs, f"{rq} — Evidence: {TASK_DISP[task]} success by arm", png,
             caption="Grey=no-tools, blue=+tool(plain), orange=+tool(steered). Whiskers=Wilson 95% CI. "
-            "Shaded band marks the ≥9B headline set. 0.8B is excluded (own caveat slide).")
-        headers, table_rows = _arm_table(task)
-        S_table_slide(prs, f"{rq} — {TASK_DISP[task]} success table (rate [Wilson 95%], * = CI-disjoint)",
-                      headers, table_rows)
+            "Shaded band marks the ≥9B headline set. 0.8B is excluded (own caveat slide)."
+            + (" Full table in the backup." if defer_tables else ""))
+        if defer_tables:
+            deferred.append((rq, task))
+        else:
+            headers, table_rows = _arm_table(task)
+            S_table_slide(prs, f"{rq} — {TASK_DISP[task]} success table (rate [Wilson 95%], * = CI-disjoint)",
+                          headers, table_rows)
 
     # (3) mechanism — only where +tool(plain) actually under-calls the tool, so
     # steering has something to repair. Data-driven: skip when every ≥9B model
@@ -1783,6 +1863,8 @@ def _add_phase1_rq(prs, rq: str, tasks: list[str], summary: dict,
     # — a mechanism slide there would contradict its own title; under think=on
     # Gemma under-calls even on validation, so the slide returns).
     min_toolsel = min(cell_toolsel(m, head_task, "tl-neut").rate for m in MODELS_9B)
+    if mech_rqs is not None and rq not in mech_rqs:
+        min_toolsel = 1.0  # mechanism restricted away for this RQ
     if min_toolsel < 0.97:
         mech = fig_mechanism(head_task, f"mechanism_{head_task}.png")
         S_image_slide(
@@ -1791,6 +1873,7 @@ def _add_phase1_rq(prs, rq: str, tasks: list[str], summary: dict,
             caption=f"{TASK_DISP[head_task]}, ≥9B. Left: tool-use rate (tool_selected) plain vs steered. "
             "Right: success. Where +tool(plain) under-calls the tool, steering raises tool-calling, and "
             "success rises with it — the tool's value is gated on the model actually invoking it.")
+    return deferred
 
 
 def _rq_headline_notes(rq: str) -> list[str]:
@@ -1798,6 +1881,19 @@ def _rq_headline_notes(rq: str) -> list[str]:
     think=on notes are written against the think=on corpus numbers (see
     paper_notes 2026-06-10) — do not reuse the off prose there."""
     if THINK == "off":
+        if rq == "RQ0.4":
+            d = _simulate_fail_decomp()
+            rq04_notes = [
+                "", "Decisive: no-tools is 0% everywhere (state-tracking by hand fails); +tool reaches "
+                "65–92% on ≥9B, with steering adding +18–22pp.",
+                "",
+                "Grader (strict, end-to-end, no partial credit): success = canonical-form deep-equality of "
+                "the FULL state trajectory against the oracle — structured JSON only, no free-text fallback; "
+                "normalisation removes formatting variance, not semantic error. The unaided 0% decomposes "
+                f"(≥9B, all failures): {d.get('format_parse_fail', 0):.0f}% unparseable trajectory JSON, "
+                f"{d.get('truncated_no_answer', 0):.0f}% truncated at the 8,192 cap, "
+                f"{d.get('result_mismatch', 0):.0f}% parsed but wrong trajectory."]
+            return rq04_notes
         return {
             "RQ0.1": ["", "Caveat: at 0.8B the availability gap REVERSES on validate_problem (−25pp) — the "
                       "smallest model mishandles the tool (see the small-model slide). YES holds from 4B up."],
@@ -1807,8 +1903,6 @@ def _rq_headline_notes(rq: str) -> list[str]:
                       "availability gap is significant-AGAINST for Gemma-MoE (−67pp: it stops answering) and "
                       "Qwen3.6-35B (−9pp); only Qwen3.5-9B is favorable. Steering RECOVERS and beats no-tools "
                       "(Gemma 21→93%), but the net tool benefit over a strong baseline is small/mixed."],
-            "RQ0.4": ["", "Decisive: no-tools is 0% everywhere (state-tracking by hand fails); +tool reaches "
-                      "65–92% on ≥9B, with steering adding +18–22pp."],
         }[rq]
     return {
         "RQ0.1": ["", "The no-tools baseline COLLAPSES under reasoning mode (validate_domain: 9B 26→3%, "
@@ -1938,8 +2032,16 @@ def _censoring_table() -> tuple[list[str], list[list[str]]]:
     """Censoring + latency-proxy evidence, ≥9B pooled: per task × arm, the share
     of trials hitting the 8,192 output cap, mean turns (round-trips — the only
     defensible latency proxy on a batched server), and the token means the rest
-    of the section quotes."""
-    headers = ["task", "arm", "truncated %", "mean turns",
+    of the section quotes.
+
+    Two truncation columns on purpose. `truncated` is ANY-turn
+    done_reason=="length" (runner.py), so the raw rate is not comparable across
+    arms: a no-tools trial is one turn (cap hit ⇒ no answer), while a tool-arm
+    trial has ~2–3 turns and is graded from the TOOL RESULT — a cap-hit on the
+    final narration turn does not void an answer already secured by the tool
+    call (e.g. simulate steered: 73% hit the cap, yet 88% of those cap-hit
+    trials still SUCCEED). 'cap-hit & failed' is the truncation that mattered."""
+    headers = ["task", "arm", "hit cap %", "cap-hit & failed %", "mean turns",
                "output tok/trial", "total tok/trial"]
     rows: list[list[str]] = []
     for task in ALL_TASKS:
@@ -1947,9 +2049,12 @@ def _censoring_table() -> tuple[list[str], list[list[str]]]:
             sub = [r for r in _pooled_rows(MODELS_9B, arm) if r["task"] == task]
             n = len(sub)
             tr = (sum(1 for r in sub if r.get("truncated")) / n * 100) if n else float("nan")
+            tf = (sum(1 for r in sub if r.get("truncated") and not r["success"])
+                  / n * 100) if n else float("nan")
             st = bd.token_stats(sub)
             rows.append([TASK_DISP[task] if j == 0 else "", ARM_DISP[arm],
                          f"{tr:.0f}%" if tr == tr else "–",
+                         f"{tf:.0f}%" if tf == tf else "–",
                          f"{st['turns']:.1f}" if st["n"] else "–",
                          bd._fmt_tokens(st["completion"]) if st["n"] else "–",
                          bd._fmt_tokens(st["total"]) if st["n"] else "–"])
@@ -2039,10 +2144,18 @@ def _add_token_section(prs) -> None:
     S_table_slide(
         prs, "Are the token numbers comparable? — truncation, turns, latency proxy",
         h3, r3,
-        notes=f"≥9B pooled, think={THINK}. 'truncated %' = trials hitting the 8,192 output cap — truncation is "
-        "arm-dependent, so completion-token means are budget-bounded counts, not free generation lengths. "
-        + ("" if not on else "Under think=on the NO-TOOLS arms truncate most (55–83%): the reasoning trace "
-           "eats the budget before an answer lands — this is the confound behind every think=on gap. ")
+        caption="'hit cap %' (any turn) is not comparable across arms: no-tools is single-turn (cap ⇒ no "
+        "answer); tool arms are multi-turn and graded from the tool result, so most cap-hit tool trials "
+        "still succeed — 'cap-hit & failed %' is the truncation that mattered.",
+        notes=f"≥9B pooled, think={THINK}. 'hit cap %' = trials where ANY turn hit the 8,192 output cap — "
+        "completion-token means are budget-bounded counts, not free generation lengths. The raw rate is NOT "
+        "comparable across arms: no-tools is single-turn (cap hit ⇒ no answer), while tool arms run ~2–3 "
+        "turns and are graded from the tool result, so a cap-hit on the final narration turn often does not "
+        "void the answer. 'cap-hit & failed %' is the truncation that mattered — in no-tools the two columns "
+        "coincide; in the tool arms most cap-hit trials still succeed. "
+        + ("" if not on else "Under think=on the NO-TOOLS arms lose 54–83% of all trials to the cap (the "
+           "reasoning trace eats the budget before an answer lands) — this is the confound behind every "
+           "think=on gap. ")
         + "'mean turns' (round-trips) × output tokens is the only defensible latency proxy here: wall-clock "
         "duration_s is confounded by the batched vLLM server; a concurrency=1 TTFT/TPOT micro-benchmark is "
         "future work.")
@@ -2105,10 +2218,16 @@ def _phase2_bin_table(summary: dict, key: str, tasks: list[str]
     return headers, rows
 
 
-def _add_backup_section(prs, summary: dict) -> None:
+def _add_backup_section(prs, summary: dict, *,
+                        extra_intro: list[str] | None = None,
+                        arm_tables: list[tuple[str, str]] | None = None,
+                        rq05_table: bool = False) -> None:
     """Backup: the full per-model token tables behind the token section's
     figures, the secondary completion-only lens, and the RQ0.6 bin table.
-    Presented slides carry the message; these carry the numbers."""
+    Presented slides carry the message; these carry the numbers. The unified
+    deck additionally parks here the RQ0.1 success tables (`arm_tables`), the
+    RQ0.5 bin table, and the cross-mode detail/truncation tables
+    (`extra_intro` lists them on the divider)."""
     S_text_slide(prs, "Backup — detailed tables", [
         "The slides that follow hold the full per-model numbers behind the token section:",
         "• total tokens/trial (input+output) per task × model × arm, with cost multiples vs no-tools;",
@@ -2117,7 +2236,7 @@ def _add_backup_section(prs, summary: dict) -> None:
         "excludes the re-fed tool input (the dominant tool cost) and failed-attempt tokens, so it flatters "
         "tools; it is a generation-length diagnostic, never the consumption headline;",
         "• the RQ0.6 difficulty-bin table.",
-    ])
+    ] + (extra_intro or []))
     for grp, part in EFF_TASK_GROUPS:
         headers, rows = _token_cost_table(grp)
         S_table_slide(
@@ -2151,10 +2270,22 @@ def _add_backup_section(prs, summary: dict) -> None:
                   h6, r6,
                   notes="No-tools vs +tool(steered), ≥9B think=off, per object-count tertile. The gap is flat "
                   "on every task — the null result summarised on the single RQ0.6 slide.")
+    for rq, task in (arm_tables or []):
+        headers, rows = _arm_table(task)
+        S_table_slide(prs, f"Backup — {rq} {TASK_DISP[task]} success table "
+                      "(rate [Wilson 95%], * = CI-disjoint)", headers, rows)
+    if rq05_table:
+        h5, r5 = _phase2_bin_table(summary, "rq05",
+                                   ["solve", "validate_plan", "simulate"])
+        S_table_slide(prs, "Backup — RQ0.5 difficulty-binned success (plan length)",
+                      h5, r5,
+                      notes="No-tools vs +tool(steered), ≥9B think=off, per plan-length tertile. "
+                      "validate_plan is the headroom-gated case carried on the RQ0.5 slide.")
 
 
 def _add_phase2_rq(prs, rq: str, question: str, answer: str, bullets: list[str],
-                   png: Path, summary: dict, key: str, tasks: list[str]) -> None:
+                   png: Path, summary: dict, key: str, tasks: list[str],
+                   *, defer_table: bool = False) -> None:
     gap_tbl_task = _phase2_headroom_task(key)
     d = summary[f"{key}/{gap_tbl_task}"]
     gap_line = " → ".join(f"{d['labels'][b]}: Δ{d['gaps'][b]:+.0f}" for b in range(3))
@@ -2169,10 +2300,12 @@ def _add_phase2_rq(prs, rq: str, question: str, answer: str, bullets: list[str],
                  badge=badge)
     S_image_slide(prs, f"{rq} — Evidence", png,
                   caption="Per difficulty bin: no-tools (grey) vs +tool steered (orange), Wilson 95% CIs; "
-                  "Δ = tool − no-tools over each bin (shaded = the advantage).")
-    headers, rows = _phase2_bin_table(summary, key, tasks)
-    S_table_slide(prs, f"{rq} — difficulty-binned success (no-tools vs +tool steered)",
-                  headers, rows)
+                  "Δ = tool − no-tools over each bin (shaded = the advantage)."
+                  + (" Full bin table in the backup." if defer_table else ""))
+    if not defer_table:
+        headers, rows = _phase2_bin_table(summary, key, tasks)
+        S_table_slide(prs, f"{rq} — difficulty-binned success (no-tools vs +tool steered)",
+                      headers, rows)
 
 
 # ---------------- Cross-mode (think=off × think=on) aggregation ----------------
@@ -2510,18 +2643,9 @@ def _compare_asserts() -> list[str]:
             f"solve=robust, simulate=sole-source confirmed"]
 
 
-def build_compare_pptx(res: dict) -> Path:
-    """The 12-slide cross-mode deck. `res[mode]` = dict(p1=…, p2=…, summary=…)
-    from the per-mode verdict replication run in `_main_compare`."""
-    prs = bd._make_pptx()
-
-    S_title_slide(
-        prs, "Where is the planning tool's value mode-invariant?",
-        "think=off × think=on cross-mode aggregation of the two RQ decks · "
-        "5 PDDL tasks, ≥9B models · per-cell statistics only — raw trials are "
-        "never pooled across arms or modes")
-
-    # --- bottom line: the three regimes + the invariant verdict pattern ---
+def _s_cross_bottom_line(prs) -> None:
+    """Bottom line: the three cross-mode regimes + the invariant verdict
+    pattern. Shared verbatim by the compare and unified decks."""
     rx = {t: [_realizable_cross(m, t) for m in MODELS_9B] for t in ALL_TASKS}
     sv_fl = min(r["floor"] for r in rx["solve"])
     si_lo = min(min(r["off"][0], r["on"][0]) for r in rx["simulate"])
@@ -2556,7 +2680,8 @@ def build_compare_pptx(res: dict) -> Path:
         "modes (asserted at build time). The MAGNITUDES do not: they move with the decode budget.",
     ])
 
-    # --- method ---
+def _s_cross_method(prs) -> None:
+    """Aggregation rules: per-cell statistics only, MOVER CIs, robust floor."""
     S_text_slide(prs, "How this deck aggregates — and what it never does", [
         "Both source decks stay untouched: think=off is the locked headline, think=on the budget-confounded "
         "companion. This deck combines them only at the level of per-cell statistics.",
@@ -2577,7 +2702,8 @@ def build_compare_pptx(res: dict) -> Path:
         "logged thinking/answer split; latency is only defensible as turns × output tokens.",
     ])
 
-    # --- the interaction figure ---
+def _s_cross_scatter(prs) -> None:
+    """The mode×arm interaction figure: steered arm on the diagonal, baseline off it."""
     S_image_slide(
         prs, "The gap moves because the BASELINE moves — not the tool arm",
         fig_mode_scatter("mode_scatter.png"),
@@ -2588,7 +2714,8 @@ def build_compare_pptx(res: dict) -> Path:
         "up on solve (reasoning genuinely helps derivation). Every cross-mode gap change is driven by the "
         "grey points, so mode×arm interaction = baseline effect.")
 
-    # --- the spine figure ---
+def _s_cross_dumbbell(prs) -> None:
+    """The spine figure: realizable benefit per mode, MOVER whiskers, the floor."""
     S_image_slide(
         prs, "Realizable benefit by mode — what the floor protects",
         fig_realizable_dumbbell("realizable_dumbbell.png"),
@@ -2598,7 +2725,8 @@ def build_compare_pptx(res: dict) -> Path:
         "or nothing in both; the validate_* dumbbells stretch right under think=on — that stretch is the "
         "budget artifact, and the open-blue end (≈ the floor) is the defensible claim.")
 
-    # --- summary + detail tables ---
+def _s_cross_summary_table(prs) -> None:
+    """Five tasks × three classes, ≥9B ranges."""
     h, r = _mode_summary_table()
     S_table_slide(prs, "Cross-mode summary — five tasks, three classes (≥9B ranges)", h, r,
                   notes="Ranges over the three ≥9B models. 'realizable' = steered − no-tools (pp); "
@@ -2606,15 +2734,22 @@ def build_compare_pptx(res: dict) -> Path:
                   "the cross-mode movement and how many of 3 models have a MOVER-D-significant Δ. Class "
                   "rule on the method slide. The Δ column is deliberately not coloured good/bad: on "
                   "validate_* the growth IS the artifact.")
+
+
+def _s_cross_detail_tables(prs, backup: bool = False) -> None:
+    """Per-model MOVER / MOVER-D detail, two parts (unified deck: backup)."""
+    pre = "Backup — per" if backup else "Per"
     for tasks, part in ((COMPARE_TASK_ORDER[:3], "1/2"), (COMPARE_TASK_ORDER[3:], "2/2")):
         h, r = _realizable_detail_table(tasks)
-        S_table_slide(prs, f"Per-model cross-mode detail — MOVER / MOVER-D 95% CIs  ·  {part}", h, r,
+        S_table_slide(prs, f"{pre}-model cross-mode detail — MOVER / MOVER-D 95% CIs  ·  {part}", h, r,
                       notes="realizable = steered − no-tools per mode [MOVER 95%]; Δ(on−off) [MOVER-D 95%] "
                       "— a CI on the MOVEMENT of the benefit across modes, not on the tool's merit (the "
                       "baseline, not the tool arm, does the moving); floor = min over modes. '*' = CI "
                       "excludes 0.")
 
-    # --- why steered, not plain ---
+
+def _s_cross_why_steered(prs) -> None:
+    """Why the cross-mode spine is the steered arm — with the Gemma honesty note."""
     g_sv = cell_toolsel("gemma4_26b-a4b", "solve", "tl-neut", "off").rate * 100
     g_sv_on = cell_toolsel("gemma4_26b-a4b", "solve", "tl-neut", "on").rate * 100
     g_vp = cell_toolsel("gemma4_26b-a4b", "validate_plan", "tl-neut", "off").rate * 100
@@ -2642,7 +2777,8 @@ def build_compare_pptx(res: dict) -> Path:
         "→ Availability and steering gaps remain fully reported, per mode, in the two source decks.",
     ])
 
-    # --- cost-of-pass regime flip ---
+def _s_cross_cop_flip(prs) -> None:
+    """Cost-of-pass flips from a task regime (off) to a model regime (on)."""
     h, r = _cop_cross_table()
     S_table_slide(prs, "Cost-of-pass flips from a task regime to a model regime", h, r,
                   notes="Total tokens per success (lower = better), no-tools vs +tool(steered), both modes. "
@@ -2654,20 +2790,26 @@ def build_compare_pptx(res: dict) -> Path:
                   "baseline survives the budget, still pays the off-style validate_* premium (6k→15k on "
                   "validate_plan). Bootstrap CIs for these cells are in the two source decks' backups.")
 
-    # --- the confound, explicitly ---
+def _s_cross_trunc_table(prs, backup: bool = False) -> None:
+    """The budget confound cell by cell (unified deck: backup)."""
     h, r = _trunc_cross_table()
-    S_table_slide(prs, "The budget confound, cell by cell — truncation at the 8,192-token cap", h, r,
-                  notes="Share of trials hitting the decode cap. The no-tools think=on column is the "
-                  "confound: 9B/Gemma baselines truncate 49–100% (validate_* 78–100%) — they reason "
+    S_table_slide(prs, ("Backup — the" if backup else "The")
+                  + " budget confound, cell by cell — truncation at the 8,192-token cap", h, r,
+                  notes="Share of trials where ANY turn hit the decode cap. The no-tools think=on column is "
+                  "the confound: 9B/Gemma baselines truncate 49–100% (validate_* 78–100%) — they reason "
                   "themselves out of the budget, so their think=on 'gaps' measure baseline drowning. "
                   "Qwen3.6-35B is the budget-robust control: its baseline truncates ≤24% (validate_* "
                   "≤11%) and its realizable benefit barely moves across modes (validate_problem Δ−1pp, "
                   "n.s.) — the same small benefit in both modes, proving the validate_* inflation is "
-                  "decode budget, not extra tool skill. The steered arm truncates for a different reason "
-                  "on solve/simulate (long tool outputs re-fed across turns), which is why even some "
-                  "steered cells pay a residual tax (Gemma solve 99→74% success).")
+                  "decode budget, not extra tool skill. The steered arm's high raw rates on solve/simulate "
+                  "are NOT comparable failures: those trials are multi-turn and graded from the tool result, "
+                  "so most cap-hit steered trials still succeed (see the censoring slide's cap-hit & failed "
+                  "column); the residual tax shows only where steering cannot restore tool-calling "
+                  "(Gemma solve 99→74% success).")
 
-    # --- the combined claim for the paper ---
+
+def _s_cross_paper_claims(prs, res: dict) -> None:
+    """The combined claim sheet for the paper."""
     d5_off = res["off"]["summary"]["rq05/validate_plan"]["gaps"]
     d5_on = res["on"]["summary"]["rq05/solve"]["gaps"]
     S_text_slide(prs, "What the paper can claim — and how to say it", [
@@ -2688,10 +2830,366 @@ def build_compare_pptx(res: dict) -> Path:
         "needs a cap-raised rerun; until then the floor is the claim that needs no such experiment.",
     ])
 
+
+def build_compare_pptx(res: dict) -> Path:
+    """The 12-slide cross-mode deck. `res[mode]` = dict(p1=…, p2=…, summary=…)
+    from the per-mode verdict replication run in `_main_compare`. The slide
+    blocks are shared functions so the unified deck re-emits them verbatim."""
+    prs = bd._make_pptx()
+    S_title_slide(
+        prs, "Where is the planning tool's value mode-invariant?",
+        "think=off × think=on cross-mode aggregation of the two RQ decks · "
+        "5 PDDL tasks, ≥9B models · per-cell statistics only — raw trials are "
+        "never pooled across arms or modes")
+    _s_cross_bottom_line(prs)
+    _s_cross_method(prs)
+    _s_cross_scatter(prs)
+    _s_cross_dumbbell(prs)
+    _s_cross_summary_table(prs)
+    _s_cross_detail_tables(prs)
+    _s_cross_why_steered(prs)
+    _s_cross_cop_flip(prs)
+    _s_cross_trunc_table(prs)
+    _s_cross_paper_claims(prs, res)
+
     _finalize_footers(prs)
     COMPARE_DIR.mkdir(parents=True, exist_ok=True)
     prs.save(str(COMPARE_PPTX))
     return COMPARE_PPTX
+
+
+# ---------------- Unified findings deck ----------------
+# A fourth artifact (`--think unified`): the single talk that consolidates the
+# three decks (off 47 + on 48 + compare 12 slides) per paper_notes 2026-06-10.
+# Structure: think=off spine (locked verdicts, full evidence — the clean read)
+# + the cross-mode synthesis slides re-emitted verbatim from the compare deck
+# + a limitations slide. The think=on deck is NOT re-presented RQ by RQ: every
+# think=on availability gap is budget-confounded, so think=on enters only via
+# the budget-cliff evidence and budget-insensitive statistics (robust floor,
+# 35B control). Honesty rules baked in: the solve baseline is quoted at its
+# BEST configuration (think=on 38%), not the direct-answer floor; simulate's
+# 0% carries its grader + failure decomposition; the 0.8B reversal carries its
+# trial-level mechanism; truncation is reported as cap-hit & FAILED.
+
+UNIFIED_DIR = REPO / "checkpoints/rq-sweep5v2-unified"
+UNIFIED_PPTX = UNIFIED_DIR / "pddl_copilot_rq_sweep5v2_unified.pptx"
+
+
+def _floor_range(task: str) -> tuple[float, float]:
+    """(min, max) over ≥9B models of the robust floor (pp) for one task."""
+    floors = [_realizable_cross(m, task)["floor"] for m in MODELS_9B]
+    return min(floors), max(floors)
+
+
+def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
+    """The unified findings deck. `res` as in `build_compare_pptx`;
+    `gate_lines_off` = the think=off RQ0.3 gate lines for the reading-guide
+    slide. Renders with THINK=='off' (the spine); cross-mode blocks pass the
+    mode explicitly."""
+    assert THINK == "off", "unified deck renders over the think=off spine"
+    summary = res["off"]["summary"]
+    prs = bd._make_pptx()
+
+    # --- title ---
+    S_title_slide(
+        prs, "Does a planning tool help LLMs on PDDL tasks? — unified findings",
+        "5 language models · 5 PDDL tasks · no-tools vs +tool vs +tool+nudge · "
+        "think=off headline + think=off × on cross-mode synthesis · "
+        "Wilson 95% CIs · success rates end-to-end")
+
+    # --- hook: the honest headline. simulate is sole-source in BOTH modes; the
+    #     solve gap is quoted against the model's BEST unaided configuration
+    #     (think=on reasoning lifts the unaided 35B 9→38%), not the
+    #     direct-answer floor the off deck alone would suggest. ---
+    sim_nt = [cell_success(m, "simulate", "nt-neut", th)
+              for m in MODEL_ORDER for th in ("off", "on")]
+    n_sim = sum(c.n for c in sim_nt)
+    assert all(c.rate == 0 for c in sim_nt if c.n), "simulate no-tools is no longer all-zero"
+    sim_st = [cell_success(m, "simulate", "tl-ster", th)
+              for m in MODELS_9B for th in ("off", "on")]
+    s35_on = cell_success("qwen3_6_35b", "solve", "nt-neut", "on")
+    s35_st_on = cell_success("qwen3_6_35b", "solve", "tl-ster", "on")
+    sv_fl, _ = _floor_range("solve")
+    vp_lo, vp_hi = _floor_range("validate_plan")
+    vpr_lo, vpr_hi = _floor_range("validate_problem")
+    vd_lo, _ = _floor_range("validate_domain")
+    S_hook_slide(
+        prs, "The headline — two of five tasks do not happen without the tool",
+        [("0%", f"simulate, no-tools — every model, BOTH think modes, all {n_sim:,} trials"),
+         (f"{min(c.rate for c in sim_st)*100:.0f}–{max(c.rate for c in sim_st)*100:.0f}%",
+          "simulate, tool + one steering sentence (≥9B, both modes)"),
+         (f"{s35_on.rate*100:.0f}% vs {s35_st_on.rate*100:.0f}%",
+          "solve — BEST unaided configuration (Qwen3.6-35B, think=on) vs the same cell with the tool")],
+        "Tracking world state through a plan (simulate) and solving (solve) essentially require the tool:",
+        f"The solve baseline is quoted at its best on purpose — reasoning mode lifts the unaided 35B from "
+        f"9% to {s35_on.rate*100:.0f}%, and the tool still adds "
+        f"{(s35_st_on.rate - s35_on.rate)*100:+.0f}pp in that same mode; across both modes the benefit "
+        f"floors at ≥ {sv_fl:+.0f}pp for every ≥9B model. Where the unaided model is already strong, the "
+        f"honest mode-invariant benefit is modest: {vp_lo:+.0f}…{vp_hi:+.0f}pp (validate_plan), "
+        f"{vpr_lo:+.0f}…{vpr_hi:+.0f}pp (validate_problem), ≥ {vd_lo:+.0f}pp (validate_domain). The deck "
+        "quantifies the pattern, its mechanism — tool-CALLING, not tool output, is what fails — and the "
+        "token bill.")
+
+    # --- executive scorecard (think=off locked) + the mode-invariance line ---
+    S_table_slide(
+        prs, "Scorecard — six research questions, six verdicts",
+        ["RQ", "question", "verdict", "evidence (≥9B, think=off)"],
+        _scorecard_rows(summary),
+        caption="Verdicts locked + asserted against the computed signed CI counts (think=off, the clean "
+        "read). The SAME signed rule on the think=on corpus reproduces the pattern — YES / YES / MIXED / "
+        "YES, RQ0.5 YES, RQ0.6 NO (asserted at build time); the MAGNITUDES move with the decode budget "
+        "(cross-mode section).",
+        notes="Availability = +tool(plain) vs no-tools on the headline task of each RQ; RQ0.5/0.6 from "
+        "the phase-2 difficulty bins (no-tools vs +tool steered).")
+
+    # --- onboarding (verbatim from the off deck) ---
+    S_text_slide(prs, "What we're testing", [
+        "PDDL is the standard formal language AI planners use to describe a world, the actions "
+        "allowed in it, a goal to reach, and step-by-step plans. We give a language model five "
+        "PDDL jobs:",
+        "• solve — find a plan (a sequence of actions) that reaches the goal",
+        "• validate_domain — check that the file defining the world and its actions is correct PDDL",
+        "• validate_problem — check that the file listing the objects, the start state and the goal is correct PDDL",
+        "• validate_plan — decide whether a given plan actually works (a yes/no verdict)",
+        "• simulate — track how the world changes as a plan is run, one action at a time",
+        "",
+        "The question: do models do these jobs better when we also let them call a real "
+        "planner/validator program — a “tool” — instead of answering only from their own knowledge?",
+    ])
+    S_text_slide(prs, "The three setups we compare", [
+        "Every job is run in three setups (we call them “arms”), and we never mix their results:",
+        "• no-tools — the model answers on its own, with no external help.  This is the baseline.",
+        "• tool available — exactly the same request, but now a real planner/validator is there for the model to call if it chooses to.",
+        "• tool + nudge — the tool is available AND we append one sentence explicitly telling the model to use it (we call this “steered”).",
+        "",
+        "Comparing neighbouring arms answers two separate questions:",
+        "      – Does simply having the tool help?  (no-tools  vs  tool available — the wording is otherwise identical)",
+        "      – Or did the model just need to be told to use it?  (tool available  vs  tool + nudge)",
+        "",
+        "In the tables these arms appear as the short codes  nt-neut · tl-neut · tl-ster  (same order).",
+    ])
+    S_text_slide(prs, "How to read the results", [
+        "• success rate — how often the model's answer matched the known-correct answer, 0–100%. It is the "
+        "only score shown; arms are scored separately and never pooled.",
+        "• Error bars (charts) and [low, high] brackets (tables) are Wilson 95% confidence intervals. When two "
+        "ranges don't overlap, the difference is real rather than noise; a “*” on a gap marks exactly that. "
+        "Green = the tool helped, red = the tool hurt.",
+        "• “≥9B” — headline conclusions use the larger models (Qwen3.5-9B, Gemma-MoE-26B, Qwen3.6-35B); "
+        "Qwen3.5-4B is shown for context and the 0.8B failure mode gets its own slide.",
+        "• Headline numbers are think=off (the model answers directly) — the clean, unconfounded read. The "
+        "cross-mode section then asks what survives think=on (the model reasons first): reasoning + answer "
+        "SHARE one 8,192-token decode budget there, so raw think=on gaps are budget-confounded and "
+        "cross-mode claims are made only through budget-insensitive statistics (the robust floor).",
+        "• “difficulty bins” (RQ0.5/0.6) — problems split into easy / medium / hard thirds, no-tools vs tool + "
+        "nudge, to see whether the tool's advantage changes as problems get harder.",
+        "• A contamination re-run on disguised problems (sweep-6) left the no-tools baseline unchanged "
+        "(dedicated slide near the end).",
+    ])
+
+    # --- signed significance (the rule that makes RQ0.3 MIXED) ---
+    g_gem = signed_gap("gemma4_26b-a4b", "validate_plan", "nt-neut", "tl-neut")
+    S_text_slide(prs, "Why the verdicts count direction — signed significance", [
+        "A gap counts toward a YES only when the two arms' 95% intervals are disjoint AND the gap points the "
+        "hypothesised way (the tool helps). Significant gaps pointing the other way are tallied separately as "
+        "significant-AGAINST — they are findings, not noise.",
+        "",
+        f"• The case that makes this matter: on validate_plan, merely making the tool available moves "
+        f"Gemma-MoE-26B by {g_gem['gap']:+.0f}pp — significant, and AGAINST the tool (it stops answering).",
+        "• A sign-blind test would count that gap as evidence the tool 'has an effect' and read RQ0.3 as YES. "
+        "The signed rule reads it as MIXED — which is what the data actually says.",
+        "• The build asserts the computed signed verdicts equal the locked scorecard (think=off) AND that the "
+        "same rule reproduces the verdict pattern on the think=on corpus — the deck cannot silently drift "
+        "from this rule in either mode.",
+    ])
+
+    # --- RQ0.1–0.4 (think=off spine). RQ0.1's tables go to the backup (its
+    #     charts saturate near 100% — the chart carries the slide); the
+    #     mechanism slide is kept where it IS the finding (RQ0.2, RQ0.3) and
+    #     dropped for RQ0.4 (same mechanism third time over). ---
+    deferred_tables: list[tuple[str, str]] = []
+    for rq, tasks in RQ_TASKS.items():
+        deferred_tables += _add_phase1_rq(
+            prs, rq, tasks, summary, gate_lines_off,
+            defer_tables=(rq == "RQ0.1"),
+            mech_rqs={"RQ0.2", "RQ0.3"})
+
+    # --- small-model caveat (with the trial-level mechanism VISIBLE) ---
+    sm_h, sm_r = _small_model_table()
+    S_table_slide(
+        prs, "Small-model caveat — Qwen3.5-0.8B mishandles the tool",
+        sm_h, sm_r,
+        caption="The only model where tool AVAILABILITY reverses sign (validate_problem −25pp*, "
+        "validate_plan −27pp*). " + _small_model_mech_note(),
+        notes="Every headline conclusion is ≥9B; the YES verdicts hold from 4B up. Excluded from the "
+        "main charts to keep them readable — this slide is its complete record.")
+
+    # --- token cost + efficiency (think=off; censoring table carries the
+    #     cap-hit & failed column) ---
+    _add_token_section(prs)
+
+    # --- RQ0.5 / RQ0.6 (think=off; bin table → backup) ---
+    rq05 = fig_phase2(summary, "rq05",
+                      ["solve", "validate_plan", "simulate"],
+                      "RQ0.5 — does the tool advantage change with PLAN LENGTH? "
+                      "(no-tools vs +tool steered, ≥9B, think=off)", "phase2_rq05.png")
+    _add_phase2_rq(prs, "RQ0.5", "Does the planning tool's advantage CHANGE as instances get harder "
+                   "(longer reference / plan length)?",
+                   "YES for validate_plan — the advantage GROWS with plan length.",
+                   ["validate_plan is the headroom-gated case (both arms have room to move): the "
+                    "no-tools − tool gap widens from +5pp (short plans) to +27pp (long plans) as no-tools "
+                    "degrades while the tool holds. This is the generalisation claim: the harder the "
+                    "instance, the more the tool is worth.",
+                    "solve and simulate are framed as tool-arm robustness: no-tools is floored (~0–12%) at "
+                    "every length, so the ~87–99pp gap is large but does not 'grow' — there is no no-tools "
+                    "headroom to lose.",
+                    "Mode note: under think=on the headroom case MOVES to solve (+48→+65pp with length) — "
+                    "reasoning runs out of budget exactly where plans get long; reported as a finding in the "
+                    "cross-mode section, not a contradiction."],
+                   rq05, summary, "rq05",
+                   ["solve", "validate_plan", "simulate"], defer_table=True)
+    rq06 = fig_phase2(summary, "rq06",
+                      ["solve", "validate_problem", "validate_plan", "simulate"],
+                      "RQ0.6 — does the tool advantage change with OBJECT COUNT? "
+                      "(no-tools vs +tool steered, ≥9B, think=off)", "phase2_rq06.png")
+    d6 = summary["rq06/validate_problem"]
+    v6 = _phase2_verdict(summary, "rq06")
+    S_image_slide(
+        prs, "RQ0.6 — object count does not move the advantage", rq06,
+        badge=(v6, VERDICT_COLOR[v6]),
+        caption="Headroom case (validate_problem): gap "
+        + " → ".join(f"{d6['labels'][b]}: Δ{d6['gaps'][b]:+.0f}" for b in range(3))
+        + "pp — essentially flat; the other tasks are also flat (no-tools floored or already "
+        "separated). Object count is not a difficulty axis the tool's advantage tracks. "
+        "Full bin table in the backup.")
+
+    # --- cross-mode synthesis: cliff first (the reading frame), then the
+    #     compare deck's core slides verbatim ---
+    cliff = fig_think_on_cliff("think_on_cliff.png")
+    S_image_slide(
+        prs, "Does it survive reasoning mode? — read the decode-budget cliff first",
+        cliff,
+        caption="Left: solve tool-use rate — neutral think=on collapses tool-calling vs think=off "
+        "(Gemma-MoE-26B 100→23, Qwen3.5-9B 100→59); steering partly restores it. Right: solve truncation "
+        "spikes under think=on. Everything in this section sits under one shared 8,192-token decode budget: "
+        "the unaided baseline often reasons past the cap and never answers, so raw think=on gaps are "
+        "inflated by baseline truncation — the section therefore reads think=on only through "
+        "budget-insensitive statistics (the robust floor, min over modes) and the budget-robust "
+        "Qwen3.6-35B control.")
+    _s_cross_bottom_line(prs)
+    _s_cross_method(prs)
+    _s_cross_scatter(prs)
+    _s_cross_dumbbell(prs)
+    _s_cross_summary_table(prs)
+    _s_cross_why_steered(prs)
+    _s_cross_cop_flip(prs)
+
+    # --- contamination (both halves: the null AND the artifact we caught) ---
+    S_text_slide(prs, "Robustness — contamination probe (sweep-6)", [
+        "• A separate anonymised-corpus sweep (sweep-6) re-ran the matrix on structurally-identical domains "
+        "with every surface name renamed, to test memorisation.",
+        "• Headline (think=off): the clean no-tools-neutral probe is near-null — Δ(canonical − anon) success "
+        "≤1.3pp mean |Δ|, zero CI-disjoint task cells. No broad train-set contamination of the pure-model "
+        "baseline where it has headroom — the availability gaps in this deck are not a contamination artifact.",
+        "• The probe's ONLY CI-disjoint cells (validate_plan, think=on) were a TOKENISATION artifact — "
+        "anonymised prompts ran ~5% longer, so more trials truncated under the shared budget; "
+        "success-given-completion was equal. Not memorisation — and a live demonstration of how budget "
+        "exhaustion, not ability, moves think=on numbers (exactly the confound the cross-mode section "
+        "controls for).",
+    ])
+
+    # --- limitations (consolidated; includes the phase-3 scope line) ---
+    S_text_slide(prs, "Limitations — what these results do and do not cover", [
+        "• Single-tool-use scope: each trial poses ONE task with one relevant tool. Multi-tool chaining, "
+        "agentic workflows, cross-benchmark generalisation (PlanBench) and published formalizer baselines "
+        "(e.g. Huang & Zhang, ACL 2025) are deliberately out of scope (phase-3).",
+        "• Model roster: 5 open models from 2 families (Qwen, Gemma); headline claims rest on the three ≥9B "
+        "models. No frontier/closed models.",
+        "• Decode budget: one fixed 8,192-token output cap. Every think=on number is budget-confounded; "
+        "whether a larger budget closes the unaided think=on gap is UNTESTED (a cap-raised rerun is the "
+        "open follow-up) — which is why cross-mode claims use the robust floor only.",
+        "• Steering = one fixed sentence appended to the request; broader prompt sensitivity is not swept "
+        "in this corpus.",
+        "• Latency is not recoverable from a batched vLLM server (wall-clock confounded, per-token timings "
+        "synthetic); turns × output tokens is the only proxy reported. A concurrency=1 TTFT/TPOT "
+        "micro-benchmark is future work.",
+        "• Grading is strict and end-to-end (structured output, exact canonical-form equality): success "
+        "conflates task ability with artifact/format adherence — deliberate (deployment-realistic), and the "
+        "failure taxonomy separates the two where it matters (simulate decomposition, 0.8B mechanism).",
+        "• validate_plan with-tools scoring: the corpus postdates the 2026-05-25 FastMCP arg-error runtime "
+        "fix; the defensive read-time relabel is verified inert on sweep5v2.",
+    ])
+
+    # --- closing: the claim sheet ---
+    _s_cross_paper_claims(prs, res)
+
+    # --- backup ---
+    _add_backup_section(
+        prs, summary,
+        extra_intro=["• the RQ0.1 success tables (their charts saturate near 100%);",
+                     "• the RQ0.5 difficulty-bin table;",
+                     "• the cross-mode per-model MOVER/MOVER-D detail and the truncation-by-cell table."],
+        arm_tables=deferred_tables, rq05_table=True)
+    _s_cross_detail_tables(prs, backup=True)
+    _s_cross_trunc_table(prs, backup=True)
+
+    _finalize_footers(prs)
+    UNIFIED_DIR.mkdir(parents=True, exist_ok=True)
+    prs.save(str(UNIFIED_PPTX))
+    return UNIFIED_PPTX
+
+
+def _main_unified(args) -> int:
+    """`--think unified` entry point. Identical gate discipline to
+    `_main_compare` (off: locked verdicts + phase-2 oracle; on: same signed
+    rule computed; pattern + cross-mode consistency asserted), then renders
+    the unified deck. The three source decks are not rebuilt or modified."""
+    global THINK, PLOT_DIR, FOOTER_THINK
+    print(f"loading {RESULTS_ROOT} ...", file=sys.stderr)
+    bd.CELLS = bd.load_all(RESULTS_ROOT)
+    bd.MODEL_ORDER = MODEL_ORDER
+
+    res = {}
+    gate_off: list[str] = []
+    for mode in ("off", "on"):
+        THINK = mode
+        print(f"=== GATE (think={mode}) ===", file=sys.stderr)
+        glines = run_gate(mode)
+        for ln in glines:
+            print("  " + ln, file=sys.stderr)
+        if mode == "off":
+            gate_off = glines
+        summary = build_phase2()
+        if mode == "off":
+            assert_phase2_matches(summary, PHASE2_EXPECTED)
+            print("  phase2 reproduces the tracked think=off oracle exactly", file=sys.stderr)
+        p1 = {rq: _phase1_verdict(rq)[0] for rq in RQ_TASKS}
+        p2 = {key: _phase2_verdict(summary, key) for key in ("rq05", "rq06")}
+        res[mode] = dict(summary=summary, p1=p1, p2=p2)
+    assert res["off"]["p1"] == res["on"]["p1"] and res["off"]["p2"] == res["on"]["p2"], (
+        f"verdict pattern no longer mode-invariant: off={res['off']['p1']}/{res['off']['p2']} "
+        f"on={res['on']['p1']}/{res['on']['p2']} — the unified deck's story must be rewritten")
+    print("  verdict pattern reproduces across modes "
+          f"({'/'.join(res['off']['p1'][rq] for rq in RQ_TASKS)}, "
+          f"rq05={res['off']['p2']['rq05']}, rq06={res['off']['p2']['rq06']})", file=sys.stderr)
+
+    print("=== CROSS-MODE CONSISTENCY ===", file=sys.stderr)
+    for ln in _compare_asserts():
+        print("  " + ln, file=sys.stderr)
+
+    if args.check:
+        print("--check: per-mode gates + cross-mode asserts passed; skipping render",
+              file=sys.stderr)
+        return 0
+
+    print("=== RENDER (unified) ===", file=sys.stderr)
+    THINK = "off"                       # the spine; cross-mode blocks pass think explicitly
+    FOOTER_THINK = "off headline × cross-mode"
+    PLOT_DIR = UNIFIED_DIR / "plots"
+    out = build_unified_pptx(res, gate_off)
+    n_slides = len(__import__("pptx").Presentation(str(out)).slides._sldIdLst)
+    print(f"wrote {out}  ({n_slides} slides)", file=sys.stderr)
+    print(f"plots → {PLOT_DIR}", file=sys.stderr)
+    return 0
 
 
 def _main_compare(args) -> int:
@@ -2756,19 +3254,24 @@ def main() -> int:
                     help="run gates + phase-2 assertion only; do not render plots/pptx")
     ap.add_argument("--no-assert-oracle", action="store_true",
                     help="skip the byte-equality assertion against the existing phase2_summary.json oracle")
-    ap.add_argument("--think", choices=("off", "on", "compare"), default="off",
+    ap.add_argument("--think", choices=("off", "on", "compare", "unified"), default="off",
                     help="thinking mode of the deck. 'off' = the locked headline deck "
                     "(verdicts + phase-2 oracle asserted). 'on' = the companion deck over "
                     "the think=on corpus: same signed rule, verdicts computed not locked, "
                     "oracle skipped (it is think=off-only), outputs under "
                     "checkpoints/rq-sweep5v2-think-on/. 'compare' = the standalone "
                     "cross-mode aggregation deck (per-cell statistics only; off/on decks "
-                    "untouched), outputs under checkpoints/rq-sweep5v2-compare/.")
+                    "untouched), outputs under checkpoints/rq-sweep5v2-compare/. "
+                    "'unified' = the single consolidated findings deck (think=off spine + "
+                    "cross-mode synthesis + limitations; the three source decks untouched), "
+                    "outputs under checkpoints/rq-sweep5v2-unified/.")
     args = ap.parse_args()
 
     THINK = args.think
     if THINK == "compare":
         return _main_compare(args)
+    if THINK == "unified":
+        return _main_unified(args)
     if THINK == "on":
         OUT_DIR = REPO / "checkpoints/rq-sweep5v2-think-on"
         PLOT_DIR = OUT_DIR / "plots"
