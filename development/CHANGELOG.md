@@ -6,6 +6,67 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-10 — Cross-mode aggregation deck (`rq_deck.py --think compare`)
+
+**Change.** `rq_deck.py` gains a third mode, `--think compare`, that aggregates the locked think=off deck and its think=on companion into a standalone 12-slide cross-mode deck at `checkpoints/rq-sweep5v2-compare/` (+PDF, plots/). The off and on decks are byte-untouched — compare runs only NEW code (a separate `build_compare_pptx` + cross-mode figures/tables + a `main()` branch that returns BEFORE the off/on phase-1/phase-2 machinery). `--check` for off (locked verdicts + phase-2 oracle) and for on still pass; `--think compare --check` runs both gates + a MOVER consistency assert.
+
+**Why.** The think=on companion's huge availability gaps are budget-confounded (no-tools baseline truncates 55–83% under the shared 8,192-token decode budget and collapses). A cross-mode view is needed to state crisply WHERE the tool's value is mode-invariant vs WHERE it is a decode-budget artifact — without ever pooling raw trials across arms or modes (corpus identity is load-bearing; aggregation happens ONLY at the per-cell-statistic level — differences / Δ-of-differences / min of already-separate cells).
+
+**Design.**
+- Spine metric = REALIZABLE benefit = success(+tool steered) − success(no-tools), per (model, task, mode). Steered, not plain: under think=on the plain arm stops calling the tool (reasons instead), so plain availability conflates baseline collapse with a tool-calling failure; steering isolates the tool's value (slide justifies it on-deck).
+- CIs: Newcombe MOVER for a gap (Wilson-consistent difference-of-proportions, `_mover_gap`), nested MOVER-D for Δ(on−off) (two INDEPENDENT gaps — off/on are disjoint corpora; `_mover_delta`); validated against a large-sample Wald contrast. "*" = Δ CI excludes 0.
+- Robust floor = min over modes of the realizable benefit = the budget-insensitive lower bound on the tool's value.
+- Per-task class: `robust` (floor ≥30pp), `sole-source` (baseline floored both modes), `budget-dep` (floor <30pp — the large think=on gap is a truncated-baseline artifact).
+
+**Slides.** title → 3-regime bottom line → method/how-to-read → off-vs-on success scatter (`fig_mode_scatter`: tool arm holds near the y=x diagonal, baseline swings) → realizable-benefit dumbbell (`fig_realizable_dumbbell`: off open → on filled, MOVER whiskers, grouped by class) → cross-mode summary table (per task: off/on ranges, floor, Δ range, k/3 sig, class chip) → per-model MOVER detail (×2 slides, 3+2 tasks) → why-steered-not-plain → cost-of-pass regime flip (task→model) → truncation-by-arm×mode budget confound → combined paper claim.
+
+**Findings (≥9B).** Verdict pattern is mode-invariant; magnitude is not. solve = robust (floor +46pp; the gap SHRINKS under think=on only because reasoning rescues the baseline 11→27 / 9→38%, not because the tool weakens); simulate = sole-source (+83…+97pp both modes); validate_domain/problem/plan = budget-dependent (floor +5…+25pp — the dramatic think=on gaps are a baseline-truncation artifact, confirmed by the budget-robust Qwen3.6-35B showing the SAME small benefit in both modes). Cost-of-pass regime flips task-determined → model-determined. Even the steered tool arm pays a residual budget tax under think=on for some cells (Gemma validate_plan 93→44%, solve 99→74%); 35B's steered arm is fully mode-invariant.
+
+**Files touched.** `.claude/skills/analyzer/scripts/rq_deck.py` (+`import math`; `--think compare` choice + `main()` branch; `_mover_gap`/`_mover_delta`/`_realizable_gap`/`_avail_gap`/`_realizable_cross`/`_baseline_floored_both`/`_mode_class`; `fig_mode_scatter`/`fig_realizable_dumbbell`; `_mode_summary_table`/`_realizable_detail_table`/`_cop_cross_table`/`_trunc_cross_table`; `build_compare_pptx`/`_compare_asserts`; 3 new `_delta_tint` class-chip keys). `checkpoints/rq-sweep5v2-compare/**` (new; PDF tracked, pptx/png gitignored).
+
+---
+
+## 2026-06-10 — `--think on` companion deck (`rq_deck.py`)
+
+**Change.** `rq_deck.py` now takes `--think {off,on}`. `--think off` (default) is byte-stable with the restructured deck below — all locked asserts + the phase-2 oracle still run. `--think on` builds a 48-slide companion deck over the think=on cells at `checkpoints/rq-sweep5v2-think-on/pddl_copilot_rq_sweep5v2_think_on.pptx` (+ PDF, plots/, phase2_summary.json). Render-checked via LibreOffice.
+
+**Mechanics.** `THINK` is now resolved at call time (all `think=THINK` default args → `None` sentinel — default-arg binding would have frozen "off" at import). Per-mode: output paths; `run_gate(think)` reads the `_{think}_` cell dirs (gate models for on = Gemma + 9B; the `acc_decided>0.65` floor asserted only on off; relabel-inert asserted on both); phase-2 recomputed fresh for on (tracked oracle is off-only); phase-1 verdicts via `_phase1_verdict` (locked+asserted on off, computed by the same signed rule on on); RQ0.5/0.6 verdicts via a `_phase2_verdict` widening rule (last−first ≥10pp, no initial dip) that reproduces and asserts the locked off verdicts; mechanism slides are now data-driven (skip iff all ≥9B plain tool_selected ≥97% — off RQ0.1 skips, on RQ0.1 returns because Gemma under-calls at 56%); `fig_cop_dumbbell(regimes=False)` drops the per-task banners on on (regime is per-model there); the cliff figure opens the on deck ("read this first") instead of closing the caveats; footer/titles/captions carry `think={THINK}`.
+
+**think=on findings the deck carries (computed, not locked):**
+- Verdict pattern REPRODUCES: YES / YES / MIXED / YES, RQ0.5 YES, RQ0.6 NO — but availability gaps are inflated by a truncation-collapsed baseline (55–83% of ≥9B no-tools trials hit the 8,192 cap; validate_* baselines collapse, e.g. validate_plan 9B 80→21%, Gemma 88→10% off→on), so the deck frames every gap as budget-confounded.
+- solve is the exception: reasoning HELPS the unaided baseline (9B 11→27%, 35B 9→38%).
+- Steering matters more: solve steering favorable-significant 3/3 (off: 1/3); Gemma validate_plan plain collapses to 0.6% success / ≈1% tool_selected (gate: answers 1% of trials, 100% accurate when it does), steered recovers to 44% — still below its own think=off no-tools 88%.
+- RQ0.5's headroom case moves to solve: baseline fades 41→17→9% with plan length while the tool holds (89→75→74), gap +48→+57→+65pp.
+- Cost-of-pass regime becomes per-MODEL: where reasoning drowns the baseline the tool is far cheaper per success (validate_domain 9B 200k→11k, Gemma ∞→12k) or the only producer; only 35B (baseline survives) still pays a tool premium on validate_*. Tools cost only ~2× per trial under on (baseline burns ~5–6k output tokens reasoning). Token caveat carried on-slide: under think=on `completion` = reasoning + answer with no logged split.
+- Contamination footnote gains the think=on tokenisation-artifact caveat (sweep-6).
+
+Also: `_cost_mult_str` renders sub-0.1 multiples with two decimals ("0.01× cheaper", was "0.0×").
+
+---
+
+## 2026-06-10 — RQ deck restructure: hook + scorecard, figure-led token section, backup tables (`rq_deck.py`)
+
+**Change.** Full presentation restructure of the single-tool-use RQ deck following a slide-by-slide review (50 → 47 slides: ~39 main + 8 backup). Metric layer, gates, locked verdicts, and the phase-2 oracle are untouched — `--check` passes and `phase2_expected_sweep5v2.json` still reproduces exactly. Deck at `checkpoints/rq-sweep5v2/pddl_copilot_rq_sweep5v2.pptx` (+ PDF), render-checked via LibreOffice.
+
+**Cut / demoted.**
+- The six standalone "Question" slides — question text folded into each Answer slide's lead line.
+- "How to read" + "Methods" merged into one slide.
+- The mechanism slide for RQ0.1 (validate_domain/problem): tool-use is already 98–100% in both tool arms, so "steering raises tool-calling" had nothing to explain there (and steering actually dips validate_problem on 9B). Kept for RQ0.2/0.3/0.4 where +tool(plain) under-calls.
+- Qwen3.5-0.8B pulled out of every main chart/table (`CHART_MODELS` = ≥4B); it gets one "small-model caveat" slide (`_small_model_table`) carrying its full 5-task record (availability reverses: validate_problem −25pp*, validate_plan −27pp*).
+- RQ0.6 (null result) compressed 4 slides → 1 (figure + NO badge); its bin table moved to backup.
+- Completion-only generation-cost lens (3 slides) demoted to backup, explicitly labelled tool-flattering.
+- Gate slide rewritten without internal QA artifacts ("relabel inert" removed from display; the asserts still run) — now reads "produces a verdict on only 21% of trials; 99% accurate when it does".
+- The ↑/↓ arrow glyphs on cost multiples replaced by plain words ("4.3× costlier" / "0.4× cheaper" / "more right"), with `_delta_tint` keying on the words — the arrow direction used to fight the colour semantics.
+
+**Added.**
+- Hook slide (slide 2, `S_hook_slide`): simulate 0% → 65–92% → 83–97% in oversized stat blocks, before any methodology.
+- Executive scorecard (slide 3, `_scorecard_rows`): all six RQ verdicts + computed signed-CI evidence lines, verdict chips tinted (YES/NO/MIXED).
+- "Why the verdicts count direction" slide — the signed-significance rule with the Gemma −67pp example, promoted from a methods bullet.
+- Token section rebuilt figures-first (`_add_token_section`): `fig_token_quadrant` (tokens/trial vs success, arrows no-tools→steered, per task — cost and quality in one view), `fig_token_profile` (stacked input/output bars: the ~0.3:1 → ~5:1 inversion shown rather than asserted), `fig_cop_dumbbell` (cost-of-pass grouped by baseline regime: strong baseline = tool 3–11× costlier per success; floored = ~3× cheaper or sole producer), the exact decomposition as ONE merged table (simulate's undefined rows dropped), and a NEW censoring/latency-proxy table (`_censoring_table`: truncated% + mean turns + token means per task × arm, ≥9B pooled) — the 8,192-cap caveat now has on-deck evidence, and `turns × output tokens` is surfaced as the only defensible latency proxy.
+- Backup section (`_add_backup_section`): full token-cost / cost-of-pass / completion-only tables + RQ0.6 bins behind a divider.
+
+---
+
 ## 2026-06-09 — Token-efficiency rewrite: total-token cost + cost-of-pass (`rq_deck.py`)
 
 **Change.** Replaced the per-token "tool intelligence" efficiency view (success ÷ action/completion tokens) with the two consumption-honest metrics the user asked for, and demoted the old output-only view to a labelled secondary lens. **Supersedes the two entries below** (2026-06-09 "extended to ≥4B" and 2026-06-08 "Per-token tool intelligence"): the `cell_efficiency`/`Eff` index table (`_add_efficiency_section`), the `more-often-right × fewer-tokens` decomposition (`_decomp_*`), `_add_efficiency_followups`, and `_fmt_idx`/`_eff_cell`/`_tool_cell`/`_efficiency_table` are removed. `--check` (gates + phase-2 oracle) unchanged; deck 36→50 slides.
