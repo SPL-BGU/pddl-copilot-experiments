@@ -29,9 +29,15 @@ Three arms, never pooled (locked design):
 Two gaps per RQ0.1–0.4: availability (tl-neut − nt-neut, byte-identical wording)
 and steering (tl-ster − tl-neut). Phase-2 (RQ0.5/0.6) compares nt-neut vs tl-ster.
 
+A third mode, `--think compare`, aggregates the locked think=off deck and the
+think=on companion into a standalone cross-mode deck (its own checkpoint dir)
+— per-cell statistics only, raw trials are NEVER pooled across arms or modes.
+
 Usage:
     python3 .claude/skills/analyzer/scripts/rq_deck.py            # full deck
     python3 .claude/skills/analyzer/scripts/rq_deck.py --check    # gates+asserts only, no render
+    python3 .claude/skills/analyzer/scripts/rq_deck.py --think on       # companion deck
+    python3 .claude/skills/analyzer/scripts/rq_deck.py --think compare  # cross-mode deck
 """
 from __future__ import annotations
 
@@ -118,6 +124,9 @@ EFF_TASK_GROUPS = [(ALL_TASKS[:3], "1/2"), (ALL_TASKS[3:], "2/2")]
 
 VALID_PLAN_LABELS = {"v1", "v2", "v3", "v4", "v5"}
 THINK = "off"
+# Footer label override for the cross-mode deck (None = use THINK verbatim, so
+# the off/on decks render byte-identically).
+FOOTER_THINK: str | None = None
 
 # ---------------- Shared visual theme (figures + slides) ----------------
 # Palette — the figure colours double as slide-accent colours so the chrome
@@ -1208,21 +1217,28 @@ def S_hook_slide(prs, title: str, stats: list[tuple[str, str]], lead: str,
 def _delta_tint(text: str):
     """Tint semantic cells. Returns (fill, ink) or None.
 
-    Three families of keys, mutually exclusive across the deck's tables:
+    Four families of keys, mutually exclusive across the deck's tables:
     - scorecard verdict chips: exact YES / NO / MIXED;
+    - cross-mode class chips (compare deck): exact robust / sole-source
+      (green — the tool's value survives both modes) / budget-dep (amber —
+      the think=on gap is decode-budget-inflated);
     - token-table direction words: 'cheaper'/'fewer tokens'/'more right' →
       green, 'costlier'/'more tokens'/'less right' → red (plain words instead
       of the old ↑/↓ glyphs, whose arrow direction fought the colour);
-    - signed-significant Δ cells: '*' with the sign giving the direction."""
+    - signed-significant Δ cells: '*' with the sign giving the direction.
+      Cells starting with 'Δ' opt out of the sign tint on purpose: for the
+      compare deck's Δ(on−off) a green 'grew' would read as 'good' when gap
+      growth on validate_* is exactly the budget artifact."""
     t = text.strip()
     if t in ("YES", "NO", "MIXED"):
         return {"YES": (GREEN_TINT, GREEN_INK), "NO": (RED_TINT, RED_INK),
                 "MIXED": (AMBER_TINT, AMBER_INK)}[t]
-    # cross-mode (--think compare) class chips — exclusive to the compare deck
-    if "budget-dep" in text:
-        return AMBER_TINT, AMBER_INK
-    if "robust" in text or "sole-source" in text:
+    if t in ("robust", "sole-source"):
         return GREEN_TINT, GREEN_INK
+    if t == "budget-dep":
+        return AMBER_TINT, AMBER_INK
+    if t.startswith("Δ"):
+        return None
     if any(k in text for k in ("cheaper", "fewer tokens", "more right")):
         return GREEN_TINT, GREEN_INK
     if any(k in text for k in ("costlier", "more tokens", "less right")):
@@ -1310,7 +1326,7 @@ def _finalize_footers(prs) -> None:
                                       Inches(10.0), Inches(0.3))
         lp = lf.text_frame.paragraphs[0]
         lr = lp.add_run()
-        lr.text = FOOTER_TEXT + f" · think={THINK}"
+        lr.text = FOOTER_TEXT + f" · think={FOOTER_THINK or THINK}"
         lr.font.size = Pt(8.5)
         lr.font.color.rgb = SOFT
         pn = slide.shapes.add_textbox(SLIDE_W - MARGIN - Inches(1.3),
@@ -2159,495 +2175,576 @@ def _add_phase2_rq(prs, rq: str, question: str, answer: str, bullets: list[str],
                   headers, rows)
 
 
-# ---------------- Cross-mode aggregation (--think compare) ----------------
-# A THIRD artifact that aggregates the locked think=off headline deck and its
-# think=on companion WITHOUT touching either. Hard rule (corpus identity is
-# load-bearing): never pool raw trials across arms or across think modes into one
-# rate — every rate here is a single (model, task, arm, mode) cell, and we combine
-# ONLY at the level of per-cell statistics (differences / Δ-of-differences / min).
-# CIs follow the house convention: Wilson per rate, then Newcombe's MOVER for a
-# difference of two proportions (a Wilson-consistent gap interval) and the nested
-# MOVER-D for the difference of two INDEPENDENT gaps (off and on are disjoint
-# corpora). The cross-mode spine is the REALIZABLE benefit = success(+tool steered)
-# − success(no-tools): we lead with the steered arm because under think=on the
-# plain arm stops calling the tool (it reasons instead), so plain availability
-# conflates baseline collapse with a tool-calling failure (justified on-slide).
+# ---------------- Cross-mode (think=off × think=on) aggregation ----------------
+# A third, standalone artifact: `--think compare` aggregates the locked off deck
+# and the on companion at the PER-CELL-STATISTIC level only — differences,
+# Δ-of-differences and minima of already-separate cells. Raw trials are never
+# pooled across arms or across think modes (corpus identity is load-bearing).
+#
+# Spine metric = REALIZABLE benefit = success(+tool steered) − success(no-tools),
+# per (model, task, mode). Steered rather than plain availability on purpose:
+# under think=on the plain arm largely stops CALLING the tool (it reasons
+# instead — Gemma solve tool_selected 100→23%, validate_plan 21→1%), so plain
+# availability conflates the baseline's budget collapse with a tool-calling
+# failure that steering is known to repair. The steered arm isolates what the
+# tool is worth when actually invoked; availability stays in the per-mode decks.
+#
+# CIs: Newcombe MOVER (square-and-add the Wilson half-widths on the relevant
+# sides) for a difference of two independent proportions; the same MOVER step
+# applied again ("MOVER-D") for Δ(on−off), a difference of two gaps that are
+# themselves independent because the off and on corpora share no trials.
+# Robust floor = min over modes of the realizable benefit = the lower bound on
+# the tool's value that no decode-budget choice can take away.
 
-COMPARE_OUT = REPO / "checkpoints/rq-sweep5v2-compare"
-COMPARE_PPTX = COMPARE_OUT / "pddl_copilot_rq_sweep5v2_compare.pptx"
-# Cross-mode marker per task for the off-vs-on scatter (arm carries the colour).
-TASK_MARKER = {"solve": "o", "validate_domain": "s", "validate_problem": "^",
-               "validate_plan": "D", "simulate": "v"}
-COMPARE_ORDER = ["solve", "simulate", "validate_domain",
-                 "validate_problem", "validate_plan"]  # robust regimes first
+COMPARE_DIR = REPO / "checkpoints/rq-sweep5v2-compare"
+COMPARE_PPTX = COMPARE_DIR / "pddl_copilot_rq_sweep5v2_compare.pptx"
+
+MODEL_SHORT = {"Qwen3_5_9B": "9B", "gemma4_26b-a4b": "26B", "qwen3_6_35b": "35B"}
+TASK_ABBR = {"solve": "solve", "validate_domain": "v_dom",
+             "validate_problem": "v_prob", "validate_plan": "v_plan",
+             "simulate": "sim"}
+# Class-grouped task order for the compare deck (classes are recomputed and
+# asserted at build time; this is display order, not a second source of truth).
+COMPARE_TASK_ORDER = ["solve", "simulate",
+                      "validate_domain", "validate_problem", "validate_plan"]
+CLASS_DISP = {"robust": "robust",
+              "sole-source": "sole-source",
+              "budget-dep": "budget-dep"}
 
 
-def _mover_gap(hi: Cell, lo: Cell) -> tuple[float, float, float]:
-    """Newcombe MOVER 95% CI (in pp) for succ(hi) − succ(lo), recovered from the
-    two cells' Wilson intervals by square-and-add (Newcombe 1998, method 10) —
-    the Wilson-consistent difference-of-proportions interval. Returns
-    (gap, lo, hi) in pp; all-nan if either cell is empty."""
-    if not (hi.n and lo.n):
-        return float("nan"), float("nan"), float("nan")
-    g = (hi.rate - lo.rate) * 100
-    lo_off = math.sqrt((hi.rate - hi.lo) ** 2 + (lo.hi - lo.rate) ** 2) * 100
-    hi_off = math.sqrt((hi.hi - hi.rate) ** 2 + (lo.rate - lo.lo) ** 2) * 100
-    return g, g - lo_off, g + hi_off
+def _mover_gap(a: Cell, b: Cell) -> tuple[float, float, float]:
+    """Newcombe MOVER 95% CI on (b − a), in pp. Square-and-add the inner Wilson
+    half-widths of the two INDEPENDENT cells; reduces to Newcombe's score-based
+    difference interval. Wilson-consistent: if the two Wilson CIs are disjoint,
+    this interval excludes 0 (asserted in `_compare_asserts`)."""
+    d = (b.rate - a.rate) * 100
+    lo = d - math.sqrt(((b.rate - b.lo) * 100) ** 2 + ((a.hi - a.rate) * 100) ** 2)
+    hi = d + math.sqrt(((b.hi - b.rate) * 100) ** 2 + ((a.rate - a.lo) * 100) ** 2)
+    return d, lo, hi
 
 
-def _mover_delta(gon: tuple, goff: tuple) -> tuple[float, float, float]:
-    """Nested MOVER-D 95% CI (pp) for Δ = gon − goff, two INDEPENDENT gaps
-    (think=off and think=on are disjoint corpora). Each gap arrives as its own
-    MOVER interval (gap, lo, hi); recover its variance from that interval and
-    square-add (Donner & Zou MOVER-D). '*' significance = CI excludes 0."""
-    if gon[0] != gon[0] or goff[0] != goff[0]:
-        return float("nan"), float("nan"), float("nan")
-    d = gon[0] - goff[0]
-    lo = d - math.sqrt((gon[0] - gon[1]) ** 2 + (goff[2] - goff[0]) ** 2)
-    hi = d + math.sqrt((gon[2] - gon[0]) ** 2 + (goff[0] - goff[1]) ** 2)
+def _mover_delta(g_on: tuple[float, float, float],
+                 g_off: tuple[float, float, float]) -> tuple[float, float, float]:
+    """MOVER-D 95% CI on Δ = gap_on − gap_off. Valid because the two gaps come
+    from INDEPENDENT corpora (off and on share no trials), so the MOVER step
+    composes: square-and-add the gaps' half-widths on the relevant sides. This
+    is a CI on how much the measured benefit MOVED across modes — under the
+    shared decode budget that movement is largely a baseline effect, so it must
+    never be read as 'the tool got better/worse'."""
+    d = g_on[0] - g_off[0]
+    lo = d - math.sqrt((g_on[0] - g_on[1]) ** 2 + (g_off[2] - g_off[0]) ** 2)
+    hi = d + math.sqrt((g_on[2] - g_on[0]) ** 2 + (g_off[0] - g_off[1]) ** 2)
     return d, lo, hi
 
 
 def _realizable_gap(model: str, task: str, think: str) -> tuple[float, float, float]:
-    """Realizable benefit = success(+tool steered) − success(no-tools), as a
-    MOVER gap (pp) for one model×task×mode. The 'tool used properly' benefit —
-    immune to the plain arm's under-calling collapse under think=on."""
-    return _mover_gap(cell_success(model, task, "tl-ster", think),
-                      cell_success(model, task, "nt-neut", think))
+    """Realizable benefit = success(+tool steered) − success(no-tools), MOVER CI."""
+    return _mover_gap(cell_success(model, task, "nt-neut", think),
+                      cell_success(model, task, "tl-ster", think))
 
 
 def _avail_gap(model: str, task: str, think: str) -> tuple[float, float, float]:
-    """Availability gap = success(+tool plain) − success(no-tools), MOVER (pp)."""
-    return _mover_gap(cell_success(model, task, "tl-neut", think),
-                      cell_success(model, task, "nt-neut", think))
+    """Availability gap (plain − no-tools) — secondary, kept for the why-steered
+    slide; the per-mode decks carry it in full."""
+    return _mover_gap(cell_success(model, task, "nt-neut", think),
+                      cell_success(model, task, "tl-neut", think))
 
 
-def _realizable_cross(task: str) -> list[dict]:
-    """Per ≥9B model: realizable benefit off & on (MOVER gaps) + the MOVER-D
-    Δ(on−off) + the robust floor (min over modes)."""
-    out = []
-    for m in MODELS_9B:
-        goff = _realizable_gap(m, task, "off")
-        gon = _realizable_gap(m, task, "on")
-        d = _mover_delta(gon, goff)
-        floor = min(goff[0], gon[0]) if (goff[0] == goff[0] and gon[0] == gon[0]) else float("nan")
-        out.append(dict(model=m, off=goff, on=gon, delta=d, floor=floor))
-    return out
+def _realizable_cross(model: str, task: str) -> dict:
+    """The compare deck's atom: realizable benefit in both modes, the MOVER-D
+    CI on Δ(on−off), and the robust floor (min over modes)."""
+    off = _realizable_gap(model, task, "off")
+    on = _realizable_gap(model, task, "on")
+    delta = _mover_delta(on, off)
+    return dict(off=off, on=on, delta=delta, floor=min(off[0], on[0]))
+
+
+def _trunc_pct(model: str, task: str, arm: str, think: str) -> float:
+    rows = [r for r in bd.CELLS.get((model, think, arm), []) if r["task"] == task]
+    if not rows:
+        return float("nan")
+    return sum(1 for r in rows if r.get("truncated")) / len(rows) * 100
 
 
 def _baseline_floored_both(task: str) -> bool:
-    """True when no-tools success < 2% across the ≥9B set in BOTH modes — the
-    tool is the SOLE source of any success (simulate), so cross-mode invariance
-    is categorical, not a magnitude comparison."""
-    for think in ("off", "on"):
-        for m in MODELS_9B:
-            c = cell_success(m, task, "nt-neut", think)
-            if c.n and c.rate >= 0.02:
-                return False
-    return True
+    """True when the no-tools baseline never gets off the floor (<2%) for any
+    ≥9B model in EITHER mode — the tool is then the sole source of successes."""
+    return all(cell_success(m, task, "nt-neut", th).rate < 0.02
+               for m in MODELS_9B for th in ("off", "on"))
 
 
-def _mode_class(task: str) -> tuple[str, float, list[dict]]:
-    """Classify a task's cross-mode tool value over ≥9B from the realizable
-    benefit. 'sole-source' = baseline floored both modes; 'robust' = floor
-    (min over modes) ≥ 30pp (a large win regardless of mode); 'budget-dep' =
-    floor < 30pp (the large think=on gap is a truncated-baseline artifact;
-    the honest mode-invariant benefit is the small floor)."""
-    cross = _realizable_cross(task)
-    floors = [r["floor"] for r in cross if r["floor"] == r["floor"]]
-    floor = min(floors) if floors else float("nan")
+def _mode_class(task: str) -> str:
+    """Cross-mode class of one task over the ≥9B set:
+    sole-source — baseline floored in both modes (the benefit can't be a budget
+                  artifact: there is no baseline to confound);
+    robust      — every ≥9B model's floor (min over modes) ≥ +30pp: a large
+                  benefit survives whichever mode the baseline prefers;
+    budget-dep  — some model's floor < +30pp: the large think=on gap on this
+                  task is decode-budget inflation, and the floor is the honest
+                  mode-invariant claim."""
     if _baseline_floored_both(task):
-        return "sole-source", floor, cross
-    if floor >= 30:
-        return "robust", floor, cross
-    return "budget-dep", floor, cross
+        return "sole-source"
+    floors = [_realizable_cross(m, task)["floor"] for m in MODELS_9B]
+    return "robust" if min(floors) >= 30 else "budget-dep"
 
 
-# ---- cross-mode figures ----
+def _gv(g: tuple[float, float, float], star: bool = False) -> str:
+    """gap [MOVER lo,hi]; optional '*' when the CI excludes 0."""
+    s = "*" if (star and (g[1] > 0 or g[2] < 0)) else ""
+    return f"{g[0]:+.0f} [{g[1]:+.0f},{g[2]:+.0f}]{s}"
+
+
+# ---- compare figures ----
 
 def fig_mode_scatter(save_name: str) -> Path:
-    """off (x) vs on (y) success, one point per ≥9B model × task × arm; colour =
-    arm (grey no-tools, orange +tool steered), marker = task. The y=x diagonal is
-    'unchanged across modes': the tool arm clusters ON it (mode-robust), the
-    baseline falls far BELOW on validation (collapses under think=on) and rises
-    ABOVE on solve (reasoning helps). No ○/→ glyphs (Helvetica Neue lacks them)."""
-    from matplotlib.lines import Line2D
-    fig, ax = plt.subplots(figsize=(7.4, 6.2))
+    """The mode×arm interaction in one view: x = think=off success, y = think=on
+    success, one point per ≥9B model × task, grey = no-tools, orange = +tool
+    (steered). The steered points hug the diagonal (the tool arm barely notices
+    reasoning mode); the no-tools points swing far off it (down on validate_*,
+    up on solve) — so the movement of every gap is a BASELINE effect."""
+    fig, ax = plt.subplots(figsize=(7.0, 5.8))
     ax.set_axisbelow(True)
-    ax.plot([0, 100], [0, 100], ls=(0, (4, 3)), lw=1.0, color=C_SPINE, zorder=1)
-    arm_cfg = [("nt-neut", "no-tools", ARM_COLOR["nt-neut"]),
-               ("tl-ster", "+tool (steered)", ARM_COLOR["tl-ster"])]
-    for arm, _lab, col in arm_cfg:
-        for task in ALL_TASKS:
-            for m in MODELS_9B:
-                co = cell_success(m, task, arm, "off")
-                cn = cell_success(m, task, arm, "on")
-                if not (co.n and cn.n):
+    markers = {"Qwen3_5_9B": "o", "gemma4_26b-a4b": "s", "qwen3_6_35b": "^"}
+    ax.plot([0, 100], [0, 100], ls=(0, (5, 4)), lw=1.1, color=C_SPINE, zorder=1)
+    ax.annotate("same success in both modes", (97, 97), ha="right", va="bottom",
+                fontsize=7.5, style="italic", color=C_SOFT, rotation=38,
+                rotation_mode="anchor")
+    for arm, col in (("nt-neut", C_GREY), ("tl-ster", C_ACCENT)):
+        for m in MODELS_9B:
+            for t in ALL_TASKS:
+                o = cell_success(m, t, arm, "off")
+                n = cell_success(m, t, arm, "on")
+                if not (o.n and n.n):
                     continue
-                ax.scatter([co.rate * 100], [cn.rate * 100], marker=TASK_MARKER[task],
-                           s=50, color=col, edgecolor="white", linewidth=0.7,
-                           zorder=3, alpha=0.92)
+                x, y = o.rate * 100, n.rate * 100
+                ax.scatter([x], [y], marker=markers[m], s=46, color=col,
+                           edgecolor="white", linewidth=0.7, alpha=0.92, zorder=3)
+                # name only the big baseline swings — the points that carry the story
+                if arm == "nt-neut" and abs(y - x) > 30:
+                    ax.annotate(f"{TASK_ABBR[t]} {MODEL_SHORT[m]}", (x, y),
+                                xytext=(5, 3), textcoords="offset points",
+                                fontsize=6.4, color=C_SOFT, zorder=4)
+    # mean distance from the diagonal, per arm — the one-number version
+    # (top-left corner: the data lives on the diagonal and lower right)
+    for arm, col, lab, ytxt in (("tl-ster", C_ACCENT, "+tool (steered)", 0.955),
+                                ("nt-neut", C_GREY, "no-tools", 0.895)):
+        devs = [abs(cell_success(m, t, arm, "on").rate
+                    - cell_success(m, t, arm, "off").rate) * 100
+                for m in MODELS_9B for t in ALL_TASKS]
+        ax.text(0.03, ytxt, f"{lab}: mean shift off vs on = {np.mean(devs):.0f}pp",
+                transform=ax.transAxes, ha="left", fontsize=8.5, color=col,
+                fontweight="bold")
     ax.set_xlim(-3, 103)
     ax.set_ylim(-3, 103)
-    ax.set_aspect("equal")  # so the y=x diagonal is a true 45° (label aligns)
     ax.set_xlabel("success rate, think=off (%)")
     ax.set_ylabel("success rate, think=on (%)")
-    ax.set_title("Across modes: the tool arm holds, the baseline swings  ·  ≥9B")
-    # single diagonal label in the empty upper-left triangle (no point collisions);
-    # the below/above-diagonal reading is spelled out in the slide caption.
-    ax.text(30, 36, "y = x: unchanged across modes", rotation=45,
-            rotation_mode="anchor", ha="left", va="bottom", fontsize=7.5,
-            style="italic", color=C_SOFT)
-    arm_handles = [Line2D([0], [0], marker="o", ls="none", color=col,
-                          markeredgecolor="white", label=lab)
-                   for arm, lab, col in arm_cfg]
-    task_handles = [Line2D([0], [0], marker=TASK_MARKER[t], ls="none",
-                           color=C_SOFT, markeredgecolor="white", label=TASK_DISP[t])
-                    for t in ALL_TASKS]
-    # both legends sit in the empty left band so they never cover data points
-    leg1 = ax.legend(handles=arm_handles, loc="upper left", fontsize=8,
-                     title="arm (colour)", title_fontsize=8, framealpha=0.92)
-    leg1._legend_box.align = "left"
-    ax.add_artist(leg1)
-    leg2 = ax.legend(handles=task_handles, loc="center left", fontsize=7.5,
-                     title="task (marker)", title_fontsize=8, framealpha=0.92,
-                     bbox_to_anchor=(0.0, 0.42))
-    leg2._legend_box.align = "left"
+    ax.set_title("The tool arm is mode-stable; the baseline is not\n"
+                 "one point per model x task; circle=9B, square=26B, triangle=35B",
+                 fontsize=10)
+    ax.grid(True)
     _despine(ax)
     fig.tight_layout()
     return _save(fig, save_name)
 
 
 def fig_realizable_dumbbell(save_name: str) -> Path:
-    """Realizable benefit (+tool steered − no-tools, pp) per ≥9B model × task,
-    think=off (open) connected to think=on (filled), MOVER 95% whiskers. Grouped
-    by cross-mode class (robust large / sole-source / budget-dependent). The
-    leftmost marker of each pair is the robust floor; a long connector = the
-    benefit is budget-sensitive, a short one = mode-invariant."""
-    from matplotlib.lines import Line2D
-    class_band = {"robust": ("#2E7D52", 0.05), "sole-source": ("#3F7CAC", 0.05),
-                  "budget-dep": ("#C0801A", 0.06)}
-    fig, ax = plt.subplots(figsize=(9.8, 5.6))
+    """Realizable benefit (steered − no-tools) per ≥9B model × task, think=off
+    (open marker) vs think=on (filled), MOVER 95% whiskers, grouped by cross-mode
+    class. A '*' on the row label = the MOVER-D CI on Δ(on−off) excludes 0."""
+    fig, ax = plt.subplots(figsize=(9.8, 5.4))
     ax.set_axisbelow(True)
     yticks, ylabels = [], []
-    y = 0.0
-    band_spans = []
-    for task in COMPARE_ORDER:
-        cls, _floor, cross = _mode_class(task)
-        y0 = y - 0.5
-        for r in cross:
-            goff, gon = r["off"], r["on"]
-            if goff[0] == goff[0] and gon[0] == gon[0]:
-                ax.plot([goff[0], gon[0]], [y, y], color=C_SPINE, lw=1.4, zorder=2)
-            if gon[0] == gon[0]:
-                ax.errorbar([gon[0]], [y],
-                            xerr=[[gon[0] - gon[1]], [gon[2] - gon[0]]],
-                            fmt="o", ms=7, color=ARM_COLOR["tl-ster"],
-                            mec="white", mew=0.8, ecolor=ARM_COLOR["tl-ster"],
-                            elinewidth=0.8, capsize=2, zorder=4)
-            if goff[0] == goff[0]:
-                ax.errorbar([goff[0]], [y],
-                            xerr=[[goff[0] - goff[1]], [goff[2] - goff[0]]],
-                            fmt="o", ms=7, mfc="white", mec=ARM_COLOR["nt-neut"],
-                            mew=1.4, ecolor=ARM_COLOR["nt-neut"], elinewidth=0.8,
-                            capsize=2, zorder=4)
+    y = 0
+    for task in COMPARE_TASK_ORDER:
+        cls = _mode_class(task)
+        ax.text(-1.5, y - 0.62, f"{TASK_DISP[task]}  ({CLASS_DISP[cls]})",
+                fontsize=8, fontweight="bold", color=C_INK, va="center")
+        for m in MODELS_9B:
+            r = _realizable_cross(m, task)
+            # CI whiskers, slightly offset so the two modes stay legible
+            ax.plot([r["off"][1], r["off"][2]], [y - 0.16] * 2,
+                    color=C_BRAND, lw=1.0, alpha=0.55, zorder=2)
+            ax.plot([r["on"][1], r["on"][2]], [y + 0.16] * 2,
+                    color=C_ACCENT, lw=1.0, alpha=0.55, zorder=2)
+            ax.plot([r["off"][0], r["on"][0]], [y - 0.16, y + 0.16],
+                    color=C_SPINE, lw=1.1, zorder=2)
+            ax.scatter([r["off"][0]], [y - 0.16], s=46, facecolor="white",
+                       edgecolor=C_BRAND, linewidth=1.5, zorder=4)
+            ax.scatter([r["on"][0]], [y + 0.16], s=48, color=C_ACCENT,
+                       edgecolor="white", linewidth=0.8, zorder=4)
+            sig = r["delta"][1] > 0 or r["delta"][2] < 0
             yticks.append(y)
-            ylabels.append(f"{TASK_DISP[task]} · {MODEL_DISP[r['model']]}")
+            ylabels.append(f"{MODEL_DISP[m]}{' *' if sig else ''}")
             y += 1
-        band_spans.append((y0, y - 0.5, cls))
-        ax.axhline(y - 0.5, color=C_RULE, lw=0.8, zorder=1)
-        y += 0.4
-    for lo, hi, cls in band_spans:
-        col, a = class_band[cls]
-        ax.axhspan(lo, hi, color=col, alpha=a, zorder=0)
+        if task != COMPARE_TASK_ORDER[-1]:
+            ax.axhline(y - 0.5, color=C_RULE, lw=0.8, zorder=1)
+        y += 0.9
+    ax.axvline(0, color=C_SPINE, lw=1.0, zorder=1)
+    ax.axvline(30, color=C_RULE, lw=0.9, ls=(0, (4, 3)), zorder=1)
+    ax.text(30, y - 1.2, " +30pp class line", fontsize=7, color=C_SOFT, va="top")
     ax.set_yticks(yticks)
     ax.set_yticklabels(ylabels, fontsize=7.5)
     ax.invert_yaxis()
-    ax.set_xlim(0, 105)
-    ax.set_xlabel("realizable benefit — success(+tool steered) − success(no-tools), pp "
-                  "(MOVER 95%); leftmost marker per pair = the robust floor")
-    ax.set_title("Realizable tool benefit across modes — think=off (open) to think=on (filled)  ·  ≥9B")
-    handles = [Line2D([0], [0], marker="o", ls="none", mfc="white",
-                      mec=ARM_COLOR["nt-neut"], mew=1.4, label="think=off"),
-               Line2D([0], [0], marker="o", ls="none", color=ARM_COLOR["tl-ster"],
-                      mec="white", label="think=on")]
-    ax.legend(handles=handles, loc="lower right", fontsize=8, framealpha=0.92)
-    ax.grid(axis="x", which="major")
+    ax.set_xlim(-8, 104)
+    ax.set_xlabel("realizable benefit, +tool(steered) minus no-tools (pp)")
+    ax.set_title("Realizable benefit by mode — open blue = think=off, filled orange = think=on; "
+                 "whiskers = MOVER 95%", fontsize=10)
+    ax.grid(axis="x")
     _despine(ax)
     fig.tight_layout()
     return _save(fig, save_name)
 
 
-# ---- cross-mode tables ----
-
-def _gap_ci_cell(g: tuple) -> str:
-    if g[0] != g[0]:
-        return "–"
-    return f"{g[0]:+.0f} [{g[1]:+.0f},{g[2]:+.0f}]"
-
-
-def _delta_ci_cell(d: tuple) -> str:
-    """Δ(on−off) [MOVER-D 95% CI]; '*' = CI excludes 0 (signed significance).
-    The leading sign drives `_delta_tint` (green if + & sig, red if − & sig)."""
-    if d[0] != d[0]:
-        return "–"
-    sig = "*" if not (d[1] <= 0 <= d[2]) else ""
-    return f"{d[0]:+.0f}{sig} [{d[1]:+.0f},{d[2]:+.0f}]"
-
+# ---- compare tables ----
 
 def _mode_summary_table() -> tuple[list[str], list[list[str]]]:
-    """One row per task: realizable-benefit range off/on across ≥9B, the robust
-    floor (min over modes), the Δ(on−off) range with a k/3-significant count, and
-    the cross-mode class chip — the crisp combined claim in one table."""
-    headers = ["task", "benefit off (pp)", "benefit on (pp)", "robust floor",
-               "Δ(on−off) pp", "k/3 sig", "mode class"]
+    """One row per task: the cross-mode read at a glance (≥9B ranges)."""
+    headers = ["task", "realizable off (pp)", "realizable on (pp)",
+               "robust floor (pp)", "Δ(on−off), sig", "class"]
     rows = []
-    for task in ALL_TASKS:
-        cls, floor, cross = _mode_class(task)
-        offs = [r["off"][0] for r in cross if r["off"][0] == r["off"][0]]
-        ons = [r["on"][0] for r in cross if r["on"][0] == r["on"][0]]
-        ds = [r["delta"][0] for r in cross if r["delta"][0] == r["delta"][0]]
-        ksig = sum(1 for r in cross if r["delta"][0] == r["delta"][0]
-                   and not (r["delta"][1] <= 0 <= r["delta"][2]))
-        rows.append([
-            TASK_DISP[task],
-            f"{min(offs):+.0f}…{max(offs):+.0f}" if offs else "–",
-            f"{min(ons):+.0f}…{max(ons):+.0f}" if ons else "–",
-            f"{floor:+.0f}" if floor == floor else "–",
-            f"{min(ds):+.0f}…{max(ds):+.0f}" if ds else "–",
-            f"{ksig}/3",
-            cls,
-        ])
+    for task in COMPARE_TASK_ORDER:
+        rs = [_realizable_cross(m, task) for m in MODELS_9B]
+        offs = [r["off"][0] for r in rs]
+        ons = [r["on"][0] for r in rs]
+        floors = [r["floor"] for r in rs]
+        deltas = [r["delta"][0] for r in rs]
+        k = sum(1 for r in rs if r["delta"][1] > 0 or r["delta"][2] < 0)
+        rows.append([TASK_DISP[task],
+                     f"{min(offs):+.0f}…{max(offs):+.0f}",
+                     f"{min(ons):+.0f}…{max(ons):+.0f}",
+                     f"{min(floors):+.0f}…{max(floors):+.0f}",
+                     f"Δ {min(deltas):+.0f}…{max(deltas):+.0f}, {k}/3",
+                     _mode_class(task)])
     return headers, rows
 
 
 def _realizable_detail_table(tasks: list[str]) -> tuple[list[str], list[list[str]]]:
-    """Per task × ≥9B model: realizable benefit off [MOVER 95%], on [MOVER 95%],
-    Δ(on−off) [MOVER-D 95%, * = excludes 0]."""
-    headers = ["task", "model", "benefit off [95%]", "benefit on [95%]",
-               "Δ(on−off) [95%]"]
+    """Per ≥9B model × task: both gaps [MOVER 95%], Δ(on−off) [MOVER-D 95%]
+    (prefixed Δ so the sign is NOT tinted good/bad — movement is not merit),
+    and the robust floor."""
+    headers = ["task", "model", "realizable off", "realizable on",
+               "Δ(on−off) [95%]", "floor"]
     rows = []
     for task in tasks:
-        cross = _realizable_cross(task)
-        for i, r in enumerate(cross):
-            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[r["model"]],
-                         _gap_ci_cell(r["off"]), _gap_ci_cell(r["on"]),
-                         _delta_ci_cell(r["delta"])])
+        for i, m in enumerate(MODELS_9B):
+            r = _realizable_cross(m, task)
+            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[m],
+                         _gv(r["off"], star=True), _gv(r["on"], star=True),
+                         "Δ " + _gv(r["delta"], star=True),
+                         f"{r['floor']:+.0f}pp"])
     return headers, rows
 
 
 def _cop_cross_table() -> tuple[list[str], list[list[str]]]:
-    """Cost-of-pass (total tokens per success) cross-mode, ≥9B: no-tools off→on
-    and +tool(steered) off→on. Shows the regime flip from task-determined (off)
-    to model-determined (on). '∞' = arm produced no success to price."""
-    headers = ["task", "model", "no-tools off→on", "+tool(steered) off→on"]
+    """Cost-of-pass in both modes, no-tools vs steered (≥9B): the regime-flip
+    evidence. Multiples in words via `_cost_mult_str`; 'only producer' where
+    the baseline never succeeds."""
+    headers = ["task", "model", "off: no-tools", "off: +tool steered",
+               "on: no-tools", "on: +tool steered"]
     rows = []
-
-    def f(c):
-        return bd._fmt_tokens(c.cop) if c.n_succ else "∞"
-
-    for task in ALL_TASKS:
+    for task in COMPARE_TASK_ORDER:
         for i, m in enumerate(MODELS_9B):
-            nt_off = cell_cost_of_pass(m, task, "nt-neut", "total", "off")
-            nt_on = cell_cost_of_pass(m, task, "nt-neut", "total", "on")
-            st_off = cell_cost_of_pass(m, task, "tl-ster", "total", "off")
-            st_on = cell_cost_of_pass(m, task, "tl-ster", "total", "on")
-            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[m],
-                         f"{f(nt_off)}→{f(nt_on)}", f"{f(st_off)}→{f(st_on)}"])
+            cells = []
+            for th in ("off", "on"):
+                nt = cell_cost_of_pass(m, task, "nt-neut", think=th)
+                st = cell_cost_of_pass(m, task, "tl-ster", think=th)
+                cells.append(bd._fmt_tokens(nt.cop) if nt.n_succ else "— (0 succ)")
+                if not st.n_succ:
+                    cells.append("— (0 succ)")
+                elif nt.n_succ:
+                    cells.append(f"{bd._fmt_tokens(st.cop)}  "
+                                 f"{_cost_mult_str(st.cop, nt.cop)}")
+                else:
+                    cells.append(f"{bd._fmt_tokens(st.cop)}  only producer")
+            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[m], *cells])
     return headers, rows
 
 
 def _trunc_cross_table() -> tuple[list[str], list[list[str]]]:
-    """Truncation (8,192-cap) by task × arm × mode, ≥9B pooled across MODELS only
-    (the established `_censoring_table` convention — arms and modes stay
-    separate, never pooled). The baseline arm's truncation explodes off→on; the
-    steered tool arm barely moves — the budget confound behind every think=on gap."""
-    headers = ["task", "arm", "truncated% off", "truncated% on", "Δ trunc (pp)"]
+    """The budget confound, cell by cell: % of trials hitting the 8,192-token
+    decode cap, per ≥9B model × task, both arms × both modes."""
+    headers = ["task", "model", "no-tools off", "no-tools on",
+               "steered off", "steered on"]
     rows = []
-
-    def tr(task, arm, think):
-        sub = [r for r in _pooled_rows(MODELS_9B, arm, think) if r["task"] == task]
-        n = len(sub)
-        return (sum(1 for r in sub if r.get("truncated")) / n * 100) if n else float("nan")
-
-    for task in ALL_TASKS:
-        for j, arm in enumerate(("nt-neut", "tl-ster")):
-            o = tr(task, arm, "off")
-            n = tr(task, arm, "on")
-            rows.append([TASK_DISP[task] if j == 0 else "", ARM_DISP[arm],
-                         f"{o:.0f}%" if o == o else "–",
-                         f"{n:.0f}%" if n == n else "–",
-                         f"{n - o:+.0f}" if (o == o and n == n) else "–"])
+    for task in COMPARE_TASK_ORDER:
+        for i, m in enumerate(MODELS_9B):
+            vals = [_trunc_pct(m, task, arm, th)
+                    for arm in ("nt-neut", "tl-ster") for th in ("off", "on")]
+            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[m],
+                         *(f"{v:.0f}%" if v == v else "–" for v in vals)])
     return headers, rows
 
 
-def _compare_asserts() -> None:
-    """Cross-mode consistency gate for `--think compare --check`: the MOVER
-    helpers must reproduce the raw per-cell differences, bracket their own point
-    estimates, and the MOVER-D point must equal on−off exactly — catches a helper
-    regression without re-deriving the whole pipeline."""
-    n_ok = 0
-    for task in ALL_TASKS:
-        for m in MODELS_9B:
-            goff = _realizable_gap(m, task, "off")
-            gon = _realizable_gap(m, task, "on")
-            raw_off = (cell_success(m, task, "tl-ster", "off").rate
-                       - cell_success(m, task, "nt-neut", "off").rate) * 100
-            assert goff[0] != goff[0] or abs(goff[0] - raw_off) < 1e-9, (m, task)
-            assert goff[0] != goff[0] or goff[1] - 1e-9 <= goff[0] <= goff[2] + 1e-9, (m, task)
-            d = _mover_delta(gon, goff)
-            assert d[0] != d[0] or abs(d[0] - (gon[0] - goff[0])) < 1e-9, (m, task)
-            assert d[0] != d[0] or d[1] - 1e-9 <= d[0] <= d[2] + 1e-9, (m, task)
-            n_ok += 1
-    print(f"  compare: MOVER point/CI consistency OK ({n_ok} cells)", file=sys.stderr)
+# ---- compare deck assembly ----
+
+def _compare_asserts() -> list[str]:
+    """Internal-consistency gate for the cross-mode statistics. Asserts, for
+    every ≥9B model × task: the floor/Δ identities hold exactly; each MOVER CI
+    brackets its point estimate; every Wilson-disjoint (nt, steered) pair has a
+    MOVER gap CI excluding 0 (Wilson-consistency); and disjoint off/on gap CIs
+    imply a significant MOVER-D. Also pins the data-driven classes the deck's
+    story leans on (simulate sole-source, solve robust)."""
+    checked = wilson_disjoint = 0
+    for m in MODELS_9B:
+        for t in ALL_TASKS:
+            r = _realizable_cross(m, t)
+            assert abs(r["floor"] - min(r["off"][0], r["on"][0])) < 1e-9
+            assert abs(r["delta"][0] - (r["on"][0] - r["off"][0])) < 1e-9
+            for th in ("off", "on"):
+                g = r[th]
+                assert g[1] <= g[0] <= g[2], f"MOVER CI disordered {m}/{t}/{th}"
+                nt = cell_success(m, t, "nt-neut", th)
+                st = cell_success(m, t, "tl-ster", th)
+                if nt.hi < st.lo or st.hi < nt.lo:
+                    wilson_disjoint += 1
+                    assert g[1] > 0 or g[2] < 0, \
+                        f"MOVER misses a Wilson-disjoint gap: {m}/{t}/{th}"
+            if r["off"][2] < r["on"][1] or r["on"][2] < r["off"][1]:
+                assert r["delta"][1] > 0 or r["delta"][2] < 0, \
+                    f"MOVER-D misses disjoint off/on gaps: {m}/{t}"
+            checked += 1
+    assert _mode_class("simulate") == "sole-source", "simulate class moved"
+    assert _mode_class("solve") == "robust", "solve class moved"
+    return [f"cross-mode consistency: {checked} model-task cells; floor/Δ identities exact; "
+            f"{wilson_disjoint} Wilson-disjoint gaps all MOVER-significant; "
+            f"solve=robust, simulate=sole-source confirmed"]
 
 
-def build_compare_pptx(gate_off: list[str], gate_on: list[str]) -> Path:
-    """Standalone cross-mode deck. Reads both corpora at the per-cell-statistic
-    level only; the off and on decks are untouched."""
+def build_compare_pptx(res: dict) -> Path:
+    """The 12-slide cross-mode deck. `res[mode]` = dict(p1=…, p2=…, summary=…)
+    from the per-mode verdict replication run in `_main_compare`."""
     prs = bd._make_pptx()
 
     S_title_slide(
-        prs, "Where is the tool's value mode-invariant — and where is it just budget?",
-        "cross-mode aggregation of the think=off headline deck and the think=on companion · "
-        "≥9B · realizable benefit = success(+tool steered) − success(no-tools) · "
-        "Newcombe MOVER 95% CIs on every gap and cross-mode difference")
+        prs, "Where is the planning tool's value mode-invariant?",
+        "think=off × think=on cross-mode aggregation of the two RQ decks · "
+        "5 PDDL tasks, ≥9B models · per-cell statistics only — raw trials are "
+        "never pooled across arms or modes")
 
-    # --- bottom line up front: the three regimes ---
-    S_text_slide(prs, "Bottom line — three cross-mode regimes", [
-        "Aggregated across reasoning modes, the planning tool's value (≥9B, realizable benefit = "
-        "+tool steered − no-tools) splits cleanly into three regimes:",
+    # --- bottom line: the three regimes + the invariant verdict pattern ---
+    rx = {t: [_realizable_cross(m, t) for m in MODELS_9B] for t in ALL_TASKS}
+    sv_fl = min(r["floor"] for r in rx["solve"])
+    si_lo = min(min(r["off"][0], r["on"][0]) for r in rx["simulate"])
+    si_hi = max(max(r["off"][0], r["on"][0]) for r in rx["simulate"])
+    vd_max_d = max(r["delta"][0] for t in ("validate_domain", "validate_problem",
+                                           "validate_plan") for r in rx[t])
+    # 9B + Gemma no-tools truncation on the validation tasks — the confound range
+    v_tr = [_trunc_pct(m, t, "nt-neut", "on")
+            for m in ("Qwen3_5_9B", "gemma4_26b-a4b")
+            for t in ("validate_domain", "validate_problem", "validate_plan")]
+    tr_rng = f"{min(v_tr):.0f}–{max(v_tr):.0f}%"
+    s9_off = cell_success("Qwen3_5_9B", "solve", "nt-neut", "off").rate * 100
+    s9_on = cell_success("Qwen3_5_9B", "solve", "nt-neut", "on").rate * 100
+    s35_off = cell_success("qwen3_6_35b", "solve", "nt-neut", "off").rate * 100
+    s35_on = cell_success("qwen3_6_35b", "solve", "nt-neut", "on").rate * 100
+    S_text_slide(prs, "Bottom line — one tool, three cross-mode regimes", [
+        "Pairing every think=off cell with its think=on twin splits the five tasks into three regimes:",
         "",
-        "• Sole capability — simulate: the unaided model scores 0% in BOTH modes, so the tool is the "
-        "only way to track state. Benefit +83…+97pp, identical off and on — mode-invariant by construction.",
-        "• Robust large win — solve: the tool wins big in both modes (robust floor +46pp). The headline "
-        "gap SHRINKS under think=on (off +83…+91 → on +46…+71) only because reasoning rescues the unaided "
-        "baseline (9B 11→27%, 35B 9→38%), not because the tool weakens.",
-        "• Budget-dependent — validate_domain / validate_problem / validate_plan: the robust floor is SMALL "
-        "(+5…+25pp). The large think=on gaps are an artifact — the unaided baseline truncates 78–100% and "
-        "collapses (Gemma validate_domain 78→0%). For the one model whose baseline survives the budget "
-        "(Qwen3.6-35B, ≤11% truncation) the benefit is small and the SAME across modes (validate_plan +8 off / +14 on).",
+        f"• solve — ROBUST. Realizable benefit ≥ {sv_fl:+.0f}pp in BOTH modes for every ≥9B model. The "
+        f"gap shrinks under think=on only because reasoning rescues the unaided baseline "
+        f"(9B {s9_off:.0f}→{s9_on:.0f}%, 35B {s35_off:.0f}→{s35_on:.0f}%), not because the tool weakens "
+        "(35B steered: 92% in both modes).",
+        f"• simulate — SOLE-SOURCE. The baseline is 0% in both modes; the tool delivers "
+        f"{si_lo:+.0f}…{si_hi:+.0f}pp. No budget choice can confound a benefit that has no baseline to move.",
+        f"• validate_domain / problem / plan — BUDGET-DEPENDENT. The dramatic think=on gaps (Δ up to "
+        f"{vd_max_d:+.0f}pp vs off) appear exactly where the no-tools baseline truncates {tr_rng} and "
+        "collapses. The honest mode-invariant claim is the robust floor: validate_plan +5…+16pp, "
+        "validate_problem +20…+25pp, validate_domain +21pp (Gemma) to +74pp (9B, whose off baseline "
+        "is already weak).",
         "",
-        "→ The tool is a categorical or large win on solve/simulate regardless of reasoning mode; on the "
-        "validation tasks the honest, mode-invariant benefit over a competent baseline is small, and only "
-        "LOOKS large when reasoning drowns that baseline under the fixed 8,192-token decode budget.",
+        "→ The verdict pattern — RQ0.1–0.4 YES/YES/MIXED/YES, RQ0.5 YES, RQ0.6 NO — reproduces in both "
+        "modes (asserted at build time). The MAGNITUDES do not: they move with the decode budget.",
     ])
 
-    # --- method / how-to-read ---
-    S_text_slide(prs, "How the cross-mode view is built", [
-        "This deck aggregates the locked think=off deck and its think=on companion at the level of per-cell "
-        "statistics ONLY — raw trials are NEVER pooled across arms or across reasoning modes. Every rate is "
-        "a single (model, task, arm, mode) cell; we combine only their differences.",
-        "• Realizable benefit = success(+tool steered) − success(no-tools), per model×task×mode. We lead with "
-        "the STEERED arm, not plain availability: under think=on the plain arm stops calling the tool (it "
-        "reasons instead), so the plain gap conflates baseline collapse with a tool-calling failure (slide near the end).",
-        "• A gap's CI uses Newcombe's MOVER method (a Wilson-consistent difference-of-proportions interval); "
-        "the cross-mode change Δ(on−off) uses the nested MOVER-D for a difference of two INDEPENDENT gaps "
-        "(off and on are disjoint corpora). A “*” marks a Δ whose 95% CI excludes zero.",
-        "• Robust floor = min over the two modes of the realizable benefit — the benefit claimable regardless "
-        "of reasoning mode (the budget-insensitive lower bound).",
-        "→ The budget confound is carried throughout: under think=on reasoning + answer share one 8,192-token "
-        "decode budget; truncation differs by arm and mode (caveat slide); completion = reasoning + answer "
-        "with no logged split; latency is only a turns×output-token proxy.",
+    # --- method ---
+    S_text_slide(prs, "How this deck aggregates — and what it never does", [
+        "Both source decks stay untouched: think=off is the locked headline, think=on the budget-confounded "
+        "companion. This deck combines them only at the level of per-cell statistics.",
+        "",
+        "• Spine metric: REALIZABLE benefit = success(+tool steered) − success(no-tools), per model × task × "
+        "mode. Why the steered arm and not plain availability: two slides down.",
+        "• CI on each gap: Newcombe MOVER (Wilson-consistent difference of two independent proportions). "
+        "CI on Δ(on−off): MOVER again on the two gaps — valid because the off and on corpora share no "
+        "trials. '*' = 95% CI excludes 0.",
+        "• Robust floor = min over modes of the realizable benefit — the budget-insensitive lower bound on "
+        "what the tool is worth. Classes: robust (every ≥9B floor ≥ +30pp) · sole-source (baseline floored "
+        "in both modes) · budget-dep (some floor < +30pp).",
+        "• Raw trials are NEVER pooled across arms or think modes — each statistic comes from exactly one "
+        "(model, mode, arm) corpus, and only the statistics are differenced or compared.",
+        "",
+        "→ Standing caveats inherited from think=on: reasoning + answer share one 8,192-token decode budget "
+        "(truncation differs by arm and mode — evidence slide near the end); completion tokens carry no "
+        "logged thinking/answer split; latency is only defensible as turns × output tokens.",
     ])
 
-    # --- figure 1: the mechanism (tool holds, baseline swings) ---
+    # --- the interaction figure ---
     S_image_slide(
-        prs, "The mechanism — the tool arm is mode-robust, the baseline is not",
+        prs, "The gap moves because the BASELINE moves — not the tool arm",
         fig_mode_scatter("mode_scatter.png"),
-        caption="Each point is one ≥9B model × task × arm: think=off success (x) vs think=on success (y). "
-        "Orange (+tool steered) clusters on the diagonal — the tool delivers similar success in both modes. "
-        "Grey (no-tools) falls far below the diagonal on the validation tasks (the baseline reasons past the "
-        "8,192-token cap and collapses) and sits above it on solve (reasoning helps the unaided model). The "
-        "gap therefore moves with the BASELINE, not the tool.")
+        caption="Success at think=off (x) vs think=on (y), one point per ≥9B model and task. The steered "
+        "tool arm (orange) hugs the diagonal — mean shift 9pp, and Qwen3.6-35B's steered arm is fully "
+        "mode-invariant on all five tasks. The no-tools baseline (grey) swings 28pp on average: down on the "
+        "validation tasks (it reasons past the budget — Gemma validate_domain 78→0%, validate_plan 88→10%), "
+        "up on solve (reasoning genuinely helps derivation). Every cross-mode gap change is driven by the "
+        "grey points, so mode×arm interaction = baseline effect.")
 
-    # --- figure 2: the WHERE (realizable benefit dumbbell) ---
+    # --- the spine figure ---
     S_image_slide(
-        prs, "Where the benefit is mode-invariant vs budget-amplified",
+        prs, "Realizable benefit by mode — what the floor protects",
         fig_realizable_dumbbell("realizable_dumbbell.png"),
-        caption="Realizable benefit (+tool steered − no-tools, pp) per model × task, think=off (open) "
-        "connected to think=on (filled), MOVER 95% whiskers. Short connector = mode-invariant benefit "
-        "(simulate, and 35B everywhere); long connector = budget-sensitive (9B/Gemma on validation, where "
-        "the think=off baseline still had room and the think=on baseline truncated). The leftmost marker of "
-        "each pair is the robust floor.")
+        caption="Benefit of the steered tool over no-tools, per ≥9B model: think=off (open blue) vs "
+        "think=on (filled orange), MOVER 95% whiskers; '*' on the label = Δ(on−off) significant "
+        "(MOVER-D 95% CI excludes 0). solve stays large in both modes (floor +46pp); simulate is the tool "
+        "or nothing in both; the validate_* dumbbells stretch right under think=on — that stretch is the "
+        "budget artifact, and the open-blue end (≈ the floor) is the defensible claim.")
 
-    # --- the crisp summary table ---
+    # --- summary + detail tables ---
     h, r = _mode_summary_table()
-    S_table_slide(
-        prs, "Cross-mode summary — robust floor and what moves, per task", h, r,
-        notes="≥9B. Benefit = realizable (steered − no-tools) MOVER point per model, ranged across the 3 "
-        "models. Robust floor = min over BOTH modes AND models = the budget-insensitive lower bound on the "
-        "tool's value. Δ(on−off) ranged across models; 'k/3 sig' = models whose MOVER-D 95% CI excludes 0. "
-        "Class: robust = floor ≥30pp (large win both modes); sole-source = baseline floored both modes; "
-        "budget-dep = floor <30pp (the large think=on gap is a truncated-baseline artifact).")
-
-    # --- per-model rigorous detail (split 3 + 2 tasks to avoid row overflow) ---
-    for grp, part in EFF_TASK_GROUPS:
-        hh, rr = _realizable_detail_table(grp)
-        S_table_slide(
-            prs, f"Cross-mode detail — realizable benefit off / on / Δ, per model  ·  ≥9B  ·  {part}",
-            hh, rr,
-            notes="Realizable benefit = success(+tool steered) − success(no-tools), pp. off/on = Newcombe "
-            "MOVER 95% CI; Δ(on−off) = nested MOVER-D 95% CI, '*' = excludes 0 (green if a significant "
-            "increase under think=on, red if a significant decrease). The Δ is large-and-positive exactly "
-            "where the no-tools baseline truncates under think=on (9B/Gemma validation); near-zero where the "
-            "baseline is mode-stable (Qwen3.6-35B) or floored both modes (simulate).")
+    S_table_slide(prs, "Cross-mode summary — five tasks, three classes (≥9B ranges)", h, r,
+                  notes="Ranges over the three ≥9B models. 'realizable' = steered − no-tools (pp); "
+                  "'robust floor' = min over modes per model, then the range; 'Δ(on−off), sig' = range of "
+                  "the cross-mode movement and how many of 3 models have a MOVER-D-significant Δ. Class "
+                  "rule on the method slide. The Δ column is deliberately not coloured good/bad: on "
+                  "validate_* the growth IS the artifact.")
+    for tasks, part in ((COMPARE_TASK_ORDER[:3], "1/2"), (COMPARE_TASK_ORDER[3:], "2/2")):
+        h, r = _realizable_detail_table(tasks)
+        S_table_slide(prs, f"Per-model cross-mode detail — MOVER / MOVER-D 95% CIs  ·  {part}", h, r,
+                      notes="realizable = steered − no-tools per mode [MOVER 95%]; Δ(on−off) [MOVER-D 95%] "
+                      "— a CI on the MOVEMENT of the benefit across modes, not on the tool's merit (the "
+                      "baseline, not the tool arm, does the moving); floor = min over modes. '*' = CI "
+                      "excludes 0.")
 
     # --- why steered, not plain ---
-    S_text_slide(prs, "Why the realizable (steered) benefit, not plain availability", [
-        "Under think=on the PLAIN tool arm becomes unreliable — the model spends its decode budget reasoning "
-        "instead of issuing the tool call. tool_selected (plain) collapses: Gemma-MoE-26B solve 100→23%, "
-        "validate_plan 21→1%, validate_domain 100→52%; Qwen3.5-9B solve 100→59%. Qwen3.6-35B mostly holds (≥78%).",
-        "• So the think=on AVAILABILITY gap (plain − no-tools) mixes two confounds: a truncation-collapsed "
-        "baseline AND an under-calling tool arm. It is not a clean measure of the tool's value.",
-        "• Steering repairs the under-calling, so the REALIZABLE benefit (steered − no-tools) isolates what "
-        "the tool is worth when actually invoked. This is why steering matters MORE under think=on — solve "
-        "plain→steered lift is Gemma 23→74% under think=on (vs an already-~99% plain arm at think=off).",
-        "→ Caveat: even the steered arm pays a residual budget tax under think=on for some cells "
-        "(Gemma validate_plan steered 93→44%, solve 99→74%), so the tool arm is MOSTLY, not perfectly, "
-        "mode-invariant. Qwen3.6-35B's steered arm is fully mode-invariant.",
+    g_sv = cell_toolsel("gemma4_26b-a4b", "solve", "tl-neut", "off").rate * 100
+    g_sv_on = cell_toolsel("gemma4_26b-a4b", "solve", "tl-neut", "on").rate * 100
+    g_vp = cell_toolsel("gemma4_26b-a4b", "validate_plan", "tl-neut", "off").rate * 100
+    g_vp_on = cell_toolsel("gemma4_26b-a4b", "validate_plan", "tl-neut", "on").rate * 100
+    q_sv = cell_toolsel("Qwen3_5_9B", "solve", "tl-neut", "off").rate * 100
+    q_sv_on = cell_toolsel("Qwen3_5_9B", "solve", "tl-neut", "on").rate * 100
+    g_vp_st = cell_toolsel("gemma4_26b-a4b", "validate_plan", "tl-ster", "on").rate * 100
+    S_text_slide(prs, "Why the spine is the STEERED arm, not plain availability", [
+        "The per-mode decks lead with the availability gap (+tool plain vs no-tools, byte-identical "
+        "wording). Across modes that gap stops measuring the tool:",
+        "",
+        f"• Under think=on the plain arm largely stops CALLING the tool — it reasons instead. solve "
+        f"tool_selected: Gemma {g_sv:.0f}→{g_sv_on:.0f}%, 9B {q_sv:.0f}→{q_sv_on:.0f}% (off→on); "
+        f"validate_plan: Gemma {g_vp:.0f}→{g_vp_on:.0f}%.",
+        "• So a cross-mode availability comparison would conflate three things: the tool's value, the "
+        "baseline's budget collapse, and a mode-dependent tool-calling failure that steering is known to "
+        "repair (the off deck's RQ0.3 mechanism).",
+        "• The steered arm isolates 'what is the tool worth when actually invoked' — the quantity a "
+        "deployment that prompts for tool use would realize. That is the only gap whose cross-mode "
+        "difference is interpretable.",
+        f"• Honesty note: steering does not fully de-confound Gemma — its steered validate_plan still only "
+        f"calls the tool {g_vp_st:.0f}% of the time under think=on (success 93→44% off→on), the one "
+        "steered cell with a residual budget tax. 35B's steered arm is immune on all five tasks.",
+        "",
+        "→ Availability and steering gaps remain fully reported, per mode, in the two source decks.",
     ])
 
     # --- cost-of-pass regime flip ---
-    hc, rc = _cop_cross_table()
-    S_table_slide(
-        prs, "Cost-of-pass flips from task-determined to model-determined", hc, rc,
-        notes="Total tokens per success (lower = better), no-tools and +tool(steered), each off→on, ≥9B. "
-        "think=off: cost-of-pass is TASK-determined — floored tasks (solve, simulate) the tool is ~3× "
-        "cheaper, strong-baseline tasks (validate_*) 3–11× costlier. think=on: the split becomes "
-        "MODEL-determined — where reasoning drowns the baseline (9B validate_domain 9.3k→200k, Gemma →∞) the "
-        "tool is far cheaper or the only producer; only Qwen3.6-35B (baseline survives the budget) still "
-        "pays the validate_* premium (≈6k→15k). Bootstrap point estimates; output right-censored at 8,192.")
+    h, r = _cop_cross_table()
+    S_table_slide(prs, "Cost-of-pass flips from a task regime to a model regime", h, r,
+                  notes="Total tokens per success (lower = better), no-tools vs +tool(steered), both modes. "
+                  "think=off splits by TASK: the tool is costlier per success where the baseline is strong "
+                  "(validate_*: 1.1×–3.6× on ≥9B) and cheaper or the only producer where it is floored "
+                  "(solve, simulate). think=on splits by MODEL: wherever reasoning drowns a model's "
+                  "baseline (9B validate_domain 200k→11k, Gemma — no baseline success at all on "
+                  "validate_domain) the tool is far cheaper or sole producer; only Qwen3.6-35B, whose "
+                  "baseline survives the budget, still pays the off-style validate_* premium (6k→15k on "
+                  "validate_plan). Bootstrap CIs for these cells are in the two source decks' backups.")
 
-    # --- the budget confound made concrete ---
-    ht, rt = _trunc_cross_table()
-    S_table_slide(
-        prs, "The budget confound, made concrete — truncation by arm × mode", ht, rt,
-        notes="Share of trials hitting the 8,192-token output cap, ≥9B pooled across MODELS only (arms and "
-        "modes never pooled). The NO-TOOLS arm's truncation explodes off→on — the baseline reasons past the "
-        "cap before answering — while the +tool(steered) arm barely moves (the tool call replaces the long "
-        "derivation). Every inflated think=on gap traces to that baseline-truncation column. Under think=on "
-        "completion = reasoning + answer with no logged split; latency only via turns × output tokens.")
+    # --- the confound, explicitly ---
+    h, r = _trunc_cross_table()
+    S_table_slide(prs, "The budget confound, cell by cell — truncation at the 8,192-token cap", h, r,
+                  notes="Share of trials hitting the decode cap. The no-tools think=on column is the "
+                  "confound: 9B/Gemma baselines truncate 49–100% (validate_* 78–100%) — they reason "
+                  "themselves out of the budget, so their think=on 'gaps' measure baseline drowning. "
+                  "Qwen3.6-35B is the budget-robust control: its baseline truncates ≤24% (validate_* "
+                  "≤11%) and its realizable benefit barely moves across modes (validate_problem Δ−1pp, "
+                  "n.s.) — the same small benefit in both modes, proving the validate_* inflation is "
+                  "decode budget, not extra tool skill. The steered arm truncates for a different reason "
+                  "on solve/simulate (long tool outputs re-fed across turns), which is why even some "
+                  "steered cells pay a residual tax (Gemma solve 99→74% success).")
 
-    # --- recap / paper claim ---
-    S_text_slide(prs, "Combined claim for the paper", [
-        "• The verdict PATTERN is mode-invariant: YES / YES / MIXED / YES, RQ0.5 YES, RQ0.6 NO reproduce "
-        "under reasoning mode — the tool's value is not an artifact of direct-answer mode.",
-        "• WHERE the value is mode-invariant: simulate (sole capability) and solve (large win, robust floor "
-        "+46pp) — robust regardless of reasoning mode.",
-        "• WHERE it is budget-dependent: the validation tasks. The robust floor over modes is small "
-        "(+5…+25pp); the dramatic think=on gaps are a decode-budget artifact (the baseline truncates "
-        "78–100% and collapses), confirmed by the budget-robust Qwen3.6-35B showing the SAME small benefit "
-        "in both modes.",
-        "→ Report think=off as the clean headline; cite the cross-mode floor as the mode-robust claim; flag "
-        "the validation-task think=on gaps as budget-confounded, not extra tool skill. A cap-raised think=on "
-        "rerun (to test whether a larger budget closes the baseline gap) remains the open follow-up.",
+    # --- the combined claim for the paper ---
+    d5_off = res["off"]["summary"]["rq05/validate_plan"]["gaps"]
+    d5_on = res["on"]["summary"]["rq05/solve"]["gaps"]
+    S_text_slide(prs, "What the paper can claim — and how to say it", [
+        "• Headline: report think=off as the clean, unconfounded read (locked verdicts "
+        "YES/YES/MIXED/YES, RQ0.5 YES, RQ0.6 NO).",
+        "• Mode-invariance: the verdict PATTERN survives reasoning mode, and the robust floor is the "
+        "quantified mode-invariant claim — solve ≥ +46pp, simulate +83…+97pp (sole source), "
+        "validate_problem ≈ +20…+25pp, validate_plan ≈ +5…+16pp, validate_domain ≥ +21pp.",
+        "• Budget-dependence: the large think=on availability/realizable gaps on the validation tasks are "
+        "decode-budget artifacts (baseline truncation 78–100% on 9B/Gemma), NOT extra tool capability — "
+        "cite the 35B control. Never quote a think=on validate_* gap without this caveat.",
+        f"• What moves with mode (report as findings, not contradictions): RQ0.5's headroom case "
+        f"(validate_plan {d5_off[0]:+.0f}→{d5_off[2]:+.0f}pp at off; solve {d5_on[0]:+.0f}→{d5_on[2]:+.0f}pp "
+        "at on); cost-of-pass regime (task-determined at off, model-determined at on); steering importance "
+        "(grows under think=on — plain tool-calling collapses).",
+        "",
+        "→ Open question (untested): whether a larger decode budget closes the think=on baseline gap — "
+        "needs a cap-raised rerun; until then the floor is the claim that needs no such experiment.",
     ])
 
     _finalize_footers(prs)
-    COMPARE_PPTX.parent.mkdir(parents=True, exist_ok=True)
+    COMPARE_DIR.mkdir(parents=True, exist_ok=True)
     prs.save(str(COMPARE_PPTX))
     return COMPARE_PPTX
+
+
+def _main_compare(args) -> int:
+    """`--think compare` entry point. Replicates both per-mode gates and verdict
+    asserts (off: locked verdicts + phase-2 oracle; on: same signed rule,
+    computed), asserts the verdict pattern actually reproduces across modes,
+    runs the cross-mode consistency asserts, then renders the compare deck.
+    Runs ONLY new code paths after the per-mode gates — the off and on decks
+    are not rebuilt or modified here."""
+    global THINK, PLOT_DIR, FOOTER_THINK
+    print(f"loading {RESULTS_ROOT} ...", file=sys.stderr)
+    bd.CELLS = bd.load_all(RESULTS_ROOT)
+    bd.MODEL_ORDER = MODEL_ORDER
+
+    res = {}
+    for mode in ("off", "on"):
+        THINK = mode
+        print(f"=== GATE (think={mode}) ===", file=sys.stderr)
+        for ln in run_gate(mode):
+            print("  " + ln, file=sys.stderr)
+        summary = build_phase2()
+        if mode == "off":
+            assert_phase2_matches(summary, PHASE2_EXPECTED)
+            print("  phase2 reproduces the tracked think=off oracle exactly", file=sys.stderr)
+        p1 = {rq: _phase1_verdict(rq)[0] for rq in RQ_TASKS}
+        p2 = {key: _phase2_verdict(summary, key) for key in ("rq05", "rq06")}
+        res[mode] = dict(summary=summary, p1=p1, p2=p2)
+    # the compare deck's framing leans on the pattern reproducing — assert it
+    assert res["off"]["p1"] == res["on"]["p1"] and res["off"]["p2"] == res["on"]["p2"], (
+        f"verdict pattern no longer mode-invariant: off={res['off']['p1']}/{res['off']['p2']} "
+        f"on={res['on']['p1']}/{res['on']['p2']} — the compare deck's story must be rewritten")
+    print("  verdict pattern reproduces across modes "
+          f"({'/'.join(res['off']['p1'][rq] for rq in RQ_TASKS)}, "
+          f"rq05={res['off']['p2']['rq05']}, rq06={res['off']['p2']['rq06']})", file=sys.stderr)
+
+    print("=== CROSS-MODE CONSISTENCY ===", file=sys.stderr)
+    for ln in _compare_asserts():
+        print("  " + ln, file=sys.stderr)
+
+    if args.check:
+        print("--check: per-mode gates + cross-mode asserts passed; skipping render",
+              file=sys.stderr)
+        return 0
+
+    print("=== RENDER (compare) ===", file=sys.stderr)
+    THINK = "off"            # compare code passes `think` explicitly everywhere;
+    FOOTER_THINK = "off × on"  # the footer alone needs the cross-mode label
+    PLOT_DIR = COMPARE_DIR / "plots"
+    out = build_compare_pptx(res)
+    n_slides = len(__import__("pptx").Presentation(str(out)).slides._sldIdLst)
+    print(f"wrote {out}  ({n_slides} slides)", file=sys.stderr)
+    print(f"plots → {PLOT_DIR}", file=sys.stderr)
+    return 0
 
 
 # ---------------- Main ----------------
@@ -2664,46 +2761,23 @@ def main() -> int:
                     "(verdicts + phase-2 oracle asserted). 'on' = the companion deck over "
                     "the think=on corpus: same signed rule, verdicts computed not locked, "
                     "oracle skipped (it is think=off-only), outputs under "
-                    "checkpoints/rq-sweep5v2-think-on/. 'compare' = the cross-mode "
-                    "aggregation deck (off vs on, realizable benefit + MOVER CIs), outputs "
-                    "under checkpoints/rq-sweep5v2-compare/ — leaves both other decks untouched.")
+                    "checkpoints/rq-sweep5v2-think-on/. 'compare' = the standalone "
+                    "cross-mode aggregation deck (per-cell statistics only; off/on decks "
+                    "untouched), outputs under checkpoints/rq-sweep5v2-compare/.")
     args = ap.parse_args()
 
     THINK = args.think
+    if THINK == "compare":
+        return _main_compare(args)
     if THINK == "on":
         OUT_DIR = REPO / "checkpoints/rq-sweep5v2-think-on"
         PLOT_DIR = OUT_DIR / "plots"
         PHASE2_JSON = OUT_DIR / "phase2_summary.json"
         PPTX_OUT = OUT_DIR / "pddl_copilot_rq_sweep5v2_think_on.pptx"
-    elif THINK == "compare":
-        OUT_DIR = COMPARE_OUT
-        PLOT_DIR = OUT_DIR / "plots"
 
     print(f"loading {RESULTS_ROOT} ...", file=sys.stderr)
     bd.CELLS = bd.load_all(RESULTS_ROOT)
     bd.MODEL_ORDER = MODEL_ORDER
-
-    # --- cross-mode aggregation: a standalone deck over BOTH corpora; the off
-    #     and on decks are not touched. Both gates run (descriptive) + the MOVER
-    #     consistency asserts; no phase-2 oracle (off-only) and no locked verdict
-    #     asserts (those are per-mode). ---
-    if THINK == "compare":
-        print("=== CROSS-MODE COMPARE: gates (off + on) + MOVER asserts ===", file=sys.stderr)
-        gate_off = run_gate("off")
-        gate_on = run_gate("on")
-        for ln in gate_off + gate_on:
-            print("  " + ln, file=sys.stderr)
-        _compare_asserts()
-        if args.check:
-            print("--check: cross-mode asserts + both gates passed; skipping render",
-                  file=sys.stderr)
-            return 0
-        print("=== RENDER (compare) ===", file=sys.stderr)
-        out = build_compare_pptx(gate_off, gate_on)
-        n_slides = len(__import__("pptx").Presentation(str(out)).slides._sldIdLst)
-        print(f"wrote {out}  ({n_slides} slides)", file=sys.stderr)
-        print(f"plots → {PLOT_DIR}", file=sys.stderr)
-        return 0
 
     print(f"=== GATE: RQ0.3 validate_plan tool-calling artifact (think={THINK}) ===", file=sys.stderr)
     gate_lines = run_gate(THINK)
