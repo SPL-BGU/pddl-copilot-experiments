@@ -2329,7 +2329,9 @@ def _add_phase2_rq(prs, rq: str, question: str, answer: str, bullets: list[str],
 # Robust floor = min over modes of the realizable benefit = the lower bound on
 # the tool's value that no decode-budget choice can take away.
 
-COMPARE_DIR = REPO / "checkpoints/rq-sweep5v2-compare"
+# All four decks live in ONE checkpoints folder (consolidated 2026-06-10);
+# per-mode plot subdirs keep same-named figures from colliding.
+COMPARE_DIR = REPO / "checkpoints/rq-sweep5v2"
 COMPARE_PPTX = COMPARE_DIR / "pddl_copilot_rq_sweep5v2_compare.pptx"
 
 MODEL_SHORT = {"Qwen3_5_9B": "9B", "gemma4_26b-a4b": "26B", "qwen3_6_35b": "35B"}
@@ -2871,7 +2873,7 @@ def build_compare_pptx(res: dict) -> Path:
 # 0% carries its grader + failure decomposition; the 0.8B reversal carries its
 # trial-level mechanism; truncation is reported as cap-hit & FAILED.
 
-UNIFIED_DIR = REPO / "checkpoints/rq-sweep5v2-unified"
+UNIFIED_DIR = REPO / "checkpoints/rq-sweep5v2"
 UNIFIED_PPTX = UNIFIED_DIR / "pddl_copilot_rq_sweep5v2_unified.pptx"
 
 
@@ -3184,7 +3186,7 @@ def _main_unified(args) -> int:
     print("=== RENDER (unified) ===", file=sys.stderr)
     THINK = "off"                       # the spine; cross-mode blocks pass think explicitly
     FOOTER_THINK = "off headline × cross-mode"
-    PLOT_DIR = UNIFIED_DIR / "plots"
+    PLOT_DIR = UNIFIED_DIR / "plots-unified"
     out = build_unified_pptx(res, gate_off)
     n_slides = len(__import__("pptx").Presentation(str(out)).slides._sldIdLst)
     print(f"wrote {out}  ({n_slides} slides)", file=sys.stderr)
@@ -3237,7 +3239,7 @@ def _main_compare(args) -> int:
     print("=== RENDER (compare) ===", file=sys.stderr)
     THINK = "off"            # compare code passes `think` explicitly everywhere;
     FOOTER_THINK = "off × on"  # the footer alone needs the cross-mode label
-    PLOT_DIR = COMPARE_DIR / "plots"
+    PLOT_DIR = COMPARE_DIR / "plots-compare"
     out = build_compare_pptx(res)
     n_slides = len(__import__("pptx").Presentation(str(out)).slides._sldIdLst)
     print(f"wrote {out}  ({n_slides} slides)", file=sys.stderr)
@@ -3259,12 +3261,12 @@ def main() -> int:
                     "(verdicts + phase-2 oracle asserted). 'on' = the companion deck over "
                     "the think=on corpus: same signed rule, verdicts computed not locked, "
                     "oracle skipped (it is think=off-only), outputs under "
-                    "checkpoints/rq-sweep5v2-think-on/. 'compare' = the standalone "
-                    "cross-mode aggregation deck (per-cell statistics only; off/on decks "
-                    "untouched), outputs under checkpoints/rq-sweep5v2-compare/. "
-                    "'unified' = the single consolidated findings deck (think=off spine + "
-                    "cross-mode synthesis + limitations; the three source decks untouched), "
-                    "outputs under checkpoints/rq-sweep5v2-unified/.")
+                    "checkpoints/rq-sweep5v2/ alongside the off deck. 'compare' = the "
+                    "standalone cross-mode aggregation deck (per-cell statistics only; "
+                    "off/on decks untouched). 'unified' = the single consolidated findings "
+                    "deck (think=off spine + cross-mode synthesis + limitations; the three "
+                    "source decks untouched). All four decks write into "
+                    "checkpoints/rq-sweep5v2/ with per-mode plot subdirs.")
     args = ap.parse_args()
 
     THINK = args.think
@@ -3273,9 +3275,8 @@ def main() -> int:
     if THINK == "unified":
         return _main_unified(args)
     if THINK == "on":
-        OUT_DIR = REPO / "checkpoints/rq-sweep5v2-think-on"
-        PLOT_DIR = OUT_DIR / "plots"
-        PHASE2_JSON = OUT_DIR / "phase2_summary.json"
+        PLOT_DIR = OUT_DIR / "plots-think-on"
+        PHASE2_JSON = OUT_DIR / "phase2_summary_think_on.json"
         PPTX_OUT = OUT_DIR / "pddl_copilot_rq_sweep5v2_think_on.pptx"
 
     print(f"loading {RESULTS_ROOT} ...", file=sys.stderr)
