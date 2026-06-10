@@ -1,7 +1,11 @@
 """Paper-ready single-tool-use RQ analysis + slideshow for sweep5v2.
 
 Regenerates every RQ figure from `results/sweep5v2-live/` and emits a
-Question→Answer→Evidence PPTX answering RQ0.1–0.6. Read-only over `results/`.
+Question→Answer→Evidence PPTX answering RQ0.1–0.6, plus a cross-cutting,
+token-cost + efficiency section after the RQ0.1–0.4 blocks: total tokens/trial
+(input+output, think=off), cost-of-pass (total tokens per success, bootstrap CIs)
+with its exact decomposition (tokens/trial ÷ hit-rate), and a secondary
+completion-only generation-cost lens. Read-only over `results/`.
 Reuses the metric layer in `build_deck.py` (load_all / task_success_rate /
 tool_selected_rate / confusion / metrics_from_cm) and its python-pptx helpers,
 plus `wilson_ci` — never recomputes success from aggregate.py/table.py.
@@ -68,6 +72,10 @@ MODEL_DISP = {
     "qwen3_6_35b": "Qwen3.6-35B",
 }
 MODELS_9B = ["Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]  # ≥9B headline set
+# Efficiency section only (≥4B): one extra model below the ≥9B headline. Kept
+# SEPARATE from MODELS_9B on purpose — MODELS_9B drives the locked RQ verdicts
+# (claim_counts) and the phase-2 oracle, which must not move.
+EFF_MODELS = ["Qwen3_5_4B"] + MODELS_9B
 
 ARMS = ["nt-neut", "tl-neut", "tl-ster"]
 ARM_DISP = {"nt-neut": "no-tools", "tl-neut": "+tool (plain)",
@@ -86,6 +94,13 @@ RQ_VERDICT = {"RQ0.1": "YES", "RQ0.2": "YES", "RQ0.3": "MIXED", "RQ0.4": "YES"}
 TASK_DISP = {"solve": "solve", "validate_domain": "validate_domain",
              "validate_problem": "validate_problem",
              "validate_plan": "validate_plan", "simulate": "simulate"}
+# Canonical 5-task order for the cross-cutting per-token efficiency table.
+ALL_TASKS = ["solve", "validate_domain", "validate_problem",
+             "validate_plan", "simulate"]
+# The efficiency tables are 5 tasks × 4 models = 21 rows, which overflow one
+# slide (LibreOffice floors table-row height at ~0.29"). Split each across two
+# slides so every row stays above the footer at the normal table font.
+EFF_TASK_GROUPS = [(ALL_TASKS[:3], "1/2"), (ALL_TASKS[3:], "2/2")]
 
 VALID_PLAN_LABELS = {"v1", "v2", "v3", "v4", "v5"}
 THINK = "off"
@@ -169,6 +184,25 @@ class Cell:
     n: int
 
 
+@dataclass
+class Eff:
+    """Per-token efficiency over one cell's token-bearing trials for a task.
+
+    `idx` = successes per 1,000 ACTION tokens = (s / tok) * 1000. Because s, n
+    and tok are all over the SAME token-bearing subset, this equals
+    succ_rate / mean_tok * 1000 exactly (the n cancels) — the user's literal
+    "success rate ÷ action tokens", just scaled for readability.
+    """
+    idx: float      # successes per 1k action tokens (the headline ratio)
+    succ: float     # success rate over the token-bearing subset
+    lo: float       # Wilson 95% on succ (component CI; the idx itself has none)
+    hi: float
+    mean_tok: float  # mean action (completion) tokens per trial
+    s: int
+    n: int
+    tok: int        # total action (completion) tokens over the subset
+
+
 def cell_success(model: str, task: str, arm: str, think: str = THINK) -> Cell:
     rows = bd.CELLS.get((model, think, arm), [])
     rate, s, n = bd.task_success_rate(rows, task)
@@ -181,6 +215,137 @@ def cell_toolsel(model: str, task: str, arm: str, think: str = THINK) -> Cell:
     rate, s, n = bd.tool_selected_rate(rows, task)
     lo, hi = wilson_ci(s, n)
     return Cell(rate, lo, hi, s, n)
+
+
+def cell_efficiency(model: str, task: str, arm: str, think: str = THINK) -> Eff:
+    """Per-token "tool intelligence" = success ÷ action tokens for one cell.
+
+    ACTION tokens = OUTPUT (completion) tokens, summed across the model's turns
+    (the agent tool-loop runs up to MAX_TOOL_LOOPS=10 turns; no-tools runs 1).
+    Computed over the token-bearing subset only — trials with an empty `tokens`
+    dict are infra-failure placeholders, excluded the same way bd.token_stats
+    does — so the numerator (s) and denominator (tok) share one trial set and
+    the s/tok identity holds.
+
+    think=off ONLY for the headline: under think=off the model emits no separate
+    reasoning trace, so output IS action. Under think=on completion = thinking +
+    action, so it is NOT pure action tokens — a think=on read needs a
+    thinking/action split and is deferred (see the framing slide).
+    """
+    rows = [r for r in bd.CELLS.get((model, think, arm), [])
+            if r["task"] == task and r.get("tokens")]
+    n = len(rows)
+    s = sum(1 for r in rows if r["success"])
+    tok = sum(int((r["tokens"].get("completion", 0) or 0)) for r in rows)
+    succ = s / n if n else float("nan")
+    lo, hi = wilson_ci(s, n)
+    idx = (s / tok * 1000) if tok else float("nan")
+    mean_tok = (tok / n) if n else float("nan")
+    return Eff(idx, succ, lo, hi, mean_tok, s, n, tok)
+
+
+@dataclass
+class CostPerSuccess:
+    mean: float   # mean action tokens spent ON A CORRECT ANSWER (lower = better)
+    lo: float     # bootstrap 95% on the mean
+    hi: float
+    n: int        # number of successful trials priced
+
+
+def _bootstrap_ci_mean(xs: list[int], B: int = 2000, seed: int = 0) -> tuple[float, float]:
+    """Percentile bootstrap 95% CI for the mean of `xs`. Deterministic (fixed
+    seed) so the deck regenerates byte-stable. Token-per-success is right-skewed
+    (a t-interval would understate the tail), so resample the mean instead."""
+    a = np.asarray(xs, dtype=float)
+    if a.size == 0:
+        return float("nan"), float("nan")
+    if a.size == 1:
+        return float(a[0]), float(a[0])
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, a.size, size=(B, a.size))
+    means = a[idx].mean(axis=1)
+    return float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
+
+
+def cell_cost_per_success(model: str, task: str, arm: str,
+                          think: str = THINK) -> CostPerSuccess:
+    """Cost per correct answer = mean action (completion) tokens over the
+    SUCCESSFUL trials only — "when the model gets it right, how many tokens did
+    that take?". LOWER is better. This is the documented H3 (cost-per-success),
+    the complement of `cell_efficiency` (success-per-cost): restricting to
+    successes removes the failed-attempt tokens, so it is NOT just the index
+    flipped, and (unlike a bare ratio) the mean carries a real CI. Returns n=0
+    when the arm produced no correct answer to price (e.g. floored baselines)."""
+    toks = [int((r["tokens"].get("completion", 0) or 0))
+            for r in bd.CELLS.get((model, think, arm), [])
+            if r["task"] == task and r.get("tokens") and r.get("success")]
+    n = len(toks)
+    if n == 0:
+        return CostPerSuccess(float("nan"), float("nan"), float("nan"), 0)
+    lo, hi = _bootstrap_ci_mean(toks)
+    return CostPerSuccess(sum(toks) / n, lo, hi, n)
+
+
+def _bootstrap_ci_ratio(toks: list[int], succ: list[int],
+                        B: int = 2000, seed: int = 0) -> tuple[float, float]:
+    """Percentile bootstrap 95% CI for cost-of-pass = Σtokens ÷ Σsuccesses, a
+    ratio of two trial-level sums. Resample TRIALS (each carries its token cost
+    and a 0/1 success) and recompute the ratio, so the interval reflects variation
+    in both the token bill and the hit rate. Resamples with zero successes are
+    dropped (the ratio is undefined). Deterministic via fixed seed."""
+    tok = np.asarray(toks, dtype=float)
+    suc = np.asarray(succ, dtype=float)
+    if tok.size == 0:
+        return float("nan"), float("nan")
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, tok.size, size=(B, tok.size))
+    num = tok[idx].sum(axis=1)
+    den = suc[idx].sum(axis=1)
+    ok = den > 0
+    if not ok.any():
+        return float("nan"), float("nan")
+    ratios = num[ok] / den[ok]
+    return float(np.percentile(ratios, 2.5)), float(np.percentile(ratios, 97.5))
+
+
+@dataclass
+class CostOfPass:
+    """Cost-of-pass = expected tokens per SUCCESS over a cell's token-bearing
+    trials = Σtokens ÷ #successes (≡ mean tokens/trial ÷ success rate). Unlike
+    `CostPerSuccess` (mean over successful trials only), this charges the tokens
+    burned on FAILED attempts to the success count — the true 'what does one
+    correct answer cost end-to-end?' metric. LOWER is better."""
+    cop: float       # tokens per success (point estimate)
+    lo: float        # bootstrap 95%
+    hi: float
+    n_succ: int      # successes priced
+    n: int           # token-bearing trials in the cell
+    mean_tok: float  # mean tokens/trial (numerator ÷ n) — for the decomposition
+    succ: float      # success rate over the token-bearing subset
+
+
+def cell_cost_of_pass(model: str, task: str, arm: str,
+                      denom: str = "total", think: str = THINK) -> CostOfPass:
+    """cost-of-pass for one cell. denom='total' (prompt+completion, the default —
+    real consumption per success) or 'completion' (output-only). Computed over the
+    token-bearing subset so numerator and denominator share one trial set, exactly
+    as `cell_efficiency` does. Returns n_succ=0 (unpriceable) for floored arms."""
+    rows = [r for r in bd.CELLS.get((model, think, arm), [])
+            if r["task"] == task and r.get("tokens")]
+    n = len(rows)
+    if denom == "completion":
+        toks = [int((r["tokens"].get("completion", 0) or 0)) for r in rows]
+    else:
+        toks = [int((r["tokens"].get("prompt", 0) or 0))
+                + int((r["tokens"].get("completion", 0) or 0)) for r in rows]
+    flags = [1 if r["success"] else 0 for r in rows]
+    s = sum(flags)
+    mean_tok = (sum(toks) / n) if n else float("nan")
+    succ = (s / n) if n else float("nan")
+    if s == 0:
+        return CostOfPass(float("nan"), float("nan"), float("nan"), 0, n, mean_tok, succ)
+    lo, hi = _bootstrap_ci_ratio(toks, flags)
+    return CostOfPass(sum(toks) / s, lo, hi, s, n, mean_tok, succ)
 
 
 def signed_gap(model: str, task: str, lo_arm: str, hi_arm: str) -> dict:
@@ -811,7 +976,15 @@ def S_image_slide(prs, title: str, image_path, caption: str | None = None,
 
 def _delta_tint(text: str):
     """Tint the CI-disjoint (signed-significant) Δ cells: green = favorable,
-    red = against. Returns (fill, ink) or None."""
+    red = against. Returns (fill, ink) or None.
+
+    Also tints the efficiency table's per-token multiplier by direction: a cell
+    carrying ↑ (tool raised intelligence-per-token) → green, ↓ (lowered) → red.
+    RQ/phase-2 tables contain neither glyph, so this is inert for them."""
+    if "↑" in text:
+        return GREEN_TINT, GREEN_INK
+    if "↓" in text:
+        return RED_TINT, RED_INK
     if "*" not in text:
         return None
     t = text.strip()
@@ -1001,6 +1174,14 @@ def build_pptx(summary: dict, gate_lines: list[str]) -> Path:
     for rq, tasks in RQ_TASKS.items():
         _add_phase1_rq(prs, rq, tasks, summary, gate_lines)
 
+    # --- cross-cutting token cost + efficiency lens (think=off) ---
+    # Sits after the RQ0.1–0.4 success blocks (it reframes the same phase-1 tasks
+    # through token consumption), before the think=on caveat which explains why
+    # this lens is think=off only.
+    _add_token_cost_section(prs)        # consumption: total tokens/trial (input+output)
+    _add_token_efficiency_section(prs)  # quality-adjusted: cost-of-pass + decomposition
+    _add_completion_lens_section(prs)   # secondary: completion-only generation cost
+
     # --- think=on caveat ---
     cliff = fig_think_on_cliff("think_on_cliff.png")
     S_image_slide(
@@ -1154,6 +1335,250 @@ def _rq_headline_notes(rq: str) -> list[str]:
         "RQ0.4": ["", "Decisive: no-tools is 0% everywhere (state-tracking by hand fails); +tool reaches "
                   "65–92% on ≥9B, with steering adding +18–22pp."],
     }[rq]
+
+
+def _mult_str(tool: float, base: float) -> str:
+    """A tool arm's per-token intelligence as a MULTIPLE of the no-tools
+    baseline — the at-a-glance increase/decrease read. ↑ = the tool raised
+    intelligence-per-token (green), ↓ = lowered it (red), ≈ = no change (±5%).
+    Empty when the baseline is floored (≈0): the ratio is then degenerate (†)."""
+    if tool != tool or base != base or base <= 0:
+        return ""
+    m = tool / base
+    arrow = "↑" if m >= 1.05 else ("↓" if m <= 0.95 else "≈")
+    return f"{m:.1f}×{arrow}"
+
+
+def _task_floored(task: str) -> bool:
+    """True when no-tools success ≈ 0 across the ≥9B set — the ratio is then
+    degenerate (tool does work per token, baseline ≈none), not a like-for-like
+    per-token comparison. Marked † in the table (and the ×multiplier is hidden,
+    since dividing by a ≈0 baseline is meaningless)."""
+    cells = [cell_efficiency(m, task, "nt-neut") for m in EFF_MODELS]
+    cells = [e for e in cells if e.n]
+    return bool(cells) and all(e.succ < 0.02 for e in cells)
+
+
+def _cost_cell(c: CostPerSuccess) -> str:
+    """mean [bootstrap 95% CI] action tokens per correct answer; '— (0 succ)'
+    when the arm produced no success to price."""
+    if c is None or not c.n:
+        return "— (0 succ)"
+    return f"{bd._fmt_tokens(c.mean)} [{bd._fmt_tokens(c.lo)},{bd._fmt_tokens(c.hi)}]"
+
+
+def _cost_table(tasks: list[str]) -> tuple[list[str], list[list[str]]]:
+    headers = ["task", "model", "no-tools", "+tool(plain)", "+tool(steered)"]
+    rows: list[list[str]] = []
+    for task in tasks:
+        for i, m in enumerate(EFF_MODELS):
+            cells = [_cost_cell(cell_cost_per_success(m, task, arm)) for arm in ARMS]
+            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[m], *cells])
+    return headers, rows
+
+
+def _cost_mult_str(tool: float, base: float) -> str:
+    """A +tool arm's TOKEN COST as a multiple of the no-tools baseline. LOWER is
+    better, so the colour flips vs `_mult_str`: cheaper → ↑ (green, the tool
+    improved cost), pricier → ↓ (red), ≈ within ±5%. The number is the raw cost
+    multiple (2.8× = the tool spends 2.8× the tokens); the arrow encodes good/bad
+    so the green/red tint (which keys on ↑/↓) reads correctly."""
+    if tool != tool or base != base or base <= 0 or tool <= 0:
+        return ""
+    m = tool / base
+    arrow = "↑" if m <= 0.95 else ("↓" if m >= 1.05 else "≈")
+    return f"{m:.1f}×{arrow}"
+
+
+def _tokcost_cell(st: dict, base_total: float | None = None) -> str:
+    """One arm's mean total tokens/trial, shown as total (input+output); a +tool
+    arm also gets ×vs-no-tools on total (pass base_total)."""
+    if not st["n"] or st["total"] != st["total"]:
+        return "–"
+    s = (f"{bd._fmt_tokens(st['total'])} "
+         f"({bd._fmt_tokens(st['prompt'])}+{bd._fmt_tokens(st['completion'])})")
+    if base_total is not None:
+        mult = _cost_mult_str(st["total"], base_total)
+        if mult:
+            s = f"{s}  {mult}"
+    return s
+
+
+def _cop_cell(c: CostOfPass, base: CostOfPass | None = None) -> str:
+    """cost-of-pass = tokens per success [bootstrap 95% CI]; '— (0 succ)' when the
+    arm never succeeds. A +tool arm also gets ×vs-no-tools (cost multiple)."""
+    if c is None or not c.n_succ or c.cop != c.cop:
+        return "— (0 succ)"
+    s = f"{bd._fmt_tokens(c.cop)} [{bd._fmt_tokens(c.lo)},{bd._fmt_tokens(c.hi)}]"
+    if base is not None and base.n_succ and base.cop == base.cop:
+        mult = _cost_mult_str(c.cop, base.cop)
+        if mult:
+            s = f"{s}  {mult}"
+    return s
+
+
+def _token_cost_table(tasks: list[str]) -> tuple[list[str], list[list[str]]]:
+    headers = ["task", "model", "no-tools", "+tool(plain)", "+tool(steered)"]
+    rows: list[list[str]] = []
+    for task in tasks:
+        for i, m in enumerate(EFF_MODELS):
+            st_nt = bd.token_stats(bd.CELLS.get((m, THINK, "nt-neut"), []), task)
+            st_tl = bd.token_stats(bd.CELLS.get((m, THINK, "tl-neut"), []), task)
+            st_st = bd.token_stats(bd.CELLS.get((m, THINK, "tl-ster"), []), task)
+            base = st_nt["total"] if st_nt["n"] else None
+            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[m],
+                         _tokcost_cell(st_nt),
+                         _tokcost_cell(st_tl, base),
+                         _tokcost_cell(st_st, base)])
+    return headers, rows
+
+
+def _add_token_cost_section(prs) -> None:
+    """PRIMARY token-cost lens: mean TOTAL tokens per trial (input + output),
+    think=off, ≥4B. This is 'tokens consumption' as asked — the whole bill the
+    model runs up, not just the output it generates."""
+    S_text_slide(prs, "Token cost — total tokens per trial (input + output)", [
+        "Token cost = mean TOTAL tokens a trial consumes = input (prompt) + output (completion), summed "
+        "across the model's turns. This is the consumption metric: the whole bill, not just generated text.",
+        "• Each cell shows total (input+output) so the split is visible; +tool cells also show ×vs no-tools "
+        "on total — ↑ (green) = the tool spends FEWER tokens, ↓ (red) = MORE (lower cost is better).",
+        "• The profile INVERTS across arms: no-tools is output-heavy (it reasons in the open), while +tool is "
+        "INPUT-heavy — tool schemas plus tool outputs are re-fed to the model every turn, so the prompt side "
+        "dominates (~5:1 input:output on the tool arms). That re-fed input is the real token cost of tools, and "
+        "an output-only view hides it entirely.",
+        "• Scope: think=off (output IS action; no separate reasoning trace), ≥4B.",
+        "",
+        "→ Caveats: (1) prefix caching (~90% on this roster) makes most re-sent tool INPUT cheap in server "
+        "compute/$ — but it is still consumption in the accounting/context-budget sense, and tool OUTPUTS "
+        "across turns are novel/uncached; the raw total is the honest accounting number. (2) Output is "
+        "right-censored at the 8,192-token cap and truncation rate varies by arm, so the output side is a "
+        "budget-bounded count, not free generation length.",
+    ])
+    for grp, part in EFF_TASK_GROUPS:
+        headers, rows = _token_cost_table(grp)
+        S_table_slide(
+            prs,
+            "Token cost — mean total tokens/trial as total (input+output); +tool also ×vs no-tools "
+            f"(↑ cheaper / ↓ costlier)  ·  ≥4B, think=off  ·  {part}",
+            headers, rows,
+            notes="Mean prompt+completion tokens over token-bearing trials, think=off, summed across turns. "
+            "×vs no-tools = total-token cost multiple: ↑green = tool cheaper, ↓red = tool costlier. Tool arms are "
+            "input-dominated (re-fed schemas + tool outputs); prefix cache (~90%) discounts the COMPUTE cost of "
+            "that input but not the raw count.")
+
+
+def _cost_of_pass_table(tasks: list[str]) -> tuple[list[str], list[list[str]]]:
+    headers = ["task", "model", "no-tools", "+tool(plain)", "+tool(steered)"]
+    rows: list[list[str]] = []
+    for task in tasks:
+        for i, m in enumerate(EFF_MODELS):
+            nt = cell_cost_of_pass(m, task, "nt-neut")
+            tl = cell_cost_of_pass(m, task, "tl-neut")
+            st = cell_cost_of_pass(m, task, "tl-ster")
+            base = nt if nt.n_succ else None
+            rows.append([TASK_DISP[task] if i == 0 else "", MODEL_DISP[m],
+                         _cop_cell(nt),
+                         _cop_cell(tl, base),
+                         _cop_cell(st, base)])
+    return headers, rows
+
+
+def _cop_decomp_cells(model: str, task: str, floored: bool) -> tuple[str, str, str]:
+    """Factor the steered-vs-no-tools cost-of-pass EXACTLY: cost-of-pass = mean
+    tokens/trial ÷ success rate, so the ratio st÷nt = (token-cost ratio) ÷
+    (success-rate ratio). Cost factors use `_cost_mult_str` (↓red = worse);
+    the hit-rate factor uses `_mult_str` (↑green = better)."""
+    nt = cell_cost_of_pass(model, task, "nt-neut")
+    st = cell_cost_of_pass(model, task, "tl-ster")
+    if (floored or not nt.n_succ or not st.n_succ
+            or nt.mean_tok <= 0 or st.mean_tok <= 0 or nt.succ <= 0 or st.succ <= 0):
+        return ("—", "—", "—")
+    return (_cost_mult_str(st.mean_tok, nt.mean_tok),  # tokens/trial (↓red if pricier)
+            _mult_str(st.succ, nt.succ),               # more often right (↑green if better)
+            _cost_mult_str(st.cop, nt.cop))            # = cost-per-success ratio (the quotient)
+
+
+def _cop_decomp_table(tasks: list[str]) -> tuple[list[str], list[list[str]]]:
+    headers = ["task", "model", "tokens/trial ×", "more often right ×", "= cost-per-success ×"]
+    rows: list[list[str]] = []
+    for task in tasks:
+        floored = _task_floored(task)
+        tlabel = TASK_DISP[task] + (" †" if floored else "")
+        for i, m in enumerate(EFF_MODELS):
+            a, b, c = _cop_decomp_cells(m, task, floored)
+            rows.append([tlabel if i == 0 else "", MODEL_DISP[m], a, b, c])
+    return headers, rows
+
+
+def _add_token_efficiency_section(prs) -> None:
+    """PRIMARY token-efficiency lens: cost-of-pass = total tokens per SUCCESS,
+    with a bootstrap CI, plus the exact decomposition (tokens/trial ÷ hit-rate)."""
+    S_text_slide(prs, "Token efficiency — cost-of-pass (tokens per success)", [
+        "Token efficiency = cost-of-pass = total tokens spent ÷ correct answers produced = (mean total "
+        "tokens/trial) ÷ (success rate). The quality-adjusted cost: every token burned on a FAILED attempt is "
+        "charged to the successes, so 'what does one correct answer actually cost?' — LOWER is better.",
+        "• This is the right efficiency metric when success rates differ a lot (here ~41% no-tools vs ~88% "
+        "+tool): a cheap-per-trial arm that rarely succeeds pays many times over to land one win.",
+        "• Each +tool cell shows ×vs no-tools (cost multiple): ↑green = the tool reaches a correct answer in "
+        "fewer total tokens, ↓red = more. 95% interval = trial-level bootstrap of the Σtokens÷Σsuccesses ratio.",
+        "• Per-attempt vs per-success can disagree: tools cost MORE total tokens per attempt (big prefills + "
+        "extra turns) yet, succeeding far more often, end up close — or cheaper — per success.",
+        "",
+        "→ The decomposition table factors the steered cost-of-pass EXACTLY: (tokens/trial ×) ÷ (more often "
+        "right ×) = (cost-per-success ×). It says WHY efficiency moved — e.g. the tool spends ~2.8× the tokens "
+        "but is ~2× more often right, nearly cancelling. Floored tasks (no-tools ≈ 0, †) can't be priced.",
+    ])
+    for grp, part in EFF_TASK_GROUPS:
+        h, r = _cost_of_pass_table(grp)
+        S_table_slide(
+            prs,
+            "Cost-of-pass — total tokens per success [bootstrap 95% CI]; +tool also ×vs no-tools "
+            f"(↑ cheaper / ↓ costlier)  ·  LOWER = better  ·  ≥4B, think=off  ·  {part}",
+            h, r,
+            notes="cost-of-pass = Σ(prompt+completion) over ALL token-bearing trials ÷ #successes, think=off "
+            "(≡ mean total tokens/trial ÷ success rate). Charges failed-attempt tokens to the success count — "
+            "differs from the completion-only 'generation cost' lens that follows. 95% CI = 2000-sample fixed-seed "
+            "trial-level bootstrap of the ratio. '— (0 succ)' = arm produced no success to price.")
+    for grp, part in EFF_TASK_GROUPS:
+        h2, r2 = _cop_decomp_table(grp)
+        S_table_slide(
+            prs,
+            "Cost-of-pass decomposed — (tokens/trial ×) ÷ (more often right ×) = (cost-per-success ×)  ·  "
+            f"steered vs no-tools  ·  ≥4B, think=off  ·  {part}",
+            h2, r2,
+            notes="Exact factorisation of the steered cost-of-pass multiple: (total-token cost ratio st÷nt) ÷ "
+            "(success-rate ratio st÷nt) = cost-per-success ratio. ↑green = the tool helps that factor (fewer "
+            "tokens, or more often right), ↓red = hurts. † floored: no-tools ≈ 0 ⇒ the ratios are undefined.")
+
+
+def _add_completion_lens_section(prs) -> None:
+    """SECONDARY completion-only lens: mean OUTPUT tokens per correct answer
+    (generation cost). Kept because it answers a narrower question — 'when the
+    model gets it right, how long is the answer?' — but it DROPS the input tax,
+    so it flatters tools; it must not stand in for consumption/efficiency."""
+    S_text_slide(prs, "Secondary lens — completion-only generation cost", [
+        "A narrower, output-only view: among only the trials the model got RIGHT, the mean COMPLETION (output) "
+        "tokens it generated. Read as 'how long is a correct answer?' — LOWER is better.",
+        "• This is the tool-flattering view: it counts only output and only successes, so it excludes the big "
+        "re-fed tool INPUT (the dominant cost of tools) and the tokens wasted on failures. On output alone "
+        "tools look cheaper (fewer, shorter turns of generated text).",
+        "• Keep it as a generation-length diagnostic, NOT as the headline — 'tokens consumption' is the total "
+        "lens shown earlier, and quality-adjusted efficiency is cost-of-pass.",
+        "",
+        "→ Caveat: on long multi-turn tasks a large share of successes still hit the 8,192 output cap "
+        "(≈30–70% truncated), so the mean is pinned toward the budget — a budget-bounded length, not free.",
+    ])
+    for grp, part in EFF_TASK_GROUPS:
+        h, r = _cost_table(grp)
+        S_table_slide(
+            prs,
+            "Completion-only generation cost — mean OUTPUT tokens per success [bootstrap 95% CI]  ·  "
+            f"secondary lens  ·  ≥4B, think=off  ·  {part}",
+            h, r,
+            notes="Mean completion (output) tokens over SUCCESSFUL trials only, think=off; 95% CI = 2000-sample "
+            "fixed-seed bootstrap. Output-only and successes-only — EXCLUDES the re-fed tool input and "
+            "failed-attempt tokens, so it flatters tools. Use the total-token cost and cost-of-pass slides for "
+            "consumption / efficiency.")
 
 
 def _add_phase2_rq(prs, rq: str, question: str, answer: str, bullets: list[str],
