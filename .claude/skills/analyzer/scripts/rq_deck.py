@@ -2532,33 +2532,32 @@ def fig_realizable_dumbbell(save_name: str) -> Path:
 
 # ---- compare tables ----
 
-def fig_visible_mode_compare(save_name: str) -> Path:
+def fig_visible_mode_compare(save_name: str, metric: str = "succ") -> Path:
     """Advisor ask (action list, Sunday review): SHOW think=on success and
-    truncation, with and without the tool, side by side. Pooled ≥9B per
-    (task, arm, mode), Wilson 95% whiskers. Top row: success. Bottom row:
-    cap-hit AND failed — the truncation that mattered (raw cap-hit is not
+    truncation, with and without the tool, side by side — PER MODEL (user
+    request 2026-06-11; the pooled variant hid per-model differences). Grid:
+    rows = ≥9B models, cols = tasks; 4 bars per panel (no-tools/steered ×
+    off/on), Wilson 95% whiskers. `metric`: 'succ' = success; 'capfail' =
+    cap-hit AND failed, the truncation that mattered (raw cap-hit is not
     cross-arm comparable; see `_censoring_table`). Arms shown: no-tools and
     +tool(steered) — the plain arm's think=on collapse is a tool-CALLING
     failure shown on its own slide, and would conflate the comparison here."""
+    assert metric in ("succ", "capfail")
     combos = [("nt-neut", "off"), ("nt-neut", "on"),
               ("tl-ster", "off"), ("tl-ster", "on")]
-    fig, axes = plt.subplots(2, len(ALL_TASKS), figsize=(12.6, 5.2),
-                             sharey="row")
-    for c, task in enumerate(ALL_TASKS):
-        cache = {}
-        for arm, th in combos:
-            rows = [r for r in _pooled_rows(MODELS_9B, arm, th)
-                    if r["task"] == task]
-            n = len(rows)
-            assert n, f"empty pooled cell {task}/{arm}/{th}"
-            succ = sum(1 for r in rows if r["success"])
-            capf = sum(1 for r in rows if r.get("truncated") and not r["success"])
-            cache[(arm, th)] = (n, succ, capf)
-        for r_i, key in enumerate(("succ", "capfail")):
+    fig, axes = plt.subplots(len(MODELS_9B), len(ALL_TASKS),
+                             figsize=(12.6, 6.0), sharey=True)
+    for r_i, model in enumerate(MODELS_9B):
+        for c, task in enumerate(ALL_TASKS):
             ax = axes[r_i][c]
             for x, (arm, th) in enumerate(combos):
-                n, succ, capf = cache[(arm, th)]
-                k = succ if key == "succ" else capf
+                rows = [r for r in bd.CELLS.get((model, th, arm), [])
+                        if r["task"] == task]
+                n = len(rows)
+                assert n, f"empty cell {model}/{task}/{arm}/{th}"
+                k = (sum(1 for r in rows if r["success"]) if metric == "succ"
+                     else sum(1 for r in rows
+                              if r.get("truncated") and not r["success"]))
                 rate = k / n * 100
                 lo, hi = wilson_ci(k, n)
                 color = ARM_COLOR[arm]
@@ -2568,10 +2567,10 @@ def fig_visible_mode_compare(save_name: str) -> Path:
                        edgecolor=color, linewidth=0.8)
                 ax.errorbar(x, rate, yerr=[[max(0.0, rate - lo * 100)],
                                            [max(0.0, hi * 100 - rate)]],
-                            fmt="none", ecolor=C_INK, elinewidth=0.9, capsize=2)
-                ax.text(x, min(rate + 3, 104), f"{rate:.0f}", ha="center",
-                        va="bottom", fontsize=7, color=C_INK)
-            ax.set_ylim(0, 112)
+                            fmt="none", ecolor=C_INK, elinewidth=0.8, capsize=1.5)
+                ax.text(x, min(rate + 3, 102), f"{rate:.0f}", ha="center",
+                        va="bottom", fontsize=6.5, color=C_INK)
+            ax.set_ylim(0, 114)
             ax.set_xticks([])
             ax.grid(axis="y")
             ax.set_axisbelow(True)
@@ -2579,8 +2578,7 @@ def fig_visible_mode_compare(save_name: str) -> Path:
             if r_i == 0:
                 ax.set_title(TASK_DISP[task], fontsize=9.5)
             if c == 0:
-                ax.set_ylabel("success (%)" if r_i == 0
-                              else "cap-hit & failed (%)")
+                ax.set_ylabel(MODEL_DISP[model], fontsize=8.5)
     import matplotlib.patches as mpatches
     handles = [
         mpatches.Patch(facecolor=ARM_COLOR["nt-neut"], label="no-tools · think=off"),
@@ -2591,10 +2589,11 @@ def fig_visible_mode_compare(save_name: str) -> Path:
                        edgecolor=ARM_COLOR["tl-ster"], label="+tool steered · think=on"),
     ]
     fig.legend(handles=handles, ncol=4, loc="lower center", frameon=False,
-               bbox_to_anchor=(0.5, -0.015))
-    fig.suptitle("think=off vs think=on, with and without the tool  ·  ≥9B pooled, Wilson 95%",
+               bbox_to_anchor=(0.5, -0.012))
+    lab = "success rate" if metric == "succ" else "cap-hit & FAILED rate (the truncation that mattered)"
+    fig.suptitle(f"think=off vs think=on, with and without the tool — {lab}  ·  per ≥9B model, Wilson 95%",
                  fontsize=11, fontweight="bold")
-    fig.tight_layout(rect=(0, 0.045, 1, 0.96))
+    fig.tight_layout(rect=(0, 0.04, 1, 0.965))
     return _save(fig, save_name)
 
 
@@ -3177,14 +3176,22 @@ def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
         "budget-insensitive statistics (the robust floor, min over modes) and the budget-robust "
         "Qwen3.6-35B control.")
     S_image_slide(
-        prs, "The modes, side by side — success and the truncation that mattered",
-        fig_visible_mode_compare("visible_mode_compare.png"),
-        caption="Per task, ≥9B pooled, Wilson 95%: no-tools (grey) vs +tool steered (orange); solid = "
-        "think=off, hatched = think=on. TOP: the steered tool arm barely moves across modes, while the "
-        "no-tools baseline collapses on the validation tasks (it reasons past the cap) and improves only "
-        "on solve. BOTTOM: cap-hit & failed — think=on no-tools loses 54–83% of ALL trials to the "
-        "8,192-token cap; the steered arm stays ≤20%. This is the budget confound in one picture: the "
-        "gap moves because the baseline drowns, not because the tool got better.")
+        prs, "The modes, side by side, per model — success",
+        fig_visible_mode_compare("visible_mode_succ.png", "succ"),
+        caption="Rows = ≥9B models, columns = tasks; no-tools (grey) vs +tool steered (orange), solid = "
+        "think=off, hatched = think=on, Wilson 95%. The steered tool arm barely moves across modes "
+        "(35B: invariant on all five tasks; Gemma's residual validate_plan tax is the one exception), "
+        "while the no-tools baseline collapses on the validation tasks under think=on — except 35B, the "
+        "budget-robust control — and improves only on solve.")
+    S_image_slide(
+        prs, "The modes, side by side, per model — the truncation that mattered",
+        fig_visible_mode_compare("visible_mode_capfail.png", "capfail"),
+        caption="Same grid, same cells: share of trials that hit the 8,192-token cap AND failed. Under "
+        "think=on the 9B/Gemma no-tools baselines lose 78–100% of validate_* trials and 81–95% of "
+        "simulate trials to the cap, while 35B's validate_* baseline stays ≤11% — it survives the "
+        "budget, its benefit barely moves across modes, and that proves the validate_* inflation is "
+        "decode budget, not extra tool skill. The steered arm stays low everywhere except Gemma "
+        "validate_plan (51%) — the same cell flagged as its residual budget tax.")
     _s_cross_bottom_line(prs)
     _s_cross_method(prs)
     _s_cross_scatter(prs)
