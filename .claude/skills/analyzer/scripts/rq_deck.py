@@ -2532,6 +2532,110 @@ def fig_realizable_dumbbell(save_name: str) -> Path:
 
 # ---- compare tables ----
 
+def fig_visible_mode_compare(save_name: str) -> Path:
+    """Advisor ask (action list, Sunday review): SHOW think=on success and
+    truncation, with and without the tool, side by side. Pooled ≥9B per
+    (task, arm, mode), Wilson 95% whiskers. Top row: success. Bottom row:
+    cap-hit AND failed — the truncation that mattered (raw cap-hit is not
+    cross-arm comparable; see `_censoring_table`). Arms shown: no-tools and
+    +tool(steered) — the plain arm's think=on collapse is a tool-CALLING
+    failure shown on its own slide, and would conflate the comparison here."""
+    combos = [("nt-neut", "off"), ("nt-neut", "on"),
+              ("tl-ster", "off"), ("tl-ster", "on")]
+    fig, axes = plt.subplots(2, len(ALL_TASKS), figsize=(12.6, 5.2),
+                             sharey="row")
+    for c, task in enumerate(ALL_TASKS):
+        cache = {}
+        for arm, th in combos:
+            rows = [r for r in _pooled_rows(MODELS_9B, arm, th)
+                    if r["task"] == task]
+            n = len(rows)
+            assert n, f"empty pooled cell {task}/{arm}/{th}"
+            succ = sum(1 for r in rows if r["success"])
+            capf = sum(1 for r in rows if r.get("truncated") and not r["success"])
+            cache[(arm, th)] = (n, succ, capf)
+        for r_i, key in enumerate(("succ", "capfail")):
+            ax = axes[r_i][c]
+            for x, (arm, th) in enumerate(combos):
+                n, succ, capf = cache[(arm, th)]
+                k = succ if key == "succ" else capf
+                rate = k / n * 100
+                lo, hi = wilson_ci(k, n)
+                color = ARM_COLOR[arm]
+                ax.bar(x, rate, width=0.72, color=color,
+                       alpha=1.0 if th == "off" else 0.45,
+                       hatch="" if th == "off" else "///",
+                       edgecolor=color, linewidth=0.8)
+                ax.errorbar(x, rate, yerr=[[max(0.0, rate - lo * 100)],
+                                           [max(0.0, hi * 100 - rate)]],
+                            fmt="none", ecolor=C_INK, elinewidth=0.9, capsize=2)
+                ax.text(x, min(rate + 3, 104), f"{rate:.0f}", ha="center",
+                        va="bottom", fontsize=7, color=C_INK)
+            ax.set_ylim(0, 112)
+            ax.set_xticks([])
+            ax.grid(axis="y")
+            ax.set_axisbelow(True)
+            _despine(ax)
+            if r_i == 0:
+                ax.set_title(TASK_DISP[task], fontsize=9.5)
+            if c == 0:
+                ax.set_ylabel("success (%)" if r_i == 0
+                              else "cap-hit & failed (%)")
+    import matplotlib.patches as mpatches
+    handles = [
+        mpatches.Patch(facecolor=ARM_COLOR["nt-neut"], label="no-tools · think=off"),
+        mpatches.Patch(facecolor=ARM_COLOR["nt-neut"], alpha=0.45, hatch="///",
+                       edgecolor=ARM_COLOR["nt-neut"], label="no-tools · think=on"),
+        mpatches.Patch(facecolor=ARM_COLOR["tl-ster"], label="+tool steered · think=off"),
+        mpatches.Patch(facecolor=ARM_COLOR["tl-ster"], alpha=0.45, hatch="///",
+                       edgecolor=ARM_COLOR["tl-ster"], label="+tool steered · think=on"),
+    ]
+    fig.legend(handles=handles, ncol=4, loc="lower center", frameon=False,
+               bbox_to_anchor=(0.5, -0.015))
+    fig.suptitle("think=off vs think=on, with and without the tool  ·  ≥9B pooled, Wilson 95%",
+                 fontsize=11, fontweight="bold")
+    fig.tight_layout(rect=(0, 0.045, 1, 0.96))
+    return _save(fig, save_name)
+
+
+def _s_size_inversion(prs) -> None:
+    """Advisor item: why does Qwen3.5-9B beat Qwen3.6-35B? Answer: only in the
+    PLAIN tool arm, and it is tool-call PROPENSITY, not capability — the
+    dominant failure is tool_not_selected, success tracks tool-use ~1:1, one
+    steering sentence closes the gap, and the propensity FLIPS with think
+    mode. Computed live from the corpus."""
+    pair = [("Qwen3_5_9B", "Qwen3.5-9B"), ("qwen3_6_35b", "Qwen3.6-35B")]
+    headers = ["task", "model", "mode", "tool-use % (plain)",
+               "success % (plain)", "success % (steered)"]
+    rows = []
+    for task in ("solve", "validate_plan"):
+        first = True
+        for m, disp in pair:
+            for th in ("off", "on"):
+                ts = cell_toolsel(m, task, "tl-neut", th)
+                pl = cell_success(m, task, "tl-neut", th)
+                st = cell_success(m, task, "tl-ster", th)
+                rows.append([TASK_DISP[task] if first else "",
+                             disp, f"think={th}",
+                             f"{ts.rate*100:.0f}", f"{pl.rate*100:.0f}",
+                             f"{st.rate*100:.0f}"])
+                first = False
+    S_table_slide(
+        prs, "Why does 9B beat 35B? — tool-call propensity, not capability",
+        headers, rows,
+        caption="The inversion exists only in the PLAIN arm (think=off solve: 9B 99% vs 35B 63%) and "
+        "success tracks tool-use almost 1:1 — the dominant failure is tool_not_selected, and "
+        "accuracy-when-calling is ≥93% for BOTH models. One steering sentence closes it (35B solve "
+        "63→92%). The propensity FLIPS with mode (think=on: 35B calls validate_plan 99.9%, 9B drops to "
+        "69%) — model- and mode-idiosyncratic behaviour, not a size law; unaided baselines favour 35B on "
+        "every validation task. No prior work pins this size inversion; closest are the tool "
+        "over-reliance/over-refusal duality reports.",
+        notes="9B/35B per mode over the two inversion tasks. 35B no-tools baselines beat 9B everywhere "
+        "(validate_domain 68% vs 26%, validate_plan 91% vs 80%, think=off) — the inversion is strictly a "
+        "spontaneous-tool-adoption phenomenon. External analogs: steering-as-repair (Databricks system "
+        "prompt +58.7), reasoning suppressing calls (ThinkBrake); none size-specific.")
+
+
 def _mode_summary_table() -> tuple[list[str], list[list[str]]]:
     """One row per task: the cross-mode read at a glance (≥9B ranges)."""
     headers = ["task", "realizable off (pp)", "realizable on (pp)",
@@ -2944,31 +3048,20 @@ def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
         notes="Availability = +tool(plain) vs no-tools on the headline task of each RQ; RQ0.5/0.6 from "
         "the phase-2 difficulty bins (no-tools vs +tool steered).")
 
-    # --- onboarding (verbatim from the off deck) ---
-    S_text_slide(prs, "What we're testing", [
-        "PDDL is the standard formal language AI planners use to describe a world, the actions "
-        "allowed in it, a goal to reach, and step-by-step plans. We give a language model five "
-        "PDDL jobs:",
-        "• solve — find a plan (a sequence of actions) that reaches the goal",
-        "• validate_domain — check that the file defining the world and its actions is correct PDDL",
-        "• validate_problem — check that the file listing the objects, the start state and the goal is correct PDDL",
-        "• validate_plan — decide whether a given plan actually works (a yes/no verdict)",
-        "• simulate — track how the world changes as a plan is run, one action at a time",
+    # --- onboarding (merged: five jobs + three arms on one slide — concise) ---
+    S_text_slide(prs, "What we're testing — five PDDL jobs, three setups", [
+        "PDDL is the standard formal language AI planners use to describe a world, its actions, a goal, "
+        "and step-by-step plans. We give a language model five PDDL jobs:",
+        "• solve — find a plan reaching the goal  ·  simulate — track world state as a plan runs, action by action",
+        "• validate_domain / validate_problem — check the PDDL world/problem files are correct  ·  "
+        "validate_plan — yes/no: does a given plan actually work?",
         "",
-        "The question: do models do these jobs better when we also let them call a real "
-        "planner/validator program — a “tool” — instead of answering only from their own knowledge?",
-    ])
-    S_text_slide(prs, "The three setups we compare", [
-        "Every job is run in three setups (we call them “arms”), and we never mix their results:",
-        "• no-tools — the model answers on its own, with no external help.  This is the baseline.",
-        "• tool available — exactly the same request, but now a real planner/validator is there for the model to call if it chooses to.",
-        "• tool + nudge — the tool is available AND we append one sentence explicitly telling the model to use it (we call this “steered”).",
-        "",
-        "Comparing neighbouring arms answers two separate questions:",
-        "      – Does simply having the tool help?  (no-tools  vs  tool available — the wording is otherwise identical)",
-        "      – Or did the model just need to be told to use it?  (tool available  vs  tool + nudge)",
-        "",
-        "In the tables these arms appear as the short codes  nt-neut · tl-neut · tl-ster  (same order).",
+        "Every job runs in three setups (“arms”), never mixed:",
+        "• no-tools — the model answers alone (the baseline)  ·  tool available — a real planner/validator "
+        "it MAY call  ·  tool + nudge — plus one sentence telling it to use the tool (“steered”).",
+        "• no-tools vs tool-available asks: does merely HAVING the tool help? tool-available vs steered "
+        "asks: did the model just need to be TOLD?",
+        "• Short codes in tables: nt-neut · tl-neut · tl-ster (same order).",
     ])
     S_text_slide(prs, "How to read the results", [
         "• success rate — how often the model's answer matched the known-correct answer, 0–100%. It is the "
@@ -3012,8 +3105,11 @@ def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
     for rq, tasks in RQ_TASKS.items():
         deferred_tables += _add_phase1_rq(
             prs, rq, tasks, summary, gate_lines_off,
-            defer_tables=(rq == "RQ0.1"),
+            defer_tables=(rq in ("RQ0.1", "RQ0.4")),
             mech_rqs={"RQ0.2", "RQ0.3"})
+
+    # --- the size inversion (advisor item: why does 9B beat 35B?) ---
+    _s_size_inversion(prs)
 
     # --- small-model caveat (with the trial-level mechanism VISIBLE) ---
     sm_h, sm_r = _small_model_table()
@@ -3021,9 +3117,12 @@ def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
         prs, "Small-model caveat — Qwen3.5-0.8B mishandles the tool",
         sm_h, sm_r,
         caption="The only model where tool AVAILABILITY reverses sign (validate_problem −25pp*, "
-        "validate_plan −27pp*). " + _small_model_mech_note(),
+        "validate_plan −27pp*). " + _small_model_mech_note()
+        + " Externally consistent: MCPToolBench++ reports the same small-model shape — plausible tool "
+        "calls (AST 0.6–0.9) that fail to execute (Pass@1 0.2–0.5).",
         notes="Every headline conclusion is ≥9B; the YES verdicts hold from 4B up. Excluded from the "
-        "main charts to keep them readable — this slide is its complete record.")
+        "main charts to keep them readable — this slide is its complete record. External calibration "
+        "from the 2026-05-29 baseline-comparison note (development/baseline_comparison_tool_use_benchmarks.md).")
 
     # --- token cost + efficiency (think=off; censoring table carries the
     #     cap-hit & failed column) ---
@@ -3077,6 +3176,15 @@ def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
         "inflated by baseline truncation — the section therefore reads think=on only through "
         "budget-insensitive statistics (the robust floor, min over modes) and the budget-robust "
         "Qwen3.6-35B control.")
+    S_image_slide(
+        prs, "The modes, side by side — success and the truncation that mattered",
+        fig_visible_mode_compare("visible_mode_compare.png"),
+        caption="Per task, ≥9B pooled, Wilson 95%: no-tools (grey) vs +tool steered (orange); solid = "
+        "think=off, hatched = think=on. TOP: the steered tool arm barely moves across modes, while the "
+        "no-tools baseline collapses on the validation tasks (it reasons past the cap) and improves only "
+        "on solve. BOTTOM: cap-hit & failed — think=on no-tools loses 54–83% of ALL trials to the "
+        "8,192-token cap; the steered arm stays ≤20%. This is the budget confound in one picture: the "
+        "gap moves because the baseline drowns, not because the tool got better.")
     _s_cross_bottom_line(prs)
     _s_cross_method(prs)
     _s_cross_scatter(prs)
