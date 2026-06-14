@@ -6,6 +6,137 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-10 — Cross-mode aggregation deck (`rq_deck.py --think compare`)
+
+**Change.** `rq_deck.py` gains a third mode, `--think compare`, that aggregates the locked think=off deck and the think=on companion into a standalone 12-slide cross-mode deck at `checkpoints/rq-sweep5v2-compare/pddl_copilot_rq_sweep5v2_compare.pptx` (+ tracked PDF, plots/). The off and on decks are content-untouched (rebuilt PDFs differ from the committed ones only in the embedded creation timestamp; `pdftotext` output is identical — verified). Render-checked page-by-page via LibreOffice.
+
+**Why.** The think=on companion's availability gaps are budget-confounded (the no-tools baseline truncates at the shared 8,192-token decode cap — 78–100% on 9B/Gemma validate_* — and collapses), so the two decks cannot be cited together without a principled aggregation that says WHERE the tool's value is mode-invariant vs WHERE it is a decode-budget artifact. Raw trials are NEVER pooled across arms or think modes (corpus identity is load-bearing): every statistic comes from exactly one (model, mode, arm) corpus, and aggregation happens only at the per-cell-statistic level (differences, Δ-of-differences, minima).
+
+**Design.**
+- Spine = REALIZABLE benefit = success(+tool steered) − success(no-tools), per (model, task, mode). Steered, not plain availability: under think=on the plain arm largely stops CALLING the tool (solve tool_selected Gemma 100→23%, 9B 100→59%; validate_plan Gemma 21→1%), so a cross-mode availability read conflates the tool's value, the baseline's budget collapse, and a mode-dependent tool-calling failure steering is known to repair. Justified on its own slide; availability/steering gaps stay in the per-mode decks.
+- CIs: Newcombe MOVER on each gap (Wilson-consistent difference of independent proportions, `_mover_gap`); MOVER-D on Δ(on−off) (`_mover_delta` — valid because the off/on corpora share no trials, so the gaps are independent). "*" = 95% CI excludes 0. The Δ column/labels are deliberately NOT tinted good/bad — gap growth on validate_* is the artifact, not merit (`_delta_tint` Δ-prefix opt-out).
+- Robust floor = min over modes of the realizable benefit = the budget-insensitive lower bound. Per-task classes over ≥9B: `robust` (every floor ≥ +30pp), `sole-source` (baseline <2% in both modes), `budget-dep` (some floor < +30pp).
+
+**Slides.** title → three-regime bottom line → method ("and what it never does") → off-vs-on success scatter (`fig_mode_scatter`: steered arm hugs the y=x diagonal, mean shift 9pp; baseline swings 28pp — the mode×arm interaction is a baseline effect) → realizable-benefit dumbbell (`fig_realizable_dumbbell`: off open-blue vs on filled-orange, MOVER whiskers, class-grouped, +30pp class line) → cross-mode summary table (ranges + class chips) → per-model MOVER/MOVER-D detail ×2 → why-steered-not-plain → cost-of-pass regime-flip table (task regime at off → model regime at on) → truncation-by-arm×mode confound table (35B = budget-robust control) → what-the-paper-can-claim.
+
+**Gate.** `--think compare` (and `--check`) replays BOTH per-mode gates before any compare code: think=off locked verdicts + tracked phase-2 oracle, think=on computed verdicts, then asserts the verdict pattern actually reproduces across modes (YES/YES/MIXED/YES, rq05 YES, rq06 NO) and runs `_compare_asserts`: floor/Δ identities exact, every MOVER CI brackets its point estimate, all 30 Wilson-disjoint (nt, steered) gaps MOVER-significant, disjoint off/on gap CIs imply MOVER-D significance, and the data-driven classes the story leans on (solve=robust, simulate=sole-source) pinned. `--think off --check` and `--think on --check` still pass unchanged.
+
+**Findings (≥9B).** Verdict pattern is mode-invariant; magnitudes are not. solve = robust (floor +46…+71pp; the gap shrinks under on, Δ −20…−43pp* all three models, only because reasoning rescues the baseline — 9B 11→27%, 35B 9→38%); simulate = sole-source (+83…+97pp, baseline 0% both modes); validate_domain/problem/plan = budget-dep (floors +21…+74 / +20…+25 / +5…+16pp; the think=on inflation up to Δ+67pp* is baseline truncation, confirmed by the budget-robust 35B showing the same small benefit in both modes — validate_problem Δ−2pp n.s.). Cost-of-pass flips task-determined (off: validate_* 3.2–4.9× costlier per success on ≥9B, solve/simulate cheaper or only producer) → model-determined (on: 9B validate_domain 200k→11k, Gemma 0-succ baseline; 35B alone still pays 1.8–3.3×). Residual budget tax on the steered arm itself: Gemma validate_plan 93→44%, solve 99→74% (35B steered fully mode-invariant).
+
+**Files touched.** `.claude/skills/analyzer/scripts/rq_deck.py` (+`import math`; `FOOTER_THINK` footer override — off/on footers unchanged; `_delta_tint` class-chip keys + Δ opt-out; compare section: `_mover_gap`/`_mover_delta`/`_realizable_gap`/`_avail_gap`/`_realizable_cross`/`_trunc_pct`/`_baseline_floored_both`/`_mode_class`; `fig_mode_scatter`/`fig_realizable_dumbbell`; `_mode_summary_table`/`_realizable_detail_table`/`_cop_cross_table`/`_trunc_cross_table`; `_compare_asserts`/`build_compare_pptx`/`_main_compare`; `--think compare` choice). `checkpoints/rq-sweep5v2-compare/**` (PDF tracked; pptx/plots gitignored).
+
+---
+
+## 2026-06-10 — `--think on` companion deck (`rq_deck.py`)
+
+**Change.** `rq_deck.py` now takes `--think {off,on}`. `--think off` (default) is byte-stable with the restructured deck below — all locked asserts + the phase-2 oracle still run. `--think on` builds a 48-slide companion deck over the think=on cells at `checkpoints/rq-sweep5v2-think-on/pddl_copilot_rq_sweep5v2_think_on.pptx` (+ PDF, plots/, phase2_summary.json). Render-checked via LibreOffice.
+
+**Mechanics.** `THINK` is now resolved at call time (all `think=THINK` default args → `None` sentinel — default-arg binding would have frozen "off" at import). Per-mode: output paths; `run_gate(think)` reads the `_{think}_` cell dirs (gate models for on = Gemma + 9B; the `acc_decided>0.65` floor asserted only on off; relabel-inert asserted on both); phase-2 recomputed fresh for on (tracked oracle is off-only); phase-1 verdicts via `_phase1_verdict` (locked+asserted on off, computed by the same signed rule on on); RQ0.5/0.6 verdicts via a `_phase2_verdict` widening rule (last−first ≥10pp, no initial dip) that reproduces and asserts the locked off verdicts; mechanism slides are now data-driven (skip iff all ≥9B plain tool_selected ≥97% — off RQ0.1 skips, on RQ0.1 returns because Gemma under-calls at 56%); `fig_cop_dumbbell(regimes=False)` drops the per-task banners on on (regime is per-model there); the cliff figure opens the on deck ("read this first") instead of closing the caveats; footer/titles/captions carry `think={THINK}`.
+
+**think=on findings the deck carries (computed, not locked):**
+- Verdict pattern REPRODUCES: YES / YES / MIXED / YES, RQ0.5 YES, RQ0.6 NO — but availability gaps are inflated by a truncation-collapsed baseline (55–83% of ≥9B no-tools trials hit the 8,192 cap; validate_* baselines collapse, e.g. validate_plan 9B 80→21%, Gemma 88→10% off→on), so the deck frames every gap as budget-confounded.
+- solve is the exception: reasoning HELPS the unaided baseline (9B 11→27%, 35B 9→38%).
+- Steering matters more: solve steering favorable-significant 3/3 (off: 1/3); Gemma validate_plan plain collapses to 0.6% success / ≈1% tool_selected (gate: answers 1% of trials, 100% accurate when it does), steered recovers to 44% — still below its own think=off no-tools 88%.
+- RQ0.5's headroom case moves to solve: baseline fades 41→17→9% with plan length while the tool holds (89→75→74), gap +48→+57→+65pp.
+- Cost-of-pass regime becomes per-MODEL: where reasoning drowns the baseline the tool is far cheaper per success (validate_domain 9B 200k→11k, Gemma ∞→12k) or the only producer; only 35B (baseline survives) still pays a tool premium on validate_*. Tools cost only ~2× per trial under on (baseline burns ~5–6k output tokens reasoning). Token caveat carried on-slide: under think=on `completion` = reasoning + answer with no logged split.
+- Contamination footnote gains the think=on tokenisation-artifact caveat (sweep-6).
+
+Also: `_cost_mult_str` renders sub-0.1 multiples with two decimals ("0.01× cheaper", was "0.0×").
+
+---
+
+## 2026-06-10 — RQ deck restructure: hook + scorecard, figure-led token section, backup tables (`rq_deck.py`)
+
+**Change.** Full presentation restructure of the single-tool-use RQ deck following a slide-by-slide review (50 → 47 slides: ~39 main + 8 backup). Metric layer, gates, locked verdicts, and the phase-2 oracle are untouched — `--check` passes and `phase2_expected_sweep5v2.json` still reproduces exactly. Deck at `checkpoints/rq-sweep5v2/pddl_copilot_rq_sweep5v2.pptx` (+ PDF), render-checked via LibreOffice.
+
+**Cut / demoted.**
+- The six standalone "Question" slides — question text folded into each Answer slide's lead line.
+- "How to read" + "Methods" merged into one slide.
+- The mechanism slide for RQ0.1 (validate_domain/problem): tool-use is already 98–100% in both tool arms, so "steering raises tool-calling" had nothing to explain there (and steering actually dips validate_problem on 9B). Kept for RQ0.2/0.3/0.4 where +tool(plain) under-calls.
+- Qwen3.5-0.8B pulled out of every main chart/table (`CHART_MODELS` = ≥4B); it gets one "small-model caveat" slide (`_small_model_table`) carrying its full 5-task record (availability reverses: validate_problem −25pp*, validate_plan −27pp*).
+- RQ0.6 (null result) compressed 4 slides → 1 (figure + NO badge); its bin table moved to backup.
+- Completion-only generation-cost lens (3 slides) demoted to backup, explicitly labelled tool-flattering.
+- Gate slide rewritten without internal QA artifacts ("relabel inert" removed from display; the asserts still run) — now reads "produces a verdict on only 21% of trials; 99% accurate when it does".
+- The ↑/↓ arrow glyphs on cost multiples replaced by plain words ("4.3× costlier" / "0.4× cheaper" / "more right"), with `_delta_tint` keying on the words — the arrow direction used to fight the colour semantics.
+
+**Added.**
+- Hook slide (slide 2, `S_hook_slide`): simulate 0% → 65–92% → 83–97% in oversized stat blocks, before any methodology.
+- Executive scorecard (slide 3, `_scorecard_rows`): all six RQ verdicts + computed signed-CI evidence lines, verdict chips tinted (YES/NO/MIXED).
+- "Why the verdicts count direction" slide — the signed-significance rule with the Gemma −67pp example, promoted from a methods bullet.
+- Token section rebuilt figures-first (`_add_token_section`): `fig_token_quadrant` (tokens/trial vs success, arrows no-tools→steered, per task — cost and quality in one view), `fig_token_profile` (stacked input/output bars: the ~0.3:1 → ~5:1 inversion shown rather than asserted), `fig_cop_dumbbell` (cost-of-pass grouped by baseline regime: strong baseline = tool 3–11× costlier per success; floored = ~3× cheaper or sole producer), the exact decomposition as ONE merged table (simulate's undefined rows dropped), and a NEW censoring/latency-proxy table (`_censoring_table`: truncated% + mean turns + token means per task × arm, ≥9B pooled) — the 8,192-cap caveat now has on-deck evidence, and `turns × output tokens` is surfaced as the only defensible latency proxy.
+- Backup section (`_add_backup_section`): full token-cost / cost-of-pass / completion-only tables + RQ0.6 bins behind a divider.
+
+---
+
+## 2026-06-09 — Token-efficiency rewrite: total-token cost + cost-of-pass (`rq_deck.py`)
+
+**Change.** Replaced the per-token "tool intelligence" efficiency view (success ÷ action/completion tokens) with the two consumption-honest metrics the user asked for, and demoted the old output-only view to a labelled secondary lens. **Supersedes the two entries below** (2026-06-09 "extended to ≥4B" and 2026-06-08 "Per-token tool intelligence"): the `cell_efficiency`/`Eff` index table (`_add_efficiency_section`), the `more-often-right × fewer-tokens` decomposition (`_decomp_*`), `_add_efficiency_followups`, and `_fmt_idx`/`_eff_cell`/`_tool_cell`/`_efficiency_table` are removed. `--check` (gates + phase-2 oracle) unchanged; deck 36→50 slides.
+
+**Why.** "Tokens consumption" means TOTAL tokens (prompt+completion); the old index was completion-only, which on the tool arms drops ~80% of the bill — tool cells are INPUT-dominated (~5:1 in:out; re-fed schemas + tool outputs across ~2 turns), so an output-only view paints tools as cheap when on total tokens they cost ~3–15× more per trial. The metric choice swung the tools verdict **0.29×→2.84×** on identical Qwen3.5-9B data; reporting only the most tool-flattering corner was misleading.
+
+**Added (`.claude/skills/analyzer/scripts/rq_deck.py`).**
+- `cell_cost_of_pass(model, task, arm, denom="total")` → `CostOfPass` — cost-of-pass = Σtokens ÷ #successes over token-bearing trials (≡ mean tokens/trial ÷ success rate); charges FAILED-attempt tokens to the success count (the true "what does one correct answer cost end-to-end?"). `_bootstrap_ci_ratio` = trial-level paired bootstrap 95% CI on the ratio. Distinct from the kept `cell_cost_per_success` (mean completion over successes only).
+- `_add_token_cost_section` — PRIMARY: mean TOTAL tokens/trial as `total (input+output)`, +tool also `×vs no-tools` on total (`_cost_mult_str`: ↑green cheaper / ↓red costlier — cost tints flip vs the old index).
+- `_add_token_efficiency_section` — PRIMARY: cost-of-pass table [boot CI] + an EXACT decomposition `(tokens/trial ×) ÷ (more often right ×) = (cost-per-success ×)` (identity verified to machine precision).
+- `_add_completion_lens_section` — SECONDARY: the kept completion cost-per-success table, relabelled output-only/tool-flattering.
+- Each table SPLIT across two slides (3 tasks + 2) via `EFF_TASK_GROUPS`: 5 tasks × 4 models = 21 rows overflow one slide (LibreOffice floors row height ~0.29"); the split keeps every row above the footer at the normal font. `S_table_slide` is unchanged.
+
+**Findings (think=off, ≥4B) — task-dependent, which the old output-only index hid.**
+- **solve / simulate (no-tools floored):** tools cost ~4× more tokens/trial but are ~9–13× more often right → cost-of-pass **0.3–0.4× (tools ~3× CHEAPER per success).**
+- **validate_problem / validate_plan (no-tools has cheap headroom):** tools cost 5–15× more tokens but only ~1.1–1.4× more often right → cost-of-pass **4–11× (tools much COSTLIER per success).**
+- Re-expresses the prior "4B per-token LOSS" finding in surviving units: Qwen3.5-4B `validate_problem` cost-of-pass 2.2k→~24k (**~10×↓**), `validate_domain` **2.2×↓** even while ~5× more often right — the token cost (5–15×) swamps the accuracy gain.
+
+**Pending (the other half of the user ask).** Time-to-response is NOT in this rewrite: `duration_s` is batched-server wall-clock (confounded) and the `tokens.*_duration_ns` fields are synthetic Ollama-compat shims. Latency to be reported via the `turns` (round-trip) + output-token proxy, with a concurrency=1 micro-benchmark for a real TTFT/TPOT number. See memory `project_tool_efficiency_metrics`.
+
+---
+
+## 2026-06-09 — Efficiency section extended to ≥4B (`rq_deck.py`)
+
+**Change.** Added Qwen3.5-4B to the three token-efficiency tables (per-token index, cost-per-success, decomposition) via a new `EFF_MODELS = ["Qwen3_5_4B"] + MODELS_9B`. Kept **separate from `MODELS_9B`** on purpose: `MODELS_9B` drives the locked RQ verdicts (`claim_counts`) and the phase-2 oracle, which must not move — `--check` confirms both unchanged. Supersedes the "≥9B" labelling of the efficiency tables in the 2026-06-08 entry below (those slides now read "≥4B"; the rest of the deck's headline stays ≥9B). 20 rows/table now (was 15); render-checked — no overflow. Floored set unchanged (`simulate` only; 4B no-tools solve = 7.7%, not floored). 4B numbers match an independent from-disk recompute exactly.
+
+**New finding (the point of adding 4B).** The tool is a per-token **LOSS** for the small model on the validation tasks it already answers cheaply: Qwen3.5-4B `validate_problem` no-tools index 4.96 (56% correct in ~108 tok) → steered 0.25 (**0.2×↓**); `validate_domain` 1.50 → 1.07 (**0.7×↓**). The decomposition shows why — 4B is *more often right* with the tool (green) but the token cost explodes (fewer-tokens factor 0.0–0.1×↓: a ~100-tok answer becomes a ~2700-tok trajectory). So the per-token value of the tool is strongly model-size-dependent and can invert below 9B.
+
+---
+
+## 2026-06-08 — Per-token "tool intelligence" efficiency view in `rq_deck.py`
+
+**Motivation.** User ask: surface the planning tool's *per-token* efficiency — task success rate ÷ action (output) tokens — as a cross-cutting lens on the RQ0.1–0.4 tasks. **H3-ADJACENT**, not H3: the documented H3 (token-efficiency note earlier in this changelog) is *cost-per-success* (tokens among successes ÷ successes); this is the inverse, *success-per-cost*. Read-only over `results/sweep5v2-live/`; no change to scoring, ground-truth, prompts, the gate, the locked verdicts, or the phase-2 oracle.
+
+**Added (`.claude/skills/analyzer/scripts/rq_deck.py`).**
+- `cell_efficiency(model, task, arm, think="off")` → `Eff` — successes per 1,000 action tokens = `(s/tok)*1000` over the token-bearing subset (trials with an empty `tokens` dict excluded, mirroring `bd.token_stats`); because s, n, tok share one subset this equals `succ_rate/mean_tok*1000` exactly (the n cancels). ACTION tokens = `tokens.completion`, summed across the model's turns (tool-loop ≤10, no-tools 1).
+- `_add_efficiency_section()` — framing slide (definition + 4 caveats) + a ≥9B × 5-task × 3-arm table; each cell = `index (succ%·mean-tok)` so the two components stay visible. **Each +tool arm also carries `×vs no-tools`** — the multiple of the no-tools baseline's per-token intelligence, rendered green ↑ (tool raised it) / red ↓ (lowered it) / ≈ (no change, ±5%) via the existing Δ-tint helper (`_mult_str` + `_delta_tint` extended for ↑/↓) — so the increase/decrease is an at-a-glance read instead of a mental division. Inserted after the RQ0.1–0.4 blocks, before the think=on caveat. Floored tasks (no-tools succ ≈ 0 across ≥9B, e.g. `simulate`) marked † and their `×` hidden (dividing by a ≈0 baseline is meaningless).
+- `_add_efficiency_followups()` — two complementary lenses (explainer slide + 2 tables), each with a plain-language definition:
+  - **Cost per correct answer** (`cell_cost_per_success` + `_bootstrap_ci_mean`) — mean `completion` tokens over SUCCESSFUL trials only = "what does one right answer cost?" (LOWER better), with a deterministic 2000-sample bootstrap 95% CI. This is the documented **H3** (cost-per-success); restricting to successes removes the failed-attempt tokens, so it is NOT the index reciprocal and (unlike the bare ratio) carries a real CI. `— (0 succ)` where the arm produced no success to price. Surfaces a finding the index hid: a correct `solve` costs *more* tokens with tools (the tool buys correctness, not brevity).
+  - **Per-token gain decomposed** (`_decomp_cells`) — the steered `×vs-no-tools` factored EXACTLY into `(success-rate ratio) × (token-savings ratio)`, reusing `_mult_str`/↑green-↓red. Says WHY efficiency moved: on `solve` ~all "more often right"; on `validate_problem` more often right but MORE tokens (red ↓) → net per-token loss.
+
+**Honesty guards.**
+- **think=off ONLY.** Under think=off the model emits no separate reasoning trace, so output = action. Under think=on `completion` = thinking + action, so it is NOT pure action tokens — a think=on read needs a thinking/action split and is deferred (stated on the slide for the planned think=on follow-up).
+- **Descriptive, not inferential.** The ratio carries no Wilson CI and no verdict badge — a bare ratio has no honest interval; the success% component carries the inferential weight. Slide documents the non-monotonicity: degenerate at floored success, rewards failing cheaply, truncation maxes the denominator (rate varies by arm), tools sum tokens across turns (total task token-cost, not per-turn).
+
+**Validation.** `--check` still exits 0 (gate + phase-2 oracle untouched). Full render → **44 slides** (was 36 — supersedes the count in the entry below). `s/tok ≡ succ/mean_tok*1000` identity holds for all ≥9B cells (0 violations); the decomposition identity `more-often-right × fewer-tokens ≡ per-token-gain` holds for all ≥9B cells (0 violations); independent from-disk recompute over `trials.jsonl` matches `cell_efficiency` and `cell_cost_per_success` exactly (e.g. qwen3.6-35b: validate_domain nt-neut idx 0.511 → tl-ster 1.333; cost/success nt-neut 1191 → tl-ster 748 tok). LibreOffice render-check of all five new slides: clean, no overflow.
+
+**Compatibility.** Pure additive render. Existing `results/` and `phase2_expected_sweep5v2.json` untouched; no new baselines. The success-per-cost index is H3-*adjacent* (the inverse direction); the new **cost-per-success table IS H3 proper** and gives it the dedicated isolation table the "H3 has no dedicated isolation figure" note earlier in this changelog flagged as missing.
+
+Verified: across all 45 ≥9B think=off cells the token-bearing subset n equals the all-trials n, so the efficiency table's success% matches the RQ0.1–0.4 evidence slides exactly (no infra-failure divergence).
+
+---
+
+## 2026-06-08 — Paper-ready single-tool-use RQ deck (`rq_deck.py` + `gen_meta.py`)
+
+**Motivation.** Turn the locked single-tool-use RQ design into ONE tracked, reproducible script that regenerates every RQ figure and emits a Question→Answer→Evidence PPTX answering RQ0.1–0.6 over `results/sweep5v2-live/` (sweep-6 = robustness footnote only). Read-only over `results/`; no change to `run_experiment.py`, `pddl_eval/`, plugins, or sbatch.
+
+**Added.**
+- `.claude/skills/analyzer/scripts/rq_deck.py` — reuses the `build_deck.py` metric layer (`load_all` / `task_success_rate` / `tool_selected_rate` / `confusion` / `metrics_from_cm`) + its python-pptx helpers, plus `wilson_ci`. Three arms, never pooled: `nt-neut` (no-tools) / `tl-neut` (+tool plain) / `tl-ster` (+tool steered); two gaps per RQ0.1–0.4 (availability = tl-neut−nt-neut at byte-identical wording; steering = tl-ster−tl-neut). Headline = think=off, ≥9B. Outputs to `checkpoints/rq-sweep5v2/` (gitignored): 12 PNGs, `phase2_summary.json`, `pddl_copilot_rq_sweep5v2.pptx` (36 slides). RQ map: 0.1=validate_domain+validate_problem, 0.2=solve, 0.3=validate_plan, 0.4=simulate, 0.5=difficulty×plan-length, 0.6=difficulty×object-count.
+- `.claude/skills/analyzer/scripts/gen_meta.py` — regenerates the per-instance difficulty oracle from `domains/` (track, obj_count, plan_len=non-empty plan-file lines, ref_len=min over v1–v5; obj_count=None for malformed `n0*` negatives missing `(:objects)`/`(:init)`). `--check` hard-asserts byte-equality. Reproduces the prior scratch `meta.json` exactly (200 instances, 1000 plan_len cells).
+- `.claude/skills/analyzer/data/meta_sweep5v2.json` — meta **relocated** here from the gitignored `checkpoints/rq-sweep5v2/` (user decision) so the deck's phase-2 input is tracked; consumed by `rq_deck.py`, regenerable by `gen_meta.py`.
+
+**Three correctness gates baked into the script (assert-or-die).**
+- *Relabel inert on this corpus:* the FastMCP plan-validation relabel (ISS-005) is applied defensively on load but verified to NOT move the confusion matrix on `sweep5v2-live` (corpus generated after the 2026-05-25 runtime `check_success` fix). validate_plan +tool(plain)'s low raw success (~21%) is a TOOL-CALLING artifact (huge `no_ans`), not a verdict collapse — decided-accuracy ≈99% (Gemma) / 68% (0.8B), fp≈0.
+- *Signed CI count:* answer slides count `k/N` models whose Wilson 95% CIs are disjoint AND the gap is favorable, with significant-against reported separately — this is why RQ0.3 reads MIXED (Gemma availability is large, significant, and against the tool) rather than a sign-blind YES.
+- *Phase-2 reproduction:* recomputed RQ0.5/0.6 binning asserts byte-equality against `phase2_summary.json` across all 7 keys × 3 bins. Bin var: solve/simulate→ref_len, validate_plan→plan_len[plan_label] (valid plans v1–v5 only), rq06→obj_count; cuts = floor(tertiles) per task; nt-neut vs tl-ster, ≥9B.
+
+**Reproducibility.** Zero effect on experiment behaviour or existing `results/`. The deck is a read-only consumer. `python3 .claude/skills/analyzer/scripts/rq_deck.py` (full deck) or `--check` (gates + phase-2 assertion only). Partially extends ISS-005 (relabel now a no-op forward; kept only for pre-2026-05-25 corpora).
+
 ## 2026-06-02 — Remove the gpt-oss:120b standalone vLLM setup
 
 **Motivation.** Decided not to pursue the gpt-oss-120b reference cell (added on `feat/gpt-oss-120b-vllm`, commit `efe7af4`). Pulled all of its live setup/config so the model is no longer a runnable option.
