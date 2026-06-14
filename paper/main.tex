@@ -138,37 +138,404 @@ generalization (e.g., PlanBench \citep{valmeekam2023planbench}) and published fo
 baselines \citep{huang2025limit} are deliberately out of scope here (see Future Work).
 
 \section{Methodology}
-% TODO (goal 3a). Sources: EXPERIMENTS_FLOW.md, run_experiment.py, pddl_eval/.
-% \subsection{Tasks}                      % solve, validate_domain/problem/plan, simulate
-% \subsection{Models and Serving}         % 5-model vLLM roster
-% \subsection{Conditions}                 % no-tools / +tool(plain) / +tool(steered)
-% \subsection{Metrics and Confidence Intervals}  % task_success_rate, tool_selected, Wilson 95%, signed-CI verdicts
-% \subsection{Contamination Control}      % canonical vs anonymized domains (the null)
+% DRAFT (goal 3a). Sources: EXPERIMENTS_FLOW.md, run_experiment.py, pddl_eval/, deck s4-6/36-42.
+We ask a single, deliberately narrow question: \emph{when a sound symbolic
+planner or validator is available as a callable tool, how much does it improve a
+language model's performance on individual PDDL tasks, and at what token cost?}
+The study crosses five PDDL tasks, five open-weight models, two reasoning modes,
+and three experimental arms, and grades every response strictly against a
+deterministic solver/validator oracle rather than by self-report. The harness,
+fixtures, and locked findings reproduce and substantially strengthen the
+preliminary evaluation of the PDDL Planning Copilot
+\citep{benyamin2025pddlcopilot}, adding end-to-end grading, confidence
+intervals, a steering control, and a contamination probe.
+
+\subsection{Tasks, Oracle, and Fixtures}
+Each model is given five PDDL tasks, one tool-relevant per task: \emph{solve}
+(find a plan reaching the goal), \emph{validate\_domain} and
+\emph{validate\_problem} (judge whether a domain or problem file is well formed),
+\emph{validate\_plan} (judge whether a given plan is correct), and
+\emph{simulate} (produce the full state trajectory a plan induces, action by
+action). Before any model is run, an oracle generates ground truth by calling the
+symbolic tools directly --- Fast Downward \citep{helmert2006fastdownward} and
+ENHSP \citep{scala2016enhsp} for planning, and a sound, pure-Python PDDL
+validator (built on the \texttt{unified-planning} library) for the verdict and
+trajectory tasks. The same deterministic tools both define ground truth and, in
+the tool arms, are what the model may call, so a correctly invoked tool is
+correct by construction; what the experiment measures is therefore whether and
+how the model invokes the tool, not the tool's own accuracy. Grading is end-to-end and
+unforgiving (Table~\ref{tab:tasks}): a \emph{solve} answer counts only if the
+returned plan is independently certified valid; a \emph{simulate} answer counts
+only if its entire trajectory equals the oracle's under a canonical normal form
+(sorted, case-folded, with the boolean/numeric fluent shapes unified), with no
+partial credit and no free-text fallback.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\begin{tabular}{@{}lp{0.62\columnwidth}@{}}
+\toprule
+\textbf{Task} & \textbf{Graded correct iff (vs.\ deterministic oracle)} \\
+\midrule
+solve            & returned plan is certified valid (goal reached, all preconditions hold) \\
+validate\_domain & VALID/INVALID verdict matches the oracle \\
+validate\_problem & verdict matches the oracle \\
+validate\_plan   & verdict matches the oracle \\
+simulate         & full state trajectory equals the oracle's (canonical form; no partial credit) \\
+\bottomrule
+\end{tabular}
+\caption{The five single-tool-use tasks and their strict success criteria. Each
+task has a single relevant, correct-by-construction tool per instance
+(\emph{solve} selects the classical or numeric planner).}
+\label{tab:tasks}
+\end{table}
+
+The fixture corpus is 20 PDDL domains --- 10 classical (e.g., blocksworld,
+gripper, rovers, satellite, depots) and 10 numeric (e.g., counters, farmland,
+sailing, drone), drawn from the earlier study's released dataset
+\citep{benyamin2025pddlcopilot} and public benchmark suites --- each shipping
+matched valid and mutated-invalid files so the verdict tasks score against both
+positive and negative instances (balanced one-to-one for \emph{validate\_problem}
+and \emph{validate\_plan}; \emph{validate\_domain} carries a $5{:}1$
+positive-to-negative ratio, which widens its negative-arm interval). Every committed positive is
+re-validated and every negative is confirmed rejected at startup, so a fixture
+that drifts from its label aborts the run. Holding model, reasoning mode, and arm
+fixed, one cell comprises 4{,}560 graded trials: \emph{solve} 300,
+\emph{validate\_domain} 360, \emph{validate\_problem} 600, \emph{validate\_plan}
+3{,}000, and \emph{simulate} 300. Each cell spans three neutral paraphrases per
+task (imperative, declarative, interrogative framings), a linguistic-robustness
+probe; the steering directive introduced below is held byte-identical across the
+three, isolating steering variance from paraphrase variance.
+
+\subsection{Models and Serving}
+We evaluate five open-weight instruction-tuned models spanning over an order of
+magnitude in scale (0.8B--35B) and two families: Qwen3.5-0.8B, Qwen3.5-4B, Qwen3.5-9B,
+a Gemma mixture-of-experts model ($\approx$26B total / $\approx$4B active
+parameters, ``Gemma-MoE-26B''), and Qwen3.6-35B. Headline conclusions are drawn
+from the three larger models ($\geq$9B: Qwen3.5-9B, Gemma-MoE-26B,
+Qwen3.6-35B); the 4B model is reported for scaling context and the 0.8B model
+isolates a small-model failure mode (Results). All models are served locally with
+vLLM on a single workstation-class GPU, decoding deterministically
+(temperature~0), so each trial is a single fixed sample and the confidence
+intervals we report quantify sampling uncertainty over the fixture instances
+(treated as the inferential population), not decoding stochasticity, which
+temperature~0 removes.
+The context window is 16{,}384 tokens; per-task decode caps are 8{,}192 tokens for
+\emph{solve} and 6{,}144 for the others; tool-using runs may iterate up to ten
+tool calls. The reasoning mode is toggled per run (\emph{think}~=~on/off via the
+serving runtime's thinking switch); crucially, under \emph{think}~=~on the
+reasoning trace and the final answer share the \emph{same} per-task decode cap, a
+shared budget that drives the confound we treat explicitly below. Tools are
+exposed to the model through the Model Context Protocol \citep{anthropic2024mcp}
+as standard function definitions; system prompts are thin per-task policy stubs,
+with all argument schemas carried by the tool definitions rather than the prompt.
+
+\subsection{The Three-Arm Design}
+Every (model, mode, task) is run in three primary arms (a fourth, control arm
+follows); arms are scored separately and never pooled, and every comparison is
+between two arms of the \emph{same} cell:
+\begin{itemize}
+\item \textbf{no-tools} --- the model answers from parametric knowledge. The PDDL
+tools are removed, but per-task JSON-schema-constrained decoding remains, so the
+baseline is not crippled by formatting alone; only the symbolic tools are absent.
+\item \textbf{tool-available (plain)} --- the \emph{byte-identical} neutral task
+prompt, now with the tools exposed (the system prompt is a structural mirror,
+differing only in a one-clause tool-availability stub). Differencing this arm
+against no-tools yields the \emph{availability gap}, which isolates tool presence.
+\item \textbf{tool-steered} --- the neutral prompt plus exactly one appended
+sentence directing the model to use the tool. Differencing against the plain arm
+yields the \emph{steering gap}.
+\end{itemize}
+The two contrasts map onto the function-calling literature: the plain arm
+measures \emph{relevance detection} (does the model spontaneously invoke the
+right tool when its existence is known but not urged?) and the steered arm
+measures \emph{function selection} (told to use a tool, does it pick the correct
+one?) in the sense of the Berkeley Function-Calling Leaderboard
+\citep{bfcl2025}. Because the per-task tool split enforces each tool's required
+arguments through its schema, argument-filling errors are largely structural, so
+the steered contrast isolates selection rather than parameter construction.
+A fourth, \emph{control} arm --- the steering directive with the tools still
+removed --- tests whether the directive alone moves the no-tools floor; it is
+reported as a control, not a primary outcome. The \emph{realizable benefit} of
+the tool, used as the cross-mode spine below, is success(tool-steered)
+$-$ success(no-tools): what a deployment that actually prompts for tool use would
+realize.
+
+\subsection{Metrics, Confidence Intervals, and Signed Significance}
+The primary outcome is the strict end-to-end \emph{success rate} of
+Table~\ref{tab:tasks}, aggregated over all instances and the three paraphrases of
+an arm. In the tool arms we
+additionally record \emph{tool\_selected} --- whether the model called the
+task-matching tool at all; the gap between tool\_selected and success quantifies
+``knows \emph{what} to call but cannot call it correctly.'' Failures are typed
+(tool not selected, wrong tool, verdict mismatch, unparseable output, trajectory
+mismatch), with cap-truncated responses re-tagged as truncations rather than
+masquerading as content failures. Every reported proportion carries a Wilson 95\%
+score interval, and \emph{arms are never pooled}: each statistic comes from
+exactly one (model, mode, arm) corpus, and only differences \emph{between} such
+statistics are formed.
+
+Verdicts use a \emph{signed} significance rule. A per-model gap counts as
+favorable evidence only when the two arms' 95\% intervals are disjoint
+\emph{and} the gap points the hypothesized way (the tool helps); a disjoint gap
+pointing the other way is tallied separately as significant-\emph{against} --- a
+finding, not noise. A research question reads \textsc{yes} when favorable
+significant gaps dominate with none against, \textsc{mixed} when significant
+against-gaps are present, and \textsc{no} when no significant favorable movement
+exists. This sign-awareness is load-bearing: on \emph{validate\_plan} mere tool
+availability moves one $\geq$9B model by $-67$\,pp (it stops calling the tool and
+returns no gradeable answer), a wildly
+significant gap that a sign-blind disjointness test would miscredit as the tool
+``having an effect''; the signed rule instead reads that task \textsc{mixed},
+which is what the data say.
+
+\subsection{Cross-Mode Aggregation and the Robust Floor}
+\emph{think}~=~off is the clean headline: the model answers directly, so the
+availability and steering gaps measure the tool, unconfounded. Under
+\emph{think}~=~on the shared decode budget truncates a large fraction of $\geq$9B
+no-tools trials (the baseline ``reasons itself to death''), so raw
+\emph{think}~=~on gaps conflate the tool's value with baseline budget collapse.
+We therefore make cross-mode claims only through budget-insensitive statistics.
+The spine is the realizable benefit (steered, not plain: under
+\emph{think}~=~on the plain arm largely stops calling the tool, so its
+availability gap also folds in a mode-dependent tool-calling failure that
+steering repairs). Gaps carry Newcombe MOVER intervals, and the mode difference
+$\Delta(\mathrm{on}-\mathrm{off})$ carries a MOVER interval for the difference of two
+independent gaps --- valid because the two reasoning-mode corpora share no
+trials. The \emph{robust floor} is the minimum realizable benefit over the two
+reasoning modes: a lower bound that neither mode's decode budget can inflate.
+Against a deliberately conservative $+30$\,pp threshold this sorts the tasks into
+\emph{robust} (every $\geq$9B floor $\geq +30$\,pp), \emph{sole-source} (baseline at
+$0$ in both modes --- a benefit with no baseline cannot be budget-confounded), and
+\emph{budget-dependent} (some floor below $+30$\,pp, where the large
+\emph{think}~=~on stretch is precisely the artifact).
+
+\subsection{Contamination Control}
+Because the domains are public, an unaided baseline could be inflated by
+memorization. A separate sweep re-ran the entire matrix on structurally identical
+domains with every surface symbol (domain, predicate, and object names) renamed.
+Under \emph{think}~=~off the clean no-tools probe is near-null --- mean
+$|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$ success $\leq 1.3$\,pp with zero
+CI-disjoint task cells --- so where the baseline has headroom it carries no
+detectable memorization signal, and the availability gap (tool arm minus this
+clean baseline) therefore cannot be a contamination artifact on the baseline
+side. The only CI-disjoint cells appeared under \emph{think}~=~on and
+trace to tokenization, not memory: the renamed prompts ran $\approx$5\% longer,
+so more trials truncated under the shared budget while success-given-completion
+was unchanged --- itself a live demonstration of the budget confound the
+cross-mode analysis controls for.
 
 \section{Results}
-% Structure DECIDED 2026-06-14 (regime-led hybrid) — full plan in paper/RESULTS_PLAN.md.
-% Source: unified deck checkpoints/rq-sweep5v2/ + paper_notes_discussions.md. No prose yet.
-% Lead paragraph + Table 1 (scorecard: 6 RQs, verdicts, headline numbers).
+% DRAFT (goal 3b), regime-led per RESULTS_PLAN.md. All numbers are locked deck values
+% (checkpoints/rq-sweep5v2/) — do NOT re-derive. think=off headline; >=9B unless noted.
+Unless stated otherwise, every figure is \emph{think}~=~off (the unconfounded
+read) on the three $\geq$9B models, with reasoning mode treated separately in the
+Robustness subsection. We report the strict end-to-end success rate of
+Table~\ref{tab:tasks}; the \emph{availability} gap is +tool(plain)~$-$~no-tools
+and the \emph{steering} gap is +tool(steered)~$-$~+tool(plain), each significant
+when the two arms' Wilson 95\% intervals are disjoint. Table~\ref{tab:scorecard}
+is the scorecard. The headline is that the five tasks fall into three regimes: two
+(\emph{solve}, \emph{simulate}) essentially do not happen without the tool; two
+(\emph{validate\_domain}, \emph{validate\_problem}) are improved from an already
+partial baseline; and one (\emph{validate\_plan}) is an instructive mixed case in
+which mere availability can \emph{hurt} and a one-sentence nudge repairs it.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{RQ / task} & \textbf{verdict} & \textbf{evidence ($\geq$9B, \emph{think}=off)} \\
+\midrule
+RQ0.1 \emph{validate\_domain} / \emph{validate\_problem} & \textsc{yes} & availability $+21$--$30$\,pp; 3/3 favorable-significant, 0/3 against \\
+RQ0.2 \emph{solve} & \textsc{yes} & unaided floored at $8$--$11\%$, tool $63$--$99\%$; availability $+54$--$92$\,pp \\
+RQ0.3 \emph{validate\_plan} & \textsc{mixed} & availability $-67$--${+}13$\,pp (1/3 favorable, 2/3 against); steering repairs ($+3$--$72$\,pp) \\
+RQ0.4 \emph{simulate} & \textsc{yes} & unaided $0\%$, tool $65$--$92\%$; availability $+65$--$92$\,pp \\
+RQ0.5 plan length & \textsc{yes} & \emph{validate\_plan} advantage widens $+5\!\to\!+7\!\to\!+27$\,pp with reference length \\
+RQ0.6 object count & \textsc{no} & \emph{validate\_problem} advantage flat ($+22/{+}23/{+}23$\,pp) across object-count bins \\
+\bottomrule
+\end{tabular}
+\caption{Scorecard: six research questions, six verdicts. A gap counts as
+favorable evidence only if the two arms' Wilson 95\% intervals are disjoint
+\emph{and} it points the hypothesized way; disjoint gaps pointing the other way
+are tallied as significant-against (Methodology).}
+\label{tab:scorecard}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.49\textwidth]{figures/solve.png}\hfill
+\includegraphics[width=0.49\textwidth]{figures/simulate.png}
+\caption{Sole-source tasks (success by arm, \emph{think}=off; whiskers are Wilson
+95\% CIs; the $\geq$9B headline set is shaded). \emph{solve} (left) is floored at
+$8$--$11\%$ unaided; \emph{simulate} (right) is $0\%$ for every model. The tool
+lifts both decisively, and steering adds a further lift wherever the plain arm
+under-calls (e.g.\ Qwen3.6-35B on \emph{solve}).}
+\label{fig:solesource}
+\end{figure*}
 
 \subsection{Two Tasks the Model Cannot Do Without the Tool}
-% RQ0.2 solve + RQ0.4 simulate (sole-source). Fig 1 = solve.png + simulate.png.
+\emph{Solve} and \emph{simulate} are sole-source: the tool is not an improvement
+but a precondition (Figure~\ref{fig:solesource}). Unaided \emph{solve} is floored
+at $8$--$11\%$ across the $\geq$9B models; the tool lifts the plain arm to
+$63$--$99\%$ and the steered arm to $92$--$100\%$, an availability gap of
+$+54$--$92$\,pp that is CI-disjoint and favorable for all three (RQ0.2
+\textsc{yes}). Where the plain arm leaves headroom --- Qwen3.6-35B invokes the
+planner on only $68\%$ of trials and reaches $63\%$ --- steering raises invocation
+to $94\%$ and success to $92\%$ ($+29$\,pp). The bottleneck is invocation, not the
+planner: accuracy-when-calling is $\geq$93\% for every $\geq$9B model.
+
+\emph{Simulate} is starker: unaided success is $0\%$ --- for every model, in both
+reasoning modes, across all $3{,}000$ trials. The tool reaches $65$--$92\%$ (plain)
+and $83$--$97\%$ (steered). The zero is not a grading artifact. Success demands
+canonical-form deep-equality of the \emph{entire} state trajectory against the
+oracle (structured JSON, no partial credit, no free-text fallback), and the
+unaided failures decompose ($\geq$9B) into $68\%$ unparseable trajectory JSON,
+$29\%$ truncated at the $6{,}144$-token cap, and only $3\%$ parsed-but-wrong:
+hand-tracking a multi-step trajectory is simply outside these models' reach,
+independent of output formatting.
 
 \subsection{Tasks With Headroom: The Tool Still Helps}
-% RQ0.1 validate_domain + validate_problem. Text + Table 1 (charts saturate ~100%).
+On \emph{validate\_domain} and \emph{validate\_problem} the unaided model is
+partly competent --- on the balanced \emph{validate\_problem} set a constant
+``VALID'' guess already scores $\approx$50\% --- so the question is whether the
+tool adds value over a non-trivial baseline. It does (RQ0.1 \textsc{yes}): the
+\emph{validate\_problem} availability gap is $+21$--$30$\,pp across the $\geq$9B
+models (3/3 favorable-significant, 0/3 against), and \emph{validate\_domain}
+saturates the tool arms near $100\%$ from a more varied baseline (e.g.\ Gemma-MoE
+$78\%$, Qwen3.6-35B $68\%$). The verdict holds from 4B up; the 0.8B model reverses
+($-25$\,pp on \emph{validate\_problem}), an instance of small-model tool-mishandling
+(it calls the right tool but omits required arguments). Steering adds nothing
+significant here ($-5$--${+}1$\,pp): once a
+capable model has the tool it already calls it, and the nudge matters only where
+the plain arm under-calls --- which is exactly the next case.
 
-\subsection{When Availability Backfires, Steering Repairs It}
-% RQ0.3 validate_plan (MIXED). Fig 2 = mechanism_validate_plan.png.
-% Silence-not-error + signed-significance consequence + 9B>35B propensity-not-capability.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/mechanism_validate_plan.png}
+\caption{\emph{validate\_plan} mechanism ($\geq$9B, \emph{think}=off). Left:
+tool-use rate (plain vs.\ steered); right: success. Where the plain arm under-calls
+the validator (Gemma-MoE), steering restores invocation, and success rises with it
+--- the tool's value is gated on the model actually calling it.}
+\label{fig:mechanism}
+\end{figure}
+
+\subsection{When Availability Backfires, and Steering Repairs It}
+\emph{Validate\_plan} is the one task the unaided model already does well
+($\geq$9B no-tools $80$--$91\%$), and it is the most informative. Merely making the
+tool available is significant-\emph{against} for two of three $\geq$9B models:
+Gemma-MoE-26B falls $88\!\to\!21\%$ ($-67$\,pp) and Qwen3.6-35B $91\!\to\!82\%$
+($-9$\,pp); only Qwen3.5-9B improves ($80\!\to\!93\%$, $+13$\,pp). One favorable,
+two against $\Rightarrow$ \textsc{mixed} --- and only because the verdict counts
+direction: a sign-blind test would read Gemma's wildly CI-disjoint $-67$\,pp as
+the tool ``having an effect'' and miscall the task \textsc{yes}.
+
+The collapse is \emph{silence, not error} (Figure~\ref{fig:mechanism}). Under the
+plain prompt Gemma-MoE produces a verdict on only $21\%$ of trials --- it reasons
+in prose instead of calling the validator --- but on the trials it does answer it
+is $99\%$ accurate. The $-67$\,pp is a tool-\emph{calling} failure, not a verdict
+failure, and steering repairs it: it lifts Gemma's invocation to $94\%$ and success
+to $93\%$ ($+72$\,pp over plain), and the steered arm is favorable-significant for
+all three $\geq$9B models ($+3$--$72$\,pp). The tool's value on a task the model
+can already do is real but gated on invocation, and a single directive sentence
+unlocks it.
+
+This also dissolves an apparent size inversion. In the plain arm the 9B
+``beats'' the 35B (\emph{solve} $99\%$ vs.\ $63\%$; \emph{validate\_plan} $93\%$
+vs.\ $82\%$), but this is tool-call \emph{propensity}, not capability: success
+tracks tool-use almost 1:1, accuracy-when-calling is $\geq$93\% for both, and
+steering closes the gap (35B \emph{solve} $63\!\to\!92\%$). The propensity even
+flips with reasoning mode (under \emph{think}=on the 35B calls the validator on
+$99.9\%$ of trials, the 9B on $69\%$). The 35B's unaided baselines exceed the 9B's
+on every validation task; the inversion is a behavioral artifact of spontaneous
+tool adoption, not a scaling law.
 
 \subsection{Does the Advantage Track Difficulty?}
-% RQ0.5 grows with plan length; RQ0.6 flat with object count. Mostly text; bins in appendix.
+An advantage can only be \emph{seen} to change where the no-tools baseline has room
+to move, which makes \emph{validate\_plan} the diagnostic case (RQ0.5 \textsc{yes}):
+as the reference plan lengthens, unaided accuracy degrades
+($94\!\to\!91\!\to\!62\%$ over short/medium/long bins) while the tool holds
+($\approx99\!\to\!98\!\to\!89\%$), so the gap widens $+5\!\to\!+7\!\to\!+27$\,pp ---
+the harder the instance, the more the tool is worth. The other two length-sensitive
+tasks bracket this case: \emph{solve}'s gap is large but roughly constant
+($+87\!\to\!+87\!\to\!+89$\,pp), both arms pinned (baseline floored, tool near
+ceiling); \emph{simulate}'s gap is large but \emph{declines}
+($+100\!\to\!+93\!\to\!+77$\,pp, CI-disjoint), because although its baseline stays
+floored at $0$, the tool arm itself degrades on long trajectories --- the one place
+tool-assisted success erodes with difficulty. Object count, by contrast, moves
+nothing: the \emph{validate\_problem} gap is flat at $+22/{+}23/{+}23$\,pp and the
+other tasks are flat too (RQ0.6 \textsc{no}). Plan length is a difficulty axis the
+tool's advantage tracks; object count is not.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/token_quadrant.png}
+\caption{What the tokens buy ($\geq$9B, \emph{think}=off): mean total tokens per
+trial (log $x$) vs.\ success ($y$); each arrow runs no-tools$\to$+tool(steered).
+Every arrow points up-and-right --- the tool always costs more per trial; the
+success it buys is decisive where the baseline is floored (\emph{solve},
+\emph{simulate}) and modest where it is already strong (\emph{validate\_*}).}
+\label{fig:tokens}
+\end{figure*}
 
 \subsection{What the Tool Costs}
-% Co-headline. Fig 3 = token_quadrant.png + cost-of-pass decomposition in text.
+The tool is not free (Figure~\ref{fig:tokens}). Per trial it raises total token
+consumption (input~$+$~output, summed over turns) several-fold ---
+$\approx$4--6$\times$ on the $\geq$9B models, and up to $\approx$15$\times$ for the
+smaller 4B --- and the cost is \emph{input}, not output: the unaided model is
+output-heavy ($\approx$0.3:1 input:output --- it reasons in the open), while the
+tool arms are input-heavy ($\approx$5:1) because the tool schemas and tool outputs
+are re-fed every turn. (Server-side prefix caching, $\approx$90\% on this roster,
+makes the re-fed \emph{schemas} cheap to compute, but tool \emph{outputs} are
+uncached and the tokens are still real context.)
+
+Whether it is worth paying depends entirely on the baseline --- the choice of
+metric flips the verdict by $\approx$10$\times$ on identical data, so we report
+\emph{cost-of-pass} $=$ total tokens $\div$ successful trials (lower is better),
+which factors exactly as (tokens-per-trial ratio) $\div$ (success-rate ratio).
+Where the baseline is floored the tool pays for itself: on \emph{solve} it is
+$\approx$0.3--0.4$\times$ the cost per success (e.g.\ $\approx$4$\times$ more tokens
+$\div$ $\approx$9--13$\times$ more correct answers), and on \emph{simulate} it is
+the \emph{only} producer of any success (no-tools cost-of-pass is infinite). Where
+the baseline is already strong the tool is a luxury: $\approx$3--5$\times$ costlier
+per success on most \emph{validate\_*} cells ($\geq$9B), where it is only modestly
+more often right and the token premium dominates. The honest headline is therefore
+neither ``tools save tokens'' nor ``tools waste tokens'' but: \emph{the tool is
+cost-effective exactly where the model cannot do the task without it.} (The output
+cap right-censors long generations; raw ``hit-cap'' rates are not comparable across
+arms, since tool runs are multi-turn and graded from the tool result --- a cap-hit
+on a final narration turn rarely voids the answer, so cap-hit-and-failed stays
+$\leq$10\% in the tool arms. We report totals; a completion-only lens, which
+flatters the tool, is in the appendix.)
 
 \subsection{Robustness: Reasoning Mode and Contamination}
-% Compact. think=on pattern survives + robust floor + budget caveat (Fig 4 = visible_mode_succ.png).
-% Contamination null (sweep-6) in one paragraph.
+\textbf{Reasoning mode.} The same signed rule applied to the \emph{think}=on
+corpus reproduces the verdict pattern (\textsc{yes}/\textsc{yes}/\textsc{mixed}/%
+\textsc{yes}, RQ0.5 \textsc{yes}, RQ0.6 \textsc{no}). But the raw \emph{think}=on
+gaps are budget-confounded: reasoning and answer share one decode budget
+($6{,}144$ tokens; $8{,}192$ for \emph{solve}), and $55$--$83\%$ of $\geq$9B
+no-tools \emph{think}=on trials truncate, collapsing the validation baselines
+(\emph{validate\_plan}: 9B $80\!\to\!21\%$, Gemma $88\!\to\!10\%$;
+\emph{validate\_domain} Gemma $78\!\to\!0\%$). We therefore read the cross-mode
+evidence only through budget-insensitive statistics. The steered tool arm is
+mode-stable (mean off-vs-on shift $9$\,pp; the 35B is invariant on all five tasks)
+while the no-tools baseline swings $28$\,pp, so essentially all cross-mode movement
+is a baseline effect, not a change in the tool's value. The robust floor --- the
+minimum benefit over both modes --- keeps \emph{solve} robust ($+46$--$71$\,pp) and
+\emph{simulate} sole-source ($+83$--$97$\,pp; a benefit with no baseline cannot be
+budget-confounded); the \emph{validate\_*} tasks are budget-dependent, their large
+\emph{think}=on gaps being the artifact.
+
+\textbf{Contamination.} Because the domains are public, we re-ran the matrix on
+structurally identical domains with all surface names renamed. The \emph{think}=off
+no-tools probe is near-null --- mean $|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$
+success $\leq 1.3$\,pp with zero CI-disjoint task cells --- so the unaided baseline
+carries no detectable memorization signal where it has headroom, and the
+availability gaps are not a contamination artifact. The only CI-disjoint cells
+(\emph{validate\_plan}, \emph{think}=on) trace to tokenization, not memory: the
+renamed prompts ran $\approx$5\% longer and so truncated more under the shared
+budget, with success-given-completion unchanged --- itself a demonstration of the
+budget confound above.
 
 \section{Limitations}
 % TODO: think=on decode-budget cliff; 8192 output cap (cap-raised rerun untested);
