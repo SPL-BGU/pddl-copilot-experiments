@@ -1,17 +1,19 @@
 # Handoff — AAAI-27 single-tool-use paper
 
-**Branch:** `paper/aaai27-single-tool-draft` (pushed clean at `0a31a3d` — Methodology +
-Results + `paper/figures/` + decode-cap fix committed & pushed 2026-06-14).
+**Branch:** `paper/aaai27-single-tool-draft` (pushed clean at `ee01e07`; **working tree clean**).
+Full paper body committed & pushed 2026-06-14.
 **Repo:** `pddl-copilot-experiments`. All paper work lives in `paper/`.
 **Last session:** 2026-06-14.
 
 ## TL;DR for a fresh session
 Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
-`paper/RESULTS_PLAN.md` (the decided Results structure) → this file. The manuscript skeleton
-is `paper/main.tex`; the bibliography is `paper/refs.bib` (fully verified). Then draft the
-next section. **STATUS 2026-06-14: the full body is drafted + verified + within 7pp. Next
-tasks are the reproducibility checklist (item 7), then the camera-ready passes (vector figures,
-anonymization/metadata, HF model ids).**
+`paper/RESULTS_PLAN.md` (the decided Results structure) → this file. The manuscript is
+`paper/main.tex`; the bibliography is `paper/refs.bib` (fully verified).
+**STATUS 2026-06-14: the full paper body (Abstract → Conclusion) is drafted, adversarially
+verified, and committed/pushed (`ee01e07`); it builds clean and the technical content is within
+the 7-page limit with all 3 figures. No prose work remains.** The next concrete task is the
+**reproducibility checklist (item 7)**; then the camera-ready passes (vector PDF figures,
+anonymization/metadata, exact HF model ids).
 
 ## What's DONE
 - AAAI-27 author kit imported (`paper/authorkit27/`, anonymous template).
@@ -74,9 +76,28 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
    mention of PlanBench + Huang \& Zhang formalizer baselines + multi-tool orchestration + a
    cap-raised rerun; Conclusion. Verified clean.
 6. ~~**Abstract**~~ — **DONE 2026-06-14.** 164 words, no citations (AAAI rule), claims match body.
-7. **Reproducibility checklist** — AAAI requires it; `authorkit27/ReproducibilityChecklist.tex`.
-   Inline it before submission (single-.tex rule). Include exact HF model ids (the roster labels
-   Qwen3.5/3.6, Gemma-MoE-26B are non-canonical — see camera-ready note).
+7. **Reproducibility checklist — NEXT.** `authorkit27/ReproducibilityChecklist.tex` (template
+   read 2026-06-14, not yet filled). It is a list of `\question{...}{(yes/partial/no/NA)}` items
+   in 4 groups; answer each by replacing the "Type your response here" line with ONE option,
+   editing nothing else. Pre-loaded answers:
+   - **General Paper Structure:** conceptual outline of methods = **yes** (Methodology + Table 1);
+     opinions-vs-facts delineated = **yes**; pedagogical refs = **yes**.
+   - **Theoretical Contributions:** **no** (empirical paper, no theorems — the sub-questions
+     become NA).
+   - **Dataset Usage:** **yes** — 20 PDDL domains (10 from the earlier version's released set,
+     cited; 10 substituted from public IPC/benchmark suites, public). No NOVEL dataset → the
+     "novel dataset" sub-items are **NA/partial**; existing datasets cited + public = **yes**.
+   - **Computational Experiments:** **yes** — fill: hyperparameters tried + selection (temp 0,
+     ctx 16384, decode caps solve 8192 / others 6144, ≤10 tool loops); infra = vLLM on a
+     workstation-class GPU — **keep GENERIC, no institution/host/SLURM**; metrics = strict
+     end-to-end success + tool\_selected, Wilson 95\% CIs, signed significance (motivated in
+     Methodology) = **yes**; #runs per result = temp 0 ⇒ 1 deterministic sample/trial, per-cell
+     N=4{,}560 = **yes**; variation/confidence = Wilson CIs + Newcombe MOVER = **yes**;
+     significance test = signed-disjoint-CI rule (Methodology) = **yes/partial**; code
+     public-on-publication = **yes** (intend to release). Include exact **HF model ids** (roster
+     labels Qwen3.5/3.6, Gemma-MoE-26B are non-canonical).
+   Inline it before `\end{document}` (single-.tex submission rule); then rebuild and confirm the
+   page budget still holds (the checklist usually doesn't count toward the 7 — verify vs CFP).
 8. ~~**Page-limit pass**~~ — **SATISFIED 2026-06-14.** Full body builds to **8 pages total**, but
    technical content **ends on page 7** (Conclusion in p7 left column; references fill p7 right
    column + p8, and refs don't count) → within the 7-page content limit **with all 3 figures
@@ -101,14 +122,21 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
   asked.
 
 ## Git state
+Working tree **clean** as of 2026-06-14; branch pushed to `origin`.
 ```
+ee01e07 paper: draft Introduction, Limitations, Future Work, Conclusion, Abstract (AAAI-27)
+0a31a3d paper: draft Methodology + Results sections (AAAI-27)
 6f25668 paper: rename bib keys to match years (bfcl2024->2025, pallagani2023->2022)
-126ea63 paper: verify all 20 bib entries against authoritative sources
-959094b paper: AAAI-27 draft scaffold + Background/Related Work
 ```
+Decision log for the two 2026-06-14 sessions (corrections, page-budget resolution, deck
+discrepancies to fix) is in `development/paper_notes_discussions.md` (three 2026-06-14 entries).
 
 ## Suggested opening prompt for the fresh session
 > Continue the AAAI-27 paper on branch `paper/aaai27-single-tool-draft`. Read
-> `paper/HANDOFF.md`, `paper/GOALS.md`, and `paper/RESULTS_PLAN.md`, then draft the
-> **Methodology** section in `paper/main.tex` from `EXPERIMENTS_FLOW.md` + the deck. Keep it
-> double-blind (third-person self-citation) and within the 7-page budget.
+> `paper/HANDOFF.md`, `paper/GOALS.md`, and `paper/RESULTS_PLAN.md`. The full body is already
+> drafted, verified, and pushed (`ee01e07`). Next: complete the **reproducibility checklist** —
+> inline `authorkit27/ReproducibilityChecklist.tex` into `paper/main.tex` (before
+> `\end{document}`) and fill every `\question{...}` answer (replace each "Type your response
+> here") using the pre-loaded answers in HANDOFF item 7, sourced from `EXPERIMENTS_FLOW.md` /
+> `run_experiment.py` / `pddl_eval/`. Rebuild, confirm the 7-page content limit still holds, and
+> keep it double-blind (generic infra only — no institution/host details).
