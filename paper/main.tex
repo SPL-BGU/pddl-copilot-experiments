@@ -59,7 +59,22 @@
 \maketitle
 
 \begin{abstract}
-% TODO (goal 1): Abstract. Write LAST. ~150-200 words, no citations.
+Sound symbolic planners and validators are correct by construction, and language
+models are increasingly able to call such tools --- but does access actually help an
+LLM on planning tasks, and when? We evaluate five single-tool-use PDDL tasks
+(solving, domain, problem, and plan validation, and state-trajectory simulation)
+across five open-weight models, grading every response strictly against a
+deterministic solver/validator oracle rather than by self-report. A three-arm
+design separates tool \emph{availability} from a one-sentence \emph{steering} nudge;
+every estimate carries a Wilson confidence interval, verdicts use a
+signed-significance rule that distinguishes help from harm, and a separate
+anonymized-domain sweep controls for contamination. The benefit is strongly
+regime-dependent: two tasks essentially cannot be done without the tool, two improve
+from an already partial baseline, and one --- plan checking --- shows that mere
+availability can \emph{lower} success, because the model reasons in prose instead of
+calling the validator, while a single steering sentence repairs it. Measured in
+tokens, the tool pays for itself precisely where the model cannot do the task
+unaided. The pattern holds under reasoning mode and the contamination control.
 \end{abstract}
 
 % Optional anonymized links block (uncomment near submission; do NOT de-anonymize).
@@ -69,9 +84,72 @@
 % \end{links}
 
 \section{Introduction}
-% TODO: motivation; the gap (do symbolic PDDL tools actually help LLMs?); our framing;
-% explicit contributions list. Self-cite the earlier arXiv version anonymously
-% (see refs.bib note) — it is our own prior work.
+% DRAFT 2026-06-14 (goal 1, partial). Third-person self-cite of benyamin2025pddlcopilot.
+% Findings preview must match Results; no "first" claims.
+Large language models are increasingly deployed as agents that call external
+tools, and automated planning is an unusually clean setting in which to ask
+whether that helps. Decades of research have produced planners and validators that
+are \emph{correct by construction}: a plan a sound solver returns provably reaches
+the goal, and a verdict a sound validator issues is sound
+\citep{helmert2006fastdownward, howey2004val}. If a language model can simply
+\emph{call} such a tool, it should be able to offload exactly the parts of a PDDL
+task --- search, state tracking, plan checking --- on which language models are
+known to be unreliable \citep{valmeekam2023planbench, kambhampati2024llmmodulo}.
+Whether, and \emph{when}, this actually improves end-to-end performance --- and at
+what cost --- is the question we study.
+
+The question is less settled than it may appear. One line of work tests LLMs
+\emph{as} planners and finds they fall well short of solvers
+\citep{valmeekam2023planbench}; a second uses LLMs as \emph{formalizers} that
+translate language into PDDL for a downstream solver
+\citep{liu2023llmp, tantakoun2025survey}; and a third measures tool-use competence
+in isolation, without a planning oracle \citep{bfcl2025}. The specific question
+--- does access to a sound PDDL tool improve a model across the planning task
+pipeline, measured end-to-end --- was raised by the PDDL Planning Copilot
+\citep{benyamin2025pddlcopilot}, but its evaluation was preliminary: a limited
+prompt set, success scored by tool \emph{selection} rather than end-to-end
+correctness, no confidence intervals, and no control for memorization of public
+benchmark domains. A clean answer requires controlling for several confounds at
+once --- whether the model is even prompted to use the tool, whether the baseline
+is floored or already competent, reasoning-mode decode budgets, and contamination
+--- which is what this paper sets out to do.
+
+We evaluate five single-tool-use PDDL tasks (\emph{solve}, \emph{validate\_domain},
+\emph{validate\_problem}, \emph{validate\_plan}, \emph{simulate}) across five
+open-weight models, grading every response strictly against a deterministic
+solver/validator oracle rather than by self-report. A three-arm design separates
+tool \emph{availability} (the tool is present) from a one-sentence \emph{steering}
+nudge (the model is told to use it), every proportion carries a Wilson confidence
+interval, and verdicts use a signed-significance rule that distinguishes a tool
+that helps from one that hurts. A separate sweep over anonymized domains controls
+for contamination, and a token cost-of-pass analysis asks what the tool is worth
+per correct answer.
+
+The benefit turns out to be strongly regime-dependent rather than uniform. Of the
+five tasks, two (\emph{solve}, \emph{simulate}) essentially do not happen without
+the tool; two (\emph{validate\_domain}, \emph{validate\_problem}) improve from an
+already partial baseline; and one (\emph{validate\_plan}) is a cautionary case in
+which merely making the tool available can \emph{lower} success --- the model
+reasons in prose instead of calling the validator --- while a single steering
+sentence repairs it. Where the unaided baseline has headroom, the tool's advantage
+grows with plan length; it is cost-effective in tokens exactly where the model
+cannot do the task unaided; and the pattern survives reasoning mode and an
+anonymized-domain control. Concretely,
+we contribute:
+\begin{itemize}
+\item A controlled three-arm, five-task, five-model evaluation of symbolic PDDL
+tool utility with strict end-to-end grading, Wilson intervals, and a
+signed-significance verdict rule that separates help from harm.
+\item The finding that tool utility is regime-dependent --- sole-source, headroom,
+and mixed --- including the counterintuitive result that tool \emph{availability}
+can hurt a task the model already does well, with a silence-not-error mechanism
+that one sentence of steering reverses.
+\item A token cost-of-pass analysis showing the tool pays for itself precisely
+where the unaided baseline is floored, and is a luxury where it is already strong.
+\item Robustness evidence: the verdict pattern reproduces under reasoning mode
+through budget-insensitive statistics, and an anonymized-domain contamination
+probe returns null.
+\end{itemize}
 
 \section{Background and Related Work}
 % DRAFT 2026-06-14 (goal 2). Re-derived for our framework; cites the earlier version
@@ -538,16 +616,52 @@ budget, with success-given-completion unchanged --- itself a demonstration of th
 budget confound above.
 
 \section{Limitations}
-% TODO: think=on decode-budget cliff; 8192 output cap (cap-raised rerun untested);
-% 5 models / 2 families; strict end-to-end grading (deliberate); latency unrecoverable;
-% FastMCP relabel verified inert on sweep5v2.
+Several constraints bound these conclusions. Under \emph{think}=on, reasoning and
+answer share one decode budget, so a large fraction of no-tools trials truncate; we
+defend the cross-mode claims with budget-insensitive statistics (the robust floor),
+but cannot fully decouple the tool's value from the budget in that mode, and a
+cap-raised rerun is untested. Decoding is deterministic (temperature~0), so each
+trial is a single sample and our intervals quantify uncertainty over the fixture
+instances, not sampling variance; robustness to higher temperatures is untested.
+The roster is five open-weight models from two families --- our claims concern the
+\emph{regime structure} of when a tool helps these models, not a leaderboard, and
+need not transfer to proprietary or frontier systems. Grading is strict and
+end-to-end by design (format adherence is part of the task), so a model that
+reasons correctly but emits malformed output scores as a failure; we report the
+failure-type decomposition so this is visible rather than hidden. The serving
+runtime did not surface per-trial reasoning traces for the model family used, so
+\emph{think}=on reasoning is evidenced through completion-token counts rather than
+archived chains of thought; and wall-clock latency is not recoverable from a
+batched server, so we use token cost, not time, as the efficiency axis. Finally,
+\emph{validate\_domain} carries a $5{:}1$ positive-to-negative imbalance that
+widens its negative-arm interval.
 
 \section{Future Work}
-% TODO (goal 4): PlanBench results & discussion + SOTA LLM-as-formalizer baselines
-% (incl. Huang & Zhang ACL 2025) are OUT OF SCOPE here — reserve ONE short paragraph.
+The natural next step is to test whether the regime structure and the
+availability-versus-steering distinction generalize beyond this suite: to
+cross-domain planning benchmarks such as PlanBench
+\citep{valmeekam2023planbench} and to a head-to-head comparison with published
+LLM-as-formalizer baselines \citep{huang2025limit}, carrying the same end-to-end
+grading, signed-significance, and contamination controls. Beyond single-tool-use,
+multi-tool orchestration and tool-chaining --- where the model must select among
+several relevant tools and compose their outputs --- would extend the analysis to
+the agentic regime, and a cap-raised rerun would let the \emph{think}=on benefit be
+measured without the decode-budget confound.
 
 \section{Conclusion}
-% TODO.
+We asked whether a sound symbolic planner or validator, exposed as a callable tool,
+improves a language model on individual PDDL tasks. It does --- but the benefit is
+strongly regime-dependent rather than uniform. The tool is indispensable where the
+model cannot do the task unaided (solving, state tracking), modest where the model
+is already competent (file validation), and on one task --- plan checking --- can
+even be \emph{harmful} when the tool is merely available without a nudge to use it,
+a failure that one steering sentence reverses. Measured in tokens, the tool pays for itself
+exactly where it is indispensable, and its advantage grows with instance difficulty
+where the baseline has room to degrade. These patterns survive reasoning mode and
+an anonymized-domain contamination control. The practical implication is concrete:
+a planner or validator behind a tool interface helps an LLM most when the task
+exceeds the model's unaided reach \emph{and} the model is actually prompted to call
+the tool --- availability alone is not enough.
 
 % If AAAI-27 requires the reproducibility checklist in-paper, inline it here
 % (final submission must be a SINGLE .tex file — no \input):

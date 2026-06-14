@@ -30,6 +30,16 @@ When a bullet later turns out wrong or superseded, strike it through and add the
 
 ---
 
+## 2026-06-14 — Full body drafted; page budget resolved (no trim needed)
+
+Drafted the remaining sections in `paper/main.tex`: **Introduction** (motivation / 3 prior-work lines / design-in-brief / regime-dependent findings preview / 4-item contributions), **Limitations**, **Future Work** (one out-of-scope paragraph: PlanBench + Huang \& Zhang formalizer baselines + multi-tool orchestration + cap-raised rerun), **Conclusion**, and the **Abstract** (164 words, no citations). Methodology + Results were committed & pushed earlier (`0a31a3d`); these new sections are uncommitted as of this entry.
+
+- **Each new section adversarially verified** (double-blind / claims-match-body / no-overclaim / citation-correctness) — all clean. Two small fixes applied: Intro's "advantage grows with plan length" scoped to "where the baseline has headroom" (consistent with the simulate-declines correction); Conclusion's "occasionally harmful" → "on one task … can even be harmful" (the validate_plan harm is 2/3 ≥9B models, not rare).
+- **Page-budget decision (user, 2026-06-14): finish all sections, then trim once; tighten prose, keep all figures.** Outcome: **no trim needed.** The full body builds to **8 pages total but technical content ends on page 7** (Conclusion in p7 left column; references fill p7 right + p8, and refs don't count toward AAAI's 7) → within the 7-page content limit **with all 3 figures kept double-column**. The added sections filled existing float whitespace rather than adding pages.
+- **Remaining before submission:** reproducibility checklist (inline, single-.tex), camera-ready vector PDF figures, anonymization/metadata pass, and reconciling the non-canonical model labels (Qwen3.5/3.6, Gemma-MoE-26B) with exact HF ids. Re-verify the exact 7-page rule against the AAAI-27 CFP.
+
+---
+
 ## 2026-06-08 — Per-token "tool intelligence" efficiency lens (descriptive)
 
 - **Added a descriptive per-token efficiency view to the RQ deck** (`rq_deck.py`, `_add_efficiency_section`): success rate ÷ action tokens, reported as **successes per 1,000 action tokens**. Action tokens = output (completion) tokens summed across the model's turns. Each +tool arm also shows **`×vs no-tools`** (green ↑ raised / red ↓ lowered / ≈ no change) so the increase/decrease in per-token intelligence is an at-a-glance read — e.g. solve 14–17×↑, but Gemma validate_plan plain 0.2×↓ recovering only to 0.8×↓ steered (still below its strong, cheap no-tools baseline).

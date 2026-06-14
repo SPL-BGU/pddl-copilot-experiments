@@ -1,8 +1,7 @@
 # Handoff — AAAI-27 single-tool-use paper
 
-**Branch:** `paper/aaai27-single-tool-draft` (pushed clean at `6f25668`; **uncommitted
-working-tree changes from 2026-06-14: Methodology + Results + `paper/figures/` in `paper/`,
-decode-cap fix in `EXPERIMENTS_FLOW.md` — not yet committed**).
+**Branch:** `paper/aaai27-single-tool-draft` (pushed clean at `0a31a3d` — Methodology +
+Results + `paper/figures/` + decode-cap fix committed & pushed 2026-06-14).
 **Repo:** `pddl-copilot-experiments`. All paper work lives in `paper/`.
 **Last session:** 2026-06-14.
 
@@ -10,21 +9,25 @@ decode-cap fix in `EXPERIMENTS_FLOW.md` — not yet committed**).
 Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
 `paper/RESULTS_PLAN.md` (the decided Results structure) → this file. The manuscript skeleton
 is `paper/main.tex`; the bibliography is `paper/refs.bib` (fully verified). Then draft the
-next section. **Suggested next task: Methodology (goal 3a).**
+next section. **STATUS 2026-06-14: the full body is drafted + verified + within 7pp. Next
+tasks are the reproducibility checklist (item 7), then the camera-ready passes (vector figures,
+anonymization/metadata, HF model ids).**
 
 ## What's DONE
 - AAAI-27 author kit imported (`paper/authorkit27/`, anonymous template).
-- `paper/main.tex` — anonymized scaffold; **Background and Related Work + Methodology +
-  Results are written** (all drafted + adversarially fact-checked vs sources 2026-06-14);
-  Introduction / Limitations / Future Work / Conclusion / Abstract are still stubs.
+- `paper/main.tex` — **the full body is drafted and verified**: Abstract + Introduction +
+  Background and Related Work + Methodology + Results + Limitations + Future Work + Conclusion
+  (all adversarially fact-checked vs sources 2026-06-14). Only the reproducibility checklist
+  and the camera-ready anonymization/vector-figure passes remain.
 - `paper/figures/` — 5 PNGs copied from the deck; Results uses 3: `solve.png`+`simulate.png`
   (Fig 1), `mechanism_validate_plan.png` (Fig 2), `token_quadrant.png` (Fig 3).
   `visible_mode_succ.png` copied but the robustness story is folded to text.
 - `paper/refs.bib` — 20 references, **all verified** against DBLP/ACL/PMLR/NeurIPS/arXiv;
   keys tidy (years match).
 - `paper/GOALS.md`, `paper/RESULTS_PLAN.md` — scope + Results plan (decisions locked).
-- Local build works (see Build below). `main.pdf` compiles to **7 pages** (Intro/Limitations/
-  Future Work/Conclusion still EMPTY) — references span ~1.2 of those pages.
+- Local build works (see Build below). `main.pdf` compiles to **8 pages total**; technical
+  content **ends on page 7** (references fill p7 right column + p8) → **within the 7-page
+  content limit, all 3 figures kept**. 0 undefined refs, 0 overfull boxes.
 
 ## Build
 ```bash
@@ -62,20 +65,27 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
 3. **Figures** — PNGs are in `paper/figures/` and compile in the draft; for camera-ready,
    regenerate the 3 used figures as **vector PDF @300dpi** (sources in
    `checkpoints/rq-sweep5v2/plots-unified/`; generator `.claude/skills/analyzer/scripts/rq_deck.py`).
-4. **Introduction (goal 1 partial) — NEXT.** motivation, the gap, contributions list.
-5. **Limitations** + **Future Work** — PlanBench/phase-3 + Huang & Zhang baseline are a
-   one-paragraph Future Work mention only (out of scope here).
-6. **Abstract** — write LAST.
+4. ~~**Introduction (goal 1)**~~ — **DONE 2026-06-14.** Motivation, the gap (3 prior-work lines),
+   the design in brief, a regime-dependent findings preview, and a 4-item contributions list.
+   Verified clean (double-blind / claims-match-Results / no overclaim / citations).
+5. ~~**Limitations + Future Work + Conclusion**~~ — **DONE 2026-06-14.** Limitations (think=on
+   budget confound, temp-0 single-sample, 5-model/2-family roster, strict grading, no archived
+   traces, latency unrecoverable, validate\_domain 5:1); Future Work = ONE-paragraph out-of-scope
+   mention of PlanBench + Huang \& Zhang formalizer baselines + multi-tool orchestration + a
+   cap-raised rerun; Conclusion. Verified clean.
+6. ~~**Abstract**~~ — **DONE 2026-06-14.** 164 words, no citations (AAAI rule), claims match body.
 7. **Reproducibility checklist** — AAAI requires it; `authorkit27/ReproducibilityChecklist.tex`.
-8. **Page-limit pass** — fit **7 pages** (refs unlimited, appendix maybe-unread). Verify the
-   7-page rule against the CFP. **STATUS 2026-06-14:** the doc is already **7 pages with
-   Intro/Limitations/Future Work/Conclusion EMPTY** (refs ~1.2pp don't count; technical
-   content ~5.5–6pp). Filling those (~1.5pp) WILL exceed 7 → trim here. Best candidates: make
-   Fig 1 or Fig 3 single-column (both are `figure*` double-column now), move one to an
-   appendix, or tighten Results prose. The robustness figure (`visible_mode_succ`) is already
-   folded to text.
-9. **Anonymization pass before submission** — third-person self-citation only; clear PDF
-   metadata; no de-anonymizing links.
+   Inline it before submission (single-.tex rule). Include exact HF model ids (the roster labels
+   Qwen3.5/3.6, Gemma-MoE-26B are non-canonical — see camera-ready note).
+8. ~~**Page-limit pass**~~ — **SATISFIED 2026-06-14.** Full body builds to **8 pages total**, but
+   technical content **ends on page 7** (Conclusion in p7 left column; references fill p7 right
+   column + p8, and refs don't count) → within the 7-page content limit **with all 3 figures
+   kept double-column** — no trim needed. Re-verify the exact rule against the CFP before
+   submission; if it tightens, the lightest lever is tightening Results/Background prose (the
+   user's chosen lever; keep figures).
+9. **Anonymization pass before submission** — third-person self-citation only (verified clean in
+   every section); clear PDF metadata; no de-anonymizing links; reconcile non-canonical model
+   labels with HF ids in the reproducibility checklist (not a blind violation, a repro gap).
 
 ## Hard constraints / policies (don't relearn the hard way)
 - **Double-blind.** Use the anonymous template. Cite the earlier version
