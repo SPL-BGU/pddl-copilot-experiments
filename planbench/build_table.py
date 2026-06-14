@@ -8,9 +8,24 @@ Usage:
     # (rsync of external/LLMs-Planning/plan-bench/results/)
 
 Per-task metric: ``llm_correct_binary`` for t3 (plan verification), else
-``llm_correct``. Accuracy = correct / graded, where graded = instances with
-the metric field set (matches PlanBench's published convention; for our
-engines every generated instance is graded).
+``llm_correct``. TWO numbers are emitted per cell:
+  * Accuracy (PlanBench-comparable) = correct / TOTAL attempted; an empty /
+    loop-exhausted instance (metric field unset) is scored INCORRECT, never
+    dropped. This is the published PlanBench convention — correct over the full
+    instance set — used for the gpt-4 / davinci baselines in this very table,
+    so our rows sit on the SAME denominator as the literature numbers beside
+    them. (A drop-empties denominator silently put our rows on a more lenient
+    yardstick than the baselines printed next to them, overstating the tools
+    arm exactly where it truncates to empty; see paper_notes_discussions.md
+    2026-06-14.)
+  * Success-given-completion (diagnostic) = correct / COMPLETED instances
+    (those that produced a gradeable answer). Isolates the NL->PDDL
+    formalization wall: low accuracy with high success-given-completion means
+    the model fails by not answering, not by being wrong. NEVER cite this
+    beside the literature.
+For the v1 no-tools vanilla engines every instance is graded, so the two
+coincide (the v1 table is unchanged by this fix); they diverge exactly where
+the tools arm truncates to empty.
 
 Caveat surfaced by --emit: PlanBench grades by exact-format string match
 (``text_to_plan`` / ``text_to_state``). Models that wrap the answer in
@@ -57,17 +72,32 @@ def _metric(task: str) -> str:
 
 
 def acc(root: str, config: str, eng: str, task: str):
-    """Return (accuracy_pct, n_graded) or (None, 0) if no file/data."""
+    """Return (acc_total, acc_completed, n_total, n_completed).
+
+    acc_total     = correct / total attempted; empty / loop-exhausted instances
+                    (metric field unset) count as INCORRECT, never dropped. The
+                    PlanBench-comparable number (same denominator as the gpt-4 /
+                    davinci baselines).
+    acc_completed = correct / instances that produced a gradeable answer.
+                    Diagnostic ONLY (isolates the formalization wall); never cite
+                    beside the literature.
+    Returns (None, None, 0, 0) when the cell has no file / no dict instances.
+    """
     fs = glob.glob(os.path.join(root, config, eng, task + ".json"))
     if not fs:
-        return None, 0
+        return None, None, 0, 0
     d = json.load(open(fs[0]))
-    insts = d.get("instances", d if isinstance(d, list) else [])
+    insts = [i for i in d.get("instances", d if isinstance(d, list) else [])
+             if isinstance(i, dict)]
+    if not insts:
+        return None, None, 0, 0
     f = _metric(task)
-    g = [i for i in insts if isinstance(i, dict) and i.get(f) is not None]
-    if not g:
-        return None, 0
-    return 100 * sum(1 for i in g if i[f]) / len(g), len(g)
+    completed = [i for i in insts if i.get(f) is not None]
+    correct = sum(1 for i in insts if i.get(f))
+    n_total, n_done = len(insts), len(completed)
+    acc_total = 100 * correct / n_total
+    acc_done = 100 * correct / n_done if n_done else None
+    return acc_total, acc_done, n_total, n_done
 
 
 def emit_rate(root: str, config: str, eng: str):
@@ -86,29 +116,62 @@ def emit_rate(root: str, config: str, eng: str):
     return 100 * len(em) / len(ne)
 
 
+def completion_rate(root: str, config: str, eng: str):
+    """Overall answered/attempted across all tasks for one engine — the size of
+    the formalization wall. Returns (pct, n_attempted) or (None, 0)."""
+    done = tot = 0
+    for t in TASKS:
+        _, _, n_total, n_done = acc(root, config, eng, t)
+        done += n_done
+        tot += n_total
+    return (100 * done / tot, tot) if tot else (None, 0)
+
+
+def _cells(root: str, config: str, eng: str, pick: int):
+    """One row of formatted cells; pick=0 -> acc_total, pick=1 -> acc_completed."""
+    out = []
+    for t in TASKS:
+        a = acc(root, config, eng, t)[pick]
+        out.append("  -  " if a is None else f"{a:5.1f}")
+    return out
+
+
+# Two views per config: the headline (PlanBench-comparable, total denominator)
+# and the diagnostic (success-given-completion) that exposes the NL->PDDL wall.
+VIEWS = [
+    (0, "acc %: PlanBench-comparable — correct / TOTAL N (empty/exhausted = INCORRECT)"),
+    (1, "success-given-completion % — correct / COMPLETED (DIAGNOSTIC, not literature-comparable)"),
+]
+
+
 def render(root: str) -> None:
     hdr = "{:26s} ".format("engine \\ task") + " ".join(f"{s:>5s}" for s in SHORT)
     for config in ("blocksworld", "logistics"):
-        print("\n" + "=" * len(hdr))
-        print(f"  PlanBench {config.upper()}  (no-tools vanilla; acc % over graded; t3=correct_binary)")
-        print("=" * len(hdr))
-        print(hdr)
-        print("-" * len(hdr))
         rows = OURS + ([("__sep__", "")] + BASELINES[config] if config in BASELINES else [])
-        for eng, lab in rows:
-            if eng == "__sep__":
-                print("-" * len(hdr))
-                continue
-            cells = []
-            for t in TASKS:
-                a, _ = acc(root, config, eng, t)
-                cells.append("  -  " if a is None else f"{a:5.1f}")
-            print(f"{lab:26s} " + " ".join(cells))
-        # Footnotes
-        print("-" * len(hdr))
+        for pick, title in VIEWS:
+            print("\n" + "=" * len(hdr))
+            print(f"  PlanBench {config.upper()}  ({title}; t3=correct_binary)")
+            print("=" * len(hdr))
+            print(hdr)
+            print("-" * len(hdr))
+            for eng, lab in rows:
+                if eng == "__sep__":
+                    print("-" * len(hdr))
+                    continue
+                print(f"{lab:26s} " + " ".join(_cells(root, config, eng, pick)))
+            print("-" * len(hdr))
+        # Footnotes (shared by both views for this config)
         print("  * t7 (plan_execution) EXCLUDED: PlanBench's exact-match state parser")
         print("    can't read verbose/markdown output (scores 0 even when the predicted")
         print("    state is correct); not a fair cell for any engine — see findings doc.")
+        crs = []
+        for eng, lab in OURS:
+            cr, _ = completion_rate(root, config, eng)
+            if cr is not None and cr < 100:
+                crs.append(f"{lab.split(': ')[1]} {cr:.0f}%")
+        if crs:
+            print("  * completion rate (answered / attempted; <100% = formalization wall — the")
+            print(f"    gap between the two tables above): {' | '.join(crs)}")
         _short = dict(zip(TASKS, SHORT))
         small = [f"{_short.get(t, t)} n={n}" for (cfg, t), n in SMALL_N.items() if cfg == config]
         if small:
