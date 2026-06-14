@@ -2,15 +2,19 @@
 """Idempotent in-place edits to make a fresh LLMs-Planning checkout host
 the ``pddl_copilot__<backend>__<model>`` engine.
 
-Five edits, anchored on stable strings (not line numbers):
+Anchored on stable strings (not line numbers):
 
 1. ``utils/__init__.py`` — tolerate missing ``OPENAI_API_KEY``.
 2. ``utils/llm_utils.py`` — tolerant imports of transformers / openai.
 3. ``utils/llm_utils.py`` — dispatch branch for ``pddl_copilot__*`` engines.
 4. ``response_generation.py`` — fix the self-destructing ``--specific_instances`` filter.
-5. ``response_evaluation.py`` — make the t3 verification parser robust to
-   responses that omit the ``plan is (in)valid`` verdict (non-adherence →
-   ``correct_binary=False`` instead of a ``KeyError`` that crashes the whole eval).
+5. ``response_evaluation.py`` — grader robustness (3 sub-edits): (A) the t3
+   verification parser tolerates responses that omit the ``plan is (in)valid``
+   verdict (non-adherence → ``correct_binary=False`` instead of a ``KeyError``
+   that crashes the whole eval); (B) the LLM parse is wrapped so a malformed
+   response can't crash the cell mid-loop; (C) ``load_json`` tolerates a MISSING
+   response file (all-empty tools cell) instead of a bare ``assert`` that exits
+   rc=1 and aborts the cell.
 
 Each edit checks for both the original anchor (apply) and the patched form
 (skip). Exits 1 if neither is found — that means upstream moved and the
@@ -235,6 +239,41 @@ def patch_response_evaluation(pb_root: Path) -> None:
             sys.exit(f"[patch] {f.relative_to(pb_root)}: parsed_llm_response anchor not found")
         text = text.replace(anchor_b, new_b)
         did.append("LLM-parse try/except")
+
+    # --- Edit C: tolerate a MISSING response file in load_json ---
+    # load_json bare-asserts the response file exists, so an eval invocation
+    # crashes (AssertionError, rc=1) for any (task,config) cell where
+    # response_generation produced NO file — which happens when every targeted
+    # instance truncated to empty (the tools arm's dominant small-model failure
+    # mode: NL->PDDL formalization wall -> retry loop -> empty). One all-empty
+    # cell would otherwise mark the whole job OVERALL_RC=1 and emit a traceback.
+    # Fix: fall through to an empty instance set so the eval records a no-data
+    # cell and the serial task loop continues. Safe under --verbose False (the
+    # only divide-by-total_instances path is verbose-gated). build_table reads
+    # the empty cell as "-" (no data); cells that DID generate some response are
+    # unaffected and graded exactly as upstream.
+    sentinel_c = "[eval] no response file for"
+    if sentinel_c not in text:
+        anchor_c = (
+            "        else:\n"
+            "            assert os.path.exists(response_dir+f\"{task_name}.json\")\n"
+            "            load_dir = response_dir\n"
+        )
+        new_c = (
+            "        elif os.path.exists(response_dir+f\"{task_name}.json\"):\n"
+            "            load_dir = response_dir\n"
+            "        else:\n"
+            f"            # {PATCH_MARKER}: tolerate a missing response file instead of the\n"
+            "            # bare assert that crashes the whole eval (rc=1) for an all-empty\n"
+            "            # (task,config) cell. Return an empty instance set so the serial\n"
+            "            # task loop records a no-data cell and continues.\n"
+            "            print(f\"[eval] no response file for {task_name} under {response_dir}; treating as empty\")\n"
+            "            return {\"instances\": []}\n"
+        )
+        if anchor_c not in text:
+            sys.exit(f"[patch] {f.relative_to(pb_root)}: load_json assert anchor not found")
+        text = text.replace(anchor_c, new_c)
+        did.append("load_json missing-file")
 
     if not did:
         print(f"[patch] {f.relative_to(pb_root)}: already applied")
