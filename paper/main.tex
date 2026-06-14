@@ -103,7 +103,7 @@ A complementary line treats the LLM not as the planner but as a \emph{formalizer
 translates natural language into PDDL, delegating search to a sound solver. LLM+P
 \citep{liu2023llmp} pipelines an LLM into a classical planner; \citet{guan2023world} use
 LLMs to construct world models for model-based planning; Plansformer
-\citep{pallagani2023plansformer} fine-tunes for plan generation; and pretrained LLMs have
+\citep{pallagani2022plansformer} fine-tunes for plan generation; and pretrained LLMs have
 been applied to generalized planning in PDDL domains \citep{silver2024generalized}.
 \citet{tantakoun2025survey} survey this rapidly growing ``LLMs-as-formalizers'' area, and
 \citet{huang2025limit} characterize its limits, showing that formalization quality degrades
@@ -118,7 +118,7 @@ Equipping LLMs with external tools is now standard, from learned tool invocation
 Context Protocol (MCP) \citep{anthropic2024mcp} standardizes how tools are described and
 called, and is the mechanism by which we expose planners and validators to the model. A
 growing body of benchmarks measures tool-use competence --- single-turn function calling
-\citep{bfcl2024} and multi-turn tool-agent-user interaction \citep{yao2024taubench}, among
+\citep{bfcl2025} and multi-turn tool-agent-user interaction \citep{yao2024taubench}, among
 others. Our setting sits deliberately at the simple end of this spectrum: each task admits
 exactly one relevant, correct-by-construction tool, so the appropriate analog is single-call
 function selection rather than long-horizon orchestration --- a point we use to calibrate
