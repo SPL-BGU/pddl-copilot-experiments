@@ -1,0 +1,191 @@
+%% AAAI-27 anonymous submission — single-tool-use evaluation paper.
+%% SCAFFOLD ONLY: sections are empty (TODO pointers, no prose). See GOALS.md for scope.
+%% Full formatting rules: authorkit27/AnonymousSubmission2027.pdf
+%% Preamble below is the AAAI-27 kit preamble verbatim — DO NOT CHANGE the marked lines.
+
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2027}  % DO NOT CHANGE THIS  (anonymous submission mode)
+% Fonts are loaded automatically by aaai2027.sty (newtxtext, helvet, courier).
+% DO NOT add \usepackage{times}, {helvet}, {courier}, or any other font package.
+\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm}  % DO NOT CHANGE THIS
+\usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing  % DO NOT CHANGE THIS
+
+% Recommended for algorithms (remove if unused before final submission).
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% Recommended for listings, e.g. PDDL snippets (remove if unused before final submission).
+\usepackage{newfloat}
+\usepackage{listings}
+\DeclareCaptionStyle{ruled}{labelfont=normalfont,labelsep=colon,strut=off} % DO NOT CHANGE THIS
+\lstset{%
+	basicstyle={\footnotesize\ttfamily},
+	numbers=left,numberstyle=\footnotesize,xleftmargin=2em,
+	aboveskip=0pt,belowskip=0pt,
+	showstringspaces=false,tabsize=2,breaklines=true}
+\floatstyle{ruled}
+\newfloat{listing}{tb}{lst}{}
+\floatname{listing}{Listing}
+
+% Recommended for better-looking tables.
+\usepackage{booktabs}
+
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{0} % 0 = unnumbered sections (AAAI default). Set to 1/2 to number.
+
+% ============================ Title & Authors ============================
+% Title is NOT anonymized (only authors are). Title Case (Chicago) required.
+\title{Working Title (TBD)} % TODO: set the real title before submission.
+
+% Anonymous submission: sole "author" is "Anonymous Submission"; affiliations empty.
+% De-anonymize (real authors/affiliations) only at camera-ready via CameraReady2027.tex.
+\author{
+    Anonymous Submission
+}
+\affiliations{
+    %
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+% TODO (goal 1): Abstract. Write LAST. ~150-200 words, no citations.
+\end{abstract}
+
+% Optional anonymized links block (uncomment near submission; do NOT de-anonymize).
+% \begin{links}
+%     \link{Code}{...}
+%     \link{Datasets}{...}
+% \end{links}
+
+\section{Introduction}
+% TODO: motivation; the gap (do symbolic PDDL tools actually help LLMs?); our framing;
+% explicit contributions list. Self-cite the earlier arXiv version anonymously
+% (see refs.bib note) — it is our own prior work.
+
+\section{Background and Related Work}
+% DRAFT 2026-06-14 (goal 2). Re-derived for our framework; cites the earlier version
+% (Benyamin et al.) in the THIRD PERSON only. Some refs flagged [VERIFY] in refs.bib.
+
+Automated planning studies how to synthesize a course of action that transforms an
+initial state into one satisfying a goal. The Planning Domain Definition Language (PDDL)
+\citep{mcdermott1998pddl, fox2003pddl21} is the field's standard formalism, and decades of
+research have produced sound, complete solvers such as Fast Downward
+\citep{helmert2006fastdownward} and FF \citep{hoffmann2001ff} for classical planning and
+ENHSP \citep{scala2016enhsp} for numeric planning, together with plan validators such as
+VAL \citep{howey2004val}. These systems are correct by construction: a plan they return
+provably reaches the goal, and a verdict they issue is sound. They are, however, brittle to
+the formal-modelling step --- a domain or problem must be expressed in precise PDDL before
+any solver can run.
+
+\subsection{Large Language Models for Planning}
+Large language models have been probed extensively as planners. Systematic benchmarks show
+that, prompted to produce plans directly, even strong LLMs fall well short of solver-level
+reliability \citep{valmeekam2023planbench}. \citet{kambhampati2024llmmodulo} argue from this
+evidence that autoregressive LLMs cannot plan or self-verify on their own, and propose
+\emph{LLM-Modulo} frameworks in which the model is paired with external, model-based
+verifiers that supply the soundness it lacks. The present study is empirical evidence for
+exactly this division of labour: we measure what an LLM gains when a sound planner or
+validator is available as a callable tool, rather than asking the model to be the planner.
+
+\subsection{Large Language Models as Planning Formalizers}
+A complementary line treats the LLM not as the planner but as a \emph{formalizer} that
+translates natural language into PDDL, delegating search to a sound solver. LLM+P
+\citep{liu2023llmp} pipelines an LLM into a classical planner; \citet{guan2023world} use
+LLMs to construct world models for model-based planning; Plansformer
+\citep{pallagani2023plansformer} fine-tunes for plan generation; and pretrained LLMs have
+been applied to generalized planning in PDDL domains \citep{silver2024generalized}.
+\citet{tantakoun2025survey} survey this rapidly growing ``LLMs-as-formalizers'' area, and
+\citet{huang2025limit} characterize its limits, showing that formalization quality degrades
+sharply on obfuscated domains. This literature largely studies the \emph{generation} of
+PDDL, evaluated on a single downstream question (does the produced model solve?). We instead
+evaluate LLMs \emph{using} planning and validation tools across five distinct PDDL tasks,
+with strict end-to-end grading against a solver oracle.
+
+\subsection{Tool Use, Agent Protocols, and Their Evaluation}
+Equipping LLMs with external tools is now standard, from learned tool invocation
+\citep{schick2023toolformer} to large API repertoires \citep{qin2024toolllm}. The Model
+Context Protocol (MCP) \citep{anthropic2024mcp} standardizes how tools are described and
+called, and is the mechanism by which we expose planners and validators to the model. A
+growing body of benchmarks measures tool-use competence --- single-turn function calling
+\citep{bfcl2024} and multi-turn tool-agent-user interaction \citep{yao2024taubench}, among
+others. Our setting sits deliberately at the simple end of this spectrum: each task admits
+exactly one relevant, correct-by-construction tool, so the appropriate analog is single-call
+function selection rather than long-horizon orchestration --- a point we use to calibrate
+our results.
+
+\subsection{Positioning}
+The system most directly related to this study is the PDDL Planning Copilot
+\citep{benyamin2025pddlcopilot}, which wraps planners and validators behind an MCP interface
+and a single natural-language entry point. Its original evaluation was preliminary --- a
+limited prompt set, no confidence intervals, and no control for memorization of public
+benchmark domains. This paper contributes a substantially more rigorous evaluation of
+whether such symbolic tools help LLMs: five single-tool-use PDDL tasks across five models, a
+three-arm design that separates tool \emph{availability} from a one-sentence steering
+\emph{nudge}, Wilson confidence intervals with signed significance, a contamination control
+over anonymized domains, and a token-cost (cost-of-pass) analysis. Cross-benchmark
+generalization (e.g., PlanBench \citep{valmeekam2023planbench}) and published formalizer
+baselines \citep{huang2025limit} are deliberately out of scope here (see Future Work).
+
+\section{Methodology}
+% TODO (goal 3a). Sources: EXPERIMENTS_FLOW.md, run_experiment.py, pddl_eval/.
+% \subsection{Tasks}                      % solve, validate_domain/problem/plan, simulate
+% \subsection{Models and Serving}         % 5-model vLLM roster
+% \subsection{Conditions}                 % no-tools / +tool(plain) / +tool(steered)
+% \subsection{Metrics and Confidence Intervals}  % task_success_rate, tool_selected, Wilson 95%, signed-CI verdicts
+% \subsection{Contamination Control}      % canonical vs anonymized domains (the null)
+
+\section{Results}
+% Structure DECIDED 2026-06-14 (regime-led hybrid) — full plan in paper/RESULTS_PLAN.md.
+% Source: unified deck checkpoints/rq-sweep5v2/ + paper_notes_discussions.md. No prose yet.
+% Lead paragraph + Table 1 (scorecard: 6 RQs, verdicts, headline numbers).
+
+\subsection{Two Tasks the Model Cannot Do Without the Tool}
+% RQ0.2 solve + RQ0.4 simulate (sole-source). Fig 1 = solve.png + simulate.png.
+
+\subsection{Tasks With Headroom: The Tool Still Helps}
+% RQ0.1 validate_domain + validate_problem. Text + Table 1 (charts saturate ~100%).
+
+\subsection{When Availability Backfires, Steering Repairs It}
+% RQ0.3 validate_plan (MIXED). Fig 2 = mechanism_validate_plan.png.
+% Silence-not-error + signed-significance consequence + 9B>35B propensity-not-capability.
+
+\subsection{Does the Advantage Track Difficulty?}
+% RQ0.5 grows with plan length; RQ0.6 flat with object count. Mostly text; bins in appendix.
+
+\subsection{What the Tool Costs}
+% Co-headline. Fig 3 = token_quadrant.png + cost-of-pass decomposition in text.
+
+\subsection{Robustness: Reasoning Mode and Contamination}
+% Compact. think=on pattern survives + robust floor + budget caveat (Fig 4 = visible_mode_succ.png).
+% Contamination null (sweep-6) in one paragraph.
+
+\section{Limitations}
+% TODO: think=on decode-budget cliff; 8192 output cap (cap-raised rerun untested);
+% 5 models / 2 families; strict end-to-end grading (deliberate); latency unrecoverable;
+% FastMCP relabel verified inert on sweep5v2.
+
+\section{Future Work}
+% TODO (goal 4): PlanBench results & discussion + SOTA LLM-as-formalizer baselines
+% (incl. Huang & Zhang ACL 2025) are OUT OF SCOPE here — reserve ONE short paragraph.
+
+\section{Conclusion}
+% TODO.
+
+% If AAAI-27 requires the reproducibility checklist in-paper, inline it here
+% (final submission must be a SINGLE .tex file — no \input):
+% \input{authorkit27/ReproducibilityChecklist.tex}
+
+\bibliography{refs}
+
+\end{document}

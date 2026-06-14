@@ -151,14 +151,19 @@ This repo ships all 10 paper-aligned domains (5 classical: barman, blocksworld, 
 3. **Without-tools condition**: Baseline -- model must answer from its own knowledge
 4. **Success criteria**: Did the model call the correct tool (with-tools) or match ground truth (without-tools)?
 
-## Citation
+## Earlier version
+
+This repository is the more-robust successor to our earlier, arXiv-only version of this
+work; a new paper is in progress (see `paper/`). Until it appears, cite the earlier version:
 
 ```bibtex
-@article{benyamin2025pddlcopilot,
-  title={Toward PDDL Planning Copilot},
-  author={Benyamin, Omer and others},
-  journal={arXiv preprint arXiv:2509.12987},
-  year={2025}
+@misc{benyamin2025pddlcopilot,
+  title         = {Toward PDDL Planning Copilot},
+  author        = {Benyamin, Yarin and Mordoch, Argaman and Shperberg, Shahaf S. and Stern, Roni},
+  year          = {2025},
+  eprint        = {2509.12987},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AI}
 }
 ```
 

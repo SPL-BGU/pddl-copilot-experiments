@@ -1,0 +1,13 @@
+# LaTeX build artifacts from the working files (kit PDFs under authorkit27/ are kept).
+/main.pdf
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.log
