@@ -1,0 +1,2326 @@
+{
+ "instances": {
+  "barman/p01": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {
+    "v1": 30,
+    "v2": 28,
+    "v3": 28,
+    "v4": 28,
+    "v5": 28,
+    "b1": 2,
+    "b2": 29,
+    "b3": 29,
+    "b4": 29,
+    "b5": 29
+   },
+   "ref_len": 28
+  },
+  "barman/p02": {
+   "track": "classical",
+   "obj_count": 13,
+   "plan_len": {
+    "v1": 14,
+    "v2": 14,
+    "v3": 14,
+    "v4": 14,
+    "v5": 14,
+    "b1": 13,
+    "b2": 13,
+    "b3": 13,
+    "b4": 14,
+    "b5": 14
+   },
+   "ref_len": 14
+  },
+  "barman/p03": {
+   "track": "classical",
+   "obj_count": 17,
+   "plan_len": {
+    "v1": 34,
+    "v2": 34,
+    "v3": 34,
+    "v4": 34,
+    "v5": 34,
+    "b1": 33,
+    "b2": 33,
+    "b3": 33,
+    "b4": 33,
+    "b5": 33
+   },
+   "ref_len": 34
+  },
+  "barman/p04": {
+   "track": "classical",
+   "obj_count": 19,
+   "plan_len": {
+    "v1": 59,
+    "v2": 59,
+    "v3": 59,
+    "v4": 59,
+    "v5": 59,
+    "b1": 58,
+    "b2": 58,
+    "b3": 58,
+    "b4": 58,
+    "b5": 58
+   },
+   "ref_len": 59
+  },
+  "barman/p05": {
+   "track": "classical",
+   "obj_count": 20,
+   "plan_len": {
+    "v1": 65,
+    "v2": 65,
+    "v3": 65,
+    "v4": 65,
+    "v5": 65,
+    "b1": 64,
+    "b2": 64,
+    "b3": 64,
+    "b4": 64,
+    "b5": 64
+   },
+   "ref_len": 65
+  },
+  "barman/n01": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "barman/n02": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "barman/n03": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "barman/n04": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "barman/n05": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "blocksworld/p01": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 4,
+    "b2": 3,
+    "b3": 4,
+    "b4": 4,
+    "b5": 5
+   },
+   "ref_len": 4
+  },
+  "blocksworld/p02": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 2,
+    "v2": 2,
+    "v3": 2,
+    "v4": 2,
+    "v5": 2,
+    "b1": 1,
+    "b2": 1,
+    "b3": 2,
+    "b4": 3,
+    "b5": 3
+   },
+   "ref_len": 2
+  },
+  "blocksworld/p03": {
+   "track": "classical",
+   "obj_count": 4,
+   "plan_len": {
+    "v1": 8,
+    "v2": 8,
+    "v3": 8,
+    "v4": 8,
+    "v5": 8,
+    "b1": 7,
+    "b2": 7,
+    "b3": 7,
+    "b4": 7,
+    "b5": 8
+   },
+   "ref_len": 8
+  },
+  "blocksworld/p04": {
+   "track": "classical",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 8,
+    "v2": 8,
+    "v3": 8,
+    "v4": 8,
+    "v5": 8,
+    "b1": 7,
+    "b2": 7,
+    "b3": 7,
+    "b4": 7,
+    "b5": 7
+   },
+   "ref_len": 8
+  },
+  "blocksworld/p05": {
+   "track": "classical",
+   "obj_count": 6,
+   "plan_len": {
+    "v1": 16,
+    "v2": 16,
+    "v3": 16,
+    "v4": 16,
+    "v5": 16,
+    "b1": 15,
+    "b2": 15,
+    "b3": 15,
+    "b4": 15,
+    "b5": 15
+   },
+   "ref_len": 16
+  },
+  "blocksworld/n01": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "blocksworld/n02": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "blocksworld/n03": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "blocksworld/n04": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "blocksworld/n05": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depots/p01": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {
+    "v1": 5,
+    "v2": 5,
+    "v3": 5,
+    "v4": 5,
+    "v5": 5,
+    "b1": 2,
+    "b2": 4,
+    "b3": 4,
+    "b4": 4,
+    "b5": 5
+   },
+   "ref_len": 5
+  },
+  "depots/p02": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {
+    "v1": 9,
+    "v2": 9,
+    "v3": 9,
+    "v4": 9,
+    "v5": 9,
+    "b1": 8,
+    "b2": 8,
+    "b3": 8,
+    "b4": 8,
+    "b5": 9
+   },
+   "ref_len": 9
+  },
+  "depots/p03": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {
+    "v1": 11,
+    "v2": 11,
+    "v3": 11,
+    "v4": 11,
+    "v5": 11,
+    "b1": 10,
+    "b2": 10,
+    "b3": 10,
+    "b4": 10,
+    "b5": 10
+   },
+   "ref_len": 11
+  },
+  "depots/p04": {
+   "track": "classical",
+   "obj_count": 18,
+   "plan_len": {
+    "v1": 22,
+    "v2": 22,
+    "v3": 22,
+    "v4": 22,
+    "v5": 22,
+    "b1": 21,
+    "b2": 21,
+    "b3": 21,
+    "b4": 21,
+    "b5": 21
+   },
+   "ref_len": 22
+  },
+  "depots/p05": {
+   "track": "classical",
+   "obj_count": 24,
+   "plan_len": {
+    "v1": 22,
+    "v2": 22,
+    "v3": 22,
+    "v4": 22,
+    "v5": 22,
+    "b1": 21,
+    "b2": 21,
+    "b3": 21,
+    "b4": 21,
+    "b5": 22
+   },
+   "ref_len": 22
+  },
+  "depots/n01": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depots/n02": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depots/n03": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depots/n04": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depots/n05": {
+   "track": "classical",
+   "obj_count": 16,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gripper/p01": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {
+    "v1": 3,
+    "v2": 3,
+    "v3": 3,
+    "v4": 3,
+    "v5": 3,
+    "b1": 2,
+    "b2": 2,
+    "b3": 2,
+    "b4": 3,
+    "b5": 3
+   },
+   "ref_len": 3
+  },
+  "gripper/p02": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {
+    "v1": 8,
+    "v2": 8,
+    "v3": 8,
+    "v4": 8,
+    "v5": 8,
+    "b1": 7,
+    "b2": 7,
+    "b3": 7,
+    "b4": 7,
+    "b5": 8
+   },
+   "ref_len": 8
+  },
+  "gripper/p03": {
+   "track": "classical",
+   "obj_count": 13,
+   "plan_len": {
+    "v1": 11,
+    "v2": 11,
+    "v3": 11,
+    "v4": 11,
+    "v5": 11,
+    "b1": 10,
+    "b2": 10,
+    "b3": 10,
+    "b4": 10,
+    "b5": 11
+   },
+   "ref_len": 11
+  },
+  "gripper/p04": {
+   "track": "classical",
+   "obj_count": 15,
+   "plan_len": {
+    "v1": 10,
+    "v2": 10,
+    "v3": 10,
+    "v4": 10,
+    "v5": 10,
+    "b1": 9,
+    "b2": 9,
+    "b3": 9,
+    "b4": 9,
+    "b5": 10
+   },
+   "ref_len": 10
+  },
+  "gripper/p05": {
+   "track": "classical",
+   "obj_count": 19,
+   "plan_len": {
+    "v1": 14,
+    "v2": 14,
+    "v3": 14,
+    "v4": 14,
+    "v5": 14,
+    "b1": 13,
+    "b2": 13,
+    "b3": 13,
+    "b4": 13,
+    "b5": 13
+   },
+   "ref_len": 14
+  },
+  "gripper/n01": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gripper/n02": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gripper/n03": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gripper/n04": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gripper/n05": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "miconic/p01": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 3,
+    "v2": 3,
+    "v3": 3,
+    "v4": 3,
+    "v5": 3,
+    "b1": 2,
+    "b2": 2,
+    "b3": 2,
+    "b4": 3,
+    "b5": 3
+   },
+   "ref_len": 3
+  },
+  "miconic/p02": {
+   "track": "classical",
+   "obj_count": 4,
+   "plan_len": {
+    "v1": 6,
+    "v2": 6,
+    "v3": 6,
+    "v4": 6,
+    "v5": 6,
+    "b1": 5,
+    "b2": 5,
+    "b3": 5,
+    "b4": 5,
+    "b5": 5
+   },
+   "ref_len": 6
+  },
+  "miconic/p03": {
+   "track": "classical",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 6,
+    "v2": 6,
+    "v3": 6,
+    "v4": 6,
+    "v5": 6,
+    "b1": 5,
+    "b2": 5,
+    "b3": 5,
+    "b4": 5,
+    "b5": 6
+   },
+   "ref_len": 6
+  },
+  "miconic/p04": {
+   "track": "classical",
+   "obj_count": 6,
+   "plan_len": {
+    "v1": 10,
+    "v2": 10,
+    "v3": 10,
+    "v4": 10,
+    "v5": 10,
+    "b1": 9,
+    "b2": 9,
+    "b3": 9,
+    "b4": 9,
+    "b5": 10
+   },
+   "ref_len": 10
+  },
+  "miconic/p05": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {
+    "v1": 9,
+    "v2": 9,
+    "v3": 9,
+    "v4": 9,
+    "v5": 9,
+    "b1": 8,
+    "b2": 8,
+    "b3": 8,
+    "b4": 8,
+    "b5": 9
+   },
+   "ref_len": 9
+  },
+  "miconic/n01": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "miconic/n02": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "miconic/n03": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "miconic/n04": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "miconic/n05": {
+   "track": "classical",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "parking/p01": {
+   "track": "classical",
+   "obj_count": 6,
+   "plan_len": {
+    "v1": 5,
+    "v2": 5,
+    "v3": 5,
+    "v4": 5,
+    "v5": 5,
+    "b1": 4,
+    "b2": 4,
+    "b3": 4,
+    "b4": 4,
+    "b5": 4
+   },
+   "ref_len": 5
+  },
+  "parking/p02": {
+   "track": "classical",
+   "obj_count": 7,
+   "plan_len": {
+    "v1": 7,
+    "v2": 7,
+    "v3": 7,
+    "v4": 7,
+    "v5": 7,
+    "b1": 6,
+    "b2": 6,
+    "b3": 6,
+    "b4": 7,
+    "b5": 7
+   },
+   "ref_len": 7
+  },
+  "parking/p03": {
+   "track": "classical",
+   "obj_count": 8,
+   "plan_len": {
+    "v1": 3,
+    "v2": 3,
+    "v3": 3,
+    "v4": 3,
+    "v5": 3,
+    "b1": 2,
+    "b2": 2,
+    "b3": 2,
+    "b4": 3,
+    "b5": 3
+   },
+   "ref_len": 3
+  },
+  "parking/p04": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {
+    "v1": 5,
+    "v2": 5,
+    "v3": 5,
+    "v4": 5,
+    "v5": 5,
+    "b1": 4,
+    "b2": 4,
+    "b3": 4,
+    "b4": 5,
+    "b5": 5
+   },
+   "ref_len": 5
+  },
+  "parking/p05": {
+   "track": "classical",
+   "obj_count": 10,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 3,
+    "b2": 3,
+    "b3": 3,
+    "b4": 4,
+    "b5": 4
+   },
+   "ref_len": 4
+  },
+  "parking/n01": {
+   "track": "classical",
+   "obj_count": 6,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "parking/n02": {
+   "track": "classical",
+   "obj_count": 6,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "parking/n03": {
+   "track": "classical",
+   "obj_count": 6,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "parking/n04": {
+   "track": "classical",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "parking/n05": {
+   "track": "classical",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "rovers/p01": {
+   "track": "classical",
+   "obj_count": 11,
+   "plan_len": {
+    "v1": 12,
+    "v2": 12,
+    "v3": 12,
+    "v4": 12,
+    "v5": 12,
+    "b1": 2,
+    "b2": 11,
+    "b3": 11,
+    "b4": 11,
+    "b5": 12
+   },
+   "ref_len": 12
+  },
+  "rovers/p02": {
+   "track": "classical",
+   "obj_count": 11,
+   "plan_len": {
+    "v1": 20,
+    "v2": 20,
+    "v3": 20,
+    "v4": 20,
+    "v5": 20,
+    "b1": 19,
+    "b2": 19,
+    "b3": 19,
+    "b4": 19,
+    "b5": 20
+   },
+   "ref_len": 20
+  },
+  "rovers/p03": {
+   "track": "classical",
+   "obj_count": 13,
+   "plan_len": {
+    "v1": 14,
+    "v2": 14,
+    "v3": 14,
+    "v4": 14,
+    "v5": 14,
+    "b1": 13,
+    "b2": 13,
+    "b3": 13,
+    "b4": 13,
+    "b5": 14
+   },
+   "ref_len": 14
+  },
+  "rovers/p04": {
+   "track": "classical",
+   "obj_count": 17,
+   "plan_len": {
+    "v1": 27,
+    "v2": 27,
+    "v3": 27,
+    "v4": 27,
+    "v5": 27,
+    "b1": 26,
+    "b2": 26,
+    "b3": 26,
+    "b4": 26,
+    "b5": 27
+   },
+   "ref_len": 27
+  },
+  "rovers/p05": {
+   "track": "classical",
+   "obj_count": 19,
+   "plan_len": {
+    "v1": 34,
+    "v2": 34,
+    "v3": 34,
+    "v4": 34,
+    "v5": 34,
+    "b1": 33,
+    "b2": 33,
+    "b3": 33,
+    "b4": 33,
+    "b5": 34
+   },
+   "ref_len": 34
+  },
+  "rovers/n01": {
+   "track": "classical",
+   "obj_count": 11,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "rovers/n02": {
+   "track": "classical",
+   "obj_count": 11,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "rovers/n03": {
+   "track": "classical",
+   "obj_count": 11,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "rovers/n04": {
+   "track": "classical",
+   "obj_count": 11,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "rovers/n05": {
+   "track": "classical",
+   "obj_count": 11,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "satellite/p01": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {
+    "v1": 6,
+    "v2": 6,
+    "v3": 6,
+    "v4": 6,
+    "v5": 6,
+    "b1": 3,
+    "b2": 5,
+    "b3": 5,
+    "b4": 5,
+    "b5": 6
+   },
+   "ref_len": 6
+  },
+  "satellite/p02": {
+   "track": "classical",
+   "obj_count": 10,
+   "plan_len": {
+    "v1": 9,
+    "v2": 9,
+    "v3": 9,
+    "v4": 9,
+    "v5": 9,
+    "b1": 8,
+    "b2": 8,
+    "b3": 8,
+    "b4": 8,
+    "b5": 8
+   },
+   "ref_len": 9
+  },
+  "satellite/p03": {
+   "track": "classical",
+   "obj_count": 10,
+   "plan_len": {
+    "v1": 9,
+    "v2": 9,
+    "v3": 9,
+    "v4": 9,
+    "v5": 9,
+    "b1": 8,
+    "b2": 8,
+    "b3": 8,
+    "b4": 8,
+    "b5": 8
+   },
+   "ref_len": 9
+  },
+  "satellite/p04": {
+   "track": "classical",
+   "obj_count": 19,
+   "plan_len": {
+    "v1": 15,
+    "v2": 15,
+    "v3": 15,
+    "v4": 15,
+    "v5": 15,
+    "b1": 14,
+    "b2": 14,
+    "b3": 14,
+    "b4": 14,
+    "b5": 15
+   },
+   "ref_len": 15
+  },
+  "satellite/p05": {
+   "track": "classical",
+   "obj_count": 21,
+   "plan_len": {
+    "v1": 11,
+    "v2": 11,
+    "v3": 11,
+    "v4": 11,
+    "v5": 11,
+    "b1": 10,
+    "b2": 10,
+    "b3": 10,
+    "b4": 10,
+    "b5": 11
+   },
+   "ref_len": 11
+  },
+  "satellite/n01": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "satellite/n02": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "satellite/n03": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "satellite/n04": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "satellite/n05": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "tpp/p01": {
+   "track": "classical",
+   "obj_count": 8,
+   "plan_len": {
+    "v1": 13,
+    "v2": 13,
+    "v3": 13,
+    "v4": 13,
+    "v5": 13,
+    "b1": 12,
+    "b2": 12,
+    "b3": 12,
+    "b4": 12,
+    "b5": 12
+   },
+   "ref_len": 13
+  },
+  "tpp/p02": {
+   "track": "classical",
+   "obj_count": 9,
+   "plan_len": {
+    "v1": 13,
+    "v2": 13,
+    "v3": 13,
+    "v4": 13,
+    "v5": 13,
+    "b1": 12,
+    "b2": 12,
+    "b3": 12,
+    "b4": 12,
+    "b5": 13
+   },
+   "ref_len": 13
+  },
+  "tpp/p03": {
+   "track": "classical",
+   "obj_count": 13,
+   "plan_len": {
+    "v1": 28,
+    "v2": 28,
+    "v3": 28,
+    "v4": 28,
+    "v5": 28,
+    "b1": 27,
+    "b2": 27,
+    "b3": 27,
+    "b4": 27,
+    "b5": 27
+   },
+   "ref_len": 28
+  },
+  "tpp/p04": {
+   "track": "classical",
+   "obj_count": 14,
+   "plan_len": {
+    "v1": 30,
+    "v2": 30,
+    "v3": 30,
+    "v4": 30,
+    "v5": 30,
+    "b1": 29,
+    "b2": 29,
+    "b3": 29,
+    "b4": 29,
+    "b5": 29
+   },
+   "ref_len": 30
+  },
+  "tpp/p05": {
+   "track": "classical",
+   "obj_count": 18,
+   "plan_len": {
+    "v1": 36,
+    "v2": 36,
+    "v3": 36,
+    "v4": 36,
+    "v5": 36,
+    "b1": 35,
+    "b2": 35,
+    "b3": 35,
+    "b4": 35,
+    "b5": 35
+   },
+   "ref_len": 36
+  },
+  "tpp/n01": {
+   "track": "classical",
+   "obj_count": 8,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "tpp/n02": {
+   "track": "classical",
+   "obj_count": 8,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "tpp/n03": {
+   "track": "classical",
+   "obj_count": 8,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "tpp/n04": {
+   "track": "classical",
+   "obj_count": 8,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "tpp/n05": {
+   "track": "classical",
+   "obj_count": 8,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel/p01": {
+   "track": "classical",
+   "obj_count": 12,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 3,
+    "b2": 3,
+    "b3": 3,
+    "b4": 4,
+    "b5": 4
+   },
+   "ref_len": 4
+  },
+  "zenotravel/p02": {
+   "track": "classical",
+   "obj_count": 14,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 3,
+    "b2": 3,
+    "b3": 3,
+    "b4": 3,
+    "b5": 4
+   },
+   "ref_len": 4
+  },
+  "zenotravel/p03": {
+   "track": "classical",
+   "obj_count": 15,
+   "plan_len": {
+    "v1": 7,
+    "v2": 7,
+    "v3": 7,
+    "v4": 7,
+    "v5": 7,
+    "b1": 6,
+    "b2": 6,
+    "b3": 6,
+    "b4": 6,
+    "b5": 6
+   },
+   "ref_len": 7
+  },
+  "zenotravel/p04": {
+   "track": "classical",
+   "obj_count": 17,
+   "plan_len": {
+    "v1": 10,
+    "v2": 10,
+    "v3": 10,
+    "v4": 10,
+    "v5": 10,
+    "b1": 9,
+    "b2": 9,
+    "b3": 9,
+    "b4": 9,
+    "b5": 10
+   },
+   "ref_len": 10
+  },
+  "zenotravel/p05": {
+   "track": "classical",
+   "obj_count": 18,
+   "plan_len": {
+    "v1": 9,
+    "v2": 9,
+    "v3": 9,
+    "v4": 9,
+    "v5": 9,
+    "b1": 8,
+    "b2": 8,
+    "b3": 8,
+    "b4": 8,
+    "b5": 9
+   },
+   "ref_len": 9
+  },
+  "zenotravel/n01": {
+   "track": "classical",
+   "obj_count": 12,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel/n02": {
+   "track": "classical",
+   "obj_count": 12,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel/n03": {
+   "track": "classical",
+   "obj_count": 12,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel/n04": {
+   "track": "classical",
+   "obj_count": 12,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel/n05": {
+   "track": "classical",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "block-grouping/p01": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 36,
+    "v2": 36,
+    "v3": 36,
+    "v4": 36,
+    "v5": 36,
+    "b1": 35,
+    "b2": 35,
+    "b3": 35,
+    "b4": 35,
+    "b5": 37
+   },
+   "ref_len": 36
+  },
+  "block-grouping/p02": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 25,
+    "v2": 25,
+    "v3": 25,
+    "v4": 25,
+    "v5": 25,
+    "b1": 24,
+    "b2": 24,
+    "b3": 24,
+    "b4": 24,
+    "b5": 24
+   },
+   "ref_len": 25
+  },
+  "block-grouping/p03": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 20,
+    "v2": 20,
+    "v3": 20,
+    "v4": 20,
+    "v5": 20,
+    "b1": 19,
+    "b2": 19,
+    "b3": 19,
+    "b4": 19,
+    "b5": 21
+   },
+   "ref_len": 20
+  },
+  "block-grouping/p04": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 10,
+    "v2": 10,
+    "v3": 10,
+    "v4": 10,
+    "v5": 10,
+    "b1": 9,
+    "b2": 9,
+    "b3": 11,
+    "b4": 11,
+    "b5": 8
+   },
+   "ref_len": 10
+  },
+  "block-grouping/p05": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 23,
+    "v2": 23,
+    "v3": 23,
+    "v4": 23,
+    "v5": 23,
+    "b1": 22,
+    "b2": 22,
+    "b3": 22,
+    "b4": 24,
+    "b5": 24
+   },
+   "ref_len": 23
+  },
+  "block-grouping/n01": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "block-grouping/n02": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "block-grouping/n03": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "block-grouping/n04": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "block-grouping/n05": {
+   "track": "numeric",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "counters/p01": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 27,
+    "v2": 27,
+    "v3": 27,
+    "v4": 27,
+    "v5": 27,
+    "b1": 2,
+    "b2": 26,
+    "b3": 26,
+    "b4": 26,
+    "b5": 28
+   },
+   "ref_len": 27
+  },
+  "counters/p02": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 33,
+    "v2": 33,
+    "v3": 33,
+    "v4": 33,
+    "v5": 33,
+    "b1": 32,
+    "b2": 31,
+    "b3": 30,
+    "b4": 29,
+    "b5": 28
+   },
+   "ref_len": 33
+  },
+  "counters/p03": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 47,
+    "v2": 47,
+    "v3": 47,
+    "v4": 47,
+    "v5": 47,
+    "b1": 46,
+    "b2": 45,
+    "b3": 44,
+    "b4": 43,
+    "b5": 42
+   },
+   "ref_len": 47
+  },
+  "counters/p04": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 8,
+    "v2": 8,
+    "v3": 8,
+    "v4": 8,
+    "v5": 8,
+    "b1": 7,
+    "b2": 7,
+    "b3": 6,
+    "b4": 5,
+    "b5": 4
+   },
+   "ref_len": 8
+  },
+  "counters/p05": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 56,
+    "v2": 56,
+    "v3": 56,
+    "v4": 56,
+    "v5": 56,
+    "b1": 55,
+    "b2": 54,
+    "b3": 53,
+    "b4": 52,
+    "b5": 51
+   },
+   "ref_len": 56
+  },
+  "counters/n01": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "counters/n02": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "counters/n03": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "counters/n04": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "counters/n05": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "delivery/p01": {
+   "track": "numeric",
+   "obj_count": 13,
+   "plan_len": {
+    "v1": 14,
+    "v2": 14,
+    "v3": 14,
+    "v4": 14,
+    "v5": 14,
+    "b1": 13,
+    "b2": 13,
+    "b3": 13,
+    "b4": 13,
+    "b5": 14
+   },
+   "ref_len": 14
+  },
+  "delivery/p02": {
+   "track": "numeric",
+   "obj_count": 15,
+   "plan_len": {
+    "v1": 22,
+    "v2": 22,
+    "v3": 22,
+    "v4": 22,
+    "v5": 22,
+    "b1": 21,
+    "b2": 21,
+    "b3": 21,
+    "b4": 21,
+    "b5": 21
+   },
+   "ref_len": 22
+  },
+  "delivery/p03": {
+   "track": "numeric",
+   "obj_count": 17,
+   "plan_len": {
+    "v1": 30,
+    "v2": 30,
+    "v3": 30,
+    "v4": 30,
+    "v5": 30,
+    "b1": 29,
+    "b2": 29,
+    "b3": 29,
+    "b4": 29,
+    "b5": 29
+   },
+   "ref_len": 30
+  },
+  "delivery/p04": {
+   "track": "numeric",
+   "obj_count": 22,
+   "plan_len": {
+    "v1": 45,
+    "v2": 45,
+    "v3": 45,
+    "v4": 45,
+    "v5": 45,
+    "b1": 44,
+    "b2": 44,
+    "b3": 44,
+    "b4": 44,
+    "b5": 44
+   },
+   "ref_len": 45
+  },
+  "delivery/p05": {
+   "track": "numeric",
+   "obj_count": 21,
+   "plan_len": {
+    "v1": 46,
+    "v2": 46,
+    "v3": 46,
+    "v4": 46,
+    "v5": 46,
+    "b1": 45,
+    "b2": 45,
+    "b3": 45,
+    "b4": 45,
+    "b5": 45
+   },
+   "ref_len": 46
+  },
+  "delivery/n01": {
+   "track": "numeric",
+   "obj_count": 13,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "delivery/n02": {
+   "track": "numeric",
+   "obj_count": 13,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "delivery/n03": {
+   "track": "numeric",
+   "obj_count": 13,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "delivery/n04": {
+   "track": "numeric",
+   "obj_count": 13,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "delivery/n05": {
+   "track": "numeric",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depot/p01": {
+   "track": "numeric",
+   "obj_count": 21,
+   "plan_len": {
+    "v1": 62,
+    "v2": 62,
+    "v3": 62,
+    "v4": 62,
+    "v5": 62,
+    "b1": 1,
+    "b2": 61,
+    "b3": 61,
+    "b4": 61,
+    "b5": 61
+   },
+   "ref_len": 62
+  },
+  "depot/p02": {
+   "track": "numeric",
+   "obj_count": 12,
+   "plan_len": {
+    "v1": 5,
+    "v2": 5,
+    "v3": 5,
+    "v4": 5,
+    "v5": 5,
+    "b1": 4,
+    "b2": 4,
+    "b3": 4,
+    "b4": 5,
+    "b5": 5
+   },
+   "ref_len": 5
+  },
+  "depot/p03": {
+   "track": "numeric",
+   "obj_count": 14,
+   "plan_len": {
+    "v1": 15,
+    "v2": 15,
+    "v3": 15,
+    "v4": 15,
+    "v5": 15,
+    "b1": 14,
+    "b2": 14,
+    "b3": 14,
+    "b4": 14,
+    "b5": 14
+   },
+   "ref_len": 15
+  },
+  "depot/p04": {
+   "track": "numeric",
+   "obj_count": 16,
+   "plan_len": {
+    "v1": 31,
+    "v2": 31,
+    "v3": 31,
+    "v4": 31,
+    "v5": 31,
+    "b1": 30,
+    "b2": 30,
+    "b3": 30,
+    "b4": 30,
+    "b5": 30
+   },
+   "ref_len": 31
+  },
+  "depot/p05": {
+   "track": "numeric",
+   "obj_count": 9,
+   "plan_len": {
+    "v1": 7,
+    "v2": 7,
+    "v3": 7,
+    "v4": 7,
+    "v5": 7,
+    "b1": 6,
+    "b2": 6,
+    "b3": 6,
+    "b4": 6,
+    "b5": 6
+   },
+   "ref_len": 7
+  },
+  "depot/n01": {
+   "track": "numeric",
+   "obj_count": 21,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depot/n02": {
+   "track": "numeric",
+   "obj_count": 21,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depot/n03": {
+   "track": "numeric",
+   "obj_count": 21,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depot/n04": {
+   "track": "numeric",
+   "obj_count": 21,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "depot/n05": {
+   "track": "numeric",
+   "obj_count": 21,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "drone/p01": {
+   "track": "numeric",
+   "obj_count": 2,
+   "plan_len": {
+    "v1": 5,
+    "v2": 5,
+    "v3": 5,
+    "v4": 5,
+    "v5": 5,
+    "b1": 4,
+    "b2": 4,
+    "b3": 6,
+    "b4": 6,
+    "b5": 3
+   },
+   "ref_len": 5
+  },
+  "drone/p02": {
+   "track": "numeric",
+   "obj_count": 4,
+   "plan_len": {
+    "v1": 10,
+    "v2": 10,
+    "v3": 10,
+    "v4": 10,
+    "v5": 10,
+    "b1": 9,
+    "b2": 9,
+    "b3": 9,
+    "b4": 11,
+    "b5": 11
+   },
+   "ref_len": 10
+  },
+  "drone/p03": {
+   "track": "numeric",
+   "obj_count": 8,
+   "plan_len": {
+    "v1": 39,
+    "v2": 39,
+    "v3": 39,
+    "v4": 39,
+    "v5": 39,
+    "b1": 38,
+    "b2": 38,
+    "b3": 38,
+    "b4": 38,
+    "b5": 38
+   },
+   "ref_len": 39
+  },
+  "drone/p04": {
+   "track": "numeric",
+   "obj_count": 16,
+   "plan_len": {
+    "v1": 64,
+    "v2": 64,
+    "v3": 64,
+    "v4": 64,
+    "v5": 64,
+    "b1": 63,
+    "b2": 63,
+    "b3": 63,
+    "b4": 63,
+    "b5": 65
+   },
+   "ref_len": 64
+  },
+  "drone/p05": {
+   "track": "numeric",
+   "obj_count": 18,
+   "plan_len": {
+    "v1": 110,
+    "v2": 110,
+    "v3": 110,
+    "v4": 110,
+    "v5": 110,
+    "b1": 109,
+    "b2": 109,
+    "b3": 109,
+    "b4": 111,
+    "b5": 111
+   },
+   "ref_len": 110
+  },
+  "drone/n01": {
+   "track": "numeric",
+   "obj_count": 2,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "drone/n02": {
+   "track": "numeric",
+   "obj_count": 2,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "drone/n03": {
+   "track": "numeric",
+   "obj_count": 2,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "drone/n04": {
+   "track": "numeric",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "drone/n05": {
+   "track": "numeric",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "farmland/p01": {
+   "track": "numeric",
+   "obj_count": 15,
+   "plan_len": {
+    "v1": 19,
+    "v2": 19,
+    "v3": 19,
+    "v4": 19,
+    "v5": 19,
+    "b1": 1,
+    "b2": 18,
+    "b3": 18,
+    "b4": 18,
+    "b5": 19
+   },
+   "ref_len": 19
+  },
+  "farmland/p02": {
+   "track": "numeric",
+   "obj_count": 4,
+   "plan_len": {
+    "v1": 6,
+    "v2": 6,
+    "v3": 6,
+    "v4": 6,
+    "v5": 6,
+    "b1": 5,
+    "b2": 5,
+    "b3": 5,
+    "b4": 5,
+    "b5": 6
+   },
+   "ref_len": 6
+  },
+  "farmland/p03": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 3,
+    "b2": 3,
+    "b3": 3,
+    "b4": 4,
+    "b5": 4
+   },
+   "ref_len": 4
+  },
+  "farmland/p04": {
+   "track": "numeric",
+   "obj_count": 6,
+   "plan_len": {
+    "v1": 3,
+    "v2": 3,
+    "v3": 3,
+    "v4": 3,
+    "v5": 3,
+    "b1": 2,
+    "b2": 2,
+    "b3": 2,
+    "b4": 3,
+    "b5": 3
+   },
+   "ref_len": 3
+  },
+  "farmland/p05": {
+   "track": "numeric",
+   "obj_count": 7,
+   "plan_len": {
+    "v1": 12,
+    "v2": 12,
+    "v3": 12,
+    "v4": 12,
+    "v5": 12,
+    "b1": 11,
+    "b2": 11,
+    "b3": 11,
+    "b4": 12,
+    "b5": 12
+   },
+   "ref_len": 12
+  },
+  "farmland/n01": {
+   "track": "numeric",
+   "obj_count": 15,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "farmland/n02": {
+   "track": "numeric",
+   "obj_count": 15,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "farmland/n03": {
+   "track": "numeric",
+   "obj_count": 15,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "farmland/n04": {
+   "track": "numeric",
+   "obj_count": 15,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "farmland/n05": {
+   "track": "numeric",
+   "obj_count": 15,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gardening/p01": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 5,
+    "v2": 5,
+    "v3": 5,
+    "v4": 5,
+    "v5": 5,
+    "b1": 4,
+    "b2": 4,
+    "b3": 4,
+    "b4": 4,
+    "b5": 5
+   },
+   "ref_len": 5
+  },
+  "gardening/p02": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 33,
+    "v2": 33,
+    "v3": 33,
+    "v4": 33,
+    "v5": 33,
+    "b1": 32,
+    "b2": 32,
+    "b3": 32,
+    "b4": 32,
+    "b5": 33
+   },
+   "ref_len": 33
+  },
+  "gardening/p03": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 86,
+    "v2": 86,
+    "v3": 86,
+    "v4": 86,
+    "v5": 86,
+    "b1": 85,
+    "b2": 85,
+    "b3": 85,
+    "b4": 85,
+    "b5": 85
+   },
+   "ref_len": 86
+  },
+  "gardening/p04": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 17,
+    "v2": 17,
+    "v3": 17,
+    "v4": 17,
+    "v5": 17,
+    "b1": 16,
+    "b2": 16,
+    "b3": 16,
+    "b4": 16,
+    "b5": 16
+   },
+   "ref_len": 17
+  },
+  "gardening/p05": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 5,
+    "v2": 5,
+    "v3": 5,
+    "v4": 5,
+    "v5": 5,
+    "b1": 4,
+    "b2": 4,
+    "b3": 4,
+    "b4": 4,
+    "b5": 5
+   },
+   "ref_len": 5
+  },
+  "gardening/n01": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gardening/n02": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gardening/n03": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gardening/n04": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "gardening/n05": {
+   "track": "numeric",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "pogo_stick/p01": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {
+    "v1": 12,
+    "v2": 12,
+    "v3": 12,
+    "v4": 12,
+    "v5": 12,
+    "b1": 2,
+    "b2": 11,
+    "b3": 11,
+    "b4": 11,
+    "b5": 12
+   },
+   "ref_len": 12
+  },
+  "pogo_stick/p02": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {
+    "v1": 23,
+    "v2": 23,
+    "v3": 23,
+    "v4": 23,
+    "v5": 23,
+    "b1": 22,
+    "b2": 22,
+    "b3": 22,
+    "b4": 23,
+    "b5": 23
+   },
+   "ref_len": 23
+  },
+  "pogo_stick/p03": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {
+    "v1": 10,
+    "v2": 10,
+    "v3": 10,
+    "v4": 10,
+    "v5": 10,
+    "b1": 9,
+    "b2": 9,
+    "b3": 9,
+    "b4": 9,
+    "b5": 9
+   },
+   "ref_len": 10
+  },
+  "pogo_stick/p04": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {
+    "v1": 14,
+    "v2": 14,
+    "v3": 14,
+    "v4": 14,
+    "v5": 14,
+    "b1": 13,
+    "b2": 13,
+    "b3": 13,
+    "b4": 13,
+    "b5": 13
+   },
+   "ref_len": 14
+  },
+  "pogo_stick/p05": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {
+    "v1": 18,
+    "v2": 18,
+    "v3": 18,
+    "v4": 18,
+    "v5": 18,
+    "b1": 17,
+    "b2": 17,
+    "b3": 17,
+    "b4": 18,
+    "b5": 18
+   },
+   "ref_len": 18
+  },
+  "pogo_stick/n01": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "pogo_stick/n02": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "pogo_stick/n03": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "pogo_stick/n04": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "pogo_stick/n05": {
+   "track": "numeric",
+   "obj_count": 35,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "sailing/p01": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 100,
+    "v2": 100,
+    "v3": 100,
+    "v4": 100,
+    "v5": 100,
+    "b1": 1,
+    "b2": 99,
+    "b3": 99,
+    "b4": 99,
+    "b5": 100
+   },
+   "ref_len": 100
+  },
+  "sailing/p02": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 3,
+    "b2": 3,
+    "b3": 3,
+    "b4": 4,
+    "b5": 4
+   },
+   "ref_len": 4
+  },
+  "sailing/p03": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 6,
+    "v2": 6,
+    "v3": 6,
+    "v4": 6,
+    "v5": 6,
+    "b1": 5,
+    "b2": 5,
+    "b3": 6,
+    "b4": 6,
+    "b5": 4
+   },
+   "ref_len": 6
+  },
+  "sailing/p04": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 3,
+    "b2": 3,
+    "b3": 4,
+    "b4": 4,
+    "b5": 2
+   },
+   "ref_len": 4
+  },
+  "sailing/p05": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {
+    "v1": 4,
+    "v2": 4,
+    "v3": 4,
+    "v4": 4,
+    "v5": 4,
+    "b1": 3,
+    "b2": 3,
+    "b3": 3,
+    "b4": 4,
+    "b5": 4
+   },
+   "ref_len": 4
+  },
+  "sailing/n01": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "sailing/n02": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "sailing/n03": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "sailing/n04": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "sailing/n05": {
+   "track": "numeric",
+   "obj_count": 3,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel-numeric/p01": {
+   "track": "numeric",
+   "obj_count": 7,
+   "plan_len": {
+    "v1": 14,
+    "v2": 14,
+    "v3": 14,
+    "v4": 14,
+    "v5": 14,
+    "b1": 13,
+    "b2": 13,
+    "b3": 13,
+    "b4": 13,
+    "b5": 13
+   },
+   "ref_len": 14
+  },
+  "zenotravel-numeric/p02": {
+   "track": "numeric",
+   "obj_count": 4,
+   "plan_len": {
+    "v1": 3,
+    "v2": 3,
+    "v3": 3,
+    "v4": 3,
+    "v5": 3,
+    "b1": 2,
+    "b2": 2,
+    "b3": 2,
+    "b4": 3,
+    "b5": 3
+   },
+   "ref_len": 3
+  },
+  "zenotravel-numeric/p03": {
+   "track": "numeric",
+   "obj_count": 5,
+   "plan_len": {
+    "v1": 8,
+    "v2": 8,
+    "v3": 8,
+    "v4": 8,
+    "v5": 8,
+    "b1": 7,
+    "b2": 7,
+    "b3": 7,
+    "b4": 7,
+    "b5": 8
+   },
+   "ref_len": 8
+  },
+  "zenotravel-numeric/p04": {
+   "track": "numeric",
+   "obj_count": 6,
+   "plan_len": {
+    "v1": 8,
+    "v2": 8,
+    "v3": 8,
+    "v4": 8,
+    "v5": 8,
+    "b1": 7,
+    "b2": 7,
+    "b3": 7,
+    "b4": 7,
+    "b5": 8
+   },
+   "ref_len": 8
+  },
+  "zenotravel-numeric/p05": {
+   "track": "numeric",
+   "obj_count": 6,
+   "plan_len": {
+    "v1": 7,
+    "v2": 7,
+    "v3": 7,
+    "v4": 7,
+    "v5": 7,
+    "b1": 6,
+    "b2": 6,
+    "b3": 6,
+    "b4": 6,
+    "b5": 7
+   },
+   "ref_len": 7
+  },
+  "zenotravel-numeric/n01": {
+   "track": "numeric",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel-numeric/n02": {
+   "track": "numeric",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel-numeric/n03": {
+   "track": "numeric",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel-numeric/n04": {
+   "track": "numeric",
+   "obj_count": 7,
+   "plan_len": {},
+   "ref_len": null
+  },
+  "zenotravel-numeric/n05": {
+   "track": "numeric",
+   "obj_count": null,
+   "plan_len": {},
+   "ref_len": null
+  }
+ },
+ "domain_track": {
+  "barman": "classical",
+  "blocksworld": "classical",
+  "depots": "classical",
+  "gripper": "classical",
+  "miconic": "classical",
+  "parking": "classical",
+  "rovers": "classical",
+  "satellite": "classical",
+  "tpp": "classical",
+  "zenotravel": "classical",
+  "block-grouping": "numeric",
+  "counters": "numeric",
+  "delivery": "numeric",
+  "depot": "numeric",
+  "drone": "numeric",
+  "farmland": "numeric",
+  "gardening": "numeric",
+  "pogo_stick": "numeric",
+  "sailing": "numeric",
+  "zenotravel-numeric": "numeric"
+ }
+}
