@@ -1726,9 +1726,12 @@ def build_pptx(summary: dict, gate_lines: list[str]) -> Path:
             "no-tools − tool gap widens from +5pp (short plans) to +27pp (long plans) as no-tools "
             "degrades while the tool holds. This is the generalisation claim: the harder the "
             "instance, the more the tool is worth.",
-            "solve and simulate are framed as tool-arm robustness: no-tools is floored (~0–12%) at "
-            "every length, so the ~87–99pp gap is large but does not 'grow' — there is no no-tools "
-            "headroom to lose."]
+            "solve and simulate bracket that case. solve's gap is large but roughly CONSTANT "
+            "(+87→+87→+89pp) — both arms pinned (no-tools floored ~6–12%, tool near-ceiling "
+            "~95–99%). simulate's gap is large but DECLINES (+100→+93→+77pp, CI-disjoint): "
+            "the no-tools arm stays floored at 0%, but the tool arm itself degrades on long "
+            "trajectories (99.7→93.2→77.1%) — the one place tool-assisted success erodes with "
+            "difficulty."]
     else:
         rq05_answer = "YES — and under think=on the headroom case moves to SOLVE."
         rq05_bullets = [
@@ -3139,9 +3142,12 @@ def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
                     "no-tools − tool gap widens from +5pp (short plans) to +27pp (long plans) as no-tools "
                     "degrades while the tool holds. This is the generalisation claim: the harder the "
                     "instance, the more the tool is worth.",
-                    "solve and simulate are framed as tool-arm robustness: no-tools is floored (~0–12%) at "
-                    "every length, so the ~87–99pp gap is large but does not 'grow' — there is no no-tools "
-                    "headroom to lose.",
+                    "solve and simulate bracket that case. solve's gap is large but roughly CONSTANT "
+                    "(+87→+87→+89pp) — both arms pinned (no-tools floored ~6–12%, tool near-ceiling "
+                    "~95–99%). simulate's gap is large but DECLINES (+100→+93→+77pp, CI-disjoint): the "
+                    "no-tools arm stays floored at 0%, but the tool arm itself degrades on long "
+                    "trajectories (99.7→93.2→77.1%) — the one place tool-assisted success erodes with "
+                    "difficulty.",
                     "Mode note: under think=on the headroom case MOVES to solve (+48→+65pp with length) — "
                     "reasoning runs out of budget exactly where plans get long; reported as a finding in the "
                     "cross-mode section, not a contradiction."],
