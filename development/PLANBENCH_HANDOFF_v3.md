@@ -184,6 +184,20 @@ PDDL_COPILOT_TASK env to pick the per-task pipeline + output format.
 - **Run PlanBench jobs SERIALLY** — concurrent jobs race on the shared-tree
   rsync at job end (benign exit 23, but corrupts the OUT_DIR). One arm at a time,
   or rsync only the engine's own subdir.
+- **`slurm_*/` dirs are rsync COPIES of a shared accumulator, NOT extra runs.**
+  Each sbatch ends with `rsync -a "$PLANBENCH_ROOT/plan-bench/results/"` (the
+  shared, reused accumulator) into its own `results/planbench/slurm_<model>_<jobid>/`,
+  so EVERY job dir snapshots EVERY engine ever run on the checkout — even though
+  `manifest.json` proves one engine per job (staggered rsync-preserved mtimes +
+  byte-identical md5 across jobs confirm copies, not re-runs). Two fallouts:
+  (1) ~28G apparent of mostly-identical copies (pruned 5.9G→198M physical
+  2026-06-15); (2) a naive `slurm_*/results/**/task_*.json` glob double-counts
+  each model. **Never feed `build_table.py` a raw `slurm_*/results` dir** — and
+  don't assume the foreign-engine subdirs in a job dir are fresh: a non-owner
+  copy can be a STALE epoch (vllm__Qwen3.5:0.8B had two md5 generations). Use
+  `planbench/canonicalize_results.py` (picks newest-mtime, owner-preferred copy
+  per `(config,engine,task)`); see Quick repro / ops. A finishing in-flight job
+  re-adds a bloated snapshot → re-run `--prune --apply` after pending jobs clear.
 - **PlanBench caches responses by engine name** (`response_generation.py:70`
   skips instances with an existing non-empty `llm_raw_response`). A re-run at a
   new setting regenerates NOTHING unless you use a fresh engine name or clear
@@ -220,4 +234,15 @@ bash cluster-experimenting/submit_planbench.sh --tools --smoke --tasks t3 t7 \
 # validate BY CONTENT: the toolcalls side-log (did the right tool fire? done_reason?),
 #   not just exit status. Pull results/planbench/slurm_tools_<tag>_<jobid>/.
 # re-apply patches after any pull (idempotent): python3 planbench/apply_patches.py external/LLMs-Planning
+
+# --- de-dupe the per-job rsync copies (see lessons above) ---
+# report duplication / reclaimable space (read-only):
+python3 planbench/canonicalize_results.py results/planbench
+# build ONE clean tree for build_table.py (symlinks; --copy for real files):
+python3 planbench/canonicalize_results.py results/planbench --materialize /tmp/pb_canon
+python3 planbench/build_table.py /tmp/pb_canon
+# reclaim disk — dry-run, then --apply (safe: keeps newest copy per file;
+#   never deletes manifest.json/toolcalls.jsonl). Re-run after in-flight jobs finish:
+python3 planbench/canonicalize_results.py results/planbench --prune
+python3 planbench/canonicalize_results.py results/planbench --prune --apply
 ```
