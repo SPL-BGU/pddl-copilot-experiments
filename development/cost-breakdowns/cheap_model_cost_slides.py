@@ -22,6 +22,7 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.dml.color import RGBColor
 
 # ---------------------------------------------------------------- palette
@@ -133,6 +134,31 @@ def _footer(slide, text):
     ff = f.text_frame; ff.word_wrap = True
     fr = ff.paragraphs[0].add_run(); fr.text = text
     fr.font.size = Pt(8.5); fr.font.italic = True; fr.font.color.rgb = GREY
+
+def _rrect(slide, x, y, w, h, fill, line=None, line_w=1.5):
+    sp = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
+                                Inches(x), Inches(y), Inches(w), Inches(h))
+    sp.shadow.inherit = False                       # kill default autoshape shadow
+    sp.fill.solid(); sp.fill.fore_color.rgb = fill
+    if line is not None:
+        sp.line.color.rgb = line; sp.line.width = Pt(line_w)
+    else:
+        sp.line.fill.background()
+    return sp
+
+def _panel(slide, x, y, w, h, mark, header, hdr_color, fill_color, items):
+    _rrect(slide, x, y, w, h, fill_color, line=hdr_color, line_w=1.5)
+    tb = slide.shapes.add_textbox(Inches(x+0.28), Inches(y+0.22), Inches(w-0.56), Inches(h-0.44))
+    tf = tb.text_frame; tf.word_wrap = True
+    hr = tf.paragraphs[0].add_run(); hr.text = f"{mark}  {header}"
+    hr.font.size = Pt(15); hr.font.bold = True; hr.font.color.rgb = hdr_color
+    for lead, body in items:
+        p = tf.add_paragraph(); p.space_before = Pt(9)
+        a = p.add_run(); a.text = "• " + lead + "  "
+        a.font.size = Pt(11.5); a.font.bold = True; a.font.color.rgb = INK
+        if body:
+            b = p.add_run(); b.text = body
+            b.font.size = Pt(11.5); b.font.color.rgb = GREY
 
 # ---------------------------------------------------------------- SLIDE 1
 def slide1(prs):
@@ -292,14 +318,54 @@ def slide3(prs):
             "(its analogue of validate_plan-style cost is the with-tools think-on cell). Cuts are "
             "labeled variants — flag any domain/fixture sampling in the writeup.")
 
+# ---------------------------------------------------------------- SLIDE 4
+def slide4(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _title(slide, "What We Cut vs What Stays Solid",
+           "Rule of thumb: cut the repeats, keep the spread.  The cuts only remove spares — "
+           "the comparison stays intact.")
+    GREEN_H = RGBColor(0x3E, 0x82, 0x3C); GREEN_F = RGBColor(0xEC, 0xF6, 0xEC)
+    AMBER_H = RGBColor(0xAE, 0x70, 0x1C); AMBER_F = RGBColor(0xFB, 0xF1, 0xDE)
+
+    _panel(slide, 0.3, 1.45, 6.25, 4.05, "✓", "KEEP — this IS the experiment",
+           GREEN_H, GREEN_F, [
+        ("Tools vs no-tools.", "the whole question — drop it and there's no experiment."),
+        ("Both world-families.", "keep some classical AND some numeric, or you can't claim it generalizes."),
+        ("Both think on / off (ideally).", "a real research question, and only a 2× cost."),
+        ("Hundreds of answers per cell.", "enough for honest confidence bars (Wilson CIs)."),
+    ])
+    _panel(slide, 6.8, 1.45, 6.23, 4.05, "✂", "SAFE TO CUT — just repeats",
+           AMBER_H, AMBER_F, [
+        ("Wordings 6 → 2.", "keep 2 phrasings; still shows wording doesn't change the result.   ‒52%"),
+        ("Plan-checks 10 → 4.", "2 broken + 2 good; still tests both skills.   −40%"),
+        ("Worlds 20 → 10.", "keep 5 classical + 5 numeric (balanced).   −50%"),
+        ("Drop think-on.", "the single biggest lever.   −64%"),
+    ])
+
+    # recipe band
+    _rrect(slide, 0.3, 5.78, 12.73, 0.92, NAVY)
+    tb = slide.shapes.add_textbox(Inches(0.55), Inches(5.90), Inches(12.3), Inches(0.7))
+    tf = tb.text_frame; tf.word_wrap = True
+    p = tf.paragraphs[0]
+    a = p.add_run(); a.text = "Lean-but-solid recipe:  "
+    a.font.size = Pt(12.5); a.font.bold = True; a.font.color.rgb = WHITE
+    b = p.add_run()
+    b.text = ("both models · tools + no-tools · both think · 10 balanced worlds · "
+              "2 wordings · 4 plan-checks   →   ~10% of full  (~$54 sweep5, Haiku+Gemini), "
+              "still with real confidence bars.")
+    b.font.size = Pt(12.5); b.font.color.rgb = RGBColor(0xDD, 0xE6, 0xF2)
+
+    _footer(slide, "Cuts are labeled variants — flag any domain/fixture sampling in the writeup. "
+            "% reductions are model-independent; $ shown for the recommended cheap pair.")
+
 # ---------------------------------------------------------------- build
 def build():
     prs = Presentation()
     prs.slide_width = Inches(13.333); prs.slide_height = Inches(7.5)
-    slide1(prs); slide2(prs); slide3(prs)
+    slide1(prs); slide2(prs); slide3(prs); slide4(prs)
     out = Path(__file__).resolve().parent / "cheap_model_cost_slides.pptx"
     prs.save(str(out))
-    print(f"wrote {out}  ({len(prs.slides.__iter__.__self__._sldIdLst)} slides)")
+    print(f"wrote {out}  ({len(prs.slides)} slides)")
 
     # echo the headline numbers for verification
     print("\n-- per-model (discounted) --")
