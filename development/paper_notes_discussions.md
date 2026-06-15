@@ -212,3 +212,40 @@ Deck rebuilt: 58 slides (43 main + 15 backup). Three additions + one merge, each
 - **Build.** Clean (0 undefined refs, 0 overfull boxes). PDF now 9 pages: technical content still
   ends on p7; references + checklist fill p7→p9 and do not count toward the 7-page limit. Not yet
   committed (commit when the user asks).
+
+## 2026-06-15 (session 2) — figures→vector, contamination table, RQ0.5 deck fix, code-availability decision
+
+Addressed the post-checklist gap list. Two decisions were taken to A* best practice, each
+validated by an independent ranking subagent (the user asked for a second perspective):
+
+- **Contamination control → keep in MAIN text + add a table (NOT appendix/repo-link).** The
+  user's initial lean was "move it to an appendix, a GH repo link suffices." Researched against
+  A* convention: the direct subfield precedent (PlanBench / Mystery-Blocksworld — a structurally
+  identical renamed-symbol control) puts the obfuscation method AND headline result in MAIN-TEXT
+  tables, never appendix-only; a NULL result is the one reviewers most distrust, so it needs MORE
+  visible evidence; and a repo link inside a double-blind PDF is a deanonymization hazard. So we
+  added **Table 3** (per model: canonical vs anonymized no-tools success, Δ, N=4,560), tightened
+  the in-text claim from "≤1.3pp" to the verified **mean |Δ|=1.1pp (max 3.7), 0 CI-disjoint
+  cells**, and moved the think=on validate_plan exception's substantiating numbers into prose
+  (Δsucc tracks Δcompletion ~1:1; success-given-completion equal; anon prompts +5% longer →
+  truncation). Numbers verified 3 ways (analyzer loader + raw trials.jsonl + saved summary) over
+  results/sweep5v2-live vs results/sweep6-live; paper's prior claim confirmed and was conservative.
+- **Code availability → release at PUBLICATION, not at submission (C1-at-publication).** Best
+  practice (per AAAI checklist framing + the research brief) allows decoupling "code in an
+  appendix at review" from "public on publication." The user chose no review-time artifact, full
+  release at publication. So checklist code-appendix items 4.3/4.4 set to **no** (nothing attached
+  at review) and 4.5 stays **yes** (public on publication) — the honest pairing. The eventual
+  release form (decided) = a curated, SCRUBBED package: eval harness + BOTH corpora (canonical +
+  renamed), NO cluster/SLURM scripts, no .git, all hostnames/usernames/org/paths scrubbed. NOT an
+  anonymous.4open.science link (can't scrub in-file institution strings; proxy flaky). Build it at
+  publication time (the prior "F" item).
+- **Figures → vector PDF.** The 3 Results figures re-rendered as true matplotlib vector PDF
+  (`paper/figures/{solve,simulate,mechanism_validate_plan,token_quadrant}.pdf`) via the analyzer
+  plotting code; main.tex includes switched to .pdf. Camera-ready quality.
+- **Deck RQ0.5 prose corrected.** Verified from the live data: solve gap ~constant (+87/+87/+89),
+  simulate gap DECLINES (+99.7/+93.2/+77.1) because its tool arm degrades on long trajectories.
+  The PAPER was already correct; the DECK slide prose was the stale artifact (the plot itself was
+  correct). Fixed both deck builders in rq_deck.py and regenerated the unified deck.
+- **Build/pages.** Clean (0 undefined, 0 overfull). PDF now 10 pages, but technical content still
+  ends on **p7** (Table 3 + Conclusion on p7; refs + checklist fill p7→p10, neither counts). Not
+  trimming — user + advisors will choose focus (their call, gap D).

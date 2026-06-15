@@ -21,31 +21,45 @@ Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
 **STATUS 2026-06-14: the full paper body (Abstract → Conclusion) is drafted, adversarially
 verified, and committed/pushed (`ee01e07`); it builds clean and the technical content is within
 the 7-page limit with all 3 figures. No prose work remains.**
-**STATUS 2026-06-15: reproducibility checklist DONE + inlined (23 answers filled), HF model ids
-added as a §Models-and-Serving footnote, and the Wilson-CI wording cleaned up paper-wide. Builds
-clean (0 undefined refs, 0 overfull boxes). PDF is now 9 pages: technical content still ends on
-p7; references + checklist fill p7→p9 (neither counts toward the 7-page limit). All committed &
-pushed (`bf6f7cb`).** The body + checklist are done; **what's left is camera-ready mechanics
-only — see "GAPS TO GOAL" below.**
+**STATUS 2026-06-15 (session 2): vector figures, the RQ0.5 deck fix, and the contamination
+control table all landed; code-availability decided (release at publication, not submission).
+Builds clean (0 undefined, 0 overfull). PDF is now 10 pages but technical content STILL ends on
+p7 (refs + checklist fill p7→p10, neither counts). See "GAPS TO GOAL" for what's done vs left.**
+(Session 1: reproducibility checklist inlined + filled, HF-id footnote, Wilson-CI wording cleaned
+up paper-wide.)
 
-## GAPS TO GOAL (what stands between here and a submittable PDF)
-Goal = a submission-ready, double-blind AAAI-27 PDF. Prose/checklist are complete; remaining
-items are mechanical / decisions, none blocking each other:
-- **A. Vector figures (camera-ready).** The 3 used figures are still PNG. Regenerate as vector
-  PDF @300dpi — see item 3. *Lever, not a blocker; PNGs compile fine for review.*
-- **B. Anonymization + PDF metadata pass.** Third-person self-citation is already clean and the
-  HF-id repro gap is closed (footnote added this session). Still owed: strip PDF metadata
-  (author/title/producer) and confirm no de-anonymizing links before upload — see item 9.
-- **C. DECISION owed (user): code appendix at submission?** Checklist 4.3/4.4 are `partial` on
-  the assumption we do NOT attach anonymized supplementary code. If we attach it, flip both to
-  `yes` (and re-inline). Until decided, the checklist is internally consistent as-is.
-- **D. Re-verify against the official CFP** (the values here were fetched 2026-06-14): exact
-  page rule + whether the reproducibility checklist counts toward the 7 pages (assumed NO),
-  abstract deadline Jul 21, full-paper Jul 28, submission-site / OpenReview open dates.
-- **E. (Not the paper — deck task) Fix deck slides 29–30 prose** for the RQ0.5 correction (the
-  simulate gap DECLINES with plan length; only solve is constant). Carried since 2026-06-14.
-- **F. (Optional, tied to C/4.5) Code-release prep** — the checklist promises the repo public on
-  publication; have the release branch/license ready.
+## GAPS TO GOAL — status after the 2026-06-15 session-2 pass
+Goal = a submission-ready, double-blind AAAI-27 PDF. Body, checklist, figures, and the
+contamination control are done. What remains is publication-time work + one upload-time check.
+
+DONE this pass (committed/pushed):
+- **Vector figures** — the 3 Results figures are now true vector PDF (`paper/figures/*.pdf`).
+- **Contamination control strengthened** — DECISION: keep the result in the MAIN text (per the
+  PlanBench / Mystery-BW A* precedent; this is the OPPOSITE of the initial appendix/repo-link
+  lean, confirmed by a research agent + an independent ranking agent). Added **Table 3** (per
+  model: canonical vs anonymized no-tools success, $\Delta$, $N$=4{,}560), tightened the claim to
+  the verified figure (mean $|\Delta|$=1.1pp, max 3.7, 0 CI-disjoint cells), and put the think=on
+  validate\_plan tokenization-artifact numbers in-prose. Numbers verified 3 ways (sweep5v2 vs
+  sweep6).
+- **Deck RQ0.5 prose fixed** — `rq_deck.py` + regenerated unified deck now match the paper
+  (simulate gap declines +100→+93→+77; only solve constant). The plot itself was already correct;
+  only the slide prose was stale.
+- **Code-availability decision: release at PUBLICATION, not at submission.** No artifact at review
+  → checklist code-appendix items set to **no**, public-on-publication **yes** (the honest AAAI
+  pairing). Eventual release = a curated, SCRUBBED package (eval harness + BOTH corpora, no
+  cluster scripts, no `.git`) — see publication-time below.
+
+REMAINING (smaller; none blocking):
+- **Double-blind PDF-metadata check at upload** — template already blanks `\pdfinfo` + forbids
+  hyperref, so the PDF leaks only generic `Creator: TeX`/`Producer: pdfTeX`. Just run
+  `exiftool main.pdf` right before upload; keep the `\begin{links}` block commented.
+- **Page focus (user + advisors).** 10 pages total, technical content ends p7 (within limit). Not
+  trimming per user instruction; user/advisors will choose focus.
+- **Publication-time:** build the curated scrubbed code+data release (both corpora); optionally
+  typeset a per-task contamination appendix table + the canonical↔renamed symbol map (data
+  verified, not yet typeset).
+- **CFP re-verify (low effort):** confirm page rule + that the checklist doesn't count, and the
+  deadlines, against the official AAAI-27 CFP before submission.
 
 ## What's DONE
 - AAAI-27 author kit imported (`paper/authorkit27/`, anonymous template).
