@@ -1,9 +1,17 @@
 # Handoff — AAAI-27 single-tool-use paper
 
-**Branch:** `paper/aaai27-single-tool-draft` (pushed clean at `ee01e07`; **working tree clean**).
+**Branch:** `paper/aaai27-single-tool-draft` (latest on `origin`; **working tree clean**).
 Full paper body committed & pushed 2026-06-14.
 **Repo:** `pddl-copilot-experiments`. All paper work lives in `paper/`.
-**Last session:** 2026-06-14.
+**Worktree (IMPORTANT — read first):** paper work lives in a dedicated git worktree at
+`/Users/omereliyahu/personal/pddl-copilot-experiments-paper` (branch
+`paper/aaai27-single-tool-draft`). The main checkout
+`/Users/omereliyahu/personal/pddl-copilot-experiments` is the separate `planbench-integration`
+line. **Do paper work in the worktree; do not switch the main checkout's branch.** If you ever
+find the main checkout on another branch with `paper/` showing as untracked, that is only
+gitignored build-artifact leftovers — the real committed paper tree is this worktree (and
+`origin/paper/aaai27-single-tool-draft`).
+**Last session:** 2026-06-15.
 
 ## TL;DR for a fresh session
 Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
