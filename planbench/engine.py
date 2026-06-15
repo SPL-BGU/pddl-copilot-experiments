@@ -9,8 +9,13 @@ The ``vllm-tools`` backend is the v2 (MCP-tools-on) arm (ISS-022): instead of
 a single ``/chat/completions`` call, it routes the per-instance query through
 ``pddl_eval.chat.chat_with_tools`` so the model can consult the pddl-copilot
 MCP planner / validator before answering. PlanBench stays single-turn from its
-own perspective — the tool-loop happens *inside* one ``send_query`` call, and
-only the FINAL assistant text is returned. The ``vllm-tools`` token (rather
+own perspective — the tool-loop happens *inside* one ``send_query`` call. The
+returned answer is, for tasks with a clean structured-output mapping (t3),
+*rendered deterministically from the tool's result* rather than read off the
+model's final free-form turn — see ``_render_answer_from_tools`` (Approach A):
+it stops a truncated/empty model turn from discarding a correct tool outcome.
+Tasks without a clean mapping fall back to the model's final assistant text.
+The ``vllm-tools`` token (rather
 than the handoff's literal ``pddl_copilot_tools__`` engine name) keeps the
 ``pddl_copilot__`` prefix so PlanBench's already-patched dispatch branch
 (``engine.startswith('pddl_copilot__')``) catches it with no re-clone /
@@ -33,6 +38,11 @@ Env vars:
   ``PDDL_COPILOT_TOOLLOG`` — (``vllm-tools``, optional) path to append a
                     per-instance tool-call JSONL side-log; a one-line summary
                     always goes to stderr regardless, for content-validation.
+  ``PDDL_COPILOT_RENDER_FROM_TOOLS`` — (``vllm-tools``) ``1``/``0`` (default
+                    ``1``). When on, the t3 answer is rendered from the last
+                    ``validate_plan`` verdict instead of the model's final turn
+                    (Approach A — fixes the truncate-to-empty failure mode). Set
+                    ``0`` for the model-authored ablation.
 
 PlanBench's ``send_query`` is sync; this is sync too. PlanBench iterates
 instances itself — one request per call. For ``vllm-tools`` the async
@@ -325,21 +335,87 @@ def _teardown_tools_runtime() -> None:
     _TOOLS_RUNTIME = None
 
 
-def _log_tool_calls(query, text, tool_calls_log, done_reason, loop_exhausted) -> None:
+# ---------------------------------------------------------------------------
+# Approach A — render the answer from the tool result (not the model's prose)
+# ---------------------------------------------------------------------------
+#
+# Truncation finding (run 18162382, qwen3.6:35b): the tool loop fires correctly
+# (validate_plan dominant, loop_exhausted=0) but ~66% of instances length-
+# truncate the model's FINAL answer turn to empty — the model gets a good tool
+# result, then rambles past num_predict before emitting the verdict. num_predict
+# is not the lever (4096->8192 just doubled output). Fix: for a task whose
+# answer is a deterministic function of the tool's structured output, render
+# that answer here and never read the model's final turn, so a truncated/empty
+# turn can't discard a correct tool outcome.
+#
+# Scope: t3 only for now. t3's answer ("The plan is valid/invalid.") is a pure
+# boolean->string with no grounding/format dependency, and t3 is the cleanest
+# tools target. The plan tasks (t1/t2/t4-t8) and t7 need PlanBench's PDDL->NL
+# templating + object grounding to render faithfully; until that lands they
+# fall back to the model's own text (no regression).
+
+
+def _render_answer_from_tools(tool_calls_log: list[dict]) -> str | None:
+    """Render PlanBench's expected answer from the relevant tool result.
+
+    Returns the rendered answer string, or ``None`` when there is no renderable
+    tool result for this task (the caller then falls back to the model's own
+    final text — rendering is strictly additive, never a regression). Gated by
+    ``PDDL_COPILOT_RENDER_FROM_TOOLS`` (default on); set ``0`` for the
+    model-authored ablation.
+    """
+    if os.environ.get("PDDL_COPILOT_RENDER_FROM_TOOLS", "1").strip().lower() in (
+        "0", "false", "off", "no",
+    ):
+        return None
+    task = os.environ.get("PDDL_COPILOT_TASK", "").strip().lower()
+    if task == "t3":
+        return _render_t3_verdict(tool_calls_log)
+    return None
+
+
+def _render_t3_verdict(tool_calls_log: list[dict]) -> str | None:
+    """t3 plan-verification: 'The plan is valid.' / 'The plan is invalid.'
+
+    Taken from the LAST ``validate_plan`` call whose result parses to a verdict
+    (the model's final validation is its conclusion — it may have repaired the
+    plan and re-validated). Reuses the harness's canonical verdict parser so the
+    mapping stays consistent with the 5-task arm. Returns ``None`` if no
+    validate_plan call produced a parseable verdict (→ model-text fallback). The
+    literal phrase matches what PlanBench's t3 grader keys on.
+    """
+    from pddl_eval.chat import _parse_validation_verdict
+
+    for tc in reversed(tool_calls_log):
+        if tc.get("name") != "validate_plan":
+            continue
+        verdict = _parse_validation_verdict(tc.get("result") or "")
+        if verdict is None:
+            continue
+        return "The plan is valid." if verdict else "The plan is invalid."
+    return None
+
+
+def _log_tool_calls(
+    query, model_text, final_text, rendered, tool_calls_log, done_reason, loop_exhausted
+) -> None:
     """Emit a per-instance tool-call record.
 
     A one-line summary always goes to stderr (lands in the sbatch log) so the
     smoke can be content-validated even without the file. The full JSONL record
     is appended to ``PDDL_COPILOT_TOOLLOG`` when that env var is set. This is
-    the guard against a false-green smoke: ``send_query`` returns only final
-    text, so a run where NO tool ever fired would otherwise look identical to a
-    working one.
+    the guard against a false-green smoke: ``send_query`` returns only the final
+    answer, so a run where NO tool ever fired would otherwise look identical to
+    a working one. ``model_text`` is the model's own final turn (may be empty on
+    truncation); ``final_text`` is what we actually return — when ``rendered``
+    is True they differ, which is exactly the Approach-A win to keep visible.
     """
     names = [tc.get("name") for tc in tool_calls_log]
     print(
         f"[pddl_copilot tools] instance done: tool_calls={len(tool_calls_log)} "
         f"names={names} done_reason={done_reason!r} loop_exhausted={loop_exhausted} "
-        f"final_text_len={len(text)}",
+        f"rendered={rendered} model_text_len={len(model_text)} "
+        f"final_text_len={len(final_text)}",
         file=sys.stderr,
     )
     path = os.environ.get("PDDL_COPILOT_TOOLLOG")
@@ -353,8 +429,11 @@ def _log_tool_calls(query, text, tool_calls_log, done_reason, loop_exhausted) ->
             "tool_names": names,
             "done_reason": done_reason,
             "loop_exhausted": loop_exhausted,
-            "final_text_head": text[:500],
-            "final_text_len": len(text),
+            "rendered": rendered,
+            "model_text_head": model_text[:500],
+            "model_text_len": len(model_text),
+            "final_text_head": final_text[:500],
+            "final_text_len": len(final_text),
             "tool_calls": [
                 {
                     "name": tc.get("name"),
@@ -375,10 +454,13 @@ def _vllm_tools_chat(query: str, model: str, max_tokens: int) -> str:
 
     Builds a FRESH message list per call (chat_with_tools mutates in place),
     drives it on the persistent loop, logs the tool-call transcript, and
-    returns ONLY the final assistant text. The few-shot ``stop`` PlanBench
-    passes is intentionally not forwarded — chat_with_tools is a multi-turn
-    chat loop where the model emits a final tool-call-free answer and stops
-    naturally; VAL's parser extracts the [PLAN] block from the full text.
+    returns the final answer. For t3 (any task with a clean structured mapping)
+    that answer is rendered deterministically from the tool's result
+    (Approach A, ``_render_answer_from_tools``); otherwise it is the model's
+    final assistant text. The few-shot ``stop`` PlanBench passes is
+    intentionally not forwarded — chat_with_tools is a multi-turn chat loop
+    where the model emits a final tool-call-free answer and stops naturally;
+    VAL's parser extracts the [PLAN] block from the full text.
     """
     from pddl_eval.chat import chat_with_tools
 
@@ -404,8 +486,18 @@ def _vllm_tools_chat(query: str, model: str, max_tokens: int) -> str:
             )
         )
     )
-    _log_tool_calls(query, text or "", tool_calls_log, done_reason, loop_exhausted)
-    return (text or "").strip()
+    model_text = text or ""
+    # Approach A: prefer the answer rendered from the tool's structured result,
+    # so a truncated/empty model final turn can't discard a correct tool
+    # outcome. Falls back to the model's own text when there's nothing to render
+    # (non-t3 tasks, or no parseable verdict).
+    rendered_answer = _render_answer_from_tools(tool_calls_log)
+    final_text = rendered_answer if rendered_answer is not None else model_text
+    _log_tool_calls(
+        query, model_text, final_text, rendered_answer is not None,
+        tool_calls_log, done_reason, loop_exhausted,
+    )
+    return final_text.strip()
 
 
 def pddl_copilot_send_query(
