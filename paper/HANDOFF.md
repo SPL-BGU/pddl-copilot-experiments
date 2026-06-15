@@ -1,17 +1,16 @@
 # Handoff — AAAI-27 single-tool-use paper
 
-**Branch:** `paper/aaai27-single-tool-draft` (latest on `origin`; **working tree clean**).
+**Branch:** `paper/aaai27-single-tool-draft` (latest on `origin`).
 Full paper body committed & pushed 2026-06-14.
 **Repo:** `pddl-copilot-experiments`. All paper work lives in `paper/`.
-**Worktree (IMPORTANT — read first):** paper work lives in a dedicated git worktree at
-`/Users/omereliyahu/personal/pddl-copilot-experiments-paper` (branch
-`paper/aaai27-single-tool-draft`). The main checkout
-`/Users/omereliyahu/personal/pddl-copilot-experiments` is the separate `planbench-integration`
-line. **Do paper work in the worktree; do not switch the main checkout's branch.** If you ever
-find the main checkout on another branch with `paper/` showing as untracked, that is only
-gitignored build-artifact leftovers — the real committed paper tree is this worktree (and
-`origin/paper/aaai27-single-tool-draft`).
-**Last session:** 2026-06-15.
+**Checkout (IMPORTANT — read first):** as of 2026-06-15 the main checkout
+`/Users/omereliyahu/personal/pddl-copilot-experiments` is itself on
+`paper/aaai27-single-tool-draft` (verify with `git worktree list` — there is now a single
+worktree, no separate `-experiments-paper` dir). Do paper work right here. The earlier
+HANDOFF described a dedicated `-experiments-paper` worktree; that no longer exists.
+**Last session:** 2026-06-15 — reproducibility checklist (item 7) completed; HF model ids added
+to Methodology; working tree has **uncommitted** changes to `paper/main.tex` + this file
+(commit when the user asks).
 
 ## TL;DR for a fresh session
 Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
@@ -19,9 +18,13 @@ Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
 `paper/main.tex`; the bibliography is `paper/refs.bib` (fully verified).
 **STATUS 2026-06-14: the full paper body (Abstract → Conclusion) is drafted, adversarially
 verified, and committed/pushed (`ee01e07`); it builds clean and the technical content is within
-the 7-page limit with all 3 figures. No prose work remains.** The next concrete task is the
-**reproducibility checklist (item 7)**; then the camera-ready passes (vector PDF figures,
-anonymization/metadata, exact HF model ids).
+the 7-page limit with all 3 figures. No prose work remains.**
+**STATUS 2026-06-15: the reproducibility checklist (item 7) is DONE — inlined into `main.tex`
+before `\end{document}` with all 23 `\question` answers filled, and exact HF model ids added as a
+footnote in §Models and Serving. Builds clean (0 undefined refs, 0 overfull boxes). PDF is now
+9 pages: technical content still ends on p7; references + checklist fill p7→p9 (neither counts
+toward the 7-page limit). NOT yet committed.** Remaining = camera-ready passes only (vector PDF
+figures, anonymization/PDF-metadata).
 
 ## What's DONE
 - AAAI-27 author kit imported (`paper/authorkit27/`, anonymous template).
@@ -84,8 +87,21 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
    mention of PlanBench + Huang \& Zhang formalizer baselines + multi-tool orchestration + a
    cap-raised rerun; Conclusion. Verified clean.
 6. ~~**Abstract**~~ — **DONE 2026-06-14.** 164 words, no citations (AAAI rule), claims match body.
-7. **Reproducibility checklist — NEXT.** `authorkit27/ReproducibilityChecklist.tex` (template
-   read 2026-06-14, not yet filled). It is a list of `\question{...}{(yes/partial/no/NA)}` items
+7. ~~**Reproducibility checklist**~~ — **DONE 2026-06-15.** Inlined verbatim into `main.tex`
+   (after `\bibliography{refs}`, before `\end{document}`); only the "Type your response here"
+   lines were replaced. Final answers as filled (deviations from the pre-load below are the
+   honest/no-overclaim reads — flag if the user wants different): General 1.1/1.2/1.3 = yes;
+   Theoretical 2.1 = no, 2.2–2.8 = NA; Dataset 3.1 = yes, 3.2 = yes, 3.3/3.4 = NA (no novel
+   dataset — corpus is from the earlier release + public suites), 3.5/3.6 = yes, 3.7 = NA;
+   Computational 4.1 = yes, 4.2 = **partial** (settings fixed by design, not swept), 4.3/4.4 =
+   **partial** (full repo exists + release-ready but NOT attached as an appendix at submission;
+   4.5 public-on-publication = yes), 4.6 = partial, 4.7 = NA (temp 0, no randomness), 4.8 =
+   **partial** (infra kept generic for anonymity), 4.9 = yes, 4.10 = yes, 4.11 = yes, 4.12 =
+   **partial** (signed disjoint-CI rule, not a named test), 4.13 = yes. HF ids go in the body
+   footnote (checklist answers are single tokens, can't hold ids). **Open call for the user:**
+   4.3/4.4 are `partial` assuming we do NOT submit anonymized supplementary code; flip to a code
+   appendix at submission if you want those = yes. Original pre-loaded answers, for reference:
+   The checklist was a list of `\question{...}{(yes/partial/no/NA)}` items
    in 4 groups; answer each by replacing the "Type your response here" line with ONE option,
    editing nothing else. Pre-loaded answers:
    - **General Paper Structure:** conceptual outline of methods = **yes** (Methodology + Table 1);

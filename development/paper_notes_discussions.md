@@ -179,3 +179,36 @@ Deck rebuilt: 58 slides (43 main + 15 backup). Three additions + one merge, each
 - **Open research items NOT deck-resolvable (for the advisor):** (a) cap-raised think=on rerun ("can we get more tokens") — harness change, untested; (b) token-limit-in-evals literature exists and is citable in the paper: budget forcing s1 (2501.19393), "Reasoning Models Can Be Effective Without Thinking" (2504.09858), "Do Thinking Tokens Help or Trap" (2506.23840 — truncation failures 86→37% when thinking suppressed), SelfBudgeter (2505.11274), thinking-budget scaling laws (2508.12140) — verify abstracts before citing per the 05-29 caveat rule.
 
 - 2026-06-11 (later): slide 33 split per user request into per-model pair (33 success / 34 cap-hit&failed), rows=models x cols=tasks; pooled variant retired. Caption numbers re-verified per model.
+
+## 2026-06-15 — Reproducibility checklist filled + inlined; HF ids added to body
+
+- **Checklist (item 7) DONE.** `authorkit27/ReproducibilityChecklist.tex` inlined verbatim into
+  `paper/main.tex` after `\bibliography{refs}`, before `\end{document}` (AAAI-27 single-`.tex`
+  submission rule — no `\input`). Only the "Type your response here" lines were replaced; the
+  form (incl. author instructions) is otherwise untouched, per the template's own rule.
+- **Answers (23 questions).** General 1.1/1.2/1.3 = yes. Theoretical 2.1 = no → 2.2–2.8 = NA
+  (empirical paper, no theorems). Dataset 3.1 = yes, 3.2 = yes, 3.3/3.4 = NA (no NOVEL dataset —
+  corpus is the earlier study's released set + public benchmark suites, framed as not-novel in
+  §Tasks/Fixtures), 3.5/3.6 = yes (existing-lit datasets cited + public), 3.7 = NA (all public).
+  Computational 4.1 = yes; 4.2 = **partial** (hyperparameters fixed by design — temp 0, ctx
+  16384, decode caps 8192/6144, ≤10 tool loops — not swept-and-selected); 4.3/4.4 = **partial**
+  (full repo exists and is release-ready but is NOT attached as a code appendix at submission);
+  4.5 = yes (public on publication); 4.6 = partial; 4.7 = NA (temp 0 ⇒ deterministic, no
+  randomness); 4.8 = **partial** (infra kept generic — "single workstation-class GPU", no
+  GPU/OS/lib versions — for double-blind); 4.9 = yes (N=4,560/cell, 1 deterministic sample/trial);
+  4.10 = yes (Wilson + Newcombe MOVER); 4.11 = yes; 4.12 = **partial** (signed disjoint-CI rule,
+  not a named test like Wilcoxon); 4.13 = yes.
+- **Honesty deviations from the HANDOFF pre-load** (decided here, no-overclaim): 4.2/4.8/4.12 →
+  partial (design-fixed params / anonymized infra / non-classical significance procedure);
+  4.3/4.4 → partial because we are NOT attaching anonymized supplementary code at submission (only
+  committing to release on publication, which is 4.5 = yes). **Open user call:** flip 4.3/4.4 to
+  yes only if we decide to submit a code appendix.
+- **HF model ids added to the body, not the checklist** (checklist answers are single yes/no/NA
+  tokens and cannot carry ids). New footnote in §Models and Serving: `Qwen/Qwen3.5-{0.8B,4B,9B}`
+  served 16-bit; the two MoE checkpoints `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit` and
+  `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit` are community AWQ-INT4 quants. Third-party ids, not
+  author-identifying ⇒ no double-blind violation; closes the repro gap from the non-canonical
+  roster labels.
+- **Build.** Clean (0 undefined refs, 0 overfull boxes). PDF now 9 pages: technical content still
+  ends on p7; references + checklist fill p7→p9 and do not count toward the 7-page limit. Not yet
+  committed (commit when the user asks).
