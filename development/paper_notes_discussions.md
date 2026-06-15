@@ -249,3 +249,12 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Build/pages.** Clean (0 undefined, 0 overfull). PDF now 10 pages, but technical content still
   ends on **p7** (Table 3 + Conclusion on p7; refs + checklist fill p7→p10, neither counts). Not
   trimming — user + advisors will choose focus (their call, gap D).
+
+- 2026-06-15 (session 2, later): per user, **PlanBench is moving INTO this paper** (no longer a
+  Future-Work-only mention). Sweep still running, so left FORWARD-NOTES only: a TODO marker in
+  `main.tex` above `\section{Future Work}` + a REMAINING item in HANDOFF. Plan when it completes:
+  add PlanBench results + discussion with the same end-to-end grading / signed-significance /
+  contamination controls, update GOALS.md (drop the "PlanBench out of scope" line), and trim
+  Background/Discussion to hold 7 pages (cut location deferred to user + advisors). PDF-metadata
+  verified CLEAN via `exiftool` (generic TeX/pdfTeX fields only; no author/path). Shipping via the
+  existing PR #76 for the user to merge.

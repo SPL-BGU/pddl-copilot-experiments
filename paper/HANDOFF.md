@@ -49,12 +49,22 @@ DONE this pass (committed/pushed):
   pairing). Eventual release = a curated, SCRUBBED package (eval harness + BOTH corpora, no
   cluster scripts, no `.git`) — see publication-time below.
 
-REMAINING (smaller; none blocking):
-- **Double-blind PDF-metadata check at upload** — template already blanks `\pdfinfo` + forbids
-  hyperref, so the PDF leaks only generic `Creator: TeX`/`Producer: pdfTeX`. Just run
-  `exiftool main.pdf` right before upload; keep the `\begin{links}` block commented.
+REMAINING:
+- **PlanBench results + discussion — BIG forthcoming addition (planned, sweep in progress).**
+  The PlanBench cross-domain track is still running (`development/PLANBENCH_HANDOFF_v3.md`; memory
+  `project_planbench_v2_v3`). When it completes, ADD its results + discussion to the paper,
+  promoting PlanBench from the one-paragraph Future Work mention to its own Results/Discussion
+  content, carrying the same end-to-end grading, signed-significance, and contamination controls.
+  **This supersedes GOALS.md's current "PlanBench out of scope" stance** — update GOALS.md when it
+  lands. There is a TODO marker in `main.tex` just above `\section{Future Work}`. Absorbing
+  PlanBench will exceed 7 pages; the plan is to TRIM Background/Discussion prose at that point —
+  **cut location is deferred (user + advisors decide).**
+- **Double-blind PDF-metadata — VERIFIED CLEAN 2026-06-15** (`exiftool main.pdf`: only generic
+  `Creator: TeX` / `Producer: pdfTeX` / PTEX banner; no author/title/path/username). Just re-run
+  `exiftool` on the FINAL pre-upload build (a rebuild regenerates the same generic fields), and
+  keep the `\begin{links}` block commented.
 - **Page focus (user + advisors).** 10 pages total, technical content ends p7 (within limit). Not
-  trimming per user instruction; user/advisors will choose focus.
+  trimming per user instruction; user/advisors will choose focus (esp. once PlanBench lands).
 - **Publication-time:** build the curated scrubbed code+data release (both corpora); optionally
   typeset a per-task contamination appendix table + the canonical↔renamed symbol map (data
   verified, not yet typeset).
