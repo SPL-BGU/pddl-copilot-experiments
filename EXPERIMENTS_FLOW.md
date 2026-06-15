@@ -219,9 +219,10 @@ matrix:
   Ollama backend under concurrency (smoke job 17244356, 2026-04-28); the
   per-call invariant is preserved for corpus comparability under vLLM.
 - **Per-task `num_predict` caps** (`pddl_eval/runner.py`
-  `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=4096`,
-  `simulate=4096`. Non-solve caps were raised from 1024/1536 → 4096 on
-  2026-04-29 after the cluster-26042026 sweep showed truncation rates
+  `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=6144`,
+  `simulate=6144`. Non-solve caps were raised 1024/1536 → 4096 on
+  2026-04-29, then **4096 → 6144 the same day** (commit `464d0f6`, PR #26),
+  after the cluster-26042026 sweep showed truncation rates
   (`done_reason == "length"`) of 40.9% on `validate_plan`, 37.1% on
   `simulate`, 32.7% on `validate_problem`, and 17.4% on
   `validate_domain` at the old caps — thinking-mode reasoning and
@@ -376,7 +377,7 @@ optional `meta` dict.
 | host | Where the run executed (`localhost`, RTX node hostname like `ise-cpu256-09:11434`, etc.). The legacy `is_remote` field was retired 2026-04-27 along with the cis-ollama path. |
 | conditions | `tools`, `no-tools`, or `both` |
 | models, tasks | CLI inputs that selected which models/tasks ran |
-| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_predict=null` means per-task defaults (`solve=8192, validate_*=4096, simulate=4096`); a number means a uniform CLI override. |
+| num_variants, prompt_variants_active, num_ctx, num_ctx_thinking, num_predict, temperature, think | Reproducibility knobs. `prompt_variants_active` records the actual variant indices used (e.g. `[0, 1, 2]` after the 2026-04-27 trim) — `num_variants` alone doesn't disambiguate which paraphrases ran. `num_ctx_thinking` (PR-2, 2026-04-28) is the bigger context budget used for `(think!=off, no-tools)` cells only; `async_main` splits `--conditions=both` into per-condition sub-passes when this applies, so `num_ctx` is constant within each `run_single_task_experiment` call. `num_predict=null` means per-task defaults (`solve=8192, validate_*=6144, simulate=6144`); a number means a uniform CLI override. |
 | tool_filter, prompt_style | Recorded only when `conditions ∈ {tools, both}` (with-tools knobs) |
 
 ### single_task_{ts}.json

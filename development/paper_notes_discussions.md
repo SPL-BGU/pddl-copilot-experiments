@@ -6,6 +6,40 @@ When a bullet later turns out wrong or superseded, strike it through and add the
 
 ---
 
+## 2026-06-14 — Methodology section drafted (AAAI-27) + three source corrections
+
+`\section{Methodology}` written in `paper/main.tex` (branch `paper/aaai27-single-tool-draft`), 6 subsections from `EXPERIMENTS_FLOW.md` + the unified deck (s4–6, 36–42): tasks/oracle/fixtures (+ strict-grading Table 1), models+serving, three-arm design (no-tools / +tool plain / +tool steered, BFCL relevance-vs-selection mapping, no-tools-steered control), metrics+Wilson CIs+arms-never-pooled+signed-significance, cross-mode (realizable benefit = steered−no-tools, MOVER/MOVER-D, robust floor = min over modes, +30pp class threshold), contamination null. Double-blind clean (Benyamin et al. cited third-person only; no de-anon tokens). Builds to 4pp (Background+Methodology), well within the 7-page budget.
+
+- **A 3-lens adversarial verify workflow (fact-fidelity / double-blind+format / stats-consistency) confirmed the section accurate, and caught three real errors — all fixed in `main.tex`, two also fixed at the source:**
+  - **Validator misattribution.** The verdict/trajectory oracle is **pddl-pyvalidator (unified-planning-based)**, NOT VAL. Dropped `\citep{howey2004val}` from the Methodology oracle sentence (VAL remains a legitimate Background-only example cite). Carry into Results: never call the harness validator "VAL".
+  - **Decode cap was stale.** Non-solve `num_predict` is **6,144**, not 4096 — `runner.py` `DEFAULT_NUM_PREDICT` = {solve 8192, validate_*/simulate 6144}; bumped 4096→6144 on 2026-04-29 (commit `464d0f6`, PR #26), a month before the sweep5v2 corpus (which ran `num_predict=null` → defaults). `EXPERIMENTS_FLOW.md` (lines 221-223, 379) was stale at 4096 → **corrected this session**. The think=on budget-confound prose must quote 8,192 for solve and **6,144** for the validation/simulate tasks.
+  - **`validate_domain` is not balanced.** It is **5:1 positive:negative** (300 pos = p01–p05×3×20; 60 neg = domain_neg×3×20), per ISS-020 (neg arm pairs `domain_neg` with only the first positive). validate_problem (100/100) and validate_plan (500/500) ARE 1:1. Methodology now scopes the "balanced" claim and notes the wider validate_domain negative-arm CI; flag in Limitations too.
+- **Verified-correct (no change needed):** per-cell N = **4,560** (solve 300 / validate_domain 360 / validate_problem 600 / validate_plan 3,000 / simulate 300); model roster + ≥9B headline; serving knobs (temp 0, ctx 16384, 10 tool loops, guided_json, MCP verbose pinned False); the −67pp Gemma-MoE-26B validate_plan signed-significance example; MOVER/MOVER-D + robust-floor as implemented in `rq_deck.py`; contamination figures (≤1.3pp think=off, zero CI-disjoint cells, the validate_plan×think=on ~5% tokenisation artifact).
+- **Local-build env (for next session):** missing fonts installed into the user TeX tree (no sudo) via `tlmgr --usermode install tex-gyre newtx courier psnfss` — `ts1-qtmr` (newtx TS1; first `itemize` bullet) + `pcrr8t` (Courier T1; `\texttt`). The AAAI kit does NOT load `amsmath` → use `\mathrm{}`, not `\text{}`.
+
+---
+
+## 2026-06-14 — Results section drafted (AAAI-27) + one major overclaim caught & fixed
+
+`\section{Results}` written in `paper/main.tex`, regime-led per `RESULTS_PLAN.md`: lead + scorecard (`table*`, 6 RQs) + 6 subsections (sole-source / headroom / mixed / scaling / cost / robustness) + 3 figures (Fig 1 solve+simulate sole-source; Fig 2 validate_plan mechanism; Fig 3 token quadrant). Robustness (think=on + contamination) folded to text. All numbers are LOCKED deck values (not re-derived). Builds to 7pp (Intro/Limitations/Conclusion still empty).
+
+- **A 3-lens adversarial fact-check (vs deck slides 2–42 + locked notes + `phase2_expected_sweep5v2.json`) found the Results overwhelmingly faithful — and caught ONE major overclaim, now fixed:**
+  - **RQ0.5 "solve and simulate show constant ~87–99pp gaps" was WRONG for simulate.** Per the phase-2 JSON: solve IS constant (gaps +87/+87/+89pp, tool arm 99→97→95% near ceiling), but **simulate's gap DECLINES +100→+93→+77pp with plan length (CI-disjoint)** because its *tool arm itself degrades* on long trajectories (99.7→93.2→77.1%) — only the no-tools arm is floored, not the tool arm. The deck's slide-29 "~87–99pp" shorthand lumped the two tasks; the paper now reports simulate's declining gap as a genuine opposite-signed difficulty signal (the one place tool-assisted success erodes with difficulty). **The unified deck should be corrected on this point too** (slides 29–30 prose).
+- **Minor fixes applied:** validate_plan middle plan-length bin tool value 99→**98** (so 98−91 reproduces the locked +7pp gap); prefix-cache caveat now notes tool **outputs are uncached** (cache discounts only re-fed schemas); cost ranges **scoped to ≥9B** (≈4–6×/trial, ≈3–5× costlier per success on most validate_* cells) rather than the deck's ≥4B-spanning "4–15× / 3–11×"; simulate truncation cap stated as **6,144** (deck's "8,192" is the known shorthand slip — see Methodology entry above).
+- **Verified-correct (no change):** every scorecard verdict/range; solve floored 8–11%→63–99% with +29pp steering on 35B; simulate 0% across all 3,000 trials + 68/29/3 failure decomposition; validate_plan −67pp = silence-not-error (Gemma verdict on 21% of trials @ 99% accuracy), steering repairs +72pp; the 9B>35B "inversion" = tool-call propensity not capability; think=on 55–83% baseline truncation, robust floor solve +46–71 / simulate +83–97; contamination null ≤1.3pp think=off, zero CI-disjoint cells.
+
+---
+
+## 2026-06-14 — Full body drafted; page budget resolved (no trim needed)
+
+Drafted the remaining sections in `paper/main.tex`: **Introduction** (motivation / 3 prior-work lines / design-in-brief / regime-dependent findings preview / 4-item contributions), **Limitations**, **Future Work** (one out-of-scope paragraph: PlanBench + Huang \& Zhang formalizer baselines + multi-tool orchestration + cap-raised rerun), **Conclusion**, and the **Abstract** (164 words, no citations). Methodology + Results were committed & pushed earlier (`0a31a3d`); these new sections are uncommitted as of this entry.
+
+- **Each new section adversarially verified** (double-blind / claims-match-body / no-overclaim / citation-correctness) — all clean. Two small fixes applied: Intro's "advantage grows with plan length" scoped to "where the baseline has headroom" (consistent with the simulate-declines correction); Conclusion's "occasionally harmful" → "on one task … can even be harmful" (the validate_plan harm is 2/3 ≥9B models, not rare).
+- **Page-budget decision (user, 2026-06-14): finish all sections, then trim once; tighten prose, keep all figures.** Outcome: **no trim needed.** The full body builds to **8 pages total but technical content ends on page 7** (Conclusion in p7 left column; references fill p7 right + p8, and refs don't count toward AAAI's 7) → within the 7-page content limit **with all 3 figures kept double-column**. The added sections filled existing float whitespace rather than adding pages.
+- **Remaining before submission:** reproducibility checklist (inline, single-.tex), camera-ready vector PDF figures, anonymization/metadata pass, and reconciling the non-canonical model labels (Qwen3.5/3.6, Gemma-MoE-26B) with exact HF ids. Re-verify the exact 7-page rule against the AAAI-27 CFP.
+
+---
+
 ## 2026-06-08 — Per-token "tool intelligence" efficiency lens (descriptive)
 
 - **Added a descriptive per-token efficiency view to the RQ deck** (`rq_deck.py`, `_add_efficiency_section`): success rate ÷ action tokens, reported as **successes per 1,000 action tokens**. Action tokens = output (completion) tokens summed across the model's turns. Each +tool arm also shows **`×vs no-tools`** (green ↑ raised / red ↓ lowered / ≈ no change) so the increase/decrease in per-token intelligence is an at-a-glance read — e.g. solve 14–17×↑, but Gemma validate_plan plain 0.2×↓ recovering only to 0.8×↓ steered (still below its strong, cheap no-tools baseline).
@@ -145,3 +179,82 @@ Deck rebuilt: 58 slides (43 main + 15 backup). Three additions + one merge, each
 - **Open research items NOT deck-resolvable (for the advisor):** (a) cap-raised think=on rerun ("can we get more tokens") — harness change, untested; (b) token-limit-in-evals literature exists and is citable in the paper: budget forcing s1 (2501.19393), "Reasoning Models Can Be Effective Without Thinking" (2504.09858), "Do Thinking Tokens Help or Trap" (2506.23840 — truncation failures 86→37% when thinking suppressed), SelfBudgeter (2505.11274), thinking-budget scaling laws (2508.12140) — verify abstracts before citing per the 05-29 caveat rule.
 
 - 2026-06-11 (later): slide 33 split per user request into per-model pair (33 success / 34 cap-hit&failed), rows=models x cols=tasks; pooled variant retired. Caption numbers re-verified per model.
+
+## 2026-06-15 — Reproducibility checklist filled + inlined; HF ids added to body
+
+- **Checklist (item 7) DONE.** `authorkit27/ReproducibilityChecklist.tex` inlined verbatim into
+  `paper/main.tex` after `\bibliography{refs}`, before `\end{document}` (AAAI-27 single-`.tex`
+  submission rule — no `\input`). Only the "Type your response here" lines were replaced; the
+  form (incl. author instructions) is otherwise untouched, per the template's own rule.
+- **Answers (23 questions).** General 1.1/1.2/1.3 = yes. Theoretical 2.1 = no → 2.2–2.8 = NA
+  (empirical paper, no theorems). Dataset 3.1 = yes, 3.2 = yes, 3.3/3.4 = NA (no NOVEL dataset —
+  corpus is the earlier study's released set + public benchmark suites, framed as not-novel in
+  §Tasks/Fixtures), 3.5/3.6 = yes (existing-lit datasets cited + public), 3.7 = NA (all public).
+  Computational 4.1 = yes; 4.2 = **partial** (hyperparameters fixed by design — temp 0, ctx
+  16384, decode caps 8192/6144, ≤10 tool loops — not swept-and-selected); 4.3/4.4 = **partial**
+  (full repo exists and is release-ready but is NOT attached as a code appendix at submission);
+  4.5 = yes (public on publication); 4.6 = partial; 4.7 = NA (temp 0 ⇒ deterministic, no
+  randomness); 4.8 = **partial** (infra kept generic — "single workstation-class GPU", no
+  GPU/OS/lib versions — for double-blind); 4.9 = yes (N=4,560/cell, 1 deterministic sample/trial);
+  4.10 = yes (Wilson + Newcombe MOVER); 4.11 = yes; 4.12 = **partial** (signed disjoint-CI rule,
+  not a named test like Wilcoxon); 4.13 = yes.
+- **Honesty deviations from the HANDOFF pre-load** (decided here, no-overclaim): 4.2/4.8/4.12 →
+  partial (design-fixed params / anonymized infra / non-classical significance procedure);
+  4.3/4.4 → partial because we are NOT attaching anonymized supplementary code at submission (only
+  committing to release on publication, which is 4.5 = yes). **Open user call:** flip 4.3/4.4 to
+  yes only if we decide to submit a code appendix.
+- **HF model ids added to the body, not the checklist** (checklist answers are single yes/no/NA
+  tokens and cannot carry ids). New footnote in §Models and Serving: `Qwen/Qwen3.5-{0.8B,4B,9B}`
+  served 16-bit; the two MoE checkpoints `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit` and
+  `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit` are community AWQ-INT4 quants. Third-party ids, not
+  author-identifying ⇒ no double-blind violation; closes the repro gap from the non-canonical
+  roster labels.
+- **Build.** Clean (0 undefined refs, 0 overfull boxes). PDF now 9 pages: technical content still
+  ends on p7; references + checklist fill p7→p9 and do not count toward the 7-page limit. Not yet
+  committed (commit when the user asks).
+
+## 2026-06-15 (session 2) — figures→vector, contamination table, RQ0.5 deck fix, code-availability decision
+
+Addressed the post-checklist gap list. Two decisions were taken to A* best practice, each
+validated by an independent ranking subagent (the user asked for a second perspective):
+
+- **Contamination control → keep in MAIN text + add a table (NOT appendix/repo-link).** The
+  user's initial lean was "move it to an appendix, a GH repo link suffices." Researched against
+  A* convention: the direct subfield precedent (PlanBench / Mystery-Blocksworld — a structurally
+  identical renamed-symbol control) puts the obfuscation method AND headline result in MAIN-TEXT
+  tables, never appendix-only; a NULL result is the one reviewers most distrust, so it needs MORE
+  visible evidence; and a repo link inside a double-blind PDF is a deanonymization hazard. So we
+  added **Table 3** (per model: canonical vs anonymized no-tools success, Δ, N=4,560), tightened
+  the in-text claim from "≤1.3pp" to the verified **mean |Δ|=1.1pp (max 3.7), 0 CI-disjoint
+  cells**, and moved the think=on validate_plan exception's substantiating numbers into prose
+  (Δsucc tracks Δcompletion ~1:1; success-given-completion equal; anon prompts +5% longer →
+  truncation). Numbers verified 3 ways (analyzer loader + raw trials.jsonl + saved summary) over
+  results/sweep5v2-live vs results/sweep6-live; paper's prior claim confirmed and was conservative.
+- **Code availability → release at PUBLICATION, not at submission (C1-at-publication).** Best
+  practice (per AAAI checklist framing + the research brief) allows decoupling "code in an
+  appendix at review" from "public on publication." The user chose no review-time artifact, full
+  release at publication. So checklist code-appendix items 4.3/4.4 set to **no** (nothing attached
+  at review) and 4.5 stays **yes** (public on publication) — the honest pairing. The eventual
+  release form (decided) = a curated, SCRUBBED package: eval harness + BOTH corpora (canonical +
+  renamed), NO cluster/SLURM scripts, no .git, all hostnames/usernames/org/paths scrubbed. NOT an
+  anonymous.4open.science link (can't scrub in-file institution strings; proxy flaky). Build it at
+  publication time (the prior "F" item).
+- **Figures → vector PDF.** The 3 Results figures re-rendered as true matplotlib vector PDF
+  (`paper/figures/{solve,simulate,mechanism_validate_plan,token_quadrant}.pdf`) via the analyzer
+  plotting code; main.tex includes switched to .pdf. Camera-ready quality.
+- **Deck RQ0.5 prose corrected.** Verified from the live data: solve gap ~constant (+87/+87/+89),
+  simulate gap DECLINES (+99.7/+93.2/+77.1) because its tool arm degrades on long trajectories.
+  The PAPER was already correct; the DECK slide prose was the stale artifact (the plot itself was
+  correct). Fixed both deck builders in rq_deck.py and regenerated the unified deck.
+- **Build/pages.** Clean (0 undefined, 0 overfull). PDF now 10 pages, but technical content still
+  ends on **p7** (Table 3 + Conclusion on p7; refs + checklist fill p7→p10, neither counts). Not
+  trimming — user + advisors will choose focus (their call, gap D).
+
+- 2026-06-15 (session 2, later): per user, **PlanBench is moving INTO this paper** (no longer a
+  Future-Work-only mention). Sweep still running, so left FORWARD-NOTES only: a TODO marker in
+  `main.tex` above `\section{Future Work}` + a REMAINING item in HANDOFF. Plan when it completes:
+  add PlanBench results + discussion with the same end-to-end grading / signed-significance /
+  contamination controls, update GOALS.md (drop the "PlanBench out of scope" line), and trim
+  Background/Discussion to hold 7 pages (cut location deferred to user + advisors). PDF-metadata
+  verified CLEAN via `exiftool` (generic TeX/pdfTeX fields only; no author/path). Shipping via the
+  existing PR #76 for the user to merge.
