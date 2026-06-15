@@ -1,16 +1,18 @@
 # Handoff — AAAI-27 single-tool-use paper
 
-**Branch:** `paper/aaai27-single-tool-draft` (latest on `origin`).
-Full paper body committed & pushed 2026-06-14.
+**Branch:** `paper/aaai27-single-tool-draft` (latest on `origin`; **working tree CLEAN** —
+everything below is committed & pushed through `bf6f7cb`).
 **Repo:** `pddl-copilot-experiments`. All paper work lives in `paper/`.
 **Checkout (IMPORTANT — read first):** as of 2026-06-15 the main checkout
 `/Users/omereliyahu/personal/pddl-copilot-experiments` is itself on
 `paper/aaai27-single-tool-draft` (verify with `git worktree list` — there is now a single
 worktree, no separate `-experiments-paper` dir). Do paper work right here. The earlier
 HANDOFF described a dedicated `-experiments-paper` worktree; that no longer exists.
-**Last session:** 2026-06-15 — reproducibility checklist (item 7) completed; HF model ids added
-to Methodology; working tree has **uncommitted** changes to `paper/main.tex` + this file
-(commit when the user asks).
+**Last session:** 2026-06-15 — (1) reproducibility checklist filled + inlined; (2) exact HF
+model ids added to §Models and Serving; (3) Wilson CI de-named everywhere except the §Metrics
+definition + the one figure error-bar legend (folded "interval-based" into the
+signed-significance clause). All committed/pushed. **The prose draft is complete; only
+camera-ready mechanics remain (see "GAPS TO GOAL").**
 
 ## TL;DR for a fresh session
 Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
@@ -19,28 +21,55 @@ Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
 **STATUS 2026-06-14: the full paper body (Abstract → Conclusion) is drafted, adversarially
 verified, and committed/pushed (`ee01e07`); it builds clean and the technical content is within
 the 7-page limit with all 3 figures. No prose work remains.**
-**STATUS 2026-06-15: the reproducibility checklist (item 7) is DONE — inlined into `main.tex`
-before `\end{document}` with all 23 `\question` answers filled, and exact HF model ids added as a
-footnote in §Models and Serving. Builds clean (0 undefined refs, 0 overfull boxes). PDF is now
-9 pages: technical content still ends on p7; references + checklist fill p7→p9 (neither counts
-toward the 7-page limit). NOT yet committed.** Remaining = camera-ready passes only (vector PDF
-figures, anonymization/PDF-metadata).
+**STATUS 2026-06-15: reproducibility checklist DONE + inlined (23 answers filled), HF model ids
+added as a §Models-and-Serving footnote, and the Wilson-CI wording cleaned up paper-wide. Builds
+clean (0 undefined refs, 0 overfull boxes). PDF is now 9 pages: technical content still ends on
+p7; references + checklist fill p7→p9 (neither counts toward the 7-page limit). All committed &
+pushed (`bf6f7cb`).** The body + checklist are done; **what's left is camera-ready mechanics
+only — see "GAPS TO GOAL" below.**
+
+## GAPS TO GOAL (what stands between here and a submittable PDF)
+Goal = a submission-ready, double-blind AAAI-27 PDF. Prose/checklist are complete; remaining
+items are mechanical / decisions, none blocking each other:
+- **A. Vector figures (camera-ready).** The 3 used figures are still PNG. Regenerate as vector
+  PDF @300dpi — see item 3. *Lever, not a blocker; PNGs compile fine for review.*
+- **B. Anonymization + PDF metadata pass.** Third-person self-citation is already clean and the
+  HF-id repro gap is closed (footnote added this session). Still owed: strip PDF metadata
+  (author/title/producer) and confirm no de-anonymizing links before upload — see item 9.
+- **C. DECISION owed (user): code appendix at submission?** Checklist 4.3/4.4 are `partial` on
+  the assumption we do NOT attach anonymized supplementary code. If we attach it, flip both to
+  `yes` (and re-inline). Until decided, the checklist is internally consistent as-is.
+- **D. Re-verify against the official CFP** (the values here were fetched 2026-06-14): exact
+  page rule + whether the reproducibility checklist counts toward the 7 pages (assumed NO),
+  abstract deadline Jul 21, full-paper Jul 28, submission-site / OpenReview open dates.
+- **E. (Not the paper — deck task) Fix deck slides 29–30 prose** for the RQ0.5 correction (the
+  simulate gap DECLINES with plan length; only solve is constant). Carried since 2026-06-14.
+- **F. (Optional, tied to C/4.5) Code-release prep** — the checklist promises the repo public on
+  publication; have the release branch/license ready.
 
 ## What's DONE
 - AAAI-27 author kit imported (`paper/authorkit27/`, anonymous template).
 - `paper/main.tex` — **the full body is drafted and verified**: Abstract + Introduction +
   Background and Related Work + Methodology + Results + Limitations + Future Work + Conclusion
-  (all adversarially fact-checked vs sources 2026-06-14). Only the reproducibility checklist
-  and the camera-ready anonymization/vector-figure passes remain.
+  (all adversarially fact-checked vs sources 2026-06-14) **+ the inlined, fully-answered
+  reproducibility checklist (2026-06-15) + HF model-id footnote.** Only the camera-ready
+  anonymization/vector-figure passes remain.
+- **Wilson CI wording cleaned up paper-wide (2026-06-15):** "Wilson" is named only at the
+  §Metrics definition and the sole-source figure's error-bar legend; the abstract/intro/
+  positioning/results-narrative/scorecard-caption use plain "confidence interval" / "95%
+  intervals" (the abstract folds it into "signed, interval-based significance rule"). Newcombe
+  MOVER is likewise named once, in §Metrics.
 - `paper/figures/` — 5 PNGs copied from the deck; Results uses 3: `solve.png`+`simulate.png`
   (Fig 1), `mechanism_validate_plan.png` (Fig 2), `token_quadrant.png` (Fig 3).
   `visible_mode_succ.png` copied but the robustness story is folded to text.
 - `paper/refs.bib` — 20 references, **all verified** against DBLP/ACL/PMLR/NeurIPS/arXiv;
   keys tidy (years match).
 - `paper/GOALS.md`, `paper/RESULTS_PLAN.md` — scope + Results plan (decisions locked).
-- Local build works (see Build below). `main.pdf` compiles to **8 pages total**; technical
-  content **ends on page 7** (references fill p7 right column + p8) → **within the 7-page
-  content limit, all 3 figures kept**. 0 undefined refs, 0 overfull boxes.
+- Local build works (see Build below). With the checklist inlined, `main.pdf` compiles to
+  **9 pages total**; technical content **still ends on page 7** (references fill p7 right
+  column → p8, then the reproducibility checklist fills p8→p9 — neither refs nor checklist count
+  toward the limit) → **within the 7-page content limit, all 3 figures kept**. 0 undefined refs,
+  0 overfull boxes.
 
 ## Build
 ```bash
@@ -129,8 +158,10 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
    submission; if it tightens, the lightest lever is tightening Results/Background prose (the
    user's chosen lever; keep figures).
 9. **Anonymization pass before submission** — third-person self-citation only (verified clean in
-   every section); clear PDF metadata; no de-anonymizing links; reconcile non-canonical model
-   labels with HF ids in the reproducibility checklist (not a blind violation, a repro gap).
+   every section). ~~reconcile non-canonical model labels with HF ids~~ **DONE 2026-06-15** (HF
+   ids added as a §Models-and-Serving footnote; third-party ids, not author-identifying). Still
+   owed at upload: **clear PDF metadata** (author/title/producer) and confirm **no de-anonymizing
+   links** (the `\begin{links}` block stays commented).
 
 ## Hard constraints / policies (don't relearn the hard way)
 - **Double-blind.** Use the anonymous template. Cite the earlier version
@@ -146,21 +177,24 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
   asked.
 
 ## Git state
-Working tree **clean** as of 2026-06-14; branch pushed to `origin`.
+Working tree **clean** as of 2026-06-15; branch pushed to `origin`.
 ```
+bf6f7cb paper: de-name Wilson CI outside Methodology; fold interval into signed-significance rule
+7a6d69f paper: fill + inline reproducibility checklist; add HF model ids to Methodology (AAAI-27)
+6a60ce9 paper: document dedicated worktree in HANDOFF (avoid branch-switch confusion)
 ee01e07 paper: draft Introduction, Limitations, Future Work, Conclusion, Abstract (AAAI-27)
 0a31a3d paper: draft Methodology + Results sections (AAAI-27)
-6f25668 paper: rename bib keys to match years (bfcl2024->2025, pallagani2023->2022)
 ```
-Decision log for the two 2026-06-14 sessions (corrections, page-budget resolution, deck
-discrepancies to fix) is in `development/paper_notes_discussions.md` (three 2026-06-14 entries).
+Decision log is in `development/paper_notes_discussions.md` (three 2026-06-14 entries + a
+2026-06-15 entry covering the checklist answers, HF-id footnote, and Wilson de-naming).
 
 ## Suggested opening prompt for the fresh session
 > Continue the AAAI-27 paper on branch `paper/aaai27-single-tool-draft`. Read
-> `paper/HANDOFF.md`, `paper/GOALS.md`, and `paper/RESULTS_PLAN.md`. The full body is already
-> drafted, verified, and pushed (`ee01e07`). Next: complete the **reproducibility checklist** —
-> inline `authorkit27/ReproducibilityChecklist.tex` into `paper/main.tex` (before
-> `\end{document}`) and fill every `\question{...}` answer (replace each "Type your response
-> here") using the pre-loaded answers in HANDOFF item 7, sourced from `EXPERIMENTS_FLOW.md` /
-> `run_experiment.py` / `pddl_eval/`. Rebuild, confirm the 7-page content limit still holds, and
-> keep it double-blind (generic infra only — no institution/host details).
+> `paper/HANDOFF.md` ("GAPS TO GOAL"), `paper/GOALS.md`, and `paper/RESULTS_PLAN.md`. The full
+> body, the inlined reproducibility checklist, and the HF-id footnote are already drafted,
+> verified, and pushed (`bf6f7cb`); the tree is clean. Only camera-ready mechanics remain. Pick
+> from GAPS TO GOAL: (A) regenerate the 3 figures as vector PDF @300dpi from
+> `checkpoints/rq-sweep5v2/plots-unified/`; (B) the anonymization/PDF-metadata pass; (D)
+> re-verify the page rule + deadlines against the official CFP. Decision C (attach anonymized
+> supplementary code → flip checklist 4.3/4.4 to `yes`?) is the user's call. Keep it double-blind
+> (generic infra only).
