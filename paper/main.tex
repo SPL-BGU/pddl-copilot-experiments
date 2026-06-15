@@ -398,7 +398,7 @@ Because the domains are public, an unaided baseline could be inflated by
 memorization. A separate sweep re-ran the entire matrix on structurally identical
 domains with every surface symbol (domain, predicate, and object names) renamed.
 Under \emph{think}~=~off the clean no-tools probe is near-null --- mean
-$|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$ success $\leq 1.3$\,pp with zero
+$|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$ success $1.1$\,pp (max $3.7$) with zero
 CI-disjoint task cells --- so where the baseline has headroom it carries no
 detectable memorization signal, and the availability gap (tool arm minus this
 clean baseline) therefore cannot be a contamination artifact on the baseline
@@ -610,15 +610,41 @@ budget-confounded); the \emph{validate\_*} tasks are budget-dependent, their lar
 \emph{think}=on gaps being the artifact.
 
 \textbf{Contamination.} Because the domains are public, we re-ran the matrix on
-structurally identical domains with all surface names renamed. The \emph{think}=off
-no-tools probe is near-null --- mean $|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$
-success $\leq 1.3$\,pp with zero CI-disjoint task cells --- so the unaided baseline
-carries no detectable memorization signal where it has headroom, and the
-availability gaps are not a contamination artifact. The only CI-disjoint cells
-(\emph{validate\_plan}, \emph{think}=on) trace to tokenization, not memory: the
-renamed prompts ran $\approx$5\% longer and so truncated more under the shared
-budget, with success-given-completion unchanged --- itself a demonstration of the
-budget confound above.
+structurally identical domains with all surface names renamed
+(Table~\ref{tab:contam}). The \emph{think}=off no-tools probe is near-null --- mean
+$|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$ success $1.1$\,pp (max $3.7$) with
+zero CI-disjoint task cells --- so the unaided baseline carries no detectable
+memorization signal where it has headroom, and the availability gaps are not a
+contamination artifact. The only CI-disjoint cell anywhere is \emph{validate\_plan}
+under \emph{think}=on, and it traces to tokenization, not memory: the renamed
+prompts run $\approx$5\% longer and so truncate more under the shared budget ---
+success falls $4$--$6$\,pp in lockstep with completion while success-given-completion
+is unchanged --- itself a demonstration of the budget confound above.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Canonical} & \textbf{Anonymized} & $\Delta$ \\
+\midrule
+Qwen3.5-0.8B  & 45.9 & 45.8 & $-0.1$ \\
+Qwen3.5-4B    & 58.2 & 56.1 & $-2.1$ \\
+Qwen3.5-9B    & 63.8 & 64.2 & $+0.4$ \\
+Gemma-MoE-26B & 74.3 & 75.2 & $+0.9$ \\
+Qwen3.6-35B   & 75.7 & 74.8 & $-0.9$ \\
+\bottomrule
+\end{tabular}
+\caption{Contamination control: no-tools success rate (\%, \emph{think}=off, pooled
+over the five tasks) on the canonical vs.\ anonymized-domain corpus, per model
+($N=4{,}560$ trials each side). Every model's Wilson 95\% intervals overlap between
+corpora ($\Delta$ within noise), and across all $25$ (model$\times$task) cells the
+mean $|\Delta|$ is $1.1$\,pp (max $3.7$) with \emph{zero} CI-disjoint cells --- the
+unaided baseline carries no memorization signal. The null is informative where the
+baseline has headroom (e.g.\ Gemma-MoE-26B, Qwen3.6-35B) and uninformative at the
+floor.}
+\label{tab:contam}
+\end{table}
 
 \section{Limitations}
 Several constraints bound these conclusions. Under \emph{think}=on, reasoning and
@@ -837,10 +863,10 @@ yes
 	partial
 
 	\question{Any code required for pre-processing data is included in the appendix}{(yes/partial/no)}
-	partial
+	no
 
 	\question{All source code required for conducting and analyzing the experiments is included in a code appendix}{(yes/partial/no)}
-	partial
+	no
 
 	\question{All source code required for conducting and analyzing the experiments will be made publicly available upon publication of the paper with a license that allows free usage for research purposes}{(yes/partial/no)}
 	yes
