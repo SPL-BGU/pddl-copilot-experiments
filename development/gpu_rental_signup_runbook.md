@@ -1,147 +1,128 @@
-# Runbook — rent an NVIDIA GPU box and unblock probing
+# Runbook — rent a RunPod H200 (account, billing, access, cost control)
 
-**Purpose:** get a steady **H200-141GB** box online so we can start probing sweep5v2 + PlanBench
-on the open-model roster. Companion to `development/steady_gpu_deployment_handoff.md` (the goal)
-and slide 5 of the cost deck (the framing).
+**Purpose:** the **provider signup + billing + access + cost-control** reference for getting a
+steady **H200-141GB** box online. This is the "how you get and pay for the box" half.
+
+- **The actual run** (bootstrap, smoke → pilot → full sweep7, sync back) lives in
+  **`development/steady_gpu_runbook.md`** — don't duplicate it here.
+- **The goal + constraints** live in `development/steady_gpu_deployment_handoff.md`.
+- **Cost framing** is slide 5 of `development/cost-breakdowns/cheap_model_cost_slides.pptx`.
 
 > **Division of labour**
-> - **PART A = you (human-only):** account, payment, launch the box, open access. Nobody else can
->   do these — they need your identity + card.
-> - **PART B = dev (me / next agent):** install + launch vanilla vLLM, wire the harness, smoke-probe.
->   Listed here for context; **no action from you**.
+> - **PART A = you (human-only):** account, payment, SSH key, launch the box. Nobody else can do
+>   these — they need your identity + card.
+> - **PART B = dev (me / next agent):** install + launch vanilla vLLM, run the probe + sweep.
+>   See `steady_gpu_runbook.md`; **no action from you**.
 
 ---
 
-## Which platform (you asked for "the NVIDIA platform")
+## Decision — RunPod Secure Cloud
 
-The NVIDIA-branded, self-serve, *raw GPU box* you can run vanilla vLLM on is **NVIDIA Brev** →
-**https://brev.nvidia.com**. It bills per hour and gives you a real Linux box with SSH.
+For one steady box running vanilla vLLM, **RunPod Secure Cloud** wins: cheapest *predictable* H200
+price (**~$3.59/hr**), vetted Tier-3/4 datacenter hardware, a one-click **vLLM/PyTorch template**,
+and it's what the handoff recommended.
 
-- ❌ Not `build.nvidia.com` (that's NIM — managed inference endpoints, you can't run *our* vLLM on it).
-- ❌ Not classic DGX Cloud (enterprise, committed contracts).
-- ✅ NVIDIA Brev = the right NVIDIA product for us.
+**Evaluated and rejected:**
+- **NVIDIA Brev** (`brev.nvidia.com`): the same H200 lists at **$5.29–5.40/hr** (~50% more) and Brev
+  is a *pass-through* over other clouds — extra layer, no upside for us.
+- **vast.ai**: our 2026-05-06 attempt (a *pool* of community boxes behind Caddy + bearer + Ollama)
+  was reverted one day later for **unreliable performance** (CHANGELOG 2026-05-07). Community
+  hardware = variable quality. The new single-box / vanilla-vLLM design avoids most of that, and
+  Secure Cloud avoids the rest. Don't use **Community Cloud** (the vast-like tier).
+- **Lambda**: fine alternative (pay-per-minute, no prepaid balance to strand), ~$5/hr H200.
 
-**Heads-up (from our handoff):** Brev is a *pass-through* to underlying clouds, so its per-hour H200
-price is **variable** — check the live number in the console before you click Deploy. Real H200
-on-demand in mid-2026 runs **~$3.0–4.4/hr** (RunPod ~$3.59, Lambda ~$4.99, market median ~$3.95).
-At those prices budget **~$120–220** for the full sweep5v2 across all five models (PlanBench extra).
-If Brev's price/availability looks bad, the **RunPod Secure Cloud** alternative is in the last section.
+> 💸 **Prepaid credit is effectively non-refundable** on RunPod (refunds are case-by-case via
+> support, not self-serve). **Load small, top up often** — don't front-load the whole sweep.
 
 ---
 
 ## PART A — what only you can do
 
-### 0. Prerequisites (have these ready)
-- [ ] An **NVIDIA account** (free) — you'll sign into Brev with it. Create/manage: https://www.nvidia.com/en-us/account/
-- [ ] A **credit card** for hourly billing.
-- [ ] Your Mac (you're on macOS) with **Homebrew**. Check: `brew --version`. If missing, install from https://brew.sh.
+### 0. Prerequisites
+- [x] **RunPod account** with a small credit loaded (you've done this).
+- [x] A **credit card** on file.
+- [ ] An **SSH key** (step 2) — needed to reach the box. macOS has `ssh`/`rsync` built in; no extra CLI.
+- [ ] A **Hugging Face token (Read)** (step 3) — to download model weights.
 
-### 1. Create your Brev account
-1. Go to **https://brev.nvidia.com**.
-2. Sign in / sign up with your **email** (or NVIDIA-account OAuth). Verify the email.
-3. You'll land on the Brev console.
+  (No NVIDIA account, no Homebrew, no `brev` CLI needed on the RunPod path.)
 
-### 2. Add a payment method
-1. In the console, open **Settings → Billing** (account/org settings).
-2. Add your credit card. Brev **bills per hour of compute**; a stopped instance has **no compute
-   charge** (tiny storage cost only).
-3. *(Optional but smart)* set a **spending alert / limit** if the billing page offers one.
+### 1. Credits — how much
+You've loaded some already. Sizing: **~$25** is enough to validate the box + run the **pilot**;
+the operator runbook suggests **~$50** to cover the full **35B `sweep7`** with buffer. The pilot
+(in `steady_gpu_runbook.md`, Step B) measures real GPU-hours so you confirm the total **before**
+committing. Top up after the pilot rather than up-front (credits don't refund).
 
-### 3. Install the Brev CLI + log in (on your Mac)
-You need the CLI so we can tunnel the GPU's port back to your laptop (step 6).
+### 2. Add your SSH public key
 ```bash
-brew install brevdev/homebrew-brev/brev
-brev --version
-brev login                 # opens a browser to authenticate; creds saved to ~/.brev/
+ssh-keygen -t ed25519 -C runpod -f ~/.ssh/runpod_ed25519     # press enter for no passphrase
+cat ~/.ssh/runpod_ed25519.pub                                 # copy this line
 ```
+Paste the `.pub` line into **RunPod → Settings → SSH Public Keys**.
 
-### 4. Launch an H200 instance (console)
-1. In the console go to **GPU Instances → Create New Instance**.
-   - Direct link for H200: **https://brev.nvidia.com/environment/new/public?gpu=H200**
-2. On **Select your Compute**, pick an **H200 (141 GB)**, single GPU.
-   - **Confirm the $/hr shown** before continuing (see price note above).
-   - Region: pick whatever has H200 capacity and is closest.
-3. **Storage:** bump the disk to **~300–400 GB** if asked — model weights for the 35B/31B are big
-   (~70 GB each) and we'll cache several.
-4. **Name** it e.g. `pddl-h200` and click **Deploy**. It takes a few minutes to boot.
+### 3. Hugging Face token (Read)
+HF → **Settings → Access Tokens → New token (Read)**. Save the `hf_...` value for step 2 of the
+operator runbook. Note: `Qwen/Qwen3.6-35B-A3B` is **ungated**; **gemma** (later) needs its license
+accepted on HF first.
 
-### 5. Verify the box is real
+### 4. Deploy the pod
+1. **https://www.runpod.io/** → **Deploy** → **Secure Cloud** (not Community Cloud).
+2. GPU = **H200 SXM (141 GB)**, **1× GPU** (a single H200 fits every model in BF16).
+3. Template = **vLLM** or **PyTorch/CUDA**; enable **SSH**.
+4. Confirm **~$3.59/hr** before deploying.
+
+### 5. Attach a persistent volume — **run-critical**
+Attach a **~150–200 GB Network/Persistent Volume mounted at `/workspace`**. It caches the ~70 GB
+BF16 weights + both repos + results across stop/restart. **Without it, every restart re-pulls
+70 GB of weights.**
+
+### 6. Verify SSH, then hand off
 ```bash
-brev refresh
-brev list                  # see your instance + its status
-brev shell pddl-h200       # opens a shell ON the box
-# on the box:
-nvidia-smi                 # should show 1× H200, ~141 GB. Then: exit
+ssh -i ~/.ssh/runpod_ed25519 root@<pod-host> -p <pod-port>    # RunPod shows host+port on the pod
 ```
+Then **give me `<pod-host>` + `<pod-port>`** (or run `steady_gpu_runbook.md` yourself). Creating +
+paying for the box was the human-only part; from there dev can drive it.
 
-### 6. Open the door for dev (pick ONE)
+---
 
-**Option A — port-forward to your laptop (recommended, private):**
-Once vLLM is running on the box (PART B), expose it locally so the harness can reach it at
-`localhost:8000`:
+## ⚠️ COST CONTROL — every time you finish
+
+RunPod bills **per hour while the pod is RUNNING**, even idle.
+
+- **Stop** the pod between sessions → no compute charge; the `/workspace` volume (and your cached
+  weights) **persists** for a small storage fee.
+- **Terminate** only when the whole sweep is done → frees everything (volume + data gone).
+- Rule of thumb: **stop** between sessions, **terminate** when finished. And remember credits don't
+  refund, so unused balance is spend-it-or-lose-it.
+
+---
+
+## How the harness reaches vLLM
+
+**Chosen design (simplest):** the harness runs **on the box** against `localhost:8000`. Vanilla
+vLLM needs no key, so `VLLMClient`'s hardcoded `api_key="EMPTY"` works unchanged — no code change
+(tracked as deferred **ISS-023**; only a *public, auth-gated* endpoint would need it).
+
+**Alternative — run the harness on your laptop** via an SSH tunnel:
 ```bash
-brev port-forward pddl-h200 --port 8000:8000
-# leave this running; the harness then uses  --llm-base-url http://localhost:8000
+ssh -i ~/.ssh/runpod_ed25519 -p <pod-port> -L 8000:localhost:8000 root@<pod-host>
+# then locally:  run_experiment.py --llm-base-url http://localhost:8000
+#                export VLLM_BASE=http://localhost:8000/v1   # PlanBench
 ```
-
-**Option B — just hand me access:** run `brev list` and tell me the instance name; I can drive it
-via `brev shell` / `brev port-forward` from here. (You still had to create it + pay — that's the
-human-only part.)
-
-### ⚠️ COST CONTROL — do this every time you finish
-You are billed **per hour while the instance is RUNNING**, even idle.
-```bash
-brev stop pddl-h200        # pause: no compute charge, keeps your data (/home/ubuntu/workspace)
-brev start pddl-h200       # resume later (subject to H200 availability)
-brev delete pddl-h200      # DONE for good: stops storage cost too (IRREVERSIBLE — wipes data)
-```
-Rule of thumb: **stop** between sessions, **delete** when the whole sweep is finished.
 
 ---
 
 ## PART B — what dev does next (no action from you)
 
-For context only — once the box is up and reachable:
-1. On the box: `pip install vllm`, then launch one model at a time, e.g.
-   ```bash
-   vllm serve <HF-model-id> --port 8000 \
-        --served-model-name <name-the-harness-sends> \
-        --max-model-len 16384 --gpu-memory-utilization 0.90 --enable-prefix-caching
-   ```
-   (exact HF ids + the per-model reasoning-parser flag come from the harness model map / the
-   `reference_vllm_parser_per_model` note — the next agent fills these in.)
-2. Point the harness at it:
-   - sweep5: `run_experiment.py --llm-base-url http://localhost:8000`
-   - PlanBench: `export VLLM_BASE=http://localhost:8000/v1`
-3. Run a tiny **smoke probe** (a handful of trials) to confirm tokens come back and parse, then
-   time-share the box across the five models per the handoff.
-4. **Corpus isolation:** each model's `trials.jsonl` from this ONE backend; keep
-   temp/top_p/max_tokens/seed identical to the cluster cells.
-
-> Note: `VLLMClient` currently hardcodes `api_key="EMPTY"`. Brev's tunnel is private so that's fine;
-> if we ever expose a public/Cloudflare URL with auth, the key has to become configurable.
-
----
-
-## Alternative — RunPod Secure Cloud (if Brev is pricey/unavailable)
-
-Equally simple, often cheaper, and the option our handoff actually recommended.
-1. Sign up: **https://www.runpod.io/** → add payment (Billing).
-2. **Deploy a Pod** → **Secure Cloud** → filter GPU = **H200 (141 GB)** → pick the **vLLM** or
-   **PyTorch** template → set container disk + volume ~300–400 GB → **Deploy** (~$3.59/hr typical).
-3. Expose the API: RunPod gives an **HTTP proxy URL** per exposed port, or use **TCP port mapping**
-   + SSH; point the harness `--llm-base-url` / `VLLM_BASE` at that URL (`…/v1`).
-4. **Stop/terminate** the pod when idle — same per-hour billing discipline as Brev.
+See **`development/steady_gpu_runbook.md`** for the full operator sequence: clone repos onto
+`/workspace`, `pip install vllm`, pre-download weights, **smoke** (confirm tool extraction) →
+**pilot** (measure cost) → **full `sweep7`** (35B BF16) → **sync back + analyze**. Corpus isolation:
+each model's `trials.jsonl` from this ONE backend; sampling params identical to the cluster cells.
 
 ---
 
 ## Sources (verified Jun 2026)
-- NVIDIA Brev console: https://brev.nvidia.com  ·  H200 launch: https://brev.nvidia.com/environment/new/public?gpu=H200
-- Brev quickstart: https://docs.nvidia.com/brev/getting-started/quickstart
-- Brev GPU instances / billing: https://docs.nvidia.com/brev/concepts/gpu-instances
-- Brev connectivity / port-forward: https://docs.nvidia.com/brev/cli/connectivity
-- NVIDIA account: https://www.nvidia.com/en-us/account/
+- RunPod: https://www.runpod.io/  ·  H200: https://www.runpod.io/gpu-models/h200
 - H200 price comparison: https://getdeploying.com/gpus/nvidia-h200
-- RunPod H200: https://www.runpod.io/gpu-models/h200
-- Lambda pricing: https://lambda.ai/service/gpu-cloud (on-demand H200)
+- Lambda (pay-per-minute alt): https://lambda.ai/service/gpu-cloud
+- vast.ai postmortem: `development/CHANGELOG.md` 2026-05-07 (reverted pool transport)
 </content>

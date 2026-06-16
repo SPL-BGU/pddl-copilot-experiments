@@ -14,9 +14,9 @@ a later phase (the driver already knows the 9B BF16 id).
 ## Part 1 — Manual steps YOU take (account + provision)
 
 Account, payment, and launching the box are human-only. **Full signup mechanics
-(NVIDIA Brev primary, RunPod alternative, CLI install, cost controls) live in
-`development/gpu_rental_signup_runbook.md`** — don't duplicate them here. For this
-run the chosen provider is **RunPod Secure Cloud**; the run-specific essentials:
+(RunPod account, billing, SSH key, cost controls) live in
+`development/gpu_rental_signup_runbook.md`** — don't duplicate them here. The chosen
+provider is **RunPod Secure Cloud**; the run-specific essentials:
 
 1. **Account + ~$50 credit** (covers probe + full 35B `sweep7` with buffer; the
    Part-2 pilot confirms the exact GPU-hour cost @ ~$3/hr before you commit).
