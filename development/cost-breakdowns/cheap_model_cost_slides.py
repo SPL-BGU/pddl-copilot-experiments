@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Self-contained cost-breakdown deck (3 slides) for the CHEAP-model API
+"""Self-contained cost-breakdown deck (5 slides) for the CHEAP-model API
 baseline: 2 models over BOTH benchmarks (PlanBench full + sweep5 single-tool),
-both think on/off, full corpus.
+both think on/off, full corpus. Slide 5 adds the DEPLOYMENT alternative we lean
+toward for the OPEN-model roster: rent one steady neocloud GPU (H200-141GB) and
+self-host with vanilla vLLM instead of queuing on the 3090/RTX-6000 cluster.
 
 Style matches frontier_cost_slide.py (navy header, zebra rows, highlight). Unlike
 that one, numbers are COMPUTED from the measured per-task token table below, so the
@@ -97,6 +99,32 @@ def sweep5_scaled(model, vp_fix=10, dom_frac=1.0, wt_var=6, nt_var=3, think_both
     return tot
 
 def money(x): return f"${x:,.0f}"
+
+# ---------------------------------------------------------------- GPU-RENTAL DATA
+# Alternative to the API baseline (slides 1-4): rent ONE persistent neocloud GPU,
+# self-host the OPEN-model roster with vanilla vLLM, time-share the box across all
+# five models (load one, run its cells, swap to next). Motivation: the free
+# 3090/RTX-6000 SLURM cluster is queued and can't seat the 35B in BF16.
+# Numbers below are ESTIMATES from the deployment handoff — confirm with a pilot.
+GPU = {  # name -> ($/hr, BF16-fit note)
+    "H200-141GB": (3.00, "all 5 single-GPU, clean BF16"),
+    "H100-80GB":  (2.40, "<=9B clean; 31-35B need FP8 or TP=2"),
+}
+GPU_HRS = (40, 50)   # est. GPU-hours for the full sweep5v2 across all 5 (time-shared)
+# Open-model roster (served one at a time) -> approx BF16 weight GB (~2 bytes/param)
+ROSTER = [
+    ("Qwen3.5-0.8B", 1.6),
+    ("Qwen3.5-4B",   8),
+    ("Qwen3.5-9B",   18),
+    ("Qwen3.6-35B",  70),
+    ("gemma4-31B †", 62),   # optional 5th model
+]
+
+def gpu_band(name):
+    rate = GPU[name][0]
+    return rate * GPU_HRS[0], rate * GPU_HRS[1]
+
+def money_band(lo, hi): return f"${lo:,.0f}-{hi:,.0f}"
 
 # ---------------------------------------------------------------- pptx helpers
 def _set(cell, text, *, size, bold=False, color=INK, align=PP_ALIGN.LEFT, fill=None):
@@ -358,11 +386,87 @@ def slide4(prs):
     _footer(slide, "Cuts are labeled variants — flag any domain/fixture sampling in the writeup. "
             "% reductions are model-independent; $ shown for the recommended cheap pair.")
 
+# ---------------------------------------------------------------- SLIDE 5
+def slide5(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _title(slide, "Alternative — Rent One Steady GPU, Self-Host the Open Roster",
+           "Run the OPEN models (Qwen3.5-0.8/4/9B · Qwen3.6-35B · maybe gemma4-31B) on a persistent "
+           "neocloud box, not the queued 3090/RTX-6000 cluster. Different models & purpose from the "
+           "API closed-model baseline above — this is the actual experiment roster.")
+    GREEN = RGBColor(0x3E, 0x82, 0x3C)
+
+    # ---- route comparison (full width) ----
+    api_pair = sum(sweep5_total(m) + planbench_total(m) for m in ["Haiku 4.5", "Gemini Flash-Lite"])
+    h2lo, h2hi = gpu_band("H200-141GB"); h1lo, h1hi = gpu_band("H100-80GB")
+    ROUTES = [
+        ("Free SLURM cluster (3090/RTX-6000)", "$0", "queued", "✗ can't seat", "shared, mixed configs", False),
+        ("Rented H200-141GB", money_band(h2lo, h2hi), "yes", "✓ clean BF16", "one vanilla vLLM · no TP/FP8", True),
+        ("Rented H100-80GB (budget)", money_band(h1lo, h1hi), "yes", "FP8 / TP=2", "one vLLM · more moving parts", False),
+        ("API closed models (slides 1-4)", money(api_pair), "yes", "n/a (closed)", "OpenAI API · by-the-token", False),
+    ]
+    RH = ["Route", "GPU/API $", "Steady?", "35B in BF16", "Backend / moving parts"]
+    RW = [3.55, 1.55, 1.25, 1.55, 4.8]
+    rt = slide.shapes.add_table(len(ROUTES) + 1, len(RH), Inches(0.3), Inches(1.28),
+                                Inches(sum(RW)), Inches(1.95)).table
+    for j, w in enumerate(RW): rt.columns[j].width = Inches(w)
+    for j, h in enumerate(RH):
+        _set(rt.cell(0, j), h, size=10, bold=True, color=WHITE,
+             align=PP_ALIGN.LEFT if j in (0, 4) else PP_ALIGN.CENTER, fill=NAVY)
+    for i, (name, cost_s, steady, bf16, backend, hi) in enumerate(ROUTES, start=1):
+        fill = HILITE if hi else (BAND if i % 2 == 0 else WHITE)
+        _set(rt.cell(i, 0), name, size=10, bold=hi, fill=fill)
+        _set(rt.cell(i, 1), cost_s, size=10, bold=hi, align=PP_ALIGN.CENTER,
+             color=NAVY if hi else INK, fill=fill)
+        _set(rt.cell(i, 2), steady, size=10, align=PP_ALIGN.CENTER, color=GREY, fill=fill)
+        _set(rt.cell(i, 3), bf16, size=10, align=PP_ALIGN.CENTER,
+             color=RED if bf16.startswith("✗") else (NAVY if hi else GREY), fill=fill)
+        _set(rt.cell(i, 4), backend, size=9.5, color=GREY, fill=fill)
+
+    # ---- per-model fit (left) ----
+    cap = slide.shapes.add_textbox(Inches(0.3), Inches(3.42), Inches(5.7), Inches(0.32))
+    cr = cap.text_frame.paragraphs[0].add_run()
+    cr.text = "Per-model BF16 fit (served one at a time)"
+    cr.font.size = Pt(12); cr.font.bold = True; cr.font.color.rgb = NAVY
+    rh = ["Open model", "BF16 GB", "H200-141", "H100-80"]
+    rw = [1.95, 1.05, 1.3, 1.4]
+    rost = slide.shapes.add_table(len(ROSTER) + 1, len(rh), Inches(0.3), Inches(3.78),
+                                  Inches(sum(rw)), Inches(2.05)).table
+    for j, w in enumerate(rw): rost.columns[j].width = Inches(w)
+    for j, h in enumerate(rh):
+        _set(rost.cell(0, j), h, size=9.5, bold=True, color=WHITE,
+             align=PP_ALIGN.LEFT if j == 0 else PP_ALIGN.CENTER, fill=NAVY)
+    for i, (m, gb) in enumerate(ROSTER, start=1):
+        big = gb > 60
+        base = BAND if i % 2 == 0 else WHITE
+        _set(rost.cell(i, 0), m, size=9.5, fill=base)
+        _set(rost.cell(i, 1), f"{gb:.0f}" if gb >= 10 else f"{gb:.1f}", size=9.5,
+             align=PP_ALIGN.RIGHT, color=GREY, fill=base)
+        _set(rost.cell(i, 2), "✓", size=9.5, align=PP_ALIGN.CENTER, color=GREEN, fill=base)
+        _set(rost.cell(i, 3), "FP8/TP2" if big else "✓", size=9, align=PP_ALIGN.CENTER,
+             color=RED if big else GREEN, fill=base)
+
+    # ---- decision & constraints (right) ----
+    _takeaways(slide, 6.2, 3.42, 6.83, 3.4, "Decision & constraints", [
+        ("H200-141GB — fewest moving parts.", "every model in clean BF16 on a single GPU: no "
+         "tensor-parallel, no FP8. H100-80 only if budget bites (forces FP8/TP=2 on the 31-35B)."),
+        ("Time-share one box.", "load a model → run its sweep5v2 + PlanBench cells → swap. Vanilla "
+         "vLLM OpenAI server; ~40-50 GPU-hrs @ ~$3/hr ≈ $120-150 for all five (PlanBench extra, TBD)."),
+        ("Harness change is tiny.", "VLLMClient is OpenAI-compatible — only base_url + key move to "
+         "the rented box. Per-model flags: --max-model-len, --gpu-memory-utilization, --served-model-name."),
+        ("Corpus isolation is load-bearing.", "each model's trials.jsonl from ONE backend; keep "
+         "temp/top_p/max_tokens/seed identical to cluster cells. Never split a model across cluster + rental."),
+    ])
+
+    _footer(slide, "Cost & GPU-hours are ESTIMATES from the deployment handoff (~40-50 GPU-hrs @ "
+            "~$3/hr H200); confirm with a short pilot before the full sweep. † gemma4-31B optional. "
+            "Open items for the planner: PlanBench trial/problem count · H200 vs H100+FP8 · whether the "
+            "0.8-9B cells stay on the free cluster (cheaper) or move to the box (one backend).")
+
 # ---------------------------------------------------------------- build
 def build():
     prs = Presentation()
     prs.slide_width = Inches(13.333); prs.slide_height = Inches(7.5)
-    slide1(prs); slide2(prs); slide3(prs); slide4(prs)
+    slide1(prs); slide2(prs); slide3(prs); slide4(prs); slide5(prs)
     out = Path(__file__).resolve().parent / "cheap_model_cost_slides.pptx"
     prs.save(str(out))
     print(f"wrote {out}  ({len(prs.slides)} slides)")
@@ -377,6 +481,10 @@ def build():
                      ("Haiku+Sonnet",["Haiku 4.5","Sonnet 4.6"]),
                      ("Haiku+Qwen",["Haiku 4.5","Qwen-Flash"])]:
         print(f"  {name:14} {money(sum(sweep5_total(m)+planbench_total(m) for m in ms))}")
+    print("-- rented-GPU alternative (open roster, sweep5v2; PlanBench extra) --")
+    for g in GPU:
+        lo, hi = gpu_band(g)
+        print(f"  {g:14} {money_band(lo,hi):>12}  ({GPU[g][0]:.2f}/hr x {GPU_HRS[0]}-{GPU_HRS[1]} GPU-hr) — {GPU[g][1]}")
 
 
 if __name__ == "__main__":

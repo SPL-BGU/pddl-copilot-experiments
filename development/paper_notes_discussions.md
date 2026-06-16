@@ -337,3 +337,15 @@ validated by an independent ranking subagent (the user asked for a second perspe
   Background/Discussion to hold 7 pages (cut location deferred to user + advisors). PDF-metadata
   verified CLEAN via `exiftool` (generic TeX/pdfTeX fields only; no author/path). Shipping via the
   existing PR #76 for the user to merge.
+
+- 2026-06-16: **Compute deployment for the open-model sweeps (leaning, not final).** To run
+  sweep5v2 + PlanBench over the open roster (Qwen3.5-0.8/4/9B, Qwen3.6-35B, maybe gemma4-31B)
+  steadily — the free 3090/RTX-6000 cluster is queued and can't seat the 35B in BF16 — Omer is
+  leaning toward renting **one persistent H200-141GB** neocloud box (RunPod Secure / Lambda),
+  vanilla vLLM, time-shared across all five (clean BF16, no TP/FP8). Est. ~$120-150 for sweep5v2
+  (PlanBench extra). Paper-relevant constraint: **corpus isolation is load-bearing** — each
+  model's `trials.jsonl` must come from ONE backend; never split a model across cluster + rental,
+  and keep temp/top_p/max_tokens/seed identical to existing cluster cells for comparability. Goal
+  + open items captured in `development/steady_gpu_deployment_handoff.md`; cost framing added as
+  slide 5 of `development/cost-breakdowns/cheap_model_cost_slides.{py,pptx}`. Next agent owns the
+  plan + implementation on branch `feat/steady-gpu-deployment`.
