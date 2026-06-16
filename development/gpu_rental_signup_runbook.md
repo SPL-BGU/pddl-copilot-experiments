@@ -17,7 +17,8 @@ We use **RunPod Secure Cloud** (cheapest predictable H200, ~$3.59/hr, vetted har
 - [x] **RunPod account** + small credit (done)
 - [x] **Credit card** on file (done)
 - [ ] **SSH key** (step 2)
-- [ ] **Hugging Face token (Read)** (step 3)
+- [ ] *(optional)* **Hugging Face token (Read)** (step 3) — **not needed for the 35B** (it's a
+  public model); only required later for gated models like gemma
 
 ## 1. Credits — how much
 **~$25** validates the box + runs the pilot; **~$50** covers the full 35B run with buffer. The
@@ -30,9 +31,12 @@ cat ~/.ssh/runpod_ed25519.pub                                 # copy this whole 
 ```
 Paste the `.pub` line into **RunPod → Settings → SSH Public Keys**.
 
-## 3. Hugging Face token (Read)
-**HF → Settings → Access Tokens → New token (Read)**; save the `hf_...` value. (`Qwen3.6-35B` is
-ungated; **gemma**, if we add it later, needs its license accepted on HF first.)
+## 3. Hugging Face token (Read) — *optional, skip for the 35B*
+`Qwen3.6-35B` is **public**, so the box downloads it **without any token**. Only bother with a
+token if/when we add a **gated** model like **gemma** (which also needs its license accepted on HF),
+or to dodge anonymous download rate-limits on the 70 GB pull. If you do want one:
+**HF → Settings → Access Tokens → New token (Read)**, save the `hf_...` value — you'll set it on the
+**box**, not your laptop.
 
 ## 4. Deploy the pod
 1. **https://www.runpod.io/** → **Deploy** → **Secure Cloud** *(not Community Cloud)*.

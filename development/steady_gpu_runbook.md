@@ -46,9 +46,9 @@ for p in pddl-solver pddl-validator; do
   bash /workspace/pddl-copilot/plugins/$p/scripts/launch-server.sh --help >/dev/null 2>&1 || true
 done
 
-# Hugging Face auth + pre-download the 35B BF16 weights onto the volume
+# Pre-download the 35B BF16 weights onto the volume (it's PUBLIC — no token/login
+# needed; only gated models like gemma need `huggingface-cli login` first)
 export HF_HOME=/workspace/hf-cache
-huggingface-cli login                                        # paste the hf_... token
 huggingface-cli download Qwen/Qwen3.6-35B-A3B                # ~70GB → warm cache
 ```
 
