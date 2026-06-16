@@ -43,20 +43,34 @@ or to dodge anonymous download rate-limits on the 70 GB pull. If you do want one
 in the repo; revoke at HF if it leaks.
 
 ## 4. Deploy the pod
-1. **https://www.runpod.io/** → **Deploy** → **Secure Cloud** *(not Community Cloud)*.
-2. GPU = **H200 SXM (141 GB)**, **1× GPU**.
-3. Template = **vLLM** or **PyTorch/CUDA**; enable **SSH**.
-4. **Confirm ~$3.59/hr** before you deploy.
+In the **RunPod console** (https://console.runpod.io) → **Pods → Deploy**, set these in order:
 
-## 5. Attach a persistent volume — run-critical
-A **~150–200 GB volume mounted at `/workspace`**. It caches the ~70 GB weights + repos + results
-across stop/restart. **Without it, every restart re-pulls 70 GB.**
+1. **Cloud type:** **Secure Cloud** *(not Community Cloud — and persistent network volumes are
+   Secure-Cloud only)*.
+2. **GPU:** search **H200 SXM (141 GB)**; **count = 1**.
+3. **Template:** a **PyTorch / CUDA** template — these ship **SSH pre-configured**. (We install vLLM
+   ourselves, so the exact template doesn't matter much.)
+4. **Storage — set it NOW** *(⚠️ a volume can't be added later without recreating the pod)*:
+   - **Container disk ≈ 50 GB** (OS + venv + vLLM).
+   - **Volume disk ≈ 150–200 GB**, **mount path `/workspace`** — **run-critical**: caches the ~70 GB
+     weights + repos + results. Survives **Stop**; wiped on **Terminate**.
+     *(Want the weights to survive Terminate/recreate too — e.g. for the later gemma phase? Create a
+     **Network Volume** under Storage and attach it here instead.)*
+5. **Networking / SSH:** ensure the pod has a **Public IP** and **TCP port 22 exposed** (the PyTorch
+   template does this). This is required for `rsync`/`scp` later — RunPod's *basic proxied* SSH
+   (`ssh.runpod.io`) **can't transfer files**. Your SSH public key is already added (step 2).
+6. **(optional) Env vars:** add `HF_TOKEN` here if you're using one (not needed for the 35B).
+7. **Type:** **On-Demand** (non-interruptible — keeps the box steady). Skip **Spot** (~50% cheaper
+   but can be killed mid-run).
+8. **Confirm the live on-demand rate** (~$3.6–4.4/hr), then **Deploy On-Demand**.
 
-## 6. Verify, then hand off
+## 5. Connect & hand off
+When the pod is **Running**, open it → **Connect** → copy the **"SSH over exposed TCP"** line (the
+full-SSH one with a real IP + port, *not* the `ssh.runpod.io` proxy) and test it:
 ```bash
-ssh -i ~/.ssh/runpod_ed25519 root@<pod-host> -p <pod-port>    # host+port shown on the pod page
+ssh root@<POD_IP> -p <SSH_PORT> -i ~/.ssh/runpod_ed25519
 ```
-Then **send me `<pod-host>` + `<pod-port>`** and I'll run smoke → pilot → full run.
+Then **send me `<POD_IP>` + `<SSH_PORT>`** and I'll run smoke → pilot → full run.
 
 ---
 
