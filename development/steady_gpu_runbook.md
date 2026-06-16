@@ -11,27 +11,14 @@ a later phase (the driver already knows the 9B BF16 id).
 
 ---
 
-## Part 1 — Manual steps YOU take (account + provision)
+## Part 1 — Get the box (human-only)
 
-Account, payment, and launching the box are human-only. **Full signup mechanics
-(RunPod account, billing, SSH key, cost controls) live in
-`development/gpu_rental_signup_runbook.md`** — don't duplicate them here. The chosen
-provider is **RunPod Secure Cloud**; the run-specific essentials:
+Account, payment, SSH key, HF token, deploying the Secure-Cloud **H200 SXM (141 GB)**, the
+**`/workspace` volume**, and cost control are all in the **user manual** →
+**`development/gpu_rental_signup_runbook.md`**. Do that first; once you can SSH in (and have
+sent the host/port), the agent drives Part 2. The 35B `Qwen/Qwen3.6-35B-A3B` is **ungated**.
 
-1. **Account + ~$50 credit** (covers probe + full 35B `sweep7` with buffer; the
-   Part-2 pilot confirms the exact GPU-hour cost @ ~$3/hr before you commit).
-2. **SSH key:** `ssh-keygen -t ed25519 -C runpod -f ~/.ssh/runpod_ed25519` →
-   paste `~/.ssh/runpod_ed25519.pub` into **RunPod → Settings → SSH Public Keys**.
-3. **HF token (Read):** HF → Settings → Access Tokens. The 35B
-   `Qwen/Qwen3.6-35B-A3B` is **ungated** (no license click); gemma later *will*
-   need its license accepted on HF.
-4. **Deploy 1× H200 SXM (141 GB)** Secure Cloud pod, CUDA/PyTorch template, SSH on.
-5. **Attach a persistent volume (~150–200 GB) at `/workspace`** — caches the
-   ~70 GB BF16 weights + both repos + results across stop/restart. **Run-critical:**
-   without it every restart re-pulls 70 GB.
-6. **Verify SSH:** `ssh -i ~/.ssh/runpod_ed25519 root@<pod-host> -p <pod-port>`.
-
-> **Auth note:** the harness runs **on the box** against `localhost:8000`, so vLLM
+> **Auth note (dev):** the harness runs **on the box** against `localhost:8000`, so vLLM
 > needs no key and `VLLMClient`'s hardcoded `api_key="EMPTY"` works unchanged.
 > Only a *public* gated endpoint would need the deferred `ISS-023` key change.
 

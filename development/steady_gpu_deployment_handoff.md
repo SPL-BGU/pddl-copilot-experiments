@@ -5,8 +5,8 @@ Provider chosen = **RunPod Secure Cloud** (credits loaded 2026-06-16). First arm
 `sweep7`** (driver `steady-gpu/run_steady_gpu.sh` + `development/steady_gpu_runbook.md`, commit
 `9670a81`); remaining models are later phases.
 
-**Runbooks:** signup/billing/access → `development/gpu_rental_signup_runbook.md`; the actual run
-→ `development/steady_gpu_runbook.md`.
+**Runbooks:** user manual (everything the human does) → `development/gpu_rental_signup_runbook.md`;
+agent on-box run sequence → `development/steady_gpu_runbook.md`.
 
 **Created:** 2026-06-16. Cost framing lives in slide 5 of
 `development/cost-breakdowns/cheap_model_cost_slides.{py,pptx}` ("Alternative — Rent One Steady
@@ -94,8 +94,8 @@ rental is the actual open-model experiment roster, not a substitute for the API 
 
 ## Pointers
 
-- Signup/billing/access runbook: `development/gpu_rental_signup_runbook.md`.
-- Operator runbook (sweep7 35B BF16): `development/steady_gpu_runbook.md`; driver
+- User manual (human setup): `development/gpu_rental_signup_runbook.md`.
+- Operator runbook (sweep7 35B BF16, agent-run): `development/steady_gpu_runbook.md`; driver
   `steady-gpu/run_steady_gpu.sh`.
 - Deferred auth gap: **ISS-023** (`development/OPEN_ISSUES.md`) — `api_key="EMPTY"` only matters for
   a public gated endpoint; the on-box `localhost:8000` design avoids it.
