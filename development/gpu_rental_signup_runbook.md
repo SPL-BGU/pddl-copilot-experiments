@@ -35,8 +35,12 @@ Paste the `.pub` line into **RunPod → Settings → SSH Public Keys**.
 `Qwen3.6-35B` is **public**, so the box downloads it **without any token**. Only bother with a
 token if/when we add a **gated** model like **gemma** (which also needs its license accepted on HF),
 or to dodge anonymous download rate-limits on the 70 GB pull. If you do want one:
-**HF → Settings → Access Tokens → New token (Read)**, save the `hf_...` value — you'll set it on the
-**box**, not your laptop.
+**HF → Settings → Access Tokens → New token (Read)**, save the `hf_...` value.
+
+**To use it (on the box, not your laptop):** easiest is a pod **environment variable
+`HF_TOKEN=hf_…`** on the RunPod deploy screen (vLLM + the downloader read it automatically); or run
+`huggingface-cli login` after you SSH in. **Keep it secret** — never paste it into chat or any file
+in the repo; revoke at HF if it leaks.
 
 ## 4. Deploy the pod
 1. **https://www.runpod.io/** → **Deploy** → **Secure Cloud** *(not Community Cloud)*.
