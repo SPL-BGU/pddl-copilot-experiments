@@ -164,7 +164,14 @@ for MODEL in $MODELS; do
                 *) echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
             esac
 
-            OUT_DIR="$RESULTS_ROOT/slurm_vllm_${MODEL_TAG}_${THINK_MODE}_${COND}_${RUN_TAG}"
+            # Cell dirname stays CANONICAL (slurm_vllm_<model>_<think>_<cond>) so
+            # the analyzer's cell parser matches it directly. Corpus isolation
+            # comes from the dedicated RESULTS_ROOT (results/$RUN_TAG), NOT a
+            # dirname suffix: a trailing _<runtag> after <cond> is non-numeric, so
+            # aggregate/plot/table/build_deck silently drop every cell (0 cells,
+            # no error — SKILL.md run-tag gotcha). The cluster needed the suffix
+            # because run-tags shared a parent root; here each tag gets its own.
+            OUT_DIR="$RESULTS_ROOT/slurm_vllm_${MODEL_TAG}_${THINK_MODE}_${COND}"
             echo
             echo "=== $MODEL  THINK=$THINK_MODE  COND=$COND → $OUT_DIR  $(date) ==="
             python3 run_experiment.py \

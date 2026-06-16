@@ -30,9 +30,13 @@ baselines. The BF16↔AWQ delta is a reportable finding; corpora are NOT pooled.
 - Two deliberate, generation-neutral infra deviations: pip `vllm serve` (not
   apptainer/SLURM); `--gpu-memory-utilization 0.90` with the rtx_6000 `>85% VRAM
   abort` dropped (KV-cache sizing only — no effect on token outputs at temp 0).
-- Corpus isolation via `RUN_TAG=sweep7` (same mechanism `sweep5v2`/`sweep6`
-  used): OUT_DIR suffix `_sweep7` in a distinct `results/sweep7/` tree; the
-  analyzer strips the suffix and reads cells as `qwen3_6_35b`.
+- Corpus isolation via a dedicated `results/sweep7/` **root** (selected by
+  `RUN_TAG`), with **canonical cell dirnames** `slurm_vllm_<model>_<think>_<cond>`
+  — deliberately NOT the cluster's `_<runtag>` dirname suffix, which is
+  non-numeric and silently drops every cell from `aggregate`/`plot`/`table`/
+  `build_deck` (SKILL.md run-tag gotcha). So the analyzer's outcome labeling
+  (`aggregate.py` failure-reason totals, `plot.py --figs 4`) runs on the pilot
+  and full corpus with no `filter_variants` strip step.
 - Auth: harness runs on the box against `localhost:8000`, so `VLLMClient`'s
   hardcoded `api_key="EMPTY"` works unchanged. Env-configurable key deferred to
   ISS-023 (only a public gated endpoint would need it).

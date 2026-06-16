@@ -69,7 +69,7 @@ SMOKE=1 bash steady-gpu/run_steady_gpu.sh
 ```
 Check `results/smoke/...` — tools cells should show ToolSel > 0.
 
-### Step B — Pilot (real throughput + cost)
+### Step B — Pilot (real throughput + cost + truncation read)
 Full matrix, capped to the first 2 fixtures/domain → measures tok/s on the BF16
 35B so you can extrapolate GPU-hours/$ before committing the full grid.
 ```bash
@@ -79,12 +79,26 @@ PARTIAL_K=2 RESULTS_ROOT=/workspace/pddl-copilot-experiments/results/sweep7-pilo
 Time the run; multiply out to the full ~600-fixture grid; sanity-check against
 the ~$3/hr H200 rate. Stop here and re-confirm budget if it's surprising.
 
+**Outcome labeling (settles the ctx/cap question with data).** Reuse the analyzer
+— no new code — to bin every cell into `ok` / `truncated_no_answer` /
+`think_overflow` / `format_parse_fail` / `tool_error` / `tool_not_selected`:
+```bash
+python3 .claude/skills/analyzer/scripts/aggregate.py results/sweep7-pilot          # per-cell failure-reason totals (text)
+python3 .claude/skills/analyzer/scripts/plot.py      results/sweep7-pilot --figs 4 # 100%-stacked breakdown → plots/fig4_failure_breakdown.png
+```
+Works directly because the driver writes canonical cell names (no run-tag
+suffix). If `truncated_no_answer` / `think_overflow` are material on specific
+cells, *that* — not a hunch — justifies a separate relaxed-budget ablation
+(`RUN_TAG=sweep7-hr`, larger `--max-model-len` + `--num-predict`, its own
+isolated corpus). The canonical `sweep7` stays at 16K to mirror the cluster.
+
 ### Step C — Full `sweep7` (35B BF16)
 ```bash
 bash steady-gpu/run_steady_gpu.sh        # MODELS defaults to qwen3.6:35b
 ```
 Resumable: a disconnect/teardown only loses the in-flight trial; re-run the same
-command to continue. Results: `results/sweep7/slurm_vllm_qwen3_6_35b_<think>_<cond>_sweep7/`.
+command to continue. Results: `results/sweep7/slurm_vllm_qwen3_6_35b_<think>_<cond>/`
+(canonical cell names; the `results/sweep7/` root is the corpus isolator).
 
 ### Step D — Sync back + analyze (from your laptop)
 ```bash
@@ -92,9 +106,16 @@ rsync -avz -e "ssh -i ~/.ssh/runpod_ed25519 -p <pod-port>" \
   root@<pod-host>:/workspace/pddl-copilot-experiments/results/sweep7/ \
   ~/personal/pddl-copilot-experiments/results/sweep7/
 ```
-Then run the **analyzer** skill pointed at the `sweep7` tree to compare BF16
-vs the cluster's AWQ 35B (`sweep5v2`). The 35B BF16↔AWQ delta is a reportable
-**finding**, not a bug — do not pool the two corpora.
+Then run the **analyzer** on the `sweep7` tree — outcome labeling + success
+matrix, then the BF16-vs-AWQ compare:
+```bash
+python3 .claude/skills/analyzer/scripts/aggregate.py results/sweep7              # success matrix + failure-reason totals
+python3 .claude/skills/analyzer/scripts/plot.py      results/sweep7 --figs 4     # outcome breakdown
+python3 .claude/skills/analyzer/scripts/table.py     results/sweep7              # master pivot (md/csv/tex)
+```
+The 35B BF16↔AWQ delta (vs the cluster's `sweep5v2`) is a reportable **finding**,
+not a bug — do not pool the two corpora; compare them as adjacent columns
+(`build_compare_deck.py` takes the two roots).
 
 ### Step E — Stop the pod
 **Stop** (not terminate) to keep the `/workspace` volume for the next phase
@@ -118,5 +139,6 @@ for drift):
    and an rtx_6000 OOM guard. GPU-mem-util only sizes the KV cache — at temp 0 it
    does not change token outputs.
 
-Corpus isolation: `RUN_TAG=sweep7` → distinct `results/sweep7/` tree; the AWQ
-`sweep5v2` corpus is untouched.
+Corpus isolation: `RUN_TAG=sweep7` selects a distinct `results/sweep7/` **root**
+(not a dirname suffix); cell dirs stay canonical `slurm_vllm_<model>_<think>_<cond>`
+so the analyzer parses them directly. The AWQ `sweep5v2` corpus is untouched.
