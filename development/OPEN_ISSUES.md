@@ -125,6 +125,14 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 - Sibling repo `pddl-copilot`: per the spec doc.
 **Files.** Tracked; not blocking until v1 is field-validated on the cluster.
 
+### ISS-023 · `VLLMClient` hardcodes `api_key="EMPTY"` (blocks public gated endpoints)
+**Source.** Steady-GPU deployment planning, 2026-06-16 (`development/steady_gpu_runbook.md`).
+**Evidence.** `pddl_eval/vllm_client.py:123` constructs `AsyncOpenAI(..., api_key="EMPTY")`. PlanBench's parallel path already reads `VLLM_API_KEY` and sets a Bearer header (`planbench/engine.py:146`); only the single-tool client is hardcoded.
+**Impact.** **None for the current `sweep7` plan** — the harness runs on the rented box against `localhost:8000`, where vanilla vLLM needs no key, so `"EMPTY"` works. This only bites if we later expose a *public, auth-gated* vLLM endpoint (e.g. a neocloud proxy or a shared box reached over the open internet) instead of localhost/SSH-tunnel.
+**Fix.** Make the key env-configurable: `api_key = os.environ.get("VLLM_API_KEY", "EMPTY")` in `VLLMClient.__init__`, mirroring `engine.py`. ~2-line change; no corpus impact (the wire payload is unchanged when no key is set).
+**Files.** `pddl_eval/vllm_client.py:117-123`.
+**Decision.** Deferred — implement only when a public gated endpoint is actually chosen. The localhost-on-box design avoids it.
+
 ### ISS-021 · gemma4:26b-a4b · `simulate` prompts exceed 16K context on large classical problems
 **Source.** PR-#66 contamfix audit, 2026-05-20.
 **Evidence.** `cluster-experimenting/run_condition_vllm_rtx.sbatch:202` sets `--max-model-len 16384` for every vLLM serve in the sweep. gemma4:26b-a4b's `simulate` task on 8 specific (domain, problem) pairs — `barman/{p04,p05}`, `rovers/{p04,p05}`, `tpp/p05`, `delivery/p04`, `depot/p01`, `drone/p05` — produces input prompts of ~106K tokens (407 867 characters), well above the 16 384-token cap. vLLM rejects with HTTP 400. With the `_CTX_OVERFLOW_RE` fix landed in this same commit, those trials now route through `_synthesize_overflow_response` (`pddl_eval/vllm_client.py:312`) and are written as `FR_TRUNCATED_NO_ANSWER` with empty content + `done_reason="length"` — **caught, accountable, but uninformative** (the model never gets to attempt the task).

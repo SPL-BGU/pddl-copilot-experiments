@@ -6,6 +6,41 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-16 — Steady-GPU BF16 `sweep7` arm: 35B on a rented RunPod H200
+
+**Change.** New non-SLURM driver `steady-gpu/run_steady_gpu.sh` + runbook
+`development/steady_gpu_runbook.md` to re-run the single-tool sweep5v2 experiment
+on **Qwen3.6-35B in clean BF16** (`Qwen/Qwen3.6-35B-A3B`) on one rented
+H200-141GB, as a fresh corpus tagged **`sweep7`** under `results/sweep7/`. Scope:
+35B only, probe (`--smoke` / `--partial`) then full run. No harness code change.
+
+**Why.** The cluster's `sweep5v2` 35B corpus is complete but served from the
+**AWQ-INT4** quant `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit` (the rtx_6000's 48 GB
+can't seat 70 GB of BF16). The open roster therefore mixes AWQ-INT4 (35B/gemma)
+with native BF16 (small Qwen) — a quantization confound. A steady H200 seats the
+35B in un-quantized BF16, giving the open model its fair shot vs the closed API
+baselines. The BF16↔AWQ delta is a reportable finding; corpora are NOT pooled.
+
+**Design.**
+- Driver sources `cluster-experimenting/lib/defaults.sh` and reuses `vllm_lookup`
+  for parser resolution, overriding **only** `HF_MODEL` to the BF16 upstream
+  (`bf16_weight_override`). So `--tool-call-parser qwen3_xml` / `--reasoning-parser
+  qwen3` / `--max-model-len 16384` / sampling (temp 0) stay byte-identical to the
+  cluster cells. The experiment design is mirrored exactly.
+- Two deliberate, generation-neutral infra deviations: pip `vllm serve` (not
+  apptainer/SLURM); `--gpu-memory-utilization 0.90` with the rtx_6000 `>85% VRAM
+  abort` dropped (KV-cache sizing only — no effect on token outputs at temp 0).
+- Corpus isolation via `RUN_TAG=sweep7` (same mechanism `sweep5v2`/`sweep6`
+  used): OUT_DIR suffix `_sweep7` in a distinct `results/sweep7/` tree; the
+  analyzer strips the suffix and reads cells as `qwen3_6_35b`.
+- Auth: harness runs on the box against `localhost:8000`, so `VLLMClient`'s
+  hardcoded `api_key="EMPTY"` works unchanged. Env-configurable key deferred to
+  ISS-023 (only a public gated endpoint would need it).
+
+**Files.** `steady-gpu/run_steady_gpu.sh` (new), `development/steady_gpu_runbook.md`
+(new), `development/steady_gpu_deployment_handoff.md` (goal doc, prior commit).
+No change to `run_experiment.py`, `pddl_eval/`, or the cluster sbatch.
+
 ## 2026-06-10 — Cross-mode aggregation deck (`rq_deck.py --think compare`)
 
 **Change.** `rq_deck.py` gains a third mode, `--think compare`, that aggregates the locked think=off deck and the think=on companion into a standalone 12-slide cross-mode deck at `checkpoints/rq-sweep5v2-compare/pddl_copilot_rq_sweep5v2_compare.pptx` (+ tracked PDF, plots/). The off and on decks are content-untouched (rebuilt PDFs differ from the committed ones only in the embedded creation timestamp; `pdftotext` output is identical — verified). Render-checked page-by-page via LibreOffice.
