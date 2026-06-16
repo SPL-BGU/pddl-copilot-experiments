@@ -90,16 +90,40 @@ STEERED_VARIANTS_RE="${STEERED_VARIANTS_RE:-1[4-6]}"
 # Output-mode flags (parsed before SSH so --help works offline).
 mode="auto"
 color="auto"
-for arg in "$@"; do
-    case "$arg" in
-        --md|--markdown)        mode="md" ;;
-        --terminal|--pretty)    mode="terminal" ;;
-        --no-color)             color="off" ;;
-        -h|--help) _show_help 2 40; exit 0 ;;
+bench="5task"
+forwarded_args=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --md|--markdown)        mode="md"; forwarded_args+=("$1"); shift ;;
+        --terminal|--pretty)    mode="terminal"; forwarded_args+=("$1"); shift ;;
+        --no-color)             color="off"; forwarded_args+=("$1"); shift ;;
+        --bench)                bench="$2"; shift 2 ;;
+        -h|--help)
+            _show_help 2 40
+            cat <<'EOF'
+
+  --bench {5task,planbench}  Pick the matrix to render. Default = 5task
+                             (model × think × cond, this script's native
+                             shape). planbench delegates to the sibling
+                             status_planbench.sh which renders model ×
+                             task × config from results/planbench/.
+EOF
+            exit 0 ;;
         *)
-            printf 'unknown flag: %s\n' "$arg" >&2; exit 2 ;;
+            printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
     esac
 done
+
+# Per-benchmark dispatch. The 5-task matrix is this script's existing
+# native shape — fall through to the rest of the file. PlanBench has a
+# different matrix shape (model × task × config) so it lives in its own
+# script to avoid contaminating the well-tuned 5task renderer.
+if [[ "$bench" == "planbench" ]]; then
+    exec "$(dirname "$0")/status_planbench.sh" "${forwarded_args[@]}"
+elif [[ "$bench" != "5task" ]]; then
+    echo "unknown --bench value: $bench (expected 5task|planbench)" >&2
+    exit 2
+fi
 
 mkdir -p "$(dirname "$STATE_FILE")"
 

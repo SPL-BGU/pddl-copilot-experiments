@@ -24,6 +24,10 @@ sas_plan*
 # SLURM job logs (see cluster-experimenting/)
 cluster-experimenting/logs/
 
+# PlanBench arm — clones (LLMs-Planning, Fast Downward) and built binaries
+# live here. Cloned + built per-host by planbench/setup.sh; never committed.
+external/
+
 # Checkpoint snapshots are stored as zip archives (results.zip, slurm_logs.zip).
 # If a user unzips them locally for inspection, ignore the extracted JSON/out
 # files so they aren't accidentally re-committed alongside the zips.

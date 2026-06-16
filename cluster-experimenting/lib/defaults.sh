@@ -120,3 +120,15 @@ vllm_reasoning_parser_flag() {
         echo "--reasoning-parser $p"
     fi
 }
+
+# --- PlanBench arm defaults (added 2026-05-18, planbench-integration branch) ---
+# Sourced by run_planbench_rtx.sbatch + submit_planbench.sh. v1 = vanilla
+# leaderboard (no MCP tools). Default tasks/configs match the user's chosen
+# scope (all 10 tasks × canonical 3 domains). Mystery/obfuscated configs
+# deferred; see planbench/README.md.
+PDDL_PLANBENCH_DEFAULT_TASKS="t1 t2 t3 t4 t5 t6 t7 t8_1 t8_2 t8_3"
+PDDL_PLANBENCH_DEFAULT_CONFIGS="blocksworld logistics depots"
+
+# Local PlanBench checkout (cloned + patched + venv'd by planbench/setup.sh).
+# `external/` is gitignored — each host runs setup.sh once.
+PDDL_PLANBENCH_PATH="${PDDL_PLANBENCH_PATH:-$HOME/pddl-copilot-experiments/external/LLMs-Planning}"

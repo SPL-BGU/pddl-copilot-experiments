@@ -107,6 +107,24 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 **Status (2026-04-29).** ISS-007 closed by the cap bump (1024/1536 → 4096); the pressure that motivated this issue is largely relieved. Recommend deferring (b) — at the new caps, `FR_VERDICT_MISMATCH` should overwhelmingly reflect actual model errors rather than truncation artefacts. Re-evaluate post the next sweep on raised caps.
 **Files.** `pddl_eval/scoring.py::_apply_truncation_override`, `tests/test_check_success.py::test_truncation_override`.
 
+### ISS-022 · PlanBench tool-using arm (v2)
+**Source.** PlanBench arm v1 landed 2026-05-18 with vanilla leaderboard only (no MCP tools during response generation). The tool-using arm — what PlanBench's `INTEGRATION.md` §3 calls a "distinct method" (LLM-Modulo) — is the natural follow-up.
+**Evidence / motivation.** Per the two-paper strategy (`memory/project_paper_strategy.md`), Paper 1 wants to show the comparison between (a) our open models + MCP tools and (b) PlanBench's published closed-model baselines. v1 gives us half of that — open models without tools, side by side with their baselines. v2 closes the loop with our tools-on arm on the same 10-task corpus.
+**Scope.**
+- Reuse `planbench/engine.py`'s structure; add a `pddl_copilot_tools__<backend>__<model>` engine that calls `pddl_eval.chat.MCPPlanner` for a tool-loop multi-turn run, returning only the final assistant text to PlanBench (PlanBench's pipeline stays single-turn from its perspective).
+- Two upstream MCP plugin extensions are gated dependencies — both specified in `../pddl-copilot/specs-for-plan-bench.md` (sibling repo branch `planbench-integration`):
+  1. `pddl-validator`: `validate_plan_structured` for t3 error-type + NL-explanation grading.
+  2. `pddl-solver`: `optimal_plan` for t2 cost-optimal grading.
+- The other two MCP extensions originally on the table (NL↔PDDL parser for Mystery, pddl-author MCP exposure) are **dropped from scope**: Mystery configs aren't in v1/v2 runs; no PlanBench task exercises domain authoring.
+**Sequencing.**
+1. Sibling repo lands the two MCP plugin extensions (separate PRs, each with `verify.sh` extension).
+2. This repo adds the `pddl_copilot_tools__*` engine + sbatch wrapper (re-using `run_planbench_rtx.sbatch`'s loop with a different engine name).
+3. Re-baseline question: do v1 (no-tools) and v2 (tools-on) PlanBench results share a corpus, or is v2 a fresh run? Same domains and same prompts, so the only delta is whether the engine consults tools — they can sit in adjacent columns of the paper table.
+**Files (when picked up).**
+- This repo: extend `planbench/engine.py` with a tools branch + `pddl_copilot_tools__*` engine name; new sbatch params on `submit_planbench.sh` to pick the engine prefix.
+- Sibling repo `pddl-copilot`: per the spec doc.
+**Files.** Tracked; not blocking until v1 is field-validated on the cluster.
+
 ### ISS-021 · gemma4:26b-a4b · `simulate` prompts exceed 16K context on large classical problems
 **Source.** PR-#66 contamfix audit, 2026-05-20.
 **Evidence.** `cluster-experimenting/run_condition_vllm_rtx.sbatch:202` sets `--max-model-len 16384` for every vLLM serve in the sweep. gemma4:26b-a4b's `simulate` task on 8 specific (domain, problem) pairs — `barman/{p04,p05}`, `rovers/{p04,p05}`, `tpp/p05`, `delivery/p04`, `depot/p01`, `drone/p05` — produces input prompts of ~106K tokens (407 867 characters), well above the 16 384-token cap. vLLM rejects with HTTP 400. With the `_CTX_OVERFLOW_RE` fix landed in this same commit, those trials now route through `_synthesize_overflow_response` (`pddl_eval/vllm_client.py:312`) and are written as `FR_TRUNCATED_NO_ANSWER` with empty content + `done_reason="length"` — **caught, accountable, but uninformative** (the model never gets to attempt the task).
