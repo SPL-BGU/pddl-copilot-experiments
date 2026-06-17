@@ -99,6 +99,7 @@ for MODEL in $MODELS; do
     SERVE_LOG="$EXPT_ROOT/steady-gpu/vllm-${MODEL_TAG}-${RUN_TAG}.log"
     echo "Starting vLLM on localhost:$VLLM_PORT serving $HF_MODEL → $SERVE_LOG"
     vllm serve "$HF_MODEL" \
+        --served-model-name "$HF_MODEL" \
         --host 0.0.0.0 \
         --port "$VLLM_PORT" \
         --max-model-len "$MAX_MODEL_LEN" \
