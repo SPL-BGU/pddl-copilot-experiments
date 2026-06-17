@@ -29,8 +29,10 @@ Autonomous orchestrator `/workspace/run_all.sh` is running in tmux session `swee
 
 ### First thing next session — check where it got to:
 ```bash
-ssh runpod-sweep7 'cat /workspace/logs/run_all.STATUS 2>/dev/null || echo RUNNING; tmux ls; tail -30 /workspace/logs/run_all.log'
+ssh runpod-sweep7 'bash /workspace/status.sh'   # quick dashboard: STATUS, phase, GPU, per-cell trial counts
+# or raw: ssh runpod-sweep7 'cat /workspace/logs/run_all.STATUS 2>/dev/null || echo RUNNING; tmux ls; tail -30 /workspace/logs/run_all.log'
 ```
+Smoke gate PASSED 2026-06-17 11:53 (gen200=117); full sweep7 running as of handoff.
 - `run_all.STATUS` absent → still running (`tail` the log / `tmux attach -t sweep7`).
 - `DONE smoke_rc=.. full_rc=..` → full sweep finished → go to **Post-run** below.
 - `FAILED ...` → smoke gate failed (vLLM didn't serve a generation). Inspect
