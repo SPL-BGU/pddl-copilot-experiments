@@ -451,6 +451,16 @@ drift favors the anonymized corpus, ruling out memorization in the expected dire
 
 ## 9. Prioritized action plan (vs. Jul 21 abstract / Jul 28 full)
 
+**0. [BLOCKER — found on the 2026-06-18 rebuild] Page limit exceeded.** Clean build (0 undefined,
+0 overfull) but **technical content ≈ 9 pp** (Conclusion on p9, References start p9) — **~2 pp
+over the 7-page AAAI limit.** The rewrite's additions caused it: the failure-taxonomy figure, the
+two new tables (`tab:vdom`, `tab:decomp`), the Discussion, and the expanded §1/§2 prose. AAAI
+desk-rejects over-length, so this gates submission. **Trim levers (highest yield first):**
+move `tab:decomp` + `tab:vdom` + the failure-taxonomy figure to a **technical appendix after the
+references** (uncounted, like the checklist) while keeping their headline numbers inline in prose;
+compress the new Discussion to its three core sentences; tighten Background/Methodology prose
+(the user's preferred lever). Re-build and re-confirm Conclusion lands by p7.
+
 **Must-do (writing/re-analysis only, no new sweeps):**
 1. §0/§5 reframe: abstract + intro + new Discussion foregrounding invocation propensity & the
    general lesson.

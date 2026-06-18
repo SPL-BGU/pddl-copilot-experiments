@@ -21,14 +21,16 @@ Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
 frontier experiment) → this file. The manuscript is `paper/main.tex`; the bibliography is
 `paper/refs.bib` (fully verified). (The Results-narration plan, formerly `RESULTS_PLAN.md`, is
 retired — its structure is now realized in the written Results section.)
-**STATUS (2026-06-18):** Full body (Abstract → Conclusion) is drafted with 3 figures + the
-inlined reproducibility checklist, and builds clean (0 undefined, 0 overfull). Latest build
-(`main.pdf`, 2026-06-17) is **12 pp total**; only the **technical content** counts toward the
-7-page limit (references + the inlined reproducibility checklist are the non-counting tail). It
-ended on p7 as of the 2026-06-15 build, but `main.tex` was edited 2026-06-18 — **re-verify
-pagination on the next rebuild.** The body is drafted but **NOT final**:
-`REVIEW_AND_REWRITES.md` proposes substantive revisions (the `validate_domain` MUST-FIX, the
-invocation-propensity reframe, a new Discussion). Code-availability decided (release at
+**STATUS (2026-06-18):** Full body (Abstract → Conclusion) drafted; rebuilt 2026-06-18 — **clean
+(0 undefined refs, 0 overfull boxes), 12 pp total.** ⚠️ **BLOCKER: over the page limit.** The
+rewrite's additions (new failure-taxonomy figure + two new tables [`tab:vdom`, `tab:decomp`] +
+the Discussion section + expanded §1/§2 prose) push the **technical content to ~9 pp**
+(Conclusion lands on p9; References start p9; the reproducibility checklist fills p10–12 and,
+with refs, does not count). That is **~2 pp over the 7-page AAAI limit — must trim before
+submission** (see REVIEW §9 for levers; AAAI desk-rejects over-length). `main.pdf` is gitignored
+(repo tracks source); rebuild locally with the Build recipe below. The body is also **NOT final**
+on content: `REVIEW_AND_REWRITES.md` records the `validate_domain` MUST-FIX (landed + verified),
+the invocation-propensity reframe, and the new Discussion. Code-availability decided (release at
 publication, not submission). See "GAPS TO GOAL" for what's done vs. left.
 
 ## GAPS TO GOAL — status after the 2026-06-15 session-2 pass
