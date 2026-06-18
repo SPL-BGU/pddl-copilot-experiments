@@ -70,15 +70,15 @@ REMAINING:
   aside** (§7B: not a capability step-up over the 35B, flaky with-tools tool-call path, redundant
   no-tools contamination). Promotes the frontier check from a generic Future-Work line to a
   concrete, costed, in-flight item.
-- **PlanBench results + discussion — BIG forthcoming addition (planned, sweep in progress).**
-  The PlanBench cross-domain track is still running (`development/PLANBENCH_HANDOFF_v3.md`; memory
-  `project_planbench_v2_v3`). When it completes, ADD its results + discussion to the paper,
-  promoting PlanBench from the one-paragraph Future Work mention to its own Results/Discussion
-  content, carrying the same end-to-end grading, signed-significance, and contamination controls.
-  **This supersedes GOALS.md's current "PlanBench out of scope" stance** — update GOALS.md when it
-  lands. There is a TODO marker in `main.tex` just above `\section{Future Work}`. Absorbing
-  PlanBench will exceed 7 pages; the plan is to TRIM Background/Discussion prose at that point —
-  **cut location is deferred (user + advisors decide).**
+- **PlanBench — DEFERRED to a standalone follow-up (RATIFIED 2026-06-18, REVIEW §7C).** It stays the
+  one-paragraph Future Work mention in `main.tex` for THIS AAAI-27 submission: the in-flight
+  cross-domain sweep (`development/PLANBENCH_HANDOFF_v3.md`; memory `project_planbench_v2_v3`) would
+  gate the deadline, PlanBench is primarily a *formalization* benchmark (a different failure mode
+  than invocation propensity), and absorbing it would exceed the 7-page budget. The stale in-text
+  TODO block above `\section{Future Work}` has been **removed** (2026-06-18). GOALS.md already lists
+  PlanBench as out-of-scope — now consistent across all three docs. Add PlanBench only if it finishes
+  early AND cleanly reproduces the regime structure under the same end-to-end grading; otherwise it
+  is the natural standalone follow-up.
 - **Double-blind PDF-metadata — VERIFIED CLEAN 2026-06-15** (`exiftool main.pdf`: only generic
   `Creator: TeX` / `Producer: pdfTeX` / PTEX banner; no author/title/path/username). Just re-run
   `exiftool` on the FINAL pre-upload build (a rebuild regenerates the same generic fields), and

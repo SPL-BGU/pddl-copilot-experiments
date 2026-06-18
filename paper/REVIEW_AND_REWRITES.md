@@ -108,7 +108,7 @@ cleanest defense against *"maybe the model just got worse with the tool."*
 | Gemma-MoE-26B | `validate_plan` steered | 93.6% | 98.9% | — | 92.6% |
 | Qwen3.6-35B | `validate_plan` plain | 82.9% | 99.1% | 0.0% | 82.2% |
 | Qwen3.6-35B | `validate_plan` steered | 99.9% | 99.4% | — | 99.3% |
-| Qwen3.5-9B | `validate_plan` plain | 100.0% | 98.8% | — | 98.8% |
+| Qwen3.5-9B | `validate_plan` plain | 97.9% | 95.2% | 0.0% | 93.2% |
 | Qwen3.6-35B | `solve` plain | 68.0% | 92.6% | 0.0% | 63.0% |
 | Qwen3.6-35B | `solve` steered | 93.7% | 98.2% | 0.0% | 92.0% |
 
