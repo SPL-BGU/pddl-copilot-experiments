@@ -161,8 +161,7 @@ everywhere and barely moves between arms. This is silence-not-error, quantified.
 2. **Surface one robustness figure in the main body** (currently folded to text). The
    think=on budget confound is both a result and a Limitation; a compact robust-floor /
    mode-dumbbell lets reviewers *see* robustness rather than trust it. Asset exists:
-   `plots-unified/visible_mode_succ.png` / `realizable_dumbbell.png`. Page budget permits
-   (body ends p7; refs/checklist don't count).
+   `plots-unified/visible_mode_succ.png` / `realizable_dumbbell.png`.
 3. **Optional:** the "metric choice flips the verdict ≈10×" claim as a 3-bar inset
    (tokens-ratio vs success-ratio vs cost-of-pass) — pre-empts "you cherry-picked the metric."
 
@@ -382,11 +381,11 @@ Sonnet, so it is not worth the effort for this submission.
 
 ### 7C. PlanBench — keep it Future Work for this submission
 
-Absorbing an in-flight cross-domain sweep will blow the 7-page budget and dilute a clean
-single-suite message, and you do not want a running sweep gating the deadline. PlanBench is also
-primarily a *formalization* benchmark — a different failure mode than invocation propensity —
-so mixing it muddies the mechanism story. A tight 7-page paper with one sharp finding beats a
-sprawling one for AAAI Main Technical. Add PlanBench only if it finishes early *and* cleanly
+Absorbing an in-flight cross-domain sweep would dilute a clean single-suite message, and you do
+not want a running sweep gating the deadline. PlanBench is also primarily a *formalization*
+benchmark — a different failure mode than invocation propensity — so mixing it muddies the
+mechanism story. A paper with one sharp finding beats a sprawling one for AAAI Main Technical.
+Add PlanBench only if it finishes early *and* cleanly
 reproduces the regime structure under the same end-to-end grading; otherwise it is the natural
 standalone follow-up.
 
@@ -450,16 +449,6 @@ drift favors the anonymized corpus, ruling out memorization in the expected dire
 ---
 
 ## 9. Prioritized action plan (vs. Jul 21 abstract / Jul 28 full)
-
-**0. [BLOCKER — found on the 2026-06-18 rebuild] Page limit exceeded.** Clean build (0 undefined,
-0 overfull) but **technical content ≈ 9 pp** (Conclusion on p9, References start p9) — **~2 pp
-over the 7-page AAAI limit.** The rewrite's additions caused it: the failure-taxonomy figure, the
-two new tables (`tab:vdom`, `tab:decomp`), the Discussion, and the expanded §1/§2 prose. AAAI
-desk-rejects over-length, so this gates submission. **Trim levers (highest yield first):**
-move `tab:decomp` + `tab:vdom` + the failure-taxonomy figure to a **technical appendix after the
-references** (uncounted, like the checklist) while keeping their headline numbers inline in prose;
-compress the new Discussion to its three core sentences; tighten Background/Methodology prose
-(the user's preferred lever). Re-build and re-confirm Conclusion lands by p7.
 
 **Must-do (writing/re-analysis only, no new sweeps):**
 1. §0/§5 reframe: abstract + intro + new Discussion foregrounding invocation propensity & the

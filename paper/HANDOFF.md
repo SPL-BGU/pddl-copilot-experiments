@@ -22,12 +22,10 @@ frontier experiment) → this file. The manuscript is `paper/main.tex`; the bibl
 `paper/refs.bib` (fully verified). (The Results-narration plan, formerly `RESULTS_PLAN.md`, is
 retired — its structure is now realized in the written Results section.)
 **STATUS (2026-06-18):** Full body (Abstract → Conclusion) drafted; rebuilt 2026-06-18 — **clean
-(0 undefined refs, 0 overfull boxes), 12 pp total.** ⚠️ **BLOCKER: over the page limit.** The
-rewrite's additions (new failure-taxonomy figure + two new tables [`tab:vdom`, `tab:decomp`] +
-the Discussion section + expanded §1/§2 prose) push the **technical content to ~9 pp**
-(Conclusion lands on p9; References start p9; the reproducibility checklist fills p10–12 and,
-with refs, does not count). That is **~2 pp over the 7-page AAAI limit — must trim before
-submission** (see REVIEW §9 for levers; AAAI desk-rejects over-length). `main.pdf` is gitignored
+(0 undefined refs, 0 overfull boxes).** The rewrite added a failure-taxonomy figure, two new
+tables (`tab:vdom`, `tab:decomp`), the Discussion section, and expanded §1/§2 prose. We write the
+data and conclusions as fully as possible; length/venue filtering is the advisors' call (memory
+`feedback_no_page_budget_trimming`). `main.pdf` is gitignored
 (repo tracks source); rebuild locally with the Build recipe below. The body is also **NOT final**
 on content: `REVIEW_AND_REWRITES.md` records the `validate_domain` MUST-FIX (landed + verified),
 the invocation-propensity reframe, and the new Discussion. Code-availability decided (release at
@@ -74,7 +72,7 @@ REMAINING:
   one-paragraph Future Work mention in `main.tex` for THIS AAAI-27 submission: the in-flight
   cross-domain sweep (`development/PLANBENCH_HANDOFF_v3.md`; memory `project_planbench_v2_v3`) would
   gate the deadline, PlanBench is primarily a *formalization* benchmark (a different failure mode
-  than invocation propensity), and absorbing it would exceed the 7-page budget. The stale in-text
+  than invocation propensity), and it would dilute the clean single-suite message. The stale in-text
   TODO block above `\section{Future Work}` has been **removed** (2026-06-18). GOALS.md already lists
   PlanBench as out-of-scope — now consistent across all three docs. Add PlanBench only if it finishes
   early AND cleanly reproduces the regime structure under the same end-to-end grading; otherwise it
@@ -83,13 +81,10 @@ REMAINING:
   `Creator: TeX` / `Producer: pdfTeX` / PTEX banner; no author/title/path/username). Just re-run
   `exiftool` on the FINAL pre-upload build (a rebuild regenerates the same generic fields), and
   keep the `\begin{links}` block commented.
-- **Page focus (user + advisors).** 10 pages total, technical content ends p7 (within limit). Not
-  trimming per user instruction; user/advisors will choose focus (esp. once PlanBench lands).
 - **Publication-time:** build the curated scrubbed code+data release (both corpora); optionally
   typeset a per-task contamination appendix table + the canonical↔renamed symbol map (data
   verified, not yet typeset).
-- **CFP re-verify (low effort):** confirm page rule + that the checklist doesn't count, and the
-  deadlines, against the official AAAI-27 CFP before submission.
+- **CFP re-verify (low effort):** confirm the deadlines against the official AAAI-27 CFP before submission.
 
 ## What's DONE
 - AAAI-27 author kit imported (`paper/authorkit27/`, anonymous template).
@@ -110,11 +105,8 @@ REMAINING:
   keys tidy (years match).
 - `paper/GOALS.md` — scope + decisions locked. (`RESULTS_PLAN.md` retired 2026-06-18; its
   Results-narration plan is now realized in the written Results section.)
-- Local build works (see Build below). With the checklist inlined, `main.pdf` compiles to
-  **9 pages total**; technical content **still ends on page 7** (references fill p7 right
-  column → p8, then the reproducibility checklist fills p8→p9 — neither refs nor checklist count
-  toward the limit) → **within the 7-page content limit, all 3 figures kept**. 0 undefined refs,
-  0 overfull boxes.
+- Local build works (see Build below). With the checklist inlined, `main.pdf` compiles clean
+  (0 undefined refs, 0 overfull boxes), all 3 figures kept double-column.
 
 ## Build
 ```bash
@@ -194,15 +186,8 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
      significance test = signed-disjoint-CI rule (Methodology) = **yes/partial**; code
      public-on-publication = **yes** (intend to release). Include exact **HF model ids** (roster
      labels Qwen3.5/3.6, Gemma-MoE-26B are non-canonical).
-   Inline it before `\end{document}` (single-.tex submission rule); then rebuild and confirm the
-   page budget still holds (the checklist usually doesn't count toward the 7 — verify vs CFP).
-8. ~~**Page-limit pass**~~ — **SATISFIED 2026-06-14.** Full body builds to **8 pages total**, but
-   technical content **ends on page 7** (Conclusion in p7 left column; references fill p7 right
-   column + p8, and refs don't count) → within the 7-page content limit **with all 3 figures
-   kept double-column** — no trim needed. Re-verify the exact rule against the CFP before
-   submission; if it tightens, the lightest lever is tightening Results/Background prose (the
-   user's chosen lever; keep figures).
-9. **Anonymization pass before submission** — third-person self-citation only (verified clean in
+   Inline it before `\end{document}` (single-.tex submission rule); then rebuild and confirm a clean compile.
+8. **Anonymization pass before submission** — third-person self-citation only (verified clean in
    every section). ~~reconcile non-canonical model labels with HF ids~~ **DONE 2026-06-15** (HF
    ids added as a §Models-and-Serving footnote; third-party ids, not author-identifying). Still
    owed at upload: **clear PDF metadata** (author/title/producer) and confirm **no de-anonymizing
@@ -213,7 +198,6 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
   (Benyamin et al. 2025, arXiv:2509.12987) in the **third person**; never "our prior work."
   That paper is the authors' OWN rejected earlier version — cite, don't copy (our framework
   differs). Omer leads this redo; he is not an author of the arXiv version.
-- **Page limit:** 7 pages technical content + unlimited references; no paid overlength.
 - **Scope:** single-tool-use only. think=off is the headline; think=on is budget-confounded
   (robust-floor + caveat only). RQ0.3 (validate_plan) is **MIXED** — keep its full mechanism
   armor. PlanBench / SOTA formalizer baselines = Future Work.
@@ -240,6 +224,6 @@ Decision log is in `development/paper_notes_discussions.md` (three 2026-06-14 en
 > verified, and pushed (`bf6f7cb`); the tree is clean. Only camera-ready mechanics remain. Pick
 > from GAPS TO GOAL: (A) regenerate the 3 figures as vector PDF @300dpi from
 > `checkpoints/rq-sweep5v2/plots-unified/`; (B) the anonymization/PDF-metadata pass; (D)
-> re-verify the page rule + deadlines against the official CFP. Decision C (attach anonymized
+> re-verify the deadlines against the official CFP. Decision C (attach anonymized
 > supplementary code → flip checklist 4.3/4.4 to `yes`?) is the user's call. Keep it double-blind
 > (generic infra only).
