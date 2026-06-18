@@ -337,3 +337,57 @@ validated by an independent ranking subagent (the user asked for a second perspe
   Background/Discussion to hold 7 pages (cut location deferred to user + advisors). PDF-metadata
   verified CLEAN via `exiftool` (generic TeX/pdfTeX fields only; no author/path). Shipping via the
   existing PR #76 for the user to merge.
+
+- 2026-06-17: **Executed the REVIEW_AND_REWRITES.md rewrite of `paper/main.tex`** (branch
+  `paper-rewrite`). Applied all five must-do items: (1) §0/§5 reframe — abstract + intro
+  contributions + new **Discussion** section now foreground *invocation propensity*
+  (`success = P(call) × P(correct|call)`, all between-arm variance in the first factor) as the
+  general, transferable lesson, with PDDL as the oracle that makes residual failures unambiguously
+  *model behavior*; (2) §1 MUST-FIX — replaced the `validate_domain` mis-framing: it is now a
+  *rescue* from at-or-below the 83.3% trivial (5:1) line / near-chance balanced accuracy (53–74%),
+  not a "partial baseline"; subsection retitled "Two Validation Tasks: Headroom and Rescue";
+  scorecard RQ1 evidence cell leads with balanced accuracy; (3) §2 — added the formal mediation
+  paragraph + appendix decomposition table (`tab:decomp`); (4) §4 — three statistics sentences
+  (paraphrase clustering ⇒ anti-conservative Wilson; disjoint-CI is conservative not over-eager;
+  no FWER, by choice); (5) §6 — set real **title** ("Availability Is Not Enough: When Symbolic
+  Tools Help---and Hurt---LLMs on Planning Tasks"), enumerated the six RQs, **dropped the `0.`
+  prefix (RQ0.x→RQx)** everywhere, added a regime-axis disambiguation paragraph (task axis vs
+  cross-mode axis overlap only on "sole-source"). Also added the §8 per-task contamination appendix
+  table (`tab:contam-pertask`) + `tab:vdom` per-class table; shrank the Conclusion to 4 sentences.
+  **Two honest deviations from the doc's paste-ready text, both to enforce internal consistency
+  with the §1 MUST-FIX decision:** (a) abstract no longer calls *both* validation tasks "rescued
+  from at-or-below-trivial" (only `validate_domain` is sub-trivial; `validate_problem` clears its
+  50% floor); (b) the per-task contamination sentence says the *largest* drifts favor the
+  anonymized corpus rather than "every nonzero drift" — the doc's own table has two small
+  `validate_plan` cells (−0.4, −1.9) going the other way. Added `\usepackage{amsmath}` for the
+  `\text{}` decomposition notation. Build clean (0 undefined, 0 overfull); PDF now **11 pages**,
+  body (Intro→Conclusion) ends early on **p8** (was p7) — the new Discussion consumed the prior
+  headroom; references/appendix/checklist remain supplementary. **NOT done (out of scope for a
+  prose rewrite, flagged in REVIEW §3/§7 as "if compute/time allows"):** the figure work (failure-
+  type taxonomy stacked bars, Fig 2 `P(correct|call)` overlay, Fig 3 cost-of-pass annotations +
+  tick-format fix, Fig 1 y-cap) and the one-frontier-model `validate_plan`+`simulate` experiment.
+  PlanBench stays Future Work (per REVIEW §7). Page trim to hold 7-page body still deferred to
+  user + advisors.
+
+- 2026-06-17 (figures): **Completed the no-compute figure work from REVIEW §3** via a new
+  reproducible generator `paper/figures/make_paper_figures.py` (imports the analyzer deck's data
+  layer — `build_deck.load_all` + `rq_deck` helpers — so every number is byte-identical to the
+  locked deck; read-only over `results/sweep5v2-live`, 136,800 trials). Re-rendered all four
+  Results figures as vector PDF plus one new figure:
+  (1) **Fig 1** `solve.pdf`/`simulate.pdf` — y-axis capped 122→**105** (legend moved below to
+  reclaim the space). (2) **Fig 2** `mechanism_validate_plan.pdf` — added a faded dashed
+  **P(correct|call)** reference (`accuracy when called`) on the success panel; sits at ~99% above
+  Gemma's 21% plain bar, making silence-not-error visually undeniable. (3) **Fig 3**
+  `token_quadrant.pdf` — printed the **cost-of-pass multiplier** per panel (solve 0.4× in green,
+  validate_domain 2.8×, validate_problem 4.4×, validate_plan 3.9×, simulate "tool-only") and
+  fixed the log x-ticks to clean $10^3$/$10^4$ mathtext (was the "10 3 104" glitch). (4) **NEW
+  Fig 2** `failure_taxonomy.pdf` (full-width `figure*`, label `fig:failtax`) — per-task×arm
+  100%-stacked outcome composition (success / truncated / no-tool-call / unparseable /
+  wrong-content / tool-call-error), pooled ≥9B. **Generator self-checks reproduce the paper text
+  exactly:** cost-of-pass solve 0.38× & validate_plan 3.91×; simulate no-tools mix
+  **68.0% unparseable / 29.1% truncated / 2.9% wrong** = the draft's "68/29/3". Wired
+  `fig:failtax` into Results (referenced from the simulate decomposition + the validate_plan
+  silence paragraph). Build clean (0 undefined, 0 overfull); PDF now **12 pages** (the new
+  figure* added ~0.5pg of float). **Still NOT done (the one genuinely new-compute item):** the
+  one-frontier-model run on validate_plan+simulate (REVIEW §7) — needs API/GPU inference, not a
+  re-plot.
