@@ -236,34 +236,29 @@ class TaskResult:
 # ---------------------------------------------------------------------------
 
 
-async def evaluate_one(
-    client: "VLLMClient",
-    model: str,
+def build_messages(
     task: str,
-    domain_name: str,
     domain_pddl: str,
-    problem_name: str,
     problem_pddl: str,
     prompt_variant: int,
     with_tools: bool,
-    mcp: MCPPlanner,
     gt: dict,
-    num_predict: int,
-    num_ctx: int,
-    num_ctx_thinking: int,
-    think: bool | None,
-    tool_filter: str = "all",
-    prompt_style: str = "minimal",
-    temperature: float = TEMPERATURE,
-    plan_label: str = "",
-) -> TaskResult:
-    # Template lookup. Two override semantics by variant range:
-    #   * v5/v6/v7 (sweep-4): override fires only under with_tools=True.
-    #     Preserves sweep-4 replay byte-stability (no override under no-tools).
-    #   * v14/v15/v16 (sweep-5 STEERED_VARIANTS): override fires regardless
-    #     of with_tools. The (no-tools, steered) control arm needs to see
-    #     the steered text — that's the H4 falsification check
-    #     ("steered directive alone does not move the no-tools floor").
+) -> list[dict]:
+    """Build the [system, user] chat messages for one single-task trial.
+
+    Pure prompt construction, extracted from `evaluate_one` so the live
+    harness and the offline Anthropic batch builder (tools/sonnet_batch.py)
+    emit byte-identical prompts for the same (task, fixture, variant,
+    condition) — corpus identity is load-bearing.
+
+    Two override semantics by variant range:
+      * v5/v6/v7 (sweep-4): override fires only under with_tools=True.
+        Preserves sweep-4 replay byte-stability (no override under no-tools).
+      * v14/v15/v16 (sweep-5 STEERED_VARIANTS): override fires regardless
+        of with_tools. The (no-tools, steered) control arm needs to see the
+        steered text — that's the H4 falsification check ("steered directive
+        alone does not move the no-tools floor").
+    """
     override = PROMPT_TEMPLATES_TOOLS_OVERRIDE.get(task, {})
     override_applies = prompt_variant in STEERED_VARIANTS or with_tools
     if override_applies and prompt_variant in override:
@@ -285,10 +280,39 @@ async def evaluate_one(
         )
     else:
         system = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
-    messages = [
+    return [
         {"role": "system", "content": system},
         {"role": "user", "content": prompt},
     ]
+
+
+async def evaluate_one(
+    client: "VLLMClient",
+    model: str,
+    task: str,
+    domain_name: str,
+    domain_pddl: str,
+    problem_name: str,
+    problem_pddl: str,
+    prompt_variant: int,
+    with_tools: bool,
+    mcp: MCPPlanner,
+    gt: dict,
+    num_predict: int,
+    num_ctx: int,
+    num_ctx_thinking: int,
+    think: bool | None,
+    tool_filter: str = "all",
+    prompt_style: str = "minimal",
+    temperature: float = TEMPERATURE,
+    plan_label: str = "",
+) -> TaskResult:
+    # Prompt construction is shared with the offline batch builder via
+    # `build_messages` so the Sonnet frontier run uses byte-identical
+    # system/user text (corpus identity is load-bearing).
+    messages = build_messages(
+        task, domain_pddl, problem_pddl, prompt_variant, with_tools, gt,
+    )
 
     t0 = time.time()
     tool_calls: list[dict] = []
@@ -489,62 +513,46 @@ def _trial_key(
     )
 
 
-async def run_single_task_experiment(
-    client: "VLLMClient",
+def build_jobs(
+    *,
     models: list[str],
     tasks: list[str],
     domains: dict,
     ground_truth: dict,
-    mcp: MCPPlanner,
-    num_variants: int = len(ACTIVE_PROMPT_VARIANTS),
-    tool_filter: str = "all",
-    prompt_style: str = "minimal",
+    num_variants: int,
+    conditions: str,
+    tool_filter: str,
+    prompt_style: str,
+    think_tag: str,
     num_predict_override: int | None = None,
-    num_ctx: int = DEFAULT_NUM_CTX,
-    num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
-    think: bool | None = None,
-    concurrency: int = DEFAULT_CONCURRENCY,
-    conditions: str = "both",
-    temperature: float = TEMPERATURE,
     shard_i: int = 0,
     shard_n: int = 1,
     cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None,
-    progress_path: Path | None = None,
     restored_by_key: dict[TrialKey, TaskResult] | None = None,
     include_no_tools_steered: bool = False,
-) -> list[TaskResult]:
-    """Run the full single-task sweep with bounded client-side concurrency.
+) -> tuple[list, set]:
+    """Enumerate the single-task job list + the in-scope trial-key set.
 
-    Jobs are enumerated up-front so `[i/N]` numbering is stable across
-    reorderings; completions are printed as they finish via
-    `asyncio.as_completed`. Partial results can be collected by the caller
-    on KeyboardInterrupt — remaining tasks are cancelled and whatever
-    finished is returned.
+    Pure function (no I/O, no inference). Given loaded `domains` +
+    `ground_truth`, returns `(jobs, in_scope_keys)`:
+      * `jobs` — list of the 11-tuple
+        `(model, task, dname, dpddl, pname, ppddl, pv, with_tools, gt_frag,
+        np_for_task, plan_label)` consumed by `evaluate_one` / `run_one`.
+      * `in_scope_keys` — set of `_trial_key` tuples this emission produces,
+        used by the resume scope-filter.
 
-    Resume / skip-existing + scope filter: when `progress_path` is set,
-    every completed trial is appended as one JSONL line
-    `{"key": [...], "result": {...}}` so a TIMEOUT/preempt/scancel doesn't
-    lose mid-run trials. When `restored_by_key` is provided (loaded by the
-    caller from the same JSONL), each emission key is checked against the
-    dict; matching jobs are skipped (not re-executed) and the restored
-    TaskResult is captured for the return list. Restored trials whose key
-    falls OUTSIDE this run's intended scope (different model, different
-    think mode, dropped fixture under `--partial K`, etc.) are silently
-    omitted — preventing per-cell summary pollution when a cell's
-    `trials.jsonl` was seeded from a multi-cell merged source. The return
-    list is ordered: restored-in-scope first (in JSONL append order),
-    then newly-run trials (in completion order).
+    Extracted from `run_single_task_experiment` so the offline Anthropic
+    batch builder (tools/sonnet_batch.py) enumerates the *identical*
+    fixture/variant/condition grid. Corpus identity is load-bearing, so the
+    two call sites must share one enumerator rather than risk drift.
+    `think_tag` is passed in (already serialised via `_think_str`) so it
+    matches the resume writer in the caller.
     """
-    # Build the full job list up-front. Skipping unsolvable validate_plan/
-    # simulate is cheaper here than inside the coroutine and keeps the
-    # denominator accurate.
     # Job tuple shape (PR-3): adds plan_label as the last field.
     Job = tuple  # (model, task, dname, domain_pddl, pname, ppddl, pv,
                  #  with_tools, gt, np_for_task, plan_label)
     jobs: list[Job] = []
     with_tools_values = _expand_conditions(conditions)
-
-    think_tag = _think_str(think)
 
     # In-scope keys this emission would have produced if there were no
     # resume. Used to filter `restored_by_key` to only those trials that
@@ -739,6 +747,75 @@ async def run_single_task_experiment(
                                         np_for_task=np_for_task,
                                         plan_label=f"b{i+1}",
                                     )
+
+    return jobs, in_scope_keys
+
+
+async def run_single_task_experiment(
+    client: "VLLMClient",
+    models: list[str],
+    tasks: list[str],
+    domains: dict,
+    ground_truth: dict,
+    mcp: MCPPlanner,
+    num_variants: int = len(ACTIVE_PROMPT_VARIANTS),
+    tool_filter: str = "all",
+    prompt_style: str = "minimal",
+    num_predict_override: int | None = None,
+    num_ctx: int = DEFAULT_NUM_CTX,
+    num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
+    think: bool | None = None,
+    concurrency: int = DEFAULT_CONCURRENCY,
+    conditions: str = "both",
+    temperature: float = TEMPERATURE,
+    shard_i: int = 0,
+    shard_n: int = 1,
+    cell_assignment: dict[tuple[str, str], tuple[str, str]] | None = None,
+    progress_path: Path | None = None,
+    restored_by_key: dict[TrialKey, TaskResult] | None = None,
+    include_no_tools_steered: bool = False,
+) -> list[TaskResult]:
+    """Run the full single-task sweep with bounded client-side concurrency.
+
+    Jobs are enumerated up-front so `[i/N]` numbering is stable across
+    reorderings; completions are printed as they finish via
+    `asyncio.as_completed`. Partial results can be collected by the caller
+    on KeyboardInterrupt — remaining tasks are cancelled and whatever
+    finished is returned.
+
+    Resume / skip-existing + scope filter: when `progress_path` is set,
+    every completed trial is appended as one JSONL line
+    `{"key": [...], "result": {...}}` so a TIMEOUT/preempt/scancel doesn't
+    lose mid-run trials. When `restored_by_key` is provided (loaded by the
+    caller from the same JSONL), each emission key is checked against the
+    dict; matching jobs are skipped (not re-executed) and the restored
+    TaskResult is captured for the return list. Restored trials whose key
+    falls OUTSIDE this run's intended scope (different model, different
+    think mode, dropped fixture under `--partial K`, etc.) are silently
+    omitted — preventing per-cell summary pollution when a cell's
+    `trials.jsonl` was seeded from a multi-cell merged source. The return
+    list is ordered: restored-in-scope first (in JSONL append order),
+    then newly-run trials (in completion order).
+    """
+    # Enumerate the full (model, task, fixture, variant, condition) job list
+    # up-front via the shared `build_jobs` helper. `build_jobs` is the single
+    # source of truth for the fixture/variant/condition grid — the offline
+    # Anthropic batch builder (tools/sonnet_batch.py) calls the same function
+    # so the Sonnet frontier run covers the byte-identical grid (corpus
+    # identity is load-bearing). `think_tag` is computed here too because the
+    # resume writer below needs it to rebuild trial keys.
+    think_tag = _think_str(think)
+    jobs, in_scope_keys = build_jobs(
+        models=models, tasks=tasks, domains=domains,
+        ground_truth=ground_truth, num_variants=num_variants,
+        conditions=conditions, tool_filter=tool_filter,
+        prompt_style=prompt_style, think_tag=think_tag,
+        num_predict_override=num_predict_override,
+        shard_i=shard_i, shard_n=shard_n,
+        cell_assignment=cell_assignment,
+        restored_by_key=restored_by_key,
+        include_no_tools_steered=include_no_tools_steered,
+    )
 
     total = len(jobs)
     results: list[TaskResult | None] = [None] * total

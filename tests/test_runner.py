@@ -451,6 +451,63 @@ def test_load_progress_dedups_repeated_keys(r: TestResults) -> None:
         r.check_eq("first-seen wins", results[0].success, True)
 
 
+def test_build_jobs_no_tools_grid(r: TestResults) -> None:
+    """`build_jobs` enumerates the no-tools grid the offline batch builder relies on.
+
+    Direct contract test for the helper extracted from
+    `run_single_task_experiment` (so tools/sonnet_batch.py enumerates the
+    byte-identical fixture/variant/condition grid). Guards: (a) validate_plan
+    emits one job per committed valid plan (v1..vN) + per invalid plan
+    (b1..bN); (b) validate_problem emits positives + task-targeted negatives
+    (n01..); (c) every job is no-tools under conditions="no-tools"; (d)
+    in_scope_keys is 1:1 with jobs when there's no resume/steered skip.
+    """
+    from pddl_eval.runner import build_jobs
+
+    domains = {
+        "d1": {"domain": "(d)", "problems": {"p1": "(p1)", "p2": "(p2)"},
+               "type": "test"},
+    }
+    ground_truth = {
+        "d1": {
+            "p1": {
+                "plan": ["(a)"],
+                "valid_plans": [
+                    {"plan": ["(a)"], "plan_valid": True},
+                    {"plan": ["(a)", "(b)"], "plan_valid": True},
+                ],
+            },
+            "p2": {"plan": ["(a)"], "valid_plans": [{"plan": ["(a)"], "plan_valid": True}]},
+            "_negatives": {
+                "problems": [{"problem_pddl": "(bad-prob)"}],
+                "plans_per_problem": {"p1": [{"plan": ["(bad)"]}]},
+            },
+        },
+    }
+
+    # validate_plan: p1 has 2 valid + 1 invalid, p2 has 1 valid → 4 jobs (1 variant).
+    jobs, in_scope = build_jobs(
+        models=["m"], tasks=["validate_plan"], domains=domains,
+        ground_truth=ground_truth, num_variants=1, conditions="no-tools",
+        tool_filter="all", prompt_style="minimal", think_tag="off",
+    )
+    r.check_eq("validate_plan no-tools job count", len(jobs), 4)
+    labels = sorted(j[10] for j in jobs)  # plan_label is the last tuple field
+    r.check_eq("validate_plan labels", labels, ["b1", "v1", "v1", "v2"])
+    r.check("validate_plan all no-tools", all(j[7] is False for j in jobs))
+    r.check_eq("in_scope_keys 1:1 with jobs", len(in_scope), len(jobs))
+
+    # validate_problem: 2 positives (p1,p2) + 1 negative (n01) → 3 jobs.
+    pjobs, _ = build_jobs(
+        models=["m"], tasks=["validate_problem"], domains=domains,
+        ground_truth=ground_truth, num_variants=1, conditions="no-tools",
+        tool_filter="all", prompt_style="minimal", think_tag="off",
+    )
+    r.check_eq("validate_problem no-tools job count", len(pjobs), 3)
+    pnames = sorted(j[4] for j in pjobs)  # pname is index 4
+    r.check_eq("validate_problem includes negative n01", pnames, ["n01", "p1", "p2"])
+
+
 if __name__ == "__main__":
     r = TestResults("test_runner")
     test_plan_label_in_shard_key_spreads_across_shards(r)
@@ -466,4 +523,5 @@ if __name__ == "__main__":
     test_runner_filters_out_of_scope_restored(r)
     test_runner_filters_out_partial_dropped_fixtures(r)
     test_load_progress_dedups_repeated_keys(r)
+    test_build_jobs_no_tools_grid(r)
     r.report_and_exit()

@@ -1,5 +1,9 @@
 mcp>=1.0.0
 openai>=1.40.0
+# Anthropic Message Batches API for the Sonnet-4.6 frontier no-tools run
+# (tools/sonnet_batch.py). Offline, batched (-50%); not used by the vLLM
+# single-task harness.
+anthropic>=0.40.0
 
 matplotlib
 pandas
