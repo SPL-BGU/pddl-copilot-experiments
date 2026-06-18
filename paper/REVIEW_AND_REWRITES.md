@@ -283,21 +283,146 @@ is where the paper earns its generality. Draft:
 
 ---
 
-## 7. Strategy — generality and PlanBench
+## 7. Generality at the frontier — DECIDED PLAN (+ PlanBench)
 
-- **Generality is the biggest substantive vulnerability.** Two families, all open-weight,
-  0.8–35B, no frontier/proprietary model. A reviewer will ask whether *availability-hurts*
-  survives for models that reliably call tools. **Highest-ROI new experiment:** run one
-  frontier API model on `validate_plan` + `simulate` only. If even a strong model gets ~0%
-  unaided on strict-trajectory `simulate`, "sole-source" becomes bulletproof; if it does *not*
-  show the `validate_plan` backfire, report that honestly as a scale boundary (still
-  interesting). Given the RunPod/H200 access, this may be reachable before Jul 28 — prioritize
-  it over PlanBench.
-- **PlanBench: keep it Future Work for this submission.** Absorbing an in-flight cross-domain
-  sweep will blow the 7-page budget and dilute a clean single-suite message, and you do not
-  want a running sweep gating the deadline. A tight 7-page paper with one sharp finding beats a
-  sprawling one for AAAI Main Technical. Add PlanBench only if it finishes early *and* cleanly
-  reproduces the regime structure.
+**Why this section exists.** The roster is two families, all open-weight, 0.8–35B, no
+frontier/proprietary model — the biggest substantive vulnerability. Two distinct reviewer
+objections must be separated, because they need different evidence:
+
+1. **"Does it scale beyond small/weak models?"** — answered by a much larger *open-weight*
+   model.
+2. **"Does it hold for the best *proprietary* SOTA?"** — answered only by a closed frontier
+   model. For a *tool-use* paper this is the sharper objection (closed models have the most
+   aggressive tool-use RLHF).
+
+A third, related worry the user raised: **a stronger model is more likely to have memorized
+public benchmark domains** (contamination), even if not emphasized in training — so the
+contamination control should be re-run on a strong model, not just the weak roster.
+
+### 7A. LOCKED — Sonnet 4.6, no-tools, canonical vs anonymized (the frontier experiment)
+
+**Budget:** ~$145 in Anthropic credit on hand. **Decision:** spend it on the no-tools arm of
+a strong proprietary model, which does double duty — sole-source proof *and* the frontier
+contamination probe — and is cheap because no-tools is single-shot (batchable).
+
+**Crucial scoping logic (do not run floored tasks for contamination).** Contamination can only
+be *seen* where the unaided baseline has room to be inflated. `simulate`/`solve` are floored
+(0–9% unaided) → they prove **sole-source** but carry **zero** contamination signal.
+`validate_plan` (80–91% unaided) is the **best** contamination probe; `validate_problem`
+(~50–76%, balanced) is a good second.
+
+| Task (no-tools, think=off, **full N**, BOTH corpora) | Role | List | **Batch (−50%)** |
+|---|---|---|---|
+| `simulate` (300 ×2) | sole-source at frontier | $32 | $16 |
+| `validate_plan` (3,000 ×2) | **best** contamination probe (highest headroom) | $184 | $92 |
+| *(optional)* `validate_problem` (600 ×2) | balanced contamination probe (triangulation) | $21 | $10 |
+| **Total (core)** | | **$215** | **~$108** |
+| **Total (+ validate_problem)** | | **$236** | **~$118** |
+
+**Decision: core `simulate` + `validate_plan` ≈ $108 batch (fits $145, ~$37 buffer); add
+`validate_problem` for ~$10 if you want the contamination claim to rest on two tasks, not one
+(~$118, ~$27 buffer).** Do **not** push to all five no-tools tasks (~$146) — it leaves no
+cushion for token-proxy error. Full N on `validate_plan` is deliberate, not a luxury: the
+roster's canonical−anon Δ there is tiny (−1.9 to +0.4 pp), so detecting whether a *stronger*
+model shows a real gap needs the 3,000-trial/corpus power; lean would blur the small effect
+being hunted.
+
+**Must-dos for the experiment agent:**
+- **Anthropic Batch API (−50%)** — the halving is what makes it fit (list price $215 > budget).
+  No-tools is single-shot → fully batchable; ~24 h turnaround is fine for an offline eval.
+- **Pilot first (~$5–10, ~50 trials/task on canonical)** — the token counts here are a
+  Qwen3.5-9B proxy; Sonnet may run ±35% on input and even think=off output should be lean —
+  verify before releasing the full batch. Pilot comes out of the buffer.
+- **think=off (disable extended thinking)** — matches the paper's clean contamination read and
+  keeps cost predictable. Bonus: "even non-thinking Sonnet scores ~0% unaided on `simulate`"
+  is a strong, conservative sole-source line. (A tiny think=on `simulate` probe can be added
+  later only if a reviewer pushes "would reasoning fix it?")
+- **Reuse the EXACT sweep5v2 (canonical) + sweep6 (anonymized) fixtures, prompts, and graders**
+  — corpus identity is load-bearing; this must be a clean drop-in into the existing
+  canonical-vs-anon comparison, not a regenerated set. Grading is clean: no tool-call parser
+  risk (no-tools), `validate_plan` is balanced 5:5 (`v*`/`b*`) so plain accuracy = balanced
+  accuracy, `simulate` is exact canonical-form trajectory match.
+- **Client shim:** the harness is vLLM-only; Anthropic exposes an OpenAI-compatible endpoint +
+  the Batch API, so a thin adapter (base_url/key swap) covers it.
+
+**What it buys (two reviewer-proofing results from one run):** (1) **sole-source holds at the
+frontier** — a strong proprietary model is still floored unaided on `simulate`; and (2) the
+**contamination control extends to a strong model** — if Sonnet's canonical−anon Δ on
+`validate_plan` (and `validate_problem`) is near-null, the "no memorization" claim jumps from
+"weak models" to "even a frontier model"; if it is *not* null, that is an honest finding the
+anonymized corpus already controls for. Either outcome strengthens the paper.
+
+### 7B. CONSIDERED AND SET ASIDE — GPT-OSS-120B
+
+GPT-OSS-120B was evaluated as a free, cluster-hosted complement (it fits `rtx_pro_6000`'s 96 GB
+at native MXFP4 ~63 GB, the harness self-deploys vLLM, and a `feat/gpt-oss-120b-vllm` branch
+exists). **Decision (2026-06-18): not in the plan.** Three verified facts removed its value:
+
+1. **Not a capability step-up over the existing roster.** Head-to-heads are mixed and several
+   show it level with or *below* the current models — e.g., Qwen3.5-9B beats gpt-oss-120B on
+   MMLU (81.2 vs 78.2). So it does **not** answer the "does it scale to stronger models?"
+   objection; the 35B is already in its capability class.
+2. **With-tools integration is risky, not a flag swap.** The parser is
+   `--tool-call-parser openai` (not "harmony"), but GPT-OSS tool calling is known-flaky on the
+   `/v1/chat/completions` endpoint the harness uses, and works reliably only on the
+   `/v1/responses` (Harmony) endpoint the harness does not speak (open vLLM bugs #22578, #22337).
+   A silent **0%** `tool_selected`/`success` is the failure mode.
+3. **Its no-tools contamination would be redundant** — five open-weight no-tools cells (Qwen×3
+   + Gemma + 35B) already cover "large open-weight, high-headroom, near-null."
+
+Sonnet (§7A) is unambiguously frontier *and* proprietary, so it closes both the "scales up" and
+"open ≠ closed" objections that GPT-OSS only partially touched. If a *larger open* model is ever
+wanted for the "scales up" angle specifically, the honest pick is Qwen3-235B-A22B (fits the
+H200) — but same lab, weaker on diversity, and it still leaves the proprietary objection to
+Sonnet, so it is not worth the effort for this submission.
+
+### 7C. PlanBench — keep it Future Work for this submission
+
+Absorbing an in-flight cross-domain sweep will blow the 7-page budget and dilute a clean
+single-suite message, and you do not want a running sweep gating the deadline. PlanBench is also
+primarily a *formalization* benchmark — a different failure mode than invocation propensity —
+so mixing it muddies the mechanism story. A tight 7-page paper with one sharp finding beats a
+sprawling one for AAAI Main Technical. Add PlanBench only if it finishes early *and* cleanly
+reproduces the regime structure under the same end-to-end grading; otherwise it is the natural
+standalone follow-up.
+
+### 7D. Precision control — the size×precision confound (DECIDED 2026-06-18)
+
+**The confound.** The roster mixes precisions: Qwen3.5-0.8B/4B/9B are 16-bit, but Gemma-MoE-26B
+and Qwen3.6-35B are AWQ-INT4 (disclosed in the Models footnote). So **model size is confounded
+with quantization** for the two largest models. This threatens the **size-inversion / "9B beats
+35B = propensity"** finding — which lives entirely in the *with-tools* arm (P(call), plain-vs-
+steered tool-use rate). A reviewer's rebuttal writes itself: *"the bigger model under-calls
+because it's 4-bit, not because it's big."*
+
+**Why the mechanism evidence does not clear it.** Silence-not-error (low P(call), high
+P(correct|call)) is *observationally identical* to "quantization suppresses tool-calling
+propensity while leaving verdict accuracy intact." The two explanations cannot be separated on
+the existing data — **only a BF16 control on the 35B can**.
+
+**State of sweep7 (the BF16-35B re-run, RunPod H200).** The **no-tools** arm completed but is
+low-diagnostic here (no tool calls → does not test the propensity confound). The **with-tools**
+arm is broken and burned ~66% of the pod budget with no clean corpus — its failures were
+RunPod-env-specific (`--served-model-name` / `HF_HUB_OFFLINE` 404 / cell-dirname), not the model.
+
+**DECISION:**
+- **Abandon the pod with-tools run** (sunk cost; metered money on a flaky config near the
+  deadline). Do *not* keep iterating it.
+- **Option 1 (rigorous, ~free, PREFERRED if cluster + timeline allow):** run **BF16-35B
+  *with tools* on the BGU cluster `rtx_pro_6000`** (96 GB; BF16 35B ~70 GB fits at 16K ctx —
+  verify headroom). The AWQ-35B-with-tools already runs cleanly there with the verified
+  `qwen3_xml` parser, and BF16 is the same architecture → same config, none of the pod bugs.
+  Make it **lean**: `solve` + `validate_plan`, plain + steered, think=off — exactly the cells
+  where plain-arm under-calling shows. Cost = cluster queue time, $0.
+- **Option 2 (fallback, if cluster congested / no time):** reframe propensity *within*-model via
+  `success = P(call)×P(correct|call)` (precision-internal — does not rest on comparing a 16-bit
+  9B to a 4-bit 35B), soften the cross-model "9B beats 35B" capability claim, and add one
+  Limitations sentence on the size×precision confound.
+- **Keep the completed no-tools BF16** as a minor appendix robustness note ("the 35B's *unaided*
+  baselines are unchanged BF16 vs AWQ-INT4") — do not oversell it; it does not defend the
+  headline.
+- **Sonnet (§7A) is unaffected** — orthogonal (external generality + frontier contamination vs
+  this internal precision confound).
 
 ---
 
@@ -330,14 +455,22 @@ drift favors the anonymized corpus, ruling out memorization in the expected dire
 4. §4 three statistics sentences (clustering, disjoint-CI conservativeness, no FWER).
 5. §6 RQ enumeration + real title.
 
-**High-ROI strengthening (if compute/time allows):**
-6. §7 one frontier model on `validate_plan` + `simulate`.
+**High-ROI strengthening (FUNDED — see §7A):**
+6. **[LOCKED] Sonnet 4.6 no-tools, `simulate` + `validate_plan` (+ optional `validate_problem`),
+   both corpora, full N, think=off, Batch API ≈ $108–118** — sole-source at the frontier +
+   strongest contamination probe. Pilot ~$5–10 first. (GPT-OSS-120B considered and set aside —
+   §7B.)
 7. §3 failure-type taxonomy figure + Fig 2 `P(correct|call)` overlay.
+8. **[DECIDED — see §7D] Precision control for the size×precision confound:** run BF16-35B
+   *with tools* (lean: `solve` + `validate_plan`, plain+steered, think=off) on the cluster
+   `rtx_pro_6000` (~free), NOT the pod. Fallback if cluster/time tight: reframe propensity
+   within-model + a Limitations sentence. Abandon the broken pod with-tools run.
 
 **Nice-to-have:** per-task contamination appendix table (§8), robustness figure in main body,
 cost-of-pass annotations on Fig 3, metric-flip inset.
 
-**Do not let it gate submission:** PlanBench.
+**Do not let it gate submission:** PlanBench. **Abandon (sunk cost):** the RunPod with-tools
+BF16 run (§7D).
 
 ---
 

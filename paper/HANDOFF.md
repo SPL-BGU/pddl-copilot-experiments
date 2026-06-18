@@ -16,8 +16,10 @@ camera-ready mechanics remain (see "GAPS TO GOAL").**
 
 ## TL;DR for a fresh session
 Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
-`paper/RESULTS_PLAN.md` (the decided Results structure) → this file. The manuscript is
-`paper/main.tex`; the bibliography is `paper/refs.bib` (fully verified).
+`paper/REVIEW_AND_REWRITES.md` (current review + grounded rewrite plan + the locked Sonnet
+frontier experiment) → this file. The manuscript is `paper/main.tex`; the bibliography is
+`paper/refs.bib` (fully verified). (The Results-narration plan, formerly `RESULTS_PLAN.md`, is
+retired — its structure is now realized in the written Results section.)
 **STATUS 2026-06-14: the full paper body (Abstract → Conclusion) is drafted, adversarially
 verified, and committed/pushed (`ee01e07`); it builds clean and the technical content is within
 the 7-page limit with all 3 figures. No prose work remains.**
@@ -50,6 +52,21 @@ DONE this pass (committed/pushed):
   cluster scripts, no `.git`) — see publication-time below.
 
 REMAINING:
+- **Review + rewrite plan — see `paper/REVIEW_AND_REWRITES.md` (2026-06-18).** Peer-review-style
+  pass with paste-ready rewrites, all grounded in recomputed sweep5v2/sweep6 numbers. Headline
+  items: (a) the reframe to lead with invocation-propensity / silence-not-error as the *general*
+  tool-use lesson; (b) a MUST-FIX — `validate_domain` is mis-framed (all ≥9B models are at/below
+  the 83% majority baseline unaided; balanced accuracy 53–74% — report balanced accuracy, recast
+  as "tool rescues," not "refines a partial baseline"); (c) the `success = P(call)×P(correct|call)`
+  decomposition; (d) add a Discussion section (currently none). Prioritized action list in §9.
+- **[LOCKED] Frontier experiment — Sonnet 4.6 no-tools contamination + sole-source (`REVIEW…md` §7A).**
+  Sonnet no-tools, think=off, full N, BOTH corpora (canonical sweep5v2 + anon sweep6), Batch API
+  (−50%): `simulate` + `validate_plan` (+ optional `validate_problem`) ≈ $108–118, funded by ~$145
+  Anthropic credit. Pilot ~$5–10 first; reuse exact fixtures/graders. Extends sole-source AND the
+  contamination control to a strong *proprietary* model. GPT-OSS-120B was considered and **set
+  aside** (§7B: not a capability step-up over the 35B, flaky with-tools tool-call path, redundant
+  no-tools contamination). Promotes the frontier check from a generic Future-Work line to a
+  concrete, costed, in-flight item.
 - **PlanBench results + discussion — BIG forthcoming addition (planned, sweep in progress).**
   The PlanBench cross-domain track is still running (`development/PLANBENCH_HANDOFF_v3.md`; memory
   `project_planbench_v2_v3`). When it completes, ADD its results + discussion to the paper,
@@ -88,7 +105,8 @@ REMAINING:
   `visible_mode_succ.png` copied but the robustness story is folded to text.
 - `paper/refs.bib` — 20 references, **all verified** against DBLP/ACL/PMLR/NeurIPS/arXiv;
   keys tidy (years match).
-- `paper/GOALS.md`, `paper/RESULTS_PLAN.md` — scope + Results plan (decisions locked).
+- `paper/GOALS.md` — scope + decisions locked. (`RESULTS_PLAN.md` retired 2026-06-18; its
+  Results-narration plan is now realized in the written Results section.)
 - Local build works (see Build below). With the checklist inlined, `main.pdf` compiles to
   **9 pages total**; technical content **still ends on page 7** (references fill p7 right
   column → p8, then the reproducibility checklist fills p8→p9 — neither refs nor checklist count
@@ -117,7 +135,7 @@ Overleaf. NOTE: the AAAI kit does **not** load `amsmath`, so avoid `\text{}` —
    (`howey2004val` stays a Background-only cite); (b) non-solve decode cap is **6{,}144**, not
    4096 (`runner.py` `DEFAULT_NUM_PREDICT`; `EXPERIMENTS_FLOW.md` was stale — fixed this
    session); (c) `validate_domain` is **5:1 positive:negative** (ISS-020), not balanced.
-2. ~~**Results (goal 3b)**~~ — **DONE 2026-06-14.** Regime-led per `RESULTS_PLAN.md`: lead +
+2. ~~**Results (goal 3b)**~~ — **DONE 2026-06-14.** Regime-led: lead +
    scorecard (`table*`) + 6 subsections (sole-source / headroom / mixed / scaling / cost /
    robustness), 3 figures. All numbers are locked deck values, adversarially fact-checked vs
    the deck. **Note:** the deck's ``8,192-token cap'' for simulate is a shorthand slip — the
@@ -214,7 +232,7 @@ Decision log is in `development/paper_notes_discussions.md` (three 2026-06-14 en
 
 ## Suggested opening prompt for the fresh session
 > Continue the AAAI-27 paper on branch `paper/aaai27-single-tool-draft`. Read
-> `paper/HANDOFF.md` ("GAPS TO GOAL"), `paper/GOALS.md`, and `paper/RESULTS_PLAN.md`. The full
+> `paper/HANDOFF.md` ("GAPS TO GOAL"), `paper/GOALS.md`, and `paper/REVIEW_AND_REWRITES.md`. The full
 > body, the inlined reproducibility checklist, and the HF-id footnote are already drafted,
 > verified, and pushed (`bf6f7cb`); the tree is clean. Only camera-ready mechanics remain. Pick
 > from GAPS TO GOAL: (A) regenerate the 3 figures as vector PDF @300dpi from
