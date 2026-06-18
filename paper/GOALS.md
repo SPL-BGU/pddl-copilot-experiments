@@ -85,11 +85,12 @@ tools on **single-tool-use** PDDL tasks, served via vLLM, **with vs. without** t
 
 ## Results narration — DECIDED 2026-06-14
 
-How to discuss the Results (goal 3b) is settled — see **`RESULTS_PLAN.md`** for the full
-plan (regime-led structure, 4 main figures + scorecard table, methods-vs-results split,
-deck→paper mapping, figure source assets). Canonical data source =
-`checkpoints/rq-sweep5v2/pddl_copilot_rq_sweep5v2_unified.{pptx,pdf}` + `plots-unified/`.
-**No Results prose drafted yet.**
+How to discuss the Results (goal 3b) was settled and is now **realized in the written Results
+section** of `paper/main.tex` (regime-led structure, scorecard table + 3 figures,
+methods-vs-results split). The standalone `RESULTS_PLAN.md` was retired 2026-06-18 once the
+prose landed. Canonical data source =
+`checkpoints/rq-sweep5v2/pddl_copilot_rq_sweep5v2_unified.{pptx,pdf}` + `plots-unified/`;
+current review + grounded rewrite plan is in `paper/REVIEW_AND_REWRITES.md`.
 
 ## How to start writing (when ready — not done yet)
 
