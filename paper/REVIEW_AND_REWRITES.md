@@ -315,17 +315,21 @@ be *seen* where the unaided baseline has room to be inflated. `simulate`/`solve`
 |---|---|---|---|
 | `simulate` (300 ×2) | sole-source at frontier | $32 | $16 |
 | `validate_plan` (3,000 ×2) | **best** contamination probe (highest headroom) | $184 | $92 |
-| *(optional)* `validate_problem` (600 ×2) | balanced contamination probe (triangulation) | $21 | $10 |
-| **Total (core)** | | **$215** | **~$108** |
-| **Total (+ validate_problem)** | | **$236** | **~$118** |
+| `validate_problem` (600 ×2) | balanced contamination probe (triangulation) | $21 | $10 |
+| *(optional)* `validate_domain` (360 ×2) | imbalanced probe + Sonnet balanced-acc for §1 | $11 | $5 |
+| **Total (DECIDED set)** | `simulate`+`validate_plan`+`validate_problem` | **$236** | **~$118** |
 
-**Decision: core `simulate` + `validate_plan` ≈ $108 batch (fits $145, ~$37 buffer); add
-`validate_problem` for ~$10 if you want the contamination claim to rest on two tasks, not one
-(~$118, ~$27 buffer).** Do **not** push to all five no-tools tasks (~$146) — it leaves no
-cushion for token-proxy error. Full N on `validate_plan` is deliberate, not a luxury: the
-roster's canonical−anon Δ there is tiny (−1.9 to +0.4 pp), so detecting whether a *stronger*
-model shows a real gap needs the 3,000-trial/corpus power; lean would blur the small effect
-being hunted.
+**DECIDED 2026-06-18: run `simulate` + `validate_plan` + `validate_problem`, no-tools, both
+corpora, full N, think=off, Batch API ≈ $118** (fits $145, ~$27 buffer). `validate_problem` is
+**included, not optional** — resting the "no memorization at the frontier" claim on a single
+task is fragile; two probes of different baseline (high-headroom `validate_plan` + balanced
+`validate_problem`) is far more defensible, and $10 against a $27 buffer is a trivial price.
+**Optional cheap add (+$5): `validate_domain`** — a third headroom probe that also gives Sonnet's
+balanced accuracy for the §1 fix. **Skip `solve` no-tools** (floored → no contamination signal;
+sole-source is already covered by `simulate`); do not push to all five tasks (~$146, no cushion
+for token-proxy error). Full N on `validate_plan` is deliberate, not a luxury: the roster's
+canonical−anon Δ there is tiny (−1.9 to +0.4 pp), so detecting whether a *stronger* model shows a
+real gap needs the 3,000-trial/corpus power; lean would blur the small effect being hunted.
 
 **Must-dos for the experiment agent:**
 - **Anthropic Batch API (−50%)** — the halving is what makes it fit (list price $215 > budget).
@@ -456,10 +460,10 @@ drift favors the anonymized corpus, ruling out memorization in the expected dire
 5. §6 RQ enumeration + real title.
 
 **High-ROI strengthening (FUNDED — see §7A):**
-6. **[LOCKED] Sonnet 4.6 no-tools, `simulate` + `validate_plan` (+ optional `validate_problem`),
-   both corpora, full N, think=off, Batch API ≈ $108–118** — sole-source at the frontier +
-   strongest contamination probe. Pilot ~$5–10 first. (GPT-OSS-120B considered and set aside —
-   §7B.)
+6. **[LOCKED] Sonnet 4.6 no-tools, `simulate` + `validate_plan` + `validate_problem`, both
+   corpora, full N, think=off, Batch API ≈ $118** — sole-source at the frontier + two
+   contamination probes. (`validate_domain` optional +$5; skip `solve`.) Pilot ~$5–10 first.
+   (GPT-OSS-120B considered and set aside — §7B.)
 7. §3 failure-type taxonomy figure + Fig 2 `P(correct|call)` overlay.
 8. **[DECIDED — see §7D] Precision control for the size×precision confound:** run BF16-35B
    *with tools* (lean: `solve` + `validate_plan`, plain+steered, think=off) on the cluster

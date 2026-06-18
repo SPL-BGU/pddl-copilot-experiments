@@ -8,11 +8,12 @@ everything below is committed & pushed through `bf6f7cb`).
 `paper/aaai27-single-tool-draft` (verify with `git worktree list` — there is now a single
 worktree, no separate `-experiments-paper` dir). Do paper work right here. The earlier
 HANDOFF described a dedicated `-experiments-paper` worktree; that no longer exists.
-**Last session:** 2026-06-15 — (1) reproducibility checklist filled + inlined; (2) exact HF
-model ids added to §Models and Serving; (3) Wilson CI de-named everywhere except the §Metrics
-definition + the one figure error-bar legend (folded "interval-based" into the
-signed-significance clause). All committed/pushed. **The prose draft is complete; only
-camera-ready mechanics remain (see "GAPS TO GOAL").**
+**Last session:** 2026-06-18 — review + rewrite pass (`paper/REVIEW_AND_REWRITES.md`): a
+grounded critique with paste-ready rewrites; the Sonnet frontier no-tools experiment LOCKED;
+GPT-OSS-120B set aside; the BF16-35B precision control re-homed to the cluster (pod with-tools
+run abandoned). **This surfaced a MUST-FIX — `validate_domain` is mis-framed (review §1) — so the
+prose is no longer "final"; substantive revisions are pending.** Earlier sessions (2026-06-14/15)
+drafted + adversarially verified the full body and inlined the reproducibility checklist.
 
 ## TL;DR for a fresh session
 Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
@@ -20,15 +21,15 @@ Read, in order: `paper/GOALS.md` (scope + deadlines + prior-work policy) →
 frontier experiment) → this file. The manuscript is `paper/main.tex`; the bibliography is
 `paper/refs.bib` (fully verified). (The Results-narration plan, formerly `RESULTS_PLAN.md`, is
 retired — its structure is now realized in the written Results section.)
-**STATUS 2026-06-14: the full paper body (Abstract → Conclusion) is drafted, adversarially
-verified, and committed/pushed (`ee01e07`); it builds clean and the technical content is within
-the 7-page limit with all 3 figures. No prose work remains.**
-**STATUS 2026-06-15 (session 2): vector figures, the RQ0.5 deck fix, and the contamination
-control table all landed; code-availability decided (release at publication, not submission).
-Builds clean (0 undefined, 0 overfull). PDF is now 10 pages but technical content STILL ends on
-p7 (refs + checklist fill p7→p10, neither counts). See "GAPS TO GOAL" for what's done vs left.**
-(Session 1: reproducibility checklist inlined + filled, HF-id footnote, Wilson-CI wording cleaned
-up paper-wide.)
+**STATUS (2026-06-18):** Full body (Abstract → Conclusion) is drafted with 3 figures + the
+inlined reproducibility checklist, and builds clean (0 undefined, 0 overfull). Latest build
+(`main.pdf`, 2026-06-17) is **12 pp total**; only the **technical content** counts toward the
+7-page limit (references + the inlined reproducibility checklist are the non-counting tail). It
+ended on p7 as of the 2026-06-15 build, but `main.tex` was edited 2026-06-18 — **re-verify
+pagination on the next rebuild.** The body is drafted but **NOT final**:
+`REVIEW_AND_REWRITES.md` proposes substantive revisions (the `validate_domain` MUST-FIX, the
+invocation-propensity reframe, a new Discussion). Code-availability decided (release at
+publication, not submission). See "GAPS TO GOAL" for what's done vs. left.
 
 ## GAPS TO GOAL — status after the 2026-06-15 session-2 pass
 Goal = a submission-ready, double-blind AAAI-27 PDF. Body, checklist, figures, and the
