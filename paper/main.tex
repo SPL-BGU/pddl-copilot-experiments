@@ -113,16 +113,16 @@ in isolation, without a planning oracle \citep{bfcl2025}. The specific question
 --- does access to a sound PDDL tool improve a model across the planning task
 pipeline, measured end-to-end --- was raised by the PDDL Planning Copilot
 \citep{benyamin2025pddlcopilot}, but its evaluation was preliminary: a limited
-prompt set, success scored by tool \emph{selection} rather than end-to-end
-correctness, no confidence intervals, and no control for memorization of public
-benchmark domains. A clean answer requires controlling for several confounds at
+prompt set (this study grades $4{,}560$ trials per model-mode-arm cell), success scored by tool
+\emph{selection} rather than end-to-end correctness, no confidence intervals, and no control for
+memorization of public benchmark domains. A clean answer requires controlling for several confounds at
 once --- whether the model is even prompted to use the tool, whether the baseline
-is floored or already competent, reasoning-mode decode budgets, and contamination
+is floored or already competent, reasoning-mode (extended-thinking) decode budgets, and contamination
 --- which is what this paper sets out to do.
 
 We evaluate five single-tool-use PDDL tasks (\emph{solve}, \emph{validate\_domain},
 \emph{validate\_problem}, \emph{validate\_plan}, \emph{simulate}) across five
-open-weight models, grading every response strictly against a deterministic
+open-weight models (from the Qwen and Gemma families), grading every response strictly against a deterministic
 solver/validator oracle rather than by self-report. A three-arm design separates
 tool \emph{availability} (the tool is present) from a one-sentence \emph{steering}
 nudge (the model is told to use it), every proportion carries a confidence
@@ -175,7 +175,9 @@ ENHSP \citep{scala2016enhsp} for numeric planning, together with plan validators
 VAL \citep{howey2004val}. These systems are correct by construction: a plan they return
 provably reaches the goal, and a verdict they issue is sound. They are, however, brittle to
 the formal-modelling step --- a domain or problem must be expressed in precise PDDL before
-any solver can run.
+any solver can run. Where a model must reason in the solver's place, numeric domains are the
+harder regime: tracking arithmetic effects on continuous fluents compounds the discrete
+state-tracking on which language models are already unreliable.
 
 \subsection{Large Language Models for Planning}
 Large language models have been probed extensively as planners. Systematic benchmarks show
@@ -194,7 +196,8 @@ translates natural language into PDDL, delegating search to a sound solver. LLM+
 LLMs to construct world models for model-based planning; Plansformer
 \citep{pallagani2022plansformer} fine-tunes for plan generation; and pretrained LLMs have
 been applied to generalized planning in PDDL domains \citep{silver2024generalized}.
-\citet{tantakoun2025survey} survey this rapidly growing ``LLMs-as-formalizers'' area, and
+\citet{tantakoun2025survey} survey this rapidly growing ``LLMs-as-formalizers'' area --- where the consensus is that pairing
+an LLM translator with a sound solver outperforms end-to-end LLM planning --- and
 \citet{huang2025limit} characterize its limits, showing that although models are largely robust to
 lexical perturbation of domain symbols, formalization quality degrades as natural-language
 descriptions move away from templated phrasing. This literature largely studies the \emph{generation} of
@@ -205,8 +208,10 @@ with strict end-to-end grading against a solver oracle.
 \subsection{Tool Use, Agent Protocols, and Their Evaluation}
 Equipping LLMs with external tools is now standard, from learned tool invocation
 \citep{schick2023toolformer} to large API repertoires \citep{qin2024toolllm}. The Model
-Context Protocol (MCP) \citep{anthropic2024mcp} standardizes how tools are described and
-called, and is the mechanism by which we expose planners and validators to the model. A
+Context Protocol \citep[MCP;][]{anthropic2024mcp} standardizes how tools are described and
+called --- in practice a vendor-neutral schema for exposing functions and their argument types to a
+model and relaying the model's invocations --- and is the mechanism by which we expose planners and
+validators to the model. A
 growing body of benchmarks measures tool-use competence --- single-turn function calling
 \citep{bfcl2025} and multi-turn tool-agent-user interaction \citep{yao2024taubench}, among
 others. Our setting sits deliberately at the simple end of this spectrum: each task admits
@@ -378,7 +383,18 @@ roughly half the nominal count and these Wilson intervals are correspondingly
 anti-conservative. We verified that every headline verdict ($+50$--$92$\,pp, and the
 smallest reported gaps) remains CI-disjoint after inflating intervals by
 $\sqrt{2.7}$, and flag the one verdict-relevant gap that does not (the $-5$\,pp
-\emph{validate\_problem} steering dip) individually.
+\emph{validate\_problem} steering dip) individually. As a robustness check on the largest
+verdict-relevant contrast, we additionally fit an instance-level random-intercept logistic model to
+the Gemma-MoE \emph{validate\_plan} plain-vs-steered comparison (success $0.206\!\to\!0.926$); the
+steering effect is strongly favorable and significant (log-odds $+7.5$, posterior SD $0.10$; a
+population-averaged GEE with an exchangeable working correlation clustered on instance agrees), so
+the verdict is invariant to whether non-independence is handled by design-effect inflation or by an
+explicit random-effects model. We do not fit such models cell-by-cell because many cells are
+near-degenerate or completely separated --- the \emph{simulate} no-tools baseline is $0/3{,}000$,
+and the tool arms reach $P(\text{correct}\mid\text{call})\!\approx\!0.99$ --- where a
+maximum-likelihood GLMM is undefined or unstable, whereas the design-effect inflation never fits a
+per-cell model and so remains valid at the boundary; with cluster size three the random-effect
+variance is also only weakly identified.
 
 Verdicts use a \emph{signed} significance rule. A per-model gap counts as
 favorable evidence only when the two arms' 95\% intervals are disjoint
@@ -519,7 +535,7 @@ $+54$--$92$\,pp that is CI-disjoint and favorable for all three (RQ2
 \textsc{yes}). Where the plain arm leaves headroom --- Qwen3.6-35B invokes the
 planner on only $68\%$ of trials and reaches $63\%$ --- steering raises invocation
 to $94\%$ and success to $92\%$ ($+29$\,pp). The bottleneck is invocation, not the
-planner: accuracy-when-calling is $\geq$93\% for every $\geq$9B model.
+planner: accuracy-given-a-call is $\geq$93\% for every $\geq$9B model.
 
 \emph{Simulate} is starker: unaided success is $0\%$ --- for every model, in both
 reasoning modes, across all $3{,}000$ trials (a rule-of-three $95\%$ upper bound of
@@ -562,7 +578,8 @@ case --- it answers
 ``INVALID'' almost reflexively (true-positive rate $12\%$, true-negative rate
 $95\%$), scoring $26\%$ pooled but $53\%$ balanced. The tool does not \emph{refine} a
 competent baseline here; it \emph{rescues} a task the models cannot do reliably,
-lifting balanced accuracy to $95$--$100\%$. The verdict holds from 4B up; the 0.8B
+lifting balanced accuracy to $95$--$100\%$ --- a $+21$--$47$\,pp gap that is CI-disjoint and
+favorable for all three $\geq$9B models. The verdict holds from 4B up; the 0.8B
 model reverses on \emph{validate\_problem} ($-25$\,pp), an instance of small-model
 tool-mishandling --- it calls the right tool but omits required arguments. Steering
 does not significantly help either validation task ($-5$--${+}1$\,pp); the one
@@ -615,7 +632,7 @@ in question --- its invocation is.
 This also dissolves an apparent size inversion. In the plain arm the 9B
 ``beats'' the 35B (\emph{solve} $99\%$ vs.\ $63\%$; \emph{validate\_plan} $93\%$
 vs.\ $82\%$), but this is tool-call \emph{propensity}, not capability: success
-tracks tool-use almost 1:1, accuracy-when-calling is $\geq$93\% for both, and
+tracks tool-use almost 1:1, accuracy-given-a-call is $\geq$93\% for both, and
 steering closes the gap (35B \emph{solve} $63\!\to\!92\%$). The propensity even
 flips with reasoning mode (under \emph{think}=on the 35B calls the validator on
 $99.9\%$ of trials, the 9B on $69\%$). The 35B's unaided baselines exceed the 9B's
@@ -661,7 +678,8 @@ output-heavy (input:output $\leq$1:1, as low as $0.3$:1 on \emph{solve} --- it r
 tool arms are strongly input-heavy ($\approx$6--12:1) because the tool schemas and tool outputs
 are re-fed every turn. (Server-side prefix caching, $\approx$90\% on this roster,
 makes the re-fed \emph{schemas} cheap to compute, but tool \emph{outputs} are
-uncached and the tokens are still real context.)
+uncached and the tokens are still real context. Our token totals count these raw, so where
+caching applies the tool's reported cost is, if anything, an over-estimate.)
 
 Whether it is worth paying depends entirely on the baseline --- the choice of
 metric flips the verdict by $\approx$10$\times$ on identical data, so we report
@@ -675,7 +693,13 @@ the baseline is already strong the tool is a luxury: $\approx$3--5$\times$ costl
 per success on most \emph{validate\_*} cells ($\geq$9B), where it is only modestly
 more often right and the token premium dominates. The honest headline is therefore
 neither ``tools save tokens'' nor ``tools waste tokens'' but: \emph{the tool is
-cost-effective exactly where the model cannot do the task without it.} (The output
+cost-effective exactly where the model cannot do the task without it.} Because cost-of-pass is a
+token \emph{ratio}, it is invariant to the per-token price: at representative commodity serving
+rates (order \$0.1--\$1 per million tokens) the absolute cost is a fraction of a cent per correct
+answer on the floored tasks, but the comparative verdict does not turn on that rate. We report token
+cost rather than wall-clock latency because the batched server multiplexes trials, so per-trial
+latency is not recoverable from our logs; a concurrency-one benchmark is the right future
+instrument for the time axis. (The output
 cap right-censors long generations; raw ``hit-cap'' rates are not comparable across
 arms, since tool runs are multi-turn and graded from the tool result --- a cap-hit
 on a final narration turn rarely voids the answer, so cap-hit-and-failed stays
@@ -757,10 +781,14 @@ of this volatility in the first factor. A correct-by-construction tool turns
 ``can the model plan?'' into ``will the model delegate?'', and the second question is
 the one that varies --- widely. Second, availability and steering are distinct levers with
 different failure modes: exposing a tool without urging its use leaves a model free
-to fall back on prose, and on a task it can almost do, that fallback is actively
+to fall back on prose --- plausibly because instruction-tuning rewards visible, self-contained
+helpfulness, so an implicit task (``check this plan'') does not trip an explicit tool call the way an
+imperative does --- and on a task it can almost do, that fallback is actively
 worse than the tool-assisted path it declined. The remedy is cheap --- one imperative
 sentence --- but it is not automatic, which is a concrete caution for any system that
-exposes tools and assumes they will be used. Third, our results are direct empirical
+exposes tools and assumes they will be used. Prompting is only the cheapest lever; invocation
+propensity could also be raised by fine-tuning or architectural routing that internalizes the call,
+which we do not test here. Third, our results are direct empirical
 support for the LLM-Modulo thesis \citep{kambhampati2024llmmodulo} that LLMs should
 be paired with sound external verifiers, and a refinement of it: the pairing pays off
 only when the orchestration actually routes work to the verifier, and naive
@@ -774,13 +802,19 @@ token-priced luxury and at worst a regression.
 Several constraints bound these conclusions. Under \emph{think}=on, reasoning and
 answer share one decode budget, so a large fraction of no-tools trials truncate; we
 defend the cross-mode claims with budget-insensitive statistics (the robust floor),
-but cannot fully decouple the tool's value from the budget in that mode, and a
-cap-raised rerun is untested. Decoding is deterministic (temperature~0), so each
+but cannot fully decouple the tool's value from the budget in that mode. A naive cap increase is
+not a clean remedy: in pilot runs, enlarging the decode budget degraded output-format adherence
+(more trials emitted unparseable answers), so it trades the truncation confound for a parsing one
+rather than removing it --- which is why we read cross-mode evidence through the budget-insensitive
+robust floor. Decoding is deterministic (temperature~0), so each
 trial is a single sample and our intervals quantify uncertainty over the fixture
 instances, not sampling variance; robustness to higher temperatures is untested.
 The roster is five open-weight models from two families --- our claims concern the
 \emph{regime structure} of when a tool helps these models, not a leaderboard, and
-need not transfer to proprietary or frontier systems. Model scale is moreover
+need not transfer to proprietary or frontier systems. The fixture suite of $20$ domains spans
+classical and numeric planning but does not exhaust PDDL's feature space --- temporal, durative, and
+conditional-effect constructs are absent --- so the regime boundaries we report may shift on richer
+formalisms. Model scale is moreover
 partially confounded with numerical precision --- the two largest models are served
 AWQ-INT4 while the smaller three are 16-bit --- so the cross-model plain-arm size
 inversion cannot fully separate spontaneous-adoption propensity from a quantization
@@ -798,7 +832,8 @@ runtime did not surface per-trial reasoning traces for the model family used, so
 archived chains of thought; and wall-clock latency is not recoverable from a
 batched server, so we use token cost, not time, as the efficiency axis. Finally,
 \emph{validate\_domain} carries a $5{:}1$ positive-to-negative imbalance that
-widens its negative-arm interval.
+widens its negative-arm interval; we therefore headline balanced accuracy for that task, which ---
+like $F_1$ --- is robust to the imbalance that a pooled metric would reward.
 
 \section{Future Work}
 The natural next step is to test whether the regime structure and the
@@ -806,11 +841,15 @@ availability-versus-steering distinction generalize beyond this suite: to
 cross-domain planning benchmarks such as PlanBench
 \citep{valmeekam2023planbench} and to a head-to-head comparison with published
 LLM-as-formalizer baselines \citep{huang2025limit}, carrying the same end-to-end
-grading, signed-significance, and contamination controls. Beyond single-tool-use,
-multi-tool orchestration and tool-chaining --- where the model must select among
-several relevant tools and compose their outputs --- would extend the analysis to
-the agentic regime, and a cap-raised rerun would let the \emph{think}=on benefit be
-measured without the decode-budget confound.
+grading, signed-significance, and contamination controls. Beyond single-tool-use, the agentic regime is the natural extension along several axes: a
+\emph{multi-tool selection} setting that exposes two or more relevant tools at once (e.g.\ a
+validator and a simulator) to measure selection under ambiguity rather than mere relevance
+detection; \emph{iterative} settings in which a model may re-plan or self-correct across turns,
+which could raise invocation propensity by giving a silent model a second chance to call; and
+\emph{model-modulo} ensembles that pair one model for formalization with another for checking.
+Finally, because a naive budget increase degrades format adherence (Limitations), measuring the
+\emph{think}=on benefit cleanly calls for a budget-decoupled design --- separate decode allowances
+for the reasoning trace and the final answer --- rather than a simple cap raise.
 
 \section{Conclusion}
 We asked whether a sound symbolic planner or validator, exposed as a callable tool,
@@ -824,7 +863,9 @@ capability or tool accuracy, and it survives reasoning mode and an anonymized-do
 contamination control. The practical rule is concrete: a planner or validator behind
 a tool interface helps an LLM most when the task exceeds the model's unaided reach
 \emph{and} the model is actually prompted to call the tool --- availability alone is
-not enough.
+not enough. The effective dose is small: a single imperative sentence sufficed across the
+$4$B--$35$B range, failing to add value only where a model already called the tool or (at $0.8$B)
+mishandled the call mechanically.
 
 \bibliography{refs}
 
@@ -870,9 +911,11 @@ The fixtures run $5{:}1$ valid-to-invalid, so a constant ``VALID'' guess scores
 $83.3\%$ pooled but only $50\%$ balanced. Table~\ref{tab:vdom} shows that unaided,
 every $\geq$9B model is at or below the pooled trivial line and ranges from near-chance
 to only modest on the balanced metric, with the tool lifting balanced accuracy to
-$95$--$100\%$. The RQ1 significance test is computed on pooled success, while the
-balanced-accuracy endpoints we headline are point estimates whose load-bearing
-negative arm ($60$ trials) carries the wider interval.
+$95$--$100\%$. We headline \emph{and} test \emph{validate\_domain} on balanced accuracy, so the metric is
+consistent throughout: the tool lifts balanced accuracy from $53$--$74\%$ (no-tools) to
+$95$--$100\%$, a $+21$--$47$\,pp gap that is CI-disjoint and favorable for all three $\geq$9B models.
+The $60$-trial negative arm widens the balanced interval but cannot close a gap this large, and the
+pooled metric yields the same verdict.
 Qwen3.5-9B answers ``INVALID'' almost reflexively (true-positive rate $11.7\%$,
 true-negative rate $95.0\%$), which is why its pooled score ($25.6\%$) and balanced
 score ($53.3\%$) diverge so sharply.
@@ -925,6 +968,62 @@ Table~\ref{tab:contam}). Mean $|\Delta|=1.2$\,pp, max $3.7$, over $15$ cells; th
 largest drifts favor the anonymized corpus.}
 \label{tab:contam-pertask}
 \end{table}
+
+\paragraph{System-prompt policy stubs and the steering directive.}
+Each task's system prompt is a three-sentence stub (Methodology). The no-tools and
+tool-available arms share the role-framing first sentence and differ only in the
+policy clause --- and an output-format reminder on the verdict tasks --- while the
+steered arm appends exactly one tool-naming sentence to the neutral user prompt.
+Listing~\ref{lst:prompts} gives the verbatim text for \emph{validate\_plan}
+(representative) together with the one-sentence steering directive for every task;
+the four other system stubs follow the same template with the tool name swapped to
+match the grader, and the complete prompt bank ships with the released harness.
+
+\begin{listing}[t]
+\begin{lstlisting}
+validate_plan, no-tools (system prompt):
+  You are a PDDL validation assistant. PDDL validation tools
+  are not available in this evaluation. Analyze whether the
+  plan solves the problem using your own reasoning; end your
+  response with exactly one line: VERDICT: VALID or VERDICT:
+  INVALID.
+
+validate_plan, tool-available (system prompt):
+  You are a PDDL validation assistant. LLMs cannot reliably
+  check plan correctness from training alone. Use the
+  available validation tool to check whether the plan solves
+  the problem.
+
+steering directive (appended to the neutral user prompt):
+  solve:            Use the planner tool with the domain and
+                    problem as arguments.
+  validate_domain:  Use the validate_domain tool with the
+                    domain as its argument.
+  validate_problem: Use the validate_problem tool with the
+                    domain and problem as arguments.
+  validate_plan:    Use the validate_plan tool with the
+                    domain, problem, and plan as arguments.
+  simulate:         Use the get_state_transition tool with the
+                    domain, problem, and plan as arguments.
+\end{lstlisting}
+\caption{The thin per-task policy stubs. The availability contrast differences the
+no-tools and tool-available system prompts (which differ by the policy clause); the
+steering contrast appends the single directive shown to the neutral user prompt (the
+only difference between the plain and steered arms).}
+\label{lst:prompts}
+\end{listing}
+
+\paragraph{Canonical trajectory normalization (\emph{simulate}).}
+A \emph{simulate} answer is graded by deep-equality against the oracle trajectory
+after a canonical normal form is applied to both, so the $0\%$ unaided rate is not a
+formatting artifact. Per state, the boolean predicate list is case-folded,
+whitespace-collapsed, and sorted, and numeric fluents are keyed by their canonical
+parenthesised form, so case, internal spacing, and ordering never affect the verdict
+--- only the set of true predicates and the fluent values do. For example, an oracle
+state whose true predicates are \texttt{(clear c)} and \texttt{(on a b)} is matched by
+a model state listing \texttt{(ON A  b)} then \texttt{(clear c)}, and a numeric fluent
+\texttt{(fuel t1)} of value \texttt{5} matches \texttt{5.0}; but a single missing or
+extra predicate in \emph{any} state fails the entire trajectory.
 
 % ===== Reproducibility Checklist =====================================
 % Inlined from authorkit27/ReproducibilityChecklist.tex. AAAI-27 requires a
