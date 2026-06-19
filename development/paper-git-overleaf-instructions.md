@@ -57,6 +57,30 @@ If step 3 prints `ABORT: newest Overleaf commit is not a monorepo sync`, a coaut
 edited Overleaf after your last pull → redo step 1, then push. (Override only if certain:
 `FORCE_OVERWRITE=1 development/sync_overleaf.sh push`.)
 
+## Automated sync (GitHub Actions)
+
+`.github/workflows/overleaf-sync.yml` auto-pushes to Overleaf on every push to
+`paper/aaai27` that touches a synced file (`main.tex`, `refs.bib`, `aaai2027.sty`,
+`aaai2027.bst`, `figures/**`). It just runs `sync_overleaf.sh push` on a runner, so
+**all the golden rules still hold** — most importantly the clobber guard: if a co-author
+edited Overleaf since the last monorepo sync, the job **fails red and pushes nothing**
+(it never force-overwrites). A red run = "pull + reconcile locally, then push"; the run's
+job summary prints the exact commands.
+
+One-time setup:
+1. Create an Overleaf git token (Overleaf → Account Settings → Git integration → new
+   token). It is **write-capable**; only repo/org admins can read Actions secrets.
+2. Add it as a repo secret named `OVERLEAF_TOKEN`:
+   `gh secret set OVERLEAF_TOKEN --repo SPL-BGU/pddl-copilot-experiments` (paste the token
+   when prompted), or via Settings → Secrets and variables → Actions.
+3. Trigger manually any time from the Actions tab (**Run workflow** → the
+   `workflow_dispatch` button) or just push a paper edit.
+
+Caveats of auto-push (chosen deliberately): the job goes red whenever a co-author is
+web-editing Overleaf (expected — it is the guard protecting their work, not a bug), and
+the write-capable token lives in shared org CI. The local daily cycle below still works
+unchanged and is the fallback whenever the Action aborts.
+
 ## Working on code and paper at the same time
 
 Independent. Do code on a `feat/…` branch, paper on `paper/aaai27`. The bridge only reads
