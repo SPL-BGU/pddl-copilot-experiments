@@ -2,7 +2,7 @@
 # Rebuild the bootstrap zip for the INITIAL Overleaf upload.
 # Produces a flat, standalone LaTeX project (no authorkit27/ subdir, no notes) at
 # paper/pddl-copilot-paper-overleaf.zip. Use only to create/replace the Overleaf
-# project; ongoing sync is git subtree (see OVERLEAF_SYNC.md).
+# project; ongoing sync is the clone-bridge (see paper-git-overleaf-instructions.md).
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)/paper"
