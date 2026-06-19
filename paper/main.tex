@@ -57,6 +57,18 @@
     %
 }
 
+\newif\ifaddcomments
+\addcommentstrue % Uncomment this line to remove the user comments
+
+\newcommand{\commentout}[1]{ }
+
+\newcommand{\todo}[1]{\ifaddcomments{\textcolor{red}{[TODO: #1]}}\fi}
+\newcommand{\roni}[1]{\ifaddcomments{\textcolor{orange}{[Roni: #1]}}\fi}
+\newcommand{\yarin}[1]{\ifaddcomments{\textcolor{violet}{[Yarin: #1]}}\fi}
+\newcommand{\shahaf}[1]{\ifaddcomments{\textcolor{blue}{[Shahaf: #1]}}\fi}
+\newcommand{\omer}[1]
+{\ifaddcomments{\textcolor{teal}{[Omer: #1]}}\fi}
+
 \begin{document}
 
 \maketitle
