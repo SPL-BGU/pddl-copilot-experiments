@@ -11,3 +11,5 @@
 *.fdb_latexmk
 *.synctex.gz
 *.log
+# Bootstrap zip for the initial Overleaf upload (regenerate as needed; not synced)
+*.zip
