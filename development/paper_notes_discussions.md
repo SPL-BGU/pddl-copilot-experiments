@@ -410,3 +410,35 @@ validated by an independent ranking subagent (the user asked for a second perspe
   figure* added ~0.5pg of float). **Still NOT done (the one genuinely new-compute item):** the
   one-frontier-model run on validate_plan+simulate (REVIEW §7) — needs API/GPU inference, not a
   re-plot.
+
+- 2026-06-19: **Wrote the Sonnet 4.6 no-tools frontier result into `paper/main.tex`** (branch
+  `paper/aaai27-sonnet-frontier-writeup`, off `paper/aaai27`). This closes the one genuinely
+  new-compute item the prior figure entry flagged as "NOT done" (REVIEW §7A: the frontier
+  generality + contamination experiment, both corpora completed 2026-06-19 in
+  `results/sonnet-frontier/{sweep5v2,sweep6}`, N=4,560/corpus, think=off). Three additive edits,
+  build clean (16pp, +1pg vs 15pp baseline, 0 undefined refs, 0 overfull): (1) **Robustness** — new
+  `\textbf{A frontier proprietary model.}` paragraph + compact `tab:frontier` (5 tasks ×
+  canonical/anon/Δ); (2) **Limitations** — replaced "need not transfer to proprietary or frontier
+  systems" with the honest split: the *unaided baseline* structure (sole-source floor +
+  contamination null) DOES extend to Sonnet, but the *with-tools invocation-propensity* finding was
+  measured only on the open-weight roster; (3) **Future Work** — added the proprietary-with-tools
+  question (does aggressive tool-use post-training close the availability gap / steering repair?).
+  **Verified numbers (recomputed from raw trials, Wilson 95%):** simulate 0%/0% (sole-source floor
+  holds at the frontier; rule-of-three ≤1.3%), solve 28.7%/28.3% (ABOVE the open roster's 8–11%
+  floor — frontier model retains modest unaided planning but still fails most problems unaided),
+  validate_problem 89.7/90.5, validate_domain 93.6/91.7, validate_plan 97.3/97.3. Contamination null
+  is CLEANER than the open roster: every Wilson CI overlaps, max |Δ|=1.9pp (validate_domain, favors
+  canonical but well within noise — so NO directional/memorization claim, unlike the open roster's
+  "favors anon" framing), pooled |Δ|=0.04pp. **KEY honest scope:** Sonnet ran NO-TOOLS ONLY
+  (with_tools=False both corpora), so it corroborates the baseline side, NOT the headline propensity
+  finding. **Haiku decision (user asked to suggest):** Haiku *no-tools* = LOW added value (Sonnet
+  already gives a STRONGER same-lab frontier no-tools baseline + contamination null; a second,
+  weaker, same-lab point is largely redundant and addresses no distinct objection). Haiku *with-tools*
+  = the only thing that would extend the CENTRAL propensity finding to a proprietary model, but (a)
+  multi-turn MCP tool-calling is NOT batchable (the cheap Batch-API shim only covered single-shot
+  no-tools) so it is the integration-risky path REVIEW §7B already flagged, and (b) Haiku is the
+  cheap tier, not the flagship the "aggressive tool-use RLHF" objection targets — so if a proprietary
+  with-tools datapoint is ever funded, Sonnet-with-tools on the two diagnostic cells (validate_plan
+  plain+steered) is the more defensible spend. RECOMMENDATION: do NOT add Haiku for this submission;
+  it is already routed to Future Work as a concrete named experiment. Not yet done: PR into
+  `paper/aaai27`; Overleaf sync (pull+commit before push).
