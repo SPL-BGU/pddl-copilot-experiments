@@ -51,6 +51,24 @@ development/sync_overleaf.sh push    # repo paper/ -> Overleaf
 to run if the newest Overleaf commit isn't a monorepo sync (i.e. a coauthor committed)
 — resolve by pulling first. Override only if you are sure with `FORCE_OVERWRITE=1`.
 
+**`pull` overwrites `paper/` in the working tree**, so commit (or stash) your local
+paper edits *before* pulling, then `git diff` to review what Overleaf changed.
+
+**Take turns, don't diverge.** The safe rhythm is: push your work up → let coauthors
+edit on Overleaf → pull their edits down → repeat. Avoid you-and-a-coauthor editing the
+*same paragraph* between syncs; if it happens, reconcile by hand after the pull.
+
+## Working on code and paper at the same time
+
+`paper/**` (paper) and everything else (code/experiments) are disjoint, so they never
+conflict. Keep them on separate branches:
+- **Paper:** `paper/aaai27` — the only branch the Overleaf bridge ever touches.
+- **Code:** `feat/...` off `main`.
+
+Switch freely. The Overleaf bridge only reads `paper/` files, so your code work is
+invisible to Overleaf and vice-versa. To refresh the paper branch with merged code/
+results: `git checkout paper/aaai27 && git merge main` (paper files are untouched).
+
 ### Recovering a clobbered coauthor edit
 
 If a push already overwrote an Overleaf edit, it is still in the clone's history:
