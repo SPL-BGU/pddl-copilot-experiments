@@ -1,0 +1,95 @@
+name: Sync paper to Overleaf
+
+# Auto-pushes paper/ to the shared Overleaf project whenever a synced file changes
+# on paper/aaai27. SAFE BY DESIGN: development/sync_overleaf.sh pulls Overleaf first
+# and ABORTS (this job goes red) if a co-author edited Overleaf since the last
+# monorepo sync, rather than clobbering their work. Nothing is ever force-pushed.
+#
+# A red run almost always means "a co-author edited Overleaf" -> pull + reconcile
+# locally, then push (the failure summary spells out the commands). See
+# development/paper-git-overleaf-instructions.md.
+#
+# One-time setup: add a repository secret OVERLEAF_TOKEN holding an Overleaf git
+# token (Overleaf -> Account Settings -> Git integration -> new token). The token is
+# write-capable and only repo/org admins can read Actions secrets, so treat it as a
+# shared-project credential.
+
+on:
+  push:
+    branches: [paper/aaai27]
+    paths:
+      - paper/main.tex
+      - paper/refs.bib
+      - paper/aaai2027.sty
+      - paper/aaai2027.bst
+      - paper/figures/**
+  workflow_dispatch: {}
+
+# Least privilege: this job never writes back to the GitHub repo (it only pushes to
+# Overleaf), so it does not re-trigger itself and needs no write scope.
+permissions:
+  contents: read
+
+# Serialize syncs so a queued push never races a push already in flight; do not
+# cancel a run mid-push (an interrupted git push to Overleaf is the one thing we
+# want to avoid).
+concurrency:
+  group: overleaf-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out paper/aaai27
+        uses: actions/checkout@v4
+
+      - name: Configure git identity + Overleaf auth
+        env:
+          OVERLEAF_TOKEN: ${{ secrets.OVERLEAF_TOKEN }}
+        run: |
+          if [ -z "${OVERLEAF_TOKEN}" ]; then
+            echo "::error::OVERLEAF_TOKEN secret is not set. Add it under Settings -> Secrets and variables -> Actions -> New repository secret."
+            exit 1
+          fi
+          git config --global user.name  "pddl-copilot monorepo sync"
+          git config --global user.email "actions@users.noreply.github.com"
+          # Apply the token to all git.overleaf.com HTTPS operations via insteadOf, so
+          # it lives only in the runner's ephemeral ~/.gitconfig and never in a stored
+          # remote or in the sync script's arguments. No `set -x` anywhere keeps it out
+          # of the logs (Actions also masks the raw secret value).
+          git config --global \
+            url."https://git:${OVERLEAF_TOKEN}@git.overleaf.com/".insteadOf \
+            "https://git.overleaf.com/"
+
+      - name: Push paper/ to Overleaf (guarded)
+        env:
+          # git.overleaf.com project id (see paper-git-overleaf-instructions.md).
+          OVERLEAF_URL: https://git.overleaf.com/6a34d3fcd57de7dc5849016d
+          # Fresh ephemeral clone each run; the clobber guard reads Overleaf's live
+          # head, so a fresh clone is fine. (runner.* is only valid in step-level env.)
+          OVERLEAF_CLONE: ${{ runner.temp }}/overleaf-clone
+        run: bash development/sync_overleaf.sh push
+
+      - name: Explain a failed sync
+        if: failure()
+        run: |
+          {
+            echo "### Overleaf sync did not push"
+            echo ""
+            echo "Most likely the **clobber guard** fired: a co-author edited the Overleaf"
+            echo "project after the last monorepo sync, so an auto-push would overwrite"
+            echo "their work. **Nothing was lost** and nothing was pushed."
+            echo ""
+            echo "Resolve it locally, then this branch will sync cleanly on the next push:"
+            echo '```bash'
+            echo "git checkout paper/aaai27"
+            echo "development/sync_overleaf.sh pull"
+            echo "git add paper && git commit -m 'overleaf: pull coauthor edits'"
+            echo "development/sync_overleaf.sh push"
+            echo '```'
+            echo ""
+            echo "If instead authentication failed, re-check the \`OVERLEAF_TOKEN\` secret"
+            echo "(Overleaf -> Account Settings -> Git integration) and that the git"
+            echo "username for the token is \`git\`."
+          } >> "$GITHUB_STEP_SUMMARY"
