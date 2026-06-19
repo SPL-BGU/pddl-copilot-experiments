@@ -6,6 +6,28 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-19 — Sonnet-4.6 frontier no-tools: both corpora run at full N (results)
+
+**Change.** Ran the §7A frontier experiment end-to-end at full N over both corpora via `tools/sonnet_batch.py`. Two Anthropic batches, 4,560 trials each (9,120 total), all succeeded / 0 API errors, ~2% `max_tokens` truncation per corpus. Graded output committed under `results/sonnet-frontier/{sweep5v2,sweep6}/` (force-added — `results/` is gitignored by repo convention; tracked here as a one-off paper deliverable). Actual cost: canonical $39.13 + anon $42.38 = **$81.51** (anon ~8% pricier — the known ~5% longer anon prompts).
+
+**Results (Sonnet 4.6, no-tools, think=off; success rate [95% Wilson CI]).**
+
+| task | canonical (sweep5v2) | anon (sweep6) | Δ (can−anon) |
+|---|---|---|---|
+| simulate | 0.0% [0.0,1.3] | 0.0% [0.0,1.3] | +0.0 |
+| solve | 28.7% [23.8,34.0] | 28.3% [23.5,33.7] | +0.3 |
+| validate_plan | 97.3% [96.6,97.8] | 97.3% [96.7,97.8] | −0.0 |
+| validate_problem | 89.7% [87.0,91.9] | 90.5% [87.9,92.6] | −0.8 |
+| validate_domain | 93.6% [90.6,95.7] | 91.7% [88.3,94.1] | +1.9 |
+
+**Two findings.** (1) **Volatility confirmed at the frontier.** One model, one config, spans **0%→97%** across tasks — bimodal: floored on the generative/state-tracking tasks (simulate 0/300 *genuinely* — 149 produced a full but wrong trajectory; solve <30%) and near-ceiling on judgment validation (validate_* 90–97%). Kills the "small models just aren't capable" rebuttal. (2) **Contamination probe = NULL.** Every canonical−anon Δ is ≤1.9pts with fully overlapping CIs, including on the tasks that *have* headroom (solve +0.3). Anonymizing fixtures changes nothing → the validate_* scores are genuine capability, not memorization, and the solve/simulate floors are real incapability, not anon-broke-recall. Mirrors the open-model sweep6 no-tools null result; now frontier-anchored. Resolves the "one-frontier-model run (REVIEW §7)" open item.
+
+**Compatibility.** Purely additive (new `results/sonnet-frontier/` rows). No scorer/prompt/fixture/existing-cell change. Paper write-up deferred (per user) — paper/main.tex untouched.
+
+**Files touched.** `results/sonnet-frontier/{sweep5v2,sweep6}/{trials.jsonl,single_task_*.json,summary_*.json}` (new, force-added), `development/{CHANGELOG.md,paper_notes_discussions.md}`.
+
+---
+
 ## 2026-06-18 — Sonnet-4.6 frontier no-tools batch pipeline (`tools/sonnet_batch.py`) + `build_jobs`/`build_messages` extraction
 
 **Change.** Adds an offline Anthropic **Message Batches API** runner for the LOCKED frontier experiment (`paper/REVIEW_AND_REWRITES.md` §7A): Claude **Sonnet 4.6, no-tools, think=off, full N**, over the exact sweep5v2 (canonical) + sweep6 (anonymized) fixtures/prompts/graders. To preserve corpus identity, the harness's job enumeration and prompt construction were extracted into two pure, shared functions:
