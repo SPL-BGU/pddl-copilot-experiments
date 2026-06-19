@@ -78,6 +78,7 @@ from pddl_eval.scoring import (
 )
 from pddl_eval.summary import save_results
 from run_experiment import resolve_plugin_dirs
+from tools._sonnet_common import format_for
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -100,27 +101,10 @@ BATCH_OUTPUT_PRICE_PER_TOK = 7.5 / 1_000_000
 # whenever solve trials are present.
 DEFAULT_TASKS = ["solve", "simulate", "validate_plan", "validate_problem", "validate_domain"]
 
-# Backend adaptations for the output-shape tasks whose corpus prompts defer the
-# top-level JSON shape to the (absent) vLLM guided_json constraint. Appended to
-# the user turn at request-build time so build_messages stays byte-identical.
-SIMULATE_JSON_DIRECTIVE = (
-    "\n\nReturn ONLY a single JSON object (no prose, no markdown code fences) "
-    'of the form {"trajectory": [ ...steps... ]}, where each step matches the '
-    "example above (keys: step, action, state.boolean, state.numeric)."
-)
-# `solve` IS schema-compatible with Anthropic structured outputs (a flat
-# {"plan": [str, ...]} object), so we force the shape via output_config.format —
-# the faithful analog of the open models' vLLM guided_json, which likewise left
-# no room for prose. This avoids the directive-only divergence where a strong
-# model reasons in prose and trips format_parse_fail instead of being graded on
-# the plan itself. (simulate's schema has a free-form numeric dict, which
-# structured outputs rejects, so simulate keeps the directive.)
-SOLVE_FORMAT_SCHEMA = {
-    "type": "object",
-    "properties": {"plan": {"type": "array", "items": {"type": "string"}}},
-    "required": ["plan"],
-    "additionalProperties": False,
-}
+# The output-shape backend adaptations (simulate JSON directive, solve schema)
+# live in tools/_sonnet_common.format_for so this no-tools builder and the live
+# with-tools probe cannot drift. format_for mirrors the vLLM per-task format
+# handling: the guided_json analog in no-tools, nothing in with-tools.
 
 # Anonymized corpus == the committed sweep6 fixture set under domains-anon/.
 CORPUS_DOMAINS = {
@@ -154,9 +138,7 @@ def _build_request(custom_id: str, job: tuple) -> tuple[dict, dict]:
 
     messages = build_messages(task, dpddl, ppddl, pv, with_tools=False, gt=gt)
     system_text = messages[0]["content"]
-    user_text = messages[1]["content"]
-    if task == "simulate":
-        user_text += SIMULATE_JSON_DIRECTIVE
+    user_text, output_config = format_for(task, messages[1]["content"], with_tools=False)
 
     params = {
         "model": MODEL,
@@ -165,13 +147,8 @@ def _build_request(custom_id: str, job: tuple) -> tuple[dict, dict]:
         "system": system_text,
         "messages": [{"role": "user", "content": user_text}],
     }
-    # solve: force the {"plan":[...]} shape via structured outputs (the
-    # guided_json analog). simulate uses the directive above; validate_* rely on
-    # the corpus prompt's VERDICT footer + check_success's free-text fallback.
-    if task == "solve":
-        params["output_config"] = {
-            "format": {"type": "json_schema", "schema": SOLVE_FORMAT_SCHEMA}
-        }
+    if output_config:
+        params["output_config"] = output_config
     request = {"custom_id": custom_id, "params": params}
     sidecar = {
         "custom_id": custom_id,

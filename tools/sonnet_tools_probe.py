@@ -50,16 +50,15 @@ from pddl_eval.runner import (
 from pddl_eval.scoring import FR_EXCEPTION, _classify_step_failure, check_success
 from pddl_eval.summary import save_results
 from run_experiment import resolve_plugin_dirs
+# The simulate-directive / solve-schema backend adaptations + the per-task
+# format-fidelity rule are shared with tools/sonnet_batch.py via format_for so
+# the no-tools mode here cannot drift from the batch path.
+from tools._sonnet_common import format_for
 
-# Canonical source of these two lives in tools/sonnet_batch.py; duplicated here
-# (tiny, no-drift-risk constants) so the probe has no cross-tool import.
 # MODEL + the live prices are overridden from --model at runtime (see main()).
+# (Trivially-stable dups vs sonnet_batch — CORPUS_DOMAINS + the J_* job-tuple
+# indices — are kept inline; only the non-trivial request-shaping moved out.)
 MODEL = "claude-sonnet-4-6"
-SIMULATE_JSON_DIRECTIVE = (
-    "\n\nReturn ONLY a single JSON object (no prose, no markdown code fences) "
-    'of the form {"trajectory": [ ...steps... ]}, where each step matches the '
-    "example above (keys: step, action, state.boolean, state.numeric)."
-)
 
 # LIVE list price per model — with-tools cannot batch, so NO −50% discount.
 # (in_per_tok, out_per_tok). Haiku 4.5 = $1/$5, Sonnet 4.6 = $3/$15.
@@ -70,15 +69,6 @@ PRICES = {
 LIST_INPUT_PRICE_PER_TOK, LIST_OUTPUT_PRICE_PER_TOK = PRICES[MODEL]
 # Batch (no-tools) price = list / 2 (the −50% Batch discount); derived at
 # report time from the runtime-resolved LIST_* so it tracks --model correctly.
-
-# solve no-tools forces the {"plan":[...]} shape via structured outputs — the
-# faithful analog of the open models' vLLM guided_json. Mirrors sonnet_batch.py.
-SOLVE_FORMAT_SCHEMA = {
-    "type": "object",
-    "properties": {"plan": {"type": "array", "items": {"type": "string"}}},
-    "required": ["plan"],
-    "additionalProperties": False,
-}
 
 CORPUS_DOMAINS = {"canonical": "domains", "anon": "domains-anon"}
 
@@ -121,9 +111,11 @@ async def _run_one(client, mcp, anthropic_tools, job) -> dict:
 
     msgs = build_messages(task, dpddl, ppddl, pv, with_tools=True, gt=gt)
     system_text = msgs[0]["content"]
-    user_text = msgs[1]["content"]
-    if task == "simulate":
-        user_text += SIMULATE_JSON_DIRECTIVE
+    # vLLM's with-tools branch passes NO format constraint, so format_for adds
+    # nothing here (no simulate directive): simulate WT is graded from the
+    # get_state_transition tool result, not the model's text, and a "return ONLY
+    # JSON" directive could suppress the tool call check_success requires.
+    user_text, _ = format_for(task, msgs[1]["content"], with_tools=True)
 
     messages = [{"role": "user", "content": user_text}]
     tool_calls_log: list[dict] = []
@@ -168,22 +160,19 @@ async def _run_one(client, mcp, anthropic_tools, job) -> dict:
 
 
 async def _run_one_notools(client, job) -> dict:
-    """Single live no-tools call. Mirrors sonnet_batch._build_request shapes:
-    build_messages(with_tools=False) + simulate JSON directive + solve
-    structured output. No MCP tool loop (the model has no planning tools)."""
+    """Single live no-tools call. Mirrors sonnet_batch._build_request shapes via
+    the shared format_for (the vLLM guided_json analog: simulate JSON directive +
+    solve structured output). No MCP tool loop (the model has no planning tools)."""
     task, dpddl, ppddl = job[J_TASK], job[J_DPDDL], job[J_PPDDL]
     pv, gt, max_tokens = job[J_PV], job[J_GT], job[J_NP]
 
     msgs = build_messages(task, dpddl, ppddl, pv, with_tools=False, gt=gt)
-    user_text = msgs[1]["content"]
-    if task == "simulate":
-        user_text += SIMULATE_JSON_DIRECTIVE
+    user_text, output_config = format_for(task, msgs[1]["content"], with_tools=False)
     kwargs = dict(model=MODEL, max_tokens=max_tokens, temperature=0,
                   system=msgs[0]["content"],
                   messages=[{"role": "user", "content": user_text}])
-    if task == "solve":
-        kwargs["output_config"] = {
-            "format": {"type": "json_schema", "schema": SOLVE_FORMAT_SCHEMA}}
+    if output_config:
+        kwargs["output_config"] = output_config
     resp = await client.messages.create(**kwargs)
     text = "".join(b.text for b in resp.content if b.type == "text")
     return {"text": text, "tool_calls": [], "stop_reason": resp.stop_reason,
