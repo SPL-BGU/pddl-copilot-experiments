@@ -6,7 +6,15 @@ When a bullet later turns out wrong or superseded, strike it through and add the
 
 ---
 
-## 2026-06-18 — Sonnet-4.6 frontier no-tools experiment: pipeline built + pilot-validated (not yet run at full N)
+## 2026-06-19 — With-tools frontier probe: capability ladder + Haiku-WT decision (cost blocked)
+
+- **Probed** with-tools (live agentic loop, can't batch → list price) for Sonnet 4.6 + Haiku 4.5 on the same 75-trial stratified canonical sample; full writeup in `development/with_tools_probe_findings.md`.
+- **Four-way ladder (success):** tools take every task to ~100% for both models. The tools *lift* is **2–5× larger for the weaker model** on validation (validate_problem +50.0 Haiku vs +10.3 Sonnet; validate_plan +16.3 vs +2.7). Sonnet no-tools validation holds high (90–97%); **Haiku no-tools collapses** (validate_problem 50%, validate_plan 83.7%, validate_domain 83.3%). **Conclusion: validation competence is capability-gated; tools erase the gap — and the gap they close grows as the model weakens.**
+- **Floors model-agnostic:** simulate 0% and solve ~29–33% unaided for *both* Sonnet and Haiku → sole-source holds across the capability range.
+- **Cost-of-pass:** at the frontier tools win only on simulate (Sonnet's unaided baseline is good+cheap elsewhere → tools 7–14× pricier per pass on solve/validate). For the weaker Haiku the tools win is broader.
+- **DECISION (Omer 2026-06-19):** run **Haiku-WT on the 4,560 plain-only (v11–13) sweep5v2** corpus. **BUT the ~$146 list cost is REJECTED — must find a cheaper solution first** (open blocker). Lead candidate = prompt caching of the stable system+tool-schema prefix (methodologically free); fallbacks = simulate trajectory compaction, lower turn cap, validate_plan subsample (last one breaks N-matching).
+- **Paper scope:** with-tools / Haiku ladder stays **Future Work** for this submission ([[project_sonnet_frontier_notools]]); the probe supplies its feasibility + cost evidence. Haiku ≠ the flagship the "frontier models don't need tools" objection targets, and with-tools is the non-batchable integration-heavier path.
+- Caveat: validate_plan n=49 (solid); other cells n=6–8 (directional, wide CIs).
 
 - **DONE (code + pilots; full run pending credit):** offline pipeline for the §7A frontier experiment — Sonnet 4.6, no-tools, think=off, full N, canonical (sweep5v2) + anonymized (sweep6), via the Anthropic **Message Batches API** (−50%). Tool: `tools/sonnet_batch.py` (`build`/`submit`/`poll`/`grade`). Corpus identity preserved by reusing the harness's own enumerator/prompt-builder/grader (extracted `build_jobs` + `build_messages` from `runner.py`; grading via `check_success`; output via `save_results`). Anon corpus = committed `domains-anon/`; no re-anonymization.
 - **Scope DECIDED → 5 tasks.** §7A's 4 (`simulate` + `validate_plan` + `validate_problem` + `validate_domain`) **plus `solve`, added on user request** (2026-06-18) as a second sole-source point (the canonical planning task). Per-corpus N = open-model `*_off_no-tools` cell exactly: solve 300 / validate_domain 360 / validate_problem 600 / validate_plan 3,000 / simulate 300 = **4,560/corpus, 9,120 total**. validate_domain is 5:1 imbalanced (ISS-020) → **report balanced accuracy**.

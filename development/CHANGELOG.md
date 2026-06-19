@@ -6,6 +6,22 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-19 — With-tools frontier probe (`tools/sonnet_tools_probe.py`) + Haiku/Sonnet capability ladder
+
+**Change.** Adds `tools/sonnet_tools_probe.py` — a LIVE with-tools agentic-loop probe (Anthropic Messages API + MCP tool execution) for proprietary frontier models, with `--model` (Sonnet 4.6 / Haiku 4.5), `--no-tools` (single-call no-tools mode mirroring the batch path's request shapes), per-trial error handling, and a cost report + full-N projection. With-tools **cannot batch** (multi-turn loop with local MCP execution) → runs live at list price, no −50% discount. Reuses `build_jobs`/`build_messages`/`check_success`/`save_results` for corpus identity.
+
+**Why a separate tool (not sonnet_batch).** sonnet_batch is the no-tools Batches runner (submit→poll→grade). With-tools is a fundamentally different execution model (request/response agentic loop), so it gets its own live tool.
+
+**Findings (75-trial stratified probe, canonical; full writeup in `development/with_tools_probe_findings.md`).** Four-way ladder (success): tools take every task to ~100% for both models; the tools *lift* is 2–5× larger for the weaker model on validation (validate_problem +50.0 Haiku vs +10.3 Sonnet) → **tools close the gap, and the gap they close grows as the model weakens.** Floors are model-agnostic (simulate 0%, solve ~30% unaided for both). Cost-of-pass: at the frontier tools win only on simulate (Sonnet's no-tools baseline is good+cheap elsewhere). Haiku's 200K context overflows on the giant-trajectory simulate fixture (depot/p01, ~500k-token tool result) → handled as a per-trial failure.
+
+**DECISION (open blocker).** Run Haiku 4.5 with-tools over the **4,560 plain-only (variants 11–13) sweep5v2** corpus (matched N to the no-tools plain arm). **The ~$146 list cost is NOT accepted — a cheaper solution is required first.** Candidates (see findings doc): prompt caching of the stable system+tool-schema prefix (recommended, methodologically free); simulate trajectory compaction; lower turn cap; validate_plan subsample (breaks N-matching). Paper scope: with-tools/Haiku ladder is Future Work; this probe supplies its feasibility + cost evidence.
+
+**Compatibility.** Purely additive (new tool + new `results/frontier-with-tools-probe/` data + docs). No existing cell, scorer, prompt, or fixture changed. One bug fixed in-tool before commit: the no-tools batch price now derives from the runtime `--model` (was pinned to Sonnet's rate).
+
+**Files.** `tools/sonnet_tools_probe.py` (new), `development/with_tools_probe_findings.md` (new), `results/frontier-with-tools-probe/` (probe keys + graded trials, force-added), `development/{CHANGELOG.md,paper_notes_discussions.md}`.
+
+---
+
 ## 2026-06-18 — Sonnet-4.6 frontier no-tools batch pipeline (`tools/sonnet_batch.py`) + `build_jobs`/`build_messages` extraction
 
 **Change.** Adds an offline Anthropic **Message Batches API** runner for the LOCKED frontier experiment (`paper/REVIEW_AND_REWRITES.md` §7A): Claude **Sonnet 4.6, no-tools, think=off, full N**, over the exact sweep5v2 (canonical) + sweep6 (anonymized) fixtures/prompts/graders. To preserve corpus identity, the harness's job enumeration and prompt construction were extracted into two pure, shared functions:
