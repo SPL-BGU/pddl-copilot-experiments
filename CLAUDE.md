@@ -8,6 +8,10 @@ See `README.md` for the sibling-project (`../pddl-copilot/`) background, marketp
 
 Paper-related decisions and bottom-line conclusions from our discussions are logged in `development/paper_notes_discussions.md` — append a dated, bulleted entry whenever a paper-related topic is decided.
 
+## Paper writing & Overleaf sync
+
+The AAAI-27 paper lives in `paper/` and syncs to an Overleaf project (owned by co-author Yarin) via a **clone-bridge, NOT git-subtree**. Before any paper-sync work, read `development/paper-git-overleaf-instructions.md`. Key rules: paper edits go on the `paper/aaai27` branch; the bridge (`development/sync_overleaf.sh`) only syncs `paper/`; **always `sync_overleaf.sh pull` (+ commit) before `push`** — a blind push clobbers coauthors' Overleaf web edits (the push guards against it). Never force-push to Overleaf (it's prohibited). `paper/` compiles standalone (`aaai2027.sty`/`.bst` live at `paper/` root; do not hand-edit them).
+
 ## Routing — where does a fix belong?
 
 - MCP tool returns `{"error": ...}` or wrong-shape output → fix in `../pddl-copilot/plugins/<name>/server/` and rerun `bash ../pddl-copilot/plugins/<name>/tests/verify.sh`

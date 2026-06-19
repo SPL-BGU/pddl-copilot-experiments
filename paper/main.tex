@@ -57,6 +57,18 @@
     %
 }
 
+\newif\ifaddcomments
+\addcommentstrue % Uncomment this line to remove the user comments
+
+\newcommand{\commentout}[1]{ }
+
+\newcommand{\todo}[1]{\ifaddcomments{\textcolor{red}{[TODO: #1]}}\fi}
+\newcommand{\roni}[1]{\ifaddcomments{\textcolor{orange}{[Roni: #1]}}\fi}
+\newcommand{\yarin}[1]{\ifaddcomments{\textcolor{violet}{[Yarin: #1]}}\fi}
+\newcommand{\shahaf}[1]{\ifaddcomments{\textcolor{blue}{[Shahaf: #1]}}\fi}
+\newcommand{\omer}[1]
+{\ifaddcomments{\textcolor{teal}{[Omer: #1]}}\fi}
+
 \begin{document}
 
 \maketitle
@@ -92,7 +104,7 @@ is not the model's capability or the tool's accuracy.
 % \end{links}
 
 \section{Introduction}
-% DRAFT 2026-06-14 (goal 1, partial). Third-person self-cite of benyamin2025pddlcopilot.
+% DRAFT 2026-06-14 (goal 1, partial).
 % Findings preview must match Results; no "first" claims.
 Large language models are increasingly deployed as agents that call external
 tools, and automated planning is an unusually clean setting in which to ask
@@ -113,15 +125,14 @@ translate language into PDDL for a downstream solver
 \citep{liu2023llmp, tantakoun2025survey}; and a third measures tool-use competence
 in isolation, without a planning oracle \citep{bfcl2025}. The specific question,
 whether access to a sound PDDL tool improves a model across the planning task
-pipeline measured end-to-end, was raised by the PDDL Planning Copilot
-\citep{benyamin2025pddlcopilot}, but its evaluation was preliminary: a limited
-prompt set (this study grades $4{,}560$ trials per model-mode-arm cell), success
-scored by tool \emph{selection} rather than end-to-end correctness, no confidence
-intervals, and no control for memorization of public benchmark domains. A clean
-answer requires controlling for several confounds at once: whether the model is
-even prompted to use the tool, whether the baseline is floored or already
-competent, reasoning-mode (extended-thinking) decode budgets, and contamination.
-This paper sets out to do that.
+pipeline measured end-to-end, has not been answered cleanly. A credible answer
+requires controlling for several confounds at once: whether the model is even
+prompted to use the tool, whether the baseline is floored or already competent,
+reasoning-mode (extended-thinking) decode budgets, and contamination of public
+benchmark domains. This paper sets out to do exactly that, grading $4{,}560$
+trials per model-mode-arm cell strictly end-to-end against a solver oracle rather
+than by tool \emph{selection}, with a confidence interval on every proportion and
+an anonymized-domain control for memorization.
 
 We evaluate five single-tool-use PDDL tasks (\emph{solve}, \emph{validate\_domain},
 \emph{validate\_problem}, \emph{validate\_plan}, \emph{simulate}) across five
@@ -166,8 +177,7 @@ probe returns null.
 \end{itemize}
 
 \section{Background and Related Work}
-% DRAFT 2026-06-14 (goal 2). Re-derived for our framework; cites the earlier version
-% (Benyamin et al.) in the THIRD PERSON only. Some refs flagged [VERIFY] in refs.bib.
+% DRAFT 2026-06-14 (goal 2). Re-derived for our framework.
 
 Automated planning studies how to synthesize a course of action that transforms an
 initial state into one satisfying a goal. The Planning Domain Definition Language (PDDL)
@@ -223,30 +233,61 @@ function selection rather than long-horizon orchestration. We use this point to 
 our results.
 
 \subsection{Positioning}
-The system most directly related to this study is the PDDL Planning Copilot
-\citep{benyamin2025pddlcopilot}, which wraps planners and validators behind an MCP interface
-and a single natural-language entry point. Its original evaluation was preliminary: a
-limited prompt set, no confidence intervals, and no control for memorization of public
-benchmark domains. This paper contributes a substantially more rigorous evaluation of
-whether such symbolic tools help LLMs: five single-tool-use PDDL tasks across five models, a
-three-arm design that separates tool \emph{availability} from a one-sentence steering
-\emph{nudge}, confidence intervals with signed significance, a contamination control
-over anonymized domains, and a token-cost (cost-of-pass) analysis. Cross-benchmark
+Across these three lines, LLMs are studied \emph{as} planners
+\citep{valmeekam2023planbench}, \emph{as} formalizers that emit PDDL for a downstream
+solver \citep{liu2023llmp, tantakoun2025survey}, or for tool-use competence in isolation
+\citep{bfcl2025}; none measures what a model gains when a sound planner or validator is
+available as a callable tool across the full set of PDDL tasks, graded end-to-end against
+the solver itself. That is the gap we close. This paper contributes a controlled evaluation
+of whether such symbolic tools help LLMs: five single-tool-use PDDL tasks across five
+models, a three-arm design that separates tool \emph{availability} from a one-sentence
+steering \emph{nudge}, confidence intervals with signed significance, a contamination
+control over anonymized domains, and a token-cost (cost-of-pass) analysis. Cross-benchmark
 generalization (e.g., PlanBench \citep{valmeekam2023planbench}) and published formalizer
 baselines \citep{huang2025limit} are deliberately out of scope here (see Future Work).
 
 \section{Methodology}
-% DRAFT (goal 3a). Sources: EXPERIMENTS_FLOW.md, run_experiment.py, pddl_eval/, deck s4-6/36-42.
 We ask a single, deliberately narrow question: \emph{when a sound symbolic
 planner or validator is available as a callable tool, how much does it improve a
 language model's performance on individual PDDL tasks, and at what token cost?}
 The study crosses five PDDL tasks, five open-weight models, two reasoning modes,
 and three experimental arms, and grades every response strictly against a
-deterministic solver/validator oracle rather than by self-report. The harness,
-fixtures, and locked findings reproduce and substantially strengthen the
-preliminary evaluation of the PDDL Planning Copilot
-\citep{benyamin2025pddlcopilot}, adding end-to-end grading, confidence
-intervals, a steering control, and a contamination probe.
+deterministic solver/validator oracle rather than by self-report.
+
+\subsection{Experimental Pipeline}
+A single evaluation harness turns the fixture corpus into graded trials, and every
+(model, reasoning mode, arm) cell runs the same four stages. In \emph{setup}, the
+harness loads the PDDL domain corpus and connects to the symbolic tools over the
+Model Context Protocol \citep{anthropic2024mcp}. In the \emph{oracle} stage, before
+any model is queried, an oracle calls those tools directly on every fixture to
+produce ground truth (a reference plan, a validity verdict, or a state trajectory,
+according to the task); a startup check re-confirms each fixture against its
+committed label and aborts the run on any drift. During \emph{trials}, for each
+task, paraphrase, and instance the harness builds the prompt, serves the model with
+vLLM at temperature~0, and in the tool arms lets it issue up to ten tool calls
+before it commits a final answer, logging that answer with its token counts and any
+tool calls. Finally, \emph{grading} scores each response strictly against the oracle
+(Table~\ref{tab:tasks}), tags it by failure mode, and aggregates it into a success
+rate with a Wilson \citep{wilson1927} score interval. The rest of this section
+details each stage: the tool suite the model calls, the tasks and fixtures, model
+serving, the three arms, and the statistics.
+
+\subsection{The Tool Suite}
+The tools the model may call are a suite of sound symbolic planners and
+validators, each exposed as a Model Context Protocol \citep{anthropic2024mcp}
+function with a typed argument schema and reached through a single
+natural-language entry point: the model reads a task description, selects a tool,
+emits a structured call, and receives the tool's result. Five tools cover the
+five tasks. A classical and a numeric planner (Fast Downward
+\citep{helmert2006fastdownward} and ENHSP \citep{scala2016enhsp}) return a plan
+for \emph{solve}; three validators built on the \texttt{unified-planning} library
+issue VALID/INVALID verdicts for \emph{validate\_domain}, \emph{validate\_problem},
+and \emph{validate\_plan}; and a state-transition tool returns the full trajectory
+a plan induces for \emph{simulate}. Every tool is sound and deterministic, so a
+correctly formed call is correct by construction; what the model contributes is
+recognizing which tool a task needs and invoking it with well-typed arguments. The
+verbatim per-task prompts that expose these tools, together with the one-sentence
+steering directive, appear in Listing~\ref{lst:prompts}.
 
 \subsection{Tasks, Oracle, and Fixtures}
 Each model is given five PDDL tasks, one tool-relevant per task: \emph{solve}
@@ -254,14 +295,11 @@ Each model is given five PDDL tasks, one tool-relevant per task: \emph{solve}
 \emph{validate\_problem} (judge whether a domain or problem file is well formed),
 \emph{validate\_plan} (judge whether a given plan is correct), and
 \emph{simulate} (produce the full state trajectory a plan induces, action by
-action). Before any model is run, an oracle generates ground truth by calling the
-symbolic tools directly: Fast Downward \citep{helmert2006fastdownward} and
-ENHSP \citep{scala2016enhsp} for planning, and a sound, pure-Python PDDL
-validator (built on the \texttt{unified-planning} library) for the verdict and
-trajectory tasks. The same deterministic tools both define ground truth and, in
-the tool arms, are what the model may call, so a correctly invoked tool is
-correct by construction; what the experiment measures is therefore whether and
-how the model invokes the tool, not the tool's own accuracy. Grading is end-to-end and
+action). Before any model is run, an oracle generates ground truth by calling
+these same tools directly. The one deterministic toolchain both defines ground
+truth and, in the tool arms, is what the model may call, so a correctly invoked
+tool is correct by construction; what the experiment measures is therefore
+whether and how the model invokes the tool, not the tool's own accuracy. Grading is end-to-end and
 unforgiving (Table~\ref{tab:tasks}): a \emph{solve} answer counts only if the
 returned plan is independently certified valid; a \emph{simulate} answer counts
 only if its entire trajectory equals the oracle's under a canonical normal form
@@ -290,8 +328,8 @@ task has a single relevant, correct-by-construction tool per instance
 
 The fixture corpus is 20 PDDL domains: 10 classical (e.g., blocksworld,
 gripper, rovers, satellite, depots) and 10 numeric (e.g., counters, farmland,
-sailing, drone), drawn from the earlier study's released dataset
-\citep{benyamin2025pddlcopilot} and public benchmark suites. Each domain ships
+sailing, drone), assembled from standard planning domains and public benchmark
+suites. Each domain ships
 matched valid and mutated-invalid files so the verdict tasks score against both
 positive and negative instances (balanced one-to-one for \emph{validate\_problem}
 and \emph{validate\_plan}; \emph{validate\_domain} carries a $5{:}1$
@@ -352,6 +390,47 @@ against no-tools yields the \emph{availability gap}, which isolates tool presenc
 sentence directing the model to use the tool. Differencing against the plain arm
 yields the \emph{steering gap}.
 \end{itemize}
+
+Listing~\ref{lst:prompts} gives the verbatim text for these three arms: the
+no-tools and tool-available \emph{validate\_plan} system prompts (representative;
+the four other stubs swap in the matching tool name) and the one-sentence
+steering directive for every task. The complete prompt bank ships with the
+released harness.
+
+\begin{listing}[t]
+\begin{lstlisting}
+validate_plan, no-tools (system prompt):
+  You are a PDDL validation assistant. PDDL validation tools
+  are not available in this evaluation. Analyze whether the
+  plan solves the problem using your own reasoning; end your
+  response with exactly one line: VERDICT: VALID or VERDICT:
+  INVALID.
+
+validate_plan, tool-available (system prompt):
+  You are a PDDL validation assistant. LLMs cannot reliably
+  check plan correctness from training alone. Use the
+  available validation tool to check whether the plan solves
+  the problem.
+
+steering directive (appended to the neutral user prompt):
+  solve:            Use the planner tool with the domain and
+                    problem as arguments.
+  validate_domain:  Use the validate_domain tool with the
+                    domain as its argument.
+  validate_problem: Use the validate_problem tool with the
+                    domain and problem as arguments.
+  validate_plan:    Use the validate_plan tool with the
+                    domain, problem, and plan as arguments.
+  simulate:         Use the get_state_transition tool with the
+                    domain, problem, and plan as arguments.
+\end{lstlisting}
+\caption{The thin per-task policy stubs. The availability contrast differences the
+no-tools and tool-available system prompts (which differ by the policy clause); the
+steering contrast appends the single directive shown to the neutral user prompt (the
+only difference between the plain and steered arms).}
+\label{lst:prompts}
+\end{listing}
+
 The two contrasts map onto the function-calling literature: the plain arm
 measures \emph{relevance detection} (does the model spontaneously invoke the
 right tool when its existence is known but not urged?) and the steered arm
@@ -972,50 +1051,6 @@ Table~\ref{tab:contam}). Mean $|\Delta|=1.2$\,pp, max $3.7$, over $15$ cells; th
 largest drifts favor the anonymized corpus.}
 \label{tab:contam-pertask}
 \end{table}
-
-\paragraph{System-prompt policy stubs and the steering directive.}
-Each task's system prompt is a three-sentence stub (Methodology). The no-tools and
-tool-available arms share the role-framing first sentence and differ only in the
-policy clause (and an output-format reminder on the verdict tasks), while the
-steered arm appends exactly one tool-naming sentence to the neutral user prompt.
-Listing~\ref{lst:prompts} gives the verbatim text for \emph{validate\_plan}
-(representative) together with the one-sentence steering directive for every task;
-the four other system stubs follow the same template with the tool name swapped to
-match the grader, and the complete prompt bank ships with the released harness.
-
-\begin{listing}[t]
-\begin{lstlisting}
-validate_plan, no-tools (system prompt):
-  You are a PDDL validation assistant. PDDL validation tools
-  are not available in this evaluation. Analyze whether the
-  plan solves the problem using your own reasoning; end your
-  response with exactly one line: VERDICT: VALID or VERDICT:
-  INVALID.
-
-validate_plan, tool-available (system prompt):
-  You are a PDDL validation assistant. LLMs cannot reliably
-  check plan correctness from training alone. Use the
-  available validation tool to check whether the plan solves
-  the problem.
-
-steering directive (appended to the neutral user prompt):
-  solve:            Use the planner tool with the domain and
-                    problem as arguments.
-  validate_domain:  Use the validate_domain tool with the
-                    domain as its argument.
-  validate_problem: Use the validate_problem tool with the
-                    domain and problem as arguments.
-  validate_plan:    Use the validate_plan tool with the
-                    domain, problem, and plan as arguments.
-  simulate:         Use the get_state_transition tool with the
-                    domain, problem, and plan as arguments.
-\end{lstlisting}
-\caption{The thin per-task policy stubs. The availability contrast differences the
-no-tools and tool-available system prompts (which differ by the policy clause); the
-steering contrast appends the single directive shown to the neutral user prompt (the
-only difference between the plain and steered arms).}
-\label{lst:prompts}
-\end{listing}
 
 \paragraph{Canonical trajectory normalization (\emph{simulate}).}
 A \emph{simulate} answer is graded by deep-equality against the oracle trajectory

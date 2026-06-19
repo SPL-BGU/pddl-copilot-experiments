@@ -43,6 +43,7 @@ run_test test_partial_subset.py
 run_test test_prompts.py
 run_test test_summary_arm.py
 run_test test_sonnet_batch.py
+run_test test_sonnet_tools_probe.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"
