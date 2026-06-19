@@ -24,31 +24,47 @@ git remote with `git subtree`.
 2. In the Overleaf project: **Menu → Git** → copy the project's git URL
    (`https://git.overleaf.com/<PROJECT_ID>`). Set a git auth token in
    Overleaf → Account Settings → Git integration (used as the password on push/pull).
-3. Add the remote and reconcile once (Overleaf already holds the uploaded files, so the
-   first contact is a pull):
+3. Add the remote:
    ```bash
    cd pddl-copilot-experiments
    git remote add overleaf https://git.overleaf.com/<PROJECT_ID>
-   git fetch overleaf
-   git subtree pull --prefix=paper overleaf master --squash -m "overleaf: initial reconcile"
    ```
-   Resolve any trivial conflicts (the files match the zip), commit.
+
+### First link (force-push is prohibited by Overleaf)
+
+Overleaf already holds the uploaded files on `main`, and our `paper/` history is
+unrelated to it, so we cannot force-overwrite. Instead, pull Overleaf's head into
+`paper/` once (joining the histories), then push on top:
+```bash
+git fetch overleaf
+# join the two unrelated histories into the paper/ subtree:
+git merge -s ort -Xsubtree=paper --allow-unrelated-histories --no-edit overleaf/main
+# identical files auto-resolve; for any real conflict keep ours:
+#   git checkout --ours <file> && git add <file> && git commit --no-edit
+git subtree push --prefix=paper overleaf main
+```
+After this, `paper/` shares ancestry with `overleaf/main`, so day-to-day pushes
+fast-forward without `--force`.
 
 ## Daily workflow
 
 - **Push local paper edits → Overleaf** (after committing your `paper/**` changes):
   ```bash
-  git subtree push --prefix=paper overleaf master
+  git subtree push --prefix=paper overleaf main
   ```
 - **Pull coauthors' Overleaf web edits → repo:**
   ```bash
-  git subtree pull --prefix=paper overleaf master --squash -m "overleaf: pull web edits"
+  git subtree pull --prefix=paper overleaf main -m "overleaf: pull web edits"
   ```
 
 Both commands are wrapped in `development/sync_overleaf.sh` (push|pull).
 
 ## Notes / gotchas
 
+- **Overleaf's branch is `main`.** The git-bridge rejects any other branch name
+  ("Please use the main branch"), so all subtree commands target `main`.
+- **No force-push.** Overleaf rejects `git push --force` ("forced push prohibited").
+  Never force; link histories with the First-link merge above, then fast-forward.
 - **Premium gate.** Overleaf's git/GitHub sync is a paid feature. Until the license is
   active, bootstrap via the zip; there is no live sync on the free tier.
 - **What rides along to Overleaf.** `git subtree push` mirrors *all* of `paper/`,

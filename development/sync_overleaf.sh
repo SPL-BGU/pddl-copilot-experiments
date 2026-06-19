@@ -5,7 +5,7 @@
 set -euo pipefail
 
 REMOTE="${OVERLEAF_REMOTE:-overleaf}"
-BRANCH="${OVERLEAF_BRANCH:-master}"
+BRANCH="${OVERLEAF_BRANCH:-main}"
 PREFIX="paper"
 
 cd "$(git rev-parse --show-toplevel)"
@@ -22,7 +22,10 @@ case "${1:-}" in
     ;;
   pull)
     git fetch "$REMOTE"
-    git subtree pull --prefix="$PREFIX" "$REMOTE" "$BRANCH" --squash \
+    # Non-squash so histories link and subsequent pushes fast-forward (Overleaf
+    # rejects force-pushes). On the very first pull use: git merge with
+    # --allow-unrelated-histories (see OVERLEAF_SYNC.md "First link").
+    git subtree pull --prefix="$PREFIX" "$REMOTE" "$BRANCH" \
       -m "overleaf: pull web edits"
     ;;
   *)
