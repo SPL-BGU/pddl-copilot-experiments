@@ -823,6 +823,25 @@ prompts run $\approx$5\% longer and so truncate more under the shared budget, so
 success falls $4$--$6$\,pp in lockstep with completion while success-given-completion
 is unchanged. This is itself a demonstration of the budget confound above.
 
+\textbf{A frontier proprietary model.} To test whether these baseline properties
+hold beyond the open-weight roster, we re-ran the no-tools arm on Claude Sonnet 4.6,
+a strong proprietary model, over both corpora at full $N$ (\emph{think}=off;
+Table~\ref{tab:frontier}). Two results carry over. The sole-source floor holds at
+the frontier: unaided \emph{simulate} success is $0\%$ ($0/300$ per corpus, Wilson
+upper bound $\leq$1.3\%), so multi-step state tracking is beyond even this model
+without the tool. Unaided \emph{solve} reaches $28.7\%$, above the open roster's
+$8$--$11\%$ floor, so the frontier model retains modest unaided planning ability but
+still fails on most problems without the tool. The contamination null also extends to
+the frontier, and is if anything cleaner than on the open roster: across all five
+tasks the canonical-to-anonymized drift never exceeds $1.9$\,pp (on
+\emph{validate\_domain}), every Wilson interval overlaps between corpora, and the
+pooled $|\Delta|$ is $0.04$\,pp, with no detectable memorization signal on the
+high-headroom probes (\emph{validate\_plan} at $97.3\%$ and \emph{validate\_problem}
+near $90\%$) where one would appear. Because this arm uses no tools, it corroborates
+the unaided \emph{baseline} structure at the frontier (sole-source flooring and the
+memorization null), not the with-tools invocation-propensity result, which remains
+specific to the open-weight roster.
+
 \begin{table}[t]
 \centering
 \small
@@ -846,6 +865,33 @@ unaided baseline carries no memorization signal. The null is informative where t
 baseline has headroom (e.g.\ Gemma-MoE-26B, Qwen3.6-35B) and uninformative at the
 floor.}
 \label{tab:contam}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Task} & \textbf{Canonical} & \textbf{Anonymized} & $\Delta$ \\
+\midrule
+\emph{simulate}$^\dagger$        & $0.0$  & $0.0$  & $+0.0$ \\
+\emph{solve}$^\dagger$           & $28.7$ & $28.3$ & $-0.3$ \\
+\emph{validate\_problem}         & $89.7$ & $90.5$ & $+0.8$ \\
+\emph{validate\_domain}          & $93.6$ & $91.7$ & $-1.9$ \\
+\emph{validate\_plan}            & $97.3$ & $97.3$ & $+0.0$ \\
+\bottomrule
+\end{tabular}
+\caption{Frontier generality and contamination: Claude Sonnet 4.6 no-tools success
+(\%, \emph{think}=off) on the canonical vs.\ anonymized-domain corpus, full $N$ per
+corpus ($300$ \emph{simulate}, $300$ \emph{solve}, $600$ \emph{validate\_problem},
+$360$ \emph{validate\_domain}, $3{,}000$ \emph{validate\_plan}; $4{,}560$ each side,
+matching Table~\ref{tab:contam}). Sign convention $\Delta=$ anonymized $-$ canonical,
+as in Tables~\ref{tab:contam}--\ref{tab:contam-pertask}. $^\dagger$Sole-source tasks:
+floored unaided, so they prove the sole-source floor at the frontier but carry no
+contamination headroom. Every Wilson $95\%$ interval overlaps between corpora (max
+$|\Delta|=1.9$\,pp on \emph{validate\_domain}, pooled $|\Delta|=0.04$\,pp), so the
+memorization null extends to a strong proprietary model.}
+\label{tab:frontier}
 \end{table}
 
 \section{Discussion}
@@ -893,8 +939,13 @@ robust floor. Decoding is deterministic (temperature~0), so each
 trial is a single sample and our intervals quantify uncertainty over the fixture
 instances, not sampling variance; robustness to higher temperatures is untested.
 The roster is five open-weight models from two families, so our claims concern the
-\emph{regime structure} of when a tool helps these models rather than a leaderboard, and
-need not transfer to proprietary or frontier systems. The fixture suite of $20$ domains spans
+\emph{regime structure} of when a tool helps these models rather than a leaderboard.
+The unaided side of that structure does extend to a strong proprietary model: Claude
+Sonnet 4.6 reproduces both the sole-source floor and the contamination null
+(Table~\ref{tab:frontier}). The with-tools invocation-propensity finding, however, was
+measured only on the open-weight roster, so whether the availability gap and its
+one-sentence steering repair transfer to proprietary models with aggressive tool-use
+post-training is untested here. The fixture suite of $20$ domains spans
 classical and numeric planning but does not exhaust PDDL's feature space (temporal, durative, and
 conditional-effect constructs are absent), so the regime boundaries we report may shift on richer
 formalisms. Model scale is moreover
@@ -930,6 +981,10 @@ validator and a simulator) to measure selection under ambiguity rather than mere
 detection; \emph{iterative} settings in which a model may re-plan or self-correct across turns,
 which could raise invocation propensity by giving a silent model a second chance to call; and
 \emph{model-modulo} ensembles that pair one model for formalization with another for checking.
+A further extension is to measure the \emph{with-tools} arm on proprietary models: the unaided
+frontier baseline is already established (Table~\ref{tab:frontier}), so the open question is
+whether a model with aggressive tool-use post-training still exhibits the availability gap and
+the steering repair, or whether its default invocation propensity is high enough to close them.
 Finally, because a naive budget increase degrades format adherence (Limitations), measuring the
 \emph{think}=on benefit cleanly calls for a budget-decoupled design (separate decode allowances
 for the reasoning trace and the final answer) rather than a simple cap raise.
