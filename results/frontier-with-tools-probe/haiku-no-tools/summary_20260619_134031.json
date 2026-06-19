@@ -1,0 +1,442 @@
+{
+  "single_task": [
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "tools",
+      "task": "solve",
+      "successes": 0,
+      "n": 0,
+      "success_rate": 0.0,
+      "ci_lo": 0.0,
+      "ci_hi": 0.0,
+      "truncated": 0,
+      "failure_reasons": {},
+      "tool_selected": 0,
+      "tool_selected_rate": 0.0,
+      "tool_selected_ci_lo": 0.0,
+      "tool_selected_ci_hi": 0.0,
+      "tokens": {
+        "n": 0,
+        "prompt_sum": 0,
+        "prompt_mean": 0.0,
+        "completion_sum": 0,
+        "completion_mean": 0.0,
+        "completion_median": 0.0,
+        "total_sum": 0,
+        "total_mean": 0.0,
+        "turns_mean": 0.0,
+        "turns_max": 0,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {}
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "tools",
+      "task": "validate_domain",
+      "successes": 0,
+      "n": 0,
+      "success_rate": 0.0,
+      "ci_lo": 0.0,
+      "ci_hi": 0.0,
+      "truncated": 0,
+      "failure_reasons": {},
+      "tool_selected": 0,
+      "tool_selected_rate": 0.0,
+      "tool_selected_ci_lo": 0.0,
+      "tool_selected_ci_hi": 0.0,
+      "tokens": {
+        "n": 0,
+        "prompt_sum": 0,
+        "prompt_mean": 0.0,
+        "completion_sum": 0,
+        "completion_mean": 0.0,
+        "completion_median": 0.0,
+        "total_sum": 0,
+        "total_mean": 0.0,
+        "turns_mean": 0.0,
+        "turns_max": 0,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {}
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "tools",
+      "task": "validate_problem",
+      "successes": 0,
+      "n": 0,
+      "success_rate": 0.0,
+      "ci_lo": 0.0,
+      "ci_hi": 0.0,
+      "truncated": 0,
+      "failure_reasons": {},
+      "tool_selected": 0,
+      "tool_selected_rate": 0.0,
+      "tool_selected_ci_lo": 0.0,
+      "tool_selected_ci_hi": 0.0,
+      "tokens": {
+        "n": 0,
+        "prompt_sum": 0,
+        "prompt_mean": 0.0,
+        "completion_sum": 0,
+        "completion_mean": 0.0,
+        "completion_median": 0.0,
+        "total_sum": 0,
+        "total_mean": 0.0,
+        "turns_mean": 0.0,
+        "turns_max": 0,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {}
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "tools",
+      "task": "validate_plan",
+      "successes": 0,
+      "n": 0,
+      "success_rate": 0.0,
+      "ci_lo": 0.0,
+      "ci_hi": 0.0,
+      "truncated": 0,
+      "failure_reasons": {},
+      "tool_selected": 0,
+      "tool_selected_rate": 0.0,
+      "tool_selected_ci_lo": 0.0,
+      "tool_selected_ci_hi": 0.0,
+      "tokens": {
+        "n": 0,
+        "prompt_sum": 0,
+        "prompt_mean": 0.0,
+        "completion_sum": 0,
+        "completion_mean": 0.0,
+        "completion_median": 0.0,
+        "total_sum": 0,
+        "total_mean": 0.0,
+        "turns_mean": 0.0,
+        "turns_max": 0,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {}
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "tools",
+      "task": "simulate",
+      "successes": 0,
+      "n": 0,
+      "success_rate": 0.0,
+      "ci_lo": 0.0,
+      "ci_hi": 0.0,
+      "truncated": 0,
+      "failure_reasons": {},
+      "tool_selected": 0,
+      "tool_selected_rate": 0.0,
+      "tool_selected_ci_lo": 0.0,
+      "tool_selected_ci_hi": 0.0,
+      "tokens": {
+        "n": 0,
+        "prompt_sum": 0,
+        "prompt_mean": 0.0,
+        "completion_sum": 0,
+        "completion_mean": 0.0,
+        "completion_median": 0.0,
+        "total_sum": 0,
+        "total_mean": 0.0,
+        "turns_mean": 0.0,
+        "turns_max": 0,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {}
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "no-tools",
+      "task": "solve",
+      "successes": 2,
+      "n": 6,
+      "success_rate": 0.3333,
+      "ci_lo": 0.0968,
+      "ci_hi": 0.7,
+      "truncated": 0,
+      "failure_reasons": {
+        "plan_invalid": 4,
+        "ok": 2
+      },
+      "tokens": {
+        "n": 6,
+        "prompt_sum": 9711,
+        "prompt_mean": 1618.5,
+        "completion_sum": 2770,
+        "completion_mean": 461.67,
+        "completion_median": 364.5,
+        "total_sum": 12481,
+        "total_mean": 2080.17,
+        "turns_mean": 1.0,
+        "turns_max": 1,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {
+        "11": {
+          "n": 6,
+          "successes": 2,
+          "success_rate": 0.3333,
+          "ci_lo": 0.0968,
+          "ci_hi": 0.7,
+          "tokens": {
+            "n": 6,
+            "prompt_sum": 9711,
+            "prompt_mean": 1618.5,
+            "completion_sum": 2770,
+            "completion_mean": 461.67,
+            "completion_median": 364.5,
+            "total_sum": 12481,
+            "total_mean": 2080.17,
+            "turns_mean": 1.0,
+            "turns_max": 1,
+            "eval_duration_s_sum": 0.0,
+            "eval_duration_s_mean": 0.0,
+            "completion_tokens_per_s": 0.0
+          }
+        }
+      }
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "no-tools",
+      "task": "validate_domain",
+      "successes": 5,
+      "n": 6,
+      "success_rate": 0.8333,
+      "ci_lo": 0.4365,
+      "ci_hi": 0.9699,
+      "truncated": 0,
+      "failure_reasons": {
+        "ok": 5,
+        "verdict_mismatch": 1
+      },
+      "tokens": {
+        "n": 6,
+        "prompt_sum": 5897,
+        "prompt_mean": 982.83,
+        "completion_sum": 3051,
+        "completion_mean": 508.5,
+        "completion_median": 490.0,
+        "total_sum": 8948,
+        "total_mean": 1491.33,
+        "turns_mean": 1.0,
+        "turns_max": 1,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {
+        "11": {
+          "n": 6,
+          "successes": 5,
+          "success_rate": 0.8333,
+          "ci_lo": 0.4365,
+          "ci_hi": 0.9699,
+          "tokens": {
+            "n": 6,
+            "prompt_sum": 5897,
+            "prompt_mean": 982.83,
+            "completion_sum": 3051,
+            "completion_mean": 508.5,
+            "completion_median": 490.0,
+            "total_sum": 8948,
+            "total_mean": 1491.33,
+            "turns_mean": 1.0,
+            "turns_max": 1,
+            "eval_duration_s_sum": 0.0,
+            "eval_duration_s_mean": 0.0,
+            "completion_tokens_per_s": 0.0
+          }
+        }
+      }
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "no-tools",
+      "task": "validate_problem",
+      "successes": 3,
+      "n": 6,
+      "success_rate": 0.5,
+      "ci_lo": 0.1876,
+      "ci_hi": 0.8124,
+      "truncated": 0,
+      "failure_reasons": {
+        "ok": 3,
+        "verdict_mismatch": 3
+      },
+      "tokens": {
+        "n": 6,
+        "prompt_sum": 7436,
+        "prompt_mean": 1239.33,
+        "completion_sum": 3355,
+        "completion_mean": 559.17,
+        "completion_median": 509.5,
+        "total_sum": 10791,
+        "total_mean": 1798.5,
+        "turns_mean": 1.0,
+        "turns_max": 1,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {
+        "11": {
+          "n": 6,
+          "successes": 3,
+          "success_rate": 0.5,
+          "ci_lo": 0.1876,
+          "ci_hi": 0.8124,
+          "tokens": {
+            "n": 6,
+            "prompt_sum": 7436,
+            "prompt_mean": 1239.33,
+            "completion_sum": 3355,
+            "completion_mean": 559.17,
+            "completion_median": 509.5,
+            "total_sum": 10791,
+            "total_mean": 1798.5,
+            "turns_mean": 1.0,
+            "turns_max": 1,
+            "eval_duration_s_sum": 0.0,
+            "eval_duration_s_mean": 0.0,
+            "completion_tokens_per_s": 0.0
+          }
+        }
+      }
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "no-tools",
+      "task": "validate_plan",
+      "successes": 41,
+      "n": 49,
+      "success_rate": 0.8367,
+      "ci_lo": 0.7096,
+      "ci_hi": 0.9149,
+      "truncated": 0,
+      "failure_reasons": {
+        "ok": 41,
+        "verdict_mismatch": 8
+      },
+      "tokens": {
+        "n": 49,
+        "prompt_sum": 79771,
+        "prompt_mean": 1627.98,
+        "completion_sum": 55595,
+        "completion_mean": 1134.59,
+        "completion_median": 1100,
+        "total_sum": 135366,
+        "total_mean": 2762.57,
+        "turns_mean": 1.0,
+        "turns_max": 1,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {
+        "11": {
+          "n": 49,
+          "successes": 41,
+          "success_rate": 0.8367,
+          "ci_lo": 0.7096,
+          "ci_hi": 0.9149,
+          "tokens": {
+            "n": 49,
+            "prompt_sum": 79771,
+            "prompt_mean": 1627.98,
+            "completion_sum": 55595,
+            "completion_mean": 1134.59,
+            "completion_median": 1100,
+            "total_sum": 135366,
+            "total_mean": 2762.57,
+            "turns_mean": 1.0,
+            "turns_max": 1,
+            "eval_duration_s_sum": 0.0,
+            "eval_duration_s_mean": 0.0,
+            "completion_tokens_per_s": 0.0
+          }
+        }
+      }
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "condition": "no-tools",
+      "task": "simulate",
+      "successes": 0,
+      "n": 8,
+      "success_rate": 0.0,
+      "ci_lo": 0.0,
+      "ci_hi": 0.3244,
+      "truncated": 5,
+      "failure_reasons": {
+        "truncated_no_answer": 5,
+        "result_mismatch": 3
+      },
+      "tokens": {
+        "n": 8,
+        "prompt_sum": 18259,
+        "prompt_mean": 2282.38,
+        "completion_sum": 31948,
+        "completion_mean": 3993.5,
+        "completion_median": 6143.0,
+        "total_sum": 50207,
+        "total_mean": 6275.88,
+        "turns_mean": 1.0,
+        "turns_max": 1,
+        "eval_duration_s_sum": 0.0,
+        "eval_duration_s_mean": 0.0,
+        "completion_tokens_per_s": 0.0
+      },
+      "per_variant": {
+        "11": {
+          "n": 8,
+          "successes": 0,
+          "success_rate": 0.0,
+          "ci_lo": 0.0,
+          "ci_hi": 0.3244,
+          "tokens": {
+            "n": 8,
+            "prompt_sum": 18259,
+            "prompt_mean": 2282.38,
+            "completion_sum": 31948,
+            "completion_mean": 3993.5,
+            "completion_median": 6143.0,
+            "total_sum": 50207,
+            "total_mean": 6275.88,
+            "turns_mean": 1.0,
+            "turns_max": 1,
+            "eval_duration_s_sum": 0.0,
+            "eval_duration_s_mean": 0.0,
+            "completion_tokens_per_s": 0.0
+          }
+        }
+      }
+    }
+  ],
+  "meta": {
+    "model": "claude-haiku-4-5",
+    "conditions": "no-tools",
+    "think": "off",
+    "temperature": 0,
+    "backend": "anthropic-live",
+    "corpus": "canonical"
+  }
+}
