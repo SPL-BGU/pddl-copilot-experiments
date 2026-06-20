@@ -468,3 +468,34 @@ validated by an independent ranking subagent (the user asked for a second perspe
   finding (still open-weight-only, per Limitations).
 - Build clean (16pp, 0 undefined refs, 0 overfull). Branch `paper/aaai27-frontier-discussion` →
   merged to `paper/aaai27`, pushed (CI auto-syncs to Overleaf with the clobber guard).
+
+## 2026-06-20 — Iter-2 external review triage + decisions (both Stanford reviews ACCEPT)
+- Two iter-2 Stanford agentic reviews (AAAI + NeurIPS rubrics) both **ACCEPT**; 16 consolidated asks
+  triaged in `paper/automated-platforms-review/iter2/iter2_action_plan.md` (annotatable decision sheet).
+  ~10 are writing-only, 2 worth new compute ([5b], [6]), 1 trap ([2]), 1 further-along ([1]).
+- **Decisions (Omer):** (A) **BF16** — keep the within-model `P(call)×P(correct|call)` reframe; do
+  NOT fold a BF16 number (would contradict the "sweep7 discarded" decision). (B) **Venue = AAAI-27**
+  now (Jul 27); JAIR/AIJ journal extension kept as an *optional, uncommitted* future path, not chosen.
+  (C) **Compute** = [6] schema-salience first, then [5b] simulate compressed-diff "if easy" (two
+  phases). (D) **Frontier [1]** = verify the Sonnet `solve`/`simulate`=0 (likely the sweep7 JRE/host
+  artifact) before surfacing the with-tools pilot (Haiku ≈100% on disk, `results/frontier-with-tools-probe/`).
+- **Reopened [8] think=on budget — key finding:** the "failed pilot" (`b527f71`, 2026-05-21) only
+  enlarged the *shared* context window (16K→32K); it never separated reasoning vs answer caps. So the
+  reviewer's decoupled-budget ask is a **genuinely different experiment** the pilot does not refute.
+  → **Honesty fix landed** (see below). A true decoupled budget = harness-side budget forcing
+  (`stop=["</think>"]` + 2-call continuation), 2-4 days dev, ~1-2 GPU-days, binding case Gemma-MoE-26B
+  (89-100% trunc). Verdict **RUN-IF-TIME after [6]/[5b]** (DECISION E pending).
+- **[2] fresh cluster BF16 now safe:** sweep7 was killed by missing Java/ENHSP on RunPod, not quant;
+  the cluster env ships openjdk-17, so a clean BF16 35B on `rtx_pro_6000:1` (96GB, HF-id swap only) is
+  feasible (~0.5 day). But expected **null** (AWQ≈BF16 already known) + competes for scarce pro_6000.
+  Verdict **RUN-IF-TIME, Exp1 wins if forced to choose** (DECISION F pending).
+- **Meta (Omer floated a consolidated "fixed sweep"):** NO — controlled ablation = one knob per corpus
+  vs the shared sweep5v2 baseline; consolidate the *submission* (parallel array), never the *factors*
+  (corpus identity is load-bearing). [[feedback_pushback_on_methodology_shortcuts]]
+- **Writing landed this session on `paper/aaai27`** (build clean, 16pp, 0 undefined, 0 overfull):
+  [9] FWER — the √2.7 design-effect inflation already imposes effective $z\approx3.2$, stricter than
+  Bonferroni for a ~30-contrast confirmatory family ($z\approx3.1$), so verdicts clear simultaneous
+  control without a dedicated correction; [12] cost — added the production note (a system could not
+  re-feed/summarize tool outputs → our cost-of-pass is a faithful worst case); [8] honesty clause —
+  the failed pilot raised the *shared* budget, not a *separate* answer cap. Remaining writing batch
+  (5a, 13, 14, 16, 3/4/7/10/15 framings) + probes [6]/[5b] + frontier verify still pending.

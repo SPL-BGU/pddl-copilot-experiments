@@ -493,9 +493,15 @@ significant gap that a sign-blind disjointness test would miscredit as the tool
 which is what the data say. Requiring disjoint 95\% intervals is deliberately
 conservative: it controls the false-positive rate well below $\alpha=0.05$, at
 the cost of power on small gaps, so a \textsc{no} verdict means ``no movement we
-are willing to call significant,'' not ``no movement.'' We do not apply a family-wise
-correction across cells: the reported effects are large, and we treat the few
-borderline gaps as exploratory rather than confirmatory.
+are willing to call significant,'' not ``no movement.'' We do not apply a separate family-wise
+correction across cells, but the headline verdicts are not thereby exposed to
+multiplicity. The design-effect inflation already widens every interval by
+$\sqrt{2.7}$, so a gap is called significant only when its arms are disjoint at an
+effective $z\approx3.2$ rather than the nominal $1.96$; that threshold is already
+stricter than a Bonferroni bound for a confirmatory family as large as ${\sim}30$
+contrasts (Bonferroni $z\approx3.1$), so the verdicts clear simultaneous control
+without a dedicated correction. The reported effects are moreover large, and we
+treat the few borderline gaps as exploratory rather than confirmatory.
 
 \subsection{Cross-Mode Aggregation and the Robust Floor}
 \emph{think}~=~off is the clean headline: the model answers directly, so the
@@ -762,7 +768,11 @@ tool arms are strongly input-heavy ($\approx$6--12:1) because the tool schemas a
 are re-fed every turn. (Server-side prefix caching, $\approx$90\% on this roster,
 makes the re-fed \emph{schemas} cheap to compute, but tool \emph{outputs} are
 uncached and the tokens are still real context. Our token totals count these raw, so where
-caching applies the tool's reported cost is, if anything, an over-estimate.)
+caching applies the tool's reported cost is, if anything, an over-estimate.) A
+production system could lower the input overhead further by not re-feeding full tool
+outputs on every turn, summarizing or eliding them once consumed; our harness re-feeds
+them verbatim, so the cost-of-pass we report is a faithful worst case rather than a
+deployment-tuned figure.
 
 Whether it is worth paying depends entirely on the baseline: the choice of
 metric flips the verdict by $\approx$10$\times$ on identical data, so we report
@@ -938,7 +948,8 @@ Several constraints bound these conclusions. Under \emph{think}=on, reasoning an
 answer share one decode budget, so a large fraction of no-tools trials truncate; we
 defend the cross-mode claims with budget-insensitive statistics (the robust floor),
 but cannot fully decouple the tool's value from the budget in that mode. A naive cap increase is
-not a clean remedy: in pilot runs, enlarging the decode budget degraded output-format adherence
+not a clean remedy: in pilot runs, enlarging the shared decode budget (a larger common
+allowance, not a cap reserved separately for the final answer) degraded output-format adherence
 (more trials emitted unparseable answers), so it trades the truncation confound for a parsing one
 rather than removing it, which is again why we read cross-mode evidence through the budget-insensitive
 robust floor. Decoding is deterministic (temperature~0), so each
