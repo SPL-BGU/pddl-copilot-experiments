@@ -1,0 +1,186 @@
+[
+{
+"task": "solve",
+"turns": 3,
+"inn": 27369,
+"out": 4499,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "solve",
+"turns": 2,
+"inn": 10270,
+"out": 791,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "solve",
+"turns": 2,
+"inn": 10224,
+"out": 744,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "solve",
+"turns": 2,
+"inn": 10227,
+"out": 698,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "solve",
+"turns": 3,
+"inn": 28945,
+"out": 4529,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "solve",
+"turns": 3,
+"inn": 26676,
+"out": 5859,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 173893,
+"out": 9334,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 12432,
+"out": 949,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 12714,
+"out": 1022,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 11596,
+"out": 1007,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 185645,
+"out": 9599,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 502960,
+"out": 9535,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 191349,
+"out": 9231,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "simulate",
+"turns": 2,
+"inn": 34493,
+"out": 7801,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 16605,
+"out": 2709,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 21608,
+"out": 3337,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 11109,
+"out": 926,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 11638,
+"out": 1052,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 11638,
+"out": 1043,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 11621,
+"out": 1116,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 14280,
+"out": 1710,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 14280,
+"out": 1610,
+"ok": true,
+"fr": "ok"
+},
+{
+"task": "validate_plan",
+"turns": 2,
+"inn": 19584,
+"out": 2770,
+"ok": true,
+"fr": "ok"
+}
+]

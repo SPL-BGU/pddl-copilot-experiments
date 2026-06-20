@@ -1,0 +1,6 @@
+{"task": "solve", "domain_name": "miconic", "problem_name": "p01", "plan_label": "", "prompt_variant": 11}
+{"task": "solve", "domain_name": "gripper", "problem_name": "p01", "plan_label": "", "prompt_variant": 11}
+{"task": "solve", "domain_name": "blocksworld", "problem_name": "p01", "plan_label": "", "prompt_variant": 11}
+{"task": "solve", "domain_name": "depot", "problem_name": "p01", "plan_label": "", "prompt_variant": 11}
+{"task": "solve", "domain_name": "barman", "problem_name": "p05", "plan_label": "", "prompt_variant": 11}
+{"task": "solve", "domain_name": "rovers", "problem_name": "p05", "plan_label": "", "prompt_variant": 11}

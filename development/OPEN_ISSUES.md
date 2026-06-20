@@ -35,6 +35,18 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## P2 — Runtime & instrumentation
 
+### ISS-023 · TODO (plan, fresh session) · Haiku-WT 4,560 list cost ($146) exceeds budget — design a cheaper with-tools run
+**Source.** With-tools frontier probe, 2026-06-19 (`development/with_tools_probe_findings.md`).
+**Decision.** Omer approved running **Haiku 4.5 with-tools over the 4,560 plain-only (variants 11–13) sweep5v2** corpus, but **rejected the ~$146 list-price cost** — with-tools cannot batch (multi-turn local-MCP loop → live, no −50% discount), so a cheaper approach must be designed *before* the run.
+**Status.** OPEN blocker. **Not yet planned** — a fresh session should produce the cost-reduction plan (do not just probe; plan first). No code/probe spend until the plan is approved.
+**Task.** Design + cost-estimate the cheaper path. Candidates, in recommended order (full rationale in the findings doc):
+1. **Prompt caching** of the byte-identical system + ~3,611-token tool-schema prefix (and prior turns within a trial) via `cache_control` — cached reads at 0.1×. Methodologically free (same prompts/grading); helps live/sequential runs (it did *not* help the parallel batch). Needs a short re-probe to measure realised saving.
+2. **simulate trajectory compaction** — the worst per-token offender + source of Haiku's 200K overflow; truncate/summarise the trajectory-tool result. Changes tool output → apply identically across any compared arm or document as a backend adaptation.
+3. **Lower the agentic turn cap** (`chat.MAX_TOOL_LOOPS`) — small saving, low risk.
+4. **Subsample validate_plan** (the ~$73 bulk) — cheapest lever but **breaks N-matching** with the no-tools corpus; only with reported CIs + explicit note.
+**Impact.** Gates the Future-Work with-tools/Haiku capability-ladder run (validation-competence-is-capability-gated result).
+**Files.** `tools/sonnet_tools_probe.py` (add caching), `development/with_tools_probe_findings.md` (decision + candidates).
+
 ### ISS-005 · `FR_TOOL_ERROR` is overloaded
 **Source.** Results review, issue 6.
 **Evidence.** Current `FR_TOOL_ERROR` collapses (a) plugin argument rejections ("PDDL file not found: 'blocksworld'"), (b) PDDL parse errors ("Failed to parse domain: Expected ':parameters', found '.'"), and (c) transport/timeout errors.
