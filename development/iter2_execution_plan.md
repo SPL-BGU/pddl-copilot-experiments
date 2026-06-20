@@ -52,7 +52,7 @@ authoritative triage is `paper/automated-platforms-review/iter2/iter2_action_pla
 | T | Task | Branch | PR contents | Status |
 |---|------|--------|-------------|--------|
 | **T1** | iter2 triage + first writing fixes | `paper/iter2-writing-batch` | review docs, action plan, this plan, paper_notes entry; **[9] FWER + [12] cost + [8] honesty** in `main.tex` | **IN PROGRESS** |
-| T2 | remaining writing asks | `paper/iter2-writing-2` | [13] reproducibility detail, [14] related-work (+ RLHF-on-propensity angle), [16] practitioner exec summary, [3]/[4]/[7]/[10]/[15] Limitations + Future-Work framings | TODO |
+| T2 | remaining writing asks | `paper/iter2-writing-2` | [13] reproducibility detail + HW/SW stack, [14] related-work (ReAct/PoT + RLHF-on-propensity), [16] practitioner exec summary, [7] tool-call iteration stats, [10] forced-decoding honesty note | ✅ PR open |
 | T3 | **[6] schema-salience probe** | `paper/iter2-schema-salience` | `chat.py` schema transform (mirror `_strip_verbose_from_schema`) + `--schema-variant {baseline,terse,salient}` flag; 3-cell sweep (Qwen3.5-9B, `validate_plan`, tool-available, think=off); paper subsection + token-cost number | TODO |
 | T4 | **[5b] simulate compressed-diff** (+ [5a] writeup) | `paper/iter2-simulate-schema` | `SimulateDeltaResponse` schema + grader branch (reuse `_normalize_trajectory`); ~900-trial no-tools `simulate` sweep (35B); paper: [5a] partial-credit decomposition + [5b] verbosity-vs-tracking result | TODO |
 | T5 | **[1] frontier verify + surface** | `paper/iter2-frontier-wt` | sanity-check Sonnet `solve`/`simulate`=0 (JRE/host artifact?); aggregate the on-disk pilot (`results/frontier-with-tools-probe/`); paper datapoint, clearly pilot-N (n=6/task) | TODO |

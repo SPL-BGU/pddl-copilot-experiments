@@ -499,3 +499,23 @@ validated by an independent ranking subagent (the user asked for a second perspe
   re-feed/summarize tool outputs → our cost-of-pass is a faithful worst case); [8] honesty clause —
   the failed pilot raised the *shared* budget, not a *separate* answer cap. Remaining writing batch
   (5a, 13, 14, 16, 3/4/7/10/15 framings) + probes [6]/[5b] + frontier verify still pending.
+
+## 2026-06-20 — Iter-2 T2: remaining writing asks landed (branch `paper/iter2-writing-2`)
+- **[16] Executive summary** — a 4-number practitioner paragraph now opens the Discussion: sole-source
+  0%/≈29% unaided (even frontier), luxury ≈3–5×, −67pp availability harm, +73pp (21→94%) steering
+  repair, >92% accuracy-given-call. NeurIPS asked for an effect-size skim; this is it.
+- **[14] Related work** — situated vs ReAct \citep{yao2023react} + program-of-thought
+  \citep{chen2023pot} (those *scaffold* invocation; we *measure* it); added an RLHF/post-training
+  sentence \citep{ouyang2022instructgpt} in Discussion — the cross-model P(call) spread is plausibly
+  an alignment-recipe property, not just scale (answers the "RLAIF/RLHF influence on propensity" ask).
+- **[7]+[13] tool-call iteration stats** — computed offline from `sweep5v2-live` (91,200 with-tools
+  trials): median **1** call, 60% single-call (90% succeed), 27% multi-call with success falling
+  monotonically (67%@2 → ≈25%@5+), 13% zero-call (silent failures). → AAAI Q1 answer: single-call
+  limiting removes low-yield retries, not successes. Added to Methodology pipeline.
+- **[13] HW/SW stack** — Models&Serving now names 48GB/96GB GPUs, vLLM/CUDA/Linux, one-model-per-GPU
+  + prefix caching, pointing to the Reproducibility Checklist for exact versions (anonymization-safe).
+- **[10] forced-decoding honesty** — Future Work note: constrained decoding sets P(call)=1 by
+  construction (relocates the question to accuracy-given-forced-call), distinct from raising propensity.
+- 3 new bib entries (react/pot/instructgpt). Build clean (16pp, 0 undefined refs, 0 overfull).
+- The [3]/[4]/[15] framings were already adequately present (matched-prompt, steering, richer-PDDL) —
+  verified, not re-touched. [5a] simulate partial-credit writeup folds into T4 (same section as [5b]).
