@@ -452,3 +452,19 @@ validated by an independent ranking subagent (the user asked for a second perspe
   plain+steered) is the more defensible spend. RECOMMENDATION: do NOT add Haiku for this submission;
   it is already routed to Future Work as a concrete named experiment. Not yet done: PR into
   `paper/aaai27`; Overleaf sync (pull+commit before push).
+
+## 2026-06-20 — Frontier no-tools result elevated into the Discussion (conservative framing)
+- Decision (Omer, asked to choose): the Sonnet 4.6 no-tools result, already in Results (`tab:frontier`)
+  + Limitations from #83, was **elevated into the §Discussion** as load-bearing evidence — and framed
+  **conservatively** (no bimodality rhetoric, no with-tools overreach).
+- One sentence added to the LLM-Modulo implication, right where it sets up "the task exceeds the
+  model's unaided reach": *the sole-source tasks genuinely exceeding unaided reach is not an artifact
+  of our open-weight roster's scale — Claude Sonnet 4.6 reproduces the floor without tools (simulate
+  0/300 per corpus, solve 28.7%), so the necessity of an external solver/simulator reflects a
+  capability boundary rather than the limited scale of the models we tested.*
+- This converts the frontier run from a robustness footnote into a refutation of the "the floor is
+  just weak open models" alternative explanation for the central sole-source claim. Scope stays
+  honest: no-tools only, so it corroborates the baseline, NOT the with-tools invocation-propensity
+  finding (still open-weight-only, per Limitations).
+- Build clean (16pp, 0 undefined refs, 0 overfull). Branch `paper/aaai27-frontier-discussion` →
+  merged to `paper/aaai27`, pushed (CI auto-syncs to Overleaf with the clobber guard).

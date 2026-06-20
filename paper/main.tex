@@ -921,7 +921,13 @@ which we do not test here. Third, our results are direct empirical
 support for the LLM-Modulo thesis \citep{kambhampati2024llmmodulo} that LLMs should
 be paired with sound external verifiers, and a refinement of it: the pairing pays off
 only when the orchestration actually routes work to the verifier, and naive
-availability does not guarantee that routing. The practical rule that follows is
+availability does not guarantee that routing. That the sole-source tasks genuinely
+exceed unaided reach is not an artifact of our open-weight roster's scale: a strong
+proprietary model, Claude Sonnet 4.6, reproduces the same floor without tools
+(Table~\ref{tab:frontier}), failing \emph{simulate} entirely ($0/300$ per corpus) and
+solving fewer than a third of problems ($28.7\%$), so the necessity of an external
+solver or simulator on these tasks reflects a capability boundary rather than the
+limited scale of the models we tested. The practical rule that follows is
 simple: a planner or validator behind a tool interface helps most when the task
 exceeds the model's unaided reach \emph{and} the prompt explicitly directs the call;
 where the model is already competent and uninstructed, the tool is at best a
