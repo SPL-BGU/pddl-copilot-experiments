@@ -60,3 +60,15 @@ Sonnet no-tools boss (live → list price) hands each job to a Haiku with-tools 
 | validate_plan | $51.26 | $73.07 | $124.34 |
 | simulate | $17.34 | $29.56 | $46.90 |
 | **Total** | **$78** | **$146** | **≈ $224** |
+
+---
+
+## Hybrid on PlanBench (Sonnet orchestrator + Haiku subagent)
+
+Same boss+helper idea at PlanBench scale (~7,000 instances) — only a component split (PlanBench cost is one aggregate per-instance cell, no per-task rows), calibration-transferred so ±wide, and it runs **free** on local vLLM anyway.
+
+| Component | $/corpus-equiv |
+|---|--:|
+| Sonnet orchestrator (no-tools, live → list) | $131 |
+| Haiku subagent (with-tools) | $224 |
+| **Together** | **≈ $356** |
