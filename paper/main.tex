@@ -227,7 +227,9 @@ model and relaying the model's invocations), and is the mechanism by which we ex
 validators to the model. A
 growing body of benchmarks measures tool-use competence: single-turn function calling
 \citep{bfcl2025} and multi-turn tool-agent-user interaction \citep{yao2024taubench}, among
-others. Our setting sits deliberately at the simple end of this spectrum: each task admits
+others. A parallel line raises invocation through scaffolding rather than measuring it,
+interleaving reasoning with tool actions \citep{yao2023react} or offloading numeric
+subproblems to executable programs \citep{chen2023pot}. Our setting sits deliberately at the simple end of this spectrum: each task admits
 exactly one relevant, correct-by-construction tool, so the appropriate analog is single-call
 function selection rather than long-horizon orchestration. We use this point to calibrate
 our results.
@@ -356,14 +358,24 @@ quantizations.} Headline conclusions are drawn
 from the three larger models ($\geq$9B: Qwen3.5-9B, Gemma-MoE-26B,
 Qwen3.6-35B); the 4B model is reported for scaling context and the 0.8B model
 isolates a small-model failure mode (Results). All models are served locally with
-vLLM on a single workstation-class GPU, decoding deterministically
+vLLM (CUDA on Linux) on single $48$\,GB and $96$\,GB GPUs, one model per GPU and with
+server-side prefix caching enabled.\todo{Pin exact vLLM/CUDA/NVIDIA-driver/OS versions
+once the experiment suite is final: record them here and flip the ``computing
+infrastructure'' Reproducibility Checklist item from \emph{partial} to \emph{yes}.}
+Decoding is deterministic
 (temperature~0), so each trial is a single fixed sample and the confidence
 intervals we report quantify sampling uncertainty over the fixture instances
 (treated as the inferential population), not decoding stochasticity, which
 temperature~0 removes.
 The context window is 16{,}384 tokens; per-task decode caps are 8{,}192 tokens for
 \emph{solve} and 6{,}144 for the others; tool-using runs may iterate up to ten
-tool calls. The reasoning mode is toggled per run (\emph{think}~=~on/off via the
+tool calls. In practice tool use is overwhelmingly single-shot: across the $91{,}200$
+with-tools trials the median trial issues one call, and $60\%$ issue exactly one (of
+which $90\%$ succeed). The $27\%$ that issue two or more are retries after an
+unsuccessful call, and their success rate falls monotonically as call count rises
+($67\%$ at two calls to ${\approx}25\%$ beyond five). A further $13\%$ issue no call at
+all, the silent failures dissected in Results. Capping at a single call would
+therefore remove low-yield retries rather than successes. The reasoning mode is toggled per run (\emph{think}~=~on/off via the
 serving runtime's thinking switch). Under \emph{think}~=~on the
 reasoning trace and the final answer share the \emph{same} per-task decode cap, a
 shared budget that drives the confound we treat explicitly below. Tools are
@@ -905,6 +917,19 @@ memorization null extends to a strong proprietary model.}
 \end{table}
 
 \section{Discussion}
+\paragraph{Executive summary.} For a practitioner weighing whether to place a sound
+planner or validator behind a tool interface, the measured effects reduce to four
+numbers. On tasks beyond the model's unaided reach the tool is not optional:
+\emph{simulate} and \emph{solve} sit at $0\%$ and ${\approx}29\%$ unaided even for a
+frontier model, and the tool is their only route to success. On tasks the model can
+already do, the tool is a ${\approx}3$--$5\times$ token-cost luxury that adds little.
+Mere availability can backfire: on plan validation one $\geq$9B model loses $67$\,pp
+when the tool is merely present, because it answers in prose instead of calling. The
+remedy is one sentence of explicit steering, which moves invocation by up to $+73$\,pp
+($21\!\to\!94\%$) and reverses the regression; once called, the tool is over $92\%$
+accurate. The single rule that follows: expose the tool \emph{and} explicitly direct
+its use where the task is hard.
+
 Three implications are not specific to PDDL and are natural hypotheses for
 tool-augmented LLMs more broadly, which our single-formalism, open-weight roster can
 suggest but not establish. First, the constraint that binds tool-augmented
@@ -927,7 +952,11 @@ worse than the tool-assisted path it declined. The remedy is cheap, one imperati
 sentence, but it is not automatic, which is a real caution for any system that
 exposes tools and assumes they will be used. Prompting is only the cheapest lever; invocation
 propensity could also be raised by fine-tuning or architectural routing that internalizes the call,
-which we do not test here. Third, our results are direct empirical
+which we do not test here. The wide cross-model spread in \emph{default} propensity is
+itself consistent with its being shaped by post-training: instruction tuning and RLHF
+optimize for direct, self-contained answers \citep{ouyang2022instructgpt}, which can
+suppress an unprompted hand-off to an external tool, so how readily a model delegates is
+plausibly a property of its alignment recipe as much as its scale. Third, our results are direct empirical
 support for the LLM-Modulo thesis \citep{kambhampati2024llmmodulo} that LLMs should
 be paired with sound external verifiers, and a refinement of it: the pairing pays off
 only when the orchestration actually routes work to the verifier, and naive
@@ -998,6 +1027,11 @@ validator and a simulator) to measure selection under ambiguity rather than mere
 detection; \emph{iterative} settings in which a model may re-plan or self-correct across turns,
 which could raise invocation propensity by giving a silent model a second chance to call; and
 \emph{model-modulo} ensembles that pair one model for formalization with another for checking.
+Raising invocation propensity at the model level, through light fine-tuning or routing
+rather than per-prompt steering, is a further direction, but it must be kept distinct
+from merely \emph{forcing} the call: constrained decoding can set $P(\text{call})=1$ by
+construction, which relocates the question to accuracy given a forced call rather than
+answering whether the model would choose to delegate.
 A further extension is to measure the \emph{with-tools} arm on proprietary models: the unaided
 frontier baseline is already established (Table~\ref{tab:frontier}), so the open question is
 whether a model with aggressive tool-use post-training still exhibits the availability gap and
