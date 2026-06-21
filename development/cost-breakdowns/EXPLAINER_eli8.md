@@ -188,10 +188,26 @@ when the top job is **big and needs splitting** (pick which helper, chain severa
 the result) — none of which our single-tool questions need. For this paper, **Haiku alone with tools
 wins**; keep the hybrid in your pocket for genuinely multi-step work.
 
-*(Numbers: boss = Sonnet's measured no-calculator word-counts at **full list price**; helper = Haiku's
-measured calculator cost. The **$224** is a **floor** — one boss pass; a real hand-off adds about one
-more boss turn, nudging it toward **~$260–300**. Caching the boss's fixed opening would pull it back
-down. All from `cheap_model_cost_slides.py` → `hybrid_total()`.)*
+**And on PlanBench?** Same idea, bigger numbers — PlanBench is ~7,000 puzzles per setting, so one pass
+of boss + helper comes to **≈ $356** (boss **$131** live + helper **$224**):
+
+| Setup | Cost (one PlanBench pass, ~7,000 puzzles) |
+|---|--:|
+| Sonnet alone, no calculator (batchable) | $66 |
+| **Hybrid: Sonnet boss + Haiku helper** | **≈ $356** |
+| Haiku alone, with calculator | $224 |
+| Sonnet alone, with calculator | $673 |
+
+Same shape as our own test — the boss is overhead, so the hybrid ($356) just pays extra over Haiku
+alone ($224) for the same answers. And remember §9: **PlanBench already runs FREE on our own
+computers**, so renting a boss-plus-helper for it makes even *less* sense than on our own test. **Keep
+PlanBench on vLLM.**
+
+*(Numbers: boss = the model's measured/calibrated no-calculator word-counts at **full list price**;
+helper = the with-calculator cost. Both totals are **floors** — one boss pass; a real hand-off adds
+about one more boss turn (single-tool → ~$260–300; PlanBench → ~$420–490). Caching the boss's fixed
+opening would pull them back down. PlanBench figures are calibration-transferred, not API-measured, so
+treat them as ±wide. All from `cheap_model_cost_slides.py` → `hybrid_total()` / `hybrid_pb()`.)*
 
 ---
 

@@ -216,6 +216,17 @@ def pb_wt(model):
     mi, mo = PB["wt_off"]
     return wt_list(mi, mo, PB_N, pin, pout) * CAL_WT
 
+def hybrid_pb(orch="Sonnet 4.6", sub="Haiku 4.5"):
+    """PlanBench hybrid: orchestrator = PlanBench no-tools at LIST (live loop, can't
+    batch; same terseness calibration as pb_nt) + subagent = PlanBench with-tools.
+    PlanBench has no per-task split, so this is one aggregate orchestrator+subagent
+    pair (7000 instances/corpus-equiv). FLOOR — a delegation round-trip adds ~1 pass."""
+    pin, pout = P[orch]
+    mi, mo = PB["nt_off"]
+    cal = 1.0 if orch in QWEN_FAMILY else CAL_NT
+    orch_cost = wt_list(mi, mo, PB_N, pin, pout) * cal   # no-tools tokens at full LIST
+    return orch_cost, pb_wt(sub)
+
 def money(x):
     return f"${x:,.0f}" if abs(x) >= 1 else f"${x:.2f}"
 
@@ -492,6 +503,8 @@ def build():
         oc, sc = hybrid_task(t)
         print(f"  {t:18} orch ${oc:5.2f} + sub ${sc:6.2f} = ${oc+sc:6.2f}")
     print(f"  {'TOTAL':18} orch ${o:5.0f} + sub ${s:6.0f} = ${o+s:6.0f}/corpus (floor; +~1 orch pass for delegation)")
+    po, ps = hybrid_pb()
+    print(f"  {'PlanBench hybrid':18} orch ${po:5.0f} + sub ${ps:6.0f} = ${po+ps:6.0f}/corpus-equiv (7000 inst; floor)")
     print(f"-- PlanBench (think-off, one corpus-equiv, calibrated) --")
     for m in MODELS:
         print(f"  {m:18} NT={money(pb_nt(m)):>7}  WT={money(pb_wt(m)):>7}")
