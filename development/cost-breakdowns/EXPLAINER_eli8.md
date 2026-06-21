@@ -1,8 +1,14 @@
 # The AI Puzzle Test — explained like you're 8
 
-This explains the 3 slides in `cheap_model_cost_slides.pptx`: what the test is, what it
-costs, which puzzle-worlds we use, what we're allowed to cut, and the smallest version
-that's still a *real* experiment.
+This explains the 4 slides in `cheap_model_cost_slides.pptx`: what the test is, what it
+**really** costs (we used to guess — now we **measured**), which puzzle-worlds we use,
+and what we're allowed to cut.
+
+> **What changed (June 2026):** the old version of these slides **guessed** the price by
+> counting the words of a *different, free* AI student (our own Qwen). Now we have actually
+> **rented two real students and run them** — so the prices below are **measured, not guessed**.
+> And the guess was wrong in **two** ways (see §5). The old "$20–35 trial run will confirm
+> the numbers" promise is **done** — this *is* the confirmation.
 
 ---
 
@@ -10,7 +16,7 @@ that's still a *real* experiment.
 
 We rent **AI brains** over the internet and **pay them by the word** they read and write.
 We give them planning puzzles, then grade the answers. The slides are about **how much
-that costs** and **how to make the test smaller without making it unfair**.
+that really costs**, now that we've measured it for real.
 
 ---
 
@@ -18,43 +24,146 @@ that costs** and **how to make the test smaller without making it unfair**.
 
 | Word we use | What it really means (kid version) |
 |---|---|
-| **Model** | A student (an AI brain). We test **2 cheap students**. |
+| **Model** | A student (an AI brain). The two we actually rented: **Sonnet** (a strong, pricey one) and **Haiku** (a cheaper one). |
 | **Task** | A *kind* of question (e.g. "solve this", "is this answer right?"). |
 | **Domain** | A *puzzle world / theme* (blocks, robots, trucks…). |
 | **Problem** | One specific puzzle inside a world. |
 | **Variant** | The **same** question asked in **different words** (to check the student isn't fooled by wording). |
-| **Think on/off** | Whether the student may **scribble rough work** before answering. |
+| **Think on/off** | Whether the student may **scribble rough work** before answering. *(We measured with think **off**.)* |
 | **Tools on/off** | Whether the student gets a **planning calculator** (our PDDL helper tools) or has to do it in their head. |
 
-The whole point of the experiment: **does giving the student the calculator (tools) make it
-get more answers right?** Everything else exists to make that comparison fair.
+The whole point: **does giving the student the calculator (tools) make it get more answers
+right?** Everything else exists to make that comparison fair.
 
 ---
 
-## 3. The two tests (benchmarks)
+## 3. The price tags (slides 1 & 3)
 
-### Test A — "Single-Tool" (we call it **sweep5**) — *our own exam*
-- **5 question-types (tasks):**
-  1. `solve` — "make a plan to reach the goal."
-  2. `validate_domain` — "is this rule-book well-formed?"
-  3. `validate_problem` — "is this puzzle set up correctly?"
-  4. `validate_plan` — "is this answer plan correct?" ← the giant (see slide 2)
-  5. `simulate` — "if we do this action, what happens next?"
-- **20 puzzle-worlds (domains)** — every task is asked in **all 20**.
-- **Full size = 27,360 graded answers per student** (both think on/off, all wordings, with and without the calculator).
+We **measured both** rented students — **Sonnet** (strong, pricey) and **Haiku** (cheaper) —
+on **both** the no-calculator and calculator tests. The big bills:
 
-### Test B — **PlanBench** — *a famous public exam*
-- **~9 question-types** (named t1, t2, t3, … — plan generation, plan checking, replanning, etc.).
-- **Main worlds: blocksworld + logistics.** Plus a **scrambled-names version of blocksworld**
-  (called *mystery*) to make sure the student is really *thinking*, not just *remembering* the
-  famous puzzles. A few questions also use **depots**.
-- **~7,000 puzzles per setting.**
+| What we ran | Student | Calculator? | **Real price** | Status |
+|---|---|---|--:|---|
+| The **whole** no-calculator test, both versions | **Sonnet** | no | **$81.51** | ✅ done |
+| The calculator test (one version) | **Haiku** | yes | **$146** | ⏳ planned, waiting for a discount trick |
+| (same, with the pricey student) | Sonnet | yes | $449 | for comparison |
+
+**Now the new part:** once you've measured a student's **word-counts**, you can price **any**
+student from **any company** — just multiply those counts by that company's per-word price. So we
+can lay out the **whole class** (Anthropic, OpenAI, Google, Alibaba), even the students we never
+rented. One test version, one corpus (the ✅ rows are the two we really measured; the rest are
+projected from the measured word-counts):
+
+| Tier | Student (company) | price/M words (in / out) | No-calculator | Calculator | How we know |
+|---|---|---|--:|--:|---|
+| **Top** | **Sonnet 4.6** (Anthropic) | $3 / $15 | **$39** | **$449** | ✅ measured |
+| Top | GPT-5.5 (OpenAI) | $5 / $30 | $86 | $788 | projected |
+| Top | Gemini 3.1 Pro (Google) | $2 / $12 | $34 | $315 | projected |
+| Top | Qwen3.7-Max (Alibaba) | $2.5 / $7.5 | $26 | $321 | projected |
+| **Middle** | **Haiku 4.5** (Anthropic) | $1 / $5 | **$17** | **$146** | ✅ measured |
+| Middle | GPT-5.4 Mini (OpenAI) | $0.75 / $4.5 | $13 | $118 | projected |
+| Middle | Gemini 2.5 Flash (Google) | $0.30 / $2.5 | $7 | $54 | projected |
+| Middle | Qwen-Plus (Alibaba) | $0.40 / $1.2 | $4 | $51 | projected |
+| **Budget** | GPT-5.4 Nano (OpenAI) | $0.20 / $1.25 | $4 | $32 | projected |
+| Budget | Gemini 2.5 Flash-Lite (Google) | $0.10 / $0.40 | $1 | $14 | projected |
+| Budget | Qwen-Flash (Alibaba) | $0.05 / $0.40 | $1 | $9 | projected (we run Qwen **free** anyway) |
+
+*(Prices are June-2026 list prices — they change monthly, so re-check before quoting. Qwen-Max's
+$2.5/$7.5 is currently half-off to $1.25/$3.75 on a promo.)*
+
+**Two honest catches when reading the projected (non-✅) rows:**
+1. Comparing a projected student to a measured one mixes **two things** — the company's price
+   **and** the fact that we used each measured student's *own* word-count but everyone else's the
+   *average*. So read the projected numbers as a **price map**, not a head-to-head race.
+2. The **no-calculator** projection is trustworthy (every student writes a roughly-short answer),
+   but the **calculator** projection is **shakier** — how much back-and-forth a student does is
+   **its own personality** (see §4), so those calculator dollars could swing a fair bit.
 
 ---
 
-## 4. The 20 puzzle-worlds, BY NAME (the thing you asked for)
+## 4. Why the calculator is so much pricier
 
-Every one of the 5 sweep5 tasks runs in **all 20** of these. They come in two families:
+When the student has **no calculator**, it just reads the puzzle once and writes one answer.
+Cheap. We can even mail all the puzzles in one big envelope ("batch") for **half price**.
+
+When the student **uses the calculator**, it's a **back-and-forth conversation**: "use this
+tool" → we run the tool → "here's the result" → "now use that tool" → … And here's the catch:
+**every time it speaks, it re-reads the whole conversation so far** — the rulebook, the
+calculator's instruction manual (long!), and everything already said. We **pay for all those
+words again, every single turn.** And you **can't** mail a back-and-forth in one envelope, so
+there's **no half-price**. That's why the calculator test costs multiples of the plain one.
+
+**And how much back-and-forth depends on the student.** On "solve", **Haiku** chattered through
+**50,000** words where **Sonnet** used only **19,000**. On "simulate", **Sonnet** pulled a giant
+**141,000-word** play-by-play, while **Haiku** hit its **memory limit** and gave up part-way. So
+the calculator's price is genuinely **hard to predict** for a student we haven't actually run —
+that's why the cheaper students' calculator numbers in §3 are marked "shakier."
+
+---
+
+## 5. The two surprises (slide 1, the colored boxes)
+
+The old **guess** was wrong in opposite directions:
+
+- 🔻 **No-calculator was HALF as expensive as we guessed.** The free student (Qwen) writes
+  a *long* answer even with scribbling off. The real students are **terse** — on "solve",
+  Qwen wrote ~3,746 words, **Sonnet wrote 261**. Short answers = small bill. Guess said
+  ~$73/version; **real was $39**.
+- 🔺 **The calculator test was MORE expensive than we guessed (~1.6×).** All that back-and-forth
+  re-reading (especially "simulate", which dumps a giant play-by-play) costs more than the
+  guess assumed. Guess said ~$92; **real was $146**.
+
+**The lesson:** these two errors **don't cancel out** for any single number — so every dollar
+figure on the *old* slides is now retired. Each part of the test must be priced from its **own**
+real measurement.
+
+---
+
+## 6. Which question costs the most (slide 2)
+
+Still **`validate_plan`** — "is this answer plan correct?" Each puzzle there secretly contains
+**10 little checks** (5 plans that are *broken* + 5 that are *good*), so it's **3,000 of the
+4,560** answers and **about two-thirds (66%) of the no-calculator bill** ($25.6 of $39).
+
+The other thing slide 2 shows: with the calculator, the pricey questions are **`simulate`** and
+**`solve`** — the ones with the longest back-and-forth. (`simulate` jumped from a guessed $8 to a
+real $30 on Haiku.)
+
+---
+
+## 7. The discount trick we're waiting on (slide 3)
+
+Most of what the calculator test reads is **the same opening over and over** (the rulebook + the
+long calculator manual) — about **9 of every 10 words it reads**. The rental company offers a
+**"remember this" sticker** (*prompt caching*): stick it on that unchanging opening and they charge
+**one-tenth** to re-read it. That's a **real** saving with **no change to the experiment at all** —
+though not a 9/10 cut of the *bill*, because the student's own writing is charged at a higher rate,
+so reading is only about **two-thirds of the money**.
+
+Catch: we haven't switched it on yet, so we need a **quick re-test** to see how much it really
+saves before paying for the full Haiku-with-calculator run. (Best guess: it drops $146 toward
+~$90–110.) **That's the open decision** — run Haiku-with-tools once the sticker clears the budget.
+
+---
+
+## 8. PlanBench — the famous public exam (slide 4)
+
+`PlanBench` is a well-known public test (blocksworld, logistics, plus a *scrambled-names* version
+called **mystery** to make sure the student is **thinking**, not **remembering**). It has **~7,000
+puzzles per setting** — way more than our own test.
+
+On the rented API, the **calculator** version of PlanBench is the real **budget-buster** — and the
+bill depends entirely on which student you rent: roughly **$14** (Qwen-Flash) → **$224** (Haiku) →
+**$673** (Sonnet) → **$1,204** (GPT-5.5) for **one pass**. But here's the happy part — **we already
+run PlanBench for FREE on our own computers** (the open-weight students on SLURM). So the rule is
+simple: **keep PlanBench on our own machines.** Only rent a *tiny* managed sample (a few hundred
+puzzles) if we ever need one — never the full 7,000.
+
+---
+
+## 9. The 20 puzzle-worlds, BY NAME
+
+Every one of the 5 single-tool tasks runs in **all 20** of these. Two families:
 
 **Classical (10)** — plain "do this then that" puzzles:
 `blocksworld`, `gripper`, `miconic`, `depots`, `satellite`, `rovers`, `barman`, `parking`, `tpp`, `zenotravel`
@@ -62,89 +171,58 @@ Every one of the 5 sweep5 tasks runs in **all 20** of these. They come in two fa
 **Numeric (10)** — puzzles with **numbers/amounts** (fuel, water, money, counts):
 `counters`, `delivery`, `drone`, `sailing`, `farmland`, `gardening`, `block-grouping`, `pogo_stick`, `depot`, `zenotravel-numeric`
 
-A few in kid words:
-- `blocksworld` — stack and unstack blocks.
-- `gripper` — a robot with two hands carrying balls between rooms.
-- `miconic` — an elevator picking up and dropping off people.
-- `delivery` / `tpp` — drive around buying/delivering things.
-- `drone` / `sailing` — move around using up fuel/wind (numbers matter).
-- `farmland` / `gardening` — grow/move stuff with amounts.
-
-**Which worlds run in each experiment:**
-
-| Experiment | How many worlds | Names |
-|---|---|---|
-| **sweep5** (every task) | **20** | all of the list above (10 classical + 10 numeric) |
-| **PlanBench** (most tasks) | **2 (+2 extra)** | `blocksworld` + `logistics`; plus `mystery` (scrambled blocks) as a memory-cheat check, and `depots` for one task |
+A few in kid words: `blocksworld` (stack/unstack blocks), `gripper` (a two-handed robot carrying
+balls between rooms), `miconic` (an elevator picking up and dropping off people), `drone`/`sailing`
+(move around using up fuel/wind — numbers matter), `farmland`/`gardening` (grow/move stuff with amounts).
 
 ---
 
-## 5. The three slides, in kid words
+## 10. What gets thrown away (and what we NEVER throw away)
 
-- **Slide 1 — the price tags.** How much each AI student costs to run **both whole tests**.
-  The cheap pair (**Haiku + Gemini Flash-Lite**) ≈ **$1,047** total. Sonnet is stronger but
-  ≈ **$3,253** (3× more). Qwen is cheapest but we already run Qwen for free on our own
-  computers, so paying for it again is a bit silly.
-- **Slide 2 — which question costs the most.** It's **`validate_plan`**. Why? Because each
-  puzzle there secretly contains **10 little checks** (5 plans that are *broken* + 5 that are
-  *good*). So it's **66% of the whole bill** — two out of every three dollars.
-- **Slide 3 — how to spend less by doing less.** A menu of cuts and how much each one saves.
+If money gets tight, each cut below only throws away **spares**. The percentages are the *same*
+for every student (they depend on the test's shape, not the price), so they still hold after the
+re-measurement.
 
----
-
-## 6. What gets thrown away (and what we NEVER throw away)
-
-First: the **old "just do 1/3 of it" idea is gone.** We now plan the **full** test. The cuts
-below are an *optional menu* if money gets tight — and each one only throws away **spares**.
-
-**Safe to cut (we keep plenty):**
+**Safe to cut:**
 | Cut | What we throw away | What we keep | Saves |
 |---|---|---|---|
-| Wordings 6 → 2 | 4 of 6 re-phrasings of each question | still 2 wordings (enough to show wording doesn't matter) | ~−52% |
-| Plan-checks 10 → 4 | 6 of the 10 mini-checks in `validate_plan` | 2 broken + 2 good (still tests both skills) | ~−40% |
-| Worlds 20 → 10 | half the puzzle-worlds | **5 classical + 5 numeric** (still both families) | ~−50% |
-| Drop "think-on" | the scribble-rough-work setting | the no-scribble setting | ~−64% (biggest) |
+| Wordings 6 → 2 | 4 of 6 re-phrasings | 2 wordings (enough to show wording doesn't matter) | ~−52% |
+| Plan-checks 10 → 4 | 6 of the 10 mini-checks in `validate_plan` | 2 broken + 2 good | ~−40% |
+| Worlds 20 → 10 | half the puzzle-worlds | **5 classical + 5 numeric** | ~−50% |
+| Drop "think-on" | the scribble-rough-work setting | the no-scribble setting | biggest — **but for the rented students, think-on cost is still UNmeasured** |
 
 **We NEVER throw away:**
-- **Tools vs no-tools** — that's the *whole question*. Drop it and there's no experiment.
+- **Tools vs no-tools** — that's the *whole question*.
 - **A whole world-family** — keep *some* classical **and** *some* numeric, or we can't say it
   works "in general."
-- Ideally **both think on/off**, because that's a question we actually care about. (If money is
-  very tight, this is the one we'd drop *last-but-cheapest-to-drop* — it halves the cost.)
+
+> ⚠️ **One honest caveat:** everything we measured used **think OFF**. We have **no real price**
+> yet for a rented student that's allowed to scribble (think on) — its rough work could be much
+> longer than the free student's, so any think-on dollar figure is still a **guess**.
 
 ---
 
-## 7. The smallest test that's still a REAL experiment
+## 11. The one rule of thumb
 
-Think of it like a school exam: you don't need to ask **every** kid **every** question in
-**every** subject to fairly rank them. You need **enough** questions, spread across **enough**
-subjects, asked **fairly**.
-
-**Recommended lean-but-solid setup:**
-- ✅ Keep **both** students (the comparison).
-- ✅ Keep **tools vs no-tools** (the whole point).
-- ✅ Keep **both think on/off** (a real question — and it's only a 2× cost).
-- ✅ Keep **10 balanced worlds** (5 classical + 5 numeric) — enough to claim "it generalizes."
-- ✂️ Use **2 wordings** instead of 6, and **4 plan-checks** instead of 10.
-
-**Why it's still solid:** every comparison cell still has **hundreds of graded answers**, so the
-"with-tools vs without" gap still comes with proper **confidence bars** (we can still say "this
-difference is real, not luck"). We kept *breadth* (many worlds, both families) and the *core
-comparison* — we only trimmed *repetition* (extra wordings, extra near-identical plan-checks).
-
-**Price of this lean-but-solid version:** roughly **one-tenth** of the full sweep5 bill — about
-**$54** for the Haiku + Gemini pair (sweep5), still with both think settings. PlanBench shrinks
-the same way. So the full *and* lean versions are both cheap on the cheap models; the cuts
-matter most if we ever price the expensive students (Sonnet/Opus).
-
-**The one rule of thumb:** *cut the repeats, keep the spread.* Drop extra wordings and extra
-plan-checks (those are repeats); keep many worlds and both tool-settings (that's the spread and
-the question).
+*Cut the repeats, keep the spread.* Drop extra wordings and extra plan-checks (repeats); keep many
+worlds and both tool-settings (that's the spread and the question).
 
 ---
 
 ### Numbers behind this doc
-Tasks/domains/counts are from the real corpus (`results/sweep5-cluster-20260601`, Qwen3.5-9B);
-costs from `cheap_model_cost_slides.py`. AI-brain word-counts are measured on our own Qwen runs
-and are an **estimate** for the rented brains — a tiny **$20–35 trial run** would confirm the
-real numbers before we spend the rest.
+Worlds/tasks/counts: the real corpus (`results/sweep5-cluster-20260601`, Qwen3.5-9B). **Prices: now
+priced from MEASURED word-counts** on real API runs, not guessed:
+- **no-tools** — Sonnet full run (`.local/sonnet/grade_{canonical,anon}.log`, both corpora = $81.51)
+  **and** Haiku probe (`results/frontier-with-tools-probe/haiku-no-tools`).
+- **with-tools** — the live Sonnet & Haiku probes (`results/frontier-with-tools-probe/{sonnet,haiku}-with-tools`),
+  summarized in `development/with_tools_probe_findings.md`.
+
+Sonnet and Haiku are priced from **their own** measured word-counts (both arms). Every other
+student (OpenAI GPT, Google Gemini, Alibaba Qwen) is **projected** by re-pricing the **average** of
+the two measured word-counts — accurate for no-tools, **± wide for with-tools** (the two measured
+students differ up to ~2.7× in back-and-forth). Per-word **prices** are June-2026 list prices:
+Anthropic from the `claude-api` skill, Google/OpenAI/Alibaba from vendor docs — re-verify in-console
+(they move monthly; Qwen-Max is on a 50%-off promo). The slide deck **computes** every figure from
+the word-count + price tables, so editing the data and re-running updates the slides. Anything with
+think **on** is still **unmeasured** and flagged as such. PlanBench has no API word-counts of its
+own, so its numbers (§8) are transferred from the single-tool measurement.

@@ -1,19 +1,39 @@
 #!/usr/bin/env python3
-"""Self-contained cost-breakdown deck (3 slides) for the CHEAP-model API
-baseline: 2 models over BOTH benchmarks (PlanBench full + sweep5 single-tool),
-both think on/off, full corpus.
+"""Single-tool + PlanBench API-cost deck — REBUILT on measured frontier runs.
 
-Style matches frontier_cost_slide.py (navy header, zebra rows, highlight). Unlike
-that one, numbers are COMPUTED from the measured per-task token table below, so the
-deck is reproducible — edit the data, re-run, the slides update.
+Supersedes the Qwen3.5-9B *proxy* version (Jun 2026). Two live Anthropic API
+runs now anchor the numbers, and they overturn the proxy in opposite directions:
 
-Token source: canonical sweep5v2 corpus (Qwen3.5-9B), results/sweep5-cluster-20260601,
-cumulative-across-loop prompt/completion tokens. Real for Qwen; PROXY for the closed
-models (Opus-class tokenizer +~35% input; Claude/Gemini extended-thinking output may
-be 2-5x on think-on cells). PlanBench tokens are the aggregate per-instance proxy from
-development/claude_baseline_cost_estimate.md.
-Pricing (per MTok in/out): Claude authoritative (claude-api skill); Gemini/Qwen from
-web, June 2026 (tokenmix.ai, pricepertoken.com, aiapi-pro.com) — re-verify in-console.
+  * Sonnet 4.6 NO-TOOLS — the full single-tool run, 4,560 trials/corpus, both
+    corpora, BATCH price (-50%). MEASURED $81.51 total.
+    .local/sonnet/grade_{canonical,anon}.log  ·  results/sonnet-frontier/
+  * Haiku 4.5 / Sonnet 4.6 WITH-TOOLS — a 75-trial live agentic-loop probe,
+    projected to the plain (v11-13) 4,560 corpus at LIST price (the tool loop
+    cannot batch). MEASURED-projection: Haiku $146/corpus, Sonnet $449/corpus.
+    development/with_tools_probe_findings.md
+
+Headline correction vs the old proxy (both think-off, plain, one corpus):
+  * NO-TOOLS  : proxy $73 -> real $39   (proxy 1.9x too HIGH — Qwen writes a long
+                answer even think-off; Sonnet is terse, e.g. solve 3,746->261 out).
+  * WITH-TOOLS: proxy $92 -> real $146  (proxy 1.6x too LOW  — the live loop re-bills
+                domain + ~3.6k-tok tool schema + history every turn; simulate dumps
+                a giant trajectory).
+
+The errors do NOT cancel per-arm, so any single $ from the old deck is unsafe.
+
+EVERY model is now priced off MEASURED per-trial token consumption (no heuristics):
+  * Sonnet 4.6 + Haiku 4.5 — measured directly (both arms; their own tokens).
+  * OpenAI GPT / Google Gemini / Alibaba Qwen (a frontier/mid/budget tier each) —
+                             projected by re-pricing the MEAN of the two measured token
+                             profiles (they have no Claude-API tokens of their own).
+                             No-tools transfers tightly (profiles within ~10-40%);
+                             with-tools is flagged ± wide because agentic token use is
+                             model-specific — our two measured models differ up to 2.7x
+                             per task (Haiku loops to 50k input on solve; Sonnet pulls
+                             141k on simulate).
+Numbers are COMPUTED from the token tables, so the deck is reproducible: edit the
+data, re-run, the slides update. Cells we did NOT measure (Gemini/Qwen, and think-on)
+stay clearly flagged as projections.
 
     Run:  .venv/bin/python development/cost-breakdowns/cheap_model_cost_slides.py
     Out:  development/cost-breakdowns/cheap_model_cost_slides.pptx
@@ -30,12 +50,50 @@ NAVY   = RGBColor(0x33, 0x55, 0x88)
 INK    = RGBColor(0x1F, 0x30, 0x50)
 GREY   = RGBColor(0x55, 0x55, 0x55)
 WHITE  = RGBColor(0xFF, 0xFF, 0xFF)
-HILITE = RGBColor(0xE2, 0xF0, 0xD9)   # recommended / lean row
+HILITE = RGBColor(0xE2, 0xF0, 0xD9)   # measured / recommended row
 BAND   = RGBColor(0xF2, 0xF5, 0xFA)   # zebra band
 RED    = RGBColor(0xA0, 0x30, 0x30)   # the dominant-cost flag
+AMBER  = RGBColor(0xAE, 0x70, 0x1C)   # estimate flag
 
-# ---------------------------------------------------------------- DATA
-# task -> {cell: (mean_in, mean_out, n_per_cell)}  cell in {nt_off,nt_on,wt_off,wt_on}
+TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
+
+# ================================================================ MEASURED DATA
+# Real Anthropic API runs (Jun 2026). think-OFF, plain variants (v11-13).
+# Per-task n/corpus (plain = 3 variants).
+N_PLAIN = {"solve": 300, "validate_domain": 360, "validate_problem": 600,
+           "validate_plan": 3000, "simulate": 300}
+
+# --- NO-TOOLS measured per-trial tokens (in, out), BATCH price. ---
+# Sonnet: full run (.local/sonnet/grade_canonical.log). Haiku: 75-trial probe
+# (results/frontier-with-tools-probe/haiku-no-tools).
+NT_TOK = {
+    "solve":            {"Sonnet 4.6": (1457,  261), "Haiku 4.5": (1618,  462)},
+    "validate_domain":  {"Sonnet 4.6": ( 861,  339), "Haiku 4.5": ( 983,  508)},
+    "validate_problem": {"Sonnet 4.6": (1266,  234), "Haiku 4.5": (1239,  559)},
+    "validate_plan":    {"Sonnet 4.6": (1526,  834), "Haiku 4.5": (1628, 1135)},
+    "simulate":         {"Sonnet 4.6": (1669, 3520), "Haiku 4.5": (2282, 3994)},
+}
+# --- WITH-TOOLS measured per-trial tokens (in, out), LIST price (agentic loop). ---
+# Both from the live probe (results/frontier-with-tools-probe/{sonnet,haiku}-with-tools).
+# Means over completed trials; Haiku simulate is over 8 ATTEMPTS (1 overflowed Haiku's
+# 200K ctx -> a cheap failure), which reproduces the probe's $30/$146 projection.
+WT_TOK = {
+    "solve":            {"Sonnet 4.6": ( 18952, 2853), "Haiku 4.5": (50496, 7272)},
+    "validate_domain":  {"Sonnet 4.6": ( 11378, 1222), "Haiku 4.5": (11485, 1129)},
+    "validate_problem": {"Sonnet 4.6": ( 12125, 1400), "Haiku 4.5": (12229, 1278)},
+    "validate_plan":    {"Sonnet 4.6": ( 14484, 1807), "Haiku 4.5": (15057, 1860)},
+    "simulate":         {"Sonnet 4.6": (140635, 6060), "Haiku 4.5": (77860, 4133)},
+}
+MEASURED = ["Sonnet 4.6", "Haiku 4.5"]     # priced from own tokens; others projected
+
+NT_CANON, NT_ANON = 39.13, 42.38           # Sonnet measured $ per corpus (headline)
+NT_BOTH = NT_CANON + NT_ANON               # the real single-tool no-tools bill ($81.51)
+
+# ================================================================ PROXY (retained)
+# Qwen3.5-9B per-trial tokens — kept ONLY to (a) derive the correction factors the
+# anchors imply and (b) extend to un-measured cells (think-on, PlanBench).
+# task -> {cell: (in, out, n)}; cell in {nt_off,nt_on,wt_off,wt_on}. wt n = 6-variant
+# grid (plain-only = //2). Source: results/sweep5-cluster-20260601.
 T = {
  "solve":            {"nt_off":(1170,3746,300),"nt_on":(1168,5611,300),"wt_off":(17674,2347,600),"wt_on":(14107,5782,600)},
  "validate_domain":  {"nt_off":(794,1580,360), "nt_on":(792,5888,360), "wt_off":(9258,728,720),  "wt_on":(9784,1550,720)},
@@ -43,60 +101,107 @@ T = {
  "validate_plan":    {"nt_off":(1354,1771,3000),"nt_on":(1352,5755,3000),"wt_off":(12383,1441,6000),"wt_on":(11162,3359,6000)},
  "simulate":         {"nt_off":(1435,3215,300),"nt_on":(1432,5686,300),"wt_off":(16586,2126,600),"wt_on":(15502,2654,600)},
 }
-TASK_LABEL = {"solve":"solve","validate_domain":"validate_domain","validate_problem":"validate_problem",
-              "validate_plan":"validate_plan","simulate":"simulate"}
-
-# pricing $/MTok (in, out)
-P = {"Qwen-Flash":(0.05,0.40), "Gemini Flash-Lite":(0.25,1.50), "Haiku 4.5":(1.0,5.0), "Sonnet 4.6":(3.0,15.0)}
-PRICE_LBL = {"Qwen-Flash":"$0.05 / $0.40","Gemini Flash-Lite":"$0.25 / $1.50","Haiku 4.5":"$1 / $5","Sonnet 4.6":"$3 / $15"}
-MODELS = ["Haiku 4.5", "Gemini Flash-Lite", "Sonnet 4.6", "Qwen-Flash"]
-
-# PlanBench aggregate per-instance proxy; 7000 instances per cell, 4 cells
+# PlanBench aggregate per-instance proxy; 7000 instances/cell.
 PB = {"nt_off":(1353,2056),"nt_on":(1274,5746),"wt_off":(12681,1482),"wt_on":(11540,3206)}
 PB_N = 7000
 
+# ---------------------------------------------------------------- model roster
+# Cross-provider price landscape (per MTok in/out), June 2026 list prices. All four
+# providers offer Batch API −50% (applied to the no-tools arm) and prompt caching
+# (NOT applied here — the with-tools arm is shown at full list, an upper bound).
+# Sources: Anthropic claude-api skill; Google ai.google.dev/gemini-api/docs/pricing;
+# OpenAI openai.com/api/pricing; Alibaba alibabacloud.com/help/en/model-studio.
+# RE-VERIFY in-console before quoting — list prices and promos move monthly.
+#   (display, provider, tier, price_in, price_out)
+ROSTER = [
+    # frontier
+    ("Sonnet 4.6",             "Anthropic", "frontier", 3.00, 15.00),
+    ("GPT-5.5",                "OpenAI",    "frontier", 5.00, 30.00),
+    ("Gemini 3.1 Pro",         "Google",    "frontier", 2.00, 12.00),
+    ("Qwen3.7-Max",            "Alibaba",   "frontier", 2.50,  7.50),
+    # mid
+    ("Haiku 4.5",              "Anthropic", "mid",      1.00,  5.00),
+    ("GPT-5.4 Mini",           "OpenAI",    "mid",      0.75,  4.50),
+    ("Gemini 2.5 Flash",       "Google",    "mid",      0.30,  2.50),
+    ("Qwen-Plus",              "Alibaba",   "mid",      0.40,  1.20),
+    # budget
+    ("GPT-5.4 Nano",           "OpenAI",    "budget",   0.20,  1.25),
+    ("Gemini 2.5 Flash-Lite",  "Google",    "budget",   0.10,  0.40),
+    ("Qwen-Flash",             "Alibaba",   "budget",   0.05,  0.40),
+]
+P         = {m: (pi, po) for m, _, _, pi, po in ROSTER}
+PROVIDER  = {m: prov     for m, prov, _, _, _ in ROSTER}
+TIER      = {m: t        for m, _, t, _, _ in ROSTER}
+PRICE_LBL = {m: f"${pi:g} / ${po:g}" for m, _, _, pi, po in ROSTER}
+MODELS    = [m for m, *_ in ROSTER]
+TIER_LABEL = {"frontier": "FRONTIER", "mid": "MID", "budget": "BUDGET"}
+# Qwen family ≈ the Qwen3.5-9B proxy's own verbosity, so PlanBench NT needs no
+# terseness correction for it (see pb_nt).
+QWEN_FAMILY = {m for m, prov, *_ in ROSTER if prov == "Alibaba"}
+
 # ---------------------------------------------------------------- cost engine
-def _kk(arm, disc):
-    if not disc: return 1.0, 1.0
-    if arm == "nt": return 0.5, 0.5      # no-tools single-shot -> Batch -50% both
-    return 0.505, 1.0                    # with-tools multi-turn -> caching on input only
+def nt_batch(mi, mo, n, pin, pout):  # no-tools: single-shot -> Batch -50% both sides
+    return n * (mi * pin * 0.5 + mo * pout * 0.5) / 1e6
 
-def cost(mi, mo, n, pin, pout, arm, disc):
-    ki, ko = _kk(arm, disc)
-    return n * (mi*pin*ki + mo*pout*ko) / 1e6
+def wt_list(mi, mo, n, pin, pout):   # with-tools: multi-turn loop -> LIST price, no batch
+    return n * (mi * pin + mo * pout) / 1e6
 
-def sweep5_task_totals(model, disc=True):
-    pin, pout = P[model]; out = {}
-    for task, cells in T.items():
-        out[task] = sum(cost(mi,mo,n,pin,pout,"nt" if c[:2]=="nt" else "wt",disc)
-                        for c,(mi,mo,n) in cells.items())
-    return out
+# --- correction factors: real anchor / what the proxy would have predicted ---
+def _proxy_nt_off(pin, pout):
+    return sum(nt_batch(*T[t]["nt_off"], pin, pout) for t in TASKS)
 
-def sweep5_total(model, disc=True): return sum(sweep5_task_totals(model, disc).values())
+def _proxy_wt_off_list(pin, pout):   # plain-only = half the 6-variant grid
+    return sum(wt_list(T[t]["wt_off"][0], T[t]["wt_off"][1], T[t]["wt_off"][2] // 2, pin, pout)
+               for t in TASKS)
 
-def task_token_means(task):
-    cells = T[task]; ntok = sum(n for _,_,n in cells.values())
-    ai = sum(mi*n for mi,_,n in cells.values())/ntok
-    ao = sum(mo*n for _,mo,n in cells.values())/ntok
-    return ntok, ai, ao
+# --- single-tool, think-off, plain, one corpus ------------------------------
+def _toks(table, model, task):
+    """Per-trial (in, out) for model/task: the model's OWN measured tokens, else the
+    MEAN of the measured profiles (the projection basis for un-measured models)."""
+    cells = table[task]
+    if model in cells:
+        return cells[model]
+    ins = [v[0] for v in cells.values()]
+    outs = [v[1] for v in cells.values()]
+    return sum(ins) / len(ins), sum(outs) / len(outs)
 
-def planbench_total(model, disc=True):
+def nt_task(model, task):
+    mi, mo = _toks(NT_TOK, model, task)
+    return nt_batch(mi, mo, N_PLAIN[task], *P[model])
+
+def wt_task(model, task):
+    mi, mo = _toks(WT_TOK, model, task)
+    return wt_list(mi, mo, N_PLAIN[task], *P[model])
+
+def nt_total(model):
+    return sum(nt_task(model, t) for t in TASKS)
+
+def wt_total(model):
+    return sum(wt_task(model, t) for t in TASKS)
+
+def is_measured(model):
+    return model in MEASURED
+
+WT_SONNET = wt_total("Sonnet 4.6")   # ~$449 (measured)
+WT_HAIKU  = wt_total("Haiku 4.5")    # ~$146 (measured)
+
+CAL_NT = NT_CANON / _proxy_nt_off(*P["Sonnet 4.6"])      # ~0.54  (proxy OVER-estimates)
+CAL_WT = WT_HAIKU / _proxy_wt_off_list(*P["Haiku 4.5"])  # ~1.59  (proxy UNDER-estimates)
+
+# --- PlanBench, think-off, one corpus-equiv (7000/cell), calibrated ----------
+def pb_nt(model):
     pin, pout = P[model]
-    return sum(cost(mi,mo,PB_N,pin,pout,"nt" if c[:2]=="nt" else "wt",disc) for c,(mi,mo) in PB.items())
+    mi, mo = PB["nt_off"]
+    cal = 1.0 if model in QWEN_FAMILY else CAL_NT      # Qwen family ≈ the proxy source
+    return nt_batch(mi, mo, PB_N, pin, pout) * cal
 
-def sweep5_scaled(model, vp_fix=10, dom_frac=1.0, wt_var=6, nt_var=3, think_both=True, disc=True):
-    pin, pout = P[model]; tot = 0
-    for task, cells in T.items():
-        for c, (mi, mo, n) in cells.items():
-            if c.endswith("on") and not think_both: continue
-            arm = "nt" if c[:2] == "nt" else "wt"
-            base_var = 3 if arm == "nt" else 6
-            scale = ((nt_var if arm=="nt" else wt_var)/base_var) * dom_frac
-            if task == "validate_plan": scale *= vp_fix/10.0
-            tot += cost(mi, mo, n*scale, pin, pout, arm, disc)
-    return tot
+def pb_wt(model):
+    pin, pout = P[model]
+    mi, mo = PB["wt_off"]
+    return wt_list(mi, mo, PB_N, pin, pout) * CAL_WT
 
-def money(x): return f"${x:,.0f}"
+def money(x):
+    return f"${x:,.0f}" if abs(x) >= 1 else f"${x:.2f}"
 
 # ---------------------------------------------------------------- pptx helpers
 def _set(cell, text, *, size, bold=False, color=INK, align=PP_ALIGN.LEFT, fill=None):
@@ -113,8 +218,9 @@ def _title(slide, title, subtitle):
     t = slide.shapes.add_textbox(Inches(0.3), Inches(0.18), Inches(12.7), Inches(0.5))
     r = t.text_frame.paragraphs[0].add_run()
     r.text = title; r.font.size = Pt(22); r.font.bold = True; r.font.color.rgb = INK
-    s = slide.shapes.add_textbox(Inches(0.3), Inches(0.72), Inches(12.7), Inches(0.4))
-    rs = s.text_frame.paragraphs[0].add_run()
+    s = slide.shapes.add_textbox(Inches(0.3), Inches(0.72), Inches(12.7), Inches(0.42))
+    tf = s.text_frame; tf.word_wrap = True
+    rs = tf.paragraphs[0].add_run()
     rs.text = subtitle; rs.font.size = Pt(11.5); rs.font.italic = True; rs.font.color.rgb = GREY
 
 def _takeaways(slide, x, y, w, h, head, items):
@@ -138,7 +244,7 @@ def _footer(slide, text):
 def _rrect(slide, x, y, w, h, fill, line=None, line_w=1.5):
     sp = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
                                 Inches(x), Inches(y), Inches(w), Inches(h))
-    sp.shadow.inherit = False                       # kill default autoshape shadow
+    sp.shadow.inherit = False
     sp.fill.solid(); sp.fill.fore_color.rgb = fill
     if line is not None:
         sp.line.color.rgb = line; sp.line.width = Pt(line_w)
@@ -151,212 +257,196 @@ def _panel(slide, x, y, w, h, mark, header, hdr_color, fill_color, items):
     tb = slide.shapes.add_textbox(Inches(x+0.28), Inches(y+0.22), Inches(w-0.56), Inches(h-0.44))
     tf = tb.text_frame; tf.word_wrap = True
     hr = tf.paragraphs[0].add_run(); hr.text = f"{mark}  {header}"
-    hr.font.size = Pt(15); hr.font.bold = True; hr.font.color.rgb = hdr_color
+    hr.font.size = Pt(14); hr.font.bold = True; hr.font.color.rgb = hdr_color
     for lead, body in items:
-        p = tf.add_paragraph(); p.space_before = Pt(9)
+        p = tf.add_paragraph(); p.space_before = Pt(8)
         a = p.add_run(); a.text = "• " + lead + "  "
-        a.font.size = Pt(11.5); a.font.bold = True; a.font.color.rgb = INK
+        a.font.size = Pt(11); a.font.bold = True; a.font.color.rgb = INK
         if body:
             b = p.add_run(); b.text = body
-            b.font.size = Pt(11.5); b.font.color.rgb = GREY
+            b.font.size = Pt(11); b.font.color.rgb = GREY
 
-# ---------------------------------------------------------------- SLIDE 1
+# ================================================================ SLIDE 1
 def slide1(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _title(slide, "Cheap-Model API Baseline — Two-Benchmark Cost",
-           "Full corpus · both think on/off · all variants  ·  no-tools = Batch −50% · "
-           "with-tools = prompt-cache (input ×0.5, can't batch the tool loop)")
+    _title(slide, "Single-Tool Cost — Now Measured, Not Estimated",
+           "Two live Anthropic API runs (Jun 2026) replace the Qwen3.5-9B proxy  ·  "
+           "think-off, plain variants  ·  the proxy was wrong both ways")
 
-    rows = [(m, PRICE_LBL[m], sweep5_total(m), planbench_total(m)) for m in MODELS]
-    HEADERS = ["Model", "$/Mtok\n(in / out)", "sweep5\nsingle-tool", "PlanBench\nfull", "Total\n/ model"]
-    COL_W = [2.35, 1.30, 1.45, 1.45, 1.35]
-    n_rows = len(rows) + 1
-    gt = slide.shapes.add_table(n_rows, len(HEADERS), Inches(0.3), Inches(1.30),
-                                Inches(sum(COL_W)), Inches(2.6)).table
+    HEADERS = ["Arm", "Model", "What ran", "Price basis", "Measured $"]
+    rows = [
+        ("no-tools",   "Sonnet 4.6", "full run, both corpora (9,120 trials)", "Batch −50%", f"${NT_BOTH:,.2f}"),
+        ("with-tools", "Sonnet 4.6", "probe → plain projection (4,560)",      "List",       f"{money(WT_SONNET)} / corpus"),
+        ("with-tools", "Haiku 4.5",  "probe → plain projection (4,560)",      "List",       f"{money(WT_HAIKU)} / corpus"),
+    ]
+    COL_W = [1.45, 1.65, 3.35, 1.35, 1.55]
+    gt = slide.shapes.add_table(len(rows)+1, len(HEADERS), Inches(0.3), Inches(1.30),
+                                Inches(sum(COL_W)), Inches(1.9)).table
     for j, w in enumerate(COL_W): gt.columns[j].width = Inches(w)
     for j, h in enumerate(HEADERS):
         _set(gt.cell(0, j), h, size=10.5, bold=True, color=WHITE,
-             align=PP_ALIGN.LEFT if j == 0 else PP_ALIGN.CENTER, fill=NAVY)
-    for i, (m, pl, s5, pb) in enumerate(rows, start=1):
-        base = BAND if i % 2 == 0 else WHITE
-        _set(gt.cell(i, 0), m, size=11, bold=True, fill=base)
-        _set(gt.cell(i, 1), pl, size=9.5, align=PP_ALIGN.CENTER, color=GREY, fill=base)
-        _set(gt.cell(i, 2), money(s5), size=10.5, align=PP_ALIGN.RIGHT, color=GREY, fill=base)
-        _set(gt.cell(i, 3), money(pb), size=10.5, align=PP_ALIGN.RIGHT, color=GREY, fill=base)
-        _set(gt.cell(i, 4), money(s5+pb), size=11, bold=True, align=PP_ALIGN.RIGHT, color=INK, fill=base)
+             align=PP_ALIGN.LEFT if j in (0, 1, 2) else PP_ALIGN.CENTER, fill=NAVY)
+    for i, (arm, m, what, pr, dollar) in enumerate(rows, start=1):
+        base = HILITE if i == 1 else (BAND if i % 2 == 0 else WHITE)
+        _set(gt.cell(i, 0), arm, size=10.5, bold=True, fill=base)
+        _set(gt.cell(i, 1), m, size=10.5, fill=base)
+        _set(gt.cell(i, 2), what, size=10, color=GREY, fill=base)
+        _set(gt.cell(i, 3), pr, size=10, align=PP_ALIGN.CENTER, color=GREY, fill=base)
+        _set(gt.cell(i, 4), dollar, size=11.5, bold=True, align=PP_ALIGN.RIGHT, color=INK, fill=base)
 
-    # pair table
-    pairs = [("Option 1 · Haiku + Gemini Flash-Lite", ["Haiku 4.5","Gemini Flash-Lite"], True),
-             ("Option 2 · Haiku + Sonnet 4.6",        ["Haiku 4.5","Sonnet 4.6"], False),
-             ("+ optional · Haiku + Qwen-Flash",      ["Haiku 4.5","Qwen-Flash"], False)]
-    py = 4.55
-    ph = slide.shapes.add_textbox(Inches(0.3), Inches(py-0.50), Inches(8.2), Inches(0.4))
-    phr = ph.text_frame.paragraphs[0].add_run(); phr.text = "Two-model pair totals (both benchmarks, discounted)"
-    phr.font.size = Pt(12); phr.font.bold = True; phr.font.color.rgb = NAVY
-    PW = [5.05, 1.55]
-    pt = slide.shapes.add_table(len(pairs), 2, Inches(0.3), Inches(py), Inches(sum(PW)), Inches(1.4)).table
-    for j, w in enumerate(PW): pt.columns[j].width = Inches(w)
-    for i, (name, ms, hi) in enumerate(pairs):
-        total = sum(sweep5_total(m)+planbench_total(m) for m in ms)
-        fill = HILITE if hi else (BAND if i % 2 else WHITE)
-        _set(pt.cell(i, 0), name, size=11, bold=hi, fill=fill)
-        _set(pt.cell(i, 1), money(total), size=12, bold=True, align=PP_ALIGN.RIGHT,
-             color=NAVY if hi else INK, fill=fill)
-
-    _takeaways(slide, 8.45, 1.30, 4.6, 5.4, "Why option 1", [
-        ("Both are closed frontier models.", "You can't self-host Haiku or Gemini — that's "
-         "exactly what API budget should buy. ~$1,047 for BOTH full benchmarks, 2 models."),
-        ("Sonnet is the pricier anchor.", "Option 2 = $3,253 (3×). Sonnet isn't 'small' — it "
-         "buys a stronger upper-bound point, not a cheap one."),
-        ("Qwen-Flash is cheapest but redundant.", "+$59/model and matches the tested family, "
-         "but you already run Qwen locally for free on SLURM, and API-Qwen ≠ your checkpoint "
-         "(different corpus). Use only as a managed point."),
-        ("Levers save ~30%, not more.", "Output (priced 5× input) is untouched by caching, and "
-         "the with-tools arm can't batch. List → discounted: Sonnet $3,735 → $2,440."),
+    # the correction, side by side
+    _panel(slide, 0.3, 3.55, 6.15, 2.75, "▲", "No-tools: proxy 1.9× too HIGH",
+           RED, RGBColor(0xFB, 0xEE, 0xEE), [
+        ("Real Sonnet = $39/corpus, proxy said $73.", ""),
+        ("Output collapses.", "Qwen3.5-9B writes a long answer even think-off; "
+         "Sonnet is terse — solve 3,746 → 261 out tok/trial, validate_plan 1,771 → 834."),
+        ("Input ~+15% only.", "Sonnet tokenizer is slightly heavier; output drove the error."),
     ])
-    _footer(slide, "Tokens: measured Qwen3.5-9B (real for Qwen, PROXY for closed models — "
-            "extended-thinking output may be 2-5× on think-on cells). PlanBench tokens = aggregate proxy. "
-            "Pricing: Claude authoritative; Gemini/Qwen web, Jun 2026. Pilot ~$20-35 to calibrate before committing.")
+    _panel(slide, 6.7, 3.55, 6.33, 2.75, "▼", "With-tools: proxy 1.6× too LOW",
+           NAVY, RGBColor(0xEC, 0xF1, 0xF8), [
+        ("Real Haiku-plain = $146/corpus, proxy said $92 (list).", ""),
+        ("The agentic loop re-bills everything.", "domain + ~3.6k-tok tool schema + "
+         "history, every turn; simulate dumps a giant trajectory (solve $9→$26, simulate $8→$30)."),
+        ("Can't batch.", "the tool loop is live → LIST price, no −50%. Errors don't cancel "
+         "per-arm — budget each arm from its own anchor."),
+    ])
+    _footer(slide, "Sources: .local/sonnet/grade_{canonical,anon}.log (no-tools, measured) · "
+            "development/with_tools_probe_findings.md (with-tools probe). Both think-OFF — there is "
+            "no frontier think-ON anchor yet; treat any think-on figure as unmeasured.")
 
-# ---------------------------------------------------------------- SLIDE 2
+# ================================================================ SLIDE 2
 def slide2(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _title(slide, "Single-Tool (sweep5) — Cost by Task",
-           "Per-model task TOTAL across full matrix (no-tools 3 variants + with-tools 6 variants, "
-           "× 2 think) · tokens are cumulative across the agent loop")
+    _title(slide, "Single-Tool by Task — Measured Tokens & $",
+           "think-off · plain · ONE corpus.  NT = Sonnet (Batch −50%); WT = live probe (List).  "
+           "The WT input column is the whole story: the tool loop, not the answer, is the bill.")
 
-    HEADERS = ["Task", "trials\n/model", "in tok\n/trial", "out tok\n/trial",
-               "Haiku\n$", "Gemini\n$", "Sonnet\n$", "Qwen\n$"]
-    COL_W = [2.35, 1.05, 1.05, 1.05, 1.05, 1.05, 1.05, 1.0]
-    order = ["solve","validate_domain","validate_problem","validate_plan","simulate"]
-    n_rows = len(order) + 2  # +header +total
-    gt = slide.shapes.add_table(n_rows, len(HEADERS), Inches(0.3), Inches(1.30),
-                                Inches(sum(COL_W)), Inches(3.2)).table
+    HEADERS = ["Task", "n/corpus", "NT $\n(Son, batch)", "WT $\nSonnet", "WT $\nHaiku",
+               "WT input tok/trial\nSonnet / Haiku"]
+    COL_W = [2.20, 1.15, 1.45, 1.30, 1.30, 2.65]
+    n_rows = len(TASKS) + 2  # header + total
+    gt = slide.shapes.add_table(n_rows, len(HEADERS), Inches(0.3), Inches(1.32),
+                                Inches(sum(COL_W)), Inches(3.0)).table
     for j, w in enumerate(COL_W): gt.columns[j].width = Inches(w)
     for j, h in enumerate(HEADERS):
-        _set(gt.cell(0, j), h, size=10, bold=True, color=WHITE,
+        _set(gt.cell(0, j), h, size=9.5, bold=True, color=WHITE,
              align=PP_ALIGN.LEFT if j == 0 else PP_ALIGN.CENTER, fill=NAVY)
-    tt = {m: sweep5_task_totals(m) for m in MODELS}
-    for i, task in enumerate(order, start=1):
-        ntok, ai, ao = task_token_means(task)
+    for i, task in enumerate(TASKS, start=1):
         dom = (task == "validate_plan")
         base = HILITE if dom else (BAND if i % 2 == 0 else WHITE)
-        _set(gt.cell(i, 0), TASK_LABEL[task], size=10.5, bold=dom, color=RED if dom else INK, fill=base)
-        _set(gt.cell(i, 1), f"{ntok:,}", size=10, align=PP_ALIGN.RIGHT, color=GREY, fill=base)
-        _set(gt.cell(i, 2), f"{ai:,.0f}", size=10, align=PP_ALIGN.RIGHT, color=GREY, fill=base)
-        _set(gt.cell(i, 3), f"{ao:,.0f}", size=10, align=PP_ALIGN.RIGHT, color=GREY, fill=base)
-        for k, m in enumerate(["Haiku 4.5","Gemini Flash-Lite","Sonnet 4.6","Qwen-Flash"]):
-            _set(gt.cell(i, 4+k), money(tt[m][task]), size=10, bold=dom,
-                 align=PP_ALIGN.RIGHT, color=INK, fill=base)
-    # total row
-    r = len(order) + 1
+        son_in = WT_TOK[task]["Sonnet 4.6"][0]; hai_in = WT_TOK[task]["Haiku 4.5"][0]
+        _set(gt.cell(i, 0), task, size=10.5, bold=dom, color=RED if dom else INK, fill=base)
+        _set(gt.cell(i, 1), f"{N_PLAIN[task]:,}", size=10, align=PP_ALIGN.RIGHT, color=GREY, fill=base)
+        _set(gt.cell(i, 2), f"${nt_task('Sonnet 4.6', task):,.2f}", size=10, bold=dom, align=PP_ALIGN.RIGHT, color=INK, fill=base)
+        _set(gt.cell(i, 3), f"${wt_task('Sonnet 4.6', task):,.0f}", size=10, bold=dom, align=PP_ALIGN.RIGHT, color=INK, fill=base)
+        _set(gt.cell(i, 4), f"${wt_task('Haiku 4.5', task):,.0f}", size=10, bold=dom, align=PP_ALIGN.RIGHT, color=INK, fill=base)
+        _set(gt.cell(i, 5), f"{son_in/1000:.0f}k / {hai_in/1000:.0f}k", size=10,
+             align=PP_ALIGN.RIGHT, color=RED if son_in > 30000 or hai_in > 30000 else GREY, fill=base)
+    r = len(TASKS) + 1
     _set(gt.cell(r, 0), "ALL TASKS", size=10.5, bold=True, color=WHITE, fill=NAVY)
-    _set(gt.cell(r, 1), "27,360", size=10, bold=True, align=PP_ALIGN.RIGHT, color=WHITE, fill=NAVY)
-    _set(gt.cell(r, 2), "", size=10, fill=NAVY); _set(gt.cell(r, 3), "", size=10, fill=NAVY)
-    for k, m in enumerate(["Haiku 4.5","Gemini Flash-Lite","Sonnet 4.6","Qwen-Flash"]):
-        _set(gt.cell(r, 4+k), money(sweep5_total(m)), size=10.5, bold=True,
-             align=PP_ALIGN.RIGHT, color=WHITE, fill=NAVY)
+    _set(gt.cell(r, 1), "4,560", size=10, bold=True, align=PP_ALIGN.RIGHT, color=WHITE, fill=NAVY)
+    _set(gt.cell(r, 2), money(NT_CANON), size=10.5, bold=True, align=PP_ALIGN.RIGHT, color=WHITE, fill=NAVY)
+    _set(gt.cell(r, 3), money(WT_SONNET), size=10.5, bold=True, align=PP_ALIGN.RIGHT, color=WHITE, fill=NAVY)
+    _set(gt.cell(r, 4), money(WT_HAIKU), size=10.5, bold=True, align=PP_ALIGN.RIGHT, color=WHITE, fill=NAVY)
+    _set(gt.cell(r, 5), "", size=10, fill=NAVY)
 
-    _takeaways(slide, 0.3, 4.85, 12.7, 2.0, "Read this table", [
-        ("validate_plan = 66% of every bill.", "It runs 10 plan fixtures (b1-b5 buggy + v1-v5 valid) "
-         "× 100 problems × variants × think = 18,000 of 27,360 trials. The #1 cut target (slide 3)."),
-        ("with-tools input dwarfs no-tools.", "solve/simulate carry 11-17K input tok/trial — the tool "
-         "loop re-bills domain+schemas+history each turn; caching that prefix is the main input lever."),
-        ("$/trial = task $ ÷ trials.", "e.g. validate_plan on Gemini = $79/18,000 ≈ $0.004/prompt; "
-         "on Sonnet ≈ $0.046; on Qwen ≈ $0.001."),
+    _takeaways(slide, 0.3, 4.65, 12.7, 2.2, "Read this table", [
+        ("validate_plan is still the bill — 66% of no-tools.", "$25.6 of $39. 10 plan fixtures "
+         "(5 buggy + 5 valid) × 100 problems × 3 variants = 3,000 of 4,560 trials."),
+        ("With-tools input is 8–80× the no-tools input.", "the loop re-bills domain + 3.6k-tok schema + "
+         "history every turn — and it is MODEL-SPECIFIC: Haiku loops to 50k on solve (Sonnet 19k); "
+         "Sonnet pulls 141k on simulate (Haiku 78k, then overflows its 200K context)."),
+        ("That model-specificity is why WT projection is ± wide.", "no-tools transfers cleanly across "
+         "models (terse output, small tokens); with-tools does not — flag any un-measured WT number."),
     ])
-    _footer(slide, "Discounted (no-tools Batch −50%; with-tools input-cache ×0.5). Per-task token means "
-            "averaged over the task's 4 cells weighted by trial count. Source: sweep5v2 Qwen3.5-9B corpus.")
+    _footer(slide, "NT $ measured (canonical corpus; anon +~8%, both = $81.51). WT $ = plain-only (4,560) "
+            "projection from the 75-trial probe — validate_plan n=49 solid, other cells n=6–8 (directional). "
+            "Tokens cumulative across the agent loop; Haiku simulate averaged over attempts incl. 1 ctx-overflow.")
 
-# ---------------------------------------------------------------- SLIDE 3
+TIER_TINT = {"frontier": RGBColor(0xEC, 0xF1, 0xF8), "mid": RGBColor(0xF6, 0xF2, 0xEC),
+             "budget": RGBColor(0xF1, 0xF7, 0xF1)}
+
+def _roster_table(slide, y, h, cols, col_w, val_fn, hi_fn=None):
+    """Tier-grouped roster table. val_fn(model) -> list of (text, align, bold, color)
+    for the value columns (everything after Tier/Model/Provider)."""
+    head = ["Tier", "Model", "Provider"] + cols
+    gt = slide.shapes.add_table(len(MODELS)+1, len(head), Inches(0.3), Inches(y),
+                                Inches(sum(col_w)), Inches(h)).table
+    for j, w in enumerate(col_w): gt.columns[j].width = Inches(w)
+    for j, hh in enumerate(head):
+        _set(gt.cell(0, j), hh, size=10, bold=True, color=WHITE,
+             align=PP_ALIGN.LEFT if j in (1, 2) else PP_ALIGN.CENTER, fill=NAVY)
+    prev_tier = None
+    for i, m in enumerate(MODELS, start=1):
+        meas = is_measured(m)
+        tier = TIER[m]
+        base = HILITE if meas else TIER_TINT[tier]
+        if hi_fn and hi_fn(m):
+            base = RGBColor(0xFB, 0xEE, 0xEE)
+        _set(gt.cell(i, 0), TIER_LABEL[tier] if tier != prev_tier else "",
+             size=8.5, bold=True, color=NAVY, fill=base)
+        prev_tier = tier
+        mk = "●" if meas else "○"
+        _set(gt.cell(i, 1), f"{mk} {m}", size=10, bold=meas, fill=base)
+        _set(gt.cell(i, 2), PROVIDER[m], size=9, color=GREY, fill=base)
+        for j, (txt, al, bold, col) in enumerate(val_fn(m), start=3):
+            _set(gt.cell(i, j), txt, size=10, bold=bold, align=al, color=col, fill=base)
+    return gt
+
+# ================================================================ SLIDE 3
 def slide3(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _title(slide, "Cutting Cost by Cutting Volume",
-           "% reductions are model-independent (token structure is fixed) — they transfer to any pair. "
-           "$ shown for the recommended Haiku + Gemini Flash-Lite pair (sweep5)")
+    _title(slide, "Cross-Provider Single-Tool Cost — One Corpus, think-off",
+           "● measured (own Claude-API tokens)   ○ projected (re-price the mean measured token profile).  "
+           "Plain variants · no-tools = Batch −50% · with-tools = LIST (no batch, no caching).")
 
-    pair = ["Haiku 4.5", "Gemini Flash-Lite"]
-    base = sum(sweep5_scaled(m) for m in pair)
-    scen = [
-        ("FULL (baseline)", dict(), "all 5 tasks · 20 domains · 6+3 variants · both think", False),
-        ("validate_plan 10→4 fixtures", dict(vp_fix=4), "drop redundant plan fixtures", False),
-        ("with-tools variants 6→2", dict(wt_var=2), "fewer prompt phrasings", False),
-        ("domains 20→10 (half pool)", dict(dom_frac=0.5), "halve the domain pool", False),
-        ("no-tools variants 3→1", dict(nt_var=1), "small — no-tools is cheap", False),
-        ("think-off only", dict(think_both=False), "biggest single lever", False),
-        ("LEAN  (vp4 · ½dom · wt2 · nt1)", dict(vp_fix=4, dom_frac=0.5, wt_var=2, nt_var=1),
-         "stack structural cuts, keep both think", True),
-        ("LEAN + think-off", dict(vp_fix=4, dom_frac=0.5, wt_var=2, nt_var=1, think_both=False),
-         "floor — power drops", False),
-    ]
-    HEADERS = ["Scenario", "% of full", "Haiku+Gemini $", "Lever"]
-    COL_W = [3.45, 1.25, 1.75, 4.55]
-    gt = slide.shapes.add_table(len(scen)+1, len(HEADERS), Inches(0.3), Inches(1.35),
-                                Inches(sum(COL_W)), Inches(3.7)).table
-    for j, w in enumerate(COL_W): gt.columns[j].width = Inches(w)
-    for j, h in enumerate(HEADERS):
-        _set(gt.cell(0, j), h, size=10.5, bold=True, color=WHITE,
-             align=PP_ALIGN.LEFT if j in (0, 3) else PP_ALIGN.CENTER, fill=NAVY)
-    for i, (name, kw, lever, hi) in enumerate(scen, start=1):
-        val = sum(sweep5_scaled(m, **kw) for m in pair)
-        pct = val / base * 100
-        fill = HILITE if hi else (BAND if i % 2 == 0 else WHITE)
-        _set(gt.cell(i, 0), name, size=10.5, bold=(i == 1 or hi), fill=fill)
-        _set(gt.cell(i, 1), f"{pct:.0f}%", size=11, bold=True, align=PP_ALIGN.CENTER,
-             color=NAVY if hi else INK, fill=fill)
-        _set(gt.cell(i, 2), money(val), size=10.5, align=PP_ALIGN.RIGHT, color=INK, fill=fill)
-        _set(gt.cell(i, 3), lever, size=9.5, color=GREY, fill=fill)
+    def vals(m):
+        return [(PRICE_LBL[m], PP_ALIGN.CENTER, False, GREY),
+                (money(nt_total(m)), PP_ALIGN.RIGHT, False, INK),
+                (money(wt_total(m)), PP_ALIGN.RIGHT, True, INK)]
+    _roster_table(slide, 1.28, 3.95,
+                  ["$/Mtok\nin / out", "No-tools\n(batch)", "With-tools\n(list)"],
+                  [1.05, 2.70, 1.40, 1.55, 1.45, 1.50], vals)
 
-    _takeaways(slide, 0.3, 5.35, 12.7, 1.5, "Biggest levers, in order", [
-        ("Drop think-on: −64%.", "Halves the matrix and removes the extended-thinking output blow-up "
-         "(the single biggest closed-model cost risk)."),
-        ("Trim with-tools variants 6→2: −52% · halve domains: −50% · validate_plan 10→4: −40%.",
-         "These stack: keeping both think but cutting structure → ~10% of full (Haiku+Gemini "
-         "sweep5 $537 → ~$54), with statistical power largely intact."),
+    _takeaways(slide, 0.3, 5.42, 12.7, 1.55, "Read this landscape", [
+        ("Two rows are measured (●), nine are projected (○).",
+         "Sonnet/Haiku priced from their OWN tokens; the rest re-price the mean profile — so a same-tier "
+         "● vs ○ gap mixes BOTH price and token-profile. Read ○ as a price landscape, not a head-to-head."),
+        ("No-tools is cheap everywhere ($1–$86); with-tools is where providers separate.",
+         "frontier WT $315 (Gemini 3.1 Pro) → $788 (GPT-5.5); budget WT $9 (Qwen-Flash) → $32 (GPT Nano). "
+         "With-tools can't batch → the prompt-caching lever (≈⅔ of the $ is repeated prefix) is the only cut."),
     ])
-    _footer(slide, "Scenarios computed on the sweep5 token table. PlanBench scales the same way "
-            "(its analogue of validate_plan-style cost is the with-tools think-on cell). Cuts are "
-            "labeled variants — flag any domain/fixture sampling in the writeup.")
+    _footer(slide, "Prices: list, Jun 2026 — Anthropic (claude-api skill), Google/OpenAI/Alibaba (vendor "
+            "docs); re-verify in-console (Qwen-Max list $2.5/$7.5 is on a 50% promo to $1.25/$3.75). WT is "
+            "± wide for ○ rows: the two measured models differ up to 2.7× per task. Qwen runs FREE on SLURM.")
 
-# ---------------------------------------------------------------- SLIDE 4
+# ================================================================ SLIDE 4
 def slide4(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _title(slide, "What We Cut vs What Stays Solid",
-           "Rule of thumb: cut the repeats, keep the spread.  The cuts only remove spares — "
-           "the comparison stays intact.")
-    GREEN_H = RGBColor(0x3E, 0x82, 0x3C); GREEN_F = RGBColor(0xEC, 0xF6, 0xEC)
-    AMBER_H = RGBColor(0xAE, 0x70, 0x1C); AMBER_F = RGBColor(0xFB, 0xF1, 0xDE)
+    _title(slide, "PlanBench — the With-Tools Budget-Buster; Keep It on vLLM",
+           "API-cost projection, think-off, one corpus-equiv (7,000 instances/cell), calibrated from the "
+           "sweep5 anchors (NT ×0.54, WT ×1.59).  ● measured-token basis  ○ projected.")
 
-    _panel(slide, 0.3, 1.45, 6.25, 4.05, "✓", "KEEP — this IS the experiment",
-           GREEN_H, GREEN_F, [
-        ("Tools vs no-tools.", "the whole question — drop it and there's no experiment."),
-        ("Both world-families.", "keep some classical AND some numeric, or you can't claim it generalizes."),
-        ("Both think on / off (ideally).", "a real research question, and only a 2× cost."),
-        ("Hundreds of answers per cell.", "enough for honest confidence bars (Wilson CIs)."),
+    def vals(m):
+        return [(money(pb_nt(m)), PP_ALIGN.RIGHT, False, INK),
+                (money(pb_wt(m)), PP_ALIGN.RIGHT, True, RED if pb_wt(m) >= 400 else INK)]
+    _roster_table(slide, 1.30, 3.95,
+                  ["No-tools\n(×0.54)", "With-tools\n(×1.59)"],
+                  [1.05, 2.95, 1.55, 1.75, 1.75], vals,
+                  hi_fn=lambda m: m == "GPT-5.5")
+
+    _takeaways(slide, 0.3, 5.45, 12.7, 1.5, "What this means", [
+        ("API PlanBench with-tools is the budget-buster.", f"{money(pb_wt('Qwen-Flash'))} (Qwen-Flash) → "
+         f"{money(pb_wt('Sonnet 4.6'))} (Sonnet) → {money(pb_wt('GPT-5.5'))} (GPT-5.5) per corpus-equiv — "
+         "7,000 instances × the tool-loop input blowup. It already runs FREE on SLURM (open-weights vLLM), "
+         "so sample a few hundred API instances at most, never the full 7,000."),
+        ("Levers (model-independent):", "drop think-on (biggest, but frontier think-on is UNMEASURED) · "
+         "with-tools wordings 6→2 (−52%) · halve domains (−50%) · validate_plan 10→4 (−40%). "
+         "Cut the repeats, keep the spread."),
     ])
-    _panel(slide, 6.8, 1.45, 6.23, 4.05, "✂", "SAFE TO CUT — just repeats",
-           AMBER_H, AMBER_F, [
-        ("Wordings 6 → 2.", "keep 2 phrasings; still shows wording doesn't change the result.   ‒52%"),
-        ("Plan-checks 10 → 4.", "2 broken + 2 good; still tests both skills.   −40%"),
-        ("Worlds 20 → 10.", "keep 5 classical + 5 numeric (balanced).   −50%"),
-        ("Drop think-on.", "the single biggest lever.   −64%"),
-    ])
-
-    # recipe band
-    _rrect(slide, 0.3, 5.78, 12.73, 0.92, NAVY)
-    tb = slide.shapes.add_textbox(Inches(0.55), Inches(5.90), Inches(12.3), Inches(0.7))
-    tf = tb.text_frame; tf.word_wrap = True
-    p = tf.paragraphs[0]
-    a = p.add_run(); a.text = "Lean-but-solid recipe:  "
-    a.font.size = Pt(12.5); a.font.bold = True; a.font.color.rgb = WHITE
-    b = p.add_run()
-    b.text = ("both models · tools + no-tools · both think · 10 balanced worlds · "
-              "2 wordings · 4 plan-checks   →   ~10% of full  (~$54 sweep5, Haiku+Gemini), "
-              "still with real confidence bars.")
-    b.font.size = Pt(12.5); b.font.color.rgb = RGBColor(0xDD, 0xE6, 0xF2)
-
-    _footer(slide, "Cuts are labeled variants — flag any domain/fixture sampling in the writeup. "
-            "% reductions are model-independent; $ shown for the recommended cheap pair.")
+    _footer(slide, "Calibration transferred from the sweep5 think-off anchors — direction solid (same token "
+            "structure), magnitudes ±30%. PlanBench tokens were NOT measured on the API; ○ rows also carry "
+            "the ±-wide with-tools token uncertainty. Flag any instance sampling in the writeup.")
 
 # ---------------------------------------------------------------- build
 def build():
@@ -367,16 +457,22 @@ def build():
     prs.save(str(out))
     print(f"wrote {out}  ({len(prs.slides)} slides)")
 
-    # echo the headline numbers for verification
-    print("\n-- per-model (discounted) --")
+    # echo headline numbers for verification
+    print(f"\n-- correction factors (think-off) --")
+    print(f"  CAL_NT (real/proxy no-tools) = {CAL_NT:.2f}")
+    print(f"  CAL_WT (real/proxy with-tools) = {CAL_WT:.2f}")
+    print(f"-- single-tool per model (think-off, plain, one corpus) --")
+    print(f"  {'model':18} {'no-tools':>9} {'with-tools':>11}  basis")
     for m in MODELS:
-        s5, pb = sweep5_total(m), planbench_total(m)
-        print(f"  {m:18} sweep5={money(s5):>7}  planbench={money(pb):>7}  total={money(s5+pb):>7}")
-    print("-- pairs --")
-    for name, ms in [("Haiku+Gemini",["Haiku 4.5","Gemini Flash-Lite"]),
-                     ("Haiku+Sonnet",["Haiku 4.5","Sonnet 4.6"]),
-                     ("Haiku+Qwen",["Haiku 4.5","Qwen-Flash"])]:
-        print(f"  {name:14} {money(sum(sweep5_total(m)+planbench_total(m) for m in ms))}")
+        st = "measured (own tokens)" if is_measured(m) else "projected (mean profile)"
+        print(f"  {m:18} {money(nt_total(m)):>9} {money(wt_total(m)):>11}  {st}")
+    print(f"-- measured anchors (reproduced from token tables) --")
+    print(f"  Sonnet no-tools both corpora = {money(NT_BOTH)}  "
+          f"(canonical {money(NT_CANON)} + anon {money(NT_ANON)})")
+    print(f"  with-tools plain/corpus: Sonnet {money(WT_SONNET)} · Haiku {money(WT_HAIKU)}")
+    print(f"-- PlanBench (think-off, one corpus-equiv, calibrated) --")
+    for m in MODELS:
+        print(f"  {m:18} NT={money(pb_nt(m)):>7}  WT={money(pb_wt(m)):>7}")
 
 
 if __name__ == "__main__":
