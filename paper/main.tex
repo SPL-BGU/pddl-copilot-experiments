@@ -359,8 +359,10 @@ from the three larger models ($\geq$9B: Qwen3.5-9B, Gemma-MoE-26B,
 Qwen3.6-35B); the 4B model is reported for scaling context and the 0.8B model
 isolates a small-model failure mode (Results). All models are served locally with
 vLLM (CUDA on Linux) on single $48$\,GB and $96$\,GB GPUs, one model per GPU and with
-server-side prefix caching enabled; exact library and driver versions are recorded in
-the Reproducibility Checklist. Decoding is deterministic
+server-side prefix caching enabled.\todo{Pin exact vLLM/CUDA/NVIDIA-driver/OS versions
+once the experiment suite is final: record them here and flip the ``computing
+infrastructure'' Reproducibility Checklist item from \emph{partial} to \emph{yes}.}
+Decoding is deterministic
 (temperature~0), so each trial is a single fixed sample and the confidence
 intervals we report quantify sampling uncertainty over the fixture instances
 (treated as the inferential population), not decoding stochasticity, which
@@ -368,11 +370,11 @@ temperature~0 removes.
 The context window is 16{,}384 tokens; per-task decode caps are 8{,}192 tokens for
 \emph{solve} and 6{,}144 for the others; tool-using runs may iterate up to ten
 tool calls. In practice tool use is overwhelmingly single-shot: across the $91{,}200$
-with-tools trials the median trial issues one call, $60\%$ issue exactly one (of which
-$90\%$ succeed), and the $27\%$ that issue two or more are predominantly trials
-struggling on hard instances, where the success rate falls monotonically with call
-count ($67\%$ at two calls to ${\approx}25\%$ beyond five); a further $13\%$ issue no
-call at all (the silent failures dissected in Results). Capping at a single call would
+with-tools trials the median trial issues one call, and $60\%$ issue exactly one (of
+which $90\%$ succeed). The $27\%$ that issue two or more are retries after an
+unsuccessful call, and their success rate falls monotonically as call count rises
+($67\%$ at two calls to ${\approx}25\%$ beyond five). A further $13\%$ issue no call at
+all, the silent failures dissected in Results. Capping at a single call would
 therefore remove low-yield retries rather than successes. The reasoning mode is toggled per run (\emph{think}~=~on/off via the
 serving runtime's thinking switch). Under \emph{think}~=~on the
 reasoning trace and the final answer share the \emph{same} per-task decode cap, a
