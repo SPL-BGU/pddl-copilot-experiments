@@ -182,6 +182,22 @@ def wt_total(model):
 def is_measured(model):
     return model in MEASURED
 
+# --- hybrid: a smart ORCHESTRATOR (no-tools) whose only "tool" is a cheaper
+# WITH-TOOLS SUBAGENT. The orchestrator is itself a live multi-turn loop (it
+# delegates, waits, synthesizes), so — exactly like with-tools — it CANNOT batch:
+# its no-tools tokens are billed at LIST, not the batched −50%. The subagent does
+# the real MCP tool loop; its giant trajectory stays inside it (the orchestrator
+# only reads the subagent's short final answer ≈ a no-tools input). This is a
+# FLOOR (one orchestrator pass); a real delegation round-trip adds ~1 more pass.
+def hybrid_task(task, orch="Sonnet 4.6", sub="Haiku 4.5"):
+    mi, mo = _toks(NT_TOK, orch, task)
+    orch_cost = wt_list(mi, mo, N_PLAIN[task], *P[orch])   # NT tokens at full LIST price
+    return orch_cost, wt_task(sub, task)
+
+def hybrid_total(orch="Sonnet 4.6", sub="Haiku 4.5"):
+    parts = [hybrid_task(t, orch, sub) for t in TASKS]
+    return sum(o for o, _ in parts), sum(s for _, s in parts)
+
 WT_SONNET = wt_total("Sonnet 4.6")   # ~$449 (measured)
 WT_HAIKU  = wt_total("Haiku 4.5")    # ~$146 (measured)
 
@@ -470,6 +486,12 @@ def build():
     print(f"  Sonnet no-tools both corpora = {money(NT_BOTH)}  "
           f"(canonical {money(NT_CANON)} + anon {money(NT_ANON)})")
     print(f"  with-tools plain/corpus: Sonnet {money(WT_SONNET)} · Haiku {money(WT_HAIKU)}")
+    print(f"-- hybrid: Sonnet orchestrator (no-tools, LIST) + Haiku subagent (with-tools) --")
+    o, s = hybrid_total()
+    for t in TASKS:
+        oc, sc = hybrid_task(t)
+        print(f"  {t:18} orch ${oc:5.2f} + sub ${sc:6.2f} = ${oc+sc:6.2f}")
+    print(f"  {'TOTAL':18} orch ${o:5.0f} + sub ${s:6.0f} = ${o+s:6.0f}/corpus (floor; +~1 orch pass for delegation)")
     print(f"-- PlanBench (think-off, one corpus-equiv, calibrated) --")
     for m in MODELS:
         print(f"  {m:18} NT={money(pb_nt(m)):>7}  WT={money(pb_wt(m)):>7}")
