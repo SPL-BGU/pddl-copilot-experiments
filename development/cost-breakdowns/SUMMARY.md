@@ -9,6 +9,8 @@ One model setup, one corpus, think-off — what each costs to run on each benchm
 | Sonnet — with-tools | $449 | $673 | ~100% |
 | Hybrid — Sonnet orchestrator + Haiku subagent | ~$224 | ~$356 | ~100% |
 
+_Calc: each cell = Σ over the 5 tasks of `n·(in·$in + out·$out)÷1e6`; no-tools × 0.5 (Batch −50%), with-tools at full list (agentic loop can't batch); PlanBench uses the per-instance proxy × 0.54 (NT)/1.59 (WT) calibration; hybrid = Sonnet-no-tools-at-list + Haiku-with-tools._
+
 _Sonnet/Haiku measured on the Anthropic API; PlanBench figures are calibration-transferred (±wide) and also run **free** on local vLLM. Full breakdown + cross-provider prices: `EXPLAINER_eli8.md` / `cheap_model_cost_slides.pptx`._
 
 ---
@@ -31,6 +33,8 @@ Per-model cost, both arms, both benchmarks — ● = measured (own API tokens), 
 | Budget | Gemini 2.5 Flash-Lite (Google) | $1 | $14 | $2 | $21 |
 | Budget | Qwen-Flash (Alibaba) | $1 | $9 | $3 | $14 |
 
+_Calc: per model, $ = Σ over tasks of `n·(in·$in + out·$out)÷1e6` from measured per-trial tokens (● = own; others = mean of the two ● profiles); no-tools × 0.5 (Batch), with-tools full list; PlanBench = per-instance proxy × 0.54 (NT)/1.59 (WT). $in/$out are that row's price._
+
 ---
 
 ## Single-tool, by task
@@ -45,6 +49,8 @@ Where the cost lives — `validate_plan` (10 plan-checks × 100 problems × 3 va
 | validate_plan | 3,000 | $25.64 | $212 | $73 |
 | simulate | 300 | $8.67 | $154 | $30 |
 | **Total** | **4,560** | **$39** | **$449** | **$146** |
+
+_Calc: per task, $ = `n·(in·$in + out·$out)÷1e6` from the measured per-trial tokens; Sonnet NT × 0.5 (Batch −50%), with-tools at full list. Total = column sum._
 
 ---
 
@@ -61,6 +67,8 @@ Sonnet no-tools boss (live → list price) hands each job to a Haiku with-tools 
 | simulate | $17.34 | $29.56 | $46.90 |
 | **Total** | **$78** | **$146** | **≈ $224** |
 
+_Calc: orch = Sonnet no-tools tokens at full list, `n·(in·$3 + out·$15)÷1e6` (live loop → no batch); sub = the Haiku with-tools task cost; together = orch + sub._
+
 ---
 
 ## Hybrid on PlanBench (Sonnet orchestrator + Haiku subagent)
@@ -72,3 +80,5 @@ Same boss+helper idea at PlanBench scale (~7,000 instances) — only a component
 | Sonnet orchestrator (no-tools, live → list) | $131 |
 | Haiku subagent (with-tools) | $224 |
 | **Together** | **≈ $356** |
+
+_Calc: orchestrator = 7,000 × (1,353·$3 + 2,056·$15) ÷ 1e6 × 0.54 = **$131** (no-tools tokens at full list — a live loop can't batch, so 2× the batched $66 — × CAL_NT); subagent = 7,000 × (12,681·$1 + 1,482·$5) ÷ 1e6 × 1.59 = **$224** (= `pb_wt(Haiku)`, × CAL_WT). Tokens = PlanBench per-instance proxy; calibration from the measured single-tool anchors._
