@@ -8,12 +8,6 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## P1 — Methodology
 
-### ~~ISS-001~~ · `validate_*` ground truth is all-positive
-**Closed 2026-04-26** by the task-targeted negative fixtures pass. Each domain now ships three negatives — `domain_0.pddl` / `p01_0.pddl` / `p01_0.plan` — joining exactly its target task, giving 1:1 balanced ground truth (10 positive + 10 negative per `validate_*` task). With-tools `validate_*` now exercises true validation capability (the trivial verdict-match shortcut is gone). No-tools `validate_*` was simultaneously re-enabled (`run_experiment.py:1147` flipped from `task != "solve"` to `task == "simulate"`), so the production matrix again grades it. `generate_ground_truth` aborts startup with `SystemExit` if any negative validates True. See CHANGELOG 2026-04-26.
-
-### ~~ISS-002~~ · `simulate` no-tools scorer is non-discriminative
-**Closed 2026-04-29 (PR-4)** (path a — structured-trace grader). PR-4 introduces format-constrained sampling (`format=SimulateResponse`) on the no-PDDL-tools branch and grades by canonical-form trajectory deep-equality against the oracle via `_normalize_trajectory` (shared with the with-tools branch). The job-builder skip is removed; `check_success`'s simulate no-tools branch is now the production grader. The pre-2026-04-25 path-b resolution (drop from headline) is superseded. See CHANGELOG 2026-04-29 (PR-4).
-
 ### ISS-003 · Guided prompt is ineffective at 0.6b
 **Source.** Results review, issue 2.
 **Evidence.** `per-task_minimal` and `per-task_guided` both hit 6/55 on `validate_domain`. Guided reshuffles failures from `tool_error:3, verdict_mismatch:8` → `tool_error:0, verdict_mismatch:27` — never to success. Sampled tool-call payloads show the 0.6b model passing the literal string `"blocksworld"` (len=11) as domain content; the hint doesn't bite.

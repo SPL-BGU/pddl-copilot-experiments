@@ -1,6 +1,10 @@
 # Contamination Probe — Anonymised-Corpus Pilot (`domains-anon/`)
 
-**Status:** plan, not implemented.
+**Status:** EXECUTED as sweep-6 (broadened to all 5 models, not just the 1-model pilot below).
+The anon pipeline shipped (`tools/anon_rename.py`, `tools/anon_validate.py`); FINAL verdict
+2026-06-01 — no-tools contamination = NULL. This doc is kept as the **design spec** that those
+tools and the `submit_with_rtx.sh` `--domains-dir` guard cite (see `paper/GOALS.md` contamination
+control + `CHANGELOG.md` for the canonical record), NOT as a live plan.
 **Author / date:** drafted 2026-05-26.
 **Scope:** 1 model (Qwen 35B), 6 sweep-5 arms, full domain set with lexical renames.
 **Owner-decision required before kickoff:** §11 open questions.
