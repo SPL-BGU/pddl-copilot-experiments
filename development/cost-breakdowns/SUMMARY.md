@@ -1,6 +1,6 @@
 # API cost summary
 
-One model setup, one corpus, think-off — what each costs to run on each benchmark (Haiku-with-tools is the cheapest path to ~100%; the **hybrid** runs a Sonnet no-tools orchestrator that delegates to a Haiku with-tools subagent).
+One model setup, one corpus, think-off — what each costs to run on each benchmark. This headline table uses the **measured** Anthropic models; the **same setups for OpenAI / Google / Alibaba** are in the next section. (The **hybrid** runs a frontier no-tools orchestrator that delegates to a cheaper with-tools subagent.)
 
 | Setup | Single-tool | PlanBench | Accuracy |
 |---|--:|--:|---|
@@ -12,6 +12,48 @@ One model setup, one corpus, think-off — what each costs to run on each benchm
 _Calc: each cell = Σ over the 5 tasks of `n·(in·$in + out·$out)÷1e6`; no-tools × 0.5 (Batch −50%), with-tools at full list (agentic loop can't batch); PlanBench uses the per-instance proxy × 0.54 (NT)/1.59 (WT) calibration; hybrid = Sonnet-no-tools-at-list + Haiku-with-tools._
 
 _Sonnet/Haiku measured on the Anthropic API; PlanBench figures are calibration-transferred (±wide) and also run **free** on local vLLM. Full breakdown + cross-provider prices: `EXPLAINER_eli8.md` / `cheap_model_cost_slides.pptx`._
+
+---
+
+## Same setups, by provider
+
+When the model choice is open: the cheapest ~100% route (mid model + tools), the **hybrid** (frontier no-tools orchestrator + mid with-tools subagent), and the frontier-with-tools upper bound — per provider, both benchmarks.
+
+| Provider | Models — orch / sub | Mid + tools (ST / PB) | Hybrid (ST / PB) | Frontier + tools (ST / PB) |
+|---|---|--:|--:|--:|
+| Anthropic | Sonnet 4.6 / Haiku 4.5 | $146 / $224 | ~$224 / ~$356 | $449 / $673 |
+| OpenAI | GPT-5.5 / GPT-5.4 Mini | $118 / $181 | ~$290 / ~$438 | $788 / $1,204 |
+| Google | Gemini 3.1 Pro / Gemini 2.5 Flash | $54 / $84 | ~$123 / ~$187 | $315 / $481 |
+| Alibaba | Qwen3.7-Max / Qwen-Plus | $51 / $76 | ~$103 / ~$208 | $321 / $478 |
+
+_ST = single-tool, PB = PlanBench (one corpus / corpus-equiv, think-off). "Mid + tools" = mid model with-tools (cheapest ~100% route per provider). "Hybrid" = frontier no-tools orchestrator + mid with-tools subagent. Anthropic measured; OpenAI/Google/Alibaba projected from the mean measured token profile (June-2026 list prices), with-tools ±wide. Qwen also runs **free** on local vLLM._
+
+---
+
+## Cutting cost by running fewer samples (single-tool)
+
+The corpus is over-sampled where it costs most: `validate_plan` is 3,000 of 4,560 trials and ~⅔ of the bill, yet its 95% CI is already ±0.6pp. Trim the redundant axes (extra plan-checks, extra wordings) before the generality axis (domains).
+
+| Step | Change | N | Haiku-WT | Sonnet-WT | Worst CI hit |
+|---|---|--:|--:|--:|---|
+| current | 20 dom · 3 var · vp=10 | 4,560 | $146 | $449 | — |
+| **L1** | `validate_plan` 10→4 checks (2+2) | 2,760 | **$102** | $322 | vp 1.2→1.9pp |
+| L2 | + variants 3→2 | 1,840 | $68 | $214 | solve 10→12pp |
+| L3 | + domains 20→10 (5+5) | 920 | $34 | $107 | solve 10→17pp |
+
+**Ship L1 unconditionally** (−30% cost, only `validate_plan`'s CI moves, still <2pp); take L2 if tight; L3 is last-resort (touches the generality breadth). Honesty guardrails: cut symmetrically across both arms (N-matching), report the Wilson CI at the reduced n, trim redundancy not the hard cases, keep both tool conditions / both domain families / both `validate_plan` polarities / ≥2 variants, and **never under-sample `simulate`** (the floor result + biggest tools lift). Full reasoning + the 5 guardrails: `SAMPLE_REDUCTION.md`.
+
+## Probing cost (one stratified probe per benchmark)
+
+A 75-trial probe de-risks a three-figure full run for single-digit dollars — it priced this whole deck.
+
+| Probe (75 trials) | Single-tool | PlanBench |
+|---|--:|--:|
+| Haiku — with-tools | **$2.72** (measured) | $2.40 (proj) |
+| Sonnet — with-tools | ~$5 (measured) | $7.19 (proj) |
+| Haiku — no-tools (batch) | $0.30 (measured) | $0.24 (proj) |
+
+The Haiku-WT probe ($2.72) is ~1.9% of the $146 run it priced; the PlanBench Haiku-WT probe is ~1.1% of the $224 pass. Always probe before a paid full run; never run the full 7,000-instance PlanBench on a paid API.
 
 ---
 
