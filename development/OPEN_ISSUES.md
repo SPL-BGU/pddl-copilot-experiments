@@ -8,6 +8,14 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## P1 — Methodology
 
+### ISS-024 · `_normalize_trajectory` predicate-syntax gap floored no-tools `simulate` at 0% (frontier-fixed)
+**Source.** Frontier Haiku no-tools grading, 2026-06-23 (`development/frontier_grading_artifacts_findings.md`, `development/simulate_normalizer_fix_plan.md`).
+**Evidence.** `pddl_eval/scoring.py::_normalize_trajectory` lowercased + whitespace-collapsed boolean/numeric/action atoms but never reconciled the model's PDDL s-expression `(ontable shaker1)` against the oracle's functional `ontable(shaker1)`, so every correct no-tools simulate trajectory deep-equality-failed as `result_mismatch`. Frontier `simulate` read 0% (Haiku 0/100, Sonnet 0/300 × 2 corpora) although the trajectories were correct.
+**Status (2026-06-23). FIXED for the frontier corpora.** `_canon_atom` bridge landed (commit `5879ac4`); the three Anthropic corpora re-graded from local raw batch dirs — Haiku 0→42.0% [32.8,51.8], Sonnet canonical 0→45.0% [39.5,50.7], anon 0→38.3% [33.0,43.9]; all non-simulate cells byte-identical (regression check passed). With-tools simulate unaffected (functional on both sides → canonicalises identically; covered by a unit test).
+**Open (carried).** (a) **Open vLLM roster `simulate` is NOT re-gradeable from disk** — `RESPONSE_SNAPSHOT_LEN=500` stored only a 500-char response snapshot, no `gt` → recovering their true simulate numbers needs a cluster re-run with the fix + a higher token cap (user-gated; a ping is required before any cluster work). (b) **Persist full responses + `gt` in trials** (raise/remove `RESPONSE_SNAPSHOT_LEN`) so future corpora are re-gradeable offline — hygiene follow-up.
+**Impact.** The paper's "frontier floored on `simulate` (0%) → sole-source capability boundary" claim is substantially a grader artifact; corrected floor ~40–45%. The `solve` floor (~29%, genuine `plan_invalid`) and `validate_*` highs are unaffected (different graders) and now carry the generative-leg / judgment-leg story. See paper_notes 2026-06-23.
+**Files.** `pddl_eval/scoring.py`, `tests/test_scoring.py`; open-roster re-run tracked here.
+
 ### ISS-003 · Guided prompt is ineffective at 0.6b
 **Source.** Results review, issue 2.
 **Evidence.** `per-task_minimal` and `per-task_guided` both hit 6/55 on `validate_domain`. Guided reshuffles failures from `tool_error:3, verdict_mismatch:8` → `tool_error:0, verdict_mismatch:27` — never to success. Sampled tool-call payloads show the 0.6b model passing the literal string `"blocksworld"` (len=11) as domain content; the hint doesn't bite.

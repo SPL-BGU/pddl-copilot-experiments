@@ -6,6 +6,28 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-23 — `_normalize_trajectory` predicate-syntax fix → frontier `simulate` re-graded 0% → ~40–45%
+
+**Change.** `pddl_eval/scoring.py::_normalize_trajectory` canonicalised simulate trajectories by lowercasing + collapsing whitespace but **never reconciled predicate notation** — the no-tools model emits PDDL s-expressions `(ontable shaker1)` while the oracle (`get_state_transition`) emits functional `ontable(shaker1)`, so every *correct* no-tools simulation deep-equality-failed as `result_mismatch`. Added `_canon_atom` (one regex; maps `(name a b)`, `name(a, b)`, `name()` and bare `name` to a single `name arg1 arg2` token, argument order preserved) and applied it to **boolean predicates, numeric-fluent keys, and the action string**. Malformed atoms fall back to the prior whitespace-lowered form → genuinely-wrong trajectories still mismatch; the bridge reconciles notation, it never widens equality. Commit `5879ac4`.
+
+**Why a bug, not a benchmark gate.** The normalizer's own docstring states its job is *content equality* across the with-tools (`boolean_fluents` dict) and no-tools (`state.boolean` list) shapes; the syntax gap is an unintended omission in that bridge, not a designed format requirement. Fixing it restores the intended measurement.
+
+**Frontier re-grade (local, from raw batch dirs; no spend, no cluster).** Re-ran `tools/claude_api_batch.py grade` on `.local/{haiku/singletool_nt_canonical, sonnet/canonical, sonnet/anon}` (responses + oracle on disk) → updated `results/{haiku-frontier/sweep5v2, sonnet-frontier/sweep5v2, sonnet-frontier/sweep6}`.
+
+| corpus | simulate before | simulate after [95% Wilson] | breakdown (pass · mismatch · parse-fail · truncated) |
+|---|--:|--:|---|
+| Haiku sweep5v2 (n=100) | 0.0% | **42.0% [32.8,51.8]** | 42 · 25 · 0 · 33 |
+| Sonnet sweep5v2 canonical (n=300) | 0.0% | **45.0% [39.5,50.7]** | 135 · 14 · 62 · 89 |
+| Sonnet sweep6 anon (n=300) | 0.0% | **38.3% [33.0,43.9]** | 115 · 13 · 70 · 102 |
+
+**Regression check (built into the re-grade): PASS.** All non-simulate cells reproduce byte-identically across all three corpora (solve 22/86/85; validate_domain 105·337·330; validate_plan 915·2918·2919; validate_problem 146·538·543) — confirms the fix touched only the simulate leg and the grade pipeline is stable.
+
+**Reading.** The simulate "0% sole-source floor" was substantially a grader artifact. Of trials that produced a *parseable* trajectory, Sonnet is correct **135/149 = 90.6%** (canonical) / **115/128 = 89.8%** (anon); the residual failures are truncation (token budget — simulate trajectories are long) + format-parse, not state-tracking incapability. Corrected floor **~40–45%, not 0%**. Contamination stays NULL for simulate (the canon−anon overall Δ+6.7 has overlapping CIs and is an anon-prompt-length truncation confound; success-given-parseable-completion is equal).
+
+**Scope / not done.** The open vLLM roster's `simulate` is **not** re-gradeable from disk (`RESPONSE_SNAPSHOT_LEN=500` kept only a 500-char snapshot, no stored `gt`) → needs a cluster re-run with the fix + higher token cap (user-gated). PlanBench `t7` left untouched (third-party deterministic parser; report as caveat). See `development/{frontier_grading_artifacts_findings.md, simulate_normalizer_fix_plan.md}` and ISS-024.
+
+**Files.** `pddl_eval/scoring.py`, `tests/test_scoring.py` (cross-syntax + idempotency + no-false-merge cases), `results/{haiku-frontier/sweep5v2, sonnet-frontier/sweep5v2, sonnet-frontier/sweep6}/` (re-graded trials + summary), `development/{CHANGELOG.md, OPEN_ISSUES.md, paper_notes_discussions.md}`.
+
 ## 2026-06-19 — With-tools frontier probe (`tools/sonnet_tools_probe.py`) + Haiku/Sonnet capability ladder
 
 **Change.** Adds `tools/sonnet_tools_probe.py` — a LIVE with-tools agentic-loop probe (Anthropic Messages API + MCP tool execution) for proprietary frontier models, with `--model` (Sonnet 4.6 / Haiku 4.5), `--no-tools` (single-call no-tools mode mirroring the batch path's request shapes), per-trial error handling, and a cost report + full-N projection. With-tools **cannot batch** (multi-turn loop with local MCP execution) → runs live at list price, no −50% discount. Reuses `build_jobs`/`build_messages`/`check_success`/`save_results` for corpus identity.

@@ -519,3 +519,31 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - 3 new bib entries (react/pot/instructgpt). Build clean (16pp, 0 undefined refs, 0 overfull).
 - The [3]/[4]/[15] framings were already adequately present (matched-prompt, steering, richer-PDDL) —
   verified, not re-touched. [5a] simulate partial-credit writeup folds into T4 (same section as [5b]).
+
+## 2026-06-23 — `simulate` 0% "sole-source floor" was substantially a grader artifact → corrected to ~40–45%
+- **Bug.** `_normalize_trajectory` compared simulate trajectories by lowercase + whitespace only; it never
+  reconciled the model's PDDL s-expression `(ontable shaker1)` against the oracle's functional
+  `ontable(shaker1)`. Every *correct* no-tools simulation scored `result_mismatch` → an artificial 0%.
+  Fixed (commit `5879ac4`; [[project_simulate_grader_artifact]]; ISS-024). With-tools simulate (functional
+  on both sides) was unaffected.
+- **Corrected frontier `simulate` (no-tools, think=off, 95% Wilson):** Haiku **0 → 42.0% [32.8,51.8]**;
+  Sonnet canonical **0 → 45.0% [39.5,50.7]**; Sonnet anon **0 → 38.3% [33.0,43.9]**. Re-graded locally from
+  the raw batch dirs (no spend, no cluster); all non-simulate cells reproduced byte-identically (built-in
+  regression check passed) — the fix touches only the simulate leg.
+- **The floor is real but ~40–45%, not 0.** Of trials that produced a *parseable* trajectory, Sonnet is
+  correct **135/149 = 90.6%** (canonical) / **115/128 = 89.8%** (anon); the remaining loss is **truncation**
+  (long trajectories hit the token cap: 89/102 of 300) + **format_parse_fail** (62/70) — output length/format,
+  not state-tracking incapability.
+- **Contamination probe stays NULL for simulate.** Overall canon 45.0% vs anon 38.3% (Δ+6.7) has *overlapping*
+  CIs and is a **truncation confound** — anon prompts are ~5% longer → more truncation (102 vs 89) + more
+  parse-fail (70 vs 62). Success-given-parseable-completion is equal (90.6% vs 89.8%) → no memorization
+  signal. Same mechanism as the validate_plan×think-on tokenization artifact ([[project_sweep6_design]]).
+- **Paper edits owed (NOT yet made — `paper/` untouched):** the "frontier reproduces the floor / 0%→97%
+  bimodal" and the Discussion executive-summary "sole-source 0%" passages must be rewritten — the low pole on
+  the *generative/state-tracking* leg is **`solve` ~29%** (genuine `plan_invalid`), not `simulate` 0%.
+  `simulate` is now a *mid* cell (~40–45%) gated by output length, not a hard floor. The `solve` floor and the
+  `validate_*` highs are unchanged and still load-bearing; the "sole-source" framing now rests on `solve`.
+- **Open-roster caveat:** the open vLLM models' `simulate` cells likely carry the *same* artifact but are
+  **not** re-gradeable from disk (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`) → a cluster re-run with the fix
+  + higher token cap is needed before quoting corrected open-model simulate numbers (user-gated, ping first).
+  [[project_simulate_grader_artifact]]
