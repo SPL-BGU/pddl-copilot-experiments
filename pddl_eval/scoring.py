@@ -131,6 +131,33 @@ def extract_plan_lines(response: str) -> list[str]:
     return plan
 
 
+# Predicate / atom syntax bridge. The no-PDDL-tools model emits PDDL
+# s-expressions `(ontable shaker1)` while the oracle (and the with-tools
+# `get_state_transition` result) emit functional `ontable(shaker1)`. Both denote
+# the same atom; canonicalise to one space-joined `name arg1 arg2` token so the
+# simulate grader's deep-equality compares content, not notation.
+_ATOM_RE = re.compile(r"^\(?\s*([a-z0-9_\-]+)\s*\(?\s*([^()]*)\)?\s*\)?$")
+
+
+def _canon_atom(s) -> str:
+    """Canonicalise one predicate / fluent-key / action string.
+
+    `(name a b)`, `name(a, b)`, `(handempty)`, `handempty` and `handempty()` all
+    map to `"name a b"` / `"handempty"`. Argument *order* is preserved — it is
+    semantically load-bearing (`on(a,b) != on(b,a)`). A string that does not
+    match the atom shape falls back to the prior whitespace-collapsed,
+    lower-cased form, so a genuinely-wrong trajectory still mismatches: the
+    bridge reconciles notation, it never silently widens equality. Idempotent.
+    """
+    t = " ".join(str(s).split()).lower()
+    m = _ATOM_RE.match(t)
+    if not m:
+        return t
+    name, rest = m.group(1), m.group(2).strip()
+    args = [a for a in re.split(r"[\s,]+", rest) if a]
+    return " ".join([name, *args])
+
+
 def _normalize_trajectory(traj) -> list[dict] | None:
     """Canonicalise a trajectory list to a comparable shape.
 
@@ -191,18 +218,15 @@ def _normalize_trajectory(traj) -> list[dict] | None:
         if not isinstance(numerics, dict):
             return None
 
-        boolean_canon = sorted(" ".join(str(b).split()).lower() for b in boolean_items)
+        boolean_canon = sorted(_canon_atom(b) for b in boolean_items)
         numeric_canon: dict[str, float] = {}
         for k, v in numerics.items():
             try:
-                numeric_canon[str(k).lower()] = float(v)
+                numeric_canon[_canon_atom(k)] = float(v)
             except (TypeError, ValueError):
                 return None
         action_raw = entry.get("action")
-        action_canon = (
-            "" if action_raw is None
-            else " ".join(str(action_raw).split()).lower()
-        )
+        action_canon = "" if action_raw is None else _canon_atom(action_raw)
         out.append({
             "step": entry.get("step"),
             "action": action_canon,
