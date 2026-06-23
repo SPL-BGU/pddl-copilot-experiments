@@ -538,11 +538,17 @@ validated by an independent ranking subagent (the user asked for a second perspe
   CIs and is a **truncation confound** — anon prompts are ~5% longer → more truncation (102 vs 89) + more
   parse-fail (70 vs 62). Success-given-parseable-completion is equal (90.6% vs 89.8%) → no memorization
   signal. Same mechanism as the validate_plan×think-on tokenization artifact ([[project_sweep6_design]]).
-- **Paper edits owed (NOT yet made — `paper/` untouched):** the "frontier reproduces the floor / 0%→97%
-  bimodal" and the Discussion executive-summary "sole-source 0%" passages must be rewritten — the low pole on
-  the *generative/state-tracking* leg is **`solve` ~29%** (genuine `plan_invalid`), not `simulate` 0%.
-  `simulate` is now a *mid* cell (~40–45%) gated by output length, not a hard floor. The `solve` floor and the
-  `validate_*` highs are unchanged and still load-bearing; the "sole-source" framing now rests on `solve`.
+- **Paper: HOLD — do not rewrite yet (Omer 2026-06-23).** Gather the *complete* simulate picture before
+  touching any narrative — avoid fixating on a story while the data is partial. We have corrected numbers for
+  **3 frontier cells only**; the open vLLM roster (the bulk of the simulate evidence) is **not** re-gradeable
+  from disk (`RESPONSE_SNAPSHOT_LEN=500`, no `gt`), and the budget-vs-capability split in the residual
+  truncation (33% Haiku / ~30% Sonnet) is unresolved. Both close via a single (gated) cluster re-run with the
+  fix + higher token cap. `paper/` untouched.
+- **Provisional read = HYPOTHESIS TO TEST, not an edit to make.** *If* the open roster moves the same way, the
+  "frontier reproduces the floor / 0%→97% bimodal" and Discussion "sole-source 0%" passages would need
+  rewriting — simulate would be a *mid* ~40–45% cell gated by output length, shifting the generative-leg low
+  pole toward `solve` (~29%, genuine `plan_invalid`). Recorded so we test it against the full data, not so we
+  commit to it now. (`solve` floor + `validate_*` highs are already complete and unaffected.)
 - **Open-roster caveat:** the open vLLM models' `simulate` cells likely carry the *same* artifact but are
   **not** re-gradeable from disk (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`) → a cluster re-run with the fix
   + higher token cap is needed before quoting corrected open-model simulate numbers (user-gated, ping first).

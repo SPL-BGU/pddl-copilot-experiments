@@ -14,6 +14,38 @@ The simulate one is the important one — it touches a load-bearing paper claim.
 
 ---
 
+## STATUS (2026-06-23, post-fix) — frontier re-graded; data still PARTIAL; do not narrate yet
+
+Fix landed (`_canon_atom` in `_normalize_trajectory`, commit `5879ac4`); the three
+Anthropic corpora re-graded from local raw batch dirs (commit `156fb01`). The
+mechanism below is confirmed on real data. **These are the authoritative numbers**
+(shipped strict grader = exact step + action + per-step state; they run a few
+points under the state-set diagnostic *estimate* in Finding 1, which is expected —
+strict is stricter):
+
+| corpus | simulate before | after [95% Wilson] | pass · mismatch · parse-fail · truncated |
+|---|--:|--:|---|
+| Haiku sweep5v2 (n=100) | 0% | **42.0% [32.8,51.8]** | 42 · 25 · 0 · 33 |
+| Sonnet sweep5v2 canon (n=300) | 0% | **45.0% [39.5,50.7]** | 135 · 14 · 62 · 89 |
+| Sonnet sweep6 anon (n=300) | 0% | **38.3% [33.0,43.9]** | 115 · 13 · 70 · 102 |
+
+All non-simulate cells reproduced byte-identically (regression check passed).
+Of trials that produced a *parseable* trajectory, Sonnet is correct 90.6% (canon) /
+89.8% (anon); the residual is truncation + format-parse, i.e. output length/format.
+
+**The picture is INCOMPLETE — hold the paper narrative.** We have corrected numbers
+for **3 frontier cells only**. Two gaps must close before assessing what the
+simulate result *means*:
+1. **Open vLLM roster** (the bulk of the paper's simulate evidence) is **not**
+   re-gradeable from disk (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`) → needs a
+   cluster re-run with the fix.
+2. **Budget vs capability** in the residual (33% truncated Haiku / ~30% Sonnet) is
+   unresolved — a higher token-cap re-run separates "ran out of tokens" from "got
+   the state wrong." Until both close, do not rewrite `paper/` (see Open items;
+   cluster work is user-gated, ping first).
+
+---
+
 ## Finding 1 — single-tool `simulate` 0% is largely a grader bug (OURS)
 
 ### What
@@ -232,9 +264,11 @@ logistics 78.9 / mystery 45.4.
 4. PlanBench `t7`: no code change; add the artifact caveat to the analysis/paper.
 
 ## Open items
-- [ ] Verify Sonnet 0/300 `simulate` shows the same artifact (raw batch responses local; no spend, no cluster).
-- [ ] Faithful fixed-grader re-grade (exact step+action, not just state-set) for the precise corrected number.
-- [ ] Uniform `simulate` re-grade across the open roster.
+- [x] Verify Sonnet 0/300 `simulate` shows the same artifact — DONE: canon 0→45.0%, anon 0→38.3% (commit `156fb01`); same artifact confirmed.
+- [x] Faithful fixed-grader re-grade (exact step+action, not just state-set) — DONE: shipped strict grader, numbers in STATUS table above.
+- [ ] **Uniform `simulate` re-grade across the open roster** — BLOCKED on disk (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`); requires a cluster re-run with the fix. **GATED — ping before any cluster work.** ← the next data-gathering step.
+- [ ] **Higher token-cap `simulate` re-run** (frontier + roster) to split the residual truncation into budget vs capability. Couples with the line above (same cluster job).
+- [ ] Persist full responses + `gt` in trials (raise/remove `RESPONSE_SNAPSHOT_LEN`) so future corpora are re-gradeable offline — hygiene follow-up (ISS-024).
 - [ ] Cluster temp cleanup (`~/haiku_eval*.{sh,log}` on slurm) — pending a ping per the cluster-interaction rule.
 
 ## File/line anchors
