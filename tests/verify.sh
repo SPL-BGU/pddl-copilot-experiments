@@ -42,8 +42,8 @@ run_test test_drift_check.py
 run_test test_partial_subset.py
 run_test test_prompts.py
 run_test test_summary_arm.py
-run_test test_sonnet_batch.py
-run_test test_sonnet_tools_probe.py
+run_test test_claude_api_batch.py
+run_test test_claude_api_tools_probe.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"

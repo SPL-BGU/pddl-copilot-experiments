@@ -455,7 +455,7 @@ def test_build_jobs_no_tools_grid(r: TestResults) -> None:
     """`build_jobs` enumerates the no-tools grid the offline batch builder relies on.
 
     Direct contract test for the helper extracted from
-    `run_single_task_experiment` (so tools/sonnet_batch.py enumerates the
+    `run_single_task_experiment` (so tools/claude_api_batch.py enumerates the
     byte-identical fixture/variant/condition grid). Guards: (a) validate_plan
     emits one job per committed valid plan (v1..vN) + per invalid plan
     (b1..bN); (b) validate_problem emits positives + task-targeted negatives

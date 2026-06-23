@@ -247,7 +247,7 @@ def build_messages(
     """Build the [system, user] chat messages for one single-task trial.
 
     Pure prompt construction, extracted from `evaluate_one` so the live
-    harness and the offline Anthropic batch builder (tools/sonnet_batch.py)
+    harness and the offline Anthropic batch builder (tools/claude_api_batch.py)
     emit byte-identical prompts for the same (task, fixture, variant,
     condition) — corpus identity is load-bearing.
 
@@ -542,7 +542,7 @@ def build_jobs(
         used by the resume scope-filter.
 
     Extracted from `run_single_task_experiment` so the offline Anthropic
-    batch builder (tools/sonnet_batch.py) enumerates the *identical*
+    batch builder (tools/claude_api_batch.py) enumerates the *identical*
     fixture/variant/condition grid. Corpus identity is load-bearing, so the
     two call sites must share one enumerator rather than risk drift.
     `think_tag` is passed in (already serialised via `_think_str`) so it
@@ -800,7 +800,7 @@ async def run_single_task_experiment(
     # Enumerate the full (model, task, fixture, variant, condition) job list
     # up-front via the shared `build_jobs` helper. `build_jobs` is the single
     # source of truth for the fixture/variant/condition grid — the offline
-    # Anthropic batch builder (tools/sonnet_batch.py) calls the same function
+    # Anthropic batch builder (tools/claude_api_batch.py) calls the same function
     # so the Sonnet frontier run covers the byte-identical grid (corpus
     # identity is load-bearing). `think_tag` is computed here too because the
     # resume writer below needs it to rebuild trial keys.

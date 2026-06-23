@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """LIVE with-tools probe for Sonnet 4.6 — cost + token-consumption estimator.
 
-Companion to `tools/sonnet_batch.py` (the no-tools Batches runner). With-tools
+Companion to `tools/claude_api_batch.py` (the no-tools Batches runner). With-tools
 is a multi-turn agentic loop: the model calls an MCP tool, *we* execute it
 locally (pddl-solver / pddl-validator), feed the result back, and loop until it
 answers (cap = `chat.MAX_TOOL_LOOPS`). The Anthropic **Batches API is
@@ -16,14 +16,14 @@ measured tokens + turns + projected full-corpus cost. It is a COST/EFFICIENCY
 probe, not the full experiment.
 
 Corpus identity is preserved by reusing the harness builders, exactly like
-sonnet_batch:
+claude_api_batch:
   * `runner.build_jobs(conditions="tools")` — the with_tools=True grid
   * `runner.build_messages(..., with_tools=True)` — the with-tools prompts
   * `scoring.check_success(..., with_tools=True)` — the with-tools grader
   * `summary.save_results` — the harness output shape
 
 Usage:
-  sonnet_tools_probe.py --corpus canonical --marketplace-path ../pddl-copilot \
+  claude_api_tools_probe.py --corpus canonical --marketplace-path ../pddl-copilot \
       --keys-file A.jsonl [--keys-file B.jsonl ...] --out .local/sonnet/tools_probe
 """
 
@@ -51,12 +51,12 @@ from pddl_eval.scoring import FR_EXCEPTION, _classify_step_failure, check_succes
 from pddl_eval.summary import save_results
 from run_experiment import resolve_plugin_dirs
 # The simulate-directive / solve-schema backend adaptations + the per-task
-# format-fidelity rule are shared with tools/sonnet_batch.py via format_for so
+# format-fidelity rule are shared with tools/claude_api_batch.py via format_for so
 # the no-tools mode here cannot drift from the batch path.
-from tools._sonnet_common import format_for
+from tools._claude_api_common import format_for
 
 # MODEL + the live prices are overridden from --model at runtime (see main()).
-# (Trivially-stable dups vs sonnet_batch — CORPUS_DOMAINS + the J_* job-tuple
+# (Trivially-stable dups vs claude_api_batch — CORPUS_DOMAINS + the J_* job-tuple
 # indices — are kept inline; only the non-trivial request-shaping moved out.)
 MODEL = "claude-sonnet-4-6"
 
@@ -160,7 +160,7 @@ async def _run_one(client, mcp, anthropic_tools, job) -> dict:
 
 
 async def _run_one_notools(client, job) -> dict:
-    """Single live no-tools call. Mirrors sonnet_batch._build_request shapes via
+    """Single live no-tools call. Mirrors claude_api_batch._build_request shapes via
     the shared format_for (the vLLM guided_json analog: simulate JSON directive +
     solve structured output). No MCP tool loop (the model has no planning tools)."""
     task, dpddl, ppddl = job[J_TASK], job[J_DPDDL], job[J_PPDDL]
@@ -242,7 +242,7 @@ async def main_async(args) -> None:
     if not domains:
         sys.exit(f"[probe] no domains under {domains_dir}")
 
-    # Selection keys (same shape as sonnet_batch --keys-file).
+    # Selection keys (same shape as claude_api_batch --keys-file).
     wanted = set()
     for kf in args.keys_file:
         for line in Path(kf).read_text().splitlines():

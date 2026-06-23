@@ -1,5 +1,5 @@
-"""Unit tests for tools.sonnet_tools_probe pure helpers + the shared
-format-fidelity rule (tools._sonnet_common.format_for).
+"""Unit tests for tools.claude_api_tools_probe pure helpers + the shared
+format-fidelity rule (tools._claude_api_common.format_for).
 
 Pure-Python: no MCP, no Anthropic API, no fixture I/O. Covers the glue the
 live with-tools probe owns on top of the reused harness graders:
@@ -10,7 +10,7 @@ live with-tools probe owns on top of the reused harness graders:
   * _grade          — refusal short-circuit, with-tools loop-exhaust routing,
                       and max_tokens->length/truncation, all without spending money.
 
-Run standalone: `python3 tests/test_sonnet_tools_probe.py`
+Run standalone: `python3 tests/test_claude_api_tools_probe.py`
 """
 
 import asyncio
@@ -20,8 +20,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tests._helpers import FakeMCP, TestResults
-import tools.sonnet_tools_probe as sp
-from tools._sonnet_common import SIMULATE_JSON_DIRECTIVE, format_for
+import tools.claude_api_tools_probe as sp
+from tools._claude_api_common import SIMULATE_JSON_DIRECTIVE, format_for
 from pddl_eval.scoring import (
     FR_EXCEPTION,
     FR_LOOP_EXHAUSTED,
@@ -198,7 +198,7 @@ def test_grade_max_tokens_truncation(r: TestResults) -> None:
 
 
 if __name__ == "__main__":
-    r = TestResults("test_sonnet_tools_probe")
+    r = TestResults("test_claude_api_tools_probe")
     test_format_for_simulate_with_tools_adds_nothing(r)
     test_format_for_simulate_no_tools_adds_directive(r)
     test_format_for_solve(r)

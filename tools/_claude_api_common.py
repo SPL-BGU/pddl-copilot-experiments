@@ -1,6 +1,6 @@
 """Shared request-shaping for the two Anthropic frontier tools.
 
-`sonnet_batch.py` (no-tools Batches runner) and `sonnet_tools_probe.py` (live
+`claude_api_batch.py` (no-tools Batches runner) and `claude_api_tools_probe.py` (live
 with-tools probe) must build *byte-identical* no-tools requests — corpus
 identity is load-bearing, and the probe's `--no-tools` mode only means anything
 if it mirrors the batch path. The two non-trivial pieces that encode that

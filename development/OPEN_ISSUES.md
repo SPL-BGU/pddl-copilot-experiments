@@ -39,7 +39,7 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 3. **Lower the agentic turn cap** (`chat.MAX_TOOL_LOOPS`) — small saving, low risk.
 4. **Subsample validate_plan** (the ~$73 bulk) — cheapest lever but **breaks N-matching** with the no-tools corpus; only with reported CIs + explicit note.
 **Impact.** Gates the Future-Work with-tools/Haiku capability-ladder run (validation-competence-is-capability-gated result).
-**Files.** `tools/sonnet_tools_probe.py` (add caching), `development/with_tools_probe_findings.md` (decision + candidates).
+**Files.** `tools/claude_api_tools_probe.py` (add caching), `development/with_tools_probe_findings.md` (decision + candidates).
 
 ### ISS-005 · `FR_TOOL_ERROR` is overloaded
 **Source.** Results review, issue 6.

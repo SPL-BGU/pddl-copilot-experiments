@@ -1,11 +1,11 @@
-"""Unit tests for tools.sonnet_batch pure helpers.
+"""Unit tests for tools.claude_api_batch pure helpers.
 
 Pure-Python: no MCP, no Anthropic API, no fixture I/O. Validates the two
 load-bearing helpers — request construction (`_build_request`) and response
 grading (`_grade_one`) — so the offline Sonnet batch path is covered without
 spending money or standing up servers.
 
-Run standalone: `python3 tests/test_sonnet_batch.py`
+Run standalone: `python3 tests/test_claude_api_batch.py`
 """
 
 import asyncio
@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tests._helpers import TestResults
-import tools.sonnet_batch as sb
+import tools.claude_api_batch as sb
 from pddl_eval.runner import TRIAL_KEY_LEN
 from pddl_eval.scoring import (
     FR_EXCEPTION,
@@ -154,7 +154,7 @@ def test_project_cost(r: TestResults) -> None:
 
 
 if __name__ == "__main__":
-    r = TestResults("test_sonnet_batch")
+    r = TestResults("test_claude_api_batch")
     test_build_request_validate(r)
     test_build_request_simulate_directive(r)
     test_build_request_solve_structured(r)

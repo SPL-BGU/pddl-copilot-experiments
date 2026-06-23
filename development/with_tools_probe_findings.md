@@ -3,7 +3,7 @@
 Investigation of the **with-tools** condition for proprietary frontier models
 (Sonnet 4.6, Haiku 4.5), to (a) extend the paper's tool-use propensity result
 beyond the open roster and (b) put a number on the **token-efficiency / cost-of-pass**
-claim. Companion to the no-tools work in `tools/sonnet_batch.py` + `results/sonnet-frontier/`.
+claim. Companion to the no-tools work in `tools/claude_api_batch.py` + `results/sonnet-frontier/`.
 
 ## The load-bearing constraint: with-tools cannot be batched
 
@@ -16,7 +16,7 @@ is structural, not an implementation choice.
 
 ## Method
 
-Tool: `tools/sonnet_tools_probe.py` (live agentic loop; `--model`, `--no-tools`,
+Tool: `tools/claude_api_tools_probe.py` (live agentic loop; `--model`, `--no-tools`,
 per-trial error handling, cost report + projection). Reuses the harness builders for
 corpus identity: `build_jobs` / `build_messages` / `check_success` / `save_results` —
 same fixtures, prompts, and graders as the live vLLM harness and the no-tools batch.
@@ -138,4 +138,4 @@ saving, then decide if #2 is also needed to clear the budget.
   cost evidence for that future run.
 
 Data: `results/frontier-with-tools-probe/` (keys + graded probe trials). Tool:
-`tools/sonnet_tools_probe.py`.
+`tools/claude_api_tools_probe.py`.

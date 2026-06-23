@@ -102,10 +102,10 @@ def _parse_engine_name(engine: str) -> tuple[str, str]:
             f"engine name must be 'pddl_copilot__<backend>__<model>': {engine!r}"
         )
     backend, model = parts
-    if backend not in {"ollama", "vllm", "vllm-base", "vllm-tools"}:
+    if backend not in {"ollama", "vllm", "vllm-base", "vllm-tools", "anthropic"}:
         raise ValueError(
             f"unsupported backend {backend!r}; expected 'ollama', 'vllm', "
-            f"'vllm-base', or 'vllm-tools'"
+            f"'vllm-base', 'vllm-tools', or 'anthropic'"
         )
     return backend, model
 
@@ -134,6 +134,32 @@ def _ollama_chat(query: str, model: str, max_tokens: int, stop: str) -> str:
         keep_alive=_KEEP_ALIVE,
     )
     return resp["message"].get("content", "").strip()
+
+
+def _anthropic_chat(query: str, model: str, max_tokens: int, stop: str) -> str:
+    """Single live Anthropic Messages call — the no-tools frontier PlanBench arm.
+
+    Mirrors ``_vllm_chat`` (one prompt in, final text out) but hits the Anthropic
+    API instead of a self-served vLLM endpoint, so the frontier no-tools rows need
+    no GPU/cluster — just ``ANTHROPIC_API_KEY``. think=off (no ``thinking`` param;
+    Claude does not think unless asked), temperature 0. ``model`` is the API id
+    (e.g. ``claude-haiku-4-5``). The few-shot delimiter ``stop`` is forwarded as a
+    stop sequence, matching the vLLM path; VAL's parser extracts the answer block
+    from the returned text. Import is lazy (the v1 slim venv lacks ``anthropic``).
+    """
+    import anthropic
+
+    client = anthropic.Anthropic()
+    kwargs = dict(
+        model=model,
+        max_tokens=_effective_num_predict(max_tokens),
+        temperature=_TEMPERATURE,
+        messages=[{"role": "user", "content": query}],
+    )
+    if stop:
+        kwargs["stop_sequences"] = [stop]
+    resp = client.messages.create(**kwargs)
+    return "".join(b.text for b in resp.content if b.type == "text").strip()
 
 
 def _vllm_chat(query: str, model: str, max_tokens: int, stop: str) -> str:
@@ -517,6 +543,8 @@ def pddl_copilot_send_query(
         backend, model_tag = _parse_engine_name(engine)
         if backend == "ollama":
             return _ollama_chat(query, model_tag, max_tokens, stop)
+        if backend == "anthropic":
+            return _anthropic_chat(query, model_tag, max_tokens, stop)
         if backend == "vllm-tools":
             return _vllm_tools_chat(query, model_tag, max_tokens)
         # vllm-base is byte-identical no-tools inference to vllm; it exists only

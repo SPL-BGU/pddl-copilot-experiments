@@ -78,18 +78,24 @@ from pddl_eval.scoring import (
 )
 from pddl_eval.summary import save_results
 from run_experiment import resolve_plugin_dirs
-from tools._sonnet_common import format_for
+from tools._claude_api_common import format_for
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
+# Default model; overridden by --model at runtime (see main()). The frontier
+# no-tools arm covers Sonnet 4.6 (done) and Haiku 4.5 (this phase).
 MODEL = "claude-sonnet-4-6"
 
-# Sonnet 4.6 list price is $3 / $15 per MTok (input / output); the Batch API
-# halves both. Per-token rates for cost projection.
-BATCH_INPUT_PRICE_PER_TOK = 1.5 / 1_000_000
-BATCH_OUTPUT_PRICE_PER_TOK = 7.5 / 1_000_000
+# LIST price per model, $/MTok (input, output). The Batch API halves both, so
+# the batch per-token rates are list/2, re-derived once --model resolves.
+LIST_PRICES = {
+    "claude-sonnet-4-6": (3.0 / 1_000_000, 15.0 / 1_000_000),
+    "claude-haiku-4-5": (1.0 / 1_000_000, 5.0 / 1_000_000),
+}
+BATCH_INPUT_PRICE_PER_TOK = LIST_PRICES[MODEL][0] / 2
+BATCH_OUTPUT_PRICE_PER_TOK = LIST_PRICES[MODEL][1] / 2
 
 # Task set. §7A's decision was the 4 tasks simulate + validate_plan +
 # validate_problem + validate_domain (validate_domain added +$5 for the §1
@@ -102,7 +108,7 @@ BATCH_OUTPUT_PRICE_PER_TOK = 7.5 / 1_000_000
 DEFAULT_TASKS = ["solve", "simulate", "validate_plan", "validate_problem", "validate_domain"]
 
 # The output-shape backend adaptations (simulate JSON directive, solve schema)
-# live in tools/_sonnet_common.format_for so this no-tools builder and the live
+# live in tools/_claude_api_common.format_for so this no-tools builder and the live
 # with-tools probe cannot drift. format_for mirrors the vLLM per-task format
 # handling: the guided_json analog in no-tools, nothing in with-tools.
 
@@ -292,9 +298,13 @@ async def cmd_build(args) -> None:
     # variant set auto-selects the plain variants (11-13): build_jobs skips
     # the steered (14-16) no-tools cells, exactly like the open-model corpus.
     from pddl_eval.prompts import ACTIVE_PROMPT_VARIANTS
+    # --num-variants 0 = all active plain variants (Sonnet's default → v11-13
+    # after the no-tools steered-skip); 1 = single plain prompt v11, the
+    # frontier single-prompt setting that cuts the grid ~3×.
+    num_variants = args.num_variants or len(ACTIVE_PROMPT_VARIANTS)
     jobs, _ = build_jobs(
         models=[MODEL], tasks=args.tasks, domains=domains,
-        ground_truth=ground_truth, num_variants=len(ACTIVE_PROMPT_VARIANTS),
+        ground_truth=ground_truth, num_variants=num_variants,
         conditions="no-tools", tool_filter="all", prompt_style="minimal",
         think_tag="off",
     )
@@ -349,6 +359,7 @@ async def cmd_build(args) -> None:
     (out / "counts.json").write_text(json.dumps({
         "model": MODEL, "corpus": args.corpus, "domains_dir": domains_dir,
         "tasks": args.tasks, "max_per_task": args.max_per_task,
+        "num_variants": num_variants,
         "per_task": counts, "total_requests": len(requests),
     }, indent=2))
 
@@ -518,8 +529,13 @@ async def cmd_grade(args) -> None:
 
 
 def main() -> None:
+    global MODEL, BATCH_INPUT_PRICE_PER_TOK, BATCH_OUTPUT_PRICE_PER_TOK
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--model", choices=list(LIST_PRICES), default=MODEL,
+                   help="claude-sonnet-4-6 ($3/$15) or claude-haiku-4-5 ($1/$5); "
+                        "batch price = list/2. Goes before the subcommand. Pass it "
+                        "to build; grade reads the built model back from counts.json.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     b = sub.add_parser("build", help="enumerate jobs + write batch request file")
@@ -533,6 +549,10 @@ def main() -> None:
     b.add_argument("--tasks", nargs="+", default=DEFAULT_TASKS)
     b.add_argument("--max-per-task", type=int, default=0,
                    help="cap each task to first-N jobs (pilot subset); 0 = full")
+    b.add_argument("--num-variants", type=int, default=0,
+                   help="how many ACTIVE_PROMPT_VARIANTS to enumerate (0 = all "
+                        "active plain variants, the Sonnet default; 1 = single "
+                        "plain prompt v11, the frontier single-prompt setting)")
     b.add_argument("--keys-file", default=None,
                    help="JSONL of {task,domain_name,problem_name,plan_label,prompt_variant} "
                         "to restrict the build to (stratified pilot selection). Per-task "
@@ -557,6 +577,20 @@ def main() -> None:
                         "Unused for the other four tasks.")
 
     args = p.parse_args()
+    MODEL = args.model
+    # For grade, the corpus's built model (counts.json) is authoritative so the
+    # trial keys + cost projection match what was actually submitted, even if
+    # --model is omitted on the grade call.
+    if args.cmd == "grade":
+        cj = Path(args.batch_dir) / "counts.json"
+        if cj.exists():
+            built = json.loads(cj.read_text()).get("model")
+            if built in LIST_PRICES and built != MODEL:
+                print(f"[grade] using built model {built} from counts.json "
+                      f"(overrides --model {MODEL})")
+                MODEL = built
+    BATCH_INPUT_PRICE_PER_TOK = LIST_PRICES[MODEL][0] / 2
+    BATCH_OUTPUT_PRICE_PER_TOK = LIST_PRICES[MODEL][1] / 2
     if args.cmd == "build":
         asyncio.run(cmd_build(args))
     elif args.cmd == "submit":
