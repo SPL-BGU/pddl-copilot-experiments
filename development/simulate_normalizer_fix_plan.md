@@ -1,5 +1,11 @@
 # Fix plan — `_normalize_trajectory` predicate-syntax bug + frontier simulate re-grade
 
+> **STATUS 2026-06-23: DONE (notation fix) — this is now historical.** The `_canon_atom` fix
+> landed (commit `5879ac4`) and the frontier corpora were re-graded. **Actual numbers differ from
+> the state-set *estimates* below** (shipped strict grader): Haiku 42.0%, Sonnet canon 45.0%, anon
+> 38.3%. The open-roster scope note here was also refined — it is a *different* failure, not the same
+> artifact. Authoritative current record: `development/simulate_decisions_and_next_steps.md`.
+
 **Hand this to an implementing agent.** Background + evidence:
 `development/frontier_grading_artifacts_findings.md` (read it first). Memory:
 `project_simulate_grader_artifact`.

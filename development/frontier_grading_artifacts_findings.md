@@ -36,9 +36,11 @@ Of trials that produced a *parseable* trajectory, Sonnet is correct 90.6% (canon
 **The picture is INCOMPLETE — hold the paper narrative.** We have corrected numbers
 for **3 frontier cells only**. Two gaps must close before assessing what the
 simulate result *means*:
-1. **Open vLLM roster** (the bulk of the paper's simulate evidence) is **not**
-   re-gradeable from disk (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`) → needs a
-   cluster re-run with the fix.
+1. **Open vLLM roster** (the bulk of the paper's simulate evidence) is **not** the
+   frontier's notation artifact and **not** re-gradeable from disk
+   (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`) → its 0% is unenforced `guided_json`
+   + a strict-wrapper sub-artifact + truncation (verified below) → needs a clean re-run
+   with the Q1 two-metric grader + decoupled budget + full storage, not "the fix."
 2. **Budget vs capability** in the residual (33% truncated Haiku / ~30% Sonnet) is
    unresolved — a higher token-cap re-run separates "ran out of tokens" from "got
    the state wrong." Until both close, do not rewrite `paper/` (see Open items;
@@ -124,28 +126,41 @@ errors). The `simulate` "floor" was the grader, full stop.
 - **Unaffected:** `solve` floor (real), `validate_*` highs (real), and the
   PlanBench story.
 
-### Open vLLM roster — affected but NOT re-gradeable from disk (2026-06-23)
-The same `_normalize_trajectory` graded the open roster, and their 500-char
-response snapshots confirm the **same `(ontable shaker1)` s-expr format** → the
-syntax artifact applies to them too. BUT their as-shipped 0% is dominated by a
-*different* failure that fires **before** the comparison:
+### Open vLLM roster — a DIFFERENT failure, NOT the frontier's notation artifact (verified 2026-06-23)
+The notation fix (`_canon_atom`) only rescues `result_mismatch` — a parsed, correct
+trajectory in the wrong predicate notation. For the open roster that bucket is **~0%**,
+so the fix barely applies. Their as-shipped 0% is a different stack that fires **before**
+the content comparison (no-tools, think=off, n=300/model):
 
-| open model (no-tools simulate, n=600) | as-shipped | dominant failures |
-|---|--:|---|
-| Qwen3.5-0.8B | 0.0% | truncated 359, parse_fail 241 |
-| Qwen3.5-4B | 0.0% | truncated 406, parse_fail 194 |
-| Qwen3.5-9B | 0.0% | truncated 354, parse_fail 246 |
-| Qwen3.6-35B | 0.0% | parse_fail 290, truncated 284 |
-| gemma-4-26B | 0.0% | truncated 369, parse_fail 231 |
+| open model | result_mismatch (fix touches) | format_parse_fail | truncated |
+|---|--:|--:|--:|
+| Qwen3.5-0.8B | 0% | 78% | 22% |
+| Qwen3.5-4B | 0% | 59% | 41% |
+| Qwen3.5-9B | 0% | 63% | 37% |
+| Qwen3.6-35B | 9% | 69% | 22% |
+| gemma-4-26B | 0% | 72% | 28% |
 
-So for the open roster the syntax bug is a *ceiling they rarely reach* — ~60%
-truncate (long trajectories exceed the token cap) and ~40% `format_parse_fail`.
-**Critically, the open corpus CANNOT be re-graded from disk:**
-`RESPONSE_SNAPSHOT_LEN=500` (`pddl_eval/runner.py:133`) kept only a 500-char
-snapshot, and `gt` is not stored in trials — so the full trajectory ↔ oracle
-comparison is unrecoverable. The true open-model simulate number is **unknown**
-and needs a **re-run** with (a) the syntax fix AND (b) a higher token cap (the
-trajectories are long; truncation bites every model — 30% even for Sonnet).
+(think=on shifts this strongly toward truncation — reasoning eats the shared decode budget.)
+
+Two sub-findings from the 500-char response heads:
+1. **`guided_json` did NOT bind.** The no-tools simulate path passes the `SimulateResponse`
+   schema as `guided_json` (`runner.py:357`), yet outputs leak free prose ("Here is the
+   step-by-step trace…") and markdown — impossible under a working constraint. So a large
+   slice of `format_parse_fail` is an *apparatus* failure (the constraint meant to force the
+   wrapper didn't), **not** proven model incapability. Owner: harness, not model.
+2. **A second, wrapper-strictness sub-artifact.** When the models DO emit JSON it is often
+   the right content (same `(ontable shaker1)` s-expr) in a *bare* shape — a top-level array
+   `[{step…}]` or bare step object — instead of the schema's `{"trajectory":[…]}` wrapper,
+   which the strict grader rejects. Model-dependent (0.8B 100% / 35B 57% / 9B 39% / gemma 35%
+   / 4B 8% of parse-fails are JSON-shaped). This is the gap the adopted **Q1 wrapper-tolerant
+   grader** closes — see `development/simulate_decisions_and_next_steps.md`.
+
+**Net:** open-roster simulate 0% is a tangle of (unenforced format constraint + strict-wrapper
+grader + truncation + some genuine incapability), in proportions **unmeasurable from disk**
+(`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`). It is **NOT** the frontier's notation artifact.
+A true number needs a clean **re-run** with the Q1 two-metric wrapper-tolerant grader +
+full-response storage + (for think=on) the decoupled-budget fix — not a re-grade, and not "the
+notation fix alone."
 
 Net: the simulate "floor" decomposes as **frontier = pure grader artifact
 (provable, ~50–66% real)**; **open roster = truncation + parse-fail + (unreached)
@@ -266,7 +281,7 @@ logistics 78.9 / mystery 45.4.
 ## Open items
 - [x] Verify Sonnet 0/300 `simulate` shows the same artifact — DONE: canon 0→45.0%, anon 0→38.3% (commit `156fb01`); same artifact confirmed.
 - [x] Faithful fixed-grader re-grade (exact step+action, not just state-set) — DONE: shipped strict grader, numbers in STATUS table above.
-- [ ] **Uniform `simulate` re-grade across the open roster** — BLOCKED on disk (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`); requires a cluster re-run with the fix. **GATED — ping before any cluster work.** ← the next data-gathering step.
+- [ ] **Clean open-roster `simulate` re-run** — NOT a re-grade (disk-unrecoverable: `RESPONSE_SNAPSHOT_LEN=500`, no `gt`) and NOT just the notation fix (open roster is a different failure — unenforced `guided_json` + strict-wrapper sub-artifact + truncation). Requires the Q1 two-metric wrapper-tolerant grader + full-response storage + (think=on) decoupled budget. **GATED — ping before any cluster work.**
 - [ ] **Higher token-cap `simulate` re-run** (frontier + roster) to split the residual truncation into budget vs capability. Couples with the line above (same cluster job).
 - [ ] Persist full responses + `gt` in trials (raise/remove `RESPONSE_SNAPSHOT_LEN`) so future corpora are re-gradeable offline — hygiene follow-up (ISS-024).
 - [ ] Cluster temp cleanup (`~/haiku_eval*.{sh,log}` on slurm) — pending a ping per the cluster-interaction rule.

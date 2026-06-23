@@ -544,12 +544,16 @@ validated by an independent ranking subagent (the user asked for a second perspe
   from disk (`RESPONSE_SNAPSHOT_LEN=500`, no `gt`), and the budget-vs-capability split in the residual
   truncation (33% Haiku / ~30% Sonnet) is unresolved. Both close via a single (gated) cluster re-run with the
   fix + higher token cap. `paper/` untouched.
-- **Provisional read = HYPOTHESIS TO TEST, not an edit to make.** *If* the open roster moves the same way, the
-  "frontier reproduces the floor / 0%→97% bimodal" and Discussion "sole-source 0%" passages would need
-  rewriting — simulate would be a *mid* ~40–45% cell gated by output length, shifting the generative-leg low
-  pole toward `solve` (~29%, genuine `plan_invalid`). Recorded so we test it against the full data, not so we
-  commit to it now. (`solve` floor + `validate_*` highs are already complete and unaffected.)
-- **Open-roster caveat:** the open vLLM models' `simulate` cells likely carry the *same* artifact but are
-  **not** re-gradeable from disk (`RESPONSE_SNAPSHOT_LEN=500`, no stored `gt`) → a cluster re-run with the fix
-  + higher token cap is needed before quoting corrected open-model simulate numbers (user-gated, ping first).
-  [[project_simulate_grader_artifact]]
+- **Provisional read = HYPOTHESIS TO TEST, not an edit to make.** For the FRONTIER, the corrected ~40–45%
+  means the "frontier reproduces the floor / 0%→97% bimodal" and Discussion "sole-source 0%" passages would
+  need rewriting *if* it holds — simulate becomes a *mid* cell gated by output length, shifting the
+  generative-leg low pole toward `solve` (~29%, genuine `plan_invalid`). Recorded to test against full data,
+  not to commit now. (`solve` floor + `validate_*` highs are complete and unaffected.)
+- **Open-roster ≠ same artifact (verified 2026-06-23).** Earlier guess that the open roster "likely carries
+  the same artifact" is **falsified**: their `result_mismatch` (what the notation fix touches) is ~0%. The
+  open-roster 0% is a *different* failure — `format_parse_fail` (unenforced `guided_json` lets prose leak past
+  the constraint, plus a strict-wrapper sub-artifact the adopted Q1 grader closes) + truncation — unmeasurable
+  from disk (`RESPONSE_SNAPSHOT_LEN=500`, no `gt`). So the grader artifact was largely a *frontier* story; the
+  open-roster floor is more genuine, and a clean number needs a re-run (Q1 two-metric grader + decoupled
+  budget + full storage), not a re-grade. [[project_simulate_grader_artifact]]
+  Full breakdown + next steps: `development/{frontier_grading_artifacts_findings.md, simulate_decisions_and_next_steps.md}`.
