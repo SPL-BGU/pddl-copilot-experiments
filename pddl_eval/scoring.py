@@ -171,10 +171,13 @@ def _normalize_trajectory(traj) -> list[dict] | None:
       - bare/legacy: per step `{step, action, boolean: list, numeric: dict}`.
 
     All three collapse to `{step, action, boolean, numeric}` where
-    `boolean` is a sorted lower-cased list of TRUE predicate strings
-    (whitespace collapsed) and `numeric` is a dict[str, float] with
-    lower-cased keys. None or missing `action` becomes "". Equality of
-    two normalised trajectories is the grader's success signal.
+    `boolean` is a sorted list of TRUE predicate strings and `numeric` is
+    a dict[str, float]. Predicate strings, numeric keys, and the action
+    are each run through `_canon_atom`, so s-expression `(on a b)` and
+    functional `on(a, b)` notation compare equal (notation is bridged;
+    argument order and content are not). None or missing `action` becomes
+    "". Equality of two normalised trajectories is the grader's success
+    signal.
 
     Returns None when *traj* is not a list or any entry has the wrong
     shape — callers tag this as FR_FORMAT_PARSE_FAIL (model side) or
