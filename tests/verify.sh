@@ -39,6 +39,7 @@ run_test test_check_success.py
 run_test test_simulate_q1.py
 run_test test_fixtures.py
 run_test test_runner.py
+run_test test_chat_decoupled.py
 run_test test_drift_check.py
 run_test test_partial_subset.py
 run_test test_prompts.py

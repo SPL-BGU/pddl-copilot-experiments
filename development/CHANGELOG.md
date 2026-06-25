@@ -63,6 +63,30 @@ branch end-to-end (incl. the bare-list-now-succeeds win + empty→`FR_SIMULATE_E
 sonnet-frontier/{sweep5v2,sweep6}}/` (re-graded), `development/{q1_grader_plan.md, CHANGELOG.md,
 OPEN_ISSUES.md}`. Narrows ISS-024.
 
+## 2026-06-25 — Decoupled-budget think=on (iter-2 T6 / reviewer ask [8]) — harness built, cluster run GATED
+
+**Change.** Added a decoupled-budget path for no-tools think=on so the reasoning and answer phases get **separate** token budgets, removing the shared-decode-budget confound the failed `b527f71` cap-raise did not address (that grew the single shared window; it did not split reasoning from answer). Mechanism = a 2-call continuation:
+- **Call 1 (reasoning):** `enable_thinking=True`, `max_tokens=num_predict_think`, `stop=["</think>"]` + `include_stop_str_in_output=True`. done_reason="length" → reasoning hit its own budget; we force-close and STILL proceed (`think_truncated=True`).
+- **Call 2 (answer):** the closed `<think>…</think>` block is replayed as the final assistant turn with vLLM `continue_final_message=True` / `add_generation_prompt=False`, and the answer generates with a fresh `max_tokens=num_predict_answer`. done_reason="length" HERE is the genuine answer-truncation signal grading uses.
+
+Reasoning reconstruction is parser-state-proof (concatenates `message.thinking` + raw `content`, strips a trailing `</think>`), so it works whether or not the server runs `--reasoning-parser qwen3`. The decoupled sweep will run with the parser **OFF** (DECISION B) to remove the `reasoning_content`-flush ambiguity entirely.
+
+**Scope (DECISION A).** Qwen3 thinking roster only (`Qwen3.5:0.8B/4B/9B`, `qwen3.6:35b`). Gemma (`gemma4:26b-a4b`, `REASONING_PARSER=none`) has no `<think>` tokens — nothing to decouple; its think=on truncation is plain long-output and is reported separately, not as evidence for/against decoupling.
+
+**Budgets (DECISION C).** `--num-predict-think` default `DEFAULT_NUM_PREDICT_THINK=8192`; `--num-predict-answer` default = per-task cap (override to 4096 for the DECISION-C config). `num_ctx` stays 16384; the existing `vllm_client` context-overflow retry clips gracefully if a long prompt pushes Call 2 over (Call 2 re-encodes the reasoning as prompt).
+
+**New CLI.** `--decoupled-budget` (no-op-proof: startup-rejected unless `--think on`, and rejected with `--conditions tools`), `--num-predict-think`, `--num-predict-answer`. Run-meta records `decoupled_budget`/`num_predict_think`/`num_predict_answer` only when engaged.
+
+**Tokens / storage.** `tokens` dict gains `think_completion` / `answer_completion` (decode split) + `call2_prompt` (the re-encoded, prefix-cacheable reasoning prefix) so the cost paragraph isn't double-counted — no schema change (free-form dict). `RESPONSE_SNAPSHOT_LEN` raised **500 → 16384** so new corpora are re-gradeable offline (the 500 cap truncated `simulate` trajectory JSON mid-object — the exact gap that blocked re-grading frontier `simulate` from disk). Storage-only; existing on-disk corpora are not rewritten.
+
+**Reproducibility.** All flags default OFF → existing reproductions byte-identical. New corpus / new RUN_TAG; a clean A/B vs the sweep5v2 think=on Qwen cells; never pooled into `sweep5v2-live`. The `main` HEAD that produced sweep5v2 is pinned as the annotated tag **`sweep5v2-final`** (DECISION E) so it survives the upcoming merges.
+
+**Prerequisite / gating (DECISION D).** The clean run is sequenced **after** the Q1 two-metric simulate grader lands as its own PR; for an apples-to-apples *simulate-accuracy* comparison the baseline Qwen think=on `simulate` cells get re-graded with Q1 (offline). The cluster smoke (validates `continue_final_message` + the Qwen3 template + parser-off behaviour on one model — DECISION D3) and full sweep are **user-gated — ping before any cluster work.**
+
+**Validation (local, no GPU).** New `tests/test_chat_decoupled.py` (34 checks via the `TestResults` driver + `verify.sh`): asserts Call-1 stop/budget/include-stop-str, Call-2 continuation flags/budget/injected-think-block, parser-on vs parser-off reconstruction, `think_truncated` on Call-1 length, answer-truncation surfacing on Call-2 length, token split without double-count, format only on the answer. Full suite green; `test_runner.py` regression 41/41.
+
+**Files.** `pddl_eval/vllm_client.py` (`stop` + `vllm_extra` passthrough), `pddl_eval/chat.py` (`chat_without_tools_decoupled`), `pddl_eval/runner.py` (`DEFAULT_NUM_PREDICT_THINK`, `RESPONSE_SNAPSHOT_LEN` 500→16384, `TaskResult.think_truncated`, no-tools branch + threading), `run_experiment.py` (CLI flags + startup guards + banner + run-meta), `tests/{test_chat_decoupled.py, verify.sh}`, `development/{decoupled_budget_plan.md, CHANGELOG.md, OPEN_ISSUES.md}`. Plan + answered decisions: `development/decoupled_budget_plan.md`. Narrows ISS-024(c).
+
 ## 2026-06-23 — `_normalize_trajectory` predicate-syntax fix → frontier `simulate` re-graded 0% → ~40–45%
 
 **Change.** `pddl_eval/scoring.py::_normalize_trajectory` canonicalised simulate trajectories by lowercasing + collapsing whitespace but **never reconciled predicate notation** — the no-tools model emits PDDL s-expressions `(ontable shaker1)` while the oracle (`get_state_transition`) emits functional `ontable(shaker1)`, so every *correct* no-tools simulation deep-equality-failed as `result_mismatch`. Added `_canon_atom` (one regex; maps `(name a b)`, `name(a, b)`, `name()` and bare `name` to a single `name arg1 arg2` token, argument order preserved) and applied it to **boolean predicates, numeric-fluent keys, and the action string**. Malformed atoms fall back to the prior whitespace-lowered form → genuinely-wrong trajectories still mismatch; the bridge reconciles notation, it never widens equality. Commit `5879ac4`.
