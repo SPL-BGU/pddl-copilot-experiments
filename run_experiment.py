@@ -95,6 +95,7 @@ from pddl_eval.scoring import (
 from pddl_eval.summary import (
     print_fail_reasons_table,
     print_per_variant_table,
+    print_simulate_q1_table,
     print_single_task_table,
     save_results,
     summarize_single_task,
@@ -485,6 +486,7 @@ async def async_main(args):
         print_single_task_table(single_results)
         print_per_variant_table(single_results)
         print_fail_reasons_table(single_results)
+        print_simulate_q1_table(single_results)
 
     except KeyboardInterrupt:
         print("\n\nInterrupted — saving partial results...")
