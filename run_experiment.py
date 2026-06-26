@@ -531,7 +531,14 @@ async def async_main(args):
             if args.decoupled_budget:
                 meta["decoupled_budget"] = True
                 meta["num_predict_think"] = args.num_predict_think or DEFAULT_NUM_PREDICT_THINK
-                meta["num_predict_answer"] = args.num_predict_answer
+                # When defaulted, the answer budget resolves to the per-task cap
+                # (--num-predict override, else DEFAULT_NUM_PREDICT[task]); record
+                # that source so the corpus's actual answer budget is recoverable.
+                meta["num_predict_answer"] = (
+                    args.num_predict_answer
+                    if args.num_predict_answer is not None
+                    else {"per_task": args.num_predict or DEFAULT_NUM_PREDICT}
+                )
             # tool_filter and prompt_style are with-tools-only knobs; record
             # them only when with-tools actually ran, so a no-tools-only
             # summary isn't mislabelled with a stale default.

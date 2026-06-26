@@ -240,10 +240,13 @@ class TaskResult:
     truncated: bool = False              # done_reason == "length" on any turn
     done_reason: str = ""                # raw done_reason from the last chat turn
     # Decoupled-budget think=on only (iter-2 T6): True when the REASONING phase
-    # (Call 1) hit its own budget. Distinct from `truncated`, which now reflects
-    # the ANSWER phase (Call 2). The headline metric: reasoning can overflow
-    # without starving the answer. Always False on the shared-budget path.
-    think_truncated: bool = False
+    # (Call 1) hit its own budget. Distinct from `truncated`, which reflects the
+    # ANSWER phase (Call 2). The headline metric: reasoning can overflow without
+    # starving the answer. `None` on every non-decoupled trial — so
+    # `think_truncated is not None` is the reliable "this row is a decoupled
+    # trial" marker that suppresses the FR_THINK_OVERFLOW mislabel write-time
+    # (_classify_step_failure) and read-time (relabel_truncated_taxonomy).
+    think_truncated: bool | None = None
     # Plan-variant label for `validate_plan` jobs (PR-3): "v1".."v5" for
     # the 5 valid plans per problem, "b1".."b5" for the 5 invalid plans.
     # "" for tasks that don't take a plan input (solve, validate_domain,
@@ -356,7 +359,9 @@ async def evaluate_one(
     tokens: dict = {}
     done_reason = ""
     loop_exhausted = False
-    think_truncated = False
+    # None on every non-decoupled path; the decoupled branch overwrites it with
+    # a bool. `think_truncated is not None` then marks a decoupled trial.
+    think_truncated: bool | None = None
 
     allowed = None
 
@@ -490,6 +495,10 @@ async def evaluate_one(
         thinking_text=thinking_text,
         response_text=response_text,
         error=error,
+        # Decoupled trials carry an answer-phase done_reason + completed
+        # reasoning as thinking_text; suppress the think-overflow mislabel
+        # (the reasoning-cap signal lives in think_truncated).
+        decoupled=think_truncated is not None,
     )
 
     return TaskResult(

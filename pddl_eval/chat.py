@@ -435,6 +435,25 @@ async def chat_without_tools_decoupled(
     done_reason_think = _response_done_reason(resp1)
     think_truncated = done_reason_think == "length"
 
+    # A Call-1 "abort" (vLLM finish_reason=abort on HTTP 200 — typically a SLURM
+    # SIGTERM near TIMEOUT tearing the server down) must surface as the trial's
+    # done_reason so `evaluate_one` tags infra_failure and resume re-attempts the
+    # key — exactly as the single-call path does. Without this short-circuit the
+    # partial/garbage reasoning would flow into Call 2 and, if Call 2 happened to
+    # return "stop", be recorded as a completed trial. Don't waste Call 2.
+    if done_reason_think == "abort":
+        tok_abort = {
+            "prompt": _response_field(resp1, "prompt_eval_count"),
+            "completion": _response_field(resp1, "eval_count"),
+            "think_completion": _response_field(resp1, "eval_count"),
+            "answer_completion": 0,
+            "call2_prompt": 0,
+            "turns": 1,
+            "total_duration_ns": _response_field(resp1, "total_duration"),
+            "eval_duration_ns": _response_field(resp1, "eval_duration"),
+        }
+        return "", "abort", tok_abort, "", False
+
     # Parser-state-proof reconstruction: thinking field (parser on) OR raw
     # content (parser off) — one of them holds the reasoning. Strip the close
     # token (it may be present via include_stop_str_in_output, or absent when

@@ -24,6 +24,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tests._helpers import TestResults
 from pddl_eval.chat import chat_without_tools_decoupled
+from pddl_eval.scoring import (
+    FR_THINK_OVERFLOW,
+    FR_TRUNCATED_NO_ANSWER,
+    FR_FORMAT_PARSE_FAIL,
+    _classify_step_failure,
+    relabel_truncated_taxonomy,
+)
 
 
 def _resp(content="", thinking="", done_reason="stop", prompt=10, completion=5):
@@ -176,6 +183,57 @@ def test_messages_not_mutated_until_end(r: TestResults) -> None:
             msgs[-1]["content"] == "<think>\nt\n</think>\n\nfinal")
 
 
+def test_call1_abort_short_circuits(r: TestResults) -> None:
+    """A Call-1 abort surfaces done_reason='abort' and never runs Call 2 (so
+    evaluate_one tags infra_failure → resume re-attempts the key)."""
+    client = FakeVLLMClient([
+        _resp(thinking="partial", done_reason="abort", completion=3),
+        _resp(content="should-not-be-used", done_reason="stop"),  # must NOT be consumed
+    ])
+    answer, done_reason, tokens, thinking, think_truncated = _run(client)
+    r.check_eq("only ONE chat() call made", len(client.calls), 1)
+    r.check_eq("done_reason surfaced as abort", done_reason, "abort")
+    r.check_eq("empty answer on abort", answer, "")
+    r.check_eq("turns=1 on abort", tokens["turns"], 1)
+    r.check_eq("think_truncated False on abort", think_truncated, False)
+
+
+def test_decoupled_answer_trunc_not_think_overflow(r: TestResults) -> None:
+    """FR mislabel fix (write-time): an empty-answer length-truncation on the
+    decoupled path is FR_TRUNCATED_NO_ANSWER, NOT FR_THINK_OVERFLOW — even
+    though thinking_text (the completed reasoning) is non-empty."""
+    # decoupled=True must suppress the think-overflow branch.
+    fr, trunc = _classify_step_failure(
+        False, "length", False, FR_FORMAT_PARSE_FAIL,
+        thinking_text="completed reasoning", response_text="",
+        decoupled=True,
+    )
+    r.check_eq("decoupled -> not think_overflow", fr, FR_TRUNCATED_NO_ANSWER)
+    r.check_eq("still truncated", trunc, True)
+    # Control: the SHARED-budget path (decoupled=False) keeps the old behaviour.
+    fr2, _ = _classify_step_failure(
+        False, "length", False, FR_FORMAT_PARSE_FAIL,
+        thinking_text="spiral", response_text="", decoupled=False,
+    )
+    r.check_eq("shared path still think_overflow", fr2, FR_THINK_OVERFLOW)
+
+
+def test_decoupled_readtime_relabel_suppressed(r: TestResults) -> None:
+    """FR mislabel fix (read-time): relabel_truncated_taxonomy must NOT convert
+    a decoupled empty-answer truncation to think_overflow."""
+    keep = relabel_truncated_taxonomy(
+        FR_TRUNCATED_NO_ANSWER, truncated=True, response="", think_mode="on",
+        decoupled=True,
+    )
+    r.check_eq("decoupled read-time keeps truncated_no_answer", keep, FR_TRUNCATED_NO_ANSWER)
+    # Control: non-decoupled think=on still relabels.
+    flip = relabel_truncated_taxonomy(
+        FR_TRUNCATED_NO_ANSWER, truncated=True, response="", think_mode="on",
+        decoupled=False,
+    )
+    r.check_eq("non-decoupled read-time relabels", flip, FR_THINK_OVERFLOW)
+
+
 if __name__ == "__main__":
     r = TestResults("test_chat_decoupled")
     test_parser_on_happy_path(r)
@@ -185,4 +243,7 @@ if __name__ == "__main__":
     test_token_split_no_double_count(r)
     test_format_only_on_answer(r)
     test_messages_not_mutated_until_end(r)
+    test_call1_abort_short_circuits(r)
+    test_decoupled_answer_trunc_not_think_overflow(r)
+    test_decoupled_readtime_relabel_suppressed(r)
     r.report_and_exit()
