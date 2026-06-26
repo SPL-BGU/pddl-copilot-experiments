@@ -6,6 +6,43 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-26 — Cluster plumbing for the decoupled think=on sweep (staging; run GATED)
+
+**Change.** Threaded the (already-merged) `--decoupled-budget` / `--num-predict-think` /
+`--num-predict-answer` harness flags and a run-scoped reasoning-parser override onto the
+cluster submit path so the Line-1 decoupled think=on `simulate` re-run can be launched. The
+wrapper + sbatch previously had no way to pass these. Three scoped edits, **byte-identical
+when the new flags aren't passed** (every existing sweep reproduces unchanged):
+- `cluster-experimenting/lib/defaults.sh` — `vllm_reasoning_parser_flag()` honors a
+  run-scoped `REASONING_PARSER_OVERRIDE` that takes precedence over the per-model
+  `REASONING_PARSER` set by `vllm_lookup`, **without mutating that baseline**. `none` omits
+  the `--reasoning-parser` flag (DECISION B — removes the `reasoning_content`-flush ambiguity).
+- `cluster-experimenting/submit_with_rtx.sh` — new `--decoupled-budget`,
+  `--num-predict-think`, `--num-predict-answer`, `--reasoning-parser` flags; integer/parser
+  validation; a guard that `--decoupled-budget` requires `--no-tools` + `--think-modes on`
+  (so no think=off cell aborts `run_experiment.py` and no tools cell silently no-ops the
+  flag); `--export` threading; submit banner line.
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch` — builds `DECOUPLED_ARGS` and
+  splices them into the full `run_experiment.py` invocation (NOT the `--smoke` fastpath,
+  which forces `conditions=both` and is incompatible with the no-tools-think=on-only
+  decoupled path; the smoke is a `--partial` constrained run instead).
+
+**Validation (local, no cluster).** `bash -n` on all three; `--dry-run` emits the correct
+cells + `--export` for both the smoke (`Qwen3.5:9B` + `qwen3.6:35b`, `--partial 2`) and full
+(4 Qwen models, array 0-3) commands; all 5 guards fire; the no-new-flags baseline dry-run is
+unchanged; the parser override and `DECOUPLED_ARGS` construction unit-tested. `tests/verify.sh`
+green. Answer budget = per-task default (`--num-predict-answer` omitted → 6144 simulate /
+8192 solve, dedicated; the answer phase never gets a smaller nominal cap than the baseline's
+combined think+answer budget — decision S2 in the staging doc).
+
+**Run is GATED.** Staging doc + exact smoke/full commands + open decisions:
+`development/decoupled_run_staging.md`. New `RUN_TAG=decoupled-thinkon`; Qwen roster only
+(Gemma excluded); never pooled into `sweep5v2-live`. Ping + VPN before any SLURM step.
+
+**Files.** `cluster-experimenting/{lib/defaults.sh, submit_with_rtx.sh,
+run_condition_vllm_rtx.sbatch}`, `development/{decoupled_run_staging.md, CHANGELOG.md,
+OPEN_ISSUES.md}`.
+
 ## 2026-06-25 — Q1 two-metric wrapper-tolerant `simulate` grader (no-tools); frontier re-graded
 
 **Change.** Replaced the strict-wrapper no-tools `simulate` grader with the pre-registered Q1

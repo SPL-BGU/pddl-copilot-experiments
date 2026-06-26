@@ -114,8 +114,16 @@ vllm_lookup() {
 # families with no <think> tokens, e.g. Gemma-4 — qwen3 crashes against
 # their tokenizer at vLLM startup). Echoes the flag; callers splice with
 # `$(...)`. No quoting on splice site so the empty case expands to nothing.
+#
+# REASONING_PARSER_OVERRIDE (run-scoped; threaded by submit_with_rtx.sh
+# --reasoning-parser) takes precedence over the per-model REASONING_PARSER
+# that vllm_lookup set, WITHOUT mutating that baseline. The decoupled-budget
+# think=on sweep passes `none` here so Call-1's raw `content` carries the
+# reasoning verbatim, removing the reasoning_content-flush ambiguity
+# (development/decoupled_budget_plan.md DECISION B). Unset → byte-identical
+# to the per-model value, so every existing sweep is unaffected.
 vllm_reasoning_parser_flag() {
-    local p="${REASONING_PARSER:-qwen3}"
+    local p="${REASONING_PARSER_OVERRIDE:-${REASONING_PARSER:-qwen3}}"
     if [ -n "$p" ] && [ "$p" != "none" ]; then
         echo "--reasoning-parser $p"
     fi

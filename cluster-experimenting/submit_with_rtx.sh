@@ -143,6 +143,10 @@ DEP_OVERRIDE=""
 INCLUDE_NO_TOOLS_STEERED=0
 DOMAINS_DIR=""
 RUN_TAG=""
+DECOUPLED_BUDGET=0
+NUM_PREDICT_THINK=""
+NUM_PREDICT_ANSWER=""
+REASONING_PARSER_OVERRIDE=""
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -166,6 +170,10 @@ while [[ $# -gt 0 ]]; do
         --include-no-tools-steered) INCLUDE_NO_TOOLS_STEERED=1; shift ;;
         --domains-dir) shift; DOMAINS_DIR="$1"; shift ;;
         --run-tag) shift; RUN_TAG="$1"; shift ;;
+        --decoupled-budget) DECOUPLED_BUDGET=1; shift ;;
+        --num-predict-think) shift; NUM_PREDICT_THINK="$1"; shift ;;
+        --num-predict-answer) shift; NUM_PREDICT_ANSWER="$1"; shift ;;
+        --reasoning-parser) shift; REASONING_PARSER_OVERRIDE="$1"; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -250,6 +258,45 @@ fi
 if [ -n "$RUN_TAG" ] && ! [[ "$RUN_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
     echo "Error: --run-tag must match [A-Za-z0-9._-]+ (got: $RUN_TAG)" >&2
     exit 1
+fi
+
+# --decoupled-budget / --num-predict-think / --num-predict-answer thread the
+# 2-call reasoning↔answer continuation harness (run_experiment.py) onto the
+# cluster. --reasoning-parser overrides the per-model REASONING_PARSER for
+# THIS submission's vLLM serve (e.g. `none` for the decoupled sweep —
+# development/decoupled_budget_plan.md DECISION B) without touching the
+# lib/defaults.sh baseline. Validate the integer budgets + parser value
+# up front so a typo fails before the cluster pulls a slot.
+if [ -n "$NUM_PREDICT_THINK" ] && ! [[ "$NUM_PREDICT_THINK" =~ ^[0-9]+$ ]]; then
+    echo "Error: --num-predict-think expects a non-negative integer (got: $NUM_PREDICT_THINK)" >&2
+    exit 1
+fi
+if [ -n "$NUM_PREDICT_ANSWER" ] && ! [[ "$NUM_PREDICT_ANSWER" =~ ^[0-9]+$ ]]; then
+    echo "Error: --num-predict-answer expects a non-negative integer (got: $NUM_PREDICT_ANSWER)" >&2
+    exit 1
+fi
+if [ -n "$REASONING_PARSER_OVERRIDE" ] && \
+   [ "$REASONING_PARSER_OVERRIDE" != "none" ] && \
+   [ "$REASONING_PARSER_OVERRIDE" != "qwen3" ]; then
+    echo "Error: --reasoning-parser must be 'none' or 'qwen3' (got: $REASONING_PARSER_OVERRIDE)" >&2
+    exit 1
+fi
+
+# --decoupled-budget only acts on the no-tools think=on path; run_experiment.py
+# hard-rejects it under --think off (exits) and no-ops it under --conditions
+# tools. Force the operator to scope the submission so every emitted cell is a
+# valid decoupled cell: --no-tools AND --think-modes on (on-only). Without this
+# guard, a `--all` or default think-axis submission would emit think=off cells
+# that abort run_experiment.py, or tools cells the flag silently skips.
+if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
+    if [ "$NO_TOOLS" -ne 1 ]; then
+        echo "Error: --decoupled-budget requires --no-tools (it is a no-tools-only intervention)" >&2
+        exit 1
+    fi
+    if [ "$THINK_MODES_OVERRIDE" != "on" ]; then
+        echo "Error: --decoupled-budget requires --think-modes on (think=on only; a think=off cell aborts run_experiment.py)" >&2
+        exit 1
+    fi
 fi
 
 # --smoke / --smoke-shuffle: pin the default model pack (5 models in
@@ -461,6 +508,22 @@ fi
 if [ -n "$RUN_TAG" ]; then
     EXPORT_LIST="${EXPORT_LIST},RUN_TAG=${RUN_TAG}"
 fi
+# Decoupled-budget bundle (consumed by run_condition_vllm_rtx.sbatch). Each is
+# threaded explicitly — same convention as RUN_TAG/DOMAINS_DIR — rather than
+# relying on --export=ALL inheritance alone. REASONING_PARSER_OVERRIDE is read
+# by vllm_reasoning_parser_flag in lib/defaults.sh at serve time.
+if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
+    EXPORT_LIST="${EXPORT_LIST},DECOUPLED_BUDGET=1"
+fi
+if [ -n "$NUM_PREDICT_THINK" ]; then
+    EXPORT_LIST="${EXPORT_LIST},NUM_PREDICT_THINK=${NUM_PREDICT_THINK}"
+fi
+if [ -n "$NUM_PREDICT_ANSWER" ]; then
+    EXPORT_LIST="${EXPORT_LIST},NUM_PREDICT_ANSWER=${NUM_PREDICT_ANSWER}"
+fi
+if [ -n "$REASONING_PARSER_OVERRIDE" ]; then
+    EXPORT_LIST="${EXPORT_LIST},REASONING_PARSER_OVERRIDE=${REASONING_PARSER_OVERRIDE}"
+fi
 # GPU_MEM_UTIL is a correctness param (the VRAM-85%-guard headroom for big
 # models). Thread it explicitly to match the SMOKE/SHARD convention rather
 # than relying on --export=ALL inheritance alone.
@@ -564,6 +627,9 @@ if [ -n "$DOMAINS_DIR" ]; then
 fi
 if [ -n "$RUN_TAG" ]; then
     echo "  run tag:     $RUN_TAG (suffixed onto per-cell OUT_DIR)" >&2
+fi
+if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
+    echo "  decoupled:   ON (think=${NUM_PREDICT_THINK:-default} / answer=${NUM_PREDICT_ANSWER:-per-task}; reasoning-parser=${REASONING_PARSER_OVERRIDE:-per-model})" >&2
 fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
