@@ -53,6 +53,7 @@ from pddl_eval.runner import (
     DEFAULT_NUM_CTX,
     DEFAULT_NUM_CTX_THINKING,
     DEFAULT_NUM_PREDICT,
+    DEFAULT_NUM_PREDICT_THINK,
     RESPONSE_SNAPSHOT_LEN,
     TASKS,
     THINKING_SNAPSHOT_LEN,
@@ -289,6 +290,10 @@ async def async_main(args):
     if args.num_ctx == args.num_ctx_thinking:
         print(f"              ^ equal to num_ctx for tools/no-pddl-tools fairness in 'tools save tokens' headline")
     print(f"  think:      {args.think}")
+    if args.decoupled_budget:
+        _np_think = args.num_predict_think or DEFAULT_NUM_PREDICT_THINK
+        _np_ans = args.num_predict_answer if args.num_predict_answer is not None else "per-task"
+        print(f"  decoupled-budget: ON (think={_np_think} / answer={_np_ans}; no-tools think=on only)")
     print(f"  Concurrency:{args.concurrency}")
     print(f"  vLLM URL:   {host or '(default: http://localhost:8000)'}")
     if smoke_mode:
@@ -454,7 +459,11 @@ async def async_main(args):
                     prompt_style=args.prompt_style,
                     num_predict_override=args.num_predict,
                     num_ctx=args.num_ctx, num_ctx_thinking=args.num_ctx_thinking,
-                    think=think_value, concurrency=args.concurrency,
+                    think=think_value,
+                    decoupled_budget=args.decoupled_budget,
+                    num_predict_think=args.num_predict_think,
+                    num_predict_answer=args.num_predict_answer,
+                    concurrency=args.concurrency,
                     conditions=sub_cond, temperature=args.temperature,
                     shard_i=args.shard_i, shard_n=args.shard_n,
                     cell_assignment=cell_assignment,
@@ -516,6 +525,20 @@ async def async_main(args):
                 "num_predict": args.num_predict,
                 "think": args.think,
             }
+            # Decoupled-budget run-meta: only record when actually engaged so a
+            # baseline summary isn't mislabelled. The corpus is a distinct A/B
+            # arm vs the shared-budget think=on baseline.
+            if args.decoupled_budget:
+                meta["decoupled_budget"] = True
+                meta["num_predict_think"] = args.num_predict_think or DEFAULT_NUM_PREDICT_THINK
+                # When defaulted, the answer budget resolves to the per-task cap
+                # (--num-predict override, else DEFAULT_NUM_PREDICT[task]); record
+                # that source so the corpus's actual answer budget is recoverable.
+                meta["num_predict_answer"] = (
+                    args.num_predict_answer
+                    if args.num_predict_answer is not None
+                    else {"per_task": args.num_predict or DEFAULT_NUM_PREDICT}
+                )
             # tool_filter and prompt_style are with-tools-only knobs; record
             # them only when with-tools actually ran, so a no-tools-only
             # summary isn't mislabelled with a stale default.
@@ -629,6 +652,21 @@ def main():
                         "model's default behaviour (reproduces paper). 'off' passes "
                         "think=False, 'on' passes think=True. Ablation only — do NOT "
                         "mix with reproduction runs.")
+    p.add_argument("--decoupled-budget", action="store_true", default=False,
+                   help="Decoupled-budget think=on (iter-2 T6 / reviewer ask [8]). "
+                        "Splits each no-tools think=on trial into a 2-call "
+                        "continuation so the reasoning and the answer get SEPARATE "
+                        "token budgets — a reasoning spiral can no longer starve the "
+                        "answer. Requires --think on; no-op (and rejected at startup) "
+                        "otherwise. Tools cells are unaffected. New corpus / new "
+                        "RUN_TAG — never pool into a shared-budget baseline.")
+    p.add_argument("--num-predict-think", type=int, default=None,
+                   help=f"Reasoning-phase budget for --decoupled-budget (Call 1, "
+                        f"stop=</think>). Default {DEFAULT_NUM_PREDICT_THINK}.")
+    p.add_argument("--num-predict-answer", type=int, default=None,
+                   help="Answer-phase budget for --decoupled-budget (Call 2, "
+                        "continuation). Default: the per-task --num-predict cap "
+                        "(solve=8192, others=6144). DECISION C runs pass 4096.")
     p.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
                    help=f"Max concurrent chat requests during the single-task "
                         f"sweep. Default {DEFAULT_CONCURRENCY}. Pair with "
@@ -707,6 +745,17 @@ def main():
 
     if args.smoke and args.smoke_shuffle:
         sys.exit("--smoke and --smoke-shuffle are mutually exclusive")
+
+    # --decoupled-budget only acts on the no-tools think=on path. Reject the
+    # combinations where it would silently no-op rather than letting an
+    # operator believe a decoupled corpus was produced.
+    if args.decoupled_budget:
+        if args.think != "on":
+            sys.exit("--decoupled-budget requires --think on (it splits the "
+                     "reasoning vs answer budget of think=on trials)")
+        if args.conditions == "tools":
+            sys.exit("--decoupled-budget has no effect with --conditions tools "
+                     "(it is a no-tools-only intervention); use no-tools or both")
 
     # Smoke pre-resolves several knobs before the num-variants range check.
     # Setting --num-variants 1 here keeps the existing check trivially valid

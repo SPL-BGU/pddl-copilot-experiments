@@ -656,6 +656,7 @@ def relabel_truncated_taxonomy(
     truncated: bool,
     response: str,
     think_mode: str,
+    decoupled: bool = False,
 ) -> str:
     """Read-time relabel: split FR_TRUNCATED_NO_ANSWER into think_overflow vs
     truncated_no_answer based on whether the model emitted any visible response.
@@ -675,7 +676,15 @@ def relabel_truncated_taxonomy(
     The think_mode gate avoids tagging think=off rows where an empty-response
     truncation has no reasoning-spiral explanation (the small Qwen3.5 sizes
     occasionally hit this; ~0.34% of trials).
+
+    `decoupled=True` (decoupled-budget think=on corpus — caller passes it per
+    row via `TaskResult.think_truncated is not None`) DISABLES this relabel:
+    an empty-answer truncation there is an answer-budget cap-hit, not a
+    reasoning spiral, so it must stay FR_TRUNCATED_NO_ANSWER (mirrors the
+    write-time guard in `_classify_step_failure`).
     """
+    if decoupled:
+        return failure_reason
     if not truncated:
         return failure_reason
     if failure_reason not in _LEGACY_RELABEL_CANDIDATES:
@@ -749,6 +758,7 @@ def _classify_step_failure(
     thinking_text: str = "",
     response_text: str = "",
     error: str = "",
+    decoupled: bool = False,
 ) -> tuple[str, bool]:
     """Apply THINK_OVERFLOW / LOOP_EXHAUSTED / truncation overrides.
 
@@ -767,8 +777,17 @@ def _classify_step_failure(
 
     The `thinking_text`/`response_text`/`error` kwargs default to empty
     strings; callers that don't pass them skip the FR_THINK_OVERFLOW step.
+
+    `decoupled=True` (decoupled-budget think=on path) SUPPRESSES the
+    FR_THINK_OVERFLOW step: there `thinking_text` is the *completed* reasoning
+    fed to the answer phase and `done_reason` is the ANSWER phase's, so an
+    empty-answer length-truncation is an ANSWER-budget cap-hit
+    (FR_TRUNCATED_NO_ANSWER), NOT a reasoning spiral. The reasoning-cap signal
+    is carried separately in `TaskResult.think_truncated`. Without this guard
+    the path would mislabel the exact phenomenon it exists to drive down.
     """
-    if (not success
+    if (not decoupled
+        and not success
         and not error
         and not loop_exhausted
         and done_reason == "length"

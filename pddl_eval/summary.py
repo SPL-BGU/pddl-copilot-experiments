@@ -204,6 +204,9 @@ def summarize_single_task(
             truncated=r.truncated,
             response=r.response,
             think_mode=think_mode or "",
+            # Decoupled-budget rows (think_truncated is not None) must NOT have
+            # answer-phase truncation re-bucketed to think_overflow.
+            decoupled=getattr(r, "think_truncated", None) is not None,
         )
         agg[key]["failure_reasons"][fr] += 1
         _add_tokens(agg[key]["tokens"], r.tokens)

@@ -29,6 +29,7 @@ from .chat import (
     TEMPERATURE,
     chat_with_tools,
     chat_without_tools,
+    chat_without_tools_decoupled,
 )
 from .domains import _build_plan_str
 from .prompts import (
@@ -118,6 +119,16 @@ DEFAULT_NUM_CTX = 16384
 DEFAULT_NUM_CTX_THINKING = 16384
 DEFAULT_CONCURRENCY = 4
 
+# Default reasoning-phase budget for the decoupled-budget think=on path
+# (iter-2 T6 / reviewer ask [8], DECISION C). Only consulted when
+# --decoupled-budget is set and think=on; the answer phase budget defaults to
+# the per-task DEFAULT_NUM_PREDICT (override both via --num-predict-think /
+# --num-predict-answer). 8192 think + a ≤6144 answer + a ~0.5-1.5K prompt fits
+# inside DEFAULT_NUM_CTX (16384) on Call 2 (which re-encodes the reasoning as
+# prompt); the vllm_client context-overflow retry clips gracefully if a long
+# prompt pushes a given trial over.
+DEFAULT_NUM_PREDICT_THINK = 8192
+
 # Abort a single-task cell after this many consecutive trials fail with
 # `infra_failure=True`. One blip is a SLURM-SIGTERM-near-TIMEOUT race; a
 # run of N in a row means the inference server is wedged (vLLM crash-loop,
@@ -129,9 +140,17 @@ _INFRA_FAIL_ABORT = 7
 # Cap on stored response/exception strings in result records. The full text
 # is reproducible by re-running the prompt; the stored snippet only needs to
 # be enough for downstream analyses (df.groupby("error"), failure-mode
-# inspection). 500 chars is the empirically-sufficient cutoff observed
-# across qwen3 / gpt-oss / gemma traces in the 2026-04-20 sweep.
-RESPONSE_SNAPSHOT_LEN = 500
+# inspection).
+#
+# Raised 500 → 16384 on 2026-06-25 (iter-2 T6 / decisions doc) so new corpora
+# are RE-GRADEABLE OFFLINE — the 500-char cap silently truncated `simulate`
+# trajectory JSON mid-object, which is exactly what blocked re-grading the
+# frontier `simulate` cells from disk (no full response + no stored `gt`). A
+# full trajectory answer is a few KB; 16384 chars covers it with headroom.
+# Storage-only change: per-record JSON grows, grading/identity are unaffected,
+# and existing on-disk corpora (written under 500) are not rewritten. Override
+# is intentionally not exposed — re-gradeability should not be a per-run knob.
+RESPONSE_SNAPSHOT_LEN = 16384
 # Cap on stored `thinking` snippet in result records. Asymmetric vs
 # RESPONSE_SNAPSHOT_LEN (4096 vs 500) because thinking spirals are
 # structurally longer than graded responses (calibration 2026-04-28
@@ -220,6 +239,14 @@ class TaskResult:
     failure_reason: str = FR_OK          # FR_* constant — "ok" iff success
     truncated: bool = False              # done_reason == "length" on any turn
     done_reason: str = ""                # raw done_reason from the last chat turn
+    # Decoupled-budget think=on only (iter-2 T6): True when the REASONING phase
+    # (Call 1) hit its own budget. Distinct from `truncated`, which reflects the
+    # ANSWER phase (Call 2). The headline metric: reasoning can overflow without
+    # starving the answer. `None` on every non-decoupled trial — so
+    # `think_truncated is not None` is the reliable "this row is a decoupled
+    # trial" marker that suppresses the FR_THINK_OVERFLOW mislabel write-time
+    # (_classify_step_failure) and read-time (relabel_truncated_taxonomy).
+    think_truncated: bool | None = None
     # Plan-variant label for `validate_plan` jobs (PR-3): "v1".."v5" for
     # the 5 valid plans per problem, "b1".."b5" for the 5 invalid plans.
     # "" for tasks that don't take a plan input (solve, validate_domain,
@@ -313,6 +340,9 @@ async def evaluate_one(
     prompt_style: str = "minimal",
     temperature: float = TEMPERATURE,
     plan_label: str = "",
+    decoupled_budget: bool = False,
+    num_predict_think: int | None = None,
+    num_predict_answer: int | None = None,
 ) -> TaskResult:
     # Prompt construction is shared with the offline batch builder via
     # `build_messages` so the Sonnet frontier run uses byte-identical
@@ -329,6 +359,9 @@ async def evaluate_one(
     tokens: dict = {}
     done_reason = ""
     loop_exhausted = False
+    # None on every non-decoupled path; the decoupled branch overwrites it with
+    # a bool. `think_truncated is not None` then marks a decoupled trial.
+    think_truncated: bool | None = None
 
     allowed = None
 
@@ -351,6 +384,26 @@ async def evaluate_one(
                 num_predict=num_predict, num_ctx=effective_num_ctx,
                 allowed_tools=allowed, think=think,
                 temperature=temperature,
+            )
+        elif decoupled_budget and think is True:
+            # Decoupled-budget think=on (iter-2 T6 / reviewer ask [8]):
+            # reasoning and answer get SEPARATE token budgets via a 2-call
+            # continuation, so a reasoning spiral can no longer starve the
+            # answer. `done_reason` here is the ANSWER phase's (Call 2);
+            # `think_truncated` carries the reasoning phase's cap-hit. Only
+            # reachable on the no-tools think=on path (the only place the
+            # shared-budget confound this addresses lives). Answer budget
+            # defaults to the per-task cap; think budget to
+            # DEFAULT_NUM_PREDICT_THINK.
+            response_text, done_reason, tokens, thinking_text, think_truncated = (
+                await chat_without_tools_decoupled(
+                    client, model, messages,
+                    num_predict_think=num_predict_think or DEFAULT_NUM_PREDICT_THINK,
+                    num_predict_answer=num_predict_answer or num_predict,
+                    num_ctx=effective_num_ctx,
+                    temperature=temperature,
+                    format=TASK_SCHEMAS.get(task),
+                )
             )
         else:
             # PR-4: no-PDDL-tools = format-constrained sampling. Per-task
@@ -442,6 +495,10 @@ async def evaluate_one(
         thinking_text=thinking_text,
         response_text=response_text,
         error=error,
+        # Decoupled trials carry an answer-phase done_reason + completed
+        # reasoning as thinking_text; suppress the think-overflow mislabel
+        # (the reasoning-cap signal lives in think_truncated).
+        decoupled=think_truncated is not None,
     )
 
     return TaskResult(
@@ -465,6 +522,7 @@ async def evaluate_one(
         failure_reason=failure_reason,
         truncated=truncated,
         done_reason=done_reason,
+        think_truncated=think_truncated,
         plan_label=plan_label,
         infra_failure=infra_failure,
     )
@@ -780,6 +838,9 @@ async def run_single_task_experiment(
     num_ctx: int = DEFAULT_NUM_CTX,
     num_ctx_thinking: int = DEFAULT_NUM_CTX_THINKING,
     think: bool | None = None,
+    decoupled_budget: bool = False,
+    num_predict_think: int | None = None,
+    num_predict_answer: int | None = None,
     concurrency: int = DEFAULT_CONCURRENCY,
     conditions: str = "both",
     temperature: float = TEMPERATURE,
@@ -858,6 +919,9 @@ async def run_single_task_experiment(
                 tool_filter=tool_filter, prompt_style=prompt_style,
                 temperature=temperature,
                 plan_label=plan_label,
+                decoupled_budget=decoupled_budget,
+                num_predict_think=num_predict_think,
+                num_predict_answer=num_predict_answer,
             )
             return idx, r
 
