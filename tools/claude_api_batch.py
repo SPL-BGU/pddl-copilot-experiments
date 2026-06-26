@@ -75,6 +75,7 @@ from pddl_eval.scoring import (
     FR_EXCEPTION,
     _classify_step_failure,
     check_success,
+    simulate_format_compliant,
 )
 from pddl_eval.summary import save_results
 from run_experiment import resolve_plugin_dirs
@@ -191,6 +192,7 @@ async def _grade_one(
     task = meta["task"]
     done_reason = "length" if stop_reason == "max_tokens" else (stop_reason or "stop")
 
+    format_compliant: bool | None = None
     if error or text is None or stop_reason == "refusal":
         success = False
         tool_selected = None
@@ -209,6 +211,10 @@ async def _grade_one(
             success, done_reason, False, failure_reason,
             thinking_text="", response_text=response_text, error="",
         )
+        # Q1 format-compliance (no-tools simulate secondary metric), mirroring
+        # evaluate_one so a re-grade carries the same field.
+        if task == "simulate":
+            format_compliant = simulate_format_compliant(response_text)
 
     return TaskResult(
         model=MODEL,
@@ -219,6 +225,7 @@ async def _grade_one(
         with_tools=False,
         success=success,
         tool_selected=tool_selected,
+        format_compliant=format_compliant,
         response=response_text[:RESPONSE_SNAPSHOT_LEN],
         thinking="",
         tool_calls=[],

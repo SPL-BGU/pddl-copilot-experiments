@@ -6,6 +6,63 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-06-25 — Q1 two-metric wrapper-tolerant `simulate` grader (no-tools); frontier re-graded
+
+**Change.** Replaced the strict-wrapper no-tools `simulate` grader with the pre-registered Q1
+**two-metric** grader (`pddl_eval/scoring.py`). The old path required the whole output to validate
+as the schema-exact `{"trajectory":[StateStep]}` wrapper; a clean top-level step list or a single
+step object — content possibly correct — was binned `FR_FORMAT_PARSE_FAIL` (the "strict-wrapper
+sub-artifact"). New primitive `_coerce_simulate_trajectory` applies a **frozen bounded-coercion
+whitelist**: (1) parse the ENTIRE output as one JSON value (markdown-fence tolerated; no prose/regex
+extraction); (2) `{"trajectory":[…]}` → compliant; (3) bare top-level step list → wrap → accept
+(not compliant); (4) single valid step → wrap → accept (not compliant); (5) else parse-fail —
+**never invent or repair a field**. The grader now reports two separable metrics:
+- **state-tracking accuracy** = `success` (the primary number; content correct under coercion),
+- **format-compliance** = emitted the schema-exact wrapper (new `simulate_format_compliant` →
+  `TaskResult.format_compliant`), with **strict** = compliant ∧ correct derivable from the two.
+
+`check_success` is the single shared grader, so the change covers the live harness *and* the
+offline Anthropic batch grader (`tools/claude_api_batch.py`) — "same rule for open + frontier" is
+structurally enforced. **With-tools simulate is untouched** (it grades via the tool result; no
+model wrapper exists there). Surfacing: `summary.py` adds a `simulate_q1` row block + a compact
+`print_simulate_q1_table`; `format_compliant` is frozen into each trial at grade time (independent
+of `RESPONSE_SNAPSHOT_LEN`).
+
+**Frontier re-grade (offline, no spend; DECISION B).** Re-graded the three Anthropic corpora.
+**State-tracking is CONFIRMED unchanged** (0 grading-diffs vs the 06-23 grading across all 1520 +
+4560 + 4560 trials — the wrapper-tolerance recovered nothing on the frontier; its parse-fails are
+genuinely truncated/prose, not clean-but-unwrapped). The new dimension:
+
+| corpus | state-tracking | format-compliance [95% Wilson] | strict |
+|---|--:|--:|--:|
+| Haiku sweep5v2 (n=100) | 42.0% | 67.0% [57.3,75.4] | 42.0% |
+| Sonnet canonical sweep5v2 (n=300) | 45.0% | 49.7% [44.1,55.3] | 45.0% |
+| Sonnet anon sweep6 (n=300) | 38.3% | 42.7% [37.2,48.4] | 38.3% |
+
+**Reading.** `strict == state-tracking` in all three → every *correct* frontier trajectory was also
+schema-compliant; format-compliance here tracks (1 − truncation − parse-fail). The wrapper-tolerance
+lever is for the **open-roster** (its 0% is `format_parse_fail` from unenforced `guided_json`), which
+**cannot** be re-graded from disk (responses truncated at 500) and stays the **gated** clean re-run
+(Line 1 / ISS-024(a)). The `guided_json` enforcement bug (ISS-024(b)) is a *generation* issue kept
+separate.
+
+**Reproducibility.** Grader change is intentional + pre-registered; redefines no-tools simulate
+`success`. Non-simulate cells and with-tools simulate are byte-identical (regression check). The
+pre-Q1 corpus is pinned at tag `sweep5v2-final`.
+
+**Validation.** New `tests/test_simulate_q1.py` (29 checks): all five whitelist rules, fence
+tolerance, never-repair, the format-compliance metric, and the `check_success` no-tools simulate
+branch end-to-end (incl. the bare-list-now-succeeds win + empty→`FR_SIMULATE_EMPTY`). Full
+`verify.sh` green; existing `test_scoring`/`test_check_success` unchanged.
+
+**Files.** `pddl_eval/scoring.py` (`_strip_md_fence`, `_validate_model`, `_coerce_simulate_trajectory`,
+`simulate_format_compliant`, rewritten simulate no-tools branch), `pddl_eval/runner.py`
+(`TaskResult.format_compliant` + wiring), `tools/claude_api_batch.py` (set it in re-grade),
+`pddl_eval/summary.py` (`simulate_q1` + printer), `run_experiment.py` (printer wire),
+`tests/{test_simulate_q1.py, verify.sh}`, `results/{haiku-frontier/sweep5v2,
+sonnet-frontier/{sweep5v2,sweep6}}/` (re-graded), `development/{q1_grader_plan.md, CHANGELOG.md,
+OPEN_ISSUES.md}`. Narrows ISS-024.
+
 ## 2026-06-23 — `_normalize_trajectory` predicate-syntax fix → frontier `simulate` re-graded 0% → ~40–45%
 
 **Change.** `pddl_eval/scoring.py::_normalize_trajectory` canonicalised simulate trajectories by lowercasing + collapsing whitespace but **never reconciled predicate notation** — the no-tools model emits PDDL s-expressions `(ontable shaker1)` while the oracle (`get_state_transition`) emits functional `ontable(shaker1)`, so every *correct* no-tools simulation deep-equality-failed as `result_mismatch`. Added `_canon_atom` (one regex; maps `(name a b)`, `name(a, b)`, `name()` and bare `name` to a single `name arg1 arg2` token, argument order preserved) and applied it to **boolean predicates, numeric-fluent keys, and the action string**. Malformed atoms fall back to the prior whitespace-lowered form → genuinely-wrong trajectories still mismatch; the bridge reconciles notation, it never widens equality. Commit `5879ac4`.

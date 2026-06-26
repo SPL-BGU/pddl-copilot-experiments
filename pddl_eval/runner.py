@@ -50,6 +50,7 @@ from .scoring import (
     _classify_step_failure,
     _safe_json_loads,
     check_success,
+    simulate_format_compliant,
 )
 
 if TYPE_CHECKING:
@@ -202,6 +203,12 @@ class TaskResult:
     with_tools: bool
     success: bool
     tool_selected: bool | None = None  # True/False for with-tools, None for no-tools
+    # Q1 simulate two-metric grader (no-tools simulate ONLY): format-compliance
+    # — True iff the model emitted the schema-exact {"trajectory":[...]} wrapper.
+    # `success` carries state-tracking (the primary metric); the strict
+    # conjunction is `format_compliant and success`. None when not applicable
+    # (any non-simulate task, with-tools, or a trial that errored pre-grade).
+    format_compliant: bool | None = None
     response: str = ""
     thinking: str = ""                   # last-turn message.thinking, capped at THINKING_SNAPSHOT_LEN
     tool_calls: list = field(default_factory=list)
@@ -383,6 +390,7 @@ async def evaluate_one(
 
     duration = time.time() - t0
     tool_selected: bool | None = None
+    format_compliant: bool | None = None
     failure_reason = FR_OK
     if error:
         success = False
@@ -406,6 +414,12 @@ async def evaluate_one(
             error = f"scoring error: {exc}"
             print(f"[scoring exception] {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
             failure_reason = FR_EXCEPTION
+        else:
+            # Q1 format-compliance is the no-tools simulate secondary metric;
+            # computed from the FULL response (pre storage-truncation) and
+            # frozen into the record. None for every other (task, condition).
+            if task == "simulate" and not with_tools:
+                format_compliant = simulate_format_compliant(response_text)
 
         # Populate the record's `error` field with the first tool-level error
         # message when the run was rejected as FR_TOOL_ERROR. The information
@@ -439,6 +453,7 @@ async def evaluate_one(
         with_tools=with_tools,
         success=success,
         tool_selected=tool_selected,
+        format_compliant=format_compliant,
         response=response_text[:RESPONSE_SNAPSHOT_LEN],
         thinking=thinking_text[:THINKING_SNAPSHOT_LEN] if thinking_text else "",
         tool_calls=tool_calls,

@@ -20,6 +20,7 @@ from .chat import (
 from .schemas import (
     SimulateResponse,
     SolveResponse,
+    StateStep,
     ValidateResponse,
 )
 
@@ -239,6 +240,38 @@ def _normalize_trajectory(traj) -> list[dict] | None:
     return out
 
 
+def _strip_md_fence(raw: str) -> str:
+    """Strip a leading ```/```json fence line and any trailing ``` fence.
+
+    Models emit fenced JSON even under a `format=` constraint. Stripping a
+    known markdown wrapper is NOT prose/regex extraction — the entire
+    remaining text must still parse as one JSON value. Shared by
+    `_safe_pydantic_validate` and the Q1 `_coerce_simulate_trajectory` so both
+    tolerate fences identically.
+    """
+    text = raw.strip()
+    if text.startswith("```"):
+        nl = text.find("\n")
+        if nl >= 0:
+            text = text[nl + 1:]
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+    return text.strip()
+
+
+def _validate_model(model_cls, data):
+    """pydantic-validate already-parsed JSON data; return instance or None.
+
+    Mirrors `_safe_pydantic_validate`'s broad catch but takes a parsed value
+    (dict/list) rather than a raw string, so the Q1 coercion whitelist can try
+    multiple target shapes against one parse without re-serialising.
+    """
+    try:
+        return model_cls.model_validate(data)
+    except Exception:
+        return None
+
+
 def _safe_pydantic_validate(model_cls, raw: str):
     """Try to JSON-parse + pydantic-validate; return instance or None.
 
@@ -249,21 +282,80 @@ def _safe_pydantic_validate(model_cls, raw: str):
     """
     if not isinstance(raw, str):
         return None
-    text = raw.strip()
-    if text.startswith("```"):
-        # Strip the first fence line and any trailing fence.
-        nl = text.find("\n")
-        if nl >= 0:
-            text = text[nl + 1:]
-        if text.rstrip().endswith("```"):
-            text = text.rstrip()[:-3]
-    data = _safe_json_loads(text.strip())
+    data = _safe_json_loads(_strip_md_fence(raw))
     if data is None:
         return None
-    try:
-        return model_cls.model_validate(data)
-    except Exception:
-        return None
+    return _validate_model(model_cls, data)
+
+
+# Q1 two-metric simulate grader (2026-06-25; pre-registered in
+# development/simulate_decisions_and_next_steps.md + q1_grader_plan.md).
+#
+# The pre-PR grader required the no-tools simulate output to validate as the
+# schema-exact {"trajectory":[...]} wrapper; a clean top-level step list or a
+# single step object — content possibly correct — was binned FR_FORMAT_PARSE_FAIL
+# (the "strict-wrapper sub-artifact"). The bounded-coercion whitelist below
+# separates two metrics: state-tracking accuracy (the primary `success`, graded
+# on coerced content) and format-compliance (did the output emit the exact
+# wrapper). FROZEN rules — never widen without a dated decision:
+#   1. parse the ENTIRE output as ONE JSON value (markdown fence tolerated);
+#      no prose/regex extraction, ever;
+#   2. dict with `trajectory` key -> SimulateResponse -> compliant=True;
+#   3. bare top-level list -> wrap -> list[StateStep] -> accept (not compliant);
+#   4. single dict that is a valid StateStep -> wrap -> accept (not compliant);
+#   5. anything else -> parse-fail. Never invent or repair a field.
+
+
+def _coerce_simulate_trajectory(response) -> tuple[list[dict] | None, bool]:
+    """Bounded wrapper-tolerant parse for no-tools simulate (Q1 whitelist).
+
+    Returns `(trajectory_steps, format_compliant)`:
+      * `trajectory_steps` — list of `StateStep.model_dump()` dicts ready for
+        `_normalize_trajectory`, or `None` iff the output is not coercible
+        (caller tags `FR_FORMAT_PARSE_FAIL`).
+      * `format_compliant` — `True` only when the output was the schema-exact
+        `{"trajectory":[...]}` wrapper (rule 2); the coerced list/single-step
+        shapes are accepted but NOT compliant.
+    """
+    if not isinstance(response, str):
+        return None, False
+    data = _safe_json_loads(_strip_md_fence(response))
+    if data is None:
+        return None, False
+    # Rule 2: schema-exact wrapper. A present `trajectory` key signals intent
+    # to comply, so a malformed one is a parse-fail (NOT a fall-through to the
+    # single-step rule) — we never repair it.
+    if isinstance(data, dict) and "trajectory" in data:
+        parsed = _validate_model(SimulateResponse, data)
+        if parsed is None:
+            return None, False
+        return [s.model_dump() for s in parsed.trajectory], True
+    # Rule 3: bare top-level list of valid steps -> wrap.
+    if isinstance(data, list):
+        parsed = _validate_model(SimulateResponse, {"trajectory": data})
+        if parsed is None:
+            return None, False
+        return [s.model_dump() for s in parsed.trajectory], False
+    # Rule 4: single valid step object -> wrap.
+    if isinstance(data, dict):
+        step = _validate_model(StateStep, data)
+        if step is None:
+            return None, False
+        return [step.model_dump()], False
+    # Rule 5: JSON scalar / anything else -> not coercible.
+    return None, False
+
+
+def simulate_format_compliant(response) -> bool:
+    """Format-compliance metric: True iff a no-tools simulate response emitted
+    the schema-exact `{"trajectory":[...]}` wrapper (coerced shapes and
+    parse-fails are False). Pure; shares `_coerce_simulate_trajectory` with
+    `check_success` so the two metrics can never drift. Callers only invoke
+    this for no-tools simulate trials; `TaskResult.format_compliant` stays
+    `None` (not applicable) elsewhere.
+    """
+    _steps, compliant = _coerce_simulate_trajectory(response)
+    return compliant
 
 
 def extract_verdict(response: str) -> bool | None:
@@ -490,17 +582,26 @@ async def check_success(
                 return True, False, FR_TOOL_ERROR
             return True, False, FR_RESULT_MISMATCH
 
-        # PR-4: no-PDDL-tools simulate. Parse SimulateResponse, normalise,
-        # deep-equal against the oracle. No free-text fallback — the
-        # pre-PR-4 keyword check (resp_lower in {"state","after","step"})
-        # is non-discriminative (ISS-002), so failing the JSON path lands
-        # on FR_FORMAT_PARSE_FAIL rather than guessing from substrings.
+        # PR-4 / Q1 (2026-06-25): no-PDDL-tools simulate. Bounded
+        # wrapper-tolerant parse via `_coerce_simulate_trajectory` — the ENTIRE
+        # output must be one JSON value; the schema-exact {"trajectory":[...]}
+        # wrapper, a bare top-level step list, or a single step object are all
+        # accepted (state-tracking is graded on content), anything else is
+        # FR_FORMAT_PARSE_FAIL. No free-text fallback (ISS-002). `success`
+        # returned here is STATE-TRACKING accuracy (the primary metric);
+        # format-compliance is the SEPARATE `simulate_format_compliant` /
+        # `TaskResult.format_compliant` channel.
         if oracle_canon is None:
             return None, False, FR_UNKNOWN
-        parsed = _safe_pydantic_validate(SimulateResponse, response or "")
-        if parsed is None:
+        model_steps, _compliant = _coerce_simulate_trajectory(response or "")
+        if model_steps is None:
             return None, False, FR_FORMAT_PARSE_FAIL
-        model_canon = _normalize_trajectory([s.model_dump() for s in parsed.trajectory])
+        if not model_steps:
+            # Coerced cleanly to an empty trajectory (e.g. {"trajectory": []}).
+            # Distinct from a wrong trajectory — and FR_SIMULATE_EMPTY is a
+            # truncation-override reason, so a budget cut-off is relabelled.
+            return None, False, FR_SIMULATE_EMPTY
+        model_canon = _normalize_trajectory(model_steps)
         if model_canon is None:
             return None, False, FR_FORMAT_PARSE_FAIL
         if model_canon == oracle_canon:
