@@ -30,16 +30,45 @@ Decoupled (split budget) vs sweep5v2 think=on baseline (shared budget), no-tools
 - Mechanism = the open-roster simulate 0% floor was substantially **shared-budget reasoning
   starvation**, stacked on the frontier **notation** artifact (`_canon_atom`). Two artifacts.
 
-## Live sweep status @ 2026-06-27 ~09:08 (job 18426027)
+## Completed cell — Qwen3.5:0.8B FINAL A/B (2026-06-27; first cell done, 4560/4560)
+
+Matched A/B (join on trial `key`), decoupled vs sweep5v2 think=on baseline, all 5 tasks, n=4560.
+Grader confound is **immaterial here**: the 0.8B baseline simulate was genuinely empty (293/300
+`truncated_no_answer`, only 0.7% Q1-coercible), not a grader artifact — so `success` is honest.
+
+| task | baseline | decoupled | impact |
+|---|--:|--:|:--|
+| validate_domain  | 0.3% | **48.6%** | ⬆️ +48.3pp (Wilson disjoint) |
+| validate_problem | 0.2% | **27.7%** | ⬆️ +27.5pp (Wilson disjoint) |
+| validate_plan    | 0.0% | 4.4%      | ⬆️ +4.4pp (small; 92.6% answer-trunc throttles it) |
+| solve            | 0.0% | 0.0%      | ➖ no change (ctx-ceiling exception) |
+| simulate         | 0.0% | 0.0%      | ➖ no change (empties 97.7%→10% but 70% `result_mismatch`) |
+
+- **No regression on any task; improvement on three.** Empties/parse-errors crushed everywhere
+  except solve (e.g. simulate 97.7%→10% empty, validate_* 99%→~0%) — the expected
+  output-erroring/parsing fix landed.
+- Accuracy lift is **capability-gated**: it converts to `success` only where 0.8B has the latent
+  skill (the two validate tasks). simulate/solve stay 0% — decoupling buys a non-empty *wrong*
+  answer, not a right one, on the tasks past this model's capability floor.
+
+> **Other models NOT yet confirmed.** This verdict is for **Qwen3.5:0.8B only**. The 35b/9B/4B
+> cells are still in flight (see status below) and have **not** yet reproduced the pattern at full N.
+> The handoff smoke (above) suggested the bigger models get a *simulate* lift (35b 0→42%, 9B 0→~28%)
+> that 0.8B did NOT show — so do not generalize the 0.8B "simulate flat" result to the roster until
+> 9B/35b complete and their matched A/B is run (NEXT STEPS §3). Treat the cross-model story as OPEN.
+
+## Live sweep status @ 2026-06-27 ~15:30 (job 18426027)
 
 Full no-tools cell ≈ **4560 trials** (5 tasks × full fixtures × 3 no-tools variants v11-13).
 
-| cell | model | trials | ~%done | rate | note |
-|---|---|--:|--:|--:|---|
-| _0 | Qwen3.5:0.8B | 3844 | 84% | ~410/h | finishes ~2h |
-| _3 | qwen3.6:35b | 3678 | 81% | ~357/h | finishes ~2-3h |
-| _1 | Qwen3.5:4B | 1461 | 32% | ~144/h | ~21h left |
-| _2 | Qwen3.5:9B | 885 | 19% | ~87/h | **long pole — projects past 48h wall** |
+| cell | model | trials | ~%done | note |
+|---|---|--:|--:|---|
+| _0 | Qwen3.5:0.8B | 4560 | **100% ✓ DONE** | final A/B above |
+| _3 | qwen3.6:35b | 4474 | 98% | finishes <1h |
+| _1 | Qwen3.5:4B | 1898 | 42% | ~20h left |
+| _2 | Qwen3.5:9B | 1135 | 25% | **long pole — projects past 48h wall** (resubmit-to-resume) |
+
+Use `bash .claude/skills/cluster-ops/scripts/status.sh --decoupled` for the live board.
 
 Turbulence so far (all auto-recovered, no data lost): **2 preemptions + 1 wedge-abort** (0.8B's
 vLLM briefly wedged → harness "Aborting cell: 7 consecutive APIConnectionErrors … Resume on rerun" →
