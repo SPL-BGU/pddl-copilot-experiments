@@ -10,7 +10,7 @@ runs now anchor the numbers, and they overturn the proxy in opposite directions:
   * Haiku 4.5 / Sonnet 4.6 WITH-TOOLS — a 75-trial live agentic-loop probe,
     projected to the plain (v11-13) 4,560 corpus at LIST price (the tool loop
     cannot batch). MEASURED-projection: Haiku $146/corpus, Sonnet $449/corpus.
-    development/with_tools_probe_findings.md
+    development/frontier/with_tools_probe_findings.md
 
 Headline correction vs the old proxy (both think-off, plain, one corpus):
   * NO-TOOLS  : proxy $73 -> real $39   (proxy 1.9x too HIGH — Qwen writes a long
@@ -338,7 +338,7 @@ def slide1(prs):
          "per-arm — budget each arm from its own anchor."),
     ])
     _footer(slide, "Sources: .local/sonnet/grade_{canonical,anon}.log (no-tools, measured) · "
-            "development/with_tools_probe_findings.md (with-tools probe). Both think-OFF — there is "
+            "development/frontier/with_tools_probe_findings.md (with-tools probe). Both think-OFF — there is "
             "no frontier think-ON anchor yet; treat any think-on figure as unmeasured.")
 
 # ================================================================ SLIDE 2

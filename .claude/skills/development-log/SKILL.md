@@ -62,6 +62,15 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 2. Scan the latest `results/<timestamp>_*` directories for new summary JSONs — any new failure modes, truncation clusters, or schema changes worth an `ISS-###`?
 3. Propose a short list of draft entries (changelog additions + new issues) and ask the user which to land. Do not edit the files until the user confirms.
 
+## Per-line workstream docs (the `development/` folder layout)
+
+`development/README.md` is the map. The two indices above (`CHANGELOG.md`, `OPEN_ISSUES.md`) remain the **framework** source of truth; long-running **experiment lines** get their own folder so they don't clutter the root:
+
+- One folder per line: `development/<line>/` (e.g. `decoupled/`, `frontier/`, `planbench/`). Each line has a single **entry doc** (handoff/plan) that links its companions; new line work appends there or adds a doc inside the folder.
+- Executed or superseded plans move to `development/archive/` (via `git mv`, never deleted).
+- Reference docs that code or skills import by path stay flat at the root (e.g. `sweep_prompt_bank_design.md`, `contamination_probe_plan.md`) — moving them means editing code.
+- When you add or retire a line, update `development/README.md` and the table there.
+
 ## Writing-style reminders
 
 - Imperative voice, short paragraphs. Reviewers skim; don't bury the contract.
@@ -73,5 +82,5 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 ## Anti-patterns (push back if the user requests them)
 
 - A new `docs/` directory duplicating `development/`. One source of truth.
-- Per-change standalone `.md` files in `development/`. The CHANGELOG is the index; do not fragment it.
+- Per-*change* standalone `.md` files at the `development/` **root**. Framework changes go in `CHANGELOG.md` (the index); per-*line* docs live in a line folder (see "Per-line workstream docs").
 - Logging routine refactors or typo fixes. Only entries that change behaviour, schema, methodology, or reproducibility belong here.

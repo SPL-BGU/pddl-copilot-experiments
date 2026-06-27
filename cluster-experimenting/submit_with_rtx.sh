@@ -264,7 +264,7 @@ fi
 # 2-call reasoning↔answer continuation harness (run_experiment.py) onto the
 # cluster. --reasoning-parser overrides the per-model REASONING_PARSER for
 # THIS submission's vLLM serve (e.g. `none` for the decoupled sweep —
-# development/decoupled_budget_plan.md DECISION B) without touching the
+# development/archive/decoupled_budget_plan.md DECISION B) without touching the
 # lib/defaults.sh baseline. Validate the integer budgets + parser value
 # up front so a typo fails before the cluster pulls a slot.
 if [ -n "$NUM_PREDICT_THINK" ] && ! [[ "$NUM_PREDICT_THINK" =~ ^[0-9]+$ ]]; then
