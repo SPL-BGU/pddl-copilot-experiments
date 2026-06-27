@@ -15,7 +15,7 @@ ISS-024 in `OPEN_ISSUES.md`.
 - **Smoke = GREEN, Line-1 hypothesis CONFIRMED** (see "Result so far").
 - **Full sweep LAUNCHED + RUNNING:** SLURM job **`18426027`** (4-cell array, all 4 Qwens, no-tools,
   think=on, `--decoupled-budget --num-predict-think 8192` answer=per-task, `--reasoning-parser none`,
-  `RUN_TAG=decoupled-thinkon`, `--time 48:00:00`). Parser-off verified live.
+  `RUN_TAG=decoupled-thinkon`, `--time 48:00:00`). Parser-off verified live. **9B long-pole hit the 48h wall → resubmitted to resume as job `18466812`** (the live job to monitor now).
 - **Open decision (user's):** with-tools parity — cheap parser-off+tools smoke vs full re-run (below).
 - **`paper/` is OFF-LIMITS** (gather-data-first). Never pool the decoupled corpus into `sweep5v2-live`.
 
@@ -88,7 +88,7 @@ decoupling does not *create* capability, it *unmasks* it:
 0.8B is the control (no latent simulate skill to recover); 35b is the positive case. 9B (in flight)
 and 4B (in flight) should land between these two.
 
-## Live sweep status @ 2026-06-27 ~15:30 (job 18426027)
+## Live sweep status @ 2026-06-27 ~15:30 (orig array `18426027`; 9B resumed as `18466812`)
 
 Full no-tools cell ≈ **4560 trials** (5 tasks × full fixtures × 3 no-tools variants v11-13).
 
@@ -97,7 +97,7 @@ Full no-tools cell ≈ **4560 trials** (5 tasks × full fixtures × 3 no-tools v
 | _0 | Qwen3.5:0.8B | 4560 | **100% ✓ DONE** | final A/B above (simulate flat) |
 | _3 | qwen3.6:35b | 4560 | **100% ✓ DONE** | final A/B above (simulate 0→40%) |
 | _1 | Qwen3.5:4B | 1898 | 42% | ~20h left |
-| _2 | Qwen3.5:9B | 1135 | 25% | **long pole — projects past 48h wall** (resubmit-to-resume) |
+| _2 → `18466812` | Qwen3.5:9B | 1135 | 25% | **long pole — hit 48h wall; resubmitted to resume as job `18466812`** |
 
 Use `bash .claude/skills/cluster-ops/scripts/status.sh --decoupled` for the live board.
 
@@ -107,13 +107,13 @@ requeued, recovered). These are NORMAL on the contended BGU cluster.
 
 ## NEXT STEPS (in order)
 
-1. **Monitor `18426027` to completion.** Use `cluster-ops`. Fastest board:
+1. **Monitor `18466812` (the resumed 9B long pole; the other cells ran under the original array `18426027`) to completion.** Use `cluster-ops`. Fastest board:
    `bash .claude/skills/cluster-ops/scripts/status.sh --decoupled` (4 Qwens × `on/nt-neut`, dedup'd
    per-cell %/Δ/ETA/watch-list; remote-side only — no result sync). Poll the job STATE with
-   `sacct -j 18426027 -X -o State` — **NOT** `squeue`-empty (that false-positives during the frequent
+   `sacct -j 18466812 -X -o State` — **NOT** `squeue`-empty (that false-positives during the frequent
    VPN drops; a dropped SSH returns empty and looks like "done"). Raw per-cell progress = `wc -l` on
    `results/slurm_vllm_<m>_on_no-tools_decoupled-thinkon/trials.jsonl`.
-2. **9B will likely TIMEOUT at 48h (~85% done).** When it does, **resubmit to resume** — same wrapper
+2. **9B hit the 48h wall (~85% done) and was resubmitted to resume as job `18466812`.** If `18466812` also walls, **resubmit again** — same wrapper
    command, it resumes from `trials.jsonl`:
    ```
    ssh slurm "cd ~/pddl-copilot-experiments && bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B \
