@@ -51,11 +51,42 @@ Grader confound is **immaterial here**: the 0.8B baseline simulate was genuinely
   skill (the two validate tasks). simulate/solve stay 0% — decoupling buys a non-empty *wrong*
   answer, not a right one, on the tasks past this model's capability floor.
 
-> **Other models NOT yet confirmed.** This verdict is for **Qwen3.5:0.8B only**. The 35b/9B/4B
-> cells are still in flight (see status below) and have **not** yet reproduced the pattern at full N.
-> The handoff smoke (above) suggested the bigger models get a *simulate* lift (35b 0→42%, 9B 0→~28%)
-> that 0.8B did NOT show — so do not generalize the 0.8B "simulate flat" result to the roster until
-> 9B/35b complete and their matched A/B is run (NEXT STEPS §3). Treat the cross-model story as OPEN.
+> **Cross-model status.** The 0.8B verdict above does NOT generalize — see the 35b cell below,
+> which behaves oppositely on simulate. 9B/4B are still in flight (NEXT STEPS §3); story stays OPEN
+> for them.
+
+## Completed cell — qwen3.6:35b FINAL A/B (2026-06-27; second cell done, 4560/4560)
+
+Matched A/B (join on trial `key`), decoupled vs sweep5v2 think=on baseline, all 5 tasks, n=4560.
+
+| task | baseline | decoupled | impact |
+|---|--:|--:|:--|
+| **simulate**     | 0.0%  | **40.0%** | ⬆️ **+40.0pp** (Wilson disjoint [0,1.3] vs [34.6,45.6]) |
+| validate_plan    | 84.8% | 91.6%     | ⬆️ +6.8pp (Wilson disjoint) |
+| validate_domain  | 73.3% | 80.3%     | ⬆️ +6.9pp (CIs marginally touch) |
+| validate_problem | 77.5% | 77.2%     | ➖ flat (−0.3pp = 2 trials, noise) |
+| solve            | 38.3% | 39.3%     | ➖ flat (+1.0pp; ctx-bound) |
+
+- **CONFIRMS the smoke prediction**: simulate 0→40% at full N (smoke said 0→42%). **No regression** on
+  any task; three improve. The simulate lift is honest — the baseline is ~0% under *either* grader
+  (only 0.3% of baseline simulate responses are Q1-coercible — truncated/non-JSON), so it is not a
+  grader artifact. Decoupling crushed simulate empties **48.7%→8.3%**; Q1 wrapper-tolerance then
+  credits the 120 coercible-but-correct trajectories (the model never emits the exact wrapper —
+  0% format-compliant — yet gets the *content* right 40% of the time).
+- **solve stays ctx-bound**: decoupled answer-truncation actually *rose* 22%→39% (8192 think + long
+  plan answer overruns the 16K window), yet success held flat — the ctx-ceiling exception, now at a
+  capable model.
+
+**Cross-model (the clean mechanism).** Same intervention, opposite simulate outcomes →
+decoupling does not *create* capability, it *unmasks* it:
+
+| model | simulate | validate_plan | read |
+|---|--:|--:|---|
+| Qwen3.5:0.8B | 0% → **0%**  | 0% → 4%   | too weak — budget buys a *wrong* answer |
+| qwen3.6:35b  | 0% → **40%** | 85% → 92% | capable — budget *unmasks* real skill |
+
+0.8B is the control (no latent simulate skill to recover); 35b is the positive case. 9B (in flight)
+and 4B (in flight) should land between these two.
 
 ## Live sweep status @ 2026-06-27 ~15:30 (job 18426027)
 
@@ -63,8 +94,8 @@ Full no-tools cell ≈ **4560 trials** (5 tasks × full fixtures × 3 no-tools v
 
 | cell | model | trials | ~%done | note |
 |---|---|--:|--:|---|
-| _0 | Qwen3.5:0.8B | 4560 | **100% ✓ DONE** | final A/B above |
-| _3 | qwen3.6:35b | 4474 | 98% | finishes <1h |
+| _0 | Qwen3.5:0.8B | 4560 | **100% ✓ DONE** | final A/B above (simulate flat) |
+| _3 | qwen3.6:35b | 4560 | **100% ✓ DONE** | final A/B above (simulate 0→40%) |
 | _1 | Qwen3.5:4B | 1898 | 42% | ~20h left |
 | _2 | Qwen3.5:9B | 1135 | 25% | **long pole — projects past 48h wall** (resubmit-to-resume) |
 
