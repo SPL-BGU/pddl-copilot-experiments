@@ -1,8 +1,9 @@
 # Frontier with-tools — correctness ladder (NEXT JOB)
 
 **Status:** PLAN / GATED. Correctness-first staged probe of the **with-tools** condition for the
-Anthropic-API frontier models, starting with **Haiku 4.5**. Nothing runs until the open decisions
-below are answered. Companion docs: `development/with_tools_probe_findings.md` (the prior cost probe +
+Anthropic-API frontier models, starting with **Haiku 4.5**. Decisions answered 2026-06-27; **Decision 2
+(simulate criterion) needs ONE re-confirm** after a code finding (the current grader does NOT match
+the chosen answer — see below). Nothing runs until that is resolved. Companion docs: `development/with_tools_probe_findings.md` (the prior cost probe +
 the $146 / ISS-023 decision), `development/frontier_haiku_phase_plan.md`, `OPEN_ISSUES.md` ISS-023
 (cost) + ISS-024 (simulate grader history).
 
@@ -27,10 +28,12 @@ rung 3, measured against real token data — not a design phase up front.
 **sweep5v2 plain-only** corpus (prompt variants 11-13 = 4,560 trials at full N). Model: **Haiku 4.5**
 first (per the ISS-023 decision). This is the paper's main scope.
 
-**Out (separate track, later):** **PlanBench** (t1/t2/t3/t7) is a *different benchmark* and gets its
-own ladder if/when we go there. As last logged in the paper strategy it is **out of the AAAI-27 main
-paper** (single-tool scope); frontier *no-tools* PlanBench data for Haiku already exists (`d1045a5`).
-The with-tools PlanBench is future-work, gated on a paper-scope call (see Decision 5).
+**Later (valued, planned — Decision 5):** **PlanBench** (t1/t2/t3/t7) is a *different benchmark* and
+gets its **own** ladder, sequenced AFTER this single-task PDDL with-tools ladder. It is **important
+for cross-paper comparison and carries real reviewer weight** — not a throwaway. Venue is uncertain
+(AAAI-27 only if we make the deadline; may pivot), so it is no longer framed as "out of the main
+paper." Frontier *no-tools* PlanBench data for Haiku already exists (`d1045a5`); the with-tools
+PlanBench is the new piece when we get there.
 
 ## Branch
 
@@ -59,7 +62,7 @@ git checkout -b paper/frontier-with-tools origin/main   # blocked until the 3 st
 | 0 — smoke | 1 trial × each of 5 tasks (Haiku) | Loop runs; the MCP tool actually fires; result captured; grader emits a verdict; loop **terminates** (doesn't silently hit `MAX_TOOL_LOOPS=10`) | cents |
 | 1 — grading audit | ~5 trials/task, **known ground truth**, manual row-by-row inspection | The grader's verdict matches ground truth by hand — at least one TRUE and one FALSE fixture per task. Confirm ~100% is **real, not lenient** | ~$1 |
 | 2 — stratified re-read | the existing 75-trial probe in `results/frontier-with-tools-probe/` | Re-examine as *correctness*: spot-check the n=6-8 cells flagged "directional"; confirm the depot/p01 200K-overflow is a clean recorded failure, not a crash | already spent |
-| 3 — one full cell | one task at full N (Decision 3) | Throughput, error handling, and **N-matching** with the no-tools plain arm hold at scale. **First real spend; first place caching earns its keep** | first real spend |
+| 3 — one full cell | one full **domain** (all 5 tasks; Decision 3) | Throughput, error handling, and **N-matching** with the no-tools plain arm hold at scale. **First real spend; first place caching earns its keep** | first real spend |
 | 4 — full run | 4,560 plain-only (variants 11-13), Haiku | The deliverable | the $146 question (ISS-023) |
 
 ### Per-rung detail
@@ -76,9 +79,13 @@ git checkout -b paper/frontier-with-tools origin/main   # blocked until the 3 st
 - **Rung 2 (re-read the probe).** No new spend. Re-open the 75-trial probe trials and audit the
   cells the findings doc itself flagged as directional (n=6-8, wide CIs) and the lone Haiku overflow
   (`simulate depot/p01`, 400 invalid_request) — confirm it's bucketed as a clean failure.
-- **Rung 3 (one full cell).** Only after rungs 0-2 pass. Run a single task at full N to validate
-  throughput, error handling, and trial-for-trial N-matching with the no-tools plain corpus before
-  committing to all five. Caching (if implemented) gets measured here against real token usage.
+- **Rung 3 (one full domain).** Only after rungs 0-2 pass. Per Decision 3, shard the run **by
+  domain** (each domain sampled equally) rather than by task; rung 3 = one full domain across all 5
+  tasks, to validate throughput, error handling, and trial-for-trial N-matching with the no-tools
+  plain corpus before committing to all domains. (User regards this rung as low-importance since the
+  probe + smoke already sample — keep it light.) Caching, if implemented, is measured here. NOTE:
+  verify `tools/claude_api_tools_probe.py` supports a domain filter — it currently shards by
+  task/variant, so by-domain selection may need a small addition.
 - **Rung 4 (full run).** The 4,560-trial Haiku-WT deliverable. Gated on the ISS-023 cost call, now
   informed by the *measured* per-trial cost from rung 3 rather than a projection.
 
@@ -114,33 +121,57 @@ reliable win). All measured at rung 3, not designed now.
 
 ### 1 — Branch base
 > Recommend `main` (reasoning above). OK?
-> ANSWER:
+> ANSWER: OK, branch from `main`
 
 ### 2 — Rung-1 simulate success criterion (with-tools)
 With-tools simulate is graded on the `get_state_transition` tool result. Options: (a) success =
 model invoked the tool and the tool result matched ground truth; (b) success = the model's own final
 answer reflects the correct trajectory (tool is a means, not the verdict). (b) is the stricter,
 more defensible "did the model get it right" measure; (a) risks measuring the tool.
+> ANSWER: B. (btw, is this how the vllm current sweep evaluates too?)
+>
+> **CODE FINDING (2026-06-27) — needs your re-confirm.** No, not for with-tools. The shared
+> `check_success` (`pddl_eval/scoring.py:566-583`) grades with-tools simulate on criterion **(a)**:
+> success iff the model SELECTED `get_state_transition` and one of its returned trajectories matches
+> the oracle; the model's own final text is NOT graded in the with-tools path. The *no-tools* path
+> (the in-flight decoupled sweep) grades the model's own trajectory text (`:596`) = (b)-like. So the
+> grader already has a deliberate per-condition split: no-tools = model reasoning (b), with-tools =
+> tool-driving (a).
+>
+> Choosing (b) for with-tools is costly: the frontier probe REUSES `check_success`, so it means
+> editing the SHARED with-tools grader → either re-grading the entire sweep5v2 with-tools corpus, or
+> forking a frontier-only grader that DIVERGES from the open roster (breaks the cross-arm comparison
+> that motivates the frontier run). And `get_state_transition` IS the oracle, so for with-tools "the
+> model's own correct trajectory" collapses to "the model correctly drove the oracle tool" — (b)
+> isn't more discriminative and would need the harness to elicit a separate final-answer synthesis.
+>
+> **Recommend: keep (a) for with-tools** (comparable + principled); address the "~100% measures the
+> tool" worry by REPORTING it as tool-driving capability (the model's unaided state-tracking is the
+> no-tools arm; the tools-vs-no-tools delta is the model-vs-tool story). Rung 1 verifies (a) is
+> implemented right, not that we switch to (b).
+> RE-CONFIRM: keep (a), or accept the re-grade/divergence cost of (b)?
 > ANSWER:
 
 ### 3 — Rung-3 first full cell
 `validate_plan` is the bulk (~$73 of the $146) — most representative of throughput/cost. A smaller
 task (e.g. `validate_domain`, ~$6) is cheaper to fail on but less representative.
-> ANSWER:
+> ANSWER: we can run the experiments by domains rather than by tasks this way well sample equally.
+> btw I don't regard it much importance since we sample with the probing and smoke runs. 
 
 ### 4 — Roster on the early rungs
 Full ladder targets **Haiku** (ISS-023 decision). Ride Sonnet 4.6 along at rungs 0-1 for a cheap
 cross-model correctness sanity check, or keep Sonnet probe-only (full Sonnet-WT ~$449, out of scope)?
-> ANSWER:
+> ANSWER: start with haiku. when we complete it. well decide if we'll run sonnet too. 
 
 ### 5 — PlanBench scope
 Keep PlanBench out of this paper as a separate future-work track (status quo), or reopen it into the
 AAAI-27 main paper (changes whether we plan its ladder now)?
-> ANSWER:
+> ANSWER: we may not target AAAI27 if we won't make it. but planbench is extremly important for cress papers comparison.
+> it will have a major positive impact in the eyes of the reviewers.
 
 ### 6 — Caching timing
 Confirm caching is deferred to rung 3 (measured), not designed up front.
-> ANSWER:
+> ANSWER: confirmed
 
 ## Reference
 
