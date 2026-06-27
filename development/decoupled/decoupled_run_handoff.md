@@ -3,7 +3,7 @@
 **For the next agent.** Pick up the in-flight Line-1 decoupled-budget no-tools sweep and take it
 through completion → final A/B → (optional) the with-tools parity decision. Read this top-to-bottom
 before any cluster action. Companion docs: `decoupled_run_staging.md` (build + decisions),
-`decoupled_budget_plan.md`, `q1_grader_plan.md`; memory `project_simulate_grader_artifact`;
+`../archive/decoupled_budget_plan.md`, `../archive/q1_grader_plan.md`; memory `project_simulate_grader_artifact`;
 ISS-024 in `OPEN_ISSUES.md`.
 
 ## TL;DR state
