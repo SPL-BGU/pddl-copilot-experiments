@@ -86,7 +86,7 @@ they are correctness conditions.
 
 1. **Cut symmetrically across both arms.** The headline is a *paired* tools-vs-no-tools contrast, so
    any reduction must be applied to the **identical** corpus on both arms. Subsampling `validate_plan`
-   on the with-tools arm only (the "cheapest lever" in `with_tools_probe_findings.md`) breaks
+   on the with-tools arm only (the "cheapest lever" in `../frontier/with_tools_probe_findings.md`) breaks
    N-matching and is **not** allowed without a flagged note.
 2. **Report the Wilson CI at the reduced n.** The CI is the honesty meter. Cutting `n` is fine;
    quoting the *old* tight CI next to the *new* `n`, or hiding the widening, is not.
@@ -105,7 +105,7 @@ they are correctness conditions.
 > prompt + ~3.6k-token tool schema re-sent every turn. **Prompt caching** (0.1× on that fixed prefix)
 > cuts the dollar cost with **zero** change to the corpus or grading — orthogonal to everything
 > above, and the recommended first move before any sample cut on the WT arm (see
-> `with_tools_probe_findings.md`).
+> `../frontier/with_tools_probe_findings.md`).
 
 ---
 

@@ -6,7 +6,7 @@ decision → see `decoupled_run_handoff.md`.** This doc is the build/decisions r
 **Date:** 2026-06-26
 **Branch:** `paper/iter2-decoupled-run` (off `origin/main` b07b394, which already carries
 **both** PR #87 Q1 grader and PR #88 decoupled budget — the merge/rebase prep is complete).
-**Background:** `decoupled_budget_plan.md`, `q1_grader_plan.md`,
+**Background:** `../archive/decoupled_budget_plan.md`, `../archive/q1_grader_plan.md`,
 `simulate_decisions_and_next_steps.md` (Line 1), CHANGELOG 2026-06-25, ISS-024(a),
 memory `project_simulate_grader_artifact`.
 

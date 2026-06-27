@@ -70,7 +70,7 @@ REMAINING:
   concrete, costed, in-flight item.
 - **PlanBench — DEFERRED to a standalone follow-up (RATIFIED 2026-06-18, REVIEW §7C).** It stays the
   one-paragraph Future Work mention in `main.tex` for THIS AAAI-27 submission: the in-flight
-  cross-domain sweep (`development/PLANBENCH_HANDOFF_v3.md`; memory `project_planbench_v2_v3`) would
+  cross-domain sweep (`development/planbench/PLANBENCH_HANDOFF_v3.md`; memory `project_planbench_v2_v3`) would
   gate the deadline, PlanBench is primarily a *formalization* benchmark (a different failure mode
   than invocation propensity), and it would dilute the clean single-suite message. The stale in-text
   TODO block above `\section{Future Work}` has been **removed** (2026-06-18). GOALS.md already lists

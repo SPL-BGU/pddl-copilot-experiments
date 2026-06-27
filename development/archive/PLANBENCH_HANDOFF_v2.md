@@ -10,7 +10,7 @@ Branch: `planbench-integration` @ `7e2c0e0` (both repos). Pull before starting.
 
 ## ✅ v2 STATUS — updated 2026-06-06 (engine built + t1 smoke VALIDATED)
 
-> **➡️ SUPERSEDED for next steps by `development/PLANBENCH_HANDOFF_v3.md`**
+> **➡️ SUPERSEDED for next steps by `development/planbench/PLANBENCH_HANDOFF_v3.md`**
 > (2026-06-07): v2 is built AND characterized across model sizes (t3 works on
 > 35B; small models hit the NL→PDDL formalization wall). v3 is the chosen next
 > direction — rescue the small open models via a workflow framework. Start there.
@@ -56,7 +56,7 @@ Plus the still-open sibling-repo MCP extensions for the full 10 tasks (below).
 - **v1 done:** 4 Qwen models × 10 PlanBench tasks × {blocksworld, logistics},
   no tools, graded by PlanBench's own VAL/PR2. Headline: **Qwen3.6-35B (open,
   no tools) matches/beats GPT-4 on 6 of 9 Blocksworld tasks.** Full writeup:
-  `development/planbench_v1_results.md`. Reproducible table:
+  `development/planbench/planbench_v1_results.md`. Reproducible table:
   `python3 planbench/build_table.py results/planbench/canonical`.
 - **Decisions locked (see below):** Qwen models ONLY — **gemma4:26b-a4b is
   discarded for PlanBench** (do not run it on this benchmark). Domains =
@@ -122,7 +122,7 @@ Our 4 qwen columns were generated now by self-deployed vLLM on the cluster.
 - `cluster-experimenting/{run_planbench_rtx.sbatch,submit_planbench.sh}` — vLLM
   self-deploy + per-(model,task) sharded submit; flags `--time`, `--gpu`,
   `--gpu-mem-util` (added this session).
-- `development/planbench_v1_results.md` — the writeup (table + caveats).
+- `development/planbench/planbench_v1_results.md` — the writeup (table + caveats).
 - `development/paper_notes_discussions.md` — 2026-06-06 entries (headline +
   findings).
 

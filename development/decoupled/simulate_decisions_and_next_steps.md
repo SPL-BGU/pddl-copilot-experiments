@@ -1,8 +1,8 @@
 # Simulate grading — decisions, status & next development lines (2026-06-23)
 
 Wrap-up record for the simulate-grader work this session. Supersedes the earlier
-open-decision draft. Background: `frontier_grading_artifacts_findings.md`,
-`simulate_normalizer_fix_plan.md`; memory `project_simulate_grader_artifact`.
+open-decision draft. Background: `../grading_artifacts_findings.md`,
+`../archive/simulate_normalizer_fix_plan.md`; memory `project_simulate_grader_artifact`.
 
 ## DONE this session (committed on `feat/claude-api-haiku-frontier`)
 - **Notation fix** — `_canon_atom` in `pddl_eval/scoring.py` bridges the model's PDDL
