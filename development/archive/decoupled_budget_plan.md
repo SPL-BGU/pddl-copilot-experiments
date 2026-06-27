@@ -2,7 +2,7 @@
 
 **Status:** PLAN ONLY. Nothing built, nothing run. Cluster work is GATED — ping first.
 **Date:** 2026-06-24
-**Background:** `simulate_decisions_and_next_steps.md` (Line 1), `iter2_execution_plan.md` (T6),
+**Background:** `../decoupled/simulate_decisions_and_next_steps.md` (Line 1), `../decoupled/iter2_execution_plan.md` (T6),
 `paper/automated-platforms-review/iter2/iter2_action_plan.md` (Exp 1), memory
 `project_think_overflow_unreachable`, CHANGELOG 2026-05-04 (think-overflow predicate).
 
