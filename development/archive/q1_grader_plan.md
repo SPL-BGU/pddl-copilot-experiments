@@ -2,7 +2,7 @@
 
 **Status:** PLAN ONLY. No code yet. Branch `paper/iter2-q1-grader` off `main` (lands first per DECISION D, before the decoupled-budget PR). Offline-only (re-grade has no spend, no cluster).
 **Date:** 2026-06-25
-**Background:** `simulate_decisions_and_next_steps.md` (the pre-registered Q1 spec), `frontier_grading_artifacts_findings.md`, ISS-024, CHANGELOG 2026-06-23 (`_canon_atom`). Sibling: `decoupled_budget_plan.md`.
+**Background:** `simulate_decisions_and_next_steps.md` (the pre-registered Q1 spec), `../grading_artifacts_findings.md`, ISS-024, CHANGELOG 2026-06-23 (`_canon_atom`). Sibling: `decoupled_budget_plan.md`.
 
 Answer the `> DECISION:` slots inline; I'll fold them in before coding.
 

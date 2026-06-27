@@ -7,7 +7,7 @@
 > artifact. Authoritative current record: `development/simulate_decisions_and_next_steps.md`.
 
 **Hand this to an implementing agent.** Background + evidence:
-`development/frontier_grading_artifacts_findings.md` (read it first). Memory:
+`development/grading_artifacts_findings.md` (read it first). Memory:
 `project_simulate_grader_artifact`.
 
 ## The bug (one sentence)

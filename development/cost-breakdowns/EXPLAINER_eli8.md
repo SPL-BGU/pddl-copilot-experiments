@@ -280,7 +280,7 @@ priced from MEASURED word-counts** on real API runs, not guessed:
 - **no-tools** — Sonnet full run (`.local/sonnet/grade_{canonical,anon}.log`, both corpora = $81.51)
   **and** Haiku probe (`results/frontier-with-tools-probe/haiku-no-tools`).
 - **with-tools** — the live Sonnet & Haiku probes (`results/frontier-with-tools-probe/{sonnet,haiku}-with-tools`),
-  summarized in `development/with_tools_probe_findings.md`.
+  summarized in `development/frontier/with_tools_probe_findings.md`.
 
 Sonnet and Haiku are priced from **their own** measured word-counts (both arms). Every other
 student (OpenAI GPT, Google Gemini, Alibaba Qwen) is **projected** by re-pricing the **average** of

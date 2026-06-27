@@ -153,7 +153,7 @@ Two sub-findings from the 500-char response heads:
    `[{step…}]` or bare step object — instead of the schema's `{"trajectory":[…]}` wrapper,
    which the strict grader rejects. Model-dependent (0.8B 100% / 35B 57% / 9B 39% / gemma 35%
    / 4B 8% of parse-fails are JSON-shaped). This is the gap the adopted **Q1 wrapper-tolerant
-   grader** closes — see `development/simulate_decisions_and_next_steps.md`.
+   grader** closes — see `development/decoupled/simulate_decisions_and_next_steps.md`.
 
 **Net:** open-roster simulate 0% is a tangle of (unenforced format constraint + strict-wrapper
 grader + truncation + some genuine incapability), in proportions **unmeasurable from disk**

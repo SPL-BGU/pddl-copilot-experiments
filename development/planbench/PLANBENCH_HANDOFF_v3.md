@@ -9,7 +9,7 @@ NL→PDDL formalization** the small models can't do free-form — preferably one
 that supports pddl-copilot-style skills + MCP natively.
 
 Branch: `planbench-integration`. Both repos. Pull before starting.
-Predecessors: `development/PLANBENCH_HANDOFF_v2.md` (v2 build), `planbench_v1_results.md` (v1).
+Predecessors: `development/archive/PLANBENCH_HANDOFF_v2.md` (v2 build), `planbench_v1_results.md` (v1).
 
 ---
 
