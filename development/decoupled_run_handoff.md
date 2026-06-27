@@ -47,9 +47,11 @@ requeued, recovered). These are NORMAL on the contended BGU cluster.
 
 ## NEXT STEPS (in order)
 
-1. **Monitor `18426027` to completion.** Use `cluster-ops`. Poll with
+1. **Monitor `18426027` to completion.** Use `cluster-ops`. Fastest board:
+   `bash .claude/skills/cluster-ops/scripts/status.sh --decoupled` (4 Qwens × `on/nt-neut`, dedup'd
+   per-cell %/Δ/ETA/watch-list; remote-side only — no result sync). Poll the job STATE with
    `sacct -j 18426027 -X -o State` — **NOT** `squeue`-empty (that false-positives during the frequent
-   VPN drops; a dropped SSH returns empty and looks like "done"). Per-cell progress = `wc -l` on
+   VPN drops; a dropped SSH returns empty and looks like "done"). Raw per-cell progress = `wc -l` on
    `results/slurm_vllm_<m>_on_no-tools_decoupled-thinkon/trials.jsonl`.
 2. **9B will likely TIMEOUT at 48h (~85% done).** When it does, **resubmit to resume** — same wrapper
    command, it resumes from `trials.jsonl`:

@@ -45,6 +45,17 @@
 # 2026-05-19) and tools_*_guided (earlier) hit the "skipped (unmatched)"
 # footer. Query archived corpora via the analyzer skill if needed.
 #
+# Profiles:
+#   (default)     sweep-6 anon matrix: 5 models × 6 logical columns,
+#                 RUN_TAG defaults to `sweep6`.
+#   --decoupled   The in-flight split-budget no-tools think=on sweep
+#                 (development/decoupled_run_handoff.md, job 18426027).
+#                 Defaults RUN_TAG to `decoupled-thinkon` and trims the
+#                 board to the live grid: 4 Qwens (gemma excluded — no
+#                 <think>) × one column (on / nt-neut). All parsing /
+#                 Δ / ETA / queue logic is dimension-agnostic and reused.
+#                 An explicit RUN_TAG env still overrides the default.
+#
 # Output mode (auto by stdout TTY-detect; override with flags):
 #   --terminal / --pretty   ANSI-coloured aligned text (default when TTY)
 #   --md                    GitHub-flavoured markdown (default when piped)
@@ -66,11 +77,14 @@ REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 # `anon-probe` run was quarantined. To run status against a
 # differently-tagged set, set:
 #   RUN_TAG=sweep5v2 bash status.sh
-RUN_TAG="${RUN_TAG:-sweep6}"
+# Resolved AFTER arg parsing — the --decoupled profile flips the default to
+# `decoupled-thinkon`, but an explicit RUN_TAG env always wins. Capture the
+# env value (if any) here and finalize once the profile is known.
+RUN_TAG_ENV="${RUN_TAG-}"
 # State cache is namespaced per RUN_TAG so switching probe runs (or
 # resetting to a fresh run-tag) doesn't get poisoned by a prior cache
-# whose keys reference a different cohort.
-STATE_FILE="${STATE_FILE:-$HOME/.cache/cluster-ops-status-${RUN_TAG}.json}"
+# whose keys reference a different cohort. Also finalized post-parse.
+STATE_FILE_ENV="${STATE_FILE-}"
 # Active prompt variants for the in-flight sweep. Trials.jsonl files can
 # carry rows from multiple sweeps (sweep-6 v11-16 may append alongside
 # legacy sweep-4 v5-7 and sweep-3 v0-2 in the same per-cell file since
@@ -91,6 +105,7 @@ STEERED_VARIANTS_RE="${STEERED_VARIANTS_RE:-1[4-6]}"
 mode="auto"
 color="auto"
 bench="5task"
+profile="standard"
 forwarded_args=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -98,8 +113,9 @@ while [[ $# -gt 0 ]]; do
         --terminal|--pretty)    mode="terminal"; forwarded_args+=("$1"); shift ;;
         --no-color)             color="off"; forwarded_args+=("$1"); shift ;;
         --bench)                bench="$2"; shift 2 ;;
+        --decoupled)            profile="decoupled"; shift ;;
         -h|--help)
-            _show_help 2 40
+            _show_help 2 48
             cat <<'EOF'
 
   --bench {5task,planbench}  Pick the matrix to render. Default = 5task
@@ -107,6 +123,10 @@ while [[ $# -gt 0 ]]; do
                              shape). planbench delegates to the sibling
                              status_planbench.sh which renders model ×
                              task × config from results/planbench/.
+  --decoupled                Track the in-flight split-budget no-tools
+                             think=on sweep (RUN_TAG defaults to
+                             `decoupled-thinkon`): 4 Qwens × one column
+                             (on / nt-neut). See the Profiles note above.
 EOF
             exit 0 ;;
         *)
@@ -125,15 +145,26 @@ elif [[ "$bench" != "5task" ]]; then
     exit 2
 fi
 
+# Finalize RUN_TAG + STATE_FILE now that the profile is known. --decoupled
+# selects the in-flight split-budget no-tools think=on corpus; standard
+# tracks the sweep-6 anon matrix. An explicit env value always wins.
+if [[ "$profile" == "decoupled" ]]; then
+    RUN_TAG="${RUN_TAG_ENV:-decoupled-thinkon}"
+else
+    RUN_TAG="${RUN_TAG_ENV:-sweep6}"
+fi
+STATE_FILE="${STATE_FILE_ENV:-$HOME/.cache/cluster-ops-status-${RUN_TAG}.json}"
+
 mkdir -p "$(dirname "$STATE_FILE")"
 
 # Single SSH: dump queue + per-cell trial counts as two delimited blocks.
-remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" "$STEERED_VARIANTS_RE" <<'REMOTE'
+remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" "$STEERED_VARIANTS_RE" "$RUN_TAG" <<'REMOTE'
 set -eo pipefail
 USER="$1"
 REPO="$2"
 VARIANTS_RE="$3"
 STEERED_RE="$4"
+RUN_TAG="$5"
 echo "=== queue ==="
 # -r expands array ranges so each pending task is a separate row (otherwise
 # squeue collapses pending arrays like 17389411_[6-9] into one row, breaking
@@ -173,15 +204,25 @@ print(len(seen))
 PY
 }
 shopt -s nullglob
+# Perf: the JSON dedup below is the dominant cost (a fresh python3 + a
+# full-file parse, TWICE per dir). The local parser only renders dirs whose
+# basename ends in `_<RUN_TAG>`; everything else it routes to an archived/
+# ignored footer BY NAME and never reads its trial count. So only parse the
+# active-tag dirs and emit a cheap `0\t0\t<name>` for the rest — the footers
+# (which count dirs, not trials) stay accurate while the expensive parse
+# runs on just the live cohort (e.g. 4 dirs for --decoupled instead of all).
+# The `_` anchor in `*_$RUN_TAG` prevents a short tag from partial-matching a
+# longer one (e.g. tag `sweep5v2` never matches `..._sweep5v2-final`).
 for d in "$HOME/$REPO/results/"slurm_*/; do
-    if [ -f "$d/trials.jsonl" ]; then
+    base=$(basename "$d")
+    if [ -f "$d/trials.jsonl" ] && [ -n "$RUN_TAG" ] && [[ "$base" == *_"$RUN_TAG" ]]; then
         n_active=$(grep_count "$VARIANTS_RE" "$d/trials.jsonl")
         n_steered=$(grep_count "$STEERED_RE" "$d/trials.jsonl")
     else
         n_active=0
         n_steered=0
     fi
-    printf '%s\t%s\t%s\n' "$n_active" "$n_steered" "$(basename "$d")"
+    printf '%s\t%s\t%s\n' "$n_active" "$n_steered" "$base"
 done
 echo "=== manifests ==="
 # Emit `<arrayjid>\t<idx>\t<model>\t<think>\t<cond>` rows for every cells.tsv
@@ -202,11 +243,11 @@ echo "=== end ==="
 REMOTE
 )
 
-python3 - "$remote_payload" "$STATE_FILE" "$mode" "$color" "$RUN_TAG" <<'PY'
+python3 - "$remote_payload" "$STATE_FILE" "$mode" "$color" "$RUN_TAG" "$profile" <<'PY'
 import json, os, re, sys, time
 
-payload, state_file, mode_arg, color_arg, run_tag = (
-    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+payload, state_file, mode_arg, color_arg, run_tag, profile = (
+    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
 
 # ---- Roster + dimensions (matches submit_with_rtx.sh --all roster) ----
 # 2026-05-18 swap: dropped gemma4_31b dense Ollama, added gemma4_26b-a4b
@@ -238,8 +279,25 @@ CELLS = [("on","no-tools-neutral"),
          ("on","tools_all-neutral"),("on","tools_all-steered"),
          ("off","no-tools-neutral"),
          ("off","tools_all-neutral"),("off","tools_all-steered")]
-COL_HEADERS = ["on / nt-neut","on / tl-neut","on / tl-ster",
-               "off / nt-neut","off / tl-neut","off / tl-ster"]
+# Logical cond → short column tag, shared by the header builders and
+# cell_label so every renderer derives its labels from CELLS (no drift).
+SHORT_CELL = {"no-tools-neutral":  "nt-neut",
+              "tools_all-neutral": "tl-neut",
+              "tools_all-steered": "tl-ster"}
+# --decoupled profile (development/decoupled_run_handoff.md, job 18426027):
+# the split-budget no-tools think=on sweep fills exactly ONE logical column
+# (on / nt-neut) for the 4 Qwens — gemma is excluded (no <think>, so its
+# think=on truncation isn't a decoupling case). Trim ROSTER + CELLS to the
+# live grid so the board isn't 5×6 mostly-empty cells; every downstream
+# parser/dedup/Δ/ETA/queue path is dimension-agnostic and unchanged.
+SWEEP_LABEL = "sweep-6"
+HDR_NOTE = "denom 4560/col · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16"
+if profile == "decoupled":
+    ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "qwen3_6_35b"]
+    CELLS = [("on", "no-tools-neutral")]
+    SWEEP_LABEL = "decoupled"
+    HDR_NOTE = "denom 4560 · no-tools v11-13 · think=on · split-budget (8192 think / per-task answer)"
+COL_HEADERS = [f"{th} / {SHORT_CELL.get(c, c)}" for th, c in CELLS]
 # Uniform per-column denominator: each logical column covers 3 variants ×
 # 1520 trials/variant = 4560. 1520 trials/variant is the sweep-3-onward
 # corpus (CHANGELOG.md:714).
@@ -268,6 +326,12 @@ TIME_LIMIT_H_BY_MODEL = {
     "qwen3_6_35b": 48, "gemma4_26b-a4b": 48,
 }
 TIME_LIMIT_H_DEFAULT = 48
+# The decoupled sweep (job 18426027) was submitted with --time 48:00:00 for
+# ALL 4 cells, not the pack3 12h default — so the small Qwens get a 48h wall
+# too. Override the per-model budgets here, else the watch-list would falsely
+# flag 4B/9B as "over 0.9×12h" when they have ~36h of headroom remaining.
+if profile == "decoupled":
+    TIME_LIMIT_H_BY_MODEL = {m: 48 for m in ROSTER}
 
 # Job-name short-cond → full cond (used when array tasks have per-cell names).
 # `tools-pt`/`tools_pt` keys retained for backwards-compatibility with
@@ -565,10 +629,7 @@ def cell_label(cell):
     m, th, c = cell
     # The `.get(c, c)` fallback prints any unmapped cond as-is — safe for
     # an unexpected cache key (renders as itself instead of crashing).
-    short = {"no-tools-neutral":  "nt-neut",
-             "tools_all-neutral": "tl-neut",
-             "tools_all-steered": "tl-ster"}.get(c, c)
-    return f"{DISPLAY[m]} {th}/{short}"
+    return f"{DISPLAY[m]} {th}/{SHORT_CELL.get(c, c)}"
 
 def parse_elapsed_h(s):
     """squeue %M: 'D-HH:MM:SS' | 'HH:MM:SS' | 'MM:SS'."""
@@ -634,7 +695,7 @@ def render_markdown():
             out.append(f"- ▶🆕 **{cell_label(cell)}** started ({n}/{DENOM[cell[2]]} trials)")
         out.append("")
 
-    out.append(f"### Per-cell progress · sweep-6 ({run_tag}) · denom 4560/col · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16")
+    out.append(f"### Per-cell progress · {SWEEP_LABEL} ({run_tag}) · {HDR_NOTE}")
     out.append("| Model | " + " | ".join(COL_HEADERS) + " |")
     out.append("|" + "|".join(["---"] * (1 + len(COL_HEADERS))) + "|")
     icon_md = {"done":"✓", "growing":"▶", "stalled":"⏸",
@@ -751,9 +812,8 @@ def render_terminal(use_color):
 
     # -- Per-cell progress matrix
     out.append(H2("Per-cell progress")
-               + DIM + f"  sweep-6 ({run_tag}) · denom 4560/col · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16" + RESET)
-    short_hdrs = ["on/nt-neut", "on/tl-neut", "on/tl-ster",
-                  "off/nt-neut","off/tl-neut","off/tl-ster"]
+               + DIM + f"  {SWEEP_LABEL} ({run_tag}) · {HDR_NOTE}" + RESET)
+    short_hdrs = [f"{th}/{SHORT_CELL.get(c, c)}" for th, c in CELLS]
     MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
     CELL_W  = 13   # 6 cols leaves room to widen by 1 for slightly easier reading
     header = _pad("Model", MODEL_W) + "".join(_pad(h, CELL_W, "left") for h in short_hdrs)

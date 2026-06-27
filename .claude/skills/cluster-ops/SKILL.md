@@ -74,9 +74,12 @@ bash .claude/skills/cluster-ops/scripts/status.sh --md            # force markdo
 bash .claude/skills/cluster-ops/scripts/status.sh --terminal      # force pretty (e.g. `… | less -R`)
 bash .claude/skills/cluster-ops/scripts/status.sh --no-color      # strip ANSI from terminal mode
 bash .claude/skills/cluster-ops/scripts/status.sh --bench planbench  # PlanBench arm (model × task × config)
+bash .claude/skills/cluster-ops/scripts/status.sh --decoupled        # split-budget no-tools think=on sweep (4 Qwens × on/nt-neut)
 ```
 
 The two modes share data computation; they differ only in rendering, so the metrics, Δ window, and watch-list logic are identical.
+
+**`--decoupled` profile** tracks the in-flight split-budget no-tools think=on sweep (`development/decoupled_run_handoff.md`, job 18426027). It defaults `RUN_TAG=decoupled-thinkon` and trims the board to the live grid: the 4 Qwens (gemma excluded — no `<think>`) × one logical column (`on / nt-neut`), each at denom 4560. An explicit `RUN_TAG=` env still overrides the default. The remote side only JSON-parses the dirs whose name ends in `_<RUN_TAG>` (≈4 for the decoupled run) instead of every `slurm_*/` accumulator — so `status.sh` does **no** result transfer (that's `sync.sh`) and the per-cell counts are computed cluster-side and returned as a tiny text blob.
 
 **`--bench planbench`** delegates to `scripts/status_planbench.sh`, which renders a model × config matrix counting completed `task_*.json` files per cell (10 tasks expected per cell). Minimal v1: no Δ-table, no pace/ETA. Reads `results/planbench/slurm_<model>_<jobid>/` on the cluster. The native 5-task renderer is unchanged when `--bench 5task` (default) is used or no flag is passed.
 
