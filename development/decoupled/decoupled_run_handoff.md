@@ -83,12 +83,41 @@ decoupling does not *create* capability, it *unmasks* it:
 | model | simulate | validate_plan | read |
 |---|--:|--:|---|
 | Qwen3.5:0.8B | 0% → **0%**  | 0% → 4%   | too weak — budget buys a *wrong* answer |
+| Qwen3.5:4B   | 0% → **23%** | 25% → 77% | mid — lifts everywhere but solve *regresses* |
 | qwen3.6:35b  | 0% → **40%** | 85% → 92% | capable — budget *unmasks* real skill |
 
-0.8B is the control (no latent simulate skill to recover); 35b is the positive case. 9B (in flight)
-and 4B (in flight) should land between these two.
+simulate rises **monotonically with capability** (0 → 23 → 40), confirming decoupling *unmasks*
+latent skill rather than creating it. 0.8B is the control (no skill to recover); 35b is the positive
+case; 4B is the middle of the curve (see its cell below — and the **first solve regression**). Only
+9B is left (in flight; ~58% as of 2026-06-28, resumed under `18466812`).
 
-## Live sweep status @ 2026-06-27 ~15:30 (orig array `18426027`; 9B resumed as `18466812`)
+## Completed cell — Qwen3.5:4B FINAL A/B (2026-06-28; third cell done, 4560/4560)
+
+Matched A/B (join on trial `key`), decoupled vs sweep5v2 think=on baseline, all 5 tasks, n=4560.
+
+| task | baseline | decoupled | impact |
+|---|--:|--:|:--|
+| validate_plan    | 25.0% | **77.1%** | ⬆️ **+52.1pp** (Wilson disjoint) |
+| validate_problem | 11.5% | **63.2%** | ⬆️ **+51.7pp** (Wilson disjoint) |
+| validate_domain  | 0.8%  | **42.5%** | ⬆️ **+41.7pp** (Wilson disjoint) |
+| simulate         | 0.0%  | **23.0%** | ⬆️ +23.0pp (Wilson disjoint [0,1.3] vs [18.6,28.1]) |
+| **solve**        | 15.7% | 9.7%      | 🔻 **−6.0pp REGRESSION** |
+
+- **Four big lifts, one regression.** The validate tasks get the *largest* lifts of any model
+  (+42 to +52pp) — 4B is the budget-starved-but-capable sweet spot (baseline 69–97% empty on those).
+  simulate +23pp sits between 0.8B (0%) and 35b (40%), confirming the capability gradient.
+- **⚠️ FIRST REGRESSION: solve 15.7%→9.7%** (47→29 of 300). Mechanistic, not noise — decoupled
+  empties/truncation *rose* 83.3%→89.7% (~19 more trials truncate, matching the ~18 lost wins). The
+  fixed 8192 think + long plan answer overruns the 16K ctx harder than the baseline's adaptive shared
+  budget, so on solve decoupling *costs* the few wins 4B had. CIs marginally touch ([12.0,20.2] vs
+  [6.8,13.5]) but the truncation mechanism corroborates a real effect. **This breaks the
+  "no regression anywhere" property** that held for 0.8B and 35b: solve is not just the ctx-ceiling
+  "no-help" case — for a mid-size model it is a net loss. Report solve as a decoupling *risk*, not a
+  neutral exception.
+- 4B decoupled simulate also shows high `format_parse_fail` (102/300 = 34% — non-JSON output), which
+  caps the simulate lift; empties were crushed 91%→10% but a third of the output isn't coercible.
+
+## Live sweep status @ 2026-06-28 (orig array `18426027`; 9B resumed as `18466812`)
 
 Full no-tools cell ≈ **4560 trials** (5 tasks × full fixtures × 3 no-tools variants v11-13).
 
@@ -96,8 +125,8 @@ Full no-tools cell ≈ **4560 trials** (5 tasks × full fixtures × 3 no-tools v
 |---|---|--:|--:|---|
 | _0 | Qwen3.5:0.8B | 4560 | **100% ✓ DONE** | final A/B above (simulate flat) |
 | _3 | qwen3.6:35b | 4560 | **100% ✓ DONE** | final A/B above (simulate 0→40%) |
-| _1 | Qwen3.5:4B | 1898 | 42% | ~20h left |
-| _2 → `18466812` | Qwen3.5:9B | 1135 | 25% | **long pole — hit 48h wall; resubmitted to resume as job `18466812`** |
+| _1 | Qwen3.5:4B | 4560 | **100% ✓ DONE** | final A/B above (simulate 0→23%; **solve −6pp regression**) |
+| _2 → `18466812` | Qwen3.5:9B | ~2650 | **~58%** ▶ | **only cell left**; hit 48h wall → resumed as `18466812` (72h, resumed from 1799) |
 
 Use `bash .claude/skills/cluster-ops/scripts/status.sh --decoupled` for the live board.
 
