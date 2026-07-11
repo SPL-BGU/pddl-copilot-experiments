@@ -130,14 +130,30 @@ async def run_one(client, mcp, model: str, job) -> dict:
 
     in_tok = out_tok = cache_write = cache_read = turns = 0
     last = None
-    async for message in runner:
-        last = message
-        u = message.usage
-        in_tok += u.input_tokens
-        out_tok += u.output_tokens
-        cache_write += u.cache_creation_input_tokens or 0
-        cache_read += u.cache_read_input_tokens or 0
-        turns += 1
+    try:
+        async for message in runner:
+            last = message
+            u = message.usage
+            in_tok += u.input_tokens
+            out_tok += u.output_tokens
+            cache_write += u.cache_creation_input_tokens or 0
+            cache_read += u.cache_read_input_tokens or 0
+            turns += 1
+    except Exception as exc:
+        # Context overflow (400 "prompt is too long") is a REAL trial
+        # outcome, not infra: on big domains a single get_state_transition
+        # result can push a later turn past the model's 200K window (seen:
+        # simulate depot/p01, ~498K tok). The open-model arm records the
+        # same situation as a done_reason="length" truncation failure, so
+        # mirror that here — keep the tool_calls evidence (tool_selected
+        # stays measurable) and the partial token usage.
+        if "prompt is too long" not in str(exc):
+            raise
+        return {"text": "", "tool_calls": tool_calls_log,
+                "stop_reason": "max_tokens", "in_tok": in_tok,
+                "out_tok": out_tok, "cache_write": cache_write,
+                "cache_read": cache_read, "turns": turns,
+                "loop_exhausted": False, "error": str(exc)[:300]}
 
     stop_reason = last.stop_reason if last else ""
     # Same exhaustion criterion as the A loop: the loop ended while the model
@@ -172,7 +188,7 @@ async def grade(job, outcome, mcp, model: str) -> TaskResult:
             success, done_reason, outcome["loop_exhausted"], failure_reason,
             thinking_text="", response_text=text, error="",
         )
-        error = ""
+        error = outcome.get("error", "")
 
     return TaskResult(
         model=model, task=task, domain_name=job[J_DNAME],
