@@ -6,10 +6,15 @@ development/tool_call_vs_final_output_grading.md (2026-07-11):
   D1/D2  end-to-end success = grade the MODEL'S final response with the same
          parser the no-tools branch uses, both arms; the stored tool-graded
          success is kept alongside as "tool-verified".
-  D2b=B  a bare tool call counts as the model's answer only when the model
-         closed the turn on its own (done_reason == "stop", empty response,
-         tool-verified). Truncated-empty (done_reason == "length") fails,
-         symmetric with no-tools truncation.
+  D2b    BOTH operationalizations are emitted per row so the headline choice
+         stays a table-level decision, not a regrade:
+           e2e         D2b=B — a bare tool call counts as the model's answer
+                       when the model closed the turn on its own
+                       (done_reason == "stop", empty response, tool-verified);
+                       truncated-empty (done_reason == "length") fails.
+           e2e_strict  D2b=i — any empty final turn fails, both arms.
+         The two differ exactly on rows with
+         e2e_reason == "delegation_terminal_credit".
   D6=A   corpora written under the 500-char response snapshot cap
          (pre-2026-06-25, runner.py RESPONSE_SNAPSHOT_LEN) are censored: a
          non-empty snapshot exactly at the cap with no gradeable answer is
@@ -323,6 +328,9 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
         with out_path.open("w") as fh:
             for row in cell_rows:
                 graded = await regrade_row(row, cap, gt_cache, ctx)
+                graded["e2e_strict"] = (
+                    False if graded["e2e_reason"] == "delegation_terminal_credit"
+                    else graded["e2e"])
                 graded["cell"] = cell
                 graded["snapshot_cap"] = cap
                 fh.write(json.dumps(graded) + "\n")
@@ -336,18 +344,24 @@ def summarize(rows: list[dict], corpus_name: str) -> None:
         arm = "tools" if r["with_tools"] else "no-tools"
         groups[(r["model"], r["task"], arm)].append(r)
 
-    print(f"\n{'=' * 100}\n{corpus_name}: end-to-end vs tool-verified\n{'=' * 100}")
+    # Upper bounds are derivable: <rule>-high = <rule>-low + censored.
+    print(f"\n{'=' * 108}\n{corpus_name}: end-to-end vs tool-verified\n{'=' * 108}")
     hdr = (f"{'model':34s} {'task':17s} {'arm':9s} {'n':>5s} "
-           f"{'tool-ver':>8s} {'e2e-low':>8s} {'e2e-high':>8s} {'censored':>8s}")
+           f"{'tool-ver':>8s} {'strict-lo':>9s} {'B-lo':>7s} {'censored':>8s} "
+           f"{'deleg':>6s}")
     print(hdr)
     for (model, task, arm), rs in sorted(groups.items()):
         n = len(rs)
         tv = sum(1 for r in rs if r["tool_verified"]) / n if arm == "tools" else None
+        strict = sum(1 for r in rs if r["e2e_strict"] is True) / n
         low = sum(1 for r in rs if r["e2e"] is True) / n
         ind = sum(1 for r in rs if r["e2e"] == "indeterminate") / n
+        deleg = sum(1 for r in rs
+                    if r["e2e_reason"] == "delegation_terminal_credit") / n
         print(f"{model:34s} {task:17s} {arm:9s} {n:5d} "
               f"{('%8.1f' % (100 * tv)) if tv is not None else '       -'} "
-              f"{100 * low:7.1f} {100 * (low + ind):8.1f} {100 * ind:8.1f}")
+              f"{100 * strict:8.1f} {100 * low:7.1f} {100 * ind:8.1f} "
+              f"{100 * deleg:6.1f}")
 
 
 def phase3_report(rows: list[dict], corpus_name: str) -> None:

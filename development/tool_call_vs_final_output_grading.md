@@ -6,6 +6,18 @@ deliberate delegation-terminal, fail truncated-empty), D3=A (one consolidated pa
 D4=names approved ("end-to-end" / "tool-verified"), D5=paper canon + frontier + sweep7,
 D6=A (report bounds). Execution plan in §10 "Next steps".
 
+**REVISION (Omer, 2026-07-11, same day): D2b=B → STRICT (i) as the headline.** After the
+external-literature audit (ABC names "τ-bench counting empty responses as successful" as a
+canonical reward-design flaw) and the measured strict-vs-B comparison
+(`tools/e2e_d2b_compare.py`: 3.6% of rows affected, 2/25 lift verdicts flip, both
+knife-edge or censoring-bound), the paper's headline e2e is the **strict** rule (any empty
+final turn fails, both arms). Delegation-terminal rows are reported as their **own visible
+outcome category**; the B-graded column stays in the overlay as a derived diagnostic. The
+9B answer-synthesis gap (deleg 10–35% of with-tools validate rows) is promoted to a
+finding. Full audit + numbers: `development/decision_audit_grading_and_frontier.md` §1.3.
+The ISS-024(d) run is unaffected and stays running (it resolves the strict-undecided
+cells exactly).
+
 ---
 
 ## Decisions to record (Omer — fill each `> MY DECISION:` slot)
@@ -24,6 +36,9 @@ Why it matters: for 4B this choice keeps roughly 60% (A) vs 75% (B) vs 97% (C) o
 current with-tools wins.
 
 > MY DECISION: B
+> **REVISED (Omer, 2026-07-11, same day): strict (A) is the headline;** delegation-terminal
+> becomes a labeled outcome category and the B column is kept as a derived diagnostic.
+> Basis: measured strict-vs-B comparison — see the status REVISION note above.
 
 **Decision 2 — how much to fix in one pass (D3).**
 - **A.** Fix all three known scoring bugs together (this one + simulate normalizer +
@@ -344,7 +359,8 @@ needing exact headline numbers rather than bounds).
 ## 10. Next steps (planned 2026-07-11, from the recorded decisions)
 
 Branch: `feat/e2e-scoring-overlay`. Overlay output: `results/derived/e2e_overlay/`
-(canonical corpora never mutated). Rules implemented: D2b=B, D6=A (bounds).
+(canonical corpora never mutated). Rules implemented: dual D2b columns — `e2e_strict`
+(headline, per the 2026-07-11 revision) + `e2e` (D2b=B, diagnostic) — and D6=A (bounds).
 
 - **Phase 1 — validate_\* e2e overlay (no MCP needed).** Truth is encoded in the fixture
   naming (verified on corpus: `validate_domain` pname `domain_neg`=INVALID else VALID;

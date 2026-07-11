@@ -6,6 +6,20 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-11 — e2e overlay: dual D2b columns, strict becomes the headline
+
+**Change.** `tools/e2e_regrade.py` now emits BOTH D2b operationalizations per overlay row:
+`e2e_strict` (any empty final turn fails — the paper's headline per the same-day D2b
+revision) alongside the existing `e2e` (D2b=B delegation credit, retained as diagnostic);
+the two differ exactly on rows with `e2e_reason == "delegation_terminal_credit"`, so no
+regrade was needed — the 49 existing overlay files under `results/derived/e2e_overlay/`
+were patched in place (295,876 rows). New `tools/e2e_d2b_compare.py` derives the
+strict-vs-B lift-verdict comparison from any overlay dir (no MCP). The `summarize()`
+table gained `strict-lo` / `deleg` columns. Decision provenance:
+`development/tool_call_vs_final_output_grading.md` (status REVISION note),
+`development/paper_notes_discussions.md` 2026-07-11 (later-3), full audit in
+`development/decision_audit_grading_and_frontier.md`.
+
 ## 2026-06-26 — Cluster plumbing for the decoupled think=on sweep (staging; run GATED)
 
 **Change.** Threaded the (already-merged) `--decoupled-budget` / `--num-predict-think` /

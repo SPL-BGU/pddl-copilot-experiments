@@ -640,3 +640,25 @@ validated by an independent ranking subagent (the user asked for a second perspe
   PlanBench-continuity argument now weighs on it.
 - Nothing submitted for the frontier reruns yet; the ISS-024(d) Qwen with-tools re-run (job 19293221)
   is running independently.
+
+## 2026-07-11 (later-3) — D2b REVISED: strict end-to-end is the paper's headline
+
+- **DECIDED (Omer): D2b=B → strict (i).** The headline end-to-end metric fails ANY empty final
+  turn, both arms; "delegation-terminal" (right tool call, deliberate silence) becomes its own
+  labeled outcome category in the tables; the B-graded column stays in the overlay as a derived
+  diagnostic. Basis: (1) external audit — ABC (arXiv:2507.02825) names "τ-bench counting empty
+  responses as successful" as the field's canonical reward-design flaw, and D2b=B was a
+  conditioned version of the same rule; (2) measured strict-vs-B comparison
+  (`tools/e2e_d2b_compare.py`, run 2026-07-11 on the existing overlays): only 3.6% of sweep5v2
+  rows carry the credit, and 2/25 lift verdicts flip — 35b validate_problem (0.3pp knife-edge,
+  a wash under both rules) and 9B solve (censoring-bound; the running ISS-024(d) 16K-cap job
+  resolves it exactly). Every headline validate lift survives strict grading.
+- **Promoted finding:** the D2b sensitivity concentrates in 9B, not 4B — 9B silently delegates
+  on 10–35% of with-tools validate rows (strict lower bounds drop 97/88/78 → 87/53/55, all
+  still lifts). The model with the best delegation (tool-verified 87–99%) restates worst: the
+  answer-synthesis gap GROWS with delegation competence.
+- **ISS-024(d) (job 19293221) kept running** — unaffected by the scoring choice (grading is an
+  offline overlay over raw rows) and now the resolver for the strict-undecided cells.
+- Full audit (incl. frontier-rerun harness conditions, probe sizing, open ANSWER slots):
+  `development/decision_audit_grading_and_frontier.md`. Overlay emits dual columns
+  (`e2e_strict` headline / `e2e` = B diagnostic); existing overlay files patched in place.
