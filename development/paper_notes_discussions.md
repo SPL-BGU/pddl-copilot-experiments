@@ -588,3 +588,38 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **PROPOSED (deferred to fresh session):** a secondary end-to-end with-tools metric that also grades the
   model's final `response` against ground truth, to put a number on the interpretation gap. Offline-computable
   (no re-run). To be discussed, not built yet.
+
+## 2026-07-11 — DECIDED: with-tools grading must read the model's output; snapshot censoring discovered
+
+- **Grading-surface principle DECIDED (Omer).** The evaluation must grade the *model's output*; grading
+  only the tool result "makes an internal component the final model output, which it obviously is not."
+  Instructing the model to relay the tool output verbatim is fine prompt design; ignoring the model's
+  output at scoring time is not. A tool call is itself a legitimate model-output form ("if the model's
+  output is the tool call, it's correct"). Consequence: a response-graded **end-to-end** success column
+  (same parser as the no-tools branch, both arms) becomes the primary surface for tool-lift claims; the
+  current trace-graded metric is retained, renamed **tool-verified** (delegation) success, as the
+  mechanism layer. Decision doc + open operational slots (D2b empty-final-turn carve-out, rescoring
+  scope, naming, corpora, censoring handling): `development/tool_call_vs_final_output_grading.md`.
+- **Supporting fact:** the v14–16 with-tools prompts already demand the answer in the final response
+  (VERDICT trailer / "return a plan" / "return the trajectory", `pddl_eval/prompts.py:279–329`), so
+  trace-grading contradicts the harness's own task contract — ~29% of 35b with-tools validate successes
+  were credited despite disobeying the prompt's output instruction.
+- **NEW measurement caveat — response-snapshot censoring (probe v2).** `trials.jsonl` stores `response`
+  as a HEAD snapshot; the cap was **500 chars** until 2026-06-25 (`runner.py:145–153,514`), and
+  sweep5v2-live predates the raise. Since the VERDICT line is instructed to be LAST, verdicts past char
+  500 are invisible offline: of 35b tool-graded validate_* successes, 63.6% restate visibly, 27.6% are
+  INDETERMINATE (snapshot exactly 500 chars, no visible verdict), 1.3% ended the turn empty (stop),
+  7.4% truncated empty. 4B: 60.3% / 3.5% / 13.7% / 22.5%. So the earlier "36–40% state no verdict" split
+  is partly storage artifact: true 35b restatement ∈ [63.6%, 91.2%]; 4B's silence is mostly genuinely
+  empty output (real synthesis gap). "0% contradiction" holds only within the visible window. The
+  offline end-to-end overlay is exact on post-06-25 corpora and **interval-valued** on sweep5v2-live;
+  published no-tools numbers are unaffected (grading ran online on full text).
+
+## 2026-07-11 (later) — grading-surface decisions ALL RECORDED; overlay work starts
+
+- Omer filled all slots in `development/tool_call_vs_final_output_grading.md`: **D2b=B** (a bare tool
+  call counts as the model's answer only when the model closed the turn on its own; truncated-empty =
+  fail, symmetric with no-tools truncation), **D3=A** (one consolidated rescoring pass: e2e overlay +
+  simulate normalizer + validate_plan FP binning), **D4** names approved (**end-to-end success** vs
+  **tool-verified success**), **D5** corpora = sweep5v2-live + sweep6 + Sonnet/Haiku frontier + sweep7,
+  **D6=A** (censored old corpora reported as bounds; no extra runs).
