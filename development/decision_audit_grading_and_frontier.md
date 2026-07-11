@@ -269,6 +269,23 @@ the paper; don't spend 3× for variants.
   prefix — verified current) — the *shared* prefix is only tools + system + fixed prompt
   preamble (fixtures vary per trial), so it must clear 4096 tokens on its own or caching
   silently no-ops and the WT cost estimate is wrong by ~2×.
+
+  **UPDATE (live smoke, 2026-07-11, `tools/frontier_runner.py`, Haiku, 3 trials):** the
+  end-to-end live path is verified (SDK Tool Runner loop + MCP + grading, 3/3 OK). Caching,
+  once moved off the below-minimum system block onto the SDK runner's own `cache_control`
+  (multi-turn breakpoints), is ACTIVE — but on this smoke it was a **NET LOSS (+6% vs
+  no-cache)**: trials are short (~2 turns) with a large, *unique* per-trial domain/problem
+  context, so the 1.25× write premium on the ~52K prefix isn't recouped, and consecutive
+  trials share no big prefix (different problem each). **This directly challenges the D4 /
+  memory assumption that "with-tools caching is the cost lever."** Consequence: (1) budget
+  the frontier WT arm at **no-cache list price** ($1/$5 Haiku, $3/$15 Sonnet), NOT a
+  caching-discounted figure — the doc's "$60–100 both arms, caching cuts it substantially"
+  is likely optimistic; (2) the stage-1 stratified probe (all 5 tasks, not 3 identical
+  simulate trials) is what settles whether caching ever helps here — solve/validate turn
+  counts and context sizes differ, so the per-task verdict may vary. The runner now prints
+  ACTIVE / NET-LOSS / INACTIVE explicitly so the probe reads the answer off the summary.
+  If the probe confirms net loss corpus-wide, disable caching for the full run (it only
+  adds cost).
 - **Optional batch≡live insurance:** the no-tools/Batch vs with-tools/live split makes API
   path covary with arm. No behavioral difference is documented for Batch, but a ~50-trial
   no-tools overlap sample run live is nearly free and closes the question if a reviewer asks.

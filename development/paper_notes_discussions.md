@@ -684,3 +684,23 @@ validated by an independent ranking subagent (the user asked for a second perspe
   the cross-family comparison, exists under A too).
 - Next action: build `tools/frontier_runner.py` (Tool Runner loop, standard trials.jsonl rows,
   16K snapshots, caching, per-trial cost log) → stage-1 probe → full run per budget sequence.
+
+## 2026-07-11 (later-5) — Frontier runner (framework B) built + live-smoked; caching is NOT a cost lever
+
+- **`tools/frontier_runner.py` built** on the SDK Tool Runner (framework B, D1). Live 3-trial
+  Haiku smoke (real API + MCP, cached GT) passed end-to-end: runner loop → MCP tool exec →
+  grading 3/3 OK; SDK version pinned (anthropic 0.109.2); `--use-cached-gt` skips the heavy
+  `generate_ground_truth` solver prelude (opt-in — full run + paired probe generate fresh so
+  both arms share one GT source); offline `--dry-run` job counts verified (full grid 9120,
+  single-variant 1520 = the doc's Haiku D3 estimate).
+- **FINDING — prompt caching does not reduce frontier WT cost (revises the D4/memory "caching
+  is the cost lever" assumption).** After moving caching off a below-4096-token system block
+  onto the SDK runner's own `cache_control` (multi-turn breakpoints), caching is ACTIVE but on
+  the smoke it was a **net +6% LOSS**: trials are short (~2 turns) with a large, unique
+  per-trial domain/problem context, so the 1.25× write premium on the ~52K prefix isn't
+  recouped and consecutive trials share no big prefix. Budget the WT arm at **no-cache list
+  price** ($1/$5 Haiku, $3/$15 Sonnet); the stage-1 stratified probe (all 5 tasks) settles
+  whether any task benefits. Detail: `development/decision_audit_grading_and_frontier.md` §2.5;
+  cost lines in `frontier_rerun_framework_decision.md` annotated.
+- Next: generate the stratified stage-1 keys file → run it through BOTH `frontier_runner.py`
+  (B) and `claude_api_tools_probe.py` (A) → compare success + turns/tokens + real cost.

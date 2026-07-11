@@ -78,12 +78,21 @@ comparison arm.
 
 ## Rough cost (order-of-magnitude, from measured prior runs)
 
+> ⚠️ CACHING CORRECTION (live smoke, 2026-07-11): the "caching cuts WT cost" assumption
+> below is likely FALSE for this workload. A 3-trial Haiku live smoke
+> (`tools/frontier_runner.py`) shows caching ACTIVE but a **net +6% loss** — short
+> trials (~2 turns) with unique per-trial domain/problem context don't recoup the 1.25×
+> write premium. **Budget the WT arm at no-cache list price** until the stage-1 stratified
+> probe says otherwise. See `development/decision_audit_grading_and_frontier.md` §2.5.
+
 - Haiku, full single-variant grid ≈ 1,520 trials/condition; the plain (no-cache)
-  with-tools estimate was ~$49; caching should cut it substantially. Both arms ≈ $60–100.
+  with-tools estimate was ~$49; ~~caching should cut it substantially~~ (caching does NOT
+  cut it — see correction). Both arms ≈ $60–100 **at list price**.
 - Sonnet ≈ 3× Haiku's token prices; old Sonnet NT both-corpora (3 variants) measured
-  $81.51 → single-variant NT ≈ $27; WT with caching, rough $100–200.
+  $81.51 → single-variant NT ≈ $27; WT ~~with caching~~ at list price, rough $100–200.
 - Total ballpark: **$200–350** for both models, both arms, both corpora (sweep5v2 +
-  sweep6 fixtures). A firmer number lands after the A-vs-B probe (~$5–10).
+  sweep6 fixtures) — now firmly at list price (no caching discount). A firmer number
+  lands after the A-vs-B probe (~$5–50, staged).
 
 ## Decisions
 
