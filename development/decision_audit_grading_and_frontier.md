@@ -254,6 +254,35 @@ consistent with anything from 0 to a Δ that flips borderline cells. Two honest 
 > pairs or a turns/token distribution shift). If stage 1 is fully concordant, stop —
 > report the probe as a bounded gross-defect check, per P2 framing.
 
+**STAGE-1 RESULT (run 2026-07-11, Haiku, canonical corpus, variant 11): fully
+concordant — stage 2 not triggered; the probe stands as the P2 gross-defect check.**
+
+- Keys: `tools/make_stage1_keys.py` (seed 11) → `.local/frontier/stage1_keys.jsonl`,
+  100 trials = 20/task × all 20 domains (one per domain per task), fixtures
+  quota-balanced (validate_problem 10p/10n, validate_plan 10 valid/10 buggy labels,
+  validate_domain 4× `domain_neg`), `prompt_variant=11` pinned (inside the old Sonnet
+  NT corpus's v11–13, so the D3 slice-to-matching-variant comparison stays available).
+  Both arms ran the identical keys file with fresh GT, serialized (B then A) so solver
+  contention couldn't skew tool results. Comparison: `tools/frontier_ab_compare.py`.
+- **Success: 0/100 discordant pairs** (exact McNemar p=1.0). Both arms 99/100; the
+  single failure is the *same trial with the same failure reason and same tool call*
+  in both arms (`simulate counters/p05`, `result_mismatch` after one
+  `get_state_transition` call) — a model/grading property, not a harness effect.
+  Per-task: solve 20/20 both, validate_* 60/60 both, simulate 19/20 both.
+- **Turns/tokens: no shift.** Mean turns 2.48 (A) vs 2.53 (B) — only solve differs
+  (4.35 vs 4.65, the SDK runner occasionally takes one extra loop); in-tok/trial
+  24,406 vs 24,768 (+1.5%); out-tok/trial 2,744 vs 2,766 (+0.8%).
+- **Cost + caching verdict: B $3.28 vs A $3.81 (−14%).** B's list-equivalent ($3.86)
+  matches A's list price ($3.81), so the whole gap is prompt caching. The 3-trial
+  smoke's "+6% net-loss" (§2.5) inverts at stratified scale: task-grouped consecutive
+  trials keep the tools+system prefix hot, and solve's multi-turn loops read ~30K
+  cached tok/trial (B per-task solve cost $0.91 cached vs $1.39 no-cache). →
+  **Keep `cache_control` ON for the full run**; budget the WT arm at ~0.85× list.
+- **License:** framework B is confirmed as the sole full-run harness (the HAL
+  model/scaffold separation argument is now backed by a measured null); the D4
+  sequence proceeds Haiku both arms → re-estimate → Sonnet. Measured full-grid
+  re-estimate: Haiku WT ≈ $50/corpus (1520 trials, cached).
+
 ### 2.4 Frontier D3 — single variant is reasonable
 
 Prompt-template variance is real (HELM-style multi-prompt evaluation exists for a reason), but

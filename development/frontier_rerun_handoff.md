@@ -10,13 +10,18 @@
 
 ## One-paragraph state
 
-The frontier with-tools rerun is **decided, built, and live-verified**; nothing is
-running for it yet. The runner (`tools/frontier_runner.py`, framework B = SDK Tool Runner)
-passed a real 3-trial Haiku smoke end-to-end. The immediate next step is the **stage-1
-paired A-vs-B harness probe** (~100 trials), which needs one thing that doesn't exist yet:
-a **stratified keys file**. Separately, the Qwen ISS-024(d) job **19293221** is still
-running on the cluster and is the resolver for the strict-grading-undecided cells — leave
-it alone.
+**Stage-1 A-vs-B probe DONE (2026-07-11): fully concordant — 0/100 discordant pairs,
+no turns/token shift, stage 2 NOT triggered.** Framework B is licensed as the sole
+full-run harness; the probe stands as the bounded gross-defect check (P2 framing).
+Caching verdict at stratified scale: **ACTIVE, saves ~15%** (the 3-trial smoke's +6%
+net-loss was a small-sample artifact) → keep `cache_control` ON. Full detail + numbers
+recorded in `decision_audit_grading_and_frontier.md` §2.3 (STAGE-1 RESULT block).
+Artifacts: `tools/make_stage1_keys.py`, `tools/frontier_ab_compare.py`,
+`.local/frontier/{stage1_keys.jsonl,a_probe,b_probe}`. The next step is the **full
+Haiku run per D4** (WT via `frontier_runner.py`, NT via the Batch API, canonical +
+anon corpora), then re-estimate cost before Sonnet. Spent so far: ~$7.4 of $238.
+Separately, the Qwen ISS-024(d) job **19293221** is still running on the cluster and
+is the resolver for the strict-grading-undecided cells — leave it alone.
 
 ## Decisions already locked (don't relitigate)
 
@@ -36,13 +41,11 @@ it alone.
 
 ## Findings from this session (already recorded, don't rediscover)
 
-1. **Prompt caching is NOT a cost lever for this workload.** Live smoke: caching ACTIVE but
-   **net +6%** (short ~2-turn trials, unique per-trial domain/problem context, 1.25× write
-   premium not recouped). **Budget the WT arm at no-cache list price** ($1/$5 Haiku, $3/$15
-   Sonnet). The stage-1 stratified probe (all 5 tasks, not 3 simulate trials) settles whether
-   any task benefits; the runner prints `ACTIVE / NET-LOSS / INACTIVE` so the answer reads off
-   the summary. If net-loss corpus-wide → disable caching for the full run (remove the
-   `cache_control=` arg in `run_one`; it only adds cost).
+1. **Prompt caching — SUPERSEDED by the stage-1 probe (2026-07-11): caching SAVES ~15%
+   at stratified scale; keep it ON.** The smoke's "+6% net-loss" was a 3-trial artifact:
+   with trials grouped by task the tools+system prefix stays hot across consecutive
+   trials, and solve's multi-turn loops (~4.7 turns) read ~30K cached tok/trial (solve
+   $0.91 cached vs $1.39 no-cache per 20 trials). Budget the WT arm at ~0.85× list.
 2. **`--use-cached-gt` is smoke/dev only.** It loads GT from `results/derived/gt_cache.json`
    to skip the heavy `generate_ground_truth` solver prelude (which SIGKILLs in a
    resource-limited sandbox). The **full run and the paired probe must generate fresh**
@@ -66,30 +69,36 @@ Verified: full grid 9120, single-variant 1520 (= the doc's Haiku D3 estimate), `
 smoke, live loop 3/3 OK, SDK pinned (anthropic 0.109.2). Writes standard `trials.jsonl`
 (16K snapshots) + `save_results` meta; the e2e overlay/analyzer read it unchanged.
 
-## NEXT STEP — stage-1 paired A-vs-B probe
+## Stage-1 paired A-vs-B probe — DONE 2026-07-11
 
-1. **Write a stratified keys-file generator** (does not exist yet). Output = JSONL, one
-   selection key per line: `{task, domain_name, problem_name, plan_label, prompt_variant}`.
-   Target ~100 trials, stratified across all 5 tasks (and a spread of domains). Both scripts
-   already consume `--keys-file` with exactly this shape (see `select_jobs` in
-   `frontier_runner.py` and the `wanted` set builder in `claude_api_tools_probe.py`). The
-   A-probe's old no-tools cost-probe keys files (under `.local/…`) are the template for the
-   format. Pin a single `prompt_variant` (D3) so the probe is single-variant.
-2. **Run the SAME keys file through both arms** (fresh GT — do NOT pass `--use-cached-gt`
-   for the real probe):
+All four steps completed; result = **fully concordant** (0/100 discordant, McNemar
+p=1.0; both arms 99/100 with the *same* single failure `simulate counters/p05`
+`result_mismatch`; turns 2.48 vs 2.53; in-tok +1.5%, out-tok +0.8%; B $3.28 vs
+A $3.81 — the −14% is entirely prompt caching, verdict ACTIVE at stratified scale).
+Recorded in `decision_audit_grading_and_frontier.md` §2.3. Reproduce with:
+
+```bash
+python tools/make_stage1_keys.py --out .local/frontier/stage1_keys.jsonl   # seed 11, v11
+python tools/frontier_ab_compare.py --a .local/frontier/a_probe/trials.jsonl \
+    --b .local/frontier/b_probe/trials.jsonl --model claude-haiku-4-5
+```
+
+## NEXT STEP — full Haiku run (D4 sequence)
+
+1. **WT arm (framework B, caching ON, variant 11)** per corpus:
    ```bash
-   python tools/frontier_runner.py       --model claude-haiku-4-5 \
-       --marketplace-path ../pddl-copilot --keys-file <keys>.jsonl --out .local/frontier/b_probe
-   python tools/claude_api_tools_probe.py --model claude-haiku-4-5 \
-       --marketplace-path ../pddl-copilot --keys-file <keys>.jsonl --out .local/frontier/a_probe
+   python tools/frontier_runner.py --model claude-haiku-4-5 --variant 11 \
+       --marketplace-path ../pddl-copilot --out results/frontier/haiku_wt_canonical
+   python tools/frontier_runner.py --model claude-haiku-4-5 --variant 11 --corpus anon \
+       --marketplace-path ../pddl-copilot --out results/frontier/haiku_wt_anon
    ```
-3. **Compare A vs B:** success (McNemar on discordant pairs), turns, tokens, and real $.
-   This is the gate that licenses comparing frontier numbers to the Qwen arm (HAL
-   model/scaffold/benchmark separation). Record in `decision_audit_grading_and_frontier.md`
-   §2.3. Decide caching on/off from the summary's ACTIVE/NET-LOSS line.
-4. If stage-1 concordant → proceed to the **full run** per D4 budget sequence (Haiku both
-   arms first). Regrade with `tools/e2e_regrade.py` (it auto-detects the 16K cap → exact
-   e2e, `e2e_strict` headline).
+   Measured estimate: ≈$50/corpus (1520 trials, cached; probe measured $3.28/100).
+2. **NT arm** via the Batch API (`tools/claude_api_batch.py`), single variant 11, both
+   corpora (50% batch discount).
+3. **Re-estimate from measured cost**, then Sonnet WT only if the remainder covers it
+   (Sonnet NT both corpora already exists — PR#80).
+4. **Regrade** with `tools/e2e_regrade.py` (auto-detects the 16K cap → exact e2e,
+   `e2e_strict` headline).
 
 ## Watch-outs
 
