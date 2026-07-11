@@ -1,7 +1,8 @@
 # Decoupled think=on `simulate` re-run — staging & GATED launch (Line 1 / ISS-024(a))
 
-**Status:** STAGED, NOT SUBMITTED. All cluster steps are **user-gated** — ping Omer
-+ confirm the university VPN is up before any SLURM/SSH. Local prep below is done.
+**Status:** SUBMITTED + RUNNING (2026-06-26→27). Smoke GREEN; full sweep is SLURM job `18426027`
+(4 Qwen cells, `--time 48h`). **For the live state, progress, next steps, and the with-tools
+decision → see `decoupled_run_handoff.md`.** This doc is the build/decisions record.
 **Date:** 2026-06-26
 **Branch:** `paper/iter2-decoupled-run` (off `origin/main` b07b394, which already carries
 **both** PR #87 Q1 grader and PR #88 decoupled budget — the merge/rebase prep is complete).

@@ -6,7 +6,7 @@ Start here. This dir holds the framework's living logs, stable reference docs, a
 
 | Line | Folder | Entry doc | Status |
 |---|---|---|---|
-| **Decoupled / iter-2** (Line 1) | `decoupled/` | `decoupled_run_handoff.md` ¹ | Decoupled think=on no-tools `simulate` re-run; SLURM job `18426027` in-flight |
+| **Decoupled / iter-2** (Line 1) | `decoupled/` | `decoupled_run_handoff.md` ¹ | ✅ Data-complete (all 4 Qwens, 2026-06-29) + final A/B rollup done (2026-07-11); only the with-tools parity decision (ISS-024(d)) is open |
 | **Frontier** (Haiku/Sonnet API) | `frontier/` | `frontier_haiku_phase_plan.md` ¹ | No-tools done; with-tools ladder GATED (`frontier_with_tools_ladder.md`) |
 | **PlanBench** | `planbench/` | `PLANBENCH_HANDOFF_v3.md` | v2 characterized; v3 = scaffold small models next |
 
