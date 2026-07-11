@@ -247,7 +247,12 @@ consistent with anything from 0 to a Δ that flips borderline cells. Two honest 
 - **(P2) Keep n≈100 but reframe** it as a gross-defect check ("rules out harness effects
   >10pp"), and don't describe it in the paper as quantifying the harness effect.
 
-> ANSWER:
+> ANSWER: **Probe approved (Omer, frontier doc D2 "yes", 2026-07-11).** Sizing
+> operationalized as a **staged probe** to respect the $238 funded budget (frontier D4):
+> stage 1 = 100 paired trials (~$5–10, gross-defect check); extend to 300–500 (~$20–50,
+> P1 quantification) only if stage 1 shows any discordance worth measuring (≥2 discordant
+> pairs or a turns/token distribution shift). If stage 1 is fully concordant, stop —
+> report the probe as a bounded gross-defect check, per P2 framing.
 
 ### 2.4 Frontier D3 — single variant is reasonable
 

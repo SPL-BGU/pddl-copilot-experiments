@@ -662,3 +662,25 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - Full audit (incl. frontier-rerun harness conditions, probe sizing, open ANSWER slots):
   `development/decision_audit_grading_and_frontier.md`. Overlay emits dual columns
   (`e2e_strict` headline / `e2e` = B diagnostic); existing overlay files patched in place.
+
+## 2026-07-11 (later-4) — Frontier rerun framework DECIDED: B (SDK Tool Runner); probe + budget approved
+
+- **All slots filled (Omer) in `development/frontier_rerun_framework_decision.md`:** D1=**B** — the
+  frontier Haiku+Sonnet single-tool rerun (and the future PlanBench with-tools backend) run on the
+  Anthropic SDK Tool Runner + MCP helpers, ONE shared module for both benchmark families; the
+  existing bare loop (A) survives only as the probe's comparison arm. D2=**yes** to the paired
+  A-vs-B harness probe — operationalized as a STAGED probe (100 paired trials ≈ $5–10 first;
+  extend to 300–500 for quantification only if discordance appears; see audit §2.3 ANSWER).
+  D3=**single prompt variant** everywhere; slice the old 3-variant Sonnet NT corpus to the matching
+  variant when comparing. D4=**approved**, with a hard budget note: Claude API currently funded
+  with **$238** — below the $200–350 ballpark upper bound, so execution is budget-sequenced:
+  probe → Haiku both arms → re-estimate from measured cost → Sonnet only if the remainder covers
+  it (else top up / Haiku-first read).
+- Build conditions carried from the audit (§2.2): pin the exact `anthropic` SDK version (Tool
+  Runner + MCP helpers are beta surfaces); verify `max_iterations` counts the same unit as
+  MAX_TOOL_LOOPS=10 so `loop_exhausted` stays comparable; per-turn request logging; validate
+  prompt caching on the probe (`cache_read_input_tokens > 0`; Haiku min cacheable prefix = 4096
+  tokens); disclose the qwen3_xml-vs-native-FC prompt-surface delta in limitations (inherent to
+  the cross-family comparison, exists under A too).
+- Next action: build `tools/frontier_runner.py` (Tool Runner loop, standard trials.jsonl rows,
+  16K snapshots, caching, per-trial cost log) → stage-1 probe → full run per budget sequence.

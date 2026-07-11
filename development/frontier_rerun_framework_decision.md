@@ -93,13 +93,13 @@ comparison arm.
   single-tool + PlanBench. *(my recommendation)*
 - **C.** Claude Agent SDK / Claude Code harness.
 
-> MY DECISION:
+> MY DECISION: B
 
 **D2 — Paired harness probe (A vs B, one model, ~100 trials, ~$5–10).**
 Runs the same trials through both loops to measure the harness effect and anchor the new
 framework to the existing probe data. *(my recommendation: yes, before the full run)*
 
-> MY DECISION:
+> MY DECISION: yes
 
 **D3 — No-tools arm variants.** Keep 3 variants (v11-13) for strict comparability with
 the old Sonnet no-tools corpus (~3× NT cost), or single variant everywhere (cheaper,
@@ -107,13 +107,13 @@ matches the frontier single-prompt decision, old corpus still comparable per-var
 *(my recommendation: single variant; slice the old corpus to the same variant when
 comparing)*
 
-> MY DECISION:
+> MY DECISION: single variant; slice the old corpus to the same variant when comparing
 
 **D4 — Scope & budget approval.** Both models × both arms × both corpora, ballpark
 $200–350, exact estimate after the D2 probe. Approve, or trim (e.g. Haiku first,
 Sonnet after reading Haiku)?
 
-> MY DECISION:
+> MY DECISION: approved; budget in calude api currnetly funded with 238$.
 
 ## Execution sketch (once decided)
 
