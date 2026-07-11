@@ -367,9 +367,36 @@ Branch: `feat/e2e-scoring-overlay`. Overlay output: `results/derived/e2e_overlay
   corpora were simply graded under older code. Tool results are stored UNCAPPED, so the
   overlay recomputes tool-verified + failure reason exactly (`tool_verified_fixed`,
   `tool_fr` columns), for validate_*.
-- **Phase 4 — frontier + sweep7 corpora (D5).** Different writers/schemas
-  (`sonnet-frontier`, `haiku-frontier`, `frontier-with-tools-probe`, `sweep7`); inventory
-  each, adapt the loader, regrade what is regradeable, bound the rest.
+- **Phase 4 — frontier + sweep7 corpora (D5). DONE 2026-07-11.** All four corpora share
+  the standard row schema; only the probe corpus needed a wider glob
+  (`trials*.jsonl`). All were written under the 500-char cap (auto-detected per cell).
+  Results:
+  - **Sonnet no-tools simulate is 100% censored** ([0,100], n=300×2) — the
+    [[project_simulate_grader_artifact]] "re-grade the 0/300 floor" plan is IMPOSSIBLE
+    from disk; the paper's sole-source-floor retraction must lean on the decoupled Qwen
+    numbers or a fresh Sonnet run. All other Sonnet no-tools cells pass through their
+    stored online grades unchanged (validate 90–97, solve ~28.5).
+  - **Frontier with-tools probe is mostly blind too**: Sonnet validate_plan e2e
+    [7.5, 100] (92.5% censored), Haiku [24.5, 100] (75.5%) — frontier models write long
+    responses, so verdicts land past char 500. Tool-verified stays 100%.
+  - **sweep7 (35b BF16)** reproduces the AWQ pattern: validate_plan tools e2e
+    [68.5, 92.6] vs no-tools 84.0 (same straddle as sweep5v2's [62.3, 90.2] vs 87.8) —
+    the censoring-bound inconclusiveness is quant-independent. Phase-3 rebinning shows
+    almost no arg-errors on sweep7 (2 vs sweep5v2's 8,756), consistent with the newer
+    plugin code it ran ("Sweep5 tool error fixes" #56).
+
+### ISS-024(d) full re-run — SUBMITTED 2026-07-11 (job 19293221)
+
+Per Omer's decision (skip the smoke, run the complete arm): 4 Qwens × think=on ×
+tools_all_minimal, full trials, `--reasoning-parser none`, `--run-tag iss024d-e2e`,
+72h wall. All 4 array tasks RUNNING at submit time. Apparatus deliberately FROZEN for
+parity: experiments repo @ `6007032` (the exact decoupled commit — its origin branch was
+deleted after merge, so no pull; this is a feature), plugins @ `5e4f9c0` (sweep5-era).
+Log confirms `--tool-call-parser qwen3_xml (no reasoning-parser)`. Runs under the 16384
+cap → every trial fully e2e-gradeable: resolves the censored with-tools cells exactly AND
+answers the parser-off parity question. Results land in
+`results/slurm_vllm_<model>_on_tools_all_minimal_iss024d-e2e/` (run-tag suffix — remember
+the analyzer cell-parser quirk).
 - **Phase 5 — analyzer + paper.** Analyzer reads the overlay via a flag; master tables
   gain end-to-end (bounds where censored) next to tool-verified; paper prose updates
   once numbers are re-derived (framing per D4 names).

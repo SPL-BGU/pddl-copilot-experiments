@@ -296,19 +296,25 @@ class SolveContext:
 async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
                          ctx: SolveContext) -> list[dict]:
     rows_out = []
-    for trials in sorted(corpus_dir.glob("*/trials.jsonl")):
-        cell = trials.parent.name
+    # trials*.jsonl: the frontier probe corpora use suffixed names
+    # (e.g. trials_rest52.jsonl); group per cell dir.
+    by_cell: dict[Path, list[Path]] = defaultdict(list)
+    for trials in sorted(corpus_dir.glob("*/trials*.jsonl")):
+        by_cell[trials.parent].append(trials)
+    for cell_dir, files in sorted(by_cell.items()):
+        cell = cell_dir.name
         cell_rows = []
         max_len = 0
-        for ln in trials.open():
-            try:
-                row = json.loads(ln).get("result", {})
-            except json.JSONDecodeError:
-                continue  # pre-2026-05-28 corpora may carry torn lines
-            if row.get("task") not in ALL_TASKS:
-                continue
-            max_len = max(max_len, len(row.get("response") or ""))
-            cell_rows.append(row)
+        for trials in files:
+            for ln in trials.open():
+                try:
+                    row = json.loads(ln).get("result", {})
+                except json.JSONDecodeError:
+                    continue  # pre-2026-05-28 corpora may carry torn lines
+                if row.get("task") not in ALL_TASKS:
+                    continue
+                max_len = max(max_len, len(row.get("response") or ""))
+                cell_rows.append(row)
         if not cell_rows:
             continue
         cap = detect_cap(max_len)
