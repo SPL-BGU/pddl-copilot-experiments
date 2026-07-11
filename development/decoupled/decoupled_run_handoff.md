@@ -19,6 +19,55 @@ ISS-024 in `OPEN_ISSUES.md`.
 - **Open decision (user's):** with-tools parity — cheap parser-off+tools smoke vs full re-run (below).
 - **`paper/` is OFF-LIMITS** (gather-data-first). Never pool the decoupled corpus into `sweep5v2-live`.
 
+## ✅ LINE COMPLETE — final matched-A/B rollup (2026-07-11)
+
+9B (the last cell) completed clean on **2026-06-29** (job `18466812`, exit `0:0`, 4560/4560).
+All 4 Qwen cells synced to `results/decoupled-rollup/` (gitignored) and joined **4560/4560 keys
+on both sides, 0 unmatched**. The 3 earlier cells reproduce their per-cell A/Bs exactly (join
+validated); 9B is new. Rollup script: **`development/decoupled/decoupled_rollup.py`** (matched
+join + Wilson CIs + baseline-simulate Q1-coercibility bound; runs on the synced dirs, no
+cluster/MCP needed — re-sync the 8 dirs first if absent).
+
+State-tracking success (`success`, base→dec), decoupled vs sweep5v2 think=on baseline, n=4560/cell:
+
+| model | validate_domain | validate_problem | validate_plan | solve | simulate |
+|---|--:|--:|--:|--:|--:|
+| Qwen3.5:0.8B | 0.3→48.6 (+48.3✓) | 0.2→27.7 (+27.5✓) | 0.0→4.4 (+4.4✓) | 0.0→0.0 | 0.0→0.0 |
+| Qwen3.5:4B   | 0.8→42.5 (+41.7✓) | 11.5→63.2 (+51.7✓) | 25.0→77.1 (+52.1✓) | 15.7→9.7 (🔻−6.0) | 0.0→23.0 (+23.0✓) |
+| Qwen3.5:9B   | 3.3→37.8 (+34.4✓) | 17.5→66.0 (+48.5✓) | **21.4→81.4 (+60.0✓)** | 27.0→27.0 (0.0) | 0.0→22.3 (+22.3✓) |
+| qwen3.6:35b  | 73.3→80.3 (+6.9) | 77.5→77.2 (−0.3) | 84.8→91.6 (+6.8✓) | 38.3→39.3 (+1.0) | **0.0→40.0 (+40.0✓)** |
+
+(✓ = Wilson 95% CIs disjoint.)
+
+### Findings (consolidated; supersedes the provisional per-cell reads below)
+
+1. **validate lifts are large + Wilson-disjoint for every model with the latent skill.** 9B posts
+   the **biggest validate_plan lift of the roster, +60.0pp (21→81)**; 4B +52.1; 35b already high so
+   +6.8. Empties are crushed everywhere (validate_* baseline 71–99% empty → ~0).
+2. **The solve regression is 4B-ONLY, not a gradient.** solve across sizes: 0.8B 0→0, **4B 15.7→9.7
+   (−6.0)**, 9B 27→27 (flat), 35b 38→39 (flat). Decoupling costs solve wins only at *mid*-capability
+   (4B has few wins and the fixed 8192-think + long plan answer overruns 16K ctx harder than the
+   baseline's adaptive shared budget). Report solve as a **risk at 4B**, not a monotonic decline.
+3. **simulate has a mid-PLATEAU, not strict monotonicity.** state-tracking: 0.8B 0 → 4B 23.0 ≈ 9B
+   22.3 → 35b 40.0 (4B/9B CIs overlap → tied). Honest shape = **floor → mid plateau (~22–23%) → top
+   (40%)**. Drop the earlier "strictly monotonic 0→23→40" phrasing — 9B lands on the 4B plateau.
+4. **simulate format-compliance = 0% for ALL four models.** No model ever emits the schema-exact
+   `{"trajectory":[…]}` wrapper; every point of state-tracking success is credited by the Q1
+   wrapper-tolerant coercion, so **strict (content ∧ format) = 0% across the board.** Clean
+   two-metric result: these models can *track state* up to 40% of the time but never in the exact
+   requested *format*.
+5. **NOT a grader artifact.** baseline simulate state-tracking is ≤0.7% even re-graded under Q1
+   (Q1-coercibility upper bound: 0.8B ≤0.7%, 4B/9B ≤0.0%, 35b ≤0.3%; baseline is ~99% truncated/
+   empty, so nothing to coerce). Decoupled 22–40% is a real lift, not a pre-Q1-vs-Q1 comparison
+   artifact.
+
+### Remaining on this line
+
+- **Only the with-tools parity decision (ISS-024(d), "Open decision" §below) is open** — GATED on
+  the user's pick + a green parser-off+tools smoke. Everything else on Line 1 is done.
+- `paper/` stays frozen (gather-data-first); this rollup is the **ready-to-fold** answer to the
+  simulate sole-source-floor claim once the freeze lifts.
+
 ## Result so far (from the `--partial 2` smoke; matched A/B, join on trial `key`)
 
 Decoupled (split budget) vs sweep5v2 think=on baseline (shared budget), no-tools `simulate`:
@@ -126,7 +175,7 @@ Full no-tools cell ≈ **4560 trials** (5 tasks × full fixtures × 3 no-tools v
 | _0 | Qwen3.5:0.8B | 4560 | **100% ✓ DONE** | final A/B above (simulate flat) |
 | _3 | qwen3.6:35b | 4560 | **100% ✓ DONE** | final A/B above (simulate 0→40%) |
 | _1 | Qwen3.5:4B | 4560 | **100% ✓ DONE** | final A/B above (simulate 0→23%; **solve −6pp regression**) |
-| _2 → `18466812` | Qwen3.5:9B | ~2650 | **~58%** ▶ | **only cell left**; hit 48h wall → resumed as `18466812` (72h, resumed from 1799) |
+| _2 → `18466812` | Qwen3.5:9B | 4560 | **100% ✓ DONE** | completed 2026-06-29 (exit `0:0`); final A/B in the LINE-COMPLETE §above |
 
 Use `bash .claude/skills/cluster-ops/scripts/status.sh --decoupled` for the live board.
 
