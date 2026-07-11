@@ -354,15 +354,19 @@ Branch: `feat/e2e-scoring-overlay`. Overlay output: `results/derived/e2e_overlay
   from the stored response with the no-tools parser; empty+`stop`+tool-verified →
   credited (D2b-B); empty+`length` → fail; nonempty-at-cap without verdict →
   INDETERMINATE. Run on sweep5v2-live + sweep6-live → first bounded e2e numbers.
-- **Phase 2 — solve + simulate e2e.** Needs ground truth (oracle plan validity + trace),
-  which the harness generates at runtime via MCP. One-time local MCP run to materialize a
-  `gt_cache.json` (deterministic), then regrade offline. The simulate normalizer fix
-  (`(p a b)` vs `p(a,b)`) lands here — it gates any simulate regrade.
-- **Phase 3 — tool-verified column fix.** Extend `_tool_error_seen` to catch FastMCP
-  pydantic arg-error signatures so validate_plan mis-binned FPs move to FR_TOOL_ERROR;
-  emit the corrected tool-verified column in the same overlay. (Until then, the D2b-B
-  credit uses stored `success` as tool-verified — a known-good approximation outside
-  this edge.)
+- **Phase 2 — solve + simulate e2e. DONE 2026-07-11.** `tools/build_gt_cache.py` ran the
+  harness's own `generate_ground_truth` once via local MCP (100 problems, all negative
+  fixtures verified) → `results/derived/gt_cache.json`. Solve regraded with live-MCP plan
+  validation (256 deduped calls); simulate regraded through the CURRENT
+  `_normalize_trajectory` — the `_canon_atom` predicate-notation fix already lives in
+  scoring.py, so this regrade IS the simulate-normalizer repair for old corpora.
+  No-tools simulate rows are regraded too (their stored grades used the pre-fix
+  normalizer); all other no-tools rows pass through their stored online grade.
+- **Phase 3 — tool-verified column fix. DONE 2026-07-11.** Current `_tool_error_seen`
+  already recognizes the FastMCP "Error executing tool" arg-error shape; the stored
+  corpora were simply graded under older code. Tool results are stored UNCAPPED, so the
+  overlay recomputes tool-verified + failure reason exactly (`tool_verified_fixed`,
+  `tool_fr` columns), for validate_*.
 - **Phase 4 — frontier + sweep7 corpora (D5).** Different writers/schemas
   (`sonnet-frontier`, `haiku-frontier`, `frontier-with-tools-probe`, `sweep7`); inventory
   each, adapt the loader, regrade what is regradeable, bound the rest.
@@ -397,3 +401,40 @@ validate_plan (and gemma broadly) the 500-char censoring makes the old corpus un
 answer at strict grading. D6=A reports these as bounds; if the paper ends up needing the
 35b validate_plan cell decided, the D6-B parity smoke (ISS-024(d) under the 16384 cap)
 is the cheap resolver — Omer's call, not assumed.
+
+### Phase 2+3 results (run 2026-07-11)
+
+Solve and simulate, sweep5v2-live (no-tools vs with-tools e2e [low, high] vs tool-ver):
+
+| model | task | no-tools | tools e2e | tools tool-ver |
+|---|---|---|---|---|
+| 0.8B | solve | 0.0 | [2.0, 10.2] | 15.2 |
+| 4B | solve | 11.7 | [9.1, 34.0] | 75.1 |
+| 9B | solve | 18.8 | [25.8, 49.4] | 82.5 |
+| 35b | solve | 23.8 | [10.1, 53.8] | 81.2 |
+| 4B | simulate | [0, 54.5] | [0, 21.1] | 63.9 |
+| 9B | simulate | [0, 16.0] | [0, 28.4] | 80.4 |
+| 35b | simulate | [0, 69.0] | [0, 26.8] | 91.2 |
+
+Readings:
+- **solve:** the e2e lift survives at the lower bound only for 9B (25.8 > 18.8) and
+  trivially 0.8B; 4B and 35b straddle. Censoring is 22–44% (plans rarely fit under
+  500 chars).
+- **simulate:** with-tools e2e-low = 0.0 for EVERY model — not one with-tools simulate
+  trial yields a determinate end-to-end success on the old corpora. The determinate mass
+  (65–73%) is `truncated_empty`: the model delegates correctly (tool-ver 64–91) and then
+  exhausts its budget before producing any final trajectory. Under the decided grading,
+  the with-tools upper bound (≤27–35) sits BELOW no-tools' upper bound for 4B/35b — the
+  "simulate 0→90" tool-lift story cannot be stated end-to-end from this corpus at all.
+  This is also a real behavioral finding: tool loops consume the token budget and the
+  model never reports the answer.
+- no-tools simulate bounds are consistent with the decoupled exact numbers (post-fix,
+  16K snapshots: 4B 23%, 9B 22%, 35b 40%), which remain the citable no-tools values.
+
+Phase 3 (tool-verified recompute, validate_*, both corpora, n=158,400): **zero success
+flips** — every published tool-verified rate stands. Failure REBINNING is large:
+sweep5v2 validate_plan failures split tool_error=8,756 vs verdict_mismatch=2,504
+(+10,493 tool_not_selected, 261 wrong_tool) — i.e. ~78% of what looked like
+"tool said the wrong thing" was actually a malformed invocation (FastMCP arg-error),
+confirming and quantifying the [[project_validate_plan_fp_scoring_bug]] memory
+corpus-wide. The overlay's `tool_fr` column now carries the corrected bins.
