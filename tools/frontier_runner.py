@@ -115,14 +115,17 @@ async def run_one(client, mcp, model: str, job) -> dict:
         model=model,
         max_tokens=max_tokens,
         temperature=0,
-        # cache_control on the system block caches tools+system together
-        # (tools render before system). The user turn varies per trial and
-        # stays after the breakpoint.
-        system=[{"type": "text", "text": msgs[0]["content"],
-                 "cache_control": {"type": "ephemeral"}}],
+        system=msgs[0]["content"],
         messages=[{"role": "user", "content": user_text}],
         tools=runner_tools(mcp, tool_calls_log),
         max_iterations=MAX_TOOL_LOOPS,
+        # The runner places breakpoints across the agentic loop so each turn
+        # re-reads the prior turns' prefix at cache-read rates. This is the
+        # multi-turn saving that matters here: the big tokens are the
+        # domain/problem in the user turn (~59K) resent every loop iteration,
+        # NOT the small system block (which is below Haiku's 4096-tok minimum
+        # and no-ops if cached alone).
+        cache_control={"type": "ephemeral"},
     )
 
     in_tok = out_tok = cache_write = cache_read = turns = 0
@@ -270,7 +273,20 @@ async def main_async(args) -> None:
     client = anthropic.AsyncAnthropic()
 
     try:
-        ground_truth = await generate_ground_truth(mcp, domains)
+        if args.use_cached_gt:
+            # Skip the heavy generate_ground_truth solver prelude by loading
+            # the cache (identical output of build_gt_cache.py). MCP stays
+            # connected for tool execution + solve-plan grading. Opt-in: the
+            # full run / paired probe should generate fresh so both arms share
+            # one GT source (generate is deterministic given fixed plugins).
+            gt_path = Path(args.gt_cache)
+            if not gt_path.exists():
+                sys.exit(f"[frontier-B] --use-cached-gt needs {gt_path}")
+            ground_truth = json.loads(gt_path.read_text())
+            print(f"[frontier-B] ground truth: cached ({gt_path})")
+        else:
+            ground_truth = await generate_ground_truth(mcp, domains)
+            print("[frontier-B] ground truth: freshly generated")
         jobs, _ = build_jobs(
             models=[model], tasks=args.tasks, domains=domains,
             ground_truth=ground_truth,
@@ -325,6 +341,7 @@ async def main_async(args) -> None:
         "sdk_version": __import__("anthropic").__version__,
         "max_iterations": MAX_TOOL_LOOPS, "corpus": args.corpus,
         "prompt_caching": "system-block (tools+system prefix)",
+        "ground_truth": "cached" if args.use_cached_gt else "generated",
     })
 
     # Cost + caching report. Effective input cost prices cached tokens at
@@ -354,10 +371,16 @@ async def main_async(args) -> None:
               f"cache_read/trial={a['cr'] / a['n']:7.0f} "
               f"cost=${cost:.3f} (no-cache ${no_cache:.3f})")
     active = sum(a["cr"] for a in agg.values()) > 0
-    print(f"  TOTAL ${tot:.3f} (no-cache ${tot_nc:.3f}, saved "
-          f"{(1 - tot / tot_nc) * 100 if tot_nc else 0:.0f}%)  "
-          f"caching {'ACTIVE' if active else 'INACTIVE — prefix likely below '
-          'the model cacheable minimum (Haiku: 4096 tok); investigate'}")
+    delta = (tot / tot_nc - 1) * 100 if tot_nc else 0  # +% = caching costs MORE
+    if not active:
+        note = ("INACTIVE — cacheable prefix below the model minimum "
+                "(Haiku: 4096 tok) or no reuse; caching no-ops")
+    elif delta > 0:
+        note = (f"ACTIVE but NET LOSS (+{delta:.0f}% vs no-cache) — write "
+                "premium not recouped; too few turns / unique per-trial context")
+    else:
+        note = f"ACTIVE, saves {-delta:.0f}%"
+    print(f"  TOTAL ${tot:.3f} (no-cache ${tot_nc:.3f})  caching {note}")
 
 
 def main() -> None:
@@ -369,7 +392,12 @@ def main() -> None:
                    help="plugins root for live MCP tool execution "
                         "(unused with --dry-run)")
     p.add_argument("--gt-cache", default="results/derived/gt_cache.json",
-                   help="cached ground truth for --dry-run (offline job counts)")
+                   help="cached ground truth (used by --dry-run and "
+                        "--use-cached-gt)")
+    p.add_argument("--use-cached-gt", action="store_true",
+                   help="live run: load GT from --gt-cache instead of the "
+                        "generate_ground_truth solver prelude (smoke/dev; the "
+                        "full run + paired probe should generate fresh)")
     p.add_argument("--keys-file", action="append", default=None,
                    help="stratified selection (repeatable); omit for full grid")
     p.add_argument("--variant", type=int, default=None,
