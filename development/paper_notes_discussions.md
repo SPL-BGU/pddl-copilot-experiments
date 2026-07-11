@@ -557,3 +557,22 @@ validated by an independent ranking subagent (the user asked for a second perspe
   open-roster floor is more genuine, and a clean number needs a re-run (Q1 two-metric grader + decoupled
   budget + full storage), not a re-grade. [[project_simulate_grader_artifact]]
   Full breakdown + next steps: `development/{frontier_grading_artifacts_findings.md, simulate_decisions_and_next_steps.md}`.
+
+## 2026-07-11 — Decoupled Line-1 COMPLETE; paper-rewrite deferred to a fresh session; with-tools parity resolved
+
+- The decoupled think=on no-tools re-run is **data-complete (all 4 Qwens)** and analyzed. Final matched
+  A/B + consolidated findings: `development/decoupled/decoupled_run_handoff.md` "LINE COMPLETE" §; rollup
+  script `development/decoupled/decoupled_rollup.py`. (9B, the last cell, finished 2026-06-29.)
+- **Bottom line for the paper:** the no-tools simulate 0% "sole-source floor" is an **artifact** (grader +
+  shared-budget reasoning starvation), NOT a capability floor. True no-tools simulate (state-tracking) =
+  0.8B 0% · 4B 23% · 9B 22% · 35b 40%. The paper must **retract the 0% floor** and re-frame the tool-lift
+  apples-to-apples as decoupled-no-tools (22–40%) → with-tools (~87–96%), not old-0% → 90%. [[project_simulate_grader_artifact]]
+- **Two-metric result:** simulate format-compliance = 0% for every model (strict content∧format = 0%);
+  all no-tools state-tracking success is Q1 wrapper-tolerant coercion (models get content right, never the
+  exact wrapper). **solve:** decoupling is a RISK at mid-capability (4B −6pp), neutral for 9B/35b (ctx-ceiling).
+- **With-tools parity — no re-run.** Reuse sweep5v2 with-tools as the comparison arm: decoupling is
+  no-tools-only by construction; with-tools never starved (`think_overflow=0`, simulate 87–96%); the only
+  apparatus delta (reasoning-parser off vs on) doesn't touch tool-call extraction/grading. A cheap
+  parser-off+tools smoke is the apples-to-apples insurance before citing sweep5v2 (ISS-024(d), still gated).
+- **Process:** the actual `paper/` rewrite is **deferred to a fresh-session agent** (per user); `paper/`
+  left untouched this session.

@@ -68,6 +68,38 @@ State-tracking success (`success`, base→dec), decoupled vs sweep5v2 think=on b
 - `paper/` stays frozen (gather-data-first); this rollup is the **ready-to-fold** answer to the
   simulate sole-source-floor claim once the freeze lifts.
 
+## 📌 PAPER REWRITE — PENDING, for a FRESH session (this session did NOT touch `paper/`)
+
+Decision (2026-07-11, user): fold the decoupled results into the paper, but a **fresh-session
+agent does the actual `paper/` rewrite** — this session deliberately left `paper/` untouched.
+What the fresh agent must change (numbers: the LINE-COMPLETE table above +
+`development/decoupled/decoupled_rollup.py`):
+
+1. **Retract the simulate "sole-source floor" claim.** No-tools simulate 0% was an ARTIFACT
+   (grader + shared-budget reasoning starvation), not a capability floor. Report the true
+   no-tools baseline = decoupled: 0.8B 0% · 4B 23% · 9B 22% · 35b 40% (state-tracking).
+2. **Re-frame the simulate tool-lift apples-to-apples** as decoupled-no-tools (22–40%) →
+   with-tools (~87–96%), NOT old-0% → 90%. Lift is still large; the "can't simulate at all"
+   framing is wrong.
+3. **Two-metric finding:** simulate format-compliance = 0% for every model (strict
+   content∧format = 0%); all no-tools state-tracking success is Q1 wrapper-tolerant coercion.
+4. **solve caveat:** decoupling is a RISK at mid-capability (4B −6pp); neutral for 9B/35b
+   (ctx-ceiling).
+
+## With-tools parity — CONCLUSION (no full re-run; reuse sweep5v2 with-tools)
+
+Q: re-run with-tools under the decoupled apparatus, or would we see no change vs sweep5v2?
+A: **No re-run — reuse sweep5v2 with-tools.** Expected change = none, three structural reasons:
+(1) `--decoupled-budget` is rejected with tools by construction (no-tools-only); (2) with-tools
+has no reasoning starvation to fix — sweep5v2 with-tools think=on already shows `think_overflow=0`
+everywhere and simulate 87–96% (9B/35B); (3) the sole apparatus delta (reasoning-parser off in
+decoupled vs on in sweep5v2) governs `<think>`/answer separation in the no-tools TEXT path only —
+with-tools answers are TOOL CALLS, extracted + graded independent of the reasoning parser.
+**Apples-to-apples insurance (cheap):** parser-off + tools smoke (1–2 Qwens, `--partial`,
+think=on), diff vs the matching sweep5v2 with-tools cells. Matches (expected) → sweep5v2 with-tools
+is the apparatus-validated comparison arm, cite it. Diverges → full re-run. Same as ISS-024(d);
+GATED on user + a green smoke.
+
 ## Result so far (from the `--partial 2` smoke; matched A/B, join on trial `key`)
 
 Decoupled (split budget) vs sweep5v2 think=on baseline (shared budget), no-tools `simulate`:
