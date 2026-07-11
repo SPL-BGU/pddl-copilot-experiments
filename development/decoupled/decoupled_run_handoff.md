@@ -100,6 +100,40 @@ think=on), diff vs the matching sweep5v2 with-tools cells. Matches (expected) �
 is the apparatus-validated comparison arm, cite it. Diverges → full re-run. Same as ISS-024(d);
 GATED on user + a green smoke.
 
+## With-tools GRADING-SURFACE caveat — PROVEN (2026-07-11); the paper must state it
+
+**With-tools success is graded on the TOOL CALL RESULT, not the model's final answer.** Proof
+(`pddl_eval/scoring.py` `check_success`): the with-tools branches read the tool's own output via
+`_get_tool_results` / `tc.get("result")` — validate_\* `:528-536`, solve `:473-492`, simulate
+`:575-583`; helper `_get_tool_results` `:74` returns `tc["result"]` verbatim. The model `response`
+is read ONLY in the no-tools fallback paths (`:497-498`, `:544-548`, `:596`). So with-tools success
+= *"right tool selected AND the tool (on the model's args) returned the ground-truth answer"*, NOT
+*"the model correctly conveyed that answer"*.
+
+Empirical size of the gap (validate_\*, sweep5v2 with-tools successes; repro:
+`development/decoupled/with_tools_grading_surface_probe.py`):
+
+| | 35b (n=7812) | 4B (n=6075) |
+|---|--:|--:|
+| model restates the tool verdict (faithful) | 63.6% | 60.3% |
+| model states a **contradictory** verdict | **0.0%** | **0.0%** |
+| model states **no checkable verdict** (credited on the tool alone) | 36.4% | 39.7% |
+| — of which completed yet silent (`done_reason=stop`) | 28.9% | 17.3% |
+| — of which truncated (`done_reason=length`) | 7.4% | 22.5% |
+
+**Implications for the paper rewrite:**
+- **No-tools grades the model's OWN answer; with-tools grades the TOOL's answer** — a different,
+  more generous surface. With-tools numbers are a **tool-selection + faithful-invocation** metric,
+  NOT a strict end-to-end answer metric. The tool-lift claim must say so; do not read with-tools
+  success as "the model produced the right final answer".
+- **Models never *misreport* the tool (0% contradiction)** — the deviation is *under-specification*
+  (≈29% of 35b successes complete without ever stating a checkable conclusion), not error.
+
+**PROPOSED, deferred to a fresh session (per user, to discuss — do NOT build yet):** add a
+secondary **end-to-end with-tools** metric that ALSO requires the model's final `response` to match
+ground truth (grade `response` via the no-tools path), quantifying the interpretation gap. Fully
+offline-computable — `response` + `tool_calls[].result` are both stored — so no re-run needed.
+
 ## Result so far (from the `--partial 2` smoke; matched A/B, join on trial `key`)
 
 Decoupled (split budget) vs sweep5v2 think=on baseline (shared budget), no-tools `simulate`:

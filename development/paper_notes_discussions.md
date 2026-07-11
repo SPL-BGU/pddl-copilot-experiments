@@ -576,3 +576,15 @@ validated by an independent ranking subagent (the user asked for a second perspe
   parser-off+tools smoke is the apples-to-apples insurance before citing sweep5v2 (ISS-024(d), still gated).
 - **Process:** the actual `paper/` rewrite is **deferred to a fresh-session agent** (per user); `paper/`
   left untouched this session.
+- **With-tools GRADING-SURFACE caveat (proven 2026-07-11).** With-tools success is graded on the TOOL
+  CALL RESULT, not the model's final answer (`scoring.py check_success` reads `tc["result"]` in every
+  with-tools branch; the model `response` is read only in the no-tools paths). So no-tools grades the
+  model's OWN answer while with-tools grades the TOOL's answer — a more generous surface; with-tools is a
+  tool-selection + faithful-invocation metric, NOT strict end-to-end. Empirically (validate_\*, sweep5v2
+  with-tools successes) models NEVER misreport the tool (0% contradiction) but ~36% (35b) / ~40% (4B)
+  state no checkable verdict — credited on the tool alone (35b: 28.9% completed-yet-silent + 7.4%
+  truncated). The paper's tool-lift framing must state this. Proof/repro:
+  `development/decoupled/with_tools_grading_surface_probe.py`; caveat detailed in the decoupled handoff.
+- **PROPOSED (deferred to fresh session):** a secondary end-to-end with-tools metric that also grades the
+  model's final `response` against ground truth, to put a number on the interpretation gap. Offline-computable
+  (no re-run). To be discussed, not built yet.
