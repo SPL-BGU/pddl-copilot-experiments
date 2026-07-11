@@ -46,6 +46,13 @@ is the resolver for the strict-grading-undecided cells — leave it alone.
    with trials grouped by task the tools+system prefix stays hot across consecutive
    trials, and solve's multi-turn loops (~4.7 turns) read ~30K cached tok/trial (solve
    $0.91 cached vs $1.39 no-cache per 20 trials). Budget the WT arm at ~0.85× list.
+1b. **Tool-result verbosity can overflow even the 200K frontier window.** Full-run
+   finding (2026-07-11, canonical WT): `simulate depot/p01` — a single
+   `get_state_transition` result pushed turn 2 to ~498K tokens → API 400. Fixed in
+   `frontier_runner.py` (commit 8b5d276): recorded as `FR_TRUNCATED_NO_ANSWER` /
+   `done_reason=length` with tool_calls kept (open-arm-equivalent semantics), NOT
+   infra. Paper-relevant: simulate's sole-source status has a *tool-side* capacity
+   boundary independent of model quality; watch for more hits on big domains.
 2. **`--use-cached-gt` is smoke/dev only.** It loads GT from `results/derived/gt_cache.json`
    to skip the heavy `generate_ground_truth` solver prelude (which SIGKILLs in a
    resource-limited sandbox). The **full run and the paired probe must generate fresh**
