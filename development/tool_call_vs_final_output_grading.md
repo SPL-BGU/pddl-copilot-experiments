@@ -385,6 +385,16 @@ Branch: `feat/e2e-scoring-overlay`. Overlay output: `results/derived/e2e_overlay
     almost no arg-errors on sweep7 (2 vs sweep5v2's 8,756), consistent with the newer
     plugin code it ran ("Sweep5 tool error fixes" #56).
 
+### Frontier reruns — DECIDED 2026-07-11 (Omer), gated on harness discussion
+
+Fresh **Haiku + Sonnet single-tool reruns** for exact end-to-end numbers (the stored
+frontier corpora are 75–100% censored; §Phase 4). NOT submitted yet — first a discussion:
+run them on the **Claude API framework** vs the existing bare-loop harness. Omer's
+driver: a clean transition from single-tool to the PlanBench benchmarks — PlanBench
+frontier will use the Claude API framework, so it must be assessed in the single-tool
+experiment too. Folds into the harness fork in the frontier phase design (memory
+`project_frontier_phase_design`); discussion doc to come.
+
 ### ISS-024(d) full re-run — SUBMITTED 2026-07-11 (job 19293221)
 
 Per Omer's decision (skip the smoke, run the complete arm): 4 Qwens × think=on ×

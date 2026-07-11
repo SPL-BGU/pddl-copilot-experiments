@@ -623,3 +623,20 @@ validated by an independent ranking subagent (the user asked for a second perspe
   simulate normalizer + validate_plan FP binning), **D4** names approved (**end-to-end success** vs
   **tool-verified success**), **D5** corpora = sweep5v2-live + sweep6 + Sonnet/Haiku frontier + sweep7,
   **D6=A** (censored old corpora reported as bounds; no extra runs).
+
+## 2026-07-11 (later-2) — DECIDED: fresh Haiku + Sonnet single-tool reruns; harness-framework discussion queued
+
+- **DECIDED (Omer): rerun Haiku AND Sonnet single-tool for fresh numbers.** Motivation from the e2e
+  overlay findings: the existing frontier corpora are 75–100% snapshot-censored (Sonnet no-tools
+  simulate 0/300 is 100% unrecoverable from disk; with-tools probes 75–93% blind on validate_plan), so
+  fresh runs under full response saving are the only way to exact frontier end-to-end numbers.
+- **GATED on a harness-framework discussion (to be held before submitting):** run the frontier
+  single-tool arm on (a) the **Claude API framework** vs (b) the **existing harness** (bare-loop
+  `tools/sonnet_tools_probe.py` / batch path). Omer's rationale for (a): he wants a clean
+  **transition/bridge from the single-tool experiments to the PlanBench benchmarks** — PlanBench
+  frontier will run on the Claude API framework, so that framework must ALSO be assessed inside the
+  single-tool experiment for the two benchmark families to be comparable. This folds into the open
+  harness fork in [[project_frontier_phase_design]] (bare loop / agnostic / Claude-native); the
+  PlanBench-continuity argument now weighs on it.
+- Nothing submitted for the frontier reruns yet; the ISS-024(d) Qwen with-tools re-run (job 19293221)
+  is running independently.
