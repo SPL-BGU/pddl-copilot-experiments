@@ -295,46 +295,98 @@ async def main_async(args) -> None:
             think_tag="off",
         )
         selected = select_jobs(jobs, args)
+
+        # Resume: restore completed rows from a prior interrupted run of the
+        # same out dir, retry infra failures (transient API errors), and
+        # compact the file so append-as-we-go never duplicates a key. Torn
+        # trailing lines (crash mid-write) are dropped with a warning.
+        out_dir = Path(args.out)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        trials_path = out_dir / "trials.jsonl"
+        restored: list[TaskResult] = []
+        done_keys: set[tuple] = set()
+        if trials_path.exists():
+            retried = torn = 0
+            for line in trials_path.read_text().splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    row = json.loads(line)
+                    r = TaskResult(**row["result"])
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    torn += 1
+                    continue
+                if r.infra_failure:
+                    retried += 1
+                    continue
+                restored.append(r)
+                done_keys.add(tuple(row["key"]))
+            if torn:
+                print(f"[frontier-B] WARNING: dropped {torn} unparsable "
+                      f"line(s) from {trials_path}")
+            print(f"[frontier-B] resume: {len(restored)} trials restored"
+                  f"{f', {retried} infra-failure(s) retried' if retried else ''}")
+
+        def row_key(r: TaskResult) -> list:
+            return list(_trial_key(model, r.task, r.domain_name,
+                                   r.problem_name, r.plan_label,
+                                   r.prompt_variant, r.with_tools,
+                                   "off", "all", "minimal"))
+
+        def job_key(j) -> tuple:
+            return _trial_key(model, j[J_TASK], j[J_DNAME], j[J_PNAME],
+                              j[J_PLAN], j[J_PV], True, "off", "all",
+                              "minimal")
+
+        selected = [j for j in selected if job_key(j) not in done_keys]
         print(f"[frontier-B] selected {len(selected)} trials "
               f"(of {len(jobs)} tools grid)")
 
+        # Compact atomically (tmp + rename) so a crash here can't lose the
+        # restored rows, then append each new trial as it lands.
+        tmp = trials_path.with_suffix(".jsonl.tmp")
+        with tmp.open("w") as fh:
+            for r in restored:
+                fh.write(json.dumps({"key": row_key(r),
+                                     "result": asdict(r)}) + "\n")
+        tmp.replace(trials_path)
+
         results: list[TaskResult] = []
-        for i, job in enumerate(selected, 1):
-            try:
-                outcome = await run_one(client, mcp, model, job)
-                r = await grade(job, outcome, mcp, model)
-            except Exception as exc:
-                if "credit balance" in str(exc).lower():
-                    print(f"  [{i:3d}/{len(selected)}] STOP — credit balance too low")
-                    break
-                r = failed_result(job, str(exc), model)
+        with trials_path.open("a") as fh:
+            for i, job in enumerate(selected, 1):
+                try:
+                    outcome = await run_one(client, mcp, model, job)
+                    r = await grade(job, outcome, mcp, model)
+                except Exception as exc:
+                    if "credit balance" in str(exc).lower():
+                        print(f"  [{i:3d}/{len(selected)}] STOP — "
+                              "credit balance too low")
+                        break
+                    r = failed_result(job, str(exc), model)
+                    print(f"  [{i:3d}/{len(selected)}] {job[J_TASK]:16s} "
+                          f"{job[J_DNAME]}/{job[J_PNAME]}  ERR {str(exc)[:70]}")
+                else:
+                    print(f"  [{i:3d}/{len(selected)}] {r.task:16s} "
+                          f"{r.domain_name}/{r.problem_name}"
+                          f"{('/' + r.plan_label) if r.plan_label else '':6s} "
+                          f"turns={outcome['turns']:2d} "
+                          f"in={outcome['in_tok']:6d} "
+                          f"out={outcome['out_tok']:5d} "
+                          f"cw={outcome['cache_write']:5d} "
+                          f"cr={outcome['cache_read']:6d} "
+                          f"{'OK ' if r.success else 'x  '}{r.failure_reason}")
                 results.append(r)
-                print(f"  [{i:3d}/{len(selected)}] {job[J_TASK]:16s} "
-                      f"{job[J_DNAME]}/{job[J_PNAME]}  ERR {str(exc)[:70]}")
-                continue
-            results.append(r)
-            print(f"  [{i:3d}/{len(selected)}] {r.task:16s} "
-                  f"{r.domain_name}/{r.problem_name}"
-                  f"{('/' + r.plan_label) if r.plan_label else '':6s} "
-                  f"turns={outcome['turns']:2d} in={outcome['in_tok']:6d} "
-                  f"out={outcome['out_tok']:5d} "
-                  f"cw={outcome['cache_write']:5d} cr={outcome['cache_read']:6d} "
-                  f"{'OK ' if r.success else 'x  '}{r.failure_reason}")
+                fh.write(json.dumps({"key": row_key(r),
+                                     "result": asdict(r)}) + "\n")
+                fh.flush()
     finally:
         await mcp.close()
         await client.close()
 
+    results = restored + results
     if not results:
         print("[frontier-B] no results")
         return
-    out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    with (out_dir / "trials.jsonl").open("w") as fh:
-        for r in results:
-            key = list(_trial_key(model, r.task, r.domain_name, r.problem_name,
-                                  r.plan_label, r.prompt_variant, r.with_tools,
-                                  "off", "all", "minimal"))
-            fh.write(json.dumps({"key": key, "result": asdict(r)}) + "\n")
     save_results(results, out_dir, meta={
         "model": model, "conditions": "tools", "think": "off", "temperature": 0,
         "backend": "anthropic-tool-runner",
