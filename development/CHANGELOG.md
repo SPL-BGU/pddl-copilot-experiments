@@ -6,6 +6,38 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-12 — e2e overlay D7/D7b: tolerant delivered-answer extraction + anon oracle (Haiku WT solve/simulate "gap" was grader artifact)
+
+**Bug.** The first Haiku full-run headline (WT solve e2e 13.5 vs tool-verified 100;
+simulate 0 vs 97.5) was three overlay artifacts stacked, not answer-dropping:
+(1) `scoring._ACTION_LINE_RE` rejects markdown plan lines
+(`` 1. `(grasp left shot1)` - annotation ``) — 190/200 Haiku WT solve responses restate
+the tool-validated plan VERBATIM, yet 141 binned `no_plan_extracted`; (2) the Q1
+whole-response JSON rule fails Haiku's prose-wrapped ```json trajectory fences — canon
+simulate had 52/100 exact oracle matches graded `format_parse_fail`; (3) sweep6* rows
+(canonical `domain_name`, anonymized symbols) were validated against canonical `domains/`
++ `gt_cache.json` → anon solve 32/32 falsely `plan_invalid`, NT-anon simulate 59 clean
+parses falsely `trajectory_mismatch` (the pooled NT simulate 0.0 [0,5.7] was artifact).
+
+**Change (`tools/e2e_regrade.py`).** D7: delivered-answer extraction is format-tolerant,
+both arms — backtick/annotation-tolerant plan lines (`_TOLERANT_ACTION_RE`), fenced-JSON
+block fallback for simulate (`coerce_simulate_tolerant`); per-row `extraction` provenance
+keeps format drift measurable; false positives impossible (plans still face live VAL,
+trajectories deep-equality vs the oracle); the frozen Q1 whitelist in `scoring.py` is NOT
+widened. D7b: sweep6* cells grade against `domains-anon/` + new
+`results/derived/gt_cache_anon.json` (`build_gt_cache.py --domains-dir domains-anon`);
+overlay rows carry an `anon` flag. All overlay corpora re-run under the new rules so one
+rule set governs `results/derived/e2e_overlay/`.
+
+**Corrected Haiku WT (e2e_strict):** solve ~95 (real failures: 3 `save_plan` delegation +
+partial long-plan transcriptions), simulate canon [52, 64]. Surviving finding =
+delivered-answer fidelity degrades with output LENGTH; plus strict parser parity ≠ arm
+neutrality (NT one-shot obeys the JSON format, post-tool-chat WT answers in markdown).
+Decision provenance: `development/tool_call_vs_final_output_grading.md` §0b; paper_notes
+2026-07-12.
+
+---
+
 ## 2026-07-11 — e2e overlay: dual D2b columns, strict becomes the headline
 
 **Change.** `tools/e2e_regrade.py` now emits BOTH D2b operationalizations per overlay row:

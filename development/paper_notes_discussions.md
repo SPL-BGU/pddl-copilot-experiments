@@ -704,3 +704,33 @@ validated by an independent ranking subagent (the user asked for a second perspe
   cost lines in `frontier_rerun_framework_decision.md` annotated.
 - Next: generate the stratified stage-1 keys file → run it through BOTH `frontier_runner.py`
   (B) and `claude_api_tools_probe.py` (A) → compare success + turns/tokens + real cost.
+
+## 2026-07-12 — Haiku WT solve/simulate "delivered gap" RETRACTED: three overlay grading artifacts, not answer-dropping
+
+- The morning headline (WT solve e2e 13.5 vs tool-verified 100; simulate 0 vs 97.5) is
+  withdrawn. Drilling into the raw trials showed the model delivers the answers; the
+  overlay grader could not read them. Do not cite the 13.5/0 row anywhere.
+- **Artifact 1 (solve):** Haiku formats plans as markdown numbered lists with backticked
+  actions + trailing annotations; the strict extractor requires bare `(action)` lines.
+  190/200 delivered plans are VERBATIM copies of the tool-validated plan.
+- **Artifact 2 (simulate):** Haiku wraps a complete ```json trajectory fence in prose; the
+  Q1 rule parses the whole response as one JSON value. Canon: 52/100 fenced trajectories
+  match the oracle exactly.
+- **Artifact 3 (anon oracle, hits NT too):** sweep6 rows were graded against canonical
+  fixtures/gt while their symbols are anonymized → anon solve 32/32 falsely invalid,
+  NT-anon simulate 59/100 clean parses all falsely mismatched (the pooled NT simulate
+  0.0 [0, 5.7] was artifact as well).
+- **DECIDED (D7/D7b, recorded in tool_call_vs_final_output_grading.md §0b):** overlay
+  delivered-answer extraction is format-tolerant, identical in both arms, with per-row
+  `extraction` provenance; sweep6* grades against domains-anon + gt_cache_anon. The frozen
+  Q1 online-grader whitelist is untouched. Oracle validation (VAL / deep-equality) makes
+  tolerant extraction false-positive-proof.
+- **Surviving paper story (replaces "drives tool then drops answer"):** delivered-answer
+  fidelity degrades with output length — short plans restated verbatim (~95 delivered),
+  long trajectories truncated/elided/summarized (canon [52, 64] vs tool-verified 97.5).
+  Secondary finding: strict parser parity across arms ≠ arm neutrality; NT one-shot output
+  obeys the JSON format while post-tool-chat WT output is chatty markdown, so the strict
+  shared parser partly measured format drift.
+- Corrected pooled table to be regenerated from the D7 overlay re-run (all corpora re-run
+  under one rule set); Sonnet-WT go/no-go should be revisited against the corrected gap
+  (~5pp solve / ~35-45pp simulate, not 85-97pp).

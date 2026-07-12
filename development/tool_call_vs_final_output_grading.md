@@ -18,6 +18,62 @@ finding. Full audit + numbers: `development/decision_audit_grading_and_frontier.
 The ISS-024(d) run is unaffected and stays running (it resolves the strict-undecided
 cells exactly).
 
+**D7 + D7b (2026-07-12): overlay extraction artifacts found and fixed — the Haiku
+solve/simulate "delivered gap" was mostly grader, not model.** See §0b below. Headline
+consequence: Haiku WT delivered solve is ~95, not 13.5; simulate canon is [52, 64], not 0.
+Do not cite the 2026-07-12 morning table's solve/simulate rows.
+
+---
+
+## 0b. D7/D7b — the overlay's own extraction artifacts (2026-07-12)
+
+Drilling into the first full-run headline (Haiku WT solve 13.5 vs tool-verified 100,
+simulate 0 vs 97.5) showed the gap was three overlay grading artifacts stacked, not
+answer-dropping:
+
+1. **Markdown plan framing (solve).** After a tool conversation Haiku formats the plan
+   as a numbered markdown list — `` 1. `(grasp left shot1)` - Pick up shot1... ``. The
+   strict `_ACTION_LINE_RE` requires a bare `(` after the numbering and `)` at line end,
+   so the backtick and the trailing annotation each kill the match. Offline comparison
+   against the planner tool's own plan inside the same trial: **190/200 delivered plans
+   are verbatim copies of the tool-validated plan**; 141 had been binned
+   `no_plan_extracted`. Genuine failures: 3 delegate to `save_plan` + prose summary,
+   6 partial transcriptions of long plans (44/86, 11/121 actions, ...), 1 near-miss.
+2. **Prose-wrapped fenced JSON (simulate).** Haiku emits the complete trajectory in a
+   ```json fence but surrounds it with prose; the Q1 rule parses the WHOLE response as
+   one JSON value and `_strip_md_fence` only strips a leading fence → 82–86%
+   `format_parse_fail`. Grading the fenced block: canon 52/100 exact oracle matches
+   (15 real content mismatches, 12 censored at the 16K cap, rest truncation/prose).
+3. **Anon-vs-canonical oracle (solve + simulate, WT and NT).** sweep6 rows carry the
+   canonical `domain_name` but anonymized symbols; the overlay validated plans against
+   canonical `domains/` and compared trajectories to the canonical `gt_cache.json` →
+   guaranteed failure. Haiku anon solve: 32/32 falsely `plan_invalid` (canon split:
+   27/27 valid). NT-anon simulate: 59/100 clean whole-response parses ALL falsely
+   `trajectory_mismatch` — the pooled NT simulate 0.0 [0, 5.7] row was artifact too.
+
+**D7 (decision):** the overlay's delivered-answer extraction is format-tolerant, applied
+identically to both arms: solve plan lines may be backtick-wrapped with a trailing
+annotation; simulate accepts a fenced JSON block inside prose (block content still must
+coerce under the unchanged Q1 whitelist). NT rows verified unchanged (one-shot responses
+are format-compliant: every non-censored NT solve response parses as `SolveResponse`
+JSON). Tolerance cannot create false positives — extracted plans still face live VAL, and
+trajectories still face deep-equality against the oracle. The frozen Q1 whitelist in
+`scoring.py` (online NT grader) is NOT widened. Each overlay row records `extraction`
+provenance (`json`/`strict_lines`/`tolerant_lines`; `whole`/`fenced_block`) so the format
+drift itself stays measurable.
+
+**D7b (decision):** sweep6* cells grade against the anon fixtures — solve validation
+against `domains-anon/`, simulate oracle from `results/derived/gt_cache_anon.json`
+(`tools/build_gt_cache.py --domains-dir domains-anon`).
+
+**Surviving finding (replaces "drives tool then drops answer"):** the WT arm's residual
+delivered gap is an output-LENGTH fidelity effect — short plans are restated verbatim
+(~95% delivered), multi-thousand-char trajectories get truncated/elided/summarized
+(canon delivered [52, 64] vs tool-verified 97.5). Second finding: strict parser parity
+across arms is not arm-NEUTRALITY — NT one-shot output obeys the JSON format (~100%
+of non-censored NT solve; 59% whole-parse NT-anon simulate) while post-tool-chat WT
+output is chatty markdown, so strict-shared-parser e2e partly measured format drift.
+
 ---
 
 ## Decisions to record (Omer — fill each `> MY DECISION:` slot)

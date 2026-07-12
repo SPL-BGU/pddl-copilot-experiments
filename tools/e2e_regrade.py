@@ -19,6 +19,28 @@ development/tool_call_vs_final_output_grading.md (2026-07-11):
          (pre-2026-06-25, runner.py RESPONSE_SNAPSHOT_LEN) are censored: a
          non-empty snapshot exactly at the cap with no gradeable answer is
          INDETERMINATE, and rates are reported as [lower, upper] bounds.
+  D7     (2026-07-12) delivered-answer extraction is FORMAT-TOLERANT, both
+         arms. The strict online parsers reject the markdown framing frontier
+         chat models use after a tool conversation (solve: numbered lists of
+         backticked actions with trailing annotations; simulate: a complete
+         fenced ```json trajectory wrapped in prose), so strict e2e measured
+         post-tool-chat format drift, not answer content — Haiku WT delivered
+         the tool-validated plan VERBATIM in 190/200 solve trials yet 141
+         binned no_plan_extracted. Tolerance = (a) solve plan lines may be
+         backtick-wrapped and carry a trailing annotation; (b) simulate may
+         put the JSON trajectory in a fenced block inside prose. Applied
+         identically to both arms (NT rows verified unchanged: one-shot
+         responses are format-compliant). Each row records `extraction`
+         provenance so format drift stays measurable. The frozen Q1 whitelist
+         in scoring.py (online NT grader) is NOT widened.
+  D7b    (2026-07-12) anon corpora (sweep6*) are graded against the ANON
+         fixtures: solve plans validate against domains-anon/, simulate
+         trajectories compare to gt_cache_anon.json (build with
+         tools/build_gt_cache.py --domains-dir domains-anon). sweep6 rows
+         carry canonical domain_name but anonymized symbols, so grading them
+         against canonical fixtures fails by construction (Haiku: 32/32 anon
+         solve falsely plan_invalid, 59 clean NT-anon simulate parses falsely
+         trajectory_mismatch).
 
 Per-task grading of the stored response:
   validate_*  truth from fixture naming (verified against runner.py emission:
@@ -76,6 +98,66 @@ ALL_TASKS = VALIDATE_TASKS + ("solve", "simulate")
 KNOWN_CAPS = (500, 16384)
 
 NEG_PROBLEM_RE = re.compile(r"^n\d\d$")
+
+# D7 solve tolerance: same line shape as scoring._ACTION_LINE_RE plus an
+# optional backtick around the s-expression and an optional trailing
+# annotation ("- Pick up shot1...") after the closing paren. A stray
+# backticked atom in prose can only ever ADD lines that then fail live plan
+# validation — the oracle is the safety net, tolerance cannot create a false
+# positive.
+_TOLERANT_ACTION_RE = re.compile(
+    r"""
+    ^\s*
+    (?:\d+[.):]\s*|[-*]\s+)?    # optional step numbering OR bullet
+    `?\(\s*
+        [A-Za-z][\w-]*          # action name
+        (?:\s+[\w\-?@.]+)*      # zero or more simple argument tokens
+    \s*\)`?
+    (?:\s*[-–—:].*)?            # optional trailing annotation
+    \s*$
+    """,
+    re.VERBOSE,
+)
+
+# D7 simulate tolerance: a fenced code block (``` or ```json) anywhere in the
+# response; the block content must still coerce as ONE JSON value under the
+# unchanged Q1 whitelist.
+_FENCED_BLOCK_RE = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
+
+
+def extract_plan_lines_tolerant(response: str) -> tuple[list[str], str | None]:
+    """Strict extraction first, markdown-tolerant fallback (D7).
+
+    Returns (plan_lines, extraction_mode) with mode in
+    {"strict_lines", "tolerant_lines", None}.
+    """
+    lines = extract_plan_lines(response)
+    if lines:
+        return lines, "strict_lines"
+    plan: list[str] = []
+    for line in (response or "").splitlines():
+        if not _TOLERANT_ACTION_RE.match(line):
+            continue
+        inner = line[line.find("("):]
+        inner = inner[: inner.find(")") + 1]
+        plan.append(" ".join(inner.split()).lower())
+    return plan, ("tolerant_lines" if plan else None)
+
+
+def coerce_simulate_tolerant(resp: str) -> tuple[list[dict] | None, str | None]:
+    """Whole-response Q1 coercion first, fenced-block fallback (D7).
+
+    Returns (steps, extraction_mode) with mode in
+    {"whole", "fenced_block", None}.
+    """
+    steps, _compliant = _coerce_simulate_trajectory(resp)
+    if steps is not None:
+        return steps, "whole"
+    for m in _FENCED_BLOCK_RE.finditer(resp or ""):
+        steps, _compliant = _coerce_simulate_trajectory(m.group(1).strip())
+        if steps is not None:
+            return steps, "fenced_block"
+    return None, None
 
 
 def truth_for(row: dict) -> bool | None:
@@ -139,6 +221,12 @@ def oracle_canon_for(gt_cache: dict, row: dict):
     return _normalize_trajectory(trace.get("trajectory"))
 
 
+def is_anon(corpus_dir: Path, cell: str) -> bool:
+    """sweep6* corpora hold anonymized-symbol rows under canonical
+    domain_name keys (D7b); they must grade against the anon fixtures."""
+    return "sweep6" in corpus_dir.name or "sweep6" in cell
+
+
 def _base_out(row: dict) -> dict:
     return {
         "task": row["task"],
@@ -185,10 +273,12 @@ def _grade_empty_or_censored(out: dict, row: dict, resp: str, cap: int | None,
 
 
 async def regrade_row(row: dict, cap: int | None, gt_cache: dict,
-                      ctx: "SolveContext") -> dict:
+                      ctx: "SolveContext", anon: bool = False) -> dict:
     """Return the overlay verdict for one trial row.
 
     e2e is one of True / False / "indeterminate" (censored).
+    `anon` selects the anon fixture set (D7b) for solve validation and the
+    simulate oracle.
     """
     out = _base_out(row)
     task = row["task"]
@@ -233,10 +323,14 @@ async def regrade_row(row: dict, cap: int | None, gt_cache: dict,
             out["e2e_reason"] = "censored_at_snapshot_cap"
             return out
         parsed = _safe_pydantic_validate(SolveResponse, resp)
-        plan_lines = parsed.plan if parsed else extract_plan_lines(resp)
+        if parsed:
+            plan_lines, out["extraction"] = parsed.plan, "json"
+        else:
+            plan_lines, out["extraction"] = extract_plan_lines_tolerant(resp)
         if plan_lines:
             verdict = await ctx.validate(row["domain_name"],
-                                         row["problem_name"], plan_lines)
+                                         row["problem_name"], plan_lines,
+                                         anon=anon)
             if verdict is None:
                 out["e2e"] = "indeterminate"
                 out["e2e_reason"] = "plan_validation_transport_error"
@@ -252,7 +346,7 @@ async def regrade_row(row: dict, cap: int | None, gt_cache: dict,
             out["e2e"] = "indeterminate"
             out["e2e_reason"] = "no_ground_truth"
             return out
-        steps, _compliant = _coerce_simulate_trajectory(resp)
+        steps, out["extraction"] = coerce_simulate_tolerant(resp)
         if steps:
             model_canon = _normalize_trajectory(steps)
             if model_canon is None:
@@ -274,23 +368,29 @@ async def regrade_row(row: dict, cap: int | None, gt_cache: dict,
 
 
 class SolveContext:
-    """Live-MCP plan validation with an in-memory dedupe cache."""
+    """Live-MCP plan validation with an in-memory dedupe cache.
 
-    def __init__(self, mcp, domains: dict | None):
+    Holds both fixture sets; `anon=True` validates against the anon tree
+    (D7b) so sweep6 plans meet the symbols they were written in.
+    """
+
+    def __init__(self, mcp, domains: dict | None,
+                 domains_anon: dict | None = None):
         self.mcp = mcp
         self.domains = domains or {}
+        self.domains_anon = domains_anon or {}
         self.cache: dict[tuple, bool | None] = {}
         self.calls = 0
 
     async def validate(self, dname: str, pname: str,
-                       plan_lines: list[str]) -> bool | None:
+                       plan_lines: list[str], anon: bool = False) -> bool | None:
         if self.mcp is None:
             return None
-        dinfo = self.domains.get(dname)
+        dinfo = (self.domains_anon if anon else self.domains).get(dname)
         ppddl = (dinfo or {}).get("problems", {}).get(pname)
         if not dinfo or not ppddl:
             return None
-        key = (dname, pname, tuple(plan_lines))
+        key = (anon, dname, pname, tuple(plan_lines))
         if key not in self.cache:
             self.calls += 1
             self.cache[key] = await _validate_model_plan(
@@ -299,7 +399,7 @@ class SolveContext:
 
 
 async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
-                         ctx: SolveContext) -> list[dict]:
+                         gt_cache_anon: dict, ctx: SolveContext) -> list[dict]:
     rows_out = []
     # trials*.jsonl: the frontier probe corpora use suffixed names
     # (e.g. trials_rest52.jsonl); group per cell dir.
@@ -323,16 +423,19 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
         if not cell_rows:
             continue
         cap = detect_cap(max_len)
+        anon = is_anon(corpus_dir, cell)
+        gt = gt_cache_anon if anon else gt_cache
         out_path = out_root / corpus_dir.name / f"{cell}.e2e.jsonl"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with out_path.open("w") as fh:
             for row in cell_rows:
-                graded = await regrade_row(row, cap, gt_cache, ctx)
+                graded = await regrade_row(row, cap, gt, ctx, anon=anon)
                 graded["e2e_strict"] = (
                     False if graded["e2e_reason"] == "delegation_terminal_credit"
                     else graded["e2e"])
                 graded["cell"] = cell
                 graded["snapshot_cap"] = cap
+                graded["anon"] = anon
                 fh.write(json.dumps(graded) + "\n")
                 rows_out.append(graded)
     return rows_out
@@ -391,28 +494,47 @@ async def amain() -> None:
                     help="root for the derived overlay files")
     ap.add_argument("--gt-cache", default="results/derived/gt_cache.json",
                     help="oracle cache from tools/build_gt_cache.py")
+    ap.add_argument("--gt-cache-anon",
+                    default="results/derived/gt_cache_anon.json",
+                    help="anon oracle cache (build_gt_cache.py "
+                         "--domains-dir domains-anon), used for sweep6* cells")
+    ap.add_argument("--domains-anon-dir", default="domains-anon",
+                    help="anon fixture tree for sweep6* solve validation")
     ap.add_argument("--marketplace-path", default="../pddl-copilot",
                     help="plugins root for live solve-plan validation")
     ap.add_argument("--no-mcp", action="store_true",
                     help="skip live MCP; solve plans grade as indeterminate")
     args = ap.parse_args()
 
-    gt_path = Path(args.gt_cache)
-    gt_cache = json.loads(gt_path.read_text()) if gt_path.exists() else {}
-    if not gt_cache:
-        print(f"warning: no gt cache at {gt_path}; simulate rows will be "
-              "indeterminate (no_ground_truth)", file=sys.stderr)
+    def _load_gt(path_str: str, label: str) -> dict:
+        path = Path(path_str)
+        cache = json.loads(path.read_text()) if path.exists() else {}
+        if not cache:
+            print(f"warning: no {label} gt cache at {path}; those simulate "
+                  "rows will be indeterminate (no_ground_truth)",
+                  file=sys.stderr)
+        return cache
+
+    gt_cache = _load_gt(args.gt_cache, "canonical")
+    gt_cache_anon = _load_gt(args.gt_cache_anon, "anon")
 
     mcp = None
     domains = None
+    domains_anon = None
     if not args.no_mcp:
         from run_experiment import resolve_plugin_dirs
         from pddl_eval.chat import MCPPlanner
         from pddl_eval.domains import load_domains
         domains = load_domains(Path("domains"))
+        anon_dir = Path(args.domains_anon_dir)
+        if anon_dir.is_dir():
+            domains_anon = load_domains(anon_dir)
+        else:
+            print(f"warning: no anon fixture tree at {anon_dir}; sweep6* "
+                  "solve plans grade as indeterminate", file=sys.stderr)
         mcp = MCPPlanner()
         await mcp.connect(resolve_plugin_dirs(args.marketplace_path))
-    ctx = SolveContext(mcp, domains)
+    ctx = SolveContext(mcp, domains, domains_anon)
 
     try:
         out_root = Path(args.out)
@@ -421,7 +543,8 @@ async def amain() -> None:
             if not corpus_dir.is_dir():
                 print(f"skip (not a dir): {corpus}", file=sys.stderr)
                 continue
-            rows = await process_corpus(corpus_dir, out_root, gt_cache, ctx)
+            rows = await process_corpus(corpus_dir, out_root, gt_cache,
+                                        gt_cache_anon, ctx)
             if rows:
                 summarize(rows, corpus_dir.name)
                 phase3_report(rows, corpus_dir.name)
