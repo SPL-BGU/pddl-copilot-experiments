@@ -60,15 +60,15 @@ can't be cleanly contrast-tested at the delivered level (NT-canon simulate censo
 solve WT e2e dominated by the transcription artifact, not memorization — capability is
 100% tool-verified both corpora).
 
-## SONNET DECISION (open — needs Omer)
+## SONNET DECISION — RESOLVED (Omer, 2026-07-12): canonical-only, "no anon needed"
 
-Sonnet NT both corpora already exist (PR#80); Sonnet only needs **WT**. Sonnet token
-price = 3× Haiku, same trials → WT **both corpora ≈ $191** (exceeds ~$161 remaining),
-**canonical-only ≈ $96** (fits, ~$66 spare). Recommendation: **canonical-only** — the
-anon contamination check was null on Haiku validation and solve/simulate WT are
-artifact-dominated, so the anon WT corpus adds little. Launch identically:
+Sonnet NT both corpora already exist (PR#80); Sonnet only needs **WT**, **canonical only**
+(~$96, fits the ~$161 remaining). Launched 2026-07-12:
 `frontier_runner.py --model claude-sonnet-4-6 --variant 11 --marketplace-path ../pddl-copilot
---out results/sonnet-frontier/sweep5v2-with-tools`. DO NOT launch without go-ahead (large spend).
+--out results/sonnet-frontier/sweep5v2-with-tools`. Regrade into the same overlay
+(`e2e_regrade.py results/sonnet-frontier`) when done; compare WT tool-verified-vs-delivered
+to the Haiku pattern (expect the same solve/simulate transcription gap, smaller if Sonnet
+transcribes better).
 
 ## Decisions already locked (don't relitigate)
 
