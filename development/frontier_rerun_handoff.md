@@ -10,18 +10,65 @@
 
 ## One-paragraph state
 
-**Stage-1 A-vs-B probe DONE (2026-07-11): fully concordant — 0/100 discordant pairs,
-no turns/token shift, stage 2 NOT triggered.** Framework B is licensed as the sole
-full-run harness; the probe stands as the bounded gross-defect check (P2 framing).
-Caching verdict at stratified scale: **ACTIVE, saves ~15%** (the 3-trial smoke's +6%
-net-loss was a small-sample artifact) → keep `cache_control` ON. Full detail + numbers
-recorded in `decision_audit_grading_and_frontier.md` §2.3 (STAGE-1 RESULT block).
-Artifacts: `tools/make_stage1_keys.py`, `tools/frontier_ab_compare.py`,
-`.local/frontier/{stage1_keys.jsonl,a_probe,b_probe}`. The next step is the **full
-Haiku run per D4** (WT via `frontier_runner.py`, NT via the Batch API, canonical +
-anon corpora), then re-estimate cost before Sonnet. Spent so far: ~$7.4 of $238.
-Separately, the Qwen ISS-024(d) job **19293221** is still running on the cluster and
-is the resolver for the strict-grading-undecided cells — leave it alone.
+**Haiku full run DONE + regraded (2026-07-12).** Stage-1 A-vs-B probe was fully
+concordant (§2.3); all four Haiku corpora now on disk and e2e-regraded
+(`results/haiku-frontier/{sweep5v2,sweep6,sweep5v2-with-tools,sweep6-with-tools}`,
+overlay under `results/derived/e2e_overlay/haiku-frontier`). **Spent ~$76.7 of $238;
+~$161 remaining.** The next decision is **Sonnet WT scope** — both corpora (~$191) does
+NOT fit the remainder; canonical-only (~$96) does (see SONNET DECISION below). The
+Haiku RESULTS block below is the headline. Separately, the Qwen ISS-024(d) job
+**19293221** is still on the cluster (leave it; strict-undecided resolver).
+
+## HAIKU FULL-RUN RESULTS (e2e_strict, 2026-07-12)
+
+Corpora: NT via Batch API (canonical = old 2026-06-25 500-cap run reused; anon = fresh
+16K batch, $5.43), WT via `frontier_runner.py` (both corpora fresh, 16K, caching ON,
+canonical $31.87 + anon $31.83, 0 infra rows, 98.4-98.5% online success). Regrade:
+`tools/e2e_regrade.py results/haiku-frontier`. **`delegation_terminal_credit = 0`
+corpus-wide → lenient `e2e` == `e2e_strict` here (D2b headline choice is moot for Haiku).**
+
+Pooled canonical+anon e2e_strict tool-lift (determinate rows, Wilson 95%):
+
+| task | NT (no-tools) | WT (tools) | WT tool-verified |
+|---|---|---|---|
+| validate_domain | 87.1 [82,91] n=240 | **98.8 [96,99.6]** n=240 | 98.8 |
+| validate_problem | 74.8 [70,79] n=400 | **96.5 [94,98]** n=400 | 96.8 |
+| validate_plan | 89.8 [88,91] n=2000 | **98.6 [98,99]** n=2000 | 98.7 |
+| solve | 20.5 [16,27] n=200 | **13.5 [9,19]** n=200 | **100.0** |
+| simulate | 0.0 [0,5.7] n=63* | **0.0 [0,2.2]** n=172 | **97.5** |
+
+*simulate NT canonical is 100% CENSORED (500-cap corpus, response ungradeable); the
+n=63 NT figure is anon-only determinate. To de-censor, rerun NT canonical simulate via
+batch at 16K (~$0.3, 100 trials) — cheap follow-up, not blocking.
+
+**The headline finding (paper-critical):** tool-call grading and end-to-end grading
+AGREE on validation (verdict is a short string the model always restates → tools give a
+real, CI-disjoint delivered-answer lift), but DIVERGE hard on the generative tasks:
+- **solve** — WT tool-verified = **100%** (the model always drives the solver to a valid
+  saved plan) but WT delivered e2e = **13.5%**, *below* NT's 20.5%. The final response
+  omits the plan in 68-73% of trials (`no_plan_extracted`); on anon, the 32/100 that do
+  restate a plan are **all invalid** (0/32) vs 27/27 valid on canonical — the model
+  transcribes the tool's plan into its prose answer wrongly, worse on unfamiliar names.
+- **simulate** — WT tool-verified = **97.5%** but delivered e2e = **0%**: the final
+  answer is not a parseable trajectory in 82-86% (`format_parse_fail`).
+So the standard tool-call metric overstates delivered with-tools capability by ~85pp on
+solve and ~97pp on simulate, and ~0 on validation. This is exactly the
+tool-call-vs-final-output distinction the overlay was built to measure.
+
+**Contamination (canonical vs anon): NULL on validation** (all CIs overlap). solve/simulate
+can't be cleanly contrast-tested at the delivered level (NT-canon simulate censored;
+solve WT e2e dominated by the transcription artifact, not memorization — capability is
+100% tool-verified both corpora).
+
+## SONNET DECISION (open — needs Omer)
+
+Sonnet NT both corpora already exist (PR#80); Sonnet only needs **WT**. Sonnet token
+price = 3× Haiku, same trials → WT **both corpora ≈ $191** (exceeds ~$161 remaining),
+**canonical-only ≈ $96** (fits, ~$66 spare). Recommendation: **canonical-only** — the
+anon contamination check was null on Haiku validation and solve/simulate WT are
+artifact-dominated, so the anon WT corpus adds little. Launch identically:
+`frontier_runner.py --model claude-sonnet-4-6 --variant 11 --marketplace-path ../pddl-copilot
+--out results/sonnet-frontier/sweep5v2-with-tools`. DO NOT launch without go-ahead (large spend).
 
 ## Decisions already locked (don't relitigate)
 
@@ -46,13 +93,19 @@ is the resolver for the strict-grading-undecided cells — leave it alone.
    with trials grouped by task the tools+system prefix stays hot across consecutive
    trials, and solve's multi-turn loops (~4.7 turns) read ~30K cached tok/trial (solve
    $0.91 cached vs $1.39 no-cache per 20 trials). Budget the WT arm at ~0.85× list.
-1b. **Tool-result verbosity can overflow even the 200K frontier window.** Full-run
-   finding (2026-07-11, canonical WT): `simulate depot/p01` — a single
+1b. **Tool-result verbosity can overflow even the 200K frontier window — intermittently.**
+   Full-run finding (2026-07-11/12, WT): `simulate depot/p01` — on one path a single
    `get_state_transition` result pushed turn 2 to ~498K tokens → API 400. Fixed in
-   `frontier_runner.py` (commit 8b5d276): recorded as `FR_TRUNCATED_NO_ANSWER` /
-   `done_reason=length` with tool_calls kept (open-arm-equivalent semantics), NOT
-   infra. Paper-relevant: simulate's sole-source status has a *tool-side* capacity
-   boundary independent of model quality; watch for more hits on big domains.
+   `frontier_runner.py` (commit 8b5d276): "prompt is too long" 400s record as
+   `FR_TRUNCATED_NO_ANSWER` / `done_reason=length` with tool_calls kept
+   (open-arm-equivalent semantics), NOT infra. **NOT deterministic:** the resume
+   mop-up re-ran the same trial (temp 0) and it SUCCEEDED in 3 turns — the SDK runner
+   takes slightly different tool-call paths run-to-run, and only the path that requests
+   the giant state-transition overflows. So the classification fix is a safety net for
+   an intermittent failure mode, not a fixed capacity wall. Final both-corpora WT: 0
+   infra rows, canonical 1497/1520 (98.5%), anon 1495/1520 (98.4%). Paper-relevant:
+   simulate on big domains has a *tool-side* verbosity risk independent of model
+   quality, but it's a tail event (~1 trial), not a floor.
 2. **`--use-cached-gt` is smoke/dev only.** It loads GT from `results/derived/gt_cache.json`
    to skip the heavy `generate_ground_truth` solver prelude (which SIGKILLs in a
    resource-limited sandbox). The **full run and the paired probe must generate fresh**
