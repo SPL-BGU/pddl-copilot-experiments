@@ -60,15 +60,21 @@ can't be cleanly contrast-tested at the delivered level (NT-canon simulate censo
 solve WT e2e dominated by the transcription artifact, not memorization — capability is
 100% tool-verified both corpora).
 
-## SONNET DECISION — RESOLVED (Omer, 2026-07-12): canonical-only, "no anon needed"
+## SONNET WT canonical — DONE (2026-07-12), regrade PENDING overlay fixes
 
-Sonnet NT both corpora already exist (PR#80); Sonnet only needs **WT**, **canonical only**
-(~$96, fits the ~$161 remaining). Launched 2026-07-12:
-`frontier_runner.py --model claude-sonnet-4-6 --variant 11 --marketplace-path ../pddl-copilot
---out results/sonnet-frontier/sweep5v2-with-tools`. Regrade into the same overlay
-(`e2e_regrade.py results/sonnet-frontier`) when done; compare WT tool-verified-vs-delivered
-to the Haiku pattern (expect the same solve/simulate transcription gap, smaller if Sonnet
-transcribes better).
+Canonical-only (Omer "no anon needed"). `frontier_runner.py --model claude-sonnet-4-6
+--variant 11 --out results/sonnet-frontier/sweep5v2-with-tools`. **1520/1520, 0 infra,
+$90.75 (caching saved 22%).** Online (tool-verified) success: simulate 99.0, solve 100.0,
+validate_domain 95.8, validate_plan 99.9, validate_problem 98.0. **Spent ~$167.4/$238
+(~$70.6 left).**
+
+**DO NOT regrade yet.** The e2e overlay's solve/simulate extraction has 3 known bugs
+(markdown-plan extractor, prose-wrapped fenced JSON, anon-vs-canonical oracle) that
+another agent is fixing on this branch — running `e2e_regrade.py` now would reproduce the
+same artifacts that made the retracted Haiku solve 13.5% / simulate 0% numbers. When the
+fixes land: `e2e_regrade.py results/sonnet-frontier`, then compare Sonnet's
+tool-verified-vs-delivered gap to the CORRECTED Haiku picture (solve ~95% delivered,
+simulate canon ∈[52,64]). Validation columns are trustworthy from the raw overlay already.
 
 ## Decisions already locked (don't relitigate)
 
