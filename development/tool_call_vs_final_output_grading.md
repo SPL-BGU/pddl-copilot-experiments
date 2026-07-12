@@ -480,6 +480,66 @@ cap → every trial fully e2e-gradeable: resolves the censored with-tools cells 
 answers the parser-off parity question. Results land in
 `results/slurm_vllm_<model>_on_tools_all_minimal_iss024d-e2e/` (run-tag suffix — remember
 the analyzer cell-parser quirk).
+
+**Corrections + gemma extension (2026-07-12).** (a) The cells emit the FULL v11-16 bank
+(9120/cell = 6×1520; verified per-variant on the completed 0.8B corpus) — the status-profile
+"4560 neutral, steered not run" line describes only the board's tracked denominator. Steered
+e2e numbers are diagnostic-only per the pre-commitment in `paper_notes_discussions.md`
+2026-07-12. (b) **Gemma added: job 19314599** (gemma4:26b-a4b × on × tools_all_minimal, same
+frozen apparatus @ 6007032 / plugins 5e4f9c0, same run-tag, rtx_6000 48G, 72h, submitted
+2026-07-12 via `submit_with_rtx.sh gemma4:26b-a4b --tools-only --think-modes on --run-tag
+iss024d-e2e --time 3-00:00:00`) — gemma was Qwen-excluded from 19293221 yet 81% censored on
+validate_plan; it carries NO parser delta (gemma4 never had a reasoning parser), so it doubles
+as the parity check's negative control. (c) Parity criteria pre-registered in
+`development/iss024d_parity_prereg.md` before the remaining cells landed. (d) Progress:
+0.8B COMPLETED (~19h), 35b near-complete at +24h; 4B/9B/gemma in flight.
+
+### D8 — cap detection made outlier-tolerant (2026-07-12, grader-symmetry audit)
+
+The Phase-5 grader-symmetry audit (does the NT stored-grade pass-through hide tolerant-vs-
+strict flips?) cleared the pass-through itself — decoupled-thinkon (16K, full text): 0 solve
+flips, 0 validate re-parse disagreements across 24,991 graded NT rows; the 12 sweep5v2
+"candidate flips" are prose-embedded state atoms that live validation would reject (and NT
+solve is pass-through regardless). What it DID catch: `detect_cap` used the cell's max
+response length, so ONE complete 503-char row (appended by a post-06-25 resume) flipped the
+whole `9B_off_no-tools` cell to cap=16384, and 253 truncated 500-char simulate snapshots
+were graded determinate `format_parse_fail` instead of `censored_at_snapshot_cap`.
+**Fix:** `detect_cap` now takes the cell's length histogram and detects a cap when the mass
+is pinned at it (≥3 rows, ≥0.5% of the cell) with essentially nothing above (≤0.1%). Scan
+of all 7 overlay corpora: exactly 1 cell reclassified (the one above); its overlay file was
+regenerated in place. NT simulate 9B-off is now correctly 84.3% censored. The 6 stale-mirror
+copies of the same cell (sweep5*-cluster-*) are not in the overlay and stay untouched.
+
+### Phase 5 — BUILT 2026-07-12 (analyzer integration + corrected pooled table)
+
+Per D-N1 (flag on the existing builders, one aggregation path):
+- **`analyzer/scripts/e2e_overlay.py`** — the single overlay reader/aggregator
+  (`load_e2e_cells`, structured `(low, high)` bounds until render time, `fmt_e2e`).
+  Frontier corpora (non-slurm cell names) map model=corpus-name with the prompt-corpus
+  prefix (sweep5v2/sweep6) in `run_tag` so canonical/anon can never pool.
+- **`table.py --e2e [--e2e-overlay DIR]`** — master pivot gains an `e2e-strict` column per
+  task next to tool-verified succ%; exact cells `62 [58.1–64.3]` (Wilson), censored cells
+  `a–b (ck/n)`. **Regression-gated:** flag-off output byte-identical to the pre-Phase-5
+  table on sweep5v2-live (md+csv+tex diffed).
+- **Run-tag cell-parser FIXED properly** (`_constants._split_cond_and_tag`): tagged dirs
+  now parse with a `run_tag` field; `iter_cells`/`load_summaries` filter untagged-only by
+  default, `table.py --run-tag` opts in per corpus (never pools tags). Verified over all
+  68 cell dirnames on disk; both parser shapes agree.
+- **`analyzer/scripts/e2e_pooled.py`** → `results/derived/e2e_overlay/pooled_e2e_table.{md,csv}`
+  — the corrected pooled table (replaces the retracted 07-12 morning table): one block per
+  corpus, neutral bank primary, steered section marked DIAGNOSTIC-ONLY, gap column
+  (tool-verified − e2e-strict, exact cells only). Marked PROVISIONAL until iss024d
+  4B/9B/gemma + Sonnet WT land. Validation: Haiku block reproduces the corrected story
+  exactly (solve delivered 95 [88.8–97.8] vs tool-ver 100 → gap +5.0pp; simulate canon
+  52.0–64.0 censored bounds).
+- **iss024d early readings (0.8B + 35b complete, neutral bank):** 35b validate_plan
+  e2e-strict 79.7 exact (c2/3000) vs tool-verified 98 — a ~19pp delivered gap at 35b, and
+  the point sits inside sweep5v2-live's D7 bounds [55.2, 89.9] (coherence check passes);
+  35b WT simulate delivered only 9.7 [c2/300] vs tool-ver 92. **0.8B stays heavily
+  censored even at 16K** (solve 161/300, validate_plan 802/3000 rows at the cap — the
+  model narrates past 16,384 chars before the verdict trailer), so exact-e2e coverage is
+  model-dependent; bounds rendering stays load-bearing. All readings pre-parity-check —
+  headline use gated on `development/iss024d_parity_prereg.md`.
 - **Phase 5 — analyzer + paper.** Analyzer reads the overlay via a flag; master tables
   gain end-to-end (bounds where censored) next to tool-verified; paper prose updates
   once numbers are re-derived (framing per D4 names).

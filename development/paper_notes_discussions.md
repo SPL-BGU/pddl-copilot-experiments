@@ -734,3 +734,25 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - Corrected pooled table to be regenerated from the D7 overlay re-run (all corpora re-run
   under one rule set); Sonnet-WT go/no-go should be revisited against the corrected gap
   (~5pp solve / ~35-45pp simulate, not 85-97pp).
+
+## 2026-07-12 — iss024d reporting discipline: steered pre-commitment, rerun-estimate language, think=on scope (Omer accepted)
+
+- **Steered arm is diagnostic-only.** The iss024d cells emit the full v11-16 bank (the
+  "neutral-only" line in the status profile described the board denominator, not the run),
+  so exact steered with-tools e2e numbers will exist. Pre-commitment: no steered with-tools
+  e2e claim enters the paper unless a steered no-tools control arm is run first — without
+  that control, prompt-content and tool-access effects are confounded. sweep5v2-live
+  no-tools cells verified v11-13 only (no nt-ster control exists).
+- **Language convention: "independent rerun estimate", never "resolved exact value".**
+  iss024d is a new sample from a near-identical apparatus (Qwens additionally carry the
+  parser-off delta), not a recovery of the censored cells' realized outcomes. Prose says
+  "a re-run under full-response storage yields X [CI]".
+- **Exact e2e is think=on-scoped.** Both resolver jobs are think=on only; every think=off
+  with-tools e2e cell stays bounds-only. Paper e2e claims must state this scope.
+- **Parity criteria pre-registered** before the remaining cells land:
+  `development/iss024d_parity_prereg.md` (TOST margins, gemma as negative control,
+  partial-failure rule).
+- **Gemma coverage gap closed:** job 19314599 (gemma4:26b-a4b × on × tools_all_minimal,
+  same frozen apparatus + run-tag, submitted 2026-07-12). Gemma has no reasoning parser
+  natively, so its only delta vs its sweep5v2 arm is the 16K snapshot cap — it doubles as
+  the negative control for the parity check.

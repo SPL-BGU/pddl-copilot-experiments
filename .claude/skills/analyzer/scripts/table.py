@@ -183,9 +183,17 @@ ARM_RANK = {
 }
 
 
-def build_rows(root: Path) -> list[dict]:
+def build_rows(root: Path, run_tag: str = "",
+               e2e_cells: dict | None = None) -> list[dict]:
+    """One pivot row per (cell × arm).
+
+    `e2e_cells` (from `e2e_overlay.load_e2e_cells`, Phase 5) joins the
+    delivered-answer overlay aggregates in as structured per-task values
+    under `{task}__e2e`; None (the default) leaves the table exactly as it
+    always was.
+    """
     rows: list[dict] = []
-    for info, data in load_summaries(root):
+    for info, data in load_summaries(root, run_tag=run_tag):
         info["host"] = host_tag(data.get("meta", {}))
         for arm in _arms_present(data, info["cond"]):
             meta = _row_meta(info, data, arm)
@@ -198,6 +206,10 @@ def build_rows(root: Path) -> list[dict]:
                 cells[f"{t}__tool_sel"] = st["tool_sel"]
                 cells[f"{t}__trunc"] = st["trunc"]
                 cells[f"{t}__out_med"] = st["out_median"]
+                if e2e_cells is not None:
+                    cells[f"{t}__e2e"] = e2e_cells.get(
+                        (info["model"], info["think"], info["cond"],
+                         info.get("run_tag", ""), arm, t))
             mean, total_n = _st_mean_arm(data, arm)
             cells["st_mean"] = mean
             cells["total_n"] = total_n
@@ -215,13 +227,22 @@ def _med_str(x: float | None) -> str:
     return f"{int(round(x))}"
 
 
-def write_md(rows: list[dict], path: Path) -> None:
+def write_md(rows: list[dict], path: Path, e2e: bool = False) -> None:
+    if e2e:
+        from e2e_overlay import fmt_e2e
     group_row = [""] * len(META_COLS)
     sub_row = list(META_COLS)
     for t in TASKS:
-        # 4-column per task: succ-with-CI, tool%, trunc%, out-token median.
-        group_row += [TASK_LABELS[t], "", "", ""]
-        sub_row += ["succ% [lo–hi]", "tool%", "trunc%", "out-med"]
+        # 4-column per task: succ-with-CI, tool%, trunc%, out-token median —
+        # plus the e2e_strict delivered-answer column when the overlay join
+        # is on (Phase 5).
+        if e2e:
+            group_row += [TASK_LABELS[t], "", "", "", ""]
+            sub_row += ["succ% [lo–hi]", "e2e-strict", "tool%", "trunc%",
+                        "out-med"]
+        else:
+            group_row += [TASK_LABELS[t], "", "", ""]
+            sub_row += ["succ% [lo–hi]", "tool%", "trunc%", "out-med"]
     group_row += ["agg", ""]
     sub_row += ["ST mean%", "n"]
 
@@ -229,6 +250,8 @@ def write_md(rows: list[dict], path: Path) -> None:
         out = [str(r.get(k, "")) for k in META_COLS]
         for t in TASKS:
             out.append(_succ_ci(r[f"{t}__succ"], r[f"{t}__lo"], r[f"{t}__hi"]))
+            if e2e:
+                out.append(fmt_e2e(r.get(f"{t}__e2e")))
             out.append(_pct(r[f"{t}__tool_sel"]))
             out.append(_pct(r[f"{t}__trunc"]))
             out.append(_med_str(r[f"{t}__out_med"]))
@@ -250,18 +273,38 @@ def write_md(rows: list[dict], path: Path) -> None:
                  f"tool% is tool_selected_rate; trunc% is truncated/n; "
                  f"out-med is output-token median (sweep-5 H3, n-weighted "
                  f"across arm variants)._")
+    if e2e:
+        lines.append("")
+        lines.append(
+            "_e2e-strict is the delivered-answer (end-to-end) success from "
+            "results/derived/e2e_overlay (one rule set: D7/D7b tolerant "
+            "extraction, empty final turns fail). Point [lo–hi] = exact "
+            "cell with Wilson 95% CI; a–b (ck/n) = bounds where k of n "
+            "rows are censored at the response-snapshot cap "
+            "(indeterminate). "
+            "In the tools arms succ% is tool-verified, so succ% vs "
+            "e2e-strict is the tool-call-vs-delivered gap._")
     path.write_text("\n".join(lines))
 
 
-def write_csv(rows: list[dict], path: Path) -> None:
+def write_csv(rows: list[dict], path: Path, e2e: bool = False) -> None:
     header = list(META_COLS)
     for t in TASKS:
         header += [f"{t}_succ", f"{t}_ci_lo", f"{t}_ci_hi",
                    f"{t}_tool_sel", f"{t}_trunc", f"{t}_out_med"]
+        if e2e:
+            header += [f"{t}_e2e_low", f"{t}_e2e_high",
+                       f"{t}_e2e_censored", f"{t}_e2e_n"]
     header += ["st_mean", "total_n"]
 
     def cell(x):
         return "" if x is None else x
+
+    def e2e_cols(r: dict, t: str) -> list:
+        c = r.get(f"{t}__e2e")
+        if c is None or c["n"] == 0:
+            return ["", "", "", ""]
+        return [round(c["low"], 4), round(c["high"], 4), c["cens"], c["n"]]
 
     with path.open("w", newline="") as f:
         w = csv.writer(f)
@@ -272,6 +315,8 @@ def write_csv(rows: list[dict], path: Path) -> None:
                 row += [cell(r[f"{t}__succ"]), cell(r[f"{t}__lo"]),
                         cell(r[f"{t}__hi"]), cell(r[f"{t}__tool_sel"]),
                         cell(r[f"{t}__trunc"]), cell(r[f"{t}__out_med"])]
+                if e2e:
+                    row += e2e_cols(r, t)
             row += [cell(r["st_mean"]), r["total_n"]]
             w.writerow(row)
 
@@ -286,17 +331,22 @@ def _tex_escape(s: str) -> str:
              .replace("–", "--"))
 
 
-def write_tex(rows: list[dict], path: Path) -> None:
-    col_spec = "l" * len(META_COLS) + "rrrr" * len(TASKS) + "rr"
+def write_tex(rows: list[dict], path: Path, e2e: bool = False) -> None:
+    if e2e:
+        from e2e_overlay import fmt_e2e
+    per_task = 5 if e2e else 4
+    col_spec = "l" * len(META_COLS) + "r" * per_task * len(TASKS) + "rr"
 
     header_groups = [r"\multicolumn{1}{l}{}"] * len(META_COLS)
     for t in TASKS:
-        header_groups.append(r"\multicolumn{4}{c}{" + _tex_escape(TASK_LABELS[t]) + "}")
+        header_groups.append(r"\multicolumn{" + str(per_task) + "}{c}{"
+                             + _tex_escape(TASK_LABELS[t]) + "}")
     header_groups.append(r"\multicolumn{2}{c}{agg}")
 
     sub = list(META_COLS)
     for _ in TASKS:
-        sub += ["succ", "tool", "trunc", "out-med"]
+        sub += (["succ", "e2e", "tool", "trunc", "out-med"] if e2e
+                else ["succ", "tool", "trunc", "out-med"])
     sub += ["ST-mean", "n"]
 
     lines = [
@@ -312,6 +362,8 @@ def write_tex(rows: list[dict], path: Path) -> None:
         row = [_tex_escape(str(r.get(k, ""))) for k in META_COLS]
         for t in TASKS:
             row.append(_tex_escape(_succ_ci(r[f"{t}__succ"], r[f"{t}__lo"], r[f"{t}__hi"])))
+            if e2e:
+                row.append(_tex_escape(fmt_e2e(r.get(f"{t}__e2e"))))
             row.append(_tex_escape(_pct(r[f"{t}__tool_sel"])))
             row.append(_tex_escape(_pct(r[f"{t}__trunc"])))
             row.append(_tex_escape(_med_str(r[f"{t}__out_med"])))
@@ -329,10 +381,27 @@ def main():
                     help="comma list of output formats (md,csv,tex); default all")
     ap.add_argument("--out", type=Path, default=None,
                     help="output dir (default: <root>/tables/)")
+    ap.add_argument("--run-tag", default="",
+                    help="corpus-identity filter: only cells whose dirname "
+                         "carries this trailing run-tag (e.g. iss024d-e2e). "
+                         "Default: bare untagged cells only.")
+    ap.add_argument("--e2e", action="store_true",
+                    help="join the delivered-answer overlay "
+                         "(results/derived/e2e_overlay/<root-name>) and add "
+                         "an e2e-strict column per task; bounds where "
+                         "censored (Phase 5)")
+    ap.add_argument("--e2e-overlay", type=Path, default=None,
+                    help="override the overlay root (default: "
+                         "<root>/../derived/e2e_overlay)")
     args = ap.parse_args()
 
     root = args.root or find_default_root()
-    rows = build_rows(root)
+    e2e_cells = None
+    if args.e2e:
+        from e2e_overlay import default_overlay_root, load_e2e_cells
+        overlay_root = args.e2e_overlay or default_overlay_root(root)
+        e2e_cells = load_e2e_cells(root, overlay_root)
+    rows = build_rows(root, run_tag=args.run_tag, e2e_cells=e2e_cells)
     if not rows:
         sys.exit(f"no summary_*.json rows found under {root}")
 
@@ -341,11 +410,11 @@ def main():
     fmts = {f.strip() for f in args.formats.split(",") if f.strip()}
     written: list[str] = []
     if "md" in fmts:
-        p = out / "master.md"; write_md(rows, p); written.append(str(p))
+        p = out / "master.md"; write_md(rows, p, e2e=args.e2e); written.append(str(p))
     if "csv" in fmts:
-        p = out / "master.csv"; write_csv(rows, p); written.append(str(p))
+        p = out / "master.csv"; write_csv(rows, p, e2e=args.e2e); written.append(str(p))
     if "tex" in fmts:
-        p = out / "master.tex"; write_tex(rows, p); written.append(str(p))
+        p = out / "master.tex"; write_tex(rows, p, e2e=args.e2e); written.append(str(p))
     print(f"wrote {len(rows)} rows → " + ", ".join(written))
 
 
