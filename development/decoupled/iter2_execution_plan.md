@@ -1,5 +1,13 @@
 # Iter-2 Execution Plan, Handoff & Branching Policy
 
+> **STATUS 2026-07-12: the task-table statuses below are STALE.** Known outcomes since:
+> T6 decoupled budget = DONE (PR #88; Line-1 sweep complete 2026-06-29, `decoupled_run_handoff.md`);
+> T7 BF16 control = ran as sweep7 on RunPod (paused 2026-06-18; AWQ≈BF16 confirmed, ENHSP/Java was
+> the apparent regression — memory `project_runpod_steady_gpu_status`); T5 frontier
+> solve/simulate=0 sanity-check = resolved, simulate 0% was a grader artifact (ISS-024) and the
+> frontier line moved to `../frontier_rerun_handoff.md`. Authoritative triage remains
+> `paper/automated-platforms-review/iter2/iter2_action_plan.md`.
+
 **Audience:** future-me + any coding agent picking up the iter-2 review work. Read this first.
 
 ---

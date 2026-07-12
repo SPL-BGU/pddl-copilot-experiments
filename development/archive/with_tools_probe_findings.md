@@ -1,3 +1,11 @@
+> **ARCHIVED 2026-07-12 — HISTORICAL cost probe.** Still true: with-tools cannot batch
+> (structural). Superseded since: prompt caching measured ACTIVE (~-15% at stratified scale),
+> the corpus became v11-only (1,520 trials, not the 4,560 plain set) → measured Haiku WT
+> ~$50/corpus, so the $146 projection and ISS-023 are CLOSED (2026-07-12); the probe's "~100%"
+> capability read was tool-verified only — delivered-answer (e2e) grading tells a longer story
+> (`tool_call_vs_final_output_grading.md`). Successors: `frontier_rerun_handoff.md`,
+> `decision_audit_grading_and_frontier.md`.
+
 # With-tools frontier probe — findings, cost, and decision (2026-06-19)
 
 Investigation of the **with-tools** condition for proprietary frontier models

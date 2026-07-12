@@ -16,6 +16,14 @@ The simulate one is the important one — it touches a load-bearing paper claim.
 
 ## STATUS (2026-06-23, post-fix) — frontier re-graded; data still PARTIAL; do not narrate yet
 
+> **UPDATE 2026-07-12 — data now COMPLETE; narration no longer blocked.** Since this status:
+> the Q1 wrapper-tolerant grader landed 2026-06-25 (frontier state-tracking unchanged); the
+> decoupled Line-1 sweep completed 2026-06-29 with the final matched-A/B rollup 2026-07-11
+> (`decoupled/decoupled_run_handoff.md` §LINE COMPLETE — open-roster simulate floor = budget
+> starvation); and delivered-answer (e2e) grading went through D7/D7b 2026-07-12
+> (`tool_call_vs_final_output_grading.md` §0b). The table below remains the authoritative
+> frontier NT simulate re-grade. The PARTIAL caveats below are historical.
+
 Fix landed (`_canon_atom` in `_normalize_trajectory`, commit `5879ac4`); the three
 Anthropic corpora re-graded from local raw batch dirs (commit `156fb01`). The
 mechanism below is confirmed on real data. **These are the authoritative numbers**

@@ -1,3 +1,9 @@
+> **ARCHIVED 2026-07-12 — SUPERSEDED.** The staged with-tools correctness ladder was overtaken by
+> the frontier rerun line: framework decision (`frontier_rerun_framework_decision.md`, D1=B),
+> stage-1 A-vs-B probe (fully concordant), Haiku WT full run + D7 e2e-overlay grading. The
+> Decision-2 simulate-criterion concern was resolved by the Q1 grader + `_canon_atom` fix
+> (ISS-024). Living state: `development/frontier_rerun_handoff.md`.
+
 # Frontier with-tools — correctness ladder (NEXT JOB)
 
 **Status:** PLAN / GATED. Correctness-first staged probe of the **with-tools** condition for the

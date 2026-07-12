@@ -1,5 +1,10 @@
 # Decoupled think=on sweep — HANDOFF (2026-06-27)
 
+> **STATUS 2026-07-12: LINE COMPLETE** — data 2026-06-29, final matched-A/B rollup 2026-07-11
+> (see §LINE COMPLETE below). The "pick up the in-flight sweep" framing below is historical.
+> Only remaining thread = the with-tools parity re-run, ISS-024(d) job 19293221, in flight;
+> next steps for it live in `../next_steps_after_inflight_runs.md`.
+
 **For the next agent.** Pick up the in-flight Line-1 decoupled-budget no-tools sweep and take it
 through completion → final A/B → (optional) the with-tools parity decision. Read this top-to-bottom
 before any cluster action. Companion docs: `decoupled_run_staging.md` (build + decisions),
