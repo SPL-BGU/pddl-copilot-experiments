@@ -203,10 +203,29 @@ def response_verdict(resp: str) -> bool | None:
     return extract_verdict(resp or "")
 
 
-def detect_cap(max_len: int) -> int | None:
-    """Smallest known snapshot cap the corpus could have been written under."""
+def detect_cap(lengths: dict[int, int]) -> int | None:
+    """Smallest known snapshot cap the cell could have been written under.
+
+    Takes the cell's response-length histogram ({len: count}). A cap is
+    detected either the strict way (no row exceeds it) or the mass-pinned
+    way: a substantial pile of rows sits EXACTLY at the cap (>=3 rows and
+    >=0.5% of the cell) while essentially nothing sits above it (<=0.1%).
+    The tolerance exists because resumed cells can carry a handful of rows
+    written under a later, larger cap: sweep5v2-live's 9B think-off
+    no-tools cell has 4,496 rows pinned at 500 plus ONE complete 503-char
+    row appended by a post-2026-06-25 resume — the old max-length rule let
+    that single row flip the whole cell to cap=16384, silently grading
+    4,496 truncated snapshots as determinate instead of censored."""
+    if not lengths:
+        return KNOWN_CAPS[0]
+    n = sum(lengths.values())
+    max_len = max(lengths)
     for cap in KNOWN_CAPS:
         if max_len <= cap:
+            return cap
+        at = lengths.get(cap, 0)
+        over = sum(c for length, c in lengths.items() if length > cap)
+        if at >= 3 and at * 200 >= n and over * 1000 <= n:
             return cap
     return None
 
@@ -409,7 +428,7 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
     for cell_dir, files in sorted(by_cell.items()):
         cell = cell_dir.name
         cell_rows = []
-        max_len = 0
+        lengths: dict[int, int] = defaultdict(int)
         for trials in files:
             for ln in trials.open():
                 try:
@@ -418,11 +437,11 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
                     continue  # pre-2026-05-28 corpora may carry torn lines
                 if row.get("task") not in ALL_TASKS:
                     continue
-                max_len = max(max_len, len(row.get("response") or ""))
+                lengths[len(row.get("response") or "")] += 1
                 cell_rows.append(row)
         if not cell_rows:
             continue
-        cap = detect_cap(max_len)
+        cap = detect_cap(lengths)
         anon = is_anon(corpus_dir, cell)
         gt = gt_cache_anon if anon else gt_cache
         out_path = out_root / corpus_dir.name / f"{cell}.e2e.jsonl"
