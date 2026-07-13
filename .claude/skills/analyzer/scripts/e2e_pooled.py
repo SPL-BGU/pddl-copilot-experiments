@@ -41,8 +41,8 @@ TASK_ORDER = ["solve", "validate_domain", "validate_problem",
 # Corpora whose runs are still landing — flagged in the header so a reader
 # knows which blocks will change (update this list as they complete).
 IN_FLIGHT = {
-    "iss024d-e2e-live": "4B/9B Qwens + gemma cells still on the cluster",
-    "sonnet-frontier": "Sonnet with-tools canonical run in flight",
+    "iss024d-e2e-live": "0.8B/35B synced; 4B complete on cluster awaiting "
+                        "sync; 9B + gemma still running (2026-07-13)",
 }
 
 

@@ -6,6 +6,33 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-13 — e2e overlay D9: table plans, per-step fenced blocks, simulate at-cap censor; Sonnet WT regraded (ladder holds)
+
+**Bug.** The first Sonnet WT regrade (D7/D8 rules) reproduced the retracted-Haiku
+artifact class on the new corpus: solve delivered 55.0 (42/100 `no_plan_extracted`) and
+simulate [5.0, 8.0] (71 `trajectory_mismatch`) vs tool-verified 100.0/99.0. Two D7
+format-coverage gaps (tolerance was tuned on Haiku's formats): Sonnet delivers solve
+plans as a markdown TABLE with a backticked action cell, and simulate trajectories as
+ONE FENCED JSON BLOCK PER STEP (D7 graded block 0 — a single step — against the full
+oracle trace). A third issue was a censoring asymmetry: simulate lacked solve's D6
+at-cap pre-censor, so 493 at-cap snapshots (mostly 500-cap corpora) were graded
+determinate from partial content.
+
+**Change (`tools/e2e_regrade.py`).** D9a: `table_lines` extraction fallback (first
+table cell per row that is exactly a backticked s-expression; live-MCP oracle stays the
+safety net — 40/42 recovered Sonnet plans validate, 2 genuinely invalid). D9b:
+`simulate_candidates` grades ordered candidates (whole response, first fenced block,
+concatenation of all coercible blocks `fenced_concat`); success iff ANY candidate
+normalizes equal to the oracle — exact-match grading cannot create false positives.
+D9c: simulate censors non-empty at-cap snapshots like solve (visible blocks can neither
+prove nor refute the delivered trajectory). Repo-wide re-run over all 8 corpora; the
+pre/post row diff is fully D9-attributable (zero validate_* / NT-non-simulate changes).
+Corrected: Sonnet WT solve 95.0 (gap +5.0pp, identical to Haiku), simulate [49.0,62.0]
+(Haiku canonical v11 untouched at [52,64]); iss024d 35b simulate neutral 9.7→12.3–13.3.
+Pooled table regenerated (`e2e_pooled.py` IN_FLIGHT now iss024d-only). Analysis memo:
+`development/sonnet_wt_vs_haiku_e2e_memo.md`; decisions:
+`tool_call_vs_final_output_grading.md` §D9.
+
 ## 2026-07-12 — e2e overlay D7/D7b: tolerant delivered-answer extraction + anon oracle (Haiku WT solve/simulate "gap" was grader artifact)
 
 **Bug.** The first Haiku full-run headline (WT solve e2e 13.5 vs tool-verified 100;

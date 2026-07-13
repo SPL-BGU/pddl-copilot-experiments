@@ -41,6 +41,25 @@ development/tool_call_vs_final_output_grading.md (2026-07-11):
          against canonical fixtures fails by construction (Haiku: 32/32 anon
          solve falsely plan_invalid, 59 clean NT-anon simulate parses falsely
          trajectory_mismatch).
+  D9     (2026-07-13) two more delivered-answer formats, found on the Sonnet
+         WT corpus (D7 tolerance was tuned on Haiku's formats):
+         (a) solve plans delivered as a MARKDOWN TABLE whose action cell is a
+             backticked s-expression (42/42 Sonnet no_plan_extracted rows);
+             extracted plans still validate through the live-MCP oracle.
+         (b) simulate trajectories delivered as ONE FENCED BLOCK PER STEP;
+             coercion now grades ordered candidates — whole response, each
+             fenced block, and the concatenation of all coercible blocks —
+             and succeeds iff ANY candidate normalizes equal to the oracle
+             (exact-match grading means added candidates cannot create a
+             false positive; 44/92 failing Sonnet rows match exactly).
+         (c) simulate gets the same at-cap pre-censor solve has had since
+             D6: a non-empty snapshot exactly at the cap can neither prove
+             nor refute the delivered trajectory (visible blocks may match
+             while hidden ones add steps), so the row is censored. Flips
+             ~493 at-cap trajectory_mismatch rows (mostly 500-cap corpora)
+             and 3 Haiku at-cap trajectory_ok rows to indeterminate
+             (Haiku WT simulate canon [52,64] -> [49,64]).
+         Applied identically to both arms, like D7.
 
 Per-task grading of the stored response:
   validate_*  truth from fixture naming (verified against runner.py emission:
@@ -124,12 +143,35 @@ _TOLERANT_ACTION_RE = re.compile(
 # unchanged Q1 whitelist.
 _FENCED_BLOCK_RE = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
 
+# D9a: a markdown-table cell that IS an s-expression (optionally backticked).
+# fullmatch on the stripped cell keeps prose cells out; a mis-picked state
+# atom can only produce a plan the live oracle then rejects.
+_TABLE_ACTION_CELL_RE = re.compile(
+    r"`?\(\s*[A-Za-z][\w-]*(?:\s+[\w\-?@.]+)*\s*\)`?"
+)
+
+
+def _table_plan_lines(response: str) -> list[str]:
+    """Plan lines from markdown-table rows (D9a): first cell per row that is
+    exactly a (backticked) s-expression, e.g. `| 1 | \\`(pick_up b3)\\` | .. |`."""
+    plan: list[str] = []
+    for line in (response or "").splitlines():
+        s = line.strip()
+        if not (s.startswith("|") and s.count("|") >= 2):
+            continue
+        for cell in (c.strip() for c in s.strip("|").split("|")):
+            if _TABLE_ACTION_CELL_RE.fullmatch(cell):
+                inner = cell.strip("`")
+                plan.append(" ".join(inner.split()).lower())
+                break
+    return plan
+
 
 def extract_plan_lines_tolerant(response: str) -> tuple[list[str], str | None]:
-    """Strict extraction first, markdown-tolerant fallback (D7).
+    """Strict extraction first, then markdown-tolerant fallbacks (D7, D9a).
 
     Returns (plan_lines, extraction_mode) with mode in
-    {"strict_lines", "tolerant_lines", None}.
+    {"strict_lines", "tolerant_lines", "table_lines", None}.
     """
     lines = extract_plan_lines(response)
     if lines:
@@ -141,23 +183,33 @@ def extract_plan_lines_tolerant(response: str) -> tuple[list[str], str | None]:
         inner = line[line.find("("):]
         inner = inner[: inner.find(")") + 1]
         plan.append(" ".join(inner.split()).lower())
-    return plan, ("tolerant_lines" if plan else None)
+    if plan:
+        return plan, "tolerant_lines"
+    plan = _table_plan_lines(response)
+    return plan, ("table_lines" if plan else None)
 
 
-def coerce_simulate_tolerant(resp: str) -> tuple[list[dict] | None, str | None]:
-    """Whole-response Q1 coercion first, fenced-block fallback (D7).
+def simulate_candidates(resp: str) -> list[tuple[list[dict], str]]:
+    """Ordered trajectory candidates under the unchanged Q1 whitelist (D7, D9b).
 
-    Returns (steps, extraction_mode) with mode in
-    {"whole", "fenced_block", None}.
+    Candidates: the whole response, the first coercible fenced block, and —
+    when several blocks coerce — their in-order concatenation (models that
+    emit one block per step). Modes: "whole", "fenced_block", "fenced_concat".
     """
+    cands: list[tuple[list[dict], str]] = []
     steps, _compliant = _coerce_simulate_trajectory(resp)
     if steps is not None:
-        return steps, "whole"
+        cands.append((steps, "whole"))
+    block_steps: list[list[dict]] = []
     for m in _FENCED_BLOCK_RE.finditer(resp or ""):
         steps, _compliant = _coerce_simulate_trajectory(m.group(1).strip())
         if steps is not None:
-            return steps, "fenced_block"
-    return None, None
+            block_steps.append(steps)
+            if len(block_steps) == 1:
+                cands.append((steps, "fenced_block"))
+    if len(block_steps) > 1:
+        cands.append(([s for st in block_steps for s in st], "fenced_concat"))
+    return cands
 
 
 def truth_for(row: dict) -> bool | None:
@@ -365,20 +417,34 @@ async def regrade_row(row: dict, cap: int | None, gt_cache: dict,
             out["e2e"] = "indeterminate"
             out["e2e_reason"] = "no_ground_truth"
             return out
-        steps, out["extraction"] = coerce_simulate_tolerant(resp)
-        if steps:
+        # D9c: same rule as solve — a snapshot at the cap may hide the tail
+        # of the delivered trajectory; visible blocks can neither prove nor
+        # refute the full answer.
+        if resp.strip() and cap is not None and len(resp) == cap:
+            out["extraction"] = None
+            out["e2e"] = "indeterminate"
+            out["e2e_reason"] = "censored_at_snapshot_cap"
+            return out
+        cands = simulate_candidates(resp)
+        graded = []  # candidates that normalize; (n_steps, order) picks best
+        for steps, mode in cands:
             model_canon = _normalize_trajectory(steps)
             if model_canon is None:
-                return _grade_empty_or_censored(out, row, resp, cap,
-                                                "format_parse_fail")
-            out["e2e"] = model_canon == oracle
-            out["e2e_reason"] = ("trajectory_ok" if out["e2e"]
-                                 else "trajectory_mismatch")
-            return out
-        if steps is not None:  # coerced cleanly to an empty trajectory
+                continue
+            if model_canon == oracle:
+                out["extraction"] = mode
+                out["e2e"] = True
+                out["e2e_reason"] = "trajectory_ok"
+                return out
+            graded.append((steps, mode))
+        if graded:
+            steps, mode = max(graded, key=lambda g: len(g[0]))
+            out["extraction"] = mode
             out["e2e"] = False
-            out["e2e_reason"] = "simulate_empty"
+            out["e2e_reason"] = ("trajectory_mismatch" if steps
+                                 else "simulate_empty")
             return out
+        out["extraction"] = None
         return _grade_empty_or_censored(out, row, resp, cap, "format_parse_fail")
 
     out["e2e"] = "indeterminate"

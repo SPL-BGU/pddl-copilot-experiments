@@ -60,21 +60,34 @@ can't be cleanly contrast-tested at the delivered level (NT-canon simulate censo
 solve WT e2e dominated by the transcription artifact, not memorization — capability is
 100% tool-verified both corpora).
 
-## SONNET WT canonical — DONE (2026-07-12), regrade PENDING overlay fixes
+## SONNET WT canonical — DONE + REGRADED (2026-07-13)
 
 Canonical-only (Omer "no anon needed"). `frontier_runner.py --model claude-sonnet-4-6
 --variant 11 --out results/sonnet-frontier/sweep5v2-with-tools`. **1520/1520, 0 infra,
-$90.75 (caching saved 22%).** Online (tool-verified) success: simulate 99.0, solve 100.0,
-validate_domain 95.8, validate_plan 99.9, validate_problem 98.0. **Spent ~$167.4/$238
-(~$70.6 left).**
+$90.75 (caching saved 22%).** **Spent ~$167.4/$238 (~$70.6 left).**
 
-**DO NOT regrade yet.** The e2e overlay's solve/simulate extraction has 3 known bugs
-(markdown-plan extractor, prose-wrapped fenced JSON, anon-vs-canonical oracle) that
-another agent is fixing on this branch — running `e2e_regrade.py` now would reproduce the
-same artifacts that made the retracted Haiku solve 13.5% / simulate 0% numbers. When the
-fixes land: `e2e_regrade.py results/sonnet-frontier`, then compare Sonnet's
-tool-verified-vs-delivered gap to the CORRECTED Haiku picture (solve ~95% delivered,
-simulate canon ∈[52,64]). Validation columns are trustworthy from the raw overlay already.
+The D7/D8 regrade still misgraded Sonnet (solve 55.0, simulate [5,8] — two NEW
+format-coverage gaps: markdown-table plans, one-fenced-block-per-step trajectories).
+**D9** (2026-07-13, `tool_call_vs_final_output_grading.md` §D9) widens extraction for
+both + adds the simulate at-cap pre-censor; repo-wide re-run, diff fully attributable.
+Corrected Sonnet WT (canonical v11, e2e_strict vs tool-verified):
+
+| task | NT (v11) | WT delivered | WT tool-ver | gap |
+|---|---|---|---|---|
+| validate_domain | 93.3 | 95.8 [90.6,98.2] | 95.8 | +0.0 |
+| validate_problem | 86.5 | 98.0 [95.0,99.2] | 98.0 | +0.0 |
+| validate_plan | 97.1 | 100.0 [99.6,100.0] | 99.9 | −0.1 |
+| solve | 29.0 | **95.0** [88.8,97.8] | 100.0 | **+5.0** |
+| simulate | censored | **[49.0, 62.0]** (c13) | 99.0 | ≈37–50 |
+
+**Ladder verdicts** (full memo: `development/sonnet_wt_vs_haiku_e2e_memo.md`):
+solve delivered ties Haiku exactly (95.0 / 95.0, both gaps +5.0pp — copy fidelity, not
+omission); simulate bands overlap (Sonnet [49,62] vs Haiku [52,64]) → "Sonnet
+transcribes long outputs better" NOT supported, the gap is length-driven not
+tier-driven; validation lift shrinks with tier (Haiku +10.8/+23.5/+7.3 →
+Sonnet +2.5/+11.5/+2.9, validate_domain loses CI-separation) → capability ladder
+holds end-to-end. Remaining cheap follow-up: de-censor NT-canonical simulate via a
+16K batch re-run (~$0.3/model).
 
 ## Decisions already locked (don't relitigate)
 

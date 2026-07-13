@@ -544,6 +544,43 @@ Per D-N1 (flag on the existing builders, one aggregation path):
   gain end-to-end (bounds where censored) next to tool-verified; paper prose updates
   once numbers are re-derived (framing per D4 names).
 
+### D9 — two more delivered-answer formats + simulate at-cap censoring (2026-07-13)
+
+The first Sonnet WT regrade (D7/D8 rules) reproduced the retracted-Haiku artifact class
+on the new corpus: solve delivered 55.0 (42/100 `no_plan_extracted`) and simulate
+[5.0, 8.0] (71 `trajectory_mismatch`) against tool-verified 100.0/99.0. Both are D7
+format-coverage gaps (the tolerance was tuned on Haiku's formats), not behavior:
+
+- **D9a solve — markdown-table plans.** Sonnet delivers the plan as a table whose action
+  cell is a backticked s-expression (`| 1 | \`(pick_up b3)\` | ... |`). New fallback
+  (`table_lines` extraction mode, after strict + tolerant): first cell per table row that
+  is exactly a (backticked) s-expression. Recovered 42/42 Sonnet rows; the live-MCP
+  oracle stays the safety net (40 validated, 2 genuinely invalid).
+- **D9b simulate — one fenced block per step.** Sonnet emits each trajectory step as its
+  own fenced JSON block; D7 graded the first coercible block (a single step) against the
+  full oracle trace. Coercion now grades ordered CANDIDATES — whole response, first
+  fenced block, concatenation of all coercible blocks (`fenced_concat`) — and succeeds
+  iff ANY candidate normalizes equal to the oracle. Exact-match grading means added
+  candidates cannot create a false positive. 44/92 failing Sonnet rows match exactly;
+  mismatch attribution uses the largest candidate.
+- **D9c simulate — at-cap pre-censor (parity with solve).** Simulate now censors any
+  non-empty snapshot exactly at the cap, as solve has since D6: visible blocks can
+  neither prove nor refute the delivered trajectory (a visible match can be broken by
+  hidden extra steps). Flips 490 at-cap `trajectory_mismatch` rows (mostly 500-cap
+  corpora — pure censoring artifacts) and 3 Haiku ANON at-cap `trajectory_ok` rows to
+  indeterminate; Haiku canonical v11 simulate is untouched at [52.0, 64.0].
+
+Applied identically to both arms; repo-wide re-run over all 8 corpora 2026-07-13. The
+row-level pre/post diff is fully D9-attributable: **zero validate_* changes, zero NT
+non-simulate changes**; movers are the censor flips above, the concat recoveries
+(44 Sonnet + 16 iss024d-35b/0.8B + 23 decoupled-NT — the NT recoveries confirm the rule
+is arm-symmetric), and the table-plan extractions (42 Sonnet + 3 iss024d). Corrected
+headline effects: Sonnet WT solve 55.0 → **95.0** (tool-ver 100.0, gap +5.0pp,
+identical to Haiku); Sonnet WT simulate [5, 8] → **[49.0, 62.0]** (tool-ver 99.0);
+iss024d 35b simulate (neutral) 9.7 → 12.3–13.3. Pooled table regenerated
+(`e2e_pooled.py`, sonnet-frontier no longer flagged in-flight). Sonnet-vs-Haiku
+analysis: `development/sonnet_wt_vs_haiku_e2e_memo.md`.
+
 ### Phase 1 results (run 2026-07-11, `tools/e2e_regrade.py`, unfiltered per-row means)
 
 With-tools validate_* outcome distribution (sweep5v2-live, all 5 models, n=79,200):

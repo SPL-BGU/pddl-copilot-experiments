@@ -756,3 +756,29 @@ validated by an independent ranking subagent (the user asked for a second perspe
   same frozen apparatus + run-tag, submitted 2026-07-12). Gemma has no reasoning parser
   natively, so its only delta vs its sweep5v2 arm is the 16K snapshot cap — it doubles as
   the negative control for the parity check.
+
+## 2026-07-13 — D9 grading extension; Sonnet WT regraded: ladder holds, transcription gap is length-driven not tier-driven
+
+- **D9 (grading, both arms):** the Sonnet WT corpus exposed two more delivered-answer
+  formats the D7 tolerance missed (markdown-table plans; one fenced JSON block per
+  trajectory step) plus a censoring asymmetry (simulate lacked solve's at-cap
+  pre-censor). Fixed in `tools/e2e_regrade.py`, repo-wide re-run; the row diff is fully
+  attributable (zero validate_* / NT-non-simulate changes). Details:
+  `tool_call_vs_final_output_grading.md` §D9.
+- **Sonnet WT canonical (v11, e2e_strict):** solve delivered 95.0 [88.8,97.8] vs
+  tool-verified 100.0 — the +5.0pp gap is IDENTICAL to Haiku's, and on both models it is
+  transcription-error mass, not answer omission (Sonnet: 0 omitted plans, 5 invalid
+  restatements). simulate delivered [49.0,62.0] vs tool-ver 99.0; band overlaps Haiku's
+  [52.0,64.0].
+- **Paper-facing conclusions:** (1) the tool-verified-vs-delivered gap is TASK-shaped
+  (0pp verdicts, 5pp plans, ≥33pp trajectories), reproduced across two frontier tiers —
+  the "delivered fidelity degrades with answer length" claim is now two-tier;
+  (2) "a stronger model transcribes long tool outputs better" is NOT supported
+  (solve tied, simulate bands overlap); (3) the validation tool-lift ladder holds
+  end-to-end — lift shrinks as the model strengthens (validate_domain loses
+  CI-separation at Sonnet tier), while the solve lift stays enormous at both tiers
+  (+73.0 / +66.0, CI-disjoint).
+- **Bookkeeping:** Sonnet WT $90.75 measured; frontier spend ≈$167.4/$238. Corrected
+  pooled table regenerated (only iss024d still flagged in-flight: 4B done on cluster
+  awaiting sync, 9B + gemma running). Full memo:
+  `development/sonnet_wt_vs_haiku_e2e_memo.md`.
