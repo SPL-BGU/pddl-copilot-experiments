@@ -6,6 +6,24 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-13 — `tools/iss024d_parity.py`: the pre-registered parity analysis script
+
+Implements `development/iss024d_parity_prereg.md` verbatim, written while 4B/9B/gemma
+cells are still in flight (the registered analysis plan named this script). Per-cell
+Δ = p(iss024d) − p(sweep5v2-live) on tool-verified success, neutral bank v11-13
+pooled, think=on × tools_all_minimal; TOST via 90% Newcombe (Wilson-score) CI within
+±5pp; gemma control table rendered first; the ≥18/20 decision rule is evaluated ONLY
+when all 25 cells are on disk (partial corpora → DEFERRED banner). Trials deduped by
+trial key (last wins) so resume mop-ups can't inflate denominators; infra rows
+excluded and counted. Secondaries per prereg: format_parse_fail and truncated rate
+deltas (neutral bank) + per-variant success-delta heterogeneity over the full v11-16
+bank. `--md` mirrors the report as markdown. Loaders reuse the analyzer's
+`iter_cells(run_tag=)` so corpus identity is enforced by the same parser everywhere.
+First run (10/25 cells, decision deferred): 35b validation cells all PASS; 35b solve
+Δ −11.3pp CI [−17.2, −5.4] with truncated-rate +12.7pp (mechanism candidate: with
+`--reasoning-parser none` think tokens stay in the response channel and eat budget);
+0.8B mixed with wide CIs. No headline use before the complete table + gemma control.
+
 ## 2026-07-13 — e2e overlay D9: table plans, per-step fenced blocks, simulate at-cap censor; Sonnet WT regraded (ladder holds)
 
 **Bug.** The first Sonnet WT regrade (D7/D8 rules) reproduced the retracted-Haiku
