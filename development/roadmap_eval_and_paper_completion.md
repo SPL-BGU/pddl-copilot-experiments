@@ -77,7 +77,14 @@ verdict exists by ~Jul 24 (fallback: ship with the surface-disclosure framing no
 in the tex and keep tool-verified as the quoted with-tools surface). If pivot:
 E1→P1 run at natural pace and P1 becomes the full reframe.
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-15, stated in session): leaning JOURNAL — limited time for
+> the thesis until September (reserves duty), so the Jul 21/28 AAAI crunch is out
+> of step with the real constraint. Implications: skip the abstract-deadline
+> compression; run E1 when the VPN is naturally back; P1 defaults to the full
+> reframe (D2 option a viable); schedule paper work to minimize Omer's hands-on
+> time (agent-executable batches, Omer decides/reviews). Journal-fit notes exist
+> at `.local/kbs-journal-fit.md`. Not yet a hard commitment — revisit with
+> advisors before dropping AAAI-27 formally.
 
 **D2 — P1 scope when it runs.** (a) Full reframe: e2e_strict becomes the quoted
 with-tools number everywhere (scorecard, tables, discussion), tool-verified moves
