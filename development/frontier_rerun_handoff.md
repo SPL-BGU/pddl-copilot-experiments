@@ -14,51 +14,58 @@
 concordant (§2.3); all four Haiku corpora now on disk and e2e-regraded
 (`results/haiku-frontier/{sweep5v2,sweep6,sweep5v2-with-tools,sweep6-with-tools}`,
 overlay under `results/derived/e2e_overlay/haiku-frontier`). **Spent ~$76.7 of $238;
-~$161 remaining.** The next decision is **Sonnet WT scope** — both corpora (~$191) does
-NOT fit the remainder; canonical-only (~$96) does (see SONNET DECISION below). The
-Haiku RESULTS block below is the headline. Separately, the Qwen ISS-024(d) job
+~$161 remaining.** Sonnet WT ran canonical-only (DONE + regraded 2026-07-13, see below).
+**2026-07-15:** all three 500-cap NT corpora (Haiku canon, Sonnet canon+anon) were
+de-censored at $0 by re-grading the raw batch dirs (full text was on disk all along) —
+the planned "$0.3/model batch rerun" is cancelled; NT simulate is now determinate at
+n=63–83 per cell. The Haiku RESULTS block below is the headline. Separately, the Qwen ISS-024(d) job
 **19293221** is still on the cluster (leave it; strict-undecided resolver).
 
-## HAIKU FULL-RUN RESULTS (e2e_strict, 2026-07-12)
+## HAIKU FULL-RUN RESULTS (e2e_strict; run 2026-07-12, numbers current as of 2026-07-15)
 
-Corpora: NT via Batch API (canonical = old 2026-06-25 500-cap run reused; anon = fresh
-16K batch, $5.43), WT via `frontier_runner.py` (both corpora fresh, 16K, caching ON,
-canonical $31.87 + anon $31.83, 0 infra rows, 98.4-98.5% online success). Regrade:
+Corpora: NT via Batch API (canonical = 2026-06-25 batch, snapshots de-censored to 16K
+2026-07-15 by re-grading the raw batch dir — see below; anon = fresh 16K batch, $5.43),
+WT via `frontier_runner.py` (both corpora fresh, 16K, caching ON, canonical $31.87 +
+anon $31.83, 0 infra rows, 98.4-98.5% online success). Regrade:
 `tools/e2e_regrade.py results/haiku-frontier`. **`delegation_terminal_credit = 0`
 corpus-wide → lenient `e2e` == `e2e_strict` here (D2b headline choice is moot for Haiku).**
 
-Pooled canonical+anon e2e_strict tool-lift (determinate rows, Wilson 95%):
+Pooled canonical+anon e2e_strict tool-lift (determinate rows, Wilson 95%; bounds
+[lo,hi] where rows are censored). The WT solve/simulate figures first reported on
+2026-07-12 (13.5 / 0.0) were RETRACTED as extraction artifacts — D7/D9 corrected them
+(CHANGELOG 2026-07-12/13); NT simulate was censored until the 2026-07-15 de-censor:
 
 | task | NT (no-tools) | WT (tools) | WT tool-verified |
 |---|---|---|---|
 | validate_domain | 87.1 [82,91] n=240 | **98.8 [96,99.6]** n=240 | 98.8 |
 | validate_problem | 74.8 [70,79] n=400 | **96.5 [94,98]** n=400 | 96.8 |
 | validate_plan | 89.8 [88,91] n=2000 | **98.6 [98,99]** n=2000 | 98.7 |
-| solve | 20.5 [16,27] n=200 | **13.5 [9,19]** n=200 | **100.0** |
-| simulate | 0.0 [0,5.7] n=63* | **0.0 [0,2.2]** n=172 | **97.5** |
+| solve | 20.5 [16,27] n=200 | **96.0** n=200 | **100.0** |
+| simulate | 57.1 [48.6,65.2] det n=133; bounds canon [38,68] / anon [38,75] | **57.0 [49.5,64.1]** det n=172; bounds [49,63] | **97.5** |
 
-*simulate NT canonical is 100% CENSORED (500-cap corpus, response ungradeable); the
-n=63 NT figure is anon-only determinate. To de-censor, rerun NT canonical simulate via
-batch at 16K (~$0.3, 100 trials) — cheap follow-up, not blocking.
+**NT snapshot de-censor (2026-07-15, $0).** The planned "$0.3 batch rerun" was
+unnecessary: the raw batch `results.jsonl` dirs (`.local/haiku/singletool_nt_canonical`,
+`.local/sonnet/{canonical,anon}`) hold FULL response text — the 500 cap only truncated
+the stored snapshot at grade time. Re-graded all three with the current 16K snapshot;
+per-row audit vs HEAD = 0 grading diffs (10,640 rows), snapshots only. A paid rerun
+would also NOT have helped: it would re-censor the same >16K-char rows at write time.
+Remaining censored rows (30/100 canon, 37/100 anon Haiku NT simulate) are >16K-char
+raw responses — irreducible at the current snapshot cap, reported as bounds per D6/D9c.
 
-**The headline finding (paper-critical):** tool-call grading and end-to-end grading
-AGREE on validation (verdict is a short string the model always restates → tools give a
-real, CI-disjoint delivered-answer lift), but DIVERGE hard on the generative tasks:
-- **solve** — WT tool-verified = **100%** (the model always drives the solver to a valid
-  saved plan) but WT delivered e2e = **13.5%**, *below* NT's 20.5%. The final response
-  omits the plan in 68-73% of trials (`no_plan_extracted`); on anon, the 32/100 that do
-  restate a plan are **all invalid** (0/32) vs 27/27 valid on canonical — the model
-  transcribes the tool's plan into its prose answer wrongly, worse on unfamiliar names.
-- **simulate** — WT tool-verified = **97.5%** but delivered e2e = **0%**: the final
-  answer is not a parseable trajectory in 82-86% (`format_parse_fail`).
-So the standard tool-call metric overstates delivered with-tools capability by ~85pp on
-solve and ~97pp on simulate, and ~0 on validation. This is exactly the
-tool-call-vs-final-output distinction the overlay was built to measure.
+**The headline finding (corrected, two-tier):** tool-call grading and end-to-end
+grading AGREE on validation (~0pp gap) but diverge on the generative tasks in a
+TASK-SHAPED way: solve tool-verified 100 vs delivered 96 (transcription-error mass,
+not omission); simulate tool-verified 97.5 vs delivered bounds [49,63]. With NT
+simulate de-censored, the delivered-level NT-vs-WT contrast on simulate is NOT
+CI-separated (NT [38,68] vs WT [49,63]) — unaided frontier simulate is ~40-60%
+delivered, not a floor; the old 0% was the ISS-021 normalizer artifact compounded by
+snapshot censoring. The paper story is tool-verified-vs-delivered, not NT-vs-WT,
+on simulate.
 
-**Contamination (canonical vs anon): NULL on validation** (all CIs overlap). solve/simulate
-can't be cleanly contrast-tested at the delivered level (NT-canon simulate censored;
-solve WT e2e dominated by the transcription artifact, not memorization — capability is
-100% tool-verified both corpora).
+**Contamination (canonical vs anon): NULL on validation** (all CIs overlap), and now
+also testable + NULL on NT simulate at the delivered level (canon 54.3 [42.7,65.4]
+vs anon 60.3 [48.0,71.5]). solve WT e2e is dominated by transcription fidelity, not
+memorization — capability is 100% tool-verified on both corpora.
 
 ## SONNET WT canonical — DONE + REGRADED (2026-07-13)
 
@@ -78,7 +85,10 @@ Corrected Sonnet WT (canonical v11, e2e_strict vs tool-verified):
 | validate_problem | 86.5 | 98.0 [95.0,99.2] | 98.0 | +0.0 |
 | validate_plan | 97.1 | 100.0 [99.6,100.0] | 99.9 | −0.1 |
 | solve | 29.0 | **95.0** [88.8,97.8] | 100.0 | **+5.0** |
-| simulate | censored | **[49.0, 62.0]** (c13) | 99.0 | ≈37–50 |
+| simulate | 42.0 [31.8,52.8] det n=81; bounds [34,53] | **[49.0, 62.0]** (c13) | 99.0 | vs tool-ver ≈37–50 |
+
+*(simulate NT cell de-censored 2026-07-15 — see the NT snapshot de-censor note above;
+Sonnet NT all-variants: canon 51.9 [45.6,58.1] n=241, anon 46.2 [39.9,52.6] n=236.)*
 
 **Ladder verdicts** (full memo: `development/sonnet_wt_vs_haiku_e2e_memo.md`):
 solve delivered ties Haiku exactly (95.0 / 95.0, both gaps +5.0pp — copy fidelity, not
@@ -86,8 +96,8 @@ omission); simulate bands overlap (Sonnet [49,62] vs Haiku [52,64]) → "Sonnet
 transcribes long outputs better" NOT supported, the gap is length-driven not
 tier-driven; validation lift shrinks with tier (Haiku +10.8/+23.5/+7.3 →
 Sonnet +2.5/+11.5/+2.9, validate_domain loses CI-separation) → capability ladder
-holds end-to-end. Remaining cheap follow-up: de-censor NT-canonical simulate via a
-16K batch re-run (~$0.3/model).
+holds end-to-end. The formerly-open cheap follow-up (de-censor NT-canonical simulate)
+was DONE 2026-07-15 at $0 — free re-grade from the raw batch dirs, no API rerun needed.
 
 ## Decisions already locked (don't relitigate)
 

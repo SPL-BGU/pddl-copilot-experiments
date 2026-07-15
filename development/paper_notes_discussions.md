@@ -782,3 +782,26 @@ validated by an independent ranking subagent (the user asked for a second perspe
   pooled table regenerated (only iss024d still flagged in-flight: 4B done on cluster
   awaiting sync, 9B + gemma running). Full memo:
   `development/sonnet_wt_vs_haiku_e2e_memo.md`.
+
+## 2026-07-15 — NT snapshot de-censor (free re-grade); simulate sole-source claim must be delivered-level-qualified
+
+- **The planned Haiku NT "batch rerun" was unnecessary and is cancelled.** The 500-cap
+  corpora were only snapshot-censored: the raw batch `results.jsonl` dirs retain full
+  response text, so all three 500-cap NT corpora (Haiku canonical, Sonnet canonical +
+  anon) were re-graded to 16K snapshots at $0. Per-row audit: 0 grading diffs across
+  10,640 rows — primary numbers unchanged; only the e2e overlay gains determinacy.
+  A paid rerun would have re-censored the same >16K-char rows at write time.
+- **NT simulate is no longer a floor at the delivered level.** De-censored e2e_strict:
+  Haiku canon 54.3 [42.7,65.4] / anon 60.3 [48.0,71.5]; Sonnet v11 canon 42.0
+  [31.8,52.8] / anon 36.1 [26.6,46.9]. Unaided frontier simulate delivers ~40–60%
+  correct trajectories — the historical 0% was the ISS-021 normalizer artifact plus
+  snapshot censoring. Any paper claim that simulate is tools-sole-source must be
+  scoped to the OPEN-model roster or to tool-verified-vs-delivered, not to frontier
+  no-tools inability.
+- **Delivered-level tools-lift on simulate is NOT CI-separated** (Haiku NT [38,68] vs
+  WT [49,63]; Sonnet NT v11 [34,53] vs WT [49,62]). The two-tier headline stays
+  tool-verified (~97–99) vs delivered (~40–60) — the transcription-fidelity gap —
+  while validation keeps its clean CI-disjoint tool-lift.
+- **Contamination null extends to delivered-level NT simulate** (canonical vs anon CIs
+  overlap for both models), closing the "can't contrast-test simulate" caveat in the
+  frontier handoff.

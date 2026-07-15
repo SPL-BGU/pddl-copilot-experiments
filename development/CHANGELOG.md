@@ -6,6 +6,47 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-15 — Frontier NT snapshot de-censor: free re-grade from raw batch dirs (planned paid rerun cancelled)
+
+**What.** The three frontier no-tools corpora graded in the 500-char snapshot era
+(Haiku `results/haiku-frontier/sweep5v2`, Sonnet `results/sonnet-frontier/{sweep5v2,sweep6}`)
+were e2e-censored — NT-canonical simulate 100% indeterminate, the handoff's open
+follow-up was a paid 16K Batch-API rerun (~$0.3/model). Discovery: the raw batch
+`results.jsonl` under `.local/{haiku/singletool_nt_canonical, sonnet/{canonical,anon}}`
+retain the FULL response text (max 24.5K chars) — the 500 cap only truncated the stored
+`TaskResult.response` snapshot at grade time; `check_success` always graded full text,
+so the primary grades were never wrong. Re-ran `tools/claude_api_batch.py grade` on all
+three raw dirs with the current 16,384 snapshot. **A paid rerun would have bought
+nothing:** temp-0 responses would reproduce, and a fresh run would still write 16K
+snapshots, re-censoring the same >16K-char rows.
+
+**Audit.** Per-row diff vs HEAD across 1,520 + 4,560 + 4,560 rows: **0 diffs** on
+success / failure_reason / format_compliant / truncated / done_reason; the only change
+is longer response snapshots (1,468 / 3,976 / 4,115 rows). Grades byte-identical.
+
+**Overlay (rebuilt for haiku-frontier + sonnet-frontier).** NT simulate de-censored
+(e2e_strict, determinate-row Wilson 95%; bounds count censored as fail/pass):
+- Haiku canonical 54.3 [42.7,65.4] n=70 det, bounds [38,68] (was 100% censored);
+  anon 60.3 [48.0,71.5] n=63, bounds [38,75] (the handoff's stale 0.0 [0,5.7] predated
+  the D7b anon-oracle + D9 fixes; same 63-row denominator, now correctly graded).
+- Sonnet v11 canonical 42.0 [31.8,52.8] n=81, bounds [34,53]; v11 anon 36.1
+  [26.6,46.9] n=83, bounds [30,47] (3-variant: canon 51.9 n=241, anon 46.2 n=236).
+- Remaining censored rows are raw responses >16,384 chars — irreducible at the current
+  snapshot cap, honest [lo,hi] reporting per D6/D9c.
+
+**Paper-relevant.** (a) The canonical-vs-anon contamination null now extends to
+delivered-level NT simulate (CIs overlap, both models). (b) The delivered-level
+tools-lift on simulate is NOT CI-separated (Haiku NT [38,68] vs WT [49,63]; Sonnet NT
+v11 [34,53] vs WT [49,62]) — the divergence story stays tool-verified (~97–99) vs
+delivered (~40–60), not NT vs WT. (c) Unaided frontier simulate is ~40–60% delivered,
+not a floor — the old 0% was the normalizer artifact (ISS-021) compounded by snapshot
+censoring.
+
+**Files.** `results/haiku-frontier/sweep5v2/trials.jsonl`,
+`results/sonnet-frontier/{sweep5v2,sweep6}/trials.jsonl` (16K snapshots, grades
+unchanged), derived overlay refreshed (untracked),
+`development/{CHANGELOG.md, frontier_rerun_handoff.md, paper_notes_discussions.md}`.
+
 ## 2026-07-13 — `tools/iss024d_parity.py`: the pre-registered parity analysis script
 
 Implements `development/iss024d_parity_prereg.md` verbatim, written while 4B/9B/gemma
