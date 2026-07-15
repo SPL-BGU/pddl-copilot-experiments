@@ -805,3 +805,26 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Contamination null extends to delivered-level NT simulate** (canonical vs anon CIs
   overlap for both models), closing the "can't contrast-test simulate" caveat in the
   frontier handoff.
+
+## 2026-07-15 — Simulate sole-source-floor RETRACTION executed in the paper (Omer caught the stale claim)
+
+- **What happened:** the morning paper pass corrected only the FRONTIER simulate numbers
+  (0/300 → 45.0/38.3) and left the open-roster "0% for every model / outside these models'
+  reach" story intact — but that story was already retracted internally on 2026-07-11
+  (decoupled handoff §PAPER REWRITE: true unaided simulate = 0.8B 0 · 4B 23.0 · 9B 22.3 ·
+  35b 40.0 content-correct, format-compliance 0% for all). Omer flagged it ("did you use
+  the stale outdated analysis?"); the full retraction batch is now in `main.tex`
+  (commit `1ac21f4` on `paper/aaai27`, Overleaf-synced 944b1f8).
+- **Answer to the floor question:** the 0/3,000 shared-budget corpus zero is ALL five
+  models (not 0.8B-marked); under the decoupled control only 0.8B remains at 0%. The
+  35B >0% Omer remembered = the decoupled NT 40.0% (and separately iss024d WT tool-verified
+  93.2%, a different arm).
+- **Paper now says:** deployed-apparatus zero is real but apparatus-bound; decoupled
+  control recovers 22–40% content-correct at ≥4B (never format-exact → strict stays 0%);
+  tool-lift reframed 22–40 → 87–96 (matching mode); Q1-coercibility ≤0.7% attributes the
+  recovery to budget, not grader; frontier 45.0% extends the capability trend. Grading-
+  surface disclosure (tool-arm success = tool's returned result, delegation competence)
+  added to Methodology + Limitations per the decoupled handoff's "must state it".
+- **Process lesson (recorded to memory):** before editing any paper claim, sweep
+  development/ for decided-but-pending rewrite specs and paper_notes bottom lines; a
+  claim can be internally retracted while still standing in the tex.

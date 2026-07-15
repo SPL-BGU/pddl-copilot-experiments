@@ -73,7 +73,17 @@ State-tracking success (`success`, base→dec), decoupled vs sweep5v2 think=on b
 - `paper/` stays frozen (gather-data-first); this rollup is the **ready-to-fold** answer to the
   simulate sole-source-floor claim once the freeze lifts.
 
-## 📌 PAPER REWRITE — PENDING, for a FRESH session (this session did NOT touch `paper/`)
+## 📌 PAPER REWRITE — ✅ DONE 2026-07-15 (commit `1ac21f4` on `paper/aaai27`, synced to Overleaf)
+
+All four items below + the grading-surface disclosure landed in `main.tex` on
+2026-07-15 (Omer caught the stale 0%-floor text surviving a same-day frontier-only
+fix). The simulate subsection now carries the decoupled control + two-metric result;
+Results gained a budget-decoupled-control paragraph (validate +34-60pp, solve -6pp
+at 4B); Methodology + Limitations state the tool-arm grading surface; intro/
+scorecard/caption/frontier/Discussion/Conclusion floor phrasings are scoped to the
+deployed apparatus. Spec kept below for provenance.
+
+## (original spec) PAPER REWRITE — PENDING, for a FRESH session (this session did NOT touch `paper/`)
 
 Decision (2026-07-11, user): fold the decoupled results into the paper, but a **fresh-session
 agent does the actual `paper/` rewrite** — this session deliberately left `paper/` untouched.
