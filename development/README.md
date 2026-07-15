@@ -1,13 +1,13 @@
 # `development/` — map
 
-Start here. This dir holds the framework's living logs, stable reference docs, and one folder per **experiment line**. Each line has a single **entry doc**; open that first. Cross-line next steps live in `next_steps_after_inflight_runs.md`.
+Start here. This dir holds the framework's living logs, stable reference docs, and one folder per **experiment line**. Each line has a single **entry doc**; open that first. Cross-line next steps: **`roadmap_eval_and_paper_completion.md`** (2026-07-15, current; D1–D4 answer slots) supersedes `next_steps_after_inflight_runs.md`.
 
 ## Live experiment lines
 
-| Line | Entry doc | Status (2026-07-12) |
+| Line | Entry doc | Status (2026-07-12; roadmap doc is fresher) |
 |---|---|---|
-| **Frontier rerun** (Haiku/Sonnet API, e2e) | `frontier_rerun_handoff.md` | Haiku full run DONE + D7-regraded; **Sonnet WT canonical IN FLIGHT**; companions: `frontier_rerun_framework_decision.md`, `decision_audit_grading_and_frontier.md` |
-| **E2E scoring overlay** | `tool_call_vs_final_output_grading.md` | Phases 1–4 + D7/D7b done; Phase 5 (analyzer `e2e_strict` headline) = last build item; **ISS-024(d) resolver job 19293221 IN FLIGHT** |
+| **Frontier rerun** (Haiku/Sonnet API, e2e) | `frontier_rerun_handoff.md` | Haiku full run DONE + D7-regraded; Sonnet WT canonical DONE 07-13; NT corpora de-censored 07-15; companions: `frontier_rerun_framework_decision.md`, `decision_audit_grading_and_frontier.md` |
+| **E2E scoring overlay** | `tool_call_vs_final_output_grading.md` | Phases 1–5 + D7/D7b/D9 done; **ISS-024(d) resolver job 19293221: 0.8B/35b synced, 4B/9B/gemma awaiting sync (VPN)** |
 | **Decoupled / iter-2** (Line 1) | `decoupled/decoupled_run_handoff.md` | ✅ LINE COMPLETE (data 2026-06-29, final A/B rollup 2026-07-11); with-tools parity re-run = job 19293221 above |
 | **PlanBench** | `planbench/PLANBENCH_HANDOFF_v3.md` | v2 characterized; v3 = scaffold small models next |
 
