@@ -620,7 +620,7 @@ are tallied as significant-against (Methodology).}
 \includegraphics[width=0.49\textwidth]{figures/simulate.pdf}
 \caption{Sole-source tasks (success by arm, \emph{think}=off; whiskers are Wilson
 95\% CIs; the $\geq$9B headline set is shaded). \emph{solve} (left) is floored at
-$8$--$11\%$ unaided; \emph{simulate} (right) is $0\%$ for every model. The tool
+$8$--$11\%$ unaided; \emph{simulate} (right) is $0\%$ for every open-weight model. The tool
 lifts both decisively, and steering adds a further lift wherever the plain arm
 under-calls (e.g.\ Qwen3.6-35B on \emph{solve}).}
 \label{fig:solesource}
@@ -638,7 +638,8 @@ to $94\%$ and success to $92\%$ ($+29$\,pp). Every $\geq$9B model is $\geq$93\%
 accurate when it does call the planner, so what limits \emph{solve} is invocation
 frequency.
 
-\emph{Simulate} is more extreme: unaided success is $0\%$ for every model, in both
+\emph{Simulate} is more extreme: unaided success is $0\%$ for every open-weight
+model, in both
 reasoning modes, across all $3{,}000$ trials (a rule-of-three $95\%$ upper bound of
 $\leq$0.1\%). The tool reaches $65$--$92\%$ (plain)
 and $83$--$97\%$ (steered). The zero is not a grading artifact. Success demands
@@ -646,7 +647,8 @@ canonical-form deep-equality of the \emph{entire} state trajectory against the
 oracle (structured JSON, no partial credit, no free-text fallback), and the
 unaided failures decompose ($\geq$9B) into $68\%$ unparseable trajectory JSON,
 $29\%$ truncated at the $6{,}144$-token cap, and only $3\%$ parsed-but-wrong
-(Figure~\ref{fig:failtax}): hand-tracking a multi-step trajectory is outside
+(Figure~\ref{fig:failtax}); even granting every parsed-but-wrong trial, the floor
+would move by at most $3$\,pp. Hand-tracking a multi-step trajectory is outside
 these models' reach, independent of output formatting.
 
 \begin{figure*}[t]
@@ -848,21 +850,26 @@ is unchanged. This is itself a demonstration of the budget confound above.
 \textbf{A frontier proprietary model.} To test whether these baseline properties
 hold beyond the open-weight roster, we re-ran the no-tools arm on Claude Sonnet 4.6,
 a strong proprietary model, over both corpora at full $N$ (\emph{think}=off;
-Table~\ref{tab:frontier}). Two results carry over. The sole-source floor holds at
-the frontier: unaided \emph{simulate} success is $0\%$ ($0/300$ per corpus, Wilson
-upper bound $\leq$1.3\%), so multi-step state tracking is beyond even this model
-without the tool. Unaided \emph{solve} reaches $28.7\%$, above the open roster's
-$8$--$11\%$ floor, so the frontier model retains modest unaided planning ability but
-still fails on most problems without the tool. The contamination null also extends to
-the frontier, and is if anything cleaner than on the open roster: across all five
-tasks the canonical-to-anonymized drift never exceeds $1.9$\,pp (on
-\emph{validate\_domain}), every Wilson interval overlaps between corpora, and the
-pooled $|\Delta|$ is $0.04$\,pp, with no detectable memorization signal on the
-high-headroom probes (\emph{validate\_plan} at $97.3\%$ and \emph{validate\_problem}
-near $90\%$) where one would appear. Because this arm uses no tools, it corroborates
-the unaided \emph{baseline} structure at the frontier (sole-source flooring and the
-memorization null), not the with-tools invocation-propensity result, which remains
-specific to the open-weight roster.
+Table~\ref{tab:frontier}). The \emph{solve} floor carries over: unaided success is
+$28.7\%$, above the open roster's $8$--$11\%$, so the frontier model retains modest
+unaided planning ability but still fails on more than two thirds of problems without
+the tool. The \emph{simulate} floor does not carry over: Sonnet reaches $45.0\%$
+unaided on the canonical corpus ($135/300$, Wilson $[39.5, 50.7]$) and $38.3\%$ on
+the anonymized one. The open roster's zero on this task therefore reflects those
+models' format and budget failures ($68\%$ unparseable, $29\%$ truncated;
+Figure~\ref{fig:failtax}) rather than a model-general incapacity for state tracking:
+\emph{simulate} is sole-source for the open-weight roster we study, not for frontier
+models. The contamination null extends to the frontier: every task's Wilson
+intervals overlap between corpora, the high-headroom validation probes
+(\emph{validate\_plan} at $97.3\%$, \emph{validate\_problem} near $90\%$) drift by
+at most $1.9$\,pp, and the pooled $|\Delta|$ is $0.5$\,pp. The largest per-task
+drift is on \emph{simulate} ($-6.7$\,pp, favoring the canonical corpus, the
+direction memorization would produce), but its intervals overlap (two-proportion
+$z=1.66$), so we read it as within noise while noting it is the one cell a stronger
+contamination design should revisit. Because this arm uses no tools, it corroborates
+the unaided \emph{baseline} structure at the frontier (the \emph{solve} floor and
+the memorization null), not the with-tools invocation-propensity result, which
+remains specific to the open-weight roster.
 
 \begin{table}[t]
 \centering
@@ -896,7 +903,7 @@ floor.}
 \toprule
 \textbf{Task} & \textbf{Canonical} & \textbf{Anonymized} & $\Delta$ \\
 \midrule
-\emph{simulate}$^\dagger$        & $0.0$  & $0.0$  & $+0.0$ \\
+\emph{simulate}                  & $45.0$ & $38.3$ & $-6.7$ \\
 \emph{solve}$^\dagger$           & $28.7$ & $28.3$ & $-0.3$ \\
 \emph{validate\_problem}         & $89.7$ & $90.5$ & $+0.8$ \\
 \emph{validate\_domain}          & $93.6$ & $91.7$ & $-1.9$ \\
@@ -908,11 +915,12 @@ floor.}
 corpus ($300$ \emph{simulate}, $300$ \emph{solve}, $600$ \emph{validate\_problem},
 $360$ \emph{validate\_domain}, $3{,}000$ \emph{validate\_plan}; $4{,}560$ each side,
 matching Table~\ref{tab:contam}). Sign convention $\Delta=$ anonymized $-$ canonical,
-as in Tables~\ref{tab:contam}--\ref{tab:contam-pertask}. $^\dagger$Sole-source tasks:
-floored unaided, so they prove the sole-source floor at the frontier but carry no
-contamination headroom. Every Wilson $95\%$ interval overlaps between corpora (max
-$|\Delta|=1.9$\,pp on \emph{validate\_domain}, pooled $|\Delta|=0.04$\,pp), so the
-memorization null extends to a strong proprietary model.}
+as in Tables~\ref{tab:contam}--\ref{tab:contam-pertask}. $^\dagger$\emph{solve} stays
+near its unaided floor, so it proves the capability boundary at the frontier but
+carries limited contamination headroom. Every Wilson $95\%$ interval overlaps
+between corpora (max $|\Delta|=6.7$\,pp on \emph{simulate}, two-proportion $z=1.66$;
+validation drifts $\leq 1.9$\,pp; pooled $|\Delta|=0.5$\,pp), so the memorization
+null extends to a strong proprietary model.}
 \label{tab:frontier}
 \end{table}
 
@@ -920,8 +928,9 @@ memorization null extends to a strong proprietary model.}
 \paragraph{Executive summary.} For a practitioner weighing whether to place a sound
 planner or validator behind a tool interface, the measured effects reduce to four
 numbers. On tasks beyond the model's unaided reach the tool is not optional:
-\emph{simulate} and \emph{solve} sit at $0\%$ and ${\approx}29\%$ unaided even for a
-frontier model, and the tool is their only route to success. On tasks the model can
+\emph{simulate} and \emph{solve} sit at $0\%$ and $8$--$11\%$ unaided on the
+open-weight roster (a frontier model reaches $45\%$ and $29\%$, still far short of
+the tool's $65$--$97\%$), and the tool is the only reliable route to success. On tasks the model can
 already do, the tool is a ${\approx}3$--$5\times$ token-cost luxury that adds little.
 Mere availability can backfire: on plan validation one $\geq$9B model loses $67$\,pp
 when the tool is merely present, because it answers in prose instead of calling. The
@@ -960,13 +969,16 @@ plausibly a property of its alignment recipe as much as its scale. Third, our re
 support for the LLM-Modulo thesis \citep{kambhampati2024llmmodulo} that LLMs should
 be paired with sound external verifiers, and a refinement of it: the pairing pays off
 only when the orchestration actually routes work to the verifier, and naive
-availability does not guarantee that routing. That the sole-source tasks genuinely
-exceed unaided reach is not an artifact of our open-weight roster's scale: a strong
-proprietary model, Claude Sonnet 4.6, reproduces the same floor without tools
-(Table~\ref{tab:frontier}), failing \emph{simulate} entirely ($0/300$ per corpus) and
-solving fewer than a third of problems ($28.7\%$), so the necessity of an external
-solver or simulator on these tasks reflects a capability boundary rather than the
-limited scale of the models we tested. The practical rule that follows is
+availability does not guarantee that routing. The \emph{solve} boundary is not an
+artifact of our open-weight roster's scale: a strong proprietary model, Claude
+Sonnet 4.6, still solves fewer than a third of problems unaided ($28.7\%$;
+Table~\ref{tab:frontier}), so the necessity of an external solver reflects a
+capability boundary rather than the limited scale of the models we tested.
+\emph{Simulate} behaves differently at the frontier: Sonnet reaches $45.0\%$ unaided,
+so its open-roster floor is a property of those models' format and budget failures,
+and the simulator's necessity is roster-dependent rather than universal (though the
+frontier model, too, fails over half the trials that the tool answers at
+$65$--$97\%$). The practical rule that follows is
 simple: a planner or validator behind a tool interface helps most when the task
 exceeds the model's unaided reach \emph{and} the prompt explicitly directs the call;
 where the model is already competent and uninstructed, the tool is at best a
@@ -986,8 +998,10 @@ trial is a single sample and our intervals quantify uncertainty over the fixture
 instances, not sampling variance; robustness to higher temperatures is untested.
 The roster is five open-weight models from two families, so our claims concern the
 \emph{regime structure} of when a tool helps these models rather than a leaderboard.
-The unaided side of that structure does extend to a strong proprietary model: Claude
-Sonnet 4.6 reproduces both the sole-source floor and the contamination null
+The unaided side of that structure partially extends to a strong proprietary model:
+Claude Sonnet 4.6 reproduces the \emph{solve} floor and the contamination null, while
+on \emph{simulate} it recovers substantial unaided success ($45.0\%$), so that task's
+floor is specific to the open-weight roster
 (Table~\ref{tab:frontier}). The with-tools invocation-propensity finding, however, was
 measured only on the open-weight roster, so whether the availability gap and its
 one-sentence steering repair transfer to proprietary models with aggressive tool-use
@@ -1160,10 +1174,13 @@ largest drifts favor the anonymized corpus.}
 
 \paragraph{Canonical trajectory normalization (\emph{simulate}).}
 A \emph{simulate} answer is graded by deep-equality against the oracle trajectory
-after a canonical normal form is applied to both, so the $0\%$ unaided rate is not a
-formatting artifact. Per state, the boolean predicate list is case-folded,
-whitespace-collapsed, and sorted, and numeric fluents are keyed by their canonical
-parenthesised form, so case, internal spacing, and ordering never affect the verdict;
+after a canonical normal form is applied to both, so the open-weight roster's $0\%$
+unaided rate is not a formatting artifact. Per state, the boolean predicate list is
+case-folded, whitespace-collapsed, and sorted; predicate atoms are compared in a
+notation-neutral form, so an s-expression rendering \texttt{(on a b)} and a
+functional rendering \texttt{on(a,b)} match; and numeric fluents are keyed by their
+canonical parenthesised form. Case, internal spacing, notation style, and ordering
+therefore never affect the verdict;
 only the set of true predicates and the fluent values do. For example, an oracle
 state whose true predicates are \texttt{(clear c)} and \texttt{(on a b)} is matched by
 a model state listing \texttt{(ON A  b)} then \texttt{(clear c)}, and a numeric fluent
