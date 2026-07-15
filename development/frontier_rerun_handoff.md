@@ -187,8 +187,9 @@ python tools/frontier_ab_compare.py --a .local/frontier/a_probe/trials.jsonl \
 - **ISS-024(d) job 19293221** (Qwen with-tools, 72h wall from 2026-07-11): leave running;
   it's the resolver for strict-undecided cells (9B solve, 35b validate_plan, simulate). When
   it lands and the cluster is reachable (ping Omer first per house rule), sync + regrade.
-- **Phase 5 (analyzer):** still owed — the analyzer/master tables must read `e2e_strict` as
-  the headline column and render bounds where censored. Not started.
+- **Phase 5 (analyzer): DONE 2026-07-12** (`e2e_overlay.py` + `table.py --e2e` +
+  `e2e_pooled.py`; run-tag parser fixed). Residual: `build_deck.py`/`plot.py` do not yet
+  consume `e2e_strict` (decks still show tool-verified) — the one remaining analyzer piece.
 
 ## Commits this session (branch `feat/e2e-scoring-overlay`)
 
