@@ -147,7 +147,7 @@ per correct answer.
 
 The benefit is strongly regime-dependent rather than uniform. Of the
 five tasks, two (\emph{solve}, \emph{simulate}) essentially do not happen without
-the tool; on two (\emph{validate\_domain}, \emph{validate\_problem}) the tool
+the tool under the deployed budget and format constraints; on two (\emph{validate\_domain}, \emph{validate\_problem}) the tool
 improves over weak baselines, one of them genuinely partial and the other at or
 below the trivial majority guess; and one (\emph{validate\_plan}) is a case in
 which merely making the tool available can \emph{lower} success. For one of three
@@ -306,7 +306,12 @@ strict (Table~\ref{tab:tasks}): a \emph{solve} answer counts only if the
 returned plan is independently certified valid; a \emph{simulate} answer counts
 only if its entire trajectory equals the oracle's under a canonical normal form
 (sorted, case-folded, with the boolean/numeric fluent shapes unified), with no
-partial credit and no free-text fallback.
+partial credit and no free-text fallback. The two arms differ in what carries the
+answer: the unaided arm is graded on the model's own text, while a tool-arm success
+is certified from the tool's returned result on the model's arguments, so it
+attests correct selection and faithful invocation rather than a restatement of the
+answer in the model's final message (models never contradict the tool; the
+tool-lift should accordingly be read as delegation competence).
 
 \begin{table}[t]
 \centering
@@ -587,7 +592,8 @@ by whether the realizable benefit survives reasoning mode: \emph{robust},
 \emph{budget-dependent}, and again \emph{sole-source}. The two axes share only the
 word sole-source (a task with no baseline is sole-source either way) and are
 otherwise independent. Table~\ref{tab:scorecard} is the task-axis scorecard: two
-tasks (\emph{solve}, \emph{simulate}) essentially do not happen without the tool;
+tasks (\emph{solve}, \emph{simulate}) essentially do not happen without the tool
+under the deployed budget and format constraints;
 two (\emph{validate\_domain}, \emph{validate\_problem}) are improved over weak
 baselines; and one (\emph{validate\_plan}) is a mixed case in which mere
 availability can \emph{hurt} and a one-sentence nudge repairs it.
@@ -602,7 +608,7 @@ availability can \emph{hurt} and a one-sentence nudge repairs it.
 RQ1 \emph{validate\_domain} / \emph{validate\_problem} & \textsc{yes} & \emph{validate\_problem} availability $+21$--$30$\,pp over a balanced $\approx$50\% floor (3/3 favorable, 0/3 against); \emph{validate\_domain} rescued from near-chance discrimination (balanced acc.\ $53$--$74\%$) to $95$--$100\%$ \\
 RQ2 \emph{solve} & \textsc{yes} & unaided floored at $8$--$11\%$, tool $63$--$99\%$; availability $+54$--$92$\,pp \\
 RQ3 \emph{validate\_plan} & \textsc{mixed} & availability $-67$--${+}13$\,pp (1/3 favorable, 2/3 against); steering repairs ($+3$--$72$\,pp) \\
-RQ4 \emph{simulate} & \textsc{yes} & unaided $0\%$, tool $65$--$92\%$; availability $+65$--$92$\,pp \\
+RQ4 \emph{simulate} & \textsc{yes} & unaided $0\%$ on the shared-budget corpus ($22$--$40\%$ content-correct at $\geq$4B under a budget-decoupled control, never format-exact); tool $65$--$92\%$ \\
 RQ5 plan length & \textsc{yes} & \emph{validate\_plan} advantage widens $+5\!\to\!+7\!\to\!+27$\,pp with reference length \\
 RQ6 object count & \textsc{no} & \emph{validate\_problem} advantage flat ($+22/{+}23/{+}23$\,pp) across object-count bins \\
 \bottomrule
@@ -620,7 +626,9 @@ are tallied as significant-against (Methodology).}
 \includegraphics[width=0.49\textwidth]{figures/simulate.pdf}
 \caption{Sole-source tasks (success by arm, \emph{think}=off; whiskers are Wilson
 95\% CIs; the $\geq$9B headline set is shaded). \emph{solve} (left) is floored at
-$8$--$11\%$ unaided; \emph{simulate} (right) is $0\%$ for every open-weight model. The tool
+$8$--$11\%$ unaided; \emph{simulate} (right) is $0\%$ for every open-weight model
+under the shared decode budget (a budget-decoupled control recovers $22$--$40\%$
+content-correct at $\geq$4B; see text). The tool
 lifts both decisively, and steering adds a further lift wherever the plain arm
 under-calls (e.g.\ Qwen3.6-35B on \emph{solve}).}
 \label{fig:solesource}
@@ -642,14 +650,27 @@ frequency.
 model, in both
 reasoning modes, across all $3{,}000$ trials (a rule-of-three $95\%$ upper bound of
 $\leq$0.1\%). The tool reaches $65$--$92\%$ (plain)
-and $83$--$97\%$ (steered). The zero is not a grading artifact. Success demands
+and $83$--$97\%$ (steered). The zero, however, is a property of the deployed budget
+and format constraints, not an absent capability. Success demands
 canonical-form deep-equality of the \emph{entire} state trajectory against the
 oracle (structured JSON, no partial credit, no free-text fallback), and the
 unaided failures decompose ($\geq$9B) into $68\%$ unparseable trajectory JSON,
 $29\%$ truncated at the $6{,}144$-token cap, and only $3\%$ parsed-but-wrong
-(Figure~\ref{fig:failtax}); even granting every parsed-but-wrong trial, the floor
-would move by at most $3$\,pp. Hand-tracking a multi-step trajectory is outside
-these models' reach, independent of output formatting.
+(Figure~\ref{fig:failtax}): the models fail on format and budget before content is
+tested. A budget-decoupled control isolates the content question. Giving the
+reasoning trace and the answer separate decode allowances (a two-call continuation
+that stops decoding at the think-close tag; \emph{think}=on, Qwen roster, run as a
+separate corpus never pooled with the main one) and grading with a wrapper-tolerant
+two-metric grader, unaided content-correct state tracking rises to $23.0\%$ (4B),
+$22.3\%$ (9B), and $40.0\%$ (35B), with the $0.8$B model alone still at $0\%$;
+re-grading the main corpus's stored responses under the same tolerant grader
+recovers at most $0.7\%$, so the recovery comes from the budget, not the grader.
+Format compliance stays $0\%$ for all four models (none ever emits the exact
+requested wrapper), so strict content-and-format success remains $0\%$ across the
+board. The honest apples-to-apples lift in the matching mode is therefore
+$22$--$40\%$ content-correct unaided against $87$--$96\%$ with the tool, still
+decisive, but the claim ``these models cannot track state at all'' does not
+survive the control.
 
 \begin{figure*}[t]
 \centering
@@ -847,6 +868,16 @@ prompts run $\approx$5\% longer and so truncate more under the shared budget, so
 success falls $4$--$6$\,pp in lockstep with completion while success-given-completion
 is unchanged. This is itself a demonstration of the budget confound above.
 
+\textbf{A budget-decoupled control.} Because the shared decode budget confounds the
+\emph{think}=on unaided baseline, we re-ran the unaided arm under the decoupled
+apparatus described in the \emph{simulate} results (separate reasoning and answer
+allowances; Qwen roster; a separate corpus, never pooled with the main sweep).
+Beyond the \emph{simulate} recovery reported there ($22$--$40\%$ content-correct at
+$\geq$4B), validation baselines rise sharply (e.g.\ \emph{validate\_plan}
+$+34$--$60$\,pp for 4B/9B, Wilson-disjoint), while \emph{solve} is flat for 9B/35B
+and drops $6$\,pp at 4B, so decoupling is not uniformly beneficial. The tool
+verdicts are unchanged; what shrinks is the unaided floor, to its honest size.
+
 \textbf{A frontier proprietary model.} To test whether these baseline properties
 hold beyond the open-weight roster, we re-ran the no-tools arm on Claude Sonnet 4.6,
 a strong proprietary model, over both corpora at full $N$ (\emph{think}=off;
@@ -855,11 +886,11 @@ $28.7\%$, above the open roster's $8$--$11\%$, so the frontier model retains mod
 unaided planning ability but still fails on more than two thirds of problems without
 the tool. The \emph{simulate} floor does not carry over: Sonnet reaches $45.0\%$
 unaided on the canonical corpus ($135/300$, Wilson $[39.5, 50.7]$) and $38.3\%$ on
-the anonymized one. The open roster's zero on this task therefore reflects those
-models' format and budget failures ($68\%$ unparseable, $29\%$ truncated;
-Figure~\ref{fig:failtax}) rather than a model-general incapacity for state tracking:
-\emph{simulate} is sole-source for the open-weight roster we study, not for frontier
-models. The contamination null extends to the frontier: every task's Wilson
+the anonymized one, in line with the budget-decoupled open-roster control
+($22$--$40\%$ at $\geq$4B; Results). Unaided state tracking grows with model
+capability once format and budget pressures are removed; the open roster's
+apparent zero reflects those pressures ($68\%$ unparseable, $29\%$ truncated;
+Figure~\ref{fig:failtax}), not a model-general incapacity. The contamination null extends to the frontier: every task's Wilson
 intervals overlap between corpora, the high-headroom validation probes
 (\emph{validate\_plan} at $97.3\%$, \emph{validate\_problem} near $90\%$) drift by
 at most $1.9$\,pp, and the pooled $|\Delta|$ is $0.5$\,pp. The largest per-task
@@ -928,9 +959,10 @@ null extends to a strong proprietary model.}
 \paragraph{Executive summary.} For a practitioner weighing whether to place a sound
 planner or validator behind a tool interface, the measured effects reduce to four
 numbers. On tasks beyond the model's unaided reach the tool is not optional:
-\emph{simulate} and \emph{solve} sit at $0\%$ and $8$--$11\%$ unaided on the
-open-weight roster (a frontier model reaches $45\%$ and $29\%$, still far short of
-the tool's $65$--$97\%$), and the tool is the only reliable route to success. On tasks the model can
+unaided \emph{solve} sits at $8$--$11\%$, and unaided \emph{simulate} tops out at
+$22$--$40\%$ content-correct even under a budget-decoupled control ($0\%$ as
+deployed, and never in the required format), both far short of the tool's
+$65$--$97\%$, so the tool is the only reliable route to success. On tasks the model can
 already do, the tool is a ${\approx}3$--$5\times$ token-cost luxury that adds little.
 Mere availability can backfire: on plan validation one $\geq$9B model loses $67$\,pp
 when the tool is merely present, because it answers in prose instead of calling. The
@@ -974,11 +1006,11 @@ artifact of our open-weight roster's scale: a strong proprietary model, Claude
 Sonnet 4.6, still solves fewer than a third of problems unaided ($28.7\%$;
 Table~\ref{tab:frontier}), so the necessity of an external solver reflects a
 capability boundary rather than the limited scale of the models we tested.
-\emph{Simulate} behaves differently at the frontier: Sonnet reaches $45.0\%$ unaided,
-so its open-roster floor is a property of those models' format and budget failures,
-and the simulator's necessity is roster-dependent rather than universal (though the
-frontier model, too, fails over half the trials that the tool answers at
-$65$--$97\%$). The practical rule that follows is
+\emph{Simulate} behaves differently: once format and budget pressures are removed,
+unaided state tracking appears at $\geq$4B ($22$--$40\%$ in the budget-decoupled
+control) and reaches $45.0\%$ at the frontier, so the simulator's necessity is a
+matter of degree rather than an absolute boundary (every model still fails at
+least half the trials that the tool answers at $65$--$97\%$). The practical rule that follows is
 simple: a planner or validator behind a tool interface helps most when the task
 exceeds the model's unaided reach \emph{and} the prompt explicitly directs the call;
 where the model is already competent and uninstructed, the tool is at best a
@@ -1000,8 +1032,9 @@ The roster is five open-weight models from two families, so our claims concern t
 \emph{regime structure} of when a tool helps these models rather than a leaderboard.
 The unaided side of that structure partially extends to a strong proprietary model:
 Claude Sonnet 4.6 reproduces the \emph{solve} floor and the contamination null, while
-on \emph{simulate} it recovers substantial unaided success ($45.0\%$), so that task's
-floor is specific to the open-weight roster
+on \emph{simulate} it recovers substantial unaided success ($45.0\%$), consistent
+with the budget-decoupled control on the open roster ($22$--$40\%$), so that task's
+apparent floor is an apparatus effect rather than a capability constant
 (Table~\ref{tab:frontier}). The with-tools invocation-propensity finding, however, was
 measured only on the open-weight roster, so whether the availability gap and its
 one-sentence steering repair transfer to proprietary models with aggressive tool-use
@@ -1017,10 +1050,13 @@ $P(\text{call})\times P(\text{correct}\mid\text{call})$ decomposition, which doe
 rest on that comparison. The availability gap likewise differences two arms whose
 system prompts, beyond tool presence, also differ by a one-line policy/format clause,
 so the steering gap (where the plain and steered prompts differ by exactly one
-appended sentence) is the cleaner of the two contrasts. Grading is strict and
-end-to-end by design (format adherence is part of the task), so a model that
+appended sentence) is the cleaner of the two contrasts. Grading of the model's own
+text is strict by design (format adherence is part of the task), so a model that
 reasons correctly but emits malformed output scores as a failure; we report the
-failure-type decomposition so this is visible rather than hidden. The serving
+failure-type decomposition, and the budget-decoupled control (Results), so this is
+visible rather than hidden. The arms also differ in grading surface (Methodology):
+tool-arm success certifies the tool's returned result, not the model's restatement
+of it, so cross-arm gaps compare delegation against unaided answering. The serving
 runtime did not surface per-trial reasoning traces for the model family used, so
 \emph{think}=on reasoning is evidenced through completion-token counts rather than
 archived chains of thought; and wall-clock latency is not recoverable from a
@@ -1052,13 +1088,15 @@ whether a model with aggressive tool-use post-training still exhibits the availa
 the steering repair, or whether its default invocation propensity is high enough to close them.
 Finally, because a naive budget increase degrades format adherence (Limitations), measuring the
 \emph{think}=on benefit cleanly calls for a budget-decoupled design (separate decode allowances
-for the reasoning trace and the final answer) rather than a simple cap raise.
+for the reasoning trace and the final answer) rather than a simple cap raise; we ran that design
+as a control on the unaided arm (Results), and extending it to the full grid, including the tool
+arms, remains open.
 
 \section{Conclusion}
 We asked whether a sound symbolic planner or validator, exposed as a callable tool,
 improves a language model on individual PDDL tasks. It does, but the benefit is
-strongly regime-dependent: the tool is indispensable where the model cannot do the
-task unaided (solving, state tracking), a token-priced luxury where it is already
+strongly regime-dependent: the tool is indispensable where the task exceeds the
+model's unaided reach (solving, state tracking), a token-priced luxury where it is already
 competent (file validation), and, on plan checking, can even be \emph{harmful}
 for a model that under-calls it (one of our three $\geq$9B models drops $67$\,pp when
 the tool is merely available), a failure one steering sentence reverses. Throughout, the limiting factor is invocation \emph{propensity}, not
