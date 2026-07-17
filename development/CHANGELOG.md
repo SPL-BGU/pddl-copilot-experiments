@@ -6,6 +6,62 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-17 — e2e-overlay PR #91 review: six regrade/aggregation bugs fixed (dedup, censor-reason split, delegation-credit staleness, simulate candidate coverage, fail-closed stem parsing, pooled-table guards)
+
+**Bugs.** PR #91 code review of `feat/e2e-scoring-overlay` found six issues, all fixed in
+`tools/e2e_regrade.py` + `.claude/skills/analyzer/scripts/{e2e_overlay,e2e_pooled,table}.py`:
+
+1. `e2e_regrade.process_corpus` graded every raw JSONL line instead of deduping by trial
+   key the way `tools/iss024d_parity.py` already does — a mop-up re-run file could inflate
+   a cell's denominator (and skew the cap-detection histogram, which now runs on deduped
+   rows, not raw lines). Dedup is last-occurrence-wins (matches resume semantics, sorted
+   glob order); each cell prints its dup count; each overlay row now carries `trial_key`
+   (list form) so downstream consumers can dedup/join too — older overlay files lack the
+   field, so no reader may require it.
+2. `e2e_overlay.load_e2e_cells` counted every `e2e_strict == "indeterminate"` row as
+   snapshot-cap censoring, but `no_ground_truth` / `plan_validation_transport_error` /
+   `unknown_task` rows are indeterminate for other reasons entirely. New `cens_cap` /
+   `cens_other` fields split the existing `cens` total (bounds math and low/high/exact
+   unchanged) for presentation; `fmt_e2e` renders `a–b (ck+uN/n)` when `cens_other > 0`,
+   else the old `a–b (ck/n)` unchanged. `e2e_pooled.py`'s header and `table.py`'s `--e2e`
+   caption each gained one sentence explaining the `+uN` component. CSV schemas untouched.
+3. `e2e_regrade._grade_empty_or_censored`'s D2b=B delegation credit gated on the STORED
+   `success` field, which pre-dates the `_tool_error_seen` FastMCP arg-error fix and can
+   be mis-binned True for validate_* with-tools rows. Now gates on
+   `out.get("tool_verified_fixed", row["success"])` — the Phase-3 recompute when present,
+   falling back to stored success for solve/simulate (which have no recompute, unchanged).
+4. `e2e_regrade.simulate_candidates` (D9b) only ever turned the FIRST coercible fenced
+   block into a candidate, contradicting its own module docstring ("each fenced block") —
+   a correct trajectory landing in a later block (e.g. after an initial-state JSON block
+   that also happens to coerce) graded False. Now every coercible block is its own
+   candidate; whole-response stays first, the all-blocks concatenation stays last.
+   Exact-match grading against the oracle means this can only add passes, never create a
+   false positive; existing overlays predate the fix, so simulate numbers can only move UP
+   on regrade. Addendum added to `development/tool_call_vs_final_output_grading.md` D9b.
+5. `e2e_overlay.load_e2e_cells` silently routed ANY unparseable stem (`parse_dirname_full`
+   cond `"?"`) through the frontier-corpus inference branch, so a typo'd `slurm_*` cell
+   dirname would be mislabeled instead of erroring. Now raises `ValueError` for
+   unparseable `slurm`-shaped stems; non-slurm (frontier) stems are unaffected — verified
+   against all seven real stem shapes on disk.
+6. `e2e_pooled.py main()` crashed on `csv_rows[0]` when the overlay had zero rows, and
+   silently `mkdir`'d a nonexistent `--overlay` root instead of telling the user to run
+   the regrade first. Both are now guarded (`sys.exit` pointing at `tools/e2e_regrade.py`;
+   CSV write skipped with a note when there are no rows, md still written).
+
+**Tests.** New `tests/test_e2e_overlay.py` (50 assertions, standalone + wired into
+`tests/verify.sh`): dirname parsing (bare / run-tagged / legacy-no-think / unparseable),
+`detect_cap` incl. the 9B resume-shape mass-pinned case, tolerant plan extraction
+(strict / backticked / table / prose), a second-fenced-block simulate regression pin,
+dedup-last-wins over a synthetic two-file resume corpus, delegation-credit gating on the
+recomputed vs. stale tool-verified value (both directions), and both the fail-closed and
+still-works `load_e2e_cells` stem cases. No behavior change to `pddl_eval/` or
+`run_experiment.py`.
+
+**Files.** `tools/e2e_regrade.py`,
+`.claude/skills/analyzer/scripts/{e2e_overlay.py,e2e_pooled.py,table.py}`,
+`tests/{test_e2e_overlay.py (new),verify.sh}`,
+`development/tool_call_vs_final_output_grading.md`.
+
 ## 2026-07-17 — ISS-024(d) endgame: all 5 cells synced + regraded; pre-registered parity FAILS at job level (separate-apparatus labeling applies)
 
 **Sync + post-mortem (E1.1).** 4B/9B/gemma pulled into `results/iss024d-e2e-live/`

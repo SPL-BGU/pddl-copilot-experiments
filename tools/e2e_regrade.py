@@ -192,9 +192,14 @@ def extract_plan_lines_tolerant(response: str) -> tuple[list[str], str | None]:
 def simulate_candidates(resp: str) -> list[tuple[list[dict], str]]:
     """Ordered trajectory candidates under the unchanged Q1 whitelist (D7, D9b).
 
-    Candidates: the whole response, the first coercible fenced block, and —
-    when several blocks coerce — their in-order concatenation (models that
-    emit one block per step). Modes: "whole", "fenced_block", "fenced_concat".
+    Candidates: the whole response first, then EVERY coercible fenced block
+    (2026-07-17 review fix — grading only the FIRST coercible block missed a
+    correct trajectory landing in a later block, e.g. after an initial-state
+    JSON block that also happens to coerce), then — when several blocks
+    coerce — their in-order concatenation (models that emit one block per
+    step) last. Modes: "whole", "fenced_block", "fenced_concat". Grading is
+    exact-match against the oracle, so widening the candidate set can only
+    ever ADD a pass, never create a false positive.
     """
     cands: list[tuple[list[dict], str]] = []
     steps, _compliant = _coerce_simulate_trajectory(resp)
@@ -205,8 +210,7 @@ def simulate_candidates(resp: str) -> list[tuple[list[dict], str]]:
         steps, _compliant = _coerce_simulate_trajectory(m.group(1).strip())
         if steps is not None:
             block_steps.append(steps)
-            if len(block_steps) == 1:
-                cands.append((steps, "fenced_block"))
+            cands.append((steps, "fenced_block"))
     if len(block_steps) > 1:
         cands.append(([s for st in block_steps for s in st], "fenced_concat"))
     return cands
@@ -322,14 +326,25 @@ def _grade_empty_or_censored(out: dict, row: dict, resp: str, cap: int | None,
         if not row["with_tools"]:
             out["e2e"] = False
             out["e2e_reason"] = "empty_response"
-        elif row.get("done_reason") == "stop" and row["success"] is True:
-            # D2b=B: the model deliberately ended its turn with the tool call
-            # as its only substantive output, and that call was correct.
-            out["e2e"] = True
-            out["e2e_reason"] = "delegation_terminal_credit"
         elif row.get("done_reason") == "stop":
-            out["e2e"] = False
-            out["e2e_reason"] = "empty_stop_not_tool_verified"
+            # 2026-07-17 review fix: stored `success` pre-dates the
+            # _tool_error_seen FastMCP arg-error fix, so validate_* rows can
+            # be mis-binned as tool-verified. `out["tool_verified_fixed"]`
+            # (Phase 3 recompute, set above for validate_* with-tools rows)
+            # is the corrected verdict and must gate delegation credit
+            # instead of the stale stored grade. solve/simulate carry no
+            # recompute (`.get` falls back to `row["success"]`, the old
+            # behavior).
+            tv = out.get("tool_verified_fixed", row["success"])
+            if tv is True:
+                # D2b=B: the model deliberately ended its turn with the tool
+                # call as its only substantive output, and that call was
+                # correct.
+                out["e2e"] = True
+                out["e2e_reason"] = "delegation_terminal_credit"
+            else:
+                out["e2e"] = False
+                out["e2e_reason"] = "empty_stop_not_tool_verified"
         else:
             out["e2e"] = False
             out["e2e_reason"] = "truncated_empty"
@@ -493,27 +508,50 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
         by_cell[trials.parent].append(trials)
     for cell_dir, files in sorted(by_cell.items()):
         cell = cell_dir.name
-        cell_rows = []
-        lengths: dict[int, int] = defaultdict(int)
+        # 2026-07-17 review fix: dedup by trial key, last occurrence wins —
+        # matches tools/iss024d_parity.py's resume semantics, so a mop-up
+        # re-run file (sorted after the original by the glob above) can't
+        # inflate the cell's denominator. A plain dict keeps insertion
+        # order, so the histogram/output below stay stable. Lines missing
+        # "key" (pre-key-write corpora) fall back to a synthetic key from
+        # the result row's identity fields.
+        keyed_rows: dict[tuple, dict] = {}
+        dup_count = 0
         for trials in files:
             for ln in trials.open():
                 try:
-                    row = json.loads(ln).get("result", {})
+                    obj = json.loads(ln)
                 except json.JSONDecodeError:
                     continue  # pre-2026-05-28 corpora may carry torn lines
+                row = obj.get("result", {})
                 if row.get("task") not in ALL_TASKS:
                     continue
-                lengths[len(row.get("response") or "")] += 1
-                cell_rows.append(row)
-        if not cell_rows:
+                raw_key = obj.get("key")
+                key = (tuple(raw_key) if raw_key is not None else
+                      (row.get("task"), row.get("domain_name"),
+                       row.get("problem_name"), row.get("plan_label"),
+                       row.get("prompt_variant"), row.get("with_tools")))
+                if key in keyed_rows:
+                    dup_count += 1
+                keyed_rows[key] = row
+        if not keyed_rows:
             continue
+        if dup_count:
+            print(f"  {cell}: {dup_count} duplicate trial key(s) deduped "
+                  "(last wins)")
+        # The cap-detection histogram must reflect the DEDUPED rows — a
+        # duplicated at-cap row would otherwise inflate the pinned-mass
+        # count detect_cap looks for.
+        lengths: dict[int, int] = defaultdict(int)
+        for row in keyed_rows.values():
+            lengths[len(row.get("response") or "")] += 1
         cap = detect_cap(lengths)
         anon = is_anon(corpus_dir, cell)
         gt = gt_cache_anon if anon else gt_cache
         out_path = out_root / corpus_dir.name / f"{cell}.e2e.jsonl"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with out_path.open("w") as fh:
-            for row in cell_rows:
+            for key, row in keyed_rows.items():
                 graded = await regrade_row(row, cap, gt, ctx, anon=anon)
                 graded["e2e_strict"] = (
                     False if graded["e2e_reason"] == "delegation_terminal_credit"
@@ -521,6 +559,9 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
                 graded["cell"] = cell
                 graded["snapshot_cap"] = cap
                 graded["anon"] = anon
+                # Downstream consumers (dedup/join) can key off this; older
+                # overlay files predate the field, so no reader may require it.
+                graded["trial_key"] = list(key)
                 fh.write(json.dumps(graded) + "\n")
                 rows_out.append(graded)
     return rows_out

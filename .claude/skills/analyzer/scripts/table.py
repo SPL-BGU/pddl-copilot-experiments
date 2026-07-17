@@ -281,7 +281,9 @@ def write_md(rows: list[dict], path: Path, e2e: bool = False) -> None:
             "extraction, empty final turns fail). Point [lo–hi] = exact "
             "cell with Wilson 95% CI; a–b (ck/n) = bounds where k of n "
             "rows are censored at the response-snapshot cap "
-            "(indeterminate). "
+            "(indeterminate); a–b (ck+uN/n) further splits out N rows "
+            "indeterminate for a non-cap reason (missing ground truth or a "
+            "plan-validation transport error). "
             "In the tools arms succ% is tool-verified, so succ% vs "
             "e2e-strict is the tool-call-vs-delivered gap._")
     path.write_text("\n".join(lines))

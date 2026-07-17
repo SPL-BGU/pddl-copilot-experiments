@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 
 from e2e_overlay import fmt_e2e, load_e2e_cells
@@ -107,6 +108,9 @@ def main():
     ap.add_argument("--out", type=Path, default=None,
                     help="output dir (default: the overlay root)")
     args = ap.parse_args()
+    if not args.overlay.is_dir():
+        sys.exit(f"no overlay directory at {args.overlay} — run "
+                 "tools/e2e_regrade.py on the corpora first")
     out_dir = args.out or args.overlay
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -119,7 +123,10 @@ def main():
         "grading rules are D7/D7b tolerant extraction "
         "(`tools/e2e_regrade.py`). Cells: point `[lo–hi]` = exact with "
         "Wilson 95% CI; `a–b (ck/n)` = bounds with k of n rows censored "
-        "at the response-snapshot cap. gap = tool-verified − e2e-strict, "
+        "at the response-snapshot cap; `a–b (ck+uN/n)` further splits out "
+        "N rows that are indeterminate for a non-cap reason (missing "
+        "ground truth or a plan-validation transport error). "
+        "gap = tool-verified − e2e-strict, "
         "exact cells only. Corpora are separate blocks and are never "
         "pooled with each other; run-tagged corpora are independent rerun "
         "estimates, not resolutions of older cells.",
@@ -176,6 +183,10 @@ def main():
 
     md_path = out_dir / "pooled_e2e_table.md"
     md_path.write_text("\n".join(md))
+    if not csv_rows:
+        print(f"wrote {md_path}; no overlay rows found under {args.overlay} "
+              "— skipping pooled_e2e_table.csv")
+        return
     csv_path = out_dir / "pooled_e2e_table.csv"
     with csv_path.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(csv_rows[0].keys()))

@@ -581,6 +581,17 @@ iss024d 35b simulate (neutral) 9.7 → 12.3–13.3. Pooled table regenerated
 (`e2e_pooled.py`, sonnet-frontier no longer flagged in-flight). Sonnet-vs-Haiku
 analysis: `development/sonnet_wt_vs_haiku_e2e_memo.md`.
 
+**D9b addendum (2026-07-17, PR #91 review):** `simulate_candidates` only ever turned the
+FIRST coercible fenced block into a candidate — the bullet above's "each fenced block"
+described the intended rule, but the shipped code implemented "first fenced block" only
+(the numbers above are correct for what actually ran). Fixed: every coercible fenced
+block is now its own candidate (whole response first, the all-blocks concatenation last),
+under the same exact-match-against-oracle argument for why widening the candidate set
+cannot create a false positive. Existing overlays — including the Sonnet WT and iss024d
+numbers above — predate the fix, so a regrade can only move simulate numbers **up**, never
+down. `tests/test_e2e_overlay.py` pins a synthetic case where the correct trajectory only
+appears in the second fenced block.
+
 ### Phase 1 results (run 2026-07-11, `tools/e2e_regrade.py`, unfiltered per-row means)
 
 With-tools validate_* outcome distribution (sweep5v2-live, all 5 models, n=79,200):
