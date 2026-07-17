@@ -62,6 +62,12 @@ still-works `load_e2e_cells` stem cases. No behavior change to `pddl_eval/` or
 `tests/{test_e2e_overlay.py (new),verify.sh}`,
 `development/tool_call_vs_final_output_grading.md`.
 
+**Regrade applied (same day).** `results/derived/e2e_overlay/` regenerated for all 8
+corpora with live MCP and `pooled_e2e_table.{md,csv}` rebuilt. Realized delta = exactly
+the predicted 19 iss024d-e2e simulate rows False→True (≤1.7pp on affected pooled rows,
+11 neutral / 8 steered); all other cells byte-stable, solve re-validated with zero flips.
+Per-cell realized numbers: D9b addendum in `tool_call_vs_final_output_grading.md`.
+
 ## 2026-07-17 — ISS-024(d) endgame: all 5 cells synced + regraded; pre-registered parity FAILS at job level (separate-apparatus labeling applies)
 
 **Sync + post-mortem (E1.1).** 4B/9B/gemma pulled into `results/iss024d-e2e-live/`

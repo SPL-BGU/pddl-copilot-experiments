@@ -592,6 +592,15 @@ numbers above — predate the fix, so a regrade can only move simulate numbers *
 down. `tests/test_e2e_overlay.py` pins a synthetic case where the correct trajectory only
 appears in the second fenced block.
 
+**Realized (regrade 2026-07-17, all 8 corpora, live MCP):** exactly 19 rows changed
+across ~388k, all iss024d-e2e simulate False→True (one-block-per-step responses whose
+first coercible block was not the trajectory): neutral bank 4B +4, 9B +5, 35b +1, gemma
++1; steered 4B +2, 9B +1, gemma +5. Pooled-table effect ≤1.7pp on the affected rows
+(e.g. 35b neutral 12.3–13.3 → 12.7–13.7; gemma steered 5.0–6.7 → 6.7–8.3). Every other
+cell in every corpus is unchanged; solve rows re-validated through live MCP with zero
+flips. Overlay rows now also carry `trial_key`; `results/derived/e2e_overlay/` and
+`pooled_e2e_table.{md,csv}` are rebuilt to this state.
+
 ### Phase 1 results (run 2026-07-11, `tools/e2e_regrade.py`, unfiltered per-row means)
 
 With-tools validate_* outcome distribution (sweep5v2-live, all 5 models, n=79,200):
