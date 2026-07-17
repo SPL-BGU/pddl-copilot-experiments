@@ -74,7 +74,7 @@ def cache_verdict(eff: float, lst: float, rows) -> str:
     if not any(r["tokens"].get("cache_write", 0)
                or r["tokens"].get("cache_read", 0) for r in rows):
         return "INACTIVE"
-    return "ACTIVE" if eff < lst else f"NET-LOSS ({(eff/lst-1)*+100:+.1f}%)"
+    return "ACTIVE" if eff < lst else f"NET-LOSS ({(eff/lst-1) * 100:+.1f}%)"
 
 
 def stats(rows) -> dict:
@@ -108,16 +108,16 @@ def main() -> None:
 
     # --- success, paired ---
     disc = []          # (key, a_success, b_success)
-    b_only_wins = c_only = 0   # b = A-succ/B-fail, c = A-fail/B-succ
+    a_succ_b_fail = a_fail_b_succ = 0
     for k in shared:
         sa, sb = a_rows[k]["success"], b_rows[k]["success"]
         if sa != sb:
             disc.append((k, sa, sb))
             if sa:
-                b_only_wins += 1
+                a_succ_b_fail += 1
             else:
-                c_only += 1
-    pval = mcnemar_exact(b_only_wins, c_only)
+                a_fail_b_succ += 1
+    pval = mcnemar_exact(a_succ_b_fail, a_fail_b_succ)
 
     task_of = lambda k: k[1]
     print(f"\n{'task':18s} {'A succ':>8s} {'B succ':>8s} {'disc':>5s}   "
@@ -137,7 +137,7 @@ def main() -> None:
               f"{sb['out']:>6.0f}")
 
     print(f"\n[ab] discordant pairs: {len(disc)} "
-          f"(A-only-success={b_only_wins}, B-only-success={c_only}), "
+          f"(A-only-success={a_succ_b_fail}, B-only-success={a_fail_b_succ}), "
           f"exact McNemar p={pval:.4f}")
     for k, sa, sb in disc:
         ra, rb = a_rows[k], b_rows[k]

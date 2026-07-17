@@ -57,7 +57,8 @@ TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan",
 
 def slot_quotas(n: int, values: list[str]) -> list[str]:
     """n slots spread over `values`: floor(n/len) each, remainder to the
-    ends of the sorted list (deterministic, documented in the header)."""
+    first `extra` values of the sorted list (deterministic, documented in
+    the header)."""
     base, extra = divmod(n, len(values))
     slots = []
     for i, v in enumerate(values):

@@ -21,8 +21,10 @@ development/decision_audit_grading_and_frontier.md):
   * `max_iterations=MAX_TOOL_LOOPS` counts API round-trips, the same unit as
     the A loop's `for _ in range(MAX_TOOL_LOOPS)`; loop_exhausted is detected
     identically (final message still asking for tools).
-  * Prompt caching ON: `cache_control` on the system block caches tools+system
-    (tools render first). Per-trial cache read/write tokens are logged and the
+  * Prompt caching ON: `cache_control={"type": "ephemeral"}` is passed as a
+    kwarg to `client.beta.messages.tool_runner`, which places the cache
+    breakpoints across the agentic loop (tools+system render first, so that
+    prefix caches). Per-trial cache read/write tokens are logged and the
     summary reports whether caching is actually active (Haiku's minimum
     cacheable prefix is 4096 tokens — below it the API silently no-ops).
 
