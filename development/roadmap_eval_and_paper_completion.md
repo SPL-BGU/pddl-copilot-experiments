@@ -23,6 +23,15 @@ that call is D1 below and it sequences everything else.
 
 **E1. ISS-024(d) endgame (cluster; VPN + ping first). The only substantive
 evaluation work left before the paper's with-tools numbers are final.**
+
+> STATUS 2026-07-17: steps 1–4 DONE + step 5 first half. All 5 cells synced
+> (9,120 trials each, exit codes clean), regraded, parity run: **job-level
+> parity FAILS** (gemma floor 5.3pp; Qwen 7/20 pass, max |Δ| 11.3pp; solve red
+> flag generalizes, truncation/parser-off mechanism). Prereg rule 4 binds:
+> separate-apparatus replication labeling; the "iss024d as headline surface"
+> branch of D-N4 is closed. Pooled table regenerated with the verdict banner.
+> Remaining: merge `feat/e2e-scoring-overlay` → main (Omer's call on timing).
+> Details: CHANGELOG 2026-07-17 + results/derived/iss024d_parity_report.md.
 1. Sync `results/slurm_vllm_*_iss024d-e2e/`: 4B (complete, unsynced), 9B + gemma
    (72h wall from 07-11 ended ~07-14 — likely complete; post-mortem exit codes).
 2. `tools/e2e_regrade.py` over the synced cells (16K → exact e2e).

@@ -40,9 +40,21 @@ TASK_ORDER = ["solve", "validate_domain", "validate_problem",
 
 # Corpora whose runs are still landing — flagged in the header so a reader
 # knows which blocks will change (update this list as they complete).
-IN_FLIGHT = {
-    "iss024d-e2e-live": "0.8B/35B synced; 4B complete on cluster awaiting "
-                        "sync; 9B + gemma still running (2026-07-13)",
+IN_FLIGHT = {}
+
+# Completed corpora carrying a binding interpretation constraint — rendered
+# as a NOTE in the header (same slot the PROVISIONAL banner used).
+NOTES = {
+    "iss024d-e2e-live": "complete (all 5 cells, 9120 trials each, synced "
+                        "2026-07-17). Pre-registered parity vs sweep5v2-live "
+                        "FAILED at job level (gemma control noise floor "
+                        "5.3pp; Qwen 7/20 pass, max |Δ| 11.3pp; mechanism: "
+                        "parser-off truncation on solve/validate_plan). Per "
+                        "prereg rule 4 these numbers are a separate-apparatus "
+                        "replication under full-response storage — never "
+                        "'the sweep5v2 cells resolved'. See "
+                        "development/iss024d_parity_prereg.md + "
+                        "results/derived/iss024d_parity_report.md",
 }
 
 
@@ -116,6 +128,9 @@ def main():
     for name, why in sorted(IN_FLIGHT.items()):
         if name in corpora:
             md.append(f"**PROVISIONAL:** `{name}` — {why}.")
+    for name, why in sorted(NOTES.items()):
+        if name in corpora:
+            md.append(f"**NOTE:** `{name}` — {why}.")
     md.append("")
 
     csv_rows = []

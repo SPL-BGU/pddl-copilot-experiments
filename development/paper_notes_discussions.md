@@ -828,3 +828,31 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Process lesson (recorded to memory):** before editing any paper claim, sweep
   development/ for decided-but-pending rewrite specs and paper_notes bottom lines; a
   claim can be internally retracted while still standing in the tex.
+
+## 2026-07-17 — ISS-024(d) complete: pre-registered parity FAILED → separate-apparatus labeling binds the P1 reframe
+
+- **Corpus final:** all 5 iss024d-e2e cells synced + regraded (9,120 trials each; exit
+  codes clean). The with-tools open-roster evaluation phase has no runs left (E1.1–E1.4
+  done; only the branch merge remains in Track E).
+- **Pre-registered verdict (no discretion):** job-level parity vs sweep5v2-live FAILS —
+  gemma control noise floor 5.3pp; Qwen 7/20 TOST pass, max |Δ| 11.3pp (35b solve).
+  The 07-13 red flag generalizes: every Qwen solve Δ is negative with truncated-rate
+  +13 to +19pp concentrated on solve/validate_plan — the parser-off mechanism, exactly
+  where long generations live. Validation cells pass or sit within the control floor.
+- **What this means for P1/D-N4:** the "if parity passes, iss024d becomes the with-tools
+  e2e headline surface" branch is CLOSED. Binding language (prereg rule 4 + 07-12
+  interpretation note): iss024d e2e numbers are *independent rerun estimates under
+  full-response storage from a separate apparatus*, reported as a labeled replication —
+  never as resolved sweep5v2 values, and not silently substitutable as THE with-tools
+  number. Paired delivered-vs-tool-verified gaps WITHIN iss024d remain valid (same-corpus
+  contrasts don't cross apparatus).
+- **The delivered-answer story sharpens anyway:** within iss024d, simulate delivered vs
+  tool-verified is 7.0–9.3 vs 63.0 (4B), 10.3–15.0 vs 82.7 (9B), 12.3–13.3 vs 92.3 (35b)
+  — the frontier transcription-fidelity gap replicates on the open roster, larger.
+  gemma validate_plan inverts (delivered 30.0–63.1 vs tool-verified 0.9): it answers
+  without competent tool use. Both are within-corpus claims, safe under the labeling.
+- **Grading-surface caveat, quantified for the paper:** even at 16K snapshots the
+  parser-off apparatus stays partially censored (worst gemma solve c200/300); bounds
+  reporting per D6/D9c stands. A gemma `<|channel>thought` template leak (10 neutral
+  rows, ≤3.3pp) is parked as a possible D10 tolerance decision — not applied, so current
+  numbers are conservative.

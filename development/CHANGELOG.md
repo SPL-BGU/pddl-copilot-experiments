@@ -6,6 +6,54 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-17 — ISS-024(d) endgame: all 5 cells synced + regraded; pre-registered parity FAILS at job level (separate-apparatus labeling applies)
+
+**Sync + post-mortem (E1.1).** 4B/9B/gemma pulled into `results/iss024d-e2e-live/`
+(rsync -z; the uncompressed first attempt ran ~125 KB/s over VPN, compressed ~30×
+faster). All 5 cells complete at 9,120 trials each. Exit codes clean: array
+`19293221` — named `qwen3_6_35b` but its 4 tasks ran the 4 Qwen models (task end
+times match cell mtimes: _0=0.8B, _1=4B, _2=9B, _3=35b) — all COMPLETED 0:0;
+gemma `19314599` COMPLETED 0:0. Queue empty.
+
+**Regrade (E1.2).** `tools/e2e_regrade.py results/iss024d-e2e-live` over all 5
+cells (D7/D7b/D9 rules, live-MCP solve oracle, 402 plan validations). Phase-3
+tool-verified recompute: 0 success flips across 39,600 validate_* rows.
+
+**Parity (E1.3, `tools/iss024d_parity.py`, report at
+`results/derived/iss024d_parity_report.md`).** Gemma control 1/5 pass, noise
+floor F = 5.3pp (gemma solve −5.3; its other FAILs are TOST-inconclusive n, not
+shifts). Qwen 7/20 pass, max |Δ| = 11.3pp (35b solve). **Job-level parity FAILS**
+(rule: ≥18/20 AND no |Δ|>10). The 07-13 red flag generalizes (E1.4): solve Δ is
+negative for every Qwen model (−1.3/−8.7/−7.3/−11.3) with truncated-rate deltas
+concentrated exactly there (solve +16.0/+18.7/+12.7 on 4B/9B/35b; validate_plan
++11.3/+10.3 on 9B/35b) — the pre-identified mechanism (`--reasoning-parser none`
+leaves think tokens in the response channel and eats generation budget) fits;
+validation tasks pass or sit within the control noise floor. Per prereg rule 4:
+iss024d numbers are a **separate-apparatus replication under full-response
+storage**, never "the sweep5v2 cells resolved"; no margin adjustment.
+
+**D9 extraction audit (new models: 4B/9B/gemma).** No Sonnet-class format
+pathology: `no_plan_extracted` ≤ 12 rows/cell; solve extraction is
+strict/tolerant/table lines as designed. Neutral-bank tool-verified simulate
+`format_parse_fail` rows (13/19/10 on 4B/9B/gemma, 19 on 35b; ceiling ≤6.3pp)
+were sampled: Qwen rows are genuine non-delivery (parser-off think-narration
+about formatting, no final JSON emitted); gemma rows carry a leaked
+`<|channel>thought` template marker wrapping otherwise well-formed JSON
+trajectories (10 neutral rows, ≤3.3pp ceiling) — a possible D10 tolerance
+decision, parked, not applied.
+
+**Pooled table (E1.5 first half).** `e2e_pooled.py`: iss024d dropped from
+IN_FLIGHT; new NOTES banner carries the parity verdict + prereg labeling; table
+regenerated (456 csv rows). Even at 16K snapshots, parser-off cells stay
+partially censored (worst: gemma solve c200/300, 0.8B validate_plan c802/3000);
+35b is near-exact. Remaining E1: merge `feat/e2e-scoring-overlay` → main.
+
+**Files.** `results/iss024d-e2e-live/` (+3 cells, untracked),
+`results/derived/e2e_overlay/iss024d-e2e-live/` (5 overlays),
+`results/derived/iss024d_parity_report.md`,
+`results/derived/e2e_overlay/pooled_e2e_table.{md,csv}`,
+`.claude/skills/analyzer/scripts/e2e_pooled.py`.
+
 ## 2026-07-15 — Frontier NT snapshot de-censor: free re-grade from raw batch dirs (planned paid rerun cancelled)
 
 **What.** The three frontier no-tools corpora graded in the 500-char snapshot era
