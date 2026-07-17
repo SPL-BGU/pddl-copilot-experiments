@@ -1,5 +1,12 @@
 # API cost summary
 
+> **NOTE 2026-07-12 — two figures below are superseded** (the cost *methodology* and the
+> cross-provider tables are unaffected): (1) "Haiku — with-tools $146" priced the 4,560-trial
+> plain set at list; the frontier rerun actually runs a v11-only 1,520-trial corpus with prompt
+> caching → **measured ≈$50/corpus** (ISS-023 closed 2026-07-12). (2) the "simulate 0%" accuracy
+> was later shown to be a grader artifact (ISS-024): corrected frontier NT ~40–45%. Current
+> frontier state: `../frontier_rerun_handoff.md`.
+
 One model setup, one corpus, think-off — what each costs to run on each benchmark. This headline table uses the **measured** Anthropic models; the **same setups for OpenAI / Google / Alibaba** are in the next section. (The **hybrid** runs a frontier no-tools orchestrator that delegates to a cheaper with-tools subagent.)
 
 | Setup | Single-tool | PlanBench | Accuracy |

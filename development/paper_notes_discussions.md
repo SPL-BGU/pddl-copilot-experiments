@@ -588,3 +588,271 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **PROPOSED (deferred to fresh session):** a secondary end-to-end with-tools metric that also grades the
   model's final `response` against ground truth, to put a number on the interpretation gap. Offline-computable
   (no re-run). To be discussed, not built yet.
+
+## 2026-07-11 — DECIDED: with-tools grading must read the model's output; snapshot censoring discovered
+
+- **Grading-surface principle DECIDED (Omer).** The evaluation must grade the *model's output*; grading
+  only the tool result "makes an internal component the final model output, which it obviously is not."
+  Instructing the model to relay the tool output verbatim is fine prompt design; ignoring the model's
+  output at scoring time is not. A tool call is itself a legitimate model-output form ("if the model's
+  output is the tool call, it's correct"). Consequence: a response-graded **end-to-end** success column
+  (same parser as the no-tools branch, both arms) becomes the primary surface for tool-lift claims; the
+  current trace-graded metric is retained, renamed **tool-verified** (delegation) success, as the
+  mechanism layer. Decision doc + open operational slots (D2b empty-final-turn carve-out, rescoring
+  scope, naming, corpora, censoring handling): `development/tool_call_vs_final_output_grading.md`.
+- **Supporting fact:** the v14–16 with-tools prompts already demand the answer in the final response
+  (VERDICT trailer / "return a plan" / "return the trajectory", `pddl_eval/prompts.py:279–329`), so
+  trace-grading contradicts the harness's own task contract — ~29% of 35b with-tools validate successes
+  were credited despite disobeying the prompt's output instruction.
+- **NEW measurement caveat — response-snapshot censoring (probe v2).** `trials.jsonl` stores `response`
+  as a HEAD snapshot; the cap was **500 chars** until 2026-06-25 (`runner.py:145–153,514`), and
+  sweep5v2-live predates the raise. Since the VERDICT line is instructed to be LAST, verdicts past char
+  500 are invisible offline: of 35b tool-graded validate_* successes, 63.6% restate visibly, 27.6% are
+  INDETERMINATE (snapshot exactly 500 chars, no visible verdict), 1.3% ended the turn empty (stop),
+  7.4% truncated empty. 4B: 60.3% / 3.5% / 13.7% / 22.5%. So the earlier "36–40% state no verdict" split
+  is partly storage artifact: true 35b restatement ∈ [63.6%, 91.2%]; 4B's silence is mostly genuinely
+  empty output (real synthesis gap). "0% contradiction" holds only within the visible window. The
+  offline end-to-end overlay is exact on post-06-25 corpora and **interval-valued** on sweep5v2-live;
+  published no-tools numbers are unaffected (grading ran online on full text).
+
+## 2026-07-11 (later) — grading-surface decisions ALL RECORDED; overlay work starts
+
+- Omer filled all slots in `development/tool_call_vs_final_output_grading.md`: **D2b=B** (a bare tool
+  call counts as the model's answer only when the model closed the turn on its own; truncated-empty =
+  fail, symmetric with no-tools truncation), **D3=A** (one consolidated rescoring pass: e2e overlay +
+  simulate normalizer + validate_plan FP binning), **D4** names approved (**end-to-end success** vs
+  **tool-verified success**), **D5** corpora = sweep5v2-live + sweep6 + Sonnet/Haiku frontier + sweep7,
+  **D6=A** (censored old corpora reported as bounds; no extra runs).
+
+## 2026-07-11 (later-2) — DECIDED: fresh Haiku + Sonnet single-tool reruns; harness-framework discussion queued
+
+- **DECIDED (Omer): rerun Haiku AND Sonnet single-tool for fresh numbers.** Motivation from the e2e
+  overlay findings: the existing frontier corpora are 75–100% snapshot-censored (Sonnet no-tools
+  simulate 0/300 is 100% unrecoverable from disk; with-tools probes 75–93% blind on validate_plan), so
+  fresh runs under full response saving are the only way to exact frontier end-to-end numbers.
+- **GATED on a harness-framework discussion (to be held before submitting):** run the frontier
+  single-tool arm on (a) the **Claude API framework** vs (b) the **existing harness** (bare-loop
+  `tools/sonnet_tools_probe.py` / batch path). Omer's rationale for (a): he wants a clean
+  **transition/bridge from the single-tool experiments to the PlanBench benchmarks** — PlanBench
+  frontier will run on the Claude API framework, so that framework must ALSO be assessed inside the
+  single-tool experiment for the two benchmark families to be comparable. This folds into the open
+  harness fork in [[project_frontier_phase_design]] (bare loop / agnostic / Claude-native); the
+  PlanBench-continuity argument now weighs on it.
+- Nothing submitted for the frontier reruns yet; the ISS-024(d) Qwen with-tools re-run (job 19293221)
+  is running independently.
+
+## 2026-07-11 (later-3) — D2b REVISED: strict end-to-end is the paper's headline
+
+- **DECIDED (Omer): D2b=B → strict (i).** The headline end-to-end metric fails ANY empty final
+  turn, both arms; "delegation-terminal" (right tool call, deliberate silence) becomes its own
+  labeled outcome category in the tables; the B-graded column stays in the overlay as a derived
+  diagnostic. Basis: (1) external audit — ABC (arXiv:2507.02825) names "τ-bench counting empty
+  responses as successful" as the field's canonical reward-design flaw, and D2b=B was a
+  conditioned version of the same rule; (2) measured strict-vs-B comparison
+  (`tools/e2e_d2b_compare.py`, run 2026-07-11 on the existing overlays): only 3.6% of sweep5v2
+  rows carry the credit, and 2/25 lift verdicts flip — 35b validate_problem (0.3pp knife-edge,
+  a wash under both rules) and 9B solve (censoring-bound; the running ISS-024(d) 16K-cap job
+  resolves it exactly). Every headline validate lift survives strict grading.
+- **Promoted finding:** the D2b sensitivity concentrates in 9B, not 4B — 9B silently delegates
+  on 10–35% of with-tools validate rows (strict lower bounds drop 97/88/78 → 87/53/55, all
+  still lifts). The model with the best delegation (tool-verified 87–99%) restates worst: the
+  answer-synthesis gap GROWS with delegation competence.
+- **ISS-024(d) (job 19293221) kept running** — unaffected by the scoring choice (grading is an
+  offline overlay over raw rows) and now the resolver for the strict-undecided cells.
+- Full audit (incl. frontier-rerun harness conditions, probe sizing, open ANSWER slots):
+  `development/decision_audit_grading_and_frontier.md`. Overlay emits dual columns
+  (`e2e_strict` headline / `e2e` = B diagnostic); existing overlay files patched in place.
+
+## 2026-07-11 (later-4) — Frontier rerun framework DECIDED: B (SDK Tool Runner); probe + budget approved
+
+- **All slots filled (Omer) in `development/frontier_rerun_framework_decision.md`:** D1=**B** — the
+  frontier Haiku+Sonnet single-tool rerun (and the future PlanBench with-tools backend) run on the
+  Anthropic SDK Tool Runner + MCP helpers, ONE shared module for both benchmark families; the
+  existing bare loop (A) survives only as the probe's comparison arm. D2=**yes** to the paired
+  A-vs-B harness probe — operationalized as a STAGED probe (100 paired trials ≈ $5–10 first;
+  extend to 300–500 for quantification only if discordance appears; see audit §2.3 ANSWER).
+  D3=**single prompt variant** everywhere; slice the old 3-variant Sonnet NT corpus to the matching
+  variant when comparing. D4=**approved**, with a hard budget note: Claude API currently funded
+  with **$238** — below the $200–350 ballpark upper bound, so execution is budget-sequenced:
+  probe → Haiku both arms → re-estimate from measured cost → Sonnet only if the remainder covers
+  it (else top up / Haiku-first read).
+- Build conditions carried from the audit (§2.2): pin the exact `anthropic` SDK version (Tool
+  Runner + MCP helpers are beta surfaces); verify `max_iterations` counts the same unit as
+  MAX_TOOL_LOOPS=10 so `loop_exhausted` stays comparable; per-turn request logging; validate
+  prompt caching on the probe (`cache_read_input_tokens > 0`; Haiku min cacheable prefix = 4096
+  tokens); disclose the qwen3_xml-vs-native-FC prompt-surface delta in limitations (inherent to
+  the cross-family comparison, exists under A too).
+- Next action: build `tools/frontier_runner.py` (Tool Runner loop, standard trials.jsonl rows,
+  16K snapshots, caching, per-trial cost log) → stage-1 probe → full run per budget sequence.
+
+## 2026-07-11 (later-5) — Frontier runner (framework B) built + live-smoked; caching is NOT a cost lever
+
+- **`tools/frontier_runner.py` built** on the SDK Tool Runner (framework B, D1). Live 3-trial
+  Haiku smoke (real API + MCP, cached GT) passed end-to-end: runner loop → MCP tool exec →
+  grading 3/3 OK; SDK version pinned (anthropic 0.109.2); `--use-cached-gt` skips the heavy
+  `generate_ground_truth` solver prelude (opt-in — full run + paired probe generate fresh so
+  both arms share one GT source); offline `--dry-run` job counts verified (full grid 9120,
+  single-variant 1520 = the doc's Haiku D3 estimate).
+- **FINDING — prompt caching does not reduce frontier WT cost (revises the D4/memory "caching
+  is the cost lever" assumption).** After moving caching off a below-4096-token system block
+  onto the SDK runner's own `cache_control` (multi-turn breakpoints), caching is ACTIVE but on
+  the smoke it was a **net +6% LOSS**: trials are short (~2 turns) with a large, unique
+  per-trial domain/problem context, so the 1.25× write premium on the ~52K prefix isn't
+  recouped and consecutive trials share no big prefix. Budget the WT arm at **no-cache list
+  price** ($1/$5 Haiku, $3/$15 Sonnet); the stage-1 stratified probe (all 5 tasks) settles
+  whether any task benefits. Detail: `development/decision_audit_grading_and_frontier.md` §2.5;
+  cost lines in `frontier_rerun_framework_decision.md` annotated.
+- Next: generate the stratified stage-1 keys file → run it through BOTH `frontier_runner.py`
+  (B) and `claude_api_tools_probe.py` (A) → compare success + turns/tokens + real cost.
+
+## 2026-07-12 — Haiku WT solve/simulate "delivered gap" RETRACTED: three overlay grading artifacts, not answer-dropping
+
+- The morning headline (WT solve e2e 13.5 vs tool-verified 100; simulate 0 vs 97.5) is
+  withdrawn. Drilling into the raw trials showed the model delivers the answers; the
+  overlay grader could not read them. Do not cite the 13.5/0 row anywhere.
+- **Artifact 1 (solve):** Haiku formats plans as markdown numbered lists with backticked
+  actions + trailing annotations; the strict extractor requires bare `(action)` lines.
+  190/200 delivered plans are VERBATIM copies of the tool-validated plan.
+- **Artifact 2 (simulate):** Haiku wraps a complete ```json trajectory fence in prose; the
+  Q1 rule parses the whole response as one JSON value. Canon: 52/100 fenced trajectories
+  match the oracle exactly.
+- **Artifact 3 (anon oracle, hits NT too):** sweep6 rows were graded against canonical
+  fixtures/gt while their symbols are anonymized → anon solve 32/32 falsely invalid,
+  NT-anon simulate 59/100 clean parses all falsely mismatched (the pooled NT simulate
+  0.0 [0, 5.7] was artifact as well).
+- **DECIDED (D7/D7b, recorded in tool_call_vs_final_output_grading.md §0b):** overlay
+  delivered-answer extraction is format-tolerant, identical in both arms, with per-row
+  `extraction` provenance; sweep6* grades against domains-anon + gt_cache_anon. The frozen
+  Q1 online-grader whitelist is untouched. Oracle validation (VAL / deep-equality) makes
+  tolerant extraction false-positive-proof.
+- **Surviving paper story (replaces "drives tool then drops answer"):** delivered-answer
+  fidelity degrades with output length — short plans restated verbatim (~95 delivered),
+  long trajectories truncated/elided/summarized (canon [52, 64] vs tool-verified 97.5).
+  Secondary finding: strict parser parity across arms ≠ arm neutrality; NT one-shot output
+  obeys the JSON format while post-tool-chat WT output is chatty markdown, so the strict
+  shared parser partly measured format drift.
+- Corrected pooled table to be regenerated from the D7 overlay re-run (all corpora re-run
+  under one rule set); Sonnet-WT go/no-go should be revisited against the corrected gap
+  (~5pp solve / ~35-45pp simulate, not 85-97pp).
+
+## 2026-07-12 — iss024d reporting discipline: steered pre-commitment, rerun-estimate language, think=on scope (Omer accepted)
+
+- **Steered arm is diagnostic-only.** The iss024d cells emit the full v11-16 bank (the
+  "neutral-only" line in the status profile described the board denominator, not the run),
+  so exact steered with-tools e2e numbers will exist. Pre-commitment: no steered with-tools
+  e2e claim enters the paper unless a steered no-tools control arm is run first — without
+  that control, prompt-content and tool-access effects are confounded. sweep5v2-live
+  no-tools cells verified v11-13 only (no nt-ster control exists).
+- **Language convention: "independent rerun estimate", never "resolved exact value".**
+  iss024d is a new sample from a near-identical apparatus (Qwens additionally carry the
+  parser-off delta), not a recovery of the censored cells' realized outcomes. Prose says
+  "a re-run under full-response storage yields X [CI]".
+- **Exact e2e is think=on-scoped.** Both resolver jobs are think=on only; every think=off
+  with-tools e2e cell stays bounds-only. Paper e2e claims must state this scope.
+- **Parity criteria pre-registered** before the remaining cells land:
+  `development/iss024d_parity_prereg.md` (TOST margins, gemma as negative control,
+  partial-failure rule).
+- **Gemma coverage gap closed:** job 19314599 (gemma4:26b-a4b × on × tools_all_minimal,
+  same frozen apparatus + run-tag, submitted 2026-07-12). Gemma has no reasoning parser
+  natively, so its only delta vs its sweep5v2 arm is the 16K snapshot cap — it doubles as
+  the negative control for the parity check.
+
+## 2026-07-13 — D9 grading extension; Sonnet WT regraded: ladder holds, transcription gap is length-driven not tier-driven
+
+- **D9 (grading, both arms):** the Sonnet WT corpus exposed two more delivered-answer
+  formats the D7 tolerance missed (markdown-table plans; one fenced JSON block per
+  trajectory step) plus a censoring asymmetry (simulate lacked solve's at-cap
+  pre-censor). Fixed in `tools/e2e_regrade.py`, repo-wide re-run; the row diff is fully
+  attributable (zero validate_* / NT-non-simulate changes). Details:
+  `tool_call_vs_final_output_grading.md` §D9.
+- **Sonnet WT canonical (v11, e2e_strict):** solve delivered 95.0 [88.8,97.8] vs
+  tool-verified 100.0 — the +5.0pp gap is IDENTICAL to Haiku's, and on both models it is
+  transcription-error mass, not answer omission (Sonnet: 0 omitted plans, 5 invalid
+  restatements). simulate delivered [49.0,62.0] vs tool-ver 99.0; band overlaps Haiku's
+  [52.0,64.0].
+- **Paper-facing conclusions:** (1) the tool-verified-vs-delivered gap is TASK-shaped
+  (0pp verdicts, 5pp plans, ≥33pp trajectories), reproduced across two frontier tiers —
+  the "delivered fidelity degrades with answer length" claim is now two-tier;
+  (2) "a stronger model transcribes long tool outputs better" is NOT supported
+  (solve tied, simulate bands overlap); (3) the validation tool-lift ladder holds
+  end-to-end — lift shrinks as the model strengthens (validate_domain loses
+  CI-separation at Sonnet tier), while the solve lift stays enormous at both tiers
+  (+73.0 / +66.0, CI-disjoint).
+- **Bookkeeping:** Sonnet WT $90.75 measured; frontier spend ≈$167.4/$238. Corrected
+  pooled table regenerated (only iss024d still flagged in-flight: 4B done on cluster
+  awaiting sync, 9B + gemma running). Full memo:
+  `development/sonnet_wt_vs_haiku_e2e_memo.md`.
+
+## 2026-07-15 — NT snapshot de-censor (free re-grade); simulate sole-source claim must be delivered-level-qualified
+
+- **The planned Haiku NT "batch rerun" was unnecessary and is cancelled.** The 500-cap
+  corpora were only snapshot-censored: the raw batch `results.jsonl` dirs retain full
+  response text, so all three 500-cap NT corpora (Haiku canonical, Sonnet canonical +
+  anon) were re-graded to 16K snapshots at $0. Per-row audit: 0 grading diffs across
+  10,640 rows — primary numbers unchanged; only the e2e overlay gains determinacy.
+  A paid rerun would have re-censored the same >16K-char rows at write time.
+- **NT simulate is no longer a floor at the delivered level.** De-censored e2e_strict:
+  Haiku canon 54.3 [42.7,65.4] / anon 60.3 [48.0,71.5]; Sonnet v11 canon 42.0
+  [31.8,52.8] / anon 36.1 [26.6,46.9]. Unaided frontier simulate delivers ~40–60%
+  correct trajectories — the historical 0% was the ISS-021 normalizer artifact plus
+  snapshot censoring. Any paper claim that simulate is tools-sole-source must be
+  scoped to the OPEN-model roster or to tool-verified-vs-delivered, not to frontier
+  no-tools inability.
+- **Delivered-level tools-lift on simulate is NOT CI-separated** (Haiku NT [38,68] vs
+  WT [49,63]; Sonnet NT v11 [34,53] vs WT [49,62]). The two-tier headline stays
+  tool-verified (~97–99) vs delivered (~40–60) — the transcription-fidelity gap —
+  while validation keeps its clean CI-disjoint tool-lift.
+- **Contamination null extends to delivered-level NT simulate** (canonical vs anon CIs
+  overlap for both models), closing the "can't contrast-test simulate" caveat in the
+  frontier handoff.
+
+## 2026-07-15 — Simulate sole-source-floor RETRACTION executed in the paper (Omer caught the stale claim)
+
+- **What happened:** the morning paper pass corrected only the FRONTIER simulate numbers
+  (0/300 → 45.0/38.3) and left the open-roster "0% for every model / outside these models'
+  reach" story intact — but that story was already retracted internally on 2026-07-11
+  (decoupled handoff §PAPER REWRITE: true unaided simulate = 0.8B 0 · 4B 23.0 · 9B 22.3 ·
+  35b 40.0 content-correct, format-compliance 0% for all). Omer flagged it ("did you use
+  the stale outdated analysis?"); the full retraction batch is now in `main.tex`
+  (commit `1ac21f4` on `paper/aaai27`, Overleaf-synced 944b1f8).
+- **Answer to the floor question:** the 0/3,000 shared-budget corpus zero is ALL five
+  models (not 0.8B-marked); under the decoupled control only 0.8B remains at 0%. The
+  35B >0% Omer remembered = the decoupled NT 40.0% (and separately iss024d WT tool-verified
+  93.2%, a different arm).
+- **Paper now says:** deployed-apparatus zero is real but apparatus-bound; decoupled
+  control recovers 22–40% content-correct at ≥4B (never format-exact → strict stays 0%);
+  tool-lift reframed 22–40 → 87–96 (matching mode); Q1-coercibility ≤0.7% attributes the
+  recovery to budget, not grader; frontier 45.0% extends the capability trend. Grading-
+  surface disclosure (tool-arm success = tool's returned result, delegation competence)
+  added to Methodology + Limitations per the decoupled handoff's "must state it".
+- **Process lesson (recorded to memory):** before editing any paper claim, sweep
+  development/ for decided-but-pending rewrite specs and paper_notes bottom lines; a
+  claim can be internally retracted while still standing in the tex.
+
+## 2026-07-17 — ISS-024(d) complete: pre-registered parity FAILED → separate-apparatus labeling binds the P1 reframe
+
+- **Corpus final:** all 5 iss024d-e2e cells synced + regraded (9,120 trials each; exit
+  codes clean). The with-tools open-roster evaluation phase has no runs left (E1.1–E1.4
+  done; only the branch merge remains in Track E).
+- **Pre-registered verdict (no discretion):** job-level parity vs sweep5v2-live FAILS —
+  gemma control noise floor 5.3pp; Qwen 7/20 TOST pass, max |Δ| 11.3pp (35b solve).
+  The 07-13 red flag generalizes: every Qwen solve Δ is negative with truncated-rate
+  +13 to +19pp concentrated on solve/validate_plan — the parser-off mechanism, exactly
+  where long generations live. Validation cells pass or sit within the control floor.
+- **What this means for P1/D-N4:** the "if parity passes, iss024d becomes the with-tools
+  e2e headline surface" branch is CLOSED. Binding language (prereg rule 4 + 07-12
+  interpretation note): iss024d e2e numbers are *independent rerun estimates under
+  full-response storage from a separate apparatus*, reported as a labeled replication —
+  never as resolved sweep5v2 values, and not silently substitutable as THE with-tools
+  number. Paired delivered-vs-tool-verified gaps WITHIN iss024d remain valid (same-corpus
+  contrasts don't cross apparatus).
+- **The delivered-answer story sharpens anyway:** within iss024d, simulate delivered vs
+  tool-verified is 7.0–9.3 vs 63.0 (4B), 10.3–15.0 vs 82.7 (9B), 12.3–13.3 vs 92.3 (35b)
+  — the frontier transcription-fidelity gap replicates on the open roster, larger.
+  gemma validate_plan inverts (delivered 30.0–63.1 vs tool-verified 0.9): it answers
+  without competent tool use. Both are within-corpus claims, safe under the labeling.
+- **Grading-surface caveat, quantified for the paper:** even at 16K snapshots the
+  parser-off apparatus stays partially censored (worst gemma solve c200/300); bounds
+  reporting per D6/D9c stands. A gemma `<|channel>thought` template leak (10 neutral
+  rows, ≤3.3pp) is parked as a possible D10 tolerance decision — not applied, so current
+  numbers are conservative.

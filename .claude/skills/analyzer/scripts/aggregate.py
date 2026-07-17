@@ -41,17 +41,21 @@ from _constants import (  # noqa: E402
 ARM_SUFFIXES = ("neut", "ster", "legacy")
 
 
-def load_summaries(root: Path, include_retired: bool = False):
+def load_summaries(root: Path, include_retired: bool = False,
+                   run_tag: str = ""):
     """Load every cell's latest `summary_*.json` into (info, data) tuples.
 
     `include_retired=True` re-includes pre-2026-05 checkpoints that legitimately
     contain `tools_per-task_*` / `tools_all_guided` cells — matches the
     signature of `plot.load_series`. `drift_check` re-aggregating a sweep-3
     baseline should set this to True so per-task cells aren't silently dropped.
+
+    `run_tag` selects run-tagged corpora (see `iter_cells`); the default ""
+    keeps only bare untagged cells — the historical behavior.
     """
     rows = []
     for d, info in iter_cells(root, include_retired=include_retired,
-                              parser="full"):
+                              parser="full", run_tag=run_tag):
         data = latest_summary(d)
         if data is None:
             continue

@@ -6,6 +6,248 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-17 — e2e-overlay PR #91 review: six regrade/aggregation bugs fixed (dedup, censor-reason split, delegation-credit staleness, simulate candidate coverage, fail-closed stem parsing, pooled-table guards)
+
+**Bugs.** PR #91 code review of `feat/e2e-scoring-overlay` found six issues, all fixed in
+`tools/e2e_regrade.py` + `.claude/skills/analyzer/scripts/{e2e_overlay,e2e_pooled,table}.py`:
+
+1. `e2e_regrade.process_corpus` graded every raw JSONL line instead of deduping by trial
+   key the way `tools/iss024d_parity.py` already does — a mop-up re-run file could inflate
+   a cell's denominator (and skew the cap-detection histogram, which now runs on deduped
+   rows, not raw lines). Dedup is last-occurrence-wins (matches resume semantics, sorted
+   glob order); each cell prints its dup count; each overlay row now carries `trial_key`
+   (list form) so downstream consumers can dedup/join too — older overlay files lack the
+   field, so no reader may require it.
+2. `e2e_overlay.load_e2e_cells` counted every `e2e_strict == "indeterminate"` row as
+   snapshot-cap censoring, but `no_ground_truth` / `plan_validation_transport_error` /
+   `unknown_task` rows are indeterminate for other reasons entirely. New `cens_cap` /
+   `cens_other` fields split the existing `cens` total (bounds math and low/high/exact
+   unchanged) for presentation; `fmt_e2e` renders `a–b (ck+uN/n)` when `cens_other > 0`,
+   else the old `a–b (ck/n)` unchanged. `e2e_pooled.py`'s header and `table.py`'s `--e2e`
+   caption each gained one sentence explaining the `+uN` component. CSV schemas untouched.
+3. `e2e_regrade._grade_empty_or_censored`'s D2b=B delegation credit gated on the STORED
+   `success` field, which pre-dates the `_tool_error_seen` FastMCP arg-error fix and can
+   be mis-binned True for validate_* with-tools rows. Now gates on
+   `out.get("tool_verified_fixed", row["success"])` — the Phase-3 recompute when present,
+   falling back to stored success for solve/simulate (which have no recompute, unchanged).
+4. `e2e_regrade.simulate_candidates` (D9b) only ever turned the FIRST coercible fenced
+   block into a candidate, contradicting its own module docstring ("each fenced block") —
+   a correct trajectory landing in a later block (e.g. after an initial-state JSON block
+   that also happens to coerce) graded False. Now every coercible block is its own
+   candidate; whole-response stays first, the all-blocks concatenation stays last.
+   Exact-match grading against the oracle means this can only add passes, never create a
+   false positive; existing overlays predate the fix, so simulate numbers can only move UP
+   on regrade. Addendum added to `development/tool_call_vs_final_output_grading.md` D9b.
+5. `e2e_overlay.load_e2e_cells` silently routed ANY unparseable stem (`parse_dirname_full`
+   cond `"?"`) through the frontier-corpus inference branch, so a typo'd `slurm_*` cell
+   dirname would be mislabeled instead of erroring. Now raises `ValueError` for
+   unparseable `slurm`-shaped stems; non-slurm (frontier) stems are unaffected — verified
+   against all seven real stem shapes on disk.
+6. `e2e_pooled.py main()` crashed on `csv_rows[0]` when the overlay had zero rows, and
+   silently `mkdir`'d a nonexistent `--overlay` root instead of telling the user to run
+   the regrade first. Both are now guarded (`sys.exit` pointing at `tools/e2e_regrade.py`;
+   CSV write skipped with a note when there are no rows, md still written).
+
+**Tests.** New `tests/test_e2e_overlay.py` (50 assertions, standalone + wired into
+`tests/verify.sh`): dirname parsing (bare / run-tagged / legacy-no-think / unparseable),
+`detect_cap` incl. the 9B resume-shape mass-pinned case, tolerant plan extraction
+(strict / backticked / table / prose), a second-fenced-block simulate regression pin,
+dedup-last-wins over a synthetic two-file resume corpus, delegation-credit gating on the
+recomputed vs. stale tool-verified value (both directions), and both the fail-closed and
+still-works `load_e2e_cells` stem cases. No behavior change to `pddl_eval/` or
+`run_experiment.py`.
+
+**Files.** `tools/e2e_regrade.py`,
+`.claude/skills/analyzer/scripts/{e2e_overlay.py,e2e_pooled.py,table.py}`,
+`tests/{test_e2e_overlay.py (new),verify.sh}`,
+`development/tool_call_vs_final_output_grading.md`.
+
+**Regrade applied (same day).** `results/derived/e2e_overlay/` regenerated for all 8
+corpora with live MCP and `pooled_e2e_table.{md,csv}` rebuilt. Realized delta = exactly
+the predicted 19 iss024d-e2e simulate rows False→True (≤1.7pp on affected pooled rows,
+11 neutral / 8 steered); all other cells byte-stable, solve re-validated with zero flips.
+Per-cell realized numbers: D9b addendum in `tool_call_vs_final_output_grading.md`.
+
+## 2026-07-17 — ISS-024(d) endgame: all 5 cells synced + regraded; pre-registered parity FAILS at job level (separate-apparatus labeling applies)
+
+**Sync + post-mortem (E1.1).** 4B/9B/gemma pulled into `results/iss024d-e2e-live/`
+(rsync -z; the uncompressed first attempt ran ~125 KB/s over VPN, compressed ~30×
+faster). All 5 cells complete at 9,120 trials each. Exit codes clean: array
+`19293221` — named `qwen3_6_35b` but its 4 tasks ran the 4 Qwen models (task end
+times match cell mtimes: _0=0.8B, _1=4B, _2=9B, _3=35b) — all COMPLETED 0:0;
+gemma `19314599` COMPLETED 0:0. Queue empty.
+
+**Regrade (E1.2).** `tools/e2e_regrade.py results/iss024d-e2e-live` over all 5
+cells (D7/D7b/D9 rules, live-MCP solve oracle, 402 plan validations). Phase-3
+tool-verified recompute: 0 success flips across 39,600 validate_* rows.
+
+**Parity (E1.3, `tools/iss024d_parity.py`, report at
+`results/derived/iss024d_parity_report.md`).** Gemma control 1/5 pass, noise
+floor F = 5.3pp (gemma solve −5.3; its other FAILs are TOST-inconclusive n, not
+shifts). Qwen 7/20 pass, max |Δ| = 11.3pp (35b solve). **Job-level parity FAILS**
+(rule: ≥18/20 AND no |Δ|>10). The 07-13 red flag generalizes (E1.4): solve Δ is
+negative for every Qwen model (−1.3/−8.7/−7.3/−11.3) with truncated-rate deltas
+concentrated exactly there (solve +16.0/+18.7/+12.7 on 4B/9B/35b; validate_plan
++11.3/+10.3 on 9B/35b) — the pre-identified mechanism (`--reasoning-parser none`
+leaves think tokens in the response channel and eats generation budget) fits;
+validation tasks pass or sit within the control noise floor. Per prereg rule 4:
+iss024d numbers are a **separate-apparatus replication under full-response
+storage**, never "the sweep5v2 cells resolved"; no margin adjustment.
+
+**D9 extraction audit (new models: 4B/9B/gemma).** No Sonnet-class format
+pathology: `no_plan_extracted` ≤ 12 rows/cell; solve extraction is
+strict/tolerant/table lines as designed. Neutral-bank tool-verified simulate
+`format_parse_fail` rows (13/19/10 on 4B/9B/gemma, 19 on 35b; ceiling ≤6.3pp)
+were sampled: Qwen rows are genuine non-delivery (parser-off think-narration
+about formatting, no final JSON emitted); gemma rows carry a leaked
+`<|channel>thought` template marker wrapping otherwise well-formed JSON
+trajectories (10 neutral rows, ≤3.3pp ceiling) — a possible D10 tolerance
+decision, parked, not applied.
+
+**Pooled table (E1.5 first half).** `e2e_pooled.py`: iss024d dropped from
+IN_FLIGHT; new NOTES banner carries the parity verdict + prereg labeling; table
+regenerated (456 csv rows). Even at 16K snapshots, parser-off cells stay
+partially censored (worst: gemma solve c200/300, 0.8B validate_plan c802/3000);
+35b is near-exact. Remaining E1: merge `feat/e2e-scoring-overlay` → main.
+
+**Files.** `results/iss024d-e2e-live/` (+3 cells, untracked),
+`results/derived/e2e_overlay/iss024d-e2e-live/` (5 overlays),
+`results/derived/iss024d_parity_report.md`,
+`results/derived/e2e_overlay/pooled_e2e_table.{md,csv}`,
+`.claude/skills/analyzer/scripts/e2e_pooled.py`.
+
+## 2026-07-15 — Frontier NT snapshot de-censor: free re-grade from raw batch dirs (planned paid rerun cancelled)
+
+**What.** The three frontier no-tools corpora graded in the 500-char snapshot era
+(Haiku `results/haiku-frontier/sweep5v2`, Sonnet `results/sonnet-frontier/{sweep5v2,sweep6}`)
+were e2e-censored — NT-canonical simulate 100% indeterminate, the handoff's open
+follow-up was a paid 16K Batch-API rerun (~$0.3/model). Discovery: the raw batch
+`results.jsonl` under `.local/{haiku/singletool_nt_canonical, sonnet/{canonical,anon}}`
+retain the FULL response text (max 24.5K chars) — the 500 cap only truncated the stored
+`TaskResult.response` snapshot at grade time; `check_success` always graded full text,
+so the primary grades were never wrong. Re-ran `tools/claude_api_batch.py grade` on all
+three raw dirs with the current 16,384 snapshot. **A paid rerun would have bought
+nothing:** temp-0 responses would reproduce, and a fresh run would still write 16K
+snapshots, re-censoring the same >16K-char rows.
+
+**Audit.** Per-row diff vs HEAD across 1,520 + 4,560 + 4,560 rows: **0 diffs** on
+success / failure_reason / format_compliant / truncated / done_reason; the only change
+is longer response snapshots (1,468 / 3,976 / 4,115 rows). Grades byte-identical.
+
+**Overlay (rebuilt for haiku-frontier + sonnet-frontier).** NT simulate de-censored
+(e2e_strict, determinate-row Wilson 95%; bounds count censored as fail/pass):
+- Haiku canonical 54.3 [42.7,65.4] n=70 det, bounds [38,68] (was 100% censored);
+  anon 60.3 [48.0,71.5] n=63, bounds [38,75] (the handoff's stale 0.0 [0,5.7] predated
+  the D7b anon-oracle + D9 fixes; same 63-row denominator, now correctly graded).
+- Sonnet v11 canonical 42.0 [31.8,52.8] n=81, bounds [34,53]; v11 anon 36.1
+  [26.6,46.9] n=83, bounds [30,47] (3-variant: canon 51.9 n=241, anon 46.2 n=236).
+- Remaining censored rows are raw responses >16,384 chars — irreducible at the current
+  snapshot cap, honest [lo,hi] reporting per D6/D9c.
+
+**Paper-relevant.** (a) The canonical-vs-anon contamination null now extends to
+delivered-level NT simulate (CIs overlap, both models). (b) The delivered-level
+tools-lift on simulate is NOT CI-separated (Haiku NT [38,68] vs WT [49,63]; Sonnet NT
+v11 [34,53] vs WT [49,62]) — the divergence story stays tool-verified (~97–99) vs
+delivered (~40–60), not NT vs WT. (c) Unaided frontier simulate is ~40–60% delivered,
+not a floor — the old 0% was the normalizer artifact (ISS-021) compounded by snapshot
+censoring.
+
+**Files.** `results/haiku-frontier/sweep5v2/trials.jsonl`,
+`results/sonnet-frontier/{sweep5v2,sweep6}/trials.jsonl` (16K snapshots, grades
+unchanged), derived overlay refreshed (untracked),
+`development/{CHANGELOG.md, frontier_rerun_handoff.md, paper_notes_discussions.md}`.
+
+## 2026-07-13 — `tools/iss024d_parity.py`: the pre-registered parity analysis script
+
+Implements `development/iss024d_parity_prereg.md` verbatim, written while 4B/9B/gemma
+cells are still in flight (the registered analysis plan named this script). Per-cell
+Δ = p(iss024d) − p(sweep5v2-live) on tool-verified success, neutral bank v11-13
+pooled, think=on × tools_all_minimal; TOST via 90% Newcombe (Wilson-score) CI within
+±5pp; gemma control table rendered first; the ≥18/20 decision rule is evaluated ONLY
+when all 25 cells are on disk (partial corpora → DEFERRED banner). Trials deduped by
+trial key (last wins) so resume mop-ups can't inflate denominators; infra rows
+excluded and counted. Secondaries per prereg: format_parse_fail and truncated rate
+deltas (neutral bank) + per-variant success-delta heterogeneity over the full v11-16
+bank. `--md` mirrors the report as markdown. Loaders reuse the analyzer's
+`iter_cells(run_tag=)` so corpus identity is enforced by the same parser everywhere.
+First run (10/25 cells, decision deferred): 35b validation cells all PASS; 35b solve
+Δ −11.3pp CI [−17.2, −5.4] with truncated-rate +12.7pp (mechanism candidate: with
+`--reasoning-parser none` think tokens stay in the response channel and eat budget);
+0.8B mixed with wide CIs. No headline use before the complete table + gemma control.
+
+## 2026-07-13 — e2e overlay D9: table plans, per-step fenced blocks, simulate at-cap censor; Sonnet WT regraded (ladder holds)
+
+**Bug.** The first Sonnet WT regrade (D7/D8 rules) reproduced the retracted-Haiku
+artifact class on the new corpus: solve delivered 55.0 (42/100 `no_plan_extracted`) and
+simulate [5.0, 8.0] (71 `trajectory_mismatch`) vs tool-verified 100.0/99.0. Two D7
+format-coverage gaps (tolerance was tuned on Haiku's formats): Sonnet delivers solve
+plans as a markdown TABLE with a backticked action cell, and simulate trajectories as
+ONE FENCED JSON BLOCK PER STEP (D7 graded block 0 — a single step — against the full
+oracle trace). A third issue was a censoring asymmetry: simulate lacked solve's D6
+at-cap pre-censor, so 493 at-cap snapshots (mostly 500-cap corpora) were graded
+determinate from partial content.
+
+**Change (`tools/e2e_regrade.py`).** D9a: `table_lines` extraction fallback (first
+table cell per row that is exactly a backticked s-expression; live-MCP oracle stays the
+safety net — 40/42 recovered Sonnet plans validate, 2 genuinely invalid). D9b:
+`simulate_candidates` grades ordered candidates (whole response, first fenced block,
+concatenation of all coercible blocks `fenced_concat`); success iff ANY candidate
+normalizes equal to the oracle — exact-match grading cannot create false positives.
+D9c: simulate censors non-empty at-cap snapshots like solve (visible blocks can neither
+prove nor refute the delivered trajectory). Repo-wide re-run over all 8 corpora; the
+pre/post row diff is fully D9-attributable (zero validate_* / NT-non-simulate changes).
+Corrected: Sonnet WT solve 95.0 (gap +5.0pp, identical to Haiku), simulate [49.0,62.0]
+(Haiku canonical v11 untouched at [52,64]); iss024d 35b simulate neutral 9.7→12.3–13.3.
+Pooled table regenerated (`e2e_pooled.py` IN_FLIGHT now iss024d-only). Analysis memo:
+`development/sonnet_wt_vs_haiku_e2e_memo.md`; decisions:
+`tool_call_vs_final_output_grading.md` §D9.
+
+## 2026-07-12 — e2e overlay D7/D7b: tolerant delivered-answer extraction + anon oracle (Haiku WT solve/simulate "gap" was grader artifact)
+
+**Bug.** The first Haiku full-run headline (WT solve e2e 13.5 vs tool-verified 100;
+simulate 0 vs 97.5) was three overlay artifacts stacked, not answer-dropping:
+(1) `scoring._ACTION_LINE_RE` rejects markdown plan lines
+(`` 1. `(grasp left shot1)` - annotation ``) — 190/200 Haiku WT solve responses restate
+the tool-validated plan VERBATIM, yet 141 binned `no_plan_extracted`; (2) the Q1
+whole-response JSON rule fails Haiku's prose-wrapped ```json trajectory fences — canon
+simulate had 52/100 exact oracle matches graded `format_parse_fail`; (3) sweep6* rows
+(canonical `domain_name`, anonymized symbols) were validated against canonical `domains/`
++ `gt_cache.json` → anon solve 32/32 falsely `plan_invalid`, NT-anon simulate 59 clean
+parses falsely `trajectory_mismatch` (the pooled NT simulate 0.0 [0,5.7] was artifact).
+
+**Change (`tools/e2e_regrade.py`).** D7: delivered-answer extraction is format-tolerant,
+both arms — backtick/annotation-tolerant plan lines (`_TOLERANT_ACTION_RE`), fenced-JSON
+block fallback for simulate (`coerce_simulate_tolerant`); per-row `extraction` provenance
+keeps format drift measurable; false positives impossible (plans still face live VAL,
+trajectories deep-equality vs the oracle); the frozen Q1 whitelist in `scoring.py` is NOT
+widened. D7b: sweep6* cells grade against `domains-anon/` + new
+`results/derived/gt_cache_anon.json` (`build_gt_cache.py --domains-dir domains-anon`);
+overlay rows carry an `anon` flag. All overlay corpora re-run under the new rules so one
+rule set governs `results/derived/e2e_overlay/`.
+
+**Corrected Haiku WT (e2e_strict):** solve ~95 (real failures: 3 `save_plan` delegation +
+partial long-plan transcriptions), simulate canon [52, 64]. Surviving finding =
+delivered-answer fidelity degrades with output LENGTH; plus strict parser parity ≠ arm
+neutrality (NT one-shot obeys the JSON format, post-tool-chat WT answers in markdown).
+Decision provenance: `development/tool_call_vs_final_output_grading.md` §0b; paper_notes
+2026-07-12.
+
+---
+
+## 2026-07-11 — e2e overlay: dual D2b columns, strict becomes the headline
+
+**Change.** `tools/e2e_regrade.py` now emits BOTH D2b operationalizations per overlay row:
+`e2e_strict` (any empty final turn fails — the paper's headline per the same-day D2b
+revision) alongside the existing `e2e` (D2b=B delegation credit, retained as diagnostic);
+the two differ exactly on rows with `e2e_reason == "delegation_terminal_credit"`, so no
+regrade was needed — the 49 existing overlay files under `results/derived/e2e_overlay/`
+were patched in place (295,876 rows). New `tools/e2e_d2b_compare.py` derives the
+strict-vs-B lift-verdict comparison from any overlay dir (no MCP). The `summarize()`
+table gained `strict-lo` / `deleg` columns. Decision provenance:
+`development/tool_call_vs_final_output_grading.md` (status REVISION note),
+`development/paper_notes_discussions.md` 2026-07-11 (later-3), full audit in
+`development/decision_audit_grading_and_frontier.md`.
+
 ## 2026-06-26 — Cluster plumbing for the decoupled think=on sweep (staging; run GATED)
 
 **Change.** Threaded the (already-merged) `--decoupled-budget` / `--num-predict-think` /

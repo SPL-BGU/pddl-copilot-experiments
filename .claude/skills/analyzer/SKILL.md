@@ -86,9 +86,48 @@ python3 .claude/skills/analyzer/scripts/table.py                                
 python3 .claude/skills/analyzer/scripts/table.py results/cluster-20260424           # explicit
 python3 .claude/skills/analyzer/scripts/table.py results/cluster-20260424 --formats md,csv
 python3 .claude/skills/analyzer/scripts/table.py results/cluster-20260424 --out /tmp/tables
+python3 .claude/skills/analyzer/scripts/table.py results/sweep5v2-live --e2e        # + e2e-strict column
+python3 .claude/skills/analyzer/scripts/table.py results/iss024d-e2e-live --run-tag iss024d-e2e --e2e
 ```
 
 Reuses `parse_dirname` / `load_summaries` / `host_tag` from `aggregate.py` (same dir).
+
+**`--e2e` (Phase 5, 2026-07-12):** joins the delivered-answer overlay
+(`results/derived/e2e_overlay/<root-name>/`, built by `tools/e2e_regrade.py`)
+and inserts an `e2e-strict` column after each task's `succ%`. Exact cells
+render `62 [58.1–64.3]` (Wilson CI); snapshot-censored cells render bounds
+`a–b (ck/n)`. In tools arms `succ%` is tool-verified, so `succ%` vs
+`e2e-strict` reads directly as the tool-call-vs-delivered gap. The join is
+aggregated once in `scripts/e2e_overlay.py` (shared, single source — see
+below); `--e2e-overlay DIR` overrides the overlay root. Flag off = byte-identical
+to the pre-Phase-5 table (regression-checked 2026-07-12).
+`--run-tag TAG` selects run-tagged corpora (default: untagged cells only).
+
+### `scripts/e2e_overlay.py` + `scripts/e2e_pooled.py` — delivered-answer (e2e) layer
+
+`e2e_overlay.load_e2e_cells(corpus, overlay_root)` is the ONLY sanctioned
+reader of `results/derived/e2e_overlay/` aggregates — every builder that
+shows e2e numbers must go through it so the overlay stays one rule set
+(D7/D7b, `e2e_strict` headline; grading itself lives in
+`tools/e2e_regrade.py`, never here). Cells are keyed
+`(model, think, cond, run_tag, arm, task)` and carry structured
+`{n, ok, cens, low, high, exact, tv_ok, tv_n}` — bounds stay numeric until
+render time (`fmt_e2e`). Frontier corpora (non-`slurm_*` cell names like
+`sweep5v2-with-tools`) map to model=corpus-name with the prompt-corpus
+prefix in `run_tag`, so canonical and anon cells cannot pool.
+
+`e2e_pooled.py` renders the corrected pooled table — all overlay corpora,
+one block per corpus, neutral bank primary + steered section marked
+diagnostic-only (pre-commitment 2026-07-12) — to
+`results/derived/e2e_overlay/pooled_e2e_table.{md,csv}`:
+
+```bash
+python3 .claude/skills/analyzer/scripts/e2e_pooled.py            # defaults
+python3 .claude/skills/analyzer/scripts/e2e_pooled.py --out /tmp # elsewhere
+```
+
+Update its `IN_FLIGHT` dict as pending runs (iss024d 4B/9B/gemma, Sonnet WT)
+land and get regraded.
 
 ### `scripts/filter_variants.py` — restrict trials.jsonl to a prompt-variant set
 
@@ -137,7 +176,16 @@ python3 .claude/skills/analyzer/scripts/build_deck.py \
     --out    checkpoints/<name>/pddl_copilot_<name>.pptx     # --out overrides config.OUT_PPTX
 ```
 
-**Run-tag gotcha (applies to `build_deck.py`, `plot.py`, `table.py`, `plot_focused.py`).** The cell-name parser expects `slurm_vllm_<model>_<think>_<cond>[_<jobid>]` and locates `<cond>` only at the END (or before a numeric jobid). A `--run-tag` suffix (`slurm_vllm_..._<cond>_<runtag>`, e.g. `_sweep5v2` / `_sweep6`) sits *after* cond → no cond matches → cells are **silently dropped** (deck builds 0 cells, no error). After `filter_variants` (each synthetic root is single-experiment so the tag is redundant), strip it from the dst cell dirnames before any deck/plot/table build:
+**Run-tag handling (FIXED in the parser 2026-07-12; plumbed to `table.py` only).**
+The cell-name parsers (`_constants.parse_dirname_*`) now understand a trailing
+run-tag (`slurm_vllm_..._<cond>_<runtag>`, e.g. `_sweep5v2` / `_iss024d-e2e`)
+and return it as `run_tag`. `iter_cells` filters on it: the default keeps only
+untagged cells (differently-tagged dirs are distinct corpora and must never
+pool), `run_tag="<tag>"` selects one corpus, `run_tag="*"` disables the filter.
+`table.py` exposes this as `--run-tag`. `build_deck.py` / `plot.py` /
+`plot_focused.py` do NOT plumb it yet — for decks/plots over a tagged corpus,
+either strip the tag from the (synthetic, post-`filter_variants`) dst dirnames
+as before, or plumb `run_tag` through the loader you need:
 
 ```bash
 for d in results/<root>/slurm_vllm_*; do mv "$d" "$(echo "$d" | sed -E 's/_(sweep5v2|sweep6)$//')"; done

@@ -55,6 +55,20 @@
 #                 <think>) × one column (on / nt-neut). All parsing /
 #                 Δ / ETA / queue logic is dimension-agnostic and reused.
 #                 An explicit RUN_TAG env still overrides the default.
+#   --iss024d     The in-flight ISS-024(d) WITH-TOOLS resolver (jobs
+#                 19293221 Qwens + 19314599 gemma, added 2026-07-12;
+#                 development/tool_call_vs_final_output_grading.md
+#                 §"ISS-024(d) full re-run"). The with-tools twin of
+#                 --decoupled: 5 models × think=on × tools_all_minimal,
+#                 --reasoning-parser none on Qwens (gemma has no reasoning
+#                 parser natively), 72h wall. NOTE: the run emits the FULL
+#                 v11-16 bank (9120/cell) — the 4560 figure below is only
+#                 the neutral (v11-13) denominator this board TRACKS; the
+#                 steered v14-16 rows exist on disk (diagnostic-only per
+#                 paper_notes 2026-07-12). Defaults RUN_TAG to `iss024d-e2e`
+#                 and trims the board to one column (on / tl-neut, 4560).
+#                 Same dimension-agnostic parsing / Δ / ETA / queue path.
+#                 An explicit RUN_TAG env still overrides the default.
 #
 # Output mode (auto by stdout TTY-detect; override with flags):
 #   --terminal / --pretty   ANSI-coloured aligned text (default when TTY)
@@ -114,6 +128,7 @@ while [[ $# -gt 0 ]]; do
         --no-color)             color="off"; forwarded_args+=("$1"); shift ;;
         --bench)                bench="$2"; shift 2 ;;
         --decoupled)            profile="decoupled"; shift ;;
+        --iss024d)              profile="iss024d"; shift ;;
         -h|--help)
             _show_help 2 48
             cat <<'EOF'
@@ -127,6 +142,11 @@ while [[ $# -gt 0 ]]; do
                              think=on sweep (RUN_TAG defaults to
                              `decoupled-thinkon`): 4 Qwens × one column
                              (on / nt-neut). See the Profiles note above.
+  --iss024d                  Track the in-flight ISS-024(d) with-tools
+                             resolver (jobs 19293221 Qwens + 19314599
+                             gemma; RUN_TAG defaults to `iss024d-e2e`):
+                             5 models × one column (on / tl-neut). See
+                             the Profiles note above.
 EOF
             exit 0 ;;
         *)
@@ -146,10 +166,13 @@ elif [[ "$bench" != "5task" ]]; then
 fi
 
 # Finalize RUN_TAG + STATE_FILE now that the profile is known. --decoupled
-# selects the in-flight split-budget no-tools think=on corpus; standard
-# tracks the sweep-6 anon matrix. An explicit env value always wins.
+# selects the in-flight split-budget no-tools think=on corpus; --iss024d the
+# in-flight ISS-024(d) with-tools resolver; standard tracks the sweep-6 anon
+# matrix. An explicit env value always wins.
 if [[ "$profile" == "decoupled" ]]; then
     RUN_TAG="${RUN_TAG_ENV:-decoupled-thinkon}"
+elif [[ "$profile" == "iss024d" ]]; then
+    RUN_TAG="${RUN_TAG_ENV:-iss024d-e2e}"
 else
     RUN_TAG="${RUN_TAG_ENV:-sweep6}"
 fi
@@ -297,6 +320,23 @@ if profile == "decoupled":
     CELLS = [("on", "no-tools-neutral")]
     SWEEP_LABEL = "decoupled"
     HDR_NOTE = "denom 4560 · no-tools v11-13 · think=on · split-budget (8192 think / per-task answer)"
+elif profile == "iss024d":
+    # ISS-024(d) with-tools resolver: the with-tools twin of --decoupled.
+    # Started as 4 Qwens × think=on × tools_all_minimal (job 19293221,
+    # 2026-07-11). Gemma was added 2026-07-12 (job 19314599, same
+    # `iss024d-e2e` run-tag) — gemma was Qwen-excluded from the original
+    # submit yet was 81% censored on validate_plan, so it doubles as extra
+    # signal (see development/tool_call_vs_final_output_grading.md:484-495).
+    # Full 5-model roster, single neutral prompt bank (v11-13),
+    # --reasoning-parser none on Qwens (gemma has no reasoning parser
+    # natively), 72h wall. One logical column (on / tl-neut); the steered
+    # arm is not run (COND_SPLIT collapses tools_all_minimal to its
+    # neutral half below). Every downstream parse/dedup/Δ/ETA/queue path
+    # is unchanged.
+    ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]
+    CELLS = [("on", "tools_all-neutral")]
+    SWEEP_LABEL = "iss024d"
+    HDR_NOTE = "denom 4560 · with-tools (tools_all_minimal) v11-13 · think=on · parser-off · jobs 19293221+19314599"
 COL_HEADERS = [f"{th} / {SHORT_CELL.get(c, c)}" for th, c in CELLS]
 # Uniform per-column denominator: each logical column covers 3 variants ×
 # 1520 trials/variant = 4560. 1520 trials/variant is the sweep-3-onward
@@ -332,6 +372,12 @@ TIME_LIMIT_H_DEFAULT = 48
 # flag 4B/9B as "over 0.9×12h" when they have ~36h of headroom remaining.
 if profile == "decoupled":
     TIME_LIMIT_H_BY_MODEL = {m: 48 for m in ROSTER}
+# ISS-024(d) (jobs 19293221 Qwens + 19314599 gemma) was submitted
+# --time 72:00:00 (3-00:00:00) for all 5 cells; give every model a 72h
+# wall so the watch-list doesn't falsely flag the small Qwens (pack3 12h
+# default) as over-budget when they have headroom.
+elif profile == "iss024d":
+    TIME_LIMIT_H_BY_MODEL = {m: 72 for m in ROSTER}
 
 # Job-name short-cond → full cond (used when array tasks have per-cell names).
 # `tools-pt`/`tools_pt` keys retained for backwards-compatibility with
@@ -393,6 +439,13 @@ COND_SPLIT = {
     "no-tools":          ("no-tools-neutral",  None),
     "tools_all_minimal": ("tools_all-neutral", "tools_all-steered"),
 }
+# ISS-024(d) runs the neutral with-tools bank only (v11-13; the decoupled
+# apparatus dropped the steered arm). Collapse tools_all_minimal to its
+# neutral half so no phantom, permanently-0 tl-ster column is populated —
+# n_neutral is still n_active(1[1-6]) − n_steered(1[4-6]) = v11-13, and the
+# steered slice is discarded rather than rendered.
+if profile == "iss024d":
+    COND_SPLIT = {"tools_all_minimal": ("tools_all-neutral", None)}
 tag_suffix = "_" + run_tag if run_tag else ""
 counts, unknown, archived_canonical, archived_legacy = {}, [], [], []
 malformed = 0   # finding #10: count silently-dropped count_raw lines and warn at end.

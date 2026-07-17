@@ -1,5 +1,10 @@
 # Simulate grading — decisions, status & next development lines (2026-06-23)
 
+> **STATUS 2026-07-12: both "NEXT" lines below have since run — this is now a decisions record.**
+> Line 1 (decoupled budget) = COMPLETE (`decoupled_run_handoff.md` §LINE COMPLETE); Line 2
+> (with-tools frontier setup) was superseded by the frontier rerun line
+> (`../frontier_rerun_handoff.md`, D1=B SDK Tool Runner, Haiku full run DONE 2026-07-12).
+
 Wrap-up record for the simulate-grader work this session. Supersedes the earlier
 open-decision draft. Background: `../grading_artifacts_findings.md`,
 `../archive/simulate_normalizer_fix_plan.md`; memory `project_simulate_grader_artifact`.

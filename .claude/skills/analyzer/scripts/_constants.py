@@ -186,6 +186,28 @@ def host_tag(meta: dict) -> str:
 # Dirname parsing — 3 variants kept distinct (callers expect different shapes)
 # ---------------------------------------------------------------------------
 
+def _split_cond_and_tag(rest: str) -> tuple[str, str, str] | None:
+    """Split `<model>_<think>_<cond>[_<run_tag>]` at the condition.
+
+    Suffix match first (bare sweep-5 dir shape), then rightmost mid-name
+    match for run-tagged dirs (post 2026-05-26 `--run-tag` wiring, e.g.
+    `..._tools_all_minimal_iss024d-e2e`). Mid-name matching goes longest
+    cond first so `tools_all_minimal` can never lose to a shorter overlap.
+    Returns (prefix_before_cond, cond, run_tag); run_tag is "" for
+    untagged names.
+    """
+    for cond in CONDITIONS:
+        suf = "_" + cond
+        if rest.endswith(suf):
+            return rest[: -len(suf)], cond, ""
+    for cond in sorted(CONDITIONS, key=len, reverse=True):
+        mid = "_" + cond + "_"
+        idx = rest.rfind(mid)
+        if idx != -1:
+            return rest[:idx], cond, rest[idx + len(mid):]
+    return None
+
+
 def parse_dirname_full(name: str) -> dict:
     """`aggregate.py`-shape parser. Always returns a dict, even on miss.
 
@@ -204,21 +226,21 @@ def parse_dirname_full(name: str) -> dict:
         rest, jobid = m.group(1), m.group(2)
     else:
         rest, jobid = stem, ""
-    for cond in CONDITIONS:
-        suf = "_" + cond
-        if rest.endswith(suf):
-            pre = rest[: -len(suf)]
-            for think in ("on", "off", "default"):
-                s = "_" + think
-                if pre.endswith(s):
-                    model = pre[: -len(s)]
-                    return {"raw": stem, "model": model, "think": think,
-                            "cond": cond, "jobid": jobid, "backend": backend}
-            return {"raw": stem, "model": pre, "think": "default",
-                    "cond": cond, "jobid": jobid, "backend": backend,
-                    "_legacy": True}
+    split = _split_cond_and_tag(rest)
+    if split is not None:
+        pre, cond, run_tag = split
+        for think in ("on", "off", "default"):
+            s = "_" + think
+            if pre.endswith(s):
+                model = pre[: -len(s)]
+                return {"raw": stem, "model": model, "think": think,
+                        "cond": cond, "jobid": jobid, "backend": backend,
+                        "run_tag": run_tag}
+        return {"raw": stem, "model": pre, "think": "default",
+                "cond": cond, "jobid": jobid, "backend": backend,
+                "_legacy": True, "run_tag": run_tag}
     return {"raw": stem, "model": rest, "think": "?", "cond": "?",
-            "jobid": jobid, "backend": backend}
+            "jobid": jobid, "backend": backend, "run_tag": ""}
 
 
 def parse_dirname_plotshape(name: str) -> dict | None:
@@ -238,18 +260,19 @@ def parse_dirname_plotshape(name: str) -> dict | None:
         rest, jobid = m.group(1), m.group(2)
     else:
         rest, jobid = stem, ""
-    for cond in CONDITIONS:
-        suf = "_" + cond
-        if rest.endswith(suf):
-            pre = rest[: -len(suf)]
-            for think in ("on", "off", "default"):
-                s = "_" + think
-                if pre.endswith(s):
-                    model = pre[: -len(s)]
-                    return {"model": model, "think": think, "cond": cond,
-                            "jobid": jobid, "backend": backend}
-            return {"model": pre, "think": "default", "cond": cond,
-                    "jobid": jobid, "backend": backend, "legacy": True}
+    split = _split_cond_and_tag(rest)
+    if split is not None:
+        pre, cond, run_tag = split
+        for think in ("on", "off", "default"):
+            s = "_" + think
+            if pre.endswith(s):
+                model = pre[: -len(s)]
+                return {"model": model, "think": think, "cond": cond,
+                        "jobid": jobid, "backend": backend,
+                        "run_tag": run_tag}
+        return {"model": pre, "think": "default", "cond": cond,
+                "jobid": jobid, "backend": backend, "legacy": True,
+                "run_tag": run_tag}
     return None
 
 
@@ -298,7 +321,8 @@ _arm_variant_set = arm_variant_set
 
 
 def iter_cells(root: Path, *, include_retired: bool = False,
-               include_legacy: bool = True, parser: str = "full"):
+               include_legacy: bool = True, parser: str = "full",
+               run_tag: str = ""):
     """Yield `(cell_dir, info)` for every `slurm_*` subdirectory of `root`.
 
     Parameters mirror the per-script signatures the loaders previously used
@@ -313,6 +337,13 @@ def iter_cells(root: Path, *, include_retired: bool = False,
       `RETIRED_CONDS` (per-task / guided arms retired in sweep-5).
     - `include_legacy`: when False, drops cells flagged with `legacy=True`
       from the plotshape parser (pre-think axis).
+    - `run_tag`: corpus-identity filter over the dirname's trailing run-tag
+      (e.g. `iss024d-e2e`, `decoupled-thinkon`). Default "" keeps ONLY
+      untagged (bare sweep-5-style) cells — the historical behavior, since
+      tagged dirs previously failed to parse at all. Pass a tag to select
+      that corpus, or "*" to disable the filter (caller then owns keeping
+      differently-tagged cells apart — they are distinct corpora and must
+      never be pooled).
 
     The walk uses `sorted(root.glob("slurm_*"))` to keep output deterministic
     across callers.
@@ -334,6 +365,8 @@ def iter_cells(root: Path, *, include_retired: bool = False,
                 continue
         else:
             raise ValueError(f"unknown parser: {parser!r}")
+        if run_tag != "*" and info.get("run_tag", "") != run_tag:
+            continue
         yield d, info
 
 
