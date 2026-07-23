@@ -23,6 +23,12 @@ The AAAI-27 paper lives in `paper/` and syncs to an Overleaf project (owned by c
 
 Each repo has its own git remote (`SPL-BGU/pddl-copilot-experiments`, `SPL-BGU/pddl-copilot`). Commit in the repo whose tree you edited; never `git add` paths under `../pddl-copilot/` from this repo. When a single change spans both, make two separate commits in the two repos.
 
+Never fast-forward or merge to main without a PR: branch first, open a PR, and merge only after review/checks. (Doc-only handoff/debug artifacts are the exception — no PR needed, they're read from the working tree.)
+
+## Data rigor
+
+Before reporting any experiment number: verify the aggregation field is correct for the task (delivered vs tool-verified, censoring/at-cap handling), and verify against the canonical corpora only — `results/sweep5v2-live` + `*_sweep6`; `results/sweep5-cluster-20260530` is a stale partial mirror. Check for existing runs before recommending a rerun. Use `/verify-claims` before paper edits and `/resume-verify` when picking up from a handoff doc.
+
 ## Plugin-isolation rule (inherited from sibling)
 
 When editing across `../pddl-copilot/plugins/`, do NOT cross-import between plugins. Each plugin must remain self-contained and installable standalone. See `../pddl-copilot/.claude/rules/marketplace.md` for the full rule set.
