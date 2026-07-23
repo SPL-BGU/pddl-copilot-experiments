@@ -6,6 +6,16 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-07-23 — PlanBench Haiku NT t2 grading artifact fixed (missing FAST_DOWNWARD → universal 0.0); full frontier NT table graded + verified
+
+**Symptom.** The Haiku 4.5 PlanBench NT corpus (`results/haiku-frontier/planbench/`, on disk since 06-22) showed t2 plan-optimality = 0.0% on all three configs (blocksworld, mystery_blocksworld, logistics) while t1 was 41.0% on blocksworld — implausible (GPT-4's committed baseline: t1 31.4, t2 28.4).
+
+**Root cause.** `plan-bench/Executor/__init__.py:get_plan` computes the optimal cost by shelling to `$FAST_DOWNWARD/fast-downward.py`; on failure it returns cost 0. The 06-22 grading environment had VAL but not `FAST_DOWNWARD`, so the optimality check `actual_cost_llm == plan_executor.cost` compared against 0 and failed for every instance, including VAL-valid optimal plans (e.g. blocksworld id=4: cost 10, ground-truth 10, graded False).
+
+**Fix.** Re-ran the upstream evaluator unmodified with `VAL=planner_tools/VAL/bin/MacOSExecutables` (x86_64 Mac VAL under Rosetta — no Docker) and `FAST_DOWNWARD=` the `up-fast-downward` package inside the pddl-solver plugin venv. Corrected t2: blocksworld 28.2% (141/500; statistically identical to GPT-4's 28.4), mystery 0.4%, logistics 2.8%. t1 gradings verified by 4/4 VAL spot-check reproduction; t3 was graded all along (`llm_correct_binary`); t7 left as-is (upstream exact-match state grader; scored with caveat). Corrected files copied into `results/haiku-frontier/planbench/`; pre-fix gradings remain at `d1045a5`.
+
+**Analysis.** `development/planbench/planbench_frontier_haiku_nt.md` — Haiku beats GPT-4 CI-disjoint on blocksworld t1; trails CI-disjoint on t3; Mystery-BW collapse replicates (41.0 → 0.8); t7 0-vs-28.4 is chat-model format sensitivity evidence.
+
 ## 2026-07-17 — e2e-overlay PR #91 review: six regrade/aggregation bugs fixed (dedup, censor-reason split, delegation-credit staleness, simulate candidate coverage, fail-closed stem parsing, pooled-table guards)
 
 **Bugs.** PR #91 code review of `feat/e2e-scoring-overlay` found six issues, all fixed in
