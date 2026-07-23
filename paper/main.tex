@@ -83,8 +83,8 @@ across five open-weight models, scoring strictly against the solver/validator
 rather than by self-report. A three-arm design separates tool \emph{availability}
 from a one-sentence \emph{steering} nudge, every proportion carries a confidence
 interval, and a signed-significance rule distinguishes help from harm. The benefit
-is strongly regime-dependent. Two tasks essentially cannot be done without the
-tool; two are improved over weak baselines, one of them rescued from below its
+is strongly regime-dependent. Two tasks essentially do not happen without the
+tool under the deployed budget and format constraints; two are improved over weak baselines, one of them rescued from below its
 trivial majority guess; and one, plan checking, carries a general lesson. There,
 for one of three $\geq$9B models, merely making the tool \emph{available} sharply
 \emph{lowers} success (a $67$\,pp drop), because the model reasons in prose instead
@@ -288,6 +288,11 @@ and \emph{validate\_plan}; and a state-transition tool returns the full trajecto
 a plan induces for \emph{simulate}. Every tool is sound and deterministic, so a
 correctly formed call is correct by construction; what the model contributes is
 recognizing which tool a task needs and invoking it with well-typed arguments. The
+suite packages the Planning Copilot tools of \citet{benyamin2025copilot}, whose
+evaluation covered the same five task types with $250$ single-task queries in
+total ($10$ problems, $5$ prompt variants, $5$ request types); the corpus graded
+here runs $4{,}560$ trials in every model-mode-arm cell, about $18$ times that
+entire suite per cell. The
 verbatim per-task prompts that expose these tools, together with the one-sentence
 steering directive, appear in Listing~\ref{lst:prompts}.
 
