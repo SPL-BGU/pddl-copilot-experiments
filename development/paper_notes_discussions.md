@@ -856,3 +856,27 @@ validated by an independent ranking subagent (the user asked for a second perspe
   reporting per D6/D9c stands. A gemma `<|channel>thought` template leak (10 neutral
   rows, ≤3.3pp) is parked as a possible D10 tolerance decision — not applied, so current
   numbers are conservative.
+
+## 2026-07-23 — P2 batch landed; D3 decided RUN NOW; PlanBench Haiku NT graded (t2 artifact fixed)
+
+- **P2 (all three, commit `afc92b6` on `paper/aaai27`, Overleaf `c8c8245`):** Fig 3 ticks
+  were already fixed in `4e9a308` (roadmap item was stale — verified by render); the
+  "limited prompt set" item became a direct ratio in the Tool Suite subsection (new
+  self-citation `benyamin2025copilot`, arXiv:2509.12987: their whole single-task
+  evaluation = 250 queries (10 problems x 5 variants x 5 request types) vs our 4,560
+  trials per model-mode-arm cell, ~18x per cell); consistency pass found the abstract
+  still carrying the unscoped "cannot be done without the tool" — now scoped "under the
+  deployed budget and format constraints", matching the 07-15 intro batch.
+- **D3 (Omer, in session): PlanBench runs NOW,** starting with the VPN-free grading of
+  the on-disk Haiku NT responses. Outcome: only t2 needed work — it was 0.0 everywhere
+  from a missing-FAST_DOWNWARD grading artifact (Executor cost fell back to 0; every
+  optimality comparison failed). Re-graded with the upstream evaluator + Rosetta VAL +
+  plugin FD: **blocksworld t2 28.2 (== GPT-4 28.4); t1 41.0 beats GPT-4 31.4
+  CI-disjoint; t3 78.2 trails GPT-4 94.6 CI-disjoint; Mystery collapse replicates
+  (t1 0.8); t7 0-vs-GPT-4-28.4 = chat-format sensitivity, grader untouched.**
+  Full table/CIs/funnel: `development/planbench/planbench_frontier_haiku_nt.md`.
+  Bottom line for the paper: a 2026 small frontier model clears PlanBench's GPT-4 bar
+  on generation but not verification, and the two contamination probes (their semantic
+  obfuscation, our structural anonymization) now both have frontier data points.
+- Next on D3: WT backend over `frontier_runner.py` + pre-registered Act-4 predictions
+  BEFORE the tools sweep (mirrors iss024d prereg discipline).

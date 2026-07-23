@@ -1730,7 +1730,7 @@
             "extracted_llm_plan": "(attack b)\n(overcome b d)\n(attack c)\n(overcome c a)\n",
             "actual_cost_of_llm_plan": 4,
             "cost_by_llm": 4,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 159,
@@ -2590,7 +2590,7 @@
             "extracted_llm_plan": "(attack c)\n(overcome c b)\n(attack d)\n(overcome d c)\n",
             "actual_cost_of_llm_plan": 4,
             "cost_by_llm": 0,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 237,

@@ -64,6 +64,14 @@ paired within iss024d. Includes the frontier transcription-gap results (solve
 Scope decision = D2.
 
 **P2. Independent of E1 — can land now (small):**
+
+> STATUS 2026-07-23: ALL THREE DONE (commit `afc92b6` on `paper/aaai27`,
+> Overleaf-synced `c8c8245`). Fig 3 was already fixed in `4e9a308` (verified by
+> render — the roadmap item was stale); the prompt-set ratio landed in the Tool
+> Suite subsection (cite `benyamin2025copilot`, 250 queries vs 4,560/cell, ~18x);
+> the consistency pass found one straggler — the abstract's unscoped "cannot be
+> done without the tool" — now scoped to the deployed apparatus, matching the
+> intro. Clean compile, 0 undefined refs.
 - Fig 3 `token_quadrant` log-x tick rendering (analyzer regeneration; iter-1
   residual).
 - "Limited prompt set" exact ratio vs the earlier Copilot (extract the prompt
@@ -109,7 +117,13 @@ Haiku NT responses is VPN-free and cheap; the WT backend is ~a day of dev + API
 spend from the $70.6 remainder. Run in parallel now, or park until the paper is
 out?
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-23, in session): run now — picked up right after P2.
+> Executed same day: Haiku NT grading turned out to already exist except t2,
+> which was 0.0 everywhere due to a missing-FAST_DOWNWARD grading artifact;
+> re-graded locally (Rosetta VAL + plugin FD, no Docker/VPN) → blocksworld 28.2
+> (== GPT-4's 28.4), mystery 0.4, logistics 2.8. Full table + findings:
+> `development/planbench/planbench_frontier_haiku_nt.md`. Next: WT backend +
+> pre-registered Act-4 predictions (see that doc's "Next" section).
 
 **D4 — The other parked items** (ISS-024b guided_json fix · steering reframe ·
 stronger contamination probe): keep all three parked as Future Work, or promote

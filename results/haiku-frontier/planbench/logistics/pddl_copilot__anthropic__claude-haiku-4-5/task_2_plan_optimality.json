@@ -36,7 +36,7 @@
             "extracted_llm_plan": "(load-airplane p0 a0 l1-0)\n(load-airplane p1 a0 l1-0)\n(fly-airplane a0 l1-0 l0-0)\n(unload-airplane p0 a0 l0-0)\n(unload-airplane p1 a0 l0-0)\n",
             "actual_cost_of_llm_plan": 5,
             "cost_by_llm": 0,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 5,
@@ -60,7 +60,7 @@
             "extracted_llm_plan": "(load-truck p0 t1 l1-0)\n(drive-truck t1 l1-0 l1-1 c1)\n(unload-truck p0 t1 l1-1)\n",
             "actual_cost_of_llm_plan": 3,
             "cost_by_llm": 0,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 7,
@@ -236,7 +236,7 @@
             "extracted_llm_plan": "(drive-truck t1 l1-0 l1-1 c1)\n(load-truck p0 t1 l1-1)\n(drive-truck t1 l1-1 l1-2 c1)\n(unload-truck p0 t1 l1-2)\n",
             "actual_cost_of_llm_plan": 4,
             "cost_by_llm": 4,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 23,
@@ -609,7 +609,7 @@
             "extracted_llm_plan": "(load-airplane p0 a0 l1-0)\n(fly-airplane a0 l1-0 l0-0)\n(unload-airplane p0 a0 l0-0)\n(load-airplane p2 a1 l2-0)\n(fly-airplane a1 l2-0 l1-0)\n(unload-airplane p2 a1 l1-0)\n",
             "actual_cost_of_llm_plan": 6,
             "cost_by_llm": 0,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 57,
@@ -862,7 +862,7 @@
             "extracted_llm_plan": "(load-truck p2 t0 l0-1)\n(drive-truck t0 l0-1 l0-0 c0)\n(unload-truck p2 t0 l0-0)\n(load-airplane p0 a2 l0-0)\n(load-airplane p1 a2 l0-0)\n(load-airplane p2 a2 l0-0)\n(fly-airplane a2 l0-0 l2-0)\n(load-airplane p3 a2 l2-0)\n(unload-airplane p2 a2 l2-0)\n(unload-airplane p1 a2 l2-0)\n(load-truck p1 t2 l2-0)\n(drive-truck t2 l2-0 l2-1 c2)\n(unload-truck p1 t2 l2-1)\n(fly-airplane a2 l2-0 l1-0)\n(unload-airplane p0 a2 l1-0)\n(unload-airplane p3 a2 l1-0)\n",
             "actual_cost_of_llm_plan": 16,
             "cost_by_llm": 0,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 80,
@@ -940,7 +940,7 @@
             "extracted_llm_plan": "(load-airplane p0 a2 l0-0)\n(fly-airplane a2 l0-0 l1-0)\n(unload-airplane p0 a2 l1-0)\n(load-truck p0 t1 l1-0)\n(drive-truck t1 l1-0 l1-1 c1)\n(load-truck p1 t1 l1-1)\n(unload-truck p0 t1 l1-1)\n(drive-truck t1 l1-1 l1-0 c1)\n(unload-truck p1 t1 l1-0)\n(load-airplane p1 a0 l1-0)\n(fly-airplane a0 l1-0 l2-0)\n(unload-airplane p1 a0 l2-0)\n(drive-truck t2 l2-0 l2-1 c2)\n(load-truck p2 t2 l2-1)\n(drive-truck t2 l2-1 l2-0 c2)\n(unload-truck p2 t2 l2-0)\n(load-airplane p2 a1 l2-0)\n(fly-airplane a1 l2-0 l0-0)\n(unload-airplane p2 a1 l0-0)\n",
             "actual_cost_of_llm_plan": 19,
             "cost_by_llm": 19,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 87,
@@ -1340,7 +1340,7 @@
             "extracted_llm_plan": "(drive-truck t2 l2-1 l2-2 c2)\n(load-truck p0 t2 l2-2)\n(drive-truck t2 l2-2 l2-0 c2)\n(unload-truck p0 t2 l2-0)\n(load-airplane p0 a1 l2-0)\n(fly-airplane a1 l2-0 l1-0)\n(unload-airplane p0 a1 l1-0)\n(load-truck p0 t1 l1-0)\n(drive-truck t1 l1-0 l1-1 c1)\n(unload-truck p0 t1 l1-1)\n",
             "actual_cost_of_llm_plan": 10,
             "cost_by_llm": 0,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 123,
@@ -1430,7 +1430,7 @@
             "extracted_llm_plan": "(drive-truck t1 l1-0 l1-1 c1)\n(load-truck p1 t1 l1-1)\n(drive-truck t1 l1-1 l1-2 c1)\n(unload-truck p1 t1 l1-2)\n(drive-truck t2 l2-0 l2-1 c2)\n(load-truck p2 t2 l2-1)\n(drive-truck t2 l2-1 l2-2 c2)\n(unload-truck p2 t2 l2-2)\n",
             "actual_cost_of_llm_plan": 8,
             "cost_by_llm": 0,
-            "llm_correct": false
+            "llm_correct": true
         },
         {
             "instance_id": 131,
