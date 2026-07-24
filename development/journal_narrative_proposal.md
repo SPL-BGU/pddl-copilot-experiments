@@ -45,7 +45,9 @@ user gets a correct answer?*
 2. **sweep6** (anonymized twin): contamination **clean null** (think=off ≤1.3pp,
    zero CI-disjoint; think=on exceptions are a tokenization artifact, documented).
 3. **Frontier corpus:** Sonnet 4.6 + Haiku 4.5, NT both corpora (de-censored
-   07-15, $0) + WT under full-response storage. Exact e2e + tool-verified.
+   07-15, $0) + WT under full-response storage. Exact e2e + tool-verified —
+   EXCEPT simulate delivered, which is censor-bounds (Sonnet [49.0,62.0], 13/100
+   censored; Haiku [52.0,64.0], 12/100; corrected 2026-07-24, decisions memo §2).
 4. **Decoupled think-budget line** (4 Qwens): the control that retracted the
    simulate 0% floor — true unaided simulate 0/23/22/40% content-correct
    (0.8B→35B), format-compliance 0% for all.
@@ -172,7 +174,8 @@ contamination probe (unless D-J5 promotes one).
 
 **Corpus-labeling discipline carries verbatim:** iss024d = separate-apparatus
 replication (never THE with-tools number; paired gaps within-corpus only);
-sweep5v2 e2e = bounds; frontier = exact; steered-WT e2e = diagnostic-only.
+sweep5v2 e2e = bounds; frontier = exact (simulate delivered: bounds); steered-WT
+e2e = diagnostic-only.
 
 ## 6. Structural consequences for the manuscript
 
@@ -180,8 +183,11 @@ sweep5v2 e2e = bounds; frontier = exact; steered-WT e2e = diagnostic-only.
   (NEED → CALL → DELIVER), each stage opening open-roster and closing frontier.
 - RQ verdicts re-home, not disappear: RQ0.1/0.2/0.5 → NEED; RQ0.3/0.4 → CALL;
   RQ0.6 + overlay → DELIVER; cost → Discussion.
-- Journal room absorbs what AAAI squeezed: full overlay methods (D1–D9), the
-  parity prereg protocol, reproducibility checklist inline.
+- Journal room absorbs what AAAI squeezed — as body-summary + appendix-detail
+  (softened 2026-07-24 per decisions memo §5): the validity/protocol thread is
+  body content; the overlay methods (D1–D9), parity prereg protocol, and
+  reproducibility checklist live in a structured appendix summarized by one
+  body-level table.
 - Contamination presented as a two-probe story vs PlanBench's Mystery-BW
   (semantic obfuscation collapses GPT-4; our structure-preserving renaming moves
   nothing — different manipulations, both informative).
@@ -200,30 +206,78 @@ sweep5v2 e2e = bounds; frontier = exact; steered-WT e2e = diagnostic-only.
 case-study findings) as proposed, vs findings-first funnel with methods demoted
 to a section.
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session — accepted decisions memo §2): RATIFIED —
+> protocol-first hybrid in the findings-hook/protocol-spine variant. Hook = the
+> length-shaped delivery gradient (0pp verdicts / +5pp plans / ≥33pp trajectories),
+> never a single cell and never a two-sided interval as the first number; Figure 1 =
+> within-arm cascade (NEED as reference line; arms never pooled); validity thread =
+> one "Controls that moved headlines" subsection; stats wall to appendix;
+> audience-self-contained primer. CONDITIONAL on the three retirements: D-J2=(a),
+> both regime-taxonomy vocabularies retired from the body, upfront corpus table in
+> Methods. Binding correction applied to §2/§5 of this doc: frontier simulate
+> delivered is censor-bounds, not exact. Full spec:
+> `development/journal_decisions_memo.md` §2.
 
 **D-J2 — Ratify D2 = (a).** e2e_strict becomes the quoted with-tools surface
 everywhere; tool-verified moves to the mechanism layer. This proposal assumes it.
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session): (a) FULL REFRAME accepted — e2e_strict is
+> the single primary surface everywhere; tool-verified = mechanism/diagnostic layer.
+> One surface, three value shapes (exact+CI / censor-bounds / lower bound) with
+> typographically distinct notation as a hard table gate; one "how to read our
+> numbers" table heads Results; open-roster e2e quoted as bounds with the
+> storage-fixed rerun pre-registered as a contingency (not "bounds forever");
+> CALL-stage claims re-derived on delivered before Act-3 prose lands. Full spec +
+> prohibited-claims list: `development/journal_decisions_memo.md` §3. Same ruling
+> recorded at roadmap D2.
 
 **D-J3 — PlanBench tools arm in scope?** Act 4 as written requires fixing the two
 blockers + running v2 open roster + frontier (~$70 API remainder + cluster time)
 + pre-registered predictions. In, or Future Work?
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session): IN SCOPE as a MINIMAL frontier-only Act 4;
+> open-roster v2 cluster arm demoted to pre-registered Future Work. The
+> already-graded NT re-measurement carries the act's headline claim; the WT arm is
+> the secondary claim, run against a NEW matched-scaffold no-tools control (tool
+> availability the only ablation). Scope priority bw t1 > mystery t1 > bw t3 (target
+> = the 2x2 on t1), subsampling not cell-deletion, prereg before any spend, GPT-4
+> rows never share a table/figure with WT cells. Kill criterion 2026-08-15 →
+> Act 4 SHRINKS to the NT-only act (not scattered). Full spec:
+> `development/journal_decisions_memo.md` §4.
 
 **D-J4 — Journal target.** JAIR vs AIJ vs other — affects length norms and
 whether the validity thread is a section or appendix.
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session — recommendation TO ADVISORS, their call):
+> JAIR primary (case built on verified strengths + an affirmative C1 originality
+> argument — NOT "rigor over novelty", which is TMLR's property); TMLR fallback with
+> all three rejection branches pre-committed; AIJ advisor-override only; KBS
+> dropped. Manuscript written audience-self-contained from day one; validity THREAD
+> in body, D1-D9 MECHANICS in appendix (§6 below softened accordingly).
+> Thesis-clock assumption (submitted manuscript suffices for the Sept 2026 thesis)
+> to be confirmed with advisors; flips the 2026-05-05 AIJ-primary ranking. Full
+> spec: `development/journal_decisions_memo.md` §5.
 
 **D-J5 — Cheap complements.** Run nt-ster cells? Run the second-family probe?
 Neither / either / both.
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session): BOTH, nt-ster first — at the RECOMMENDED
+> scope (think=off AND think=on, ~92 GPU-h, one VPN window) with the same-apparatus
+> nt-neut anchor co-run, iss024d-pinned apparatus, fresh run-tag, and
+> prereg-before-submit (H4 TOST ±5pp; anchor scope = exactly two pre-registered
+> uses; claim-licensing map). Then the Llama-3.1-8B second-family probe (v11
+> nt-neut/tl-neut + v14 tl-ster; smoke kill-gate). Caveat-only integration cap; the
+> P1 writing sprint proceeds NOW under worst-case scoping. Cluster submits remain
+> ping-gated per standing rule (scope changeable until the submit ping). Full spec:
+> `development/journal_decisions_memo.md` §6.
 
 **D-J6 — Title/abstract recentering** on the composition-failure thesis: want
 draft candidates in the next iteration?
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session): YES — draft candidates next iteration under
+> D-J2's corpus-label constraints. No unscoped universal composition-failure
+> declaratives ("soundness does not transfer to the delivered answer" is the
+> permitted scoping — delivered is ≥95.0 on 4 of 5 frontier tasks); retire
+> "Availability Is Not Enough"; abstract skeleton per ABC/SWE-bench order; AI-tells
+> rule applies; collision-check "the delivery gap" before locking the coined term.
+> Full spec: `development/journal_decisions_memo.md` §8.

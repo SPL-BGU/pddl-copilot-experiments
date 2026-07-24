@@ -110,7 +110,11 @@ delivered-answer subsection + table (frontier + iss024d) and the "delegation vs
 delivered" discussion. (b) is smaller and reviewer-safe; (a) matches the 07-11
 decision most literally.
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session): (a) FULL REFRAME — same ruling as
+> `journal_narrative_proposal.md` D-J2 (one answer covers both, as anticipated).
+> Full spec + per-corpus quoting rules + prohibited-claims list:
+> `development/journal_decisions_memo.md` §3. Executable with zero new runs;
+> every results PR gates on /verify-claims.
 
 **D3 — PlanBench now or after submission?** The Docker-VAL grading of the on-disk
 Haiku NT responses is VPN-free and cheap; the WT backend is ~a day of dev + API
@@ -129,4 +133,10 @@ out?
 stronger contamination probe): keep all three parked as Future Work, or promote
 any into the evaluation phase?
 
-> ANSWER:
+> ANSWER (Omer, 2026-07-24, in session): keep ALL THREE parked as Future Work;
+> promote none. One amendment: run the $0 LOCAL AUDIT of the guided_json
+> artifact's mechanism + affected-row fraction now (agent-executable, fix itself
+> stays parked) so C1's "artifact audits" component stays internally consistent.
+> Steering reframe superseded by the D-J5 nt-ster control; contamination probe
+> parked with a concrete promotion trigger (advisor/reviewer challenge after the
+> truncation decomposition). Full spec: `development/journal_decisions_memo.md` §7.

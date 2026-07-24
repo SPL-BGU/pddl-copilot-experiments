@@ -110,6 +110,17 @@ corpus triggers no missing-field drops).
 
 ## Next on the PlanBench line (D3, in order)
 
+> SUPERSEDED 2026-07-24 by the accepted D-J3 ruling — full spec:
+> `development/journal_decisions_memo.md` §4. Deltas vs the list below: the WT
+> arm is Haiku-only and runs against a NEW matched-scaffold no-tools control
+> (the bare-NT rows graded in this doc become a published-apparatus replication
+> layer, and they carry Act 4's HEADLINE claim; WT is the secondary claim);
+> prereg is scoped to unrun cells with a two-sided Mystery prediction and a
+> prediction-cell linkage rule; scope priority bw t1 > mystery t1 > bw t3 with
+> n≈200-250/cell subsampling; item 2 (open-roster arm) is demoted to
+> pre-registered Future Work (its two blockers turned out already fixed in
+> `2a1298c`); item 3 (Sonnet NT) is out of budget and dropped.
+
 1. **WT backend** — adapter over `frontier_runner.py` driving the MCP tool loop
    for Haiku/Sonnet (~a day of dev + spend from the ~$70.6 API remainder).
    Pre-register the Act-4 predictions BEFORE the sweep (mirrors the iss024d

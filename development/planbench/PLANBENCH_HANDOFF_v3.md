@@ -1,5 +1,31 @@
 # PlanBench — handoff for v3 (make the small-model tools arm work)
 
+> STATUS 2026-07-24 — DIRECTION SUPERSEDED by the accepted D-J3 ruling
+> (`development/journal_decisions_memo.md` §4; ANSWER slots annotated in
+> `journal_narrative_proposal.md` + roadmap). The next PlanBench work is the
+> FRONTIER-ONLY WT arm (Haiku) via an adapter over `tools/frontier_runner.py`,
+> run against a NEW matched-scaffold no-tools control (identical system scaffold,
+> tool availability the only ablation) — NOT this doc's v3 small-model
+> scaffolding direction, which is DEMOTED to pre-registered Future Work together
+> with the open-roster cluster arm. Binding design points: prereg BEFORE any
+> spend (`development/planbench/planbench_wt_prereg.md`, to be written and
+> ratified); scope priority bw t1 > mystery t1 > bw t3, target = the
+> {clean, mystery} x {matched-NT, WT} 2x2 on t1, n≈200-250/cell subsampling
+> (never whole-cell deletion); t2 excluded (optimal_plan tool unbuilt); GPT-4
+> rows context-only and never share a table/figure with WT cells; ~20-instance
+> calibration against the ~$70.6 API remainder; kill criterion 2026-08-15 →
+> Act 4 shrinks to the NT-only re-measurement act.
+> Since this handoff was written: **Haiku NT is fully graded** (2026-07-23,
+> `planbench_frontier_haiku_nt.md` — t1 41.0 beats GPT-4 CI-disjoint; t2 28.2
+> after the missing-FAST_DOWNWARD artifact fix; Mystery collapse replicates; t7
+> chat-format grading artifact quantified), and the first two carry-forward
+> blockers below (build_table denominator; response_evaluation.load_json crash)
+> are FIXED since 2026-06-16 (`2a1298c`, PR #65 — verified in
+> `planbench/build_table.py acc()` and `planbench/apply_patches.py` Edit C).
+> The truncation-cap concern is MOOTED (not fixed) by the frontier path; it
+> still applies if the open-roster arm is ever revived. The serial-jobs,
+> rsync-copies, and engine-name-caching lessons below still stand.
+
 Session close 2026-06-07. **v2 (the MCP-tools-on arm) is BUILT and
 CHARACTERIZED.** This session ran a series of smokes that mapped exactly how the
 tools arm behaves across model sizes and found the wall. The next session's

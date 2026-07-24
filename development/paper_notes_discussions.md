@@ -880,3 +880,34 @@ validated by an independent ranking subagent (the user asked for a second perspe
   obfuscation, our structural anonymization) now both have frontier data points.
 - Next on D3: WT backend over `frontier_runner.py` + pre-registered Act-4 predictions
   BEFORE the tools sweep (mirrors iss024d prereg discipline).
+
+## 2026-07-24 — Journal-pivot decision batch: all 8 open slots decided (decisions memo accepted)
+
+- **Omer accepted `development/journal_decisions_memo.md` in session** (produced by a
+  23-agent investigation + 12 adversarial red-team passes, all verdicts AMEND / zero
+  refutes, load-bearing claims source-verified). All 8 ANSWER slots annotated:
+  D-J1..D-J6 in `journal_narrative_proposal.md`, D2 + D4 in the roadmap.
+- **Rulings in brief:** D-J1 protocol-first RATIFIED (findings-hook variant: delivery
+  gradient opener 0pp/+5pp/≥33pp, within-arm cascade Fig 1, "Controls that moved
+  headlines" subsection; conditional on the three retirements). D-J2=D2=(a) FULL
+  REFRAME (delivered = single primary surface; notation hard gate; "how to read our
+  numbers" table; storage-fixed rerun as pre-registered contingency). D-J3 minimal
+  frontier-only PlanBench Act 4 (NT re-measurement carries the headline; WT secondary
+  vs matched-scaffold control; prereg; 08-15 kill → shrink to NT-only). D-J4 =
+  recommendation TO ADVISORS: JAIR primary / TMLR fallback / AIJ override-only / KBS
+  dropped (advisor conversation still owed; thesis-clock assumption to confirm).
+  D-J5 BOTH complements at recommended scope (nt-ster think=off+on ~92 GPU-h +
+  same-apparatus anchor, prereg-before-submit; Llama-8B v11+v14 probe; submits
+  ping-gated). D4 all three parked + $0 guided_json local audit. D-J6 yes
+  (scoped-declarative constraint; collision-check "the delivery gap").
+- **Binding factual correction recorded:** frontier simulate delivered is
+  censor-bounds (Sonnet [49.0,62.0], 13/100 censored; Haiku [52.0,64.0], 12/100),
+  NOT exact — proposal §2/§5 fixed; never quote frontier simulate delivered as exact.
+- **E2E overlay placement (Omer asked explicitly): INCLUDED by construction.** Under
+  D-J2(a) the overlay is the paper's primary measurement instrument, not an optional
+  section: its delivered surface is the headline number in every with-tools claim,
+  the dual-surface design is C1 body content, and the D7→D9 grading history becomes
+  named controls in the validity subsection. Only the overlay's operational
+  MECHANICS (D1–D9 decision log, tolerance history, parity-prereg text) go to a
+  structured appendix summarized by one body-level table. iss024d overlay cells keep
+  the separate-apparatus label (within-corpus paired gaps only).
