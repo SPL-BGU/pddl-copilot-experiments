@@ -40,13 +40,27 @@ delivered-primary ruling.
 
 ## 1. §2 — subsample size, seed, and how S is actually fixed
 
-**Bottom line.** n=250 is affordable with 2-4x headroom, so money is not the binding
-constraint and the prereg should stop presenting it as one. But "seed 20260724 +
-quartile stratification" does not pin S, so as written this is not a
-pre-registration. Fix the pool (499-id intersection), fix the strata (discrete length
-value x t3 verdict), **materialize the realized id list before the gate**, run the
-cheap no-tools cells at the full pool, and pre-commit a cost-only escalation to the
-full pool for the with-tools cells.
+**DECIDED 2026-07-25 (Omer): run the WHOLE POOL, 500 per cell**, to match the
+leaderboard corpus. This supersedes the n=250 recommendation below, and it is the
+stronger design on four counts beyond comparability: it deletes the entire subsample
+apparatus (no seed, no strata, no id list, and no t1-vs-t3 intersection problem, since
+each task runs its own full pool), it raises the sample-size justification class from
+resource-constrained to whole-population, it makes both silent subsampling hazards inert
+(the `build_table` denominator and the evaluator's `--specific_instances` filter), and it
+fixes the one under-powered prediction — exact McNemar 80%-power MDE on t3 falls from
++9.0pp to +6.0pp, and power at a WT t3 of 85% rises from 0.58 to 0.88. Cost is the one
+real constraint: the t1 2x2 at the whole pool is ~$46 central (65% of the remainder) and
+six cells ~$59 (84%), so §8 fixes a spend priority (t1 2x2 first, t3 pair second) and the
+t3 pair is the cell that drops to 250 if the gate says six cells do not fit — t3's
+external comparability is already broken by the corpus mismatch (§5), so subsampling it
+forfeits nothing.
+
+**Original bottom line (retained as the costed fallback spec).** n=250 is affordable with
+2-4x headroom, so money is not the binding constraint and the prereg should stop
+presenting it as one. But "seed 20260724 + quartile stratification" does not pin S, so as
+written this is not a pre-registration. Fix the pool (499-id intersection), fix the strata
+(discrete length value x t3 verdict), **materialize the realized id list before the
+gate**, run the cheap no-tools cells at the full pool.
 
 **Cost.** Four independent estimates of Haiku WT $/trial on PlanBench: $0.0348
 (parametric model fitted to our five measured frontier WT cells, ±0.2% on three of
@@ -242,12 +256,15 @@ indistinguishable from Huang & Zhang's published formalizer numbers.
 > La Malfa 93).
 >
 > **Clean t1 WT is demoted from a prediction to an OUTCOME-NEUTRAL apparatus
-> criterion** (Registered Reports device), with two measured parts: (a) extraction rate
-> ≥ 90% (measured NT clean t1 = 94.4%, 472/500) and (b) delivered p̂ ≥ 85% with Wilson
-> lower ≥ 80. The old ">= 90" is struck as unattainable-by-instrument: Wilson lower ≥
-> 90 needs p̂ ≥ 94.0% at n=250 against a 94.4% extraction ceiling, i.e.
-> P(correct | extracted) ≥ 0.953. Report P(correct | extracted) alongside the raw rate
-> in every t1 cell. Failing (a) is an apparatus-fix-and-restart event, never a scope
+> criterion** (Registered Reports device), thresholded on the two DECOMPOSED quantities
+> rather than on the combined number [updated 07-25]: (a) **extraction rate ≥ 90%**
+> (measured NT clean t1 = 94.4%, 472/500) and (b) **P(correct | extracted) ≥ 90%**
+> (measured NT = 43.4%, 205/472). A failure then names which stage broke — the
+> benchmark's text parser or the model's planning — while raw delivered accuracy stays
+> the reported primary for comparability with the NT layer and the GPT-4 rows. The old
+> raw ">= 90" band is struck as unattainable-by-instrument at any n: Wilson lower ≥ 90
+> needs p̂ ≥ 92.8% at n=500 / 94.0% at n=250 against a 94.4% extraction ceiling, i.e.
+> P(correct | extracted) ≥ 0.95. Failing (a) is an apparatus-fix-and-restart event, never a scope
 > decision; failing (b) with (a) passing is recorded as a scaffold/capability ceiling
 > that bounds the mystery cell's interpretation.
 >

@@ -59,8 +59,8 @@ the verbatim-with-dangling-directive variant is not the primary comparator and i
 instead run as a labelled sensitivity arm on mystery t1. The 06-22 bare-NT rows (no
 system prompt) are NOT the control; they are a replication layer, and the
 matched-NT-vs-bare-NT delta is reported once as a scaffold effect in the validity
-thread, never as a treatment contrast (paired on S — the bare-NT rows cover the same
-instances).
+thread, never as a treatment contrast (fully paired — the bare-NT rows cover the same
+instance ids).
 
 **Cells, in priority order** (t2 excluded **as a scope decision**, not a capability
 one — [corrected 07-25: `classic_planner(strategy="astar_lmcut")` = `astar(lmcut())`
@@ -77,57 +77,73 @@ Act 5; logistics out of scope):
 | 3 | blocksworld t3 | verification-gap probe (prediction iii) |
 
 **Budget valve = subsampling, never whole-cell deletion within the t1 2×2.**
-[corrected 07-25: the earlier valve trimmed n uniformly and named the t3 pair as the
-only cuttable one, which is inverted — t3 is the ONLY power-scarce cell (80%-power
-McNemar MDE +9.0pp at n=250 vs +10.4pp at n=200 under 10% leakage) and clean t1 has
-power 1.0000 to spare at every pre-registered WT value. The cost-only shrink order is
-now: (1) drop the §9-A sensitivity arm; (2) matched-NT from the full pool back to |S|;
-(3) clean-t1 WT n 250→150; (4) **t3 last**, 250→200. If step (4) still misses budget,
+[updated 07-25: the design baseline is now the whole pool (500/cell), so the valve
+starts there. Cost-only shrink order, applied at the gate before any confirmatory trial:
+(1) drop the §9-A sensitivity arm; (2) t3 pair 500→250; (3) clean-t1 WT 500→250;
+(4) mystery-t1 WT 500→250; (5) only then the t3 pair is dropped entirely, which strikes
+prediction (iii) per the linkage rule. t3 is cut before the t1 cells because its
+external comparability is already broken by the corpus mismatch, and t3 at n=250 retains
+the power the 07-24 draft was written for (+9.0pp MDE). If step (5) still misses budget,
 kill criterion (a) fires for the whole arm (§8).]
 
-**Instance subsample.** See the ANSWER block below, which supersedes the earlier
-"seed 20260724 + gold-plan-length quartile over the 500-instance pool" wording:
-measured on disk, the t1 pool is ids 2..501 and the t3 pool is ids 1..500
-(intersection 499), gold plan lengths take only 8 even values so quartile cuts land on
-the modal values (strata 200/139/113/48), and a seed alone does not pin S.
+**Instance set.** The ANSWER block below supersedes the earlier "seed 20260724 +
+gold-plan-length quartile over the 500-instance pool" wording: the design now runs the
+whole pool, which removes the subsample machinery entirely. The subsample spec survives
+only as a costed fallback, corrected on three measured points (the t1 pool is ids 2..501
+and the t3 pool is ids 1..500, intersection 499; gold plan lengths take only 8 even
+values so quartile cuts land on the modal values, giving strata 200/139/113/48; and a
+seed alone does not pin the realized set).
 
 > ANSWER (RECOMMENDED 2026-07-25, decisions memo §1 — pending RATIFY):
 >
-> **n and pool.** S is drawn from the **499-id t1∩t3 intersection (instance_ids
-> 2..500)**, not the 500-instance t1 pool: t1/t2 ids are 2..501 and t3 ids are 1..500
-> (measured), so a draw containing id 501 would silently reduce the t3 cells to n=249.
-> **|S| = 250** for the with-tools cells. The three matched-no-tools cells run the
-> **full 499-id pool** (+≈$5.6 central): the confirmatory paired tests are computed on
-> S only, and the extra 249 no-tools rows are a labelled secondary precision estimate
-> for the NT cell and for the bare-NT scaffold delta, never entering a paired test.
+> **n = the WHOLE POOL, 500 per cell** (Omer's call, 2026-07-25: match the leaderboard
+> corpus so every row is comparable). Each task runs its own full pool — t1 ids 2..501,
+> t3 ids 1..500 — which is exactly the corpus the published bare-NT layer and the
+> committed GPT-4 rows were graded on. **No subsampling apparatus is needed at the whole
+> pool**: no seed, no strata, no materialized id list, and no t1∩t3 intersection problem
+> (the 499-id intersection existed only to let ONE shared subsample serve both tasks).
+> Clean-vs-mystery and WT-vs-NT stay exactly paired because the id sets are identical
+> across configs and arms. Four independent gains over the n=250 draft: (1) every cell
+> shares a denominator with the published NT layer and the GPT-4 comparator, removing a
+> subsample caveat from every row; (2) sample-size justification rises from
+> resource-constrained to whole-population; (3) prediction (iii) stops being
+> under-powered — exact McNemar 80%-power MDE falls from +9.0pp to **+6.0pp** (10%
+> leakage), and power at a WT t3 of 85% rises from 0.58 to **0.88**; (4) the §3
+> INCONCLUSIVE band shrinks from 45/251 to 62/500 of possible outcomes. It also makes
+> the two subsampling hazards inert (the `build_table` denominator and the evaluator's
+> `--specific_instances` filter), since nothing is filtered.
 >
-> **Stratification.** Proportional allocation with largest-remainder over the crossed
-> strata **(gold-plan-length value, collapsed: {2,4} / {6} / {8} / {10} / {12,14,16})
-> × (t3 gold verdict: VALID / INVALID)**. "Quartile" is struck as not implementable:
-> lengths are {2:30, 4:56, 6:114, 8:139, 10:113, 12:46, 14:1, 16:1} and the quartile
-> cuts 6/8/10 coincide with the three modal values. Verdict enters because t3 accuracy
-> is strongly verdict-conditional in the graded NT layer (blocksworld VALID 73.1
-> [68.1,77.7] vs INVALID 87.5 [81.8,91.6]; mystery 25.9 vs 81.2), so the t3 marginal is
-> a mixture whose value tracks the VALID share; the joint scheme ties or dominates every
-> alternative in Monte Carlo at both n (bw t3 sampling SD 1.83 SRS → 1.76).
+> **Spend priority at the gate** (the whole pool is affordable at central estimates,
+> ≈$58 of the $70.6 for six cells, but sits near the line once a reserve is held):
+> **t1 2×2 first** — the leaderboard-comparable headline cells — then the t3 pair. If
+> the gate's measured projection cannot cover six cells at 500, **the t3 pair drops to
+> n=250 and nothing else does**, because t3's external comparability is already broken
+> (the committed GPT-4 t3 corpus is a different corpus: 0/500 identical queries, verdict
+> mix 31.0% VALID vs our 64.8%), so subsampling t3 forfeits no comparability. Decided
+> before any confirmatory trial, reading **only** $/trial, turns/trial, cache-read
+> fraction and wall-clock — never graded accuracy and never the WT-vs-NT contrast.
 >
-> **Seed and materialization.** Seed **20260724**, `random.Random(20260724)`, strata
-> iterated in sorted (length-bin, verdict) order, proportional + largest-remainder.
-> The seed alone does not pin S (a reference draw shifted NT-recomputed-on-S by up to
-> 5pp: mystery t3 50.4 vs 45.4), so the drawing script
-> `planbench/draw_wt_subsample.py` **and the realized id list**
+> **FALLBACK SPEC, used only if the gate forces subsampling** (kept because a
+> pre-registration must specify it in advance, not invent it under budget pressure):
+> S is drawn from the **499-id t1∩t3 intersection (ids 2..500)** — t1/t2 ids are 2..501
+> and t3 ids are 1..500 (measured), so a draw containing id 501 would silently reduce
+> the t3 cells to n=249. |S| = 250. Stratification: proportional allocation with
+> largest-remainder over the crossed strata **(gold-plan-length value, collapsed:
+> {2,4} / {6} / {8} / {10} / {12,14,16}) × (t3 gold verdict: VALID / INVALID)**;
+> "quartile" is struck as not implementable (lengths are {2:30, 4:56, 6:114, 8:139,
+> 10:113, 12:46, 14:1, 16:1} and the quartile cuts 6/8/10 coincide with the three modal
+> values), and verdict enters because t3 accuracy is strongly verdict-conditional in the
+> graded NT layer (blocksworld VALID 73.1 [68.1,77.7] vs INVALID 87.5 [81.8,91.6];
+> mystery 25.9 vs 81.2), so the t3 marginal is a mixture whose value tracks the VALID
+> share. Seed **20260724**, `random.Random(20260724)`, strata iterated in sorted
+> (length-bin, verdict) order; the seed alone does not pin S (a reference draw shifted
+> NT-recomputed-on-S by up to 5pp: mystery t3 50.4 vs 45.4), so if this path is taken the
+> drawing script `planbench/draw_wt_subsample.py` **and the realized id list**
 > `planbench/wt_subsample_S.json` (250 ids + stratum labels + sha256) are committed
-> **before the calibration gate**; the pre-registered S is that file, not the procedure.
->
-> **Pre-committed escalation (cost-only, increase-only).** If the calibration gate's
-> projection at **p90** measured $/WT-trial for the full-pool design is **≤ $50**
-> (≈71% of the remainder, holding a ~20% reserve), the with-tools cells run the full
-> 499-id pool instead of S. Decided before any confirmatory trial, reading **only**
-> $/trial, turns/trial, cache-read fraction and wall-clock — never graded accuracy and
-> never the WT-vs-NT contrast. Escalation raises the sample-size justification from
-> resource-constrained to whole-population, lets every WT row share a denominator with
-> the published n=500 bare-NT layer, and cuts the §3 INCONCLUSIVE band mass from 45/251
-> outcomes to 63/500.
+> before the run, and the pre-registered S is that file rather than the procedure. In
+> that case the matched-no-tools cells still run the full pool (+≈$5.6): confirmatory
+> paired tests are computed on S only, and the extra rows are a labelled secondary
+> precision estimate that never enters a paired test.
 >
 > **Correspondence check: PASSED, recorded now** (the contingent fallback is struck as
 > dead code, and clean-vs-mystery is committed as paired). Mystery is a pure symbol
@@ -139,14 +155,16 @@ the modal values (strata 200/139/113/48), and a seed alone does not pin S.
 > holds a stray mystery-only `instance-0.pddl` that is not a rename of any clean
 > instance (unused at `start=1`).
 >
-> **Denominator (blocking).** TOTAL = |S| (or 499 if escalated). `build_table.acc()`
-> divides by `len(instances)` = 500 regardless of the subsample: replaying the real
-> graded bw-t1 file with 250 instances stripped returns 22.2% where the truth is 44.4%.
-> Filter the response JSON to S before grading, or pass S to the table builder. Do
-> **not** pass `--specific_instances` to `response_evaluation.py` — its filter mutates a
-> module-level list and silently grades everything after the last matched id (unpatched
-> at :92-96, :155-159, :254-258); the evaluator already skips empty-response instances,
-> so a subsampled run yields denominator = |S| naturally.
+> **Denominator (blocking only on the fallback path).** At the whole pool TOTAL = 500 and
+> both subsampling hazards are inert. They stay on the §5 audit list because they are
+> **silent**, not because they are hard: `build_table.acc()` divides by
+> `len(instances)` = 500 regardless of what was run, so replaying the real graded bw-t1
+> file with 250 instances stripped returns a plausible-looking 22.2% where the truth is
+> 44.4% — no error, no warning, and a believable number for a struggling tools arm. If
+> the fallback fires, filter the response JSON to S before grading or pass S to the table
+> builder, and do **not** pass `--specific_instances` to `response_evaluation.py` (its
+> filter mutates a module-level list and silently grades everything after the last
+> matched id, unpatched at :92-96, :155-159, :254-258).
 
 ## 3. Predictions (pre-registered, with outcome bands)
 
@@ -177,35 +195,43 @@ prereg — reported as struck, not as unsupported.
 > explicitly: the three t3 fields differ by up to 19.4pp on identical responses — binary
 > 78.2 / w_type 68.2 / w_expl 58.8 — and both the published NT layer and the GPT-4 94.6
 > comparator are on binary; w_type and w_expl are secondary); summary = per-cell
-> proportion with Wilson 95% CI plus the paired Δ on S; intercurrent events per the §9-F
-> exclusion table (treatment-policy: counted as failures, denominator = |S|).
+> proportion with Wilson 95% CI plus the paired Δ on the shared instance set; intercurrent
+> events per the §9-F
+> exclusion table (treatment-policy: counted as failures, denominator = the cell's full
+> realized instance set).
 >
 > **(i) Mystery t1 WT bands** (exhaustive and disjoint by construction, verified by
 > enumerating every integer outcome; mirrors the PASS/FAIL/UNDERPOWERED shape already
 > ratified in `ntster_h4_prereg.md`):
 >
-> | verdict | rule | counts at n=250 | counts at n=499 |
+> | verdict | rule | counts at n=500 (whole pool) | counts at n=250 (fallback) |
 > |---|---|---|---|
-> | NO-RESCUE | Wilson upper < 5% | x ≤ 5 (≤ 2.00%) | x ≤ 15 (≤ 3.01%) |
-> | PARTIAL | CI entirely within [5,50) | x ∈ [20,109] | x ∈ [35,227] |
-> | RESCUE | Wilson lower ≥ 50% | x ≥ 141 (≥ 56.40%) | x ≥ 272 (≥ 54.51%) |
-> | INCONCLUSIVE | CI spans 5% or 50% | x ∈ 6..19 or 110..140 | x ∈ 16..34 or 228..271 |
+> | NO-RESCUE | Wilson upper < 5% | x ≤ 15 (≤ 3.00%) | x ≤ 5 (≤ 2.00%) |
+> | PARTIAL | CI entirely within [5,50) | x ∈ [35,228] | x ∈ [20,109] |
+> | RESCUE | Wilson lower ≥ 50% | x ≥ 272 (≥ 54.40%) | x ≥ 141 (≥ 56.40%) |
+> | INCONCLUSIVE | CI spans 5% or 50% | x ∈ 16..34 or 229..271 | x ∈ 6..19 or 110..140 |
 >
 > **Anchors:** 5% = ~2.5× the measured bare-NT mystery Wilson upper bound (2.0% at
 > n=500) and just above the smallest value distinguishable from it at n=250 (Wilson
 > half-width 2.8pp at p=0.05); 50% = solved more often than not, which in evidential
-> form demands p̂ ≥ 56.4% (n=250) / 54.5% (n=499). The declared INCONCLUSIVE region is
-> the falsifiability feature: 45/251 outcomes at n=250 and 63/500 at n=499 land in it.
+> form demands p̂ ≥ 54.4% (n=500) / 56.4% (n=250). The declared INCONCLUSIVE region is
+> the falsifiability feature, and the whole pool shrinks it: 62/500 outcomes at n=500
+> versus 45/251 at n=250.
 > Every verdict is additionally reported against the two published bands
 > (verifier-in-the-loop ~3.8-14%, formalize-then-delegate ~63-100%; pending
 > `/verify-claims`) with pool size and grader on the same line, since "Mystery
 > Blocksworld" denotes at least five different pools in the literature.
 >
-> **Clean t1 WT = OUTCOME-NEUTRAL apparatus criterion, not a prediction:**
-> (a) extraction rate ≥ 90% (measured NT clean t1 = 94.4%, 472/500) and (b) delivered
-> p̂ ≥ 85% with Wilson lower ≥ 80. The old "≥ 90%" is struck: Wilson lower ≥ 90 needs
-> p̂ ≥ 94.0% at n=250 against a 94.4% extraction ceiling, i.e. P(correct | extracted)
-> ≥ 0.953. Report P(correct | extracted) alongside the raw rate in every t1 cell.
+> **Clean t1 WT = OUTCOME-NEUTRAL apparatus criterion, not a prediction, and it is
+> thresholded on the two DECOMPOSED quantities rather than on the combined number:**
+> (a) **extraction rate ≥ 90%** (measured NT clean t1 = 94.4%, 472/500) and
+> (b) **P(correct | extracted) ≥ 90%** (measured NT clean t1 = 43.4%, 205/472). Raw
+> delivered accuracy remains the reported primary number for the cell — comparability
+> with the published NT layer and the GPT-4 rows requires it — but the pass/fail check
+> uses (a) and (b), because a failure then names which stage broke: the benchmark's text
+> parser or the model's planning. The old raw "≥ 90%" band is struck as
+> unattainable-by-instrument at any n: Wilson lower ≥ 90 needs p̂ ≥ 92.8% at n=500 /
+> 94.0% at n=250 against a 94.4% extraction ceiling, i.e. P(correct | extracted) ≥ 0.95.
 > Failing (a) is an apparatus-fix-and-restart event, never a scope decision; failing (b)
 > with (a) passing is recorded as a scaffold/capability ceiling that bounds the mystery
 > cell's interpretation.
@@ -226,19 +252,23 @@ prereg — reported as struck, not as unsupported.
 > - **JOINT FALSIFIER:** mystery WT statistically indistinguishable from mystery
 >   matched-NT with the same per-stage failure profile as clean WT → the arm's mechanism
 >   claim is reported **unsupported**, not narrated either way.
-> - **±10pp is the margin n supports** (paired TOST power 0.96 at n=250 for the
->   plausible discordance ψ=0.18, certifying ±10pp up to ψ=0.29). **±5pp is not
->   pre-registrable** (power 0.18 at n=250; ~617 pairs needed), and the 5.26pp post-hoc
->   CI half-width must not be quoted as licence for it.
+> - **Margin: ±7.5pp at the whole pool** (paired TOST at n=500 certifies it up to a total
+>   discordance of ψ=0.33, comfortably above the plausible ψ=0.18, where the minimum
+>   pre-registrable margin is 5.6pp); the fallback n=250 margin is **±10pp** (certifiable
+>   up to ψ=0.29, power 0.96 at ψ=0.18). **±5pp is not pre-registrable on either path**
+>   (it needs ψ ≤ 0.15 at n=500, and ~617 pairs at ψ=0.18), and the post-hoc CI
+>   half-width must not be quoted as licence for it.
 >
 > **(iii) t3, with its power stated instead of assumed.** Confirmatory: exact McNemar,
-> paired WT vs matched-NT on S. Band: WT t3 p̂ ≥ 90 with Wilson lower ≥ 85, anchored on
+> paired WT vs matched-NT on the shared instance set. Band: WT t3 p̂ ≥ 90 with Wilson lower ≥ 85, anchored on
 > our own measured Haiku frontier with-tools validation delivered rates (96-99) minus
 > headroom for the added NL→PDDL step, against the NT anchor 78.2 [74.4,81.6] and
-> GPT-4's 94.6. **Pre-registered MDE:** power is 0.94 at n=250 if WT t3 reaches 90% and
-> the tool breaks ≤10% of NT successes, but only 0.58 if WT t3 lands at 85%; the
-> 80%-power MDE is +9.0pp (n=250) / +10.4pp (n=200) under 10% leakage, so a true +7pp
-> improvement will likely be missed — pre-declared, not reinterpreted afterwards.
+> GPT-4's 94.6. **Pre-registered MDE** (exact McNemar, 80% power, 10% leakage — i.e. the
+> tool breaks 10% of the matched-NT successes): **+6.0pp at n=500** vs +9.0pp at n=250.
+> At a WT t3 of 85% the whole pool gives power **0.88** where n=250 gave 0.58 — this is
+> the one prediction the subsample would have left under-powered, and running the full
+> pool is what fixes it. A true improvement below +6pp will still likely be missed;
+> pre-declared, not reinterpreted afterwards.
 > **Conjunctive ruling, fixed now:** significant + band met = supported; significant +
 > band missed = "gap narrowed, not closed" (no rescue language); not significant + band
 > met = level reached without a demonstrable paired lift, reported descriptively;
@@ -360,7 +390,8 @@ Per newly graded cell: (a) ≥ 4 hand-verified instances, 2 expected-correct + 2
 expected-incorrect; (b) extraction-rate distribution check against the measured NT
 baselines (clean t1 94.4%, mystery t1 89.6%); (c) **any cell grading exactly 0.0% or
 100.0% triggers a mandatory artifact audit before the number is used anywhere**;
-(d) **denominator assertion**: the graded denominator equals |S| (or 499 if escalated) —
+(d) **denominator assertion**: the graded denominator equals the cell's realized n (500
+at the whole pool, |S| on the fallback path) —
 `build_table.acc()` divides by 500 regardless of the subsample and this audit is the
 only thing that catches it, since a halved-denominator cell does not land on 0.0/100.0;
 (e) a **gold-PDDL positive control**: the hand-verified instances' gold domain+problem
@@ -369,8 +400,8 @@ persistence result cannot be a broken-solver artifact.
 
 ## 6. Analysis
 
-Per-cell accuracy with Wilson 95% CI, correct/TOTAL denominator where TOTAL = |S| (no
-dropped instances). **Primary confirmatory family** (§3): the two paired
+Per-cell accuracy with Wilson 95% CI, correct/TOTAL denominator where TOTAL is the
+cell's realized instance count (500 at the whole pool; no dropped instances). **Primary confirmatory family** (§3): the two paired
 WT-vs-matched-NT t1 contrasts, McNemar exact + paired Δ with CI, Holm within family;
 prediction (iii) t3 serially gated behind it. Clean vs mystery within arm is **paired**
 (the correspondence check is recorded PASSED in §2, not contingent) and is
@@ -379,7 +410,7 @@ Funnel decomposition per the §4 placement, including `formalization_match` (par
 solvable → equivalent-to-gold) and the delegation rate with delegation-conditional
 accuracy. t3 tables always carry per-verdict rates, the confusion matrix and the
 constant-VALID baseline. Bare-NT replication delta reported in the validity thread only,
-paired on S. Reported alongside every cell: turns/trial, output tokens/trial and $/cell
+paired on the shared instance set. Reported alongside every cell: turns/trial, output tokens/trial and $/cell
 (latency is not measurable on this path — the duration fields are hard-coded 0 — so any
 efficiency claim uses turns and output tokens only).
 
@@ -397,10 +428,15 @@ efficiency claim uses turns and output tokens only).
 **Ceiling:** the ~$70.6 API remainder (D4 parks the steering reframe and the
 contamination probe precisely to fund this). **The figure is bookkeeping**
 (`frontier_rerun_handoff.md:74`), not a console balance — verify it in the Anthropic
-console before authorizing spend. Projected cost of the recommended shape at central
-estimates: **≈$38 (54% of the ceiling)** — WT 750 trials ≈$23.4, matched-NT 1497
-trials ≈$11.2, sensitivity arm ≈$2.1, calibration ≈$1.5; the pessimistic band breaches
-(≈$90), which is what the gate, the spend guard (§9-E) and the §2 shrink order are for.
+console before authorizing spend. Projected cost at central estimates, whole pool
+(500/cell): **t1 2×2 ≈ $46 (65% of the ceiling)** — 1000 WT trials ≈$38.0, 1000
+matched-NT trials ≈$7.9, calibration ≈$1.5. **Adding the t3 pair at 500 takes it to
+≈ $59 (84%)**, and the §9-A sensitivity arm at 500 adds ≈$4. That is why §2 fixes a
+spend priority rather than assuming all six cells at the whole pool: the low band puts
+everything at ≈$29 (42%) and the pessimistic band puts it far over the ceiling, so the
+gate's measurement is what selects the realized scope. Shrinking happens at the gate,
+before the run — the §9-E cap is a backstop against per-trial cost exceeding projection,
+never a scope-setting device.
 
 **Calibration gate:** **20 clean + 20 mystery instances drawn DISJOINT from S and
 discarded** — [corrected 07-25: the earlier "~20 instances from S + a 5-instance mystery
@@ -459,11 +495,13 @@ in bulk at the RATIFY slot, or annotate individual rejections.
 - **E. Spend guard.** `frontier_runner` has no dollar cap; its only stop is an Anthropic
   "credit balance too low" exception, i.e. it halts when the money is already gone. Add
   `--max-spend` with a running accumulator that saves and exits (the resume path makes a
-  mid-run stop safe): global cap **$50**, per-cell cap 2× the calibrated central
-  projection. Worst legal trial (10 loops) ≈$0.135, and the measured loop_exhausted rate
-  on our own apparatus is 1/4560, so the cap is a backstop rather than a throttle.
-- **F. Exclusion / intercurrent-event table**, identical in both arms, denominator = |S|
-  throughout: API error → one logged deterministic retry, then counted as failure;
+  mid-run stop safe): global cap = **1.3× the gate-approved projection, hard-ceilinged at
+  $60** (holding ≈$10 of the remainder); per-cell cap 2× the calibrated projection for
+  that cell. Worst legal trial (10 loops) ≈$0.135, and the measured loop_exhausted rate
+  on our own apparatus is 1/4560, so the cap is a backstop against per-trial cost
+  exceeding projection, not a scope-setting device — scope is set at the gate (§8).
+- **F. Exclusion / intercurrent-event table**, identical in both arms, denominator = the
+  realized instance set throughout: API error → one logged deterministic retry, then counted as failure;
   `loop_exhausted` → counted as failure, never retried (it is an outcome);
   `truncated_no_answer` → counted as failure; prompt-too-long 400 → counted as failure,
   logged; MCP/infra failure → retried once, logged; extraction failure → counted as
