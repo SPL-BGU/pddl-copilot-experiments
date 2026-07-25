@@ -64,8 +64,20 @@ VAL drift is possible; treat close calls (within ~5pp) as near-parity.
    identical (141 vs 142 of 500). A 2026 small frontier model clears the
    PlanBench GPT-4 bar on the generation tasks, consistent with the v1 finding
    that Qwen3.6-35B already matched it.
-2. **Verification does not follow: Haiku t3 sits clearly below GPT-4** (78.2 vs
-   94.6, CI-disjoint) and below Qwen3.6-35B (88.4). Within Haiku the ordering
+2. **PENDING AUDIT 2026-07-25 — this finding is mix-confounded as stated; do not write
+   paper prose from it until re-reported.** The committed GPT-4 t3 corpus is a
+   *different* corpus, not our prompts: 0/500 identical queries, identical gold verdict
+   text on 119/500, and an inverted verdict mix (GPT-4 155 VALID / 345 INVALID = 31.0%
+   VALID vs our 324/176 = 64.8%). The two models have opposite verdict biases, so
+   post-stratifying to a common mix moves Haiku bw t3 78.2 → 83.1 and mystery 45.4 →
+   64.1 (GPT-4 the other way: 94.6 → 90.3, 73.6 → 83.7), collapsing the mystery t3 gap
+   from 28.2pp to 9.5pp. Fix = re-report t3 with per-verdict rates and a stated mix.
+   **t1 is unaffected and clean** (same 500 ids, same one-shot example 500/500, 499/500
+   byte-identical queries after removing our one extra domain-rule sentence), which is
+   what carries the headline. Full evidence:
+   `development/planbench/planbench_wt_prereg_decisions.md` §5.
+   Original wording: **Verification does not follow: Haiku t3 sits clearly below GPT-4**
+   (78.2 vs 94.6, CI-disjoint) and below Qwen3.6-35B (88.4). Within Haiku the ordering
    still matches our suite (verification 78 > generation 41), but across models
    the generation and verification orderings invert. Consistent with our
    frontier suite result that Haiku's validation is mid-ladder (validate_problem
