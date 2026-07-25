@@ -14,6 +14,43 @@ of them would have produced wrong numbers silently (denominator, t3 grading surf
 (graded, `development/planbench/planbench_frontier_haiku_nt.md`) are untouched and
 become the published-apparatus replication layer.
 
+## 0. What this arm is, in plain terms
+
+PlanBench hands the model a planning problem in English. It ships two versions of the
+same 500 problems: ordinary blocksworld ("the red block is on the blue block"), and
+**Mystery** blocksworld, which is the identical problem set with every predicate and
+action renamed to nonsense ("object a craves object b"). We verified the correspondence
+on disk: Mystery is a pure symbol rename with an identity object mapping, at 501/501
+instances, 500/500 gold plans and 500/500 t3 verdicts.
+
+**Already measured, no tools** (the graded 06-22 layer): Haiku 4.5 solves **41.0%** of
+the ordinary problems and **0.8%** of the Mystery ones. That collapse is PlanBench's
+signature result, and it replicates on a 2026 model. This layer carries Act 4's headline
+and is finished.
+
+**What this arm adds:** give the model our planning tools and ask the same questions. It
+now has to (a) translate the English into PDDL, (b) hand it to Fast Downward, (c) report
+the answer. Fast Downward does not care what the predicates are called — "craves" and
+"on" are the same search problem — so a model that can translate should not collapse
+under obfuscation.
+
+**The question:** does a real planner fix the Mystery collapse, or does the collapse
+simply move upstream into the English→PDDL translation?
+
+**Four cells answer it** — {ordinary, Mystery} × {tools, no tools} — with everything held
+identical except tool access. Three outcomes, all pre-committed before data:
+
+1. **Tools fix Mystery.** The failure was never search; it was symbol grounding, and
+   delegating the search removes it.
+2. **Tools do not fix Mystery.** The failure lives in translation, and we can show that
+   directly by comparing the PDDL the model wrote against the correct PDDL (exactly
+   reconstructible from the English prompt, verified 500/500 both configs).
+3. **Tools change nothing anywhere.** Our funnel account fails on this instrument, and
+   §3(ii) pre-commits us to reporting that as unsupported.
+
+Everything below is the machinery that keeps those three readings honest: which problems,
+where the thresholds sit, what counts as which outcome, and what would falsify us.
+
 ## 1. Claims and headline assignment (fixed)
 
 - **Act 4 headline = the already-graded NT layer** (honest-denominator regrade, t2
@@ -492,14 +529,17 @@ in bulk at the RATIFY slot, or annotate individual rejections.
   reads INACTIVE.
 - **D. Calibration gate** — see §8 (disjoint from S, discarded, 20+20, cost-only decision
   function, p90 output tokens as the headline).
-- **E. Spend guard.** `frontier_runner` has no dollar cap; its only stop is an Anthropic
-  "credit balance too low" exception, i.e. it halts when the money is already gone. Add
-  `--max-spend` with a running accumulator that saves and exits (the resume path makes a
-  mid-run stop safe): global cap = **1.3× the gate-approved projection, hard-ceilinged at
-  $60** (holding ≈$10 of the remainder); per-cell cap 2× the calibrated projection for
-  that cell. Worst legal trial (10 loops) ≈$0.135, and the measured loop_exhausted rate
-  on our own apparatus is 1/4560, so the cap is a backstop against per-trial cost
-  exceeding projection, not a scope-setting device — scope is set at the gate (§8).
+- **E. Spend control = the prepaid balance; no runner-side cap.** [REJECTED by Omer
+  2026-07-25, and correctly: the account is prepaid per experiment and never billed on
+  real-time usage, so the loaded balance is a hard ceiling that no software cap can
+  improve on, and `frontier_runner`'s existing "credit balance too low" break
+  (:378-382) is the stop.] Two consequences the prereg still names: (1) **the gate's
+  projection determines how much is loaded before the run**, which makes §8 the actual
+  spend control rather than a formality; (2) **if the balance is exhausted mid-cell**,
+  that cell is reported at its realized n as a pre-declared censored cell under §9-F, or
+  resumed after a top-up with the resumption logged — never silently re-run. A per-trial
+  cap was unnecessary anyway: `MAX_TOOL_LOOPS`=10 bounds the worst legal trial at
+  ≈$0.135, and the measured loop_exhausted rate on our own apparatus is 1/4560.
 - **F. Exclusion / intercurrent-event table**, identical in both arms, denominator = the
   realized instance set throughout: API error → one logged deterministic retry, then counted as failure;
   `loop_exhausted` → counted as failure, never retried (it is an outcome);
@@ -554,13 +594,37 @@ the metric to problem-only set equality and turns the cells into a labelled "giv
 variant.
 
 > ANSWER (accept A-I in bulk, or list rejections):
+> pushiong back on `E` - Spend guard not needed. i load what i need per experiment and no more. i do not allow bill on real time usage. i always prepay.
 
 > ANSWER (N — t2: keep excluded [recommended] / add a mystery-t2 WT+matched-NT pair
-> (≈$12 at n=250) / defer to gate headroom):
+> (≈$12 at n=250) / defer to gate headroom): keep excluded
 
 > ANSWER (O — domain authorship: model authors domain+problem+plan [recommended] / gold
-> domain injected):
+> domain injected): lets go with `O — domain authorship: model authors domain+problem+plan [recommended]`
+
+**RESOLVED 2026-07-25:** A-D and F-I accepted; **E rejected and rewritten** (prepaid
+balance is the ceiling; the gate's projection sets what gets loaded; balance exhaustion
+mid-cell = a censored cell under F, never a silent re-run). **N: t2 stays excluded** — the
+rationale in §2 is corrected to a scope decision, and the mystery-t2 option is closed, not
+deferred. **O: the model authors domain + problem + plan**, so the §4 boundary metric uses
+the 24-bijection domain check alongside problem-level set equality; no PDDL is injected in
+any cell.
 
 ## 10. Ratification
 
+**Scope shape — one choice left before signing.** Both shapes run the whole pool with
+everything above unchanged; they differ only in whether the t3 verification pair is in.
+
+| | shape A: six cells | shape B: t1 2×2 only |
+|---|---|---|
+| cells | {ordinary, Mystery} × {tools, NT} on t1, **plus** blocksworld t3 pair | {ordinary, Mystery} × {tools, NT} on t1 |
+| cost, central | ≈$59 (84% of the remainder) | ≈$46 (65%) |
+| predictions | (i), (ii), (iii) | (i), (ii); **(iii) struck** per the linkage rule |
+| what B drops | — | the verification-gap probe, the t3 endpoint-field and verdict-mix machinery, the confusion-matrix requirement |
+| note | this is what §2's spend priority already falls back to if the gate says six cells do not fit | committing to that fallback now, in exchange for a shorter protocol and one fewer prediction |
+
+> ANSWER (scope shape A / B):
+
 > RATIFY (design + predictions + rules above are binding as annotated):
+> lets simplify and dig deeper here i either dont realy get the full picture or it just seems insignificant
+
