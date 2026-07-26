@@ -17,6 +17,23 @@ recomputed from scratch. Two external citations were spot-fetched (Göbel et al.
 arXiv:2603.06064 and Huang & Zhang ACL 2025); the rest of the literature block is
 flagged for `/verify-claims` before anything from it enters prose.
 
+**SCOPE DECIDED 2026-07-26 (Omer): SHAPE B — the t1 2×2 only.** Four cells
+({ordinary, Mystery} × {tools, matched-NT} on blocksworld t1) at the whole 500-instance
+pool, ≈$46 central. The t3 verification pair is out and **prediction (iii) is struck per
+the linkage rule** (reported as struck, not unsupported). Rationale: t3's external
+comparability was already broken by the GPT-4 corpus mismatch (§5), so it was the cheapest
+cell to drop; dropping it also removes the t3 endpoint-field choice, the verdict-mix
+stratification and the confusion-matrix requirement from the protocol. Everything in §2
+(whole pool), §3 (bands, prediction (ii)) and §3 of this memo's §3 (funnel placement)
+stands. Also decided 07-25/26: amendments A-D and F-I accepted; **E rejected** (the account
+is prepaid per experiment with no real-time billing, so the loaded balance is a harder
+ceiling than any runner-side cap — rewritten as a prepaid-balance clause whose two
+consequences are that the gate's projection sets what gets loaded, and that balance
+exhaustion mid-cell yields a censored cell rather than a silent re-run); **t2 stays
+excluded** (rationale corrected to a scope decision, option closed); **the model authors
+domain + problem + plan** (no PDDL injected, so the boundary metric uses the 24-bijection
+domain check). RATIFY is the only slot still open.
+
 **Headline of this memo.** The design survives, but **five of the prereg's stated
 premises are measurably false**, and two of them would have silently produced wrong
 numbers rather than an error:

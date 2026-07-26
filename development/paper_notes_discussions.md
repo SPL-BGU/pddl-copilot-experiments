@@ -981,3 +981,30 @@ validated by an independent ranking subagent (the user asked for a second perspe
   robust to lexical perturbation. Architecture, not model tier, decides — which is why
   delegation rate is pre-registered as the mediator, and why the bare "tools rescue
   Mystery" claim is a replication (already published ≥4×) rather than a new phenomenon.
+
+## 2026-07-26 — PlanBench WT prereg: SHAPE B (t1 2×2 only); prediction (iii) struck
+
+- **DECIDED (Omer): shape B.** Four cells — {ordinary, Mystery} × {tools, matched-NT} on
+  blocksworld t1 — at the whole 500-instance pool. ≈$46 central, ≈$52 with the
+  pure-availability sensitivity arm and the calibration gate (73% of the ~$70.6). The t3
+  verification pair is dropped and **prediction (iii) is STRUCK per the prereg's linkage
+  rule** — reported as struck, not as unsupported. t3 was the cheapest cell to cut because
+  its external comparability is already broken by the GPT-4 corpus mismatch (see the
+  07-25 entry), and dropping it also removes the t3 endpoint-field choice, the verdict-mix
+  stratification and the confusion-matrix requirement from the protocol.
+- **Surviving confirmatory layer:** the two paired WT-vs-matched-NT t1 contrasts (clean,
+  Mystery), Holm within family at α=0.05. Both are far from the power margin at the whole
+  pool (mystery ≥0.95 against any WT rate ≥5%; clean ≥0.99 against any WT rate ≥60%).
+  Predictions (i) and (ii) stand unchanged, including the four-outcome band partition and
+  the two-branch mechanism test with its ±7.5pp equivalence margin.
+- **Significance, stated honestly for the write-up:** this arm cannot move Act 4's
+  headline (§1), and the bare "tools rescue Mystery" result is already published ≥4×. What
+  it buys is (a) the matched-scaffold single ablation nobody has run on PlanBench —
+  isolating tool availability rather than comparing different prompt shapes; (b) a
+  measured answer to the live 3.8-14% vs 63-100% split in the literature, via the
+  delegation-rate mediator; (c) the formalization-boundary metric, which separates
+  "cannot plan" from "cannot translate"; and (d) accuracy-vs-dollars on the field's own
+  instrument. Its real value to the paper is that it is the ONLY place the tools claim is
+  tested on an instrument we did not build, which pre-empts the "you designed the
+  benchmark your method wins on" objection for ≈$46.
+- RATIFY still unsigned; no build or spend until it is.
