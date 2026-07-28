@@ -5,10 +5,19 @@
 > nothing is spent, no API call has been made.** Do not build, do not spend, and do not
 > reopen a slot that §3 below records as decided. If Omer signs, start at §6.
 >
-> **Branch:** `planbench-wt-prereg-decisions`, 5 commits ahead of `main`, doc-only,
-> unmerged, no PR (project convention for handoff/doc artifacts). One of those commits
-> (`31b84ab`, the nt-ster H4 prereg) belongs to a **parallel session** and is unrelated
-> to this arm — leave it alone.
+> **[corrected 07-28] The gate is not merely unsigned — Omer left substantive pushback in
+> it:** *"lets simplify and dig deeper here i either dont realy get the full picture or it
+> just seems insignificant."* He wrote that at the scope slot; the shape-B commit answered
+> the "simplify" half and relocated the text to RATIFY without answering the rest. The
+> reply, with a plain-language walkthrough, an honest significance verdict and three answer
+> slots (go/no-go, balance, free unblocked work), is
+> `development/planbench/planbench_wt_significance_brief.md`. **Read that before touching
+> anything else here.**
+>
+> **[corrected 07-28] Branch:** the prereg work is **merged to `main`** (`53553a7`), tree
+> clean. The earlier "5 commits ahead, unmerged" line was true only at write time.
+> `31b84ab` (nt-ster H4 prereg) rode along in that merge and belongs to a **parallel
+> session** — unrelated to this arm, leave it alone.
 >
 > **Suggested entry point:** `/resume-verify development/planbench/PLANBENCH_WT_HANDOFF.md`
 

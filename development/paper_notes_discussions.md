@@ -1008,3 +1008,26 @@ validated by an independent ranking subagent (the user asked for a second perspe
   tested on an instrument we did not build, which pre-empts the "you designed the
   benchmark your method wins on" objection for ≈$46.
 - RATIFY still unsigned; no build or spend until it is.
+
+## 2026-07-28 — PlanBench WT: RATIFY re-opened as a significance question, not a signature
+
+- **State check (verified, not read off the handoff):** prereg work is merged to main
+  (`53553a7`), nothing built (no `anthropic-tools`/`anthropic-scaffold` token in any code
+  path), nothing spent, and the NT anchors reproduce exactly off
+  `results/haiku-frontier/planbench/` (ordinary t1 205/500, Mystery t1 4/500).
+- **The gate was mis-summarised.** §10 RATIFY is unsigned because Omer left an objection in
+  it — "lets simplify and dig deeper here i either dont realy get the full picture or it
+  just seems insignificant" — originally written at the scope slot. The shape-B commit
+  answered "simplify" (t1 2×2, prediction (iii) struck) and relocated the text to RATIFY.
+  The "insignificant" half was never answered.
+- **Answered in** `development/planbench/planbench_wt_significance_brief.md`: one-page
+  plain-language walkthrough, per-outcome value table, cost/off-ramp ladder, and three
+  answer slots (go/no-go with A/B/C/D, balance to load, free unblocked NT work).
+- **Significance verdict recorded, unhedged:** the direction of the effect is not worth
+  paying for (published ≥4×, and Göbel et al. already ran this same model with PDDL tools
+  over MCP for +3.0pp). Three things are: the matched single ablation ($8 of the $46), the
+  delegation-rate + formalization-match split that separates cannot-plan from
+  cannot-translate from did-not-call-the-tool, and the fact that this is the ONLY tools
+  measurement in the paper taken on an instrument we did not build. Recommendation =
+  ratify shape B; declining and publishing the design as pre-registered future work is
+  stated as a legitimate outcome rather than a failure.
