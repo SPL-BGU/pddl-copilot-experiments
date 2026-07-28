@@ -911,3 +911,100 @@ validated by an independent ranking subagent (the user asked for a second perspe
   MECHANICS (D1–D9 decision log, tolerance history, parity-prereg text) go to a
   structured appendix summarized by one body-level table. iss024d overlay cells keep
   the separate-apparatus label (within-corpus paired gaps only).
+
+## 2026-07-25 — PlanBench WT prereg: slots answered, whole-pool design, E rejected
+
+- **Method note:** the three open ANSWER slots were filled from a 7-agent read-only
+  evidence workflow (instance-pool audit, cost model, funnel/scoring audit, statistics,
+  runner audit, literature, prereg standards); recommendations + provenance in
+  `development/planbench/planbench_wt_prereg_decisions.md`. RATIFY still unsigned.
+- **DECIDED (Omer): run the WHOLE POOL, 500 per cell** — match the leaderboard corpus so
+  every row shares a denominator with the published NT layer and the committed GPT-4 rows.
+  This deletes the subsample apparatus outright (no seed, no strata, no id list, no
+  t1-vs-t3 intersection problem; each task runs its own pool: t1 ids 2..501, t3 ids
+  1..500), makes both silent subsampling hazards inert, and fixes the one under-powered
+  prediction (exact McNemar 80%-power MDE on t3 +9.0pp → +6.0pp; power at WT t3 = 85%
+  0.58 → 0.88). n=250 stratified survives only as the costed fallback. Cost is the binding
+  constraint: t1 2×2 ≈$46 central (65% of the ~$70.6), six cells ≈$59 (84%), so §8 fixes a
+  spend priority (t1 2×2 first, t3 second) and t3 is the only cell that drops to 250.
+- **DECIDED (Omer): t2 stays excluded** — as a SCOPE decision. The 07-24 rationale
+  ("optimal_plan tool unbuilt") is false: `classic_planner(strategy="astar_lmcut")` =
+  `astar(lmcut())` is optimal search and ships (`solver_server.py:247,411`). The
+  mystery-t2 option is closed, not deferred.
+- **DECIDED (Omer): the model authors domain + problem + plan**; no PDDL injected in any
+  cell, so the formalization-boundary metric uses the 24-bijection domain check alongside
+  problem-level (objects, init, goal) set equality.
+- **DECIDED (Omer): no runner-side spend cap.** The account is prepaid per experiment and
+  never billed on real-time usage, so the loaded balance is the ceiling and the existing
+  "credit balance too low" break is the stop. Consequences recorded: the calibration
+  gate's projection determines what gets loaded (making §8 the real spend control), and
+  balance exhaustion mid-cell yields a pre-declared censored cell, never a silent re-run.
+- **Binding factual corrections carried into the prereg** (five false premises in the
+  07-24 draft, two of which would have produced wrong numbers silently): the harness
+  roster is pddl-solver + pddl-validator only (7 tools, no pddl-parser — which is now an
+  analysis-time instrument); `response_evaluation.py` is NOT unmodified (three
+  `apply_patches.py` robustness patches, the same build that graded the NT layer);
+  `build_table.acc()` divides by 500 regardless of what was run (a stripped 250-instance
+  replay reports a believable 22.2% where the truth is 44.4%); and
+  `PDDL_COPILOT_RENDER_FROM_TOOLS` defaults to 1, which renders the t3 verdict from the
+  last tool result and never reads the model's final message — i.e. the cell would have
+  silently measured tool-verified, contradicting the D-J2 delivered-primary ruling.
+- **Band rules rebuilt:** the 07-24 "CI midpoint" rule left 5 integer outcomes
+  unclassifiable at each n and the Wilson midpoint is not the point estimate. Replaced
+  with a four-outcome evidential partition (NO-RESCUE / PARTIAL / RESCUE / INCONCLUSIVE),
+  cutpoints stated in counts. The clean-t1 "≥ 90%" band is struck as
+  unattainable-by-instrument (the template extractor's measured ceiling is 94.4%, so a
+  CI-backed 90 needs P(correct | extracted) ≥ 0.95) and demoted to an outcome-neutral
+  apparatus criterion thresholded on the two decomposed quantities. Prediction (ii) gets
+  per-branch mechanistic signatures, a joint falsifier, and a ±7.5pp equivalence margin
+  (±5pp is not pre-registrable at any n we can afford).
+- **Funnel placement (§4) = input boundary, corrected to a new LEADING BAR** in the
+  with-tools cascade (NEED is a reference line in the ratified Figure-1 spec, so "upstream
+  of NEED" was geometrically undefined). The CALL-extension alternative is rejected on
+  measurement: 98.4% of `missing_required_arg` trials and 90.3% of invalid-PDDL-argument
+  trials already PASS the CALL bar, and adopting it would move the published CALL bar by
+  up to −53.2pp (0.8B) and flip the minimum-CALL model, contradicting `main.tex:685`.
+  `formalization_match` is named as the metric (gold reference exactly reconstructible from
+  the NL prompt, verified 500/500 both configs), with delegation rate as a companion
+  mediator.
+- **NT-layer red flag, pending re-report (does NOT touch the t1 headline):** the committed
+  GPT-4 t3 corpus is a different corpus from ours (0/500 identical queries; verdict mix
+  31.0% VALID vs our 64.8%), and the two models have opposite verdict biases, so a
+  common-mix reweighting moves Haiku bw t3 78.2 → 83.1 and mystery 45.4 → 64.1 while GPT-4
+  goes 94.6 → 90.3 and 73.6 → 83.7 — collapsing the mystery t3 gap from 28.2pp to 9.5pp.
+  Finding 2 of `planbench_frontier_haiku_nt.md` is marked PENDING AUDIT; t1 is clean
+  (same ids, 499/500 byte-identical prompts).
+- **Prior-art calibration (verified 2026-07-25):** Göbel et al. (arXiv:2603.06064) ran
+  **Haiku 4.5** with PDDL tools over MCP on 102 IPC Blocksworld instances and got
+  63.7% → 66.7% (+3.0pp) at 5.7× token cost, because the tools exposed a step-wise
+  simulator and the model retained the search; Huang & Zhang (ACL 2025) find formalizers
+  robust to lexical perturbation. Architecture, not model tier, decides — which is why
+  delegation rate is pre-registered as the mediator, and why the bare "tools rescue
+  Mystery" claim is a replication (already published ≥4×) rather than a new phenomenon.
+
+## 2026-07-26 — PlanBench WT prereg: SHAPE B (t1 2×2 only); prediction (iii) struck
+
+- **DECIDED (Omer): shape B.** Four cells — {ordinary, Mystery} × {tools, matched-NT} on
+  blocksworld t1 — at the whole 500-instance pool. ≈$46 central, ≈$52 with the
+  pure-availability sensitivity arm and the calibration gate (73% of the ~$70.6). The t3
+  verification pair is dropped and **prediction (iii) is STRUCK per the prereg's linkage
+  rule** — reported as struck, not as unsupported. t3 was the cheapest cell to cut because
+  its external comparability is already broken by the GPT-4 corpus mismatch (see the
+  07-25 entry), and dropping it also removes the t3 endpoint-field choice, the verdict-mix
+  stratification and the confusion-matrix requirement from the protocol.
+- **Surviving confirmatory layer:** the two paired WT-vs-matched-NT t1 contrasts (clean,
+  Mystery), Holm within family at α=0.05. Both are far from the power margin at the whole
+  pool (mystery ≥0.95 against any WT rate ≥5%; clean ≥0.99 against any WT rate ≥60%).
+  Predictions (i) and (ii) stand unchanged, including the four-outcome band partition and
+  the two-branch mechanism test with its ±7.5pp equivalence margin.
+- **Significance, stated honestly for the write-up:** this arm cannot move Act 4's
+  headline (§1), and the bare "tools rescue Mystery" result is already published ≥4×. What
+  it buys is (a) the matched-scaffold single ablation nobody has run on PlanBench —
+  isolating tool availability rather than comparing different prompt shapes; (b) a
+  measured answer to the live 3.8-14% vs 63-100% split in the literature, via the
+  delegation-rate mediator; (c) the formalization-boundary metric, which separates
+  "cannot plan" from "cannot translate"; and (d) accuracy-vs-dollars on the field's own
+  instrument. Its real value to the paper is that it is the ONLY place the tools claim is
+  tested on an instrument we did not build, which pre-empts the "you designed the
+  benchmark your method wins on" objection for ≈$46.
+- RATIFY still unsigned; no build or spend until it is.
