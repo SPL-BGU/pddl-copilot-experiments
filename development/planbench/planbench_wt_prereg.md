@@ -6,6 +6,8 @@ and nothing is built or spent before it.** Design as decided: **shape B**, four 
 pool**, no subsampling, model-authored PDDL, no runner-side spend cap, t2 and t3 both out,
 prediction (iii) struck. Reasoning, provenance and rejected alternatives:
 `development/planbench/planbench_wt_prereg_decisions.md`.
+**Fresh-session pickup:** `development/planbench/PLANBENCH_WT_HANDOFF.md` (verified state,
+decided-do-not-reopen list, traps, and the owed-work order).
 Corrections applied inline are marked `[corrected 07-25: …]`; five premises in the 07-24
 draft were measurably false and two of them would have produced wrong numbers silently
 (the subsample denominator and the t3 grading surface, both now moot).
