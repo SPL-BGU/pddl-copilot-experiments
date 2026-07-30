@@ -62,9 +62,21 @@ publishing all four outcomes, including the one where our own story fails.
 
 ## 4. "It seems insignificant" — straight answer
 
-**You are right about the direction.** "Give it a planner and Mystery gets better" is
-already published at least four times. If that sentence were the deliverable, do not pay
-for it.
+**You are right about the direction, and I verified it rather than assuming it**
+(2026-07-30, `planbench_verification_20260730.md`). "Give it a planner and Mystery gets
+better" is genuinely published four times over — Huang & Zhang, CoPE, LLMFP, La Malfa, all
+real papers, all correctly cited in our notes. If that sentence were the deliverable, do not
+pay for it.
+
+**But verification turned up the thing that decides this, and it points the other way.**
+None of those papers rescue Mystery by *tool availability*. Every published rescue is a
+bespoke formalization pipeline. In LLMFP's own results table, the baselines that merely hand
+the model a solver score **0.0 to 0.3** on Mystery; only their full four-component framework
+with repair loops reaches 77.7 (GPT-4o) and 98.0 (Claude 3.5 Sonnet). And the one paper that
+gave **our exact model** general PDDL tools over MCP got **+3.0 points**, finishing about 19
+points *below* the planner it was holding. So what our four cells measure — a general tool
+roster plus a light scaffold, which is what the paper actually ships — is not predicted by
+any of them.
 
 **One paper is uncomfortably close and it is the reason RESCUE is not a foregone
 conclusion.** Göbel et al. (arXiv:2603.06064, spot-verified 07-25) ran **this exact model**
