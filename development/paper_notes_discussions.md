@@ -1140,3 +1140,35 @@ validated by an independent ranking subagent (the user asked for a second perspe
   contribution).
 - Frozen text + 8 machine checks in `planbench/engine.py:_pb_scaffold`; all pass,
   test_prompts 451/451.
+
+## 2026-07-30 — PlanBench WT calibration gate: FIX APPARATUS AND RESTART ($1.09 spent)
+
+- **Cost/throughput PASS, well under projection.** Tools arm $0.0254 (ordinary) / $0.0248
+  (Mystery) per trial; p90 output tokens 4543 / 3887 (the gate's headline observable); turns
+  4.55 / 5.20; loop_exhausted 0/80; delegation 100% (>= the 80% RESCUE requirement).
+  **Caching ACTIVE — cache_read > 0 on 100% of tools trials**, so the ~5% margin over Haiku
+  4.5's 4096-token minimum held; matched-NT caches 0% as §9-C predicted.
+  **600/cell projection = $32.78 vs the prereg's $55.02, i.e. $22 under**, on a $170 balance.
+- **GATE VERDICT: RESTART.** The outcome-neutral extraction check fails 2 of 4 cells, and §3
+  makes that an apparatus-fix-and-restart event, never a scope decision. Do NOT launch the run.
+  - **Defect 1 (Mystery tools, extraction 15%):** the model writes a complete plan in PDDL
+    shorthand — `attack g` instead of the example's `attack object e ... from object c`.
+    Trap 3's shorthand bullet; the frozen clause's "exactly the action wording of the example"
+    did not prevent it because Mystery's vocabulary is already near-PDDL.
+  - **Defect 2 (Mystery matched-NT):** 80% write narration before [PLAN] and in 65% the
+    extractor parses actions out of that narration and emits MORE actions than the model listed.
+    Corrupts the control arm, so it does not inflate our hypothesis, but it is noise.
+- **NOT a defect — ordinary tools 50% empty extraction is a REAL formalization collapse.** All
+  10 empties are the model correctly reporting "unsolvable" after classic_planner said so, and
+  all 10 instances have PlanBench gold plans of 4-8 actions. Model-authored PDDL was wrong and
+  the planner faithfully answered the wrong question. **Signal only — n=20, discarded set,
+  non-standard pool, no VAL. Must not enter prose or influence design.** Recorded because it
+  suggests the real Mystery/ordinary cells will be informative rather than a foregone
+  confirmation, i.e. the §4 boundary metric has something to measure.
+- **NEW BLOCKER for the results phase:** VAL cannot execute on this machine (wrong
+  architecture) — any llm_correct right now is an artifact of the same class as the t2
+  missing-FAST_DOWNWARD bug. Calibration is unaffected (cost/throughput only) but no graded
+  number can exist until VAL works.
+- **Also measured:** sequential wall-clock ~18s/tools-trial → ~12h for 2400 trials; worth
+  adding concurrency before the real run.
+- Full memo: `development/planbench/planbench_wt_calibration_20260730.md`.

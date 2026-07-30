@@ -26,6 +26,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -323,7 +324,9 @@ def patch_instance_id_stamp(pb_root: Path) -> None:
     if anchor not in text:
         sys.exit(f"[patch] {f.relative_to(pb_root)}: send_query query anchor not found")
     text = text.replace(anchor, new)
-    if "\nimport os" not in text and "\nimport os\n" not in text:
+    # `import os` may sit on line 1, so anchor the check to a line start rather
+    # than a preceding newline.
+    if not re.search(r"^import os$", text, re.M):
         sys.exit(
             f"[patch] {f.relative_to(pb_root)}: expected `import os` at module level"
         )
