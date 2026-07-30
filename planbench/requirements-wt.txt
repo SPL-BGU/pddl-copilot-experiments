@@ -1,0 +1,36 @@
+# PlanBench-WT arm venv (prereg §6 item 3; ratified 2026-07-30).
+#
+# Build:
+#   python3 -m venv .venv-planbench-wt
+#   .venv-planbench-wt/bin/pip install -r planbench/requirements-wt.txt
+#
+# WHY A DEDICATED VENV. No existing environment can run with-tools generation:
+# the PlanBench venv lacks `mcp`, and the repo `.venv` lacks tarski / pddl /
+# transformers (response_generation.py imports all three at module level).
+# Adding them to the shared `.venv` would change dependencies underneath a
+# parallel session working in this repo, so this arm gets its own.
+#
+# PINS ARE APPARATUS IDENTITY, NOT CONVENIENCE:
+#   anthropic==0.109.2  the version that produced the graded frontier with-tools
+#                       corpora via tools/frontier_runner.py. 0.111.0 is also on
+#                       this machine; do not drift onto it mid-arm. Recorded in
+#                       run meta per prereg §2.
+#   mcp==1.26.0         MCPPlanner (pddl_eval/chat.py) is written against 1.26.
+#                       A bare `pip install mcp` resolves 2.0.0 — a major bump
+#                       under the component the prereg names as the shared tool
+#                       execution path. Pinned so the PlanBench arm and the
+#                       harness are the same instrument.
+#
+# transformers is import-only here (response_generation.py imports AutoTokenizer
+# at module level). Nothing on the with-tools path loads a model, so the
+# "PyTorch was not found" warning at import is expected and harmless — do NOT
+# install torch to silence it.
+anthropic==0.109.2
+mcp==1.26.0
+tarski
+pddl
+transformers
+numpy
+openai
+pyyaml
+tqdm

@@ -282,6 +282,55 @@ def patch_response_evaluation(pb_root: Path) -> None:
     print(f"[patch] {f.relative_to(pb_root)}: t3 grader robustness ({', '.join(did)})")
 
 
+def patch_instance_id_stamp(pb_root: Path) -> None:
+    """Stamp the instance id into the environment before every send_query.
+
+    PlanBench's ``send_query`` signature carries only the query text, so the
+    tool-call side-log had no join key: ``query[:200]`` has ONE distinct value
+    across all 500 instances (every prompt opens with the identical domain
+    intro). Without a per-instance key the PlanBench-WT prereg's §4
+    formalization-boundary metric and its delegation-rate mediator are
+    unmeasurable — the prereg would name a stage it cannot test.
+
+    Fix: export ``PDDL_COPILOT_INSTANCE_ID`` immediately before the call, which
+    ``planbench/engine.py:_log_tool_calls`` reads into every side-log record.
+    Env var rather than a signature change so upstream's call site is untouched
+    and the other engines are unaffected.
+
+    Separate function with its own sentinel (not folded into
+    ``patch_response_generation``) because that one early-returns on the global
+    marker and is already applied on the graded build.
+    """
+    f = pb_root / "plan-bench" / "response_generation.py"
+    text = f.read_text()
+    sentinel = "PDDL_COPILOT_INSTANCE_ID"
+    if sentinel in text:
+        print(f"[patch] {f.relative_to(pb_root)}: instance-id stamp already applied")
+        return
+
+    anchor = (
+        "                query = instance[\"query\"]\n"
+        "                stop_statement = \"[STATEMENT]\"\n"
+    )
+    new = (
+        f"                # {PATCH_MARKER}: stamp the instance id so the tool-call\n"
+        "                # side-log is joinable (query[:200] is identical across all\n"
+        "                # instances — see planbench/apply_patches.py docstring).\n"
+        "                os.environ['PDDL_COPILOT_INSTANCE_ID'] = str(instance['instance_id'])\n"
+        "                query = instance[\"query\"]\n"
+        "                stop_statement = \"[STATEMENT]\"\n"
+    )
+    if anchor not in text:
+        sys.exit(f"[patch] {f.relative_to(pb_root)}: send_query query anchor not found")
+    text = text.replace(anchor, new)
+    if "\nimport os" not in text and "\nimport os\n" not in text:
+        sys.exit(
+            f"[patch] {f.relative_to(pb_root)}: expected `import os` at module level"
+        )
+    f.write_text(text)
+    print(f"[patch] {f.relative_to(pb_root)}: instance-id stamp for the WT side-log")
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("usage: apply_patches.py <LLMs-Planning checkout>")
@@ -291,6 +340,7 @@ def main() -> None:
     patch_init(pb_root)
     patch_llm_utils(pb_root)
     patch_response_generation(pb_root)
+    patch_instance_id_stamp(pb_root)
     patch_response_evaluation(pb_root)
 
 

@@ -53,6 +53,7 @@ lazily-connected ``MCPPlanner`` (one connect, not one-per-instance); see
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -102,7 +103,19 @@ def _parse_engine_name(engine: str) -> tuple[str, str]:
             f"engine name must be 'pddl_copilot__<backend>__<model>': {engine!r}"
         )
     backend, model = parts
-    if backend not in {"ollama", "vllm", "vllm-base", "vllm-tools", "anthropic"}:
+    if backend not in {
+        "ollama",
+        "vllm",
+        "vllm-base",
+        "vllm-tools",
+        "anthropic",
+        # PlanBench-WT prereg arms (prereg §10-R, tag prereg-planbench-wt-v1):
+        # the tools cell and its matched no-tools control. Separate engine names
+        # so neither can overwrite the graded 06-22 bare-NT corpus, which lives
+        # under the plain ``anthropic`` backend.
+        "anthropic-tools",
+        "anthropic-scaffold",
+    }:
         raise ValueError(
             f"unsupported backend {backend!r}; expected 'ollama', 'vllm', "
             f"'vllm-base', 'vllm-tools', or 'anthropic'"
@@ -423,7 +436,8 @@ def _render_t3_verdict(tool_calls_log: list[dict]) -> str | None:
 
 
 def _log_tool_calls(
-    query, model_text, final_text, rendered, tool_calls_log, done_reason, loop_exhausted
+    query, model_text, final_text, rendered, tool_calls_log, done_reason,
+    loop_exhausted, usage=None, error=None,
 ) -> None:
     """Emit a per-instance tool-call record.
 
@@ -449,6 +463,18 @@ def _log_tool_calls(
         return
     try:
         rec = {
+            # JOIN KEYS — prereg §4 build precondition. ``query_head`` alone has
+            # ONE distinct value across all 500 instances (every prompt opens
+            # with the same domain intro), so the side-log was unjoinable and the
+            # formalization-boundary metric was unmeasurable. The instance id is
+            # stamped into the environment by the response_generation patch
+            # (planbench/apply_patches.py, patch 6); ``query_sha256`` is a
+            # belt-and-braces fallback that works even without that patch.
+            "instance_id": os.environ.get("PDDL_COPILOT_INSTANCE_ID"),
+            "query_sha256": hashlib.sha256(query.encode()).hexdigest(),
+            "task": os.environ.get("PDDL_COPILOT_TASK"),
+            "usage": usage,
+            "error": error,
             "query_head": query[:200],
             "query_len": len(query),
             "n_tool_calls": len(tool_calls_log),
@@ -526,6 +552,261 @@ def _vllm_tools_chat(query: str, model: str, max_tokens: int) -> str:
     return final_text.strip()
 
 
+# ---------------------------------------------------------------------------
+# PlanBench-WT prereg arms (ratified 2026-07-30, tag prereg-planbench-wt-v1)
+# ---------------------------------------------------------------------------
+#
+# Two engines, one shared scaffold. Amendment A (prereg §9-A) requires a
+# COHERENT control: the NL→PDDL step and the task-format clause are shared
+# BYTE-IDENTICALLY across arms, the tool-use policy sentence is MIRRORED rather
+# than reused (the with-tools wording asserts "your ONLY way ... is by calling
+# the provided tools", which with an empty tool list would assert a false
+# premise and forbid the only available action), and NO tool name appears in the
+# shared clause. The measured contrast is therefore a package contrast:
+# tool list + directive.
+#
+# The format clause is written against the MEASURED upstream extractor, which
+# biases against the tools arm (prereg §3, handoff trap 3): a plan pasted from
+# ``classic_planner`` extracts to nothing because ``(unstack a b)`` tokenizes as
+# ``(unstack``; markdown bolding extracts to nothing; shorthand action names
+# extract to nothing; and ONE narrating sentence before the plan injects a
+# duplicated action that VAL then rejects. Hence "entire answer", "no preamble",
+# "no markdown", "no PDDL" — identical in both arms so the contrast stays
+# unbiased.
+#
+# FREEZE STATUS: this text is frozen at the calibration gate by Omer, per
+# prereg §8. Treat it as a draft until that signature lands.
+
+_PB_POLICY_TOOLS = (
+    "You are a PDDL planning assistant with access to planning tools. "
+    "Your ONLY way to get information or solve problems is by calling the "
+    "provided tools ONE AT A TIME — never guess or create plan details yourself."
+)
+_PB_POLICY_NOTOOLS = (
+    "You are a PDDL planning assistant working without planning tools. "
+    "Your ONLY way to get information or solve problems is by reasoning it "
+    "through yourself ONE STEP AT A TIME — never guess or skip plan details."
+)
+# Shared, byte-identical across both arms. No tool name, no tool reference.
+_PB_SHARED_FORMALIZE = (
+    " The task is given in natural language. First translate the relevant parts "
+    "into PDDL — the domain, the problem, and the plan where one is given — then "
+    "determine the answer from that PDDL."
+)
+_PB_SHARED_T1_FORMAT = (
+    " Your entire answer must be the plan and nothing else: begin with [PLAN], "
+    "give one action per line using exactly the action wording of the in-context "
+    "example, and end with [PLAN END]. Write nothing before [PLAN] and nothing "
+    "after [PLAN END]. Do not use markdown emphasis. Do not put PDDL in the answer."
+)
+
+
+def _pb_scaffold(with_tools: bool) -> str:
+    """The frozen PlanBench-WT system scaffold for one arm."""
+    policy = _PB_POLICY_TOOLS if with_tools else _PB_POLICY_NOTOOLS
+    return policy + _PB_SHARED_FORMALIZE + _PB_SHARED_T1_FORMAT
+
+
+_PB_ANTHROPIC_RUNTIME = None
+
+
+def _get_pb_anthropic_runtime():
+    """Lazily build the persistent (loop, MCPPlanner, AsyncAnthropic) singleton.
+
+    Same lifetime argument as ``_get_tools_runtime``: the MCP stdio contexts and
+    the SDK's httpx pool must live on ONE event loop, so we make that loop here,
+    connect MCP once, and run every instance's tool loop on it. Reconnecting MCP
+    per instance would relaunch the plugin server subprocesses 600×.
+    """
+    global _PB_ANTHROPIC_RUNTIME
+    if _PB_ANTHROPIC_RUNTIME is not None:
+        return _PB_ANTHROPIC_RUNTIME
+
+    import asyncio
+    import atexit
+
+    import anthropic
+
+    from pddl_eval.chat import MCPPlanner
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    plugin_dirs = _resolve_tool_plugin_dirs()
+    print(
+        f"[pddl_copilot pb-wt] connecting MCP plugins: {[d.name for d in plugin_dirs]}",
+        file=sys.stderr,
+    )
+    mcp = MCPPlanner()
+    loop.run_until_complete(mcp.connect(plugin_dirs))
+    client = anthropic.AsyncAnthropic()
+
+    _PB_ANTHROPIC_RUNTIME = (loop, mcp, client)
+    atexit.register(_teardown_pb_anthropic_runtime)
+    return _PB_ANTHROPIC_RUNTIME
+
+
+def _teardown_pb_anthropic_runtime() -> None:
+    global _PB_ANTHROPIC_RUNTIME
+    if _PB_ANTHROPIC_RUNTIME is None:
+        return
+    loop, mcp, client = _PB_ANTHROPIC_RUNTIME
+    for coro in (mcp.close(), client.close()):
+        try:
+            loop.run_until_complete(coro)
+        except Exception:
+            pass
+    try:
+        loop.close()
+    except Exception:
+        pass
+    _PB_ANTHROPIC_RUNTIME = None
+
+
+def _pb_runner_tools(mcp, log: list[dict]) -> list:
+    """Wrap each MCP tool as an SDK runnable tool with its ORIGINAL schema.
+
+    Byte-for-byte the same shape as ``tools/frontier_runner.py:runner_tools`` —
+    same ``MCPPlanner.call_tool`` execution path and the same
+    ``"Tool error: {exc}"`` string on failure — so the harness's tool-call
+    semantics and the PlanBench arm's are identical instruments.
+    """
+    from anthropic.lib.tools import beta_async_tool
+
+    out = []
+    for t in mcp.tools:
+        fn = t["function"]
+
+        def make(tool_name: str):
+            async def _call(**kwargs) -> str:
+                try:
+                    result = await mcp.call_tool(tool_name, kwargs or {})
+                except Exception as exc:
+                    result = f"Tool error: {exc}"
+                log.append(
+                    {"name": tool_name, "arguments": kwargs or {}, "result": result}
+                )
+                return result
+
+            return _call
+
+        out.append(
+            beta_async_tool(
+                make(fn["name"]),
+                name=fn["name"],
+                description=fn["description"],
+                input_schema=fn["parameters"],
+            )
+        )
+    return out
+
+
+def _anthropic_tools_chat(query: str, model: str, max_tokens: int) -> str:
+    """One PlanBench instance through the SDK Tool Runner (prereg §2 backend).
+
+    Returns the model's DELIVERED final message. Tool-result rendering is
+    deliberately not consulted on this path — the prereg endpoint is the
+    delivered answer graded by the patched upstream evaluator (D-J2), so
+    ``_render_answer_from_tools`` is bypassed structurally rather than by env
+    var. That makes handoff trap 1 (``PDDL_COPILOT_RENDER_FROM_TOOLS`` defaults
+    to ``"1"``, which would silently measure tool-verified instead of delivered)
+    unreachable for these cells.
+    """
+    from pddl_eval.chat import MAX_TOOL_LOOPS
+
+    loop, mcp, client = _get_pb_anthropic_runtime()
+    tool_calls_log: list[dict] = []
+
+    async def _run():
+        runner = client.beta.messages.tool_runner(
+            model=model,
+            max_tokens=_effective_num_predict(max_tokens),
+            temperature=_TEMPERATURE,
+            system=_pb_scaffold(with_tools=True),
+            messages=[{"role": "user", "content": query}],
+            tools=_pb_runner_tools(mcp, tool_calls_log),
+            max_iterations=MAX_TOOL_LOOPS,
+            # Breakpoints across the agentic loop, so each turn re-reads the
+            # prior turns' prefix at cache-read rates. Prompt caching is a
+            # BILLING-layer property only and is explicitly outside the
+            # "identical apparatus" clause (prereg §9-C): PlanBench prompts sit
+            # on a ~5% margin over Haiku 4.5's 4096-token cacheable minimum, and
+            # the matched-NT arm cannot cache at all. The calibration gate
+            # records the runner's ACTIVE / NET-LOSS / INACTIVE verdict.
+            cache_control={"type": "ephemeral"},
+        )
+        usage = {"in": 0, "out": 0, "cache_write": 0, "cache_read": 0, "turns": 0}
+        last = None
+        try:
+            async for message in runner:
+                last = message
+                u = message.usage
+                usage["in"] += u.input_tokens
+                usage["out"] += u.output_tokens
+                usage["cache_write"] += u.cache_creation_input_tokens or 0
+                usage["cache_read"] += u.cache_read_input_tokens or 0
+                usage["turns"] += 1
+        except Exception as exc:
+            # Context overflow is a REAL trial outcome, not infra: a single
+            # tool result can push a later turn past the window. Mirror
+            # frontier_runner — keep the tool-call evidence and partial usage.
+            if "prompt is too long" not in str(exc):
+                raise
+            return "", "max_tokens", False, usage, str(exc)[:300]
+
+        stop_reason = last.stop_reason if last else ""
+        # Same exhaustion criterion as the harness loop: the loop ended while
+        # the model was still asking for a tool (no tool-call-free final turn).
+        loop_exhausted = stop_reason == "tool_use"
+        text = (
+            ""
+            if last is None or loop_exhausted
+            else "".join(b.text for b in last.content if b.type == "text")
+        )
+        return text, stop_reason, loop_exhausted, usage, None
+
+    text, stop_reason, loop_exhausted, usage, err = loop.run_until_complete(_run())
+    _log_tool_calls(
+        query, text, text, False, tool_calls_log, stop_reason, loop_exhausted,
+        usage=usage, error=err,
+    )
+    return (text or "").strip()
+
+
+def _anthropic_scaffold_chat(query: str, model: str, max_tokens: int) -> str:
+    """The matched no-tools control: identical scaffold, mirrored policy, no tools.
+
+    Deliberately NOT ``_anthropic_chat`` — that path answers the bare upstream
+    prompt with no system scaffold and is the already-graded 06-22 layer. This
+    cell exists so the confirmatory contrast isolates tool availability instead
+    of confounding it with prompt shape.
+    """
+    import anthropic
+
+    client = anthropic.Anthropic()
+    resp = client.messages.create(
+        model=model,
+        max_tokens=_effective_num_predict(max_tokens),
+        temperature=_TEMPERATURE,
+        system=_pb_scaffold(with_tools=False),
+        messages=[{"role": "user", "content": query}],
+    )
+    text = "".join(b.text for b in resp.content if b.type == "text")
+    u = resp.usage
+    _log_tool_calls(
+        query, text, text, False, [], resp.stop_reason, False,
+        usage={
+            "in": u.input_tokens,
+            "out": u.output_tokens,
+            "cache_write": u.cache_creation_input_tokens or 0,
+            "cache_read": u.cache_read_input_tokens or 0,
+            "turns": 1,
+        },
+        error=None,
+    )
+    return text.strip()
+
+
 def pddl_copilot_send_query(
     query: str,
     engine: str,
@@ -545,6 +826,10 @@ def pddl_copilot_send_query(
             return _ollama_chat(query, model_tag, max_tokens, stop)
         if backend == "anthropic":
             return _anthropic_chat(query, model_tag, max_tokens, stop)
+        if backend == "anthropic-tools":
+            return _anthropic_tools_chat(query, model_tag, max_tokens)
+        if backend == "anthropic-scaffold":
+            return _anthropic_scaffold_chat(query, model_tag, max_tokens)
         if backend == "vllm-tools":
             return _vllm_tools_chat(query, model_tag, max_tokens)
         # vllm-base is byte-identical no-tools inference to vllm; it exists only

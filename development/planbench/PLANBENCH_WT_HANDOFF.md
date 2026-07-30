@@ -170,6 +170,32 @@ Everything else in the literature block of the decisions memo is **unverified** 
 
 ## 6. Owed work, in order — ONLY after RATIFY
 
+> **BUILD STATUS 2026-07-30 (ratified; items 1-3 DONE, nothing spent).**
+> - **Item 1 adapter — DONE.** `planbench/engine.py`: `anthropic-tools` (SDK Tool
+>   Runner over `MCPPlanner`, same `runner_tools` shape and `"Tool error: {exc}"`
+>   string as `tools/frontier_runner.py`) and `anthropic-scaffold` (matched no-tools
+>   control). Instance-id stamping via `apply_patches.py` **patch 6** +
+>   `query_sha256` fallback, so the §4 formalization metric is now measurable.
+>   Trap 1 is structurally unreachable on the WT path: rendering-from-tools is
+>   bypassed in code, not by env var, because the prereg endpoint is *delivered*.
+>   Per-instance token usage is logged so the calibration gate can compute its
+>   headline p90-output-tokens observable.
+> - **Item 2 engine names + allowlist — DONE.** Both tokens added to
+>   `_parse_engine_name`; no `_chat` substring; `build_table` rows registered plus
+>   the `blocksworld_3` / `mystery_blocksworld*` configs amendment K needs.
+> - **Item 3 environment — DONE.** `.venv-planbench-wt` (gitignored) from
+>   `planbench/requirements-wt.txt`. **Pins are apparatus identity:**
+>   `anthropic==0.109.2` (the version that produced the graded frontier WT corpora)
+>   and `mcp==1.26.0` (a bare install resolves 2.0.0 — a major bump under the
+>   shared tool-execution component). Full PlanBench generation + evaluation import
+>   chain verified green.
+> - **Item 4 scaffold — DRAFTED, awaiting Omer's freeze.** `_pb_scaffold()` in
+>   `engine.py`. Amendment-A compliant and machine-checked: shared block
+>   byte-identical across arms, no tool name in it, policy sentences mirrored
+>   (698 vs 696 chars). Extraction-safe per trap 3.
+> - **Next: item 5 calibration (≈$1.50) — needs the scaffold frozen first.**
+
+
 1. **Adapter** over `tools/frontier_runner.py` driving PlanBench t1 (~1 agent-day). It
    must stamp the **instance id into every logged tool call** — without that the §4
    formalization metric is unmeasurable and the prereg names a stage it cannot test. The

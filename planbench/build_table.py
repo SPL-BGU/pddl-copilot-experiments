@@ -62,9 +62,26 @@ OURS = [
     ("pddl_copilot__vllm__Qwen3.5:4B", "ours: Qwen3.5-4B"),
     ("pddl_copilot__vllm__Qwen3.5:9B", "ours: Qwen3.5-9B"),
     ("pddl_copilot__vllm__qwen3.6:35b", "ours: Qwen3.6-35B"),
+    # Frontier rows. `anthropic` = the graded 06-22 bare-NT layer (Act 4
+    # headline). The two below are the PlanBench-WT prereg arms (ratified
+    # 2026-07-30): tools, and its matched-scaffold no-tools control. Presentation
+    # rule (prereg §7): WT rows must NOT be read across the separator against the
+    # gpt-4 baseline as a controlled contrast — the controlled contrast is
+    # WT vs matched-NT within Haiku. See amendment M for the reference-line rule.
+    ("pddl_copilot__anthropic__claude-haiku-4-5", "ours: Haiku-4.5 (bare NT)"),
+    ("pddl_copilot__anthropic-scaffold__claude-haiku-4-5", "ours: Haiku-4.5 matched-NT"),
+    ("pddl_copilot__anthropic-tools__claude-haiku-4-5", "ours: Haiku-4.5 +tools"),
 ]
-BASELINES = {"blocksworld": [("gpt-4_chat", "PlanBench: gpt-4_chat"),
-                             ("text-davinci-002", "PlanBench: davinci-002")]}
+# gpt-4_chat exists on disk for blocksworld (500), blocksworld_3 (100) and
+# mystery_blocksworld; their union across the two blocksworld pools is the
+# published 600 (157 + 49 = 206 = 34.3%), which is why amendment K redefined the
+# sample as both pools together.
+_GPT4 = [("gpt-4_chat", "PlanBench: gpt-4_chat")]
+BASELINES = {
+    "blocksworld": _GPT4 + [("text-davinci-002", "PlanBench: davinci-002")],
+    "blocksworld_3": _GPT4,
+    "mystery_blocksworld": _GPT4,
+}
 
 
 def _metric(task: str) -> str:
@@ -146,7 +163,10 @@ VIEWS = [
 
 def render(root: str) -> None:
     hdr = "{:26s} ".format("engine \\ task") + " ".join(f"{s:>5s}" for s in SHORT)
-    for config in ("blocksworld", "logistics"):
+    # blocksworld + blocksworld_3 together are the published 600-instance pool
+    # (amendment K); the mystery variants are their pure-rename counterparts.
+    for config in ("blocksworld", "blocksworld_3", "mystery_blocksworld",
+                   "mystery_blocksworld_3", "logistics"):
         rows = OURS + ([("__sep__", "")] + BASELINES[config] if config in BASELINES else [])
         for pick, title in VIEWS:
             print("\n" + "=" * len(hdr))

@@ -36,4 +36,4 @@ checkpoints/**/*.jsonl
 checkpoints/**/*.out
 checkpoints/**/*.png
 checkpoints/**/*.md
-checkpoints/**/*.pptx
+checkpoints/**/*.pptx.venv-planbench-wt/
