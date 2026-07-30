@@ -122,14 +122,19 @@ corpus triggers no missing-field drops).
 
 ## Next on the PlanBench line (D3, in order)
 
-> SUPERSEDED 2026-07-24 by the accepted D-J3 ruling — full spec:
-> `development/journal_decisions_memo.md` §4. Deltas vs the list below: the WT
-> arm is Haiku-only and runs against a NEW matched-scaffold no-tools control
-> (the bare-NT rows graded in this doc become a published-apparatus replication
-> layer, and they carry Act 4's HEADLINE claim; WT is the secondary claim);
-> prereg is scoped to unrun cells with a two-sided Mystery prediction and a
-> prediction-cell linkage rule; scope priority bw t1 > mystery t1 > bw t3 with
-> n≈200-250/cell subsampling; item 2 (open-roster arm) is demoted to
+> **SUPERSEDED — the numbered list below is history. Do not plan from it.**
+> Superseded 2026-07-24 by the accepted D-J3 ruling
+> (`development/journal_decisions_memo.md` §4), then narrowed 07-26 to ratified
+> shape B. **Live design lives in one place:**
+> `development/planbench/planbench_wt_prereg.md`, with the open go/no-go in
+> `development/planbench/planbench_wt_significance_brief.md`.
+> Deltas vs the list below: the WT arm is Haiku-only against a NEW
+> matched-scaffold no-tools control (the bare-NT rows graded in this doc become
+> the published-apparatus replication layer and carry Act 4's HEADLINE claim; WT
+> is explicitly secondary); four cells on t1 at the **whole 500-instance pool**
+> (the earlier "bw t1 > mystery t1 > bw t3, n≈200-250/cell subsampling" line is
+> deleted, not amended — t3 is out, prediction (iii) is struck, and there is no
+> subsampling on the ratified path); item 2 (open-roster arm) is demoted to
 > pre-registered Future Work (its two blockers turned out already fixed in
 > `2a1298c`); item 3 (Sonnet NT) is out of budget and dropped.
 

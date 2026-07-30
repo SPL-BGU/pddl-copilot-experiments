@@ -1,23 +1,19 @@
-# PlanBench with-tools arm — handoff (2026-07-28)
+# PlanBench with-tools arm — handoff (2026-07-28, revised 07-30)
 
-> **ONE GATE IS OPEN AND IT IS NOT YOURS TO CLOSE.** §10 RATIFY in
-> `development/planbench/planbench_wt_prereg.md` is unsigned. **Nothing is built,
-> nothing is spent, no API call has been made.** Do not build, do not spend, and do not
-> reopen a slot that §3 below records as decided. If Omer signs, start at §6.
+> **ONE GATE IS OPEN AND IT IS NOT YOURS TO CLOSE.** The open item is a **go/no-go
+> judgement on whether this arm earns its ≈$46**, not a missing signature. At
+> `planbench_wt_prereg.md` §10 Omer wrote: *"lets simplify and dig deeper here i either
+> dont realy get the full picture or it just seems insignificant."* The reply — plain
+> walkthrough, honest significance verdict, cost-and-off-ramp ladder, answer slots — is
+> **`development/planbench/planbench_wt_significance_brief.md`. Read that first.**
 >
-> **[corrected 07-28] The gate is not merely unsigned — Omer left substantive pushback in
-> it:** *"lets simplify and dig deeper here i either dont realy get the full picture or it
-> just seems insignificant."* He wrote that at the scope slot; the shape-B commit answered
-> the "simplify" half and relocated the text to RATIFY without answering the rest. The
-> reply, with a plain-language walkthrough, an honest significance verdict and three answer
-> slots (go/no-go, balance, free unblocked work), is
-> `development/planbench/planbench_wt_significance_brief.md`. **Read that before touching
-> anything else here.**
+> **Nothing is built, nothing is spent, no API call has been made.** Do not build, do not
+> spend, and do not reopen a slot that §3 below records as decided. On a go, start at §6.
 >
-> **[corrected 07-28] Branch:** the prereg work is **merged to `main`** (`53553a7`), tree
-> clean. The earlier "5 commits ahead, unmerged" line was true only at write time.
-> `31b84ab` (nt-ster H4 prereg) rode along in that merge and belongs to a **parallel
-> session** — unrelated to this arm, leave it alone.
+> **Git:** prereg work is on `main` (`53553a7`); the brief and the 07-30 stale-content
+> cleanup are on branch `planbench-wt-significance-brief` (doc-only, no PR needed by
+> project convention). Do not touch `31b84ab` (nt-ster H4 prereg) — parallel session,
+> different workstream.
 >
 > **Suggested entry point:** `/resume-verify development/planbench/PLANBENCH_WT_HANDOFF.md`
 

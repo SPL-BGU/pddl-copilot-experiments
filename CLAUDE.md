@@ -32,3 +32,9 @@ Before reporting any experiment number: verify the aggregation field is correct 
 ## Plugin-isolation rule (inherited from sibling)
 
 When editing across `../pddl-copilot/plugins/`, do NOT cross-import between plugins. Each plugin must remain self-contained and installable standalone. See `../pddl-copilot/.claude/rules/marketplace.md` for the full rule set.
+
+## Chat writing style 
+
+When chatting in a session with a user:
+- explain topics simply.
+- summerise what had been done without compressing the output into unreadable text consisting of tech terms, instead simplify the output so human developers can understand it.

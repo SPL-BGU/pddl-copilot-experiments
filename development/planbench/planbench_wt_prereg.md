@@ -1,7 +1,9 @@
 # Pre-registration — PlanBench frontier with-tools arm (Haiku 4.5)
 
-**Status:** ALL SLOTS ANSWERED — **the §10 RATIFY signature is the only thing outstanding,
-and nothing is built or spent before it.** Design as decided: **shape B**, four cells
+**Status:** ALL DESIGN SLOTS ANSWERED. **The one thing outstanding is not a signature, it
+is a go/no-go judgement on whether the arm earns its ≈$46** — argued in plain language, with
+the answer slots, in `development/planbench/planbench_wt_significance_brief.md`. Nothing is
+built or spent before that call. Design as decided: **shape B**, four cells
 ({ordinary, Mystery} × {tools, matched-NT} on blocksworld t1) at the **whole 500-instance
 pool**, no subsampling, model-authored PDDL, no runner-side spend cap, t2 and t3 both out,
 prediction (iii) struck. Reasoning, provenance and rejected alternatives:
