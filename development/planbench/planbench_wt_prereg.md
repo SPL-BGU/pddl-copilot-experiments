@@ -708,6 +708,43 @@ unaided Haiku clears the GPT-4 bar stops being load-bearing.
 > ANSWER (accept the §7 amendment as worded / keep §7 as-is / other):
 >
 
+### Amendment N — only the format clause is shared (BINDING, 2026-07-30)
+
+**Supersedes the D-J3 "shared" definition**, which named both the NL→PDDL
+formalization step and the task-format clause. The formalization step moves into the
+**tools policy**; the format clause is the only shared text.
+
+**Reason — bias direction, not aesthetics.** Formalizing has a purpose only when there
+is a planner to receive the PDDL. A *shared* "translate into PDDL" instruction therefore
+hands the matched-NT arm something it structurally cannot satisfy: it is told to produce
+PDDL and, two sentences later, that its entire answer must be the plan with nothing
+before it — and one sentence of preamble is **measured** to make the upstream extractor
+inject a duplicated action that VAL then rejects. Any compliance loss that causes would
+depress arm B for a reason unrelated to tool access and **inflate the WT−NT delta in our
+own hypothesis's favour**, which is exactly the failure mode §9-A was adopted to prevent.
+Origin: Omer, 07-30 — "the no tools is practically planbenches native prompt. we added
+tools so arm A must be different."
+
+**The format clause stays shared** because it is the instrument rather than the method:
+both arms must answer in a shape the extractor can read or neither number is meaningful.
+
+**Declared consequence.** Arm A's system prompt is ~176 characters longer, and that
+difference *is* the treatment (already framed as a package contrast: tool list +
+directive). Arm B is deliberately **not** padded to match length.
+
+**Native-prompt comparison is unaffected and already in the design:** the bare-NT
+scaffold delta (§3, exploratory, uses the free graded 06-22 layer) and the
+pure-availability sensitivity arm (§9-A, mystery t1). Together with the two confirmatory
+cells these give four rungs — native, scaffold-only, directive-only, scaffold+tools.
+
+**Rejected alternatives:** rewording "translate" to "work out internally" (treats a
+classification error as a phrasing problem); dropping arm B and comparing against the
+native graded layer (saves ≈$9, but the contrast then confounds tool access with prompt
+shape — the same confounded comparison the existing literature already makes, and it
+discards the arm's only unrun contribution).
+
+Frozen text and its machine checks live in `planbench/engine.py` (`_pb_scaffold`).
+
 ### Freeze record (amendment I)
 
 Ratified at the commit that adds this section; tag `prereg-planbench-wt-v1`. Build may begin

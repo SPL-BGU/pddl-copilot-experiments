@@ -577,22 +577,43 @@ def _vllm_tools_chat(query: str, model: str, max_tokens: int) -> str:
 # FREEZE STATUS: this text is frozen at the calibration gate by Omer, per
 # prereg §8. Treat it as a draft until that signature lands.
 
+# AMENDMENT N (2026-07-30): the NL→PDDL formalization step lives in the TOOLS
+# policy, not the shared block. D-J3 as accepted named both the formalization
+# step and the task-format clause as shared; only the format clause is shared
+# now. Reason, and it is a bias-direction argument rather than an aesthetic one:
+# formalizing has a purpose only when there is a planner to receive the PDDL, so
+# a shared "translate into PDDL" instruction hands the no-tools arm something it
+# structurally cannot satisfy — it is told to produce PDDL and, two sentences
+# later, that its entire answer must be the plan with nothing before it (and one
+# sentence of preamble is MEASURED to make the upstream extractor inject a
+# duplicated action that VAL rejects). Any compliance drop that causes would
+# depress arm B for a reason unrelated to tools and INFLATE the WT−NT delta in
+# our own hypothesis's favour — precisely the failure mode §9-A exists to stop.
+# The format clause stays shared because it is the instrument, not the method:
+# both arms must answer in a shape the extractor can read.
+#
+# Consequence, declared rather than hidden: arm A's system prompt is ~176 chars
+# longer, and that difference IS the treatment (the prereg already calls this a
+# package contrast — tool list + directive). Arm B is deliberately NOT padded to
+# match length; filler text to hit a character count would be worse than a
+# declared asymmetry.
+
 _PB_POLICY_TOOLS = (
     "You are a PDDL planning assistant with access to planning tools. "
     "Your ONLY way to get information or solve problems is by calling the "
-    "provided tools ONE AT A TIME — never guess or create plan details yourself."
+    "provided tools ONE AT A TIME — never guess or create plan details yourself. "
+    "The task is given in natural language: translate the relevant parts into "
+    "PDDL — the domain, the problem, and the plan where one is given — and get "
+    "the answer from the tools."
 )
 _PB_POLICY_NOTOOLS = (
     "You are a PDDL planning assistant working without planning tools. "
     "Your ONLY way to get information or solve problems is by reasoning it "
     "through yourself ONE STEP AT A TIME — never guess or skip plan details."
 )
-# Shared, byte-identical across both arms. No tool name, no tool reference.
-_PB_SHARED_FORMALIZE = (
-    " The task is given in natural language. First translate the relevant parts "
-    "into PDDL — the domain, the problem, and the plan where one is given — then "
-    "determine the answer from that PDDL."
-)
+# The ONLY shared block: byte-identical across arms, no tool name, no tool
+# reference, and nothing either arm cannot satisfy. Written against the MEASURED
+# extractor (see the arm header above).
 _PB_SHARED_T1_FORMAT = (
     " Your entire answer must be the plan and nothing else: begin with [PLAN], "
     "give one action per line using exactly the action wording of the in-context "
@@ -602,9 +623,9 @@ _PB_SHARED_T1_FORMAT = (
 
 
 def _pb_scaffold(with_tools: bool) -> str:
-    """The frozen PlanBench-WT system scaffold for one arm."""
+    """The PlanBench-WT system scaffold for one arm (amendment N shape)."""
     policy = _PB_POLICY_TOOLS if with_tools else _PB_POLICY_NOTOOLS
-    return policy + _PB_SHARED_FORMALIZE + _PB_SHARED_T1_FORMAT
+    return policy + _PB_SHARED_T1_FORMAT
 
 
 _PB_ANTHROPIC_RUNTIME = None

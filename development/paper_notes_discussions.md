@@ -1113,3 +1113,30 @@ validated by an independent ranking subagent (the user asked for a second perspe
   significance test against it; the controlled contrast stays WT vs matched-NT. This licenses
   the bar-crossing narrative and also defuses the 07-30 headline exposure, since whether
   unaided Haiku clears the GPT-4 bar stops being load-bearing. **AWAITING one line from Omer.**
+
+## 2026-07-30 — PlanBench WT amendment N: only the format clause is shared
+
+- **Origin (Omer):** "the no tools is practically planbenches native prompt. we added tools
+  so arm A must be different." That reframing located a real design error in the scaffold.
+- **DECIDED: the NL→PDDL formalization step moves into the TOOLS policy**; the task-format
+  clause is the only shared text. Supersedes the D-J3 "shared" definition, which named both.
+- **Reason is bias direction, not elegance.** Formalizing has a purpose only when a planner
+  will receive the PDDL. Shared, it hands the matched-NT arm an instruction it cannot satisfy
+  (produce PDDL / entire answer must be the plan with nothing before it — and one sentence of
+  preamble is MEASURED to make the extractor inject a duplicated action VAL rejects). Any
+  compliance loss depresses arm B for a non-tool reason and INFLATES the WT−NT delta in our
+  own favour — the exact failure mode §9-A was adopted to prevent.
+- **Format clause stays shared** = it is the instrument, not the method; both arms must answer
+  in a shape the extractor can read.
+- **Declared:** arm A's system prompt is ~176 chars longer and that IS the treatment (package
+  contrast). Arm B is NOT padded — filler to hit a character count is worse than a declared
+  asymmetry.
+- **Native prompt is not lost:** the bare-NT scaffold delta (§3, free, uses the graded 06-22
+  layer) plus the pure-availability sensitivity arm (§9-A) give four rungs — native,
+  scaffold-only, directive-only, scaffold+tools.
+- **Rejected:** rewording "translate" → "work out internally" (phrasing patch for a
+  classification error); dropping arm B (saves ≈$9, but confounds tool access with prompt
+  shape — the same comparison the literature already makes — and discards the only unrun
+  contribution).
+- Frozen text + 8 machine checks in `planbench/engine.py:_pb_scaffold`; all pass,
+  test_prompts 451/451.
