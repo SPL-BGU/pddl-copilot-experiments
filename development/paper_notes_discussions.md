@@ -1066,3 +1066,25 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Effect on the WT go/no-go:** recommendation unchanged (option A, ratify shape B) and the
   case is stronger than before, because the published rescues all come from bespoke
   pipelines rather than tool access.
+
+## 2026-07-30 — the PlanBench denominator gap (Omer's question) + a free paired test
+
+- **Omer asked why we don't use the published denominator/instance set.** Verified answer: our
+  `blocksworld` pool is **4-block (446) + 5-block (55)**; the never-run `blocksworld_3` pool is
+  **every 3-block instance** (100). Content-disjoint, and together exactly the paper's 600
+  ("3-5 blocks"). We ran the HARD two-thirds and skipped every easy instance — which is why
+  GPT-4 scores 31.4% on ours and 49.0% on the skipped 100 (pooled = 206/600 = 34.3%).
+- **Completing to 600 costs ≈$1.50** (200 NT trials) and fixes three things: the denominator
+  footnote, the cross-pool Mystery comparator (`mystery_blocksworld_3` exists, structural
+  rename verified 100/100), and it enables an exact PAIRED test on 600 since GPT-4 per-instance
+  answers exist for both pools.
+- **It also risks the headline, which is the honest reason to run it:** Haiku needs >=~50/100 of
+  the 3-block instances for CI-disjointness at n=600 (GPT-4 got 49); below ~41 the beat
+  disappears.
+- **FREE WIN, already computed — use a paired test on the shared 500 instead of two independent
+  Wilson CIs.** Exact McNemar: both correct 81, Haiku-only 124, GPT-4-only 76, neither 219;
+  paired delta **+9.6pp, exact two-sided p = 0.00085**. Strictly stronger than the current
+  CI-overlap argument and costs nothing.
+- **New Slot 4 in the significance brief:** (A) NT to 600, WT stays 500 [recommended, ≈$1.50];
+  (B) everything to 600 [≈$10.50, one denominator across Act 4]; (C) leave at 500 with the
+  disclosure sentence [$0].

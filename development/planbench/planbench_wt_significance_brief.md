@@ -127,6 +127,45 @@ it before loading.
 
 ---
 
+## 6b. The denominator question (Omer, 2026-07-30) — and it is a real gap
+
+**Question:** why not use the same instance set and denominator as the published GPT-4 rows,
+so the comparison is apples to apples?
+
+**Answer: we should, it was an oversight rather than a design choice, and it costs ≈$1.50.**
+Verified on disk 07-30:
+
+| pool | what it is | n | GPT-4 |
+|---|---|---|---|
+| `blocksworld` (what we ran) | **4-block (446) and 5-block (55)** instances, gold plans up to 16 steps | 500 | 157 = 31.4% |
+| `blocksworld_3` (never run) | **every 3-block instance**, gold plans up to 8 steps | 100 | 49 = 49.0% |
+| published total | the paper's "600 instances, 3-5 blocks" | 600 | 206 = 34.3% |
+
+The two pools are content-disjoint and together are exactly the paper's 600. So we did not
+run a random 500 of 600 — **we ran the hard two-thirds and skipped every easy instance**,
+which is the whole reason GPT-4 looks weaker on our pool (31.4 vs 49.0).
+
+**Completing it fixes three things at once:** the denominator footnote in §6 disappears; the
+Mystery comparator stops being cross-pool (`mystery_blocksworld_3` exists and is a structural
+rename of `blocksworld_3`, verified 100/100); and because GPT-4's per-instance answers exist
+for both pools, we get an exact **paired** test on all 600 rather than two independent CIs.
+
+**It also puts the headline at genuine risk, which is the honest reason to run it.** For the
+CIs to stay disjoint at n=600, Haiku needs **≥ ~50 of the 100** three-block instances. GPT-4
+got 49. Below ~41 the beat disappears. Haiku beats GPT-4 on the hard pool, so it is likely to
+clear the bar, but this is a real test and it can fail. Better we find that than a reviewer.
+
+**Free win available regardless (already computed).** On the 500 we share, a paired exact
+McNemar is stronger than the independent-CI comparison we currently report and it costs
+nothing: Haiku-only 124, GPT-4-only 76, paired Δ **+9.6pp, p = 0.00085**. Report this instead
+of, or alongside, the two Wilson intervals.
+
+**Cost:** 200 NT trials (100 ordinary + 100 Mystery) ≈ **$1.50**. Extending the *with-tools*
+2×2 to 600 as well would add ≈**$9** to the ≈$46, and is the only way Act 4 ends up with a
+single denominator everywhere.
+
+---
+
 ## 7. Decisions
 
 **Slot 1 — go or no-go.**
@@ -164,6 +203,23 @@ replication (41.5 / 0.8 at n=602 against our 41.0 / 0.8) and the published GPT-4
 comparator (26/600 = 4.3% [3.0,6.3], Valmeekam arXiv:2305.15771 Table 1), which is
 CI-disjoint **above** Haiku's 0.8% and is currently recorded as "not in canonical".
 Should I start these now while the gate is open?
+
+> ANSWER:
+>
+
+**Slot 4 — the denominator fix (§6b), added 07-30 in response to your question.** Which?
+
+- **A. Complete the no-tools layer to 600 and keep the with-tools 2×2 at 500 (my
+  recommendation).** ≈$1.50. Removes the footnote on the GPT-4 comparison, makes the Mystery
+  comparator same-pool, enables the paired 600-instance test. The with-tools arm never shares
+  a table with GPT-4 (prereg §7) and its tests are internal, so it does not need the extra
+  100 — but Act 4 then carries two pool sizes and must say so in one sentence.
+- **B. Move everything to 600, no-tools and with-tools.** ≈$1.50 + ≈$9. One denominator
+  across all of Act 4, no footnote anywhere. Requires re-verifying the Mystery rename on the
+  extra 100 to prereg standard (structure already checks 100/100; the full object-mapping
+  check is free and local).
+- **C. Leave it at 500** and rely on the §6 disclosure sentence. $0, but we knowingly publish
+  a comparison on the hard two-thirds of someone else's benchmark.
 
 > ANSWER:
 >
