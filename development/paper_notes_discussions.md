@@ -1031,3 +1031,38 @@ validated by an independent ranking subagent (the user asked for a second perspe
   measurement in the paper taken on an instrument we did not build. Recommendation =
   ratify shape B; declining and publishing the design as pre-registered future work is
   stated as a legitimate outcome rather than a failure.
+
+## 2026-07-30 — PlanBench citation verification + t3 audit (no spend, no build)
+
+- **All seven citations verified at source** (arXiv IDs fetched, two read as local PDFs):
+  Göbel 2603.06064, Huang & Zhang 2412.09879, La Malfa 2512.09629, LLMFP 2410.12112,
+  CoPE 2510.05486, Valmeekam 2305.15771. No hallucinated references. Full record:
+  `development/planbench/planbench_verification_20260730.md`.
+- **The "already published >=4x" premise is TRUE for the direction** (Huang & Zhang n=100,
+  CoPE n=100, LLMFP n=602, La Malfa n=30), so amendment J's "replication plus an ablation
+  the field has not run" wording stays honest.
+- **But no published work rescues Mystery by TOOL AVAILABILITY.** In LLMFP's own Table 2 the
+  give-it-a-solver baselines score 0.0-0.3 on Mystery; only the full 4-component framework
+  with repair loops reaches 77.7 (GPT-4o) / 98.0 (Claude 3.5 Sonnet). The one general-tool
+  result on our exact model (Göbel, Haiku 4.5 + PDDL tools over MCP) is +3.0pp, and it
+  finished ~19pp BELOW Fast Downward alone (66.7 vs 85.3 on 102 IPC instances). The WT arm
+  measures the configuration our paper actually ships, and no cited paper predicts it.
+- **HEADLINE DISCLOSURE OWED (new).** Act 4's "Haiku 41.0 beats GPT-4 31.4 CI-disjoint" is
+  correct on the shared 500, but the *published* figure for that cell is 206/600 = 34.3%
+  [30.6,38.2], from which 41.0 is NOT disjoint. Reconciles exactly on disk: 157/500
+  (`blocksworld`) + 49/100 (`blocksworld_3`) = 206/600, same run partitioned, extra 100
+  easier. Any disjointness sentence must name the shared-500 denominator.
+- **Strengthener verdicts:** LLMFP-as-replication **DOWNGRADED** (their 41.5 is optimal-rate
+  zero-shot, ours is VAL-validity one-shot; validity-equivalent is >=41.5 and unknown — cite
+  as "consistent with", never "replicates"). Valmeekam Mystery comparator **HOLDS** at 26/600
+  = 4.33% [2.97,6.27], disjoint above Haiku's 0.80% — but label it unpaired/cross-pool (no
+  GPT-4 Mystery t1 corpus exists on disk). The 17/600 figure a web search returns is Table 2
+  (PDDL prompts), the wrong condition.
+- **t3 mix audit DONE, and the 07-25 memo overstated it.** Opposite response biases confirmed
+  (Haiku mystery accuracy-given-VALID 25.9%; GPT-4 accuracy-given-INVALID 64.3%). The Mystery
+  gap is not identified without a stated reference mix: 28.2pp unadjusted, 9.5pp at GPT-4's
+  mix, 25.7pp at 50/50, 38.3pp at ours. Direction robust under all mixes; magnitude is not.
+  Do not quote 9.5pp alone. NT doc finding 2 updated from PENDING AUDIT to resolved.
+- **Effect on the WT go/no-go:** recommendation unchanged (option A, ratify shape B) and the
+  case is stronger than before, because the published rescues all come from bespoke
+  pipelines rather than tool access.

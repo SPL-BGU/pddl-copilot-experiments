@@ -43,7 +43,7 @@ dropped instances — every instance carries a grading field)
 | blocksworld | t2 optimality | 28.2 [24.4, 32.3] | 28.4 [24.6, 32.5] | 37.6 |
 | blocksworld | t3 verification | 78.2 [74.4, 81.6] | **94.6 [92.3, 96.3]** | 88.4 |
 | blocksworld | t7 execution | 0.0 [0.0, 0.8] | 28.4 [24.6, 32.5] | (excluded) |
-| mystery_bw | t1 | 0.8 [0.3, 2.0] | (not in canonical) | (not graded) |
+| mystery_bw | t1 | 0.8 [0.3, 2.0] | (none on disk; published 4.3 [3.0, 6.3] — see below) | (not graded) |
 | mystery_bw | t2 | 0.4 [0.1, 1.4] | (not in canonical) | (not graded) |
 | mystery_bw | t3 | 45.4 [41.1, 49.8] | 73.6 [69.6, 77.3] | (not graded) |
 | mystery_bw | t7 | 0.0 [0.0, 0.8] | (not in canonical) | (excluded) |
@@ -57,6 +57,16 @@ The v1 prompt-parity caveat carries over: our prompts differ from the committed
 GPT-4 prompts by one extra blocksworld domain-rule sentence, and grading-epoch
 VAL drift is possible; treat close calls (within ~5pp) as near-parity.
 
+**mystery_bw t1 GPT-4 comparator (verified 2026-07-30).** No GPT-4 Mystery t1 corpus
+exists on disk in any config, so this cell cannot be paired. The published comparator is
+**26/600 = 4.33% [2.97, 6.27]** (Valmeekam Table 1, one-shot NL, Mystery-Deceptive), which
+is CI-disjoint **above** Haiku's 0.80% [0.31, 2.04] — so Act 4 may state that Haiku is
+significantly *worse* than GPT-4 under obfuscation, **labelled as an unpaired cross-pool
+comparison**: the 600 is our 500 plus the 100 easier `blocksworld_3` instances, and since
+all four Haiku successes have gold plan length 2, GPT-4's 26 may concentrate in the 100 we
+did not run. Do not use the 17/600 (2.8%) figure — that is Table 2, the PDDL-prompt
+condition, not ours. Details: `planbench_verification_20260730.md` §2 and §5.
+
 ## Findings
 
 1. **Haiku beats GPT-4 on blocksworld plan generation, CI-disjoint** (41.0
@@ -64,14 +74,32 @@ VAL drift is possible; treat close calls (within ~5pp) as near-parity.
    identical (141 vs 142 of 500). A 2026 small frontier model clears the
    PlanBench GPT-4 bar on the generation tasks, consistent with the v1 finding
    that Qwen3.6-35B already matched it.
-2. **PENDING AUDIT 2026-07-25 — this finding is mix-confounded as stated; do not write
-   paper prose from it until re-reported.** The committed GPT-4 t3 corpus is a
-   *different* corpus, not our prompts: 0/500 identical queries, identical gold verdict
-   text on 119/500, and an inverted verdict mix (GPT-4 155 VALID / 345 INVALID = 31.0%
-   VALID vs our 324/176 = 64.8%). The two models have opposite verdict biases, so
-   post-stratifying to a common mix moves Haiku bw t3 78.2 → 83.1 and mystery 45.4 →
-   64.1 (GPT-4 the other way: 94.6 → 90.3, 73.6 → 83.7), collapsing the mystery t3 gap
-   from 28.2pp to 9.5pp. Fix = re-report t3 with per-verdict rates and a stated mix.
+   **REQUIRED DISCLOSURE when this goes in the paper (verified 2026-07-30).** The 31.4%
+   is GPT-4 **on the 500 instances both models ran**, which is the correct paired
+   comparison. The *published* figure for the same cell is **206/600 = 34.3%
+   [30.6, 38.2]** (Valmeekam et al. arXiv:2305.15771 Table 1, one-shot NL), and Haiku's
+   41.0% is **NOT** CI-disjoint from that (36.8 < 38.2). The two reconcile exactly on
+   disk: `blocksworld/gpt-4_chat` = 157/500 plus `blocksworld_3/gpt-4_chat` = 49/100,
+   and 157 + 49 = 206/600 — same run, partitioned, with the extra 100 instances easier
+   (GPT-4 49% there). So the numbers are sound, but any sentence claiming disjointness
+   must name the shared-500 denominator and note that the published 34.3% pools in 100
+   instances we did not run. Evidence: `planbench_verification_20260730.md` §6.
+2. **AUDIT DONE 2026-07-30** (`planbench_verification_20260730.md` §7). The confound is
+   real, the direction survives, **the magnitude does not** — and the earlier "collapses
+   to 9.5pp" wording overstated it. The committed GPT-4 t3 corpus is a *different*
+   corpus, not our prompts: 0/500 identical queries, identical gold verdict text on
+   119/500, and an inverted verdict mix (GPT-4 155 VALID / 345 INVALID = 31.0% VALID vs
+   our 324/176 = 64.8%). The two models have **opposite response biases under
+   obfuscation**: Haiku over-answers INVALID (mystery accuracy given gold-VALID collapses
+   to 25.9%, 84/324) while GPT-4 over-answers VALID (accuracy given gold-INVALID falls to
+   64.3%, 222/345). The Mystery gap is therefore **not identified without a stated
+   reference mix**: 28.2pp unadjusted, **9.5pp** at GPT-4's mix, 25.7pp at 50/50, and
+   **38.3pp** at ours. The 9.5pp figure quoted on 07-25 is the single most gap-shrinking
+   choice available and must not be quoted alone.
+   **Safe statement:** Haiku sits below GPT-4 on verification under every reference mix
+   (direction robust); report per-verdict rates and name the mix, and do not put a single
+   gap number in prose. Degenerate always-VALID baseline on our bw t3 = 324/500 = 64.8%
+   [60.5, 68.9], so Haiku's 78.2 is +13.4pp above answering VALID every time.
    **t1 is unaffected and clean** (same 500 ids, same one-shot example 500/500, 499/500
    byte-identical queries after removing our one extra domain-rule sentence), which is
    what carries the headline. Full evidence:
