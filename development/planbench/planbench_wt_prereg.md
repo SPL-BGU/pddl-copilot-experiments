@@ -1,9 +1,12 @@
 # Pre-registration — PlanBench frontier with-tools arm (Haiku 4.5)
 
-**Status:** ALL DESIGN SLOTS ANSWERED. **The one thing outstanding is not a signature, it
-is a go/no-go judgement on whether the arm earns its ≈$46** — argued in plain language, with
-the answer slots, in `development/planbench/planbench_wt_significance_brief.md`. Nothing is
-built or spent before that call. Design as decided: **shape B**, four cells
+**Status: RATIFIED 2026-07-30 (Omer) — see §10-R for the signature, the slot answers and
+amendments K/L/M.** Binding design: **shape B at the published 600-instance pool** (amendment
+K supersedes every "500/cell" and "whole pool = 500" statement below, and the n=600 band
+cutpoints in §10-R supersede the n=500 row in §3(i)). Balance $170, projected ≈$62. Build may
+begin; spend is still gated behind the ≈$1.50 calibration and Omer's scope approval. **One
+item open: amendment M** (whether GPT-4 may appear as a labelled reference line). Original
+shape-B text follows unchanged for the record: four cells
 ({ordinary, Mystery} × {tools, matched-NT} on blocksworld t1) at the **whole 500-instance
 pool**, no subsampling, model-authored PDDL, no runner-side spend cap, t2 and t3 both out,
 prediction (iii) struck. Reasoning, provenance and rejected alternatives:
@@ -616,4 +619,98 @@ and to the 2026-08-15 kill date after which this converts to pre-registered futu
 
 > RATIFY (design + predictions + rules above are binding as annotated):
 > lets simplify and dig deeper here i either dont realy get the full picture or it just seems insignificant
+
+---
+
+## 10-R. RATIFIED 2026-07-30 (Omer)
+
+The 07-26 comment above was answered by
+`development/planbench/planbench_wt_significance_brief.md` and the source verification in
+`planbench_verification_20260730.md`. Omer's slot answers, 2026-07-30:
+
+| slot | answer |
+|---|---|
+| 1 — go/no-go | **A: ratify as designed** |
+| 2 — balance | **$170 in the account** (supersedes the ~$70.6 bookkeeping figure; kill criterion (a) is no longer budget-binding at any pre-registered shape) |
+| 3 — free local work | done: citations verified at source, t3 mix audit resolved |
+| 4 — denominator | **match apples to apples** → read as option **B: the whole published 600 everywhere**, since his GPT-4 framing (below) requires WT and NT on one pool |
+
+### Amendment K — the pool is the published 600, not 500 (BINDING)
+
+The 500-instance pool we had been calling "the whole pool" is **the hard two-thirds of the
+published Blocksworld set**: `blocksworld/generated_basic` holds only 4-block (446) and
+5-block (55) instances, while `blocksworld_3/generated_basic_3` holds **every 3-block
+instance** (100). The two are content-disjoint and their union is exactly the paper's 600
+("3-5 blocks"), reconciled on GPT-4's own numbers: 157/500 + 49/100 = **206/600 = 34.3%**,
+the published figure.
+
+**S is therefore redefined:** ordinary = `generated_basic` ids 2..501 ∪ `generated_basic_3`
+ids 2..101 = **600**; Mystery = the corresponding rename pools
+(`mystery/generated_basic` ∪ `mystery/generated_basic_3`), pairing verified — structural
+rename 100/100 on the extra pool, in addition to the 501/501 already verified on the 500.
+All four cells run at **n=600**. The `instance-0.pddl` stray in the Mystery basic pool is
+still excluded; never enumerate by directory glob (§5 trap 3 of the handoff).
+
+**Band cutpoints recomputed at n=600** and superseding the n=500 row of §3(i):
+
+| verdict | rule | counts at n=600 |
+|---|---|---|
+| NO-RESCUE | Wilson upper < 5% | x ≤ 19 (≤ 3.17%) |
+| PARTIAL | CI entirely within [5,50) | x ∈ [41,275] |
+| RESCUE | Wilson lower ≥ 50% | x ≥ 325 (≥ 54.17%) |
+| INCONCLUSIVE | CI spans 5% or 50% | 70/601 outcomes |
+
+Confirmatory power at n=600 strictly exceeds the pre-registered n=500 values (mystery ≥0.95
+against any WT rate ≥5%, clean ≥0.99 against any WT rate ≥60%), so no power slot reopens.
+The ±7.5pp equivalence margin is certifiable at n=600 wherever it was at n=500.
+
+**Budget at the 600 pool** (measured per-trial anchors): bw WT $20.88 + mystery WT $24.72 +
+bw matched-NT $4.44 + mystery matched-NT $4.98 = **$55.02** for the 2×2; plus the §9-A
+sensitivity arm ≈$4, calibration ≈$1.5, and the 200-trial bare-NT completion ≈$1.5 →
+**≈$62** against a $170 balance, **$108 headroom**. The shrink order in §2 is unchanged but
+is now expected to stay unused.
+
+**Also owed at the 600 pool:** the bare-NT layer gains 200 trials (100 ordinary + 100
+Mystery) so the published NT rows and the WT rows share one denominator. The clean-t1
+apparatus criterion (extraction ≥90%, correct-given-extracted ≥90%) is re-measured at 600;
+its 07-23 values (94.4%, 43.4%) were measured on the 500 and are now reference only.
+
+### Amendment L — pool frozen BEFORE the extra 100 are run (anti-outcome-shopping)
+
+The denominator materially affects the NT-vs-GPT-4 read: at n=500 Haiku's 41.0% is
+CI-disjoint above GPT-4's 31.4%, while at n=600 GPT-4 is 34.3% and Haiku needs **≥ ~50 of
+the extra 100** to stay disjoint (GPT-4 got 49). **Haiku's results on the extra 100 do not
+exist at ratification time**, and this amendment records that the pool was fixed on the
+apples-to-apples argument alone, before any such number could be seen. Choosing between the
+500 and 600 denominators after seeing them is prohibited, in either direction, and the
+realized value is reported whichever way it falls.
+
+### Amendment M — GPT-4 as a published reference line, not a comparator arm [OPEN, needs one line from Omer]
+
+Omer, 2026-07-30: *"without tools we dont care if it beats gpt4. actually its better if he
+loses, then outperform him with tools."* That narrative — unaided Haiku below the GPT-4 bar,
+tool-equipped Haiku above it — **collides with §7 as ratified**, which says WT cells never
+share a table or figure with GPT-4 rows.
+
+The rule exists for a real reason: GPT-4's rows are 2023 numbers, one-shot NL, on a different
+grader epoch. "Haiku-with-tools beats GPT-4-without-tools" conflates tool access with three
+years of model progress and a grading-epoch change, so it is not a tools claim at all.
+
+**Proposed resolution, which preserves the story and the rigour.** Amend §7 to: *GPT-4
+appears only as a labelled published reference line at a stated epoch and denominator, never
+as a comparator arm; no significance test is run against it; the controlled contrast remains
+WT vs matched-NT within Haiku.* That licenses the bar-crossing narrative descriptively while
+keeping every inferential claim inside the matched apparatus.
+
+Note this also defuses the §6 headline exposure found on 07-30: under Omer's framing, whether
+unaided Haiku clears the GPT-4 bar stops being load-bearing.
+
+> ANSWER (accept the §7 amendment as worded / keep §7 as-is / other):
+>
+
+### Freeze record (amendment I)
+
+Ratified at the commit that adds this section; tag `prereg-planbench-wt-v1`. Build may begin
+on §6 of `PLANBENCH_WT_HANDOFF.md`. Spend is still gated: the ≈$1.50 calibration runs first,
+and Omer's ≈10-minute scope-and-spend approval follows it, before the ≈$55 confirmatory run.
 

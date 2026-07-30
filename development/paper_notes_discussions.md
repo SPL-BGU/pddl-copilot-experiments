@@ -1088,3 +1088,28 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **New Slot 4 in the significance brief:** (A) NT to 600, WT stays 500 [recommended, ≈$1.50];
   (B) everything to 600 [≈$10.50, one denominator across Act 4]; (C) leave at 500 with the
   disclosure sentence [$0].
+
+## 2026-07-30 — PlanBench WT arm RATIFIED (all four slots answered)
+
+- **DECIDED (Omer): ratify shape B as designed.** Balance is **$170**, not the ~$70.6
+  bookkeeping figure, so kill criterion (a) is no longer budget-binding at any pre-registered
+  shape. Signature + amendments recorded in `planbench_wt_prereg.md` §10-R.
+- **DECIDED (Omer): match apples to apples → amendment K, the pool is the published 600.**
+  Our 500 was the hard two-thirds (4-block 446 + 5-block 55); `blocksworld_3` is every 3-block
+  instance (100); union = the paper's 600, confirmed by 157/500 + 49/100 = 206/600 = 34.3%.
+  All four cells at n=600. Bands recomputed: NO-RESCUE x<=19, PARTIAL 41..275, RESCUE x>=325,
+  INCONCLUSIVE 70/601. Cost $55.02 for the 2x2, ~$62 all-in. Bare-NT layer owes 200 completion
+  trials so NT and WT share one denominator.
+- **Amendment L (anti-outcome-shopping):** the pool was frozen BEFORE Haiku's numbers on the
+  extra 100 exist. At n=500 Haiku 41.0 is disjoint above GPT-4 31.4; at n=600 GPT-4 is 34.3 and
+  Haiku needs >=~50/100 to stay disjoint. Choosing the denominator after seeing that is
+  prohibited in either direction.
+- **NEW FRAMING (Omer), and it conflicts with ratified §7:** "without tools we dont care if it
+  beats gpt4. actually its better if he loses, then outperform him with tools." §7 as ratified
+  forbids WT cells sharing a table or figure with GPT-4 rows, because GPT-4's rows are 2023,
+  one-shot NL, different grader epoch — so "Haiku+tools beats GPT-4" conflates tool access with
+  three years of model progress. **Proposed amendment M:** GPT-4 becomes a labelled published
+  reference line at a stated epoch and denominator, never a comparator arm, with no
+  significance test against it; the controlled contrast stays WT vs matched-NT. This licenses
+  the bar-crossing narrative and also defuses the 07-30 headline exposure, since whether
+  unaided Haiku clears the GPT-4 bar stops being load-bearing. **AWAITING one line from Omer.**

@@ -1,19 +1,28 @@
 # PlanBench with-tools arm — handoff (2026-07-28, revised 07-30)
 
-> **ONE GATE IS OPEN AND IT IS NOT YOURS TO CLOSE.** The open item is a **go/no-go
-> judgement on whether this arm earns its ≈$46**, not a missing signature. At
-> `planbench_wt_prereg.md` §10 Omer wrote: *"lets simplify and dig deeper here i either
-> dont realy get the full picture or it just seems insignificant."* The reply — plain
-> walkthrough, honest significance verdict, cost-and-off-ramp ladder, answer slots — is
-> **`development/planbench/planbench_wt_significance_brief.md`. Read that first.**
+> **RATIFIED 2026-07-30 — THE GATE IS CLOSED AND BUILD IS AUTHORISED.** See
+> `planbench_wt_prereg.md` **§10-R** for the signature, the four slot answers and the three
+> ratification amendments. **Read §10-R before §2 or §3 of this handoff**, because two things
+> below are superseded:
 >
-> **Nothing is built, nothing is spent, no API call has been made.** Do not build, do not
-> spend, and do not reopen a slot that §3 below records as decided. On a go, start at §6.
+> - **n is 600, not 500** (amendment K). The 500 pool was the *hard two-thirds* of the
+>   published set — 4-block and 5-block only. `blocksworld_3` holds every 3-block instance
+>   (100), the union is the paper's 600, and 157/500 + 49/100 = 206/600 = the published
+>   34.3%. All four cells run at 600, band cutpoints are recomputed (NO-RESCUE x ≤ 19,
+>   PARTIAL 41..275, RESCUE x ≥ 325), and the bare-NT layer owes 200 completion trials.
+> - **Budget is $170, not ~$70.6.** Projected ≈$62 all-in, $108 headroom. The §2 shrink
+>   order should stay unused.
 >
-> **Git:** prereg work is on `main` (`53553a7`); the brief and the 07-30 stale-content
-> cleanup are on branch `planbench-wt-significance-brief` (doc-only, no PR needed by
-> project convention). Do not touch `31b84ab` (nt-ster H4 prereg) — parallel session,
-> different workstream.
+> **Still unspent, and spend is still staged:** the ≈$1.50 calibration first, then Omer's
+> ≈10-minute scope approval, then the ≈$55 confirmatory run. **One design item remains open:
+> amendment M** (may GPT-4 appear as a labelled published reference line, against §7's
+> current flat prohibition). Do not build a WT-vs-GPT-4 table until that answer lands.
+>
+> Do not reopen a slot that §3 below records as decided.
+>
+> **Git:** on branch `planbench-wt-significance-brief` (doc-only, no PR needed by project
+> convention). Do not touch `31b84ab` (nt-ster H4 prereg) — parallel session, different
+> workstream.
 >
 > **Suggested entry point:** `/resume-verify development/planbench/PLANBENCH_WT_HANDOFF.md`
 
