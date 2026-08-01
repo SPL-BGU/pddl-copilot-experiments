@@ -57,9 +57,17 @@
 > archived under `.local/calib/archive-20260801-103650/`; analyzer at
 > `.local/calib/analyze_calib.py` (validated by reproducing run 1's published numbers).
 >
-> **THE ONLY REMAINING GATE: Omer's scope-and-spend approval on the measured $34.08**,
-> which is also where he signs off the 75% gate reading. After that: the 600/cell run
-> (~7.3 h), grade with Rosetta VAL, results memo per prereg §6.
+> **2026-08-01 (fifth pass): APPROVED AND LAUNCHED, THEN PAUSED BY OMER.** Scope-and-spend
+> approved ("launch", 08-01); confirmatory run started 08:08 UTC and was cleanly paused at
+> Omer's request at ~09:05 UTC, mid cell 1/8 — **111 trials attempted, $3.84 spent, 93
+> answers saved, JSON verified intact**. Resume instructions + state:
+> `.local/wt_run/PAUSED.md` (relaunch the same script; it skips saved trials and
+> re-attempts the 18 empty loop-exhausted ones — record that in the deviation table).
+> **Mid-run finding: loop_exhausted 18/111 (16%) on the real pool vs 0/80 in calibration**
+> — real 4/5-block instances are harder than the calibration draw; decision (Omer aware)
+> = continue under the frozen apparatus, bias direction is against the tools arm; revised
+> projection ≈$40-45 and ≈9-10 h. After the run: grade with Rosetta VAL, results memo per
+> prereg §6.
 >
 > Do not reopen a slot that §3 below records as decided.
 >
