@@ -4,8 +4,10 @@
 amendments K/L/M.** Binding design: **shape B at the published 600-instance pool** (amendment
 K supersedes every "500/cell" and "whole pool = 500" statement below, and the n=600 band
 cutpoints in §10-R supersede the n=500 row in §3(i)). Balance $170, projected ≈$62. Build may
-begin; spend is still gated behind the ≈$1.50 calibration and Omer's scope approval. **One
-item open: amendment M** (whether GPT-4 may appear as a labelled reference line). Original
+begin; spend is still gated behind the ≈$1.50 calibration and Omer's scope approval.
+**Amendment M ACCEPTED 2026-08-01** (GPT-4 as a labelled published reference line; §7
+amended). **Format clause v2 FROZEN 2026-08-01** (restart record 1). No slot open except
+the post-calibration scope-and-spend approval. Original
 shape-B text follows unchanged for the record: four cells
 ({ordinary, Mystery} × {tools, matched-NT} on blocksworld t1) at the **whole 500-instance
 pool**, no subsampling, model-authored PDDL, no runner-side spend cap, t2 and t3 both out,
@@ -448,9 +450,13 @@ efficiency claim uses turns and output tokens only).
 
 ## 7. Presentation rules (prereg rules, not prose intentions)
 
-- WT cells never share a table or figure with GPT-4 rows. **Table A** = NT vs
-  committed GPT-4 (existing caveats). **Figure B** = within-Haiku paired
-  matched-NT→WT deltas, no GPT-4 column.
+- [amended 08-01 per amendment M, accepted:] GPT-4 appears only as a **labelled
+  published reference line at a stated epoch and denominator**, never as a comparator
+  arm; no significance test is run against it; the controlled contrast remains WT vs
+  matched-NT within Haiku. **Table A** = NT vs committed GPT-4 (existing caveats).
+  **Figure B** = within-Haiku paired matched-NT→WT deltas; a GPT-4 reference line is
+  permitted under the rule above. [original rule, superseded: WT cells never share a
+  table or figure with GPT-4 rows.]
 - t7 appears only in Act 5's grading critique.
 - Headline assignment of §1 is a presentation rule: WT numbers are introduced as
   secondary, within-apparatus.
@@ -685,7 +691,7 @@ apples-to-apples argument alone, before any such number could be seen. Choosing 
 500 and 600 denominators after seeing them is prohibited, in either direction, and the
 realized value is reported whichever way it falls.
 
-### Amendment M — GPT-4 as a published reference line, not a comparator arm [OPEN, needs one line from Omer]
+### Amendment M — GPT-4 as a published reference line, not a comparator arm (ACCEPTED 2026-08-01)
 
 Omer, 2026-07-30: *"without tools we dont care if it beats gpt4. actually its better if he
 loses, then outperform him with tools."* That narrative — unaided Haiku below the GPT-4 bar,
@@ -722,7 +728,7 @@ The flat prohibition defends against a criticism journals rarely make, at the pr
 one they often do.
 
 > ANSWER (accept the §7 amendment as worded / keep §7 as-is / other):
->
+> accept it as worded (Omer, 2026-08-01). §7 first bullet amended accordingly.
 
 ### Amendment N — only the format clause is shared (BINDING, 2026-07-30)
 
@@ -803,7 +809,8 @@ passes ≥90%, and accuracy is outside the gate's decision function — so it ha
 removed by wording, not by measurement. No other edit is recommended.
 
 > ANSWER (re-freeze the text above as worded / edit further):
->
+> freeze — "good, lets freeze if its already edited" (Omer, 2026-08-01). The quoted
+> text is FROZEN; any further change voids the affected cells and restarts them (§2).
 
 **VAL is resolved, not rebuilt.** The 07-30 blocker was a wrong-path artifact: the tested
 binary (`~/personal/LLMs-Planning/planner_tools/VAL/validate`) is a Linux x86-64 ELF that

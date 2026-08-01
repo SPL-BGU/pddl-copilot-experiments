@@ -574,11 +574,10 @@ def _vllm_tools_chat(query: str, model: str, max_tokens: int) -> str:
 # "no markdown", "no PDDL" — identical in both arms so the contrast stays
 # unbiased.
 #
-# FREEZE STATUS: v1 was frozen for the 07-30 calibration; the gate verdict was
-# FIX-AND-RESTART on two extraction defects, which unfreezes the clause. The v2
-# text below is a DRAFT until Omer re-freezes it (prereg §10-R restart record),
-# and the ~$1.10 calibration re-run must pass extraction ≥90% on all four cells
-# before the confirmatory run.
+# FREEZE STATUS: v2 FROZEN by Omer 2026-08-01 (prereg §10-R restart record 1,
+# which quotes this text verbatim). Any further change voids the affected cells
+# and restarts them (prereg §2). The ~$1.10 calibration re-run must pass
+# extraction ≥90% on all four cells before the confirmatory run.
 
 # AMENDMENT N (2026-07-30): the NL→PDDL formalization step lives in the TOOLS
 # policy, not the shared block. D-J3 as accepted named both the formalization

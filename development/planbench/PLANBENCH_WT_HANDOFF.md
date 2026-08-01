@@ -42,10 +42,11 @@
 >   re-pass. Recommendations are recorded in the prereg for both open slots: freeze the
 >   quoted text, and accept amendment M as worded (journal-fitness reasoning inline).
 >
-> **Open, needs Omer (two one-line ANSWER slots in `planbench_wt_prereg.md`):** the
-> re-freeze signature on the quoted v2 text (restart record 1) and amendment M. After the
-> re-freeze lands: the ~$1.10 calibration re-run, its ≥90%-extraction check on all four
-> cells, then Omer's scope-and-spend approval on the measured $32.78.
+> **2026-08-01 (third pass): ALL SLOTS CLOSED.** Format clause v2 FROZEN (Omer);
+> amendment M ACCEPTED as worded (Omer) — §7's first bullet is amended, GPT-4 may appear
+> as a labelled published reference line, still never as a comparator arm. Concurrency
+> decided sequential. The only remaining gate is Omer's scope-and-spend approval on the
+> measured $32.78, which follows the calibration re-run's ≥90%-extraction check.
 >
 > Do not reopen a slot that §3 below records as decided.
 >

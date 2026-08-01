@@ -1172,3 +1172,25 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Also measured:** sequential wall-clock ~18s/tools-trial → ~12h for 2400 trials; worth
   adding concurrency before the real run.
 - Full memo: `development/planbench/planbench_wt_calibration_20260730.md`.
+
+## 2026-08-01 — PlanBench-WT restart closed: clause v2 frozen, amendment M accepted, sequential run
+
+- **Amendment M ACCEPTED as worded (Omer):** GPT-4 may appear as a **labelled published
+  reference line at a stated epoch and denominator** — never as a comparator arm, no
+  significance test against it; the controlled contrast stays WT vs matched-NT within
+  Haiku. Prereg §7 first bullet amended. Decided on journal-fitness grounds: showing the
+  published bar with labels is the standard journal device; hiding it invites the
+  "how does this relate to the published results?" objection. Licenses Omer's narrative
+  (unaided Haiku below the GPT-4 bar, tool-equipped above) descriptively.
+- **Format clause v2 FROZEN (Omer):** fixes both calibration extraction defects
+  (word-for-word example phrasing incl. 'object'/'from'; answer must start with [PLAN]),
+  plus one pre-freeze disambiguation ("phrased exactly as the example phrases its
+  actions" — the "copying word for word" draft risked copy-the-example-PLAN, undetectable
+  by the outcome-blind gate). Exact text quoted in prereg §10-R restart record 1.
+- **Concurrency DECIDED sequential (Omer):** confirmatory run stays ~12 h overnight; the
+  apparatus is exactly what the calibration measured.
+- **VAL resolved at $0:** the 07-30 "cannot execute" blocker was a wrong path (Linux ELF);
+  the NT layer's own Mach-O x86_64 build runs under Rosetta and passed positive+negative
+  controls. Same grader epoch across NT and WT layers.
+- Next: calibration re-run (~$1.10) → extraction ≥90% × 4 cells → Omer's scope-and-spend
+  on the measured $32.78 → the 600/cell confirmatory run.
