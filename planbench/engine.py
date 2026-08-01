@@ -574,8 +574,11 @@ def _vllm_tools_chat(query: str, model: str, max_tokens: int) -> str:
 # "no markdown", "no PDDL" — identical in both arms so the contrast stays
 # unbiased.
 #
-# FREEZE STATUS: this text is frozen at the calibration gate by Omer, per
-# prereg §8. Treat it as a draft until that signature lands.
+# FREEZE STATUS: v1 was frozen for the 07-30 calibration; the gate verdict was
+# FIX-AND-RESTART on two extraction defects, which unfreezes the clause. The v2
+# text below is a DRAFT until Omer re-freezes it (prereg §10-R restart record),
+# and the ~$1.10 calibration re-run must pass extraction ≥90% on all four cells
+# before the confirmatory run.
 
 # AMENDMENT N (2026-07-30): the NL→PDDL formalization step lives in the TOOLS
 # policy, not the shared block. D-J3 as accepted named both the formalization
@@ -614,11 +617,22 @@ _PB_POLICY_NOTOOLS = (
 # The ONLY shared block: byte-identical across arms, no tool name, no tool
 # reference, and nothing either arm cannot satisfy. Written against the MEASURED
 # extractor (see the arm header above).
+#
+# v2 (2026-08-01, calibration gate restart — planbench_wt_calibration_20260730.md):
+# v1's "using exactly the action wording of the in-context example" did not stop
+# either measured failure. Defect 1: the Mystery tools arm collapsed to PDDL
+# shorthand ("attack g" for "attack object e"), so v2 demands every word of the
+# example's action lines and bans abbreviation. Defect 2: the Mystery matched-NT
+# arm narrated before [PLAN] and the extractor parsed extra actions out of the
+# narration, so v2 pins the answer's first characters to [PLAN].
 _PB_SHARED_T1_FORMAT = (
-    " Your entire answer must be the plan and nothing else: begin with [PLAN], "
-    "give one action per line using exactly the action wording of the in-context "
-    "example, and end with [PLAN END]. Write nothing before [PLAN] and nothing "
-    "after [PLAN END]. Do not use markdown emphasis. Do not put PDDL in the answer."
+    " Your entire answer must be the plan and nothing else. The very first "
+    "characters of your answer must be [PLAN] — no introduction, explanation, or "
+    "summary before it. Give one action per line, copying the action wording of "
+    "the in-context example word for word: keep every word the example's action "
+    "lines use (including words such as 'object' and 'from'), and never "
+    "abbreviate or shorten an action line. End with [PLAN END] and write nothing "
+    "after it. Do not use markdown emphasis. Do not put PDDL in the answer."
 )
 
 

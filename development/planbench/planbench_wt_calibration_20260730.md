@@ -108,6 +108,14 @@ artifact of the same class as the t2 missing-FAST_DOWNWARD bug, not a grade — 
 (whose decision function reads cost and throughput only) but it **is** on the critical path:
 no graded number can exist until a working VAL is available.
 
+> **RESOLVED 2026-08-01 — wrong path, not a missing tool.** The binary tested above is a
+> Linux x86-64 ELF (unrunnable on any Mac, Rosetta included). The build the graded NT layer
+> already used — `external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate`,
+> Mach-O x86_64 under Rosetta, per `planbench_frontier_haiku_nt.md:29,141` — runs on this
+> machine and passed a negative and a positive control on 2026-08-01. Same grader epoch as
+> the NT layer; set `VAL=<repo>/external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables`.
+> Details in prereg §10-R "Restart record 1".
+
 ## Owed before the confirmatory run
 
 1. Fix defects 1 and 2 in the format clause; Omer re-freezes the amended text.

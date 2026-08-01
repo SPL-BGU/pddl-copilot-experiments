@@ -24,12 +24,23 @@
 > - **Amendment N:** only the task-format clause is shared across arms. The NL→PDDL step
 >   moved into the tools policy.
 >
-> **Open, needs Omer:** amendment M (whether GPT-4 may appear as a labelled published
-> reference line, against §7's current flat prohibition) is written but unanswered. Do not
-> build any WT-vs-GPT-4 table until it lands.
+> **UPDATE 2026-08-01 (restart work done, see prereg §10-R "Restart record 1"):**
+> - **Format clause v2 is drafted** in `planbench/engine.py` fixing both calibration
+>   defects (word-for-word example phrasing + answer must start with `[PLAN]`);
+>   machine checks re-pass (shared suffix byte-identical, no tool reference, 176-char
+>   arm-A delta preserved). Awaiting Omer's re-freeze at the restart record's ANSWER slot.
+> - **VAL is RESOLVED** — the 07-30 blocker was a wrong path (a Linux ELF). The Mach-O
+>   x86_64 build at `external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate`
+>   runs under Rosetta, is the same build that graded the NT layer, and passed positive +
+>   negative controls. `VAL=<repo>/external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables`.
+> - **Concurrency**: recommendation in the restart record is stay-sequential (~12 h
+>   overnight); ANSWER slot open.
 >
-> **Open, needs work (see "Owed" in the calibration memo):** two format-clause defects, a
-> calibration re-run, VAL, and a concurrency decision.
+> **Open, needs Omer (three ANSWER slots, all in `planbench_wt_prereg.md`):** amendment M
+> (GPT-4 as a labelled published reference line — do not build any WT-vs-GPT-4 table until
+> it lands), the v2 clause re-freeze, and the concurrency choice. After the re-freeze: the
+> ~$1.10 calibration re-run, its ≥90%-extraction check, then Omer's scope-and-spend
+> approval on the measured $32.78.
 >
 > Do not reopen a slot that §3 below records as decided.
 >

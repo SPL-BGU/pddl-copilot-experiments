@@ -751,3 +751,49 @@ Ratified at the commit that adds this section; tag `prereg-planbench-wt-v1`. Bui
 on §6 of `PLANBENCH_WT_HANDOFF.md`. Spend is still gated: the ≈$1.50 calibration runs first,
 and Omer's ≈10-minute scope-and-spend approval follows it, before the ≈$55 confirmatory run.
 
+### Restart record 1 — gate verdict 2026-07-30, apparatus fixed 2026-08-01
+
+The first calibration ($1.09, 80 trials, `planbench_wt_calibration_20260730.md`) passed
+cost and throughput but failed extraction on 2 of 4 cells; §8 makes that
+fix-apparatus-and-restart. The v1 format clause is therefore **unfrozen**. Changes made:
+
+**Format clause v2** (`planbench/engine.py`, `_PB_SHARED_T1_FORMAT`) fixes both measured
+defects and nothing else. Defect 1 (Mystery tools arm collapsed to PDDL shorthand,
+`attack g` for `attack object e`): v2 replaces "using exactly the action wording of the
+in-context example" with copying it *word for word*, keeping every word the example's
+action lines use — naming 'object' and 'from' as examples — and banning abbreviation.
+Defect 2 (Mystery matched-NT arm narrated before `[PLAN]` and the extractor injected
+actions from the narration): v2 pins the very first characters of the answer to `[PLAN]`.
+The clause remains the only shared block, byte-identical across arms, tool-name-free, and
+machine-checked (2026-08-01: shared suffix identical, no tool reference, arm-A delta still
+the declared 176 chars). v1's other sentences (one action per line, `[PLAN END]` terminal,
+no markdown, no PDDL) are unchanged.
+
+> ANSWER (re-freeze the v2 clause as worded / edit first):
+>
+
+**VAL is resolved, not rebuilt.** The 07-30 blocker was a wrong-path artifact: the tested
+binary (`~/personal/LLMs-Planning/planner_tools/VAL/validate`) is a Linux x86-64 ELF that
+no Mac can run. The build the graded NT layer already used —
+`external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate`, Mach-O x86_64
+under Rosetta (`planbench_frontier_haiku_nt.md:29,141`) — runs on this machine and was
+re-verified 2026-08-01 with a negative control (precondition failure correctly rejected)
+and a positive control (10-step hand-checked plan on `generated_basic/instance-3`
+validates). Grading uses `VAL=<repo>/external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables`,
+the same grader epoch as the NT layer. No critical-path item remains here.
+
+**Concurrency for the ~12 h sequential run.** Recommendation: **stay sequential.** The
+calibration measured the sequential apparatus (100% cache-read hits depend on trial N
+priming trial N+1; PlanBench's per-instance result JSON is written by one process; the
+torn-lines history argues against adding parallel writers), an overnight run costs
+nothing, and serialization-over-throughput is the standing pipeline preference. Any
+concurrency would have to land *before* the calibration re-run so the re-run exercises
+the final apparatus.
+
+> ANSWER (sequential as recommended / add concurrency, target N workers):
+>
+
+**Sequencing after these two answers + amendment M:** calibration re-run (~$1.10, same
+discarded 20+20 draw) → extraction ≥90% on all four cells → Omer's scope-and-spend
+approval on the measured $32.78 → the 600/cell confirmatory run → grade with Rosetta VAL.
+
