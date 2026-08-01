@@ -45,8 +45,21 @@
 > **2026-08-01 (third pass): ALL SLOTS CLOSED.** Format clause v2 FROZEN (Omer);
 > amendment M ACCEPTED as worded (Omer) — §7's first bullet is amended, GPT-4 may appear
 > as a labelled published reference line, still never as a comparator arm. Concurrency
-> decided sequential. The only remaining gate is Omer's scope-and-spend approval on the
-> measured $32.78, which follows the calibration re-run's ≥90%-extraction check.
+> decided sequential.
+>
+> **2026-08-01 (fourth pass): CALIBRATION RUN 2 DONE — $1.13, cumulative $2.22.** Memo:
+> `planbench_wt_calibration_run2_20260801.md`. Both restart defects FIXED (Mystery tools
+> extraction 15→90%; Mystery matched-NT injection 65→0%). Cost/throughput pass; projection
+> at 600/cell = **$34.08 measured**, wall-clock **≈7.3 h** sequential (supersedes the 12 h
+> figure). Ordinary/tools reads 75% extraction, but all 5 misses are the run-1 memo's
+> NOT-a-defect class (honest empty plans on solvable instances; extraction of delivered
+> plans 15/15) — no apparatus fix exists that wouldn't bias the task. Run-1 artifacts
+> archived under `.local/calib/archive-20260801-103650/`; analyzer at
+> `.local/calib/analyze_calib.py` (validated by reproducing run 1's published numbers).
+>
+> **THE ONLY REMAINING GATE: Omer's scope-and-spend approval on the measured $34.08**,
+> which is also where he signs off the 75% gate reading. After that: the 600/cell run
+> (~7.3 h), grade with Rosetta VAL, results memo per prereg §6.
 >
 > Do not reopen a slot that §3 below records as decided.
 >
