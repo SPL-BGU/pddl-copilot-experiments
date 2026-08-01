@@ -1,28 +1,65 @@
-# PlanBench with-tools arm — handoff (2026-07-28, revised 07-30)
+# PlanBench with-tools arm — handoff (state as of 2026-08-01)
 
-> **RATIFIED 2026-07-30 — THE GATE IS CLOSED AND BUILD IS AUTHORISED.** See
-> `planbench_wt_prereg.md` **§10-R** for the signature, the four slot answers and the three
-> ratification amendments. **Read §10-R before §2 or §3 of this handoff**, because two things
-> below are superseded:
+> **STATUS: ratified, built, calibrated once, and HELD at the calibration gate.**
+> **$1.09 spent to date. The confirmatory run has not been launched.**
 >
-> - **n is 600, not 500** (amendment K). The 500 pool was the *hard two-thirds* of the
->   published set — 4-block and 5-block only. `blocksworld_3` holds every 3-block instance
->   (100), the union is the paper's 600, and 157/500 + 49/100 = 206/600 = the published
->   34.3%. All four cells run at 600, band cutpoints are recomputed (NO-RESCUE x ≤ 19,
->   PARTIAL 41..275, RESCUE x ≥ 325), and the bare-NT layer owes 200 completion trials.
-> - **Budget is $170, not ~$70.6.** Projected ≈$62 all-in, $108 headroom. The §2 shrink
->   order should stay unused.
+> **Read in this order:** this header → `planbench_wt_calibration_20260730.md` (the gate
+> result and the two defects blocking the run) → `planbench_wt_prereg.md` §10-R (signature,
+> slot answers, amendments K/L/M/N).
 >
-> **Still unspent, and spend is still staged:** the ≈$1.50 calibration first, then Omer's
-> ≈10-minute scope approval, then the ≈$55 confirmatory run. **One design item remains open:
-> amendment M** (may GPT-4 appear as a labelled published reference line, against §7's
-> current flat prohibition). Do not build a WT-vs-GPT-4 table until that answer lands.
+> **Gate verdict, 2026-07-30: FIX APPARATUS AND RESTART.** Cost and throughput passed. The
+> outcome-neutral extraction check failed on 2 of 4 cells, and prereg §3 classifies that as
+> an apparatus-fix-and-restart event, not a scope decision. Details and the two mechanisms
+> are in the calibration memo; they are **not** re-derived here.
+>
+> **Superseded numbers — do not use the older figures further down this document:**
+> - **n = 600 per cell, not 500** (amendment K). The 500 pool was the 4- and 5-block portion
+>   of the published set; `blocksworld_3` holds the 100 3-block instances; the union is
+>   PlanBench's 600, confirmed by 157/500 + 49/100 = 206/600 = the published 34.3%. Band
+>   cutpoints at n=600: NO-RESCUE x ≤ 19, PARTIAL 41..275, RESCUE x ≥ 325. The bare-NT layer
+>   owes 200 completion trials.
+> - **Budget is $170** (Omer, 07-30), not the ~$70.6 bookkeeping figure.
+> - **Run cost is $32.78 measured**, not the $55.02 the prereg projected. Derived from
+>   measured per-trial cost at 600/cell; see the calibration memo for the per-cell figures.
+> - **Amendment N:** only the task-format clause is shared across arms. The NL→PDDL step
+>   moved into the tools policy.
+>
+> **Open, needs Omer:** amendment M (whether GPT-4 may appear as a labelled published
+> reference line, against §7's current flat prohibition) is written but unanswered. Do not
+> build any WT-vs-GPT-4 table until it lands.
+>
+> **Open, needs work (see "Owed" in the calibration memo):** two format-clause defects, a
+> calibration re-run, VAL, and a concurrency decision.
 >
 > Do not reopen a slot that §3 below records as decided.
 >
-> **Git:** on branch `planbench-wt-significance-brief` (doc-only, no PR needed by project
-> convention). Do not touch `31b84ab` (nt-ster H4 prereg) — parallel session, different
-> workstream.
+> **Git:** branch `planbench-wt-significance-brief`, 9 commits ahead of `main`, unmerged, no
+> PR (project convention for doc/handoff artifacts). Tag `prereg-planbench-wt-v1` marks
+> ratification. Do not touch `31b84ab` (nt-ster H4 prereg) — parallel session.
+>
+> **Machine-local artifacts NOT in git** (`external/` and `.local/` are both gitignored, so a
+> fresh clone will not have these):
+> - `.local/calib/` — the four side-log JSONLs, `smoke_wt.jsonl`, `run_calib.sh`,
+>   `calib_run.log`, and `calib_manifest.json` (the discarded calibration draw: example
+>   source id 134, 20 target source ids).
+> - `external/LLMs-Planning/plan-bench/configs/{blocksworld,mystery_blocksworld}_calib.yaml`
+> - `external/LLMs-Planning/plan-bench/instances/blocksworld/{,mystery/}calib_basic/` (21
+>   files each: `instance-1` is the one-shot example, `instance-2..21` the targets)
+> - `external/LLMs-Planning/plan-bench/{responses,results}/{blocksworld,mystery_blocksworld}_calib/`
+> - `.venv-planbench-wt/` — rebuild with `planbench/requirements-wt.txt`
+>
+> **Environment the calibration ran under** (all four are required; the run script
+> `.local/calib/run_calib.sh` sets them):
+> `PDDL_MARKETPLACE_PATH=/Users/omereliyahu/personal/pddl-copilot`,
+> `PDDL_PLANBENCH_PLUGINS="pddl-solver pddl-validator"`, `PDDL_COPILOT_TASK=t1`,
+> `FAST_DOWNWARD=/Users/omereliyahu/personal/pddl-copilot/plugins/pddl-solver/.venv/lib/python3.14/site-packages/up_fast_downward/downward`,
+> plus `PDDL_COPILOT_TOOLLOG` per cell and `ANTHROPIC_API_KEY`.
+>
+> **`apply_patches.py main()` cannot be run end-to-end on this tree:** `patch_init`'s anchor
+> no longer matches (`utils/__init__.py` imports `openai` unguarded; we satisfied that by
+> installing `openai` in the venv instead) and it `sys.exit`s before later patches run. Patch
+> 6 (the instance-id stamp) was applied by calling `patch_instance_id_stamp` directly. It is
+> applied and idempotent on this tree.
 >
 > **Suggested entry point:** `/resume-verify development/planbench/PLANBENCH_WT_HANDOFF.md`
 
@@ -170,6 +207,13 @@ Everything else in the literature block of the decisions memo is **unverified** 
 
 ## 6. Owed work, in order — ONLY after RATIFY
 
+> **BUILD STATUS 2026-08-01.** Items 1-3 done and exercised end-to-end by the calibration
+> run. Item 4 (scaffold) is written and was run, but the calibration found two defects in it,
+> so it is **not** frozen. Item 5 (calibration) has been run once — $1.09, 80 trials, verdict
+> RESTART. Items 6-8 not started.
+>
+> Superseded detail from 07-30 follows; the item 1-3 descriptions are still accurate.
+>
 > **BUILD STATUS 2026-07-30 (ratified; items 1-3 DONE, nothing spent).**
 > - **Item 1 adapter — DONE.** `planbench/engine.py`: `anthropic-tools` (SDK Tool
 >   Runner over `MCPPlanner`, same `runner_tools` shape and `"Tool error: {exc}"`
