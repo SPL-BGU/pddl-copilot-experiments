@@ -33,14 +33,19 @@
 >   x86_64 build at `external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate`
 >   runs under Rosetta, is the same build that graded the NT layer, and passed positive +
 >   negative controls. `VAL=<repo>/external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables`.
-> - **Concurrency**: recommendation in the restart record is stay-sequential (~12 h
->   overnight); ANSWER slot open.
+> - **Concurrency: DECIDED sequential** (Omer, 2026-08-01) — apparatus unchanged from
+>   what the calibration measured; the confirmatory run is ~12 h overnight.
+> - **2026-08-01 second pass:** the v2 clause got one pre-freeze disambiguation
+>   ("phrased exactly as the example phrases its actions", not "copying ... word for
+>   word" — the copy phrasing risked copy-the-example-PLAN, which the outcome-blind gate
+>   cannot detect). Final text is quoted verbatim in the restart record; machine checks
+>   re-pass. Recommendations are recorded in the prereg for both open slots: freeze the
+>   quoted text, and accept amendment M as worded (journal-fitness reasoning inline).
 >
-> **Open, needs Omer (three ANSWER slots, all in `planbench_wt_prereg.md`):** amendment M
-> (GPT-4 as a labelled published reference line — do not build any WT-vs-GPT-4 table until
-> it lands), the v2 clause re-freeze, and the concurrency choice. After the re-freeze: the
-> ~$1.10 calibration re-run, its ≥90%-extraction check, then Omer's scope-and-spend
-> approval on the measured $32.78.
+> **Open, needs Omer (two one-line ANSWER slots in `planbench_wt_prereg.md`):** the
+> re-freeze signature on the quoted v2 text (restart record 1) and amendment M. After the
+> re-freeze lands: the ~$1.10 calibration re-run, its ≥90%-extraction check on all four
+> cells, then Omer's scope-and-spend approval on the measured $32.78.
 >
 > Do not reopen a slot that §3 below records as decided.
 >

@@ -705,6 +705,22 @@ keeping every inferential claim inside the matched apparatus.
 Note this also defuses the §6 headline exposure found on 07-30: under Omer's framing, whether
 unaided Haiku clears the GPT-4 bar stops being load-bearing.
 
+**Recommendation (2026-08-01, judged by fit for a computer-science journal, per Omer's
+ask): accept the §7 amendment as worded.** Reasoning, all journal-specific:
+(a) PlanBench's published identity *is* its GPT-4 numbers — a with-tools section that
+never shows the published bar invites the reviewer question "how does this relate to the
+published results?" and forces readers to cross-reference the 2023 paper themselves;
+(b) a labelled published reference line at a stated epoch and denominator, with no
+significance test against it, is the standard journal device for baselines measured on a
+different apparatus — disclosure over omission;
+(c) the inferential surface is unchanged: the only tested contrast stays WT vs matched-NT
+within Haiku, so nothing a methods reviewer audits gets weaker;
+(d) the conflation risk the flat prohibition guards against (tool access vs three years
+of model progress plus a grader-epoch change) is carried by the label itself, and this
+prereg section documents the reasoning we can cite verbatim if a reviewer raises it.
+The flat prohibition defends against a criticism journals rarely make, at the price of
+one they often do.
+
 > ANSWER (accept the §7 amendment as worded / keep §7 as-is / other):
 >
 
@@ -759,17 +775,34 @@ fix-apparatus-and-restart. The v1 format clause is therefore **unfrozen**. Chang
 
 **Format clause v2** (`planbench/engine.py`, `_PB_SHARED_T1_FORMAT`) fixes both measured
 defects and nothing else. Defect 1 (Mystery tools arm collapsed to PDDL shorthand,
-`attack g` for `attack object e`): v2 replaces "using exactly the action wording of the
-in-context example" with copying it *word for word*, keeping every word the example's
-action lines use — naming 'object' and 'from' as examples — and banning abbreviation.
-Defect 2 (Mystery matched-NT arm narrated before `[PLAN]` and the extractor injected
-actions from the narration): v2 pins the very first characters of the answer to `[PLAN]`.
-The clause remains the only shared block, byte-identical across arms, tool-name-free, and
+`attack g` for `attack object e`): v2 requires each action phrased exactly as the
+in-context example phrases its actions, keeping every word the example's action lines use
+— naming 'object' and 'from' as examples — and banning abbreviation. Defect 2 (Mystery
+matched-NT arm narrated before `[PLAN]` and the extractor injected actions from the
+narration): v2 pins the very first characters of the answer to `[PLAN]`. The clause
+remains the only shared block, byte-identical across arms, tool-name-free, and
 machine-checked (2026-08-01: shared suffix identical, no tool reference, arm-A delta still
 the declared 176 chars). v1's other sentences (one action per line, `[PLAN END]` terminal,
 no markdown, no PDDL) are unchanged.
 
-> ANSWER (re-freeze the v2 clause as worded / edit first):
+The exact text the signature binds to:
+
+> Your entire answer must be the plan and nothing else. The very first characters of
+> your answer must be [PLAN] — no introduction, explanation, or summary before it. Give
+> one action per line, phrased exactly as the in-context example phrases its actions:
+> keep every word the example's action lines use (including words such as 'object' and
+> 'from'), and never abbreviate or shorten an action line. End with [PLAN END] and write
+> nothing after it. Do not use markdown emphasis. Do not put PDDL in the answer.
+
+**Recommendation on Omer's re-freeze-or-edit question (2026-08-01): freeze the text
+above.** One pre-freeze disambiguation was applied first: the draft's "copying the action
+wording of the in-context example word for word" could be read as copy-the-example's-PLAN
+(content) rather than copy-its-phrasing (style). That misreading is precisely the defect
+class the calibration gate cannot catch — a copied plan extracts cleanly, extraction
+passes ≥90%, and accuracy is outside the gate's decision function — so it had to be
+removed by wording, not by measurement. No other edit is recommended.
+
+> ANSWER (re-freeze the text above as worded / edit further):
 >
 
 **VAL is resolved, not rebuilt.** The 07-30 blocker was a wrong-path artifact: the tested
@@ -791,7 +824,7 @@ concurrency would have to land *before* the calibration re-run so the re-run exe
 the final apparatus.
 
 > ANSWER (sequential as recommended / add concurrency, target N workers):
->
+> sequential (Omer, 2026-08-01 — DECIDED, apparatus unchanged from calibration)
 
 **Sequencing after these two answers + amendment M:** calibration re-run (~$1.10, same
 discarded 20+20 draw) → extraction ≥90% on all four cells → Omer's scope-and-spend

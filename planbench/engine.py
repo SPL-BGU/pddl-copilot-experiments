@@ -625,11 +625,15 @@ _PB_POLICY_NOTOOLS = (
 # example's action lines and bans abbreviation. Defect 2: the Mystery matched-NT
 # arm narrated before [PLAN] and the extractor parsed extra actions out of the
 # narration, so v2 pins the answer's first characters to [PLAN].
+# Disambiguated pre-freeze (08-01): "phrased exactly as the example phrases its
+# actions", not "copying the example word for word" — the copy phrasing could
+# read as copy-the-example-PLAN, a defect the outcome-blind gate cannot detect
+# (a copied plan extracts cleanly; accuracy is outside the decision function).
 _PB_SHARED_T1_FORMAT = (
     " Your entire answer must be the plan and nothing else. The very first "
     "characters of your answer must be [PLAN] — no introduction, explanation, or "
-    "summary before it. Give one action per line, copying the action wording of "
-    "the in-context example word for word: keep every word the example's action "
+    "summary before it. Give one action per line, phrased exactly as the "
+    "in-context example phrases its actions: keep every word the example's action "
     "lines use (including words such as 'object' and 'from'), and never "
     "abbreviate or shorten an action line. End with [PLAN END] and write nothing "
     "after it. Do not use markdown emphasis. Do not put PDDL in the answer."
