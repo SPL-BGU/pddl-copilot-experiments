@@ -1,6 +1,18 @@
-# PlanBench with-tools arm — handoff (state as of 2026-08-01)
+# PlanBench with-tools arm — handoff (state as of 2026-08-03)
 
-> **STATUS: ratified, built, calibrated once, and HELD at the calibration gate.**
+> **STATUS: RUN COMPLETE AND GRADED. Pre-registered verdict = RESCUE, both confirmatory
+> tests significant (Mystery Δ+71.8pp p=3.6e-130; clean Δ+21.8pp p=2.7e-15).**
+> **Results memo: `planbench_wt_results_20260803.md` — read it FIRST; it carries two
+> open ANSWER slots (criterion-(a) decomposition reading; Mystery-NT injection
+> robustness reading) plus the owed follow-ups (formalization_match §4 pass, bare-NT
+> 200-trial completion, optional stripped-block regrade).**
+> **Arm spend total $42.09** ($1.09 + $1.13 calibrations + $39.87 confirmatory).
+> Graded corpora: `external/LLMs-Planning/plan-bench/results/{blocksworld,blocksworld_3,
+> mystery_blocksworld,mystery_blocksworld_3}/pddl_copilot__anthropic-{tools,scaffold}__
+> claude-haiku-4-5/` + side-logs and analyzers in `.local/wt_run/` (machine-local).
+> The header below this line describes the pre-run state and remains for provenance.
+
+> **STATUS (superseded 08-03): ratified, built, calibrated once, and HELD at the calibration gate.**
 > **$1.09 spent to date. The confirmatory run has not been launched.**
 >
 > **Read in this order:** this header → `planbench_wt_calibration_20260730.md` (the gate

@@ -1194,3 +1194,25 @@ validated by an independent ranking subagent (the user asked for a second perspe
   controls. Same grader epoch across NT and WT layers.
 - Next: calibration re-run (~$1.10) → extraction ≥90% × 4 cells → Omer's scope-and-spend
   on the measured $32.78 → the 600/cell confirmatory run.
+
+## 2026-08-03 — PlanBench-WT confirmatory RESULTS: RESCUE, both tests significant
+
+- **Bottom line (pre-registered, n=600/cell, delivered endpoint):** clean NT 47.8
+  [43.9,51.8] → clean WT **69.7** [65.9,73.2]; Mystery NT 0.0 [0.0,0.6] → Mystery WT
+  **71.8** [68.1,75.3]. Paired exact McNemar + Holm: Mystery Δ+71.8pp (b=431/c=0,
+  p=3.6e-130), clean Δ+21.8pp (b=206/c=75, p=2.7e-15). **Band verdict RESCUE**
+  (431 ≥ 325); conjunctive ruling = SUPPORTED.
+- **Mechanism: RESCUE branch provisionally met** — delegation 100%, |clean−Mystery WT|
+  = 2.2pp (p=0.449, within ±7.5pp); formalization_match (§4) still owed to finalize.
+- **The instrument biases ran against us and RESCUE survived them:** 125/569 delivered
+  Mystery WT plans lost to residual PDDL-shorthand dialect (true rate ~90%+ under a
+  tolerant parse); loop exhaustion 10.5%/5.2% counted as failures.
+- **Two honest flags (ANSWER slots in the results memo):** clean-WT raw extraction
+  72.7% decomposes to 7/443 instrument misses + 157 model-side (loop-exh + honest
+  "unsolvable" empties on solvable instances — the formalization signal at scale);
+  Mystery-NT narration-injection recurred (479/600) but collapse holds on the
+  uninjected subset (0/121) and external anchors (bare-NT 0.8%, GPT-4 4.3%).
+- **Reference-line context (amendment M):** tool-equipped Haiku (69.7/71.8) more than
+  doubles the published GPT-4 clean bar (34.3, 2023 epoch); Mystery NT sits at 0.
+- Cost: confirmatory $39.87; whole arm $42.09. Memo:
+  `development/planbench/planbench_wt_results_20260803.md`.
