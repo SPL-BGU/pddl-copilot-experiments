@@ -30,13 +30,13 @@ denominator = realized 600 per cell (asserted). Analyzer:
 published bands: lands in the formalize-then-delegate band (~63–100%), far above the
 verifier-in-the-loop band (~3.8–14%) [both pending /verify-claims before prose].
 
-**Mechanism (prediction ii): RESCUE branch, provisionally met — one requirement open.**
-Delegation = 100.0% of WT trials in both domains (≥80% required ✓); paired
-|clean_WT − mystery_WT| = **2.2pp** (b=119/c=132, exact p=0.449 — within the ±7.5pp
-margin, let alone the branch's ±10pp ✓); `formalization_match` (§4, the third
-requirement) is NOT yet computed — it needs the pddl-parser equivalence pass over the
-stamped tool-call logs and is the next analysis step. Branch language stays provisional
-until it lands. The joint falsifier (Mystery WT ≈ Mystery NT) is trivially refuted.
+**Mechanism (prediction ii): RESCUE branch CONFIRMED — all three requirements met**
+(third requirement computed 2026-08-05, section below). Delegation = 100.0% of WT
+trials in both domains (≥80% required ✓); paired |clean_WT − mystery_WT| = **2.2pp**
+(b=119/c=132, exact p=0.449 — within the ±7.5pp margin, let alone the branch's ±10pp
+✓); Mystery `formalization_match` = 97.8 [96.3, 98.7] vs clean 96.3 [94.5, 97.6] —
+overlapping CIs, Mystery numerically HIGHER, so it is not CI-disjointly below clean ✓.
+The joint falsifier (Mystery WT ≈ Mystery NT) is trivially refuted.
 
 ## Audits (all pre-registered; two need Omer's sign-off on interpretation)
 
@@ -92,6 +92,77 @@ survives formalization and dialect, delegated search is essentially always right
 funnel bottleneck on this instrument is the input boundary (formalization) plus the
 extractor's dialect intolerance, not search and not tool operation.
 
+## formalization_match (§4) — computed 2026-08-05, mechanism branch finalized
+
+**Analyzer:** `.local/wt_run/formalization_match.py` (+ per-trial rows in
+`formalization_match_rows.jsonl`); instrument = the pddl-parser plugin's own
+`inspect_problem`/`inspect_domain`/`get_trajectory` functions imported at analysis time
+(kept out of the model's roster, per §4). Inputs = the stamped tool-call side-logs,
+deduped LAST record per instance_id (518→500 on blocksworld = the 18 pause/resume
+re-attempts; other three cells exact). **Precondition re-verified and extended:** gold
+reconstruction from the NL query is 1200/1200 exact across all four WT pools
+(`verify_gold_reconstruction.py` — the prereg's 500/500 claims plus both amendment-K
+`_3` pools, which the original verification predated), with zero side-log
+`query_sha256` mismatches against the response files.
+
+**Operationalization (recorded, not in the prereg text):** a trial's formalization =
+the LAST `classic_planner` call's (domain, problem) arguments — the model's final
+settled statement; an any-call upper bound is reported as a diagnostic. "solvable" =
+the logged Fast Downward result of that same call contains a non-empty plan; note this
+conditions on the MODEL's domain, where Planetarium's solvable stage conditions on a
+gold domain, so the two solvable rows are not directly comparable. Problem equality =
+(objects, init, goal) literal-set equality under the config-declared object bijection
+plus an arity-constrained brute-forced predicate bijection (≤6 candidates); domain
+equivalence = 24 arity-constrained bijections structurally, behavioral fallback =
+gold-plan replay through the model's domain+problem (fallback validated on synthetic
+positive and negative controls after an initial parenthesis-stripping bug in the
+final-state parse was found and fixed — first pass undercounted clean domain
+equivalence 29.3%→69.5%; no other column moved).
+
+| stage (denominator 600) | clean WT | Mystery WT |
+|---|---|---|
+| delegated (≥1 `classic_planner` call) | 600/600 = 100.0 [99.4, 100.0] | 600/600 = 100.0 [99.4, 100.0] |
+| parseable (model problem+domain parse) | 594/600 = **99.0** [97.8, 99.5] | 588/600 = **98.0** [96.5, 98.9] |
+| solvable (FD plan on last call) | 418/600 = 69.7 [65.9, 73.2] | 572/600 = 95.3 [93.3, 96.8] |
+| **formalization_match (problem ≡ gold)** | 578/600 = **96.3** [94.5, 97.6] | 587/600 = **97.8** [96.3, 98.7] |
+| domain equivalent (structural + behavioral) | 417/600 = 69.5 [65.7, 73.1] | 597/600 = **99.5** [98.5, 99.8] |
+| any-call match (diagnostic upper bound) | 597/600 = 99.5 | 597/600 = 99.5 |
+| P(correct \| match) | 418/578 = 72.3 | 431/587 = 73.4 |
+| P(correct \| no match) | **0/22 = 0.0** | **0/13 = 0.0** |
+
+**Verdict on the branch's third requirement: MET** — Mystery formalization_match is
+not CI-disjointly below clean (it is numerically above it). Combined with delegation
+100% and the 2.2pp paired delta, **the RESCUE branch of prediction (ii) is final: the
+NL→PDDL formalization boundary transfers to the obfuscated domain essentially intact,
+and the rescue is formalize-then-delegate, not model-side search.** Companion
+diagnostics per §4: delegation 100% both cells; accuracy conditional on delegation =
+the cell accuracies (69.7 / 71.8).
+
+Three secondary observations, all model-side:
+
+1. **The metric is a perfect gate on delivered correctness:** 0 of the 35 no-match
+   trials were graded correct, in both domains. A boundary loss is never recovered
+   downstream, which is the funnel-placement claim (§4) observed in data.
+2. **The clean ceiling is domain-authoring fidelity, not problem statement and not
+   search:** clean P(solvable | domain equivalent) = 415/417 = 99.5% vs
+   3/183 = 1.6% without — the FD-failure mass IS the broken-domain mass. Haiku
+   transcribes the Mystery domain near-perfectly (99.5% equivalent, all structural)
+   because the obfuscated NL is a mechanical 1:1 rendering of the PDDL; the clean NL
+   states physics informally (e.g. never says stacking makes the moved block clear),
+   and Haiku authors what the text says — 183/600 clean domains cannot even replay
+   the gold plan, which is where the honest "unsolvable" empty blocks and part of the
+   loop exhaustion come from (audit 1's 94 + deviation 3). The paired WT contrast is
+   unaffected: the two arms agree because the problem-side boundary holds in both.
+3. **No-match tail decomposition:** clean 22 = 11 init mismatches + 5 goal mismatches
+   + 4 unparseable + 2 empty-argument calls; Mystery 13 = 12 unparseable (final
+   problem omits the `(:domain ...)` line — the tool rejected the call at run time,
+   loop ended before repair) + 1 goal mismatch. Every one graded incorrect, so
+   instrument and grader agree on the entire tail.
+
+Planetarium's published GPT-4o decomposition (96.1 / 94.4 / 24.8) is the intended
+prose anchor for these rows and remains flagged for `/verify-claims` before any paper
+use, as does the different solvable conditioning noted above.
+
 ## Deviation table
 
 | # | deviation | consequence |
@@ -106,9 +177,8 @@ extractor's dialect intolerance, not search and not tool operation.
 
 ## Owed next
 
-1. **`formalization_match` (§4)** over the stamped tool-call side-logs (pddl-parser
-   `inspect_problem`/`inspect_domain`, 24-bijection domain check, gold reconstruction) —
-   finalizes the mechanism branch; exploratory family otherwise.
+1. ~~**`formalization_match` (§4)**~~ DONE 2026-08-05 (section above) — mechanism
+   branch final: RESCUE branch confirmed.
 2. **Bare-NT 200-trial completion** (100 clean + 100 Mystery on the _3 pools, ≈$1.5) so
    published NT rows share the n=600 denominator (amendment K).
 3. Omer's two ANSWER slots above; then paper-prose planning (Act 4 secondary claim).
