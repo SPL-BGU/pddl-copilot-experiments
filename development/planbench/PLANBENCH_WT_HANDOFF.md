@@ -2,6 +2,9 @@
 
 > **STATUS: RUN COMPLETE AND GRADED. Pre-registered verdict = RESCUE, both confirmatory
 > tests significant (Mystery Δ+71.8pp p=3.6e-130; clean Δ+21.8pp p=2.7e-15).**
+> **FRESH SESSIONS START AT `PLANBENCH_WT_NEXT_STEPS_HANDOFF.md` (2026-08-05)** — the
+> ordered remaining actions, the Omer gates, and the machine-local inventory. This file
+> is now background/provenance.
 > **Results memo: `planbench_wt_results_20260803.md` — read it FIRST; it carries two
 > open ANSWER slots (criterion-(a) decomposition reading; Mystery-NT injection
 > robustness reading) plus the owed follow-ups (formalization_match §4 pass, bare-NT
