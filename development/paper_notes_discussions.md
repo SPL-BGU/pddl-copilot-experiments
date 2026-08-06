@@ -1262,3 +1262,18 @@ validated by an independent ranking subagent (the user asked for a second perspe
   (4) overall approved, no amendments. Prose gated on PR #93 merge; lit numbers
   gated on /verify-claims (H&Z, GPT-4 Mystery 4.3, La Malfa, LLMFP, Göbel,
   Planetarium).
+
+## 2026-08-06 — Act-4 literature numbers: /verify-claims pass COMPLETE (6/6 sources)
+
+- Per-paper verification agents, full table in
+  `development/planbench/planbench_wt_paper_integration_plan.md` §5. Verdicts:
+  H&Z CONFIRMED (70/100 vs 0/100 Mystery, cite v4/ACL only); Valmeekam GPT-4
+  Mystery Deceptive 26/600 = 4.3 CONFIRMED (one-shot, Table 2 A.3; clean 206/600
+  doubly verified vs on-disk corpus); LLMFP CONFIRMED (602/task, but metric =
+  optimal rate and GRADER UNDISCLOSED — say so in the amendment-M line);
+  Planetarium CONFIRMED verbatim (cite NAACL v2); La Malfa PARTLY (+12/+15 hold,
+  **pool "93" was WRONG** — real pools 3×50/task in v2; cite retitled v2); Göbel
+  PARTLY (+3.0pp/102 IPC holds, **mechanism restated** — no planner tool in their
+  roster, non-delegation was design not model choice).
+- Consequence for prose: all six may enter tex with the §5 wordings; the frozen
+  prereg's "La Malfa 93" is superseded by the table (prereg untouched).

@@ -54,8 +54,8 @@ descriptive CI-separation language only, no tests against it.
 2. **Table PB-A (NT re-measurement, carries the headline).** Rows: Haiku bare-NT
    clean 263/600 = 43.8 [39.9, 47.8]; Haiku bare-NT Mystery 4/600 = 0.7 [0.3, 1.7];
    GPT-4 clean 206/600 = 34.3 [30.6, 38.2] (published responses, published grader
-   epoch, n=600); GPT-4 Mystery 4.3 (published line, pending verification). No WT
-   cells.
+   epoch, n=600); GPT-4 Mystery (Deceptive) 26/600 = 4.3, one-shot NL, verified
+   against the paper (§5). No WT cells.
 3. **Table/Figure PB-B (the WT 2×2, the SECONDARY claim).** Within-Haiku paired
    deltas only, n=600/cell, one Rosetta-VAL epoch: clean WT 69.7 [65.9, 73.2] vs
    matched-NT 47.8 [43.9, 51.8], exact McNemar p = 2.7e-15; Mystery WT 71.8
@@ -115,13 +115,26 @@ descriptive CI-separation language only, no tests against it.
 - No edits to Results/Methodology sections of the existing suite; the PlanBench
   section is additive.
 
-## 5. Literature numbers gated on /verify-claims (none enter tex before passing)
+## 5. Literature numbers — /verify-claims PASS 2026-08-06 (six sources, per-paper agents)
 
-Huang & Zhang ACL 2025 rescue numbers (pool 100); GPT-4 Mystery 4.3 (Valmeekam,
-pool 600); La Malfa arXiv:2512.09629 (+12/+15, pool 93); LLMFP replication numbers
-(pool 602); Göbel +3.0pp; Planetarium 96.1/94.4/24.8. Internal numbers above are
-already verified against the graded corpora (this session, analyze_confirmatory +
-stripped_block_regrade) and need no external check.
+All six sources verified against the papers themselves; internal numbers were
+already verified against the graded corpora (analyze_confirmatory +
+stripped_block_regrade). Verdicts and the wording corrections that BIND prose:
+
+| claim (as previously noted) | verdict | verified value + citation anchor |
+|---|---|---|
+| H&Z rescue, pool 100 | **CONFIRMED** | gpt-4o Mystery: formalizer 70/100 correct vs planner 0/100 (Table 3); n=100/cell; solvability = dual-bfws-ffparser, correctness = VAL; "robust to lexical perturbation" verbatim in abstract. Cite v4 / ACL 2025.acl-long.242 ONLY (older arXiv versions = different 111-instance pool). |
+| GPT-4 Mystery 4.3 (Valmeekam 600) | **CONFIRMED** | 26/600 = 4.3%, Table 2 App A.3, row "Mystery Blocksworld (Deceptive)"; regime ONE-SHOT NL; grader FD+VAL. Clean 206/600 = 34.3 (Table 1) doubly verified — reproduced from the vendored corpus on disk (157/500 + 49/100). |
+| La Malfa +12/+15, pool 93 | **PARTLY** | +12 (Google Natural Plan avg) and +15 (PlanBench avg; v2 Table 1: GPT-5-mini 91.6 vs 76.6) CONFIRMED. **Pool 93 is WRONG** — no such count exists; pools are 30/benchmark (v1) or 3 runs × 50/task (v2); "93" was a success rate. Cite v2 (retitled "End-to-end PDDL Planning with Hardcoded and Dynamic Agents"). |
+| LLMFP replication, pool 602 | **CONFIRMED** | n=602 per task (Blocksworld AND Mystery separately). LLMFP Claude 3.5 Sonnet 93.0 clean / 98.0 Mystery; GPT-4o 96.2 / 77.7; direct baselines 0.5–0.8 Mystery. Metric = "optimal rate" (stricter than success); **grader undisclosed** — the amendment-M line must say so; formalizes to SMT (Z3), not PDDL. |
+| Göbel +3.0pp | **PARTLY** | +3.0pp (63.7→66.7), Claude Haiku 4.5, MCP, 102 IPC Blocksworld instances CONFIRMED (arXiv:2603.06064 Table II). **Mechanism correction:** their roster exposes ONLY a step-wise simulator — no planner tool exists, so non-delegation is the authors' design, not model behavior; paper attributes the modest gain to self-assessed feedback. Prose must not say the model "kept the search" by choice. |
+| Planetarium 96.1/94.4/24.8 | **CONFIRMED** | Verbatim abstract triplet: GPT-4o zero-shot, parseable / solvable / semantically correct, test n=15,943. Cite the NAACL 2025 (v2) revision; middle metric is "solvable". |
+
+Amendment-M pool/grader lines as they will print: ours 600 (Rosetta VAL);
+Valmeekam 600 (FD+VAL, one-shot); H&Z 100 (VAL); LLMFP 602 (grader undisclosed);
+La Malfa 3×50/task (v2); Göbel 102 IPC (their harness). The frozen prereg's
+amendment-I sentence "La Malfa 93" is superseded by this table (prereg stays
+untouched; deviation-table-style correction, recorded here).
 
 ## 6. Execution order after sign-off
 
