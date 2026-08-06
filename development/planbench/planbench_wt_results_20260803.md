@@ -225,6 +225,44 @@ rung that moves is actual tool attachment. The +71.8pp contrast is attributable 
 tool availability, not to prompt framing, scaffold shape, or the directive text —
 closing the pure-availability confound the arm was pre-registered to test.
 
+## Stripped-block regrade of the injected Mystery matched-NT trials — run 2026-08-06
+
+Audit 2 hardening (Owed next item 4), executed after Omer signed the robustness
+slot. New side script `.local/wt_run/stripped_block_regrade.py` (graded corpora
+untouched, no `response_evaluation.py` re-run): for each of the 600 Mystery
+matched-NT trials, re-extract using ONLY the text inside the model's
+`[PLAN]..[PLAN END]` block (no block / empty block = failure), convert with the
+grader's own `text_to_plan`, validate with the same Rosetta VAL epoch. The script's
+injection cross-check reproduces the audit definition exactly: 479/600, tying to
+deviation 5. Coverage: 600 delivered, 3 no-block, 36 empty-block, 1 block parsed
+to empty plan, 560 VAL invocations.
+
+**The expected ~0 did NOT hold — reported as measured:**
+
+| layer (n=600) | correct | % | Wilson 95% |
+|---|---|---|---|
+| matched-NT, full-text grading (graded corpus) | 0/600 | 0.0 | [0.0, 0.6] |
+| matched-NT, stripped-block regrade | 26/600 | **4.3** | [3.0, 6.3] |
+
+All 26 are 0→1 flips: the narration injection had DEPRESSED the cell — scraped
+extra actions invalidated 26 otherwise-valid block plans. So the audit-2 bias
+direction stated in deviation 5 ("inflates the WT−NT delta in our favor") is
+confirmed and now quantified: the honest matched-NT rate is 4.3%, not 0.0%, and it
+lands exactly at the "worst plausible true NT rate (~4%)" the signed slot already
+priced in. Re-running the paired PRIMARY contrast against the stripped layer:
+WT 431/600 vs stripped-NT 26/600, discordant b=412 / c=7, exact McNemar
+**p = 6.4e-112** — under the signed slot's p < 1e-100 threshold; paired Δ = +67.5pp
+(vs +71.8pp on the graded layer). The band verdict is a function of WT successes
+only, so RESCUE is untouched.
+
+Descriptive notes (amendment M language, no tests): the stripped matched-NT 4.3%
+coincides numerically with the published GPT-4 Mystery line (4.3%, published
+grader) and is CI-disjoint above bare-NT 0.7 [0.3, 1.7] — the scaffold plus
+block-only extraction recovers a small nonzero Mystery rate that bare prompting
+does not. For prose: per the signed slot, report the graded 0/600 with the
+injection caveat, and cite this measured 4.3% [3.0, 6.3] as the instrument-robust
+reading with the contrast surviving at p = 6.4e-112.
+
 ## Deviation table
 
 | # | deviation | consequence |
@@ -233,7 +271,7 @@ closing the pure-availability confound the arm was pre-registered to test.
 | 2 | One connectivity blip mid-run | absorbed by SDK timeout/retry; no trial lost |
 | 3 | loop_exhausted 10.5%/5.2% vs calibration 0/80 | frozen apparatus held (MAX_TOOL_LOOPS=10); counted as delivered failures per treatment-policy |
 | 4 | Clean criterion (a) raw fail, decomposed model-side (7/443 instrument) | ANSWER slot above |
-| 5 | Mystery NT narration-injection at scale (479/600) | robustness shown (0/121 uninjected); ANSWER slot above; optional stripped-block regrade available |
+| 5 | Mystery NT narration-injection at scale (479/600) | robustness shown (0/121 uninjected); ANSWER slot above; stripped-block regrade DONE 08-06: true rate 4.3%, contrast survives (section above) |
 | 6 | Mystery WT dialect losses 125/569 | conservative (against hypothesis); no correction applied |
 | 7 | Confirmatory cost $39.87 vs gate projection $34.08 | loop-exhaustion overhead; within revised $40–45 estimate |
 
@@ -241,8 +279,9 @@ closing the pure-availability confound the arm was pre-registered to test.
 
 1. ~~**`formalization_match` (§4)**~~ DONE 2026-08-05 (section above) — mechanism
    branch final: RESCUE branch confirmed.
-2. **Bare-NT 200-trial completion** (100 clean + 100 Mystery on the _3 pools, ≈$1.5) so
-   published NT rows share the n=600 denominator (amendment K).
+2. ~~**Bare-NT 200-trial completion**~~ DONE 2026-08-06 (section above) — published NT
+   rows share the n=600 denominator (amendment K).
 3. ~~Omer's two ANSWER slots above~~ BOTH FILLED 2026-08-06 (accept + accept) —
    paper-prose planning (Act 4 secondary claim) is now unblocked.
-4. Optional robustness: stripped-block regrade of the 479 injected Mystery NT trials.
+4. ~~Optional robustness: stripped-block regrade~~ DONE 2026-08-06 (section above) —
+   NOT ~0: true matched-NT rate 4.3% [3.0, 6.3]; contrast survives at p = 6.4e-112.
