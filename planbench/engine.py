@@ -115,6 +115,10 @@ def _parse_engine_name(engine: str) -> tuple[str, str]:
         # under the plain ``anthropic`` backend.
         "anthropic-tools",
         "anthropic-scaffold",
+        # §9-A sensitivity arm (amendment A third rung): the WT scaffold with
+        # its dangling tool directive but NO tools attached — pure availability
+        # control. Mystery t1 only.
+        "anthropic-directive",
     }:
         raise ValueError(
             f"unsupported backend {backend!r}; expected 'ollama', 'vllm', "
@@ -845,6 +849,42 @@ def _anthropic_scaffold_chat(query: str, model: str, max_tokens: int) -> str:
     return text.strip()
 
 
+def _anthropic_directive_chat(query: str, model: str, max_tokens: int) -> str:
+    """§9-A sensitivity arm: the WT scaffold, verbatim, with NO tools attached.
+
+    Pure-availability control (amendment A third rung, prereg §9-A): the system
+    prompt is byte-identical to the tools cell's — including the directive that
+    asserts "Your ONLY way ... is by calling the provided tools", which dangles
+    because no tools exist on this path. Per the pre-registered wire
+    substitution, the ``tools`` parameter is OMITTED rather than sent as an
+    empty list. One ``create()`` call, mirroring ``_anthropic_scaffold_chat``.
+    """
+    import anthropic
+
+    client = anthropic.Anthropic()
+    resp = client.messages.create(
+        model=model,
+        max_tokens=_effective_num_predict(max_tokens),
+        temperature=_TEMPERATURE,
+        system=_pb_scaffold(with_tools=True),
+        messages=[{"role": "user", "content": query}],
+    )
+    text = "".join(b.text for b in resp.content if b.type == "text")
+    u = resp.usage
+    _log_tool_calls(
+        query, text, text, False, [], resp.stop_reason, False,
+        usage={
+            "in": u.input_tokens,
+            "out": u.output_tokens,
+            "cache_write": u.cache_creation_input_tokens or 0,
+            "cache_read": u.cache_read_input_tokens or 0,
+            "turns": 1,
+        },
+        error=None,
+    )
+    return text.strip()
+
+
 def pddl_copilot_send_query(
     query: str,
     engine: str,
@@ -868,6 +908,8 @@ def pddl_copilot_send_query(
             return _anthropic_tools_chat(query, model_tag, max_tokens)
         if backend == "anthropic-scaffold":
             return _anthropic_scaffold_chat(query, model_tag, max_tokens)
+        if backend == "anthropic-directive":
+            return _anthropic_directive_chat(query, model_tag, max_tokens)
         if backend == "vllm-tools":
             return _vllm_tools_chat(query, model_tag, max_tokens)
         # vllm-base is byte-identical no-tools inference to vllm; it exists only
