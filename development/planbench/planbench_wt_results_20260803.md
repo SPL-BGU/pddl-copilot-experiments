@@ -197,6 +197,34 @@ confirms the collapse on the full published pool (0.7%), and adds a third anchor
 audit 2's robustness case: bare-NT 4/600 with zero injection exposure on the `_3`
 extension.
 
+## §9-A directive-only sensitivity arm — run + graded 2026-08-06
+
+Approved by Omer 2026-08-06; measured **$2.61** (side-log token sums at Haiku 4.5
+pricing; caching structurally absent as expected — prefix below the cacheable
+minimum). Engine `pddl_copilot__anthropic-directive__claude-haiku-4-5`
+(planbench/engine.py, commit 36e6292): byte-identical WT scaffold including the
+dangling "Your ONLY way … is by calling the provided tools" directive, tools
+parameter OMITTED (the pre-registered wire substitution). Mystery t1, full 600 pool —
+the §9-A bullet's n=250 predates the whole-pool ANSWER and amendment K, and no draw
+file was ever committed (the subsample machinery was struck as dead code), so
+whole-pool preserves denominator identity; recorded as the operationalization.
+600/600 non-empty deliveries; graded with the same Rosetta VAL epoch.
+
+**Amendment N's four-rung ladder (Mystery t1, n=600, one grader):**
+
+| rung | correct | % | Wilson 95% |
+|---|---|---|---|
+| native prompt (bare NT) | 4/600 | 0.7 | [0.3, 1.7] |
+| scaffold-only (matched NT) | 0/600 | 0.0 | [0.0, 0.6] |
+| directive-only (dangling directive, no tools) | 3/600 | **0.5** | [0.2, 1.5] |
+| scaffold + tools (WT) | 431/600 | **71.8** | [68.1, 75.3] |
+
+**The pre-registered outcome-neutral prediction holds: the directive alone moves
+nothing.** All three tool-less rungs sit in one overlapping 0–1.7% band; the only
+rung that moves is actual tool attachment. The +71.8pp contrast is attributable to
+tool availability, not to prompt framing, scaffold shape, or the directive text —
+closing the pure-availability confound the arm was pre-registered to test.
+
 ## Deviation table
 
 | # | deviation | consequence |

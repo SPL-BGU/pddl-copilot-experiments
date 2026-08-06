@@ -1234,6 +1234,9 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Bare-NT completed to n=600 (amendment K debt, ~$1.5):** clean 263/600 = 43.8
   [39.9, 47.8] stays CI-disjoint above published GPT-4 206/600 = 34.3 [30.6, 38.2]
   (needed ~50/100 on the extra pool, got 58); Mystery 4/600 = 0.7%.
-- **§9-A directive-only arm approved and launched** (~$4): full Mystery 600 pool
-  (the bullet's n=250 predates the whole-pool ANSWER; no committed draw exists, so
-  whole-pool for denominator identity). Completes the four-rung ladder.
+- **§9-A directive-only arm DONE ($2.61 measured):** Mystery t1 n=600, dangling
+  directive + no tools = 3/600 = 0.5% [0.2, 1.5] — the pre-registered outcome-neutral
+  prediction holds. Four-rung ladder final: native 0.7 / scaffold-only 0.0 /
+  directive-only 0.5 / scaffold+tools 71.8. The +71.8pp contrast is tool
+  availability, not prompt framing. (Run at full 600: the bullet's n=250 predates
+  the whole-pool ANSWER; no committed draw exists.)
