@@ -163,6 +163,29 @@ Planetarium's published GPT-4o decomposition (96.1 / 94.4 / 24.8) is the intende
 prose anchor for these rows and remains flagged for `/verify-claims` before any paper
 use, as does the different solvable conditioning noted above.
 
+## Bare-NT completion at n=600 (amendment K debt) — run + graded 2026-08-06
+
+Approved by Omer 2026-08-06; ~$1.5 (estimate; single-completion trials). 100 clean +
+100 Mystery on the `_3` pools, engine token `anthropic` (the graded 06-22 NT path:
+native PlanBench prompt, no scaffold), plain invocation (trap 5 honored — these
+configs had no prior bare-NT response files), graded with the same patched
+`response_evaluation.py` + Rosetta VAL epoch.
+
+| row (denominator 600) | correct | % | Wilson 95% |
+|---|---|---|---|
+| Haiku bare-NT clean (205/500 + 58/100) | 263/600 | **43.8** | [39.9, 47.8] |
+| Haiku bare-NT Mystery (4/500 + 0/100) | 4/600 | **0.7** | [0.3, 1.7] |
+| GPT-4 clean, published grader (157/500 + 49/100) | 206/600 | 34.3 | [30.6, 38.2] |
+
+**The NT-vs-GPT-4 line survives the denominator completion** (amendment L: reported
+whichever way it fell): Haiku's clean bare-NT lower bound 39.9 sits above GPT-4's
+upper bound 38.2 at the shared n=600 denominator — the extra pool needed ≥~50/100 and
+Haiku scored 58 (GPT-4: 49). GPT-4 remains a labelled published reference line per
+amendment M — descriptive CI separation, no paired test. Mystery bare-NT at n=600
+confirms the collapse on the full published pool (0.7%), and adds a third anchor to
+audit 2's robustness case: bare-NT 4/600 with zero injection exposure on the `_3`
+extension.
+
 ## Deviation table
 
 | # | deviation | consequence |
