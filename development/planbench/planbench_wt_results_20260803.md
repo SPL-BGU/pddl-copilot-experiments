@@ -53,6 +53,11 @@ Same reading Omer signed at the run-2 gate (75% cell), extended to the real cell
 > ANSWER (accept the decomposition reading of criterion (a) / treat as apparatus
 > restart):
 >
+> **Accept the decomposition reading** (Omer, 2026-08-06). The criterion names the
+> model's planning, not the apparatus: 7/443 instrument misses (parser 98.4% on
+> plan-bearing blocks) vs 157 model-side non-deliveries. Same reading signed at the
+> run-2 gate, extended to the real cell. No apparatus restart; numbers stand as
+> reported (treatment policy already counts all 164 as failures).
 
 **2. Mystery matched-NT narration-injection recurred at scale — the collapse survives
 it.** 479/600 NT trials had extra actions injected from narration (calibration run 2
@@ -65,6 +70,12 @@ plausible true NT rate (~4%) leaves the McNemar at p < 1e-100. The 0.0% cell val
 partly instrument-flavored; the collapse and the contrast are not.
 > ANSWER (accept the robustness reading / require the stripped-block regrade first):
 >
+> **Accept the robustness reading** (Omer, 2026-08-06). The collapse is real even if
+> the 0.0% cell value is partly instrument-flavored: 0/121 on the uninjected subset,
+> bare-NT 4/600 = 0.7% at the completed n=600 denominator (zero injection exposure on
+> the `_3` extension), published GPT-4 4.3%; the worst plausible substitution leaves
+> the McNemar at p < 1e-100. Report 0/600 with the injection caveat; the stripped-block
+> regrade (item 4) stays optional, not required for sign-off.
 
 **3. Extraction-injection audit on Mystery WT (pre-committed before any NO-RESCUE call;
 run although verdict is RESCUE):** injection 11/600 (1.8%); **125/569 delivered Mystery
@@ -204,5 +215,6 @@ extension.
    branch final: RESCUE branch confirmed.
 2. **Bare-NT 200-trial completion** (100 clean + 100 Mystery on the _3 pools, ≈$1.5) so
    published NT rows share the n=600 denominator (amendment K).
-3. Omer's two ANSWER slots above; then paper-prose planning (Act 4 secondary claim).
+3. ~~Omer's two ANSWER slots above~~ BOTH FILLED 2026-08-06 (accept + accept) —
+   paper-prose planning (Act 4 secondary claim) is now unblocked.
 4. Optional robustness: stripped-block regrade of the 479 injected Mystery NT trials.
