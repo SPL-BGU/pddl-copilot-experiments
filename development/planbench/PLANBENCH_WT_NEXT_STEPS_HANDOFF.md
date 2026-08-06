@@ -1,9 +1,19 @@
-# PlanBench-WT — post-results handoff (state as of 2026-08-05)
+# PlanBench-WT — post-results handoff (state as of 2026-08-06)
 
 > **Entry point for a fresh session: `/resume-verify` this file.**
 > The confirmatory experiment is DONE, GRADED, and ANALYZED. Verdict = **RESCUE,
 > SUPPORTED** (both McNemar tests significant; memo
 > `planbench_wt_results_20260803.md`). This doc is ONLY the ordered remaining work.
+>
+> **2026-08-06 CLOSE-OUT:** items 1, 2, 3, and 5 are DONE (see the memo's new
+> sections + commits f57998d/21cf811/3e9c09a/678f6d7): mechanism branch FINAL
+> (Mystery formalization_match 97.8 not below clean 96.3), both ANSWER slots
+> signed by Omer (accept + accept), bare-NT n=600 rows done (clean 43.8 stays
+> CI-disjoint above GPT-4 34.3), §9-A ladder final (directive-only 0.5% — the
+> directive alone moves nothing; $2.61). Arm cumulative ≈ $46.2 of $170.
+> Remaining: item 4 (optional stripped-block regrade, free), item 6 (paper
+> integration — Omer must prompt; prose unblocked), item 7 (branch hygiene — PR
+> when Omer says so).
 > Background, traps, and decided-do-not-reopen live in `PLANBENCH_WT_HANDOFF.md`
 > (read its 08-01/08-03 header passes) and the prereg (`planbench_wt_prereg.md`,
 > binding, tag `prereg-planbench-wt-v1` + restart record 1).
