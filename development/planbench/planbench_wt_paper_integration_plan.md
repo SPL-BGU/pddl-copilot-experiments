@@ -39,7 +39,7 @@ section lifts unchanged into the Act restructure later; waiting (Option B) leave
 the arm's freshest material out of the living draft with nothing gained.
 
 > ANSWER (placement: A = new section now / B = wait for Act restructure):
->
+>A
 
 ## 3. Section skeleton, tables, figures
 
@@ -68,7 +68,7 @@ descriptive CI-separation language only, no tests against it.
    novelty sentence). Appendix is the fallback if the section runs long.
 
 > ANSWER (ladder placement: body / appendix):
->
+>body
 
 5. **Mechanism paragraph (formalization_match, prereg §4).** clean 96.3
    [94.5, 97.6] / Mystery 97.8 [96.3, 98.7] — the RESCUE branch requirement met;
@@ -94,7 +94,7 @@ descriptive CI-separation language only, no tests against it.
    (treatment-policy).
 
 > ANSWER (confirm the two-layer NT presentation: graded 0.0 + stripped 4.3 as
-> robustness, per the signed audit-2 slot):
+> robustness, per the signed audit-2 slot): confirmed-approved
 >
 
 8. **Cost sentence.** Measured, not estimated: confirmatory 2×2 $39.87; directive
@@ -136,4 +136,5 @@ stripped_block_regrade) and need no external check.
 6. Append the dated decision entry to `development/paper_notes_discussions.md`.
 
 > ANSWER (approve plan overall / amendments):
->
+> **Approved overall** (Omer, 2026-08-06, via chat + inline fills above): placement
+> A, ladder in body, two-layer NT presentation confirmed. No amendments.

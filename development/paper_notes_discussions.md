@@ -1240,3 +1240,25 @@ validated by an independent ranking subagent (the user asked for a second perspe
   directive-only 0.5 / scaffold+tools 71.8. The +71.8pp contrast is tool
   availability, not prompt framing. (Run at full 600: the bullet's n=250 predates
   the whole-pool ANSWER; no committed draw exists.)
+
+## 2026-08-06 — WT arm finale: stripped regrade finding, PR #93, paper plan APPROVED
+
+- **Stripped-block regrade DONE ($0), reported as a finding:** block-only re-extraction
+  of the 600 Mystery matched-NT trials gives 26/600 = **4.3 [3.0, 6.3]**, not the
+  expected ~0 — narration injection had DEPRESSED the cell (26 valid block plans
+  invalidated by scraped extra actions), so the instrument bias ran against the
+  published 0.0, not in our favor. Paired contrast vs WT survives at p = 6.4e-112
+  (b=412, c=7), under the signed slot's 1e-100 threshold; RESCUE untouched. Injection
+  cross-check ties audit 2 exactly (479/600). Memo section appended to
+  `planbench_wt_results_20260803.md`; paper reports BOTH layers.
+- **PR #93 opened** (`planbench-wt-significance-brief` → main, 27 commits, code + docs,
+  data stays laptop-local); Omer merges after review.
+- **Paper integration plan APPROVED (Omer, all 4 slots):**
+  `development/planbench/planbench_wt_paper_integration_plan.md`. Decisions: (1)
+  placement = Option A, new self-contained section "External validity on PlanBench"
+  between Results and Discussion NOW (lifts into Act 4 on the journal restructure);
+  (2) amendment-N ladder table in the BODY; (3) two-layer NT presentation confirmed
+  (graded 0.0 + injection caveat, stripped 4.3 as the instrument-robust reading);
+  (4) overall approved, no amendments. Prose gated on PR #93 merge; lit numbers
+  gated on /verify-claims (H&Z, GPT-4 Mystery 4.3, La Malfa, LLMFP, Göbel,
+  Planetarium).
