@@ -1216,3 +1216,24 @@ validated by an independent ranking subagent (the user asked for a second perspe
   doubles the published GPT-4 clean bar (34.3, 2023 epoch); Mystery NT sits at 0.
 - Cost: confirmatory $39.87; whole arm $42.09. Memo:
   `development/planbench/planbench_wt_results_20260803.md`.
+
+## 2026-08-06 — WT arm closed out: mechanism final, ANSWER slots signed, NT denominator completed
+
+- **formalization_match (§4) computed; RESCUE mechanism branch FINAL.** Mystery 97.8
+  [96.3, 98.7] vs clean 96.3 [94.5, 97.6] — not CI-disjointly below, third requirement
+  met; the rescue is formalize-then-delegate. Perfect gate: 0/35 no-match trials graded
+  correct. Clean WT ceiling isolated to DOMAIN-authoring fidelity (P(solvable |
+  domain-equivalent) = 99.5% vs 1.6%): the clean NL under-states physics (e.g. never
+  says stacking clears the moved block) and Haiku transcribes what the text says;
+  Mystery NL is a mechanical rendering, so 99.5% of Mystery domains come out equivalent.
+- **Omer signed both ANSWER slots (accept + accept):** criterion (a) decomposes
+  model-side (no apparatus restart); Mystery-NT 0/600 collapse is real (0/121
+  uninjected + bare-NT 0.7% at n=600 + GPT-4 4.3%). Stripped-block regrade optional.
+  **Paper prose on the WT arm is now unblocked** (still §7 rules + /verify-claims for
+  every literature number).
+- **Bare-NT completed to n=600 (amendment K debt, ~$1.5):** clean 263/600 = 43.8
+  [39.9, 47.8] stays CI-disjoint above published GPT-4 206/600 = 34.3 [30.6, 38.2]
+  (needed ~50/100 on the extra pool, got 58); Mystery 4/600 = 0.7%.
+- **§9-A directive-only arm approved and launched** (~$4): full Mystery 600 pool
+  (the bullet's n=250 predates the whole-pool ANSWER; no committed draw exists, so
+  whole-pool for denominator identity). Completes the four-rung ladder.
