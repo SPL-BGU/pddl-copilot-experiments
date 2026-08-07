@@ -1,0 +1,74 @@
+[
+  {
+    "cfg": "mystery_blocksworld",
+    "iid": 5,
+    "orig_correct": 0,
+    "plan_lines": 2,
+    "readable_plan": "(attack object d)\n(overcome object d object c)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  },
+  {
+    "cfg": "mystery_blocksworld",
+    "iid": 61,
+    "orig_correct": 0,
+    "plan_lines": 4,
+    "readable_plan": "(attack object a)\n(overcome object a object d)\n(attack object c)\n(overcome object c object a)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  },
+  {
+    "cfg": "mystery_blocksworld",
+    "iid": 142,
+    "orig_correct": 0,
+    "plan_lines": 2,
+    "readable_plan": "(attack object a)\n(overcome object a object d)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  },
+  {
+    "cfg": "mystery_blocksworld",
+    "iid": 164,
+    "orig_correct": 0,
+    "plan_lines": 2,
+    "readable_plan": "(attack object c)\n(overcome object c object a)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  },
+  {
+    "cfg": "mystery_blocksworld",
+    "iid": 233,
+    "orig_correct": 0,
+    "plan_lines": 2,
+    "readable_plan": "(attack object c)\n(overcome object c object d)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  },
+  {
+    "cfg": "mystery_blocksworld",
+    "iid": 428,
+    "orig_correct": 0,
+    "plan_lines": 2,
+    "readable_plan": "(attack object d)\n(overcome object d object b)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  },
+  {
+    "cfg": "mystery_blocksworld_3",
+    "iid": 73,
+    "orig_correct": 0,
+    "plan_lines": 2,
+    "readable_plan": "(attack object b)\n(overcome object b object c)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  },
+  {
+    "cfg": "mystery_blocksworld_3",
+    "iid": 100,
+    "orig_correct": 0,
+    "plan_lines": 2,
+    "readable_plan": "(attack object b)\n(overcome object b object c)",
+    "val_verdict": "VALID",
+    "problem_in_domain_error": false
+  }
+]

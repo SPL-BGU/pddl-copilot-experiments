@@ -15,6 +15,11 @@ Anchored on stable strings (not line numbers):
    response can't crash the cell mid-loop; (C) ``load_json`` tolerates a MISSING
    response file (all-empty tools cell) instead of a bare ``assert`` that exits
    rc=1 and aborts the cell.
+6. ``response_generation.py`` — stamp ``PDDL_COPILOT_INSTANCE_ID`` into the
+   environment before every ``send_query`` so the PlanBench-WT tool-call
+   side-log is joinable (prereg §4). Applied last in ``main()`` — its anchors
+   are the strictest, so a drifted upstream aborts after, not before, the
+   grader patches.
 
 Each edit checks for both the original anchor (apply) and the patched form
 (skip). Exits 1 if neither is found — that means upstream moved and the
@@ -26,6 +31,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -123,7 +129,12 @@ def patch_response_generation(pb_root: Path) -> None:
     """
     f = pb_root / "plan-bench" / "response_generation.py"
     text = f.read_text()
-    if PATCH_MARKER in text:
+    # Guard on THIS patch's own edit, not the global PATCH_MARKER: patch 6
+    # (patch_instance_id_stamp) also injects PATCH_MARKER into this file, and
+    # the documented WT recipe applies patch 6 out-of-band — a global-marker
+    # guard would then skip this fix silently, resurrecting the
+    # self-destructing filter (497-instance overrun at API prices).
+    if "_specified_instances_set" in text:
         print(f"[patch] {f.relative_to(pb_root)}: already applied")
         return
 
@@ -282,6 +293,57 @@ def patch_response_evaluation(pb_root: Path) -> None:
     print(f"[patch] {f.relative_to(pb_root)}: t3 grader robustness ({', '.join(did)})")
 
 
+def patch_instance_id_stamp(pb_root: Path) -> None:
+    """Stamp the instance id into the environment before every send_query.
+
+    PlanBench's ``send_query`` signature carries only the query text, so the
+    tool-call side-log had no join key: ``query[:200]`` has ONE distinct value
+    across all 500 instances (every prompt opens with the identical domain
+    intro). Without a per-instance key the PlanBench-WT prereg's §4
+    formalization-boundary metric and its delegation-rate mediator are
+    unmeasurable — the prereg would name a stage it cannot test.
+
+    Fix: export ``PDDL_COPILOT_INSTANCE_ID`` immediately before the call, which
+    ``planbench/engine.py:_log_tool_calls`` reads into every side-log record.
+    Env var rather than a signature change so upstream's call site is untouched
+    and the other engines are unaffected.
+
+    Separate function with its own sentinel (not folded into
+    ``patch_response_generation``) because that one early-returns on the global
+    marker and is already applied on the graded build.
+    """
+    f = pb_root / "plan-bench" / "response_generation.py"
+    text = f.read_text()
+    sentinel = "PDDL_COPILOT_INSTANCE_ID"
+    if sentinel in text:
+        print(f"[patch] {f.relative_to(pb_root)}: instance-id stamp already applied")
+        return
+
+    anchor = (
+        "                query = instance[\"query\"]\n"
+        "                stop_statement = \"[STATEMENT]\"\n"
+    )
+    new = (
+        f"                # {PATCH_MARKER}: stamp the instance id so the tool-call\n"
+        "                # side-log is joinable (query[:200] is identical across all\n"
+        "                # instances — see planbench/apply_patches.py docstring).\n"
+        "                os.environ['PDDL_COPILOT_INSTANCE_ID'] = str(instance['instance_id'])\n"
+        "                query = instance[\"query\"]\n"
+        "                stop_statement = \"[STATEMENT]\"\n"
+    )
+    if anchor not in text:
+        sys.exit(f"[patch] {f.relative_to(pb_root)}: send_query query anchor not found")
+    text = text.replace(anchor, new)
+    # `import os` may sit on line 1, so anchor the check to a line start rather
+    # than a preceding newline.
+    if not re.search(r"^import os$", text, re.M):
+        sys.exit(
+            f"[patch] {f.relative_to(pb_root)}: expected `import os` at module level"
+        )
+    f.write_text(text)
+    print(f"[patch] {f.relative_to(pb_root)}: instance-id stamp for the WT side-log")
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("usage: apply_patches.py <LLMs-Planning checkout>")
@@ -292,6 +354,10 @@ def main() -> None:
     patch_llm_utils(pb_root)
     patch_response_generation(pb_root)
     patch_response_evaluation(pb_root)
+    # Last on purpose: patch 6 sys.exit()s on the strictest anchors (exact
+    # indentation + a bare `import os` line), so on a drifted upstream it
+    # aborts AFTER the grader-robustness patches have landed, not before.
+    patch_instance_id_stamp(pb_root)
 
 
 if __name__ == "__main__":

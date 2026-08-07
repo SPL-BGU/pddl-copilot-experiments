@@ -163,6 +163,25 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ---
 
+### ISS-025 · `planbench/apply_patches.py main()` cannot run end-to-end on the current external tree
+**Source.** PR #93 review, 2026-08-06; first documented in `development/planbench/PLANBENCH_WT_HANDOFF.md` ("main() cannot be run end-to-end on this tree") but filed nowhere trackable.
+**Evidence.** `external/LLMs-Planning/plan-bench/utils/__init__.py` and `utils/llm_utils.py` were hand-edited without the patch marker (e.g. `openai.api_key = os.environ.get("OPENAI_API_KEY", "")` replaced the anchor `patch_init` greps for), so `patch_init` `sys.exit`s at the first patch and nothing after it is reachable from the documented entry point. Patch 6 (the WT instance-id stamp) had to be applied by calling `patch_instance_id_stamp` directly — a recipe now baked into three handoff docs.
+**Impact.** A fresh session following `python planbench/apply_patches.py external/LLMs-Planning` on this tree gets an abort that looks like upstream drift; on a genuinely fresh clone main() works, so the failure is machine-state-dependent and confusing. The out-of-band patch-6 recipe also used to poison patch 4's global-marker skip-guard (fixed in the PR #93 review pass: patch 4 now guards on its own edit sentinel, and patch 6 runs last).
+**Fix.** Teach `patch_init`/`patch_llm_utils` to recognize the hand-patched forms as "already applied" (per-edit sentinels, like `patch_response_evaluation`), or re-apply the marker comments to the external tree so the anchors match again.
+**Files.** `planbench/apply_patches.py` (patch_init, patch_llm_utils); `external/LLMs-Planning/plan-bench/utils/` (hand-edited state).
+
+---
+
+### ~~ISS-026~~ · PlanBench-WT analysis layer is uncommitted (`.local/wt_run/`): paper-bound numbers unreproducible from the repo — RESOLVED 2026-08-07 (commit f7baca9)
+**Source.** PR #93 review, 2026-08-06.
+**Evidence.** Every mechanism/§4 number in `development/planbench/planbench_wt_results_20260803.md` (formalization_match 97.8/96.3, delegation 100%, the 518→500 dedup, the stripped-block regrade 26/600 = 4.3% and its p = 6.4e-112 contrast) is computed by scripts that exist only under gitignored `.local/wt_run/` — `formalization_match.py`, `analyze_confirmatory.py` (known ×100 printf bug flagged "fix before reuse" in `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`), `stripped_block_regrade.py`, `verify_gold_reconstruction.py`, and the run scripts that carry arm identity in their filenames. The side-log corpora they read are also only there. The graded WT corpora live only in gitignored `external/`.
+**Impact.** A clone at this commit can reproduce none of the WT mechanism numbers; if the one laptop's `.local/` is lost, the mechanism branch of the paper is unreconstructible even though engine.py faithfully stamps every join key. The stripped-regrade 26/600 also numerically coincides with the published GPT-4 Mystery line (26/600), which the results doc flags descriptively — an independent spot-check of a few flip IDs (VAL on the stripped text) plus committing the script would settle provenance. **Update 2026-08-06: the spot-check half is DONE** — independent provenance audit found no anchor ingestion (unconditional sweep over config-declared ranges, 600 emergent) and 8/8 sampled flip IDs re-validated VALID via direct VAL calls; coincidence ruled genuine (full record in the results doc §stripped-block regrade). Remaining scope is only the script/manifest promotion below.
+**Fix.** Promote the analysis scripts (after fixing the ×100 printf bug) into `planbench/` or `development/planbench/scripts/` — Omer's call where, per the `.local`-is-user-private convention — and either commit the side-log JSONLs or a checksummed manifest of them.
+**Files.** `.local/wt_run/*` (uncommitted); `planbench/` (destination).
+**Resolution (2026-08-07, Omer approved, commit f7baca9).** Scripts promoted to `planbench/analysis/` (×100 bug fixed; side-log paths now `WT_SIDELOG_DIR`-relative, defaulting to the committed archive). Full data archive committed at `results/planbench/wt-anthropic-20260801/` (15 graded cells, all side-logs, formalization rows, 2026-08-06 verification evidence, sha256 MANIFEST, provenance README with grader-epoch + VAL hashes and the upstream fork commit). `planbench/analysis/verify_promotion.py` re-derives every published number data-only from the archive — all checks pass at the commit. The 500-pool bare-NT t1 corpora were already tracked under `results/haiku-frontier/planbench/`.
+
+---
+
 ## Planned batches (approved 2026-04-20)
 
 Landing order differs from raw impact ranking — front-load zero-risk wins, then unlock the P1 blocker. Raw impact ranking retained at the bottom.

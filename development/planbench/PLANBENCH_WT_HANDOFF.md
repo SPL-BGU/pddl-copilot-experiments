@@ -1,14 +1,118 @@
-# PlanBench with-tools arm — handoff (2026-07-28)
+# PlanBench with-tools arm — handoff (state as of 2026-08-03)
 
-> **ONE GATE IS OPEN AND IT IS NOT YOURS TO CLOSE.** §10 RATIFY in
-> `development/planbench/planbench_wt_prereg.md` is unsigned. **Nothing is built,
-> nothing is spent, no API call has been made.** Do not build, do not spend, and do not
-> reopen a slot that §3 below records as decided. If Omer signs, start at §6.
+> **STATUS: RUN COMPLETE AND GRADED. Pre-registered verdict = RESCUE, both confirmatory
+> tests significant (Mystery Δ+71.8pp p=3.6e-130; clean Δ+21.8pp p=2.7e-15).**
+> **FRESH SESSIONS START AT `PLANBENCH_WT_NEXT_STEPS_HANDOFF.md` (2026-08-05)** — the
+> ordered remaining actions, the Omer gates, and the machine-local inventory. This file
+> is now background/provenance.
+> **Results memo: `planbench_wt_results_20260803.md` — read it FIRST; it carries two
+> open ANSWER slots (criterion-(a) decomposition reading; Mystery-NT injection
+> robustness reading) plus the owed follow-ups (formalization_match §4 pass, bare-NT
+> 200-trial completion, optional stripped-block regrade).**
+> **Arm spend total $42.09** ($1.09 + $1.13 calibrations + $39.87 confirmatory).
+> Graded corpora: `external/LLMs-Planning/plan-bench/results/{blocksworld,blocksworld_3,
+> mystery_blocksworld,mystery_blocksworld_3}/pddl_copilot__anthropic-{tools,scaffold}__
+> claude-haiku-4-5/` + side-logs and analyzers in `.local/wt_run/` (machine-local).
+> The header below this line describes the pre-run state and remains for provenance.
+
+> **STATUS (superseded 08-03): ratified, built, calibrated once, and HELD at the calibration gate.**
+> **$1.09 spent to date. The confirmatory run has not been launched.**
 >
-> **Branch:** `planbench-wt-prereg-decisions`, 5 commits ahead of `main`, doc-only,
-> unmerged, no PR (project convention for handoff/doc artifacts). One of those commits
-> (`31b84ab`, the nt-ster H4 prereg) belongs to a **parallel session** and is unrelated
-> to this arm — leave it alone.
+> **Read in this order:** this header → `planbench_wt_calibration_20260730.md` (the gate
+> result and the two defects blocking the run) → `planbench_wt_prereg.md` §10-R (signature,
+> slot answers, amendments K/L/M/N).
+>
+> **Gate verdict, 2026-07-30: FIX APPARATUS AND RESTART.** Cost and throughput passed. The
+> outcome-neutral extraction check failed on 2 of 4 cells, and prereg §3 classifies that as
+> an apparatus-fix-and-restart event, not a scope decision. Details and the two mechanisms
+> are in the calibration memo; they are **not** re-derived here.
+>
+> **Superseded numbers — do not use the older figures further down this document:**
+> - **n = 600 per cell, not 500** (amendment K). The 500 pool was the 4- and 5-block portion
+>   of the published set; `blocksworld_3` holds the 100 3-block instances; the union is
+>   PlanBench's 600, confirmed by 157/500 + 49/100 = 206/600 = the published 34.3%. Band
+>   cutpoints at n=600: NO-RESCUE x ≤ 19, PARTIAL 41..275, RESCUE x ≥ 325. The bare-NT layer
+>   owes 200 completion trials.
+> - **Budget is $170** (Omer, 07-30), not the ~$70.6 bookkeeping figure.
+> - **Run cost is $32.78 measured**, not the $55.02 the prereg projected. Derived from
+>   measured per-trial cost at 600/cell; see the calibration memo for the per-cell figures.
+> - **Amendment N:** only the task-format clause is shared across arms. The NL→PDDL step
+>   moved into the tools policy.
+>
+> **UPDATE 2026-08-01 (restart work done, see prereg §10-R "Restart record 1"):**
+> - **Format clause v2 is drafted** in `planbench/engine.py` fixing both calibration
+>   defects (word-for-word example phrasing + answer must start with `[PLAN]`);
+>   machine checks re-pass (shared suffix byte-identical, no tool reference, 176-char
+>   arm-A delta preserved). Awaiting Omer's re-freeze at the restart record's ANSWER slot.
+> - **VAL is RESOLVED** — the 07-30 blocker was a wrong path (a Linux ELF). The Mach-O
+>   x86_64 build at `external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate`
+>   runs under Rosetta, is the same build that graded the NT layer, and passed positive +
+>   negative controls. `VAL=<repo>/external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables`.
+> - **Concurrency: DECIDED sequential** (Omer, 2026-08-01) — apparatus unchanged from
+>   what the calibration measured; the confirmatory run is ~12 h overnight.
+> - **2026-08-01 second pass:** the v2 clause got one pre-freeze disambiguation
+>   ("phrased exactly as the example phrases its actions", not "copying ... word for
+>   word" — the copy phrasing risked copy-the-example-PLAN, which the outcome-blind gate
+>   cannot detect). Final text is quoted verbatim in the restart record; machine checks
+>   re-pass. Recommendations are recorded in the prereg for both open slots: freeze the
+>   quoted text, and accept amendment M as worded (journal-fitness reasoning inline).
+>
+> **2026-08-01 (third pass): ALL SLOTS CLOSED.** Format clause v2 FROZEN (Omer);
+> amendment M ACCEPTED as worded (Omer) — §7's first bullet is amended, GPT-4 may appear
+> as a labelled published reference line, still never as a comparator arm. Concurrency
+> decided sequential.
+>
+> **2026-08-01 (fourth pass): CALIBRATION RUN 2 DONE — $1.13, cumulative $2.22.** Memo:
+> `planbench_wt_calibration_run2_20260801.md`. Both restart defects FIXED (Mystery tools
+> extraction 15→90%; Mystery matched-NT injection 65→0%). Cost/throughput pass; projection
+> at 600/cell = **$34.08 measured**, wall-clock **≈7.3 h** sequential (supersedes the 12 h
+> figure). Ordinary/tools reads 75% extraction, but all 5 misses are the run-1 memo's
+> NOT-a-defect class (honest empty plans on solvable instances; extraction of delivered
+> plans 15/15) — no apparatus fix exists that wouldn't bias the task. Run-1 artifacts
+> archived under `.local/calib/archive-20260801-103650/`; analyzer at
+> `.local/calib/analyze_calib.py` (validated by reproducing run 1's published numbers).
+>
+> **2026-08-01 (fifth pass): APPROVED AND LAUNCHED, THEN PAUSED BY OMER.** Scope-and-spend
+> approved ("launch", 08-01); confirmatory run started 08:08 UTC and was cleanly paused at
+> Omer's request at ~09:05 UTC, mid cell 1/8 — **111 trials attempted, $3.84 spent, 93
+> answers saved, JSON verified intact**. Resume instructions + state:
+> `.local/wt_run/PAUSED.md` (relaunch the same script; it skips saved trials and
+> re-attempts the 18 empty loop-exhausted ones — record that in the deviation table).
+> **Mid-run finding: loop_exhausted 18/111 (16%) on the real pool vs 0/80 in calibration**
+> — real 4/5-block instances are harder than the calibration draw; decision (Omer aware)
+> = continue under the frozen apparatus, bias direction is against the tools arm; revised
+> projection ≈$40-45 and ≈9-10 h. After the run: grade with Rosetta VAL, results memo per
+> prereg §6.
+>
+> Do not reopen a slot that §3 below records as decided.
+>
+> **Git:** branch `planbench-wt-significance-brief`, 9 commits ahead of `main`, unmerged, no
+> PR (project convention for doc/handoff artifacts). Tag `prereg-planbench-wt-v1` marks
+> ratification. Do not touch `31b84ab` (nt-ster H4 prereg) — parallel session.
+>
+> **Machine-local artifacts NOT in git** (`external/` and `.local/` are both gitignored, so a
+> fresh clone will not have these):
+> - `.local/calib/` — the four side-log JSONLs, `smoke_wt.jsonl`, `run_calib.sh`,
+>   `calib_run.log`, and `calib_manifest.json` (the discarded calibration draw: example
+>   source id 134, 20 target source ids).
+> - `external/LLMs-Planning/plan-bench/configs/{blocksworld,mystery_blocksworld}_calib.yaml`
+> - `external/LLMs-Planning/plan-bench/instances/blocksworld/{,mystery/}calib_basic/` (21
+>   files each: `instance-1` is the one-shot example, `instance-2..21` the targets)
+> - `external/LLMs-Planning/plan-bench/{responses,results}/{blocksworld,mystery_blocksworld}_calib/`
+> - `.venv-planbench-wt/` — rebuild with `planbench/requirements-wt.txt`
+>
+> **Environment the calibration ran under** (all four are required; the run script
+> `.local/calib/run_calib.sh` sets them):
+> `PDDL_MARKETPLACE_PATH=/Users/omereliyahu/personal/pddl-copilot`,
+> `PDDL_PLANBENCH_PLUGINS="pddl-solver pddl-validator"`, `PDDL_COPILOT_TASK=t1`,
+> `FAST_DOWNWARD=/Users/omereliyahu/personal/pddl-copilot/plugins/pddl-solver/.venv/lib/python3.14/site-packages/up_fast_downward/downward`,
+> plus `PDDL_COPILOT_TOOLLOG` per cell and `ANTHROPIC_API_KEY`.
+>
+> **`apply_patches.py main()` cannot be run end-to-end on this tree:** `patch_init`'s anchor
+> no longer matches (`utils/__init__.py` imports `openai` unguarded; we satisfied that by
+> installing `openai` in the venv instead) and it `sys.exit`s before later patches run. Patch
+> 6 (the instance-id stamp) was applied by calling `patch_instance_id_stamp` directly. It is
+> applied and idempotent on this tree.
 >
 > **Suggested entry point:** `/resume-verify development/planbench/PLANBENCH_WT_HANDOFF.md`
 
@@ -155,6 +259,39 @@ Everything else in the literature block of the decisions memo is **unverified** 
    outside the "identical apparatus" clause; the gate records the runner's verdict.
 
 ## 6. Owed work, in order — ONLY after RATIFY
+
+> **BUILD STATUS 2026-08-01.** Items 1-3 done and exercised end-to-end by the calibration
+> run. Item 4 (scaffold) is written and was run, but the calibration found two defects in it,
+> so it is **not** frozen. Item 5 (calibration) has been run once — $1.09, 80 trials, verdict
+> RESTART. Items 6-8 not started.
+>
+> Superseded detail from 07-30 follows; the item 1-3 descriptions are still accurate.
+>
+> **BUILD STATUS 2026-07-30 (ratified; items 1-3 DONE, nothing spent).**
+> - **Item 1 adapter — DONE.** `planbench/engine.py`: `anthropic-tools` (SDK Tool
+>   Runner over `MCPPlanner`, same `runner_tools` shape and `"Tool error: {exc}"`
+>   string as `tools/frontier_runner.py`) and `anthropic-scaffold` (matched no-tools
+>   control). Instance-id stamping via `apply_patches.py` **patch 6** +
+>   `query_sha256` fallback, so the §4 formalization metric is now measurable.
+>   Trap 1 is structurally unreachable on the WT path: rendering-from-tools is
+>   bypassed in code, not by env var, because the prereg endpoint is *delivered*.
+>   Per-instance token usage is logged so the calibration gate can compute its
+>   headline p90-output-tokens observable.
+> - **Item 2 engine names + allowlist — DONE.** Both tokens added to
+>   `_parse_engine_name`; no `_chat` substring; `build_table` rows registered plus
+>   the `blocksworld_3` / `mystery_blocksworld*` configs amendment K needs.
+> - **Item 3 environment — DONE.** `.venv-planbench-wt` (gitignored) from
+>   `planbench/requirements-wt.txt`. **Pins are apparatus identity:**
+>   `anthropic==0.109.2` (the version that produced the graded frontier WT corpora)
+>   and `mcp==1.26.0` (a bare install resolves 2.0.0 — a major bump under the
+>   shared tool-execution component). Full PlanBench generation + evaluation import
+>   chain verified green.
+> - **Item 4 scaffold — DRAFTED, awaiting Omer's freeze.** `_pb_scaffold()` in
+>   `engine.py`. Amendment-A compliant and machine-checked: shared block
+>   byte-identical across arms, no tool name in it, policy sentences mirrored
+>   (698 vs 696 chars). Extraction-safe per trap 3.
+> - **Next: item 5 calibration (≈$1.50) — needs the scaffold frozen first.**
+
 
 1. **Adapter** over `tools/frontier_runner.py` driving PlanBench t1 (~1 agent-day). It
    must stamp the **instance id into every logged tool call** — without that the §4

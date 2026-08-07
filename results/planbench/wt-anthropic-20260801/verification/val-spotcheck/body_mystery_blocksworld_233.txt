@@ -1,0 +1,3 @@
+
+attack object c
+overcome object c from object d
