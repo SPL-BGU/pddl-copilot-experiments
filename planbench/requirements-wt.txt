@@ -1,8 +1,10 @@
 # PlanBench-WT arm venv (prereg §6 item 3; ratified 2026-07-30).
 #
-# Build:
-#   python3 -m venv .venv-planbench-wt
+# Build (the arm RAN on CPython 3.14 — bare `python3` on the build machine;
+# note this differs from setup.sh's python3.12 preference for the v1 venv):
+#   python3.14 -m venv .venv-planbench-wt
 #   .venv-planbench-wt/bin/pip install -r planbench/requirements-wt.txt
+# NOT wired into planbench/setup.sh — this file is the arm's only build recipe.
 #
 # WHY A DEDICATED VENV. No existing environment can run with-tools generation:
 # the PlanBench venv lacks `mcp`, and the repo `.venv` lacks tarski / pddl /
@@ -25,12 +27,27 @@
 # at module level). Nothing on the with-tools path loads a model, so the
 # "PyTorch was not found" warning at import is expected and harmless — do NOT
 # install torch to silence it.
+#
+# The remaining pins record what the 08-01..03 confirmatory + 08-06 completion
+# runs RESOLVED (review fix 2026-08-06: they floated before, contradicting the
+# banner above — a rebuild next month would have produced a different stack).
+# NOTE these differ from the v1 grading venv (py3.12, tarski==0.7.0,
+# pddl==0.2.0, anthropic 0.111.0) that graded the 06-22 bare-NT 500-half;
+# tarski 0.7.0-vs-0.9.1 was probed on the real instances and parses
+# identically (action sets equal), and the verdict itself is a VAL
+# subprocess — but the two halves of every 600-pool union DID run on
+# different interpreter stacks. See planbench_wt_results_20260803.md.
+# 2026-08-06 invariance check: the full 200-instance completion half
+# (clean 58/100, Mystery 0/100) was re-graded under a rebuilt v1 stack
+# (py3.12.12 + tarski 0.7.0 + the setup.sh pin set) — 200/200 per-instance
+# verdicts identical, zero parse failures. The two-stack split is
+# provenance only; it moves no number.
 anthropic==0.109.2
 mcp==1.26.0
-tarski
-pddl
-transformers
-numpy
-openai
-pyyaml
-tqdm
+tarski==0.9.1
+pddl==0.4.8
+transformers==5.14.1
+numpy==2.5.1
+openai==2.50.0
+pyyaml==6.0.3
+tqdm==4.70.0

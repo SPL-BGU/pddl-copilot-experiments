@@ -15,6 +15,11 @@ Anchored on stable strings (not line numbers):
    response can't crash the cell mid-loop; (C) ``load_json`` tolerates a MISSING
    response file (all-empty tools cell) instead of a bare ``assert`` that exits
    rc=1 and aborts the cell.
+6. ``response_generation.py`` — stamp ``PDDL_COPILOT_INSTANCE_ID`` into the
+   environment before every ``send_query`` so the PlanBench-WT tool-call
+   side-log is joinable (prereg §4). Applied last in ``main()`` — its anchors
+   are the strictest, so a drifted upstream aborts after, not before, the
+   grader patches.
 
 Each edit checks for both the original anchor (apply) and the patched form
 (skip). Exits 1 if neither is found — that means upstream moved and the
@@ -124,7 +129,12 @@ def patch_response_generation(pb_root: Path) -> None:
     """
     f = pb_root / "plan-bench" / "response_generation.py"
     text = f.read_text()
-    if PATCH_MARKER in text:
+    # Guard on THIS patch's own edit, not the global PATCH_MARKER: patch 6
+    # (patch_instance_id_stamp) also injects PATCH_MARKER into this file, and
+    # the documented WT recipe applies patch 6 out-of-band — a global-marker
+    # guard would then skip this fix silently, resurrecting the
+    # self-destructing filter (497-instance overrun at API prices).
+    if "_specified_instances_set" in text:
         print(f"[patch] {f.relative_to(pb_root)}: already applied")
         return
 
@@ -343,8 +353,11 @@ def main() -> None:
     patch_init(pb_root)
     patch_llm_utils(pb_root)
     patch_response_generation(pb_root)
-    patch_instance_id_stamp(pb_root)
     patch_response_evaluation(pb_root)
+    # Last on purpose: patch 6 sys.exit()s on the strictest anchors (exact
+    # indentation + a bare `import os` line), so on a drifted upstream it
+    # aborts AFTER the grader-robustness patches have landed, not before.
+    patch_instance_id_stamp(pb_root)
 
 
 if __name__ == "__main__":

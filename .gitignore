@@ -36,4 +36,7 @@ checkpoints/**/*.jsonl
 checkpoints/**/*.out
 checkpoints/**/*.png
 checkpoints/**/*.md
-checkpoints/**/*.pptx.venv-planbench-wt/
+checkpoints/**/*.pptx
+
+# PlanBench-WT arm venv (built from planbench/requirements-wt.txt).
+.venv-planbench-wt/
