@@ -1277,3 +1277,46 @@ validated by an independent ranking subagent (the user asked for a second perspe
   roster, non-delegation was design not model choice).
 - Consequence for prose: all six may enter tex with the §5 wordings; the frozen
   prereg's "La Malfa 93" is superseded by the table (prereg untouched).
+
+## 2026-08-06 — PR #93 code review: two paper-relevant corrections logged, no rerun required
+
+- **Deviation 1 corrected in `planbench_wt_results_20260803.md` (review finding, verified on the raw side-logs):** the 18 pause/resume re-attempts on clean-WT were NOT deterministic — 11/18 changed outcome at temp 0 (multi-turn tool loop), 8 graded correct on the second draw, and last-attempt grading makes those 18 instances best-of-2. **First-draw sensitivity: clean WT 418/600 = 69.7 → 410/600 = 68.3; paired Δ vs matched-NT +21.8 → +20.5pp (label fixed 2026-08-06 — this is the within-Haiku paired delta, not a GPT-4 contrast). No verdict changes** (CI vs GPT-4 still disjoint; Mystery/RESCUE untouched — the other three cells have exactly one record per instance). Bottom line for prose: wherever Act 4 cites clean WT 69.7 / Δ+21.8 (integration plan §tables line ~60, both handoffs), quote it with the first-draw sensitivity footnote, or quote 68.3 conservatively — Omer's call which; both are computed and logged in deviation 1.
+- **Deviation 8 added (undeclared wire asymmetry, now declared):** the three prereg arms never sent the upstream `[STATEMENT]` stop sequence; the bare-NT arm did. Primary WT-vs-matched-NT contrast is symmetric (neither sends it); only ladder reads against bare-NT carry the extra wire diff, and it is measured-inert in the frozen corpora (0 post-`[PLAN END]` text in scaffold/directive). No prose change needed unless Act 4 compares bare-vs-scaffold as a controlled pair — then cite deviation 8.
+- **Rerun verdict: NO paid rerun is required by any review fix or finding.** No fix touches a frozen prompt byte (new freeze test `tests/test_planbench_prompts.py` pins them), any grading code, or any wire-visible request parameter; all engine changes affect only failure paths that never fired in the frozen corpora, or what future side-logs record. Optional $0 local verifications only: (a) first-draw sensitivity (already computed, above); (b) VAL spot-check of a few of the 26 stripped-regrade flip IDs to settle the numeric coincidence with the published GPT-4 26/600 (ISS-026); (c) optional re-grade of the 58/100 bare-NT completion half under the v1 venv to demonstrate two-stack grader invariance (tarski already probed parse-equivalent).
+- Review artifacts: corrected deviation row + new row 8 (results doc), CHANGELOG 2026-08-06 entry, ISS-025/ISS-026, freeze test, and the engine/build_table/apply_patches hardening — all uncommitted on `planbench-wt-significance-brief` for Omer's review.
+
+## 2026-08-06 — Act-4 number decision: clean WT quoted FIRST-DRAW (conservative); $0 checks delegated
+
+- **Omer resolved the deviation-1 fork: conservative.** "The 1 pt does not worth the ambiguity" — Act 4 quotes clean WT **410/600 = 68.3, paired Δ vs matched-NT +20.5pp** (first-draw: every instance single-shot, the 18 resume re-draws excluded). The last-attempt reading (69.7 / +21.8pp / p = 2.7e-15) lives only in the deviation-1 footnote, never as the quoted number. Mystery cells unchanged (one record per instance). Integration plan PB-B rewritten accordingly.
+- Open numeric slots for PB-B: first-draw Wilson CI, exact McNemar b/c/p, and the clean-vs-Mystery paired delta under first-draw — recompute queued from the raw side-logs ($0 local, delegated). Until they land, PB-B cites counts only. *(Landed — see the 2026-08-07 entry below.)*
+- **Optional $0 checks (b) and (c) approved and delegated** (to cheaper-tier Sonnet agents, per Omer): (b) VAL spot-check of the 26 stripped-regrade flip IDs + provenance audit of `stripped_block_regrade.py` against the GPT-4 26/600 anchor coincidence (ISS-026); (c) re-grade of the bare-NT completion half under the old py3.12/tarski-0.7.0 stack to demonstrate two-stack grader invariance.
+
+## 2026-08-07 — $0 verification batch: all three checks GREEN, PB-B numeric slots filled
+
+- **First-draw statistics (now the quoted Act-4 numbers, PB-B updated):** clean WT
+  410/600 = **68.3 [64.5, 71.9]**; paired vs matched-NT Δ **+20.5pp**, exact McNemar
+  b=202 / c=79, **p = 1.38e-13**; clean-vs-Mystery WT paired Δ = 3.5pp Mystery-above
+  (b=119 / c=140, p = 0.214), within the ±7.5pp prereg margin (last-attempt 2.17pp,
+  same direction). Independent script over the raw side-log; both anchors (410
+  first-draw / 418 last-attempt) reproduced and the b/c shifts decompose exactly
+  (of the 8 flips: 4 drop from b, 4 add to c; all 8 Mystery-correct). Mechanism
+  fact: all 18 re-queried first draws were loop-exhausted empty answers, so
+  "first-draw" is precisely "re-draws counted as failures" — no grading ambiguity.
+- **Stripped-regrade coincidence ruled GENUINE (ISS-026 spot-check half done):**
+  provenance audit found no anchor ingestion in `stripped_block_regrade.py`
+  (unconditional sweep, 600 emergent from config ranges); 8/8 sampled flip IDs
+  independently re-extracted and VAL-validated VALID. The 26/600-vs-GPT-4-26/600
+  match is coincidence. Recorded in the results doc §stripped-block regrade.
+- **Two-stack grader invariance DEMONSTRATED:** completion half (200 instances)
+  re-graded under a rebuilt v1 stack (py3.12.12 + tarski 0.7.0 + setup.sh pins) —
+  **200/200 per-instance verdicts identical** (clean 58/100, Mystery 0/100), zero
+  parse failures. The two-stack split is provenance only; recorded in
+  `planbench/requirements-wt.txt`.
+- Net effect: every number PB-B quotes is now computed, verified, and logged.
+  **ISS-026 CLOSED same day (Omer: "ok"):** analysis layer promoted to
+  `planbench/analysis/` (×100 printf bug fixed) + full data archive committed at
+  `results/planbench/wt-anthropic-20260801/` (graded cells, side-logs incl. the
+  18 re-draw records, formalization rows, verification evidence, sha256
+  MANIFEST); `verify_promotion.py` re-derives every published number data-only —
+  all pass. Commit f7baca9 on `planbench-wt-significance-brief`; the review-fix
+  edits remain uncommitted alongside for Omer's review.

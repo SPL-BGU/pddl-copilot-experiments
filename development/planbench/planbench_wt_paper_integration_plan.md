@@ -57,10 +57,21 @@ descriptive CI-separation language only, no tests against it.
    epoch, n=600); GPT-4 Mystery (Deceptive) 26/600 = 4.3, one-shot NL, verified
    against the paper (§5). No WT cells.
 3. **Table/Figure PB-B (the WT 2×2, the SECONDARY claim).** Within-Haiku paired
-   deltas only, n=600/cell, one Rosetta-VAL epoch: clean WT 69.7 [65.9, 73.2] vs
-   matched-NT 47.8 [43.9, 51.8], exact McNemar p = 2.7e-15; Mystery WT 71.8
-   [68.1, 75.3] vs matched-NT 0.0 [0.0, 0.6], p = 3.6e-130. Clean-vs-Mystery WT
-   paired delta ≈ 2.2pp, inside the pre-registered ±7.5pp margin. No GPT-4 column.
+   deltas only, n=600/cell, one Rosetta-VAL epoch. Clean WT is quoted FIRST-DRAW
+   (decision 2026-08-06, Omer: the ~1pp is not worth the best-of-2 ambiguity from
+   the 18 resume re-draws — results doc deviation 1; all 18 first draws are
+   loop-exhausted empty answers, so first-draw = re-draws counted as failures):
+   clean WT **410/600 = 68.3 [64.5, 71.9]** vs matched-NT 47.8 [43.9, 51.8],
+   paired Δ **+20.5pp**, exact McNemar b=202 / c=79, **p = 1.4e-13** (recomputed
+   2026-08-06 from the raw side-log by an independent script; both anchors
+   410/418 reproduced, b/c shifts decompose exactly). The last-attempt reading
+   69.7 [65.9, 73.2] / +21.8pp / p = 2.7e-15 lives only in the deviation
+   footnote, never as the quoted number. Mystery WT 71.8 [68.1, 75.3] vs
+   matched-NT 0.0 [0.0, 0.6], p = 3.6e-130 — one record per instance, no
+   re-draws, unchanged. Clean-vs-Mystery WT paired Δ under first-draw = 3.5pp
+   (Mystery above clean; b=119 / c=140, p = 0.214; last-attempt ≈2.2pp same
+   direction) — inside the pre-registered ±7.5pp margin either way. No GPT-4
+   column.
 4. **Table PB-C (amendment N ladder, Mystery t1, n=600/rung):** native 0.7 /
    scaffold-only 0.0 / directive-only 0.5 / scaffold+tools 71.8 — the directive
    alone moves nothing; the contrast is tool availability. Proposed home: main

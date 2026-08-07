@@ -263,17 +263,32 @@ does not. For prose: per the signed slot, report the graded 0/600 with the
 injection caveat, and cite this measured 4.3% [3.0, 6.3] as the instrument-robust
 reading with the contrast surviving at p = 6.4e-112.
 
+**Coincidence with the GPT-4 26/600 settled as genuine (2026-08-06, independent
+spot-check per ISS-026):** a from-scratch audit of `stripped_block_regrade.py`
+(full read) found no hardcoded 26/4.3/GPT-4/Valmeekam anchor, no target-seeking
+filter, and no count-keyed exit — the loop sweeps every id in the config-declared
+ranges (500 + 100 = 600, emergent not asserted), and the script's internal 479/600
+injection count independently reproduces the deviation-5 audit number. 8 of the 26
+flip IDs (spread across both configs) were re-extracted by an independent script
+and validated by direct VAL subprocess calls against the real instance files:
+8/8 VALID. Mechanism reproduced concretely (e.g. clean #61: full-text scraping of
+the prose walkthrough yields a garbled 12-step plan graded 0; the `[PLAN]` block
+alone is a valid 4-step plan). The 26/600-vs-26/600 match is coincidence, not
+artifact. Spot-check artifacts under the session scratchpad (`val-spotcheck/`);
+committing the regrade script itself remains open in ISS-026.
+
 ## Deviation table
 
 | # | deviation | consequence |
 |---|---|---|
-| 1 | Run paused by Omer 08-01 (~09:05 UTC) and resumed; 18 loop-exhausted trials re-attempted on resume (temp 0) | ≤$0.60; deterministic re-attempts; final data uses last attempt per instance |
+| 1 | Run paused by Omer 08-01 (~09:05 UTC) and resumed; 18 loop-exhausted trials re-attempted on resume (temp 0) | ≤$0.60; final data uses last attempt per instance. **Corrected 2026-08-06 (PR #93 review):** the re-attempts were NOT deterministic — 11/18 changed outcome and 8 graded correct on the second draw (temp 0 does not pin the multi-turn tool loop), so those 18 instances are effectively best-of-2 while every other instance is single-shot. Mechanism: an empty answer leaves `llm_raw_response` unset and upstream's resume guard re-queries exactly the failed instances (engine.py resume note). First-draw-only sensitivity: clean WT 418/600 = 69.7 → 410/600 = 68.3, paired Δ vs matched-NT +21.8 → +20.5pp (label corrected 2026-08-06: 21.8 is the within-Haiku paired delta, not a GPT-4 contrast); no verdict changes. **Decision 2026-08-06 (Omer): Act 4 quotes the first-draw numbers (68.3 / +20.5pp) as primary — "the 1 pt is not worth the ambiguity"; the last-attempt reading stays in this row only.** First-draw statistics recomputed 2026-08-06 from the raw side-log by an independent script (both anchors 410/418 reproduced; all 18 first draws are loop-exhausted empty answers, i.e. deterministic failures — first-draw = re-draws counted as failures): Wilson 95% **[64.5, 71.9]**; paired vs matched-NT clean b=202 / c=79, exact McNemar **p = 1.38e-13** (b/c shift vs last-attempt decomposes exactly: of the 8 flips, 4 drop from b, 4 add to c); clean-vs-Mystery WT paired Δ = 3.5pp Mystery-above (b=119 / c=140, p = 0.214), within the ±7.5pp margin (last-attempt 2.17pp, same direction). The other three cells (bw_3, mystery, mystery_3) have exactly one record per instance — no re-attempts. |
 | 2 | One connectivity blip mid-run | absorbed by SDK timeout/retry; no trial lost |
 | 3 | loop_exhausted 10.5%/5.2% vs calibration 0/80 | frozen apparatus held (MAX_TOOL_LOOPS=10); counted as delivered failures per treatment-policy |
 | 4 | Clean criterion (a) raw fail, decomposed model-side (7/443 instrument) | ANSWER slot above |
 | 5 | Mystery NT narration-injection at scale (479/600) | robustness shown (0/121 uninjected); ANSWER slot above; stripped-block regrade DONE 08-06: true rate 4.3%, contrast survives (section above) |
 | 6 | Mystery WT dialect losses 125/569 | conservative (against hypothesis); no correction applied |
 | 7 | Confirmatory cost $39.87 vs gate projection $34.08 | loop-exhaustion overhead; within revised $40–45 estimate |
+| 8 | **Added 2026-08-06 (PR #93 review):** the three prereg arms do not send the upstream few-shot stop sequence (`[STATEMENT]`), while the bare-NT `anthropic` arm does — an undeclared wire-level asymmetry (no prereg/handoff mention) | Primary WT-vs-matched-NT contrast is symmetric (neither arm sends it). Ladder rungs that compare against bare-NT carry this extra wire diff. Empirically masked in the frozen corpora: post-`[PLAN END]` text was 0 in all scaffold/directive responses (v2 format clause held), so nothing was left for the missing stop to truncate; bare-NT responses carry post-`[PLAN END]` narration (73/500 bw, 290/500 mystery, 42/100 bw_3) that its stop sequence did not remove. The upstream extractor reads to end-of-text (only `[COST]` breaks), so any format-clause change re-exposes the asymmetry |
 
 ## Owed next
 
