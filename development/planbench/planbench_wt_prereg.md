@@ -1,7 +1,14 @@
 # Pre-registration — PlanBench frontier with-tools arm (Haiku 4.5)
 
-**Status:** ALL SLOTS ANSWERED — **the §10 RATIFY signature is the only thing outstanding,
-and nothing is built or spent before it.** Design as decided: **shape B**, four cells
+**Status: RATIFIED 2026-07-30 (Omer) — see §10-R for the signature, the slot answers and
+amendments K/L/M.** Binding design: **shape B at the published 600-instance pool** (amendment
+K supersedes every "500/cell" and "whole pool = 500" statement below, and the n=600 band
+cutpoints in §10-R supersede the n=500 row in §3(i)). Balance $170, projected ≈$62. Build may
+begin; spend is still gated behind the ≈$1.50 calibration and Omer's scope approval.
+**Amendment M ACCEPTED 2026-08-01** (GPT-4 as a labelled published reference line; §7
+amended). **Format clause v2 FROZEN 2026-08-01** (restart record 1). No slot open except
+the post-calibration scope-and-spend approval. Original
+shape-B text follows unchanged for the record: four cells
 ({ordinary, Mystery} × {tools, matched-NT} on blocksworld t1) at the **whole 500-instance
 pool**, no subsampling, model-authored PDDL, no runner-side spend cap, t2 and t3 both out,
 prediction (iii) struck. Reasoning, provenance and rejected alternatives:
@@ -443,9 +450,13 @@ efficiency claim uses turns and output tokens only).
 
 ## 7. Presentation rules (prereg rules, not prose intentions)
 
-- WT cells never share a table or figure with GPT-4 rows. **Table A** = NT vs
-  committed GPT-4 (existing caveats). **Figure B** = within-Haiku paired
-  matched-NT→WT deltas, no GPT-4 column.
+- [amended 08-01 per amendment M, accepted:] GPT-4 appears only as a **labelled
+  published reference line at a stated epoch and denominator**, never as a comparator
+  arm; no significance test is run against it; the controlled contrast remains WT vs
+  matched-NT within Haiku. **Table A** = NT vs committed GPT-4 (existing caveats).
+  **Figure B** = within-Haiku paired matched-NT→WT deltas; a GPT-4 reference line is
+  permitted under the rule above. [original rule, superseded: WT cells never share a
+  table or figure with GPT-4 rows.]
 - t7 appears only in Act 5's grading critique.
 - Headline assignment of §1 is a presentation rule: WT numbers are introduced as
   secondary, within-apparatus.
@@ -614,4 +625,215 @@ and to the 2026-08-15 kill date after which this converts to pre-registered futu
 
 > RATIFY (design + predictions + rules above are binding as annotated):
 > lets simplify and dig deeper here i either dont realy get the full picture or it just seems insignificant
+
+---
+
+## 10-R. RATIFIED 2026-07-30 (Omer)
+
+The 07-26 comment above was answered by
+`development/planbench/planbench_wt_significance_brief.md` and the source verification in
+`planbench_verification_20260730.md`. Omer's slot answers, 2026-07-30:
+
+| slot | answer |
+|---|---|
+| 1 — go/no-go | **A: ratify as designed** |
+| 2 — balance | **$170 in the account** (supersedes the ~$70.6 bookkeeping figure; kill criterion (a) is no longer budget-binding at any pre-registered shape) |
+| 3 — free local work | done: citations verified at source, t3 mix audit resolved |
+| 4 — denominator | **match apples to apples** → read as option **B: the whole published 600 everywhere**, since his GPT-4 framing (below) requires WT and NT on one pool |
+
+### Amendment K — the pool is the published 600, not 500 (BINDING)
+
+The 500-instance pool we had been calling "the whole pool" is **the hard two-thirds of the
+published Blocksworld set**: `blocksworld/generated_basic` holds only 4-block (446) and
+5-block (55) instances, while `blocksworld_3/generated_basic_3` holds **every 3-block
+instance** (100). The two are content-disjoint and their union is exactly the paper's 600
+("3-5 blocks"), reconciled on GPT-4's own numbers: 157/500 + 49/100 = **206/600 = 34.3%**,
+the published figure.
+
+**S is therefore redefined:** ordinary = `generated_basic` ids 2..501 ∪ `generated_basic_3`
+ids 2..101 = **600**; Mystery = the corresponding rename pools
+(`mystery/generated_basic` ∪ `mystery/generated_basic_3`), pairing verified — structural
+rename 100/100 on the extra pool, in addition to the 501/501 already verified on the 500.
+All four cells run at **n=600**. The `instance-0.pddl` stray in the Mystery basic pool is
+still excluded; never enumerate by directory glob (§5 trap 3 of the handoff).
+
+**Band cutpoints recomputed at n=600** and superseding the n=500 row of §3(i):
+
+| verdict | rule | counts at n=600 |
+|---|---|---|
+| NO-RESCUE | Wilson upper < 5% | x ≤ 19 (≤ 3.17%) |
+| PARTIAL | CI entirely within [5,50) | x ∈ [41,275] |
+| RESCUE | Wilson lower ≥ 50% | x ≥ 325 (≥ 54.17%) |
+| INCONCLUSIVE | CI spans 5% or 50% | 70/601 outcomes |
+
+Confirmatory power at n=600 strictly exceeds the pre-registered n=500 values (mystery ≥0.95
+against any WT rate ≥5%, clean ≥0.99 against any WT rate ≥60%), so no power slot reopens.
+The ±7.5pp equivalence margin is certifiable at n=600 wherever it was at n=500.
+
+**Budget at the 600 pool** (measured per-trial anchors): bw WT $20.88 + mystery WT $24.72 +
+bw matched-NT $4.44 + mystery matched-NT $4.98 = **$55.02** for the 2×2; plus the §9-A
+sensitivity arm ≈$4, calibration ≈$1.5, and the 200-trial bare-NT completion ≈$1.5 →
+**≈$62** against a $170 balance, **$108 headroom**. The shrink order in §2 is unchanged but
+is now expected to stay unused.
+
+**Also owed at the 600 pool:** the bare-NT layer gains 200 trials (100 ordinary + 100
+Mystery) so the published NT rows and the WT rows share one denominator. The clean-t1
+apparatus criterion (extraction ≥90%, correct-given-extracted ≥90%) is re-measured at 600;
+its 07-23 values (94.4%, 43.4%) were measured on the 500 and are now reference only.
+
+### Amendment L — pool frozen BEFORE the extra 100 are run (anti-outcome-shopping)
+
+The denominator materially affects the NT-vs-GPT-4 read: at n=500 Haiku's 41.0% is
+CI-disjoint above GPT-4's 31.4%, while at n=600 GPT-4 is 34.3% and Haiku needs **≥ ~50 of
+the extra 100** to stay disjoint (GPT-4 got 49). **Haiku's results on the extra 100 do not
+exist at ratification time**, and this amendment records that the pool was fixed on the
+apples-to-apples argument alone, before any such number could be seen. Choosing between the
+500 and 600 denominators after seeing them is prohibited, in either direction, and the
+realized value is reported whichever way it falls.
+
+### Amendment M — GPT-4 as a published reference line, not a comparator arm (ACCEPTED 2026-08-01)
+
+Omer, 2026-07-30: *"without tools we dont care if it beats gpt4. actually its better if he
+loses, then outperform him with tools."* That narrative — unaided Haiku below the GPT-4 bar,
+tool-equipped Haiku above it — **collides with §7 as ratified**, which says WT cells never
+share a table or figure with GPT-4 rows.
+
+The rule exists for a real reason: GPT-4's rows are 2023 numbers, one-shot NL, on a different
+grader epoch. "Haiku-with-tools beats GPT-4-without-tools" conflates tool access with three
+years of model progress and a grading-epoch change, so it is not a tools claim at all.
+
+**Proposed resolution, which preserves the story and the rigour.** Amend §7 to: *GPT-4
+appears only as a labelled published reference line at a stated epoch and denominator, never
+as a comparator arm; no significance test is run against it; the controlled contrast remains
+WT vs matched-NT within Haiku.* That licenses the bar-crossing narrative descriptively while
+keeping every inferential claim inside the matched apparatus.
+
+Note this also defuses the §6 headline exposure found on 07-30: under Omer's framing, whether
+unaided Haiku clears the GPT-4 bar stops being load-bearing.
+
+**Recommendation (2026-08-01, judged by fit for a computer-science journal, per Omer's
+ask): accept the §7 amendment as worded.** Reasoning, all journal-specific:
+(a) PlanBench's published identity *is* its GPT-4 numbers — a with-tools section that
+never shows the published bar invites the reviewer question "how does this relate to the
+published results?" and forces readers to cross-reference the 2023 paper themselves;
+(b) a labelled published reference line at a stated epoch and denominator, with no
+significance test against it, is the standard journal device for baselines measured on a
+different apparatus — disclosure over omission;
+(c) the inferential surface is unchanged: the only tested contrast stays WT vs matched-NT
+within Haiku, so nothing a methods reviewer audits gets weaker;
+(d) the conflation risk the flat prohibition guards against (tool access vs three years
+of model progress plus a grader-epoch change) is carried by the label itself, and this
+prereg section documents the reasoning we can cite verbatim if a reviewer raises it.
+The flat prohibition defends against a criticism journals rarely make, at the price of
+one they often do.
+
+> ANSWER (accept the §7 amendment as worded / keep §7 as-is / other):
+> accept it as worded (Omer, 2026-08-01). §7 first bullet amended accordingly.
+
+### Amendment N — only the format clause is shared (BINDING, 2026-07-30)
+
+**Supersedes the D-J3 "shared" definition**, which named both the NL→PDDL
+formalization step and the task-format clause. The formalization step moves into the
+**tools policy**; the format clause is the only shared text.
+
+**Reason — bias direction, not aesthetics.** Formalizing has a purpose only when there
+is a planner to receive the PDDL. A *shared* "translate into PDDL" instruction therefore
+hands the matched-NT arm something it structurally cannot satisfy: it is told to produce
+PDDL and, two sentences later, that its entire answer must be the plan with nothing
+before it — and one sentence of preamble is **measured** to make the upstream extractor
+inject a duplicated action that VAL then rejects. Any compliance loss that causes would
+depress arm B for a reason unrelated to tool access and **inflate the WT−NT delta in our
+own hypothesis's favour**, which is exactly the failure mode §9-A was adopted to prevent.
+Origin: Omer, 07-30 — "the no tools is practically planbenches native prompt. we added
+tools so arm A must be different."
+
+**The format clause stays shared** because it is the instrument rather than the method:
+both arms must answer in a shape the extractor can read or neither number is meaningful.
+
+**Declared consequence.** Arm A's system prompt is ~176 characters longer, and that
+difference *is* the treatment (already framed as a package contrast: tool list +
+directive). Arm B is deliberately **not** padded to match length.
+
+**Native-prompt comparison is unaffected and already in the design:** the bare-NT
+scaffold delta (§3, exploratory, uses the free graded 06-22 layer) and the
+pure-availability sensitivity arm (§9-A, mystery t1). Together with the two confirmatory
+cells these give four rungs — native, scaffold-only, directive-only, scaffold+tools.
+
+**Rejected alternatives:** rewording "translate" to "work out internally" (treats a
+classification error as a phrasing problem); dropping arm B and comparing against the
+native graded layer (saves ≈$9, but the contrast then confounds tool access with prompt
+shape — the same confounded comparison the existing literature already makes, and it
+discards the arm's only unrun contribution).
+
+Frozen text and its machine checks live in `planbench/engine.py` (`_pb_scaffold`).
+
+### Freeze record (amendment I)
+
+Ratified at the commit that adds this section; tag `prereg-planbench-wt-v1`. Build may begin
+on §6 of `PLANBENCH_WT_HANDOFF.md`. Spend is still gated: the ≈$1.50 calibration runs first,
+and Omer's ≈10-minute scope-and-spend approval follows it, before the ≈$55 confirmatory run.
+
+### Restart record 1 — gate verdict 2026-07-30, apparatus fixed 2026-08-01
+
+The first calibration ($1.09, 80 trials, `planbench_wt_calibration_20260730.md`) passed
+cost and throughput but failed extraction on 2 of 4 cells; §8 makes that
+fix-apparatus-and-restart. The v1 format clause is therefore **unfrozen**. Changes made:
+
+**Format clause v2** (`planbench/engine.py`, `_PB_SHARED_T1_FORMAT`) fixes both measured
+defects and nothing else. Defect 1 (Mystery tools arm collapsed to PDDL shorthand,
+`attack g` for `attack object e`): v2 requires each action phrased exactly as the
+in-context example phrases its actions, keeping every word the example's action lines use
+— naming 'object' and 'from' as examples — and banning abbreviation. Defect 2 (Mystery
+matched-NT arm narrated before `[PLAN]` and the extractor injected actions from the
+narration): v2 pins the very first characters of the answer to `[PLAN]`. The clause
+remains the only shared block, byte-identical across arms, tool-name-free, and
+machine-checked (2026-08-01: shared suffix identical, no tool reference, arm-A delta still
+the declared 176 chars). v1's other sentences (one action per line, `[PLAN END]` terminal,
+no markdown, no PDDL) are unchanged.
+
+The exact text the signature binds to:
+
+> Your entire answer must be the plan and nothing else. The very first characters of
+> your answer must be [PLAN] — no introduction, explanation, or summary before it. Give
+> one action per line, phrased exactly as the in-context example phrases its actions:
+> keep every word the example's action lines use (including words such as 'object' and
+> 'from'), and never abbreviate or shorten an action line. End with [PLAN END] and write
+> nothing after it. Do not use markdown emphasis. Do not put PDDL in the answer.
+
+**Recommendation on Omer's re-freeze-or-edit question (2026-08-01): freeze the text
+above.** One pre-freeze disambiguation was applied first: the draft's "copying the action
+wording of the in-context example word for word" could be read as copy-the-example's-PLAN
+(content) rather than copy-its-phrasing (style). That misreading is precisely the defect
+class the calibration gate cannot catch — a copied plan extracts cleanly, extraction
+passes ≥90%, and accuracy is outside the gate's decision function — so it had to be
+removed by wording, not by measurement. No other edit is recommended.
+
+> ANSWER (re-freeze the text above as worded / edit further):
+> freeze — "good, lets freeze if its already edited" (Omer, 2026-08-01). The quoted
+> text is FROZEN; any further change voids the affected cells and restarts them (§2).
+
+**VAL is resolved, not rebuilt.** The 07-30 blocker was a wrong-path artifact: the tested
+binary (`~/personal/LLMs-Planning/planner_tools/VAL/validate`) is a Linux x86-64 ELF that
+no Mac can run. The build the graded NT layer already used —
+`external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate`, Mach-O x86_64
+under Rosetta (`planbench_frontier_haiku_nt.md:29,141`) — runs on this machine and was
+re-verified 2026-08-01 with a negative control (precondition failure correctly rejected)
+and a positive control (10-step hand-checked plan on `generated_basic/instance-3`
+validates). Grading uses `VAL=<repo>/external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables`,
+the same grader epoch as the NT layer. No critical-path item remains here.
+
+**Concurrency for the ~12 h sequential run.** Recommendation: **stay sequential.** The
+calibration measured the sequential apparatus (100% cache-read hits depend on trial N
+priming trial N+1; PlanBench's per-instance result JSON is written by one process; the
+torn-lines history argues against adding parallel writers), an overnight run costs
+nothing, and serialization-over-throughput is the standing pipeline preference. Any
+concurrency would have to land *before* the calibration re-run so the re-run exercises
+the final apparatus.
+
+> ANSWER (sequential as recommended / add concurrency, target N workers):
+> sequential (Omer, 2026-08-01 — DECIDED, apparatus unchanged from calibration)
+
+**Sequencing after these two answers + amendment M:** calibration re-run (~$1.10, same
+discarded 20+20 draw) → extraction ≥90% on all four cells → Omer's scope-and-spend
+approval on the measured $32.78 → the 600/cell confirmatory run → grade with Rosetta VAL.
 

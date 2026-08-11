@@ -1008,3 +1008,315 @@ validated by an independent ranking subagent (the user asked for a second perspe
   tested on an instrument we did not build, which pre-empts the "you designed the
   benchmark your method wins on" objection for ≈$46.
 - RATIFY still unsigned; no build or spend until it is.
+
+## 2026-07-28 — PlanBench WT: RATIFY re-opened as a significance question, not a signature
+
+- **State check (verified, not read off the handoff):** prereg work is merged to main
+  (`53553a7`), nothing built (no `anthropic-tools`/`anthropic-scaffold` token in any code
+  path), nothing spent, and the NT anchors reproduce exactly off
+  `results/haiku-frontier/planbench/` (ordinary t1 205/500, Mystery t1 4/500).
+- **The gate was mis-summarised.** §10 RATIFY is unsigned because Omer left an objection in
+  it — "lets simplify and dig deeper here i either dont realy get the full picture or it
+  just seems insignificant" — originally written at the scope slot. The shape-B commit
+  answered "simplify" (t1 2×2, prediction (iii) struck) and relocated the text to RATIFY.
+  The "insignificant" half was never answered.
+- **Answered in** `development/planbench/planbench_wt_significance_brief.md`: one-page
+  plain-language walkthrough, per-outcome value table, cost/off-ramp ladder, and three
+  answer slots (go/no-go with A/B/C/D, balance to load, free unblocked NT work).
+- **Significance verdict recorded, unhedged:** the direction of the effect is not worth
+  paying for (published ≥4×, and Göbel et al. already ran this same model with PDDL tools
+  over MCP for +3.0pp). Three things are: the matched single ablation ($8 of the $46), the
+  delegation-rate + formalization-match split that separates cannot-plan from
+  cannot-translate from did-not-call-the-tool, and the fact that this is the ONLY tools
+  measurement in the paper taken on an instrument we did not build. Recommendation =
+  ratify shape B; declining and publishing the design as pre-registered future work is
+  stated as a legitimate outcome rather than a failure.
+
+## 2026-07-30 — PlanBench citation verification + t3 audit (no spend, no build)
+
+- **All seven citations verified at source** (arXiv IDs fetched, two read as local PDFs):
+  Göbel 2603.06064, Huang & Zhang 2412.09879, La Malfa 2512.09629, LLMFP 2410.12112,
+  CoPE 2510.05486, Valmeekam 2305.15771. No hallucinated references. Full record:
+  `development/planbench/planbench_verification_20260730.md`.
+- **The "already published >=4x" premise is TRUE for the direction** (Huang & Zhang n=100,
+  CoPE n=100, LLMFP n=602, La Malfa n=30), so amendment J's "replication plus an ablation
+  the field has not run" wording stays honest.
+- **But no published work rescues Mystery by TOOL AVAILABILITY.** In LLMFP's own Table 2 the
+  give-it-a-solver baselines score 0.0-0.3 on Mystery; only the full 4-component framework
+  with repair loops reaches 77.7 (GPT-4o) / 98.0 (Claude 3.5 Sonnet). The one general-tool
+  result on our exact model (Göbel, Haiku 4.5 + PDDL tools over MCP) is +3.0pp, and it
+  finished ~19pp BELOW Fast Downward alone (66.7 vs 85.3 on 102 IPC instances). The WT arm
+  measures the configuration our paper actually ships, and no cited paper predicts it.
+- **HEADLINE DISCLOSURE OWED (new).** Act 4's "Haiku 41.0 beats GPT-4 31.4 CI-disjoint" is
+  correct on the shared 500, but the *published* figure for that cell is 206/600 = 34.3%
+  [30.6,38.2], from which 41.0 is NOT disjoint. Reconciles exactly on disk: 157/500
+  (`blocksworld`) + 49/100 (`blocksworld_3`) = 206/600, same run partitioned, extra 100
+  easier. Any disjointness sentence must name the shared-500 denominator.
+- **Strengthener verdicts:** LLMFP-as-replication **DOWNGRADED** (their 41.5 is optimal-rate
+  zero-shot, ours is VAL-validity one-shot; validity-equivalent is >=41.5 and unknown — cite
+  as "consistent with", never "replicates"). Valmeekam Mystery comparator **HOLDS** at 26/600
+  = 4.33% [2.97,6.27], disjoint above Haiku's 0.80% — but label it unpaired/cross-pool (no
+  GPT-4 Mystery t1 corpus exists on disk). The 17/600 figure a web search returns is Table 2
+  (PDDL prompts), the wrong condition.
+- **t3 mix audit DONE, and the 07-25 memo overstated it.** Opposite response biases confirmed
+  (Haiku mystery accuracy-given-VALID 25.9%; GPT-4 accuracy-given-INVALID 64.3%). The Mystery
+  gap is not identified without a stated reference mix: 28.2pp unadjusted, 9.5pp at GPT-4's
+  mix, 25.7pp at 50/50, 38.3pp at ours. Direction robust under all mixes; magnitude is not.
+  Do not quote 9.5pp alone. NT doc finding 2 updated from PENDING AUDIT to resolved.
+- **Effect on the WT go/no-go:** recommendation unchanged (option A, ratify shape B) and the
+  case is stronger than before, because the published rescues all come from bespoke
+  pipelines rather than tool access.
+
+## 2026-07-30 — the PlanBench denominator gap (Omer's question) + a free paired test
+
+- **Omer asked why we don't use the published denominator/instance set.** Verified answer: our
+  `blocksworld` pool is **4-block (446) + 5-block (55)**; the never-run `blocksworld_3` pool is
+  **every 3-block instance** (100). Content-disjoint, and together exactly the paper's 600
+  ("3-5 blocks"). We ran the HARD two-thirds and skipped every easy instance — which is why
+  GPT-4 scores 31.4% on ours and 49.0% on the skipped 100 (pooled = 206/600 = 34.3%).
+- **Completing to 600 costs ≈$1.50** (200 NT trials) and fixes three things: the denominator
+  footnote, the cross-pool Mystery comparator (`mystery_blocksworld_3` exists, structural
+  rename verified 100/100), and it enables an exact PAIRED test on 600 since GPT-4 per-instance
+  answers exist for both pools.
+- **It also risks the headline, which is the honest reason to run it:** Haiku needs >=~50/100 of
+  the 3-block instances for CI-disjointness at n=600 (GPT-4 got 49); below ~41 the beat
+  disappears.
+- **FREE WIN, already computed — use a paired test on the shared 500 instead of two independent
+  Wilson CIs.** Exact McNemar: both correct 81, Haiku-only 124, GPT-4-only 76, neither 219;
+  paired delta **+9.6pp, exact two-sided p = 0.00085**. Strictly stronger than the current
+  CI-overlap argument and costs nothing.
+- **New Slot 4 in the significance brief:** (A) NT to 600, WT stays 500 [recommended, ≈$1.50];
+  (B) everything to 600 [≈$10.50, one denominator across Act 4]; (C) leave at 500 with the
+  disclosure sentence [$0].
+
+## 2026-07-30 — PlanBench WT arm RATIFIED (all four slots answered)
+
+- **DECIDED (Omer): ratify shape B as designed.** Balance is **$170**, not the ~$70.6
+  bookkeeping figure, so kill criterion (a) is no longer budget-binding at any pre-registered
+  shape. Signature + amendments recorded in `planbench_wt_prereg.md` §10-R.
+- **DECIDED (Omer): match apples to apples → amendment K, the pool is the published 600.**
+  Our 500 was the hard two-thirds (4-block 446 + 5-block 55); `blocksworld_3` is every 3-block
+  instance (100); union = the paper's 600, confirmed by 157/500 + 49/100 = 206/600 = 34.3%.
+  All four cells at n=600. Bands recomputed: NO-RESCUE x<=19, PARTIAL 41..275, RESCUE x>=325,
+  INCONCLUSIVE 70/601. Cost $55.02 for the 2x2, ~$62 all-in. Bare-NT layer owes 200 completion
+  trials so NT and WT share one denominator.
+- **Amendment L (anti-outcome-shopping):** the pool was frozen BEFORE Haiku's numbers on the
+  extra 100 exist. At n=500 Haiku 41.0 is disjoint above GPT-4 31.4; at n=600 GPT-4 is 34.3 and
+  Haiku needs >=~50/100 to stay disjoint. Choosing the denominator after seeing that is
+  prohibited in either direction.
+- **NEW FRAMING (Omer), and it conflicts with ratified §7:** "without tools we dont care if it
+  beats gpt4. actually its better if he loses, then outperform him with tools." §7 as ratified
+  forbids WT cells sharing a table or figure with GPT-4 rows, because GPT-4's rows are 2023,
+  one-shot NL, different grader epoch — so "Haiku+tools beats GPT-4" conflates tool access with
+  three years of model progress. **Proposed amendment M:** GPT-4 becomes a labelled published
+  reference line at a stated epoch and denominator, never a comparator arm, with no
+  significance test against it; the controlled contrast stays WT vs matched-NT. This licenses
+  the bar-crossing narrative and also defuses the 07-30 headline exposure, since whether
+  unaided Haiku clears the GPT-4 bar stops being load-bearing. **AWAITING one line from Omer.**
+
+## 2026-07-30 — PlanBench WT amendment N: only the format clause is shared
+
+- **Origin (Omer):** "the no tools is practically planbenches native prompt. we added tools
+  so arm A must be different." That reframing located a real design error in the scaffold.
+- **DECIDED: the NL→PDDL formalization step moves into the TOOLS policy**; the task-format
+  clause is the only shared text. Supersedes the D-J3 "shared" definition, which named both.
+- **Reason is bias direction, not elegance.** Formalizing has a purpose only when a planner
+  will receive the PDDL. Shared, it hands the matched-NT arm an instruction it cannot satisfy
+  (produce PDDL / entire answer must be the plan with nothing before it — and one sentence of
+  preamble is MEASURED to make the extractor inject a duplicated action VAL rejects). Any
+  compliance loss depresses arm B for a non-tool reason and INFLATES the WT−NT delta in our
+  own favour — the exact failure mode §9-A was adopted to prevent.
+- **Format clause stays shared** = it is the instrument, not the method; both arms must answer
+  in a shape the extractor can read.
+- **Declared:** arm A's system prompt is ~176 chars longer and that IS the treatment (package
+  contrast). Arm B is NOT padded — filler to hit a character count is worse than a declared
+  asymmetry.
+- **Native prompt is not lost:** the bare-NT scaffold delta (§3, free, uses the graded 06-22
+  layer) plus the pure-availability sensitivity arm (§9-A) give four rungs — native,
+  scaffold-only, directive-only, scaffold+tools.
+- **Rejected:** rewording "translate" → "work out internally" (phrasing patch for a
+  classification error); dropping arm B (saves ≈$9, but confounds tool access with prompt
+  shape — the same comparison the literature already makes — and discards the only unrun
+  contribution).
+- Frozen text + 8 machine checks in `planbench/engine.py:_pb_scaffold`; all pass,
+  test_prompts 451/451.
+
+## 2026-07-30 — PlanBench WT calibration gate: FIX APPARATUS AND RESTART ($1.09 spent)
+
+- **Cost/throughput PASS, well under projection.** Tools arm $0.0254 (ordinary) / $0.0248
+  (Mystery) per trial; p90 output tokens 4543 / 3887 (the gate's headline observable); turns
+  4.55 / 5.20; loop_exhausted 0/80; delegation 100% (>= the 80% RESCUE requirement).
+  **Caching ACTIVE — cache_read > 0 on 100% of tools trials**, so the ~5% margin over Haiku
+  4.5's 4096-token minimum held; matched-NT caches 0% as §9-C predicted.
+  **600/cell projection = $32.78 vs the prereg's $55.02, i.e. $22 under**, on a $170 balance.
+- **GATE VERDICT: RESTART.** The outcome-neutral extraction check fails 2 of 4 cells, and §3
+  makes that an apparatus-fix-and-restart event, never a scope decision. Do NOT launch the run.
+  - **Defect 1 (Mystery tools, extraction 15%):** the model writes a complete plan in PDDL
+    shorthand — `attack g` instead of the example's `attack object e ... from object c`.
+    Trap 3's shorthand bullet; the frozen clause's "exactly the action wording of the example"
+    did not prevent it because Mystery's vocabulary is already near-PDDL.
+  - **Defect 2 (Mystery matched-NT):** 80% write narration before [PLAN] and in 65% the
+    extractor parses actions out of that narration and emits MORE actions than the model listed.
+    Corrupts the control arm, so it does not inflate our hypothesis, but it is noise.
+- **NOT a defect — ordinary tools 50% empty extraction is a REAL formalization collapse.** All
+  10 empties are the model correctly reporting "unsolvable" after classic_planner said so, and
+  all 10 instances have PlanBench gold plans of 4-8 actions. Model-authored PDDL was wrong and
+  the planner faithfully answered the wrong question. **Signal only — n=20, discarded set,
+  non-standard pool, no VAL. Must not enter prose or influence design.** Recorded because it
+  suggests the real Mystery/ordinary cells will be informative rather than a foregone
+  confirmation, i.e. the §4 boundary metric has something to measure.
+- **NEW BLOCKER for the results phase:** VAL cannot execute on this machine (wrong
+  architecture) — any llm_correct right now is an artifact of the same class as the t2
+  missing-FAST_DOWNWARD bug. Calibration is unaffected (cost/throughput only) but no graded
+  number can exist until VAL works.
+- **Also measured:** sequential wall-clock ~18s/tools-trial → ~12h for 2400 trials; worth
+  adding concurrency before the real run.
+- Full memo: `development/planbench/planbench_wt_calibration_20260730.md`.
+
+## 2026-08-01 — PlanBench-WT restart closed: clause v2 frozen, amendment M accepted, sequential run
+
+- **Amendment M ACCEPTED as worded (Omer):** GPT-4 may appear as a **labelled published
+  reference line at a stated epoch and denominator** — never as a comparator arm, no
+  significance test against it; the controlled contrast stays WT vs matched-NT within
+  Haiku. Prereg §7 first bullet amended. Decided on journal-fitness grounds: showing the
+  published bar with labels is the standard journal device; hiding it invites the
+  "how does this relate to the published results?" objection. Licenses Omer's narrative
+  (unaided Haiku below the GPT-4 bar, tool-equipped above) descriptively.
+- **Format clause v2 FROZEN (Omer):** fixes both calibration extraction defects
+  (word-for-word example phrasing incl. 'object'/'from'; answer must start with [PLAN]),
+  plus one pre-freeze disambiguation ("phrased exactly as the example phrases its
+  actions" — the "copying word for word" draft risked copy-the-example-PLAN, undetectable
+  by the outcome-blind gate). Exact text quoted in prereg §10-R restart record 1.
+- **Concurrency DECIDED sequential (Omer):** confirmatory run stays ~12 h overnight; the
+  apparatus is exactly what the calibration measured.
+- **VAL resolved at $0:** the 07-30 "cannot execute" blocker was a wrong path (Linux ELF);
+  the NT layer's own Mach-O x86_64 build runs under Rosetta and passed positive+negative
+  controls. Same grader epoch across NT and WT layers.
+- Next: calibration re-run (~$1.10) → extraction ≥90% × 4 cells → Omer's scope-and-spend
+  on the measured $32.78 → the 600/cell confirmatory run.
+
+## 2026-08-03 — PlanBench-WT confirmatory RESULTS: RESCUE, both tests significant
+
+- **Bottom line (pre-registered, n=600/cell, delivered endpoint):** clean NT 47.8
+  [43.9,51.8] → clean WT **69.7** [65.9,73.2]; Mystery NT 0.0 [0.0,0.6] → Mystery WT
+  **71.8** [68.1,75.3]. Paired exact McNemar + Holm: Mystery Δ+71.8pp (b=431/c=0,
+  p=3.6e-130), clean Δ+21.8pp (b=206/c=75, p=2.7e-15). **Band verdict RESCUE**
+  (431 ≥ 325); conjunctive ruling = SUPPORTED.
+- **Mechanism: RESCUE branch provisionally met** — delegation 100%, |clean−Mystery WT|
+  = 2.2pp (p=0.449, within ±7.5pp); formalization_match (§4) still owed to finalize.
+- **The instrument biases ran against us and RESCUE survived them:** 125/569 delivered
+  Mystery WT plans lost to residual PDDL-shorthand dialect (true rate ~90%+ under a
+  tolerant parse); loop exhaustion 10.5%/5.2% counted as failures.
+- **Two honest flags (ANSWER slots in the results memo):** clean-WT raw extraction
+  72.7% decomposes to 7/443 instrument misses + 157 model-side (loop-exh + honest
+  "unsolvable" empties on solvable instances — the formalization signal at scale);
+  Mystery-NT narration-injection recurred (479/600) but collapse holds on the
+  uninjected subset (0/121) and external anchors (bare-NT 0.8%, GPT-4 4.3%).
+- **Reference-line context (amendment M):** tool-equipped Haiku (69.7/71.8) more than
+  doubles the published GPT-4 clean bar (34.3, 2023 epoch); Mystery NT sits at 0.
+- Cost: confirmatory $39.87; whole arm $42.09. Memo:
+  `development/planbench/planbench_wt_results_20260803.md`.
+
+## 2026-08-06 — WT arm closed out: mechanism final, ANSWER slots signed, NT denominator completed
+
+- **formalization_match (§4) computed; RESCUE mechanism branch FINAL.** Mystery 97.8
+  [96.3, 98.7] vs clean 96.3 [94.5, 97.6] — not CI-disjointly below, third requirement
+  met; the rescue is formalize-then-delegate. Perfect gate: 0/35 no-match trials graded
+  correct. Clean WT ceiling isolated to DOMAIN-authoring fidelity (P(solvable |
+  domain-equivalent) = 99.5% vs 1.6%): the clean NL under-states physics (e.g. never
+  says stacking clears the moved block) and Haiku transcribes what the text says;
+  Mystery NL is a mechanical rendering, so 99.5% of Mystery domains come out equivalent.
+- **Omer signed both ANSWER slots (accept + accept):** criterion (a) decomposes
+  model-side (no apparatus restart); Mystery-NT 0/600 collapse is real (0/121
+  uninjected + bare-NT 0.7% at n=600 + GPT-4 4.3%). Stripped-block regrade optional.
+  **Paper prose on the WT arm is now unblocked** (still §7 rules + /verify-claims for
+  every literature number).
+- **Bare-NT completed to n=600 (amendment K debt, ~$1.5):** clean 263/600 = 43.8
+  [39.9, 47.8] stays CI-disjoint above published GPT-4 206/600 = 34.3 [30.6, 38.2]
+  (needed ~50/100 on the extra pool, got 58); Mystery 4/600 = 0.7%.
+- **§9-A directive-only arm DONE ($2.61 measured):** Mystery t1 n=600, dangling
+  directive + no tools = 3/600 = 0.5% [0.2, 1.5] — the pre-registered outcome-neutral
+  prediction holds. Four-rung ladder final: native 0.7 / scaffold-only 0.0 /
+  directive-only 0.5 / scaffold+tools 71.8. The +71.8pp contrast is tool
+  availability, not prompt framing. (Run at full 600: the bullet's n=250 predates
+  the whole-pool ANSWER; no committed draw exists.)
+
+## 2026-08-06 — WT arm finale: stripped regrade finding, PR #93, paper plan APPROVED
+
+- **Stripped-block regrade DONE ($0), reported as a finding:** block-only re-extraction
+  of the 600 Mystery matched-NT trials gives 26/600 = **4.3 [3.0, 6.3]**, not the
+  expected ~0 — narration injection had DEPRESSED the cell (26 valid block plans
+  invalidated by scraped extra actions), so the instrument bias ran against the
+  published 0.0, not in our favor. Paired contrast vs WT survives at p = 6.4e-112
+  (b=412, c=7), under the signed slot's 1e-100 threshold; RESCUE untouched. Injection
+  cross-check ties audit 2 exactly (479/600). Memo section appended to
+  `planbench_wt_results_20260803.md`; paper reports BOTH layers.
+- **PR #93 opened** (`planbench-wt-significance-brief` → main, 27 commits, code + docs,
+  data stays laptop-local); Omer merges after review.
+- **Paper integration plan APPROVED (Omer, all 4 slots):**
+  `development/planbench/planbench_wt_paper_integration_plan.md`. Decisions: (1)
+  placement = Option A, new self-contained section "External validity on PlanBench"
+  between Results and Discussion NOW (lifts into Act 4 on the journal restructure);
+  (2) amendment-N ladder table in the BODY; (3) two-layer NT presentation confirmed
+  (graded 0.0 + injection caveat, stripped 4.3 as the instrument-robust reading);
+  (4) overall approved, no amendments. Prose gated on PR #93 merge; lit numbers
+  gated on /verify-claims (H&Z, GPT-4 Mystery 4.3, La Malfa, LLMFP, Göbel,
+  Planetarium).
+
+## 2026-08-06 — Act-4 literature numbers: /verify-claims pass COMPLETE (6/6 sources)
+
+- Per-paper verification agents, full table in
+  `development/planbench/planbench_wt_paper_integration_plan.md` §5. Verdicts:
+  H&Z CONFIRMED (70/100 vs 0/100 Mystery, cite v4/ACL only); Valmeekam GPT-4
+  Mystery Deceptive 26/600 = 4.3 CONFIRMED (one-shot, Table 2 A.3; clean 206/600
+  doubly verified vs on-disk corpus); LLMFP CONFIRMED (602/task, but metric =
+  optimal rate and GRADER UNDISCLOSED — say so in the amendment-M line);
+  Planetarium CONFIRMED verbatim (cite NAACL v2); La Malfa PARTLY (+12/+15 hold,
+  **pool "93" was WRONG** — real pools 3×50/task in v2; cite retitled v2); Göbel
+  PARTLY (+3.0pp/102 IPC holds, **mechanism restated** — no planner tool in their
+  roster, non-delegation was design not model choice).
+- Consequence for prose: all six may enter tex with the §5 wordings; the frozen
+  prereg's "La Malfa 93" is superseded by the table (prereg untouched).
+
+## 2026-08-06 — PR #93 code review: two paper-relevant corrections logged, no rerun required
+
+- **Deviation 1 corrected in `planbench_wt_results_20260803.md` (review finding, verified on the raw side-logs):** the 18 pause/resume re-attempts on clean-WT were NOT deterministic — 11/18 changed outcome at temp 0 (multi-turn tool loop), 8 graded correct on the second draw, and last-attempt grading makes those 18 instances best-of-2. **First-draw sensitivity: clean WT 418/600 = 69.7 → 410/600 = 68.3; paired Δ vs matched-NT +21.8 → +20.5pp (label fixed 2026-08-06 — this is the within-Haiku paired delta, not a GPT-4 contrast). No verdict changes** (CI vs GPT-4 still disjoint; Mystery/RESCUE untouched — the other three cells have exactly one record per instance). Bottom line for prose: wherever Act 4 cites clean WT 69.7 / Δ+21.8 (integration plan §tables line ~60, both handoffs), quote it with the first-draw sensitivity footnote, or quote 68.3 conservatively — Omer's call which; both are computed and logged in deviation 1.
+- **Deviation 8 added (undeclared wire asymmetry, now declared):** the three prereg arms never sent the upstream `[STATEMENT]` stop sequence; the bare-NT arm did. Primary WT-vs-matched-NT contrast is symmetric (neither sends it); only ladder reads against bare-NT carry the extra wire diff, and it is measured-inert in the frozen corpora (0 post-`[PLAN END]` text in scaffold/directive). No prose change needed unless Act 4 compares bare-vs-scaffold as a controlled pair — then cite deviation 8.
+- **Rerun verdict: NO paid rerun is required by any review fix or finding.** No fix touches a frozen prompt byte (new freeze test `tests/test_planbench_prompts.py` pins them), any grading code, or any wire-visible request parameter; all engine changes affect only failure paths that never fired in the frozen corpora, or what future side-logs record. Optional $0 local verifications only: (a) first-draw sensitivity (already computed, above); (b) VAL spot-check of a few of the 26 stripped-regrade flip IDs to settle the numeric coincidence with the published GPT-4 26/600 (ISS-026); (c) optional re-grade of the 58/100 bare-NT completion half under the v1 venv to demonstrate two-stack grader invariance (tarski already probed parse-equivalent).
+- Review artifacts: corrected deviation row + new row 8 (results doc), CHANGELOG 2026-08-06 entry, ISS-025/ISS-026, freeze test, and the engine/build_table/apply_patches hardening — all uncommitted on `planbench-wt-significance-brief` for Omer's review.
+
+## 2026-08-06 — Act-4 number decision: clean WT quoted FIRST-DRAW (conservative); $0 checks delegated
+
+- **Omer resolved the deviation-1 fork: conservative.** "The 1 pt does not worth the ambiguity" — Act 4 quotes clean WT **410/600 = 68.3, paired Δ vs matched-NT +20.5pp** (first-draw: every instance single-shot, the 18 resume re-draws excluded). The last-attempt reading (69.7 / +21.8pp / p = 2.7e-15) lives only in the deviation-1 footnote, never as the quoted number. Mystery cells unchanged (one record per instance). Integration plan PB-B rewritten accordingly.
+- Open numeric slots for PB-B: first-draw Wilson CI, exact McNemar b/c/p, and the clean-vs-Mystery paired delta under first-draw — recompute queued from the raw side-logs ($0 local, delegated). Until they land, PB-B cites counts only. *(Landed — see the 2026-08-07 entry below.)*
+- **Optional $0 checks (b) and (c) approved and delegated** (to cheaper-tier Sonnet agents, per Omer): (b) VAL spot-check of the 26 stripped-regrade flip IDs + provenance audit of `stripped_block_regrade.py` against the GPT-4 26/600 anchor coincidence (ISS-026); (c) re-grade of the bare-NT completion half under the old py3.12/tarski-0.7.0 stack to demonstrate two-stack grader invariance.
+
+## 2026-08-07 — $0 verification batch: all three checks GREEN, PB-B numeric slots filled
+
+- **First-draw statistics (now the quoted Act-4 numbers, PB-B updated):** clean WT
+  410/600 = **68.3 [64.5, 71.9]**; paired vs matched-NT Δ **+20.5pp**, exact McNemar
+  b=202 / c=79, **p = 1.38e-13**; clean-vs-Mystery WT paired Δ = 3.5pp Mystery-above
+  (b=119 / c=140, p = 0.214), within the ±7.5pp prereg margin (last-attempt 2.17pp,
+  same direction). Independent script over the raw side-log; both anchors (410
+  first-draw / 418 last-attempt) reproduced and the b/c shifts decompose exactly
+  (of the 8 flips: 4 drop from b, 4 add to c; all 8 Mystery-correct). Mechanism
+  fact: all 18 re-queried first draws were loop-exhausted empty answers, so
+  "first-draw" is precisely "re-draws counted as failures" — no grading ambiguity.
+- **Stripped-regrade coincidence ruled GENUINE (ISS-026 spot-check half done):**
+  provenance audit found no anchor ingestion in `stripped_block_regrade.py`
+  (unconditional sweep, 600 emergent from config ranges); 8/8 sampled flip IDs
+  independently re-extracted and VAL-validated VALID. The 26/600-vs-GPT-4-26/600
+  match is coincidence. Recorded in the results doc §stripped-block regrade.
+- **Two-stack grader invariance DEMONSTRATED:** completion half (200 instances)
+  re-graded under a rebuilt v1 stack (py3.12.12 + tarski 0.7.0 + setup.sh pins) —
+  **200/200 per-instance verdicts identical** (clean 58/100, Mystery 0/100), zero
+  parse failures. The two-stack split is provenance only; recorded in
+  `planbench/requirements-wt.txt`.
+- Net effect: every number PB-B quotes is now computed, verified, and logged.
+  **ISS-026 CLOSED same day (Omer: "ok"):** analysis layer promoted to
+  `planbench/analysis/` (×100 printf bug fixed) + full data archive committed at
+  `results/planbench/wt-anthropic-20260801/` (graded cells, side-logs incl. the
+  18 re-draw records, formalization rows, verification evidence, sha256
+  MANIFEST); `verify_promotion.py` re-derives every published number data-only —
+  all pass. Commit f7baca9 on `planbench-wt-significance-brief`; the review-fix
+  edits remain uncommitted alongside for Omer's review.

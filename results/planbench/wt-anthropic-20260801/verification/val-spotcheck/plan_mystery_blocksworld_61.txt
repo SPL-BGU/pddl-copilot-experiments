@@ -1,0 +1,4 @@
+(attack a)
+(overcome a d)
+(attack c)
+(overcome c a)

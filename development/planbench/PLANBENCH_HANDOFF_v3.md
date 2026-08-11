@@ -1,30 +1,31 @@
 # PlanBench — handoff for v3 (make the small-model tools arm work)
 
-> STATUS 2026-07-24 — DIRECTION SUPERSEDED by the accepted D-J3 ruling
-> (`development/journal_decisions_memo.md` §4; ANSWER slots annotated in
-> `journal_narrative_proposal.md` + roadmap). The next PlanBench work is the
-> FRONTIER-ONLY WT arm (Haiku) via an adapter over `tools/frontier_runner.py`,
-> run against a NEW matched-scaffold no-tools control (identical system scaffold,
-> tool availability the only ablation) — NOT this doc's v3 small-model
-> scaffolding direction, which is DEMOTED to pre-registered Future Work together
-> with the open-roster cluster arm. Binding design points: prereg BEFORE any
-> spend (`development/planbench/planbench_wt_prereg.md`, to be written and
-> ratified); scope priority bw t1 > mystery t1 > bw t3, target = the
-> {clean, mystery} x {matched-NT, WT} 2x2 on t1, n≈200-250/cell subsampling
-> (never whole-cell deletion); t2 excluded (optimal_plan tool unbuilt); GPT-4
-> rows context-only and never share a table/figure with WT cells; ~20-instance
-> calibration against the ~$70.6 API remainder; kill criterion 2026-08-15 →
-> Act 4 shrinks to the NT-only re-measurement act.
-> Since this handoff was written: **Haiku NT is fully graded** (2026-07-23,
-> `planbench_frontier_haiku_nt.md` — t1 41.0 beats GPT-4 CI-disjoint; t2 28.2
-> after the missing-FAST_DOWNWARD artifact fix; Mystery collapse replicates; t7
-> chat-format grading artifact quantified), and the first two carry-forward
-> blockers below (build_table denominator; response_evaluation.load_json crash)
-> are FIXED since 2026-06-16 (`2a1298c`, PR #65 — verified in
-> `planbench/build_table.py acc()` and `planbench/apply_patches.py` Edit C).
-> The truncation-cap concern is MOOTED (not fixed) by the frontier path; it
-> still applies if the open-roster arm is ever revived. The serial-jobs,
-> rsync-copies, and engine-name-caching lessons below still stand.
+> **STATUS 2026-07-24, header rewritten 07-30 — DIRECTION SUPERSEDED. This doc is retained
+> for its cluster/ops lessons ONLY. Do not take a design number from it.**
+>
+> The small-model scaffolding direction below, and the open-roster cluster arm, are DEMOTED
+> to pre-registered Future Work by the accepted D-J3 ruling
+> (`development/journal_decisions_memo.md` §4).
+>
+> The frontier Haiku with-tools arm that replaced it is now itself CLOSED (2026-08-06).
+> **Entry point: `development/planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`**;
+> design of record `planbench_wt_prereg.md`; results `planbench_wt_results_20260803.md`.
+> The go/no-go in `planbench_wt_significance_brief.md` was answered and is closed —
+> it is a dated record, not an open decision.
+>
+> The 07-24 design sketch that used to sit in this header has been **deleted rather than
+> annotated**, because every number in it was later superseded: it named n≈200-250/cell
+> subsampling (now the whole 500-instance pool), a bw-t1 > mystery-t1 > bw-t3 scope priority
+> (t3 is out and prediction (iii) is struck), and a ~20-instance calibration reusing the
+> graded set (now 40 instances, disjoint and discarded). Reading it as design guidance would
+> silently contradict the ratified prereg.
+>
+> Still true and still useful: **Haiku NT is fully graded** (2026-07-23,
+> `planbench_frontier_haiku_nt.md`). The first two carry-forward blockers below
+> (`build_table` denominator; `response_evaluation.load_json` crash) are FIXED since
+> 2026-06-16 (`2a1298c`, PR #65). The truncation-cap concern is mooted by the frontier path
+> but returns if the open-roster arm is revived. The serial-jobs, rsync-copies and
+> engine-name-caching lessons below all stand.
 
 Session close 2026-06-07. **v2 (the MCP-tools-on arm) is BUILT and
 CHARACTERIZED.** This session ran a series of smokes that mapped exactly how the
