@@ -1,8 +1,9 @@
 # Pre-registration — nt-ster H4 control + nt-neut anchor (+ Llama second-family probe)
 
-**Status:** slots FILLED 2026-07-25 and accepted by Omer; awaiting the §10 RATIFY
-signatures. **No cluster submit before ratification; the submit itself is ping-gated
-(VPN window).**
+**Status:** **RATIFIED 2026-08-11** (all four §10 lines; Omer, via R2/R3 in
+`development/remaining_work_20260811.md`). Design frozen. The submit is still gated on
+the §8 readiness items 7/9/10/14 and on Omer's explicit go-ahead plus a VPN window.
+Slots were FILLED 2026-07-25 and accepted the same day.
 **Date:** 2026-07-24, amended 2026-07-25. **Binding source:**
 `development/journal_decisions_memo.md` §6 (accepted D-J5, 2026-07-24). H4 itself was
 pre-registered in May (`development/sweep_prompt_bank_design.md:46`); this document
@@ -765,12 +766,40 @@ claimed**, never a level comparison, because apparatus vintage and n differ. CIs
 Slot answers are filled per Omer's acceptance 2026-07-25. Signing below confirms the
 design, the corrected price, and the two scope items called out explicitly.
 
+**RATIFIED by Omer 2026-08-11**, in session, via decisions R2 ("ratify") and R3
+("keep as sequenced") in `development/remaining_work_20260811.md`. All four lines
+below are signed by that answer. Price in hand at the time of signing: the accepted
+shape costs **~46 GPU-h (`think=off`, 3 models, plain) + ~110-150 GPU-h (`think=on`,
+9B + 35b, decoupled) ≈ 156-196 GPU-h total**, against the memo's obsolete ~92. The
+on-mode half is still an estimate until §8 item 7 (the decoupled-wall reconstruction
+from `results/decoupled-rollup/*decoupled-thinkon/trials.jsonl`) lands; that item is
+local and runs before the submit ping. The R2 slot as annotated quoted the
+plain-apparatus both-modes figure (~186 GPU-h) — same order, different shape; the
+line above is the accurate one and no scope changed between them.
+
 > RATIFY (nt-ster + anchor design and analysis, §1-§5):
+> RATIFIED — Omer, 2026-08-11 (R2).
 
 > RATIFY (§2.3(B) scope note — `think=on` covers Qwen3.5:9B + qwen3.6:35b only; gemma
 > has no `think=on` control leg):
+> RATIFIED — Omer, 2026-08-11 (R2). Limitations owes the one sentence the scope note
+> requires: no non-Qwen `think=on` control exists, because gemma's `think=on` no-tools
+> cell is 90-100% cap-saturated under every apparatus available to us.
 
 > RATIFY (§2.3(A) — the `--reasoning-parser` element of the D-J5 pin is dropped for the
 > no-tools cells as a measurement-validity correction, not a scope change):
+> RATIFIED — Omer, 2026-08-11 (R2).
 
 > RATIFY (Llama probe spec + kill-gate, §6, at the ~13,680-trial executable shape):
+> RATIFIED — Omer, 2026-08-11 (R3: keep as sequenced, strictly after nt-ster lands).
+> The ~13,680-trial shape is accepted; the `--variants` pass-through (§8 item 12) is
+> not authorised, so no flag selects {v11, v14}.
+
+**What ratification unblocks and what it does not.** The design is now frozen; the
+submit is still gated on (a) the §8 readiness items that must precede it — item 7
+(decoupled-wall reconstruction), item 9 (freeze both analysis entry points), item 10
+(rebuild + stamp `gt_cache.json`), item 14 (confirm ISS-024(b) `guided_json` stays
+parked) — and (b) Omer's explicit go-ahead plus a VPN window, per the standing
+cluster rule. Item 11 (`vllm_lookup` case for Llama) is needed only for the §6 probe
+and carries its own branch + PR; it must not append the tag to
+`PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live.
