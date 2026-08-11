@@ -1320,3 +1320,39 @@ validated by an independent ranking subagent (the user asked for a second perspe
   MANIFEST); `verify_promotion.py` re-derives every published number data-only —
   all pass. Commit f7baca9 on `planbench-wt-significance-brief`; the review-fix
   edits remain uncommitted alongside for Omer's review.
+
+## 2026-08-11 — Act 4 PlanBench section WRITTEN (Job 1 of the post-PR-93 batch)
+
+- **PR #93 merged**, which was the only gate on prose. Remaining-work map written and
+  answered by Omer (R1-R4 in `development/remaining_work_20260811.md`): PlanBench prose
+  first, nt-ster ratified, Llama probe kept sequenced after nt-ster, the three $0
+  Phase-0 items run alongside.
+- **Section written on `paper/aaai27`, commit `67ea69c`:** "External Validity on
+  PlanBench", new self-contained section between Results and Discussion (placement A as
+  signed). Structure follows the approved integration plan exactly: instrument
+  paragraph (Mystery = pure symbol rename, 501/501 verified on disk), headline NT
+  table, secondary WT 2x2 table, ladder table in the BODY, mechanism paragraph,
+  cascade/FORMALIZE paragraph, audits, scope + cost.
+- **Every number quoted is the signed one.** Clean WT is the FIRST-DRAW reading 68.3
+  [64.5, 71.9], Δ+20.5pp, b=202/c=79, p=1.4e-13; the last-attempt reading does not
+  appear anywhere in the tex. Independent re-derivation of all nine Wilson intervals
+  from their counts reproduced the results-doc values exactly (including the GPT-4
+  Mystery CI [3.0, 6.3] from the published 26/600, computed by our own method as the
+  clean 206/600 line already was).
+- **Amendment M/I rules honored in the prose:** GPT-4 appears only in the NT table as a
+  labelled published reference line with pool size and grader epoch on the same line,
+  described as CI-separated with no test run against it; no WT cell shares a table with
+  it. The novelty sentence is the replication-with-ablation framing, naming the
+  matched-scaffold control and the directive-only rung as what the field has not run.
+- **Companion edits in the same commit:** Related Work now anchors Huang and Zhang as
+  the published rescue result (70/100 vs 0/100, n=100, VAL) and adds La Malfa et al.
+  arXiv:2512.09629 as the closest agentic system, citing the retitled v2 with the
+  corrected 3x50/task pool and an author list verified at the arXiv source; Positioning
+  drops the "PlanBench is out of scope" sentence; Future Work now points at the
+  delivered section and keeps the second-tier and open-roster runs as the open items.
+- Compile is clean (0 undefined references, 0 overfull boxes, 19 pages). Overleaf was
+  pulled before the edit and had no coauthor changes (bridge head `c8c8245`).
+  **Not yet pushed** to origin or Overleaf, pending Omer's go-ahead.
+- **nt-ster H4 prereg RATIFIED** the same day (all four §10 lines) with the corrected
+  price for the accepted shape: ~46 GPU-h off + ~110-150 on, against the memo's
+  obsolete ~92. Submit stays gated on readiness items 7/9/10/14 plus a ping and VPN.
