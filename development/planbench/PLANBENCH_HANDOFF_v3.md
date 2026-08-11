@@ -5,10 +5,13 @@
 >
 > The small-model scaffolding direction below, and the open-roster cluster arm, are DEMOTED
 > to pre-registered Future Work by the accepted D-J3 ruling
-> (`development/journal_decisions_memo.md` §4). Current PlanBench work is the frontier-only
-> Haiku with-tools arm. **Single source of truth for its design:**
-> `development/planbench/planbench_wt_prereg.md` (ratified shape B) plus
-> `development/planbench/planbench_wt_significance_brief.md` (the open go/no-go).
+> (`development/journal_decisions_memo.md` §4).
+>
+> The frontier Haiku with-tools arm that replaced it is now itself CLOSED (2026-08-06).
+> **Entry point: `development/planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`**;
+> design of record `planbench_wt_prereg.md`; results `planbench_wt_results_20260803.md`.
+> The go/no-go in `planbench_wt_significance_brief.md` was answered and is closed —
+> it is a dated record, not an open decision.
 >
 > The 07-24 design sketch that used to sit in this header has been **deleted rather than
 > annotated**, because every number in it was later superseded: it named n≈200-250/cell

@@ -1,26 +1,22 @@
-# PlanBench-WT — post-results handoff (state as of 2026-08-06)
+# PlanBench-WT — post-results handoff (snapshot of 2026-08-06; SUPERSEDED)
 
-> **Entry point for a fresh session: `/resume-verify` this file.**
-> The confirmatory experiment is DONE, GRADED, and ANALYZED. Verdict = **RESCUE,
-> SUPPORTED** (both McNemar tests significant; memo
-> `planbench_wt_results_20260803.md`). This doc is ONLY the ordered remaining work.
+> **SUPERSEDED — NOT an entry point. Start at
+> `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`, the single entry point for this arm.**
+> Every ordered item below is now DONE and the arm is closed. Retained only as a
+> dated record of the sequencing; do not take a state claim, an open action, or a
+> headline number from this file.
 >
-> **2026-08-06 CLOSE-OUT:** items 1, 2, 3, and 5 are DONE (see the memo's new
-> sections + commits f57998d/21cf811/3e9c09a/678f6d7): mechanism branch FINAL
-> (Mystery formalization_match 97.8 not below clean 96.3), both ANSWER slots
-> signed by Omer (accept + accept), bare-NT n=600 rows done (clean 43.8 stays
-> CI-disjoint above GPT-4 34.3), §9-A ladder final (directive-only 0.5% — the
-> directive alone moves nothing; $2.61). Arm cumulative ≈ $46.2 of $170.
-> Remaining: item 4 (optional stripped-block regrade, free), item 6 (paper
-> integration — Omer must prompt; prose unblocked), item 7 (branch hygiene — PR
-> when Omer says so).
-> Background, traps, and decided-do-not-reopen live in `PLANBENCH_WT_HANDOFF.md`
-> (read its 08-01/08-03 header passes) and the prereg (`planbench_wt_prereg.md`,
-> binding, tag `prereg-planbench-wt-v1` + restart record 1).
-
-**Read in this order:** this file → `planbench_wt_results_20260803.md` (the verdict,
-audits, deviation table, two OPEN ANSWER slots) → prereg §4 (formalization_match spec)
-and §9-A (sensitivity arm) → `PLANBENCH_WT_HANDOFF.md` for deep background.
+> Two things here are actively wrong if read as current: the "remaining" list
+> (items 4/6/7 all completed — regrade done 08-06/07, PR #93 open, integration
+> plan written and signed 4/4), and any clean-WT figure, which predates Omer's
+> 2026-08-06 first-draw decision (**68.3**, not 69.7 — see the results memo's
+> deviation row 1).
+>
+> Original 08-06 close-out, for the record: items 1, 2, 3 and 5 DONE (commits
+> f57998d/21cf811/3e9c09a/678f6d7) — mechanism branch FINAL (Mystery
+> formalization_match 97.8 not below clean 96.3), two ANSWER slots signed,
+> bare-NT n=600 (clean 43.8 CI-disjoint above GPT-4 34.3), §9-A ladder final
+> (directive-only 0.5%, $2.61). Arm cumulative ≈ $46.2 of $170.
 
 **Money:** $42.09 spent of $170 (calib $1.09 + $1.13, confirmatory $39.87). Every
 remaining paid item below is gated on an explicit go-ahead from Omer.

@@ -1,15 +1,18 @@
 # PlanBench with-tools arm — handoff (state as of 2026-08-03)
 
-> **STATUS: RUN COMPLETE AND GRADED. Pre-registered verdict = RESCUE, both confirmatory
-> tests significant (Mystery Δ+71.8pp p=3.6e-130; clean Δ+21.8pp p=2.7e-15).**
-> **FRESH SESSIONS START AT `PLANBENCH_WT_NEXT_STEPS_HANDOFF.md` (2026-08-05)** — the
-> ordered remaining actions, the Omer gates, and the machine-local inventory. This file
-> is now background/provenance.
-> **Results memo: `planbench_wt_results_20260803.md` — read it FIRST; it carries two
-> open ANSWER slots (criterion-(a) decomposition reading; Mystery-NT injection
-> robustness reading) plus the owed follow-ups (formalization_match §4 pass, bare-NT
-> 200-trial completion, optional stripped-block regrade).**
-> **Arm spend total $42.09** ($1.09 + $1.13 calibrations + $39.87 confirmatory).
+> **SUPERSEDED as a status doc — retained for its DEEP BACKGROUND and TRAP lists
+> (§3/§5), which are still accurate and still binding.**
+> **FRESH SESSIONS START AT `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`** — the single
+> entry point for this arm. (This file previously pointed at
+> `PLANBENCH_WT_NEXT_STEPS_HANDOFF.md`; that doc is superseded too.)
+>
+> Do not quote the verdict line this header used to carry: the clean delta shown
+> here was the LAST-ATTEMPT reading (Δ+21.8pp, p=2.7e-15), superseded by Omer's
+> 2026-08-06 first-draw decision — **clean WT 68.3 [64.5, 71.9], Δ+20.5pp,
+> p=1.38e-13**. Mystery is unchanged (Δ+71.8pp, p=3.6e-130). The ANSWER slots and
+> "owed follow-ups" this header listed are all closed.
+> **Arm spend total $42.09** at this snapshot ($1.09 + $1.13 calibrations +
+> $39.87 confirmatory); arm cumulative ≈ $46.2 after the ladder and completion runs.
 > Graded corpora: `external/LLMs-Planning/plan-bench/results/{blocksworld,blocksworld_3,
 > mystery_blocksworld,mystery_blocksworld_3}/pddl_copilot__anthropic-{tools,scaffold}__
 > claude-haiku-4-5/` + side-logs and analyzers in `.local/wt_run/` (machine-local).
@@ -114,7 +117,9 @@
 > 6 (the instance-id stamp) was applied by calling `patch_instance_id_stamp` directly. It is
 > applied and idempotent on this tree.
 >
-> **Suggested entry point:** `/resume-verify development/planbench/PLANBENCH_WT_HANDOFF.md`
+> *(This 08-01 pass suggested resuming from this file. Superseded — the arm's
+> entry point is `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`. The `apply_patches`
+> caveat above is still accurate and is tracked as ISS-025.)*
 
 ## 1. What this arm is and where it sits
 

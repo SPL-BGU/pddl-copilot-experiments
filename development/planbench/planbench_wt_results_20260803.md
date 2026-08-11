@@ -7,7 +7,7 @@ at the amendment-K 600/cell pool. **Confirmatory spend $39.87**; arm cumulative 
 `response_evaluation.py` + Rosetta VAL — byte-identical grader epoch to the published NT
 layer. Endpoint: **delivered** `llm_correct`, treatment-policy (empty/missing = failure),
 denominator = realized 600 per cell (asserted). Analyzer:
-`.local/wt_run/analyze_confirmatory.py`.
+`planbench/analysis/analyze_confirmatory.py`.
 
 ## Headline: the pre-registered verdict is RESCUE, and both confirmatory tests pass
 
@@ -17,6 +17,13 @@ denominator = realized 600 per cell (asserted). Analyzer:
 | clean WT | 418 | **69.7** | [65.9, 73.2] |
 | Mystery matched-NT | 0 | 0.0 | [0.0, 0.6] |
 | Mystery WT | 431 | **71.8** | [68.1, 75.3] |
+
+> **Do not quote clean WT 69.7 in prose.** This table is the LAST-ATTEMPT reading.
+> Omer's ratified decision (2026-08-06) is that Act 4 quotes the conservative
+> **FIRST-DRAW** clean WT: **410/600 = 68.3 [64.5, 71.9], paired Δ +20.5pp,
+> b=202/c=79, p=1.38e-13**. Full derivation and both readings: deviation row 1.
+> Mystery, matched-NT and every other cell are unaffected (one record per
+> instance); only clean WT had the 18 resume re-draws.
 
 **PRIMARY family (paired exact McNemar, Holm within family, α=.05):**
 
@@ -93,10 +100,12 @@ caching active; no crash, one connectivity blip absorbed by SDK retry.
 ## Descriptive context (per amendment M — labelled published reference, no test)
 
 GPT-4 (2023, one-shot NL, published grader epoch, n=600): clean 34.3%. Haiku 4.5
-with tools: clean **69.7%**, Mystery **71.8%** — both above the published GPT-4 clean
+with tools: clean **68.3%** (first-draw, the quoted reading; 69.7% last-attempt),
+Mystery **71.8%** — both above the published GPT-4 clean
 bar; Haiku matched-NT clean 47.8% is also above it, Mystery matched-NT 0.0% far below.
-The controlled contrast remains WT vs matched-NT within Haiku; the bare-NT 200-trial
-completion at n=600 (amendment K) is still owed before NT-vs-GPT-4 prose.
+The controlled contrast remains WT vs matched-NT within Haiku. The bare-NT 200-trial
+completion at n=600 (amendment K) was owed at the time of writing and is now **DONE**
+(2026-08-06): bare-NT clean 43.8 [39.9, 47.8], CI-disjoint above GPT-4 34.3.
 
 Funnel note (exploratory): P(correct | extracted) is 95.9% / 97.3% — once a plan
 survives formalization and dialect, delegated search is essentially always right. The
@@ -105,7 +114,7 @@ extractor's dialect intolerance, not search and not tool operation.
 
 ## formalization_match (§4) — computed 2026-08-05, mechanism branch finalized
 
-**Analyzer:** `.local/wt_run/formalization_match.py` (+ per-trial rows in
+**Analyzer:** `planbench/analysis/formalization_match.py` (+ per-trial rows in
 `formalization_match_rows.jsonl`); instrument = the pddl-parser plugin's own
 `inspect_problem`/`inspect_domain`/`get_trajectory` functions imported at analysis time
 (kept out of the model's roster, per §4). Inputs = the stamped tool-call side-logs,
@@ -228,7 +237,7 @@ closing the pure-availability confound the arm was pre-registered to test.
 ## Stripped-block regrade of the injected Mystery matched-NT trials — run 2026-08-06
 
 Audit 2 hardening (Owed next item 4), executed after Omer signed the robustness
-slot. New side script `.local/wt_run/stripped_block_regrade.py` (graded corpora
+slot. New side script `planbench/analysis/stripped_block_regrade.py` (graded corpora
 untouched, no `response_evaluation.py` re-run): for each of the 600 Mystery
 matched-NT trials, re-extract using ONLY the text inside the model's
 `[PLAN]..[PLAN END]` block (no block / empty block = failure), convert with the
