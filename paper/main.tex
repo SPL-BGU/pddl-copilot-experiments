@@ -213,7 +213,13 @@ been applied to generalized planning in PDDL domains \citep{silver2024generalize
 an LLM translator with a sound solver outperforms end-to-end LLM planning), and
 \citet{huang2025limit} characterize its limits, showing that although models are largely robust to
 lexical perturbation of domain symbols, formalization quality degrades as natural-language
-descriptions move away from templated phrasing. This literature largely studies the \emph{generation} of
+descriptions move away from templated phrasing. Their result is also the published
+reference point for our PlanBench section: formalizing and delegating rescues an
+obfuscated domain on which direct planning scores zero ($70/100$ against $0/100$ for
+GPT-4o, $n=100$ per cell, VAL-graded). We replicate that finding and add the control it
+was not reported with (Section~\ref{sec:planbench}). Closest on the agentic side,
+\citet{lamalfa2026endtoend} report end-to-end PDDL planning agents improving PlanBench
+averages by about $15$ points ($3$ runs of $50$ instances per task). This literature largely studies the \emph{generation} of
 PDDL, evaluated on a single downstream question (does the produced model solve?). We instead
 evaluate LLMs \emph{using} planning and validation tools across five distinct PDDL tasks,
 with strict end-to-end grading against a solver oracle.
@@ -244,9 +250,11 @@ the solver itself. That is the gap we close. This paper contributes a controlled
 of whether such symbolic tools help LLMs: five single-tool-use PDDL tasks across five
 models, a three-arm design that separates tool \emph{availability} from a one-sentence
 steering \emph{nudge}, confidence intervals with signed significance, a contamination
-control over anonymized domains, and a token-cost (cost-of-pass) analysis. Cross-benchmark
-generalization (e.g., PlanBench \citep{valmeekam2023planbench}) and published formalizer
-baselines \citep{huang2025limit} are deliberately out of scope here (see Future Work).
+control over anonymized domains, and a token-cost (cost-of-pass) analysis. A reduced form
+of the design is then carried onto PlanBench \citep{valmeekam2023planbench}, where the
+prompts are natural language rather than PDDL, to re-measure the unaided baseline against
+the published reference line and to test the tool contrast against a matched-scaffold
+control (Section~\ref{sec:planbench}).
 
 \section{Methodology}
 We ask a single, deliberately narrow question: \emph{when a sound symbolic
@@ -960,6 +968,211 @@ null extends to a strong proprietary model.}
 \label{tab:frontier}
 \end{table}
 
+\section{External Validity on PlanBench}
+\label{sec:planbench}
+Every number so far comes from one suite, and that suite hands the model PDDL in the
+prompt. To test whether the same structure survives on an instrument built by other
+people, we re-ran a reduced form of the design on PlanBench
+\citep{valmeekam2023planbench}. We use its plan-generation task in two domains:
+standard Blocksworld, and Mystery Blocksworld, an obfuscated variant that replaces
+every predicate and action name with an unrelated token while leaving the transition
+system untouched. We verified on disk that the obfuscation is a pure symbol rename
+under an identity object mapping, at $501/501$ instance files, so the two domains pose
+the same planning problem in different vocabularies. Both cells draw the same $600$
+instances, and the model is Claude Haiku 4.5 throughout.
+
+PlanBench differs from our suite in one way that matters more than the domain change:
+its prompts are natural language, so a model that wants to delegate must first write
+the PDDL itself. Our suite never asks for that, because the files are given. PlanBench
+therefore exercises a stage our own design cannot see, and the two layers below are
+graded on the plan the model \emph{delivers} in its final answer rather than on the
+tool's return value, so a correct call that is never transcribed counts as a failure.
+
+The two layers carry different weight, and we label them explicitly. The
+\textbf{headline} is a no-tools re-measurement: how a current small model does on the
+field's own instrument, against the published reference line. The \textbf{secondary}
+claim is the with-tools contrast. That tools rescue obfuscated planning is already
+published \citep{huang2025limit}; what we add is the ablation the field has not run,
+namely a matched-scaffold control that holds the prompt scaffold fixed and removes only
+the tools, a directive-only rung that isolates prompt framing from tool availability,
+paired exact tests with interval estimates, a formalization-boundary metric, and
+measured cost per trial.
+
+\subsection{Re-measuring the Unaided Baseline}
+Table~\ref{tab:pb-nt} reports the no-tools layer. On standard Blocksworld the model
+reaches $43.8\%$, with a Wilson interval whose lower bound sits above the published
+GPT-4 reference line of $34.3\%$; the two intervals do not overlap. We report that as a
+descriptive separation and run no test against it, because the reference line comes
+from a different model generation, a different grader epoch, and a corpus we did not
+produce. On Mystery Blocksworld the collapse replicates: $0.7\%$, four correct plans in
+$600$. The published GPT-4 line on the same obfuscated domain is $4.3\%$, numerically
+above ours, and both sit near zero.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{System (no tools)} & \textbf{Blocksworld} & \textbf{Mystery} \\
+\midrule
+Claude Haiku 4.5 (ours) & $43.8$ & $0.7$ \\
+                        & \footnotesize[$39.9$, $47.8$] & \footnotesize[$0.3$, $1.7$] \\
+GPT-4 (published) & $34.3$ & $4.3$ \\
+                  & \footnotesize[$30.6$, $38.2$] & \footnotesize[$3.0$, $6.3$] \\
+\bottomrule
+\end{tabular}
+\caption{PlanBench plan generation without tools, delivered-answer accuracy (\%) with
+Wilson 95\% intervals. Ours: Claude Haiku 4.5, one-shot natural language, no scaffold,
+$n=600$ per cell, graded by the benchmark's evaluation script with VAL
+\citep{howey2004val}. Published reference: GPT-4, one-shot natural language, $n=600$
+per cell, 2023 responses at the published Fast Downward $+$ VAL grader epoch, Mystery
+row from the \emph{Deceptive} variant \citep{valmeekam2023planbench}. The reference
+line is descriptive: it is not a comparator and no test is run against it.}
+\label{tab:pb-nt}
+\end{table}
+
+Two readings follow. The clean-domain gain is modest for two and a half years of model
+progress on a benchmark that has been public throughout, and the obfuscated collapse is
+unchanged. Whatever improved between GPT-4 and a current small model did not repair
+planning under an unfamiliar vocabulary.
+
+\subsection{The With-Tools Contrast (Secondary)}
+The with-tools arm exposes the same planner and validator suite used throughout the
+paper, over the same protocol, plus a system scaffold that names the formalization step
+and the answer format. Its control is a matched-scaffold no-tools
+arm: byte-identical scaffold, with the empty tool list as the only difference. That
+control is what separates a tool effect from a prompt effect, and it is what published
+rescue results have not reported.
+
+Table~\ref{tab:pb-wt} gives the $2\times2$. On Mystery the contrast is the full width of
+the instrument: $71.8\%$ with tools against $0.0\%$ without, paired over the same
+instances, exact McNemar $p=3.6\mathrm{e}{-}130$. On standard Blocksworld, where the
+control is far from the floor, tools still add $+20.5$\,pp ($68.3\%$ against $47.8\%$,
+discordant pairs $b=202$ / $c=79$, exact McNemar $p=1.4\mathrm{e}{-}13$). We quote the
+conservative first-draw reading of the clean with-tools cell throughout: an interrupted
+run left $18$ instances re-queried, every one of them an exhausted-loop empty answer on
+its first draw, and counting those re-draws as failures costs $1.4$\,pp against us.
+
+The obfuscation penalty essentially disappears once tools are available. The paired
+clean-minus-Mystery gap inside the with-tools arm is $3.5$\,pp in Mystery's favor
+($b=119$ / $c=140$, $p=0.214$), inside the $\pm7.5$\,pp margin we registered in advance.
+A tool-equipped model is no worse at the obfuscated domain than at the familiar one.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Domain} & \textbf{matched-NT} & \textbf{$+$tools} & \textbf{paired $\Delta$} \\
+\midrule
+Blocksworld & $47.8$ & $68.3$ & $+20.5$ \\
+ & \footnotesize[$43.9$, $51.8$] & \footnotesize[$64.5$, $71.9$]
+ & \footnotesize$p{=}1.4$e$-$13 \\
+\addlinespace
+Mystery & $0.0$ & $71.8$ & $+71.8$ \\
+ & \footnotesize[$0.0$, $0.6$] & \footnotesize[$68.1$, $75.3$]
+ & \footnotesize$p{=}3.6$e$-$130 \\
+\bottomrule
+\end{tabular}
+\caption{PlanBench with-tools contrast, Claude Haiku 4.5, delivered-answer accuracy
+(\%) with Wilson 95\% intervals, $n=600$ per cell, one grader epoch (the benchmark's
+evaluation script with VAL). The two arms share a byte-identical system scaffold and
+differ only in whether the tool list is populated. $\Delta$ is paired over instances:
+Blocksworld $b=202$ / $c=79$, exact McNemar $p=1.4\mathrm{e}{-}13$; Mystery $b=431$ /
+$c=0$, $p=3.6\mathrm{e}{-}130$. The Blocksworld $+$tools cell is the conservative
+first-draw reading (see text). No published reference line appears in this table.}
+\label{tab:pb-wt}
+\end{table}
+
+\subsection{Availability, Not Framing}
+A tool-use directive changes the prompt as well as the action space, so a with-tools
+gain could in principle be a framing effect. We registered a four-rung ladder on Mystery
+to separate the two, and ran every rung at the full $n=600$
+(Table~\ref{tab:pb-ladder}). The bare published prompt, the scaffold with no tools, and
+a scaffold whose directive tells the model to call a planner that is not attached all
+land in one overlapping band below $2\%$. Only attaching the tools moves anything, and
+it moves the cell by more than $71$\,pp. The prompt text is not doing the work.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Rung (Mystery, $n=600$)} & \textbf{Delivered} & \textbf{Wilson 95\%} \\
+\midrule
+Native published prompt      & $0.7$  & [$0.3$, $1.7$] \\
+Scaffold, no tools           & $0.0$  & [$0.0$, $0.6$] \\
+Directive, no tools attached & $0.5$  & [$0.2$, $1.5$] \\
+Scaffold $+$ tools           & $71.8$ & [$68.1$, $75.3$] \\
+\bottomrule
+\end{tabular}
+\caption{Ablation ladder on Mystery Blocksworld, delivered-answer accuracy (\%), same
+model, instances, and grader epoch throughout. The three tool-less rungs are mutually
+indistinguishable; the contrast is tool availability rather than prompt framing or
+scaffold shape.}
+\label{tab:pb-ladder}
+\end{table}
+
+\subsection{Why the Rescue Works}
+The obvious explanation for the Mystery collapse is that renaming the vocabulary defeats
+the model's search. The with-tools data say otherwise. We recovered the PDDL each trial
+sent to the planner and compared it against a gold reconstruction of the instance, using
+a parser held out of the model's own tool roster. The model's formalization matches the
+gold semantics on $96.3\%$ [$94.5$, $97.6$] of clean trials and $97.8\%$ [$96.3$,
+$98.7$] of Mystery trials, so obfuscation does not degrade it. Transcribing a natural
+language description into PDDL is a semantics-blind operation, and renaming the symbols
+leaves it intact. Delegation was universal: every with-tools trial in both domains
+called the planner.
+
+The same measurement explains what still limits the clean cell. Conditional on the
+model's domain file being semantically equivalent to gold, the planner returns a
+solvable instance $99.5\%$ of the time; when it is not equivalent, $1.6\%$. Not one of
+the $35$ no-match trials produced a correct plan. The clean ceiling is therefore
+domain-authoring fidelity, and its cause is visible in the source text: the clean
+natural language under-states the physics, never saying that moving a block clears the
+one beneath it, and the model transcribes what the text says. Mystery's phrasing is a
+mechanical rendering of the same dynamics, which is why $99.5\%$ of Mystery domains come
+out equivalent and the obfuscated cell scores slightly higher than the familiar one.
+
+This adds a stage to the cascade we report elsewhere. Where prompts already contain
+PDDL, a with-tools trial can only fail by not calling, by calling wrongly, or by
+mis-delivering the result. On PlanBench a prior stage comes first: can the model state
+the problem in the tool's language at all? We treat \textsc{formalize} as a leading bar
+of the PlanBench cascade and as a property of the instrument rather than of the model
+family, since it is absent by construction wherever the PDDL is supplied. Once a plan
+clears formalization and extraction, delegated search is almost always right, at
+$95.9\%$ and $97.3\%$ correct given a delivered plan.
+
+\subsection{Audits}
+Three measured biases run against the with-tools result, and we apply no correction for
+any of them. On Mystery, $125$ of $569$ delivered plans were discarded because the model
+wrote actions in a PDDL shorthand the benchmark's extractor does not accept; a tolerant
+parse would put that cell above $90\%$. Exhausted tool loops, counted as delivered
+failures under a treatment-policy rule, cost the clean and Mystery with-tools cells
+$10.5\%$ and $5.2\%$ of their trials. Formalization failures likewise count against the
+model, not the instrument.
+
+One bias runs the other way and needs stating plainly. In $479$ of the $600$ Mystery
+no-tools trials the model narrated its reasoning in a way that leaked extra actions into
+the extracted plan, which invalidates plans that would otherwise have been scored. The
+graded cell is $0.0\%$. Re-extracting the same $600$ responses using only the text
+inside the model's declared answer block gives $26/600 = 4.3\%$ [$3.0$, $6.3$], and we
+report both. The injection depressed the no-tools cell, so the instrument's bias ran
+against the published $0.0$ rather than in its favor. The paired contrast is unaffected
+either way, surviving at $p=6.4\mathrm{e}{-}112$ ($b=412$ / $c=7$) under the
+instrument-robust reading. Two independent anchors agree that the collapse is real: the
+uninjected subset scores $0/121$, and the bare published prompt, which has no scaffold
+and no injection exposure, scores $0.7\%$.
+
+\subsection{Scope and Cost}
+The arm covers one model tier. We registered a second-tier extension and left it unrun,
+so nothing here speaks to how the with-tools gain scales with model strength on this
+instrument, and the no-tools reference separation in Table~\ref{tab:pb-nt} is a
+single-model observation. Measured cost was \$$39.87$ for the confirmatory $2\times2$
+of $2{,}400$ trials, \$$2.61$ for the directive rung, and roughly \$$46$ for the arm as
+a whole including calibration, which is about \$$0.017$ per trial averaged over the
+$2\times2$.
+
 \section{Discussion}
 \paragraph{Executive summary.} For a practitioner weighing whether to place a sound
 planner or validator behind a tool interface, the measured effects reduce to four
@@ -1071,12 +1284,13 @@ widens its negative-arm interval; we therefore headline balanced accuracy for th
 like $F_1$, is robust to the imbalance that a pooled metric would reward.
 
 \section{Future Work}
-The natural next step is to test whether the regime structure and the
-availability-versus-steering distinction generalize beyond this suite: to
-cross-domain planning benchmarks such as PlanBench
-\citep{valmeekam2023planbench} and to a head-to-head comparison with published
-LLM-as-formalizer baselines \citep{huang2025limit}, carrying the same end-to-end
-grading, signed-significance, and contamination controls. Beyond single-tool-use, the agentic regime is the natural extension along several axes: a
+Section~\ref{sec:planbench} takes the first step outside this suite, and it does so on
+one model tier. Two extensions follow directly. The PlanBench arm should be run at a
+second tier, to see whether the tool contrast narrows as the unaided baseline rises
+there as it does here; and it should be run on the open-weight roster, where
+formalization quality rather than invocation propensity is likely to be the binding
+constraint, since a model that cannot write the PDDL never reaches the delegation
+question at all. Beyond single-tool-use, the agentic regime is the natural extension along several axes: a
 \emph{multi-tool selection} setting that exposes two or more relevant tools at once (e.g.\ a
 validator and a simulator) to measure selection under ambiguity rather than mere relevance
 detection; \emph{iterative} settings in which a model may re-plan or self-correct across turns,
