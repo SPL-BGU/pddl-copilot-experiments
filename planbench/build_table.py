@@ -130,14 +130,45 @@ def _metric(task: str) -> str:
     return "llm_correct_binary" if "verification" in task else "llm_correct"
 
 
+_SHADOWED: dict[tuple[str, str, str], list[str]] = {}
+
+
 def _find(roots: tuple[str, ...], config: str, eng: str, pattern: str):
     """First matching file across the ordered roots (see module docstring:
-    the graded corpora are split across trees)."""
+    the graded corpora are split across trees).
+
+    Records every cell that resolved in more than one root. First-hit-wins is
+    what makes the split trees renderable at all, but it is also exactly how a
+    stale mirror shadows the canonical tree unnoticed — that is how
+    results/sweep5-cluster-20260530 leaked a wrong number into a paper table.
+    A collision is not automatically an error (the same cell can legitimately
+    be rsynced to two trees), so this reports rather than fails, and names both
+    the winner and the shadowed copies.
+    """
+    hits = []
     for root in roots:
-        fs = glob.glob(os.path.join(root, config, eng, pattern))
+        # sorted(): glob order is filesystem order, so a multi-file pattern
+        # (task_3_*.json) would otherwise pick a non-deterministic winner.
+        fs = sorted(glob.glob(os.path.join(root, config, eng, pattern)))
         if fs:
-            return fs[0]
-    return None
+            hits.append((root, fs[0]))
+    if not hits:
+        return None
+    if len(hits) > 1:
+        _SHADOWED.setdefault((config, eng, pattern),
+                             [root for root, _ in hits[1:]])
+    return hits[0][1]
+
+
+def report_shadowed() -> None:
+    """Print the multi-root collisions accumulated during render()."""
+    if not _SHADOWED:
+        return
+    print(f"\n  ! {len(_SHADOWED)} cell(s) resolved in more than one results "
+          f"root; the FIRST root on the command line won. Confirm that root is "
+          f"the canonical corpus for these cells:")
+    for (config, eng, pattern), losers in sorted(_SHADOWED.items()):
+        print(f"      {config}/{eng}/{pattern}  shadowed: {', '.join(losers)}")
 
 
 @lru_cache(maxsize=None)
@@ -269,3 +300,6 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit("usage: build_table.py <results-root> [<results-root> ...]")
     render(tuple(sys.argv[1:]))
+    # To stdout, after every cell has been touched, so the collision report is
+    # captured alongside the table it qualifies rather than lost to stderr.
+    report_shadowed()

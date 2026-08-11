@@ -60,7 +60,10 @@ Env vars:
                     ``anthropic-*`` WT arms — a stray value silently changes
                     the WT apparatus, so the effective cap is recorded in each
                     side-log record.
-  ``ANTHROPIC_API_KEY`` — required by all ``anthropic*`` backends.
+  ``ANTHROPIC_API_KEY`` — required by all ``anthropic*`` backends;
+                    ``ANTHROPIC_AUTH_TOKEN`` is accepted instead. Checked in
+                    the dispatch before any of the four arms does paid work, so
+                    a keyless run halts instead of grading 600 empty answers.
   ``PDDL_COPILOT_RENDER_FROM_TOOLS`` — (``vllm-tools``) ``1``/``0`` (default
                     ``1``). When on, the t3 answer is rendered from the last
                     ``validate_plan`` verdict instead of the model's final turn
@@ -182,6 +185,33 @@ def _ollama_chat(query: str, model: str, max_tokens: int, stop: str) -> str:
         keep_alive=_KEEP_ALIVE,
     )
     return resp["message"].get("content", "").strip()
+
+
+_ANTHROPIC_CREDENTIAL_ENVS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+
+
+def _require_anthropic_credential(backend: str) -> None:
+    """Fail fast, once, before ANY ``anthropic*`` arm starts paid work.
+
+    The SDK tolerates a missing credential at construction and only raises per
+    request, so without this the failure mode is a full run of empty answers:
+    ``pddl_copilot_send_query``'s blanket handler turns each per-request error
+    into ``""``, PlanBench grades the cell a clean 0.0, and the process still
+    exits 0 — nothing for the run script's halt-on-failure to catch. The bare
+    ``anthropic`` arm is the worst case (it writes no side-log at all, and
+    ``run_bare_nt_completion.sh`` sets no ``PDDL_COPILOT_TOOLLOG``), so a
+    keyless rerun there leaves only stderr behind.
+
+    Hoisted to the dispatch so all four arms are covered by one check; the
+    tools path keeps its own guard for direct callers. SystemExit, not
+    Exception, so the blanket handler cannot swallow it (same argument as the
+    t1 guard in ``_pb_scaffold``).
+    """
+    if not any(os.environ.get(k) for k in _ANTHROPIC_CREDENTIAL_ENVS):
+        raise SystemExit(
+            f"backend={backend} requires ANTHROPIC_API_KEY (or "
+            f"ANTHROPIC_AUTH_TOKEN) in the environment"
+        )
 
 
 def _anthropic_chat(query: str, model: str, max_tokens: int, stop: str) -> str:
@@ -1050,6 +1080,11 @@ def pddl_copilot_send_query(
     """
     try:
         backend, model_tag = _parse_engine_name(engine)
+        # All four anthropic arms, before any of them can spend money or spawn
+        # MCP subprocesses. _parse_engine_name has already whitelisted backend,
+        # so this prefix matches exactly those four.
+        if backend.startswith("anthropic"):
+            _require_anthropic_credential(backend)
         if backend == "ollama":
             return _ollama_chat(query, model_tag, max_tokens, stop)
         if backend == "anthropic":

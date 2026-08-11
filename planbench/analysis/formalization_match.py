@@ -23,9 +23,12 @@ Operationalization (recorded for the memo):
   Model object names outside the declared bijection count as no-match and
   are tallied separately.
 
-Run with the plugin venv:
+Run with the plugin venv, from the repo root:
   /Users/omereliyahu/personal/pddl-copilot/plugins/pddl-parser/.venv/bin/python3 \
-      .local/wt_run/formalization_match.py [--limit N]
+      planbench/analysis/formalization_match.py [--limit N] [--rows PATH]
+
+Re-deriving the archived rows file is a deliberate act: --rows defaults to the
+MANIFEST-pinned copy and the script refuses to overwrite it without --force.
 """
 import argparse
 import hashlib
@@ -43,9 +46,21 @@ import parser_server as ps  # noqa: E402
 
 R = Path(__file__).resolve().parents[2]
 PB = R / "external/LLMs-Planning/plan-bench"
+ARCHIVE = R / "results/planbench/wt-anthropic-20260801"
 ENGINE = "pddl_copilot__anthropic-tools__claude-haiku-4-5"
-HERE = Path(os.environ.get("WT_SIDELOG_DIR",
-    Path(__file__).resolve().parents[2] / "results/planbench/wt-anthropic-20260801/sidelogs"))
+
+# PROVENANCE: side-logs and grades BOTH default to the committed archive, so a
+# re-run joins one frozen epoch to itself. These used to be split — side-logs
+# from the archive, grades from the live external/ tree — which silently pairs
+# frozen model behaviour against whatever the live tree has been regraded to
+# since, with nothing flagging the mismatch (review finding, 2026-08-09).
+# Override them together or not at all.
+HERE = Path(os.environ.get("WT_SIDELOG_DIR", ARCHIVE / "sidelogs"))
+GRADED = Path(os.environ.get("WT_GRADED_DIR", ARCHIVE / "graded"))
+# The one remaining live-tree read: ground-truth plans (used only by the
+# behavioral-equivalence fallback) and the upstream instance fixtures. Neither
+# is in the archive; both are upstream-derived and independent of our runs.
+RESPONSES = Path(os.environ.get("WT_RESPONSES_DIR", PB / "responses"))
 
 CONFIGS = {
     "blocksworld": ("clean", "blocksworld/generated_basic"),
@@ -458,15 +473,29 @@ def main():
     ap.add_argument("--limit", type=int, default=None,
                     help="first N trials per config (smoke)")
     ap.add_argument("--rows", default=str(HERE / "formalization_match_rows.jsonl"))
+    ap.add_argument("--force", action="store_true",
+                    help="allow overwriting an existing --rows file")
     args = ap.parse_args()
+
+    # Checked BEFORE the (minutes-long) evaluation loop. The default target is
+    # the archive's MANIFEST-pinned 1200-row copy, so a plain no-arg invocation
+    # — or worse, a --limit smoke — would otherwise silently replace the
+    # published rows with a partial rebuild.
+    if os.path.exists(args.rows) and not args.force:
+        sys.exit(
+            f"refusing to overwrite an existing rows file: {args.rows}\n"
+            f"  the default target is the MANIFEST-pinned archive copy; pass\n"
+            f"  --rows <other path> to write elsewhere, or --force to replace it\n"
+            f"  (verify_promotion.py will then fail until MANIFEST is regenerated)"
+        )
 
     rows = []
     for config, (kind, inst_dir) in CONFIGS.items():
-        resp = json.load(open(PB / "responses" / config / ENGINE /
+        resp = json.load(open(RESPONSES / config / ENGINE /
                               "task_1_plan_generation.json"))
         gt_plan = {str(i["instance_id"]): i["ground_truth_plan"]
                    for i in resp["instances"]}
-        graded = json.load(open(PB / "results" / config / ENGINE /
+        graded = json.load(open(GRADED / config / ENGINE /
                                 "task_1_plan_generation.json"))
         correct = {str(i["instance_id"]): bool(i.get("llm_correct"))
                    for i in graded["instances"]}
