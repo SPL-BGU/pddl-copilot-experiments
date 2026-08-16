@@ -197,10 +197,28 @@ Consequence: `think=off` and `think=on` are **different apparatuses**. Each mode
 contrast remains internally valid (both arms co-run in one cell), and H4 never made a
 cross-mode comparison — but no number may be compared across the two modes.
 
-> TODO before the submit ping (local, no cluster): reconstruct the decoupled
-> `think=on` wall from `results/decoupled-rollup/*decoupled-thinkon/trials.jsonl` by
-> the §2.2 method and record it here. Plain-apparatus 9B+35b both arms is ~102 GPU-h;
-> the 2-call path costs more per trial, so budget ~46 (off) + ~110-150 (on).
+> **DONE 2026-08-16 (§8 item 7) — decoupled `think=on` wall, reconstructed.** Measured
+> from `results/decoupled-rollup/*decoupled-thinkon/trials.jsonl` by the §2.2 method
+> (Σ `result.duration_s` ÷ assumed `CONCURRENCY=4`). Both corpora are **neutral-arm
+> only** — 4,560 rows each, v11/12/13 × 1,520 verified — so the nt-ster projection
+> scales each cell to its 9,120-row both-arm shape (×2), which assumes the steered arm
+> costs the same per trial as the neutral arm. That assumption is untested and is the
+> single largest error term in this number.
+>
+> | cell | rows | Σ `duration_s` | mean/trial | wall @4 | projected 9,120-row wall |
+> |---|---|---|---|---|---|
+> | `Qwen3.5:9B` on/decoupled | 4,560 | 755,877 s | 165.8 s | 52.5 h | **105.0 h** |
+> | `qwen3.6:35b` on/decoupled | 4,560 | 193,914 s | 42.5 s | 13.5 h | **26.9 h** |
+>
+> **On-mode total ≈ 132 GPU-h** (≈172 h at the +30% node-speed spread), against the
+> §10 signing estimate of 110-150. **Grand total ≈ 46 (off) + 132 (on) = ~178 GPU-h**,
+> inside the ratified 156-196 band — the price signed at §10 stands and no
+> re-ratification is owed. Per-cell `--time` headroom: the 9B on-cell is the long pole
+> at ~105 h projected, which **exceeds the 5-day (120 h) ask only after the +30%
+> spread** (≈137 h). See the `--time` note in §2.2: a TIMEOUT is resumable from
+> `OUT_DIR/trials.jsonl` but costs a queue cycle and another ping. The partition cap is
+> 7 days, so `--time 7-00:00:00` on the on-mode submit is the cheaper insurance;
+> SLURM bills usage, not the ask.
 
 **(C) Snapshot.** `RESPONSE_SNAPSHOT_LEN = 16384` is a non-overridable code constant
 (`runner.py:145-153`, "Override is intentionally not exposed"), so it comes free and is
@@ -728,15 +746,29 @@ claimed**, never a level comparison, because apparatus vintage and n differ. CIs
 | 4 | gemma iss024d wt cell exists (9,120 rows, v11-16) → §4(b) correction | **DONE** (verified) | No |
 | 5 | HEAD generation-identical to `6007032`; plugins additive since `5e4f9c0` | **DONE** (verified) | No |
 | 6 | Ratify think-mode scope at the **corrected** price | **DONE — Omer, 07-25** | No |
-| 7 | Reconstruct the decoupled `think=on` wall and fill the §2.3(B) TODO | **TODO — agent, local** | No |
+| 7 | Reconstruct the decoupled `think=on` wall and fill the §2.3(B) TODO | **DONE 2026-08-16** — ~132 GPU-h on-mode, ~178 total, inside the ratified band; raises a `--time` question for the 9B on-cell (§2.3(B)) | No |
 | 8 | Smoke the `--include-no-tools-steered` production path **and its composition with `--decoupled-budget`** | **TODO — cluster, ping-gated** | No |
 | 9 | Write + freeze both analysis entry points; record hashes here | **TODO — agent, local** | No |
 | 10 | Rebuild + stamp `gt_cache.json` from the pinned marketplace commit; add the GT-hash dump/assert | **TODO — agent, local** | No |
 | 11 | `vllm_lookup` case for Llama (`llama3_json`, `REASONING_PARSER=none`) — without it `submit_with_rtx.sh:341-343` aborts | **TODO** | **YES — branch + PR.** Do **not** append the tag to `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live (`submit_with_resume.sh:18` expands that array into the submit roster), and do not check the branch out in `$HOME` until every nt-ster cell is terminal — the sbatch sources `lib/defaults.sh` from `$HOME` at run time, so a worktree does not help |
 | 12 | Optional `--variants 11,14` pass-through, if the §6 arm spec is honoured literally | **TODO / optional** | **YES — branch + PR**, else accept the ~13,680-trial shape |
 | 13 | Optional `status.sh` nt-ster column (~4 lines; it maps `no-tools` → neutral only and prices the cell at 4,560 against 9,120) | **TODO / optional** | **YES — branch + PR**, or accept manual `wc -l` checks |
-| 14 | Confirm ISS-024(b) `guided_json` stays parked through the submit (interpretability precondition for §3.7 M1) | **TODO — confirm in writing** | No |
+| 14 | Confirm ISS-024(b) `guided_json` stays parked through the submit (interpretability precondition for §3.7 M1) | **CONFIRMED 2026-08-16** — see below | No |
 | 15 | `llama3_json` registration in vLLM v0.20.2 | **UNVERIFIABLE locally** — read from the serve-flag echo (`sbatch:219`) | No |
+
+**Item 14, in writing (2026-08-16).** ISS-024(b) **stays parked through this submit**;
+the fix is not to be applied while nt-ster is live. The $0 audit run the same day
+(`tools/guided_json_audit.py`, commit `d10fd15` on `audit/guided-json-iss024b`)
+upgraded the §3.7 M1 precondition from an assumption to a measurement: the no-tools
+JSON-schema constraint produced conformant output on **526 of 88,781 decidable rows
+(0.59%)** across the canonical corpora, with violation shapes impossible under a
+working constrained decoder. So `guided_json` does not bind, M1 is interpretable as
+written, and the N/A clause in §3.7 is not triggered. Two consequences worth stating:
+(i) no with-tools row is affected, so §4(b) is untouched; (ii) because the constraint
+is inert in both the May corpora and this run, the anchor arm is not exposed to a
+constrained-decoding difference across apparatuses. If the fix were to land before or
+during the run it would change the no-tools `solve`/`simulate` generation surface
+mid-corpus — which is why it stays parked, not merely deprioritised.
 
 ---
 
