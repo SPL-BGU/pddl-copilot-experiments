@@ -6,6 +6,47 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-08-15 — ISS-024(b) `guided_json` audit: the constraint never bound (measured, $0, fix stays parked)
+
+**What.** The no-tools branch passes `TASK_SCHEMAS[task]` as vLLM `guided_json`
+(`runner.py` -> `chat.py` -> `vllm_client.py` `extra_body["guided_json"]`). The D4-amended
+$0 local audit measured whether it took effect, over every no-tools row in the three
+canonical corpora. New read-only script `tools/guided_json_audit.py`.
+
+**Result.** It bound on **526 of 88,781 decidable rows (0.59%)**. Decidable excludes empty,
+generation-truncated, and at-snapshot-cap rows, which cannot be judged. Per corpus:
+sweep5v2-live 132/33,204 (0.40%), sweep6-live 102/32,670 (0.31%), decoupled-rollup
+292/22,907 (1.27%).
+
+**Why this is proof, not inference.** Each observed violation is impossible under a working
+constrained decoder: `validate_*` return the bare prompt trailer `VERDICT: VALID` with no
+JSON at all (100% of decidable rows in every corpus); `solve` returns
+`{"plan": "<string>"}` where `SolveResponse.plan` is `list[str]`; `simulate` returns a bare
+`{"step": 0, ...}` object without the required `trajectory` wrapper. The last of these
+identifies Finding 1's "strict-wrapper sub-artifact" as a symptom of non-binding rather
+than a separate defect.
+
+**Scope of harm — much narrower than scope of effect.** `format_parse_fail` is **0.0% on
+all three `validate_*` tasks across all three corpora**: the v11-v13 prompts restore the
+`VERDICT:` trailer and `scoring.extract_verdict` reads it, so the safety net carries every
+row. That makes the sweep-4 trailer regression fix retroactively load-bearing for the
+paper's validation claims. Exposure is confined to `solve` (29.0 / 26.7 / 4.6%) and
+`simulate` (40.1 / 37.7 / 16.9%) for sweep5v2-live / sweep6-live / decoupled. **No
+with-tools row is affected**: `format` is never passed in the tools branch.
+
+**Root cause: hypothesis only.** The likely explanation is that the pinned server image
+(`vllm/vllm-openai:v0.20.2`) no longer accepts the `guided_json` extra_body field, which
+vLLM would drop silently. Unverified — it needs one live probe against a served model,
+which is cluster work and ping-gated. The corpora prove the constraint did not bind; they
+cannot say why.
+
+**Not done, deliberately.** The enforcement fix stays parked (D4): it creates a third
+generation apparatus, citable only after a full no-tools re-sweep. Limitations may cite the
+audit as a C1 artifact audit; no reported number is adjusted for it.
+
+**Files.** `tools/guided_json_audit.py` (new), `development/grading_artifacts_findings.md`
+(Finding 4), `development/OPEN_ISSUES.md` (ISS-024(b)).
+
 ## 2026-08-07 — PlanBench-WT: Act-4 quotes FIRST-DRAW clean WT (68.3); $0 verification batch green; analysis layer + data archive promoted (ISS-026 closed, commit f7baca9)
 
 **Decision (Omer).** Act 4 quotes clean WT first-draw — 410/600 = 68.3 [64.5, 71.9], paired Δ vs matched-NT +20.5pp, exact McNemar b=202/c=79, p=1.38e-13 — the "1 pt is not worth the ambiguity" of the 18 resume re-draws (all 18 first draws were loop-exhausted empty answers, so first-draw = re-draws counted as failures). The last-attempt reading (69.7 / +21.8pp / p=2.7e-15) stays in results-doc deviation row 1 only. Clean-vs-Mystery first-draw paired Δ 3.5pp (p=0.214), within the ±7.5pp margin. Integration-plan PB-B rewritten; also fixed a review-pass mislabel ("Δ vs GPT-4" → within-Haiku paired delta).

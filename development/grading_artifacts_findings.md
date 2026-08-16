@@ -299,3 +299,110 @@ logistics 78.9 / mystery 45.4.
 - `external/LLMs-Planning/plan-bench/utils/text_to_pddl.py` — `text_to_state` (263), `text_to_state_blocksworld` (329), `text_to_plan_blocksworld` (193).
 - Haiku single-tool corpus: `results/haiku-frontier/sweep5v2/`; raw batch: `.local/haiku/singletool_nt_canonical/`.
 - Haiku PlanBench: `results/haiku-frontier/planbench/`; cluster grade log: `slurm:~/haiku_eval.log`.
+
+---
+
+## Finding 4 — `guided_json` never bound: measured audit (ISS-024(b), 2026-08-15)
+
+**Status: AUDIT ONLY. The fix stays parked** (D4, memo §7). This closes the
+audit debt so C1's "artifact audits" component stays internally consistent; it
+does not reopen the enforcement fix, which would create a third generation
+apparatus citable only after a full no-tools re-sweep.
+
+Finding 1 above asserted from 500-character response heads that `guided_json`
+"did NOT bind". That was an impression from a handful of samples. This is the
+measurement, over every no-tools row in all three canonical corpora.
+
+### What is passed, and where
+
+`runner.evaluate_one` passes `format=TASK_SCHEMAS.get(task)` in the **no-tools
+branch only** (both the single-call and the decoupled two-call paths).
+`chat_without_tools` forwards it, and `vllm_client.chat` places it at
+`extra_body["guided_json"]`. The with-tools branch never passes a schema, so
+**no with-tools row is affected by this artifact at all.** All five tasks carry
+a schema (`schemas.py`: `SolveResponse`, `ValidateResponse` ×3,
+`SimulateResponse`).
+
+### The test
+
+A working constrained decoder cannot leave the grammar, so any stored response
+that is not JSON, or is JSON violating its task schema, is direct proof the
+constraint did not bind on that row. Rows that are empty, generation-truncated,
+or at the storage-snapshot cap are undecidable (a valid prefix may have been
+cut) and are excluded from the denominator rather than counted as failures.
+
+### Result: the constraint bound on 0.59% of decidable rows
+
+| corpus | no-tools rows | decidable | schema-conformant |
+|---|---|---|---|
+| sweep5v2-live | 45,600 | 33,204 | 132 (0.40%) |
+| sweep6-live | 45,600 | 32,670 | 102 (0.31%) |
+| decoupled-rollup | 36,480 | 22,907 | 292 (1.27%) |
+| **pooled** | **127,680** | **88,781** | **526 (0.59%)** |
+
+Per task, share of decidable rows that are not JSON at all (sweep5v2-live /
+sweep6-live / decoupled): `validate_domain` 100 / 100 / 100; `validate_problem`
+100 / 100 / 100; `validate_plan` 100 / 100 / 100; `simulate` 95.7 / 96.1 / 87.7;
+`solve` 92.6 / 93.9 / 59.1.
+
+The three violation shapes are each individually impossible under a working
+constraint, which is what makes this proof rather than inference:
+
+1. **`validate_*` emit no JSON whatsoever.** The stored response is the bare
+   string `VERDICT: VALID`, the trailer the v11-v13 prompt asks for. The model
+   followed the prompt and ignored the schema.
+2. **`solve` puts a string where the schema requires an array.**
+   `SolveResponse.plan` is `list[str]`; the observed shape is
+   `{"plan": "(shake ...) (pour ...)"}`. A bound decoder could not emit the
+   opening quote.
+3. **`simulate` omits the required wrapper.** `SimulateResponse` requires
+   `trajectory`; the observed shape is a bare `{"step": 0, "action": "", ...}`
+   step object. This is the same "strict-wrapper sub-artifact" Finding 1
+   described, now identified as a symptom of non-binding rather than a separate
+   defect.
+
+### Affected is not the same as harmed
+
+Nearly every no-tools row is affected, but the artifact changes a grade on only
+two of the five tasks. `format_parse_fail` rate by task and corpus:
+
+| task | sweep5v2-live | sweep6-live | decoupled |
+|---|---|---|---|
+| `validate_domain` | 0.0% | 0.0% | 0.0% |
+| `validate_problem` | 0.0% | 0.0% | 0.0% |
+| `validate_plan` | 0.0% | 0.0% | 0.0% |
+| `solve` | 29.0% | 26.7% | 4.6% |
+| `simulate` | 40.1% | 37.7% | 16.9% |
+
+The validation tasks are fully insulated: the v11-v13 prompts restore the
+`VERDICT:` trailer and `scoring.extract_verdict` reads it, so the safety net
+carries every row and the artifact costs nothing. That is why the sweep-4
+regression fix mattered so much (`prompts.py` history note) — it is the reason
+the validation results, which carry the paper's validation claims, are untouched
+by this defect. The exposure is `solve` and `simulate`, where no equivalent
+trailer exists. The decoupled corpus shows a much smaller exposure on both,
+because the budget fix removed the truncation pressure that was compounding it.
+
+### Root cause: hypothesis, not verified
+
+The constraint is sent as `extra_body["guided_json"]`, and vLLM ignores
+unrecognized `extra_body` keys silently rather than erroring. The leading
+hypothesis is that the pinned server (`vllm/vllm-openai:v0.20.2`) no longer
+accepts that field name, since vLLM moved structured decoding to a different
+request field after `guided_json` was deprecated. **This is not verified** — it
+needs one live probe against a served model, comparing `guided_json` against the
+current field name on the same prompt, which is cluster work and therefore
+ping-gated. What the corpora prove is that the constraint did not bind. Why it
+did not bind is a one-command check whenever a server is next up.
+
+### What this licenses in the paper
+
+Limitations may state: the no-tools arm intended schema-constrained sampling,
+the constraint did not take effect, this is measured at 0.59% conformance over
+88,781 decidable rows, the validation tasks are unaffected because a prompt-level
+trailer and a regex fallback carried them, and the exposure is confined to
+`solve` and `simulate` where it inflates `format_parse_fail` by the rates
+tabulated above. It must NOT be described as fixed, and no number in the paper
+may be adjusted for it.
+
+Reproduce: `tools/guided_json_audit.py` (read-only, no arguments).
