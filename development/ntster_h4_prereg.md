@@ -749,7 +749,7 @@ claimed**, never a level comparison, because apparatus vintage and n differ. CIs
 | 7 | Reconstruct the decoupled `think=on` wall and fill the §2.3(B) TODO | **DONE 2026-08-16** — ~132 GPU-h on-mode, ~178 total, inside the ratified band; raises a `--time` question for the 9B on-cell (§2.3(B)) | No |
 | 8 | Smoke the `--include-no-tools-steered` production path **and its composition with `--decoupled-budget`** | **TODO — cluster, ping-gated** | No |
 | 9 | Write + freeze both analysis entry points; record hashes here | **TODO — agent, local** | No |
-| 10 | Rebuild + stamp `gt_cache.json` from the pinned marketplace commit; add the GT-hash dump/assert | **TODO — agent, local** | No |
+| 10 | Rebuild + stamp `gt_cache.json` from the pinned marketplace commit; add the GT-hash dump/assert | **DONE 2026-08-17** — rebuilt, proven equivalent, stamped; gate = `tools/gt_cache_gate.py`. See below | No (D4(a): no harness edit) |
 | 11 | `vllm_lookup` case for Llama (`llama3_json`, `REASONING_PARSER=none`) — without it `submit_with_rtx.sh:341-343` aborts | **TODO** | **YES — branch + PR.** Do **not** append the tag to `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live (`submit_with_resume.sh:18` expands that array into the submit roster), and do not check the branch out in `$HOME` until every nt-ster cell is terminal — the sbatch sources `lib/defaults.sh` from `$HOME` at run time, so a worktree does not help |
 | 12 | Optional `--variants 11,14` pass-through, if the §6 arm spec is honoured literally | **TODO / optional** | **YES — branch + PR**, else accept the ~13,680-trial shape |
 | 13 | Optional `status.sh` nt-ster column (~4 lines; it maps `no-tools` → neutral only and prices the cell at 4,560 against 9,120) | **TODO / optional** | **YES — branch + PR**, or accept manual `wc -l` checks |
@@ -831,6 +831,44 @@ predating the July iss024d run, so the same image file served the pinned apparat
 
 **Capacity at the time of check:** `rtx6000` 41/44 nodes idle-or-mixed, `rtx_pro_6000`
 7/7, and the personal queue is **empty** — no contention for either submit.
+
+### Item 10 record — ground truth rebuilt, proven invariant, stamped (2026-08-17)
+
+Executed under **D4(a)**: cache-only, no harness edit, equivalence carried by the SHA
+argument rather than by an in-run dump.
+
+**Rebuilt** with `tools/build_gt_cache.py` against `domains/` (tree
+`8cde5762f74d6acba97e19d3b4a83cdfb946266b`, identical on the cluster) and the local
+marketplace clone. That clone's HEAD `f0e2c61` sits 2 additive commits past the pin, but
+**both oracle plugin subtrees hash identically to `5e4f9c0`** — `pddl-solver`
+`2ece6ce0…`, `pddl-validator` `b090092c…` at both commits — so this **is** a build from
+the pinned marketplace commit for ground-truth purposes. `REQUIRED_PLUGINS` is exactly
+those two (`run_experiment.py:122`). Output: 20 domains / 100 problems / 60 negative
+fixtures.
+
+**Result: ground truth has not moved.** The rebuild was diffed against the unstamped
+Jul-11 cache (preserved at `results/derived/gt_cache_20260711.prestamp.json`). Excluding
+one field, the two are **exactly equal** — canonical
+`6af57125bde3ec2bb7262b4db23449e2b504f0c721c4412f8eb1151f744ca945` on both sides. This
+also settles the preflight's open question: **the `mcp` bump did not perturb ground
+truth**, and neither did five weeks nor the two additive marketplace commits.
+
+**The one difference, and why the gate is not a file hash.** Whole-file sha256 differs
+while byte-length is identical to the byte. The cause is `domain_validation_raw`, which
+serializes the validator's `[WARNING]` lines in a **process-dependent order** — verified
+across all 100 problems as an identical warning multiset in a different order. The field
+is written at `pddl_eval/domains.py:174` and **read by no grading code** (single grep hit
+in `pddl_eval/`, `tools/`, `run_experiment.py`). So a naive file-hash gate would
+false-alarm on every rebuild and would eventually be disabled by whoever hit it — the
+classic way a safety check dies. The gate is instead a canonical hash over every
+grading-visible field, excluding that diagnostic.
+
+**Stamped** at `results/derived/gt_cache_stamp.json`: builder blob SHA, both repo SHAs,
+the `domains/` tree hash, both oracle subtree hashes at HEAD and at the pin, the plugin
+venv `mcp` versions on both laptop and cluster, the gate value, and the equivalence
+result. **Enforced** by `tools/gt_cache_gate.py`, which both frozen analysis entry points
+(item 9) call via `assert_gate()` before reading any trial — so "the analysis ran against
+the pinned ground truth" is checked, not promised. Verified passing.
 
 ---
 
