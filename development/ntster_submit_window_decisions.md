@@ -50,7 +50,7 @@ Options:
   answered with any measurement of the steered arm's per-trial cost.
 
 > ANSWER (a / b / c):
->
+> a
 
 ## D2 — `--time` on the on-mode submit: 5 days or 7?
 
@@ -67,7 +67,7 @@ Recommendation: **`--time 7-00:00:00` for the on-mode submit**, keep 5 days for 
 your initials rather than my judgement.
 
 > ANSWER (7 days on-mode / keep 5 days as written / other):
->
+> 7
 
 ## D3 — The prereg's "smoke first" step is not executable as written
 
@@ -106,7 +106,7 @@ Options:
   delays the window.
 
 > ANSWER (a / b):
->
+> a
 
 ## D4 — Item 10's GT-hash dump contradicts its own "no code change" row
 
@@ -128,7 +128,7 @@ Options:
   submitting — strongest audit trail, but it perturbs the pinned apparatus.
 
 > ANSWER (a / b):
->
+> a
 
 ---
 

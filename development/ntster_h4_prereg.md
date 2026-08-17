@@ -770,6 +770,68 @@ constrained-decoding difference across apparatuses. If the fix were to land befo
 during the run it would change the no-tools `solve`/`simulate` generation surface
 mid-corpus — which is why it stays parked, not merely deprioritised.
 
+### Preflight record — 2026-08-17 (§7 step 2 SHA requirement, discharged early)
+
+Preflight-only window; **no submit**, per D1(a) in
+`development/ntster_submit_window_decisions.md`.
+
+**Repo SHAs, both sides.** The cluster is sitting on the **literal pin**, not merely on
+something generation-identical to it:
+
+| | cluster (`~`) | this worktree | verdict |
+|---|---|---|---|
+| experiments | `paper/iter2-decoupled-run` @ **`6007032`** | `run/ntster-h4` @ `origin/main` | the pin itself |
+| marketplace | `main` @ **`5e4f9c0`** | `main` @ `5e4f9c0` (= tip of `origin/main`) | the pin itself |
+| `domains/` tree hash | `8cde5762f74d6acba97e19d3b4a83cdfb946266b` | `8cde5762f74d6acba97e19d3b4a83cdfb946266b` | **identical** |
+
+Both working trees carry **zero** tracked modifications, and `domains/` is clean of
+untracked files as well. The identical fixture-tree hash is what converts the D4(a)
+ground-truth argument from an assertion into a check: GT is deterministic given the
+fixture tree and the oracle plugins, both sides hold the same tree, and
+`pddl-solver` / `pddl-validator` / `pddl-parser` are unchanged since `5e4f9c0`.
+
+The §2.3 "generation-identical to `6007032`" claim was re-verified directly: the diff
+between `6007032` and current `main` across `pddl_eval/`, `run_experiment.py`,
+`cluster-experimenting/`, `domains/` is **three lines, all of them doc-path comments**
+(`lib/defaults.sh`, `submit_with_rtx.sh`, `scoring.py`). Zero behavioural delta.
+
+**No pull was performed on the experiments repo, deliberately.** Two reasons: it is
+already at the pin, and its branch `paper/iter2-decoupled-run` **no longer exists on
+`origin`** (deleted after PR #88 merged), so `scripts/preflight.sh`'s
+`git pull --ff-only` would have failed under its own `set -e` and aborted the run before
+the venv and capacity phases. The preflight phases were therefore run manually. The
+marketplace pull ran and was a no-op.
+
+**Venv refresh — one real apparatus delta, recorded.** Per the standing preflight rule
+the two required plugin venvs (`REQUIRED_PLUGINS = ["pddl-solver", "pddl-validator"]`,
+`run_experiment.py:122`) were force-refreshed without `--quiet`. Both had drifted, and
+inconsistently with each other:
+
+| plugin | `mcp` before | after |
+|---|---|---|
+| `pddl-solver` | 1.28.1 | **1.29.0** |
+| `pddl-validator` | 1.27.2 | **1.29.0** |
+
+`requirements.txt` pins only `mcp<2.0,>=1.27`, so this dependency floats and was never
+part of the commit-level pin — the May/July corpora were themselves produced under
+whichever version was resident then, and the two servers did not even agree with each
+other before today. The bump is a **client/transport** change; the planner and validator
+oracles live in the plugin servers, which are pinned by `5e4f9c0`. Both servers were
+verified to import cleanly under 1.29.0, and the harness imports cleanly in the run's
+conda env (`pddl_copilot`, Python 3.12.13). **This is testable rather than assumed:**
+readiness item 10 rebuilds `gt_cache.json` under the new stack, so a diff against the
+Jul-11 cache measures directly whether ground truth moved. Recorded here as a stated
+apparatus delta either way.
+
+**vLLM image.** The sbatch pins `docker://vllm/vllm-openai:v0.20.2` and will reuse the
+cached `$HOME/vllm.sif`. Its version cannot be read login-side (no `apptainer` on the
+login node), so §2.3's "verified from the served log header" stays a **run-time** check.
+The strongest pre-run evidence: the file's mtime is **2026-05-31 23:26**, unchanged and
+predating the July iss024d run, so the same image file served the pinned apparatus.
+
+**Capacity at the time of check:** `rtx6000` 41/44 nodes idle-or-mixed, `rtx_pro_6000`
+7/7, and the personal queue is **empty** — no contention for either submit.
+
 ---
 
 ## 9. Known limits, carried into Limitations
