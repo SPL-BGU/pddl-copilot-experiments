@@ -10,12 +10,15 @@ is the most recent) > `remaining_work_20260811.md` > `journal_decisions_memo.md`
 
 | item | what it is | state |
 |---|---|---|
-| 7 | reconstruct the decoupled `think=on` wall | **DONE today** — ~132 GPU-h on-mode, ~178 total, inside the ratified 156-196 band |
-| 14 | confirm `guided_json` stays parked, in writing | **DONE today** — the 08-16 audit measured it never binds (526/88,781 = 0.59%), so §3.7 M1 keeps its interpretability |
-| 9 | write + **freeze** `tools/ntster_f_gate.py` and `tools/ntster_h4.py`, hashes recorded in the prereg | **OPEN** — not started; this is the big one (§7 step 3 lists ~10 required behaviours) |
-| 10 | rebuild + stamp `gt_cache.json` from the pinned marketplace commit, add the GT-hash dump/assert | **OPEN** — cache on disk is an unstamped Jul-11 artifact |
+| 7 | reconstruct the decoupled `think=on` wall | **DONE 08-16** — ~132 GPU-h on-mode, ~178 total, inside the ratified 156-196 band |
+| 14 | confirm `guided_json` stays parked, in writing | **DONE 08-16** — the 08-16 audit measured it never binds (526/88,781 = 0.59%), so §3.7 M1 keeps its interpretability |
+| 9 | write + **freeze** `tools/ntster_f_gate.py` and `tools/ntster_h4.py`, hashes recorded in the prereg | **DONE 08-17** — written, rehearsed against a same-shape corpus, frozen at `ff7bbd7`; four hashes recorded in the prereg |
+| 10 | rebuild + stamp `gt_cache.json` from the pinned marketplace commit, add the GT-hash dump/assert | **DONE 08-17** — rebuilt, proven byte-identical on every grading-relevant field, stamped, gate enforced by `tools/gt_cache_gate.py` |
 
 Item 8 (smoke) is cluster-gated and is its own problem — see D3.
+
+> **ALL FOUR CLOSED as of 2026-08-17, and preflight is done.** The submit is now gated
+> only on Omer's go-ahead plus a VPN window. Everything below is the answered record.
 
 ---
 
@@ -131,6 +134,42 @@ Options:
 > a
 
 ---
+
+## The next window, ready to run
+
+Decisions applied: **7-day on-mode `--time`** (D2), **live-smoke instead of `--smoke`**
+(D3(a)). Models named explicitly — never `--all`, which would set `Nice=500` on exactly
+the 9B cells, the longest tasks in this regime.
+
+```bash
+# off-mode — 3 array tasks (9B, gemma, 35b), plain apparatus, ~46 GPU-h
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+  --no-tools --include-no-tools-steered --think-modes off \
+  --run-tag ntster-h4 --time 5-00:00:00
+
+# on-mode — 2 array tasks (9B, 35b), decoupled apparatus, ~132 GPU-h
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B qwen3.6:35b \
+  --no-tools --include-no-tools-steered --think-modes on \
+  --decoupled-budget --num-predict-think 8192 \
+  --run-tag ntster-h4 --time 7-00:00:00
+```
+
+Immediately after each submit: **verify `TimeLimit`** (increases are admin-denied
+afterwards). Then the live-smoke on the first rows to land: v14/v15/v16 present,
+`with_tools=false` on them, six variants tracking. Variants are the innermost emission
+loop, so steered rows appear from the first problem — not after the anchor arm finishes.
+Note the on-disk check can only be `prompt_variant ∈ {14,15,16}`: **trial rows store no
+prompt text**, so "the directive is in the stored prompt" is not checkable from data;
+it is guaranteed by `runner.py:288-301`, verified separately.
+
+Watch for gemma's VRAM guard at zero margin (85.9% peak against a `> 85` integer guard);
+on `rc=3` resubmit gemma alone with `GPU_MEM_UTIL=0.82`. Record the served vLLM
+image/revision from the log header — that is the one apparatus check that can only be
+made at run time.
+
+After the run: `sync.sh results/ntster-h4-live` → `e2e_regrade.py --no-mcp` →
+`ntster_f_gate.py` → `ntster_h4.py`. The last refuses to start without the F gate's
+output, so the pre-registered order enforces itself.
 
 ## Not blocking, for awareness
 

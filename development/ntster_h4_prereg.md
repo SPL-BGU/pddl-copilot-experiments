@@ -747,8 +747,8 @@ claimed**, never a level comparison, because apparatus vintage and n differ. CIs
 | 5 | HEAD generation-identical to `6007032`; plugins additive since `5e4f9c0` | **DONE** (verified) | No |
 | 6 | Ratify think-mode scope at the **corrected** price | **DONE — Omer, 07-25** | No |
 | 7 | Reconstruct the decoupled `think=on` wall and fill the §2.3(B) TODO | **DONE 2026-08-16** — ~132 GPU-h on-mode, ~178 total, inside the ratified band; raises a `--time` question for the 9B on-cell (§2.3(B)) | No |
-| 8 | Smoke the `--include-no-tools-steered` production path **and its composition with `--decoupled-budget`** | **TODO — cluster, ping-gated** | No |
-| 9 | Write + freeze both analysis entry points; record hashes here | **TODO — agent, local** | No |
+| 8 | Smoke the `--include-no-tools-steered` production path **and its composition with `--decoupled-budget`** | **SUPERSEDED 2026-08-17 by D3(a)** — not executable as written: `--smoke` is mutually exclusive with `--no-tools`/`--think-modes` (`submit_with_rtx.sh:311-315`) and forces `--num-variants 1`, which is a *prefix* of the variant list, so it can never emit v14-16. The composition unknown was closed locally instead (`runner.py:350` builds `messages` once, then dispatches to the decoupled path at `:399` or the plain path at `:413` — the directive is in the prompt before the branch, so the two flags compose by construction). Residual check = live-smoke on the first rows of the production submit | No |
+| 9 | Write + freeze both analysis entry points; record hashes here | **DONE 2026-08-17** — written, rehearsed, frozen at `ff7bbd7`; hashes below | No |
 | 10 | Rebuild + stamp `gt_cache.json` from the pinned marketplace commit; add the GT-hash dump/assert | **DONE 2026-08-17** — rebuilt, proven equivalent, stamped; gate = `tools/gt_cache_gate.py`. See below | No (D4(a): no harness edit) |
 | 11 | `vllm_lookup` case for Llama (`llama3_json`, `REASONING_PARSER=none`) — without it `submit_with_rtx.sh:341-343` aborts | **TODO** | **YES — branch + PR.** Do **not** append the tag to `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live (`submit_with_resume.sh:18` expands that array into the submit roster), and do not check the branch out in `$HOME` until every nt-ster cell is terminal — the sbatch sources `lib/defaults.sh` from `$HOME` at run time, so a worktree does not help |
 | 12 | Optional `--variants 11,14` pass-through, if the §6 arm spec is honoured literally | **TODO / optional** | **YES — branch + PR**, else accept the ~13,680-trial shape |
@@ -870,6 +870,56 @@ result. **Enforced** by `tools/gt_cache_gate.py`, which both frozen analysis ent
 (item 9) call via `assert_gate()` before reading any trial — so "the analysis ran against
 the pinned ground truth" is checked, not promised. Verified passing.
 
+### Item 9 record — analysis entry points FROZEN (2026-08-17)
+
+Frozen at commit **`ff7bbd7`** on `run/ntster-h4`. sha256:
+
+| file | sha256 |
+|---|---|
+| `tools/ntster_f_gate.py` | `2ebb92f16481263940ac03d7658b34e8e560fd76f40dc8194159cef31471aa6e` |
+| `tools/ntster_h4.py` | `0541ad8e9fab62d2c483b2e589782d6f2dea56948dcb322e794d348ade6534e9` |
+| `tools/ntster_common.py` | `a7bc6093f711666c744f9b2fa9ffb62bec69b37e64ae43184e529a37e3e822f4` |
+| `tools/gt_cache_gate.py` | `db78f3623a534ccbd26989c2fb29e14777193933106d40e1b2ae40e3fcd8057b` |
+
+Four files, not the two §7 step 3 names, and the reason matters: the shared core and
+the GT gate are **inside** the frozen boundary. Splitting them out and leaving them
+mutable would reproduce exactly the loophole freezing exists to close. For the same
+reason nothing imports from `.claude/skills/analyzer/` — a frozen analysis that imports
+a live module is not frozen.
+
+**Enforcement, not documentation.** `ntster_h4.py` refuses to start without the F-gate
+JSON; refuses when that JSON names a different overlay corpus than the one passed;
+and calls `assert_gate()` before reading any trial. There is no `--margin`, `--alpha`,
+`--surface` or `--shard` flag — each would be a design commitment turned into a run-time
+choice, and `--shard` additionally breaks the +3-offset pairing because `prompt_variant`
+is in the shard key (`runner.py:647-650`).
+
+**Coverage.** Between them the four files implement: dedup by trial key (last wins); the
+§3.1 completeness gate incl. the `snapshot_cap == 16384` assertion; the fixture-matched
+join on the trial key with the variant slot stripped; the paired per-domain difference
+with t₁₉ and domain-clustered bootstrap (B = 10,000, seeded) at **both** clusterings with
+the wider governing; unpaired Newcombe as companion; F at pooled and per-task
+granularity; the §3.3 eligibility classification incl. the LOW-BASE-RATE risk-ratio
+bound; the §3.4 labels, verdict vector and paper-level branch table; Holm over the
+ELIGIBLE family only; the MDE table; and the §3.7 four-way partition with M1/M2, the
+ceiling and APPARATUS guards, the dominance label rules and the help-direction Spearman.
+
+**Rehearsed before freezing** against `results/derived/e2e_overlay/iss024d-e2e-live`,
+which carries the same 9,120-row six-variant shape these cells will have. **Code
+correctness only — that corpus is with-tools, so its numbers are the H2 effect and not
+this control; nothing from the rehearsal may be read as an H4 result.** What it
+established: the completeness gate passes exactly on all five cells, and the mechanism
+partition reproduces the ΣΔ = −Δ̂ identity to **0.000pp in every cell**. All five failure
+paths were exercised deliberately — missing F gate, corpus mismatch, GT divergence,
+incomplete cell, empty granularity — and each refuses or degrades correctly rather than
+producing a number.
+
+Two defects the rehearsal caught and fixed before the freeze: the identity check was
+comparing against the governing interval rather than the domain-clustered Δ̂ the
+components are computed on, showing a spurious residual whenever problem clustering was
+wider; and a granularity with zero rows rendered as `usable`, which would have let a
+silent shortfall read as a pass.
+
 ---
 
 ## 9. Known limits, carried into Limitations
@@ -932,6 +982,17 @@ submit is still gated on (a) the §8 readiness items that must precede it — it
 (decoupled-wall reconstruction), item 9 (freeze both analysis entry points), item 10
 (rebuild + stamp `gt_cache.json`), item 14 (confirm ISS-024(b) `guided_json` stays
 parked) — and (b) Omer's explicit go-ahead plus a VPN window, per the standing
-cluster rule. Item 11 (`vllm_lookup` case for Llama) is needed only for the §6 probe
+cluster rule.
+
+> **STATUS 2026-08-17 — all four pre-submit readiness items are CLOSED.** Item 7
+> measured (~178 GPU-h total, inside the ratified band); item 14 confirmed in writing
+> and now backed by measurement; item 10 rebuilt, proven invariant and stamped; item 9
+> written, rehearsed and frozen at `ff7bbd7`. Preflight is done and the cluster is
+> verified sitting on the literal pin. **The submit is now gated only on (b)** — Omer's
+> go-ahead plus a VPN window. Item 8 (smoke) is superseded by the live-smoke decision
+> (D3(a) in `ntster_submit_window_decisions.md`): the wrapper cannot express the
+> smoke the prereg asked for, its riskiest unknown was closed locally instead, and the
+> residual check runs against the first rows of the production submit. The on-mode
+> `--time` is **7 days**, not the 5 in §7 step 2, per D2. Item 11 (`vllm_lookup` case for Llama) is needed only for the §6 probe
 and carries its own branch + PR; it must not append the tag to
 `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live.
