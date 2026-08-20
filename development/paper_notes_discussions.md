@@ -1394,3 +1394,39 @@ validated by an independent ranking subagent (the user asked for a second perspe
   memo's "227k trials" does not reproduce from disk; the counted two-corpus total is
   273,600, and the draft abstract must not pair that figure with "seven models" — it covers
   the five open-weight models only.
+
+## 2026-08-20 — D-J6 answered: delivery demoted to OPTIONAL, scale figure fixed, all three titles rejected
+
+- **The delivery gap is OPTIONAL, not the thesis (Omer).** *"Let's mark the delivery as
+  optional and later we choose between a version where it's included and a version where
+  it's not included. We need to decide on a non-confusing narrative. The delivery is not
+  our main point in the paper."* Two variants are now written up in
+  `title_abstract_candidates.md` §2 with an ANSWER slot: **N1** = invocation-propensity
+  spine, delivery in Limitations only (recommended); **N2** = delivery kept but
+  subordinate, with its own section.
+- **The term question is deferred, not answered.** It only arises under N2. The collision
+  verdict stands if delivery stays: "the delivery gap" is unclaimed, nearest neighbour is
+  the GAP metric of arXiv:2602.16943.
+- **All three title candidates REJECTED (Omer):** *"the title is misleading. it's
+  over-focused on the recent changes rather than the actual field and conclusions we
+  present."* A and C made DELIVER the thesis; B made the dual-surface grading instrument
+  the thesis. Three replacements (D/E/F) are drafted around the field-level conclusion
+  instead.
+- **The paper's actual thesis is already in the tex** and it does not mention delivery:
+  "the bottleneck throughout is invocation propensity, an unstable, model- and
+  prompt-dependent behavior, separate from the model's capability or the tool's accuracy."
+  Any title or abstract that does not lead with that is off-spine.
+- **Reopened:** "Availability Is Not Enough" was retired for anchoring the CALL finding
+  only and predating the DELIVER stage. If delivery leaves the thesis that rationale
+  mostly dissolves, and anchoring the CALL finding becomes exactly right. Back on the
+  table under N1.
+- **Scale figure DECIDED (Omer): quote 273,600 and say five open-weight models.** Derives
+  in one line for a reviewer: 5 models x 2 reasoning modes x 3 arms x 4,560 x 2 corpora.
+  The frontier arm (6,080 Haiku + 10,640 Sonnet) gets its own sentence and is never folded
+  in. "227k" is retired; correction markers are now at the head of
+  `journal_decisions_memo.md` and `journal_narrative_proposal.md`, which is where the
+  "227k-trial / 7-model" pairing entered the drafting chain.
+- **Still open:** the N1/N2 call and the title choice, both with inline slots in
+  `title_abstract_candidates.md` §2. The §3 draft abstract is bannered PENDING that call —
+  it implements N2-with-delivery-as-climax, so under N1 it needs rewriting rather than
+  renumbering.

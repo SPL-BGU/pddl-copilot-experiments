@@ -43,9 +43,92 @@ same sentence. If Omer wants more distance, the strongest alternatives are
 
 > ANSWER (keep "the delivery gap" / switch to "delivery loss" / switch to
 > "last-mile gap" / other):
+> **ANSWERED 2026-08-20 (Omer): OPTIONAL, and the term choice is deferred.**
+> "Let's mark the delivery as optional and later we choose between a version
+> where it's included and a version where it's not included. We need to decide
+> on a non-confusing narrative. The delivery is not our main point in the paper."
+>
+> Consequence: the term question is no longer answerable on its own, because it
+> only arises in the variant that keeps delivery. The live decision is now the
+> narrative in section 2 below; the term follows from it. If delivery stays, the
+> collision verdict above stands and "the delivery gap" is the recommendation.
+
+## 2. Narrative decision first, then the title
+
+> **REJECTED 2026-08-20 (Omer), all three earlier candidates.** *"The title is
+> misleading. It's over-focused on the recent changes rather than the actual
+> field and conclusions we present."* Kept at the bottom of this section for the
+> record. The diagnosis is right and it generalises: A ("Need, Call, Deliver")
+> and C ("Soundness Does Not Transfer to the Delivered Answer") both make
+> DELIVER the thesis, and B ("Dual-Surface Grading") makes our measurement
+> instrument the thesis. All three foreground work done in the last two months
+> rather than the question the paper answers.
+
+**What the paper actually concludes.** The tex abstract already states it, and it
+does not mention delivery at all:
+
+> *"The bottleneck throughout is invocation propensity, an unstable, model- and
+> prompt-dependent behavior, separate from the model's capability or the tool's
+> accuracy."*
+
+That is the field-level result: sound planning tools are available to LLMs, the
+benefit is strongly regime-dependent, and what gates it is whether the model
+chooses to call, not whether the tool is correct or the model is capable.
+
+### The two narratives
+
+**N1 — Invocation-propensity spine (delivery out of the thesis).**
+The paper asks when tool access helps an LLM planner and answers: it depends on
+the regime, and the binding constraint is invocation. Two tasks cannot be done
+without the tool; plan checking gets *worse* when the tool is merely available
+(-67pp for one model) because the model reasons in prose instead of calling; one
+steering sentence moves invocation 21% to 94%. Dual-surface grading appears in
+Methods as how we measure honestly, and the delivery gap appears in Limitations
+as a second place the guarantee can be lost. Neither is a headline.
+
+**N2 — Two-failure spine (delivery in, subordinate).**
+Same spine, plus a second, later failure: even once called, the tool's result may
+not reach the answer. Delivery is a supporting act with its own section, not the
+climax. Costs an extra concept in the abstract, and risks the reviewer reading
+the paper as two loosely joined findings.
+
+**Recommendation: N1.** It matches the tex we already have, it is one idea rather
+than two, and it puts the paper in the tool-use literature rather than in the
+grading-methodology literature. Delivery is stronger as a limitation that a
+careful reader notices than as a co-headline it has to compete with.
+
+> ANSWER (N1 / N2 / other — and if N2, say what delivery is subordinate to):
 >
 
-## 2. Title candidates
+### Title candidates for N1
+
+Each names the field (LLMs calling sound planning tools) and a conclusion, not an
+instrument. All are scoped; none makes an unscoped composition-failure claim.
+
+**D. The conclusion, stated.**
+> **Invocation Is the Bottleneck: When Sound Planning Tools Help an LLM, and When
+> They Do Not**
+
+**E. The question, with the regime answer.**
+> **Does Calling a Planner Help? Regime-Dependent Gains and an Availability
+> Penalty in LLM PDDL Planning**
+
+**F. The counterintuitive result, scoped.**
+> **A Correct Tool the Model Will Not Call: Invocation Propensity as the Limit on
+> Tool-Augmented LLM Planning**
+
+**Worth reopening.** "Availability Is Not Enough" was retired because it "anchors
+the CALL finding only and predates the DELIVER stage". If delivery leaves the
+thesis, that rationale mostly dissolves: anchoring the CALL finding is now
+exactly right. It is the most economical statement of the paper's result and it
+should be back on the table under N1.
+
+> ANSWER (D / E / F / un-retire "Availability Is Not Enough" / combination /
+> other):
+>
+
+### Rejected 2026-08-20, kept for the record
+
 
 Constraints applied: "Availability Is Not Enough" is retired (it anchors the CALL
 finding only and predates the DELIVER stage); no unscoped universal
@@ -75,10 +158,13 @@ composition-failure claim. Costs us the funnel mnemonic, and it echoes the Mind
 the GAP subtitle closely enough that I would only pick it if we are comfortable
 being read alongside that paper.
 
-> ANSWER (A / B / C / combination):
->
-
 ## 3. Abstract candidate
+
+> **PENDING the section-2 narrative answer.** The draft below implements N2 with
+> delivery as the *climax* ("this is where the guarantee is lost"), which the
+> 2026-08-20 decision demotes. Under N1 it needs rewriting around invocation
+> propensity, not renumbering. The scale-figure fix from section 4 is applied
+> here already, since it holds under either narrative.
 
 Built on the memo's skeleton: field claim and prescribed remedy, one honest gap
 number in gradient form, C1 named, three one-number stage results, constructive
@@ -96,7 +182,8 @@ recommendation, scale as protocol validation. Paired with title A.
 > twin as a contamination control, a budget-decoupling control that separates
 > reasoning from answer length, denominator discipline that scores an empty answer
 > as incorrect, and pre-registered parity tests between apparatus versions.
-> Applying it to five PDDL tasks over seven models, the failure localizes to three
+> Applying it to five PDDL tasks over five open-weight models, with a two-model
+> frontier arm as a capability check, the failure localizes to three
 > stages. The model needs the tool: unaided plan generation sits at 8 to 11
 > percent, and the tool lifts it by 66 to 73 points at both open-weight and
 > frontier tiers. The model must choose to call it: mere availability can hurt,
@@ -106,7 +193,7 @@ recommendation, scale as protocol validation. Paired with title A.
 > and it is lost in proportion to how much there is to say. We recommend reporting
 > the delivered answer as the primary number and relaying tool output as
 > structured data rather than asking a model to restate it. The protocol is
-> exercised over 273,600 trials across two corpora.
+> exercised over 273,600 open-weight trials across two corpora.
 
 Notes on choices a reviewer might probe. The first number is one-sided by
 construction (a gradient, not an interval), per the D-J1 constraint. No sentence
@@ -148,7 +235,15 @@ reviewer with the released data will check it.
 
 > ANSWER (quote 273,600 two-corpus / quote a larger total that includes the
 > control and frontier corpora, specify which / other):
->
+> **ANSWERED 2026-08-20 (Omer): quote 273,600 and say five open-weight models.**
+> The abstract names the five open-weight models with the 273,600 two-corpus
+> total, so the derivation is one line a reviewer can check:
+> 5 models x 2 reasoning modes x 3 arms x 4,560 x 2 corpora. The frontier arm
+> (6,080 Haiku + 10,640 Sonnet) is described in its own sentence and is never
+> folded into that figure. "227k" does not appear anywhere.
+> Applied to the section-3 draft; correction markers added at the head of
+> `journal_decisions_memo.md` and `journal_narrative_proposal.md`, which are
+> where the "227k-trial / 7-model" pairing entered the drafting chain.
 
 ## 5. Before any of this reaches the tex
 
