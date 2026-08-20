@@ -5,5 +5,11 @@ openai>=1.40.0
 # single-task harness.
 anthropic>=0.40.0
 
+# JSON-Schema validation for tools/guided_json_audit.py: the ISS-024(b) audit
+# checks stored responses against TASK_SCHEMAS itself (the object handed to
+# vLLM's guided_json), not against the pydantic model, which coerces types the
+# grammar would reject.
+jsonschema>=4.0.0
+
 matplotlib
 pandas

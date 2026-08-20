@@ -1,5 +1,11 @@
 # Next steps after the two in-flight runs (written 2026-07-12)
 
+> **SUPERSEDED — NOT an entry point, and NOT a status doc.** Both runs described
+> below as "in flight" landed in July. The open `> ANSWER:` slots were overtaken by
+> events; do not answer them. Current cross-line entry point:
+> **`remaining_work_20260811.md`**. Retained for its decision record and for the
+> reasoning behind the July sequencing.
+
 Two runs are in flight, both expected to land within ~20h:
 
 1. **Qwen with-tools re-run** — ISS-024(d), cluster job **19293221** (4 Qwens ×

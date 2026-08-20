@@ -1,5 +1,11 @@
 # PlanBench with-tools arm — plain-language brief and go/no-go
 
+> **DECIDED — the go/no-go below is CLOSED; do not answer its `> ANSWER:` slots.**
+> The arm ran, returned a RESCUE verdict, and closed out 2026-08-06/11. Act 4 quotes
+> clean WT first-draw 68.3 [64.5, 71.9], paired delta +20.5pp. Single entry point for
+> the arm: **`PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`**. Retained for its plain-language
+> framing of why the arm was worth running.
+
 **Why this page exists.** At the scope slot (carried to `planbench_wt_prereg.md` §10 RATIFY)
 you wrote: *"lets simplify and dig deeper here i either dont realy get the full picture or
 it just seems insignificant."* The previous session read the "simplify" half as a vote for

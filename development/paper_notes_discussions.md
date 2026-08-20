@@ -1356,3 +1356,124 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **nt-ster H4 prereg RATIFIED** the same day (all four §10 lines) with the corrected
   price for the accepted shape: ~46 GPU-h off + ~110-150 on, against the memo's
   obsolete ~92. Submit stays gated on readiness items 7/9/10/14 plus a ping and VPN.
+
+## 2026-08-17 — ISS-024(b) audit numbers corrected after PR-94 review; what Limitations may say about `guided_json`
+
+- **The verdict is unchanged: `guided_json` never bound.** It survives every cut of the
+  data. What changed are the numbers quoted for it, after three defects in
+  `tools/guided_json_audit.py` were found in review and fixed.
+- **Quote the zero, not the percentage.** The headline for the paper is **0 of 58,581
+  provable `validate_*` rows emitted JSON of any kind** across the two canonical corpora.
+  It needs no denominator argument. The pooled rate (0.36% of 65,874 provable rows) is
+  partly a task-mix figure, because `validate_*` is 82% of rows and its prompt never asks
+  for JSON; it is a coverage number, not a measure of constraint strength.
+- **Conservative bound available on request:** 1.92% on the 12,176 rows stored in full.
+  That subset is length-biased upward (short JSON is disproportionately conformant), so it
+  is a bound and not an estimate. Whichever cut a reviewer prefers, conformance is under 2%.
+- **Superseded:** ~~526 of 88,781 decidable rows (0.59%)~~ — that figure pooled three trees,
+  double-counted the four `decoupled-rollup` cells that are byte-identical copies of their
+  sweep5v2 baseline, and applied one snapshot cap to a tree holding cells at two caps.
+- **The decoupled control is never pooled with the canonical corpora** (corpus-identity
+  rule). It is a different generation apparatus; it gets its own line, 174/16,448 (1.06%).
+- **Sharpest framing for the Limitations sentence:** the `solve` and `simulate` prompts
+  instruct the model to conform to "the JSON schema provided by the format constraint"
+  (`prompts.py:114,138`) while no constraint ever reached the server. The `validate_*`
+  prompts never mention JSON, which is why they sit at exactly 0.0%.
+- **Do NOT write that the validation results are unaffected.** Measured: no validation row
+  is *mis-graded* (`format_parse_fail` 0.0%, the `VERDICT:` trailer plus the regex fallback
+  carry every row). Not measured, and not inferable from these corpora: what a constraint
+  that actually bound would have generated. The counterfactual is unavailable.
+- **Withdrawn:** ~~the decoupled budget fix shrank `format_parse_fail` exposure on both
+  `solve` and `simulate`~~. Against the roster-matched 4-cell baseline it reads solve
+  5.9%→3.2% and simulate 13.8%→**20.0%**; simulate got worse. The original reading compared
+  4 Qwens at think=on against a 5-model both-modes pool, so it was composition, not
+  apparatus.
+- **Also settled in PR 94:** "the delivery gap" is available as a term (nearest neighbour is
+  the GAP metric of arXiv:2602.16943, same divergence shape in a safety setting; distinguish
+  it if we ever cite that paper). "Availability Is Not Enough" is retired as a title. The
+  memo's "227k trials" does not reproduce from disk; the counted two-corpus total is
+  273,600, and the draft abstract must not pair that figure with "seven models" — it covers
+  the five open-weight models only.
+
+## 2026-08-20 — D-J6 answered: delivery demoted to OPTIONAL, scale figure fixed, all three titles rejected
+
+- **The delivery gap is OPTIONAL, not the thesis (Omer).** *"Let's mark the delivery as
+  optional and later we choose between a version where it's included and a version where
+  it's not included. We need to decide on a non-confusing narrative. The delivery is not
+  our main point in the paper."* Two variants are now written up in
+  `title_abstract_candidates.md` §2 with an ANSWER slot: **N1** = invocation-propensity
+  spine, delivery in Limitations only (recommended); **N2** = delivery kept but
+  subordinate, with its own section.
+- **The term question is deferred, not answered.** It only arises under N2. The collision
+  verdict stands if delivery stays: "the delivery gap" is unclaimed, nearest neighbour is
+  the GAP metric of arXiv:2602.16943.
+- **All three title candidates REJECTED (Omer):** *"the title is misleading. it's
+  over-focused on the recent changes rather than the actual field and conclusions we
+  present."* A and C made DELIVER the thesis; B made the dual-surface grading instrument
+  the thesis. Three replacements (D/E/F) are drafted around the field-level conclusion
+  instead.
+- **The paper's actual thesis is already in the tex** and it does not mention delivery:
+  "the bottleneck throughout is invocation propensity, an unstable, model- and
+  prompt-dependent behavior, separate from the model's capability or the tool's accuracy."
+  Any title or abstract that does not lead with that is off-spine.
+- **Reopened:** "Availability Is Not Enough" was retired for anchoring the CALL finding
+  only and predating the DELIVER stage. If delivery leaves the thesis that rationale
+  mostly dissolves, and anchoring the CALL finding becomes exactly right. Back on the
+  table under N1.
+- **Scale figure DECIDED (Omer): quote 273,600 and say five open-weight models.** Derives
+  in one line for a reviewer: 5 models x 2 reasoning modes x 3 arms x 4,560 x 2 corpora.
+  The frontier arm (6,080 Haiku + 10,640 Sonnet) gets its own sentence and is never folded
+  in. "227k" is retired; correction markers are now at the head of
+  `journal_decisions_memo.md` and `journal_narrative_proposal.md`, which is where the
+  "227k-trial / 7-model" pairing entered the drafting chain.
+- **Still open:** the N1/N2 call and the title choice, both with inline slots in
+  `title_abstract_candidates.md` §2. The §3 draft abstract is bannered PENDING that call —
+  it implements N2-with-delivery-as-climax, so under N1 it needs rewriting rather than
+  renumbering.
+
+## 2026-08-20 — "propensity" retired as a paper term (Omer)
+
+- *"'Propensity' is a complex word. I don't like it."* Not a stray word:
+  `paper/main.tex` uses it **15 times** (abstract, contributions, results, limitations,
+  future work, conclusion), so this is a paper-wide rename, not a wording tweak.
+- **Recommended replacement: "invocation rate."** Plain, and it maps exactly onto the
+  quantity already measured (the `tool_selected` share), so the simpler word is also the
+  more concrete one. Where a sentence needs the dispositional sense, spell it out rather
+  than nominalise: "whether the model chooses to call the tool". Runners-up: "call rate"
+  (shorter, slightly informal for a thesis term), "willingness to call" (most human, mildly
+  anthropomorphic, awkward in "the willingness result").
+- The term still has to carry the paper's key distinction, behavior versus capability
+  ("this reflects how often the model calls the tool, not whether it can"), so any
+  replacement must survive noun slots like "default X", "raise X", "the X result".
+- **Not yet applied to the tex.** Paper edits belong on `paper/aaai27` per CLAUDE.md; the
+  15 edits are queued with an ANSWER slot in `title_abstract_candidates.md` §2. The
+  development docs on this branch are already switched over.
+- Knock-on: title candidate F was rewritten to drop the word, and the N1 narrative is now
+  "invocation spine" rather than "invocation-propensity spine".
+
+## 2026-08-20 — D-J6 CLOSED: N1 spine, title D, "invocation rate"; abstract redrafted
+
+- **Narrative = N1 (Omer).** The invocation spine. The paper asks when tool access helps an
+  LLM planner and answers that it depends on the regime, and that what gates it is whether
+  the model calls. **Delivery moves to Limitations**; dual-surface grading stays in Methods
+  as how we measure honestly. Neither is a headline.
+- **Title = D (Omer):** *"Invocation Is the Bottleneck: When Sound Planning Tools Help an
+  LLM, and When They Do Not."* States the conclusion and scopes it in the same breath, so
+  it makes no unscoped composition-failure claim. "Availability Is Not Enough" stays
+  retired, having been offered again and passed over.
+- **Term = "invocation rate" (Omer).** "Propensity" is retired paper-wide.
+- **Abstract redrafted on the N1 spine** (`title_abstract_candidates.md` §3), paired with
+  title D. Delivery is absent by design. The delivered-answer sentence names the
+  dual-surface instrument in one clause without spending the abstract on it. The superseded
+  delivery-as-climax draft is kept below it for the record.
+- **Verification debt shrank.** Dropping the delivery gradient from the abstract removes
+  one of the five numbers owed a `/verify-claims` pass. Four remain (8-11 unaided floor,
+  66-73 lift, -67 availability harm, 21-to-94 steering), plus two the redraft newly
+  promotes into the abstract: ">99 percent correct when it does call" and the "one of three
+  models at 9B or larger" roster claim.
+- **D-J1 may no longer bind.** It governed the first number being one-sided by construction,
+  which was the delivery gradient. With delivery out of the abstract there is no gradient to
+  constrain. Flagged for confirmation before the tex pass rather than assumed.
+- **STILL BLOCKED: the 15 `paper/main.tex` propensity edits.** The word is decided but the
+  branch go-ahead is not given. Paper edits belong on `paper/aaai27` behind the Overleaf
+  pull-then-push protocol, so nothing in the tex has been touched.
