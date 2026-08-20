@@ -1,5 +1,11 @@
 # Roadmap — remaining actions to close the evaluation phase and the paper
 
+> **SUPERSEDED as a status and schedule doc.** The AAAI-27 deadline framing below
+> ("6 days", "13 days") expired in July 2026, and AAAI-27 is no longer a hard target
+> (journal pivot; see `journal_decisions_memo.md`). For what is actually left, start at
+> **`remaining_work_20260811.md`**. Retained for its D1-D4 decision record, which is
+> still binding.
+
 **Date:** 2026-07-15 (written after the NT de-censor + simulate-floor retraction landed).
 **Deadline context:** AAAI-27 Main abstracts **Jul 21** (6 days), full **Jul 28** (13 days);
 per the 2026-06-27 note AAAI-27 may no longer be the hard target (journal pivot possible) —

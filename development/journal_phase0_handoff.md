@@ -1,5 +1,11 @@
 # Journal Phase-0 — handoff (fresh session pickup)
 
+> **SUPERSEDED — do NOT use the pickup protocol below.** Its status rows were
+> replaced by **`remaining_work_20260811.md`** (2026-08-11), which is where a fresh
+> session should start. The accepted spec it points at
+> (`journal_decisions_memo.md`) is still live and still binding. Retained as the
+> record of the Phase-0 slot decisions.
+
 **Date:** 2026-07-24. **Branch:** `main` at `4909c0b`, pushed, working tree clean.
 **Pickup protocol:** run `/resume-verify` against this doc. Read order for a fresh
 session: this doc → `development/journal_decisions_memo.md` (the accepted spec —
