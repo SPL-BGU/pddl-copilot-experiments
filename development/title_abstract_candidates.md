@@ -267,9 +267,9 @@ before the tex pass.
 ### Superseded draft, kept for the record (delivery-as-climax, N2)
 
 
-> **PENDING the section-2 narrative answer.** The draft below implements N2 with
-> delivery as the *climax* ("this is where the guarantee is lost"), which the
-> 2026-08-20 decision demotes. Under N1 it needs rewriting around the
+> **SUPERSEDED by the section-2 answer (N1, 2026-08-20).** The draft below
+> implements N2 with delivery as the *climax* ("this is where the guarantee is
+> lost"), which that decision demotes. Under N1 it needs rewriting around the
 > invocation rate, not renumbering. The scale-figure fix from section 4 is applied
 > here already, since it holds under either narrative.
 

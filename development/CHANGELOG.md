@@ -6,6 +6,58 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-08-20 — ISS-024(b) audit hardening after code review (PR #94)
+
+**What.** A code review of PR #94 re-ran `tools/guided_json_audit.py` against the live
+corpora, reproduced every headline figure exactly, and raised 15 findings against the
+machinery around them. The pre-merge set is applied here. **No audited number changed**:
+the script's output before and after is byte-identical apart from one deliberate relabel,
+so every figure quoted in `grading_artifacts_findings.md` Finding 4 and `OPEN_ISSUES.md`
+ISS-024(b) still reproduces.
+
+**Correctness.** One arithmetic error is fixed in the prose: the control tree's
+trailer-visible count was quoted as 10,256 of 15,074 rows, but the script's shape buckets
+are mutually exclusive, so the 1,757 "bare trailer only" rows also show the trailer. The
+true figure is **12,013 of 15,074 (79.7%)**, against **11,157 of 58,581 (19.0%)** on the
+canonical side; the inversion the sentence argues for is stronger than it was stated.
+
+**Script.** `jsonschema` is now declared in `requirements.txt` (it was an undeclared hard
+dependency, so the documented reproduce command failed on a clean install). The pooled
+complete-rows rate is guarded against a zero denominator: COMPLETE is a strict subset of
+PROOF, so a corpus in which every provable row is truncated is legal and used to crash the
+run after all cells had been classified. A missing **non-canonical** corpus root now warns
+and continues instead of exiting, because `results/` is gitignored and no headline figure
+depends on the control tree. Rows are deduplicated by trial key before the cap histogram is
+built, matching the precondition `e2e_regrade` documents for `detect_cap`; the content
+fingerprint now covers `truncated` and `failure_reason`, the two fields that drive the
+censored/provable split and the `format_parse_fail` table, so two cells differing only there
+can no longer collide and be silently dropped; unparseable lines are counted and reported
+rather than skipped in silence; cell discovery globs `trials*.jsonl` so mop-up/resume files
+are not dropped; a zero-row cell is skipped before it can claim the empty-string fingerprint
+and drag an unrelated cell into the matched subset; and the matched-subset size is derived
+rather than hardcoded, with a loud warning if it is not the expected 4 cells.
+
+**Trailer grammar.** The `VERDICT:` shape classifier moved off a bare substring test plus an
+undocumented `len < 32` cutoff and onto the grammar the v11-v13 prompts actually specify,
+with the verdict word matched as an optional prefix because a 500-character snapshot
+routinely cuts it mid-word (`VERDICT: INVAL`). Measured on the canonical corpora the new
+grammar and the old test agree on all 11,157 trailer-visible rows and all 9,814 bare rows,
+so this removes two hazards without moving any evidence. A first attempt that required the
+whole verdict word was **wrong** and re-binned 42 truncated trailers as "no trailer"; it was
+caught by diffing against the pre-change output and reverted.
+
+**Deferred, not applied.** The double read plus triple JSON parse per row, and the
+`from e2e_regrade import detect_cap` chain that pulls the whole MCP client stack into a
+read-only audit. The clean fix for the latter is a light `pddl_eval/caps.py` shared by both
+tools, which touches `e2e_regrade.py` and is out of this PR's scope.
+
+**Files.** `tools/guided_json_audit.py`, `requirements.txt`,
+`development/grading_artifacts_findings.md`, `development/title_abstract_candidates.md`
+(stale PENDING banner on the superseded abstract cleared: section 2 was answered N1 the
+same day), `development/CHANGELOG.md`.
+
+---
+
 ## 2026-08-15 — ISS-024(b) `guided_json` audit: the constraint never bound (measured, $0, fix stays parked)
 
 **What.** The no-tools branch passes `TASK_SCHEMAS[task]` as vLLM `guided_json`

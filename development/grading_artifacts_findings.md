@@ -400,11 +400,12 @@ unequal in mass, so each is quoted with its n (canonical corpora):
    stored snapshot is not usually the bare trailer: of those rows, 9,814 are the
    bare `VERDICT: VALID` string, 1,343 contain the trailer after prose, and
    47,424 contain no trailer at all, because at a 500-character snapshot the
-   trailer sits past the cut. The control tree, which stores 16,384 characters,
-   inverts that split (10,256 of 15,074 rows show the trailer), which confirms
-   the missing trailers are a storage artifact and not a generation one. The
-   model followed a prompt that asked for a verdict line and never mentioned
-   JSON.
+   trailer sits past the cut. The trailer is therefore visible in 11,157 of the
+   58,581 rows, 19.0%. The control tree, which stores 16,384 characters, inverts
+   that split: 1,757 bare plus 10,256 after prose, so 12,013 of 15,074 rows,
+   79.7%, show the trailer. That confirms the missing trailers are a storage
+   artifact and not a generation one. The model followed a prompt that asked for
+   a verdict line and never mentioned JSON.
 2. **`solve` puts a string where the schema requires an array — 22 rows.**
    `SolveResponse.plan` is `list[str]`; the observed shape is
    `{"plan": "(shake ...) (pour ...)"}`. A bound decoder could not emit the
