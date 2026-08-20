@@ -1,5 +1,50 @@
 # nt-ster submit window — open decisions (2026-08-16)
 
+> ## RESUME HERE — run is LIVE as of 2026-08-20
+>
+> **Nothing is owed until the cells finish.** Both arms were submitted 2026-08-20 and
+> every pre-registered readiness and apparatus check is closed.
+>
+> | arm | job | tasks | `--time` | apparatus |
+> |---|---|---|---|---|
+> | off-mode | `20392775` | 3 — 9B, gemma, 35b | 5 days | plain |
+> | on-mode | `20392801` | 2 — 9B, 35b | 7 days | decoupled, `--num-predict-think 8192` |
+>
+> **Watch progress (no VPN needed beyond the SSH itself):**
+> ```bash
+> bash .claude/skills/cluster-ops/scripts/status.sh --ntster --md
+> ```
+> Expect 4 columns × 3 models, `n/a` in gemma's two on-mode slots (no think leg by
+> design), and a 0/10 roll-up. The **9B on-mode cell is the long pole** — ~105h
+> projected, which is why it got 7 days rather than 5.
+>
+> **When every cell is done, run exactly this order** (the last step refuses to start
+> until the F gate has produced output, so the order enforces itself):
+> ```bash
+> bash .claude/skills/cluster-ops/scripts/sync.sh results/ntster-h4-live
+> python3 tools/e2e_regrade.py results/ntster-h4-live --no-mcp
+> python3 tools/ntster_f_gate.py --overlay-dir results/derived/e2e_overlay/ntster-h4-live \
+>     --out results/derived/ntster_f_gate.json
+> python3 tools/ntster_h4.py --overlay-dir results/derived/e2e_overlay/ntster-h4-live \
+>     --f-gate results/derived/ntster_f_gate.json
+> ```
+>
+> **Already verified, do not redo:** cluster sat on the literal pin (`6007032` /
+> `5e4f9c0`); ground truth rebuilt and proven unchanged, stamped and gated; analysis
+> scripts frozen at `ff7bbd7`; live-smoke passed (all six variants, `with_tools=False`
+> on 100% of rows); the never-before-run steered × decoupled flag composition confirmed
+> at runtime; served vLLM verified as the pinned v0.20.2. Full detail in
+> `ntster_h4_prereg.md` — the preflight, item 9/10 and live-smoke records near the end.
+>
+> **Only genuine risk left:** a TIMEOUT on the 9B on-mode cell. It is recoverable — a
+> resubmit resumes from `OUT_DIR/trials.jsonl` — but costs a queue cycle. Also note the
+> vLLM serve log lives on compute-node scratch and is only copied back by the EXIT trap,
+> so it is lost if a job is hard-killed.
+>
+> This branch (`run/ntster-h4`, 8 commits) is **not pushed**. Say the word if you want it
+> on the remote.
+
+
 Written while setting up the run worktree, before the VPN window. Governing docs, in
 priority order where they disagree: `ntster_h4_prereg.md` (RATIFIED 08-11, its §10 text
 is the most recent) > `remaining_work_20260811.md` > `journal_decisions_memo.md` §6.
