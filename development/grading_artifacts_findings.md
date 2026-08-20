@@ -311,7 +311,8 @@ apparatus citable only after a full no-tools re-sweep.
 
 Finding 1 above asserted from 500-character response heads that `guided_json`
 "did NOT bind". That was an impression from a handful of samples. This is the
-measurement, over every no-tools row in all three canonical corpora.
+measurement, over every no-tools row in the two canonical corpora, with the
+decoupled control tree measured beside them and never pooled into them.
 
 ### What is passed, and where
 
@@ -323,65 +324,133 @@ branch only** (both the single-call and the decoupled two-call paths).
 a schema (`schemas.py`: `SolveResponse`, `ValidateResponse` ×3,
 `SimulateResponse`).
 
-### The test
+On the two-call path the schema is attached to Call 2 only, the answer call, and
+never to the free-text reasoning call (`chat.py:466-471`); the stored `response`
+is Call-2 text alone. That is what keeps the first-character test below valid on
+control rows: the reasoning block cannot be what makes those rows start with
+something other than `{`.
+
+The sharpest statement of the defect is at the prompt layer. The `solve` and
+`simulate` system prompts instruct the model to "conform to the JSON schema
+provided by the format constraint" (`prompts.py:114,138`) — a constraint that
+never reached the server. Those two tasks were told to follow a schema they were
+never shown. The three `validate_*` prompts never mention JSON at all; they ask
+the model to "end your response with exactly one line: VERDICT: VALID or
+VERDICT: INVALID", which is what it produced.
+
+### The test, and the two denominators
 
 A working constrained decoder cannot leave the grammar, so any stored response
-that is not JSON, or is JSON violating its task schema, is direct proof the
-constraint did not bind on that row. Rows that are empty, generation-truncated,
-or at the storage-snapshot cap are undecidable (a valid prefix may have been
-cut) and are excluded from the denominator rather than counted as failures.
+that is not JSON, or is JSON violating `TASK_SCHEMAS[task]`, is direct proof the
+constraint did not bind on that row. Conformance is checked against
+`TASK_SCHEMAS[task]` itself, the exact object placed in `extra_body`, not
+against the pydantic model, which coerces types the JSON-Schema grammar would
+reject (both are computed; they agree on every row).
 
-### Result: the constraint bound on 0.59% of decidable rows
+Two denominators are reported because they answer different questions:
 
-| corpus | no-tools rows | decidable | schema-conformant |
-|---|---|---|---|
-| sweep5v2-live | 45,600 | 33,204 | 132 (0.40%) |
-| sweep6-live | 45,600 | 32,670 | 102 (0.31%) |
-| decoupled-rollup | 36,480 | 22,907 | 292 (1.27%) |
-| **pooled** | **127,680** | **88,781** | **526 (0.59%)** |
+- **provable** — every row on which non-binding is demonstrable. A row whose
+  first non-space character is not `{` proves it even when the text is
+  truncated, because neither generation truncation nor the storage snapshot can
+  change the FIRST character, and a bound decoder's first character is always
+  `{`. This is the primary rate.
+- **complete rows only** — the strictly conservative denominator, dropping every
+  generation-truncated or at-cap row regardless of shape. This subset is
+  length-biased (a row survives intact only if it fit under the snapshot cap, and
+  short JSON is disproportionately conformant), so it runs higher; it is quoted
+  as a bound, not as a fair-sample estimate.
 
-Per task, share of decidable rows that are not JSON at all (sweep5v2-live /
-sweep6-live / decoupled): `validate_domain` 100 / 100 / 100; `validate_problem`
-100 / 100 / 100; `validate_plan` 100 / 100 / 100; `simulate` 95.7 / 96.1 / 87.7;
-`solve` 92.6 / 93.9 / 59.1.
+Empty responses carry no evidence either way and are excluded from both.
+
+### Result: zero on validation, under 2% everywhere
+
+**No `validate_*` row emitted JSON of any kind: 0 of 58,581 provable rows across
+the two canonical corpora** (0 of 73,655 including the control tree). That is the
+claim with no denominator argument available against it. Under a bound decoder
+every one of those rows is impossible.
+
+| corpus | no-tools rows | conformant | of provable | of complete only |
+|---|---|---|---|---|
+| sweep5v2-live | 45,600 | 132 | 0.40% (33,204) | 2.14% (6,158) |
+| sweep6-live | 45,600 | 102 | 0.31% (32,670) | 1.69% (6,018) |
+| **canonical pooled** | **91,200** | **234** | **0.36% (65,874)** | **1.92% (12,176)** |
+| decoupled-rollup (control, never pooled) | 18,240 | 174 | 1.06% (16,448) | 1.32% (13,176) |
+
+The pooled rate is a coverage figure — what share of the no-tools arm was
+generated under an effective constraint — and not a measure of constraint
+strength, because `validate_*` is 82% of the rows and its prompt never asks for
+JSON. The informative rates are per task. Conformance is confined to `solve`
+(6.9% sweep5v2-live, 5.5% sweep6-live) and is **0.0% on `simulate` and on all
+three `validate_*` tasks in both corpora**.
+
+The decoupled control tree is `RUN_TAG=decoupled-thinkon`: a 4-Qwen think=on
+roster on the two-call generation apparatus, with 16,384-character snapshots. It
+is reported separately under the corpus-identity rule and is never merged into
+either canonical corpus. Its four cells physically ship beside byte-identical
+copies of their matched sweep5v2 baseline; the audit deduplicates cells by
+content fingerprint and prints every drop, so the baseline copies are counted
+once, under `sweep5v2-live`.
 
 The three violation shapes are each individually impossible under a working
-constraint, which is what makes this proof rather than inference:
+constraint, which is what makes this proof rather than inference. They are very
+unequal in mass, so each is quoted with its n (canonical corpora):
 
-1. **`validate_*` emit no JSON whatsoever.** The stored response is the bare
-   string `VERDICT: VALID`, the trailer the v11-v13 prompt asks for. The model
-   followed the prompt and ignored the schema.
-2. **`solve` puts a string where the schema requires an array.**
+1. **`validate_*` emit no JSON whatsoever — 58,581 rows, 100% of the provable
+   `validate_*` rows in both corpora.** This is the bulk of the evidence. The
+   stored snapshot is not usually the bare trailer: of those rows, 9,814 are the
+   bare `VERDICT: VALID` string, 1,343 contain the trailer after prose, and
+   47,424 contain no trailer at all, because at a 500-character snapshot the
+   trailer sits past the cut. The control tree, which stores 16,384 characters,
+   inverts that split (10,256 of 15,074 rows show the trailer), which confirms
+   the missing trailers are a storage artifact and not a generation one. The
+   model followed a prompt that asked for a verdict line and never mentioned
+   JSON.
+2. **`solve` puts a string where the schema requires an array — 22 rows.**
    `SolveResponse.plan` is `list[str]`; the observed shape is
    `{"plan": "(shake ...) (pour ...)"}`. A bound decoder could not emit the
    opening quote.
-3. **`simulate` omits the required wrapper.** `SimulateResponse` requires
-   `trajectory`; the observed shape is a bare `{"step": 0, "action": "", ...}`
-   step object. This is the same "strict-wrapper sub-artifact" Finding 1
-   described, now identified as a symptom of non-binding rather than a separate
-   defect.
+3. **`simulate` omits the required wrapper — 140 rows** (4 more in the control
+   tree). `SimulateResponse` requires `trajectory`; the observed shape is a bare
+   `{"step": 0, "action": "", ...}` step object. This is the same
+   "strict-wrapper sub-artifact" Finding 1 described, now identified as a
+   symptom of non-binding rather than a separate defect. The re-attribution
+   rests on those 144 rows and should be quoted with that n.
 
 ### Affected is not the same as harmed
 
 Nearly every no-tools row is affected, but the artifact changes a grade on only
-two of the five tasks. `format_parse_fail` rate by task and corpus:
+two of the five tasks. `format_parse_fail` rate by task:
 
-| task | sweep5v2-live | sweep6-live | decoupled |
-|---|---|---|---|
-| `validate_domain` | 0.0% | 0.0% | 0.0% |
-| `validate_problem` | 0.0% | 0.0% | 0.0% |
-| `validate_plan` | 0.0% | 0.0% | 0.0% |
-| `solve` | 29.0% | 26.7% | 4.6% |
-| `simulate` | 40.1% | 37.7% | 16.9% |
+| group | `solve` | `simulate` | `validate_domain` | `validate_problem` | `validate_plan` |
+|---|---|---|---|---|---|
+| sweep5v2-live | 29.0% | 40.1% | 0.0% | 0.0% | 0.0% |
+| sweep6-live | 26.7% | 37.7% | 0.0% | 0.0% | 0.0% |
+| sweep5v2-live, matched 4-cell subset | 5.9% | 13.8% | 0.0% | 0.0% | 0.0% |
+| decoupled-rollup (control) | 3.2% | 20.0% | 0.0% | 0.0% | 0.0% |
 
-The validation tasks are fully insulated: the v11-v13 prompts restore the
-`VERDICT:` trailer and `scoring.extract_verdict` reads it, so the safety net
-carries every row and the artifact costs nothing. That is why the sweep-4
-regression fix mattered so much (`prompts.py` history note) — it is the reason
-the validation results, which carry the paper's validation claims, are untouched
-by this defect. The exposure is `solve` and `simulate`, where no equivalent
-trailer exists. The decoupled corpus shows a much smaller exposure on both,
-because the budget fix removed the truncation pressure that was compounding it.
+The validation tasks are insulated **from this grading path**: the v11-v13
+prompts restore the `VERDICT:` trailer and `scoring.extract_verdict` reads it
+from the full response, so no validation row is lost to a parse failure. That is
+why the sweep-4 regression fix mattered so much (`prompts.py` history note) — it
+is the reason the validation results, which carry the paper's validation claims,
+are not mis-graded by this defect. The claim stops there. What the corpora cannot
+show is the counterfactual: a constraint that actually bound would have
+suppressed the free-text reasoning and the trailer entirely, so "no row was
+mis-graded" is not the same as "the numbers equal what the intended apparatus
+would have produced". Do not write the stronger sentence.
+
+The exposure is `solve` and `simulate`, where no equivalent trailer exists.
+
+**On the control tree, compare only against the matched subset.** The
+decoupled-vs-canonical gap in the first two rows above is a roster and
+reasoning-mode difference, not an apparatus effect: the control is 4 Qwens at
+think=on, while the full canonical corpora are 5 models across both modes. The
+controlled comparison is the third row against the fourth, the same four cells
+re-run on the two-call apparatus. It reads `solve` 5.9% → 3.2% and `simulate`
+13.8% → **20.0%**. The budget fix left `solve` roughly where it was and made
+`simulate` worse on this metric. An earlier version of this note credited the
+budget fix with shrinking both; that reading came from the uncontrolled
+comparison and is withdrawn.
 
 ### Root cause: hypothesis, not verified
 
@@ -397,12 +466,26 @@ did not bind is a one-command check whenever a server is next up.
 
 ### What this licenses in the paper
 
-Limitations may state: the no-tools arm intended schema-constrained sampling,
-the constraint did not take effect, this is measured at 0.59% conformance over
-88,781 decidable rows, the validation tasks are unaffected because a prompt-level
-trailer and a regex fallback carried them, and the exposure is confined to
-`solve` and `simulate` where it inflates `format_parse_fail` by the rates
-tabulated above. It must NOT be described as fixed, and no number in the paper
-may be adjusted for it.
+Limitations may state: the no-tools arm intended schema-constrained sampling and
+the constraint did not take effect; the `solve` and `simulate` prompts therefore
+referred the model to a schema it was never shown; no `validate_*` row emitted
+JSON at all (0 of 58,581 provable rows across the two canonical corpora), and
+pooled conformance is 0.36% of 65,874 provable rows, 1.92% even on the 12,176
+rows stored in full; no row was mis-graded, because the `VERDICT:` trailer and
+the regex fallback carried validation and `format_parse_fail` is 0.0% on all
+three validation tasks; and the exposure is confined to `solve` and `simulate`
+at the rates tabulated above.
 
-Reproduce: `tools/guided_json_audit.py` (read-only, no arguments).
+Lead with the zero, not the percentage. It needs no denominator argument, and the
+pooled percentage is partly a task-mix figure.
+
+Three sentences must NOT be written: that the artifact is fixed; that any paper
+number is adjusted for it; and that the validation results are what a bound
+decoder would have produced (see the counterfactual caveat above — only the
+absence of mis-grading is measured). The decoupled control number must never be
+pooled with the canonical corpora.
+
+Reproduce: `tools/guided_json_audit.py` (read-only, no arguments). It prints the
+cell inventory with every deduplicated cell named, per-cell snapshot caps, both
+denominators, the `format_parse_fail` table including the matched subset, and the
+n behind each violation shape.

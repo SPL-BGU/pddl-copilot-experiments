@@ -10,29 +10,55 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 **What.** The no-tools branch passes `TASK_SCHEMAS[task]` as vLLM `guided_json`
 (`runner.py` -> `chat.py` -> `vllm_client.py` `extra_body["guided_json"]`). The D4-amended
-$0 local audit measured whether it took effect, over every no-tools row in the three
-canonical corpora. New read-only script `tools/guided_json_audit.py`.
+$0 local audit measured whether it took effect, over every no-tools row in the two canonical
+corpora, with the `decoupled-rollup` control tree measured beside them and never pooled into
+them. New read-only script `tools/guided_json_audit.py`: conformance is checked against
+`TASK_SCHEMAS[task]` itself (the exact object sent, not the pydantic model, which coerces
+types the grammar would reject; both are computed and agree on every row), snapshot caps are
+detected per cell via `e2e_regrade.detect_cap` because the control tree genuinely holds cells
+at both caps, and cells are deduplicated by content fingerprint because that tree ships
+byte-identical copies of its matched sweep5v2 baseline.
 
-**Result.** It bound on **526 of 88,781 decidable rows (0.59%)**. Decidable excludes empty,
-generation-truncated, and at-snapshot-cap rows, which cannot be judged. Per corpus:
-sweep5v2-live 132/33,204 (0.40%), sweep6-live 102/32,670 (0.31%), decoupled-rollup
-292/22,907 (1.27%).
+**Result.** **No `validate_*` row emitted JSON of any kind — 0 of 58,581 provable rows
+across the two canonical corpora** (0 of 73,655 including the control tree). Pooled
+conformance over the canonical corpora is **234 of 65,874 provable rows (0.36%)**, and
+**1.92%** on the 12,176 rows stored in full. Per corpus: sweep5v2-live 132/33,204 (0.40%),
+sweep6-live 102/32,670 (0.31%). The `decoupled-rollup` control tree is reported separately
+and never pooled: 174/16,448 (1.06%). Conformance is confined to `solve` (6.9% / 5.5%) and
+is 0.0% on `simulate` in both corpora.
+
+Two denominators are reported. *Provable* keeps a truncated row when its first non-space
+character is not `{`, because neither generation truncation nor the storage snapshot can
+change the first character and a bound decoder's first character is always `{`.
+*Complete rows only* drops every truncated or at-cap row; that subset is length-biased
+(short JSON is disproportionately conformant) so it runs higher and is quoted as a bound.
 
 **Why this is proof, not inference.** Each observed violation is impossible under a working
-constrained decoder: `validate_*` return the bare prompt trailer `VERDICT: VALID` with no
-JSON at all (100% of decidable rows in every corpus); `solve` returns
-`{"plan": "<string>"}` where `SolveResponse.plan` is `list[str]`; `simulate` returns a bare
-`{"step": 0, ...}` object without the required `trajectory` wrapper. The last of these
-identifies Finding 1's "strict-wrapper sub-artifact" as a symptom of non-binding rather
-than a separate defect.
+constrained decoder, and each is now quoted with its n: `validate_*` emit no JSON at all
+(58,581 rows, 100% of provable validate rows); `solve` returns `{"plan": "<string>"}` where
+`SolveResponse.plan` is `list[str]` (22 rows); `simulate` returns a bare `{"step": 0, ...}`
+object without the required `trajectory` wrapper (140 rows, plus 4 in the control). The last
+identifies Finding 1's "strict-wrapper sub-artifact" as a symptom of non-binding rather than
+a separate defect, on those 144 rows. Sharpest framing: the `solve` and `simulate` prompts
+tell the model to "conform to the JSON schema provided by the format constraint"
+(`prompts.py:114,138`) while no constraint ever reached the server, and the `validate_*`
+prompts never mention JSON, which is why they sit at exactly 0.0%.
 
-**Scope of harm — much narrower than scope of effect.** `format_parse_fail` is **0.0% on
-all three `validate_*` tasks across all three corpora**: the v11-v13 prompts restore the
-`VERDICT:` trailer and `scoring.extract_verdict` reads it, so the safety net carries every
-row. That makes the sweep-4 trailer regression fix retroactively load-bearing for the
-paper's validation claims. Exposure is confined to `solve` (29.0 / 26.7 / 4.6%) and
-`simulate` (40.1 / 37.7 / 16.9%) for sweep5v2-live / sweep6-live / decoupled. **No
-with-tools row is affected**: `format` is never passed in the tools branch.
+**Scope of harm — narrower than scope of effect.** `format_parse_fail` is **0.0% on all
+three `validate_*` tasks in both corpora**: the v11-v13 prompts restore the `VERDICT:`
+trailer and `scoring.extract_verdict` reads it from the full response, so no validation row
+is lost to a parse failure. That makes the sweep-4 trailer regression fix retroactively
+load-bearing for the paper's validation claims. The claim stops at "not mis-graded" — the
+corpora cannot show what a constraint that actually bound would have generated. Exposure is
+confined to `solve` (29.0 / 26.7%) and `simulate` (40.1 / 37.7%) for sweep5v2-live /
+sweep6-live. **No with-tools row is affected**: `format` is never passed in the tools branch.
+
+**Control-tree comparison is roster-matched or not made.** The control is 4 Qwens at
+think=on; the canonical corpora are 5 models across both modes, so the raw gap is
+composition. Against its matched 4-cell sweep5v2 baseline the decoupled apparatus reads
+`solve` 5.9% → 3.2% and `simulate` 13.8% → **20.0%**: `solve` roughly unchanged, `simulate`
+worse. An earlier draft of this entry credited the budget fix with shrinking both; that came
+from the uncontrolled comparison and is withdrawn.
 
 **Root cause: hypothesis only.** The likely explanation is that the pinned server image
 (`vllm/vllm-openai:v0.20.2`) no longer accepts the `guided_json` extra_body field, which
@@ -44,8 +70,24 @@ cannot say why.
 generation apparatus, citable only after a full no-tools re-sweep. Limitations may cite the
 audit as a C1 artifact audit; no reported number is adjusted for it.
 
+**Corrected 2026-08-17 after PR-94 review.** The first version of this entry reported 526 of
+88,781 decidable rows (0.59%) over three pooled corpora. Three defects in the audit script
+produced that figure and are fixed: the `decoupled-rollup` root was globbed whole, so the
+four byte-identical copies of its sweep5v2 baseline were counted twice (18,240 rows, 6,459
+of them in the denominator); one snapshot cap was inferred per corpus root by a max-length
+rule, so 46 storage-truncated rows in a 500-cap cell were graded as determinate under a
+16,384 cap (the exact regression `e2e_regrade.detect_cap` was written to prevent, now
+reused rather than re-implemented); and conformance was checked with the pydantic model
+instead of the JSON Schema actually sent. The script also resolved paths from `os.getcwd()`
+and exited 0 with an empty table when run from anywhere else. Denominator wording is fixed
+too: the old entry said decidable excluded truncated rows, while the code kept truncated
+non-JSON rows on the sound first-character argument, so both denominators are now named and
+reported. The verdict is unchanged on every cut.
+
 **Files.** `tools/guided_json_audit.py` (new), `development/grading_artifacts_findings.md`
-(Finding 4), `development/OPEN_ISSUES.md` (ISS-024(b)).
+(Finding 4), `development/OPEN_ISSUES.md` (ISS-024(b)),
+`development/title_abstract_candidates.md` (D-J6 term check, title and abstract candidates,
+and the "227k trials" scale claim that does not reproduce).
 
 ## 2026-08-07 — PlanBench-WT: Act-4 quotes FIRST-DRAW clean WT (68.3); $0 verification batch green; analysis layer + data archive promoted (ISS-026 closed, commit f7baca9)
 

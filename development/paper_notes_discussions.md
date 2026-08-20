@@ -1356,3 +1356,41 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **nt-ster H4 prereg RATIFIED** the same day (all four §10 lines) with the corrected
   price for the accepted shape: ~46 GPU-h off + ~110-150 on, against the memo's
   obsolete ~92. Submit stays gated on readiness items 7/9/10/14 plus a ping and VPN.
+
+## 2026-08-17 — ISS-024(b) audit numbers corrected after PR-94 review; what Limitations may say about `guided_json`
+
+- **The verdict is unchanged: `guided_json` never bound.** It survives every cut of the
+  data. What changed are the numbers quoted for it, after three defects in
+  `tools/guided_json_audit.py` were found in review and fixed.
+- **Quote the zero, not the percentage.** The headline for the paper is **0 of 58,581
+  provable `validate_*` rows emitted JSON of any kind** across the two canonical corpora.
+  It needs no denominator argument. The pooled rate (0.36% of 65,874 provable rows) is
+  partly a task-mix figure, because `validate_*` is 82% of rows and its prompt never asks
+  for JSON; it is a coverage number, not a measure of constraint strength.
+- **Conservative bound available on request:** 1.92% on the 12,176 rows stored in full.
+  That subset is length-biased upward (short JSON is disproportionately conformant), so it
+  is a bound and not an estimate. Whichever cut a reviewer prefers, conformance is under 2%.
+- **Superseded:** ~~526 of 88,781 decidable rows (0.59%)~~ — that figure pooled three trees,
+  double-counted the four `decoupled-rollup` cells that are byte-identical copies of their
+  sweep5v2 baseline, and applied one snapshot cap to a tree holding cells at two caps.
+- **The decoupled control is never pooled with the canonical corpora** (corpus-identity
+  rule). It is a different generation apparatus; it gets its own line, 174/16,448 (1.06%).
+- **Sharpest framing for the Limitations sentence:** the `solve` and `simulate` prompts
+  instruct the model to conform to "the JSON schema provided by the format constraint"
+  (`prompts.py:114,138`) while no constraint ever reached the server. The `validate_*`
+  prompts never mention JSON, which is why they sit at exactly 0.0%.
+- **Do NOT write that the validation results are unaffected.** Measured: no validation row
+  is *mis-graded* (`format_parse_fail` 0.0%, the `VERDICT:` trailer plus the regex fallback
+  carry every row). Not measured, and not inferable from these corpora: what a constraint
+  that actually bound would have generated. The counterfactual is unavailable.
+- **Withdrawn:** ~~the decoupled budget fix shrank `format_parse_fail` exposure on both
+  `solve` and `simulate`~~. Against the roster-matched 4-cell baseline it reads solve
+  5.9%→3.2% and simulate 13.8%→**20.0%**; simulate got worse. The original reading compared
+  4 Qwens at think=on against a 5-model both-modes pool, so it was composition, not
+  apparatus.
+- **Also settled in PR 94:** "the delivery gap" is available as a term (nearest neighbour is
+  the GAP metric of arXiv:2602.16943, same divergence shape in a safety setting; distinguish
+  it if we ever cite that paper). "Availability Is Not Enough" is retired as a title. The
+  memo's "227k trials" does not reproduce from disk; the counted two-corpus total is
+  273,600, and the draft abstract must not pair that figure with "seven models" — it covers
+  the five open-weight models only.
