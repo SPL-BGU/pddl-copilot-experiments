@@ -1042,5 +1042,29 @@ with it applied. GPU confirmed as `NVIDIA RTX 6000 Ada Generation, 49140 MiB`; t
 allocation is `gres/gpu:rtx_6000=1` per task. Node names of the form `ise-cpu256-*` are
 GPU nodes on this cluster despite the name — checked, not assumed.
 
-**Still owed at run time:** the served vLLM version from the log header (§2.3(D)), which
-is only readable while a job is running.
+**(4) Served vLLM version — §2.3(D), CLOSED 2026-08-20.** Read live from the engine
+banner inside the running allocation:
+
+```
+Initializing a V1 LLM engine (v0.20.2) with config: model='Qwen/Qwen3.5-9B', ...
+```
+
+**v0.20.2**, matching the pinned `docker://vllm/vllm-openai:v0.20.2`. This is the check
+§2.3 said had to be *verified rather than asserted*, because `$HOME/vllm.sif` is a
+mutable shared cache that could have been rebuilt by any session: the cached image
+genuinely contains the pinned version, so the apparatus matches iss024d's.
+
+Getting it required a detour worth recording for the next run: the serve log is written
+to the compute node's scratch (`/scratch/omereliy/<jobid>/vllm-work/vllm-<model>.log`),
+**not** the `/tmp/vllm-<jobid>` path the sbatch's primary branch suggests, and it is only
+copied back to `cluster-experimenting/logs/` by the EXIT trap — so it is unreadable from
+the login node mid-run, and lost entirely if a job is hard-killed before the trap fires.
+Compute-node SSH is key-denied; `srun --overlap --jobid=<task>` is the working idiom.
+
+**HF weight revision remains unpinned and unreported** — the engine config line names
+`model='Qwen/Qwen3.5-9B'` with no revision field, since the sbatch serves without
+`--revision`. Recorded as absent rather than guessed; per §2.3(D) weight vintage stays a
+stated component of the drift term.
+
+VRAM after load on the 9B cell: 40,758/49,140 MiB (**82%**), under the `> 85` abort
+guard. gemma is the cell to watch there, not this one.
