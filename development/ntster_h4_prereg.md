@@ -752,7 +752,7 @@ claimed**, never a level comparison, because apparatus vintage and n differ. CIs
 | 10 | Rebuild + stamp `gt_cache.json` from the pinned marketplace commit; add the GT-hash dump/assert | **DONE 2026-08-17** — rebuilt, proven equivalent, stamped; gate = `tools/gt_cache_gate.py`. See below | No (D4(a): no harness edit) |
 | 11 | `vllm_lookup` case for Llama (`llama3_json`, `REASONING_PARSER=none`) — without it `submit_with_rtx.sh:341-343` aborts | **TODO** | **YES — branch + PR.** Do **not** append the tag to `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live (`submit_with_resume.sh:18` expands that array into the submit roster), and do not check the branch out in `$HOME` until every nt-ster cell is terminal — the sbatch sources `lib/defaults.sh` from `$HOME` at run time, so a worktree does not help |
 | 12 | Optional `--variants 11,14` pass-through, if the §6 arm spec is honoured literally | **TODO / optional** | **YES — branch + PR**, else accept the ~13,680-trial shape |
-| 13 | Optional `status.sh` nt-ster column (~4 lines; it maps `no-tools` → neutral only and prices the cell at 4,560 against 9,120) | **TODO / optional** | **YES — branch + PR**, or accept manual `wc -l` checks |
+| 13 | Optional `status.sh` nt-ster column (~4 lines; it maps `no-tools` → neutral only and prices the cell at 4,560 against 9,120) | **DONE 2026-08-20** — `--ntster` profile; the column was structurally absent, not mispriced (`no-tools` split to neutral with the steered slice discarded) | On `run/ntster-h4`; local ops tooling only, does not touch the pinned apparatus |
 | 14 | Confirm ISS-024(b) `guided_json` stays parked through the submit (interpretability precondition for §3.7 M1) | **CONFIRMED 2026-08-16** — see below | No |
 | 15 | `llama3_json` registration in vLLM v0.20.2 | **UNVERIFIABLE locally** — read from the serve-flag echo (`sbatch:219`) | No |
 
@@ -996,3 +996,51 @@ cluster rule.
 > `--time` is **7 days**, not the 5 in §7 step 2, per D2. Item 11 (`vllm_lookup` case for Llama) is needed only for the §6 probe
 and carries its own branch + PR; it must not append the tag to
 `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live.
+
+### Live-smoke record — the run is emitting the control arm (2026-08-20)
+
+Submitted: **job 20392775** (off-mode, 3 tasks, `--time 5-00:00:00`) and **job 20392801**
+(on-mode, 2 tasks, `--time 7-00:00:00`, per D2). Both `TimeLimit`s verified at submit.
+Preconditions re-checked immediately before each submit: HEAD `6007032`, clean tree.
+
+This closes the §8 item 8 residual, which D3(a) deferred to the production submit
+because the wrapper cannot express the smoke the prereg asked for.
+
+**(1) The steered arm exists on disk.** First time the
+`--include-no-tools-steered` production path has ever produced data. All six variants
+present, and `with_tools=False` on **100%** of rows in every cell:
+
+| cell | n | variants seen | with_tools |
+|---|---:|---|---|
+| `gemma4:26b-a4b` off | 14 | 11,12,13,14,15,16 | all False |
+| `qwen3.6:35b` off | 13 | 11,12,13,14,15,16 | all False |
+| `Qwen3.5:9B` off | 5 | 11,12,13,14,15 | all False |
+| `qwen3.6:35b` on | 4 | 11,12,13,14 | all False |
+
+Variants interleave rather than running arm-by-arm, as §7 predicted from the emission
+order — so both arms fill together and a partial cell is never all-anchor.
+
+**(2) The untested flag composition works at runtime.** `--include-no-tools-steered` ×
+`--decoupled-budget` had never been run, and §8 item 8 called it unverified. A steered
+row on the decoupled path:
+
+```
+v14 solve  turns=2  think_tok=8192  answer_tok=4768  call2_prompt=2049  done=stop
+```
+
+`turns=2` is the two-call continuation; `think_tok` is exactly the
+`--num-predict-think 8192` passed; the answer phase draws its own separate budget
+(4,768-8,192 across the first rows) rather than sharing one; `call2_prompt≈2,040`
+confirms the think block is re-injected. The code-reading argument in §8 item 8 is now
+a measurement.
+
+**(3) The apparatus pin holds where it can be seen.** The serve flags in the job log are
+`--tool-call-parser qwen3_xml --reasoning-parser qwen3` — the **per-model default**, not
+`none`. §2.3(A) is the correction that mattered most (parser-off would have
+re-manufactured the `simulate` grading artifact on a no-tools cell), and the run went out
+with it applied. GPU confirmed as `NVIDIA RTX 6000 Ada Generation, 49140 MiB`; the
+allocation is `gres/gpu:rtx_6000=1` per task. Node names of the form `ise-cpu256-*` are
+GPU nodes on this cluster despite the name — checked, not assumed.
+
+**Still owed at run time:** the served vLLM version from the log header (§2.3(D)), which
+is only readable while a job is running.
