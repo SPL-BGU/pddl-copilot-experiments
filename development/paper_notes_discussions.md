@@ -1430,3 +1430,23 @@ validated by an independent ranking subagent (the user asked for a second perspe
   `title_abstract_candidates.md` §2. The §3 draft abstract is bannered PENDING that call —
   it implements N2-with-delivery-as-climax, so under N1 it needs rewriting rather than
   renumbering.
+
+## 2026-08-20 — "propensity" retired as a paper term (Omer)
+
+- *"'Propensity' is a complex word. I don't like it."* Not a stray word:
+  `paper/main.tex` uses it **15 times** (abstract, contributions, results, limitations,
+  future work, conclusion), so this is a paper-wide rename, not a wording tweak.
+- **Recommended replacement: "invocation rate."** Plain, and it maps exactly onto the
+  quantity already measured (the `tool_selected` share), so the simpler word is also the
+  more concrete one. Where a sentence needs the dispositional sense, spell it out rather
+  than nominalise: "whether the model chooses to call the tool". Runners-up: "call rate"
+  (shorter, slightly informal for a thesis term), "willingness to call" (most human, mildly
+  anthropomorphic, awkward in "the willingness result").
+- The term still has to carry the paper's key distinction, behavior versus capability
+  ("this reflects how often the model calls the tool, not whether it can"), so any
+  replacement must survive noun slots like "default X", "raise X", "the X result".
+- **Not yet applied to the tex.** Paper edits belong on `paper/aaai27` per CLAUDE.md; the
+  15 edits are queued with an ANSWER slot in `title_abstract_candidates.md` §2. The
+  development docs on this branch are already switched over.
+- Knock-on: title candidate F was rewritten to drop the word, and the N1 narrative is now
+  "invocation spine" rather than "invocation-propensity spine".

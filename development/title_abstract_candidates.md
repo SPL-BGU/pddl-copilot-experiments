@@ -71,13 +71,17 @@ does not mention delivery at all:
 > prompt-dependent behavior, separate from the model's capability or the tool's
 > accuracy."*
 
+Quoted verbatim from the current tex. The *finding* is the spine; the *word*
+"propensity" is retired (see the terminology note below), so this sentence is one
+of the 15 that get rewritten.
+
 That is the field-level result: sound planning tools are available to LLMs, the
 benefit is strongly regime-dependent, and what gates it is whether the model
 chooses to call, not whether the tool is correct or the model is capable.
 
 ### The two narratives
 
-**N1 — Invocation-propensity spine (delivery out of the thesis).**
+**N1 — Invocation spine (delivery out of the thesis).**
 The paper asks when tool access helps an LLM planner and answers: it depends on
 the regime, and the binding constraint is invocation. Two tasks cannot be done
 without the tool; plan checking gets *worse* when the tool is merely available
@@ -114,8 +118,41 @@ instrument. All are scoped; none makes an unscoped composition-failure claim.
 > Penalty in LLM PDDL Planning**
 
 **F. The counterintuitive result, scoped.**
-> **A Correct Tool the Model Will Not Call: Invocation Propensity as the Limit on
-> Tool-Augmented LLM Planning**
+> **A Correct Tool the Model Will Not Call: How Often LLMs Invoke a Sound Planner,
+> and What It Costs Them**
+
+### Terminology: retire "propensity" (Omer, 2026-08-20)
+
+*"'Propensity' is a complex word. I don't like it."* It is not a stray word:
+`paper/main.tex` uses it **15 times**, so this is a paper-wide rename.
+
+The term has to do two jobs in those slots. It must name a *behavior* (whether
+the model calls) as distinct from *capability* (whether it can), and it must
+survive in noun positions such as "default propensity", "raise propensity", and
+"the propensity result".
+
+**Recommendation: "invocation rate".** It is plain, and it maps exactly onto the
+quantity we already measure, the `tool_selected` share, so the simpler word is
+also the more concrete one. Where a sentence needs the dispositional sense, spell
+it out instead of nominalising: "whether the model chooses to call the tool".
+
+| current | plain replacement |
+|---|---|
+| "the bottleneck is invocation *propensity*" | "the bottleneck is the invocation rate: whether the model calls the tool at all" |
+| "this reflects tool-call *propensity*, not capability" | "this reflects how often the model calls the tool, not whether it can" |
+| "the wide cross-model spread in *default propensity*" | "the wide cross-model spread in default invocation rate" |
+| "raising invocation *propensity* by fine-tuning" | "raising the invocation rate by fine-tuning" |
+
+Runners-up: **"call rate"** (shorter, slightly informal for a thesis term) and
+**"willingness to call"** (most human, mildly anthropomorphic, and awkward in
+"the willingness result").
+
+The 15 tex edits are NOT in this branch. Paper edits belong on `paper/aaai27`
+(CLAUDE.md), so this is a queued job, not a done one.
+
+> ANSWER ("invocation rate" / "call rate" / "willingness to call" / other — and
+> confirm I should make the 15 tex edits on `paper/aaai27`):
+>
 
 **Worth reopening.** "Availability Is Not Enough" was retired because it "anchors
 the CALL finding only and predates the DELIVER stage". If delivery leaves the
@@ -162,8 +199,8 @@ being read alongside that paper.
 
 > **PENDING the section-2 narrative answer.** The draft below implements N2 with
 > delivery as the *climax* ("this is where the guarantee is lost"), which the
-> 2026-08-20 decision demotes. Under N1 it needs rewriting around invocation
-> propensity, not renumbering. The scale-figure fix from section 4 is applied
+> 2026-08-20 decision demotes. Under N1 it needs rewriting around the
+> invocation rate, not renumbering. The scale-figure fix from section 4 is applied
 > here already, since it holds under either narrative.
 
 Built on the memo's skeleton: field claim and prescribed remedy, one honest gap
