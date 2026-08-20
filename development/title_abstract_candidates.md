@@ -102,7 +102,15 @@ grading-methodology literature. Delivery is stronger as a limitation that a
 careful reader notices than as a co-headline it has to compete with.
 
 > ANSWER (N1 / N2 / other — and if N2, say what delivery is subordinate to):
+> **ANSWERED 2026-08-20 (Omer): N1 — the invocation spine.** The paper asks when
+> tool access helps an LLM planner and answers that it depends on the regime, and
+> that what gates it is whether the model calls. Delivery moves to Limitations.
+> Dual-surface grading stays in Methods as how we measure honestly.
 >
+> Knock-on: the section-3 abstract is redrafted on this spine below. Dropping the
+> delivery gradient from the abstract also drops one of the five numbers owed a
+> `/verify-claims` pass (section 5), since the 0 / +5 / >=33 point gradient is no
+> longer quoted there.
 
 ### Title candidates for N1
 
@@ -152,7 +160,11 @@ The 15 tex edits are NOT in this branch. Paper edits belong on `paper/aaai27`
 
 > ANSWER ("invocation rate" / "call rate" / "willingness to call" / other — and
 > confirm I should make the 15 tex edits on `paper/aaai27`):
->
+> **ANSWERED 2026-08-20 (Omer): "invocation rate".** Applied to the development
+> docs and to the section-3 redraft. The 15 `paper/main.tex` edits are still
+> QUEUED, not done: the branch confirmation half of this slot was not answered,
+> and paper edits belong on `paper/aaai27` behind the Overleaf pull-then-push
+> protocol (CLAUDE.md). One word of go-ahead releases them.
 
 **Worth reopening.** "Availability Is Not Enough" was retired because it "anchors
 the CALL finding only and predates the DELIVER stage". If delivery leaves the
@@ -162,7 +174,15 @@ should be back on the table under N1.
 
 > ANSWER (D / E / F / un-retire "Availability Is Not Enough" / combination /
 > other):
+> **ANSWERED 2026-08-20 (Omer): D.**
 >
+> > **Invocation Is the Bottleneck: When Sound Planning Tools Help an LLM, and
+> > When They Do Not**
+>
+> States the conclusion and scopes it in the same breath: the subtitle promises
+> both halves of the regime-dependence result, so the title makes no unscoped
+> composition-failure claim. Consistent with "invocation rate" as the term, since
+> neither uses "propensity".
 
 ### Rejected 2026-08-20, kept for the record
 
@@ -195,7 +215,57 @@ composition-failure claim. Costs us the funnel mnemonic, and it echoes the Mind
 the GAP subtitle closely enough that I would only pick it if we are comfortable
 being read alongside that paper.
 
-## 3. Abstract candidate
+## 3. Abstract candidate (redrafted on the N1 spine, 2026-08-20)
+
+Paired with title D. Built on the memo's skeleton: field claim and prescribed
+remedy, the measurement contribution named, the regime result in numbers, the
+counterintuitive finding with its mechanism, a constructive recommendation, and
+scale as protocol validation. Delivery is absent by design and belongs in
+Limitations under N1. Scale figure follows the section-4 decision.
+
+> Sound planners and validators are correct by construction, and the standard
+> prescription for unreliable LLM planning is to put one behind a tool interface.
+> Whether that access actually helps, and when, is rarely measured directly. Using
+> PDDL as a setting where a deterministic oracle grades every answer exactly, we
+> evaluate five single-tool-use tasks across five open-weight models, scoring
+> against the solver and validator rather than by self-report. A three-arm design
+> separates tool availability from a one-sentence steering nudge, every proportion
+> carries a confidence interval, and a signed-significance rule distinguishes help
+> from harm. We grade the model's delivered answer alongside the tool's return
+> value, so a correct tool result that never reaches the answer does not count as
+> a success.
+>
+> The benefit is strongly regime-dependent. Unaided plan generation sits at 8 to
+> 11 percent, and the tool lifts it by 66 to 73 points. Plan checking inverts the
+> pattern: for one of three models at 9B or larger, merely making the validator
+> available lowers success by 67 points, because the model reasons in prose
+> instead of calling it. The failure is silence rather than a wrong answer. That
+> model is correct on more than 99 percent of the trials where it does call, and
+> one steering sentence moves invocation from 21 to 94 percent. The limiting
+> factor throughout is the invocation rate, whether the model calls at all. It is
+> unstable across models and prompts, and it is separate from the model's
+> capability and from the tool's accuracy. We recommend reporting the invocation
+> rate beside success, and steering explicitly rather than assuming availability
+> is enough. The protocol runs over 273,600 open-weight trials across two corpora,
+> including an anonymized-domain twin as a contamination control, with a two-model
+> frontier arm as a capability check.
+
+Notes on choices a reviewer might probe. No sentence claims a task is impossible
+without the tool; the unaided floor is quoted as a number instead. The simulate
+floor is not cited as sole-source anywhere. The delivered-answer sentence names
+the dual-surface instrument without spending the abstract on it, which is what N1
+asks for. "Propensity" does not appear.
+
+The D-J1 constraint (first number one-sided by construction, a gradient rather
+than an interval) governed the delivery figure in the superseded draft. With
+delivery out of the abstract, D-J1 no longer binds here; confirm that reading
+before the tex pass.
+
+> ANSWER (approve / revise — mark the sentences you want changed):
+>
+
+### Superseded draft, kept for the record (delivery-as-climax, N2)
+
 
 > **PENDING the section-2 narrative answer.** The draft below implements N2 with
 > delivery as the *climax* ("this is where the guarantee is lost"), which the
@@ -237,9 +307,6 @@ construction (a gradient, not an interval), per the D-J1 constraint. No sentence
 claims a task is impossible without the tool. The simulate floor is not cited as
 sole-source anywhere. The delivery gradient is stated in points rather than as a
 delivered-simulate figure, which keeps us clear of the bounds-only rule.
-
-> ANSWER (approve / revise — mark the sentences you want changed):
->
 
 ## 4. One number in the memo does not reproduce: the "227k trials" scale claim
 
@@ -285,7 +352,16 @@ reviewer with the released data will check it.
 ## 5. Before any of this reaches the tex
 
 Every number in §3 traces to a locked deck value or the memo's MAY-USE list, but
-none has been through `/verify-claims` in this session. That pass is owed on: the
-8-11 percent unaided solve floor, the 66-73 point solve lift at both tiers, the
-0 / +5 / >=33 point delivery gradient, the -67 point availability harm, and the
-21-to-94 percent steering move. The scale figure in §4 is verified.
+none has been through `/verify-claims` in this session.
+
+Owed on the **N1 redraft** (four numbers): the 8-11 percent unaided solve floor,
+the 66-73 point solve lift, the -67 point availability harm, and the 21-to-94
+percent steering move. Also owed: the ">99 percent correct when it does call"
+figure, which the redraft promotes from the tex abstract into the mechanism
+sentence, and the "one of three models at 9B or larger" roster claim.
+
+The 0 / +5 / >=33 point **delivery gradient is no longer owed here**, since N1
+drops it from the abstract. It returns as a debt if it is quoted in Limitations.
+
+The scale figure in §4 is verified. The `guided_json` conformance numbers that
+Limitations may cite are verified and reproduce from `tools/guided_json_audit.py`.

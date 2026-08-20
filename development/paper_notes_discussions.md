@@ -1450,3 +1450,30 @@ validated by an independent ranking subagent (the user asked for a second perspe
   development docs on this branch are already switched over.
 - Knock-on: title candidate F was rewritten to drop the word, and the N1 narrative is now
   "invocation spine" rather than "invocation-propensity spine".
+
+## 2026-08-20 — D-J6 CLOSED: N1 spine, title D, "invocation rate"; abstract redrafted
+
+- **Narrative = N1 (Omer).** The invocation spine. The paper asks when tool access helps an
+  LLM planner and answers that it depends on the regime, and that what gates it is whether
+  the model calls. **Delivery moves to Limitations**; dual-surface grading stays in Methods
+  as how we measure honestly. Neither is a headline.
+- **Title = D (Omer):** *"Invocation Is the Bottleneck: When Sound Planning Tools Help an
+  LLM, and When They Do Not."* States the conclusion and scopes it in the same breath, so
+  it makes no unscoped composition-failure claim. "Availability Is Not Enough" stays
+  retired, having been offered again and passed over.
+- **Term = "invocation rate" (Omer).** "Propensity" is retired paper-wide.
+- **Abstract redrafted on the N1 spine** (`title_abstract_candidates.md` §3), paired with
+  title D. Delivery is absent by design. The delivered-answer sentence names the
+  dual-surface instrument in one clause without spending the abstract on it. The superseded
+  delivery-as-climax draft is kept below it for the record.
+- **Verification debt shrank.** Dropping the delivery gradient from the abstract removes
+  one of the five numbers owed a `/verify-claims` pass. Four remain (8-11 unaided floor,
+  66-73 lift, -67 availability harm, 21-to-94 steering), plus two the redraft newly
+  promotes into the abstract: ">99 percent correct when it does call" and the "one of three
+  models at 9B or larger" roster claim.
+- **D-J1 may no longer bind.** It governed the first number being one-sided by construction,
+  which was the delivery gradient. With delivery out of the abstract there is no gradient to
+  constrain. Flagged for confirmation before the tex pass rather than assumed.
+- **STILL BLOCKED: the 15 `paper/main.tex` propensity edits.** The word is decided but the
+  branch go-ahead is not given. Paper edits belong on `paper/aaai27` behind the Overleaf
+  pull-then-push protocol, so nothing in the tex has been touched.
