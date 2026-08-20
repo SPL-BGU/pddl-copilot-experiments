@@ -1,5 +1,14 @@
 # Journal decisions memo — recommendations for the 8 open slots (2026-07-23)
 
+> **SCALE-FIGURE CORRECTION (2026-08-16).** The "227k trials" headline used in this
+> doc does not reproduce from disk and has no recorded derivation. The counted
+> two-corpus total is **273,600** (5 models x 2 reasoning modes x 3 arms x 4,560 x 2
+> corpora; sweep5v2-live and sweep6-live are 136,800 rows each, all keys unique, zero
+> infra failures). That figure covers the **five open-weight models only** — the
+> frontier arm (6,080 Haiku + 10,640 Sonnet) is separate, so it must NOT be paired
+> with a "seven models" phrase. See `title_abstract_candidates.md` section 4.
+
+
 **Status:** RECOMMENDATIONS for Omer's sign-off. Covers D-J1..D-J6
 (`development/journal_narrative_proposal.md` §8) and D2 + D4
 (`development/roadmap_eval_and_paper_completion.md`). Each Recommendation block is
