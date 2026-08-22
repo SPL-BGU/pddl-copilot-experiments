@@ -1532,3 +1532,19 @@ validated by an independent ranking subagent (the user asked for a second perspe
   and an honest declaration of the on-mode apparatus failure) in an appendix. Promoting
   H4 to a larger body surface *because it passed* would be a post-hoc, outcome-contingent
   deviation from a ratified prereg. Not yet actioned — no tex has been touched.
+- **Roster gap found and closed: 4B was steered-but-uncontrolled.** Omer asked why the
+  H4 roster is 3 models and not all four Qwens. Measured the with-tools `think=off`
+  steering effect the control exists to attribute: 0.8B **+0.0pp** pooled (no effect,
+  so no control is owed), 4B **+6.9pp** pooled / **+9.6pp** `validate_plan`, 9B +2.5,
+  gemma **+47.4** (+72.0 `validate_plan`), 35b **+14.8**. So 4B carried a steering
+  effect **larger than 9B's, which was controlled** — an asymmetry not defensible on
+  effect size. Also ruled out "too weak to test": at `think=off` both 0.8B and 4B have
+  3/5 tasks inside the §3.3 ELIGIBLE band, the same as gemma and more than 35b (2/5).
+  Submitted `Qwen3.5:4B` `think=off` as **job 20490174** (no `--reasoning-parser`, no
+  `--decoupled-budget` — apparatus parity with the three completed off cells).
+  **To be declared as a deviation:** the control roster was expanded after seeing
+  results. It is conservative — under §3.4's intersection-union rule a fourth unit can
+  only make the conjunctive equivalence claim harder to satisfy, never easier — but it
+  must be stated plainly, in the same appendix paragraph as the on-mode apparatus
+  failure. D6 (what a 4B FAIL would do to the claim) is pre-committed in the readout
+  memo and still needs Omer's answer before that cell lands.

@@ -334,3 +334,80 @@ cell whose own paraphrase noise floor is F = 9.17pp, so it is not resolvable eit
 
 The only zeros in this run are the two `think=on` cells, and those are empty-text
 apparatus failures (§3), not model behaviour.
+
+---
+
+## 7. Roster gap — 4B was uncontrolled, and is now being controlled (2026-08-22)
+
+**Raised by Omer**: why not all four Qwens (0.8B / 4B / 9B / 35b)?
+
+The roster was fixed at three models in `journal_decisions_memo.md` §6 (accepted
+2026-07-23) and ratified into this prereg before any data existed, so it was not a
+choice made during the run. But the substantive check had never been done, so it was
+done now.
+
+### The effect H4 exists to attribute
+
+With-tools, `think=off`, canonical `sweep5v2-live`, plain (v11-13) → steered (v14-16),
+deduped by trial key:
+
+| model | pooled Δ | solve | validate_domain | validate_problem | validate_plan | simulate | H4 control |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Qwen3.5:0.8B | **+0.0** | +2.0 | +1.7 | −7.7 | +1.6 | −3.7 | none — **not needed** |
+| Qwen3.5:4B | **+6.9** | +4.0 | +1.4 | +2.8 | **+9.6** | −2.0 | **was missing → job 20490174** |
+| Qwen3.5:9B | +2.5 | +0.7 | +0.0 | −5.0 | +2.9 | +18.0 | PASS |
+| gemma4:26b-a4b | **+47.4** | −0.7 | +0.8 | +0.3 | **+72.0** | −1.0 | PASS |
+| qwen3.6:35b | **+14.8** | +29.0 | +0.8 | +0.5 | +17.1 | +22.3 | PASS |
+
+**0.8B needs no control.** There is no steering effect on it to attribute (+0.0pp
+pooled). H4 exists to rule out "the directive is merely a better prompt"; where the
+directive does nothing *with* tools either, there is no claim to protect.
+
+**4B was a real gap.** +6.9pp pooled and +9.6pp on `validate_plan`, uncontrolled —
+and **larger than 9B's +2.5pp, which was controlled.** That asymmetry is not
+defensible on effect size, so it is being closed rather than argued around.
+
+### Not a power problem
+
+"Too weak to measure" would have been an acceptable reason. It is not the reason. On
+the canonical `think=off` neutral arm, tasks inside the §3.3 ELIGIBLE band
+(anchor ∈ [10%, 90%]):
+
+| model | pooled anchor | tasks in ELIGIBLE band |
+|---|---:|---|
+| 0.8B | 45.9% | 3/5 (`validate_domain`, `validate_problem`, `validate_plan`) |
+| 4B | 58.2% | 3/5 (same three) |
+| 9B | 63.8% | 4/5 |
+| gemma | 74.3% | 3/5 |
+| 35b | 75.7% | 2/5 |
+
+4B and 0.8B are **as testable as gemma and more testable than 35b** at `think=off`.
+(0.8B's `think=on` half genuinely is degenerate — nt-neut extraction 4/4,560 = 0.088%,
+prereg §6 G3 — but that constrains only the on-mode leg.)
+
+### Action
+
+`Qwen3.5:4B`, `think=off`, `--no-tools --include-no-tools-steered`, run-tag
+`ntster-h4`, `--time 5-00:00:00` → **job 20490174**, RUNNING, TimeLimit verified.
+Deliberately submitted **without** `--reasoning-parser` and **without**
+`--decoupled-budget`, matching the three completed off-mode cells exactly — apparatus
+parity with the cells it will be reported beside matters more than any other
+consideration here.
+
+### Declare this as a deviation
+
+The roster is being expanded **after** seeing results, which must be stated plainly
+rather than presented as the original design. It is a conservative deviation: adding a
+unit to a control family adds chances for the control to **fail**, not to pass, and the
+intersection-union rule in §3.4 means a fourth unit can only make the conjunctive
+equivalence claim harder to satisfy. It is not model-shopping. The declaration belongs
+in the same appendix paragraph as the on-mode apparatus failure.
+
+> **D6 — if the 4B cell FAILS, what happens to the claim?**
+> Pre-commit the answer now, before the data lands, or the deviation loses its
+> conservatism. Proposed: a 4B FAIL routes to the §5 MIXED branch — the CALL-beat
+> attribution holds for gemma and 35b (where the effect lives) and is explicitly
+> withdrawn for 4B, with the failing cell named. It does **not** revoke the gemma
+> matched-cell result, which is a different model and a far larger effect.
+>
+> > ANSWER:
