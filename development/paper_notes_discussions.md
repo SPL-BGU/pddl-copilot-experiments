@@ -1477,3 +1477,58 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **STILL BLOCKED: the 15 `paper/main.tex` propensity edits.** The word is decided but the
   branch go-ahead is not given. Paper edits belong on `paper/aaai27` behind the Overleaf
   pull-then-push protocol, so nothing in the tex has been touched.
+
+## 2026-08-22 — nt-ster H4: off-mode PASSES land, on-mode arm was void and has been rerun
+
+- **Three `think=off` H4 units are complete, valid and all PASS.** Qwen3.5:9B
+  66.18 → 67.24 (Δ̂ −0.18 [−1.89, +1.52]), gemma4:26b-a4b 78.16 → 78.64
+  (+0.52 [−0.95, +1.99]), qwen3.6:35b 78.33 → 78.20 (+1.34 [−0.40, +3.08]). Every
+  ELIGIBLE task cell is EQUIVALENT, which is what §3.4 requires for a PASS. Realized
+  MDE 6.47-6.74pp. Full readout: `ntster_h4_partial_readout_20260822.md`.
+- **The matched-cell result is the one to quote.** The paper's +72pp
+  (`main.tex:501`, 0.206 → 0.926) is specifically gemma `validate_plan` **with-tools,
+  `think=off`** — measured, not assumed. Its mode- and model-matched no-tools control
+  is now done: **Δ +0.63pp [−0.46, +1.73]**, ELIGIBLE, EQUIVALENT. The sentence worth
+  +72pp with tools is worth six tenths of a point without them. That is the CALL-beat
+  attribution closed in the matched cell, on the model that owns the effect.
+- **Both `think=on` cells were void — apparatus failure, not a result.** 9,120/9,120
+  (35b) and 3,822/3,824 (9B) rows carried an EMPTY `response` AND empty `thinking`,
+  with `done_reason=stop`, no errors, and 12,960 tokens genuinely generated per row.
+  Text was never stored, so it is unrecoverable.
+- **Cause: §2.3(A) and §2.3(B) are incompatible when composed.** The decoupled two-call
+  path was built for, and only ever validated under, `--reasoning-parser none`
+  (`chat.py:422`, `CHANGELOG.md:512` DECISION B). §2.3(A) correctly ruled the override
+  is not passed — reasoning about the *single-call* path, where reasoning and answer
+  share one stream. In the two-call path they do not. `CHANGELOG.md:512`'s claim that
+  the reconstruction is "parser-state-proof" was a code-reading argument and is now
+  **empirically false**.
+- **Controlled proof.** June's `decoupled-rollup` corpora, same models, same apparatus,
+  parser OFF: 9B 8.8% empty / 68.4% success, 35b 4.1% empty / 82.0% success. August,
+  parser ON: ~100% empty / 0% success. The flag is the only difference.
+- **Parser-off does NOT re-manufacture the §2.3(A) `simulate` artifact on the decoupled
+  path**, because the answer is generated in a separate call with the reasoning
+  re-injected as prompt. June 35b decoupled parser-off: `format_parse_fail` 0.0% on all
+  three validate tasks, 14.0% on simulate, simulate success 40.0%.
+- **The 08-20 live-smoke gave a false PASS.** It asserted turn structure and token
+  counters (`turns=2 think_tok=8192 answer_tok=4768 call2_prompt=2049 done=stop`) —
+  every one of which is still true on a row containing no text. Standing lesson: a smoke
+  must assert `len(response) > 0` on a non-trivial share of rows.
+- **No corpus drift (§4 validity thread).** August neutral anchor vs canonical May
+  sweep5v2, four tasks, `simulate` excluded: pooled Δ = +0.1 (9B) / +1.0 (gemma) /
+  +0.2pp (35b), n=4,260 per side, all non-negative and inside the ~1pp half-width. The
+  "August looks like it is regressing" read is not supported — the only zeros are the
+  void cells.
+- **Actions taken (Omer, 08-22).** Job 20392801 cancelled; both void on-mode cell dirs
+  deleted on the cluster (local copies retained under `results/ntster-h4-live/` as the
+  failure record for the appendix); on-mode arm resubmitted as **job 20489912** with
+  `--reasoning-parser none`, same `--run-tag ntster-h4`, `--time 7-00:00:00`, pins
+  re-verified at `6007032` / `5e4f9c0`. A resume into the old dirs would have skipped
+  exactly the void keys and produced a "complete" empty cell — hence delete, not resume.
+- **§4(b) "replicated attribution" clause is dropped for now**, exactly as
+  pre-registered. The 2×2 factorial is `think=on` and needs the Qwens' on-mode nt legs,
+  which were the void cells. The §5 PASS sentence stands without the clause.
+- **Integration follows the pre-committed §5 cap** — caveat-only: the CALL beat plus
+  Limitations in the body, everything else (per-task table, F gate, MDE, drift check,
+  and an honest declaration of the on-mode apparatus failure) in an appendix. Promoting
+  H4 to a larger body surface *because it passed* would be a post-hoc, outcome-contingent
+  deviation from a ratified prereg. Not yet actioned — no tex has been touched.
