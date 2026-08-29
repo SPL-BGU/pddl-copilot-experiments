@@ -1548,3 +1548,58 @@ validated by an independent ranking subagent (the user asked for a second perspe
   must be stated plainly, in the same appendix paragraph as the on-mode apparatus
   failure. D6 (what a 4B FAIL would do to the claim) is pre-committed in the readout
   memo and still needs Omer's answer before that cell lands.
+
+## 2026-08-29 — nt-ster H4 COMPLETE: all six units PASS, paper-level branch = PASS
+
+- **The control is closed. All six units PASS**, and every one of the 8 ELIGIBLE task
+  cells across those units is EQUIVALENT — the §3.4 condition for a PASS, with no
+  exceptions to name. Paper-level branch = **§5 PASS**. Pooled Δ̂ by unit: 4B off
+  **−3.03 [−4.83, −1.23]**, 9B off −0.18 [−1.89, +1.52], 9B on **+1.83 [−0.28, +3.94]**,
+  gemma off +0.52 [−0.95, +1.99], 35b off +1.34 [−0.40, +3.08], 35b on **+0.49
+  [−1.37, +2.35]**. Realized MDE 6.47–6.80pp. Full readout:
+  `ntster_h4_final_readout_20260829.md`, which supersedes the 08-22 partial for every
+  number.
+- **H4 now holds in both think modes and across four models**, not just at `think=off`
+  on three. The 08-22 INCONCLUSIVE branch is retired.
+- **The matched-cell attribution is unchanged and is still the sentence to quote.** gemma
+  `validate_plan` `think=off`: **+72.0pp with tools, +0.63pp [−0.46, +1.73] without**,
+  ELIGIBLE and EQUIVALENT. The three original `think=off` numbers recomputed
+  bit-identical to 08-22 from the frozen scripts.
+- **The on-mode rerun is healthy and the 08-22 diagnosis is confirmed by prediction.**
+  The parser-off fix was predicted from June's corpora to land at 8.8%/68.4% (9B) and
+  4.1%/82.0% (35b) empty-response/success; August delivered **8.2%/69.1%** and
+  **3.9%/82.5%**. Both within a point on both axes. Parser ON was 99.9%/0% and 100%/0%.
+  The flag was the whole effect, as diagnosed.
+- **Parser-off did NOT re-manufacture the §2.3(A) grading artifact on the decoupled
+  path.** `format_parse_fail` is **0.0% on all three `validate_*` tasks in all four
+  on-mode arms**; `solve` 1–13%; `simulate` 10.7–44.3% (June 35b parser-off was 14.0%, so
+  the known level). `simulate` is UNINFORMATIVE in both on cells (F 32.0 / 19.0) and never
+  reaches a verdict. The 08-22 mechanism argument is now confirmed on independent data.
+- **Unplanned benefit: §4(b)'s parser mismatch is gone.** §2.3(A) had budgeted for the
+  factorial acquiring a parser difference across its nt/wt axis. The void-and-rerun forced
+  the nt on-mode legs to parser-off, which is what iss024d already used, so **both legs now
+  share the parser setting**. Still budget-unmatchable, still attribution-only, but one of
+  two named confounds removed by accident.
+- **4B PASSES, so D6 is moot** (it asked what a 4B FAIL would do to the claim). Two things
+  reported honestly anyway: 4B is the only unit whose pooled CI excludes zero **and the
+  sign is negative** — the directive makes 4B slightly *worse* without tools, which runs
+  against the "merely a better prompt" objection rather than toward it; and 4B `simulate`
+  is the family's only NOT-EQUIVALENT task cell (−14.00 [−19.97, −8.03]), but it is
+  UNINFORMATIVE (own F = 12.0pp) so by §3.2/§3.4 it cannot contribute a FAIL and carries
+  no verdict authority. Branch is PASS, not MIXED.
+- **Mechanism decomposition VOID in all six cells** (APPARATUS 13.8–36.0% per arm vs a 1%
+  threshold). Verdicts unaffected — §3.7 never gates a verdict, and labels are owed only
+  on FAIL cells. M1 directive echo +0.00pp everywhere. The `M2 mean completion tokens =
+  nan` cosmetic bug from 08-22 is still there.
+- **No corpus drift, now including 4B.** August neutral anchor vs canonical May sweep5v2,
+  four tasks, `simulate` excluded: pooled +0.2 (4B) / +0.1 (9B) / +1.0 (gemma) / +0.2pp
+  (35b), n = 4,260 per side. All non-negative, all inside the ~1pp half-width.
+- **Still owed before any tex is touched** (all four logged with `> ANSWER:` slots in the
+  final readout §7): **O1** write the two deviation declarations — roster expanded 3→4
+  after seeing results, and the on-mode `--reasoning-parser none` deviation from §2.3(A);
+  **O2** decide whether §2.3(A) itself gets amended (08-22's D5); **O3** decide whether to
+  write+freeze the §4(b) factorial script now that it is unblocked — this is what decides
+  whether §5's PASS sentence keeps its "replicated attribution" clause, and the recommended
+  route is freeze-and-hash *before* pointing it at data, the way items 9/10 were done;
+  **O4** schedule the §5 integration under the pre-committed caveat-only cap.
+  **No tex has been touched.**
