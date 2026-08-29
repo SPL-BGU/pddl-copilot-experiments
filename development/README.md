@@ -17,7 +17,7 @@ Three files answer almost every question:
 | **`NUMBERS.md`** | the frozen value of every headline figure + the stale readings it replaces. **Check before quoting anything** |
 | **`MOVES.md`** | old path → new path, for resolving pre-2026-08-29 paths cited in the append-only logs |
 
-## Root — live (13 docs)
+## Root — live (12 docs)
 
 | doc | what it is |
 |---|---|
@@ -26,7 +26,7 @@ Three files answer almost every question:
 | `tool_call_vs_final_output_grading.md` | e2e-vs-tool-verified grading decisions D1–D9 + phase results |
 | `sonnet_wt_vs_haiku_e2e_memo.md` | Sonnet-WT vs Haiku delivered/tool-verified comparison; the transcription-gap numbers |
 | `iss024d_parity_prereg.md` | pre-registered parity test gating headline use of the e2e overlay |
-| `ntster_h4_prereg.md` · `ntster_h4_prereg_decisions.md` | no-tools-steered H4 preregistration + answered slots |
+| `ntster_h4_final_readout_20260829.md` | nt-ster H4 result — all six units PASS, branch PASS. Live because its caveat-only paper integration is still open |
 | `title_abstract_candidates.md` | term-collision check, title/abstract candidates, scale-claim audit (open `> ANSWER:` slots) |
 | `planbench/` (3 docs) | `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` (the one entry point + binding constraints), `planbench_wt_paper_integration_plan.md` (Job 1 spec, 4/4 signed), `planbench_wt_results_20260803.md` (frozen numbers) |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head (13 open / 8 closed) |
@@ -38,7 +38,9 @@ Three files answer almost every question:
 `sweep_prompt_bank_design.md` (sweep-5 prompt bank; pinned by `run_experiment.py`,
 `pddl_eval/prompts.py`) · `contamination_probe_plan.md` (pinned by `tools/anon_*.py`,
 `submit_with_rtx.sh`) · `planbench_wt_prereg.md` + `planbench_wt_prereg_decisions.md`
-(PlanBench design of record) · `grading_artifacts_findings.md` ·
+(PlanBench design of record) · `ntster_h4_prereg.md` + `ntster_h4_prereg_decisions.md`
+(nt-ster H4 design of record; §9.1 holds the two executed deviations) ·
+`grading_artifacts_findings.md` ·
 `decision_audit_grading_and_frontier.md` · `frontier_rerun_framework_decision.md`
 (the D1=B SDK Tool Runner decision) · `baseline_comparison_tool_use_benchmarks.md` ·
 `cluster_user_guide.md` (BGU CIS HPC) · `CHANGELOG-archive.md` (pre-2026-05-05)
@@ -56,6 +58,7 @@ Grouped by line. Nothing here is a status source; several files carry numbers th
 | `status-snapshots/` | the four dated status docs `STATUS.md` replaced (`next_steps` 07-12 → `roadmap` 07-15 → `journal_phase0` 07-24 → this) + `journal_narrative_proposal.md` |
 | `plans-executed/` | `decoupled_budget_plan.md` (#88), `q1_grader_plan.md` (#87), `simulate_normalizer_fix_plan.md`, `FRAMEWORK_EXTENSION_PLAN.md` (restored from git — holds the PR-3 domain-substitution rationale `EXPERIMENTS_FLOW.md` cites) |
 | `cost-breakdowns/` | the cost line, parked on the advisor verdict; figures superseded |
+| `ntster/` | the nt-ster H4 run line — the 08-22 partial readout (superseded by the final readout) and the spent submit-window decisions |
 
 ## House rules
 

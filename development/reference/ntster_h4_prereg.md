@@ -820,7 +820,7 @@ mid-corpus — which is why it stays parked, not merely deprioritised.
 ### Preflight record — 2026-08-17 (§7 step 2 SHA requirement, discharged early)
 
 Preflight-only window; **no submit**, per D1(a) in
-`development/ntster_submit_window_decisions.md`.
+`development/archive/ntster/ntster_submit_window_decisions.md`.
 
 **Repo SHAs, both sides.** The cluster is sitting on the **literal pin**, not merely on
 something generation-identical to it:

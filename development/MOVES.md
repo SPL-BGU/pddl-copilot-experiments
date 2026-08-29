@@ -21,6 +21,10 @@ full history.
 
 ## Renames
 
+Rows marked *(08-29 second wave)* were moved after the nt-ster H4 run closed on the same
+day, in the same tier scheme — see the note at the foot of this file.
+
+
 | old path | new path |
 |---|---|
 | `development/CHANGELOG-archive.md` | `development/reference/CHANGELOG-archive.md` |
@@ -52,6 +56,10 @@ full history.
 | `development/journal_narrative_proposal.md` | `development/archive/status-snapshots/journal_narrative_proposal.md` |
 | `development/journal_phase0_handoff.md` | `development/archive/status-snapshots/journal_phase0_handoff.md` |
 | `development/next_steps_after_inflight_runs.md` | `development/archive/status-snapshots/next_steps_after_inflight_runs.md` |
+| `development/ntster_h4_partial_readout_20260822.md` | `development/archive/ntster/ntster_h4_partial_readout_20260822.md` |
+| `development/ntster_h4_prereg.md` | `development/reference/ntster_h4_prereg.md` |
+| `development/ntster_h4_prereg_decisions.md` | `development/reference/ntster_h4_prereg_decisions.md` |
+| `development/ntster_submit_window_decisions.md` | `development/archive/ntster/ntster_submit_window_decisions.md` |
 | `development/planbench/PLANBENCH_HANDOFF_v3.md` | `development/archive/planbench/PLANBENCH_HANDOFF_v3.md` |
 | `development/planbench/PLANBENCH_WT_HANDOFF.md` | `development/archive/planbench/PLANBENCH_WT_HANDOFF.md` |
 | `development/planbench/PLANBENCH_WT_NEXT_STEPS_HANDOFF.md` | `development/archive/planbench/PLANBENCH_WT_NEXT_STEPS_HANDOFF.md` |
@@ -89,3 +97,27 @@ real files:
 |---|---|
 | `development/ntster_h4_slot_recommendations.md` | user-local scratch (the 34-agent evidence workflow behind the nt-ster prereg). Never entered the repo; not recoverable from git. The citation in `ntster_h4_prereg.md` is annotated to say so |
 | `development/INVESTIGATION_vllm_oom_thinkon_20260511.md`, `SUBMISSION_STRATEGY_PROPOSAL.md`, `qwen3_6_35b_validate_plan_tool_inversion.md`, `sweep4_plan_new_prompts.md`, `sweep4_fr_pivot.md` | cited only from append-only log entries; not present and not restored. Treat the log entry itself as the record |
+
+## The frozen analysis scripts deliberately keep pre-reorg paths
+
+`tools/ntster_common.py`, `ntster_f_gate.py`, `ntster_h4.py` and `ntster_factorial.py`
+each cite `development/ntster_h4_prereg.md` in a docstring or in the `prereg` field of
+their JSON output. That path now resolves to `development/reference/ntster_h4_prereg.md`.
+
+**Do not repair them.** All four are frozen and pinned by sha256 in the prereg (§8 item 9
+and its 08-29 addendum); their bytes are the audit trail that the analysis which produced
+the H4 verdict is the analysis that was registered. Editing a docstring changes the hash
+and silently voids that guarantee, which is a far worse outcome than a stale path in a
+comment. This table is how you resolve them.
+
+The same applies to any archived doc under `archive/` — #95's rule was to repair live
+docs and code, not to rewrite archived bodies.
+
+## nt-ster H4 line — second wave, 2026-08-29
+
+The four rows above moved after the run closed (all six units PASS, paper-level branch
+PASS). The prereg pair went to `reference/` as the design of record, matching the
+PlanBench prereg pair; the superseded partial readout and the spent submit-window
+decisions went to `archive/ntster/`. The live doc for the line is
+`ntster_h4_final_readout_20260829.md`, which stays at the root because the paper
+integration it specifies is still open.

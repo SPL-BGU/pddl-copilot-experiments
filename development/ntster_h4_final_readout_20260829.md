@@ -1,13 +1,13 @@
 # nt-ster H4 — final readout, all six units complete (2026-08-29)
 
-**Supersedes** `ntster_h4_partial_readout_20260822.md` for every number. That memo stays
+**Supersedes** `archive/ntster/ntster_h4_partial_readout_20260822.md` for every number. That memo stays
 on disk as the record of the void on-mode arm and the roster-gap argument; nothing in it
 about the three `think=off` cells has changed.
 
 **Scope.** All six pre-registered/amended units are now complete, valid, and analysed.
 Pipeline run in the pre-registered order — targeted sync → `e2e_regrade.py --no-mcp` →
 `ntster_f_gate.py` → `ntster_h4.py`. All four frozen scripts sha256-checked against
-`ntster_h4_prereg.md` §8 item 9 before the run: **all four match `ff7bbd7`**. GT gate
+`reference/ntster_h4_prereg.md` §8 item 9 before the run: **all four match `ff7bbd7`**. GT gate
 `6af57125bde3` PASSED.
 
 ---
@@ -258,7 +258,7 @@ on it, but it should be fixed before any future mechanism read.
 > confirmed harmless in §2.2's table.
 >
 > > **ANSWER: OK (Omer, 2026-08-29). DONE** — both declarations written as
-> > appendix-ready prose in `ntster_h4_prereg.md` §9.1, sitting in the Known-limits
+> > appendix-ready prose in `reference/ntster_h4_prereg.md` §9.1, sitting in the Known-limits
 > > section so they travel with the Limitations material rather than being re-derived at
 > > writing time.
 
@@ -269,7 +269,7 @@ on it, but it should be fixed before any future mechanism read.
 > August failure as evidence. A documented deviation, not a silent one.
 >
 > > **ANSWER: OK (Omer, 2026-08-29). DONE** — amendment written inline in
-> > `ntster_h4_prereg.md` §2.3(A), scoping the original rule to the single-call path and
+> > `reference/ntster_h4_prereg.md` §2.3(A), scoping the original rule to the single-call path and
 > > requiring parser-off on the decoupled path. It also marks the "Cost, stated"
 > > paragraph void in fact (the nt/wt parser difference no longer exists), records
 > > `CHANGELOG.md:512`'s "parser-state-proof" claim as empirically false, and adds the
@@ -291,7 +291,7 @@ on it, but it should be fixed before any future mechanism read.
 >
 > > **ANSWER: OK — write+freeze (Omer, 2026-08-29). DONE** — `tools/ntster_factorial.py`
 > > written, rehearsed against a forced-zero configuration, frozen and hashed
-> > (`78787eb7…11629164`) in `ntster_h4_prereg.md` §8 item 9 addendum. The freeze commit
+> > (`78787eb7…11629164`) in `reference/ntster_h4_prereg.md` §8 item 9 addendum. The freeze commit
 > > precedes the first real invocation in git history, so the ordering is checkable
 > > rather than asserted. Result in §9 below.
 

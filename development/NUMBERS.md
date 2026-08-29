@@ -52,6 +52,42 @@ The retracted 13.5 / 0.0 pair is the single most dangerous stale number in the t
 it was published in earlier drafts before the overlay bug was found. Anything quoting
 a frontier solve or simulate figure below ~90 / outside those bands is pre-retraction.
 
+## nt-ster H4 — steering falsification control (CLOSED 2026-08-29)
+
+Provenance for all rows: `ntster_h4_final_readout_20260829.md`.
+Design of record: `reference/ntster_h4_prereg.md`. Executed deviations: its §9.1.
+
+**Paper-level branch = PASS** — all six units PASS, all 8 ELIGIBLE task cells
+EQUIVALENT. Surface = delivered, margin ±5pp, 90% domain-clustered intervals, governing
+interval = the wider of the domain (k=20) and problem (k=100) clusterings.
+
+| figure | **quote this** | line | do NOT quote |
+|---|---|---|---|
+| the attribution, matched cell | gemma `validate_plan` `think=off`: **+72.0pp with tools vs +0.63pp [−0.46, +1.73] without** | L51-52 | — *(this is the sentence the control exists to license)* |
+| Qwen3.5:4B off | **−3.03 [−4.83, −1.23]**, 61.10 → 59.23% | L23 | — |
+| Qwen3.5:9B off | **−0.18 [−1.89, +1.52]**, 66.18 → 67.24% | L24 | — |
+| Qwen3.5:9B on | **+1.83 [−0.28, +3.94]**, 70.04 → 72.04% | L25 | the 08-22 reading of this cell — it was **void**, 0% success, empty text |
+| gemma4:26b-a4b off | **+0.52 [−0.95, +1.99]**, 78.16 → 78.64% | L26 | — |
+| qwen3.6:35b off | **+1.34 [−0.40, +3.08]**, 78.33 → 78.20% | L27 | — |
+| qwen3.6:35b on | **+0.49 [−1.37, +2.35]**, 83.75 → 83.31% | L28 | the 08-22 reading — **void**, same cause |
+| realized MDE | **6.47–6.80pp** per unit | L37 | — |
+| §4(b) factorial interaction | 9B **+0.83 [−1.98, +3.64]** · 35b **−0.00 [−2.21, +2.21]** — neither excludes 0 | L365-366 | the domain-only intervals (+1.97 / +1.71); §3.3 takes the **wider** clustering |
+| paper-level branch | **PASS** | L17 | **INCONCLUSIVE** — the 08-22 partial reading, when the two on-mode cells were void |
+
+**Two use constraints, both pre-registered.**
+
+- **§5's PASS sentence does NOT carry the "replicated attribution" clause.** The §4(b)
+  factorial did not meet its criterion, so the clause is *removed*, not weakened. That is
+  a null on an underpowered diagnostic — gemma, which owns the +72pp, has no `think=on`
+  no-tools leg and cannot appear in it at all — and it is **not** evidence against the
+  attribution, which rests on the matched cell above.
+- **The mechanism decomposition is VOID in all six cells** (APPARATUS 13.8–36.0% per arm
+  against a 1% threshold), so no §3.7 component number may be quoted.
+
+Per-task cells labelled UNINFORMATIVE carry no verdict authority and must not be quoted
+as steering effects — this includes 4B `simulate` −14.00 [−19.97, −8.03], the family's
+only NOT-EQUIVALENT cell, whose own paraphrase noise floor is 12.0pp.
+
 ## Corpus scale
 
 | figure | **quote this** | provenance | do NOT quote |
@@ -64,10 +100,5 @@ reasoning modes × 3 arms × 4,560 × 2 corpora.
 
 ## Not yet in this table
 
-- **nt-ster H4** (the steering falsification control) completed 2026-08-29 on the
-  unpushed branch `run/ntster-h4`; its readout doc is not on `main` yet. Add its
-  rows here when that branch merges. Until then take nt-ster figures only from
-  `ntster_h4_final_readout_20260829.md` on branch `run/ntster-h4`
-  (not on `main` yet, so the path does not resolve here).
 - Single-tool suite headline numbers: still to be pinned as Job 2 writes. Use
   `/verify-claims` per figure until they land here.

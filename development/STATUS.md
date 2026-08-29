@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-08-11 (after PR #93). Renamed from
+*Content last refreshed: 2026-08-29 (nt-ster H4 closed). Renamed from
 `remaining_work_20260811.md` on 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
@@ -17,10 +17,10 @@
 **No experiment is owed for either line's headline claims.** PlanBench-WT is closed
 (RESCUE, SUPPORTED, four-rung ladder, n=600/cell). The single-tool line's data has
 been complete since 2026-07-17 (sweep5v2-live + sweep6 + iss024d-e2e-live + the
-Haiku/Sonnet frontier corpora, all graded). What is left is **writing** — two paper
-sections that are fully specified and signed but have not touched tex — plus **one
-optional control run** (nt-ster H4) that by its own prereg can only soften prose,
-never delay it. Last paper commit is `afc92b6`, 2026-07-23.
+Haiku/Sonnet frontier corpora, all graded). **The nt-ster H4 control closed 2026-08-29
+— all six units PASS — so there is now no unrun experiment on either line.** What is
+left is **writing**: three paper sections that are fully specified and signed but have
+not touched tex. Last paper commit is `afc92b6`, 2026-07-23.
 
 ## State by line
 
@@ -28,7 +28,7 @@ never delay it. Last paper commit is `afc92b6`, 2026-07-23.
 |---|---|---|---|
 | PlanBench (NT + WT) | DONE, archived + MANIFEST-verified | DONE, `verify_promotion.py` re-derives every number | **NOT STARTED** — Act 4 section, plan signed 4/4 slots |
 | Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **NOT STARTED** — the full e2e reframe (D2/D-J2 = option a) |
-| nt-ster H4 control | not run | n/a | prereg written, **4 RATIFY signatures open** |
+| nt-ster H4 control | **DONE 2026-08-29** (6 cells, 9,120 rows each) | **DONE** — all six units PASS, branch PASS | **NOT STARTED** — caveat-only integration, see Job 3 |
 
 Evidence that the paper side is untouched: `paper/main.tex` on `paper/aaai27` has
 **zero occurrences of "delivered"** (the reframe's whole vocabulary) and mentions
@@ -70,28 +70,38 @@ transcription gap (solve +5pp both tiers, simulate ≈35–50pp length-driven,
 This is where the retracted claims finally get their replacement text, so it is also
 the cleanup of the simulate sole-source-floor thread.
 
-## Job 3 — nt-ster H4 control + nt-neut anchor (the only unrun experiment)
+## Job 3 — nt-ster H4 control: RUN COMPLETE, integration owed
 
-Falsification control for the steering claim: does the steered directive move the
-no-tools floor on its own? If it does, the +72pp May steering effect stops being
-"steering under tools." Prereg `ntster_h4_prereg.md` is written, slots filled and
-accepted 07-25, **§10 has four unsigned RATIFY lines**.
+**The experiment is done.** Closed 2026-08-29 on branch `run/ntster-h4`: six cells,
+9,120 rows each, **all six units PASS**, paper-level branch **PASS**. Every one of the
+8 ELIGIBLE task cells is EQUIVALENT. Figures: `NUMBERS.md`. Full readout:
+`ntster_h4_final_readout_20260829.md`. Design of record: `reference/ntster_h4_prereg.md`.
 
-Two things to know before signing:
+The result it was commissioned for, in the matched cell: gemma `validate_plan`
+`think=off` is **+72.0pp with tools and +0.63pp [−0.46, +1.73] without**. The steering
+effect is attributed to the directive's interaction with tool access.
 
-- **Price was corrected upward from the memo's ~92 GPU-h.** [refined 08-11 after
-  ratification: ~186 GPU-h is the *plain-apparatus, three-model, both-modes* price.
-  The accepted shape costs **~46 GPU-h off + ~110-150 on ≈ 156-196 total**, the
-  on-mode half still an estimate until readiness item 7 reconstructs the decoupled
-  wall. Same order of magnitude; recorded accurately in the prereg §10 signature.]
-- It is **caveat-only by design** — the result can relax prose but never gates it,
-  so Job 1 and Job 2 proceed whatever happens here.
+**What is left is writing only**, under the pre-committed caveat-only cap — CALL beat +
+Limitations in the body; per-task table, F gate, MDE table, drift check, the on-mode
+apparatus failure and the two §9.1 deviations in an appendix. Scope approved
+(final readout O4); no tex touched.
 
-Readiness items still owed before a submit ping (prereg §readiness rows 7–14): the
-decoupled think=on wall reconstruction, freezing the two analysis entry points,
-rebuilding + stamping `gt_cache.json`, and — only if the Llama probe stays in
-scope — a `vllm_lookup` case for Llama-3.1-8B, which needs its own branch + PR and
-must not touch `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live.
+Two things the integration must carry, both pre-registered and neither optional:
+
+- **§5's PASS sentence drops its "replicated attribution" clause.** The §4(b) factorial
+  did not meet its criterion (9B +0.83 [−1.98, +3.64], 35b −0.00 [−2.21, +2.21]). This
+  is a null on an underpowered diagnostic that structurally excludes gemma — the model
+  owning the +72pp has no `think=on` no-tools leg — and is **not** evidence against the
+  attribution.
+- **Two executed deviations get declared** (`reference/ntster_h4_prereg.md` §9.1): the
+  roster expanded 3→4 models after interim results, and the `think=on` arm was rerun
+  with `--reasoning-parser none` after the preregistered configuration produced a void
+  corpus.
+
+**Follow-on now unblocked:** the Llama-3.1-8B second-family probe (R3) was sequenced
+strictly after nt-ster and no longer has a blocker. It needs its own branch + PR for a
+`vllm_lookup` case; the "must not touch `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is
+live" constraint has lapsed.
 
 ## Job 4 — small items, agent-executable, no gates
 
@@ -132,6 +142,10 @@ owned" worst-case scoping in the manuscript permanently.
 > ANSWER (ratify now / defer until after the two writing jobs / drop and keep the
 > worst-case scoping):
 > ratify
+>
+> **RESOLVED 2026-08-29 — ratified, run, and closed.** All six units PASS. The
+> worst-case "diagnostic-only" scoping this decision was hedging against is not
+> needed: the attribution holds in the matched cell. See Job 3.
 
 **R3 — Llama-3.1-8B second-family probe.** It is the piece that drags in harness
 changes (branch + PR for `vllm_lookup`) and its own kill-gate. Recommendation: keep
@@ -139,6 +153,10 @@ it, but sequenced strictly after nt-ster lands, as the memo already has it.
 
 > ANSWER (keep as sequenced / drop / decide after nt-ster):
 > keep as sequenced
+>
+> **UNBLOCKED 2026-08-29.** nt-ster has landed, so the sequencing constraint has
+> lapsed and the Llama probe can start whenever it is wanted. It still needs its own
+> branch + PR for the `vllm_lookup` case.
 
 **R4 — Job 4 small items: run them now in the background?** They are $0, local, and
 independent of everything above. Recommendation: yes, run them alongside Job 1.

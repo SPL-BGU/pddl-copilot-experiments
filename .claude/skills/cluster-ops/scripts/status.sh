@@ -362,7 +362,7 @@ elif profile == "iss024d":
     SWEEP_LABEL = "iss024d"
     HDR_NOTE = "denom 4560 · with-tools (tools_all_minimal) v11-13 · think=on · parser-off · jobs 19293221+19314599"
 elif profile == "ntster":
-    # nt-ster H4 control (development/ntster_h4_prereg.md; jobs 20392775
+    # nt-ster H4 control (development/reference/ntster_h4_prereg.md; jobs 20392775
     # off-mode + 20392801 on-mode, submitted 2026-08-20). This is the ONLY
     # profile that populates an nt-ster column, because it is the only run
     # that passes --include-no-tools-steered: both arms land in ONE 9,120-row
