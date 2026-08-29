@@ -1603,3 +1603,53 @@ validated by an independent ranking subagent (the user asked for a second perspe
   route is freeze-and-hash *before* pointing it at data, the way items 9/10 were done;
   **O4** schedule the §5 integration under the pre-committed caveat-only cap.
   **No tex has been touched.**
+
+## 2026-08-29 — O1-O4 answered OK; §4(b) factorial run after freeze, clause DROPS
+
+- **All four open items accepted by Omer.** O1/O2 are written, O3 executed under the
+  freeze protocol, O4 approved as scope with the tex itself deferred.
+- **O1 — both deviations declared** as appendix-ready prose in `ntster_h4_prereg.md`
+  §9.1: the roster expansion 3→4 after interim results, and the on-mode
+  `--reasoning-parser none` rerun. Written so a reader sees what changed, when, relative
+  to what knowledge, and which way it pushes the conclusion. The roster point is argued
+  in checkable form — intersection-union means a fourth unit can only make the
+  conjunctive claim harder — and notes the added unit was chosen by the size of the
+  effect needing attribution, not by its control result, which was unknown at submit.
+- **O2 — §2.3(A) amended** inline in the prereg: scoped to the single-call path, with the
+  decoupled path requiring parser-off. Also marks the "Cost, stated" paragraph **void in
+  fact** (the nt/wt parser difference no longer exists), records `CHANGELOG.md:512`'s
+  "parser-state-proof" claim as empirically false, and adds a standing rule that a
+  readiness smoke must assert `len(response) > 0`.
+- **O3 — `tools/ntster_factorial.py` written, frozen at `78787eb7…11629164`**, hash
+  recorded in the prereg §8 item 9 addendum, freeze committed **before** the first real
+  invocation so the ordering is checkable in git rather than asserted. Rehearsed
+  pre-freeze with both leg paths pointed at one directory, forcing the interaction to
+  exactly zero by construction — exercises every code path against a known answer while
+  leaking nothing. The addendum states plainly that the code was written after the H4
+  verdict was known and why (until the on-mode rerun landed, the factorial had no nt
+  legs).
+- **§4(b) RESULT: the "replicated attribution" clause DROPS**, as pre-registered.
+  9B interaction **+0.83 [−1.98, +3.64]**, 35b **−0.00 [−2.21, +2.21]** — neither
+  excludes zero. §5's PASS sentence loses its optional bracketed clause; it is removed,
+  not rewritten.
+- **This is a null on an underpowered diagnostic, NOT evidence against the attribution**,
+  and the write-up says so with the three structural reasons: gemma — the model that owns
+  the +72pp — **cannot be in this factorial at all** (§2.3(B), no `think=on` nt leg,
+  because the decoupled mechanism stops on `</think>` and gemma has no think tokens); the
+  factorial is `think=on`, where the two eligible Qwens steer by only +3.97 and +1.27pp
+  with tools, far too little to resolve an interaction at a ±2–3pp half-width; and the
+  comparison was already declared attribution-only and budget-unmatchable.
+- **Reported in both directions, honestly.** Under **domain** clustering both point
+  estimates are positive and 35b's excludes zero (+1.71 [+0.03, +3.39]) — a less
+  conservative clustering would have returned KEEP for 35b. The governing interval is the
+  **wider** of the two clusterings per §3.3, so we take DROP. And on `validate_plan` the
+  interaction is positive and excludes zero in both models (9B +7.33 [+3.92, +10.74], 35b
+  +2.77 [+0.08, +5.46]) — recorded because suppressing it would be selective, but it
+  carries no clause authority since §4(b) states the estimand per model.
+- **No consequence for the paper beyond the clause.** The CALL-beat attribution never
+  rested on the factorial; it rests on the matched cell — gemma `validate_plan`
+  `think=off`, **+72.0pp with tools vs +0.63pp [−0.46, +1.73] without** — which is
+  stronger and sits on the model and cell where the effect actually lives.
+- **O4 — integration scope approved** (caveat-only cap: CALL beat + Limitations in body;
+  per-task table, F gate, MDE, drift check, apparatus-failure declaration and the two
+  §9.1 deviations in an appendix). **Tex deferred to a later session. No tex touched.**

@@ -349,3 +349,62 @@ on it, but it should be fixed before any future mechanism read.
 `results/derived/gt_cache.json` and `gt_cache_stamp.json` in this worktree are symlinks
 to the canonical copies in the main checkout, so the frozen scripts run at their
 pre-registered default invocation with no CLI override.
+
+---
+
+## 9. §4(b) factorial — result (O3, run 2026-08-29 after freeze)
+
+`tools/ntster_factorial.py`, frozen at `78787eb7…11629164` and hashed into the prereg
+before this invocation. GT gate `6af57125bde3` passed; both legs of both models pass the
+completeness gate; 4,560 matched fixtures per model, 0 dropped.
+
+### Verdict: **the clause DROPS**
+
+| model | Δ_wt | Δ_nt | interaction [90% CI] | excludes 0 | May ref | replicated |
+|---|---:|---:|---|---|---:|---|
+| Qwen3.5:9B | +3.97 | +2.00 | **+0.83 [−1.98, +3.64]** | no | +9.76 | no |
+| qwen3.6:35b | +1.27 | −0.44 | **−0.00 [−2.21, +2.21]** | no | +0.46 | no |
+
+Neither interaction excludes zero, so §4(b)'s criterion is not met and §5's PASS sentence
+**drops the "replicated attribution" clause** — pre-registered behaviour, and the clause
+is removed rather than rewritten or weakened.
+
+### What this does and does not mean
+
+**It is not evidence against the attribution.** It is a null on a diagnostic that was
+structurally unable to test the claim where the claim lives, for three reasons that were
+all fixed before the data existed:
+
+1. **The model that owns the effect cannot be in this factorial.** gemma has no
+   `think=on` no-tools leg by construction (§2.3(B) — the decoupled mechanism stops on
+   `</think>` and gemma has no think tokens). The +72pp is gemma's. The factorial can
+   only see the two Qwens.
+2. **The factorial is `think=on`, where these two models barely steer at all.** Their
+   with-tools steering effects here are +3.97pp and +1.27pp. An interaction cannot be
+   resolved out of an effect that small at a ±2–3pp half-width. The headline +72pp is a
+   `think=off` effect, and `think=off` has no factorial because there is no `think=off`
+   with-tools steered corpus co-run with it.
+3. **The diagnostic was already declared attribution-only and budget-unmatchable**
+   (§2.3(A)): `chat_with_tools` re-grants the per-task decode budget every turn up to
+   `MAX_TOOL_LOOPS = 10`, while a no-tools trial gets one shared budget.
+
+**Direction is consistent with the attribution, but the pre-registered interval is the
+one that counts.** Worth recording honestly, in both directions:
+
+- Under **domain** clustering both point estimates are positive and 35b's interval
+  excludes zero (9B +1.97 [−0.09, +4.04]; 35b **+1.71 [+0.03, +3.39]**). The governing
+  interval is the **wider** of the two clusterings (§3.3), which is problem clustering,
+  and that includes zero. So a less conservative clustering choice would have returned
+  KEEP for 35b. We take the pre-registered one. This is the designed conservatism
+  working, not a close call being spun.
+- On `validate_plan` — the task that owns the effect and the top of §3.7's pre-registered
+  leakage ranking — the interaction is positive and excludes zero in **both** models
+  (9B +7.33 [+3.92, +10.74]; 35b +2.77 [+0.08, +5.46]). Per-task cells carry no clause
+  authority under §4(b), which states the estimand per model, so this cannot rescue the
+  clause. It is reported because suppressing it would be selective.
+
+**Consequence for the paper: none beyond the clause.** The CALL-beat attribution does not
+rest on this factorial. It rests on the matched-cell result in §1 — gemma
+`validate_plan` `think=off`, +72.0pp with tools versus +0.63pp [−0.46, +1.73] without —
+which is a stronger and more direct argument, on the model and in the cell where the
+effect actually lives. §5's PASS sentence stands, minus its optional bracketed clause.
