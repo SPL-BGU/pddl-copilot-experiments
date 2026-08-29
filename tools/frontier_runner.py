@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Frontier with-tools runner on the Anthropic SDK Tool Runner (framework B).
 
-Implements frontier D1=B (development/frontier_rerun_framework_decision.md,
+Implements frontier D1=B (development/reference/frontier_rerun_framework_decision.md,
 decided 2026-07-11): the agent loop is owned by the official SDK
 (`client.beta.messages.tool_runner`, beta surface — the exact `anthropic`
 package version is recorded in the run meta), built as the shared module for
@@ -10,7 +10,7 @@ backend. `tools/claude_api_tools_probe.py` is the frozen bare-loop comparison
 arm (framework A) for the paired harness probe.
 
 Deliberate design choices (audit §2.2 conditions,
-development/decision_audit_grading_and_frontier.md):
+development/reference/decision_audit_grading_and_frontier.md):
   * Corpus identity — same harness builders as the A probe: `build_jobs`,
     `build_messages`, `check_success(with_tools=True)`, `save_results`,
     standard trials.jsonl rows (16K response snapshots).

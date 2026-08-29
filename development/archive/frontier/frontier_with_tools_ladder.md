@@ -2,15 +2,15 @@
 > the frontier rerun line: framework decision (`frontier_rerun_framework_decision.md`, D1=B),
 > stage-1 A-vs-B probe (fully concordant), Haiku WT full run + D7 e2e-overlay grading. The
 > Decision-2 simulate-criterion concern was resolved by the Q1 grader + `_canon_atom` fix
-> (ISS-024). Living state: `development/frontier_rerun_handoff.md`.
+> (ISS-024). Living state: `development/archive/frontier/frontier_rerun_handoff.md`.
 
 # Frontier with-tools — correctness ladder (NEXT JOB)
 
 **Status:** PLAN / GATED. Correctness-first staged probe of the **with-tools** condition for the
 Anthropic-API frontier models, starting with **Haiku 4.5**. Decisions answered 2026-06-27; **Decision 2
 (simulate criterion) needs ONE re-confirm** after a code finding (the current grader does NOT match
-the chosen answer — see below). Nothing runs until that is resolved. Companion docs: `development/frontier/with_tools_probe_findings.md` (the prior cost probe +
-the $146 / ISS-023 decision), `development/frontier/frontier_haiku_phase_plan.md`, `OPEN_ISSUES.md` ISS-023
+the chosen answer — see below). Nothing runs until that is resolved. Companion docs: `development/archive/frontier/with_tools_probe_findings.md` (the prior cost probe +
+the $146 / ISS-023 decision), `development/archive/frontier/frontier_haiku_phase_plan.md`, `OPEN_ISSUES.md` ISS-023
 (cost) + ISS-024 (simulate grader history).
 
 ## Why this job exists (the reframe)
@@ -57,7 +57,7 @@ git checkout -b paper/frontier-with-tools origin/main   # blocked until the 3 st
 ```
 
 > **NOTE (2026-06-27):** the working tree currently has uncommitted edits to
-> `.claude/skills/cluster-ops/{SKILL.md,scripts/status.sh}` and `development/decoupled/decoupled_run_handoff.md`
+> `.claude/skills/cluster-ops/{SKILL.md,scripts/status.sh}` and `development/archive/decoupled/decoupled_run_handoff.md`
 > (not made by this plan) that block the switch. Commit/stash those first, then create the branch;
 > this doc is untracked and carries over.
 
@@ -181,8 +181,8 @@ Confirm caching is deferred to rung 3 (measured), not designed up front.
 
 ## Reference
 
-- `development/frontier/with_tools_probe_findings.md` — prior cost probe, capability ladder, $146 decision.
-- `development/frontier/frontier_haiku_phase_plan.md` — frontier phase design (batch no-tools / live with-tools).
+- `development/archive/frontier/with_tools_probe_findings.md` — prior cost probe, capability ladder, $146 decision.
+- `development/archive/frontier/frontier_haiku_phase_plan.md` — frontier phase design (batch no-tools / live with-tools).
 - `OPEN_ISSUES.md` — ISS-023 (with-tools cost), ISS-024 (simulate grader artifacts).
 - Tool: `tools/claude_api_tools_probe.py` (live agentic loop); `tools/_claude_api_common.py`;
   `tools/claude_api_batch.py` (no-tools batch). Harness builders reused: `build_jobs` /

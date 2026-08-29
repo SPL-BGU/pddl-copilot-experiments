@@ -83,7 +83,7 @@ comparison arm.
 > (`tools/frontier_runner.py`) shows caching ACTIVE but a **net +6% loss** — short
 > trials (~2 turns) with unique per-trial domain/problem context don't recoup the 1.25×
 > write premium. **Budget the WT arm at no-cache list price** until the stage-1 stratified
-> probe says otherwise. See `development/decision_audit_grading_and_frontier.md` §2.5.
+> probe says otherwise. See `development/reference/decision_audit_grading_and_frontier.md` §2.5.
 
 - Haiku, full single-variant grid ≈ 1,520 trials/condition; the plain (no-cache)
   with-tools estimate was ~$49; ~~caching should cut it substantially~~ (caching does NOT

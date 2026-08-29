@@ -14,7 +14,7 @@ knife-edge or censoring-bound), the paper's headline e2e is the **strict** rule 
 final turn fails, both arms). Delegation-terminal rows are reported as their **own visible
 outcome category**; the B-graded column stays in the overlay as a derived diagnostic. The
 9B answer-synthesis gap (deleg 10–35% of with-tools validate rows) is promoted to a
-finding. Full audit + numbers: `development/decision_audit_grading_and_frontier.md` §1.3.
+finding. Full audit + numbers: `development/reference/decision_audit_grading_and_frontier.md` §1.3.
 The ISS-024(d) run is unaffected and stays running (it resolves the strict-undecided
 cells exactly).
 
@@ -466,7 +466,7 @@ driver: a clean transition from single-tool to the PlanBench benchmarks — Plan
 frontier will use the Claude API framework, so it must be assessed in the single-tool
 experiment too. Folds into the harness fork in the frontier phase design (memory
 `project_frontier_phase_design`). **Discussion doc (with decision slots):
-`development/frontier_rerun_framework_decision.md`.**
+`development/reference/frontier_rerun_framework_decision.md`.**
 
 ### ISS-024(d) full re-run — SUBMITTED 2026-07-11 (job 19293221)
 

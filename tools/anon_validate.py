@@ -1,7 +1,7 @@
 """Validation-gate runner for the contamination-probe renamed corpus.
 
 Implements §4 (gates 1–10) and the round-trip determinism check (gate 11)
-of `development/contamination_probe_plan.md`. Read that doc first — the
+of `development/reference/contamination_probe_plan.md`. Read that doc first — the
 gates are the contract; this script is the executor.
 
 Reuses `pddl_eval.chat.MCPPlanner` (stdio transport, same client the

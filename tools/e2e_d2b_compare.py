@@ -11,7 +11,7 @@ For each model x task it prints the no-tools reference bounds, the with-tools
 bounds under both rules, the delegation-credit mass, and the tool-lift verdict
 under each rule; rows where the verdict differs between rules are flagged
 FLIP. Decision support for D2b — see
-development/decision_audit_grading_and_frontier.md §1.3.
+development/reference/decision_audit_grading_and_frontier.md §1.3.
 
 Verdict semantics (per-row means; censoring bounds, not sampling CIs):
   lift      tools lower bound > no-tools upper bound

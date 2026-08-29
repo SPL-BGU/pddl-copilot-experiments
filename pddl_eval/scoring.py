@@ -289,7 +289,7 @@ def _safe_pydantic_validate(model_cls, raw: str):
 
 
 # Q1 two-metric simulate grader (2026-06-25; pre-registered in
-# development/decoupled/simulate_decisions_and_next_steps.md + archive/q1_grader_plan.md).
+# development/archive/decoupled/simulate_decisions_and_next_steps.md + archive/plans-executed/q1_grader_plan.md).
 #
 # The pre-PR grader required the no-tools simulate output to validate as the
 # schema-exact {"trajectory":[...]} wrapper; a clean top-level step list or a

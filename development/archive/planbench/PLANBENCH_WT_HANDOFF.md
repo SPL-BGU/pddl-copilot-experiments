@@ -141,12 +141,12 @@ formalization-boundary metric, the delegation-rate mediator, and accuracy-vs-dol
 not the direction of the effect.
 
 **Binding documents, in precedence order:**
-1. `development/planbench/planbench_wt_prereg.md` — the protocol. Binding once signed.
-2. `development/planbench/planbench_wt_prereg_decisions.md` — reasoning, provenance,
+1. `development/reference/planbench_wt_prereg.md` — the protocol. Binding once signed.
+2. `development/reference/planbench_wt_prereg_decisions.md` — reasoning, provenance,
    rejected alternatives, and two findings that live outside the prereg (§7 below).
 3. `development/journal_decisions_memo.md` §4 — the accepted D-J3 ruling this implements.
-4. `development/planbench/planbench_frontier_haiku_nt.md` — the graded NT layer.
-5. `development/planbench/PLANBENCH_HANDOFF_v3.md` — superseded direction (small-model
+4. `development/archive/planbench/planbench_frontier_haiku_nt.md` — the graded NT layer.
+5. `development/archive/planbench/PLANBENCH_HANDOFF_v3.md` — superseded direction (small-model
    scaffolding), kept for its cluster/ops lessons only.
 
 ## 2. The design (all slots answered; awaiting signature only)

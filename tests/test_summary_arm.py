@@ -4,7 +4,7 @@ extension to the token aggregator.
 Run standalone: `python3 tests/test_summary_arm.py`
 Or via the shell wrapper: `bash tests/verify.sh`
 
-Why this file: the sweep-5 design doc (development/sweep_prompt_bank_design.md
+Why this file: the sweep-5 design doc (development/reference/sweep_prompt_bank_design.md
 §0) defines four analysis arms — nt-neut / nt-ster / tl-neut / tl-ster — that
 the analyzer must classify consistently across plot.py, table.py, aggregate.py,
 and build_deck.py. A single classifier in pddl_eval/summary.py is the source

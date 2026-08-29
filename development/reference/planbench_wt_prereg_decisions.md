@@ -1,7 +1,7 @@
 # PlanBench WT prereg — decisions memo for the open slots (2026-07-25)
 
 **Status:** RECOMMENDATIONS for Omer. Each §N below ends in a paste-ready block; the
-blocks are already pasted into `development/planbench/planbench_wt_prereg.md` marked
+blocks are already pasted into `development/reference/planbench_wt_prereg.md` marked
 `RECOMMENDED … pending RATIFY`, so the prereg reads as a complete document and the
 single gate is still the §9 RATIFY slot. **No build or spend before ratification.**
 

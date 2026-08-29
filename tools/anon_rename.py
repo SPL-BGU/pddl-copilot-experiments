@@ -1,6 +1,6 @@
 """Deterministic PDDL symbol rewriter for the contamination-probe pilot.
 
-Implements the rename pipeline spec'd in `development/contamination_probe_plan.md`
+Implements the rename pipeline spec'd in `development/reference/contamination_probe_plan.md`
 (§3.1, §3.2, §6). Reads canonical PDDL fixtures under `--source-dir`, applies a
 per-domain YAML rename table from `--maps-dir`, and writes a renamed corpus to
 `--output-dir`. Safety invariants enforced at startup: source tree is opened
@@ -139,7 +139,7 @@ def load_map(path: Path) -> dict:
     if "domain_name" not in rename:
         raise ValueError(
             f"{path}: missing required key 'rename.domain_name' "
-            f"(see development/contamination_probe_plan.md fix 3)"
+            f"(see development/reference/contamination_probe_plan.md fix 3)"
         )
     dn_target = rename["domain_name"]
     if not isinstance(dn_target, str) or not dn_target.strip():
@@ -767,7 +767,7 @@ def _apply_problem_name_pass(
 
     Closes the lexical-leak weak spot where canonical (or canonical-substring)
     tokens survived in the problem identifier — see
-    `development/contamination_probe_plan.md` §3.2.
+    `development/reference/contamination_probe_plan.md` §3.2.
     """
     new_name = f"{target_domain_token}-{file_stem}".lower()
 

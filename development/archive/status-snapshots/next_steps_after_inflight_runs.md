@@ -39,7 +39,7 @@ corrected pooled table → paper prose corrections.
    - validation tasks: does the tool lift stay ~ceiling at Sonnet tier (ladder
      prediction: lift shrinks as the model strengthens)?
    - NT comparison uses **Sonnet-NT sliced to v11-only** (zero-cost filter, no
-     rerun; decided in `archive/frontier_haiku_phase_plan.md`).
+     rerun; decided in `archive/frontier/frontier_haiku_phase_plan.md`).
 4. **Docs:** update `frontier_rerun_handoff.md` + dated entry in
    `paper_notes_discussions.md`. Note: WT-anon deliberately skipped (decision
    recorded 2026-07-12) — don't reopen.

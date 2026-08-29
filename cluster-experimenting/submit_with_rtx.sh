@@ -243,7 +243,7 @@ if [ -n "$DOMAINS_DIR" ]; then
         echo "  resolved:  $_domains_resolved" >&2
         echo "  canonical: $_domains_canonical (forbidden as target)" >&2
         echo "Refusing to re-run canonical fixtures under a non-baseline run." >&2
-        echo "Use a sibling directory (e.g. domains-anon/) per development/contamination_probe_plan.md §6." >&2
+        echo "Use a sibling directory (e.g. domains-anon/) per development/reference/contamination_probe_plan.md §6." >&2
         exit 1
     fi
     DOMAINS_DIR="$_domains_resolved"
@@ -264,7 +264,7 @@ fi
 # 2-call reasoning↔answer continuation harness (run_experiment.py) onto the
 # cluster. --reasoning-parser overrides the per-model REASONING_PARSER for
 # THIS submission's vLLM serve (e.g. `none` for the decoupled sweep —
-# development/archive/decoupled_budget_plan.md DECISION B) without touching the
+# development/archive/plans-executed/decoupled_budget_plan.md DECISION B) without touching the
 # lib/defaults.sh baseline. Validate the integer budgets + parser value
 # up front so a typo fails before the cluster pulls a slot.
 if [ -n "$NUM_PREDICT_THINK" ] && ! [[ "$NUM_PREDICT_THINK" =~ ^[0-9]+$ ]]; then

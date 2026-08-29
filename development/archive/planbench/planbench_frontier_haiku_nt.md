@@ -103,7 +103,7 @@ condition, not ours. Details: `planbench_verification_20260730.md` §2 and §5.
    **t1 is unaffected and clean** (same 500 ids, same one-shot example 500/500, 499/500
    byte-identical queries after removing our one extra domain-rule sentence), which is
    what carries the headline. Full evidence:
-   `development/planbench/planbench_wt_prereg_decisions.md` §5.
+   `development/reference/planbench_wt_prereg_decisions.md` §5.
    Original wording: **Verification does not follow: Haiku t3 sits clearly below GPT-4**
    (78.2 vs 94.6, CI-disjoint) and below Qwen3.6-35B (88.4). Within Haiku the ordering
    still matches our suite (verification 78 > generation 41), but across models
@@ -154,8 +154,8 @@ corpus triggers no missing-field drops).
 > Superseded 2026-07-24 by the accepted D-J3 ruling
 > (`development/journal_decisions_memo.md` §4), then narrowed 07-26 to ratified
 > shape B. **Live design lives in one place:**
-> `development/planbench/planbench_wt_prereg.md`, with the open go/no-go in
-> `development/planbench/planbench_wt_significance_brief.md`.
+> `development/reference/planbench_wt_prereg.md`, with the open go/no-go in
+> `development/archive/planbench/planbench_wt_significance_brief.md`.
 > Deltas vs the list below: the WT arm is Haiku-only against a NEW
 > matched-scaffold no-tools control (the bare-NT rows graded in this doc become
 > the published-apparatus replication layer and carry Act 4's HEADLINE claim; WT
