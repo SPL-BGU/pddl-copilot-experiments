@@ -10,8 +10,8 @@
 
 
 **Status:** RECOMMENDATIONS for Omer's sign-off. Covers D-J1..D-J6
-(`development/journal_narrative_proposal.md` §8) and D2 + D4
-(`development/roadmap_eval_and_paper_completion.md`). Each Recommendation block is
+(`development/archive/status-snapshots/journal_narrative_proposal.md` §8) and D2 + D4
+(`development/archive/status-snapshots/roadmap_eval_and_paper_completion.md`). Each Recommendation block is
 paste-ready for its ANSWER slot; the original docs' slots are untouched. Rulings go
 to `paper_notes_discussions.md` once decided.
 **Method:** 23-agent investigation workflow — 4 repo evidence readers (paper audit,
@@ -245,7 +245,7 @@ gates on /verify-claims.
 > carried by the ALREADY-GRADED NT layer — honest-denominator regrade, the t2
 > silent-0.0 artifact fix, the t7 chat-format grading critique vs GPT-4's 28.4,
 > Haiku t1 41.0 beats GPT-4 31.4 CI-disjoint, Mystery collapse replication
-> (`development/planbench/planbench_frontier_haiku_nt.md`, 07-23). The WT arm
+> (`development/archive/planbench/planbench_frontier_haiku_nt.md`, 07-23). The WT arm
 > carries the explicitly-labeled SECONDARY claim: "the funnel replicates when the
 > model operates the prescribed remedy on the field's instrument" — external
 > validity for C2, within-apparatus only. This assignment makes the WT-vs-GPT-4
@@ -582,7 +582,7 @@ VPN]**. Everything else is agent-executable.
   guided_json $0 local audit (§7).
 - Agent: write the two preregs — `development/ntster_h4_prereg.md` (TOST margin,
   anchor two-use scope, Llama kill-gate, v11/v14 arm spec) and
-  `development/planbench/planbench_wt_prereg.md` (matched-scaffold control, t1
+  `development/reference/planbench_wt_prereg.md` (matched-scaffold control, t1
   2x2, two-sided prediction ii, linkage rule, funnel-placement statement, GPT-4
   separation rule, kill criterion). **[OMER ~30 min]** ratify both.
 - Agent: P1 writing sprint STARTS under worst-case scoping (steering

@@ -75,8 +75,8 @@ tools on **single-tool-use** PDDL tasks, served via vLLM, **with vs. without** t
 - **Locked single-tool RQ findings & verdicts:** `development/paper_notes_discussions.md`
   (entries 2026-06-08 → 2026-06-11); RQ deck under `checkpoints/rq-sweep5v2/`.
 - **Methodology / harness:** `EXPERIMENTS_FLOW.md`, `run_experiment.py`, `pddl_eval/`.
-- **External benchmark calibration:** `development/baseline_comparison_tool_use_benchmarks.md`.
-- **Contamination control:** `development/contamination_probe_plan.md` + the 2026-06-01
+- **External benchmark calibration:** `development/reference/baseline_comparison_tool_use_benchmarks.md`.
+- **Contamination control:** `development/reference/contamination_probe_plan.md` + the 2026-06-01
   verdict in `paper_notes_discussions.md`.
 - **Token / cost efficiency:** the 2026-06-09 / 06-10 notes + memory `project_tool_efficiency_metrics`.
 - **Domains & provenance:** `domains/README.md`.

@@ -10,8 +10,8 @@
 **Pickup protocol:** run `/resume-verify` against this doc. Read order for a fresh
 session: this doc → `development/journal_decisions_memo.md` (the accepted spec —
 everything below derives from it) → the annotated ANSWER slots in
-`development/journal_narrative_proposal.md` §8 + `development/roadmap_eval_and_paper_completion.md`
-→ `development/planbench/planbench_frontier_haiku_nt.md` + `PLANBENCH_HANDOFF_v3.md`
+`development/archive/status-snapshots/journal_narrative_proposal.md` §8 + `development/archive/status-snapshots/roadmap_eval_and_paper_completion.md`
+→ `development/archive/planbench/planbench_frontier_haiku_nt.md` + `PLANBENCH_HANDOFF_v3.md`
 (status banners, 07-24).
 
 ---
@@ -55,7 +55,7 @@ is PlanBench with-tools**, entered via its prereg.
 
 ## Next actions, in order (memo §9 Phase 0 — all local, no ping needed)
 
-1. **Write `development/planbench/planbench_wt_prereg.md`** and get Omer's
+1. **Write `development/reference/planbench_wt_prereg.md`** and get Omer's
    ratification (~20 min of his time) BEFORE any build/spend. Must contain (memo
    §4): matched-scaffold no-tools control definition (identical SDK system
    scaffold: NL→PDDL step + task-format clause; empty tool list is the ONLY

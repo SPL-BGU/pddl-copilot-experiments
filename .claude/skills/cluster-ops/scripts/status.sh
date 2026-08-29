@@ -55,7 +55,7 @@
 #   (default)     sweep-6 anon matrix: 5 models × 6 logical columns,
 #                 RUN_TAG defaults to `sweep6`.
 #   --decoupled   The in-flight split-budget no-tools think=on sweep
-#                 (development/decoupled/decoupled_run_handoff.md, job 18426027).
+#                 (development/archive/decoupled/decoupled_run_handoff.md, job 18426027).
 #                 Defaults RUN_TAG to `decoupled-thinkon` and trims the
 #                 board to the live grid: 4 Qwens (gemma excluded — no
 #                 <think>) × one column (on / nt-neut). All parsing /
@@ -331,7 +331,7 @@ SHORT_CELL = {"no-tools-neutral":  "nt-neut",
 # Kept distinct from "empty" so an intentionally-absent cell never renders as
 # a stalled or pending one — that misread is the whole reason this exists.
 EXCLUDED_CELLS = set()
-# --decoupled profile (development/decoupled/decoupled_run_handoff.md, job 18426027):
+# --decoupled profile (development/archive/decoupled/decoupled_run_handoff.md, job 18426027):
 # the split-budget no-tools think=on sweep fills exactly ONE logical column
 # (on / nt-neut) for the 4 Qwens — gemma is excluded (no <think>, so its
 # think=on truncation isn't a decoupling case). Trim ROSTER + CELLS to the

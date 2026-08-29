@@ -4,7 +4,7 @@
 Emits the ~100-trial selection-key JSONL consumed by both probe arms
 (`tools/frontier_runner.py --keys-file` and
 `tools/claude_api_tools_probe.py --keys-file`), per the stage-1 plan in
-development/frontier_rerun_handoff.md. One line per trial:
+development/archive/frontier/frontier_rerun_handoff.md. One line per trial:
 
     {"task": ..., "domain_name": ..., "problem_name": ...,
      "plan_label": ..., "prompt_variant": 11}

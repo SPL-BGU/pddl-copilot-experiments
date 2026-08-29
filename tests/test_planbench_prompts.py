@@ -1,7 +1,7 @@
 """Freeze test for the PlanBench-WT prompt apparatus (planbench/engine.py).
 
 The _PB_* constants carry a "FREEZE STATUS: v2 FROZEN by Omer 2026-08-01"
-banner: the prereg (development/planbench/planbench_wt_prereg.md §10-R,
+banner: the prereg (development/reference/planbench_wt_prereg.md §10-R,
 restart record 1) quotes the scaffold text verbatim, and any change voids the
 affected cells and forces a paid restart. Until this file existed nothing
 enforced that — tests/test_prompts.py pins the harness prompts but no test

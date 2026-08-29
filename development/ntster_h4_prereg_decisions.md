@@ -90,7 +90,7 @@ re-decision.
 > disk; its steered block is already stamped DIAGNOSTIC-ONLY in
 > `results/derived/e2e_overlay/pooled_e2e_table.md:115`). It would also narrow the May
 > pre-registration, which sized H4 over "think modes (2)"
-> (`development/sweep_prompt_bank_design.md:48`), from authors whose C1 is pre-registration
+> (`development/reference/sweep_prompt_bank_design.md:48`), from authors whose C1 is pre-registration
 > discipline, and `paper/main.tex:387` already asserts the fourth control arm per (model, **mode**,
 > task) with zero rows on disk.
 >

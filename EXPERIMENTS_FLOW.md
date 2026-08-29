@@ -101,7 +101,7 @@ Five tasks, each testing a different stage of the PDDL planning pipeline:
 | **validate_plan** | Verify a given plan is correct | `validate_plan` oracle |
 | **simulate** | Produce a state-transition trajectory for a plan | `get_state_transition` oracle. With-tools and no-PDDL-tools both grade by canonical-form deep-equality of the produced trajectory against the oracle's (PR-4, 2026-04-29). |
 
-Each task uses 3 paraphrases per arm for robustness. Sweep-5 (current) active set is `v11/v12/v13` (neutral, imperative/declarative/interrogative) plus `v14/v15/v16` (steered — neutral text with one appended tool-directive sentence). See `development/sweep_prompt_bank_design.md` for the full prompt bank, hypothesis pre-registration, and per-task rationale.
+Each task uses 3 paraphrases per arm for robustness. Sweep-5 (current) active set is `v11/v12/v13` (neutral, imperative/declarative/interrogative) plus `v14/v15/v16` (steered — neutral text with one appended tool-directive sentence). See `development/reference/sweep_prompt_bank_design.md` for the full prompt bank, hypothesis pre-registration, and per-task rationale.
 
 ---
 
@@ -279,7 +279,7 @@ Domain set:
 | numeric | sailing | paper | boolean |
 | numeric | zenotravel-numeric | PR-3 (matteocarde/patty IPC-2023; p02-p05 hand-authored) | numeric |
 
-The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). The 10 PR-3 domains were sourced from public benchmark suites and validated end-to-end by the build pipeline. Substitution rationale and per-domain caveats live in `development/FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec".
+The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). The 10 PR-3 domains were sourced from public benchmark suites and validated end-to-end by the build pipeline. Substitution rationale and per-domain caveats live in `development/archive/plans-executed/FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec".
 
 **Negative fixtures.** Each domain ships:
 - `domain_neg.pddl` — joins `validate_domain` (negative arm) only
@@ -476,7 +476,7 @@ The key methodological addition is the separation of **tool selection** from **e
 
 ## 12. Methodology Disclosures (sweep-5)
 
-Disclosures required for reviewer-defense of the sweep-5 three-arm matrix + control. Full design rationale and literature anchors live in `development/sweep_prompt_bank_design.md`; this section is the abridged reference for the paper.
+Disclosures required for reviewer-defense of the sweep-5 three-arm matrix + control. Full design rationale and literature anchors live in `development/reference/sweep_prompt_bank_design.md`; this section is the abridged reference for the paper.
 
 ### 12.1 Three-arm matrix and the control arm
 

@@ -1,7 +1,7 @@
 > **ARCHIVED 2026-07-12 — EXECUTED / SUPERSEDED.** This draft plan predates the D1=B framework
 > decision; the Haiku phase actually ran via `tools/frontier_runner.py` (full run DONE + regraded
-> 2026-07-12, both arms, D7 overlay). Living state: `development/frontier_rerun_handoff.md`;
-> roadmap: `development/next_steps_after_inflight_runs.md`. Kept for provenance — the
+> 2026-07-12, both arms, D7 overlay). Living state: `development/archive/frontier/frontier_rerun_handoff.md`;
+> roadmap: `development/archive/status-snapshots/next_steps_after_inflight_runs.md`. Kept for provenance — the
 > Sonnet-NT-v11-slice comparability argument and the NT batch design originated here.
 
 # Frontier Phase (Haiku-first) — Implementation & Experiment Plan

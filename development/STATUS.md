@@ -1,4 +1,12 @@
-# Remaining work after PR #93 — PlanBench + single-tool line (2026-08-11)
+# STATUS — what is actually left
+
+*Content last refreshed: 2026-08-11 (after PR #93). Renamed from
+`remaining_work_20260811.md` on 2026-08-29.*
+
+> **This is the single, stable entry point for project status, and it is edited in
+> place.** Do not write a new dated successor doc — that is what produced the
+> four-deep supersession chain now sitting in `archive/status-snapshots/`. Update
+> this file and move its date line. Before quoting any figure, check `NUMBERS.md`.
 
 **Entry point for "what is actually left."** Written after PR #93 merged to main
 (`1638013`). Supersedes the status rows in `journal_phase0_handoff.md` (07-24) and

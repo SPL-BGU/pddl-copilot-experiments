@@ -64,12 +64,21 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 
 ## Per-line workstream docs (the `development/` folder layout)
 
-`development/README.md` is the map. The two indices above (`CHANGELOG.md`, `OPEN_ISSUES.md`) remain the **framework** source of truth; long-running **experiment lines** get their own folder so they don't clutter the root:
+`development/README.md` is the map. **Reorganised 2026-08-29 into three tiers, where the path carries the status** (rationale: `development/dev_docs_refactor_plan.md`):
 
-- One folder per line: `development/<line>/` (e.g. `decoupled/`, `frontier/`, `planbench/`). Each line has a single **entry doc** (handoff/plan) that links its companions; new line work appends there or adds a doc inside the folder.
-- Executed or superseded plans move to `development/archive/` (via `git mv`, never deleted).
-- Reference docs that code or skills import by path stay flat at the root (e.g. `sweep_prompt_bank_design.md`, `contamination_probe_plan.md`) — moving them means editing code.
-- When you add or retire a line, update `development/README.md` and the table there.
+| tier | rule |
+|---|---|
+| `development/` root | **live** — part of work that is still open |
+| `development/reference/` | **stable spec or guide** — accurate, but never a status |
+| `development/archive/<line>/` | **provenance only** — never a status, never a number, never a next action |
+
+- **Status lives in `development/STATUS.md`, edited in place.** Never write a new dated status doc — that is what produced the four-deep supersession chain now in `archive/status-snapshots/`.
+- **Before any figure enters prose, check `development/NUMBERS.md`** — the frozen value of each headline number plus the stale readings it replaces.
+- `CHANGELOG.md` and `OPEN_ISSUES.md` remain the **framework** source of truth. `OPEN_ISSUES.md` carries a scannable open/closed index at its head — update it when you add or close an `ISS-###`.
+- A live line gets a folder at the root (currently only `planbench/`). When it closes, **`git mv` the whole folder to `archive/<line>/`** — do not leave banner-marked files at the root.
+- Reference docs that code or skills import by path live in `development/reference/`; moving them means editing code.
+- Append-only logs (`CHANGELOG*.md`, `paper_notes_discussions.md`) are never rewritten and may cite pre-reorg paths — `development/MOVES.md` resolves them.
+- When you add or retire a line, update `development/README.md`.
 
 ## Writing-style reminders
 
@@ -83,4 +92,6 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 
 - A new `docs/` directory duplicating `development/`. One source of truth.
 - Per-*change* standalone `.md` files at the `development/` **root**. Framework changes go in `CHANGELOG.md` (the index); per-*line* docs live in a line folder (see "Per-line workstream docs").
+- A **new dated status doc** (`remaining_work_<date>.md`, `next_steps_*.md`). Edit `STATUS.md` in place instead.
+- Leaving a superseded doc at the `development/` root with a "SUPERSEDED" banner. Move it to `archive/<line>/`; the path is the status.
 - Logging routine refactors or typo fixes. Only entries that change behaviour, schema, methodology, or reproducibility belong here.

@@ -7,7 +7,7 @@
 
 Wrap-up record for the simulate-grader work this session. Supersedes the earlier
 open-decision draft. Background: `../grading_artifacts_findings.md`,
-`../archive/simulate_normalizer_fix_plan.md`; memory `project_simulate_grader_artifact`.
+`../archive/plans-executed/simulate_normalizer_fix_plan.md`; memory `project_simulate_grader_artifact`.
 
 ## DONE this session (committed on `feat/claude-api-haiku-frontier`)
 - **Notation fix** — `_canon_atom` in `pddl_eval/scoring.py` bridges the model's PDDL

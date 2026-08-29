@@ -8,7 +8,7 @@
 **For the next agent.** Pick up the in-flight Line-1 decoupled-budget no-tools sweep and take it
 through completion → final A/B → (optional) the with-tools parity decision. Read this top-to-bottom
 before any cluster action. Companion docs: `decoupled_run_staging.md` (build + decisions),
-`../archive/decoupled_budget_plan.md`, `../archive/q1_grader_plan.md`; memory `project_simulate_grader_artifact`;
+`../archive/plans-executed/decoupled_budget_plan.md`, `../archive/plans-executed/q1_grader_plan.md`; memory `project_simulate_grader_artifact`;
 ISS-024 in `OPEN_ISSUES.md`.
 
 ## TL;DR state
@@ -29,7 +29,7 @@ ISS-024 in `OPEN_ISSUES.md`.
 9B (the last cell) completed clean on **2026-06-29** (job `18466812`, exit `0:0`, 4560/4560).
 All 4 Qwen cells synced to `results/decoupled-rollup/` (gitignored) and joined **4560/4560 keys
 on both sides, 0 unmatched**. The 3 earlier cells reproduce their per-cell A/Bs exactly (join
-validated); 9B is new. Rollup script: **`development/decoupled/decoupled_rollup.py`** (matched
+validated); 9B is new. Rollup script: **`development/archive/decoupled/decoupled_rollup.py`** (matched
 join + Wilson CIs + baseline-simulate Q1-coercibility bound; runs on the synced dirs, no
 cluster/MCP needed — re-sync the 8 dirs first if absent).
 
@@ -88,7 +88,7 @@ deployed apparatus. Spec kept below for provenance.
 Decision (2026-07-11, user): fold the decoupled results into the paper, but a **fresh-session
 agent does the actual `paper/` rewrite** — this session deliberately left `paper/` untouched.
 What the fresh agent must change (numbers: the LINE-COMPLETE table above +
-`development/decoupled/decoupled_rollup.py`):
+`development/archive/decoupled/decoupled_rollup.py`):
 
 1. **Retract the simulate "sole-source floor" claim.** No-tools simulate 0% was an ARTIFACT
    (grader + shared-budget reasoning starvation), not a capability floor. Report the true
@@ -126,7 +126,7 @@ is read ONLY in the no-tools fallback paths (`:497-498`, `:544-548`, `:596`). So
 *"the model correctly conveyed that answer"*.
 
 Empirical size of the gap (validate_\*, sweep5v2 with-tools successes; repro:
-`development/decoupled/with_tools_grading_surface_probe.py`):
+`development/archive/decoupled/with_tools_grading_surface_probe.py`):
 
 | | 35b (n=7812) | 4B (n=6075) |
 |---|--:|--:|
