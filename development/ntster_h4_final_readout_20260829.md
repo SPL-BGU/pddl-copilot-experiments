@@ -257,7 +257,10 @@ on it, but it should be fixed before any future mechanism read.
 > the literal-prereg configuration produced a void corpus. Justified in §2.2 above and
 > confirmed harmless in §2.2's table.
 >
-> > ANSWER:
+> > **ANSWER: OK (Omer, 2026-08-29). DONE** — both declarations written as
+> > appendix-ready prose in `ntster_h4_prereg.md` §9.1, sitting in the Known-limits
+> > section so they travel with the Limitations material rather than being re-derived at
+> > writing time.
 
 > **O2 — Does §2.3(A) get amended in the prereg? (this is 08-22's D5, still open)**
 > As written it is mode-blind and, applied to the decoupled path, guarantees a void
@@ -265,7 +268,12 @@ on it, but it should be fixed before any future mechanism read.
 > one line stating the decoupled path requires parser-off, citing the June corpus and the
 > August failure as evidence. A documented deviation, not a silent one.
 >
-> > ANSWER:
+> > **ANSWER: OK (Omer, 2026-08-29). DONE** — amendment written inline in
+> > `ntster_h4_prereg.md` §2.3(A), scoping the original rule to the single-call path and
+> > requiring parser-off on the decoupled path. It also marks the "Cost, stated"
+> > paragraph void in fact (the nt/wt parser difference no longer exists), records
+> > `CHANGELOG.md:512`'s "parser-state-proof" claim as empirically false, and adds the
+> > standing rule that a readiness smoke must assert `len(response) > 0`.
 
 > **O3 — Compute the §4(b) factorial now that it is unblocked?**
 > This decides whether §5's PASS sentence keeps or drops its "replicated attribution"
@@ -281,7 +289,11 @@ on it, but it should be fixed before any future mechanism read.
 > it, freeze and hash it *before* pointing it at data, and record the hash in the prereg
 > the same way items 9/10 were.
 >
-> > ANSWER (write+freeze / leave the clause dropped / other):
+> > **ANSWER: OK — write+freeze (Omer, 2026-08-29). DONE** — `tools/ntster_factorial.py`
+> > written, rehearsed against a forced-zero configuration, frozen and hashed
+> > (`78787eb7…11629164`) in `ntster_h4_prereg.md` §8 item 9 addendum. The freeze commit
+> > precedes the first real invocation in git history, so the ordering is checkable
+> > rather than asserted. Result in §9 below.
 
 > **O4 — D4 from 08-22, now answerable.** It asked whether the off-mode PASSes get
 > written up immediately or held for on-mode. Moot — everything has landed. The live
@@ -290,7 +302,11 @@ on it, but it should be fixed before any future mechanism read.
 > drift check, apparatus-failure declaration and the two O1 deviations in an appendix).
 > **No tex has been touched.**
 >
-> > ANSWER:
+> > **ANSWER: OK (Omer, 2026-08-29).** Scope and placement approved as written —
+> > caveat-only cap, CALL beat + Limitations in the body, everything else (per-task
+> > table, F gate, MDE table, drift check, apparatus-failure declaration, the two §9.1
+> > deviations) in an appendix. **The tex itself is deferred to a later session**, per
+> > the standing instruction to stop after aggregation. Still true: no tex touched.
 
 ---
 

@@ -170,6 +170,52 @@ up to `MAX_TOOL_LOOPS = 10`, `chat.py:29`, while a no-tools trial gets one share
 budget), so adding a parser difference to an already-unmatchable diagnostic is
 strictly cheaper than corrupting the nt legs' grading on two of five tasks.
 
+> **AMENDMENT 2026-08-29 (approved by Omer as final-readout O2). §2.3(A) is scoped to
+> the SINGLE-CALL path. The decoupled two-call path requires `--reasoning-parser none`.**
+>
+> As originally written §2.3(A) is mode-blind, and applied to §2.3(B)'s decoupled
+> apparatus it guarantees a void corpus — which is exactly what happened. Job `20392801`
+> produced 9,120/9,120 (35b) and 3,822/3,824 (9B) rows with an **empty `response` and
+> empty `thinking`**, `done_reason=stop`, no errors, and ~12,960 tokens genuinely
+> generated per row. The text was never stored and is unrecoverable.
+>
+> **Why the two sections are incompatible when composed.** §2.3(A)'s three failure
+> mechanisms all assume a reasoning prefix contaminating the graded text, which is a
+> property of the single-call path where reasoning and answer share one output stream.
+> In the two-call path they do not share a stream: reasoning is consumed in call 1 and
+> re-injected as *prompt*, so call 2's content is answer-only. The decoupled path was
+> built for, and only ever validated under, parser-off (`chat.py:422`,
+> `CHANGELOG.md:512` DECISION B). `CHANGELOG.md:512`'s claim that the reconstruction is
+> "parser-state-proof" was a code-reading argument and is **empirically false**; read it
+> as superseded by this amendment.
+>
+> **Evidence, both directions.** June's `decoupled-rollup` corpora (same models, same
+> apparatus, parser OFF) show 9B 8.8% empty / 68.4% success and 35b 4.1% empty / 82.0%
+> success, against August parser-ON at ~100% empty / 0% success — the flag is the whole
+> effect. The 2026-08-22 rerun under parser-off (job `20489912`) then landed at 9B
+> **8.2% / 69.1%** and 35b **3.9% / 82.5%**, reproducing the June corpus to within a
+> point on both axes, so the diagnosis is confirmed by prediction rather than by absence
+> of failure.
+>
+> **The feared artifact does not appear on this path.** Measured on the August rerun,
+> `format_parse_fail` is **0.0% on all three `validate_*` tasks in all four on-mode
+> arms**; `solve` is 1–2% (9B) and 11–13% (35b); `simulate` is 10.7–44.3% against June
+> 35b parser-off's 14.0%, i.e. the known level for that task rather than a new problem.
+> `simulate` is UNINFORMATIVE in both on-mode cells (F = 32.00 / 19.00) and never reaches
+> a verdict.
+>
+> **Consequence for §4(b).** The "Cost, stated" paragraph immediately above is now
+> **void in fact**: the on-mode nt legs ran parser-off, which is what iss024d already
+> used, so both legs of the factorial share the parser setting and the nt/wt parser
+> difference budgeted for here does not exist. The comparison remains attribution-only
+> and budget-unmatchable for the separate reason given in that paragraph.
+>
+> **Standing operational rule added by this amendment:** a readiness smoke must assert
+> `len(response) > 0` on a non-trivial share of rows. The 2026-08-20 live-smoke passed on
+> turn structure and token counters (`turns=2 think_tok=8192 answer_tok=4768
+> call2_prompt=2049 done=stop`), every one of which remains true on a row containing no
+> text. It checked the plumbing and not the water.
+
 **(B) The `think=on` legs run under the decoupled-budget apparatus.**
 Accepted by Omer 2026-07-25 with the scope cost below stated in plain terms.
 Flags: `--decoupled-budget --num-predict-think 8192` (hard-gated to `--no-tools` +
@@ -887,6 +933,39 @@ mutable would reproduce exactly the loophole freezing exists to close. For the s
 reason nothing imports from `.claude/skills/analyzer/` — a frozen analysis that imports
 a live module is not frozen.
 
+#### Item 9 addendum — §4(b) entry point FROZEN (2026-08-29)
+
+| file | sha256 |
+|---|---|
+| `tools/ntster_factorial.py` | `78787eb7f3ba671773d695f8b2904bbe5edcef559297c76f8f35fe1211629164` |
+
+**This one was written after the H4 verdict was known, and that must be stated rather
+than smoothed over.** The §4(b) estimand was locked in the ratified prereg before any
+data existed, but the code implementing it did not exist until 2026-08-29, because until
+the on-mode rerun landed the factorial had no nt legs to run against. Writing analysis
+code after seeing a result is the ordering §8 item 9 exists to prevent.
+
+The mitigation, approved by Omer as final-readout O3, is the item 9/10 protocol applied
+after the fact: **write it, freeze it, hash it here, and only then point it at data.**
+The freeze commit precedes the first real invocation in the git history, so the ordering
+is checkable rather than asserted.
+
+Enforcement matching the other entry points: it calls `assert_gate()` before reading any
+trial; it runs the §3.1 completeness gate on both legs of every model; it derives its
+roster from which legs exist rather than taking a `--models` flag; and it exposes no
+`--margin`, `--alpha`, `--surface`, `--sign` or `--shard` flag, each of which would turn
+a design commitment into a run-time choice. The May reference sign is **computed from
+the canonical corpus**, not hardcoded, so it cannot drift from a number typed into a
+docstring. It reuses the frozen `ntster_common` §3.3 interval machinery unchanged.
+
+**Rehearsal before freeze:** run with both `--nt-overlay-dir` and `--wt-overlay-dir`
+pointed at the same directory, which forces the interaction to exactly zero for every
+fixture by construction. This exercises loading, the fixture join, both clusterings, the
+seeded bootstrap, the verdict logic and both output writers against a mathematically
+known answer, while leaking nothing about the real estimate. Result: `+0.00 [+0.00,
++0.00]` on both models, 4,560 matched fixtures each, 0 dropped, roster correctly resolved
+to the two Qwens.
+
 **Enforcement, not documentation.** `ntster_h4.py` refuses to start without the F-gate
 JSON; refuses when that JSON names a different overlay corpus than the one passed;
 and calls `assert_gate()` before reading any trial. There is no `--margin`, `--alpha`,
@@ -940,6 +1019,46 @@ silent shortfall read as a pass.
 6. **Queue wait** is excluded from every wall estimate, and six simultaneous
    `rtx_6000` grants would be one above observed precedent (the split submits reduce
    this to 3 + 2).
+
+### 9.1 Executed deviations from this prereg — declaration (2026-08-29, O1)
+
+Approved by Omer as final-readout O1. Both belong in the paper appendix, in the same
+paragraph, stated plainly rather than presented as the original design. Appendix-ready
+text follows; it is deliberately written so a reader can see what was changed, when,
+relative to what knowledge, and which direction the change pushes the conclusion.
+
+> **Deviation 1 — the control roster was expanded from three models to four after
+> interim results were seen.** The preregistration fixed the H4 roster at Qwen3.5:9B,
+> gemma4:26b-a4b and qwen3.6:35b. On 2026-08-22, with the three `think=off` units
+> complete and passing, we measured the with-tools steering effect the control exists to
+> attribute across the full five-model roster and found that Qwen3.5:4B carried a larger
+> effect (+6.9pp pooled, +9.6pp on `validate_plan`) than Qwen3.5:9B (+2.5pp), which was
+> controlled, while having no control of its own. Qwen3.5:0.8B showed no effect (+0.0pp
+> pooled) and so has nothing to attribute. We added a Qwen3.5:4B `think=off` control
+> rather than argue the asymmetry away. It was submitted with apparatus parity to the
+> three completed `think=off` cells and it PASSES. The deviation is conservative in a
+> checkable sense: under the intersection-union rule a fourth unit can only make the
+> conjunctive equivalence claim harder to satisfy, never easier. It is not model
+> selection — no unit was dropped, and the added unit was chosen by the size of the
+> effect needing attribution, not by its control result, which was unknown at submit
+> time.
+>
+> **Deviation 2 — the `think=on` arm was rerun with `--reasoning-parser none`, against
+> the preregistered configuration.** The preregistration ruled that the reasoning-parser
+> override is not passed. Applied to the decoupled two-call apparatus that the `think=on`
+> legs use, that configuration produced a void corpus: 9,120/9,120 and 3,822/3,824 rows
+> with empty response text, no errors, and ~12,960 tokens generated per row. The cause is
+> that the preregistered rule was reasoned about the single-call path, where reasoning
+> and answer share one output stream, while the decoupled path generates the answer in a
+> separate call and had only ever been validated with the parser off. We cancelled the
+> arm, discarded the void rows, and reran with the parser off. The rerun reproduces an
+> independent parser-off corpus from June to within a percentage point on both empty-text
+> share and success rate, and the grading artifact the original rule was written to
+> prevent does not appear on this path (`format_parse_fail` is 0.0% on all three
+> validation tasks in all four affected arms). The two think modes were already declared
+> different apparatuses whose numbers may not be compared across the mode axis, and they
+> were already separate submissions, so the change alters no cross-mode comparison. The
+> void arm is reported here rather than omitted; the discarded corpus is retained.
 
 ---
 
