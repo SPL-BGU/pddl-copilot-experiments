@@ -58,7 +58,8 @@ from gt_cache_gate import assert_gate                    # noqa: E402
 from ntster_common import (                              # noqa: E402
     ALPHA, K_DOMAIN, K_PLAN, K_PROBLEM, K_TASK, K_VARIANT, NEUTRAL_VARIANTS,
     STEERED_VARIANTS, Cell, Interval, completeness_gate, delivered,
-    load_overlay_cells, paired_cluster_bootstrap, paired_cluster_ci, wider,
+    is_indeterminate, load_overlay_cells, paired_cluster_bootstrap,
+    paired_cluster_ci, wider,
 )
 
 TASKS = ("solve", "validate_domain", "validate_problem", "validate_plan", "simulate")
@@ -99,8 +100,10 @@ def _arm_deltas(cell: Cell, task: str | None = None) -> dict[tuple, float]:
     """Per-fixture paired difference (steered − anchor) on the delivered surface.
 
     Keyed by (task, domain, problem, plan_label, paraphrase) so the two legs can
-    be joined on identical fixtures. Mirrors `ntster_common.build_pairs`; kept
-    local because the join key must survive out of the function.
+    be joined on identical fixtures. Mirrors `ntster_common.build_pairs`
+    (including the §2.3(C) exclusion of indeterminate rows — the wt leg is
+    ~14% censored); kept local because the join key must survive out of the
+    function. An excluded fixture surfaces in `fixtures_dropped`.
     """
     idx = _fixture_index(cell, task)
     out: dict[tuple, float] = {}
@@ -110,6 +113,8 @@ def _arm_deltas(cell: Cell, task: str | None = None) -> dict[tuple, float]:
                 continue
             other = idx.get((t, dom, prob, plan, vhi))
             if other is None:
+                continue
+            if is_indeterminate(row) or is_indeterminate(other):
                 continue
             out[(t, dom, prob, plan, j)] = float(delivered(other)) - float(delivered(row))
     return out
@@ -131,9 +136,12 @@ def build_interactions(wt: Cell, nt: Cell,
 
 
 def _intervals(items: list[Interaction]) -> dict:
-    ci_domain = paired_cluster_ci(items, lambda p: p.domain, method="domain (k=20)")
+    # Problem clustering is size-weighted (§9.2 deviation D5): the realized
+    # problem clusters are unbalanced, so the unweighted mean of cluster means
+    # would not estimate the locked interaction. Labels carry the realized k.
+    ci_domain = paired_cluster_ci(items, lambda p: p.domain, method="domain")
     ci_problem = paired_cluster_ci(items, lambda p: (p.domain, p.problem),
-                                   method="problem (k=100)")
+                                   method="problem", weighted=True)
     governing = wider(ci_domain, ci_problem)
     boot = paired_cluster_bootstrap(items, lambda p: p.domain)
     return {"domain": ci_domain, "problem": ci_problem,
@@ -157,17 +165,44 @@ def _leg_delta_pp(cell: Cell, task: str | None = None) -> float:
     return 100.0 * (sum(d.values()) / len(d)) if d else math.nan
 
 
+def _by_model(cells: list[Cell], leg: str) -> dict[str, Cell]:
+    """Model-keyed cells, refusing a silent last-wins on a duplicate.
+
+    A stray overlay beside the clean rerun for the same model (exactly what a
+    void cell dir would be) must fail loudly, not shadow the good leg.
+    """
+    out: dict[str, Cell] = {}
+    for c in cells:
+        if c.model in out:
+            raise SystemExit(
+                f"two overlay cells claim model {c.model!r} in the {leg} leg: "
+                f"{out[c.model].name!r} and {c.name!r}. Corpus identity is "
+                "load-bearing; remove the stray overlay instead of letting "
+                "dict order pick one.")
+        out[c.model] = c
+    return out
+
+
 def may_reference_sign(may_cells: list[Cell], model: str) -> dict:
     """May's with-tools `think=on` steering effect — the sign to match (§4(b)).
 
     Computed from the canonical corpus rather than hardcoded, so the reference is
-    auditable and cannot drift from a number typed into a docstring.
+    auditable and cannot drift from a number typed into a docstring. Refuses an
+    ambiguous corpus (two matching cells) rather than taking the first by glob
+    order.
     """
-    for c in may_cells:
-        if c.model == model and c.think == "on" and "no-tools" not in c.name:
-            delta = _leg_delta_pp(c)
-            return {"cell": c.name, "delta_pp": delta,
-                    "sign": (1 if delta > 0 else -1 if delta < 0 else 0)}
+    matches = [c for c in may_cells
+               if c.model == model and c.think == "on" and "no-tools" not in c.name]
+    if len(matches) > 1:
+        raise SystemExit(
+            f"May reference is ambiguous for {model!r}: "
+            f"{[c.name for c in matches]!r} all match. Corpus identity is "
+            "load-bearing; refusing to pick one silently.")
+    if matches:
+        c = matches[0]
+        delta = _leg_delta_pp(c)
+        return {"cell": c.name, "delta_pp": delta,
+                "sign": (1 if delta > 0 else -1 if delta < 0 else 0)}
     return {"cell": None, "delta_pp": math.nan, "sign": 0}
 
 
@@ -192,8 +227,8 @@ def main() -> int:
     wt_cells = [c for c in load_overlay_cells(args.wt_overlay_dir) if c.think == "on"]
     may_cells = load_overlay_cells(args.may_overlay_dir)
 
-    nt_by_model = {c.model: c for c in nt_cells}
-    wt_by_model = {c.model: c for c in wt_cells}
+    nt_by_model = _by_model(nt_cells, "nt")
+    wt_by_model = _by_model(wt_cells, "wt")
     roster = sorted(nt_by_model.keys() & wt_by_model.keys())
     if not roster:
         print("ERROR: no model has both a think=on nt leg and a think=on wt leg",
@@ -225,6 +260,22 @@ def main() -> int:
         nt, wt = nt_by_model[model], wt_by_model[model]
         g_nt = completeness_gate(nt)
         g_wt = completeness_gate(wt)
+        if not (g_nt.ok and g_wt.ok):
+            # §3.1: an incomplete cell is INCONCLUSIVE and is not analysed on
+            # the surviving subset — recording the gate without enforcing it
+            # would feed a quiet surviving-subset verdict into §4(b).
+            results["models"].append({
+                "model": model,
+                "nt_cell": nt.name, "wt_cell": wt.name,
+                "analysable": False,
+                "completeness": {"nt": g_nt.ok, "wt": g_wt.ok,
+                                 "nt_lines": g_nt.lines, "wt_lines": g_wt.lines},
+                "replicated": False,
+                "note": ("leg(s) fail the §3.1 completeness gate — "
+                         "INCONCLUSIVE, not analysed; re-run the missing keys "
+                         "to completion."),
+            })
+            continue
         items, dropped = build_interactions(wt, nt)
         ivs = _intervals(items)
         gov = ivs["governing"]
@@ -250,6 +301,7 @@ def main() -> int:
         results["models"].append({
             "model": model,
             "nt_cell": nt.name, "wt_cell": wt.name,
+            "analysable": True,
             "completeness": {"nt": g_nt.ok, "wt": g_wt.ok,
                              "nt_lines": g_nt.lines, "wt_lines": g_wt.lines},
             "n_fixtures": len(items), "fixtures_dropped": dropped,
@@ -263,14 +315,21 @@ def main() -> int:
             "per_task": per_task,
         })
 
-    all_replicated = all(m["replicated"] for m in results["models"])
+    unanalysable = [m["model"] for m in results["models"]
+                    if not m.get("analysable", True)]
+    all_replicated = (not unanalysable
+                      and all(m["replicated"] for m in results["models"]))
     results["clause_verdict"] = {
         "criterion": "§4(b): interaction CI excludes 0 AND sign matches May, every model",
         "include_replicated_attribution_clause": all_replicated,
         "note": ("§5's PASS sentence keeps the '[, with attribution replicated in a "
                  "within-July factorial]' clause" if all_replicated else
-                 "§5's PASS sentence DROPS the 'replicated attribution' clause, as "
-                 "pre-registered — it is not rewritten or weakened, it is removed."),
+                 (("model(s) with an incomplete leg cannot establish the "
+                   f"criterion: {', '.join(unanalysable)}. " if unanalysable
+                   else "")
+                  + "§5's PASS sentence DROPS the 'replicated attribution' "
+                    "clause, as pre-registered — it is not rewritten or "
+                    "weakened, it is removed.")),
     }
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -297,6 +356,10 @@ def main() -> int:
         "|---|---:|---:|---|---|---|---|",
     ]
     for m in results["models"]:
+        if not m.get("analysable", True):
+            lines.append(f"| {m['model']} | — | — | INCONCLUSIVE (incomplete leg) "
+                         f"| — | — | no |")
+            continue
         g = m["ci"]["governing"]
         lines.append(
             f"| {m['model']} | {m['delta_wt_pp']:+.2f} | {m['delta_nt_pp']:+.2f} | "
@@ -306,10 +369,17 @@ def main() -> int:
             f"{'**yes**' if m['replicated'] else 'no'} |")
 
     for m in results["models"]:
+        if not m.get("analysable", True):
+            lines += ["", f"## {m['model']}", "",
+                      f"- nt leg: `{m['nt_cell']}` (complete: {m['completeness']['nt']})",
+                      f"- wt leg: `{m['wt_cell']}` (complete: {m['completeness']['wt']})",
+                      f"- **{m['note']}**"]
+            continue
         lines += ["", f"## {m['model']}", "",
                   f"- nt leg: `{m['nt_cell']}` (complete: {m['completeness']['nt']})",
                   f"- wt leg: `{m['wt_cell']}` (complete: {m['completeness']['wt']})",
-                  f"- {m['n_fixtures']:,} matched fixtures, {m['fixtures_dropped']} dropped",
+                  f"- {m['n_fixtures']:,} matched fixtures, {m['fixtures_dropped']} dropped "
+                  "(unmatched or indeterminate on either leg, §2.3(C))",
                   "",
                   "| interval | interaction [90% CI] | half-width |", "|---|---|---:|"]
         for k in ("domain", "problem", "governing", "bootstrap_domain"):
@@ -333,6 +403,9 @@ def main() -> int:
     print()
     print(f"CLAUSE: {'KEEP' if all_replicated else 'DROP'} the replicated-attribution clause")
     for m in results["models"]:
+        if not m.get("analysable", True):
+            print(f"  {m['model']}: INCONCLUSIVE — {m['note']}")
+            continue
         g = m["ci"]["governing"]
         print(f"  {m['model']}: interaction {g['estimate_pp']:+.2f} "
               f"[{g['lo_pp']:+.2f}, {g['hi_pp']:+.2f}]  replicated={m['replicated']}")

@@ -45,15 +45,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ntster_common import (  # noqa: E402
-    ALPHA, ANCHOR_BAND, APPARATUS_REASONS, APPARATUS_VOID_SHARE,
+    ALPHA, ANCHOR_BAND, APPARATUS_VOID_SHARE,
     AT_CAP_RESPONSE_LEN, BOOTSTRAP_B, CEILING_GUARD_TRUNCATION,
     CHANNEL_FORMAT_REASONS, CONTENT_REASONS, HALF_WIDTH_CEILING_PP,
     LEAKAGE_RANK, LOW_BASE_RATE_BELOW, M1_SOLVE_PATTERN, M1_TOOL_NAME_PATTERN,
     MARGIN_PP, MECHANISM_MIN_ABS_DELTA_PP, NEUTRAL_VARIANTS, STEERED_VARIANTS,
     TASKS, TRUNCATED_LOSS_REASONS,
-    Cell, Interval, K_TASK, K_VARIANT, arm_rate, build_pairs, completeness_gate,
-    delivered, holm, is_censored, legacy, load_overlay_cells,
-    newcombe_unpaired, noninferiority_p, paired_cluster_bootstrap,
+    Cell, Interval, K_TASK, K_VARIANT, arm_indeterminate, arm_rate,
+    build_pairs, completeness_gate, delivered, holm, is_censored,
+    is_indeterminate, legacy, load_overlay_cells, newcombe_unpaired,
+    noninferiority_p, paired_bounds, paired_cluster_bootstrap,
     paired_cluster_ci, pct, wider,
 )
 from gt_cache_gate import assert_gate  # noqa: E402
@@ -66,21 +67,37 @@ from scipy import stats  # noqa: E402
 # ==========================================================================
 
 def contrast(cell: Cell, *, task: str | None) -> dict:
-    """Paired, domain-clustered contrast at one granularity, with companions."""
+    """Paired, domain-clustered contrast at one granularity, with companions.
+
+    Indeterminate (censored / no-ground-truth) rows are excluded from the
+    estimator and both arm denominators (§2.3(C)); they are counted per arm and
+    the extreme-imputation `bounds` block reports the range they could occupy.
+    The problem clustering uses the size-weighted cluster-robust form (§9.2
+    deviation D5) so its estimate is the paired difference, not a task-reweighted
+    quantity; the domain clustering keeps the registered unweighted estimator.
+    """
     pairs = build_pairs(cell, lo=NEUTRAL_VARIANTS, hi=STEERED_VARIANTS,
                         surface=delivered, task=task)
-    ci_domain = paired_cluster_ci(pairs, lambda p: p.domain, method="domain (k=20)")
+    ci_domain = paired_cluster_ci(pairs, lambda p: p.domain, method="domain")
     ci_problem = paired_cluster_ci(pairs, lambda p: (p.domain, p.problem),
-                                   method="problem (k=100)")
+                                   method="problem", weighted=True)
     governing = wider(ci_domain, ci_problem)
     boot = paired_cluster_bootstrap(pairs, lambda p: p.domain)
+    bounds = paired_bounds(cell, lo=NEUTRAL_VARIANTS, hi=STEERED_VARIANTS,
+                           task=task)
 
     xa, na = arm_rate(cell, NEUTRAL_VARIANTS, task=task, surface=delivered)
     xb, nb = arm_rate(cell, STEERED_VARIANTS, task=task, surface=delivered)
     newc = newcombe_unpaired(xa, na, xb, nb)
+    indet_a = arm_indeterminate(cell, NEUTRAL_VARIANTS, task=task)
+    indet_b = arm_indeterminate(cell, STEERED_VARIANTS, task=task)
 
-    xal, nal = arm_rate(cell, NEUTRAL_VARIANTS, task=task, surface=legacy)
-    xbl, nbl = arm_rate(cell, STEERED_VARIANTS, task=task, surface=legacy)
+    # Legacy is the stored online grade — a real measurement on every row, so
+    # its denominator keeps the indeterminate rows.
+    xal, nal = arm_rate(cell, NEUTRAL_VARIANTS, task=task, surface=legacy,
+                        drop_indeterminate=False)
+    xbl, nbl = arm_rate(cell, STEERED_VARIANTS, task=task, surface=legacy,
+                        drop_indeterminate=False)
 
     # Row-level pooled difference, reported so any cluster imbalance is visible
     # rather than absorbed into the cluster-mean estimator.
@@ -96,11 +113,19 @@ def contrast(cell: Cell, *, task: str | None) -> dict:
     return {
         "granularity": task or "pooled",
         "n_pairs": len(pairs),
+        "n_pairs_dropped_indeterminate": bounds["n_pairs_indeterminate"],
         "anchor": {"x": xa, "n": na, "rate_pp": pct(xa, na),
-                   "legacy_rate_pp": pct(xal, nal), "censored": censored_a},
+                   "legacy_rate_pp": pct(xal, nal), "censored": censored_a,
+                   "indeterminate": indet_a,
+                   "rate_bounds_pp": [pct(xa, na + indet_a),
+                                      pct(xa + indet_a, na + indet_a)]},
         "steered": {"x": xb, "n": nb, "rate_pp": pct(xb, nb),
-                    "legacy_rate_pp": pct(xbl, nbl), "censored": censored_b},
+                    "legacy_rate_pp": pct(xbl, nbl), "censored": censored_b,
+                    "indeterminate": indet_b,
+                    "rate_bounds_pp": [pct(xb, nb + indet_b),
+                                       pct(xb + indet_b, nb + indet_b)]},
         "pooled_row_level_delta_pp": pooled_pp,
+        "bounds": bounds,
         "ci": {
             "domain": _ci_dict(ci_domain),
             "problem": _ci_dict(ci_problem),
@@ -109,6 +134,7 @@ def contrast(cell: Cell, *, task: str | None) -> dict:
             "newcombe_unpaired": _ci_dict(newc),
         },
         "_governing_obj": governing,
+        "_domain_obj": ci_domain,
     }
 
 
@@ -162,7 +188,12 @@ def risk_ratio_bound(anchor_x: int, anchor_n: int, steered_x: int,
         return {"rr": math.nan, "note": "anchor has zero successes; RR undefined"}
     pa, pb = anchor_x / anchor_n, steered_x / steered_n
     if pb == 0:
-        return {"rr": 0.0, "note": "steered arm has zero successes"}
+        # Every key the render path subscripts must exist on every returned
+        # shape — a missing `margin_equivalent_rr` here crashed after the JSON
+        # was written but before the markdown report.
+        return {"rr": 0.0, "lo": math.nan, "hi": math.nan,
+                "margin_equivalent_rr": (pa * 100 + MARGIN_PP) / (pa * 100),
+                "note": "steered arm has zero successes; CI undefined"}
     log_rr = math.log(pb / pa)
     se = math.sqrt((1 - pa) / anchor_x + (1 - pb) / steered_x)
     z = float(stats.norm.ppf(1 - ALPHA / 2))
@@ -175,6 +206,57 @@ def risk_ratio_bound(anchor_x: int, anchor_n: int, steered_x: int,
 # §3.7 — mechanism decomposition (secondary; never gates or revises H4)
 # ==========================================================================
 
+RAW_FIELDS = ("failure_reason", "response", "tokens")
+
+
+def attach_raw_fields(cells: list[Cell], trials_root: Path) -> None:
+    """Join each overlay row to its raw trial row and attach the §3.7 fields.
+
+    The overlay carries only the graded view (`e2e`, `success_stored`,
+    `done_reason`, `response_len`, …); the mechanism decomposition additionally
+    needs `failure_reason`, `response` and `tokens`, which live only in the raw
+    `trials.jsonl` the prereg's "fields already written per row" refers to. The
+    join key is the raw row's `key`, which is exactly the overlay `trial_key`;
+    dedup is last-wins, matching `load_overlay_cells`.
+    """
+    for cell in cells:
+        fp = trials_root / cell.name / "trials.jsonl"
+        if not fp.exists():
+            raise SystemExit(
+                f"raw trials not found: {fp}\n"
+                "The §3.7 mechanism decomposition reads `failure_reason`, "
+                "`response` and `tokens`, which the overlay does not carry. "
+                "Restore the raw cells (checkpoints/ntster-h4-live/*_trials.zip) "
+                "or pass --trials-dir at the corpus root.")
+        raw: dict[tuple, dict] = {}
+        with fp.open() as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    trial = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                key = trial.get("key")
+                if key is None:
+                    continue
+                raw[tuple(key)] = trial.get("result") or {}
+        missing = 0
+        for key, row in cell.rows.items():
+            src = raw.get(key)
+            if src is None:
+                missing += 1
+                continue
+            for f in RAW_FIELDS:
+                row[f] = src.get(f)
+        if missing:
+            raise SystemExit(
+                f"{missing} overlay row(s) in {cell.name} have no raw trial "
+                "row — the overlay and the raw corpus disagree. Corpus "
+                "identity is load-bearing; refusing.")
+
+
 def _norm_reason(row: dict) -> str:
     r = (row.get("failure_reason") or "").strip()
     if r.upper().startswith("FR_"):
@@ -183,20 +265,24 @@ def _norm_reason(row: dict) -> str:
 
 
 def _component(row: dict) -> str | None:
-    """Four-way partition of a FAILED row. Returns None for a success."""
-    if delivered(row):
+    """Four-way partition of a FAILED row (§3.7). Returns None for a success
+    and None for an indeterminate row — censored rows are folded into neither
+    side and are reported separately."""
+    if is_indeterminate(row) or delivered(row):
         return None
     reason = _norm_reason(row)
-    # The overlay can re-grade `simulate` into its own reasons; fold those in.
+    # The overlay re-grades `simulate` into its own reasons; fold those in.
+    # `empty_response` is the overlay's counterpart of `simulate_empty`.
     e2e_reason = (row.get("e2e_reason") or "").lower()
-    if e2e_reason in ("format_parse_fail",) or reason in CHANNEL_FORMAT_REASONS:
+    if e2e_reason == "format_parse_fail" or reason in CHANNEL_FORMAT_REASONS:
         return "CHANNEL_FORMAT"
-    if e2e_reason == "trajectory_mismatch" or reason in CONTENT_REASONS:
+    if (e2e_reason in ("trajectory_mismatch", "empty_response")
+            or reason in CONTENT_REASONS):
         return "CONTENT"
     if reason in TRUNCATED_LOSS_REASONS:
         return "TRUNCATED_LOSS"
-    if reason in APPARATUS_REASONS or reason == "":
-        return "APPARATUS"
+    # §3.7: APPARATUS = exception, tool_error, unknown, other — the partition's
+    # explicit catch-all, so any unrecognised reason lands here by design.
     return "APPARATUS"
 
 
@@ -214,6 +300,11 @@ def mechanism(cell: Cell, *, task: str | None, verdict: str,
         rows = [r for k, r in cell.rows.items()
                 if k[K_VARIANT] in variants and (task is None or k[K_TASK] == task)]
         n = len(rows)
+        # Success and the failure components are shares of the DETERMINATE rows
+        # (§2.3(C): indeterminate rows are folded into neither side), so the
+        # partition plus success sums to 100% within the gradeable rows. M1/M2
+        # are behavioural reads and keep the full-arm denominator.
+        n_det = sum(1 for r in rows if not is_indeterminate(r))
         comps = defaultdict(int)
         for r in rows:
             c = _component(r)
@@ -235,8 +326,9 @@ def mechanism(cell: Cell, *, task: str | None, verdict: str,
 
         out["arms"][arm_name] = {
             "n": n,
-            "success_pp": pct(sum(1 for r in rows if delivered(r)), n),
-            "components_pp": {c: pct(comps.get(c, 0), n)
+            "n_determinate": n_det,
+            "success_pp": pct(sum(1 for r in rows if delivered(r)), n_det),
+            "components_pp": {c: pct(comps.get(c, 0), n_det)
                               for c in ("TRUNCATED_LOSS", "CHANNEL_FORMAT",
                                         "CONTENT", "APPARATUS")},
             "M1_directive_echo_pp": pct(m1, n),
@@ -253,7 +345,7 @@ def mechanism(cell: Cell, *, task: str | None, verdict: str,
     for comp in ("TRUNCATED_LOSS", "CHANNEL_FORMAT", "CONTENT", "APPARATUS"):
         pairs = build_pairs(cell, lo=NEUTRAL_VARIANTS, hi=STEERED_VARIANTS,
                             surface=lambda r, c=comp: _component(r) == c, task=task)
-        ci = paired_cluster_ci(pairs, lambda p: p.domain, method="domain (k=20)")
+        ci = paired_cluster_ci(pairs, lambda p: p.domain, method="domain")
         out["deltas"][comp] = _ci_dict(ci)
 
     sum_delta = sum(out["deltas"][c]["estimate_pp"]
@@ -398,7 +490,10 @@ def analyse_cell(cell: Cell, f_gate: dict) -> dict:
         c = contrast(cell, task=task)
         ci = c["_governing_obj"]
         f_pp = fg["granularity"][task]["F_pp"]
-        cls = classify(c["anchor"]["rate_pp"], f_pp, ci.half_width_pp)
+        # §3.3 point 3 pins eligibility to the realized paired DOMAIN-clustered
+        # half-width; "the wider one governs" (point 1) applies to the primary
+        # CI, not this gate.
+        cls = classify(c["anchor"]["rate_pp"], f_pp, c["_domain_obj"].half_width_pp)
         lab, under = label(ci)
         c.update({"F_pp": f_pp, "classification": cls, "label": lab,
                   "underpowered": under,
@@ -416,10 +511,19 @@ def analyse_cell(cell: Cell, f_gate: dict) -> dict:
             pvalues[task] = noninferiority_p(ci)
         result["per_task"][task] = c
 
-    # §3.4 verdict.
+    # §3.4 verdict, gated by §3.2's pooled F clause: "F ≥ margin ⇒
+    # UNINFORMATIVE, never rescued" is retained at pooled granularity, and §3.2
+    # states F is a gate at every granularity where a verdict is read — the
+    # unit verdict is read at pooled granularity. An UNINFORMATIVE pooled read
+    # cannot license a PASS; an ELIGIBLE-task FAIL still stands.
     eligible_not_equiv = [t for t in eligible_names
                           if result["per_task"][t]["label"] == "NOT-EQUIVALENT"]
-    if pooled_ci.inside_margin() and not eligible_not_equiv:
+    pooled_f_uninformative = bool(pooled["F_ge_margin"])
+    if pooled_f_uninformative:
+        pooled["label"] = "UNINFORMATIVE (pooled F ≥ margin)"
+        verdict = ("FAIL" if eligible_not_equiv
+                   else "INCONCLUSIVE (pooled F ≥ margin — UNINFORMATIVE)")
+    elif pooled_ci.inside_margin() and not eligible_not_equiv:
         verdict = "PASS"
     elif pooled_ci.outside_margin() or eligible_not_equiv:
         verdict = "FAIL"
@@ -430,6 +534,24 @@ def analyse_cell(cell: Cell, f_gate: dict) -> dict:
                              else ("pooled" if verdict == "FAIL" else None))
     result["eligible_tasks"] = eligible_names
     result["eligible_not_equivalent"] = eligible_not_equiv
+
+    # §3.3 point 2 companion: the unweighted mean over ELIGIBLE task cells,
+    # reported alongside the pooled primary. A pooled PASS whose eligible-task
+    # mean disagrees (sits outside the margin) is reported as a disagreement,
+    # not resolved. A point summary as registered — no CI is attached.
+    elig_deltas = [result["per_task"][t]["ci"]["governing"]["estimate_pp"]
+                   for t in eligible_names]
+    elig_mean = (sum(elig_deltas) / len(elig_deltas)) if elig_deltas else math.nan
+    result["eligible_task_mean"] = {
+        "mean_pp": elig_mean,
+        "n_tasks": len(elig_deltas),
+        "disagrees_with_pooled_pass": bool(
+            verdict == "PASS" and not math.isnan(elig_mean)
+            and abs(elig_mean) >= MARGIN_PP),
+        "note": ("Unweighted mean of the governing Δ̂ over ELIGIBLE task cells "
+                 "(§3.3 point 2). A disagreement with a pooled PASS is "
+                 "reported, not resolved."),
+    }
 
     # Holm across the ELIGIBLE family only, and only for the affirmative claim.
     result["holm_rejected"] = holm(pvalues) if pvalues else {}
@@ -444,39 +566,55 @@ def analyse_cell(cell: Cell, f_gate: dict) -> dict:
         result["scope_note"] = ("think=on PASS at an anchor < 15% licenses only the "
                                 "absolute ±5pp statement.")
 
-    pooled_domain_ci = Interval(**{k: v for k, v in pooled["ci"]["domain"].items()})
     result["mechanism"] = {
         "pooled": mechanism(cell, task=None, verdict=verdict, governing=pooled_ci,
-                            domain_ci=pooled_domain_ci)}
+                            domain_ci=pooled["_domain_obj"])}
     if verdict == "FAIL" and pooled_ci.estimate_pp > 0:
         result["mechanism"]["help_direction"] = leakage_spearman(result["per_task"])
 
     # Strip the non-serialisable working objects.
-    pooled.pop("_governing_obj", None)
-    for t in result["per_task"].values():
-        t.pop("_governing_obj", None)
+    for c in [pooled, *result["per_task"].values()]:
+        c.pop("_governing_obj", None)
+        c.pop("_domain_obj", None)
     return result
 
 
 def paper_branch(cells: list[dict]) -> dict:
-    """§3.4 paper-level table over the verdict vector."""
+    """§3.4 paper-level table over the verdict vector, evaluated top-down.
+
+    Any unit FAIL routes to the FAIL branch: per §3.4 a unit can only FAIL via
+    an ELIGIBLE task cell or via the pooled primary, and the pooled primary can
+    never be "ineligible" under any of the three named grounds — so a
+    pooled-driven FAIL is a failed primary endpoint, never a MIXED outcome.
+    MIXED is reserved for margin failures confined to INELIGIBLE task cells
+    (LOW-BASE-RATE / DEGENERATE / UNINFORMATIVE) when no unit FAILs.
+    """
     verdicts = [c.get("verdict") for c in cells]
-    fails_eligible = [c["cell"] for c in cells
-                      if c.get("verdict") == "FAIL"
-                      and c.get("fail_driver") == "eligible_task"]
-    fails_other = [c["cell"] for c in cells
-                   if c.get("verdict") == "FAIL" and c.get("fail_driver") != "eligible_task"]
-    if fails_eligible:
-        return {"branch": "FAIL", "cells": fails_eligible,
-                "note": "≥1 FAIL in an ELIGIBLE cell — no 'named exception' escape."}
-    if fails_other:
-        return {"branch": "MIXED", "cells": fails_other,
-                "note": "FAILs only outside the ELIGIBLE family; cells named."}
+    unit_fails = [f"{c['cell']} (driver: {c.get('fail_driver')})"
+                  for c in cells if c.get("verdict") == "FAIL"]
+    ineligible_margin_fails = [
+        f"{c['cell']}:{t}"
+        for c in cells for t, pt in (c.get("per_task") or {}).items()
+        if pt.get("label") == "NOT-EQUIVALENT"
+        and pt.get("classification") != "ELIGIBLE"]
     if verdicts and all(v == "PASS" for v in verdicts):
-        return {"branch": "PASS", "cells": [], "note": "All units PASS."}
+        note = "All units PASS."
+        if ineligible_margin_fails:
+            note += (" Ineligible task cells outside the margin, named per "
+                     "§5's reporting discipline (no verdict authority): "
+                     + ", ".join(ineligible_margin_fails))
+        return {"branch": "PASS", "cells": [], "note": note}
+    if unit_fails:
+        return {"branch": "FAIL", "cells": unit_fails,
+                "note": "≥1 unit FAIL (ELIGIBLE-task or pooled-primary driven) "
+                        "— no 'named exception' escape."}
+    if ineligible_margin_fails:
+        return {"branch": "MIXED", "cells": ineligible_margin_fails,
+                "note": "Margin failures only in INELIGIBLE task cells; no "
+                        "unit FAIL; cells named."}
     return {"branch": "INCONCLUSIVE", "cells": [c["cell"] for c in cells
                                                 if c.get("verdict") != "PASS"],
-            "note": "Not all units PASS and no ELIGIBLE FAIL."}
+            "note": "Not all units PASS and no FAIL."}
 
 
 # ==========================================================================
@@ -495,8 +633,10 @@ def render(results: list[dict], branch: dict, gt_hash: str) -> str:
     L = [f"# nt-ster H4 — confirmatory contrast", "",
          f"Margin ±{MARGIN_PP:g}pp · {int((1-ALPHA)*100)}% intervals · surface = "
          f"delivered · bootstrap B={BOOTSTRAP_B:,} · GT gate `{gt_hash[:12]}`", "",
-         "Δ̂ = steered − anchor. The governing interval is the **wider** of the "
-         "domain (k=20) and problem-instance (k=100) clusterings.", "",
+         "Δ̂ = steered − anchor, on determinate rows (censored / ungradeable rows "
+         "are excluded from every estimator and reported as bounds, §2.3(C)). "
+         "The governing interval is the **wider** of the domain and "
+         "problem-instance clusterings; each label carries its realized k.", "",
          f"## Paper-level branch: **{branch['branch']}**", "", branch["note"], ""]
     if branch["cells"]:
         L += ["Cells: " + ", ".join(branch["cells"]), ""]
@@ -538,7 +678,26 @@ def render(results: list[dict], branch: dict, gt_hash: str) -> str:
               "(cluster-mean vs row-level agree when clusters are balanced)",
               f"- label: **{p['label']}**"
               + (" · UNDERPOWERED" if p["underpowered"] else ""),
-              f"- MDE (|Δ| needed to FAIL): {p['mde_pp']:.2f}pp", ""]
+              f"- MDE (|Δ| needed to FAIL): {p['mde_pp']:.2f}pp"]
+        if p["bounds"]["n_pairs_indeterminate"]:
+            b = p["bounds"]
+            L.append(
+                f"- indeterminate rows (excluded, §2.3(C)): anchor "
+                f"{p['anchor']['indeterminate']}, steered "
+                f"{p['steered']['indeterminate']}; extreme-imputation bounds on "
+                f"Δ̂: [{b['delta_lo_pp']:+.2f}, {b['delta_hi_pp']:+.2f}]pp over "
+                f"{b['n_pairs']:,} pairs ({b['n_pairs_indeterminate']} with an "
+                "indeterminate side)")
+        em = r.get("eligible_task_mean") or {}
+        if em and not math.isnan(em.get("mean_pp", math.nan)):
+            L.append(
+                f"- eligible-task mean (§3.3 point 2 companion): "
+                f"{em['mean_pp']:+.2f}pp over {em['n_tasks']} ELIGIBLE task "
+                f"cell(s)"
+                + (" — **DISAGREES with the pooled PASS; reported, not "
+                   "resolved**" if em.get("disagrees_with_pooled_pass")
+                   else " — consistent with the pooled read"))
+        L.append("")
         if r.get("scope_note"):
             L += [f"- scope: {r['scope_note']}", ""]
 
@@ -559,12 +718,20 @@ def render(results: list[dict], branch: dict, gt_hash: str) -> str:
             c = r["per_task"][t]
             if "risk_ratio" in c and not math.isnan(c["risk_ratio"].get("rr", math.nan)):
                 rr = c["risk_ratio"]
-                L.append(f"- `{t}` LOW-BASE-RATE: RR {rr['rr']:.2f} "
-                         f"[{rr.get('lo', float('nan')):.2f}, {rr.get('hi', float('nan')):.2f}]; "
+                ci_txt = ("CI undefined" if math.isnan(rr.get("lo", math.nan))
+                          else f"[{rr['lo']:.2f}, {rr['hi']:.2f}]")
+                L.append(f"- `{t}` LOW-BASE-RATE: RR {rr['rr']:.2f} {ci_txt}; "
                          f"±{MARGIN_PP:g}pp at this anchor admits up to "
-                         f"{rr['margin_equivalent_rr']:.2f}× relative.")
+                         f"{rr['margin_equivalent_rr']:.2f}× relative."
+                         + (f" ({rr['note']})" if rr.get("note") else ""))
             if "note" in c:
                 L.append(f"- `{t}`: {c['note']}")
+            if c["bounds"]["n_pairs_indeterminate"]:
+                b = c["bounds"]
+                L.append(f"- `{t}` bounds (indeterminate excluded): Δ̂ ∈ "
+                         f"[{b['delta_lo_pp']:+.2f}, {b['delta_hi_pp']:+.2f}]pp; "
+                         f"censored anchor {c['anchor']['censored']}, steered "
+                         f"{c['steered']['censored']}")
         L.append("")
 
         if r.get("eligible_tasks"):
@@ -622,6 +789,11 @@ def render(results: list[dict], branch: dict, gt_hash: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--overlay-dir", type=Path, required=True)
+    ap.add_argument("--trials-dir", type=Path,
+                    default=Path("results/ntster-h4-live"),
+                    help="raw corpus root holding <cell>/trials.jsonl — the "
+                         "§3.7 mechanism fields (failure_reason, response, "
+                         "tokens) live only there, not in the overlay")
     ap.add_argument("--f-gate", type=Path, required=True,
                     help="output of tools/ntster_f_gate.py — REQUIRED, and must "
                          "describe the same overlay corpus")
@@ -651,6 +823,8 @@ def main() -> int:
 
     cells = load_overlay_cells(args.overlay_dir)
     print(f"loaded {len(cells)} cell(s) from {args.overlay_dir}")
+    attach_raw_fields(cells, args.trials_dir)
+    print(f"attached §3.7 raw fields from {args.trials_dir}")
 
     results = [analyse_cell(c, f_gate) for c in cells]
     branch = paper_branch(results)
@@ -659,6 +833,7 @@ def main() -> int:
         "produced_by": "tools/ntster_h4.py",
         "prereg": "development/ntster_h4_prereg.md §3.3-§3.7",
         "overlay_dir": str(args.overlay_dir),
+        "trials_dir": str(args.trials_dir),
         "f_gate": str(args.f_gate),
         "gt_gate_hash": gt_hash,
         "margin_pp": MARGIN_PP, "alpha": ALPHA, "bootstrap_b": BOOTSTRAP_B,

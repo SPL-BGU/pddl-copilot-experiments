@@ -1000,6 +1000,36 @@ components are computed on, showing a spurious residual whenever problem cluster
 wider; and a granularity with zero rows rendered as `usable`, which would have let a
 silent shortfall read as a pass.
 
+#### Item 9 second addendum — post-review corrective RE-FREEZE (2026-08-30)
+
+**Every hash in the two tables above is superseded by the table below.** A
+15-finding correctness review of PR #96 (posted as inline comments on the PR,
+2026-08-30) found defects in the frozen analysis code — the material ones are
+declared as deviations in §9.2, with the latent ones that never fired listed
+there too. Each fix edits hash-frozen files, so per this document's own
+protocol the full five-file set was re-frozen and re-hashed here, and only then
+was the analysis re-run.
+
+| file | sha256 (2026-08-30) |
+|---|---|
+| `tools/ntster_f_gate.py` | `e9b746b74ab725359077175ed54d77eebf1bedaba63523fa395d22a21d01d200` |
+| `tools/ntster_h4.py` | `272f96b9f9ea20b3398afeb4a7c849a990e6c705149f9ffb2821c199cba67c26` |
+| `tools/ntster_common.py` | `49d869f39fc59fa875554c06e3e17937823abd8cabb852a028296a72cfb71ed7` |
+| `tools/gt_cache_gate.py` | `1181781e674f212c7d62c4fcdb6d50eb7ee9e650887d8e2bd95937609d8f3897` |
+| `tools/ntster_factorial.py` | `16f03b59e3e480f79639acf7117eb5c1bf630760951d37747d955388294ea40c` |
+
+**The ordering caveat, stated rather than smoothed over.** Unlike the original
+freeze, these edits were written after the data and the verdicts were known.
+The mitigations are: every change is tied to a named finding of an external
+review, not to anything seen in the numbers; every behavioural change is a
+mechanical correction *toward* the already-registered design (§2.3(C), §3.2,
+§3.3 points 2–3, §3.4, §3.7, §8 item 10), never a new analyst choice; and both
+the pre-fix and post-fix code and outputs are in git, so the entire delta is
+auditable. The re-run reproduces the six-unit all-PASS verdict vector and the
+paper-level PASS branch unchanged; the secondary numbers moved and the final
+readout was revised in place (`ntster_h4_final_readout_20260829.md`, revision
+note at top).
+
 ---
 
 ## 9. Known limits, carried into Limitations
@@ -1060,6 +1090,105 @@ relative to what knowledge, and which direction the change pushes the conclusion
 > different apparatuses whose numbers may not be compared across the mode axis, and they
 > were already separate submissions, so the change alters no cross-mode comparison. The
 > void arm is reported here rather than omitted; the discarded corpus is retained.
+
+### 9.2 Post-review code deviations — declaration (2026-08-30)
+
+A correctness review of PR #96 (15 findings) audited the frozen analysis code
+after the ratified readout shipped. The fixes below all edit hash-frozen files;
+they are declared here and the files re-frozen (§8 item 9, second addendum)
+before the analysis was re-run. **The six-unit verdict vector and the
+paper-level branch are unchanged by every fix — all six units PASS.** The
+secondary numbers changed; the revised values live in the final readout and
+`NUMBERS.md`. Appendix-ready prose:
+
+> **Deviation 3 — censored rows were counted as delivered successes and fed to
+> the estimator.** The overlay's delivered grade is tri-state (`true` / `false`
+> / `"indeterminate"` for rows censored at the 16K snapshot cap); the frozen
+> `delivered()` used a truthiness test, so `bool("indeterminate")` scored every
+> censored row as a success in the arm rates, the paired TOST, the F gate, the
+> eligibility anchors, and both factorial legs — and, separately, the
+> §2.3(C)/§3.7 commitment that censored rows are excluded and reported as
+> bounds was not implemented at all. Both were fixed on 2026-08-30: the grade
+> is now an identity test, indeterminate rows are excluded from every
+> estimator and denominator, and each contrast reports censored counts plus
+> extreme-imputation bounds on Δ̂. Direction: the shipped `simulate` rates were
+> inflated (4B anchor `simulate` 41.7% as shipped vs 17.1% determinate); the
+> shipped 4B `simulate` −14.00pp cell — the family's only NOT-EQUIVALENT label
+> — was largely this artifact and reads −2.43 [−5.33, +0.47] INDETERMINATE
+> after the fix. No unit verdict moved.
+>
+> **Deviation 4 — the "problem (k=100)" clustering was neither k=100 nor an
+> estimator of the paired difference.** The registered description assumed 100
+> balanced problem clusters; the realized fixture layout yields 220 unbalanced
+> ones (the 100 shared problems carry 42 pairs each, 120 single-task fixtures
+> carry 3), so the unweighted mean of cluster means gave 7.9% of rows 55% of
+> the weight and estimated a task-reweighted quantity — and it was the wider,
+> therefore governing, interval in all six cells and both factorial models.
+> Fixed: the problem clustering now uses a size-weighted cluster-robust
+> interval whose point estimate is the registered paired difference, and every
+> interval label carries its realized k. The domain clustering — the
+> registered primary — is estimated exactly as registered. Direction:
+> governing intervals tightened (realized MDE 5.82–6.25pp against the shipped
+> 6.47–7.11), which can only make the equivalence test harder to pass, and all
+> six units still PASS.
+>
+> **Deviation 5 — task-cell eligibility was classified on the governing
+> half-width; §3.3 point 3 pins it to the realized domain-clustered
+> half-width.** Fixed. On this corpus the ELIGIBLE family is identical under
+> both readings (the same 8 cells), so nothing moved; the defect was
+> anti-conservative in principle because a wider governing interval could
+> screen a NOT-EQUIVALENT cell out of the FAIL veto.
+>
+> **Deviation 6 — the §3.7 mechanism section read row fields the overlay never
+> carries and was degenerate in all six cells.** `failure_reason`, `response`
+> and `tokens` live in the raw `trials.jsonl`, not the overlay, so every
+> failed row fell through to APPARATUS (13.75–36.01% per arm), all six
+> mechanism reads self-VOIDed on the 1% guard, and the shipped report told an
+> apparatus-failure story that was an artifact of reading absent fields.
+> Fixed: the entry point joins each overlay row to its raw trial row
+> (`--trials-dir`) and computes the partition from the fields the prereg
+> actually names. Re-run: APPARATUS is 0.00% in every arm, the VOID guard does
+> not fire, the ΣΔ = −Δ̂ identity closes to 0.000pp in every cell, and no
+> mechanism label is owed because no unit FAILs.
+>
+> **Deviation 7 — the legacy consistency surface read a key no overlay row
+> has** (`success` instead of `success_stored`), so it was constant False and
+> §3.1's "real second measurement on `simulate`" measured nothing. Fixed; the
+> legacy column now reports the stored online grade on every row.
+>
+> **Deviation 8 — latent verdict-path defects, none of which fired on this
+> corpus, fixed for any future run:** the pooled F gate is now enforced in the
+> unit verdict (§3.2's "F ≥ margin ⇒ UNINFORMATIVE, never rescued" had been
+> recorded but never consulted); a pooled-driven unit FAIL now routes to the
+> §3.4 FAIL branch instead of the MIXED branch (the pooled primary can never
+> be "ineligible"); the §4(b) factorial refuses to analyse a leg that fails
+> the §3.1 completeness gate and refuses duplicate or ambiguous overlay cells
+> instead of silently taking the last one; the LOW-BASE-RATE risk-ratio path
+> no longer crashes on a steered arm with zero successes; and an overlay
+> carrying no `snapshot_cap` at all now fails the completeness gate instead of
+> passing as verified.
+>
+> **Deviation 9 — provenance-enforcement gaps closed, and one registered
+> quantity restored.** `ntster_f_gate.py` now calls the GT gate before reading
+> any trial — the §8 item 10 record claimed both entry points did, which was
+> false for this one from the original freeze until 2026-08-30. The GT gate
+> now also compares the cache against the preregistered canonical hash
+> (`6af57125…`) as a code constant, so a rebuilt cache with a self-consistent
+> fresh stamp can no longer pass; the stamp itself is committed to the repo;
+> `scipy`/`numpy` are declared in `requirements.txt`. And the §3.3 point 2
+> companion — the unweighted mean over ELIGIBLE task cells, with a pooled-PASS
+> disagreement reported rather than resolved — is now computed and reported;
+> it is consistent with the pooled read in all six units.
+
+**Consequence for §4(b), restated.** The clause verdict remains **DROP**, but
+its basis changed and the old narrative ("neither interaction excludes zero,
+an underpowered null") is superseded: on the corrected surface both
+interactions are positive and exclude zero (9B +8.12 [+4.61, +11.63],
+replicated; 35b +2.62 [+0.74, +4.50]), and the clause drops only because 35b's
+May reference effect is −0.11pp — an essentially null reference whose sign
+cannot meaningfully be matched. The corrected factorial is directionally
+consistent with the attribution in both models; the pre-registered criterion
+is applied as written and the clause stays out.
 
 ---
 

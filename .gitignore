@@ -6,6 +6,9 @@ __pycache__/
 .envrc
 .venv/
 *.egg-info/
+# results/ is ignored wholesale; one exception is force-added and stays tracked:
+# results/derived/gt_cache_stamp.json — the GT provenance stamp the frozen
+# nt-ster gates verify against (prereg §8 item 10).
 results/
 .ipynb_checkpoints/
 *.log

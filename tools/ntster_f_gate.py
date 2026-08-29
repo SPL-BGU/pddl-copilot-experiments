@@ -44,6 +44,7 @@ from ntster_common import (  # noqa: E402  (sibling module, same dir)
     Cell, arm_rate, build_pairs, completeness_gate, delivered, legacy,
     load_overlay_cells, paired_cluster_ci, pct,
 )
+from gt_cache_gate import assert_gate  # noqa: E402
 
 DEFAULT_OUT = Path("results/derived/ntster_f_gate.json")
 
@@ -99,7 +100,9 @@ def analyse(cell: Cell) -> dict:
     }
     x, n = arm_rate(cell, NEUTRAL_VARIANTS, surface=delivered)
     out["anchor_rate_pp"]["pooled"] = pct(x, n)
-    xl, nl = arm_rate(cell, NEUTRAL_VARIANTS, surface=legacy)
+    # Legacy = the stored online grade, a real measurement on every row.
+    xl, nl = arm_rate(cell, NEUTRAL_VARIANTS, surface=legacy,
+                      drop_indeterminate=False)
     out["anchor_rate_pp"]["pooled_legacy"] = pct(xl, nl)
     out["granularity"]["pooled"] = f_for(cell, task=None)
 
@@ -151,7 +154,17 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--markdown", type=Path, default=None,
                     help="also write the rendered table here")
+    ap.add_argument("--gt-cache", type=Path,
+                    default=Path("results/derived/gt_cache.json"))
+    ap.add_argument("--gt-stamp", type=Path,
+                    default=Path("results/derived/gt_cache_stamp.json"))
     args = ap.parse_args()
+
+    # §8 item 10: both frozen entry points call the GT gate before reading any
+    # trial. F consumes no ground truth directly, but its JSON feeds the §3.3
+    # eligibility classification, so the enforcement claim must hold here too.
+    gt_hash = assert_gate(args.gt_cache, args.gt_stamp)
+    print(f"gt gate: PASS {gt_hash[:12]}")
 
     cells = load_overlay_cells(args.overlay_dir)
     print(f"loaded {len(cells)} cell(s) from {args.overlay_dir}")
@@ -161,6 +174,7 @@ def main() -> int:
         "produced_by": "tools/ntster_f_gate.py",
         "prereg": "development/ntster_h4_prereg.md §3.2",
         "overlay_dir": str(args.overlay_dir),
+        "gt_gate_hash": gt_hash,
         "margin_pp": MARGIN_PP,
         "alpha": ALPHA,
         "surface": "delivered (overlay e2e)",

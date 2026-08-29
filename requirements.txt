@@ -13,3 +13,8 @@ jsonschema>=4.0.0
 
 matplotlib
 pandas
+
+# Direct imports of the frozen nt-ster analysis entry points
+# (tools/ntster_*.py); previously present only transitively.
+numpy
+scipy

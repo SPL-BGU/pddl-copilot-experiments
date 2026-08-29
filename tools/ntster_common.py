@@ -7,16 +7,21 @@ need — loading, dedup, the completeness gate, the paired estimator, and the
 interval machinery — so the two scripts cannot drift apart in how they read a
 cell or compute a CI.
 
-FREEZING. All three files are hashed together and the hashes are recorded in the
-prereg before the sync ping. Deliberately **self-contained**: nothing here
-imports from `.claude/skills/analyzer/`, because a frozen analysis that imports a
-live module is not frozen — an edit there would silently change a pre-registered
-result. Standard library plus numpy/scipy only.
+FREEZING. All frozen files are hashed together and the hashes are recorded in
+the prereg (§8 item 9 and its addenda) before pointing at data. Deliberately
+**self-contained**: nothing here imports from `.claude/skills/analyzer/`,
+because a frozen analysis that imports a live module is not frozen — an edit
+there would silently change a pre-registered result. Standard library plus
+numpy/scipy only.
 
-Surfaces (§3.1). Primary is **delivered** = the overlay's `e2e` field. For
-no-tools rows outside `simulate` the overlay passes the stored online grade
-through unchanged, so delivered and legacy coincide on ~93.4% of rows and the
-legacy column is a real second measurement only on `simulate`.
+Surfaces (§3.1). Primary is **delivered** = the overlay's `e2e` field, which is
+tri-state: `true` / `false` / `"indeterminate"` (censored at the snapshot cap,
+or no ground truth). Indeterminate rows are excluded from every estimator and
+reported as counts + extreme-imputation bounds, per §2.3(C)/§3.7 ("reported as
+bounds and never fed to the TOST"; "folded into neither side"). For no-tools
+rows outside `simulate` the overlay passes the stored online grade through
+unchanged, so delivered and legacy coincide on ~93.4% of rows and the legacy
+column is a real second measurement only on `simulate`.
 """
 
 from __future__ import annotations
@@ -185,14 +190,27 @@ def _think_from_name(name: str) -> str:
 
 
 def delivered(row: dict) -> bool:
-    """§3.1 primary surface. `e2e` is the overlay's delivered grade."""
-    return bool(row.get("e2e"))
+    """§3.1 primary surface. `e2e` is the overlay's delivered grade.
+
+    `e2e` is tri-state — the string "indeterminate" marks censored / ungradeable
+    rows, and `bool("indeterminate")` is True, so the comparison must be an
+    identity test, never a truthiness test (prereg §9.2 deviation D3).
+    """
+    return row.get("e2e") is True
 
 
 def legacy(row: dict) -> bool:
     """Stored online grade — the consistency column, a real second measurement
-    only on `simulate` (§3.1)."""
-    return bool(row.get("success"))
+    only on `simulate` (§3.1). The overlay stores it as `success_stored`
+    (`e2e_regrade.py`); no overlay row carries a `success` key."""
+    return bool(row.get("success_stored"))
+
+
+def is_indeterminate(row: dict) -> bool:
+    """Rows the overlay could not grade on the delivered surface — censored at
+    the snapshot cap, or missing ground truth. §2.3(C)/§3.7: excluded from every
+    estimator, reported separately, folded into neither side."""
+    return not isinstance(row.get("e2e"), bool)
 
 
 def is_censored(row: dict) -> bool:
@@ -258,7 +276,17 @@ def completeness_gate(cell: Cell, *, arms: Sequence[int] | None = None) -> GateR
                 imbalance = True
                 lines.append(f"({task}, v{v}): {got:,} rows != {expect:,}")
 
-    if cell.snapshot_caps and cell.snapshot_caps != {EXPECTED_SNAPSHOT_CAP}:
+    if not cell.snapshot_caps:
+        # An empty set means NO row carries `snapshot_cap` (a pre-snapshot_cap
+        # overlay, or detect_cap returned None). That is the exact "cap
+        # unverified" state the message below warns about; passing silently
+        # here is how the censor branches go untrustworthy without a trace.
+        ok = False
+        lines.append(
+            "no row carries `snapshot_cap` — the cap is unverified, so this "
+            "cell's censor branches are not trustworthy (§2.3(C), §3.1); "
+            "re-grade with a `detect_cap`-aware e2e_regrade before analysing")
+    elif cell.snapshot_caps != {EXPECTED_SNAPSHOT_CAP}:
         ok = False
         lines.append(
             f"snapshot_cap {sorted(cell.snapshot_caps)} != [{EXPECTED_SNAPSHOT_CAP}] — "
@@ -298,7 +326,8 @@ class Pair:
 
 def build_pairs(cell: Cell, *, lo: Sequence[int], hi: Sequence[int],
                 surface: Callable[[dict], bool] = delivered,
-                task: str | None = None) -> list[Pair]:
+                task: str | None = None,
+                drop_indeterminate: bool = True) -> list[Pair]:
     """Fixture-matched join: the trial key with the variant slot stripped.
 
     v11/v12/v13 cover byte-identical `(task, domain, problem, plan_label)` sets
@@ -306,6 +335,11 @@ def build_pairs(cell: Cell, *, lo: Sequence[int], hi: Sequence[int],
     exact rather than approximate. Unmatched fixtures are dropped and counted by
     the caller via the length difference — with a passing completeness gate there
     are none.
+
+    A pair with an indeterminate row on either side is dropped by default
+    (§2.3(C): censored rows are never fed to the TOST); `paired_bounds` reports
+    the range those rows could occupy. Pass `drop_indeterminate=False` only for
+    a surface that grades indeterminate rows itself.
     """
     if len(lo) != len(hi):
         raise ValueError("lo and hi must be the same length")
@@ -324,9 +358,53 @@ def build_pairs(cell: Cell, *, lo: Sequence[int], hi: Sequence[int],
             other = index.get((t, dom, prob, plan, vhi))
             if other is None:
                 continue
+            if drop_indeterminate and (is_indeterminate(row)
+                                       or is_indeterminate(other)):
+                continue
             pairs.append(Pair(task=t, domain=dom, problem=prob, plan_label=plan,
                               paraphrase=j, a=surface(row), b=surface(other)))
     return pairs
+
+
+def paired_bounds(cell: Cell, *, lo: Sequence[int], hi: Sequence[int],
+                  task: str | None = None) -> dict:
+    """Extreme-imputation bounds on the paired Δ̂, per §2.3(C) ("reported as
+    bounds").
+
+    Determinate pairs contribute their observed difference to both bounds; a
+    pair with an indeterminate row contributes its worst case to the lower bound
+    (steered side graded FAIL, anchor side graded SUCCESS) and its best case to
+    the upper bound (the reverse). The true Δ̂ under any grading of the
+    indeterminate rows lies inside [delta_lo_pp, delta_hi_pp].
+    """
+    index: dict[tuple, dict] = {}
+    for key, row in cell.rows.items():
+        if task is not None and key[K_TASK] != task:
+            continue
+        index[(key[K_TASK], key[K_DOMAIN], key[K_PROBLEM], key[K_PLAN],
+               key[K_VARIANT])] = row
+    d_lo: list[float] = []
+    d_hi: list[float] = []
+    n_indet = 0
+    for vlo, vhi in zip(lo, hi):
+        for (t, dom, prob, plan, v), row in index.items():
+            if v != vlo:
+                continue
+            other = index.get((t, dom, prob, plan, vhi))
+            if other is None:
+                continue
+            a_ind, b_ind = is_indeterminate(row), is_indeterminate(other)
+            if a_ind or b_ind:
+                n_indet += 1
+            a, b = float(delivered(row)), float(delivered(other))
+            d_lo.append((0.0 if b_ind else b) - (1.0 if a_ind else a))
+            d_hi.append((1.0 if b_ind else b) - (0.0 if a_ind else a))
+    if not d_lo:
+        return {"delta_lo_pp": math.nan, "delta_hi_pp": math.nan,
+                "n_pairs": 0, "n_pairs_indeterminate": 0}
+    return {"delta_lo_pp": 100.0 * sum(d_lo) / len(d_lo),
+            "delta_hi_pp": 100.0 * sum(d_hi) / len(d_hi),
+            "n_pairs": len(d_lo), "n_pairs_indeterminate": n_indet}
 
 
 # --------------------------------------------------------------------------
@@ -359,25 +437,56 @@ def _cluster_means(pairs: Sequence[Pair],
 
 
 def paired_cluster_ci(pairs: Sequence[Pair], key: Callable[[Pair], object],
-                      *, method: str, alpha: float = ALPHA) -> Interval:
-    """90% t interval on the per-cluster mean of the per-fixture paired difference.
+                      *, method: str, alpha: float = ALPHA,
+                      weighted: bool = False) -> Interval:
+    """90% t interval on the paired difference, clustered by `key`.
 
-    The estimate is the unweighted mean of cluster means. Under this design the
-    clusters are balanced, so it coincides with the row-level pooled difference;
-    `pooled_rate_pp` is reported alongside so any imbalance is visible rather
-    than absorbed.
+    The realized cluster count is appended to the method label — e.g.
+    "domain (k=20)" — so the label can never contradict the `k` field.
+
+    Unweighted (the registered §3.3 primary, domain clustering): the estimate is
+    the unweighted mean of cluster means. Domain clusters are balanced by design
+    (every domain carries the same per-task fixture counts), so it coincides
+    with the row-level pooled difference; `pooled_row_level_delta_pp` is
+    reported alongside so any residual imbalance (e.g. dropped censored pairs)
+    is visible rather than absorbed.
+
+    Weighted (the problem clustering, §9.2 deviation D5): the realized problem
+    clusters are unbalanced — the 100 shared (domain, problem) fixtures carry 42
+    pairs each while single-task fixtures carry 3 — so an unweighted mean of
+    cluster means estimates a task-reweighted quantity, not the registered
+    paired difference. The weighted form keeps the row-level paired mean as the
+    estimate and takes a cluster-robust (cluster-sum) SE with k−1 df.
     """
     if not pairs:
         return Interval(math.nan, math.nan, math.nan, math.nan, 0, method)
+    if weighted:
+        buckets: dict[object, list[float]] = defaultdict(list)
+        for p in pairs:
+            buckets[key(p)].append(p.d)
+        k = len(buckets)
+        n_total = len(pairs)
+        mean_d = sum(p.d for p in pairs) / n_total
+        est = mean_d * 100.0
+        label = f"{method} (k={k})"
+        if k < 2:
+            return Interval(est, math.nan, math.nan, math.nan, k, label)
+        resid_sq = sum((sum(ds) - len(ds) * mean_d) ** 2
+                       for ds in buckets.values())
+        se = math.sqrt(k / (k - 1) * resid_sq / (n_total ** 2)) * 100.0
+        tcrit = float(stats.t.ppf(1.0 - alpha / 2.0, k - 1))
+        hw = tcrit * se
+        return Interval(est, est - hw, est + hw, hw, k, label)
     means, labels = _cluster_means(pairs, key)
     k = len(means)
+    label = f"{method} (k={k})"
     est = float(means.mean()) * 100.0
     if k < 2:
-        return Interval(est, math.nan, math.nan, math.nan, k, method)
+        return Interval(est, math.nan, math.nan, math.nan, k, label)
     se = float(means.std(ddof=1)) / math.sqrt(k) * 100.0
     tcrit = float(stats.t.ppf(1.0 - alpha / 2.0, k - 1))
     hw = tcrit * se
-    return Interval(est, est - hw, est + hw, hw, k, method)
+    return Interval(est, est - hw, est + hw, hw, k, label)
 
 
 def paired_cluster_bootstrap(pairs: Sequence[Pair], key: Callable[[Pair], object],
@@ -478,17 +587,35 @@ def holm(pvalues: dict[str, float], alpha: float = ALPHA) -> dict[str, bool]:
 # --------------------------------------------------------------------------
 
 def arm_rate(cell: Cell, variants: Sequence[int], *, task: str | None = None,
-             surface: Callable[[dict], bool] = delivered) -> tuple[int, int]:
-    """(successes, n) for one arm at pooled or per-task granularity."""
+             surface: Callable[[dict], bool] = delivered,
+             drop_indeterminate: bool = True) -> tuple[int, int]:
+    """(successes, n) for one arm at pooled or per-task granularity.
+
+    By default n counts only determinate rows (§2.3(C): indeterminate rows are
+    folded into neither side); `arm_indeterminate` counts the excluded rows.
+    Pass `drop_indeterminate=False` for the legacy surface, whose stored online
+    grade is a real measurement on every row.
+    """
     x = n = 0
     for key, row in cell.rows.items():
         if key[K_VARIANT] not in variants:
             continue
         if task is not None and key[K_TASK] != task:
             continue
+        if drop_indeterminate and is_indeterminate(row):
+            continue
         n += 1
         x += int(surface(row))
     return x, n
+
+
+def arm_indeterminate(cell: Cell, variants: Sequence[int],
+                      *, task: str | None = None) -> int:
+    """Count of indeterminate rows excluded from `arm_rate`'s denominator."""
+    return sum(1 for key, row in cell.rows.items()
+               if key[K_VARIANT] in variants
+               and (task is None or key[K_TASK] == task)
+               and is_indeterminate(row))
 
 
 def pct(x: int, n: int) -> float:
@@ -500,11 +627,12 @@ def pct(x: int, n: int) -> float:
 # --------------------------------------------------------------------------
 
 def frozen_hashes() -> dict[str, str]:
-    """sha256 of the three frozen files, for the prereg record."""
+    """sha256 of every frozen file, for the prereg record (§8 item 9 + addenda)."""
     import hashlib
     here = Path(__file__).resolve().parent
     out = {}
-    for name in ("ntster_common.py", "ntster_f_gate.py", "ntster_h4.py"):
+    for name in ("ntster_common.py", "ntster_f_gate.py", "ntster_h4.py",
+                 "gt_cache_gate.py", "ntster_factorial.py"):
         fp = here / name
         if fp.exists():
             out[name] = hashlib.sha256(fp.read_bytes()).hexdigest()

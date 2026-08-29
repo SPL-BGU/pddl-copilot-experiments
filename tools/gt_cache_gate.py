@@ -36,6 +36,14 @@ from pathlib import Path
 DEFAULT_CACHE = Path("results/derived/gt_cache.json")
 DEFAULT_STAMP = Path("results/derived/gt_cache_stamp.json")
 
+# The ratified apparatus pin (prereg §8 item 10, stamped 2026-08-17). The stamp
+# proves the cache matches ITS stamp; this constant proves both match the
+# preregistered apparatus — without it a reproducer who rebuilds the cache and
+# hand-writes a stamp from its own canonical_hash would pass the gate even if
+# ground truth had drifted from the ratified oracle.
+PREREG_PINNED_HASH = (
+    "6af57125bde3ec2bb7262b4db23449e2b504f0c721c4412f8eb1151f744ca945")
+
 # Written at pddl_eval/domains.py:174, consumed nowhere. Its serialization order
 # is process-dependent, so it is excluded from the canonical hash.
 UNSTABLE_DIAGNOSTIC_FIELDS = ("domain_validation_raw",)
@@ -82,6 +90,16 @@ def assert_gate(cache_path: Path = DEFAULT_CACHE,
             "Ground truth moved since the stamp was written, so any number derived "
             "from it is not comparable to the pre-registered apparatus. Do not "
             "proceed: rebuild, re-diff against the backup, and re-stamp explicitly."
+        )
+    if actual != PREREG_PINNED_HASH:
+        raise SystemExit(
+            "gt gate: FAIL — cache and stamp agree with each other but NOT with "
+            "the preregistered pin.\n"
+            f"  pinned (prereg §8 item 10) {PREREG_PINNED_HASH}\n"
+            f"  actual                     {actual}\n"
+            "A rebuilt cache with a fresh stamp is self-consistent by "
+            "construction; only this pin ties the analysis to the ratified "
+            "apparatus."
         )
     return actual
 

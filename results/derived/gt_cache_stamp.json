@@ -1,0 +1,43 @@
+{
+  "purpose": "Provenance stamp for results/derived/gt_cache.json, required by ntster_h4_prereg.md \u00a78 item 10 before the nt-ster H4 submit.",
+  "built_at": "2026-08-17",
+  "builder": "tools/build_gt_cache.py",
+  "builder_blob_sha": "c278d24f1755e3428ef1a932e4b603c0f4b4bb7d",
+  "gate": {
+    "field": "canonical_sha256_excluding_domain_validation_raw",
+    "value": "6af57125bde3ec2bb7262b4db23449e2b504f0c721c4412f8eb1151f744ca945",
+    "why_not_file_sha256": "domain_validation_raw serializes the validator's [WARNING] lines in a process-dependent order (identical multiset, identical length, different order \u2014 measured 2026-08-17 across all 100 problems). It is written at pddl_eval/domains.py:174 and read by no grading code, so a whole-file hash is unstable by construction and must not be used as the gate."
+  },
+  "file_sha256_informational": "77d4184ed872dd4bd7a22747c2e716eb74b86edc94420e47c92daf1684d04c7e",
+  "contents": {
+    "domains": 20,
+    "problems": 100,
+    "negative_fixtures": 60
+  },
+  "provenance": {
+    "experiments_repo": {
+      "branch": "run/ntster-h4",
+      "head": "390c1b4736a5b21f8af62ae2db610929d0a4c371",
+      "domains_tree": "8cde5762f74d6acba97e19d3b4a83cdfb946266b"
+    },
+    "marketplace_repo": {
+      "head": "f0e2c61d6bb0236d1e611238e04d0d20959bb96e",
+      "pinned_commit": "5e4f9c0bfbea0fdfe802edb08eaa2aa9d2095d38",
+      "pddl_solver_tree": "2ece6ce0272f86aff37e1fb18f69b7084743e319",
+      "pddl_validator_tree": "b090092c67292aa799aca11bca380ced8114674a",
+      "pddl_solver_tree_at_pin": "2ece6ce0272f86aff37e1fb18f69b7084743e319",
+      "pddl_validator_tree_at_pin": "b090092c67292aa799aca11bca380ced8114674a",
+      "note": "HEAD is 2 additive commits past the pin (visualizer plugin), but both oracle plugin subtrees hash identically to the pin, so this IS a build from the pinned marketplace commit for GT purposes."
+    },
+    "plugin_venv_mcp": {
+      "pddl-solver": "1.27.0",
+      "pddl-validator": "1.27.1",
+      "note": "laptop venvs; the cluster was refreshed to 1.29.0 on 2026-08-17. GT proved invariant across both."
+    }
+  },
+  "equivalence_check": {
+    "against": "the unstamped 2026-07-11 cache, preserved at results/derived/gt_cache_20260711.prestamp.json",
+    "canonical_hashes_match": true,
+    "result": "Ground truth is invariant across the 2026-07-11 \u2192 2026-08-17 gap, across the mcp client-library bump, and across the 2 additive marketplace commits. Every grading-relevant field is byte-identical."
+  }
+}
