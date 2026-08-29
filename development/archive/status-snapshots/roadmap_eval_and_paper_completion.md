@@ -132,7 +132,7 @@ out?
 > which was 0.0 everywhere due to a missing-FAST_DOWNWARD grading artifact;
 > re-graded locally (Rosetta VAL + plugin FD, no Docker/VPN) → blocksworld 28.2
 > (== GPT-4's 28.4), mystery 0.4, logistics 2.8. Full table + findings:
-> `development/planbench/planbench_frontier_haiku_nt.md`. Next: WT backend +
+> `development/archive/planbench/planbench_frontier_haiku_nt.md`. Next: WT backend +
 > pre-registered Act-4 predictions (see that doc's "Next" section).
 
 **D4 — The other parked items** (ISS-024b guided_json fix · steering reframe ·

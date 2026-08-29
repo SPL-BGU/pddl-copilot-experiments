@@ -1,15 +1,16 @@
 # Pre-registration — nt-ster H4 control + nt-neut anchor (+ Llama second-family probe)
 
 **Status:** **RATIFIED 2026-08-11** (all four §10 lines; Omer, via R2/R3 in
-`development/remaining_work_20260811.md`). Design frozen. The submit is still gated on
+`development/STATUS.md`). Design frozen. The submit is still gated on
 the §8 readiness items 7/9/10/14 and on Omer's explicit go-ahead plus a VPN window.
 Slots were FILLED 2026-07-25 and accepted the same day.
 **Date:** 2026-07-24, amended 2026-07-25. **Binding source:**
 `development/journal_decisions_memo.md` §6 (accepted D-J5, 2026-07-24). H4 itself was
-pre-registered in May (`development/sweep_prompt_bank_design.md:46`); this document
+pre-registered in May (`development/reference/sweep_prompt_bank_design.md:46`); this document
 locks the July execution + analysis before any data exists.
 **Reasoning trail, provenance, and rejected alternatives:**
-`development/ntster_h4_slot_recommendations.md` (34-agent evidence workflow:
+`ntster_h4_slot_recommendations.md` [never committed to this repo — user-local
+scratch; not recoverable from git] (34-agent evidence workflow:
 8 investigations × 3 adversarial lenses + synthesis + completeness critic).
 
 **Corrections applied inline are marked `[corrected 07-25: …]`. Eleven premises in the
@@ -767,7 +768,7 @@ Slot answers are filled per Omer's acceptance 2026-07-25. Signing below confirms
 design, the corrected price, and the two scope items called out explicitly.
 
 **RATIFIED by Omer 2026-08-11**, in session, via decisions R2 ("ratify") and R3
-("keep as sequenced") in `development/remaining_work_20260811.md`. All four lines
+("keep as sequenced") in `development/STATUS.md`. All four lines
 below are signed by that answer. Price in hand at the time of signing: the accepted
 shape costs **~46 GPU-h (`think=off`, 3 models, plain) + ~110-150 GPU-h (`think=on`,
 9B + 35b, decoupled) ≈ 156-196 GPU-h total**, against the memo's obsolete ~92. The

@@ -12,8 +12,8 @@ shape-B text follows unchanged for the record: four cells
 ({ordinary, Mystery} × {tools, matched-NT} on blocksworld t1) at the **whole 500-instance
 pool**, no subsampling, model-authored PDDL, no runner-side spend cap, t2 and t3 both out,
 prediction (iii) struck. Reasoning, provenance and rejected alternatives:
-`development/planbench/planbench_wt_prereg_decisions.md`.
-**Fresh-session pickup:** `development/planbench/PLANBENCH_WT_HANDOFF.md` (verified state,
+`development/reference/planbench_wt_prereg_decisions.md`.
+**Fresh-session pickup:** `development/archive/planbench/PLANBENCH_WT_HANDOFF.md` (verified state,
 decided-do-not-reopen list, traps, and the owed-work order).
 Corrections applied inline are marked `[corrected 07-25: …]`; five premises in the 07-24
 draft were measurably false and two of them would have produced wrong numbers silently
@@ -21,7 +21,7 @@ draft were measurably false and two of them would have produced wrong numbers si
 **Date:** 2026-07-24, amended 2026-07-25 and 2026-07-26. **Binding source:**
 `development/journal_decisions_memo.md` §4
 (accepted D-J3, 2026-07-24); scoped to UNRUN cells only — the 06-22 bare-NT rows
-(graded, `development/planbench/planbench_frontier_haiku_nt.md`) are untouched and
+(graded, `development/archive/planbench/planbench_frontier_haiku_nt.md`) are untouched and
 become the published-apparatus replication layer.
 
 ## 0. What this arm is, in plain terms
@@ -631,7 +631,7 @@ and to the 2026-08-15 kill date after which this converts to pre-registered futu
 ## 10-R. RATIFIED 2026-07-30 (Omer)
 
 The 07-26 comment above was answered by
-`development/planbench/planbench_wt_significance_brief.md` and the source verification in
+`development/archive/planbench/planbench_wt_significance_brief.md` and the source verification in
 `planbench_verification_20260730.md`. Omer's slot answers, 2026-07-30:
 
 | slot | answer |

@@ -23,7 +23,7 @@ from .scoring import FR_OK, relabel_truncated_taxonomy
 
 # Sweep-5 neutral variants — paired with STEERED_VARIANTS for the analyzer's
 # four-arm split. v0-v10 (legacy sweep-3/4) map to *-legacy so the analyzer
-# can still render historical corpora; see development/sweep_prompt_bank_design.md.
+# can still render historical corpora; see development/reference/sweep_prompt_bank_design.md.
 NEUTRAL_VARIANTS: frozenset[int] = frozenset({11, 12, 13})
 
 
@@ -58,7 +58,7 @@ def _new_token_agg() -> dict:
 
     `completion_samples` buffers per-trial completion counts so the row can
     emit `completion_median` (a sweep-5 primary outcome per
-    development/sweep_prompt_bank_design.md §0). The list itself is internal —
+    development/reference/sweep_prompt_bank_design.md §0). The list itself is internal —
     it is never serialized into summary_*.json; only the computed median is.
     Memory cost is ~8 bytes/trial × ≤9120 trials/cell = <80KB/cell, negligible.
     """

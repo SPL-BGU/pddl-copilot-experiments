@@ -8,6 +8,8 @@ See `README.md` for the sibling-project (`../pddl-copilot/`) background, marketp
 
 Paper-related decisions and bottom-line conclusions from our discussions are logged in `development/paper_notes_discussions.md` — append a dated, bulleted entry whenever a paper-related topic is decided.
 
+`development/` is organised in three tiers where **the path carries the status**: root = live, `reference/` = stable spec (never a status), `archive/` = provenance only (never a status, number, or next action). Start at `development/README.md`. Three files answer most questions: **`STATUS.md`** (what is left — stable name, edited in place, never write a dated successor), **`NUMBERS.md`** (the frozen value of every headline figure and the stale readings it replaces), **`MOVES.md`** (old→new paths, for the pre-2026-08-29 paths still cited in the append-only logs).
+
 ## Paper writing & Overleaf sync
 
 The AAAI-27 paper lives in `paper/` and syncs to an Overleaf project (owned by co-author Yarin) via a **clone-bridge, NOT git-subtree**. Before any paper-sync work, read `development/paper-git-overleaf-instructions.md`. Key rules: paper edits go on the `paper/aaai27` branch; the bridge (`development/sync_overleaf.sh`) only syncs `paper/`; **always `sync_overleaf.sh pull` (+ commit) before `push`** — a blind push clobbers coauthors' Overleaf web edits (the push guards against it). Never force-push to Overleaf (it's prohibited). `paper/` compiles standalone (`aaai2027.sty`/`.bst` live at `paper/` root; do not hand-edit them).
@@ -27,7 +29,7 @@ Never fast-forward or merge to main without a PR: branch first, open a PR, and m
 
 ## Data rigor
 
-Before reporting any experiment number: verify the aggregation field is correct for the task (delivered vs tool-verified, censoring/at-cap handling), and verify against the canonical corpora only — `results/sweep5v2-live` + `*_sweep6`; `results/sweep5-cluster-20260530` is a stale partial mirror. Check for existing runs before recommending a rerun. Use `/verify-claims` before paper edits and `/resume-verify` when picking up from a handoff doc.
+Before reporting any experiment number: verify the aggregation field is correct for the task (delivered vs tool-verified, censoring/at-cap handling), and verify against the canonical corpora only — `results/sweep5v2-live` + `*_sweep6`; `results/sweep5-cluster-20260530` is a stale partial mirror. Check for existing runs before recommending a rerun. **Check `development/NUMBERS.md` before quoting any headline figure** — several exist at more than one value and it names the frozen one. Use `/verify-claims` before paper edits and `/resume-verify` when picking up from a handoff doc.
 
 ## Plugin-isolation rule (inherited from sibling)
 

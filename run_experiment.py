@@ -610,7 +610,7 @@ def main():
                         "cells are skipped at emit. Set this flag for the "
                         "sweep-5 control submit to emit those cells as the "
                         "4th arm (H4 falsification check). See "
-                        "development/sweep_prompt_bank_design.md §0 / §2.6.")
+                        "development/reference/sweep_prompt_bank_design.md §0 / §2.6.")
     p.add_argument("--temperature", type=float, default=TEMPERATURE,
                    help="LLM sampling temperature (paper uses 0)")
     p.add_argument("--conditions", choices=list(CONDITION_CHOICES), default="both",
@@ -689,7 +689,7 @@ def main():
                         "Applied within each filtered domain. Default: all.")
     # Smoke harness — fixed slice for the PR-1 byte-equal anchor gate.
     # Auto-overrides several flags inside async_main; see EXPERIMENTS_FLOW
-    # / development/FRAMEWORK_EXTENSION_PLAN.md §3.1.
+    # / development/archive/plans-executed/FRAMEWORK_EXTENSION_PLAN.md §3.1.
     p.add_argument("--smoke", action="store_true",
                    help="Run the smoke slice: 1 domain × 1 problem × 1 prompt "
                         "variant × 5 tasks × 2 conditions × 2 think modes × "
