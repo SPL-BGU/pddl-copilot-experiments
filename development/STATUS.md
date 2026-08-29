@@ -86,17 +86,24 @@ Limitations in the body; per-task table, F gate, MDE table, drift check, the on-
 apparatus failure and the two §9.1 deviations in an appendix. Scope approved
 (final readout O4); no tex touched.
 
-Two things the integration must carry, both pre-registered and neither optional:
+**2026-08-30: post-review corrective re-run.** The PR #96 correctness review found
+defects in the frozen analysis code (censored rows scored as successes, a mis-specified
+governing estimator, a degenerate mechanism section — prereg §9.2). Code fixed,
+re-frozen, everything regenerated: **verdicts unchanged, secondary numbers revised** —
+quote only NUMBERS.md / the revised readout.
 
-- **§5's PASS sentence drops its "replicated attribution" clause.** The §4(b) factorial
-  did not meet its criterion (9B +0.83 [−1.98, +3.64], 35b −0.00 [−2.21, +2.21]). This
-  is a null on an underpowered diagnostic that structurally excludes gemma — the model
-  owning the +72pp has no `think=on` no-tools leg — and is **not** evidence against the
-  attribution.
-- **Two executed deviations get declared** (`reference/ntster_h4_prereg.md` §9.1): the
-  roster expanded 3→4 models after interim results, and the `think=on` arm was rerun
-  with `--reasoning-parser none` after the preregistered configuration produced a void
-  corpus.
+Things the integration must carry, pre-registered and none optional:
+
+- **§5's PASS sentence drops its "replicated attribution" clause.** After the 08-30
+  correction both §4(b) interactions are positive and exclude zero (9B +8.12
+  [+4.61, +11.63], replicated; 35b +2.62 [+0.74, +4.50]), but 35b fails sign-match
+  against an essentially null (−0.11pp) May reference, so the per-model conjunction is
+  not met. Directionally consistent with the attribution; the clause is still removed,
+  as pre-registered.
+- **The deviations get declared** (`reference/ntster_h4_prereg.md` §9.1 + §9.2): the
+  roster expanded 3→4 models after interim results; the `think=on` arm was rerun with
+  `--reasoning-parser none` after the preregistered configuration produced a void
+  corpus; and the 2026-08-30 post-review code corrections with the re-freeze.
 
 **Follow-on now unblocked:** the Llama-3.1-8B second-family probe (R3) was sequenced
 strictly after nt-ster and no longer has a blocker. It needs its own branch + PR for a

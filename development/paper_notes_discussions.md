@@ -1653,3 +1653,49 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **O4 — integration scope approved** (caveat-only cap: CALL beat + Limitations in body;
   per-task table, F gate, MDE, drift check, apparatus-failure declaration and the two
   §9.1 deviations in an appendix). **Tex deferred to a later session. No tex touched.**
+
+## 2026-08-30 — PR #96 review: frozen-code fixes, re-freeze, corrected numbers (verdicts unchanged)
+
+- **A 15-finding correctness review of PR #96 audited the frozen nt-ster analysis code
+  and found real defects**; all were fixed under the prereg's own protocol — declared
+  deviations (`reference/ntster_h4_prereg.md` §9.2, deviations 3–9) plus a re-freeze of
+  all five files (§8 item 9, second addendum) — and the whole analysis was regenerated
+  from the checkpointed corpus. **The six-unit all-PASS vector and the paper-level PASS
+  branch are unchanged.** The revised readout and NUMBERS.md are the only quotable
+  sources now; every pre-revision secondary number is stale.
+- **The material defects:** (1) the delivered surface counted censored
+  (`e2e = "indeterminate"`) rows as successes — §2.3(C)'s exclusion/bounds were never
+  implemented; (2) the "problem (k=100)" clustering realized 220 unbalanced clusters and
+  its unweighted mean-of-cluster-means was not the paired difference, yet it governed
+  every headline CI — replaced by a size-weighted cluster-robust interval; (3) the §3.7
+  mechanism section read fields the overlay does not carry, so it was degenerate
+  (APPARATUS 13.8–36.0%, all six reads self-VOID) — recomputed from raw trial rows, true
+  APPARATUS is 0.00% everywhere and the mechanism block is now valid; (4) the legacy
+  consistency surface read a nonexistent key and was constant False; (5) eligibility was
+  gated on the governing rather than the registered domain half-width (same 8-cell
+  ELIGIBLE family either way).
+- **Corrected headline secondary figures:** realized MDE **5.82–6.25pp** (stale
+  6.47–6.80 was wrong twice over — the true pre-revision range was 6.47–7.11); 4B
+  `simulate` −14.00 NOT-EQUIVALENT was largely the censoring artifact (true −2.43
+  [−5.33, +0.47] INDETERMINATE; **no NOT-EQUIVALENT cell exists in the family**); the
+  matched-cell attribution — gemma `validate_plan` off, +72.0 vs +0.63 [−0.46, +1.73] —
+  is **bit-identical** (no censoring in that cell).
+- **§4(b) factorial, corrected: the clause still DROPS but the story changed.** With
+  censored rows no longer scored as successes on both legs, both interactions are
+  positive and exclude zero: 9B **+8.12 [+4.61, +11.63]** — fully replicated (sign
+  matches its +11.38pp May reference) — and 35b **+2.62 [+0.74, +4.50]**, which fails
+  only sign-match against a −0.11pp (essentially null) May reference. The pre-registered
+  per-model conjunction is unmet, so §5's PASS sentence still drops the bracketed
+  clause; but the "underpowered null" narrative is superseded — the corrected factorial
+  is directionally consistent with the attribution in both models.
+- **Enforcement hardened for the record:** `ntster_f_gate.py` now actually calls the GT
+  gate (the §8 item 10 "both entry points" record was false for it until now); the GT
+  gate compares against the preregistered canonical hash as a code constant and the
+  stamp is committed to the repo; the pooled F gate and the §3.4 FAIL-branch routing are
+  enforced rather than recorded; the factorial refuses incomplete legs and ambiguous
+  overlay cells; the §3.3 point-2 eligible-task-mean companion is now computed
+  (consistent with the pooled read in all six units).
+- **Writing consequence:** the appendix deviation paragraph now covers §9.1 + §9.2, and
+  any drafted sentence quoting the mechanism-VOID, the −3.03 4B pooled cell, the old
+  MDE range, or the "neither interaction excludes zero" factorial reading must be
+  re-sourced from the revised readout. No tex touched.
