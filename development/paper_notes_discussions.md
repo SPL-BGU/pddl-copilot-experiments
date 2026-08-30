@@ -1699,3 +1699,18 @@ validated by an independent ranking subagent (the user asked for a second perspe
   any drafted sentence quoting the mechanism-VOID, the −3.03 4B pooled cell, the old
   MDE range, or the "neither interaction excludes zero" factorial reading must be
   re-sourced from the revised readout. No tex touched.
+
+## 2026-08-30 — Freeze protocol v2 adopted as a skill (post-PR-96 retrospective)
+
+- **Decision (Omer):** the PR #96 retrospective's process fixes become a standing,
+  agent-executable gate, not prose. New skill `.claude/skills/freeze-protocol/SKILL.md`;
+  it fires before hashing any preregistered analysis entry point, when writing a new
+  prereg's blocking-prerequisites section, and before ratifying a readout produced by
+  frozen code that never passed the gate.
+- **The one structural change:** the adversarial code review moves *inside* the freeze
+  ordering — freeze candidate → typed-load / registered-constant-asserts /
+  clause-traceability / synthetic-fixture / review → hash → data. In v1 that review ran
+  after the ratified readout shipped, so all 15 findings became declared deviations
+  (§9.2) instead of ordinary pre-freeze edits.
+- **Binds forward:** the two journal-phase preregs still owed before any spend, and the
+  Llama second-family probe under the nt-ster prereg, run under v2.
