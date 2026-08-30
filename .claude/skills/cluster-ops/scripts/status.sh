@@ -28,6 +28,12 @@
 # `nt-ster` column in the matrix. Each logical column has a uniform
 # 4560-trial denominator (3 variants × 1520 trials/variant).
 #
+# EXCEPTION: `--ntster` (added 2026-08-20). The nt-ster H4 control run is
+# the one submit that DOES pass --include-no-tools-steered, so under that
+# profile the no-tools cell splits into nt-neut + nt-ster, 4560 each
+# against a 9120-row cell file. Do not read an nt-ster column under any
+# other profile — there is nothing to fill it.
+#
 # Arm semantics (which cells get filled by which submit):
 #   no-tools-neutral    (v11-13) — main sweep-6 submit
 #   tools_all-neutral   (v11-13) — main sweep-6 submit (same run as steered)
@@ -129,6 +135,7 @@ while [[ $# -gt 0 ]]; do
         --bench)                bench="$2"; shift 2 ;;
         --decoupled)            profile="decoupled"; shift ;;
         --iss024d)              profile="iss024d"; shift ;;
+        --ntster)               profile="ntster"; shift ;;
         -h|--help)
             _show_help 2 48
             cat <<'EOF'
@@ -147,6 +154,16 @@ while [[ $# -gt 0 ]]; do
                              gemma; RUN_TAG defaults to `iss024d-e2e`):
                              5 models × one column (on / tl-neut). See
                              the Profiles note above.
+  --ntster                   Track the nt-ster H4 control run (jobs
+                             20392775 off-mode + 20392801 on-mode;
+                             RUN_TAG defaults to `ntster-h4`). This is
+                             the ONLY profile that renders the nt-ster
+                             column: it splits each no-tools cell into
+                             its neutral (v11-13) and steered (v14-16)
+                             halves, 4560 each against the 9120-row cell
+                             file. gemma has no think=on leg by design,
+                             so that slot renders n/a and is excluded
+                             from the roll-up denominator.
 EOF
             exit 0 ;;
         *)
@@ -173,6 +190,8 @@ if [[ "$profile" == "decoupled" ]]; then
     RUN_TAG="${RUN_TAG_ENV:-decoupled-thinkon}"
 elif [[ "$profile" == "iss024d" ]]; then
     RUN_TAG="${RUN_TAG_ENV:-iss024d-e2e}"
+elif [[ "$profile" == "ntster" ]]; then
+    RUN_TAG="${RUN_TAG_ENV:-ntster-h4}"
 else
     RUN_TAG="${RUN_TAG_ENV:-sweep6}"
 fi
@@ -305,8 +324,13 @@ CELLS = [("on","no-tools-neutral"),
 # Logical cond → short column tag, shared by the header builders and
 # cell_label so every renderer derives its labels from CELLS (no drift).
 SHORT_CELL = {"no-tools-neutral":  "nt-neut",
+              "no-tools-steered":  "nt-ster",
               "tools_all-neutral": "tl-neut",
               "tools_all-steered": "tl-ster"}
+# (model, think) slots that do not exist BY DESIGN for the active profile.
+# Kept distinct from "empty" so an intentionally-absent cell never renders as
+# a stalled or pending one — that misread is the whole reason this exists.
+EXCLUDED_CELLS = set()
 # --decoupled profile (development/archive/decoupled/decoupled_run_handoff.md, job 18426027):
 # the split-budget no-tools think=on sweep fills exactly ONE logical column
 # (on / nt-neut) for the 4 Qwens — gemma is excluded (no <think>, so its
@@ -337,11 +361,30 @@ elif profile == "iss024d":
     CELLS = [("on", "tools_all-neutral")]
     SWEEP_LABEL = "iss024d"
     HDR_NOTE = "denom 4560 · with-tools (tools_all_minimal) v11-13 · think=on · parser-off · jobs 19293221+19314599"
+elif profile == "ntster":
+    # nt-ster H4 control (development/reference/ntster_h4_prereg.md; jobs 20392775
+    # off-mode + 20392801 on-mode, submitted 2026-08-20). This is the ONLY
+    # profile that populates an nt-ster column, because it is the only run
+    # that passes --include-no-tools-steered: both arms land in ONE 9,120-row
+    # cell file and the split here is a row-level grep on prompt_variant.
+    #
+    # think=off covers all three models on the plain apparatus; think=on
+    # covers 9B + 35b only, on the decoupled-budget apparatus — gemma has no
+    # <think> tokens, so it was deliberately excluded (prereg §2.3(B) scope
+    # note). That absence is marked below rather than left to look empty.
+    ROSTER = ["Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]
+    CELLS = [("off", "no-tools-neutral"), ("off", "no-tools-steered"),
+             ("on",  "no-tools-neutral"), ("on",  "no-tools-steered")]
+    EXCLUDED_CELLS = {("gemma4_26b-a4b", "on")}
+    SWEEP_LABEL = "nt-ster H4"
+    HDR_NOTE = ("denom 4560/arm (9120/cell file) · no-tools · neut=v11-13 "
+                "ster=v14-16 · off=plain 3 models, on=decoupled 9B+35b "
+                "(gemma n/a by design) · jobs 20392775+20392801")
 COL_HEADERS = [f"{th} / {SHORT_CELL.get(c, c)}" for th, c in CELLS]
 # Uniform per-column denominator: each logical column covers 3 variants ×
 # 1520 trials/variant = 4560. 1520 trials/variant is the sweep-3-onward
 # corpus (CHANGELOG.md:714).
-DENOM = {"no-tools-neutral":4560,
+DENOM = {"no-tools-neutral":4560, "no-tools-steered":4560,
          "tools_all-neutral":4560, "tools_all-steered":4560}
 # Maps a logical (split) cond to the underlying dirname cond so queue/
 # running attribution from the sbatch layer fans back out to its logical
@@ -349,6 +392,7 @@ DENOM = {"no-tools-neutral":4560,
 # `cond=tools_all_minimal` sbatch.
 LOGICAL_TO_DIR_COND = {
     "no-tools-neutral":  "no-tools",
+    "no-tools-steered":  "no-tools",
     "tools_all-neutral": "tools_all_minimal",
     "tools_all-steered": "tools_all_minimal",
 }
@@ -378,6 +422,17 @@ if profile == "decoupled":
 # default) as over-budget when they have headroom.
 elif profile == "iss024d":
     TIME_LIMIT_H_BY_MODEL = {m: 72 for m in ROSTER}
+
+# Per-(model, think) wall override. The by-model table cannot express nt-ster,
+# whose two submits carry DIFFERENT walls: off-mode asked 5-00:00:00 and
+# on-mode 7-00:00:00 (the 9B on-cell projects to ~105h, which overruns 5 days
+# once the +30% node-speed spread is applied). Collapsing both to one number
+# would either false-flag every off cell or silently under-watch the one cell
+# that can actually time out. Consulted before TIME_LIMIT_H_BY_MODEL.
+TIME_LIMIT_H_BY_CELL = {}
+if profile == "ntster":
+    TIME_LIMIT_H_BY_CELL = {(m, "off"): 120 for m in ROSTER}
+    TIME_LIMIT_H_BY_CELL.update({(m, "on"): 168 for m in ROSTER})
 
 # Job-name short-cond → full cond (used when array tasks have per-cell names).
 # `tools-pt`/`tools_pt` keys retained for backwards-compatibility with
@@ -446,6 +501,13 @@ COND_SPLIT = {
 # steered slice is discarded rather than rendered.
 if profile == "iss024d":
     COND_SPLIT = {"tools_all_minimal": ("tools_all-neutral", None)}
+# nt-ster H4 is the one run that DOES emit the no-tools steered arm
+# (--include-no-tools-steered), so its no-tools dir splits into both halves
+# instead of discarding the steered slice. Both arms live in one 9,120-row
+# cell file, interleaved by one process against one vLLM server, which is
+# exactly why the H4 contrast has zero config drift between the arms.
+elif profile == "ntster":
+    COND_SPLIT = {"no-tools": ("no-tools-neutral", "no-tools-steered")}
 tag_suffix = "_" + run_tag if run_tag else ""
 counts, unknown, archived_canonical, archived_legacy = {}, [], [], []
 malformed = 0   # finding #10: count silently-dropped count_raw lines and warn at end.
@@ -698,9 +760,14 @@ def parse_elapsed_h(s):
 
 # ---- Roll-up totals (shared by both renderers) ----
 done_cnt = sum(1 for d in deltas.values() if d["now"] >= d["denom"])
-total_expected = len(ROSTER) * len(CELLS)
+# Cells excluded by design are removed from BOTH the count and the trial
+# denominator. Leaving them in would understate coverage forever and make a
+# finished run read as permanently incomplete.
+LIVE_SLOTS = [(m, th, c) for m in ROSTER for th, c in CELLS
+              if (m, th) not in EXCLUDED_CELLS]
+total_expected = len(LIVE_SLOTS)
 total_now = sum(d["now"] for d in deltas.values())
-total_denom = len(ROSTER) * sum(DENOM[c] for _, c in CELLS)
+total_denom = sum(DENOM[c] for _, _, c in LIVE_SLOTS)
 coverage = (100*total_now/total_denom) if total_denom else 0
 
 watch = []
@@ -717,7 +784,8 @@ for cell, d in deltas.items():
     if dir_cell not in cell_running: continue
     seen_dirs.add(dir_cell)
     elapsed_h = parse_elapsed_h(cell_running[dir_cell]["elapsed"])
-    budget_h = TIME_LIMIT_H_BY_MODEL.get(m, TIME_LIMIT_H_DEFAULT)
+    budget_h = TIME_LIMIT_H_BY_CELL.get(
+        (m, th), TIME_LIMIT_H_BY_MODEL.get(m, TIME_LIMIT_H_DEFAULT))
     # Watch lines now name the dir-level sbatch (e.g. "Qwen3.5:9B on/tools_all")
     # since the ETA covers BOTH neutral and steered halves of that run.
     dir_label = f"{DISPLAY[m]} {th}/{LOGICAL_TO_DIR_COND.get(c, c)}"
@@ -757,6 +825,9 @@ def render_markdown():
         row = [f"**{DISPLAY[m]}**"]
         for th, c in CELLS:
             cell = (m, th, c)
+            if (m, th) in EXCLUDED_CELLS:
+                row.append("_n/a_")
+                continue
             st = cell_status(cell)
             if cell in counts:
                 n = counts[cell]; denom = DENOM[c]
@@ -876,6 +947,9 @@ def render_terminal(use_color):
         row = _pad(DISPLAY[m], MODEL_W)
         for th, c in CELLS:
             cell = (m, th, c)
+            if (m, th) in EXCLUDED_CELLS:
+                row += _pad(f"{DIM}n/a{RESET}", CELL_W)
+                continue
             st = cell_status(cell)
             icon, col = ICONS[st]
             if cell in counts:

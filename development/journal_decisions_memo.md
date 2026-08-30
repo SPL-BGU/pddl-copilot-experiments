@@ -580,7 +580,7 @@ VPN]**. Everything else is agent-executable.
 - Agent: fix proposal §2 item 3 exactness error + soften §6 (per §2/§5);
   collision-check "delivery gap"; draft title/abstract candidates (§8);
   guided_json $0 local audit (§7).
-- Agent: write the two preregs — `development/ntster_h4_prereg.md` (TOST margin,
+- Agent: write the two preregs — `development/reference/ntster_h4_prereg.md` (TOST margin,
   anchor two-use scope, Llama kill-gate, v11/v14 arm spec) and
   `development/reference/planbench_wt_prereg.md` (matched-scaffold control, t1
   2x2, two-sided prediction ii, linkage rule, funnel-placement statement, GPT-4

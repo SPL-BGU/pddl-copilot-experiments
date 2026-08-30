@@ -171,6 +171,52 @@ up to `MAX_TOOL_LOOPS = 10`, `chat.py:29`, while a no-tools trial gets one share
 budget), so adding a parser difference to an already-unmatchable diagnostic is
 strictly cheaper than corrupting the nt legs' grading on two of five tasks.
 
+> **AMENDMENT 2026-08-29 (approved by Omer as final-readout O2). §2.3(A) is scoped to
+> the SINGLE-CALL path. The decoupled two-call path requires `--reasoning-parser none`.**
+>
+> As originally written §2.3(A) is mode-blind, and applied to §2.3(B)'s decoupled
+> apparatus it guarantees a void corpus — which is exactly what happened. Job `20392801`
+> produced 9,120/9,120 (35b) and 3,822/3,824 (9B) rows with an **empty `response` and
+> empty `thinking`**, `done_reason=stop`, no errors, and ~12,960 tokens genuinely
+> generated per row. The text was never stored and is unrecoverable.
+>
+> **Why the two sections are incompatible when composed.** §2.3(A)'s three failure
+> mechanisms all assume a reasoning prefix contaminating the graded text, which is a
+> property of the single-call path where reasoning and answer share one output stream.
+> In the two-call path they do not share a stream: reasoning is consumed in call 1 and
+> re-injected as *prompt*, so call 2's content is answer-only. The decoupled path was
+> built for, and only ever validated under, parser-off (`chat.py:422`,
+> `CHANGELOG.md:512` DECISION B). `CHANGELOG.md:512`'s claim that the reconstruction is
+> "parser-state-proof" was a code-reading argument and is **empirically false**; read it
+> as superseded by this amendment.
+>
+> **Evidence, both directions.** June's `decoupled-rollup` corpora (same models, same
+> apparatus, parser OFF) show 9B 8.8% empty / 68.4% success and 35b 4.1% empty / 82.0%
+> success, against August parser-ON at ~100% empty / 0% success — the flag is the whole
+> effect. The 2026-08-22 rerun under parser-off (job `20489912`) then landed at 9B
+> **8.2% / 69.1%** and 35b **3.9% / 82.5%**, reproducing the June corpus to within a
+> point on both axes, so the diagnosis is confirmed by prediction rather than by absence
+> of failure.
+>
+> **The feared artifact does not appear on this path.** Measured on the August rerun,
+> `format_parse_fail` is **0.0% on all three `validate_*` tasks in all four on-mode
+> arms**; `solve` is 1–2% (9B) and 11–13% (35b); `simulate` is 10.7–44.3% against June
+> 35b parser-off's 14.0%, i.e. the known level for that task rather than a new problem.
+> `simulate` is UNINFORMATIVE in both on-mode cells (F = 32.00 / 19.00) and never reaches
+> a verdict.
+>
+> **Consequence for §4(b).** The "Cost, stated" paragraph immediately above is now
+> **void in fact**: the on-mode nt legs ran parser-off, which is what iss024d already
+> used, so both legs of the factorial share the parser setting and the nt/wt parser
+> difference budgeted for here does not exist. The comparison remains attribution-only
+> and budget-unmatchable for the separate reason given in that paragraph.
+>
+> **Standing operational rule added by this amendment:** a readiness smoke must assert
+> `len(response) > 0` on a non-trivial share of rows. The 2026-08-20 live-smoke passed on
+> turn structure and token counters (`turns=2 think_tok=8192 answer_tok=4768
+> call2_prompt=2049 done=stop`), every one of which remains true on a row containing no
+> text. It checked the plumbing and not the water.
+
 **(B) The `think=on` legs run under the decoupled-budget apparatus.**
 Accepted by Omer 2026-07-25 with the scope cost below stated in plain terms.
 Flags: `--decoupled-budget --num-predict-think 8192` (hard-gated to `--no-tools` +
@@ -198,10 +244,28 @@ Consequence: `think=off` and `think=on` are **different apparatuses**. Each mode
 contrast remains internally valid (both arms co-run in one cell), and H4 never made a
 cross-mode comparison — but no number may be compared across the two modes.
 
-> TODO before the submit ping (local, no cluster): reconstruct the decoupled
-> `think=on` wall from `results/decoupled-rollup/*decoupled-thinkon/trials.jsonl` by
-> the §2.2 method and record it here. Plain-apparatus 9B+35b both arms is ~102 GPU-h;
-> the 2-call path costs more per trial, so budget ~46 (off) + ~110-150 (on).
+> **DONE 2026-08-16 (§8 item 7) — decoupled `think=on` wall, reconstructed.** Measured
+> from `results/decoupled-rollup/*decoupled-thinkon/trials.jsonl` by the §2.2 method
+> (Σ `result.duration_s` ÷ assumed `CONCURRENCY=4`). Both corpora are **neutral-arm
+> only** — 4,560 rows each, v11/12/13 × 1,520 verified — so the nt-ster projection
+> scales each cell to its 9,120-row both-arm shape (×2), which assumes the steered arm
+> costs the same per trial as the neutral arm. That assumption is untested and is the
+> single largest error term in this number.
+>
+> | cell | rows | Σ `duration_s` | mean/trial | wall @4 | projected 9,120-row wall |
+> |---|---|---|---|---|---|
+> | `Qwen3.5:9B` on/decoupled | 4,560 | 755,877 s | 165.8 s | 52.5 h | **105.0 h** |
+> | `qwen3.6:35b` on/decoupled | 4,560 | 193,914 s | 42.5 s | 13.5 h | **26.9 h** |
+>
+> **On-mode total ≈ 132 GPU-h** (≈172 h at the +30% node-speed spread), against the
+> §10 signing estimate of 110-150. **Grand total ≈ 46 (off) + 132 (on) = ~178 GPU-h**,
+> inside the ratified 156-196 band — the price signed at §10 stands and no
+> re-ratification is owed. Per-cell `--time` headroom: the 9B on-cell is the long pole
+> at ~105 h projected, which **exceeds the 5-day (120 h) ask only after the +30%
+> spread** (≈137 h). See the `--time` note in §2.2: a TIMEOUT is resumable from
+> `OUT_DIR/trials.jsonl` but costs a queue cycle and another ping. The partition cap is
+> 7 days, so `--time 7-00:00:00` on the on-mode submit is the cheaper insurance;
+> SLURM bills usage, not the ask.
 
 **(C) Snapshot.** `RESPONSE_SNAPSHOT_LEN = 16384` is a non-overridable code constant
 (`runner.py:145-153`, "Override is intentionally not exposed"), so it comes free and is
@@ -729,15 +793,242 @@ claimed**, never a level comparison, because apparatus vintage and n differ. CIs
 | 4 | gemma iss024d wt cell exists (9,120 rows, v11-16) → §4(b) correction | **DONE** (verified) | No |
 | 5 | HEAD generation-identical to `6007032`; plugins additive since `5e4f9c0` | **DONE** (verified) | No |
 | 6 | Ratify think-mode scope at the **corrected** price | **DONE — Omer, 07-25** | No |
-| 7 | Reconstruct the decoupled `think=on` wall and fill the §2.3(B) TODO | **TODO — agent, local** | No |
-| 8 | Smoke the `--include-no-tools-steered` production path **and its composition with `--decoupled-budget`** | **TODO — cluster, ping-gated** | No |
-| 9 | Write + freeze both analysis entry points; record hashes here | **TODO — agent, local** | No |
-| 10 | Rebuild + stamp `gt_cache.json` from the pinned marketplace commit; add the GT-hash dump/assert | **TODO — agent, local** | No |
+| 7 | Reconstruct the decoupled `think=on` wall and fill the §2.3(B) TODO | **DONE 2026-08-16** — ~132 GPU-h on-mode, ~178 total, inside the ratified band; raises a `--time` question for the 9B on-cell (§2.3(B)) | No |
+| 8 | Smoke the `--include-no-tools-steered` production path **and its composition with `--decoupled-budget`** | **SUPERSEDED 2026-08-17 by D3(a)** — not executable as written: `--smoke` is mutually exclusive with `--no-tools`/`--think-modes` (`submit_with_rtx.sh:311-315`) and forces `--num-variants 1`, which is a *prefix* of the variant list, so it can never emit v14-16. The composition unknown was closed locally instead (`runner.py:350` builds `messages` once, then dispatches to the decoupled path at `:399` or the plain path at `:413` — the directive is in the prompt before the branch, so the two flags compose by construction). Residual check = live-smoke on the first rows of the production submit | No |
+| 9 | Write + freeze both analysis entry points; record hashes here | **DONE 2026-08-17** — written, rehearsed, frozen at `ff7bbd7`; hashes below | No |
+| 10 | Rebuild + stamp `gt_cache.json` from the pinned marketplace commit; add the GT-hash dump/assert | **DONE 2026-08-17** — rebuilt, proven equivalent, stamped; gate = `tools/gt_cache_gate.py`. See below | No (D4(a): no harness edit) |
 | 11 | `vllm_lookup` case for Llama (`llama3_json`, `REASONING_PARSER=none`) — without it `submit_with_rtx.sh:341-343` aborts | **TODO** | **YES — branch + PR.** Do **not** append the tag to `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live (`submit_with_resume.sh:18` expands that array into the submit roster), and do not check the branch out in `$HOME` until every nt-ster cell is terminal — the sbatch sources `lib/defaults.sh` from `$HOME` at run time, so a worktree does not help |
 | 12 | Optional `--variants 11,14` pass-through, if the §6 arm spec is honoured literally | **TODO / optional** | **YES — branch + PR**, else accept the ~13,680-trial shape |
-| 13 | Optional `status.sh` nt-ster column (~4 lines; it maps `no-tools` → neutral only and prices the cell at 4,560 against 9,120) | **TODO / optional** | **YES — branch + PR**, or accept manual `wc -l` checks |
-| 14 | Confirm ISS-024(b) `guided_json` stays parked through the submit (interpretability precondition for §3.7 M1) | **TODO — confirm in writing** | No |
+| 13 | Optional `status.sh` nt-ster column (~4 lines; it maps `no-tools` → neutral only and prices the cell at 4,560 against 9,120) | **DONE 2026-08-20** — `--ntster` profile; the column was structurally absent, not mispriced (`no-tools` split to neutral with the steered slice discarded) | On `run/ntster-h4`; local ops tooling only, does not touch the pinned apparatus |
+| 14 | Confirm ISS-024(b) `guided_json` stays parked through the submit (interpretability precondition for §3.7 M1) | **CONFIRMED 2026-08-16** — see below | No |
 | 15 | `llama3_json` registration in vLLM v0.20.2 | **UNVERIFIABLE locally** — read from the serve-flag echo (`sbatch:219`) | No |
+
+**Item 14, in writing (2026-08-16).** ISS-024(b) **stays parked through this submit**;
+the fix is not to be applied while nt-ster is live. The $0 audit run the same day
+(`tools/guided_json_audit.py`, commit `d10fd15` on `audit/guided-json-iss024b`)
+upgraded the §3.7 M1 precondition from an assumption to a measurement: the no-tools
+JSON-schema constraint produced conformant output on **526 of 88,781 decidable rows
+(0.59%)** across the canonical corpora, with violation shapes impossible under a
+working constrained decoder. So `guided_json` does not bind, M1 is interpretable as
+written, and the N/A clause in §3.7 is not triggered. Two consequences worth stating:
+(i) no with-tools row is affected, so §4(b) is untouched; (ii) because the constraint
+is inert in both the May corpora and this run, the anchor arm is not exposed to a
+constrained-decoding difference across apparatuses. If the fix were to land before or
+during the run it would change the no-tools `solve`/`simulate` generation surface
+mid-corpus — which is why it stays parked, not merely deprioritised.
+
+### Preflight record — 2026-08-17 (§7 step 2 SHA requirement, discharged early)
+
+Preflight-only window; **no submit**, per D1(a) in
+`development/archive/ntster/ntster_submit_window_decisions.md`.
+
+**Repo SHAs, both sides.** The cluster is sitting on the **literal pin**, not merely on
+something generation-identical to it:
+
+| | cluster (`~`) | this worktree | verdict |
+|---|---|---|---|
+| experiments | `paper/iter2-decoupled-run` @ **`6007032`** | `run/ntster-h4` @ `origin/main` | the pin itself |
+| marketplace | `main` @ **`5e4f9c0`** | `main` @ `5e4f9c0` (= tip of `origin/main`) | the pin itself |
+| `domains/` tree hash | `8cde5762f74d6acba97e19d3b4a83cdfb946266b` | `8cde5762f74d6acba97e19d3b4a83cdfb946266b` | **identical** |
+
+Both working trees carry **zero** tracked modifications, and `domains/` is clean of
+untracked files as well. The identical fixture-tree hash is what converts the D4(a)
+ground-truth argument from an assertion into a check: GT is deterministic given the
+fixture tree and the oracle plugins, both sides hold the same tree, and
+`pddl-solver` / `pddl-validator` / `pddl-parser` are unchanged since `5e4f9c0`.
+
+The §2.3 "generation-identical to `6007032`" claim was re-verified directly: the diff
+between `6007032` and current `main` across `pddl_eval/`, `run_experiment.py`,
+`cluster-experimenting/`, `domains/` is **three lines, all of them doc-path comments**
+(`lib/defaults.sh`, `submit_with_rtx.sh`, `scoring.py`). Zero behavioural delta.
+
+**No pull was performed on the experiments repo, deliberately.** Two reasons: it is
+already at the pin, and its branch `paper/iter2-decoupled-run` **no longer exists on
+`origin`** (deleted after PR #88 merged), so `scripts/preflight.sh`'s
+`git pull --ff-only` would have failed under its own `set -e` and aborted the run before
+the venv and capacity phases. The preflight phases were therefore run manually. The
+marketplace pull ran and was a no-op.
+
+**Venv refresh — one real apparatus delta, recorded.** Per the standing preflight rule
+the two required plugin venvs (`REQUIRED_PLUGINS = ["pddl-solver", "pddl-validator"]`,
+`run_experiment.py:122`) were force-refreshed without `--quiet`. Both had drifted, and
+inconsistently with each other:
+
+| plugin | `mcp` before | after |
+|---|---|---|
+| `pddl-solver` | 1.28.1 | **1.29.0** |
+| `pddl-validator` | 1.27.2 | **1.29.0** |
+
+`requirements.txt` pins only `mcp<2.0,>=1.27`, so this dependency floats and was never
+part of the commit-level pin — the May/July corpora were themselves produced under
+whichever version was resident then, and the two servers did not even agree with each
+other before today. The bump is a **client/transport** change; the planner and validator
+oracles live in the plugin servers, which are pinned by `5e4f9c0`. Both servers were
+verified to import cleanly under 1.29.0, and the harness imports cleanly in the run's
+conda env (`pddl_copilot`, Python 3.12.13). **This is testable rather than assumed:**
+readiness item 10 rebuilds `gt_cache.json` under the new stack, so a diff against the
+Jul-11 cache measures directly whether ground truth moved. Recorded here as a stated
+apparatus delta either way.
+
+**vLLM image.** The sbatch pins `docker://vllm/vllm-openai:v0.20.2` and will reuse the
+cached `$HOME/vllm.sif`. Its version cannot be read login-side (no `apptainer` on the
+login node), so §2.3's "verified from the served log header" stays a **run-time** check.
+The strongest pre-run evidence: the file's mtime is **2026-05-31 23:26**, unchanged and
+predating the July iss024d run, so the same image file served the pinned apparatus.
+
+**Capacity at the time of check:** `rtx6000` 41/44 nodes idle-or-mixed, `rtx_pro_6000`
+7/7, and the personal queue is **empty** — no contention for either submit.
+
+### Item 10 record — ground truth rebuilt, proven invariant, stamped (2026-08-17)
+
+Executed under **D4(a)**: cache-only, no harness edit, equivalence carried by the SHA
+argument rather than by an in-run dump.
+
+**Rebuilt** with `tools/build_gt_cache.py` against `domains/` (tree
+`8cde5762f74d6acba97e19d3b4a83cdfb946266b`, identical on the cluster) and the local
+marketplace clone. That clone's HEAD `f0e2c61` sits 2 additive commits past the pin, but
+**both oracle plugin subtrees hash identically to `5e4f9c0`** — `pddl-solver`
+`2ece6ce0…`, `pddl-validator` `b090092c…` at both commits — so this **is** a build from
+the pinned marketplace commit for ground-truth purposes. `REQUIRED_PLUGINS` is exactly
+those two (`run_experiment.py:122`). Output: 20 domains / 100 problems / 60 negative
+fixtures.
+
+**Result: ground truth has not moved.** The rebuild was diffed against the unstamped
+Jul-11 cache (preserved at `results/derived/gt_cache_20260711.prestamp.json`). Excluding
+one field, the two are **exactly equal** — canonical
+`6af57125bde3ec2bb7262b4db23449e2b504f0c721c4412f8eb1151f744ca945` on both sides. This
+also settles the preflight's open question: **the `mcp` bump did not perturb ground
+truth**, and neither did five weeks nor the two additive marketplace commits.
+
+**The one difference, and why the gate is not a file hash.** Whole-file sha256 differs
+while byte-length is identical to the byte. The cause is `domain_validation_raw`, which
+serializes the validator's `[WARNING]` lines in a **process-dependent order** — verified
+across all 100 problems as an identical warning multiset in a different order. The field
+is written at `pddl_eval/domains.py:174` and **read by no grading code** (single grep hit
+in `pddl_eval/`, `tools/`, `run_experiment.py`). So a naive file-hash gate would
+false-alarm on every rebuild and would eventually be disabled by whoever hit it — the
+classic way a safety check dies. The gate is instead a canonical hash over every
+grading-visible field, excluding that diagnostic.
+
+**Stamped** at `results/derived/gt_cache_stamp.json`: builder blob SHA, both repo SHAs,
+the `domains/` tree hash, both oracle subtree hashes at HEAD and at the pin, the plugin
+venv `mcp` versions on both laptop and cluster, the gate value, and the equivalence
+result. **Enforced** by `tools/gt_cache_gate.py`, which both frozen analysis entry points
+(item 9) call via `assert_gate()` before reading any trial — so "the analysis ran against
+the pinned ground truth" is checked, not promised. Verified passing.
+
+### Item 9 record — analysis entry points FROZEN (2026-08-17)
+
+Frozen at commit **`ff7bbd7`** on `run/ntster-h4`. sha256:
+
+| file | sha256 |
+|---|---|
+| `tools/ntster_f_gate.py` | `2ebb92f16481263940ac03d7658b34e8e560fd76f40dc8194159cef31471aa6e` |
+| `tools/ntster_h4.py` | `0541ad8e9fab62d2c483b2e589782d6f2dea56948dcb322e794d348ade6534e9` |
+| `tools/ntster_common.py` | `a7bc6093f711666c744f9b2fa9ffb62bec69b37e64ae43184e529a37e3e822f4` |
+| `tools/gt_cache_gate.py` | `db78f3623a534ccbd26989c2fb29e14777193933106d40e1b2ae40e3fcd8057b` |
+
+Four files, not the two §7 step 3 names, and the reason matters: the shared core and
+the GT gate are **inside** the frozen boundary. Splitting them out and leaving them
+mutable would reproduce exactly the loophole freezing exists to close. For the same
+reason nothing imports from `.claude/skills/analyzer/` — a frozen analysis that imports
+a live module is not frozen.
+
+#### Item 9 addendum — §4(b) entry point FROZEN (2026-08-29)
+
+| file | sha256 |
+|---|---|
+| `tools/ntster_factorial.py` | `78787eb7f3ba671773d695f8b2904bbe5edcef559297c76f8f35fe1211629164` |
+
+**This one was written after the H4 verdict was known, and that must be stated rather
+than smoothed over.** The §4(b) estimand was locked in the ratified prereg before any
+data existed, but the code implementing it did not exist until 2026-08-29, because until
+the on-mode rerun landed the factorial had no nt legs to run against. Writing analysis
+code after seeing a result is the ordering §8 item 9 exists to prevent.
+
+The mitigation, approved by Omer as final-readout O3, is the item 9/10 protocol applied
+after the fact: **write it, freeze it, hash it here, and only then point it at data.**
+The freeze commit precedes the first real invocation in the git history, so the ordering
+is checkable rather than asserted.
+
+Enforcement matching the other entry points: it calls `assert_gate()` before reading any
+trial; it runs the §3.1 completeness gate on both legs of every model; it derives its
+roster from which legs exist rather than taking a `--models` flag; and it exposes no
+`--margin`, `--alpha`, `--surface`, `--sign` or `--shard` flag, each of which would turn
+a design commitment into a run-time choice. The May reference sign is **computed from
+the canonical corpus**, not hardcoded, so it cannot drift from a number typed into a
+docstring. It reuses the frozen `ntster_common` §3.3 interval machinery unchanged.
+
+**Rehearsal before freeze:** run with both `--nt-overlay-dir` and `--wt-overlay-dir`
+pointed at the same directory, which forces the interaction to exactly zero for every
+fixture by construction. This exercises loading, the fixture join, both clusterings, the
+seeded bootstrap, the verdict logic and both output writers against a mathematically
+known answer, while leaking nothing about the real estimate. Result: `+0.00 [+0.00,
++0.00]` on both models, 4,560 matched fixtures each, 0 dropped, roster correctly resolved
+to the two Qwens.
+
+**Enforcement, not documentation.** `ntster_h4.py` refuses to start without the F-gate
+JSON; refuses when that JSON names a different overlay corpus than the one passed;
+and calls `assert_gate()` before reading any trial. There is no `--margin`, `--alpha`,
+`--surface` or `--shard` flag — each would be a design commitment turned into a run-time
+choice, and `--shard` additionally breaks the +3-offset pairing because `prompt_variant`
+is in the shard key (`runner.py:647-650`).
+
+**Coverage.** Between them the four files implement: dedup by trial key (last wins); the
+§3.1 completeness gate incl. the `snapshot_cap == 16384` assertion; the fixture-matched
+join on the trial key with the variant slot stripped; the paired per-domain difference
+with t₁₉ and domain-clustered bootstrap (B = 10,000, seeded) at **both** clusterings with
+the wider governing; unpaired Newcombe as companion; F at pooled and per-task
+granularity; the §3.3 eligibility classification incl. the LOW-BASE-RATE risk-ratio
+bound; the §3.4 labels, verdict vector and paper-level branch table; Holm over the
+ELIGIBLE family only; the MDE table; and the §3.7 four-way partition with M1/M2, the
+ceiling and APPARATUS guards, the dominance label rules and the help-direction Spearman.
+
+**Rehearsed before freezing** against `results/derived/e2e_overlay/iss024d-e2e-live`,
+which carries the same 9,120-row six-variant shape these cells will have. **Code
+correctness only — that corpus is with-tools, so its numbers are the H2 effect and not
+this control; nothing from the rehearsal may be read as an H4 result.** What it
+established: the completeness gate passes exactly on all five cells, and the mechanism
+partition reproduces the ΣΔ = −Δ̂ identity to **0.000pp in every cell**. All five failure
+paths were exercised deliberately — missing F gate, corpus mismatch, GT divergence,
+incomplete cell, empty granularity — and each refuses or degrades correctly rather than
+producing a number.
+
+Two defects the rehearsal caught and fixed before the freeze: the identity check was
+comparing against the governing interval rather than the domain-clustered Δ̂ the
+components are computed on, showing a spurious residual whenever problem clustering was
+wider; and a granularity with zero rows rendered as `usable`, which would have let a
+silent shortfall read as a pass.
+
+#### Item 9 second addendum — post-review corrective RE-FREEZE (2026-08-30)
+
+**Every hash in the two tables above is superseded by the table below.** A
+15-finding correctness review of PR #96 (posted as inline comments on the PR,
+2026-08-30) found defects in the frozen analysis code — the material ones are
+declared as deviations in §9.2, with the latent ones that never fired listed
+there too. Each fix edits hash-frozen files, so per this document's own
+protocol the full five-file set was re-frozen and re-hashed here, and only then
+was the analysis re-run.
+
+| file | sha256 (2026-08-30) |
+|---|---|
+| `tools/ntster_f_gate.py` | `e9b746b74ab725359077175ed54d77eebf1bedaba63523fa395d22a21d01d200` |
+| `tools/ntster_h4.py` | `272f96b9f9ea20b3398afeb4a7c849a990e6c705149f9ffb2821c199cba67c26` |
+| `tools/ntster_common.py` | `49d869f39fc59fa875554c06e3e17937823abd8cabb852a028296a72cfb71ed7` |
+| `tools/gt_cache_gate.py` | `1181781e674f212c7d62c4fcdb6d50eb7ee9e650887d8e2bd95937609d8f3897` |
+| `tools/ntster_factorial.py` | `16f03b59e3e480f79639acf7117eb5c1bf630760951d37747d955388294ea40c` |
+
+**The ordering caveat, stated rather than smoothed over.** Unlike the original
+freeze, these edits were written after the data and the verdicts were known.
+The mitigations are: every change is tied to a named finding of an external
+review, not to anything seen in the numbers; every behavioural change is a
+mechanical correction *toward* the already-registered design (§2.3(C), §3.2,
+§3.3 points 2–3, §3.4, §3.7, §8 item 10), never a new analyst choice; and both
+the pre-fix and post-fix code and outputs are in git, so the entire delta is
+auditable. The re-run reproduces the six-unit all-PASS verdict vector and the
+paper-level PASS branch unchanged; the secondary numbers moved and the final
+readout was revised in place (`ntster_h4_final_readout_20260829.md`, revision
+note at top).
 
 ---
 
@@ -759,6 +1050,145 @@ claimed**, never a level comparison, because apparatus vintage and n differ. CIs
 6. **Queue wait** is excluded from every wall estimate, and six simultaneous
    `rtx_6000` grants would be one above observed precedent (the split submits reduce
    this to 3 + 2).
+
+### 9.1 Executed deviations from this prereg — declaration (2026-08-29, O1)
+
+Approved by Omer as final-readout O1. Both belong in the paper appendix, in the same
+paragraph, stated plainly rather than presented as the original design. Appendix-ready
+text follows; it is deliberately written so a reader can see what was changed, when,
+relative to what knowledge, and which direction the change pushes the conclusion.
+
+> **Deviation 1 — the control roster was expanded from three models to four after
+> interim results were seen.** The preregistration fixed the H4 roster at Qwen3.5:9B,
+> gemma4:26b-a4b and qwen3.6:35b. On 2026-08-22, with the three `think=off` units
+> complete and passing, we measured the with-tools steering effect the control exists to
+> attribute across the full five-model roster and found that Qwen3.5:4B carried a larger
+> effect (+6.9pp pooled, +9.6pp on `validate_plan`) than Qwen3.5:9B (+2.5pp), which was
+> controlled, while having no control of its own. Qwen3.5:0.8B showed no effect (+0.0pp
+> pooled) and so has nothing to attribute. We added a Qwen3.5:4B `think=off` control
+> rather than argue the asymmetry away. It was submitted with apparatus parity to the
+> three completed `think=off` cells and it PASSES. The deviation is conservative in a
+> checkable sense: under the intersection-union rule a fourth unit can only make the
+> conjunctive equivalence claim harder to satisfy, never easier. It is not model
+> selection — no unit was dropped, and the added unit was chosen by the size of the
+> effect needing attribution, not by its control result, which was unknown at submit
+> time.
+>
+> **Deviation 2 — the `think=on` arm was rerun with `--reasoning-parser none`, against
+> the preregistered configuration.** The preregistration ruled that the reasoning-parser
+> override is not passed. Applied to the decoupled two-call apparatus that the `think=on`
+> legs use, that configuration produced a void corpus: 9,120/9,120 and 3,822/3,824 rows
+> with empty response text, no errors, and ~12,960 tokens generated per row. The cause is
+> that the preregistered rule was reasoned about the single-call path, where reasoning
+> and answer share one output stream, while the decoupled path generates the answer in a
+> separate call and had only ever been validated with the parser off. We cancelled the
+> arm, discarded the void rows, and reran with the parser off. The rerun reproduces an
+> independent parser-off corpus from June to within a percentage point on both empty-text
+> share and success rate, and the grading artifact the original rule was written to
+> prevent does not appear on this path (`format_parse_fail` is 0.0% on all three
+> validation tasks in all four affected arms). The two think modes were already declared
+> different apparatuses whose numbers may not be compared across the mode axis, and they
+> were already separate submissions, so the change alters no cross-mode comparison. The
+> void arm is reported here rather than omitted; the discarded corpus is retained.
+
+### 9.2 Post-review code deviations — declaration (2026-08-30)
+
+A correctness review of PR #96 (15 findings) audited the frozen analysis code
+after the ratified readout shipped. The fixes below all edit hash-frozen files;
+they are declared here and the files re-frozen (§8 item 9, second addendum)
+before the analysis was re-run. **The six-unit verdict vector and the
+paper-level branch are unchanged by every fix — all six units PASS.** The
+secondary numbers changed; the revised values live in the final readout and
+`NUMBERS.md`. Appendix-ready prose:
+
+> **Deviation 3 — censored rows were counted as delivered successes and fed to
+> the estimator.** The overlay's delivered grade is tri-state (`true` / `false`
+> / `"indeterminate"` for rows censored at the 16K snapshot cap); the frozen
+> `delivered()` used a truthiness test, so `bool("indeterminate")` scored every
+> censored row as a success in the arm rates, the paired TOST, the F gate, the
+> eligibility anchors, and both factorial legs — and, separately, the
+> §2.3(C)/§3.7 commitment that censored rows are excluded and reported as
+> bounds was not implemented at all. Both were fixed on 2026-08-30: the grade
+> is now an identity test, indeterminate rows are excluded from every
+> estimator and denominator, and each contrast reports censored counts plus
+> extreme-imputation bounds on Δ̂. Direction: the shipped `simulate` rates were
+> inflated (4B anchor `simulate` 41.7% as shipped vs 17.1% determinate); the
+> shipped 4B `simulate` −14.00pp cell — the family's only NOT-EQUIVALENT label
+> — was largely this artifact and reads −2.43 [−5.33, +0.47] INDETERMINATE
+> after the fix. No unit verdict moved.
+>
+> **Deviation 4 — the "problem (k=100)" clustering was neither k=100 nor an
+> estimator of the paired difference.** The registered description assumed 100
+> balanced problem clusters; the realized fixture layout yields 220 unbalanced
+> ones (the 100 shared problems carry 42 pairs each, 120 single-task fixtures
+> carry 3), so the unweighted mean of cluster means gave 7.9% of rows 55% of
+> the weight and estimated a task-reweighted quantity — and it was the wider,
+> therefore governing, interval in all six cells and both factorial models.
+> Fixed: the problem clustering now uses a size-weighted cluster-robust
+> interval whose point estimate is the registered paired difference, and every
+> interval label carries its realized k. The domain clustering — the
+> registered primary — is estimated exactly as registered. Direction:
+> governing intervals tightened (realized MDE 5.82–6.25pp against the shipped
+> 6.47–7.11), which can only make the equivalence test harder to pass, and all
+> six units still PASS.
+>
+> **Deviation 5 — task-cell eligibility was classified on the governing
+> half-width; §3.3 point 3 pins it to the realized domain-clustered
+> half-width.** Fixed. On this corpus the ELIGIBLE family is identical under
+> both readings (the same 8 cells), so nothing moved; the defect was
+> anti-conservative in principle because a wider governing interval could
+> screen a NOT-EQUIVALENT cell out of the FAIL veto.
+>
+> **Deviation 6 — the §3.7 mechanism section read row fields the overlay never
+> carries and was degenerate in all six cells.** `failure_reason`, `response`
+> and `tokens` live in the raw `trials.jsonl`, not the overlay, so every
+> failed row fell through to APPARATUS (13.75–36.01% per arm), all six
+> mechanism reads self-VOIDed on the 1% guard, and the shipped report told an
+> apparatus-failure story that was an artifact of reading absent fields.
+> Fixed: the entry point joins each overlay row to its raw trial row
+> (`--trials-dir`) and computes the partition from the fields the prereg
+> actually names. Re-run: APPARATUS is 0.00% in every arm, the VOID guard does
+> not fire, the ΣΔ = −Δ̂ identity closes to 0.000pp in every cell, and no
+> mechanism label is owed because no unit FAILs.
+>
+> **Deviation 7 — the legacy consistency surface read a key no overlay row
+> has** (`success` instead of `success_stored`), so it was constant False and
+> §3.1's "real second measurement on `simulate`" measured nothing. Fixed; the
+> legacy column now reports the stored online grade on every row.
+>
+> **Deviation 8 — latent verdict-path defects, none of which fired on this
+> corpus, fixed for any future run:** the pooled F gate is now enforced in the
+> unit verdict (§3.2's "F ≥ margin ⇒ UNINFORMATIVE, never rescued" had been
+> recorded but never consulted); a pooled-driven unit FAIL now routes to the
+> §3.4 FAIL branch instead of the MIXED branch (the pooled primary can never
+> be "ineligible"); the §4(b) factorial refuses to analyse a leg that fails
+> the §3.1 completeness gate and refuses duplicate or ambiguous overlay cells
+> instead of silently taking the last one; the LOW-BASE-RATE risk-ratio path
+> no longer crashes on a steered arm with zero successes; and an overlay
+> carrying no `snapshot_cap` at all now fails the completeness gate instead of
+> passing as verified.
+>
+> **Deviation 9 — provenance-enforcement gaps closed, and one registered
+> quantity restored.** `ntster_f_gate.py` now calls the GT gate before reading
+> any trial — the §8 item 10 record claimed both entry points did, which was
+> false for this one from the original freeze until 2026-08-30. The GT gate
+> now also compares the cache against the preregistered canonical hash
+> (`6af57125…`) as a code constant, so a rebuilt cache with a self-consistent
+> fresh stamp can no longer pass; the stamp itself is committed to the repo;
+> `scipy`/`numpy` are declared in `requirements.txt`. And the §3.3 point 2
+> companion — the unweighted mean over ELIGIBLE task cells, with a pooled-PASS
+> disagreement reported rather than resolved — is now computed and reported;
+> it is consistent with the pooled read in all six units.
+
+**Consequence for §4(b), restated.** The clause verdict remains **DROP**, but
+its basis changed and the old narrative ("neither interaction excludes zero,
+an underpowered null") is superseded: on the corrected surface both
+interactions are positive and exclude zero (9B +8.12 [+4.61, +11.63],
+replicated; 35b +2.62 [+0.74, +4.50]), and the clause drops only because 35b's
+May reference effect is −0.11pp — an essentially null reference whose sign
+cannot meaningfully be matched. The corrected factorial is directionally
+consistent with the attribution in both models; the pre-registered criterion
+is applied as written and the clause stays out.
 
 ---
 
@@ -801,6 +1231,89 @@ submit is still gated on (a) the §8 readiness items that must precede it — it
 (decoupled-wall reconstruction), item 9 (freeze both analysis entry points), item 10
 (rebuild + stamp `gt_cache.json`), item 14 (confirm ISS-024(b) `guided_json` stays
 parked) — and (b) Omer's explicit go-ahead plus a VPN window, per the standing
-cluster rule. Item 11 (`vllm_lookup` case for Llama) is needed only for the §6 probe
+cluster rule.
+
+> **STATUS 2026-08-17 — all four pre-submit readiness items are CLOSED.** Item 7
+> measured (~178 GPU-h total, inside the ratified band); item 14 confirmed in writing
+> and now backed by measurement; item 10 rebuilt, proven invariant and stamped; item 9
+> written, rehearsed and frozen at `ff7bbd7`. Preflight is done and the cluster is
+> verified sitting on the literal pin. **The submit is now gated only on (b)** — Omer's
+> go-ahead plus a VPN window. Item 8 (smoke) is superseded by the live-smoke decision
+> (D3(a) in `ntster_submit_window_decisions.md`): the wrapper cannot express the
+> smoke the prereg asked for, its riskiest unknown was closed locally instead, and the
+> residual check runs against the first rows of the production submit. The on-mode
+> `--time` is **7 days**, not the 5 in §7 step 2, per D2. Item 11 (`vllm_lookup` case for Llama) is needed only for the §6 probe
 and carries its own branch + PR; it must not append the tag to
 `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live.
+
+### Live-smoke record — the run is emitting the control arm (2026-08-20)
+
+Submitted: **job 20392775** (off-mode, 3 tasks, `--time 5-00:00:00`) and **job 20392801**
+(on-mode, 2 tasks, `--time 7-00:00:00`, per D2). Both `TimeLimit`s verified at submit.
+Preconditions re-checked immediately before each submit: HEAD `6007032`, clean tree.
+
+This closes the §8 item 8 residual, which D3(a) deferred to the production submit
+because the wrapper cannot express the smoke the prereg asked for.
+
+**(1) The steered arm exists on disk.** First time the
+`--include-no-tools-steered` production path has ever produced data. All six variants
+present, and `with_tools=False` on **100%** of rows in every cell:
+
+| cell | n | variants seen | with_tools |
+|---|---:|---|---|
+| `gemma4:26b-a4b` off | 14 | 11,12,13,14,15,16 | all False |
+| `qwen3.6:35b` off | 13 | 11,12,13,14,15,16 | all False |
+| `Qwen3.5:9B` off | 5 | 11,12,13,14,15 | all False |
+| `qwen3.6:35b` on | 4 | 11,12,13,14 | all False |
+
+Variants interleave rather than running arm-by-arm, as §7 predicted from the emission
+order — so both arms fill together and a partial cell is never all-anchor.
+
+**(2) The untested flag composition works at runtime.** `--include-no-tools-steered` ×
+`--decoupled-budget` had never been run, and §8 item 8 called it unverified. A steered
+row on the decoupled path:
+
+```
+v14 solve  turns=2  think_tok=8192  answer_tok=4768  call2_prompt=2049  done=stop
+```
+
+`turns=2` is the two-call continuation; `think_tok` is exactly the
+`--num-predict-think 8192` passed; the answer phase draws its own separate budget
+(4,768-8,192 across the first rows) rather than sharing one; `call2_prompt≈2,040`
+confirms the think block is re-injected. The code-reading argument in §8 item 8 is now
+a measurement.
+
+**(3) The apparatus pin holds where it can be seen.** The serve flags in the job log are
+`--tool-call-parser qwen3_xml --reasoning-parser qwen3` — the **per-model default**, not
+`none`. §2.3(A) is the correction that mattered most (parser-off would have
+re-manufactured the `simulate` grading artifact on a no-tools cell), and the run went out
+with it applied. GPU confirmed as `NVIDIA RTX 6000 Ada Generation, 49140 MiB`; the
+allocation is `gres/gpu:rtx_6000=1` per task. Node names of the form `ise-cpu256-*` are
+GPU nodes on this cluster despite the name — checked, not assumed.
+
+**(4) Served vLLM version — §2.3(D), CLOSED 2026-08-20.** Read live from the engine
+banner inside the running allocation:
+
+```
+Initializing a V1 LLM engine (v0.20.2) with config: model='Qwen/Qwen3.5-9B', ...
+```
+
+**v0.20.2**, matching the pinned `docker://vllm/vllm-openai:v0.20.2`. This is the check
+§2.3 said had to be *verified rather than asserted*, because `$HOME/vllm.sif` is a
+mutable shared cache that could have been rebuilt by any session: the cached image
+genuinely contains the pinned version, so the apparatus matches iss024d's.
+
+Getting it required a detour worth recording for the next run: the serve log is written
+to the compute node's scratch (`/scratch/omereliy/<jobid>/vllm-work/vllm-<model>.log`),
+**not** the `/tmp/vllm-<jobid>` path the sbatch's primary branch suggests, and it is only
+copied back to `cluster-experimenting/logs/` by the EXIT trap — so it is unreadable from
+the login node mid-run, and lost entirely if a job is hard-killed before the trap fires.
+Compute-node SSH is key-denied; `srun --overlap --jobid=<task>` is the working idiom.
+
+**HF weight revision remains unpinned and unreported** — the engine config line names
+`model='Qwen/Qwen3.5-9B'` with no revision field, since the sbatch serves without
+`--revision`. Recorded as absent rather than guessed; per §2.3(D) weight vintage stays a
+stated component of the drift term.
+
+VRAM after load on the 9B cell: 40,758/49,140 MiB (**82%**), under the `> 85` abort
+guard. gemma is the cell to watch there, not this one.

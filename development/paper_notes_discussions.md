@@ -1477,3 +1477,225 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **STILL BLOCKED: the 15 `paper/main.tex` propensity edits.** The word is decided but the
   branch go-ahead is not given. Paper edits belong on `paper/aaai27` behind the Overleaf
   pull-then-push protocol, so nothing in the tex has been touched.
+
+## 2026-08-22 — nt-ster H4: off-mode PASSES land, on-mode arm was void and has been rerun
+
+- **Three `think=off` H4 units are complete, valid and all PASS.** Qwen3.5:9B
+  66.18 → 67.24 (Δ̂ −0.18 [−1.89, +1.52]), gemma4:26b-a4b 78.16 → 78.64
+  (+0.52 [−0.95, +1.99]), qwen3.6:35b 78.33 → 78.20 (+1.34 [−0.40, +3.08]). Every
+  ELIGIBLE task cell is EQUIVALENT, which is what §3.4 requires for a PASS. Realized
+  MDE 6.47-6.74pp. Full readout: `ntster_h4_partial_readout_20260822.md`.
+- **The matched-cell result is the one to quote.** The paper's +72pp
+  (`main.tex:501`, 0.206 → 0.926) is specifically gemma `validate_plan` **with-tools,
+  `think=off`** — measured, not assumed. Its mode- and model-matched no-tools control
+  is now done: **Δ +0.63pp [−0.46, +1.73]**, ELIGIBLE, EQUIVALENT. The sentence worth
+  +72pp with tools is worth six tenths of a point without them. That is the CALL-beat
+  attribution closed in the matched cell, on the model that owns the effect.
+- **Both `think=on` cells were void — apparatus failure, not a result.** 9,120/9,120
+  (35b) and 3,822/3,824 (9B) rows carried an EMPTY `response` AND empty `thinking`,
+  with `done_reason=stop`, no errors, and 12,960 tokens genuinely generated per row.
+  Text was never stored, so it is unrecoverable.
+- **Cause: §2.3(A) and §2.3(B) are incompatible when composed.** The decoupled two-call
+  path was built for, and only ever validated under, `--reasoning-parser none`
+  (`chat.py:422`, `CHANGELOG.md:512` DECISION B). §2.3(A) correctly ruled the override
+  is not passed — reasoning about the *single-call* path, where reasoning and answer
+  share one stream. In the two-call path they do not. `CHANGELOG.md:512`'s claim that
+  the reconstruction is "parser-state-proof" was a code-reading argument and is now
+  **empirically false**.
+- **Controlled proof.** June's `decoupled-rollup` corpora, same models, same apparatus,
+  parser OFF: 9B 8.8% empty / 68.4% success, 35b 4.1% empty / 82.0% success. August,
+  parser ON: ~100% empty / 0% success. The flag is the only difference.
+- **Parser-off does NOT re-manufacture the §2.3(A) `simulate` artifact on the decoupled
+  path**, because the answer is generated in a separate call with the reasoning
+  re-injected as prompt. June 35b decoupled parser-off: `format_parse_fail` 0.0% on all
+  three validate tasks, 14.0% on simulate, simulate success 40.0%.
+- **The 08-20 live-smoke gave a false PASS.** It asserted turn structure and token
+  counters (`turns=2 think_tok=8192 answer_tok=4768 call2_prompt=2049 done=stop`) —
+  every one of which is still true on a row containing no text. Standing lesson: a smoke
+  must assert `len(response) > 0` on a non-trivial share of rows.
+- **No corpus drift (§4 validity thread).** August neutral anchor vs canonical May
+  sweep5v2, four tasks, `simulate` excluded: pooled Δ = +0.1 (9B) / +1.0 (gemma) /
+  +0.2pp (35b), n=4,260 per side, all non-negative and inside the ~1pp half-width. The
+  "August looks like it is regressing" read is not supported — the only zeros are the
+  void cells.
+- **Actions taken (Omer, 08-22).** Job 20392801 cancelled; both void on-mode cell dirs
+  deleted on the cluster (local copies retained under `results/ntster-h4-live/` as the
+  failure record for the appendix); on-mode arm resubmitted as **job 20489912** with
+  `--reasoning-parser none`, same `--run-tag ntster-h4`, `--time 7-00:00:00`, pins
+  re-verified at `6007032` / `5e4f9c0`. A resume into the old dirs would have skipped
+  exactly the void keys and produced a "complete" empty cell — hence delete, not resume.
+- **§4(b) "replicated attribution" clause is dropped for now**, exactly as
+  pre-registered. The 2×2 factorial is `think=on` and needs the Qwens' on-mode nt legs,
+  which were the void cells. The §5 PASS sentence stands without the clause.
+- **Integration follows the pre-committed §5 cap** — caveat-only: the CALL beat plus
+  Limitations in the body, everything else (per-task table, F gate, MDE, drift check,
+  and an honest declaration of the on-mode apparatus failure) in an appendix. Promoting
+  H4 to a larger body surface *because it passed* would be a post-hoc, outcome-contingent
+  deviation from a ratified prereg. Not yet actioned — no tex has been touched.
+- **Roster gap found and closed: 4B was steered-but-uncontrolled.** Omer asked why the
+  H4 roster is 3 models and not all four Qwens. Measured the with-tools `think=off`
+  steering effect the control exists to attribute: 0.8B **+0.0pp** pooled (no effect,
+  so no control is owed), 4B **+6.9pp** pooled / **+9.6pp** `validate_plan`, 9B +2.5,
+  gemma **+47.4** (+72.0 `validate_plan`), 35b **+14.8**. So 4B carried a steering
+  effect **larger than 9B's, which was controlled** — an asymmetry not defensible on
+  effect size. Also ruled out "too weak to test": at `think=off` both 0.8B and 4B have
+  3/5 tasks inside the §3.3 ELIGIBLE band, the same as gemma and more than 35b (2/5).
+  Submitted `Qwen3.5:4B` `think=off` as **job 20490174** (no `--reasoning-parser`, no
+  `--decoupled-budget` — apparatus parity with the three completed off cells).
+  **To be declared as a deviation:** the control roster was expanded after seeing
+  results. It is conservative — under §3.4's intersection-union rule a fourth unit can
+  only make the conjunctive equivalence claim harder to satisfy, never easier — but it
+  must be stated plainly, in the same appendix paragraph as the on-mode apparatus
+  failure. D6 (what a 4B FAIL would do to the claim) is pre-committed in the readout
+  memo and still needs Omer's answer before that cell lands.
+
+## 2026-08-29 — nt-ster H4 COMPLETE: all six units PASS, paper-level branch = PASS
+
+- **The control is closed. All six units PASS**, and every one of the 8 ELIGIBLE task
+  cells across those units is EQUIVALENT — the §3.4 condition for a PASS, with no
+  exceptions to name. Paper-level branch = **§5 PASS**. Pooled Δ̂ by unit: 4B off
+  **−3.03 [−4.83, −1.23]**, 9B off −0.18 [−1.89, +1.52], 9B on **+1.83 [−0.28, +3.94]**,
+  gemma off +0.52 [−0.95, +1.99], 35b off +1.34 [−0.40, +3.08], 35b on **+0.49
+  [−1.37, +2.35]**. Realized MDE 6.47–6.80pp. Full readout:
+  `ntster_h4_final_readout_20260829.md`, which supersedes the 08-22 partial for every
+  number.
+- **H4 now holds in both think modes and across four models**, not just at `think=off`
+  on three. The 08-22 INCONCLUSIVE branch is retired.
+- **The matched-cell attribution is unchanged and is still the sentence to quote.** gemma
+  `validate_plan` `think=off`: **+72.0pp with tools, +0.63pp [−0.46, +1.73] without**,
+  ELIGIBLE and EQUIVALENT. The three original `think=off` numbers recomputed
+  bit-identical to 08-22 from the frozen scripts.
+- **The on-mode rerun is healthy and the 08-22 diagnosis is confirmed by prediction.**
+  The parser-off fix was predicted from June's corpora to land at 8.8%/68.4% (9B) and
+  4.1%/82.0% (35b) empty-response/success; August delivered **8.2%/69.1%** and
+  **3.9%/82.5%**. Both within a point on both axes. Parser ON was 99.9%/0% and 100%/0%.
+  The flag was the whole effect, as diagnosed.
+- **Parser-off did NOT re-manufacture the §2.3(A) grading artifact on the decoupled
+  path.** `format_parse_fail` is **0.0% on all three `validate_*` tasks in all four
+  on-mode arms**; `solve` 1–13%; `simulate` 10.7–44.3% (June 35b parser-off was 14.0%, so
+  the known level). `simulate` is UNINFORMATIVE in both on cells (F 32.0 / 19.0) and never
+  reaches a verdict. The 08-22 mechanism argument is now confirmed on independent data.
+- **Unplanned benefit: §4(b)'s parser mismatch is gone.** §2.3(A) had budgeted for the
+  factorial acquiring a parser difference across its nt/wt axis. The void-and-rerun forced
+  the nt on-mode legs to parser-off, which is what iss024d already used, so **both legs now
+  share the parser setting**. Still budget-unmatchable, still attribution-only, but one of
+  two named confounds removed by accident.
+- **4B PASSES, so D6 is moot** (it asked what a 4B FAIL would do to the claim). Two things
+  reported honestly anyway: 4B is the only unit whose pooled CI excludes zero **and the
+  sign is negative** — the directive makes 4B slightly *worse* without tools, which runs
+  against the "merely a better prompt" objection rather than toward it; and 4B `simulate`
+  is the family's only NOT-EQUIVALENT task cell (−14.00 [−19.97, −8.03]), but it is
+  UNINFORMATIVE (own F = 12.0pp) so by §3.2/§3.4 it cannot contribute a FAIL and carries
+  no verdict authority. Branch is PASS, not MIXED.
+- **Mechanism decomposition VOID in all six cells** (APPARATUS 13.8–36.0% per arm vs a 1%
+  threshold). Verdicts unaffected — §3.7 never gates a verdict, and labels are owed only
+  on FAIL cells. M1 directive echo +0.00pp everywhere. The `M2 mean completion tokens =
+  nan` cosmetic bug from 08-22 is still there.
+- **No corpus drift, now including 4B.** August neutral anchor vs canonical May sweep5v2,
+  four tasks, `simulate` excluded: pooled +0.2 (4B) / +0.1 (9B) / +1.0 (gemma) / +0.2pp
+  (35b), n = 4,260 per side. All non-negative, all inside the ~1pp half-width.
+- **Still owed before any tex is touched** (all four logged with `> ANSWER:` slots in the
+  final readout §7): **O1** write the two deviation declarations — roster expanded 3→4
+  after seeing results, and the on-mode `--reasoning-parser none` deviation from §2.3(A);
+  **O2** decide whether §2.3(A) itself gets amended (08-22's D5); **O3** decide whether to
+  write+freeze the §4(b) factorial script now that it is unblocked — this is what decides
+  whether §5's PASS sentence keeps its "replicated attribution" clause, and the recommended
+  route is freeze-and-hash *before* pointing it at data, the way items 9/10 were done;
+  **O4** schedule the §5 integration under the pre-committed caveat-only cap.
+  **No tex has been touched.**
+
+## 2026-08-29 — O1-O4 answered OK; §4(b) factorial run after freeze, clause DROPS
+
+- **All four open items accepted by Omer.** O1/O2 are written, O3 executed under the
+  freeze protocol, O4 approved as scope with the tex itself deferred.
+- **O1 — both deviations declared** as appendix-ready prose in `ntster_h4_prereg.md`
+  §9.1: the roster expansion 3→4 after interim results, and the on-mode
+  `--reasoning-parser none` rerun. Written so a reader sees what changed, when, relative
+  to what knowledge, and which way it pushes the conclusion. The roster point is argued
+  in checkable form — intersection-union means a fourth unit can only make the
+  conjunctive claim harder — and notes the added unit was chosen by the size of the
+  effect needing attribution, not by its control result, which was unknown at submit.
+- **O2 — §2.3(A) amended** inline in the prereg: scoped to the single-call path, with the
+  decoupled path requiring parser-off. Also marks the "Cost, stated" paragraph **void in
+  fact** (the nt/wt parser difference no longer exists), records `CHANGELOG.md:512`'s
+  "parser-state-proof" claim as empirically false, and adds a standing rule that a
+  readiness smoke must assert `len(response) > 0`.
+- **O3 — `tools/ntster_factorial.py` written, frozen at `78787eb7…11629164`**, hash
+  recorded in the prereg §8 item 9 addendum, freeze committed **before** the first real
+  invocation so the ordering is checkable in git rather than asserted. Rehearsed
+  pre-freeze with both leg paths pointed at one directory, forcing the interaction to
+  exactly zero by construction — exercises every code path against a known answer while
+  leaking nothing. The addendum states plainly that the code was written after the H4
+  verdict was known and why (until the on-mode rerun landed, the factorial had no nt
+  legs).
+- **§4(b) RESULT: the "replicated attribution" clause DROPS**, as pre-registered.
+  9B interaction **+0.83 [−1.98, +3.64]**, 35b **−0.00 [−2.21, +2.21]** — neither
+  excludes zero. §5's PASS sentence loses its optional bracketed clause; it is removed,
+  not rewritten.
+- **This is a null on an underpowered diagnostic, NOT evidence against the attribution**,
+  and the write-up says so with the three structural reasons: gemma — the model that owns
+  the +72pp — **cannot be in this factorial at all** (§2.3(B), no `think=on` nt leg,
+  because the decoupled mechanism stops on `</think>` and gemma has no think tokens); the
+  factorial is `think=on`, where the two eligible Qwens steer by only +3.97 and +1.27pp
+  with tools, far too little to resolve an interaction at a ±2–3pp half-width; and the
+  comparison was already declared attribution-only and budget-unmatchable.
+- **Reported in both directions, honestly.** Under **domain** clustering both point
+  estimates are positive and 35b's excludes zero (+1.71 [+0.03, +3.39]) — a less
+  conservative clustering would have returned KEEP for 35b. The governing interval is the
+  **wider** of the two clusterings per §3.3, so we take DROP. And on `validate_plan` the
+  interaction is positive and excludes zero in both models (9B +7.33 [+3.92, +10.74], 35b
+  +2.77 [+0.08, +5.46]) — recorded because suppressing it would be selective, but it
+  carries no clause authority since §4(b) states the estimand per model.
+- **No consequence for the paper beyond the clause.** The CALL-beat attribution never
+  rested on the factorial; it rests on the matched cell — gemma `validate_plan`
+  `think=off`, **+72.0pp with tools vs +0.63pp [−0.46, +1.73] without** — which is
+  stronger and sits on the model and cell where the effect actually lives.
+- **O4 — integration scope approved** (caveat-only cap: CALL beat + Limitations in body;
+  per-task table, F gate, MDE, drift check, apparatus-failure declaration and the two
+  §9.1 deviations in an appendix). **Tex deferred to a later session. No tex touched.**
+
+## 2026-08-30 — PR #96 review: frozen-code fixes, re-freeze, corrected numbers (verdicts unchanged)
+
+- **A 15-finding correctness review of PR #96 audited the frozen nt-ster analysis code
+  and found real defects**; all were fixed under the prereg's own protocol — declared
+  deviations (`reference/ntster_h4_prereg.md` §9.2, deviations 3–9) plus a re-freeze of
+  all five files (§8 item 9, second addendum) — and the whole analysis was regenerated
+  from the checkpointed corpus. **The six-unit all-PASS vector and the paper-level PASS
+  branch are unchanged.** The revised readout and NUMBERS.md are the only quotable
+  sources now; every pre-revision secondary number is stale.
+- **The material defects:** (1) the delivered surface counted censored
+  (`e2e = "indeterminate"`) rows as successes — §2.3(C)'s exclusion/bounds were never
+  implemented; (2) the "problem (k=100)" clustering realized 220 unbalanced clusters and
+  its unweighted mean-of-cluster-means was not the paired difference, yet it governed
+  every headline CI — replaced by a size-weighted cluster-robust interval; (3) the §3.7
+  mechanism section read fields the overlay does not carry, so it was degenerate
+  (APPARATUS 13.8–36.0%, all six reads self-VOID) — recomputed from raw trial rows, true
+  APPARATUS is 0.00% everywhere and the mechanism block is now valid; (4) the legacy
+  consistency surface read a nonexistent key and was constant False; (5) eligibility was
+  gated on the governing rather than the registered domain half-width (same 8-cell
+  ELIGIBLE family either way).
+- **Corrected headline secondary figures:** realized MDE **5.82–6.25pp** (stale
+  6.47–6.80 was wrong twice over — the true pre-revision range was 6.47–7.11); 4B
+  `simulate` −14.00 NOT-EQUIVALENT was largely the censoring artifact (true −2.43
+  [−5.33, +0.47] INDETERMINATE; **no NOT-EQUIVALENT cell exists in the family**); the
+  matched-cell attribution — gemma `validate_plan` off, +72.0 vs +0.63 [−0.46, +1.73] —
+  is **bit-identical** (no censoring in that cell).
+- **§4(b) factorial, corrected: the clause still DROPS but the story changed.** With
+  censored rows no longer scored as successes on both legs, both interactions are
+  positive and exclude zero: 9B **+8.12 [+4.61, +11.63]** — fully replicated (sign
+  matches its +11.38pp May reference) — and 35b **+2.62 [+0.74, +4.50]**, which fails
+  only sign-match against a −0.11pp (essentially null) May reference. The pre-registered
+  per-model conjunction is unmet, so §5's PASS sentence still drops the bracketed
+  clause; but the "underpowered null" narrative is superseded — the corrected factorial
+  is directionally consistent with the attribution in both models.
+- **Enforcement hardened for the record:** `ntster_f_gate.py` now actually calls the GT
+  gate (the §8 item 10 "both entry points" record was false for it until now); the GT
+  gate compares against the preregistered canonical hash as a code constant and the
+  stamp is committed to the repo; the pooled F gate and the §3.4 FAIL-branch routing are
+  enforced rather than recorded; the factorial refuses incomplete legs and ambiguous
+  overlay cells; the §3.3 point-2 eligible-task-mean companion is now computed
+  (consistent with the pooled read in all six units).
+- **Writing consequence:** the appendix deviation paragraph now covers §9.1 + §9.2, and
+  any drafted sentence quoting the mechanism-VOID, the −3.03 4B pooled cell, the old
+  MDE range, or the "neither interaction excludes zero" factorial reading must be
+  re-sourced from the revised readout. No tex touched.

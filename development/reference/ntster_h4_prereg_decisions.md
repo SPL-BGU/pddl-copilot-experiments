@@ -1,6 +1,6 @@
 # nt-ster H4 prereg — decisions, provenance, and rejected alternatives
 
-**Companion to `development/ntster_h4_prereg.md`** (slots filled + amendments applied
+**Companion to `development/reference/ntster_h4_prereg.md`** (slots filled + amendments applied
 2026-07-25, accepted by Omer). This is the evidence trail: a 34-agent workflow —
 8 grounded investigations × 3 adversarial lenses (statistical validity /
 apparatus-and-corpus identity / operational feasibility) + synthesis + a completeness
@@ -32,7 +32,7 @@ the original `results/**` scan.
 
 # nt-ster H4 prereg — definitive slot-filling recommendation set
 
-**Date:** 2026-07-25. **Target:** `development/ntster_h4_prereg.md` (DRAFT, 4 ANSWER slots + 2 RATIFY lines).
+**Date:** 2026-07-25. **Target:** `development/reference/ntster_h4_prereg.md` (DRAFT, 4 ANSWER slots + 2 RATIFY lines).
 **Inputs:** 8 parallel investigations × 3 adversarial verifiers each. **Adjudication basis:** every
 load-bearing fact below was re-verified locally in this session against `results/sweep5v2-live`,
 `results/iss024d-e2e-live`, `results/decoupled-rollup`, and the code; verifier claims I could not

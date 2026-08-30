@@ -6,6 +6,9 @@ __pycache__/
 .envrc
 .venv/
 *.egg-info/
+# results/ is ignored wholesale; one exception is force-added and stays tracked:
+# results/derived/gt_cache_stamp.json — the GT provenance stamp the frozen
+# nt-ster gates verify against (prereg §8 item 10).
 results/
 .ipynb_checkpoints/
 *.log
@@ -37,6 +40,10 @@ checkpoints/**/*.out
 checkpoints/**/*.png
 checkpoints/**/*.md
 checkpoints/**/*.pptx
+# ...but a checkpoint's own README is documentation we write, not extracted
+# content, so it is kept. Restore recipes belong next to the archives they
+# restore, not in a doc someone has to know to go looking for.
+!checkpoints/**/README.md
 
 # PlanBench-WT arm venv (built from planbench/requirements-wt.txt).
 .venv-planbench-wt/
