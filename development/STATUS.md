@@ -76,17 +76,17 @@ delivered balanced accuracy, NUMBERS.md Job 2 block. Generator
 `job2/batch2-budget-probe-prereg`); merge main into `paper/aaai27` after it lands so
 the branch can regenerate its own figures.
 
-**Frontier budget probe: PREREG DRAFTED, NOT RUN, $0 spent.**
-`frontier_budget_probe_prereg.md` has four `> ANSWER` slots for Omer (legs A–D,
-budget 65,536 / snapshot 262,144, spend ≈$50–65 expected / $217 cap, decision
-rule). Freeze-protocol v2: gates 1, 2, 4 done (typed loader, constant asserts,
-29-check synthetic fixture); gates 3 (traceability map) and 5 (adversarial review
-by a different session) + the hash are owed before the first API call. Ledger line
-= `paper_notes_discussions.md` 2026-09-08 (later).
+**Frontier budget probe: PREREG RATIFIED 2026-09-08 (all four legs, 65,536,
+spend approved, decision rule accepted), NOT RUN, $0 spent.** Sequence of record:
+`frontier_budget_probe_handoff.md` (merge PR #98 → gate 5 adversarial review in a
+different session → discharge §8 items 4–6 → hash freeze → dry run → legs A/B live,
+C/D batch → standard regrade → `budget_probe_analysis.py readout` → ratify → 1–2
+sentences in the Delivery Gap section). Ledger line = `paper_notes_discussions.md`
+2026-09-08 (later); expected ≈$50–65, cap $217.
 
 **What is left on Job 2:** Omer's review of the two paper commits → `sync_overleaf.sh
-pull`, then push. Then the probe (answers → gates 3/5 → freeze → run → readout →
-one or two sentences in the Delivery Gap section).
+pull`, then push. In parallel the probe per its handoff (PR #98 → review → freeze →
+run → readout → the paper sentence).
 
 The one substantive paper change left on the main suite, and the larger of the two.
 Spec: `journal_decisions_memo.md` §3. It makes **delivered** the single primary

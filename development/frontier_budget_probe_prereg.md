@@ -1,7 +1,10 @@
 # Pre-registration — frontier output-budget probe (the delivery gap's cause)
 
-**Status:** DRAFT 2026-09-08, awaiting Omer's ratification (§10 slots). No data
-exists. No spend until §8 gates are discharged and §10 is signed.
+**Status:** **RATIFIED 2026-09-08 (Omer; all four §10 lines).** Design frozen: legs
+A+B+C+D, budget 65,536 / snapshot 262,144, spend approved (expected ≈$50–65, cap
+$217), decision rule accepted. No data exists. The first API call still waits on the
+§8 code gates (PR #98 merge, gate 5 adversarial review, hash freeze) — see
+`frontier_budget_probe_handoff.md` for the exact sequence.
 **Binding sources:** `job2_delivered_reframe_worknote.md` §7a (design sketch, GO in
 principle 2026-09-08); `paper_notes_discussions.md` 2026-09-08 (gates: freeze-protocol
 v2 + itemized ledger line before spend; strict delivery grading is not weakened);
@@ -80,6 +83,7 @@ temperature 0, same caching setup.
 > ANSWER (legs): A required. B / C / D — include? (recommended: all three; they are
 > cheap and C/D are what licenses any *arm-contrast* sentence at the raised budget,
 > because the paper currently asserts both arms share one output-length constraint.)
+> **ANSWER (Omer, 2026-09-08): all four legs — "we have budget".**
 
 ### 2.2 The one manipulated variable — the budget, and why 65,536
 
@@ -111,8 +115,9 @@ costs ≈$10 more than 32,768 at the expected outcome. The runner must stream at
 budget (the SDK refuses non-streaming requests whose expected time exceeds 10 minutes,
 i.e. `max_tokens` > 21,333); §2.3.
 
-> ANSWER (budget): 65,536 as registered? (alternatives considered: 32,768 fits 20/29
-> and leaves 9 non-fitting; 16,384 is non-discriminating.)
+> ANSWER (budget): 65,536 as registered? (alternatives considered: 32,768 fits 19/29
+> and leaves 10 non-fitting; 16,384 fits 11/29 and is non-discriminating.)
+> **ANSWER (Omer, 2026-09-08): 65,536.**
 
 ### 2.3 Apparatus changes (all flags default to the reference behavior; the reference
 corpus is reproducible from the same code)
@@ -352,8 +357,8 @@ readout rule).
 
 ## 8. Blocking prerequisites (every item blocks the first API call)
 
-1. Omer's §10 signatures (legs, budget, spend).
-2. Ledger line present in `paper_notes_discussions.md` (2026-09-08 entry; §2.5).
+1. ~~Omer's §10 signatures (legs, budget, spend).~~ DONE 2026-09-08.
+2. ~~Ledger line present in `paper_notes_discussions.md` (2026-09-08 entry; §2.5).~~ DONE 2026-09-08 ("later" entry).
 3. Code PR (§7 step 1) merged to main.
 4. Reference cell key sets extracted and hashed (100 keys each, Sonnet + Haiku);
    `gt_cache.json` sha256 = `77d4184ed872dd4bd7a22747c2e716eb74b86edc94420e47c92daf1684d04c7e`
@@ -442,11 +447,12 @@ trace stored as `{"trajectory": [...]}` would take the `dict` branch of
 
 ## 10. Ratification
 
-> ANSWER (10.1 legs — see §2.1 slot):
+> ANSWER (10.1 legs — see §2.1 slot): **all four (A, B, C, D). — Omer, 2026-09-08**
 
-> ANSWER (10.2 budget 65,536 / snapshot 262,144 — see §2.2 slot):
+> ANSWER (10.2 budget 65,536 / snapshot 262,144 — see §2.2 slot): **65,536. — Omer, 2026-09-08**
 
 > ANSWER (10.3 spend: expected ≈ $50–65 for A+B+C+D, hard cap $217, itemized §2.5):
+> **yes. — Omer, 2026-09-08**
 
 > ANSWER (10.4 the §3.2 decision rule and §3.4 bands are accepted as the reading rule
-> for this probe, whichever way it comes out):
+> for this probe, whichever way it comes out): **ok. — Omer, 2026-09-08**

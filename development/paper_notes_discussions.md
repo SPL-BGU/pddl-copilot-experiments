@@ -1864,3 +1864,16 @@ validated by an independent ranking subagent (the user asked for a second perspe
   the push; the probe awaits the four prereg answers, the freeze gates, and then
   ≈$50–65 of API spend. Job 3 (nt-ster caveat integration) is the remaining writing
   job.
+
+## 2026-09-08 (evening) — Frontier budget probe prereg RATIFIED
+
+- Omer answered all four `frontier_budget_probe_prereg.md` slots: **legs A+B+C+D**
+  ("we have budget"), **budget 65,536** (snapshot 262,144), **spend approved**
+  (expected ≈$50–65, hard cap $217, itemized in the "later" entry above), **decision
+  rule accepted** (§3.2 Fisher contrast; H1 ≥60% conversion ∧ p<0.05, kill ≤30%,
+  else partial — read the same way whichever way it comes out).
+- Design frozen. Still gated before the first API call: PR #98 merge, freeze-protocol
+  gate 5 (adversarial review by a different session), §8 items 4–6, the hash.
+  Operational sequence = `development/frontier_budget_probe_handoff.md`.
+- Bottom line: nothing spent yet; next action = merge PR #98, then a fresh session runs
+  the gate-5 review of `tools/budget_probe_analysis.py` against the prereg.
