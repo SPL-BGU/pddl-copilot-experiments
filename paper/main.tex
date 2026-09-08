@@ -643,7 +643,10 @@ intervals are disjoint; where a cell is a censoring bound \cbnd{a}{b}, the gap i
 asserted only if it survives the claim-adverse end. Table~\ref{tab:howtoread}
 says, for each corpus, which value shape its delivered rates take and why, and
 its footnotes list the claims this discipline forbids; we recommend reading it
-before any table below.
+before any table below. Figure~\ref{fig:funnel} draws the same discipline for
+every with-tools cell that can be drawn: of all trials, how many call the tool,
+how many obtain a correct tool result, and how many deliver a correct answer,
+against the unaided rate as a reference line.
 
 \begin{table*}[t]
 \centering
@@ -681,6 +684,26 @@ are the sole source of \emph{simulate} success is made at the delivered level;
 are excluded from headline use.}
 \label{tab:howtoread}
 \end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/funnel.pdf}
+\caption{The funnel. For every with-tools trial, the share that calls the tool
+(\textsc{call}), obtains a correct tool result (the mechanism layer), and
+delivers a correct answer (the primary surface); the dashed line is the
+no-tools delivered rate on the same task (\textsc{need}), drawn as a reference
+and never as a bar, because arms are never pooled. Top row: the two frontier
+tiers on the canonical corpus (prompt v11) and the PlanBench arm, whose
+sequence gains a leading \textsc{formalize} stage (the model's PDDL matches the
+gold problem) because the prompt supplies no PDDL there. Bottom row: the three
+$\geq$9B open-weight models on the validation tasks, plain arm,
+\emph{think}=off; this corpus's \emph{solve} and \emph{simulate} tool cells are
+censoring bounds too wide to draw and are reported in Figure~\ref{fig:solesource}
+and the text. Bars are marginal shares of all trials, not nested conditionals;
+hatched segments are censoring bounds \cbnd{a}{b}; the PlanBench delivered bars
+use the first-draw counts ($410/600$ and $431/600$).}
+\label{fig:funnel}
+\end{figure*}
 
 We organize the evaluation around six research questions. The first four ask,
 per task, whether and how the tool helps; the last two ask whether its advantage
@@ -769,16 +792,22 @@ delivered answer.}
 \centering
 \includegraphics[width=0.49\textwidth]{figures/solve.pdf}\hfill
 \includegraphics[width=0.49\textwidth]{figures/simulate.pdf}
-\caption{Sole-source tasks (success by arm, \emph{think}=off; whiskers are Wilson
-95\% CIs; the $\geq$9B headline set is shaded). Tool-arm bars show the
-\emph{mechanism layer} (tool-verified success, exact in every corpus); the
-delivered rates for these arms are censoring bounds and are reported in the
-text. \emph{solve} (left) is floored at
-$8$--$11\%$ unaided; \emph{simulate} (right) is $0\%$ format-exact for every
-open-weight model under the shared decode budget (a budget-decoupled control
-recovers $22$--$40\%$ content-correct at $\geq$4B; see text). The tool
-lifts the mechanism layer decisively, and steering adds a further lift wherever
-the plain arm under-calls (e.g.\ Qwen3.6-35B on \emph{solve}).}
+\caption{Sole-source tasks on the delivered surface (\emph{think}=off). Solid
+bars are delivered rates, hatched segments are censoring bounds \cbnd{a}{b},
+whiskers are Wilson 95\% intervals on exact cells, and the dotted tick above a
+tool bar marks the mechanism layer (tool-verified). \emph{solve} (left): the
+open-weight roster on the canonical corpus (the $\geq$9B headline set is
+shaded) and the two frontier tiers (prompt v11, exact). Unaided \emph{solve} is
+floored at $8$--$11\%$ open-weight and $22$--$29\%$ at the frontier; with the
+tool the frontier delivers $95.0\%$ at both tiers against a $100\%$ mechanism
+layer, while the open-weight tool arms clear their baselines only at the
+claim-adverse end of the 9B's bound. \emph{simulate} (right): the canonical
+open-weight cells are censored on both arms, so the open-weight panel shows the
+independent full-storage rerun (\emph{think}=on, separate apparatus,
+within-corpus contrasts only), where the tool verifies $44$--$94\%$ of
+trajectories per cell but at most \cbnd{6}{21} is delivered; the frontier panel
+shows delivered \cbnd{49}{62} (Sonnet) and \cbnd{52}{64} (Haiku) against
+unaided \cbnd{34}{53} and \cbnd{38}{68}, which the bounds do not separate.}
 \label{fig:solesource}
 \end{figure*}
 
@@ -841,23 +870,29 @@ survive the control.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/failure_taxonomy.pdf}
-\caption{How models fail: per-trial outcome composition by task and arm
-($\geq$9B, \emph{think}=off, pooled), each bar normalized to $100\%$. Every trial
-is one of \emph{success} or a single failure type, separating budget
-\emph{truncation} from \emph{no tool call} (silence) from genuine content errors
-(\emph{unparseable}, \emph{wrong content}, \emph{tool-call error}). The figure
-supports the failure-mode claims made throughout: unaided \emph{simulate} is
-$68\%$ unparseable $+$ $29\%$ truncated; unaided \emph{solve} is dominated by
-unparseable output; the unaided validation baselines fail by \emph{wrong content}
-(a parseable but incorrect verdict); and on \emph{validate\_plan} the plain tool arm
-carries a large \emph{no tool call} band, the silence that steering removes.}
+\caption{How answers fail on the delivered surface: per-trial outcome
+composition by task and arm ($\geq$9B, \emph{think}=off, canonical corpus,
+pooled), each bar normalized to $100\%$. Every trial is \emph{delivered ok} or
+exactly one other outcome: \emph{censored} (the stored snapshot ends before the
+answer can be graded, a bound rather than a failure), \emph{truncated} (the
+budget ran out with no answer), \emph{unparseable}, or \emph{wrong content}.
+Unaided \emph{solve} is $67\%$ unparseable and $15\%$ truncated; the unaided
+validation baselines fail by wrong content ($13$--$40\%$); on the tool arms the
+dominant non-success mass is censoring, which is why those cells are bounds, and
+on \emph{validate\_plan} the plain arm's censored band is largely the trials in
+which the model reasons in prose instead of calling the validator, the silence
+that steering removes (Figure~\ref{fig:mechanism} shows it at the mechanism
+layer). Unaided \emph{simulate} on this corpus is $93\%$ censored under the
+delivered grader; its online-grader anatomy ($68\%$ unparseable, $29\%$
+truncated) is quoted in the text.}
 \label{fig:failtax}
 \end{figure*}
 
 \subsection{The Delivery Gap: What Reaches the Answer}
 The two grading layers let us measure something the tool-use literature usually
 cannot see: how much of what the tool computes actually reaches the model's
-answer. Table~\ref{tab:deliverygap} reports both layers for the frontier
+answer. Table~\ref{tab:deliverygap} (and the top row of Figure~\ref{fig:funnel})
+reports both layers for the frontier
 with-tools runs, where storage permits exact delivered rates. The pattern is
 sharp and identical at both capability tiers. On the three validation tasks the
 gap is zero to within a tenth of a point: a verdict is a short string, and the
@@ -940,8 +975,13 @@ competent baseline here; it \emph{rescues} a task the models cannot do reliably.
 The delivered lower bounds alone establish it: \cbnd{99.7}{100.0} (9B),
 \cbnd{93.3}{98.1} (Gemma), and \cbnd{91.9}{99.2} (35B) against exact unaided
 baselines of $26$, $78$, and $68\%$, favorable for all three at the claim-adverse
-end and past the $83\%$ trivial line at every lower bound (at the mechanism
-layer, balanced accuracy reaches $95$--$100\%$). The \emph{validate\_domain}
+end and past the $83\%$ trivial line at every lower bound. Balanced accuracy on
+the delivered surface tells the same story: the steered arm reaches
+\cbnd{100}{100} (9B), \cbnd{92.2}{95.0} (Gemma), and \cbnd{82.7}{99.2} (35B)
+against unaided $53$, $74$, and $65\%$, clearing the baseline at the
+claim-adverse end for all three; the 35B's wide bound comes from its
+$60$-trial negative arm, of which $19$ are censored (Table~\ref{tab:vdom}). The
+\emph{validate\_domain}
 verdict holds from 4B up (\cbnd{84.2}{100.0} against $19.2\%$); the 4B's
 \emph{validate\_problem} cell is undecided. The 0.8B model moves sharply and
 decidedly \emph{against} on both tasks even at the censoring bounds' favorable
@@ -1044,10 +1084,13 @@ tool's advantage tracks; object count is not.
 \centering
 \includegraphics[width=\textwidth]{figures/token_quadrant.pdf}
 \caption{What the tokens buy ($\geq$9B, \emph{think}=off): mean total tokens per
-trial (log $x$) vs.\ success ($y$); each arrow runs no-tools$\to$+tool(steered).
-Every arrow points up-and-right: the tool always costs more per trial, and the
-success it buys is decisive where the baseline is floored (\emph{solve},
-\emph{simulate}) and modest where it is already strong (\emph{validate\_*}).}
+trial (log $x$) vs.\ delivered success ($y$); each arrow runs
+no-tools$\to$+tool(steered), and a translucent bar marks a censoring bound.
+Every arrow points right: the tool always costs more per trial. Delivered
+cost-of-pass (tokens per delivered success, as a range across the bound) is
+$0.6$--$1.6\times$ the unaided cost on \emph{solve}, $2.8$--$5.2\times$ on the
+validation tasks, and not identified on \emph{simulate}, where both arms are
+censored on this corpus.}
 \label{fig:tokens}
 \end{figure*}
 
@@ -1077,7 +1120,15 @@ delivered-surface cost-of-pass can only be equal or costlier, since delivered
 successes are a subset of tool-verified ones.
 Where the baseline is floored the tool pays for itself: on \emph{solve} it is
 $\approx$0.3--0.4$\times$ the cost per success (e.g.\ $\approx$4$\times$ more tokens
-$\div$ $\approx$9--13$\times$ more correct answers). On \emph{simulate} the
+$\div$ $\approx$9--13$\times$ more correct answers); on the delivered surface the
+same ratio is a range, $0.6$--$1.6\times$, because the tool arm's delivered
+successes are bounded (Figure~\ref{fig:tokens}). At the frontier, where
+delivered \emph{solve} is exact, the verdict inverts: the unaided baseline is no
+longer floored ($22$--$29\%$) and the re-fed context dominates, so a delivered
+pass costs $3.1\times$ (Sonnet, $18.6$K vs.\ $6.0$K tokens) and $6.1\times$
+(Haiku, $48.5$K vs.\ $8.0$K) the unaided tokens, and on \emph{simulate}
+\cbnd{84}{106}K against \cbnd{10}{15}K (Sonnet), a $5$--$11\times$ premium
+per delivered trajectory. On \emph{simulate} the
 unaided arm produces no format-exact success here, but the tool arm also rarely
 delivers its trajectory within budget, so at the delivered level neither arm's
 per-success cost is identified on this corpus and we make no \emph{simulate}
@@ -1425,8 +1476,8 @@ already contains PDDL, a with-tools trial can fail in three ways: the model neve
 the tool, it calls with bad arguments, or it fails to report what came back. PlanBench
 puts an earlier step in front of those: can the model write the problem down in the
 tool's language at all? We treat \textsc{formalize} as the first stage of the PlanBench
-sequence, and it belongs to the benchmark, because it cannot arise anywhere the PDDL is
-supplied. Once a plan clears that stage and the extractor, the delegated search is right
+sequence (Figure~\ref{fig:funnel}, top right, draws all four stages), and it belongs to
+the benchmark, because it cannot arise anywhere the PDDL is supplied. Once a plan clears that stage and the extractor, the delegated search is right
 $95.9\%$ of the time on Blocksworld and $97.3\%$ on Mystery.
 
 \subsection{What Could Distort These Numbers}
@@ -1695,10 +1746,12 @@ $83.3\%$ pooled but only $50\%$ balanced. Table~\ref{tab:vdom} shows that unaide
 every $\geq$9B model is at or below the pooled trivial line and ranges from near-chance
 to only modest on the balanced metric, with the tool lifting balanced accuracy to
 $95$--$100\%$. We headline \emph{and} test \emph{validate\_domain} on balanced accuracy, so the metric is
-consistent throughout: the tool lifts balanced accuracy from $53$--$74\%$ (no-tools) to
-$95$--$100\%$, a $+21$--$47$\,pp gap that is CI-disjoint and favorable for all three $\geq$9B models.
-The $60$-trial negative arm widens the balanced interval but cannot close a gap this large, and the
-pooled metric yields the same verdict.
+consistent throughout: at the mechanism layer the tool lifts balanced accuracy from
+$53$--$74\%$ (no-tools) to $95$--$100\%$, a $+21$--$47$\,pp gap that is CI-disjoint and
+favorable for all three $\geq$9B models; on the delivered surface the same cells are
+censoring bounds (last column), and the bound's claim-adverse end still clears the
+unaided value for all three. The $60$-trial negative arm widens the balanced interval
+but cannot close a gap this large, and the pooled metric yields the same verdict.
 Qwen3.5-9B answers ``INVALID'' almost reflexively (true-positive rate $11.7\%$,
 true-negative rate $95.0\%$), which is why its pooled score ($25.6\%$) and balanced
 score ($53.3\%$) diverge so sharply.
@@ -1706,19 +1759,21 @@ score ($53.3\%$) diverge so sharply.
 \begin{table}[t]
 \centering
 \footnotesize
-\begin{tabular}{@{}lcccc@{}}
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lccccc@{}}
 \toprule
- & \multicolumn{2}{c}{\textbf{no-tools}} & \multicolumn{2}{c}{\textbf{+tool (steered)}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-\textbf{Model} & pooled & balanced & pooled & balanced \\
+ & \multicolumn{2}{c}{\textbf{no-tools}} & \multicolumn{3}{c}{\textbf{+tool (steered)}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-6}
+\textbf{Model} & pooled & bal. & pooled$^{m}$ & bal.$^{m}$ & bal.$^{d}$ \\
 \midrule
-Qwen3.5-9B    & 25.6 & 53.3 & 100.0 & 100.0 \\
-Gemma-MoE-26B & 77.8 & 74.0 & 98.3  & 95.0  \\
-Qwen3.6-35B   & 67.8 & 64.7 & 99.7  & 99.2  \\
+Qwen3.5-9B    & 25.6 & 53.3 & 100.0 & 100.0 & \cbnd{100.0}{100.0} \\
+Gemma-MoE-26B & 77.8 & 74.0 & 98.3  & 95.0  & \cbnd{92.2}{95.0} \\
+Qwen3.6-35B   & 67.8 & 64.7 & 99.7  & 99.2  & \cbnd{82.7}{99.2} \\
 \bottomrule
 \end{tabular}
 \caption{\emph{validate\_domain} accuracy ($\geq$9B, \emph{think}=off), pooled
-(majority-positive) vs.\ balanced (per-class mean). Trivial baselines are $83.3\%$
+(majority-positive) vs.\ balanced (per-class mean); $^{m}$ = mechanism layer
+(exact), $^{d}$ = delivered surface (censoring bounds). Trivial baselines are $83.3\%$
 pooled / $50\%$ balanced. Unaided pooled scores are at or below the trivial line and
 balanced accuracy is near chance; the tool rescues the task rather than refining a
 competent baseline.}
