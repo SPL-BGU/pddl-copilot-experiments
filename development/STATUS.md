@@ -1,7 +1,7 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-09-08 (Job 2 batches 1+2 drafted, unpushed; frontier
-budget probe prereg drafted, not run). Renamed from `remaining_work_20260811.md`
+*Content last refreshed: 2026-09-08 (Job 2 batches 1+2 pushed + Overleaf-synced;
+frontier budget probe prereg ratified, not run). Renamed from `remaining_work_20260811.md`
 on 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
@@ -30,7 +30,7 @@ wrongly carried it as NOT STARTED until 2026-09-07. Last paper commit is `644f8b
 | line | data | analysis | paper |
 |---|---|---|---|
 | PlanBench (NT + WT) | DONE, archived + MANIFEST-verified | DONE, `verify_promotion.py` re-derives every number | **DONE 2026-08-11** — section in tex + Overleaf, re-verified 09-07 |
-| Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **DRAFTED 09-07/08, unpushed** — the full e2e reframe (D2/D-J2 = option a), batches 1+2 on `paper/aaai27`, awaiting review |
+| Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **DONE 09-08** — the full e2e reframe (D2/D-J2 = option a), batches 1+2 on `paper/aaai27`, in Overleaf; probe sentence pending |
 | nt-ster H4 control | **DONE 2026-08-29** (6 cells, 9,120 rows each) | **DONE** — all six units PASS, branch PASS | **NOT STARTED** — caveat-only integration, see Job 3 |
 
 Evidence on the paper side: the Results sections of the main suite still carry the
@@ -64,9 +64,10 @@ since, nothing to pull. Re-verified 2026-09-07 against the signed plan
 
 ## Job 2 — the single-tool e2e reframe (P1 / D2 = D-J2 = option a)
 
-**BATCHES 1 AND 2 DRAFTED (2026-09-07 / 09-08) — two LOCAL commits on
-`paper/aaai27` (`125cc7a` batch 1; `dbea3d7` batch 2), deliberately NOT pushed: pushing
-auto-syncs Overleaf, and the reframe gets Omer's review first.** Grounding:
+**BATCHES 1 AND 2 LANDED (2026-09-07 / 09-08) — `125cc7a` (batch 1) + `dbea3d7`
+(batch 2) on `paper/aaai27`, PUSHED 2026-09-08 on Omer's go and synced to Overleaf
+(Action run 34245382827 green; Overleaf had no coauthor edits since the 08-11 sync,
+verified byte-identical before the push).** Grounding:
 `job2_delivered_reframe_worknote.md` (§2 verdicts — read §3 before reviewing: the
 memo's "2/25 undecided" is superseded by the derived 13/25; §8 = batch-2 tables).
 Batch 2 delivered: funnel Figure 1 (+ PlanBench FORMALIZE bar), the four Results
@@ -84,9 +85,8 @@ C/D batch → standard regrade → `budget_probe_analysis.py readout` → ratify
 sentences in the Delivery Gap section). Ledger line = `paper_notes_discussions.md`
 2026-09-08 (later); expected ≈$50–65, cap $217.
 
-**What is left on Job 2:** Omer's review of the two paper commits → `sync_overleaf.sh
-pull`, then push. In parallel the probe per its handoff (PR #98 → review → freeze →
-run → readout → the paper sentence).
+**What is left on Job 2:** only the probe, per its handoff (PR #98 → gate-5 review →
+freeze → run → readout → the paper sentence). The tex reframe is in Overleaf now.
 
 The one substantive paper change left on the main suite, and the larger of the two.
 Spec: `journal_decisions_memo.md` §3. It makes **delivered** the single primary

@@ -1877,3 +1877,18 @@ validated by an independent ranking subagent (the user asked for a second perspe
   Operational sequence = `development/frontier_budget_probe_handoff.md`.
 - Bottom line: nothing spent yet; next action = merge PR #98, then a fresh session runs
   the gate-5 review of `tools/budget_probe_analysis.py` against the prereg.
+
+## 2026-09-08 (night) — Job 2 pushed to Overleaf
+
+- Omer: "push". Sequence followed: `sync_overleaf.sh pull` through the existing bridge
+  (the bridge clone was behind its own remote and fast-forwarded to the 08-11 sync;
+  Overleaf's newest commit is still that monorepo sync — zero coauthor web edits),
+  Overleaf copy verified byte-identical to `644f8bd`, working tree restored, then
+  `git push origin paper/aaai27` (`644f8bd..dbea3d7`). The "Sync paper to Overleaf"
+  Action ran green (run 34245382827).
+- Overleaf now carries the full D-J2 delivered reframe (batch 1 `125cc7a`) and batch 2
+  (`dbea3d7`: funnel Figure 1, delivered-surface figures, frontier delivered
+  cost-of-pass, vd delivered balanced accuracy). One pre-existing overfull box (the
+  batch-1 scorecard table*, tex ~L746–787) is still there for a layout pass.
+- Bottom line: Job 2 tex is done; remaining on the main suite = the budget-probe
+  sentence (after the probe runs) and Job 3 (nt-ster caveat integration).
