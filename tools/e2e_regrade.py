@@ -112,9 +112,12 @@ from pddl_eval.scoring import (  # noqa: E402
 VALIDATE_TASKS = ("validate_domain", "validate_problem", "validate_plan")
 ALL_TASKS = VALIDATE_TASKS + ("solve", "simulate")
 # Snapshot caps the runner has ever used (runner.py RESPONSE_SNAPSHOT_LEN):
-# 500 until 2026-06-25, 16384 after. A stored response of exactly cap length
-# is (with negligible false-positive mass) a truncated snapshot.
-KNOWN_CAPS = (500, 16384)
+# 500 until 2026-06-25, 16384 after; 262144 = the frontier output-budget
+# probe's --snapshot-len (development/frontier_budget_probe_prereg.md §2.3,
+# registered 2026-09-08). A stored response of exactly cap length is (with
+# negligible false-positive mass) a truncated snapshot. detect_cap iterates
+# smallest-first, so adding a larger cap cannot change any existing corpus.
+KNOWN_CAPS = (500, 16384, 262144)
 
 NEG_PROBLEM_RE = re.compile(r"^n\d\d$")
 

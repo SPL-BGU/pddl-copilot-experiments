@@ -103,9 +103,17 @@ def runner_tools(mcp: MCPPlanner, log: list[dict]) -> list:
     return out
 
 
-async def run_one(client, mcp, model: str, job) -> dict:
+async def run_one(client, mcp, model: str, job, *, stream: bool = False) -> dict:
     """One with-tools trial through the SDK Tool Runner; raw outcome dict
-    (same shape as the A probe's _run_one)."""
+    (same shape as the A probe's _run_one).
+
+    `stream=True` (frontier budget probe, development/frontier_budget_probe_prereg.md
+    §2.3) runs each turn as a streaming request: the SDK refuses non-streaming
+    requests whose expected time exceeds 10 minutes (max_tokens > ~21K), and the
+    probe's per-call budget is 65,536. Each yielded item is then a
+    BetaAsyncMessageStream; the final message (usage, stop_reason, content) is
+    read from `get_final_message()`, so the recorded fields are identical to the
+    non-streaming path."""
     task, dpddl, ppddl = job[J_TASK], job[J_DPDDL], job[J_PPDDL]
     pv, gt, max_tokens = job[J_PV], job[J_GT], job[J_NP]
 
@@ -128,12 +136,14 @@ async def run_one(client, mcp, model: str, job) -> dict:
         # NOT the small system block (which is below Haiku's 4096-tok minimum
         # and no-ops if cached alone).
         cache_control={"type": "ephemeral"},
+        stream=stream,
     )
 
     in_tok = out_tok = cache_write = cache_read = turns = 0
     last = None
     try:
-        async for message in runner:
+        async for item in runner:
+            message = (await item.get_final_message()) if stream else item
             last = message
             u = message.usage
             in_tok += u.input_tokens
@@ -169,7 +179,8 @@ async def run_one(client, mcp, model: str, job) -> dict:
             "turns": turns, "loop_exhausted": loop_exhausted}
 
 
-async def grade(job, outcome, mcp, model: str) -> TaskResult:
+async def grade(job, outcome, mcp, model: str,
+                snapshot_len: int = RESPONSE_SNAPSHOT_LEN) -> TaskResult:
     """Grade a runner outcome into a harness TaskResult (parity with the A
     probe's _grade; with_tools=True only — the no-tools arm goes via
     tools/claude_api_batch.py)."""
@@ -196,7 +207,7 @@ async def grade(job, outcome, mcp, model: str) -> TaskResult:
         model=model, task=task, domain_name=job[J_DNAME],
         problem_name=job[J_PNAME], prompt_variant=job[J_PV], with_tools=True,
         success=success, tool_selected=tool_selected,
-        response=(text or "")[:RESPONSE_SNAPSHOT_LEN], thinking="",
+        response=(text or "")[:snapshot_len], thinking="",
         tool_calls=outcome["tool_calls"],
         tokens={"prompt": outcome["in_tok"], "completion": outcome["out_tok"],
                 "turns": outcome["turns"],
@@ -272,7 +283,7 @@ async def main_async(args) -> None:
             ground_truth=ground_truth,
             num_variants=len(ACTIVE_PROMPT_VARIANTS),
             conditions="tools", tool_filter="all", prompt_style="minimal",
-            think_tag="off",
+            think_tag="off", num_predict_override=args.num_predict,
         )
         selected = select_jobs(jobs, args)
         by_task: dict[str, int] = {}
@@ -310,7 +321,7 @@ async def main_async(args) -> None:
             ground_truth=ground_truth,
             num_variants=len(ACTIVE_PROMPT_VARIANTS),
             conditions="tools", tool_filter="all", prompt_style="minimal",
-            think_tag="off",
+            think_tag="off", num_predict_override=args.num_predict,
         )
         selected = select_jobs(jobs, args)
 
@@ -373,8 +384,10 @@ async def main_async(args) -> None:
         with trials_path.open("a") as fh:
             for i, job in enumerate(selected, 1):
                 try:
-                    outcome = await run_one(client, mcp, model, job)
-                    r = await grade(job, outcome, mcp, model)
+                    outcome = await run_one(client, mcp, model, job,
+                                            stream=args.stream)
+                    r = await grade(job, outcome, mcp, model,
+                                    snapshot_len=args.snapshot_len)
                 except Exception as exc:
                     if "credit balance" in str(exc).lower():
                         print(f"  [{i:3d}/{len(selected)}] STOP — "
@@ -412,6 +425,11 @@ async def main_async(args) -> None:
         "max_iterations": MAX_TOOL_LOOPS, "corpus": args.corpus,
         "prompt_caching": "system-block (tools+system prefix)",
         "ground_truth": "cached" if args.use_cached_gt else "generated",
+        # Budget-probe apparatus pins (prereg §2.4). None = the per-task
+        # DEFAULT_NUM_PREDICT / RESPONSE_SNAPSHOT_LEN reference behavior.
+        "num_predict": args.num_predict,
+        "snapshot_len": args.snapshot_len,
+        "stream": args.stream,
     })
 
     # Cost + caching report. Effective input cost prices cached tokens at
@@ -480,6 +498,17 @@ def main() -> None:
     p.add_argument("--dry-run", action="store_true",
                    help="build + select jobs, print counts, no API calls")
     p.add_argument("--out", default=".local/frontier/b_runner")
+    # Frontier output-budget probe (development/frontier_budget_probe_prereg.md
+    # §2.3). All three default to the reference apparatus; the reference
+    # corpora are reproducible from this file with the flags omitted.
+    p.add_argument("--num-predict", type=int, default=None,
+                   help="override the per-task max_tokens (budget probe: 65536)")
+    p.add_argument("--snapshot-len", type=int, default=RESPONSE_SNAPSHOT_LEN,
+                   help="stored-response snapshot length in characters "
+                        f"(default {RESPONSE_SNAPSHOT_LEN}; budget probe: 262144)")
+    p.add_argument("--stream", action="store_true",
+                   help="stream each turn (required by the SDK for max_tokens "
+                        "> ~21K); recorded fields are unchanged")
     args = p.parse_args()
     asyncio.run(main_async(args))
 

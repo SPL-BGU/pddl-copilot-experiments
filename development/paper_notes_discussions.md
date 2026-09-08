@@ -1714,3 +1714,153 @@ validated by an independent ranking subagent (the user asked for a second perspe
   (§9.2) instead of ordinary pre-freeze edits.
 - **Binds forward:** the two journal-phase preregs still owed before any spend, and the
   Llama second-family probe under the nt-ster prereg, run under v2.
+
+## 2026-08-30 — Budget unconstrained (grant), venue confirmed, AAAI-27 formally dropped
+
+- **Budget (Omer):** a small grant is now available and is "sufficient for almost
+  anything we had planned" — cost stops being a design constraint. The standing
+  requirement is specificity: an explicit itemized ledger of remaining expenses
+  before any new spend, not a blanket green light. The 2026-07-23 memo's "~$70.6
+  API remainder" budget-coherence frame is superseded; parked items stay parked on
+  their **methodological** grounds only, not for budget reasons.
+- **Remaining-expense ledger as of 2026-08-30:** nothing dollar-denominated is
+  committed. All planned API spend is executed (Haiku frontier ~$76.7 + regrade,
+  Sonnet NT $81.51, Sonnet WT $90.75, PlanBench WT 2×2 within the remainder). Open
+  items: (1) Llama-3.1-8B probe — cluster GPU-h only, $0; (2) Sonnet-tier PlanBench
+  Act 4 extension — the ONE decision the grant reopens (it was excluded on budget
+  alone, "single-tier owned as a limitation"); needs a ~20-instance calibration to
+  price and a freeze-protocol-v2 prereg before any spend; (3) contamination anon
+  simulate leg $20–40 — stays trigger-only; (4) steering-reframe third construct
+  ~$50 — stays parked per D4, largely mooted by the nt-ster PASS; (5) storage-fixed
+  rerun of ~5 headline cells — cluster GPU-h, advisor risk-appetite call (memo §10.5).
+- **Venue (Omer):** OK on the D-J4 recommendation — JAIR primary / TMLR fallback is
+  the working target. Formal advisor ratification (memo §10.1) remains the last step,
+  but planning proceeds on JAIR.
+- **AAAI-27 (Omer):** formally off the table — the deadline has passed. What D1
+  recorded as a lean (2026-07-15) is now fact; memo §10.3's "drop formally" item is
+  resolved by calendar. Venue calculus is journal-only from here.
+
+## 2026-09-07 — Job 1 (PlanBench Act 4) found already DONE; verified, no new prose needed
+
+- Omer chose PlanBench-first (R1) and said go. On inspection the section already
+  exists: `paper/aaai27` commits `67ea69c` (add "External Validity on PlanBench")
+  + `644f8bd` (plain-language pass), both 2026-08-11 — written right after PR #93
+  merged, before nt-ster consumed the docs' attention. STATUS.md carried it as
+  NOT STARTED until today; corrected.
+- Verified 2026-09-07 against the signed integration plan and NUMBERS.md: all nine
+  skeleton items present, every figure matches the frozen values (first-draw 68.3,
+  Δ+20.5, p=1.4e-13; Mystery 71.8 vs 0.0; ladder 0.7/0.0/0.5/71.8; formalization
+  96.3/97.8; stripped-NT 4.3 both-layer presentation; costs $39.87/$2.61/≈$46).
+  The suspicious-looking "99.5% of Mystery domains come out right" is correct —
+  Mystery domain-equivalence is 597/600 = 99.5 (results doc L148), coincidentally
+  equal to clean P(solvable|domain-equiv).
+- Overleaf: the auto-sync Action ran green on `644f8bd` (2026-08-11); bridge fetch
+  today shows Overleaf head = that sync, zero coauthor web edits since. Nothing to
+  pull or push.
+- One plan item deliberately deferred: the funnel-figure FORMALIZE amendment. No
+  funnel figure exists in the tex yet (it is the journal memo §2 Figure-1 spec),
+  so the amendment rides with Job 2; FORMALIZE is handled in prose meanwhile.
+- Bottom line: the remaining writing roadmap is **Job 2 (e2e delivered reframe,
+  incl. Figure-1/funnel) and Job 3 (nt-ster caveat integration)**. Next action =
+  start Job 2.
+
+## 2026-09-07 — Job 2 batch 1: the delivered reframe is drafted (local commit, review before push)
+
+- Executed D-J2's full reframe on `paper/aaai27` as `125cc7a` (+514/−197,
+  compiles clean, 21pp). NOT pushed: a push auto-syncs Overleaf, and a change of
+  this size gets Omer's review first. Grounding doc =
+  `development/job2_delivered_reframe_worknote.md`.
+- What the paper now says: delivered is the single primary surface; tool-verified
+  is everywhere relabeled "mechanism layer"; a "how to read our numbers" table
+  opens Results with the prohibited claims as footnotes; censoring bounds print
+  as ⟨a,b⟩, typographically distinct from Wilson [a,b]; a new "Delivery Gap"
+  section carries the two-tier frontier table (gap ≈0 verdicts / +5.0pp plans /
+  ≥33pp trajectories, identical at both tiers) and the gemma validate_plan
+  inversion (delivered ⟨30.0,63.1⟩ vs tool-verified 0.9 in the full-storage
+  rerun); the −67pp availability harm is now a mechanism-layer claim, with the
+  delivered harm owned as UNDECIDED on the canonical corpus; the storage-fixed
+  rerun contingency is pre-registered in Limitations; the "no-tools simulate
+  cost-of-pass is infinite" sentence is dead.
+- **Three source conflicts surfaced and resolved conservatively (worknote §3):**
+  (1) the memo's "exactly 2/25 UNDECIDED" came from a mode-pooled computation;
+  the honest think=off count from the canonical pooled table is 13/25 — prose
+  follows the derived table, every memo prohibition still satisfied; (2) 9B
+  solve survives worst-case bounds by 0.9pp after the √2.7 inflation — quoted as
+  a bound, classified exploratory per the memo's prohibition; (3) the tex's
+  frontier NT-simulate 45.0/38.3 exact points reproduce from no sanctioned
+  artifact — replaced with the pooled bounds ⟨41.7,61.3⟩/⟨36.3,57.7⟩ and
+  NUMBERS.md's stale row corrected.
+- Batch 2 owed: funnel Figure-1 (+ its PlanBench FORMALIZE amendment), delivered
+  regeneration of the four Results figures, frontier delivered cost-of-pass, vd
+  delivered balanced accuracy, NUMBERS.md single-tool rows.
+
+## 2026-09-08 — Simulate no-lift reading upheld; frontier budget probe approved in principle; claude.ai harness rejected for this paper
+
+- Omer challenged the batch-1 "simulate has no demonstrable delivered lift"
+  claim. Walked the numbers: frontier unaided ⟨42, 61⟩ (the old 0% was the
+  retracted artifact), tool-verified 97–99, delivered ⟨49, 64⟩ — the tool wins
+  the task internally and loses it in delivery, and both arms are bound by the
+  same output-length constraint. **The reading STANDS as drafted**; it is
+  undecided-to-null, not "tool useless," and the delivery gap is the finding.
+- **Strict grading is not up for weakening**: crediting unrestated tool results
+  is the τ-bench reward flaw D2b was decided against. No change.
+- **Frontier budget probe: GO in principle (Omer, via "continue the probe in a
+  different session").** Causal mechanism test — raise only the answer budget on
+  frontier simulate (Sonnet WT primary cell, n=100, ~$10–20), predict delivered
+  rises toward tool-verified by roughly the 29/100 truncation mass. Gates before
+  spend: freeze-protocol-v2 prereg + an itemized line in this ledger. Open-roster
+  budget raises stay dead (the 32K smoke failure stands). Design sketch:
+  `job2_delivered_reframe_worknote.md` §7a.
+- **Native claude.ai / agentic harness: rejected for this paper** — it changes
+  the question (system design, not model behavior) and the apparatus
+  (incomparable corpora), and expands scope during the writing window. Logged as
+  the successor-paper direction; the tex's Future Work "agentic regime" +
+  "give the answer its own room" already point at it.
+- Continuation state for the next session: worknote §7 (probe spec, batch-2
+  list, standing gates). Batch 1 = `125cc7a` on `paper/aaai27`, unpushed,
+  awaiting Omer's review.
+
+## 2026-09-08 (later) — Frontier budget probe prereg DRAFTED + itemized ledger line; Job 2 batch 2 executed (local commit, same review gate)
+
+- **Prereg drafted:** `development/frontier_budget_probe_prereg.md`. Causal test of
+  the "budget-shaped" delivery-gap sentence: same 100 Sonnet simulate trials, only
+  the per-call output budget raised 6,144 → **65,536** tokens (snapshot 16,384 →
+  262,144 chars). The budget was chosen from the oracle, not the failures: canonical
+  trajectory sizes run 420–157K chars; 16K would fit only 11 of the 29 truncated
+  failures (non-discriminating: its H1 prediction sits inside the current ⟨49, 62⟩),
+  65K fits 25/29. Primary contrast = conversion of budget-fitting truncated
+  failures (LEN-FIT, 25) vs the re-run conversion of non-truncated failures
+  (ET-FAIL, 19) — a within-run control for the unseeded temperature-0 loop — one-sided
+  Fisher, α=0.05; H1 iff p<0.05 ∧ ≥60% convert; kill iff ≤30%. Haiku carries a
+  registered negative control (14 DECLINE rows: the model ended its turn with a
+  summary instead of the trace; the API never shows it `max_tokens`, so these must
+  not convert). Four `> ANSWER` slots (legs, budget, spend, decision rule).
+- **Itemized ledger line (rule: itemize before spend; nothing spent):** leg A Sonnet
+  WT simulate expected **≈$30–35** (reference cell measured $23.36; output grows on
+  the 30 truncated trials), hard cap $114; leg B Haiku WT ≈$10–12 (cap $38); leg C
+  Sonnet NT batch ≈$8–12 (cap $49); leg D Haiku NT ≈$3–4 (cap $16). **Expected total
+  ≈$50–65, hard cap $217.** The worknote's "$10–20" guess was low because the answers
+  that must fit are long; corrected here. Tripwire: leg A > $45 halts the leg.
+- **Freeze-protocol v2 status:** freeze candidate written (`tools/budget_probe_analysis.py`,
+  typed loader, registered constants as asserts, pinned reference-class counts,
+  gt_cache sha256) with the gate-4 synthetic fixture
+  (`tests/test_budget_probe_analysis.py`, 29 checks, hand-computed Fisher 120/792).
+  Gates 3 (traceability map), 5 (adversarial review by another session) and the hash
+  are still owed before any API call. Apparatus flags added, defaults unchanged
+  (`frontier_runner.py --num-predict/--snapshot-len/--stream`; batch runner
+  `--num-predict`/`--snapshot-len`; `KNOWN_CAPS += 262144`; probe cells parse to run
+  tag `sweep5v2-budget65k`). Code on branch `job2/batch2-budget-probe-prereg`, PR
+  pending.
+- **Job 2 batch 2 executed** on `paper/aaai27` (`dbea3d7`, after `125cc7a`,
+  UNPUSHED — one review gate for both): funnel Figure 1 with the PlanBench FORMALIZE
+  bar (closes integration-plan item 6); solve/simulate/token/failure figures
+  regenerated on the delivered surface (hatched bounds, tool-verified as a tick);
+  frontier delivered cost-of-pass (solve 3.1× Sonnet / 6.1× Haiku, simulate 5–11×
+  premium — at the frontier the tool is a token premium on every task because the
+  unaided baseline is not floored); validate_domain delivered balanced accuracy
+  (⟨100,100⟩ / ⟨92.2,95.0⟩ / ⟨82.7,99.2⟩ steered). Tables in worknote §8; NUMBERS.md
+  gained a Job 2 block. Compiles clean, 22pp.
+- Bottom line: Job 2 is fully drafted (batches 1+2) and awaits Omer's review before
+  the push; the probe awaits the four prereg answers, the freeze gates, and then
+  ≈$50–65 of API spend. Job 3 (nt-ster caveat integration) is the remaining writing
+  job.

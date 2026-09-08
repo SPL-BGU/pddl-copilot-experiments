@@ -97,10 +97,15 @@ def load_e2e_cells(corpus: str | Path,
             # `sweep6`). Model = the corpus itself (haiku-frontier,
             # sonnet-frontier, ...); the prompt-corpus prefix rides in
             # run_tag so canonical and anon cells can never pool.
+            # The budget-probe cells carry a trailing tag
+            # (`sweep5v2-with-tools-budget65k` / `sweep5v2-budget65k`), so
+            # the arm marker is removed wherever it sits, not only at the
+            # end: both probe cells then share run_tag `sweep5v2-budget65k`
+            # (distinct from the reference `sweep5v2`) and differ by arm.
             cond = ("tools_all_minimal" if "with-tools" in stem
                     else "no-tools")
             base = (Path(corpus).name, "default", cond,
-                    stem.removesuffix("-with-tools"))
+                    stem.replace("-with-tools", ""))
         else:
             base = (info["model"], info["think"], info["cond"],
                     info.get("run_tag", ""))

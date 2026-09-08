@@ -180,6 +180,7 @@ async def _grade_one(
     out_tok: int,
     error: str = "",
     mcp=None,
+    snapshot_len: int = RESPONSE_SNAPSHOT_LEN,
 ) -> TaskResult:
     """Grade one batch response into a harness `TaskResult` (no-tools path).
 
@@ -226,7 +227,7 @@ async def _grade_one(
         success=success,
         tool_selected=tool_selected,
         format_compliant=format_compliant,
-        response=response_text[:RESPONSE_SNAPSHOT_LEN],
+        response=response_text[:snapshot_len],
         thinking="",
         tool_calls=[],
         tokens={
@@ -313,7 +314,7 @@ async def cmd_build(args) -> None:
         models=[MODEL], tasks=args.tasks, domains=domains,
         ground_truth=ground_truth, num_variants=num_variants,
         conditions="no-tools", tool_filter="all", prompt_style="minimal",
-        think_tag="off",
+        think_tag="off", num_predict_override=args.num_predict,
     )
 
     # Optional explicit key set (stratified pilot selection): restrict to
@@ -367,6 +368,9 @@ async def cmd_build(args) -> None:
         "model": MODEL, "corpus": args.corpus, "domains_dir": domains_dir,
         "tasks": args.tasks, "max_per_task": args.max_per_task,
         "num_variants": num_variants,
+        # Budget-probe pin (development/frontier_budget_probe_prereg.md §2.3);
+        # None = the per-task DEFAULT_NUM_PREDICT reference behavior.
+        "num_predict": args.num_predict,
         "per_task": counts, "total_requests": len(requests),
     }, indent=2))
 
@@ -480,12 +484,13 @@ async def cmd_grade(args) -> None:
                     r = await _grade_one(
                         meta, rec.get("text"), rec.get("stop_reason"),
                         rec.get("input_tokens", 0), rec.get("output_tokens", 0),
-                        mcp=mcp,
+                        mcp=mcp, snapshot_len=args.snapshot_len,
                     )
                 else:
                     r = await _grade_one(
                         meta, None, None, 0, 0,
                         error=rec.get("error", rec["type"]), mcp=mcp,
+                        snapshot_len=args.snapshot_len,
                     )
                 task_results.append(r)
                 trials_fh.write(json.dumps(
@@ -508,6 +513,11 @@ async def cmd_grade(args) -> None:
         "corpus": (json.loads((bdir / "counts.json").read_text()).get("corpus")
                    if (bdir / "counts.json").exists() else None),
         "tasks": sorted(per_task.keys()),
+        # Budget-probe pins (development/frontier_budget_probe_prereg.md §2.4);
+        # None / the default = the reference apparatus.
+        "num_predict": (json.loads((bdir / "counts.json").read_text()).get("num_predict")
+                        if (bdir / "counts.json").exists() else None),
+        "snapshot_len": args.snapshot_len,
     }
     save_results(task_results, out_dir, meta=meta_block)
 
@@ -566,6 +576,9 @@ def main() -> None:
                         "`full` counts stay the true full-grid size, so cost projection "
                         "still extrapolates the pilot to the real full N.")
     b.add_argument("--out", required=True, help="batch dir to write")
+    b.add_argument("--num-predict", type=int, default=None,
+                   help="override the per-task max_tokens (frontier budget probe "
+                        "legs C/D: 65536); default = DEFAULT_NUM_PREDICT[task]")
 
     s = sub.add_parser("submit", help="create the Anthropic batch")
     s.add_argument("--batch-dir", required=True)
@@ -582,6 +595,9 @@ def main() -> None:
                    help="pddl-copilot marketplace path; REQUIRED when the batch "
                         "contains `solve` trials (MCP validates the model's plans). "
                         "Unused for the other four tasks.")
+    g.add_argument("--snapshot-len", type=int, default=RESPONSE_SNAPSHOT_LEN,
+                   help="stored-response snapshot length in characters "
+                        f"(default {RESPONSE_SNAPSHOT_LEN}; budget probe: 262144)")
 
     args = p.parse_args()
     MODEL = args.model

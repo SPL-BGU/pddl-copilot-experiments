@@ -1,7 +1,8 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-08-29 (nt-ster H4 closed). Renamed from
-`remaining_work_20260811.md` on 2026-08-29.*
+*Content last refreshed: 2026-09-08 (Job 2 batches 1+2 drafted, unpushed; frontier
+budget probe prereg drafted, not run). Renamed from `remaining_work_20260811.md`
+on 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc — that is what produced the
@@ -19,40 +20,73 @@
 been complete since 2026-07-17 (sweep5v2-live + sweep6 + iss024d-e2e-live + the
 Haiku/Sonnet frontier corpora, all graded). **The nt-ster H4 control closed 2026-08-29
 — all six units PASS — so there is now no unrun experiment on either line.** What is
-left is **writing**: three paper sections that are fully specified and signed but have
-not touched tex. Last paper commit is `afc92b6`, 2026-07-23.
+left is **writing**: Jobs 2 and 3 below. Job 1 (PlanBench Act 4) is DONE — it landed
+2026-08-11 (`67ea69c` + `644f8bd`) and synced to Overleaf the same day; this file
+wrongly carried it as NOT STARTED until 2026-09-07. Last paper commit is `644f8bd`,
+2026-08-11.
 
 ## State by line
 
 | line | data | analysis | paper |
 |---|---|---|---|
-| PlanBench (NT + WT) | DONE, archived + MANIFEST-verified | DONE, `verify_promotion.py` re-derives every number | **NOT STARTED** — Act 4 section, plan signed 4/4 slots |
-| Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **NOT STARTED** — the full e2e reframe (D2/D-J2 = option a) |
+| PlanBench (NT + WT) | DONE, archived + MANIFEST-verified | DONE, `verify_promotion.py` re-derives every number | **DONE 2026-08-11** — section in tex + Overleaf, re-verified 09-07 |
+| Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **DRAFTED 09-07/08, unpushed** — the full e2e reframe (D2/D-J2 = option a), batches 1+2 on `paper/aaai27`, awaiting review |
 | nt-ster H4 control | **DONE 2026-08-29** (6 cells, 9,120 rows each) | **DONE** — all six units PASS, branch PASS | **NOT STARTED** — caveat-only integration, see Job 3 |
 
-Evidence that the paper side is untouched: `paper/main.tex` on `paper/aaai27` has
-**zero occurrences of "delivered"** (the reframe's whole vocabulary) and mentions
-PlanBench only as citations plus the Future Work promise at L1076-77.
+Evidence on the paper side: the Results sections of the main suite still carry the
+old tool-verified framing (the Job 2 reframe is genuinely untouched), but the
+PlanBench section EXISTS in `paper/main.tex` (`\section{External Validity on
+PlanBench}`, ~L972–1181) — the old "zero occurrences of 'delivered'" evidence line
+is void.
 
-## Job 1 — PlanBench Act 4 section (unblocked today by the merge)
+## Job 1 — PlanBench Act 4 section: DONE (2026-08-11, verified 2026-09-07)
 
-Fully specified in `planbench/planbench_wt_paper_integration_plan.md`, all four
-ANSWER slots signed 2026-08-06/07. Nothing to design; it is transcription plus
-prose. Shape: new self-contained section "External validity on PlanBench" between
-Results and Discussion (placement A), ladder table in the body, two-layer NT
-presentation (graded 0.0 + injection caveat, stripped 4.3 as the robust reading).
+Landed on `paper/aaai27` as `67ea69c` (section) + `644f8bd` (plain-language /
+AI-tell pass), both 2026-08-11; the Overleaf auto-sync Action ran green the same
+day and the bridge remote's head (`dff7ffb`) IS that sync — no coauthor web edits
+since, nothing to pull. Re-verified 2026-09-07 against the signed plan
+(`planbench/planbench_wt_paper_integration_plan.md`) and `NUMBERS.md`:
 
-Numbers it quotes are frozen and verified: clean WT **68.3** [64.5, 71.9] vs
-matched-NT 47.8, Δ+20.5pp, McNemar p=1.38e-13 (first-draw — Omer's conservative
-call); Mystery WT 71.8 vs 0.0; bare-NT clean 43.8 CI-disjoint above the GPT-4
-reference 34.3; ladder 0.7 / 0.0 / 0.5 / 71.8; formalization_match 96.3 / 97.8.
-
-Binding while writing: `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` §"only open work"
-(WT is the labelled SECONDARY claim; GPT-4 is a reference line never a comparator;
-every external number prints pool size + grader; `/verify-claims` for anything
-outside the 08-06 pass). Estimated: one agent session, plus Overleaf sync.
+- All nine skeleton items present: opening + headline/secondary split, NT table
+  (GPT-4 as labelled reference, no test), WT 2×2 (first-draw 68.3 / Δ+20.5 /
+  p=1.4e-13; Mystery 71.8 vs 0.0), ladder in the body (0.7/0.0/0.5/71.8),
+  formalization mechanism (96.3/97.8; the "99.5% of Mystery domains" sentence is
+  correct — Mystery domain-equivalence 597/600 = 99.5, distinct from clean
+  P(solvable|equiv) 99.5), two-layer NT audit (graded 0.0 + stripped 4.3,
+  p=6.4e-112), dialect/exhaustion ownership, cost ($39.87/$2.61/≈$46), single-tier
+  limitation.
+- Plan §4 companion edits done: Future Work rewritten to point at the section;
+  Related Work anchors H&Z (70/100 vs 0/100) and La Malfa with the corrected
+  3×50/task pool.
+- NOT done (and not owed here): the funnel-figure FORMALIZE amendment — no funnel
+  figure exists in the tex at all yet; that figure is the journal memo §2 Figure-1
+  spec and rides with Job 2. FORMALIZE is covered in prose meanwhile.
 
 ## Job 2 — the single-tool e2e reframe (P1 / D2 = D-J2 = option a)
+
+**BATCHES 1 AND 2 DRAFTED (2026-09-07 / 09-08) — two LOCAL commits on
+`paper/aaai27` (`125cc7a` batch 1; `dbea3d7` batch 2), deliberately NOT pushed: pushing
+auto-syncs Overleaf, and the reframe gets Omer's review first.** Grounding:
+`job2_delivered_reframe_worknote.md` (§2 verdicts — read §3 before reviewing: the
+memo's "2/25 undecided" is superseded by the derived 13/25; §8 = batch-2 tables).
+Batch 2 delivered: funnel Figure 1 (+ PlanBench FORMALIZE bar), the four Results
+figures on the delivered surface, frontier delivered cost-of-pass, validate_domain
+delivered balanced accuracy, NUMBERS.md Job 2 block. Generator
+`paper/figures/make_paper_figures.py` lives on main (PR
+`job2/batch2-budget-probe-prereg`); merge main into `paper/aaai27` after it lands so
+the branch can regenerate its own figures.
+
+**Frontier budget probe: PREREG DRAFTED, NOT RUN, $0 spent.**
+`frontier_budget_probe_prereg.md` has four `> ANSWER` slots for Omer (legs A–D,
+budget 65,536 / snapshot 262,144, spend ≈$50–65 expected / $217 cap, decision
+rule). Freeze-protocol v2: gates 1, 2, 4 done (typed loader, constant asserts,
+29-check synthetic fixture); gates 3 (traceability map) and 5 (adversarial review
+by a different session) + the hash are owed before the first API call. Ledger line
+= `paper_notes_discussions.md` 2026-09-08 (later).
+
+**What is left on Job 2:** Omer's review of the two paper commits → `sync_overleaf.sh
+pull`, then push. Then the probe (answers → gates 3/5 → freeze → run → readout →
+one or two sentences in the Delivery Gap section).
 
 The one substantive paper change left on the main suite, and the larger of the two.
 Spec: `journal_decisions_memo.md` §3. It makes **delivered** the single primary
@@ -110,22 +144,30 @@ strictly after nt-ster and no longer has a blocker. It needs its own branch + PR
 `vllm_lookup` case; the "must not touch `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is
 live" constraint has lapsed.
 
-## Job 4 — small items, agent-executable, no gates
+## Job 4 — small items: DONE (PR #94, 2026-08-20)
 
-- `guided_json` $0 local audit (mechanism + affected-row fraction, for Limitations;
-  the fix stays parked per D4).
-- Collision-check "the delivery gap" against existing tool-use/agent-eval
-  terminology before the term locks into the title/abstract.
-- Title/abstract candidates per memo §8 constraints.
+All three landed in `ad09c80`: the `guided_json` $0 local audit (constraint never
+bound — 526/88,781 no-tools rows conformant, 0.59%; validate_* shielded by the
+VERDICT trailer, exposure on solve/simulate only; fix stays parked per D4), the
+"delivery gap" collision check (term unclaimed; one near neighbour to distinguish
+if ever cited), and the title/abstract candidates
+(`development/title_abstract_candidates.md`). PR #94 also flagged that the memo's
+"227k trials" scale claim does not reproduce from disk (counted two-corpus figure
+273,600) — resolve before that number enters tex.
 
-None of the three were done during the PlanBench phase; all three were Phase-0
-parallel items.
+## External gates — mostly resolved 2026-08-30
 
-## Not our call (external)
-
-Advisor cost verdict (blocks the next cost-phase step only); venue ratification
-(D-J4 recommends JAIR primary / TMLR fallback); formal AAAI-27 drop. The PlanBench
-kill criterion of 2026-08-15 is moot — the arm delivered before it.
+- **Budget: RESOLVED.** Omer holds a small grant sufficient for everything planned;
+  cost is no longer a design constraint. Requirement: itemized expenses before any
+  new spend. Ledger in `paper_notes_discussions.md` 2026-08-30 — nothing
+  dollar-denominated is currently committed; the one decision the grant reopens is
+  the Sonnet-tier PlanBench extension (was excluded on budget alone).
+- **Venue: confirmed by Omer** — JAIR primary / TMLR fallback is the working target;
+  formal advisor ratification (memo §10.1) is the remaining step.
+- **AAAI-27: formally dropped** — deadline passed.
+- Advisor cost verdict on the cost-of-pass deck content remains open as a paper-content
+  question only (the budget gate it rode with is gone). The PlanBench kill criterion
+  of 2026-08-15 is moot — the arm delivered before it.
 
 ---
 

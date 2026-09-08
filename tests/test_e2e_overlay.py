@@ -108,8 +108,14 @@ def test_detect_cap_clean_16384(r: TestResults) -> None:
 
 
 def test_detect_cap_above_16384(r: TestResults) -> None:
-    r.check_eq("rows above 16384 -> None",
-              e2e_regrade.detect_cap({20000: 5}), None)
+    # Since the 262144 probe cap was registered (2026-09-08) a corpus whose
+    # rows exceed 16384 but stay under 262144 reads as a 262144-snapshot
+    # corpus (only rows of exactly that length are censored — negligible
+    # false-positive mass); only rows above the largest known cap give None.
+    r.check_eq("rows above 16384 -> 262144",
+              e2e_regrade.detect_cap({20000: 5}), 262144)
+    r.check_eq("rows above 262144 -> None",
+              e2e_regrade.detect_cap({300000: 5}), None)
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +325,54 @@ def test_load_e2e_cells_frontier_stem_still_aggregates(r: TestResults) -> None:
         r.check_eq("frontier cell exact (no censoring)", cell["exact"], True)
 
 
+# ---------------------------------------------------------------------------
+# 9. Frontier output-budget probe (development/frontier_budget_probe_prereg.md
+#    §2.3 items 3-4, §8 item 6): the 262144 snapshot cap is registered and the
+#    probe's cell stems never pool with the reference cells.
+# ---------------------------------------------------------------------------
+
+
+def test_detect_cap_probe_262144(r: TestResults) -> None:
+    r.check("262144 registered", 262144 in e2e_regrade.KNOWN_CAPS,
+            str(e2e_regrade.KNOWN_CAPS))
+    # A probe corpus whose longest answer sits under the cap is exact ...
+    r.check_eq("probe corpus below cap -> 262144",
+              e2e_regrade.detect_cap({30000: 60, 150000: 40}), 262144)
+    # ... and one pinned at the cap censors the pinned rows (D6=A rule).
+    r.check_eq("probe corpus pinned at cap -> 262144",
+              e2e_regrade.detect_cap({30000: 90, 262144: 10}), 262144)
+    # Existing corpora are untouched by the larger cap (smallest-first).
+    r.check_eq("16384 corpus still 16384",
+              e2e_regrade.detect_cap({5000: 50, 16384: 20}), 16384)
+    r.check_eq("500 corpus still 500", e2e_regrade.detect_cap({500: 4496, 503: 1}), 500)
+
+
+def test_load_e2e_cells_probe_stems_get_their_own_run_tag(r: TestResults) -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        overlay_root = Path(tmp)
+        corpus_dir = overlay_root / "sonnet-frontier"
+        corpus_dir.mkdir(parents=True)
+        wt = {"task": "simulate", "with_tools": True, "prompt_variant": 11,
+              "e2e_strict": True, "e2e": True, "tool_verified": True}
+        nt = {"task": "simulate", "with_tools": False, "prompt_variant": 11,
+              "e2e_strict": False, "e2e": False, "tool_verified": None}
+        for stem, row in [("sweep5v2-with-tools", wt), ("sweep5v2", nt),
+                          ("sweep5v2-with-tools-budget65k", wt),
+                          ("sweep5v2-budget65k", nt)]:
+            (corpus_dir / f"{stem}.e2e.jsonl").write_text(json.dumps(row) + "\n")
+        cells = e2e_overlay.load_e2e_cells("sonnet-frontier", overlay_root)
+        keys = sorted(cells)
+        r.check_eq("four distinct cells (no pooling)", len(keys), 4)
+        tags = {k[3] for k in keys}
+        r.check_eq("run tags", tags, {"sweep5v2", "sweep5v2-budget65k"})
+        r.check("probe WT cell keyed by arm+tag",
+                ("sonnet-frontier", "default", "tools_all_minimal",
+                 "sweep5v2-budget65k", "tl-neut", "simulate") in cells, str(keys))
+        r.check("probe NT cell keyed by arm+tag",
+                ("sonnet-frontier", "default", "no-tools",
+                 "sweep5v2-budget65k", "nt-neut", "simulate") in cells, str(keys))
+
+
 def main() -> None:
     r = TestResults("test_e2e_overlay")
     test_parse_dirname_full_bare_cell(r)
@@ -339,6 +393,8 @@ def main() -> None:
     test_delegation_credit_uses_recomputed_tool_verified(r)
     test_load_e2e_cells_unparseable_slurm_stem_raises(r)
     test_load_e2e_cells_frontier_stem_still_aggregates(r)
+    test_detect_cap_probe_262144(r)
+    test_load_e2e_cells_probe_stems_get_their_own_run_tag(r)
     r.report_and_exit()
 
 
