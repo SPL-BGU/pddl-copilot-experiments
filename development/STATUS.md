@@ -77,16 +77,20 @@ delivered balanced accuracy, NUMBERS.md Job 2 block. Generator
 `job2/batch2-budget-probe-prereg`); merge main into `paper/aaai27` after it lands so
 the branch can regenerate its own figures.
 
-**Frontier budget probe: PREREG RATIFIED 2026-09-08 (all four legs, 65,536,
-spend approved, decision rule accepted), NOT RUN, $0 spent.** Sequence of record:
-`frontier_budget_probe_handoff.md` (merge PR #98 → gate 5 adversarial review in a
-different session → discharge §8 items 4–6 → hash freeze → dry run → legs A/B live,
-C/D batch → standard regrade → `budget_probe_analysis.py readout` → ratify → 1–2
-sentences in the Delivery Gap section). Ledger line = `paper_notes_discussions.md`
-2026-09-08 (later); expected ≈$50–65, cap $217.
+**Frontier budget probe: PREREG RATIFIED 2026-09-08, AMENDED + ANALYSIS FROZEN
+2026-09-10 (all four legs, budget 64,000 — Haiku 4.5's output ceiling, replacing
+65,536; spend approved; decision rule accepted), NOT RUN, $0 spent.** Gate-5 review
+findings (4) fixed before the hash: run manifest written before the first API call
+and enforced on resume, snapshot cap read from the manifest, final-turn output tokens
+recorded separately for the §3.6(a) tripwire. Hashes + traceability map in the
+prereg's freeze record. Sequence of record: `frontier_budget_probe_handoff.md` (merge
+PR #98 and re-verify the hashes → dry run → legs A/B live, C/D batch → standard regrade
+→ `budget_probe_analysis.py readout` → ratify → 1–2 sentences in the Delivery Gap
+section). Ledger line = `paper_notes_discussions.md` 2026-09-08 (later) + 2026-09-10
+amendment; expected ≈$50–65, cap $213.
 
-**What is left on Job 2:** only the probe, per its handoff (PR #98 → gate-5 review →
-freeze → run → readout → the paper sentence). The tex reframe is in Overleaf now.
+**What is left on Job 2:** only the probe, per its handoff (merge PR #98 → run →
+readout → the paper sentence). The tex reframe is in Overleaf now.
 
 The one substantive paper change left on the main suite, and the larger of the two.
 Spec: `journal_decisions_memo.md` §3. It makes **delivered** the single primary

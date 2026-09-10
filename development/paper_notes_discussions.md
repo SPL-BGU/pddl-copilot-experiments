@@ -1892,3 +1892,38 @@ validated by an independent ranking subagent (the user asked for a second perspe
   batch-1 scorecard table*, tex ~L746–787) is still there for a layout pass.
 - Bottom line: Job 2 tex is done; remaining on the main suite = the budget-probe
   sentence (after the probe runs) and Job 3 (nt-ster caveat integration).
+
+## 2026-09-10 — Frontier budget probe: budget amended to 64,000, gate-5 fixes, analysis frozen
+
+- **Decision (Omer): the probe budget is 64,000 output tokens on all four legs**, not the
+  ratified 65,536. Reason: `claude-haiku-4-5` caps output at 64,000; 65,536 would have
+  been rejected on legs B/D, and the paper's budget-symmetry sentence (§3.3(2) of the
+  prereg) needs every leg at one budget. Sonnet 4.6 allows 128K, so the same value
+  fits both tiers. Prereg §2.2 / §10.5 / §11 record the amendment; the ledger line
+  becomes: expected total ≈$50–65 (unchanged — the cap moved by 1,536 tokens on at
+  most two trials), hard caps A $111 / B $37 / C $49 / D $16, **total $213** (was
+  $217). Still $0 spent.
+- **Fit classes re-derived, not assumed:** the cutoff moves from 71,929 to 70,243
+  canonical chars; `classify` under the new constant gives the same anatomy on both
+  tiers (Sonnet 49/25/4/0/0/3/19/0, Haiku 52/17/1/1/2/14/12/1). The largest fitting
+  oracle is 64,327 chars, so nothing sits between the two cutoffs.
+- **Gate-5 review (four findings) fixed before the hash**, so no deviation is
+  declared: (1) the Haiku ceiling above; (2) resumable runners persisted no settings —
+  a resume could have topped up a 6K-budget corpus at 64K with no trace; now a
+  `run_manifest.json` is written before the first API call and any changed setting, or
+  trials without a manifest, refuses the resume; (3) the grader inferred the snapshot
+  cap from the length histogram even for the probe, so a probe corpus whose answers all
+  happened to be short would have been graded as a 16,384-snapshot cell; it now reads
+  the manifest and records the source per row; (4) the §3.6(a) tripwire compared the
+  AGGREGATE output tokens with `<` instead of the FINAL-turn count with `≠`, and
+  omitted the response-length clause — a multi-turn trial whose total exceeded the
+  budget while its truncated final turn did not would have passed silently. Both
+  runners now record `tokens.completion_final` separately from the aggregate (cost).
+- **Analysis frozen** (prereg §8 freeze record: sha256 of `budget_probe_analysis.py`,
+  `_run_manifest.py`, `e2e_regrade.py`, `e2e_overlay.py`, `gt_cache.json`; key-set
+  hashes; traceability map with line numbers of the frozen bytes). Regrading the
+  reference frontier corpora with the frozen grader reproduces every stored grade
+  exactly. Dry run selects 100/100 per tier under the new flags.
+- Bottom line: the probe's remaining gate is the PR #98 merge (re-verify the hash table
+  on main afterwards), then the run. The reference bound ⟨49, 62⟩ and every headline
+  number are untouched.

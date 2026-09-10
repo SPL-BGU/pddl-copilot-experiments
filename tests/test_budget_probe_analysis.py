@@ -42,7 +42,7 @@ def _trace(n_preds: int, n_steps: int = 3) -> str:
 
 
 # (cls, domain, problem, n_preds, ref(e2e, done, resp_len, err), probe(e2e, done, out_tok))
-# canon sizes sit around the fit boundary: fits(65536) <=> canon <= 71,929 chars.
+# canon sizes sit around the fit boundary: fits(64000) <=> canon <= 70,243 chars.
 SMALL, BIG = 20, 5000          # canon ≈ 1.4K chars  vs  ≈ 330K chars (no fit)
 SPEC = [
     ("OK",       "d", "p01", SMALL, (True, "end_turn", 2000, ""),       (True, "end_turn", 3000)),
@@ -63,8 +63,8 @@ SPEC = [
     ("LEN-FIT",  "e", "p06", SMALL, (False, "length", 12000, ""),       (True, "end_turn", 9000)),
     ("LEN-FIT",  "e", "p07", SMALL, (False, "length", 12000, ""),       (False, "end_turn", 9000)),
     ("LEN-FIT",  "e", "p08", SMALL, (False, "length", 12000, ""),       (False, "end_turn", 9000)),
-    ("LEN-NOFIT", "f", "p01", BIG,  (False, "length", 12000, ""),       (False, "length", 65536)),
-    ("LEN-NOFIT", "f", "p02", BIG,  ("indeterminate", "length", 16384, ""), (False, "length", 65536)),
+    ("LEN-NOFIT", "f", "p01", BIG,  (False, "length", 12000, ""),       (False, "length", 64000)),
+    ("LEN-NOFIT", "f", "p02", BIG,  ("indeterminate", "length", 16384, ""), (False, "length", 64000)),
     ("OVERFLOW", "g", "p01", BIG,   (False, "length", 0, "prompt is too long: 498K"), (False, "length", 0)),
     ("SNAP",     "h", "p01", SMALL, ("indeterminate", "end_turn", 16384, ""), (True, "end_turn", 7000)),
     ("DECLINE",  "i", "p01", 900,   (False, "end_turn", 1500, ""),      (True, "end_turn", 30000)),
@@ -96,7 +96,8 @@ def _gt(spec) -> dict:
 
 
 def _write_corpus(root: Path, name: str, spec, *, probe: bool, cap: int,
-                  meta: dict | None = None, mutate=None) -> tuple[Path, Path]:
+                  meta: dict | None = None, manifest: dict | None = None,
+                  mutate=None) -> tuple[Path, Path]:
     cell_dir = root / "results" / "sonnet-frontier" / name
     ov_dir = root / "results" / "derived" / "e2e_overlay" / "sonnet-frontier"
     cell_dir.mkdir(parents=True, exist_ok=True)
@@ -105,17 +106,21 @@ def _write_corpus(root: Path, name: str, spec, *, probe: bool, cap: int,
     for cls, dom, prob, preds, ref, prb in spec:
         e2e, done, resp_len, err = ref
         out_tok = 6000
+        tokens = {"prompt": 10, "completion": out_tok, "turns": 2}
         if probe:
             e2e, done, out_tok = prb
             resp_len = min(out_tok * 2, cap) if e2e is not False else 1500
             err = ""
+            # Probe rows carry the final-turn count (the runner writes it);
+            # by default the final turn is the whole output.
+            tokens = {"prompt": 10, "completion": out_tok, "completion_final": out_tok,
+                      "turns": 2}
         key = [MODEL, "simulate", dom, prob] + KEY_TAIL
         raw = {"key": key, "result": {"task": "simulate", "domain_name": dom,
                                        "problem_name": prob, "model": MODEL,
                                        "prompt_variant": 11, "with_tools": True,
                                        "done_reason": done, "error": err,
-                                       "tokens": {"prompt": 10, "completion": out_tok,
-                                                  "turns": 2}}}
+                                       "tokens": tokens}}
         ov = {"task": "simulate", "model": MODEL, "domain_name": dom, "problem_name": prob,
               "plan_label": "", "prompt_variant": 11, "with_tools": True,
               "tool_verified": True, "done_reason": done, "response_len": resp_len,
@@ -134,21 +139,35 @@ def _write_corpus(root: Path, name: str, spec, *, probe: bool, cap: int,
     (ov_dir / f"{name}.e2e.jsonl").write_text("\n".join(ov_lines) + "\n")
     if meta is not None:
         (cell_dir / "summary_20260101_000000.json").write_text(json.dumps({"meta": meta}))
+    if manifest is not None:
+        (cell_dir / "run_manifest.json").write_text(json.dumps(manifest))
     return cell_dir, ov_dir / f"{name}.e2e.jsonl"
 
 
-GOOD_META = {"num_predict": 65536, "snapshot_len": 262144}
+GOOD_META = {"num_predict": 64000, "snapshot_len": 262144}
+# The run manifest the runner writes before its first API call; every field
+# below is one the prereg registers (§2.4) and the readout asserts.
+GOOD_MANIFEST = {
+    "manifest_version": 1, "created_at": "2026-01-01T00:00:00+0000",
+    "backend": "anthropic-tool-runner", "sdk_version": "0.109.2",
+    "model": MODEL, "with_tools": True, "conditions": "tools", "tasks": ["simulate"],
+    "corpus": "canonical", "domains_dir": "domains", "prompt_variants": [11],
+    "num_predict": 64000, "snapshot_len": 262144, "max_iterations": 10, "stream": True,
+    "temperature": 0, "think": "off", "ground_truth": "cached",
+    "ground_truth_sha256": "0" * 64, "gt_cache_sha256": bpa.GT_CACHE_SHA256,
+    "gt_cache_path": "results/derived/gt_cache.json", "keys_files": None, "limit": None,
+}
 
 
-def _run(spec, *, probe_meta=GOOD_META, ref_mutate=None, probe_mutate=None,
-         pinned=EXPECTED_CLASSES):
+def _run(spec, *, probe_meta=GOOD_META, probe_manifest=GOOD_MANIFEST, ref_mutate=None,
+         probe_mutate=None, pinned=EXPECTED_CLASSES):
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         ref_dir, ref_ov = _write_corpus(root, "sweep5v2-with-tools", spec, probe=False,
                                         cap=16384, mutate=ref_mutate)
-        pr_dir, pr_ov = _write_corpus(root, "sweep5v2-with-tools-budget65k", spec,
+        pr_dir, pr_ov = _write_corpus(root, "sweep5v2-with-tools-budget64k", spec,
                                       probe=True, cap=262144, meta=probe_meta,
-                                      mutate=probe_mutate)
+                                      manifest=probe_manifest, mutate=probe_mutate)
         return bpa.run_readout(tier="sonnet", ref_dir=ref_dir, ref_overlay=ref_ov,
                                probe_dir=pr_dir, probe_overlay=pr_ov, gt=_gt(spec),
                                pinned=pinned, ok_rerun_trip=8, n_per_leg=len(spec))
@@ -167,9 +186,15 @@ def test_fisher_known_values(r: TestResults) -> None:
 
 
 def test_fit_rule_boundary(r: TestResults) -> None:
-    # 0.82 * canon <= 0.9 * 65536 = 58982.4  <=>  canon <= 71929.7
-    r.check("71929 fits", bpa.fits(71929), "fit boundary low side")
-    r.check("71930 does not fit", not bpa.fits(71930), "fit boundary high side")
+    # 0.82 * canon <= 0.9 * 64000 = 57600  <=>  canon <= 70243.9
+    r.check("70243 fits", bpa.fits(70243), "fit boundary low side")
+    r.check("70244 does not fit", not bpa.fits(70244), "fit boundary high side")
+    # The old 65,536 budget put the boundary at 71,929; no reference oracle
+    # lies in (70243, 71929], which is why the pinned counts survived the
+    # 2026-09-10 amendment — pin the boundary so a future budget edit reruns
+    # `classify` instead of assuming the same.
+    r.check("budget is 64,000", bpa.BUDGET_TOKENS == 64000, str(bpa.BUDGET_TOKENS))
+    r.check("budget fits Haiku's ceiling", bpa.BUDGET_TOKENS <= bpa.HAIKU_MAX_OUTPUT_TOKENS, "")
     # 16384 budget: 0.82 * canon <= 14745.6 <=> canon <= 17,982 chars
     r.check("16384 budget: 17,982-char oracle fits", bpa.fits(17982, 16384), "")
     r.check("16384 budget: 17,983-char oracle does not fit", not bpa.fits(17983, 16384), "")
@@ -281,6 +306,104 @@ def test_refuses_key_mismatch(r: TestResults) -> None:
         r.check("29/30 join refused", True, "")
 
 
+def test_refuses_manifest_violations(r: TestResults) -> None:
+    """§2.4: every registered setting is asserted against run_manifest.json."""
+    cases = {
+        "missing manifest": None,
+        "wrong corpus (anon)": dict(GOOD_MANIFEST, corpus="anon", domains_dir="domains-anon"),
+        "wrong loop limit": dict(GOOD_MANIFEST, max_iterations=5),
+        "wrong gt_cache hash": dict(GOOD_MANIFEST, gt_cache_sha256="f" * 64),
+        "generated (not cached) ground truth": dict(GOOD_MANIFEST, ground_truth="generated",
+                                                    gt_cache_sha256=None),
+        "not streaming": dict(GOOD_MANIFEST, stream=False),
+        "wrong budget": dict(GOOD_MANIFEST, num_predict=65536),
+        "wrong snapshot": dict(GOOD_MANIFEST, snapshot_len=16384),
+        "wrong variant set": dict(GOOD_MANIFEST, prompt_variants=[11, 12]),
+        "wrong model": dict(GOOD_MANIFEST, model="claude-haiku-4-5"),
+        "keys-file subset": dict(GOOD_MANIFEST, keys_files=["k.jsonl"]),
+        "limit set": dict(GOOD_MANIFEST, limit=20),
+    }
+    for label, manifest in cases.items():
+        try:
+            _run(SPEC, probe_manifest=manifest)
+            r.check(f"refused: {label}", False, "no exception")
+        except ValueError as exc:
+            r.check(f"refused: {label}", "manifest" in str(exc), str(exc))
+    # And the good manifest passes, surfacing the checked fields in the readout.
+    out = _run(SPEC)
+    r.check_eq("manifest echoed in readout", out["manifest"]["num_predict"], 64000)
+
+
+def test_refuses_probe_row_without_final_tokens(r: TestResults) -> None:
+    def mut(cls, dom, prob, raw, ov):
+        if (dom, prob) == ("e", "p01"):
+            toks = {k: v for k, v in raw["result"]["tokens"].items() if k != "completion_final"}
+            raw = dict(raw, result=dict(raw["result"], tokens=toks))
+        return raw, ov
+    try:
+        _run(SPEC, probe_mutate=mut)
+        r.check("missing completion_final refused", False, "no exception")
+    except ValueError as exc:
+        r.check("missing completion_final refused", "completion_final" in str(exc), str(exc))
+
+
+def _len_fit_length_row(final: int, aggregate: int, resp_len: int = 20000):
+    """Mutator: e/p01 (LEN-FIT) re-truncates in the probe with the given
+    final-turn / aggregate output tokens and response length."""
+    def mut(cls, dom, prob, raw, ov):
+        if (dom, prob) == ("e", "p01"):
+            raw = dict(raw, result=dict(raw["result"], done_reason="length",
+                                        tokens={"prompt": 10, "completion": aggregate,
+                                                "completion_final": final, "turns": 3}))
+            ov = dict(ov, done_reason="length", e2e_strict=False, e2e=False,
+                      e2e_reason="format_parse_fail", response_len=resp_len)
+        return raw, ov
+    return mut
+
+
+def test_tripwire_a_uses_final_turn_tokens(r: TestResults) -> None:
+    """§3.6(a) second clause, literally: done_reason == length ∧ response_len <
+    0.9 × 262,144 ∧ FINAL-turn output ≠ 64,000. The aggregate is not consulted."""
+    def tw_a(out):
+        return [tw for tw in out["tripwires"] if "final-turn" in tw]
+    # Aggregate ABOVE the budget, final turn below it: the old aggregate rule
+    # (completion < budget) would stay silent; the final-turn rule must fire.
+    out = _run(SPEC, probe_mutate=_len_fit_length_row(final=30000, aggregate=70000))
+    r.check_eq("aggregate 70000 / final 30000 -> tripwire", tw_a(out),
+               ["(a) 1 LEN-FIT rows truncated with final-turn output != 64000"])
+    # Final turn truncated EXACTLY at the budget: the budget bound, no tripwire,
+    # whatever the aggregate says.
+    out = _run(SPEC, probe_mutate=_len_fit_length_row(final=64000, aggregate=70000))
+    r.check_eq("final 64000 exactly -> no tripwire", tw_a(out), [])
+    # Final turn one token short of the budget: the budget did not bind.
+    out = _run(SPEC, probe_mutate=_len_fit_length_row(final=63999, aggregate=63999))
+    r.check_eq("final 63999 -> tripwire", len(tw_a(out)), 1)
+    # Response at/above 0.9 × snapshot (= 235,929.6 chars): the response-length
+    # clause excludes it (that row is the censoring clause's business, not
+    # this one). 235,930 is the first integer length at or above the bound.
+    out = _run(SPEC, probe_mutate=_len_fit_length_row(final=30000, aggregate=30000,
+                                                      resp_len=235930))
+    r.check_eq("response_len >= 0.9 cap -> excluded", tw_a(out), [])
+    out = _run(SPEC, probe_mutate=_len_fit_length_row(final=30000, aggregate=30000,
+                                                      resp_len=235929))
+    r.check_eq("response_len just under 0.9 cap -> included", len(tw_a(out)), 1)
+    # The same shape on a LEN-NOFIT reference row is out of scope for (a).
+    def nofit(cls, dom, prob, raw, ov):
+        if (dom, prob) == ("f", "p01"):
+            raw = dict(raw, result=dict(raw["result"],
+                                        tokens={"prompt": 10, "completion": 30000,
+                                                "completion_final": 30000, "turns": 2}))
+        return raw, ov
+    out = _run(SPEC, probe_mutate=nofit)
+    r.check_eq("LEN-NOFIT row not covered by (a)", tw_a(out), [])
+    # Secondary token columns: aggregate and final reported separately.
+    out = _run(SPEC, probe_mutate=_len_fit_length_row(final=30000, aggregate=70000))
+    sec = out["secondary"]
+    r.check_eq("aggregate max = 70000", sec["completion_tokens_max"], 70000)
+    r.check_eq("final max = 64000 (the two LEN-NOFIT rows)", sec["completion_final_max"], 64000)
+    r.check_eq("rows with final == budget", sec["completion_final_at_budget"], 2)
+
+
 def main() -> None:
     r = TestResults("test_budget_probe_analysis")
     test_fisher_known_values(r)
@@ -292,6 +415,9 @@ def main() -> None:
     test_refuses_missing_snapshot_cap_and_unknown_grade(r)
     test_refuses_wrong_meta_and_drifted_counts(r)
     test_refuses_key_mismatch(r)
+    test_refuses_manifest_violations(r)
+    test_refuses_probe_row_without_final_tokens(r)
+    test_tripwire_a_uses_final_turn_tokens(r)
     r.report_and_exit()
 
 

@@ -1,9 +1,10 @@
 # Pre-registration — frontier output-budget probe (the delivery gap's cause)
 
-**Status:** **RATIFIED 2026-09-08 (Omer; all four §10 lines).** Design frozen: legs
-A+B+C+D, budget 65,536 / snapshot 262,144, spend approved (expected ≈$50–65, cap
-$217), decision rule accepted. No data exists. The first API call still waits on the
-§8 code gates (PR #98 merge, gate 5 adversarial review, hash freeze) — see
+**Status:** **RATIFIED 2026-09-08 (Omer; all four §10 lines); AMENDED + ANALYSIS
+FROZEN 2026-09-10 (§11).** Design frozen: legs A+B+C+D, budget **64,000** / snapshot
+262,144, spend approved (expected ≈$50–65, cap $213), decision rule accepted. No data
+exists. The gate-5 review findings are fixed and the analysis hashes are in the §8
+freeze record; the first API call still waits on the PR #98 merge — see
 `frontier_budget_probe_handoff.md` for the exact sequence.
 **Binding sources:** `job2_delivered_reframe_worknote.md` §7a (design sketch, GO in
 principle 2026-09-08); `paper_notes_discussions.md` 2026-09-08 (gates: freeze-protocol
@@ -24,7 +25,7 @@ trajectory correctly on 97–99% of trials, the model delivers it correctly on �
 ⟨52, 64⟩) is "a property of answer length interacting with the output budget". That
 is currently a *description* of the failure anatomy (30/100 Sonnet trials stop with
 `done_reason=length`), not a causal test. This probe re-runs the same 100 trials with
-one change — the per-call output-token budget raised from 6,144 to 65,536 (and the
+one change — the per-call output-token budget raised from 6,144 to 64,000 (and the
 response snapshot widened so storage cannot censor the gain) — and asks whether the
 truncated trials now deliver. If they do, the budget is the cause and the sentence gets
 causal support. If they do not, the gap is content- or policy-bound and the sentence is
@@ -69,10 +70,10 @@ answers all three.
 
 | leg | model | arm | prompt bank | n | budget | cost (list, see §2.5) | status |
 |---|---|---|---|---|---|---|---|
-| A (primary) | `claude-sonnet-4-6` | with-tools, plain | v11 | 100 (the same 100 (domain, problem) cells as the reference corpus) | 65,536 out-tok/call | expected ≈ $30–35, hard cap $114 | REQUIRED |
-| B (tier replication) | `claude-haiku-4-5` | with-tools, plain | v11 | 100 | 65,536 | expected ≈ $10–12, hard cap $38 | recommended |
-| C (budget symmetry) | `claude-sonnet-4-6` | no-tools | v11 | 100 | 65,536 | expected ≈ $8–12, hard cap $49 | recommended |
-| D (budget symmetry) | `claude-haiku-4-5` | no-tools | v11 | 100 | 65,536 | expected ≈ $3–4, hard cap $16 | recommended |
+| A (primary) | `claude-sonnet-4-6` | with-tools, plain | v11 | 100 (the same 100 (domain, problem) cells as the reference corpus) | 64,000 out-tok/call | expected ≈ $30–35, hard cap $111 | REQUIRED |
+| B (tier replication) | `claude-haiku-4-5` | with-tools, plain | v11 | 100 | 64,000 | expected ≈ $10–12, hard cap $37 | recommended |
+| C (budget symmetry) | `claude-sonnet-4-6` | no-tools | v11 | 100 | 64,000 | expected ≈ $8–12, hard cap $49 | recommended |
+| D (budget symmetry) | `claude-haiku-4-5` | no-tools | v11 | 100 | 64,000 | expected ≈ $3–4, hard cap $16 | recommended |
 
 Legs A/B run through `tools/frontier_runner.py` (SDK Tool Runner, streaming — §2.3).
 Legs C/D run through `tools/claude_api_batch.py` (Message Batches, list/2 pricing).
@@ -85,7 +86,7 @@ temperature 0, same caching setup.
 > because the paper currently asserts both arms share one output-length constraint.)
 > **ANSWER (Omer, 2026-09-08): all four legs — "we have budget".**
 
-### 2.2 The one manipulated variable — the budget, and why 65,536
+### 2.2 The one manipulated variable — the budget, and why 64,000
 
 Reference apparatus: `max_tokens = job[J_NP]` = `DEFAULT_NUM_PREDICT["simulate"]` =
 **6,144 tokens per API call** (`pddl_eval/runner.py:98-104`), and the stored response is
@@ -107,17 +108,24 @@ Under this rule the reference corpus reads (Sonnet): every trial whose oracle is
 ≤ 8.9K canonical chars was delivered correctly or failed for a non-length reason; from
 ≈9K upward almost every trial is `done_reason=length`. A 16,384 budget would let only
 ≈12 of the 29 truncated failures fit — its H1 prediction (≈61) sits *inside* the
-current bound ⟨49, 62⟩ and cannot discriminate. **65,536** fits 25 of the 29 (the four
-that do not: tpp/p05 80.5K, drone/p04 82.0K, depot/p01 126.8K, drone/p05 157.0K
-canonical chars — these are pre-declared non-fitting and are reported, never counted
-against H1). 65,536 is also below the SDK's 128K output ceiling for both models and
-costs ≈$10 more than 32,768 at the expected outcome. The runner must stream at this
-budget (the SDK refuses non-streaming requests whose expected time exceeds 10 minutes,
-i.e. `max_tokens` > 21,333); §2.3.
+current bound ⟨49, 62⟩ and cannot discriminate. **64,000** fits 25 of the 29 (fits ⇔
+canonical size ≤ 70,243 chars; the four that do not: tpp/p05 80.5K, drone/p04 82.0K,
+depot/p01 126.8K, drone/p05 157.0K canonical chars — these are pre-declared
+non-fitting and are reported, never counted against H1). 64,000 is the output-token
+ceiling of `claude-haiku-4-5` (Sonnet 4.6 allows 128K); the originally registered
+65,536 would have been rejected on legs B and D, so the budget is 64,000 on all four
+legs to keep the arms and tiers symmetric (§11 amendment 1; the largest oracle that
+fits is 64,327 chars, so the 1,536-token reduction moves no trial across the fit
+boundary — re-derived by `classify`, not assumed). It costs ≈$10 more than 32,768 at
+the expected outcome. The runner must stream at this budget (the SDK refuses
+non-streaming requests whose expected time exceeds 10 minutes, i.e. `max_tokens` >
+21,333); §2.3.
 
 > ANSWER (budget): 65,536 as registered? (alternatives considered: 32,768 fits 19/29
 > and leaves 10 non-fitting; 16,384 fits 11/29 and is non-discriminating.)
 > **ANSWER (Omer, 2026-09-08): 65,536.**
+> **AMENDED (Omer, 2026-09-10): 64,000 on all four legs — Haiku 4.5's output ceiling;
+> same fit classes (25/29 Sonnet, 17/18 Haiku), re-derived.** See §11.
 
 ### 2.3 Apparatus changes (all flags default to the reference behavior; the reference
 corpus is reproducible from the same code)
@@ -128,21 +136,42 @@ corpus is reproducible from the same code)
    `client.beta.messages.tool_runner`; each yielded item is a
    `BetaAsyncMessageStream`, resolved with `await item.get_final_message()` — usage,
    stop_reason and content are read from the final message exactly as today). The run
-   meta records `num_predict`, `snapshot_len`, `stream`.
+   meta records `num_predict`, `snapshot_len`, `stream`. Every trial row records the
+   output tokens of the **final turn** separately (`tokens.completion_final`) next to
+   the aggregate over all turns (`tokens.completion`, the cost figure): `max_tokens`
+   is a per-call limit, so only the final turn's count says whether the budget bound
+   on the turn that stopped (§3.6(a)); the aggregate can exceed the budget on a
+   multi-turn trial without any single turn having been cut.
 2. `tools/claude_api_batch.py` (legs C/D): `--num-predict N` and `--snapshot-len N`
    with the same semantics.
 3. `tools/e2e_regrade.py`: `KNOWN_CAPS = (500, 16384, 262144)`. The probe's snapshot
-   is **262,144 characters** (≥ 4× the longest possible 65,536-token answer at 2.7
+   is **262,144 characters** (≥ 4× the longest possible 64,000-token answer at 2.7
    chars/token plus prose). `detect_cap` iterates smallest-first, so existing corpora
    are unaffected (unit test added). A probe row of exactly 262,144 chars is censored
    by the standard rule and trips §3.6(a).
-4. Results placement: `results/sonnet-frontier/sweep5v2-with-tools-budget65k/`,
-   `results/haiku-frontier/sweep5v2-with-tools-budget65k/`,
-   `results/sonnet-frontier/sweep5v2-budget65k/`, `results/haiku-frontier/sweep5v2-budget65k/`
-   (run tag `budget65k`). These are separate corpora: never pooled with the reference
+4. Results placement: `results/sonnet-frontier/sweep5v2-with-tools-budget64k/`,
+   `results/haiku-frontier/sweep5v2-with-tools-budget64k/`,
+   `results/sonnet-frontier/sweep5v2-budget64k/`, `results/haiku-frontier/sweep5v2-budget64k/`
+   (run tag `budget64k`). These are separate corpora: never pooled with the reference
    cells, never merged into `pooled_e2e_table` rows of the reference corpus. The
    cell-name parser (`_constants.parse_dirname_full` / frontier stem handling in
    `e2e_regrade.process_corpus`) must classify the new stems correctly — §8 item 6.
+5. **Run manifest (2026-09-10).** Both runners persist `run_manifest.json` in the
+   results directory **before the first API call** (`tools/_run_manifest.py`): model,
+   budget (`num_predict`), snapshot length, corpus, prompt variants, loop limit
+   (`max_iterations`), streaming, temperature, ground-truth source and hash (content
+   hash always; `gt_cache.json` file hash when cached), key-file/limit selection.
+   A resume into a directory whose manifest differs on any registered setting is
+   refused before any trial is restored or rewritten; a directory that holds trials
+   but no manifest is refused outright (its rows have no verifiable settings — a
+   fresh `--out` is required). The batch runner writes the manifest at `build` (before
+   `submit`) and carries it into the graded results directory.
+6. **Manifest as provenance.** `tools/e2e_regrade.py` takes the snapshot cap from the
+   cell's manifest when one exists (histogram inference is kept only for legacy
+   corpora; each overlay row records `snapshot_cap_source`), so a probe corpus whose
+   answers all happen to be short cannot be mis-read as a 16,384-snapshot cell.
+   `tools/budget_probe_analysis.py` asserts every §2.4 setting against the probe's
+   manifest before reading a single row.
 
 ### 2.4 What is held fixed (and is asserted in the frozen code, §8 item 9)
 
@@ -150,8 +179,14 @@ corpus is reproducible from the same code)
   per leg; the 100 trial keys equal the reference cell's 100 trial keys (set equality,
   asserted); `with_tools` per leg; `task == "simulate"`; corpus = canonical
   (`domains/`); `snapshot_cap == 262144` on every overlay row; the meta's
-  `num_predict == 65536`; `MAX_TOOL_LOOPS == 10`; ground truth = the same
-  `results/derived/gt_cache.json` (sha256 recorded at freeze).
+  `num_predict == 64000`; `MAX_TOOL_LOOPS == 10`; ground truth = the same
+  `results/derived/gt_cache.json` (sha256 recorded at freeze). Each of these is
+  asserted against the probe directory's `run_manifest.json` (backend, model,
+  `with_tools`, tasks = [simulate], corpus = canonical, `domains/`, prompt variants =
+  [11], `num_predict` = 64,000, `snapshot_len` = 262,144, `max_iterations` = 10,
+  `stream` = true, temperature 0, think off, ground truth cached with the pinned
+  file hash, no key-file subset, no limit) and, for the two budget fields, against
+  the summary meta as well.
 - Grading = the existing overlay pass (`tools/e2e_regrade.py`, D7/D7b/D9 rules, D2b
   strict) — no new grader, no new tolerance. The probe corpus is regraded by the same
   command as every other corpus.
@@ -163,13 +198,17 @@ Measured reference cells: Sonnet WT `simulate` **$23.36** (535K output tokens; c
 write 4.04M, read 0.60M), Haiku WT `simulate` **$6.73**, Sonnet NT v11 `simulate`
 $2.89 (batch), Haiku NT v11 $0.98 (batch). Projection for leg A under H1: the input side
 is unchanged (≈$15.3); the 30 truncated trials grow from ≈8K to their needed length
-(Σ ≈ 0.75M output tokens after capping the two largest at 65,536) → output ≈ 1.05M
+(Σ ≈ 0.75M output tokens after capping the two largest at 64,000) → output ≈ 1.05M
 tokens ≈ $15.8 → **≈ $31**; rounded expected band $30–35. Hard cap = every trial
-emitting 65,536 tokens (100 × 65,536 × $15/M + input) = **$114**; a spend above ≈$45
-on leg A is itself a tripwire (§3.6(d)). Legs B/C/D scale the same way (table §2.1).
-**Expected total (A+B+C+D) ≈ $50–65; hard cap $217.** The grant covers it; the rule is
-itemization before spend, and this section is the itemized line (mirrored into the
-`paper_notes_discussions.md` ledger on 2026-09-08).
+emitting 64,000 tokens (100 × 64,000 × $15/M = $96.0 + input ≈ $15.3) = **$111**; a
+spend above ≈$45 on leg A is itself a tripwire (§3.6(d)). Legs B/C/D scale the same
+way (table §2.1): B cap 100 × 64,000 × $5/M = $32.0 + ≈$5.2 input = **$37**; C cap
+100 × 64,000 × $7.5/M = $48.0 + <$1 input = **$49**; D cap 100 × 64,000 × $2.5/M =
+$16.0 + <$0.5 = **$16**. **Expected total (A+B+C+D) ≈ $50–65 (unchanged by the
+amendment — the cap moved by 1,536 tokens on at most two trials, ≈$0.05); hard cap
+$213 (was $217 at 65,536).** The grant covers it; the rule is itemization before spend,
+and this section is the itemized line (mirrored into the `paper_notes_discussions.md`
+ledger on 2026-09-08; amendment logged 2026-09-10).
 
 ---
 
@@ -186,7 +225,7 @@ classified ONCE, from the reference corpus only, before any probe data is read:
 |---|---|---|---|
 | OK | `e2e_strict == True` | 49 | 52 |
 | OVERFLOW | raw `error` contains "prompt is too long" (context window, not output budget) | 0 | 1 |
-| LEN-FIT | not OK/OVERFLOW ∧ `done_reason == "length"` ∧ fits(65,536) | 25 | 17 |
+| LEN-FIT | not OK/OVERFLOW ∧ `done_reason == "length"` ∧ fits(64,000) | 25 | 17 |
 | LEN-NOFIT | as LEN-FIT but ¬fits | 4 | 1 |
 | SNAP | `done_reason == "end_turn"` ∧ `e2e_strict == "indeterminate"` (the model finished; only the 16K snapshot censored it) | 0 | 2 |
 | DECLINE | `done_reason == "end_turn"` ∧ not OK/SNAP ∧ `canon_chars > 8,000` ∧ `response_len < 0.25 × canon_chars` | 3 | 14 |
@@ -194,7 +233,9 @@ classified ONCE, from the reference corpus only, before any probe data is read:
 | OTHER | anything else (Haiku satellite/p03: loop exhausted, `tool_use`) | 0 | 1 |
 
 (Counts computed 2026-09-08 by `python3 tools/budget_probe_analysis.py classify
---tier {sonnet,haiku}` from the reference corpora + `gt_cache.json`
+--tier {sonnet,haiku}` from the reference corpora + `gt_cache.json`, and **re-derived
+2026-09-10 under the 64,000 budget with identical counts** — the fit cutoff moved from
+71,929 to 70,243 canonical chars and no oracle lies in between
 (sha256 `77d4184ed872dd4bd7a22747c2e716eb74b86edc94420e47c92daf1684d04c7e`); the rules
 are the `classify()` function and the counts are pinned as `PINNED_CLASS_COUNTS`
 asserts, so a re-derivation that disagrees fails loudly rather than silently
@@ -234,8 +275,10 @@ the one-sided Fisher test rejects at α = 0.05 with power ≈ 0.85.
    Reported with a Wilson interval; no test (the class is a negative control, §3.6(c)).
 5. Failure anatomy of the probe corpus (`e2e_reason` distribution) next to the
    reference anatomy, so the reader sees where the residual mass went.
-6. Output tokens per trial (median, max) and the per-leg measured cost, appended to the
-   ledger.
+6. Output tokens per trial (median, max) — the aggregate over all turns, which is the
+   cost figure — and, separately, the final-turn output tokens (median, max, and the
+   number of rows at exactly the budget), plus the per-leg measured cost, appended to
+   the ledger.
 7. SNAP rows (Haiku, 2): the model finished on its own inside the 6K budget and only
    storage censored the answer; predicted to convert under the wider snapshot alone.
    Reported; excluded from both the LEN-FIT and control groups.
@@ -275,8 +318,10 @@ surface. The reference cells' frozen values do not change.
 ### 3.6 Readout-time tripwires (halt and trace before any sentence is written)
 
 (a) any probe row censored at 262,144 chars, or any `done_reason == "length"` in a
-LEN-FIT row with `response_len` < 0.9 × 262,144 whose output tokens ≠ 65,536 (the
-budget did not bind but the row still truncated: apparatus bug);
+LEN-FIT row with `response_len` < 0.9 × 262,144 whose **final-turn** output tokens
+(`tokens.completion_final`) ≠ 64,000 (the budget did not bind on the turn that stopped
+but the row still truncated: apparatus bug; the aggregate over turns is not the test —
+it can exceed the budget with no single turn cut);
 (b) ET-FAIL control conversion > 50% or OK-class re-run success < 40/49 (Sonnet) /
 < 42/52 (Haiku) —
 run-to-run nondeterminism dominates; the §3.2 test is still reported but the
@@ -340,8 +385,9 @@ readout rule).
 3. Dry run: `frontier_runner.py --dry-run --tasks simulate --variant 11` must select
    exactly 100 trials whose keys equal the reference cell's keys.
 4. Leg A live: `python3 tools/frontier_runner.py --model claude-sonnet-4-6 --tasks simulate
-   --variant 11 --num-predict 65536 --snapshot-len 262144 --stream --use-cached-gt
-   --out results/sonnet-frontier/sweep5v2-with-tools-budget65k` (sequential, resumable;
+   --variant 11 --num-predict 64000 --snapshot-len 262144 --stream --use-cached-gt
+   --out results/sonnet-frontier/sweep5v2-with-tools-budget64k` (sequential, resumable
+   only into the directory whose `run_manifest.json` matches;
    expected wall time 2–4 h at 65K-token answers). Cost check after the first 20 trials
    against §2.5 (tripwire (d)).
 5. Legs B, C, D per §10 answers (C/D through `claude_api_batch.py build/submit/poll/grade`
@@ -359,69 +405,109 @@ readout rule).
 
 1. ~~Omer's §10 signatures (legs, budget, spend).~~ DONE 2026-09-08.
 2. ~~Ledger line present in `paper_notes_discussions.md` (2026-09-08 entry; §2.5).~~ DONE 2026-09-08 ("later" entry).
-3. Code PR (§7 step 1) merged to main.
-4. Reference cell key sets extracted and hashed (100 keys each, Sonnet + Haiku);
-   `gt_cache.json` sha256 = `77d4184ed872dd4bd7a22747c2e716eb74b86edc94420e47c92daf1684d04c7e`
-   (recorded 2026-09-08; re-checked at freeze).
-5. Reference-row classification (§3.1 table) reproduced by the frozen loader with the
-   exact counts above; counts are `assert`s in the code (`PINNED_CLASS_COUNTS`, done
-   2026-09-08 — the freeze candidate already refuses to run on drifted counts).
-6. Cell-name parsing: `sweep5v2-with-tools-budget65k` and `sweep5v2-budget65k` parse
-   to (cond, run_tag) = (`tools_all_minimal`, `budget65k`) / (`no-tools`, `budget65k`)
-   in the overlay and pooled-table path, verified by a unit test, so the probe never
-   masquerades as the reference cell.
-7. **Freeze gate 1 — typed load boundary.** One loader parses overlay rows and raw
-   rows into a typed record; unknown `e2e_strict` / `done_reason` values crash; no
-   truthiness on grade fields (`"indeterminate"` is truthy).
-8. **Freeze gate 2 — constants as asserts.** Budget 65,536, snapshot 262,144, n = 100,
-   variant 11, model ids, the §3.1 class counts, KNOWN_CAPS membership, join size 100.
-9. **Freeze gate 3 — traceability map.** Every §3 clause → `file:line`, recorded in the
-   freeze record below; a clause with no implementation blocks the freeze.
-10. **Freeze gate 4 — synthetic fixture.** ~30-row reference + probe mini-corpus with
-    planted traps (a censored row, an overflow row, a DECLINE row, a duplicate key, a
-    row missing `snapshot_cap`, a known Fisher 2×2 with hand-computed p) under
-    `tests/`; the pipeline reproduces the hand-computed numbers and refuses the
-    malformed rows.
-11. **Freeze gate 5 — adversarial review** of the freeze candidate by a different
-    session/model (`/code-review` high or stronger) with the traceability map in
-    context; findings fixed before the hash.
-12. Hash freeze record (sha256 of `tools/budget_probe_analysis.py`,
-    `tools/e2e_regrade.py`, `.claude/skills/analyzer/scripts/e2e_overlay.py`,
-    `results/derived/gt_cache.json`) appended below; any later edit = declared
-    deviation + re-freeze + regenerated readout.
+3. Code PR (§7 step 1) merged to main — **OPEN** (PR #98; the freeze below hashes the
+   branch tip, so the merge must land these bytes unchanged — re-run the sha256 table
+   after merging and treat any difference as a deviation).
+4. ~~Reference cell key sets extracted and hashed (100 keys each, Sonnet + Haiku);
+   `gt_cache.json` sha256 re-checked.~~ DONE 2026-09-10 (freeze record).
+5. ~~Reference-row classification (§3.1 table) reproduced by the frozen loader with
+   the exact counts above.~~ DONE 2026-09-10 under the amended 64,000 budget
+   (`PINNED_CLASS_COUNTS` asserts; counts identical to 2026-09-08).
+6. ~~Cell-name parsing: `sweep5v2-with-tools-budget64k` and `sweep5v2-budget64k` parse
+   to (cond, run_tag) = (`tools_all_minimal`, `budget64k`) / (`no-tools`, `budget64k`)
+   in the overlay and pooled-table path, verified by a unit test.~~ DONE
+   (`tests/test_e2e_overlay.py`).
+7. ~~**Freeze gate 1 — typed load boundary.**~~ DONE: one loader parses overlay rows
+   and raw rows into a typed record; unknown `e2e_strict` / `done_reason` values
+   crash; a probe row without `tokens.completion_final` crashes; no truthiness on
+   grade fields.
+8. ~~**Freeze gate 2 — constants as asserts.**~~ DONE: budget 64,000 (≤ Haiku's
+   64,000 ceiling, asserted at import), snapshot 262,144, n = 100, variant 11, model
+   ids, corpus, loop limit 10, streaming, the §3.1 class counts, the `gt_cache.json`
+   hash, join size 100 — every one asserted against the run manifest and/or the data.
+9. ~~**Freeze gate 3 — traceability map.**~~ DONE 2026-09-10 (freeze record below,
+   line numbers re-derived from the frozen bytes).
+10. ~~**Freeze gate 4 — synthetic fixture.**~~ DONE: `tests/test_budget_probe_analysis.py`
+    (54 checks) + `tests/test_frontier_runner.py` (65 checks) + the three manifest-cap
+    cases in `tests/test_e2e_overlay.py`.
+11. ~~**Freeze gate 5 — adversarial review.**~~ DONE 2026-09-10: four findings —
+    (1) 65,536 exceeds Haiku 4.5's 64,000 output ceiling (budget symmetry would have
+    broken on legs B/D); (2) resumable runners persisted no settings, so a resume could
+    silently mix budgets/snapshots in one corpus; (3) the snapshot cap was inferred from
+    the length histogram even for the probe, so a short-answer probe corpus would read
+    as a 16,384 cell; (4) the §3.6(a) tripwire compared the AGGREGATE output tokens
+    with `<` instead of the final-turn count with `≠`, and omitted the response-length
+    clause. All four fixed as ordinary pre-hash edits (§11); regression tests added for
+    each.
+12. ~~Hash freeze record~~ DONE 2026-09-10 (below). Any later edit to a frozen file =
+    declared deviation + re-freeze + regenerated readout.
 
-### Freeze record
+### Freeze record (2026-09-10)
 
-*(hash table empty until §8 items 7–12 are discharged)*
+**Frozen files (sha256 of the bytes on `job2/batch2-budget-probe-prereg` at the
+freeze commit; re-verify after the PR #98 merge):**
 
-**Candidate traceability map (gate 3, drafted 2026-09-08 with the freeze candidate;
-line numbers as of that draft — re-derive at freeze time, do not trust from memory):**
+| file | sha256 | role |
+|---|---|---|
+| `tools/budget_probe_analysis.py` | `c4dc196875b3a5ffe2e273a1a5ab922b2849db816d7f5bfdbced913bf05fe126` | analysis entry point (frozen) |
+| `tools/_run_manifest.py` | `08db2b20be699c818e47e15e589639d4294a40be1a6707b5a1e8c5acf2152c45` | manifest read/validate, imported by the analysis (frozen) |
+| `tools/e2e_regrade.py` | `45dcf74a23b5d2b1d79028fd1733a9ba7884ba7f62f84c7ffa4febd100c4b11a` | grader (frozen) |
+| `.claude/skills/analyzer/scripts/e2e_overlay.py` | `5dc56cb841e0b285d7c742f1aab9d597a08397699a2c78ddc200dc822ef75350` | overlay aggregator / stem → run tag (frozen) |
+| `results/derived/gt_cache.json` | `77d4184ed872dd4bd7a22747c2e716eb74b86edc94420e47c92daf1684d04c7e` | ground truth (pinned; asserted at readout and in the manifest) |
+| `tools/frontier_runner.py` | `3d4982b7525523ee126623fe61e0c3b362c68d76edacd0c354311d5655a36a1a` | apparatus, legs A/B (recorded; an edit before the run is a §2.3 apparatus change, not a deviation of the analysis) |
+| `tools/claude_api_batch.py` | `a56ccfe2bf24914a656c8b3b7ea012d87d35c8730cffb2f728e3a5df5469e94d` | apparatus, legs C/D (recorded) |
+| `tests/test_budget_probe_analysis.py` | `e3cb93ebce1270aef68fa17e2631eece8d21e37bcc875ce6433422231a4c7c36` | gate-4 fixture (recorded) |
+| `tests/test_frontier_runner.py` | `74f0f4f9a1a73c5b4b33cef6468147855ee2265ac25ece3c4172a1482833732d` | apparatus regression tests (recorded) |
 
-| prereg clause | implementation (`tools/budget_probe_analysis.py`) |
+**Reference cell key sets** (`jq -c .key <cell>/trials.jsonl | grep '"simulate"' | sort | sha256sum`,
+100 keys each): Sonnet `results/sonnet-frontier/sweep5v2-with-tools`
+`bdaab77325abf8598678a321ae0f489ac6b69689013090b40a3238569b673207`; Haiku
+`results/haiku-frontier/sweep5v2-with-tools`
+`bf3a6d947a0fbe4ef0f4c7063d9721bdf36ecd1f79da0c027f69a6a1ed2a7db8`. The probe legs must
+reproduce these sets exactly (`set(ref) == set(probe)`, L380).
+
+**Reference classification under the frozen code** (`classify --tier {sonnet,haiku}`,
+2026-09-10, budget 64,000, fits ⇔ canon ≤ 70,243): Sonnet 49/25/4/0/0/3/19/0, Haiku
+52/17/1/1/2/14/12/1 (OK / LEN-FIT / LEN-NOFIT / OVERFLOW / SNAP / DECLINE / ET-FAIL /
+OTHER) — equal to the 2026-09-08 pins. Regrading the reference corpora with the frozen
+`e2e_regrade.py` reproduces every stored overlay grade byte-for-byte (the only change is
+the added `snapshot_cap_source: "inferred"` provenance field). Dry run (§7 step 3)
+selects exactly 100 trials per tier under `--num-predict 64000 --snapshot-len 262144
+--stream` (verified 2026-09-10).
+
+**Traceability map (gate 3, line numbers of the frozen bytes above):**
+
+| prereg clause | implementation (`tools/budget_probe_analysis.py` unless noted) |
 |---|---|
-| §2.2 budget 65,536 / §2.3 snapshot 262,144 / reference 6,144 + 16,384 | constants L44–47; asserted on the probe meta L274–275 and on every overlay row's `snapshot_cap` L161 |
-| §2.4 n = 100, variant 11, model id, task = simulate | L48–49; loader L155–163 (wrong model/variant/cap → `ValueError`); L269 (n per leg) |
-| §2.4 join = the same 100 keys | L270 (`set(ref) == set(probe)`) |
-| §2.4 ground truth = pinned `gt_cache.json` | `GT_CACHE_SHA256` L74; asserted L328 before any read |
-| §2.2 fit rule (0.82 chars→tokens, 10% headroom) | L51–52, `fits()` L179 |
-| §3.1 class rules and order (OK → OVERFLOW → LEN-FIT/NOFIT → SNAP → DECLINE → ET-FAIL → OTHER) | `classify()` L183; DECLINE constants L53–54; `class_table()` L200 |
-| §3.1 pinned counts (Sonnet 49/25/4/0/0/3/19/0; Haiku 52/17/1/1/2/14/12/1) | `PINNED_CLASS_COUNTS` L68; asserted L277 |
-| §3.2 one-sided Fisher exact, α = 0.05, LEN-FIT vs ET-FAIL | `fisher_one_sided()` L211; `conversion()` L221; call site L288–292; `ALPHA` L55 |
-| §3.2 verdict bands (H1 ≥ 60% ∧ p < α; kill ≤ 30%; else partial) | L56–57; L293 |
-| §3.3 secondaries (cell rate + Wilson, OK re-run, DECLINE, LEN-NOFIT, OVERFLOW, SNAP, reasons, tokens) | L309–321 |
-| §3.6(a) censored probe rows / non-binding truncation | L281–287 |
-| §3.6(b) control > 50% / OK re-run < 40 (Sonnet) < 42 (Haiku) | L58, L75; L302–305 |
-| §3.6(c) DECLINE > 50% | L306–308 |
-| §3.6(d) spend tripwire | operational (§7 step 4), not code — checked by hand from the runner's cost report |
+| §2.2 budget 64,000 (≤ Haiku ceiling) / §2.3 snapshot 262,144 / reference 6,144 + 16,384 | constants L49–55 (`assert BUDGET_TOKENS <= HAIKU_MAX_OUTPUT_TOKENS` L52); asserted on the manifest via `expected_probe_manifest()` L208 → `validate_probe_manifest()` L234 (called first, L365), on the summary meta L369–372, and on every overlay row's `snapshot_cap` L181 |
+| §2.4 n = 100, variant 11, model id, task = simulate, corpus canonical, loop limit 10, streaming, cached GT with pinned hash, no subset/limit | L56–61, L89; manifest expectation L208–230, checked L234–249 (a missing manifest is a `ValueError`, L239); loader L176–183 (wrong model/variant/cap → `ValueError`); n per leg L379 |
+| §2.4 join = the same 100 keys | L380 (`set(ref) == set(probe)`) |
+| §2.4 ground truth = pinned `gt_cache.json` | `GT_CACHE_SHA256` L89; file hash asserted L440 before any read (`cmd_readout`) and again as the manifest's `gt_cache_sha256` L225 |
+| §2.3 final-turn output tokens recorded separately | `tools/frontier_runner.py` L166 (`out_tok_final`), row field `tokens.completion_final` L235 (and L252 on infra failures; `tools/claude_api_batch.py` L248 single-turn); typed as `Row.completion_final_tokens` L110–111, required on probe rows L184–188 (`final_tokens_required=True`, L377) |
+| §2.2 fit rule (0.82 chars→tokens, 10% headroom) | L62–63, `fits()` L254 |
+| §3.1 class rules and order (OK → OVERFLOW → LEN-FIT/NOFIT → SNAP → DECLINE → ET-FAIL → OTHER) | `classify()` L258; DECLINE constants L64–65; `class_table()` L275 |
+| §3.1 pinned counts (Sonnet 49/25/4/0/0/3/19/0; Haiku 52/17/1/1/2/14/12/1) | `PINNED_CLASS_COUNTS` L83; asserted L382 |
+| §3.2 one-sided Fisher exact, α = 0.05, LEN-FIT vs ET-FAIL | `fisher_one_sided()` L286; `conversion()` L296; call site L395–397; `ALPHA` L66 |
+| §3.2 verdict bands (H1 ≥ 60% ∧ p < α; kill ≤ 30%; else partial) | L67–68; L399–400 |
+| §3.3 secondaries (cell rate + Wilson, OK re-run, DECLINE, LEN-NOFIT, OVERFLOW, SNAP, reasons, aggregate tokens, final-turn tokens) | L417–432 (aggregate `completion_tokens_*` = cost; `completion_final_*` = budget-binding) |
+| §3.6(a) censored probe rows | L387–389 |
+| §3.6(a) non-binding truncation — `done_reason == "length"` ∧ LEN-FIT ∧ `response_len` < 0.9 × 262,144 ∧ final-turn tokens ≠ 64,000 | `nonbinding_truncations()` L302–317 (`NONBINDING_LEN_FRACTION` L70), called L390 |
+| §3.6(b) control > 50% / OK re-run < 40 (Sonnet) < 42 (Haiku) | L69, L90; L406–411 |
+| §3.6(c) DECLINE > 50% | L412–414 |
+| §3.6(d) spend tripwire | operational (§7 step 4), not code — checked by hand from the runner's cost report (`out=` aggregate column) |
 | §3.6(e) constant-column / everywhere-guard | readout-time rule (freeze-protocol skill); no code, reviewer checks the JSON |
-| gate 1 typed load boundary (unknown enum → crash; no truthiness on grades) | `Row` L79–99; `_load_overlay` L102, `_load_raw` L117, `load_cell` L144; `E2E_VALUES`/`DONE_REASONS` L77–79; every grade test is `is True` / `== "indeterminate"` |
-| gate 4 fixture | `tests/test_budget_probe_analysis.py` (29 checks; Fisher 120/792 and 1/495 hand-computed; traps: censored probe row, duplicate key, missing `snapshot_cap`, unknown grade, wrong meta, drifted counts, 29/30 join) |
-| §2.3 cap registration + stem parsing | `tools/e2e_regrade.py` `KNOWN_CAPS`; `.claude/skills/analyzer/scripts/e2e_overlay.py` stem→run_tag; tests in `tests/test_e2e_overlay.py` (`test_detect_cap_probe_262144`, `test_load_e2e_cells_probe_stems_get_their_own_run_tag`) |
+| gate 1 typed load boundary (unknown enum → crash; missing field → crash; no truthiness on grades) | `Row` L100–116; `_load_overlay` L119, `_load_raw` L134, `load_cell` L161; `E2E_VALUES`/`DONE_REASONS` L94–96; every grade test is `is True` / `== "indeterminate"` |
+| §2.3 item 5 run manifest written before the first API call; resume refused on changed settings or missing provenance | `tools/_run_manifest.py` `ensure_manifest()` L155–182 (`UNCOMPARED_FIELDS` L38, `manifest_diffs()` L138); called by `tools/frontier_runner.py` L382–386 before any trial is restored, and by `tools/claude_api_batch.py` L415 (build, before submit), L442 (submit guard), L521 (grade) |
+| §2.3 item 6 snapshot cap from the manifest, inference only for legacy cells | `tools/e2e_regrade.py` `cap_for_cell()` L135–148 (manifest cap below the longest response → `ValueError`), call site L580, `snapshot_cap_source` on every row L593; `KNOWN_CAPS` L132 |
+| §2.3 cap registration + stem parsing | `tools/e2e_regrade.py` `KNOWN_CAPS` L132; `.claude/skills/analyzer/scripts/e2e_overlay.py` stem → run_tag L105–108; tests in `tests/test_e2e_overlay.py` |
+| gate 4 fixture | `tests/test_budget_probe_analysis.py` (54 checks; Fisher 120/792 and 1/495 hand-computed; traps: censored probe row, duplicate key, missing `snapshot_cap`, unknown grade, wrong meta, drifted counts, 29/30 join, missing manifest, wrong corpus / loop limit / GT hash / stream / budget / snapshot / variants / model / subset, probe row without final-turn tokens, aggregate-above-budget-final-below, final exactly at budget, response-length clause on both sides of 0.9 × cap); `tests/test_frontier_runner.py` (65 checks: final-turn accounting streaming and not, context overflow, manifest fields, fresh write, compatible resume, refused resume per changed field, trials without provenance); `tests/test_e2e_overlay.py` (manifest cap on short responses vs legacy inference, impossible manifest cap refused, at-cap row still censored) |
 
-Known gap for the reviewer (gate 5): the fixture's oracle traces use the
-`boolean_fluents` shape only; the real `gt_cache.json` traces are the same shape, but a
-trace stored as `{"trajectory": [...]}` would take the `dict` branch of
-`canon_size()` L133, which the fixture does not exercise.
+Known residual (declared at freeze, not a gate-5 finding): the fixture's oracle
+traces use the `boolean_fluents` list shape only; the real `gt_cache.json` traces are
+the same shape, but a trace stored as `{"trajectory": [...]}` would take the `dict`
+branch of `canon_size()` L150–157, which the fixture does not exercise. The pinned
+`gt_cache.json` hash guarantees the real traces are the list shape the code was
+classified on.
 
 ---
 
@@ -433,7 +519,7 @@ trace stored as `{"trajectory": [...]}` would take the `dict` branch of
   cannot bound it.
 - The fit rule (§2.2) is an engineering estimate from the reference corpus; rows it
   misclassifies are visible after the fact (a LEN-NOFIT row that converts, or a
-  LEN-FIT row that truncates again at 65,536) and are reported, not re-binned.
+  LEN-FIT row that truncates again at 64,000) and are reported, not re-binned.
 - One budget point, not a dose–response curve. A curve (16K / 32K / 64K) would cost
   ≈3× and is not needed to answer the causal question as posed; it is a follow-up if
   the partial band is hit.
@@ -456,3 +542,36 @@ trace stored as `{"trajectory": [...]}` would take the `dict` branch of
 
 > ANSWER (10.4 the §3.2 decision rule and §3.4 bands are accepted as the reading rule
 > for this probe, whichever way it comes out): **ok. — Omer, 2026-09-08**
+
+> ANSWER (10.5 amendment — budget 64,000 on all four legs, replacing 65,536; fit
+> classes re-derived and unchanged; hard cap $213): **yes — Omer, 2026-09-10** (the
+> gate-5 fix list: "Use 64,000 tokens for all four legs").
+
+---
+
+## 11. Amendments (pre-data; every entry is before the first API call)
+
+**2026-09-10 — gate-5 review fixes, applied before the hash (so these are ordinary
+edits, not §9-style deviations). Ratified value 65,536 → 64,000.**
+
+1. **Budget 64,000 on all four legs.** `claude-haiku-4-5` caps output at 64,000 tokens;
+   the ratified 65,536 would have been rejected on legs B and D and broken the
+   budget-symmetry argument (§2.1, §3.3(2)). 64,000 keeps every leg identical. The fit
+   cutoff moves from 71,929 to 70,243 canonical chars; `classify` re-derived under the
+   new constant gives the same eight counts on both tiers (no oracle lies between the
+   two cutoffs — checked, not assumed). Hard caps: A $111, B $37, C $49, D $16, total
+   $213; expected bands unchanged. Run tag `budget65k` → `budget64k`.
+2. **Run manifest before the first API call** (§2.3 item 5; `tools/_run_manifest.py`).
+   Resumes are refused on any changed registered setting and on trials without
+   provenance.
+3. **Manifest as provenance for grading and readout** (§2.3 item 6): the grader takes
+   the snapshot cap from the manifest (inference only for legacy cells); the readout
+   asserts every §2.4 setting against the manifest.
+4. **Final-turn output tokens recorded separately** (`tokens.completion_final`); the
+   §3.6(a) tripwire now implements the registered clause literally (final-turn count
+   ≠ budget, with the response-length condition) instead of the candidate's
+   aggregate-`<`-budget approximation, which would have stayed silent on a multi-turn
+   trial whose total exceeded the budget while its truncated final turn did not.
+
+Regression tests for each item are listed in the gate-4 row of the traceability map.
+Suite: `bash tests/verify.sh` — all 16 files pass (2026-09-10).

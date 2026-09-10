@@ -71,7 +71,7 @@ tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (both UNPUSHED, review gate).
 | frontier delivered cost-of-pass, simulate | Sonnet ⟨83.5K, 105.7K⟩ vs NT ⟨9.8K, 15.3K⟩ (**5.5–10.8×**); Haiku ⟨72.9K, 89.7K⟩ vs ⟨7.7K, 13.8K⟩ (5.3–11.6×) | — |
 | validate_domain balanced accuracy, delivered, steered arm | 9B **⟨100, 100⟩**; Gemma **⟨92.2, 95.0⟩**; 35B **⟨82.7, 99.2⟩** vs unaided 53.3 / 74.0 / 64.7 (plain: ⟨99.2,100⟩ / ⟨87.3,94.2⟩ / ⟨77.2,97.5⟩) | mechanism-layer 95–100 as delivered |
 | PlanBench funnel stages (Haiku WT, n=600) | clean FORMALIZE 96.3 → CALL 100 → plan found 69.7 → delivered **68.3** (first-draw); Mystery 97.8 → 100 → 95.3 → **71.8** | last-attempt 69.7 delivered |
-| frontier budget probe | **NOT RUN** — prereg DRAFT (`frontier_budget_probe_prereg.md`); reference anatomy Sonnet 49 OK / 25 LEN-FIT / 4 LEN-NOFIT / 3 DECLINE / 19 ET-FAIL | any probe number |
+| frontier budget probe | **NOT RUN** — prereg RATIFIED 09-08, amended to budget **64,000** + analysis FROZEN 09-10 (`frontier_budget_probe_prereg.md` §8/§11); reference anatomy Sonnet 49 OK / 25 LEN-FIT / 4 LEN-NOFIT / 3 DECLINE / 19 ET-FAIL, Haiku 52/17/1/1 OVERFLOW/2 SNAP/14/12/1 (re-derived under 64,000, unchanged) | any probe number; the 65,536 budget and $217 cap |
 
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29)
 

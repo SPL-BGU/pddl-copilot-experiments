@@ -382,3 +382,7 @@ flags: `frontier_runner.py --num-predict/--snapshot-len/--stream`,
 Reference-cell anatomy pinned (Sonnet 49 OK / 25 LEN-FIT / 4 LEN-NOFIT / 3 DECLINE /
 19 ET-FAIL; Haiku 52 / 17 / 1 / 1 OVERFLOW / 2 SNAP / 14 / 12 / 1 OTHER). Itemized
 cost: expected ≈$50–65 (A+B+C+D), hard cap $217. Nothing has been spent.
+*(2026-09-10: ratified 09-08; budget amended to 64,000 — Haiku's ceiling — run tag
+`budget64k`, cap $213, anatomy re-derived and unchanged; analysis frozen after the
+gate-5 fixes. Current state lives in `frontier_budget_probe_prereg.md` §8/§11 and the
+handoff; this subsection is the drafting-time record.)*

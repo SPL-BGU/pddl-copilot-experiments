@@ -6,6 +6,61 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-09-10 — Frontier budget probe: gate-5 fixes, run manifest, analysis freeze (PR #98)
+
+**What.** The gate-5 review of the budget-probe freeze candidate
+(`development/frontier_budget_probe_prereg.md`) raised four findings; all are fixed in
+this commit, before the hash, with regression tests. No experiment data exists yet, so
+no number changes.
+
+**Budget 65,536 → 64,000 on all four legs.** `claude-haiku-4-5` caps output at 64,000
+tokens, so the ratified 65,536 would have been rejected on the Haiku legs and broken the
+budget-symmetry design. The fit cutoff moves from 71,929 to 70,243 canonical chars; the
+reference classification re-derived under the new constant is unchanged on both tiers
+(no oracle lies between the two cutoffs). Hard caps A $111 / B $37 / C $49 / D $16, total
+$213 (was $217). Run tag `budget65k` → `budget64k`.
+
+**Run manifest (`tools/_run_manifest.py`).** `tools/frontier_runner.py` and
+`tools/claude_api_batch.py` persist `run_manifest.json` (model, budget, snapshot length,
+corpus, prompt variants, loop limit, streaming, temperature, ground-truth source + hash,
+selection knobs) in the results directory before the first API call. A resume into a
+directory whose manifest differs on any registered setting is refused before any trial
+is restored or rewritten; a directory holding trials without a manifest is refused
+outright. `submit` refuses a batch dir without one; `grade` carries it into the results
+dir with the snapshot length filled in.
+
+**Manifest as provenance.** `tools/e2e_regrade.py` takes the snapshot cap from the
+cell's manifest when present (`cap_for_cell`); the length-histogram inference is kept
+only for legacy corpora, and every overlay row now records `snapshot_cap_source`
+("manifest" | "inferred"). Regrading the two reference frontier corpora reproduces every
+stored grade byte-for-byte. `tools/budget_probe_analysis.py` asserts every prereg §2.4
+setting against the probe manifest before reading a row.
+
+**Final-turn output tokens.** Both runners record `tokens.completion_final` (the last
+turn's output tokens) next to the aggregate `tokens.completion` (cost). The §3.6(a)
+truncation tripwire now implements the registered clause literally — final-turn count ≠
+budget, with the response-length condition — instead of the candidate's
+aggregate-`<`-budget approximation, which stayed silent whenever a multi-turn trial's
+total exceeded the budget while its truncated final turn did not.
+
+**Tests.** `tests/test_frontier_runner.py` (new, 65 checks: final-turn accounting under
+streaming and not, context overflow, manifest write/compatible resume/refused resume per
+field/trials without provenance); `tests/test_budget_probe_analysis.py` 29 → 54 checks
+(manifest violations per field, missing final-turn tokens, aggregate-above/final-below,
+final exactly at budget, both sides of the 0.9 × cap bound);
+`tests/test_e2e_overlay.py` +8 (manifest cap on short responses vs legacy inference,
+impossible manifest cap, at-cap row still censored). Suite: 16 files, all pass.
+
+**Freeze.** sha256 table, key-set hashes, and the re-derived traceability map are in the
+prereg's §8 freeze record; §11 logs the amendment. Files: `tools/_run_manifest.py`
+(new), `tools/frontier_runner.py`, `tools/claude_api_batch.py`, `tools/e2e_regrade.py`,
+`tools/budget_probe_analysis.py`, `.claude/skills/analyzer/scripts/e2e_overlay.py`
+(comment), `tests/verify.sh`, the three test files, `development/{frontier_budget_probe_prereg,
+frontier_budget_probe_handoff,STATUS,NUMBERS,CHANGELOG,paper_notes_discussions,
+job2_delivered_reframe_worknote}.md`.
+
+---
+
 ## 2026-08-20 — ISS-024(b) audit hardening after code review (PR #94)
 
 **What.** A code review of PR #94 re-ran `tools/guided_json_audit.py` against the live
