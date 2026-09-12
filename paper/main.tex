@@ -664,6 +664,10 @@ availability and steering verdicts at claim-adverse bounds; straddling cells sta
 Frontier runs, Claude Haiku~4.5 $+$ Sonnet~4.6 (both arms) & $16$K snapshot;
 no-tools de-censored from raw batch output & exact, except \emph{simulate}
 \cbnd{a}{b} & exact delivered lifts and the delivery gap at two capability tiers \\
+Output-budget probe, frontier (both arms; \emph{simulate}, $n{=}100$ per cell,
+same trial keys as the canonical cells) & $64{,}000$-token allowance; $256$K-char
+storage & exact & the budget component of the delivery gap; reported beside, never
+pooled with, the canonical cells \\
 Independent full-storage rerun (tool arms, \emph{think}=on, reasoning parser off)
 & full text & exact or near-exact & separate-apparatus replication;
 \emph{within}-corpus contrasts only \\
@@ -913,7 +917,24 @@ loses a third or more. A stronger model does not close it: Sonnet and Haiku tie
 at $95.0$ on \emph{solve} with the same five-failure count, and their
 \emph{simulate} bounds overlap almost completely. On this evidence the gap is a
 property of answer length interacting with the output budget, not of model
-strength.
+strength. The probe below tests the budget half of that reading directly.
+
+\textbf{Output-budget probe.} Under a pre-registered protocol (Technical
+Appendix) we re-ran the same $100$ \emph{simulate} trials per tier with the output
+allowance raised from $6{,}144$ to $64{,}000$ tokens and the stored response
+enlarged from $16$K to $256$K characters, so that no answer is censored. With the
+larger allowance, $16/25$ of the previously truncated, budget-fitting Sonnet
+failures became correct, compared with $7/19$ of its other failures re-run under
+the same apparatus (one-sided Fisher $p=0.069$); this did not meet the
+pre-registered confirmation criterion. Haiku met that criterion, with $12/17$
+versus $1/12$ conversions ($p=0.0011$), while none of its $14$ summary-only
+failures became correct. Under the 64K output allowance, delivered accuracy with
+versus without tools was $70\%$ $[60,\,78]$ versus $44\%$ $[35,\,54]$ for Sonnet
+and $65\%$ $[55,\,74]$ versus $58\%$ $[48,\,67]$ for Haiku. Despite the larger
+allowance, $30\%$ and $35\%$ of the tool-arm trials still failed, and no
+tool-arm final response reached the output-token cap. The probe corpus is
+reported on its own; the canonical cells and their censoring bounds
+(\cbnd{49}{62}, \cbnd{52}{64}; Table~\ref{tab:deliverygap}) stand unchanged.
 
 The open-weight roster shows the same structure wherever it can be measured. On
 the canonical corpus the tool arms' delivered rates are bounds, so the gap is
@@ -1633,7 +1654,12 @@ affected cells on the same canonical apparatus with full-response storage
 (reasoning parser on, \emph{think}=off, the enlarged snapshot cap), and we
 pre-register that rerun, under the same prereg-parity discipline as the
 independent rerun (a Gemma negative control and TOST at $\pm5$\,pp), as our
-declared answer should a reviewer require those cells decided. The serving
+declared answer should a reviewer require those cells decided. The frontier
+\emph{simulate} cells have been probed this way (Results): under a $64$K
+allowance with full storage they become exact, the budget explanation is
+confirmed at one tier and only partly supported at the other, and the residual
+failures ($30$--$35\%$ of tool-arm trials) are wrong or unparseable trajectories
+rather than truncation, so a larger allowance narrows the gap without closing it. The serving
 runtime did not surface per-trial reasoning traces for the model family used, so
 \emph{think}=on reasoning is evidenced through completion-token counts rather than
 archived chains of thought; and wall-clock latency is not recoverable from a
@@ -1667,7 +1693,9 @@ Finally, because a naive budget increase degrades format adherence (Limitations)
 \emph{think}=on benefit cleanly calls for a budget-decoupled design (separate decode allowances
 for the reasoning trace and the final answer) rather than a simple cap raise; we ran that design
 as a control on the unaided arm (Results), and extending it to the full grid, including the tool
-arms, remains open.
+arms, remains open. The output-budget probe (Results) asks the same question of the tool arm
+at the frontier tiers; asking it of the open-weight roster requires that decoupled design,
+because the plain cap raise degrades format adherence there.
 
 \section{Conclusion}
 We asked whether a sound symbolic planner or validator, exposed as a callable tool,
@@ -1806,6 +1834,28 @@ Table~\ref{tab:contam}). Mean $|\Delta|=1.2$\,pp, max $3.7$, over $15$ cells; th
 largest drifts favor the anonymized corpus.}
 \label{tab:contam-pertask}
 \end{table}
+
+\paragraph{Execution protocol of the output-budget probe.}
+The probe (Results, Delivery Gap) was pre-registered, and its analysis code was
+frozen by hash, before the first API call. Each tier re-ran the $100$ canonical
+\emph{simulate} trial keys of its with-tools cell under the same prompt
+(v11), temperature~$0$, the same tool loop (at most ten calls), and the same
+pinned ground truth, changing two settings: the per-turn output allowance,
+$64{,}000$ tokens on both tiers (Haiku~4.5's output ceiling, so both tiers share
+one value), and the stored response, $262{,}144$ characters, which no probe
+answer reached. Each run wrote a manifest of its settings before its first
+request, and a resume into a directory whose manifest differed was refused. The
+no-tools arms were run at the same allowance through the provider's batch
+interface. The primary test is a one-sided Fisher exact test comparing conversion
+among the canonical cell's truncated, budget-fitting failures (Sonnet $25$, Haiku
+$17$) against its non-truncated failures re-run under the same apparatus (Sonnet
+$19$, Haiku $12$), with a confirmation criterion of $p<0.05$ and at least $60\%$
+conversion. One infrastructure failure (a Sonnet trial that raised an exception
+before producing any tokens) was retried under the runner's existing resume
+policy; the completed retry was graded incorrect, and the primary verdicts were
+unchanged. No probe answer was censored by storage; no tool-arm final turn reached
+the allowance (one Sonnet and two Haiku no-tools answers did). Measured cost of
+the four cells was \$40.68.
 
 \paragraph{Canonical trajectory normalization (\emph{simulate}).}
 A \emph{simulate} answer is graded by deep-equality against the oracle trajectory
