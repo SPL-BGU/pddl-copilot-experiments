@@ -495,8 +495,10 @@ one?) in the sense of the Berkeley Function-Calling Leaderboard
 arguments through its schema, argument-filling errors are largely structural, so
 the steered contrast isolates selection rather than parameter construction.
 A fourth, \emph{control} arm (the steering directive with the tools still
-removed) tests whether the directive alone moves the no-tools floor; it is
-reported as a control, not a primary outcome. The \emph{realizable benefit} of
+removed) tests whether the directive alone moves the no-tools floor. It serves
+only as a control: its result is reported beside the steering finding (Results,
+Table~\ref{tab:ster-units}), and its design and full tables are in the Technical
+Appendix. The \emph{realizable benefit} of
 the tool, used as the cross-mode spine below, is success(tool-steered)
 $-$ success(no-tools): what a deployment that actually prompts for tool use would
 realize.
@@ -1067,6 +1069,20 @@ bounds, and does not determine, the collapse of the answer. What survives at
 full strength is the invocation finding itself: availability swings whether the
 model uses the tool by huge, model-specific amounts, and one directive sentence
 moves invocation from $21\%$ to $94\%$.
+
+A pre-registered control asks whether that sentence is simply a better prompt.
+We appended the same directive to the no-tools prompt, with the tools removed
+and the system prompt still stating that they are unavailable, and ran it
+beside a neutral-prompt arm in the same job on six (model, mode) units, as a
+paired equivalence test at $\pm5$\,pp (Table~\ref{tab:ster-units}, with the
+design and full tables in the Technical Appendix). The directive alone does not move the
+no-tools floor: every unit and every eligible task cell is equivalent to its
+anchor, at a realized resolution of about $6$\,pp per unit, so prompt-only
+effects larger than that are not excluded. In the matched cell, Gemma-MoE-26B
+\emph{validate\_plan} at \emph{think}=off, the sentence worth $+72.0$\,pp at the
+mechanism layer with the tool present is worth $+0.63$\,pp on the model's own
+answer with it absent ($90\%$ interval $[-0.46,\,+1.73]$). We therefore
+attribute the steering effect to the directive's interaction with tool access.
 
 This also explains an apparent size inversion. In the plain arm's mechanism
 layer the 9B
@@ -1640,7 +1656,20 @@ $P(\text{call})\times P(\text{correct}\mid\text{call})$ decomposition, which doe
 rest on that comparison. The availability gap likewise differences two arms whose
 system prompts, beyond tool presence, also differ by a one-line policy/format clause,
 so the steering gap (where the plain and steered prompts differ by exactly one
-appended sentence) is the cleaner of the two contrasts. Grading of the model's own
+appended sentence) is the cleaner of the two contrasts. The control that
+attributes the steering effect to tool access (Results) is conservative by
+construction. Its no-tools system prompt states that tools are unavailable while
+the appended directive names one, so the control removes both the tool and its
+stated availability, and that contradiction biases the test toward equivalence.
+Its realized resolution is about $6$\,pp per unit, so a smaller prompt-only
+effect is not excluded. It was run on a later apparatus than the canonical
+sweep, beside a neutral-prompt arm in the same job, so its bearing on the
+canonical steering gap rests on how closely that neutral arm reproduces the
+canonical no-tools rates (within $1$\,pp pooled, Technical Appendix) and on the
+unmeasured run-to-run variation of deterministic decoding, since no prompt was
+ever sampled twice under one apparatus. No \emph{think}=on control exists for
+Gemma-MoE-26B, whose \emph{think}=on unaided cell saturates the decode budget
+under every apparatus available to us. Grading of the model's own
 text is strict by design (format adherence is part of the task), so a model that
 reasons correctly but emits malformed output scores as a failure; we report the
 failure-type decomposition, and the budget-decoupled control (Results), so this is
@@ -1856,6 +1885,214 @@ policy; the completed retry was graded incorrect, and the primary verdicts were
 unchanged. No probe answer was censored by storage; no tool-arm final turn reached
 the allowance (one Sonnet and two Haiku no-tools answers did). Measured cost of
 the four cells was \$40.68.
+
+\paragraph{The steering control.}
+The control arm of the Methodology (the steering directive with the tools
+removed) was pre-registered as an equivalence test before it was run, after the
+main sweeps, in six (model, mode) units: Qwen3.5-4B, Qwen3.5-9B, Gemma-MoE-26B
+and Qwen3.6-35B at \emph{think}=off, and the two Qwen models at
+\emph{think}=on. Each unit is one job of $9{,}120$ trials: the three neutral
+paraphrases of every task (the \emph{anchor}, $4{,}560$ trials) and the same
+paraphrases with the directive of Listing~\ref{lst:prompts} appended
+($4{,}560$ trials), interleaved by one process against one server, with the
+no-tools system prompt unchanged. The \emph{think}=on units use the
+budget-decoupled apparatus of the Results with the serving runtime's reasoning
+parser off (see the deviations below). The two modes are separate apparatuses,
+and no number is compared across them. Gemma-MoE-26B has no \emph{think}=on
+unit, because its \emph{think}=on unaided cell saturates the shared decode
+budget and the decoupled apparatus relies on a reasoning delimiter that model
+does not emit. The hypothesis is that the directive alone moves the no-tools
+rate by less than $5$\,pp. The surface is the model's own answer (delivered) on
+determinate rows. Rows censored at the $16$K storage cap ($1.2$--$1.7\%$ per
+unit, all \emph{simulate}) are excluded from every estimator and reported as
+bounds. The estimate is the paired difference, steered minus anchor, over
+$4{,}466$--$4{,}500$ matched trial pairs per unit, with $90\%$ intervals
+clustered on domain ($k{=}20$) and on problem instance (size-weighted, realized
+$k{=}220$). The wider interval governs. A unit passes if its pooled interval
+lies inside $(-5,\,+5)$ and no eligible task cell has an interval entirely
+outside it. The paper-level claim requires every unit to pass, an
+intersection-union test that needs no multiplicity correction. A task cell is
+eligible when its anchor rate lies in $[10\%,\,90\%]$, its realized
+domain-clustered half-width is at most $5$\,pp, and its own paraphrase noise
+floor $F$ is below $5$\,pp, where $F$ is the largest absolute difference among
+the three designed-null pairs of neutral paraphrases in the anchor arm. A cell
+whose $F$ reaches the margin is uninformative at that granularity and cannot
+contribute a failure, because the paraphrases alone move it by more than the
+effect under test. This gate removes \emph{solve} ($F$ of $14$--$31$\,pp) and
+\emph{simulate} ($5.6$--$36.3$\,pp) in every unit and \emph{validate\_domain}
+($5.0$--$14.2$\,pp) in every unit. The minimum detectable effect of a unit is
+$5$\,pp plus its realized governing half-width.
+
+Table~\ref{tab:ster-units} gives the six unit verdicts and
+Table~\ref{tab:ster-tasks} every task cell. All six units pass, all eight
+eligible task cells are equivalent, and no cell in the family is labeled
+not-equivalent. Two pooled intervals (Qwen3.5-9B in both modes) exclude zero on
+the positive side while lying inside the margin, which is what the design
+treats as floor-equivalent: a real prompt effect below $2$\,pp. The largest
+per-task movements (Gemma-MoE-26B \emph{simulate} $+9.0$\,pp at $F{=}36.3$, and
+Qwen3.5-9B \emph{think}=on \emph{validate\_domain} $+10.3$\,pp at $F{=}6.7$) sit
+in cells the paraphrase gate excluded before the contrast was read and carry
+no verdict authority. The matched cell for the body's $+72.0$\,pp,
+Gemma-MoE-26B \emph{validate\_plan} at \emph{think}=off, is eligible and
+equivalent at $+0.63$\,pp $[-0.46,\,+1.73]$. It contains no censored row.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrlrrl@{}}
+\toprule
+\textbf{Model} & \textbf{Mode} & \textbf{Anchor} & \textbf{Steered} & $\hat\Delta$ [90\%] & $F$ & \textbf{MDE} & \textbf{Verdict} \\
+\midrule
+Qwen3.5-4B & off & 60.3 & 58.8 & $-1.07$ $[-2.32,\,+0.17]$ & 2.09 & 6.25 & pass \\
+Qwen3.5-9B & off & 65.6 & 66.7 & $+1.25$ $[+0.01,\,+2.50]$ & 0.55 & 6.25 & pass \\
+Qwen3.5-9B & on & 69.7 & 71.7 & $+1.87$ $[+0.69,\,+3.06]$ & 1.67 & 6.18 & pass \\
+Gemma-MoE-26B & off & 77.8 & 78.3 & $+0.53$ $[-0.29,\,+1.36]$ & 2.75 & 5.82 & pass \\
+Qwen3.6-35B & off & 78.0 & 78.0 & $+0.16$ $[-0.89,\,+1.21]$ & 2.54 & 6.05 & pass \\
+Qwen3.6-35B & on & 83.6 & 83.1 & $-0.46$ $[-1.33,\,+0.42]$ & 0.66 & 5.87 & pass \\
+\bottomrule
+\end{tabular}
+\caption{The steering control, unit level (no-tools, \%, delivered surface on
+determinate rows). Anchor and steered are the pooled success rates of the two
+arms. $\hat\Delta$ is the paired difference, steered minus anchor, with its
+governing $90\%$ cluster-robust interval. $F$ is the pooled paraphrase noise
+floor of the anchor arm. MDE is the smallest $|\hat\Delta|$ that would have
+failed the unit ($5$\,pp plus the realized half-width). A unit passes when its
+interval lies inside $(-5,\,+5)$ and no eligible task cell lies entirely
+outside it.}
+\label{tab:ster-units}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrlrrll@{}}
+\toprule
+\textbf{Unit} & \textbf{Task} & \textbf{Anchor} & $\hat\Delta$ [90\%] & $F$ & \textbf{MDE} & \textbf{Class} & \textbf{Label} \\
+\midrule
+Qwen3.5-4B (off) & \emph{solve} & 6.7 & $-1.67$ $[-4.32,\,+0.99]$ & 17.00 & 7.65 & uninformative & equivalent \\
+ & \emph{val\_domain} & 19.2 & $+0.28$ $[-0.20,\,+0.76]$ & 7.50 & 5.48 & uninformative & equivalent \\
+ & \emph{val\_problem} & 56.0 & $-1.00$ $[-3.81,\,+1.81]$ & 5.50 & 7.81 & uninformative & equivalent \\
+ & \emph{val\_plan} & 74.5 & {\boldmath $-1.10$ $[-2.86,\,+0.66]$} & 1.40 & 6.76 & eligible & equivalent \\
+ & \emph{simulate} & 17.1 & $-2.43$ $[-5.33,\,+0.47]$ & 5.56 & 7.90 & uninformative & indeterminate \\
+\addlinespace
+Qwen3.5-9B (off) & \emph{solve} & 10.3 & $-1.67$ $[-4.89,\,+1.56]$ & 28.00 & 8.23 & uninformative & equivalent \\
+ & \emph{val\_domain} & 25.3 & $+4.17$ $[-0.07,\,+8.40]$ & 14.17 & 9.23 & uninformative & indeterminate \\
+ & \emph{val\_problem} & 66.3 & {\boldmath $+1.33$ $[-1.72,\,+4.39]$} & 4.50 & 8.06 & eligible & equivalent \\
+ & \emph{val\_plan} & 79.8 & {\boldmath $+0.63$ $[-1.24,\,+2.50]$} & 1.40 & 6.87 & eligible & equivalent \\
+ & \emph{simulate} & 10.9 & $+6.95$ $[+2.71,\,+11.18]$ & 9.78 & 9.24 & uninformative & indeterminate \\
+\addlinespace
+Qwen3.5-9B (on) & \emph{solve} & 26.7 & $+1.33$ $[-4.31,\,+6.98]$ & 16.00 & 10.65 & uninformative & indeterminate$^{\dagger}$ \\
+ & \emph{val\_domain} & 43.6 & $+10.28$ $[+3.30,\,+17.26]$ & 6.67 & 11.98 & uninformative & indeterminate$^{\dagger}$ \\
+ & \emph{val\_problem} & 63.8 & $+5.67$ $[+1.76,\,+9.57]$ & 6.50 & 8.90 & uninformative & indeterminate \\
+ & \emph{val\_plan} & 81.4 & {\boldmath $+0.07$ $[-1.10,\,+1.23]$} & 1.60 & 6.17 & eligible & equivalent \\
+ & \emph{simulate} & 32.5 & $+3.83$ $[-3.73,\,+11.39]$ & 30.50 & 12.56 & uninformative & indeterminate$^{\dagger}$ \\
+\addlinespace
+Gemma-MoE-26B (off) & \emph{solve} & 10.3 & $-4.00$ $[-7.68,\,-0.32]$ & 14.00 & 8.68 & uninformative & indeterminate \\
+ & \emph{val\_domain} & 79.2 & $-1.39$ $[-4.86,\,+2.09]$ & 5.00 & 8.48 & uninformative & equivalent \\
+ & \emph{val\_problem} & 77.7 & {\boldmath $-0.50$ $[-2.88,\,+1.88]$} & 4.00 & 7.38 & eligible & equivalent \\
+ & \emph{val\_plan} & 88.3 & {\boldmath $+0.63$ $[-0.46,\,+1.73]$} & 2.50 & 6.10 & eligible & equivalent \\
+ & \emph{simulate} & 28.0 & $+9.00$ $[+4.68,\,+13.32]$ & 36.33 & 9.32 & uninformative & indeterminate \\
+\addlinespace
+Qwen3.6-35B (off) & \emph{solve} & 10.7 & $-1.33$ $[-5.13,\,+2.46]$ & 31.00 & 8.80 & uninformative & indeterminate \\
+ & \emph{val\_domain} & 74.4 & $+1.67$ $[-2.14,\,+5.47]$ & 9.17 & 8.80 & uninformative & indeterminate \\
+ & \emph{val\_problem} & 74.5 & {\boldmath $+0.83$ $[-1.36,\,+3.02]$} & 1.00 & 7.19 & eligible & equivalent \\
+ & \emph{val\_plan} & 90.5 & $-0.33$ $[-1.61,\,+0.94]$ & 0.60 & 6.27 & uninformative & equivalent \\
+ & \emph{simulate} & 20.7 & $+3.36$ $[-1.01,\,+7.73]$ & 19.26 & 9.37 & uninformative & indeterminate \\
+\addlinespace
+Qwen3.6-35B (on) & \emph{solve} & 42.0 & $-7.67$ $[-14.11,\,-1.23]$ & 26.00 & 11.44 & uninformative & indeterminate$^{\dagger}$ \\
+ & \emph{val\_domain} & 81.4 & $-2.50$ $[-7.50,\,+2.50]$ & 5.83 & 10.00 & uninformative & indeterminate$^{\dagger}$ \\
+ & \emph{val\_problem} & 76.0 & {\boldmath $+1.17$ $[-0.36,\,+2.70]$} & 1.50 & 6.53 & eligible & equivalent \\
+ & \emph{val\_plan} & 92.6 & $-0.30$ $[-1.10,\,+0.50]$ & 1.20 & 5.80 & uninformative & equivalent \\
+ & \emph{simulate} & 45.8 & $+6.32$ $[-0.35,\,+12.98]$ & 16.83 & 11.66 & uninformative & indeterminate$^{\dagger}$ \\
+\bottomrule
+\end{tabular}
+\caption{The steering control, every task cell (\%, delivered surface on
+determinate rows). Class is assigned mechanically from the anchor arm before
+the contrast is read. \emph{Eligible} cells (bold interval) have an anchor rate
+in $[10\%,\,90\%]$, a paraphrase floor $F$ below $5$\,pp and a domain-clustered
+half-width of at most $5$\,pp. Every other cell is \emph{uninformative} and
+carries no verdict authority. An \emph{equivalent} label means the interval lies
+inside $(-5,\,+5)$, and \emph{indeterminate} means it crosses a margin. No cell
+is not-equivalent. $^{\dagger}$ half-width above $5$\,pp (underpowered).
+\emph{Simulate} cells are additionally censoring bounds under extreme
+imputation and are reported here on determinate rows only.}
+\label{tab:ster-tasks}
+\end{table*}
+
+\emph{Drift check.} The anchor arm doubles as a re-measurement of the canonical
+no-tools rates on a later apparatus (Table~\ref{tab:ster-drift}). Pooled over
+the four tasks other than \emph{simulate} (whose canonical unaided answers were
+stored as $500$-character snapshots and cannot be regraded), the anchor sits at
+most $+1.0$\,pp above the canonical corpus, no larger than the $90\%$ sampling
+half-width of a single side ($1.0$--$1.2$\,pp at $n{=}4{,}260$ per side per
+model). The one per-task movement above $5$\,pp (Qwen3.6-35B
+\emph{validate\_domain}, $+6.7$\,pp) is in a cell whose own paraphrase floor is
+$9.2$\,pp. This datum is reported only here and revises no number in the
+Results.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Model} & \emph{solve} & \emph{val\_dom.} & \emph{val\_prob.} & \emph{val\_plan} & \textbf{pooled} \\
+\midrule
+Qwen3.5-4B    & $-1.0$ & $+0.0$ & $-0.5$ & $+0.5$ & $+0.2$ \\
+Qwen3.5-9B    & $-0.3$ & $-0.3$ & $+0.7$ & $+0.1$ & $+0.1$ \\
+Gemma-MoE-26B & $+2.7$ & $+1.4$ & $+2.8$ & $+0.5$ & $+1.0$ \\
+Qwen3.6-35B   & $+1.3$ & $+6.7$ & $-1.2$ & $-0.4$ & $+0.2$ \\
+\bottomrule
+\end{tabular}
+\caption{Drift check: the control's neutral anchor minus the canonical no-tools
+rate (pp, \emph{think}=off, $n{=}4{,}260$ per side per model). \emph{Simulate}
+is excluded because its canonical unaided answers cannot be regraded.}
+\label{tab:ster-drift}
+\end{table}
+
+\emph{Deviations from the preregistration, declared.} Three changes were made
+after the preregistration was ratified. First, the control roster was expanded
+from three models to four after interim results were seen. The preregistration
+fixed the roster at Qwen3.5-9B, Gemma-MoE-26B and Qwen3.6-35B. With those three
+\emph{think}=off units complete and passing, we measured the with-tools steering
+effect the control exists to attribute across the full roster at the mechanism
+layer and found that Qwen3.5-4B carried a larger effect ($+6.9$\,pp pooled,
+$+9.6$\,pp on \emph{validate\_plan}) than the controlled Qwen3.5-9B
+($+2.5$\,pp), while Qwen3.5-0.8B showed no pooled effect ($+0.0$\,pp) and so has
+nothing to attribute. We added a Qwen3.5-4B \emph{think}=off unit with apparatus
+parity to the three completed units. It passes. Under the intersection-union
+rule a fourth unit can only make the conjunctive claim harder to satisfy, and
+the unit was chosen by the size of the effect needing attribution, before its
+control result was known. Second, the \emph{think}=on arm was rerun with the
+reasoning parser off. The preregistration ruled that the parser override is not
+passed, reasoning about the single-call path in which reasoning and answer
+share one output stream. The \emph{think}=on units use the two-call decoupled
+apparatus, and under that rule it produced a void corpus: $9{,}120$ of $9{,}120$
+and $3{,}822$ of $3{,}824$ rows with empty answer text, no errors, and about
+$13$K tokens generated per row. We cancelled the arm, discarded the void rows
+(retained as a failure record), and reran with the parser off, the setting
+under which that apparatus had been validated. The rerun reproduces an earlier
+parser-off run of the same two models under that apparatus to within a
+percentage point on both empty-text share ($8.2\%$ and $3.9\%$ against $8.8\%$
+and $4.1\%$ predicted) and success rate ($69.1\%$ and $82.5\%$ against $68.4\%$
+and $82.0\%$), and the grading artifact the original rule guarded against does
+not appear on this path (unparseable answers are $0.0\%$ on all three
+validation tasks in all four affected arms). The two modes were already
+declared separate apparatuses whose numbers are never compared, so the change
+alters no comparison. Third, after the first readout was ratified, a code
+review of the hash-frozen analysis found defects: rows censored at the storage
+cap had been scored as successes on the delivered surface, the problem-instance
+clustering assumed $100$ balanced clusters where the fixture layout yields
+$220$ unbalanced ones and so estimated a task-reweighted quantity, and the
+secondary mechanism decomposition read fields the graded rows do not carry. The
+code was corrected, re-frozen by hash, and the analysis regenerated from the
+checkpointed corpus. The six unit verdicts and the paper-level branch are
+unchanged. The secondary figures reported here are the corrected values, and
+the corrected intervals are tighter (resolution $5.8$--$6.3$\,pp against
+$6.5$--$7.1$\,pp as first shipped), which can only make the equivalence test
+harder to pass.
 
 \paragraph{Canonical trajectory normalization (\emph{simulate}).}
 A \emph{simulate} answer is graded by deep-equality against the oracle trajectory
