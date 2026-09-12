@@ -122,7 +122,7 @@ Tripwire (d) checked at trial 20 of leg A: $4.93 spent, naive projection $24.67.
 1. Ratify the readout as written: Sonnet **PARTIAL** (16/25 vs 7/19, p = 0.069),
    Haiku **H1** (12/17 vs 1/12, p = 0.001), H2 supported on Haiku (0/14), arm contrast
    at 64K Sonnet +26 pp / Haiku +7 pp, no tripwires.
-   > ANSWER:
+   > ANSWER:    Use revised wording that states the mixed primary result explicitly, reports the larger-budget arm comparisons, and notes that substantial delivery failures remain. Mention that response storage was also enlarged. Replace “at a budget the trajectory fits” with “under the 64K output allowance.” Preserve the original censoring bounds.
 
 2. Paper sentence (handoff step 11; prereg §3.5 pre-drafted language). Because the
    Sonnet verdict is PARTIAL, §3.5 says: quote both rates, no causal clause, keep the
@@ -137,11 +137,11 @@ Tripwire (d) checked at trial 20 of leg A: $4.93 spent, naive projection $24.67.
    simulate is +26 pp on Sonnet (70 [60, 78] vs 44 [35, 54]) and +7 pp on Haiku
    (65 [55, 74] vs 58 [48, 67])."*
    Use these, or say what to change.
-   > ANSWER:
+   > ANSWER: With the output allowance raised from 6,144 to 64,000 tokens and response storage expanded, 16/25 previously truncated, budget-fitting Sonnet failures became correct, compared with 7/19 other failures (p=0.069); this did not meet the preregistered confirmation criterion. Haiku met that criterion, with 12/17 versus 1/12 conversions (p=0.0011), while none of its 14 summary-only failures became correct. At 64K, delivered accuracy with versus without tools was 70% versus 44% for Sonnet and 65% versus 58% for Haiku. Despite the larger allowance, 30% and 35% of tool-arm trials still failed, and no final response reached the output-token cap.
 
 3. The infra retry in §4 is reported in the Limitations clause alongside the §9
    known limits (one line), or omitted as apparatus routine?
-   > ANSWER:
+   > ANSWER: Document the infrastructure retry in the reproducibility appendix or execution-protocol note. It does not need a main-text Limitations paragraph. State that one infrastructure failure was retried under the existing resume policy, the completed retry was graded incorrect, and the primary verdicts were unchanged
 
 After ratification: NUMBERS.md "budget probe" block, the Delivery Gap + Limitations
 edits on `paper/aaai27` (pull Overleaf first), ledger cost line already appended.
