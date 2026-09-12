@@ -387,7 +387,7 @@ loop: with-tools cells emit v11/v12/v13 (neutral) + v14/v15/v16 (steered);
 no-tools cells emit v11/v12/v13 only. The 4th-arm control
 `(no-tools × v14-v16)` runs via `run_experiment.py --include-no-tools-steered`
 and lands in the same per-cell dir, distinguished at row-level by
-`prompt_variant`. See `development/sweep_prompt_bank_design.md` for the
+`prompt_variant`. See `development/reference/sweep_prompt_bank_design.md` for the
 full matrix + arm mapping. Retired axes: `tools_per-task_minimal` (sweep-5
 retirement 2026-05-19), `tools_*_guided` (earlier).
 

@@ -1,9 +1,20 @@
 mcp>=1.0.0
 openai>=1.40.0
 # Anthropic Message Batches API for the Sonnet-4.6 frontier no-tools run
-# (tools/sonnet_batch.py). Offline, batched (-50%); not used by the vLLM
+# (tools/claude_api_batch.py). Offline, batched (-50%); not used by the vLLM
 # single-task harness.
 anthropic>=0.40.0
 
+# JSON-Schema validation for tools/guided_json_audit.py: the ISS-024(b) audit
+# checks stored responses against TASK_SCHEMAS itself (the object handed to
+# vLLM's guided_json), not against the pydantic model, which coerces types the
+# grammar would reject.
+jsonschema>=4.0.0
+
 matplotlib
 pandas
+
+# Direct imports of the frozen nt-ster analysis entry points
+# (tools/ntster_*.py); previously present only transitively.
+numpy
+scipy

@@ -397,6 +397,25 @@ for MODEL in $MODELS; do
                 DOMAINS_DIR_ARG=(--domains-dir "$DOMAINS_DIR")
             fi
 
+            # Decoupled-budget threading (run_experiment.py 2-call
+            # continuation). Engaged only when submit_with_rtx.sh passed
+            # --decoupled-budget. run_experiment.py's own guards still apply
+            # (requires --think on, rejects --conditions tools), and the
+            # submit wrapper already pinned --no-tools --think-modes on, so
+            # every emitted cell here is a valid decoupled cell. The parser-off
+            # half of DECISION B is handled at serve time by
+            # vllm_reasoning_parser_flag honoring REASONING_PARSER_OVERRIDE.
+            DECOUPLED_ARGS=()
+            if [ "${DECOUPLED_BUDGET:-0}" = "1" ]; then
+                DECOUPLED_ARGS=(--decoupled-budget)
+                if [ -n "${NUM_PREDICT_THINK:-}" ]; then
+                    DECOUPLED_ARGS+=(--num-predict-think "$NUM_PREDICT_THINK")
+                fi
+                if [ -n "${NUM_PREDICT_ANSWER:-}" ]; then
+                    DECOUPLED_ARGS+=(--num-predict-answer "$NUM_PREDICT_ANSWER")
+                fi
+            fi
+
             python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
@@ -410,6 +429,7 @@ for MODEL in $MODELS; do
                 "${PARTIAL_ARG[@]}" \
                 "${STEERED_ARG[@]}" \
                 "${DOMAINS_DIR_ARG[@]}" \
+                "${DECOUPLED_ARGS[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 

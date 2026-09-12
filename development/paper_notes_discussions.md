@@ -519,3 +519,1411 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - 3 new bib entries (react/pot/instructgpt). Build clean (16pp, 0 undefined refs, 0 overfull).
 - The [3]/[4]/[15] framings were already adequately present (matched-prompt, steering, richer-PDDL) —
   verified, not re-touched. [5a] simulate partial-credit writeup folds into T4 (same section as [5b]).
+
+## 2026-06-23 — `simulate` 0% "sole-source floor" was substantially a grader artifact → corrected to ~40–45%
+- **Bug.** `_normalize_trajectory` compared simulate trajectories by lowercase + whitespace only; it never
+  reconciled the model's PDDL s-expression `(ontable shaker1)` against the oracle's functional
+  `ontable(shaker1)`. Every *correct* no-tools simulation scored `result_mismatch` → an artificial 0%.
+  Fixed (commit `5879ac4`; [[project_simulate_grader_artifact]]; ISS-024). With-tools simulate (functional
+  on both sides) was unaffected.
+- **Corrected frontier `simulate` (no-tools, think=off, 95% Wilson):** Haiku **0 → 42.0% [32.8,51.8]**;
+  Sonnet canonical **0 → 45.0% [39.5,50.7]**; Sonnet anon **0 → 38.3% [33.0,43.9]**. Re-graded locally from
+  the raw batch dirs (no spend, no cluster); all non-simulate cells reproduced byte-identically (built-in
+  regression check passed) — the fix touches only the simulate leg.
+- **The floor is real but ~40–45%, not 0.** Of trials that produced a *parseable* trajectory, Sonnet is
+  correct **135/149 = 90.6%** (canonical) / **115/128 = 89.8%** (anon); the remaining loss is **truncation**
+  (long trajectories hit the token cap: 89/102 of 300) + **format_parse_fail** (62/70) — output length/format,
+  not state-tracking incapability.
+- **Contamination probe stays NULL for simulate.** Overall canon 45.0% vs anon 38.3% (Δ+6.7) has *overlapping*
+  CIs and is a **truncation confound** — anon prompts are ~5% longer → more truncation (102 vs 89) + more
+  parse-fail (70 vs 62). Success-given-parseable-completion is equal (90.6% vs 89.8%) → no memorization
+  signal. Same mechanism as the validate_plan×think-on tokenization artifact ([[project_sweep6_design]]).
+- **Paper: HOLD — do not rewrite yet (Omer 2026-06-23).** Gather the *complete* simulate picture before
+  touching any narrative — avoid fixating on a story while the data is partial. We have corrected numbers for
+  **3 frontier cells only**; the open vLLM roster (the bulk of the simulate evidence) is **not** re-gradeable
+  from disk (`RESPONSE_SNAPSHOT_LEN=500`, no `gt`), and the budget-vs-capability split in the residual
+  truncation (33% Haiku / ~30% Sonnet) is unresolved. Both close via a single (gated) cluster re-run with the
+  fix + higher token cap. `paper/` untouched.
+- **Provisional read = HYPOTHESIS TO TEST, not an edit to make.** For the FRONTIER, the corrected ~40–45%
+  means the "frontier reproduces the floor / 0%→97% bimodal" and Discussion "sole-source 0%" passages would
+  need rewriting *if* it holds — simulate becomes a *mid* cell gated by output length, shifting the
+  generative-leg low pole toward `solve` (~29%, genuine `plan_invalid`). Recorded to test against full data,
+  not to commit now. (`solve` floor + `validate_*` highs are complete and unaffected.)
+- **Open-roster ≠ same artifact (verified 2026-06-23).** Earlier guess that the open roster "likely carries
+  the same artifact" is **falsified**: their `result_mismatch` (what the notation fix touches) is ~0%. The
+  open-roster 0% is a *different* failure — `format_parse_fail` (unenforced `guided_json` lets prose leak past
+  the constraint, plus a strict-wrapper sub-artifact the adopted Q1 grader closes) + truncation — unmeasurable
+  from disk (`RESPONSE_SNAPSHOT_LEN=500`, no `gt`). So the grader artifact was largely a *frontier* story; the
+  open-roster floor is more genuine, and a clean number needs a re-run (Q1 two-metric grader + decoupled
+  budget + full storage), not a re-grade. [[project_simulate_grader_artifact]]
+  Full breakdown + next steps: `development/{frontier_grading_artifacts_findings.md, simulate_decisions_and_next_steps.md}`.
+
+## 2026-07-11 — Decoupled Line-1 COMPLETE; paper-rewrite deferred to a fresh session; with-tools parity resolved
+
+- The decoupled think=on no-tools re-run is **data-complete (all 4 Qwens)** and analyzed. Final matched
+  A/B + consolidated findings: `development/decoupled/decoupled_run_handoff.md` "LINE COMPLETE" §; rollup
+  script `development/decoupled/decoupled_rollup.py`. (9B, the last cell, finished 2026-06-29.)
+- **Bottom line for the paper:** the no-tools simulate 0% "sole-source floor" is an **artifact** (grader +
+  shared-budget reasoning starvation), NOT a capability floor. True no-tools simulate (state-tracking) =
+  0.8B 0% · 4B 23% · 9B 22% · 35b 40%. The paper must **retract the 0% floor** and re-frame the tool-lift
+  apples-to-apples as decoupled-no-tools (22–40%) → with-tools (~87–96%), not old-0% → 90%. [[project_simulate_grader_artifact]]
+- **Two-metric result:** simulate format-compliance = 0% for every model (strict content∧format = 0%);
+  all no-tools state-tracking success is Q1 wrapper-tolerant coercion (models get content right, never the
+  exact wrapper). **solve:** decoupling is a RISK at mid-capability (4B −6pp), neutral for 9B/35b (ctx-ceiling).
+- **With-tools parity — no re-run.** Reuse sweep5v2 with-tools as the comparison arm: decoupling is
+  no-tools-only by construction; with-tools never starved (`think_overflow=0`, simulate 87–96%); the only
+  apparatus delta (reasoning-parser off vs on) doesn't touch tool-call extraction/grading. A cheap
+  parser-off+tools smoke is the apples-to-apples insurance before citing sweep5v2 (ISS-024(d), still gated).
+- **Process:** the actual `paper/` rewrite is **deferred to a fresh-session agent** (per user); `paper/`
+  left untouched this session.
+- **With-tools GRADING-SURFACE caveat (proven 2026-07-11).** With-tools success is graded on the TOOL
+  CALL RESULT, not the model's final answer (`scoring.py check_success` reads `tc["result"]` in every
+  with-tools branch; the model `response` is read only in the no-tools paths). So no-tools grades the
+  model's OWN answer while with-tools grades the TOOL's answer — a more generous surface; with-tools is a
+  tool-selection + faithful-invocation metric, NOT strict end-to-end. Empirically (validate_\*, sweep5v2
+  with-tools successes) models NEVER misreport the tool (0% contradiction) but ~36% (35b) / ~40% (4B)
+  state no checkable verdict — credited on the tool alone (35b: 28.9% completed-yet-silent + 7.4%
+  truncated). The paper's tool-lift framing must state this. Proof/repro:
+  `development/decoupled/with_tools_grading_surface_probe.py`; caveat detailed in the decoupled handoff.
+- **PROPOSED (deferred to fresh session):** a secondary end-to-end with-tools metric that also grades the
+  model's final `response` against ground truth, to put a number on the interpretation gap. Offline-computable
+  (no re-run). To be discussed, not built yet.
+
+## 2026-07-11 — DECIDED: with-tools grading must read the model's output; snapshot censoring discovered
+
+- **Grading-surface principle DECIDED (Omer).** The evaluation must grade the *model's output*; grading
+  only the tool result "makes an internal component the final model output, which it obviously is not."
+  Instructing the model to relay the tool output verbatim is fine prompt design; ignoring the model's
+  output at scoring time is not. A tool call is itself a legitimate model-output form ("if the model's
+  output is the tool call, it's correct"). Consequence: a response-graded **end-to-end** success column
+  (same parser as the no-tools branch, both arms) becomes the primary surface for tool-lift claims; the
+  current trace-graded metric is retained, renamed **tool-verified** (delegation) success, as the
+  mechanism layer. Decision doc + open operational slots (D2b empty-final-turn carve-out, rescoring
+  scope, naming, corpora, censoring handling): `development/tool_call_vs_final_output_grading.md`.
+- **Supporting fact:** the v14–16 with-tools prompts already demand the answer in the final response
+  (VERDICT trailer / "return a plan" / "return the trajectory", `pddl_eval/prompts.py:279–329`), so
+  trace-grading contradicts the harness's own task contract — ~29% of 35b with-tools validate successes
+  were credited despite disobeying the prompt's output instruction.
+- **NEW measurement caveat — response-snapshot censoring (probe v2).** `trials.jsonl` stores `response`
+  as a HEAD snapshot; the cap was **500 chars** until 2026-06-25 (`runner.py:145–153,514`), and
+  sweep5v2-live predates the raise. Since the VERDICT line is instructed to be LAST, verdicts past char
+  500 are invisible offline: of 35b tool-graded validate_* successes, 63.6% restate visibly, 27.6% are
+  INDETERMINATE (snapshot exactly 500 chars, no visible verdict), 1.3% ended the turn empty (stop),
+  7.4% truncated empty. 4B: 60.3% / 3.5% / 13.7% / 22.5%. So the earlier "36–40% state no verdict" split
+  is partly storage artifact: true 35b restatement ∈ [63.6%, 91.2%]; 4B's silence is mostly genuinely
+  empty output (real synthesis gap). "0% contradiction" holds only within the visible window. The
+  offline end-to-end overlay is exact on post-06-25 corpora and **interval-valued** on sweep5v2-live;
+  published no-tools numbers are unaffected (grading ran online on full text).
+
+## 2026-07-11 (later) — grading-surface decisions ALL RECORDED; overlay work starts
+
+- Omer filled all slots in `development/tool_call_vs_final_output_grading.md`: **D2b=B** (a bare tool
+  call counts as the model's answer only when the model closed the turn on its own; truncated-empty =
+  fail, symmetric with no-tools truncation), **D3=A** (one consolidated rescoring pass: e2e overlay +
+  simulate normalizer + validate_plan FP binning), **D4** names approved (**end-to-end success** vs
+  **tool-verified success**), **D5** corpora = sweep5v2-live + sweep6 + Sonnet/Haiku frontier + sweep7,
+  **D6=A** (censored old corpora reported as bounds; no extra runs).
+
+## 2026-07-11 (later-2) — DECIDED: fresh Haiku + Sonnet single-tool reruns; harness-framework discussion queued
+
+- **DECIDED (Omer): rerun Haiku AND Sonnet single-tool for fresh numbers.** Motivation from the e2e
+  overlay findings: the existing frontier corpora are 75–100% snapshot-censored (Sonnet no-tools
+  simulate 0/300 is 100% unrecoverable from disk; with-tools probes 75–93% blind on validate_plan), so
+  fresh runs under full response saving are the only way to exact frontier end-to-end numbers.
+- **GATED on a harness-framework discussion (to be held before submitting):** run the frontier
+  single-tool arm on (a) the **Claude API framework** vs (b) the **existing harness** (bare-loop
+  `tools/sonnet_tools_probe.py` / batch path). Omer's rationale for (a): he wants a clean
+  **transition/bridge from the single-tool experiments to the PlanBench benchmarks** — PlanBench
+  frontier will run on the Claude API framework, so that framework must ALSO be assessed inside the
+  single-tool experiment for the two benchmark families to be comparable. This folds into the open
+  harness fork in [[project_frontier_phase_design]] (bare loop / agnostic / Claude-native); the
+  PlanBench-continuity argument now weighs on it.
+- Nothing submitted for the frontier reruns yet; the ISS-024(d) Qwen with-tools re-run (job 19293221)
+  is running independently.
+
+## 2026-07-11 (later-3) — D2b REVISED: strict end-to-end is the paper's headline
+
+- **DECIDED (Omer): D2b=B → strict (i).** The headline end-to-end metric fails ANY empty final
+  turn, both arms; "delegation-terminal" (right tool call, deliberate silence) becomes its own
+  labeled outcome category in the tables; the B-graded column stays in the overlay as a derived
+  diagnostic. Basis: (1) external audit — ABC (arXiv:2507.02825) names "τ-bench counting empty
+  responses as successful" as the field's canonical reward-design flaw, and D2b=B was a
+  conditioned version of the same rule; (2) measured strict-vs-B comparison
+  (`tools/e2e_d2b_compare.py`, run 2026-07-11 on the existing overlays): only 3.6% of sweep5v2
+  rows carry the credit, and 2/25 lift verdicts flip — 35b validate_problem (0.3pp knife-edge,
+  a wash under both rules) and 9B solve (censoring-bound; the running ISS-024(d) 16K-cap job
+  resolves it exactly). Every headline validate lift survives strict grading.
+- **Promoted finding:** the D2b sensitivity concentrates in 9B, not 4B — 9B silently delegates
+  on 10–35% of with-tools validate rows (strict lower bounds drop 97/88/78 → 87/53/55, all
+  still lifts). The model with the best delegation (tool-verified 87–99%) restates worst: the
+  answer-synthesis gap GROWS with delegation competence.
+- **ISS-024(d) (job 19293221) kept running** — unaffected by the scoring choice (grading is an
+  offline overlay over raw rows) and now the resolver for the strict-undecided cells.
+- Full audit (incl. frontier-rerun harness conditions, probe sizing, open ANSWER slots):
+  `development/decision_audit_grading_and_frontier.md`. Overlay emits dual columns
+  (`e2e_strict` headline / `e2e` = B diagnostic); existing overlay files patched in place.
+
+## 2026-07-11 (later-4) — Frontier rerun framework DECIDED: B (SDK Tool Runner); probe + budget approved
+
+- **All slots filled (Omer) in `development/frontier_rerun_framework_decision.md`:** D1=**B** — the
+  frontier Haiku+Sonnet single-tool rerun (and the future PlanBench with-tools backend) run on the
+  Anthropic SDK Tool Runner + MCP helpers, ONE shared module for both benchmark families; the
+  existing bare loop (A) survives only as the probe's comparison arm. D2=**yes** to the paired
+  A-vs-B harness probe — operationalized as a STAGED probe (100 paired trials ≈ $5–10 first;
+  extend to 300–500 for quantification only if discordance appears; see audit §2.3 ANSWER).
+  D3=**single prompt variant** everywhere; slice the old 3-variant Sonnet NT corpus to the matching
+  variant when comparing. D4=**approved**, with a hard budget note: Claude API currently funded
+  with **$238** — below the $200–350 ballpark upper bound, so execution is budget-sequenced:
+  probe → Haiku both arms → re-estimate from measured cost → Sonnet only if the remainder covers
+  it (else top up / Haiku-first read).
+- Build conditions carried from the audit (§2.2): pin the exact `anthropic` SDK version (Tool
+  Runner + MCP helpers are beta surfaces); verify `max_iterations` counts the same unit as
+  MAX_TOOL_LOOPS=10 so `loop_exhausted` stays comparable; per-turn request logging; validate
+  prompt caching on the probe (`cache_read_input_tokens > 0`; Haiku min cacheable prefix = 4096
+  tokens); disclose the qwen3_xml-vs-native-FC prompt-surface delta in limitations (inherent to
+  the cross-family comparison, exists under A too).
+- Next action: build `tools/frontier_runner.py` (Tool Runner loop, standard trials.jsonl rows,
+  16K snapshots, caching, per-trial cost log) → stage-1 probe → full run per budget sequence.
+
+## 2026-07-11 (later-5) — Frontier runner (framework B) built + live-smoked; caching is NOT a cost lever
+
+- **`tools/frontier_runner.py` built** on the SDK Tool Runner (framework B, D1). Live 3-trial
+  Haiku smoke (real API + MCP, cached GT) passed end-to-end: runner loop → MCP tool exec →
+  grading 3/3 OK; SDK version pinned (anthropic 0.109.2); `--use-cached-gt` skips the heavy
+  `generate_ground_truth` solver prelude (opt-in — full run + paired probe generate fresh so
+  both arms share one GT source); offline `--dry-run` job counts verified (full grid 9120,
+  single-variant 1520 = the doc's Haiku D3 estimate).
+- **FINDING — prompt caching does not reduce frontier WT cost (revises the D4/memory "caching
+  is the cost lever" assumption).** After moving caching off a below-4096-token system block
+  onto the SDK runner's own `cache_control` (multi-turn breakpoints), caching is ACTIVE but on
+  the smoke it was a **net +6% LOSS**: trials are short (~2 turns) with a large, unique
+  per-trial domain/problem context, so the 1.25× write premium on the ~52K prefix isn't
+  recouped and consecutive trials share no big prefix. Budget the WT arm at **no-cache list
+  price** ($1/$5 Haiku, $3/$15 Sonnet); the stage-1 stratified probe (all 5 tasks) settles
+  whether any task benefits. Detail: `development/decision_audit_grading_and_frontier.md` §2.5;
+  cost lines in `frontier_rerun_framework_decision.md` annotated.
+- Next: generate the stratified stage-1 keys file → run it through BOTH `frontier_runner.py`
+  (B) and `claude_api_tools_probe.py` (A) → compare success + turns/tokens + real cost.
+
+## 2026-07-12 — Haiku WT solve/simulate "delivered gap" RETRACTED: three overlay grading artifacts, not answer-dropping
+
+- The morning headline (WT solve e2e 13.5 vs tool-verified 100; simulate 0 vs 97.5) is
+  withdrawn. Drilling into the raw trials showed the model delivers the answers; the
+  overlay grader could not read them. Do not cite the 13.5/0 row anywhere.
+- **Artifact 1 (solve):** Haiku formats plans as markdown numbered lists with backticked
+  actions + trailing annotations; the strict extractor requires bare `(action)` lines.
+  190/200 delivered plans are VERBATIM copies of the tool-validated plan.
+- **Artifact 2 (simulate):** Haiku wraps a complete ```json trajectory fence in prose; the
+  Q1 rule parses the whole response as one JSON value. Canon: 52/100 fenced trajectories
+  match the oracle exactly.
+- **Artifact 3 (anon oracle, hits NT too):** sweep6 rows were graded against canonical
+  fixtures/gt while their symbols are anonymized → anon solve 32/32 falsely invalid,
+  NT-anon simulate 59/100 clean parses all falsely mismatched (the pooled NT simulate
+  0.0 [0, 5.7] was artifact as well).
+- **DECIDED (D7/D7b, recorded in tool_call_vs_final_output_grading.md §0b):** overlay
+  delivered-answer extraction is format-tolerant, identical in both arms, with per-row
+  `extraction` provenance; sweep6* grades against domains-anon + gt_cache_anon. The frozen
+  Q1 online-grader whitelist is untouched. Oracle validation (VAL / deep-equality) makes
+  tolerant extraction false-positive-proof.
+- **Surviving paper story (replaces "drives tool then drops answer"):** delivered-answer
+  fidelity degrades with output length — short plans restated verbatim (~95 delivered),
+  long trajectories truncated/elided/summarized (canon [52, 64] vs tool-verified 97.5).
+  Secondary finding: strict parser parity across arms ≠ arm neutrality; NT one-shot output
+  obeys the JSON format while post-tool-chat WT output is chatty markdown, so the strict
+  shared parser partly measured format drift.
+- Corrected pooled table to be regenerated from the D7 overlay re-run (all corpora re-run
+  under one rule set); Sonnet-WT go/no-go should be revisited against the corrected gap
+  (~5pp solve / ~35-45pp simulate, not 85-97pp).
+
+## 2026-07-12 — iss024d reporting discipline: steered pre-commitment, rerun-estimate language, think=on scope (Omer accepted)
+
+- **Steered arm is diagnostic-only.** The iss024d cells emit the full v11-16 bank (the
+  "neutral-only" line in the status profile described the board denominator, not the run),
+  so exact steered with-tools e2e numbers will exist. Pre-commitment: no steered with-tools
+  e2e claim enters the paper unless a steered no-tools control arm is run first — without
+  that control, prompt-content and tool-access effects are confounded. sweep5v2-live
+  no-tools cells verified v11-13 only (no nt-ster control exists).
+- **Language convention: "independent rerun estimate", never "resolved exact value".**
+  iss024d is a new sample from a near-identical apparatus (Qwens additionally carry the
+  parser-off delta), not a recovery of the censored cells' realized outcomes. Prose says
+  "a re-run under full-response storage yields X [CI]".
+- **Exact e2e is think=on-scoped.** Both resolver jobs are think=on only; every think=off
+  with-tools e2e cell stays bounds-only. Paper e2e claims must state this scope.
+- **Parity criteria pre-registered** before the remaining cells land:
+  `development/iss024d_parity_prereg.md` (TOST margins, gemma as negative control,
+  partial-failure rule).
+- **Gemma coverage gap closed:** job 19314599 (gemma4:26b-a4b × on × tools_all_minimal,
+  same frozen apparatus + run-tag, submitted 2026-07-12). Gemma has no reasoning parser
+  natively, so its only delta vs its sweep5v2 arm is the 16K snapshot cap — it doubles as
+  the negative control for the parity check.
+
+## 2026-07-13 — D9 grading extension; Sonnet WT regraded: ladder holds, transcription gap is length-driven not tier-driven
+
+- **D9 (grading, both arms):** the Sonnet WT corpus exposed two more delivered-answer
+  formats the D7 tolerance missed (markdown-table plans; one fenced JSON block per
+  trajectory step) plus a censoring asymmetry (simulate lacked solve's at-cap
+  pre-censor). Fixed in `tools/e2e_regrade.py`, repo-wide re-run; the row diff is fully
+  attributable (zero validate_* / NT-non-simulate changes). Details:
+  `tool_call_vs_final_output_grading.md` §D9.
+- **Sonnet WT canonical (v11, e2e_strict):** solve delivered 95.0 [88.8,97.8] vs
+  tool-verified 100.0 — the +5.0pp gap is IDENTICAL to Haiku's, and on both models it is
+  transcription-error mass, not answer omission (Sonnet: 0 omitted plans, 5 invalid
+  restatements). simulate delivered [49.0,62.0] vs tool-ver 99.0; band overlaps Haiku's
+  [52.0,64.0].
+- **Paper-facing conclusions:** (1) the tool-verified-vs-delivered gap is TASK-shaped
+  (0pp verdicts, 5pp plans, ≥33pp trajectories), reproduced across two frontier tiers —
+  the "delivered fidelity degrades with answer length" claim is now two-tier;
+  (2) "a stronger model transcribes long tool outputs better" is NOT supported
+  (solve tied, simulate bands overlap); (3) the validation tool-lift ladder holds
+  end-to-end — lift shrinks as the model strengthens (validate_domain loses
+  CI-separation at Sonnet tier), while the solve lift stays enormous at both tiers
+  (+73.0 / +66.0, CI-disjoint).
+- **Bookkeeping:** Sonnet WT $90.75 measured; frontier spend ≈$167.4/$238. Corrected
+  pooled table regenerated (only iss024d still flagged in-flight: 4B done on cluster
+  awaiting sync, 9B + gemma running). Full memo:
+  `development/sonnet_wt_vs_haiku_e2e_memo.md`.
+
+## 2026-07-15 — NT snapshot de-censor (free re-grade); simulate sole-source claim must be delivered-level-qualified
+
+- **The planned Haiku NT "batch rerun" was unnecessary and is cancelled.** The 500-cap
+  corpora were only snapshot-censored: the raw batch `results.jsonl` dirs retain full
+  response text, so all three 500-cap NT corpora (Haiku canonical, Sonnet canonical +
+  anon) were re-graded to 16K snapshots at $0. Per-row audit: 0 grading diffs across
+  10,640 rows — primary numbers unchanged; only the e2e overlay gains determinacy.
+  A paid rerun would have re-censored the same >16K-char rows at write time.
+- **NT simulate is no longer a floor at the delivered level.** De-censored e2e_strict:
+  Haiku canon 54.3 [42.7,65.4] / anon 60.3 [48.0,71.5]; Sonnet v11 canon 42.0
+  [31.8,52.8] / anon 36.1 [26.6,46.9]. Unaided frontier simulate delivers ~40–60%
+  correct trajectories — the historical 0% was the ISS-021 normalizer artifact plus
+  snapshot censoring. Any paper claim that simulate is tools-sole-source must be
+  scoped to the OPEN-model roster or to tool-verified-vs-delivered, not to frontier
+  no-tools inability.
+- **Delivered-level tools-lift on simulate is NOT CI-separated** (Haiku NT [38,68] vs
+  WT [49,63]; Sonnet NT v11 [34,53] vs WT [49,62]). The two-tier headline stays
+  tool-verified (~97–99) vs delivered (~40–60) — the transcription-fidelity gap —
+  while validation keeps its clean CI-disjoint tool-lift.
+- **Contamination null extends to delivered-level NT simulate** (canonical vs anon CIs
+  overlap for both models), closing the "can't contrast-test simulate" caveat in the
+  frontier handoff.
+
+## 2026-07-15 — Simulate sole-source-floor RETRACTION executed in the paper (Omer caught the stale claim)
+
+- **What happened:** the morning paper pass corrected only the FRONTIER simulate numbers
+  (0/300 → 45.0/38.3) and left the open-roster "0% for every model / outside these models'
+  reach" story intact — but that story was already retracted internally on 2026-07-11
+  (decoupled handoff §PAPER REWRITE: true unaided simulate = 0.8B 0 · 4B 23.0 · 9B 22.3 ·
+  35b 40.0 content-correct, format-compliance 0% for all). Omer flagged it ("did you use
+  the stale outdated analysis?"); the full retraction batch is now in `main.tex`
+  (commit `1ac21f4` on `paper/aaai27`, Overleaf-synced 944b1f8).
+- **Answer to the floor question:** the 0/3,000 shared-budget corpus zero is ALL five
+  models (not 0.8B-marked); under the decoupled control only 0.8B remains at 0%. The
+  35B >0% Omer remembered = the decoupled NT 40.0% (and separately iss024d WT tool-verified
+  93.2%, a different arm).
+- **Paper now says:** deployed-apparatus zero is real but apparatus-bound; decoupled
+  control recovers 22–40% content-correct at ≥4B (never format-exact → strict stays 0%);
+  tool-lift reframed 22–40 → 87–96 (matching mode); Q1-coercibility ≤0.7% attributes the
+  recovery to budget, not grader; frontier 45.0% extends the capability trend. Grading-
+  surface disclosure (tool-arm success = tool's returned result, delegation competence)
+  added to Methodology + Limitations per the decoupled handoff's "must state it".
+- **Process lesson (recorded to memory):** before editing any paper claim, sweep
+  development/ for decided-but-pending rewrite specs and paper_notes bottom lines; a
+  claim can be internally retracted while still standing in the tex.
+
+## 2026-07-17 — ISS-024(d) complete: pre-registered parity FAILED → separate-apparatus labeling binds the P1 reframe
+
+- **Corpus final:** all 5 iss024d-e2e cells synced + regraded (9,120 trials each; exit
+  codes clean). The with-tools open-roster evaluation phase has no runs left (E1.1–E1.4
+  done; only the branch merge remains in Track E).
+- **Pre-registered verdict (no discretion):** job-level parity vs sweep5v2-live FAILS —
+  gemma control noise floor 5.3pp; Qwen 7/20 TOST pass, max |Δ| 11.3pp (35b solve).
+  The 07-13 red flag generalizes: every Qwen solve Δ is negative with truncated-rate
+  +13 to +19pp concentrated on solve/validate_plan — the parser-off mechanism, exactly
+  where long generations live. Validation cells pass or sit within the control floor.
+- **What this means for P1/D-N4:** the "if parity passes, iss024d becomes the with-tools
+  e2e headline surface" branch is CLOSED. Binding language (prereg rule 4 + 07-12
+  interpretation note): iss024d e2e numbers are *independent rerun estimates under
+  full-response storage from a separate apparatus*, reported as a labeled replication —
+  never as resolved sweep5v2 values, and not silently substitutable as THE with-tools
+  number. Paired delivered-vs-tool-verified gaps WITHIN iss024d remain valid (same-corpus
+  contrasts don't cross apparatus).
+- **The delivered-answer story sharpens anyway:** within iss024d, simulate delivered vs
+  tool-verified is 7.0–9.3 vs 63.0 (4B), 10.3–15.0 vs 82.7 (9B), 12.3–13.3 vs 92.3 (35b)
+  — the frontier transcription-fidelity gap replicates on the open roster, larger.
+  gemma validate_plan inverts (delivered 30.0–63.1 vs tool-verified 0.9): it answers
+  without competent tool use. Both are within-corpus claims, safe under the labeling.
+- **Grading-surface caveat, quantified for the paper:** even at 16K snapshots the
+  parser-off apparatus stays partially censored (worst gemma solve c200/300); bounds
+  reporting per D6/D9c stands. A gemma `<|channel>thought` template leak (10 neutral
+  rows, ≤3.3pp) is parked as a possible D10 tolerance decision — not applied, so current
+  numbers are conservative.
+
+## 2026-07-23 — P2 batch landed; D3 decided RUN NOW; PlanBench Haiku NT graded (t2 artifact fixed)
+
+- **P2 (all three, commit `afc92b6` on `paper/aaai27`, Overleaf `c8c8245`):** Fig 3 ticks
+  were already fixed in `4e9a308` (roadmap item was stale — verified by render); the
+  "limited prompt set" item became a direct ratio in the Tool Suite subsection (new
+  self-citation `benyamin2025copilot`, arXiv:2509.12987: their whole single-task
+  evaluation = 250 queries (10 problems x 5 variants x 5 request types) vs our 4,560
+  trials per model-mode-arm cell, ~18x per cell); consistency pass found the abstract
+  still carrying the unscoped "cannot be done without the tool" — now scoped "under the
+  deployed budget and format constraints", matching the 07-15 intro batch.
+- **D3 (Omer, in session): PlanBench runs NOW,** starting with the VPN-free grading of
+  the on-disk Haiku NT responses. Outcome: only t2 needed work — it was 0.0 everywhere
+  from a missing-FAST_DOWNWARD grading artifact (Executor cost fell back to 0; every
+  optimality comparison failed). Re-graded with the upstream evaluator + Rosetta VAL +
+  plugin FD: **blocksworld t2 28.2 (== GPT-4 28.4); t1 41.0 beats GPT-4 31.4
+  CI-disjoint; t3 78.2 trails GPT-4 94.6 CI-disjoint; Mystery collapse replicates
+  (t1 0.8); t7 0-vs-GPT-4-28.4 = chat-format sensitivity, grader untouched.**
+  Full table/CIs/funnel: `development/planbench/planbench_frontier_haiku_nt.md`.
+  Bottom line for the paper: a 2026 small frontier model clears PlanBench's GPT-4 bar
+  on generation but not verification, and the two contamination probes (their semantic
+  obfuscation, our structural anonymization) now both have frontier data points.
+- Next on D3: WT backend over `frontier_runner.py` + pre-registered Act-4 predictions
+  BEFORE the tools sweep (mirrors iss024d prereg discipline).
+
+## 2026-07-24 — Journal-pivot decision batch: all 8 open slots decided (decisions memo accepted)
+
+- **Omer accepted `development/journal_decisions_memo.md` in session** (produced by a
+  23-agent investigation + 12 adversarial red-team passes, all verdicts AMEND / zero
+  refutes, load-bearing claims source-verified). All 8 ANSWER slots annotated:
+  D-J1..D-J6 in `journal_narrative_proposal.md`, D2 + D4 in the roadmap.
+- **Rulings in brief:** D-J1 protocol-first RATIFIED (findings-hook variant: delivery
+  gradient opener 0pp/+5pp/≥33pp, within-arm cascade Fig 1, "Controls that moved
+  headlines" subsection; conditional on the three retirements). D-J2=D2=(a) FULL
+  REFRAME (delivered = single primary surface; notation hard gate; "how to read our
+  numbers" table; storage-fixed rerun as pre-registered contingency). D-J3 minimal
+  frontier-only PlanBench Act 4 (NT re-measurement carries the headline; WT secondary
+  vs matched-scaffold control; prereg; 08-15 kill → shrink to NT-only). D-J4 =
+  recommendation TO ADVISORS: JAIR primary / TMLR fallback / AIJ override-only / KBS
+  dropped (advisor conversation still owed; thesis-clock assumption to confirm).
+  D-J5 BOTH complements at recommended scope (nt-ster think=off+on ~92 GPU-h +
+  same-apparatus anchor, prereg-before-submit; Llama-8B v11+v14 probe; submits
+  ping-gated). D4 all three parked + $0 guided_json local audit. D-J6 yes
+  (scoped-declarative constraint; collision-check "the delivery gap").
+- **Binding factual correction recorded:** frontier simulate delivered is
+  censor-bounds (Sonnet [49.0,62.0], 13/100 censored; Haiku [52.0,64.0], 12/100),
+  NOT exact — proposal §2/§5 fixed; never quote frontier simulate delivered as exact.
+- **E2E overlay placement (Omer asked explicitly): INCLUDED by construction.** Under
+  D-J2(a) the overlay is the paper's primary measurement instrument, not an optional
+  section: its delivered surface is the headline number in every with-tools claim,
+  the dual-surface design is C1 body content, and the D7→D9 grading history becomes
+  named controls in the validity subsection. Only the overlay's operational
+  MECHANICS (D1–D9 decision log, tolerance history, parity-prereg text) go to a
+  structured appendix summarized by one body-level table. iss024d overlay cells keep
+  the separate-apparatus label (within-corpus paired gaps only).
+
+## 2026-07-25 — PlanBench WT prereg: slots answered, whole-pool design, E rejected
+
+- **Method note:** the three open ANSWER slots were filled from a 7-agent read-only
+  evidence workflow (instance-pool audit, cost model, funnel/scoring audit, statistics,
+  runner audit, literature, prereg standards); recommendations + provenance in
+  `development/planbench/planbench_wt_prereg_decisions.md`. RATIFY still unsigned.
+- **DECIDED (Omer): run the WHOLE POOL, 500 per cell** — match the leaderboard corpus so
+  every row shares a denominator with the published NT layer and the committed GPT-4 rows.
+  This deletes the subsample apparatus outright (no seed, no strata, no id list, no
+  t1-vs-t3 intersection problem; each task runs its own pool: t1 ids 2..501, t3 ids
+  1..500), makes both silent subsampling hazards inert, and fixes the one under-powered
+  prediction (exact McNemar 80%-power MDE on t3 +9.0pp → +6.0pp; power at WT t3 = 85%
+  0.58 → 0.88). n=250 stratified survives only as the costed fallback. Cost is the binding
+  constraint: t1 2×2 ≈$46 central (65% of the ~$70.6), six cells ≈$59 (84%), so §8 fixes a
+  spend priority (t1 2×2 first, t3 second) and t3 is the only cell that drops to 250.
+- **DECIDED (Omer): t2 stays excluded** — as a SCOPE decision. The 07-24 rationale
+  ("optimal_plan tool unbuilt") is false: `classic_planner(strategy="astar_lmcut")` =
+  `astar(lmcut())` is optimal search and ships (`solver_server.py:247,411`). The
+  mystery-t2 option is closed, not deferred.
+- **DECIDED (Omer): the model authors domain + problem + plan**; no PDDL injected in any
+  cell, so the formalization-boundary metric uses the 24-bijection domain check alongside
+  problem-level (objects, init, goal) set equality.
+- **DECIDED (Omer): no runner-side spend cap.** The account is prepaid per experiment and
+  never billed on real-time usage, so the loaded balance is the ceiling and the existing
+  "credit balance too low" break is the stop. Consequences recorded: the calibration
+  gate's projection determines what gets loaded (making §8 the real spend control), and
+  balance exhaustion mid-cell yields a pre-declared censored cell, never a silent re-run.
+- **Binding factual corrections carried into the prereg** (five false premises in the
+  07-24 draft, two of which would have produced wrong numbers silently): the harness
+  roster is pddl-solver + pddl-validator only (7 tools, no pddl-parser — which is now an
+  analysis-time instrument); `response_evaluation.py` is NOT unmodified (three
+  `apply_patches.py` robustness patches, the same build that graded the NT layer);
+  `build_table.acc()` divides by 500 regardless of what was run (a stripped 250-instance
+  replay reports a believable 22.2% where the truth is 44.4%); and
+  `PDDL_COPILOT_RENDER_FROM_TOOLS` defaults to 1, which renders the t3 verdict from the
+  last tool result and never reads the model's final message — i.e. the cell would have
+  silently measured tool-verified, contradicting the D-J2 delivered-primary ruling.
+- **Band rules rebuilt:** the 07-24 "CI midpoint" rule left 5 integer outcomes
+  unclassifiable at each n and the Wilson midpoint is not the point estimate. Replaced
+  with a four-outcome evidential partition (NO-RESCUE / PARTIAL / RESCUE / INCONCLUSIVE),
+  cutpoints stated in counts. The clean-t1 "≥ 90%" band is struck as
+  unattainable-by-instrument (the template extractor's measured ceiling is 94.4%, so a
+  CI-backed 90 needs P(correct | extracted) ≥ 0.95) and demoted to an outcome-neutral
+  apparatus criterion thresholded on the two decomposed quantities. Prediction (ii) gets
+  per-branch mechanistic signatures, a joint falsifier, and a ±7.5pp equivalence margin
+  (±5pp is not pre-registrable at any n we can afford).
+- **Funnel placement (§4) = input boundary, corrected to a new LEADING BAR** in the
+  with-tools cascade (NEED is a reference line in the ratified Figure-1 spec, so "upstream
+  of NEED" was geometrically undefined). The CALL-extension alternative is rejected on
+  measurement: 98.4% of `missing_required_arg` trials and 90.3% of invalid-PDDL-argument
+  trials already PASS the CALL bar, and adopting it would move the published CALL bar by
+  up to −53.2pp (0.8B) and flip the minimum-CALL model, contradicting `main.tex:685`.
+  `formalization_match` is named as the metric (gold reference exactly reconstructible from
+  the NL prompt, verified 500/500 both configs), with delegation rate as a companion
+  mediator.
+- **NT-layer red flag, pending re-report (does NOT touch the t1 headline):** the committed
+  GPT-4 t3 corpus is a different corpus from ours (0/500 identical queries; verdict mix
+  31.0% VALID vs our 64.8%), and the two models have opposite verdict biases, so a
+  common-mix reweighting moves Haiku bw t3 78.2 → 83.1 and mystery 45.4 → 64.1 while GPT-4
+  goes 94.6 → 90.3 and 73.6 → 83.7 — collapsing the mystery t3 gap from 28.2pp to 9.5pp.
+  Finding 2 of `planbench_frontier_haiku_nt.md` is marked PENDING AUDIT; t1 is clean
+  (same ids, 499/500 byte-identical prompts).
+- **Prior-art calibration (verified 2026-07-25):** Göbel et al. (arXiv:2603.06064) ran
+  **Haiku 4.5** with PDDL tools over MCP on 102 IPC Blocksworld instances and got
+  63.7% → 66.7% (+3.0pp) at 5.7× token cost, because the tools exposed a step-wise
+  simulator and the model retained the search; Huang & Zhang (ACL 2025) find formalizers
+  robust to lexical perturbation. Architecture, not model tier, decides — which is why
+  delegation rate is pre-registered as the mediator, and why the bare "tools rescue
+  Mystery" claim is a replication (already published ≥4×) rather than a new phenomenon.
+
+## 2026-07-26 — PlanBench WT prereg: SHAPE B (t1 2×2 only); prediction (iii) struck
+
+- **DECIDED (Omer): shape B.** Four cells — {ordinary, Mystery} × {tools, matched-NT} on
+  blocksworld t1 — at the whole 500-instance pool. ≈$46 central, ≈$52 with the
+  pure-availability sensitivity arm and the calibration gate (73% of the ~$70.6). The t3
+  verification pair is dropped and **prediction (iii) is STRUCK per the prereg's linkage
+  rule** — reported as struck, not as unsupported. t3 was the cheapest cell to cut because
+  its external comparability is already broken by the GPT-4 corpus mismatch (see the
+  07-25 entry), and dropping it also removes the t3 endpoint-field choice, the verdict-mix
+  stratification and the confusion-matrix requirement from the protocol.
+- **Surviving confirmatory layer:** the two paired WT-vs-matched-NT t1 contrasts (clean,
+  Mystery), Holm within family at α=0.05. Both are far from the power margin at the whole
+  pool (mystery ≥0.95 against any WT rate ≥5%; clean ≥0.99 against any WT rate ≥60%).
+  Predictions (i) and (ii) stand unchanged, including the four-outcome band partition and
+  the two-branch mechanism test with its ±7.5pp equivalence margin.
+- **Significance, stated honestly for the write-up:** this arm cannot move Act 4's
+  headline (§1), and the bare "tools rescue Mystery" result is already published ≥4×. What
+  it buys is (a) the matched-scaffold single ablation nobody has run on PlanBench —
+  isolating tool availability rather than comparing different prompt shapes; (b) a
+  measured answer to the live 3.8-14% vs 63-100% split in the literature, via the
+  delegation-rate mediator; (c) the formalization-boundary metric, which separates
+  "cannot plan" from "cannot translate"; and (d) accuracy-vs-dollars on the field's own
+  instrument. Its real value to the paper is that it is the ONLY place the tools claim is
+  tested on an instrument we did not build, which pre-empts the "you designed the
+  benchmark your method wins on" objection for ≈$46.
+- RATIFY still unsigned; no build or spend until it is.
+
+## 2026-07-28 — PlanBench WT: RATIFY re-opened as a significance question, not a signature
+
+- **State check (verified, not read off the handoff):** prereg work is merged to main
+  (`53553a7`), nothing built (no `anthropic-tools`/`anthropic-scaffold` token in any code
+  path), nothing spent, and the NT anchors reproduce exactly off
+  `results/haiku-frontier/planbench/` (ordinary t1 205/500, Mystery t1 4/500).
+- **The gate was mis-summarised.** §10 RATIFY is unsigned because Omer left an objection in
+  it — "lets simplify and dig deeper here i either dont realy get the full picture or it
+  just seems insignificant" — originally written at the scope slot. The shape-B commit
+  answered "simplify" (t1 2×2, prediction (iii) struck) and relocated the text to RATIFY.
+  The "insignificant" half was never answered.
+- **Answered in** `development/planbench/planbench_wt_significance_brief.md`: one-page
+  plain-language walkthrough, per-outcome value table, cost/off-ramp ladder, and three
+  answer slots (go/no-go with A/B/C/D, balance to load, free unblocked NT work).
+- **Significance verdict recorded, unhedged:** the direction of the effect is not worth
+  paying for (published ≥4×, and Göbel et al. already ran this same model with PDDL tools
+  over MCP for +3.0pp). Three things are: the matched single ablation ($8 of the $46), the
+  delegation-rate + formalization-match split that separates cannot-plan from
+  cannot-translate from did-not-call-the-tool, and the fact that this is the ONLY tools
+  measurement in the paper taken on an instrument we did not build. Recommendation =
+  ratify shape B; declining and publishing the design as pre-registered future work is
+  stated as a legitimate outcome rather than a failure.
+
+## 2026-07-30 — PlanBench citation verification + t3 audit (no spend, no build)
+
+- **All seven citations verified at source** (arXiv IDs fetched, two read as local PDFs):
+  Göbel 2603.06064, Huang & Zhang 2412.09879, La Malfa 2512.09629, LLMFP 2410.12112,
+  CoPE 2510.05486, Valmeekam 2305.15771. No hallucinated references. Full record:
+  `development/planbench/planbench_verification_20260730.md`.
+- **The "already published >=4x" premise is TRUE for the direction** (Huang & Zhang n=100,
+  CoPE n=100, LLMFP n=602, La Malfa n=30), so amendment J's "replication plus an ablation
+  the field has not run" wording stays honest.
+- **But no published work rescues Mystery by TOOL AVAILABILITY.** In LLMFP's own Table 2 the
+  give-it-a-solver baselines score 0.0-0.3 on Mystery; only the full 4-component framework
+  with repair loops reaches 77.7 (GPT-4o) / 98.0 (Claude 3.5 Sonnet). The one general-tool
+  result on our exact model (Göbel, Haiku 4.5 + PDDL tools over MCP) is +3.0pp, and it
+  finished ~19pp BELOW Fast Downward alone (66.7 vs 85.3 on 102 IPC instances). The WT arm
+  measures the configuration our paper actually ships, and no cited paper predicts it.
+- **HEADLINE DISCLOSURE OWED (new).** Act 4's "Haiku 41.0 beats GPT-4 31.4 CI-disjoint" is
+  correct on the shared 500, but the *published* figure for that cell is 206/600 = 34.3%
+  [30.6,38.2], from which 41.0 is NOT disjoint. Reconciles exactly on disk: 157/500
+  (`blocksworld`) + 49/100 (`blocksworld_3`) = 206/600, same run partitioned, extra 100
+  easier. Any disjointness sentence must name the shared-500 denominator.
+- **Strengthener verdicts:** LLMFP-as-replication **DOWNGRADED** (their 41.5 is optimal-rate
+  zero-shot, ours is VAL-validity one-shot; validity-equivalent is >=41.5 and unknown — cite
+  as "consistent with", never "replicates"). Valmeekam Mystery comparator **HOLDS** at 26/600
+  = 4.33% [2.97,6.27], disjoint above Haiku's 0.80% — but label it unpaired/cross-pool (no
+  GPT-4 Mystery t1 corpus exists on disk). The 17/600 figure a web search returns is Table 2
+  (PDDL prompts), the wrong condition.
+- **t3 mix audit DONE, and the 07-25 memo overstated it.** Opposite response biases confirmed
+  (Haiku mystery accuracy-given-VALID 25.9%; GPT-4 accuracy-given-INVALID 64.3%). The Mystery
+  gap is not identified without a stated reference mix: 28.2pp unadjusted, 9.5pp at GPT-4's
+  mix, 25.7pp at 50/50, 38.3pp at ours. Direction robust under all mixes; magnitude is not.
+  Do not quote 9.5pp alone. NT doc finding 2 updated from PENDING AUDIT to resolved.
+- **Effect on the WT go/no-go:** recommendation unchanged (option A, ratify shape B) and the
+  case is stronger than before, because the published rescues all come from bespoke
+  pipelines rather than tool access.
+
+## 2026-07-30 — the PlanBench denominator gap (Omer's question) + a free paired test
+
+- **Omer asked why we don't use the published denominator/instance set.** Verified answer: our
+  `blocksworld` pool is **4-block (446) + 5-block (55)**; the never-run `blocksworld_3` pool is
+  **every 3-block instance** (100). Content-disjoint, and together exactly the paper's 600
+  ("3-5 blocks"). We ran the HARD two-thirds and skipped every easy instance — which is why
+  GPT-4 scores 31.4% on ours and 49.0% on the skipped 100 (pooled = 206/600 = 34.3%).
+- **Completing to 600 costs ≈$1.50** (200 NT trials) and fixes three things: the denominator
+  footnote, the cross-pool Mystery comparator (`mystery_blocksworld_3` exists, structural
+  rename verified 100/100), and it enables an exact PAIRED test on 600 since GPT-4 per-instance
+  answers exist for both pools.
+- **It also risks the headline, which is the honest reason to run it:** Haiku needs >=~50/100 of
+  the 3-block instances for CI-disjointness at n=600 (GPT-4 got 49); below ~41 the beat
+  disappears.
+- **FREE WIN, already computed — use a paired test on the shared 500 instead of two independent
+  Wilson CIs.** Exact McNemar: both correct 81, Haiku-only 124, GPT-4-only 76, neither 219;
+  paired delta **+9.6pp, exact two-sided p = 0.00085**. Strictly stronger than the current
+  CI-overlap argument and costs nothing.
+- **New Slot 4 in the significance brief:** (A) NT to 600, WT stays 500 [recommended, ≈$1.50];
+  (B) everything to 600 [≈$10.50, one denominator across Act 4]; (C) leave at 500 with the
+  disclosure sentence [$0].
+
+## 2026-07-30 — PlanBench WT arm RATIFIED (all four slots answered)
+
+- **DECIDED (Omer): ratify shape B as designed.** Balance is **$170**, not the ~$70.6
+  bookkeeping figure, so kill criterion (a) is no longer budget-binding at any pre-registered
+  shape. Signature + amendments recorded in `planbench_wt_prereg.md` §10-R.
+- **DECIDED (Omer): match apples to apples → amendment K, the pool is the published 600.**
+  Our 500 was the hard two-thirds (4-block 446 + 5-block 55); `blocksworld_3` is every 3-block
+  instance (100); union = the paper's 600, confirmed by 157/500 + 49/100 = 206/600 = 34.3%.
+  All four cells at n=600. Bands recomputed: NO-RESCUE x<=19, PARTIAL 41..275, RESCUE x>=325,
+  INCONCLUSIVE 70/601. Cost $55.02 for the 2x2, ~$62 all-in. Bare-NT layer owes 200 completion
+  trials so NT and WT share one denominator.
+- **Amendment L (anti-outcome-shopping):** the pool was frozen BEFORE Haiku's numbers on the
+  extra 100 exist. At n=500 Haiku 41.0 is disjoint above GPT-4 31.4; at n=600 GPT-4 is 34.3 and
+  Haiku needs >=~50/100 to stay disjoint. Choosing the denominator after seeing that is
+  prohibited in either direction.
+- **NEW FRAMING (Omer), and it conflicts with ratified §7:** "without tools we dont care if it
+  beats gpt4. actually its better if he loses, then outperform him with tools." §7 as ratified
+  forbids WT cells sharing a table or figure with GPT-4 rows, because GPT-4's rows are 2023,
+  one-shot NL, different grader epoch — so "Haiku+tools beats GPT-4" conflates tool access with
+  three years of model progress. **Proposed amendment M:** GPT-4 becomes a labelled published
+  reference line at a stated epoch and denominator, never a comparator arm, with no
+  significance test against it; the controlled contrast stays WT vs matched-NT. This licenses
+  the bar-crossing narrative and also defuses the 07-30 headline exposure, since whether
+  unaided Haiku clears the GPT-4 bar stops being load-bearing. **AWAITING one line from Omer.**
+
+## 2026-07-30 — PlanBench WT amendment N: only the format clause is shared
+
+- **Origin (Omer):** "the no tools is practically planbenches native prompt. we added tools
+  so arm A must be different." That reframing located a real design error in the scaffold.
+- **DECIDED: the NL→PDDL formalization step moves into the TOOLS policy**; the task-format
+  clause is the only shared text. Supersedes the D-J3 "shared" definition, which named both.
+- **Reason is bias direction, not elegance.** Formalizing has a purpose only when a planner
+  will receive the PDDL. Shared, it hands the matched-NT arm an instruction it cannot satisfy
+  (produce PDDL / entire answer must be the plan with nothing before it — and one sentence of
+  preamble is MEASURED to make the extractor inject a duplicated action VAL rejects). Any
+  compliance loss depresses arm B for a non-tool reason and INFLATES the WT−NT delta in our
+  own favour — the exact failure mode §9-A was adopted to prevent.
+- **Format clause stays shared** = it is the instrument, not the method; both arms must answer
+  in a shape the extractor can read.
+- **Declared:** arm A's system prompt is ~176 chars longer and that IS the treatment (package
+  contrast). Arm B is NOT padded — filler to hit a character count is worse than a declared
+  asymmetry.
+- **Native prompt is not lost:** the bare-NT scaffold delta (§3, free, uses the graded 06-22
+  layer) plus the pure-availability sensitivity arm (§9-A) give four rungs — native,
+  scaffold-only, directive-only, scaffold+tools.
+- **Rejected:** rewording "translate" → "work out internally" (phrasing patch for a
+  classification error); dropping arm B (saves ≈$9, but confounds tool access with prompt
+  shape — the same comparison the literature already makes — and discards the only unrun
+  contribution).
+- Frozen text + 8 machine checks in `planbench/engine.py:_pb_scaffold`; all pass,
+  test_prompts 451/451.
+
+## 2026-07-30 — PlanBench WT calibration gate: FIX APPARATUS AND RESTART ($1.09 spent)
+
+- **Cost/throughput PASS, well under projection.** Tools arm $0.0254 (ordinary) / $0.0248
+  (Mystery) per trial; p90 output tokens 4543 / 3887 (the gate's headline observable); turns
+  4.55 / 5.20; loop_exhausted 0/80; delegation 100% (>= the 80% RESCUE requirement).
+  **Caching ACTIVE — cache_read > 0 on 100% of tools trials**, so the ~5% margin over Haiku
+  4.5's 4096-token minimum held; matched-NT caches 0% as §9-C predicted.
+  **600/cell projection = $32.78 vs the prereg's $55.02, i.e. $22 under**, on a $170 balance.
+- **GATE VERDICT: RESTART.** The outcome-neutral extraction check fails 2 of 4 cells, and §3
+  makes that an apparatus-fix-and-restart event, never a scope decision. Do NOT launch the run.
+  - **Defect 1 (Mystery tools, extraction 15%):** the model writes a complete plan in PDDL
+    shorthand — `attack g` instead of the example's `attack object e ... from object c`.
+    Trap 3's shorthand bullet; the frozen clause's "exactly the action wording of the example"
+    did not prevent it because Mystery's vocabulary is already near-PDDL.
+  - **Defect 2 (Mystery matched-NT):** 80% write narration before [PLAN] and in 65% the
+    extractor parses actions out of that narration and emits MORE actions than the model listed.
+    Corrupts the control arm, so it does not inflate our hypothesis, but it is noise.
+- **NOT a defect — ordinary tools 50% empty extraction is a REAL formalization collapse.** All
+  10 empties are the model correctly reporting "unsolvable" after classic_planner said so, and
+  all 10 instances have PlanBench gold plans of 4-8 actions. Model-authored PDDL was wrong and
+  the planner faithfully answered the wrong question. **Signal only — n=20, discarded set,
+  non-standard pool, no VAL. Must not enter prose or influence design.** Recorded because it
+  suggests the real Mystery/ordinary cells will be informative rather than a foregone
+  confirmation, i.e. the §4 boundary metric has something to measure.
+- **NEW BLOCKER for the results phase:** VAL cannot execute on this machine (wrong
+  architecture) — any llm_correct right now is an artifact of the same class as the t2
+  missing-FAST_DOWNWARD bug. Calibration is unaffected (cost/throughput only) but no graded
+  number can exist until VAL works.
+- **Also measured:** sequential wall-clock ~18s/tools-trial → ~12h for 2400 trials; worth
+  adding concurrency before the real run.
+- Full memo: `development/planbench/planbench_wt_calibration_20260730.md`.
+
+## 2026-08-01 — PlanBench-WT restart closed: clause v2 frozen, amendment M accepted, sequential run
+
+- **Amendment M ACCEPTED as worded (Omer):** GPT-4 may appear as a **labelled published
+  reference line at a stated epoch and denominator** — never as a comparator arm, no
+  significance test against it; the controlled contrast stays WT vs matched-NT within
+  Haiku. Prereg §7 first bullet amended. Decided on journal-fitness grounds: showing the
+  published bar with labels is the standard journal device; hiding it invites the
+  "how does this relate to the published results?" objection. Licenses Omer's narrative
+  (unaided Haiku below the GPT-4 bar, tool-equipped above) descriptively.
+- **Format clause v2 FROZEN (Omer):** fixes both calibration extraction defects
+  (word-for-word example phrasing incl. 'object'/'from'; answer must start with [PLAN]),
+  plus one pre-freeze disambiguation ("phrased exactly as the example phrases its
+  actions" — the "copying word for word" draft risked copy-the-example-PLAN, undetectable
+  by the outcome-blind gate). Exact text quoted in prereg §10-R restart record 1.
+- **Concurrency DECIDED sequential (Omer):** confirmatory run stays ~12 h overnight; the
+  apparatus is exactly what the calibration measured.
+- **VAL resolved at $0:** the 07-30 "cannot execute" blocker was a wrong path (Linux ELF);
+  the NT layer's own Mach-O x86_64 build runs under Rosetta and passed positive+negative
+  controls. Same grader epoch across NT and WT layers.
+- Next: calibration re-run (~$1.10) → extraction ≥90% × 4 cells → Omer's scope-and-spend
+  on the measured $32.78 → the 600/cell confirmatory run.
+
+## 2026-08-03 — PlanBench-WT confirmatory RESULTS: RESCUE, both tests significant
+
+- **Bottom line (pre-registered, n=600/cell, delivered endpoint):** clean NT 47.8
+  [43.9,51.8] → clean WT **69.7** [65.9,73.2]; Mystery NT 0.0 [0.0,0.6] → Mystery WT
+  **71.8** [68.1,75.3]. Paired exact McNemar + Holm: Mystery Δ+71.8pp (b=431/c=0,
+  p=3.6e-130), clean Δ+21.8pp (b=206/c=75, p=2.7e-15). **Band verdict RESCUE**
+  (431 ≥ 325); conjunctive ruling = SUPPORTED.
+- **Mechanism: RESCUE branch provisionally met** — delegation 100%, |clean−Mystery WT|
+  = 2.2pp (p=0.449, within ±7.5pp); formalization_match (§4) still owed to finalize.
+- **The instrument biases ran against us and RESCUE survived them:** 125/569 delivered
+  Mystery WT plans lost to residual PDDL-shorthand dialect (true rate ~90%+ under a
+  tolerant parse); loop exhaustion 10.5%/5.2% counted as failures.
+- **Two honest flags (ANSWER slots in the results memo):** clean-WT raw extraction
+  72.7% decomposes to 7/443 instrument misses + 157 model-side (loop-exh + honest
+  "unsolvable" empties on solvable instances — the formalization signal at scale);
+  Mystery-NT narration-injection recurred (479/600) but collapse holds on the
+  uninjected subset (0/121) and external anchors (bare-NT 0.8%, GPT-4 4.3%).
+- **Reference-line context (amendment M):** tool-equipped Haiku (69.7/71.8) more than
+  doubles the published GPT-4 clean bar (34.3, 2023 epoch); Mystery NT sits at 0.
+- Cost: confirmatory $39.87; whole arm $42.09. Memo:
+  `development/planbench/planbench_wt_results_20260803.md`.
+
+## 2026-08-06 — WT arm closed out: mechanism final, ANSWER slots signed, NT denominator completed
+
+- **formalization_match (§4) computed; RESCUE mechanism branch FINAL.** Mystery 97.8
+  [96.3, 98.7] vs clean 96.3 [94.5, 97.6] — not CI-disjointly below, third requirement
+  met; the rescue is formalize-then-delegate. Perfect gate: 0/35 no-match trials graded
+  correct. Clean WT ceiling isolated to DOMAIN-authoring fidelity (P(solvable |
+  domain-equivalent) = 99.5% vs 1.6%): the clean NL under-states physics (e.g. never
+  says stacking clears the moved block) and Haiku transcribes what the text says;
+  Mystery NL is a mechanical rendering, so 99.5% of Mystery domains come out equivalent.
+- **Omer signed both ANSWER slots (accept + accept):** criterion (a) decomposes
+  model-side (no apparatus restart); Mystery-NT 0/600 collapse is real (0/121
+  uninjected + bare-NT 0.7% at n=600 + GPT-4 4.3%). Stripped-block regrade optional.
+  **Paper prose on the WT arm is now unblocked** (still §7 rules + /verify-claims for
+  every literature number).
+- **Bare-NT completed to n=600 (amendment K debt, ~$1.5):** clean 263/600 = 43.8
+  [39.9, 47.8] stays CI-disjoint above published GPT-4 206/600 = 34.3 [30.6, 38.2]
+  (needed ~50/100 on the extra pool, got 58); Mystery 4/600 = 0.7%.
+- **§9-A directive-only arm DONE ($2.61 measured):** Mystery t1 n=600, dangling
+  directive + no tools = 3/600 = 0.5% [0.2, 1.5] — the pre-registered outcome-neutral
+  prediction holds. Four-rung ladder final: native 0.7 / scaffold-only 0.0 /
+  directive-only 0.5 / scaffold+tools 71.8. The +71.8pp contrast is tool
+  availability, not prompt framing. (Run at full 600: the bullet's n=250 predates
+  the whole-pool ANSWER; no committed draw exists.)
+
+## 2026-08-06 — WT arm finale: stripped regrade finding, PR #93, paper plan APPROVED
+
+- **Stripped-block regrade DONE ($0), reported as a finding:** block-only re-extraction
+  of the 600 Mystery matched-NT trials gives 26/600 = **4.3 [3.0, 6.3]**, not the
+  expected ~0 — narration injection had DEPRESSED the cell (26 valid block plans
+  invalidated by scraped extra actions), so the instrument bias ran against the
+  published 0.0, not in our favor. Paired contrast vs WT survives at p = 6.4e-112
+  (b=412, c=7), under the signed slot's 1e-100 threshold; RESCUE untouched. Injection
+  cross-check ties audit 2 exactly (479/600). Memo section appended to
+  `planbench_wt_results_20260803.md`; paper reports BOTH layers.
+- **PR #93 opened** (`planbench-wt-significance-brief` → main, 27 commits, code + docs,
+  data stays laptop-local); Omer merges after review.
+- **Paper integration plan APPROVED (Omer, all 4 slots):**
+  `development/planbench/planbench_wt_paper_integration_plan.md`. Decisions: (1)
+  placement = Option A, new self-contained section "External validity on PlanBench"
+  between Results and Discussion NOW (lifts into Act 4 on the journal restructure);
+  (2) amendment-N ladder table in the BODY; (3) two-layer NT presentation confirmed
+  (graded 0.0 + injection caveat, stripped 4.3 as the instrument-robust reading);
+  (4) overall approved, no amendments. Prose gated on PR #93 merge; lit numbers
+  gated on /verify-claims (H&Z, GPT-4 Mystery 4.3, La Malfa, LLMFP, Göbel,
+  Planetarium).
+
+## 2026-08-06 — Act-4 literature numbers: /verify-claims pass COMPLETE (6/6 sources)
+
+- Per-paper verification agents, full table in
+  `development/planbench/planbench_wt_paper_integration_plan.md` §5. Verdicts:
+  H&Z CONFIRMED (70/100 vs 0/100 Mystery, cite v4/ACL only); Valmeekam GPT-4
+  Mystery Deceptive 26/600 = 4.3 CONFIRMED (one-shot, Table 2 A.3; clean 206/600
+  doubly verified vs on-disk corpus); LLMFP CONFIRMED (602/task, but metric =
+  optimal rate and GRADER UNDISCLOSED — say so in the amendment-M line);
+  Planetarium CONFIRMED verbatim (cite NAACL v2); La Malfa PARTLY (+12/+15 hold,
+  **pool "93" was WRONG** — real pools 3×50/task in v2; cite retitled v2); Göbel
+  PARTLY (+3.0pp/102 IPC holds, **mechanism restated** — no planner tool in their
+  roster, non-delegation was design not model choice).
+- Consequence for prose: all six may enter tex with the §5 wordings; the frozen
+  prereg's "La Malfa 93" is superseded by the table (prereg untouched).
+
+## 2026-08-06 — PR #93 code review: two paper-relevant corrections logged, no rerun required
+
+- **Deviation 1 corrected in `planbench_wt_results_20260803.md` (review finding, verified on the raw side-logs):** the 18 pause/resume re-attempts on clean-WT were NOT deterministic — 11/18 changed outcome at temp 0 (multi-turn tool loop), 8 graded correct on the second draw, and last-attempt grading makes those 18 instances best-of-2. **First-draw sensitivity: clean WT 418/600 = 69.7 → 410/600 = 68.3; paired Δ vs matched-NT +21.8 → +20.5pp (label fixed 2026-08-06 — this is the within-Haiku paired delta, not a GPT-4 contrast). No verdict changes** (CI vs GPT-4 still disjoint; Mystery/RESCUE untouched — the other three cells have exactly one record per instance). Bottom line for prose: wherever Act 4 cites clean WT 69.7 / Δ+21.8 (integration plan §tables line ~60, both handoffs), quote it with the first-draw sensitivity footnote, or quote 68.3 conservatively — Omer's call which; both are computed and logged in deviation 1.
+- **Deviation 8 added (undeclared wire asymmetry, now declared):** the three prereg arms never sent the upstream `[STATEMENT]` stop sequence; the bare-NT arm did. Primary WT-vs-matched-NT contrast is symmetric (neither sends it); only ladder reads against bare-NT carry the extra wire diff, and it is measured-inert in the frozen corpora (0 post-`[PLAN END]` text in scaffold/directive). No prose change needed unless Act 4 compares bare-vs-scaffold as a controlled pair — then cite deviation 8.
+- **Rerun verdict: NO paid rerun is required by any review fix or finding.** No fix touches a frozen prompt byte (new freeze test `tests/test_planbench_prompts.py` pins them), any grading code, or any wire-visible request parameter; all engine changes affect only failure paths that never fired in the frozen corpora, or what future side-logs record. Optional $0 local verifications only: (a) first-draw sensitivity (already computed, above); (b) VAL spot-check of a few of the 26 stripped-regrade flip IDs to settle the numeric coincidence with the published GPT-4 26/600 (ISS-026); (c) optional re-grade of the 58/100 bare-NT completion half under the v1 venv to demonstrate two-stack grader invariance (tarski already probed parse-equivalent).
+- Review artifacts: corrected deviation row + new row 8 (results doc), CHANGELOG 2026-08-06 entry, ISS-025/ISS-026, freeze test, and the engine/build_table/apply_patches hardening — all uncommitted on `planbench-wt-significance-brief` for Omer's review.
+
+## 2026-08-06 — Act-4 number decision: clean WT quoted FIRST-DRAW (conservative); $0 checks delegated
+
+- **Omer resolved the deviation-1 fork: conservative.** "The 1 pt does not worth the ambiguity" — Act 4 quotes clean WT **410/600 = 68.3, paired Δ vs matched-NT +20.5pp** (first-draw: every instance single-shot, the 18 resume re-draws excluded). The last-attempt reading (69.7 / +21.8pp / p = 2.7e-15) lives only in the deviation-1 footnote, never as the quoted number. Mystery cells unchanged (one record per instance). Integration plan PB-B rewritten accordingly.
+- Open numeric slots for PB-B: first-draw Wilson CI, exact McNemar b/c/p, and the clean-vs-Mystery paired delta under first-draw — recompute queued from the raw side-logs ($0 local, delegated). Until they land, PB-B cites counts only. *(Landed — see the 2026-08-07 entry below.)*
+- **Optional $0 checks (b) and (c) approved and delegated** (to cheaper-tier Sonnet agents, per Omer): (b) VAL spot-check of the 26 stripped-regrade flip IDs + provenance audit of `stripped_block_regrade.py` against the GPT-4 26/600 anchor coincidence (ISS-026); (c) re-grade of the bare-NT completion half under the old py3.12/tarski-0.7.0 stack to demonstrate two-stack grader invariance.
+
+## 2026-08-07 — $0 verification batch: all three checks GREEN, PB-B numeric slots filled
+
+- **First-draw statistics (now the quoted Act-4 numbers, PB-B updated):** clean WT
+  410/600 = **68.3 [64.5, 71.9]**; paired vs matched-NT Δ **+20.5pp**, exact McNemar
+  b=202 / c=79, **p = 1.38e-13**; clean-vs-Mystery WT paired Δ = 3.5pp Mystery-above
+  (b=119 / c=140, p = 0.214), within the ±7.5pp prereg margin (last-attempt 2.17pp,
+  same direction). Independent script over the raw side-log; both anchors (410
+  first-draw / 418 last-attempt) reproduced and the b/c shifts decompose exactly
+  (of the 8 flips: 4 drop from b, 4 add to c; all 8 Mystery-correct). Mechanism
+  fact: all 18 re-queried first draws were loop-exhausted empty answers, so
+  "first-draw" is precisely "re-draws counted as failures" — no grading ambiguity.
+- **Stripped-regrade coincidence ruled GENUINE (ISS-026 spot-check half done):**
+  provenance audit found no anchor ingestion in `stripped_block_regrade.py`
+  (unconditional sweep, 600 emergent from config ranges); 8/8 sampled flip IDs
+  independently re-extracted and VAL-validated VALID. The 26/600-vs-GPT-4-26/600
+  match is coincidence. Recorded in the results doc §stripped-block regrade.
+- **Two-stack grader invariance DEMONSTRATED:** completion half (200 instances)
+  re-graded under a rebuilt v1 stack (py3.12.12 + tarski 0.7.0 + setup.sh pins) —
+  **200/200 per-instance verdicts identical** (clean 58/100, Mystery 0/100), zero
+  parse failures. The two-stack split is provenance only; recorded in
+  `planbench/requirements-wt.txt`.
+- Net effect: every number PB-B quotes is now computed, verified, and logged.
+  **ISS-026 CLOSED same day (Omer: "ok"):** analysis layer promoted to
+  `planbench/analysis/` (×100 printf bug fixed) + full data archive committed at
+  `results/planbench/wt-anthropic-20260801/` (graded cells, side-logs incl. the
+  18 re-draw records, formalization rows, verification evidence, sha256
+  MANIFEST); `verify_promotion.py` re-derives every published number data-only —
+  all pass. Commit f7baca9 on `planbench-wt-significance-brief`; the review-fix
+  edits remain uncommitted alongside for Omer's review.
+
+## 2026-08-11 — Act 4 PlanBench section WRITTEN (Job 1 of the post-PR-93 batch)
+
+- **PR #93 merged**, which was the only gate on prose. Remaining-work map written and
+  answered by Omer (R1-R4 in `development/remaining_work_20260811.md`): PlanBench prose
+  first, nt-ster ratified, Llama probe kept sequenced after nt-ster, the three $0
+  Phase-0 items run alongside.
+- **Section written on `paper/aaai27`, commit `67ea69c`:** "External Validity on
+  PlanBench", new self-contained section between Results and Discussion (placement A as
+  signed). Structure follows the approved integration plan exactly: instrument
+  paragraph (Mystery = pure symbol rename, 501/501 verified on disk), headline NT
+  table, secondary WT 2x2 table, ladder table in the BODY, mechanism paragraph,
+  cascade/FORMALIZE paragraph, audits, scope + cost.
+- **Every number quoted is the signed one.** Clean WT is the FIRST-DRAW reading 68.3
+  [64.5, 71.9], Δ+20.5pp, b=202/c=79, p=1.4e-13; the last-attempt reading does not
+  appear anywhere in the tex. Independent re-derivation of all nine Wilson intervals
+  from their counts reproduced the results-doc values exactly (including the GPT-4
+  Mystery CI [3.0, 6.3] from the published 26/600, computed by our own method as the
+  clean 206/600 line already was).
+- **Amendment M/I rules honored in the prose:** GPT-4 appears only in the NT table as a
+  labelled published reference line with pool size and grader epoch on the same line,
+  described as CI-separated with no test run against it; no WT cell shares a table with
+  it. The novelty sentence is the replication-with-ablation framing, naming the
+  matched-scaffold control and the directive-only rung as what the field has not run.
+- **Companion edits in the same commit:** Related Work now anchors Huang and Zhang as
+  the published rescue result (70/100 vs 0/100, n=100, VAL) and adds La Malfa et al.
+  arXiv:2512.09629 as the closest agentic system, citing the retitled v2 with the
+  corrected 3x50/task pool and an author list verified at the arXiv source; Positioning
+  drops the "PlanBench is out of scope" sentence; Future Work now points at the
+  delivered section and keeps the second-tier and open-roster runs as the open items.
+- Compile is clean (0 undefined references, 0 overfull boxes, 19 pages). Overleaf was
+  pulled before the edit and had no coauthor changes (bridge head `c8c8245`).
+  **Not yet pushed** to origin or Overleaf, pending Omer's go-ahead.
+- **nt-ster H4 prereg RATIFIED** the same day (all four §10 lines) with the corrected
+  price for the accepted shape: ~46 GPU-h off + ~110-150 on, against the memo's
+  obsolete ~92. Submit stays gated on readiness items 7/9/10/14 plus a ping and VPN.
+
+## 2026-08-17 — ISS-024(b) audit numbers corrected after PR-94 review; what Limitations may say about `guided_json`
+
+- **The verdict is unchanged: `guided_json` never bound.** It survives every cut of the
+  data. What changed are the numbers quoted for it, after three defects in
+  `tools/guided_json_audit.py` were found in review and fixed.
+- **Quote the zero, not the percentage.** The headline for the paper is **0 of 58,581
+  provable `validate_*` rows emitted JSON of any kind** across the two canonical corpora.
+  It needs no denominator argument. The pooled rate (0.36% of 65,874 provable rows) is
+  partly a task-mix figure, because `validate_*` is 82% of rows and its prompt never asks
+  for JSON; it is a coverage number, not a measure of constraint strength.
+- **Conservative bound available on request:** 1.92% on the 12,176 rows stored in full.
+  That subset is length-biased upward (short JSON is disproportionately conformant), so it
+  is a bound and not an estimate. Whichever cut a reviewer prefers, conformance is under 2%.
+- **Superseded:** ~~526 of 88,781 decidable rows (0.59%)~~ — that figure pooled three trees,
+  double-counted the four `decoupled-rollup` cells that are byte-identical copies of their
+  sweep5v2 baseline, and applied one snapshot cap to a tree holding cells at two caps.
+- **The decoupled control is never pooled with the canonical corpora** (corpus-identity
+  rule). It is a different generation apparatus; it gets its own line, 174/16,448 (1.06%).
+- **Sharpest framing for the Limitations sentence:** the `solve` and `simulate` prompts
+  instruct the model to conform to "the JSON schema provided by the format constraint"
+  (`prompts.py:114,138`) while no constraint ever reached the server. The `validate_*`
+  prompts never mention JSON, which is why they sit at exactly 0.0%.
+- **Do NOT write that the validation results are unaffected.** Measured: no validation row
+  is *mis-graded* (`format_parse_fail` 0.0%, the `VERDICT:` trailer plus the regex fallback
+  carry every row). Not measured, and not inferable from these corpora: what a constraint
+  that actually bound would have generated. The counterfactual is unavailable.
+- **Withdrawn:** ~~the decoupled budget fix shrank `format_parse_fail` exposure on both
+  `solve` and `simulate`~~. Against the roster-matched 4-cell baseline it reads solve
+  5.9%→3.2% and simulate 13.8%→**20.0%**; simulate got worse. The original reading compared
+  4 Qwens at think=on against a 5-model both-modes pool, so it was composition, not
+  apparatus.
+- **Also settled in PR 94:** "the delivery gap" is available as a term (nearest neighbour is
+  the GAP metric of arXiv:2602.16943, same divergence shape in a safety setting; distinguish
+  it if we ever cite that paper). "Availability Is Not Enough" is retired as a title. The
+  memo's "227k trials" does not reproduce from disk; the counted two-corpus total is
+  273,600, and the draft abstract must not pair that figure with "seven models" — it covers
+  the five open-weight models only.
+
+## 2026-08-20 — D-J6 answered: delivery demoted to OPTIONAL, scale figure fixed, all three titles rejected
+
+- **The delivery gap is OPTIONAL, not the thesis (Omer).** *"Let's mark the delivery as
+  optional and later we choose between a version where it's included and a version where
+  it's not included. We need to decide on a non-confusing narrative. The delivery is not
+  our main point in the paper."* Two variants are now written up in
+  `title_abstract_candidates.md` §2 with an ANSWER slot: **N1** = invocation-propensity
+  spine, delivery in Limitations only (recommended); **N2** = delivery kept but
+  subordinate, with its own section.
+- **The term question is deferred, not answered.** It only arises under N2. The collision
+  verdict stands if delivery stays: "the delivery gap" is unclaimed, nearest neighbour is
+  the GAP metric of arXiv:2602.16943.
+- **All three title candidates REJECTED (Omer):** *"the title is misleading. it's
+  over-focused on the recent changes rather than the actual field and conclusions we
+  present."* A and C made DELIVER the thesis; B made the dual-surface grading instrument
+  the thesis. Three replacements (D/E/F) are drafted around the field-level conclusion
+  instead.
+- **The paper's actual thesis is already in the tex** and it does not mention delivery:
+  "the bottleneck throughout is invocation propensity, an unstable, model- and
+  prompt-dependent behavior, separate from the model's capability or the tool's accuracy."
+  Any title or abstract that does not lead with that is off-spine.
+- **Reopened:** "Availability Is Not Enough" was retired for anchoring the CALL finding
+  only and predating the DELIVER stage. If delivery leaves the thesis that rationale
+  mostly dissolves, and anchoring the CALL finding becomes exactly right. Back on the
+  table under N1.
+- **Scale figure DECIDED (Omer): quote 273,600 and say five open-weight models.** Derives
+  in one line for a reviewer: 5 models x 2 reasoning modes x 3 arms x 4,560 x 2 corpora.
+  The frontier arm (6,080 Haiku + 10,640 Sonnet) gets its own sentence and is never folded
+  in. "227k" is retired; correction markers are now at the head of
+  `journal_decisions_memo.md` and `journal_narrative_proposal.md`, which is where the
+  "227k-trial / 7-model" pairing entered the drafting chain.
+- **Still open:** the N1/N2 call and the title choice, both with inline slots in
+  `title_abstract_candidates.md` §2. The §3 draft abstract is bannered PENDING that call —
+  it implements N2-with-delivery-as-climax, so under N1 it needs rewriting rather than
+  renumbering.
+
+## 2026-08-20 — "propensity" retired as a paper term (Omer)
+
+- *"'Propensity' is a complex word. I don't like it."* Not a stray word:
+  `paper/main.tex` uses it **15 times** (abstract, contributions, results, limitations,
+  future work, conclusion), so this is a paper-wide rename, not a wording tweak.
+- **Recommended replacement: "invocation rate."** Plain, and it maps exactly onto the
+  quantity already measured (the `tool_selected` share), so the simpler word is also the
+  more concrete one. Where a sentence needs the dispositional sense, spell it out rather
+  than nominalise: "whether the model chooses to call the tool". Runners-up: "call rate"
+  (shorter, slightly informal for a thesis term), "willingness to call" (most human, mildly
+  anthropomorphic, awkward in "the willingness result").
+- The term still has to carry the paper's key distinction, behavior versus capability
+  ("this reflects how often the model calls the tool, not whether it can"), so any
+  replacement must survive noun slots like "default X", "raise X", "the X result".
+- **Not yet applied to the tex.** Paper edits belong on `paper/aaai27` per CLAUDE.md; the
+  15 edits are queued with an ANSWER slot in `title_abstract_candidates.md` §2. The
+  development docs on this branch are already switched over.
+- Knock-on: title candidate F was rewritten to drop the word, and the N1 narrative is now
+  "invocation spine" rather than "invocation-propensity spine".
+
+## 2026-08-20 — D-J6 CLOSED: N1 spine, title D, "invocation rate"; abstract redrafted
+
+- **Narrative = N1 (Omer).** The invocation spine. The paper asks when tool access helps an
+  LLM planner and answers that it depends on the regime, and that what gates it is whether
+  the model calls. **Delivery moves to Limitations**; dual-surface grading stays in Methods
+  as how we measure honestly. Neither is a headline.
+- **Title = D (Omer):** *"Invocation Is the Bottleneck: When Sound Planning Tools Help an
+  LLM, and When They Do Not."* States the conclusion and scopes it in the same breath, so
+  it makes no unscoped composition-failure claim. "Availability Is Not Enough" stays
+  retired, having been offered again and passed over.
+- **Term = "invocation rate" (Omer).** "Propensity" is retired paper-wide.
+- **Abstract redrafted on the N1 spine** (`title_abstract_candidates.md` §3), paired with
+  title D. Delivery is absent by design. The delivered-answer sentence names the
+  dual-surface instrument in one clause without spending the abstract on it. The superseded
+  delivery-as-climax draft is kept below it for the record.
+- **Verification debt shrank.** Dropping the delivery gradient from the abstract removes
+  one of the five numbers owed a `/verify-claims` pass. Four remain (8-11 unaided floor,
+  66-73 lift, -67 availability harm, 21-to-94 steering), plus two the redraft newly
+  promotes into the abstract: ">99 percent correct when it does call" and the "one of three
+  models at 9B or larger" roster claim.
+- **D-J1 may no longer bind.** It governed the first number being one-sided by construction,
+  which was the delivery gradient. With delivery out of the abstract there is no gradient to
+  constrain. Flagged for confirmation before the tex pass rather than assumed.
+- **STILL BLOCKED: the 15 `paper/main.tex` propensity edits.** The word is decided but the
+  branch go-ahead is not given. Paper edits belong on `paper/aaai27` behind the Overleaf
+  pull-then-push protocol, so nothing in the tex has been touched.
+
+## 2026-08-22 — nt-ster H4: off-mode PASSES land, on-mode arm was void and has been rerun
+
+- **Three `think=off` H4 units are complete, valid and all PASS.** Qwen3.5:9B
+  66.18 → 67.24 (Δ̂ −0.18 [−1.89, +1.52]), gemma4:26b-a4b 78.16 → 78.64
+  (+0.52 [−0.95, +1.99]), qwen3.6:35b 78.33 → 78.20 (+1.34 [−0.40, +3.08]). Every
+  ELIGIBLE task cell is EQUIVALENT, which is what §3.4 requires for a PASS. Realized
+  MDE 6.47-6.74pp. Full readout: `ntster_h4_partial_readout_20260822.md`.
+- **The matched-cell result is the one to quote.** The paper's +72pp
+  (`main.tex:501`, 0.206 → 0.926) is specifically gemma `validate_plan` **with-tools,
+  `think=off`** — measured, not assumed. Its mode- and model-matched no-tools control
+  is now done: **Δ +0.63pp [−0.46, +1.73]**, ELIGIBLE, EQUIVALENT. The sentence worth
+  +72pp with tools is worth six tenths of a point without them. That is the CALL-beat
+  attribution closed in the matched cell, on the model that owns the effect.
+- **Both `think=on` cells were void — apparatus failure, not a result.** 9,120/9,120
+  (35b) and 3,822/3,824 (9B) rows carried an EMPTY `response` AND empty `thinking`,
+  with `done_reason=stop`, no errors, and 12,960 tokens genuinely generated per row.
+  Text was never stored, so it is unrecoverable.
+- **Cause: §2.3(A) and §2.3(B) are incompatible when composed.** The decoupled two-call
+  path was built for, and only ever validated under, `--reasoning-parser none`
+  (`chat.py:422`, `CHANGELOG.md:512` DECISION B). §2.3(A) correctly ruled the override
+  is not passed — reasoning about the *single-call* path, where reasoning and answer
+  share one stream. In the two-call path they do not. `CHANGELOG.md:512`'s claim that
+  the reconstruction is "parser-state-proof" was a code-reading argument and is now
+  **empirically false**.
+- **Controlled proof.** June's `decoupled-rollup` corpora, same models, same apparatus,
+  parser OFF: 9B 8.8% empty / 68.4% success, 35b 4.1% empty / 82.0% success. August,
+  parser ON: ~100% empty / 0% success. The flag is the only difference.
+- **Parser-off does NOT re-manufacture the §2.3(A) `simulate` artifact on the decoupled
+  path**, because the answer is generated in a separate call with the reasoning
+  re-injected as prompt. June 35b decoupled parser-off: `format_parse_fail` 0.0% on all
+  three validate tasks, 14.0% on simulate, simulate success 40.0%.
+- **The 08-20 live-smoke gave a false PASS.** It asserted turn structure and token
+  counters (`turns=2 think_tok=8192 answer_tok=4768 call2_prompt=2049 done=stop`) —
+  every one of which is still true on a row containing no text. Standing lesson: a smoke
+  must assert `len(response) > 0` on a non-trivial share of rows.
+- **No corpus drift (§4 validity thread).** August neutral anchor vs canonical May
+  sweep5v2, four tasks, `simulate` excluded: pooled Δ = +0.1 (9B) / +1.0 (gemma) /
+  +0.2pp (35b), n=4,260 per side, all non-negative and inside the ~1pp half-width. The
+  "August looks like it is regressing" read is not supported — the only zeros are the
+  void cells.
+- **Actions taken (Omer, 08-22).** Job 20392801 cancelled; both void on-mode cell dirs
+  deleted on the cluster (local copies retained under `results/ntster-h4-live/` as the
+  failure record for the appendix); on-mode arm resubmitted as **job 20489912** with
+  `--reasoning-parser none`, same `--run-tag ntster-h4`, `--time 7-00:00:00`, pins
+  re-verified at `6007032` / `5e4f9c0`. A resume into the old dirs would have skipped
+  exactly the void keys and produced a "complete" empty cell — hence delete, not resume.
+- **§4(b) "replicated attribution" clause is dropped for now**, exactly as
+  pre-registered. The 2×2 factorial is `think=on` and needs the Qwens' on-mode nt legs,
+  which were the void cells. The §5 PASS sentence stands without the clause.
+- **Integration follows the pre-committed §5 cap** — caveat-only: the CALL beat plus
+  Limitations in the body, everything else (per-task table, F gate, MDE, drift check,
+  and an honest declaration of the on-mode apparatus failure) in an appendix. Promoting
+  H4 to a larger body surface *because it passed* would be a post-hoc, outcome-contingent
+  deviation from a ratified prereg. Not yet actioned — no tex has been touched.
+- **Roster gap found and closed: 4B was steered-but-uncontrolled.** Omer asked why the
+  H4 roster is 3 models and not all four Qwens. Measured the with-tools `think=off`
+  steering effect the control exists to attribute: 0.8B **+0.0pp** pooled (no effect,
+  so no control is owed), 4B **+6.9pp** pooled / **+9.6pp** `validate_plan`, 9B +2.5,
+  gemma **+47.4** (+72.0 `validate_plan`), 35b **+14.8**. So 4B carried a steering
+  effect **larger than 9B's, which was controlled** — an asymmetry not defensible on
+  effect size. Also ruled out "too weak to test": at `think=off` both 0.8B and 4B have
+  3/5 tasks inside the §3.3 ELIGIBLE band, the same as gemma and more than 35b (2/5).
+  Submitted `Qwen3.5:4B` `think=off` as **job 20490174** (no `--reasoning-parser`, no
+  `--decoupled-budget` — apparatus parity with the three completed off cells).
+  **To be declared as a deviation:** the control roster was expanded after seeing
+  results. It is conservative — under §3.4's intersection-union rule a fourth unit can
+  only make the conjunctive equivalence claim harder to satisfy, never easier — but it
+  must be stated plainly, in the same appendix paragraph as the on-mode apparatus
+  failure. D6 (what a 4B FAIL would do to the claim) is pre-committed in the readout
+  memo and still needs Omer's answer before that cell lands.
+
+## 2026-08-29 — nt-ster H4 COMPLETE: all six units PASS, paper-level branch = PASS
+
+- **The control is closed. All six units PASS**, and every one of the 8 ELIGIBLE task
+  cells across those units is EQUIVALENT — the §3.4 condition for a PASS, with no
+  exceptions to name. Paper-level branch = **§5 PASS**. Pooled Δ̂ by unit: 4B off
+  **−3.03 [−4.83, −1.23]**, 9B off −0.18 [−1.89, +1.52], 9B on **+1.83 [−0.28, +3.94]**,
+  gemma off +0.52 [−0.95, +1.99], 35b off +1.34 [−0.40, +3.08], 35b on **+0.49
+  [−1.37, +2.35]**. Realized MDE 6.47–6.80pp. Full readout:
+  `ntster_h4_final_readout_20260829.md`, which supersedes the 08-22 partial for every
+  number.
+- **H4 now holds in both think modes and across four models**, not just at `think=off`
+  on three. The 08-22 INCONCLUSIVE branch is retired.
+- **The matched-cell attribution is unchanged and is still the sentence to quote.** gemma
+  `validate_plan` `think=off`: **+72.0pp with tools, +0.63pp [−0.46, +1.73] without**,
+  ELIGIBLE and EQUIVALENT. The three original `think=off` numbers recomputed
+  bit-identical to 08-22 from the frozen scripts.
+- **The on-mode rerun is healthy and the 08-22 diagnosis is confirmed by prediction.**
+  The parser-off fix was predicted from June's corpora to land at 8.8%/68.4% (9B) and
+  4.1%/82.0% (35b) empty-response/success; August delivered **8.2%/69.1%** and
+  **3.9%/82.5%**. Both within a point on both axes. Parser ON was 99.9%/0% and 100%/0%.
+  The flag was the whole effect, as diagnosed.
+- **Parser-off did NOT re-manufacture the §2.3(A) grading artifact on the decoupled
+  path.** `format_parse_fail` is **0.0% on all three `validate_*` tasks in all four
+  on-mode arms**; `solve` 1–13%; `simulate` 10.7–44.3% (June 35b parser-off was 14.0%, so
+  the known level). `simulate` is UNINFORMATIVE in both on cells (F 32.0 / 19.0) and never
+  reaches a verdict. The 08-22 mechanism argument is now confirmed on independent data.
+- **Unplanned benefit: §4(b)'s parser mismatch is gone.** §2.3(A) had budgeted for the
+  factorial acquiring a parser difference across its nt/wt axis. The void-and-rerun forced
+  the nt on-mode legs to parser-off, which is what iss024d already used, so **both legs now
+  share the parser setting**. Still budget-unmatchable, still attribution-only, but one of
+  two named confounds removed by accident.
+- **4B PASSES, so D6 is moot** (it asked what a 4B FAIL would do to the claim). Two things
+  reported honestly anyway: 4B is the only unit whose pooled CI excludes zero **and the
+  sign is negative** — the directive makes 4B slightly *worse* without tools, which runs
+  against the "merely a better prompt" objection rather than toward it; and 4B `simulate`
+  is the family's only NOT-EQUIVALENT task cell (−14.00 [−19.97, −8.03]), but it is
+  UNINFORMATIVE (own F = 12.0pp) so by §3.2/§3.4 it cannot contribute a FAIL and carries
+  no verdict authority. Branch is PASS, not MIXED.
+- **Mechanism decomposition VOID in all six cells** (APPARATUS 13.8–36.0% per arm vs a 1%
+  threshold). Verdicts unaffected — §3.7 never gates a verdict, and labels are owed only
+  on FAIL cells. M1 directive echo +0.00pp everywhere. The `M2 mean completion tokens =
+  nan` cosmetic bug from 08-22 is still there.
+- **No corpus drift, now including 4B.** August neutral anchor vs canonical May sweep5v2,
+  four tasks, `simulate` excluded: pooled +0.2 (4B) / +0.1 (9B) / +1.0 (gemma) / +0.2pp
+  (35b), n = 4,260 per side. All non-negative, all inside the ~1pp half-width.
+- **Still owed before any tex is touched** (all four logged with `> ANSWER:` slots in the
+  final readout §7): **O1** write the two deviation declarations — roster expanded 3→4
+  after seeing results, and the on-mode `--reasoning-parser none` deviation from §2.3(A);
+  **O2** decide whether §2.3(A) itself gets amended (08-22's D5); **O3** decide whether to
+  write+freeze the §4(b) factorial script now that it is unblocked — this is what decides
+  whether §5's PASS sentence keeps its "replicated attribution" clause, and the recommended
+  route is freeze-and-hash *before* pointing it at data, the way items 9/10 were done;
+  **O4** schedule the §5 integration under the pre-committed caveat-only cap.
+  **No tex has been touched.**
+
+## 2026-08-29 — O1-O4 answered OK; §4(b) factorial run after freeze, clause DROPS
+
+- **All four open items accepted by Omer.** O1/O2 are written, O3 executed under the
+  freeze protocol, O4 approved as scope with the tex itself deferred.
+- **O1 — both deviations declared** as appendix-ready prose in `ntster_h4_prereg.md`
+  §9.1: the roster expansion 3→4 after interim results, and the on-mode
+  `--reasoning-parser none` rerun. Written so a reader sees what changed, when, relative
+  to what knowledge, and which way it pushes the conclusion. The roster point is argued
+  in checkable form — intersection-union means a fourth unit can only make the
+  conjunctive claim harder — and notes the added unit was chosen by the size of the
+  effect needing attribution, not by its control result, which was unknown at submit.
+- **O2 — §2.3(A) amended** inline in the prereg: scoped to the single-call path, with the
+  decoupled path requiring parser-off. Also marks the "Cost, stated" paragraph **void in
+  fact** (the nt/wt parser difference no longer exists), records `CHANGELOG.md:512`'s
+  "parser-state-proof" claim as empirically false, and adds a standing rule that a
+  readiness smoke must assert `len(response) > 0`.
+- **O3 — `tools/ntster_factorial.py` written, frozen at `78787eb7…11629164`**, hash
+  recorded in the prereg §8 item 9 addendum, freeze committed **before** the first real
+  invocation so the ordering is checkable in git rather than asserted. Rehearsed
+  pre-freeze with both leg paths pointed at one directory, forcing the interaction to
+  exactly zero by construction — exercises every code path against a known answer while
+  leaking nothing. The addendum states plainly that the code was written after the H4
+  verdict was known and why (until the on-mode rerun landed, the factorial had no nt
+  legs).
+- **§4(b) RESULT: the "replicated attribution" clause DROPS**, as pre-registered.
+  9B interaction **+0.83 [−1.98, +3.64]**, 35b **−0.00 [−2.21, +2.21]** — neither
+  excludes zero. §5's PASS sentence loses its optional bracketed clause; it is removed,
+  not rewritten.
+- **This is a null on an underpowered diagnostic, NOT evidence against the attribution**,
+  and the write-up says so with the three structural reasons: gemma — the model that owns
+  the +72pp — **cannot be in this factorial at all** (§2.3(B), no `think=on` nt leg,
+  because the decoupled mechanism stops on `</think>` and gemma has no think tokens); the
+  factorial is `think=on`, where the two eligible Qwens steer by only +3.97 and +1.27pp
+  with tools, far too little to resolve an interaction at a ±2–3pp half-width; and the
+  comparison was already declared attribution-only and budget-unmatchable.
+- **Reported in both directions, honestly.** Under **domain** clustering both point
+  estimates are positive and 35b's excludes zero (+1.71 [+0.03, +3.39]) — a less
+  conservative clustering would have returned KEEP for 35b. The governing interval is the
+  **wider** of the two clusterings per §3.3, so we take DROP. And on `validate_plan` the
+  interaction is positive and excludes zero in both models (9B +7.33 [+3.92, +10.74], 35b
+  +2.77 [+0.08, +5.46]) — recorded because suppressing it would be selective, but it
+  carries no clause authority since §4(b) states the estimand per model.
+- **No consequence for the paper beyond the clause.** The CALL-beat attribution never
+  rested on the factorial; it rests on the matched cell — gemma `validate_plan`
+  `think=off`, **+72.0pp with tools vs +0.63pp [−0.46, +1.73] without** — which is
+  stronger and sits on the model and cell where the effect actually lives.
+- **O4 — integration scope approved** (caveat-only cap: CALL beat + Limitations in body;
+  per-task table, F gate, MDE, drift check, apparatus-failure declaration and the two
+  §9.1 deviations in an appendix). **Tex deferred to a later session. No tex touched.**
+
+## 2026-08-30 — PR #96 review: frozen-code fixes, re-freeze, corrected numbers (verdicts unchanged)
+
+- **A 15-finding correctness review of PR #96 audited the frozen nt-ster analysis code
+  and found real defects**; all were fixed under the prereg's own protocol — declared
+  deviations (`reference/ntster_h4_prereg.md` §9.2, deviations 3–9) plus a re-freeze of
+  all five files (§8 item 9, second addendum) — and the whole analysis was regenerated
+  from the checkpointed corpus. **The six-unit all-PASS vector and the paper-level PASS
+  branch are unchanged.** The revised readout and NUMBERS.md are the only quotable
+  sources now; every pre-revision secondary number is stale.
+- **The material defects:** (1) the delivered surface counted censored
+  (`e2e = "indeterminate"`) rows as successes — §2.3(C)'s exclusion/bounds were never
+  implemented; (2) the "problem (k=100)" clustering realized 220 unbalanced clusters and
+  its unweighted mean-of-cluster-means was not the paired difference, yet it governed
+  every headline CI — replaced by a size-weighted cluster-robust interval; (3) the §3.7
+  mechanism section read fields the overlay does not carry, so it was degenerate
+  (APPARATUS 13.8–36.0%, all six reads self-VOID) — recomputed from raw trial rows, true
+  APPARATUS is 0.00% everywhere and the mechanism block is now valid; (4) the legacy
+  consistency surface read a nonexistent key and was constant False; (5) eligibility was
+  gated on the governing rather than the registered domain half-width (same 8-cell
+  ELIGIBLE family either way).
+- **Corrected headline secondary figures:** realized MDE **5.82–6.25pp** (stale
+  6.47–6.80 was wrong twice over — the true pre-revision range was 6.47–7.11); 4B
+  `simulate` −14.00 NOT-EQUIVALENT was largely the censoring artifact (true −2.43
+  [−5.33, +0.47] INDETERMINATE; **no NOT-EQUIVALENT cell exists in the family**); the
+  matched-cell attribution — gemma `validate_plan` off, +72.0 vs +0.63 [−0.46, +1.73] —
+  is **bit-identical** (no censoring in that cell).
+- **§4(b) factorial, corrected: the clause still DROPS but the story changed.** With
+  censored rows no longer scored as successes on both legs, both interactions are
+  positive and exclude zero: 9B **+8.12 [+4.61, +11.63]** — fully replicated (sign
+  matches its +11.38pp May reference) — and 35b **+2.62 [+0.74, +4.50]**, which fails
+  only sign-match against a −0.11pp (essentially null) May reference. The pre-registered
+  per-model conjunction is unmet, so §5's PASS sentence still drops the bracketed
+  clause; but the "underpowered null" narrative is superseded — the corrected factorial
+  is directionally consistent with the attribution in both models.
+- **Enforcement hardened for the record:** `ntster_f_gate.py` now actually calls the GT
+  gate (the §8 item 10 "both entry points" record was false for it until now); the GT
+  gate compares against the preregistered canonical hash as a code constant and the
+  stamp is committed to the repo; the pooled F gate and the §3.4 FAIL-branch routing are
+  enforced rather than recorded; the factorial refuses incomplete legs and ambiguous
+  overlay cells; the §3.3 point-2 eligible-task-mean companion is now computed
+  (consistent with the pooled read in all six units).
+- **Writing consequence:** the appendix deviation paragraph now covers §9.1 + §9.2, and
+  any drafted sentence quoting the mechanism-VOID, the −3.03 4B pooled cell, the old
+  MDE range, or the "neither interaction excludes zero" factorial reading must be
+  re-sourced from the revised readout. No tex touched.
+
+## 2026-08-30 — Freeze protocol v2 adopted as a skill (post-PR-96 retrospective)
+
+- **Decision (Omer):** the PR #96 retrospective's process fixes become a standing,
+  agent-executable gate, not prose. New skill `.claude/skills/freeze-protocol/SKILL.md`;
+  it fires before hashing any preregistered analysis entry point, when writing a new
+  prereg's blocking-prerequisites section, and before ratifying a readout produced by
+  frozen code that never passed the gate.
+- **The one structural change:** the adversarial code review moves *inside* the freeze
+  ordering — freeze candidate → typed-load / registered-constant-asserts /
+  clause-traceability / synthetic-fixture / review → hash → data. In v1 that review ran
+  after the ratified readout shipped, so all 15 findings became declared deviations
+  (§9.2) instead of ordinary pre-freeze edits.
+- **Binds forward:** the two journal-phase preregs still owed before any spend, and the
+  Llama second-family probe under the nt-ster prereg, run under v2.
+
+## 2026-08-30 — Budget unconstrained (grant), venue confirmed, AAAI-27 formally dropped
+
+- **Budget (Omer):** a small grant is now available and is "sufficient for almost
+  anything we had planned" — cost stops being a design constraint. The standing
+  requirement is specificity: an explicit itemized ledger of remaining expenses
+  before any new spend, not a blanket green light. The 2026-07-23 memo's "~$70.6
+  API remainder" budget-coherence frame is superseded; parked items stay parked on
+  their **methodological** grounds only, not for budget reasons.
+- **Remaining-expense ledger as of 2026-08-30:** nothing dollar-denominated is
+  committed. All planned API spend is executed (Haiku frontier ~$76.7 + regrade,
+  Sonnet NT $81.51, Sonnet WT $90.75, PlanBench WT 2×2 within the remainder). Open
+  items: (1) Llama-3.1-8B probe — cluster GPU-h only, $0; (2) Sonnet-tier PlanBench
+  Act 4 extension — the ONE decision the grant reopens (it was excluded on budget
+  alone, "single-tier owned as a limitation"); needs a ~20-instance calibration to
+  price and a freeze-protocol-v2 prereg before any spend; (3) contamination anon
+  simulate leg $20–40 — stays trigger-only; (4) steering-reframe third construct
+  ~$50 — stays parked per D4, largely mooted by the nt-ster PASS; (5) storage-fixed
+  rerun of ~5 headline cells — cluster GPU-h, advisor risk-appetite call (memo §10.5).
+- **Venue (Omer):** OK on the D-J4 recommendation — JAIR primary / TMLR fallback is
+  the working target. Formal advisor ratification (memo §10.1) remains the last step,
+  but planning proceeds on JAIR.
+- **AAAI-27 (Omer):** formally off the table — the deadline has passed. What D1
+  recorded as a lean (2026-07-15) is now fact; memo §10.3's "drop formally" item is
+  resolved by calendar. Venue calculus is journal-only from here.
+
+## 2026-09-07 — Job 1 (PlanBench Act 4) found already DONE; verified, no new prose needed
+
+- Omer chose PlanBench-first (R1) and said go. On inspection the section already
+  exists: `paper/aaai27` commits `67ea69c` (add "External Validity on PlanBench")
+  + `644f8bd` (plain-language pass), both 2026-08-11 — written right after PR #93
+  merged, before nt-ster consumed the docs' attention. STATUS.md carried it as
+  NOT STARTED until today; corrected.
+- Verified 2026-09-07 against the signed integration plan and NUMBERS.md: all nine
+  skeleton items present, every figure matches the frozen values (first-draw 68.3,
+  Δ+20.5, p=1.4e-13; Mystery 71.8 vs 0.0; ladder 0.7/0.0/0.5/71.8; formalization
+  96.3/97.8; stripped-NT 4.3 both-layer presentation; costs $39.87/$2.61/≈$46).
+  The suspicious-looking "99.5% of Mystery domains come out right" is correct —
+  Mystery domain-equivalence is 597/600 = 99.5 (results doc L148), coincidentally
+  equal to clean P(solvable|domain-equiv).
+- Overleaf: the auto-sync Action ran green on `644f8bd` (2026-08-11); bridge fetch
+  today shows Overleaf head = that sync, zero coauthor web edits since. Nothing to
+  pull or push.
+- One plan item deliberately deferred: the funnel-figure FORMALIZE amendment. No
+  funnel figure exists in the tex yet (it is the journal memo §2 Figure-1 spec),
+  so the amendment rides with Job 2; FORMALIZE is handled in prose meanwhile.
+- Bottom line: the remaining writing roadmap is **Job 2 (e2e delivered reframe,
+  incl. Figure-1/funnel) and Job 3 (nt-ster caveat integration)**. Next action =
+  start Job 2.
+
+## 2026-09-07 — Job 2 batch 1: the delivered reframe is drafted (local commit, review before push)
+
+- Executed D-J2's full reframe on `paper/aaai27` as `125cc7a` (+514/−197,
+  compiles clean, 21pp). NOT pushed: a push auto-syncs Overleaf, and a change of
+  this size gets Omer's review first. Grounding doc =
+  `development/job2_delivered_reframe_worknote.md`.
+- What the paper now says: delivered is the single primary surface; tool-verified
+  is everywhere relabeled "mechanism layer"; a "how to read our numbers" table
+  opens Results with the prohibited claims as footnotes; censoring bounds print
+  as ⟨a,b⟩, typographically distinct from Wilson [a,b]; a new "Delivery Gap"
+  section carries the two-tier frontier table (gap ≈0 verdicts / +5.0pp plans /
+  ≥33pp trajectories, identical at both tiers) and the gemma validate_plan
+  inversion (delivered ⟨30.0,63.1⟩ vs tool-verified 0.9 in the full-storage
+  rerun); the −67pp availability harm is now a mechanism-layer claim, with the
+  delivered harm owned as UNDECIDED on the canonical corpus; the storage-fixed
+  rerun contingency is pre-registered in Limitations; the "no-tools simulate
+  cost-of-pass is infinite" sentence is dead.
+- **Three source conflicts surfaced and resolved conservatively (worknote §3):**
+  (1) the memo's "exactly 2/25 UNDECIDED" came from a mode-pooled computation;
+  the honest think=off count from the canonical pooled table is 13/25 — prose
+  follows the derived table, every memo prohibition still satisfied; (2) 9B
+  solve survives worst-case bounds by 0.9pp after the √2.7 inflation — quoted as
+  a bound, classified exploratory per the memo's prohibition; (3) the tex's
+  frontier NT-simulate 45.0/38.3 exact points reproduce from no sanctioned
+  artifact — replaced with the pooled bounds ⟨41.7,61.3⟩/⟨36.3,57.7⟩ and
+  NUMBERS.md's stale row corrected.
+- Batch 2 owed: funnel Figure-1 (+ its PlanBench FORMALIZE amendment), delivered
+  regeneration of the four Results figures, frontier delivered cost-of-pass, vd
+  delivered balanced accuracy, NUMBERS.md single-tool rows.
+
+## 2026-09-08 — Simulate no-lift reading upheld; frontier budget probe approved in principle; claude.ai harness rejected for this paper
+
+- Omer challenged the batch-1 "simulate has no demonstrable delivered lift"
+  claim. Walked the numbers: frontier unaided ⟨42, 61⟩ (the old 0% was the
+  retracted artifact), tool-verified 97–99, delivered ⟨49, 64⟩ — the tool wins
+  the task internally and loses it in delivery, and both arms are bound by the
+  same output-length constraint. **The reading STANDS as drafted**; it is
+  undecided-to-null, not "tool useless," and the delivery gap is the finding.
+- **Strict grading is not up for weakening**: crediting unrestated tool results
+  is the τ-bench reward flaw D2b was decided against. No change.
+- **Frontier budget probe: GO in principle (Omer, via "continue the probe in a
+  different session").** Causal mechanism test — raise only the answer budget on
+  frontier simulate (Sonnet WT primary cell, n=100, ~$10–20), predict delivered
+  rises toward tool-verified by roughly the 29/100 truncation mass. Gates before
+  spend: freeze-protocol-v2 prereg + an itemized line in this ledger. Open-roster
+  budget raises stay dead (the 32K smoke failure stands). Design sketch:
+  `job2_delivered_reframe_worknote.md` §7a.
+- **Native claude.ai / agentic harness: rejected for this paper** — it changes
+  the question (system design, not model behavior) and the apparatus
+  (incomparable corpora), and expands scope during the writing window. Logged as
+  the successor-paper direction; the tex's Future Work "agentic regime" +
+  "give the answer its own room" already point at it.
+- Continuation state for the next session: worknote §7 (probe spec, batch-2
+  list, standing gates). Batch 1 = `125cc7a` on `paper/aaai27`, unpushed,
+  awaiting Omer's review.
+
+## 2026-09-08 (later) — Frontier budget probe prereg DRAFTED + itemized ledger line; Job 2 batch 2 executed (local commit, same review gate)
+
+- **Prereg drafted:** `development/frontier_budget_probe_prereg.md`. Causal test of
+  the "budget-shaped" delivery-gap sentence: same 100 Sonnet simulate trials, only
+  the per-call output budget raised 6,144 → **65,536** tokens (snapshot 16,384 →
+  262,144 chars). The budget was chosen from the oracle, not the failures: canonical
+  trajectory sizes run 420–157K chars; 16K would fit only 11 of the 29 truncated
+  failures (non-discriminating: its H1 prediction sits inside the current ⟨49, 62⟩),
+  65K fits 25/29. Primary contrast = conversion of budget-fitting truncated
+  failures (LEN-FIT, 25) vs the re-run conversion of non-truncated failures
+  (ET-FAIL, 19) — a within-run control for the unseeded temperature-0 loop — one-sided
+  Fisher, α=0.05; H1 iff p<0.05 ∧ ≥60% convert; kill iff ≤30%. Haiku carries a
+  registered negative control (14 DECLINE rows: the model ended its turn with a
+  summary instead of the trace; the API never shows it `max_tokens`, so these must
+  not convert). Four `> ANSWER` slots (legs, budget, spend, decision rule).
+- **Itemized ledger line (rule: itemize before spend; nothing spent):** leg A Sonnet
+  WT simulate expected **≈$30–35** (reference cell measured $23.36; output grows on
+  the 30 truncated trials), hard cap $114; leg B Haiku WT ≈$10–12 (cap $38); leg C
+  Sonnet NT batch ≈$8–12 (cap $49); leg D Haiku NT ≈$3–4 (cap $16). **Expected total
+  ≈$50–65, hard cap $217.** The worknote's "$10–20" guess was low because the answers
+  that must fit are long; corrected here. Tripwire: leg A > $45 halts the leg.
+- **Freeze-protocol v2 status:** freeze candidate written (`tools/budget_probe_analysis.py`,
+  typed loader, registered constants as asserts, pinned reference-class counts,
+  gt_cache sha256) with the gate-4 synthetic fixture
+  (`tests/test_budget_probe_analysis.py`, 29 checks, hand-computed Fisher 120/792).
+  Gates 3 (traceability map), 5 (adversarial review by another session) and the hash
+  are still owed before any API call. Apparatus flags added, defaults unchanged
+  (`frontier_runner.py --num-predict/--snapshot-len/--stream`; batch runner
+  `--num-predict`/`--snapshot-len`; `KNOWN_CAPS += 262144`; probe cells parse to run
+  tag `sweep5v2-budget65k`). Code on branch `job2/batch2-budget-probe-prereg`, PR
+  pending.
+- **Job 2 batch 2 executed** on `paper/aaai27` (`dbea3d7`, after `125cc7a`,
+  UNPUSHED — one review gate for both): funnel Figure 1 with the PlanBench FORMALIZE
+  bar (closes integration-plan item 6); solve/simulate/token/failure figures
+  regenerated on the delivered surface (hatched bounds, tool-verified as a tick);
+  frontier delivered cost-of-pass (solve 3.1× Sonnet / 6.1× Haiku, simulate 5–11×
+  premium — at the frontier the tool is a token premium on every task because the
+  unaided baseline is not floored); validate_domain delivered balanced accuracy
+  (⟨100,100⟩ / ⟨92.2,95.0⟩ / ⟨82.7,99.2⟩ steered). Tables in worknote §8; NUMBERS.md
+  gained a Job 2 block. Compiles clean, 22pp.
+- Bottom line: Job 2 is fully drafted (batches 1+2) and awaits Omer's review before
+  the push; the probe awaits the four prereg answers, the freeze gates, and then
+  ≈$50–65 of API spend. Job 3 (nt-ster caveat integration) is the remaining writing
+  job.
+
+## 2026-09-08 (evening) — Frontier budget probe prereg RATIFIED
+
+- Omer answered all four `frontier_budget_probe_prereg.md` slots: **legs A+B+C+D**
+  ("we have budget"), **budget 65,536** (snapshot 262,144), **spend approved**
+  (expected ≈$50–65, hard cap $217, itemized in the "later" entry above), **decision
+  rule accepted** (§3.2 Fisher contrast; H1 ≥60% conversion ∧ p<0.05, kill ≤30%,
+  else partial — read the same way whichever way it comes out).
+- Design frozen. Still gated before the first API call: PR #98 merge, freeze-protocol
+  gate 5 (adversarial review by a different session), §8 items 4–6, the hash.
+  Operational sequence = `development/frontier_budget_probe_handoff.md`.
+- Bottom line: nothing spent yet; next action = merge PR #98, then a fresh session runs
+  the gate-5 review of `tools/budget_probe_analysis.py` against the prereg.
+
+## 2026-09-08 (night) — Job 2 pushed to Overleaf
+
+- Omer: "push". Sequence followed: `sync_overleaf.sh pull` through the existing bridge
+  (the bridge clone was behind its own remote and fast-forwarded to the 08-11 sync;
+  Overleaf's newest commit is still that monorepo sync — zero coauthor web edits),
+  Overleaf copy verified byte-identical to `644f8bd`, working tree restored, then
+  `git push origin paper/aaai27` (`644f8bd..dbea3d7`). The "Sync paper to Overleaf"
+  Action ran green (run 34245382827).
+- Overleaf now carries the full D-J2 delivered reframe (batch 1 `125cc7a`) and batch 2
+  (`dbea3d7`: funnel Figure 1, delivered-surface figures, frontier delivered
+  cost-of-pass, vd delivered balanced accuracy). One pre-existing overfull box (the
+  batch-1 scorecard table*, tex ~L746–787) is still there for a layout pass.
+- Bottom line: Job 2 tex is done; remaining on the main suite = the budget-probe
+  sentence (after the probe runs) and Job 3 (nt-ster caveat integration).
+
+## 2026-09-10 — Frontier budget probe: budget amended to 64,000, gate-5 fixes, analysis frozen
+
+- **Decision (Omer): the probe budget is 64,000 output tokens on all four legs**, not the
+  ratified 65,536. Reason: `claude-haiku-4-5` caps output at 64,000; 65,536 would have
+  been rejected on legs B/D, and the paper's budget-symmetry sentence (§3.3(2) of the
+  prereg) needs every leg at one budget. Sonnet 4.6 allows 128K, so the same value
+  fits both tiers. Prereg §2.2 / §10.5 / §11 record the amendment; the ledger line
+  becomes: expected total ≈$50–65 (unchanged — the cap moved by 1,536 tokens on at
+  most two trials), hard caps A $111 / B $37 / C $49 / D $16, **total $213** (was
+  $217). Still $0 spent.
+- **Fit classes re-derived, not assumed:** the cutoff moves from 71,929 to 70,243
+  canonical chars; `classify` under the new constant gives the same anatomy on both
+  tiers (Sonnet 49/25/4/0/0/3/19/0, Haiku 52/17/1/1/2/14/12/1). The largest fitting
+  oracle is 64,327 chars, so nothing sits between the two cutoffs.
+- **Gate-5 review (four findings) fixed before the hash**, so no deviation is
+  declared: (1) the Haiku ceiling above; (2) resumable runners persisted no settings —
+  a resume could have topped up a 6K-budget corpus at 64K with no trace; now a
+  `run_manifest.json` is written before the first API call and any changed setting, or
+  trials without a manifest, refuses the resume; (3) the grader inferred the snapshot
+  cap from the length histogram even for the probe, so a probe corpus whose answers all
+  happened to be short would have been graded as a 16,384-snapshot cell; it now reads
+  the manifest and records the source per row; (4) the §3.6(a) tripwire compared the
+  AGGREGATE output tokens with `<` instead of the FINAL-turn count with `≠`, and
+  omitted the response-length clause — a multi-turn trial whose total exceeded the
+  budget while its truncated final turn did not would have passed silently. Both
+  runners now record `tokens.completion_final` separately from the aggregate (cost).
+- **Analysis frozen** (prereg §8 freeze record: sha256 of `budget_probe_analysis.py`,
+  `_run_manifest.py`, `e2e_regrade.py`, `e2e_overlay.py`, `gt_cache.json`; key-set
+  hashes; traceability map with line numbers of the frozen bytes). Regrading the
+  reference frontier corpora with the frozen grader reproduces every stored grade
+  exactly. Dry run selects 100/100 per tier under the new flags.
+- Bottom line: the probe's remaining gate is the PR #98 merge (re-verify the hash table
+  on main afterwards), then the run. The reference bound ⟨49, 62⟩ and every headline
+  number are untouched.

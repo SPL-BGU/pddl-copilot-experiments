@@ -6,6 +6,611 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-09-10 — Frontier budget probe: gate-5 fixes, run manifest, analysis freeze (PR #98)
+
+**What.** The gate-5 review of the budget-probe freeze candidate
+(`development/frontier_budget_probe_prereg.md`) raised four findings; all are fixed in
+this commit, before the hash, with regression tests. No experiment data exists yet, so
+no number changes.
+
+**Budget 65,536 → 64,000 on all four legs.** `claude-haiku-4-5` caps output at 64,000
+tokens, so the ratified 65,536 would have been rejected on the Haiku legs and broken the
+budget-symmetry design. The fit cutoff moves from 71,929 to 70,243 canonical chars; the
+reference classification re-derived under the new constant is unchanged on both tiers
+(no oracle lies between the two cutoffs). Hard caps A $111 / B $37 / C $49 / D $16, total
+$213 (was $217). Run tag `budget65k` → `budget64k`.
+
+**Run manifest (`tools/_run_manifest.py`).** `tools/frontier_runner.py` and
+`tools/claude_api_batch.py` persist `run_manifest.json` (model, budget, snapshot length,
+corpus, prompt variants, loop limit, streaming, temperature, ground-truth source + hash,
+selection knobs) in the results directory before the first API call. A resume into a
+directory whose manifest differs on any registered setting is refused before any trial
+is restored or rewritten; a directory holding trials without a manifest is refused
+outright. `submit` refuses a batch dir without one; `grade` carries it into the results
+dir with the snapshot length filled in.
+
+**Manifest as provenance.** `tools/e2e_regrade.py` takes the snapshot cap from the
+cell's manifest when present (`cap_for_cell`); the length-histogram inference is kept
+only for legacy corpora, and every overlay row now records `snapshot_cap_source`
+("manifest" | "inferred"). Regrading the two reference frontier corpora reproduces every
+stored grade byte-for-byte. `tools/budget_probe_analysis.py` asserts every prereg §2.4
+setting against the probe manifest before reading a row.
+
+**Final-turn output tokens.** Both runners record `tokens.completion_final` (the last
+turn's output tokens) next to the aggregate `tokens.completion` (cost). The §3.6(a)
+truncation tripwire now implements the registered clause literally — final-turn count ≠
+budget, with the response-length condition — instead of the candidate's
+aggregate-`<`-budget approximation, which stayed silent whenever a multi-turn trial's
+total exceeded the budget while its truncated final turn did not.
+
+**Tests.** `tests/test_frontier_runner.py` (new, 65 checks: final-turn accounting under
+streaming and not, context overflow, manifest write/compatible resume/refused resume per
+field/trials without provenance); `tests/test_budget_probe_analysis.py` 29 → 54 checks
+(manifest violations per field, missing final-turn tokens, aggregate-above/final-below,
+final exactly at budget, both sides of the 0.9 × cap bound);
+`tests/test_e2e_overlay.py` +8 (manifest cap on short responses vs legacy inference,
+impossible manifest cap, at-cap row still censored). Suite: 16 files, all pass.
+
+**Freeze.** sha256 table, key-set hashes, and the re-derived traceability map are in the
+prereg's §8 freeze record; §11 logs the amendment. Files: `tools/_run_manifest.py`
+(new), `tools/frontier_runner.py`, `tools/claude_api_batch.py`, `tools/e2e_regrade.py`,
+`tools/budget_probe_analysis.py`, `.claude/skills/analyzer/scripts/e2e_overlay.py`
+(comment), `tests/verify.sh`, the three test files, `development/{frontier_budget_probe_prereg,
+frontier_budget_probe_handoff,STATUS,NUMBERS,CHANGELOG,paper_notes_discussions,
+job2_delivered_reframe_worknote}.md`.
+
+---
+
+## 2026-08-20 — ISS-024(b) audit hardening after code review (PR #94)
+
+**What.** A code review of PR #94 re-ran `tools/guided_json_audit.py` against the live
+corpora, reproduced every headline figure exactly, and raised 15 findings against the
+machinery around them. The pre-merge set is applied here. **No audited number changed**:
+the script's output before and after is byte-identical apart from one deliberate relabel,
+so every figure quoted in `grading_artifacts_findings.md` Finding 4 and `OPEN_ISSUES.md`
+ISS-024(b) still reproduces.
+
+**Correctness.** One arithmetic error is fixed in the prose: the control tree's
+trailer-visible count was quoted as 10,256 of 15,074 rows, but the script's shape buckets
+are mutually exclusive, so the 1,757 "bare trailer only" rows also show the trailer. The
+true figure is **12,013 of 15,074 (79.7%)**, against **11,157 of 58,581 (19.0%)** on the
+canonical side; the inversion the sentence argues for is stronger than it was stated.
+
+**Script.** `jsonschema` is now declared in `requirements.txt` (it was an undeclared hard
+dependency, so the documented reproduce command failed on a clean install). The pooled
+complete-rows rate is guarded against a zero denominator: COMPLETE is a strict subset of
+PROOF, so a corpus in which every provable row is truncated is legal and used to crash the
+run after all cells had been classified. A missing **non-canonical** corpus root now warns
+and continues instead of exiting, because `results/` is gitignored and no headline figure
+depends on the control tree. Rows are deduplicated by trial key before the cap histogram is
+built, matching the precondition `e2e_regrade` documents for `detect_cap`; the content
+fingerprint now covers `truncated` and `failure_reason`, the two fields that drive the
+censored/provable split and the `format_parse_fail` table, so two cells differing only there
+can no longer collide and be silently dropped; unparseable lines are counted and reported
+rather than skipped in silence; cell discovery globs `trials*.jsonl` so mop-up/resume files
+are not dropped; a zero-row cell is skipped before it can claim the empty-string fingerprint
+and drag an unrelated cell into the matched subset; and the matched-subset size is derived
+rather than hardcoded, with a loud warning if it is not the expected 4 cells.
+
+**Trailer grammar.** The `VERDICT:` shape classifier moved off a bare substring test plus an
+undocumented `len < 32` cutoff and onto the grammar the v11-v13 prompts actually specify,
+with the verdict word matched as an optional prefix because a 500-character snapshot
+routinely cuts it mid-word (`VERDICT: INVAL`). Measured on the canonical corpora the new
+grammar and the old test agree on all 11,157 trailer-visible rows and all 9,814 bare rows,
+so this removes two hazards without moving any evidence. A first attempt that required the
+whole verdict word was **wrong** and re-binned 42 truncated trailers as "no trailer"; it was
+caught by diffing against the pre-change output and reverted.
+
+**Deferred, not applied.** The double read plus triple JSON parse per row, and the
+`from e2e_regrade import detect_cap` chain that pulls the whole MCP client stack into a
+read-only audit. The clean fix for the latter is a light `pddl_eval/caps.py` shared by both
+tools, which touches `e2e_regrade.py` and is out of this PR's scope.
+
+**Files.** `tools/guided_json_audit.py`, `requirements.txt`,
+`development/grading_artifacts_findings.md`, `development/title_abstract_candidates.md`
+(stale PENDING banner on the superseded abstract cleared: section 2 was answered N1 the
+same day), `development/CHANGELOG.md`.
+
+---
+
+## 2026-08-15 — ISS-024(b) `guided_json` audit: the constraint never bound (measured, $0, fix stays parked)
+
+**What.** The no-tools branch passes `TASK_SCHEMAS[task]` as vLLM `guided_json`
+(`runner.py` -> `chat.py` -> `vllm_client.py` `extra_body["guided_json"]`). The D4-amended
+$0 local audit measured whether it took effect, over every no-tools row in the two canonical
+corpora, with the `decoupled-rollup` control tree measured beside them and never pooled into
+them. New read-only script `tools/guided_json_audit.py`: conformance is checked against
+`TASK_SCHEMAS[task]` itself (the exact object sent, not the pydantic model, which coerces
+types the grammar would reject; both are computed and agree on every row), snapshot caps are
+detected per cell via `e2e_regrade.detect_cap` because the control tree genuinely holds cells
+at both caps, and cells are deduplicated by content fingerprint because that tree ships
+byte-identical copies of its matched sweep5v2 baseline.
+
+**Result.** **No `validate_*` row emitted JSON of any kind — 0 of 58,581 provable rows
+across the two canonical corpora** (0 of 73,655 including the control tree). Pooled
+conformance over the canonical corpora is **234 of 65,874 provable rows (0.36%)**, and
+**1.92%** on the 12,176 rows stored in full. Per corpus: sweep5v2-live 132/33,204 (0.40%),
+sweep6-live 102/32,670 (0.31%). The `decoupled-rollup` control tree is reported separately
+and never pooled: 174/16,448 (1.06%). Conformance is confined to `solve` (6.9% / 5.5%) and
+is 0.0% on `simulate` in both corpora.
+
+Two denominators are reported. *Provable* keeps a truncated row when its first non-space
+character is not `{`, because neither generation truncation nor the storage snapshot can
+change the first character and a bound decoder's first character is always `{`.
+*Complete rows only* drops every truncated or at-cap row; that subset is length-biased
+(short JSON is disproportionately conformant) so it runs higher and is quoted as a bound.
+
+**Why this is proof, not inference.** Each observed violation is impossible under a working
+constrained decoder, and each is now quoted with its n: `validate_*` emit no JSON at all
+(58,581 rows, 100% of provable validate rows); `solve` returns `{"plan": "<string>"}` where
+`SolveResponse.plan` is `list[str]` (22 rows); `simulate` returns a bare `{"step": 0, ...}`
+object without the required `trajectory` wrapper (140 rows, plus 4 in the control). The last
+identifies Finding 1's "strict-wrapper sub-artifact" as a symptom of non-binding rather than
+a separate defect, on those 144 rows. Sharpest framing: the `solve` and `simulate` prompts
+tell the model to "conform to the JSON schema provided by the format constraint"
+(`prompts.py:114,138`) while no constraint ever reached the server, and the `validate_*`
+prompts never mention JSON, which is why they sit at exactly 0.0%.
+
+**Scope of harm — narrower than scope of effect.** `format_parse_fail` is **0.0% on all
+three `validate_*` tasks in both corpora**: the v11-v13 prompts restore the `VERDICT:`
+trailer and `scoring.extract_verdict` reads it from the full response, so no validation row
+is lost to a parse failure. That makes the sweep-4 trailer regression fix retroactively
+load-bearing for the paper's validation claims. The claim stops at "not mis-graded" — the
+corpora cannot show what a constraint that actually bound would have generated. Exposure is
+confined to `solve` (29.0 / 26.7%) and `simulate` (40.1 / 37.7%) for sweep5v2-live /
+sweep6-live. **No with-tools row is affected**: `format` is never passed in the tools branch.
+
+**Control-tree comparison is roster-matched or not made.** The control is 4 Qwens at
+think=on; the canonical corpora are 5 models across both modes, so the raw gap is
+composition. Against its matched 4-cell sweep5v2 baseline the decoupled apparatus reads
+`solve` 5.9% → 3.2% and `simulate` 13.8% → **20.0%**: `solve` roughly unchanged, `simulate`
+worse. An earlier draft of this entry credited the budget fix with shrinking both; that came
+from the uncontrolled comparison and is withdrawn.
+
+**Root cause: hypothesis only.** The likely explanation is that the pinned server image
+(`vllm/vllm-openai:v0.20.2`) no longer accepts the `guided_json` extra_body field, which
+vLLM would drop silently. Unverified — it needs one live probe against a served model,
+which is cluster work and ping-gated. The corpora prove the constraint did not bind; they
+cannot say why.
+
+**Not done, deliberately.** The enforcement fix stays parked (D4): it creates a third
+generation apparatus, citable only after a full no-tools re-sweep. Limitations may cite the
+audit as a C1 artifact audit; no reported number is adjusted for it.
+
+**Corrected 2026-08-17 after PR-94 review.** The first version of this entry reported 526 of
+88,781 decidable rows (0.59%) over three pooled corpora. Three defects in the audit script
+produced that figure and are fixed: the `decoupled-rollup` root was globbed whole, so the
+four byte-identical copies of its sweep5v2 baseline were counted twice (18,240 rows, 6,459
+of them in the denominator); one snapshot cap was inferred per corpus root by a max-length
+rule, so 46 storage-truncated rows in a 500-cap cell were graded as determinate under a
+16,384 cap (the exact regression `e2e_regrade.detect_cap` was written to prevent, now
+reused rather than re-implemented); and conformance was checked with the pydantic model
+instead of the JSON Schema actually sent. The script also resolved paths from `os.getcwd()`
+and exited 0 with an empty table when run from anywhere else. Denominator wording is fixed
+too: the old entry said decidable excluded truncated rows, while the code kept truncated
+non-JSON rows on the sound first-character argument, so both denominators are now named and
+reported. The verdict is unchanged on every cut.
+
+**Files.** `tools/guided_json_audit.py` (new), `development/grading_artifacts_findings.md`
+(Finding 4), `development/OPEN_ISSUES.md` (ISS-024(b)),
+`development/title_abstract_candidates.md` (D-J6 term check, title and abstract candidates,
+and the "227k trials" scale claim that does not reproduce).
+
+## 2026-08-07 — PlanBench-WT: Act-4 quotes FIRST-DRAW clean WT (68.3); $0 verification batch green; analysis layer + data archive promoted (ISS-026 closed, commit f7baca9)
+
+**Decision (Omer).** Act 4 quotes clean WT first-draw — 410/600 = 68.3 [64.5, 71.9], paired Δ vs matched-NT +20.5pp, exact McNemar b=202/c=79, p=1.38e-13 — the "1 pt is not worth the ambiguity" of the 18 resume re-draws (all 18 first draws were loop-exhausted empty answers, so first-draw = re-draws counted as failures). The last-attempt reading (69.7 / +21.8pp / p=2.7e-15) stays in results-doc deviation row 1 only. Clean-vs-Mystery first-draw paired Δ 3.5pp (p=0.214), within the ±7.5pp margin. Integration-plan PB-B rewritten; also fixed a review-pass mislabel ("Δ vs GPT-4" → within-Haiku paired delta).
+
+**Verification batch ($0, three independent checks — all green).** (a) First-draw statistics recomputed from the raw side-log, anchors 410/418 reproduced, b/c shifts decompose exactly. (b) Stripped-regrade 26/600-vs-GPT-4-26/600 coincidence ruled GENUINE: no anchor ingestion in the script (unconditional sweep, 600 emergent from config ranges) and 8/8 sampled flip IDs re-validated VALID by direct VAL calls. (c) Two-stack grader invariance: completion half re-graded under rebuilt py3.12.12 + tarski 0.7.0 — 200/200 per-instance verdicts identical.
+
+**Promotion (commit f7baca9, 84 files).** `.local/wt_run/` analysis layer → `planbench/analysis/` (byte-faithful except the ×100 percent printf fix in `analyze_confirmatory.py` and `WT_SIDELOG_DIR`-relative side-log paths); full data archive → `results/planbench/wt-anthropic-20260801/` (15 graded anthropic cells, all side-logs incl. the 18 re-draw records, `formalization_match_rows.jsonl`, verification evidence, sha256 MANIFEST, provenance README with grader-epoch/VAL hashes + upstream fork commit). `planbench/analysis/verify_promotion.py` re-derives every published number data-only from the archive; all checks pass at the commit. Note for table reads: build_table renders per-config (500-pool) tables — the ladder there is 0.8/0.0/0.2/71.4 while the results-doc 600-union ladder is 0.7/0.0/0.5/71.8; same data, different slice.
+
+## 2026-08-06 — PlanBench-WT arm shipped (PR #93): three anthropic engines, side-log join keys, dedicated venv; review pass hardened the apparatus
+
+**Change.** `planbench/engine.py` adds the prereg arms `anthropic-tools` (SDK Tool Runner over the MCP plugins), `anthropic-scaffold` (matched no-tools control) and `anthropic-directive` (§9-A availability control), all t1-only and dispatch-separated from the graded 06-22 bare-NT `anthropic` corpus. `planbench/apply_patches.py` gains patch 6 (stamps `PDDL_COPILOT_INSTANCE_ID` into upstream `response_generation.py` so the `PDDL_COPILOT_TOOLLOG` side-log is joinable — prereg §4). `planbench/build_table.py` renders the `_3` extension pools and mystery configs with per-config baselines. `planbench/requirements-wt.txt` defines the dedicated `.venv-planbench-wt` (anthropic==0.109.2, mcp==1.26.0).
+
+**Review fixes (PR #93 pass, this date).** Correctness: repaired the fused `.gitignore` line that had disabled both `checkpoints/**/*.pptx` and the venv ignore; patch 4's skip-guard now keys on its own edit sentinel (the documented out-of-band patch-6 recipe used to make it skip silently — 497-instance-overrun class) and patch 6 runs last; `done_reason` normalized to the repo vocabulary (`max_tokens`→`length`; pre-08-06 side-logs carry the raw value); refusals and non-overflow API failures now leave side-log records (`stop_reason=refusal` / `done_reason="error"`) instead of vanishing into the dispatch's blanket handler; ANTHROPIC_API_KEY is checked before MCP subprocesses spawn; the t1-only scaffold refuses other tasks via SystemExit; side-log records self-describe (`backend`/`model`/`ts`/`num_predict`). Presentation: build_table takes multiple results roots (the graded corpora are split across three trees), renders the missing `+directive` ladder rung, adds the on-disk `_3`/davinci baselines, n=100 and mystery-gpt-4-noncomparability footnotes, and caches file loads. Reproducibility: requirements-wt pins floated deps to the versions that actually ran (py3.14 stack; the 06-22 bare-NT half was graded on the py3.12/tarski-0.7.0 stack — probed equivalent on the real instances); `tests/test_planbench_prompts.py` sha256-pins the FROZEN v2 prompt apparatus and the `WITH_TOOLS_SYSTEM` prefix copy. Docs: results-doc deviation 1 corrected (resume re-rolls were NOT deterministic — 11/18 flipped, 8 newly correct; first-draw clean WT 68.3 vs 69.7, verdicts unchanged) and deviation 8 added (undeclared stop-sequence wire asymmetry vs bare-NT, measured masked in the frozen corpora).
+
+**Compatibility.** New side-log keys are additive (consumers must `.get()`); pre-review corpora keep raw `done_reason` values (`in ("length","max_tokens")` for truncation counts) and lack self-description keys. `build_table.py` now accepts 1+ roots; single-root invocations behave as before. No graded corpus or frozen prompt byte changed (freeze test enforces). Gaps filed: ISS-025 (apply_patches main() unreachable end-to-end on the current external tree), ISS-026 (WT analysis layer uncommitted in `.local/wt_run/`).
+
+## 2026-07-23 — PlanBench Haiku NT t2 grading artifact fixed (missing FAST_DOWNWARD → universal 0.0); full frontier NT table graded + verified
+
+**Symptom.** The Haiku 4.5 PlanBench NT corpus (`results/haiku-frontier/planbench/`, on disk since 06-22) showed t2 plan-optimality = 0.0% on all three configs (blocksworld, mystery_blocksworld, logistics) while t1 was 41.0% on blocksworld — implausible (GPT-4's committed baseline: t1 31.4, t2 28.4).
+
+**Root cause.** `plan-bench/Executor/__init__.py:get_plan` computes the optimal cost by shelling to `$FAST_DOWNWARD/fast-downward.py`; on failure it returns cost 0. The 06-22 grading environment had VAL but not `FAST_DOWNWARD`, so the optimality check `actual_cost_llm == plan_executor.cost` compared against 0 and failed for every instance, including VAL-valid optimal plans (e.g. blocksworld id=4: cost 10, ground-truth 10, graded False).
+
+**Fix.** Re-ran the upstream evaluator unmodified with `VAL=planner_tools/VAL/bin/MacOSExecutables` (x86_64 Mac VAL under Rosetta — no Docker) and `FAST_DOWNWARD=` the `up-fast-downward` package inside the pddl-solver plugin venv. Corrected t2: blocksworld 28.2% (141/500; statistically identical to GPT-4's 28.4), mystery 0.4%, logistics 2.8%. t1 gradings verified by 4/4 VAL spot-check reproduction; t3 was graded all along (`llm_correct_binary`); t7 left as-is (upstream exact-match state grader; scored with caveat). Corrected files copied into `results/haiku-frontier/planbench/`; pre-fix gradings remain at `d1045a5`.
+
+**Analysis.** `development/planbench/planbench_frontier_haiku_nt.md` — Haiku beats GPT-4 CI-disjoint on blocksworld t1; trails CI-disjoint on t3; Mystery-BW collapse replicates (41.0 → 0.8); t7 0-vs-28.4 is chat-model format sensitivity evidence.
+
+## 2026-07-17 — e2e-overlay PR #91 review: six regrade/aggregation bugs fixed (dedup, censor-reason split, delegation-credit staleness, simulate candidate coverage, fail-closed stem parsing, pooled-table guards)
+
+**Bugs.** PR #91 code review of `feat/e2e-scoring-overlay` found six issues, all fixed in
+`tools/e2e_regrade.py` + `.claude/skills/analyzer/scripts/{e2e_overlay,e2e_pooled,table}.py`:
+
+1. `e2e_regrade.process_corpus` graded every raw JSONL line instead of deduping by trial
+   key the way `tools/iss024d_parity.py` already does — a mop-up re-run file could inflate
+   a cell's denominator (and skew the cap-detection histogram, which now runs on deduped
+   rows, not raw lines). Dedup is last-occurrence-wins (matches resume semantics, sorted
+   glob order); each cell prints its dup count; each overlay row now carries `trial_key`
+   (list form) so downstream consumers can dedup/join too — older overlay files lack the
+   field, so no reader may require it.
+2. `e2e_overlay.load_e2e_cells` counted every `e2e_strict == "indeterminate"` row as
+   snapshot-cap censoring, but `no_ground_truth` / `plan_validation_transport_error` /
+   `unknown_task` rows are indeterminate for other reasons entirely. New `cens_cap` /
+   `cens_other` fields split the existing `cens` total (bounds math and low/high/exact
+   unchanged) for presentation; `fmt_e2e` renders `a–b (ck+uN/n)` when `cens_other > 0`,
+   else the old `a–b (ck/n)` unchanged. `e2e_pooled.py`'s header and `table.py`'s `--e2e`
+   caption each gained one sentence explaining the `+uN` component. CSV schemas untouched.
+3. `e2e_regrade._grade_empty_or_censored`'s D2b=B delegation credit gated on the STORED
+   `success` field, which pre-dates the `_tool_error_seen` FastMCP arg-error fix and can
+   be mis-binned True for validate_* with-tools rows. Now gates on
+   `out.get("tool_verified_fixed", row["success"])` — the Phase-3 recompute when present,
+   falling back to stored success for solve/simulate (which have no recompute, unchanged).
+4. `e2e_regrade.simulate_candidates` (D9b) only ever turned the FIRST coercible fenced
+   block into a candidate, contradicting its own module docstring ("each fenced block") —
+   a correct trajectory landing in a later block (e.g. after an initial-state JSON block
+   that also happens to coerce) graded False. Now every coercible block is its own
+   candidate; whole-response stays first, the all-blocks concatenation stays last.
+   Exact-match grading against the oracle means this can only add passes, never create a
+   false positive; existing overlays predate the fix, so simulate numbers can only move UP
+   on regrade. Addendum added to `development/tool_call_vs_final_output_grading.md` D9b.
+5. `e2e_overlay.load_e2e_cells` silently routed ANY unparseable stem (`parse_dirname_full`
+   cond `"?"`) through the frontier-corpus inference branch, so a typo'd `slurm_*` cell
+   dirname would be mislabeled instead of erroring. Now raises `ValueError` for
+   unparseable `slurm`-shaped stems; non-slurm (frontier) stems are unaffected — verified
+   against all seven real stem shapes on disk.
+6. `e2e_pooled.py main()` crashed on `csv_rows[0]` when the overlay had zero rows, and
+   silently `mkdir`'d a nonexistent `--overlay` root instead of telling the user to run
+   the regrade first. Both are now guarded (`sys.exit` pointing at `tools/e2e_regrade.py`;
+   CSV write skipped with a note when there are no rows, md still written).
+
+**Tests.** New `tests/test_e2e_overlay.py` (50 assertions, standalone + wired into
+`tests/verify.sh`): dirname parsing (bare / run-tagged / legacy-no-think / unparseable),
+`detect_cap` incl. the 9B resume-shape mass-pinned case, tolerant plan extraction
+(strict / backticked / table / prose), a second-fenced-block simulate regression pin,
+dedup-last-wins over a synthetic two-file resume corpus, delegation-credit gating on the
+recomputed vs. stale tool-verified value (both directions), and both the fail-closed and
+still-works `load_e2e_cells` stem cases. No behavior change to `pddl_eval/` or
+`run_experiment.py`.
+
+**Files.** `tools/e2e_regrade.py`,
+`.claude/skills/analyzer/scripts/{e2e_overlay.py,e2e_pooled.py,table.py}`,
+`tests/{test_e2e_overlay.py (new),verify.sh}`,
+`development/tool_call_vs_final_output_grading.md`.
+
+**Regrade applied (same day).** `results/derived/e2e_overlay/` regenerated for all 8
+corpora with live MCP and `pooled_e2e_table.{md,csv}` rebuilt. Realized delta = exactly
+the predicted 19 iss024d-e2e simulate rows False→True (≤1.7pp on affected pooled rows,
+11 neutral / 8 steered); all other cells byte-stable, solve re-validated with zero flips.
+Per-cell realized numbers: D9b addendum in `tool_call_vs_final_output_grading.md`.
+
+## 2026-07-17 — ISS-024(d) endgame: all 5 cells synced + regraded; pre-registered parity FAILS at job level (separate-apparatus labeling applies)
+
+**Sync + post-mortem (E1.1).** 4B/9B/gemma pulled into `results/iss024d-e2e-live/`
+(rsync -z; the uncompressed first attempt ran ~125 KB/s over VPN, compressed ~30×
+faster). All 5 cells complete at 9,120 trials each. Exit codes clean: array
+`19293221` — named `qwen3_6_35b` but its 4 tasks ran the 4 Qwen models (task end
+times match cell mtimes: _0=0.8B, _1=4B, _2=9B, _3=35b) — all COMPLETED 0:0;
+gemma `19314599` COMPLETED 0:0. Queue empty.
+
+**Regrade (E1.2).** `tools/e2e_regrade.py results/iss024d-e2e-live` over all 5
+cells (D7/D7b/D9 rules, live-MCP solve oracle, 402 plan validations). Phase-3
+tool-verified recompute: 0 success flips across 39,600 validate_* rows.
+
+**Parity (E1.3, `tools/iss024d_parity.py`, report at
+`results/derived/iss024d_parity_report.md`).** Gemma control 1/5 pass, noise
+floor F = 5.3pp (gemma solve −5.3; its other FAILs are TOST-inconclusive n, not
+shifts). Qwen 7/20 pass, max |Δ| = 11.3pp (35b solve). **Job-level parity FAILS**
+(rule: ≥18/20 AND no |Δ|>10). The 07-13 red flag generalizes (E1.4): solve Δ is
+negative for every Qwen model (−1.3/−8.7/−7.3/−11.3) with truncated-rate deltas
+concentrated exactly there (solve +16.0/+18.7/+12.7 on 4B/9B/35b; validate_plan
++11.3/+10.3 on 9B/35b) — the pre-identified mechanism (`--reasoning-parser none`
+leaves think tokens in the response channel and eats generation budget) fits;
+validation tasks pass or sit within the control noise floor. Per prereg rule 4:
+iss024d numbers are a **separate-apparatus replication under full-response
+storage**, never "the sweep5v2 cells resolved"; no margin adjustment.
+
+**D9 extraction audit (new models: 4B/9B/gemma).** No Sonnet-class format
+pathology: `no_plan_extracted` ≤ 12 rows/cell; solve extraction is
+strict/tolerant/table lines as designed. Neutral-bank tool-verified simulate
+`format_parse_fail` rows (13/19/10 on 4B/9B/gemma, 19 on 35b; ceiling ≤6.3pp)
+were sampled: Qwen rows are genuine non-delivery (parser-off think-narration
+about formatting, no final JSON emitted); gemma rows carry a leaked
+`<|channel>thought` template marker wrapping otherwise well-formed JSON
+trajectories (10 neutral rows, ≤3.3pp ceiling) — a possible D10 tolerance
+decision, parked, not applied.
+
+**Pooled table (E1.5 first half).** `e2e_pooled.py`: iss024d dropped from
+IN_FLIGHT; new NOTES banner carries the parity verdict + prereg labeling; table
+regenerated (456 csv rows). Even at 16K snapshots, parser-off cells stay
+partially censored (worst: gemma solve c200/300, 0.8B validate_plan c802/3000);
+35b is near-exact. Remaining E1: merge `feat/e2e-scoring-overlay` → main.
+
+**Files.** `results/iss024d-e2e-live/` (+3 cells, untracked),
+`results/derived/e2e_overlay/iss024d-e2e-live/` (5 overlays),
+`results/derived/iss024d_parity_report.md`,
+`results/derived/e2e_overlay/pooled_e2e_table.{md,csv}`,
+`.claude/skills/analyzer/scripts/e2e_pooled.py`.
+
+## 2026-07-15 — Frontier NT snapshot de-censor: free re-grade from raw batch dirs (planned paid rerun cancelled)
+
+**What.** The three frontier no-tools corpora graded in the 500-char snapshot era
+(Haiku `results/haiku-frontier/sweep5v2`, Sonnet `results/sonnet-frontier/{sweep5v2,sweep6}`)
+were e2e-censored — NT-canonical simulate 100% indeterminate, the handoff's open
+follow-up was a paid 16K Batch-API rerun (~$0.3/model). Discovery: the raw batch
+`results.jsonl` under `.local/{haiku/singletool_nt_canonical, sonnet/{canonical,anon}}`
+retain the FULL response text (max 24.5K chars) — the 500 cap only truncated the stored
+`TaskResult.response` snapshot at grade time; `check_success` always graded full text,
+so the primary grades were never wrong. Re-ran `tools/claude_api_batch.py grade` on all
+three raw dirs with the current 16,384 snapshot. **A paid rerun would have bought
+nothing:** temp-0 responses would reproduce, and a fresh run would still write 16K
+snapshots, re-censoring the same >16K-char rows.
+
+**Audit.** Per-row diff vs HEAD across 1,520 + 4,560 + 4,560 rows: **0 diffs** on
+success / failure_reason / format_compliant / truncated / done_reason; the only change
+is longer response snapshots (1,468 / 3,976 / 4,115 rows). Grades byte-identical.
+
+**Overlay (rebuilt for haiku-frontier + sonnet-frontier).** NT simulate de-censored
+(e2e_strict, determinate-row Wilson 95%; bounds count censored as fail/pass):
+- Haiku canonical 54.3 [42.7,65.4] n=70 det, bounds [38,68] (was 100% censored);
+  anon 60.3 [48.0,71.5] n=63, bounds [38,75] (the handoff's stale 0.0 [0,5.7] predated
+  the D7b anon-oracle + D9 fixes; same 63-row denominator, now correctly graded).
+- Sonnet v11 canonical 42.0 [31.8,52.8] n=81, bounds [34,53]; v11 anon 36.1
+  [26.6,46.9] n=83, bounds [30,47] (3-variant: canon 51.9 n=241, anon 46.2 n=236).
+- Remaining censored rows are raw responses >16,384 chars — irreducible at the current
+  snapshot cap, honest [lo,hi] reporting per D6/D9c.
+
+**Paper-relevant.** (a) The canonical-vs-anon contamination null now extends to
+delivered-level NT simulate (CIs overlap, both models). (b) The delivered-level
+tools-lift on simulate is NOT CI-separated (Haiku NT [38,68] vs WT [49,63]; Sonnet NT
+v11 [34,53] vs WT [49,62]) — the divergence story stays tool-verified (~97–99) vs
+delivered (~40–60), not NT vs WT. (c) Unaided frontier simulate is ~40–60% delivered,
+not a floor — the old 0% was the normalizer artifact (ISS-021) compounded by snapshot
+censoring.
+
+**Files.** `results/haiku-frontier/sweep5v2/trials.jsonl`,
+`results/sonnet-frontier/{sweep5v2,sweep6}/trials.jsonl` (16K snapshots, grades
+unchanged), derived overlay refreshed (untracked),
+`development/{CHANGELOG.md, frontier_rerun_handoff.md, paper_notes_discussions.md}`.
+
+## 2026-07-13 — `tools/iss024d_parity.py`: the pre-registered parity analysis script
+
+Implements `development/iss024d_parity_prereg.md` verbatim, written while 4B/9B/gemma
+cells are still in flight (the registered analysis plan named this script). Per-cell
+Δ = p(iss024d) − p(sweep5v2-live) on tool-verified success, neutral bank v11-13
+pooled, think=on × tools_all_minimal; TOST via 90% Newcombe (Wilson-score) CI within
+±5pp; gemma control table rendered first; the ≥18/20 decision rule is evaluated ONLY
+when all 25 cells are on disk (partial corpora → DEFERRED banner). Trials deduped by
+trial key (last wins) so resume mop-ups can't inflate denominators; infra rows
+excluded and counted. Secondaries per prereg: format_parse_fail and truncated rate
+deltas (neutral bank) + per-variant success-delta heterogeneity over the full v11-16
+bank. `--md` mirrors the report as markdown. Loaders reuse the analyzer's
+`iter_cells(run_tag=)` so corpus identity is enforced by the same parser everywhere.
+First run (10/25 cells, decision deferred): 35b validation cells all PASS; 35b solve
+Δ −11.3pp CI [−17.2, −5.4] with truncated-rate +12.7pp (mechanism candidate: with
+`--reasoning-parser none` think tokens stay in the response channel and eat budget);
+0.8B mixed with wide CIs. No headline use before the complete table + gemma control.
+
+## 2026-07-13 — e2e overlay D9: table plans, per-step fenced blocks, simulate at-cap censor; Sonnet WT regraded (ladder holds)
+
+**Bug.** The first Sonnet WT regrade (D7/D8 rules) reproduced the retracted-Haiku
+artifact class on the new corpus: solve delivered 55.0 (42/100 `no_plan_extracted`) and
+simulate [5.0, 8.0] (71 `trajectory_mismatch`) vs tool-verified 100.0/99.0. Two D7
+format-coverage gaps (tolerance was tuned on Haiku's formats): Sonnet delivers solve
+plans as a markdown TABLE with a backticked action cell, and simulate trajectories as
+ONE FENCED JSON BLOCK PER STEP (D7 graded block 0 — a single step — against the full
+oracle trace). A third issue was a censoring asymmetry: simulate lacked solve's D6
+at-cap pre-censor, so 493 at-cap snapshots (mostly 500-cap corpora) were graded
+determinate from partial content.
+
+**Change (`tools/e2e_regrade.py`).** D9a: `table_lines` extraction fallback (first
+table cell per row that is exactly a backticked s-expression; live-MCP oracle stays the
+safety net — 40/42 recovered Sonnet plans validate, 2 genuinely invalid). D9b:
+`simulate_candidates` grades ordered candidates (whole response, first fenced block,
+concatenation of all coercible blocks `fenced_concat`); success iff ANY candidate
+normalizes equal to the oracle — exact-match grading cannot create false positives.
+D9c: simulate censors non-empty at-cap snapshots like solve (visible blocks can neither
+prove nor refute the delivered trajectory). Repo-wide re-run over all 8 corpora; the
+pre/post row diff is fully D9-attributable (zero validate_* / NT-non-simulate changes).
+Corrected: Sonnet WT solve 95.0 (gap +5.0pp, identical to Haiku), simulate [49.0,62.0]
+(Haiku canonical v11 untouched at [52,64]); iss024d 35b simulate neutral 9.7→12.3–13.3.
+Pooled table regenerated (`e2e_pooled.py` IN_FLIGHT now iss024d-only). Analysis memo:
+`development/sonnet_wt_vs_haiku_e2e_memo.md`; decisions:
+`tool_call_vs_final_output_grading.md` §D9.
+
+## 2026-07-12 — e2e overlay D7/D7b: tolerant delivered-answer extraction + anon oracle (Haiku WT solve/simulate "gap" was grader artifact)
+
+**Bug.** The first Haiku full-run headline (WT solve e2e 13.5 vs tool-verified 100;
+simulate 0 vs 97.5) was three overlay artifacts stacked, not answer-dropping:
+(1) `scoring._ACTION_LINE_RE` rejects markdown plan lines
+(`` 1. `(grasp left shot1)` - annotation ``) — 190/200 Haiku WT solve responses restate
+the tool-validated plan VERBATIM, yet 141 binned `no_plan_extracted`; (2) the Q1
+whole-response JSON rule fails Haiku's prose-wrapped ```json trajectory fences — canon
+simulate had 52/100 exact oracle matches graded `format_parse_fail`; (3) sweep6* rows
+(canonical `domain_name`, anonymized symbols) were validated against canonical `domains/`
++ `gt_cache.json` → anon solve 32/32 falsely `plan_invalid`, NT-anon simulate 59 clean
+parses falsely `trajectory_mismatch` (the pooled NT simulate 0.0 [0,5.7] was artifact).
+
+**Change (`tools/e2e_regrade.py`).** D7: delivered-answer extraction is format-tolerant,
+both arms — backtick/annotation-tolerant plan lines (`_TOLERANT_ACTION_RE`), fenced-JSON
+block fallback for simulate (`coerce_simulate_tolerant`); per-row `extraction` provenance
+keeps format drift measurable; false positives impossible (plans still face live VAL,
+trajectories deep-equality vs the oracle); the frozen Q1 whitelist in `scoring.py` is NOT
+widened. D7b: sweep6* cells grade against `domains-anon/` + new
+`results/derived/gt_cache_anon.json` (`build_gt_cache.py --domains-dir domains-anon`);
+overlay rows carry an `anon` flag. All overlay corpora re-run under the new rules so one
+rule set governs `results/derived/e2e_overlay/`.
+
+**Corrected Haiku WT (e2e_strict):** solve ~95 (real failures: 3 `save_plan` delegation +
+partial long-plan transcriptions), simulate canon [52, 64]. Surviving finding =
+delivered-answer fidelity degrades with output LENGTH; plus strict parser parity ≠ arm
+neutrality (NT one-shot obeys the JSON format, post-tool-chat WT answers in markdown).
+Decision provenance: `development/tool_call_vs_final_output_grading.md` §0b; paper_notes
+2026-07-12.
+
+---
+
+## 2026-07-11 — e2e overlay: dual D2b columns, strict becomes the headline
+
+**Change.** `tools/e2e_regrade.py` now emits BOTH D2b operationalizations per overlay row:
+`e2e_strict` (any empty final turn fails — the paper's headline per the same-day D2b
+revision) alongside the existing `e2e` (D2b=B delegation credit, retained as diagnostic);
+the two differ exactly on rows with `e2e_reason == "delegation_terminal_credit"`, so no
+regrade was needed — the 49 existing overlay files under `results/derived/e2e_overlay/`
+were patched in place (295,876 rows). New `tools/e2e_d2b_compare.py` derives the
+strict-vs-B lift-verdict comparison from any overlay dir (no MCP). The `summarize()`
+table gained `strict-lo` / `deleg` columns. Decision provenance:
+`development/tool_call_vs_final_output_grading.md` (status REVISION note),
+`development/paper_notes_discussions.md` 2026-07-11 (later-3), full audit in
+`development/decision_audit_grading_and_frontier.md`.
+
+## 2026-06-26 — Cluster plumbing for the decoupled think=on sweep (staging; run GATED)
+
+**Change.** Threaded the (already-merged) `--decoupled-budget` / `--num-predict-think` /
+`--num-predict-answer` harness flags and a run-scoped reasoning-parser override onto the
+cluster submit path so the Line-1 decoupled think=on `simulate` re-run can be launched. The
+wrapper + sbatch previously had no way to pass these. Three scoped edits, **byte-identical
+when the new flags aren't passed** (every existing sweep reproduces unchanged):
+- `cluster-experimenting/lib/defaults.sh` — `vllm_reasoning_parser_flag()` honors a
+  run-scoped `REASONING_PARSER_OVERRIDE` that takes precedence over the per-model
+  `REASONING_PARSER` set by `vllm_lookup`, **without mutating that baseline**. `none` omits
+  the `--reasoning-parser` flag (DECISION B — removes the `reasoning_content`-flush ambiguity).
+- `cluster-experimenting/submit_with_rtx.sh` — new `--decoupled-budget`,
+  `--num-predict-think`, `--num-predict-answer`, `--reasoning-parser` flags; integer/parser
+  validation; a guard that `--decoupled-budget` requires `--no-tools` + `--think-modes on`
+  (so no think=off cell aborts `run_experiment.py` and no tools cell silently no-ops the
+  flag); `--export` threading; submit banner line.
+- `cluster-experimenting/run_condition_vllm_rtx.sbatch` — builds `DECOUPLED_ARGS` and
+  splices them into the full `run_experiment.py` invocation (NOT the `--smoke` fastpath,
+  which forces `conditions=both` and is incompatible with the no-tools-think=on-only
+  decoupled path; the smoke is a `--partial` constrained run instead).
+
+**Validation (local, no cluster).** `bash -n` on all three; `--dry-run` emits the correct
+cells + `--export` for both the smoke (`Qwen3.5:9B` + `qwen3.6:35b`, `--partial 2`) and full
+(4 Qwen models, array 0-3) commands; all 5 guards fire; the no-new-flags baseline dry-run is
+unchanged; the parser override and `DECOUPLED_ARGS` construction unit-tested. `tests/verify.sh`
+green. Answer budget = per-task default (`--num-predict-answer` omitted → 6144 simulate /
+8192 solve, dedicated; the answer phase never gets a smaller nominal cap than the baseline's
+combined think+answer budget — decision S2 in the staging doc).
+
+**Run is GATED.** Staging doc + exact smoke/full commands + open decisions:
+`development/decoupled_run_staging.md`. New `RUN_TAG=decoupled-thinkon`; Qwen roster only
+(Gemma excluded); never pooled into `sweep5v2-live`. Ping + VPN before any SLURM step.
+
+**Files.** `cluster-experimenting/{lib/defaults.sh, submit_with_rtx.sh,
+run_condition_vllm_rtx.sbatch}`, `development/{decoupled_run_staging.md, CHANGELOG.md,
+OPEN_ISSUES.md}`.
+
+## 2026-06-25 — Q1 two-metric wrapper-tolerant `simulate` grader (no-tools); frontier re-graded
+
+**Change.** Replaced the strict-wrapper no-tools `simulate` grader with the pre-registered Q1
+**two-metric** grader (`pddl_eval/scoring.py`). The old path required the whole output to validate
+as the schema-exact `{"trajectory":[StateStep]}` wrapper; a clean top-level step list or a single
+step object — content possibly correct — was binned `FR_FORMAT_PARSE_FAIL` (the "strict-wrapper
+sub-artifact"). New primitive `_coerce_simulate_trajectory` applies a **frozen bounded-coercion
+whitelist**: (1) parse the ENTIRE output as one JSON value (markdown-fence tolerated; no prose/regex
+extraction); (2) `{"trajectory":[…]}` → compliant; (3) bare top-level step list → wrap → accept
+(not compliant); (4) single valid step → wrap → accept (not compliant); (5) else parse-fail —
+**never invent or repair a field**. The grader now reports two separable metrics:
+- **state-tracking accuracy** = `success` (the primary number; content correct under coercion),
+- **format-compliance** = emitted the schema-exact wrapper (new `simulate_format_compliant` →
+  `TaskResult.format_compliant`), with **strict** = compliant ∧ correct derivable from the two.
+
+`check_success` is the single shared grader, so the change covers the live harness *and* the
+offline Anthropic batch grader (`tools/claude_api_batch.py`) — "same rule for open + frontier" is
+structurally enforced. **With-tools simulate is untouched** (it grades via the tool result; no
+model wrapper exists there). Surfacing: `summary.py` adds a `simulate_q1` row block + a compact
+`print_simulate_q1_table`; `format_compliant` is frozen into each trial at grade time (independent
+of `RESPONSE_SNAPSHOT_LEN`).
+
+**Frontier re-grade (offline, no spend; DECISION B).** Re-graded the three Anthropic corpora.
+**State-tracking is CONFIRMED unchanged** (0 grading-diffs vs the 06-23 grading across all 1520 +
+4560 + 4560 trials — the wrapper-tolerance recovered nothing on the frontier; its parse-fails are
+genuinely truncated/prose, not clean-but-unwrapped). The new dimension:
+
+| corpus | state-tracking | format-compliance [95% Wilson] | strict |
+|---|--:|--:|--:|
+| Haiku sweep5v2 (n=100) | 42.0% | 67.0% [57.3,75.4] | 42.0% |
+| Sonnet canonical sweep5v2 (n=300) | 45.0% | 49.7% [44.1,55.3] | 45.0% |
+| Sonnet anon sweep6 (n=300) | 38.3% | 42.7% [37.2,48.4] | 38.3% |
+
+**Reading.** `strict == state-tracking` in all three → every *correct* frontier trajectory was also
+schema-compliant; format-compliance here tracks (1 − truncation − parse-fail). The wrapper-tolerance
+lever is for the **open-roster** (its 0% is `format_parse_fail` from unenforced `guided_json`), which
+**cannot** be re-graded from disk (responses truncated at 500) and stays the **gated** clean re-run
+(Line 1 / ISS-024(a)). The `guided_json` enforcement bug (ISS-024(b)) is a *generation* issue kept
+separate.
+
+**Reproducibility.** Grader change is intentional + pre-registered; redefines no-tools simulate
+`success`. Non-simulate cells and with-tools simulate are byte-identical (regression check). The
+pre-Q1 corpus is pinned at tag `sweep5v2-final`.
+
+**Validation.** New `tests/test_simulate_q1.py` (29 checks): all five whitelist rules, fence
+tolerance, never-repair, the format-compliance metric, and the `check_success` no-tools simulate
+branch end-to-end (incl. the bare-list-now-succeeds win + empty→`FR_SIMULATE_EMPTY`). Full
+`verify.sh` green; existing `test_scoring`/`test_check_success` unchanged.
+
+**Files.** `pddl_eval/scoring.py` (`_strip_md_fence`, `_validate_model`, `_coerce_simulate_trajectory`,
+`simulate_format_compliant`, rewritten simulate no-tools branch), `pddl_eval/runner.py`
+(`TaskResult.format_compliant` + wiring), `tools/claude_api_batch.py` (set it in re-grade),
+`pddl_eval/summary.py` (`simulate_q1` + printer), `run_experiment.py` (printer wire),
+`tests/{test_simulate_q1.py, verify.sh}`, `results/{haiku-frontier/sweep5v2,
+sonnet-frontier/{sweep5v2,sweep6}}/` (re-graded), `development/{q1_grader_plan.md, CHANGELOG.md,
+OPEN_ISSUES.md}`. Narrows ISS-024.
+
+## 2026-06-25 — Decoupled-budget think=on (iter-2 T6 / reviewer ask [8]) — harness built, cluster run GATED
+
+**Change.** Added a decoupled-budget path for no-tools think=on so the reasoning and answer phases get **separate** token budgets, removing the shared-decode-budget confound the failed `b527f71` cap-raise did not address (that grew the single shared window; it did not split reasoning from answer). Mechanism = a 2-call continuation:
+- **Call 1 (reasoning):** `enable_thinking=True`, `max_tokens=num_predict_think`, `stop=["</think>"]` + `include_stop_str_in_output=True`. done_reason="length" → reasoning hit its own budget; we force-close and STILL proceed (`think_truncated=True`).
+- **Call 2 (answer):** the closed `<think>…</think>` block is replayed as the final assistant turn with vLLM `continue_final_message=True` / `add_generation_prompt=False`, and the answer generates with a fresh `max_tokens=num_predict_answer`. done_reason="length" HERE is the genuine answer-truncation signal grading uses.
+
+Reasoning reconstruction is parser-state-proof (concatenates `message.thinking` + raw `content`, strips a trailing `</think>`), so it works whether or not the server runs `--reasoning-parser qwen3`. The decoupled sweep will run with the parser **OFF** (DECISION B) to remove the `reasoning_content`-flush ambiguity entirely.
+
+**Scope (DECISION A).** Qwen3 thinking roster only (`Qwen3.5:0.8B/4B/9B`, `qwen3.6:35b`). Gemma (`gemma4:26b-a4b`, `REASONING_PARSER=none`) has no `<think>` tokens — nothing to decouple; its think=on truncation is plain long-output and is reported separately, not as evidence for/against decoupling.
+
+**Budgets (DECISION C).** `--num-predict-think` default `DEFAULT_NUM_PREDICT_THINK=8192`; `--num-predict-answer` default = per-task cap (override to 4096 for the DECISION-C config). `num_ctx` stays 16384; the existing `vllm_client` context-overflow retry clips gracefully if a long prompt pushes Call 2 over (Call 2 re-encodes the reasoning as prompt).
+
+**New CLI.** `--decoupled-budget` (no-op-proof: startup-rejected unless `--think on`, and rejected with `--conditions tools`), `--num-predict-think`, `--num-predict-answer`. Run-meta records `decoupled_budget`/`num_predict_think`/`num_predict_answer` only when engaged.
+
+**Tokens / storage.** `tokens` dict gains `think_completion` / `answer_completion` (decode split) + `call2_prompt` (the re-encoded, prefix-cacheable reasoning prefix) so the cost paragraph isn't double-counted — no schema change (free-form dict). `RESPONSE_SNAPSHOT_LEN` raised **500 → 16384** so new corpora are re-gradeable offline (the 500 cap truncated `simulate` trajectory JSON mid-object — the exact gap that blocked re-grading frontier `simulate` from disk). Storage-only; existing on-disk corpora are not rewritten.
+
+**Reproducibility.** All flags default OFF → existing reproductions byte-identical. New corpus / new RUN_TAG; a clean A/B vs the sweep5v2 think=on Qwen cells; never pooled into `sweep5v2-live`. The `main` HEAD that produced sweep5v2 is pinned as the annotated tag **`sweep5v2-final`** (DECISION E) so it survives the upcoming merges.
+
+**Prerequisite / gating (DECISION D).** The clean run is sequenced **after** the Q1 two-metric simulate grader lands as its own PR; for an apples-to-apples *simulate-accuracy* comparison the baseline Qwen think=on `simulate` cells get re-graded with Q1 (offline). The cluster smoke (validates `continue_final_message` + the Qwen3 template + parser-off behaviour on one model — DECISION D3) and full sweep are **user-gated — ping before any cluster work.**
+
+**Validation (local, no GPU).** New `tests/test_chat_decoupled.py` (34 checks via the `TestResults` driver + `verify.sh`): asserts Call-1 stop/budget/include-stop-str, Call-2 continuation flags/budget/injected-think-block, parser-on vs parser-off reconstruction, `think_truncated` on Call-1 length, answer-truncation surfacing on Call-2 length, token split without double-count, format only on the answer. Full suite green; `test_runner.py` regression 41/41.
+
+**Review fixes (PR #88, 2026-06-26) — pre-cluster-run, both corpus-integrity.**
+- **Answer-phase truncation was mislabeled `FR_THINK_OVERFLOW`** — the headline metric the PR drives down. The decoupled helper returns the *completed* reasoning as `thinking_text` and Call 2's `done_reason`, so an empty-answer length-truncation (e.g. Call 2 overflows `max_model_len` → `_synthesize_overflow_response` empty+length) tripped the think-overflow predicate. Fixed write-time (`_classify_step_failure(decoupled=…)`) AND read-time (`relabel_truncated_taxonomy(decoupled=…)`); the reasoning-cap signal stays in `think_truncated`. `think_truncated` is now `bool | None` (None on non-decoupled rows) so `think_truncated is not None` is the per-row decoupled marker both classifiers key off.
+- **Call-1 `abort` was swallowed** — an aborted reasoning call (vLLM finish_reason=abort, HTTP 200, SLURM teardown) flowed into Call 2 and could record a bogus completion. The helper now short-circuits and surfaces `done_reason="abort"` so `evaluate_one` tags `infra_failure` → resume re-attempts the key.
+- **Run-meta provenance** — `num_predict_answer` now records the resolved per-task source `{"per_task": …}` when defaulted, instead of `null`.
+- *Non-blocking (cost note):* analyzers compute cost as `prompt + completion` and **exclude `call2_prompt`** (the re-encoded reasoning, billed again) — comparable to the shared-budget baseline by design, but any **true-billing** cost-of-pass on a decoupled corpus must add `call2_prompt` manually.
+- Tests: `test_chat_decoupled.py` +3 (Call-1 abort short-circuit; think-overflow suppression write-time + read-time, each with a non-decoupled control). Full `verify.sh` green.
+
+**Files.** `pddl_eval/vllm_client.py` (`stop` + `vllm_extra` passthrough), `pddl_eval/chat.py` (`chat_without_tools_decoupled` + Call-1 abort short-circuit), `pddl_eval/scoring.py` (`decoupled` guard in `_classify_step_failure` + `relabel_truncated_taxonomy`), `pddl_eval/runner.py` (`DEFAULT_NUM_PREDICT_THINK`, `RESPONSE_SNAPSHOT_LEN` 500→16384, `TaskResult.think_truncated: bool|None`, no-tools branch + threading + `decoupled=` classify), `pddl_eval/summary.py` (pass `decoupled=` to relabel), `run_experiment.py` (CLI flags + startup guards + banner + run-meta), `tests/{test_chat_decoupled.py, verify.sh}`, `development/{decoupled_budget_plan.md, CHANGELOG.md, OPEN_ISSUES.md}`. Plan + answered decisions: `development/decoupled_budget_plan.md`. Narrows ISS-024(c).
+
+## 2026-06-23 — `_normalize_trajectory` predicate-syntax fix → frontier `simulate` re-graded 0% → ~40–45%
+
+**Change.** `pddl_eval/scoring.py::_normalize_trajectory` canonicalised simulate trajectories by lowercasing + collapsing whitespace but **never reconciled predicate notation** — the no-tools model emits PDDL s-expressions `(ontable shaker1)` while the oracle (`get_state_transition`) emits functional `ontable(shaker1)`, so every *correct* no-tools simulation deep-equality-failed as `result_mismatch`. Added `_canon_atom` (one regex; maps `(name a b)`, `name(a, b)`, `name()` and bare `name` to a single `name arg1 arg2` token, argument order preserved) and applied it to **boolean predicates, numeric-fluent keys, and the action string**. Malformed atoms fall back to the prior whitespace-lowered form → genuinely-wrong trajectories still mismatch; the bridge reconciles notation, it never widens equality. Commit `5879ac4`.
+
+**Why a bug, not a benchmark gate.** The normalizer's own docstring states its job is *content equality* across the with-tools (`boolean_fluents` dict) and no-tools (`state.boolean` list) shapes; the syntax gap is an unintended omission in that bridge, not a designed format requirement. Fixing it restores the intended measurement.
+
+**Frontier re-grade (local, from raw batch dirs; no spend, no cluster).** Re-ran `tools/claude_api_batch.py grade` on `.local/{haiku/singletool_nt_canonical, sonnet/canonical, sonnet/anon}` (responses + oracle on disk) → updated `results/{haiku-frontier/sweep5v2, sonnet-frontier/sweep5v2, sonnet-frontier/sweep6}`.
+
+| corpus | simulate before | simulate after [95% Wilson] | breakdown (pass · mismatch · parse-fail · truncated) |
+|---|--:|--:|---|
+| Haiku sweep5v2 (n=100) | 0.0% | **42.0% [32.8,51.8]** | 42 · 25 · 0 · 33 |
+| Sonnet sweep5v2 canonical (n=300) | 0.0% | **45.0% [39.5,50.7]** | 135 · 14 · 62 · 89 |
+| Sonnet sweep6 anon (n=300) | 0.0% | **38.3% [33.0,43.9]** | 115 · 13 · 70 · 102 |
+
+**Regression check (built into the re-grade): PASS.** All non-simulate cells reproduce byte-identically across all three corpora (solve 22/86/85; validate_domain 105·337·330; validate_plan 915·2918·2919; validate_problem 146·538·543) — confirms the fix touched only the simulate leg and the grade pipeline is stable.
+
+**Reading.** The simulate "0% sole-source floor" was substantially a grader artifact. Of trials that produced a *parseable* trajectory, Sonnet is correct **135/149 = 90.6%** (canonical) / **115/128 = 89.8%** (anon); the residual failures are truncation (token budget — simulate trajectories are long) + format-parse, not state-tracking incapability. Corrected floor **~40–45%, not 0%**. Contamination stays NULL for simulate (the canon−anon overall Δ+6.7 has overlapping CIs and is an anon-prompt-length truncation confound; success-given-parseable-completion is equal).
+
+**Scope / not done.** The open vLLM roster's `simulate` 0% is a **different** failure — NOT the frontier's notation artifact (its `result_mismatch` is ~0%). It is dominated by `format_parse_fail` (unenforced `guided_json` → prose leaks past the constraint, plus a strict-wrapper sub-artifact) + truncation, in proportions unmeasurable from disk (`RESPONSE_SNAPSHOT_LEN=500`, no `gt`). A true number needs a clean re-run with the adopted Q1 two-metric wrapper-tolerant grader + full-response storage + (think=on) decoupled budget — not a re-grade, not "the notation fix alone." PlanBench `t7` left untouched (third-party deterministic parser; report as caveat). See `development/{frontier_grading_artifacts_findings.md, simulate_decisions_and_next_steps.md}` and ISS-024.
+
+**Files.** `pddl_eval/scoring.py`, `tests/test_scoring.py` (cross-syntax + idempotency + no-false-merge cases), `results/{haiku-frontier/sweep5v2, sonnet-frontier/sweep5v2, sonnet-frontier/sweep6}/` (re-graded trials + summary), `development/{CHANGELOG.md, OPEN_ISSUES.md, paper_notes_discussions.md}`.
+
 ## 2026-06-19 — With-tools frontier probe (`tools/sonnet_tools_probe.py`) + Haiku/Sonnet capability ladder
 
 **Change.** Adds `tools/sonnet_tools_probe.py` — a LIVE with-tools agentic-loop probe (Anthropic Messages API + MCP tool execution) for proprietary frontier models, with `--model` (Sonnet 4.6 / Haiku 4.5), `--no-tools` (single-call no-tools mode mirroring the batch path's request shapes), per-trial error handling, and a cost report + full-N projection. With-tools **cannot batch** (multi-turn loop with local MCP execution) → runs live at list price, no −50% discount. Reuses `build_jobs`/`build_messages`/`check_success`/`save_results` for corpus identity.

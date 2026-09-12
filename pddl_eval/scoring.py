@@ -20,6 +20,7 @@ from .chat import (
 from .schemas import (
     SimulateResponse,
     SolveResponse,
+    StateStep,
     ValidateResponse,
 )
 
@@ -131,6 +132,33 @@ def extract_plan_lines(response: str) -> list[str]:
     return plan
 
 
+# Predicate / atom syntax bridge. The no-PDDL-tools model emits PDDL
+# s-expressions `(ontable shaker1)` while the oracle (and the with-tools
+# `get_state_transition` result) emit functional `ontable(shaker1)`. Both denote
+# the same atom; canonicalise to one space-joined `name arg1 arg2` token so the
+# simulate grader's deep-equality compares content, not notation.
+_ATOM_RE = re.compile(r"^\(?\s*([a-z0-9_\-]+)\s*\(?\s*([^()]*)\)?\s*\)?$")
+
+
+def _canon_atom(s) -> str:
+    """Canonicalise one predicate / fluent-key / action string.
+
+    `(name a b)`, `name(a, b)`, `(handempty)`, `handempty` and `handempty()` all
+    map to `"name a b"` / `"handempty"`. Argument *order* is preserved — it is
+    semantically load-bearing (`on(a,b) != on(b,a)`). A string that does not
+    match the atom shape falls back to the prior whitespace-collapsed,
+    lower-cased form, so a genuinely-wrong trajectory still mismatches: the
+    bridge reconciles notation, it never silently widens equality. Idempotent.
+    """
+    t = " ".join(str(s).split()).lower()
+    m = _ATOM_RE.match(t)
+    if not m:
+        return t
+    name, rest = m.group(1), m.group(2).strip()
+    args = [a for a in re.split(r"[\s,]+", rest) if a]
+    return " ".join([name, *args])
+
+
 def _normalize_trajectory(traj) -> list[dict] | None:
     """Canonicalise a trajectory list to a comparable shape.
 
@@ -144,10 +172,13 @@ def _normalize_trajectory(traj) -> list[dict] | None:
       - bare/legacy: per step `{step, action, boolean: list, numeric: dict}`.
 
     All three collapse to `{step, action, boolean, numeric}` where
-    `boolean` is a sorted lower-cased list of TRUE predicate strings
-    (whitespace collapsed) and `numeric` is a dict[str, float] with
-    lower-cased keys. None or missing `action` becomes "". Equality of
-    two normalised trajectories is the grader's success signal.
+    `boolean` is a sorted list of TRUE predicate strings and `numeric` is
+    a dict[str, float]. Predicate strings, numeric keys, and the action
+    are each run through `_canon_atom`, so s-expression `(on a b)` and
+    functional `on(a, b)` notation compare equal (notation is bridged;
+    argument order and content are not). None or missing `action` becomes
+    "". Equality of two normalised trajectories is the grader's success
+    signal.
 
     Returns None when *traj* is not a list or any entry has the wrong
     shape — callers tag this as FR_FORMAT_PARSE_FAIL (model side) or
@@ -191,18 +222,15 @@ def _normalize_trajectory(traj) -> list[dict] | None:
         if not isinstance(numerics, dict):
             return None
 
-        boolean_canon = sorted(" ".join(str(b).split()).lower() for b in boolean_items)
+        boolean_canon = sorted(_canon_atom(b) for b in boolean_items)
         numeric_canon: dict[str, float] = {}
         for k, v in numerics.items():
             try:
-                numeric_canon[str(k).lower()] = float(v)
+                numeric_canon[_canon_atom(k)] = float(v)
             except (TypeError, ValueError):
                 return None
         action_raw = entry.get("action")
-        action_canon = (
-            "" if action_raw is None
-            else " ".join(str(action_raw).split()).lower()
-        )
+        action_canon = "" if action_raw is None else _canon_atom(action_raw)
         out.append({
             "step": entry.get("step"),
             "action": action_canon,
@@ -210,6 +238,38 @@ def _normalize_trajectory(traj) -> list[dict] | None:
             "numeric": numeric_canon,
         })
     return out
+
+
+def _strip_md_fence(raw: str) -> str:
+    """Strip a leading ```/```json fence line and any trailing ``` fence.
+
+    Models emit fenced JSON even under a `format=` constraint. Stripping a
+    known markdown wrapper is NOT prose/regex extraction — the entire
+    remaining text must still parse as one JSON value. Shared by
+    `_safe_pydantic_validate` and the Q1 `_coerce_simulate_trajectory` so both
+    tolerate fences identically.
+    """
+    text = raw.strip()
+    if text.startswith("```"):
+        nl = text.find("\n")
+        if nl >= 0:
+            text = text[nl + 1:]
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+    return text.strip()
+
+
+def _validate_model(model_cls, data):
+    """pydantic-validate already-parsed JSON data; return instance or None.
+
+    Mirrors `_safe_pydantic_validate`'s broad catch but takes a parsed value
+    (dict/list) rather than a raw string, so the Q1 coercion whitelist can try
+    multiple target shapes against one parse without re-serialising.
+    """
+    try:
+        return model_cls.model_validate(data)
+    except Exception:
+        return None
 
 
 def _safe_pydantic_validate(model_cls, raw: str):
@@ -222,21 +282,80 @@ def _safe_pydantic_validate(model_cls, raw: str):
     """
     if not isinstance(raw, str):
         return None
-    text = raw.strip()
-    if text.startswith("```"):
-        # Strip the first fence line and any trailing fence.
-        nl = text.find("\n")
-        if nl >= 0:
-            text = text[nl + 1:]
-        if text.rstrip().endswith("```"):
-            text = text.rstrip()[:-3]
-    data = _safe_json_loads(text.strip())
+    data = _safe_json_loads(_strip_md_fence(raw))
     if data is None:
         return None
-    try:
-        return model_cls.model_validate(data)
-    except Exception:
-        return None
+    return _validate_model(model_cls, data)
+
+
+# Q1 two-metric simulate grader (2026-06-25; pre-registered in
+# development/archive/decoupled/simulate_decisions_and_next_steps.md + archive/plans-executed/q1_grader_plan.md).
+#
+# The pre-PR grader required the no-tools simulate output to validate as the
+# schema-exact {"trajectory":[...]} wrapper; a clean top-level step list or a
+# single step object — content possibly correct — was binned FR_FORMAT_PARSE_FAIL
+# (the "strict-wrapper sub-artifact"). The bounded-coercion whitelist below
+# separates two metrics: state-tracking accuracy (the primary `success`, graded
+# on coerced content) and format-compliance (did the output emit the exact
+# wrapper). FROZEN rules — never widen without a dated decision:
+#   1. parse the ENTIRE output as ONE JSON value (markdown fence tolerated);
+#      no prose/regex extraction, ever;
+#   2. dict with `trajectory` key -> SimulateResponse -> compliant=True;
+#   3. bare top-level list -> wrap -> list[StateStep] -> accept (not compliant);
+#   4. single dict that is a valid StateStep -> wrap -> accept (not compliant);
+#   5. anything else -> parse-fail. Never invent or repair a field.
+
+
+def _coerce_simulate_trajectory(response) -> tuple[list[dict] | None, bool]:
+    """Bounded wrapper-tolerant parse for no-tools simulate (Q1 whitelist).
+
+    Returns `(trajectory_steps, format_compliant)`:
+      * `trajectory_steps` — list of `StateStep.model_dump()` dicts ready for
+        `_normalize_trajectory`, or `None` iff the output is not coercible
+        (caller tags `FR_FORMAT_PARSE_FAIL`).
+      * `format_compliant` — `True` only when the output was the schema-exact
+        `{"trajectory":[...]}` wrapper (rule 2); the coerced list/single-step
+        shapes are accepted but NOT compliant.
+    """
+    if not isinstance(response, str):
+        return None, False
+    data = _safe_json_loads(_strip_md_fence(response))
+    if data is None:
+        return None, False
+    # Rule 2: schema-exact wrapper. A present `trajectory` key signals intent
+    # to comply, so a malformed one is a parse-fail (NOT a fall-through to the
+    # single-step rule) — we never repair it.
+    if isinstance(data, dict) and "trajectory" in data:
+        parsed = _validate_model(SimulateResponse, data)
+        if parsed is None:
+            return None, False
+        return [s.model_dump() for s in parsed.trajectory], True
+    # Rule 3: bare top-level list of valid steps -> wrap.
+    if isinstance(data, list):
+        parsed = _validate_model(SimulateResponse, {"trajectory": data})
+        if parsed is None:
+            return None, False
+        return [s.model_dump() for s in parsed.trajectory], False
+    # Rule 4: single valid step object -> wrap.
+    if isinstance(data, dict):
+        step = _validate_model(StateStep, data)
+        if step is None:
+            return None, False
+        return [step.model_dump()], False
+    # Rule 5: JSON scalar / anything else -> not coercible.
+    return None, False
+
+
+def simulate_format_compliant(response) -> bool:
+    """Format-compliance metric: True iff a no-tools simulate response emitted
+    the schema-exact `{"trajectory":[...]}` wrapper (coerced shapes and
+    parse-fails are False). Pure; shares `_coerce_simulate_trajectory` with
+    `check_success` so the two metrics can never drift. Callers only invoke
+    this for no-tools simulate trials; `TaskResult.format_compliant` stays
+    `None` (not applicable) elsewhere.
+    """
+    _steps, compliant = _coerce_simulate_trajectory(response)
+    return compliant
 
 
 def extract_verdict(response: str) -> bool | None:
@@ -463,17 +582,26 @@ async def check_success(
                 return True, False, FR_TOOL_ERROR
             return True, False, FR_RESULT_MISMATCH
 
-        # PR-4: no-PDDL-tools simulate. Parse SimulateResponse, normalise,
-        # deep-equal against the oracle. No free-text fallback — the
-        # pre-PR-4 keyword check (resp_lower in {"state","after","step"})
-        # is non-discriminative (ISS-002), so failing the JSON path lands
-        # on FR_FORMAT_PARSE_FAIL rather than guessing from substrings.
+        # PR-4 / Q1 (2026-06-25): no-PDDL-tools simulate. Bounded
+        # wrapper-tolerant parse via `_coerce_simulate_trajectory` — the ENTIRE
+        # output must be one JSON value; the schema-exact {"trajectory":[...]}
+        # wrapper, a bare top-level step list, or a single step object are all
+        # accepted (state-tracking is graded on content), anything else is
+        # FR_FORMAT_PARSE_FAIL. No free-text fallback (ISS-002). `success`
+        # returned here is STATE-TRACKING accuracy (the primary metric);
+        # format-compliance is the SEPARATE `simulate_format_compliant` /
+        # `TaskResult.format_compliant` channel.
         if oracle_canon is None:
             return None, False, FR_UNKNOWN
-        parsed = _safe_pydantic_validate(SimulateResponse, response or "")
-        if parsed is None:
+        model_steps, _compliant = _coerce_simulate_trajectory(response or "")
+        if model_steps is None:
             return None, False, FR_FORMAT_PARSE_FAIL
-        model_canon = _normalize_trajectory([s.model_dump() for s in parsed.trajectory])
+        if not model_steps:
+            # Coerced cleanly to an empty trajectory (e.g. {"trajectory": []}).
+            # Distinct from a wrong trajectory — and FR_SIMULATE_EMPTY is a
+            # truncation-override reason, so a budget cut-off is relabelled.
+            return None, False, FR_SIMULATE_EMPTY
+        model_canon = _normalize_trajectory(model_steps)
         if model_canon is None:
             return None, False, FR_FORMAT_PARSE_FAIL
         if model_canon == oracle_canon:
@@ -528,6 +656,7 @@ def relabel_truncated_taxonomy(
     truncated: bool,
     response: str,
     think_mode: str,
+    decoupled: bool = False,
 ) -> str:
     """Read-time relabel: split FR_TRUNCATED_NO_ANSWER into think_overflow vs
     truncated_no_answer based on whether the model emitted any visible response.
@@ -547,7 +676,15 @@ def relabel_truncated_taxonomy(
     The think_mode gate avoids tagging think=off rows where an empty-response
     truncation has no reasoning-spiral explanation (the small Qwen3.5 sizes
     occasionally hit this; ~0.34% of trials).
+
+    `decoupled=True` (decoupled-budget think=on corpus — caller passes it per
+    row via `TaskResult.think_truncated is not None`) DISABLES this relabel:
+    an empty-answer truncation there is an answer-budget cap-hit, not a
+    reasoning spiral, so it must stay FR_TRUNCATED_NO_ANSWER (mirrors the
+    write-time guard in `_classify_step_failure`).
     """
+    if decoupled:
+        return failure_reason
     if not truncated:
         return failure_reason
     if failure_reason not in _LEGACY_RELABEL_CANDIDATES:
@@ -621,6 +758,7 @@ def _classify_step_failure(
     thinking_text: str = "",
     response_text: str = "",
     error: str = "",
+    decoupled: bool = False,
 ) -> tuple[str, bool]:
     """Apply THINK_OVERFLOW / LOOP_EXHAUSTED / truncation overrides.
 
@@ -639,8 +777,17 @@ def _classify_step_failure(
 
     The `thinking_text`/`response_text`/`error` kwargs default to empty
     strings; callers that don't pass them skip the FR_THINK_OVERFLOW step.
+
+    `decoupled=True` (decoupled-budget think=on path) SUPPRESSES the
+    FR_THINK_OVERFLOW step: there `thinking_text` is the *completed* reasoning
+    fed to the answer phase and `done_reason` is the ANSWER phase's, so an
+    empty-answer length-truncation is an ANSWER-budget cap-hit
+    (FR_TRUNCATED_NO_ANSWER), NOT a reasoning spiral. The reasoning-cap signal
+    is carried separately in `TaskResult.think_truncated`. Without this guard
+    the path would mislabel the exact phenomenon it exists to drive down.
     """
-    if (not success
+    if (not decoupled
+        and not success
         and not error
         and not loop_exhausted
         and done_reason == "length"

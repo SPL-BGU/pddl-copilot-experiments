@@ -1,7 +1,7 @@
 """pddl_eval — Eval harness internals for the PDDL Planning Copilot paper.
 
 Split out of run_experiment.py in PR-1 (2026-04-27); see
-development/CHANGELOG.md and development/FRAMEWORK_EXTENSION_PLAN.md.
+development/CHANGELOG.md and development/archive/plans-executed/FRAMEWORK_EXTENSION_PLAN.md.
 
 Module DAG (one-directional, no cycles):
     prompts          — system prompts + per-task templates (no internal deps)

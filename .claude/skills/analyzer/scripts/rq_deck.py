@@ -3124,7 +3124,7 @@ def build_unified_pptx(res: dict, gate_lines_off: list[str]) -> Path:
         "calls (AST 0.6–0.9) that fail to execute (Pass@1 0.2–0.5).",
         notes="Every headline conclusion is ≥9B; the YES verdicts hold from 4B up. Excluded from the "
         "main charts to keep them readable — this slide is its complete record. External calibration "
-        "from the 2026-05-29 baseline-comparison note (development/baseline_comparison_tool_use_benchmarks.md).")
+        "from the 2026-05-29 baseline-comparison note (development/reference/baseline_comparison_tool_use_benchmarks.md).")
 
     # --- token cost + efficiency (think=off; censoring table carries the
     #     cap-hit & failed column) ---

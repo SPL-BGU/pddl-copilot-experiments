@@ -105,7 +105,7 @@ def split_series_by_arm(series: list[dict]) -> list[dict]:
     """Split each loaded series into per-arm series by pooling per_variant
     cells and filtering instances.
 
-    Sweep-5 design (development/sweep_prompt_bank_design.md §0) frames result
+    Sweep-5 design (development/reference/sweep_prompt_bank_design.md §0) frames result
     comparisons by arm — `(no-tools|with-tools) × (neutral|steered)`. The
     existing series is one-per-dir (i.e. per condition); after this split it
     becomes one-per-(dir, arm). Wilson CIs are recomputed on the pooled
@@ -652,7 +652,7 @@ def main():
                     help="comma-separated arm filter applied after --by-arm "
                          "(e.g. 'nt-neut,tl-neut' for the H1 isolation view "
                          "or 'tl-neut,tl-ster' for H2). Requires --by-arm; "
-                         "see development/sweep_prompt_bank_design.md §0 for "
+                         "see development/reference/sweep_prompt_bank_design.md §0 for "
                          "the hypothesis mapping.")
     args = ap.parse_args()
 

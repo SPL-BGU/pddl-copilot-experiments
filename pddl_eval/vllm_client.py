@@ -30,6 +30,11 @@ Knobs translated:
   * think (qwen3 thinking)    → extra_body.chat_template_kwargs.enable_thinking
   * format=<schema dict>      → extra_body.guided_json
   * format="json"             → response_format={"type": "json_object"}
+  * stop=[...]                → stop (OpenAI standard sampling param)
+  * vllm_extra={...}          → merged into extra_body verbatim. Carries
+    vLLM-only request fields the decoupled-budget think path needs:
+    continue_final_message / add_generation_prompt (2-call continuation)
+    and include_stop_str_in_output. See chat_without_tools_decoupled.
 
 Streaming is forced off — tracks vLLM/Qwen3 hermes streaming bug
 vllm-project/vllm#31871 (May 2026) where partial tool_call XML can be
@@ -131,6 +136,8 @@ class VLLMClient:
         keep_alive: str | None = None,  # noqa: ARG002 — server-side concept
         think: bool | None = None,
         format: dict | str | None = None,
+        stop: list[str] | None = None,
+        vllm_extra: dict | None = None,
     ) -> dict:
         oa_messages = _to_openai_messages(messages)
 
@@ -157,8 +164,18 @@ class VLLMClient:
             extra_body["guided_json"] = format
         elif format == "json":
             kwargs["response_format"] = {"type": "json_object"}
+        # vLLM-only request fields (continue_final_message, add_generation_prompt,
+        # include_stop_str_in_output). Merged last so callers can override the
+        # think/format defaults above when a 2-call continuation needs to.
+        if vllm_extra:
+            extra_body.update(vllm_extra)
         if extra_body:
             kwargs["extra_body"] = extra_body
+        # `stop` is a standard OpenAI sampling param (top-level, not extra_body).
+        # vLLM excludes the matched stop string from the output unless
+        # include_stop_str_in_output=True is passed via vllm_extra.
+        if stop:
+            kwargs["stop"] = stop
 
         # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
         # and rejects with HTTP 400. We catch the specific context-overflow

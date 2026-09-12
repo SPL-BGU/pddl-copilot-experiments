@@ -28,6 +28,12 @@
 # `nt-ster` column in the matrix. Each logical column has a uniform
 # 4560-trial denominator (3 variants × 1520 trials/variant).
 #
+# EXCEPTION: `--ntster` (added 2026-08-20). The nt-ster H4 control run is
+# the one submit that DOES pass --include-no-tools-steered, so under that
+# profile the no-tools cell splits into nt-neut + nt-ster, 4560 each
+# against a 9120-row cell file. Do not read an nt-ster column under any
+# other profile — there is nothing to fill it.
+#
 # Arm semantics (which cells get filled by which submit):
 #   no-tools-neutral    (v11-13) — main sweep-6 submit
 #   tools_all-neutral   (v11-13) — main sweep-6 submit (same run as steered)
@@ -44,6 +50,31 @@
 # "archived (canonical sweep-5)" footer; tools_per-task_minimal (retired
 # 2026-05-19) and tools_*_guided (earlier) hit the "skipped (unmatched)"
 # footer. Query archived corpora via the analyzer skill if needed.
+#
+# Profiles:
+#   (default)     sweep-6 anon matrix: 5 models × 6 logical columns,
+#                 RUN_TAG defaults to `sweep6`.
+#   --decoupled   The in-flight split-budget no-tools think=on sweep
+#                 (development/archive/decoupled/decoupled_run_handoff.md, job 18426027).
+#                 Defaults RUN_TAG to `decoupled-thinkon` and trims the
+#                 board to the live grid: 4 Qwens (gemma excluded — no
+#                 <think>) × one column (on / nt-neut). All parsing /
+#                 Δ / ETA / queue logic is dimension-agnostic and reused.
+#                 An explicit RUN_TAG env still overrides the default.
+#   --iss024d     The in-flight ISS-024(d) WITH-TOOLS resolver (jobs
+#                 19293221 Qwens + 19314599 gemma, added 2026-07-12;
+#                 development/tool_call_vs_final_output_grading.md
+#                 §"ISS-024(d) full re-run"). The with-tools twin of
+#                 --decoupled: 5 models × think=on × tools_all_minimal,
+#                 --reasoning-parser none on Qwens (gemma has no reasoning
+#                 parser natively), 72h wall. NOTE: the run emits the FULL
+#                 v11-16 bank (9120/cell) — the 4560 figure below is only
+#                 the neutral (v11-13) denominator this board TRACKS; the
+#                 steered v14-16 rows exist on disk (diagnostic-only per
+#                 paper_notes 2026-07-12). Defaults RUN_TAG to `iss024d-e2e`
+#                 and trims the board to one column (on / tl-neut, 4560).
+#                 Same dimension-agnostic parsing / Δ / ETA / queue path.
+#                 An explicit RUN_TAG env still overrides the default.
 #
 # Output mode (auto by stdout TTY-detect; override with flags):
 #   --terminal / --pretty   ANSI-coloured aligned text (default when TTY)
@@ -66,11 +97,14 @@ REPO_REMOTE="${REPO_REMOTE:-pddl-copilot-experiments}"
 # `anon-probe` run was quarantined. To run status against a
 # differently-tagged set, set:
 #   RUN_TAG=sweep5v2 bash status.sh
-RUN_TAG="${RUN_TAG:-sweep6}"
+# Resolved AFTER arg parsing — the --decoupled profile flips the default to
+# `decoupled-thinkon`, but an explicit RUN_TAG env always wins. Capture the
+# env value (if any) here and finalize once the profile is known.
+RUN_TAG_ENV="${RUN_TAG-}"
 # State cache is namespaced per RUN_TAG so switching probe runs (or
 # resetting to a fresh run-tag) doesn't get poisoned by a prior cache
-# whose keys reference a different cohort.
-STATE_FILE="${STATE_FILE:-$HOME/.cache/cluster-ops-status-${RUN_TAG}.json}"
+# whose keys reference a different cohort. Also finalized post-parse.
+STATE_FILE_ENV="${STATE_FILE-}"
 # Active prompt variants for the in-flight sweep. Trials.jsonl files can
 # carry rows from multiple sweeps (sweep-6 v11-16 may append alongside
 # legacy sweep-4 v5-7 and sweep-3 v0-2 in the same per-cell file since
@@ -91,6 +125,7 @@ STEERED_VARIANTS_RE="${STEERED_VARIANTS_RE:-1[4-6]}"
 mode="auto"
 color="auto"
 bench="5task"
+profile="standard"
 forwarded_args=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -98,8 +133,11 @@ while [[ $# -gt 0 ]]; do
         --terminal|--pretty)    mode="terminal"; forwarded_args+=("$1"); shift ;;
         --no-color)             color="off"; forwarded_args+=("$1"); shift ;;
         --bench)                bench="$2"; shift 2 ;;
+        --decoupled)            profile="decoupled"; shift ;;
+        --iss024d)              profile="iss024d"; shift ;;
+        --ntster)               profile="ntster"; shift ;;
         -h|--help)
-            _show_help 2 40
+            _show_help 2 48
             cat <<'EOF'
 
   --bench {5task,planbench}  Pick the matrix to render. Default = 5task
@@ -107,6 +145,25 @@ while [[ $# -gt 0 ]]; do
                              shape). planbench delegates to the sibling
                              status_planbench.sh which renders model ×
                              task × config from results/planbench/.
+  --decoupled                Track the in-flight split-budget no-tools
+                             think=on sweep (RUN_TAG defaults to
+                             `decoupled-thinkon`): 4 Qwens × one column
+                             (on / nt-neut). See the Profiles note above.
+  --iss024d                  Track the in-flight ISS-024(d) with-tools
+                             resolver (jobs 19293221 Qwens + 19314599
+                             gemma; RUN_TAG defaults to `iss024d-e2e`):
+                             5 models × one column (on / tl-neut). See
+                             the Profiles note above.
+  --ntster                   Track the nt-ster H4 control run (jobs
+                             20392775 off-mode + 20392801 on-mode;
+                             RUN_TAG defaults to `ntster-h4`). This is
+                             the ONLY profile that renders the nt-ster
+                             column: it splits each no-tools cell into
+                             its neutral (v11-13) and steered (v14-16)
+                             halves, 4560 each against the 9120-row cell
+                             file. gemma has no think=on leg by design,
+                             so that slot renders n/a and is excluded
+                             from the roll-up denominator.
 EOF
             exit 0 ;;
         *)
@@ -125,15 +182,31 @@ elif [[ "$bench" != "5task" ]]; then
     exit 2
 fi
 
+# Finalize RUN_TAG + STATE_FILE now that the profile is known. --decoupled
+# selects the in-flight split-budget no-tools think=on corpus; --iss024d the
+# in-flight ISS-024(d) with-tools resolver; standard tracks the sweep-6 anon
+# matrix. An explicit env value always wins.
+if [[ "$profile" == "decoupled" ]]; then
+    RUN_TAG="${RUN_TAG_ENV:-decoupled-thinkon}"
+elif [[ "$profile" == "iss024d" ]]; then
+    RUN_TAG="${RUN_TAG_ENV:-iss024d-e2e}"
+elif [[ "$profile" == "ntster" ]]; then
+    RUN_TAG="${RUN_TAG_ENV:-ntster-h4}"
+else
+    RUN_TAG="${RUN_TAG_ENV:-sweep6}"
+fi
+STATE_FILE="${STATE_FILE_ENV:-$HOME/.cache/cluster-ops-status-${RUN_TAG}.json}"
+
 mkdir -p "$(dirname "$STATE_FILE")"
 
 # Single SSH: dump queue + per-cell trial counts as two delimited blocks.
-remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" "$STEERED_VARIANTS_RE" <<'REMOTE'
+remote_payload=$(ssh "${REMOTE_USER}@${REMOTE_HOST}" "bash -s" "$REMOTE_USER" "$REPO_REMOTE" "$ACTIVE_VARIANTS_RE" "$STEERED_VARIANTS_RE" "$RUN_TAG" <<'REMOTE'
 set -eo pipefail
 USER="$1"
 REPO="$2"
 VARIANTS_RE="$3"
 STEERED_RE="$4"
+RUN_TAG="$5"
 echo "=== queue ==="
 # -r expands array ranges so each pending task is a separate row (otherwise
 # squeue collapses pending arrays like 17389411_[6-9] into one row, breaking
@@ -173,15 +246,25 @@ print(len(seen))
 PY
 }
 shopt -s nullglob
+# Perf: the JSON dedup below is the dominant cost (a fresh python3 + a
+# full-file parse, TWICE per dir). The local parser only renders dirs whose
+# basename ends in `_<RUN_TAG>`; everything else it routes to an archived/
+# ignored footer BY NAME and never reads its trial count. So only parse the
+# active-tag dirs and emit a cheap `0\t0\t<name>` for the rest — the footers
+# (which count dirs, not trials) stay accurate while the expensive parse
+# runs on just the live cohort (e.g. 4 dirs for --decoupled instead of all).
+# The `_` anchor in `*_$RUN_TAG` prevents a short tag from partial-matching a
+# longer one (e.g. tag `sweep5v2` never matches `..._sweep5v2-final`).
 for d in "$HOME/$REPO/results/"slurm_*/; do
-    if [ -f "$d/trials.jsonl" ]; then
+    base=$(basename "$d")
+    if [ -f "$d/trials.jsonl" ] && [ -n "$RUN_TAG" ] && [[ "$base" == *_"$RUN_TAG" ]]; then
         n_active=$(grep_count "$VARIANTS_RE" "$d/trials.jsonl")
         n_steered=$(grep_count "$STEERED_RE" "$d/trials.jsonl")
     else
         n_active=0
         n_steered=0
     fi
-    printf '%s\t%s\t%s\n' "$n_active" "$n_steered" "$(basename "$d")"
+    printf '%s\t%s\t%s\n' "$n_active" "$n_steered" "$base"
 done
 echo "=== manifests ==="
 # Emit `<arrayjid>\t<idx>\t<model>\t<think>\t<cond>` rows for every cells.tsv
@@ -202,11 +285,11 @@ echo "=== end ==="
 REMOTE
 )
 
-python3 - "$remote_payload" "$STATE_FILE" "$mode" "$color" "$RUN_TAG" <<'PY'
+python3 - "$remote_payload" "$STATE_FILE" "$mode" "$color" "$RUN_TAG" "$profile" <<'PY'
 import json, os, re, sys, time
 
-payload, state_file, mode_arg, color_arg, run_tag = (
-    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+payload, state_file, mode_arg, color_arg, run_tag, profile = (
+    sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
 
 # ---- Roster + dimensions (matches submit_with_rtx.sh --all roster) ----
 # 2026-05-18 swap: dropped gemma4_31b dense Ollama, added gemma4_26b-a4b
@@ -238,12 +321,70 @@ CELLS = [("on","no-tools-neutral"),
          ("on","tools_all-neutral"),("on","tools_all-steered"),
          ("off","no-tools-neutral"),
          ("off","tools_all-neutral"),("off","tools_all-steered")]
-COL_HEADERS = ["on / nt-neut","on / tl-neut","on / tl-ster",
-               "off / nt-neut","off / tl-neut","off / tl-ster"]
+# Logical cond → short column tag, shared by the header builders and
+# cell_label so every renderer derives its labels from CELLS (no drift).
+SHORT_CELL = {"no-tools-neutral":  "nt-neut",
+              "no-tools-steered":  "nt-ster",
+              "tools_all-neutral": "tl-neut",
+              "tools_all-steered": "tl-ster"}
+# (model, think) slots that do not exist BY DESIGN for the active profile.
+# Kept distinct from "empty" so an intentionally-absent cell never renders as
+# a stalled or pending one — that misread is the whole reason this exists.
+EXCLUDED_CELLS = set()
+# --decoupled profile (development/archive/decoupled/decoupled_run_handoff.md, job 18426027):
+# the split-budget no-tools think=on sweep fills exactly ONE logical column
+# (on / nt-neut) for the 4 Qwens — gemma is excluded (no <think>, so its
+# think=on truncation isn't a decoupling case). Trim ROSTER + CELLS to the
+# live grid so the board isn't 5×6 mostly-empty cells; every downstream
+# parser/dedup/Δ/ETA/queue path is dimension-agnostic and unchanged.
+SWEEP_LABEL = "sweep-6"
+HDR_NOTE = "denom 4560/col · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16"
+if profile == "decoupled":
+    ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "qwen3_6_35b"]
+    CELLS = [("on", "no-tools-neutral")]
+    SWEEP_LABEL = "decoupled"
+    HDR_NOTE = "denom 4560 · no-tools v11-13 · think=on · split-budget (8192 think / per-task answer)"
+elif profile == "iss024d":
+    # ISS-024(d) with-tools resolver: the with-tools twin of --decoupled.
+    # Started as 4 Qwens × think=on × tools_all_minimal (job 19293221,
+    # 2026-07-11). Gemma was added 2026-07-12 (job 19314599, same
+    # `iss024d-e2e` run-tag) — gemma was Qwen-excluded from the original
+    # submit yet was 81% censored on validate_plan, so it doubles as extra
+    # signal (see development/tool_call_vs_final_output_grading.md:484-495).
+    # Full 5-model roster, single neutral prompt bank (v11-13),
+    # --reasoning-parser none on Qwens (gemma has no reasoning parser
+    # natively), 72h wall. One logical column (on / tl-neut); the steered
+    # arm is not run (COND_SPLIT collapses tools_all_minimal to its
+    # neutral half below). Every downstream parse/dedup/Δ/ETA/queue path
+    # is unchanged.
+    ROSTER = ["Qwen3_5_0_8B", "Qwen3_5_4B", "Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]
+    CELLS = [("on", "tools_all-neutral")]
+    SWEEP_LABEL = "iss024d"
+    HDR_NOTE = "denom 4560 · with-tools (tools_all_minimal) v11-13 · think=on · parser-off · jobs 19293221+19314599"
+elif profile == "ntster":
+    # nt-ster H4 control (development/reference/ntster_h4_prereg.md; jobs 20392775
+    # off-mode + 20392801 on-mode, submitted 2026-08-20). This is the ONLY
+    # profile that populates an nt-ster column, because it is the only run
+    # that passes --include-no-tools-steered: both arms land in ONE 9,120-row
+    # cell file and the split here is a row-level grep on prompt_variant.
+    #
+    # think=off covers all three models on the plain apparatus; think=on
+    # covers 9B + 35b only, on the decoupled-budget apparatus — gemma has no
+    # <think> tokens, so it was deliberately excluded (prereg §2.3(B) scope
+    # note). That absence is marked below rather than left to look empty.
+    ROSTER = ["Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]
+    CELLS = [("off", "no-tools-neutral"), ("off", "no-tools-steered"),
+             ("on",  "no-tools-neutral"), ("on",  "no-tools-steered")]
+    EXCLUDED_CELLS = {("gemma4_26b-a4b", "on")}
+    SWEEP_LABEL = "nt-ster H4"
+    HDR_NOTE = ("denom 4560/arm (9120/cell file) · no-tools · neut=v11-13 "
+                "ster=v14-16 · off=plain 3 models, on=decoupled 9B+35b "
+                "(gemma n/a by design) · jobs 20392775+20392801")
+COL_HEADERS = [f"{th} / {SHORT_CELL.get(c, c)}" for th, c in CELLS]
 # Uniform per-column denominator: each logical column covers 3 variants ×
 # 1520 trials/variant = 4560. 1520 trials/variant is the sweep-3-onward
 # corpus (CHANGELOG.md:714).
-DENOM = {"no-tools-neutral":4560,
+DENOM = {"no-tools-neutral":4560, "no-tools-steered":4560,
          "tools_all-neutral":4560, "tools_all-steered":4560}
 # Maps a logical (split) cond to the underlying dirname cond so queue/
 # running attribution from the sbatch layer fans back out to its logical
@@ -251,6 +392,7 @@ DENOM = {"no-tools-neutral":4560,
 # `cond=tools_all_minimal` sbatch.
 LOGICAL_TO_DIR_COND = {
     "no-tools-neutral":  "no-tools",
+    "no-tools-steered":  "no-tools",
     "tools_all-neutral": "tools_all_minimal",
     "tools_all-steered": "tools_all_minimal",
 }
@@ -268,6 +410,29 @@ TIME_LIMIT_H_BY_MODEL = {
     "qwen3_6_35b": 48, "gemma4_26b-a4b": 48,
 }
 TIME_LIMIT_H_DEFAULT = 48
+# The decoupled sweep (job 18426027) was submitted with --time 48:00:00 for
+# ALL 4 cells, not the pack3 12h default — so the small Qwens get a 48h wall
+# too. Override the per-model budgets here, else the watch-list would falsely
+# flag 4B/9B as "over 0.9×12h" when they have ~36h of headroom remaining.
+if profile == "decoupled":
+    TIME_LIMIT_H_BY_MODEL = {m: 48 for m in ROSTER}
+# ISS-024(d) (jobs 19293221 Qwens + 19314599 gemma) was submitted
+# --time 72:00:00 (3-00:00:00) for all 5 cells; give every model a 72h
+# wall so the watch-list doesn't falsely flag the small Qwens (pack3 12h
+# default) as over-budget when they have headroom.
+elif profile == "iss024d":
+    TIME_LIMIT_H_BY_MODEL = {m: 72 for m in ROSTER}
+
+# Per-(model, think) wall override. The by-model table cannot express nt-ster,
+# whose two submits carry DIFFERENT walls: off-mode asked 5-00:00:00 and
+# on-mode 7-00:00:00 (the 9B on-cell projects to ~105h, which overruns 5 days
+# once the +30% node-speed spread is applied). Collapsing both to one number
+# would either false-flag every off cell or silently under-watch the one cell
+# that can actually time out. Consulted before TIME_LIMIT_H_BY_MODEL.
+TIME_LIMIT_H_BY_CELL = {}
+if profile == "ntster":
+    TIME_LIMIT_H_BY_CELL = {(m, "off"): 120 for m in ROSTER}
+    TIME_LIMIT_H_BY_CELL.update({(m, "on"): 168 for m in ROSTER})
 
 # Job-name short-cond → full cond (used when array tasks have per-cell names).
 # `tools-pt`/`tools_pt` keys retained for backwards-compatibility with
@@ -329,6 +494,20 @@ COND_SPLIT = {
     "no-tools":          ("no-tools-neutral",  None),
     "tools_all_minimal": ("tools_all-neutral", "tools_all-steered"),
 }
+# ISS-024(d) runs the neutral with-tools bank only (v11-13; the decoupled
+# apparatus dropped the steered arm). Collapse tools_all_minimal to its
+# neutral half so no phantom, permanently-0 tl-ster column is populated —
+# n_neutral is still n_active(1[1-6]) − n_steered(1[4-6]) = v11-13, and the
+# steered slice is discarded rather than rendered.
+if profile == "iss024d":
+    COND_SPLIT = {"tools_all_minimal": ("tools_all-neutral", None)}
+# nt-ster H4 is the one run that DOES emit the no-tools steered arm
+# (--include-no-tools-steered), so its no-tools dir splits into both halves
+# instead of discarding the steered slice. Both arms live in one 9,120-row
+# cell file, interleaved by one process against one vLLM server, which is
+# exactly why the H4 contrast has zero config drift between the arms.
+elif profile == "ntster":
+    COND_SPLIT = {"no-tools": ("no-tools-neutral", "no-tools-steered")}
 tag_suffix = "_" + run_tag if run_tag else ""
 counts, unknown, archived_canonical, archived_legacy = {}, [], [], []
 malformed = 0   # finding #10: count silently-dropped count_raw lines and warn at end.
@@ -565,10 +744,7 @@ def cell_label(cell):
     m, th, c = cell
     # The `.get(c, c)` fallback prints any unmapped cond as-is — safe for
     # an unexpected cache key (renders as itself instead of crashing).
-    short = {"no-tools-neutral":  "nt-neut",
-             "tools_all-neutral": "tl-neut",
-             "tools_all-steered": "tl-ster"}.get(c, c)
-    return f"{DISPLAY[m]} {th}/{short}"
+    return f"{DISPLAY[m]} {th}/{SHORT_CELL.get(c, c)}"
 
 def parse_elapsed_h(s):
     """squeue %M: 'D-HH:MM:SS' | 'HH:MM:SS' | 'MM:SS'."""
@@ -584,9 +760,14 @@ def parse_elapsed_h(s):
 
 # ---- Roll-up totals (shared by both renderers) ----
 done_cnt = sum(1 for d in deltas.values() if d["now"] >= d["denom"])
-total_expected = len(ROSTER) * len(CELLS)
+# Cells excluded by design are removed from BOTH the count and the trial
+# denominator. Leaving them in would understate coverage forever and make a
+# finished run read as permanently incomplete.
+LIVE_SLOTS = [(m, th, c) for m in ROSTER for th, c in CELLS
+              if (m, th) not in EXCLUDED_CELLS]
+total_expected = len(LIVE_SLOTS)
 total_now = sum(d["now"] for d in deltas.values())
-total_denom = len(ROSTER) * sum(DENOM[c] for _, c in CELLS)
+total_denom = sum(DENOM[c] for _, _, c in LIVE_SLOTS)
 coverage = (100*total_now/total_denom) if total_denom else 0
 
 watch = []
@@ -603,7 +784,8 @@ for cell, d in deltas.items():
     if dir_cell not in cell_running: continue
     seen_dirs.add(dir_cell)
     elapsed_h = parse_elapsed_h(cell_running[dir_cell]["elapsed"])
-    budget_h = TIME_LIMIT_H_BY_MODEL.get(m, TIME_LIMIT_H_DEFAULT)
+    budget_h = TIME_LIMIT_H_BY_CELL.get(
+        (m, th), TIME_LIMIT_H_BY_MODEL.get(m, TIME_LIMIT_H_DEFAULT))
     # Watch lines now name the dir-level sbatch (e.g. "Qwen3.5:9B on/tools_all")
     # since the ETA covers BOTH neutral and steered halves of that run.
     dir_label = f"{DISPLAY[m]} {th}/{LOGICAL_TO_DIR_COND.get(c, c)}"
@@ -634,7 +816,7 @@ def render_markdown():
             out.append(f"- ▶🆕 **{cell_label(cell)}** started ({n}/{DENOM[cell[2]]} trials)")
         out.append("")
 
-    out.append(f"### Per-cell progress · sweep-6 ({run_tag}) · denom 4560/col · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16")
+    out.append(f"### Per-cell progress · {SWEEP_LABEL} ({run_tag}) · {HDR_NOTE}")
     out.append("| Model | " + " | ".join(COL_HEADERS) + " |")
     out.append("|" + "|".join(["---"] * (1 + len(COL_HEADERS))) + "|")
     icon_md = {"done":"✓", "growing":"▶", "stalled":"⏸",
@@ -643,6 +825,9 @@ def render_markdown():
         row = [f"**{DISPLAY[m]}**"]
         for th, c in CELLS:
             cell = (m, th, c)
+            if (m, th) in EXCLUDED_CELLS:
+                row.append("_n/a_")
+                continue
             st = cell_status(cell)
             if cell in counts:
                 n = counts[cell]; denom = DENOM[c]
@@ -751,9 +936,8 @@ def render_terminal(use_color):
 
     # -- Per-cell progress matrix
     out.append(H2("Per-cell progress")
-               + DIM + f"  sweep-6 ({run_tag}) · denom 4560/col · nt=no-tools · tl=tools_all · neut=v11-13 · ster=v14-16" + RESET)
-    short_hdrs = ["on/nt-neut", "on/tl-neut", "on/tl-ster",
-                  "off/nt-neut","off/tl-neut","off/tl-ster"]
+               + DIM + f"  {SWEEP_LABEL} ({run_tag}) · {HDR_NOTE}" + RESET)
+    short_hdrs = [f"{th}/{SHORT_CELL.get(c, c)}" for th, c in CELLS]
     MODEL_W = 14   # "Qwen3.5:0.8B" = 12 + slack
     CELL_W  = 13   # 6 cols leaves room to widen by 1 for slightly easier reading
     header = _pad("Model", MODEL_W) + "".join(_pad(h, CELL_W, "left") for h in short_hdrs)
@@ -763,6 +947,9 @@ def render_terminal(use_color):
         row = _pad(DISPLAY[m], MODEL_W)
         for th, c in CELLS:
             cell = (m, th, c)
+            if (m, th) in EXCLUDED_CELLS:
+                row += _pad(f"{DIM}n/a{RESET}", CELL_W)
+                continue
             st = cell_status(cell)
             icon, col = ICONS[st]
             if cell in counts:

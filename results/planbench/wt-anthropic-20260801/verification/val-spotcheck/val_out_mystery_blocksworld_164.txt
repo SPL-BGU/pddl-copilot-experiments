@@ -1,0 +1,11 @@
+CMD: /Users/omereliyahu/personal/pddl-copilot-experiments/external/LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate /Users/omereliyahu/personal/pddl-copilot-experiments/external/LLMs-Planning/plan-bench/instances/blocksworld/mystery/generated_domain.pddl /Users/omereliyahu/personal/pddl-copilot-experiments/external/LLMs-Planning/plan-bench/instances/blocksworld/mystery/generated_basic/instance-164.pddl /private/tmp/claude-501/-Users-omereliyahu-personal-pddl-copilot-experiments/4721bdc4-1a3f-4ecb-86e9-672fa71b56d1/scratchpad/val-spotcheck/plan_mystery_blocksworld_164.txt
+
+Checking plan: /private/tmp/claude-501/-Users-omereliyahu-personal-pddl-copilot-experiments/4721bdc4-1a3f-4ecb-86e9-672fa71b56d1/scratchpad/val-spotcheck/plan_mystery_blocksworld_164.txt
+Plan executed successfully - checking goal
+Plan valid
+Final value: 2 
+
+Successful plans:
+Value: 2
+ /private/tmp/claude-501/-Users-omereliyahu-personal-pddl-copilot-experiments/4721bdc4-1a3f-4ecb-86e9-672fa71b56d1/scratchpad/val-spotcheck/plan_mystery_blocksworld_164.txt 2 
+

@@ -1006,7 +1006,7 @@ def fig_tokens(save_path: Path, only_success: bool = False,
     "how verbose is the model under this arm".
 
     Each bar carries a top label `mean (m:NN)` where `m:NN` is the median —
-    a sweep-5 design-doc primary outcome (development/sweep_prompt_bank_design.md
+    a sweep-5 design-doc primary outcome (development/reference/sweep_prompt_bank_design.md
     §0) that's robust to truncation outliers. The inset (`f:NN%`) remains the
     full-cell failure rate.
     """

@@ -385,7 +385,7 @@ def test_normalize_trajectory(r: TestResults):
     ]
     canon_spaced = f(spaced)
     r.check_eq("action whitespace + case canonical",
-               canon_spaced[1]["action"], "(pick-up a)")
+               canon_spaced[1]["action"], "pick-up a")
 
     # Mismatch: boolean differs → not equal.
     diff_boolean = [
@@ -408,6 +408,51 @@ def test_normalize_trajectory(r: TestResults):
         {"step": 0, "action": None, "state": ["clear(a)"]},
     ]
     r.check_eq("list state returns None", f(bad_state_list), None)
+
+    # Predicate-syntax bridge (frontier simulate fix): the no-tools model emits
+    # PDDL s-expressions while the oracle emits functional syntax — same atoms,
+    # different notation. They MUST canonicalise equal (boolean preds, numeric
+    # keys, and the action string all bridged).
+    sexpr_model = [
+        {"step": 0, "action": None,
+         "state": {"boolean": ["(ontable shaker1)", "(handempty)",
+                               "(dispenses dispenser1 ingredient1)"],
+                   "numeric": {"(level shaker1)": 2}}},
+        {"step": 1, "action": "(grasp left shot1)",
+         "state": {"boolean": ["(holding left shot1)"], "numeric": {}}},
+    ]
+    func_oracle = [
+        {"step": 0, "action": None,
+         "boolean_fluents": {"ontable(shaker1)": True, "handempty": True,
+                             "dispenses(dispenser1, ingredient1)": True},
+         "numeric_fluents": {"level(shaker1)": 2.0}},
+        {"step": 1, "action": "grasp(left, shot1)",
+         "boolean_fluents": {"holding(left, shot1)": True}, "numeric_fluents": {}},
+    ]
+    r.check_eq("s-expr model == functional oracle (predicate-syntax bridge)",
+               f(sexpr_model), f(func_oracle))
+
+    # The bridge reconciles notation only — it must NOT widen equality. Swapping
+    # one predicate's argument order is genuinely different content.
+    swapped_args = [
+        {"step": 0, "action": None,
+         "state": {"boolean": ["(ontable shaker1)", "(handempty)",
+                               "(dispenses dispenser1 ingredient1)"],
+                   "numeric": {"(level shaker1)": 2}}},
+        {"step": 1, "action": "(grasp left shot1)",
+         "state": {"boolean": ["(holding shot1 left)"], "numeric": {}}},
+    ]
+    r.check("arg order is load-bearing (no false merge)",
+            f(swapped_args) != f(func_oracle))
+
+    # Idempotency: re-canonicalising an already-canon trajectory is stable.
+    canon_once = f(sexpr_model)
+    remodel = [
+        {"step": s["step"], "action": s["action"],
+         "state": {"boolean": s["boolean"], "numeric": s["numeric"]}}
+        for s in canon_once
+    ]
+    r.check_eq("normalize is idempotent", f(remodel), canon_once)
 
 
 def main():

@@ -1,0 +1,136 @@
+# NUMBERS.md — the one lookup before you quote a figure
+
+**Purpose.** Several headline figures exist at more than one value across the docs,
+because a reading was revised after the first write-up. Every stale value is
+banner-marked where it lives, but that means trusting a banner in each of six files.
+This table replaces that: **one row per figure, the frozen value, where it is
+provenanced, and the readings it replaces.**
+
+**Rule.** Before any figure enters paper prose, check it here. If it is not in this
+table, run `/verify-claims` against the canonical corpora
+(`results/sweep5v2-live` + `*_sweep6`; **never** `results/sweep5-cluster-20260530`,
+a stale partial mirror). Every value below was re-verified against its provenance
+file on 2026-08-29.
+
+*Last refreshed: 2026-09-08 (Job 2 delivered-surface block added).*
+
+## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
+
+Provenance for all rows: `planbench/planbench_wt_results_20260803.md`.
+Binding constraints on use: `planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`.
+
+| figure | **quote this** | line | do NOT quote |
+|---|---|---|---|
+| clean WT accuracy | **68.3** [64.5, 71.9], 410/600 — *first-draw* | L23, L103 | **69.7** (last-attempt reading, L17) |
+| clean WT paired Δ vs matched-NT | **+20.5pp**, b=202/c=79, McNemar **p=1.38e-13** | L23 | **+21.8pp**, p=2.7e-15 (last-attempt, L32) |
+| Mystery WT | **71.8** [68.1, 75.3] vs NT **0.0** — paired Δ +71.8pp | L19, L30 | — |
+| bare-NT clean | **43.8** [39.9, 47.8], 263/600 — CI-disjoint above GPT-4 | L108, L196 | — |
+| GPT-4 reference line (2023, published grader) | clean **34.3** [30.6, 38.2]; Mystery **4.3** | L102, L198 | — *(reference line, never a comparator)* |
+| matched-NT stripped-block regrade | **4.3** [3.0, 6.3], 26/600 | L254 | graded **0.0** — carries the injection caveat |
+| formalization_match | clean **96.3** [94.5, 97.6] · Mystery **97.8** [96.3, 98.7] | L147 | — |
+
+The first-draw-vs-last-attempt split is Omer's 2026-08-06 call ("the 1 pt is not
+worth the ambiguity"). Cause: 18 instances were re-attempted on a resume and are
+effectively best-of-2 while every other instance is single-shot; first-draw counts
+the re-draws as failures. Full derivation: results doc deviation row 1 (L293).
+
+## Frontier e2e — delivered vs tool-verified
+
+Provenance: `sonnet_wt_vs_haiku_e2e_memo.md` (canonical corpus, variant 11,
+`e2e_strict`). **Delivered is the primary surface**; tool-verified is the mechanism
+layer (journal memo §3 / D-J2).
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| solve delivered, with tools | **95.0** [88.8, 97.8] — *both* Sonnet and Haiku; tool-verified 100.0, gap **+5.0pp** | **13.5% — RETRACTED**, an overlay grading artifact |
+| simulate delivered, with tools | **bounds, not points**: Sonnet **[49.0, 62.0]**, Haiku **[52.0, 64.0]** | **0% — RETRACTED**, same artifact |
+| simulate delivered↔tool-verified gap | ≈37–50pp Sonnet · ≈33–45pp Haiku (length-driven) | a single pooled "≈35–45" figure |
+| simulate, no-tools | **bounds after 07-15 de-censoring** (pooled table 07-17): Sonnet canonical ⟨41.7, 61.3⟩ (c59/300), anon ⟨36.3, 57.7⟩ (c64/300); Haiku canonical ⟨38, 68⟩ (c30/100) | **[0, 100]** (pre-de-censoring memo row) and **45.0 / 38.3 exact points** (in the pre-reframe tex; reproduce from no sanctioned artifact — see `job2_delivered_reframe_worknote.md` §3(e)) |
+| validation tasks (vd/vp/vplan) | gap ≈0.0pp; delivered ≈ tool-verified | — |
+
+The retracted 13.5 / 0.0 pair is the single most dangerous stale number in the tree:
+it was published in earlier drafts before the overlay bug was found. Anything quoting
+a frontier solve or simulate figure below ~90 / outside those bands is pre-retraction.
+
+## Job 2 — the delivered surface (batches 1+2, 2026-09-07/08)
+
+Provenance: `job2_delivered_reframe_worknote.md` §2 (verdict table, derived from
+`results/derived/e2e_overlay/pooled_e2e_table.csv`, 2026-07-17) and §8 (batch-2
+tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (both UNPUSHED, review gate). Notation: Wilson `[a, b]`; censoring bounds `⟨a, b⟩`, never resolved.
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| open-roster availability verdicts, think=off, delivered (sweep5v2-live, v11–13) | **13/25 cells UNDECIDED**; headline ≥9B: vd FAV/FAV/FAV (9B/Gemma/35B); vp FAV / knife-edge (fails √2.7) / UNDECIDED; vplan UNDECIDED ×3; solve exploratory-FAV (9B, +0.9pp margin) / UNDECIDED / UNDECIDED; simulate UNDECIDED ×3 | the memo's "exactly 2/25 UNDECIDED" (mode-pooled computation) |
+| 9B validate_domain delivered | **⟨99.7, 100.0⟩** (359/360, c1) vs unaided 25.6 | — |
+| gemma validate_plan, canonical delivered | **⟨6.6, 99.6⟩** (c2790/3000), UNDECIDED; the −67pp harm is a **mechanism-layer** claim | "−67pp delivered" |
+| gemma validate_plan, full-storage rerun (iss024d, think=on) | delivered **⟨30.0, 63.1⟩** vs tool-verified 0.9 — separate apparatus, within-corpus only | as a resolution of the canonical cell |
+| frontier NT simulate, v11 slice (funnel NEED line) | Sonnet **⟨34, 53⟩** (c19/100); Haiku **⟨38, 68⟩** (c30/100) | 45.0 / 38.3 exact points (retired) |
+| frontier CALL rate, with-tools plain, every task | **100.0%** both tiers | — |
+| delivered cost-of-pass multiplier, pooled ≥9B, tl-ster ÷ nt-neut (canonical) | solve **0.65–1.64×**; vd 2.81–2.91×; vp 4.41–4.86×; vplan 4.11–5.16×; simulate not identified | the mechanism-layer 0.3–0.4× as a delivered figure |
+| frontier delivered cost-of-pass, solve | Sonnet **3.1×** (18.6K vs 6.0K tokens/pass); Haiku **6.1×** (48.5K vs 8.0K) | — |
+| frontier delivered cost-of-pass, simulate | Sonnet ⟨83.5K, 105.7K⟩ vs NT ⟨9.8K, 15.3K⟩ (**5.5–10.8×**); Haiku ⟨72.9K, 89.7K⟩ vs ⟨7.7K, 13.8K⟩ (5.3–11.6×) | — |
+| validate_domain balanced accuracy, delivered, steered arm | 9B **⟨100, 100⟩**; Gemma **⟨92.2, 95.0⟩**; 35B **⟨82.7, 99.2⟩** vs unaided 53.3 / 74.0 / 64.7 (plain: ⟨99.2,100⟩ / ⟨87.3,94.2⟩ / ⟨77.2,97.5⟩) | mechanism-layer 95–100 as delivered |
+| PlanBench funnel stages (Haiku WT, n=600) | clean FORMALIZE 96.3 → CALL 100 → plan found 69.7 → delivered **68.3** (first-draw); Mystery 97.8 → 100 → 95.3 → **71.8** | last-attempt 69.7 delivered |
+| frontier budget probe | **NOT RUN** — prereg RATIFIED 09-08, amended to budget **64,000** + analysis FROZEN 09-10 (`frontier_budget_probe_prereg.md` §8/§11); reference anatomy Sonnet 49 OK / 25 LEN-FIT / 4 LEN-NOFIT / 3 DECLINE / 19 ET-FAIL, Haiku 52/17/1/1 OVERFLOW/2 SNAP/14/12/1 (re-derived under 64,000, unchanged) | any probe number; the 65,536 budget and $217 cap |
+
+## nt-ster H4 — steering falsification control (CLOSED 2026-08-29)
+
+Provenance for all rows: `ntster_h4_final_readout_20260829.md`.
+Design of record: `reference/ntster_h4_prereg.md`. Executed deviations: its §9.1.
+
+**Paper-level branch = PASS** — all six units PASS, all 8 ELIGIBLE task cells
+EQUIVALENT. Surface = delivered on **determinate** rows (censored rows excluded and
+bounded, §2.3(C)), margin ±5pp, 90% clustered intervals, governing interval = the wider
+of the domain (k=20) and size-weighted problem (realized k=220) clusterings.
+
+**REVISED 2026-08-30** after the PR #96 correctness review (prereg §9.2 deviations
+3–9): the code was fixed and re-frozen and every figure regenerated. Verdicts
+unchanged; every Δ̂, rate and MDE below is the corrected value — the pre-revision
+values (−3.03 4B, MDE 6.47–6.80/7.11, factorial +0.83/−0.00, "mechanism VOID",
+4B simulate −14.00) are all stale, do not quote them.
+
+| figure | **quote this** | line | do NOT quote |
+|---|---|---|---|
+| the attribution, matched cell | gemma `validate_plan` `think=off`: **+72.0pp with tools vs +0.63pp [−0.46, +1.73] without** | L64-65 | — *(this is the sentence the control exists to license; bit-identical across the 08-30 revision)* |
+| Qwen3.5:4B off | **−1.07 [−2.32, +0.17]**, 60.32 → 58.75% | L36 | −3.03 [−4.83, −1.23] (pre-revision estimator) |
+| Qwen3.5:9B off | **+1.25 [+0.01, +2.50]**, 65.58 → 66.71% | L37 | −0.18 [−1.89, +1.52] (pre-revision) |
+| Qwen3.5:9B on | **+1.87 [+0.69, +3.06]**, 69.71 → 71.68% | L38 | +1.83 [−0.28, +3.94] (pre-revision); the 08-22 reading — **void**, 0% success |
+| gemma4:26b-a4b off | **+0.53 [−0.29, +1.36]**, 77.83 → 78.33% | L39 | +0.52 [−0.95, +1.99] (pre-revision) |
+| qwen3.6:35b off | **+0.16 [−0.89, +1.21]**, 78.05 → 77.98% | L40 | +1.34 [−0.40, +3.08] (pre-revision) |
+| qwen3.6:35b on | **−0.46 [−1.33, +0.42]**, 83.57 → 83.11% | L41 | +0.49 [−1.37, +2.35] (pre-revision); the 08-22 reading — **void** |
+| realized MDE | **5.82–6.25pp** per unit | L21-28 | 6.47–6.80 (stale, and it was wrong even pre-revision — the true pre-revision range was 6.47–7.11) |
+| §4(b) factorial interaction | 9B **+8.12 [+4.61, +11.63]** (replicated) · 35b **+2.62 [+0.74, +4.50]** (excludes 0, sign-mismatch vs a −0.11pp May reference) — clause **DROPS** | L367-368 | +0.83 / −0.00 "neither excludes zero" (pre-revision, censored-as-success on both legs) |
+| paper-level branch | **PASS** | L17 | **INCONCLUSIVE** — the 08-22 partial reading, when the two on-mode cells were void |
+
+**Two use constraints.**
+
+- **§5's PASS sentence does NOT carry the "replicated attribution" clause.** 9B now
+  fully replicates and both interactions exclude zero, but 35b fails the sign-match half
+  of the criterion against an essentially null (−0.11pp) May reference, so the
+  pre-registered per-model conjunction is not met and the clause is *removed*, not
+  weakened. The corrected factorial is directionally consistent with the attribution,
+  which in any case rests on the matched cell above.
+- **The mechanism decomposition is VALID after the 08-30 revision** (the shipped "VOID,
+  APPARATUS 13.8–36.0%" was an artifact of reading fields the overlay lacks; true
+  APPARATUS = 0.00% everywhere). No label is owed (no unit FAILs); component shares are
+  descriptive only — readout §6.
+
+Per-task cells labelled UNINFORMATIVE carry no verdict authority and must not be quoted
+as steering effects. No NOT-EQUIVALENT label exists anywhere in the family after the
+revision — the shipped 4B `simulate` −14.00 was largely the censoring artifact (true
+determinate read −2.43 [−5.33, +0.47], INDETERMINATE).
+
+## Corpus scale
+
+| figure | **quote this** | provenance | do NOT quote |
+|---|---|---|---|
+| open-weight trial count | **273,600** across two corpora, **five** open-weight models | `title_abstract_candidates.md` §4 (L324) | **227k** — does not reproduce from disk; never pair any total with "seven models" |
+
+`journal_decisions_memo.md` still uses 227k in three places (§5, §8, and its revision
+line); the memo carries a correction banner at its head. 273,600 = 5 models × 2
+reasoning modes × 3 arms × 4,560 × 2 corpora.
+
+## Not yet in this table
+
+- Single-tool suite headline numbers: still to be pinned as Job 2 writes. Use
+  `/verify-claims` per figure until they land here.

@@ -23,7 +23,7 @@ from .scoring import FR_OK, relabel_truncated_taxonomy
 
 # Sweep-5 neutral variants — paired with STEERED_VARIANTS for the analyzer's
 # four-arm split. v0-v10 (legacy sweep-3/4) map to *-legacy so the analyzer
-# can still render historical corpora; see development/sweep_prompt_bank_design.md.
+# can still render historical corpora; see development/reference/sweep_prompt_bank_design.md.
 NEUTRAL_VARIANTS: frozenset[int] = frozenset({11, 12, 13})
 
 
@@ -58,7 +58,7 @@ def _new_token_agg() -> dict:
 
     `completion_samples` buffers per-trial completion counts so the row can
     emit `completion_median` (a sweep-5 primary outcome per
-    development/sweep_prompt_bank_design.md §0). The list itself is internal —
+    development/reference/sweep_prompt_bank_design.md §0). The list itself is internal —
     it is never serialized into summary_*.json; only the computed median is.
     Memory cost is ~8 bytes/trial × ≤9120 trials/cell = <80KB/cell, negligible.
     """
@@ -169,6 +169,13 @@ def summarize_single_task(
             "success": 0,
             "tool_selected": 0,
             "truncated": 0,
+            # Q1 simulate two-metric grader (no-tools simulate only): success
+            # above IS state-tracking; these add format-compliance + strict.
+            # `fmt_applicable` is the denominator (trials where format_compliant
+            # is not None).
+            "fmt_applicable": 0,
+            "fmt_compliant": 0,
+            "fmt_strict": 0,
             "failure_reasons": defaultdict(int),
             "per_variant": defaultdict(lambda: {"n": 0, "succ": 0, "tool_sel": 0,
                                                 "tokens": _new_token_agg()}),
@@ -186,11 +193,20 @@ def summarize_single_task(
             agg[key]["tool_selected"] += 1
         if r.truncated:
             agg[key]["truncated"] += 1
+        if getattr(r, "format_compliant", None) is not None:
+            agg[key]["fmt_applicable"] += 1
+            if r.format_compliant:
+                agg[key]["fmt_compliant"] += 1
+                if r.success:
+                    agg[key]["fmt_strict"] += 1
         fr = relabel_truncated_taxonomy(
             r.failure_reason,
             truncated=r.truncated,
             response=r.response,
             think_mode=think_mode or "",
+            # Decoupled-budget rows (think_truncated is not None) must NOT have
+            # answer-phase truncation re-bucketed to think_overflow.
+            decoupled=getattr(r, "think_truncated", None) is not None,
         )
         agg[key]["failure_reasons"][fr] += 1
         _add_tokens(agg[key]["tokens"], r.tokens)
@@ -226,6 +242,26 @@ def summarize_single_task(
                     "truncated": d["truncated"],
                     "failure_reasons": dict(d["failure_reasons"]),
                 }
+                # Q1 two-metric simulate (no-tools simulate only): success_rate
+                # above is state-tracking; surface format-compliance + strict
+                # (both over the same N) so the three numbers travel together.
+                fa = d["fmt_applicable"]
+                if fa > 0:
+                    fc, st = d["fmt_compliant"], d["fmt_strict"]
+                    fc_lo, fc_hi = wilson_ci(fc, fa)
+                    st_lo, st_hi = wilson_ci(st, fa)
+                    row["simulate_q1"] = {
+                        "n": fa,
+                        "state_tracking_rate": round(rate, 4),
+                        "format_compliant": fc,
+                        "format_compliant_rate": round(fc / fa, 4),
+                        "format_compliant_ci_lo": round(fc_lo, 4),
+                        "format_compliant_ci_hi": round(fc_hi, 4),
+                        "strict": st,
+                        "strict_rate": round(st / fa, 4),
+                        "strict_ci_lo": round(st_lo, 4),
+                        "strict_ci_hi": round(st_hi, 4),
+                    }
                 if cond == "tools":
                     ts = d["tool_selected"]
                     ts_rate = ts / n if n > 0 else 0.0
@@ -328,6 +364,34 @@ def print_single_task_table(results: list[TaskResult]):
         print(
             f"{r['model']:<20} {_display_condition(r['condition']):<13} {r['task']:<18} "
             f"{r['success_rate']:>6.2f}  {r['n']:>4}  {ci_str:<16}  {ts_str:>7}"
+        )
+    print(bar)
+
+
+def print_simulate_q1_table(results: list[TaskResult]):
+    """Q1 two-metric breakdown for no-tools simulate cells (state-tracking /
+    format-compliance / strict). No-op when no such cells are present, so it is
+    safe to call unconditionally after the main table.
+    """
+    rows = [r for r in summarize_single_task(results) if "simulate_q1" in r]
+    if not rows:
+        return
+    header = (
+        f"{'Model':<20} {'Task':<10} {'N':>4}  "
+        f"{'StateTrack':>10}  {'FormatCmpl':>10}  {'Strict':>7}"
+    )
+    bar = "=" * len(header)
+    print("\n" + bar)
+    print("SIMULATE Q1 (no-tools): state-tracking · format-compliance · strict")
+    print(bar)
+    print(header)
+    print("-" * len(header))
+    for r in rows:
+        q = r["simulate_q1"]
+        print(
+            f"{r['model']:<20} {r['task']:<10} {q['n']:>4}  "
+            f"{q['state_tracking_rate']:>10.2f}  "
+            f"{q['format_compliant_rate']:>10.2f}  {q['strict_rate']:>7.2f}"
         )
     print(bar)
 

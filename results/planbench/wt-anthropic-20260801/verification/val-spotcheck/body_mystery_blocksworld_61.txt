@@ -1,0 +1,5 @@
+
+attack object a
+overcome object a from object d
+attack object c
+overcome object c from object a

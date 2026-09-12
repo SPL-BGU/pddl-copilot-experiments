@@ -370,3 +370,131 @@ async def chat_without_tools(
     thinking_text = _response_thinking(resp)
     messages.append({"role": "assistant", "content": content})
     return content, _response_done_reason(resp), tokens, thinking_text
+
+
+# Qwen3 thinking-block close. The open `<think>` is injected by the chat
+# template under enable_thinking=True (it is part of the prompt, not the
+# model's output), so the decoupled flow only ever generates/handles the
+# close.
+_THINK_CLOSE = "</think>"
+
+
+async def chat_without_tools_decoupled(
+    client: "VLLMClient",
+    model: str,
+    messages: list[dict],
+    num_predict_think: int,
+    num_predict_answer: int,
+    num_ctx: int,
+    temperature: float = TEMPERATURE,
+    format: dict | str | None = None,
+) -> tuple[str, str, dict, str, bool]:
+    """Decoupled-budget think=on: reasoning and answer get SEPARATE budgets.
+
+    Two `client.chat()` calls (iter-2 T6 / reviewer ask [8]):
+
+      Call 1 — reasoning. `enable_thinking=True`, `max_tokens=num_predict_think`,
+        `stop=["</think>"]` (with include_stop_str_in_output=True so the close
+        survives whatever the server's reasoning-parser setting is). The model
+        emits only the reasoning body. done_reason="length" here means the
+        reasoning hit its own budget — we force-close it and STILL proceed to
+        the answer. That is the whole point: a reasoning spiral can no longer
+        starve the answer (the shared-budget confound the failed b527f71
+        cap-raise did not address).
+
+      Call 2 — answer (continuation). The closed think block is fed back as the
+        final assistant turn with vLLM continue_final_message=True /
+        add_generation_prompt=False, so the model continues from
+        "...</think>\\n\\n" and emits the answer with a fresh
+        `max_tokens=num_predict_answer`. done_reason="length" HERE is the
+        genuine answer-truncation signal grading cares about.
+
+    Returns `(answer_text, done_reason_answer, tokens, thinking_text,
+    think_truncated)`. `tokens` mirrors the `chat_without_tools` shape
+    (prompt = Call-1 input; completion = think+answer decode) plus a decode
+    split (`think_completion` / `answer_completion`) and `call2_prompt` (the
+    re-encoded reasoning prefix — a real, prefix-cacheable cost the cost
+    paragraph should note). `think_truncated` is True iff Call 1 hit its budget.
+
+    Reasoning reconstruction is parser-state-proof: it concatenates the
+    structured `message.thinking` (populated when --reasoning-parser qwen3 is on)
+    and raw `content` (populated when the parser is off — the configured path
+    for the decoupled sweep, DECISION B), then strips a trailing `</think>`.
+
+    Appends the full assistant turn (`<think>…</think>\\n\\n{answer}`) to
+    *messages* so the post-call shape matches `chat_without_tools`.
+    """
+    # --- Call 1: reasoning with its own budget, halted at </think>. ---
+    opts1, extra1 = _build_chat_kwargs(num_predict_think, num_ctx, temperature, think=True)
+    resp1 = await client.chat(
+        model=model, messages=messages, options=opts1,
+        stop=[_THINK_CLOSE],
+        vllm_extra={"include_stop_str_in_output": True},
+        **extra1,
+    )
+    done_reason_think = _response_done_reason(resp1)
+    think_truncated = done_reason_think == "length"
+
+    # A Call-1 "abort" (vLLM finish_reason=abort on HTTP 200 — typically a SLURM
+    # SIGTERM near TIMEOUT tearing the server down) must surface as the trial's
+    # done_reason so `evaluate_one` tags infra_failure and resume re-attempts the
+    # key — exactly as the single-call path does. Without this short-circuit the
+    # partial/garbage reasoning would flow into Call 2 and, if Call 2 happened to
+    # return "stop", be recorded as a completed trial. Don't waste Call 2.
+    if done_reason_think == "abort":
+        tok_abort = {
+            "prompt": _response_field(resp1, "prompt_eval_count"),
+            "completion": _response_field(resp1, "eval_count"),
+            "think_completion": _response_field(resp1, "eval_count"),
+            "answer_completion": 0,
+            "call2_prompt": 0,
+            "turns": 1,
+            "total_duration_ns": _response_field(resp1, "total_duration"),
+            "eval_duration_ns": _response_field(resp1, "eval_duration"),
+        }
+        return "", "abort", tok_abort, "", False
+
+    # Parser-state-proof reconstruction: thinking field (parser on) OR raw
+    # content (parser off) — one of them holds the reasoning. Strip the close
+    # token (it may be present via include_stop_str_in_output, or absent when
+    # the reasoning was budget-truncated before emitting it).
+    reasoning = (_response_thinking(resp1) + (resp1["message"].get("content") or "")).strip()
+    if reasoning.endswith(_THINK_CLOSE):
+        reasoning = reasoning[: -len(_THINK_CLOSE)].rstrip()
+
+    # --- Call 2: answer with a fresh budget, continuing the assistant turn. ---
+    think_block = f"<think>\n{reasoning}\n{_THINK_CLOSE}\n\n"
+    messages2 = messages + [{"role": "assistant", "content": think_block}]
+    opts2, extra2 = _build_chat_kwargs(num_predict_answer, num_ctx, temperature, think=True)
+    if format is not None:
+        # guided_json / json-object mode constrains the ANSWER, never the
+        # free-text reasoning.
+        extra2["format"] = format
+    resp2 = await client.chat(
+        model=model, messages=messages2, options=opts2,
+        vllm_extra={"continue_final_message": True, "add_generation_prompt": False},
+        **extra2,
+    )
+    answer = resp2["message"].get("content", "")
+    done_reason_answer = _response_done_reason(resp2)
+
+    think_completion = _response_field(resp1, "eval_count")
+    answer_completion = _response_field(resp2, "eval_count")
+    tokens = {
+        # Call-1 prompt is the true input. Call-2 re-encodes the reasoning as
+        # prompt (`call2_prompt`); that re-encode is a real but prefix-cacheable
+        # cost, kept separate so the headline prompt count is not double-counted.
+        "prompt": _response_field(resp1, "prompt_eval_count"),
+        "completion": think_completion + answer_completion,
+        "think_completion": think_completion,
+        "answer_completion": answer_completion,
+        "call2_prompt": _response_field(resp2, "prompt_eval_count"),
+        "turns": 2,
+        "total_duration_ns": _response_field(resp1, "total_duration")
+        + _response_field(resp2, "total_duration"),
+        "eval_duration_ns": _response_field(resp1, "eval_duration")
+        + _response_field(resp2, "eval_duration"),
+    }
+
+    messages.append({"role": "assistant", "content": f"{think_block}{answer}"})
+    return answer, done_reason_answer, tokens, reasoning, think_truncated

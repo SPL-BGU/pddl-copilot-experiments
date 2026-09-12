@@ -1,1 +1,14 @@
 checkpoints/sweep5/*.zip filter=lfs diff=lfs merge=lfs -text
+
+# Committed experiment corpora are DATA, not source. Without this a data-archive
+# PR reads as unreviewable — PR #93 landed 107 changed files, 73 of them the
+# frozen PlanBench-WT archive, burying the ~34 files a human actually reviews.
+# `linguist-generated` collapses them in GitHub's Files-changed view and drops
+# them from the repo's language stats; they stay fully present, diffable on
+# request, and hash-pinned by their MANIFEST.
+results/**                      linguist-generated=true
+
+# Exceptions: the human entry points into an archive stay open for review.
+# (Later rules win, so these override the blanket line above.)
+results/**/README.md            linguist-generated=false
+results/**/*.py                 linguist-generated=false

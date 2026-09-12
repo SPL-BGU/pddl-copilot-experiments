@@ -4,7 +4,7 @@ STATUS (2026-05-23): sweep-5 active set is v11/v12/v13 (neutral) + v14/v15/v16
 (steered). Marketplace pin: pddl-copilot @ 2850bc4 (marketplace 1.4.0,
 validator 3.0.0). The full design doc with literature anchors, hypothesis
 pre-registration, and per-task rationale is at
-`development/sweep_prompt_bank_design.md`.
+`development/reference/sweep_prompt_bank_design.md`.
 
 History (each set preserved verbatim for trial-replay byte-stability):
 
@@ -70,7 +70,7 @@ WITHOUT_TOOLS_SYSTEM = (
 # each, no tool signatures, no argument descriptions). Tool schemas live in
 # `tools=[]` per Anthropic's documented contract; the marketplace 1.4.0 raised
 # the per-tool description bar at that source so the experiments repo no
-# longer restates the schema. See `development/sweep_prompt_bank_design.md`
+# longer restates the schema. See `development/reference/sweep_prompt_bank_design.md`
 # §3.1 / §3.2 for the rationale.
 #
 # Mirror property: each WITHOUT entry shares the role-framing first sentence
@@ -190,7 +190,8 @@ PROMPT_TEMPLATES: dict[str, list[str]] = {
         # logit bias and the regex fallback (`scoring.extract_verdict`)
         # has nothing to match when the JSON path fails on small / hybrid /
         # thinking-mode cells. Redesign in progress — see
-        # `development/sweep_prompt_redesign_handoff.md`.
+        # `development/reference/sweep_prompt_bank_design.md`
+        # (the redesign handoff was folded into it in b82f590).
         "Check if this PDDL domain definition has valid syntax:\n\n{domain}",
         # v6 — sweep-4 no-tools.
         "Validate the following PDDL domain for syntactic correctness:\n\n{domain}",
