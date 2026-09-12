@@ -1,7 +1,7 @@
 # STATUS — what is actually left
 
 *Content last refreshed: 2026-09-08 (Job 2 batches 1+2 pushed + Overleaf-synced;
-frontier budget probe RUN 09-12, readout awaiting ratification). Renamed from `remaining_work_20260811.md`
+frontier budget probe DONE 09-12, in tex). Renamed from `remaining_work_20260811.md`
 on 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
@@ -77,19 +77,14 @@ delivered balanced accuracy, NUMBERS.md Job 2 block. Generator
 `job2/batch2-budget-probe-prereg`); merge main into `paper/aaai27` after it lands so
 the branch can regenerate its own figures.
 
-**Frontier budget probe: RUN 2026-09-12, READOUT AWAITING RATIFICATION** (prereg
-ratified 09-08, budget 64,000 + analysis frozen 09-10, PR #98 merged `bbcf111` with
-hashes re-verified on main). All four legs ran under the frozen code; measured cost
-$40.68 (expected $50–65, cap $213); no §3.6 tripwire fired. Verdicts per the frozen
-script: **Sonnet PARTIAL** (LEN-FIT 16/25 = 64% vs ET-FAIL control 7/19 = 37%, Fisher
-p = 0.069; delivered 70 [60.4, 78.1] vs ref ⟨49, 62⟩), **Haiku H1** (12/17 = 71% vs
-1/12, p = 0.001; delivered 65 [55.3, 73.6]; H2 supported 0/14 DECLINE converted). Arm
-contrast at 64K: Sonnet +26 pp, Haiku +7 pp. Readout + ratification slots:
-`frontier_budget_probe_readout.md`. Reference cells unchanged everywhere.
+**Frontier budget probe: DONE 2026-09-12 (run, readout RATIFIED, paper edit
+landed on `paper/aaai27` `5466cb6`, Overleaf `d922237`).** Sonnet PARTIAL (16/25 vs
+7/19, p = 0.069), Haiku H1 (12/17 vs 1/12, p = 0.001), 0/14 DECLINE; delivered at 64K
+70 / 44 (Sonnet WT / NT) and 65 / 58 (Haiku). Frozen values: NUMBERS.md "frontier
+budget probe" row. Readout + Omer's answers: `frontier_budget_probe_readout.md`.
+Reference cells unchanged. Cost $40.68.
 
-**What is left on Job 2:** Omer ratifies the readout (§6 of the readout doc) → NUMBERS
-"budget probe" block → the one-or-two-sentence Delivery Gap edit + Limitations clause
-on `paper/aaai27` (pull Overleaf first). The tex reframe is in Overleaf now.
+**Job 2 is closed.** Nothing left on it.
 
 The one substantive paper change left on the main suite, and the larger of the two.
 Spec: `journal_decisions_memo.md` §3. It makes **delivered** the single primary

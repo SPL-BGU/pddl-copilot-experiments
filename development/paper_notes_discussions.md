@@ -1946,3 +1946,29 @@ validated by an independent ranking subagent (the user asked for a second perspe
   clause; the Haiku sentence may use the H1 language. The reference cells do not
   change. One leg-A infra failure was retried through the runner's built-in resume;
   counts unchanged — logged in the readout §4, not a deviation.
+
+## 2026-09-12 (later) — Budget probe readout RATIFIED; paper sentence landed and Overleaf-synced
+
+- **Decision (Omer, `frontier_budget_probe_readout.md` §6):** readout ratified as
+  computed, with revised wording: state the mixed primary result explicitly (Sonnet
+  did not meet the pre-registered criterion, Haiku did), report the with/without-tools
+  comparison at the raised allowance, note that substantial delivery failures remain
+  (30% / 35% of tool-arm trials), mention that response storage was enlarged, say
+  "under the 64K output allowance" rather than "at a budget the trajectory fits", and
+  preserve the original censoring bounds.
+- **Decision (Omer):** the one infrastructure retry is documented in the appendix
+  execution-protocol note, not in Limitations: one failure retried under the existing
+  resume policy, the completed retry graded incorrect, primary verdicts unchanged.
+- **Applied (paper/aaai27 `5466cb6`, Overleaf `d922237`):** Delivery Gap paragraph
+  "Output-budget probe" using the ratified text; a how-to-read table row for the probe
+  corpus; one Limitations sentence (gap narrows, does not close); one Future Work
+  clause (open roster needs the decoupled design); appendix paragraph "Execution
+  protocol of the output-budget probe". Numbers re-verified independently from the
+  overlay rows (scipy Fisher p = 0.0689 / 0.0011). One scoping fix at verification:
+  "no final response reached the cap" holds for the tool arms only (1 Sonnet and 2
+  Haiku no-tools answers did hit 64,000), so the sentence says "tool-arm".
+- **Bottom line:** the budget explains part of the frontier `simulate` delivery gap
+  (confirmed on Haiku, partial on Sonnet); the remaining 30–35% of tool-arm failures
+  are content failures, and the reference cells ⟨49, 62⟩ / ⟨52, 64⟩ stay in every
+  table. Job 2 is closed.
+

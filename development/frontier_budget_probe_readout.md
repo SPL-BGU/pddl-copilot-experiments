@@ -1,4 +1,4 @@
-# Frontier output-budget probe — readout (run 2026-09-12, AWAITING RATIFICATION)
+# Frontier output-budget probe — readout (run 2026-09-12, RATIFIED 2026-09-12, in tex `5466cb6`)
 
 **Status:** all four legs ran on 2026-09-12 under the frozen code (prereg
 `frontier_budget_probe_prereg.md`, freeze record 2026-09-10; hashes re-verified

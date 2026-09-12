@@ -1,4 +1,4 @@
-# Handoff — frontier output-budget probe (ratified 2026-09-08, frozen 2026-09-10, RUN 2026-09-12 — readout awaiting ratification)
+# Handoff — frontier output-budget probe (ratified 2026-09-08, frozen 2026-09-10, RUN + RATIFIED + IN TEX 2026-09-12 — CLOSED)
 
 **Read first:** `frontier_budget_probe_prereg.md` (design of record, RATIFIED — all four
 legs, budget **64,000** (amended 2026-09-10 from 65,536, §11), spend approved, decision
@@ -8,10 +8,10 @@ prereg. Pick up with `/resume-verify development/frontier_budget_probe_handoff.m
 **State at write time (2026-09-12):** steps 1–10 DONE. PR #98 squash-merged
 (`bbcf111`), hashes re-verified on `main`, all four legs run ($40.68 measured, no
 tripwire), regrade + pooled table + both readouts generated. **Readout =
-`frontier_budget_probe_readout.md` (AWAITING Omer's ratification, §6 there).** Verdicts:
+`frontier_budget_probe_readout.md` (RATIFIED by Omer 2026-09-12, §6 there; paper edit landed).** Verdicts:
 Sonnet PARTIAL (16/25 vs 7/19, p = 0.069), Haiku H1 (12/17 vs 1/12, p = 0.001). One
 infra failure on leg A (depot/p03) was retried through the runner's documented resume
-path; counts unchanged. Only step 11 remains. The paper branch `paper/aaai27` was
+path; counts unchanged. All steps done; this handoff is closed. The paper branch `paper/aaai27` was
 pushed + Overleaf-synced 2026-09-08 — separate track, do not touch until ratified.
 
 ## The sequence (each step blocks the next; nothing here touches the cluster)
@@ -99,7 +99,7 @@ pushed + Overleaf-synced 2026-09-08 — separate track, do not touch until ratif
     feed §3.3(2) (arm contrast at the raised budget) — compute that as two exact Wilson
     cells from the pooled table, WT minus NT, nothing fancier.
 
-11. **Ratify the readout (Omer), then the paper edit** on `paper/aaai27` (after the
+11. ~~**Ratify the readout (Omer), then the paper edit**~~ DONE 2026-09-12 (ratified in `frontier_budget_probe_readout.md` §6; tex `5466cb6`, Overleaf `d922237`) — on `paper/aaai27` (after the
     batch-1/2 review gate has cleared and Overleaf has been pulled): one or two
     sentences in the Delivery Gap subsection using the pre-drafted language in prereg
     §3.5, the matching Limitations/Future-Work clause, a "budget probe" block in
