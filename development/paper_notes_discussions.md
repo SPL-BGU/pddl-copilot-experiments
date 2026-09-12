@@ -1972,3 +1972,51 @@ validated by an independent ranking subagent (the user asked for a second perspe
   are content failures, and the reference cells ⟨49, 62⟩ / ⟨52, 64⟩ stay in every
   table. Job 2 is closed.
 
+
+## 2026-09-12 (night) — Job 3: nt-ster H4 steering control integrated into the tex (local commit, review gate)
+
+- **Landed on `paper/aaai27` as `6027d68` (worktree, LOCAL, unpushed)** under the
+  pre-committed caveat-only cap (prereg §5; final readout O4). Overleaf was pulled
+  first: no coauthor edits since the 09-12 budget-probe sync (`d922237`). Standalone
+  compile: 0 errors, 0 undefined references, 25 pages; the only overfull box is the
+  pre-existing scorecard table.
+- **Body, two surfaces only.** (1) The CALL beat — a PASS paragraph right after "one
+  directive sentence moves invocation from 21% to 94%" in the `validate_plan` Results
+  subsection: pre-registered control, six (model, mode) units, paired equivalence at
+  ±5pp, every unit and every eligible task cell EQUIVALENT, ~6pp realized resolution
+  (so larger prompt-only effects are not excluded), matched cell gemma `validate_plan`
+  `think=off` **+72.0pp (mechanism layer, with tools) vs +0.63pp [−0.46, +1.73]
+  (delivered, without)**, "attributed to the directive's interaction with tool
+  access". **No "replicated attribution" clause** — §4(b)'s per-model conjunction is
+  unmet (35b sign-match against a −0.11pp May reference), so the clause is removed as
+  pre-registered, not rewritten. (2) Limitations: conservative by construction (the
+  no-tools system prompt says tools are unavailable while the directive names one),
+  ~6pp resolution, later-apparatus transfer rests on anchor drift ≤1pp pooled plus the
+  unmeasured T=0 run-to-run variation, no gemma `think=on` unit. Plus one conversion
+  of the existing Methodology control-arm sentence so it points at where the control
+  is reported (allowed under the cap: converting an existing caveat, not a new surface).
+- **Appendix, "The steering control":** design / estimator / decision rule /
+  eligibility / F gate in prose; `tab:ster-units` (6 units: anchor, steered, Δ̂ [90%],
+  F, MDE, verdict); `tab:ster-tasks` (all 30 task cells with class + label, † =
+  underpowered); drift-check prose + `tab:ster-drift`; declared deviations in one
+  paragraph — §9.1 dev 1 (roster 3→4 after interim results, with the +6.9/+9.6 vs +2.5
+  numbers), §9.1 dev 2 (parser-off rerun after the void corpus, with the 08-22
+  prediction check 8.2/69.1 and 3.9/82.5 vs 8.8/68.4 and 4.1/82.0), §9.2 (post-review
+  code corrections + re-freeze; verdicts unchanged, intervals tighter 5.8–6.3 vs
+  6.5–7.1 as first shipped).
+- **Deliberately NOT in the tex:** the §4(b) factorial result (9B +8.12 replicated, 35b
+  +2.62). It is outside the O4-approved appendix list ("per-task table, F gate, MDE
+  table, drift check, apparatus failure, deviations"), so it was left out rather than
+  expanding scope. Omer to decide whether one appendix sentence should carry it.
+- **Number discipline.** Both appendix tables were generated programmatically from the
+  frozen report in `checkpoints/ntster-h4-live/derived_reports.zip` (08-30 revised),
+  with asserts on 8/8 ELIGIBLE = EQUIVALENT and MDE 5.82–6.25. The drift table and the
+  roster-gap steering figures (0.8B +0.0, 4B +6.9/+9.6, 9B +2.5, gemma +47.4/+72.0, 35b
+  +14.8) are not frozen-script outputs, so they were recomputed from the checkpoint
+  overlay + `results/sweep5v2-live` and match the readout to the decimal. NUMBERS.md
+  nt-ster block gained a "Tex cross-check rows" sub-table for every figure that entered
+  the tex without a prior pin. `grep PENDING development/` found no open spec touching
+  steering / H2 / `validate_plan` / gemma.
+- **Gate:** push + Overleaf sync wait for Omer's go (the auto-sync Action fires on
+  push). Experiments-side records are on `job3/ntster-integration-docs` off `main`,
+  doc-only, no PR.

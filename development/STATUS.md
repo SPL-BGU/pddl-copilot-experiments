@@ -1,8 +1,9 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-09-08 (Job 2 batches 1+2 pushed + Overleaf-synced;
-frontier budget probe DONE 09-12, in tex). Renamed from `remaining_work_20260811.md`
-on 2026-08-29.*
+*Content last refreshed: 2026-09-12 (Job 3 nt-ster integration landed as a LOCAL
+commit on `paper/aaai27` `6027d68`, review gate; frontier budget probe DONE 09-12, in
+tex and Overleaf; Job 2 closed). Renamed from `remaining_work_20260811.md` on
+2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc — that is what produced the
@@ -20,24 +21,27 @@ on 2026-08-29.*
 been complete since 2026-07-17 (sweep5v2-live + sweep6 + iss024d-e2e-live + the
 Haiku/Sonnet frontier corpora, all graded). **The nt-ster H4 control closed 2026-08-29
 — all six units PASS — so there is now no unrun experiment on either line.** What is
-left is **writing**: Jobs 2 and 3 below. Job 1 (PlanBench Act 4) is DONE — it landed
-2026-08-11 (`67ea69c` + `644f8bd`) and synced to Overleaf the same day; this file
-wrongly carried it as NOT STARTED until 2026-09-07. Last paper commit is `644f8bd`,
-2026-08-11.
+left is **one review gate**: Job 3's tex landed 2026-09-12 as a local commit on
+`paper/aaai27` (`6027d68`) and waits for Omer's review, push and Overleaf sync. Job 2
+is closed (batches 1+2 + the budget-probe sentence pushed and synced). Job 1
+(PlanBench Act 4) is DONE — it landed 2026-08-11 (`67ea69c` + `644f8bd`) and synced
+to Overleaf the same day; this file wrongly carried it as NOT STARTED until
+2026-09-07. Last paper commit is `6027d68` (local, 2026-09-12); origin head is `a63a557`
+(the main merge), whose last paper edit `5466cb6` is Overleaf-synced (`d922237`).
 
 ## State by line
 
 | line | data | analysis | paper |
 |---|---|---|---|
 | PlanBench (NT + WT) | DONE, archived + MANIFEST-verified | DONE, `verify_promotion.py` re-derives every number | **DONE 2026-08-11** — section in tex + Overleaf, re-verified 09-07 |
-| Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **DONE 09-08** — the full e2e reframe (D2/D-J2 = option a), batches 1+2 on `paper/aaai27`, in Overleaf; probe sentence pending |
-| nt-ster H4 control | **DONE 2026-08-29** (6 cells, 9,120 rows each) | **DONE** — all six units PASS, branch PASS | **NOT STARTED** — caveat-only integration, see Job 3 |
+| Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **DONE 09-08 / 09-12** — the full e2e reframe (D2/D-J2 = option a), batches 1+2 on `paper/aaai27`, in Overleaf; budget-probe sentence LANDED 09-12 (tex `5466cb6`, Overleaf `d922237`) |
+| nt-ster H4 control | **DONE 2026-08-29** (6 cells, 9,120 rows each) | **DONE** — all six units PASS, branch PASS | **DONE 2026-09-12 (LOCAL)** — caveat-only integration on `paper/aaai27` `6027d68`, awaiting review + push, see Job 3 |
 
-Evidence on the paper side: the Results sections of the main suite still carry the
-old tool-verified framing (the Job 2 reframe is genuinely untouched), but the
-PlanBench section EXISTS in `paper/main.tex` (`\section{External Validity on
-PlanBench}`, ~L972–1181) — the old "zero occurrences of 'delivered'" evidence line
-is void.
+Evidence on the paper side (2026-09-12): the Results sections carry the delivered
+reframe and the budget-probe paragraph; the PlanBench section exists (`\section{External
+Validity on PlanBench}`); the steering control's PASS paragraph, Limitations note and
+appendix block (`tab:ster-units` / `tab:ster-tasks` / `tab:ster-drift`) exist in the
+local `6027d68` only.
 
 ## Job 1 — PlanBench Act 4 section: DONE (2026-08-11, verified 2026-09-07)
 
@@ -102,7 +106,18 @@ transcription gap (solve +5pp both tiers, simulate ≈35–50pp length-driven,
 This is where the retracted claims finally get their replacement text, so it is also
 the cleanup of the simulate sole-source-floor thread.
 
-## Job 3 — nt-ster H4 control: RUN COMPLETE, integration owed
+## Job 3 — nt-ster H4 control: DONE (tex landed 2026-09-12, LOCAL commit, review gate)
+
+**Integration landed 2026-09-12 on `paper/aaai27` as `6027d68` (worktree
+`../pddl-copilot-worktrees/paper-aaai27`), unpushed.** Overleaf pulled clean first.
+What is in it: the CALL-beat PASS paragraph (Results, after the 21→94% invocation
+sentence), the Limitations note, a converted Methodology control-arm sentence, and the
+appendix block "The steering control" with `tab:ster-units`, `tab:ster-tasks`,
+`tab:ster-drift` and the declared deviations. Compile: 0 errors, 0 undefined refs.
+Record: `paper_notes_discussions.md` 2026-09-12 (night); tex cross-check rows in
+`NUMBERS.md`. **Left: Omer's review → push (auto-sync Action fires) → confirm the
+Action ran green.** Not in the tex, by scope: the §4(b) factorial result (outside the
+O4 list); one appendix sentence if Omer wants it.
 
 **The experiment is done.** Closed 2026-08-29 on branch `run/ntster-h4`: six cells,
 9,120 rows each, **all six units PASS**, paper-level branch **PASS**. Every one of the
@@ -113,10 +128,10 @@ The result it was commissioned for, in the matched cell: gemma `validate_plan`
 `think=off` is **+72.0pp with tools and +0.63pp [−0.46, +1.73] without**. The steering
 effect is attributed to the directive's interaction with tool access.
 
-**What is left is writing only**, under the pre-committed caveat-only cap — CALL beat +
+**The writing was done under the pre-committed caveat-only cap** — CALL beat +
 Limitations in the body; per-task table, F gate, MDE table, drift check, the on-mode
-apparatus failure and the two §9.1 deviations in an appendix. Scope approved
-(final readout O4); no tex touched.
+apparatus failure and the two §9.1 deviations (plus §9.2) in an appendix. Scope as
+approved (final readout O4), not expanded.
 
 **2026-08-30: post-review corrective re-run.** The PR #96 correctness review found
 defects in the frozen analysis code (censored rows scored as successes, a mis-specified
@@ -124,7 +139,8 @@ governing estimator, a degenerate mechanism section — prereg §9.2). Code fixe
 re-frozen, everything regenerated: **verdicts unchanged, secondary numbers revised** —
 quote only NUMBERS.md / the revised readout.
 
-Things the integration must carry, pre-registered and none optional:
+Things the integration had to carry, pre-registered and none optional — all present
+in `6027d68`:
 
 - **§5's PASS sentence drops its "replicated attribution" clause.** After the 08-30
   correction both §4(b) interactions are positive and exclude zero (9B +8.12
