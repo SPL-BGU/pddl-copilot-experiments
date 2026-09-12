@@ -1,19 +1,22 @@
-# Handoff — frontier output-budget probe (ratified 2026-09-08, analysis frozen 2026-09-10, not yet run)
+# Handoff — frontier output-budget probe (ratified 2026-09-08, frozen 2026-09-10, RUN 2026-09-12 — readout awaiting ratification)
 
 **Read first:** `frontier_budget_probe_prereg.md` (design of record, RATIFIED — all four
 legs, budget **64,000** (amended 2026-09-10 from 65,536, §11), spend approved, decision
 rule accepted). This file is the operational sequence only; it never overrides the
 prereg. Pick up with `/resume-verify development/frontier_budget_probe_handoff.md`.
 
-**State at write time (2026-09-10):** $0 spent, no probe data exists. Steps 2–4 below
-are DONE (gate-5 findings fixed, §8 items 4–6 discharged, hashes in the prereg's freeze
-record). Code is on PR #98 (`job2/batch2-budget-probe-prereg`), not yet merged. The
-paper branch `paper/aaai27` was pushed + Overleaf-synced 2026-09-08 — separate track,
-do not touch here.
+**State at write time (2026-09-12):** steps 1–10 DONE. PR #98 squash-merged
+(`bbcf111`), hashes re-verified on `main`, all four legs run ($40.68 measured, no
+tripwire), regrade + pooled table + both readouts generated. **Readout =
+`frontier_budget_probe_readout.md` (AWAITING Omer's ratification, §6 there).** Verdicts:
+Sonnet PARTIAL (16/25 vs 7/19, p = 0.069), Haiku H1 (12/17 vs 1/12, p = 0.001). One
+infra failure on leg A (depot/p03) was retried through the runner's documented resume
+path; counts unchanged. Only step 11 remains. The paper branch `paper/aaai27` was
+pushed + Overleaf-synced 2026-09-08 — separate track, do not touch until ratified.
 
 ## The sequence (each step blocks the next; nothing here touches the cluster)
 
-1. **Merge PR #98** (after review). It carries the runner flags, the 262,144 cap, the
+1. ~~**Merge PR #98**~~ DONE 2026-09-12 (`bbcf111`, squash; hashes re-verified equal). It carries the runner flags, the 262,144 cap, the
    run manifest, the frozen `tools/budget_probe_analysis.py`, and the tests. Until it
    is on main, do not run anything against the API. **After the merge, re-run the
    sha256 table in the prereg's freeze record against main** — the freeze hashed the
@@ -35,11 +38,11 @@ do not touch here.
    apparatus/test hashes + traceability map). From here any edit to a frozen file is a
    declared deviation (prereg §9-style) + re-freeze + regenerated readout.
 
-5. **Dry run (free):**
+5. ~~**Dry run (free):**~~ DONE 2026-09-12 —
    `python3 tools/frontier_runner.py --dry-run --model claude-sonnet-4-6 --tasks simulate --variant 11 --num-predict 64000 --snapshot-len 262144 --stream`
    must select exactly 100 trials. (Verified 2026-09-10 on the frozen code, both tiers.)
 
-6. **Leg A — Sonnet with tools (the primary).** Needs `ANTHROPIC_API_KEY` in the
+6. ~~**Leg A — Sonnet with tools (the primary).**~~ DONE 2026-09-12 — Needs `ANTHROPIC_API_KEY` in the
    environment and the marketplace at `../pddl-copilot`.
    ```
    python3 tools/frontier_runner.py --model claude-sonnet-4-6 --tasks simulate --variant 11 \
@@ -59,11 +62,11 @@ do not touch here.
    (barman/p04–p05, tpp/p05, drone/p04–p05, depot/p01, rovers/p05) are the ones that
    should be long.
 
-7. **Leg B — Haiku with tools:** same command with `--model claude-haiku-4-5` and
+7. ~~**Leg B — Haiku with tools:**~~ DONE 2026-09-12 — same command with `--model claude-haiku-4-5` and
    `--out results/haiku-frontier/sweep5v2-with-tools-budget64k`. Expected ≈$10–12.
    depot/p01 will overflow the context again by construction (pre-classified OVERFLOW).
 
-8. **Legs C/D — no-tools, Message Batches** (cheap; run after A/B, or in parallel):
+8. ~~**Legs C/D — no-tools, Message Batches**~~ DONE 2026-09-12 — (cheap; run after A/B, or in parallel):
    ```
    python3 tools/claude_api_batch.py --model claude-sonnet-4-6 build --corpus canonical \
      --marketplace-path ../pddl-copilot --tasks simulate --num-variants 1 \
@@ -80,7 +83,7 @@ do not touch here.
    `run_manifest.json` into the batch dir, before `submit` (submit refuses without it;
    grade carries the manifest into the results dir with the snapshot length).
 
-9. **Regrade with the standard command** (no new grader, no new tolerance):
+9. ~~**Regrade with the standard command**~~ DONE 2026-09-12 — (no new grader, no new tolerance):
    `python3 tools/e2e_regrade.py results/sonnet-frontier results/haiku-frontier`.
    The new cells appear as `sweep5v2-with-tools-budget64k` / `sweep5v2-budget64k`
    overlay files with `snapshot_cap: 262144` and `snapshot_cap_source: "manifest"`
@@ -88,7 +91,7 @@ do not touch here.
    `python3 .claude/skills/analyzer/scripts/e2e_pooled.py` — the probe rows must appear
    as their own run-tagged block, never merged into the `sweep5v2` rows.
 
-10. **Readout:**
+10. ~~**Readout:**~~ DONE 2026-09-12 —
     `python3 tools/budget_probe_analysis.py readout --tier sonnet --probe results/sonnet-frontier/sweep5v2-with-tools-budget64k`
     and `--tier haiku ...`. Output: `results/derived/budget_probe/readout_<tier>.json`.
     **If it prints `TRIPWIRE(S)`, stop: trace the cause (prereg §3.6) before writing a

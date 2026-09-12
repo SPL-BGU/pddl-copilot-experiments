@@ -1927,3 +1927,22 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - Bottom line: the probe's remaining gate is the PR #98 merge (re-verify the hash table
   on main afterwards), then the run. The reference bound ⟨49, 62⟩ and every headline
   number are untouched.
+
+## 2026-09-12 — Frontier budget probe RUN; measured cost itemized; readout awaiting ratification
+
+- **Spend (measured, list prices, itemized per leg per the 08-30 rule):** leg A Sonnet
+  WT $26.21 (band $30–35, cap $111); leg B Haiku WT $6.92 (cap $37); leg C Sonnet NT
+  batch $5.55 (cap $49); leg D Haiku NT batch $2.00 (cap $16). **Total $40.68** against
+  the expected $50–65 and the $213 hard cap. Tripwire (d) checked at trial 20 of leg A
+  ($4.93 spent, projection $24.67). Grant-covered.
+- **Readout (frozen `budget_probe_analysis.py`, no tripwire):** Sonnet PARTIAL —
+  16/25 LEN-FIT converted (64%) vs 7/19 ET-FAIL control (37%), one-sided Fisher
+  p = 0.069; delivered 70 [60.4, 78.1] next to the frozen ⟨49, 62⟩. Haiku H1 — 12/17
+  (71%) vs 1/12 (8%), p = 0.001; delivered 65 [55.3, 73.6]; H2 supported (0/14 DECLINE
+  converted). Arm contrast at 64K (§3.3(2), legs C/D): Sonnet +26 pp (70 vs 44), Haiku
+  +7 pp (65 vs 58). Zero rows at the 64,000 final-turn budget on either tier.
+- **Bottom line (pending Omer's ratification, `frontier_budget_probe_readout.md` §6):**
+  per the pre-registered rule the Sonnet sentence quotes both rates with no causal
+  clause; the Haiku sentence may use the H1 language. The reference cells do not
+  change. One leg-A infra failure was retried through the runner's built-in resume;
+  counts unchanged — logged in the readout §4, not a deviation.

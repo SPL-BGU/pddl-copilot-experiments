@@ -6,6 +6,34 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-09-12 — Frontier budget probe RUN (all four legs), readout generated, awaiting ratification
+
+**What.** PR #98 squash-merged to `main` (`bbcf111`); the nine freeze-record hashes
+re-verified equal on main before the first API call. Dry run, legs A/B
+(`frontier_runner.py`, sequential, streaming) and C/D (`claude_api_batch.py`, Message
+Batches) ran on 2026-09-12; standard regrade, pooled table and
+`budget_probe_analysis.py readout` on both tiers. Readout + ratification slots:
+`development/frontier_budget_probe_readout.md`. No tripwire fired. No paper edit yet.
+
+**Numbers (frozen script).** Sonnet PARTIAL: 16/25 LEN-FIT vs 7/19 ET-FAIL, p = 0.069,
+delivered 70 [60.4, 78.1]. Haiku H1: 12/17 vs 1/12, p = 0.001, delivered 65 [55.3, 73.6],
+DECLINE 0/14. NT at 64K: Sonnet 44, Haiku 58. Zero rows at the 64,000 final-turn budget
+on either tier (max final turn 35,196 / 14,154). Cost $40.68 total.
+
+**Apparatus event (not a deviation).** Leg A trial 28 (depot/p03) raised an exception
+with an empty message inside the SDK tool-runner loop and was stored as
+`infra_failure: true`. The runner's documented resume path retried it on an identical
+re-invocation (99 restored, 1 retried); the retry completed normally. The readout was
+regenerated after the retry; primary counts identical to the pre-retry readout.
+Two async-generator cleanup tracebacks print at interpreter exit after all rows are
+saved — cosmetic, logged for the next run.
+
+**Provenance check.** The four probe overlay cells carry `snapshot_cap: 262144` /
+`snapshot_cap_source: "manifest"`; the reference cells keep `"inferred"` at 16,384.
+The probe rows appear as their own `*-budget64k` run-tagged block in the pooled table.
+
+---
+
 ## 2026-09-10 — Frontier budget probe: gate-5 fixes, run manifest, analysis freeze (PR #98)
 
 **What.** The gate-5 review of the budget-probe freeze candidate
