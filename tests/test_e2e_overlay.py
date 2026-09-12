@@ -108,8 +108,14 @@ def test_detect_cap_clean_16384(r: TestResults) -> None:
 
 
 def test_detect_cap_above_16384(r: TestResults) -> None:
-    r.check_eq("rows above 16384 -> None",
-              e2e_regrade.detect_cap({20000: 5}), None)
+    # Since the 262144 probe cap was registered (2026-09-08) a corpus whose
+    # rows exceed 16384 but stay under 262144 reads as a 262144-snapshot
+    # corpus (only rows of exactly that length are censored — negligible
+    # false-positive mass); only rows above the largest known cap give None.
+    r.check_eq("rows above 16384 -> 262144",
+              e2e_regrade.detect_cap({20000: 5}), 262144)
+    r.check_eq("rows above 262144 -> None",
+              e2e_regrade.detect_cap({300000: 5}), None)
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +325,143 @@ def test_load_e2e_cells_frontier_stem_still_aggregates(r: TestResults) -> None:
         r.check_eq("frontier cell exact (no censoring)", cell["exact"], True)
 
 
+# ---------------------------------------------------------------------------
+# 9. Frontier output-budget probe (development/frontier_budget_probe_prereg.md
+#    §2.3 items 3-4, §8 item 6): the 262144 snapshot cap is registered and the
+#    probe's cell stems never pool with the reference cells.
+# ---------------------------------------------------------------------------
+
+
+def test_detect_cap_probe_262144(r: TestResults) -> None:
+    r.check("262144 registered", 262144 in e2e_regrade.KNOWN_CAPS,
+            str(e2e_regrade.KNOWN_CAPS))
+    # A probe corpus whose longest answer sits under the cap is exact ...
+    r.check_eq("probe corpus below cap -> 262144",
+              e2e_regrade.detect_cap({30000: 60, 150000: 40}), 262144)
+    # ... and one pinned at the cap censors the pinned rows (D6=A rule).
+    r.check_eq("probe corpus pinned at cap -> 262144",
+              e2e_regrade.detect_cap({30000: 90, 262144: 10}), 262144)
+    # Existing corpora are untouched by the larger cap (smallest-first).
+    r.check_eq("16384 corpus still 16384",
+              e2e_regrade.detect_cap({5000: 50, 16384: 20}), 16384)
+    r.check_eq("500 corpus still 500", e2e_regrade.detect_cap({500: 4496, 503: 1}), 500)
+
+
+def test_load_e2e_cells_probe_stems_get_their_own_run_tag(r: TestResults) -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        overlay_root = Path(tmp)
+        corpus_dir = overlay_root / "sonnet-frontier"
+        corpus_dir.mkdir(parents=True)
+        wt = {"task": "simulate", "with_tools": True, "prompt_variant": 11,
+              "e2e_strict": True, "e2e": True, "tool_verified": True}
+        nt = {"task": "simulate", "with_tools": False, "prompt_variant": 11,
+              "e2e_strict": False, "e2e": False, "tool_verified": None}
+        for stem, row in [("sweep5v2-with-tools", wt), ("sweep5v2", nt),
+                          ("sweep5v2-with-tools-budget64k", wt),
+                          ("sweep5v2-budget64k", nt)]:
+            (corpus_dir / f"{stem}.e2e.jsonl").write_text(json.dumps(row) + "\n")
+        cells = e2e_overlay.load_e2e_cells("sonnet-frontier", overlay_root)
+        keys = sorted(cells)
+        r.check_eq("four distinct cells (no pooling)", len(keys), 4)
+        tags = {k[3] for k in keys}
+        r.check_eq("run tags", tags, {"sweep5v2", "sweep5v2-budget64k"})
+        r.check("probe WT cell keyed by arm+tag",
+                ("sonnet-frontier", "default", "tools_all_minimal",
+                 "sweep5v2-budget64k", "tl-neut", "simulate") in cells, str(keys))
+        r.check("probe NT cell keyed by arm+tag",
+                ("sonnet-frontier", "default", "no-tools",
+                 "sweep5v2-budget64k", "nt-neut", "simulate") in cells, str(keys))
+
+
+# ---------------------------------------------------------------------------
+# 10. Snapshot cap from the run manifest (2026-09-10 gate-5 fix): an explicit
+#     `snapshot_len` in the cell's run_manifest.json overrides the histogram
+#     inference; legacy cells without one keep the inference.
+# ---------------------------------------------------------------------------
+
+
+def _cap_cell(tmp_path: Path, name: str, lengths: list[int], manifest: dict | None):
+    corpus_dir = tmp_path / "sonnet-frontier"
+    cell_dir = corpus_dir / name
+    cell_dir.mkdir(parents=True)
+    with (cell_dir / "trials.jsonl").open("w") as fh:
+        for i, n in enumerate(lengths):
+            row = {"task": "validate_domain", "model": "claude-sonnet-4-6",
+                   "domain_name": "d1", "problem_name": f"p{i}", "plan_label": "",
+                   "prompt_variant": 11, "with_tools": True, "success": True,
+                   "done_reason": "end_turn", "infra_failure": False,
+                   "tool_calls": [{"name": "validate_domain",
+                                   "result": json.dumps({"valid": True})}],
+                   "response": "x" * n}
+            fh.write(json.dumps({"key": ["validate_domain", "d1", f"p{i}", "", 11, True],
+                                 "result": row}) + "\n")
+    if manifest is not None:
+        (cell_dir / "run_manifest.json").write_text(json.dumps(manifest))
+    return corpus_dir
+
+
+PROBE_MANIFEST = {"manifest_version": 1, "backend": "anthropic-tool-runner",
+                  "model": "claude-sonnet-4-6", "snapshot_len": 262144,
+                  "num_predict": 64000, "stream": True}
+
+
+def test_cap_from_manifest_short_responses(r: TestResults) -> None:
+    """A probe cell written under the 262,144 snapshot whose answers all
+    happen to be short. The histogram alone reads as a 16,384-snapshot cell
+    and would censor the one row of exactly 16,384 chars; the manifest says
+    otherwise, so that row is graded, not censored."""
+    lengths = [5000] * 9 + [16384]
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        corpus_dir = _cap_cell(tmp_path, "sweep5v2-with-tools-budget64k", lengths, PROBE_MANIFEST)
+        ctx = e2e_regrade.SolveContext(None, None)
+        rows = asyncio.run(e2e_regrade.process_corpus(corpus_dir, tmp_path / "out", {}, {}, ctx))
+        r.check_eq("manifest cap on every row", {x["snapshot_cap"] for x in rows}, {262144})
+        r.check_eq("cap source recorded", {x["snapshot_cap_source"] for x in rows}, {"manifest"})
+        at16k = [x for x in rows if x["response_len"] == 16384]
+        r.check_eq("16384-char row NOT censored under the manifest cap",
+                   at16k[0]["e2e_reason"], "no_verdict_stated")
+    # Same rows, no manifest (legacy): inference censors the 16,384 row.
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        corpus_dir = _cap_cell(tmp_path, "sweep5v2-with-tools", lengths, None)
+        ctx = e2e_regrade.SolveContext(None, None)
+        rows = asyncio.run(e2e_regrade.process_corpus(corpus_dir, tmp_path / "out", {}, {}, ctx))
+        r.check_eq("legacy cell infers 16384", {x["snapshot_cap"] for x in rows}, {16384})
+        r.check_eq("legacy cap source", {x["snapshot_cap_source"] for x in rows}, {"inferred"})
+        at16k = [x for x in rows if x["response_len"] == 16384]
+        r.check_eq("legacy 16384-char row censored", at16k[0]["e2e_reason"],
+                   "censored_at_snapshot_cap")
+
+
+def test_cap_from_manifest_refuses_impossible_length(r: TestResults) -> None:
+    """A manifest cap below the longest stored response is corrupt provenance."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        corpus_dir = _cap_cell(tmp_path, "sweep5v2-with-tools-budget64k", [5000, 20000],
+                               dict(PROBE_MANIFEST, snapshot_len=16384))
+        ctx = e2e_regrade.SolveContext(None, None)
+        try:
+            asyncio.run(e2e_regrade.process_corpus(corpus_dir, tmp_path / "out", {}, {}, ctx))
+            r.check("impossible manifest cap refused", False, "no exception")
+        except ValueError as exc:
+            r.check("impossible manifest cap refused", "snapshot_len=16384" in str(exc), str(exc))
+
+
+def test_cap_from_manifest_at_cap_row_still_censored(r: TestResults) -> None:
+    """The manifest changes WHICH cap applies, not the censoring rule: a row
+    of exactly the manifest cap is still indeterminate."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        corpus_dir = _cap_cell(tmp_path, "sweep5v2-with-tools-budget64k", [5000, 262144],
+                               PROBE_MANIFEST)
+        ctx = e2e_regrade.SolveContext(None, None)
+        rows = asyncio.run(e2e_regrade.process_corpus(corpus_dir, tmp_path / "out", {}, {}, ctx))
+        at_cap = [x for x in rows if x["response_len"] == 262144]
+        r.check_eq("row at manifest cap censored", at_cap[0]["e2e_reason"],
+                   "censored_at_snapshot_cap")
+
+
 def main() -> None:
     r = TestResults("test_e2e_overlay")
     test_parse_dirname_full_bare_cell(r)
@@ -339,6 +482,11 @@ def main() -> None:
     test_delegation_credit_uses_recomputed_tool_verified(r)
     test_load_e2e_cells_unparseable_slurm_stem_raises(r)
     test_load_e2e_cells_frontier_stem_still_aggregates(r)
+    test_detect_cap_probe_262144(r)
+    test_load_e2e_cells_probe_stems_get_their_own_run_tag(r)
+    test_cap_from_manifest_short_responses(r)
+    test_cap_from_manifest_refuses_impossible_length(r)
+    test_cap_from_manifest_at_cap_row_still_censored(r)
     r.report_and_exit()
 
 

@@ -19,6 +19,8 @@ development/tool_call_vs_final_output_grading.md (2026-07-11):
          (pre-2026-06-25, runner.py RESPONSE_SNAPSHOT_LEN) are censored: a
          non-empty snapshot exactly at the cap with no gradeable answer is
          INDETERMINATE, and rates are reported as [lower, upper] bounds.
+         The cap is read from the cell's run_manifest.json when present
+         (2026-09-10) and inferred from the length histogram otherwise.
   D7     (2026-07-12) delivered-answer extraction is FORMAT-TOLERANT, both
          arms. The strict online parsers reject the markdown framing frontier
          chat models use after a tool conversation (solve: numbered lists of
@@ -95,6 +97,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from tools._run_manifest import read_manifest  # noqa: E402
 from pddl_eval.schemas import SolveResponse, ValidateResponse  # noqa: E402
 from pddl_eval.scoring import (  # noqa: E402
     _VALIDATE_TOOL_NAMES,
@@ -112,9 +115,38 @@ from pddl_eval.scoring import (  # noqa: E402
 VALIDATE_TASKS = ("validate_domain", "validate_problem", "validate_plan")
 ALL_TASKS = VALIDATE_TASKS + ("solve", "simulate")
 # Snapshot caps the runner has ever used (runner.py RESPONSE_SNAPSHOT_LEN):
-# 500 until 2026-06-25, 16384 after. A stored response of exactly cap length
-# is (with negligible false-positive mass) a truncated snapshot.
-KNOWN_CAPS = (500, 16384)
+# 500 until 2026-06-25, 16384 after; 262144 = the frontier output-budget
+# probe's --snapshot-len (development/frontier_budget_probe_prereg.md §2.3,
+# registered 2026-09-08). A stored response of exactly cap length is (with
+# negligible false-positive mass) a truncated snapshot. detect_cap iterates
+# smallest-first, so adding a larger cap cannot change any existing corpus.
+#
+# Cap provenance (2026-09-10, gate-5 review): a cell whose directory carries a
+# run_manifest.json (tools/_run_manifest.py — every frontier corpus written
+# after 2026-09-10) takes its cap from the manifest's explicit `snapshot_len`;
+# the histogram inference below is kept ONLY for legacy corpora without one.
+# The inference cannot tell a 262144-snapshot cell whose answers all happen
+# to be short from a 16384-snapshot cell, and would censor a probe row of
+# exactly 16384 chars that was in fact complete. Each overlay row records
+# `snapshot_cap_source` = "manifest" | "inferred".
+KNOWN_CAPS = (500, 16384, 262144)
+
+
+def cap_for_cell(cell_dir: Path, lengths: dict[int, int]) -> tuple[int | None, str]:
+    """(cap, source) for one cell: the manifest's explicit snapshot length
+    when the cell has one, else the histogram inference (legacy corpora).
+    A manifest cap smaller than the longest stored response is impossible
+    under the runner that wrote it and is refused as corrupt provenance."""
+    manifest = read_manifest(cell_dir)
+    if manifest is not None and manifest.get("snapshot_len") is not None:
+        cap = int(manifest["snapshot_len"])
+        max_len = max(lengths) if lengths else 0
+        if max_len > cap:
+            raise ValueError(
+                f"{cell_dir}: run_manifest.json declares snapshot_len={cap} but a "
+                f"stored response is {max_len} chars long")
+        return cap, "manifest"
+    return detect_cap(lengths), "inferred"
 
 NEG_PROBLEM_RE = re.compile(r"^n\d\d$")
 
@@ -545,7 +577,7 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
         lengths: dict[int, int] = defaultdict(int)
         for row in keyed_rows.values():
             lengths[len(row.get("response") or "")] += 1
-        cap = detect_cap(lengths)
+        cap, cap_source = cap_for_cell(cell_dir, lengths)
         anon = is_anon(corpus_dir, cell)
         gt = gt_cache_anon if anon else gt_cache
         out_path = out_root / corpus_dir.name / f"{cell}.e2e.jsonl"
@@ -558,6 +590,7 @@ async def process_corpus(corpus_dir: Path, out_root: Path, gt_cache: dict,
                     else graded["e2e"])
                 graded["cell"] = cell
                 graded["snapshot_cap"] = cap
+                graded["snapshot_cap_source"] = cap_source
                 graded["anon"] = anon
                 # Downstream consumers (dedup/join) can key off this; older
                 # overlay files predate the field, so no reader may require it.

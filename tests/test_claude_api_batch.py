@@ -95,6 +95,8 @@ def test_grade_validate_valid(r: TestResults) -> None:
     r.check("no-tools record", res.with_tools is False)
     r.check_eq("prompt tokens recorded", res.tokens["prompt"], 100)
     r.check_eq("completion tokens recorded", res.tokens["completion"], 20)
+    r.check_eq("final-turn tokens recorded (single turn == aggregate)",
+               res.tokens["completion_final"], 20)
 
 
 def test_grade_validate_mismatch(r: TestResults) -> None:

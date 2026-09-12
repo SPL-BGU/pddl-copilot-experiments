@@ -48,6 +48,8 @@ run_test test_summary_arm.py
 run_test test_e2e_overlay.py
 run_test test_claude_api_batch.py
 run_test test_claude_api_tools_probe.py
+run_test test_budget_probe_analysis.py
+run_test test_frontier_runner.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"

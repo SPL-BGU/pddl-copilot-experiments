@@ -80,6 +80,15 @@ from pddl_eval.scoring import (
 from pddl_eval.summary import save_results
 from run_experiment import resolve_plugin_dirs
 from tools._claude_api_common import format_for
+from tools._run_manifest import (
+    MANIFEST_NAME,
+    ManifestError,
+    build_manifest,
+    ensure_manifest,
+    ground_truth_sha256,
+    read_manifest,
+    write_manifest,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -180,6 +189,7 @@ async def _grade_one(
     out_tok: int,
     error: str = "",
     mcp=None,
+    snapshot_len: int = RESPONSE_SNAPSHOT_LEN,
 ) -> TaskResult:
     """Grade one batch response into a harness `TaskResult` (no-tools path).
 
@@ -226,12 +236,16 @@ async def _grade_one(
         success=success,
         tool_selected=tool_selected,
         format_compliant=format_compliant,
-        response=response_text[:RESPONSE_SNAPSHOT_LEN],
+        response=response_text[:snapshot_len],
         thinking="",
         tool_calls=[],
         tokens={
             "prompt": int(in_tok or 0),
             "completion": int(out_tok or 0),
+            # Single-turn path: the final turn IS the only turn. Recorded
+            # separately anyway so every frontier corpus carries the field
+            # the budget-probe truncation tripwire reads.
+            "completion_final": int(out_tok or 0),
             "turns": 1,
             "total_duration_ns": 0,
             "eval_duration_ns": 0,
@@ -255,6 +269,26 @@ def _trial_key_for(meta: dict) -> list:
         meta["plan_label"], meta["prompt_variant"], False,
         "off", "all", "minimal",
     ))
+
+
+def _batch_manifest(*, corpus: str | None, domains_dir: str, tasks: list[str],
+                    prompt_variants: list[int], num_predict: int | None,
+                    snapshot_len: int | None, gt_sha: str,
+                    keys_file: str | None, max_per_task: int) -> dict:
+    """Manifest for the no-tools Batches path (single turn, no streaming; the
+    ground truth is always generated at build time, so only the content hash
+    is recorded)."""
+    return build_manifest(
+        backend="anthropic-batch", model=MODEL, with_tools=False,
+        tasks=list(tasks), corpus=corpus or "explicit", domains_dir=domains_dir,
+        prompt_variants=prompt_variants, num_predict=num_predict,
+        snapshot_len=snapshot_len, max_iterations=1, stream=False,
+        temperature=0, think="off", ground_truth_source="generated",
+        ground_truth_sha256=gt_sha, gt_cache_sha256=None, gt_cache_path=None,
+        sdk_version=None,
+        keys_files=[keys_file] if keys_file else None,
+        limit=max_per_task or None,
+    )
 
 
 def _project_cost(per_task: dict, counts: dict | None) -> dict:
@@ -313,7 +347,7 @@ async def cmd_build(args) -> None:
         models=[MODEL], tasks=args.tasks, domains=domains,
         ground_truth=ground_truth, num_variants=num_variants,
         conditions="no-tools", tool_filter="all", prompt_style="minimal",
-        think_tag="off",
+        think_tag="off", num_predict_override=args.num_predict,
     )
 
     # Optional explicit key set (stratified pilot selection): restrict to
@@ -363,14 +397,29 @@ async def cmd_build(args) -> None:
     (out / "sidecar.jsonl").write_text(
         "".join(json.dumps(s) + "\n" for s in sidecars)
     )
+    gt_sha = ground_truth_sha256(ground_truth)
     (out / "counts.json").write_text(json.dumps({
         "model": MODEL, "corpus": args.corpus, "domains_dir": domains_dir,
         "tasks": args.tasks, "max_per_task": args.max_per_task,
         "num_variants": num_variants,
+        # Budget-probe pin (development/frontier_budget_probe_prereg.md §2.3);
+        # None = the per-task DEFAULT_NUM_PREDICT reference behavior.
+        "num_predict": args.num_predict,
+        "ground_truth_sha256": gt_sha,
         "per_task": counts, "total_requests": len(requests),
     }, indent=2))
+    # Run manifest (prereg §2.3 item 5), persisted in the batch dir BEFORE
+    # `submit` — the first API call — so the settings the requests were built
+    # under are on disk before any money moves. `grade` carries it into the
+    # results dir with the snapshot length filled in.
+    write_manifest(out, _batch_manifest(
+        corpus=args.corpus, domains_dir=domains_dir, tasks=args.tasks,
+        prompt_variants=sorted({j[J_PV] for j in selected}),
+        num_predict=args.num_predict, snapshot_len=None, gt_sha=gt_sha,
+        keys_file=args.keys_file, max_per_task=args.max_per_task,
+    ))
 
-    print(f"[build] wrote {len(requests)} requests -> {out}")
+    print(f"[build] wrote {len(requests)} requests + {MANIFEST_NAME} -> {out}")
     for task in args.tasks:
         c = counts.get(task, {"full": 0, "selected": 0})
         print(f"  {task:18s} full={c['full']:5d}  selected={c['selected']:5d}")
@@ -390,6 +439,12 @@ def cmd_submit(args) -> None:
     reqs = [json.loads(l) for l in (bdir / "batch_requests.jsonl").read_text().splitlines() if l]
     if not reqs:
         sys.exit(f"[submit] no requests in {bdir}")
+    manifest = read_manifest(bdir)
+    if manifest is None:
+        sys.exit(f"[submit] {bdir} has no {MANIFEST_NAME} — rebuild with the "
+                 "current `build` so the settings are on disk before submission")
+    if manifest["model"] != MODEL:
+        sys.exit(f"[submit] batch was built for {manifest['model']}, not {MODEL}")
     print(f"[submit] creating batch with {len(reqs)} requests ({MODEL})...")
     client = anthropic.Anthropic()
     batch = client.messages.batches.create(requests=reqs)
@@ -454,7 +509,18 @@ async def cmd_grade(args) -> None:
         counts = json.loads((bdir / "counts.json").read_text()).get("per_task")
 
     out_dir = Path(args.out_results) if args.out_results else (bdir / "graded")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    # Carry the build-time manifest into the results dir with the snapshot
+    # length filled in; refuse to grade into a dir written under different
+    # settings (a re-grade into the same dir under the same settings is fine).
+    built = read_manifest(bdir)
+    if built is None:
+        sys.exit(f"[grade] {bdir} has no {MANIFEST_NAME}; rebuild + resubmit "
+                 "so the results carry verifiable settings")
+    requested = dict(built, snapshot_len=args.snapshot_len)
+    try:
+        manifest = ensure_manifest(out_dir, requested)
+    except ManifestError as exc:
+        sys.exit(f"[grade] {exc}")
 
     # `solve` no-tools grading validates the model's plan via MCP; the other
     # four tasks grade offline. Connect MCP only when solve trials are present.
@@ -480,12 +546,13 @@ async def cmd_grade(args) -> None:
                     r = await _grade_one(
                         meta, rec.get("text"), rec.get("stop_reason"),
                         rec.get("input_tokens", 0), rec.get("output_tokens", 0),
-                        mcp=mcp,
+                        mcp=mcp, snapshot_len=args.snapshot_len,
                     )
                 else:
                     r = await _grade_one(
                         meta, None, None, 0, 0,
                         error=rec.get("error", rec["type"]), mcp=mcp,
+                        snapshot_len=args.snapshot_len,
                     )
                 task_results.append(r)
                 trials_fh.write(json.dumps(
@@ -508,6 +575,13 @@ async def cmd_grade(args) -> None:
         "corpus": (json.loads((bdir / "counts.json").read_text()).get("corpus")
                    if (bdir / "counts.json").exists() else None),
         "tasks": sorted(per_task.keys()),
+        # Budget-probe pins (development/frontier_budget_probe_prereg.md §2.4);
+        # None / the default = the reference apparatus.
+        "num_predict": (json.loads((bdir / "counts.json").read_text()).get("num_predict")
+                        if (bdir / "counts.json").exists() else None),
+        "snapshot_len": args.snapshot_len,
+        "ground_truth_sha256": manifest["ground_truth_sha256"],
+        "manifest": MANIFEST_NAME,
     }
     save_results(task_results, out_dir, meta=meta_block)
 
@@ -566,6 +640,9 @@ def main() -> None:
                         "`full` counts stay the true full-grid size, so cost projection "
                         "still extrapolates the pilot to the real full N.")
     b.add_argument("--out", required=True, help="batch dir to write")
+    b.add_argument("--num-predict", type=int, default=None,
+                   help="override the per-task max_tokens (frontier budget probe "
+                        "legs C/D: 64000); default = DEFAULT_NUM_PREDICT[task]")
 
     s = sub.add_parser("submit", help="create the Anthropic batch")
     s.add_argument("--batch-dir", required=True)
@@ -582,6 +659,9 @@ def main() -> None:
                    help="pddl-copilot marketplace path; REQUIRED when the batch "
                         "contains `solve` trials (MCP validates the model's plans). "
                         "Unused for the other four tasks.")
+    g.add_argument("--snapshot-len", type=int, default=RESPONSE_SNAPSHOT_LEN,
+                   help="stored-response snapshot length in characters "
+                        f"(default {RESPONSE_SNAPSHOT_LEN}; budget probe: 262144)")
 
     args = p.parse_args()
     MODEL = args.model

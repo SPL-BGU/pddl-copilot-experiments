@@ -58,6 +58,14 @@ from pddl_eval.scoring import FR_EXCEPTION, _classify_step_failure, check_succes
 from pddl_eval.summary import save_results
 from run_experiment import resolve_plugin_dirs
 from tools._claude_api_common import format_for
+from tools._run_manifest import (
+    MANIFEST_NAME,
+    ManifestError,
+    build_manifest,
+    ensure_manifest,
+    file_sha256,
+    ground_truth_sha256,
+)
 
 # (in, out) list $/tok; cache write = 1.25x in, cache read = 0.1x in.
 PRICES = {
@@ -103,9 +111,24 @@ def runner_tools(mcp: MCPPlanner, log: list[dict]) -> list:
     return out
 
 
-async def run_one(client, mcp, model: str, job) -> dict:
+async def run_one(client, mcp, model: str, job, *, stream: bool = False) -> dict:
     """One with-tools trial through the SDK Tool Runner; raw outcome dict
-    (same shape as the A probe's _run_one)."""
+    (same shape as the A probe's _run_one).
+
+    `stream=True` (frontier budget probe, development/frontier_budget_probe_prereg.md
+    §2.3) runs each turn as a streaming request: the SDK refuses non-streaming
+    requests whose expected time exceeds 10 minutes (max_tokens > ~21K), and the
+    probe's per-call budget is 64,000. Each yielded item is then a
+    BetaAsyncMessageStream; the final message (usage, stop_reason, content) is
+    read from `get_final_message()`, so the recorded fields are identical to the
+    non-streaming path.
+
+    Token accounting: `out_tok` sums output tokens over every turn (the cost
+    figure); `out_tok_final` is the output-token count of the LAST turn alone —
+    the one `max_tokens` bound when `stop_reason == "max_tokens"`. The prereg's
+    §3.6(a) truncation tripwire compares that final-turn count to the budget;
+    the aggregate can exceed the budget on a multi-turn trial without any single
+    turn having been cut (gate-5 review, 2026-09-10)."""
     task, dpddl, ppddl = job[J_TASK], job[J_DPDDL], job[J_PPDDL]
     pv, gt, max_tokens = job[J_PV], job[J_GT], job[J_NP]
 
@@ -128,16 +151,19 @@ async def run_one(client, mcp, model: str, job) -> dict:
         # NOT the small system block (which is below Haiku's 4096-tok minimum
         # and no-ops if cached alone).
         cache_control={"type": "ephemeral"},
+        stream=stream,
     )
 
-    in_tok = out_tok = cache_write = cache_read = turns = 0
+    in_tok = out_tok = out_tok_final = cache_write = cache_read = turns = 0
     last = None
     try:
-        async for message in runner:
+        async for item in runner:
+            message = (await item.get_final_message()) if stream else item
             last = message
             u = message.usage
             in_tok += u.input_tokens
             out_tok += u.output_tokens
+            out_tok_final = u.output_tokens
             cache_write += u.cache_creation_input_tokens or 0
             cache_read += u.cache_read_input_tokens or 0
             turns += 1
@@ -151,9 +177,12 @@ async def run_one(client, mcp, model: str, job) -> dict:
         # stays measurable) and the partial token usage.
         if "prompt is too long" not in str(exc):
             raise
+        # The turn that overflowed never produced a message: its final-turn
+        # output count is 0 (the aggregate keeps the completed turns).
         return {"text": "", "tool_calls": tool_calls_log,
                 "stop_reason": "max_tokens", "in_tok": in_tok,
-                "out_tok": out_tok, "cache_write": cache_write,
+                "out_tok": out_tok, "out_tok_final": 0,
+                "cache_write": cache_write,
                 "cache_read": cache_read, "turns": turns,
                 "loop_exhausted": False, "error": str(exc)[:300]}
 
@@ -165,11 +194,13 @@ async def run_one(client, mcp, model: str, job) -> dict:
             else "".join(b.text for b in last.content if b.type == "text"))
     return {"text": text, "tool_calls": tool_calls_log,
             "stop_reason": stop_reason, "in_tok": in_tok, "out_tok": out_tok,
+            "out_tok_final": out_tok_final,
             "cache_write": cache_write, "cache_read": cache_read,
             "turns": turns, "loop_exhausted": loop_exhausted}
 
 
-async def grade(job, outcome, mcp, model: str) -> TaskResult:
+async def grade(job, outcome, mcp, model: str,
+                snapshot_len: int = RESPONSE_SNAPSHOT_LEN) -> TaskResult:
     """Grade a runner outcome into a harness TaskResult (parity with the A
     probe's _grade; with_tools=True only — the no-tools arm goes via
     tools/claude_api_batch.py)."""
@@ -196,9 +227,12 @@ async def grade(job, outcome, mcp, model: str) -> TaskResult:
         model=model, task=task, domain_name=job[J_DNAME],
         problem_name=job[J_PNAME], prompt_variant=job[J_PV], with_tools=True,
         success=success, tool_selected=tool_selected,
-        response=(text or "")[:RESPONSE_SNAPSHOT_LEN], thinking="",
+        response=(text or "")[:snapshot_len], thinking="",
         tool_calls=outcome["tool_calls"],
         tokens={"prompt": outcome["in_tok"], "completion": outcome["out_tok"],
+                # Final-turn output tokens, kept apart from the aggregate
+                # `completion` (cost): the truncation tripwire reads this.
+                "completion_final": outcome["out_tok_final"],
                 "turns": outcome["turns"],
                 "cache_write": outcome["cache_write"],
                 "cache_read": outcome["cache_read"],
@@ -214,12 +248,36 @@ def failed_result(job, err: str, model: str) -> TaskResult:
         model=model, task=job[J_TASK], domain_name=job[J_DNAME],
         problem_name=job[J_PNAME], prompt_variant=job[J_PV], with_tools=True,
         success=False, tool_selected=False, response="", thinking="",
-        tool_calls=[], tokens={"prompt": 0, "completion": 0, "turns": 0,
+        tool_calls=[], tokens={"prompt": 0, "completion": 0,
+                               "completion_final": 0, "turns": 0,
                                "cache_write": 0, "cache_read": 0,
                                "total_duration_ns": 0, "eval_duration_ns": 0},
         duration_s=0.0, error=err[:300], tool_filter="all",
         prompt_style="minimal", failure_reason=FR_EXCEPTION, truncated=False,
         done_reason="error", plan_label=job[J_PLAN], infra_failure=True,
+    )
+
+
+def build_run_manifest(args, *, model: str, selected: list, ground_truth: dict,
+                       gt_cache_sha: str | None) -> dict:
+    """The registered settings of this invocation, in manifest form. Pure:
+    reads only the parsed args, the selected job list and the ground truth."""
+    import anthropic
+    return build_manifest(
+        backend="anthropic-tool-runner", model=model, with_tools=True,
+        tasks=list(args.tasks), corpus=args.corpus,
+        domains_dir=CORPUS_DOMAINS[args.corpus],
+        prompt_variants=sorted({j[J_PV] for j in selected}),
+        num_predict=args.num_predict, snapshot_len=args.snapshot_len,
+        max_iterations=MAX_TOOL_LOOPS, stream=bool(args.stream),
+        temperature=0, think="off",
+        ground_truth_source="cached" if args.use_cached_gt else "generated",
+        ground_truth_sha256=ground_truth_sha256(ground_truth),
+        gt_cache_sha256=gt_cache_sha,
+        gt_cache_path=str(args.gt_cache) if args.use_cached_gt else None,
+        sdk_version=anthropic.__version__,
+        keys_files=list(args.keys_file) if args.keys_file else None,
+        limit=args.limit,
     )
 
 
@@ -272,7 +330,7 @@ async def main_async(args) -> None:
             ground_truth=ground_truth,
             num_variants=len(ACTIVE_PROMPT_VARIANTS),
             conditions="tools", tool_filter="all", prompt_style="minimal",
-            think_tag="off",
+            think_tag="off", num_predict_override=args.num_predict,
         )
         selected = select_jobs(jobs, args)
         by_task: dict[str, int] = {}
@@ -301,25 +359,42 @@ async def main_async(args) -> None:
             if not gt_path.exists():
                 sys.exit(f"[frontier-B] --use-cached-gt needs {gt_path}")
             ground_truth = json.loads(gt_path.read_text())
-            print(f"[frontier-B] ground truth: cached ({gt_path})")
+            gt_cache_sha = file_sha256(gt_path)
+            print(f"[frontier-B] ground truth: cached ({gt_path}, sha256 {gt_cache_sha[:12]}…)")
         else:
             ground_truth = await generate_ground_truth(mcp, domains)
+            gt_cache_sha = None
             print("[frontier-B] ground truth: freshly generated")
         jobs, _ = build_jobs(
             models=[model], tasks=args.tasks, domains=domains,
             ground_truth=ground_truth,
             num_variants=len(ACTIVE_PROMPT_VARIANTS),
             conditions="tools", tool_filter="all", prompt_style="minimal",
-            think_tag="off",
+            think_tag="off", num_predict_override=args.num_predict,
         )
         selected = select_jobs(jobs, args)
+
+        # Run manifest (prereg §2.3 item 5): the settings become a property of
+        # the out dir BEFORE the first API call. A resume into a dir written
+        # under different settings, or into one whose trials carry no
+        # manifest, is refused here — before any row is restored or rewritten.
+        out_dir = Path(args.out)
+        requested = build_run_manifest(args, model=model, selected=selected,
+                                       ground_truth=ground_truth,
+                                       gt_cache_sha=gt_cache_sha)
+        try:
+            manifest = ensure_manifest(out_dir, requested)
+        except ManifestError as exc:
+            sys.exit(f"[frontier-B] {exc}")
+        if manifest.get("sdk_version") != requested["sdk_version"]:
+            print(f"[frontier-B] WARNING: resuming under anthropic=="
+                  f"{requested['sdk_version']}; the run started under "
+                  f"{manifest.get('sdk_version')}")
 
         # Resume: restore completed rows from a prior interrupted run of the
         # same out dir, retry infra failures (transient API errors), and
         # compact the file so append-as-we-go never duplicates a key. Torn
         # trailing lines (crash mid-write) are dropped with a warning.
-        out_dir = Path(args.out)
-        out_dir.mkdir(parents=True, exist_ok=True)
         trials_path = out_dir / "trials.jsonl"
         restored: list[TaskResult] = []
         done_keys: set[tuple] = set()
@@ -373,8 +448,10 @@ async def main_async(args) -> None:
         with trials_path.open("a") as fh:
             for i, job in enumerate(selected, 1):
                 try:
-                    outcome = await run_one(client, mcp, model, job)
-                    r = await grade(job, outcome, mcp, model)
+                    outcome = await run_one(client, mcp, model, job,
+                                            stream=args.stream)
+                    r = await grade(job, outcome, mcp, model,
+                                    snapshot_len=args.snapshot_len)
                 except Exception as exc:
                     if "credit balance" in str(exc).lower():
                         print(f"  [{i:3d}/{len(selected)}] STOP — "
@@ -390,6 +467,7 @@ async def main_async(args) -> None:
                           f"turns={outcome['turns']:2d} "
                           f"in={outcome['in_tok']:6d} "
                           f"out={outcome['out_tok']:5d} "
+                          f"outF={outcome['out_tok_final']:5d} "
                           f"cw={outcome['cache_write']:5d} "
                           f"cr={outcome['cache_read']:6d} "
                           f"{'OK ' if r.success else 'x  '}{r.failure_reason}")
@@ -412,6 +490,16 @@ async def main_async(args) -> None:
         "max_iterations": MAX_TOOL_LOOPS, "corpus": args.corpus,
         "prompt_caching": "system-block (tools+system prefix)",
         "ground_truth": "cached" if args.use_cached_gt else "generated",
+        # Budget-probe apparatus pins (prereg §2.4). None = the per-task
+        # DEFAULT_NUM_PREDICT / RESPONSE_SNAPSHOT_LEN reference behavior.
+        # The authoritative record is run_manifest.json (written before the
+        # first API call); these mirror it for readers of the summary alone.
+        "num_predict": args.num_predict,
+        "snapshot_len": args.snapshot_len,
+        "stream": args.stream,
+        "ground_truth_sha256": manifest["ground_truth_sha256"],
+        "gt_cache_sha256": manifest["gt_cache_sha256"],
+        "manifest": MANIFEST_NAME,
     })
 
     # Cost + caching report. Effective input cost prices cached tokens at
@@ -480,6 +568,18 @@ def main() -> None:
     p.add_argument("--dry-run", action="store_true",
                    help="build + select jobs, print counts, no API calls")
     p.add_argument("--out", default=".local/frontier/b_runner")
+    # Frontier output-budget probe (development/frontier_budget_probe_prereg.md
+    # §2.3). All three default to the reference apparatus; the reference
+    # corpora are reproducible from this file with the flags omitted.
+    p.add_argument("--num-predict", type=int, default=None,
+                   help="override the per-task max_tokens (budget probe: 64000 — "
+                        "Haiku 4.5's output ceiling, used on all four legs)")
+    p.add_argument("--snapshot-len", type=int, default=RESPONSE_SNAPSHOT_LEN,
+                   help="stored-response snapshot length in characters "
+                        f"(default {RESPONSE_SNAPSHOT_LEN}; budget probe: 262144)")
+    p.add_argument("--stream", action="store_true",
+                   help="stream each turn (required by the SDK for max_tokens "
+                        "> ~21K); recorded fields are unchanged")
     args = p.parse_args()
     asyncio.run(main_async(args))
 
