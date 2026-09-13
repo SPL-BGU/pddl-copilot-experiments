@@ -1927,3 +1927,135 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - Bottom line: the probe's remaining gate is the PR #98 merge (re-verify the hash table
   on main afterwards), then the run. The reference bound ⟨49, 62⟩ and every headline
   number are untouched.
+
+## 2026-09-12 — Frontier budget probe RUN; measured cost itemized; readout awaiting ratification
+
+- **Spend (measured, list prices, itemized per leg per the 08-30 rule):** leg A Sonnet
+  WT $26.21 (band $30–35, cap $111); leg B Haiku WT $6.92 (cap $37); leg C Sonnet NT
+  batch $5.55 (cap $49); leg D Haiku NT batch $2.00 (cap $16). **Total $40.68** against
+  the expected $50–65 and the $213 hard cap. Tripwire (d) checked at trial 20 of leg A
+  ($4.93 spent, projection $24.67). Grant-covered.
+- **Readout (frozen `budget_probe_analysis.py`, no tripwire):** Sonnet PARTIAL —
+  16/25 LEN-FIT converted (64%) vs 7/19 ET-FAIL control (37%), one-sided Fisher
+  p = 0.069; delivered 70 [60.4, 78.1] next to the frozen ⟨49, 62⟩. Haiku H1 — 12/17
+  (71%) vs 1/12 (8%), p = 0.001; delivered 65 [55.3, 73.6]; H2 supported (0/14 DECLINE
+  converted). Arm contrast at 64K (§3.3(2), legs C/D): Sonnet +26 pp (70 vs 44), Haiku
+  +7 pp (65 vs 58). Zero rows at the 64,000 final-turn budget on either tier.
+- **Bottom line (pending Omer's ratification, `frontier_budget_probe_readout.md` §6):**
+  per the pre-registered rule the Sonnet sentence quotes both rates with no causal
+  clause; the Haiku sentence may use the H1 language. The reference cells do not
+  change. One leg-A infra failure was retried through the runner's built-in resume;
+  counts unchanged — logged in the readout §4, not a deviation.
+
+## 2026-09-12 (later) — Budget probe readout RATIFIED; paper sentence landed and Overleaf-synced
+
+- **Decision (Omer, `frontier_budget_probe_readout.md` §6):** readout ratified as
+  computed, with revised wording: state the mixed primary result explicitly (Sonnet
+  did not meet the pre-registered criterion, Haiku did), report the with/without-tools
+  comparison at the raised allowance, note that substantial delivery failures remain
+  (30% / 35% of tool-arm trials), mention that response storage was enlarged, say
+  "under the 64K output allowance" rather than "at a budget the trajectory fits", and
+  preserve the original censoring bounds.
+- **Decision (Omer):** the one infrastructure retry is documented in the appendix
+  execution-protocol note, not in Limitations: one failure retried under the existing
+  resume policy, the completed retry graded incorrect, primary verdicts unchanged.
+- **Applied (paper/aaai27 `5466cb6`, Overleaf `d922237`):** Delivery Gap paragraph
+  "Output-budget probe" using the ratified text; a how-to-read table row for the probe
+  corpus; one Limitations sentence (gap narrows, does not close); one Future Work
+  clause (open roster needs the decoupled design); appendix paragraph "Execution
+  protocol of the output-budget probe". Numbers re-verified independently from the
+  overlay rows (scipy Fisher p = 0.0689 / 0.0011). One scoping fix at verification:
+  "no final response reached the cap" holds for the tool arms only (1 Sonnet and 2
+  Haiku no-tools answers did hit 64,000), so the sentence says "tool-arm".
+- **Bottom line:** the budget explains part of the frontier `simulate` delivery gap
+  (confirmed on Haiku, partial on Sonnet); the remaining 30–35% of tool-arm failures
+  are content failures, and the reference cells ⟨49, 62⟩ / ⟨52, 64⟩ stay in every
+  table. Job 2 is closed.
+
+
+## 2026-09-12 (night) — Job 3: nt-ster H4 steering control integrated into the tex (local commit, review gate)
+
+- **Landed on `paper/aaai27` as `6027d68` (worktree, LOCAL, unpushed)** under the
+  pre-committed caveat-only cap (prereg §5; final readout O4). Overleaf was pulled
+  first: no coauthor edits since the 09-12 budget-probe sync (`d922237`). Standalone
+  compile: 0 errors, 0 undefined references, 25 pages; the only overfull box is the
+  pre-existing scorecard table.
+- **Body, two surfaces only.** (1) The CALL beat — a PASS paragraph right after "one
+  directive sentence moves invocation from 21% to 94%" in the `validate_plan` Results
+  subsection: pre-registered control, six (model, mode) units, paired equivalence at
+  ±5pp, every unit and every eligible task cell EQUIVALENT, ~6pp realized resolution
+  (so larger prompt-only effects are not excluded), matched cell gemma `validate_plan`
+  `think=off` **+72.0pp (mechanism layer, with tools) vs +0.63pp [−0.46, +1.73]
+  (delivered, without)**, "attributed to the directive's interaction with tool
+  access". **No "replicated attribution" clause** — §4(b)'s per-model conjunction is
+  unmet (35b sign-match against a −0.11pp May reference), so the clause is removed as
+  pre-registered, not rewritten. (2) Limitations: conservative by construction (the
+  no-tools system prompt says tools are unavailable while the directive names one),
+  ~6pp resolution, later-apparatus transfer rests on anchor drift ≤1pp pooled plus the
+  unmeasured T=0 run-to-run variation, no gemma `think=on` unit. Plus one conversion
+  of the existing Methodology control-arm sentence so it points at where the control
+  is reported (allowed under the cap: converting an existing caveat, not a new surface).
+- **Appendix, "The steering control":** design / estimator / decision rule /
+  eligibility / F gate in prose; `tab:ster-units` (6 units: anchor, steered, Δ̂ [90%],
+  F, MDE, verdict); `tab:ster-tasks` (all 30 task cells with class + label, † =
+  underpowered); drift-check prose + `tab:ster-drift`; declared deviations in one
+  paragraph — §9.1 dev 1 (roster 3→4 after interim results, with the +6.9/+9.6 vs +2.5
+  numbers), §9.1 dev 2 (parser-off rerun after the void corpus, with the 08-22
+  prediction check 8.2/69.1 and 3.9/82.5 vs 8.8/68.4 and 4.1/82.0), §9.2 (post-review
+  code corrections + re-freeze; verdicts unchanged, intervals tighter 5.8–6.3 vs
+  6.5–7.1 as first shipped).
+- **Deliberately NOT in the tex:** the §4(b) factorial result (9B +8.12 replicated, 35b
+  +2.62). It is outside the O4-approved appendix list ("per-task table, F gate, MDE
+  table, drift check, apparatus failure, deviations"), so it was left out rather than
+  expanding scope. Omer to decide whether one appendix sentence should carry it.
+- **Number discipline.** Both appendix tables were generated programmatically from the
+  frozen report in `checkpoints/ntster-h4-live/derived_reports.zip` (08-30 revised),
+  with asserts on 8/8 ELIGIBLE = EQUIVALENT and MDE 5.82–6.25. The drift table and the
+  roster-gap steering figures (0.8B +0.0, 4B +6.9/+9.6, 9B +2.5, gemma +47.4/+72.0, 35b
+  +14.8) are not frozen-script outputs, so they were recomputed from the checkpoint
+  overlay + `results/sweep5v2-live` and match the readout to the decimal. NUMBERS.md
+  nt-ster block gained a "Tex cross-check rows" sub-table for every figure that entered
+  the tex without a prior pin. `grep PENDING development/` found no open spec touching
+  steering / H2 / `validate_plan` / gemma.
+- **Gate:** push + Overleaf sync wait for Omer's go (the auto-sync Action fires on
+  push). Experiments-side records are on `job3/ntster-integration-docs` off `main`,
+  doc-only, no PR.
+
+## 2026-09-13 — Job 3 revised on Omer's four points, PUSHED and Overleaf-synced
+
+- **Omer's review of `6027d68` asked for four changes; all landed as `7c0502a` on
+  `paper/aaai27`, pushed 2026-09-13 (Overleaf pulled clean first — no coauthor edits;
+  the pull's overwrite of `paper/` was verified byte-identical to `a63a557` before
+  restoring HEAD). Auto-sync Action run 34743222922 green; Overleaf bridge head
+  `2ab9bb5`, `main.tex` verified identical to local HEAD.**
+- **(1) Factorial diagnostic now IN the appendix** ("Within-corpus factorial
+  diagnostic", after the drift table): estimand, per-model replication criterion, 9B
+  +8.12 [+4.61, +11.63] with Δ_wt +8.54 / Δ_nt +1.87 vs canonical +11.38 (met), 35b
+  +2.62 [+0.74, +4.50] with Δ_wt +2.05 / Δ_nt −0.47 vs a −0.11pp reference (not met),
+  fixtures 3,765 / 4,417, the clause not carried into the main claim as pre-registered,
+  the three pre-registered bounds (gemma absent, think=on vs the think=off headline,
+  budget-unmatched legs → attribution-only), and the per-task validate_plan
+  interactions (+15.0 / +2.8) with no clause authority. "replicated attribution" stays
+  out of the main claim (0 occurrences in the tex).
+- **(2) Equivalence wording corrected.** Results now reads "All six pooled units and all
+  eight eligible task cells met the ±5pp equivalence criterion; excluded task cells
+  remain unresolved." The 5 + realized half-width quantity is kept in the appendix and
+  the table captions strictly as the registered threshold for declaring
+  non-equivalence (MDE), never as measurement resolution; the "effects larger than ~6pp
+  are not excluded" sentence (which contradicted the intervals) is gone from Results
+  and Limitations.
+- **(3) "Tighter intervals make the test harder" removed** from the deviation
+  paragraph; it now says the corrected analysis preserved all six unit verdicts and the
+  paper-level branch. (The separate intersection-union sentence about a fourth *unit*
+  making the conjunction harder is a different, correct claim and stays.)
+- **(4) Causal conclusion softened** to "This supports the interpretation that steering
+  acts through tool use in the matched Gemma cell." Limitations now says the control
+  does not establish the attribution causally and names the three reasons: different
+  measurement layers (mechanism layer vs the model's own answer), later apparatus, and
+  the conflicting no-tools instruction.
+- Compile after revision: 0 errors, 0 undefined references, 25 pages, no new overfull
+  box. NUMBERS.md nt-ster block: factorial row extended with the leg deltas, fixtures
+  and per-task validate_plan interactions; the pre-revision-MDE cross-check row removed
+  (no longer cited); use-constraint records Omer's wording.
+- **Job 3 is CLOSED on the paper side.** Docs branch `job3/ntster-integration-docs`
+  goes through a PR to main per the repo's merge rule (Omer: no further approval round).
