@@ -30,6 +30,20 @@ provenance block replaces the Job 2 placeholder; Job 2 tex note updated to pushe
 (2026-09-13 later entry). `paper/aaai27` carries main's Job 3 records via the doc-only
 merge `45de99c`.
 
+**Probe run + audit (same day, later).** Omer ran the probe; results and the per-cell
+served-version map are in `development/reference/serving_env_20260913.md`. Versions:
+vLLM 0.20.2 (torch 2.11.0+cu130, CUDA 13.0), Apptainer 1.4.5, Rocky Linux 9.7, kernel
+5.14.0-611, driver 595.58.03, RTX 6000 Ada 48 GB, 1 GPU / 6 CPU / 48 GB per job.
+**Reproducibility finding:** the serve-log banners show that the 2026-05-29 container
+cache drift to vLLM 0.22.0 reached the Qwen3.5-4B and 9B with-tools canonical cells
+(both modes) and most anonymized Qwen3.5 with-tools cells, not only the five cells
+the 05-31 memory note listed. Qwen3 tool/reasoning parsers are byte-identical between
+the releases (GitHub blob SHAs); the Qwen3.5-0.8B think=off cell, which exists at
+both versions, agrees within noise (+0.43 pp [−0.86, +1.71], 10/10 cells
+CI-overlapping). Tex: `paper/aaai27` `4eb4751` (local, review gate) pins the versions,
+drops the "96 GB" claim, discloses the drift in a footnote, and flips the checklist
+item to yes. Decision owed: disclose (recommended) vs rerun the affected cells.
+
 ## 2026-09-12 — Frontier budget probe RUN (all four legs), readout generated, awaiting ratification
 
 **What.** PR #98 squash-merged to `main` (`bbcf111`); the nine freeze-record hashes

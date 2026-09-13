@@ -2078,3 +2078,34 @@ validated by an independent ranking subagent (the user asked for a second perspe
   not in the Job 2 block is re-derived from it, never copied from decks or memos.
 - **Branch hygiene.** main merged into `paper/aaai27` (`45de99c`, doc-only) so the paper
   branch carries the Job 3 and budget-probe records, as was done after Job 2.
+
+## 2026-09-13 (night) — Serving environment pinned; vLLM 0.22.0 drift larger than recorded; decision owed
+
+- **Probe ran** (Omer's SSH; `cluster-experimenting/probe_serving_env.sh`). Pinned in the
+  tex (`paper/aaai27` `4eb4751`, LOCAL, not pushed): vLLM 0.20.2 (container
+  `vllm/vllm-openai:v0.20.2`, PyTorch 2.11.0, CUDA 13.0 runtime, Apptainer 1.4.5), NVIDIA
+  RTX 6000 Ada 48 GB, one GPU + 6 cores + 48 GB RAM per job, Rocky Linux 9.7, kernel
+  5.14.0-611, driver 595.58.03. Checklist "computing infrastructure" → yes. The old
+  "48 GB and 96 GB" wording was wrong: no paper corpus ran on the 96 GB card (only
+  pre-roster gemma4_31b and PlanBench smoke jobs did).
+- **Finding.** Reading the vLLM banner of every preserved serve log: the 2026-05-29
+  cache drift to 0.22.0 served the Qwen3.5-4B and 9B with-tools canonical cells (both
+  reasoning modes, 36,480 trials) and, in the anonymized corpus, all six Qwen3.5
+  with-tools cells (9B-on for its first 7,240 rows) plus the Gemma think=on with-tools
+  cell. The 05-31 audit (memory only) had listed five cells and assumed the rest started
+  before the flip; `sacct` shows they started after it. Everything else (all no-tools,
+  Gemma/Qwen3.6 canonical, decoupled/iss024d/nt-ster) is 0.20.2.
+- **Mitigants, verified.** (1) `qwen3xml_tool_parser.py` and `qwen3_reasoning_parser.py`
+  are byte-identical between v0.20.2 and v0.22.0 (blob SHAs at the tags); the Gemma
+  tool parser changed, but the only Gemma cell on 0.22.0 is anonymized-with-tools,
+  which no reported number uses. (2) The one cell that exists at both versions
+  (Qwen3.5-0.8B off with-tools canonical, 9,120 trials each) agrees within noise:
+  pooled +0.43 pp [−0.86, +1.71], no task×arm cell CI-disjoint; two 0.22.0 repeats of
+  the same cell differ from each other by as much.
+- **Bottom line / decision owed (Omer).** The tex now discloses the drift in a footnote
+  of the "Models and Serving" sentence. Recommendation: keep the disclosure. The
+  alternative, rerunning 4 canonical + 7 anonymized cells on 0.20.2 and regenerating
+  the overlay, pooled table, figures, decks and every Qwen3.5-4B/9B with-tools NUMBERS
+  row, buys corpus uniformity at the cost of re-freezing ratified numbers; do it only if
+  a reviewer or advisor asks. Push + Overleaf sync of `4eb4751` waits for this call.
+  Full audit: `development/reference/serving_env_20260913.md`.

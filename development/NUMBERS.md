@@ -156,6 +156,19 @@ were generated programmatically from the frozen report in
 line); the memo carries a correction banner at its head. 273,600 = 5 models × 2
 reasoning modes × 3 arms × 4,560 × 2 corpora.
 
+## Serving environment (audited 2026-09-13; tex `paper/aaai27` `4eb4751`, LOCAL, review gate)
+
+Provenance for all rows: `reference/serving_env_20260913.md`.
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| vLLM | **0.20.2** — container `vllm/vllm-openai:v0.20.2`, PyTorch 2.11.0+cu130, CUDA 13.0 runtime, Apptainer 1.4.5 | 0.22.0 as "the" version |
+| host | Rocky Linux 9.7, kernel 5.14.0-611, NVIDIA driver 595.58.03 (driver CUDA API 13.2) | — |
+| GPU / job | NVIDIA RTX 6000 Ada Generation **48 GB**, one per job, 6 CPU cores, 48 GB RAM | "48 GB and 96 GB" (pre-09-13 tex; no paper corpus ran on the 96 GB card) |
+| cells served by vLLM 0.22.0 (2026-05-29 cache drift) | canonical: Qwen3.5-**4B off/on + 9B off/on** with-tools (4 cells, 36,480 trials); anonymized: Qwen3.5 0.8B off/on, 4B off/on, 9B off with-tools, 9B on for its first 7,240 rows, Gemma on with-tools. All no-tools, all Gemma/Qwen3.6 canonical, all later corpora: 0.20.2 | the 2026-05-31 "five cells, zero mixed" list (memory-only, superseded) |
+| parser identity across 0.20.2 → 0.22.0 | `qwen3xml_tool_parser.py` and `qwen3_reasoning_parser.py` **byte-identical** (GitHub blob SHAs); `gemma4_tool_parser.py` **changed** (affects only the unquoted anon Gemma-on cell) | — |
+| 0.20.2-vs-0.22.0 rerun check (Qwen3.5-0.8B off with-tools canonical, 9,120 vs 9,120) | pooled **+0.43 pp [−0.86, +1.71]**; 10/10 task×arm cells CI-overlapping; two 0.22.0 repeats differ by as much | as proof for the 4B/9B cells beyond "within run-to-run noise" |
+
 ## Single-tool suite — per-cell figures (generated, not transcribed)
 
 The Job 2 block above pins every single-tool figure the prose quotes by value. The
