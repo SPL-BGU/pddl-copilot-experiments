@@ -401,10 +401,24 @@ quantizations.} Headline conclusions are drawn
 from the three larger models ($\geq$9B: Qwen3.5-9B, Gemma-MoE-26B,
 Qwen3.6-35B); the 4B model is reported for scaling context and the 0.8B model
 isolates a small-model failure mode (Results). All models are served locally with
-vLLM (CUDA on Linux) on single $48$\,GB and $96$\,GB GPUs, one model per GPU and with
-server-side prefix caching enabled.\todo{Pin exact vLLM/CUDA/NVIDIA-driver/OS versions
-once the experiment suite is final: record them here and flip the ``computing
-infrastructure'' Reproducibility Checklist item from \emph{partial} to \emph{yes}.}
+vLLM~0.20.2 (the official \texttt{vllm/vllm-openai:v0.20.2} container image,
+PyTorch~2.11.0, CUDA~13.0 runtime, executed with Apptainer~1.4.5), one model per
+GPU on a single NVIDIA RTX~6000 Ada Generation (48\,GB) with server-side prefix
+caching enabled; each job is allocated one GPU, six CPU cores and 48\,GB of host
+memory on compute nodes running Rocky Linux~9.7 (kernel 5.14.0-611, NVIDIA driver
+595.58.03).\footnote{Serving-version provenance, read from the vLLM start-up banner
+of every job: all no-tools cells, all Gemma-MoE-26B and Qwen3.6-35B cells of the
+canonical corpus, and every later corpus in this paper were served by vLLM~0.20.2.
+On 2026-05-29 the shared container cache drifted to vLLM~0.22.0 while the Qwen3.5
+with-tools jobs were still queued, so the Qwen3.5-4B and Qwen3.5-9B with-tools
+cells of the canonical corpus (both reasoning modes) were served by 0.22.0, as
+were, in the anonymized corpus, the six Qwen3.5 with-tools cells (one of them for
+its first 7{,}240 trials) and the Gemma-MoE-26B \emph{think}=on with-tools cell;
+the anonymized with-tools cells enter no reported number. The Qwen3 tool-call and
+reasoning parsers are byte-identical between the two releases. Re-running one
+affected cell (Qwen3.5-0.8B, \emph{think}=off, 9{,}120 trials) on 0.20.2
+reproduced its 0.22.0 results within run-to-run noise: pooled $+0.4$\,pp, 95\% CI
+$[-0.9,\,+1.7]$, with no task--arm cell CI-disjoint.}
 Decoding is deterministic
 (temperature~0), so each trial is a single fixed sample and the confidence
 intervals we report quantify sampling uncertainty over the fixture instances
@@ -2330,7 +2344,7 @@ yes
 	NA
 
 	\question{This paper specifies the computing infrastructure used for running experiments (hardware and software), including GPU/CPU models; amount of memory; operating system; names and versions of relevant software libraries and frameworks}{(yes/partial/no)}
-	partial
+	yes
 
 	\question{This paper formally describes evaluation metrics used and explains the motivation for choosing these metrics}{(yes/partial/no)}
 	yes
