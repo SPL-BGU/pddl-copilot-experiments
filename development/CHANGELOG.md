@@ -6,6 +6,30 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-09-13 — Serving-environment probe for the paper's infrastructure sentence (reproducibility)
+
+**What.** New read-only operator script `cluster-experimenting/probe_serving_env.sh`.
+Run on the cluster login node, it prints (1) the vLLM version actually served, from the
+`vLLM API server version` banner in the preserved serve logs
+(`cluster-experimenting/logs/<jobid>-vllm-<model>.log`); (2) the GPU models the sweep
+jobs saw (the `nvidia-smi` line every job `.out` starts with); (3) the container's
+vLLM / PyTorch / CUDA-runtime versions, read from the cached `~/vllm.sif`
+(`docker://vllm/vllm-openai:v0.20.2`); (4) NVIDIA driver, `/etc/os-release` and kernel on
+one node of each GPU class via a 3-minute `srun`; (5) SLURM's `OS=` field for the GPU
+nodes as an allocation-free fallback. Nothing is submitted or modified.
+
+**Why.** `paper/main.tex` (Methodology, "Models and Serving") carries the last open
+`\todo`: pin the exact vLLM / CUDA / driver / OS versions and flip the Reproducibility
+Checklist "computing infrastructure" item from *partial* to *yes*. Nothing synced to the
+laptop records those versions (the results dirs carry no environment metadata), so they
+must be read on the cluster once. The run itself waits for Omer's go-ahead.
+
+**No methodology change.** Records only: `development/NUMBERS.md` (single-tool per-cell
+provenance block replaces the Job 2 placeholder; Job 2 tex note updated to pushed),
+`development/STATUS.md` ("Paper housekeeping" section), `paper_notes_discussions.md`
+(2026-09-13 later entry). `paper/aaai27` carries main's Job 3 records via the doc-only
+merge `45de99c`.
+
 ## 2026-09-12 — Frontier budget probe RUN (all four legs), readout generated, awaiting ratification
 
 **What.** PR #98 squash-merged to `main` (`bbcf111`); the nine freeze-record hashes

@@ -12,7 +12,7 @@ table, run `/verify-claims` against the canonical corpora
 a stale partial mirror). Every value below was re-verified against its provenance
 file on 2026-08-29.
 
-*Last refreshed: 2026-09-13 (nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -56,7 +56,7 @@ a frontier solve or simulate figure below ~90 / outside those bands is pre-retra
 
 Provenance: `job2_delivered_reframe_worknote.md` §2 (verdict table, derived from
 `results/derived/e2e_overlay/pooled_e2e_table.csv`, 2026-07-17) and §8 (batch-2
-tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (both UNPUSHED, review gate). Notation: Wilson `[a, b]`; censoring bounds `⟨a, b⟩`, never resolved.
+tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (pushed 2026-09-08, Overleaf `cbc45b7`). Notation: Wilson `[a, b]`; censoring bounds `⟨a, b⟩`, never resolved.
 
 | figure | **quote this** | do NOT quote |
 |---|---|---|
@@ -156,7 +156,19 @@ were generated programmatically from the frozen report in
 line); the memo carries a correction banner at its head. 273,600 = 5 models × 2
 reasoning modes × 3 arms × 4,560 × 2 corpora.
 
-## Not yet in this table
+## Single-tool suite — per-cell figures (generated, not transcribed)
 
-- Single-tool suite headline numbers: still to be pinned as Job 2 writes. Use
-  `/verify-claims` per figure until they land here.
+The Job 2 block above pins every single-tool figure the prose quotes by value. The
+remaining per-cell numbers (each model × task × arm × reasoning-mode success rate,
+censoring bound and tool-verified count) are **deliberately not pinned row-by-row
+here**: the tex draws them from one artifact and they are regenerated from it, never
+copied from a deck, memo or earlier draft.
+
+| what | **the one source** | how the tex gets it | do NOT quote |
+|---|---|---|---|
+| delivered rates (`ok_strict`), censoring bounds `⟨low, high⟩`, tool-verified counts (`tv_ok/tv_n`), every corpus × bank × arm | `results/derived/e2e_overlay/pooled_e2e_table.csv` (460 rows, 2026-07-17), written by `.claude/skills/analyzer/scripts/e2e_pooled.py` over `results/derived/e2e_overlay/`; the paper's open-roster cells are the `sweep5v2-live` (+ `sweep6-live` twin) rows, `bank=neut`, arms `nt-neut` / `tl-neut` / `tl-ster` | figures: `paper/figures/make_paper_figures.py`, which reads the CSV through `e2e_overlay.load_e2e_cells` so no figure can drift from the table; prose ranges and tables: `/verify-claims` against the same CSV | any per-cell number from `results/sweep5-cluster-20260530` (stale mirror), from the RQ decks (tool-verified surface, pre-reframe), or from `summary_*.json` `success_rate` (harness surface, not delivered) |
+| availability verdicts (FAVORABLE / AGAINST / UNDECIDED), think=off, 25 cells | `job2_delivered_reframe_worknote.md` §2 (the table) + §6 (the verbatim script that recomputes it from the CSV; rerun with `Z *= √2.7` for the design-effect check) | the scorecard verdict column and the "13/25 UNDECIDED" row above | the memo's 2/25 (mode-pooled) |
+| invocation (CALL) rates | computed from the canonical `trials.jsonl` (`tool_selected` / `delegated` flags) by the figure generator; storage-exact in every corpus | funnel figure, mechanism-layer prose | — |
+
+Rule of thumb: a single-tool number that is not in the Job 2 block is re-derived from
+the CSV (the §6 script or `/verify-claims`), not searched for in the docs.

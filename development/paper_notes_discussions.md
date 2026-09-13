@@ -2059,3 +2059,22 @@ validated by an independent ranking subagent (the user asked for a second perspe
   (no longer cited); use-constraint records Omer's wording.
 - **Job 3 is CLOSED on the paper side.** Docs branch `job3/ntster-integration-docs`
   goes through a PR to main per the repo's merge rule (Omer: no further approval round).
+
+## 2026-09-13 (later) — Paper housekeeping pass: three items closed, one gated
+
+- **Serving-environment versions (the Methodology `\todo`).** Still open; it is the
+  only tex item owed. vLLM is fixed by the sbatch pin (`vllm/vllm-openai:v0.20.2`); the
+  CUDA runtime, NVIDIA driver and node OS are not recorded anywhere off-cluster. A
+  read-only probe (`cluster-experimenting/probe_serving_env.sh`) is ready and runs once
+  Omer gives the go-ahead for the SSH. Then: versions into the "Models and Serving"
+  sentence, checklist item *partial → yes*, Overleaf cycle.
+- **Corpus-scale figure.** Bottom line unchanged from 2026-08-16: 227k never enters the
+  tex; the reproducible total is 273,600 (5 models × 2 modes × 3 arms × 4,560 × 2
+  corpora). Verified today that the paper-branch tex states no total at all.
+- **NUMBERS.md.** The "single-tool headline numbers to be pinned as Job 2 writes"
+  placeholder is retired. Decision: per-cell single-tool figures are **not** pinned
+  row-by-row; the pooled overlay table
+  (`results/derived/e2e_overlay/pooled_e2e_table.csv`) is the one source, and any figure
+  not in the Job 2 block is re-derived from it, never copied from decks or memos.
+- **Branch hygiene.** main merged into `paper/aaai27` (`45de99c`, doc-only) so the paper
+  branch carries the Job 3 and budget-probe records, as was done after Job 2.
