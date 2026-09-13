@@ -2020,3 +2020,42 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Gate:** push + Overleaf sync wait for Omer's go (the auto-sync Action fires on
   push). Experiments-side records are on `job3/ntster-integration-docs` off `main`,
   doc-only, no PR.
+
+## 2026-09-13 — Job 3 revised on Omer's four points, PUSHED and Overleaf-synced
+
+- **Omer's review of `6027d68` asked for four changes; all landed as `7c0502a` on
+  `paper/aaai27`, pushed 2026-09-13 (Overleaf pulled clean first — no coauthor edits;
+  the pull's overwrite of `paper/` was verified byte-identical to `a63a557` before
+  restoring HEAD). Auto-sync Action run 34743222922 green; Overleaf bridge head
+  `2ab9bb5`, `main.tex` verified identical to local HEAD.**
+- **(1) Factorial diagnostic now IN the appendix** ("Within-corpus factorial
+  diagnostic", after the drift table): estimand, per-model replication criterion, 9B
+  +8.12 [+4.61, +11.63] with Δ_wt +8.54 / Δ_nt +1.87 vs canonical +11.38 (met), 35b
+  +2.62 [+0.74, +4.50] with Δ_wt +2.05 / Δ_nt −0.47 vs a −0.11pp reference (not met),
+  fixtures 3,765 / 4,417, the clause not carried into the main claim as pre-registered,
+  the three pre-registered bounds (gemma absent, think=on vs the think=off headline,
+  budget-unmatched legs → attribution-only), and the per-task validate_plan
+  interactions (+15.0 / +2.8) with no clause authority. "replicated attribution" stays
+  out of the main claim (0 occurrences in the tex).
+- **(2) Equivalence wording corrected.** Results now reads "All six pooled units and all
+  eight eligible task cells met the ±5pp equivalence criterion; excluded task cells
+  remain unresolved." The 5 + realized half-width quantity is kept in the appendix and
+  the table captions strictly as the registered threshold for declaring
+  non-equivalence (MDE), never as measurement resolution; the "effects larger than ~6pp
+  are not excluded" sentence (which contradicted the intervals) is gone from Results
+  and Limitations.
+- **(3) "Tighter intervals make the test harder" removed** from the deviation
+  paragraph; it now says the corrected analysis preserved all six unit verdicts and the
+  paper-level branch. (The separate intersection-union sentence about a fourth *unit*
+  making the conjunction harder is a different, correct claim and stays.)
+- **(4) Causal conclusion softened** to "This supports the interpretation that steering
+  acts through tool use in the matched Gemma cell." Limitations now says the control
+  does not establish the attribution causally and names the three reasons: different
+  measurement layers (mechanism layer vs the model's own answer), later apparatus, and
+  the conflicting no-tools instruction.
+- Compile after revision: 0 errors, 0 undefined references, 25 pages, no new overfull
+  box. NUMBERS.md nt-ster block: factorial row extended with the leg deltas, fixtures
+  and per-task validate_plan interactions; the pre-revision-MDE cross-check row removed
+  (no longer cited); use-constraint records Omer's wording.
+- **Job 3 is CLOSED on the paper side.** Docs branch `job3/ntster-integration-docs`
+  goes through a PR to main per the repo's merge rule (Omer: no further approval round).

@@ -1,9 +1,8 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-09-12 (Job 3 nt-ster integration landed as a LOCAL
-commit on `paper/aaai27` `6027d68`, review gate; frontier budget probe DONE 09-12, in
-tex and Overleaf; Job 2 closed). Renamed from `remaining_work_20260811.md` on
-2026-08-29.*
+*Content last refreshed: 2026-09-13 (Job 3 nt-ster integration PUSHED + Overleaf-synced
+as `6027d68` + `7c0502a` on `paper/aaai27`, Overleaf `2ab9bb5`; frontier budget probe
+DONE 09-12; Job 2 closed). Renamed from `remaining_work_20260811.md` on 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc — that is what produced the
@@ -20,14 +19,15 @@ tex and Overleaf; Job 2 closed). Renamed from `remaining_work_20260811.md` on
 (RESCUE, SUPPORTED, four-rung ladder, n=600/cell). The single-tool line's data has
 been complete since 2026-07-17 (sweep5v2-live + sweep6 + iss024d-e2e-live + the
 Haiku/Sonnet frontier corpora, all graded). **The nt-ster H4 control closed 2026-08-29
-— all six units PASS — so there is now no unrun experiment on either line.** What is
-left is **one review gate**: Job 3's tex landed 2026-09-12 as a local commit on
-`paper/aaai27` (`6027d68`) and waits for Omer's review, push and Overleaf sync. Job 2
-is closed (batches 1+2 + the budget-probe sentence pushed and synced). Job 1
+— all six units PASS — so there is now no unrun experiment on either line.** **All
+three writing jobs are landed and synced.** Job 3's tex landed 2026-09-12 (`6027d68`),
+was revised on Omer's four review points 2026-09-13 (`7c0502a`), pushed, and
+Overleaf-synced (Action run 34743222922 green, Overleaf `2ab9bb5`). Job 2 is closed
+(batches 1+2 + the budget-probe sentence pushed and synced). Job 1
 (PlanBench Act 4) is DONE — it landed 2026-08-11 (`67ea69c` + `644f8bd`) and synced
 to Overleaf the same day; this file wrongly carried it as NOT STARTED until
-2026-09-07. Last paper commit is `6027d68` (local, 2026-09-12); origin head is `a63a557`
-(the main merge), whose last paper edit `5466cb6` is Overleaf-synced (`d922237`).
+2026-09-07. Last paper commit is `7c0502a` (2026-09-13), pushed and Overleaf-synced (`2ab9bb5`).
+Nothing on the paper is owed beyond coauthor review.
 
 ## State by line
 
@@ -35,13 +35,13 @@ to Overleaf the same day; this file wrongly carried it as NOT STARTED until
 |---|---|---|---|
 | PlanBench (NT + WT) | DONE, archived + MANIFEST-verified | DONE, `verify_promotion.py` re-derives every number | **DONE 2026-08-11** — section in tex + Overleaf, re-verified 09-07 |
 | Single-tool suite | DONE (07-17) | DONE (e2e overlay D1–D9 + Phase 5, pooled table regenerated) | **DONE 09-08 / 09-12** — the full e2e reframe (D2/D-J2 = option a), batches 1+2 on `paper/aaai27`, in Overleaf; budget-probe sentence LANDED 09-12 (tex `5466cb6`, Overleaf `d922237`) |
-| nt-ster H4 control | **DONE 2026-08-29** (6 cells, 9,120 rows each) | **DONE** — all six units PASS, branch PASS | **DONE 2026-09-12 (LOCAL)** — caveat-only integration on `paper/aaai27` `6027d68`, awaiting review + push, see Job 3 |
+| nt-ster H4 control | **DONE 2026-08-29** (6 cells, 9,120 rows each) | **DONE** — all six units PASS, branch PASS | **DONE 2026-09-13** — caveat-only integration `6027d68` + review revisions `7c0502a` on `paper/aaai27`, pushed + Overleaf-synced (`2ab9bb5`), see Job 3 |
 
-Evidence on the paper side (2026-09-12): the Results sections carry the delivered
+Evidence on the paper side (2026-09-13): the Results sections carry the delivered
 reframe and the budget-probe paragraph; the PlanBench section exists (`\section{External
 Validity on PlanBench}`); the steering control's PASS paragraph, Limitations note and
-appendix block (`tab:ster-units` / `tab:ster-tasks` / `tab:ster-drift`) exist in the
-local `6027d68` only.
+appendix block (`tab:ster-units` / `tab:ster-tasks` / `tab:ster-drift` + the factorial
+diagnostic) are in Overleaf (`2ab9bb5`).
 
 ## Job 1 — PlanBench Act 4 section: DONE (2026-08-11, verified 2026-09-07)
 
@@ -106,18 +106,22 @@ transcription gap (solve +5pp both tiers, simulate ≈35–50pp length-driven,
 This is where the retracted claims finally get their replacement text, so it is also
 the cleanup of the simulate sole-source-floor thread.
 
-## Job 3 — nt-ster H4 control: DONE (tex landed 2026-09-12, LOCAL commit, review gate)
+## Job 3 — nt-ster H4 control: DONE (tex landed 2026-09-12, revised + pushed + synced 2026-09-13)
 
-**Integration landed 2026-09-12 on `paper/aaai27` as `6027d68` (worktree
-`../pddl-copilot-worktrees/paper-aaai27`), unpushed.** Overleaf pulled clean first.
-What is in it: the CALL-beat PASS paragraph (Results, after the 21→94% invocation
-sentence), the Limitations note, a converted Methodology control-arm sentence, and the
-appendix block "The steering control" with `tab:ster-units`, `tab:ster-tasks`,
-`tab:ster-drift` and the declared deviations. Compile: 0 errors, 0 undefined refs.
-Record: `paper_notes_discussions.md` 2026-09-12 (night); tex cross-check rows in
-`NUMBERS.md`. **Left: Omer's review → push (auto-sync Action fires) → confirm the
-Action ran green.** Not in the tex, by scope: the §4(b) factorial result (outside the
-O4 list); one appendix sentence if Omer wants it.
+**Integration landed on `paper/aaai27` as `6027d68` (2026-09-12) and, after Omer's
+four review points, `7c0502a` (2026-09-13); pushed 2026-09-13, auto-sync Action run
+34743222922 green, Overleaf bridge head `2ab9bb5` verified byte-identical to HEAD.**
+What is in it: the CALL-beat paragraph (Results, after the 21→94% invocation sentence;
+"All six pooled units and all eight eligible task cells met the ±5pp equivalence
+criterion; excluded task cells remain unresolved" / "This supports the interpretation
+that steering acts through tool use in the matched Gemma cell"), the Limitations note
+(not causal: different layers, later apparatus, conflicting no-tools instruction), a
+converted Methodology control-arm sentence, and the appendix block "The steering
+control" with `tab:ster-units`, `tab:ster-tasks`, `tab:ster-drift`, the within-corpus
+factorial diagnostic (per-model replication criterion not met; clause not in the main
+claim) and the declared deviations. Compile: 0 errors, 0 undefined refs. Records:
+`paper_notes_discussions.md` 2026-09-12 (night) + 2026-09-13; tex cross-check rows in
+`NUMBERS.md`. **Nothing left on Job 3.**
 
 **The experiment is done.** Closed 2026-08-29 on branch `run/ntster-h4`: six cells,
 9,120 rows each, **all six units PASS**, paper-level branch **PASS**. Every one of the
