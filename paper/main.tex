@@ -1075,14 +1075,13 @@ We appended the same directive to the no-tools prompt, with the tools removed
 and the system prompt still stating that they are unavailable, and ran it
 beside a neutral-prompt arm in the same job on six (model, mode) units, as a
 paired equivalence test at $\pm5$\,pp (Table~\ref{tab:ster-units}, with the
-design and full tables in the Technical Appendix). The directive alone does not move the
-no-tools floor: every unit and every eligible task cell is equivalent to its
-anchor, at a realized resolution of about $6$\,pp per unit, so prompt-only
-effects larger than that are not excluded. In the matched cell, Gemma-MoE-26B
+design and full tables in the Technical Appendix). All six pooled units and all
+eight eligible task cells met the $\pm5$\,pp equivalence criterion; excluded
+task cells remain unresolved. In the matched cell, Gemma-MoE-26B
 \emph{validate\_plan} at \emph{think}=off, the sentence worth $+72.0$\,pp at the
 mechanism layer with the tool present is worth $+0.63$\,pp on the model's own
-answer with it absent ($90\%$ interval $[-0.46,\,+1.73]$). We therefore
-attribute the steering effect to the directive's interaction with tool access.
+answer with it absent ($90\%$ interval $[-0.46,\,+1.73]$). This supports the
+interpretation that steering acts through tool use in the matched Gemma cell.
 
 This also explains an apparent size inversion. In the plain arm's mechanism
 layer the 9B
@@ -1657,14 +1656,18 @@ rest on that comparison. The availability gap likewise differences two arms whos
 system prompts, beyond tool presence, also differ by a one-line policy/format clause,
 so the steering gap (where the plain and steered prompts differ by exactly one
 appended sentence) is the cleaner of the two contrasts. The control that
-attributes the steering effect to tool access (Results) is conservative by
-construction. Its no-tools system prompt states that tools are unavailable while
-the appended directive names one, so the control removes both the tool and its
-stated availability, and that contradiction biases the test toward equivalence.
-Its realized resolution is about $6$\,pp per unit, so a smaller prompt-only
-effect is not excluded. It was run on a later apparatus than the canonical
-sweep, beside a neutral-prompt arm in the same job, so its bearing on the
-canonical steering gap rests on how closely that neutral arm reproduces the
+supports the tool-use reading of the steering effect (Results) does not
+establish it causally. Its no-tools system prompt states that tools are
+unavailable while the appended directive names one, so the control removes both
+the tool and its stated availability, and that contradiction biases the test
+toward equivalence. Its verdicts cover the six pooled units and the eight
+eligible task cells, and the task cells excluded by the eligibility gates
+remain unresolved. The two figures compared in the matched cell are read at
+different layers, the with-tools effect at the mechanism layer and the control
+on the model's own answer, so the comparison is a juxtaposition across
+surfaces. The control was run on a later apparatus than the canonical sweep,
+beside a neutral-prompt arm in the same job, so its bearing on the canonical
+steering gap rests on how closely that neutral arm reproduces the
 canonical no-tools rates (within $1$\,pp pooled, Technical Appendix) and on the
 unmeasured run-to-run variation of deterministic decoding, since no prompt was
 ever sampled twice under one apparatus. No \emph{think}=on control exists for
@@ -1920,8 +1923,10 @@ whose $F$ reaches the margin is uninformative at that granularity and cannot
 contribute a failure, because the paraphrases alone move it by more than the
 effect under test. This gate removes \emph{solve} ($F$ of $14$--$31$\,pp) and
 \emph{simulate} ($5.6$--$36.3$\,pp) in every unit and \emph{validate\_domain}
-($5.0$--$14.2$\,pp) in every unit. The minimum detectable effect of a unit is
-$5$\,pp plus its realized governing half-width.
+($5.0$--$14.2$\,pp) in every unit. The registered threshold for declaring a
+unit not-equivalent is $5$\,pp plus its realized governing half-width (MDE in
+the tables): the smallest $|\hat\Delta|$ at which the interval would lie
+entirely outside the margin.
 
 Table~\ref{tab:ster-units} gives the six unit verdicts and
 Table~\ref{tab:ster-tasks} every task cell. All six units pass, all eight
@@ -1956,8 +1961,8 @@ Qwen3.6-35B & on & 83.6 & 83.1 & $-0.46$ $[-1.33,\,+0.42]$ & 0.66 & 5.87 & pass 
 determinate rows). Anchor and steered are the pooled success rates of the two
 arms. $\hat\Delta$ is the paired difference, steered minus anchor, with its
 governing $90\%$ cluster-robust interval. $F$ is the pooled paraphrase noise
-floor of the anchor arm. MDE is the smallest $|\hat\Delta|$ that would have
-failed the unit ($5$\,pp plus the realized half-width). A unit passes when its
+floor of the anchor arm. MDE is the registered threshold for declaring the unit
+not-equivalent, $5$\,pp plus the realized half-width. A unit passes when its
 interval lies inside $(-5,\,+5)$ and no eligible task cell lies entirely
 outside it.}
 \label{tab:ster-units}
@@ -2015,7 +2020,9 @@ in $[10\%,\,90\%]$, a paraphrase floor $F$ below $5$\,pp and a domain-clustered
 half-width of at most $5$\,pp. Every other cell is \emph{uninformative} and
 carries no verdict authority. An \emph{equivalent} label means the interval lies
 inside $(-5,\,+5)$, and \emph{indeterminate} means it crosses a margin. No cell
-is not-equivalent. $^{\dagger}$ half-width above $5$\,pp (underpowered).
+is not-equivalent. MDE is the per-cell threshold for declaring non-equivalence,
+as in Table~\ref{tab:ster-units}. $^{\dagger}$ half-width above $5$\,pp
+(underpowered).
 \emph{Simulate} cells are additionally censoring bounds under extreme
 imputation and are reported here on determinate rows only.}
 \label{tab:ster-tasks}
@@ -2052,19 +2059,54 @@ is excluded because its canonical unaided answers cannot be regraded.}
 \label{tab:ster-drift}
 \end{table}
 
+\emph{Within-corpus factorial diagnostic.} The preregistration also fixed an
+optional replication check on the two \emph{think}=on units, whose no-tools
+legs come from the control run and whose with-tools legs come from the
+independent full-storage rerun (Results), two runs under one apparatus pin.
+The estimand is the interaction
+$\Delta_{\text{wt}}(\text{steered}-\text{neutral})-
+\Delta_{\text{nt}}(\text{steered}-\text{neutral})$ per model, on the delivered
+surface for both legs with the same clustered $90\%$ interval, and the
+attribution counts as replicated for a model when that interval excludes zero
+and its sign matches the model's canonical \emph{think}=on with-tools steering
+effect. The replication clause was to enter the main claim only if every model
+met the criterion. Fixtures censored on either leg are excluded ($3{,}765$
+matched fixtures for Qwen3.5-9B, $4{,}417$ for Qwen3.6-35B). For Qwen3.5-9B
+the interaction is $+8.12$\,pp $[+4.61,\,+11.63]$ (with-tools steering
+$+8.54$\,pp against no-tools $+1.87$\,pp), and its sign matches the canonical
+$+11.38$\,pp, so the criterion is met. For Qwen3.6-35B the interaction is
+$+2.62$\,pp $[+0.74,\,+4.50]$ (with-tools $+2.05$\,pp against no-tools
+$-0.47$\,pp), but its canonical reference effect is $-0.11$\,pp, an essentially
+null reference whose sign cannot meaningfully be matched, so the criterion is
+not met. The per-model criterion therefore fails, and the replication clause is
+not carried into the main claim, as pre-registered. The diagnostic is bounded
+in three ways that the preregistration stated in advance. Gemma-MoE-26B, the
+model that owns the $+72.0$\,pp, cannot be in it, because it has no
+\emph{think}=on no-tools leg. The factorial is \emph{think}=on while the body's
+steering effect is \emph{think}=off, and no \emph{think}=off with-tools steered
+corpus was co-run with the control. And the two legs are budget-unmatched by
+construction, since the tool loop re-grants the per-task decode budget on every
+turn (up to ten calls) while a no-tools trial has one shared budget, so the
+comparison was declared attribution-only and no rate from it is quoted as an
+effect size. Descriptively, both interactions are positive and exclude zero,
+which is consistent with the tool-use reading. On \emph{validate\_plan} alone
+the interaction is $+15.0$\,pp $[+9.0,\,+21.0]$ for the 9B and $+2.8$\,pp
+$[+0.1,\,+5.4]$ for the 35B, reported because the estimand is stated per model
+and a per-task cell carries no clause authority.
+
 \emph{Deviations from the preregistration, declared.} Three changes were made
 after the preregistration was ratified. First, the control roster was expanded
 from three models to four after interim results were seen. The preregistration
 fixed the roster at Qwen3.5-9B, Gemma-MoE-26B and Qwen3.6-35B. With those three
 \emph{think}=off units complete and passing, we measured the with-tools steering
-effect the control exists to attribute across the full roster at the mechanism
+effect the control was designed to test across the full roster at the mechanism
 layer and found that Qwen3.5-4B carried a larger effect ($+6.9$\,pp pooled,
 $+9.6$\,pp on \emph{validate\_plan}) than the controlled Qwen3.5-9B
-($+2.5$\,pp), while Qwen3.5-0.8B showed no pooled effect ($+0.0$\,pp) and so has
-nothing to attribute. We added a Qwen3.5-4B \emph{think}=off unit with apparatus
+($+2.5$\,pp), while Qwen3.5-0.8B showed no pooled effect ($+0.0$\,pp) and so
+gives the control nothing to test. We added a Qwen3.5-4B \emph{think}=off unit with apparatus
 parity to the three completed units. It passes. Under the intersection-union
 rule a fourth unit can only make the conjunctive claim harder to satisfy, and
-the unit was chosen by the size of the effect needing attribution, before its
+the unit was chosen by the size of its with-tools steering effect, before its
 control result was known. Second, the \emph{think}=on arm was rerun with the
 reasoning parser off. The preregistration ruled that the parser override is not
 passed, reasoning about the single-call path in which reasoning and answer
@@ -2088,11 +2130,8 @@ clustering assumed $100$ balanced clusters where the fixture layout yields
 $220$ unbalanced ones and so estimated a task-reweighted quantity, and the
 secondary mechanism decomposition read fields the graded rows do not carry. The
 code was corrected, re-frozen by hash, and the analysis regenerated from the
-checkpointed corpus. The six unit verdicts and the paper-level branch are
-unchanged. The secondary figures reported here are the corrected values, and
-the corrected intervals are tighter (resolution $5.8$--$6.3$\,pp against
-$6.5$--$7.1$\,pp as first shipped), which can only make the equivalence test
-harder to pass.
+checkpointed corpus. The corrected analysis preserved all six unit verdicts and
+the paper-level branch. The figures reported here are the corrected values.
 
 \paragraph{Canonical trajectory normalization (\emph{simulate}).}
 A \emph{simulate} answer is graded by deep-equality against the oracle trajectory
