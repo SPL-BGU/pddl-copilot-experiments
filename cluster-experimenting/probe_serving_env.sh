@@ -20,8 +20,13 @@ SIF="${SIF:-$HOME/vllm.sif}"
 echo "== probe_serving_env $(date '+%Y-%m-%dT%H:%M:%S%z') on $(hostname) =="
 
 echo; echo "## 1. vLLM version actually served (startup banner in the preserved serve logs)"
-grep -h -o 'vLLM API server version [0-9A-Za-z.+]*' "$LOGS"/*-vllm-*.log 2>/dev/null | sort | uniq -c \
-  || echo "(no *-vllm-*.log under $LOGS)"
+# The audited releases use a logo for the API banner; the engine logs its version.
+if compgen -G "$LOGS/*-vllm-*.log" > /dev/null; then
+  grep -h -E -o 'Initializing a V1 LLM engine \(v[0-9][0-9A-Za-z.+-]*\)' "$LOGS"/*-vllm-*.log 2>/dev/null | sort | uniq -c \
+    || echo "(no readable engine-version banners in *-vllm-*.log under $LOGS)"
+else
+  echo "(no *-vllm-*.log under $LOGS)"
+fi
 
 echo; echo "## 2. GPU models the sweep jobs saw (nvidia-smi line at the top of every job .out)"
 grep -h -E '^[A-Za-z].*, [0-9]+ MiB$' "$LOGS"/*.out 2>/dev/null | sort | uniq -c \

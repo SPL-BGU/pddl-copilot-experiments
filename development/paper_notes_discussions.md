@@ -2122,3 +2122,10 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - Pushed as `paper/aaai27` `4eb4751`; Overleaf pull beforehand: already up to date
   (no coauthor edits since `2ab9bb5`); Overleaf-sync Action run 34814416712 green;
   Overleaf head `d884bd3`. Paper housekeeping (2026-09-13 list) is closed.
+
+## 2026-09-14 — PR #100 reproduction corrections
+
+- The serving-version probe now reads the engine banner used by the audit.
+- The per-cell NUMBERS recipe uses the neutral bank for `nt-neut` / `tl-neut` and
+  the steered bank for `tl-ster`. Figures and CSV share the overlay aggregator.
+  These corrections preserve the frozen figures and the approved disclosure.

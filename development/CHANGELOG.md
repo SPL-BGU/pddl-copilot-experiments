@@ -6,6 +6,23 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-09-14 — Fix the serving-version probe and per-cell reproduction recipe (PR #100 review)
+
+**Motivation.** The probe searched for an API banner absent from the audited vLLM
+releases, and the NUMBERS recipe's neutral-bank filter omitted every steered-tool row.
+
+**Changes.** `cluster-experimenting/probe_serving_env.sh` now counts the preserved
+`Initializing a V1 LLM engine (v...)` banners and distinguishes missing logs from
+logs without readable engine banners. `development/NUMBERS.md` specifies `bank=neut`
+for `nt-neut` / `tl-neut` and `bank=ster` for `tl-ster`, and clarifies that the figures
+and CSV share the overlay aggregator rather than the figures reading the CSV.
+
+**Validation.** `bash -n` and `git diff --check` passed. Local fixtures covered missing
+and empty log directories, logs without engine banners, both audited versions, ANSI
+prefixes and paths with spaces. The corrected CSV filter retains every row for all
+three arms in both canonical corpora. No cluster jobs ran; scoring, data and frozen
+paper figures are unchanged.
+
 ## 2026-09-13 — Serving-environment probe for the paper's infrastructure sentence (reproducibility)
 
 **What.** New read-only operator script `cluster-experimenting/probe_serving_env.sh`.
