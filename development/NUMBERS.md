@@ -12,7 +12,7 @@ table, run `/verify-claims` against the canonical corpora
 a stale partial mirror). Every value below was re-verified against its provenance
 file on 2026-08-29.
 
-*Last refreshed: 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -156,7 +156,7 @@ were generated programmatically from the frozen report in
 line); the memo carries a correction banner at its head. 273,600 = 5 models × 2
 reasoning modes × 3 arms × 4,560 × 2 corpora.
 
-## Serving environment (audited 2026-09-13; tex `paper/aaai27` `4eb4751`, LOCAL, review gate)
+## Serving environment (audited 2026-09-13; tex `paper/aaai27` `4eb4751`, pushed 2026-09-14, Overleaf `d884bd3`)
 
 Provenance for all rows: `reference/serving_env_20260913.md`.
 
