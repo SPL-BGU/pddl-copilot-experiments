@@ -2109,3 +2109,16 @@ validated by an independent ranking subagent (the user asked for a second perspe
   row, buys corpus uniformity at the cost of re-freezing ratified numbers; do it only if
   a reviewer or advisor asks. Push + Overleaf sync of `4eb4751` waits for this call.
   Full audit: `development/reference/serving_env_20260913.md`.
+
+## 2026-09-14 — Serving-environment disclosure ratified and pushed
+
+- **Omer's decision:** keep the vLLM 0.22.0 disclosure footnote; no rerun of the affected
+  Qwen3.5 with-tools cells. Bottom line for the paper: the infrastructure sentence
+  states vLLM 0.20.2 / PyTorch 2.11.0 / CUDA 13.0 / Apptainer 1.4.5 / Rocky Linux 9.7 /
+  driver 595.58.03 / RTX 6000 Ada 48 GB (one GPU, 6 cores, 48 GB per job), and its
+  footnote gives the per-cell served-version provenance, the parser identity across the
+  two releases, and the within-noise 0.8B rerun check. The Reproducibility Checklist
+  "computing infrastructure" item is *yes*. No `\todo` remains in the tex.
+- Pushed as `paper/aaai27` `4eb4751`; Overleaf pull beforehand: already up to date
+  (no coauthor edits since `2ab9bb5`); Overleaf-sync Action run 34814416712 green;
+  Overleaf head `d884bd3`. Paper housekeeping (2026-09-13 list) is closed.

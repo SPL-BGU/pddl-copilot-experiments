@@ -7,8 +7,8 @@ version that actually served every canonical cell. Sources: the read-only probe
 class), the preserved serve logs under `cluster-experimenting/logs/` (the
 `Initializing a V1 LLM engine (vX.Y.Z)` banner, one per job), `sacct`, GitHub blob
 hashes of the parser files at the two release tags, and a local comparison of the one
-cell that exists at both versions. Tex landed as `paper/aaai27` `4eb4751` (worktree,
-**local, unpushed** at the time of writing; review gate).
+cell that exists at both versions. Tex landed as `paper/aaai27` `4eb4751`, pushed 2026-09-14 and
+Overleaf-synced (`d884bd3`, Action run 34814416712).
 
 ## 1. Versions the tex states
 
@@ -134,14 +134,13 @@ The Methodology sentence now states the versions in §1, drops the 96 GB claim, 
 carries a footnote with the §3 provenance, the §4 parser identity and the §5
 comparison. The checklist item "computing infrastructure" is `yes`.
 
-**Decision owed (Omer / advisors):**
-(a) keep the disclosure footnote as the reproducibility statement; or
-(b) rerun the affected cells on 0.20.2 — 4 canonical + 7 anonymized `rtx_6000`
-jobs of 10–45 h each — then regenerate the e2e overlay, the pooled table, the
-figures, the decks and every NUMBERS row that touches Qwen3.5-4B/9B with-tools.
-Recommendation: (a). The parsers are identical, the rerun check is within noise,
-and (b) re-freezes numbers already ratified. (b) becomes worth it only if a
-reviewer or advisor asks for corpus uniformity.
+**Decision (Omer, 2026-09-14): (a) keep the disclosure footnote** as the
+reproducibility statement. The alternative, (b) rerunning the affected cells on
+0.20.2 (4 canonical + 7 anonymized `rtx_6000` jobs of 10–45 h each, then
+regenerating the e2e overlay, the pooled table, the figures, the decks and every
+NUMBERS row that touches Qwen3.5-4B/9B with-tools), is not planned; it would only
+become worth it if a reviewer or advisor asks for corpus uniformity. The parsers are
+identical and the rerun check is within noise.
 
 ## 7. Re-running the probe
 

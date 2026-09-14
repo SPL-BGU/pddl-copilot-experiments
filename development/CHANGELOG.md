@@ -42,7 +42,8 @@ the releases (GitHub blob SHAs); the Qwen3.5-0.8B think=off cell, which exists a
 both versions, agrees within noise (+0.43 pp [−0.86, +1.71], 10/10 cells
 CI-overlapping). Tex: `paper/aaai27` `4eb4751` (local, review gate) pins the versions,
 drops the "96 GB" claim, discloses the drift in a footnote, and flips the checklist
-item to yes. Decision owed: disclose (recommended) vs rerun the affected cells.
+item to yes. **2026-09-14:** Omer chose to keep the disclosure (no rerun); `4eb4751`
+pushed, Overleaf-sync Action 34814416712 green, Overleaf `d884bd3`. Housekeeping closed.
 
 ## 2026-09-12 — Frontier budget probe RUN (all four legs), readout generated, awaiting ratification
 
