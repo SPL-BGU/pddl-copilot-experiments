@@ -302,6 +302,15 @@ trials from the parallel Ollama corpora). The resume key in
 `--gpu-type rtx_pro_6000` escape hatch routes to the 96 GB class +
 `--mem=80G` if rtx_6000 is queue-saturated.
 
+### Serving-environment probe (paper reproducibility)
+
+`bash cluster-experimenting/probe_serving_env.sh` (login node, read-only) prints the
+served vLLM version (from the preserved serve logs), the GPU models the jobs saw, the
+image's vLLM / PyTorch / CUDA-runtime versions (from `~/vllm.sif`), and the NVIDIA
+driver + OS of one node per GPU class (one short `srun` each). It feeds the "computing
+infrastructure" sentence in `paper/main.tex`; save its output under
+`development/reference/` when it is used.
+
 ## vLLM smoke probes (parser verification)
 
 Post 2026-05-18 backend unification, vLLM is the production inference

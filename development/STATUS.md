@@ -1,6 +1,10 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-09-13 (Job 3 nt-ster integration PUSHED + Overleaf-synced
+*Content last refreshed: 2026-09-14 (paper housekeeping CLOSED: the serving-environment
+sentence + vLLM 0.22.0 disclosure footnote pushed as `paper/aaai27` `4eb4751`,
+Overleaf `d884bd3`, Omer chose "keep the disclosure"; 09-13: main merged into
+`paper/aaai27` as `45de99c`; NUMBERS placeholder filled — see "Paper housekeeping".
+Earlier the same day: Job 3 nt-ster integration PUSHED + Overleaf-synced
 as `6027d68` + `7c0502a` on `paper/aaai27`, Overleaf `2ab9bb5`; frontier budget probe
 DONE 09-12; Job 2 closed). Renamed from `remaining_work_20260811.md` on 2026-08-29.*
 
@@ -26,8 +30,12 @@ Overleaf-synced (Action run 34743222922 green, Overleaf `2ab9bb5`). Job 2 is clo
 (batches 1+2 + the budget-probe sentence pushed and synced). Job 1
 (PlanBench Act 4) is DONE — it landed 2026-08-11 (`67ea69c` + `644f8bd`) and synced
 to Overleaf the same day; this file wrongly carried it as NOT STARTED until
-2026-09-07. Last paper commit is `7c0502a` (2026-09-13), pushed and Overleaf-synced (`2ab9bb5`).
-Nothing on the paper is owed beyond coauthor review.
+2026-09-07. Last paper commit is `7c0502a` (2026-09-13), pushed and Overleaf-synced (`2ab9bb5`);
+the branch head is the doc-only merge `45de99c` (main → `paper/aaai27`, 2026-09-13, no
+paper files changed, Overleaf untouched). Nothing on the paper is owed beyond coauthor
+review. The last `\todo` (serving environment) closed 2026-09-14: `4eb4751` pushed and
+Overleaf-synced (`d884bd3`) with the vLLM 0.22.0 disclosure footnote Omer approved —
+see "Paper housekeeping" below.
 
 ## State by line
 
@@ -171,7 +179,26 @@ VERDICT trailer, exposure on solve/simulate only; fix stays parked per D4), the
 if ever cited), and the title/abstract candidates
 (`development/title_abstract_candidates.md`). PR #94 also flagged that the memo's
 "227k trials" scale claim does not reproduce from disk (counted two-corpus figure
-273,600) — resolve before that number enters tex.
+273,600) — resolved 2026-09-13: the paper-branch tex states no corpus total at all
+(grep for 227/273 is empty on `paper/aaai27`); if a total is ever wanted, the
+reproducible value is 273,600 (NUMBERS.md "Corpus scale"). The memo keeps its
+correction banner.
+
+## Paper housekeeping — 2026-09-13/14 (all four done)
+
+| item | state | record |
+|---|---|---|
+| Methodology `\todo` — pin exact vLLM / CUDA / NVIDIA-driver / OS versions, then flip the "computing infrastructure" checklist item from *partial* to *yes* | **DONE 2026-09-14 — `paper/aaai27` `4eb4751` pushed, Overleaf-sync Action 34814416712 green, Overleaf `d884bd3`. Omer's decision (2026-09-14): keep the disclosure footnote, no rerun.** *(History:)* landed locally 2026-09-13 (review gate). The probe ran (Omer's SSH). Versions: vLLM 0.20.2 / PyTorch 2.11.0 / CUDA 13.0 / Apptainer 1.4.5 / Rocky 9.7 / driver 595.58.03 / RTX 6000 Ada 48 GB (the "96 GB" claim removed: no paper corpus used that card). **Finding that needs Omer's decision:** the serve-log banners show the Qwen3.5-4B/9B with-tools canonical cells (both modes) and most anon Qwen3.5 with-tools cells were served by **vLLM 0.22.0** after the 2026-05-29 cache drift (larger than the five-cell list memory carried). Qwen3 parsers are byte-identical across the releases and the 0.8B rerun matches within noise (+0.43 pp [−0.86, +1.71]); the tex discloses this in a footnote. Decision taken: (a) keep the disclosure; (b) the rerun is not planned. Audit: `reference/serving_env_20260913.md`. *(Earlier text of this row:)* OPEN — needs one cluster action. vLLM is fixed by the sbatch pin (`docker://vllm/vllm-openai:v0.20.2` in `run_condition_vllm_rtx.sbatch`); the CUDA runtime lives inside that image, the driver and OS on the compute nodes. Nothing on the laptop records them: the synced results carry no environment metadata and the job stdout prints only GPU name + memory. Probe written: `cluster-experimenting/probe_serving_env.sh` (read-only; run on the login node — greps the preserved serve logs for the served vLLM version, reads `~/vllm.sif` for torch/CUDA, one short `srun` per GPU class for driver + `/etc/os-release`). **Waiting on Omer's go-ahead for the SSH** (his connection must be up). Then: edit the sentence in `paper/main.tex` "Models and Serving" (in the paper worktree, see note below), change the `partial` line under the checklist question to `yes`, Overleaf cycle (pull → commit → push; the Action syncs), save the probe output under `development/reference/`. | this section |
+| "227k trials" must not enter the tex | **VERIFIED 2026-09-13** — the `paper/aaai27` tex has no corpus total (no 227k, no 273,600). Reproducible value if one is wanted: **273,600** (NUMBERS.md "Corpus scale"). | NUMBERS.md; Job 4 above |
+| NUMBERS.md "to be pinned as Job 2 writes" placeholder | **DONE** — replaced by the "Single-tool suite — per-cell figures" block: one source (`results/derived/e2e_overlay/pooled_e2e_table.csv`), generator and verdict script named, do-not-quote list. The Job 2 tex note corrected from "UNPUSHED" to pushed 09-08. | NUMBERS.md |
+| merge main into `paper/aaai27` so the paper branch carries the Job 3 records | **DONE** — `45de99c` (no-ff merge of `1943222`; doc-only, 6 files, no `paper/` change), pushed; the Overleaf pull beforehand returned "Already up to date" (bridge head `2ab9bb5`). | `git log paper/aaai27` |
+
+Operational note found on the way: `paper/aaai27` is checked out as a **git worktree**
+at `../pddl-copilot-worktrees/paper-aaai27` (a plain `git checkout paper/aaai27` in the
+main tree fails with "already used by worktree"). Run `development/sync_overleaf.sh`
+from inside that worktree with
+`OVERLEAF_CLONE=/Users/omereliyahu/personal/pddl-copilot-paper-overleaf` — the
+script's default clone path resolves relative to the worktree, not the main tree.
 
 ## External gates — mostly resolved 2026-08-30
 

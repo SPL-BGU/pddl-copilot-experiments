@@ -6,6 +6,62 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-09-14 — Fix the serving-version probe and per-cell reproduction recipe (PR #100 review)
+
+**Motivation.** The probe searched for an API banner absent from the audited vLLM
+releases, and the NUMBERS recipe's neutral-bank filter omitted every steered-tool row.
+
+**Changes.** `cluster-experimenting/probe_serving_env.sh` now counts the preserved
+`Initializing a V1 LLM engine (v...)` banners and distinguishes missing logs from
+logs without readable engine banners. `development/NUMBERS.md` specifies `bank=neut`
+for `nt-neut` / `tl-neut` and `bank=ster` for `tl-ster`, and clarifies that the figures
+and CSV share the overlay aggregator rather than the figures reading the CSV.
+
+**Validation.** `bash -n` and `git diff --check` passed. Local fixtures covered missing
+and empty log directories, logs without engine banners, both audited versions, ANSI
+prefixes and paths with spaces. The corrected CSV filter retains every row for all
+three arms in both canonical corpora. No cluster jobs ran; scoring, data and frozen
+paper figures are unchanged.
+
+## 2026-09-13 — Serving-environment probe for the paper's infrastructure sentence (reproducibility)
+
+**What.** New read-only operator script `cluster-experimenting/probe_serving_env.sh`.
+Run on the cluster login node, it prints (1) the vLLM version actually served, from the
+`vLLM API server version` banner in the preserved serve logs
+(`cluster-experimenting/logs/<jobid>-vllm-<model>.log`); (2) the GPU models the sweep
+jobs saw (the `nvidia-smi` line every job `.out` starts with); (3) the container's
+vLLM / PyTorch / CUDA-runtime versions, read from the cached `~/vllm.sif`
+(`docker://vllm/vllm-openai:v0.20.2`); (4) NVIDIA driver, `/etc/os-release` and kernel on
+one node of each GPU class via a 3-minute `srun`; (5) SLURM's `OS=` field for the GPU
+nodes as an allocation-free fallback. Nothing is submitted or modified.
+
+**Why.** `paper/main.tex` (Methodology, "Models and Serving") carries the last open
+`\todo`: pin the exact vLLM / CUDA / driver / OS versions and flip the Reproducibility
+Checklist "computing infrastructure" item from *partial* to *yes*. Nothing synced to the
+laptop records those versions (the results dirs carry no environment metadata), so they
+must be read on the cluster once. The run itself waits for Omer's go-ahead.
+
+**No methodology change.** Records only: `development/NUMBERS.md` (single-tool per-cell
+provenance block replaces the Job 2 placeholder; Job 2 tex note updated to pushed),
+`development/STATUS.md` ("Paper housekeeping" section), `paper_notes_discussions.md`
+(2026-09-13 later entry). `paper/aaai27` carries main's Job 3 records via the doc-only
+merge `45de99c`.
+
+**Probe run + audit (same day, later).** Omer ran the probe; results and the per-cell
+served-version map are in `development/reference/serving_env_20260913.md`. Versions:
+vLLM 0.20.2 (torch 2.11.0+cu130, CUDA 13.0), Apptainer 1.4.5, Rocky Linux 9.7, kernel
+5.14.0-611, driver 595.58.03, RTX 6000 Ada 48 GB, 1 GPU / 6 CPU / 48 GB per job.
+**Reproducibility finding:** the serve-log banners show that the 2026-05-29 container
+cache drift to vLLM 0.22.0 reached the Qwen3.5-4B and 9B with-tools canonical cells
+(both modes) and most anonymized Qwen3.5 with-tools cells, not only the five cells
+the 05-31 memory note listed. Qwen3 tool/reasoning parsers are byte-identical between
+the releases (GitHub blob SHAs); the Qwen3.5-0.8B think=off cell, which exists at
+both versions, agrees within noise (+0.43 pp [−0.86, +1.71], 10/10 cells
+CI-overlapping). Tex: `paper/aaai27` `4eb4751` (local, review gate) pins the versions,
+drops the "96 GB" claim, discloses the drift in a footnote, and flips the checklist
+item to yes. **2026-09-14:** Omer chose to keep the disclosure (no rerun); `4eb4751`
+pushed, Overleaf-sync Action 34814416712 green, Overleaf `d884bd3`. Housekeeping closed.
+
 ## 2026-09-12 — Frontier budget probe RUN (all four legs), readout generated, awaiting ratification
 
 **What.** PR #98 squash-merged to `main` (`bbcf111`); the nine freeze-record hashes

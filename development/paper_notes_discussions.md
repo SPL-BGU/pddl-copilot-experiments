@@ -2059,3 +2059,73 @@ validated by an independent ranking subagent (the user asked for a second perspe
   (no longer cited); use-constraint records Omer's wording.
 - **Job 3 is CLOSED on the paper side.** Docs branch `job3/ntster-integration-docs`
   goes through a PR to main per the repo's merge rule (Omer: no further approval round).
+
+## 2026-09-13 (later) — Paper housekeeping pass: three items closed, one gated
+
+- **Serving-environment versions (the Methodology `\todo`).** Still open; it is the
+  only tex item owed. vLLM is fixed by the sbatch pin (`vllm/vllm-openai:v0.20.2`); the
+  CUDA runtime, NVIDIA driver and node OS are not recorded anywhere off-cluster. A
+  read-only probe (`cluster-experimenting/probe_serving_env.sh`) is ready and runs once
+  Omer gives the go-ahead for the SSH. Then: versions into the "Models and Serving"
+  sentence, checklist item *partial → yes*, Overleaf cycle.
+- **Corpus-scale figure.** Bottom line unchanged from 2026-08-16: 227k never enters the
+  tex; the reproducible total is 273,600 (5 models × 2 modes × 3 arms × 4,560 × 2
+  corpora). Verified today that the paper-branch tex states no total at all.
+- **NUMBERS.md.** The "single-tool headline numbers to be pinned as Job 2 writes"
+  placeholder is retired. Decision: per-cell single-tool figures are **not** pinned
+  row-by-row; the pooled overlay table
+  (`results/derived/e2e_overlay/pooled_e2e_table.csv`) is the one source, and any figure
+  not in the Job 2 block is re-derived from it, never copied from decks or memos.
+- **Branch hygiene.** main merged into `paper/aaai27` (`45de99c`, doc-only) so the paper
+  branch carries the Job 3 and budget-probe records, as was done after Job 2.
+
+## 2026-09-13 (night) — Serving environment pinned; vLLM 0.22.0 drift larger than recorded; decision owed
+
+- **Probe ran** (Omer's SSH; `cluster-experimenting/probe_serving_env.sh`). Pinned in the
+  tex (`paper/aaai27` `4eb4751`, LOCAL, not pushed): vLLM 0.20.2 (container
+  `vllm/vllm-openai:v0.20.2`, PyTorch 2.11.0, CUDA 13.0 runtime, Apptainer 1.4.5), NVIDIA
+  RTX 6000 Ada 48 GB, one GPU + 6 cores + 48 GB RAM per job, Rocky Linux 9.7, kernel
+  5.14.0-611, driver 595.58.03. Checklist "computing infrastructure" → yes. The old
+  "48 GB and 96 GB" wording was wrong: no paper corpus ran on the 96 GB card (only
+  pre-roster gemma4_31b and PlanBench smoke jobs did).
+- **Finding.** Reading the vLLM banner of every preserved serve log: the 2026-05-29
+  cache drift to 0.22.0 served the Qwen3.5-4B and 9B with-tools canonical cells (both
+  reasoning modes, 36,480 trials) and, in the anonymized corpus, all six Qwen3.5
+  with-tools cells (9B-on for its first 7,240 rows) plus the Gemma think=on with-tools
+  cell. The 05-31 audit (memory only) had listed five cells and assumed the rest started
+  before the flip; `sacct` shows they started after it. Everything else (all no-tools,
+  Gemma/Qwen3.6 canonical, decoupled/iss024d/nt-ster) is 0.20.2.
+- **Mitigants, verified.** (1) `qwen3xml_tool_parser.py` and `qwen3_reasoning_parser.py`
+  are byte-identical between v0.20.2 and v0.22.0 (blob SHAs at the tags); the Gemma
+  tool parser changed, but the only Gemma cell on 0.22.0 is anonymized-with-tools,
+  which no reported number uses. (2) The one cell that exists at both versions
+  (Qwen3.5-0.8B off with-tools canonical, 9,120 trials each) agrees within noise:
+  pooled +0.43 pp [−0.86, +1.71], no task×arm cell CI-disjoint; two 0.22.0 repeats of
+  the same cell differ from each other by as much.
+- **Bottom line / decision owed (Omer).** The tex now discloses the drift in a footnote
+  of the "Models and Serving" sentence. Recommendation: keep the disclosure. The
+  alternative, rerunning 4 canonical + 7 anonymized cells on 0.20.2 and regenerating
+  the overlay, pooled table, figures, decks and every Qwen3.5-4B/9B with-tools NUMBERS
+  row, buys corpus uniformity at the cost of re-freezing ratified numbers; do it only if
+  a reviewer or advisor asks. Push + Overleaf sync of `4eb4751` waits for this call.
+  Full audit: `development/reference/serving_env_20260913.md`.
+
+## 2026-09-14 — Serving-environment disclosure ratified and pushed
+
+- **Omer's decision:** keep the vLLM 0.22.0 disclosure footnote; no rerun of the affected
+  Qwen3.5 with-tools cells. Bottom line for the paper: the infrastructure sentence
+  states vLLM 0.20.2 / PyTorch 2.11.0 / CUDA 13.0 / Apptainer 1.4.5 / Rocky Linux 9.7 /
+  driver 595.58.03 / RTX 6000 Ada 48 GB (one GPU, 6 cores, 48 GB per job), and its
+  footnote gives the per-cell served-version provenance, the parser identity across the
+  two releases, and the within-noise 0.8B rerun check. The Reproducibility Checklist
+  "computing infrastructure" item is *yes*. No `\todo` remains in the tex.
+- Pushed as `paper/aaai27` `4eb4751`; Overleaf pull beforehand: already up to date
+  (no coauthor edits since `2ab9bb5`); Overleaf-sync Action run 34814416712 green;
+  Overleaf head `d884bd3`. Paper housekeeping (2026-09-13 list) is closed.
+
+## 2026-09-14 — PR #100 reproduction corrections
+
+- The serving-version probe now reads the engine banner used by the audit.
+- The per-cell NUMBERS recipe uses the neutral bank for `nt-neut` / `tl-neut` and
+  the steered bank for `tl-ster`. Figures and CSV share the overlay aggregator.
+  These corrections preserve the frozen figures and the approved disclosure.
