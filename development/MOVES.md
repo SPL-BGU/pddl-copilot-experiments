@@ -1,7 +1,7 @@
 # MOVES.md — old path → new path (reorg of 2026-08-29)
 
 The `development/` tree was reorganised into three tiers on 2026-08-29 (rationale:
-`dev_docs_refactor_plan.md`). Live docs and code were repointed at the same time.
+`archive/plans-executed/dev_docs_refactor_plan.md`). Live docs and code were repointed at the same time.
 
 **The append-only logs were deliberately NOT rewritten** — `CHANGELOG.md`,
 `reference/CHANGELOG-archive.md`, and `paper_notes_discussions.md` are append-only by
@@ -121,3 +121,50 @@ PlanBench prereg pair; the superseded partial readout and the spent submit-windo
 decisions went to `archive/ntster/`. The live doc for the line is
 `ntster_h4_final_readout_20260829.md`, which stays at the root because the paper
 integration it specifies is still open.
+
+## Third wave — documentation cleanup, 2026-09-18
+
+Plan and Omer's approval ("ok all"): `doc_cleanup_plan.md`. By 09-18 every line of work
+below had closed, so root no longer meant *live* for these files. All moves are
+`git mv`; no body text was changed. This supersedes the sentence above that says the
+nt-ster final readout "stays at the root": its paper integration closed on 09-13.
+
+| old path | new path |
+|---|---|
+| `development/title_abstract_candidates.md` | `development/reference/title_abstract_candidates.md` |
+| `development/frontier_budget_probe_prereg.md` | `development/reference/frontier_budget_probe_prereg.md` |
+| `development/frontier_budget_probe_readout.md` | `development/reference/frontier_budget_probe_readout.md` |
+| `development/frontier_budget_probe_handoff.md` | `development/archive/frontier/frontier_budget_probe_handoff.md` |
+| `development/iss024d_parity_prereg.md` | `development/reference/iss024d_parity_prereg.md` |
+| `development/job2_delivered_reframe_worknote.md` | `development/reference/job2_delivered_reframe_worknote.md` (named a worknote, but `NUMBERS.md` cites its §2 and §6, and `archive/` may never hold a number) |
+| `development/ntster_h4_final_readout_20260829.md` | `development/reference/ntster_h4_final_readout_20260829.md` |
+| `development/sonnet_wt_vs_haiku_e2e_memo.md` | `development/reference/sonnet_wt_vs_haiku_e2e_memo.md` |
+| `development/tool_call_vs_final_output_grading.md` | `development/reference/tool_call_vs_final_output_grading.md` |
+| `development/planbench/planbench_wt_results_20260803.md` | `development/reference/planbench_wt_results_20260803.md` |
+| `development/planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` | `development/archive/planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` |
+| `development/planbench/planbench_wt_paper_integration_plan.md` | `development/archive/planbench/planbench_wt_paper_integration_plan.md` |
+| `development/dev_docs_refactor_plan.md` | `development/archive/plans-executed/dev_docs_refactor_plan.md` |
+| `paper/HANDOFF.md` | `development/archive/paper-june/HANDOFF.md` |
+| `paper/GOALS.md` | `development/archive/paper-june/GOALS.md` |
+| `paper/REVIEW_AND_REWRITES.md` | `development/archive/paper-june/REVIEW_AND_REWRITES.md` |
+
+`development/planbench/` is now empty and gone. The three `paper-june/` files are
+June-era records: they name dead branches, quote numbers from the stale corpus mirror,
+and `GOALS.md` lines 95–102 hold a `cp … main.tex` command that would overwrite the
+manuscript. **Never follow them.**
+
+### These files deliberately keep the old paths (second block)
+
+Same rule as the nt-ster scripts above: **do not repair them.**
+
+| file | stale path it cites | why it stays |
+|---|---|---|
+| `tools/budget_probe_analysis.py`, `tools/_run_manifest.py`, `tools/e2e_regrade.py`, `tools/frontier_runner.py`, `tools/claude_api_batch.py`, `tests/test_budget_probe_analysis.py` | `development/frontier_budget_probe_prereg.md` | pinned by sha256 in that prereg's "Freeze record (2026-09-10)". All hashes re-checked 09-18 after the move: they still match |
+| `tools/e2e_regrade.py`, `.claude/skills/analyzer/scripts/e2e_overlay.py` | `development/tool_call_vs_final_output_grading.md` | same freeze record |
+| `tools/claude_api_batch.py` | `paper/REVIEW_AND_REWRITES.md` §7A | same freeze record |
+| `tools/iss024d_parity.py` | `development/iss024d_parity_prereg.md` (docstring and a printed report line) | not hashed, but it is the executed analysis of a prereg; left byte-identical so a rerun prints what the 07-17 report printed |
+| `planbench/analysis/verify_promotion.py`, `planbench/engine.py`, `planbench/requirements-wt.txt` | `planbench_wt_results_20260803.md` (by old path or bare name) | the analysis layer was promoted byte-faithful (ISS-026) and its MANIFEST check depends on that |
+| `results/planbench/wt-anthropic-20260801/README.md` | `development/planbench/planbench_wt_results_20260803.md` | part of the committed data archive; the archive is left exactly as published |
+| `paper/main.tex` lines 2 and 638, `paper/figures/make_paper_figures.py` line 3 | `GOALS.md`, `development/job2_delivered_reframe_worknote.md` | Overleaf-synced files. The three comments get fixed in the first real paper PR, so one sync covers it (plan Q2) |
+| everything already under `archive/` and `reference/`, including the files moved in this wave | bare names and pre-move paths | tier rule: moving a file in is fine, rewriting its body is not |
+

@@ -117,6 +117,9 @@ a decision was reversed.
 
 **Starting inventory (surveyed 2026-09-18 — re-verify, the counts are grep hits):**
 
+Paths in this table are as they were at the survey. The moves of rows A and C were made
+on 09-18 (PR "moves only"); `MOVES.md` "Third wave" gives the new path of each file.
+
 | # | where | what is wrong | likely fix |
 |---|---|---|---|
 | A | `development/` root holds 19 docs; `development/README.md` still says "Root — live (12 docs)" and was last touched 08-30 | root means *live*, but these are closed: `frontier_budget_probe_handoff.md` (CLOSED 09-12), `frontier_budget_probe_prereg.md` + `_readout.md` (ratified, in tex), `job2_delivered_reframe_worknote.md` (Job 2 closed), `dev_docs_refactor_plan.md` (check whether the 08-29 pass ran), `ntster_h4_final_readout_20260829.md` (Job 3 closed), and probably `iss024d_parity_prereg.md`, `sonnet_wt_vs_haiku_e2e_memo.md`, `tool_call_vs_final_output_grading.md` | `git mv` to `reference/` (stable specs, preregs, readouts that `NUMBERS.md` cites) or `archive/` (handoffs, worknotes, executed plans); one `MOVES.md` row per move; refresh the README map |
@@ -190,8 +193,9 @@ a decision was reversed.
 - Two git stashes labelled "On paper/aaai27": `stash@{0}` describes itself as
   superseded by `1ac21f4`; `stash@{1}` holds untracked `.codex` + `.agents` tooling.
   Omer has not asked for either to be dropped.
-- `paper/HANDOFF.md`, `paper/GOALS.md`, `paper/REVIEW_AND_REWRITES.md` still name the
-  even older branch `paper/aaai27-single-tool-draft`. They are June-era records, not
-  live instructions. **Do not follow them; Step 2 (row C) archives them.**
+- `HANDOFF.md`, `GOALS.md`, `REVIEW_AND_REWRITES.md` (now in
+  `development/archive/paper-june/`, moved 09-18) still name the even older branch
+  `paper/aaai27-single-tool-draft`. They are June-era records, not live instructions.
+  **Do not follow them.**
 - `AGENTS.md` is a local symlink to `CLAUDE.md` (excluded from git), so it is always
   current and needs no cleanup.

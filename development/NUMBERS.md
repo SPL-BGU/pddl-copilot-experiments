@@ -16,8 +16,10 @@ file on 2026-08-29.
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
-Provenance for all rows: `planbench/planbench_wt_results_20260803.md`.
-Binding constraints on use: `planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`.
+Provenance for all rows: `reference/planbench_wt_results_20260803.md`.
+Binding constraints on use: the first-draw rule (deviation row 1 of the results doc
+above) and Amendment M in `reference/planbench_wt_prereg.md` (GPT-4 is a published
+reference line, not a comparator arm).
 
 | figure | **quote this** | line | do NOT quote |
 |---|---|---|---|
@@ -36,7 +38,7 @@ the re-draws as failures. Full derivation: results doc deviation row 1 (L293).
 
 ## Frontier e2e — delivered vs tool-verified
 
-Provenance: `sonnet_wt_vs_haiku_e2e_memo.md` (canonical corpus, variant 11,
+Provenance: `reference/sonnet_wt_vs_haiku_e2e_memo.md` (canonical corpus, variant 11,
 `e2e_strict`). **Delivered is the primary surface**; tool-verified is the mechanism
 layer (journal memo §3 / D-J2).
 
@@ -45,7 +47,7 @@ layer (journal memo §3 / D-J2).
 | solve delivered, with tools | **95.0** [88.8, 97.8] — *both* Sonnet and Haiku; tool-verified 100.0, gap **+5.0pp** | **13.5% — RETRACTED**, an overlay grading artifact |
 | simulate delivered, with tools | **bounds, not points**: Sonnet **[49.0, 62.0]**, Haiku **[52.0, 64.0]** | **0% — RETRACTED**, same artifact |
 | simulate delivered↔tool-verified gap | ≈37–50pp Sonnet · ≈33–45pp Haiku (length-driven) | a single pooled "≈35–45" figure |
-| simulate, no-tools | **bounds after 07-15 de-censoring** (pooled table 07-17): Sonnet canonical ⟨41.7, 61.3⟩ (c59/300), anon ⟨36.3, 57.7⟩ (c64/300); Haiku canonical ⟨38, 68⟩ (c30/100) | **[0, 100]** (pre-de-censoring memo row) and **45.0 / 38.3 exact points** (in the pre-reframe tex; reproduce from no sanctioned artifact — see `job2_delivered_reframe_worknote.md` §3(e)) |
+| simulate, no-tools | **bounds after 07-15 de-censoring** (pooled table 07-17): Sonnet canonical ⟨41.7, 61.3⟩ (c59/300), anon ⟨36.3, 57.7⟩ (c64/300); Haiku canonical ⟨38, 68⟩ (c30/100) | **[0, 100]** (pre-de-censoring memo row) and **45.0 / 38.3 exact points** (in the pre-reframe tex; reproduce from no sanctioned artifact — see `reference/job2_delivered_reframe_worknote.md` §3(e)) |
 | validation tasks (vd/vp/vplan) | gap ≈0.0pp; delivered ≈ tool-verified | — |
 
 The retracted 13.5 / 0.0 pair is the single most dangerous stale number in the tree:
@@ -54,7 +56,7 @@ a frontier solve or simulate figure below ~90 / outside those bands is pre-retra
 
 ## Job 2 — the delivered surface (batches 1+2, 2026-09-07/08)
 
-Provenance: `job2_delivered_reframe_worknote.md` §2 (verdict table, derived from
+Provenance: `reference/job2_delivered_reframe_worknote.md` §2 (verdict table, derived from
 `results/derived/e2e_overlay/pooled_e2e_table.csv`, 2026-07-17) and §8 (batch-2
 tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (pushed 2026-09-08, Overleaf `cbc45b7`). Notation: Wilson `[a, b]`; censoring bounds `⟨a, b⟩`, never resolved.
 
@@ -75,7 +77,7 @@ tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (pushed 2026-09-08, Overleaf 
 
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29; IN TEX 2026-09-12/13, `paper/aaai27` `6027d68` + `7c0502a`, pushed + Overleaf `2ab9bb5`)
 
-Provenance for all rows: `ntster_h4_final_readout_20260829.md`.
+Provenance for all rows: `reference/ntster_h4_final_readout_20260829.md`.
 Design of record: `reference/ntster_h4_prereg.md`. Executed deviations: its §9.1.
 
 **Paper-level branch = PASS** — all six units PASS, all 8 ELIGIBLE task cells
@@ -149,7 +151,7 @@ were generated programmatically from the frozen report in
 ## Abstract — the four figures + the scale clause (verified 2026-09-18 for `paper/aaai27` `b27ef23` + `b045f07`)
 
 The abstract quotes exactly four numbers, one per role of the two-gate abstraction
-(`title_abstract_candidates.md` §5). Each was re-derived this session; nothing else
+(`reference/title_abstract_candidates.md` §5). Each was re-derived this session; nothing else
 may be added to the abstract without a row here.
 
 | abstract sentence | **quote this** | derivation | do NOT quote |
@@ -164,7 +166,7 @@ may be added to the abstract without a row here.
 
 | figure | **quote this** | provenance | do NOT quote |
 |---|---|---|---|
-| open-weight trial count | **273,600** across two corpora, **five** open-weight models | `title_abstract_candidates.md` §4 (L324) | **227k** — does not reproduce from disk; never pair any total with "seven models" |
+| open-weight trial count | **273,600** across two corpora, **five** open-weight models | `reference/title_abstract_candidates.md` §4 (L324) | **227k** — does not reproduce from disk; never pair any total with "seven models" |
 
 `journal_decisions_memo.md` still uses 227k in three places (§5, §8, and its revision
 line); the memo carries a correction banner at its head. 273,600 = 5 models × 2
@@ -194,7 +196,7 @@ copied from a deck, memo or earlier draft.
 | what | **the one source** | how the tex gets it | do NOT quote |
 |---|---|---|---|
 | delivered rates (`ok_strict`), censoring bounds `⟨low, high⟩`, tool-verified counts (`tv_ok/tv_n`), every corpus × bank × arm | `results/derived/e2e_overlay/pooled_e2e_table.csv` (460 rows, 2026-07-17), written by `.claude/skills/analyzer/scripts/e2e_pooled.py` over `results/derived/e2e_overlay/`; the paper's open-roster cells are the `sweep5v2-live` (+ `sweep6-live` twin) rows: `bank=neut` for arms `nt-neut` / `tl-neut`, `bank=ster` for arm `tl-ster` | figures: `paper/figures/make_paper_figures.py`, which reads the overlay JSONL through `e2e_overlay.load_e2e_cells`, the same aggregator used to generate the CSV; prose ranges and tables: `/verify-claims` against the same CSV | any per-cell number from `results/sweep5-cluster-20260530` (stale mirror), from the RQ decks (tool-verified surface, pre-reframe), or from `summary_*.json` `success_rate` (harness surface, not delivered) |
-| availability verdicts (FAVORABLE / AGAINST / UNDECIDED), think=off, 25 cells | `job2_delivered_reframe_worknote.md` §2 (the table) + §6 (the verbatim script that recomputes it from the CSV; rerun with `Z *= √2.7` for the design-effect check) | the scorecard verdict column and the "13/25 UNDECIDED" row above | the memo's 2/25 (mode-pooled) |
+| availability verdicts (FAVORABLE / AGAINST / UNDECIDED), think=off, 25 cells | `reference/job2_delivered_reframe_worknote.md` §2 (the table) + §6 (the verbatim script that recomputes it from the CSV; rerun with `Z *= √2.7` for the design-effect check) | the scorecard verdict column and the "13/25 UNDECIDED" row above | the memo's 2/25 (mode-pooled) |
 | invocation (CALL) rates | computed from the canonical `trials.jsonl` (`tool_selected` / `delegated` flags) by the figure generator; storage-exact in every corpus | funnel figure, mechanism-layer prose | — |
 
 Rule of thumb: a single-tool number that is not in the Job 2 block is re-derived from

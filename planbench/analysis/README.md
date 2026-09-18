@@ -1,7 +1,7 @@
 # PlanBench-WT analysis layer
 
 Scripts that computed the PlanBench-WT numbers in
-`development/planbench/planbench_wt_results_20260803.md`. Promoted from
+`development/reference/planbench_wt_results_20260803.md`. Promoted from
 machine-local `.local/wt_run/` on 2026-08-07 (ISS-026). Data lives in
 `results/planbench/wt-anthropic-20260801/` (see its README for provenance);
 side-log location is overridable via `WT_SIDELOG_DIR` (defaults to the

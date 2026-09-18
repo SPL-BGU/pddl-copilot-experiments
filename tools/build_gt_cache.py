@@ -4,7 +4,7 @@
 The harness regenerates ground truth (oracle plan validity, canonical plan,
 state trajectory) via live MCP calls at every run start; nothing is persisted,
 which is what blocks offline regrading of solve/simulate (see
-development/tool_call_vs_final_output_grading.md §9-10). This script runs the
+development/reference/tool_call_vs_final_output_grading.md §9-10). This script runs the
 exact same `generate_ground_truth` once, locally, and dumps the result.
 
 Deterministic given the fixture tree (planner + validator are oracles), so the
