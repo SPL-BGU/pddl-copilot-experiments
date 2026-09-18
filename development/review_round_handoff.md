@@ -27,18 +27,22 @@ docs). Record: `paper_notes_discussions.md`, entry "2026-09-18 — One line of w
 
 ## State at write time — each line is checkable
 
+The first two rows describe the moment of writing. Since then PR #103 (branch
+`docs/advisor-brief`) was opened; it carries this file, the advisor brief and the
+doc-cleanup plan. Until it is merged, expect that one extra branch and one open PR.
+
 | claim | check |
 |---|---|
-| only `main` exists, locally and on origin; no worktrees; tree clean except this file | `git branch -a`, `git worktree list`, `git status --short` |
-| `main` = `dc9e3f0` or later; no open PRs | `git log --oneline -5`, `gh pr list` |
-| every Overleaf-synced file on `main` is byte-identical to Overleaf head `a0b8c84` ("Update paper from monorepo"), so no coauthor edits are waiting | `git fetch overleaf && git diff --quiet main:paper/main.tex overleaf/main:main.tex` (same for `refs.bib`) |
+| only `main` exists, locally and on origin (plus `docs/advisor-brief` until PR #103 is merged); no worktrees; tree clean | `git branch -a`, `git worktree list`, `git status --short` |
+| `main` = `dc9e3f0` or later; no open PRs other than #103 | `git log --oneline -5`, `gh pr list` |
+| every Overleaf-synced file on `main` is byte-identical to Overleaf head `a0b8c84` ("Update paper from monorepo"), so no coauthor edits are waiting | `git fetch overleaf`, then for each of `main.tex`, `refs.bib`, `aaai2027.sty`, `aaai2027.bst`: `git diff --quiet main:paper/<f> overleaf/main:<f>`; for the figures compare blob hashes: `diff <(git ls-tree -r main:paper/figures \| grep '\.pdf$' \| awk '{print $3,$4}') <(git ls-tree -r overleaf/main:figures \| grep '\.pdf$' \| awk '{print $3,$4}')`. Re-run 09-18 over the full set: all identical |
 | the Action works from `main`: run 35335139473 (manual dispatch) green, "Overleaf already up to date" | `gh run list --workflow overleaf-sync.yml --limit 3` |
 | paper compiles from `main`: 0 errors, 25 pages, 0 undefined refs, one overfull box (129.9 pt, tex lines 755–796, the scorecard `table*`) | `cd paper && latexmk -pdf main` |
 | title D + the two-gate abstract (four verified numbers + the 273,600-trial scale clause) + "invocation rate" at all 14 sites are in the tex — N1 is closed | `STATUS.md` N1; `NUMBERS.md` "Abstract — the four figures" |
 | no experiment is owed, no `\todo` is left, all three writing jobs are in Overleaf | `STATUS.md` "The one-paragraph answer" |
 
-This file is **untracked on `main`** on purpose (handoff docs need no PR of their own).
-Commit it on the first short branch below so it rides along with the advisor brief.
+This file is committed together with the advisor brief and the doc-cleanup plan
+(PR #103, branch `docs/advisor-brief`). Do not commit it a second time.
 
 ## How to work now (the new routine)
 
@@ -48,7 +52,9 @@ Commit it on the first short branch below so it rides along with the advisor bri
    then edit, compile, commit.
 3. Push the branch, open a PR. **The agent cannot merge a PR nobody reviewed — the
    harness blocks it.** Show Omer the diff in chat; he merges (on GitHub, or
-   `! gh pr merge <n> --squash` in the session). Squash is fine for small PRs.
+   `! gh pr merge <n> --squash` in the session). Squash is fine for small PRs. After a
+   squash the branch hashes do not exist on `main`, so record the **squash-merge hash**,
+   not a branch hash, in `paper_notes_discussions.md` and `NUMBERS.md`.
 4. A merged PR that touches the synced paper files pushes to Overleaf by itself. Check
    the run is green. A red run means a coauthor edited Overleaf: pull, reconcile, push.
 5. No commit carries a Claude credit line. Editing `.github/workflows/` needs Omer's
@@ -56,8 +62,10 @@ Commit it on the first short branch below so it rides along with the advisor bri
 
 ## The sequence
 
-**Step 1 — Advisor brief (agent, no input needed). This is the recommended start.**
-Write `development/advisor_brief.md`: one page, the six questions of `STATUS.md` N2 with
+**Step 1 — Advisor brief. DONE 2026-09-18 (PR #103). Do not rewrite
+`development/advisor_brief.md`: the advisors fill in its `> ANSWER:` lines, and a rewrite
+would erase them.** What is left of this step is Omer sending it (Step 3, R7). For the
+record, the brief is: one page, the six questions of `STATUS.md` N2 with
 inline `> ANSWER:` slots (not popups), each with a one-line recommendation and the
 source section. Sources: `journal_decisions_memo.md` §5 (venue) and §10 (open questions
 for advisors), `paper_notes_discussions.md` 08-30 (budget ledger, the reopened
@@ -65,11 +73,13 @@ Sonnet-tier PlanBench decision), `archive/cost-breakdowns/` (cost-of-pass deck).
 The six: venue ratification (JAIR primary, TMLR fallback) · thesis needs *submitted*
 not *accepted* · record the journal pivot · cost-of-pass deck verdict · storage-fixed
 rerun of ~5 headline cells (contingency or before submission) · Sonnet-tier PlanBench
-extension (run or leave excluded). Branch `docs/advisor-brief`; include this handoff
-and a row for both files in `development/README.md`.
+extension (run or leave excluded). Branch `docs/advisor-brief`, with this handoff and a
+row for each file in `development/README.md`.
 
 **Step 2 — Documentation cleanup (agent; plan first, Omer approves, then execute).**
-Full brief in the section "Step 2 in detail" below. Do it right after the brief, while
+The plan is written: `development/doc_cleanup_plan.md` (same PR #103), waiting for Omer's
+`> ANSWER:` lines. **Nothing moves before those are filled in.** This is the next agent
+step. Full brief in the section "Step 2 in detail" below. Do it right after the brief, while
 the manuscript is out with the advisors: every later session reads these docs first.
 
 **Step 3 — Omer, any time: answer R7 and R8 in `STATUS.md`** (the two empty slots).
@@ -137,9 +147,10 @@ a decision was reversed.
 6. Docs only. Dead code, dead CLI flags and stale constants go on a list for a
    separate `feat/` PR.
 
-**How to deliver it (three PRs, smallest first, so each diff is easy to review):**
+**How to deliver it (the plan, then two PRs, smallest first, so each diff is easy to review):**
 
-1. `development/doc_cleanup_plan.md` — one table, a row per file: verdict (keep / move
+1. `development/doc_cleanup_plan.md` — **written 09-18, rides in PR #103 with the brief
+   (no PR of its own).** One table, a row per file: verdict (keep / move
    to `reference/` / move to `archive/` / rewrite section / cut) · one-line reason ·
    `> ANSWER:` slot. Omer approves in the file. Nothing moves before that.
 2. PR "moves only": `git mv`, `MOVES.md`, README map, link repair. No body text changes,

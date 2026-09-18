@@ -375,7 +375,8 @@ only record.
 
 ## Delivery
 
-1. **This file** (branch `docs/doc-cleanup-plan`). You answer here; I commit the answers.
+1. **This file** (rides in PR #103, branch `docs/advisor-brief`, with the advisor brief;
+   no branch of its own). You answer here; I commit the answers.
 2. **PR "moves only":** tables A and C moves, `MOVES.md` rows (including the second
    "deliberately stale" block from Q1), README map, link repair in files that are not
    pinned. No body text changes, so the diff is renames plus path strings.

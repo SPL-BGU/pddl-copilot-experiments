@@ -306,7 +306,12 @@ Overleaf pull → edit on `paper/aaai27` in the worktree (title, abstract, the 1
 edits, the Intro's "invocation propensity" definition sentence) → compile → push
 (Action syncs) → paper_notes entry.
 
-### N2 — Coauthor + advisor review round (Omer; agent prepares the brief)
+### N2 — Coauthor + advisor review round (Omer; the brief is written)
+
+**Brief DONE 2026-09-18: `advisor_brief.md` (PR #103) holds the six questions below
+with recommendations and `> ANSWER:` slots. Do not rewrite it, the advisors answer in
+place. What is left of N2: Omer sends the manuscript and the brief (R7), then the
+answers come back.**
 
 No coauthor has edited Overleaf since the 08-11 sync (every pull since returned
 clean). The journal memo's timeline had "manuscript draft to advisors ~early

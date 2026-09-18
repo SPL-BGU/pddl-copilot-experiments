@@ -17,13 +17,19 @@ Three files answer almost every question:
 | **`NUMBERS.md`** | the frozen value of every headline figure + the stale readings it replaces. **Check before quoting anything** |
 | **`MOVES.md`** | old path → new path, for resolving pre-2026-08-29 paths cited in the append-only logs |
 
-## Root — live (12 docs)
+## Root — live
+
+Four closed docs still sit at the root and are not in this table
+(`frontier_budget_probe_handoff.md`, `frontier_budget_probe_prereg.md`,
+`frontier_budget_probe_readout.md`, `job2_delivered_reframe_worknote.md`).
+`doc_cleanup_plan.md` row A decides where each one goes.
 
 | doc | what it is |
 |---|---|
 | `STATUS.md` · `NUMBERS.md` · `MOVES.md` | the three above |
 | `review_round_handoff.md` | operational pickup for the review round and pre-submission work (2026-09-18): the single-line branch model, the step sequence, the doc-cleanup brief. Never overrides `STATUS.md` |
 | `advisor_brief.md` | one page for the advisors and coauthors: the six `STATUS.md` N2 questions with recommendations and open `> ANSWER:` slots |
+| `doc_cleanup_plan.md` | the documentation-cleanup plan: seven decisions and a verdict per file, with open `> ANSWER:` slots. Plan only, nothing moves until Omer answers |
 | `journal_decisions_memo.md` | the accepted journal-pivot spec; §3 is the Job 2 e2e-reframe brief. ⚠️ still says "227k trials" in 3 places — the figure is **273,600**, see `NUMBERS.md` |
 | `tool_call_vs_final_output_grading.md` | e2e-vs-tool-verified grading decisions D1–D9 + phase results |
 | `sonnet_wt_vs_haiku_e2e_memo.md` | Sonnet-WT vs Haiku delivered/tool-verified comparison; the transcription-gap numbers |
