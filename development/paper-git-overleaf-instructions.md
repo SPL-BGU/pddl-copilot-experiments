@@ -20,10 +20,15 @@ the **Overleaf** project in sync without losing anyone's edits. Tooling:
 
 ## Branch model
 
-- **Paper writing → `paper/aaai27`** — the only branch the Overleaf bridge ever touches.
-- **Code / experiments → `feat/…` off `main`.**
-- `paper/**` and code are disjoint, so they never conflict; switch branches freely.
-  This is branches, not a fork (we own the repo).
+**One line of work: `main`** (since 2026-09-18). The long-lived `paper/aaai27` branch and
+its separate worktree were merged into `main` (PR #101) and removed, so paper and code
+no longer drift apart and nothing has to be merged back and forth.
+
+- **Everything → a short branch off `main`, merged back by PR.** Use `paper/<topic>` for
+  paper edits and `feat/…` for code, one at a time, and delete the branch after merge.
+- `main` never takes a direct push or a fast-forward; changes arrive by PR only.
+- The Overleaf auto-sync Action watches `main` (see "Automated sync" below).
+- Do not recreate a long-lived paper branch or a second worktree.
 
 ## First-time setup (once per machine)
 
@@ -41,7 +46,8 @@ need `OVERLEAF_URL` again.
 ## Daily cycle (paper writing) — follow the order
 
 ```bash
-git checkout paper/aaai27
+git checkout main && git pull
+git checkout -b paper/<topic>
 
 # 1. SYNC DOWN first — pull coauthors' Overleaf edits before touching anything
 development/sync_overleaf.sh pull
@@ -50,8 +56,11 @@ git add paper && git commit -m "overleaf: pull coauthor edits"   # if anything c
 # 2. Write. Edit paper/main.tex etc., then commit
 git add paper && git commit -m "paper: <what you changed>"
 
-# 3. SYNC UP
+# 3. SYNC UP — either way ends with the same text on Overleaf
+#    (a) open a PR and merge it into main -> the Action pushes to Overleaf, or
+#    (b) push by hand first if coauthors should see the draft before the merge:
 development/sync_overleaf.sh push
+#    then still open the PR and merge, so main matches what Overleaf shows.
 ```
 If step 3 prints `ABORT: newest Overleaf commit is not a monorepo sync`, a coauthor
 edited Overleaf after your last pull → redo step 1, then push. (Override only if certain:
@@ -60,8 +69,11 @@ edited Overleaf after your last pull → redo step 1, then push. (Override only 
 ## Automated sync (GitHub Actions)
 
 `.github/workflows/overleaf-sync.yml` auto-pushes to Overleaf on every push to
-`paper/aaai27` that touches a synced file (`main.tex`, `refs.bib`, `aaai2027.sty`,
-`aaai2027.bst`, `figures/**`). It just runs `sync_overleaf.sh push` on a runner, so
+`main` that touches a synced file (`main.tex`, `refs.bib`, `aaai2027.sty`,
+`aaai2027.bst`, `figures/**`). Since `main` only changes by PR, that means: **Overleaf
+updates when a PR that touches the paper is merged.** Code-only and doc-only merges do
+not match the path filter and trigger nothing. (Until 2026-09-18 the trigger was the
+`paper/aaai27` branch.) It just runs `sync_overleaf.sh push` on a runner, so
 **all the golden rules still hold** — most importantly the clobber guard: if a co-author
 edited Overleaf since the last monorepo sync, the job **fails red and pushes nothing**
 (it never force-overwrites). A red run = "pull + reconcile locally, then push"; the run's
@@ -83,10 +95,11 @@ unchanged and is the fallback whenever the Action aborts.
 
 ## Working on code and paper at the same time
 
-Independent. Do code on a `feat/…` branch, paper on `paper/aaai27`. The bridge only reads
-`paper/` files, so code/experiment work is invisible to Overleaf and vice-versa. To
-refresh the paper branch with merged code/results:
-`git checkout paper/aaai27 && git merge main` (paper files are untouched).
+Work is sequential on `main`: finish one short branch (paper or code), merge it by PR,
+then start the next from the updated `main`. The bridge only reads `paper/` files, so
+code/experiment work is invisible to Overleaf and vice-versa. There is no separate paper
+branch to refresh any more; a new branch off `main` always has the latest results and
+the latest paper.
 
 ## Recovering a clobbered coauthor edit
 

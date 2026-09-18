@@ -1,7 +1,9 @@
 name: Sync paper to Overleaf
 
 # Auto-pushes paper/ to the shared Overleaf project whenever a synced file changes
-# on paper/aaai27. SAFE BY DESIGN: development/sync_overleaf.sh pulls Overleaf first
+# on main (since 2026-09-18 main is the single line of work; the former paper/aaai27
+# branch was merged in and deleted, so in practice this fires when a PR that touches
+# the paper is merged). SAFE BY DESIGN: development/sync_overleaf.sh pulls Overleaf first
 # and ABORTS (this job goes red) if a co-author edited Overleaf since the last
 # monorepo sync, rather than clobbering their work. Nothing is ever force-pushed.
 #
@@ -16,7 +18,7 @@ name: Sync paper to Overleaf
 
 on:
   push:
-    branches: [paper/aaai27]
+    branches: [main]
     paths:
       - paper/main.tex
       - paper/refs.bib
@@ -41,7 +43,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out paper/aaai27
+      - name: Check out main
         uses: actions/checkout@v4
 
       - name: Configure git identity + Overleaf auth
@@ -81,12 +83,14 @@ jobs:
             echo "project after the last monorepo sync, so an auto-push would overwrite"
             echo "their work. **Nothing was lost** and nothing was pushed."
             echo ""
-            echo "Resolve it locally, then this branch will sync cleanly on the next push:"
+            echo "Resolve it locally on a short branch off main, then merge that branch by PR:"
             echo '```bash'
-            echo "git checkout paper/aaai27"
+            echo "git checkout main && git pull"
+            echo "git checkout -b paper/overleaf-pull"
             echo "development/sync_overleaf.sh pull"
             echo "git add paper && git commit -m 'overleaf: pull coauthor edits'"
             echo "development/sync_overleaf.sh push"
+            echo "# then open a PR and merge the branch into main"
             echo '```'
             echo ""
             echo "If instead authentication failed, re-check the \`OVERLEAF_TOKEN\` secret"

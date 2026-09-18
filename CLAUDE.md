@@ -12,7 +12,7 @@ Paper-related decisions and bottom-line conclusions from our discussions are log
 
 ## Paper writing & Overleaf sync
 
-The AAAI-27 paper lives in `paper/` and syncs to an Overleaf project (owned by co-author Yarin) via a **clone-bridge, NOT git-subtree**. Before any paper-sync work, read `development/paper-git-overleaf-instructions.md`. Key rules: paper edits go on the `paper/aaai27` branch; the bridge (`development/sync_overleaf.sh`) only syncs `paper/`; **always `sync_overleaf.sh pull` (+ commit) before `push`** — a blind push clobbers coauthors' Overleaf web edits (the push guards against it). Never force-push to Overleaf (it's prohibited). `paper/` compiles standalone (`aaai2027.sty`/`.bst` live at `paper/` root; do not hand-edit them).
+The AAAI-27 paper lives in `paper/` and syncs to an Overleaf project (owned by co-author Yarin) via a **clone-bridge, NOT git-subtree**. Before any paper-sync work, read `development/paper-git-overleaf-instructions.md`. Key rules: since 2026-09-18 there is **one line of work — `main`** (the old `paper/aaai27` branch and its worktree were merged in and removed; do not recreate a long-lived paper branch or a worktree). Paper edits go on a short branch off `main` and reach `main` by PR like everything else; merging a PR that touches the synced paper files fires the Overleaf auto-sync Action. The bridge (`development/sync_overleaf.sh`) only syncs `paper/`; **always `sync_overleaf.sh pull` (+ commit) before `push`** — a blind push clobbers coauthors' Overleaf web edits (the push guards against it). Never force-push to Overleaf (it's prohibited). `paper/` compiles standalone (`aaai2027.sty`/`.bst` live at `paper/` root; do not hand-edit them).
 
 ## Routing — where does a fix belong?
 

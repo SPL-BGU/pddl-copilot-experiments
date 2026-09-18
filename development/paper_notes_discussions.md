@@ -2197,3 +2197,33 @@ validated by an independent ranking subagent (the user asked for a second perspe
   35332662004 green; Overleaf head **`a0b8c84`**, `main.tex` verified byte-identical to
   local HEAD. **N1 is closed.** Next = STATUS N2, the coauthor/advisor round.
 
+## 2026-09-18 — One line of work: main aligned with the paper branch, paper branch and worktree retired
+
+- **Decision (Omer, 09-18): all work becomes sequential on `main`.** Reason: the paper
+  lived on a long-lived `paper/aaai27` branch in a separate worktree, so `main` carried a
+  stale `paper/main.tex` and every records update needed a merge in each direction.
+- **Alignment = PR #101, merge commit `75e070f` (deliberately NOT squashed).** It brought
+  the 16 `paper/aaai27` commits (`3e258c1` … `b045f07`) plus the abstract-rebuild records
+  (`5dcf792`) into `main`. A squash would have left the paper hashes cited across
+  `STATUS.md`, `NUMBERS.md` and this log unreachable once the branch was deleted. Checked
+  before merging: conflict-free, `paper/` tree byte-identical to `paper/aaai27`, and every
+  Overleaf-synced file identical to Overleaf head `a0b8c84` (a monorepo sync, so no
+  unmerged coauthor edits). The merge pushed nothing to Overleaf.
+- **Removed, each verified fully contained in `main` first:** the worktree
+  `../pddl-copilot-worktrees/paper-aaai27`; local `docs/next-steps-20260915`; remote
+  `job2/budget-probe-readout` and `planbench-wt-prereg-decisions`.
+- **Overleaf auto-sync Action retargeted from `paper/aaai27` to `main`** (Omer's explicit
+  go, since it is shared CI that writes to Yarin's project). Without this, deleting the
+  paper branch would have silently stopped the sync. Consequence to remember: Overleaf now
+  updates when a PR touching the synced paper files is merged into `main`; a draft can
+  still be pushed by hand with `development/sync_overleaf.sh push` from the short branch.
+  `CLAUDE.md` and `paper-git-overleaf-instructions.md` ("Branch model", "Daily cycle",
+  "Automated sync") rewritten to match.
+- **Known and left alone:** the push guard in `sync_overleaf.sh` only checks that the
+  newest Overleaf commit subject is "Update paper from monorepo", so after a legitimate
+  pull-and-reconcile of coauthor edits a plain `push` still aborts and needs
+  `FORCE_OVERWRITE=1`. To be fixed in its own PR, not mixed into this one.
+- **Bottom line:** one branch, one checkout, `paper/main.tex` on `main` is the paper.
+  Read every older "on `paper/aaai27`" in these notes as history; new paper work goes on
+  a short branch off `main` and merges by PR.
+

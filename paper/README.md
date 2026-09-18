@@ -47,6 +47,7 @@ copy/symlink them next to `main.tex`).
 
 ## Workflow
 
-Write locally on `paper/aaai27-single-tool-draft`; push to GitHub and mirror to Overleaf
-later. Per AAAI rules, the submitted PDF must use the **anonymous** template — keep
+Write on a short `paper/<topic>` branch off `main` and merge it back by PR; the merge
+mirrors the paper to Overleaf (see `development/paper-git-overleaf-instructions.md`).
+Per AAAI rules, the submitted PDF must use the **anonymous** template — keep
 author/affiliation/acknowledgement and any self-identifying repo links out until camera-ready.
