@@ -79,20 +79,21 @@
 
 \begin{abstract}
 Planners and validators are correct by construction, and language models can now
-call them as tools. Does that access improve the answers a model actually
-delivers, and when? We evaluate five open-weight and two frontier models on five
-PDDL tasks, where a deterministic oracle grades every answer exactly, scoring the
-delivered answer rather than the tool call. The tool's guarantee reaches the
-answer only through two gates. Where both hold the effect is decisive: on plan
-generation, frontier models rise from $22$--$29\%$ unaided to $95\%$. The first
-gate is invocation: on plan checking, one model calls the validator on $21\%$ of
-trials when it is merely available, on $94\%$ after one steering sentence, and is
-$99\%$ correct when it calls. The second gate is delivery: what the tool verifies
-fails to reach the answer by a gap that grows with answer length, none on
-verdicts, five points on plans, over thirty on state trajectories, at both
-frontier tiers. On PlanBench, the same tools lift an obfuscated benchmark from
-$0$ to $72\%$. A sound tool helps when the model is directed to call it and the
-answer has room for the result.
+call them as tools. Does that access improve the answers a model delivers, and
+when? We evaluate five open-weight and two frontier models on five PDDL tasks,
+graded exactly by a deterministic oracle at the delivered answer rather than the
+tool call. The tool's guarantee reaches the answer only through two gates. Where
+both hold the tool is decisive: frontier plan generation rises from $22$--$29\%$
+unaided to $95\%$. The first gate is invocation: on plan checking, one model calls
+the validator on $21\%$ of trials when merely available, on $94\%$ after one
+steering sentence, and is $99\%$ correct when it calls. The second gate is
+delivery: what the tool verifies fails to reach the answer, by a gap growing with
+answer length, none on verdicts, five points on plans, over thirty on state
+trajectories, at both tiers. On PlanBench, the same tools lift an
+obfuscated benchmark from $0$ to $72\%$. We grade $273{,}600$ trials across five
+open-weight models and two corpora, including anonymized domains as a
+contamination control. A sound tool helps when the model is directed to call it
+and the answer has room for the result.
 \end{abstract}
 
 % Optional anonymized links block (uncomment near submission; do NOT de-anonymize).
