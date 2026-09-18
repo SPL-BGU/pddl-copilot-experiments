@@ -365,3 +365,204 @@ drops it from the abstract. It returns as a debt if it is quoted in Limitations.
 
 The scale figure in §4 is verified. The `guided_json` conformance numbers that
 Limitations may cite are verified and reproduce from `tools/guided_json_audit.py`.
+
+## 5. Abstract brainstorm, 2026-09-15 (Omer: "too much methodology; set what we present and the abstraction of the research")
+
+Run under the `brainstorm` skill. Phase 1 context, from the tex on `paper/aaai27`
+(`4eb4751`) and the decisions on record:
+
+- **The paper's own question** (Intro, Conclusion): does a sound planner or validator,
+  exposed as a callable tool, improve an LLM on individual PDDL tasks, measured at the
+  answer the model delivers; when; and at what cost.
+- **What the tex claims to contribute** (Intro list): (1) the controlled three-arm,
+  five-task, seven-model evaluation graded at two layers; (2) invocation as the limiting
+  factor; (3) the delivery gap; (4) token cost-of-pass; (5) robustness (reasoning mode,
+  anonymized-domain control). The PlanBench external-validity section (rescue of an
+  obfuscated benchmark, 71.8 vs 0) exists since 08-11 but is in neither abstract.
+- **Standing decisions that bind the abstract:** N1 spine (invocation is the story,
+  delivery lives in Limitations, 08-20); title D; "invocation rate" not "propensity";
+  no unscoped "tools do not compose" declaratives; no two-sided interval as the first
+  number; quote 273,600 with "five open-weight models" if scale is quoted; no
+  retracted numbers (13.5/0, 0% simulate floor); frontier simulate only as bounds.
+- **Why both existing abstracts read as methodology:** in each, roughly half the words
+  describe the instrument (oracle grading, three arms, CIs, signed significance,
+  two-layer grading) before any finding appears, and the findings are listed
+  task-by-task instead of as one abstraction.
+- **Reader:** JAIR primary, TMLR fallback; the memo's drafting constraint is
+  "audience-self-contained", so the abstraction must be stated in tool-use terms with
+  PDDL as the instance.
+
+### Clarifying questions (answer inline; suggested answers in parentheses)
+
+**Q1 — What is the one-sentence abstraction of the research?** Pick the sentence the
+whole paper is evidence for.
+  (i) "A sound tool's guarantee does not transfer to the LLM by availability alone; the
+  transfer is gated by whether the model calls the tool." (= the 08-20 N1 decision)
+  (ii) "The guarantee passes through two gates, calling the tool and relaying its
+  result, and each gate fails for its own reason." (invocation + delivery, matches the
+  Conclusion as written)
+  (iii) "Whether a sound tool helps an LLM depends on the regime: decisive where the
+  model cannot do the task, a cost where it can, and lost where the answer is long."
+  (regime-dependence, matches the Results order)
+  (Suggested: (i) is on record, but the tex body and Conclusion now argue (ii); choose
+  (ii) if you want the abstract to match the paper as it stands, (i) if delivery should
+  be pushed back to Limitations in the body as well.)
+
+> ANSWER (i / ii / iii / your own sentence):
+> **ANSWERED 2026-09-15 (Omer): (ii)** — two gates, calling the tool and relaying its result.
+
+**Q2 — What do we present: findings, a protocol, or both?** The memo calls the
+dual-surface protocol contribution C1; the 08-20 decision says it is not a headline.
+  (Suggested: findings first; the protocol gets one clause, "graded at the answer the
+  model delivers, not at the tool call", because that clause is what makes the findings
+  believable and is the one methodological idea a reader should take away.)
+
+> ANSWER (findings only / findings + one protocol clause / protocol first):
+> **ANSWERED 2026-09-15 (Omer): findings + one protocol clause.**
+
+**Q3 — Which results earn a number in the abstract, and how many?** Candidates:
+solve lift (+66 to +73 pp, open-weight); availability collapse (−67 pp) and the
+steering repair (21% → 94%); delivery gradient (≈0 / 5 / tens of points by answer
+length); PlanBench rescue (72 vs 0 on the obfuscated benchmark); scale (273,600 trials).
+  (Suggested: three at most: the solve lift, the −67 / 21→94 pair as one sentence, and
+  PlanBench 72 vs 0 as the external check; scale in the last sentence if at all.)
+
+> ANSWER (list the ones to keep):
+> *(2026-09-15: Omer asked to discuss this one; see §5.1 below.)*
+
+**Q4 — Does PlanBench belong in the abstract?** It is a full section, added after the
+08-20 draft, and it is the paper's only result on a public benchmark.
+  (Suggested: yes, one sentence, as "the same pattern on PlanBench" external
+  validation, since it is the result an outside reader can compare to other papers.)
+
+> ANSWER (yes, one sentence / no):
+> **ANSWERED 2026-09-15 (Omer): yes, one sentence.**
+
+**Q5 — Length and shape.** JAIR abstracts run about 150–250 words.
+  (Suggested: ≤ 200 words, one paragraph, order = question → abstraction → two or
+  three numbered findings → PlanBench check → the practical rule for practitioners.)
+
+> ANSWER (word cap / shape):
+> **ANSWERED 2026-09-15 (Omer): as suggested — ≤ 200 words, one paragraph, question → abstraction → findings → PlanBench check → practical rule.**
+
+Approaches are proposed after these are answered (skill Phase 2).
+
+### 5.1 Q3 discussion — which results earn a number (2026-09-15)
+
+Under abstraction (ii), every number in the abstract has to play one of four roles:
+show the upside when both gates pass, show gate 1 (calling) failing, show gate 2
+(relaying) failing, or check the pattern outside our own benchmark. Anything that does
+not play a role is Intro material. Values below are the `NUMBERS.md` frozen readings.
+
+| candidate | role | frozen value / surface | verdict |
+|---|---|---|---|
+| solve at the frontier: 95% delivered with the tool vs 8–29% unaided | upside, both gates pass | **95.0 [88.8, 97.8]** both tiers, delivered; floors 8–11 open-weight, 22–29 frontier | **keep** — the one exact delivered lift on record |
+| open-weight solve lift "+66 to +73 pp" (08-20 draft) | upside | NOT frozen; Job 2 block: open-roster solve *delivered* is exploratory-FAV (9B) / UNDECIDED / UNDECIDED, so the range is a mechanism-layer (tool-verified) figure | **drop** unless `/verify-claims` shows it survives on the delivered surface; the frontier 95% carries the role |
+| −67 pp availability collapse on plan checking | gate 1 fails | mechanism layer only (Gemma vplan tool-verified 88 → 21); delivered cell ⟨6.6, 99.6⟩ UNDECIDED; NUMBERS: "do NOT quote −67 pp delivered" | **drop the −67**; say it as an invocation rate instead (next row) |
+| invocation 21% → 94% with one steering sentence, 99% correct when it does call | gate 1 fails, and the tool is not the cause | CALL rates are storage-exact in every corpus; 99% is the tex figure (P(correct \| call)) | **keep** — the cleanest gate-1 sentence, needs no surface qualifier |
+| delivery gradient: ≈0 pp on verdicts, +5 pp on plans, ≥33 pp on state trajectories, same at both frontier tiers | gate 2 fails, and grows with answer length | frozen: vd/vp/vplan ≈0; solve +5.0; simulate ≈37–50 (Sonnet) / ≈33–45 (Haiku); the tex already says "≥33 pp" | **keep** — it is the gate-2 finding; three small numbers in one clause |
+| PlanBench: with tools 72% vs 0% without on the obfuscated (Mystery) benchmark; +20.5 pp on the clean one | external check | Mystery WT **71.8 [68.1, 75.3]** vs NT 0.0; clean first-draw 68.3, Δ **+20.5 pp**, p = 1.4e-13 | **keep the Mystery pair** (72 vs 0); the clean Δ is optional |
+| scale: 273,600 trials, five open-weight + two frontier models, two corpora | credibility | frozen 273,600, must say "five open-weight models" | **optional** — one clause at the end or drop; it is in the Intro either way |
+| token cost-of-pass ("pays for itself where the model cannot do the task") | practical rule | delivered multipliers are ranges (solve 0.65–1.64×, vd ≈2.9×, …) | **no number** — one clause without a figure, or leave to the body |
+
+Recommended set: four figures, one per role — 95 vs 8–29 · 21 → 94 (+ 99% when called)
+· 0 / 5 / ≥33 · 72 vs 0. Scale optional. Nothing else.
+
+Constraints that still apply to the wording: the frontier simulate delivered value is
+never a point (only the *gap* is quoted); the availability harm is described as an
+invocation drop, not a success drop; the first number in the abstract is not a
+two-sided interval (95 vs 8–29 is a rate and a range of floors, fine); "invocation
+rate" throughout.
+
+> ANSWER (keep the recommended four / add or remove — name them / scale: keep or drop):
+> **ANSWERED 2026-09-18 (Omer): keep all four.** Scale clause: sent to a separate
+> advisor agent with the prompt in §5.2; decision pending.
+
+### 5.2 Advisor prompt for the scale clause, and two abstract shapes (2026-09-18)
+
+**What "the scale clause" is.** Not a token count. It is one sentence stating how much
+graded evidence the paper rests on: **273,600 trials** (five open-weight models × two
+reasoning modes × three arms × 4,560 trials × two corpora), plus the separate frontier
+arm (6,080 Haiku + 10,640 Sonnet = 16,720 trials). Candidate wording (22 words):
+
+> The protocol runs over 273,600 graded trials on the five open-weight models across two corpora, one of them an anonymized-domain contamination control.
+
+**Prompt to hand to a separate advisor agent (self-contained):**
+
+```
+You are advising on the abstract of a journal paper (target: JAIR, fallback TMLR) about
+whether sound symbolic planning tools (PDDL planners and validators, exposed as callable
+tools) help large language models. The abstract is capped at 200 words and is built on
+one abstraction: the tool's guarantee reaches the model's delivered answer only through
+two gates, calling the tool and relaying its result. It already carries four numbers:
+frontier plan-generation success 22-29% unaided vs 95% with the tool; invocation 21% vs
+94% with one steering sentence (99% correct when called); a delivery gap of 0 / 5 / >33
+points by answer length; and PlanBench 0% vs 72% on an obfuscated benchmark.
+
+Question: should the abstract also include a "scale clause" stating the size of the
+evidence base, and if so, how? The candidate sentence is:
+"The protocol runs over 273,600 graded trials on the five open-weight models across two corpora, one of them an anonymized-domain contamination control."
+
+Facts you may rely on: 273,600 = 5 open-weight models x 2 reasoning modes x 3 arms x
+4,560 trials x 2 corpora; a separate frontier arm adds 16,720 trials (two Anthropic
+models) and must not be folded into the 273,600 or paired with a phrase like "seven
+models"; every proportion in the paper carries a confidence interval. The Introduction
+already states the per-cell count (4,560 trials per model-mode-arm cell). The earlier
+version of this paper was rejected at a conference; the journal submission argues it is
+an extensive revision.
+
+Return: (1) keep / drop / shorten, with a two-sentence reason from the reader's point of
+view (a planning-and-LLM-evaluation audience skimming abstracts); (2) if keep or
+shorten, the best wording in at most 20 words and where in the abstract it should sit
+(after the findings or as the final sentence); (3) any risk you see in quoting a trial
+count in an abstract (for example, it reading as a substitute for insight).
+```
+
+**Two abstract shapes** (skill Phase 2). Both follow the agreed order: question →
+abstraction → findings (upside, gate 1, gate 2) → PlanBench → practical rule. Numbers
+are the frozen `NUMBERS.md` values and still owe a `/verify-claims` pass before the tex.
+The scale clause, if kept, is appended as the last sentence of either.
+
+**Shape A — guarantee-transfer, abstraction stated as a general tool-use claim** (199 words, trimmed to the 200 cap)
+
+> Planners and validators are correct by construction, and language models can now call them as tools. Does that access improve the answers a model actually delivers, and when? We evaluate five open-weight and two frontier models on five PDDL tasks, where a deterministic oracle grades every answer exactly, scoring the delivered answer rather than the tool call. The tool's guarantee reaches the answer only through two gates. Where both hold the effect is decisive: on plan generation, frontier models rise from 22 to 29 percent unaided to 95 percent. The first gate is invocation: on plan checking, one model calls the validator on 21 percent of trials when it is merely available, on 94 percent after one steering sentence, and is 99 percent correct when it calls. The second gate is delivery: what the tool verifies fails to reach the answer by a gap that grows with answer length, none on verdicts, five points on plans, over thirty on state trajectories, at both frontier tiers. On PlanBench, the same tools lift an obfuscated benchmark from 0 to 72 percent. A sound tool helps when the model is directed to call it and the answer has room for the result.
+
+- Pros: the abstraction is stated in tool-use terms, so it travels beyond planning
+  (JAIR and TMLR readers alike); "two gates" gives the reader a handle to retain; the
+  protocol appears as one clause ("grading the delivered answer rather than the tool
+  call") as decided.
+- Cons: "guarantee reaches the answer" is new vocabulary the body does not use yet
+  (the body says "delivery gap" and "invocation"); one more sentence than B before the
+  first number.
+- Effort: low. Fits existing patterns: yes, the Results order is upside → gate 1 →
+  gate 2 → PlanBench.
+
+**Shape B — regime framing, uses the body's own wording** (200 words, trimmed to the 200 cap)
+
+> Does a sound planning tool help a language model, and when? The usual fix for unreliable LLM planning is a sound planner or validator behind a tool interface. We test that prescription on five PDDL tasks over five open-weight and two frontier models, grading the delivered answer against a deterministic oracle rather than the tool's return value. The benefit depends on two behaviours separate from the model's capability and the tool's accuracy: whether the model calls the tool, and whether the result survives into the answer. When both hold the tool is decisive: frontier plan generation rises from 22 to 29 percent unaided to 95 percent. Calling is fragile: on plan checking one model invokes the validator on 21 percent of trials when merely available, on 94 percent after one steering sentence, and is 99 percent correct when it calls. Delivery leaks with length: the gap between what the tool verifies and what the answer contains is zero on verdicts, five points on plans, over thirty on state trajectories, at both frontier tiers. On PlanBench the same tools raise an obfuscated benchmark from 0 to 72 percent. Availability alone is not enough: direct the call, and give the answer room.
+
+- Pros: opens with the question in seven words; the abstraction sentence reuses the
+  Intro/Conclusion wording ("two behaviours … separate from capability and from tool
+  accuracy"), so abstract and body agree word-for-word; the closing rule echoes the
+  Conclusion.
+- Cons: the abstraction reads as a finding about behaviours rather than as a claim
+  about guarantees, which is a weaker hook; "Availability alone is not enough" revives
+  the retired title phrase in prose (it is already in the Conclusion, so not new).
+- Effort: low. Fits existing patterns: yes.
+
+**Recommendation: Shape A**, because the abstraction is what the reader should carry
+away, and A states it as a claim the rest of the paper is evidence for. Take B's opening
+question if a seven-word first sentence is preferred.
+
+**One consistency risk to decide with the abstract.** Title D ("Invocation Is the
+Bottleneck …") was chosen on 08-20 under abstraction (i), invocation only. Under (ii) it
+names the first gate and not the second. Options: keep D (invocation is the larger and
+more surprising gate; delivery is the second clause of the subtitle's "when they do
+not"), or revisit the title after the abstract settles. Recommendation: keep D for now
+and re-read it against the final abstract before the tex pass.
+
+> ANSWER (A / B / A with B's opening / revise — mark sentences; title: keep D / revisit):
+> **ANSWERED 2026-09-18 (Omer): A.** APPLIED as `paper/aaai27` `b27ef23` (local, unpushed; 191 words in the tex). Title D kept for now (re-read against the final
+> abstract before the tex pass). Scale clause: advisor agent said SHORTEN (18 words, after
+> PlanBench, before the takeaway; paper_notes 2026-09-18); Omer accepted; applied as `b045f07`
+> (local), abstract held at 200 words. **PUSHED 2026-09-18, Overleaf `a0b8c84`.**

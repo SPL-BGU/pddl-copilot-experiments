@@ -12,7 +12,7 @@ table, run `/verify-claims` against the canonical corpora
 a stale partial mirror). Every value below was re-verified against its provenance
 file on 2026-08-29.
 
-*Last refreshed: 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-09-18 (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -145,6 +145,20 @@ were generated programmatically from the frozen report in
 | void on-mode arm (parser ON, job 20392801) | **9,120/9,120** (35b) and **3,822/3,824** (9B) rows empty response; ~12,960 tok/row (tex "about 13K") | readout §2.1; prereg §9.1 dev 2 | — |
 | on-mode rerun (parser OFF) vs June prediction | 9B **8.2% empty / 69.1% success** (pred. 8.8 / 68.4); 35b **3.9% / 82.5%** (pred. 4.1 / 82.0); format_parse_fail **0.0%** on all three validate_* tasks in all 4 on-mode arms | readout §2.1–2.2 | — |
 | roster-gap with-tools think=off steering (tl-ster − tl-neut, mechanism layer, canonical) | 0.8B **+0.0** pooled · 4B **+6.9** pooled / **+9.6** vplan · 9B **+2.5** · gemma +47.4 / **+72.0** vplan · 35b +14.8 | prereg §9.1 dev 1; `archive/ntster/ntster_h4_partial_readout_20260822.md` §3; **recomputed 2026-09-12** from `results/sweep5v2-live/*_off_tools_all_minimal` — matches | — |
+
+## Abstract — the four figures + the scale clause (verified 2026-09-18 for `paper/aaai27` `b27ef23` + `b045f07`)
+
+The abstract quotes exactly four numbers, one per role of the two-gate abstraction
+(`title_abstract_candidates.md` §5). Each was re-derived this session; nothing else
+may be added to the abstract without a row here.
+
+| abstract sentence | **quote this** | derivation | do NOT quote |
+|---|---|---|---|
+| frontier plan generation, unaided → with tool | **22–29% → 95%** (both tiers, delivered) | `pooled_e2e_table.csv`: solve tl-neut ok_strict 95/100 Sonnet and Haiku; nt-neut Haiku 22/100, Sonnet 86/300 = 28.7 | the open-weight "+66 to +73 pp" lift (tool-verified; delivered cells censored/UNDECIDED) |
+| invocation on plan checking, merely available → steered; correct when it calls | **21% → 94%; 99%** | `sweep5v2-live/slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal/trials.jsonl`, validate_plan: called (`tool_selected`) 622/3000 = 20.7% (v11–13) vs 2808/3000 = 93.6% (v14–16); P(ok \| called) 617/622 = 99.2% (98.9% steered); 0 successes without a call | "−67 pp" as a success drop (mechanism layer; delivered ⟨6.6, 99.6⟩ UNDECIDED) |
+| delivery gap by answer length, both frontier tiers | **≈0 on verdicts, 5 pp on plans, >33 pp on trajectories** | overlay table: vd/vp/vplan delivered vs tool-verified differ by ≤0.1 pp; solve 95 vs 100 = +5.0 both tiers; simulate Sonnet ⟨49, 62⟩ vs 99 (37–50), Haiku ⟨52, 64⟩ vs 97 (33–45) | any frontier simulate delivered *point* |
+| PlanBench obfuscated (Mystery) benchmark, without → with tools | **0 → 72%** | `verify_promotion.py` ALL CHECKS PASS: NT 0/600, WT 431/600 = 71.8 [68.1, 75.3] | clean WT 69.7 (last-attempt) |
+| scale clause (in the abstract since `b045f07`, after the PlanBench sentence) | **273,600 trials, five open-weight models, two corpora, anonymized domains as the contamination control** | Corpus scale block; advisor recommendation in paper_notes 2026-09-18 | 227k; "seven models"; any wording that folds in the 16,720 frontier trials |
 
 ## Corpus scale
 
