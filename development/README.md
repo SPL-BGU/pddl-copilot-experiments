@@ -22,6 +22,8 @@ Three files answer almost every question:
 | doc | what it is |
 |---|---|
 | `STATUS.md` · `NUMBERS.md` · `MOVES.md` | the three above |
+| `review_round_handoff.md` | operational pickup for the review round and pre-submission work (2026-09-18): the single-line branch model, the step sequence, the doc-cleanup brief. Never overrides `STATUS.md` |
+| `advisor_brief.md` | one page for the advisors and coauthors: the six `STATUS.md` N2 questions with recommendations and open `> ANSWER:` slots |
 | `journal_decisions_memo.md` | the accepted journal-pivot spec; §3 is the Job 2 e2e-reframe brief. ⚠️ still says "227k trials" in 3 places — the figure is **273,600**, see `NUMBERS.md` |
 | `tool_call_vs_final_output_grading.md` | e2e-vs-tool-verified grading decisions D1–D9 + phase results |
 | `sonnet_wt_vs_haiku_e2e_memo.md` | Sonnet-WT vs Haiku delivered/tool-verified comparison; the transcription-gap numbers |
