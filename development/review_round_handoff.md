@@ -78,8 +78,8 @@ row for each file in `development/README.md`.
 
 **Step 2 — Documentation cleanup (agent; plan first, Omer approves, then execute).**
 The plan is written and approved (`development/archive/plans-executed/doc_cleanup_plan.md`, "ok all" on 09-18).
-Executed the same day as two stacked PRs: #104 "moves only", then "rewrites" (branch
-`docs/cleanup-rewrites`). Omer merges #103, #104, then the rewrites PR, in that order.
+Executed the same day as two stacked PRs: #104 "moves only", then #105 "rewrites".
+Omer merges #103, #104, #105, in that order.
 If all three are merged, this step is closed. Full brief in the section "Step 2 in detail" below. Do it right after the brief, while
 the manuscript is out with the advisors: every later session reads these docs first.
 
@@ -119,7 +119,7 @@ a decision was reversed.
 **Starting inventory (surveyed 2026-09-18 — re-verify, the counts are grep hits):**
 
 **This table is a record of what was wrong on the morning of 09-18. Every row has since
-been fixed (PRs #104 and the rewrites PR); do not act on it again.** Paths in this table
+been fixed (PRs #104 and #105); do not act on it again.** Paths in this table
 are as they were at the survey. The moves of rows A and C were made
 on 09-18 (PR "moves only"); `MOVES.md` "Third wave" gives the new path of each file.
 
