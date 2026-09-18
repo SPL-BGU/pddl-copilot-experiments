@@ -1,6 +1,6 @@
 ---
 name: debug-and-simplify
-description: Diagnose and fix issues with experiment execution, MCP client connections, vLLM server, tool-call failures (truncation, JSON parse, tool_error), or result analysis. Use whenever the pipeline is broken, a run crashed, tool outputs look wrong, results JSON files are malformed, or `run_*.log` contains errors. Check `development/OPEN_ISSUES.md` before deep-diving — the symptom may already be a tracked `ISS-###` with a documented fix.
+description: Diagnose and fix issues with experiment execution, MCP client connections, vLLM server, tool-call failures (truncation, JSON parse, tool_error), or result analysis. Use whenever the pipeline is broken, a run crashed, tool outputs look wrong, results JSON files are malformed, or a cluster `.out` log contains errors. Check `development/OPEN_ISSUES.md` before deep-diving — the symptom may already be a tracked `ISS-###` with a documented fix.
 disable-model-invocation: true
 argument-hint: [description of the issue or error message]
 ---
@@ -32,19 +32,19 @@ Systematically check each layer, stopping when the root cause is found:
 2. Can the MCP plugin servers start? Run the plugin's `launch-server.sh` directly
 3. Do individual MCP tool calls succeed? Test with inline PDDL content
 4. Are tool responses in the expected format?
-   - Standalone calls default to verbose: `validate_pddl_syntax` returns `{valid, status, report, details}`; `get_state_transition` returns `{valid, report, steps, trajectory, details}`.
+   - Standalone calls default to verbose: `validate_domain`, `validate_problem` and `validate_plan` return `{valid, status, report, details}` (there is no `validate_pddl_syntax` tool any more); `get_state_transition` returns `{valid, report, steps, trajectory, details}`.
    - Through `MCPPlanner` the bridge projects validator + `get_state_transition` responses (see EXPERIMENTS_FLOW.md §8 for the contract).
    - If captured `tool_calls[*].result` strings still carry `details`, the bridge isn't stripping `verbose` — check `_PINNED_VERBOSE_FALSE` and the `inputSchema` mutation in `MCPPlanner.connect()`.
 
 **Layer 3 — Experiment execution:**
-1. Does a single-task dry run work? (`python3 run_experiment.py --tasks solve --dry-run`)
+1. Does a single-task smoke run work? (`python3 run_experiment.py --tasks solve --smoke`; there is no `--dry-run` flag)
 2. Are PDDL domain/problem files found in `domains/`?
 3. Is ground-truth generation succeeding before model evaluation?
-4. Check timestamped log files (`run_*.log`) for error traces
+4. Check the error traces: the harness prints `[exception] <Type>: <message>` to stderr, which on the cluster lands in `cluster-experimenting/logs/*-<jobid>.out`; each trial's error is also stored in `trials.jsonl`
 
 **Layer 4 — Results and analysis:**
 1. Are output JSON files valid? (`python3 -m json.tool results/<dir>/summary_*.json`)
-2. Do result schemas match what notebooks expect?
+2. Do result schemas match what the analyzer scripts expect? (`python3 .claude/skills/analyzer/scripts/aggregate.py <results-root>`; the notebooks were removed)
 
 ### Phase 2: Fix
 Apply the **minimal change** that resolves the root cause:
@@ -60,7 +60,7 @@ Before committing the fix, review it:
 
 ### Phase 4: Verify
 1. Run a quick experiment to confirm the fix (smallest model, single task)
-2. If the issue was in results/analysis, verify notebooks still load correctly
+2. If the issue was in results/analysis, verify the analyzer scripts still load the results
 3. Report: what broke, why, what was fixed, verification result
 
 ### Common Issues Reference
@@ -76,5 +76,5 @@ Before committing the fix, review it:
 | Background run dies | OOM or vLLM crash | Check the vLLM serve log and system memory |
 | Stale MCP connection | Plugin venv missing new deps | Delete plugin `.venv` and restart |
 | Validator tool result has `details`/verbose `report` inside `tool_calls[*].result` | Bridge not stripping `verbose` or not injecting `verbose=False` | Confirm `_PINNED_VERBOSE_FALSE` set and `inputSchema` mutation in `MCPPlanner.connect()` |
-| LLM reply cut with `done_reason="length"` on validate_* | `num_predict` cap (see `ISS-007`), not MCP output size | Raise `--num-predict` for validate tasks; do not chase MCP output fixes |
-| High `truncated_no_answer` on no-tools simulate | `ISS-002` — scorer is lenient; metric is vocabulary-only | Check scorer path in `check_success` before blaming the model |
+| LLM reply cut at the output-token cap (`finish_reason="length"`) on validate_* | the `--num-predict` cap, not MCP output size (the old 1024 cap was `ISS-007`, closed 2026-04-29 by raising it to 4096) | Check the cap in the run's `meta`; do not chase MCP output fixes |
+| Low or zero no-tools `simulate` success | usually a grading-format effect, not the model: the grader compares trajectories exactly (`ISS-002` closed 2026-04-29; the predicate-syntax normalizer artifact is recorded in `development/NUMBERS.md`) | Read `check_success` in `pddl_eval/scoring.py` and the simulate rows in `NUMBERS.md` before blaming the model |

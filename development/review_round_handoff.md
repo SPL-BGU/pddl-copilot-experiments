@@ -2,7 +2,7 @@
 
 **Pick up with** `/resume-verify development/review_round_handoff.md`.
 
-**Read first:** `STATUS.md` → "Next steps" (N1–N5, decision slots R5–R8). This file is the
+**Read first:** `STATUS.md` → "Next steps" (N2–N5; open decision slots R7 and R8). This file is the
 operational pickup only. It never overrides `STATUS.md` (what is left) or `NUMBERS.md`
 (which value of each figure to quote). If this file and the repo disagree, the repo wins.
 
@@ -77,9 +77,10 @@ extension (run or leave excluded). Branch `docs/advisor-brief`, with this handof
 row for each file in `development/README.md`.
 
 **Step 2 — Documentation cleanup (agent; plan first, Omer approves, then execute).**
-The plan is written: `development/doc_cleanup_plan.md` (same PR #103), waiting for Omer's
-`> ANSWER:` lines. **Nothing moves before those are filled in.** This is the next agent
-step. Full brief in the section "Step 2 in detail" below. Do it right after the brief, while
+The plan is written and approved (`development/archive/plans-executed/doc_cleanup_plan.md`, "ok all" on 09-18).
+Executed the same day as two stacked PRs: #104 "moves only", then #105 "rewrites".
+Omer merges #103, #104, #105, in that order.
+If all three are merged, this step is closed. Full brief in the section "Step 2 in detail" below. Do it right after the brief, while
 the manuscript is out with the advisors: every later session reads these docs first.
 
 **Step 3 — Omer, any time: answer R7 and R8 in `STATUS.md`** (the two empty slots).
@@ -117,7 +118,9 @@ a decision was reversed.
 
 **Starting inventory (surveyed 2026-09-18 — re-verify, the counts are grep hits):**
 
-Paths in this table are as they were at the survey. The moves of rows A and C were made
+**This table is a record of what was wrong on the morning of 09-18. Every row has since
+been fixed (PRs #104 and #105); do not act on it again.** Paths in this table
+are as they were at the survey. The moves of rows A and C were made
 on 09-18 (PR "moves only"); `MOVES.md` "Third wave" gives the new path of each file.
 
 | # | where | what is wrong | likely fix |
@@ -152,7 +155,7 @@ on 09-18 (PR "moves only"); `MOVES.md` "Third wave" gives the new path of each f
 
 **How to deliver it (the plan, then two PRs, smallest first, so each diff is easy to review):**
 
-1. `development/doc_cleanup_plan.md` — **written 09-18, rides in PR #103 with the brief
+1. `doc_cleanup_plan.md` (now in `development/archive/plans-executed/`) — **written 09-18, rides in PR #103 with the brief
    (no PR of its own).** One table, a row per file: verdict (keep / move
    to `reference/` / move to `archive/` / rewrite section / cut) · one-line reason ·
    `> ANSWER:` slot. Omer approves in the file. Nothing moves before that.

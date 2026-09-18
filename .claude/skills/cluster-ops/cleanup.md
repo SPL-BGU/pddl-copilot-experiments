@@ -78,7 +78,8 @@ row counts:
 
 ```bash
 # from the analyzer skill — see .claude/skills/analyzer/SKILL.md
-bash .claude/skills/analyzer/scripts/aggregate.py --rebuild
+# aggregate.py is a Python script and takes the results root as its one argument.
+python3 .claude/skills/analyzer/scripts/aggregate.py results/<root-you-pruned>
 ```
 
 ## Quarantine directory convention

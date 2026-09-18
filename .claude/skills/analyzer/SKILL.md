@@ -16,7 +16,7 @@ Triggers (so the skill auto-matches): "aggregate summaries", "plot results", "re
 
 All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`.
 
-- **Results root**: directories under `results/`, typically `results/cluster-YYYYMMDD/` (synced) or `results/full-cluster-run*/` (older). Each contains one `slurm_<model>_<think>_<cond>[_<jobid>]/` subdir per cell.
+- **Results root**: a directory under `results/`. **The canonical corpora are `results/sweep5v2-live` (canonical domains) and `results/sweep6-live` (anonymized; the `*_sweep6` cells).** Paper numbers are checked against these only. Dated sync dirs (`results/sweep5-cluster-YYYYMMDD/`, `results/sweep56-cluster-*`) are working mirrors; `results/sweep5-cluster-20260530` is a stale partial mirror that gives wrong numbers. Each root contains one `slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/` subdir per cell. Before quoting a headline figure, check `development/NUMBERS.md`.
 - **Per-cell layout**: `summary_*.json` (aggregated single_task; the legacy `chains` array is empty under the active flow as of 2026-05-05) is the canonical analysis input. `trials.jsonl` (per-trial JSONL, post 2026-05-01) is read by `drift_check.py` as a mid-sweep fallback when no `summary_*.json` exists yet.
 - **Cell dirname shapes** (handled transparently by `parse_dirname`):
   - Cell-keyed (current, post 2026-05-01): `slurm_<model>_<think>_<cond>` — one dir per cell, resubmits accumulate timestamped summaries inside.
@@ -28,12 +28,13 @@ All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-
 
 ### `scripts/aggregate.py` — summary.json → Markdown
 
-Walks a results root (default: most recent `results/cluster-*` or `results/full-cluster-run*`), loads every `summary_*.json`, emits Markdown tables: single-task success-rate matrix and failure-reason totals.
+Walks a results root, loads every `summary_*.json`, emits Markdown tables: single-task success-rate matrix and failure-reason totals.
 
 ```bash
-python3 .claude/skills/analyzer/scripts/aggregate.py                            # auto-pick latest
-python3 .claude/skills/analyzer/scripts/aggregate.py results/full-cluster-run1  # explicit
+python3 .claude/skills/analyzer/scripts/aggregate.py results/sweep5v2-live
 ```
+
+**Always pass the root.** With no argument, `aggregate.py`, `plot.py` and `table.py` look for `results/cluster-*` or `results/full-cluster-run*`. Neither exists any more, so a no-argument call exits with an error. `plot_focused.py` defaults to `checkpoints/cluster-26042026`, which is also gone. (Known; the code fix is tracked separately.)
 
 Legacy dirs (no `<think>` segment) are treated as `think=default` with a header warning.
 
@@ -48,15 +49,14 @@ Auto-discovers series from dir names + summary meta; dynamically builds the SERI
 - `fig6_tool_adherence.png` — per-task `tool_selected_rate` with CI whiskers (with-tools only)
 
 ```bash
-python3 .claude/skills/analyzer/scripts/plot.py                                     # auto-pick latest, plots → <root>/plots/
-python3 .claude/skills/analyzer/scripts/plot.py results/full-cluster-run1           # explicit root
-python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --group-by think
-python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --figs 1,4,5  # subset
-python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --no-ci       # drop CI whiskers
-python3 .claude/skills/analyzer/scripts/plot.py results/cluster-20260501 --merge       # pooled (model, think) → plots/merged/
-python3 .claude/skills/analyzer/scripts/plot.py results/sweep5-live --by-arm           # four-arm split → plots/by_arm/
-python3 .claude/skills/analyzer/scripts/plot.py results/sweep5-live --by-arm --arms nt-neut,tl-neut  # H1 isolation
-python3 .claude/skills/analyzer/scripts/plot.py results/sweep5-live --by-arm --arms tl-neut,tl-ster  # H2 isolation
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live               # plots → <root>/plots/
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --group-by think
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --figs 1,4,5  # subset
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --no-ci       # drop CI whiskers
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --merge       # pooled (model, think) → plots/merged/
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --by-arm         # four-arm split → plots/by_arm/
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --by-arm --arms nt-neut,tl-neut  # H1 isolation
+python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --by-arm --arms tl-neut,tl-ster  # H2 isolation
 ```
 
 `--figs` accepts `all` (default) or a comma list over `1, 3, 4, 5, 6` (chain figures `2`/`7` archived 2026-05-05; passing them is a hard error). `--no-ci` disables error bars on figs 1, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged.
@@ -68,7 +68,7 @@ python3 .claude/skills/analyzer/scripts/plot.py results/sweep5-live --by-arm --a
 Companion to `plot.py`: each focused figure answers ONE question with at most two bars per model. Outputs to `<root>/plots/focused/`.
 
 ```bash
-python3 .claude/skills/analyzer/scripts/plot_focused.py                # auto-pick latest
+python3 .claude/skills/analyzer/scripts/plot_focused.py results/sweep5v2-live
 python3 .claude/skills/analyzer/scripts/plot_focused.py <root> --figs 1,5,7
 python3 .claude/skills/analyzer/scripts/plot_focused.py <root> --figs h1   # sweep-5 H1 isolation
 ```
@@ -82,10 +82,9 @@ One large pivot per run root covering all measured axes. Rows: `(model, think, t
 Sweep-3/4 corpora collapse to `*-legacy` arm rows, so the table renders unchanged from pre-arm-axis times (one row per cell, arm=`nt-legacy` or `tl-legacy`).
 
 ```bash
-python3 .claude/skills/analyzer/scripts/table.py                                    # auto-pick latest
-python3 .claude/skills/analyzer/scripts/table.py results/cluster-20260424           # explicit
-python3 .claude/skills/analyzer/scripts/table.py results/cluster-20260424 --formats md,csv
-python3 .claude/skills/analyzer/scripts/table.py results/cluster-20260424 --out /tmp/tables
+python3 .claude/skills/analyzer/scripts/table.py results/sweep5v2-live
+python3 .claude/skills/analyzer/scripts/table.py results/sweep5v2-live --formats md,csv
+python3 .claude/skills/analyzer/scripts/table.py results/sweep5v2-live --out /tmp/tables
 python3 .claude/skills/analyzer/scripts/table.py results/sweep5v2-live --e2e        # + e2e-strict column
 python3 .claude/skills/analyzer/scripts/table.py results/iss024d-e2e-live --run-tag iss024d-e2e --e2e
 ```
@@ -126,8 +125,8 @@ python3 .claude/skills/analyzer/scripts/e2e_pooled.py            # defaults
 python3 .claude/skills/analyzer/scripts/e2e_pooled.py --out /tmp # elsewhere
 ```
 
-Update its `IN_FLIGHT` dict as pending runs (iss024d 4B/9B/gemma, Sonnet WT)
-land and get regraded.
+Its `IN_FLIGHT` dict is empty: every run it used to list (iss024d 4B/9B/gemma, Sonnet
+with-tools) has landed and been regraded. Add an entry only when a new run is pending.
 
 ### `scripts/filter_variants.py` — restrict trials.jsonl to a prompt-variant set
 
@@ -156,8 +155,9 @@ python3 .claude/skills/analyzer/scripts/filter_variants.py \
     --src sweep5-cluster-20260601 --dst sweep5-steered \
     --model-glob 'slurm_vllm_*' --arm steered --min-out 4560
 
-# Sweep-4 replay (historical — explicit --variants since --arm presets
-# only encode sweep-5 indices):
+# Sweep-4 replay (historical form; the sweep-4 sync dir is no longer kept
+# locally). Explicit --variants, since the --arm presets only encode the
+# sweep-5 indices:
 python3 .claude/skills/analyzer/scripts/filter_variants.py \
     --src sweep4-cluster-20260519 --dst sweep4-v5-v7-first \
     --model-glob 'slurm_vllm_Qwen3_5_0_8B_*,slurm_vllm_qwen3_6_35b_*' \
@@ -166,7 +166,7 @@ python3 .claude/skills/analyzer/scripts/filter_variants.py \
 
 ### `scripts/build_deck.py` — render a paper-talk PPTX from a filtered root
 
-Reads a small `deck_config.py` (model order, captions, results path) and writes a self-contained ~16-slide deck on a sweep-5 corpus (~14 slides on a sweep-3/4 replay — H1/H2 slides are skipped when the relevant arms are absent): success-by-arm (off/on), H1 isolation slide (nt-neut vs tl-neut on result_correct at byte-identical prompts), H2 isolation slide (tl-neut vs tl-ster on tool_selected with FR_WRONG_TOOL share annotation), tool-selection per task, tool-selection vs successful-tool-use, confusion-matrix grids (nt-neut), validation-metric tables, simulate failure-proof slides, output-token note + 7 output-token slides (input tokens dropped 2026-05-24), and 2 latency slides. Chart functions and slide order are baked into the script — per-checkpoint customization is config-only. See `checkpoints/sweep5-live/deck_config.py` for the worked sweep-5 example (or `checkpoints/sweep4-v5-v7-first/deck_config.py` for the sweep-3/4 replay form).
+Reads a small `deck_config.py` (model order, captions, results path) and writes a self-contained ~16-slide deck on a sweep-5 corpus (~14 slides on a sweep-3/4 replay — H1/H2 slides are skipped when the relevant arms are absent): success-by-arm (off/on), H1 isolation slide (nt-neut vs tl-neut on result_correct at byte-identical prompts), H2 isolation slide (tl-neut vs tl-ster on tool_selected with FR_WRONG_TOOL share annotation), tool-selection per task, tool-selection vs successful-tool-use, confusion-matrix grids (nt-neut), validation-metric tables, simulate failure-proof slides, output-token note + 7 output-token slides (input tokens dropped 2026-05-24), and 2 latency slides. Chart functions and slide order are baked into the script — per-checkpoint customization is config-only. See `checkpoints/sweep5v2-live/deck_config.py` for the worked example (`checkpoints/sweep6-live/deck_config.py` is the anonymized-corpus twin).
 
 **Arm-axis behavior.** `build_deck.py` re-keys each cell's trials.jsonl into `(model, think, arm)` buckets via `pddl_eval.summary.arm_for()`. A sweep-5 `tools_all_minimal` dir splits into two arm buckets (`tl-neut` from v11-13, `tl-ster` from v14-16); a sweep-3/4 dir collapses into one `tl-legacy` bucket. `ARM_ORDER` is derived from data unless the deck_config sets it explicitly; empty arms are dropped (no reserved slot). Input tokens are no longer plotted — `TOKEN_NOTE_BULLETS` documents the policy and the 2-turn structural multiplier.
 
@@ -208,8 +208,8 @@ Compares a `--current` results root (in-flight or finished) against a `--baselin
 
 ```bash
 python3 .claude/skills/analyzer/scripts/drift_check.py \
-    --baseline results/cluster-20260427 \
-    --current  results/cluster-20260501
+    --baseline results/sweep5v2-live \
+    --current  results/<synced-dir>
 
 # Bound to specific tasks:
 python3 .claude/skills/analyzer/scripts/drift_check.py --baseline ... --current ... \
@@ -227,9 +227,9 @@ Exit code is `1` if any `direction=below` rows surface (current notably worse th
 
 The standard end-of-sweep flow. Step 1 lives in `cluster-ops`; the rest in this skill.
 
-1. `bash .claude/skills/cluster-ops/scripts/sync.sh` — rsync into `results/cluster-<today>/`.
+1. `bash .claude/skills/cluster-ops/scripts/sync.sh` — rsync into `results/sweep5-cluster-<today>/` (the script's default name; or pass an explicit subdir).
 2. `python3 .claude/skills/analyzer/scripts/aggregate.py <that-dir>` — print success-rate tables.
-3. `python3 .claude/skills/analyzer/scripts/plot.py <that-dir>` — write the 7 PNG figures.
+3. `python3 .claude/skills/analyzer/scripts/plot.py <that-dir>` — write the 5 PNG figures (fig 1, 3, 4, 5, 6).
 4. `python3 .claude/skills/analyzer/scripts/table.py <that-dir>` — write `tables/master.{md,csv,tex}` for the paper.
 5. (Optional) `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct memory headroom; surface OOMs / near-`--time` jobs.
 6. Report to user with the plot paths and 3–5 key numbers from the aggregate table. Frame against the paper headline (arXiv:2509.12987) when possible.
@@ -238,7 +238,7 @@ The standard end-of-sweep flow. Step 1 lives in `cluster-ops`; the rest in this 
 
 End-to-end recipe that turns a cluster sync into a tracked `checkpoints/<name>/` artifact bundle: per-model trial zips, master pivot, plots, deck. Use when a sweep with a new prompt set lands its first complete cells and you want a snapshot to share with collaborators.
 
-Variables: `<sync>` = synced cluster dirname (e.g. `sweep5-cluster-20260601`); `<name>` = checkpoint name (e.g. `sweep5-main`); `<variants>` = active prompt-variant ids (sweep-5 default: `11,12,13,14,15,16`; sweep-4 replay: `5,6,7`).
+Variables: `<sync>` = synced cluster dirname (e.g. `sweep5-cluster-<today>`); `<name>` = checkpoint name (e.g. `sweep5-main`); `<variants>` = active prompt-variant ids (sweep-5 default: `11,12,13,14,15,16`; sweep-4 replay: `5,6,7`).
 
 ```bash
 # 1. Sync from cluster
@@ -269,7 +269,7 @@ python3 .claude/skills/analyzer/scripts/table.py         results/<name>
 cp -r results/<name>/plots/* checkpoints/<name>/plots/
 cp    results/<name>/tables/* checkpoints/<name>/tables/
 
-# 4. One trials.zip per model (sweep-4+ rule — see sweep4-v5-v7-first FOOTNOTE)
+# 4. One trials.zip per model (sweep-4+ rule)
 for model in $(ls results/<name> | sed -E 's/^slurm_(vllm_)?(.+)_(on|off)_.*$/\2/' | sort -u); do
     safe=$(echo "$model" | tr ':' '_' | tr '-' '_')
     (cd results/<name> && zip -r ../../checkpoints/<name>/${safe}_trials.zip \
@@ -285,7 +285,7 @@ python3 .claude/skills/analyzer/scripts/build_deck.py \
     && rm pddl_copilot_<name>.pptx)
 
 # 6. Hand-write FOOTNOTE.md — scope, headline findings, caveats.
-#    NO template; reference checkpoints/sweep4-v5-v7-first/FOOTNOTE.md for the shape.
+#    NO template. FOOTNOTE.md is gitignored under checkpoints/**, so no tracked example exists.
 
 # 7. Commit tracked files (zip + csv + tex + deck_config + the .pptx.zip).
 #    .png and .md under checkpoints/** are gitignored by design — they rebuild from the zip + scripts.
@@ -296,9 +296,9 @@ python3 .claude/skills/analyzer/scripts/build_deck.py \
 Drift gate before letting a long sweep continue chewing GPU-hours. Combines `cluster-ops` (status + sync) with this skill's `drift_check.py`.
 
 1. `bash .claude/skills/cluster-ops/scripts/status.sh` — confirm jobs are actually running (not stuck, not OOM-killed).
-2. `bash .claude/skills/cluster-ops/scripts/sync.sh results/cluster-<today>` — pull whatever cells have started writing. Cells without a `summary_*.json` yet still ship `trials.jsonl` (PR-30) so partial progress is captured.
-3. Pick a baseline. The most reliable choice is the most recent prior **finished** sweep (e.g. `results/cluster-20260427/`). For paper-target gating, point at a curated reference dir.
-4. `python3 .claude/skills/analyzer/scripts/drift_check.py --baseline <baseline> --current results/cluster-<today>`.
+2. `bash .claude/skills/cluster-ops/scripts/sync.sh results/<synced-dir>` — pull whatever cells have started writing. Cells without a `summary_*.json` yet still ship `trials.jsonl` (PR-30) so partial progress is captured.
+3. Pick a baseline. The most reliable choice is the most recent prior **finished** sweep For the canonical domains that is `results/sweep5v2-live`; for the anonymized corpus, `results/sweep6-live`.
+4. `python3 .claude/skills/analyzer/scripts/drift_check.py --baseline <baseline> --current results/<synced-dir>`.
 5. **Interpret the output:**
    - "No drift detected" → green light, sweep is on the same surface as baseline.
    - Rows with `direction=below` and `src=trials` → mid-sweep cells trending worse than baseline. Often the early samples just haven't covered the easier domains yet (sweep order is stable but per-trial rate varies). Re-run the drift check after another `sync.sh` pass; if `below` persists across two pulls separated by ≥30 min of further progress, surface to the user with the affected cells and the candidate causes (recent code change, model swap, num_ctx bump).

@@ -23,7 +23,7 @@ The harness is a ~4-file research codebase whose correctness depends on methodol
 - Bullet what changed and what the new contract/behaviour is. Include dual-mode specifications if the change adds a mode (e.g., default vs. `verbose=False`).
 
 **Tests / validation**
-- Which test suites ran (`verify.sh`, notebook sanity checks, smoke run) and the pass counts.
+- Which test suites ran (`verify.sh`, `pytest tests/`, a `--smoke` run) and the pass counts.
 
 **Compatibility**
 - What's byte-identical, what's not, which scorer paths were verified unaffected. This is the section reviewers will read.
@@ -59,7 +59,7 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 ## When the user says "review" / no target given
 
 1. Diff git since the most recent CHANGELOG date header. List commits/files that aren't yet reflected.
-2. Scan the latest `results/<timestamp>_*` directories for new summary JSONs — any new failure modes, truncation clusters, or schema changes worth an `ISS-###`?
+2. Scan the newest result dirs for new summary JSONs: bare local runs land in `results/{full,smoke,partial}/<sha>_<timestamp>/`, cluster cells in `results/<synced-root>/slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/`. Any new harness failure modes, truncation clusters, or schema changes worth an `ISS-###`? (A model failing to use a tool is a finding to report, not an issue to open.)
 3. Propose a short list of draft entries (changelog additions + new issues) and ask the user which to land. Do not edit the files until the user confirms.
 
 ## Per-line workstream docs (the `development/` folder layout)

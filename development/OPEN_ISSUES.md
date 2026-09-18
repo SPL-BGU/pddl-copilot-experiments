@@ -1,31 +1,29 @@
 # Open Issues
 
-Tracker for methodology / framework gaps surfaced by result reviews but not yet resolved. Each entry notes severity, evidence, and the minimal fix. Close an issue by moving its entry (with resolution date and commit) into `CHANGELOG.md`.
+Tracker for methodology / framework gaps surfaced by result reviews but not yet resolved. Each entry notes severity, evidence, and the minimal fix. Close an issue **in place**: strike its heading (`~~ISS-###~~`) and add one dated resolution line (date, and the commit or PR when there is one); the body stays as history. Framework or methodology changes that close an issue are also logged in `CHANGELOG.md`. (The earliest issues, e.g. ISS-001 and ISS-004, were closed under an older practice that moved the entry into `CHANGELOG.md`, which is why they are not in this file.)
 
 Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpretation or wastes runtime. **P3** cosmetic / taxonomy.
 
-## Index (added 2026-08-29 — scan this before reading the entries)
+## Index (added 2026-08-29, re-verified 2026-09-18 — scan this before reading the entries)
 
-**13 open · 8 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
+**5 open · 3 no work owed · 13 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
 in place under their severity heading; they are history, not work.
 
 | open | one-line |
 |---|---|
-| ISS-024 | simulate normalizer gap — **fixed for frontier**, carried items: open-roster re-run (gated) + `guided_json` enforcement (= STATUS.md Job 4) |
-| ISS-003 | guided prompt ineffective at 0.6b |
-| ISS-017 | grading bias at small scales — *largely closed* by the ISS-001 fix; residual is P3 and dormant |
-| ISS-005 | `FR_TOOL_ERROR` overloaded |
-| ISS-013 | paper-diff audit vs arXiv:2509.12987 |
-| ISS-008 | domain-size cliff in `validate_domain` at 0.6b |
-| ISS-010 | tool-name contamination under `tool_filter=all` |
-| ISS-019 | tool-error message extraction is name-unscoped |
-| ISS-012 | truncation override skips `FR_VERDICT_MISMATCH` |
-| ISS-022 | PlanBench tool-using arm (v2) — **the WT arm closed out 2026-08-06; candidate to strike through** |
-| ISS-021 | gemma4:26b-a4b simulate prompts exceed 16K ctx |
-| ISS-020 | `validate_domain` neg-arm pairing 5:1 vs 5:5 |
-| ISS-025 | `planbench/apply_patches.py main()` can't run end-to-end on the external tree |
+| ISS-005 | `FR_TOOL_ERROR` overloaded — P3 optional polish; the sub-patterns are already grep-discoverable in `TaskResult.error` |
+| ISS-013 | paper-diff audit vs arXiv:2509.12987 (our own earlier version) — closes with the cover-letter delta, `STATUS.md` N3 |
+| ISS-019 | tool-error message extraction is name-unscoped — latent, never observed |
+| ISS-020 | `validate_domain` neg-arm pairing 5:1 vs 5:5 — **frozen by corpus identity**: fixing it changes the trial set, so it waits for a fresh sweep |
+| ISS-025 | `planbench/apply_patches.py main()` can't run end-to-end on the hand-edited external tree |
 
-Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
+| no work owed (stays listed) | why |
+|---|---|
+| ISS-024 | simulate normalizer gap — fixed for frontier; (a) open-roster re-run COMPLETE 2026-06-29; (c) full responses stored, ground truth persisted as `results/derived/gt_cache.json` (`tools/build_gt_cache.py`); (b) `guided_json` audited 2026-08-15, the **fix is parked per D4** (it would be a third generation apparatus) |
+| ISS-021 | gemma4:26b-a4b simulate prompts exceed 16K ctx — accepted limitation, decision recorded in the entry |
+| ISS-012 | truncation override skips `FR_VERDICT_MISMATCH` — option (a) "leave as is" is what shipped: stated in the `_apply_truncation_override` docstring, pinned by `test_truncation_override`, and every canonical corpus was graded under it. The "re-evaluate after the next sweep" note was never acted on and no log records a formal decision |
+
+Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026; struck 2026-09-18: ISS-003, 008, 010 (moot), ISS-017 (closed in substance), ISS-022 (PR #93).
 
 ---
 
@@ -46,14 +44,16 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 **Impact.** The paper's "frontier floored on `simulate` (0%) → sole-source capability boundary" claim is substantially a *frontier* grader artifact; corrected frontier floor ~40–45%. The `solve` floor (~29%, genuine `plan_invalid`) and `validate_*` highs are unaffected (different graders). See paper_notes 2026-06-23 + `development/archive/decoupled/simulate_decisions_and_next_steps.md`.
 **Files.** `pddl_eval/scoring.py`, `tests/test_scoring.py`; Q1 grader + open-roster re-run tracked here.
 
-### ISS-003 · Guided prompt is ineffective at 0.6b
+### ~~ISS-003~~ · Guided prompt is ineffective at 0.6b
+**Closed 2026-09-18 as moot.** The `guided` prompt style is retired (`run_experiment.py`: `PROMPT_STYLE_CHOICES = ("minimal",)`; `_GUIDED_SUFFIX` disabled since CHANGELOG 2026-05-19) and qwen3:0.6b is not in the vLLM roster (`cluster-experimenting/lib/defaults.sh`). The entry below is history.
 **Source.** Results review, issue 2.
 **Evidence.** `per-task_minimal` and `per-task_guided` both hit 6/55 on `validate_domain`. Guided reshuffles failures from `tool_error:3, verdict_mismatch:8` → `tool_error:0, verdict_mismatch:27` — never to success. Sampled tool-call payloads show the 0.6b model passing the literal string `"blocksworld"` (len=11) as domain content; the hint doesn't bite.
 **Impact.** Runs half the sweep for no information gain; inflates compute costs without producing a comparable data point.
 **Fix.** Drop `guided` from the qwen3:0.6b sweep. Keep guided only for qwen3:4b (and larger) where the prompt may plausibly change behaviour. Consider replacing the one-sentence hint with a one-shot example or a schema-enforced tool-call wrapper before re-enabling for small models.
 **Files.** `run_background.sh` or sweep-config call-sites.
 
-### ISS-017 · Grading bias inverts tools-vs-no-tools at small scales
+### ~~ISS-017~~ · Grading bias inverts tools-vs-no-tools at small scales
+**Closed 2026-09-18 (closed in substance).** The bias itself was removed by the ISS-001 balanced fixtures (2026-04-26). The P3 residual no longer exists: the keyword-check simulate grader it cites at `run_experiment.py:910-912` is gone (the file has about 800 lines; `check_success` lives in `pddl_eval/scoring.py`), replaced by trajectory-equality grading when ISS-002 closed (2026-04-29), and no-tools `simulate` is back in the matrix under that grader. The entry below is history.
 **Source.** Cluster-run1 analysis, 2026-04-22 (SLURM 17123867/8, Qwen3.5:0.8B, 6/10 conditions).
 **Status (2026-04-26).** **Largely closed** by the ISS-001 fix landing. With-tools `validate_*` now sees 1:1 balanced ground truth, so the trivial verdict-match shortcut is gone — a constant-VALID strategy scores ~50%, capability shows up above that. No-tools `validate_*` re-enabled in the same PR, also under balanced ground truth. Pre-ISS-001 result rows from cluster-run1 (Qwen3.5:0.8B, 2026-04-22) remain on disk but should not be quoted as headline numbers since the fixtures they were graded against are no longer the production set. Residual concern (P3 only): the simulate keyword-check grader at `run_experiment.py:910-912` is still non-discriminative, but `simulate` no-tools stays excluded from the matrix, so this is dormant. Re-baselining the with-tools `validate_*` cells under balanced ground truth is the remaining follow-up — tracked under the next sweep, not as a new ISS.
 **Original evidence (kept for archaeology).** For Qwen3.5:0.8B (think=off, no-tools, n=50/task):
@@ -87,7 +87,7 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 **Update (2026-05-25, post FastMCP arg-validation audit).** Fifth sub-pattern `(e) FastMCP argument-validation error` (string prefix `"Error executing tool <name>: N validation errors for <name>Arguments\n  <field>\n    Field required ..."`) is now correctly bucketed as `FR_TOOL_ERROR`. Pre-2026-05-25 this prefix escaped `_tool_error_seen` and the row landed in `FR_VERDICT_MISMATCH` / `FR_RESULT_MISMATCH` / `FR_PLAN_INVALID`, charging the model with a confident-wrong prediction for a call the plugin never executed. Forward fix in `_tool_error_seen` + read-time relabel in `build_deck.py` for legacy corpora. Audit on `results/sweep5-live` with-tools `validate_plan`: 3,373 of 3,718 analyzer-FP rows (90.7%) recovered to `FR_TOOL_ERROR`. Sub-pattern (e) is also grep-discoverable in raw `tool_calls[*].result` strings. No new constants; remains P3. See CHANGELOG 2026-05-25 (arg-validation entry).
 **Impact.** Cannot quantify the "passes names not content" failure mode directly — it's the paper's most interesting diagnostic.
 **Fix.** Split into `FR_TOOL_ARG_ERROR` (plugin rejection) / `FR_TOOL_PARSE_ERROR` (content rejection) / `FR_TOOL_TRANSPORT` (MCP failure). ~30 LOC in `_tool_error_seen` + failure-reason vocabulary. Decompose existing runs during follow-up analysis.
-**Files.** `run_experiment.py` (failure-reason constants, `_tool_error_seen`, `check_success`).
+**Files.** `pddl_eval/scoring.py` (failure-reason constants, `_tool_error_seen`, `check_success`). *(anchor updated 2026-09-18; the code moved out of `run_experiment.py`)*
 
 ### ~~ISS-006~~ · Truncation on no-tools `solve` (17/55, 31%) — partially addressed
 **Source.** Results review, issue 8.
@@ -110,7 +110,7 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 **Status (2026-04-20).** Domain-set prerequisite resolved: `domains/` now matches the paper's 10 (CHANGELOG 2026-04-20). The audit can now compare numbers on like-for-like coverage instead of mapping 3-vs-10.
 **Impact.** Unknown whether any of our scoring decisions silently diverge from the paper on a specific task branch.
 **Fix.** Read arXiv:2509.12987 §3 (benchmark construction) and §5 (evaluation protocol). Produce a per-task side-by-side diff table as an appendix to `EXPERIMENTS_FLOW.md`. Flag any discrepancy as a new ISS-###.
-**Files.** `EXPERIMENTS_FLOW.md`, possibly `run_experiment.py::check_success` if a discrepancy needs a fix.
+**Files.** `EXPERIMENTS_FLOW.md`, possibly `pddl_eval/scoring.py::check_success` if a discrepancy needs a fix. *(anchor updated 2026-09-18)*
 
 ### ~~ISS-018~~ · `think=off` should be single-task-only (like `no-tools`)
 **Closed 2026-04-28** by PR-2 (token + thinking instrumentation). `run_experiment.py::async_main` now skips the chain phase entirely when `args.think == "off"` (mirrors the existing no-tools chain skip). The cluster sbatch templates do not need a parallel guard — they invoke `run_experiment.py`, which now refuses to start chains under `think=off` regardless of the matrix axis values fed in. The PR-2 abort gate that previously refused `(no-tools, think=on/default)` runs was also lifted in the same PR; thinking content is captured into `TaskResult.thinking` separately so it does not contaminate `extract_verdict` / `extract_plan_lines`. See CHANGELOG 2026-04-28 (PR-2).
@@ -119,7 +119,8 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 
 ## P3 — Reporting & polish
 
-### ISS-008 · Domain-size cliff in `validate_domain` wins at 0.6b
+### ~~ISS-008~~ · Domain-size cliff in `validate_domain` wins at 0.6b
+**Closed 2026-09-18 as moot.** Both things it measured are retired: qwen3:0.6b is not in the vLLM roster, and the `per-task` tool filter was retired 2026-05-19 (`TOOL_FILTER_CHOICES = ("all",)`). The entry below is history.
 **Source.** Results review, issue 3.
 **Evidence.** All 6 per-task `validate_domain` successes land on `counters` (401 B) only, never `blocksworld` (862 B) or `depots` (1571 B).
 **Impact.** `tool_selected_rate=0.45` on `validate_domain` measures verbatim-PDDL-echoing capacity, not planning competence. Scales with model size and co-varies with domain selection.
@@ -129,7 +130,8 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 ### ~~ISS-009~~ · Chain with-tools = 0% for 0.6b is uninformative
 **Closed 2026-05-05** by the chain-phase archive (CHANGELOG 2026-05-05). The chain phase is no longer dispatched, so the floor-CI gating concern is moot. If chain phase is revived, this gating recommendation should be reconsidered alongside whatever the new model roster looks like at that point.
 
-### ISS-010 · Tool-name contamination under `tool_filter=all`
+### ~~ISS-010~~ · Tool-name contamination under `tool_filter=all`
+**Closed 2026-09-18 as moot.** The proposed fix was to report the `per-task` vs `all` delta; the `per-task` filter was retired 2026-05-19, so `all` is the only condition and there is no delta to report. `validate_pddl_syntax`, named in the evidence, no longer exists either. The entry below is history.
 **Source.** Results review, issue 10.
 **Evidence.** `all_minimal` invokes `save_plan` on `validate_plan` (×4), `simulate` (×17-18), `solve` (×19); `all_*` simulate additionally calls `validate_pddl_syntax` (×10-11).
 **Impact.** Expected behaviour of the `all` filter and the point of the filter ablation — not a bug, but not currently surfaced in the headline table.
@@ -141,17 +143,18 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 **Evidence.** `evaluate_one`'s `if failure_reason == FR_TOOL_ERROR and not error:` loop walks every entry in `tool_calls` and surfaces the first `{"error": True, ...}` payload it finds, regardless of whether that tool is the one `check_success` flagged. `_tool_error_seen` (the function that decided `FR_TOOL_ERROR` in the first place) was called with a specific tool name (`"validate_pddl_syntax"`, `"classic_planner"`, etc.), so the two sides are scoped differently.
 **Impact.** Edge-case only. Triggers when (a) `--tool-filter=all` exposes multiple tools, and (b) the model calls a *different* tool that errors during the same evaluation. With the paper-default `solve` task and `--tool-filter=all`, both `classic_planner` and `numeric_planner` are valid; an error from the unused planner could be reported as the message even though `check_success` accepted the used planner's plan. Has not been observed in 2026-04-20/04-23 sweeps; surfaced as a latent inconsistency during the dedupe refactor.
 **Fix.** Either expand `check_success`'s return tuple to include the offending tool name when `FR_TOOL_ERROR` fires, or reconstruct a per-task tool-name allowlist at the call site and pass it into the message-extraction loop. (Earlier drafts of this issue referenced `TASK_TOOLS[task]`; the `TASK_TOOLS` allowlist was deleted in the 2026-05-21 cleanup along with `tool_filter=per-task` retirement, so the allowlist now has to be rebuilt from the task name + the active tool catalogue.) Methodology-neutral — the recorded `failure_reason` is already correct; only the `error` snippet is potentially mislabelled.
-**Files.** `run_experiment.py::check_success`, `run_experiment.py::evaluate_one` (the `FR_TOOL_ERROR` message-extraction block).
+**Files.** `pddl_eval/scoring.py::check_success`, `pddl_eval/runner.py::evaluate_one` (the `FR_TOOL_ERROR` message-extraction block, `if failure_reason == FR_TOOL_ERROR and not error:`). *(anchors updated 2026-09-18)*
 
 ### ISS-012 · Truncation override skips `FR_VERDICT_MISMATCH`
 **Source.** Scoring audit, 2026-04-20.
-**Evidence.** `_apply_truncation_override` in `run_experiment.py` reclassifies a failure to `FR_TRUNCATED_NO_ANSWER` only when the downstream tag is `FR_PLAN_INVALID` / `FR_NO_VERDICT_PARSED` / `FR_SIMULATE_EMPTY` / `FR_UNKNOWN`. A model that emits `VERDICT: VALID` after a partial chain-of-thought that got cut off, and the verdict happens to be wrong, is tagged `FR_VERDICT_MISMATCH` — truncation-caused or not.
+**Evidence.** `_apply_truncation_override` in `pddl_eval/scoring.py` (originally in `run_experiment.py`) reclassifies a failure to `FR_TRUNCATED_NO_ANSWER` only when the downstream tag is `FR_PLAN_INVALID` / `FR_NO_VERDICT_PARSED` / `FR_SIMULATE_EMPTY` / `FR_UNKNOWN`. A model that emits `VERDICT: VALID` after a partial chain-of-thought that got cut off, and the verdict happens to be wrong, is tagged `FR_VERDICT_MISMATCH` — truncation-caused or not.
 **Impact.** Per-task truncation counts understate the cap's real effect on validate_* success. Minor; the failure is still counted as a failure, just with a different label.
 **Fix.** Decide: (a) leave as-is (current policy, pinned by `test_check_success::test_truncation_override`); (b) also override `FR_VERDICT_MISMATCH` when `done_reason=="length"`, treating any truncated+mismatched verdict as cap-driven. (b) would require explicit justification since the model *did* answer.
 **Status (2026-04-29).** ISS-007 closed by the cap bump (1024/1536 → 4096); the pressure that motivated this issue is largely relieved. Recommend deferring (b) — at the new caps, `FR_VERDICT_MISMATCH` should overwhelmingly reflect actual model errors rather than truncation artefacts. Re-evaluate post the next sweep on raised caps.
 **Files.** `pddl_eval/scoring.py::_apply_truncation_override`, `tests/test_check_success.py::test_truncation_override`.
 
-### ISS-022 · PlanBench tool-using arm (v2)
+### ~~ISS-022~~ · PlanBench tool-using arm (v2)
+**Closed 2026-09-18 (work done 2026-08-06/11, PR #93, commit `1638013`).** The with-tools arm ran as a preregistered confirmatory run and closed with the RESCUE verdict; it is Act 4 of the paper. Numbers: `NUMBERS.md` PlanBench rows; record: `development/reference/planbench_wt_results_20260803.md`. The scope below (two MCP plugin extensions, "Mystery dropped") is the May plan, not what was built. The entry below is history.
 **Source.** PlanBench arm v1 landed 2026-05-18 with vanilla leaderboard only (no MCP tools during response generation). The tool-using arm — what PlanBench's `INTEGRATION.md` §3 calls a "distinct method" (LLM-Modulo) — is the natural follow-up.
 **Evidence / motivation.** Per the two-paper strategy (`memory/project_paper_strategy.md`), Paper 1 wants to show the comparison between (a) our open models + MCP tools and (b) PlanBench's published closed-model baselines. v1 gives us half of that — open models without tools, side by side with their baselines. v2 closes the loop with our tools-on arm on the same 10-task corpus.
 **Scope.**
@@ -181,9 +184,9 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 
 ### ISS-020 · `validate_domain` neg-arm pairs only the first positive (5:1 vs positive 5:5)
 **Source.** PR #22 review on `framework-ext-pr3`, 2026-04-29.
-**Evidence.** `pddl_eval/runner.py:533-538` (negative `validate_domain` job emission) uses `positive_first = next(iter(dinfo["problems"].values()))` and pairs the single `domain_neg.pddl` only with that first problem. Comment justifies it as "same convention as the generate_ground_truth pass." Post-PR-3 there are 5 positive problems per domain, so the validate_domain arm is now structurally imbalanced: positive arm emits 5 jobs (`p01..p05` × `domain.pddl`) while the negative arm emits 1 (`p01` × `domain_neg.pddl`).
+**Evidence.** `pddl_eval/runner.py:771-781` (negative `validate_domain` job emission; line numbers updated 2026-09-18, originally cited as `:533-538`) uses `positive_first = next(iter(dinfo["problems"].values()))` and pairs the single `domain_neg.pddl` only with that first problem. Comment justifies it as "same convention as the generate_ground_truth pass." Post-PR-3 there are 5 positive problems per domain, so the validate_domain arm is now structurally imbalanced: positive arm emits 5 jobs (`p01..p05` × `domain.pddl`) while the negative arm emits 1 (`p01` × `domain_neg.pddl`).
 **Impact.** validate_domain n is 6 per domain (5 pos + 1 neg) instead of a balanced 10 (5 pos + 5 neg). At 20 domains × 5 models × 4 conditions ≈ 480 cells, this leaves the negative-arm headline statistic with 1/5 the sample size of the other validate_* tasks (which got balanced 5:5 at PR-3). Wilson CI widths on validate_domain neg are correspondingly ~√5× wider than necessary.
-**Fix.** Change the validate_domain negative-job emission loop to iterate over all 5 positives instead of `next(iter(...))`. ~3-line change in `_emit_job` site at `runner.py:533-538`. Ground-truth `_negatives.domain` already validates the standalone negative (independent of paired positive), so the additional jobs reuse the same `domain_neg.pddl` content with each positive's problem PDDL — no fixture change needed.
+**Fix.** Change the validate_domain negative-job emission loop to iterate over all 5 positives instead of `next(iter(...))`. ~3-line change in `_emit_job` site at `runner.py:771-781`. Ground-truth `_negatives.domain` already validates the standalone negative (independent of paired positive), so the additional jobs reuse the same `domain_neg.pddl` content with each positive's problem PDDL — no fixture change needed.
 **Files.** `pddl_eval/runner.py` (validate_domain neg-arm emission).
 
 ---
@@ -208,6 +211,8 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026.
 ---
 
 ## Planned batches (approved 2026-04-20)
+
+> **Historical (April 2026). Not a plan.** Everything from here to the end of the file is the April batch plan and ranking, kept as a record. Most of the issues it names are closed, and the file anchors and the chain-phase text in it are out of date. What is open today is the index at the head of this file.
 
 Landing order differs from raw impact ranking — front-load zero-risk wins, then unlock the P1 blocker. Raw impact ranking retained at the bottom.
 
