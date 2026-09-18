@@ -14,7 +14,7 @@ is, what work is left, which corpus numbers are checked against, which backend e
 - Fast path: if you agree with every recommendation in this file, write `ok all` here
   and skip the rest.
 
-> ANSWER (ok all / see slots below):
+> ANSWER (ok all / see slots below): ok all
 >
 
 **How it was surveyed.** Four read-only audits on 2026-09-18 (the `development/` root,
