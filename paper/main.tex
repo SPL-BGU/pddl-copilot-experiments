@@ -46,7 +46,7 @@
 
 % ============================ Title & Authors ============================
 % Title is NOT anonymized (only authors are). Title Case (Chicago) required.
-\title{Availability Is Not Enough: When Symbolic Tools Help---and Hurt---LLMs on Planning Tasks}
+\title{Invocation Is the Bottleneck: When Sound Planning Tools Help an LLM, and When They Do Not}
 
 % Anonymous submission: sole "author" is "Anonymous Submission"; affiliations empty.
 % De-anonymize (real authors/affiliations) only at camera-ready via CameraReady2027.tex.
@@ -78,33 +78,21 @@
 \maketitle
 
 \begin{abstract}
-Sound symbolic planners and validators are correct by construction, and language
-models are increasingly able to call them as tools. But does access actually help
-an LLM on planning tasks, and when? Using PDDL as a setting where a deterministic
-oracle can grade every answer exactly, we evaluate five single-tool-use tasks
-(solving, domain, problem, and plan validation, and state-trajectory simulation)
-across five open-weight models and two frontier models, grading every tool-arm
-trial twice: at the answer the model \emph{delivers}, our primary surface, and at
-the tool results it obtained along the way, the mechanism layer. A three-arm
-design separates tool \emph{availability}
-from a one-sentence \emph{steering} nudge, every proportion carries a confidence
-interval or an explicit censoring bound, and a signed-significance rule
-distinguishes help from harm. The benefit
-is strongly regime-dependent. Solving is transformed wherever the unaided model
-is floored ($8$--$29\%$ across tiers; $95\%$ delivered with the tool at the
-frontier); the validation tasks are lifted over weak baselines, one rescued from
-below its trivial majority guess. What limits the rest is two behaviors distinct
-from capability and from tool accuracy. The first is invocation: on plan
-checking, one of three $\geq$9B models stops calling the validator when it is
-merely \emph{available} (its tool path drops $67$\,pp) and reasons in prose
-instead, and one steering sentence moves invocation from $21\%$ to $94\%$, with
-the tool $>$99\% accurate when called. The second is delivery: what the tool
-verifies often fails to reach the final answer, by an amount that grows with
-answer length (nothing on verdicts, five points on plans, tens of points on
-state trajectories), the same at both frontier tiers. Measured in tokens, the
-tool pays for itself
-where the model cannot do the task unaided. The pattern holds under reasoning mode
-and an anonymized-domain contamination control.
+Planners and validators are correct by construction, and language models can now
+call them as tools. Does that access improve the answers a model actually
+delivers, and when? We evaluate five open-weight and two frontier models on five
+PDDL tasks, where a deterministic oracle grades every answer exactly, scoring the
+delivered answer rather than the tool call. The tool's guarantee reaches the
+answer only through two gates. Where both hold the effect is decisive: on plan
+generation, frontier models rise from $22$--$29\%$ unaided to $95\%$. The first
+gate is invocation: on plan checking, one model calls the validator on $21\%$ of
+trials when it is merely available, on $94\%$ after one steering sentence, and is
+$99\%$ correct when it calls. The second gate is delivery: what the tool verifies
+fails to reach the answer by a gap that grows with answer length, none on
+verdicts, five points on plans, over thirty on state trajectories, at both
+frontier tiers. On PlanBench, the same tools lift an obfuscated benchmark from
+$0$ to $72\%$. A sound tool helps when the model is directed to call it and the
+answer has room for the result.
 \end{abstract}
 
 % Optional anonymized links block (uncomment near submission; do NOT de-anonymize).
@@ -179,9 +167,9 @@ result as the mechanism layer), with confidence intervals, explicit censoring
 bounds where storage truncated answers, and a
 signed-significance verdict rule that separates help from harm.
 \item The identification of
-\emph{invocation propensity} (a large, unstable, prompt- and mode-dependent free
-variable, rather than capability or tool accuracy) as the factor that limits the
-tool path:
+the \emph{invocation rate}, whether the model calls the tool at all (a large,
+unstable, prompt- and mode-dependent free variable, rather than capability or tool
+accuracy), as the factor that limits the tool path:
 it factors as $P(\text{call})\times P(\text{correct}\mid\text{call})$, with
 nearly all between-arm, between-model, and cross-mode variance living in the first
 factor, and for a model that under-calls, mere \emph{availability} collapses the
@@ -1100,14 +1088,14 @@ interpretation that steering acts through tool use in the matched Gemma cell.
 This also explains an apparent size inversion. In the plain arm's mechanism
 layer the 9B
 ``beats'' the 35B (\emph{solve} $99\%$ vs.\ $63\%$; \emph{validate\_plan} $93\%$
-vs.\ $82\%$), but this reflects tool-call \emph{propensity}, not capability: the
+vs.\ $82\%$), but this reflects the invocation rate rather than capability: the
 tool path tracks tool-use almost 1:1, accuracy-given-a-call is $\geq$93\% for both, and
-steering closes the gap (35B \emph{solve} $63\!\to\!92\%$ at that layer). The propensity even
+steering closes the gap (35B \emph{solve} $63\!\to\!92\%$ at that layer). The invocation rate even
 flips with reasoning mode (under \emph{think}=on the 35B calls the validator on
 $99.9\%$ of trials, the 9B on $69\%$). The 35B's unaided baselines exceed the 9B's
 on every validation task; the inversion is a behavioral difference in spontaneous
 tool adoption rather than a capability gap. Because our two largest models are AWQ-INT4
-while the 9B is 16-bit, we read this cross-model inversion as a propensity
+while the 9B is 16-bit, we read this cross-model inversion as an invocation-rate
 phenomenon we observe rather than a controlled size effect (see Limitations).
 
 \subsection{Does the Advantage Track Difficulty?}
@@ -1288,7 +1276,7 @@ floor barely moves. On \emph{simulate} the with-tools bounds
 \cbnd{41.7}{61.3}, so no delivered lift is claimed there; the tool's work shows
 up at the mechanism layer ($97$--$99\%$) and dies in delivery, as the delivery-gap
 analysis showed. These runs corroborate the unaided baseline structure and the
-delivery-gap law at the frontier; the invocation-propensity findings remain
+delivery-gap law at the frontier; the invocation-rate findings remain
 specific to the open-weight roster (both frontier models call the tool on
 essentially every trial).
 
@@ -1605,9 +1593,9 @@ imperative does), and on a task it can almost do, that fallback forfeits a
 verified path for an unverified one; how much it costs the delivered answer is
 corpus-dependent and, on our canonical corpus, bounded rather than decided. The remedy is cheap, one imperative
 sentence, but it is not automatic, which is a real caution for any system that
-exposes tools and assumes they will be used. Prompting is only the cheapest lever; invocation
-propensity could also be raised by fine-tuning or architectural routing that internalizes the call,
-which we do not test here. The wide cross-model spread in \emph{default} propensity is
+exposes tools and assumes they will be used. Prompting is only the cheapest lever; the invocation
+rate could also be raised by fine-tuning or architectural routing that internalizes the call,
+which we do not test here. The wide cross-model spread in \emph{default} invocation rate is
 itself consistent with its being shaped by post-training: instruction tuning and RLHF
 optimize for direct, self-contained answers \citep{ouyang2022instructgpt}, which can
 suppress an unprompted hand-off to an external tool, so how readily a model delegates is
@@ -1654,7 +1642,7 @@ on \emph{simulate} it recovers substantial unaided success (\cbnd{41.7}{61.3}),
 consistent
 with the budget-decoupled control on the open roster ($22$--$40\%$), so that task's
 apparent floor is an apparatus effect rather than a capability constant
-(Table~\ref{tab:frontier}). The with-tools invocation-propensity finding, however, was
+(Table~\ref{tab:frontier}). The with-tools invocation-rate finding, however, was
 measured only on the open-weight roster, so whether the availability gap and its
 one-sentence steering repair transfer to proprietary models with aggressive tool-use
 post-training is untested here. The fixture suite of $20$ domains spans
@@ -1663,8 +1651,8 @@ conditional-effect constructs are absent), so the regime boundaries we report ma
 formalisms. Model scale is moreover
 partially confounded with numerical precision (the two largest models are served
 AWQ-INT4 while the smaller three are 16-bit), so the cross-model plain-arm size
-inversion cannot fully separate spontaneous-adoption propensity from a quantization
-effect on tool-calling; we therefore frame propensity within-model, through the
+inversion cannot fully separate a model's spontaneous invocation rate from a quantization
+effect on tool-calling; we therefore frame the invocation rate within-model, through the
 $P(\text{call})\times P(\text{correct}\mid\text{call})$ decomposition, which does not
 rest on that comparison. The availability gap likewise differences two arms whose
 system prompts, beyond tool presence, also differ by a one-line policy/format clause,
@@ -1724,9 +1712,9 @@ of whether it will delegate. Beyond single-tool-use, the agentic regime is the n
 \emph{multi-tool selection} setting that exposes two or more relevant tools at once (e.g.\ a
 validator and a simulator) to measure selection under ambiguity rather than mere relevance
 detection; \emph{iterative} settings in which a model may re-plan or self-correct across turns,
-which could raise invocation propensity by giving a silent model a second chance to call; and
+which could raise the invocation rate by giving a silent model a second chance to call; and
 \emph{model-modulo} ensembles that pair one model for formalization with another for checking.
-Raising invocation propensity at the model level, through light fine-tuning or routing
+Raising the invocation rate at the model level, through light fine-tuning or routing
 rather than per-prompt steering, is a further direction, but it must be kept distinct
 from merely \emph{forcing} the call: constrained decoding can set $P(\text{call})=1$ by
 construction, which relocates the question to accuracy given a forced call rather than
@@ -1734,7 +1722,7 @@ answering whether the model would choose to delegate.
 A further extension is to measure the \emph{with-tools} arm on proprietary models: the unaided
 frontier baseline is already established (Table~\ref{tab:frontier}), so the open question is
 whether a model with aggressive tool-use post-training still exhibits the availability gap and
-the steering repair, or whether its default invocation propensity is high enough to close them.
+the steering repair, or whether its default invocation rate is high enough to close them.
 Finally, because a naive budget increase degrades format adherence (Limitations), measuring the
 \emph{think}=on benefit cleanly calls for a budget-decoupled design (separate decode allowances
 for the reasoning trace and the final answer) rather than a simple cap raise; we ran that design
@@ -1758,7 +1746,7 @@ path for a model that under-calls it ($-67$\,pp at the mechanism layer), a
 failure one steering sentence reverses; whether that collapse reaches the
 delivered answer is bounded, not decided, on our canonical corpus. Two factors
 limit tool-augmented performance throughout, and neither is capability or tool
-accuracy: invocation \emph{propensity}, which decides whether the verified path
+accuracy: the \emph{invocation rate}, which decides whether the verified path
 is taken at all, and the \emph{delivery gap}, which decides how much of the
 verified result survives into the answer and grows with answer length. Both
 survive reasoning mode and an anonymized-domain
