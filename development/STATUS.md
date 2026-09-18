@@ -195,12 +195,15 @@ correction banner.
 | NUMBERS.md "to be pinned as Job 2 writes" placeholder | **DONE** — replaced by the "Single-tool suite — per-cell figures" block: one source (`results/derived/e2e_overlay/pooled_e2e_table.csv`), generator and verdict script named, do-not-quote list. The Job 2 tex note corrected from "UNPUSHED" to pushed 09-08. | NUMBERS.md |
 | merge main into `paper/aaai27` so the paper branch carries the Job 3 records | **DONE** — `45de99c` (no-ff merge of `1943222`; doc-only, 6 files, no `paper/` change), pushed; the Overleaf pull beforehand returned "Already up to date" (bridge head `2ab9bb5`). | `git log paper/aaai27` |
 
-Operational note found on the way: `paper/aaai27` is checked out as a **git worktree**
-at `../pddl-copilot-worktrees/paper-aaai27` (a plain `git checkout paper/aaai27` in the
-main tree fails with "already used by worktree"). Run `development/sync_overleaf.sh`
-from inside that worktree with
-`OVERLEAF_CLONE=/Users/omereliyahu/personal/pddl-copilot-paper-overleaf` — the
-script's default clone path resolves relative to the worktree, not the main tree.
+Operational note (updated 2026-09-18): **`main` is the single line of work.**
+`paper/aaai27` was merged into `main` by PR #101 (merge commit `75e070f`, not squashed,
+so every `paper/aaai27` hash cited in this file stays reachable on `main`), and the
+branch plus its worktree at `../pddl-copilot-worktrees/paper-aaai27` were removed.
+`paper/main.tex` on `main` is the current paper. Paper edits go on a short branch off
+`main` and merge by PR; the Overleaf auto-sync Action now triggers on `main`. Run
+`development/sync_overleaf.sh` from the main checkout — its default clone path
+(`../pddl-copilot-paper-overleaf`) resolves correctly there, no `OVERLEAF_CLONE` needed.
+Where the text above says "on `paper/aaai27`", read "on `main`" for any new work.
 
 ## External gates — mostly resolved 2026-08-30
 
