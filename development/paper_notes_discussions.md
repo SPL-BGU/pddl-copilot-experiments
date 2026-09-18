@@ -2129,3 +2129,71 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - The per-cell NUMBERS recipe uses the neutral bank for `nt-neut` / `tl-neut` and
   the steered bank for `tl-ster`. Figures and CSV share the overlay aggregator.
   These corrections preserve the frozen figures and the approved disclosure.
+
+## 2026-09-15/18 — Post-PR-#100 scan; D-J6 found unapplied; abstract rebuilt (brainstorm) and landed locally
+
+- **Scan after PR #100 merged (09-15).** No experiment owed, no `\todo`, all three writing
+  jobs synced. One decided-but-unapplied item: the 2026-08-20 D-J6 decision (title D,
+  "invocation rate", N1 abstract) never reached `paper/main.tex`; the tex still carried
+  the retired title, 14 "propensity" sites, and the 09-07 Job 2 abstract with delivery
+  as a second headline. Proposal + slots R5–R8 in `STATUS.md` "Next steps".
+- **Omer (09-15): the abstract "is too much of a methodology description"; set what we
+  present and the abstraction of the research.** Brainstormed under the `brainstorm`
+  skill (`title_abstract_candidates.md` §5). Decisions (Omer): abstraction = **(ii) two
+  gates** — the tool's guarantee reaches the delivered answer only through calling the
+  tool and relaying its result, each failing for its own reason (this supersedes the
+  08-20 N1 "invocation only" spine for the abstract; the body already argues two gates);
+  findings first with **one protocol clause**; PlanBench **in**, one sentence; **≤ 200
+  words**; numbers = **exactly four**, one per role: frontier solve 22–29 → 95 (upside),
+  invocation 21 → 94 with 99% correct when called (gate 1), delivery gap ≈0 / 5 / >33 pp
+  by answer length (gate 2), PlanBench Mystery 72 vs 0 (external check).
+- **Numbers deliberately NOT in the abstract:** the 08-20 draft's "+66 to +73 pp" open-
+  weight solve lift (tool-verified; the delivered cells are censored/UNDECIDED for two
+  of three ≥9B models) and the "−67 pp" availability harm (mechanism layer; NUMBERS
+  forbids it as a delivered figure) — the harm is stated as an invocation rate instead.
+- **Shape A chosen (09-18)** over Shape B (regime framing). Title D kept; to be re-read
+  against the final abstract (it names the first gate only).
+- **Scale clause (273,600 trials)** — Omer is sending the question to a separate advisor
+  agent (prompt in §5.2); the abstract landed without it; one-sentence follow-up if kept.
+- **`/verify-claims` on the four numbers, all reproduced:** solve tl-neut 95/100 both
+  tiers, unaided Haiku 22/100, Sonnet 86/300 = 28.7 (`pooled_e2e_table.csv`); Gemma
+  validate_plan think=off canonical: called 622/3000 = 20.7% (v11–13) vs 2808/3000 =
+  93.6% (v14–16), P(ok | called) 617/622 = 99.2% (`sweep5v2-live/…gemma…off_tools_all_
+  minimal/trials.jsonl`); validation gaps 0 to 0.1 pp, solve +5.0 both tiers, simulate
+  Sonnet 37–50 / Haiku 33–45 (overlay table); PlanBench Mystery 431/600 vs 0/600
+  (`verify_promotion.py` ALL CHECKS PASS). No PENDING spec touches these.
+- **Landed on `paper/aaai27` as `b27ef23` (worktree, LOCAL, unpushed):** title D, the
+  191-word Shape A abstract, "propensity" → "invocation rate" at all 14 sites (each
+  rewritten by hand, no find-replace). Compile 0 errors / 0 undefined / 25 pages; only
+  the pre-existing scorecard overfull box. Overleaf pulled first: already up to date
+  (`d884bd3`), no coauthor edits.
+- **Bottom line:** the abstract now states one abstraction and four verified findings;
+  push + Overleaf sync wait for Omer's go. After that: the advisor/coauthor round with
+  the six-question brief (STATUS N2).
+
+## 2026-09-18 — Abstract scale clause: advisor recommendation
+
+- **Recommendation, pending Omer's acceptance:** shorten the scale clause and place it
+  after the PlanBench finding, before the concluding two-gate takeaway. Suggested
+  wording (18 words): "We grade 273,600 trials across five open-weight models and two
+  corpora, including anonymized domains as a contamination control." Reclaim space
+  elsewhere to keep the abstract at or below 200 words; do not simply append it.
+- **Reason:** a compact scope statement helps readers assess the evidence base, while
+  the anonymized control gives that statement methodological content. Preserve the
+  final sentence for the insight rather than the trial count.
+- **Scope and limits:** checked against `NUMBERS.md` and the canonical-corpus count
+  audit in `title_abstract_candidates.md` section 4; the count covers only five
+  open-weight models. It is neither a count of independent planning problems nor the
+  denominator for every reported result, and volume alone does not establish an
+  extensive journal revision. No abstract or accepted-decision status changed.
+- **APPLIED 2026-09-18 (Omer accepted the recommendation):** the 18-word sentence sits
+  after the PlanBench finding and before the two-gate takeaway; trimmed elsewhere to
+  hold the abstract at 200 words. `paper/aaai27` `b045f07` (worktree, LOCAL, unpushed; on
+  top of `b27ef23`). Compile clean. Push + Overleaf sync still wait for Omer's go.
+- **PUSHED 2026-09-18 (Omer: "push").** Overleaf pulled first: already up to date (bridge
+  head `d884bd3`, no coauthor edits; the pull reversed the two local commits in the
+  working copy, restored with `git checkout -- paper/main.tex`, never committed).
+  `git push origin paper/aaai27` `4eb4751..b045f07`; Overleaf-sync Action run
+  35332662004 green; Overleaf head **`a0b8c84`**, `main.tex` verified byte-identical to
+  local HEAD. **N1 is closed.** Next = STATUS N2, the coauthor/advisor round.
+

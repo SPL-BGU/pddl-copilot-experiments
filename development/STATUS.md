@@ -1,6 +1,9 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-09-14 (paper housekeeping CLOSED: the serving-environment
+*Content last refreshed: 2026-09-18 (N1 DONE: `paper/aaai27` `b27ef23` + `b045f07` — title D, the brainstormed two-gate abstract with the scale clause, 14 term edits — PUSHED, Action 35332662004 green, Overleaf `a0b8c84`. Next = N2, the coauthor/advisor round. 2026-09-15: PR #100 merged to main; "Next steps" section
+added at the bottom with decision slots R5–R8, incl. one decided-but-unapplied tex
+item found on the scan: the 2026-08-20 D-J6 title / abstract / "invocation rate"
+decision never reached `paper/main.tex`. Previously: 2026-09-14, paper housekeeping CLOSED: the serving-environment
 sentence + vLLM 0.22.0 disclosure footnote pushed as `paper/aaai27` `4eb4751`,
 Overleaf `d884bd3`, Omer chose "keep the disclosure"; 09-13: main merged into
 `paper/aaai27` as `45de99c`; NUMBERS placeholder filled — see "Paper housekeeping".
@@ -30,9 +33,8 @@ Overleaf-synced (Action run 34743222922 green, Overleaf `2ab9bb5`). Job 2 is clo
 (batches 1+2 + the budget-probe sentence pushed and synced). Job 1
 (PlanBench Act 4) is DONE — it landed 2026-08-11 (`67ea69c` + `644f8bd`) and synced
 to Overleaf the same day; this file wrongly carried it as NOT STARTED until
-2026-09-07. Last paper commit is `7c0502a` (2026-09-13), pushed and Overleaf-synced (`2ab9bb5`);
-the branch head is the doc-only merge `45de99c` (main → `paper/aaai27`, 2026-09-13, no
-paper files changed, Overleaf untouched). Nothing on the paper is owed beyond coauthor
+2026-09-07. Last paper commit is `b045f07` (2026-09-18: title D + the two-gate abstract + "invocation
+rate", on `b27ef23`), pushed and Overleaf-synced (`a0b8c84`); see "Next steps" N1. Nothing on the paper is owed beyond coauthor
 review. The last `\todo` (serving environment) closed 2026-09-14: `4eb4751` pushed and
 Overleaf-synced (`d884bd3`) with the vLLM 0.22.0 disclosure footnote Omer approved —
 see "Paper housekeeping" below.
@@ -257,3 +259,124 @@ independent of everything above. Recommendation: yes, run them alongside Job 1.
 
 > ANSWER:
 > yes
+
+---
+
+## Next steps — proposed 2026-09-15 (after PR #100 merged)
+
+Everything above is closed: no experiment is owed, all three writing jobs are in
+Overleaf, no `\todo` is left, the tex compiles (25 pages, 0 undefined refs, one
+overfull box). What is left is getting the manuscript in front of the coauthors and
+advisors and then to JAIR. Scanning for that turned up one decision that was taken
+but never applied to the tex (N1). Order: N1 → N2 → N3; N4 is optional; N5 is
+minutes.
+
+### N1 — Apply the D-J6 decision to the tex: DONE 2026-09-18 (pushed + Overleaf-synced)
+
+**`paper/aaai27` `b27ef23` + `b045f07` (`b045f07` = the scale clause the advisor agent recommended, accepted by Omer 09-18). PUSHED 2026-09-18 on Omer's go, Overleaf-sync Action 35332662004 green, Overleaf head `a0b8c84`, `main.tex` byte-identical.** Title D; a new 191-word
+abstract brainstormed 09-15/18 (`title_abstract_candidates.md` §5: two-gate abstraction,
+findings first, four verified numbers, PlanBench in, scale clause after PlanBench, 200 words); "propensity"
+→ "invocation rate" at all 14 sites. Compile clean. Overleaf pull before editing: already
+up to date. Nothing left on N1. Next: N2. Record: `paper_notes_discussions.md` 2026-09-15/18.
+
+*(Original text of this item:)*
+
+Decided 2026-08-20 (`paper_notes_discussions.md` "D-J6 CLOSED"; slots in
+`title_abstract_candidates.md` §2–3), never applied to `paper/main.tex` on `paper/aaai27`:
+
+| decided 08-20 | tex today (`4eb4751`) |
+|---|---|
+| title D: *Invocation Is the Bottleneck: When Sound Planning Tools Help an LLM, and When They Do Not* | still the retired *Availability Is Not Enough: …* (title line last touched 06-18) |
+| term = "invocation rate", "propensity" retired paper-wide | "propensity" appears 14 times (abstract-adjacent intro L182, results, limitations, future work, conclusion) |
+| abstract redrafted on the N1 spine: invocation is the headline, delivery demoted to one clause, delivery itself lives in Limitations | Job 2 batch 1 (`125cc7a`, 09-07) rewrote the abstract on the delivered surface: 297 words, delivery is a second headline ("The second is delivery: …") |
+
+The 08-20 N1 abstract draft (`title_abstract_candidates.md` §3) has an empty
+approve/revise slot and predates Job 2, Job 3 and the budget probe, so its six numbers
+(8–11 floor, 66–73 lift, −67 availability harm, 21→94 steering, >99% correct when
+called, "one of three models at 9B or larger") need a `/verify-claims` pass against
+the current tex and `NUMBERS.md` before any of it enters the tex. D-J1 (first number
+one-sided by construction) was flagged 08-20 as no longer binding under N1; confirm
+when ruling R5.
+
+Sequence once R5/R6 are answered: `/verify-claims` on the abstract numbers →
+Overleaf pull → edit on `paper/aaai27` in the worktree (title, abstract, the 14 term
+edits, the Intro's "invocation propensity" definition sentence) → compile → push
+(Action syncs) → paper_notes entry.
+
+### N2 — Coauthor + advisor review round (Omer; agent prepares the brief)
+
+No coauthor has edited Overleaf since the 08-11 sync (every pull since returned
+clean). The journal memo's timeline had "manuscript draft to advisors ~early
+September". The manuscript is ready to send once N1 is in, because title and abstract
+are what the advisors read first. Agent-executable prep: a one-page advisor brief
+that bundles the memo §10 questions, so one conversation closes them all:
+
+1. venue ratification — JAIR primary, TMLR fallback with the three pre-committed
+   rejection branches, AIJ only on override (memo §5);
+2. confirm the Sept-2026 thesis needs a *submitted* manuscript, not an acceptance;
+3. record the journal pivot formally (AAAI-27 dropped 08-30);
+4. verdict on the cost-of-pass deck content (`archive/cost-breakdowns/`);
+5. storage-fixed rerun of ~5 headline cells: contingency only (default) or run before
+   submission;
+6. (grant-reopened 08-30) Sonnet-tier PlanBench extension: run or leave excluded.
+
+### N3 — Pre-submission mechanics (agent; prose items after N2 feedback, reformat after venue is ratified)
+
+- Fix the one overfull box: the batch-1 scorecard `table*` (tex ~L766–807, 130 pt too
+  wide).
+- One whole-paper consistency read after N1: terminology (invocation rate everywhere),
+  AI-tells over the Job 2 / Job 3 additions (em-dash count is already 0), notation
+  gate (CI vs censor-bound typography) in the newest tables.
+- JAIR reformat: the tex is `article` + `aaai2027.sty`; JAIR uses its own style file.
+  Mechanical but it touches every float, so do it once, after the venue is ratified.
+- Cover letter with the arXiv:2509.12987 delta statement (memo §5: each control flipped
+  a headline; extensive-revision defence). Writing it also closes ISS-013 (the
+  paper-diff audit vs the arXiv version), which has been open since April.
+
+### N4 — Optional experiments (none owed; all unblocked)
+
+- **Llama-3.1-8B second-family probe** (R3 = "keep as sequenced"; unblocked since
+  08-29). $0, cluster GPU-h only; needs a harness branch + PR for the `vllm_lookup`
+  case, a kill-gate, ping + VPN. Recommendation: hold until the advisor round; it is
+  the ready answer if they ask whether the invocation finding is Qwen/Gemma-specific.
+- Sonnet-tier PlanBench extension and the storage-fixed rerun: advisor calls, N2.
+
+### N5 — Hygiene (agent, minutes)
+
+- Cluster checkout sits on `paper/iter2-decoupled-run`, whose remote is gone; switch
+  to `main` + pull so the probe script is there (SSH → needs Omer's go).
+- `OPEN_ISSUES.md`: strike ISS-022 (WT arm closed 08-06; index already says so).
+- Memory note for the 09-13/14 housekeeping updated to "PR #100 merged".
+
+### Decisions
+
+**R5 — Which abstract under N1?** (a) apply D-J6 in full: title D + the N1 abstract
+(re-verified, delivery demoted to one clause) + the 14 term edits; (b) title D + term
+edits only, keep the 09-07 delivered-reframe abstract with delivery as a second
+headline — this supersedes the 08-20 abstract decision and gets its own paper_notes
+entry; (c) other. Recommendation: **(a)** — it is the recorded decision, the N1
+spine is what title D promises, and 297 words is long for a JAIR abstract.
+
+> ANSWER (a / b / c):
+> **ANSWERED 2026-09-18 (Omer): apply D-J6 with a NEW abstract** — brainstormed 09-15/18
+> (`title_abstract_candidates.md` §5): abstraction (ii) two gates, findings first with one
+> protocol clause, four numbers (95 vs 22–29 · 21→94 + 99% · 0/5/>33 · 72 vs 0), PlanBench
+> in, ≤200 words, **Shape A** chosen. Scale clause pending a separate advisor agent. Title D
+> kept for now, re-read against the final abstract before the tex pass.
+
+**R6 — Go-ahead for the tex edits on `paper/aaai27`** (the half of the 08-20 slot
+that was never answered). Pull-then-push protocol as always.
+
+> ANSWER (go / hold):
+> **ANSWERED 2026-09-15 (Omer): go, once R5 is answered.**
+
+**R7 — Send to the coauthors and advisors after N1, with the six-question brief?**
+Alternative: send now, before N1, if you want their view on the title first.
+
+> ANSWER (after N1 / now / hold):
+>
+
+**R8 — Llama-3.1-8B probe.** Recommendation: hold until the advisor round.
+
+> ANSWER (hold / start now):
+>
