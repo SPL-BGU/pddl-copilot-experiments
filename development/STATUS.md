@@ -147,10 +147,11 @@ The six questions (memo §10):
 
 ### Open decisions
 
-**R7 — Send to the coauthors and advisors after N1, with the six-question brief?**
-Alternative: send now, before N1, if you want their view on the title first.
+**R7 — Send the manuscript and the six-question brief to the coauthors and advisors?**
+The slot was written as "after N1 / now". N1 closed on 09-18, so both mean *now*.
+Recommendation: send.
 
-> ANSWER (after N1 / now / hold):
+> ANSWER (send / hold):
 >
 
 **R8 — Llama-3.1-8B probe.** Recommendation: hold until the advisor round.

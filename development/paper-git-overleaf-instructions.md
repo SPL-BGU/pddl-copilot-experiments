@@ -90,7 +90,7 @@ One-time setup:
 
 Caveats of auto-push (chosen deliberately): the job goes red whenever a co-author is
 web-editing Overleaf (expected — it is the guard protecting their work, not a bug), and
-the write-capable token lives in shared org CI. The local daily cycle below still works
+the write-capable token lives in shared org CI. The local daily cycle described above still works
 unchanged and is the fallback whenever the Action aborts.
 
 ## Working on code and paper at the same time

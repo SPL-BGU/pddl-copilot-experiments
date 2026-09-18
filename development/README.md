@@ -15,7 +15,7 @@ Three files answer almost every question:
 |---|---|
 | **`STATUS.md`** | what is actually left to do. Single stable entry point, **edited in place** — never write a dated successor |
 | **`NUMBERS.md`** | the frozen value of every headline figure + the stale readings it replaces. **Check before quoting anything** |
-| **`MOVES.md`** | old path → new path, for resolving pre-2026-08-29 paths cited in the append-only logs |
+| **`MOVES.md`** | old path → new path for the 2026-08-29 and 2026-09-18 reorganisations. Resolves old paths cited in the append-only logs and in hash-pinned scripts |
 
 ## Root — live
 
@@ -29,6 +29,10 @@ Three files answer almost every question:
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
 
 ## `reference/` — stable, code-pinned, never a status
+
+Files here are not rewritten after they move in. Several were written before 2026-09-18
+and say "edit on `paper/aaai27`" or name other old paths. Read that as history: the
+paper is edited on a short branch off `main` (see `STATUS.md` "How work is done now").
 
 `sweep_prompt_bank_design.md` (sweep-5 prompt bank; pinned by `run_experiment.py`,
 `pddl_eval/prompts.py`) · `contamination_probe_plan.md` (pinned by `tools/anon_*.py`,

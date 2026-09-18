@@ -2,7 +2,7 @@
 
 **Pick up with** `/resume-verify development/review_round_handoff.md`.
 
-**Read first:** `STATUS.md` → "Next steps" (N1–N5, decision slots R5–R8). This file is the
+**Read first:** `STATUS.md` → "Next steps" (N2–N5; open decision slots R7 and R8). This file is the
 operational pickup only. It never overrides `STATUS.md` (what is left) or `NUMBERS.md`
 (which value of each figure to quote). If this file and the repo disagree, the repo wins.
 
@@ -118,7 +118,9 @@ a decision was reversed.
 
 **Starting inventory (surveyed 2026-09-18 — re-verify, the counts are grep hits):**
 
-Paths in this table are as they were at the survey. The moves of rows A and C were made
+**This table is a record of what was wrong on the morning of 09-18. Every row has since
+been fixed (PRs #104 and the rewrites PR); do not act on it again.** Paths in this table
+are as they were at the survey. The moves of rows A and C were made
 on 09-18 (PR "moves only"); `MOVES.md` "Third wave" gives the new path of each file.
 
 | # | where | what is wrong | likely fix |

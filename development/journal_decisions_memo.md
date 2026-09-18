@@ -9,7 +9,9 @@
 > with a "seven models" phrase. See `reference/title_abstract_candidates.md` section 4.
 
 
-**Status:** RECOMMENDATIONS for Omer's sign-off. Covers D-J1..D-J6
+**Status: ACCEPTED.** Omer accepted all eight slots on 2026-07-24 (`paper_notes_discussions.md`);
+the text below keeps its original "recommendation" wording. What is still open is only the
+advisors' ratification of the venue (§5, §10; see `advisor_brief.md`). Covers D-J1..D-J6
 (`development/archive/status-snapshots/journal_narrative_proposal.md` §8) and D2 + D4
 (`development/archive/status-snapshots/roadmap_eval_and_paper_completion.md`). Each Recommendation block is
 paste-ready for its ANSWER slot; the original docs' slots are untouched. Rulings go
