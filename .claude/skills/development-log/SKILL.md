@@ -64,7 +64,7 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 
 ## Per-line workstream docs (the `development/` folder layout)
 
-`development/README.md` is the map. **Reorganised 2026-08-29 into three tiers, where the path carries the status** (rationale: `development/dev_docs_refactor_plan.md`):
+`development/README.md` is the map. **Reorganised 2026-08-29 into three tiers, where the path carries the status** (rationale: `development/archive/plans-executed/dev_docs_refactor_plan.md`):
 
 | tier | rule |
 |---|---|

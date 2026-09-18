@@ -63,7 +63,7 @@
 #                 An explicit RUN_TAG env still overrides the default.
 #   --iss024d     The in-flight ISS-024(d) WITH-TOOLS resolver (jobs
 #                 19293221 Qwens + 19314599 gemma, added 2026-07-12;
-#                 development/tool_call_vs_final_output_grading.md
+#                 development/reference/tool_call_vs_final_output_grading.md
 #                 §"ISS-024(d) full re-run"). The with-tools twin of
 #                 --decoupled: 5 models × think=on × tools_all_minimal,
 #                 --reasoning-parser none on Qwens (gemma has no reasoning
@@ -350,7 +350,7 @@ elif profile == "iss024d":
     # 2026-07-11). Gemma was added 2026-07-12 (job 19314599, same
     # `iss024d-e2e` run-tag) — gemma was Qwen-excluded from the original
     # submit yet was 81% censored on validate_plan, so it doubles as extra
-    # signal (see development/tool_call_vs_final_output_grading.md:484-495).
+    # signal (see development/reference/tool_call_vs_final_output_grading.md:484-495).
     # Full 5-model roster, single neutral prompt bank (v11-13),
     # --reasoning-parser none on Qwens (gemma has no reasoning parser
     # natively), 72h wall. One logical column (on / tl-neut); the steered

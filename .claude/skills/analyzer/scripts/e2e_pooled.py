@@ -54,7 +54,7 @@ NOTES = {
                         "prereg rule 4 these numbers are a separate-apparatus "
                         "replication under full-response storage — never "
                         "'the sweep5v2 cells resolved'. See "
-                        "development/iss024d_parity_prereg.md + "
+                        "development/reference/iss024d_parity_prereg.md + "
                         "results/derived/iss024d_parity_report.md",
 }
 

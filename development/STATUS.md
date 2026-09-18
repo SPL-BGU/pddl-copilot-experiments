@@ -59,7 +59,7 @@ Landed on `paper/aaai27` as `67ea69c` (section) + `644f8bd` (plain-language /
 AI-tell pass), both 2026-08-11; the Overleaf auto-sync Action ran green the same
 day and the bridge remote's head (`dff7ffb`) IS that sync — no coauthor web edits
 since, nothing to pull. Re-verified 2026-09-07 against the signed plan
-(`planbench/planbench_wt_paper_integration_plan.md`) and `NUMBERS.md`:
+(`archive/planbench/planbench_wt_paper_integration_plan.md`) and `NUMBERS.md`:
 
 - All nine skeleton items present: opening + headline/secondary split, NT table
   (GPT-4 as labelled reference, no test), WT 2×2 (first-draw 68.3 / Δ+20.5 /
@@ -82,7 +82,7 @@ since, nothing to pull. Re-verified 2026-09-07 against the signed plan
 (batch 2) on `paper/aaai27`, PUSHED 2026-09-08 on Omer's go and synced to Overleaf
 (Action run 34245382827 green; Overleaf had no coauthor edits since the 08-11 sync,
 verified byte-identical before the push).** Grounding:
-`job2_delivered_reframe_worknote.md` (§2 verdicts — read §3 before reviewing: the
+`reference/job2_delivered_reframe_worknote.md` (§2 verdicts — read §3 before reviewing: the
 memo's "2/25 undecided" is superseded by the derived 13/25; §8 = batch-2 tables).
 Batch 2 delivered: funnel Figure 1 (+ PlanBench FORMALIZE bar), the four Results
 figures on the delivered surface, frontier delivered cost-of-pass, validate_domain
@@ -95,7 +95,7 @@ the branch can regenerate its own figures.
 landed on `paper/aaai27` `5466cb6`, Overleaf `d922237`).** Sonnet PARTIAL (16/25 vs
 7/19, p = 0.069), Haiku H1 (12/17 vs 1/12, p = 0.001), 0/14 DECLINE; delivered at 64K
 70 / 44 (Sonnet WT / NT) and 65 / 58 (Haiku). Frozen values: NUMBERS.md "frontier
-budget probe" row. Readout + Omer's answers: `frontier_budget_probe_readout.md`.
+budget probe" row. Readout + Omer's answers: `reference/frontier_budget_probe_readout.md`.
 Reference cells unchanged. Cost $40.68.
 
 **Job 2 is closed.** Nothing left on it.
@@ -111,7 +111,7 @@ Corpus rules that bind every sentence: frontier exact except simulate delivered
 **separate-apparatus** (job-level parity FAILED 07-17) so it never resolves an
 UNDECIDED cell; gaps computed paired within a corpus. Material to fold in: the
 transcription gap (solve +5pp both tiers, simulate ≈35–50pp length-driven,
-`sonnet_wt_vs_haiku_e2e_memo.md`) and the de-censored NT delivered columns.
+`reference/sonnet_wt_vs_haiku_e2e_memo.md`) and the de-censored NT delivered columns.
 
 This is where the retracted claims finally get their replacement text, so it is also
 the cleanup of the simulate sole-source-floor thread.
@@ -136,7 +136,7 @@ claim) and the declared deviations. Compile: 0 errors, 0 undefined refs. Records
 **The experiment is done.** Closed 2026-08-29 on branch `run/ntster-h4`: six cells,
 9,120 rows each, **all six units PASS**, paper-level branch **PASS**. Every one of the
 8 ELIGIBLE task cells is EQUIVALENT. Figures: `NUMBERS.md`. Full readout:
-`ntster_h4_final_readout_20260829.md`. Design of record: `reference/ntster_h4_prereg.md`.
+`reference/ntster_h4_final_readout_20260829.md`. Design of record: `reference/ntster_h4_prereg.md`.
 
 The result it was commissioned for, in the matched cell: gemma `validate_plan`
 `think=off` is **+72.0pp with tools and +0.63pp [−0.46, +1.73] without**. The steering
@@ -179,7 +179,7 @@ bound — 526/88,781 no-tools rows conformant, 0.59%; validate_* shielded by the
 VERDICT trailer, exposure on solve/simulate only; fix stays parked per D4), the
 "delivery gap" collision check (term unclaimed; one near neighbour to distinguish
 if ever cited), and the title/abstract candidates
-(`development/title_abstract_candidates.md`). PR #94 also flagged that the memo's
+(`development/reference/title_abstract_candidates.md`). PR #94 also flagged that the memo's
 "227k trials" scale claim does not reproduce from disk (counted two-corpus figure
 273,600) — resolved 2026-09-13: the paper-branch tex states no corpus total at all
 (grep for 227/273 is empty on `paper/aaai27`); if a total is ever wanted, the
@@ -277,7 +277,7 @@ minutes.
 ### N1 — Apply the D-J6 decision to the tex: DONE 2026-09-18 (pushed + Overleaf-synced)
 
 **`paper/aaai27` `b27ef23` + `b045f07` (`b045f07` = the scale clause the advisor agent recommended, accepted by Omer 09-18). PUSHED 2026-09-18 on Omer's go, Overleaf-sync Action 35332662004 green, Overleaf head `a0b8c84`, `main.tex` byte-identical.** Title D; a new 191-word
-abstract brainstormed 09-15/18 (`title_abstract_candidates.md` §5: two-gate abstraction,
+abstract brainstormed 09-15/18 (`reference/title_abstract_candidates.md` §5: two-gate abstraction,
 findings first, four verified numbers, PlanBench in, scale clause after PlanBench, 200 words); "propensity"
 → "invocation rate" at all 14 sites. Compile clean. Overleaf pull before editing: already
 up to date. Nothing left on N1. Next: N2. Record: `paper_notes_discussions.md` 2026-09-15/18.
@@ -285,7 +285,7 @@ up to date. Nothing left on N1. Next: N2. Record: `paper_notes_discussions.md` 2
 *(Original text of this item:)*
 
 Decided 2026-08-20 (`paper_notes_discussions.md` "D-J6 CLOSED"; slots in
-`title_abstract_candidates.md` §2–3), never applied to `paper/main.tex` on `paper/aaai27`:
+`reference/title_abstract_candidates.md` §2–3), never applied to `paper/main.tex` on `paper/aaai27`:
 
 | decided 08-20 | tex today (`4eb4751`) |
 |---|---|
@@ -293,7 +293,7 @@ Decided 2026-08-20 (`paper_notes_discussions.md` "D-J6 CLOSED"; slots in
 | term = "invocation rate", "propensity" retired paper-wide | "propensity" appears 14 times (abstract-adjacent intro L182, results, limitations, future work, conclusion) |
 | abstract redrafted on the N1 spine: invocation is the headline, delivery demoted to one clause, delivery itself lives in Limitations | Job 2 batch 1 (`125cc7a`, 09-07) rewrote the abstract on the delivered surface: 297 words, delivery is a second headline ("The second is delivery: …") |
 
-The 08-20 N1 abstract draft (`title_abstract_candidates.md` §3) has an empty
+The 08-20 N1 abstract draft (`reference/title_abstract_candidates.md` §3) has an empty
 approve/revise slot and predates Job 2, Job 3 and the budget probe, so its six numbers
 (8–11 floor, 66–73 lift, −67 availability harm, 21→94 steering, >99% correct when
 called, "one of three models at 9B or larger") need a `/verify-claims` pass against
@@ -367,7 +367,7 @@ spine is what title D promises, and 297 words is long for a JAIR abstract.
 
 > ANSWER (a / b / c):
 > **ANSWERED 2026-09-18 (Omer): apply D-J6 with a NEW abstract** — brainstormed 09-15/18
-> (`title_abstract_candidates.md` §5): abstraction (ii) two gates, findings first with one
+> (`reference/title_abstract_candidates.md` §5): abstraction (ii) two gates, findings first with one
 > protocol clause, four numbers (95 vs 22–29 · 21→94 + 99% · 0/5/>33 · 72 vs 0), PlanBench
 > in, ≤200 words, **Shape A** chosen. Scale clause pending a separate advisor agent. Title D
 > kept for now, re-read against the final abstract before the tex pass.

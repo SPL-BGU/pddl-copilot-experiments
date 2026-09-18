@@ -8,7 +8,7 @@ Why this file exists: `tools/e2e_regrade.py` (the offline overlay grader) and
 `.claude/skills/analyzer/scripts/e2e_overlay.py` (the aggregator every
 table/deck builder reads through) are the single source of truth for
 delivered-answer numbers reported in the paper — see
-`development/tool_call_vs_final_output_grading.md`. A PR #91 review found
+`development/reference/tool_call_vs_final_output_grading.md`. A PR #91 review found
 six correctness bugs in that pipeline (trial-key dedup, cap-vs-other
 censoring conflation, stale stored-success gating delegation credit, only
 the first fenced simulate block considered a candidate, unparseable slurm
@@ -326,7 +326,7 @@ def test_load_e2e_cells_frontier_stem_still_aggregates(r: TestResults) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 9. Frontier output-budget probe (development/frontier_budget_probe_prereg.md
+# 9. Frontier output-budget probe (development/reference/frontier_budget_probe_prereg.md
 #    §2.3 items 3-4, §8 item 6): the 262144 snapshot cap is registered and the
 #    probe's cell stems never pool with the reference cells.
 # ---------------------------------------------------------------------------

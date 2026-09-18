@@ -19,27 +19,15 @@ Three files answer almost every question:
 
 ## Root — live
 
-Four closed docs still sit at the root and are not in this table
-(`frontier_budget_probe_handoff.md`, `frontier_budget_probe_prereg.md`,
-`frontier_budget_probe_readout.md`, `job2_delivered_reframe_worknote.md`).
-`doc_cleanup_plan.md` row A decides where each one goes.
-
 | doc | what it is |
 |---|---|
 | `STATUS.md` · `NUMBERS.md` · `MOVES.md` | the three above |
 | `review_round_handoff.md` | operational pickup for the review round and pre-submission work (2026-09-18): the single-line branch model, the step sequence, the doc-cleanup brief. Never overrides `STATUS.md` |
 | `advisor_brief.md` | one page for the advisors and coauthors: the six `STATUS.md` N2 questions with recommendations and open `> ANSWER:` slots |
-| `doc_cleanup_plan.md` | the documentation-cleanup plan: seven decisions and a verdict per file, with open `> ANSWER:` slots. Plan only, nothing moves until Omer answers |
-| `journal_decisions_memo.md` | the accepted journal-pivot spec; §3 is the Job 2 e2e-reframe brief. ⚠️ still says "227k trials" in 3 places — the figure is **273,600**, see `NUMBERS.md` |
-| `tool_call_vs_final_output_grading.md` | e2e-vs-tool-verified grading decisions D1–D9 + phase results |
-| `sonnet_wt_vs_haiku_e2e_memo.md` | Sonnet-WT vs Haiku delivered/tool-verified comparison; the transcription-gap numbers |
-| `iss024d_parity_prereg.md` | pre-registered parity test gating headline use of the e2e overlay |
-| `ntster_h4_final_readout_20260829.md` | nt-ster H4 result — all six units PASS, branch PASS. Live because its caveat-only paper integration is still open |
-| `title_abstract_candidates.md` | term-collision check, title/abstract candidates, scale-claim audit (open `> ANSWER:` slots) |
-| `planbench/` (3 docs) | `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` (the one entry point + binding constraints), `planbench_wt_paper_integration_plan.md` (Job 1 spec, 4/4 signed), `planbench_wt_results_20260803.md` (frozen numbers) |
+| `doc_cleanup_plan.md` | the documentation-cleanup plan, approved 09-18 ("ok all"). Moves to `archive/plans-executed/` with the last cleanup PR |
+| `journal_decisions_memo.md` | the accepted journal-pivot spec; §5 and §10 feed the advisor round. Moves to `reference/` once the venue is ratified. ⚠️ still says "227k trials" in 3 places — the figure is **273,600**, see `NUMBERS.md` |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head (13 open / 8 closed) |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
-| `dev_docs_refactor_plan.md` | rationale for this layout (2026-08-29) |
 
 ## `reference/` — stable, code-pinned, never a status
 
@@ -53,6 +41,17 @@ Four closed docs still sit at the root and are not in this table
 (the D1=B SDK Tool Runner decision) · `baseline_comparison_tool_use_benchmarks.md` ·
 `cluster_user_guide.md` (BGU CIS HPC) · `CHANGELOG-archive.md` (pre-2026-05-05)
 
+Added 2026-09-18 (closed lines whose numbers `NUMBERS.md` cites, so they cannot go to
+`archive/`): `planbench_wt_results_20260803.md` (every PlanBench number, the audits, the
+deviation table) · `frontier_budget_probe_prereg.md` (holds the 09-10 freeze record) +
+`frontier_budget_probe_readout.md` (ratified 09-12) · `ntster_h4_final_readout_20260829.md`
+(all six units PASS; quote the revised readout only) · `job2_delivered_reframe_worknote.md`
+(§2 the 13/25 verdict table, §6 the recompute script) · `sonnet_wt_vs_haiku_e2e_memo.md`
+(transcription-gap numbers) · `tool_call_vs_final_output_grading.md` (grading decisions
+D1–D9) · `iss024d_parity_prereg.md` (executed; parity failed 07-17) ·
+`title_abstract_candidates.md` (N1 closed; §4 scale audit, §5 the abstract) ·
+`serving_env_20260913.md` (serving-environment audit)
+
 ## `archive/` — closed lines, provenance only
 
 Grouped by line. Nothing here is a status source; several files carry numbers that
@@ -60,12 +59,13 @@ Grouped by line. Nothing here is a status source; several files carry numbers th
 
 | folder | what closed |
 |---|---|
-| `planbench/` | the three superseded WT handoffs, `PLANBENCH_HANDOFF_v2/v3`, calibration + verification memos, v1 results, the significance brief |
-| `frontier/` | `frontier_rerun_handoff.md` and the pre-rerun frontier line (phase plan, ladder, probe findings) |
+| `planbench/` | `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` (arm close-out, 09-18) and the signed `planbench_wt_paper_integration_plan.md` (Job 1, executed); the three superseded WT handoffs, `PLANBENCH_HANDOFF_v2/v3`, calibration + verification memos, v1 results, the significance brief |
+| `frontier/` | `frontier_budget_probe_handoff.md` (CLOSED 09-12), `frontier_rerun_handoff.md` and the pre-rerun frontier line (phase plan, ladder, probe findings) |
 | `decoupled/` | the whole iter-2 line (✅ complete 2026-07-11), incl. its two analysis scripts |
 | `status-snapshots/` | the four dated status docs `STATUS.md` replaced (`next_steps` 07-12 → `roadmap` 07-15 → `journal_phase0` 07-24 → this) + `journal_narrative_proposal.md` |
-| `plans-executed/` | `decoupled_budget_plan.md` (#88), `q1_grader_plan.md` (#87), `simulate_normalizer_fix_plan.md`, `FRAMEWORK_EXTENSION_PLAN.md` (restored from git — holds the PR-3 domain-substitution rationale `EXPERIMENTS_FLOW.md` cites) |
+| `plans-executed/` | `dev_docs_refactor_plan.md` (the 08-29 layout rationale, ran as PR #95), `decoupled_budget_plan.md` (#88), `q1_grader_plan.md` (#87), `simulate_normalizer_fix_plan.md`, `FRAMEWORK_EXTENSION_PLAN.md` (restored from git — holds the PR-3 domain-substitution rationale `EXPERIMENTS_FLOW.md` cites) |
 | `cost-breakdowns/` | the cost line, parked on the advisor verdict; figures superseded |
+| `paper-june/` | `HANDOFF.md`, `GOALS.md`, `REVIEW_AND_REWRITES.md` that used to sit beside `main.tex`. June-era: dead branches, stale-mirror numbers, a command that would overwrite the manuscript. **Never follow them** |
 | `ntster/` | the nt-ster H4 run line — the 08-22 partial readout (superseded by the final readout) and the spent submit-window decisions |
 
 ## House rules

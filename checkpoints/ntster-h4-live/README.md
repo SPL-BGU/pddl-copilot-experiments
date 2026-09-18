@@ -3,7 +3,7 @@
 Frozen copy of the nt-ster H4 corpus and its derived artefacts, so the analysis can be
 reproduced **without re-syncing from the cluster and without re-running the regrader**.
 
-Every number in `development/ntster_h4_final_readout_20260829.md` (as revised
+Every number in `development/reference/ntster_h4_final_readout_20260829.md` (as revised
 2026-08-30 after the PR #96 review — the frozen scripts were fixed and re-frozen, see
 prereg §8 item 9 second addendum and §9.2) comes from these files. The run is closed:
 all six units PASS, paper-level branch PASS.

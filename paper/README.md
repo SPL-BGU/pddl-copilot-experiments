@@ -1,6 +1,6 @@
 # paper/ — AAAI-27 manuscript (single-tool-use evaluation)
 
-Self-contained home of the new paper. See **`GOALS.md`** for scope, deadlines, and the
+Self-contained home of the new paper. See **`GOALS.md`** (archived 2026-09-18 to `development/archive/paper-june/`; historical, do not follow it) for scope, deadlines, and the
 prior-work policy. The directory holds the official AAAI-27 templates, the planning docs,
 and a compilable **scaffold** (`main.tex` + `refs.bib`) — sections are empty (TODO pointers
 only); **no paper prose is written yet.**
@@ -9,7 +9,6 @@ only); **no paper prose is written yet.**
 
 ```
 paper/
-  GOALS.md            # scope, deadlines, prior-work policy, source pointers
   README.md           # this file
   main.tex            # working manuscript — anonymized scaffold, empty sections (start here)
   refs.bib            # bibliography (seeded with the anonymized self-citation)

@@ -6,7 +6,7 @@
 > corpora; sweep5v2-live and sweep6-live are 136,800 rows each, all keys unique, zero
 > infra failures). That figure covers the **five open-weight models only** — the
 > frontier arm (6,080 Haiku + 10,640 Sonnet) is separate, so it must NOT be paired
-> with a "seven models" phrase. See `title_abstract_candidates.md` section 4.
+> with a "seven models" phrase. See `reference/title_abstract_candidates.md` section 4.
 
 
 **Status:** RECOMMENDATIONS for Omer's sign-off. Covers D-J1..D-J6
@@ -22,11 +22,11 @@ precedents), 5 decision analysts, and 12 adversarial red-team passes (hostile-re
 verdicts were AMEND, zero refutes: every core recommendation stood, and every
 amendment is applied below. Load-bearing repo claims were then spot-checked against
 sources by the coordinating session: simulate delivered bounds
-(`sonnet_wt_vs_haiku_e2e_memo.md` L34: Sonnet [49.0,62.0] 13/100 censored, Haiku
+(`reference/sonnet_wt_vs_haiku_e2e_memo.md` L34: Sonnet [49.0,62.0] 13/100 censored, Haiku
 [52.0,64.0] 12/100), the 07-11 later-3 "strict end-to-end is the paper's headline —
 DECIDED (Omer)" ruling (paper_notes L644-646), the May H4 prereg
 (`sweep_prompt_bank_design.md:46`), the iss024d prereg think=on scoping
-(`iss024d_parity_prereg.md:69`), commit `2a1298c` (PlanBench #65 grading fixes), and
+(`reference/iss024d_parity_prereg.md:69`), commit `2a1298c` (PlanBench #65 grading fixes), and
 the v14-16 steered-arm mapping (`pddl_eval/summary.py arm_for`).
 **Governing goal:** simplify the narrative and make the evaluation approachable
 without compromising rigor. Nothing below is justified by page-limit savings.
@@ -407,7 +407,7 @@ cluster.
 > think=off AND think=on cells (~92 GPU-h total, 3 parallel rtx_6000 jobs, <4 days
 > wall, same VPN window) — think=on is what licenses the 07-12 pre-commitment's
 > steered-WT e2e claim family, since the only exact steered-WT e2e corpus (iss024d)
-> is think=on-scoped (`iss024d_parity_prereg.md:69`, verified) and sweep6 proved
+> is think=on-scoped (`reference/iss024d_parity_prereg.md:69`, verified) and sweep6 proved
 > think-mode mismatch is material (prompt-length->truncation channel). FALLBACK if
 > Omer prefers minimal: think=off only (~46 GPU-h), with the 07-12 link struck and
 > steered-WT e2e diagnostic-only permanently — choose explicitly, not by default.
