@@ -1,6 +1,6 @@
 # Paper ↔ Git ↔ Overleaf — working instructions
 
-How to work on **code and the AAAI-27 paper concurrently from this one repo** and keep
+How to work on **code and the journal paper concurrently from this one repo** and keep
 the **Overleaf** project in sync without losing anyone's edits. Tooling:
 `development/sync_overleaf.sh` (a clone-bridge) + `development/make_overleaf_zip.sh`.
 

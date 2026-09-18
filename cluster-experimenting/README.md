@@ -33,10 +33,11 @@ is a thin orchestrator over `submit_with_rtx.sh`, which is the
 lower-level wrapper.
 
 Submission topology history (see `development/CHANGELOG.md` for full
-rationale): cis-ollama path retired 2026-04-27; per-cell SLURM arrays
+rationale): cis-ollama path retired 2026-04-27 (the `cis-ollama.*` hostname
+still exists and now serves managed vLLM); per-cell SLURM arrays
 landed 2026-04-30 (replacing the packed-job model); roster trimmed and
 Qwen3.5:4B/9B added 2026-05-17; full unification on vLLM `rtx_6000:1`
-2026-05-18; Ollama backend retired 2026-05-23.
+2026-05-18; Ollama backend retired 2026-05-18, code removed 2026-05-23.
 
 ## Quickstart
 

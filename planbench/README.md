@@ -7,12 +7,12 @@ vLLM model fleet — the **same models, served the same way** as the existing
 arms. The cluster sbatch self-deploys vLLM per job (Ollama backend retired
 2026-05-18; the arm was migrated off it 2026-06-02 — see CHANGELOG).
 
-**v1 = vanilla leaderboard only.** No MCP tools used during response
-generation. The tool-using arm (LLM-Modulo style, per PlanBench
-INTEGRATION.md §3) is tracked as ISS-022 and depends on two MCP plugin
-extensions specified in
-`../../pddl-copilot/specs-for-plan-bench.md` (sibling repo,
-`planbench-integration` branch).
+**This README documents v1, the vanilla leaderboard run:** no MCP tools during
+response generation. **The with-tools arm also ran and is closed** (ISS-022, PR #93,
+2026-08): design in `development/reference/planbench_wt_prereg.md`, every number in
+`development/reference/planbench_wt_results_20260803.md` (quote them through
+`development/NUMBERS.md`), analysis scripts in `planbench/analysis/`, data in
+`results/planbench/wt-anthropic-20260801/`.
 
 ---
 
