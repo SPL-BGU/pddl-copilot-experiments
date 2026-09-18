@@ -10,7 +10,7 @@ argument-hint: [status | job | preflight | sync | postmortem | prioritize]
 
 Triggers (so the skill auto-matches): "cluster status", "what's running", "why is it pending", "when will it run", "queue position", "queue rank", "ETA for job", "submit sweep", "cancel jobs", "sync results", "check vllm", "postmortem", "memory headroom", "prioritize", "deprioritize", "nice value", "let cell X finish first".
 
-Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, and sacct memory-headroom recipes. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes 4 short helper scripts. Read it before running SSH/rsync commands ad-hoc.
+Every session we re-derive the same SSH queue queries, `.out`-file grep patterns, rsync invocations, and sacct memory-headroom recipes. The cluster state is persistent but Claude's working set isn't. This skill pins the conventions in one place and exposes six short helper scripts. Read it before running SSH/rsync commands ad-hoc.
 
 **Skill boundary.** This skill owns cluster operations: queue inspection, submit/cancel, sync, preflight, postmortem, prioritization, and the destructive scenarios in `cleanup.md`. For result analysis (Markdown tables, paper plots, the master pivot, drift detection), delegate to the sibling `analyzer` skill. The two compose via the recipes below.
 
@@ -19,10 +19,10 @@ Cluster & repo conventions that matter here:
 - **Login node**: `omereliy@slurm.bgu.ac.il` — SSH is pre-authed for the user.
 - **Remote repo root**: `~/pddl-copilot-experiments` on the login node.
 - **Job submission**:
-  - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch self-deploys a vLLM OpenAI server via Apptainer on a single dedicated GPU (default `rtx_6000:1` 48 GB; `--gpu-type rtx_pro_6000` is the opt-in 96 GB escape hatch). Each array task is one (model, think, cond) cell with weights resident throughout. `--all` expands to the 5 active models (`Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`) × think × cond. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES={on,off}`, `--time=05:00:00`).
-  - Historical: the cis-ollama path was retired 2026-04-27; the Ollama backend was retired 2026-05-18 (`run_condition_rtx.sbatch` removed 2026-05-23). `gpt-oss:120b` is no longer in the active sweep; the large-model band is held by `qwen3.6:35b` (A3B MoE).
+  - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch self-deploys a vLLM OpenAI server via Apptainer on a single dedicated GPU (default `rtx_6000:1` 48 GB; `--gpu-type rtx_pro_6000` is the opt-in 96 GB escape hatch). Each array task is one (model, think, cond) cell with weights resident throughout. `--all` expands to the 5 active models (`Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`) × think × cond. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES={on,off}`, `--time=12:00:00`). A with-tools cell defaults to `--time=72:00:00`; an explicit `--time` always wins. Note: the header comment of `submit_with_rtx.sh` still calls `rtx_pro_6000` the default. The code (`GPU_TYPE="${GPU_TYPE:-rtx_6000}"`) is what runs, and it is what this skill documents.
+  - Historical: the cis-ollama path was retired 2026-04-27. The Ollama backend was retired 2026-05-18, code removed 2026-05-23 (including `run_condition_rtx.sbatch`). The `cis-ollama.*` hostname still exists and now serves vLLM. `gpt-oss:120b` is no longer in the active sweep; the large-model band is held by `qwen3.6:35b` (A3B MoE).
 - **Log file**: `cluster-experimenting/logs/pddl_rtx_<model>-<jobid>.out`. Legacy formats from earlier sweeps: `pddl_<model>_<think>-<jobid>.out` (cis path, retired) and `pddl_<model>_<cond>-<jobid>.out` (pre-2026-04-21).
-- **Results dir**: `results/slurm_vllm_<model>_<think>_<cond>/` (cell-keyed, no jobid suffix post 2026-05-01; `slurm_vllm_` prefix retained from the era when it disambiguated vLLM cells from parallel Ollama cells).
+- **Results dir**: `results/slurm_vllm_<model>_<think>_<cond>_<RUN_TAG>/` when the submit passes `--run-tag` (every run since 2026-05-26: `sweep5v2`, `sweep6`, `decoupled-thinkon`, `iss024d-e2e`, `ntster-h4`); bare `results/slurm_vllm_<model>_<think>_<cond>/` for older corpora. Cell-keyed, no jobid suffix. The `slurm_vllm_` prefix is kept from the era when it told vLLM cells apart from Ollama cells.
 - **vLLM server**: per-job unique port on the allocated compute node (Apptainer-served, no TLS), exported as `LLM_BASE_URL` by `run_condition_vllm_rtx.sbatch`.
 - **Routing rules** (from `CLAUDE.md`): MCP-tool bugs → `../pddl-copilot/plugins/<name>/server/`. Scoring/prompt/GT → here. This skill is read-only over experiment state.
 
@@ -30,6 +30,7 @@ Cluster & repo conventions that matter here:
 
 - **Destructive ops require explicit user consent**: `scancel -u omereliy` (kills all jobs), `rm` on logs or results. Confirm with the user before each.
 - **Never mutate** `run_experiment.py`, `run_condition_vllm_rtx.sbatch`, or `submit_with_rtx.sh` from this skill.
+- **Ask first**: get Omer's explicit go-ahead before any SSH / SLURM action (his connection is not always up). Local work needs no ping.
 - **Preflight before submit**: run `scripts/preflight.sh` first — it pulls both repos, refreshes the plugin venvs, and surfaces GPU pool capacity in one shot. Submitting with a stale venv or against a saturated pool wastes time.
 
 ## Operations scripts (under `scripts/`)
@@ -38,33 +39,41 @@ All paths are relative to the repo root `/Users/omereliyahu/personal/pddl-copilo
 
 ### `scripts/status.sh` — cluster status snapshot
 
-One SSH call (`squeue` + per-cell `wc -l trials.jsonl`, two greps per cell — full v11-16 active set and the v14-16 steered subset, so every dir is split into a neutral and steered logical column). Local Python diffs against `~/.cache/cluster-ops-status.json` (overridable via `STATE_FILE` env) and renders five sections, in this order:
+**Tracks runs by run tag.** Since 2026-05-27 the script only builds its matrix from result dirs whose name ends in `_<RUN_TAG>`. The default tag is `sweep6` (the anonymized contamination corpus). To look at the canonical corpus, run `RUN_TAG=sweep5v2 bash status.sh`. Dirs without the suffix are listed in an "archived" footer and never enter the matrix.
+
+One SSH call gathers `squeue` plus per-cell trial counts (computed cluster-side, returned as a small text blob; no result files are transferred, that is `sync.sh`). Local Python diffs against `~/.cache/cluster-ops-status-<RUN_TAG>.json` (one cache per run tag; override with the `STATE_FILE` env) and renders six sections, in this order:
 
 1. **Header** — `## Status — ~Xh since last check` (or `first run` when the cache file is absent).
-2. **What changed** — bullets for cells that flipped to ✓ this window and cells that newly started accumulating trials. Omitted if nothing changed.
-3. **Per-cell progress matrix** — 5 active models × **8 logical columns**: `think × {no-tools, tools_all} × {neutral v11-13, steered v14-16}`. The neutral/steered split is **explicit**: every column shows exactly one of the four arms, so H1 (`tl-neut` vs `nt-neut`) and H2 (`tl-ster` vs `tl-neut`) are directly readable. Column headers: `on/nt-neut`, `on/nt-ster`, `on/tl-neut`, `on/tl-ster`, then the same four for `off/`. Every logical column has a **uniform 4560-trial denominator** (3 variants × 1520 trials/variant). The `nt-ster` column is the only one that doesn't inherit queue/running attribution from its sibling sbatch — main and control submits share `cond=no-tools` jnames, so status can't tell them apart at the queue layer. Each cell shows `N/D (P%)` plus an icon: ✓ done · ▶ growing · ⏸ has trials but no growth · `PD↻` pending rerun (count > 0) · `PD` pending fresh · `_-_` empty/no match.
-4. **Δ since last status** — only cells whose count grew this window. Columns: `Cell | Prev → Now | Δ | pace (s/trial) | ETA`. Pace is window-averaged, so a cell that started mid-window will appear slower than reality.
-5. **Roll-up** — Done X/40 (5 models × 8 columns; `nt-ster` cells stay "empty" until the control submits) · Trial coverage % · Running N cells (job IDs) · Watch list (cells where `elapsed + ETA > 0.9 × --time` budget).
-6. **Queue** (compact) — Running job IDs, Pending grouped by REASON. See the REASON cheat-sheet below.
+2. **What changed** — cells that flipped to ✓ this window and cells that newly started accumulating trials. Omitted if nothing changed.
+3. **Per-cell progress matrix** — 5 active models × **6 logical columns**: `on/nt-neut`, `on/tl-neut`, `on/tl-ster`, then the same three for `off/`. `nt` = no-tools, `tl` = `tools_all_minimal`, `neut` = variants v11-13, `ster` = v14-16. Every column has the same **4560-trial denominator** (3 variants × 1520 trials). There is **no `nt-ster` column** in the default matrix: the sweep-6 plan does not run the no-tools steered arm. Each cell shows `N/D (P%)` plus an icon: ✓ done · ▶ growing · ⏸ has trials but no growth · `PD↻` pending rerun (count > 0) · `PD` pending fresh · `_-_` empty/no match · `n/a` absent by design.
+4. **Δ since last status** — only cells whose count grew this window. Columns: `Cell | Prev → Now | Δ | pace (s/trial) | ETA`. Pace is window-averaged, so a cell that started mid-window looks slower than it is.
+5. **Roll-up** — Done X/30 (5 models × 6 columns) · trial coverage % · running cells (job IDs) · watch list (cells where `elapsed + ETA > 0.9 × --time` budget).
+6. **Queue** (compact) — running job IDs, pending grouped by REASON. See the REASON cheat-sheet below.
 
-**Arm semantics** (which submit fills which column):
+**Which sbatch cell fills which column:**
 
-| Column      | Variants | Filled by                                         |
-|-------------|----------|---------------------------------------------------|
-| `nt-neut`   | v11-13   | sweep-5 main `submit_with_rtx.sh` no-tools cells  |
-| `nt-ster`   | v14-16   | sweep-5 control `--include-no-tools-steered` run  |
-| `tl-neut`   | v11-13   | sweep-5 main with-tools cells (same run as below) |
-| `tl-ster`   | v14-16   | sweep-5 main with-tools cells (emits both arms)   |
+| Column    | Variants | Filled by |
+|-----------|----------|-----------|
+| `nt-neut` | v11-13   | the no-tools cell |
+| `tl-neut` | v11-13   | the with-tools cell (same run as below) |
+| `tl-ster` | v14-16   | the with-tools cell (it emits both arms into one `trials.jsonl`; the split is a row-level filter on `prompt_variant`) |
 
-For sweep-4 or sweep-3 replay, override the variant regexes:
-```bash
-ACTIVE_VARIANTS_RE='[567]' STEERED_VARIANTS_RE='' bash status.sh   # sweep-4 (steered cols stay empty)
-ACTIVE_VARIANTS_RE='[012]' STEERED_VARIANTS_RE='' bash status.sh   # sweep-3
-```
+**Profiles** (each sets its own default run tag; an explicit `RUN_TAG=` env still wins):
 
-The cache file is local-only and pure scratch — `rm ~/.cache/cluster-ops-status.json` to reset (next run will be a "first run" with no Δ). After the 2026-05-23 column-split, the first run against an older cache will treat every cell as freshly-started — expected.
+| Flag | Default run tag | Board |
+|------|-----------------|-------|
+| (none) | `sweep6` | 5 models × 6 columns, Done X/30 |
+| `--decoupled` | `decoupled-thinkon` | split-budget no-tools think=on sweep: 4 Qwens (gemma excluded, it has no `<think>`) × one column (`on/nt-neut`). 48 h wall for every cell. Record: `development/archive/decoupled/decoupled_run_handoff.md` |
+| `--iss024d` | `iss024d-e2e` | ISS-024(d) with-tools resolver: 5 models × one column (`on/tl-neut`). The run wrote the full v11-16 bank; the board tracks the neutral half only. 72 h wall. Record: `development/reference/tool_call_vs_final_output_grading.md` |
+| `--ntster` | `ntster-h4` | nt-ster H4 control: 3 models (`Qwen3.5:9B`, `gemma4:26b-a4b`, `qwen3.6:35b`) × `off/nt-neut`, `off/nt-ster`, `on/nt-neut`, `on/nt-ster`. **The only profile with an `nt-ster` column**, because it is the only run that passed `--include-no-tools-steered`. gemma has no think=on leg by design, so that slot shows `n/a` and is left out of the roll-up. Walls: off 5 days, on 7 days. Record: `development/reference/ntster_h4_prereg.md` |
 
-Pending array tasks whose per-cell name hasn't materialised yet (still showing the parent template like `pddl_rtx_qwen3_6_35b`) are matched to all main-arm cells of that model via the manifest — so `PD` icons appear before the array fans out.
+All four of those runs are finished; the profiles stay so a closed run can still be inspected.
+
+The variant filters can be overridden with the `ACTIVE_VARIANTS_RE` (default `1[1-6]`) and `STEERED_VARIANTS_RE` (default `1[4-6]`) env vars.
+
+The cache file is local-only scratch. `rm ~/.cache/cluster-ops-status-<RUN_TAG>.json` resets it (the next run is a "first run" with no Δ table).
+
+Pending array tasks whose per-cell name hasn't materialised yet (still showing the parent template like `pddl_rtx_qwen3_6_35b`) are matched to that model's cells via the submit manifest, so `PD` icons appear before the array fans out.
 
 **Output mode** auto-selects from stdout TTY-detect: ANSI-coloured aligned text in a real terminal, GitHub-flavoured markdown when piped or run via the Bash tool. Override with flags:
 
@@ -73,15 +82,16 @@ bash .claude/skills/cluster-ops/scripts/status.sh                 # auto (termin
 bash .claude/skills/cluster-ops/scripts/status.sh --md            # force markdown (paste into chat)
 bash .claude/skills/cluster-ops/scripts/status.sh --terminal      # force pretty (e.g. `… | less -R`)
 bash .claude/skills/cluster-ops/scripts/status.sh --no-color      # strip ANSI from terminal mode
+RUN_TAG=sweep5v2 bash .claude/skills/cluster-ops/scripts/status.sh   # canonical corpus instead of sweep6
+bash .claude/skills/cluster-ops/scripts/status.sh --ntster           # one of the profiles above
 bash .claude/skills/cluster-ops/scripts/status.sh --bench planbench  # PlanBench arm (model × task × config)
-bash .claude/skills/cluster-ops/scripts/status.sh --decoupled        # split-budget no-tools think=on sweep (4 Qwens × on/nt-neut)
 ```
 
 The two modes share data computation; they differ only in rendering, so the metrics, Δ window, and watch-list logic are identical.
 
-**`--decoupled` profile** tracks the in-flight split-budget no-tools think=on sweep (`development/archive/decoupled/decoupled_run_handoff.md`, job 18426027). It defaults `RUN_TAG=decoupled-thinkon` and trims the board to the live grid: the 4 Qwens (gemma excluded — no `<think>`) × one logical column (`on / nt-neut`), each at denom 4560. An explicit `RUN_TAG=` env still overrides the default. The remote side only JSON-parses the dirs whose name ends in `_<RUN_TAG>` (≈4 for the decoupled run) instead of every `slurm_*/` accumulator — so `status.sh` does **no** result transfer (that's `sync.sh`) and the per-cell counts are computed cluster-side and returned as a tiny text blob.
-
 **`--bench planbench`** delegates to `scripts/status_planbench.sh`, which renders a model × config matrix counting completed `task_*.json` files per cell (10 tasks expected per cell). Minimal v1: no Δ-table, no pace/ETA. Reads `results/planbench/slurm_<model>_<jobid>/` on the cluster. The native 5-task renderer is unchanged when `--bench 5task` (default) is used or no flag is passed.
+
+If percentages look stuck, check for a tool-call parser mismatch in `vllm_lookup()` (`cluster-experimenting/lib/defaults.sh`) before suspecting a dead job.
 
 ### `scripts/job.sh` — single-job inspection
 
@@ -109,9 +119,11 @@ Caveats: neither rank nor SLURM's earliest-slot estimate is a real ETA. Rank cou
 `rsync -av --update` from the cluster's `results/slurm_*` AND `results/smoke/probe_*` into a local subdir under `results/`. Two rsync calls — sweep cells (must succeed) and probe outputs (`|| true` since they're often empty on a fresh cluster).
 
 ```bash
-bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/sweep5-cluster-YYYYMMDD/
+bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/sweep5-cluster-YYYYMMDD/ (the script's default name; a fresh dated mirror)
 bash .claude/skills/cluster-ops/scripts/sync.sh results/my-custom-run    # → explicit dir
 ```
+
+**A dated sync dir is a working mirror, never the corpus paper numbers are checked against.** Paper numbers are verified only against `results/sweep5v2-live` plus the `*_sweep6` cells; `results/sweep5-cluster-20260530` in particular is a stale partial mirror.
 
 Reports per-class dir-count delta (sweep cells / probe outputs) so you can tell whether the probe added anything. Never deletes anything. To clear cancelled-job `.out` files on the remote side, tell the user explicitly what IDs you intend to delete and wait for confirmation before `ssh … rm`.
 
@@ -121,7 +133,7 @@ Run this before every `submit_with_rtx.sh`. Does, in one SSH call:
 
 1. `git pull` both repos (this one + `../pddl-copilot`).
 2. `pip install --upgrade -r requirements.txt` in each plugin's `.venv` — `setup_env.sh` deliberately skips existing venvs, so a pinned dependency bump in `../pddl-copilot/plugins/<plugin>/requirements.txt` is silently stale until something explicitly upgrades.
-3. **GPU pool capacity** — `sinfo -p rtx6000 -t idle,mix` and same for `rtx_pro_6000`. The free-node count tells you whether `submit_with_rtx.sh` will queue immediately or sit in `PENDING(Resources)`. If `rtx_pro_6000` is 0/6 and you can't wait, `--gpu-type rtx_6000` is the opt-in escape hatch.
+3. **GPU pool capacity** — `sinfo -p rtx6000 -t idle,mix` and same for `rtx_pro_6000`. The free-node count tells you whether `submit_with_rtx.sh` will queue immediately or sit in `PENDING(Resources)`. The default class is `rtx_6000`; if that pool is full and you can't wait, `--gpu-type rtx_pro_6000` is the opt-in escape hatch.
 4. **`sres` snapshot** (Mar-26 guide §"Resources Usage") — one-glance cluster utilization view. `sres`'s "6000" column conflates `rtx_6000` and `rtx_pro_6000`, so trust step 3 for routing decisions.
 
 ```bash
@@ -134,16 +146,16 @@ Per-array-task `scontrol update Nice=N` driven by the manifest written at submit
 
 Direction is one-way: negative Nice (raise priority above default) is admin-only on this cluster — verified by probe 2026-05-08 (`nice=100` accepted, `nice=-1000` denied). The only lever is *deprioritizing the rest*.
 
-`submit_with_rtx.sh` already auto-applies this on a fresh `--all` submission (deprioritizes everything outside `PDDL_SLOW_MODELS`={gemma4:31b, qwen3.6:35b}). The skill script is the manual lever for: (a) `--continue-partial` / single-model resubmits where the auto-gate intentionally doesn't fire, and (b) mid-sweep when you want one specific high-progress cell to finish next so partial results are ready for analyst handoff.
+`submit_with_rtx.sh` already auto-applies this on a fresh `--all` submission (deprioritizes everything outside `PDDL_SLOW_MODELS`={gemma4:26b-a4b, qwen3.6:35b}, defined in `cluster-experimenting/lib/defaults.sh`). The skill script is the manual lever for: (a) `--continue-partial` / single-model resubmits where the auto-gate intentionally doesn't fire, and (b) mid-sweep when you want one specific high-progress cell to finish next so partial results are ready for analyst handoff.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid>                       # default slow set
-bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> gemma4:31b            # only gemma at Nice=0
+bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> gemma4:26b-a4b        # only gemma at Nice=0
 bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> --reset               # all cells back to Nice=0
-bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> --dry-run gemma4:31b  # show plan without applying
+bash .claude/skills/cluster-ops/scripts/prioritize.sh <jobid> --dry-run gemma4:26b-a4b  # show plan without applying
 ```
 
-Idempotent — safe to re-run with a different keep-list. If the manifest is missing (job submitted before the prioritize feature landed), the script exits 2 and tells you so; in that case fall back to manual `scontrol update JobId=<master>_<idx> Nice=500` per `cluster-experimenting/README.md:280-287`.
+Idempotent — safe to re-run with a different keep-list. If the manifest is missing (job submitted before the prioritize feature landed), the script exits 2 and tells you so; in that case fall back to manual `scontrol update JobId=<master>_<idx> Nice=500` per `cluster-experimenting/README.md`, section "Throttle a running array post-submission".
 
 If you want progress-aware ordering (rank pending cells by current `trials.jsonl` count and apply a Nice ladder so the closest-to-done cell wins ties), do it manually for now: pull progress with `status.sh`, then `scontrol update JobId=<master>_<idx> Nice=N` per task with N rising as progress falls (e.g. 0 / 100 / 200 / … / 700 — Nice values up to 700 are accepted unprivileged). Codifying it into the script is on the table when there's a second concrete need.
 
@@ -151,7 +163,7 @@ If you want progress-aware ordering (rank pending cells by current `trials.jsonl
 
 Closes the loop on the Mar-26 guide's "use minimum possible RAM" rule (§Allocating Resources). Pulls `sacct` for completed `pddl_*` jobs, merges parent + `.batch` step rows so MaxRSS lands in the same row as State/Elapsed/ExitCode, then computes a memory-headroom recommendation across the window.
 
-Use it after a sweep finishes to: spot OOMs (`Comment` = `OOM-Kill`), find jobs that approached `--time` (Elapsed close to 3-00:00:00), and right-size `--mem` for the next sweep without manual `sacct` per job.
+Use it after a sweep finishes to: spot OOMs (`Comment` = `OOM-Kill`), find jobs that approached their `--time` budget, and right-size `--mem` for the next sweep without manual `sacct` per job.
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/postmortem.sh                          # last 7 days, all pddl_* jobs
@@ -173,7 +185,7 @@ bash .claude/skills/cluster-ops/scripts/postmortem.sh --jobs 17130166,17130167 #
 
 This recipe spans both skills — sync + sacct here, aggregate + plot + table in `analyzer`.
 
-1. `bash .claude/skills/cluster-ops/scripts/sync.sh` — rsync into `results/cluster-<today>/`.
+1. `bash .claude/skills/cluster-ops/scripts/sync.sh` — rsync into `results/sweep5-cluster-<today>/` (or pass an explicit subdir).
 2. Hand off to the `analyzer` skill's "Sync, aggregate, plot, table" recipe for steps 3–5 (`aggregate.py`, `plot.py`, `table.py` against the synced dir).
 3. `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct table + memory-headroom recommendation. Surface any OOM rows or jobs that approached `--time` to the user.
 4. Report to user with the plot paths (from analyzer) and 3–5 key numbers.
@@ -188,8 +200,9 @@ After a sweep is submitted, periodically verify it's not regressing vs a baselin
 
 ### "Submit the sweep"
 
-Sweep-5 (active 2026-05-23): the production submit is `submit_full_sweep.sh` (3 sbatch arrays — small Qwens / 35B / gemma4 — total 20 cells, 5 models × 4 think×cond cells). Per-cell trial denominator is asymmetric: no-tools = 4560 (v11-13), tools_all_minimal = 9120 (v11-16 — with-tools cells emit both neutral and steered variants in one run).
+No sweep is in flight or owed as of 2026-09-18 (`development/STATUS.md`). When one is needed, the production submit is `submit_full_sweep.sh`: three `submit_with_rtx.sh` calls (small Qwens at `--time 12:00:00`, `qwen3.6:35b` and `gemma4:26b-a4b` at `48:00:00`), 20 cells in total (5 models × 4 think×cond cells). Per-cell trial count is asymmetric: no-tools = 4560 (v11-13), `tools_all_minimal` = 9120 (v11-16, the with-tools cell emits both the neutral and the steered variants in one run). Pass `--run-tag <tag>` so the dirs get a suffix `status.sh` can track.
 
+0. Get Omer's go-ahead (see Safety), and check for existing runs before recommending a rerun.
 1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes plugin venvs, surfaces GPU pool capacity for `rtx6000` and `rtx_pro_6000`. Halts on any failure.
 2. Dry-run, then submit. `submit_full_sweep.sh` dispatches the production pack:
    ```bash
@@ -198,13 +211,13 @@ Sweep-5 (active 2026-05-23): the production submit is `submit_full_sweep.sh` (3 
    ```
    For single-model pilots, fall back to `submit_with_rtx.sh <model>`.
 3. If approved, same command without `--dry-run`.
-4. **Sweep-5 control arm** (separate submit after main completes): the 4th arm `(no-tools × v14-16)` runs via `run_experiment.py --include-no-tools-steered`. Trials land in the SAME `slurm_vllm_<model>_<think>_no-tools/` dirs as the main no-tools cells; the analyzer separates them at row-level by `prompt_variant`. `status.sh`'s `nt-ctrl` column tracks the control fill rate (0% until that submit lands).
+4. **No-tools steered control arm** `(no-tools × v14-16)`: only a submit that passes `--include-no-tools-steered` writes it. The one run that did is the nt-ster H4 control (run tag `ntster-h4`, finished 2026-08-29); both arms land in one 9,120-row cell file and are split by `prompt_variant`. `status.sh --ntster` is the only board with an `nt-ster` column.
 
-**`--no-tools` shorthand**: for the baseline-only run, `bash submit_with_rtx.sh --all --no-tools` pins `CONDITIONS=no-tools` and `THINK_MODES={on,off}`, with `--time=05:00:00` per cell.
+**`--no-tools` shorthand**: for the baseline-only run, `bash submit_with_rtx.sh --all --no-tools` pins `CONDITIONS=no-tools` and `THINK_MODES={on,off}`, with `--time=12:00:00` per cell.
 
 **GPU class**: default `rtx_6000:1` (48 GB, `--mem=48G`). `--gpu-type rtx_pro_6000` is the opt-in 96 GB escape hatch (use only if `rtx_6000` is saturated). Think modes auto-select to `on off` (both run sequentially in one cell so weights stay resident); override with `--think-modes "default"` for a model that lacks the think kwarg.
 
-**VRAM safety**: the sbatch pins `gpu-memory-utilization=0.85`, `max-num-seqs=4`, `max-model-len=16384`. After warmup, a runtime guard aborts the offending model if VRAM usage > 85% (loop continues with the next model). Never raise `max-num-seqs` without re-measuring KV-cache allocation.
+**VRAM safety**: the sbatch serves with `--gpu-memory-utilization 0.85` (env `GPU_MEM_UTIL`), `--max-model-len 16384` and `--enable-prefix-caching`. It does **not** pass `--max-num-seqs`, so vLLM's own default applies. After the model loads, a guard aborts the cell if VRAM usage is above 85%. Hold the context at 16K: the 32K smoke fit in VRAM but raised format-parse failures.
 
 ### "Submit a one-off probe / smoke sbatch"
 
@@ -219,7 +232,7 @@ For sbatches that aren't sweep cells — vLLM probes, concurrency-saturation tes
    ```
    Capture the printed `Submitted batch job <jobid>`. The `GPU Parameter Set ! Using GPU Partition` line under it is informational, not an error.
 3. Inspect with `bash .claude/skills/cluster-ops/scripts/job.sh <jobid>` — pending state shows queue position + estimated start; running state shows live log tail.
-4. When the probe completes, `bash .claude/skills/cluster-ops/scripts/sync.sh` already pulls `results/smoke/probe_*` alongside sweep cells, so the data lands under `results/sweep5-cluster-<today>/probe_*/`.
+4. When the probe completes, `bash .claude/skills/cluster-ops/scripts/sync.sh` already pulls `results/smoke/probe_*` alongside sweep cells, so the data lands under `results/sweep5-cluster-<today>/probe_*/` (the script's default dir name).
 
 This path explicitly bypasses `submit_with_rtx.sh` (no CELLS_LIST manifest, no auto-prioritize, no `pddl_*` job-name) — fine because the recipe is for one-off experiments, not sweep cells. Don't use it for sweep work.
 
@@ -265,17 +278,17 @@ When `status.sh`'s Pending table shows a non-trivial REASON, here's what to do:
 
 | REASON | What it means | Action |
 |---|---|---|
-| `Resources` | The requested partition pool is full. | Wait, or fall back to `--gpu-type rtx_6000` if `rtx_pro_6000` is saturated and the model set fits 48 GB. |
+| `Resources` | The requested partition pool is full. | Wait. If the default `rtx_6000` pool is saturated, `--gpu-type rtx_pro_6000` is the opt-in alternative. |
 | `Priority` | Preempted by a Golden-Ticket QoS job (Mar-26 guide §"High Priority Jobs"). | Wait — usually clears in minutes. |
 | `QOSMaxJobsPerUserLimit` | Per-user concurrent-job cap reached. | Wait for one of your other jobs to finish, or scancel a low-priority one. |
 | `MaxGRESPerAccount` | Per-account GPU cap (relevant for high-priority QoS). | Wait. Not applicable on plain `--partition main`. |
-| `PartitionTimeLimit` | `--time` exceeds partition's max (`main` ≤ 7 days). | Edit the `#SBATCH --time` line in the sbatch and resubmit. |
+| `PartitionTimeLimit` | `--time` exceeds partition's max (`main` ≤ 7 days). | Resubmit with a smaller `--time` passed to `submit_with_rtx.sh`. A running job's limit cannot be raised by a normal user. |
 
 ### "Debug a FAIL (exception) cluster"
 
 Real MCP/chat failure, often FD-stdout pollution on tool use (`ISS-016`, fixed 2026-04-21 in `pddl-copilot` as `bb23ad0`).
 
-The stderr lines added in commit `cea5ae0` (`run_experiment.py:951–971`) print the exception type + message live in the `.out`. For older jobs, the message only exists in `single_task_*.json`.
+The harness prints `[exception] <Type>: <message>` (and `[infra-skip] …`, `[scoring exception] …`) to stderr live, so they show up in the `.out` (`pddl_eval/runner.py`, the trial-error handler). The same text is stored per trial in `trials.jsonl`.
 
 ## Things this skill does NOT do
 

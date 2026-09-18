@@ -5,7 +5,7 @@ argument-hint: [description of what to review]
 paths: run_experiment.py, pddl_eval/**, cluster-experimenting/**
 ---
 
-Review the current work for unnecessary complexity, methodology drift, and result compatibility issues. The bundled `/code-review` (formerly `/simplify`) handles general correctness; this skill adds experiment-specific concerns it cannot know.
+Review the current work for unnecessary complexity, methodology drift, and result compatibility issues. The built-in review skills cover general correctness and code quality; this skill adds the experiment-specific concerns they cannot know.
 
 $ARGUMENTS
 
@@ -39,7 +39,7 @@ The harness is a research evaluation framework (`run_experiment.py` + the `pddl_
 When reviewing a plan or diff:
 1. **Simplest solution?** Is the new code the minimum needed? If a new file is proposed, would the logic fit in `run_experiment.py` or an existing module?
 2. **Result compat.** Will existing JSON files in `results/` still load and parse? `TaskResult` fields and `save_results()` output shape are load-bearing.
-3. **Methodology integrity.** Do success criteria still match EXPERIMENTS_FLOW.md §4.1-§4.3? Is `generate_ground_truth()` called before model evaluation? Are temperature, seed, num_variants defaults preserved? Do output JSON fields still match §9?
+3. **Methodology integrity.** Do success criteria still match EXPERIMENTS_FLOW.md §4.1-§4.2? Is `generate_ground_truth()` called before model evaluation? Are temperature, seed, num_variants defaults preserved? Do output JSON fields still match §9?
 4. **MCP contract.** Do tool calls still match §8, including the bridge stripping `verbose` from validator tool `inputSchema` and injecting `verbose=False`?
 5. **Helper duplication.** Search `Grep` for existing helpers before approving new ones.
 6. **Prompt/system surface.** Flag any change to `PROMPT_TEMPLATES`, `WITH_TOOLS_SYSTEM`, `WITHOUT_TOOLS_SYSTEM`.
