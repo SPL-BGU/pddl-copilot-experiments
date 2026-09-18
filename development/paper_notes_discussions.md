@@ -2227,3 +2227,55 @@ validated by an independent ranking subagent (the user asked for a second perspe
   Read every older "on `paper/aaai27`" in these notes as history; new paper work goes on
   a short branch off `main` and merges by PR.
 
+
+## 2026-09-18 — Documentation cleanup: what it decided, and the June review items carried forward
+
+- **Omer approved the whole plan with "ok all" (09-18).** Plan:
+  `archive/plans-executed/doc_cleanup_plan.md`
+  (seven decisions Q1–Q7, tables A–J). This pass changes wording and file location only.
+  **No number changed.**
+- **Moves (PR "moves only", #104).** 13 closed docs left the `development/` root for
+  `reference/` or `archive/`; `paper/HANDOFF.md`, `paper/GOALS.md` and
+  `paper/REVIEW_AND_REWRITES.md` went to `archive/paper-june/`; the June review folder
+  `paper/automated-platforms-review/` follows in the rewrites PR. Old → new paths:
+  `MOVES.md` "Third wave". Paths inside hash-pinned scripts were deliberately not repaired
+  (all eight budget-probe hashes re-checked after the move and still match).
+- **`CLAUDE.md` corrected (plan Q3).** It said the chain-phase function bodies were
+  preserved in `pddl_eval/`. They were deleted on 2026-05-25 (`CHANGELOG.md`, HARNESS-01).
+  The venue wording is now "the journal paper (JAIR target, TMLR fallback)".
+- **Open items that lived only in the June review files, now tracked (plan Q4).** The
+  audit checked every action item of the iter-1 and iter-2 plans against the tex and
+  these notes. All but the five below are closed or superseded.
+  1. **GLMM refit with a standard (non-variational) estimator: TRACKED, `STATUS.md` N3.**
+     `main.tex` line 564 still quotes the variational output (log-odds +7.5, posterior SD
+     0.10). Local, $0. iter-1 asked for the refit "before camera-ready".
+  2. **Curated code and data release at publication: TRACKED, `STATUS.md` N3.** The tex
+     reproducibility checklist promises it (`main.tex` lines 2293 and 2326).
+  3. **Clean cluster BF16-35B precision control (iter-2 DECISION F): NOT PLANNED.** On
+     06-20 it was "run if time", left pending, never run and never dropped. The tex uses
+     the within-model `P(call)×P(correct|call)` reframe, which was always the fallback.
+     Listed under `STATUS.md` N4 (optional) so it is not mistaken for owed work.
+  4. **Schema-salience probe (iter-2 ask 6): NOT PLANNED.** Approved 06-20 as the first
+     compute item, never built (no `--schema-variant` flag exists). Listed under N4.
+  5. **Writing leftovers, listed once as candidates under N3's consistency read:** a
+     structural-contamination clause, a steering-phrasing Future Work sentence, a
+     temperature Future Work sentence, the classical-vs-numeric cost split, a symbol-map
+     appendix. None is in the tex and none was explicitly dropped. No prose gets written
+     unprompted.
+- **The iter-1 decisions of 2026-06-18, recorded here because until now they existed only
+  in `iter1_action_plan.md` §5:**
+  - Q1, cap-raised `think=on` rerun: **do not rerun.** A larger context was already
+    piloted (the 32K smoke) and raised format-parse failures, so the Limitations text
+    defends the choice instead. (The 06-20 entry above later narrowed this: that pilot
+    never separated reasoning and answer budgets, which is what the decoupled-budget run
+    then did.)
+  - Q2, mixed-effects inference: **keep the post-hoc √2.7 design effect as primary, plus
+    one confirmatory GLMM** on the Gemma `validate_plan` plain-vs-steered contrast. The
+    non-variational refit of that GLMM is item 1 above.
+  - Q3, BF16-35B with-tools control: **sweep7 discarded entirely**; no BF16 number enters
+    the paper.
+- **Note for anyone opening the archived review folder:** the three iter-1 review PDFs
+  have been 0-byte files since they were committed. `iter1_review_synthesis.md` is the
+  only record of those reviews.
+- **Bottom line:** root = live is true again; `STATUS.md` N3/N4 now carry everything the
+  June files still held open; nothing in `archive/paper-june/` is an instruction.

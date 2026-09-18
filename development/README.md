@@ -24,9 +24,8 @@ Three files answer almost every question:
 | `STATUS.md` · `NUMBERS.md` · `MOVES.md` | the three above |
 | `review_round_handoff.md` | operational pickup for the review round and pre-submission work (2026-09-18): the single-line branch model, the step sequence, the doc-cleanup brief. Never overrides `STATUS.md` |
 | `advisor_brief.md` | one page for the advisors and coauthors: the six `STATUS.md` N2 questions with recommendations and open `> ANSWER:` slots |
-| `doc_cleanup_plan.md` | the documentation-cleanup plan, approved 09-18 ("ok all"). Moves to `archive/plans-executed/` with the last cleanup PR |
 | `journal_decisions_memo.md` | the accepted journal-pivot spec; §5 and §10 feed the advisor round. Moves to `reference/` once the venue is ratified. ⚠️ still says "227k trials" in 3 places — the figure is **273,600**, see `NUMBERS.md` |
-| `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head (13 open / 8 closed) |
+| `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head (5 open / 3 no work owed / 13 closed, re-verified 2026-09-18) |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
 
 ## `reference/` — stable, code-pinned, never a status
@@ -63,9 +62,9 @@ Grouped by line. Nothing here is a status source; several files carry numbers th
 | `frontier/` | `frontier_budget_probe_handoff.md` (CLOSED 09-12), `frontier_rerun_handoff.md` and the pre-rerun frontier line (phase plan, ladder, probe findings) |
 | `decoupled/` | the whole iter-2 line (✅ complete 2026-07-11), incl. its two analysis scripts |
 | `status-snapshots/` | the four dated status docs `STATUS.md` replaced (`next_steps` 07-12 → `roadmap` 07-15 → `journal_phase0` 07-24 → this) + `journal_narrative_proposal.md` |
-| `plans-executed/` | `dev_docs_refactor_plan.md` (the 08-29 layout rationale, ran as PR #95), `decoupled_budget_plan.md` (#88), `q1_grader_plan.md` (#87), `simulate_normalizer_fix_plan.md`, `FRAMEWORK_EXTENSION_PLAN.md` (restored from git — holds the PR-3 domain-substitution rationale `EXPERIMENTS_FLOW.md` cites) |
+| `plans-executed/` | `doc_cleanup_plan.md` (the 09-18 documentation cleanup, approved "ok all", ran as PRs #103–#105), `dev_docs_refactor_plan.md` (the 08-29 layout rationale, ran as PR #95), `decoupled_budget_plan.md` (#88), `q1_grader_plan.md` (#87), `simulate_normalizer_fix_plan.md`, `FRAMEWORK_EXTENSION_PLAN.md` (restored from git — holds the PR-3 domain-substitution rationale `EXPERIMENTS_FLOW.md` cites) |
 | `cost-breakdowns/` | the cost line, parked on the advisor verdict; figures superseded |
-| `paper-june/` | `HANDOFF.md`, `GOALS.md`, `REVIEW_AND_REWRITES.md` that used to sit beside `main.tex`. June-era: dead branches, stale-mirror numbers, a command that would overwrite the manuscript. **Never follow them** |
+| `paper-june/` | `HANDOFF.md`, `GOALS.md`, `REVIEW_AND_REWRITES.md` and the `automated-platforms-review/` folder (iter-1 and iter-2 review triage) that used to sit beside `main.tex`. June-era: dead branches, stale-mirror numbers, a command that would overwrite the manuscript. **Never follow them** |
 | `ntster/` | the nt-ster H4 run line — the 08-22 partial readout (superseded by the final readout) and the spent submit-window decisions |
 
 ## House rules

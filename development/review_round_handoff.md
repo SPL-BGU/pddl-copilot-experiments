@@ -77,9 +77,10 @@ extension (run or leave excluded). Branch `docs/advisor-brief`, with this handof
 row for each file in `development/README.md`.
 
 **Step 2 — Documentation cleanup (agent; plan first, Omer approves, then execute).**
-The plan is written: `development/doc_cleanup_plan.md` (same PR #103), waiting for Omer's
-`> ANSWER:` lines. **Nothing moves before those are filled in.** This is the next agent
-step. Full brief in the section "Step 2 in detail" below. Do it right after the brief, while
+The plan is written and approved (`development/archive/plans-executed/doc_cleanup_plan.md`, "ok all" on 09-18).
+Executed the same day as two stacked PRs: #104 "moves only", then "rewrites" (branch
+`docs/cleanup-rewrites`). Omer merges #103, #104, then the rewrites PR, in that order.
+If all three are merged, this step is closed. Full brief in the section "Step 2 in detail" below. Do it right after the brief, while
 the manuscript is out with the advisors: every later session reads these docs first.
 
 **Step 3 — Omer, any time: answer R7 and R8 in `STATUS.md`** (the two empty slots).
@@ -152,7 +153,7 @@ on 09-18 (PR "moves only"); `MOVES.md` "Third wave" gives the new path of each f
 
 **How to deliver it (the plan, then two PRs, smallest first, so each diff is easy to review):**
 
-1. `development/doc_cleanup_plan.md` — **written 09-18, rides in PR #103 with the brief
+1. `doc_cleanup_plan.md` (now in `development/archive/plans-executed/`) — **written 09-18, rides in PR #103 with the brief
    (no PR of its own).** One table, a row per file: verdict (keep / move
    to `reference/` / move to `archive/` / rewrite section / cut) · one-line reason ·
    `> ANSWER:` slot. Omer approves in the file. Nothing moves before that.

@@ -124,7 +124,7 @@ integration it specifies is still open.
 
 ## Third wave — documentation cleanup, 2026-09-18
 
-Plan and Omer's approval ("ok all"): `doc_cleanup_plan.md`. By 09-18 every line of work
+Plan and Omer's approval ("ok all"): `archive/plans-executed/doc_cleanup_plan.md`. By 09-18 every line of work
 below had closed, so root no longer meant *live* for these files. All moves are
 `git mv`; no body text was changed. This supersedes the sentence above that says the
 nt-ster final readout "stays at the root": its paper integration closed on 09-13.
@@ -144,9 +144,11 @@ nt-ster final readout "stays at the root": its paper integration closed on 09-13
 | `development/planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` | `development/archive/planbench/PLANBENCH_WT_FINAL_PHASE_HANDOFF.md` |
 | `development/planbench/planbench_wt_paper_integration_plan.md` | `development/archive/planbench/planbench_wt_paper_integration_plan.md` |
 | `development/dev_docs_refactor_plan.md` | `development/archive/plans-executed/dev_docs_refactor_plan.md` |
+| `development/doc_cleanup_plan.md` | `development/archive/plans-executed/doc_cleanup_plan.md` (moved with the last cleanup PR, once executed) |
 | `paper/HANDOFF.md` | `development/archive/paper-june/HANDOFF.md` |
 | `paper/GOALS.md` | `development/archive/paper-june/GOALS.md` |
 | `paper/REVIEW_AND_REWRITES.md` | `development/archive/paper-june/REVIEW_AND_REWRITES.md` |
+| `paper/automated-platforms-review/` (iter1 + iter2, moved as one directory so the relative links inside it survive) | `development/archive/paper-june/automated-platforms-review/` — moved in the rewrites PR, after its open items were carried into `STATUS.md` N3/N4 and `paper_notes_discussions.md` 2026-09-18. The three iter-1 review PDFs have been 0-byte files since they were committed; `iter1_review_synthesis.md` is the only record of those reviews |
 
 `development/planbench/` is now empty and gone. The three `paper-june/` files are
 June-era records: they name dead branches, quote numbers from the stale corpus mirror,
