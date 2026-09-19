@@ -1,5 +1,6 @@
 %% AAAI-27 anonymous submission: single-tool-use evaluation paper.
-%% SCAFFOLD ONLY: sections are empty (TODO pointers, no prose). See GOALS.md for scope.
+%% Full draft, no longer a scaffold. Status lives in development/STATUS.md (monorepo);
+%% the June scope note is archived at development/archive/paper-june/GOALS.md.
 %% Full formatting rules: authorkit27/AnonymousSubmission2027.pdf
 %% Preamble below is the AAAI-27 kit preamble verbatim. DO NOT CHANGE the marked lines.
 
@@ -34,6 +35,8 @@
 
 % Recommended for better-looking tables.
 \usepackage{booktabs}
+% array for ragged-right p{} columns in the scorecard table.
+\usepackage{array}
 
 % amsmath for \text in the P(call) x P(correct|call) decomposition notation.
 \usepackage{amsmath}
@@ -635,7 +638,7 @@ cross-mode analysis controls for.
 \section{Results}
 % Delivered-surface reframe (D-J2, 2026-09-07). Open-roster delivered numbers come
 % from results/derived/e2e_overlay/pooled_e2e_table.csv; verdicts from
-% development/job2_delivered_reframe_worknote.md. Mechanism-layer (tool-verified)
+% development/reference/job2_delivered_reframe_worknote.md. Mechanism-layer (tool-verified)
 % numbers keep the locked deck values (checkpoints/rq-sweep5v2/).
 Unless stated otherwise, every figure is \emph{think}~=~off (the unconfounded
 read) on the three $\geq$9B models, with reasoning mode treated separately in the
@@ -752,7 +755,9 @@ still \emph{answers} correctly, so the two layers genuinely disagree.
 \begin{table*}[t]
 \centering
 \footnotesize
-\begin{tabular}{@{}ll p{0.60\textwidth}@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.16\textwidth}
+                >{\raggedright\arraybackslash}p{0.14\textwidth}
+                p{0.63\textwidth}@{}}
 \toprule
 \textbf{RQ / task} & \textbf{verdict} & \textbf{evidence ($\geq$9B, \emph{think}=off)} \\
 \midrule
