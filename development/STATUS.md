@@ -1,8 +1,8 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-09-18 (documentation cleanup: closed work compressed into
-one table, answered decisions into one list; nothing about the work itself changed.
-Earlier refreshes are in git history). Renamed from `remaining_work_20260811.md` on
+*Content last refreshed: 2026-09-19 (R7 and R8 answered; first N3 items closed by PR #107;
+consistency read delivered; the weakness review added as the next piece of work. Earlier
+refreshes are in git history). Renamed from `remaining_work_20260811.md` on
 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
@@ -14,9 +14,10 @@ Earlier refreshes are in git history). Renamed from `remaining_work_20260811.md`
 
 **No experiment is owed and no writing job is open.** Both lines of evidence (PlanBench
 and the single-tool suite) and the nt-ster H4 steering control are run, analysed, in the
-tex and in Overleaf. The tex has no `\todo`, compiles at 25 pages with 0 undefined refs,
-and carries title D and the two-gate abstract. What is left: send the manuscript and the
-brief to the coauthors and advisors (N2), then the pre-submission mechanics for JAIR (N3).
+tex and in Overleaf. The tex has no `\todo`, compiles at 25 pages with 0 undefined refs
+and 0 overfull boxes, and carries title D and the two-gate abstract. What is left: a
+critical review of the paper's biggest weakness (N1b, next), the pre-submission
+mechanics (N3), and the coauthor and advisor round (N2), which Omer schedules himself.
 
 ## State by line
 
@@ -71,19 +72,31 @@ checkout, **pull before push**. Details: `review_round_handoff.md`,
 - **R4** Job 4 small items: yes, run alongside Job 1 (`paper_notes` 08-11; done 08-20).
 - **R5** abstract under N1: apply D-J6 with a new abstract, two gates, findings first, four numbers, PlanBench in, at most 200 words, Shape A (`paper_notes` 09-15/18).
 - **R6** go-ahead for the tex edits: go, once R5 is answered (`paper_notes` 09-15/18).
+- **R7** send the manuscript and the brief: **hold** (Omer 09-19). Work proceeds; the advisors are consulted later and Omer says when a meeting happened. Never give "wait for the advisors" as a reason to hold a task (`paper_notes` 09-19).
+- **R8** Llama-3.1-8B probe: **hold** (Omer 09-19). Not a major addition; the weakness review (N1b) comes before any further experiment (`paper_notes` 09-19).
 
 ---
 
 ## Next steps
 
-Order: N2 → N3. N4 is optional. N5 is minutes.
+Order: N1b → N3. N2 happens when Omer schedules it. N4 is optional and on hold (R8). N5
+is minutes.
+
+### N1b — Weakness review (agent + Omer; next)
+
+Omer, 09-19: before any further experiment, take a deep, honest and critical look at
+what the paper's biggest weakness is, so the remaining time goes where it matters. The
+output is a findings doc with `> ANSWER:` slots, not tex edits and not a run. Input
+already on hand: `consistency_read_findings.md` (where the paper contradicts itself),
+`OPEN_ISSUES.md`, the Limitations section, the June review syntheses in
+`archive/paper-june/`.
 
 ### N2 — Coauthor + advisor review round (Omer; the brief is written)
 
 **Brief DONE 2026-09-18: `advisor_brief.md` (PR #103) holds the six questions below
 with recommendations and `> ANSWER:` slots. Do not rewrite it, the advisors answer in
-place. What is left of N2: Omer sends the manuscript and the brief (R7), then the
-answers come back.**
+place. R7 (09-19): sending is on hold; Omer consults them later and says when. Nothing
+else waits on this round except the JAIR reformat (venue ratification).**
 
 No coauthor has edited Overleaf since the 08-11 sync (every pull since returned clean).
 The six questions (memo §10):
@@ -97,22 +110,18 @@ The six questions (memo §10):
    submission;
 6. (grant-reopened 08-30) Sonnet-tier PlanBench extension: run or leave excluded.
 
-### N3 — Pre-submission mechanics (agent; prose items after N2 feedback, reformat after the venue is ratified)
+### N3 — Pre-submission mechanics (agent; reformat after the venue is ratified)
 
-- Fix the one overfull box: the batch-1 scorecard `table*` (tex lines 755–796, 130 pt
-  too wide).
-- First paper PR also fixes three stale comments in Overleaf-synced files, so one sync
-  covers them: `paper/main.tex` lines 2 and 638, `paper/figures/make_paper_figures.py`
-  line 3.
-- Check `main.tex:568`: "the *simulate* no-tools baseline is 0/3,000" has no qualifier,
-  while `main.tex:845` calls the same zero *format-exact* success and `NUMBERS.md` has no
-  row for it. Run `/verify-claims`; no silent fix.
-- One whole-paper consistency read: terminology (invocation rate everywhere), AI-tells
-  over the Job 2 / Job 3 additions (em-dash count is already 0), notation gate (CI vs
-  censor-bound typography) in the newest tables. Candidates to raise in that read, found
-  only in the June review files; **candidates only, no prose unprompted:**
-  structural-contamination clause · steering-phrasing Future Work sentence · temperature
-  Future Work sentence · classical-vs-numeric cost split · symbol-map appendix.
+- DONE 09-19 (PR #107, `3196112`): the overfull scorecard `table*` and the three stale
+  comments in Overleaf-synced files.
+- DONE 09-19: the *simulate* "0/3,000" in the GLMM sentence. Verified on
+  `sweep5v2-live`, now qualified "format-exact on the shared-budget corpus", with a
+  `NUMBERS.md` row (Job 2 block). Three more unqualified sites are row A5 of the
+  consistency read.
+- **Consistency read: delivered 09-19, `consistency_read_findings.md`. Waiting for Omer's
+  answers in its slots** (A contradictions · B synonyms · C notation · D figures at two
+  values, `/verify-claims` first · E AI-tells, drafts shown before any commit · F the five
+  June-review candidates, candidates only). Approved fixes go on one `paper/` branch.
 - **GLMM refit with a standard (non-variational) estimator.** `main.tex:564` still
   quotes the variational output. Tracked here; local, $0.
 - **Curated code and data release at publication.** The tex reproducibility checklist
@@ -129,9 +138,9 @@ The six questions (memo §10):
 - **Llama-3.1-8B second-family probe** (R3). Unblocked since nt-ster closed 08-29: the
   rule "do not touch `PDDL_VLLM_VERIFIED_MODELS` while nt-ster is live" has lapsed. $0,
   cluster GPU-h only. Needs its own harness branch + PR for the `vllm_lookup` case, a
-  kill-gate, and a ping to Omer before any cluster action. Recommendation: hold until
-  the advisor round; it is the ready answer if they ask whether the invocation finding
-  is Qwen/Gemma-specific.
+  kill-gate, and a ping to Omer before any cluster action. **On hold (R8, 09-19):** not
+  a major addition; revisit after the weakness review (N1b). It is the ready answer to
+  "is the invocation finding Qwen/Gemma-specific?".
 - Sonnet-tier PlanBench extension and the storage-fixed rerun: advisor calls, N2.
 - **Recorded as not planned** (`paper_notes` 09-18; both came out of the 06-20 iter-2
   review and were never run and never dropped until now): the clean cluster BF16-35B
@@ -147,14 +156,5 @@ The six questions (memo §10):
 
 ### Open decisions
 
-**R7 — Send the manuscript and the six-question brief to the coauthors and advisors?**
-The slot was written as "after N1 / now". N1 closed on 09-18, so both mean *now*.
-Recommendation: send.
-
-> ANSWER (send / hold):
->
-
-**R8 — Llama-3.1-8B probe.** Recommendation: hold until the advisor round.
-
-> ANSWER (hold / start now):
->
+None in this file. R7 and R8 were answered 09-19 (see "Decided"). The open slots are in
+`consistency_read_findings.md`.

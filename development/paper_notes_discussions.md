@@ -2279,3 +2279,31 @@ validated by an independent ranking subagent (the user asked for a second perspe
   only record of those reviews.
 - **Bottom line:** root = live is true again; `STATUS.md` N3/N4 now carry everything the
   June files still held open; nothing in `archive/paper-june/` is an instruction.
+
+## 2026-09-19 — Simulate zero gets its qualifier; R7 and R8 answered; consistency read delivered
+
+- **Simulate "0/3,000" (N3 item, `/verify-claims`).** Recomputed on `results/sweep5v2-live`:
+  10 no-tools cells × 300 simulate trials = 3,000, strict `success` = 0, no duplicate or
+  torn rows. Failure mix: 1,772 `truncated_no_answer`, 1,202 `format_parse_fail`, 26
+  `result_mismatch`. The number is right. It is a format-exact zero under the shared
+  decode budget, and the tex reports 22–40% content-correct under the decoupled control,
+  so the bare figure in the GLMM sentence read like a capability floor.
+  **Decision (Omer): add the qualifier.** The sentence now reads "0/3,000 format-exact on
+  the shared-budget corpus". `NUMBERS.md` gains a row for the figure (Job 2 block). The
+  three other unqualified sites (consistency read, row A5) wait for Omer's answer there.
+- **R7 (Omer): hold.** The manuscript and the brief are not sent yet. Work proceeds, the
+  advisors are consulted later, and Omer says when a meeting happened. Standing rule: do
+  not give "wait for the advisors" as a reason to hold anything.
+- **R8 (Omer): hold the Llama-3.1-8B probe.** Reason: it is not a major addition, and
+  before any further experiment we first do a deep, honest, critical look at what the
+  paper's biggest weakness is, so that the time goes where it matters. The probe stays
+  specified (`journal_decisions_memo.md` §6) and unblocked; it is simply not next.
+- **Consistency read delivered:** `development/consistency_read_findings.md`, findings
+  only, `> ANSWER:` slots per group. Nine internal contradictions (most in the Job 2 /
+  Job 3 text), four leftover synonyms for "invocation rate", one caption promise not kept
+  (Wilson intervals "in the text"), five figures shown at two values (one confirmed: the
+  "at most 17%" sentence ignores Gemma's ⟨6.0, 20.7⟩), and a cluster of "X, not Y"
+  closers. No tex change came out of the read itself.
+- **PR #107 merged** (`3196112`): scorecard `table*` fits the page, three stale comments
+  fixed. Action 35442368261 green. The paper now compiles with 0 overfull boxes.
+- **Bottom line:** next piece of work is the weakness review, not an experiment.

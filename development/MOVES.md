@@ -167,6 +167,5 @@ Same rule as the nt-ster scripts above: **do not repair them.**
 | `tools/iss024d_parity.py` | `development/iss024d_parity_prereg.md` (docstring and a printed report line) | not hashed, but it is the executed analysis of a prereg; left byte-identical so a rerun prints what the 07-17 report printed |
 | `planbench/analysis/verify_promotion.py`, `planbench/engine.py`, `planbench/requirements-wt.txt` | `planbench_wt_results_20260803.md` (by old path or bare name) | the analysis layer was promoted byte-faithful (ISS-026) and its MANIFEST check depends on that |
 | `results/planbench/wt-anthropic-20260801/README.md` | `development/planbench/planbench_wt_results_20260803.md` | part of the committed data archive; the archive is left exactly as published |
-| `paper/main.tex` lines 2 and 638, `paper/figures/make_paper_figures.py` line 3 | `GOALS.md`, `development/job2_delivered_reframe_worknote.md` | Overleaf-synced files. The three comments get fixed in the first real paper PR, so one sync covers it (plan Q2) |
 | everything already under `archive/` and `reference/`, including the files moved in this wave | bare names and pre-move paths | tier rule: moving a file in is fine, rewriting its body is not |
 
