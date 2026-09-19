@@ -24,6 +24,7 @@ Three files answer almost every question:
 | `STATUS.md` · `NUMBERS.md` · `MOVES.md` | the three above |
 | `review_round_handoff.md` | operational pickup for the review round and pre-submission work (2026-09-18): the single-line branch model, the step sequence, the doc-cleanup brief. Never overrides `STATUS.md` |
 | `advisor_brief.md` | one page for the advisors and coauthors: the six `STATUS.md` N2 questions with recommendations and open `> ANSWER:` slots |
+| `consistency_read_findings.md` | whole-paper consistency read of 2026-09-19 (N3): where the tex contradicts itself, leftover synonyms, notation, figures at two values, AI-tells; findings only, with open `> ANSWER:` slots |
 | `journal_decisions_memo.md` | the accepted journal-pivot spec; §5 and §10 feed the advisor round. Moves to `reference/` once the venue is ratified. ⚠️ still says "227k trials" in 3 places — the figure is **273,600**, see `NUMBERS.md` |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head (5 open / 3 no work owed / 13 closed, re-verified 2026-09-18) |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
