@@ -1,6 +1,6 @@
 """Regenerate the paper's Results figures as vector PDFs — DELIVERED surface.
 
-D-J2 batch 2 (2026-09-08, development/job2_delivered_reframe_worknote.md §7b):
+D-J2 batch 2 (2026-09-08, development/reference/job2_delivered_reframe_worknote.md §7b):
 every success-type figure now draws the DELIVERED rate (`e2e_strict`, the
 paper's single primary surface) read through the analyzer's shared overlay
 aggregator (`e2e_overlay.load_e2e_cells` over results/derived/e2e_overlay/),
