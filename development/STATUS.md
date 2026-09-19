@@ -86,10 +86,16 @@ is minutes.
 
 Omer, 09-19: before any further experiment, take a deep, honest and critical look at
 what the paper's biggest weakness is, so the remaining time goes where it matters. The
-output is a findings doc with `> ANSWER:` slots, not tex edits and not a run. Input
-already on hand: `consistency_read_findings.md` (where the paper contradicts itself),
-`OPEN_ISSUES.md`, the Limitations section, the June review syntheses in
-`archive/paper-june/`.
+output is a findings doc with `> ANSWER:` slots, not tex edits and not a run.
+
+**Delivered 09-19: `weakness_review.md`. Waiting for Omer's answers (Q1–Q7).** Three
+independent cold readers all ranked the same weakness first: the delivered surface is
+declared primary but is unmeasured on the open-weight tool arms (500-character storage),
+so the title claim is undecided on the paper's own metric; the pre-registered
+full-storage rerun (about 27K trials, $0) was never run. Insider finding: tex line 441
+says JSON-constrained decoding "remains" in the no-tools arm, which the `guided_json`
+audit (`paper_notes` 08-17) refutes, and the planned Limitations sentence never entered
+the tex.
 
 ### N2 — Coauthor + advisor review round (Omer; the brief is written)
 
@@ -157,4 +163,4 @@ The six questions (memo §10):
 ### Open decisions
 
 None in this file. R7 and R8 were answered 09-19 (see "Decided"). The open slots are in
-`consistency_read_findings.md`.
+`weakness_review.md` (Q1–Q7, answer these first) and `consistency_read_findings.md`.
