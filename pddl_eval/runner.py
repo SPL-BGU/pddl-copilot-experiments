@@ -150,7 +150,19 @@ _INFRA_FAIL_ABORT = 7
 # Storage-only change: per-record JSON grows, grading/identity are unaffected,
 # and existing on-disk corpora (written under 500) are not rewritten. Override
 # is intentionally not exposed — re-gradeability should not be a per-run knob.
-RESPONSE_SNAPSHOT_LEN = 16384
+#
+# Raised 16384 → 65536 on 2026-10-02. The slice keeps the HEAD of the answer,
+# so a long answer loses its END — the verdict line / the final plan, i.e.
+# exactly what the delivered-answer overlay grades. 14% of rows in the
+# iss024d-e2e full-storage rerun sat at 16384 and had to be censored. 65536
+# chars is 8 chars per token at the largest per-task output allowance
+# (DEFAULT_NUM_PREDICT["solve"] = 8192 tokens; the roster averages ~3-4
+# chars/token), so no answer producible under the default budgets can be cut.
+# This is a CHARACTER cap on the stored answer and is unrelated to
+# DEFAULT_NUM_CTX (a TOKEN window that happens to also be 16384). Every row
+# now also records `response_truncated_by_storage`, so an analysis can assert
+# that the cut never happened instead of inferring it from lengths.
+RESPONSE_SNAPSHOT_LEN = 65536
 # Cap on stored `thinking` snippet in result records. Asymmetric vs
 # RESPONSE_SNAPSHOT_LEN (4096 vs 500) because thinking spirals are
 # structurally longer than graded responses (calibration 2026-04-28
@@ -229,7 +241,13 @@ class TaskResult:
     # (any non-simulate task, with-tools, or a trial that errored pre-grade).
     format_compliant: bool | None = None
     response: str = ""
-    thinking: str = ""                   # last-turn message.thinking, capped at THINKING_SNAPSHOT_LEN
+    # True iff the model's answer was longer than RESPONSE_SNAPSHOT_LEN and
+    # `response` holds only its head; False when `response` is the complete
+    # answer. `None` on rows written before 2026-10-02 (unknown — fall back to
+    # the at-cap length inference in tools/e2e_regrade.py). Grading always ran
+    # on the full text; this only describes what was kept on disk.
+    response_truncated_by_storage: bool | None = None
+    thinking: str = ""                 # last-turn message.thinking, capped at THINKING_SNAPSHOT_LEN
     tool_calls: list = field(default_factory=list)
     tokens: dict = field(default_factory=dict)  # {prompt, completion, turns, total_duration_ns, eval_duration_ns}
     duration_s: float = 0.0
@@ -512,6 +530,7 @@ async def evaluate_one(
         tool_selected=tool_selected,
         format_compliant=format_compliant,
         response=response_text[:RESPONSE_SNAPSHOT_LEN],
+        response_truncated_by_storage=len(response_text) > RESPONSE_SNAPSHOT_LEN,
         thinking=thinking_text[:THINKING_SNAPSHOT_LEN] if thinking_text else "",
         tool_calls=tool_calls,
         tokens=tokens,
