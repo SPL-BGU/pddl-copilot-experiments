@@ -155,6 +155,66 @@ def test_extract_plan_lines_prose(r: TestResults) -> None:
     r.check_eq("prose mode None", mode, None)
 
 
+# Leaked Gemma thought-channel prefix (2026-10-02). tools/e2e_regrade.py is
+# hash-pinned and was NOT edited; it inherits the normalisation through the
+# pddl_eval.scoring extractors it imports. These tests pin that the overlay
+# path really gets it. Responses are verbatim from
+# results/sweep5v2-live/slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal.
+
+_GEMMA_PFX = "<|channel>thought\n<channel|>"
+_GEMMA_BW_P01 = (_GEMMA_PFX + "(unstack b2 b1)\n(put_down b2)\n(pick_up b3)\n"
+                 "(stack b3 b1)")
+
+
+class _RecordingSolveContext:
+    """SolveContext stand-in: records the plan the overlay sends to the
+    validator and calls it valid only when it is the full 4-action plan."""
+
+    def __init__(self):
+        self.seen: list[list[str]] = []
+
+    async def validate(self, dname, pname, plan_lines, anon=False):
+        self.seen.append(list(plan_lines))
+        return plan_lines == ["(unstack b2 b1)", "(put_down b2)",
+                              "(pick_up b3)", "(stack b3 b1)"]
+
+
+def test_overlay_solve_keeps_first_action_behind_gemma_prefix(r: TestResults) -> None:
+    lines, mode = e2e_regrade.extract_plan_lines_tolerant(_GEMMA_BW_P01)
+    r.check_eq("gemma prefix: overlay extracts all 4 actions", lines,
+              ["(unstack b2 b1)", "(put_down b2)", "(pick_up b3)",
+               "(stack b3 b1)"])
+    r.check_eq("gemma prefix: strict mode", mode, "strict_lines")
+
+    row = {
+        "task": "solve", "model": "google/gemma-4-26b-a4b-it",
+        "domain_name": "blocksworld", "problem_name": "p01", "plan_label": "",
+        "prompt_variant": 12, "with_tools": True, "success": True,
+        "done_reason": "stop", "infra_failure": False,
+        "response": _GEMMA_BW_P01, "tool_calls": [],
+    }
+    ctx = _RecordingSolveContext()
+    out = asyncio.run(e2e_regrade.regrade_row(row, 500, {}, ctx))
+    r.check_eq("gemma prefix: validator receives the full plan",
+              ctx.seen, [["(unstack b2 b1)", "(put_down b2)", "(pick_up b3)",
+                          "(stack b3 b1)"]])
+    r.check_eq("gemma prefix: delivered plan graded valid", out["e2e"], True)
+    r.check_eq("gemma prefix: reason", out["e2e_reason"], "plan_valid")
+    # The overlay reports the RAW stored length (cap censoring depends on it).
+    r.check_eq("gemma prefix: response_len is the raw length",
+              out["response_len"], len(_GEMMA_BW_P01))
+
+
+def test_overlay_verdict_behind_gemma_prefix(r: TestResults) -> None:
+    r.check_eq("gemma prefix: free-text verdict",
+              e2e_regrade.response_verdict(_GEMMA_PFX + "VERDICT: INVALID"),
+              False)
+    r.check_eq("gemma prefix: JSON verdict",
+              e2e_regrade.response_verdict(
+                  _GEMMA_PFX + '{"verdict": "VALID", "reason": ""}'),
+              True)
+
+
 # ---------------------------------------------------------------------------
 # 4. e2e_regrade.simulate_candidates (FIX 4 pin)
 # ---------------------------------------------------------------------------
@@ -477,6 +537,8 @@ def main() -> None:
     test_extract_plan_lines_tolerant_backticked(r)
     test_extract_plan_lines_table(r)
     test_extract_plan_lines_prose(r)
+    test_overlay_solve_keeps_first_action_behind_gemma_prefix(r)
+    test_overlay_verdict_behind_gemma_prefix(r)
     test_simulate_candidates_second_fenced_block(r)
     test_process_corpus_dedups_last_wins(r)
     test_delegation_credit_uses_recomputed_tool_verified(r)
