@@ -176,11 +176,13 @@ no-call answers read in full (does the prose end in a verdict, and is it right).
 
 - **Order, strictly serial, each step gated on the previous one succeeding (`afterok`):**
   smoke → Gemma Part A → Gemma Part B → Qwen3.5-9B → Qwen3.6-35B.
-- **Smoke.** Full-run resources, short trial count, separate smoke directory, never
-  pooled. Checks allowed on smoke output: the job completes; rows carry the new storage
+- **Smoke.** Full-run resources, short trial count (the real configuration with
+  `--partial 1`, because the stock `--smoke` uses prompts too short to reach the
+  overflow path and refuses the new flags), separate run tags, never pooled. Checks allowed on smoke output: the job completes; rows carry the new storage
   and clipped-allowance fields; no row is cut by storage; no exception or
   infrastructure-failure rows; tool calls parse (at least one trial with a tool call
-  per model). Smoke success rates are not computed.
+  per model); on rows whose allowance was clipped, measured prompt plus clipped
+  allowance against the 16,384-token window. Smoke success rates are not computed.
 - **During the run.** Monitoring reads row counts and job states only. No success,
   invocation or failure-reason rate of any cell is computed before the freeze in §8.
 - **Stop rules.** A cell is VOID and rerun from scratch (declared here, not a
@@ -200,9 +202,9 @@ new file that reuses the harness scoring functions at the harness commit below.
 
 | item | value |
 |---|---|
-| harness branch / commit | *to fill at submit* |
+| harness branch / commit | `harness/delivered-rerun` at `4b2fe6ec0a0b8c54c1607e7fc37e2ba4f1525114` (PR #113; independent review 2026-10-02, four findings fixed in that commit). The cluster checkout stays on this commit until every cell is complete. Tools repo `pddl-copilot` at `5e4f9c0` (same commit as the canonical corpus) |
 | serving version (probe) | *to fill at submit* |
-| job IDs | *to fill at submit* |
+| job IDs | smoke (never pooled, `--partial 1`, tags `delivered-rerun-smoke` / `delivered-rerun-neutral-smoke`): 21978895_[0-2], 21978896, submitted 2026-10-02. Main run: *to fill at submit* |
 | analysis files + sha256 | *to fill at freeze* |
 | traceability map (clause → file:line) | *to fill at freeze* |
 
