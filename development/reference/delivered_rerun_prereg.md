@@ -203,10 +203,50 @@ new file that reuses the harness scoring functions at the harness commit below.
 | item | value |
 |---|---|
 | harness branch / commit | `harness/delivered-rerun` at `4b2fe6ec0a0b8c54c1607e7fc37e2ba4f1525114` (PR #113; independent review 2026-10-02, four findings fixed in that commit). The cluster checkout stays on this commit until every cell is complete. Tools repo `pddl-copilot` at `5e4f9c0` (same commit as the canonical corpus) |
-| serving version (probe) | *to fill at submit* |
-| job IDs | smoke (never pooled, `--partial 1`, tags `delivered-rerun-smoke` / `delivered-rerun-neutral-smoke`): 21978895_[0-2], 21978896, submitted 2026-10-02. Main run: *to fill at submit* |
+| serving version | vLLM **0.20.2** (served banner in the smoke server log `21978897-vllm-gemma4_26b-a4b.log`; cached `~/vllm.sif`). So Gemma and Qwen3.6-35B carry no version delta against their canonical tool cells; Qwen3.5-9B does (canonical 0.22.0) |
+| job IDs | smoke (never pooled, `--partial 1`, tags `delivered-rerun-smoke` / `delivered-rerun-neutral-smoke`): 21978895_[0-2], 21978896, submitted 2026-10-02. Main run, submitted 2026-10-02 after the Gemma smoke cells passed: **21982285** (Gemma Part A, tag `delivered-rerun`), **21982286** (Gemma Part B, tag `delivered-rerun-neutral`, `afterok:21982285`). Qwen3.5-9B and Qwen3.6-35B: *to fill; submitted after the 9B smoke cell completes and passes, gated on 21982286* |
 | analysis files + sha256 | *to fill at freeze* |
 | traceability map (clause → file:line) | *to fill at freeze* |
+
+## 8a. Smoke record (2026-10-02)
+
+Checked on the smoke output, apparatus fields only (script: row counts, field presence,
+storage cuts, exception and infrastructure rows, presence of tool calls, clip
+arithmetic). Gemma Part A, Gemma Part B and Qwen3.6-35B complete at registration of this
+record; Qwen3.5-9B still running.
+
+| check | Gemma A (960 rows) | Gemma B (240) | 35B (960) |
+|---|---|---|---|
+| job state | COMPLETED 0:0 | COMPLETED 0:0 | COMPLETED 0:0 |
+| storage flag on every row / rows cut by storage | 960 / 0 | 240 / 0 | 960 / 0 |
+| longest stored answer (characters) | 18,421 | 19,093 | 21,934 |
+| exception rows / infrastructure-failure rows | 0 / 0 | 0 / 0 | 0 / 0 |
+| at least one tool call | yes | yes | yes |
+| clipped rows; measured prompt + clipped allowance = 16,384 | 53; 43 of 43 with sizes | 6; 6 of 6 | 103; 87 of 87 |
+| rows with a turn where the prompt alone fills the window | 65 (simulate 55, solve 10) | 0 | 67 (simulate 53, solve 14) |
+
+Three things the smoke showed, recorded before the main run:
+
+1. **The retry fix works on a live server.** Wherever the prompt size was measured, the
+   clipped allowance fills the window exactly. No shortfall, no halving.
+2. **The longest stored answers exceed 16,384 characters** in every cell, so the old cap
+   would have cut them. None reaches 65,536.
+3. **A real context limit remains, mostly on simulate.** In about 45% of smoke simulate
+   trials the tool's own result fills the 16,384-token window (server log: prompts of
+   about 1.2 million characters), so no final answer can be generated at any
+   allowance. On solve the same happens after several tool calls in one trial. This is
+   a property of the canonical apparatus (16K context), not of the fixes. It is not
+   changed for this run: a 32K context was piloted earlier and raised parse failures
+   (`paper_notes` 2026-06-18). **Consequence registered here:** delivered simulate for the
+   open-weight tool arms is reported with these rows counted as failures and their share
+   stated (`ctx_no_room_turns`), as a limit of the 16K deployment.
+4. Clipped rows that later hit a no-room turn carry the clip count without the
+   last-turn sizes (10 / 0 / 16 rows). Accounting only.
+
+**Incidental disclosure.** While scanning the smoke logs for errors, two end-of-run
+summary lines of the 35B smoke cell were printed (solve and simulate pass counts on the
+smoke slice, 120 trials each). Smoke rows are never pooled and no main-run outcome has
+been read.
 
 ## 9. Deviations
 
