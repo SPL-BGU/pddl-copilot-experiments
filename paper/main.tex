@@ -438,8 +438,11 @@ follows); arms are scored separately and never pooled, and every comparison is
 between two arms of the \emph{same} cell:
 \begin{itemize}
 \item \textbf{no-tools}: the model answers from parametric knowledge. The PDDL
-tools are removed, but per-task JSON-schema-constrained decoding remains, so the
-baseline is not held back by formatting alone; only the symbolic tools are absent.
+tools are removed and the answer format is requested in the system prompt alone: a
+JSON answer on \emph{solve} and \emph{simulate}, a closing verdict line on the three
+validation tasks. Per-task JSON-schema-constrained decoding was intended for this arm
+but did not take effect, so no decoder-level constraint was active and an unaided
+failure can be a failure of format as well as of content (Limitations).
 \item \textbf{tool-available (plain)}: the \emph{byte-identical} neutral task
 prompt, now with the tools exposed. (The thin per-task system prompts are structural
 mirrors sharing the same role-framing first sentence and sentence count. They differ
@@ -872,7 +875,9 @@ separate corpus never pooled with the main one) and grading with a wrapper-toler
 two-metric grader, unaided content-correct state tracking rises to $23.0\%$ (4B),
 $22.3\%$ (9B), and $40.0\%$ (35B), with the $0.8$B model alone still at $0\%$;
 re-grading the main corpus's stored responses under the same tolerant grader
-recovers at most $0.7\%$, so the recovery comes from the budget, not the grader.
+recovers at most $0.7\%$, but those responses are stored as $500$-character snapshots
+that are too short to regrade (Technical Appendix), so this figure does not establish
+how much of the recovery is due to the budget and how much to the grader.
 Format compliance stays $0\%$ for all four models (none ever emits the exact
 requested wrapper), so strict content-and-format success remains $0\%$ across the
 board. The honest comparison in the matching mode is therefore
@@ -1685,7 +1690,16 @@ under every apparatus available to us. Grading of the model's own
 text is strict by design (format adherence is part of the task), so a model that
 reasons correctly but emits malformed output scores as a failure; we report the
 failure-type decomposition, and the budget-decoupled control (Results), so this is
-visible rather than hidden. The largest self-imposed constraint is storage: the
+visible rather than hidden. The no-tools arm was meant to decode under a per-task
+JSON schema, but an audit of the stored responses shows that the constraint never
+took effect: of the $58{,}581$ validation responses on which this can be established
+across the canonical and anonymized corpora, none contains JSON of any kind, and
+schema conformance over all five tasks is $0.36\%$ of $65{,}874$ such responses
+($1.92\%$ of the $12{,}176$ stored in full), so the \emph{solve} and \emph{simulate}
+prompts pointed the model to a schema ``provided by the format constraint'' that it
+never received, the unaided results on those two tasks were obtained under a
+prompt-level format instruction alone, and what a working constraint would have
+produced is unmeasured. The largest self-imposed constraint is storage: the
 open-roster corpora stored final answers as $500$-character snapshots, a decision
 made before the delivered surface was fixed as primary, so the tool arms'
 delivered rates there are censoring bounds and several availability cells are
