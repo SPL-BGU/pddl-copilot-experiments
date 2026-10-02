@@ -25,7 +25,9 @@ Three files answer almost every question:
 | `review_round_handoff.md` | operational pickup for the review round and pre-submission work (2026-09-18): the single-line branch model, the step sequence, the doc-cleanup brief. Never overrides `STATUS.md` |
 | `advisor_brief.md` | one page for the advisors and coauthors: the six `STATUS.md` N2 questions with recommendations and open `> ANSWER:` slots |
 | `consistency_read_findings.md` | whole-paper consistency read of 2026-09-19 (N3): where the tex contradicts itself, leftover synonyms, notation, figures at two values, AI-tells; findings only, with open `> ANSWER:` slots |
-| `weakness_review.md` | the paper's biggest weaknesses (2026-09-19, `STATUS.md` N1b): three cold-reader reviews plus an insider audit, ranked, with fix type and cost per item and open `> ANSWER:` slots (Q1–Q7) |
+| `weakness_consolidated.md` | the working weakness list (2026-09-19): two independent reviews merged, C1–C22, disagreements D1–D8, decisions Q1–Q10 with `> ANSWER:` slots. Replaces `weakness_review.md` (deleted 2026-10-02, in git history) |
+| `reanalysis_statistics.md` · `reanalysis_planbench.md` · `reanalysis_breakdowns_cost.md` · `reanalysis_transcripts.md` | the four local re-analyses of 2026-10-02 (weakness list Q4); scripts in `tools/reanalysis/`. Findings only: no figure in them is frozen in `NUMBERS.md` yet |
+| `consistency_read_E_drafts.md` | reworded sentences for group E of the consistency read, with an `> ANSWER:` slot |
 | `journal_decisions_memo.md` | the accepted journal-pivot spec; §5 and §10 feed the advisor round. Moves to `reference/` once the venue is ratified. ⚠️ still says "227k trials" in 3 places — the figure is **273,600**, see `NUMBERS.md` |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head (5 open / 3 no work owed / 13 closed, re-verified 2026-09-18) |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
@@ -38,7 +40,8 @@ paper is edited on a short branch off `main` (see `STATUS.md` "How work is done 
 
 `sweep_prompt_bank_design.md` (sweep-5 prompt bank; pinned by `run_experiment.py`,
 `pddl_eval/prompts.py`) · `contamination_probe_plan.md` (pinned by `tools/anon_*.py`,
-`submit_with_rtx.sh`) · `planbench_wt_prereg.md` + `planbench_wt_prereg_decisions.md`
+`submit_with_rtx.sh`) · `delivered_rerun_prereg.md` (full-storage rerun of the open-weight tool arms, registered 2026-10-02; **the run is live**, its status is in `STATUS.md`) ·
+`planbench_wt_prereg.md` + `planbench_wt_prereg_decisions.md`
 (PlanBench design of record) · `ntster_h4_prereg.md` + `ntster_h4_prereg_decisions.md`
 (nt-ster H4 design of record; §9.1 holds the two executed deviations) ·
 `grading_artifacts_findings.md` ·
