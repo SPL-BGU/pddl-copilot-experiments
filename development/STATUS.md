@@ -109,13 +109,19 @@ arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
 
 **In progress**
 
-1. **Harness fixes for the rerun** (branch `harness/delivered-rerun`): final-request
-   overflow retry, leaked Gemma channel prefix, storage cap 65,536, a `neutral` prompt
-   style. PR, then an independent code review.
+1. **Harness fixes for the rerun: done, PR #113** (`harness/delivered-rerun`, `4b2fe6e`):
+   final-request overflow retry, leaked Gemma channel prefix, storage cap 65,536, a
+   `neutral` prompt style. Independently reviewed; four findings fixed. Do not merge in a
+   way that moves the cluster checkout while jobs are pending.
 2. **Delivered rerun** (`reference/delivered_rerun_prereg.md`): Part A 27,360 trials
    (three headline models, thinking off, plain + steered), Part B 6,000 (Gemma
-   validate_plan, neutral system prompt). Smoke first, then strictly serial. Cluster
-   go-ahead given by Omer 2026-10-02.
+   validate_plan, neutral system prompt). **Submitted 2026-10-02 as a serial `afterok`
+   chain: 21982285 (Gemma A, running) → 21982286 (Gemma B) → 21982369 (9B) → 21982370
+   (35B).** Smoke passed (prereg §8a). The cluster checkout must stay on
+   `harness/delivered-rerun` at `4b2fe6e` until every cell is complete: jobs read the
+   Python code from that checkout when they start. Monitoring reads row counts and job
+   states only (prereg §7). `status.sh` does not show the `tools_all_neutral` cell;
+   count its rows directly.
 3. **Analysis code for the rerun**, written while the jobs run and frozen under
    `/freeze-protocol` before any outcome is read.
 4. **PlanBench wording** (drafts, on a branch stacked on #111): corrected-extractor
