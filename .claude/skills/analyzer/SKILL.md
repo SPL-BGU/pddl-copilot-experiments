@@ -1,6 +1,6 @@
 ---
 name: analyzer
-description: Aggregate, plot, and tabulate PDDL Copilot sweep results; render paper-style figures and the master pivot table; flag drift between an in-flight or follow-up sweep and a baseline. Read-only over results — never mutates experiment state. Pairs with the `cluster-ops` skill: cluster-ops gets results onto disk via `sync.sh` / `status.sh`; this skill turns them into tables, figures, and observations.
+description: "Aggregate, plot, and tabulate PDDL Copilot sweep results; render paper-style figures and the master pivot table; flag drift between an in-flight or follow-up sweep and a baseline. Read-only over results — never mutates experiment state. Pairs with the `cluster-ops` skill: cluster-ops gets results onto disk via `sync.sh` / `status.sh`; this skill turns them into tables, figures, and observations."
 argument-hint: [aggregate | plot | table | drift | observations]
 ---
 
