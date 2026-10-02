@@ -616,7 +616,12 @@ def test_ctx_clip_reaches_the_result_row(r: TestResults) -> None:
                 "total_duration_ns", "turns"])
     res = _evaluate_no_tools_validate(
         "VERDICT: VALID", num_predict_requested=6144,
-        num_predict_clipped_to=5484)
+        num_predict_clipped_to=5484, num_predict_measured_prompt=10900)
+    r.check_eq("clipped row: last-turn prompt size",
+               res.tokens.get("ctx_clip_last_turn_prompt_tokens"), 10900)
+    r.check("clipped row: prompt + clip fits the window",
+            res.tokens["ctx_clip_last_turn_prompt_tokens"]
+            + res.tokens["ctx_clip_last_turn_max_tokens"] <= 16384, "")
     r.check_eq("clipped row: clipped turn count",
                res.tokens.get("ctx_clipped_turns"), 1)
     r.check_eq("clipped row: last-turn allowance",

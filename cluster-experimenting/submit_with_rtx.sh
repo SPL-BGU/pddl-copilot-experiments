@@ -46,10 +46,12 @@
 #   still exposed). The with-tools cell is then named tools_all_neutral, so it
 #   writes to results/slurm_vllm_<model>_<think>_tools_all_neutral[_<tag>]/
 #   and never shares a dir or resume keys with tools_all_minimal. Default
-#   (unset or `minimal`) leaves the submission unchanged.
+#   (unset or `minimal`) leaves the submission unchanged. A non-default style
+#   requires --tools-only, so it never re-submits the no-tools baseline.
 #
 # --tasks "<list>": run only these tasks in every cell (space- or
-#   comma-separated, one quoted argument). Default: all 5.
+#   comma-separated, one quoted argument). Default (flag omitted): all 5. An
+#   empty list or an unknown task name is an error; repeats are dropped.
 #
 # --include-no-tools-steered: enables the sweep-5 control arm by emitting
 #   v14/v15/v16 in no-tools cells (the harness otherwise skips them — see
@@ -159,7 +161,9 @@ NUM_PREDICT_THINK=""
 NUM_PREDICT_ANSWER=""
 REASONING_PARSER_OVERRIDE=""
 PROMPT_STYLE=""
+PROMPT_STYLE_GIVEN=0
 TASKS_OVERRIDE=""
+TASKS_GIVEN=0
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -187,8 +191,11 @@ while [[ $# -gt 0 ]]; do
         --num-predict-think) shift; NUM_PREDICT_THINK="$1"; shift ;;
         --num-predict-answer) shift; NUM_PREDICT_ANSWER="$1"; shift ;;
         --reasoning-parser) shift; REASONING_PARSER_OVERRIDE="$1"; shift ;;
-        --prompt-style) shift; PROMPT_STYLE="$1"; shift ;;
-        --tasks) shift; TASKS_OVERRIDE="$1"; shift ;;
+        # ${2-} + guarded shift: a missing or empty value must reach the
+        # validation below (clear error) instead of dying on `shift` or being
+        # mistaken for "flag not given".
+        --prompt-style) PROMPT_STYLE_GIVEN=1; PROMPT_STYLE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
+        --tasks) TASKS_GIVEN=1; TASKS_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -304,19 +311,26 @@ fi
 # [_<RUN_TAG>]) and its own resume keys; it can never land in, or resume from,
 # a tools_all_minimal cell. Unset or `minimal` → cond stays tools_all_minimal
 # and the submission is byte-equivalent to before the flag existed.
-# The style only changes the with-tools system prompt, so it is refused with
-# --no-tools and with the smoke modes (which run both conditions in one dir).
+# The style only changes the with-tools system prompt, so a non-default style
+# REQUIRES --tools-only. Without it the default cond axis would also emit the
+# no-tools cells, whose prompts do not depend on the style: e.g.
+# `--all --prompt-style neutral` would re-run the whole no-tools baseline (into
+# the ordinary no-tools dirs) as a side effect of asking for a tools-arm
+# variant. --tools-only is itself exclusive with --no-tools and the smoke
+# modes, so this one requirement rules those out too.
+if [ "$PROMPT_STYLE_GIVEN" -eq 1 ] && [ -z "$PROMPT_STYLE" ]; then
+    echo "Error: --prompt-style expects a value ('minimal' or 'neutral')" >&2
+    exit 1
+fi
 case "$PROMPT_STYLE" in
     ""|minimal|neutral) ;;
     *)
         echo "Error: --prompt-style must be 'minimal' or 'neutral' (got: $PROMPT_STYLE)" >&2
         exit 1 ;;
 esac
-if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
-    if [ "$NO_TOOLS" -eq 1 ] || [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
-        echo "Error: --prompt-style $PROMPT_STYLE only affects with-tools cells; it cannot be combined with --no-tools or --smoke[-shuffle]" >&2
-        exit 1
-    fi
+if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ] && [ "$TOOLS_ONLY" -ne 1 ]; then
+    echo "Error: --prompt-style $PROMPT_STYLE requires --tools-only (the style only changes the with-tools system prompt; without --tools-only the no-tools baseline cells would be submitted again)" >&2
+    exit 1
 fi
 
 # --tasks "<list>": restrict every cell to a subset of the 5 tasks (space- or
@@ -324,14 +338,19 @@ fi
 # which it forwards as run_experiment.py --tasks. Normalised here to a
 # `^`-joined token (the CELLS_LIST separator) because the --export list is
 # comma-separated and must not depend on embedded spaces; the sbatch maps it
-# back. Unset → the sbatch passes no --tasks and all 5 tasks run, as before.
+# back. Flag not given → the sbatch passes no --tasks and all 5 tasks run, as
+# before. Flag given with an empty value (`--tasks ""`, or a list of only
+# separators) is an error rather than a silent "all 5 tasks": an empty list
+# usually means an unset shell variable in the caller. Unknown names are
+# rejected; repeats are dropped, keeping first-seen order.
 TASKS_EXPORT=""
-if [ -n "$TASKS_OVERRIDE" ]; then
+if [ "$TASKS_GIVEN" -eq 1 ]; then
     read -ra _tasks <<< "${TASKS_OVERRIDE//,/ }"
     if [ "${#_tasks[@]}" -eq 0 ]; then
-        echo "Error: --tasks expects at least one task" >&2
+        echo "Error: --tasks expects at least one task (got an empty list); omit the flag to run all 5" >&2
         exit 1
     fi
+    _uniq=()
     for _t in "${_tasks[@]}"; do
         case "$_t" in
             solve|validate_domain|validate_problem|validate_plan|simulate) ;;
@@ -339,9 +358,13 @@ if [ -n "$TASKS_OVERRIDE" ]; then
                 echo "Error: --tasks: unknown task '$_t' (expected solve, validate_domain, validate_problem, validate_plan, simulate)" >&2
                 exit 1 ;;
         esac
+        case " ${_uniq[*]} " in
+            *" $_t "*) ;;
+            *) _uniq+=("$_t") ;;
+        esac
     done
-    TASKS_EXPORT=$(IFS='^'; echo "${_tasks[*]}")
-    unset _tasks _t
+    TASKS_EXPORT=$(IFS='^'; echo "${_uniq[*]}")
+    unset _tasks _uniq _t
     if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
         echo "Error: --tasks cannot be combined with --smoke[-shuffle] (the smoke slice fixes its own task set)" >&2
         exit 1
@@ -467,9 +490,9 @@ else
     EFF_COND=("${DEFAULT_CONDITIONS[@]}")
 fi
 
-# --prompt-style: rename the with-tools cond token to carry the style. Only
-# `tools_all_minimal` is rewritten; `no-tools` (when the default two-cond axis
-# is in use) is left as the ordinary no-tools cell.
+# --prompt-style: rename the with-tools cond token to carry the style. A
+# non-default style requires --tools-only (validated above), so EFF_COND is
+# exactly ("tools_all_minimal") here and no no-tools cell is ever emitted.
 if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
     for i in "${!EFF_COND[@]}"; do
         if [ "${EFF_COND[$i]}" = "tools_all_minimal" ]; then

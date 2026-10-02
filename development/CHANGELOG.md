@@ -25,11 +25,15 @@ headline think-off tool cells of `sweep5v2-live` (solve and validate_plan), usua
 after the tool had already returned the right result. Now, when the first request is
 refused, the client sends the same request asking for one token, reads the true prompt
 size from the reply, and re-sends with exactly the room that is left. If the server
-reports no usage it falls back to halving the allowance until a request fits. The first
-request is unchanged, so trials that fit behave as before. The empty "length" reply
-remains only when not even one token fits. New optional keys in a row's `tokens`,
-present only when a turn overflowed: `ctx_clipped_turns`,
-`ctx_clip_last_turn_max_tokens`, `ctx_no_room_turns`.
+refuses even that (its own check may count a token or a few more than it reports), the
+client steps down by 1, then 8, then 64 tokens before it ever halves, so the model keeps
+essentially all of its room. If the server reports no usage it halves the allowance
+until a request fits. The first request is unchanged, so trials that fit behave as
+before. The empty "length" reply remains only when not even one token fits. New optional
+keys in a row's `tokens`, present only when a turn overflowed: `ctx_clipped_turns`,
+`ctx_clip_last_turn_max_tokens`, `ctx_clip_last_turn_prompt_tokens` (the measured prompt
+size of that turn, so an analysis can check prompt plus allowance against the 16,384
+window and see how far below it a clip landed), `ctx_no_room_turns`.
 
 **2. A leaked Gemma marker no longer costs the first line of the answer
 (`pddl_eval/scoring.py`).** Gemma is served without a reasoning parser, and with
@@ -82,7 +86,12 @@ cell `tools_all_neutral`, so it writes to
 `results/slurm_vllm_<model>_<think>_tools_all_neutral[_<run tag>]/` and can never mix
 with `tools_all_minimal` rows. `run_experiment.py` refuses `neutral` unless
 `--conditions tools`, and refuses an output dir that already holds rows of another
-style. The wrapper also gains `--tasks "<list>"` to run a task subset. Without the new
+style. A `--continue-partial` seed is checked the same way before it is copied, so a
+seed of the wrong style is refused without leaving its rows behind in the cell's dir.
+In the wrapper a non-default style requires `--tools-only`; otherwise
+`--all --prompt-style neutral` would also have resubmitted the whole no-tools baseline.
+The wrapper also gains `--tasks "<list>"` to run a task subset; an empty list or an
+unknown task name is an error and repeated names are dropped. Without the new
 flags its `--dry-run` output is unchanged. Note on naming: this "neutral" is the
 system-prompt style; it is a different axis from the neutral (v11 to 13) versus steered
 (v14 to 16) prompt variants. Not done: the status board

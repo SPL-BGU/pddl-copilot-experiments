@@ -24,7 +24,11 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pddl_eval.chat import _record_ctx_clip  # noqa: E402
-from pddl_eval.vllm_client import VLLMClient, _parse_ctx_overflow  # noqa: E402
+from pddl_eval.vllm_client import (  # noqa: E402
+    VLLMClient,
+    _clip_candidates,
+    _parse_ctx_overflow,
+)
 
 
 def _make_err(body: str) -> BadRequestError:
@@ -84,10 +88,14 @@ class _FakeCompletions:
     """
 
     def __init__(self, true_prompt: int, report_usage: bool = True,
-                 unrelated_400_on_call: int | None = None):
+                 unrelated_400_on_call: int | None = None,
+                 check_overhead: int = 0):
         self.true_prompt = true_prompt
         self.report_usage = report_usage
         self.unrelated_400_on_call = unrelated_400_on_call
+        # Tokens the server's pre-flight check counts ON TOP of what it later
+        # reports in usage.prompt_tokens (0 = the two agree).
+        self.check_overhead = check_overhead
         self.sent_max_tokens: list[int] = []
 
     async def create(self, **kwargs):
@@ -95,7 +103,7 @@ class _FakeCompletions:
         self.sent_max_tokens.append(max_tokens)
         if self.unrelated_400_on_call == len(self.sent_max_tokens):
             raise _make_err("Error code: 400 - tool argument schema mismatch.")
-        if self.true_prompt + max_tokens > _MAX_CTX:
+        if self.true_prompt + self.check_overhead + max_tokens > _MAX_CTX:
             lower_bound = _MAX_CTX - max_tokens + 1
             raise _make_err(
                 f"This model's maximum context length is {_MAX_CTX} tokens. "
@@ -208,6 +216,63 @@ def test_overflow_without_usage_falls_back_to_halving():
     assert resp["message"]["content"] == "VERDICT: VALID"
 
 
+def test_clip_candidates_order():
+    """Measured: exact room, then −1/−8/−64, only then halving. Unmeasured:
+    halving straight away. Nothing below 1; no room → nothing to try."""
+    assert _clip_candidates(5484, fine=True)[:6] == [5484, 5483, 5476, 5420, 2710, 1355]
+    assert _clip_candidates(5484, fine=True)[-1] == 1
+    assert _clip_candidates(6015, fine=False)[:3] == [6015, 3007, 1503]
+    assert _clip_candidates(5, fine=True) == [5, 4, 2, 1]
+    assert _clip_candidates(1, fine=True) == [1]
+    assert _clip_candidates(0, fine=True) == []
+    assert _clip_candidates(-40, fine=False) == []
+    for base in (1, 2, 9, 65, 5484, 16383):
+        c = _clip_candidates(base, fine=True)
+        assert c == sorted(set(c), reverse=True), (base, c)   # strictly decreasing
+        assert len(c) <= 3 + 15
+
+
+def test_rejected_exact_clip_steps_down_before_halving():
+    """Server's check counts a few tokens more than usage reports: the retry
+    must give up at most a handful of tokens, never half the room."""
+    # off by one → base−1
+    fake = _FakeCompletions(true_prompt=10900, check_overhead=1)
+    resp = _chat(fake, 6144)
+    assert fake.sent_max_tokens == [6144, 1, 5484, 5483]
+    assert resp["num_predict_clipped_to"] == 5483
+    assert resp["num_predict_measured_prompt"] == 10900
+    # off by five → base−8
+    fake = _FakeCompletions(true_prompt=10900, check_overhead=5)
+    resp = _chat(fake, 6144)
+    assert fake.sent_max_tokens == [6144, 1, 5484, 5483, 5476]
+    assert resp["num_predict_clipped_to"] == 5476
+    # off by forty → base−64
+    fake = _FakeCompletions(true_prompt=10900, check_overhead=40)
+    resp = _chat(fake, 6144)
+    assert resp["num_predict_clipped_to"] == 5420
+    # beyond every small step → halving, from the last value tried
+    fake = _FakeCompletions(true_prompt=10900, check_overhead=100)
+    resp = _chat(fake, 6144)
+    assert fake.sent_max_tokens == [6144, 1, 5484, 5483, 5476, 5420, 2710]
+    assert resp["num_predict_clipped_to"] == 2710
+    assert resp["message"]["content"] == "VERDICT: VALID"
+
+
+def test_clipped_response_records_measured_prompt():
+    """prompt + clip is checkable against the window from the response."""
+    fake = _FakeCompletions(true_prompt=10900)
+    resp = _chat(fake, 6144)
+    assert resp["num_predict_measured_prompt"] == 10900
+    assert resp["num_predict_measured_prompt"] + resp["num_predict_clipped_to"] == _MAX_CTX
+    # No usage on the probe → no measurement to record.
+    fake = _FakeCompletions(true_prompt=10900, report_usage=False)
+    resp = _chat(fake, 6144)
+    assert resp["num_predict_measured_prompt"] is None
+    # Unclipped responses carry none of it.
+    resp = _chat(_FakeCompletions(true_prompt=3000), 6144)
+    assert "num_predict_measured_prompt" not in resp
+
+
 def test_unrelated_400_during_retry_is_raised():
     """A non-overflow 400 on the retry path must propagate, not be swallowed
     into a synthetic truncation."""
@@ -226,13 +291,25 @@ def test_record_ctx_clip_keys_absent_by_default():
     tokens: dict = {"prompt": 0, "completion": 0, "turns": 0}
     _record_ctx_clip(tokens, {"message": {}, "done_reason": "stop"})
     assert set(tokens) == {"prompt", "completion", "turns"}
-    _record_ctx_clip(tokens, {"num_predict_clipped_to": 5484})
+    _record_ctx_clip(tokens, {"num_predict_clipped_to": 5484,
+                              "num_predict_measured_prompt": 10900,
+                              "prompt_eval_count": 10900})
     assert tokens["ctx_clipped_turns"] == 1
     assert tokens["ctx_clip_last_turn_max_tokens"] == 5484
-    # a later unclipped turn clears the last-turn marker, keeps the count
+    assert tokens["ctx_clip_last_turn_prompt_tokens"] == 10900
+    assert (tokens["ctx_clip_last_turn_prompt_tokens"]
+            + tokens["ctx_clip_last_turn_max_tokens"]) <= _MAX_CTX
+    # no measurement → the turn's own reported prompt count
+    _record_ctx_clip(tokens, {"num_predict_clipped_to": 3007,
+                              "num_predict_measured_prompt": None,
+                              "prompt_eval_count": 10950})
+    assert tokens["ctx_clipped_turns"] == 2
+    assert tokens["ctx_clip_last_turn_prompt_tokens"] == 10950
+    # a later unclipped turn clears the last-turn markers, keeps the count
     _record_ctx_clip(tokens, {"message": {}, "done_reason": "stop"})
-    assert tokens["ctx_clipped_turns"] == 1
+    assert tokens["ctx_clipped_turns"] == 2
     assert "ctx_clip_last_turn_max_tokens" not in tokens
+    assert "ctx_clip_last_turn_prompt_tokens" not in tokens
     _record_ctx_clip(tokens, {"ctx_overflow_no_room": True})
     assert tokens["ctx_no_room_turns"] == 1
 

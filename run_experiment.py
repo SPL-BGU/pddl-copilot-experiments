@@ -170,6 +170,50 @@ PROMPT_STYLE_CHOICES = PROMPT_STYLES  # ("minimal", "neutral") — pddl_eval/pro
 CONDITION_CHOICES = ("tools", "no-tools", "both")
 
 
+def _refuse_other_prompt_styles(
+    restored_by_key: dict, prompt_style: str, path: Path, *, what: str,
+) -> None:
+    """Exit if `restored_by_key` (a loaded trials.jsonl) holds trials written
+    under a prompt style other than this run's.
+
+    One prompt style per results dir: the resume key keeps styles apart, but
+    a file holding both would be pooled by any reader that does not filter on
+    `prompt_style`. `what` names the file's role in the message
+    ("--output-dir" / "--continue-partial seed"). `prompt_style` is the last
+    element of the 10-tuple (see runner._trial_key).
+    """
+    other_styles = sorted({k[-1] for k in restored_by_key} - {prompt_style})
+    if other_styles:
+        sys.exit(
+            f"{what}: {path} holds trials written under prompt style "
+            f"{other_styles}; this run is --prompt-style {prompt_style}. "
+            f"Use a separate --output-dir and a seed of the same style."
+        )
+
+
+def _seed_from_partial(src_dir: Path, progress_path: Path, prompt_style: str) -> None:
+    """`--continue-partial`: copy `src_dir/trials.jsonl` to `progress_path`.
+
+    Exits (leaving `progress_path` untouched) when the seed is missing, the
+    destination is already non-empty, or the seed holds trials of another
+    prompt style. The style check runs on the SEED, before the copy: copying
+    first would leave the foreign-style rows in the cell's dir, and the
+    one-style-per-dir guard would then refuse every later resubmit of it.
+    """
+    src = src_dir / "trials.jsonl"
+    if not src.exists():
+        sys.exit(f"--continue-partial: {src} not found")
+    if progress_path.exists() and progress_path.stat().st_size > 0:
+        sys.exit(
+            f"--continue-partial: {progress_path} already non-empty; "
+            f"pass --no-resume to overwrite"
+        )
+    _refuse_other_prompt_styles(load_progress(src), prompt_style, src,
+                                what="--continue-partial seed")
+    shutil.copy2(src, progress_path)
+    print(f"\n  --continue-partial: seeded {progress_path} from {src}")
+
+
 def _apply_partial_subset(domains: dict, k: int) -> dict:
     """Cap each domain to first-K positive + first-K negative fixtures.
 
@@ -387,16 +431,8 @@ async def async_main(args):
     # this run via the existing 10-tuple resume key. Strictly sugar over
     # `cp` + `--resume`, but with named UX + error semantics.
     if args.continue_partial:
-        src = Path(args.continue_partial) / "trials.jsonl"
-        if not src.exists():
-            sys.exit(f"--continue-partial: {src} not found")
-        if progress_path.exists() and progress_path.stat().st_size > 0:
-            sys.exit(
-                f"--continue-partial: {progress_path} already non-empty; "
-                f"pass --no-resume to overwrite"
-            )
-        shutil.copy2(src, progress_path)
-        print(f"\n  --continue-partial: seeded {progress_path} from {src}")
+        _seed_from_partial(Path(args.continue_partial), progress_path,
+                           args.prompt_style)
     # Load all prior trials as `dict[TrialKey, TaskResult]`. The runner
     # filters this to in-scope (matching this run's meta-dims + post-partial
     # fixture set) before merging into the saved results, so trials seeded
@@ -407,15 +443,10 @@ async def async_main(args):
     # both would still be pooled by anything that reads trials.jsonl without
     # filtering on `prompt_style`. Every corpus before 2026-10-02 is `minimal`,
     # so this can only fire when a non-default style is pointed at an existing
-    # dir (or the reverse).
-    # (prompt_style is the last element of the 10-tuple, see runner._trial_key.)
-    other_styles = sorted({k[-1] for k in restored_by_key} - {args.prompt_style})
-    if other_styles:
-        sys.exit(
-            f"{progress_path} already holds trials written under prompt style "
-            f"{other_styles}; this run is --prompt-style {args.prompt_style}. "
-            f"Use a separate --output-dir."
-        )
+    # dir (or the reverse). A --continue-partial seed was already checked
+    # above, before it was copied in.
+    _refuse_other_prompt_styles(restored_by_key, args.prompt_style, progress_path,
+                                what="--output-dir")
     if restored_by_key:
         print(
             f"\n  Resume: loaded {len(restored_by_key)} previously-completed "

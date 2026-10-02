@@ -84,27 +84,66 @@ def test_neutral_style_and_tasks(r: TestResults) -> None:
                 _export(err).endswith(",TASKS=solve^validate_plan"),
                 _export(err))
 
-    # Default two-cond axis: only the with-tools cond is renamed.
-    rc, err = _dry("gemma4:26b-a4b", "--think-modes", "off",
-                   "--prompt-style", "neutral")
-    r.check("no-tools cell kept, tools cell renamed",
-            "CELLS_LIST=gemma4:26b-a4b|off|no-tools"
-            "^gemma4:26b-a4b|off|tools_all_neutral" in _export(err),
+    # Repeats are dropped, first-seen order kept.
+    rc, err = _dry("gemma4:26b-a4b", "--tools-only", "--tasks",
+                   "validate_plan solve,validate_plan solve")
+    r.check_eq("duplicate tasks exits 0", rc, 0)
+    r.check("duplicate tasks deduped in order",
+            _export(err).endswith(",TASKS=validate_plan^solve"), _export(err))
+
+    # A neutral submission never contains a no-tools cell, whatever the
+    # model set or think axis.
+    rc, err = _dry("--all", "--tools-only", "--prompt-style", "neutral")
+    r.check_eq("--all neutral tools-only exits 0", rc, 0)
+    r.check("--all neutral: no no-tools cell", "no-tools" not in _export(err),
             _export(err))
+    r.check("--all neutral: no minimal cell",
+            "tools_all_minimal" not in _export(err), _export(err))
+    r.check_eq("--all neutral: 5 models x 2 think modes",
+               _export(err).count("tools_all_neutral"), 10)
 
 
 def test_rejected_combinations(r: TestResults) -> None:
-    for label, args in (
-        ("unknown style", ("gemma4:26b-a4b", "--prompt-style", "guided")),
+    for label, args, needle in (
+        ("unknown style", ("gemma4:26b-a4b", "--prompt-style", "guided"),
+         "must be 'minimal' or 'neutral'"),
+        ("empty style", ("gemma4:26b-a4b", "--prompt-style", ""),
+         "expects a value"),
+        # A non-minimal style without --tools-only would also submit the
+        # no-tools cells (the whole baseline, under `--all`).
+        ("neutral without --tools-only (single model)",
+         ("gemma4:26b-a4b", "--prompt-style", "neutral"),
+         "requires --tools-only"),
+        ("neutral without --tools-only (--all)",
+         ("--all", "--prompt-style", "neutral"), "requires --tools-only"),
         ("neutral + --no-tools",
-         ("gemma4:26b-a4b", "--no-tools", "--prompt-style", "neutral")),
-        ("neutral + --smoke", ("--smoke", "--prompt-style", "neutral")),
-        ("unknown task", ("gemma4:26b-a4b", "--tasks", "solve bogus")),
-        ("tasks + --smoke", ("--smoke", "--tasks", "solve")),
+         ("gemma4:26b-a4b", "--no-tools", "--prompt-style", "neutral"),
+         "requires --tools-only"),
+        ("neutral + --smoke", ("--smoke", "--prompt-style", "neutral"),
+         "requires --tools-only"),
+        ("unknown task", ("gemma4:26b-a4b", "--tasks", "solve bogus"),
+         "unknown task 'bogus'"),
+        ("empty task list", ("gemma4:26b-a4b", "--tools-only", "--tasks", ""),
+         "at least one task"),
+        ("separator-only task list",
+         ("gemma4:26b-a4b", "--tools-only", "--tasks", " , "),
+         "at least one task"),
+        ("tasks + --smoke", ("--smoke", "--tasks", "solve"),
+         "cannot be combined with --smoke"),
     ):
         rc, err = _dry(*args)
-        r.check(f"{label} rejected", rc != 0 and "Error:" in err,
-                f"rc={rc} {err!r}")
+        r.check(f"{label} rejected", rc != 0 and "Error:" in err
+                and needle in err, f"rc={rc} {err!r}")
+        r.check(f"{label}: nothing would be submitted", "DRY:" not in err, err)
+
+    # `--tasks` as the very last argument (value missing) must also be a
+    # clear error, not a silent exit or an all-tasks run.
+    p = subprocess.run(["bash", str(WRAPPER), "gemma4:26b-a4b", "--dry-run",
+                        "--tools-only", "--tasks"],
+                       capture_output=True, text=True)
+    r.check("trailing --tasks with no value rejected",
+            p.returncode != 0 and "at least one task" in p.stderr,
+            f"rc={p.returncode} {p.stderr!r}")
 
 
 def test_sbatch_handles_the_new_cond(r: TestResults) -> None:

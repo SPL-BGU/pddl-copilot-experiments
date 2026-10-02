@@ -116,6 +116,9 @@ _CTX_OVERFLOW_RE = re.compile(
 # max_model_len − prompt_tokens. With --enable-prefix-caching the probe's
 # prompt processing is reused by that request.
 #
+# If the server rejects that exact clip, small step-downs come before any
+# halving (see `_clip_candidates`).
+#
 # Fallback when the probe returns no usage: start from the old first clip
 # (lower bound + this safety margin — right when the prompt really is
 # within the margin of the limit) and halve until a request fits.
@@ -123,6 +126,37 @@ _CTX_RETRY_SAFETY = 128
 # Smallest max_tokens worth sending. Below this the prompt alone fills the
 # window and the turn gets the synthetic empty length-truncation response.
 _CTX_MIN_MAX_TOKENS = 1
+# Small step-downs tried (in this order, each relative to the measured room)
+# when the server rejects max_tokens = max_model_len − measured prompt. They
+# absorb an off-by-a-few disagreement between usage.prompt_tokens and the
+# server's own pre-flight count at a cost of at most 64 tokens of room,
+# instead of jumping straight to half.
+_CTX_CLIP_STEP_DOWNS = (1, 8, 64)
+
+
+def _clip_candidates(base: int, fine: bool) -> list[int]:
+    """max_tokens values to try, in order, after a context overflow.
+
+    `base` is the first clip. With `fine` (the prompt was measured) the next
+    tries are base−1, base−8, base−64; after that the last value tried is
+    halved repeatedly. Values below `_CTX_MIN_MAX_TOKENS` are dropped, so an
+    empty list means there is no room at all. Bounded: at most
+    3 + log2(max_model_len) entries.
+    """
+    out: list[int] = []
+    if base >= _CTX_MIN_MAX_TOKENS:
+        out.append(base)
+    last = base
+    if fine:
+        for step in _CTX_CLIP_STEP_DOWNS:
+            if base - step >= _CTX_MIN_MAX_TOKENS:
+                out.append(base - step)
+                last = base - step
+    last //= 2
+    while last >= _CTX_MIN_MAX_TOKENS:
+        out.append(last)
+        last //= 2
+    return out
 
 
 class VLLMClient:
@@ -232,15 +266,19 @@ class VLLMClient:
         usage = getattr(probe, "usage", None)
         measured_prompt = int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
 
-        # Step 2 — clip to the measured room and re-send. The halving loop
-        # is a backstop: it only iterates if the measured clip is itself
-        # rejected, or if the probe carried no usage and we had to start
-        # from the lower bound. Bounded by log2(max_model_len) attempts.
+        # Step 2 — clip to the measured room and re-send. If the measured
+        # clip is itself rejected (e.g. the server's own check counts a token
+        # or a few more than usage.prompt_tokens reports), step down by small
+        # amounts first so the model keeps essentially all of its room;
+        # halving is the last resort. Without a measurement the small steps
+        # are meaningless against a lower bound, so that path halves directly.
         if measured_prompt > 0:
-            candidate = max_ctx - measured_prompt
+            candidates = _clip_candidates(max_ctx - measured_prompt, fine=True)
         else:
-            candidate = max_ctx - reported_prompt - _CTX_RETRY_SAFETY
-        while candidate >= _CTX_MIN_MAX_TOKENS:
+            candidates = _clip_candidates(
+                max_ctx - reported_prompt - _CTX_RETRY_SAFETY, fine=False
+            )
+        for candidate in candidates:
             try:
                 resp = await self._client.chat.completions.create(
                     **{**kwargs, "max_tokens": candidate}
@@ -250,14 +288,18 @@ class VLLMClient:
                 if retry_parsed is None:
                     raise
                 reported_prompt = retry_parsed[1]
-                candidate //= 2
                 continue
             wall_ns = time.perf_counter_ns() - t0
             out = _to_ollama_response(resp, wall_ns)
             # Present ONLY on clipped turns, so readers of unclipped
             # responses (and of every pre-2026-10-02 corpus) see no change.
+            # `num_predict_measured_prompt` is the probe's measurement (None
+            # when the probe carried no usage), so analysis can check
+            # prompt + clip against the window and see how far below it a
+            # stepped-down clip landed.
             out["num_predict_requested"] = requested
             out["num_predict_clipped_to"] = candidate
+            out["num_predict_measured_prompt"] = measured_prompt or None
             return out
 
         wall_ns = time.perf_counter_ns() - t0

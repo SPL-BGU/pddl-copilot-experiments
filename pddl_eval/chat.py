@@ -230,6 +230,11 @@ def _record_ctx_clip(tokens: dict, resp) -> None:
         the LAST turn; present only when that turn was clipped (it is dropped
         again if a later turn runs unclipped), so its presence means "the
         final answer was generated under a reduced allowance of N".
+      * `ctx_clip_last_turn_prompt_tokens` — that turn's prompt size (the
+        client's 1-token measurement; the turn's own reported prompt count
+        when the measurement carried no usage). Present and dropped together
+        with the key above. prompt + max_tokens must not exceed the context
+        window, and the gap shows how far below it a stepped-down clip landed.
       * `ctx_no_room_turns` — how many turns were never generated because
         the prompt alone filled the window (synthetic empty response).
     Call once per turn, in turn order.
@@ -240,8 +245,15 @@ def _record_ctx_clip(tokens: dict, resp) -> None:
     if clipped_to is not None:
         tokens["ctx_clipped_turns"] = tokens.get("ctx_clipped_turns", 0) + 1
         tokens["ctx_clip_last_turn_max_tokens"] = int(clipped_to)
+        prompt_tokens = (resp.get("num_predict_measured_prompt")
+                         or resp.get("prompt_eval_count"))
+        if prompt_tokens:
+            tokens["ctx_clip_last_turn_prompt_tokens"] = int(prompt_tokens)
+        else:
+            tokens.pop("ctx_clip_last_turn_prompt_tokens", None)
     else:
         tokens.pop("ctx_clip_last_turn_max_tokens", None)
+        tokens.pop("ctx_clip_last_turn_prompt_tokens", None)
     if resp.get("ctx_overflow_no_room"):
         tokens["ctx_no_room_turns"] = tokens.get("ctx_no_room_turns", 0) + 1
 

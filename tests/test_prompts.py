@@ -449,6 +449,88 @@ def test_prompt_style_end_to_end(r: TestResults):
                {x.prompt_style for x in neutral_rows}, {"neutral"})
 
 
+def test_continue_partial_seed_style_guard(r: TestResults):
+    """`--continue-partial` must check the SEED's prompt style before copying.
+
+    Seeding a neutral cell from a minimal dir used to copy first and refuse
+    afterwards, leaving a dir whose trials.jsonl failed the one-style-per-dir
+    guard on every resubmit.
+    """
+    import json
+    import tempfile
+    import run_experiment as rx
+    from dataclasses import asdict
+    from pddl_eval.runner import _trial_key
+    from tests._helpers import make_stub_result
+
+    def write_seed(dirpath: Path, style: str) -> Path:
+        res = make_stub_result(model="m", task="solve", domain_name="d1",
+                               problem_name="p1", prompt_variant=11,
+                               with_tools=True, prompt_style=style)
+        key = _trial_key("m", "solve", "d1", "p1", "", 11, True, "off",
+                         "all", style)
+        dirpath.mkdir(parents=True, exist_ok=True)
+        p = dirpath / "trials.jsonl"
+        p.write_text(json.dumps({"key": list(key), "result": asdict(res)}) + "\n")
+        return p
+
+    def exits(fn) -> str | None:
+        try:
+            fn()
+        except SystemExit as exc:
+            return str(exc.code)
+        return None
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        seed_min = root / "seed_minimal"
+        write_seed(seed_min, "minimal")
+
+        # Mismatched seed: refused, and the destination is left untouched.
+        dest = root / "cell_neutral" / "trials.jsonl"
+        dest.parent.mkdir()
+        msg = exits(lambda: rx._seed_from_partial(seed_min, dest, "neutral"))
+        r.check("minimal seed refused for a neutral run",
+                msg is not None and "--continue-partial seed" in msg
+                and "minimal" in msg, str(msg))
+        r.check("refused seed was NOT copied (no poisoned dir)",
+                not dest.exists(), str(list(dest.parent.iterdir())))
+        # ...so a resubmit of the same cell without the seed starts clean.
+        r.check("cell dir passes the per-dir guard afterwards",
+                exits(lambda: rx._refuse_other_prompt_styles(
+                    rx.load_progress(dest), "neutral", dest,
+                    what="--output-dir")) is None)
+
+        # Matching seed: copied byte-for-byte (the pre-existing behaviour).
+        dest_min = root / "cell_minimal" / "trials.jsonl"
+        dest_min.parent.mkdir()
+        r.check("minimal seed accepted for a minimal run",
+                exits(lambda: rx._seed_from_partial(seed_min, dest_min,
+                                                    "minimal")) is None)
+        r.check_eq("matching seed copied byte-for-byte", dest_min.read_bytes(),
+                   (seed_min / "trials.jsonl").read_bytes())
+
+        # Pre-existing refusals keep their messages.
+        msg = exits(lambda: rx._seed_from_partial(root / "nope", dest, "minimal"))
+        r.check("missing seed still refused",
+                msg is not None and msg.endswith("not found"), str(msg))
+        msg = exits(lambda: rx._seed_from_partial(seed_min, dest_min, "minimal"))
+        r.check("non-empty destination still refused",
+                msg is not None and "already non-empty" in msg, str(msg))
+
+        # Per-dir guard on an existing output dir, both directions.
+        msg = exits(lambda: rx._refuse_other_prompt_styles(
+            rx.load_progress(dest_min), "neutral", dest_min, what="--output-dir"))
+        r.check("existing minimal dir refused for a neutral run",
+                msg is not None and "--output-dir" in msg, str(msg))
+        seed_neu = root / "seed_neutral"
+        p_neu = write_seed(seed_neu, "neutral")
+        msg = exits(lambda: rx._refuse_other_prompt_styles(
+            rx.load_progress(p_neu), "minimal", p_neu, what="--output-dir"))
+        r.check("existing neutral dir refused for a minimal run",
+                msg is not None and "neutral" in msg, str(msg))
+
+
 # ---------------------------------------------------------------------------
 # Configuration constants: ACTIVE / STEERED match the design.
 # ---------------------------------------------------------------------------
@@ -584,6 +666,7 @@ def main():
     test_neutral_system_prompt_mirror(r)
     test_prompt_style_threading(r)
     test_prompt_style_end_to_end(r)
+    test_continue_partial_seed_style_guard(r)
     test_config_constants(r)
     test_emit_skip_gate(r)
     r.report_and_exit()
