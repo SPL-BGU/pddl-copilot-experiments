@@ -107,6 +107,38 @@ WITH_TOOLS_SYSTEM_BY_TASK: dict[str, str] = {
     ),
 }
 
+# `--prompt-style neutral` (2026-10-02): the with-tools system prompt reduced
+# to the role-framing first sentence. The `minimal` entries above are not
+# instruction-free — they say "LLMs cannot reliably … Use the available …
+# tool" — so the un-steered with-tools arm under `minimal` already carries a
+# tool-use instruction in the system turn. Under `neutral` the tools are still
+# exposed through `tools=[]` and the user prompts (v11..v16) are unchanged;
+# only this system text differs, which isolates what the system-prompt
+# instruction itself contributes to tool use.
+#
+# Naming: "neutral" here is a prompt STYLE (the system turn). It is a
+# different axis from the "neutral" prompt VARIANTS v11-13 (the user turn,
+# as opposed to the steered v14-16). A `neutral`-style run still contains
+# both variant sets.
+#
+# Each entry is byte-equal to the first sentence of the matching WITH and
+# WITHOUT entries (enforced by tests/test_prompts.py), so the role framing is
+# constant across all three system prompts. The no-tools system prompt has no
+# `neutral` form: the style is a with-tools-only knob.
+WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK: dict[str, str] = {
+    "solve": "You are a PDDL planning assistant.",
+    "validate_domain": "You are a PDDL validation assistant.",
+    "validate_problem": "You are a PDDL validation assistant.",
+    "validate_plan": "You are a PDDL validation assistant.",
+    "simulate": "You are a PDDL simulation assistant.",
+}
+
+# `--prompt-style` values. `minimal` is the default and the only style any
+# corpus before 2026-10-02 was written under. The style is part of the resume
+# key and of the cluster cell name (`tools_all_<style>`), so rows of different
+# styles can never share a results dir or satisfy each other's resume.
+PROMPT_STYLES: tuple[str, ...] = ("minimal", "neutral")
+
 WITHOUT_TOOLS_SYSTEM_BY_TASK: dict[str, str] = {
     "solve": (
         "You are a PDDL planning assistant. PDDL planning tools are not "
