@@ -416,7 +416,7 @@ def fig_mechanism(task: str, save_name: str) -> Path:
     x = np.arange(len(rq.MODELS_9B))
     w = 0.38
     arms = ("tl-neut", "tl-ster")
-    for ax, metric, fn in ((axL, "tool-use rate (tool_selected %)", rq.cell_toolsel),
+    for ax, metric, fn in ((axL, "invocation rate (tool_selected %)", rq.cell_toolsel),
                            (axR, "tool-verified success (%)", rq.cell_success)):
         ax.set_axisbelow(True)
         ax.set_ylim(0, 112)
@@ -443,7 +443,7 @@ def fig_mechanism(task: str, save_name: str) -> Path:
                        lw=1.4, ls=(0, (2, 1.4)), zorder=5,
                        label=("accuracy when called" if not ref_label_done else None))
             ref_label_done = True
-    axL.set_title(f"{rq.TASK_DISP[task]} — tool-use rate")
+    axL.set_title(f"{rq.TASK_DISP[task]} — invocation rate")
     axR.set_title("…raises the tool path (mechanism layer)")
     axR.legend(loc="lower right", framealpha=0.92)
     fig.suptitle(f"{rq.TASK_DISP[task]} mechanism: steering raises tool-calling, "
