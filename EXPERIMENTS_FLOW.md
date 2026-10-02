@@ -447,7 +447,7 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pla
 | done_reason | Raw `done_reason` from the last chat turn (`"stop"`, `"length"`, etc.) |
 | infra_failure | True when the trial never got a real model attempt (transport or server failure). Such records are dropped from `trials.jsonl` and from the saved list, so this is `false` on disk |
 | tool_filter | "all" |
-| prompt_style | "minimal" |
+| prompt_style | "minimal" (every corpus before 2026-10-02), or "neutral" for a `--prompt-style neutral` run: the with-tools system prompt is only the role-framing sentence, with no "use the tool" instruction. This is the system-prompt style and is separate from the neutral (v11–13) versus steered (v14–16) prompt variants |
 
 ---
 

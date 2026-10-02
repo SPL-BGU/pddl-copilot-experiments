@@ -17,11 +17,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pddl_eval.prompts import (
     ACTIVE_PROMPT_VARIANTS,
+    PROMPT_STYLES,
     PROMPT_TEMPLATES,
     PROMPT_TEMPLATES_TOOLS_OVERRIDE,
     STEERED_VARIANTS,
     WITH_TOOLS_SYSTEM,
     WITH_TOOLS_SYSTEM_BY_TASK,
+    WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK,
     WITHOUT_TOOLS_SYSTEM,
     WITHOUT_TOOLS_SYSTEM_BY_TASK,
 )
@@ -264,6 +266,190 @@ def test_system_prompt_parity(r: TestResults):
 
 
 # ---------------------------------------------------------------------------
+# `--prompt-style neutral` (2026-10-02): the with-tools system prompt reduced
+# to the role-framing sentence. Mirror property extended to three texts: the
+# neutral entry IS the first sentence of both the WITH and the WITHOUT entry.
+# ---------------------------------------------------------------------------
+
+# Phrases that would make the neutral system prompt carry an instruction or a
+# claim about tool use — the very thing the style exists to remove.
+_NEUTRAL_FORBIDDEN = ("tool", "cannot reliably", "use the", "arxiv", "reasoning")
+
+# sha256 over json.dumps([task, variant, with_tools, messages]) for every
+# task × v0..v16 × {tools, no-tools} under the DEFAULT style, computed on
+# origin/main (fedbeb3) before `prompt_style` reached build_messages. A change
+# here means the default prompts are no longer byte-identical to the corpus.
+_DEFAULT_MESSAGES_SHA256 = (
+    "d11d948dfb79226d4cb215260be25821353b38557b5531861964f4c303ec0ead"
+)
+_FIXTURE_GT = {"plan": ["(pick_up b3)", "(stack b3 b2)"]}
+_FIXTURE_DOMAIN = "(define (domain d))"
+_FIXTURE_PROBLEM = "(define (problem p))"
+
+
+def test_neutral_system_prompt_mirror(r: TestResults):
+    """Neutral with-tools system prompt = the shared role-framing sentence."""
+    r.check_eq("PROMPT_STYLES", tuple(PROMPT_STYLES), ("minimal", "neutral"))
+    r.check_eq(
+        "WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK keys",
+        sorted(WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK.keys()),
+        sorted(TASKS),
+    )
+    for task in TASKS:
+        neutral = WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK[task]
+        r.check_eq(f"{task} NEUTRAL sentence count", _count_sentences(neutral), 1)
+        r.check_eq(
+            f"{task} NEUTRAL == first sentence of WITH",
+            neutral, _first_sentence(WITH_TOOLS_SYSTEM_BY_TASK[task]),
+        )
+        r.check_eq(
+            f"{task} NEUTRAL == first sentence of WITHOUT",
+            neutral, _first_sentence(WITHOUT_TOOLS_SYSTEM_BY_TASK[task]),
+        )
+        r.check(
+            f"{task} NEUTRAL is a strict prefix of WITH (pure truncation)",
+            WITH_TOOLS_SYSTEM_BY_TASK[task].startswith(neutral + " "),
+        )
+        for phrase in _NEUTRAL_FORBIDDEN:
+            r.check(
+                f"{task} NEUTRAL has no {phrase!r}",
+                phrase not in neutral.lower(), neutral,
+            )
+    # The example from the design brief, pinned literally.
+    r.check_eq(
+        "validate_plan NEUTRAL literal",
+        WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK["validate_plan"],
+        "You are a PDDL validation assistant.",
+    )
+
+
+def test_prompt_style_threading(r: TestResults):
+    """`prompt_style` changes the with-tools system turn and nothing else;
+    the default is byte-identical to the pre-change prompts."""
+    import hashlib
+    import json
+    from pddl_eval.runner import _trial_key, build_messages
+
+    def msgs(task, pv, with_tools, **kw):
+        return build_messages(task, _FIXTURE_DOMAIN, _FIXTURE_PROBLEM, pv,
+                              with_tools, _FIXTURE_GT, **kw)
+
+    # Default style: whole grid (incl. legacy v0..v10) pinned to origin/main.
+    h = hashlib.sha256()
+    for task in TASKS:
+        for pv in range(0, 17):
+            for with_tools in (True, False):
+                h.update(json.dumps([task, pv, with_tools,
+                                     msgs(task, pv, with_tools)],
+                                    sort_keys=True).encode())
+    r.check_eq("default-style messages byte-identical to origin/main",
+               h.hexdigest(), _DEFAULT_MESSAGES_SHA256)
+
+    for task in TASKS:
+        for pv in ACTIVE_PROMPT_VARIANTS:
+            default = msgs(task, pv, True)
+            r.check_eq(f"{task} v{pv} explicit minimal == default",
+                       msgs(task, pv, True, prompt_style="minimal"), default)
+            neutral = msgs(task, pv, True, prompt_style="neutral")
+            r.check_eq(f"{task} v{pv} neutral system turn",
+                       neutral[0],
+                       {"role": "system",
+                        "content": WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK[task]})
+            r.check_eq(f"{task} v{pv} neutral user turn unchanged",
+                       neutral[1], default[1])
+            r.check(f"{task} v{pv} neutral differs from minimal",
+                    neutral[0] != default[0])
+            # No-tools arm: the style is a with-tools-only knob.
+            r.check_eq(f"{task} v{pv} no-tools unaffected by style",
+                       msgs(task, pv, False, prompt_style="neutral"),
+                       msgs(task, pv, False))
+
+    # Fail loud on an unknown style and on legacy variants (no role-only form).
+    for label, kwargs, pv in (("unknown style", {"prompt_style": "guided"}, 11),
+                              ("neutral on legacy v5", {"prompt_style": "neutral"}, 5)):
+        try:
+            msgs("solve", pv, True, **kwargs)
+        except ValueError:
+            r.check(f"{label} rejected", True)
+        else:
+            r.check(f"{label} rejected", False, "no ValueError")
+
+    # Resume keys: the style is a key coordinate, so a neutral trial can never
+    # be satisfied by (or satisfy) a minimal one.
+    k_min = _trial_key("m", "validate_plan", "d", "p", "v1", 11, True,
+                       "off", "all", "minimal")
+    k_neu = _trial_key("m", "validate_plan", "d", "p", "v1", 11, True,
+                       "off", "all", "neutral")
+    r.check("resume keys differ by style", k_min != k_neu)
+    r.check_eq("style is the last key coordinate", k_neu[-1], "neutral")
+
+
+def test_prompt_style_end_to_end(r: TestResults):
+    """CLI choices → evaluate_one → result row → resume scope."""
+    import asyncio
+    import run_experiment as rx
+    from pddl_eval.runner import evaluate_one, run_single_task_experiment
+
+    r.check_eq("CLI --prompt-style choices", tuple(rx.PROMPT_STYLE_CHOICES),
+               ("minimal", "neutral"))
+
+    # evaluate_one sends the neutral system prompt and stamps the row.
+    sent: list[list[dict]] = []
+
+    class _Client:
+        async def chat(self, **kwargs):
+            sent.append([dict(m) for m in kwargs["messages"]])
+            return {"message": {"role": "assistant", "content": "x",
+                                "thinking": ""},
+                    "done_reason": "stop", "prompt_eval_count": 1,
+                    "eval_count": 1, "total_duration": 1, "eval_duration": 1}
+
+    class _MCP:
+        tools: list = []
+
+    for style in ("minimal", "neutral"):
+        sent.clear()
+        res = asyncio.run(evaluate_one(
+            _Client(), "m", "validate_plan", "d1", _FIXTURE_DOMAIN, "p1",
+            _FIXTURE_PROBLEM, 11, True, _MCP(), {"plan_valid": True,
+                                                 **_FIXTURE_GT},
+            num_predict=6144, num_ctx=16384, num_ctx_thinking=16384,
+            think=False, prompt_style=style,
+        ))
+        expected = (WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK if style == "neutral"
+                    else WITH_TOOLS_SYSTEM_BY_TASK)["validate_plan"]
+        r.check_eq(f"{style}: system prompt on the wire",
+                   sent[0][0]["content"], expected)
+        r.check_eq(f"{style}: row prompt_style", res.prompt_style, style)
+
+    # A minimal-style trials.jsonl does not satisfy a neutral-style run: every
+    # job is still emitted, and the restored minimal rows are out of scope.
+    domains = {"d1": {"type": "classical", "domain": "(d)",
+                      "problems": {"p1": "(p)"}}}
+    ground_truth = {"d1": {"p1": {"plan": ["(a)"], "trace": []}}}
+    common = dict(client=None, models=["m"], tasks=["solve"], domains=domains,
+                  ground_truth=ground_truth, mcp=None, conditions="tools",
+                  concurrency=1)
+    with stubbed_evaluate_one(make_stub_evaluate_one()):
+        minimal_rows = asyncio.run(run_single_task_experiment(**common))
+    from pddl_eval.runner import _think_str, _trial_key
+    restored = {
+        _trial_key(x.model, x.task, x.domain_name, x.problem_name,
+                   x.plan_label, x.prompt_variant, x.with_tools,
+                   _think_str(None), x.tool_filter, x.prompt_style): x
+        for x in minimal_rows
+    }
+    captured: list = []
+    with stubbed_evaluate_one(make_stub_evaluate_one(captured=captured)):
+        neutral_rows = asyncio.run(run_single_task_experiment(
+            **common, prompt_style="neutral", restored_by_key=restored))
+    r.check_eq("neutral run re-emits every job despite minimal rows on disk",
+               len(captured), len(minimal_rows))
+    r.check_eq("neutral run returns only neutral rows",
+               {x.prompt_style for x in neutral_rows}, {"neutral"})
+
+
+# ---------------------------------------------------------------------------
 # Configuration constants: ACTIVE / STEERED match the design.
 # ---------------------------------------------------------------------------
 
@@ -395,6 +581,9 @@ def main():
     test_solve_action_example(r)
     test_no_harness_mismatched_content(r)
     test_system_prompt_parity(r)
+    test_neutral_system_prompt_mirror(r)
+    test_prompt_style_threading(r)
+    test_prompt_style_end_to_end(r)
     test_config_constants(r)
     test_emit_skip_gate(r)
     r.report_and_exit()

@@ -45,6 +45,7 @@ from pddl_eval.domains import (
 )
 from pddl_eval.prompts import (
     ACTIVE_PROMPT_VARIANTS,
+    PROMPT_STYLES,
     PROMPT_TEMPLATES,
 )
 from pddl_eval.resume import load_progress
@@ -165,7 +166,7 @@ def resolve_plugin_dirs(marketplace_path: str | Path) -> list[Path]:
 DEFAULT_MODELS = ["qwen3:0.6b", "qwen3:4b"]
 
 TOOL_FILTER_CHOICES = ("all",)
-PROMPT_STYLE_CHOICES = ("minimal",)
+PROMPT_STYLE_CHOICES = PROMPT_STYLES  # ("minimal", "neutral") — pddl_eval/prompts.py
 CONDITION_CHOICES = ("tools", "no-tools", "both")
 
 
@@ -401,6 +402,20 @@ async def async_main(args):
     # fixture set) before merging into the saved results, so trials seeded
     # from a multi-cell merged source don't pollute the cell's summary.
     restored_by_key = load_progress(progress_path)
+    # One prompt style per results dir. The resume key already keeps styles
+    # apart (rows of another style are simply out of scope), but a dir holding
+    # both would still be pooled by anything that reads trials.jsonl without
+    # filtering on `prompt_style`. Every corpus before 2026-10-02 is `minimal`,
+    # so this can only fire when a non-default style is pointed at an existing
+    # dir (or the reverse).
+    # (prompt_style is the last element of the 10-tuple, see runner._trial_key.)
+    other_styles = sorted({k[-1] for k in restored_by_key} - {args.prompt_style})
+    if other_styles:
+        sys.exit(
+            f"{progress_path} already holds trials written under prompt style "
+            f"{other_styles}; this run is --prompt-style {args.prompt_style}. "
+            f"Use a separate --output-dir."
+        )
     if restored_by_key:
         print(
             f"\n  Resume: loaded {len(restored_by_key)} previously-completed "
@@ -621,7 +636,14 @@ def main():
     p.add_argument("--tool-filter", choices=list(TOOL_FILTER_CHOICES), default="all",
                    help="'all' exposes every connected MCP tool every turn (paper-aligned).")
     p.add_argument("--prompt-style", choices=list(PROMPT_STYLE_CHOICES), default="minimal",
-                   help="System prompt style. 'minimal' is the active choice.")
+                   help="With-tools system prompt style. 'minimal' (default) is the "
+                        "style of every corpus to date: role framing plus 'LLMs "
+                        "cannot reliably ... Use the available ... tool'. 'neutral' "
+                        "keeps only the role-framing sentence (tools still exposed, "
+                        "user prompts unchanged). The style is part of the resume "
+                        "key; 'neutral' requires --conditions tools, and an "
+                        "--output-dir that already holds rows of another style is "
+                        "refused, so the two never mix.")
     p.add_argument("--num-predict", type=int, default=None,
                    help=f"Override max output tokens per chat turn for ALL tasks. "
                         f"Default: per-task caps (solve={DEFAULT_NUM_PREDICT['solve']}, "
@@ -756,6 +778,19 @@ def main():
         if args.conditions == "tools":
             sys.exit("--decoupled-budget has no effect with --conditions tools "
                      "(it is a no-tools-only intervention); use no-tools or both")
+
+    # A non-default --prompt-style only changes the WITH-TOOLS system prompt.
+    # The style is still stamped on every row and into every resume key, so a
+    # no-tools pass under it would write rows that are prompt-identical to the
+    # `minimal` no-tools baseline under a different label. Refuse rather than
+    # let a duplicate baseline appear (smoke forces --conditions both, so it is
+    # refused too).
+    if args.prompt_style != "minimal" and (
+        args.conditions != "tools" or args.smoke or args.smoke_shuffle
+    ):
+        sys.exit(f"--prompt-style {args.prompt_style} only affects the with-tools "
+                 "system prompt; run it with --conditions tools (and without "
+                 "--smoke/--smoke-shuffle)")
 
     # Smoke pre-resolves several knobs before the num-variants range check.
     # Setting --num-variants 1 here keeps the existing check trivially valid

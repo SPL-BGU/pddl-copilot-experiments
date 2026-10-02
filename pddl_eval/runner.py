@@ -34,11 +34,13 @@ from .chat import (
 from .domains import _build_plan_str
 from .prompts import (
     ACTIVE_PROMPT_VARIANTS,
+    PROMPT_STYLES,
     PROMPT_TEMPLATES,
     PROMPT_TEMPLATES_TOOLS_OVERRIDE,
     STEERED_VARIANTS,
     WITH_TOOLS_SYSTEM,
     WITH_TOOLS_SYSTEM_BY_TASK,
+    WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK,
     WITHOUT_TOOLS_SYSTEM,
     WITHOUT_TOOLS_SYSTEM_BY_TASK,
 )
@@ -295,6 +297,7 @@ def build_messages(
     prompt_variant: int,
     with_tools: bool,
     gt: dict,
+    prompt_style: str = "minimal",
 ) -> list[dict]:
     """Build the [system, user] chat messages for one single-task trial.
 
@@ -310,7 +313,17 @@ def build_messages(
         of with_tools. The (no-tools, steered) control arm needs to see the
         steered text — that's the H4 falsification check ("steered directive
         alone does not move the no-tools floor").
+
+    `prompt_style` selects the WITH-TOOLS system prompt only: `minimal` (the
+    default — output byte-identical to before the parameter existed) uses
+    `WITH_TOOLS_SYSTEM_BY_TASK`; `neutral` uses the role-framing-only
+    `WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK`. The user prompt and the no-tools
+    system prompt do not depend on it.
     """
+    if prompt_style not in PROMPT_STYLES:
+        raise ValueError(
+            f"unknown prompt_style {prompt_style!r} (expected one of {PROMPT_STYLES})"
+        )
     override = PROMPT_TEMPLATES_TOOLS_OVERRIDE.get(task, {})
     override_applies = prompt_variant in STEERED_VARIANTS or with_tools
     if override_applies and prompt_variant in override:
@@ -325,12 +338,20 @@ def build_messages(
     #   * v11..v16 (sweep-5): per-task dicts (thin policy stubs, Option C).
     #   * v0..v10 (legacy): unchanged flat WITH/WITHOUT_TOOLS_SYSTEM constants.
     if prompt_variant >= 11:
-        system = (
-            WITH_TOOLS_SYSTEM_BY_TASK[task]
-            if with_tools
-            else WITHOUT_TOOLS_SYSTEM_BY_TASK[task]
-        )
+        if not with_tools:
+            system = WITHOUT_TOOLS_SYSTEM_BY_TASK[task]
+        elif prompt_style == "neutral":
+            system = WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK[task]
+        else:
+            system = WITH_TOOLS_SYSTEM_BY_TASK[task]
     else:
+        # The `neutral` style is defined against the per-task sweep-5
+        # prompts only; the legacy flat constants have no role-only form.
+        if with_tools and prompt_style != "minimal":
+            raise ValueError(
+                f"prompt_style {prompt_style!r} is only defined for prompt "
+                f"variants >= 11 (got v{prompt_variant})"
+            )
         system = WITH_TOOLS_SYSTEM if with_tools else WITHOUT_TOOLS_SYSTEM
     return [
         {"role": "system", "content": system},
@@ -367,6 +388,7 @@ async def evaluate_one(
     # system/user text (corpus identity is load-bearing).
     messages = build_messages(
         task, domain_pddl, problem_pddl, prompt_variant, with_tools, gt,
+        prompt_style=prompt_style,
     )
 
     t0 = time.time()

@@ -39,6 +39,17 @@
 #   bash cluster-experimenting/submit_with_rtx.sh --all --exclude ise-6000p-04          # skip a sick node
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-auto-prioritize             # don't deprioritize fast cells
 #   bash cluster-experimenting/submit_with_rtx.sh --all --no-tools --include-no-tools-steered  # sweep-5 control arm
+#   bash cluster-experimenting/submit_with_rtx.sh <model> --tools-only --prompt-style neutral --tasks "validate_plan" --run-tag <tag>
+#
+# --prompt-style <minimal|neutral>: with-tools system-prompt style. `neutral`
+#   keeps only the role-framing sentence (no "use the tool" instruction; tools
+#   still exposed). The with-tools cell is then named tools_all_neutral, so it
+#   writes to results/slurm_vllm_<model>_<think>_tools_all_neutral[_<tag>]/
+#   and never shares a dir or resume keys with tools_all_minimal. Default
+#   (unset or `minimal`) leaves the submission unchanged.
+#
+# --tasks "<list>": run only these tasks in every cell (space- or
+#   comma-separated, one quoted argument). Default: all 5.
 #
 # --include-no-tools-steered: enables the sweep-5 control arm by emitting
 #   v14/v15/v16 in no-tools cells (the harness otherwise skips them — see
@@ -147,6 +158,8 @@ DECOUPLED_BUDGET=0
 NUM_PREDICT_THINK=""
 NUM_PREDICT_ANSWER=""
 REASONING_PARSER_OVERRIDE=""
+PROMPT_STYLE=""
+TASKS_OVERRIDE=""
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -174,6 +187,8 @@ while [[ $# -gt 0 ]]; do
         --num-predict-think) shift; NUM_PREDICT_THINK="$1"; shift ;;
         --num-predict-answer) shift; NUM_PREDICT_ANSWER="$1"; shift ;;
         --reasoning-parser) shift; REASONING_PARSER_OVERRIDE="$1"; shift ;;
+        --prompt-style) shift; PROMPT_STYLE="$1"; shift ;;
+        --tasks) shift; TASKS_OVERRIDE="$1"; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -280,6 +295,57 @@ if [ -n "$REASONING_PARSER_OVERRIDE" ] && \
    [ "$REASONING_PARSER_OVERRIDE" != "qwen3" ]; then
     echo "Error: --reasoning-parser must be 'none' or 'qwen3' (got: $REASONING_PARSER_OVERRIDE)" >&2
     exit 1
+fi
+
+# --prompt-style <style>: with-tools system-prompt style passed down to
+# run_experiment.py (pddl_eval/prompts.py PROMPT_STYLES). The style is carried
+# by the cell's cond token — `tools_all_<style>` — so a non-default style gets
+# its own results dir (results/slurm_vllm_<model>_<think>_tools_all_<style>
+# [_<RUN_TAG>]) and its own resume keys; it can never land in, or resume from,
+# a tools_all_minimal cell. Unset or `minimal` → cond stays tools_all_minimal
+# and the submission is byte-equivalent to before the flag existed.
+# The style only changes the with-tools system prompt, so it is refused with
+# --no-tools and with the smoke modes (which run both conditions in one dir).
+case "$PROMPT_STYLE" in
+    ""|minimal|neutral) ;;
+    *)
+        echo "Error: --prompt-style must be 'minimal' or 'neutral' (got: $PROMPT_STYLE)" >&2
+        exit 1 ;;
+esac
+if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
+    if [ "$NO_TOOLS" -eq 1 ] || [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+        echo "Error: --prompt-style $PROMPT_STYLE only affects with-tools cells; it cannot be combined with --no-tools or --smoke[-shuffle]" >&2
+        exit 1
+    fi
+fi
+
+# --tasks "<list>": restrict every cell to a subset of the 5 tasks (space- or
+# comma-separated, quoted as ONE argument). Passed to the sbatch as TASKS,
+# which it forwards as run_experiment.py --tasks. Normalised here to a
+# `^`-joined token (the CELLS_LIST separator) because the --export list is
+# comma-separated and must not depend on embedded spaces; the sbatch maps it
+# back. Unset → the sbatch passes no --tasks and all 5 tasks run, as before.
+TASKS_EXPORT=""
+if [ -n "$TASKS_OVERRIDE" ]; then
+    read -ra _tasks <<< "${TASKS_OVERRIDE//,/ }"
+    if [ "${#_tasks[@]}" -eq 0 ]; then
+        echo "Error: --tasks expects at least one task" >&2
+        exit 1
+    fi
+    for _t in "${_tasks[@]}"; do
+        case "$_t" in
+            solve|validate_domain|validate_problem|validate_plan|simulate) ;;
+            *)
+                echo "Error: --tasks: unknown task '$_t' (expected solve, validate_domain, validate_problem, validate_plan, simulate)" >&2
+                exit 1 ;;
+        esac
+    done
+    TASKS_EXPORT=$(IFS='^'; echo "${_tasks[*]}")
+    unset _tasks _t
+    if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+        echo "Error: --tasks cannot be combined with --smoke[-shuffle] (the smoke slice fixes its own task set)" >&2
+        exit 1
+    fi
 fi
 
 # --decoupled-budget only acts on the no-tools think=on path; run_experiment.py
@@ -401,6 +467,17 @@ else
     EFF_COND=("${DEFAULT_CONDITIONS[@]}")
 fi
 
+# --prompt-style: rename the with-tools cond token to carry the style. Only
+# `tools_all_minimal` is rewritten; `no-tools` (when the default two-cond axis
+# is in use) is left as the ordinary no-tools cell.
+if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
+    for i in "${!EFF_COND[@]}"; do
+        if [ "${EFF_COND[$i]}" = "tools_all_minimal" ]; then
+            EFF_COND[$i]="tools_all_${PROMPT_STYLE}"
+        fi
+    done
+fi
+
 # Build cells (model × think × cond). The legacy no-tools/think=on gate was
 # lifted 2026-05-12 to complete the ablation dimension (4 missing cells per
 # `--all` sweep, one per model). Default `--all` now expands to 4×6 = 24
@@ -507,6 +584,11 @@ if [ -n "$DOMAINS_DIR" ]; then
 fi
 if [ -n "$RUN_TAG" ]; then
     EXPORT_LIST="${EXPORT_LIST},RUN_TAG=${RUN_TAG}"
+fi
+# --tasks subset (`^`-joined; see the validation block above). --prompt-style
+# needs no export of its own: it travels inside CELLS_LIST as the cond token.
+if [ -n "$TASKS_EXPORT" ]; then
+    EXPORT_LIST="${EXPORT_LIST},TASKS=${TASKS_EXPORT}"
 fi
 # Decoupled-budget bundle (consumed by run_condition_vllm_rtx.sbatch). Each is
 # threaded explicitly — same convention as RUN_TAG/DOMAINS_DIR — rather than
@@ -627,6 +709,12 @@ if [ -n "$DOMAINS_DIR" ]; then
 fi
 if [ -n "$RUN_TAG" ]; then
     echo "  run tag:     $RUN_TAG (suffixed onto per-cell OUT_DIR)" >&2
+fi
+if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
+    echo "  style:       $PROMPT_STYLE (with-tools cells become tools_all_${PROMPT_STYLE}; separate OUT_DIR and resume keys)" >&2
+fi
+if [ -n "$TASKS_EXPORT" ]; then
+    echo "  tasks:       ${TASKS_EXPORT//^/ } (subset; default is all 5)" >&2
 fi
 if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
     echo "  decoupled:   ON (think=${NUM_PREDICT_THINK:-default} / answer=${NUM_PREDICT_ANSWER:-per-task}; reasoning-parser=${REASONING_PARSER_OVERRIDE:-per-model})" >&2
