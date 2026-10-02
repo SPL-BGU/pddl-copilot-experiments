@@ -6,6 +6,98 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-10-02 — Four harness fixes ahead of a full-storage rerun of the with-tools arms
+
+**Motivation.** The transcript re-analysis (`development/reanalysis_transcripts.md`,
+findings 3 and 5; the file is not yet committed on `main`) found that two things the
+paper reads as model behaviour on the open tool arms are produced by the harness, and
+that stored answers are still cut. A rerun is only worth its GPU time once these are
+fixed. No cluster job ran for this entry and no existing corpus was rewritten.
+
+**1. The final turn is no longer dropped when the conversation is long
+(`pddl_eval/vllm_client.py`, `pddl_eval/chat.py`).** The server refuses a request when
+prompt plus output allowance exceeds its 16,384-token window. Its error message gives
+only a lower bound for the prompt size ("at least N", where N is the window minus the
+allowance plus one), and the old retry treated N as the real size. Each retry therefore
+lowered the allowance by just 129 tokens, both retries were refused, and the trial was
+recorded as an empty answer marked "length". This happened to 1,987 trials in the three
+headline think-off tool cells of `sweep5v2-live` (solve and validate_plan), usually
+after the tool had already returned the right result. Now, when the first request is
+refused, the client sends the same request asking for one token, reads the true prompt
+size from the reply, and re-sends with exactly the room that is left. If the server
+reports no usage it falls back to halving the allowance until a request fits. The first
+request is unchanged, so trials that fit behave as before. The empty "length" reply
+remains only when not even one token fits. New optional keys in a row's `tokens`,
+present only when a turn overflowed: `ctx_clipped_turns`,
+`ctx_clip_last_turn_max_tokens`, `ctx_no_room_turns`.
+
+**2. A leaked Gemma marker no longer costs the first line of the answer
+(`pddl_eval/scoring.py`).** Gemma is served without a reasoning parser, and with
+thinking off its answer after a tool call starts with the literal
+`<|channel>thought\n<channel|>`. On solve the first action sits on the same line as the
+closing marker, the line does not look like an action, and the plan is read without its
+first step. In the canonical Gemma think-off tool cell this hit 208 solve answers; with
+the marker removed, 207 are the planner's own plan word for word. The three text
+extractors (`extract_plan_lines`, `extract_verdict`, and the JSON path through
+`_strip_md_fence`) now drop that exact prefix, only at the very start, once. Thought
+blocks that carry text, doubled markers, and markers later in the answer are left
+alone. The stored `response` keeps the raw text. **This changes delivered-answer
+grades for Gemma**: re-running `tools/e2e_regrade.py` on the Gemma cells will give
+different solve numbers from the frozen ones in `NUMBERS.md`; the overlay files under
+`results/derived/` were not regenerated here. `tools/e2e_regrade.py` is hash-pinned
+and was not edited. It gets the fix through the scoring functions it imports, which
+covers every prefixed solve and simulate row in the canonical Gemma cells (checked:
+no remaining difference). Its own fallback readers (backticked lines, table rows, the
+"is the answer empty" test) still see the raw text; closing that needs a declared
+change to the pinned file.
+
+**3. Stored answers are no longer cut at 16,384 characters (`pddl_eval/runner.py`).**
+`RESPONSE_SNAPSHOT_LEN` goes from 16384 to 65536. The cut keeps the start of the answer,
+so a long answer lost its end, which is where the verdict or the final plan is; 14% of
+rows in the iss024d-e2e rerun sat at the old cap. 65536 characters is 8 per token at the
+largest output allowance (8,192 tokens), so answers under the default budgets cannot be
+cut. Each row now also stores `response_truncated_by_storage` (true / false; null on
+older rows), so an analysis can assert it never happened. Two side effects to know
+about: (a) the frontier tools (`tools/frontier_runner.py`, `tools/claude_api_batch.py`,
+`tools/claude_api_tools_probe.py`) take this constant as their default `--snapshot-len`,
+so their default is now 65536 too (their run manifest records the value and refuses a
+resume under a different one); (b) the pinned overlay's list of known caps is
+`(500, 16384, 262144)`, so for a new vLLM cell it will infer 16384 or 262144, never
+65536. With the new flag false on every row this does not change any grade except that
+a complete answer of exactly 16,384 characters would be censored; adding 65536 there
+is a declared change to a pinned file.
+
+**4. A with-tools arm with no tool instruction in the system prompt
+(`pddl_eval/prompts.py`, `pddl_eval/runner.py`, `run_experiment.py`,
+`cluster-experimenting/submit_with_rtx.sh`, `run_condition_vllm_rtx.sbatch`).** The
+with-tools system prompt has always said "LLMs cannot reliably ... Use the available
+... tool", so the un-steered tool arm was never instruction-free. New
+`--prompt-style neutral` keeps only the first sentence ("You are a PDDL validation
+assistant." and its planning / simulation counterparts). Tools are still offered and
+the user prompts (variants 11 to 16) are unchanged. The default style is `minimal` and
+its prompts are byte-identical to before (a digest over every task, variant and
+condition is pinned in `tests/test_prompts.py`). The style is part of the resume key
+and of the cluster cell name: `submit_with_rtx.sh --prompt-style neutral` names the
+cell `tools_all_neutral`, so it writes to
+`results/slurm_vllm_<model>_<think>_tools_all_neutral[_<run tag>]/` and can never mix
+with `tools_all_minimal` rows. `run_experiment.py` refuses `neutral` unless
+`--conditions tools`, and refuses an output dir that already holds rows of another
+style. The wrapper also gains `--tasks "<list>"` to run a task subset. Without the new
+flags its `--dry-run` output is unchanged. Note on naming: this "neutral" is the
+system-prompt style; it is a different axis from the neutral (v11 to 13) versus steered
+(v14 to 16) prompt variants. Not done: the status board
+(`.claude/skills/cluster-ops/scripts/status.sh`) and the analyzer's cell-name parser
+(`.claude/skills/analyzer/scripts/_constants.py`) do not know `tools_all_neutral`; the
+status board lists such a dir under "unknown" and the analyzer skips it, so it is never
+silently pooled, but neither can show it yet.
+
+**Tests.** `tests/test_vllm_client.py` (a fake server that reports only the lower
+bound), `tests/test_scoring.py` and `tests/test_e2e_overlay.py` (real prefixed Gemma
+answers), `tests/test_runner.py` (storage cap, flag, old rows still load),
+`tests/test_prompts.py` (mirror property for the neutral prompt, default digest, resume
+keys), new `tests/test_submit_wrapper.py` (dry-run output with and without the flags).
+`tests/verify.sh` now also runs the vLLM-client and wrapper tests.
+
 ## 2026-09-14 — Fix the serving-version probe and per-cell reproduction recipe (PR #100 review)
 
 **Motivation.** The probe searched for an API banner absent from the audited vLLM
