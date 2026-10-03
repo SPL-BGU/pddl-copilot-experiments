@@ -229,9 +229,46 @@ new file that reuses the harness scoring functions at the harness commit below.
 |---|---|
 | harness branch / commit | `harness/delivered-rerun` at `4b2fe6ec0a0b8c54c1607e7fc37e2ba4f1525114` (PR #113; independent review 2026-10-02, four findings fixed in that commit). The cluster checkout stays on this commit until every cell is complete. Tools repo `pddl-copilot` at `5e4f9c0` (same commit as the canonical corpus) |
 | serving version | vLLM **0.20.2** (served banner in the smoke server log `21978897-vllm-gemma4_26b-a4b.log`; cached `~/vllm.sif`). So Gemma and Qwen3.6-35B carry no version delta against their canonical tool cells; Qwen3.5-9B does (canonical 0.22.0) |
-| job IDs | smoke (never pooled, `--partial 1`, tags `delivered-rerun-smoke` / `delivered-rerun-neutral-smoke`): 21978895_[0-2], 21978896, submitted 2026-10-02. Main run, submitted 2026-10-02 after the Gemma smoke cells passed: **21982285** (Gemma Part A, tag `delivered-rerun`), **21982286** (Gemma Part B, tag `delivered-rerun-neutral`, `afterok:21982285`). **21982369** (Qwen3.5-9B, tag `delivered-rerun`, `afterok:21982286`), **21982370** (Qwen3.6-35B, tag `delivered-rerun`, `afterok:21982369`), both submitted 2026-10-02 after the 9B smoke cell completed and passed |
-| analysis files + sha256 | *to fill at freeze* |
-| traceability map (clause → file:line) | *to fill at freeze* |
+| job IDs | smoke (never pooled, `--partial 1`): 21978895_[0-2], 21978896. Main run: **21982285** (Gemma A) → **21982286** (Gemma B) → **21982369** (9B) → **21982370** (35B) → **21991349_[0-2]** (Part C), each `afterok` on the previous |
+| **FROZEN 2026-10-03** | analysis branch `analysis/delivered-rerun` at **`d558946985330b95f71f07d38d59d20df848dc01`** (PR #116). No outcome field of this run had been read at freeze time (only row counts and job states) |
+| package hash (`--i-have-frozen`) | **`822aace9ef8a6493592b5b08d73091094fd2602fc0180d1482af83db1ee45cc9`** (covers the package and every repo module it imports; live mode also checks the domain-file manifest digest and requires `pddl-copilot` at `5e4f9c0` with a clean `plugins/`) |
+| gates | 1 typed loader, 2 registered constants as raised checks (refuses `python -O`), 3 traceability map (all quoted clauses verbatim against this prereg), 4 synthetic fixture with hand-computed values and refusals (428 checks), 5 independent adversarial review (2026-10-03: 1 blocker, 5 should-fix, 8 notes, all fixed) followed by an independent verification pass (all confirmed; 4 low items found and fixed) |
+| canonical self-vs-self dry run | Δ = 0 and interval [0, 0] in all 30 tool cells and all 12 Part C parity cells, k = 20 |
+
+**sha256 of the frozen files** (at `d558946`):
+
+| file | sha256 |
+|---|---|
+| `tools/delivered_rerun/__init__.py` | `1450beb6fe7ba5d573676ca1825a4cba39b4d73cb82159d903e436e6e8675917` |
+| `tools/delivered_rerun/analysis.py` | `ec915da3da9eda78870e7cc26cb5bcf0d145cfb21dd7d7f846c2ec00a530de8b` |
+| `tools/delivered_rerun/constants.py` | `879daf12ce176a71f7d7c2137b73c21a7844ff562dde9b07da4d67b60bc9a1b9` |
+| `tools/delivered_rerun/e4.py` | `2ad776ee4b648971d0459c613db85d34326d8c3c6ec330ee75f5c71893a2c25b` |
+| `tools/delivered_rerun/grade.py` | `1588646c021ce23126d11b716bad9c24f794e72894b0e73f261dc206b32b617e` |
+| `tools/delivered_rerun/readout.py` | `ffddae5576d396d1bd69e2baee8958892a91f96856f9fae035c0be3bc5c78590` |
+| `tools/delivered_rerun/run.py` | `8410090db908cfb01622cbfd4d7f97204b82139c434d03e92da03fbd5e68f940` |
+| `tools/delivered_rerun/schema.py` | `5e33d6bd16ebcdf6b7298002d5929d07b7601f32b586c93933a176688e9aa66e` |
+| `tools/delivered_rerun/stats.py` | `f37950779694741c106b0a8d20e6d4afe9d10573a658edd7e3efdd8c726d87a0` |
+| `tools/delivered_rerun/tripwires.py` | `f53193a5f2b40ec9bae3cbe64df4b44691f2dca54cb494eb60fb79d640145ae4` |
+| `pddl_eval/__init__.py` | `0164c8d1cca872a3be65dd2461d627b95cdae8dc4b23ef4a6c6871b632c1e3db` |
+| `pddl_eval/scoring.py` | `13444404ed07f5fe06216248b742d8d286da7caad631ccab6b374837ed237299` |
+| `pddl_eval/chat.py` | `f195e0889bc0003c6faf2050bbdec28d525ace5cc9ecacf7c1be3a2b28426907` |
+| `pddl_eval/schemas.py` | `335b62a6d2907eace6694f899e1d54f87764e85e8deb6c65aaba7c20b45528ef` |
+| `pddl_eval/runner.py` | `95213c61e343447d76f16be7bb1dcb0cfa3798d0febf14a440a352a11bd6f1cb` |
+| `pddl_eval/summary.py` | `6b3475163cee2b35f7ce816d00b1886b6c788b1d2caa6c083ff0b518e4eebb36` |
+| `pddl_eval/prompts.py` | `f12c19e9026bea463cdb5cf0b1e9ece96104e419a1bf51f9f1b0bf5dddd32e92` |
+| `pddl_eval/domains.py` | `6f2a7f98c7327b535fa3d489f31555969b94fc03b735fb2735f2c96527aa7a94` |
+| `pddl_eval/resume.py` | `f4abc5d4843204f42e7099f7eedfcc4ff3e3763d7b2848db4dfae0a154ba72c9` |
+| `run_experiment.py` | `38f0b5d4fb1dba014efbfadaa101444f8a1b183d12fd92ed6a45d92e4addad29` |
+| `tools/__init__.py` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `tools/e2e_regrade.py` (pinned 2026-09-10, unchanged) | `45dcf74a23b5d2b1d79028fd1733a9ba7884ba7f62f84c7ffa4febd100c4b11a` |
+| `tools/_run_manifest.py` | `08db2b20be699c818e47e15e589639d4294a40be1a6707b5a1e8c5acf2152c45` |
+| `tools/gt_cache_gate.py` | `1181781e674f212c7d62c4fcdb6d50eb7ee9e650887d8e2bd95937609d8f3897` |
+| `development/delivered_rerun_traceability.md` (gate 3 map) | `4440c7720877a5d02bc7f1ea205425de2dbb4427d3418f29ee7f8bbf4ce57ba2` |
+| `tests/test_delivered_rerun_analysis.py` (gate 4, 428 checks) | `dc4ec7983454893ed12b74ec0d4a923ded43a6350fb97cf9ad3bfd7781403eeb` |
+| `tests/fixtures/delivered_rerun/build_fixture.py` | `ba163b030caa40ea5ac5a97e07c87240e208d09990124525d2618cdf3c2c8c50` |
+
+Any later edit to one of these files is a declared deviation in §9, followed by a re-freeze
+and regeneration of every downstream artifact.
 
 ## 8a. Smoke record (2026-10-02)
 
@@ -296,7 +333,11 @@ fixed now, before the freeze, so they are part of the registration, not deviatio
    90% TOST. If no row applies, the label is "No registered row applies". Invocation is
    any tool call (reproduces the canonical 622/3,000).
 10. §7 exception rows are `failure_reason` "exception" or "ollama_parse_error"; the 1%
-    rule is applied per job cell and stops the whole analysis.
+    rule is applied per job cell and stops the whole analysis. Also counted as an
+    exception row, by its exact shape: a client exception whose message is empty, which
+    the harness stores under an ordinary failure reason with empty tokens, no tool calls
+    and an empty answer (added 2026-10-03 before the freeze; found by the verification
+    pass).
 11. Duplicate trial keys stop the analysis. Half-written lines are counted and reported.
 12. The delivered rule is the overlay's `e2e_strict` rule with its markdown
     tolerances, applied identically to tool and no-tools rows (Part C).

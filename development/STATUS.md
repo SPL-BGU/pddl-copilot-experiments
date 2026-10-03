@@ -122,8 +122,11 @@ arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
    Python code from that checkout when they start. Monitoring reads row counts and job
    states only (prereg §7). `status.sh` does not show the `tools_all_neutral` cell;
    count its rows directly.
-3. **Analysis code for the rerun**, written while the jobs run and frozen under
-   `/freeze-protocol` before any outcome is read.
+3. **Analysis code for the rerun: FROZEN 2026-10-03** (PR #116, `d558946`, package hash
+   `822aace…`; freeze record in prereg §8). Gates 1–5 passed. Run it with
+   `--i-have-frozen` once all cells are complete; live mode needs the local
+   `../pddl-copilot` at `5e4f9c0` (the laptop copy is at `f0e2c61`; ask Omer before
+   switching it) or run it where that commit is checked out.
 4. **PlanBench wording** (drafts, on a branch stacked on #111): corrected-extractor
    numbers beside the shipped ones; the "well inside ±7.5" sentence replaced.
 
