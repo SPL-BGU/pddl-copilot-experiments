@@ -1,5 +1,5 @@
 ---
-name: simplify
+name: experiment-drift-review
 description: Review current plan or code changes for unnecessary complexity, methodology drift, and result compatibility issues. Flags over-engineering and changes that could invalidate prior experiments.
 argument-hint: [description of what to review]
 paths: run_experiment.py, pddl_eval/**, cluster-experimenting/**
