@@ -120,7 +120,7 @@ known to be unreliable \citep{valmeekam2023planbench, kambhampati2024llmmodulo}.
 Whether this actually improves end-to-end performance, when it does, and at
 what cost, is the question we study.
 
-The question is less settled than it may appear. One line of work tests LLMs
+The question is not settled. One line of work tests LLMs
 \emph{as} planners and finds they fall well short of solvers
 \citep{valmeekam2023planbench}; a second uses LLMs as \emph{formalizers} that
 translate language into PDDL for a downstream solver
@@ -131,7 +131,7 @@ pipeline measured end-to-end, has not been answered cleanly. A credible answer
 requires controlling for several confounds at once: whether the model is even
 prompted to use the tool, whether the baseline is floored or already competent,
 reasoning-mode (extended-thinking) decode budgets, and contamination of public
-benchmark domains. This paper sets out to do exactly that, grading $4{,}560$
+benchmark domains. This paper does so, grading $4{,}560$
 trials per model-mode-arm cell strictly end-to-end against a solver oracle rather
 than by tool \emph{selection}, with a confidence interval computed for every proportion and
 an anonymized-domain control for memorization.
@@ -260,7 +260,7 @@ Across these three lines, LLMs are studied \emph{as} planners
 solver \citep{liu2023llmp, tantakoun2025survey}, or for tool-use competence in isolation
 \citep{bfcl2025}; none measures what a model gains when a sound planner or validator is
 available as a callable tool across the full set of PDDL tasks, graded end-to-end against
-the solver itself. That is the gap we close. This paper contributes a controlled evaluation
+the solver itself. This paper contributes a controlled evaluation
 of whether such symbolic tools help LLMs: five single-tool-use PDDL tasks across five
 models, a three-arm design that separates tool \emph{availability} from a one-sentence
 steering \emph{nudge}, confidence intervals with signed significance, a contamination
@@ -532,8 +532,8 @@ failure, since the answer never reached the user; crediting such trials instead
 would move $3.6\%$ of tool-arm rows and flips no headline verdict.
 
 \paragraph{One surface, three value shapes.} Our corpora differ in how much of
-the final message was stored, and the reported value shape follows the storage,
-not the estimand. Where the full text is available the delivered rate is an
+the final message was stored, and the reported value shape is set by the storage,
+while the estimand is the same throughout. Where the full text is available the delivered rate is an
 exact point with a Wilson 95\% interval, written $[a,\,b]$. Where responses were
 stored as truncated snapshots, a snapshot that ends before any verdict is
 visible leaves the trial \emph{indeterminate}: it cannot be graded correct or
@@ -585,7 +585,7 @@ pointing the other way is tallied separately as significant-\emph{against}, whic
 we treat as a finding in its own right. A research question reads \textsc{yes} when favorable
 significant gaps dominate with none against, \textsc{mixed} when significant
 against-gaps are present, and \textsc{no} when no significant favorable movement
-exists. This sign-awareness carries real weight: on \emph{validate\_plan} mere tool
+exists. This sign-awareness matters: on \emph{validate\_plan} mere tool
 availability collapses one $\geq$9B model's validator invocation to $21\%$ of
 trials, a mechanism-layer drop of $-67$\,pp in tool-verified success, and a
 sign-blind disjointness test would credit that highly significant movement as
@@ -694,7 +694,7 @@ optimism. Four claims are ruled out by construction and do not appear in this
 paper: (i) no delivered-vs-tool-verified gap is computed across corpora, only
 within one; (ii) an undecided open-roster cell is never resolved by importing the
 full-storage rerun, whose job-level parity with the canonical sweep failed (it is a
-replication under a different apparatus, not a repair); (iii) no claim that tools
+replication under a different apparatus and does not repair the canonical cells); (iii) no claim that tools
 are the sole source of \emph{simulate} success is made at the delivered level;
 (iv) the rerun's \emph{solve} cells carry a known parser-off truncation shift and
 are excluded from headline use.}
@@ -845,9 +845,8 @@ roster the tool arm's delivered rates are censoring bounds: the 9B's
 failed, though by under a point once the clustering correction is applied, so we
 read it as exploratory; Gemma (\cbnd{14.3}{35.3}) and the 35B
 (\cbnd{12.7}{53.7}) straddle and stay undecided (RQ2 \textsc{yes}, carried by
-the frontier tier and the baseline floor). The mechanism layer says why the
-open-roster bounds sit so far under their tool-verified rates of $63$--$99\%$:
-invocation. Where the plain arm leaves headroom (Qwen3.6-35B invokes the
+the frontier tier and the baseline floor). The mechanism layer points to invocation as the reason the
+open-roster bounds sit so far under their tool-verified rates of $63$--$99\%$. Where the plain arm leaves headroom (Qwen3.6-35B invokes the
 planner on only $68\%$ of trials) steering raises invocation
 to $94\%$, and every $\geq$9B model is $\geq$93\%
 accurate when it does call the planner, so what limits the tool path on
@@ -882,7 +881,7 @@ that are too short to regrade (Technical Appendix), so this figure does not esta
 how much of the recovery is due to the budget and how much to the grader.
 Format compliance stays $0\%$ for all four models (none ever emits the exact
 requested wrapper), so strict content-and-format success remains $0\%$ across the
-board. The honest comparison in the matching mode is therefore
+board. The comparison in the matching mode is therefore
 $22$--$40\%$ content-correct unaided against a tool-arm mechanism layer of
 $87$--$96\%$; a delivered-surface version of that contrast cannot be computed
 from this corpus (the tool arm delivers no determinate trajectory), and the
@@ -965,8 +964,7 @@ same corpus also shows the gap can run \emph{backwards}: on Gemma's
 \emph{validate\_plan} cell the mechanism layer is $0.9\%$ (the model almost
 never completes a valid tool interaction) while the delivered rate is
 \cbnd{30.0}{63.1}, because the model answers the verdict question directly, in
-prose, without the tool. Not calling is not the same as not answering, a point
-the availability analysis below has to respect.
+prose, without the tool, a case the availability analysis below has to respect.
 
 \begin{table}[t]
 \centering
@@ -1009,8 +1007,7 @@ below} that trivial line (pooled $26$--$78\%$) and discrimination is unreliable 
 the board, from near-chance to only modest (balanced accuracy $53$--$74\%$; Table~\ref{tab:vdom}). Qwen3.5-9B is the clearest
 case: it answers
 ``INVALID'' almost reflexively (true-positive rate $12\%$, true-negative rate
-$95\%$), scoring $26\%$ pooled but $53\%$ balanced. The tool does not \emph{refine} a
-competent baseline here; it \emph{rescues} a task the models cannot do reliably.
+$95\%$), scoring $26\%$ pooled but $53\%$ balanced. Here the tool \emph{rescues} a task the models cannot do reliably.
 The delivered lower bounds alone establish it: \cbnd{99.7}{100.0} (9B),
 \cbnd{93.3}{98.1} (Gemma), and \cbnd{91.9}{99.2} (35B) against exact unaided
 baselines of $26$, $78$, and $68\%$, favorable for all three at the claim-adverse
@@ -1053,7 +1050,7 @@ are exact in every corpus (tool transcripts are stored in full).}
 ($\geq$9B no-tools $80$--$91\%$, exact), and it is where the two grading layers
 tell visibly different stories, so we give both and keep them labeled.
 
-At the mechanism layer the picture is dramatic and exact. Merely making the
+At the mechanism layer the picture is exact. Merely making the
 tool available collapses the tool path for two of three $\geq$9B models:
 Gemma-MoE-26B's tool-verified rate falls $88\!\to\!21\%$ ($-67$\,pp) and
 Qwen3.6-35B's $91\!\to\!82\%$ ($-9$\,pp); only Qwen3.5-9B improves
@@ -1083,7 +1080,7 @@ answers the verdict question directly, in prose, and is often right. Not
 calling is not the same as not answering, so a collapse of the tool path only
 bounds, and does not determine, the collapse of the answer. What survives at
 full strength is the invocation finding itself: availability swings whether the
-model uses the tool by huge, model-specific amounts, and one directive sentence
+model uses the tool by large, model-specific amounts, and one directive sentence
 moves invocation from $21\%$ to $94\%$.
 
 A pre-registered control asks whether that sentence is simply a better prompt.
@@ -1129,8 +1126,8 @@ ceiling); \emph{simulate}'s gap is large but \emph{declines}
 floored at a format-exact $0$, the tool arm itself degrades on long trajectories, the one place
 tool-assisted success erodes with difficulty. Object count, by contrast, moves
 nothing: the \emph{validate\_problem} gap is flat at $+22/{+}23/{+}23$\,pp and the
-other tasks are flat too (RQ6 \textsc{no}). Plan length is a difficulty axis the
-tool's advantage tracks; object count is not.
+other tasks are flat too (RQ6 \textsc{no}). The tool's advantage tracks plan length
+and is flat in object count.
 
 \begin{figure*}[t]
 \centering
@@ -1251,7 +1248,7 @@ Beyond the \emph{simulate} recovery reported there ($22$--$40\%$ content-correct
 $\geq$4B), validation baselines rise sharply (e.g.\ \emph{validate\_plan}
 $+34$--$60$\,pp for 4B/9B, Wilson-disjoint), while \emph{solve} is flat for 9B/35B
 and drops $6$\,pp at 4B, so decoupling is not uniformly beneficial. The tool
-verdicts are unchanged; what shrinks is the unaided floor, to its honest size.
+verdicts are unchanged; what shrinks is the unaided floor.
 
 \textbf{A frontier proprietary model.} To test whether these baseline properties
 hold beyond the open-weight roster, we re-ran the no-tools arm on Claude Sonnet 4.6,
@@ -1267,7 +1264,7 @@ open-roster control
 ($22$--$40\%$ at $\geq$4B; Results). Unaided state tracking grows with model
 capability once format and budget pressures are removed; the open-weight roster's
 apparent zero reflects those pressures ($68\%$ unparseable, $29\%$ truncated;
-Figure~\ref{fig:failtax}), not a model-general incapacity. The contamination null extends to the frontier: every task's Wilson
+Figure~\ref{fig:failtax}) and does not carry over to the stronger model. The contamination null extends to the frontier: every task's Wilson
 intervals overlap between corpora, the high-headroom validation probes
 (\emph{validate\_plan} at $97.3\%$, \emph{validate\_problem} near $90\%$) drift by
 at most $1.9$\,pp, and the pooled $|\Delta|$ is $0.5$\,pp. The \emph{simulate}
@@ -1284,12 +1281,12 @@ delivered lift is large for Haiku ($+10.8$ / $+23.5$ / $+7.3$\,pp on
 shrinks by half to three quarters for Sonnet ($+2.5$, not separated / $+11.5$ /
 $+2.9$\,pp), so the tool's headroom on tasks the model partly does closes as
 the model strengthens. \emph{Solve} is the counterpoint: the delivered lift is
-enormous at both tiers ($22\!\to\!95$ and $29\!\to\!95$) because the unaided
+large at both tiers ($22\!\to\!95$ and $29\!\to\!95$) because the unaided
 floor barely moves. On \emph{simulate} the with-tools bounds
 (\cbnd{49}{62} Sonnet / \cbnd{52}{64} Haiku) are not separated from Sonnet's
 unaided \cbnd{41.7}{61.3} at full $N$ (\cbnd{34}{53} on the matching
 prompt-v11 slice), so no delivered lift is claimed there; the tool's work shows
-up at the mechanism layer ($97$--$99\%$) and dies in delivery, as the delivery-gap
+up at the mechanism layer ($97$--$99\%$) and is lost in delivery, as the delivery-gap
 analysis showed. These runs corroborate the unaided baseline structure and the
 delivery-gap pattern at the frontier; the invocation-rate findings remain
 specific to the open-weight roster (both frontier models call the tool on
@@ -1417,7 +1414,7 @@ comparison arm and we run no test against it.}
 \label{tab:pb-nt}
 \end{table}
 
-Two things stand out. A small current model scores $9.5$ points higher than GPT-4 did
+A small current model scores $9.5$ points higher than GPT-4 did
 on the standard domain. On the renamed domain, more than two years apart, both models
 sit near zero.
 
@@ -1630,24 +1627,24 @@ restate needs an output budget sized to the restatement.
 Three implications are not specific to PDDL and are natural hypotheses for
 tool-augmented LLMs more broadly, which our single-formalism, open-weight roster can
 suggest but not establish. First, what limits tool-augmented
-performance here is not whether the model \emph{can} use the tool but whether it
-\emph{does}, and the less obvious point is that whether it does is a large, unstable,
+performance here is whether the model actually calls the tool, and the less obvious
+point is that this is a large, unstable,
 prompt-sensitive free variable: invocation ranges from $21\%$ to $100\%$ across models
 on the same task, reverses rank-order between models under reasoning mode, and is
 moved $21\!\to\!94\%$ by one appended sentence. In nearly every cell
 accuracy-given-a-call exceeds $92\%$ (9B \emph{simulate}, $\approx$81\%, is the
 exception), so the oracle design makes the decomposition
 $P(\text{call})\times P(\text{correct}\mid\text{call})$ exact and localizes almost all
-of this volatility in the first factor. A correct-by-construction tool turns
-``can the model plan?'' into ``will the model delegate?'', and the second question is
-the one that varies widely. Second, availability and steering are distinct levers with
+of this volatility in the first factor. With a correct-by-construction tool, the open
+question shifts from whether the model can plan to whether it delegates, and delegation
+is what varies widely. Second, availability and steering are distinct levers with
 different failure modes. Exposing a tool without urging its use leaves a model free
 to fall back on prose (plausibly because instruction-tuning rewards visible, self-contained
 helpfulness, so an implicit task such as ``check this plan'' does not trigger an explicit tool call the way an
 imperative does), and on a task it can almost do, that fallback forfeits a
 verified path for an unverified one; how much it costs the delivered answer is
 corpus-dependent and, on our canonical corpus, bounded rather than decided. The remedy is cheap, one imperative
-sentence, but it is not automatic, which is a real caution for any system that
+sentence, but it is not automatic, which is a caution for any system that
 exposes tools and assumes they will be used. Prompting is only the cheapest lever; the invocation
 rate could also be raised by fine-tuning or architectural routing that internalizes the call,
 which we do not test here. The wide cross-model spread in \emph{default} invocation rate is
@@ -1669,9 +1666,8 @@ control) and reaches \cbnd{41.7}{61.3} at the frontier, so the simulator's
 necessity is a
 matter of degree rather than an absolute boundary; the tool's verified work on
 that task ($97$--$99\%$ at the mechanism layer) moreover largely fails to reach
-the delivered answer, so what the simulator lacks is not accuracy but a
-delivery path. The practical rule that follows is
-simple: a planner or validator behind a tool interface helps most when the task
+the delivered answer, so the simulator is accurate and what it lacks is a
+delivery path. In practice, a planner or validator behind a tool interface helps most when the task
 exceeds the model's unaided reach \emph{and} the prompt explicitly directs the call;
 where the model is already competent and uninstructed, the tool is at best a
 token-priced luxury, and at worst a path the model silently declines, forfeiting
@@ -1746,8 +1742,8 @@ produced is unmeasured. The largest self-imposed constraint is storage: the
 open-roster corpora stored final answers as $500$-character snapshots, a decision
 made before the delivered surface was fixed as primary, so the tool arms'
 delivered rates there are censoring bounds and several availability cells are
-undecided rather than measured. This is a property of the stored corpus, not of
-the generation apparatus: point identification is feasible by re-running the
+undecided rather than measured. This limitation comes from the stored corpus
+alone: point identification is feasible by re-running the
 affected cells on the same canonical apparatus with full-response storage
 (reasoning parser on, \emph{think}=off, the enlarged snapshot cap), and we
 pre-register that rerun, under the same prereg-parity discipline as the
@@ -1814,11 +1810,11 @@ accuracy: the \emph{invocation rate}, which decides whether the verified path
 is taken at all, and the \emph{delivery gap}, which decides how much of the
 verified result survives into the answer and grows with answer length. Both
 survive reasoning mode and an anonymized-domain
-contamination control. The rule for practitioners follows: a planner or validator behind
+contamination control. For practitioners, a planner or validator behind
 a tool interface helps an LLM most when the task exceeds the model's unaided reach,
 the model is actually prompted to call the tool, and the output budget leaves
-room to deliver what the tool returns. Availability alone is
-not enough. The prompting fix is small: a single imperative sentence sufficed across the
+room to deliver what the tool returns. Availability alone does
+not secure this, and the prompting fix is small: a single imperative sentence sufficed across the
 $4$B--$35$B range, failing to add value only where a model already called the tool or (at $0.8$B)
 mishandled the call mechanically.
 
