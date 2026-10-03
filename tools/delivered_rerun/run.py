@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import subprocess
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -49,10 +50,15 @@ class Halt(Exception):
 # Files outside the package whose behaviour the analysis imports. They are
 # part of the freeze: a later edit to any of them changes the package hash,
 # so `--i-have-frozen` refuses to run until the change is declared.
+# Every repo module imported by the package, by `run_experiment` (for
+# resolve_plugin_dirs) and by the live-mode gates; a test checks this list
+# covers sys.modules after those imports (review F2).
 DEPENDENCIES = (
-    "pddl_eval/scoring.py", "pddl_eval/chat.py", "pddl_eval/schemas.py",
-    "pddl_eval/runner.py", "pddl_eval/summary.py", "pddl_eval/prompts.py",
-    "tools/e2e_regrade.py", "tools/_run_manifest.py", "tools/gt_cache_gate.py",
+    "pddl_eval/__init__.py", "pddl_eval/scoring.py", "pddl_eval/chat.py",
+    "pddl_eval/schemas.py", "pddl_eval/runner.py", "pddl_eval/summary.py",
+    "pddl_eval/prompts.py", "pddl_eval/domains.py", "pddl_eval/resume.py",
+    "run_experiment.py", "tools/__init__.py", "tools/e2e_regrade.py",
+    "tools/_run_manifest.py", "tools/gt_cache_gate.py",
 )
 
 
@@ -71,6 +77,70 @@ def package_sha256() -> str:
     for rel, digest in file_hashes():
         h.update(rel.encode() + b"\0" + digest.encode() + b"\n")
     return h.hexdigest()
+
+
+def domains_manifest(domains_dir: Path) -> tuple[int, str]:
+    """(file count, sha256 over (relative path, sha256(bytes))) of every .pddl
+    and .plan file that pddl_eval.domains.load_domains can read."""
+    files = sorted(f for d in ("classical", "numeric") for f in (domains_dir / d).rglob("*")
+                   if f.is_file() and f.suffix in (".pddl", ".plan"))
+    h = hashlib.sha256()
+    for f in files:
+        h.update(f.relative_to(domains_dir).as_posix().encode() + b"\0"
+                 + hashlib.sha256(f.read_bytes()).hexdigest().encode() + b"\n")
+    return len(files), h.hexdigest()
+
+
+def check_domains(domains_dir: Path) -> None:
+    n, digest = domains_manifest(domains_dir)
+    if (n, digest) != (C.DOMAINS_FILES, C.DOMAINS_MANIFEST_SHA256):
+        raise Halt(f"{domains_dir}: {n} fixture files, manifest {digest}; registered "
+                   f"{C.DOMAINS_FILES}, {C.DOMAINS_MANIFEST_SHA256}")
+
+
+def check_marketplace(head: str, plugin_changes: list[str]) -> None:
+    """prereg §8: tools repo `pddl-copilot` at 5e4f9c0, and no uncommitted
+    change to a tracked file under plugins/ (the validator code the solve
+    plans are checked with)."""
+    if not head.startswith(C.MARKETPLACE_PIN):
+        raise Halt(f"marketplace HEAD {head[:12]} is not the pinned {C.MARKETPLACE_PIN} "
+                   "(prereg §8); check it out before validating solve plans")
+    if plugin_changes:
+        raise Halt(f"marketplace has uncommitted changes under plugins/: {plugin_changes[:5]}")
+
+
+def marketplace_state(path: Path) -> tuple[str, list[str]]:
+    """(HEAD sha, `git status --porcelain` lines of tracked files under plugins/)."""
+    head = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"], capture_output=True,
+                          text=True)
+    if head.returncode != 0:
+        raise Halt(f"--marketplace-path {path}: not a git checkout ({head.stderr.strip()})")
+    st = subprocess.run(["git", "-C", str(path), "status", "--porcelain",
+                         "--untracked-files=no", "--", "plugins"],
+                        capture_output=True, text=True)
+    if st.returncode != 0:
+        raise Halt(f"--marketplace-path {path}: git status failed ({st.stderr.strip()})")
+    return head.stdout.strip(), [ln for ln in st.stdout.splitlines() if ln.strip()]
+
+
+def load_audit_notes(path: Path | None, audited: set[str]) -> dict[str, str]:
+    """§8b item 15: 'the audit is recorded in the readout'. Every released
+    tripwire needs a written note; the notes are embedded verbatim."""
+    if not audited:
+        if path is not None:
+            raise Halt("--audit-notes given without --audited-tripwires")
+        return {}
+    if path is None:
+        raise Halt("--audited-tripwires needs --audit-notes FILE (a JSON object with "
+                   "one note per released tripwire id)")
+    notes = json.loads(path.read_text())
+    if not isinstance(notes, dict) or set(notes) != audited:
+        raise Halt(f"--audit-notes must have exactly one entry per released tripwire "
+                   f"{sorted(audited)}")
+    for k, v in notes.items():
+        if not isinstance(v, str) or not v.strip():
+            raise Halt(f"--audit-notes: the note for {k} is empty")
+    return notes
 
 
 # ------------------------------------------------------------------ inputs
@@ -100,7 +170,7 @@ def load_all(design: C.Design, rerun_root: Path, canonical_root: Path) -> dict:
     # §7 stop rule: > 1% exception / infrastructure rows -> VOID, rerun from scratch.
     for lc in (list(cells["rerun_a"].values()) + [cells["rerun_b"]]
                + list(cells["rerun_c"].values())):
-        bad = lc.exception_rows + lc.infra_rows
+        bad = lc.void_rule_rows
         if bad > C.EXCEPTION_VOID_FRAC * len(lc.rows):
             raise Halt(f"VOID (§7): {lc.spec.name} has {bad} exception/infrastructure rows "
                        f"of {len(lc.rows)} (> {100 * C.EXCEPTION_VOID_FRAC:.0f}%); the cell "
@@ -114,11 +184,21 @@ def corpus_table(cells: dict) -> list[dict]:
              + list(cells["rerun_c"].values()) + list(cells["canon_tools"].values())
              + list(cells["canon_nt"].values()))
     for lc in every:
+        rerun = lc.spec.layer == S.RERUN
         out.append({"cell": lc.spec.name, "layer": lc.spec.layer, "rows": len(lc.rows),
                     "torn_lines": lc.torn_lines, "exception_rows": lc.exception_rows,
-                    "infra_rows": lc.infra_rows,
+                    "infra_rows": lc.infra_rows, "scoring_error_rows": lc.scoring_error_rows,
                     "storage_cuts": (sum(r.response_truncated_by_storage is True for r in lc.rows)
-                                     if lc.spec.layer == S.RERUN else None)})
+                                     if rerun else None),
+                    # Review N3, descriptive only (the strip is never widened):
+                    # answers starting with the exact registered prefix, with
+                    # it twice, and with a channel marker left after the strip.
+                    "prefix_rows": (sum(G.has_prefix(r.response) for r in lc.rows)
+                                    if rerun else None),
+                    "doubled_prefix_rows": (sum(G.doubled_prefix(r.response) for r in lc.rows)
+                                            if rerun else None),
+                    "residual_marker_rows": (sum(G.residual_marker(r.response) for r in lc.rows)
+                                             if rerun else None)})
     return out
 
 
@@ -156,7 +236,8 @@ async def live_verdicts(need: set, domains_dir: Path, marketplace: Path) -> dict
 
 # ------------------------------------------------------------------ analysis
 def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str,
-            audited: set[str]) -> dict:
+            audit_notes: dict[str, str]) -> dict:
+    audited = set(audit_notes)
     k = design.k_domains
     rerun_a, rerun_b, rerun_c = cells["rerun_a"], cells["rerun_b"], cells["rerun_c"]
 
@@ -164,6 +245,7 @@ def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str
     # Part C parity check reads only the stored online grade as well.
     par = A.parity(rerun_a, cells["canon_tools"], k)
     par_c = A.part_c_parity(rerun_c, cells["canon_nt"], k)
+    book = A.StatusBook(par, par_c)
 
     rerun_rows = ([r for lc in rerun_a.values() for r in lc.rows] + list(rerun_b.rows)
                   + [r for lc in rerun_c.values() for r in lc.rows])
@@ -173,14 +255,14 @@ def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str
     for r in rerun_rows:
         grades[(r.cell, r.trial_key)] = G.grade(r, gt_cache, verdicts)
 
-    e1 = [A.rate_cell(list(rerun_a[m].rows), grades, m, t, a, C.STYLE_A, k)
+    e1 = [A.rate_cell(list(rerun_a[m].rows), grades, m, t, a, C.STYLE_A, k, book.a(m, t, a))
           for m, t, a in A.CELLS]
-    e2 = A.e2(rerun_a, rerun_c, grades, k)
-    e3 = A.e3(rerun_a, grades, k)
+    e2 = A.e2(rerun_a, rerun_c, grades, k, book)
+    e3 = A.e3(rerun_a, grades, k, book)
     gaps = [A.e4_cell(list(rerun_a[m].rows), grades, gt_cache, m, t, a) for m, t, a in A.CELLS]
     r1 = A.r1(e2)
     readings = {"R1": r1, "R2": A.r2(e3), "R3": A.r3(r1["label"], e3),
-                "R4": A.r4(rerun_a, grades),
+                "R4": A.r4(rerun_a, grades, book),
                 "R5": A.r5(list(rerun_a[C.PART_B_MODEL].rows), list(rerun_b.rows), grades, k)}
 
     fired = T.check(design, par, e1, gaps, e2, rerun_a, cells["canon_tools"])
@@ -194,6 +276,7 @@ def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str
         "package_sha256": package_sha256(),
         "design": design.name,
         "audited_tripwires": {k_: v for k_, v in fired.items() if k_ in audited},
+        "audit_notes": audit_notes,
         "corpus": corpus_table(cells),
         "parity": asdict(par),
         "apparatus_deltas": list(A.APPARATUS_DELTAS),
@@ -213,13 +296,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fixture", type=Path, help="synthetic fixture root (tests only)")
     ap.add_argument("--rerun-root", type=Path)
     ap.add_argument("--canonical-root", type=Path)
-    ap.add_argument("--gt-cache", type=Path, default=REPO / "results/derived/gt_cache.json")
+    # Live mode requires these explicitly: from a git worktree, REPO-relative
+    # defaults point at the wrong checkout (review F2).
+    ap.add_argument("--gt-cache", type=Path)
     ap.add_argument("--domains-dir", type=Path, default=REPO / "domains")
-    ap.add_argument("--marketplace-path", type=Path, default=REPO.parent / "pddl-copilot")
+    ap.add_argument("--marketplace-path", type=Path)
     ap.add_argument("--out", type=Path)
     ap.add_argument("--i-have-frozen", metavar="SHA256")
     ap.add_argument("--audited-tripwires", default="",
                     help="comma-separated tripwire ids a human has audited")
+    ap.add_argument("--audit-notes", type=Path,
+                    help="JSON object {tripwire id: audit note}, one per released id")
     args = ap.parse_args(argv)
 
     if args.print_package_hash:
@@ -229,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     audited = {x for x in args.audited_tripwires.split(",") if x}
     try:
+        audit_notes = load_audit_notes(args.audit_notes, audited)
         if args.out is None:
             raise Halt("--out is required")
         if args.fixture is not None:
@@ -250,8 +338,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.i_have_frozen != package_sha256():
                 raise Halt("refusing to run on live data: --i-have-frozen does not match the "
                            "package sha256 (freeze the package first, prereg §8)")
-            if args.rerun_root is None or args.canonical_root is None:
-                raise Halt("--rerun-root and --canonical-root are required")
+            missing = [f for f, v in (("--rerun-root", args.rerun_root),
+                                      ("--canonical-root", args.canonical_root),
+                                      ("--gt-cache", args.gt_cache),
+                                      ("--marketplace-path", args.marketplace_path)) if v is None]
+            if missing:
+                raise Halt(f"live mode requires {', '.join(missing)}")
+            check_marketplace(*marketplace_state(args.marketplace_path))
+            check_domains(args.domains_dir)
             design = C.REGISTERED
             C.assert_registered(design)
             from tools.gt_cache_gate import PREREG_PINNED_HASH, canonical_hash
@@ -263,8 +357,8 @@ def main(argv: list[str] | None = None) -> int:
             def verdict_fn(need):
                 return asyncio.run(live_verdicts(need, args.domains_dir, args.marketplace_path))
             mode = "live"
-        res = analyse(design, cells, gt_cache, verdict_fn, mode, audited)
-    except (Halt, S.SchemaError) as e:
+        res = analyse(design, cells, gt_cache, verdict_fn, mode, audit_notes)
+    except (Halt, S.SchemaError, C.RegisteredCheckFailed, AssertionError) as e:
         print(f"HALT: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
     args.out.mkdir(parents=True, exist_ok=True)

@@ -158,20 +158,31 @@ class Row:
         return self.failure_reason in C.EXCEPTION_REASONS
 
     @property
+    def scoring_error(self) -> bool:
+        """The harness grader raised (runner.py "scoring error"). Counted and
+        reported; it enters the §7 rule only through failure_reason."""
+        return self.error.startswith("scoring error: ")
+
+    @property
     def clipped_before_tool_call(self) -> bool:
-        """§3: a turn ran with a clipped allowance and a tool call followed it.
+        """§3 / §8b item 14: a turn ran with a clipped allowance and a tool
+        call followed it.
 
         A turn is followed by another turn only when it emitted tool calls
         (pddl_eval/chat.py chat_with_tools), so every clipped turn other than
         the last one preceded a tool call. `ctx_clip_last_turn_max_tokens` is
         present iff the LAST turn was clipped (chat._record_ctx_clip). The last
-        turn also preceded a tool call when the loop ran out (loop_exhausted).
+        turn also preceded a tool call when the loop ran out: failure_reason
+        "loop_exhausted" on a failed trial, or done_reason "tool_calls" on a
+        trial the tool result had already made a success (failure_reason "ok").
         """
         clipped = self.tokens.ctx_clipped_turns
         last_clipped = self.tokens.ctx_clip_last_turn_max_tokens is not None
         if clipped - (1 if last_clipped else 0) > 0:
             return True
-        return last_clipped and self.failure_reason == "loop_exhausted"
+        loop_ran_out = (self.failure_reason == "loop_exhausted"
+                        or self.done_reason == "tool_calls")
+        return last_clipped and loop_ran_out
 
 
 @dataclass(frozen=True)
@@ -239,9 +250,14 @@ def _exact_keys(d: dict, expected: frozenset, where: str) -> None:
         raise SchemaError(f"{where}: unexpected key(s) {sorted(extra)}")
 
 
-def _parse_tokens(t: Any, layer: str, where: str) -> Tokens:
+def _parse_tokens(t: Any, layer: str, where: str, exception_row: bool) -> Tokens:
     if not isinstance(t, dict):
         raise SchemaError(f"{where}: tokens must be an object")
+    if not t and exception_row:
+        # runner.evaluate_one: a client exception leaves `tokens = {}`.
+        return Tokens(prompt=0, completion=0, turns=0, ctx_clipped_turns=0,
+                      ctx_clip_last_turn_max_tokens=None,
+                      ctx_clip_last_turn_prompt_tokens=None, ctx_no_room_turns=0)
     missing = TOKEN_BASE_KEYS - set(t)
     if missing:
         raise SchemaError(f"{where}: tokens missing {sorted(missing)}")
@@ -318,7 +334,6 @@ def parse_row(obj: Any, spec: CellSpec, where: str) -> Row:
     success = _bool(r, "success", where)
     tool_selected = _opt_bool(r, "tool_selected", where)
     response = _str(r, "response", where)
-    _str(r, "thinking", where)
     error = _str(r, "error", where)
     failure_reason = _str(r, "failure_reason", where)
     truncated = _bool(r, "truncated", where)
@@ -373,13 +388,39 @@ def parse_row(obj: Any, spec: CellSpec, where: str) -> Row:
         raise SchemaError(f"{where}: variant {variant} not registered for {spec.name}")
 
     tool_calls = _parse_tool_calls(_need(r, "tool_calls", where), where)
-    if with_tools:
-        if tool_selected is None:
-            raise SchemaError(f"{where}: with-tools row has tool_selected=null")
-    else:
-        if tool_selected is not None or tool_calls:
-            raise SchemaError(f"{where}: no-tools row carries tool fields")
-    tokens = _parse_tokens(_need(r, "tokens", where), spec.layer, where)
+    raw_tokens = _need(r, "tokens", where)
+    thinking = _str(r, "thinking", where)
+    # Harness exception rows (pddl_eval/runner.py evaluate_one) are valid rows;
+    # the §7 1% rule decides about them (prereg §8b item 10). Exactly two
+    # shapes exist, in both layers (review F1):
+    #  * client exception (the chat call raised, runner.py `except Exception`):
+    #    tokens={}, tool_calls=[], response="", thinking="", done_reason="",
+    #    tool_selected=None, a non-empty error; failure_reason "exception" or
+    #    "ollama_parse_error".
+    #  * scoring exception (check_success raised, runner.py "scoring error"):
+    #    the chat's tokens, tool calls and answer are kept, tool_selected=None,
+    #    error "scoring error: ...", failure_reason "exception" -- or
+    #    "loop_exhausted" when the tool loop also ran out, because
+    #    scoring._classify_step_failure overrides the reason in that case.
+    exception_row = failure_reason in C.EXCEPTION_REASONS
+    client_shape = (raw_tokens == {} and tool_calls == () and response == ""
+                    and thinking == "" and done_reason == "")
+    scoring_shape = (error.startswith("scoring error: ") and raw_tokens != {}
+                     and failure_reason in ("exception", "loop_exhausted"))
+    if exception_row or scoring_shape:
+        if not error or tool_selected is not None:
+            raise SchemaError(f"{where}: exception row needs a non-empty error and "
+                              "tool_selected null")
+        if not (client_shape or scoring_shape):
+            raise SchemaError(f"{where}: failure_reason {failure_reason!r} row does not "
+                              "have a harness exception shape (client: empty tokens, "
+                              "tool calls, answer and done_reason; scoring: error "
+                              "'scoring error: ...')")
+    elif with_tools and tool_selected is None:
+        raise SchemaError(f"{where}: with-tools row has tool_selected=null")
+    if not with_tools and (tool_selected is not None or tool_calls):
+        raise SchemaError(f"{where}: no-tools row carries tool fields")
+    tokens = _parse_tokens(raw_tokens, spec.layer, where, exception_row and client_shape)
 
     # --- layer-specific fields
     if spec.layer == RERUN:
@@ -429,6 +470,8 @@ class LoadedCell:
     torn_lines: int
     exception_rows: int
     infra_rows: int
+    void_rule_rows: int        # §7: rows that are an exception OR an infra failure
+    scoring_error_rows: int    # descriptive: the harness grader raised
 
 
 def load_cell(root: Path, spec: CellSpec) -> LoadedCell:
@@ -465,7 +508,9 @@ def load_cell(root: Path, spec: CellSpec) -> LoadedCell:
     _check_completeness(spec, rows)
     return LoadedCell(spec=spec, rows=tuple(rows), torn_lines=torn,
                       exception_rows=sum(r.is_exception for r in rows),
-                      infra_rows=sum(r.infra_failure for r in rows))
+                      infra_rows=sum(r.infra_failure for r in rows),
+                      void_rule_rows=sum(r.is_exception or r.infra_failure for r in rows),
+                      scoring_error_rows=sum(r.scoring_error for r in rows))
 
 
 class IncompleteCell(SchemaError):

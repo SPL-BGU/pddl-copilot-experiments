@@ -64,7 +64,7 @@ REASONS = frozenset({
     "verdict_stated_ok", "verdict_stated_wrong", "no_verdict_stated",
     "plan_valid", "plan_invalid", "no_plan_extracted",
     "trajectory_ok", "trajectory_mismatch", "simulate_empty", "format_parse_fail",
-    "empty_stop", "truncated_empty", "no_room",
+    "empty_stop", "truncated_empty", "no_room", "exception",
 })
 
 PlanKey = tuple[str, str, tuple[str, ...]]   # (domain, problem, plan lines)
@@ -82,6 +82,19 @@ class Delivered:
 
 def has_prefix(text: str) -> bool:
     return text.startswith(C.LEAKED_PREFIX)
+
+
+def doubled_prefix(text: str) -> bool:
+    """The exact prefix twice at the start: only the first is stripped (the
+    strip is registered as exact, §2 delta 3). Descriptive count (review N3)."""
+    return text.startswith(C.LEAKED_PREFIX + C.LEAKED_PREFIX)
+
+
+def residual_marker(text: str) -> bool:
+    """A channel marker is still in the text the grader reads, after the one
+    registered strip. Descriptive count (review N3); never widens the strip."""
+    view = strip_leaked_channel_prefix(text)
+    return any(m in view for m in C.CHANNEL_MARKERS)
 
 
 def solve_plan(response: str) -> tuple[tuple[str, ...], str | None]:
@@ -139,6 +152,10 @@ def grade(row: Row, gt_cache: dict, plan_verdicts: Mapping[PlanKey, bool]) -> De
                           "answers are 500-character snapshots")
     resp = row.response
     prefix = has_prefix(resp)
+    if row.is_exception:
+        # The harness raised on this trial (§7). It is a failed trial on the
+        # delivered surface, counted against the 1% budget and reported.
+        return Delivered(False, "exception", None, None, None, prefix)
     if not strip_leaked_channel_prefix(resp).strip():
         return _empty(row, prefix)
 
@@ -194,6 +211,8 @@ def solve_plans_to_validate(rows) -> set[PlanKey]:
     """Every (domain, problem, plan) a solve grade will need a verdict for."""
     need: set[PlanKey] = set()
     for r in rows:
+        if r.is_exception:
+            continue
         if r.task == "solve" and strip_leaked_channel_prefix(r.response).strip():
             plan, _ = solve_plan(r.response)
             if plan:

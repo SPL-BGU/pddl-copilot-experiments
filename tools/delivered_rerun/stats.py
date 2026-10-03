@@ -33,7 +33,7 @@ class Boot:
 
 
 def cluster_bootstrap(values: list[float], clusters: list[str], level: float,
-                      k_expected: int) -> Boot:
+                      k_expected: int, what: str = "") -> Boot:
     """Domain-cluster percentile bootstrap of a row-level mean (§3, §4).
 
     `B_BOOT` resamples, a fresh generator seeded with `SEED` per call (the
@@ -42,11 +42,14 @@ def cluster_bootstrap(values: list[float], clusters: list[str], level: float,
     count.
     """
     if len(values) != len(clusters) or not values:
-        raise ValueError("bootstrap needs a non-empty, aligned sample")
+        raise C.RegisteredCheckFailed(f"{what}: bootstrap needs a non-empty, aligned sample")
     v = np.asarray(values, dtype=float)
     labels, inv = np.unique(np.asarray(clusters), return_inverse=True)
     k = len(labels)
-    assert k == k_expected, f"cluster count {k} != registered {k_expected}"
+    if k != k_expected:
+        raise C.RegisteredCheckFailed(
+            f"{what}: domain-cluster bootstrap over {k} domains, registered {k_expected}: "
+            f"a domain is missing from this comparison (present: {list(labels)})")
     sums = np.bincount(inv, weights=v, minlength=k)
     sizes = np.bincount(inv, minlength=k).astype(float)
     rng = np.random.default_rng(C.SEED)
@@ -96,7 +99,8 @@ def tost_met(b: Boot) -> bool:
     Inclusive bounds, as tools/iss024d_parity.py (the earlier parity prereg)
     implemented TOST.
     """
-    assert b.level == C.CI_PARITY
+    if b.level != C.CI_PARITY:
+        raise C.RegisteredCheckFailed(f"TOST needs the {C.CI_PARITY} interval, got {b.level}")
     return b.lo >= -C.MARGIN and b.hi <= C.MARGIN
 
 
@@ -117,7 +121,9 @@ def newcombe(k1: int, n1: int, k2: int, n2: int, z: float = C.Z90) -> tuple[floa
 
 def holm(pvals: dict, family_size: int) -> dict:
     """Holm step-down adjusted p (monotone), over exactly `family_size` tests."""
-    assert len(pvals) == family_size, (len(pvals), family_size)
+    if len(pvals) != family_size:
+        raise C.RegisteredCheckFailed(f"Holm family has {len(pvals)} tests, registered "
+                                      f"{family_size}")
     items = sorted(pvals.items(), key=lambda kv: (kv[1], str(kv[0])))
     m = len(items)
     out, running = {}, 0.0

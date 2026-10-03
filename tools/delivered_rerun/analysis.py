@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass, field
 
 from . import constants as C
 from . import e4 as E4
-from .grade import Delivered
+from .grade import Delivered, doubled_prefix, residual_marker
 from .schema import LoadedCell, Row, SchemaError
 from .stats import (Boot, cluster_bootstrap, domain_sums, holm, newcombe,
                     signflip_exact_p, tost_met)
@@ -44,11 +44,19 @@ R5_INERT = "The system-prompt sentence is inert for this model."
 R5_SUPPRESS = "The directive suppresses calling."
 R5_NONE = "No registered row applies"                              # §8b item 9
 R5_STEER_SUFFICIENT = "Steering in the user turn is sufficient by itself."
-# Not registered (neither §5 nor §8b names the complement of the steering sentence).
-R5_STEER_NOT = "Not shown (neutral-steered not within ±5 of minimal-steered)."
-E2_CAVEAT = ("No-tools side: Part C of this run (same harness commit, vLLM 0.20.2, full "
-             "storage, the same delivered grader as the tool side). The no-tools arm is "
-             "sampled under the per-task JSON constraint; the tool arm has none (§4 E2).")
+R5_STEER_NOT = "Not shown (neutral-steered not within ±5 of minimal-steered)"  # §8b item 16
+# §2 Part C and §4 E2 (as amended 2026-10-03): the no-tools side is Part C of
+# this run, graded by the same delivered grader. The JSON-constraint sentence
+# is a stated apparatus fact (pddl_eval/runner.py: no-tools calls pass
+# format=TASK_SCHEMAS[task]), not a quote of the prereg.
+E2_CAVEAT = ("No-tools side: Part C of this run (prereg §2 \"Part C\" and §4 E2: same "
+             "harness commit, full storage, graded with the same delivered grader as the "
+             "tool side; the canonical no-tools cells are not an E2 input). The no-tools "
+             "arm is sampled under the per-task JSON constraint; the tool arm has none.")
+# Status carried by every delivered number (review F4; §3 "reported as a
+# separate-apparatus measurement, labelled").
+PART_C_NOT_CHECKED = "not checked (simulate is excluded from the Part C parity check, §2)"
+PART_C_CONSEQ = "Part C parity is reported, not a gate on E2 (§2 Part C)"
 
 # §3 "with the apparatus deltas of §2 stated": the four deltas, verbatim in substance.
 APPARATUS_DELTAS = (
@@ -112,7 +120,8 @@ def parity_cell(rerun: list[Row], canon: list[Row], model: str, task: str,
     d = [int(rr[x].success) - int(cc[x].success) for x in both]
     delta = 100 * sum(d) / len(d)
     void = frac > C.UNPAIRED_VOID_FRAC
-    ci = None if void else cluster_bootstrap(d, [x[1] for x in both], C.CI_PARITY, k)
+    ci = None if void else cluster_bootstrap(d, [x[1] for x in both], C.CI_PARITY, k,
+                                             what=f"parity {model}/{task}/{arm}")
     verdict = VOID if void else (MET if tost_met(ci) else NOT_MET)
     k1 = sum(r.success for r in rr.values())
     k2 = sum(r.success for r in cc.values())
@@ -159,6 +168,15 @@ def parity(rerun_a: dict[str, LoadedCell], canon_tools: dict[str, LoadedCell],
             gemma_failed = any(c.verdict != MET for c in g)
             floor = max(abs(c.delta) for c in g) if gemma_failed else None
     assert len(cells) == C.PARITY_CELLS
+    # §3 "Gemma's 10 cells are evaluated before the Qwen cells" (review N4):
+    # checked on the evaluated order against the literal model tag, not
+    # recorded as a constant.
+    gemma_first = ([c.model for c in cells[:10]] == ["gemma4_26b-a4b"] * 10
+                   and all(c.model in C.QWEN_MODELS for c in cells[10:]))
+    if not gemma_first:
+        raise C.RegisteredCheckFailed(
+            "§3: the first ten parity cells evaluated must be Gemma's "
+            f"(got {[c.model for c in cells[:10]]})")
     q = [c for c in cells if c.model in C.QWEN_MODELS]
     assert len(q) == C.QWEN_CELLS_TOTAL
     qwen_met = sum(c.verdict == MET for c in q)
@@ -171,11 +189,35 @@ def parity(rerun_a: dict[str, LoadedCell], canon_tools: dict[str, LoadedCell],
             c.consequence = CONSEQ_EXACT
         else:
             c.consequence = CONSEQ_CELL_FAIL
-    return Parity(cells=cells, gemma_evaluated_first=True, gemma_failed=bool(gemma_failed),
+    return Parity(cells=cells, gemma_evaluated_first=gemma_first,
+                  gemma_failed=bool(gemma_failed),
                   noise_floor_F=floor, qwen_met=qwen_met, gross_cells=gross,
                   job=JOB_HOLDS if holds else JOB_FAILS,
                   void_cells=[f"{c.model}/{c.task}/{c.arm}" for c in cells
                               if c.verdict == VOID])
+
+
+# ------------------------------------------------------------------ cell status (F4)
+class StatusBook:
+    """Parity verdict and registered consequence of every input cell, so each
+    delivered number is printed with its label (§3 consequences)."""
+
+    def __init__(self, par: Parity, par_c: list[ParityCell]):
+        self._a = {(c.model, c.task, c.arm): c for c in par.cells}
+        self._c = {(c.model, c.task): c for c in par_c}
+        if len(self._a) != C.PARITY_CELLS or len(self._c) != 12:
+            raise C.RegisteredCheckFailed("status book: parity tables incomplete")
+
+    def a(self, model: str, task: str, arm: str) -> dict:
+        c = self._a[(model, task, arm)]
+        return {"cell": f"A/{model}/{task}/{arm}", "parity_verdict": c.verdict,
+                "consequence": c.consequence}
+
+    def c(self, model: str, task: str) -> dict:
+        hit = self._c[(model, task)] if task in C.PART_C_PARITY_TASKS else None
+        return {"cell": f"C/{model}/{task}/plain",
+                "parity_verdict": hit.verdict if hit else PART_C_NOT_CHECKED,
+                "consequence": PART_C_CONSEQ}
 
 
 # ------------------------------------------------------------------ E1 (§4)
@@ -202,11 +244,16 @@ class RateCell:
     no_room_n: int
     no_room_pct: float
     prefix_n: int
+    doubled_prefix_n: int      # descriptive (review N3)
+    residual_marker_n: int     # descriptive (review N3)
+    exception_n: int
     reasons: dict
+    parity_verdict: str
+    consequence: str
 
 
 def rate_cell(rows: list[Row], grades: Grades, model: str, task: str, arm: str,
-              style: str, k: int) -> RateCell:
+              style: str, k: int, status: dict) -> RateCell:
     rs = [r for r in rows if r.task == task and r.arm == arm]
     if not rs:
         raise SchemaError(f"E1 {model}/{task}/{arm}: no rows")
@@ -215,14 +262,19 @@ def rate_cell(rows: list[Row], grades: Grades, model: str, task: str, arm: str,
     return RateCell(
         model=model, task=task, arm=arm, style=style, n=n, delivered_k=sum(ok),
         delivered_pct=100 * sum(ok) / n,
-        ci95=cluster_bootstrap(ok, [r.domain for r in rs], C.CI_ENDPOINT, k),
+        ci95=cluster_bootstrap(ok, [r.domain for r in rs], C.CI_ENDPOINT, k,
+                               what=f"E1 {model}/{task}/{arm}"),
         tool_verified_pct=100 * sum(r.success for r in rs) / n,
         invocation_pct=100 * sum(r.invoked for r in rs) / n,
         no_room_n=sum(r.no_room for r in rs),
         no_room_pct=100 * sum(r.no_room for r in rs) / n,
         prefix_n=sum(grades[(r.cell, r.trial_key)].prefix_stripped for r in rs),
+        doubled_prefix_n=sum(doubled_prefix(r.response) for r in rs),
+        residual_marker_n=sum(residual_marker(r.response) for r in rs),
+        exception_n=sum(r.is_exception for r in rs),
         reasons=dict(sorted(Counter(grades[(r.cell, r.trial_key)].reason
-                                    for r in rs).items())))
+                                    for r in rs).items())),
+        parity_verdict=status["parity_verdict"], consequence=status["consequence"])
 
 
 # ------------------------------------------------------------------ E2 / E3 (§4)
@@ -231,6 +283,8 @@ class Contrast:
     model: str
     task: str
     name: str
+    a_label: str               # side A of Δ̂ = B − A (review F5)
+    b_label: str
     n_pairs: int
     unpaired_a: int
     unpaired_b: int
@@ -239,26 +293,37 @@ class Contrast:
     delta: float | None
     ci95: Boot | None
     p: float
+    input_cells: list = field(default_factory=list)   # [side A status, side B status]
     p_holm: float = 1.0
 
 
+# Side names of each contrast, Δ̂ = B − A (review F5; readout column names).
+CONTRAST_SIDES = {"E2": ("no-tools (C)", "tools-plain (A)"), "E3": ("plain", "steered")}
+
+
 def _contrast(name: str, model: str, task: str, pairs: list[tuple[int, int, str]],
-              ua: int, ub: int, k: int) -> Contrast:
+              ua: int, ub: int, k: int, inputs: list) -> Contrast:
     if not pairs:
         raise SchemaError(f"{name} {model}/{task}: no pairs")
+    if ua or ub:
+        # Completeness (§7) gives both sides the same keys; an unpaired row here
+        # means the corpora disagree on the fixture set (review N5).
+        raise C.RegisteredCheckFailed(f"{name} {model}/{task}: {ua}/{ub} unpaired rows")
     d = [b - a for a, b, _ in pairs]
     doms = [dom for _, _, dom in pairs]
-    ci = cluster_bootstrap(d, doms, C.CI_ENDPOINT, k)
+    ci = cluster_bootstrap(d, doms, C.CI_ENDPOINT, k, what=f"{name} {model}/{task}")
     n = len(pairs)
-    return Contrast(model=model, task=task, name=name, n_pairs=n, unpaired_a=ua,
+    a_label, b_label = CONTRAST_SIDES[name]
+    return Contrast(model=model, task=task, name=name, a_label=a_label, b_label=b_label,
+                    n_pairs=n, unpaired_a=ua,
                     unpaired_b=ub, a_pct=100 * sum(a for a, _, _ in pairs) / n,
                     b_pct=100 * sum(b for _, b, _ in pairs) / n,
                     delta=100 * sum(d) / n, ci95=ci,
-                    p=signflip_exact_p(domain_sums(d, doms)))
+                    p=signflip_exact_p(domain_sums(d, doms)), input_cells=inputs)
 
 
 def e2(rerun_a: dict[str, LoadedCell], rerun_c: dict[str, LoadedCell],
-       grades: Grades, k: int) -> list[Contrast]:
+       grades: Grades, k: int, book: StatusBook) -> list[Contrast]:
     """Tools-plain (Part A) − no-tools (Part C), both this run, per model × task,
     paired on (domain, problem, variant, plan label); both sides graded by the
     same delivered grader (§2 Part C, §8b item 12)."""
@@ -267,12 +332,16 @@ def e2(rerun_a: dict[str, LoadedCell], rerun_c: dict[str, LoadedCell],
         for t in C.TASKS:
             tl = _by_key([r for r in rerun_a[m].rows if r.task == t and r.arm == "plain"])
             nt = _by_key([r for r in rerun_c[m].rows if r.task == t])
-            assert all(r.variant in C.PLAIN and not r.with_tools and r.layer == "rerun"
-                       for r in nt.values())
+            if not all(r.variant in C.PLAIN and not r.with_tools and r.layer == "rerun"
+                       for r in nt.values()):
+                raise C.RegisteredCheckFailed(
+                    f"E2 {m}/{t}: the no-tools side must be Part C rows (rerun layer, "
+                    "no tools, v11-13)")
             both = sorted(set(tl) & set(nt))
             ua, ub = len(set(nt) - set(tl)), len(set(tl) - set(nt))
             pairs = [(int(dlv(grades, nt[x])), int(dlv(grades, tl[x])), x[1]) for x in both]
-            out.append(_contrast("E2", m, t, pairs, ua, ub, k))
+            out.append(_contrast("E2", m, t, pairs, ua, ub, k,
+                                 [book.c(m, t), book.a(m, t, "plain")]))
     _apply_holm(out)
     return out
 
@@ -288,7 +357,8 @@ def part_c_parity(rerun_c: dict[str, LoadedCell], canon_nt: dict[str, LoadedCell
     return cells
 
 
-def e3(rerun_a: dict[str, LoadedCell], grades: Grades, k: int) -> list[Contrast]:
+def e3(rerun_a: dict[str, LoadedCell], grades: Grades, k: int,
+       book: StatusBook) -> list[Contrast]:
     """Tools-steered − tools-plain (both this run): v ↔ v+3 on the same fixture."""
     out: list[Contrast] = []
     for m in C.PART_A_MODELS:
@@ -305,7 +375,8 @@ def e3(rerun_a: dict[str, LoadedCell], grades: Grades, k: int) -> list[Contrast]
                     matched.add(y)
                 else:
                     ua += 1
-            out.append(_contrast("E3", m, t, pairs, ua, len(set(steer) - matched), k))
+            out.append(_contrast("E3", m, t, pairs, ua, len(set(steer) - matched), k,
+                                 [book.a(m, t, "plain"), book.a(m, t, "steered")]))
     _apply_holm(out)
     return out
 
@@ -363,7 +434,7 @@ def r1(e2s: list[Contrast]) -> dict:
         label = R1_NO_HARM
     else:
         label = R1_UNRESOLVED
-    return {"label": label, "delta": c.delta, "ci95": [lo, hi]}
+    return {"label": label, "delta": c.delta, "ci95": [lo, hi], "input_cells": c.input_cells}
 
 
 def r2(e3s: list[Contrast]) -> dict:
@@ -375,7 +446,7 @@ def r2(e3s: list[Contrast]) -> dict:
         label = R2_NO
     else:
         label = R2_UNRESOLVED
-    return {"label": label, "delta": c.delta, "ci95": [lo, hi]}
+    return {"label": label, "delta": c.delta, "ci95": [lo, hi], "input_cells": c.input_cells}
 
 
 def r3(r1_label: str, e3s: list[Contrast]) -> dict:
@@ -383,10 +454,12 @@ def r3(r1_label: str, e3s: list[Contrast]) -> dict:
              if _find(e3s, m, "validate_plan").ci95.lo > C.MARGIN]
     stays = r1_label == R1_HARM or len(gains) >= C.R3_MODELS_REQUIRED
     return {"label": R3_STAYS if stays else R3_CHANGES,
-            "r1_harm": r1_label == R1_HARM, "models_with_e3_gain_above_5": gains}
+            "r1_harm": r1_label == R1_HARM, "models_with_e3_gain_above_5": gains,
+            "input_cells": [ic for m in C.PART_A_MODELS
+                            for ic in _find(e3s, m, "validate_plan").input_cells]}
 
 
-def r4(rerun_a: dict[str, LoadedCell], grades: Grades) -> dict:
+def r4(rerun_a: dict[str, LoadedCell], grades: Grades, book: StatusBook) -> dict:
     """Solve, per model (both arms pooled): among tool-verified trials whose
     final answer is full and uncut, the share delivered correctly."""
     per = {}
@@ -399,7 +472,8 @@ def r4(rerun_a: dict[str, LoadedCell], grades: Grades) -> dict:
                   "delivered_pct": (100 * k / len(rs)) if rs else None}
     ok = all(v["delivered_pct"] is not None and v["delivered_pct"] >= C.R4_THRESHOLD
              for v in per.values())
-    return {"label": R4_ATTRIBUTED if ok else R4_NOT, "per_model": per}
+    return {"label": R4_ATTRIBUTED if ok else R4_NOT, "per_model": per,
+            "input_cells": [book.a(m, "solve", a) for m in C.PART_A_MODELS for a in C.ARMS]}
 
 
 def r5(minimal: list[Row], neutral: list[Row], grades: Grades, k: int) -> dict:
@@ -415,9 +489,11 @@ def r5(minimal: list[Row], neutral: list[Row], grades: Grades, k: int) -> dict:
             cells[f"{style}-{arm}"] = {
                 "n": len(rs),
                 "invocation_pct": 100 * sum(inv) / len(rs),
-                "invocation_ci95": _bd(cluster_bootstrap(inv, dom, C.CI_ENDPOINT, k)),
+                "invocation_ci95": _bd(cluster_bootstrap(inv, dom, C.CI_ENDPOINT, k,
+                                                         what=f"R5 {style}-{arm}")),
                 "delivered_pct": 100 * sum(ok) / len(rs),
-                "delivered_ci95": _bd(cluster_bootstrap(ok, dom, C.CI_ENDPOINT, k)),
+                "delivered_ci95": _bd(cluster_bootstrap(ok, dom, C.CI_ENDPOINT, k,
+                                                        what=f"R5 {style}-{arm}")),
             }
 
     def contrast(arm: str) -> Boot:
@@ -427,7 +503,8 @@ def r5(minimal: list[Row], neutral: list[Row], grades: Grades, k: int) -> dict:
         if len(both) != len(a) or len(both) != len(b):
             raise SchemaError(f"R5 {arm}: Part A and Part B keys differ")
         d = [int(b[x].invoked) - int(a[x].invoked) for x in both]
-        return cluster_bootstrap(d, [x[1] for x in both], C.CI_PARITY, k)
+        return cluster_bootstrap(d, [x[1] for x in both], C.CI_PARITY, k,
+                                 what=f"R5 neutral − minimal, {arm}")
 
     plain = contrast("plain")
     if plain.est < -C.MARGIN:

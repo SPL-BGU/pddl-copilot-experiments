@@ -18,6 +18,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+
+class RegisteredCheckFailed(Exception):
+    """A registered constant or structural expectation does not hold."""
+
+
+# The registered constants below are checked with `assert`, which `python -O`
+# strips. Refuse to import under -O rather than run unchecked (review N1).
+if not __debug__:
+    raise RegisteredCheckFailed(
+        "tools.delivered_rerun refuses to run under `python -O`: its registered "
+        "checks are asserts")
+
 # --------------------------------------------------------------- roster (§2)
 # Directory tags (cluster cell names) -> the model id every row must carry.
 # Ids checked against results/sweep5v2-live (2026-10-03): same weights and
@@ -58,6 +70,19 @@ STORAGE_CAP = 65_536          # §2 delta 1: answers stored up to 65,536 chars
 REGISTERED_STORAGE_CUTS = 0   # §2 delta 1: "Registered expectation: zero rows cut"
 CONTEXT_WINDOW = 16_384       # §2 delta 2 / §8a: the 16,384-token window
 LEAKED_PREFIX = "<|channel>thought\n<channel|>"   # §2 delta 3
+CHANNEL_MARKERS = ("<|channel>", "<channel|>")     # descriptive residue count (review N3)
+
+# --------------------------------------------------------------- pinned inputs (§8)
+# prereg §8: "Tools repo `pddl-copilot` at `5e4f9c0` (same commit as the
+# canonical corpus)". Live mode checks the marketplace HEAD against it.
+MARKETPLACE_PIN = "5e4f9c0"
+# sha256 over (relative path, sha256(bytes)) of every .pddl / .plan file under
+# domains/{classical,numeric}, the files pddl_eval.domains.load_domains reads
+# for solve-plan validation (run.domains_manifest_sha256). Computed 2026-10-03
+# on the tree `git rev-parse HEAD:domains` = 8cde5762f74d…, the same tree the
+# ground-truth stamp records (results/derived/gt_cache_stamp.json).
+DOMAINS_FILES = 1_240
+DOMAINS_MANIFEST_SHA256 = "6e81f86c0737187c82bf1f0b481b14c2934281fa6e05dd1dabaab121508de3fd"
 
 # --------------------------------------------------------------- statistics (§3, §4)
 MARGIN = 5.0                  # §3 "TOST at ±5 points"; §5 "[−5, +5]"
