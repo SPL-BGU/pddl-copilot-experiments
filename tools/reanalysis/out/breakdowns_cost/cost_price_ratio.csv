@@ -1,0 +1,445 @@
+group,cell,task,accounting,price_ratio,delivered_mult_low,delivered_mult_high,delivered_verdict,tool_verified_mult,tool_verified_verdict,tools_n,tools_in,tools_out,tools_deliv_ok,tools_deliv_cens,tools_tv_ok,nt_n,nt_in,nt_out,nt_deliv_ok,nt_deliv_cens,nt_harness_ok
+open tl-ster,pooled 3 models,solve,raw,input only,2.121,5.375,no,1.258,no,900,14085667,2211180,204,313,872,900,1066172,2973093,83,0,83
+open tl-ster,pooled 3 models,solve,raw,output only,0.119,0.303,yes,0.071,yes,900,14085667,2211180,204,313,872,900,1066172,2973093,83,0,83
+open tl-ster,pooled 3 models,solve,raw,1:1 (paper),0.648,1.642,undecided (range spans 1),0.384,yes,900,14085667,2211180,204,313,872,900,1066172,2973093,83,0,83
+open tl-ster,pooled 3 models,solve,raw,3:1,0.333,0.844,yes,0.197,yes,900,14085667,2211180,204,313,872,900,1066172,2973093,83,0,83
+open tl-ster,pooled 3 models,solve,raw,4:1,0.284,0.72,yes,0.168,yes,900,14085667,2211180,204,313,872,900,1066172,2973093,83,0,83
+open tl-ster,pooled 3 models,solve,raw,5:1,0.253,0.642,yes,0.15,yes,900,14085667,2211180,204,313,872,900,1066172,2973093,83,0,83
+open tl-ster,pooled 3 models,validate_domain,raw,input only,6.387,6.609,no,6.387,no,1080,9644894,817714,1037,36,1073,1080,866913,1270517,616,0,616
+open tl-ster,pooled 3 models,validate_domain,raw,output only,0.369,0.382,yes,0.369,yes,1080,9644894,817714,1037,36,1073,1080,866913,1270517,616,0,616
+open tl-ster,pooled 3 models,validate_domain,raw,1:1 (paper),2.81,2.908,no,2.81,no,1080,9644894,817714,1037,36,1073,1080,866913,1270517,616,0,616
+open tl-ster,pooled 3 models,validate_domain,raw,3:1,1.485,1.536,no,1.485,no,1080,9644894,817714,1037,36,1073,1080,866913,1270517,616,0,616
+open tl-ster,pooled 3 models,validate_domain,raw,4:1,1.246,1.29,no,1.246,no,1080,9644894,817714,1037,36,1073,1080,866913,1270517,616,0,616
+open tl-ster,pooled 3 models,validate_domain,raw,5:1,1.092,1.13,no,1.092,no,1080,9644894,817714,1037,36,1073,1080,866913,1270517,616,0,616
+open tl-ster,pooled 3 models,validate_problem,raw,input only,6.905,7.605,no,6.917,no,1800,19204240,2281763,1569,159,1725,1800,2087376,1567444,1297,0,1297
+open tl-ster,pooled 3 models,validate_problem,raw,output only,1.093,1.203,no,1.095,no,1800,19204240,2281763,1569,159,1725,1800,2087376,1567444,1297,0,1297
+open tl-ster,pooled 3 models,validate_problem,raw,1:1 (paper),4.413,4.86,no,4.42,no,1800,19204240,2281763,1569,159,1725,1800,2087376,1567444,1297,0,1297
+open tl-ster,pooled 3 models,validate_problem,raw,3:1,2.88,3.172,no,2.885,no,1800,19204240,2281763,1569,159,1725,1800,2087376,1567444,1297,0,1297
+open tl-ster,pooled 3 models,validate_problem,raw,4:1,2.545,2.802,no,2.549,no,1800,19204240,2281763,1569,159,1725,1800,2087376,1567444,1297,0,1297
+open tl-ster,pooled 3 models,validate_problem,raw,5:1,2.315,2.55,no,2.319,no,1800,19204240,2281763,1569,159,1725,1800,2087376,1567444,1297,0,1297
+open tl-ster,pooled 3 models,validate_plan,raw,input only,8.032,10.08,no,7.644,no,9000,105038100,12820543,6549,1670,8636,9000,12337969,14725802,7754,0,7754
+open tl-ster,pooled 3 models,validate_plan,raw,output only,0.821,1.031,undecided (range spans 1),0.782,yes,9000,105038100,12820543,6549,1670,8636,9000,12337969,14725802,7754,0,7754
+open tl-ster,pooled 3 models,validate_plan,raw,1:1 (paper),4.108,5.156,no,3.91,no,9000,105038100,12820543,6549,1670,8636,9000,12337969,14725802,7754,0,7754
+open tl-ster,pooled 3 models,validate_plan,raw,3:1,2.395,3.006,no,2.28,no,9000,105038100,12820543,6549,1670,8636,9000,12337969,14725802,7754,0,7754
+open tl-ster,pooled 3 models,validate_plan,raw,4:1,2.07,2.598,no,1.97,no,9000,105038100,12820543,6549,1670,8636,9000,12337969,14725802,7754,0,7754
+open tl-ster,pooled 3 models,validate_plan,raw,5:1,1.856,2.33,no,1.767,no,9000,105038100,12820543,6549,1670,8636,9000,12337969,14725802,7754,0,7754
+open tl-ster,pooled 3 models,simulate,raw,input only,0.0,,not identified,,not identified,900,14484132,1637519,0,239,812,900,1308859,2731380,0,833,0
+open tl-ster,pooled 3 models,simulate,raw,output only,0.0,,not identified,,not identified,900,14484132,1637519,0,239,812,900,1308859,2731380,0,833,0
+open tl-ster,pooled 3 models,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,900,14484132,1637519,0,239,812,900,1308859,2731380,0,833,0
+open tl-ster,pooled 3 models,simulate,raw,3:1,0.0,,not identified,,not identified,900,14484132,1637519,0,239,812,900,1308859,2731380,0,833,0
+open tl-ster,pooled 3 models,simulate,raw,4:1,0.0,,not identified,,not identified,900,14484132,1637519,0,239,812,900,1308859,2731380,0,833,0
+open tl-ster,pooled 3 models,simulate,raw,5:1,0.0,,not identified,,not identified,900,14484132,1637519,0,239,812,900,1308859,2731380,0,833,0
+open tl-ster,Gemma 26B a4b,solve,raw,input only,1.419,3.557,no,0.853,yes,300,3998087,592463,71,107,296,300,364110,789491,23,0,23
+open tl-ster,Gemma 26B a4b,solve,raw,output only,0.097,0.243,yes,0.058,yes,300,3998087,592463,71,107,296,300,364110,789491,23,0,23
+open tl-ster,Gemma 26B a4b,solve,raw,1:1 (paper),0.514,1.289,undecided (range spans 1),0.309,yes,300,3998087,592463,71,107,296,300,364110,789491,23,0,23
+open tl-ster,Gemma 26B a4b,solve,raw,3:1,0.273,0.685,yes,0.164,yes,300,3998087,592463,71,107,296,300,364110,789491,23,0,23
+open tl-ster,Gemma 26B a4b,solve,raw,4:1,0.234,0.586,yes,0.14,yes,300,3998087,592463,71,107,296,300,364110,789491,23,0,23
+open tl-ster,Gemma 26B a4b,solve,raw,5:1,0.209,0.523,yes,0.125,yes,300,3998087,592463,71,107,296,300,364110,789491,23,0,23
+open tl-ster,Gemma 26B a4b,validate_domain,raw,input only,7.924,8.227,no,7.924,no,360,2955647,286074,341,13,354,360,295011,224608,280,0,280
+open tl-ster,Gemma 26B a4b,validate_domain,raw,output only,1.007,1.046,no,1.007,no,360,2955647,286074,341,13,354,360,295011,224608,280,0,280
+open tl-ster,Gemma 26B a4b,validate_domain,raw,1:1 (paper),4.935,5.123,no,4.935,no,360,2955647,286074,341,13,354,360,295011,224608,280,0,280
+open tl-ster,Gemma 26B a4b,validate_domain,raw,3:1,3.114,3.232,no,3.114,no,360,2955647,286074,341,13,354,360,295011,224608,280,0,280
+open tl-ster,Gemma 26B a4b,validate_domain,raw,4:1,2.717,2.821,no,2.717,no,360,2955647,286074,341,13,354,360,295011,224608,280,0,280
+open tl-ster,Gemma 26B a4b,validate_domain,raw,5:1,2.446,2.54,no,2.446,no,360,2955647,286074,341,13,354,360,295011,224608,280,0,280
+open tl-ster,Gemma 26B a4b,validate_problem,raw,input only,6.104,6.658,no,6.104,no,600,5792029,714168,550,50,600,600,710138,426193,449,0,449
+open tl-ster,Gemma 26B a4b,validate_problem,raw,output only,1.254,1.368,no,1.254,no,600,5792029,714168,550,50,600,600,710138,426193,449,0,449
+open tl-ster,Gemma 26B a4b,validate_problem,raw,1:1 (paper),4.285,4.674,no,4.285,no,600,5792029,714168,550,50,600,600,710138,426193,449,0,449
+open tl-ster,Gemma 26B a4b,validate_problem,raw,3:1,2.986,3.257,no,2.986,no,600,5792029,714168,550,50,600,600,710138,426193,449,0,449
+open tl-ster,Gemma 26B a4b,validate_problem,raw,4:1,2.68,2.924,no,2.68,no,600,5792029,714168,550,50,600,600,710138,426193,449,0,449
+open tl-ster,Gemma 26B a4b,validate_problem,raw,5:1,2.466,2.69,no,2.466,no,600,5792029,714168,550,50,600,600,710138,426193,449,0,449
+open tl-ster,Gemma 26B a4b,validate_plan,raw,input only,6.725,11.523,no,6.909,no,3000,30701043,4270659,1665,1188,2777,3000,4216439,3418926,2635,0,2635
+open tl-ster,Gemma 26B a4b,validate_plan,raw,output only,1.154,1.977,no,1.185,no,3000,30701043,4270659,1665,1188,2777,3000,4216439,3418926,2635,0,2635
+open tl-ster,Gemma 26B a4b,validate_plan,raw,1:1 (paper),4.23,7.249,no,4.346,no,3000,30701043,4270659,1665,1188,2777,3000,4216439,3418926,2635,0,2635
+open tl-ster,Gemma 26B a4b,validate_plan,raw,3:1,2.777,4.758,no,2.853,no,3000,30701043,4270659,1665,1188,2777,3000,4216439,3418926,2635,0,2635
+open tl-ster,Gemma 26B a4b,validate_plan,raw,4:1,2.467,4.227,no,2.534,no,3000,30701043,4270659,1665,1188,2777,3000,4216439,3418926,2635,0,2635
+open tl-ster,Gemma 26B a4b,validate_plan,raw,5:1,2.256,3.866,no,2.318,no,3000,30701043,4270659,1665,1188,2777,3000,4216439,3418926,2635,0,2635
+open tl-ster,Gemma 26B a4b,simulate,raw,input only,0.0,,not identified,,not identified,300,4668050,552942,0,82,272,300,448190,995672,0,300,0
+open tl-ster,Gemma 26B a4b,simulate,raw,output only,0.0,,not identified,,not identified,300,4668050,552942,0,82,272,300,448190,995672,0,300,0
+open tl-ster,Gemma 26B a4b,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,300,4668050,552942,0,82,272,300,448190,995672,0,300,0
+open tl-ster,Gemma 26B a4b,simulate,raw,3:1,0.0,,not identified,,not identified,300,4668050,552942,0,82,272,300,448190,995672,0,300,0
+open tl-ster,Gemma 26B a4b,simulate,raw,4:1,0.0,,not identified,,not identified,300,4668050,552942,0,82,272,300,448190,995672,0,300,0
+open tl-ster,Gemma 26B a4b,simulate,raw,5:1,0.0,,not identified,,not identified,300,4668050,552942,0,82,272,300,448190,995672,0,300,0
+open tl-ster,Qwen3.5 9B,solve,raw,input only,2.381,5.622,no,1.556,no,300,5119057,676530,83,113,300,300,351031,1123841,32,0,32
+open tl-ster,Qwen3.5 9B,solve,raw,output only,0.098,0.232,yes,0.064,yes,300,5119057,676530,83,113,300,300,351031,1123841,32,0,32
+open tl-ster,Qwen3.5 9B,solve,raw,1:1 (paper),0.642,1.515,undecided (range spans 1),0.419,yes,300,5119057,676530,83,113,300,300,351031,1123841,32,0,32
+open tl-ster,Qwen3.5 9B,solve,raw,3:1,0.314,0.74,yes,0.205,yes,300,5119057,676530,83,113,300,300,351031,1123841,32,0,32
+open tl-ster,Qwen3.5 9B,solve,raw,4:1,0.264,0.623,yes,0.172,yes,300,5119057,676530,83,113,300,300,351031,1123841,32,0,32
+open tl-ster,Qwen3.5 9B,solve,raw,5:1,0.232,0.549,yes,0.152,yes,300,5119057,676530,83,113,300,300,351031,1123841,32,0,32
+open tl-ster,Qwen3.5 9B,validate_domain,raw,input only,2.983,2.983,no,2.983,no,360,3337625,262415,360,0,360,360,285951,568726,92,0,92
+open tl-ster,Qwen3.5 9B,validate_domain,raw,output only,0.118,0.118,yes,0.118,yes,360,3337625,262415,360,0,360,360,285951,568726,92,0,92
+open tl-ster,Qwen3.5 9B,validate_domain,raw,1:1 (paper),1.076,1.076,no,1.076,no,360,3337625,262415,360,0,360,360,285951,568726,92,0,92
+open tl-ster,Qwen3.5 9B,validate_domain,raw,3:1,0.529,0.529,yes,0.529,yes,360,3337625,262415,360,0,360,360,285951,568726,92,0,92
+open tl-ster,Qwen3.5 9B,validate_domain,raw,4:1,0.438,0.438,yes,0.438,yes,360,3337625,262415,360,0,360,360,285951,568726,92,0,92
+open tl-ster,Qwen3.5 9B,validate_domain,raw,5:1,0.38,0.38,yes,0.38,yes,360,3337625,262415,360,0,360,360,285951,568726,92,0,92
+open tl-ster,Qwen3.5 9B,validate_problem,raw,input only,7.38,7.66,no,7.448,no,600,7042455,851852,526,20,541,600,688619,564053,394,0,394
+open tl-ster,Qwen3.5 9B,validate_problem,raw,output only,1.09,1.131,no,1.1,no,600,7042455,851852,526,20,541,600,688619,564053,394,0,394
+open tl-ster,Qwen3.5 9B,validate_problem,raw,1:1 (paper),4.548,4.72,no,4.59,no,600,7042455,851852,526,20,541,600,688619,564053,394,0,394
+open tl-ster,Qwen3.5 9B,validate_problem,raw,3:1,2.909,3.02,no,2.936,no,600,7042455,851852,526,20,541,600,688619,564053,394,0,394
+open tl-ster,Qwen3.5 9B,validate_problem,raw,4:1,2.561,2.658,no,2.584,no,600,7042455,851852,526,20,541,600,688619,564053,394,0,394
+open tl-ster,Qwen3.5 9B,validate_problem,raw,5:1,2.324,2.413,no,2.346,no,600,7042455,851852,526,20,541,600,688619,564053,394,0,394
+open tl-ster,Qwen3.5 9B,validate_plan,raw,input only,8.142,8.326,no,7.537,no,3000,36861710,4223491,2608,59,2881,3000,4060765,5311837,2392,0,2392
+open tl-ster,Qwen3.5 9B,validate_plan,raw,output only,0.713,0.729,yes,0.66,yes,3000,36861710,4223491,2608,59,2881,3000,4060765,5311837,2392,0,2392
+open tl-ster,Qwen3.5 9B,validate_plan,raw,1:1 (paper),3.932,4.02,no,3.64,no,3000,36861710,4223491,2608,59,2881,3000,4060765,5311837,2392,0,2392
+open tl-ster,Qwen3.5 9B,validate_plan,raw,3:1,2.222,2.272,no,2.057,no,3000,36861710,4223491,2608,59,2881,3000,4060765,5311837,2392,0,2392
+open tl-ster,Qwen3.5 9B,validate_plan,raw,4:1,1.905,1.948,no,1.764,no,3000,36861710,4223491,2608,59,2881,3000,4060765,5311837,2392,0,2392
+open tl-ster,Qwen3.5 9B,validate_plan,raw,5:1,1.698,1.737,no,1.572,no,3000,36861710,4223491,2608,59,2881,3000,4060765,5311837,2392,0,2392
+open tl-ster,Qwen3.5 9B,simulate,raw,input only,0.0,,not identified,,not identified,300,5330488,612989,0,76,249,300,430571,964361,0,262,0
+open tl-ster,Qwen3.5 9B,simulate,raw,output only,0.0,,not identified,,not identified,300,5330488,612989,0,76,249,300,430571,964361,0,262,0
+open tl-ster,Qwen3.5 9B,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,300,5330488,612989,0,76,249,300,430571,964361,0,262,0
+open tl-ster,Qwen3.5 9B,simulate,raw,3:1,0.0,,not identified,,not identified,300,5330488,612989,0,76,249,300,430571,964361,0,262,0
+open tl-ster,Qwen3.5 9B,simulate,raw,4:1,0.0,,not identified,,not identified,300,5330488,612989,0,76,249,300,430571,964361,0,262,0
+open tl-ster,Qwen3.5 9B,simulate,raw,5:1,0.0,,not identified,,not identified,300,5330488,612989,0,76,249,300,430571,964361,0,262,0
+open tl-ster,Qwen3.6 35B,solve,raw,input only,2.771,7.926,no,1.436,no,300,4968523,942187,50,93,276,300,351031,1059761,28,0,28
+open tl-ster,Qwen3.6 35B,solve,raw,output only,0.174,0.498,yes,0.09,yes,300,4968523,942187,50,93,276,300,351031,1059761,28,0,28
+open tl-ster,Qwen3.6 35B,solve,raw,1:1 (paper),0.82,2.346,undecided (range spans 1),0.425,yes,300,4968523,942187,50,93,276,300,351031,1059761,28,0,28
+open tl-ster,Qwen3.6 35B,solve,raw,3:1,0.432,1.237,undecided (range spans 1),0.224,yes,300,4968523,942187,50,93,276,300,351031,1059761,28,0,28
+open tl-ster,Qwen3.6 35B,solve,raw,4:1,0.373,1.066,undecided (range spans 1),0.193,yes,300,4968523,942187,50,93,276,300,351031,1059761,28,0,28
+open tl-ster,Qwen3.6 35B,solve,raw,5:1,0.335,0.959,yes,0.174,yes,300,4968523,942187,50,93,276,300,351031,1059761,28,0,28
+open tl-ster,Qwen3.6 35B,validate_domain,raw,input only,7.966,8.512,no,7.966,no,360,3351622,269225,336,23,359,360,285951,477183,244,0,244
+open tl-ster,Qwen3.6 35B,validate_domain,raw,output only,0.383,0.41,yes,0.383,yes,360,3351622,269225,336,23,359,360,285951,477183,244,0,244
+open tl-ster,Qwen3.6 35B,validate_domain,raw,1:1 (paper),3.225,3.446,no,3.225,no,360,3351622,269225,336,23,359,360,285951,477183,244,0,244
+open tl-ster,Qwen3.6 35B,validate_domain,raw,3:1,1.646,1.759,no,1.646,no,360,3351622,269225,336,23,359,360,285951,477183,244,0,244
+open tl-ster,Qwen3.6 35B,validate_domain,raw,4:1,1.371,1.465,no,1.371,no,360,3351622,269225,336,23,359,360,285951,477183,244,0,244
+open tl-ster,Qwen3.6 35B,validate_domain,raw,5:1,1.195,1.277,no,1.195,no,360,3351622,269225,336,23,359,360,285951,477183,244,0,244
+open tl-ster,Qwen3.6 35B,validate_problem,raw,input only,7.216,8.518,no,7.191,no,600,6369756,715743,493,89,584,600,688619,577198,454,0,454
+open tl-ster,Qwen3.6 35B,validate_problem,raw,output only,0.967,1.142,undecided (range spans 1),0.964,yes,600,6369756,715743,493,89,584,600,688619,577198,454,0,454
+open tl-ster,Qwen3.6 35B,validate_problem,raw,1:1 (paper),4.366,5.155,no,4.352,no,600,6369756,715743,493,89,584,600,688619,577198,454,0,454
+open tl-ster,Qwen3.6 35B,validate_problem,raw,3:1,2.745,3.241,no,2.736,no,600,6369756,715743,493,89,584,600,688619,577198,454,0,454
+open tl-ster,Qwen3.6 35B,validate_problem,raw,4:1,2.403,2.837,no,2.395,no,600,6369756,715743,493,89,584,600,688619,577198,454,0,454
+open tl-ster,Qwen3.6 35B,validate_problem,raw,5:1,2.171,2.563,no,2.164,no,600,6369756,715743,493,89,584,600,688619,577198,454,0,454
+open tl-ster,Qwen3.6 35B,validate_plan,raw,input only,9.324,11.057,no,8.451,no,3000,37475347,4326393,2276,423,2978,3000,4060765,5995039,2727,0,2727
+open tl-ster,Qwen3.6 35B,validate_plan,raw,output only,0.729,0.865,yes,0.661,yes,3000,37475347,4326393,2276,423,2978,3000,4060765,5995039,2727,0,2727
+open tl-ster,Qwen3.6 35B,validate_plan,raw,1:1 (paper),4.2,4.981,no,3.807,no,3000,37475347,4326393,2276,423,2978,3000,4060765,5995039,2727,0,2727
+open tl-ster,Qwen3.6 35B,validate_plan,raw,3:1,2.312,2.742,no,2.096,no,3000,37475347,4326393,2276,423,2978,3000,4060765,5995039,2727,0,2727
+open tl-ster,Qwen3.6 35B,validate_plan,raw,4:1,1.974,2.341,no,1.789,no,3000,37475347,4326393,2276,423,2978,3000,4060765,5995039,2727,0,2727
+open tl-ster,Qwen3.6 35B,validate_plan,raw,5:1,1.755,2.081,no,1.59,no,3000,37475347,4326393,2276,423,2978,3000,4060765,5995039,2727,0,2727
+open tl-ster,Qwen3.6 35B,simulate,raw,input only,0.0,,not identified,,not identified,300,4485594,471588,0,81,291,300,430098,771347,0,271,0
+open tl-ster,Qwen3.6 35B,simulate,raw,output only,0.0,,not identified,,not identified,300,4485594,471588,0,81,291,300,430098,771347,0,271,0
+open tl-ster,Qwen3.6 35B,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,300,4485594,471588,0,81,291,300,430098,771347,0,271,0
+open tl-ster,Qwen3.6 35B,simulate,raw,3:1,0.0,,not identified,,not identified,300,4485594,471588,0,81,291,300,430098,771347,0,271,0
+open tl-ster,Qwen3.6 35B,simulate,raw,4:1,0.0,,not identified,,not identified,300,4485594,471588,0,81,291,300,430098,771347,0,271,0
+open tl-ster,Qwen3.6 35B,simulate,raw,5:1,0.0,,not identified,,not identified,300,4485594,471588,0,81,291,300,430098,771347,0,271,0
+open tl-neut,pooled 3 models,solve,raw,input only,2.513,7.002,no,1.418,no,900,14300600,2534518,159,284,785,900,1066172,2973093,83,0,83
+open tl-neut,pooled 3 models,solve,raw,output only,0.16,0.445,yes,0.09,yes,900,14300600,2534518,159,284,785,900,1066172,2973093,83,0,83
+open tl-neut,pooled 3 models,solve,raw,1:1 (paper),0.781,2.176,undecided (range spans 1),0.441,yes,900,14300600,2534518,159,284,785,900,1066172,2973093,83,0,83
+open tl-neut,pooled 3 models,solve,raw,3:1,0.411,1.145,undecided (range spans 1),0.232,yes,900,14300600,2534518,159,284,785,900,1066172,2973093,83,0,83
+open tl-neut,pooled 3 models,solve,raw,4:1,0.353,0.984,yes,0.199,yes,900,14300600,2534518,159,284,785,900,1066172,2973093,83,0,83
+open tl-neut,pooled 3 models,solve,raw,5:1,0.317,0.884,yes,0.179,yes,900,14300600,2534518,159,284,785,900,1066172,2973093,83,0,83
+open tl-neut,pooled 3 models,validate_domain,raw,input only,6.441,6.717,no,6.459,no,1080,9698741,855257,1026,44,1067,1080,866913,1270517,616,0,616
+open tl-neut,pooled 3 models,validate_domain,raw,output only,0.388,0.404,yes,0.389,yes,1080,9698741,855257,1026,44,1067,1080,866913,1270517,616,0,616
+open tl-neut,pooled 3 models,validate_domain,raw,1:1 (paper),2.843,2.965,no,2.851,no,1080,9698741,855257,1026,44,1067,1080,866913,1270517,616,0,616
+open tl-neut,pooled 3 models,validate_domain,raw,3:1,1.509,1.574,no,1.513,no,1080,9698741,855257,1026,44,1067,1080,866913,1270517,616,0,616
+open tl-neut,pooled 3 models,validate_domain,raw,4:1,1.27,1.324,no,1.273,no,1080,9698741,855257,1026,44,1067,1080,866913,1270517,616,0,616
+open tl-neut,pooled 3 models,validate_domain,raw,5:1,1.114,1.162,no,1.118,no,1080,9698741,855257,1026,44,1067,1080,866913,1270517,616,0,616
+open tl-neut,pooled 3 models,validate_problem,raw,input only,6.901,8.05,no,6.932,no,1800,19523767,2431667,1507,251,1750,1800,2087376,1567444,1297,0,1297
+open tl-neut,pooled 3 models,validate_problem,raw,output only,1.145,1.335,no,1.15,no,1800,19523767,2431667,1507,251,1750,1800,2087376,1567444,1297,0,1297
+open tl-neut,pooled 3 models,validate_problem,raw,1:1 (paper),4.432,5.17,no,4.452,no,1800,19523767,2431667,1507,251,1750,1800,2087376,1567444,1297,0,1297
+open tl-neut,pooled 3 models,validate_problem,raw,3:1,2.914,3.399,no,2.927,no,1800,19523767,2431667,1507,251,1750,1800,2087376,1567444,1297,0,1297
+open tl-neut,pooled 3 models,validate_problem,raw,4:1,2.582,3.012,no,2.594,no,1800,19523767,2431667,1507,251,1750,1800,2087376,1567444,1297,0,1297
+open tl-neut,pooled 3 models,validate_problem,raw,5:1,2.355,2.747,no,2.366,no,1800,19523767,2431667,1507,251,1750,1800,2087376,1567444,1297,0,1297
+open tl-neut,pooled 3 models,validate_plan,raw,input only,6.585,12.818,no,9.313,no,9000,87089810,12772994,4270,4042,5877,9000,12337969,14725802,7754,0,7754
+open tl-neut,pooled 3 models,validate_plan,raw,output only,0.809,1.575,undecided (range spans 1),1.144,no,9000,87089810,12772994,4270,4042,5877,9000,12337969,14725802,7754,0,7754
+open tl-neut,pooled 3 models,validate_plan,raw,1:1 (paper),3.442,6.701,no,4.868,no,9000,87089810,12772994,4270,4042,5877,9000,12337969,14725802,7754,0,7754
+open tl-neut,pooled 3 models,validate_plan,raw,3:1,2.07,4.03,no,2.928,no,9000,87089810,12772994,4270,4042,5877,9000,12337969,14725802,7754,0,7754
+open tl-neut,pooled 3 models,validate_plan,raw,4:1,1.809,3.522,no,2.559,no,9000,87089810,12772994,4270,4042,5877,9000,12337969,14725802,7754,0,7754
+open tl-neut,pooled 3 models,validate_plan,raw,5:1,1.638,3.189,no,2.317,no,9000,87089810,12772994,4270,4042,5877,9000,12337969,14725802,7754,0,7754
+open tl-neut,pooled 3 models,simulate,raw,input only,0.0,,not identified,,not identified,900,13045453,1815694,0,316,694,900,1308859,2731380,0,833,0
+open tl-neut,pooled 3 models,simulate,raw,output only,0.0,,not identified,,not identified,900,13045453,1815694,0,316,694,900,1308859,2731380,0,833,0
+open tl-neut,pooled 3 models,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,900,13045453,1815694,0,316,694,900,1308859,2731380,0,833,0
+open tl-neut,pooled 3 models,simulate,raw,3:1,0.0,,not identified,,not identified,900,13045453,1815694,0,316,694,900,1308859,2731380,0,833,0
+open tl-neut,pooled 3 models,simulate,raw,4:1,0.0,,not identified,,not identified,900,13045453,1815694,0,316,694,900,1308859,2731380,0,833,0
+open tl-neut,pooled 3 models,simulate,raw,5:1,0.0,,not identified,,not identified,900,13045453,1815694,0,316,694,900,1308859,2731380,0,833,0
+open tl-neut,Gemma 26B a4b,solve,raw,input only,2.777,6.846,no,0.988,yes,300,4660576,697691,43,63,298,300,364110,789491,23,0,23
+open tl-neut,Gemma 26B a4b,solve,raw,output only,0.192,0.473,yes,0.068,yes,300,4660576,697691,43,63,298,300,364110,789491,23,0,23
+open tl-neut,Gemma 26B a4b,solve,raw,1:1 (paper),1.008,2.484,no,0.358,yes,300,4660576,697691,43,63,298,300,364110,789491,23,0,23
+open tl-neut,Gemma 26B a4b,solve,raw,3:1,0.536,1.322,undecided (range spans 1),0.191,yes,300,4660576,697691,43,63,298,300,364110,789491,23,0,23
+open tl-neut,Gemma 26B a4b,solve,raw,4:1,0.459,1.132,undecided (range spans 1),0.163,yes,300,4660576,697691,43,63,298,300,364110,789491,23,0,23
+open tl-neut,Gemma 26B a4b,solve,raw,5:1,0.41,1.011,undecided (range spans 1),0.146,yes,300,4660576,697691,43,63,298,300,364110,789491,23,0,23
+open tl-neut,Gemma 26B a4b,validate_domain,raw,input only,7.948,8.35,no,7.993,no,360,2955981,287683,336,17,351,360,295011,224608,280,0,280
+open tl-neut,Gemma 26B a4b,validate_domain,raw,output only,1.016,1.067,no,1.022,no,360,2955981,287683,336,17,351,360,295011,224608,280,0,280
+open tl-neut,Gemma 26B a4b,validate_domain,raw,1:1 (paper),4.951,5.202,no,4.98,no,360,2955981,287683,336,17,351,360,295011,224608,280,0,280
+open tl-neut,Gemma 26B a4b,validate_domain,raw,3:1,3.127,3.285,no,3.145,no,360,2955981,287683,336,17,351,360,295011,224608,280,0,280
+open tl-neut,Gemma 26B a4b,validate_domain,raw,4:1,2.729,2.868,no,2.745,no,360,2955981,287683,336,17,351,360,295011,224608,280,0,280
+open tl-neut,Gemma 26B a4b,validate_domain,raw,5:1,2.458,2.582,no,2.472,no,360,2955981,287683,336,17,351,360,295011,224608,280,0,280
+open tl-neut,Gemma 26B a4b,validate_problem,raw,input only,6.204,7.345,no,6.215,no,600,5877785,731977,506,93,598,600,710138,426193,449,0,449
+open tl-neut,Gemma 26B a4b,validate_problem,raw,output only,1.287,1.524,no,1.29,no,600,5877785,731977,506,93,598,600,710138,426193,449,0,449
+open tl-neut,Gemma 26B a4b,validate_problem,raw,1:1 (paper),4.36,5.162,no,4.367,no,600,5877785,731977,506,93,598,600,710138,426193,449,0,449
+open tl-neut,Gemma 26B a4b,validate_problem,raw,3:1,3.043,3.602,no,3.048,no,600,5877785,731977,506,93,598,600,710138,426193,449,0,449
+open tl-neut,Gemma 26B a4b,validate_problem,raw,4:1,2.733,3.236,no,2.738,no,600,5877785,731977,506,93,598,600,710138,426193,449,0,449
+open tl-neut,Gemma 26B a4b,validate_problem,raw,5:1,2.516,2.979,no,2.521,no,600,5877785,731977,506,93,598,600,710138,426193,449,0,449
+open tl-neut,Gemma 26B a4b,validate_plan,raw,input only,3.329,50.479,no,16.117,no,3000,15912668,3673770,197,2790,617,3000,4216439,3418926,2635,0,2635
+open tl-neut,Gemma 26B a4b,validate_plan,raw,output only,0.948,14.373,undecided (range spans 1),4.589,no,3000,15912668,3673770,197,2790,617,3000,4216439,3418926,2635,0,2635
+open tl-neut,Gemma 26B a4b,validate_plan,raw,1:1 (paper),2.263,34.312,no,10.955,no,3000,15912668,3673770,197,2790,617,3000,4216439,3418926,2635,0,2635
+open tl-neut,Gemma 26B a4b,validate_plan,raw,3:1,1.642,24.891,no,7.948,no,3000,15912668,3673770,197,2790,617,3000,4216439,3418926,2635,0,2635
+open tl-neut,Gemma 26B a4b,validate_plan,raw,4:1,1.509,22.881,no,7.306,no,3000,15912668,3673770,197,2790,617,3000,4216439,3418926,2635,0,2635
+open tl-neut,Gemma 26B a4b,validate_plan,raw,5:1,1.419,21.516,no,6.87,no,3000,15912668,3673770,197,2790,617,3000,4216439,3418926,2635,0,2635
+open tl-neut,Gemma 26B a4b,simulate,raw,input only,0.0,,not identified,,not identified,300,4560413,539845,0,82,275,300,448190,995672,0,300,0
+open tl-neut,Gemma 26B a4b,simulate,raw,output only,0.0,,not identified,,not identified,300,4560413,539845,0,82,275,300,448190,995672,0,300,0
+open tl-neut,Gemma 26B a4b,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,300,4560413,539845,0,82,275,300,448190,995672,0,300,0
+open tl-neut,Gemma 26B a4b,simulate,raw,3:1,0.0,,not identified,,not identified,300,4560413,539845,0,82,275,300,448190,995672,0,300,0
+open tl-neut,Gemma 26B a4b,simulate,raw,4:1,0.0,,not identified,,not identified,300,4560413,539845,0,82,275,300,448190,995672,0,300,0
+open tl-neut,Gemma 26B a4b,simulate,raw,5:1,0.0,,not identified,,not identified,300,4560413,539845,0,82,275,300,448190,995672,0,300,0
+open tl-neut,Qwen3.5 9B,solve,raw,input only,2.841,6.411,no,1.678,no,300,5485288,731922,78,98,298,300,351031,1123841,32,0,32
+open tl-neut,Qwen3.5 9B,solve,raw,output only,0.118,0.267,yes,0.07,yes,300,5485288,731922,78,98,298,300,351031,1123841,32,0,32
+open tl-neut,Qwen3.5 9B,solve,raw,1:1 (paper),0.766,1.729,undecided (range spans 1),0.453,yes,300,5485288,731922,78,98,298,300,351031,1123841,32,0,32
+open tl-neut,Qwen3.5 9B,solve,raw,3:1,0.375,0.847,yes,0.222,yes,300,5485288,731922,78,98,298,300,351031,1123841,32,0,32
+open tl-neut,Qwen3.5 9B,solve,raw,4:1,0.316,0.712,yes,0.186,yes,300,5485288,731922,78,98,298,300,351031,1123841,32,0,32
+open tl-neut,Qwen3.5 9B,solve,raw,5:1,0.278,0.628,yes,0.164,yes,300,5485288,731922,78,98,298,300,351031,1123841,32,0,32
+open tl-neut,Qwen3.5 9B,validate_domain,raw,input only,2.974,2.983,no,2.974,no,360,3328128,262005,359,1,360,360,285951,568726,92,0,92
+open tl-neut,Qwen3.5 9B,validate_domain,raw,output only,0.118,0.118,yes,0.118,yes,360,3328128,262005,359,1,360,360,285951,568726,92,0,92
+open tl-neut,Qwen3.5 9B,validate_domain,raw,1:1 (paper),1.073,1.076,no,1.073,no,360,3328128,262005,359,1,360,360,285951,568726,92,0,92
+open tl-neut,Qwen3.5 9B,validate_domain,raw,3:1,0.528,0.529,yes,0.528,yes,360,3328128,262005,359,1,360,360,285951,568726,92,0,92
+open tl-neut,Qwen3.5 9B,validate_domain,raw,4:1,0.437,0.438,yes,0.437,yes,360,3328128,262005,359,1,360,360,285951,568726,92,0,92
+open tl-neut,Qwen3.5 9B,validate_domain,raw,5:1,0.379,0.38,yes,0.379,yes,360,3328128,262005,359,1,360,360,285951,568726,92,0,92
+open tl-neut,Qwen3.5 9B,validate_problem,raw,input only,7.092,7.336,no,7.104,no,600,7089919,805529,553,19,571,600,688619,564053,394,0,394
+open tl-neut,Qwen3.5 9B,validate_problem,raw,output only,0.984,1.017,undecided (range spans 1),0.985,yes,600,7089919,805529,553,19,571,600,688619,564053,394,0,394
+open tl-neut,Qwen3.5 9B,validate_problem,raw,1:1 (paper),4.341,4.491,no,4.349,no,600,7089919,805529,553,19,571,600,688619,564053,394,0,394
+open tl-neut,Qwen3.5 9B,validate_problem,raw,3:1,2.75,2.845,no,2.755,no,600,7089919,805529,553,19,571,600,688619,564053,394,0,394
+open tl-neut,Qwen3.5 9B,validate_problem,raw,4:1,2.412,2.495,no,2.416,no,600,7089919,805529,553,19,571,600,688619,564053,394,0,394
+open tl-neut,Qwen3.5 9B,validate_problem,raw,5:1,2.182,2.257,no,2.186,no,600,7089919,805529,553,19,571,600,688619,564053,394,0,394
+open tl-neut,Qwen3.5 9B,validate_plan,raw,input only,8.426,9.1,no,7.889,no,3000,37433482,4424984,2423,194,2795,3000,4060765,5311837,2392,0,2392
+open tl-neut,Qwen3.5 9B,validate_plan,raw,output only,0.761,0.822,yes,0.713,yes,3000,37433482,4424984,2423,194,2795,3000,4060765,5311837,2392,0,2392
+open tl-neut,Qwen3.5 9B,validate_plan,raw,1:1 (paper),4.082,4.409,no,3.822,no,3000,37433482,4424984,2423,194,2795,3000,4060765,5311837,2392,0,2392
+open tl-neut,Qwen3.5 9B,validate_plan,raw,3:1,2.318,2.503,no,2.17,no,3000,37433482,4424984,2423,194,2795,3000,4060765,5311837,2392,0,2392
+open tl-neut,Qwen3.5 9B,validate_plan,raw,4:1,1.991,2.151,no,1.864,no,3000,37433482,4424984,2423,194,2795,3000,4060765,5311837,2392,0,2392
+open tl-neut,Qwen3.5 9B,validate_plan,raw,5:1,1.778,1.92,no,1.665,no,3000,37433482,4424984,2423,194,2795,3000,4060765,5311837,2392,0,2392
+open tl-neut,Qwen3.5 9B,simulate,raw,input only,0.0,,not identified,,not identified,300,4620958,662758,0,117,195,300,430571,964361,0,262,0
+open tl-neut,Qwen3.5 9B,simulate,raw,output only,0.0,,not identified,,not identified,300,4620958,662758,0,117,195,300,430571,964361,0,262,0
+open tl-neut,Qwen3.5 9B,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,300,4620958,662758,0,117,195,300,430571,964361,0,262,0
+open tl-neut,Qwen3.5 9B,simulate,raw,3:1,0.0,,not identified,,not identified,300,4620958,662758,0,117,195,300,430571,964361,0,262,0
+open tl-neut,Qwen3.5 9B,simulate,raw,4:1,0.0,,not identified,,not identified,300,4620958,662758,0,117,195,300,430571,964361,0,262,0
+open tl-neut,Qwen3.5 9B,simulate,raw,5:1,0.0,,not identified,,not identified,300,4620958,662758,0,117,195,300,430571,964361,0,262,0
+open tl-neut,Qwen3.6 35B,solve,raw,input only,2.058,8.721,no,1.753,no,300,4154736,1104905,38,123,189,300,351031,1059761,28,0,28
+open tl-neut,Qwen3.6 35B,solve,raw,output only,0.181,0.768,yes,0.154,yes,300,4154736,1104905,38,123,189,300,351031,1059761,28,0,28
+open tl-neut,Qwen3.6 35B,solve,raw,1:1 (paper),0.648,2.747,undecided (range spans 1),0.552,yes,300,4154736,1104905,38,123,189,300,351031,1059761,28,0,28
+open tl-neut,Qwen3.6 35B,solve,raw,3:1,0.368,1.559,undecided (range spans 1),0.313,yes,300,4154736,1104905,38,123,189,300,351031,1059761,28,0,28
+open tl-neut,Qwen3.6 35B,solve,raw,4:1,0.325,1.376,undecided (range spans 1),0.277,yes,300,4154736,1104905,38,123,189,300,351031,1059761,28,0,28
+open tl-neut,Qwen3.6 35B,solve,raw,5:1,0.298,1.262,undecided (range spans 1),0.254,yes,300,4154736,1104905,38,123,189,300,351031,1059761,28,0,28
+open tl-neut,Qwen3.6 35B,validate_domain,raw,input only,8.162,8.803,no,8.184,no,360,3414632,305569,331,26,356,360,285951,477183,244,0,244
+open tl-neut,Qwen3.6 35B,validate_domain,raw,output only,0.438,0.472,yes,0.439,yes,360,3414632,305569,331,26,356,360,285951,477183,244,0,244
+open tl-neut,Qwen3.6 35B,validate_domain,raw,1:1 (paper),3.332,3.594,no,3.341,no,360,3414632,305569,331,26,356,360,285951,477183,244,0,244
+open tl-neut,Qwen3.6 35B,validate_domain,raw,3:1,1.724,1.859,no,1.728,no,360,3414632,305569,331,26,356,360,285951,477183,244,0,244
+open tl-neut,Qwen3.6 35B,validate_domain,raw,4:1,1.444,1.557,no,1.448,no,360,3414632,305569,331,26,356,360,285951,477183,244,0,244
+open tl-neut,Qwen3.6 35B,validate_domain,raw,5:1,1.264,1.364,no,1.268,no,360,3414632,305569,331,26,356,360,285951,477183,244,0,244
+open tl-neut,Qwen3.6 35B,validate_problem,raw,input only,7.363,9.648,no,7.44,no,600,6556063,894161,448,139,581,600,688619,577198,454,0,454
+open tl-neut,Qwen3.6 35B,validate_problem,raw,output only,1.198,1.57,no,1.211,no,600,6556063,894161,448,139,581,600,688619,577198,454,0,454
+open tl-neut,Qwen3.6 35B,validate_problem,raw,1:1 (paper),4.552,5.965,no,4.599,no,600,6556063,894161,448,139,581,600,688619,577198,454,0,454
+open tl-neut,Qwen3.6 35B,validate_problem,raw,3:1,2.952,3.868,no,2.983,no,600,6556063,894161,448,139,581,600,688619,577198,454,0,454
+open tl-neut,Qwen3.6 35B,validate_problem,raw,4:1,2.615,3.426,no,2.642,no,600,6556063,894161,448,139,581,600,688619,577198,454,0,454
+open tl-neut,Qwen3.6 35B,validate_problem,raw,5:1,2.386,3.126,no,2.41,no,600,6556063,894161,448,139,581,600,688619,577198,454,0,454
+open tl-neut,Qwen3.6 35B,validate_plan,raw,input only,8.368,13.734,no,9.193,no,3000,33743660,4674240,1650,1058,2465,3000,4060765,5995039,2727,0,2727
+open tl-neut,Qwen3.6 35B,validate_plan,raw,output only,0.785,1.289,undecided (range spans 1),0.863,yes,3000,33743660,4674240,1650,1058,2465,3000,4060765,5995039,2727,0,2727
+open tl-neut,Qwen3.6 35B,validate_plan,raw,1:1 (paper),3.847,6.314,no,4.227,no,3000,33743660,4674240,1650,1058,2465,3000,4060765,5995039,2727,0,2727
+open tl-neut,Qwen3.6 35B,validate_plan,raw,3:1,2.182,3.581,no,2.397,no,3000,33743660,4674240,1650,1058,2465,3000,4060765,5995039,2727,0,2727
+open tl-neut,Qwen3.6 35B,validate_plan,raw,4:1,1.883,3.091,no,2.069,no,3000,33743660,4674240,1650,1058,2465,3000,4060765,5995039,2727,0,2727
+open tl-neut,Qwen3.6 35B,validate_plan,raw,5:1,1.69,2.773,no,1.856,no,3000,33743660,4674240,1650,1058,2465,3000,4060765,5995039,2727,0,2727
+open tl-neut,Qwen3.6 35B,simulate,raw,input only,0.0,,not identified,,not identified,300,3864082,613091,0,117,224,300,430098,771347,0,271,0
+open tl-neut,Qwen3.6 35B,simulate,raw,output only,0.0,,not identified,,not identified,300,3864082,613091,0,117,224,300,430098,771347,0,271,0
+open tl-neut,Qwen3.6 35B,simulate,raw,1:1 (paper),0.0,,not identified,,not identified,300,3864082,613091,0,117,224,300,430098,771347,0,271,0
+open tl-neut,Qwen3.6 35B,simulate,raw,3:1,0.0,,not identified,,not identified,300,3864082,613091,0,117,224,300,430098,771347,0,271,0
+open tl-neut,Qwen3.6 35B,simulate,raw,4:1,0.0,,not identified,,not identified,300,3864082,613091,0,117,224,300,430098,771347,0,271,0
+open tl-neut,Qwen3.6 35B,simulate,raw,5:1,0.0,,not identified,,not identified,300,3864082,613091,0,117,224,300,430098,771347,0,271,0
+open tl-ster by track,"tools-steered, classical",solve,raw,input only,1.186,3.16,no,0.864,yes,450,5785282,976696,119,198,435,450,523114,1634645,34,0,34
+open tl-ster by track,"tools-steered, classical",solve,raw,output only,0.064,0.171,yes,0.047,yes,450,5785282,976696,119,198,435,450,523114,1634645,34,0,34
+open tl-ster by track,"tools-steered, classical",solve,raw,1:1 (paper),0.336,0.895,yes,0.245,yes,450,5785282,976696,119,198,435,450,523114,1634645,34,0,34
+open tl-ster by track,"tools-steered, classical",solve,raw,3:1,0.172,0.459,yes,0.126,yes,450,5785282,976696,119,198,435,450,523114,1634645,34,0,34
+open tl-ster by track,"tools-steered, classical",solve,raw,4:1,0.147,0.392,yes,0.107,yes,450,5785282,976696,119,198,435,450,523114,1634645,34,0,34
+open tl-ster by track,"tools-steered, classical",solve,raw,5:1,0.132,0.351,yes,0.096,yes,450,5785282,976696,119,198,435,450,523114,1634645,34,0,34
+open tl-ster by track,"tools-steered, numeric",solve,raw,input only,3.745,8.811,no,1.714,no,450,8300385,1234484,85,115,437,450,543058,1338448,49,0,49
+open tl-ster by track,"tools-steered, numeric",solve,raw,output only,0.226,0.532,yes,0.103,yes,450,8300385,1234484,85,115,437,450,543058,1338448,49,0,49
+open tl-ster by track,"tools-steered, numeric",solve,raw,1:1 (paper),1.242,2.921,no,0.568,yes,450,8300385,1234484,85,115,437,450,543058,1338448,49,0,49
+open tl-ster by track,"tools-steered, numeric",solve,raw,3:1,0.645,1.518,undecided (range spans 1),0.295,yes,450,8300385,1234484,85,115,437,450,543058,1338448,49,0,49
+open tl-ster by track,"tools-steered, numeric",solve,raw,4:1,0.55,1.294,undecided (range spans 1),0.252,yes,450,8300385,1234484,85,115,437,450,543058,1338448,49,0,49
+open tl-ster by track,"tools-steered, numeric",solve,raw,5:1,0.49,1.153,undecided (range spans 1),0.224,yes,450,8300385,1234484,85,115,437,450,543058,1338448,49,0,49
+open tl-neut by track,"tools-plain, classical",solve,raw,input only,1.355,3.884,no,0.994,yes,450,5856383,1164150,98,183,383,450,523114,1634645,34,0,34
+open tl-neut by track,"tools-plain, classical",solve,raw,output only,0.086,0.247,yes,0.063,yes,450,5856383,1164150,98,183,383,450,523114,1634645,34,0,34
+open tl-neut by track,"tools-plain, classical",solve,raw,1:1 (paper),0.394,1.129,undecided (range spans 1),0.289,yes,450,5856383,1164150,98,183,383,450,523114,1634645,34,0,34
+open tl-neut by track,"tools-plain, classical",solve,raw,3:1,0.208,0.598,yes,0.153,yes,450,5856383,1164150,98,183,383,450,523114,1634645,34,0,34
+open tl-neut by track,"tools-plain, classical",solve,raw,4:1,0.18,0.516,yes,0.132,yes,450,5856383,1164150,98,183,383,450,523114,1634645,34,0,34
+open tl-neut by track,"tools-plain, classical",solve,raw,5:1,0.162,0.466,yes,0.119,yes,450,5856383,1164150,98,183,383,450,523114,1634645,34,0,34
+open tl-neut by track,"tools-plain, numeric",solve,raw,input only,4.703,12.49,no,1.895,no,450,8444217,1370368,61,101,402,450,543058,1338448,49,0,49
+open tl-neut by track,"tools-plain, numeric",solve,raw,output only,0.31,0.822,yes,0.125,yes,450,8444217,1370368,61,101,402,450,543058,1338448,49,0,49
+open tl-neut by track,"tools-plain, numeric",solve,raw,1:1 (paper),1.578,4.19,no,0.636,yes,450,8444217,1370368,61,101,402,450,543058,1338448,49,0,49
+open tl-neut by track,"tools-plain, numeric",solve,raw,3:1,0.833,2.212,undecided (range spans 1),0.336,yes,450,8444217,1370368,61,101,402,450,543058,1338448,49,0,49
+open tl-neut by track,"tools-plain, numeric",solve,raw,4:1,0.714,1.897,undecided (range spans 1),0.288,yes,450,8444217,1370368,61,101,402,450,543058,1338448,49,0,49
+open tl-neut by track,"tools-plain, numeric",solve,raw,5:1,0.639,1.698,undecided (range spans 1),0.258,yes,450,8444217,1370368,61,101,402,450,543058,1338448,49,0,49
+frontier raw,Sonnet 4.6,solve,raw,input only,3.249,3.249,no,3.087,no,100,1550281,219979,95,0,100,100,145656,28975,29,0,29
+frontier raw,Sonnet 4.6,solve,raw,output only,2.318,2.318,no,2.202,no,100,1550281,219979,95,0,100,100,145656,28975,29,0,29
+frontier raw,Sonnet 4.6,solve,raw,1:1 (paper),3.094,3.094,no,2.94,no,100,1550281,219979,95,0,100,100,145656,28975,29,0,29
+frontier raw,Sonnet 4.6,solve,raw,3:1,2.901,2.901,no,2.756,no,100,1550281,219979,95,0,100,100,145656,28975,29,0,29
+frontier raw,Sonnet 4.6,solve,raw,4:1,2.836,2.836,no,2.694,no,100,1550281,219979,95,0,100,100,145656,28975,29,0,29
+frontier raw,Sonnet 4.6,solve,raw,5:1,2.785,2.785,no,2.645,no,100,1550281,219979,95,0,100,100,145656,28975,29,0,29
+frontier cache-billed,Sonnet 4.6,solve,cache-billed,input only,2.135,2.135,no,2.028,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier cache-billed,Sonnet 4.6,solve,cache-billed,output only,2.318,2.318,no,2.202,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier cache-billed,Sonnet 4.6,solve,cache-billed,1:1 (paper),2.165,2.165,no,2.057,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier cache-billed,Sonnet 4.6,solve,cache-billed,3:1,2.203,2.203,no,2.093,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier cache-billed,Sonnet 4.6,solve,cache-billed,4:1,2.216,2.216,no,2.105,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier cache-billed,Sonnet 4.6,solve,cache-billed,5:1,2.226,2.226,no,2.115,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier as-billed,Sonnet 4.6,solve,as-billed,input only,4.27,4.27,no,4.056,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier as-billed,Sonnet 4.6,solve,as-billed,output only,4.635,4.635,no,4.403,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier as-billed,Sonnet 4.6,solve,as-billed,1:1 (paper),4.331,4.331,no,4.114,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier as-billed,Sonnet 4.6,solve,as-billed,3:1,4.406,4.406,no,4.186,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier as-billed,Sonnet 4.6,solve,as-billed,4:1,4.432,4.432,no,4.21,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier as-billed,Sonnet 4.6,solve,as-billed,5:1,4.452,4.452,no,4.229,no,100,1018701,219979,95,0,100,100,145656,28975,29,0,29
+frontier raw,Sonnet 4.6,validate_domain,raw,input only,12.469,12.469,no,12.469,no,120,1322590,132348,115,0,115,120,103300,38209,112,0,112
+frontier raw,Sonnet 4.6,validate_domain,raw,output only,3.373,3.373,no,3.373,no,120,1322590,132348,115,0,115,120,103300,38209,112,0,112
+frontier raw,Sonnet 4.6,validate_domain,raw,1:1 (paper),10.013,10.013,no,10.013,no,120,1322590,132348,115,0,115,120,103300,38209,112,0,112
+frontier raw,Sonnet 4.6,validate_domain,raw,3:1,7.685,7.685,no,7.685,no,120,1322590,132348,115,0,115,120,103300,38209,112,0,112
+frontier raw,Sonnet 4.6,validate_domain,raw,4:1,7.042,7.042,no,7.042,no,120,1322590,132348,115,0,115,120,103300,38209,112,0,112
+frontier raw,Sonnet 4.6,validate_domain,raw,5:1,6.566,6.566,no,6.566,no,120,1322590,132348,115,0,115,120,103300,38209,112,0,112
+frontier cache-billed,Sonnet 4.6,validate_domain,cache-billed,input only,3.935,3.935,no,3.935,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier cache-billed,Sonnet 4.6,validate_domain,cache-billed,output only,3.373,3.373,no,3.373,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier cache-billed,Sonnet 4.6,validate_domain,cache-billed,1:1 (paper),3.783,3.783,no,3.783,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier cache-billed,Sonnet 4.6,validate_domain,cache-billed,3:1,3.639,3.639,no,3.639,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier cache-billed,Sonnet 4.6,validate_domain,cache-billed,4:1,3.6,3.6,no,3.6,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier cache-billed,Sonnet 4.6,validate_domain,cache-billed,5:1,3.57,3.57,no,3.57,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier as-billed,Sonnet 4.6,validate_domain,as-billed,input only,7.869,7.869,no,7.869,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier as-billed,Sonnet 4.6,validate_domain,as-billed,output only,6.747,6.747,no,6.747,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier as-billed,Sonnet 4.6,validate_domain,as-billed,1:1 (paper),7.566,7.566,no,7.566,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier as-billed,Sonnet 4.6,validate_domain,as-billed,3:1,7.279,7.279,no,7.279,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier as-billed,Sonnet 4.6,validate_domain,as-billed,4:1,7.2,7.2,no,7.2,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier as-billed,Sonnet 4.6,validate_domain,as-billed,5:1,7.141,7.141,no,7.141,no,120,417341,132348,115,0,115,120,103300,38209,112,0,112
+frontier raw,Sonnet 4.6,validate_problem,raw,input only,8.511,8.511,no,8.511,no,200,2440942,290379,196,0,196,200,253150,33963,173,0,173
+frontier raw,Sonnet 4.6,validate_problem,raw,output only,7.547,7.547,no,7.547,no,200,2440942,290379,196,0,196,200,253150,33963,173,0,173
+frontier raw,Sonnet 4.6,validate_problem,raw,1:1 (paper),8.397,8.397,no,8.397,no,200,2440942,290379,196,0,196,200,253150,33963,173,0,173
+frontier raw,Sonnet 4.6,validate_problem,raw,3:1,8.234,8.234,no,8.234,no,200,2440942,290379,196,0,196,200,253150,33963,173,0,173
+frontier raw,Sonnet 4.6,validate_problem,raw,4:1,8.174,8.174,no,8.174,no,200,2440942,290379,196,0,196,200,253150,33963,173,0,173
+frontier raw,Sonnet 4.6,validate_problem,raw,5:1,8.124,8.124,no,8.124,no,200,2440942,290379,196,0,196,200,253150,33963,173,0,173
+frontier cache-billed,Sonnet 4.6,validate_problem,cache-billed,input only,6.279,6.279,no,6.279,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier cache-billed,Sonnet 4.6,validate_problem,cache-billed,output only,7.547,7.547,no,7.547,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier cache-billed,Sonnet 4.6,validate_problem,cache-billed,1:1 (paper),6.429,6.429,no,6.429,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier cache-billed,Sonnet 4.6,validate_problem,cache-billed,3:1,6.643,6.643,no,6.643,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier cache-billed,Sonnet 4.6,validate_problem,cache-billed,4:1,6.721,6.721,no,6.721,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier cache-billed,Sonnet 4.6,validate_problem,cache-billed,5:1,6.788,6.788,no,6.788,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier as-billed,Sonnet 4.6,validate_problem,as-billed,input only,12.557,12.557,no,12.557,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier as-billed,Sonnet 4.6,validate_problem,as-billed,output only,15.093,15.093,no,15.093,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier as-billed,Sonnet 4.6,validate_problem,as-billed,1:1 (paper),12.857,12.857,no,12.857,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier as-billed,Sonnet 4.6,validate_problem,as-billed,3:1,13.285,13.285,no,13.285,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier as-billed,Sonnet 4.6,validate_problem,as-billed,4:1,13.443,13.443,no,13.443,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier as-billed,Sonnet 4.6,validate_problem,as-billed,5:1,13.575,13.575,no,13.575,no,200,1800755,290379,196,0,196,200,253150,33963,173,0,173
+frontier raw,Sonnet 4.6,validate_plan,raw,input only,8.974,8.974,no,8.983,no,1000,14118027,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier raw,Sonnet 4.6,validate_plan,raw,output only,1.985,1.985,no,1.987,no,1000,14118027,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier raw,Sonnet 4.6,validate_plan,raw,1:1 (paper),6.472,6.472,no,6.478,no,1000,14118027,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier raw,Sonnet 4.6,validate_plan,raw,3:1,4.599,4.599,no,4.604,no,1000,14118027,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier raw,Sonnet 4.6,validate_plan,raw,4:1,4.148,4.148,no,4.152,no,1000,14118027,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier raw,Sonnet 4.6,validate_plan,raw,5:1,3.83,3.83,no,3.833,no,1000,14118027,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier cache-billed,Sonnet 4.6,validate_plan,cache-billed,input only,4.642,4.642,no,4.647,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier cache-billed,Sonnet 4.6,validate_plan,cache-billed,output only,1.985,1.985,no,1.987,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier cache-billed,Sonnet 4.6,validate_plan,cache-billed,1:1 (paper),3.691,3.691,no,3.695,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier cache-billed,Sonnet 4.6,validate_plan,cache-billed,3:1,2.979,2.979,no,2.982,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier cache-billed,Sonnet 4.6,validate_plan,cache-billed,4:1,2.807,2.807,no,2.81,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier cache-billed,Sonnet 4.6,validate_plan,cache-billed,5:1,2.686,2.686,no,2.689,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier as-billed,Sonnet 4.6,validate_plan,as-billed,input only,9.285,9.285,no,9.294,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier as-billed,Sonnet 4.6,validate_plan,as-billed,output only,3.97,3.97,no,3.974,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier as-billed,Sonnet 4.6,validate_plan,as-billed,1:1 (paper),7.382,7.382,no,7.389,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier as-billed,Sonnet 4.6,validate_plan,as-billed,3:1,5.958,5.958,no,5.964,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier as-billed,Sonnet 4.6,validate_plan,as-billed,4:1,5.615,5.615,no,5.62,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier as-billed,Sonnet 4.6,validate_plan,as-billed,5:1,5.373,5.373,no,5.378,no,1000,7303527,1741764,1000,0,999,1000,1527569,852045,971,0,971
+frontier raw,Sonnet 4.6,simulate,raw,input only,15.156,29.893,no,10.329,no,100,4643933,535491,49,13,99,100,168036,352199,34,19,37
+frontier raw,Sonnet 4.6,simulate,raw,output only,0.834,1.645,undecided (range spans 1),0.568,yes,100,4643933,535491,49,13,99,100,168036,352199,34,19,37
+frontier raw,Sonnet 4.6,simulate,raw,1:1 (paper),5.46,10.769,no,3.721,no,100,4643933,535491,49,13,99,100,168036,352199,34,19,37
+frontier raw,Sonnet 4.6,simulate,raw,3:1,2.799,5.521,no,1.908,no,100,4643933,535491,49,13,99,100,168036,352199,34,19,37
+frontier raw,Sonnet 4.6,simulate,raw,4:1,2.36,4.655,no,1.608,no,100,4643933,535491,49,13,99,100,168036,352199,34,19,37
+frontier raw,Sonnet 4.6,simulate,raw,5:1,2.081,4.105,no,1.418,no,100,4643933,535491,49,13,99,100,168036,352199,34,19,37
+frontier cache-billed,Sonnet 4.6,simulate,cache-billed,input only,16.675,32.889,no,11.364,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier cache-billed,Sonnet 4.6,simulate,cache-billed,output only,0.834,1.645,undecided (range spans 1),0.568,yes,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier cache-billed,Sonnet 4.6,simulate,cache-billed,1:1 (paper),5.95,11.736,no,4.055,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier cache-billed,Sonnet 4.6,simulate,cache-billed,3:1,3.007,5.932,no,2.05,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier cache-billed,Sonnet 4.6,simulate,cache-billed,4:1,2.522,4.974,no,1.719,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier cache-billed,Sonnet 4.6,simulate,cache-billed,5:1,2.214,4.366,no,1.509,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier as-billed,Sonnet 4.6,simulate,as-billed,input only,33.349,65.778,no,22.728,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier as-billed,Sonnet 4.6,simulate,as-billed,output only,1.668,3.289,no,1.136,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier as-billed,Sonnet 4.6,simulate,as-billed,1:1 (paper),11.901,23.473,no,8.111,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier as-billed,Sonnet 4.6,simulate,as-billed,3:1,6.015,11.863,no,4.099,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier as-billed,Sonnet 4.6,simulate,as-billed,4:1,5.044,9.948,no,3.437,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier as-billed,Sonnet 4.6,simulate,as-billed,5:1,4.427,8.732,no,3.017,no,100,5109430,535491,49,13,99,100,168036,352199,34,19,37
+frontier raw,Haiku 4.5,solve,raw,input only,6.487,6.487,no,6.163,no,100,4077464,531971,95,0,100,100,145556,30377,22,0,22
+frontier raw,Haiku 4.5,solve,raw,output only,4.055,4.055,no,3.853,no,100,4077464,531971,95,0,100,100,145556,30377,22,0,22
+frontier raw,Haiku 4.5,solve,raw,1:1 (paper),6.067,6.067,no,5.764,no,100,4077464,531971,95,0,100,100,145556,30377,22,0,22
+frontier raw,Haiku 4.5,solve,raw,3:1,5.551,5.551,no,5.273,no,100,4077464,531971,95,0,100,100,145556,30377,22,0,22
+frontier raw,Haiku 4.5,solve,raw,4:1,5.381,5.381,no,5.112,no,100,4077464,531971,95,0,100,100,145556,30377,22,0,22
+frontier raw,Haiku 4.5,solve,raw,5:1,5.245,5.245,no,4.983,no,100,4077464,531971,95,0,100,100,145556,30377,22,0,22
+frontier cache-billed,Haiku 4.5,solve,cache-billed,input only,3.019,3.019,no,2.868,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier cache-billed,Haiku 4.5,solve,cache-billed,output only,4.055,4.055,no,3.853,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier cache-billed,Haiku 4.5,solve,cache-billed,1:1 (paper),3.198,3.198,no,3.038,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier cache-billed,Haiku 4.5,solve,cache-billed,3:1,3.418,3.418,no,3.247,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier cache-billed,Haiku 4.5,solve,cache-billed,4:1,3.49,3.49,no,3.316,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier cache-billed,Haiku 4.5,solve,cache-billed,5:1,3.548,3.548,no,3.371,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier as-billed,Haiku 4.5,solve,as-billed,input only,6.037,6.037,no,5.735,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier as-billed,Haiku 4.5,solve,as-billed,output only,8.111,8.111,no,7.705,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier as-billed,Haiku 4.5,solve,as-billed,1:1 (paper),6.395,6.395,no,6.075,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier as-billed,Haiku 4.5,solve,as-billed,3:1,6.836,6.836,no,6.494,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier as-billed,Haiku 4.5,solve,as-billed,4:1,6.981,6.981,no,6.632,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier as-billed,Haiku 4.5,solve,as-billed,5:1,7.096,7.096,no,6.741,no,100,1897288,531971,95,0,100,100,145556,30377,22,0,22
+frontier raw,Haiku 4.5,validate_domain,raw,input only,11.521,11.521,no,11.521,no,120,1335901,111553,118,0,118,120,103180,57965,105,0,105
+frontier raw,Haiku 4.5,validate_domain,raw,output only,1.712,1.712,no,1.712,no,120,1335901,111553,118,0,118,120,103180,57965,105,0,105
+frontier raw,Haiku 4.5,validate_domain,raw,1:1 (paper),7.993,7.993,no,7.993,no,120,1335901,111553,118,0,118,120,103180,57965,105,0,105
+frontier raw,Haiku 4.5,validate_domain,raw,3:1,5.365,5.365,no,5.365,no,120,1335901,111553,118,0,118,120,103180,57965,105,0,105
+frontier raw,Haiku 4.5,validate_domain,raw,4:1,4.733,4.733,no,4.733,no,120,1335901,111553,118,0,118,120,103180,57965,105,0,105
+frontier raw,Haiku 4.5,validate_domain,raw,5:1,4.288,4.288,no,4.288,no,120,1335901,111553,118,0,118,120,103180,57965,105,0,105
+frontier cache-billed,Haiku 4.5,validate_domain,cache-billed,input only,4.519,4.519,no,4.519,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier cache-billed,Haiku 4.5,validate_domain,cache-billed,output only,1.712,1.712,no,1.712,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier cache-billed,Haiku 4.5,validate_domain,cache-billed,1:1 (paper),3.51,3.51,no,3.51,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier cache-billed,Haiku 4.5,validate_domain,cache-billed,3:1,2.758,2.758,no,2.758,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier cache-billed,Haiku 4.5,validate_domain,cache-billed,4:1,2.577,2.577,no,2.577,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier cache-billed,Haiku 4.5,validate_domain,cache-billed,5:1,2.449,2.449,no,2.449,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier as-billed,Haiku 4.5,validate_domain,as-billed,input only,9.039,9.039,no,9.039,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier as-billed,Haiku 4.5,validate_domain,as-billed,output only,3.425,3.425,no,3.425,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier as-billed,Haiku 4.5,validate_domain,as-billed,1:1 (paper),7.019,7.019,no,7.019,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier as-billed,Haiku 4.5,validate_domain,as-billed,3:1,5.515,5.515,no,5.515,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier as-billed,Haiku 4.5,validate_domain,as-billed,4:1,5.154,5.154,no,5.154,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier as-billed,Haiku 4.5,validate_domain,as-billed,5:1,4.899,4.899,no,4.899,no,120,524036,111553,118,0,118,120,103180,57965,105,0,105
+frontier raw,Haiku 4.5,validate_problem,raw,input only,7.439,7.439,no,7.439,no,200,2487522,271227,193,0,193,200,252950,117735,146,0,146
+frontier raw,Haiku 4.5,validate_problem,raw,output only,1.743,1.743,no,1.743,no,200,2487522,271227,193,0,193,200,252950,117735,146,0,146
+frontier raw,Haiku 4.5,validate_problem,raw,1:1 (paper),5.63,5.63,no,5.63,no,200,2487522,271227,193,0,193,200,252950,117735,146,0,146
+frontier raw,Haiku 4.5,validate_problem,raw,3:1,4.12,4.12,no,4.12,no,200,2487522,271227,193,0,193,200,252950,117735,146,0,146
+frontier raw,Haiku 4.5,validate_problem,raw,4:1,3.733,3.733,no,3.733,no,200,2487522,271227,193,0,193,200,252950,117735,146,0,146
+frontier raw,Haiku 4.5,validate_problem,raw,5:1,3.455,3.455,no,3.455,no,200,2487522,271227,193,0,193,200,252950,117735,146,0,146
+frontier cache-billed,Haiku 4.5,validate_problem,cache-billed,input only,5.446,5.446,no,5.446,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier cache-billed,Haiku 4.5,validate_problem,cache-billed,output only,1.743,1.743,no,1.743,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier cache-billed,Haiku 4.5,validate_problem,cache-billed,1:1 (paper),4.27,4.27,no,4.27,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier cache-billed,Haiku 4.5,validate_problem,cache-billed,3:1,3.288,3.288,no,3.288,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier cache-billed,Haiku 4.5,validate_problem,cache-billed,4:1,3.037,3.037,no,3.037,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier cache-billed,Haiku 4.5,validate_problem,cache-billed,5:1,2.856,2.856,no,2.856,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier as-billed,Haiku 4.5,validate_problem,as-billed,input only,10.891,10.891,no,10.891,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier as-billed,Haiku 4.5,validate_problem,as-billed,output only,3.485,3.485,no,3.485,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier as-billed,Haiku 4.5,validate_problem,as-billed,1:1 (paper),8.539,8.539,no,8.539,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier as-billed,Haiku 4.5,validate_problem,as-billed,3:1,6.576,6.576,no,6.576,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier as-billed,Haiku 4.5,validate_problem,as-billed,4:1,6.073,6.073,no,6.073,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier as-billed,Haiku 4.5,validate_problem,as-billed,5:1,5.711,5.711,no,5.711,no,200,1820899,271227,193,0,193,200,252950,117735,146,0,146
+frontier raw,Haiku 4.5,validate_plan,raw,input only,8.867,8.867,no,8.858,no,1000,14615674,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier raw,Haiku 4.5,validate_plan,raw,output only,1.485,1.485,no,1.484,no,1000,14615674,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier raw,Haiku 4.5,validate_plan,raw,1:1 (paper),5.774,5.774,no,5.768,no,1000,14615674,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier raw,Haiku 4.5,validate_plan,raw,3:1,3.818,3.818,no,3.814,no,1000,14615674,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier raw,Haiku 4.5,validate_plan,raw,4:1,3.385,3.385,no,3.382,no,1000,14615674,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier raw,Haiku 4.5,validate_plan,raw,5:1,3.088,3.088,no,3.084,no,1000,14615674,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier cache-billed,Haiku 4.5,validate_plan,cache-billed,input only,4.547,4.547,no,4.543,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier cache-billed,Haiku 4.5,validate_plan,cache-billed,output only,1.485,1.485,no,1.484,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier cache-billed,Haiku 4.5,validate_plan,cache-billed,1:1 (paper),3.264,3.264,no,3.261,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier cache-billed,Haiku 4.5,validate_plan,cache-billed,3:1,2.453,2.453,no,2.45,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier cache-billed,Haiku 4.5,validate_plan,cache-billed,4:1,2.273,2.273,no,2.271,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier cache-billed,Haiku 4.5,validate_plan,cache-billed,5:1,2.15,2.15,no,2.148,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier as-billed,Haiku 4.5,validate_plan,as-billed,input only,9.094,9.094,no,9.085,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier as-billed,Haiku 4.5,validate_plan,as-billed,output only,2.97,2.97,no,2.967,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier as-billed,Haiku 4.5,validate_plan,as-billed,1:1 (paper),6.528,6.528,no,6.521,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier as-billed,Haiku 4.5,validate_plan,as-billed,3:1,4.906,4.906,no,4.901,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier as-billed,Haiku 4.5,validate_plan,as-billed,4:1,4.547,4.547,no,4.542,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier as-billed,Haiku 4.5,validate_plan,as-billed,5:1,4.3,4.3,no,4.295,no,1000,7495355,1765912,988,0,989,1000,1526569,1101150,915,0,915
+frontier raw,Haiku 4.5,simulate,raw,input only,14.934,32.89,no,10.89,no,100,4223790,441703,52,12,97,100,167936,357540,38,30,42
+frontier raw,Haiku 4.5,simulate,raw,output only,0.734,1.616,undecided (range spans 1),0.535,yes,100,4223790,441703,52,12,97,100,167936,357540,38,30,42
+frontier raw,Haiku 4.5,simulate,raw,1:1 (paper),5.272,11.61,no,3.844,no,100,4223790,441703,52,12,97,100,167936,357540,38,30,42
+frontier raw,Haiku 4.5,simulate,raw,3:1,2.656,5.849,no,1.937,no,100,4223790,441703,52,12,97,100,167936,357540,38,30,42
+frontier raw,Haiku 4.5,simulate,raw,4:1,2.226,4.902,no,1.623,no,100,4223790,441703,52,12,97,100,167936,357540,38,30,42
+frontier raw,Haiku 4.5,simulate,raw,5:1,1.953,4.301,no,1.424,no,100,4223790,441703,52,12,97,100,167936,357540,38,30,42
+frontier cache-billed,Haiku 4.5,simulate,cache-billed,input only,15.975,35.183,no,11.65,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier cache-billed,Haiku 4.5,simulate,cache-billed,output only,0.734,1.616,undecided (range spans 1),0.535,yes,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier cache-billed,Haiku 4.5,simulate,cache-billed,1:1 (paper),5.604,12.343,no,4.087,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier cache-billed,Haiku 4.5,simulate,cache-billed,3:1,2.797,6.16,no,2.04,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier cache-billed,Haiku 4.5,simulate,cache-billed,4:1,2.335,5.143,no,1.703,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier cache-billed,Haiku 4.5,simulate,cache-billed,5:1,2.042,4.498,no,1.489,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier as-billed,Haiku 4.5,simulate,as-billed,input only,31.95,70.367,no,23.299,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier as-billed,Haiku 4.5,simulate,as-billed,output only,1.467,3.231,no,1.07,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier as-billed,Haiku 4.5,simulate,as-billed,1:1 (paper),11.209,24.687,no,8.174,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier as-billed,Haiku 4.5,simulate,as-billed,3:1,5.594,12.319,no,4.079,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier as-billed,Haiku 4.5,simulate,as-billed,4:1,4.67,10.286,no,3.406,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42
+frontier as-billed,Haiku 4.5,simulate,as-billed,5:1,4.085,8.996,no,2.979,no,100,4518302,441703,52,12,97,100,167936,357540,38,30,42

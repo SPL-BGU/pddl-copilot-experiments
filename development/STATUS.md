@@ -1,9 +1,9 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-09-19 (R7 and R8 answered; first N3 items closed by PR #107;
-consistency read delivered; the weakness review added as the next piece of work. Earlier
-refreshes are in git history). Renamed from `remaining_work_20260811.md` on
-2026-08-29.*
+*Content last refreshed: 2026-10-02 (resume-verify; Q1/Q2/Q3/Q4 of the weakness list
+answered; the $0 re-analysis package delivered; the delivered rerun pre-registered and
+in preparation; PRs #110 and #111 open. Earlier refreshes are in git history). Renamed
+from `remaining_work_20260811.md` on 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. That is what produced the four-deep
@@ -12,12 +12,14 @@ refreshes are in git history). Renamed from `remaining_work_20260811.md` on
 
 ## The one-paragraph answer
 
-**No experiment is owed and no writing job is open.** Both lines of evidence (PlanBench
-and the single-tool suite) and the nt-ster H4 steering control are run, analysed, in the
-tex and in Overleaf. The tex has no `\todo`, compiles at 25 pages with 0 undefined refs
-and 0 overfull boxes, and carries title D and the two-gate abstract. What is left: a
-critical review of the paper's biggest weakness (N1b, next), the pre-submission
-mechanics (N3), and the coauthor and advisor round (N2), which Omer schedules himself.
+**One experiment is now owed: the delivered rerun** (`reference/delivered_rerun_prereg.md`,
+decided 2026-10-02). The paper names the delivered answer as its main outcome and cannot
+measure it on the open-weight tool arms; the rerun measures it, after three harness
+fixes. The four local re-analyses of 2026-10-02 (`reanalysis_*.md`) also changed what
+the paper can claim: two statistical verdicts, the PlanBench equivalence sentence, the
+cost claim, and the reading of the open-weight delivery gap. The tex is still the
+09-19 text plus two open PRs (#110, #111). After the rerun reads out comes one drafting
+pass, then the pre-submission mechanics (N3) and the advisor round (N2).
 
 ## State by line
 
@@ -79,23 +81,59 @@ checkout, **pull before push**. Details: `review_round_handoff.md`,
 
 ## Next steps
 
-Order: N1b → N3. N2 happens when Omer schedules it. N4 is optional and on hold (R8). N5
-is minutes.
+Order: N1b (rerun + drafting pass) → N3. N2 happens when Omer schedules it. N4 is
+optional and on hold (R8). N5 is minutes.
 
-### N1b — Weakness review (agent + Omer; next)
+### N1b — Weakness list and what came out of it (in progress)
 
-Omer, 09-19: before any further experiment, take a deep, honest and critical look at
-what the paper's biggest weakness is, so the remaining time goes where it matters. The
-output is a findings doc with `> ANSWER:` slots, not tex edits and not a run.
+The working list is **`weakness_consolidated.md`** (C1–C22, decisions Q1–Q10). It
+replaced `weakness_review.md` (deleted 2026-10-02; in git history at `66cc314`) and the
+never-committed `referee_weaknesses.md` (lost; its content survives only as merged into
+C1–C22).
 
-**Delivered 09-19: `weakness_review.md`. Waiting for Omer's answers (Q1–Q7).** Three
-independent cold readers all ranked the same weakness first: the delivered surface is
-declared primary but is unmeasured on the open-weight tool arms (500-character storage),
-so the title claim is undecided on the paper's own metric; the pre-registered
-full-storage rerun (about 27K trials, $0) was never run. Insider finding: tex line 441
-says JSON-constrained decoding "remains" in the no-tools arm, which the `guided_json`
-audit (`paper_notes` 08-17) refutes, and the planned Limitations sentence never entered
-the tex.
+Answered 2026-10-02 (`paper_notes` 10-02): **Q1 run · Q2 add the Gemma neutral-prompt
+arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
+
+**Done 2026-10-02**
+
+- PR #110: the false "JSON-constrained decoding remains" sentence corrected, the
+  `guided_json` Limitations sentence added, the "budget, not the grader" inference
+  removed. Waiting for Omer's merge.
+- PR #111 (stacked on #110): consistency read groups A–D applied. Group E drafts are in
+  `consistency_read_E_drafts.md`, waiting for Omer's answer.
+- The $0 re-analysis package (Q4), four findings docs + `tools/reanalysis/`:
+  `reanalysis_statistics.md`, `reanalysis_planbench.md`, `reanalysis_breakdowns_cost.md`,
+  `reanalysis_transcripts.md`. Headlines are in `paper_notes` 10-02. **None of their
+  numbers is in `NUMBERS.md` or the tex yet**; each needs `/verify-claims` on the edit
+  that adopts it.
+
+**In progress**
+
+1. **Harness fixes for the rerun: done, PR #113** (`harness/delivered-rerun`, `4b2fe6e`):
+   final-request overflow retry, leaked Gemma channel prefix, storage cap 65,536, a
+   `neutral` prompt style. Independently reviewed; four findings fixed. Do not merge in a
+   way that moves the cluster checkout while jobs are pending.
+2. **Delivered rerun** (`reference/delivered_rerun_prereg.md`): Part A 27,360 trials
+   (three headline models, thinking off, plain + steered), Part B 6,000 (Gemma
+   validate_plan, neutral system prompt). **Submitted 2026-10-02 as a serial `afterok`
+   chain: 21982285 (Gemma A, running) → 21982286 (Gemma B) → 21982369 (9B) → 21982370
+   (35B).** Smoke passed (prereg §8a). The cluster checkout must stay on
+   `harness/delivered-rerun` at `4b2fe6e` until every cell is complete: jobs read the
+   Python code from that checkout when they start. Monitoring reads row counts and job
+   states only (prereg §7). `status.sh` does not show the `tools_all_neutral` cell;
+   count its rows directly.
+3. **Analysis code for the rerun: FROZEN 2026-10-03** (PR #116, `d558946`, package hash
+   `822aace…`; freeze record in prereg §8). Gates 1–5 passed. Run it with
+   `--i-have-frozen` once all cells are complete; live mode needs the local
+   `../pddl-copilot` at `5e4f9c0` (the laptop copy is at `f0e2c61`; ask Omer before
+   switching it) or run it where that commit is checked out.
+4. **PlanBench wording** (drafts, on a branch stacked on #111): corrected-extractor
+   numbers beside the shipped ones; the "well inside ±7.5" sentence replaced.
+
+**After the rerun reads out: one drafting pass** covering the statistics paragraph
+(paired, domain-clustered tests; two verdicts downgraded; the GLMM sentence), the cost
+paragraph, the test-data description, the per-wording and per-domain tables, the
+delivery-gap section, the title rule (prereg R3), and Q5 / Q8 / Q9.
 
 ### N2 — Coauthor + advisor review round (Omer; the brief is written)
 
@@ -124,12 +162,11 @@ The six questions (memo §10):
   `sweep5v2-live`, now qualified "format-exact on the shared-budget corpus", with a
   `NUMBERS.md` row (Job 2 block). Three more unqualified sites are row A5 of the
   consistency read.
-- **Consistency read: delivered 09-19, `consistency_read_findings.md`. Waiting for Omer's
-  answers in its slots** (A contradictions · B synonyms · C notation · D figures at two
-  values, `/verify-claims` first · E AI-tells, drafts shown before any commit · F the five
-  June-review candidates, candidates only). Approved fixes go on one `paper/` branch.
-- **GLMM refit with a standard (non-variational) estimator.** `main.tex:564` still
-  quotes the variational output. Tracked here; local, $0.
+- **Consistency read: groups A–D applied 2026-10-02 (PR #111).** Group E drafts wait
+  in `consistency_read_E_drafts.md`. Group F: nothing drafted.
+- **GLMM refit: computed 2026-10-02** (`reanalysis_statistics.md` §3: log-odds +7.80,
+  SE 0.29). The tex sentence still quotes the variational output; the edit belongs to
+  the post-rerun drafting pass.
 - **Curated code and data release at publication.** The tex reproducibility checklist
   promises it. Tracked here.
 - JAIR reformat: the tex is `article` + `aaai2027.sty`; JAIR uses its own style file.
@@ -162,5 +199,10 @@ The six questions (memo §10):
 
 ### Open decisions
 
-None in this file. R7 and R8 were answered 09-19 (see "Decided"). The open slots are in
-`weakness_review.md` (Q1–Q7, answer these first) and `consistency_read_findings.md`.
+- `weakness_consolidated.md` Q5–Q10 (rewriting scope, title, more model families, the
+  VAL cross-check).
+- `consistency_read_E_drafts.md` (the reworded sentences).
+- The PlanBench wording drafts, once shown.
+- `advisor_brief.md` question 5 still recommends "contingency only" for the rerun. The
+  rerun was decided 2026-10-02, so that recommendation is out of date; the brief is
+  answered in place by the advisors and is not rewritten.
