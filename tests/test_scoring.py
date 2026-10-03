@@ -455,6 +455,101 @@ def test_normalize_trajectory(r: TestResults):
     r.check_eq("normalize is idempotent", f(remodel), canon_once)
 
 
+def test_leaked_gemma_channel_prefix(r: TestResults):
+    """The empty thought-channel marker Gemma leaks (no reasoning parser,
+    thinking off) must not cost the graders the first line of the answer.
+
+    Responses are verbatim from the canonical cell
+    results/sweep5v2-live/slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal.
+    """
+    from pddl_eval import scoring as sc
+
+    pfx = "<|channel>thought\n<channel|>"
+    r.check_eq("prefix constant is the corpus literal",
+               sc._EMPTY_THOUGHT_CHANNEL_PREFIX, pfx)
+
+    # --- solve: blocksworld/p01 v12 and blocksworld/p02 v12 (verbatim) ---
+    bw_p01 = ("<|channel>thought\n<channel|>(unstack b2 b1)\n(put_down b2)\n"
+              "(pick_up b3)\n(stack b3 b1)")
+    r.check_eq(
+        "solve: first action on the marker line is kept",
+        rx.extract_plan_lines(bw_p01),
+        ["(unstack b2 b1)", "(put_down b2)", "(pick_up b3)", "(stack b3 b1)"],
+    )
+    bw_p02 = "<|channel>thought\n<channel|>(pick_up b3)\n(stack b3 b2)"
+    r.check_eq("solve: two-action plan complete",
+               rx.extract_plan_lines(bw_p02),
+               ["(pick_up b3)", "(stack b3 b2)"])
+    # Same plan as the un-prefixed text: the strip is exactly a prefix removal.
+    r.check_eq("solve: prefixed == unprefixed extraction",
+               rx.extract_plan_lines(bw_p01),
+               rx.extract_plan_lines(bw_p01[len(pfx):]))
+
+    # --- solve, prose opener (barman/p01 v12, start of the stored answer) ---
+    barman = ("<|channel>thought\n<channel|>To achieve the goal of having "
+              "`shot1` contain `cocktail1` and `shot2` contain `cocktail2`, "
+              "the following plan is executed:\n\n(grasp left shot1)\n"
+              "(fill_shot shot1 ingredient1 left right dispenser1)")
+    r.check_eq("solve: prose after the marker is unaffected",
+               rx.extract_plan_lines(barman),
+               ["(grasp left shot1)",
+                "(fill_shot shot1 ingredient1 left right dispenser1)"])
+
+    # --- validate_*: verdict directly after the marker ---
+    r.check_eq("verdict on the marker line",
+               rx.extract_verdict(pfx + "VERDICT: INVALID"), False)
+    r.check_eq("verdict after prose",
+               rx.extract_verdict(pfx + "The plan was validated.\n\nVERDICT: VALID"),
+               True)
+
+    # --- structured (JSON) paths used by no-tools grading and the overlay ---
+    from pddl_eval.schemas import SolveResponse, ValidateResponse
+    parsed = sc._safe_pydantic_validate(
+        ValidateResponse, pfx + '{"verdict": "VALID", "reason": "ok"}')
+    r.check("JSON verdict parses behind the marker",
+            parsed is not None and parsed.verdict == "VALID", str(parsed))
+    parsed = sc._safe_pydantic_validate(
+        SolveResponse, pfx + '```json\n{"plan": ["(pick_up b3)"]}\n```')
+    r.check("fenced JSON plan parses behind the marker",
+            parsed is not None and parsed.plan == ["(pick_up b3)"], str(parsed))
+    traj = ('{"trajectory": [{"step": 0, "action": "", '
+            '"state": {"boolean": ["(clear a)"], "numeric": {}}}]}')
+    steps_raw, compliant_raw = sc._coerce_simulate_trajectory(traj)
+    steps_pfx, compliant_pfx = sc._coerce_simulate_trajectory(pfx + traj)
+    r.check("simulate JSON coerces behind the marker",
+            steps_pfx is not None and steps_pfx == steps_raw, str(steps_pfx))
+    r.check_eq("simulate format-compliance unchanged by the marker",
+               compliant_pfx, compliant_raw)
+
+    # --- conservative: only the exact empty prefix, only at the start ---
+    f = sc.strip_leaked_channel_prefix
+    plain = "(pick_up b3)\n(stack b3 b2)"
+    r.check("no-op returns the same object for unprefixed text",
+            f(plain) is plain)
+    r.check_eq("no-op on empty string", f(""), "")
+    r.check("no-op on None", f(None) is None)
+    # Verbatim non-empty / malformed thought channels from the same cell:
+    # these carry model text and must be left alone.
+    for label, text in (
+        ("thought with content",
+         "<|channel>thought\n1.  The user wants to validate a PDDL domain "
+         "for syntactic correctness."),
+        ("doubled open marker",
+         "<|channel><|channel>thought\n<channel|>The plan was executed "
+         "step-by-step."),
+        ("indented close marker",
+         "<|channel>thought\n    <channel|>The provided plan contains action "
+         "names that do not match"),
+        ("marker not at the start",
+         "Answer:\n<|channel>thought\n<channel|>(pick_up b3)"),
+        ("leading whitespace before the marker",
+         " <|channel>thought\n<channel|>(pick_up b3)"),
+    ):
+        r.check(f"not stripped: {label}", f(text) is text)
+    r.check_eq("stripped once, not repeatedly",
+               f(pfx + pfx + "(pick_up b3)"), pfx + "(pick_up b3)")
+
+
 def main():
     r = TestResults("test_scoring")
     test_wilson_ci(r)
@@ -469,6 +564,7 @@ def main():
     test_expand_conditions(r)
     test_shard_filter(r)
     test_normalize_trajectory(r)
+    test_leaked_gemma_channel_prefix(r)
     r.report_and_exit()
 
 
