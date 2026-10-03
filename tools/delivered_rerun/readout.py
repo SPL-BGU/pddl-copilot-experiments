@@ -14,7 +14,11 @@ def _iv(b):
 
 
 def _status(ic: list) -> str:
-    return "; ".join(f"{c['cell']}: {c['parity_verdict']}" for c in ic)
+    """Each input cell with its §3 parity verdict AND consequence, so a
+    job-level parity failure shows on every E2/E3/R line, as in E1. The
+    consequence is bracketed because CONSEQ_CELL_FAIL itself contains '; '."""
+    return "; ".join(f"{c['cell']}: {c['parity_verdict']} [consequence: {c['consequence']}]"
+                     for c in ic)
 
 
 def render(res: dict) -> str:
@@ -117,7 +121,7 @@ def render(res: dict) -> str:
         L.append(f"Δ̂ = {b_name} − {a_name}, paired.\n")
         L.append(f"| model | task | pairs | unpaired ({a_name} / {b_name}) | {a_name} "
                  f"| {b_name} | Δ̂ | 95% CI | p (domain sign-flip) | p (Holm, 15) "
-                 f"| input cells: parity verdict |")
+                 f"| input cells: parity verdict [consequence] |")
         L.append("|---|---|---|---|---|---|---|---|---|---|---|")
         for c in res[key]:
             L.append(f"| {c['model']} | {c['task']} | {c['n_pairs']} | "

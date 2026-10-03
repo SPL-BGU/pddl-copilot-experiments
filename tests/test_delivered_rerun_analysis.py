@@ -19,6 +19,7 @@ band-constant check, and both skip cleanly when it is not on disk.
 """
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import io
 import json
@@ -537,6 +538,15 @@ HARNESS_EXCEPTION = dict(success=False, tool_selected=None, tool_calls=[], token
                          response="", done_reason="", truncated=False,
                          failure_reason="exception", error="boom: the server raised",
                          thinking="")
+# runner.evaluate_one when the chat call raises with an EMPTY message
+# (str(exc) == ""): error stays "", so check_success grades the empty answer.
+# With tools it returns (False, False, "tool_not_selected"); with no tools
+# (None, False, "format_parse_fail"), or "unknown" on simulate without an oracle.
+HARNESS_EMPTY_MESSAGE = dict(success=False, tool_selected=False, tool_calls=[], tokens={},
+                             response="", done_reason="", truncated=False,
+                             failure_reason="tool_not_selected", error="", thinking="")
+HARNESS_EMPTY_MESSAGE_NT = {**HARNESS_EMPTY_MESSAGE, "tool_selected": None,
+                            "failure_reason": "format_parse_fail"}
 
 
 def _first(recs, pred):
@@ -617,6 +627,18 @@ def test_refusals(r):
             return recs
         edit_rows(cell_file(root, "rerun", RA[GM]), f)
     expect_refusal(r, "exception rows 2/102 > 1% -> VOID", exception_void,
+                   "VOID (§7): slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal_delivered-rerun "
+                   "has 2 exception/infrastructure rows of 102")
+
+    def empty_message_void(root):
+        # The second exception row is an empty-message client exception: it
+        # must reach the §7 rule (2/102 > 1%), not halt on "tokens missing".
+        def f(recs):
+            rec = _first(recs, lambda x: match(x, "validate_domain", "dA", "p02", "", 16))
+            rec["result"].update(HARNESS_EMPTY_MESSAGE)
+            return recs
+        edit_rows(cell_file(root, "rerun", RA[GM]), f)
+    expect_refusal(r, "empty-message exception row counts for §7 -> VOID", empty_message_void,
                    "VOID (§7): slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal_delivered-rerun "
                    "has 2 exception/infrastructure rows of 102")
 
@@ -821,6 +843,7 @@ def test_live_mode_guard(r):
         (repo / "plugins").mkdir()
         (repo / "plugins" / "a.py").write_text("x = 1\n")
         (repo / "README").write_text("r\n")
+        (repo / ".gitignore").write_text("*.pyc\n")
         subprocess.run(git + ["add", "."], check=True)
         subprocess.run(git + ["commit", "-qm", "init"], check=True)
         head = subprocess.run(git + ["rev-parse", "HEAD"], capture_output=True, text=True,
@@ -830,6 +853,22 @@ def test_live_mode_guard(r):
         (repo / "plugins" / "a.py").write_text("x = 2\n")
         r.check_eq("marketplace_state: edited plugin file listed",
                    RUN.marketplace_state(repo)[1], [" M plugins/a.py"])
+        subprocess.run(git + ["checkout", "-q", "--", "plugins/a.py"], check=True)
+        (repo / "plugins" / "cache.pyc").write_text("ignored\n")
+        (repo / "plugins" / "sub").mkdir()
+        (repo / "plugins" / "sub" / "venv.pyc").write_text("ignored\n")
+        r.check_eq("marketplace_state: git-ignored files under plugins/ not listed",
+                   RUN.marketplace_state(repo), (head, []))
+        (repo / "plugins" / "sub" / "b.py").write_text("y = 1\n")
+        state = RUN.marketplace_state(repo)
+        r.check_eq("marketplace_state: untracked plugin file listed", state[1],
+                   ["?? plugins/sub/b.py"])
+        try:
+            RUN.check_marketplace("5e4f9c0bfbea0fdfe802edb08eaa2aa9d2095d38", state[1])
+            r.check("pinned HEAD with an untracked plugin file refused", False)
+        except RUN.Halt as e:
+            r.check("pinned HEAD with an untracked plugin file refused",
+                    "uncommitted" in str(e) and "plugins/sub/b.py" in str(e), str(e))
     finally:
         shutil.rmtree(repo)
     try:
@@ -890,6 +929,27 @@ def test_job_level_failure(r):
         r.check_eq("gross cell", p["gross_cells"], ["Qwen3_5_9B/validate_problem/plain"])
         r.check("every consequence is separate-apparatus replication",
                 all(c["consequence"] == A.CONSEQ_JOB_FAIL for c in p["cells"]))
+        # The markdown carries the consequence on every E2/E3 row and every
+        # R1–R4 input-cell line, not only in the parity section.
+        md = res["_md"].splitlines()
+        tag = f"[consequence: {A.CONSEQ_JOB_FAIL}]"
+
+        def rows_of(title):
+            i = next(n for n, ln in enumerate(md) if ln.startswith(f"## {title}"))
+            j = next(n for n in range(i + 1, len(md)) if md[n].startswith("## "))
+            return [ln for ln in md[i:j] if ln.startswith("| ") and not ln.startswith("| model")]
+        e2_rows, e3_rows = rows_of("E2."), rows_of("E3.")
+        r.check_eq("md E2/E3 row counts", (len(e2_rows), len(e3_rows)), (15, 15))
+        r.check("md: every E2 row shows the job-level consequence",
+                all(tag in ln for ln in e2_rows), [ln for ln in e2_rows if tag not in ln][:1])
+        r.check("md: every E3 row shows the job-level consequence",
+                all(tag in ln for ln in e3_rows), [ln for ln in e3_rows if tag not in ln][:1])
+        ic = [ln for ln in md if ln.startswith("  - input cells: ")]
+        r.check_eq("md: R1-R4 input-cell lines", len(ic), 4)
+        r.check("md: every R1-R4 input-cell line shows the job-level consequence",
+                all(tag in ln for ln in ic), ic)
+        r.check("md: Part C input cells keep their own consequence",
+                f"[consequence: {A.PART_C_CONSEQ}]" in "\n".join(e2_rows))
     finally:
         shutil.rmtree(root.parent)
 
@@ -1150,6 +1210,7 @@ def test_exception_rows_parse(r):
     design = RUN.fixture_design(FIXTURE)
     spec_a = S.spec_rerun_a(design, GM)
     spec_ct = S.spec_canonical_tools(design, GM)
+    spec_c = S.spec_rerun_c(design, GM)
     base = json.loads(cell_file(FIXTURE, "rerun", RA[GM]).read_text().splitlines()[0])
 
     def rec(layer, **upd):
@@ -1187,8 +1248,53 @@ def test_exception_rows_parse(r):
         row = S.parse_row(cbase, spec_c, "t")
         r.check_eq("client exception shape parses (Part C)", (row.is_exception, G.grade(
             row, {}, {}).reason), (True, "exception"))
+        # Empty-message client exception (str(exc) == ""), in both layers and
+        # with no tools: a §7 exception row, a delivered failure.
+        row = S.parse_row(rec("rerun", **HARNESS_EMPTY_MESSAGE), spec_a, "t")
+        r.check_eq("empty-message exception parses (rerun, tools): §7 exception row",
+                   (row.is_exception, row.empty_message_exception, row.tokens.turns,
+                    row.error, G.grade(row, {}, {}).reason), (True, True, 0, "", "exception"))
+        row = S.parse_row(rec("canonical", **HARNESS_EMPTY_MESSAGE), spec_ct, "t")
+        r.check("empty-message exception parses (canonical)", row.is_exception)
+        cbase = json.loads(cell_file(FIXTURE, "rerun", RC[GM]).read_text().splitlines()[0])
+        cbase["result"].update(HARNESS_EMPTY_MESSAGE_NT)
+        row = S.parse_row(cbase, spec_c, "t")
+        r.check_eq("empty-message exception parses (Part C, format_parse_fail)",
+                   (row.is_exception, G.grade(row, {}, {}).reason), (True, "exception"))
+        csim = json.loads(next(ln for ln in cell_file(FIXTURE, "rerun", RC[GM]).read_text()
+                               .splitlines() if '"task": "simulate"' in ln))
+        csim["result"].update({**HARNESS_EMPTY_MESSAGE_NT, "failure_reason": "unknown",
+                               "format_compliant": False})
+        row = S.parse_row(csim, spec_c, "t")
+        r.check("empty-message exception parses (Part C simulate, no oracle)", row.is_exception)
+        row = S.parse_row(base, spec_a, "t")
+        r.check("a normal row is not an empty-message exception",
+                not row.empty_message_exception and not row.is_exception)
     except S.SchemaError as e:
         r.check("exception shapes parse", False, str(e))
+    # Narrow: tokens={} without the exact empty-message harness shape is refused.
+    cfirst = json.loads(cell_file(FIXTURE, "rerun", RC[GM]).read_text().splitlines()[0])
+    for label, layer_rec, spec in (
+        ("empty message, but an answer", rec("rerun", **{**HARNESS_EMPTY_MESSAGE,
+                                                         "response": "x"}), spec_a),
+        ("empty message, but a done_reason", rec("rerun", **{**HARNESS_EMPTY_MESSAGE,
+                                                             "done_reason": "stop"}), spec_a),
+        ("empty message, tools, wrong reason", rec("rerun", **{**HARNESS_EMPTY_MESSAGE,
+                                                               "failure_reason": "format_parse_fail"}),
+         spec_a),
+        ("empty message, tools, tool_selected true",
+         rec("rerun", **{**HARNESS_EMPTY_MESSAGE, "tool_selected": True}), spec_a),
+        ("empty message, flagged infra", rec("rerun", **{**HARNESS_EMPTY_MESSAGE,
+                                                         "infra_failure": True}), spec_a),
+        ("empty message, no tools, unknown off simulate",
+         {**cfirst, "result": {**cfirst["result"], **HARNESS_EMPTY_MESSAGE_NT,
+                               "failure_reason": "unknown"}}, spec_c),
+    ):
+        try:
+            S.parse_row(layer_rec, spec, "t")
+            r.check(f"refused: {label}", False, "parsed")
+        except S.SchemaError as e:
+            r.check(f"refused: {label}", "tokens missing" in str(e), str(e))
     shape = "does not have a harness exception shape"
     for label, upd, needle in (
         ("exception row with tool_selected set", {**HARNESS_EXCEPTION, "tool_selected": False},
@@ -1250,6 +1356,85 @@ def test_halts_with_context(r):
         r.check("a non-Gemma first cell is refused", "first ten parity cells" in str(e), str(e))
     finally:
         C.CONTROL_MODEL = saved
+
+
+def test_named_halts_no_traceback(r):
+    """Item 4 of the final verification: a bad --audit-notes file, a domain or
+    problem missing from the plan validator's fixtures, and a render error
+    each exit 2 with a named HALT; a render error leaves no readout behind."""
+    ids = ["--audited-tripwires", "T4_rate_outside_band"]
+    tmp = Path(tempfile.mkdtemp(prefix="dr_halt_"))
+    try:
+        out = tmp / "out"
+        code, err = run_main(["--fixture", str(FIXTURE), "--out", str(out), *ids,
+                              "--audit-notes", str(tmp / "absent.json")])
+        r.check("missing --audit-notes file: named HALT, exit 2",
+                code == 2 and err.startswith("HALT: Halt: --audit-notes")
+                and "FileNotFoundError" in err and "Traceback" not in err, err)
+        bad = tmp / "bad.json"
+        bad.write_text("{not json")
+        code, err = run_main(["--fixture", str(FIXTURE), "--out", str(out), *ids,
+                              "--audit-notes", str(bad)])
+        r.check("malformed --audit-notes file: named HALT, exit 2",
+                code == 2 and err.startswith("HALT: Halt: --audit-notes")
+                and "JSONDecodeError" in err, err)
+        bad.write_bytes(b"\xff\xfe\x00")
+        code, err = run_main(["--fixture", str(FIXTURE), "--out", str(out), *ids,
+                              "--audit-notes", str(bad)])
+        r.check("undecodable --audit-notes file: named HALT, exit 2",
+                code == 2 and err.startswith("HALT: Halt: --audit-notes"), err)
+        r.check("nothing written by the audit-notes halts", not out.exists())
+
+        # A render failure after the analysis: exit 2, neither file on disk.
+        saved = RUN.render
+
+        def broken(res):
+            raise ValueError("e2: rows disagree on their side labels")
+        RUN.render = broken
+        try:
+            out.mkdir()
+            code, err = run_main(["--fixture", str(FIXTURE), "--out", str(out)])
+        finally:
+            RUN.render = saved
+        r.check("render error: named HALT, exit 2",
+                code == 2 and "HALT: Halt: readout render failed (ValueError" in err
+                and "nothing written" in err, err)
+        r.check_eq("render error: no JSON readout without its markdown",
+                   sorted(f.name for f in out.iterdir()), [])
+        code, err = run_main(["--fixture", str(FIXTURE), "--out", str(out)])
+        r.check_eq("after the render fix the pair is written, no temp file left",
+                   (code, sorted(f.name for f in out.iterdir())),
+                   (0, ["delivered_rerun_readout.json", "delivered_rerun_readout.md"]))
+        # A write failure removes what this call placed and halts.
+        blocked = tmp / "blocked"
+        blocked.mkdir()
+        (blocked / "delivered_rerun_readout.md.tmp").mkdir()   # the md temp cannot be written
+        try:
+            RUN.write_readout(blocked, "{}\n", "# md\n")
+            r.check("write failure halts", False)
+        except RUN.Halt as e:
+            r.check("write failure halts, nothing kept",
+                    "could not write the readout" in str(e)
+                    and not (blocked / "delivered_rerun_readout.json").exists()
+                    and not (blocked / "delivered_rerun_readout.json.tmp").exists(), str(e))
+    finally:
+        shutil.rmtree(tmp)
+
+    # A domain/problem the validator fixtures lack: named HALT before any MCP
+    # connection (the marketplace path is never touched).
+    real = next(d for d in sorted((REPO_ROOT / "domains" / "classical").iterdir()) if d.is_dir())
+    for label, need in (("unknown domain", {("no_such_domain", "p01", ("(a)",))}),
+                        ("unknown problem", {(real.name, "p99", ("(a)",))})):
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                asyncio.run(RUN.live_verdicts(need, REPO_ROOT / "domains",
+                                              Path("/nonexistent-marketplace")))
+            r.check(f"live_verdicts {label}: named HALT", False, "no halt")
+        except RUN.Halt as e:
+            r.check(f"live_verdicts {label}: named HALT",
+                    "not in" in str(e) and need.pop()[0] in str(e), str(e))
+        except Exception as e:  # noqa: BLE001
+            r.check(f"live_verdicts {label}: named HALT", False, f"{type(e).__name__}: {e}")
 
 
 def test_requirements_cover_frozen_imports(r):
@@ -1364,6 +1549,7 @@ def main():
     test_clipped_logic(r)
     test_exception_rows_parse(r)
     test_halts_with_context(r)
+    test_named_halts_no_traceback(r)
     test_requirements_cover_frozen_imports(r)
     test_registered_constants(r)
     test_canonical_dry_run(r)

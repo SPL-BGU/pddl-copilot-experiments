@@ -123,6 +123,9 @@ class Row:
     truncated: bool
     done_reason: str
     infra_failure: bool
+    # The chat call raised an exception whose message is empty (see
+    # parse_row, third harness exception shape). Counted as a §7 exception.
+    empty_message_exception: bool = False
 
     @property
     def fixture_key(self) -> tuple[str, str, str, str]:
@@ -154,8 +157,9 @@ class Row:
 
     @property
     def is_exception(self) -> bool:
-        """§7: the harness raised (client call or scoring) on this row."""
-        return self.failure_reason in C.EXCEPTION_REASONS
+        """§7: the harness raised (client call or scoring) on this row,
+        including a client exception with an empty message (§8b item 10)."""
+        return self.failure_reason in C.EXCEPTION_REASONS or self.empty_message_exception
 
     @property
     def scoring_error(self) -> bool:
@@ -254,7 +258,8 @@ def _parse_tokens(t: Any, layer: str, where: str, exception_row: bool) -> Tokens
     if not isinstance(t, dict):
         raise SchemaError(f"{where}: tokens must be an object")
     if not t and exception_row:
-        # runner.evaluate_one: a client exception leaves `tokens = {}`.
+        # runner.evaluate_one: a client exception leaves `tokens = {}`
+        # (whether or not its message is empty).
         return Tokens(prompt=0, completion=0, turns=0, ctx_clipped_turns=0,
                       ctx_clip_last_turn_max_tokens=None,
                       ctx_clip_last_turn_prompt_tokens=None, ctx_no_room_turns=0)
@@ -391,7 +396,7 @@ def parse_row(obj: Any, spec: CellSpec, where: str) -> Row:
     raw_tokens = _need(r, "tokens", where)
     thinking = _str(r, "thinking", where)
     # Harness exception rows (pddl_eval/runner.py evaluate_one) are valid rows;
-    # the §7 1% rule decides about them (prereg §8b item 10). Exactly two
+    # the §7 1% rule decides about them (prereg §8b item 10). Exactly three
     # shapes exist, in both layers (review F1):
     #  * client exception (the chat call raised, runner.py `except Exception`):
     #    tokens={}, tool_calls=[], response="", thinking="", done_reason="",
@@ -402,9 +407,28 @@ def parse_row(obj: Any, spec: CellSpec, where: str) -> Row:
     #    error "scoring error: ...", failure_reason "exception" -- or
     #    "loop_exhausted" when the tool loop also ran out, because
     #    scoring._classify_step_failure overrides the reason in that case.
+    #  * client exception with an EMPTY message (str(exc) == ""): runner.py
+    #    stores error="", so `if error:` is false and check_success grades the
+    #    empty answer. Same empty fields as the client shape, error "", and
+    #    exactly what check_success returns on an empty answer: with tools
+    #    tool_selected False + "tool_not_selected"; no tools tool_selected
+    #    None + "format_parse_fail" ("unknown" on simulate without an oracle).
+    #    A completed chat always returns the base token keys
+    #    (pddl_eval/chat.py), so tokens={} marks the raise. Counted as an
+    #    exception row for §7 via Row.empty_message_exception.
     exception_row = failure_reason in C.EXCEPTION_REASONS
     client_shape = (raw_tokens == {} and tool_calls == () and response == ""
                     and thinking == "" and done_reason == "")
+    if with_tools:
+        empty_answer_grade = (tool_selected is False
+                              and failure_reason == "tool_not_selected")
+    else:
+        empty_answer_grade = (tool_selected is None and (
+            failure_reason == "format_parse_fail"
+            or (task == "simulate" and failure_reason == "unknown")))
+    empty_message = (client_shape and not exception_row and error == ""
+                     and not success and not truncated and not infra_failure
+                     and empty_answer_grade)
     scoring_shape = (error.startswith("scoring error: ") and raw_tokens != {}
                      and failure_reason in ("exception", "loop_exhausted"))
     if exception_row or scoring_shape:
@@ -420,7 +444,8 @@ def parse_row(obj: Any, spec: CellSpec, where: str) -> Row:
         raise SchemaError(f"{where}: with-tools row has tool_selected=null")
     if not with_tools and (tool_selected is not None or tool_calls):
         raise SchemaError(f"{where}: no-tools row carries tool fields")
-    tokens = _parse_tokens(raw_tokens, spec.layer, where, exception_row and client_shape)
+    tokens = _parse_tokens(raw_tokens, spec.layer, where,
+                           (exception_row and client_shape) or empty_message)
 
     # --- layer-specific fields
     if spec.layer == RERUN:
@@ -460,7 +485,7 @@ def parse_row(obj: Any, spec: CellSpec, where: str) -> Row:
                response_truncated_by_storage=cut, tool_calls=tool_calls,
                tokens=tokens, error=error, failure_reason=failure_reason,
                truncated=truncated, done_reason=done_reason,
-               infra_failure=infra_failure)
+               infra_failure=infra_failure, empty_message_exception=empty_message)
 
 
 @dataclass(frozen=True)

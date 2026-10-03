@@ -15,12 +15,15 @@ Order of operations follows the prereg: completeness and VOID rules (§7)
 for Parts A, B and C -> parity on tool-verified success (§3, before any
 delivered number) and the Part C parity check on the stored online grade (§2)
 -> delivered grading of every rerun row, tool and no-tools alike (§8b item 12)
--> E1–E4 (§4) -> readings (§5) -> readout tripwires -> JSON + markdown. Any failure exits non-zero without writing a readout.
+-> E1–E4 (§4) -> readings (§5) -> readout tripwires -> JSON + markdown (both
+rendered in memory before either is written). Any failure exits non-zero
+without writing a readout.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import json
 import subprocess
@@ -100,8 +103,8 @@ def check_domains(domains_dir: Path) -> None:
 
 def check_marketplace(head: str, plugin_changes: list[str]) -> None:
     """prereg §8: tools repo `pddl-copilot` at 5e4f9c0, and no uncommitted
-    change to a tracked file under plugins/ (the validator code the solve
-    plans are checked with)."""
+    change under plugins/ (the validator code the solve plans are checked
+    with): no edited tracked file and no untracked file git does not ignore."""
     if not head.startswith(C.MARKETPLACE_PIN):
         raise Halt(f"marketplace HEAD {head[:12]} is not the pinned {C.MARKETPLACE_PIN} "
                    "(prereg §8); check it out before validating solve plans")
@@ -110,13 +113,15 @@ def check_marketplace(head: str, plugin_changes: list[str]) -> None:
 
 
 def marketplace_state(path: Path) -> tuple[str, list[str]]:
-    """(HEAD sha, `git status --porcelain` lines of tracked files under plugins/)."""
+    """(HEAD sha, `git status --porcelain` lines under plugins/): edited
+    tracked files and untracked files, ignored files left out (git status
+    lists ignored files only with --ignored)."""
     head = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"], capture_output=True,
                           text=True)
     if head.returncode != 0:
         raise Halt(f"--marketplace-path {path}: not a git checkout ({head.stderr.strip()})")
     st = subprocess.run(["git", "-C", str(path), "status", "--porcelain",
-                         "--untracked-files=no", "--", "plugins"],
+                         "--untracked-files=all", "--", "plugins"],
                         capture_output=True, text=True)
     if st.returncode != 0:
         raise Halt(f"--marketplace-path {path}: git status failed ({st.stderr.strip()})")
@@ -133,7 +138,11 @@ def load_audit_notes(path: Path | None, audited: set[str]) -> dict[str, str]:
     if path is None:
         raise Halt("--audited-tripwires needs --audit-notes FILE (a JSON object with "
                    "one note per released tripwire id)")
-    notes = json.loads(path.read_text())
+    try:
+        notes = json.loads(path.read_text())
+    except (OSError, ValueError) as e:      # missing/unreadable file, bad JSON
+        raise Halt(f"--audit-notes {path}: cannot be read as JSON "
+                   f"({type(e).__name__}: {e})") from e
     if not isinstance(notes, dict) or set(notes) != audited:
         raise Halt(f"--audit-notes must have exactly one entry per released tripwire "
                    f"{sorted(audited)}")
@@ -218,6 +227,13 @@ async def live_verdicts(need: set, domains_dir: Path, marketplace: Path) -> dict
     from pddl_eval.scoring import _validate_model_plan
     from run_experiment import resolve_plugin_dirs
     domains = load_domains(domains_dir)
+    # Checked before connecting, so a missing fixture is a named HALT, not a
+    # KeyError traceback.
+    absent = sorted({(d, p) for d, p, _ in need
+                     if d not in domains or p not in domains[d]["problems"]})
+    if absent:
+        raise Halt(f"plan validation: {len(absent)} domain/problem pair(s) not in "
+                   f"{domains_dir}: {absent[:5]}")
     mcp = MCPPlanner()
     await mcp.connect(resolve_plugin_dirs(marketplace))
     out = {}
@@ -358,15 +374,42 @@ def main(argv: list[str] | None = None) -> int:
                 return asyncio.run(live_verdicts(need, args.domains_dir, args.marketplace_path))
             mode = "live"
         res = analyse(design, cells, gt_cache, verdict_fn, mode, audit_notes)
+        # Both outputs are produced in memory first, so a render error leaves
+        # neither file on disk (never a JSON readout without its markdown).
+        try:
+            md = render(res)
+            js = json.dumps(res, indent=1, sort_keys=True, default=list) + "\n"
+        except Exception as e:  # noqa: BLE001 -- any render failure is a named HALT
+            raise Halt(f"readout render failed ({type(e).__name__}: {e}); "
+                       "nothing written") from e
+        write_readout(args.out, js, md)
     except (Halt, S.SchemaError, C.RegisteredCheckFailed, AssertionError) as e:
         print(f"HALT: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
-    args.out.mkdir(parents=True, exist_ok=True)
-    (args.out / "delivered_rerun_readout.json").write_text(
-        json.dumps(res, indent=1, sort_keys=True, default=list) + "\n")
-    (args.out / "delivered_rerun_readout.md").write_text(render(res))
     print(f"wrote {args.out}/delivered_rerun_readout.{{json,md}}")
     return 0
+
+
+def write_readout(out: Path, js: str, md: str) -> None:
+    """Write the JSON and markdown readouts as a pair: both go to temporary
+    names first and are renamed only when both writes succeeded; on an
+    error the temporary files, and any file this call already renamed into
+    place, are removed and the run halts."""
+    final = [out / "delivered_rerun_readout.json", out / "delivered_rerun_readout.md"]
+    tmp = [f.with_name(f.name + ".tmp") for f in final]
+    placed: list[Path] = []
+    try:
+        out.mkdir(parents=True, exist_ok=True)
+        for t, text in zip(tmp, (js, md)):
+            t.write_text(text)
+        for t, f in zip(tmp, final):
+            t.replace(f)
+            placed.append(f)
+    except OSError as e:
+        for f in tmp + placed:
+            with contextlib.suppress(OSError):    # best effort; the halt is what counts
+                f.unlink(missing_ok=True)
+        raise Halt(f"could not write the readout to {out} ({e}); nothing kept") from e
 
 
 if __name__ == "__main__":
