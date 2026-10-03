@@ -11,14 +11,16 @@ of any real corpus is read or copied. The committed files are this script's
 output; tests/test_delivered_rerun_analysis.py rebuilds into a temp dir and
 checks they are byte-identical.
 
-Layout per Part A cell (72 rows = 6 variants x 12):
+Layout per Part A cell (102 rows = 6 variants x 17; 102 rows so that one
+exception row is below the §7 1% threshold and two are above it):
   solve            (dA,p01) (dB,p01)                          2 per variant
-  validate_domain  (dA,p01)=VALID (dB,domain_neg)=INVALID     2
+  validate_domain  (dA,p01..p03)=VALID (dB,domain_neg)=INVALID
+                   (dB,p01..p03)=VALID                        7
   validate_problem (dA,p01)=VALID (dB,n01)=INVALID            2
   validate_plan    (dA,p01,v1) (dA,p01,b1) (dB,p01,v1) (dB,p01,b1)   4
   simulate         (dA,p01) (dB,p01)                          2
 Part B: Gemma validate_plan only, 24 rows. Part C (no tools, full storage) and
-canonical no-tools: v11-13, 36 rows each.
+canonical no-tools: v11-13, 51 rows each.
 
 Default row: the right tool is called, its result is right (tool-verified),
 and the final answer is right. The planted deviations are listed in PLANTS
@@ -43,13 +45,16 @@ G, Q9, Q35 = "gemma4_26b-a4b", "Qwen3_5_9B", "qwen3_6_35b"
 VARIANTS = (11, 12, 13, 14, 15, 16)
 FIXTURES = {
     "solve": [("dA", "p01", ""), ("dB", "p01", "")],
-    "validate_domain": [("dA", "p01", ""), ("dB", "domain_neg", "")],
+    "validate_domain": [("dA", "p01", ""), ("dB", "domain_neg", ""), ("dA", "p02", ""),
+                        ("dA", "p03", ""), ("dB", "p01", ""), ("dB", "p02", ""),
+                        ("dB", "p03", "")],
     "validate_problem": [("dA", "p01", ""), ("dB", "n01", "")],
     "validate_plan": [("dA", "p01", "v1"), ("dA", "p01", "b1"),
                       ("dB", "p01", "v1"), ("dB", "p01", "b1")],
     "simulate": [("dA", "p01", ""), ("dB", "p01", "")],
 }
 TRUTH = {("validate_domain", "p01"): True, ("validate_domain", "domain_neg"): False,
+         ("validate_domain", "p02"): True, ("validate_domain", "p03"): True,
          ("validate_problem", "p01"): True, ("validate_problem", "n01"): False}
 TOOL = {"solve": "classic_planner", "validate_domain": "validate_domain",
         "validate_problem": "validate_problem", "validate_plan": "validate_plan",
@@ -199,6 +204,13 @@ PLANTS = {
     # 35B solve steered dB v15: no plan at all (SUMMARY_ONLY).
     (Q35, "solve", "dB", "p01", "", 15): lambda row: _p(
         row, response="I solved it with the planner."),
+    # Gemma validate_problem plain dA v12: the leaked prefix twice; only the
+    # first is stripped, the verdict line is still read (descriptive count).
+    (G, "validate_problem", "dA", "p01", "", 12): lambda row: _p(
+        row, response=PREFIX + PREFIX + "VERDICT: VALID"),
+    # Gemma validate_problem steered dB v14: a channel marker after the verdict.
+    (G, "validate_problem", "dB", "n01", "", 14): lambda row: _p(
+        row, response="VERDICT: INVALID <channel|>"),
     # 35B validate_domain plain dA v12: no verdict line (NEEDS_READING).
     (Q35, "validate_domain", "dA", "p01", "", 12): lambda row: _p(
         row, response="The domain looks fine to me."),
@@ -206,6 +218,14 @@ PLANTS = {
     **{(Q35, "validate_problem", d, p, "", v): (
         lambda row, p=p: not_invoked(row, wrong_verdict("validate_problem", p, "")))
        for d, p in (("dA", "p01"), ("dB", "n01")) for v in (14, 15, 16)},
+    # ... and its dB v15 row (both layers) also carries the harness's
+    # scoring-exception shape relabelled by the loop-exhausted override
+    # (runner.py "scoring error", scoring._classify_step_failure): not a §7
+    # exception row, parsed, counted as a scoring-error row (review F1).
+    (Q35, "validate_problem", "dB", "n01", "", 15): lambda row: (
+        not_invoked(row, wrong_verdict("validate_problem", "n01", "")),
+        _p(row, failure_reason="loop_exhausted", tool_selected=None,
+           error="scoring error: validator transport closed", done_reason="tool_calls")),
     # 35B validate_plan steered dB b1 v16: stated verdict contradicts the tool (WRONG_FACTS).
     (Q35, "validate_plan", "dB", "p01", "b1", 16): lambda row: _p(
         row, response="VERDICT: VALID"),
@@ -214,6 +234,15 @@ PLANTS = {
         row, tokens={**base_tokens(3), "ctx_clipped_turns": 2,
                      "ctx_clip_last_turn_max_tokens": 1000,
                      "ctx_clip_last_turn_prompt_tokens": 15384}),
+    # Gemma validate_domain plain dA p02 v11: only the LAST turn was clipped and
+    # the tool loop ran out on a trial the tool result had already made a
+    # success (done_reason "tool_calls", failure_reason "ok"): that turn
+    # preceded a tool call (prereg 8b item 14, review F6).
+    (G, "validate_domain", "dA", "p02", "", 11): lambda row: _p(
+        row, done_reason="tool_calls",
+        tokens={**base_tokens(10), "ctx_clipped_turns": 1,
+                "ctx_clip_last_turn_max_tokens": 600,
+                "ctx_clip_last_turn_prompt_tokens": 15784}),
     # 35B simulate plain dB v13: last tool call sent a changed plan; the answer
     # restates that wrong trajectory (TOOL_INPUT_ERROR).
     (Q35, "simulate", "dB", "p01", "", 13): lambda row: _p(
@@ -236,10 +265,29 @@ CANON = {
     # 35B solve steered: discordant in both directions (Δ̂ = 0, wide CI).
     (Q35, "solve", "dA", "p01", "", 14): "uninvoked",
     (Q35, "solve", "dB", "p01", "", 14): "invoked",
+    # 35B validate_problem steered dA v14: a harness exception row in the
+    # CANONICAL layer (review F1). The rerun row fails the tool-verified grade
+    # too (zero-success arm), so the parity Δ̂ of that cell is unchanged.
+    (Q35, "validate_problem", "dA", "p01", "", 14): "exception",
 }
-# 9B validate_domain plain: canonical (dA,p01,v11) recorded under problem p02
-# -> 1 unpaired row on each side -> 2/7 > 1% -> VOID.
-CANON_RENAME = {(Q9, "validate_domain", "dA", "p01", "", 11): "p02"}
+# 9B validate_domain plain: canonical (dA,p01,v11) recorded under problem p04
+# -> 1 unpaired row on each side -> 2/22 > 1% -> VOID.
+CANON_RENAME = {(Q9, "validate_domain", "dA", "p01", "", 11): "p04"}
+
+
+def harness_exception(row, reason="exception", error="boom: the server raised"):
+    """The exact shape runner.evaluate_one writes when the client call raises."""
+    row.update(success=False, tool_selected=None, tool_calls=[], tokens={}, response="",
+               done_reason="", truncated=False, failure_reason=reason, error=error,
+               thinking="")
+
+
+# Applied to the rerun row only, after the canonical copy is taken.
+# Gemma validate_domain steered (dB,p03,v16): one harness exception row of
+# 102 (0.98%, below the §7 1% rule): analysed, a delivered failure, reported.
+RERUN_ONLY_PLANTS = {
+    (G, "validate_domain", "dB", "p03", "", 16): harness_exception,
+}
 
 # Canonical no-tools stored grades: default right; these are wrong.
 NT_WRONG = {(Q35, "validate_plan", d, "p01", l, 11)
@@ -286,6 +334,8 @@ def to_canonical(row, model):
         dom, problem, label = c["domain_name"], c["problem_name"], c["plan_label"]
         c.update(success=True, tool_selected=True, failure_reason="ok",
                  tool_calls=[tool_call(c["task"], dom, problem, label)])
+    elif what == "exception":
+        harness_exception(c)
     if key in CANON_RENAME:
         c["problem_name"] = CANON_RENAME[key]
     return c
@@ -385,9 +435,14 @@ def build(out: Path) -> None:
         "Synthetic fixture for tests/test_delivered_rerun_analysis.py. Not experiment data.\n")
     for m in MODELS:
         a = rerun_a_rows(m)
-        write_cell(rerun / f"slurm_vllm_{m}_off_tools_all_minimal_delivered-rerun", a)
         write_cell(canon / f"slurm_vllm_{m}_off_tools_all_minimal",
                    [to_canonical(r, m) for r in a])
+        for row in a:
+            key = (m, row["task"], row["domain_name"], row["problem_name"],
+                   row["plan_label"], row["prompt_variant"])
+            if key in RERUN_ONLY_PLANTS:
+                RERUN_ONLY_PLANTS[key](row)
+        write_cell(rerun / f"slurm_vllm_{m}_off_tools_all_minimal_delivered-rerun", a)
         write_cell(canon / f"slurm_vllm_{m}_off_no-tools", no_tools_rows(m))
         write_cell(rerun / f"slurm_vllm_{m}_off_no-tools_delivered-rerun", part_c_rows(m))
     write_cell(rerun / "slurm_vllm_gemma4_26b-a4b_off_tools_all_neutral_delivered-rerun-neutral",
@@ -411,9 +466,11 @@ def build(out: Path) -> None:
             for arm in ("plain", "steered"):
                 n = 3 * len(fxs)
                 counts[f"{m}|{t}|{arm}"] = [n, 0, n]
-    design = {"n_part_a_cell": 72, "n_part_b": 24, "per_variant_a": 12, "per_variant_b": 4,
+    per_variant = sum(len(f) for f in FIXTURES.values())
+    design = {"n_part_a_cell": 6 * per_variant, "n_part_b": 24,
+              "per_variant_a": per_variant, "per_variant_b": 4,
               "per_task_variant": {t: len(f) for t, f in FIXTURES.items()},
-              "k_domains": 2, "n_no_tools_cell": 36,
+              "k_domains": 2, "n_no_tools_cell": 3 * per_variant,
               "canonical_delivered_counts": counts}
     (out / "design.json").write_text(json.dumps(design, indent=1, sort_keys=True) + "\n")
 

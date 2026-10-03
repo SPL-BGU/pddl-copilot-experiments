@@ -45,6 +45,9 @@ from tools.delivered_rerun import stats as ST  # noqa: E402
 from tools.delivered_rerun import tripwires as T  # noqa: E402
 
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "delivered_rerun"
+# Rows per (task, arm) cell: 3 variants x fixtures per variant.
+NCELL = {"solve": 6, "validate_domain": 21, "validate_problem": 6, "validate_plan": 12,
+         "simulate": 6}
 GM, Q9, Q35 = "gemma4_26b-a4b", "Qwen3_5_9B", "qwen3_6_35b"
 PREFIX = "<|channel>thought\n<channel|>"
 EPS = 1e-9
@@ -68,6 +71,7 @@ def run_fixture(root: Path, extra: list[str] | None = None) -> tuple[int, str, d
     res = None
     if code == 0:
         res = json.loads((out / "delivered_rerun_readout.json").read_text())
+        res["_md"] = (out / "delivered_rerun_readout.md").read_text()
     shutil.rmtree(out)
     return code, err, res
 
@@ -191,21 +195,33 @@ def test_base_parity(r, res):
     r.check("35B solve TV 5/6 both", close(c["tv_rerun_pct"], 500 / 6)
             and close(c["tv_canonical_pct"], 500 / 6), c)
 
-    # 9B vdom plain: (dA,p01,v11) vs canonical (dA,p02,v11): 1 + 1 unpaired of 7.
+    # 9B vdom plain: (dA,p01,v11) vs canonical (dA,p04,v11): 1 + 1 unpaired of 22.
     c = pcell(res, Q9, "validate_domain", "plain")
     r.check_eq("9B vdom unpaired", (c["unpaired_rerun"], c["unpaired_canonical"], c["n_paired"]),
-               (1, 1, 5))
-    r.check("9B vdom unpaired frac 2/7", close(c["unpaired_frac"], 2 / 7), c["unpaired_frac"])
+               (1, 1, 20))
+    r.check("9B vdom unpaired frac 2/22", close(c["unpaired_frac"], 2 / 22), c["unpaired_frac"])
     r.check_eq("9B vdom VOID", (c["verdict"], c["ci90"]), (A.VOID, None))
 
-    # clipped before a tool call: only 35B simulate plain (dA,v11), 2 clipped turns.
+    # Gemma vdom steered: one harness exception row (dB,p03,v16) fails the tool-verified
+    # grade in the rerun only: -1 of 21 rows, at dB (12 rows) -> CI90 [-100/12, 0].
+    c = pcell(res, GM, "validate_domain", "steered")
+    r.check("G vdom steered Δ̂ -100/21, CI90 [-100/12, 0], not met",
+            close(c["delta"], -100 / 21) and close(c["ci90"]["lo"], -100 / 12)
+            and close(c["ci90"]["hi"], 0) and c["verdict"] == A.NOT_MET and not c["gross"], c)
+
+    # clipped before a tool call: 35B simulate plain (dA,v11), 2 clipped turns;
+    # Gemma vdom plain (dA,p02,v11), only the last turn clipped but the loop ran
+    # out on a successful trial (done_reason "tool_calls", review F6). Gemma
+    # solve plain (dB,v13) has its last turn clipped and ended on "length": not counted.
     clipped = {(c["model"], c["task"], c["arm"]): c["clipped_before_tool_call"]
                for c in p["cells"] if c["clipped_before_tool_call"]}
-    r.check_eq("clipped-before-tool counts", clipped, {(Q35, "simulate", "plain"): 1})
+    r.check_eq("clipped-before-tool counts", clipped,
+               {(Q35, "simulate", "plain"): 1, (GM, "validate_domain", "plain"): 1})
 
     others = [c for c in p["cells"] if (c["model"], c["task"], c["arm"]) not in {
-        (GM, "validate_plan", "plain"), (Q35, "solve", "steered"), (Q9, "validate_domain", "plain")}]
-    r.check_eq("27 other cells", len(others), 27)
+        (GM, "validate_plan", "plain"), (Q35, "solve", "steered"), (Q9, "validate_domain", "plain"),
+        (GM, "validate_domain", "steered")}]
+    r.check_eq("26 other cells", len(others), 26)
     r.check("others Δ̂ 0, CI [0,0], met, exact consequence",
             all(close(c["delta"], 0) and close(c["ci90"]["lo"], 0) and close(c["ci90"]["hi"], 0)
                 and c["verdict"] == A.MET and c["consequence"] == A.CONSEQ_EXACT for c in others))
@@ -216,6 +232,7 @@ E1_K = {
     (GM, "solve", "plain"): (5, 6),        # dB v13 clipped final turn
     (GM, "solve", "steered"): (6, 6),      # prefix + backticked list still right
     (GM, "validate_plan", "plain"): (1, 12),
+    (GM, "validate_domain", "steered"): (20, 21),   # dB p03 v16 harness exception
     (GM, "simulate", "plain"): (5, 6),     # dB v12 no-room
     (GM, "simulate", "steered"): (5, 6),   # dA v14 prose
     (Q9, "solve", "plain"): (5, 6),        # dB v13 abridged
@@ -223,7 +240,7 @@ E1_K = {
     (Q9, "simulate", "plain"): (5, 6),     # dB v12 numeric omitted
     (Q9, "simulate", "steered"): (5, 6),   # dA v15 step skipped
     (Q35, "solve", "steered"): (3, 6),     # dB v14 wrong, dA v15 prose, dB v15 summary
-    (Q35, "validate_domain", "plain"): (5, 6),   # dA v12 no verdict
+    (Q35, "validate_domain", "plain"): (20, 21),  # dA v12 no verdict
     (Q35, "validate_problem", "steered"): (0, 6),  # zero-success arm
     (Q35, "validate_plan", "steered"): (11, 12),   # dB b1 v16 wrong verdict
     (Q35, "simulate", "plain"): (5, 6),    # dB v13 tool-input error
@@ -233,7 +250,7 @@ E1_K = {
 
 def test_base_e1(r, res):
     for m, t, a in A.CELLS:
-        n = 12 if t == "validate_plan" else 6
+        n = NCELL[t]
         k, n_ = E1_K.get((m, t, a), (n, n))
         c = by(res, "e1", model=m, task=t, arm=a)
         r.check(f"E1 {m}/{t}/{a} = {k}/{n_}",
@@ -247,6 +264,8 @@ def test_base_e1(r, res):
         (GM, "simulate", "plain"): (200 / 3, 100),           # dA 1, dB 2/3
         (Q35, "validate_problem", "steered"): (0, 0),
         (GM, "validate_domain", "plain"): (100, 100),
+        (GM, "validate_domain", "steered"): (1100 / 12, 100),  # dA 9/9, dB 11/12
+        (Q35, "validate_domain", "plain"): (800 / 9, 100),     # dA 8/9, dB 12/12
     }.items():
         ci = by(res, "e1", model=m, task=t, arm=a)["ci95"]
         r.check(f"E1 CI {m}/{t}/{a}", close(ci["lo"], lo) and close(ci["hi"], hi), ci)
@@ -259,10 +278,66 @@ def test_base_e1(r, res):
     r.check_eq("prefix stripped G solve steered",
                by(res, "e1", model=GM, task="solve", arm="steered")["reasons"],
                {"plan_valid": 6})
+    c = by(res, "e1", model=GM, task="validate_domain", arm="steered")
+    r.check_eq("exception row: counted, a delivered failure, reported",
+               (c["exception_n"], c["reasons"]["exception"], c["parity_verdict"]),
+               (1, 1, A.NOT_MET))
+    r.check_eq("exception row in the corpus table",
+               [x["exception_rows"] for x in res["corpus"] if x["cell"] == RA[GM]], [1])
+    # N3: doubled prefix and marker residue, descriptive counts.
+    c = by(res, "e1", model=GM, task="validate_problem", arm="plain")
+    r.check_eq("doubled prefix row", (c["prefix_n"], c["doubled_prefix_n"],
+                                      c["residual_marker_n"], c["delivered_k"]), (1, 1, 1, 6))
+    c = by(res, "e1", model=GM, task="validate_problem", arm="steered")
+    r.check_eq("marker after the verdict", (c["prefix_n"], c["doubled_prefix_n"],
+                                            c["residual_marker_n"], c["delivered_k"]), (0, 0, 1, 6))
+    r.check_eq("residue only in those two cells",
+               sum(x["residual_marker_n"] for x in res["e1"]), 2)
+    # F4: every E1 cell carries its parity verdict and consequence.
+    c = by(res, "e1", model=GM, task="validate_plan", arm="plain")
+    r.check_eq("E1 carries the parity label", (c["parity_verdict"], c["consequence"]),
+               (A.NOT_MET, A.CONSEQ_CELL_FAIL))
+    r.check("E1 labels match the parity table",
+            all((x["parity_verdict"], x["consequence"])
+                == (pcell(res, x["model"], x["task"], x["arm"])["verdict"],
+                    pcell(res, x["model"], x["task"], x["arm"])["consequence"])
+                for x in res["e1"]))
     r.check_eq("zero-success arm invocation",
                by(res, "e1", model=Q35, task="validate_problem", arm="steered")["invocation_pct"], 0.0)
     r.check_eq("storage cuts all zero (Parts A, B, C)",
                [c["storage_cuts"] for c in res["corpus"] if c["layer"] == "rerun"], [0] * 7)
+    # F1: harness-shaped rows below the §7 threshold are analysed and reported,
+    # in both layers: the client-exception row (Gemma Part A, 1/102), the
+    # canonical-layer one (35B tools, vprob dA v14) and the loop-exhausted
+    # scoring error (35B vprob dB v15, both layers; not a §7 exception row).
+    corpus = {c["cell"]: c for c in res["corpus"]}
+    r.check_eq("exception rows per cell",
+               {k: v["exception_rows"] for k, v in corpus.items() if v["exception_rows"]},
+               {RA[GM]: 1, CT[Q35]: 1})
+    r.check_eq("scoring-error rows per cell",
+               {k: v["scoring_error_rows"] for k, v in corpus.items() if v["scoring_error_rows"]},
+               {RA[Q35]: 1, CT[Q35]: 1})
+    c = pcell(res, Q35, "validate_problem", "steered")
+    r.check("canonical exception row: parity cell analysed, Δ̂ 0, met",
+            close(c["delta"], 0) and c["verdict"] == A.MET and c["n_paired"] == 6, c)
+    c = by(res, "e1", model=Q35, task="validate_problem", arm="steered")
+    r.check_eq("scoring-error row graded on its answer (wrong verdict), not as an exception",
+               (c["exception_n"], c["reasons"]), (0, {"verdict_stated_wrong": 6}))
+    # N3 per job cell: Gemma Part A has the prefix on solve plain v11, solve
+    # steered v14 and the doubled vprob row; residue on the doubled row and on
+    # the marker-after-verdict row. Every other rerun cell is clean.
+    r.check_eq("marker counts per rerun cell",
+               {k: (v["prefix_rows"], v["doubled_prefix_rows"], v["residual_marker_rows"])
+                for k, v in corpus.items() if v["layer"] == "rerun"},
+               {**{k: (0, 0, 0) for k, v in corpus.items() if v["layer"] == "rerun"},
+                RA[GM]: (3, 1, 2)})
+    r.check("corpus marker columns agree with E1",
+            corpus[RA[GM]]["residual_marker_rows"]
+            == sum(x["residual_marker_n"] for x in res["e1"] if x["model"] == GM)
+            and corpus[RA[GM]]["doubled_prefix_rows"]
+            == sum(x["doubled_prefix_n"] for x in res["e1"] if x["model"] == GM))
+    r.check("markdown corpus table carries the marker columns",
+            "| leaked prefix | doubled prefix | marker left after strip |" in res["_md"])
 
 
 # (Δ̂, CI lo, CI hi, sign-flip p) per model x task. Δ̂ = sum(d) / n.
@@ -282,14 +357,14 @@ E2_EXP = {
     (Q9, "validate_plan"): (0, 0, 0, 1.0),
     (Q9, "simulate"): (0, -100 / 3, 100 / 3, 1.0),      # +1 dA (Part C wrong), -1 dB (tools)
     (Q35, "solve"): (0, 0, 0, 1.0),
-    (Q35, "validate_domain"): (-100 / 6, -100 / 3, 0, 1.0),
+    (Q35, "validate_domain"): (-100 / 21, -100 / 9, 0, 1.0),   # tools dA v12: dA 8/9 vs 9/9
     (Q35, "validate_problem"): (0, 0, 0, 1.0),
     (Q35, "validate_plan"): (100 / 3, 100 / 3, 100 / 3, 0.5),  # Part C wrong on 4 v11 rows: sums (2,2)
     (Q35, "simulate"): (-100 / 6, -100 / 3, 0, 1.0),    # tools dB v13 tool-input error
 }
 E3_EXP = {
     (GM, "solve"): (100 / 6, 0, 100 / 3, 1.0),
-    (GM, "validate_domain"): (0, 0, 0, 1.0),
+    (GM, "validate_domain"): (-100 / 21, -100 / 12, 0, 1.0),  # steered dB p03 v16 exception
     (GM, "validate_problem"): (0, 0, 0, 1.0),
     (GM, "validate_plan"): (1100 / 12, 500 / 6, 100, 0.5),
     (GM, "simulate"): (0, -100 / 3, 100 / 3, 1.0),        # -1 at dA, +1 at dB
@@ -299,7 +374,7 @@ E3_EXP = {
     (Q9, "validate_plan"): (0, 0, 0, 1.0),
     (Q9, "simulate"): (0, -100 / 3, 100 / 3, 1.0),
     (Q35, "solve"): (-50, -200 / 3, -100 / 3, 0.5),       # sums (-1,-2): P(|±1±2|>=3)=1/2
-    (Q35, "validate_domain"): (100 / 6, 0, 100 / 3, 1.0),
+    (Q35, "validate_domain"): (100 / 21, 0, 100 / 9, 1.0),
     (Q35, "validate_problem"): (-100, -100, -100, 0.5),   # sums (-3,-3)
     (Q35, "validate_plan"): (-100 / 12, -100 / 6, 0, 1.0),
     (Q35, "simulate"): (0, 0, 0, 1.0),                    # plain dB v13 and steered dB v16 both wrong
@@ -329,6 +404,27 @@ def test_base_e2_e3(r, res):
                 and close(c["ci95"]["hi"], hi) and close(c["p"], p),
                 (c["delta"], c["ci95"], c["p"]))
     r.check("E3 Holm all 1", all(c["p_holm"] == 1.0 for c in res["e3"]))
+    # F4: input cells carry their parity labels.
+    c = by(res, "e2", model=GM, task="validate_plan")
+    r.check_eq("E2 input cells", [(x["cell"], x["parity_verdict"]) for x in c["input_cells"]],
+               [(f"C/{GM}/validate_plan/plain", A.MET), (f"A/{GM}/validate_plan/plain", A.NOT_MET)])
+    c = by(res, "e2", model=GM, task="simulate")
+    r.check_eq("E2 simulate Part C side not checked", c["input_cells"][0]["parity_verdict"],
+               A.PART_C_NOT_CHECKED)
+    c = by(res, "e3", model=Q9, task="validate_domain")
+    r.check_eq("E3 input cells", [(x["cell"], x["parity_verdict"]) for x in c["input_cells"]],
+               [(f"A/{Q9}/validate_domain/plain", A.VOID),
+                (f"A/{Q9}/validate_domain/steered", A.MET)])
+    # F5: each table names its own columns.
+    md = res["_md"]
+    r.check("E2 columns named", "| no-tools (C) | tools-plain (A) | Δ̂ |" in md
+            and "unpaired (no-tools (C) / tools-plain (A))" in md)
+    r.check("E3 columns named", "| plain | steered | Δ̂ |" in md
+            and "unpaired (plain / steered)" in md)
+    r.check("JSON contrast rows name their sides",
+            all((c["a_label"], c["b_label"]) == ("no-tools (C)", "tools-plain (A)")
+                for c in res["e2"])
+            and all((c["a_label"], c["b_label"]) == ("plain", "steered") for c in res["e3"]))
     r.check_eq("E2 caveat present", res["e2_caveat"], A.E2_CAVEAT)
 
 
@@ -369,7 +465,8 @@ E4_EXP = {
     (Q9, "simulate", "plain"): (6, {E4.NUMERIC_OMITTED: 1}),
     (Q9, "simulate", "steered"): (6, {E4.ABRIDGED: 1}),
     (Q35, "solve", "steered"): (5, {E4.WRONG_WRAPPER: 1, E4.SUMMARY_ONLY: 1}),
-    (Q35, "validate_domain", "plain"): (6, {E4.NEEDS_READING: 1}),
+    (Q35, "validate_domain", "plain"): (21, {E4.NEEDS_READING: 1}),
+    (GM, "validate_domain", "steered"): (20, {}),     # the exception row is not tool-verified
     (Q35, "validate_problem", "steered"): (0, {}),
     (Q35, "validate_plan", "steered"): (12, {E4.WRONG_FACTS: 1}),
     (Q35, "simulate", "plain"): (6, {E4.TOOL_INPUT_ERROR: 1}),
@@ -379,8 +476,7 @@ E4_EXP = {
 
 def test_base_e4(r, res):
     for m, t, a in A.CELLS:
-        n_default = 12 if t == "validate_plan" else 6
-        n_tc, cats = E4_EXP.get((m, t, a), (n_default, {}))
+        n_tc, cats = E4_EXP.get((m, t, a), (NCELL[t], {}))
         g = by(res, "e4", model=m, task=t, arm=a)
         got = {k: v for k, v in g["categories"].items() if v}
         gap = sum(cats.values())
@@ -405,6 +501,18 @@ def test_base_readings(r, res):
     r.check_eq("R4 counts", {m: (v["delivered_k"], v["n"]) for m, v in per.items()},
                {GM: (11, 11), Q9: (11, 12), Q35: (9, 11)})
     r.check_eq("R4 label", R["R4"]["label"], A.R4_NOT)
+    r.check_eq("R4 label is the §8b text", A.R4_NOT, "R4 condition not met")
+    r.check_eq("R5 complement labels are the §8b text",
+               (A.R5_NONE, A.R5_STEER_NOT),
+               ("No registered row applies",
+                "Not shown (neutral-steered not within ±5 of minimal-steered)"))
+    r.check_eq("R1 input cells", [x["cell"] for x in R["R1"]["input_cells"]],
+               [f"C/{GM}/validate_plan/plain", f"A/{GM}/validate_plan/plain"])
+    r.check_eq("R2 input cells", [x["parity_verdict"] for x in R["R2"]["input_cells"]],
+               [A.NOT_MET, A.MET])
+    r.check_eq("R3 input cells", len(R["R3"]["input_cells"]), 6)
+    r.check_eq("R4 input cells", [x["parity_verdict"] for x in R["R4"]["input_cells"]],
+               [A.MET, A.MET, A.MET, A.MET, A.MET, A.NOT_MET])
     # R5: minimal-plain invokes only (dA,v1,v11); neutral-plain never -> Δ̂ -1/12,
     # domain means dA -1/6, dB 0 -> 90% CI [-100/6, 0]; est < -5 -> "doing work".
     pl = R["R5"]["neutral_minus_minimal_plain"]
@@ -424,6 +532,13 @@ def test_base_readings(r, res):
 
 
 # ------------------------------------------------------------------ refusals
+# runner.evaluate_one, client-exception path: the exact fields it writes.
+HARNESS_EXCEPTION = dict(success=False, tool_selected=None, tool_calls=[], tokens={},
+                         response="", done_reason="", truncated=False,
+                         failure_reason="exception", error="boom: the server raised",
+                         thinking="")
+
+
 def _first(recs, pred):
     for rec in recs:
         if pred(rec):
@@ -495,12 +610,15 @@ def test_refusals(r):
     expect_refusal(r, "short cell", short, "IncompleteCell")
 
     def exception_void(root):
+        # A second harness-shaped exception row in the Gemma Part A cell: 2/102 > 1%.
         def f(recs):
-            res = recs[7]["result"]
-            res.update(success=False, failure_reason="exception", error="boom")
+            rec = _first(recs, lambda x: match(x, "validate_domain", "dA", "p02", "", 16))
+            rec["result"].update(HARNESS_EXCEPTION)
             return recs
-        edit_rows(cell_file(root, "rerun", RA[Q9]), f)
-    expect_refusal(r, "exception rows > 1% -> VOID", exception_void, "VOID (§7)")
+        edit_rows(cell_file(root, "rerun", RA[GM]), f)
+    expect_refusal(r, "exception rows 2/102 > 1% -> VOID", exception_void,
+                   "VOID (§7): slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal_delivered-rerun "
+                   "has 2 exception/infrastructure rows of 102")
 
     def noroom_text(root):
         def f(recs):
@@ -591,16 +709,39 @@ def test_refusals(r):
 
     def c_void(root):
         def f(recs):
-            recs[0]["result"].update(success=False, failure_reason="ollama_parse_error",
+            recs[0]["result"].update(HARNESS_EXCEPTION, failure_reason="ollama_parse_error",
                                      error="error parsing tool call")
             return recs
         edit_rows(cell_file(root, "rerun", RC[Q35]), f)
-    # 1 of 36 = 2.8% > 1%
+    # 1 of 51 = 2.0% > 1%
     expect_refusal(r, "Part C exception rows > 1% -> VOID", c_void, "VOID (§7)")
 
     def c_short(root):
         edit_rows(cell_file(root, "rerun", RC[GM]), lambda recs: recs[:-1])
     expect_refusal(r, "Part C short cell", c_short, "IncompleteCell")
+
+    def e2_unpaired(root):
+        # Part C (dA,p01,v1,v11) relabelled v2: Part C parity marks the cell VOID,
+        # then E2 finds an unpaired row and halts (review N5, N1).
+        def f(recs):
+            rec = _first(recs, lambda x: match(x, "validate_plan", "dA", "p01", "v1", 11))
+            rec["result"]["plan_label"] = "v2"
+            rec["key"][4] = "v2"
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[GM]), f)
+    expect_refusal(r, "E2 unpaired rows halt", e2_unpaired, "RegisteredCheckFailed")
+
+    def e3_unpaired(root):
+        # Part A steered (dA,p01,v1,v14) relabelled v2: its plain partner v11 has
+        # no steered row. E2 (plain only) is untouched; E3 halts (review N5).
+        def f(recs):
+            rec = _first(recs, lambda x: match(x, "validate_plan", "dA", "p01", "v1", 14))
+            rec["result"]["plan_label"] = "v2"
+            rec["key"][4] = "v2"
+            return recs
+        edit_rows(cell_file(root, "rerun", RA[GM]), f)
+    expect_refusal(r, "E3 unpaired rows halt", e3_unpaired,
+                   "E3 gemma4_26b-a4b/validate_plan: 1/1 unpaired rows")
 
     def no_marker(root):
         (root / "rerun" / RUN.FIXTURE_MARKER).unlink()
@@ -647,6 +788,87 @@ def test_live_mode_guard(r):
         shutil.rmtree(out)
     h = RUN.package_sha256()
     r.check("package hash is a stable sha256", len(h) == 64 and h == RUN.package_sha256())
+    out = tempfile.mkdtemp(prefix="dr_live_")
+    try:
+        code, err = run_main(["--rerun-root", "/x", "--canonical-root", "/y", "--out", out,
+                              "--i-have-frozen", h])
+        r.check("live mode requires gt cache and marketplace path",
+                code == 2 and "live mode requires --gt-cache, --marketplace-path" in err, err)
+    finally:
+        shutil.rmtree(out)
+    # F2: pins
+    try:
+        RUN.check_marketplace("5e4f9c0bfbea0fdfe802edb08eaa2aa9d2095d38", [])
+        r.check("pinned marketplace HEAD accepted", True)
+    except RUN.Halt as e:
+        r.check("pinned marketplace HEAD accepted", False, str(e))
+    try:
+        RUN.check_marketplace("f0e2c61d6bb0236d1e611238e04d0d20959bb96e", [])
+        r.check("other marketplace HEAD refused", False)
+    except RUN.Halt as e:
+        r.check("other marketplace HEAD refused", "not the pinned 5e4f9c0" in str(e), str(e))
+    try:
+        RUN.check_marketplace("5e4f9c0bfbea0fdfe802edb08eaa2aa9d2095d38",
+                              [" M plugins/pddl-validator/server/validator_server.py"])
+        r.check("pinned HEAD with edited plugin code refused", False)
+    except RUN.Halt as e:
+        r.check("pinned HEAD with edited plugin code refused", "uncommitted" in str(e), str(e))
+    # marketplace_state reads a real checkout: HEAD and tracked changes under plugins/.
+    repo = Path(tempfile.mkdtemp(prefix="dr_mkt_"))
+    try:
+        git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        (repo / "plugins").mkdir()
+        (repo / "plugins" / "a.py").write_text("x = 1\n")
+        (repo / "README").write_text("r\n")
+        subprocess.run(git + ["add", "."], check=True)
+        subprocess.run(git + ["commit", "-qm", "init"], check=True)
+        head = subprocess.run(git + ["rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+        (repo / "README").write_text("edited outside plugins/\n")
+        r.check_eq("marketplace_state: clean plugins/", RUN.marketplace_state(repo), (head, []))
+        (repo / "plugins" / "a.py").write_text("x = 2\n")
+        r.check_eq("marketplace_state: edited plugin file listed",
+                   RUN.marketplace_state(repo)[1], [" M plugins/a.py"])
+    finally:
+        shutil.rmtree(repo)
+    try:
+        RUN.check_domains(REPO_ROOT / "domains")
+        r.check("repo domains match the registered manifest", True)
+    except RUN.Halt as e:
+        r.check("repo domains match the registered manifest", False, str(e))
+    tmp = Path(tempfile.mkdtemp(prefix="dr_dom_"))
+    try:
+        shutil.copytree(REPO_ROOT / "domains" / "classical", tmp / "classical")
+        shutil.copytree(REPO_ROOT / "domains" / "numeric", tmp / "numeric")
+        plan = sorted((tmp / "classical").rglob("*.plan"))[0]
+        plan.write_text(plan.read_text() + "\n")
+        RUN.check_domains(tmp)
+        r.check("an edited fixture file is refused", False)
+    except RUN.Halt:
+        r.check("an edited fixture file is refused", True)
+    finally:
+        shutil.rmtree(tmp)
+    # F2: every repo module the analysis imports is hashed.
+    import os
+    import run_experiment  # noqa: F401
+    import pddl_eval.domains  # noqa: F401
+    import tools.gt_cache_gate  # noqa: F401
+    imported = {os.path.relpath(m.__file__, REPO_ROOT) for m in list(sys.modules.values())
+                if getattr(m, "__file__", None) and m.__file__.startswith(str(REPO_ROOT))
+                and not os.path.relpath(m.__file__, REPO_ROOT).startswith("tests")}
+    frozen = {rel for rel, _ in RUN.frozen_files()}
+    r.check("DEPENDENCIES cover every imported repo module", imported <= frozen,
+            sorted(imported - frozen))
+    # N1: -O refused, for the package, a direct module import and the entry point.
+    for argv in (["-c", "import tools.delivered_rerun"],
+                 ["-c", "import tools.delivered_rerun.stats"],
+                 ["-m", "tools.delivered_rerun.run", "--print-package-hash"]):
+        proc = subprocess.run([sys.executable, "-O", *argv], cwd=REPO_ROOT,
+                              capture_output=True, text=True)
+        r.check(f"python -O refused: {' '.join(argv)}",
+                proc.returncode != 0 and "python -O" in proc.stderr and not proc.stdout,
+                proc.stderr[-300:])
 
 
 # ------------------------------------------------------------------ verdict paths
@@ -675,6 +897,8 @@ def test_job_level_failure(r):
 def _flip_all(recs):
     for rec in recs:
         res = rec["result"]
+        if res["failure_reason"] == "exception":
+            continue                      # the planted canonical exception row stays
         if res["success"]:
             res.update(success=False, tool_selected=False, tool_calls=[],
                        failure_reason="tool_not_selected")
@@ -694,9 +918,25 @@ def test_tripwires(r):
         code, err, _ = run_fixture(root)
         r.check("T4 halts", code == 2 and "T4_rate_outside_band" in err
                 and "delivered 8.3 outside [80.0, 100.0]" in err, err)
-        code, err, res = run_fixture(root, ["--audited-tripwires", "T4_rate_outside_band"])
-        r.check("T4 audited run proceeds", code == 0 and "T4_rate_outside_band"
-                in res["audited_tripwires"], err)
+        code, err, _ = run_fixture(root, ["--audited-tripwires", "T4_rate_outside_band"])
+        r.check("release without audit notes refused", code == 2 and "--audit-notes" in err, err)
+        notes = root.parent / "notes.json"
+        notes.write_text(json.dumps({"T4_rate_outside_band": ""}))
+        code, err, _ = run_fixture(root, ["--audited-tripwires", "T4_rate_outside_band",
+                                          "--audit-notes", str(notes)])
+        r.check("empty audit note refused", code == 2 and "is empty" in err, err)
+        notes.write_text(json.dumps({"T3_constant_invocation": "x"}))
+        code, err, _ = run_fixture(root, ["--audited-tripwires", "T4_rate_outside_band",
+                                          "--audit-notes", str(notes)])
+        r.check("notes for another id refused", code == 2 and "one entry per" in err, err)
+        note = "Read 30 rows of Gemma vplan plain by hand; the band was set on a censored cell."
+        notes.write_text(json.dumps({"T4_rate_outside_band": note}))
+        code, err, res = run_fixture(root, ["--audited-tripwires", "T4_rate_outside_band",
+                                            "--audit-notes", str(notes)])
+        r.check("T4 audited run proceeds, note embedded verbatim",
+                code == 0 and "T4_rate_outside_band" in res["audited_tripwires"]
+                and res["audit_notes"] == {"T4_rate_outside_band": note}
+                and note in res["_md"], err)
     finally:
         shutil.rmtree(root.parent)
     # T1: every canonical tool-verified grade flipped -> no cell meets the criterion.
@@ -717,9 +957,11 @@ def test_tripwires(r):
     rows = ([x for lc in cells["rerun_a"].values() for x in lc.rows]
             + [x for lc in cells["rerun_c"].values() for x in lc.rows])
     grades = {(x.cell, x.trial_key): G.grade(x, gt, table) for x in rows}
-    e2 = A.e2(cells["rerun_a"], cells["rerun_c"], grades, 2)
-    e1 = [A.rate_cell(list(cells["rerun_a"][m].rows), grades, m, t, a, "minimal", 2)
-          for m, t, a in A.CELLS]
+    par_c = A.part_c_parity(cells["rerun_c"], cells["canon_nt"], 2)
+    book = A.StatusBook(par, par_c)
+    e2 = A.e2(cells["rerun_a"], cells["rerun_c"], grades, 2, book)
+    e1 = [A.rate_cell(list(cells["rerun_a"][m].rows), grades, m, t, a, "minimal", 2,
+                      book.a(m, t, a)) for m, t, a in A.CELLS]
     gaps = [A.e4_cell(list(cells["rerun_a"][m].rows), grades, gt, m, t, a) for m, t, a in A.CELLS]
     r.check_eq("base: no tripwire", T.check(design, par, e1, gaps, e2, cells["rerun_a"],
                                              cells["canon_tools"]), {})
@@ -798,7 +1040,8 @@ def test_r4_attributed(r):
 def test_reading_rules(r):
     def con(model, task, lo, hi):
         b = ST.Boot(est=(lo + hi) / 2, lo=lo, hi=hi, level=0.95, k=20, n=100)
-        return A.Contrast(model=model, task=task, name="x", n_pairs=100, unpaired_a=0,
+        return A.Contrast(model=model, task=task, name="x", a_label="a", b_label="b",
+                          n_pairs=100, unpaired_a=0,
                           unpaired_b=0, a_pct=0, b_pct=0, delta=b.est, ci95=b, p=1.0)
     r.check_eq("R1 harm", A.r1([con(GM, "validate_plan", -30, -5.01)])["label"], A.R1_HARM)
     r.check_eq("R1 harm needs < -5", A.r1([con(GM, "validate_plan", -30, -5.0)])["label"],
@@ -868,17 +1111,17 @@ def test_stats_units(r):
     try:
         ST.holm({0: 0.1}, 15)
         r.check("Holm refuses a short family", False)
-    except AssertionError:
+    except C.RegisteredCheckFailed:
         r.check("Holm refuses a short family", True)
     try:
         ST.cluster_bootstrap([1, 0], ["a", "b"], 0.9, 20)
-        r.check("bootstrap asserts k", False)
-    except AssertionError:
-        r.check("bootstrap asserts k", True)
+        r.check("bootstrap checks k", False)
+    except C.RegisteredCheckFailed as e:
+        r.check("bootstrap checks k", "a domain is missing" in str(e), str(e))
 
 
 def test_clipped_logic(r):
-    def row(clipped, last, fr="ok"):
+    def row(clipped, last, fr="ok", done="stop"):
         tok = S.Tokens(prompt=1, completion=1, turns=3, ctx_clipped_turns=clipped,
                        ctx_clip_last_turn_max_tokens=last, ctx_clip_last_turn_prompt_tokens=None,
                        ctx_no_room_turns=0)
@@ -887,13 +1130,149 @@ def test_clipped_logic(r):
                      prompt_style="minimal", success=fr == "ok", tool_selected=True,
                      response="x", response_truncated_by_storage=False, tool_calls=(),
                      tokens=tok, error="", failure_reason=fr, truncated=False,
-                     done_reason="stop", infra_failure=False)
+                     done_reason=done, infra_failure=False)
     r.check_eq("no clip", row(0, None).clipped_before_tool_call, False)
     r.check_eq("only the last turn clipped", row(1, 900).clipped_before_tool_call, False)
     r.check_eq("an earlier turn clipped, last not", row(1, None).clipped_before_tool_call, True)
     r.check_eq("two clipped incl. last", row(2, 900).clipped_before_tool_call, True)
     r.check_eq("last clipped, loop exhausted", row(1, 900, "loop_exhausted").clipped_before_tool_call,
                True)
+    # F6: the loop ran out on a trial the tool result had already made a success.
+    r.check_eq("last clipped, done_reason tool_calls, success",
+               row(1, 900, "ok", "tool_calls").clipped_before_tool_call, True)
+    r.check_eq("last clipped, done_reason stop", row(1, 900, "ok", "stop").clipped_before_tool_call,
+               False)
+
+
+def test_exception_rows_parse(r):
+    """F1: the harness exception shapes parse in both layers; nothing else may
+    borrow them."""
+    design = RUN.fixture_design(FIXTURE)
+    spec_a = S.spec_rerun_a(design, GM)
+    spec_ct = S.spec_canonical_tools(design, GM)
+    base = json.loads(cell_file(FIXTURE, "rerun", RA[GM]).read_text().splitlines()[0])
+
+    def rec(layer, **upd):
+        o = json.loads(json.dumps(base))
+        o["result"].update(upd)
+        if layer == "canonical":
+            for k in ("format_compliant", "response_truncated_by_storage", "think_truncated"):
+                del o["result"][k]
+        return o
+    try:
+        row = S.parse_row(rec("rerun", **HARNESS_EXCEPTION), spec_a, "t")
+        r.check("client exception shape parses (rerun)",
+                row.is_exception and row.tokens.turns == 0 and row.tool_selected is None)
+        g = G.grade(row, {}, {})
+        r.check_eq("graded as a delivered failure", (g.ok, g.reason), (False, "exception"))
+        S.parse_row(rec("canonical", **HARNESS_EXCEPTION), spec_ct, "t")
+        r.check("client exception shape parses (canonical)", True)
+        row = S.parse_row(rec("rerun", success=False, tool_selected=None,
+                              failure_reason="exception", error="scoring error: x"), spec_a, "t")
+        r.check("scoring-exception shape parses (tokens and tool calls kept)",
+                row.is_exception and len(row.tool_calls) == 1 and row.tokens.turns == 2)
+        S.parse_row(rec("rerun", **{**HARNESS_EXCEPTION, "failure_reason": "ollama_parse_error"}),
+                    spec_a, "t")
+        r.check("ollama_parse_error shape parses", True)
+        # scoring exception relabelled by the loop-exhausted override
+        row = S.parse_row(rec("rerun", success=False, tool_selected=None,
+                              failure_reason="loop_exhausted", done_reason="tool_calls",
+                              error="scoring error: x"), spec_a, "t")
+        r.check("loop_exhausted scoring-exception shape parses; not a §7 exception row",
+                not row.is_exception and row.scoring_error and row.tool_selected is None)
+        # Part C (no tools): the client-exception shape parses there too.
+        spec_c = S.spec_rerun_c(design, GM)
+        cbase = json.loads(cell_file(FIXTURE, "rerun", RC[GM]).read_text().splitlines()[0])
+        cbase["result"].update(HARNESS_EXCEPTION)
+        row = S.parse_row(cbase, spec_c, "t")
+        r.check_eq("client exception shape parses (Part C)", (row.is_exception, G.grade(
+            row, {}, {}).reason), (True, "exception"))
+    except S.SchemaError as e:
+        r.check("exception shapes parse", False, str(e))
+    shape = "does not have a harness exception shape"
+    for label, upd, needle in (
+        ("exception row with tool_selected set", {**HARNESS_EXCEPTION, "tool_selected": False},
+         "exception row needs a non-empty error and tool_selected null"),
+        ("exception row with an empty error", {**HARNESS_EXCEPTION, "error": ""},
+         "exception row needs a non-empty error"),
+        ("client exception with tool calls", {**HARNESS_EXCEPTION, "tool_calls": [
+            {"name": "validate_domain", "arguments": {}, "result": "{}"}]}, shape),
+        ("client exception with an answer", {**HARNESS_EXCEPTION, "response": "VERDICT: VALID"},
+         shape),
+        ("client exception with a done_reason", {**HARNESS_EXCEPTION, "done_reason": "stop"},
+         shape),
+        ("client exception with thinking", {**HARNESS_EXCEPTION, "thinking": "hmm"}, shape),
+        ("exception reason, tokens kept, no scoring error",
+         {**HARNESS_EXCEPTION, "tokens": {"prompt": 1, "completion": 1, "turns": 1,
+                                          "total_duration_ns": 1, "eval_duration_ns": 1}},
+         shape),
+        ("ollama_parse_error with the scoring shape",
+         {"success": False, "tool_selected": None, "failure_reason": "ollama_parse_error",
+          "error": "scoring error: x"}, shape),
+        ("empty tokens on a normal row", {"tokens": {}}, "tokens missing"),
+        ("tool_selected null on a normal row", {"tool_selected": None},
+         "with-tools row has tool_selected=null"),
+    ):
+        try:
+            S.parse_row(rec("rerun", **upd), spec_a, "t")
+            r.check(label, False, "parsed")
+        except S.SchemaError as e:
+            r.check(label, needle in str(e), str(e))
+
+
+def test_halts_with_context(r):
+    """N1/N4: registered checks raise named errors with the comparison in the
+    message, not bare asserts."""
+    # E2 with one domain missing from the pairs (k = 2 registered for the fixture).
+    try:
+        A._contrast("E2", GM, "solve", [(1, 1, "dA"), (0, 1, "dA")], 0, 0, 2, [])
+        r.check("E2 missing domain halts", False)
+    except C.RegisteredCheckFailed as e:
+        r.check("E2 missing domain halts, naming the comparison",
+                "E2 gemma4_26b-a4b/solve" in str(e) and "a domain is missing" in str(e), str(e))
+    try:
+        A._contrast("E3", Q9, "simulate", [], 0, 0, 2, [])
+        r.check("empty contrast halts", False)
+    except S.SchemaError as e:
+        r.check("empty contrast halts", "E3 Qwen3_5_9B/simulate: no pairs" in str(e), str(e))
+    # Gemma first is checked on the evaluated order (review N4).
+    design = RUN.fixture_design(FIXTURE)
+    cells = RUN.load_all(design, FIXTURE / "rerun", FIXTURE / "canonical")
+    par = A.parity(cells["rerun_a"], cells["canon_tools"], 2)
+    r.check_eq("Gemma evaluated first (computed)", (par.gemma_evaluated_first,
+               [c.model for c in par.cells[:10]]), (True, [GM] * 10))
+    saved = C.CONTROL_MODEL
+    try:
+        C.CONTROL_MODEL = Q9
+        A.parity(cells["rerun_a"], cells["canon_tools"], 2)
+        r.check("a non-Gemma first cell is refused", False)
+    except C.RegisteredCheckFailed as e:
+        r.check("a non-Gemma first cell is refused", "first ten parity cells" in str(e), str(e))
+    finally:
+        C.CONTROL_MODEL = saved
+
+
+def test_requirements_cover_frozen_imports(r):
+    """N8 / freeze gate 3: every third-party module a frozen file imports is
+    declared in requirements.txt."""
+    import ast
+    local = {"pddl_eval", "tools", "run_experiment", "__future__"}
+    third = set()
+    for _, path in RUN.frozen_files():
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.Import):
+                third |= {a.name.split(".")[0] for a in node.names}
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                third.add(node.module.split(".")[0])
+    third = {m for m in third if m not in sys.stdlib_module_names and m not in local}
+    declared = set()
+    for ln in (REPO_ROOT / "requirements.txt").read_text().splitlines():
+        ln = ln.split("#")[0].strip()
+        if ln:
+            declared.add(ln.split(">")[0].split("=")[0].split("<")[0].strip().lower())
+    r.check_eq("frozen third-party imports", sorted(third),
+               ["mcp", "numpy", "openai", "pydantic"])
+    r.check("all declared in requirements.txt", third <= declared, sorted(third - declared))
 
 
 def test_registered_constants(r):
@@ -983,6 +1362,9 @@ def main():
     test_grader_prefix(r)
     test_stats_units(r)
     test_clipped_logic(r)
+    test_exception_rows_parse(r)
+    test_halts_with_context(r)
+    test_requirements_cover_frozen_imports(r)
     test_registered_constants(r)
     test_canonical_dry_run(r)
     r.report_and_exit()

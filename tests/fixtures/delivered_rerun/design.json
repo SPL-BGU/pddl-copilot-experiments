@@ -21,14 +21,14 @@
    6
   ],
   "Qwen3_5_9B|validate_domain|plain": [
-   6,
+   21,
    0,
-   6
+   21
   ],
   "Qwen3_5_9B|validate_domain|steered": [
-   6,
+   21,
    0,
-   6
+   21
   ],
   "Qwen3_5_9B|validate_plan|plain": [
    12,
@@ -71,14 +71,14 @@
    6
   ],
   "gemma4_26b-a4b|validate_domain|plain": [
-   6,
+   21,
    0,
-   6
+   21
   ],
   "gemma4_26b-a4b|validate_domain|steered": [
-   6,
+   21,
    0,
-   6
+   21
   ],
   "gemma4_26b-a4b|validate_plan|plain": [
    12,
@@ -121,14 +121,14 @@
    6
   ],
   "qwen3_6_35b|validate_domain|plain": [
-   6,
+   21,
    0,
-   6
+   21
   ],
   "qwen3_6_35b|validate_domain|steered": [
-   6,
+   21,
    0,
-   6
+   21
   ],
   "qwen3_6_35b|validate_plan|plain": [
    12,
@@ -152,16 +152,16 @@
   ]
  },
  "k_domains": 2,
- "n_no_tools_cell": 36,
- "n_part_a_cell": 72,
+ "n_no_tools_cell": 51,
+ "n_part_a_cell": 102,
  "n_part_b": 24,
  "per_task_variant": {
   "simulate": 2,
   "solve": 2,
-  "validate_domain": 2,
+  "validate_domain": 7,
   "validate_plan": 4,
   "validate_problem": 2
  },
- "per_variant_a": 12,
+ "per_variant_a": 17,
  "per_variant_b": 4
 }
