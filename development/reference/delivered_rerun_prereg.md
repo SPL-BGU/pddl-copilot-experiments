@@ -70,12 +70,30 @@ graded:
    cells on 0.22.0. If the cluster serves 0.20.2, the 9B cell carries a version delta
    and Gemma and the 35B do not.
 
-**The unaided arm is not rerun (decided 2026-10-03).** The canonical no-tools cells ran
-on vLLM 0.20.2, the same version this run uses, so the E2 contrast is same-version for
-all three models; and the no-tools delivered score is already exact, because it was
-graded online on the full text. A rerun would add a second unaided baseline without
-removing a confound. Omer: "if best approach is to do it then do it"; the analysis
-above says it is not.
+**Part C, the unaided arm, is rerun (added 2026-10-03, before any outcome of this run
+was read).** An earlier note the same day said it was not needed, on two grounds: same
+serving version, and an unaided delivered score that is "already exact". The second
+ground is false in two ways, found while writing the analysis code: (i) canonical
+unaided *simulate* rows were graded online with the pre-fix trajectory normaliser and
+are stored as 500-character snapshots, so they cannot be regraded (the canonical overlay
+marks 300/300, 262/300 and 271/300 of the headline rows censored), which leaves 3 of the
+15 E2 comparisons uncomputable; (ii) on every task the canonical unaided grade is the
+strict online extraction while the tool side would get the tolerant delivered grader,
+which is the asymmetry the weakness list calls C7. Part C fixes both: the three headline
+models, thinking off, no tools, v11–13, all five tasks, 3 × 4,560 = **13,680 trials**,
+same harness commit, tag `delivered-rerun`, job 21991349 (`afterok:21982370`). Omer's
+instruction for this choice: "if best approach is to do it then do it".
+
+- **E2 now uses Part C as its no-tools side**, graded with the same delivered grader as
+  the tool side, so both sides of every availability contrast are same-run,
+  same-storage and same-grader. The canonical no-tools cells are no longer an input to
+  E2.
+- **Part C parity check (reported, not a gate on E2).** Per model × task for solve and
+  the three validate tasks (12 cells): Δ = Part C − canonical on the stored online
+  `success`, paired, same TOST at ±5 with the 90% domain-cluster interval as §3.
+  Simulate is excluded (the canonical online grade used the pre-fix normaliser). If a
+  cell fails, the paper says that the unaided baseline moved for that cell and by how
+  much; E2 still uses Part C.
 
 Nothing else differs: same model weights and quantisations, same parsers
 (`vllm_lookup`), same GPU class (`rtx_6000`, one per job), same sbatch.
@@ -254,6 +272,43 @@ Three things the smoke showed, recorded before the main run:
 summary lines of the 35B smoke cell were printed (solve and simulate pass counts on the
 smoke slice, 120 trials each). Smoke rows are never pooled and no main-run outcome has
 been read.
+
+## 8b. Clarifications fixed before the freeze (2026-10-03, no outcome of this run read)
+
+Points the prereg left open, and the reading the analysis code implements. These are
+fixed now, before the freeze, so they are part of the registration, not deviations.
+
+1. Holm p-values come from an exact sign-flip test over the 20 domains; intervals from
+   the domain-cluster bootstrap.
+2. R1–R3 use the unadjusted 95% interval.
+3. "Inside [−5, +5]" includes the endpoints; "entirely below −5" and "entirely above +5"
+   are strict.
+4. The unpaired share is measured against all keys in either corpus. A VOID cell counts
+   as "not met" in the 18/20 rule, and its point estimate still enters the |Δ̂| > 10 check.
+5. A Gemma control cell "fails" on any verdict other than "criterion met", VOID included.
+6. E3 pairs plain wording v with steered wording v+3 on the same fixture.
+7. R3's "gain above +5" means the 95% lower bound is above +5.
+8. R4's population is trials with a correct tool result. "Full, uncut" means
+   `done_reason` is not "length", no no-room turn, not cut by storage. Empty answers that
+   stopped normally stay in and count as failures. Both arms are pooled per model; the
+   point estimate is compared with 90%. If not met, the label is "R4 condition not met".
+9. R5's "lower / higher by more than 5" use the point estimate; the middle row uses the
+   90% TOST. If no row applies, the label is "No registered row applies". Invocation is
+   any tool call (reproduces the canonical 622/3,000).
+10. §7 exception rows are `failure_reason` "exception" or "ollama_parse_error"; the 1%
+    rule is applied per job cell and stops the whole analysis.
+11. Duplicate trial keys stop the analysis. Half-written lines are counted and reported.
+12. The delivered rule is the overlay's `e2e_strict` rule with its markdown
+    tolerances, applied identically to tool and no-tools rows (Part C).
+13. E4: "refused or clipped final request" is classified first. Answers the mechanical
+    rules cannot classify are labelled "needs reading" and read by hand after the
+    freeze, with the reading recorded.
+14. "Clipped before a tool call" means a clipped turn that was not the last turn, or a
+    clipped last turn when the tool loop ran out.
+15. Readout tripwire bands: tool-verified within ±30 points of canonical; delivered
+    within [canonical low − 20, canonical high + 20 + canonical share of empty
+    length-stopped answers + share with the leaked prefix]. A fired tripwire halts the
+    readout until audited; the audit is recorded in the readout.
 
 ## 9. Deviations
 
