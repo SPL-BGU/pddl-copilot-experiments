@@ -52,6 +52,7 @@ run_test test_budget_probe_analysis.py
 run_test test_frontier_runner.py
 run_test test_vllm_client.py
 run_test test_submit_wrapper.py
+run_test test_delivered_rerun_analysis.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"
