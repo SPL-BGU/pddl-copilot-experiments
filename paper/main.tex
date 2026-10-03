@@ -1359,7 +1359,9 @@ appears on a benchmark that someone else built, so we repeated a smaller version
 experiment on PlanBench \citep{valmeekam2023planbench}. We use its plan-generation task
 in two domains. The first is standard Blocksworld. The second is Mystery Blocksworld,
 which renames every predicate and action to an unrelated word and leaves the underlying
-problem untouched. We checked all $501$ instance files on disk and confirmed that the
+problem untouched. The instance files sit in two directories of $501$ and $101$ files,
+and the first file in each serves only as the worked example, which leaves $500$ and
+$100$ instances to ask. We checked all $602$ files and confirmed that the
 renaming is a straight symbol swap with the objects unchanged, so the two domains ask
 the same planning question in different words. Every cell uses the same $600$ instances,
 and the model is Claude Haiku 4.5 throughout.
@@ -1441,10 +1443,19 @@ $18$ instances were asked a second time. On their first attempt all $18$ had use
 their tool-calling turns and returned nothing, so we count them as failures. Reading
 them the other way would raise that cell by $1.4$ points.
 
-Once the tools are available the renamed domain is no harder than the standard one.
+Once the tools are available the renamed domain is not harder than the standard one.
 Inside the with-tools arm the paired gap between the two domains is $3.5$ points in
 Mystery's favor, with $119$ instances solved only on Blocksworld and $140$ only on
-Mystery ($p=0.214$). That is well inside the $\pm7.5$ point margin we fixed in advance.
+Mystery ($p=0.214$). Our preregistration listed this comparison as exploratory and named
+a paired equivalence test for it, with a margin of $\pm7.5$ points. We declare a deviation here: at readout only the point
+estimate was compared with the margin, and the test itself was not computed. We report
+it now. The $90\%$ interval for the gap is [$-7.9$, $+0.9$] points and the test gives
+$p=0.068$, so the criterion is not met at $\pm7.5$ and the question is unresolved at
+that margin. The preregistration also names $\pm10$ points for the same comparison, as
+a requirement of its mechanism check, and at $\pm10$ the criterion is met ($p=0.008$).
+The interval is wide because the two domains disagree on $43\%$ of instances. The small
+gap also depends on a notation loss in the Mystery cell. With the corrected extractor
+of Section~\ref{sec:pb-distort}, Mystery is $24.2$ points higher.
 
 \begin{table}[t]
 \centering
@@ -1456,10 +1467,12 @@ Mystery ($p=0.214$). That is well inside the $\pm7.5$ point margin we fixed in a
 Blocksworld & $47.8$ & $68.3$ & $+20.5$ \\
  & \footnotesize[$43.9$, $51.8$] & \footnotesize[$64.5$, $71.9$]
  & \footnotesize$p{=}1.4$e$-$13 \\
+\quad\emph{post hoc} & $47.8$ & $70.2$ & $+22.3$ \\
 \addlinespace
 Mystery & $0.0$ & $71.8$ & $+71.8$ \\
  & \footnotesize[$0.0$, $0.6$] & \footnotesize[$68.1$, $75.3$]
  & \footnotesize$p{=}3.6$e$-$130 \\
+\quad\emph{post hoc} & $4.3$ & $94.3$ & $+90.0$ \\
 \bottomrule
 \end{tabular}
 \caption{Tools against no tools on PlanBench, Claude Haiku 4.5. Cells are the percentage
@@ -1467,8 +1480,10 @@ of instances whose delivered plan validates, with Wilson 95\% intervals, $600$ i
 per cell, all graded in one pass by the benchmark's script using VAL. The two arms share
 the same system message word for word and differ only in whether any tools are attached.
 $\Delta$ is paired instance by instance and tested with an exact McNemar test. The
-Blocksworld $+$tools cell is the cautious reading described in the text. No published
-figures appear in this table.}
+Blocksworld $+$tools cell is the cautious reading described in the text. The rows
+marked \emph{post hoc} regrade the same responses with the corrected plan extractor of
+Section~\ref{sec:pb-distort}. They were not preregistered, and the rows above them are
+the primary result. No published figures appear in this table.}
 \label{tab:pb-wt}
 \end{table}
 
@@ -1534,10 +1549,13 @@ the benchmark, because it cannot arise anywhere the PDDL is supplied. Once a pla
 $95.9\%$ of the time on Blocksworld and $97.3\%$ on Mystery.
 
 \subsection{What Could Distort These Numbers}
-Several measurement problems affect these cells, and we correct for none of them. Most
+\label{sec:pb-distort}
+Several measurement problems affect these cells. The figures we report as primary
+correct for none of them, as preregistered. For the two that come from the plan
+extractor we add a post hoc regrade at the end of this section. Most
 work against the tools arm. On Mystery, $125$ of $569$ delivered plans were thrown out
 because the model wrote its actions in a PDDL shorthand the benchmark's extractor does
-not read, and a more tolerant parser would put that cell above $90\%$. Trials that used
+not read. Trials that used
 up their tool-calling turns without answering are counted as failures, which costs the
 standard and Mystery with-tools cells $10.5\%$ and $5.2\%$ of their trials. Failures to
 write usable PDDL are charged to the model as well.
@@ -1554,6 +1572,26 @@ reading. Under the stricter one, $412$ instances are solved only with tools and 
 without, giving $p=6.4\mathrm{e}{-}112$. Two further measurements
 agree that the collapse is real. The $121$ trials with no leak score $0$ of $121$, and
 the published prompt, which carries no system message and shows no leak, scores $0.7\%$.
+
+After the readout we wrote a corrected extractor and regraded all four cells with it.
+It reads only the model's final answer block, and it accepts the PDDL shorthand as well
+as the English phrasing. Every plan it extracts is checked by the same validator
+against the same instance files. This regrade is post hoc and was not preregistered,
+so the figures above remain the primary result. The corrected figures are $47.8\%$
+[$43.9$, $51.8$] without tools and $70.2\%$ [$66.4$, $73.7$] with tools on Blocksworld,
+and $4.3\%$ [$3.0$, $6.3$] and $94.3\%$ [$92.2$, $95.9$] on Mystery, where $566$ of
+$600$ trials deliver a valid plan. All $125$ shorthand plans are valid, and no trial moved
+from correct to incorrect. Both tool contrasts grow, to $22.3$ points on Blocksworld
+($207$ instances solved only with tools and $73$ only without,
+$p=5.1\mathrm{e}{-}16$) and to $90.0$ points on Mystery ($541$ and $1$,
+$p=7.5\mathrm{e}{-}161$). The comparison between the two domains changes more. With
+the corrected extractor the with-tools gap is $24.2$ points in Mystery's favor, with
+$28$ instances solved only on Blocksworld and $173$ only on Mystery
+($p=1.0\mathrm{e}{-}26$), and the equivalence criterion is not met at either margin.
+The notation loss fell almost entirely on the Mystery cell, which is what brought the
+two primary figures close together. Our prompt asked for the English phrasing, so a
+shorthand answer is still a failure to follow the instruction, and the primary grading
+counts it as one.
 
 \subsection{Scope and Cost}
 This arm covers one model. We registered a stronger second model as an extension and did
