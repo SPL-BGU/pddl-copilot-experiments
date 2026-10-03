@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass, field
 
 from . import constants as C
 from . import e4 as E4
-from .grade import Delivered, has_prefix
+from .grade import Delivered
 from .schema import LoadedCell, Row, SchemaError
 from .stats import (Boot, cluster_bootstrap, domain_sums, holm, newcombe,
                     signflip_exact_p, tost_met)
@@ -38,17 +38,17 @@ R3_STAYS = "Title stays: invocation is the bottleneck."
 R3_CHANGES = "Title changes to the two-gate reading (invocation and delivery)."
 R4_ATTRIBUTED = ("The canonical open-weight delivery gap on solve is attributed to "
                  "storage and the refused final request.")
-R4_NOT = "R4 condition not met (some model below 90%)."           # unregistered complement
+R4_NOT = "R4 condition not met"                                   # §8b item 8
 R5_WORK = "The system-prompt sentence was doing work."
 R5_INERT = "The system-prompt sentence is inert for this model."
 R5_SUPPRESS = "The directive suppresses calling."
-R5_NONE = "No registered row applies."                             # unregistered complement
+R5_NONE = "No registered row applies"                              # §8b item 9
 R5_STEER_SUFFICIENT = "Steering in the user turn is sufficient by itself."
-R5_STEER_NOT = "Not shown (neutral-steered not within ±5 of minimal-steered)."  # complement
-E2_BLOCKED = ("BLOCKED: canonical no-tools simulate is not exact (500-char snapshots "
-              "censored; stored grade predates the normaliser fix)")
-E2_CAVEAT = ("No-tools side: canonical sweep5v2-live, vLLM 0.20.2, graded online; the "
-             "tool arm has no JSON constraint (§4 E2).")
+# Not registered (neither §5 nor §8b names the complement of the steering sentence).
+R5_STEER_NOT = "Not shown (neutral-steered not within ±5 of minimal-steered)."
+E2_CAVEAT = ("No-tools side: Part C of this run (same harness commit, vLLM 0.20.2, full "
+             "storage, the same delivered grader as the tool side). The no-tools arm is "
+             "sampled under the per-task JSON constraint; the tool arm has none (§4 E2).")
 
 # §3 "with the apparatus deltas of §2 stated": the four deltas, verbatim in substance.
 APPARATUS_DELTAS = (
@@ -240,7 +240,6 @@ class Contrast:
     ci95: Boot | None
     p: float
     p_holm: float = 1.0
-    status: str = "computed"
 
 
 def _contrast(name: str, model: str, task: str, pairs: list[tuple[int, int, str]],
@@ -258,43 +257,35 @@ def _contrast(name: str, model: str, task: str, pairs: list[tuple[int, int, str]
                     p=signflip_exact_p(domain_sums(d, doms)))
 
 
-def no_tools_delivered(r: Row) -> int:
-    """§2: 'the no-tools delivered score is already exact, because it was
-    graded online on the full text' — true for solve and validate_*.
-
-    The online grade predates the leaked-prefix normalisation; it equals the
-    normalised grade only if no no-tools answer carries the prefix, which is
-    asserted. Simulate is refused (see E2_BLOCKED)."""
-    if r.with_tools or r.layer != "canonical":
-        raise SchemaError("no_tools_delivered reads canonical no-tools rows only")
-    if r.task == "simulate":
-        raise SchemaError(E2_BLOCKED)
-    if has_prefix(r.response):
-        raise SchemaError(f"no-tools row {r.trial_key} carries the leaked prefix; its "
-                          "online grade is not the normalised grade")
-    return int(r.success)
-
-
-def e2(rerun_a: dict[str, LoadedCell], canon_nt: dict[str, LoadedCell],
+def e2(rerun_a: dict[str, LoadedCell], rerun_c: dict[str, LoadedCell],
        grades: Grades, k: int) -> list[Contrast]:
-    """Tools-plain (this run) − no-tools (canonical, v11–13), per model × task."""
+    """Tools-plain (Part A) − no-tools (Part C), both this run, per model × task,
+    paired on (domain, problem, variant, plan label); both sides graded by the
+    same delivered grader (§2 Part C, §8b item 12)."""
     out: list[Contrast] = []
     for m in C.PART_A_MODELS:
         for t in C.TASKS:
             tl = _by_key([r for r in rerun_a[m].rows if r.task == t and r.arm == "plain"])
-            nt = _by_key([r for r in canon_nt[m].rows if r.task == t])
-            assert all(r.variant in C.PLAIN for r in nt.values())
+            nt = _by_key([r for r in rerun_c[m].rows if r.task == t])
+            assert all(r.variant in C.PLAIN and not r.with_tools and r.layer == "rerun"
+                       for r in nt.values())
             both = sorted(set(tl) & set(nt))
             ua, ub = len(set(nt) - set(tl)), len(set(tl) - set(nt))
-            if t == "simulate":
-                out.append(Contrast(model=m, task=t, name="E2", n_pairs=len(both),
-                                    unpaired_a=ua, unpaired_b=ub, a_pct=None, b_pct=None,
-                                    delta=None, ci95=None, p=1.0, status=E2_BLOCKED))
-                continue
-            pairs = [(no_tools_delivered(nt[x]), int(dlv(grades, tl[x])), x[1]) for x in both]
+            pairs = [(int(dlv(grades, nt[x])), int(dlv(grades, tl[x])), x[1]) for x in both]
             out.append(_contrast("E2", m, t, pairs, ua, ub, k))
     _apply_holm(out)
     return out
+
+
+def part_c_parity(rerun_c: dict[str, LoadedCell], canon_nt: dict[str, LoadedCell],
+                  k: int) -> list[ParityCell]:
+    """§2 Part C parity (reported, not a gate on E2): Part C − canonical on the
+    stored online `success`, paired, the §3 code path (TOST ±5 on the 90%
+    domain-cluster interval, unpaired/VOID rule). Simulate excluded."""
+    cells = [parity_cell(list(rerun_c[m].rows), list(canon_nt[m].rows), m, t, "plain", k)
+             for m in C.PART_A_MODELS for t in C.PART_C_PARITY_TASKS]
+    assert len(cells) == 12
+    return cells
 
 
 def e3(rerun_a: dict[str, LoadedCell], grades: Grades, k: int) -> list[Contrast]:
@@ -320,8 +311,7 @@ def e3(rerun_a: dict[str, LoadedCell], grades: Grades, k: int) -> list[Contrast]
 
 
 def _apply_holm(cs: list[Contrast]) -> None:
-    """Holm over the registered family of 15. A blocked comparison enters with
-    p = 1 so the family size stays 15 (conservative for the others)."""
+    """Holm over the registered family of 15 (§4; p from §8b item 1)."""
     adj = holm({(c.model, c.task): c.p for c in cs}, C.HOLM_FAMILY)
     for c in cs:
         c.p_holm = adj[(c.model, c.task)]

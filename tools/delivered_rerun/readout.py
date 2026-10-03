@@ -51,6 +51,19 @@ def render(res: dict) -> str:
                  f"{c['clipped_before_tool_call']} | {c['consequence']} |")
     L.append("")
 
+    L.append("## Part C parity (§2; reported, not a gate on E2)\n")
+    L.append("Part C − canonical no-tools on the stored online grade, paired; simulate "
+             "excluded.\n")
+    L.append("| model | task | paired | unpaired (rerun/canon) | Part C | canonical | Δ̂ "
+             "| 90% CI (domain boot) | verdict |")
+    L.append("|---|---|---|---|---|---|---|---|---|")
+    for c in res["part_c_parity"]:
+        L.append(f"| {c['model']} | {c['task']} | {c['n_paired']} | "
+                 f"{c['unpaired_rerun']}/{c['unpaired_canonical']} | {_f(c['tv_rerun_pct'])} "
+                 f"| {_f(c['tv_canonical_pct'])} | {c['delta']:+.1f} | {_iv(c['ci90'])} | "
+                 f"{c['verdict']} |")
+    L.append("")
+
     L.append("## E1. Delivered rate per cell (§4), exact\n")
     L.append("No-room rows (§8a) are counted as delivered failures; their share is shown.\n")
     L.append("| model | task | arm | n | delivered | 95% CI | tool-verified | invocation "
@@ -63,17 +76,19 @@ def render(res: dict) -> str:
                  f"| {c['prefix_n']} |")
     L.append("")
 
-    for key, title in (("e2", "E2. Availability contrast, tools-plain − no-tools (§4)"),
+    for key, title in (("e2", "E2. Availability contrast, tools-plain (Part A) − no-tools (Part C) (§4)"),
                        ("e3", "E3. Steering contrast, steered − plain (§4)")):
         L.append(f"## {title}\n")
         if key == "e2":
             L.append(res["e2_caveat"] + "\n")
-        L.append("| model | task | pairs | A | B | Δ̂ | 95% CI | p (domain sign-flip) | p (Holm, 15) | status |")
+        L.append("| model | task | pairs | unpaired (A/B) | A | B | Δ̂ | 95% CI "
+                 "| p (domain sign-flip) | p (Holm, 15) |")
         L.append("|---|---|---|---|---|---|---|---|---|---|")
         for c in res[key]:
-            L.append(f"| {c['model']} | {c['task']} | {c['n_pairs']} | {_f(c['a_pct'])} | "
+            L.append(f"| {c['model']} | {c['task']} | {c['n_pairs']} | "
+                     f"{c['unpaired_a']}/{c['unpaired_b']} | {_f(c['a_pct'])} | "
                      f"{_f(c['b_pct'])} | {_f(c['delta'])} | {_iv(c['ci95'])} | "
-                     f"{c['p']:.4g} | {c['p_holm']:.4g} | {c['status']} |")
+                     f"{c['p']:.4g} | {c['p_holm']:.4g} |")
         L.append("")
 
     L.append("## E4. Delivery gap among trials with a correct tool result (§4)\n")

@@ -24,11 +24,13 @@ Bands (T4) and why they are this wide
   answers that start with the leaked prefix. Both shares are counted on the
   canonical rows of the cell. The ±20 slack covers run-to-run noise on
   the delivered layer, which the parity guard does not measure.
-* Part B has no canonical counterpart, so it has no band; T3 still covers it.
+* Part B has no canonical counterpart, so it has no band. Part C's delivered
+  rate has no registered band (§8b item 15 names only the two above); T3
+  still covers it.
 """
 from __future__ import annotations
 
-from .analysis import MET, VOID, GapCell, Parity, RateCell
+from .analysis import MET, VOID, Contrast, GapCell, Parity, RateCell
 from . import constants as C
 from . import e4 as E4
 from .grade import has_prefix
@@ -56,7 +58,7 @@ def _tv(cell: LoadedCell, task: str, arm: str) -> float:
 
 
 def check(design: C.Design, par: Parity, e1: list[RateCell], gaps: list[GapCell],
-          rerun_a: dict[str, LoadedCell],
+          e2: list[Contrast], rerun_a: dict[str, LoadedCell],
           canon_tools: dict[str, LoadedCell]) -> dict[str, str]:
     fired: dict[str, str] = {}
     # T1/T2: a guard firing everywhere is a bug report, not a result.
@@ -73,6 +75,7 @@ def check(design: C.Design, par: Parity, e1: list[RateCell], gaps: list[GapCell]
         "invocation": [c.invocation_pct for c in e1],
         "no_room_share": [c.no_room_pct for c in e1],
         "e4_gap_share": [g.gap_pct for g in gaps if g.gap_pct is not None],
+        "part_c_delivered": [c.a_pct for c in e2],
     }
     for name, vals in cols.items():
         if len(vals) > 1 and len(set(vals)) == 1:

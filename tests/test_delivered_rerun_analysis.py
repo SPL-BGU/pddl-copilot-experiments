@@ -98,6 +98,7 @@ def match(rec, task, dom, prob, label, v):
 
 RA = {m: f"slurm_vllm_{m}_off_tools_all_minimal_delivered-rerun" for m in (GM, Q9, Q35)}
 RB = "slurm_vllm_gemma4_26b-a4b_off_tools_all_neutral_delivered-rerun-neutral"
+RC = {m: f"slurm_vllm_{m}_off_no-tools_delivered-rerun" for m in (GM, Q9, Q35)}
 CT = {m: f"slurm_vllm_{m}_off_tools_all_minimal" for m in (GM, Q9, Q35)}
 
 
@@ -260,24 +261,31 @@ def test_base_e1(r, res):
                {"plan_valid": 6})
     r.check_eq("zero-success arm invocation",
                by(res, "e1", model=Q35, task="validate_problem", arm="steered")["invocation_pct"], 0.0)
-    r.check_eq("storage cuts all zero",
-               [c["storage_cuts"] for c in res["corpus"] if c["layer"] == "rerun"], [0, 0, 0, 0])
+    r.check_eq("storage cuts all zero (Parts A, B, C)",
+               [c["storage_cuts"] for c in res["corpus"] if c["layer"] == "rerun"], [0] * 7)
 
 
 # (Δ̂, CI lo, CI hi, sign-flip p) per model x task. Δ̂ = sum(d) / n.
+# E2: tools-plain (Part A) − no-tools (Part C), both graded by grade.grade.
+# Part C is right everywhere except 35B validate_plan v11 (4 rows) and 9B
+# simulate dA v11; Gemma solve dA v12 is a backticked list the tolerant path
+# grades right (its stored online grade is False).
 E2_EXP = {
     (GM, "solve"): (-100 / 6, -100 / 3, 0, 1.0),        # -1 at dB: sums (0,-1)
     (GM, "validate_domain"): (0, 0, 0, 1.0),
     (GM, "validate_problem"): (0, 0, 0, 1.0),
     (GM, "validate_plan"): (-1100 / 12, -100, -500 / 6, 0.5),  # sums (-5,-6): P(|±5±6|>=11)=1/2
+    (GM, "simulate"): (-100 / 6, -100 / 3, 0, 1.0),     # tools dB v12 no-room
     (Q9, "solve"): (-100 / 6, -100 / 3, 0, 1.0),
     (Q9, "validate_domain"): (0, 0, 0, 1.0),
     (Q9, "validate_problem"): (-100 / 6, -100 / 3, 0, 1.0),
     (Q9, "validate_plan"): (0, 0, 0, 1.0),
+    (Q9, "simulate"): (0, -100 / 3, 100 / 3, 1.0),      # +1 dA (Part C wrong), -1 dB (tools)
     (Q35, "solve"): (0, 0, 0, 1.0),
     (Q35, "validate_domain"): (-100 / 6, -100 / 3, 0, 1.0),
     (Q35, "validate_problem"): (0, 0, 0, 1.0),
-    (Q35, "validate_plan"): (100 / 3, 100 / 3, 100 / 3, 0.5),  # NT wrong on 4 v11 rows: sums (2,2)
+    (Q35, "validate_plan"): (100 / 3, 100 / 3, 100 / 3, 0.5),  # Part C wrong on 4 v11 rows: sums (2,2)
+    (Q35, "simulate"): (-100 / 6, -100 / 3, 0, 1.0),    # tools dB v13 tool-input error
 }
 E3_EXP = {
     (GM, "solve"): (100 / 6, 0, 100 / 3, 1.0),
@@ -301,14 +309,18 @@ E3_EXP = {
 def test_base_e2_e3(r, res):
     for (m, t), (d, lo, hi, p) in E2_EXP.items():
         c = by(res, "e2", model=m, task=t)
-        r.check(f"E2 {m}/{t}", c["status"] == "computed" and close(c["delta"], d)
+        r.check(f"E2 {m}/{t}", close(c["delta"], d)
                 and close(c["ci95"]["lo"], lo) and close(c["ci95"]["hi"], hi)
-                and close(c["p"], p), (c["delta"], c["ci95"], c["p"]))
-    for m in (GM, Q9, Q35):
-        c = by(res, "e2", model=m, task="simulate")
-        r.check(f"E2 {m}/simulate BLOCKED", c["status"] == A.E2_BLOCKED and c["delta"] is None
-                and c["p"] == 1.0, c)
-    r.check_eq("E2 family size", len(res["e2"]), 15)
+                and close(c["p"], p) and c["unpaired_a"] == 0 and c["unpaired_b"] == 0,
+                (c["delta"], c["ci95"], c["p"]))
+    r.check_eq("E2 family size, all computed", (len(res["e2"]), len(E2_EXP)), (15, 15))
+    # Part C delivered (side A): the tolerant-path row counts as right (6/6), and
+    # every s-expression simulate answer is graded right by the current normaliser.
+    r.check("E2 Gemma solve Part C 6/6", close(by(res, "e2", model=GM, task="solve")["a_pct"], 100))
+    r.check("E2 Gemma simulate Part C 6/6",
+            close(by(res, "e2", model=GM, task="simulate")["a_pct"], 100))
+    r.check("E2 9B simulate Part C 5/6",
+            close(by(res, "e2", model=Q9, task="simulate")["a_pct"], 500 / 6))
     # Holm: smallest p 0.5 x 15 > 1 -> every adjusted p is 1.
     r.check("E2 Holm all 1", all(c["p_holm"] == 1.0 for c in res["e2"]))
     for (m, t), (d, lo, hi, p) in E3_EXP.items():
@@ -318,6 +330,33 @@ def test_base_e2_e3(r, res):
                 (c["delta"], c["ci95"], c["p"]))
     r.check("E3 Holm all 1", all(c["p_holm"] == 1.0 for c in res["e3"]))
     r.check_eq("E2 caveat present", res["e2_caveat"], A.E2_CAVEAT)
+
+
+def test_part_c_parity(r, res):
+    """§2 Part C parity: Part C − canonical on the stored online grade; 12 cells.
+    Only Gemma solve differs: Part C stored (dA,v12) False (strict online parse
+    of a backticked list), canonical True -> -1 at dA."""
+    cells = res["part_c_parity"]
+    r.check_eq("Part C parity: 12 cells, no simulate",
+               (len(cells), sorted({c["task"] for c in cells})),
+               (12, ["solve", "validate_domain", "validate_plan", "validate_problem"]))
+    for c in cells:
+        if (c["model"], c["task"]) == (GM, "solve"):
+            r.check("Part C Gemma solve Δ̂ -100/6, CI90 [-100/3, 0], not met",
+                    close(c["delta"], -100 / 6) and close(c["ci90"]["lo"], -100 / 3)
+                    and close(c["ci90"]["hi"], 0) and c["verdict"] == A.NOT_MET
+                    and close(c["tv_rerun_pct"], 500 / 6) and close(c["tv_canonical_pct"], 100),
+                    c)
+        else:
+            r.check(f"Part C {c['model']}/{c['task']} Δ̂ 0 met",
+                    close(c["delta"], 0) and close(c["ci90"]["lo"], 0)
+                    and close(c["ci90"]["hi"], 0) and c["verdict"] == A.MET
+                    and c["unpaired_rerun"] == 0 and c["unpaired_canonical"] == 0, c)
+    r.check("Part C 35B vplan both sides 8/12 stored",
+            close([c for c in cells if (c["model"], c["task"]) == (Q35, "validate_plan")][0]
+                  ["tv_rerun_pct"], 800 / 12))
+    r.check("Part C parity is not a gate: job verdict unchanged",
+            res["parity"]["job"] == A.JOB_HOLDS)
 
 
 E4_EXP = {
@@ -501,6 +540,68 @@ def test_refusals(r):
         edit_rows(cell_file(root, "rerun", RA[GM]), f)
     expect_refusal(r, "row of another model", wrong_model, "in cell of gemma4_26b-a4b")
 
+    def c_missing(root):
+        def f(recs):
+            del recs[0]["result"]["response_truncated_by_storage"]
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[GM]), f)
+    expect_refusal(r, "Part C row missing the storage field", c_missing,
+                   "missing key(s) ['response_truncated_by_storage']")
+
+    def c_cut(root):
+        def f(recs):
+            recs[1]["result"]["response_truncated_by_storage"] = True
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[Q9]), f)
+    expect_refusal(r, "Part C storage-cut row", c_cut, "response cut by storage")
+
+    def c_steered(root):
+        def f(recs):
+            recs[2]["result"]["prompt_variant"] = 14
+            recs[2]["key"][5] = 14
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[Q35]), f)
+    expect_refusal(r, "Part C row with a steered variant", c_steered,
+                   "variant 14 not registered")
+
+    def c_tools(root):
+        def f(recs):
+            recs[3]["result"]["tool_calls"] = [{"name": "validate_plan", "arguments": {},
+                                                "result": "{}"}]
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[GM]), f)
+    expect_refusal(r, "Part C row with tool calls", c_tools, "no-tools row carries tool fields")
+
+    def c_style(root):
+        def f(recs):
+            recs[0]["result"]["prompt_style"] = "neutral"
+            recs[0]["key"][9] = "neutral"
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[Q9]), f)
+    expect_refusal(r, "Part C row with neutral style", c_style,
+                   "prompt_style 'neutral' in a 'minimal' cell")
+
+    def c_fc(root):
+        def f(recs):
+            recs[0]["result"]["format_compliant"] = True     # a solve row
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[Q9]), f)
+    expect_refusal(r, "Part C format_compliant outside simulate", c_fc,
+                   "format_compliant set outside no-tools simulate")
+
+    def c_void(root):
+        def f(recs):
+            recs[0]["result"].update(success=False, failure_reason="ollama_parse_error",
+                                     error="error parsing tool call")
+            return recs
+        edit_rows(cell_file(root, "rerun", RC[Q35]), f)
+    # 1 of 36 = 2.8% > 1%
+    expect_refusal(r, "Part C exception rows > 1% -> VOID", c_void, "VOID (§7)")
+
+    def c_short(root):
+        edit_rows(cell_file(root, "rerun", RC[GM]), lambda recs: recs[:-1])
+    expect_refusal(r, "Part C short cell", c_short, "IncompleteCell")
+
     def no_marker(root):
         (root / "rerun" / RUN.FIXTURE_MARKER).unlink()
     expect_refusal(r, "fixture marker missing", no_marker, "SYNTHETIC_FIXTURE")
@@ -613,16 +714,18 @@ def test_tripwires(r):
     gt = json.loads((FIXTURE / "gt_cache.json").read_text())
     table = RUN.fixture_verdicts(FIXTURE)
     par = A.parity(cells["rerun_a"], cells["canon_tools"], 2)
-    rows = [x for lc in cells["rerun_a"].values() for x in lc.rows]
+    rows = ([x for lc in cells["rerun_a"].values() for x in lc.rows]
+            + [x for lc in cells["rerun_c"].values() for x in lc.rows])
     grades = {(x.cell, x.trial_key): G.grade(x, gt, table) for x in rows}
+    e2 = A.e2(cells["rerun_a"], cells["rerun_c"], grades, 2)
     e1 = [A.rate_cell(list(cells["rerun_a"][m].rows), grades, m, t, a, "minimal", 2)
           for m, t, a in A.CELLS]
     gaps = [A.e4_cell(list(cells["rerun_a"][m].rows), grades, gt, m, t, a) for m, t, a in A.CELLS]
-    r.check_eq("base: no tripwire", T.check(design, par, e1, gaps, cells["rerun_a"],
+    r.check_eq("base: no tripwire", T.check(design, par, e1, gaps, e2, cells["rerun_a"],
                                              cells["canon_tools"]), {})
     for c in e1:
         c.invocation_pct = 50.0
-    fired = T.check(design, par, e1, gaps, cells["rerun_a"], cells["canon_tools"])
+    fired = T.check(design, par, e1, gaps, e2, cells["rerun_a"], cells["canon_tools"])
     r.check_eq("T3 constant column", list(fired), ["T3_constant_invocation"])
     for c in e1:
         c.invocation_pct = 100.0 * (c.n % 7)
@@ -630,7 +733,7 @@ def test_tripwires(r):
         if g.n_gap:
             g.categories = {k: 0 for k in E4.CATS}
             g.categories[E4.NEEDS_READING] = g.n_gap
-    fired = T.check(design, par, e1, gaps, cells["rerun_a"], cells["canon_tools"])
+    fired = T.check(design, par, e1, gaps, e2, cells["rerun_a"], cells["canon_tools"])
     r.check("T5 fallback bucket everywhere", "T5_needs_reading_everywhere" in fired, fired)
 
 
@@ -726,6 +829,28 @@ def test_grader_prefix(r):
     doubled = PREFIX + PREFIX + "(a x)"
     r.check_eq("doubled marker stripped once only", G.solve_plan(doubled)[0], ())
     r.check_eq("verdict behind prefix", G.stated_verdict(PREFIX + "VERDICT: INVALID"), False)
+    # Part C rows go through the same grader (prereg 8b item 12).
+    design = RUN.fixture_design(FIXTURE)
+    pc = S.load_cell(FIXTURE / "rerun", S.spec_rerun_c(design, GM))
+    gt = json.loads((FIXTURE / "gt_cache.json").read_text())
+    table = RUN.fixture_verdicts(FIXTURE)
+    row = [x for x in pc.rows if x.trial_key == ("solve", "dA", "p01", "", 12)][0]
+    g = G.grade(row, gt, table)
+    r.check_eq("Part C tolerant solve: stored False, delivered True",
+               (row.success, g.ok, g.extraction), (False, True, "tolerant_lines"))
+    row = [x for x in pc.rows if x.trial_key == ("simulate", "dA", "p01", "", 11)][0]
+    oracle_atoms = json.loads(gt["dA"]["p01"]["trace"])["trajectory"][0]["boolean_fluents"]
+    answer_atoms = json.loads(row.response)["trajectory"][0]["state"]["boolean"]
+    r.check("simulate notation differs (functional oracle, s-expression answer)",
+            "at(r,l1)" in oracle_atoms and "(at r l1)" in answer_atoms)
+    r.check_eq("current normaliser grades it right", G.grade(row, gt, table).reason,
+               "trajectory_ok")
+    try:
+        canon = S.load_cell(FIXTURE / "canonical", S.spec_canonical_no_tools(design, GM))
+        G.grade(canon.rows[0], gt, table)
+        r.check("canonical snapshot rows are never graded", False)
+    except S.SchemaError:
+        r.check("canonical snapshot rows are never graded", True)
 
 
 def test_stats_units(r):
@@ -814,8 +939,10 @@ def test_canonical_dry_run(r):
                 and c.ci90.k == 20 for c in p.cells))
     r.check_eq("dry run: job", (p.job, p.qwen_met, p.gemma_failed), (A.JOB_HOLDS, 20, False))
     nt = {m: S.load_cell(root, S.spec_canonical_no_tools(C.REGISTERED, m)) for m in C.PART_A_MODELS}
-    r.check("dry run: no no-tools answer carries the leaked prefix",
-            not any(G.has_prefix(x.response) for lc in nt.values() for x in lc.rows))
+    pc = A.part_c_parity(nt, nt, C.REGISTERED.k_domains)
+    r.check("dry run: Part C parity path, canonical no-tools vs itself, Δ = 0 in 12 cells",
+            len(pc) == 12 and all(c.delta == 0 and c.ci90.lo == 0 and c.ci90.hi == 0
+                                  and c.verdict == A.MET for c in pc))
     # The band constants equal a recount of the canonical overlay.
     ov_dir = root.parent / "derived" / "e2e_overlay" / "sweep5v2-live"
     if not ov_dir.is_dir():
@@ -843,6 +970,7 @@ def main():
         test_base_parity(r, res)
         test_base_e1(r, res)
         test_base_e2_e3(r, res)
+        test_part_c_parity(r, res)
         test_base_e4(r, res)
         test_base_readings(r, res)
     test_refusals(r)

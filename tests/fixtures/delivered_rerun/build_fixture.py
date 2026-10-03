@@ -17,7 +17,8 @@ Layout per Part A cell (72 rows = 6 variants x 12):
   validate_problem (dA,p01)=VALID (dB,n01)=INVALID            2
   validate_plan    (dA,p01,v1) (dA,p01,b1) (dB,p01,v1) (dB,p01,b1)   4
   simulate         (dA,p01) (dB,p01)                          2
-Part B: Gemma validate_plan only, 24 rows. Canonical no-tools: v11-13, 36 rows.
+Part B: Gemma validate_plan only, 24 rows. Part C (no tools, full storage) and
+canonical no-tools: v11-13, 36 rows each.
 
 Default row: the right tool is called, its result is right (tool-verified),
 and the final answer is right. The planted deviations are listed in PLANTS
@@ -316,6 +317,56 @@ def no_tools_rows(model):
     return rows
 
 
+# Part C (no-tools rerun) plants on top of the default "right answer" row.
+PART_C_PLANTS = {
+    # Gemma solve dA v12: the right plan as a backticked numbered list. The
+    # strict online grade fails it (format_parse_fail, stored success False);
+    # the delivered grader's tolerant path passes it (prereg 8b item 12).
+    (G, "solve", "dA", "p01", "", 12): dict(
+        response="1. `(a x)` - pick" + chr(10) + "2. `(b y)` - put", success=False,
+        failure_reason="format_parse_fail"),
+    # 9B simulate dA v11: one extra fact at step 1 (wrong trajectory).
+    (Q9, "simulate", "dA", "p01", "", 11): dict(
+        response=json.dumps(model_traj("dA", wrong_fact=True)), success=False,
+        failure_reason="result_mismatch"),
+}
+
+
+def part_c_rows(model):
+    """No-tools rerun rows. Simulate answers use s-expression atoms ("(at r l1)")
+    against the functional-notation oracle ("at(r,l1)"), which only the current
+    normaliser (`_canon_atom`) equates."""
+    rows = []
+    for v in (11, 12, 13):
+        for task, fxs in FIXTURES.items():
+            for dom, problem, label in fxs:
+                if task == "solve":
+                    resp = json.dumps({"plan": PLANS[dom]})
+                elif task == "simulate":
+                    resp = json.dumps(model_traj(dom))
+                else:
+                    t = truth(task, problem, label)
+                    resp = json.dumps({"verdict": "VALID" if t else "INVALID", "reason": ""})
+                row = {
+                    "model": MODELS[model], "task": task, "domain_name": dom,
+                    "problem_name": problem, "prompt_variant": v, "with_tools": False,
+                    "success": True, "tool_selected": None,
+                    "format_compliant": True if task == "simulate" else None,
+                    "response": resp, "response_truncated_by_storage": False, "thinking": "",
+                    "tool_calls": [], "tokens": base_tokens(1), "duration_s": 1.0,
+                    "error": "", "tool_filter": "all", "prompt_style": "minimal",
+                    "failure_reason": "ok", "truncated": False, "done_reason": "stop",
+                    "think_truncated": None, "plan_label": label, "infra_failure": False}
+                if (model, task, dom, problem, label, v) in NT_WRONG:
+                    t = truth(task, problem, label)
+                    row.update(success=False, failure_reason="verdict_mismatch",
+                               response=json.dumps({"verdict": "INVALID" if t else "VALID",
+                                                    "reason": ""}))
+                row.update(PART_C_PLANTS.get((model, task, dom, problem, label, v), {}))
+                rows.append(row)
+    return rows
+
+
 def write_cell(path: Path, rows):
     path.mkdir(parents=True, exist_ok=True)
     with (path / "trials.jsonl").open("w") as fh:
@@ -338,6 +389,7 @@ def build(out: Path) -> None:
         write_cell(canon / f"slurm_vllm_{m}_off_tools_all_minimal",
                    [to_canonical(r, m) for r in a])
         write_cell(canon / f"slurm_vllm_{m}_off_no-tools", no_tools_rows(m))
+        write_cell(rerun / f"slurm_vllm_{m}_off_no-tools_delivered-rerun", part_c_rows(m))
     write_cell(rerun / "slurm_vllm_gemma4_26b-a4b_off_tools_all_neutral_delivered-rerun-neutral",
                rerun_b_rows())
     gt = {d: {"p01": {"trace": json.dumps({"valid": True, "trajectory": ORACLE[d]})}}

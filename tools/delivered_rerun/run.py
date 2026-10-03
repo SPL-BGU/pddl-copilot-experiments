@@ -12,9 +12,10 @@ frozen (prereg §8). Fixture mode runs only on a directory that carries the
 `SYNTHETIC_FIXTURE` marker and a non-registered (small) design.
 
 Order of operations follows the prereg: completeness and VOID rules (§7)
--> parity on tool-verified success (§3, before any delivered number) ->
-delivered grading -> E1–E4 (§4) -> readings (§5) -> readout tripwires ->
-JSON + markdown. Any failure exits non-zero without writing a readout.
+for Parts A, B and C -> parity on tool-verified success (§3, before any
+delivered number) and the Part C parity check on the stored online grade (§2)
+-> delivered grading of every rerun row, tool and no-tools alike (§8b item 12)
+-> E1–E4 (§4) -> readings (§5) -> readout tripwires -> JSON + markdown. Any failure exits non-zero without writing a readout.
 """
 from __future__ import annotations
 
@@ -90,13 +91,15 @@ def load_all(design: C.Design, rerun_root: Path, canonical_root: Path) -> dict:
     cells = {
         "rerun_a": {m: S.load_cell(rerun_root, S.spec_rerun_a(design, m)) for m in C.PART_A_MODELS},
         "rerun_b": S.load_cell(rerun_root, S.spec_rerun_b(design)),
+        "rerun_c": {m: S.load_cell(rerun_root, S.spec_rerun_c(design, m)) for m in C.PART_A_MODELS},
         "canon_tools": {m: S.load_cell(canonical_root, S.spec_canonical_tools(design, m))
                         for m in C.PART_A_MODELS},
         "canon_nt": {m: S.load_cell(canonical_root, S.spec_canonical_no_tools(design, m))
                      for m in C.PART_A_MODELS},
     }
     # §7 stop rule: > 1% exception / infrastructure rows -> VOID, rerun from scratch.
-    for lc in list(cells["rerun_a"].values()) + [cells["rerun_b"]]:
+    for lc in (list(cells["rerun_a"].values()) + [cells["rerun_b"]]
+               + list(cells["rerun_c"].values())):
         bad = lc.exception_rows + lc.infra_rows
         if bad > C.EXCEPTION_VOID_FRAC * len(lc.rows):
             raise Halt(f"VOID (§7): {lc.spec.name} has {bad} exception/infrastructure rows "
@@ -108,7 +111,8 @@ def load_all(design: C.Design, rerun_root: Path, canonical_root: Path) -> dict:
 def corpus_table(cells: dict) -> list[dict]:
     out = []
     every = (list(cells["rerun_a"].values()) + [cells["rerun_b"]]
-             + list(cells["canon_tools"].values()) + list(cells["canon_nt"].values()))
+             + list(cells["rerun_c"].values()) + list(cells["canon_tools"].values())
+             + list(cells["canon_nt"].values()))
     for lc in every:
         out.append({"cell": lc.spec.name, "layer": lc.spec.layer, "rows": len(lc.rows),
                     "torn_lines": lc.torn_lines, "exception_rows": lc.exception_rows,
@@ -154,12 +158,15 @@ async def live_verdicts(need: set, domains_dir: Path, marketplace: Path) -> dict
 def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str,
             audited: set[str]) -> dict:
     k = design.k_domains
-    rerun_a, rerun_b = cells["rerun_a"], cells["rerun_b"]
+    rerun_a, rerun_b, rerun_c = cells["rerun_a"], cells["rerun_b"], cells["rerun_c"]
 
-    # §3 first: tool-verified only, before any delivered grade exists.
+    # §3 first: tool-verified only, before any delivered grade exists. The
+    # Part C parity check reads only the stored online grade as well.
     par = A.parity(rerun_a, cells["canon_tools"], k)
+    par_c = A.part_c_parity(rerun_c, cells["canon_nt"], k)
 
-    rerun_rows = [r for lc in rerun_a.values() for r in lc.rows] + list(rerun_b.rows)
+    rerun_rows = ([r for lc in rerun_a.values() for r in lc.rows] + list(rerun_b.rows)
+                  + [r for lc in rerun_c.values() for r in lc.rows])
     need = G.solve_plans_to_validate(rerun_rows)
     verdicts = verdict_fn(need)
     grades: A.Grades = {}
@@ -168,7 +175,7 @@ def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str
 
     e1 = [A.rate_cell(list(rerun_a[m].rows), grades, m, t, a, C.STYLE_A, k)
           for m, t, a in A.CELLS]
-    e2 = A.e2(rerun_a, cells["canon_nt"], grades, k)
+    e2 = A.e2(rerun_a, rerun_c, grades, k)
     e3 = A.e3(rerun_a, grades, k)
     gaps = [A.e4_cell(list(rerun_a[m].rows), grades, gt_cache, m, t, a) for m, t, a in A.CELLS]
     r1 = A.r1(e2)
@@ -176,7 +183,7 @@ def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str
                 "R4": A.r4(rerun_a, grades),
                 "R5": A.r5(list(rerun_a[C.PART_B_MODEL].rows), list(rerun_b.rows), grades, k)}
 
-    fired = T.check(design, par, e1, gaps, rerun_a, cells["canon_tools"])
+    fired = T.check(design, par, e1, gaps, e2, rerun_a, cells["canon_tools"])
     unaudited = {k_: v for k_, v in fired.items() if k_ not in audited}
     if unaudited:
         raise Halt("readout tripwire(s) fired; audit before any readout sentence:\n  "
@@ -190,6 +197,7 @@ def analyse(design: C.Design, cells: dict, gt_cache: dict, verdict_fn, mode: str
         "corpus": corpus_table(cells),
         "parity": asdict(par),
         "apparatus_deltas": list(A.APPARATUS_DELTAS),
+        "part_c_parity": [asdict(c) for c in par_c],
         "e1": [asdict(c) for c in e1],
         "e2": [asdict(c) for c in e2],
         "e2_caveat": A.E2_CAVEAT,

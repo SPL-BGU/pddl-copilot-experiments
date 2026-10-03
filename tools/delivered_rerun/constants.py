@@ -37,9 +37,13 @@ STYLE_A = "minimal"                                  # §2 Part A prompt style
 STYLE_B = "neutral"                                  # §2 Part B prompt style
 RUN_TAG_A = "delivered-rerun"                        # §2 run tag
 RUN_TAG_B = "delivered-rerun-neutral"                # §2 run tag
+RUN_TAG_C = "delivered-rerun"                        # §2 Part C: "same harness commit, tag `delivered-rerun`"
 TASKS: tuple[str, ...] = ("solve", "validate_domain", "validate_problem",
                           "validate_plan", "simulate")
 PART_B_TASK = "validate_plan"
+# §2 Part C parity: "solve and the three validate tasks (12 cells) ... Simulate is excluded"
+PART_C_PARITY_TASKS: tuple[str, ...] = ("solve", "validate_domain", "validate_problem",
+                                        "validate_plan")
 PLAIN: tuple[int, ...] = (11, 12, 13)                # §2 plain arm
 STEERED: tuple[int, ...] = (14, 15, 16)              # §2 steered arm
 VARIANTS: tuple[int, ...] = PLAIN + STEERED
@@ -88,7 +92,7 @@ class Design:
     per_variant_b: int                      # §7 rows per variant, Part B
     per_task_variant: dict[str, int] = field(default_factory=dict)
     k_domains: int = 20                     # §3 "the 20 domains"
-    n_no_tools_cell: int = 0                # canonical no-tools rows per model (v11-13)
+    n_no_tools_cell: int = 0                # no-tools rows per model, v11-13 (Part C and canonical)
     # Canonical delivered bounds per Part A cell, as (n, delivered ok,
     # censored) counts of the e2e overlay (`e2e_strict`), keyed
     # (model, task, arm). Used ONLY by the readout-time band tripwire.
@@ -178,6 +182,9 @@ def assert_statistical_constants() -> None:
     assert set(PART_A_MODELS) == {"Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"}
     assert PART_B_MODEL == CONTROL_MODEL == "gemma4_26b-a4b"
     assert PART_B_TASK == "validate_plan"
+    assert RUN_TAG_C == RUN_TAG_A == "delivered-rerun"
+    assert set(PART_C_PARITY_TASKS) == set(TASKS) - {"simulate"}
+    assert len(PART_A_MODELS) * len(PART_C_PARITY_TASKS) == 12   # §2 "12 cells"
     assert LEAKED_PREFIX == "<|channel>thought\n<channel|>"
 
 
@@ -197,7 +204,9 @@ def assert_registered(design: Design) -> None:
     assert design.per_variant_b * len(PLAIN) == 3_000
     # Part A total (§2): 3 x 9,120 = 27,360
     assert design.n_part_a_cell * len(PART_A_MODELS) == 27_360
+    assert design.n_no_tools_cell == 4_560, design.n_no_tools_cell   # §2 Part C "3 × 4,560"
     assert design.n_no_tools_cell == design.per_variant_a * len(PLAIN)
+    assert design.n_no_tools_cell * len(PART_A_MODELS) == 13_680     # §2 Part C "13,680 trials"
     assert set(design.canonical_delivered_counts) == {
         (m, t, a) for m in PART_A_MODELS for t in TASKS for a in ARMS}
 

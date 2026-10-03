@@ -21,6 +21,10 @@ edited, partly imported):
 * The "delivered" surface is the overlay's `e2e_strict` (NUMBERS.md "Frontier
   e2e": delivered is the primary surface, `e2e_strict`): an empty final
   answer fails, including after a correct tool call (no delegation credit).
+* §8b item 12: the same rule, with the same markdown tolerances, grades the
+  no-tools rows of Part C. `e2e_regrade` passes no-tools solve/validate rows
+  through their strict online grade instead; here both arms go through
+  `grade()` unchanged.
 
 Imported unchanged from e2e_regrade (pure helpers, behaviour exactly as
 needed): `truth_for`, `simulate_candidates`, `oracle_canon_for`,
@@ -128,10 +132,11 @@ def _empty(row: Row, prefix: bool) -> Delivered:
 
 
 def grade(row: Row, gt_cache: dict, plan_verdicts: Mapping[PlanKey, bool]) -> Delivered:
-    """Delivered grade of one with-tools row. Raises on anything not exact."""
-    if not row.with_tools:
-        raise SchemaError("grade() is for with-tools rows; no-tools rows carry "
-                          "their online grade (see endpoints.no_tools_delivered)")
+    """Delivered grade of one rerun row (tools or Part C no-tools: the same
+    rule for both, §8b item 12). Raises on anything not exact."""
+    if row.layer != "rerun":
+        raise SchemaError("grade() reads full-storage rerun rows only; canonical "
+                          "answers are 500-character snapshots")
     resp = row.response
     prefix = has_prefix(resp)
     if not strip_leaked_channel_prefix(resp).strip():
@@ -189,7 +194,7 @@ def solve_plans_to_validate(rows) -> set[PlanKey]:
     """Every (domain, problem, plan) a solve grade will need a verdict for."""
     need: set[PlanKey] = set()
     for r in rows:
-        if r.with_tools and r.task == "solve" and strip_leaked_channel_prefix(r.response).strip():
+        if r.task == "solve" and strip_leaked_channel_prefix(r.response).strip():
             plan, _ = solve_plan(r.response)
             if plan:
                 need.add((r.domain, r.problem, plan))

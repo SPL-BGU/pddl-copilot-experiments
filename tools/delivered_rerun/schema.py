@@ -393,8 +393,12 @@ def parse_row(obj: Any, spec: CellSpec, where: str) -> Row:
         if len(response) > C.STORAGE_CAP:
             raise RefusedRow(f"{where}: stored response {len(response)} chars > "
                              f"{C.STORAGE_CAP}")
-        if _need(r, "format_compliant", where) is not None:
-            raise SchemaError(f"{where}: format_compliant set on a with-tools row")
+        fc = _need(r, "format_compliant", where)
+        if with_tools or task != "simulate":
+            if fc is not None:
+                raise SchemaError(f"{where}: format_compliant set outside no-tools simulate")
+        elif fc is not None and not isinstance(fc, bool):
+            raise SchemaError(f"{where}: format_compliant must be a bool or null")
         if _need(r, "think_truncated", where) is not None:
             raise SchemaError(f"{where}: think_truncated set (decoupled row)")
     else:
@@ -501,6 +505,10 @@ def rerun_b_name() -> str:
     return f"slurm_vllm_{C.PART_B_MODEL}_{C.THINK}_tools_all_{C.STYLE_B}_{C.RUN_TAG_B}"
 
 
+def rerun_c_name(model_tag: str) -> str:
+    return f"slurm_vllm_{model_tag}_{C.THINK}_no-tools_{C.RUN_TAG_C}"
+
+
 def canonical_tools_name(model_tag: str) -> str:
     return f"slurm_vllm_{model_tag}_{C.THINK}_tools_all_{C.STYLE_A}"
 
@@ -524,6 +532,16 @@ def spec_rerun_b(design: C.Design) -> CellSpec:
                     variants=C.VARIANTS, n_rows=design.n_part_b,
                     per_variant=design.per_variant_b,
                     per_task_variant={C.PART_B_TASK: design.per_variant_b},
+                    k_domains=design.k_domains)
+
+
+def spec_rerun_c(design: C.Design, model_tag: str) -> CellSpec:
+    """§2 Part C: no tools, v11-13, all five tasks, 4,560 rows, full storage."""
+    return CellSpec(name=rerun_c_name(model_tag), layer=RERUN, model_tag=model_tag,
+                    with_tools=False, prompt_style=C.STYLE_A, tasks=C.TASKS,
+                    variants=C.PLAIN, n_rows=design.n_no_tools_cell,
+                    per_variant=design.per_variant_a,
+                    per_task_variant=design.per_task_variant,
                     k_domains=design.k_domains)
 
 
