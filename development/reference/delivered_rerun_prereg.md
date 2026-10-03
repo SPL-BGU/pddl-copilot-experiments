@@ -137,11 +137,11 @@ normalisation of §2 delta 3, exact (no censoring bounds).
 
 **E1. Delivered rate per cell.** 30 cells, with a domain-cluster bootstrap 95% interval.
 
-**E2. Availability contrast on the delivered score.** Tools-plain (this run) against
-no-tools (canonical `sweep5v2-live`, exact, v11–13), per model × task, paired on
-(domain, problem, variant, plan label), domain-cluster bootstrap 95% interval, Holm
-across the 15 comparisons. The no-tools side is not rerun; its serving version and the
-missing JSON constraint are stated wherever this contrast is quoted.
+**E2. Availability contrast on the delivered score.** Tools-plain (Part A) against
+no-tools (Part C), both from this run and graded with the same delivered grader, per
+model × task, paired on (domain, problem, variant, plan label), domain-cluster bootstrap
+95% interval, Holm across the 15 comparisons. (Amended 2026-10-03 with Part C, before any
+outcome was read; the canonical no-tools cells are not an E2 input.)
 
 **E3. Steering contrast on the delivered score.** Tools-steered against tools-plain,
 both from this run, same pairing and intervals, Holm across 15.
@@ -308,7 +308,11 @@ fixed now, before the freeze, so they are part of the registration, not deviatio
 15. Readout tripwire bands: tool-verified within ±30 points of canonical; delivered
     within [canonical low − 20, canonical high + 20 + canonical share of empty
     length-stopped answers + share with the leaked prefix]. A fired tripwire halts the
-    readout until audited; the audit is recorded in the readout.
+    readout until audited; the audit is recorded in the readout. Part C's delivered rate
+   has no band of its own; it is covered by the constant-column tripwire and by the
+   Part C parity table.
+16. R5's steering sentence, when neutral-steered is not within ±5 of minimal-steered,
+    reads "Not shown (neutral-steered not within ±5 of minimal-steered)".
 
 ## 9. Deviations
 
