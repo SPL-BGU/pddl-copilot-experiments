@@ -70,6 +70,13 @@ graded:
    cells on 0.22.0. If the cluster serves 0.20.2, the 9B cell carries a version delta
    and Gemma and the 35B do not.
 
+**The unaided arm is not rerun (decided 2026-10-03).** The canonical no-tools cells ran
+on vLLM 0.20.2, the same version this run uses, so the E2 contrast is same-version for
+all three models; and the no-tools delivered score is already exact, because it was
+graded online on the full text. A rerun would add a second unaided baseline without
+removing a confound. Omer: "if best approach is to do it then do it"; the analysis
+above says it is not.
+
 Nothing else differs: same model weights and quantisations, same parsers
 (`vllm_lookup`), same GPU class (`rtx_6000`, one per job), same sbatch.
 

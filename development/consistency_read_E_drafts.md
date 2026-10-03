@@ -46,4 +46,4 @@ that covers Qwen only, thinking on. Suggested: hold E3a, E3b and E8b for the C5 
 rewrite and apply the rest.
 
 > ANSWER (all / all except … / per-row notes):
->
+> Omer 2026-10-03: okay, as suggested. Applied in PR #115 (27 rows); E3a, E3b, E8b held for the delivery-gap rewrite.

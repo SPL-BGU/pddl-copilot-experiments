@@ -2369,3 +2369,11 @@ validated by an independent ranking subagent (the user asked for a second perspe
   the 500-character snapshots cannot recover.
 - **Bottom line:** the paper waits on one run. Everything else found today is rewriting
   with numbers already on disk.
+
+## 2026-10-03 — PlanBench wording and group E approved; the delivered rerun is running; no unaided rerun
+
+- **PlanBench (Omer: okay).** PR #114: the equivalence test is reported and declared (exploratory comparison; not met at ±7.5, p = 0.068; met at ±10, p = 0.008), the post hoc corrected-extractor rows sit beside the primary figures, and the 602-file clause is fixed. `NUMBERS.md` rows added.
+- **Group E (Omer: okay).** PR #115: 27 rewordings; E3a, E3b, E8b held for the delivery-gap rewrite after the rerun.
+- **Unaided arm (Omer: do it if it is the best approach). Decision: not run.** The canonical no-tools cells ran on vLLM 0.20.2, which is what the rerun uses (served banner in the smoke log), so the availability contrast is same-version for all three models, and the no-tools delivered score is already exact (graded online on full text). My earlier suggestion that it would remove the 9B version objection was wrong: the rerun of the tool arm removes it. Recorded in the prereg.
+- **Rerun status.** Smoke passed (prereg §8a). Chain submitted 2026-10-02: 21982285 → 21982286 → 21982369 → 21982370. The smoke showed a real 16K-context limit on simulate (tool result alone fills the window in about 45% of smoke trials); registered as a reported limit, not changed.
+- **Merges:** Omer will merge later (#110 → #111 → #114 → #115; #112 docs; #113 harness, after the run or without moving the cluster checkout).
