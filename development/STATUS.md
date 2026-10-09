@@ -2,7 +2,7 @@
 
 *Content last refreshed: 2026-10-09 (delivered rerun complete and read out by the
 frozen code; N1b updated; every open PR merged: #117, then the paper stack #110, #111,
-#114, #115). Before that: 2026-10-02 (resume-verify; Q1/Q2/Q3/Q4 of the
+#114, #115; the descriptive §6 tables and the E4 hand read done). Before that: 2026-10-02 (resume-verify; Q1/Q2/Q3/Q4 of the
 weakness list answered; the $0 re-analysis package delivered; the delivered rerun
 pre-registered. Earlier refreshes are in git history). Renamed
 from `remaining_work_20260811.md` on 2026-08-29.*
@@ -126,9 +126,11 @@ arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
    package `822aace…`); ran on live data 2026-10-09 with no halt and no tripwire. On `main`
    since 2026-10-09 via PR #117, a squash (`4147a0c`), so `4b2fe6e` and `d558946` are reached
    through their tags, not `main`'s history; frozen files re-checked unchanged (prereg §8).
-   Still open under the prereg, labelled descriptive: the hand read of the E4 "needs
-   reading" rows (§8b 13) and the §6 tables (per wording, per domain, classical vs
-   numeric, cost at realistic price ratios, the Gemma no-call answers read in full).
+   **Descriptive pieces done 2026-10-09:** the E4 hand read (§8b 13) and the §6 tables
+   (per wording, per domain, classical vs numeric, clipped allowances, cost at 1:1 to
+   5:1, the Gemma no-call answers read in full), in
+   `reference/delivered_rerun_secondary/secondary.md`; figures in `NUMBERS.md`. Nothing is left
+   open under the prereg.
 4. **PlanBench wording** (in the tex since 2026-10-09, PR #114): corrected-extractor
    numbers beside the shipped ones; the "well inside ±7.5" sentence replaced.
 

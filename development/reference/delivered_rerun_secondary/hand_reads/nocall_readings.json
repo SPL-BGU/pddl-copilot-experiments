@@ -1,0 +1,1524 @@
+{
+ "n": 60,
+ "readers": "each read in full by two independent readers (Claude Opus agent, Claude Sonnet agent) with the fixed rubric",
+ "counts": {
+  "answers read (each by both readers)": 60,
+  "end in a clear final verdict (both readers)": 59,
+  "verdict right (both readers)": 54,
+  "reader's verdict equals the grader's parsed verdict (both readers)": 60,
+  "try to call a tool (either reader)": 0,
+  "mention a tool or validator (either reader)": 0
+ },
+ "agreement": {
+  "ends_in_verdict": 60,
+  "verdict": 60,
+  "matches_mechanical": 60,
+  "right": 60,
+  "tool_attempt": 60,
+  "mentions_tool": 60
+ },
+ "disagreements": [],
+ "rows": [
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b2|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first claimed failure (step 5)",
+    "note": "Failure reason looks wrong: it lists the real unload preconditions (no lifting), then claims unload needs (lifting hoist0 crate3). Right verdict, doubtful reason."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps until first failing action",
+    "note": "claims unload needs lifting; stops at step 5"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v1|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|depot|p01|v4|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depot|p01|v4|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "checks first action only, stops at claimed failure",
+    "note": "Says crate9 is on pallet1 (it lists both crate3 and crate9 on pallet1), so it rejects lift of crate9 from crate3. Probably misread the init; true answer VALID."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depot|p01|v4|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "checks first action only, misreads lift precondition",
+    "note": "wrong: says crate9 not on crate3 from a misread; initial state lists crate3 and crate9 both on pallet1"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|parking|p04|b5|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p04|b5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces state step by step to first failed precondition (step 4)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p04|b5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps until a precondition fails",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|counters|p01|b5|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p01|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks numeric values to failed precondition, also checks goal",
+    "note": "Step numbering is loose (batches of repeated actions)."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p01|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks counter values to first failing step, then goal",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|depots|p04|b2|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p04|b2|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions to first failure (step 11)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p04|b2|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps until first failing action",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|v2|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|v2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": "Text is identical to the zenotravel p03 v4 v11 packet."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|v2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v1|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|drone|p04|v3|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|drone|p04|v3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks position and battery every step, checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|drone|p04|v3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces position and battery over all steps",
+    "note": "long numeric trace"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|counters|p05|b5|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p05|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks counter values, finds goal not met",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p05|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "computes final counter value and checks goal",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v2|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p02|b1|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p02|b1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks numeric state every step, finds goal not met",
+    "note": "Tracks values but does not state preconditions per step."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p02|b1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces all steps, checks goal count",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p02|b5|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p02|b5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step, finds action with swapped arguments",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p02|b5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps, finds swapped argument order at step 32",
+    "note": "also reasons past the error to the goal"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|b5|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|b5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "spots type error in first action, then simulates corrected plan",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|b5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "flags type error in first action, then traces corrected plan",
+    "note": "reaches INVALID for type mismatch only"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|miconic|p02|v4|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|miconic|p02|v4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|miconic|p02|v4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|v4|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|v4|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": "Text is identical to the zenotravel p03 v2 v11 packet."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|v4|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p01|v2|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p01|v2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p01|v2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p02|b1|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p02|b1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions, finds goal not met",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p02|b1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces all steps, goal check finds a missing communicate",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p04|b2|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p04|b2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first failed precondition (step 4)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p04|b2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces until calibrate precondition fails",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|barman|p05|v1|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|barman|p05|v1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "checks each goal through key action subsequences, spot-checks a few preconditions",
+    "note": "No full step-by-step trace."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|barman|p05|v1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "summarises by goal, checks only key preconditions",
+    "note": "not a full step trace"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p02|b4|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p02|b4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first failed precondition (step 2)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p02|b4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "stops at second action",
+    "note": "fuel reasoning is muddled but verdict matches"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p03|b4|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p03|b4|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first failed precondition (step 4)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p03|b4|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "stops at first failing take_image",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p03|v5|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p03|v5|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps, retracts a false failure at step 4, then checks goals",
+    "note": "First calls step 4 a definitive failure, then corrects itself; later steps checked loosely."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p03|v5|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps, flips mid-answer then re-checks",
+    "note": "says step 4 fails, then retracts"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b4|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first failed precondition (step 4)",
+    "note": "Muddled about clear pallet1 in step 1, but the step 4 failure (truck not at depot0) is sound."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "stops at step 4 truck location",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p05|v5|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p05|v5|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "simulates numeric state, checks every precondition and goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p05|v5|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "computes coordinates and save preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v4|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v4|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "simulates numeric state, checks every precondition and goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v4|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "computes coordinates and save preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|depots|p03|v5|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p03|v5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": "Wrongly says crate is not a surface, then contradicts itself and proceeds."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p03|v5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": "raises a type worry about crate as surface but proceeds"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p04|b3|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p04|b3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks numeric state to failed precondition (last step)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p04|b3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces fuel numerically, stops at debark of person never boarded",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p01|v4|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p01|v4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p01|v4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p04|b3|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p04|b3|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks numeric state to failed precondition (step 16)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|gardening|p04|b3|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to step 16 precondition failure",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|b1|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions, finds goal not met",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps then goal check",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p01|b5|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p01|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks numeric state to failed precondition (step 11)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p01|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces fuel, stops at debark of unboarded person",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v3|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": "Raises a case-mismatch objection (strict PDDL would fail), then waves it off as a typo; hedged VALID."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p02|v3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps, hedges on case sensitivity",
+    "note": "verdict is conditional on treating the case mismatch as a typo; ends in VERDICT: VALID"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|pogo_stick|p03|b2|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|pogo_stick|p03|b2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks inventory to first failed precondition (step 3)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|pogo_stick|p03|b2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "stops at craft_plank with no logs",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|v1|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|v1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|parking|p05|v1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|depots|p03|v3|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p03|v3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p03|v3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": "raises a type worry about crate as surface but proceeds"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p01|b3|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p01|b3|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step, marks all preconditions true",
+    "note": "Misses the flaw: step 10 loads goods1 with no prior buy, and it checks ready-to-load at level0 there while it checked level1 for the same action earlier."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p01|b3|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces all steps, accepts every precondition",
+    "note": "wrong: misses the failure; all preconditions marked True"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p05|b1|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p05|b1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step, finds goal not met",
+    "note": "Labels several steps 'Error' and then 'Success'; sloppy, but the final reason is sound."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p05|b1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps, final goal check finds missing communicate",
+    "note": "several spurious ERROR labels retracted"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|counters|p04|b2|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p04|b2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks counter values, finds goal not met",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p04|b2|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "notes rate is zero so value never changes, goal fails",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|drone|p02|b1|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|drone|p02|b1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks numeric state every step, finds goal not met",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|drone|p02|b1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces all steps, goal check finds z not 0",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p04|v5|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p04|v5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|satellite|p04|v5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p04|v3|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p04|v3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p04|v3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p05|v3|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p05|v3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks numeric state every step and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel-numeric|p05|v3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces fuel numerically over all steps",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|pogo_stick|p02|b3|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|pogo_stick|p02|b3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks inventory every step to failed precondition (step 20)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|pogo_stick|p02|b3|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces inventory counts until place_tree_tap position fails",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v5|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "simulates numeric state, checks every precondition and goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "computes coordinates and save preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|b5|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first failed precondition (step 2)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|zenotravel|p03|b5|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "stops at second action",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p01|v5|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p01|v5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p01|v5|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|counters|p05|b1|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p05|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "tracks counter values, finds goal not met",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|counters|p05|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "computes final counter value and checks goal",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p05|v1|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p05|v1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "checks goals by grouping the relevant actions, no sequential state trace",
+    "note": "Lists preconditions without confirming they hold in order."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p05|v1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "summarises by goal, checks only key actions",
+    "note": "not a step trace; no real check of preconditions"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|delivery|p04|v1|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|delivery|p04|v1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to a claimed failed precondition (step 26)",
+    "note": "Marks several steps 'ERROR' and then calls them valid. Claims bot1 is in roomb at step 26, probably from a misread or skipped move; true answer VALID."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|delivery|p04|v1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps, labels several ERRORs then retracts, ends on step 26",
+    "note": "wrong: step 26 claim about bot1 location is a state-tracking error"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|delivery|p01|b3|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|delivery|p01|b3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first failed precondition (step 7)",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|delivery|p01|b3|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps until bot2 not in rooma",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p04|v2|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p04|v2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions and checks goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p04|v2|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|barman|p03|b1|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|barman|p03|b1|v11",
+    "ends_in_verdict": "no",
+    "verdict": "none",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps, then loops on one precondition until cut off",
+    "note": "done_reason=length. Falls into a repeating loop at step 20 ('Let's look at the code: (next l1 l2) is the precondition?') and never gives a verdict."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|barman|p03|b1|v11",
+    "ends_in_verdict": "no",
+    "verdict": "none",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "stops partway in a repetition loop",
+    "note": "done_reason length; text loops on the same sentence and never reaches a verdict"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p02|b1|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p02|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step's preconditions, finds goal not met",
+    "note": "The last sentence is garbled ('is not in the goal state'), but the reasoning just before it is clear."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|rovers|p02|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces all steps, goal check finds missing communicate",
+    "note": "closing sentence says 'not in the goal state' but means not achieved"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v1|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "simulates numeric state, checks every precondition and goal",
+    "note": ""
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|sailing|p02|v1|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "computes coordinates and save preconditions",
+    "note": ""
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p04|b4|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p04|b4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces every step, marks all preconditions met",
+    "note": "Accepts every precondition with a bare 'Yes' and misses the real flaw."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p04|b4|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces all steps, accepts every precondition",
+    "note": "wrong: misses the failure"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p03|b4|v11",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p03|b4|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "checks key actions and goal, skips parts of the plan; finds goal not met",
+    "note": "Elides steps ('Several buy actions follow')."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p03|b4|v11",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces key actions only, checks goal levels",
+    "note": "skips with '...'; finds goods2 ends at level1 not level2"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b1|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces steps to first claimed failure (step 5)",
+    "note": "Reasons look wrong: says unload needs lifting (it lists the real preconditions, which do not), and says a crate is not a surface. Right verdict for doubtful reasons."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|depots|p05|b1|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces until unload fails, adds a type argument",
+    "note": "second reason (type of crate as surface) is dubious"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|barman|p05|b1|v12",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|barman|p05|b1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "checks goals via key subsequences, then the precondition chain, then finds goal not met",
+    "note": "Raises and retracts an 'unshaked' failure before settling on the unmet shot4 goal."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|barman|p05|b1|v12",
+    "ends_in_verdict": "yes",
+    "verdict": "INVALID",
+    "matches_mechanical": "yes",
+    "right": "yes",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "summarises by goal then checks unshaked chain, ends on shot4 goal",
+    "note": "flip-flops several times before final reason"
+   }
+  },
+  {
+   "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p05|b2|v13",
+   "A": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p05|b2|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces the first 12 steps, then summarizes the rest by goal",
+    "note": "Skips most of the plan ('The plan continues...'). Accepts step 4 (load goods4 with no buy) and misses the flaw."
+   },
+   "B": {
+    "id": "gemma4_26b-a4b|validate_plan|plain|tpp|p05|b2|v13",
+    "ends_in_verdict": "yes",
+    "verdict": "VALID",
+    "matches_mechanical": "yes",
+    "right": "no",
+    "tool_attempt": "no",
+    "mentions_tool": "no",
+    "method": "traces first 12 steps, then asserts the rest from the goals",
+    "note": "wrong: skips with '... (The plan continues ...)' and never checks the later steps"
+   }
+  }
+ ],
+ "notes": "The two readers agree on every field for every answer (60 of 60 on each of the six questions). Each reader's verdict equals the grader's parsed verdict on all 60, so the mechanical columns of the table above describe these answers correctly. Not right: 5 wrong verdicts and 1 answer that loops until the output cap without a verdict. Sample share right 54 of 60 = 90.0% (Wilson 95% [79.9, 95.3]), against 86.6% [85.2, 87.9] mechanically on all 2,400."
+}

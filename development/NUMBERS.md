@@ -122,6 +122,20 @@ Provenance: `reference/delivered_rerun_readout.md` / `.json` (frozen code `d5589
 | E2 simulate, Gemma | **−15.7** [−24.7, −6.7], Holm p 0.018 (tools worse; 8.3 vs 24.0) | — |
 | E1 simulate delivered, tool arms | Gemma **8.3** both arms · 9B **17.3 / 16.3** · 35B **28.3 / 25.7** (plain / steered); no-room share **42.7–53.0%** | the 2026-10-03 "at most 21%" row above (`iss024d` apparatus), as a figure of this run |
 
+## Delivered rerun — descriptive secondary analyses (prereg §6, §8b 13; 2026-10-09; in no tex yet)
+
+Provenance: `reference/delivered_rerun_secondary/secondary.md` / `.json`, from `tools/delivered_rerun_secondary.py` on the frozen package (`822aace…`; its grades reproduce the readout's E1 and E4 counts exactly). Hand reads and rules: `reference/delivered_rerun_secondary/hand_reads/`. **Descriptive, not registered readings**; same separate-apparatus caveat as the block above.
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| Gemma validate_plan, no-call answers (minimal-plain) | **2,400** no-call; **2,377** end in a parsed verdict (the other 23 hit the output cap); delivered right **2,078 = 86.6%** [85.2, 87.9]; unaided (Part C) on the same 2,400 fixtures **2,098**; tool-call-like text **0**, names the tool **0** | "not calling loses the answer"; the canonical "cannot be determined" (now determined) |
+| same, hand read (60, seeded) | **59/60** end in a verdict, **54/60** right; both readers agree on every field; reader = grader's parsed verdict **60/60** | — |
+| Gemma validate_plan invocation by wording, plain arm | v11 **31.0** · v12 **25.1** · v13 **3.9**; Part B neutral **44.2 / 29.7 / 6.7** | one invocation rate as if wording did not matter |
+| E4 hand read | **290** rows, two independent readers + third reading; category agreement **259/290 (89.3%)**, "right" agreement **282/290 (97.2%)**; **218** WRONG_WRAPPER, **180** right to a human reader | the readout's NEEDS_READING counts as unexplained |
+| simulate gap that is form only | **154 of 1,266** simulate gap rows (12%) are right to a human reader (**148** full trajectories in a form the grader does not read, 6 change lists or answers missing constants); the largest share stays REFUSED_OR_CLIPPED_FINAL (**843**) | "the simulate gap is a formatting artefact" |
+| 35B validate_plan gap | **25 of 32** gap rows are a bare "VALID" (right; the grader needs `VERDICT:`) | — |
+| cost-of-pass multiplier, tools ÷ unaided, delivered, pooled solve | plain **1.48** [0.89, 2.27] at 1:1, **0.58** [0.35, 0.90] at 5:1; steered **1.32** [0.80, 2.06] / **0.51** [0.31, 0.80] | "tools are cheaper" without the price ratio. Validation tasks and simulate: interval above 1 at 1:1 everywhere except 9B validate_domain (1.08 [0.71, 1.68]); at 5:1 only 9B validate_domain is below 1 (0.38 [0.25, 0.62]), and 9B simulate, 35B simulate and pooled validate_domain include 1 |
+
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29; IN TEX 2026-09-12/13, `paper/aaai27` `6027d68` + `7c0502a`, pushed + Overleaf `2ab9bb5`)
 
 Provenance for all rows: `reference/ntster_h4_final_readout_20260829.md`.

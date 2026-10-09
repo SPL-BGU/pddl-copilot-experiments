@@ -1,0 +1,235 @@
+{
+ "Qwen3_5_9B|simulate|plain|block-grouping|p03||v11": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 2: one JSON array whose states are nested under a 'state' key with boolean written as {} is a schema the grader does not read: WRONG_WRAPPER; content matches the oracle."
+ },
+ "Qwen3_5_9B|simulate|plain|gardening|p04||v11": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 2: one JSON array whose states are nested under a 'state' key with boolean written as {} is a schema the grader does not read: WRONG_WRAPPER; content matches the oracle."
+ },
+ "Qwen3_5_9B|simulate|steered|block-grouping|p03||v14": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 2: one JSON array whose states are nested under a 'state' key with boolean written as {} is a schema the grader does not read: WRONG_WRAPPER; content matches the oracle."
+ },
+ "Qwen3_5_9B|simulate|steered|block-grouping|p03||v15": {
+  "category": "ABRIDGED",
+  "human_correct": "yes",
+  "note": "Rule 3: per-step change list after a complete step-0 state is ABRIDGED; every stated change is right and every state can be rebuilt, so right."
+ },
+ "Qwen3_5_9B|simulate|steered|blocksworld|p03||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "Qwen3_5_9B|simulate|steered|blocksworld|p04||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "Qwen3_5_9B|simulate|steered|depots|p01||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "Qwen3_5_9B|simulate|steered|depots|p02||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "Qwen3_5_9B|simulate|steered|gardening|p01||v15": {
+  "category": "ABRIDGED",
+  "human_correct": "no",
+  "note": "Rule 3: per-step change list is ABRIDGED; the step-0 numeric state is not given, so the states cannot be rebuilt: not right."
+ },
+ "Qwen3_5_9B|simulate|steered|gardening|p04||v14": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 2: one JSON array whose states are nested under a 'state' key with boolean written as {} is a schema the grader does not read: WRONG_WRAPPER; content matches the oracle."
+ },
+ "Qwen3_5_9B|simulate|steered|gardening|p04||v15": {
+  "category": "ABRIDGED",
+  "human_correct": "no",
+  "note": "Rule 3: per-step change list is ABRIDGED; the step-0 numeric state is not given, so the states cannot be rebuilt: not right."
+ },
+ "Qwen3_5_9B|simulate|steered|gardening|p05||v15": {
+  "category": "ABRIDGED",
+  "human_correct": "no",
+  "note": "Rule 3: per-step change list is ABRIDGED; the step-0 numeric state is not given, so the states cannot be rebuilt: not right."
+ },
+ "Qwen3_5_9B|simulate|steered|gripper|p02||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "Qwen3_5_9B|simulate|steered|miconic|p01||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "Qwen3_5_9B|simulate|steered|parking|p02||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "Qwen3_5_9B|simulate|steered|zenotravel|p01||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct. Third reading: step 2 omits (fuel-level plane2 fl5), true in the oracle."
+ },
+ "gemma4_26b-a4b|simulate|plain|gripper|p02||v12": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 4: a wrong draft followed by an explicitly corrected full version is judged on the corrected version (counted as self-corrected)."
+ },
+ "gemma4_26b-a4b|simulate|plain|gripper|p02||v13": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct. Step 4 writes the two false facts as '... is false' strings inside the true list; read as stated, the content is right (same call both readers made on the analogous gemma blocksworld rows)."
+ },
+ "gemma4_26b-a4b|simulate|plain|parking|p01||v13": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|plain|parking|p02||v12": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|plain|parking|p02||v13": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|steered|parking|p01||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|steered|parking|p02||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|steered|parking|p02||v16": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|steered|parking|p04||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|steered|parking|p05||v16": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "gemma4_26b-a4b|simulate|steered|sailing|p04||v16": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 4: a wrong draft followed by an explicitly corrected full version is judged on the corrected version (counted as self-corrected)."
+ },
+ "gemma4_26b-a4b|simulate|steered|sailing|p05||v14": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 4: a wrong draft followed by an explicitly corrected full version is judged on the corrected version (counted as self-corrected)."
+ },
+ "gemma4_26b-a4b|simulate|steered|sailing|p05||v16": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "yes",
+  "note": "Rule 4: a wrong draft followed by an explicitly corrected full version is judged on the corrected version (counted as self-corrected)."
+ },
+ "gemma4_26b-a4b|validate_plan|steered|zenotravel|p04|b1|v14": {
+  "category": "NO_FINAL_ANSWER",
+  "human_correct": "no",
+  "note": "Answer is only chat-template debris ('<|channel>thought }<tool_call|>'), no content; treated as an empty final answer."
+ },
+ "qwen3_6_35b|simulate|plain|block-grouping|p03||v13": {
+  "category": "ABRIDGED",
+  "human_correct": "yes",
+  "note": "Rule 3: per-step change list after a complete step-0 state is ABRIDGED; every stated change is right and every state can be rebuilt, so right."
+ },
+ "qwen3_6_35b|simulate|plain|gardening|p01||v13": {
+  "category": "ABRIDGED",
+  "human_correct": "yes",
+  "note": "Rule 3: per-step change list after a complete step-0 state is ABRIDGED; every stated change is right and every state can be rebuilt, so right."
+ },
+ "qwen3_6_35b|simulate|plain|gardening|p04||v13": {
+  "category": "ABRIDGED",
+  "human_correct": "yes",
+  "note": "Rule 3: per-step change list after a complete step-0 state is ABRIDGED; every stated change is right and every state can be rebuilt, so right."
+ },
+ "qwen3_6_35b|simulate|plain|parking|p02||v13": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "qwen3_6_35b|simulate|steered|blocksworld|p02||v16": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "qwen3_6_35b|simulate|steered|depots|p02||v16": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "note": "Rule 1: every step written out with all fluent kinds in a non-gradeable form is WRONG_WRAPPER whatever its content (Q1 definition; first match); the content error is recorded in human_correct."
+ },
+ "qwen3_6_35b|validate_problem|plain|delivery|n04||v12": {
+  "category": "SUMMARY_ONLY",
+  "human_correct": "unclear",
+  "note": "States 'the problem is INVALID' mid-text (correct) but keeps doubting and is cut off at the output cap without a final verdict; no final verdict, so SUMMARY_ONLY; whether a grader would accept the buried verdict is unclear."
+ },
+ "Qwen3_5_9B|simulate|plain|parking|p01||v12": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ },
+ "Qwen3_5_9B|simulate|plain|parking|p05||v12": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ },
+ "gemma4_26b-a4b|simulate|steered|blocksworld|p01||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ },
+ "gemma4_26b-a4b|simulate|steered|blocksworld|p03||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ },
+ "gemma4_26b-a4b|simulate|steered|blocksworld|p03||v16": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ },
+ "gemma4_26b-a4b|simulate|steered|blocksworld|p04||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ },
+ "gemma4_26b-a4b|simulate|steered|depots|p01||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ },
+ "gemma4_26b-a4b|simulate|steered|depots|p02||v15": {
+  "category": "WRONG_WRAPPER",
+  "human_correct": "no",
+  "consistency": true,
+  "note": "Rule 1 applied to a row both readers labelled WRONG_FACTS: every step is written out with its full state (classical domain, nothing omitted) in a non-gradeable form, so WRONG_WRAPPER; both readers agree the content is wrong."
+ }
+}

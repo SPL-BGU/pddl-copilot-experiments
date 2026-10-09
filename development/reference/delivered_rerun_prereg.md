@@ -427,8 +427,15 @@ request). "Needs reading" rows await the hand read of §8b item 13.
   +6.9, 90% CI [3.6, 10.7]; 26.9% against 20.0%). Steering sentence: Not shown
   (neutral-steered not within ±5 of minimal-steered; 98.1 against 93.1).
 
-Still to do under this prereg: the hand read of the E4 "needs reading" rows (§8b 13) and
-the descriptive §6 tables, both labelled descriptive.
+**Done 2026-10-09, descriptive:** the hand read of the E4 "needs reading" rows (§8b 13)
+and the §6 tables, in `reference/delivered_rerun_secondary/secondary.md` / `.json`
+(`tools/delivered_rerun_secondary.py`; it loads and grades with the frozen package,
+refuses to run if its hash changed, and first checks that its grades reproduce the E1 and
+E4 counts above exactly). The 290 rows were each read by two independent readers, with
+disagreements settled by a third reading under written rules (records in
+`reference/delivered_rerun_secondary/hand_reads/`). No registered reading changes: the readout
+tables above remain the record, and the hand read only explains the NEEDS_READING
+column. Figures in `NUMBERS.md` "Delivered rerun — descriptive secondary analyses".
 
 ## 9. Deviations
 
