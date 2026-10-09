@@ -1,0 +1,12 @@
+{
+ "dA": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true, \"clear(l2)\": true, \"stopped(r)\": false}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(move r l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true, \"clear(l1)\": true, \"stopped(r)\": false}, \"numeric_fluents\": {}}, {\"step\": 2, \"action\": \"(stop r)\", \"boolean_fluents\": {\"at(r,l2)\": true, \"clear(l1)\": true, \"stopped(r)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "dB": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(t,a)\": true}, \"numeric_fluents\": {\"fuel(t)\": 5}}, {\"step\": 1, \"action\": \"(drive t a b)\", \"boolean_fluents\": {\"at(t,b)\": true}, \"numeric_fluents\": {\"fuel(t)\": 3}}]}"
+  }
+ }
+}

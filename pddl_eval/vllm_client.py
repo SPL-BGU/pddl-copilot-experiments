@@ -43,11 +43,16 @@ either, so non-streaming is the safe default.
 
 Context-overflow handling: vLLM rejects prompt_tokens + max_tokens >
 max_model_len with HTTP 400 BadRequestError. chat() catches the specific
-overflow body, clips max_tokens to the remaining budget, and retries.
-The degenerate prompt ≥ max_model_len case returns a synthetic
-length-truncation response with empty content (see
-`_synthesize_overflow_response`), preserving the existing chat.py
-classifier for `done_reason="length"` truncation.
+overflow body, MEASURES the real prompt size with a 1-token request, clips
+max_tokens to the real remaining room, and retries (see
+`_retry_after_ctx_overflow`). The first request is always sent with the
+caller's full allowance, so a trial that fits is unaffected. A clipped
+response carries `num_predict_requested` / `num_predict_clipped_to`. Only
+the degenerate case where the prompt alone leaves no room returns a
+synthetic length-truncation response with empty content (see
+`_synthesize_overflow_response`, flagged `ctx_overflow_no_room`),
+preserving the existing chat.py classifier for `done_reason="length"`
+truncation.
 """
 
 import json
@@ -81,39 +86,77 @@ _CTX_OVERFLOW_RE = re.compile(
     r"(?:at least|upper bound for) (\d+) input tokens",
     re.DOTALL,
 )
-# Slack between (max_model_len − prompt_tokens) and the clipped max_tokens
-# we re-send. vLLM's 400 error body reports prompt-token count as a LOWER
-# bound — "your prompt contains at least N input tokens" — because the
-# pre-flight check fires before final template additions (generation
-# prefix, BOS, prefix-caching block-padding) are appended. The real
-# served prompt is consistently higher than the reported N.
+# The prompt-token count in vLLM's 400 body is a LOWER BOUND, not a
+# measurement: "your prompt contains at least N input tokens" is derived as
+# N = max_model_len − max_tokens + 1, i.e. "one more than what would have
+# fit next to the allowance you asked for". It says nothing about how big
+# the prompt really is.
 #
-# Drift history (attempt-1 reported prompt → attempt-2 reported prompt):
-#   * 17478753 sweep (sweep-3, qwen3.6:27b + Qwen3.5:0.8B, v0/v1/v2
-#     prompts): exact and consistent +9 over 374 failures. safety = 32
-#     absorbed this with ~3× headroom.
-#   * sweep4-cluster-20260519 (Qwen3.5 4B/9B + v5/v6/v7 prompts under
-#     the new prompt variants): drift jumped to +33 (8193 → 8226 on
-#     solve, 10241 → 10274 on validate-style), so safety = 32 was off
-#     by exactly +1 and every retry 400'd. ~7,400 trials (up to 31% on
-#     Qwen3.5-4B off tools_all) landed as `failure_reason=exception`
-#     with empty content rather than Ollama-parity `done_reason=length`.
+# History of misreading it (attempt-1 reported prompt → attempt-2 reported):
+#   * 17478753 sweep (sweep-3): read as a "+9 drift"; safety = 32.
+#   * sweep4-cluster-20260519: 8193 → 8226 on solve, 10241 → 10274 on
+#     validate-style, read as a "+33 template drift"; safety raised to 128
+#     and a second retry added. +33 is exactly safety(32) + 1: the server
+#     was re-deriving N from the clipped max_tokens we had just sent.
+#   * 2026-10-02 (development/reanalysis_transcripts.md §3.3): with
+#     new_max = max_ctx − N − 128, each retry lowered max_tokens by only
+#     129, so the two retries covered prompts within 258 tokens of the
+#     limit and nothing else. In the sweep5v2 headline tool arms 1,987
+#     trials had their FINAL turn (conversation + tool result) refused this
+#     way and were recorded as an empty answer with done_reason="length",
+#     the give-up prompt count being exactly 8193+258 = 8451 (solve) or
+#     10241+258 = 10499 (validate_*), although the model had thousands of
+#     tokens of room.
 #
-# Defense is now layered:
-#   1. safety = 128 absorbs the observed +33 with ~4× headroom for the
-#      next prompt-template change. Output-budget cost is 96/8192 ≈ 1.2%
-#      on solve, ~0.5% on smaller `num_predict` tasks.
-#   2. The chat() retry path also retries a SECOND time (see MAX_RETRIES)
-#      using whatever prompt-token count the previous error reported, so
-#      a drift larger than safety still converges instead of bubbling a
-#      BadRequestError. After max retries, falls through to
-#      _synthesize_overflow_response to keep Ollama parity (done_reason
-#      = "length", empty content) rather than raising.
+# The fix measures instead of guessing: after the first overflow, the same
+# request is re-sent with max_tokens=1. Its `usage.prompt_tokens` is the
+# true prompt size under the identical chat template / tools / template
+# kwargs (no dependence on a separate tokenize endpoint agreeing with the
+# chat endpoint), and the real request is then sent with max_tokens =
+# max_model_len − prompt_tokens. With --enable-prefix-caching the probe's
+# prompt processing is reused by that request.
+#
+# If the server rejects that exact clip, small step-downs come before any
+# halving (see `_clip_candidates`).
+#
+# Fallback when the probe returns no usage: start from the old first clip
+# (lower bound + this safety margin — right when the prompt really is
+# within the margin of the limit) and halve until a request fits.
 _CTX_RETRY_SAFETY = 128
-# Max number of clip-and-retry attempts AFTER the initial request. Two
-# retries cover any drift smaller than ~3 × safety; bigger drifts fall
-# through to the synthetic length-truncation response.
-_CTX_MAX_RETRIES = 2
+# Smallest max_tokens worth sending. Below this the prompt alone fills the
+# window and the turn gets the synthetic empty length-truncation response.
+_CTX_MIN_MAX_TOKENS = 1
+# Small step-downs tried (in this order, each relative to the measured room)
+# when the server rejects max_tokens = max_model_len − measured prompt. They
+# absorb an off-by-a-few disagreement between usage.prompt_tokens and the
+# server's own pre-flight count at a cost of at most 64 tokens of room,
+# instead of jumping straight to half.
+_CTX_CLIP_STEP_DOWNS = (1, 8, 64)
+
+
+def _clip_candidates(base: int, fine: bool) -> list[int]:
+    """max_tokens values to try, in order, after a context overflow.
+
+    `base` is the first clip. With `fine` (the prompt was measured) the next
+    tries are base−1, base−8, base−64; after that the last value tried is
+    halved repeatedly. Values below `_CTX_MIN_MAX_TOKENS` are dropped, so an
+    empty list means there is no room at all. Bounded: at most
+    3 + log2(max_model_len) entries.
+    """
+    out: list[int] = []
+    if base >= _CTX_MIN_MAX_TOKENS:
+        out.append(base)
+    last = base
+    if fine:
+        for step in _CTX_CLIP_STEP_DOWNS:
+            if base - step >= _CTX_MIN_MAX_TOKENS:
+                out.append(base - step)
+                last = base - step
+    last //= 2
+    while last >= _CTX_MIN_MAX_TOKENS:
+        out.append(last)
+        last //= 2
+    return out
 
 
 class VLLMClient:
@@ -178,33 +221,91 @@ class VLLMClient:
             kwargs["stop"] = stop
 
         # vLLM strictly enforces prompt_tokens + max_tokens ≤ max_model_len
-        # and rejects with HTTP 400. We catch the specific context-overflow
-        # body, clip max_tokens to the remaining headroom from the latest
-        # reported prompt count, and retry up to _CTX_MAX_RETRIES times
-        # before falling through to a synthetic length-truncation response.
+        # and rejects with HTTP 400. The first request always carries the
+        # caller's full allowance; only when it is rejected for context
+        # overflow do we enter the measure-and-clip path.
         t0 = time.perf_counter_ns()
-        resp = None
-        for attempt in range(_CTX_MAX_RETRIES + 1):
-            try:
-                resp = await self._client.chat.completions.create(**kwargs)
-                break
-            except BadRequestError as e:
-                parsed = _parse_ctx_overflow(e)
-                if parsed is None:
-                    raise
-                max_ctx, prompt_tokens = parsed
-                new_max = max_ctx - prompt_tokens - _CTX_RETRY_SAFETY
-                if new_max <= 0 or attempt == _CTX_MAX_RETRIES:
-                    # Either the prompt alone consumes (or nearly consumes)
-                    # max_model_len, or we've exhausted retries. Surface as
-                    # a length-truncation response with empty content; the
-                    # harness already buckets done_reason="length" as
-                    # truncation.
-                    wall_ns = time.perf_counter_ns() - t0
-                    return _synthesize_overflow_response(prompt_tokens, wall_ns)
-                kwargs["max_tokens"] = new_max
+        try:
+            resp = await self._client.chat.completions.create(**kwargs)
+        except BadRequestError as e:
+            parsed = _parse_ctx_overflow(e)
+            if parsed is None:
+                raise
+            return await self._retry_after_ctx_overflow(kwargs, parsed, t0)
         wall_ns = time.perf_counter_ns() - t0
         return _to_ollama_response(resp, wall_ns)
+
+    async def _retry_after_ctx_overflow(
+        self, kwargs: dict, parsed: tuple[int, int], t0: int,
+    ) -> dict:
+        """Re-send a context-overflow-rejected request with max_tokens clipped
+        to the real remaining room.
+
+        `parsed` is (max_model_len, lower-bound prompt count) from the 400
+        body. Returns the model's real response annotated with
+        `num_predict_requested` / `num_predict_clipped_to`, or the synthetic
+        empty length-truncation response when the prompt alone leaves no
+        room. Non-overflow 400s raised along the way propagate unchanged.
+        """
+        max_ctx, reported_prompt = parsed
+        requested = kwargs.get("max_tokens")
+
+        # Step 1 — measure. A 1-token completion of the identical request
+        # reports the true prompt size in usage.prompt_tokens. If even that
+        # is rejected, the prompt alone fills the window: genuine overflow.
+        try:
+            probe = await self._client.chat.completions.create(
+                **{**kwargs, "max_tokens": _CTX_MIN_MAX_TOKENS}
+            )
+        except BadRequestError as e:
+            probe_parsed = _parse_ctx_overflow(e)
+            if probe_parsed is None:
+                raise
+            wall_ns = time.perf_counter_ns() - t0
+            return _synthesize_overflow_response(probe_parsed[1], wall_ns)
+        usage = getattr(probe, "usage", None)
+        measured_prompt = int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
+
+        # Step 2 — clip to the measured room and re-send. If the measured
+        # clip is itself rejected (e.g. the server's own check counts a token
+        # or a few more than usage.prompt_tokens reports), step down by small
+        # amounts first so the model keeps essentially all of its room;
+        # halving is the last resort. Without a measurement the small steps
+        # are meaningless against a lower bound, so that path halves directly.
+        if measured_prompt > 0:
+            candidates = _clip_candidates(max_ctx - measured_prompt, fine=True)
+        else:
+            candidates = _clip_candidates(
+                max_ctx - reported_prompt - _CTX_RETRY_SAFETY, fine=False
+            )
+        for candidate in candidates:
+            try:
+                resp = await self._client.chat.completions.create(
+                    **{**kwargs, "max_tokens": candidate}
+                )
+            except BadRequestError as e:
+                retry_parsed = _parse_ctx_overflow(e)
+                if retry_parsed is None:
+                    raise
+                reported_prompt = retry_parsed[1]
+                continue
+            wall_ns = time.perf_counter_ns() - t0
+            out = _to_ollama_response(resp, wall_ns)
+            # Present ONLY on clipped turns, so readers of unclipped
+            # responses (and of every pre-2026-10-02 corpus) see no change.
+            # `num_predict_measured_prompt` is the probe's measurement (None
+            # when the probe carried no usage), so analysis can check
+            # prompt + clip against the window and see how far below it a
+            # stepped-down clip landed.
+            out["num_predict_requested"] = requested
+            out["num_predict_clipped_to"] = candidate
+            out["num_predict_measured_prompt"] = measured_prompt or None
+            return out
+
+        wall_ns = time.perf_counter_ns() - t0
+        return _synthesize_overflow_response(
+            measured_prompt or reported_prompt, wall_ns
+        )
 
     async def aclose(self) -> None:
         await self._client.close()
@@ -330,7 +431,11 @@ def _synthesize_overflow_response(prompt_tokens: int, wall_ns: int) -> dict:
     Same shape as `_to_ollama_response` with empty content and
     done_reason="length". Mirrors Ollama's behaviour when num_ctx is fully
     consumed by the prompt — the trial completes but the model produces no
-    output, so grading sees a truncation rather than an exception."""
+    output, so grading sees a truncation rather than an exception.
+    `prompt_tokens` is the measured prompt size when the probe got that far,
+    else the server's lower bound. `ctx_overflow_no_room` marks the turn as
+    never generated (as opposed to a model that wrote until its cap) so
+    analysis can count these directly."""
     return {
         "message": {"role": "assistant", "content": "", "thinking": ""},
         "done_reason": "length",
@@ -338,4 +443,5 @@ def _synthesize_overflow_response(prompt_tokens: int, wall_ns: int) -> dict:
         "eval_count": 0,
         "total_duration": int(wall_ns),
         "eval_duration": int(wall_ns),
+        "ctx_overflow_no_room": True,
     }

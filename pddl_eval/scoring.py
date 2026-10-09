@@ -108,6 +108,36 @@ _VERDICT_RE = re.compile(r"VERDICT\s*:\s*(VALID|INVALID)\b", re.IGNORECASE)
 # appear inside the reasoning block.
 _THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
+# Gemma 4 is served with no reasoning parser, so with thinking off its answer
+# after a tool turn opens with an EMPTY thought channel that the server leaves
+# in `message.content`: the literal text below, immediately followed by the
+# answer. On solve the first action then shares a line with the closing marker
+# ("<channel|>(unstack b2 b1)"), `_ACTION_LINE_RE` rejects that line, and the
+# plan loses its first action. In the sweep5v2 Gemma think-off tool cell this
+# hit 208 solve answers; with the marker removed, 207 are the planner tool's
+# plan word for word, yet the delivered-answer overlay graded them invalid
+# (2026-10-02, development/reanalysis_transcripts.md §3.5).
+#
+# Deliberately narrow: only this exact prefix at the very start is removed,
+# once. A thought channel that carries content ("<|channel>thought\n1. The
+# user wants…"), doubled markers, or a marker later in the text are left
+# untouched — those are model output, not serving residue, and guessing where
+# such a block ends could hide real text from the graders.
+_EMPTY_THOUGHT_CHANNEL_PREFIX = "<|channel>thought\n<channel|>"
+
+
+def strip_leaked_channel_prefix(text):
+    """Drop a leading empty Gemma thought-channel marker from *text*.
+
+    The view of a response that graders/extractors parse; the stored
+    `response` keeps the raw text. No-op (returns *text* itself) for anything
+    that does not start with exactly `_EMPTY_THOUGHT_CHANNEL_PREFIX`,
+    including non-strings.
+    """
+    if isinstance(text, str) and text.startswith(_EMPTY_THOUGHT_CHANNEL_PREFIX):
+        return text[len(_EMPTY_THOUGHT_CHANNEL_PREFIX):]
+    return text
+
 
 def extract_plan_lines(response: str) -> list[str]:
     """Extract `(action args...)` lines from a model response.
@@ -117,6 +147,7 @@ def extract_plan_lines(response: str) -> list[str]:
     """
     if not response:
         return []
+    response = strip_leaked_channel_prefix(response)
     response = _THINK_BLOCK_RE.sub("", response)
     plan: list[str] = []
     for line in response.splitlines():
@@ -247,9 +278,11 @@ def _strip_md_fence(raw: str) -> str:
     known markdown wrapper is NOT prose/regex extraction — the entire
     remaining text must still parse as one JSON value. Shared by
     `_safe_pydantic_validate` and the Q1 `_coerce_simulate_trajectory` so both
-    tolerate fences identically.
+    tolerate fences identically. A leaked empty thought-channel marker (see
+    `strip_leaked_channel_prefix`) is serving residue of the same kind and is
+    removed first; the whole-text-is-one-JSON-value rule is unchanged.
     """
-    text = raw.strip()
+    text = strip_leaked_channel_prefix(raw).strip()
     if text.startswith("```"):
         nl = text.find("\n")
         if nl >= 0:
@@ -365,6 +398,7 @@ def extract_verdict(response: str) -> bool | None:
     """
     if not response:
         return None
+    response = strip_leaked_channel_prefix(response)
     response = _THINK_BLOCK_RE.sub("", response)
     matches = _VERDICT_RE.findall(response)
     if not matches:

@@ -508,6 +508,127 @@ def test_build_jobs_no_tools_grid(r: TestResults) -> None:
     r.check_eq("validate_problem includes negative n01", pnames, ["n01", "p1", "p2"])
 
 
+class _CannedClient:
+    """Minimal VLLMClient stand-in: returns one canned response dict."""
+
+    def __init__(self, content: str, **extra):
+        self._resp = {
+            "message": {"role": "assistant", "content": content, "thinking": ""},
+            "done_reason": "stop",
+            "prompt_eval_count": 100, "eval_count": 50,
+            "total_duration": 1, "eval_duration": 1,
+            **extra,
+        }
+
+    async def chat(self, **kwargs):
+        return self._resp
+
+
+def _evaluate_no_tools_validate(content: str, **extra) -> TaskResult:
+    from pddl_eval.runner import evaluate_one
+    return asyncio.run(evaluate_one(
+        _CannedClient(content, **extra), "m", "validate_domain", "d1",
+        "(define (domain d1))", "p1", "(define (problem p1))",
+        _ACTIVE_V0, False, None, {"domain_valid": True},
+        num_predict=6144, num_ctx=16384, num_ctx_thinking=16384, think=False,
+    ))
+
+
+def test_response_snapshot_keeps_the_end_of_long_answers(r: TestResults) -> None:
+    """Storage cap (2026-10-02): the slice keeps the head, so the cap must be
+    large enough that the END of an answer (verdict / final plan) survives,
+    and each row says whether storage cut it."""
+    from pddl_eval.runner import (
+        DEFAULT_NUM_CTX, DEFAULT_NUM_PREDICT, RESPONSE_SNAPSHOT_LEN,
+    )
+    r.check_eq("snapshot cap", RESPONSE_SNAPSHOT_LEN, 65536)
+    r.check("snapshot cap covers 8 chars/token at the largest allowance",
+            RESPONSE_SNAPSHOT_LEN >= 8 * max(DEFAULT_NUM_PREDICT.values()),
+            f"{RESPONSE_SNAPSHOT_LEN} vs {max(DEFAULT_NUM_PREDICT.values())}")
+    r.check("snapshot cap is not the context window constant",
+            RESPONSE_SNAPSHOT_LEN != DEFAULT_NUM_CTX, "")
+
+    # 20,000 chars: cut under the old 16384 cap, complete under the new one.
+    body = "reasoning " * 2000
+    res = _evaluate_no_tools_validate(body + "\nVERDICT: VALID")
+    r.check_eq("20K answer stored complete", len(res.response), len(body) + 15)
+    r.check("20K answer keeps its final verdict line",
+            res.response.endswith("VERDICT: VALID"), res.response[-30:])
+    r.check_eq("20K answer: not truncated by storage",
+               res.response_truncated_by_storage, False)
+    r.check_eq("20K answer graded on the verdict", res.success, True)
+
+    # Short answer: flag is an explicit False, not None.
+    res = _evaluate_no_tools_validate("VERDICT: VALID")
+    r.check_eq("short answer: not truncated by storage",
+               res.response_truncated_by_storage, False)
+
+    # Beyond the cap: stored head only, flagged, and still graded on the FULL
+    # text (the verdict sits past the stored part).
+    body = "x" * (RESPONSE_SNAPSHOT_LEN + 5000)
+    res = _evaluate_no_tools_validate(body + "\nVERDICT: VALID")
+    r.check_eq("over-cap answer stored at the cap",
+               len(res.response), RESPONSE_SNAPSHOT_LEN)
+    r.check_eq("over-cap answer flagged", res.response_truncated_by_storage, True)
+    r.check_eq("over-cap answer graded on full text", res.success, True)
+
+    # Exactly at the cap is complete — the case length inference cannot tell
+    # apart from a cut answer.
+    tail = "\nVERDICT: VALID"
+    res = _evaluate_no_tools_validate(
+        "x" * (RESPONSE_SNAPSHOT_LEN - len(tail)) + tail)
+    r.check_eq("at-cap answer length", len(res.response), RESPONSE_SNAPSHOT_LEN)
+    r.check_eq("at-cap complete answer is not flagged",
+               res.response_truncated_by_storage, False)
+
+
+def test_new_optional_fields_do_not_break_old_rows(r: TestResults) -> None:
+    """Rows written before 2026-10-02 lack `response_truncated_by_storage`
+    and the `ctx_*` token keys; they must load, with the flag unknown."""
+    from pddl_eval.resume import load_progress
+    old = make_stub_result(model="m", task="solve", domain_name="d1",
+                           problem_name="p1", prompt_variant=_ACTIVE_V0,
+                           with_tools=True)
+    d = json.loads(json.dumps(old.__dict__))
+    d.pop("response_truncated_by_storage")
+    key = list(_trial_key(old.model, old.task, old.domain_name,
+                          old.problem_name, old.plan_label, old.prompt_variant,
+                          old.with_tools, "off", old.tool_filter,
+                          old.prompt_style))
+    with tempfile.TemporaryDirectory() as td:
+        p = Path(td) / "trials.jsonl"
+        p.write_text(json.dumps({"key": key, "result": d}) + "\n")
+        loaded = load_progress(p)
+    r.check_eq("old row loads", len(loaded), 1)
+    row = next(iter(loaded.values()))
+    r.check("old row: storage flag is None (unknown)",
+            row.response_truncated_by_storage is None, "")
+    r.check_eq("trial key length unchanged", TRIAL_KEY_LEN, 10)
+
+
+def test_ctx_clip_reaches_the_result_row(r: TestResults) -> None:
+    """A turn whose allowance was clipped by the overflow path is recorded
+    on the row's `tokens`; an ordinary turn leaves `tokens` unchanged."""
+    res = _evaluate_no_tools_validate("VERDICT: VALID")
+    r.check_eq("ordinary row: tokens keys",
+               sorted(res.tokens),
+               ["completion", "eval_duration_ns", "prompt",
+                "total_duration_ns", "turns"])
+    res = _evaluate_no_tools_validate(
+        "VERDICT: VALID", num_predict_requested=6144,
+        num_predict_clipped_to=5484, num_predict_measured_prompt=10900)
+    r.check_eq("clipped row: last-turn prompt size",
+               res.tokens.get("ctx_clip_last_turn_prompt_tokens"), 10900)
+    r.check("clipped row: prompt + clip fits the window",
+            res.tokens["ctx_clip_last_turn_prompt_tokens"]
+            + res.tokens["ctx_clip_last_turn_max_tokens"] <= 16384, "")
+    r.check_eq("clipped row: clipped turn count",
+               res.tokens.get("ctx_clipped_turns"), 1)
+    r.check_eq("clipped row: last-turn allowance",
+               res.tokens.get("ctx_clip_last_turn_max_tokens"), 5484)
+    r.check_eq("clipped row still graded", res.success, True)
+
+
 if __name__ == "__main__":
     r = TestResults("test_runner")
     test_plan_label_in_shard_key_spreads_across_shards(r)
@@ -524,4 +645,7 @@ if __name__ == "__main__":
     test_runner_filters_out_partial_dropped_fixtures(r)
     test_load_progress_dedups_repeated_keys(r)
     test_build_jobs_no_tools_grid(r)
+    test_response_snapshot_keeps_the_end_of_long_answers(r)
+    test_new_optional_fields_do_not_break_old_rows(r)
+    test_ctx_clip_reaches_the_result_row(r)
     r.report_and_exit()

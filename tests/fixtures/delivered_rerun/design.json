@@ -1,0 +1,167 @@
+{
+ "canonical_delivered_counts": {
+  "Qwen3_5_9B|simulate|plain": [
+   6,
+   0,
+   6
+  ],
+  "Qwen3_5_9B|simulate|steered": [
+   6,
+   0,
+   6
+  ],
+  "Qwen3_5_9B|solve|plain": [
+   6,
+   0,
+   6
+  ],
+  "Qwen3_5_9B|solve|steered": [
+   6,
+   0,
+   6
+  ],
+  "Qwen3_5_9B|validate_domain|plain": [
+   21,
+   0,
+   21
+  ],
+  "Qwen3_5_9B|validate_domain|steered": [
+   21,
+   0,
+   21
+  ],
+  "Qwen3_5_9B|validate_plan|plain": [
+   12,
+   0,
+   12
+  ],
+  "Qwen3_5_9B|validate_plan|steered": [
+   12,
+   0,
+   12
+  ],
+  "Qwen3_5_9B|validate_problem|plain": [
+   6,
+   0,
+   6
+  ],
+  "Qwen3_5_9B|validate_problem|steered": [
+   6,
+   0,
+   6
+  ],
+  "gemma4_26b-a4b|simulate|plain": [
+   6,
+   0,
+   6
+  ],
+  "gemma4_26b-a4b|simulate|steered": [
+   6,
+   0,
+   6
+  ],
+  "gemma4_26b-a4b|solve|plain": [
+   6,
+   0,
+   6
+  ],
+  "gemma4_26b-a4b|solve|steered": [
+   6,
+   0,
+   6
+  ],
+  "gemma4_26b-a4b|validate_domain|plain": [
+   21,
+   0,
+   21
+  ],
+  "gemma4_26b-a4b|validate_domain|steered": [
+   21,
+   0,
+   21
+  ],
+  "gemma4_26b-a4b|validate_plan|plain": [
+   12,
+   0,
+   12
+  ],
+  "gemma4_26b-a4b|validate_plan|steered": [
+   12,
+   0,
+   12
+  ],
+  "gemma4_26b-a4b|validate_problem|plain": [
+   6,
+   0,
+   6
+  ],
+  "gemma4_26b-a4b|validate_problem|steered": [
+   6,
+   0,
+   6
+  ],
+  "qwen3_6_35b|simulate|plain": [
+   6,
+   0,
+   6
+  ],
+  "qwen3_6_35b|simulate|steered": [
+   6,
+   0,
+   6
+  ],
+  "qwen3_6_35b|solve|plain": [
+   6,
+   0,
+   6
+  ],
+  "qwen3_6_35b|solve|steered": [
+   6,
+   0,
+   6
+  ],
+  "qwen3_6_35b|validate_domain|plain": [
+   21,
+   0,
+   21
+  ],
+  "qwen3_6_35b|validate_domain|steered": [
+   21,
+   0,
+   21
+  ],
+  "qwen3_6_35b|validate_plan|plain": [
+   12,
+   0,
+   12
+  ],
+  "qwen3_6_35b|validate_plan|steered": [
+   12,
+   0,
+   12
+  ],
+  "qwen3_6_35b|validate_problem|plain": [
+   6,
+   0,
+   6
+  ],
+  "qwen3_6_35b|validate_problem|steered": [
+   6,
+   0,
+   6
+  ]
+ },
+ "k_domains": 2,
+ "n_no_tools_cell": 51,
+ "n_part_a_cell": 102,
+ "n_part_b": 24,
+ "per_task_variant": {
+  "simulate": 2,
+  "solve": 2,
+  "validate_domain": 7,
+  "validate_plan": 4,
+  "validate_problem": 2
+ },
+ "per_variant_a": 17,
+ "per_variant_b": 4
+}
