@@ -15,6 +15,14 @@ matplotlib
 pandas
 
 # Direct imports of the frozen nt-ster analysis entry points
-# (tools/ntster_*.py); previously present only transitively.
+# (tools/ntster_*.py); previously present only transitively. numpy is also a
+# direct import of the delivered-rerun analysis (tools/delivered_rerun/,
+# freeze gate 3); its other imports are pddl_eval and the stdlib.
 numpy
 scipy
+
+# Direct import of pddl_eval/schemas.py (response models), which the
+# delivered-rerun package imports and hashes as a frozen dependency; previously
+# present only transitively through mcp. tests/test_delivered_rerun_analysis.py
+# checks every third-party import of the frozen files is listed here.
+pydantic

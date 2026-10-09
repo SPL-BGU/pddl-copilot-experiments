@@ -1,0 +1,46 @@
+[
+ {
+  "domain": "dA",
+  "problem": "p01",
+  "plan": [
+   "(a x)",
+   "(b y)"
+  ],
+  "valid": true
+ },
+ {
+  "domain": "dB",
+  "problem": "p01",
+  "plan": [
+   "(c z)",
+   "(d w)",
+   "(e v)"
+  ],
+  "valid": true
+ },
+ {
+  "domain": "dB",
+  "problem": "p01",
+  "plan": [
+   "(c z)",
+   "(d w)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "dB",
+  "problem": "p01",
+  "plan": [
+   "(c z)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "dB",
+  "problem": "p01",
+  "plan": [
+   "(z z)"
+  ],
+  "valid": false
+ }
+]
