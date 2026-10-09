@@ -1,8 +1,9 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-10-02 (resume-verify; Q1/Q2/Q3/Q4 of the weakness list
-answered; the $0 re-analysis package delivered; the delivered rerun pre-registered and
-in preparation; PRs #110 and #111 open. Earlier refreshes are in git history). Renamed
+*Content last refreshed: 2026-10-09 (delivered rerun complete and read out by the
+frozen code; N1b updated). Before that: 2026-10-02 (resume-verify; Q1/Q2/Q3/Q4 of the
+weakness list answered; the $0 re-analysis package delivered; the delivered rerun
+pre-registered. Earlier refreshes are in git history). Renamed
 from `remaining_work_20260811.md` on 2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
@@ -111,29 +112,28 @@ arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
 
 1. **Harness fixes for the rerun: done, PR #113** (`harness/delivered-rerun`, `4b2fe6e`):
    final-request overflow retry, leaked Gemma channel prefix, storage cap 65,536, a
-   `neutral` prompt style. Independently reviewed; four findings fixed. Do not merge in a
-   way that moves the cluster checkout while jobs are pending.
-2. **Delivered rerun** (`reference/delivered_rerun_prereg.md`): Part A 27,360 trials
-   (three headline models, thinking off, plain + steered), Part B 6,000 (Gemma
-   validate_plan, neutral system prompt). **Submitted 2026-10-02 as a serial `afterok`
-   chain: 21982285 (Gemma A, running) → 21982286 (Gemma B) → 21982369 (9B) → 21982370
-   (35B).** Smoke passed (prereg §8a). The cluster checkout must stay on
-   `harness/delivered-rerun` at `4b2fe6e` until every cell is complete: jobs read the
-   Python code from that checkout when they start. Monitoring reads row counts and job
-   states only (prereg §7). `status.sh` does not show the `tools_all_neutral` cell;
-   count its rows directly.
-3. **Analysis code for the rerun: FROZEN 2026-10-03** (PR #116, `d558946`, package hash
-   `822aace…`; freeze record in prereg §8). Gates 1–5 passed. Run it with
-   `--i-have-frozen` once all cells are complete; live mode needs the local
-   `../pddl-copilot` at `5e4f9c0` (the laptop copy is at `f0e2c61`; ask Omer before
-   switching it) or run it where that commit is checked out.
+   `neutral` prompt style. Independently reviewed; four findings fixed. Every rerun job has
+   finished (2026-10-09), so it can be merged now.
+2. **Delivered rerun: COMPLETE and READ OUT 2026-10-09** (`reference/delivered_rerun_prereg.md`
+   §8c; readout `reference/delivered_rerun_readout.{md,json}`; figures in `NUMBERS.md`
+   "Delivered rerun"). Seven cells full; the 9B unaided cell needed one resume (22417213;
+   prereg §9 deviation 1, execution only). **Parity fails at job level** (Gemma 10/10,
+   Qwen 15/20), so the whole rerun is a separate-apparatus replication. **R1 No delivered
+   harm · R2 Unresolved · R3 title changes to the two-gate reading · R4 met · R5 the
+   directive suppresses calling.** The cluster checkout may now leave `4b2fe6e`.
+3. **Analysis code: FROZEN 2026-10-03** (PR #116, `d558946`, package `822aace…`); ran on
+   live data 2026-10-09 with no halt and no tripwire. Merge PR #116 after the readout is
+   recorded.
+   Still open under the prereg, labelled descriptive: the hand read of the E4 "needs
+   reading" rows (§8b 13) and the §6 tables (per wording, per domain, classical vs
+   numeric, cost at realistic price ratios, the Gemma no-call answers read in full).
 4. **PlanBench wording** (drafts, on a branch stacked on #111): corrected-extractor
    numbers beside the shipped ones; the "well inside ±7.5" sentence replaced.
 
-**After the rerun reads out: one drafting pass** covering the statistics paragraph
+**Next: one drafting pass (the rerun has read out)** covering the rerun results (as a separate-apparatus replication), the new title (R3), the statistics paragraph
 (paired, domain-clustered tests; two verdicts downgraded; the GLMM sentence), the cost
 paragraph, the test-data description, the per-wording and per-domain tables, the
-delivery-gap section, the title rule (prereg R3), and Q5 / Q8 / Q9.
+delivery-gap section (incl. the held group E rows E3a, E3b, E8b), and Q5 / Q8 / Q9.
 
 ### N2 — Coauthor + advisor review round (Omer; the brief is written)
 

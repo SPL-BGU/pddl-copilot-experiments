@@ -355,7 +355,78 @@ fixed now, before the freeze, so they are part of the registration, not deviatio
 16. R5's steering sentence, when neutral-steered is not within ±5 of minimal-steered,
     reads "Not shown (neutral-steered not within ±5 of minimal-steered)".
 
+## 8c. Readout (2026-10-09, frozen code, live mode)
+
+**Run.** All seven cells complete: Part A 9,120 × 3, Part B 6,000, Part C 4,560 × 3. The
+Qwen3.5-9B Part C cell timed out at 12 h (21991349_1, 4,392 rows) and was resumed once
+under §7 "a short cell is resumed": job **22417213**, same run tag, same harness checkout
+`4b2fe6e`, tools repo `5e4f9c0`, vLLM 0.20.2 (served banner in
+`22417213-vllm-Qwen3_5_9B.log`); COMPLETED 2026-10-09 12:22, exit 0, 4,560 rows. Rows
+synced to the laptop (`results/delivered-rerun/`, seven dirs, smoke dirs excluded).
+
+**Invocation.** Analysis worktree at `d558946`, package hash
+`822aace9ef8a6493592b5b08d73091094fd2602fc0180d1482af83db1ee45cc9` (matched),
+`--canonical-root results/sweep5v2-live`, `--gt-cache results/derived/gt_cache.json`,
+`--marketplace-path` = a temporary detached worktree of `pddl-copilot` at `5e4f9c0`
+(plugin venvs built as `launch-server.sh` does; worktree removed afterwards). Exit 0, no
+HALT, no tripwire fired, no `--audit-notes`. Every corpus check is zero (torn lines,
+exception rows, infrastructure rows, scoring errors, storage cuts) in all 13 cells.
+
+**Output, kept byte-identical:** `reference/delivered_rerun_readout.md` (sha256
+`043526d8b8b8f0299ad910c3468d5650c9bdd15718e6e98247e8357c1970f973`) and
+`reference/delivered_rerun_readout.json` (sha256
+`81bd59ffd153dafe20e9d9d7422785fff05d8dba894e9f8a331b919a7334c674`). The tables there
+are the record; the lines below are a summary of them.
+
+**Parity guard (§3).** Gemma first: all 10 Gemma cells meet the criterion (no noise
+floor reported). Qwen: 15 / 20 cells meet it (rule needs 18); two cells have
+|Δ̂| > 10: Qwen3.6-35B solve-plain +19.3 [14.3, 24.7] and simulate-plain +19.3
+[11.7, 27.7]. Also not met: 35B solve-steered +7.3, 9B simulate plain +3.0 and steered
++4.0. **Parity fails at job level: the whole rerun is reported as a separate-apparatus
+replication** (fixed consequence). Turns clipped before a tool call, the §3 "known
+reason": 97 (35B solve-plain), 85 (35B solve-steered).
+
+**Part C parity (reported, not a gate).** 11 / 12 cells meet the criterion; Qwen3.6-35B
+validate_domain does not (76.4 against 67.8, +8.6 [2.8, 14.7], unresolved).
+
+**E1.** Solve 77.0–95.3; validate tasks 89.2–100.0; simulate 8.3 (Gemma, both arms),
+16.3–17.3 (9B), 25.7–28.3 (35B). No-room share on simulate 42.7–53.0% (§8a), counted as
+delivered failures.
+
+**E2 (tools-plain − Part C, Holm over 15).** Solve +71.0 / +64.3 / +51.7 (Gemma / 9B /
+35B); validate_domain +18.9 / +73.9 / +22.2; validate_problem +23.3 / +29.0 / +21.5;
+validate_plan +0.9 [−1.2, 2.9] (Gemma, Holm p 0.46) / +14.2 / +7.4; simulate −15.7
+[−24.7, −6.7] (Gemma, Holm p 0.018) / +8.0 (Holm p 0.22) / +10.7 (Holm p 0.090).
+
+**E3 (steered − plain, Holm over 15).** Only Gemma validate_plan survives Holm: +7.5
+[4.9, 10.2], Holm p 0.00057. All others Holm p ≥ 0.15.
+
+**E4.** Gap among tool-correct trials: validate tasks 0–1.7%; solve 4.7–13.4% (mostly
+refused or clipped final request); simulate 69.9–91.2% (mostly refused or clipped final
+request). "Needs reading" rows await the hand read of §8b item 13.
+
+**Registered readings (§5), verbatim labels.**
+
+- **R1:** No delivered harm (Gemma validate_plan E2 +0.9, 95% CI [−1.2, 2.9]).
+- **R2:** Unresolved (Gemma validate_plan E3 +7.5, 95% CI [4.9, 10.2]; the lower bound
+  is not above +5).
+- **R3:** Title changes to the two-gate reading (invocation and delivery). R1 is not
+  "harm confirmed" and no model has an E3 validate_plan 95% lower bound above +5.
+- **R4:** The canonical open-weight delivery gap on solve is attributed to storage and
+  the refused final request (≥ 90% for each model; full, uncut answers delivered correctly:
+  Gemma 97.7% of 576, 9B 95.0% of 561, 35B 95.2% of 498).
+- **R5:** The directive suppresses calling (neutral-plain − minimal-plain invocation
+  +6.9, 90% CI [3.6, 10.7]; 26.9% against 20.0%). Steering sentence: Not shown
+  (neutral-steered not within ±5 of minimal-steered; 98.1 against 93.1).
+
+Still to do under this prereg: the hand read of the E4 "needs reading" rows (§8b 13) and
+the descriptive §6 tables, both labelled descriptive.
+
 ## 9. Deviations
 
-*None yet. Any change to the above after the first job starts is listed here with its
-date and reason.*
+1. **2026-10-09, execution only, no analysis change.** The Qwen3.5-9B Part C cell
+   (21991349_1) stopped at the 12 h wall clock with 4,392 / 4,560 rows. §7 says a short
+   cell is resumed, so it was resumed once (22417213) on the same checkout, tools
+   commit, serving version and run tag; no row was rerun or dropped. Listed here because
+   §7 also says any stop other than a VOID cell is a declared deviation. The analysis
+   was not edited and no outcome had been read when the resume was submitted.
