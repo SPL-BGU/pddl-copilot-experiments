@@ -1,7 +1,8 @@
 # STATUS — what is actually left
 
 *Content last refreshed: 2026-10-09 (delivered rerun complete and read out by the
-frozen code; N1b updated). Before that: 2026-10-02 (resume-verify; Q1/Q2/Q3/Q4 of the
+frozen code; N1b updated; every open PR merged: #117, then the paper stack #110, #111,
+#114, #115). Before that: 2026-10-02 (resume-verify; Q1/Q2/Q3/Q4 of the
 weakness list answered; the $0 re-analysis package delivered; the delivered rerun
 pre-registered. Earlier refreshes are in git history). Renamed
 from `remaining_work_20260811.md` on 2026-08-29.*
@@ -18,8 +19,8 @@ decided 2026-10-02). The paper names the delivered answer as its main outcome an
 measure it on the open-weight tool arms; the rerun measures it, after three harness
 fixes. The four local re-analyses of 2026-10-02 (`reanalysis_*.md`) also changed what
 the paper can claim: two statistical verdicts, the PlanBench equivalence sentence, the
-cost claim, and the reading of the open-weight delivery gap. The tex is still the
-09-19 text plus two open PRs (#110, #111). After the rerun reads out comes one drafting
+cost claim, and the reading of the open-weight delivery gap. The tex is the
+09-19 text plus PRs #110, #111, #114, #115 (merged 2026-10-09). After the rerun reads out comes one drafting
 pass, then the pre-submission mechanics (N3) and the advisor round (N2).
 
 ## State by line
@@ -99,9 +100,9 @@ arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
 
 - PR #110: the false "JSON-constrained decoding remains" sentence corrected, the
   `guided_json` Limitations sentence added, the "budget, not the grader" inference
-  removed. Waiting for Omer's merge.
-- PR #111 (stacked on #110): consistency read groups A–D applied. Group E drafts are in
-  `consistency_read_E_drafts.md`, waiting for Omer's answer.
+  removed. Merged 2026-10-09.
+- PR #111: consistency read groups A–D applied. Merged 2026-10-09. Group E: see
+  PR #115 below.
 - The $0 re-analysis package (Q4), four findings docs + `tools/reanalysis/`:
   `reanalysis_statistics.md`, `reanalysis_planbench.md`, `reanalysis_breakdowns_cost.md`,
   `reanalysis_transcripts.md`. Headlines are in `paper_notes` 10-02. **None of their
@@ -110,10 +111,10 @@ arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
 
 **In progress**
 
-1. **Harness fixes for the rerun: done, PR #113** (`harness/delivered-rerun`, `4b2fe6e`):
+1. **Harness fixes for the rerun: on `main` since 2026-10-09 (PR #117)** (`4b2fe6e`, tag
+   `delivered-rerun-harness`):
    final-request overflow retry, leaked Gemma channel prefix, storage cap 65,536, a
-   `neutral` prompt style. Independently reviewed; four findings fixed. Every rerun job has
-   finished (2026-10-09), so it can be merged now.
+   `neutral` prompt style. Independently reviewed; four findings fixed.
 2. **Delivered rerun: COMPLETE and READ OUT 2026-10-09** (`reference/delivered_rerun_prereg.md`
    §8c; readout `reference/delivered_rerun_readout.{md,json}`; figures in `NUMBERS.md`
    "Delivered rerun"). Seven cells full; the 9B unaided cell needed one resume (22417213;
@@ -121,13 +122,14 @@ arm · Q3 yes (PR #110) · Q4 all.** Still open in that file: Q5–Q10.
    Qwen 15/20), so the whole rerun is a separate-apparatus replication. **R1 No delivered
    harm · R2 Unresolved · R3 title changes to the two-gate reading · R4 met · R5 the
    directive suppresses calling.** The cluster checkout may now leave `4b2fe6e`.
-3. **Analysis code: FROZEN 2026-10-03** (PR #116, `d558946`, package `822aace…`); ran on
-   live data 2026-10-09 with no halt and no tripwire. Merge PR #116 after the readout is
-   recorded.
+3. **Analysis code: FROZEN 2026-10-03** (`d558946`, tag `delivered-rerun-analysis-frozen`,
+   package `822aace…`); ran on live data 2026-10-09 with no halt and no tripwire. On `main`
+   since 2026-10-09 via PR #117, a squash (`4147a0c`), so `4b2fe6e` and `d558946` are reached
+   through their tags, not `main`'s history; frozen files re-checked unchanged (prereg §8).
    Still open under the prereg, labelled descriptive: the hand read of the E4 "needs
    reading" rows (§8b 13) and the §6 tables (per wording, per domain, classical vs
    numeric, cost at realistic price ratios, the Gemma no-call answers read in full).
-4. **PlanBench wording** (drafts, on a branch stacked on #111): corrected-extractor
+4. **PlanBench wording** (in the tex since 2026-10-09, PR #114): corrected-extractor
    numbers beside the shipped ones; the "well inside ±7.5" sentence replaced.
 
 **Next: one drafting pass (the rerun has read out)** covering the rerun results (as a separate-apparatus replication), the new title (R3), the statistics paragraph
@@ -162,8 +164,9 @@ The six questions (memo §10):
   `sweep5v2-live`, now qualified "format-exact on the shared-budget corpus", with a
   `NUMBERS.md` row (Job 2 block). Three more unqualified sites are row A5 of the
   consistency read.
-- **Consistency read: groups A–D applied 2026-10-02 (PR #111).** Group E drafts wait
-  in `consistency_read_E_drafts.md`. Group F: nothing drafted.
+- **Consistency read: groups A–D applied 2026-10-02 (PR #111); group E applied by
+  PR #115** (27 rows; E3a, E3b, E8b held for the delivery-gap rewrite). Both merged
+  2026-10-09. Group F: nothing drafted.
 - **GLMM refit: computed 2026-10-02** (`reanalysis_statistics.md` §3: log-odds +7.80,
   SE 0.29). The tex sentence still quotes the variational output; the edit belongs to
   the post-rerun drafting pass.

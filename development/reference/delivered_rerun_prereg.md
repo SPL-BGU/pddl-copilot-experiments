@@ -270,6 +270,14 @@ new file that reuses the harness scoring functions at the harness commit below.
 Any later edit to one of these files is a declared deviation in §9, followed by a re-freeze
 and regeneration of every downstream artifact.
 
+**On `main` (2026-10-09, after the readout).** The harness, the analysis and this prereg
+reached `main` together in PR #117 (it replaced PRs #112, #113, #116), merged as the single
+squash commit `4147a0c`. So `4b2fe6e` and `d558946` are not in `main`'s history. They are
+kept on GitHub by the tags `delivered-rerun-harness` (`4b2fe6e`) and
+`delivered-rerun-analysis-frozen` (`d558946`); the branches named above are deleted. Checked
+on `main` at `4999a6d`: all 27 sha256 values in the table above match, and
+`--print-package-hash` gives `822aace…` as frozen. Not a deviation: no frozen file changed.
+
 ## 8a. Smoke record (2026-10-02)
 
 Checked on the smoke output, apparatus fields only (script: row counts, field presence,
