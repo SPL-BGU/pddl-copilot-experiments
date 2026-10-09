@@ -1,0 +1,4483 @@
+{
+ "apparatus_deltas": [
+  "1. Storage: final answers stored up to 65,536 characters (canonical: 500); rows cut by storage: 0 (asserted).",
+  "2. Final-request overflow retry: a request refused for exceeding the 16,384-token window is resent with the allowance that fits; the first request of every turn is unchanged.",
+  "3. A leading empty thought-channel marker is removed from the text the grader reads.",
+  "4. Serving version: vLLM 0.20.2; Qwen3.5-9B canonical tool cells ran on 0.22.0."
+ ],
+ "audit_notes": {},
+ "audited_tripwires": {},
+ "corpus": [
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal_delivered-rerun",
+   "doubled_prefix_rows": 0,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "rerun",
+   "prefix_rows": 6180,
+   "residual_marker_rows": 31,
+   "rows": 9120,
+   "scoring_error_rows": 0,
+   "storage_cuts": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_Qwen3_5_9B_off_tools_all_minimal_delivered-rerun",
+   "doubled_prefix_rows": 0,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "rerun",
+   "prefix_rows": 0,
+   "residual_marker_rows": 0,
+   "rows": 9120,
+   "scoring_error_rows": 0,
+   "storage_cuts": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_qwen3_6_35b_off_tools_all_minimal_delivered-rerun",
+   "doubled_prefix_rows": 0,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "rerun",
+   "prefix_rows": 0,
+   "residual_marker_rows": 0,
+   "rows": 9120,
+   "scoring_error_rows": 0,
+   "storage_cuts": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_tools_all_neutral_delivered-rerun-neutral",
+   "doubled_prefix_rows": 0,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "rerun",
+   "prefix_rows": 3724,
+   "residual_marker_rows": 25,
+   "rows": 6000,
+   "scoring_error_rows": 0,
+   "storage_cuts": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_no-tools_delivered-rerun",
+   "doubled_prefix_rows": 0,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "rerun",
+   "prefix_rows": 0,
+   "residual_marker_rows": 0,
+   "rows": 4560,
+   "scoring_error_rows": 0,
+   "storage_cuts": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_Qwen3_5_9B_off_no-tools_delivered-rerun",
+   "doubled_prefix_rows": 0,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "rerun",
+   "prefix_rows": 0,
+   "residual_marker_rows": 0,
+   "rows": 4560,
+   "scoring_error_rows": 0,
+   "storage_cuts": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_qwen3_6_35b_off_no-tools_delivered-rerun",
+   "doubled_prefix_rows": 0,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "rerun",
+   "prefix_rows": 0,
+   "residual_marker_rows": 0,
+   "rows": 4560,
+   "scoring_error_rows": 0,
+   "storage_cuts": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal",
+   "doubled_prefix_rows": null,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "canonical",
+   "prefix_rows": null,
+   "residual_marker_rows": null,
+   "rows": 9120,
+   "scoring_error_rows": 0,
+   "storage_cuts": null,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_Qwen3_5_9B_off_tools_all_minimal",
+   "doubled_prefix_rows": null,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "canonical",
+   "prefix_rows": null,
+   "residual_marker_rows": null,
+   "rows": 9120,
+   "scoring_error_rows": 0,
+   "storage_cuts": null,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_qwen3_6_35b_off_tools_all_minimal",
+   "doubled_prefix_rows": null,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "canonical",
+   "prefix_rows": null,
+   "residual_marker_rows": null,
+   "rows": 9120,
+   "scoring_error_rows": 0,
+   "storage_cuts": null,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_no-tools",
+   "doubled_prefix_rows": null,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "canonical",
+   "prefix_rows": null,
+   "residual_marker_rows": null,
+   "rows": 4560,
+   "scoring_error_rows": 0,
+   "storage_cuts": null,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_Qwen3_5_9B_off_no-tools",
+   "doubled_prefix_rows": null,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "canonical",
+   "prefix_rows": null,
+   "residual_marker_rows": null,
+   "rows": 4560,
+   "scoring_error_rows": 0,
+   "storage_cuts": null,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_qwen3_6_35b_off_no-tools",
+   "doubled_prefix_rows": null,
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "layer": "canonical",
+   "prefix_rows": null,
+   "residual_marker_rows": null,
+   "rows": 4560,
+   "scoring_error_rows": 0,
+   "storage_cuts": null,
+   "torn_lines": 0
+  }
+ ],
+ "design": "registered",
+ "e1": [
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 92.33333333333333,
+    "hi": 97.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 87.33333333333333,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 277,
+   "delivered_pct": 92.33333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "no_room_n": 8,
+   "no_room_pct": 2.6666666666666665,
+   "parity_verdict": "criterion met",
+   "prefix_n": 291,
+   "reasons": {
+    "no_plan_extracted": 3,
+    "no_room": 8,
+    "plan_invalid": 12,
+    "plan_valid": 277
+   },
+   "residual_marker_n": 1,
+   "style": "minimal",
+   "task": "solve",
+   "tool_verified_pct": 98.66666666666667
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 95.33333333333334,
+    "hi": 98.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 91.33333333333333,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 286,
+   "delivered_pct": 95.33333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "no_room_n": 8,
+   "no_room_pct": 2.6666666666666665,
+   "parity_verdict": "criterion met",
+   "prefix_n": 290,
+   "reasons": {
+    "no_plan_extracted": 1,
+    "no_room": 8,
+    "plan_invalid": 5,
+    "plan_valid": 286
+   },
+   "residual_marker_n": 2,
+   "style": "minimal",
+   "task": "solve",
+   "tool_verified_pct": 100.0
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 98.33333333333333,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 96.11111111111111,
+    "n": 360
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 354,
+   "delivered_pct": 98.33333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "gemma4_26b-a4b",
+   "n": 360,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 360,
+   "reasons": {
+    "verdict_stated_ok": 354,
+    "verdict_stated_wrong": 6
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_domain",
+   "tool_verified_pct": 97.77777777777777
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 98.88888888888889,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 97.5,
+    "n": 360
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 356,
+   "delivered_pct": 98.88888888888889,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "gemma4_26b-a4b",
+   "n": 360,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 359,
+   "reasons": {
+    "verdict_stated_ok": 356,
+    "verdict_stated_wrong": 4
+   },
+   "residual_marker_n": 1,
+   "style": "minimal",
+   "task": "validate_domain",
+   "tool_verified_pct": 98.88888888888889
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 99.5,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 99.0,
+    "n": 600
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 597,
+   "delivered_pct": 99.5,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "gemma4_26b-a4b",
+   "n": 600,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 598,
+   "reasons": {
+    "verdict_stated_ok": 597,
+    "verdict_stated_wrong": 3
+   },
+   "residual_marker_n": 2,
+   "style": "minimal",
+   "task": "validate_problem",
+   "tool_verified_pct": 99.5
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 99.66666666666667,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 99.16666666666667,
+    "n": 600
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 598,
+   "delivered_pct": 99.66666666666667,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "gemma4_26b-a4b",
+   "n": 600,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 600,
+   "reasons": {
+    "verdict_stated_ok": 598,
+    "verdict_stated_wrong": 2
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_problem",
+   "tool_verified_pct": 100.0
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 89.16666666666667,
+    "hi": 93.10000000000001,
+    "k": 20,
+    "level": 0.95,
+    "lo": 84.6,
+    "n": 3000
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 2675,
+   "delivered_pct": 89.16666666666667,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 20.0,
+   "model": "gemma4_26b-a4b",
+   "n": 3000,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 595,
+   "reasons": {
+    "no_verdict_stated": 23,
+    "verdict_stated_ok": 2675,
+    "verdict_stated_wrong": 302
+   },
+   "residual_marker_n": 5,
+   "style": "minimal",
+   "task": "validate_plan",
+   "tool_verified_pct": 19.866666666666667
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 96.63333333333334,
+    "hi": 98.9,
+    "k": 20,
+    "level": 0.95,
+    "lo": 93.13333333333334,
+    "n": 3000
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 2899,
+   "delivered_pct": 96.63333333333334,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 93.06666666666666,
+   "model": "gemma4_26b-a4b",
+   "n": 3000,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 2776,
+   "reasons": {
+    "no_verdict_stated": 16,
+    "verdict_stated_ok": 2899,
+    "verdict_stated_wrong": 85
+   },
+   "residual_marker_n": 16,
+   "style": "minimal",
+   "task": "validate_plan",
+   "tool_verified_pct": 92.13333333333334
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 8.333333333333332,
+    "hi": 13.333333333333334,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.0,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 25,
+   "delivered_pct": 8.333333333333334,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 99.66666666666667,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "no_room_n": 138,
+   "no_room_pct": 46.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 156,
+   "reasons": {
+    "empty_stop": 2,
+    "format_parse_fail": 116,
+    "no_room": 138,
+    "trajectory_mismatch": 19,
+    "trajectory_ok": 25
+   },
+   "residual_marker_n": 3,
+   "style": "minimal",
+   "task": "simulate",
+   "tool_verified_pct": 90.66666666666667
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 8.333333333333332,
+    "hi": 13.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.333333333333334,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 25,
+   "delivered_pct": 8.333333333333334,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "no_room_n": 141,
+   "no_room_pct": 47.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 155,
+   "reasons": {
+    "empty_stop": 3,
+    "format_parse_fail": 112,
+    "no_room": 141,
+    "trajectory_mismatch": 19,
+    "trajectory_ok": 25
+   },
+   "residual_marker_n": 1,
+   "style": "minimal",
+   "task": "simulate",
+   "tool_verified_pct": 90.66666666666667
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 88.66666666666667,
+    "hi": 94.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 82.0,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 266,
+   "delivered_pct": 88.66666666666667,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "no_room_n": 16,
+   "no_room_pct": 5.333333333333333,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "no_plan_extracted": 3,
+    "no_room": 16,
+    "plan_invalid": 15,
+    "plan_valid": 266
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "solve",
+   "tool_verified_pct": 100.0
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 89.0,
+    "hi": 94.33333333333334,
+    "k": 20,
+    "level": 0.95,
+    "lo": 82.66666666666667,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 267,
+   "delivered_pct": 89.0,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "no_room_n": 17,
+   "no_room_pct": 5.666666666666667,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "no_plan_extracted": 2,
+    "no_room": 17,
+    "plan_invalid": 14,
+    "plan_valid": 267
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "solve",
+   "tool_verified_pct": 100.0
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 100.0,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 100.0,
+    "n": 360
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 360,
+   "delivered_pct": 100.0,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 360,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "verdict_stated_ok": 360
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_domain",
+   "tool_verified_pct": 100.0
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 100.0,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 100.0,
+    "n": 360
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 360,
+   "delivered_pct": 100.0,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 360,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "verdict_stated_ok": 360
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_domain",
+   "tool_verified_pct": 100.0
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 94.83333333333334,
+    "hi": 96.83333333333334,
+    "k": 20,
+    "level": 0.95,
+    "lo": 92.83333333333333,
+    "n": 600
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 569,
+   "delivered_pct": 94.83333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 600,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "verdict_stated_ok": 569,
+    "verdict_stated_wrong": 31
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_problem",
+   "tool_verified_pct": 94.83333333333333
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 90.66666666666666,
+    "hi": 95.83333333333334,
+    "k": 20,
+    "level": 0.95,
+    "lo": 84.5,
+    "n": 600
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 544,
+   "delivered_pct": 90.66666666666667,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 600,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "no_verdict_stated": 2,
+    "verdict_stated_ok": 544,
+    "verdict_stated_wrong": 54
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_problem",
+   "tool_verified_pct": 91.0
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 94.03333333333333,
+    "hi": 97.56666666666666,
+    "k": 20,
+    "level": 0.95,
+    "lo": 89.43333333333334,
+    "n": 3000
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 2821,
+   "delivered_pct": 94.03333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 97.9,
+   "model": "Qwen3_5_9B",
+   "n": 3000,
+   "no_room_n": 58,
+   "no_room_pct": 1.9333333333333333,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "no_room": 58,
+    "no_verdict_stated": 10,
+    "verdict_stated_ok": 2821,
+    "verdict_stated_wrong": 111
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_plan",
+   "tool_verified_pct": 92.53333333333333
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 95.93333333333334,
+    "hi": 98.83333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 92.10000000000001,
+    "n": 3000
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 2878,
+   "delivered_pct": 95.93333333333334,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 3000,
+   "no_room_n": 24,
+   "no_room_pct": 0.8,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "empty_stop": 1,
+    "no_room": 24,
+    "no_verdict_stated": 8,
+    "verdict_stated_ok": 2878,
+    "verdict_stated_wrong": 89
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_plan",
+   "tool_verified_pct": 96.13333333333334
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 17.333333333333336,
+    "hi": 27.666666666666668,
+    "k": 20,
+    "level": 0.95,
+    "lo": 8.0,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 52,
+   "delivered_pct": 17.333333333333332,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 81.33333333333333,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "no_room_n": 128,
+   "no_room_pct": 42.666666666666664,
+   "parity_verdict": "criterion not met (unresolved)",
+   "prefix_n": 0,
+   "reasons": {
+    "empty_stop": 1,
+    "format_parse_fail": 54,
+    "no_room": 128,
+    "trajectory_mismatch": 65,
+    "trajectory_ok": 52
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "simulate",
+   "tool_verified_pct": 68.0
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 16.333333333333332,
+    "hi": 26.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 8.0,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 49,
+   "delivered_pct": 16.333333333333332,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "no_room_n": 159,
+   "no_room_pct": 53.0,
+   "parity_verdict": "criterion not met (unresolved)",
+   "prefix_n": 0,
+   "reasons": {
+    "format_parse_fail": 47,
+    "no_room": 159,
+    "trajectory_mismatch": 45,
+    "trajectory_ok": 49
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "simulate",
+   "tool_verified_pct": 87.0
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 77.0,
+    "hi": 83.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 69.66666666666667,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 231,
+   "delivered_pct": 77.0,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 87.66666666666667,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "no_room_n": 25,
+   "no_room_pct": 8.333333333333334,
+   "parity_verdict": "criterion not met (unresolved)",
+   "prefix_n": 0,
+   "reasons": {
+    "no_plan_extracted": 14,
+    "no_room": 25,
+    "plan_invalid": 30,
+    "plan_valid": 231
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "solve",
+   "tool_verified_pct": 82.33333333333333
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 87.33333333333333,
+    "hi": 92.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 81.66666666666667,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 262,
+   "delivered_pct": 87.33333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 99.66666666666667,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "no_room_n": 21,
+   "no_room_pct": 7.0,
+   "parity_verdict": "criterion not met (unresolved)",
+   "prefix_n": 0,
+   "reasons": {
+    "no_plan_extracted": 7,
+    "no_room": 21,
+    "plan_invalid": 10,
+    "plan_valid": 262
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "solve",
+   "tool_verified_pct": 99.33333333333333
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 98.61111111111111,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 96.11111111111111,
+    "n": 360
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 355,
+   "delivered_pct": 98.61111111111111,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "qwen3_6_35b",
+   "n": 360,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "verdict_stated_ok": 355,
+    "verdict_stated_wrong": 5
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_domain",
+   "tool_verified_pct": 98.61111111111111
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 99.44444444444444,
+    "hi": 100.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 98.33333333333333,
+    "n": 360
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 358,
+   "delivered_pct": 99.44444444444444,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "qwen3_6_35b",
+   "n": 360,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "verdict_stated_ok": 358,
+    "verdict_stated_wrong": 2
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_domain",
+   "tool_verified_pct": 99.44444444444444
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 96.16666666666667,
+    "hi": 98.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 94.16666666666667,
+    "n": 600
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 577,
+   "delivered_pct": 96.16666666666667,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 99.33333333333333,
+   "model": "qwen3_6_35b",
+   "n": 600,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "no_verdict_stated": 9,
+    "verdict_stated_ok": 577,
+    "verdict_stated_wrong": 14
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_problem",
+   "tool_verified_pct": 97.16666666666667
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 97.33333333333334,
+    "hi": 99.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 95.5,
+    "n": 600
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 584,
+   "delivered_pct": 97.33333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "qwen3_6_35b",
+   "n": 600,
+   "no_room_n": 0,
+   "no_room_pct": 0.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "verdict_stated_ok": 584,
+    "verdict_stated_wrong": 16
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_problem",
+   "tool_verified_pct": 97.33333333333333
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 97.83333333333334,
+    "hi": 98.86666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 96.66666666666667,
+    "n": 3000
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 2935,
+   "delivered_pct": 97.83333333333333,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 83.13333333333334,
+   "model": "qwen3_6_35b",
+   "n": 3000,
+   "no_room_n": 3,
+   "no_room_pct": 0.1,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "no_room": 3,
+    "no_verdict_stated": 15,
+    "verdict_stated_ok": 2935,
+    "verdict_stated_wrong": 47
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_plan",
+   "tool_verified_pct": 82.4
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 98.63333333333333,
+    "hi": 99.4,
+    "k": 20,
+    "level": 0.95,
+    "lo": 97.76666666666667,
+    "n": 3000
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 2959,
+   "delivered_pct": 98.63333333333334,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "qwen3_6_35b",
+   "n": 3000,
+   "no_room_n": 2,
+   "no_room_pct": 0.06666666666666667,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "no_room": 2,
+    "no_verdict_stated": 15,
+    "verdict_stated_ok": 2959,
+    "verdict_stated_wrong": 24
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "validate_plan",
+   "tool_verified_pct": 99.13333333333334
+  },
+  {
+   "arm": "plain",
+   "ci95": {
+    "est": 28.333333333333332,
+    "hi": 41.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 16.333333333333332,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 85,
+   "delivered_pct": 28.333333333333332,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 99.66666666666667,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "no_room_n": 150,
+   "no_room_pct": 50.0,
+   "parity_verdict": "criterion not met (unresolved)",
+   "prefix_n": 0,
+   "reasons": {
+    "format_parse_fail": 20,
+    "no_room": 150,
+    "trajectory_mismatch": 45,
+    "trajectory_ok": 85
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "simulate",
+   "tool_verified_pct": 94.0
+  },
+  {
+   "arm": "steered",
+   "ci95": {
+    "est": 25.666666666666664,
+    "hi": 37.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 15.0,
+    "n": 300
+   },
+   "consequence": "separate-apparatus replication (whole rerun)",
+   "delivered_k": 77,
+   "delivered_pct": 25.666666666666668,
+   "doubled_prefix_n": 0,
+   "exception_n": 0,
+   "invocation_pct": 100.0,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "no_room_n": 150,
+   "no_room_pct": 50.0,
+   "parity_verdict": "criterion met",
+   "prefix_n": 0,
+   "reasons": {
+    "empty_stop": 1,
+    "format_parse_fail": 35,
+    "no_room": 150,
+    "trajectory_mismatch": 37,
+    "trajectory_ok": 77
+   },
+   "residual_marker_n": 0,
+   "style": "minimal",
+   "task": "simulate",
+   "tool_verified_pct": 95.66666666666667
+  }
+ ],
+ "e2": [
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 21.333333333333332,
+   "b_label": "tools-plain (A)",
+   "b_pct": 92.33333333333333,
+   "ci95": {
+    "est": 71.0,
+    "hi": 79.66666666666666,
+    "k": 20,
+    "level": 0.95,
+    "lo": 62.0,
+    "n": 300
+   },
+   "delta": 71.0,
+   "input_cells": [
+    {
+     "cell": "C/gemma4_26b-a4b/solve/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 300,
+   "name": "E2",
+   "p": 1.9073486328125e-06,
+   "p_holm": 2.86102294921875e-05,
+   "task": "solve",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 79.44444444444444,
+   "b_label": "tools-plain (A)",
+   "b_pct": 98.33333333333333,
+   "ci95": {
+    "est": 18.88888888888889,
+    "hi": 31.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 7.5,
+    "n": 360
+   },
+   "delta": 18.88888888888889,
+   "input_cells": [
+    {
+     "cell": "C/gemma4_26b-a4b/validate_domain/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_domain/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 360,
+   "name": "E2",
+   "p": 0.00146484375,
+   "p_holm": 0.00732421875,
+   "task": "validate_domain",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 76.16666666666667,
+   "b_label": "tools-plain (A)",
+   "b_pct": 99.5,
+   "ci95": {
+    "est": 23.333333333333332,
+    "hi": 28.999999999999996,
+    "k": 20,
+    "level": 0.95,
+    "lo": 17.5,
+    "n": 600
+   },
+   "delta": 23.333333333333332,
+   "input_cells": [
+    {
+     "cell": "C/gemma4_26b-a4b/validate_problem/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_problem/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 600,
+   "name": "E2",
+   "p": 3.814697265625e-06,
+   "p_holm": 3.814697265625e-05,
+   "task": "validate_problem",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 88.3,
+   "b_label": "tools-plain (A)",
+   "b_pct": 89.16666666666667,
+   "ci95": {
+    "est": 0.8666666666666666,
+    "hi": 2.933333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": -1.2,
+    "n": 3000
+   },
+   "delta": 0.8666666666666667,
+   "input_cells": [
+    {
+     "cell": "C/gemma4_26b-a4b/validate_plan/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 3000,
+   "name": "E2",
+   "p": 0.45661163330078125,
+   "p_holm": 0.45661163330078125,
+   "task": "validate_plan",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 24.0,
+   "b_label": "tools-plain (A)",
+   "b_pct": 8.333333333333334,
+   "ci95": {
+    "est": -15.666666666666668,
+    "hi": -6.666666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": -24.666666666666668,
+    "n": 300
+   },
+   "delta": -15.666666666666666,
+   "input_cells": [
+    {
+     "cell": "C/gemma4_26b-a4b/simulate/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "not checked (simulate is excluded from the Part C parity check, \u00a72)"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/simulate/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 300,
+   "name": "E2",
+   "p": 0.00439453125,
+   "p_holm": 0.017578125,
+   "task": "simulate",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 24.333333333333332,
+   "b_label": "tools-plain (A)",
+   "b_pct": 88.66666666666667,
+   "ci95": {
+    "est": 64.33333333333333,
+    "hi": 74.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 54.0,
+    "n": 300
+   },
+   "delta": 64.33333333333333,
+   "input_cells": [
+    {
+     "cell": "C/Qwen3_5_9B/solve/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 300,
+   "name": "E2",
+   "p": 1.9073486328125e-06,
+   "p_holm": 2.86102294921875e-05,
+   "task": "solve",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 26.11111111111111,
+   "b_label": "tools-plain (A)",
+   "b_pct": 100.0,
+   "ci95": {
+    "est": 73.88888888888889,
+    "hi": 81.67361111111101,
+    "k": 20,
+    "level": 0.95,
+    "lo": 63.33333333333333,
+    "n": 360
+   },
+   "delta": 73.88888888888889,
+   "input_cells": [
+    {
+     "cell": "C/Qwen3_5_9B/validate_domain/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_domain/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 360,
+   "name": "E2",
+   "p": 3.814697265625e-06,
+   "p_holm": 3.814697265625e-05,
+   "task": "validate_domain",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 65.83333333333333,
+   "b_label": "tools-plain (A)",
+   "b_pct": 94.83333333333333,
+   "ci95": {
+    "est": 28.999999999999996,
+    "hi": 35.833333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 22.833333333333332,
+    "n": 600
+   },
+   "delta": 29.0,
+   "input_cells": [
+    {
+     "cell": "C/Qwen3_5_9B/validate_problem/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_problem/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 600,
+   "name": "E2",
+   "p": 1.9073486328125e-06,
+   "p_holm": 2.86102294921875e-05,
+   "task": "validate_problem",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 79.8,
+   "b_label": "tools-plain (A)",
+   "b_pct": 94.03333333333333,
+   "ci95": {
+    "est": 14.233333333333334,
+    "hi": 20.200000000000003,
+    "k": 20,
+    "level": 0.95,
+    "lo": 8.7,
+    "n": 3000
+   },
+   "delta": 14.233333333333333,
+   "input_cells": [
+    {
+     "cell": "C/Qwen3_5_9B/validate_plan/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 3000,
+   "name": "E2",
+   "p": 0.0001201629638671875,
+   "p_holm": 0.0008411407470703125,
+   "task": "validate_plan",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 9.333333333333334,
+   "b_label": "tools-plain (A)",
+   "b_pct": 17.333333333333332,
+   "ci95": {
+    "est": 8.0,
+    "hi": 17.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": -0.33333333333333337,
+    "n": 300
+   },
+   "delta": 8.0,
+   "input_cells": [
+    {
+     "cell": "C/Qwen3_5_9B/simulate/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "not checked (simulate is excluded from the Part C parity check, \u00a72)"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/simulate/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 300,
+   "name": "E2",
+   "p": 0.1123046875,
+   "p_holm": 0.224609375,
+   "task": "simulate",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 25.333333333333332,
+   "b_label": "tools-plain (A)",
+   "b_pct": 77.0,
+   "ci95": {
+    "est": 51.66666666666667,
+    "hi": 60.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 42.333333333333336,
+    "n": 300
+   },
+   "delta": 51.666666666666664,
+   "input_cells": [
+    {
+     "cell": "C/qwen3_6_35b/solve/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 300,
+   "name": "E2",
+   "p": 1.9073486328125e-06,
+   "p_holm": 2.86102294921875e-05,
+   "task": "solve",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 76.38888888888889,
+   "b_label": "tools-plain (A)",
+   "b_pct": 98.61111111111111,
+   "ci95": {
+    "est": 22.22222222222222,
+    "hi": 32.22222222222222,
+    "k": 20,
+    "level": 0.95,
+    "lo": 12.777777777777777,
+    "n": 360
+   },
+   "delta": 22.22222222222222,
+   "input_cells": [
+    {
+     "cell": "C/qwen3_6_35b/validate_domain/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion not met (unresolved)"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_domain/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 360,
+   "name": "E2",
+   "p": 0.000274658203125,
+   "p_holm": 0.00164794921875,
+   "task": "validate_domain",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 74.66666666666667,
+   "b_label": "tools-plain (A)",
+   "b_pct": 96.16666666666667,
+   "ci95": {
+    "est": 21.5,
+    "hi": 26.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 17.166666666666668,
+    "n": 600
+   },
+   "delta": 21.5,
+   "input_cells": [
+    {
+     "cell": "C/qwen3_6_35b/validate_problem/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_problem/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 600,
+   "name": "E2",
+   "p": 1.9073486328125e-06,
+   "p_holm": 2.86102294921875e-05,
+   "task": "validate_problem",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 90.43333333333334,
+   "b_label": "tools-plain (A)",
+   "b_pct": 97.83333333333333,
+   "ci95": {
+    "est": 7.3999999999999995,
+    "hi": 10.633333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.433333333333334,
+    "n": 3000
+   },
+   "delta": 7.4,
+   "input_cells": [
+    {
+     "cell": "C/qwen3_6_35b/validate_plan/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 3000,
+   "name": "E2",
+   "p": 6.866455078125e-05,
+   "p_holm": 0.00054931640625,
+   "task": "validate_plan",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "no-tools (C)",
+   "a_pct": 17.666666666666668,
+   "b_label": "tools-plain (A)",
+   "b_pct": 28.333333333333332,
+   "ci95": {
+    "est": 10.666666666666668,
+    "hi": 19.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 2.0,
+    "n": 300
+   },
+   "delta": 10.666666666666666,
+   "input_cells": [
+    {
+     "cell": "C/qwen3_6_35b/simulate/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "not checked (simulate is excluded from the Part C parity check, \u00a72)"
+    },
+    {
+     "cell": "A/qwen3_6_35b/simulate/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 300,
+   "name": "E2",
+   "p": 0.029937744140625,
+   "p_holm": 0.089813232421875,
+   "task": "simulate",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  }
+ ],
+ "e2_caveat": "No-tools side: Part C of this run (prereg \u00a72 \"Part C\" and \u00a74 E2: same harness commit, full storage, graded with the same delivered grader as the tool side; the canonical no-tools cells are not an E2 input). The no-tools arm is sampled under the per-task JSON constraint; the tool arm has none.",
+ "e3": [
+  {
+   "a_label": "plain",
+   "a_pct": 92.33333333333333,
+   "b_label": "steered",
+   "b_pct": 95.33333333333333,
+   "ci95": {
+    "est": 3.0,
+    "hi": 7.008333333333212,
+    "k": 20,
+    "level": 0.95,
+    "lo": -0.33333333333333337,
+    "n": 300
+   },
+   "delta": 3.0,
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/solve/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 300,
+   "name": "E3",
+   "p": 0.203125,
+   "p_holm": 1.0,
+   "task": "solve",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 98.33333333333333,
+   "b_label": "steered",
+   "b_pct": 98.88888888888889,
+   "ci95": {
+    "est": 0.5555555555555556,
+    "hi": 1.3888888888888888,
+    "k": 20,
+    "level": 0.95,
+    "lo": 0.0,
+    "n": 360
+   },
+   "delta": 0.5555555555555556,
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/validate_domain/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_domain/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 360,
+   "name": "E3",
+   "p": 0.5,
+   "p_holm": 1.0,
+   "task": "validate_domain",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 99.5,
+   "b_label": "steered",
+   "b_pct": 99.66666666666667,
+   "ci95": {
+    "est": 0.16666666666666669,
+    "hi": 0.8333333333333334,
+    "k": 20,
+    "level": 0.95,
+    "lo": -0.5,
+    "n": 600
+   },
+   "delta": 0.16666666666666666,
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/validate_problem/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_problem/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 600,
+   "name": "E3",
+   "p": 1.0,
+   "p_holm": 1.0,
+   "task": "validate_problem",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 89.16666666666667,
+   "b_label": "steered",
+   "b_pct": 96.63333333333334,
+   "ci95": {
+    "est": 7.466666666666668,
+    "hi": 10.166666666666666,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.9,
+    "n": 3000
+   },
+   "delta": 7.466666666666667,
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 3000,
+   "name": "E3",
+   "p": 3.814697265625e-05,
+   "p_holm": 0.00057220458984375,
+   "task": "validate_plan",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 8.333333333333334,
+   "b_label": "steered",
+   "b_pct": 8.333333333333334,
+   "ci95": {
+    "est": 0.0,
+    "hi": 2.666666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": -2.3333333333333335,
+    "n": 300
+   },
+   "delta": 0.0,
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/simulate/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/simulate/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "gemma4_26b-a4b",
+   "n_pairs": 300,
+   "name": "E3",
+   "p": 1.0,
+   "p_holm": 1.0,
+   "task": "simulate",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 88.66666666666667,
+   "b_label": "steered",
+   "b_pct": 89.0,
+   "ci95": {
+    "est": 0.33333333333333337,
+    "hi": 1.6666666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": -1.0,
+    "n": 300
+   },
+   "delta": 0.3333333333333333,
+   "input_cells": [
+    {
+     "cell": "A/Qwen3_5_9B/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/solve/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 300,
+   "name": "E3",
+   "p": 1.0,
+   "p_holm": 1.0,
+   "task": "solve",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 100.0,
+   "b_label": "steered",
+   "b_pct": 100.0,
+   "ci95": {
+    "est": 0.0,
+    "hi": 0.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 0.0,
+    "n": 360
+   },
+   "delta": 0.0,
+   "input_cells": [
+    {
+     "cell": "A/Qwen3_5_9B/validate_domain/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_domain/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 360,
+   "name": "E3",
+   "p": 1.0,
+   "p_holm": 1.0,
+   "task": "validate_domain",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 94.83333333333333,
+   "b_label": "steered",
+   "b_pct": 90.66666666666667,
+   "ci95": {
+    "est": -4.166666666666666,
+    "hi": 0.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": -9.666666666666666,
+    "n": 600
+   },
+   "delta": -4.166666666666667,
+   "input_cells": [
+    {
+     "cell": "A/Qwen3_5_9B/validate_problem/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_problem/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 600,
+   "name": "E3",
+   "p": 0.171875,
+   "p_holm": 1.0,
+   "task": "validate_problem",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 94.03333333333333,
+   "b_label": "steered",
+   "b_pct": 95.93333333333334,
+   "ci95": {
+    "est": 1.9,
+    "hi": 3.5666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 0.5,
+    "n": 3000
+   },
+   "delta": 1.9,
+   "input_cells": [
+    {
+     "cell": "A/Qwen3_5_9B/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_plan/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 3000,
+   "name": "E3",
+   "p": 0.01953125,
+   "p_holm": 0.25390625,
+   "task": "validate_plan",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 17.333333333333332,
+   "b_label": "steered",
+   "b_pct": 16.333333333333332,
+   "ci95": {
+    "est": -1.0,
+    "hi": 2.666666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": -6.0,
+    "n": 300
+   },
+   "delta": -1.0,
+   "input_cells": [
+    {
+     "cell": "A/Qwen3_5_9B/simulate/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/simulate/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    }
+   ],
+   "model": "Qwen3_5_9B",
+   "n_pairs": 300,
+   "name": "E3",
+   "p": 0.875,
+   "p_holm": 1.0,
+   "task": "simulate",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 77.0,
+   "b_label": "steered",
+   "b_pct": 87.33333333333333,
+   "ci95": {
+    "est": 10.333333333333334,
+    "hi": 18.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 3.6666666666666665,
+    "n": 300
+   },
+   "delta": 10.333333333333334,
+   "input_cells": [
+    {
+     "cell": "A/qwen3_6_35b/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    },
+    {
+     "cell": "A/qwen3_6_35b/solve/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 300,
+   "name": "E3",
+   "p": 0.0108489990234375,
+   "p_holm": 0.151885986328125,
+   "task": "solve",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 98.61111111111111,
+   "b_label": "steered",
+   "b_pct": 99.44444444444444,
+   "ci95": {
+    "est": 0.8333333333333334,
+    "hi": 2.2222222222222223,
+    "k": 20,
+    "level": 0.95,
+    "lo": 0.0,
+    "n": 360
+   },
+   "delta": 0.8333333333333334,
+   "input_cells": [
+    {
+     "cell": "A/qwen3_6_35b/validate_domain/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_domain/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 360,
+   "name": "E3",
+   "p": 0.5,
+   "p_holm": 1.0,
+   "task": "validate_domain",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 96.16666666666667,
+   "b_label": "steered",
+   "b_pct": 97.33333333333333,
+   "ci95": {
+    "est": 1.1666666666666667,
+    "hi": 2.5,
+    "k": 20,
+    "level": 0.95,
+    "lo": 0.0,
+    "n": 600
+   },
+   "delta": 1.1666666666666667,
+   "input_cells": [
+    {
+     "cell": "A/qwen3_6_35b/validate_problem/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_problem/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 600,
+   "name": "E3",
+   "p": 0.1484375,
+   "p_holm": 1.0,
+   "task": "validate_problem",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 97.83333333333333,
+   "b_label": "steered",
+   "b_pct": 98.63333333333334,
+   "ci95": {
+    "est": 0.8,
+    "hi": 1.5333333333333332,
+    "k": 20,
+    "level": 0.95,
+    "lo": 0.13333333333333333,
+    "n": 3000
+   },
+   "delta": 0.8,
+   "input_cells": [
+    {
+     "cell": "A/qwen3_6_35b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_plan/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 3000,
+   "name": "E3",
+   "p": 0.0458984375,
+   "p_holm": 0.55078125,
+   "task": "validate_plan",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  },
+  {
+   "a_label": "plain",
+   "a_pct": 28.333333333333332,
+   "b_label": "steered",
+   "b_pct": 25.666666666666668,
+   "ci95": {
+    "est": -2.666666666666667,
+    "hi": 1.3333333333333335,
+    "k": 20,
+    "level": 0.95,
+    "lo": -6.333333333333334,
+    "n": 300
+   },
+   "delta": -2.6666666666666665,
+   "input_cells": [
+    {
+     "cell": "A/qwen3_6_35b/simulate/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    },
+    {
+     "cell": "A/qwen3_6_35b/simulate/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "model": "qwen3_6_35b",
+   "n_pairs": 300,
+   "name": "E3",
+   "p": 0.263671875,
+   "p_holm": 1.0,
+   "task": "simulate",
+   "unpaired_a": 0,
+   "unpaired_b": 0
+  }
+ ],
+ "e4": [
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 10,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 6,
+    "WRONG_WRAPPER": 3
+   },
+   "gap_pct": 6.418918918918919,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 19,
+   "n_tool_correct": 296,
+   "subs": {
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 3,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 7,
+    "WRONG_FACTS: plan differs from the tool's plan": 6,
+    "WRONG_WRAPPER: every tool action is in the text, none extractable": 3
+   },
+   "task": "solve"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 10,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 3,
+    "WRONG_WRAPPER": 1
+   },
+   "gap_pct": 4.666666666666667,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 14,
+   "n_tool_correct": 300,
+   "subs": {
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 2,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 8,
+    "WRONG_FACTS: plan differs from the tool's plan": 3,
+    "WRONG_WRAPPER: every tool action is in the text, none extractable": 1
+   },
+   "task": "solve"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 0,
+   "n_tool_correct": 352,
+   "subs": {},
+   "task": "validate_domain"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 0,
+   "n_tool_correct": 356,
+   "subs": {},
+   "task": "validate_domain"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 0,
+   "n_tool_correct": 597,
+   "subs": {},
+   "task": "validate_problem"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 2,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.3333333333333333,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 2,
+   "n_tool_correct": 600,
+   "subs": {
+    "WRONG_FACTS: stated verdict contradicts the tool's": 2
+   },
+   "task": "validate_problem"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 0,
+   "n_tool_correct": 596,
+   "subs": {},
+   "task": "validate_plan"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 1,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 2,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.1085383502170767,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 3,
+   "n_tool_correct": 2764,
+   "subs": {
+    "NEEDS_READING: no parseable verdict in a non-empty answer": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 2
+   },
+   "task": "validate_plan"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 81,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 148,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 18,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 90.80882352941177,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 247,
+   "n_tool_correct": 272,
+   "subs": {
+    "NEEDS_READING: no gradeable JSON; wrapper vs summary vs change-list": 81,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 19,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 129,
+    "WRONG_FACTS: gradeable JSON whose facts differ from the tool's": 18
+   },
+   "task": "simulate"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 79,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 151,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 18,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 91.17647058823529,
+   "model": "gemma4_26b-a4b",
+   "n_gap": 248,
+   "n_tool_correct": 272,
+   "subs": {
+    "NEEDS_READING: no gradeable JSON; wrapper vs summary vs change-list": 79,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 20,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 131,
+    "WRONG_FACTS: gradeable JSON whose facts differ from the tool's": 18
+   },
+   "task": "simulate"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 1,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 20,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 13,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 11.333333333333334,
+   "model": "Qwen3_5_9B",
+   "n_gap": 34,
+   "n_tool_correct": 300,
+   "subs": {
+    "ABRIDGED: 1 of 47 tool actions restated": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 4,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 16,
+    "WRONG_FACTS: plan differs from the tool's plan": 13
+   },
+   "task": "solve"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 2,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 19,
+    "SUMMARY_ONLY": 2,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 10,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 11.0,
+   "model": "Qwen3_5_9B",
+   "n_gap": 33,
+   "n_tool_correct": 300,
+   "subs": {
+    "ABRIDGED: 1 of 33 tool actions restated": 1,
+    "ABRIDGED: 79 of 82 tool actions restated": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 2,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 17,
+    "SUMMARY_ONLY: no tool action restated": 2,
+    "WRONG_FACTS: plan differs from the tool's plan": 10
+   },
+   "task": "solve"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "Qwen3_5_9B",
+   "n_gap": 0,
+   "n_tool_correct": 360,
+   "subs": {},
+   "task": "validate_domain"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "Qwen3_5_9B",
+   "n_gap": 0,
+   "n_tool_correct": 360,
+   "subs": {},
+   "task": "validate_domain"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "Qwen3_5_9B",
+   "n_gap": 0,
+   "n_tool_correct": 569,
+   "subs": {},
+   "task": "validate_problem"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 1,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 1,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.3663003663003663,
+   "model": "Qwen3_5_9B",
+   "n_gap": 2,
+   "n_tool_correct": 546,
+   "subs": {
+    "NEEDS_READING: no parseable verdict in a non-empty answer": 1,
+    "WRONG_FACTS: stated verdict contradicts the tool's": 1
+   },
+   "task": "validate_problem"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 4,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 13,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 3,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.7204610951008645,
+   "model": "Qwen3_5_9B",
+   "n_gap": 20,
+   "n_tool_correct": 2776,
+   "subs": {
+    "NEEDS_READING: no parseable verdict in a non-empty answer": 4,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 13,
+    "WRONG_FACTS: stated verdict contradicts the tool's": 3
+   },
+   "task": "validate_plan"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 4,
+    "NO_FINAL_ANSWER": 1,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 1,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 1,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.24271844660194175,
+   "model": "Qwen3_5_9B",
+   "n_gap": 7,
+   "n_tool_correct": 2884,
+   "subs": {
+    "NEEDS_READING: no parseable verdict in a non-empty answer": 4,
+    "NO_FINAL_ANSWER: done_reason=tool_calls": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 1,
+    "WRONG_FACTS: stated verdict contradicts the tool's": 1
+   },
+   "task": "validate_plan"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 1,
+    "NEEDS_READING": 10,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 106,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 35,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 74.50980392156863,
+   "model": "Qwen3_5_9B",
+   "n_gap": 152,
+   "n_tool_correct": 204,
+   "subs": {
+    "ABRIDGED: steps skipped": 1,
+    "NEEDS_READING: no gradeable JSON; wrapper vs summary vs change-list": 10,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 10,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 96,
+    "WRONG_FACTS: gradeable JSON whose facts differ from the tool's": 35
+   },
+   "task": "simulate"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 1,
+    "NEEDS_READING": 38,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 1,
+    "REFUSED_OR_CLIPPED_FINAL": 132,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 40,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 81.22605363984674,
+   "model": "Qwen3_5_9B",
+   "n_gap": 212,
+   "n_tool_correct": 261,
+   "subs": {
+    "ABRIDGED: steps skipped": 1,
+    "NEEDS_READING: no gradeable JSON; wrapper vs summary vs change-list": 38,
+    "NUMERIC_OMITTED: 23 numeric fluents left out": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 9,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 123,
+    "WRONG_FACTS: gradeable JSON whose facts differ from the tool's": 40
+   },
+   "task": "simulate"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 4,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 22,
+    "SUMMARY_ONLY": 1,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 3,
+    "WRONG_WRAPPER": 3
+   },
+   "gap_pct": 13.360323886639677,
+   "model": "qwen3_6_35b",
+   "n_gap": 33,
+   "n_tool_correct": 247,
+   "subs": {
+    "ABRIDGED: 1 of 56 tool actions restated": 1,
+    "ABRIDGED: 2 of 10 tool actions restated": 1,
+    "ABRIDGED: 32 of 33 tool actions restated": 1,
+    "ABRIDGED: 54 of 56 tool actions restated": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 21,
+    "SUMMARY_ONLY: no tool action restated": 1,
+    "WRONG_FACTS: plan differs from the tool's plan": 3,
+    "WRONG_WRAPPER: every tool action is in the text, none extractable": 3
+   },
+   "task": "solve"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 3,
+    "NEEDS_READING": 2,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 23,
+    "SUMMARY_ONLY": 3,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 3,
+    "WRONG_WRAPPER": 2
+   },
+   "gap_pct": 12.080536912751677,
+   "model": "qwen3_6_35b",
+   "n_gap": 36,
+   "n_tool_correct": 298,
+   "subs": {
+    "ABRIDGED: 2 of 33 tool actions restated": 1,
+    "ABRIDGED: 55 of 56 tool actions restated": 1,
+    "ABRIDGED: 72 of 73 tool actions restated": 1,
+    "NEEDS_READING: 1 of 8 tool actions in unextractable text": 1,
+    "NEEDS_READING: 22 of 110 tool actions in unextractable text": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 3,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 20,
+    "SUMMARY_ONLY: no tool action restated": 3,
+    "WRONG_FACTS: plan differs from the tool's plan": 3,
+    "WRONG_WRAPPER: every tool action is in the text, none extractable": 2
+   },
+   "task": "solve"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "qwen3_6_35b",
+   "n_gap": 0,
+   "n_tool_correct": 355,
+   "subs": {},
+   "task": "validate_domain"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "qwen3_6_35b",
+   "n_gap": 0,
+   "n_tool_correct": 358,
+   "subs": {},
+   "task": "validate_domain"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 9,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 1,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 1.7152658662092624,
+   "model": "qwen3_6_35b",
+   "n_gap": 10,
+   "n_tool_correct": 583,
+   "subs": {
+    "NEEDS_READING: no parseable verdict in a non-empty answer": 9,
+    "WRONG_FACTS: stated verdict contradicts the tool's": 1
+   },
+   "task": "validate_problem"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 0,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 0,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.0,
+   "model": "qwen3_6_35b",
+   "n_gap": 0,
+   "n_tool_correct": 584,
+   "subs": {},
+   "task": "validate_problem"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 12,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 4,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 1,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.6877022653721683,
+   "model": "qwen3_6_35b",
+   "n_gap": 17,
+   "n_tool_correct": 2472,
+   "subs": {
+    "NEEDS_READING: no parseable verdict in a non-empty answer": 12,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 3,
+    "WRONG_FACTS: stated verdict contradicts the tool's": 1
+   },
+   "task": "validate_plan"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 13,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 0,
+    "REFUSED_OR_CLIPPED_FINAL": 2,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 0,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 0.5043712172158709,
+   "model": "qwen3_6_35b",
+   "n_gap": 15,
+   "n_tool_correct": 2974,
+   "subs": {
+    "NEEDS_READING: no parseable verdict in a non-empty answer": 13,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 1
+   },
+   "task": "validate_plan"
+  },
+  {
+   "arm": "plain",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 11,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 9,
+    "REFUSED_OR_CLIPPED_FINAL": 151,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 26,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 69.8581560283688,
+   "model": "qwen3_6_35b",
+   "n_gap": 197,
+   "n_tool_correct": 282,
+   "subs": {
+    "NEEDS_READING: no gradeable JSON; wrapper vs summary vs change-list": 11,
+    "NUMERIC_OMITTED: 12 numeric fluents left out": 1,
+    "NUMERIC_OMITTED: 13 numeric fluents left out": 1,
+    "NUMERIC_OMITTED: 17 numeric fluents left out": 1,
+    "NUMERIC_OMITTED: 19 numeric fluents left out": 1,
+    "NUMERIC_OMITTED: 4 numeric fluents left out": 4,
+    "NUMERIC_OMITTED: 9 numeric fluents left out": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 17,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 134,
+    "WRONG_FACTS: gradeable JSON whose facts differ from the tool's": 26
+   },
+   "task": "simulate"
+  },
+  {
+   "arm": "steered",
+   "categories": {
+    "ABRIDGED": 0,
+    "NEEDS_READING": 25,
+    "NO_FINAL_ANSWER": 0,
+    "NUMERIC_OMITTED": 7,
+    "REFUSED_OR_CLIPPED_FINAL": 155,
+    "SUMMARY_ONLY": 0,
+    "TOOL_INPUT_ERROR": 0,
+    "WRONG_FACTS": 23,
+    "WRONG_WRAPPER": 0
+   },
+   "gap_pct": 73.17073170731707,
+   "model": "qwen3_6_35b",
+   "n_gap": 210,
+   "n_tool_correct": 287,
+   "subs": {
+    "NEEDS_READING: no gradeable JSON; wrapper vs summary vs change-list": 25,
+    "NUMERIC_OMITTED: 12 numeric fluents left out": 1,
+    "NUMERIC_OMITTED: 13 numeric fluents left out": 1,
+    "NUMERIC_OMITTED: 19 numeric fluents left out": 1,
+    "NUMERIC_OMITTED: 4 numeric fluents left out": 3,
+    "NUMERIC_OMITTED: 9 numeric fluents left out": 1,
+    "REFUSED_OR_CLIPPED_FINAL: final turn ran out of a clipped allowance": 16,
+    "REFUSED_OR_CLIPPED_FINAL: final turn refused: prompt filled the window": 139,
+    "WRONG_FACTS: gradeable JSON whose facts differ from the tool's": 23
+   },
+   "task": "simulate"
+  }
+ ],
+ "mode": "live",
+ "package_sha256": "822aace9ef8a6493592b5b08d73091094fd2602fc0180d1482af83db1ee45cc9",
+ "parity": {
+  "cells": [
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": -0.6666666666666667,
+     "hi": 0.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.3333333333333335,
+     "n": 300
+    },
+    "clipped_before_tool_call": 20,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.6666666666666666,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     -0.6666666666666599,
+     -2.3308133578927634,
+     0.8500909312440907
+    ],
+    "task": "solve",
+    "tv_canonical_pct": 99.33333333333333,
+    "tv_rerun_pct": 98.66666666666667,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 1.3333333333333335,
+     "hi": 3.3333333333333335,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 300
+    },
+    "clipped_before_tool_call": 17,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 1.3333333333333333,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     1.3333333333333308,
+     0.17718205204427484,
+     2.936655296548729
+    ],
+    "task": "solve",
+    "tv_canonical_pct": 98.66666666666667,
+    "tv_rerun_pct": 100.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 0.2777777777777778,
+     "hi": 0.8333333333333334,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 360
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.2777777777777778,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 360,
+    "n_paired": 360,
+    "n_rerun": 360,
+    "newcombe90": [
+     0.2777777777777768,
+     -1.6966787115056645,
+     2.275216631381731
+    ],
+    "task": "validate_domain",
+    "tv_canonical_pct": 97.5,
+    "tv_rerun_pct": 97.77777777777777,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.5555555555555556,
+     "hi": 1.6666666666666667,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 360
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.5555555555555556,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 360,
+    "n_paired": 360,
+    "n_rerun": 360,
+    "newcombe90": [
+     0.5555555555555647,
+     -1.006924207438937,
+     2.197133637911104
+    ],
+    "task": "validate_domain",
+    "tv_canonical_pct": 98.33333333333333,
+    "tv_rerun_pct": 98.88888888888889,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": -0.16666666666666669,
+     "hi": 0.33333333333333337,
+     "k": 20,
+     "level": 0.9,
+     "lo": -0.6666666666666667,
+     "n": 600
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.16666666666666666,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 600,
+    "n_paired": 600,
+    "n_rerun": 600,
+    "newcombe90": [
+     -0.16666666666667052,
+     -0.9437552513148028,
+     0.5664032113910404
+    ],
+    "task": "validate_problem",
+    "tv_canonical_pct": 99.66666666666667,
+    "tv_rerun_pct": 99.5,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 600
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.0,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 600,
+    "n_paired": 600,
+    "n_rerun": 600,
+    "newcombe90": [
+     0.0,
+     -0.4488997128830219,
+     0.4488997128830219
+    ],
+    "task": "validate_problem",
+    "tv_canonical_pct": 100.0,
+    "tv_rerun_pct": 100.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": -0.7000000000000001,
+     "hi": 0.03333333333333333,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.4000000000000001,
+     "n": 3000
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.7,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 3000,
+    "n_paired": 3000,
+    "n_rerun": 3000,
+    "newcombe90": [
+     -0.7000000000000006,
+     -2.4054705273128927,
+     1.0058724799910075
+    ],
+    "task": "validate_plan",
+    "tv_canonical_pct": 20.566666666666666,
+    "tv_rerun_pct": 19.866666666666667,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": -0.4333333333333333,
+     "hi": 0.1,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.0666666666666667,
+     "n": 3000
+    },
+    "clipped_before_tool_call": 5,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.43333333333333335,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 3000,
+    "n_paired": 3000,
+    "n_rerun": 3000,
+    "newcombe90": [
+     -0.43333333333333,
+     -1.5646233659463438,
+     0.6971122392761616
+    ],
+    "task": "validate_plan",
+    "tv_canonical_pct": 92.56666666666666,
+    "tv_rerun_pct": 92.13333333333334,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": -1.0,
+     "hi": 1.3333333333333335,
+     "k": 20,
+     "level": 0.9,
+     "lo": -3.3333333333333335,
+     "n": 300
+    },
+    "clipped_before_tool_call": 9,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -1.0,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     -1.0000000000000009,
+     -4.870830462575013,
+     2.857696048593582
+    ],
+    "task": "simulate",
+    "tv_canonical_pct": 91.66666666666667,
+    "tv_rerun_pct": 90.66666666666667,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.0,
+     "hi": 1.6666666666666667,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.3333333333333335,
+     "n": 300
+    },
+    "clipped_before_tool_call": 10,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.0,
+    "gross": false,
+    "model": "gemma4_26b-a4b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     0.0,
+     -3.956678399495429,
+     3.956678399495429
+    ],
+    "task": "simulate",
+    "tv_canonical_pct": 90.66666666666667,
+    "tv_rerun_pct": 90.66666666666667,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 0.6666666666666667,
+     "hi": 2.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 300
+    },
+    "clipped_before_tool_call": 66,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.6666666666666666,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     0.666666666666671,
+     -0.3321318527451168,
+     1.9943426119872654
+    ],
+    "task": "solve",
+    "tv_canonical_pct": 99.33333333333333,
+    "tv_rerun_pct": 100.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 300
+    },
+    "clipped_before_tool_call": 47,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.0,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     0.0,
+     -0.8937872175127981,
+     0.8937872175127981
+    ],
+    "task": "solve",
+    "tv_canonical_pct": 100.0,
+    "tv_rerun_pct": 100.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 360
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.0,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 360,
+    "n_paired": 360,
+    "n_rerun": 360,
+    "newcombe90": [
+     0.0,
+     -0.7459338581732533,
+     0.7459338581732533
+    ],
+    "task": "validate_domain",
+    "tv_canonical_pct": 100.0,
+    "tv_rerun_pct": 100.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 360
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.0,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 360,
+    "n_paired": 360,
+    "n_rerun": 360,
+    "newcombe90": [
+     0.0,
+     -0.7459338581732533,
+     0.7459338581732533
+    ],
+    "task": "validate_domain",
+    "tv_canonical_pct": 100.0,
+    "tv_rerun_pct": 100.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": -0.33333333333333337,
+     "hi": 0.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": -0.6666666666666667,
+     "n": 600
+    },
+    "clipped_before_tool_call": 2,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.3333333333333333,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 600,
+    "n_paired": 600,
+    "n_rerun": 600,
+    "newcombe90": [
+     -0.33333333333332993,
+     -2.440816925552294,
+     1.7675143280820114
+    ],
+    "task": "validate_problem",
+    "tv_canonical_pct": 95.16666666666667,
+    "tv_rerun_pct": 94.83333333333333,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.8333333333333334,
+     "hi": 1.6666666666666667,
+     "k": 20,
+     "level": 0.9,
+     "lo": 0.0,
+     "n": 600
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.8333333333333334,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 600,
+    "n_paired": 600,
+    "n_rerun": 600,
+    "newcombe90": [
+     0.8333333333333415,
+     -1.9552234743628827,
+     3.626665934032447
+    ],
+    "task": "validate_problem",
+    "tv_canonical_pct": 90.16666666666667,
+    "tv_rerun_pct": 91.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": -0.6333333333333333,
+     "hi": 0.0,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.2333333333333334,
+     "n": 3000
+    },
+    "clipped_before_tool_call": 59,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.6333333333333333,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 3000,
+    "n_paired": 3000,
+    "n_rerun": 3000,
+    "newcombe90": [
+     -0.6333333333333302,
+     -1.730461233181984,
+     0.46237790103984666
+    ],
+    "task": "validate_plan",
+    "tv_canonical_pct": 93.16666666666667,
+    "tv_rerun_pct": 92.53333333333333,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.1,
+     "hi": 0.4333333333333333,
+     "k": 20,
+     "level": 0.9,
+     "lo": -0.23333333333333336,
+     "n": 3000
+    },
+    "clipped_before_tool_call": 25,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.1,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 3000,
+    "n_paired": 3000,
+    "n_rerun": 3000,
+    "newcombe90": [
+     0.10000000000000009,
+     -0.7273897225005004,
+     0.9279756389496941
+    ],
+    "task": "validate_plan",
+    "tv_canonical_pct": 96.03333333333333,
+    "tv_rerun_pct": 96.13333333333334,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 3.0,
+     "hi": 6.666666666666667,
+     "k": 20,
+     "level": 0.9,
+     "lo": -0.33333333333333337,
+     "n": 300
+    },
+    "clipped_before_tool_call": 33,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 3.0,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     3.0000000000000027,
+     -3.330915642667101,
+     9.297608587077287
+    ],
+    "task": "simulate",
+    "tv_canonical_pct": 65.0,
+    "tv_rerun_pct": 68.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion not met (unresolved)"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 4.0,
+     "hi": 6.666666666666667,
+     "k": 20,
+     "level": 0.9,
+     "lo": 1.6666666666666667,
+     "n": 300
+    },
+    "clipped_before_tool_call": 34,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 4.0,
+    "gross": false,
+    "model": "Qwen3_5_9B",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     4.0000000000000036,
+     -0.8088378243760908,
+     8.80631415259923
+    ],
+    "task": "simulate",
+    "tv_canonical_pct": 83.0,
+    "tv_rerun_pct": 87.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion not met (unresolved)"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 19.333333333333332,
+     "hi": 24.666666666666668,
+     "k": 20,
+     "level": 0.9,
+     "lo": 14.333333333333334,
+     "n": 300
+    },
+    "clipped_before_tool_call": 97,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 19.333333333333332,
+    "gross": true,
+    "model": "qwen3_6_35b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     19.333333333333336,
+     13.412313789357272,
+     25.077827844430434
+    ],
+    "task": "solve",
+    "tv_canonical_pct": 63.0,
+    "tv_rerun_pct": 82.33333333333333,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion not met (unresolved)"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 7.333333333333333,
+     "hi": 11.333333333333332,
+     "k": 20,
+     "level": 0.9,
+     "lo": 3.6666666666666665,
+     "n": 300
+    },
+    "clipped_before_tool_call": 85,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 7.333333333333333,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     7.333333333333325,
+     4.749401616315567,
+     10.33416380771684
+    ],
+    "task": "solve",
+    "tv_canonical_pct": 92.0,
+    "tv_rerun_pct": 99.33333333333333,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion not met (unresolved)"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": -0.2777777777777778,
+     "hi": 1.1111111111111112,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.6666666666666667,
+     "n": 360
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.2777777777777778,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 360,
+    "n_paired": 360,
+    "n_rerun": 360,
+    "newcombe90": [
+     -0.2777777777777768,
+     -1.8388931145603347,
+     1.23988120287093
+    ],
+    "task": "validate_domain",
+    "tv_canonical_pct": 98.88888888888889,
+    "tv_rerun_pct": 98.61111111111111,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": -0.2777777777777778,
+     "hi": 0.5555555555555556,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.3888888888888888,
+     "n": 360
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.2777777777777778,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 360,
+    "n_paired": 360,
+    "n_rerun": 360,
+    "newcombe90": [
+     -0.2777777777777768,
+     -1.4077570825148409,
+     0.7493480517673555
+    ],
+    "task": "validate_domain",
+    "tv_canonical_pct": 99.72222222222223,
+    "tv_rerun_pct": 99.44444444444444,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 0.33333333333333337,
+     "hi": 1.5,
+     "k": 20,
+     "level": 0.9,
+     "lo": -0.8333333333333334,
+     "n": 600
+    },
+    "clipped_before_tool_call": 1,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.3333333333333333,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 600,
+    "n_paired": 600,
+    "n_rerun": 600,
+    "newcombe90": [
+     0.33333333333332993,
+     -1.3305334924732632,
+     2.0103412937424365
+    ],
+    "task": "validate_problem",
+    "tv_canonical_pct": 96.83333333333333,
+    "tv_rerun_pct": 97.16666666666667,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": 0.0,
+     "hi": 1.1666666666666667,
+     "k": 20,
+     "level": 0.9,
+     "lo": -1.0,
+     "n": 600
+    },
+    "clipped_before_tool_call": 0,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.0,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 600,
+    "n_paired": 600,
+    "n_rerun": 600,
+    "newcombe90": [
+     0.0,
+     -1.5845749981259174,
+     1.5845749981259174
+    ],
+    "task": "validate_problem",
+    "tv_canonical_pct": 97.33333333333333,
+    "tv_rerun_pct": 97.33333333333333,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 0.23333333333333336,
+     "hi": 4.3,
+     "k": 20,
+     "level": 0.9,
+     "lo": -3.8666666666666667,
+     "n": 3000
+    },
+    "clipped_before_tool_call": 8,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 0.23333333333333334,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 3000,
+    "n_paired": 3000,
+    "n_rerun": 3000,
+    "newcombe90": [
+     0.23333333333332984,
+     -1.3885580849525376,
+     1.8551396952366759
+    ],
+    "task": "validate_plan",
+    "tv_canonical_pct": 82.16666666666667,
+    "tv_rerun_pct": 82.4,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": -0.13333333333333333,
+     "hi": 0.23333333333333336,
+     "k": 20,
+     "level": 0.9,
+     "lo": -0.46666666666666673,
+     "n": 3000
+    },
+    "clipped_before_tool_call": 4,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -0.13333333333333333,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 3000,
+    "n_paired": 3000,
+    "n_rerun": 3000,
+    "newcombe90": [
+     -0.13333333333334085,
+     -0.5241446057472897,
+     0.2526680052409604
+    ],
+    "task": "validate_plan",
+    "tv_canonical_pct": 99.26666666666667,
+    "tv_rerun_pct": 99.13333333333334,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   },
+   {
+    "arm": "plain",
+    "ci90": {
+     "est": 19.333333333333332,
+     "hi": 27.666666666666668,
+     "k": 20,
+     "level": 0.9,
+     "lo": 11.666666666666666,
+     "n": 300
+    },
+    "clipped_before_tool_call": 8,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": 19.333333333333332,
+    "gross": true,
+    "model": "qwen3_6_35b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     19.333333333333325,
+     14.607746953190606,
+     24.06374284838809
+    ],
+    "task": "simulate",
+    "tv_canonical_pct": 74.66666666666667,
+    "tv_rerun_pct": 94.0,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion not met (unresolved)"
+   },
+   {
+    "arm": "steered",
+    "ci90": {
+     "est": -1.3333333333333335,
+     "hi": -0.33333333333333337,
+     "k": 20,
+     "level": 0.9,
+     "lo": -2.3333333333333335,
+     "n": 300
+    },
+    "clipped_before_tool_call": 8,
+    "consequence": "separate-apparatus replication (whole rerun)",
+    "delta": -1.3333333333333333,
+    "gross": false,
+    "model": "qwen3_6_35b",
+    "n_canonical": 300,
+    "n_paired": 300,
+    "n_rerun": 300,
+    "newcombe90": [
+     -1.3333333333333308,
+     -4.016318383967514,
+     1.2716960973196931
+    ],
+    "task": "simulate",
+    "tv_canonical_pct": 97.0,
+    "tv_rerun_pct": 95.66666666666667,
+    "unpaired_canonical": 0,
+    "unpaired_frac": 0.0,
+    "unpaired_rerun": 0,
+    "verdict": "criterion met"
+   }
+  ],
+  "gemma_evaluated_first": true,
+  "gemma_failed": false,
+  "gross_cells": [
+   "qwen3_6_35b/solve/plain",
+   "qwen3_6_35b/simulate/plain"
+  ],
+  "job": "Parity fails at job level",
+  "noise_floor_F": null,
+  "qwen_met": 15,
+  "void_cells": []
+ },
+ "part_c_parity": [
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 2.0,
+    "hi": 4.333333333333334,
+    "k": 20,
+    "level": 0.9,
+    "lo": 0.0,
+    "n": 300
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 2.0,
+   "gross": false,
+   "model": "gemma4_26b-a4b",
+   "n_canonical": 300,
+   "n_paired": 300,
+   "n_rerun": 300,
+   "newcombe90": [
+    2.0000000000000004,
+    -1.8173250431224461,
+    5.845002851386746
+   ],
+   "task": "solve",
+   "tv_canonical_pct": 7.666666666666667,
+   "tv_rerun_pct": 9.666666666666666,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 1.6666666666666667,
+    "hi": 3.6111111111111107,
+    "k": 20,
+    "level": 0.9,
+    "lo": 0.0,
+    "n": 360
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 1.6666666666666667,
+   "gross": false,
+   "model": "gemma4_26b-a4b",
+   "n_canonical": 360,
+   "n_paired": 360,
+   "n_rerun": 360,
+   "newcombe90": [
+    1.6666666666666607,
+    -3.3634445012818133,
+    6.687683647081315
+   ],
+   "task": "validate_domain",
+   "tv_canonical_pct": 77.77777777777777,
+   "tv_rerun_pct": 79.44444444444444,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 1.3333333333333335,
+    "hi": 3.166666666666667,
+    "k": 20,
+    "level": 0.9,
+    "lo": -0.5,
+    "n": 600
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 1.3333333333333333,
+   "gross": false,
+   "model": "gemma4_26b-a4b",
+   "n_canonical": 600,
+   "n_paired": 600,
+   "n_rerun": 600,
+   "newcombe90": [
+    1.333333333333342,
+    -2.7505319442840745,
+    5.411697142121292
+   ],
+   "task": "validate_problem",
+   "tv_canonical_pct": 74.83333333333333,
+   "tv_rerun_pct": 76.16666666666667,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 0.46666666666666673,
+    "hi": 1.5333333333333332,
+    "k": 20,
+    "level": 0.9,
+    "lo": -0.5666666666666667,
+    "n": 3000
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 0.4666666666666667,
+   "gross": false,
+   "model": "gemma4_26b-a4b",
+   "n_canonical": 3000,
+   "n_paired": 3000,
+   "n_rerun": 3000,
+   "newcombe90": [
+    0.4666666666666708,
+    -0.9110661908210838,
+    1.844623005813297
+   ],
+   "task": "validate_plan",
+   "tv_canonical_pct": 87.83333333333333,
+   "tv_rerun_pct": 88.3,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 0.0,
+    "hi": 2.666666666666667,
+    "k": 20,
+    "level": 0.9,
+    "lo": -2.666666666666667,
+    "n": 300
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 0.0,
+   "gross": false,
+   "model": "Qwen3_5_9B",
+   "n_canonical": 300,
+   "n_paired": 300,
+   "n_rerun": 300,
+   "newcombe90": [
+    0.0,
+    -4.186641316840941,
+    4.186641316840941
+   ],
+   "task": "solve",
+   "tv_canonical_pct": 10.666666666666666,
+   "tv_rerun_pct": 10.666666666666666,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 0.5555555555555556,
+    "hi": 1.3888888888888888,
+    "k": 20,
+    "level": 0.9,
+    "lo": -0.2777777777777778,
+    "n": 360
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 0.5555555555555556,
+   "gross": false,
+   "model": "Qwen3_5_9B",
+   "n_canonical": 360,
+   "n_paired": 360,
+   "n_rerun": 360,
+   "newcombe90": [
+    0.5555555555555591,
+    -4.8049034712136285,
+    5.911927808879238
+   ],
+   "task": "validate_domain",
+   "tv_canonical_pct": 25.555555555555557,
+   "tv_rerun_pct": 26.11111111111111,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 0.16666666666666669,
+    "hi": 1.8333333333333333,
+    "k": 20,
+    "level": 0.9,
+    "lo": -1.5,
+    "n": 600
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 0.16666666666666666,
+   "gross": false,
+   "model": "Qwen3_5_9B",
+   "n_canonical": 600,
+   "n_paired": 600,
+   "n_rerun": 600,
+   "newcombe90": [
+    0.16666666666667052,
+    -4.332450156271934,
+    4.664841627067833
+   ],
+   "task": "validate_problem",
+   "tv_canonical_pct": 65.66666666666667,
+   "tv_rerun_pct": 65.83333333333333,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 0.06666666666666667,
+    "hi": 0.8999999999999999,
+    "k": 20,
+    "level": 0.9,
+    "lo": -0.8333333333333334,
+    "n": 3000
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 0.06666666666666667,
+   "gross": false,
+   "model": "Qwen3_5_9B",
+   "n_canonical": 3000,
+   "n_paired": 3000,
+   "n_rerun": 3000,
+   "newcombe90": [
+    0.06666666666667043,
+    -1.6396112924746524,
+    1.7729062575635501
+   ],
+   "task": "validate_plan",
+   "tv_canonical_pct": 79.73333333333333,
+   "tv_rerun_pct": 79.8,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 0.6666666666666667,
+    "hi": 3.0,
+    "k": 20,
+    "level": 0.9,
+    "lo": -1.6666666666666667,
+    "n": 300
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 0.6666666666666666,
+   "gross": false,
+   "model": "qwen3_6_35b",
+   "n_canonical": 300,
+   "n_paired": 300,
+   "n_rerun": 300,
+   "newcombe90": [
+    0.6666666666666667,
+    -3.3458088257047636,
+    4.6859678339225175
+   ],
+   "task": "solve",
+   "tv_canonical_pct": 9.333333333333334,
+   "tv_rerun_pct": 10.0,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": 8.61111111111111,
+    "hi": 14.722222222222223,
+    "k": 20,
+    "level": 0.9,
+    "lo": 2.7777777777777777,
+    "n": 360
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": 8.61111111111111,
+   "gross": false,
+   "model": "qwen3_6_35b",
+   "n_canonical": 360,
+   "n_paired": 360,
+   "n_rerun": 360,
+   "newcombe90": [
+    8.611111111111104,
+    3.1127115259222555,
+    14.04087263119161
+   ],
+   "task": "validate_domain",
+   "tv_canonical_pct": 67.77777777777777,
+   "tv_rerun_pct": 76.38888888888889,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion not met (unresolved)"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": -1.0,
+    "hi": 0.5,
+    "k": 20,
+    "level": 0.9,
+    "lo": -2.5,
+    "n": 600
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": -1.0,
+   "gross": false,
+   "model": "qwen3_6_35b",
+   "n_canonical": 600,
+   "n_paired": 600,
+   "n_rerun": 600,
+   "newcombe90": [
+    -1.0000000000000009,
+    -5.0975928344069255,
+    3.1017964454736666
+   ],
+   "task": "validate_problem",
+   "tv_canonical_pct": 75.66666666666667,
+   "tv_rerun_pct": 74.66666666666667,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  },
+  {
+   "arm": "plain",
+   "ci90": {
+    "est": -0.46666666666666673,
+    "hi": 0.8999999999999999,
+    "k": 20,
+    "level": 0.9,
+    "lo": -1.7666666666666668,
+    "n": 3000
+   },
+   "clipped_before_tool_call": 0,
+   "consequence": "",
+   "delta": -0.4666666666666667,
+   "gross": false,
+   "model": "qwen3_6_35b",
+   "n_canonical": 3000,
+   "n_paired": 3000,
+   "n_rerun": 3000,
+   "newcombe90": [
+    -0.4666666666666708,
+    -1.7039711862383757,
+    0.7700737712281777
+   ],
+   "task": "validate_plan",
+   "tv_canonical_pct": 90.9,
+   "tv_rerun_pct": 90.43333333333334,
+   "unpaired_canonical": 0,
+   "unpaired_frac": 0.0,
+   "unpaired_rerun": 0,
+   "verdict": "criterion met"
+  }
+ ],
+ "readings": {
+  "R1": {
+   "ci95": [
+    -1.2,
+    2.933333333333333
+   ],
+   "delta": 0.8666666666666667,
+   "input_cells": [
+    {
+     "cell": "C/gemma4_26b-a4b/validate_plan/plain",
+     "consequence": "Part C parity is reported, not a gate on E2 (\u00a72 Part C)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "label": "No delivered harm."
+  },
+  "R2": {
+   "ci95": [
+    4.9,
+    10.166666666666666
+   ],
+   "delta": 7.466666666666667,
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "label": "Unresolved."
+  },
+  "R3": {
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/validate_plan/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/validate_plan/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_plan/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/validate_plan/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    }
+   ],
+   "label": "Title changes to the two-gate reading (invocation and delivery).",
+   "models_with_e3_gain_above_5": [],
+   "r1_harm": false
+  },
+  "R4": {
+   "input_cells": [
+    {
+     "cell": "A/gemma4_26b-a4b/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/gemma4_26b-a4b/solve/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/Qwen3_5_9B/solve/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion met"
+    },
+    {
+     "cell": "A/qwen3_6_35b/solve/plain",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    },
+    {
+     "cell": "A/qwen3_6_35b/solve/steered",
+     "consequence": "separate-apparatus replication (whole rerun)",
+     "parity_verdict": "criterion not met (unresolved)"
+    }
+   ],
+   "label": "The canonical open-weight delivery gap on solve is attributed to storage and the refused final request.",
+   "per_model": {
+    "Qwen3_5_9B": {
+     "delivered_k": 533,
+     "delivered_pct": 95.00891265597149,
+     "n": 561
+    },
+    "gemma4_26b-a4b": {
+     "delivered_k": 563,
+     "delivered_pct": 97.74305555555556,
+     "n": 576
+    },
+    "qwen3_6_35b": {
+     "delivered_k": 474,
+     "delivered_pct": 95.18072289156626,
+     "n": 498
+    }
+   }
+  },
+  "R5": {
+   "cells": {
+    "minimal-plain": {
+     "delivered_ci95": {
+      "est": 89.16666666666667,
+      "hi": 93.10000000000001,
+      "k": 20,
+      "level": 0.95,
+      "lo": 84.6,
+      "n": 3000
+     },
+     "delivered_pct": 89.16666666666667,
+     "invocation_ci95": {
+      "est": 20.0,
+      "hi": 33.06666666666666,
+      "k": 20,
+      "level": 0.95,
+      "lo": 8.533333333333333,
+      "n": 3000
+     },
+     "invocation_pct": 20.0,
+     "n": 3000
+    },
+    "minimal-steered": {
+     "delivered_ci95": {
+      "est": 96.63333333333334,
+      "hi": 98.9,
+      "k": 20,
+      "level": 0.95,
+      "lo": 93.13333333333334,
+      "n": 3000
+     },
+     "delivered_pct": 96.63333333333334,
+     "invocation_ci95": {
+      "est": 93.06666666666666,
+      "hi": 99.86666666666667,
+      "k": 20,
+      "level": 0.95,
+      "lo": 82.86666666666666,
+      "n": 3000
+     },
+     "invocation_pct": 93.06666666666666,
+     "n": 3000
+    },
+    "neutral-plain": {
+     "delivered_ci95": {
+      "est": 89.46666666666667,
+      "hi": 93.0,
+      "k": 20,
+      "level": 0.95,
+      "lo": 85.53333333333333,
+      "n": 3000
+     },
+     "delivered_pct": 89.46666666666667,
+     "invocation_ci95": {
+      "est": 26.866666666666667,
+      "hi": 40.0,
+      "k": 20,
+      "level": 0.95,
+      "lo": 14.465833333333341,
+      "n": 3000
+     },
+     "invocation_pct": 26.866666666666667,
+     "n": 3000
+    },
+    "neutral-steered": {
+     "delivered_ci95": {
+      "est": 98.6,
+      "hi": 99.4,
+      "k": 20,
+      "level": 0.95,
+      "lo": 97.7,
+      "n": 3000
+     },
+     "delivered_pct": 98.6,
+     "invocation_ci95": {
+      "est": 98.1,
+      "hi": 100.0,
+      "k": 20,
+      "level": 0.95,
+      "lo": 95.83333333333334,
+      "n": 3000
+     },
+     "invocation_pct": 98.1,
+     "n": 3000
+    }
+   },
+   "label": "The directive suppresses calling.",
+   "neutral_minus_minimal_plain": {
+    "est": 6.866666666666667,
+    "hi": 10.7,
+    "k": 20,
+    "level": 0.9,
+    "lo": 3.564999999999996,
+    "n": 3000
+   },
+   "neutral_minus_minimal_steered": {
+    "est": 5.033333333333333,
+    "hi": 11.5,
+    "k": 20,
+    "level": 0.9,
+    "lo": 0.46666666666666673,
+    "n": 3000
+   },
+   "steering_label": "Not shown (neutral-steered not within \u00b15 of minimal-steered)"
+  }
+ }
+}

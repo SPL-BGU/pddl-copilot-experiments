@@ -1,0 +1,621 @@
+domain,track,fixture,kind,type
+barman,classical,domain_neg.pddl,domain,undeclared predicate used in a precondition or effect (inherited)
+barman,classical,n01.pddl,problem,missing :goal
+barman,classical,n02.pddl,problem,undeclared object in :init
+barman,classical,n03.pddl,problem,undefined predicate in :goal
+barman,classical,n04.pddl,problem,one extra closing paren
+barman,classical,n05.pddl,problem,missing :goal + one extra closing paren
+barman,classical,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+barman,classical,p01_b2.plan,plan,one mid-plan step dropped
+barman,classical,p01_b3.plan,plan,one mid-plan step dropped
+barman,classical,p01_b4.plan,plan,one mid-plan step dropped
+barman,classical,p01_b5.plan,plan,one mid-plan step dropped
+barman,classical,p02_b1.plan,plan,tail truncated (-1)
+barman,classical,p02_b2.plan,plan,one mid-plan step dropped
+barman,classical,p02_b3.plan,plan,one mid-plan step dropped
+barman,classical,p02_b4.plan,plan,first two arguments swapped in one step
+barman,classical,p02_b5.plan,plan,first two arguments swapped in one step
+barman,classical,p03_b1.plan,plan,tail truncated (-1)
+barman,classical,p03_b2.plan,plan,one mid-plan step dropped
+barman,classical,p03_b3.plan,plan,one mid-plan step dropped
+barman,classical,p03_b4.plan,plan,one mid-plan step dropped
+barman,classical,p03_b5.plan,plan,one mid-plan step dropped
+barman,classical,p04_b1.plan,plan,tail truncated (-1)
+barman,classical,p04_b2.plan,plan,one mid-plan step dropped
+barman,classical,p04_b3.plan,plan,one mid-plan step dropped
+barman,classical,p04_b4.plan,plan,one mid-plan step dropped
+barman,classical,p04_b5.plan,plan,one mid-plan step dropped
+barman,classical,p05_b1.plan,plan,tail truncated (-1)
+barman,classical,p05_b2.plan,plan,one mid-plan step dropped
+barman,classical,p05_b3.plan,plan,one mid-plan step dropped
+barman,classical,p05_b4.plan,plan,one mid-plan step dropped
+barman,classical,p05_b5.plan,plan,one mid-plan step dropped
+blocksworld,classical,domain_neg.pddl,domain,missing closing paren(s)
+blocksworld,classical,n01.pddl,problem,inherited hand-made n01 (see list)
+blocksworld,classical,n02.pddl,problem,undeclared object in :init
+blocksworld,classical,n03.pddl,problem,undefined predicate in :goal
+blocksworld,classical,n04.pddl,problem,one extra closing paren
+blocksworld,classical,n05.pddl,problem,missing :goal + one extra closing paren
+blocksworld,classical,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+blocksworld,classical,p01_b2.plan,plan,one mid-plan step dropped
+blocksworld,classical,p01_b3.plan,plan,first two arguments swapped in one step
+blocksworld,classical,p01_b4.plan,plan,first two arguments swapped in one step
+blocksworld,classical,p01_b5.plan,plan,one step duplicated
+blocksworld,classical,p02_b1.plan,plan,tail truncated (-1)
+blocksworld,classical,p02_b2.plan,plan,one mid-plan step dropped
+blocksworld,classical,p02_b3.plan,plan,first two arguments swapped in one step
+blocksworld,classical,p02_b4.plan,plan,one step duplicated
+blocksworld,classical,p02_b5.plan,plan,one step duplicated
+blocksworld,classical,p03_b1.plan,plan,tail truncated (-1)
+blocksworld,classical,p03_b2.plan,plan,one mid-plan step dropped
+blocksworld,classical,p03_b3.plan,plan,one mid-plan step dropped
+blocksworld,classical,p03_b4.plan,plan,one mid-plan step dropped
+blocksworld,classical,p03_b5.plan,plan,first two arguments swapped in one step
+blocksworld,classical,p04_b1.plan,plan,tail truncated (-1)
+blocksworld,classical,p04_b2.plan,plan,one mid-plan step dropped
+blocksworld,classical,p04_b3.plan,plan,one mid-plan step dropped
+blocksworld,classical,p04_b4.plan,plan,one mid-plan step dropped
+blocksworld,classical,p04_b5.plan,plan,one mid-plan step dropped
+blocksworld,classical,p05_b1.plan,plan,tail truncated (-1)
+blocksworld,classical,p05_b2.plan,plan,one mid-plan step dropped
+blocksworld,classical,p05_b3.plan,plan,one mid-plan step dropped
+blocksworld,classical,p05_b4.plan,plan,one mid-plan step dropped
+blocksworld,classical,p05_b5.plan,plan,one mid-plan step dropped
+depots,classical,domain_neg.pddl,domain,'-' dropped from a typed parameter list (inherited)
+depots,classical,n01.pddl,problem,inherited hand-made n01 (see list)
+depots,classical,n02.pddl,problem,undeclared object in :init
+depots,classical,n03.pddl,problem,undefined predicate in :goal
+depots,classical,n04.pddl,problem,one extra closing paren
+depots,classical,n05.pddl,problem,missing :goal + one extra closing paren
+depots,classical,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+depots,classical,p01_b2.plan,plan,one mid-plan step dropped
+depots,classical,p01_b3.plan,plan,one mid-plan step dropped
+depots,classical,p01_b4.plan,plan,one mid-plan step dropped
+depots,classical,p01_b5.plan,plan,first two arguments swapped in one step
+depots,classical,p02_b1.plan,plan,tail truncated (-1)
+depots,classical,p02_b2.plan,plan,one mid-plan step dropped
+depots,classical,p02_b3.plan,plan,one mid-plan step dropped
+depots,classical,p02_b4.plan,plan,one mid-plan step dropped
+depots,classical,p02_b5.plan,plan,first two arguments swapped in one step
+depots,classical,p03_b1.plan,plan,tail truncated (-1)
+depots,classical,p03_b2.plan,plan,one mid-plan step dropped
+depots,classical,p03_b3.plan,plan,one mid-plan step dropped
+depots,classical,p03_b4.plan,plan,one mid-plan step dropped
+depots,classical,p03_b5.plan,plan,one mid-plan step dropped
+depots,classical,p04_b1.plan,plan,tail truncated (-1)
+depots,classical,p04_b2.plan,plan,one mid-plan step dropped
+depots,classical,p04_b3.plan,plan,one mid-plan step dropped
+depots,classical,p04_b4.plan,plan,one mid-plan step dropped
+depots,classical,p04_b5.plan,plan,one mid-plan step dropped
+depots,classical,p05_b1.plan,plan,tail truncated (-1)
+depots,classical,p05_b2.plan,plan,one mid-plan step dropped
+depots,classical,p05_b3.plan,plan,one mid-plan step dropped
+depots,classical,p05_b4.plan,plan,one mid-plan step dropped
+depots,classical,p05_b5.plan,plan,first two arguments swapped in one step
+gripper,classical,domain_neg.pddl,domain,one extra closing paren
+gripper,classical,n01.pddl,problem,missing :goal
+gripper,classical,n02.pddl,problem,undeclared object in :init
+gripper,classical,n03.pddl,problem,undefined predicate in :goal
+gripper,classical,n04.pddl,problem,one extra closing paren
+gripper,classical,n05.pddl,problem,missing :goal + one extra closing paren
+gripper,classical,p01_b1.plan,plan,tail truncated (-1)
+gripper,classical,p01_b2.plan,plan,one mid-plan step dropped
+gripper,classical,p01_b3.plan,plan,one mid-plan step dropped
+gripper,classical,p01_b4.plan,plan,first two arguments swapped in one step
+gripper,classical,p01_b5.plan,plan,first two arguments swapped in one step
+gripper,classical,p02_b1.plan,plan,tail truncated (-1)
+gripper,classical,p02_b2.plan,plan,one mid-plan step dropped
+gripper,classical,p02_b3.plan,plan,one mid-plan step dropped
+gripper,classical,p02_b4.plan,plan,one mid-plan step dropped
+gripper,classical,p02_b5.plan,plan,first two arguments swapped in one step
+gripper,classical,p03_b1.plan,plan,tail truncated (-1)
+gripper,classical,p03_b2.plan,plan,one mid-plan step dropped
+gripper,classical,p03_b3.plan,plan,one mid-plan step dropped
+gripper,classical,p03_b4.plan,plan,one mid-plan step dropped
+gripper,classical,p03_b5.plan,plan,first two arguments swapped in one step
+gripper,classical,p04_b1.plan,plan,tail truncated (-1)
+gripper,classical,p04_b2.plan,plan,one mid-plan step dropped
+gripper,classical,p04_b3.plan,plan,one mid-plan step dropped
+gripper,classical,p04_b4.plan,plan,one mid-plan step dropped
+gripper,classical,p04_b5.plan,plan,first two arguments swapped in one step
+gripper,classical,p05_b1.plan,plan,tail truncated (-1)
+gripper,classical,p05_b2.plan,plan,one mid-plan step dropped
+gripper,classical,p05_b3.plan,plan,one mid-plan step dropped
+gripper,classical,p05_b4.plan,plan,one mid-plan step dropped
+gripper,classical,p05_b5.plan,plan,one mid-plan step dropped
+miconic,classical,domain_neg.pddl,domain,one extra closing paren
+miconic,classical,n01.pddl,problem,missing :goal
+miconic,classical,n02.pddl,problem,undeclared object in :init
+miconic,classical,n03.pddl,problem,undefined predicate in :goal
+miconic,classical,n04.pddl,problem,one extra closing paren
+miconic,classical,n05.pddl,problem,missing :goal + one extra closing paren
+miconic,classical,p01_b1.plan,plan,tail truncated (-1)
+miconic,classical,p01_b2.plan,plan,one mid-plan step dropped
+miconic,classical,p01_b3.plan,plan,one mid-plan step dropped
+miconic,classical,p01_b4.plan,plan,first two arguments swapped in one step
+miconic,classical,p01_b5.plan,plan,first two arguments swapped in one step
+miconic,classical,p02_b1.plan,plan,tail truncated (-1)
+miconic,classical,p02_b2.plan,plan,one mid-plan step dropped
+miconic,classical,p02_b3.plan,plan,one mid-plan step dropped
+miconic,classical,p02_b4.plan,plan,one mid-plan step dropped
+miconic,classical,p02_b5.plan,plan,one mid-plan step dropped
+miconic,classical,p03_b1.plan,plan,tail truncated (-1)
+miconic,classical,p03_b2.plan,plan,one mid-plan step dropped
+miconic,classical,p03_b3.plan,plan,one mid-plan step dropped
+miconic,classical,p03_b4.plan,plan,one mid-plan step dropped
+miconic,classical,p03_b5.plan,plan,first two arguments swapped in one step
+miconic,classical,p04_b1.plan,plan,tail truncated (-1)
+miconic,classical,p04_b2.plan,plan,one mid-plan step dropped
+miconic,classical,p04_b3.plan,plan,one mid-plan step dropped
+miconic,classical,p04_b4.plan,plan,one mid-plan step dropped
+miconic,classical,p04_b5.plan,plan,first two arguments swapped in one step
+miconic,classical,p05_b1.plan,plan,tail truncated (-1)
+miconic,classical,p05_b2.plan,plan,one mid-plan step dropped
+miconic,classical,p05_b3.plan,plan,one mid-plan step dropped
+miconic,classical,p05_b4.plan,plan,one mid-plan step dropped
+miconic,classical,p05_b5.plan,plan,first two arguments swapped in one step
+parking,classical,domain_neg.pddl,domain,one extra closing paren
+parking,classical,n01.pddl,problem,missing :goal
+parking,classical,n02.pddl,problem,undeclared object in :init
+parking,classical,n03.pddl,problem,undefined predicate in :goal
+parking,classical,n04.pddl,problem,:objects block removed
+parking,classical,n05.pddl,problem,:init block removed
+parking,classical,p01_b1.plan,plan,tail truncated (-1)
+parking,classical,p01_b2.plan,plan,one mid-plan step dropped
+parking,classical,p01_b3.plan,plan,one mid-plan step dropped
+parking,classical,p01_b4.plan,plan,one mid-plan step dropped
+parking,classical,p01_b5.plan,plan,one mid-plan step dropped
+parking,classical,p02_b1.plan,plan,tail truncated (-1)
+parking,classical,p02_b2.plan,plan,one mid-plan step dropped
+parking,classical,p02_b3.plan,plan,one mid-plan step dropped
+parking,classical,p02_b4.plan,plan,first two arguments swapped in one step
+parking,classical,p02_b5.plan,plan,first two arguments swapped in one step
+parking,classical,p03_b1.plan,plan,tail truncated (-1)
+parking,classical,p03_b2.plan,plan,one mid-plan step dropped
+parking,classical,p03_b3.plan,plan,one mid-plan step dropped
+parking,classical,p03_b4.plan,plan,first two arguments swapped in one step
+parking,classical,p03_b5.plan,plan,first two arguments swapped in one step
+parking,classical,p04_b1.plan,plan,tail truncated (-1)
+parking,classical,p04_b2.plan,plan,one mid-plan step dropped
+parking,classical,p04_b3.plan,plan,one mid-plan step dropped
+parking,classical,p04_b4.plan,plan,first two arguments swapped in one step
+parking,classical,p04_b5.plan,plan,first two arguments swapped in one step
+parking,classical,p05_b1.plan,plan,tail truncated (-1)
+parking,classical,p05_b2.plan,plan,one mid-plan step dropped
+parking,classical,p05_b3.plan,plan,one mid-plan step dropped
+parking,classical,p05_b4.plan,plan,first two arguments swapped in one step
+parking,classical,p05_b5.plan,plan,first two arguments swapped in one step
+rovers,classical,domain_neg.pddl,domain,undeclared predicate used in a precondition or effect (inherited)
+rovers,classical,n01.pddl,problem,inherited hand-made n01 (see list)
+rovers,classical,n02.pddl,problem,undeclared object in :init
+rovers,classical,n03.pddl,problem,undefined predicate in :goal
+rovers,classical,n04.pddl,problem,one extra closing paren
+rovers,classical,n05.pddl,problem,missing :goal + one extra closing paren
+rovers,classical,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+rovers,classical,p01_b2.plan,plan,one mid-plan step dropped
+rovers,classical,p01_b3.plan,plan,one mid-plan step dropped
+rovers,classical,p01_b4.plan,plan,one mid-plan step dropped
+rovers,classical,p01_b5.plan,plan,first two arguments swapped in one step
+rovers,classical,p02_b1.plan,plan,tail truncated (-1)
+rovers,classical,p02_b2.plan,plan,one mid-plan step dropped
+rovers,classical,p02_b3.plan,plan,one mid-plan step dropped
+rovers,classical,p02_b4.plan,plan,one mid-plan step dropped
+rovers,classical,p02_b5.plan,plan,first two arguments swapped in one step
+rovers,classical,p03_b1.plan,plan,tail truncated (-1)
+rovers,classical,p03_b2.plan,plan,one mid-plan step dropped
+rovers,classical,p03_b3.plan,plan,one mid-plan step dropped
+rovers,classical,p03_b4.plan,plan,one mid-plan step dropped
+rovers,classical,p03_b5.plan,plan,first two arguments swapped in one step
+rovers,classical,p04_b1.plan,plan,tail truncated (-1)
+rovers,classical,p04_b2.plan,plan,one mid-plan step dropped
+rovers,classical,p04_b3.plan,plan,one mid-plan step dropped
+rovers,classical,p04_b4.plan,plan,one mid-plan step dropped
+rovers,classical,p04_b5.plan,plan,first two arguments swapped in one step
+rovers,classical,p05_b1.plan,plan,tail truncated (-1)
+rovers,classical,p05_b2.plan,plan,one mid-plan step dropped
+rovers,classical,p05_b3.plan,plan,one mid-plan step dropped
+rovers,classical,p05_b4.plan,plan,one mid-plan step dropped
+rovers,classical,p05_b5.plan,plan,first two arguments swapped in one step
+satellite,classical,domain_neg.pddl,domain,missing closing paren(s)
+satellite,classical,n01.pddl,problem,inherited hand-made n01 (see list)
+satellite,classical,n02.pddl,problem,undeclared object in :init
+satellite,classical,n03.pddl,problem,undefined predicate in :goal
+satellite,classical,n04.pddl,problem,one extra closing paren
+satellite,classical,n05.pddl,problem,missing :goal + one extra closing paren
+satellite,classical,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+satellite,classical,p01_b2.plan,plan,one mid-plan step dropped
+satellite,classical,p01_b3.plan,plan,one mid-plan step dropped
+satellite,classical,p01_b4.plan,plan,one mid-plan step dropped
+satellite,classical,p01_b5.plan,plan,first two arguments swapped in one step
+satellite,classical,p02_b1.plan,plan,tail truncated (-1)
+satellite,classical,p02_b2.plan,plan,one mid-plan step dropped
+satellite,classical,p02_b3.plan,plan,one mid-plan step dropped
+satellite,classical,p02_b4.plan,plan,one mid-plan step dropped
+satellite,classical,p02_b5.plan,plan,one mid-plan step dropped
+satellite,classical,p03_b1.plan,plan,tail truncated (-1)
+satellite,classical,p03_b2.plan,plan,one mid-plan step dropped
+satellite,classical,p03_b3.plan,plan,one mid-plan step dropped
+satellite,classical,p03_b4.plan,plan,one mid-plan step dropped
+satellite,classical,p03_b5.plan,plan,one mid-plan step dropped
+satellite,classical,p04_b1.plan,plan,tail truncated (-1)
+satellite,classical,p04_b2.plan,plan,one mid-plan step dropped
+satellite,classical,p04_b3.plan,plan,one mid-plan step dropped
+satellite,classical,p04_b4.plan,plan,one mid-plan step dropped
+satellite,classical,p04_b5.plan,plan,first two arguments swapped in one step
+satellite,classical,p05_b1.plan,plan,tail truncated (-1)
+satellite,classical,p05_b2.plan,plan,one mid-plan step dropped
+satellite,classical,p05_b3.plan,plan,one mid-plan step dropped
+satellite,classical,p05_b4.plan,plan,one mid-plan step dropped
+satellite,classical,p05_b5.plan,plan,first two arguments swapped in one step
+tpp,classical,domain_neg.pddl,domain,one extra closing paren
+tpp,classical,n01.pddl,problem,missing :goal
+tpp,classical,n02.pddl,problem,undeclared object in :init
+tpp,classical,n03.pddl,problem,undefined predicate in :goal
+tpp,classical,n04.pddl,problem,one extra closing paren
+tpp,classical,n05.pddl,problem,missing :goal + one extra closing paren
+tpp,classical,p01_b1.plan,plan,tail truncated (-1)
+tpp,classical,p01_b2.plan,plan,one mid-plan step dropped
+tpp,classical,p01_b3.plan,plan,one mid-plan step dropped
+tpp,classical,p01_b4.plan,plan,one mid-plan step dropped
+tpp,classical,p01_b5.plan,plan,one mid-plan step dropped
+tpp,classical,p02_b1.plan,plan,tail truncated (-1)
+tpp,classical,p02_b2.plan,plan,one mid-plan step dropped
+tpp,classical,p02_b3.plan,plan,one mid-plan step dropped
+tpp,classical,p02_b4.plan,plan,one mid-plan step dropped
+tpp,classical,p02_b5.plan,plan,first two arguments swapped in one step
+tpp,classical,p03_b1.plan,plan,tail truncated (-1)
+tpp,classical,p03_b2.plan,plan,one mid-plan step dropped
+tpp,classical,p03_b3.plan,plan,one mid-plan step dropped
+tpp,classical,p03_b4.plan,plan,one mid-plan step dropped
+tpp,classical,p03_b5.plan,plan,one mid-plan step dropped
+tpp,classical,p04_b1.plan,plan,tail truncated (-1)
+tpp,classical,p04_b2.plan,plan,one mid-plan step dropped
+tpp,classical,p04_b3.plan,plan,one mid-plan step dropped
+tpp,classical,p04_b4.plan,plan,one mid-plan step dropped
+tpp,classical,p04_b5.plan,plan,one mid-plan step dropped
+tpp,classical,p05_b1.plan,plan,tail truncated (-1)
+tpp,classical,p05_b2.plan,plan,one mid-plan step dropped
+tpp,classical,p05_b3.plan,plan,one mid-plan step dropped
+tpp,classical,p05_b4.plan,plan,one mid-plan step dropped
+tpp,classical,p05_b5.plan,plan,one mid-plan step dropped
+zenotravel,classical,domain_neg.pddl,domain,one extra closing paren
+zenotravel,classical,n01.pddl,problem,missing :goal
+zenotravel,classical,n02.pddl,problem,undeclared object in :init
+zenotravel,classical,n03.pddl,problem,undefined predicate in :goal
+zenotravel,classical,n04.pddl,problem,one extra closing paren
+zenotravel,classical,n05.pddl,problem,:objects block removed
+zenotravel,classical,p01_b1.plan,plan,tail truncated (-1)
+zenotravel,classical,p01_b2.plan,plan,one mid-plan step dropped
+zenotravel,classical,p01_b3.plan,plan,one mid-plan step dropped
+zenotravel,classical,p01_b4.plan,plan,first two arguments swapped in one step
+zenotravel,classical,p01_b5.plan,plan,first two arguments swapped in one step
+zenotravel,classical,p02_b1.plan,plan,tail truncated (-1)
+zenotravel,classical,p02_b2.plan,plan,one mid-plan step dropped
+zenotravel,classical,p02_b3.plan,plan,one mid-plan step dropped
+zenotravel,classical,p02_b4.plan,plan,one mid-plan step dropped
+zenotravel,classical,p02_b5.plan,plan,first two arguments swapped in one step
+zenotravel,classical,p03_b1.plan,plan,tail truncated (-1)
+zenotravel,classical,p03_b2.plan,plan,one mid-plan step dropped
+zenotravel,classical,p03_b3.plan,plan,one mid-plan step dropped
+zenotravel,classical,p03_b4.plan,plan,one mid-plan step dropped
+zenotravel,classical,p03_b5.plan,plan,one mid-plan step dropped
+zenotravel,classical,p04_b1.plan,plan,tail truncated (-1)
+zenotravel,classical,p04_b2.plan,plan,one mid-plan step dropped
+zenotravel,classical,p04_b3.plan,plan,one mid-plan step dropped
+zenotravel,classical,p04_b4.plan,plan,one mid-plan step dropped
+zenotravel,classical,p04_b5.plan,plan,first two arguments swapped in one step
+zenotravel,classical,p05_b1.plan,plan,tail truncated (-1)
+zenotravel,classical,p05_b2.plan,plan,one mid-plan step dropped
+zenotravel,classical,p05_b3.plan,plan,one mid-plan step dropped
+zenotravel,classical,p05_b4.plan,plan,one mid-plan step dropped
+zenotravel,classical,p05_b5.plan,plan,first two arguments swapped in one step
+block-grouping,numeric,domain_neg.pddl,domain,:predicates block removed (generator)
+block-grouping,numeric,n01.pddl,problem,missing :goal
+block-grouping,numeric,n02.pddl,problem,undeclared object in :init
+block-grouping,numeric,n03.pddl,problem,undefined predicate in :goal
+block-grouping,numeric,n04.pddl,problem,one extra closing paren
+block-grouping,numeric,n05.pddl,problem,:objects block removed
+block-grouping,numeric,p01_b1.plan,plan,tail truncated (-1)
+block-grouping,numeric,p01_b2.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p01_b3.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p01_b4.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p01_b5.plan,plan,one step duplicated
+block-grouping,numeric,p02_b1.plan,plan,tail truncated (-1)
+block-grouping,numeric,p02_b2.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p02_b3.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p02_b4.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p02_b5.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p03_b1.plan,plan,tail truncated (-1)
+block-grouping,numeric,p03_b2.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p03_b3.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p03_b4.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p03_b5.plan,plan,one step duplicated
+block-grouping,numeric,p04_b1.plan,plan,tail truncated (-1)
+block-grouping,numeric,p04_b2.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p04_b3.plan,plan,one step duplicated
+block-grouping,numeric,p04_b4.plan,plan,one step duplicated
+block-grouping,numeric,p04_b5.plan,plan,tail truncated (-2)
+block-grouping,numeric,p05_b1.plan,plan,tail truncated (-1)
+block-grouping,numeric,p05_b2.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p05_b3.plan,plan,one mid-plan step dropped
+block-grouping,numeric,p05_b4.plan,plan,one step duplicated
+block-grouping,numeric,p05_b5.plan,plan,one step duplicated
+counters,numeric,domain_neg.pddl,domain,undeclared predicate used in a precondition or effect (inherited)
+counters,numeric,n01.pddl,problem,missing :goal
+counters,numeric,n02.pddl,problem,undeclared object in :init
+counters,numeric,n03.pddl,problem,undefined predicate in :goal
+counters,numeric,n04.pddl,problem,one extra closing paren
+counters,numeric,n05.pddl,problem,missing :goal + one extra closing paren
+counters,numeric,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+counters,numeric,p01_b2.plan,plan,one mid-plan step dropped
+counters,numeric,p01_b3.plan,plan,one mid-plan step dropped
+counters,numeric,p01_b4.plan,plan,one mid-plan step dropped
+counters,numeric,p01_b5.plan,plan,one step duplicated
+counters,numeric,p02_b1.plan,plan,tail truncated (-1)
+counters,numeric,p02_b2.plan,plan,tail truncated (-2)
+counters,numeric,p02_b3.plan,plan,tail truncated (-3)
+counters,numeric,p02_b4.plan,plan,tail truncated (-4)
+counters,numeric,p02_b5.plan,plan,tail truncated (-5)
+counters,numeric,p03_b1.plan,plan,tail truncated (-1)
+counters,numeric,p03_b2.plan,plan,tail truncated (-2)
+counters,numeric,p03_b3.plan,plan,tail truncated (-3)
+counters,numeric,p03_b4.plan,plan,tail truncated (-4)
+counters,numeric,p03_b5.plan,plan,tail truncated (-5)
+counters,numeric,p04_b1.plan,plan,tail truncated (-1)
+counters,numeric,p04_b2.plan,plan,one mid-plan step dropped
+counters,numeric,p04_b3.plan,plan,tail truncated (-2)
+counters,numeric,p04_b4.plan,plan,tail truncated (-3)
+counters,numeric,p04_b5.plan,plan,tail truncated (-4)
+counters,numeric,p05_b1.plan,plan,tail truncated (-1)
+counters,numeric,p05_b2.plan,plan,tail truncated (-2)
+counters,numeric,p05_b3.plan,plan,tail truncated (-3)
+counters,numeric,p05_b4.plan,plan,tail truncated (-4)
+counters,numeric,p05_b5.plan,plan,tail truncated (-5)
+delivery,numeric,domain_neg.pddl,domain,one extra closing paren
+delivery,numeric,n01.pddl,problem,missing :goal
+delivery,numeric,n02.pddl,problem,undeclared object in :init
+delivery,numeric,n03.pddl,problem,undefined predicate in :goal
+delivery,numeric,n04.pddl,problem,one extra closing paren
+delivery,numeric,n05.pddl,problem,:objects block removed
+delivery,numeric,p01_b1.plan,plan,tail truncated (-1)
+delivery,numeric,p01_b2.plan,plan,one mid-plan step dropped
+delivery,numeric,p01_b3.plan,plan,one mid-plan step dropped
+delivery,numeric,p01_b4.plan,plan,one mid-plan step dropped
+delivery,numeric,p01_b5.plan,plan,first two arguments swapped in one step
+delivery,numeric,p02_b1.plan,plan,tail truncated (-1)
+delivery,numeric,p02_b2.plan,plan,one mid-plan step dropped
+delivery,numeric,p02_b3.plan,plan,one mid-plan step dropped
+delivery,numeric,p02_b4.plan,plan,one mid-plan step dropped
+delivery,numeric,p02_b5.plan,plan,one mid-plan step dropped
+delivery,numeric,p03_b1.plan,plan,tail truncated (-1)
+delivery,numeric,p03_b2.plan,plan,one mid-plan step dropped
+delivery,numeric,p03_b3.plan,plan,one mid-plan step dropped
+delivery,numeric,p03_b4.plan,plan,one mid-plan step dropped
+delivery,numeric,p03_b5.plan,plan,one mid-plan step dropped
+delivery,numeric,p04_b1.plan,plan,tail truncated (-1)
+delivery,numeric,p04_b2.plan,plan,one mid-plan step dropped
+delivery,numeric,p04_b3.plan,plan,one mid-plan step dropped
+delivery,numeric,p04_b4.plan,plan,one mid-plan step dropped
+delivery,numeric,p04_b5.plan,plan,one mid-plan step dropped
+delivery,numeric,p05_b1.plan,plan,tail truncated (-1)
+delivery,numeric,p05_b2.plan,plan,one mid-plan step dropped
+delivery,numeric,p05_b3.plan,plan,one mid-plan step dropped
+delivery,numeric,p05_b4.plan,plan,one mid-plan step dropped
+delivery,numeric,p05_b5.plan,plan,one mid-plan step dropped
+depot,numeric,domain_neg.pddl,domain,'-' dropped from a typed parameter list (inherited)
+depot,numeric,n01.pddl,problem,inherited hand-made n01 (see list)
+depot,numeric,n02.pddl,problem,undeclared object in :init
+depot,numeric,n03.pddl,problem,undefined predicate in :goal
+depot,numeric,n04.pddl,problem,one extra closing paren
+depot,numeric,n05.pddl,problem,missing :goal + one extra closing paren
+depot,numeric,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+depot,numeric,p01_b2.plan,plan,one mid-plan step dropped
+depot,numeric,p01_b3.plan,plan,one mid-plan step dropped
+depot,numeric,p01_b4.plan,plan,one mid-plan step dropped
+depot,numeric,p01_b5.plan,plan,one mid-plan step dropped
+depot,numeric,p02_b1.plan,plan,tail truncated (-1)
+depot,numeric,p02_b2.plan,plan,one mid-plan step dropped
+depot,numeric,p02_b3.plan,plan,one mid-plan step dropped
+depot,numeric,p02_b4.plan,plan,first two arguments swapped in one step
+depot,numeric,p02_b5.plan,plan,first two arguments swapped in one step
+depot,numeric,p03_b1.plan,plan,tail truncated (-1)
+depot,numeric,p03_b2.plan,plan,one mid-plan step dropped
+depot,numeric,p03_b3.plan,plan,one mid-plan step dropped
+depot,numeric,p03_b4.plan,plan,one mid-plan step dropped
+depot,numeric,p03_b5.plan,plan,one mid-plan step dropped
+depot,numeric,p04_b1.plan,plan,tail truncated (-1)
+depot,numeric,p04_b2.plan,plan,one mid-plan step dropped
+depot,numeric,p04_b3.plan,plan,one mid-plan step dropped
+depot,numeric,p04_b4.plan,plan,one mid-plan step dropped
+depot,numeric,p04_b5.plan,plan,one mid-plan step dropped
+depot,numeric,p05_b1.plan,plan,tail truncated (-1)
+depot,numeric,p05_b2.plan,plan,one mid-plan step dropped
+depot,numeric,p05_b3.plan,plan,one mid-plan step dropped
+depot,numeric,p05_b4.plan,plan,one mid-plan step dropped
+depot,numeric,p05_b5.plan,plan,one mid-plan step dropped
+drone,numeric,domain_neg.pddl,domain,one extra closing paren
+drone,numeric,n01.pddl,problem,missing :goal
+drone,numeric,n02.pddl,problem,undeclared object in :init
+drone,numeric,n03.pddl,problem,undefined predicate in :goal
+drone,numeric,n04.pddl,problem,:objects block removed
+drone,numeric,n05.pddl,problem,:init block removed
+drone,numeric,p01_b1.plan,plan,tail truncated (-1)
+drone,numeric,p01_b2.plan,plan,one mid-plan step dropped
+drone,numeric,p01_b3.plan,plan,one step duplicated
+drone,numeric,p01_b4.plan,plan,one step duplicated
+drone,numeric,p01_b5.plan,plan,tail truncated (-2)
+drone,numeric,p02_b1.plan,plan,tail truncated (-1)
+drone,numeric,p02_b2.plan,plan,one mid-plan step dropped
+drone,numeric,p02_b3.plan,plan,one mid-plan step dropped
+drone,numeric,p02_b4.plan,plan,one step duplicated
+drone,numeric,p02_b5.plan,plan,one step duplicated
+drone,numeric,p03_b1.plan,plan,tail truncated (-1)
+drone,numeric,p03_b2.plan,plan,one mid-plan step dropped
+drone,numeric,p03_b3.plan,plan,one mid-plan step dropped
+drone,numeric,p03_b4.plan,plan,one mid-plan step dropped
+drone,numeric,p03_b5.plan,plan,one mid-plan step dropped
+drone,numeric,p04_b1.plan,plan,tail truncated (-1)
+drone,numeric,p04_b2.plan,plan,one mid-plan step dropped
+drone,numeric,p04_b3.plan,plan,one mid-plan step dropped
+drone,numeric,p04_b4.plan,plan,one mid-plan step dropped
+drone,numeric,p04_b5.plan,plan,one step duplicated
+drone,numeric,p05_b1.plan,plan,tail truncated (-1)
+drone,numeric,p05_b2.plan,plan,one mid-plan step dropped
+drone,numeric,p05_b3.plan,plan,one mid-plan step dropped
+drone,numeric,p05_b4.plan,plan,one step duplicated
+drone,numeric,p05_b5.plan,plan,one step duplicated
+farmland,numeric,domain_neg.pddl,domain,undeclared predicate used in a precondition or effect (inherited)
+farmland,numeric,n01.pddl,problem,inherited hand-made n01 (see list)
+farmland,numeric,n02.pddl,problem,undeclared object in :init
+farmland,numeric,n03.pddl,problem,undefined predicate in :goal
+farmland,numeric,n04.pddl,problem,one extra closing paren
+farmland,numeric,n05.pddl,problem,missing :goal + one extra closing paren
+farmland,numeric,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+farmland,numeric,p01_b2.plan,plan,one mid-plan step dropped
+farmland,numeric,p01_b3.plan,plan,one mid-plan step dropped
+farmland,numeric,p01_b4.plan,plan,one mid-plan step dropped
+farmland,numeric,p01_b5.plan,plan,first two arguments swapped in one step
+farmland,numeric,p02_b1.plan,plan,tail truncated (-1)
+farmland,numeric,p02_b2.plan,plan,one mid-plan step dropped
+farmland,numeric,p02_b3.plan,plan,one mid-plan step dropped
+farmland,numeric,p02_b4.plan,plan,one mid-plan step dropped
+farmland,numeric,p02_b5.plan,plan,first two arguments swapped in one step
+farmland,numeric,p03_b1.plan,plan,tail truncated (-1)
+farmland,numeric,p03_b2.plan,plan,one mid-plan step dropped
+farmland,numeric,p03_b3.plan,plan,one mid-plan step dropped
+farmland,numeric,p03_b4.plan,plan,first two arguments swapped in one step
+farmland,numeric,p03_b5.plan,plan,first two arguments swapped in one step
+farmland,numeric,p04_b1.plan,plan,tail truncated (-1)
+farmland,numeric,p04_b2.plan,plan,one mid-plan step dropped
+farmland,numeric,p04_b3.plan,plan,one mid-plan step dropped
+farmland,numeric,p04_b4.plan,plan,first two arguments swapped in one step
+farmland,numeric,p04_b5.plan,plan,first two arguments swapped in one step
+farmland,numeric,p05_b1.plan,plan,tail truncated (-1)
+farmland,numeric,p05_b2.plan,plan,one mid-plan step dropped
+farmland,numeric,p05_b3.plan,plan,one mid-plan step dropped
+farmland,numeric,p05_b4.plan,plan,first two arguments swapped in one step
+farmland,numeric,p05_b5.plan,plan,first two arguments swapped in one step
+gardening,numeric,domain_neg.pddl,domain,one extra closing paren
+gardening,numeric,n01.pddl,problem,missing :goal
+gardening,numeric,n02.pddl,problem,undeclared object in :init
+gardening,numeric,n03.pddl,problem,undefined predicate in :goal
+gardening,numeric,n04.pddl,problem,one extra closing paren
+gardening,numeric,n05.pddl,problem,:objects block removed
+gardening,numeric,p01_b1.plan,plan,tail truncated (-1)
+gardening,numeric,p01_b2.plan,plan,one mid-plan step dropped
+gardening,numeric,p01_b3.plan,plan,one mid-plan step dropped
+gardening,numeric,p01_b4.plan,plan,one mid-plan step dropped
+gardening,numeric,p01_b5.plan,plan,first two arguments swapped in one step
+gardening,numeric,p02_b1.plan,plan,tail truncated (-1)
+gardening,numeric,p02_b2.plan,plan,one mid-plan step dropped
+gardening,numeric,p02_b3.plan,plan,one mid-plan step dropped
+gardening,numeric,p02_b4.plan,plan,one mid-plan step dropped
+gardening,numeric,p02_b5.plan,plan,first two arguments swapped in one step
+gardening,numeric,p03_b1.plan,plan,tail truncated (-1)
+gardening,numeric,p03_b2.plan,plan,one mid-plan step dropped
+gardening,numeric,p03_b3.plan,plan,one mid-plan step dropped
+gardening,numeric,p03_b4.plan,plan,one mid-plan step dropped
+gardening,numeric,p03_b5.plan,plan,one mid-plan step dropped
+gardening,numeric,p04_b1.plan,plan,tail truncated (-1)
+gardening,numeric,p04_b2.plan,plan,one mid-plan step dropped
+gardening,numeric,p04_b3.plan,plan,one mid-plan step dropped
+gardening,numeric,p04_b4.plan,plan,one mid-plan step dropped
+gardening,numeric,p04_b5.plan,plan,one mid-plan step dropped
+gardening,numeric,p05_b1.plan,plan,tail truncated (-1)
+gardening,numeric,p05_b2.plan,plan,one mid-plan step dropped
+gardening,numeric,p05_b3.plan,plan,one mid-plan step dropped
+gardening,numeric,p05_b4.plan,plan,one mid-plan step dropped
+gardening,numeric,p05_b5.plan,plan,first two arguments swapped in one step
+pogo_stick,numeric,domain_neg.pddl,domain,missing closing paren(s)
+pogo_stick,numeric,n01.pddl,problem,inherited hand-made n01 (see list)
+pogo_stick,numeric,n02.pddl,problem,undeclared object in :init
+pogo_stick,numeric,n03.pddl,problem,undefined predicate in :goal
+pogo_stick,numeric,n04.pddl,problem,one extra closing paren
+pogo_stick,numeric,n05.pddl,problem,missing :goal + one extra closing paren
+pogo_stick,numeric,p01_b1.plan,plan,tail truncated (-10)
+pogo_stick,numeric,p01_b2.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p01_b3.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p01_b4.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p01_b5.plan,plan,first two arguments swapped in one step
+pogo_stick,numeric,p02_b1.plan,plan,tail truncated (-1)
+pogo_stick,numeric,p02_b2.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p02_b3.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p02_b4.plan,plan,first two arguments swapped in one step
+pogo_stick,numeric,p02_b5.plan,plan,first two arguments swapped in one step
+pogo_stick,numeric,p03_b1.plan,plan,tail truncated (-1)
+pogo_stick,numeric,p03_b2.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p03_b3.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p03_b4.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p03_b5.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p04_b1.plan,plan,tail truncated (-1)
+pogo_stick,numeric,p04_b2.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p04_b3.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p04_b4.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p04_b5.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p05_b1.plan,plan,tail truncated (-1)
+pogo_stick,numeric,p05_b2.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p05_b3.plan,plan,one mid-plan step dropped
+pogo_stick,numeric,p05_b4.plan,plan,first two arguments swapped in one step
+pogo_stick,numeric,p05_b5.plan,plan,first two arguments swapped in one step
+sailing,numeric,domain_neg.pddl,domain,undeclared predicate used in a precondition or effect (inherited)
+sailing,numeric,n01.pddl,problem,missing :goal
+sailing,numeric,n02.pddl,problem,undeclared object in :init
+sailing,numeric,n03.pddl,problem,undefined predicate in :goal
+sailing,numeric,n04.pddl,problem,one extra closing paren
+sailing,numeric,n05.pddl,problem,missing :goal + one extra closing paren
+sailing,numeric,p01_b1.plan,plan,inherited hand-made b1 plan (shortened and/or altered)
+sailing,numeric,p01_b2.plan,plan,one mid-plan step dropped
+sailing,numeric,p01_b3.plan,plan,one mid-plan step dropped
+sailing,numeric,p01_b4.plan,plan,one mid-plan step dropped
+sailing,numeric,p01_b5.plan,plan,first two arguments swapped in one step
+sailing,numeric,p02_b1.plan,plan,tail truncated (-1)
+sailing,numeric,p02_b2.plan,plan,one mid-plan step dropped
+sailing,numeric,p02_b3.plan,plan,one mid-plan step dropped
+sailing,numeric,p02_b4.plan,plan,first two arguments swapped in one step
+sailing,numeric,p02_b5.plan,plan,first two arguments swapped in one step
+sailing,numeric,p03_b1.plan,plan,tail truncated (-1)
+sailing,numeric,p03_b2.plan,plan,one mid-plan step dropped
+sailing,numeric,p03_b3.plan,plan,first two arguments swapped in one step
+sailing,numeric,p03_b4.plan,plan,first two arguments swapped in one step
+sailing,numeric,p03_b5.plan,plan,tail truncated (-2)
+sailing,numeric,p04_b1.plan,plan,tail truncated (-1)
+sailing,numeric,p04_b2.plan,plan,one mid-plan step dropped
+sailing,numeric,p04_b3.plan,plan,first two arguments swapped in one step
+sailing,numeric,p04_b4.plan,plan,first two arguments swapped in one step
+sailing,numeric,p04_b5.plan,plan,tail truncated (-2)
+sailing,numeric,p05_b1.plan,plan,tail truncated (-1)
+sailing,numeric,p05_b2.plan,plan,one mid-plan step dropped
+sailing,numeric,p05_b3.plan,plan,one mid-plan step dropped
+sailing,numeric,p05_b4.plan,plan,first two arguments swapped in one step
+sailing,numeric,p05_b5.plan,plan,first two arguments swapped in one step
+zenotravel-numeric,numeric,domain_neg.pddl,domain,one extra closing paren
+zenotravel-numeric,numeric,n01.pddl,problem,missing :goal
+zenotravel-numeric,numeric,n02.pddl,problem,undeclared object in :init
+zenotravel-numeric,numeric,n03.pddl,problem,undefined predicate in :goal
+zenotravel-numeric,numeric,n04.pddl,problem,one extra closing paren
+zenotravel-numeric,numeric,n05.pddl,problem,:objects block removed
+zenotravel-numeric,numeric,p01_b1.plan,plan,tail truncated (-1)
+zenotravel-numeric,numeric,p01_b2.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p01_b3.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p01_b4.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p01_b5.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p02_b1.plan,plan,tail truncated (-1)
+zenotravel-numeric,numeric,p02_b2.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p02_b3.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p02_b4.plan,plan,first two arguments swapped in one step
+zenotravel-numeric,numeric,p02_b5.plan,plan,first two arguments swapped in one step
+zenotravel-numeric,numeric,p03_b1.plan,plan,tail truncated (-1)
+zenotravel-numeric,numeric,p03_b2.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p03_b3.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p03_b4.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p03_b5.plan,plan,first two arguments swapped in one step
+zenotravel-numeric,numeric,p04_b1.plan,plan,tail truncated (-1)
+zenotravel-numeric,numeric,p04_b2.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p04_b3.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p04_b4.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p04_b5.plan,plan,first two arguments swapped in one step
+zenotravel-numeric,numeric,p05_b1.plan,plan,tail truncated (-1)
+zenotravel-numeric,numeric,p05_b2.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p05_b3.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p05_b4.plan,plan,one mid-plan step dropped
+zenotravel-numeric,numeric,p05_b5.plan,plan,first two arguments swapped in one step

@@ -17,7 +17,7 @@ was made on the old paper branch. That branch was merged into `main` by PR #101
 (2026-09-18, merge commit, not squashed) and deleted, so every such hash is reachable on
 `main`. Docs cited by bare name moved on 2026-09-18; `MOVES.md` "Third wave" resolves them.
 
-*Last refreshed: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -40,6 +40,18 @@ The first-draw-vs-last-attempt split is Omer's 2026-08-06 call ("the 1 pt is not
 worth the ambiguity"). Cause: 18 instances were re-attempted on a resume and are
 effectively best-of-2 while every other instance is single-shot; first-draw counts
 the re-draws as failures. Full derivation: results doc deviation row 1 (L293).
+
+### Added 2026-10-03 — PlanBench equivalence test and post hoc regrade (tex PR #114)
+
+Provenance: `reanalysis_planbench.md`; scripts `tools/reanalysis/planbench_equivalence_tost.py`, `planbench_corrected_extractor.py` (re-run 2026-10-02).
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| clean-vs-Mystery WT paired gap (primary, first-draw) | **3.5 pp Mystery-above**, b = 119 / c = 140, McNemar **p = 0.214**; 90% CI **[−7.9, +0.9]**; discordance 43.2% | 2.2 pp, b = 119 / c = 132, p = 0.449 (last-attempt) |
+| paired equivalence test on that gap (prereg-named, exploratory comparison; computed 2026-10-02, declared deviation) | ±7.5: **criterion not met (unresolved)**, TOST **p = 0.068**; ±10: **criterion met**, **p = 0.008** | "within / well inside the ±7.5 margin"; last-attempt p = 0.022; the word "equivalent" |
+| corrected-extractor cells (**POST HOC**, always beside the primary) | BW NT **47.8** [43.9, 51.8] 287/600; BW WT **70.2** [66.4, 73.7] 421/600 first-draw; Mystery NT **4.3** [3.0, 6.3] 26/600; Mystery WT **94.3** [92.2, 95.9] 566/600 | BW WT 71.5 (last-attempt); Mystery WT 94.0 (first-block rule); "above 90%" as an estimate; any corrected figure as a headline |
+| corrected-extractor paired contrasts (**POST HOC**) | BW WT vs NT **+22.3 pp**, 207/73, p = 5.1e−16; Mystery WT vs NT **+90.0 pp**, 541/1, p = 7.5e−161; BW WT vs Mystery WT **24.2 pp Mystery-above**, 28/173, p = 1.0e−26, criterion not met at ±7.5 or ±10 | last-attempt variants; block-only rows |
+| instance files | **602 files** (501 + 101), **600 asked** (file 1 of each directory is the worked example); rename check 602/602 | "501 instance files" as the whole set |
 
 ## Frontier e2e — delivered vs tool-verified
 
@@ -80,6 +92,35 @@ tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (pushed 2026-09-08, Overleaf 
 | PlanBench funnel stages (Haiku WT, n=600) | clean FORMALIZE 96.3 → CALL 100 → plan found 69.7 → delivered **68.3** (first-draw); Mystery 97.8 → 100 → 95.3 → **71.8** | last-attempt 69.7 delivered |
 | frontier budget probe (RATIFIED 2026-09-12; in tex 5466cb6, Overleaf d922237; readout: `reference/frontier_budget_probe_readout.md`) | Sonnet: LEN-FIT **16/25** (64.0% [44.5, 79.8]) vs ET-FAIL **7/19** (36.8% [19.1, 59.0]), one-sided Fisher **p = 0.069** → PARTIAL (criterion not met); Haiku: **12/17** (70.6% [46.9, 86.7]) vs **1/12** (8.3% [1.5, 35.4]), **p = 0.0011** → H1; Haiku DECLINE **0/14**; delivered at 64K WT/NT: Sonnet **70 [60.4, 78.1] / 44 [34.7, 53.8]** (Δ +26 pp), Haiku **65 [55.3, 73.6] / 58 [48.2, 67.2]** (Δ +7 pp); tool-arm final turns at 64,000: **0** both tiers (NT: 1 Sonnet, 2 Haiku); censored at 262,144 chars: 0; cost **$40.68**; reference anatomy Sonnet 49/25/4/0/0/3/19/0, Haiku 52/17/1/1/2/14/12/1; canonical cells ⟨49, 62⟩ / ⟨52, 64⟩ UNCHANGED | the pre-retry readout (identical counts, superseded); the 65,536 budget and $217 cap; any pooling of probe rows with canonical cells |
 | open-roster unaided simulate, canonical corpus, both reasoning modes (verified 2026-09-19) | **0/3,000 format-exact on the shared-budget corpus** (10 no-tools cells × 300, strict `success`, `results/sweep5v2-live/slurm_vllm_*_no-tools/trials.jsonl`; failure mix 1,772 `truncated_no_answer` · 1,202 `format_parse_fail` · 26 `result_mismatch`). Always carry the qualifier; the capability figure is the decoupled control, 22–40% content-correct at ≥4B | a bare "0/3,000" or "0%" read as a capability floor |
+
+### Added 2026-10-03 — figures changed by the consistency read (tex PR #111)
+
+Provenance: `results/derived/e2e_overlay/pooled_e2e_table.csv` (corpus `iss024d-e2e-live`, simulate, plain arm) and the frontier rows above.
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| open-weight delivered simulate, rerun apparatus, upper end | **at most 21%** (Gemma ⟨6.0, 20.7⟩; 4B ⟨8.3, 10.7⟩, 9B ⟨12.0, 16.7⟩, 35B ⟨12.7, 13.7⟩ from 25+7, 36+14, 18+44, 38+3 of 300) | "at most 17%" (ignored Gemma) |
+| frontier delivered vs verified | delivered at **two thirds** of the verified rate or less (64/97 = 0.66 Haiku high end; 62/99 = 0.63 Sonnet) | "half that or less" |
+| rerun simulate mechanism layer, plain arm | **63.0 / 82.7 / 44.0 / 92.3%** (4B / 9B / Gemma / 35B; 189, 248, 132, 277 of 300) | the 3-model list "63, 83, 92%" |
+
+**Warning (2026-10-02).** `pddl_eval/scoring.py` on `harness/delivered-rerun` (PR #113) strips a leaked Gemma channel prefix before extraction. The pinned `tools/e2e_regrade.py` imports those functions, so re-running it on the canonical Gemma tool cells now gives different delivered solve numbers from the frozen rows in this file. The frozen rows stay; any regenerated Gemma figure is a new reading and needs its own row.
+
+## Delivered rerun — readout (FROZEN 2026-10-09; in no tex yet)
+
+Provenance: `reference/delivered_rerun_readout.md` / `.json` (frozen code `d558946`, package `822aace…`; summary and sha256s in `reference/delivered_rerun_prereg.md` §8c). Data: `results/delivered-rerun/` (seven cells, cluster run tag `delivered-rerun` / `delivered-rerun-neutral`). **Parity failed at job level, so every figure below is a separate-apparatus replication**: it never replaces a canonical-cell figure and is never pooled with one.
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| parity guard (§3) | Gemma **10/10** met; Qwen **15/20** met (needs 18); \|Δ̂\| > 10 in 35B solve-plain **+19.3** and 35B simulate-plain **+19.3** → **parity fails at job level** | "the rerun reproduces the canonical cells"; any rerun rate as the exact delivered rate of a canonical cell |
+| Part C parity | **11/12** met; 35B validate_domain **+8.6** [2.8, 14.7] unresolved | — |
+| R1, Gemma validate_plan delivered, tools-plain − unaided (E2) | **+0.9** [−1.2, 2.9] (89.2 vs 88.3) → **No delivered harm** | "−67 pp" as a delivered effect (it is tool-verified only) |
+| R2, Gemma validate_plan steered − plain (E3) | **+7.5** [4.9, 10.2], Holm p 0.00057 → **Unresolved** (lower bound not above +5) | "steering raises delivered answers" as a registered finding |
+| R3, title rule | **Title changes to the two-gate reading (invocation and delivery)** | "invocation is the bottleneck" as the title |
+| R4, solve, full uncut answers delivered correctly | Gemma **97.7%** of 576 · 9B **95.0%** of 561 · 35B **95.2%** of 498 → gap attributed to storage and the refused final request | — |
+| R5, neutral system prompt, invocation | neutral-plain **26.9** vs minimal-plain **20.0** (+6.9, 90% CI [3.6, 10.7]) → **The directive suppresses calling**; steered 98.1 vs 93.1 → steering sentence "Not shown" | — |
+| E2 solve delivered, tools-plain − unaided | **+71.0 / +64.3 / +51.7** (Gemma / 9B / 35B) | the canonical tool-verified "+66 to +73" as delivered |
+| E2 simulate, Gemma | **−15.7** [−24.7, −6.7], Holm p 0.018 (tools worse; 8.3 vs 24.0) | — |
+| E1 simulate delivered, tool arms | Gemma **8.3** both arms · 9B **17.3 / 16.3** · 35B **28.3 / 25.7** (plain / steered); no-room share **42.7–53.0%** | the 2026-10-03 "at most 21%" row above (`iss024d` apparatus), as a figure of this run |
 
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29; IN TEX 2026-09-12/13, `paper/aaai27` `6027d68` + `7c0502a`, pushed + Overleaf `2ab9bb5`)
 
