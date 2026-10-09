@@ -218,6 +218,46 @@ def _response_field(resp, name: str) -> int:
     return 0
 
 
+def _record_ctx_clip(tokens: dict, resp) -> None:
+    """Fold one turn's context-overflow outcome into the trial's `tokens` dict.
+
+    VLLMClient annotates a response only when the overflow path ran (see
+    `vllm_client._retry_after_ctx_overflow`), so on an ordinary turn this
+    adds nothing and the `tokens` dict keeps its pre-2026-10-02 shape. Keys,
+    all absent by default:
+      * `ctx_clipped_turns` — how many turns ran with a clipped max_tokens.
+      * `ctx_clip_last_turn_max_tokens` — the max_tokens actually granted on
+        the LAST turn; present only when that turn was clipped (it is dropped
+        again if a later turn runs unclipped), so its presence means "the
+        final answer was generated under a reduced allowance of N".
+      * `ctx_clip_last_turn_prompt_tokens` — that turn's prompt size (the
+        client's 1-token measurement; the turn's own reported prompt count
+        when the measurement carried no usage). Present and dropped together
+        with the key above. prompt + max_tokens must not exceed the context
+        window, and the gap shows how far below it a stepped-down clip landed.
+      * `ctx_no_room_turns` — how many turns were never generated because
+        the prompt alone filled the window (synthetic empty response).
+    Call once per turn, in turn order.
+    """
+    if not isinstance(resp, dict):
+        return
+    clipped_to = resp.get("num_predict_clipped_to")
+    if clipped_to is not None:
+        tokens["ctx_clipped_turns"] = tokens.get("ctx_clipped_turns", 0) + 1
+        tokens["ctx_clip_last_turn_max_tokens"] = int(clipped_to)
+        prompt_tokens = (resp.get("num_predict_measured_prompt")
+                         or resp.get("prompt_eval_count"))
+        if prompt_tokens:
+            tokens["ctx_clip_last_turn_prompt_tokens"] = int(prompt_tokens)
+        else:
+            tokens.pop("ctx_clip_last_turn_prompt_tokens", None)
+    else:
+        tokens.pop("ctx_clip_last_turn_max_tokens", None)
+        tokens.pop("ctx_clip_last_turn_prompt_tokens", None)
+    if resp.get("ctx_overflow_no_room"):
+        tokens["ctx_no_room_turns"] = tokens.get("ctx_no_room_turns", 0) + 1
+
+
 def _response_thinking(resp) -> str:
     """Extract message.thinking from a VLLMClient response (dict-shaped).
 
@@ -252,7 +292,8 @@ async def chat_with_tools(
     Returns (text, tool_calls_log, last_done_reason, loop_exhausted, tokens,
     thinking). `tokens` is a dict accumulating prompt_eval_count +
     eval_count + total_duration_ns + eval_duration_ns + turns across every
-    chat() call in the loop. `thinking` is the LAST turn's structured
+    chat() call in the loop (plus the `ctx_*` keys of `_record_ctx_clip`
+    when a turn overflowed the context). `thinking` is the LAST turn's structured
     `message.thinking` content (empty for non-thinking models); earlier-turn
     thinking is observable via `tool_calls[]`.
 
@@ -297,6 +338,7 @@ async def chat_with_tools(
         tokens["total_duration_ns"] += _response_field(resp, "total_duration")
         tokens["eval_duration_ns"] += _response_field(resp, "eval_duration")
         tokens["turns"] += 1
+        _record_ctx_clip(tokens, resp)
         thinking_text = _response_thinking(resp)
         msg = resp["message"]
         messages.append(msg)
@@ -367,6 +409,7 @@ async def chat_without_tools(
         "total_duration_ns": _response_field(resp, "total_duration"),
         "eval_duration_ns": _response_field(resp, "eval_duration"),
     }
+    _record_ctx_clip(tokens, resp)
     thinking_text = _response_thinking(resp)
     messages.append({"role": "assistant", "content": content})
     return content, _response_done_reason(resp), tokens, thinking_text
@@ -495,6 +538,8 @@ async def chat_without_tools_decoupled(
         "eval_duration_ns": _response_field(resp1, "eval_duration")
         + _response_field(resp2, "eval_duration"),
     }
+    _record_ctx_clip(tokens, resp1)
+    _record_ctx_clip(tokens, resp2)
 
     messages.append({"role": "assistant", "content": f"{think_block}{answer}"})
     return answer, done_reason_answer, tokens, reasoning, think_truncated

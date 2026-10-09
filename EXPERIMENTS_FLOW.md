@@ -434,10 +434,11 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pla
 | success | End-to-end correctness as scored live. For no-tools `simulate` this is state-tracking |
 | tool_selected | Correct tool called (with-tools only, null otherwise) |
 | format_compliant | No-tools `simulate` only: the model emitted the schema-exact `{"trajectory": [...]}` wrapper. Null elsewhere |
-| response | Model text response, truncated to `RESPONSE_SNAPSHOT_LEN = 16384` chars. **Corpora written before 2026-06-25 stored only 500 chars.** That older cap cuts long answers mid-object, which is what makes some delivered-answer cells censored (§14) |
+| response | Model text response, truncated to `RESPONSE_SNAPSHOT_LEN = 65536` chars (the head is kept). **Corpora written before 2026-06-25 stored only 500 chars, and corpora from 2026-06-25 to 2026-10-02 stored 16384.** Those older caps cut long answers before their end (the verdict or final plan), which is what makes some delivered-answer cells censored (§14) |
+| response_truncated_by_storage | `true` when the answer was longer than the cap and `response` holds only its head, `false` when `response` is the complete answer. Null on rows written before 2026-10-02 |
 | thinking | Last-turn structured `message.thinking` content (PR-2, truncated to `THINKING_SNAPSHOT_LEN=4096` chars). Empty string when the model didn't emit thinking. For multi-turn `with_tools` runs, only the last turn's thinking is recorded — earlier-turn reasoning is observable via `tool_calls[]`. |
 | tool_calls | List of `{name, arguments, result}` dicts |
-| tokens | Dict `{prompt, completion, turns, total_duration_ns, eval_duration_ns}` (PR-2). Counts are summed across `client.chat()` turns; `turns=1` for `with_tools=False`, up to `MAX_TOOL_LOOPS=10` otherwise. Durations are measured client-side with `perf_counter_ns` around the vLLM call; `eval_duration_ns ≤ total_duration_ns`. Used for tokens-per-second and prompt-shrinkage analysis. |
+| tokens | Dict `{prompt, completion, turns, total_duration_ns, eval_duration_ns}` (PR-2). Counts are summed across `client.chat()` turns; `turns=1` for `with_tools=False`, up to `MAX_TOOL_LOOPS=10` otherwise. Durations are measured client-side with `perf_counter_ns` around the vLLM call; `eval_duration_ns ≤ total_duration_ns`. Used for tokens-per-second and prompt-shrinkage analysis. Since 2026-10-02 four more keys appear **only** when a turn overflowed the context window: `ctx_clipped_turns` (turns that ran with a reduced output allowance), `ctx_clip_last_turn_max_tokens` (the allowance the final turn actually got, present only if that turn was clipped), `ctx_clip_last_turn_prompt_tokens` (that turn's measured prompt size; prompt plus allowance never exceeds the context window) and `ctx_no_room_turns` (turns never generated because the prompt alone filled the window; the row then has an empty answer with `done_reason = "length"`). |
 | duration_s | Wall-clock time around the chat helper (Python + MCP latency included; not the same as `tokens.total_duration_ns`) |
 | error | Error message if any |
 | failure_reason | `FR_*` constant from `pddl_eval/scoring.py` ("ok" iff `success=True`); see `failure_reasons` description above for the open-ended vocabulary |
@@ -446,7 +447,7 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pla
 | done_reason | Raw `done_reason` from the last chat turn (`"stop"`, `"length"`, etc.) |
 | infra_failure | True when the trial never got a real model attempt (transport or server failure). Such records are dropped from `trials.jsonl` and from the saved list, so this is `false` on disk |
 | tool_filter | "all" |
-| prompt_style | "minimal" |
+| prompt_style | "minimal" (every corpus before 2026-10-02), or "neutral" for a `--prompt-style neutral` run: the with-tools system prompt is only the role-framing sentence, with no "use the tool" instruction. This is the system-prompt style and is separate from the neutral (v11–13) versus steered (v14–16) prompt variants |
 
 ---
 

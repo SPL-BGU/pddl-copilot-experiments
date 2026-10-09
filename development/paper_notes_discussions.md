@@ -2307,3 +2307,82 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **PR #107 merged** (`3196112`): scorecard `table*` fits the page, three stale comments
   fixed. Action 35442368261 green. The paper now compiles with 0 overfull boxes.
 - **Bottom line:** next piece of work is the weakness review, not an experiment.
+
+## 2026-10-02 — Weakness list answered in part; four re-analyses; the delivered rerun is decided
+
+- **Resume-verify.** The tex had not changed since 09-19. `weakness_review.md` was deleted
+  (in git history at `66cc314`) and `referee_weaknesses.md` was never committed and is
+  lost; `weakness_consolidated.md` is the working list.
+- **Q3 (Omer): yes.** Tex line 441 said JSON-constrained decoding "remains" in the
+  no-tools arm; the 08-17 audit says it never took effect. Fixed, with the Limitations
+  sentence (0 of 58,581; 0.36% of 65,874; 1.92% of 12,176, all re-run today with
+  `tools/guided_json_audit.py`) and the "budget, not the grader" inference removed.
+  Wording approved by Omer. **PR #110.** Note: "under 2% on every cut" in our own notes
+  is loose (sweep5v2 alone on complete rows is 2.14%); the tex quotes the two pooled
+  figures.
+- **Consistency read (Omer): fix groups A–D with the smallest fix.** Applied, **PR #111**
+  (stacked on #110). New figures in that PR, each re-derived from
+  `pooled_e2e_table.csv`: "open-weight models deliver at most 21%" on simulate (was 17%;
+  Gemma is ⟨6.0, 20.7⟩); "delivered at two thirds of that or less" (was "half"); Gemma's
+  44% added to the rerun mechanism list. Group E (prose) waits in
+  `consistency_read_E_drafts.md`.
+- **Q4 (Omer): all.** Four local re-analyses, findings docs `reanalysis_*.md`, scripts
+  `tools/reanalysis/`. Every frozen figure they started from reproduces. Bottom lines:
+  - *Statistics.* Every large effect and both Gemma validate_plan results survive paired,
+    domain-clustered tests and a Holm correction. Two verdicts become not significant:
+    Qwen3.5-9B validate_plan steering (+2.9, [−0.6, +6.3]) and Qwen3.6-35B validate_plan
+    availability (−8.7, [−19.0, +1.5]). "Stricter than Bonferroni" does not hold. The
+    GLMM refit is +7.80, SE 0.29 (the tex quotes SD 0.10). Single-rate intervals on
+    validate_plan are two to five times too narrow once the 20 domains are respected.
+    Contamination: criterion met pooled for all five models, thinking off; unresolved in
+    5 of 15 per-task headline cells.
+  - *PlanBench.* The prereg's paired equivalence test was never computed. On the
+    first-draw numbers it is not met at ±7.5 (p = 0.068) and met at ±10. With a corrected
+    extractor Mystery with tools is 94.3% (566/600) against 71.8% shipped, and the
+    with-tools gap between the domains is 24.2 points in Mystery's favour.
+    **Decision (Omer): shipped numbers stay primary; corrected numbers are reported
+    beside them as post hoc; the "well inside ±7.5" sentence is replaced; the
+    not-computed test is declared.** Drafts first.
+  - *Breakdowns and cost.* The unaided solve floor is mostly one wording. Gemma's 21% is
+    31 / 27 / 4% by wording and comes from the five shortest domains. "Invariant to the
+    per-token price" is wrong: above about 2.2:1 output-to-input the tool is cheaper on
+    delivered solve for the open-weight models; at the frontier it does not pay at any
+    ratio. Test-set facts to disclose: five copies of one valid plan for 99 of 100
+    problems, 100:20 valid-to-invalid domains, 12 of 20 invalid domains differ by a
+    parenthesis count.
+  - *Transcripts.* 1,987 of 2,057 "truncated" headline tool-arm trials are a final
+    request the client never got through (overflow retry lowers the allowance by about
+    129 tokens per attempt). 198 of 200 Gemma solve answers graded "invalid plan" are the
+    tool's plan behind a leaked `<|channel>thought` prefix. No sign of unrecognised tool
+    calls in Gemma's 2,378 no-call answers, as far as 500 characters show. The frontier
+    64K residual (65 trials) is a restating problem, different for Sonnet and Haiku.
+- **Q1 (Omer): run the full-storage rerun. Q2: add the Gemma neutral-prompt arm.**
+  Registered in `reference/delivered_rerun_prereg.md`: Part A 27,360 trials (three
+  headline models, thinking off, plain + steered), Part B 6,000 (Gemma validate_plan,
+  system prompt without the "use the tool" sentence). Three harness fixes go in first
+  (overflow retry, Gemma prefix, storage cap 65,536; the 16,384 cap was hit by 14% of
+  `iss024d` rows). Parity guard: paired TOST at ±5 on tool-verified success,
+  domain-clustered, Gemma first. The title rule is registered (R3). Cluster go-ahead
+  given by Omer.
+- **Consequence for the tex, to be written after the rerun:** the open-weight delivered
+  bounds now in the paper are biased low by the two harness problems above, by an amount
+  the 500-character snapshots cannot recover.
+- **Bottom line:** the paper waits on one run. Everything else found today is rewriting
+  with numbers already on disk.
+
+## 2026-10-03 — PlanBench wording and group E approved; the delivered rerun is running; no unaided rerun
+
+- **PlanBench (Omer: okay).** PR #114: the equivalence test is reported and declared (exploratory comparison; not met at ±7.5, p = 0.068; met at ±10, p = 0.008), the post hoc corrected-extractor rows sit beside the primary figures, and the 602-file clause is fixed. `NUMBERS.md` rows added.
+- **Group E (Omer: okay).** PR #115: 27 rewordings; E3a, E3b, E8b held for the delivery-gap rewrite after the rerun.
+- **Unaided arm (Omer: do it if it is the best approach). First decision: not run. REVERSED the same day: run (Part C, job 21991349).** Writing the analysis code showed the canonical unaided simulate cells cannot be regraded (old normaliser, 500-char snapshots) and that the canonical unaided grade is the strict online one while the tool side gets the tolerant grader (weakness C7). Part C gives same-run, same-grader contrasts on all 15 cells. 13,680 trials, chained after the 35B. The text below is the superseded first reasoning: The canonical no-tools cells ran on vLLM 0.20.2, which is what the rerun uses (served banner in the smoke log), so the availability contrast is same-version for all three models, and the no-tools delivered score is already exact (graded online on full text). My earlier suggestion that it would remove the 9B version objection was wrong: the rerun of the tool arm removes it. Recorded in the prereg.
+- **Rerun status.** Smoke passed (prereg §8a). Chain submitted 2026-10-02: 21982285 → 21982286 → 21982369 → 21982370. The smoke showed a real 16K-context limit on simulate (tool result alone fills the window in about 45% of smoke trials); registered as a reported limit, not changed.
+- **Merges:** Omer will merge later (#110 → #111 → #114 → #115; #112 docs; #113 harness, after the run or without moving the cluster checkout).
+
+## 2026-10-09 — Delivered rerun read out (frozen code, no halt); title rule says change the title
+
+- **Run complete.** All seven cells full (Part A 9,120 × 3, Part B 6,000, Part C 4,560 × 3). The 9B unaided cell timed out at 12 h and was resumed once (job 22417213, same checkout and serving version); declared in prereg §9 as an execution-only deviation. Frozen code `d558946` ran in live mode with exit 0, no halt, no tripwire. Readout kept byte-identical in `reference/delivered_rerun_readout.{md,json}`; summary in prereg §8c; figures in `NUMBERS.md`.
+- **Parity fails at job level.** Gemma 10/10 cells reproduce the canonical tool-verified scores within ±5; Qwen only 15/20, and Qwen3.6-35B solve-plain and simulate-plain moved by +19.3 each (the most turns clipped before a tool call, the reason the prereg anticipated). Fixed consequence: the whole rerun is a **separate-apparatus replication**. Its rates do not replace the canonical cells' figures.
+- **Part C (unaided rerun):** 11/12 cells reproduce the canonical unaided score; 35B validate_domain moved +8.6 (unresolved).
+- **Registered readings:** R1 **No delivered harm** (Gemma validate_plan, tools-plain − unaided +0.9 [−1.2, 2.9]); R2 **Unresolved** (steering +7.5 [4.9, 10.2]); **R3 title changes to the two-gate reading (invocation and delivery)**; R4 met (solve gap = storage + refused final request; 95–98% of full, uncut answers correct); R5 **the directive suppresses calling** (neutral prompt +6.9 invocation), steering sentence "Not shown".
+- **Other registered results:** tools lift delivered solve by +52 to +71 points for all three models; validate_domain and validate_problem gain for all three; validate_plan gains for both Qwens but not Gemma; on simulate tools make Gemma worse (−15.7, Holm-significant) because in 43–53% of tool-arm simulate trials the tool result fills the 16K window.
+- **Consequence for the paper (to draft, not decided in prose):** the "invocation is the bottleneck" title goes, by the registered rule. The −67 points on Gemma validate_plan stays a tool-verified (mechanism-layer) figure only. No interpretation beyond the registered labels yet; Omer to read first.

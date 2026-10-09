@@ -70,6 +70,7 @@ if [ -n "${CELLS_LIST:-}" ]; then
         case "$CELL_COND" in
             no-tools)               _CTAG="notools" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
+            tools_all_neutral)      _CTAG="tools-all-neutral" ;;
             @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
         esac
@@ -104,6 +105,12 @@ MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
 TASKS_ENV_OVERRIDE="${TASKS:-}"
+# submit_with_rtx.sh --tasks joins the task list with `^` (same separator as
+# CELLS_LIST) so the value survives sbatch's comma-separated --export list
+# without relying on embedded spaces. Map it back to the space-separated form
+# used below. A space-separated TASKS (the pre-existing direct-env form) and
+# an unset TASKS pass through unchanged.
+TASKS_ENV_OVERRIDE="${TASKS_ENV_OVERRIDE//^/ }"
 
 ### Workspace on /scratch — with ENOSPC fallback to /tmp ###
 # Test the FULL target path (vllm-work/hf-cache) in one mkdir -p so an
@@ -356,6 +363,12 @@ for MODEL in $MODELS; do
                     COND_ARGS=(--conditions no-tools) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
+                tools_all_neutral)
+                    # submit_with_rtx.sh --prompt-style neutral. The style is
+                    # carried by the cond token, so OUT_DIR below becomes
+                    # ..._tools_all_neutral[_<RUN_TAG>] — a different dir from
+                    # every tools_all_minimal cell.
+                    COND_ARGS=(--conditions tools --tool-filter all --prompt-style neutral) ;;
                 *)
                     echo "Error: unknown condition '$COND'"; OVERALL_RC=1; continue ;;
             esac

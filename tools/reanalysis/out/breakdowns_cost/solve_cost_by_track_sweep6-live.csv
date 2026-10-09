@@ -1,0 +1,7 @@
+corpus,track,arm,nt_n,nt_ok,nt_tokens,nt_tokens_per_trial,nt_tokens_per_pass,tl_n,tl_tv_ok,tl_deliv_ok,tl_deliv_cens,tl_tokens,tl_tokens_per_trial,mult_tool_verified,mult_delivered_low,mult_delivered_high
+sweep6-live,all,tl-neut,900,87,4545557,5051,52248,900,740,131,301,17128182,19031,0.44,0.76,2.5
+sweep6-live,all,tl-ster,900,87,4545557,5051,52248,900,840,163,314,16783055,18648,0.38,0.67,1.97
+sweep6-live,classical,tl-neut,450,27,2476054,5502,91706,450,367,83,189,7219907,16044,0.21,0.29,0.95
+sweep6-live,classical,tl-ster,450,27,2476054,5502,91706,450,426,100,188,7238287,16085,0.19,0.27,0.79
+sweep6-live,numeric,tl-neut,450,60,2069503,4599,34492,450,373,48,112,9908275,22018,0.77,1.8,5.98
+sweep6-live,numeric,tl-ster,450,60,2069503,4599,34492,450,414,63,126,9544768,21211,0.67,1.46,4.39
