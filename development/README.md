@@ -25,6 +25,7 @@ Three files answer almost every question:
 | `review_round_handoff.md` | operational pickup for the review round and pre-submission work (2026-09-18): the single-line branch model, the step sequence, the doc-cleanup brief. Never overrides `STATUS.md` |
 | `advisor_brief.md` | one page for the advisors and coauthors: the six `STATUS.md` N2 questions with recommendations and open `> ANSWER:` slots |
 | `consistency_read_findings.md` | whole-paper consistency read of 2026-09-19 (N3): where the tex contradicts itself, leftover synonyms, notation, figures at two values, AI-tells; findings only, with open `> ANSWER:` slots |
+| `delivered_rerun_handoff.md` | handoff for the delivered rerun (2026-10-09): exact run state, frozen analysis, remaining steps to the readout. Start here with `/resume-verify` |
 | `weakness_consolidated.md` | the working weakness list (2026-09-19): two independent reviews merged, C1–C22, disagreements D1–D8, decisions Q1–Q10 with `> ANSWER:` slots. Replaces `weakness_review.md` (deleted 2026-10-02, in git history) |
 | `reanalysis_statistics.md` · `reanalysis_planbench.md` · `reanalysis_breakdowns_cost.md` · `reanalysis_transcripts.md` | the four local re-analyses of 2026-10-02 (weakness list Q4); scripts in `tools/reanalysis/`. Findings only: no figure in them is frozen in `NUMBERS.md` yet |
 | `consistency_read_E_drafts.md` | reworded sentences for group E of the consistency read, with an `> ANSWER:` slot |
