@@ -9,8 +9,8 @@ paper reports as nulls from overlapping intervals.
   (b) serving version: vLLM 0.22.0 vs 0.20.2 on the one cell that exists at
       both versions (Qwen3.5-0.8B, think=off, with-tools, canonical, 9,120
       trials). The two 0.22.0 runs survive only as backups under
-      results/sweep5-cluster-20260601/*.v0220-bak (that directory is NOT the
-      stale 20260530 mirror; NUMBERS.md "Serving environment" cites it).
+      results/vllm0220-backup/*.v0220-bak (moved there on 2026-10-10 from
+      results/sweep5-cluster-20260601; NUMBERS.md "Serving environment").
 
 Method, following the steering-control prereg conventions already used in the
 paper: trials are paired on the exact trial key; the interval is a 90%
@@ -130,7 +130,7 @@ def main() -> None:
 
     # ------------------------------------------------------------ (b)
     L.append("## (b) Serving version: vLLM 0.20.2 minus 0.22.0, Qwen3.5-0.8B think=off with-tools\n")
-    old = RESULTS / "sweep5-cluster-20260601"
+    old = RESULTS / "vllm0220-backup"
     base = "slurm_vllm_Qwen3_5_0_8B_off_tools_all_minimal"
     r1 = trials(old, base + "_sweep5v2.v0220-bak")
     r2 = trials(old, base + "_sweep5v2.v0220-2nd-bak")

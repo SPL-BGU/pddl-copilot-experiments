@@ -163,16 +163,16 @@ FAILURE_COLORS = {
 # ---------------------------------------------------------------------------
 
 def find_default_root() -> Path:
-    """Most-recent results/cluster-* or results/full-cluster-run* dir."""
-    results = _REPO_ROOT / "results"
-    candidates = sorted(
-        list(results.glob("cluster-*")) + list(results.glob("full-cluster-run*")),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
+    """No default root: exit and ask the caller to name one.
+
+    Guessing "the newest folder under results/" picks up working sync mirrors,
+    which give wrong numbers. The canonical corpora are named in
+    development/NUMBERS.md; pass the root explicitly.
+    """
+    sys.exit(
+        "pass the results root explicitly, e.g. results/sweep5v2-live "
+        "(the canonical corpora are named in development/NUMBERS.md)"
     )
-    if not candidates:
-        sys.exit(f"no results/cluster-* or results/full-cluster-run* dirs under {results}")
-    return candidates[0]
 
 
 def host_tag(meta: dict) -> str:

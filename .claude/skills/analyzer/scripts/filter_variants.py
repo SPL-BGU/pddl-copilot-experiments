@@ -9,26 +9,26 @@ Examples:
   # asymmetric per-cell denominators — with-tools cells gate at 9120 trials,
   # no-tools at 4560 — filter arm-by-arm if uniform --min-out matters):
   python3 .claude/skills/analyzer/scripts/filter_variants.py \\
-      --src sweep5-cluster-20260601 --dst sweep5-main \\
+      --src <sync-dir> --dst <name>-main \\
       --model-glob 'slurm_vllm_*'
 
   # Sweep-5 neutral arm (H1 isolation: tools-vs-no-tools at byte-identical
   # prompt content). 4560 trials/cell completed.
   python3 .claude/skills/analyzer/scripts/filter_variants.py \\
-      --src sweep5-cluster-20260601 --dst sweep5-neutral \\
+      --src <sync-dir> --dst <name>-neutral \\
       --model-glob 'slurm_vllm_*' --arm neutral --min-out 4560
 
   # Sweep-5 steered arm (H2 isolation: steering effect within with-tools,
   # AND the 4th-arm control if its --include-no-tools-steered trials have
   # been merged into the no-tools dirs). 4560 trials/cell completed.
   python3 .claude/skills/analyzer/scripts/filter_variants.py \\
-      --src sweep5-cluster-20260601 --dst sweep5-steered \\
+      --src <sync-dir> --dst <name>-steered \\
       --model-glob 'slurm_vllm_*' --arm steered --min-out 4560
 
-  # Sweep-4 replay (historical — explicit --variants since --arm presets
-  # only encode sweep-5 indices):
+  # Other variant sets: pass --variants explicitly, since the --arm presets
+  # only encode the sweep-5 indices:
   python3 .claude/skills/analyzer/scripts/filter_variants.py \\
-      --src sweep4-cluster-20260519 --dst sweep4-v5-v7-first \\
+      --src <sync-dir> --dst <name> \\
       --model-glob 'slurm_vllm_*' --variants 5,6,7 --min-out 4560
 
 Reads:  results/<--src>/<cell>/trials.jsonl
