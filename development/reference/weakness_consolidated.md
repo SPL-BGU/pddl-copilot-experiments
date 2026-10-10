@@ -5,6 +5,16 @@ and the places where they disagree worked through. Written as the input for a la
 session that will propose an improvement plan. Nothing in the tex was changed and
 nothing was run.*
 
+> **Status 2026-10-10.** Q1 to Q4 were answered on 2026-10-02 and carried out: the
+> delivered rerun ran and read out on 2026-10-09 (`reference/delivered_rerun_readout.md`,
+> `NUMBERS.md` "Delivered rerun"), PR #110 fixed tex line 441, and the four re-analyses
+> are in `reanalysis_*.md`. Q5 to Q10 are still open. Each now carries a recommendation
+> written after the rerun readout, and a new **Q11** asks the question the rerun raises.
+> **Answer Q11 first**: Q6, Q7 and Q9 depend on it.
+>
+> **2026-10-10 (later): Omer accepted every recommendation, Q5 to Q11.** The action plan
+> is `development/weakness_action_plan.md`; this file (moved to `reference/` on 2026-10-10) is now the record of why.
+
 ## Sources
 
 | tag | file | how it was written |
@@ -908,6 +918,20 @@ and V's "what survives a strict reader".
 Q1 to Q7 are V's open questions, carried over unanswered, with notes where R changes
 the options. Q8 to Q10 are new and come from R's items and the disagreements.
 
+**Read first (2026-10-10).** The rerun changed the starting point. What it found, in
+one paragraph: with the recording fixed, the tools raise the delivered answer a lot on
+solve (+52 to +71 points) and on domain and problem checking, a little on plan checking
+for the two Qwen models, and not at all for Gemma, whose answers without calling the
+tool are right about 87% of the time anyway (R1: no delivered harm). On simulate the
+tool's result fills the 16K window in 43 to 53% of tool trials, so tools make Gemma
+worse (-15.7). A system-prompt sentence telling the model to use the tool *lowers*
+calling (R5). By the rule we registered, the title changes (R3). All figures are in
+`NUMBERS.md` "Delivered rerun", as a separate-apparatus replication.
+
+**Priority (Omer, 2026-10-10):** budget and reruns are not a constraint; the paper must
+read as a scientific study, not as a technical report on our harness. The
+recommendations below follow from the rerun and from this priority.
+
 **Q1 (C1): run the pre-registered full-storage rerun (headline models, thinking off,
 plain + steered, about 27K trials, $0) before submission?** V recommends **yes**. R
 independently names it the most probable reviewer request. It needs the freeze-protocol
@@ -917,7 +941,9 @@ Gemma negative control and the plus/minus 5 point TOST the tex already names, is
 first task if the answer is "run".
 
 > ANSWER (run / contingency only / other):
->
+> **ANSWERED 2026-10-02 (Omer): run.** Done: `reference/delivered_rerun_prereg.md`,
+> read out 2026-10-09 by the frozen code. Parity failed at job level, so the whole rerun
+> is a separate-apparatus replication (`paper_notes` 10-09).
 
 **Q2 (C3, C4): the "merely available" arm.** (a) rewording only; (b) add the small Gemma
 validate_plan arms to the Q1 job (neutral system prompt; directive in the system prompt;
@@ -925,7 +951,10 @@ optionally forced call), about 3K trials each; (c) both. V recommends **(c)**. *
 from R and D6:* (d) also add an official-Gemma-weights arm to the same job.
 
 > ANSWER (a / b / c / c + d):
->
+> **ANSWERED 2026-10-02 (Omer): add the Gemma neutral-system-prompt arm** (rerun Part B,
+> 6,000 trials, a 2 x 2 with Part A on Gemma validate_plan). The forced-call arm and the
+> official weights (d) were not run. Result, R5: the "use the tool" sentence lowers
+> calling (+6.9 points without it).
 
 **Q3 (C6): fix tex line 441 and add the `guided_json` Limitations sentence now**, through
 `/verify-claims`, quoting the 08-17 figures. V recommends **yes, regardless of everything
@@ -933,7 +962,16 @@ else**. Drafts shown before committing. *Added from D8:* the 874-875 sentence ("
 not the grader") belongs in the same edit.
 
 > ANSWER (yes, show me drafts / no / other):
+> **ANSWERED 2026-10-02 (Omer): yes.** PR #110, merged 2026-10-09.
 >
+> *Note 2026-10-10: the frozen rerun readout repeats the false claim.* Its E2 caveat
+> says "the no-tools arm is sampled under the per-task JSON constraint"
+> (`tools/delivered_rerun/analysis.py:55`). Checked on the rerun's Part C rows
+> (`results/delivered-rerun/*_no-tools_delivered-rerun/trials.jsonl`): 13,446 of 13,680
+> answers do not begin with `{`, which a constraint that bound would make impossible
+> (of the 234 that do, 226 are the 35B on simulate). The constraint did not bind in the
+> rerun either; the harness still sends the `guided_json` key. The readout is frozen and
+> stays as it is. Do not copy that sentence into the tex.
 
 **Q4: the $0 re-analysis package, local, no cluster.** V's list: classify the 30 to 35%
 residual failures in the 64K probe (C5); domain-cluster bootstrap and the GLMM refit (C9);
@@ -947,7 +985,10 @@ realistic input-to-output price ratio (C16); PlanBench with a corrected extracto
 the as-shipped numbers (C15).
 
 > ANSWER (all / list which):
->
+> **ANSWERED 2026-10-02 (Omer): all.** Delivered in `reanalysis_statistics.md`,
+> `reanalysis_planbench.md`, `reanalysis_breakdowns_cost.md`,
+> `reanalysis_transcripts.md`. The PlanBench part is in the tex (PR #114); the other
+> numbers are not in the tex yet.
 
 **Q5: rewriting that does not depend on new data.** V's list: demote "law" and
 "identical" (C5); say "by construction" in the body and describe the checks honestly
@@ -955,43 +996,225 @@ the as-shipped numbers (C15).
 paper (C17). V recommends **yes, drafts shown first**, after the consistency-read
 answers, so the same passages are touched once.
 
+*Recommendation (2026-10-10): yes, all of it.* These edits are about claiming only what
+was shown and placing the work in its field, which is most of what makes a paper read
+as science. What the rerun changes:
+
+- "Law" and "identical" go. The rerun traced the open-model solve gap to our own
+  recording (answer storage and the refused final request; R4: 95 to 98% of full, uncut
+  answers are right), and most of the simulate gap to the tool result filling the 16K
+  window. A gap our setup created is not a law. What stays is a description: how often a
+  correct tool result fails to reach the answer, and why.
+- "By construction" gets one plain sentence in Methods: once the model calls the tool,
+  the tool-verified score is right almost by definition, which is why the delivered
+  answer is the main outcome. Name the real checker (`pyval` on `unified-planning`), not
+  VAL (D1). Q10 adds a real VAL check.
+- Related work and the arXiv delta do not depend on any number and can be drafted now:
+  work on when a model decides to call a tool, planning benchmarks with similar tasks,
+  reasoning models on PlanBench, LLMFP. Look up each reference before citing it (R named
+  them from memory). Add a short paragraph on what the arXiv version found and what this
+  paper confirms or reverses.
+- The claim wording itself waits for the final numbers (Q11).
+
 > ANSWER:
->
+> **ANSWERED 2026-10-10 (Omer): accepted the recommendation.** Work: `weakness_action_plan.md`.
 
 **Q6: title.** Title D ("Invocation Is the Bottleneck...") was chosen on 09-18. All four
 readers say the body does not yet support it on the main outcome. V recommends **keep it
 for now and let Q1 and Q2 decide**; if Q1 is "contingency only", change to the two-gate
 reading the abstract already has.
 
+*Recommendation (2026-10-10): drop title D now; choose the final words after the main
+results.* Q1 and Q2 have decided: our registered rule (R3) says the title changes to the
+two-gate reading, and keeping title D would break our own pre-registration. The final
+wording should follow the numbers the paper ends up standing on (Q11). Direction, from
+your 08-20 rule (name the field and the conclusion, never the instrument): the two gates
+in plain words. Starting candidates, to be checked against the final results:
+
+- *When Do Sound Planning Tools Help an LLM? Calling the Tool and Passing On Its Answer*
+- *Two Gates Between a Sound Planner and an LLM's Answer*
+- *From Tool Call to Answer: When Sound Planning Tools Help Language Models*
+
 > ANSWER:
->
+> **ANSWERED 2026-10-10 (Omer): accepted the recommendation.** Work: `weakness_action_plan.md`.
 
 **Q7 (C14, C15): more families, open-model PlanBench, the Llama probe.** V recommends
 **not now**; revisit after Q1 and Q2, and only if the invocation claim survives them. See
 D6 for R's opposing pressure and the official-weights middle step (now in Q2).
 
+*Recommendation (2026-10-10): yes, now, inside the Q11 study.* V's condition was "after
+Q1 and Q2, and only if the invocation claim survives". Q1 and Q2 are done. The strong
+claim did not survive: not calling the tool is not the bottleneck on the delivered answer
+(R1). A weaker claim did, and it is the more interesting science. How often a model calls
+depends on the wording (Gemma: 4 to 31% across the three wordings), on reasoning mode
+(0.6% with thinking on) and on the system prompt (a "use the tool" sentence lowers it,
+R5), and calling only matters where the model cannot do the task alone. All of that is
+one model, a community 4-bit build. A referee will ask whether it holds for other models,
+and only other models can answer.
+
+- **More families:** two or three families beyond Qwen and Gemma that fit the cluster
+  GPUs (Llama, Mistral and GPT-OSS are the obvious candidates; the exact checkpoints are
+  settled by the tool-parser smoke, since a wrong parser silently gives 0% calls), plus
+  the **official Gemma 4 weights**. The on-hold Llama-3.1-8B probe (R8) is absorbed into
+  this.
+- **Open-model PlanBench, plain against steered, two or three models:** yes. It is the
+  only place the calling gate can meet a public benchmark (C15). The open Qwen no-tools
+  PlanBench run from June exists; the tools arm is what is new. This reopens a closed
+  line, which is your call.
+- **Sonnet-tier PlanBench** (advisor brief question 6): lower priority. Frontier models
+  call the tool every time, so it adds little to the calling question.
+- If Q11 is (a), run these on the fixed setup anyway, never on the old one.
+
 > ANSWER:
->
+> **ANSWERED 2026-10-10 (Omer): accepted the recommendation.** Work: `weakness_action_plan.md`.
 
 **Q8 (new; C11, C18, C20, C21): the cheap text fixes only R found.** Describe the test
 data and prompts; fix the sentence-level errors (including the D3 "straddling" wording);
 scope the over-reaching claims; add two or three example transcripts. None depends on new
 data. Suggested: **yes**, in the same drafting pass as Q5.
 
+*Recommendation (2026-10-10): yes.* What the rerun and the re-analyses add:
+
+- **Test data.** The facts are already measured (`reanalysis_breakdowns_cost.md` §4):
+  the model sees all seven tools; the PDDL is pasted into the prompt; the "five valid
+  plans" are five copies of one plan for 99 of 100 problems; domain checking is 100 valid
+  to 20 invalid, so always answering VALID scores 83%; 12 of the 20 invalid domains
+  differ only by a parenthesis count; 76% of invalid plans are one step short of the
+  valid one. Write them down plainly, and report the validation tasks with a score that
+  does not reward always answering VALID (valid and invalid items shown separately, or
+  balanced accuracy). If these facts look too weak once written, that is the case for
+  Q11 (c).
+- **Example transcripts: three**, taken from the rerun, which stores full answers: Gemma
+  skipping the tool and judging the plan correctly in prose (why not calling cost
+  nothing; 0 of its 2,400 no-call answers contain anything like a tool call), a correct
+  relay, and a simulate trial where the tool result fills the window. Examples are the
+  cheapest way to make the paper about what models do.
+- **Sentence errors** (scorecard caption, "straddling", the "invocation" explanation at
+  843-849): fix them in whatever text survives the rewrite. Most sit in passages the
+  rerun replaces.
+- **Over-reaching claims** (C18): "direct support for the LLM-Modulo thesis" and
+  "proves the capability boundary" go or are softened whatever the results; the rest are
+  scoped on the final numbers.
+
 > ANSWER:
->
+> **ANSWERED 2026-10-10 (Omer): accepted the recommendation.** Work: `weakness_action_plan.md`.
 
 **Q9 (new; C19, D5): split the readability work?** Vocabulary, definitions, one interval
 notation and the Limitations split now; the structural rewrite after Q1 results.
 Suggested: **yes, split**.
 
+*Recommendation (2026-10-10): no split; one restructure, done once, after the final
+numbers.* The split existed to wait for Q1, which has read out. A vocabulary pass first
+would mostly edit text that is about to go: the private terms (mechanism layer,
+censoring bound, claim-adverse end, robust floor, determinate rows) exist to handle
+ranges and bounds, and those disappear once the delivered answer is measured exactly.
+The target for the body:
+
+- one study, one main score (the delivered answer), one secondary measure (how often the
+  model calls the tool);
+- results ordered by question, each answered once;
+- one appendix section, "How we measured", for recording faults, parity, serving
+  versions, storage caps and the JSON constraint, with a single table of setups.
+
+If Q11 is (a), the restructure can start now on the current numbers.
+
 > ANSWER:
->
+> **ANSWERED 2026-10-10 (Omer): accepted the recommendation.** Work: `weakness_action_plan.md`.
 
 **Q10 (new; C8, D1): cross-check a sample of the answer key against KCL VAL?** Local and
 small if a VAL binary is at hand. It turns "sound by construction" into something
 checked, and it is the only full answer to R-W9. Suggested: **yes, if it is an afternoon;
 otherwise state the solve-only independence and leave it as a limitation.**
 
+*Recommendation (2026-10-10): yes; it is small.* A VAL binary is already next door,
+`../LLMs-Planning/planner_tools/VAL/validate`. It is a Linux build, so it runs in a Linux
+container or on the cluster, not on the Mac directly (the cluster needs your go-ahead
+first). `../pyvalidator/.claude/skills/validate-against-val.md` already describes the
+comparison. Scope: every plan in the validate_plan fixtures and every solve plan graded
+in the rerun (VAL checks plans fully); domain and problem files as a parse check only;
+simulate not covered. Report it as one agreement figure. VAL has known bugs on some
+numeric domains, so read each disagreement by hand before blaming either side. If Q11 is
+(c), include the new fixtures.
+
 > ANSWER:
->
+> **ANSWERED 2026-10-10 (Omer): accepted the recommendation.** Work: `weakness_action_plan.md`.
+
+**Q11 (new, 2026-10-10; answer this first): how does the paper use the rerun?**
+
+*Revised the same day after a per-run fault check (Omer: "no way we were so much off").*
+The first version of this question recommended a new study about five times the rerun's
+size. That mixed two things: repairing what the faults broke, and adding new science.
+The check below shows the repair is nearly done already.
+
+*Which runs carry which fault (measured 2026-10-10 on the stored rows,
+`results/<run>/*/trials.jsonl`).*
+
+| run | what it is | answers cut at 500 characters | final request refused (tool arms) | Gemma prefix left in | JSON constraint not binding (unaided) |
+|---|---|---|---|---|---|
+| `sweep5v2-live` | the main sweep, 136,800 trials | yes | yes | yes | yes |
+| `sweep6-live` | its anonymized twin, 136,800 | yes | yes | yes, but no reported number grades Gemma's tool answers | yes |
+| `iss024d-e2e-live` | thinking-on tool rerun, 45,600 | partly: 16,384 cap, hit by 6,563 rows (14%) | yes | yes | no unaided arm |
+| `e2e-overlay` | a regrade of the stored answers, no new model runs | inherits the cut | inherits | yes, the regrade did not strip it | not regraded |
+| `rq-sweep5v2` | a slide deck of the main sweep, no new runs | inherits | inherits | inherits | inherits |
+| `delivered-rerun` | the pre-registered rerun, 47,040 | fixed (65,536 cap, 0 rows at it) | fixed | fixed (stripped before grading) | **still not binding** |
+
+The refused request, counted the same way in both runs on the same 27,360-trial headline
+design (thinking off): 3,233 empty "truncated" tool answers in the main sweep, 1,048 in
+the rerun, and all 1,048 are trials where the tool's result left no room to answer.
+(`sweep7`, the RunPod BF16 run, was already discarded; `paper_notes` 2026-09-18.)
+
+*What the faults moved.* The rerun measures the damage, because it repeats the headline
+design with the faults fixed:
+
+- **Unaided scores:** 11 of 12 cells within ±5 points (the exception: 35B domain
+  checking, +8.6). Sound.
+- **Calling and tool-verified scores:** 25 of 30 cells within ±5, including all 10 Gemma
+  cells (Gemma's plain and steered calling come back at 20.0 and 93.1 against 20.7 and
+  93.6). The misses are all Qwen: the 35B's plain solve and simulate, +19.3 each (the
+  fault cut its turns short before it could call), its steered solve, +7.3, and the 9B's
+  simulate, +3.0 and +4.0 (not shown to be within ±5). The 9B's vLLM version split turned
+  out small: 8 of its 10 cells reproduce. Mostly sound.
+- **Delivered answers in the open-model tool arms:** far off. The old ranges were pulled
+  down by the refused final request, the 500-character cut and the Gemma prefix. Solve,
+  plain arm: Gemma "at most 35.3" against 92.3 measured; 9B "26.0 to 58.7" against
+  88.7. Most of the open-model "delivery gap" was our harness (R4).
+
+So the main sweep is right about what the models do without tools and about how often
+they call the tool. It was wrong about what reaches the answer once they call.
+
+- **(a) Keep the current plan.** The main sweep stays the evidence for everything, the
+  rerun sits beside it as a separate replication. The paper keeps the old delivered
+  ranges, which we now know are biased low.
+- **(b) Two studies, each used for what it measures well (recommended).** Study 1, the
+  main sweep: unaided scores, calling, tool-verified scores, and the contamination check
+  (`sweep6` against `sweep5v2`, unaided cells only, which the tool-arm faults do not
+  touch). Study 2, the pre-registered rerun: the delivered answer. Their agreement (25 of
+  30 and 11 of 12 cells) is reported as a replication, and the two 35B cells that moved
+  get one sentence: the fault the rerun fixed. The old open-model delivered ranges are
+  retired. **No new sweep.** Two loose ends, each a separate choice:
+  - *Reasoning mode.* The thinking-on tool cells (main sweep and `iss024d`) carry the
+    refused-request fault and have no fixed rerun. Keep the reasoning-mode claim with
+    that caveat, drop it, or rerun those tool cells on the fixed setup (3 models x 9,120 =
+    27,360 trials, about a week at the rerun's pace).
+  - *Small models (0.8B, 4B).* The fault hits them hardest (0.8B: 6,396 of 9,120 tool
+    answers empty). Keep them out of tool-arm claims, or rerun them (small models run
+    fast).
+- **(c) (b), plus new science on the fixed setup.** None of it is needed to repair
+  anything; each item stands on its own merits: more families (Q7), harder test items
+  beside the current ones (wrong plans that break a precondition mid-plan, distinct
+  valid plans, domains with real errors, balanced valid and invalid; 76% of today's wrong
+  plans are one step short, so "Gemma loses nothing by not calling" is only as general as
+  those items are hard), room in the context window as a factor on solve and simulate,
+  open-model PlanBench. Roughly one to two reruns' worth in total, not a new sweep.
+
+The one fault no run has fixed is the JSON constraint in the unaided arm (the rerun has
+it too). It only touches the format of unaided solve and simulate answers. A small
+unaided run with a working constraint (3 models x 600 solve and simulate trials) would
+show whether those scores are held down by format; otherwise the PR #110 Limitations
+sentence covers it.
+
+*Recommendation: (b)*, plus the reasoning-mode rerun if the paper keeps that claim. Add
+(c) items one by one, on their merits.
+
+> ANSWER (a / b / c, and the two loose ends):
+> **ANSWERED 2026-10-10 (Omer): accepted the recommendation, (b) with the (c) items.** The open choices (reasoning mode, small models, JSON control, harder items, context room) carry defaults in `weakness_action_plan.md` §2.

@@ -115,4 +115,4 @@ For each (domain, valid problem) we generate 5 valid plans:
 - **Classical**: invoke `classic_planner` with up to three Fast Downward strategies (`lazy_greedy_cea`, `astar_lmcut`, `lazy_greedy_ff`); pad with duplicates of the canonical plan when fewer distinct plans are returned.
 - **Numeric**: ENHSP has fewer alternative search algorithms; v1 is taken as canonical and v2..v5 are duplicates. The graded count remains 5 per problem; per-call grading robustness is maintained because each prompt variant grades the plan independently.
 
-This spec-conformant duplication is documented in the Decisions log (FRAMEWORK_EXTENSION_PLAN.md §5) so reviewers know v1..v5 are not always semantically distinct on numeric domains.
+This spec-conformant duplication is documented in the Decisions log (FRAMEWORK_EXTENSION_PLAN.md §5; deleted 2026-10-10, recover with `git show 1fee730:development/archive/plans-executed/FRAMEWORK_EXTENSION_PLAN.md`) so reviewers know v1..v5 are not always semantically distinct on numeric domains.

@@ -1,4 +1,56 @@
-# MOVES.md — old path → new path (reorg of 2026-08-29)
+# MOVES.md — old path → new path, and deleted files
+
+## The cut of 2026-10-10 (read this first)
+
+On 2026-10-10 `development/` was cut to the docs the current work needs (Omer: avoid
+confusion). The `archive/` tier no longer exists. **Every file deleted then was last
+present at commit `1fee730`**; get one back with
+
+```
+git show 1fee730:<path>            # read it
+git checkout 1fee730 -- <path>     # restore it into the tree
+```
+
+So any `development/archive/...` path in the tables further down, in the append-only
+logs or in a pinned script now resolves to `1fee730`. Code comments that cite these
+paths were left as they are (never repair a path inside a pinned script).
+
+**Moved to `reference/` on 2026-10-10** (finished, but still a source for numbers,
+code or decisions; `git log --follow` gives their history):
+
+| old path | new path |
+|---|---|
+| `development/delivered_rerun_traceability.md` | `development/reference/delivered_rerun_traceability.md` |
+| `development/journal_decisions_memo.md` | `development/reference/journal_decisions_memo.md` |
+| `development/reanalysis_breakdowns_cost.md` | `development/reference/reanalysis_breakdowns_cost.md` |
+| `development/reanalysis_planbench.md` | `development/reference/reanalysis_planbench.md` |
+| `development/reanalysis_statistics.md` | `development/reference/reanalysis_statistics.md` |
+| `development/reanalysis_transcripts.md` | `development/reference/reanalysis_transcripts.md` |
+| `development/weakness_consolidated.md` | `development/reference/weakness_consolidated.md` |
+
+**Deleted on 2026-10-10** (60 files; last present at `1fee730`):
+
+- `development/`: `consistency_read_E_drafts.md`, `consistency_read_findings.md`, `delivered_rerun_handoff.md`, `review_round_handoff.md`
+- `development/archive/cost-breakdowns/`: `EXPLAINER_eli8.md`, `SAMPLE_REDUCTION.md`, `SUMMARY.md`, `cheap_model_cost_slides.pptx`, `cheap_model_cost_slides.py`
+- `development/archive/decoupled/`: `decoupled_rollup.py`, `decoupled_run_handoff.md`, `decoupled_run_staging.md`, `iter2_execution_plan.md`, `simulate_decisions_and_next_steps.md`, `with_tools_grading_surface_probe.py`
+- `development/archive/frontier/`: `frontier_budget_probe_handoff.md`, `frontier_haiku_phase_plan.md`, `frontier_rerun_handoff.md`, `frontier_with_tools_ladder.md`, `with_tools_probe_findings.md`
+- `development/archive/ntster/`: `ntster_h4_partial_readout_20260822.md`, `ntster_submit_window_decisions.md`
+- `development/archive/paper-june/`: `GOALS.md`, `HANDOFF.md`, `REVIEW_AND_REWRITES.md`
+- `development/archive/paper-june/automated-platforms-review/iter1/`: `iter1_action_plan.md`, `iter1_review_synthesis.md`, `paper_submitted.pdf`, `scholarsreview_res.pdf`, `stanfordreview_res.pdf`
+- `development/archive/paper-june/automated-platforms-review/iter2/`: `iter2_action_plan.md`, `iter2_review_synthesis.md`, `stanfordAAAI.md`, `stanfordneuroIPS.md`
+- `development/archive/planbench/`: `PLANBENCH_HANDOFF_v2.md`, `PLANBENCH_HANDOFF_v3.md`, `PLANBENCH_WT_FINAL_PHASE_HANDOFF.md`, `PLANBENCH_WT_HANDOFF.md`, `PLANBENCH_WT_NEXT_STEPS_HANDOFF.md`, `planbench_frontier_haiku_nt.md`, `planbench_v1_results.md`, `planbench_verification_20260730.md`, `planbench_wt_calibration_20260730.md`, `planbench_wt_calibration_run2_20260801.md`, `planbench_wt_paper_integration_plan.md`, `planbench_wt_significance_brief.md`
+- `development/archive/plans-executed/`: `FRAMEWORK_EXTENSION_PLAN.md`, `decoupled_budget_plan.md`, `dev_docs_refactor_plan.md`, `doc_cleanup_plan.md`, `q1_grader_plan.md`, `simulate_normalizer_fix_plan.md`
+- `development/archive/status-snapshots/`: `journal_narrative_proposal.md`, `journal_phase0_handoff.md`, `next_steps_after_inflight_runs.md`, `roadmap_eval_and_paper_completion.md`
+- `development/reference/`: `CHANGELOG-archive.md`, `baseline_comparison_tool_use_benchmarks.md`, `decision_audit_grading_and_frontier.md`, `frontier_rerun_framework_decision.md`
+
+What replaced the live ones: `review_round_handoff.md` and `delivered_rerun_handoff.md`
+→ `STATUS.md` and `weakness_action_plan.md`; `consistency_read_findings.md` and
+`consistency_read_E_drafts.md` → their open items (held rows E3a, E3b, E8b and group F)
+are in `weakness_action_plan.md` step E7.
+
+---
+
+## The reorganisation of 2026-08-29
 
 The `development/` tree was reorganised into three tiers on 2026-08-29 (rationale:
 `archive/plans-executed/dev_docs_refactor_plan.md`). Live docs and code were repointed at the same time.

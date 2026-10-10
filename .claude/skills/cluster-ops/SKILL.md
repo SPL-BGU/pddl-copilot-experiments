@@ -63,7 +63,7 @@ One SSH call gathers `squeue` plus per-cell trial counts (computed cluster-side,
 | Flag | Default run tag | Board |
 |------|-----------------|-------|
 | (none) | `sweep6` | 5 models × 6 columns, Done X/30 |
-| `--decoupled` | `decoupled-thinkon` | split-budget no-tools think=on sweep: 4 Qwens (gemma excluded, it has no `<think>`) × one column (`on/nt-neut`). 48 h wall for every cell. Record: `development/archive/decoupled/decoupled_run_handoff.md` |
+| `--decoupled` | `decoupled-thinkon` | split-budget no-tools think=on sweep: 4 Qwens (gemma excluded, it has no `<think>`) × one column (`on/nt-neut`). 48 h wall for every cell. Record: `development/archive/decoupled/decoupled_run_handoff.md` (deleted 2026-10-10; `git show 1fee730:<path>`) |
 | `--iss024d` | `iss024d-e2e` | ISS-024(d) with-tools resolver: 5 models × one column (`on/tl-neut`). The run wrote the full v11-16 bank; the board tracks the neutral half only. 72 h wall. Record: `development/reference/tool_call_vs_final_output_grading.md` |
 | `--ntster` | `ntster-h4` | nt-ster H4 control: 3 models (`Qwen3.5:9B`, `gemma4:26b-a4b`, `qwen3.6:35b`) × `off/nt-neut`, `off/nt-ster`, `on/nt-neut`, `on/nt-ster`. **The only profile with an `nt-ster` column**, because it is the only run that passed `--include-no-tools-steered`. gemma has no think=on leg by design, so that slot shows `n/a` and is left out of the roll-up. Walls: off 5 days, on 7 days. Record: `development/reference/ntster_h4_prereg.md` |
 

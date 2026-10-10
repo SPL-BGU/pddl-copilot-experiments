@@ -289,7 +289,7 @@ Domain set:
 | numeric | sailing | paper | boolean |
 | numeric | zenotravel-numeric | PR-3 (matteocarde/patty IPC-2023; p02-p05 hand-authored) | numeric |
 
-The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). The 10 PR-3 domains were sourced from public benchmark suites and validated end-to-end by the build pipeline. Substitution rationale and per-domain caveats live in `development/archive/plans-executed/FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec".
+The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). The 10 PR-3 domains were sourced from public benchmark suites and validated end-to-end by the build pipeline. Substitution rationale and per-domain caveats live in `development/archive/plans-executed/FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec" (deleted 2026-10-10; `git show 1fee730:<path>`, see `development/MOVES.md`).
 
 **Negative fixtures.** Each domain ships:
 - `domain_neg.pddl` — joins `validate_domain` (negative arm) only

@@ -1,5 +1,7 @@
 # Advisor brief: six decisions before the journal submission (2026-09-18)
 
+> **Note 2026-10-10 (not sent yet, R7).** The work has overtaken half of this brief. Questions 1 to 3 (venue, thesis requirement, recording the pivot) still stand. Question 4 is superseded: the cost analysis was redone on measured tokens with real price ratios (`reference/reanalysis_breakdowns_cost.md` §5), and the deck it names was deleted. Question 5 is settled: the rerun ran and read out on 2026-10-09. Question 6 is decided: Sonnet-tier PlanBench is not planned. The title, the "no experiment is owed" line and the page count below are also out of date; the plan is `weakness_action_plan.md`. Rewrite this brief before sending it.
+
 Goes with the manuscript (`paper/main.pdf`, 25 pages): *Invocation Is the Bottleneck:
 When Sound Planning Tools Help an LLM, and When They Do Not*. **Write under each
 `> ANSWER:` line**; one conversation can close all six. No new numbers here: every

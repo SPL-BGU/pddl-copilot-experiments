@@ -2386,3 +2386,33 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Registered readings:** R1 **No delivered harm** (Gemma validate_plan, tools-plain − unaided +0.9 [−1.2, 2.9]); R2 **Unresolved** (steering +7.5 [4.9, 10.2]); **R3 title changes to the two-gate reading (invocation and delivery)**; R4 met (solve gap = storage + refused final request; 95–98% of full, uncut answers correct); R5 **the directive suppresses calling** (neutral prompt +6.9 invocation), steering sentence "Not shown".
 - **Other registered results:** tools lift delivered solve by +52 to +71 points for all three models; validate_domain and validate_problem gain for all three; validate_plan gains for both Qwens but not Gemma; on simulate tools make Gemma worse (−15.7, Holm-significant) because in 43–53% of tool-arm simulate trials the tool result fills the 16K window.
 - **Consequence for the paper (to draft, not decided in prose):** the "invocation is the bottleneck" title goes, by the registered rule. The −67 points on Gemma validate_plan stays a tool-verified (mechanism-layer) figure only. No interpretation beyond the registered labels yet; Omer to read first.
+
+## 2026-10-10 — Weakness list fully answered; the paper becomes two studies; action plan written
+
+- **Priority (Omer):** budget and reruns are not a constraint; the paper must read as a
+  scientific study, not as a technical report on our harness.
+- **Per-run fault check (Omer: "no way we were so much off").** `sweep6-live` and
+  `iss024d-e2e-live` carry the same harness faults as the main sweep; `e2e-overlay` and
+  `rq-sweep5v2` are a regrade and a deck of stored data, not runs. The rerun measures the
+  damage: unaided cells 11/12 and tool-verified cells 25/30 within ±5 (all 10 Gemma
+  cells); the misses are the 35B's plain solve and simulate (+19.3 each) and smaller
+  Qwen cells. Only the open-model delivered ranges were badly off (solve: Gemma "at most
+  35.3" against 92.3; 9B "26.0 to 58.7" against 88.7). Counts in
+  `weakness_consolidated.md` Q11.
+- **Found:** the frozen rerun readout's E2 caveat says the unaided arm was "sampled under
+  the per-task JSON constraint"; 13,446 of 13,680 Part C answers do not begin with `{`,
+  so the constraint did not bind in the rerun either. The readout stays frozen; the
+  sentence must never reach the tex.
+- **Q5–Q11 (Omer): accepted every recommendation.** Title D is dropped (R3), the final
+  words chosen after the results; more families and open-model PlanBench now; the VAL
+  cross-check; test data described; one restructure after the final numbers. **Q11 = (b)
+  with the (c) items:** Study 1 = the main sweep (unaided, calling, tool-verified,
+  contamination); Study 2 = the pre-registered rerun plus an extension on the same fixed
+  setup; never pooled; the old open-model delivered ranges retired.
+- **Plan:** `development/weakness_action_plan.md`, workstreams A–F, about 190K new trials
+  in two waves (thinking off, then on), about two months to the readout. Five defaults
+  filled in for the open choices (§2 there), standing unless Omer changes one. Q11's
+  "one to two reruns" for the (c) items was low; with the families at full design it is
+  about two and a half.
+- **Bottom line:** no rerun of the main sweep; the extension is new science plus two
+  repairs (reasoning mode, small models).
