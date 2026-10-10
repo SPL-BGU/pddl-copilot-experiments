@@ -64,7 +64,7 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 
 ## Per-line workstream docs (the `development/` folder layout)
 
-`development/README.md` is the map. **Two tiers, where the path carries the status** (three tiers from 2026-08-29; the `archive/` tier was deleted in the cut of 2026-10-10):
+`development/README.md` is the map. **Two tiers, where the path carries the status:**
 
 | tier | rule |
 |---|---|
@@ -74,7 +74,7 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 There is no archive. A doc that is no longer needed is **deleted** with `git rm`, and its last commit goes in `development/MOVES.md` (recover with `git show <commit>:<path>`).
 
 - **Status lives in `development/STATUS.md`, edited in place.** Never write a new dated status doc — that is what once produced a four-deep supersession chain of status files.
-- The work in progress follows `development/weakness_action_plan.md` (since 2026-10-10).
+- `STATUS.md` names the live plan doc the work follows. A plan doc is deleted when its last step is done (recorded in `MOVES.md`).
 - **Before any figure enters prose, check `development/NUMBERS.md`** — the frozen value of each headline number plus the stale readings it replaces.
 - `CHANGELOG.md` and `OPEN_ISSUES.md` remain the **framework** source of truth. `OPEN_ISSUES.md` carries a scannable open/closed index at its head — update it when you add or close an `ISS-###`.
 - When a line closes, its docs are either deleted (recorded in `MOVES.md`) or, if they are still a source for numbers, code or decisions, moved to `reference/` — do not leave banner-marked files at the root.

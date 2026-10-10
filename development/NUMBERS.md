@@ -8,8 +8,8 @@ provenanced, and the readings it replaces.**
 
 **Rule.** Before any figure enters paper prose, check it here. If it is not in this
 table, run `/verify-claims` against the canonical corpora
-(`results/sweep5v2-live` + `*_sweep6`; **never** `results/sweep5-cluster-20260530`,
-a stale partial mirror). Every value below was re-verified against its provenance
+(`results/sweep5v2-live` + `*_sweep6`; **never** a sync mirror such as the old
+`results/sweep5-cluster-20260530`, moved out of the repo on 2026-10-10, `MOVES.md`). Every value below was re-verified against its provenance
 file on 2026-08-29.
 
 **Branch names in this file are provenance.** A hash written as "`paper/aaai27` `<hash>`"

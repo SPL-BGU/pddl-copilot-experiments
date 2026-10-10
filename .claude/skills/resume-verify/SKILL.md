@@ -7,7 +7,7 @@ description: Resume work from a handoff doc by reconstructing and verifying curr
 
 Handoff docs describe the state at write time, not now. Before acting on one:
 
-1. Read the handoff doc the user named. If none was named, start from `development/STATUS.md` (the one source for what is left) and then the newest handoff **in the `development/` root only**. Never pick a handoff from `development/reference/` or from git history (the `archive/` tier was deleted on 2026-10-10): those are closed lines, and their state claims and next steps are stale by design. List the doc's load-bearing claims: what ran, what's in flight, what's blocked, what's next.
+1. Read the handoff doc the user named. If none was named, start from `development/STATUS.md` (the one source for what is left) and then the newest handoff **in the `development/` root only**. Never pick a handoff from `development/reference/` or from git history (there is no `archive/` tier): those are closed lines, and their state claims and next steps are stale by design. List the doc's load-bearing claims: what ran, what's in flight, what's blocked, what's next.
 2. Verify each claim against the actual state before trusting it:
    - Git: `git log --oneline -15`, current branch, open PRs (`gh pr list`) — did work land after the doc was written?
    - Results: do the corpora/dirs the doc references exist, and with the expected trial counts? Use canonical sources only (see CLAUDE.md / Data rigor), and check `development/NUMBERS.md` before trusting any figure the doc quotes.

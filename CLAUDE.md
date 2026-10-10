@@ -29,7 +29,7 @@ Never fast-forward or merge to main without a PR: branch first, open a PR, and m
 
 ## Data rigor
 
-Before reporting any experiment number: verify the aggregation field is correct for the task (delivered vs tool-verified, censoring/at-cap handling), and verify against the canonical corpora only — `results/sweep5v2-live` + `*_sweep6`; `results/sweep5-cluster-20260530` is a stale partial mirror. Check for existing runs before recommending a rerun. **Check `development/NUMBERS.md` before quoting any headline figure** — several exist at more than one value and it names the frozen one. Use `/verify-claims` before paper edits and `/resume-verify` when picking up from a handoff doc.
+Before reporting any experiment number: verify the aggregation field is correct for the task (delivered vs tool-verified, censoring/at-cap handling), and verify against the canonical corpora only — `results/sweep5v2-live` + `*_sweep6` (Study 2 figures: the frozen readouts `NUMBERS.md` names). Any other sweep folder is a sync mirror and gives wrong numbers; the old mirrors were moved out of the repo on 2026-10-10 (`development/MOVES.md`). Check for existing runs before recommending a rerun. **Check `development/NUMBERS.md` before quoting any headline figure** — several exist at more than one value and it names the frozen one. Use `/verify-claims` before paper edits and `/resume-verify` when picking up from a handoff doc.
 
 ## Plugin-isolation rule (inherited from sibling)
 

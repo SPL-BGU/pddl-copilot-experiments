@@ -86,7 +86,8 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
 - **Status goes in `STATUS.md`, edited in place.** Never a new dated status file.
 - **Numbers go in `NUMBERS.md`** before they go in prose. Verify against
   `results/sweep5v2-live` + `*_sweep6` only (and the rerun's own tree for Study 2);
-  `results/sweep5-cluster-20260530` is a stale partial mirror.
+  any other sweep folder is a sync mirror and gives wrong numbers (the old ones
+  were moved out of the repo on 2026-10-10, `MOVES.md`).
 - New **framework/methodology** change → `CHANGELOG.md`; new gap → `OPEN_ISSUES.md`
   as `ISS-###`. See the `development-log` skill.
 - A doc that stops being needed is **deleted** (`git rm`), and its last commit goes in

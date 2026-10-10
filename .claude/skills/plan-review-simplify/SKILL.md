@@ -20,7 +20,7 @@ Reference surface, in the order you typically need them:
 - `development/OPEN_ISSUES.md` — known methodology gaps (`ISS-###`) with severity and fix sketches; many "should we fix X?" questions already have a written answer here
 - `domains/` — PDDL benchmark structure; `results/` — output format
 
-Why these matter: the harness is intentionally small (~4 CORE files). Most changes either land in `run_experiment.py` or cross into `../pddl-copilot` plugin servers. Checking CHANGELOG + OPEN_ISSUES up front prevents duplicate work and surfaces whether the ask is already tracked.
+Why these matter: the harness is intentionally small. Most changes either land in `run_experiment.py` or cross into `../pddl-copilot` plugin servers. Checking CHANGELOG + OPEN_ISSUES up front prevents duplicate work and surfaces whether the ask is already tracked.
 
 ### Phase 2: Plan
 Design the implementation approach covering:
@@ -57,9 +57,10 @@ Before presenting the plan, review it for simplification and correctness:
 If concerns found: revise the plan. Note what changed and why.
 
 ### Phase 4: Present for Approval
-Present plan to user, noting:
+Write the plan to `development/<topic>_plan.md`, with each open decision as a `> ANSWER:` slot and the recommended option marked `(rec)`, unless the user asks for the questions in chat. Note:
 - Open decisions requiring user input
 - Any impact on existing experiment results or reproducibility
+- Whether the change touches a pinned harness (the tags under "Pinned commits" in `development/STATUS.md`)
 
 Do NOT proceed until approved.
 

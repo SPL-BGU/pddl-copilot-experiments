@@ -16,8 +16,8 @@ Triggers (so the skill auto-matches): "aggregate summaries", "plot results", "re
 
 All paths below are relative to the repo root `/Users/omereliyahu/personal/pddl-copilot-experiments`.
 
-- **Results root**: a directory under `results/`. **The canonical corpora are `results/sweep5v2-live` (canonical domains) and `results/sweep6-live` (anonymized; the `*_sweep6` cells).** Paper numbers are checked against these only. Dated sync dirs (`results/sweep5-cluster-YYYYMMDD/`, `results/sweep56-cluster-*`) are working mirrors; `results/sweep5-cluster-20260530` is a stale partial mirror that gives wrong numbers. Each root contains one `slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/` subdir per cell. Before quoting a headline figure, check `development/NUMBERS.md`.
-- **Per-cell layout**: `summary_*.json` (aggregated single_task; the legacy `chains` array is empty under the active flow as of 2026-05-05) is the canonical analysis input. `trials.jsonl` (per-trial JSONL, post 2026-05-01) is read by `drift_check.py` as a mid-sweep fallback when no `summary_*.json` exists yet.
+- **Results root**: a directory under `results/`. **Only the corpora `development/NUMBERS.md` and `CLAUDE.md` name are canonical (`results/sweep5v2-live` for the canonical domains, `results/sweep6-live` for the anonymized `*_sweep6` cells); Study 2 figures come from the frozen readouts `NUMBERS.md` names.** Any other sweep folder, including a dated sync folder written by `sync.sh`, is a working mirror and gives wrong numbers; never quote from one. (The old sync mirrors were moved out of the repo on 2026-10-10, see `development/MOVES.md`.) Each root contains one `slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/` subdir per cell. Before quoting a headline figure, check `development/NUMBERS.md`.
+- **Per-cell layout**: `summary_*.json` (aggregated single_task; the legacy `chains` array is always empty) is the canonical analysis input. `trials.jsonl` (per-trial JSONL, post 2026-05-01) is read by `drift_check.py` as a mid-sweep fallback when no `summary_*.json` exists yet.
 - **Cell dirname shapes** (handled transparently by `parse_dirname`):
   - Cell-keyed (current, post 2026-05-01): `slurm_<model>_<think>_<cond>` — one dir per cell, resubmits accumulate timestamped summaries inside.
   - With-jobid (pre 2026-05-01): `slurm_<model>_<think>_<cond>_<jobid>` — one dir per submission.
@@ -34,13 +34,13 @@ Walks a results root, loads every `summary_*.json`, emits Markdown tables: singl
 python3 .claude/skills/analyzer/scripts/aggregate.py results/sweep5v2-live
 ```
 
-**Always pass the root.** With no argument, `aggregate.py`, `plot.py` and `table.py` look for `results/cluster-*` or `results/full-cluster-run*`. Neither exists any more, so a no-argument call exits with an error. `plot_focused.py` defaults to `checkpoints/cluster-26042026`, which is also gone. (Known; the code fix is tracked separately.)
+**Always pass the root.** With no argument, `aggregate.py`, `plot.py` and `table.py` look for `results/cluster-*` or `results/full-cluster-run*`. Neither exists any more, so a no-argument call exits with an error. `plot_focused.py` defaults to `checkpoints/cluster-26042026`, which is also gone.
 
 Legacy dirs (no `<think>` segment) are treated as `think=default` with a header warning.
 
 ### `scripts/plot.py` — paper-style plots
 
-Auto-discovers series from dir names + summary meta; dynamically builds the SERIES list. Five figures in `<root>/plots/` (chain-phase fig2 + fig7 archived 2026-05-05; numeric IDs preserved):
+Auto-discovers series from dir names + summary meta; dynamically builds the SERIES list. Five figures in `<root>/plots/` (figures 2 and 7 no longer exist; the numbering is kept):
 
 - `fig1_single_task.png` — task × series success-rate bars with Wilson 95% CI whiskers
 - `fig3_tool_selection.png` — classical vs numeric planner-selection rate on `solve`
@@ -59,7 +59,7 @@ python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --by-arm -
 python3 .claude/skills/analyzer/scripts/plot.py results/sweep5v2-live --by-arm --arms tl-neut,tl-ster  # H2 isolation
 ```
 
-`--figs` accepts `all` (default) or a comma list over `1, 3, 4, 5, 6` (chain figures `2`/`7` archived 2026-05-05; passing them is a hard error). `--no-ci` disables error bars on figs 1, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged.
+`--figs` accepts `all` (default) or a comma list over `1, 3, 4, 5, 6` (passing `2` or `7` is a hard error). `--no-ci` disables error bars on figs 1, 6. `--merge` pools `tool_filter × prompt_style` into a single `tools_merged` series per `(model, think)` (counts summed, Wilson CIs recomputed on the pooled n); `no-tools` series pass through unchanged.
 
 `--by-arm` (sweep-5 arm-aware mode) re-derives one series per `(cell, arm)` from each summary's `per_variant` dict. Arms come from `pddl_eval.summary.arm_for(with_tools, prompt_variant)`: `nt-neut` / `nt-ster` / `tl-neut` / `tl-ster` for sweep-5 (v11-v16); `nt-legacy` / `tl-legacy` for sweep-3/4 (v0-v10). Wilson CIs are recomputed on the pooled arm n. The `--arms` filter accepts a comma list of arm tags and is the H1/H2 isolation lever (development/reference/sweep_prompt_bank_design.md §0 H1 → `nt-neut,tl-neut`; H2 → `tl-neut,tl-ster`). `fig4` (failure breakdown) auto-skips under `--by-arm` because per-variant cells in `summary_*.json` don't carry arm-tagged FR counts — use `build_deck.py` / `plot_focused.py` (which read trials.jsonl directly) for per-arm FR breakdowns.
 
@@ -91,15 +91,15 @@ python3 .claude/skills/analyzer/scripts/table.py results/iss024d-e2e-live --run-
 
 Reuses `parse_dirname` / `load_summaries` / `host_tag` from `aggregate.py` (same dir).
 
-**`--e2e` (Phase 5, 2026-07-12):** joins the delivered-answer overlay
+**`--e2e`:** joins the delivered-answer overlay
 (`results/derived/e2e_overlay/<root-name>/`, built by `tools/e2e_regrade.py`)
 and inserts an `e2e-strict` column after each task's `succ%`. Exact cells
 render `62 [58.1–64.3]` (Wilson CI); snapshot-censored cells render bounds
 `a–b (ck/n)`. In tools arms `succ%` is tool-verified, so `succ%` vs
 `e2e-strict` reads directly as the tool-call-vs-delivered gap. The join is
 aggregated once in `scripts/e2e_overlay.py` (shared, single source — see
-below); `--e2e-overlay DIR` overrides the overlay root. Flag off = byte-identical
-to the pre-Phase-5 table (regression-checked 2026-07-12).
+below); `--e2e-overlay DIR` overrides the overlay root. With the flag off the table is
+byte-identical to the table without the e2e column.
 `--run-tag TAG` selects run-tagged corpora (default: untagged cells only).
 
 ### `scripts/e2e_overlay.py` + `scripts/e2e_pooled.py` — delivered-answer (e2e) layer
@@ -117,7 +117,7 @@ prefix in `run_tag`, so canonical and anon cells cannot pool.
 
 `e2e_pooled.py` renders the corrected pooled table — all overlay corpora,
 one block per corpus, neutral bank primary + steered section marked
-diagnostic-only (pre-commitment 2026-07-12) — to
+diagnostic-only — to
 `results/derived/e2e_overlay/pooled_e2e_table.{md,csv}`:
 
 ```bash
@@ -125,8 +125,8 @@ python3 .claude/skills/analyzer/scripts/e2e_pooled.py            # defaults
 python3 .claude/skills/analyzer/scripts/e2e_pooled.py --out /tmp # elsewhere
 ```
 
-Its `IN_FLIGHT` dict is empty: every run it used to list (iss024d 4B/9B/gemma, Sonnet
-with-tools) has landed and been regraded. Add an entry only when a new run is pending.
+Its `IN_FLIGHT` dict lists runs that are still pending, so their blocks carry a banner.
+Leave it empty unless a run is in flight.
 
 ### `scripts/filter_variants.py` — restrict trials.jsonl to a prompt-variant set
 
@@ -139,30 +139,29 @@ When the on-cluster `trials.jsonl` files mix variants across sweeps (e.g. sweep-
 # in one place. Apply --arm-specific filters below for hypothesis-isolating
 # checkpoints.
 python3 .claude/skills/analyzer/scripts/filter_variants.py \
-    --src sweep5-cluster-20260601 --dst sweep5-main \
+    --src <sync-dir> --dst <name>-main \
     --model-glob 'slurm_vllm_*'
 
 # Sweep-5 H1 isolation (neutral arm only — byte-identical prompt across
 # no-tools and with-tools, the headline tool-utility comparison):
 python3 .claude/skills/analyzer/scripts/filter_variants.py \
-    --src sweep5-cluster-20260601 --dst sweep5-neutral \
+    --src <sync-dir> --dst <name>-neutral \
     --model-glob 'slurm_vllm_*' --arm neutral --min-out 4560
 
 # Sweep-5 H2 isolation (steered arm — measures the steering effect within
 # with-tools; also use this filter to extract the 4th-arm control submit
 # if its trials were merged into the main no-tools dirs):
 python3 .claude/skills/analyzer/scripts/filter_variants.py \
-    --src sweep5-cluster-20260601 --dst sweep5-steered \
+    --src <sync-dir> --dst <name>-steered \
     --model-glob 'slurm_vllm_*' --arm steered --min-out 4560
-
-# Sweep-4 replay (historical form; the sweep-4 sync dir is no longer kept
-# locally). Explicit --variants, since the --arm presets only encode the
-# sweep-5 indices:
-python3 .claude/skills/analyzer/scripts/filter_variants.py \
-    --src sweep4-cluster-20260519 --dst sweep4-v5-v7-first \
-    --model-glob 'slurm_vllm_Qwen3_5_0_8B_*,slurm_vllm_qwen3_6_35b_*' \
-    --variants 5,6,7 --min-out 4560
 ```
+
+For other variant sets, pass `--variants` explicitly; the `--arm` presets only encode
+the sweep-5 indices (v11-16).
+
+`filter_variants.py` writes into an existing `--dst` without wiping it, so move or delete
+an old destination first. It also stops on a cell folder that has no `trials.jsonl`
+yet; move that folder out of the source before running.
 
 ### `scripts/build_deck.py` — render a paper-talk PPTX from a filtered root
 
@@ -176,7 +175,7 @@ python3 .claude/skills/analyzer/scripts/build_deck.py \
     --out    checkpoints/<name>/pddl_copilot_<name>.pptx     # --out overrides config.OUT_PPTX
 ```
 
-**Run-tag handling (FIXED in the parser 2026-07-12; plumbed to `table.py` only).**
+**Run-tag handling (only `table.py` takes `--run-tag`).**
 The cell-name parsers (`_constants.parse_dirname_*`) now understand a trailing
 run-tag (`slurm_vllm_..._<cond>_<runtag>`, e.g. `_sweep5v2` / `_iss024d-e2e`)
 and return it as `run_tag`. `iter_cells` filters on it: the default keeps only
@@ -227,18 +226,18 @@ Exit code is `1` if any `direction=below` rows surface (current notably worse th
 
 The standard end-of-sweep flow. Step 1 lives in `cluster-ops`; the rest in this skill.
 
-1. `bash .claude/skills/cluster-ops/scripts/sync.sh` — rsync into `results/sweep5-cluster-<today>/` (the script's default name; or pass an explicit subdir).
+1. `bash .claude/skills/cluster-ops/scripts/sync.sh results/<run-tag>-sync-<today>` — rsync into a working mirror (with no argument the script writes `results/sweep5-cluster-<today>/`; prefer naming the folder after the run tag).
 2. `python3 .claude/skills/analyzer/scripts/aggregate.py <that-dir>` — print success-rate tables.
 3. `python3 .claude/skills/analyzer/scripts/plot.py <that-dir>` — write the 5 PNG figures (fig 1, 3, 4, 5, 6).
 4. `python3 .claude/skills/analyzer/scripts/table.py <that-dir>` — write `tables/master.{md,csv,tex}` for the paper.
 5. (Optional) `bash .claude/skills/cluster-ops/scripts/postmortem.sh` — sacct memory headroom; surface OOMs / near-`--time` jobs.
-6. Report to user with the plot paths and 3–5 key numbers from the aggregate table. Frame against the paper headline (arXiv:2509.12987) when possible.
+6. Report to user with the plot paths and 3–5 key numbers from the aggregate table. Compare against the frozen values in `development/NUMBERS.md`, never against a dated sync folder or the old arXiv paper.
 
 ### "Checkpoint a sweep (in-flight or finished)"
 
 End-to-end recipe that turns a cluster sync into a tracked `checkpoints/<name>/` artifact bundle: per-model trial zips, master pivot, plots, deck. Use when a sweep with a new prompt set lands its first complete cells and you want a snapshot to share with collaborators.
 
-Variables: `<sync>` = synced cluster dirname (e.g. `sweep5-cluster-<today>`); `<name>` = checkpoint name (e.g. `sweep5-main`); `<variants>` = active prompt-variant ids (sweep-5 default: `11,12,13,14,15,16`; sweep-4 replay: `5,6,7`).
+Variables: `<sync>` = synced cluster dirname; `<name>` = checkpoint name; `<variants>` = the prompt-variant ids the run used (sweep-5 bank: `11,12,13,14,15,16`).
 
 ```bash
 # 1. Sync from cluster
@@ -256,11 +255,10 @@ python3 .claude/skills/analyzer/scripts/filter_variants.py \
 python3 .claude/skills/analyzer/scripts/filter_variants.py \
     --src <sync> --dst <name>-steered \
     --model-glob 'slurm_vllm_*' --arm steered --min-out 4560
-# Sweep-4 replay: --variants 5,6,7 --min-out 4560 (single pass; no arm split).
 
 # 3. Aggregate / plot / table on EACH filtered root. Repeat for <name>-neutral
 #    and <name>-steered (steps below shown for one — substitute the other to
-#    produce the paired checkpoint). For a sweep-4 replay, drop the suffix.
+#    produce the paired checkpoint).
 mkdir -p checkpoints/<name>/{plots,tables}
 python3 .claude/skills/analyzer/scripts/aggregate.py     results/<name> > checkpoints/<name>/aggregate.md
 python3 .claude/skills/analyzer/scripts/plot.py          results/<name>
@@ -297,7 +295,7 @@ Drift gate before letting a long sweep continue chewing GPU-hours. Combines `clu
 
 1. `bash .claude/skills/cluster-ops/scripts/status.sh` — confirm jobs are actually running (not stuck, not OOM-killed).
 2. `bash .claude/skills/cluster-ops/scripts/sync.sh results/<synced-dir>` — pull whatever cells have started writing. Cells without a `summary_*.json` yet still ship `trials.jsonl` (PR-30) so partial progress is captured.
-3. Pick a baseline. The most reliable choice is the most recent prior **finished** sweep For the canonical domains that is `results/sweep5v2-live`; for the anonymized corpus, `results/sweep6-live`.
+3. Pick a baseline **from the same apparatus** (same harness commit or tag, vLLM version and storage settings). A run under a prereg uses the anchor its prereg names. Never compare across the apparatus split in `development/STATUS.md` "Rules that bind": a difference there is the apparatus, not drift. Only when the run is a repeat of the main sweep's setup is the baseline `results/sweep5v2-live` (canonical domains) or `results/sweep6-live` (anonymized).
 4. `python3 .claude/skills/analyzer/scripts/drift_check.py --baseline <baseline> --current results/<synced-dir>`.
 5. **Interpret the output:**
    - "No drift detected" → green light, sweep is on the same surface as baseline.
@@ -311,10 +309,10 @@ Drift gate before letting a long sweep continue chewing GPU-hours. Combines `clu
 For a finished sweep, after step 1–4 of the standard flow:
 
 1. Read `<root>/aggregate.md` (printed by `aggregate.py`) for the success-rate matrix and failure-reason totals.
-2. Cross-reference against the paper headline (`reference_paper_and_repos.md` memory) — flag any cell ≥10pp off the paper's reported number. Always express deltas with Wilson CIs.
+2. Cross-reference against the frozen values in `development/NUMBERS.md` — flag any cell ≥10pp off its frozen value, and check first that both come from the same apparatus. Always express deltas with Wilson CIs.
 3. Look at `fig4_failure_breakdown.png` for failure-mode distribution; comment on shifts since the prior sweep (e.g. truncation rates falling after a num_predict bump).
 4. Look at `fig5_domain_heatmap.png` for domain-stratified breakdowns; note any cliff (e.g. `validate_domain` succeeds on `counters` but fails on `blocksworld` / `depots` — the size-cliff in `ISS-008`).
-5. When reporting, use the analysis-style memory's structure: paper-comparison framing, CIs on every percentage, implications. Avoid bare percentages without n.
+5. When reporting: comparison to the frozen values, CIs on every percentage, implications. Avoid bare percentages without n.
 
 ## Things this skill does NOT do
 

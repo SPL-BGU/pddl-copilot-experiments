@@ -105,9 +105,9 @@ ISS-013.
 
 ### N4 — Hygiene
 
-- Check where the cluster checkout sits before D1 (it was last recorded on the dead
-  branch `paper/iter2-decoupled-run`, and the rerun ran from `4b2fe6e`). Needs SSH, so
-  **ping Omer first**.
+- Cluster checkout: checked 2026-10-10, it sits on `harness/delivered-rerun` at `4b2fe6e`
+  (the rerun's pinned harness), not on the dead `paper/iter2-decoupled-run`. D1 branches
+  from there. Any SSH needs Omer's go-ahead first.
 
 ### Open decisions
 
