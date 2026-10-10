@@ -1,6 +1,6 @@
 """Aggregate every summary_*.json under a results root into Markdown tables.
 
-Default root = the most recent results/cluster-* or results/full-cluster-run*.
+Root: pass it explicitly (e.g. results/sweep5v2-live); there is no default.
 Override with a positional arg.
 
 Handles three naming schemes:
