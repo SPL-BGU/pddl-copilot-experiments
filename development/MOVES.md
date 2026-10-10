@@ -1,5 +1,31 @@
 # MOVES.md — old path → new path, and deleted files
 
+## Results moved out of the repo, 2026-10-10
+
+`results/` is gitignored, so these moves are not in git history; this table is the
+record. Omer approved them on 2026-10-10. Nothing was deleted. The moved folders are
+sync mirrors and a discarded run; no paper number, script or skill reads them, and the
+canonical corpora (`results/sweep5v2-live`, `results/sweep6-live`, zipped in
+`checkpoints/`) hold the same main-sweep data in full. A README in the cold-storage
+folder describes each one. The cluster's own `results/` was not touched (it holds the
+original run folders).
+
+| old path | new path | size |
+|---|---|---|
+| `results/sweep5-cluster-20260601/slurm_vllm_Qwen3_5_0_8B_off_tools_all_minimal_sweep5v2.v0220-bak` | `results/vllm0220-backup/` (same name; kept in the repo, read by `tools/reanalysis/04_equivalence.py` after PR #120) | 285 MB |
+| `results/sweep5-cluster-20260601/slurm_vllm_Qwen3_5_0_8B_off_tools_all_minimal_sweep5v2.v0220-2nd-bak` | `results/vllm0220-backup/` (same name) | 288 MB |
+| `results/sweep5-cluster-20260530` | `~/cold-storage/pddl-copilot-experiments/results/sweep5-cluster-20260530` | 2.8 GB |
+| `results/sweep5-cluster-20260601` (rest) | `~/cold-storage/pddl-copilot-experiments/results/sweep5-cluster-20260601` | 4.5 GB |
+| `results/sweep56-cluster-20260529` | `~/cold-storage/pddl-copilot-experiments/results/sweep56-cluster-20260529` | 1.4 GB |
+| `results/sweep56-cluster-20260531` | `~/cold-storage/pddl-copilot-experiments/results/sweep56-cluster-20260531` | 4.1 GB |
+| `results/sweep56-cluster-20260601` | `~/cold-storage/pddl-copilot-experiments/results/sweep56-cluster-20260601` | 1.6 GB |
+| `results/sweep56-cluster-20260602` | `~/cold-storage/pddl-copilot-experiments/results/sweep56-cluster-20260602` | 0.9 GB |
+| `results/sweep7` | `~/cold-storage/pddl-copilot-experiments/results/sweep7` | 0.2 GB |
+
+Restore one: `mv ~/cold-storage/pddl-copilot-experiments/results/<name> results/`.
+Docs and code comments that cite these paths (reference docs, append-only logs,
+docstrings) were left as they are; this table resolves them.
+
 ## The cut of 2026-10-10 (read this first)
 
 On 2026-10-10 `development/` was cut to the docs the current work needs (Omer: avoid

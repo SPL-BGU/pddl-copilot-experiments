@@ -26,7 +26,7 @@ The harness is a research evaluation framework (`run_experiment.py` + the `pddl_
 ## File classification
 
 **CORE** (review carefully):
-- `run_experiment.py`, `pddl_eval/{chat,runner,scoring,summary,domains,prompts,resume,vllm_client}.py`
+- `run_experiment.py`, `pddl_eval/{chat,runner,scoring,summary,domains,prompts,resume,schemas,vllm_client}.py`
 - `EXPERIMENTS_FLOW.md` — methodology; changes here imply methodology changes
 - `cluster-experimenting/` — sbatch + submit scripts
 - `development/CHANGELOG.md`, `development/OPEN_ISSUES.md`
@@ -44,6 +44,7 @@ When reviewing a plan or diff:
 5. **Helper duplication.** Search `Grep` for existing helpers before approving new ones.
 6. **Prompt/system surface.** Flag any change to `PROMPT_TEMPLATES`, `WITH_TOOLS_SYSTEM`, `WITHOUT_TOOLS_SYSTEM`.
 7. **Documentation trail.** Is there a matching CHANGELOG entry queued? Does the change advance or invalidate any `ISS-###` in OPEN_ISSUES?
+8. **Pinned harness.** Does the change touch code a pinned run depends on (the tags under "Pinned commits" in `development/STATUS.md`)? Runs on a pinned harness allow additive changes only (new model entries, new test items, new prompt styles); anything that changes existing behaviour is `[METHODOLOGY]`.
 
 ## Output
 
@@ -53,7 +54,7 @@ Numbered list of concerns, each tagged:
 3. `[EXISTING]` — code already does this (cite path:line)
 4. `[METHODOLOGY]` — changes evaluation methodology without justification
 5. `[COMPAT]` — breaks compatibility with existing results
-6. `[OVERKILL]` — solution exceeds problem scope for a ~4-CORE-file project
+6. `[OVERKILL]` — solution exceeds problem scope for a small research harness
 
 End with: **Simplification verdict: PASS / NEEDS REVISION**
 

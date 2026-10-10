@@ -696,5 +696,6 @@ whose names and symbols were renamed (`tools/anon_*.py`), under run tag `sweep6`
 **Canonical corpora.** Numbers are checked against `results/sweep5v2-live` (original
 domains) and the anonymized sweep-6 corpus only (`results/sweep6-live`, the default of
 `tools/e2e_regrade.py`; `CLAUDE.md` writes it as `*_sweep6`, after the run tag).
-`results/sweep5-cluster-20260530` is a stale partial mirror and gives wrong numbers. Check
+Any other sweep folder is a sync mirror and gives wrong numbers (the old mirrors were moved
+out of the repo on 2026-10-10, `development/MOVES.md`). Check
 `development/NUMBERS.md` before quoting any figure.

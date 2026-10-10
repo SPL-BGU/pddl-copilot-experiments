@@ -18,7 +18,7 @@ Tests vLLM-served LLMs **with** and **without** MCP planning tools on 5 PDDL tas
 - Recent changes / open issues? See `development/CHANGELOG.md`, `development/OPEN_ISSUES.md`.
 - What work is left? See `development/STATUS.md` (the single status file; `development/README.md` maps the rest).
 - Quoting a result? Check `development/NUMBERS.md` first. It holds the frozen value of every headline figure.
-- Which results are canonical? `results/sweep5v2-live` plus the anonymized sweep-6 corpus (`results/sweep6-live`; `CLAUDE.md` writes it as `*_sweep6`, after the run tag). `results/sweep5-cluster-20260530` is a stale partial mirror; do not read numbers from it.
+- Which results are canonical? `results/sweep5v2-live` plus the anonymized sweep-6 corpus (`results/sweep6-live`; `CLAUDE.md` writes it as `*_sweep6`, after the run tag). Any other sweep folder (a sync mirror) gives wrong numbers; the old mirrors were moved out of the repo on 2026-10-10 (`development/MOVES.md`).
 - Two success layers exist: *tool-verified* (scored live by the harness) and *delivered* (the final answer re-graded offline by `tools/e2e_regrade.py`). See "How It Works" below and `EXPERIMENTS_FLOW.md` §14.
 - Frontier (Claude API) runs use `tools/frontier_runner.py` and `tools/claude_api_batch.py`, not `run_experiment.py`.
 - PlanBench arm? See `planbench/README.md`; its numbers are in `development/reference/planbench_wt_results_20260803.md`.
