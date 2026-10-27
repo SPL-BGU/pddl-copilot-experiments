@@ -87,7 +87,7 @@ _DEFAULT_BASE_URL = "http://localhost:8000"
 #     matches both shapes; regression test in tests/test_vllm_client.py.
 _CTX_OVERFLOW_RE = re.compile(
     r"maximum context length is (\d+) tokens.*?"
-    r"(?:at least|upper bound for) (\d+) input tokens",
+    r"(?:at least|upper bound for|contains) (\d+) input tokens",
     re.DOTALL,
 )
 # The prompt-token count in vLLM's 400 body is a LOWER BOUND, not a

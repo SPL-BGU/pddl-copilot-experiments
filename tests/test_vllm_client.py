@@ -62,6 +62,17 @@ def test_parse_ctx_overflow_new_format():
     assert _parse_ctx_overflow(_make_err(body)) == (16384, 10240)
 
 
+def test_parse_ctx_overflow_exact_format():
+    """Mistral-tokenizer body (vLLM 0.20.2, 2026-10-27): the exact prompt count."""
+    body = (
+        "Error code: 400 - {'error': {'message': \"This model's maximum "
+        "context length is 16384 tokens. However, you requested 8192 output "
+        "tokens and your prompt contains 8310 input tokens, for a total of "
+        "16502 tokens. Please reduce the length of the input...\""
+    )
+    assert _parse_ctx_overflow(_make_err(body)) == (16384, 8310)
+
+
 def test_parse_ctx_overflow_returns_none_for_unrelated_400():
     """A non-overflow 400 must return None so the caller re-raises."""
     body = "Error code: 400 - Bad Request: tool argument schema mismatch."
