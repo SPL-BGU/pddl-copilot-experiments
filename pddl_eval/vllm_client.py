@@ -85,6 +85,10 @@ _DEFAULT_BASE_URL = "http://localhost:8000"
 #     length-truncated response. The audit found 24 600 such rows across
 #     the corpus. The `(?:at least|upper bound for)` alternation below
 #     matches both shapes; regression test in tests/test_vllm_client.py.
+#   * 2026-10-27: vLLM's Mistral tokenizer path reports the exact count
+#     ("your prompt contains 8310 input tokens"); `contains` added. No stored
+#     row of sweep5v2-live or delivered-rerun holds any overflow error, so
+#     the older models' behaviour is unchanged.
 _CTX_OVERFLOW_RE = re.compile(
     r"maximum context length is (\d+) tokens.*?"
     r"(?:at least|upper bound for|contains) (\d+) input tokens",
