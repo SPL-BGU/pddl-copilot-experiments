@@ -188,11 +188,23 @@ for MODEL in $MODELS; do
     # MAX_NUM_BATCHED_TOKENS. Unset between iterations so a leftover
     # MM-aware value from a previous model doesn't bleed into a
     # text-only model's serve command.
-    unset MAX_NUM_BATCHED_TOKENS
+    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS
     vllm_lookup "$MODEL" || exit 1
     MAX_NUM_BATCHED_TOKENS_FLAG=""
     [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
         MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
+    # Optional per-model extras (lib/defaults.sh). Both stay empty for the
+    # models verified before 2026-10-27, so their serve command is unchanged.
+    # The template path is under $EXPT_ROOT, inside $HOME, which apptainer
+    # binds by default.
+    CHAT_TEMPLATE_FLAG=""
+    if [ -n "${CHAT_TEMPLATE:-}" ]; then
+        if [ ! -f "$EXPT_ROOT/$CHAT_TEMPLATE" ]; then
+            echo "Error: chat template $EXPT_ROOT/$CHAT_TEMPLATE not found"; exit 1
+        fi
+        CHAT_TEMPLATE_FLAG="--chat-template $EXPT_ROOT/$CHAT_TEMPLATE"
+    fi
+    EXTRA_SERVE_FLAGS="${EXTRA_SERVE_ARGS:-}"
     # Build --reasoning-parser flag via the shared helper. Families with
     # no reasoning trace (gemma4, REASONING_PARSER=none) get an empty
     # string so the flag is omitted — passing `--reasoning-parser none`
@@ -223,7 +235,7 @@ for MODEL in $MODELS; do
     # can confirm WHICH parsers + VRAM fraction actually loaded without
     # parsing vLLM's startup verbosity — a wrong --tool-call-parser silently
     # yields 0% tool extraction (memory reference_vllm_parser_per_model).
-    echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-}"
+    echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-} ${CHAT_TEMPLATE_FLAG:-} ${EXTRA_SERVE_FLAGS:-}"
     apptainer exec --nv \
         --bind "$WORK/hf-cache:/root/.cache/huggingface" \
         --writable-tmpfs \
@@ -239,6 +251,8 @@ for MODEL in $MODELS; do
             --gpu-memory-utilization "$GPU_MEM_UTIL" \
             --enable-prefix-caching \
             $MAX_NUM_BATCHED_TOKENS_FLAG \
+            $CHAT_TEMPLATE_FLAG \
+            $EXTRA_SERVE_FLAGS \
             > "$SERVE_LOG" 2>&1 &
     VLLM_PID=$!
     trap 'echo "Shutting down..."; kill $VLLM_PID 2>/dev/null || true; preserve_serve_logs; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT

@@ -38,12 +38,21 @@ PDDL_DEFAULT_SBATCH_CONDITIONS="tools_all_minimal"
 # submit_with_rtx.sh.
 PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B gemma4:26b-a4b)
 
+# Extension candidates (plan step D1a): resolvable by vllm_lookup so they can
+# be smoke-tested, but not yet parser-verified. Move a model to
+# PDDL_VLLM_VERIFIED_MODELS only after its smoke shows extracted tool calls.
+PDDL_VLLM_CANDIDATE_MODELS=(gemma4:26b-a4b-bf16 gpt-oss:20b ministral3:14b llama3.1:8b)
+
 # Resolve canonical model tag → (HF id, parser flags) for vLLM serve.
 # Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success, plus
 # MAX_NUM_BATCHED_TOKENS for multimodal-aware cases where vLLM's default
 # 2048-token batch budget is too small for the model's per-MM-item
 # (left unset for text-only models → callers fall through to vLLM default);
 # returns non-zero with a clear error otherwise so callers can bail.
+# Two optional per-model extras, left unset for every model verified before
+# 2026-10-27 so their serve command is unchanged: CHAT_TEMPLATE (a path
+# relative to the repo root, passed as --chat-template) and EXTRA_SERVE_ARGS
+# (extra vllm serve flags, spliced unquoted).
 vllm_lookup() {
     case "$1" in
         qwen3.6:35b)
@@ -100,6 +109,48 @@ vllm_lookup() {
             TOOL_CALL_PARSER="gemma4"
             REASONING_PARSER="none"
             MAX_NUM_BATCHED_TOKENS="4096"
+            ;;
+        # --- Extension candidates (plan step D1a, 2026-10-27) ---------------
+        # Smoke-only until `submit_with_rtx.sh --smoke <model>` shows tool
+        # calls being extracted; only then do they join
+        # PDDL_VLLM_VERIFIED_MODELS. Parser names checked against the vLLM
+        # v0.20.2 registries (vllm/tool_parsers, vllm/reasoning).
+        gemma4:26b-a4b-bf16)
+            # Google's official BF16 weights of the same model as
+            # gemma4:26b-a4b, with identical parser flags, so the only
+            # difference is the weights (community AWQ-INT4 vs official).
+            # ~51.6 GB on disk: needs --gpu-type rtx_pro_6000 and --tmp 100G.
+            HF_MODEL="google/gemma-4-26B-A4B-it"
+            TOOL_CALL_PARSER="gemma4"
+            REASONING_PARSER="none"
+            MAX_NUM_BATCHED_TOKENS="4096"
+            ;;
+        gpt-oss:20b)
+            # MXFP4, ~13.8 GB. Harmony format; reasoning is always on
+            # (effort low/medium/high), enable_thinking does not switch it off.
+            HF_MODEL="openai/gpt-oss-20b"
+            TOOL_CALL_PARSER="openai"
+            REASONING_PARSER="openai_gptoss"
+            ;;
+        ministral3:14b)
+            # FP8, ~15.7 GB, no reasoning trace (Instruct variant). Served in
+            # Mistral's own format, as the model card's vLLM command does.
+            HF_MODEL="mistralai/Ministral-3-14B-Instruct-2512"
+            TOOL_CALL_PARSER="mistral"
+            REASONING_PARSER="none"
+            EXTRA_SERVE_ARGS="--tokenizer-mode mistral --config-format mistral --load-format mistral"
+            ;;
+        llama3.1:8b)
+            # BF16, ~16 GB. meta-llama/Llama-3.1-8B-Instruct is gated and the
+            # cluster has no HF token, so this reads unsloth's ungated copy
+            # (same shard files and sizes). The chat template is vLLM
+            # v0.20.2's tool_chat_template_llama3.1_json.jinja, as vLLM's
+            # tool-calling docs recommend for llama3_json; it replaces the
+            # repo's own template.
+            HF_MODEL="unsloth/Llama-3.1-8B-Instruct"
+            TOOL_CALL_PARSER="llama3_json"
+            REASONING_PARSER="none"
+            CHAT_TEMPLATE="cluster-experimenting/chat_templates/tool_chat_template_llama3.1_json.jinja"
             ;;
         *)
             echo "Error: model '$1' not in PDDL_VLLM_VERIFIED_MODELS (${PDDL_VLLM_VERIFIED_MODELS[*]})" >&2
