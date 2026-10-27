@@ -71,6 +71,7 @@ if [ -n "${CELLS_LIST:-}" ]; then
             no-tools)               _CTAG="notools" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
             tools_all_neutral)      _CTAG="tools-all-neutral" ;;
+            no-tools-jsonbound)     _CTAG="notools-jsonbound" ;;
             @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
         esac
@@ -105,6 +106,10 @@ MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
 TASKS_ENV_OVERRIDE="${TASKS:-}"
+# PDDL_JSON_CONSTRAINT is set per run_experiment.py call, only for the
+# no-tools-jsonbound cond (COND_ENV below). Drop any value inherited through
+# the wrapper's --export=ALL so a plain no-tools cell can never bind.
+unset PDDL_JSON_CONSTRAINT
 # submit_with_rtx.sh --tasks joins the task list with `^` (same separator as
 # CELLS_LIST) so the value survives sbatch's comma-separated --export list
 # without relying on embedded spaces. Map it back to the space-separated form
@@ -188,7 +193,7 @@ for MODEL in $MODELS; do
     # MAX_NUM_BATCHED_TOKENS. Unset between iterations so a leftover
     # MM-aware value from a previous model doesn't bleed into a
     # text-only model's serve command.
-    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS
+    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS HF_REVISION HF_CACHE_IN_JOB
     vllm_lookup "$MODEL" || exit 1
     MAX_NUM_BATCHED_TOKENS_FLAG=""
     [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
@@ -205,6 +210,17 @@ for MODEL in $MODELS; do
         CHAT_TEMPLATE_FLAG="--chat-template $EXPT_ROOT/$CHAT_TEMPLATE"
     fi
     EXTRA_SERVE_FLAGS="${EXTRA_SERVE_ARGS:-}"
+    if [ -n "${HF_REVISION:-}" ]; then
+        EXTRA_SERVE_FLAGS="$EXTRA_SERVE_FLAGS --revision $HF_REVISION --tokenizer-revision $HF_REVISION"
+    fi
+    # HF_CACHE_IN_JOB=1: point HF_HOME inside the container at the bound
+    # scratch hf-cache, so the weights download to job scratch, not $HOME.
+    # Passed through `env` as APPTAINERENV_HF_HOME; unset otherwise, so the
+    # older models keep reading their $HOME cache exactly as before.
+    APPTAINER_ENV=()
+    if [ "${HF_CACHE_IN_JOB:-0}" = "1" ]; then
+        APPTAINER_ENV=(APPTAINERENV_HF_HOME=/root/.cache/huggingface)
+    fi
     # Build --reasoning-parser flag via the shared helper. Families with
     # no reasoning trace (gemma4, REASONING_PARSER=none) get an empty
     # string so the flag is omitted — passing `--reasoning-parser none`
@@ -236,7 +252,8 @@ for MODEL in $MODELS; do
     # parsing vLLM's startup verbosity — a wrong --tool-call-parser silently
     # yields 0% tool extraction (memory reference_vllm_parser_per_model).
     echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-} ${CHAT_TEMPLATE_FLAG:-} ${EXTRA_SERVE_FLAGS:-}"
-    apptainer exec --nv \
+    [ "${HF_CACHE_IN_JOB:-0}" = "1" ] && echo "  hf cache: job scratch ($WORK/hf-cache)"
+    env "${APPTAINER_ENV[@]}" apptainer exec --nv \
         --bind "$WORK/hf-cache:/root/.cache/huggingface" \
         --writable-tmpfs \
         "$SIF_VLLM" \
@@ -372,8 +389,18 @@ for MODEL in $MODELS; do
                 TASKS_ARG=()
             fi
 
+            COND_ENV=()
             case "$COND" in
                 no-tools)
+                    COND_ARGS=(--conditions no-tools) ;;
+                no-tools-jsonbound)
+                    COND_ENV=(PDDL_JSON_CONSTRAINT=structured_outputs)
+                    # submit_with_rtx.sh --json-constraint structured_outputs
+                    # (JSON control, plan step D1d): the no-tools schema is
+                    # sent in the field vLLM 0.20.2 reads, so it binds. The
+                    # cond token gives these cells their own OUT_DIR.
+                    # Carried by $PDDL_JSON_CONSTRAINT (read by VLLMClient), set
+                    # on this run_experiment.py call only (COND_ENV below).
                     COND_ARGS=(--conditions no-tools) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
@@ -443,7 +470,7 @@ for MODEL in $MODELS; do
                 fi
             fi
 
-            python3 run_experiment.py \
+            env "${COND_ENV[@]}" python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
                 --llm-base-url "$LLM_BASE_URL" \

@@ -28,7 +28,9 @@ Knobs translated:
   * options.num_ctx           → ignored (server-side via --max-model-len)
   * keep_alive                → ignored (server-side via TTL or none)
   * think (qwen3 thinking)    → extra_body.chat_template_kwargs.enable_thinking
-  * format=<schema dict>      → extra_body.guided_json
+  * format=<schema dict>      → extra_body.guided_json (default), or
+    extra_body.structured_outputs={"json": schema} when the client is built
+    with json_constraint="structured_outputs" (see VLLMClient.__init__)
   * format="json"             → response_format={"type": "json_object"}
   * stop=[...]                → stop (OpenAI standard sampling param)
   * vllm_extra={...}          → merged into extra_body verbatim. Carries
@@ -56,7 +58,9 @@ truncation.
 """
 
 import json
+import os
 import re
+import sys
 import time
 
 from openai import AsyncOpenAI, BadRequestError
@@ -159,10 +163,32 @@ def _clip_candidates(base: int, fine: bool) -> list[int]:
     return out
 
 
+JSON_CONSTRAINT_CHOICES = ("guided_json", "structured_outputs")
+
+
 class VLLMClient:
     """Async vLLM client exposing chat() / aclose()."""
 
-    def __init__(self, base_url: str | None = None):
+    def __init__(self, base_url: str | None = None,
+                 json_constraint: str | None = None):
+        # Which request field carries a format=<schema dict>. "guided_json"
+        # is what every corpus before 2026-10-27 sent; vLLM 0.20.2 has no
+        # such field and drops unknown fields with only a DEBUG log
+        # (OpenAIBaseModel, extra="allow"), so that schema never bound.
+        # "structured_outputs" sends it as structured_outputs={"json": schema},
+        # the field 0.20.2 reads. Opt-in, for the JSON control cells only
+        # (plan step D1d). When the argument is None the value comes from
+        # $PDDL_JSON_CONSTRAINT, which the sbatch sets only for the
+        # no-tools-jsonbound cond; this keeps run_experiment.py (hashed into
+        # the frozen delivered-rerun analysis) byte-identical.
+        if json_constraint is None:
+            json_constraint = os.environ.get("PDDL_JSON_CONSTRAINT") or "guided_json"
+        if json_constraint not in JSON_CONSTRAINT_CHOICES:
+            raise ValueError(f"json_constraint must be one of "
+                             f"{JSON_CONSTRAINT_CHOICES} (got {json_constraint!r})")
+        self._json_constraint = json_constraint
+        if json_constraint != "guided_json":
+            print(f"VLLMClient: JSON schema sent as {json_constraint}", file=sys.stderr)
         base_url = (base_url or _DEFAULT_BASE_URL).rstrip("/")
         if not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
@@ -204,7 +230,10 @@ class VLLMClient:
         if think is not None:
             extra_body["chat_template_kwargs"] = {"enable_thinking": bool(think)}
         if isinstance(format, dict):
-            extra_body["guided_json"] = format
+            if self._json_constraint == "structured_outputs":
+                extra_body["structured_outputs"] = {"json": format}
+            else:
+                extra_body["guided_json"] = format
         elif format == "json":
             kwargs["response_format"] = {"type": "json_object"}
         # vLLM-only request fields (continue_final_message, add_generation_prompt,

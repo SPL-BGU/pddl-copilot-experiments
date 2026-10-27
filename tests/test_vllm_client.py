@@ -314,6 +314,76 @@ def test_record_ctx_clip_keys_absent_by_default():
     assert tokens["ctx_no_room_turns"] == 1
 
 
+class _CaptureCompletions:
+    """Records the kwargs of each create() call; always answers."""
+
+    def __init__(self):
+        self.calls: list[dict] = []
+
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        msg = SimpleNamespace(content="{}", tool_calls=None, reasoning_content=None)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=msg, finish_reason="stop")],
+            usage=SimpleNamespace(prompt_tokens=10, completion_tokens=2),
+        )
+
+
+def _sent_extra_body(json_constraint: str | None, fmt) -> dict:
+    fake = _CaptureCompletions()
+    client = (VLLMClient(base_url="http://test") if json_constraint is None
+              else VLLMClient(base_url="http://test", json_constraint=json_constraint))
+    client._client = SimpleNamespace(chat=SimpleNamespace(completions=fake))
+    asyncio.run(client.chat(model="m", messages=[{"role": "user", "content": "x"}],
+                            options={"num_predict": 64}, format=fmt))
+    return fake.calls[0].get("extra_body", {})
+
+
+_SCHEMA = {"type": "object", "properties": {"verdict": {"type": "string"}}}
+
+
+def test_schema_default_field_is_guided_json():
+    # The default must stay exactly what every earlier corpus sent.
+    assert _sent_extra_body(None, _SCHEMA) == {"guided_json": _SCHEMA}
+    assert _sent_extra_body("guided_json", _SCHEMA) == {"guided_json": _SCHEMA}
+
+
+def test_schema_structured_outputs_field():
+    assert _sent_extra_body("structured_outputs", _SCHEMA) == {
+        "structured_outputs": {"json": _SCHEMA}}
+
+
+def test_json_object_format_ignores_the_switch():
+    # format="json" goes through response_format under both settings.
+    assert _sent_extra_body("structured_outputs", "json") == {}
+
+
+def test_json_constraint_from_environment():
+    import os
+    saved = os.environ.get("PDDL_JSON_CONSTRAINT")
+    try:
+        os.environ["PDDL_JSON_CONSTRAINT"] = "structured_outputs"
+        assert _sent_extra_body(None, _SCHEMA) == {
+            "structured_outputs": {"json": _SCHEMA}}
+        # an explicit argument wins over the environment
+        assert _sent_extra_body("guided_json", _SCHEMA) == {"guided_json": _SCHEMA}
+        os.environ["PDDL_JSON_CONSTRAINT"] = ""
+        assert _sent_extra_body(None, _SCHEMA) == {"guided_json": _SCHEMA}
+    finally:
+        if saved is None:
+            os.environ.pop("PDDL_JSON_CONSTRAINT", None)
+        else:
+            os.environ["PDDL_JSON_CONSTRAINT"] = saved
+
+
+def test_unknown_json_constraint_is_rejected():
+    try:
+        VLLMClient(base_url="http://test", json_constraint="guided")
+    except ValueError:
+        return
+    raise AssertionError("expected ValueError")
+
+
 if __name__ == "__main__":
     # Plain-python entry point so tests/verify.sh (no pytest dependency) can
     # run this file; pytest collects the same functions directly.

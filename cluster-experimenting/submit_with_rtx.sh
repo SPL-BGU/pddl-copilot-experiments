@@ -49,6 +49,13 @@
 #   (unset or `minimal`) leaves the submission unchanged. A non-default style
 #   requires --tools-only, so it never re-submits the no-tools baseline.
 #
+# --json-constraint <guided_json|structured_outputs>: request field that
+#   carries the no-tools JSON schema. `guided_json` (default) is what every
+#   corpus before 2026-10-27 sent; vLLM 0.20.2 ignores it, so the schema never
+#   bound. `structured_outputs` makes it bind (JSON control, plan step D1d).
+#   It requires --no-tools, and the no-tools cell is then named
+#   no-tools-jsonbound, so it writes to its own OUT_DIR.
+#
 # --tasks "<list>": run only these tasks in every cell (space- or
 #   comma-separated, one quoted argument). Default (flag omitted): all 5. An
 #   empty list or an unknown task name is an error; repeats are dropped.
@@ -162,6 +169,8 @@ NUM_PREDICT_ANSWER=""
 REASONING_PARSER_OVERRIDE=""
 PROMPT_STYLE=""
 PROMPT_STYLE_GIVEN=0
+JSON_CONSTRAINT=""
+JSON_CONSTRAINT_GIVEN=0
 TASKS_OVERRIDE=""
 TASKS_GIVEN=0
 MODELS=()
@@ -195,6 +204,7 @@ while [[ $# -gt 0 ]]; do
         # validation below (clear error) instead of dying on `shift` or being
         # mistaken for "flag not given".
         --prompt-style) PROMPT_STYLE_GIVEN=1; PROMPT_STYLE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
+        --json-constraint) JSON_CONSTRAINT_GIVEN=1; JSON_CONSTRAINT="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         --tasks) TASKS_GIVEN=1; TASKS_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -330,6 +340,25 @@ case "$PROMPT_STYLE" in
 esac
 if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ] && [ "$TOOLS_ONLY" -ne 1 ]; then
     echo "Error: --prompt-style $PROMPT_STYLE requires --tools-only (the style only changes the with-tools system prompt; without --tools-only the no-tools baseline cells would be submitted again)" >&2
+    exit 1
+fi
+
+# --json-constraint <field>: see the header. The constraint is not part of the
+# resume key, so a bound cell must never share an OUT_DIR with an unbound one:
+# `structured_outputs` renames the no-tools cond token to no-tools-jsonbound
+# (below) and requires --no-tools, so no with-tools cell is ever emitted.
+if [ "$JSON_CONSTRAINT_GIVEN" -eq 1 ] && [ -z "$JSON_CONSTRAINT" ]; then
+    echo "Error: --json-constraint expects a value ('guided_json' or 'structured_outputs')" >&2
+    exit 1
+fi
+case "$JSON_CONSTRAINT" in
+    ""|guided_json|structured_outputs) ;;
+    *)
+        echo "Error: --json-constraint must be 'guided_json' or 'structured_outputs' (got: $JSON_CONSTRAINT)" >&2
+        exit 1 ;;
+esac
+if [ "$JSON_CONSTRAINT" = "structured_outputs" ] && [ "$NO_TOOLS" -ne 1 ]; then
+    echo "Error: --json-constraint structured_outputs requires --no-tools (only the no-tools path sends a schema)" >&2
     exit 1
 fi
 
@@ -497,6 +526,16 @@ if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
     for i in "${!EFF_COND[@]}"; do
         if [ "${EFF_COND[$i]}" = "tools_all_minimal" ]; then
             EFF_COND[$i]="tools_all_${PROMPT_STYLE}"
+        fi
+    done
+fi
+
+# --json-constraint structured_outputs: rename the no-tools cond token. It
+# requires --no-tools (validated above), so EFF_COND is exactly ("no-tools").
+if [ "$JSON_CONSTRAINT" = "structured_outputs" ]; then
+    for i in "${!EFF_COND[@]}"; do
+        if [ "${EFF_COND[$i]}" = "no-tools" ]; then
+            EFF_COND[$i]="no-tools-jsonbound"
         fi
     done
 fi
@@ -735,6 +774,9 @@ if [ -n "$RUN_TAG" ]; then
 fi
 if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
     echo "  style:       $PROMPT_STYLE (with-tools cells become tools_all_${PROMPT_STYLE}; separate OUT_DIR and resume keys)" >&2
+fi
+if [ "$JSON_CONSTRAINT" = "structured_outputs" ]; then
+    echo "  json:        structured_outputs (no-tools cells become no-tools-jsonbound; separate OUT_DIR)" >&2
 fi
 if [ -n "$TASKS_EXPORT" ]; then
     echo "  tasks:       ${TASKS_EXPORT//^/ } (subset; default is all 5)" >&2

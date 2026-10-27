@@ -49,10 +49,16 @@ PDDL_VLLM_CANDIDATE_MODELS=(gemma4:26b-a4b-bf16 gpt-oss:20b ministral3:14b llama
 # 2048-token batch budget is too small for the model's per-MM-item
 # (left unset for text-only models → callers fall through to vLLM default);
 # returns non-zero with a clear error otherwise so callers can bail.
-# Two optional per-model extras, left unset for every model verified before
+# Optional per-model extras, left unset for every model verified before
 # 2026-10-27 so their serve command is unchanged: CHAT_TEMPLATE (a path
-# relative to the repo root, passed as --chat-template) and EXTRA_SERVE_ARGS
-# (extra vllm serve flags, spliced unquoted).
+# relative to the repo root, passed as --chat-template), EXTRA_SERVE_ARGS
+# (extra vllm serve flags, spliced unquoted), HF_REVISION (an HF commit,
+# passed as --revision and --tokenizer-revision so the weights are fixed), and
+# HF_CACHE_IN_JOB=1 (download the weights into the job's scratch hf-cache).
+# Without HF_CACHE_IN_JOB the weights land in $HOME/.cache/huggingface:
+# apptainer sets HOME to the real home, so the bind onto
+# /root/.cache/huggingface is never used. That is how every earlier run
+# cached its models; on 2026-10-27 three new downloads filled the home quota.
 vllm_lookup() {
     case "$1" in
         qwen3.6:35b)
@@ -121,6 +127,8 @@ vllm_lookup() {
             # difference is the weights (community AWQ-INT4 vs official).
             # ~51.6 GB on disk: needs --gpu-type rtx_pro_6000 and --tmp 100G.
             HF_MODEL="google/gemma-4-26B-A4B-it"
+            HF_REVISION="4d7ae4984b7db7de8f8457170b3f1a419ee76d52"
+            HF_CACHE_IN_JOB=1
             TOOL_CALL_PARSER="gemma4"
             REASONING_PARSER="none"
             MAX_NUM_BATCHED_TOKENS="4096"
@@ -129,6 +137,8 @@ vllm_lookup() {
             # MXFP4, ~13.8 GB. Harmony format; reasoning is always on
             # (effort low/medium/high), enable_thinking does not switch it off.
             HF_MODEL="openai/gpt-oss-20b"
+            HF_REVISION="6cee5e81ee83917806bbde320786a8fb61efebee"
+            HF_CACHE_IN_JOB=1
             TOOL_CALL_PARSER="openai"
             REASONING_PARSER="openai_gptoss"
             ;;
@@ -136,6 +146,8 @@ vllm_lookup() {
             # FP8, ~15.7 GB, no reasoning trace (Instruct variant). Served in
             # Mistral's own format, as the model card's vLLM command does.
             HF_MODEL="mistralai/Ministral-3-14B-Instruct-2512"
+            HF_REVISION="29439f81c2be264d8d393273f99e7db9c0961120"
+            HF_CACHE_IN_JOB=1
             TOOL_CALL_PARSER="mistral"
             REASONING_PARSER="none"
             EXTRA_SERVE_ARGS="--tokenizer-mode mistral --config-format mistral --load-format mistral"
@@ -148,6 +160,8 @@ vllm_lookup() {
             # tool-calling docs recommend for llama3_json; it replaces the
             # repo's own template.
             HF_MODEL="unsloth/Llama-3.1-8B-Instruct"
+            HF_REVISION="4699cc75b550f9c6f3173fb80f4703b62d946aa5"
+            HF_CACHE_IN_JOB=1
             TOOL_CALL_PARSER="llama3_json"
             REASONING_PARSER="none"
             CHAT_TEMPLATE="cluster-experimenting/chat_templates/tool_chat_template_llama3.1_json.jinja"

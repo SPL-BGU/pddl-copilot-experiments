@@ -163,12 +163,52 @@ def test_sbatch_handles_the_new_cond(r: TestResults) -> None:
                subprocess.run(["bash", "-n", str(SBATCH)]).returncode, 0)
 
 
+def test_json_constraint(r: TestResults) -> None:
+    rc, err = _dry("Qwen3.5:9B", "--no-tools", "--think-modes", "off",
+                   "--json-constraint", "structured_outputs",
+                   "--tasks", "solve simulate", "--run-tag", "json-control")
+    r.check_eq("structured_outputs submit exits 0", rc, 0)
+    r.check_eq(
+        "structured_outputs --export list",
+        _export(err),
+        "ALL,CELLS_LIST=Qwen3.5:9B|off|no-tools-jsonbound,"
+        "RUN_TAG=json-control,TASKS=solve^simulate",
+    )
+    # guided_json is the default: same submission as no flag at all.
+    base = _dry("Qwen3.5:9B", "--no-tools", "--think-modes", "off")
+    r.check_eq("explicit guided_json == default output",
+               _dry("Qwen3.5:9B", "--no-tools", "--think-modes", "off",
+                    "--json-constraint", "guided_json"), base)
+    r.check("default no-tools submit prints no json line", "json:" not in base[1])
+    for args, why in [
+        (("Qwen3.5:9B", "--json-constraint", "structured_outputs"), "needs --no-tools"),
+        (("Qwen3.5:9B", "--tools-only", "--json-constraint", "structured_outputs"),
+         "rejected with --tools-only"),
+        (("Qwen3.5:9B", "--no-tools", "--json-constraint", "xml"), "unknown value"),
+        (("Qwen3.5:9B", "--no-tools", "--json-constraint", ""), "empty value"),
+    ]:
+        rc_bad, _ = _dry(*args)
+        r.check(f"--json-constraint {why}", rc_bad != 0)
+    text = SBATCH.read_text()
+    r.check("sbatch has a no-tools-jsonbound branch setting structured_outputs",
+            re.search(r"no-tools-jsonbound\)\s*\n\s*"
+                      r"COND_ENV=\(PDDL_JSON_CONSTRAINT=structured_outputs\)",
+                      text) is not None)
+    r.check("sbatch drops an inherited PDDL_JSON_CONSTRAINT",
+            "\nunset PDDL_JSON_CONSTRAINT\n" in text)
+    r.check("sbatch resets COND_ENV for every cond",
+            "COND_ENV=()\n            case \"$COND\" in" in text)
+    r.check("sbatch keeps the plain no-tools branch byte-stable",
+            "COND_ARGS=(--conditions no-tools) ;;" in text)
+
+
 def main() -> None:
     r = TestResults("test_submit_wrapper")
     test_defaults_unchanged(r)
     test_neutral_style_and_tasks(r)
     test_rejected_combinations(r)
     test_sbatch_handles_the_new_cond(r)
+    test_json_constraint(r)
     r.report_and_exit()
 
 
