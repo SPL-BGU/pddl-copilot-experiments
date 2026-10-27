@@ -119,7 +119,7 @@ TASKS_ENV_OVERRIDE="${TASKS:-}"
 # PDDL_JSON_CONSTRAINT is set per run_experiment.py call, only for the
 # no-tools-jsonbound cond (COND_ENV below). Drop any value inherited through
 # the wrapper's --export=ALL so a plain no-tools cell can never bind.
-unset PDDL_JSON_CONSTRAINT
+unset PDDL_JSON_CONSTRAINT PDDL_TOOL_CALL_ID_STYLE
 # submit_with_rtx.sh --tasks joins the task list with `^` (same separator as
 # CELLS_LIST) so the value survives sbatch's comma-separated --export list
 # without relying on embedded spaces. Map it back to the space-separated form
@@ -203,7 +203,7 @@ for MODEL in $MODELS; do
     # MAX_NUM_BATCHED_TOKENS. Unset between iterations so a leftover
     # MM-aware value from a previous model doesn't bleed into a
     # text-only model's serve command.
-    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS HF_REVISION HF_CACHE_IN_JOB
+    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS HF_REVISION HF_CACHE_IN_JOB TOOL_CALL_ID_STYLE
     vllm_lookup "$MODEL" || exit 1
     MAX_NUM_BATCHED_TOKENS_FLAG=""
     [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
@@ -227,6 +227,12 @@ for MODEL in $MODELS; do
     # scratch hf-cache, so the weights download to job scratch, not $HOME.
     # Passed through `env` as APPTAINERENV_HF_HOME; unset otherwise, so the
     # older models keep reading their $HOME cache exactly as before.
+    # Client-side per-model setting, passed to every run_experiment.py call
+    # of this model (MODEL_ENV); empty for the older models.
+    MODEL_ENV=()
+    if [ -n "${TOOL_CALL_ID_STYLE:-}" ]; then
+        MODEL_ENV=(PDDL_TOOL_CALL_ID_STYLE="$TOOL_CALL_ID_STYLE")
+    fi
     APPTAINER_ENV=()
     if [ "${HF_CACHE_IN_JOB:-0}" = "1" ]; then
         APPTAINER_ENV=(APPTAINERENV_HF_HOME=/root/.cache/huggingface)
@@ -356,7 +362,7 @@ for MODEL in $MODELS; do
         echo "===================================================================="
         echo "MODEL: $MODEL   smoke ($SMOKE_FLAG)   started $(date)"
         echo "===================================================================="
-        python3 run_experiment.py \
+        env "${MODEL_ENV[@]}" python3 run_experiment.py \
             --marketplace-path "$MARKETPLACE_PATH" \
             --models "$HF_MODEL" \
             --llm-base-url "$LLM_BASE_URL" \
@@ -481,7 +487,7 @@ for MODEL in $MODELS; do
                 fi
             fi
 
-            env "${COND_ENV[@]}" python3 run_experiment.py \
+            env "${COND_ENV[@]}" "${MODEL_ENV[@]}" python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
                 --llm-base-url "$LLM_BASE_URL" \

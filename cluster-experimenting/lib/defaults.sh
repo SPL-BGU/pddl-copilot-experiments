@@ -54,7 +54,9 @@ PDDL_VLLM_CANDIDATE_MODELS=(gemma4:26b-a4b-bf16 gpt-oss:20b ministral3:14b llama
 # relative to the repo root, passed as --chat-template), EXTRA_SERVE_ARGS
 # (extra vllm serve flags, spliced unquoted), HF_REVISION (an HF commit,
 # passed as --revision and --tokenizer-revision so the weights are fixed), and
-# HF_CACHE_IN_JOB=1 (download the weights into the job's scratch hf-cache).
+# HF_CACHE_IN_JOB=1 (download the weights into the job's scratch hf-cache),
+# and TOOL_CALL_ID_STYLE (the client's synthetic tool-call id shape, passed
+# to run_experiment.py as $PDDL_TOOL_CALL_ID_STYLE; see pddl_eval/vllm_client.py).
 # Without HF_CACHE_IN_JOB the weights land in $HOME/.cache/huggingface:
 # apptainer sets HOME to the real home, so the bind onto
 # /root/.cache/huggingface is never used. That is how every earlier run
@@ -151,6 +153,11 @@ vllm_lookup() {
             TOOL_CALL_PARSER="mistral"
             REASONING_PARSER="none"
             EXTRA_SERVE_ARGS="--tokenizer-mode mistral --config-format mistral --load-format mistral"
+            # Mistral's tokenizer rejects any request carrying
+            # chat_template_kwargs, so run this model with --think-modes
+            # default (it has no thinking mode), and it accepts only 9-char
+            # alphanumeric tool-call ids.
+            TOOL_CALL_ID_STYLE="mistral9"
             ;;
         llama3.1:8b)
             # BF16, ~16 GB. meta-llama/Llama-3.1-8B-Instruct is gated and the

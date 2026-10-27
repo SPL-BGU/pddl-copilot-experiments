@@ -195,8 +195,10 @@ def test_json_constraint(r: TestResults) -> None:
             re.search(r"no-tools-jsonbound\)\s*\n\s*"
                       r"COND_ENV=\(PDDL_JSON_CONSTRAINT=structured_outputs\)",
                       text) is not None)
-    r.check("sbatch drops an inherited PDDL_JSON_CONSTRAINT",
-            "\nunset PDDL_JSON_CONSTRAINT\n" in text)
+    r.check("sbatch drops an inherited PDDL_JSON_CONSTRAINT and PDDL_TOOL_CALL_ID_STYLE",
+            "\nunset PDDL_JSON_CONSTRAINT PDDL_TOOL_CALL_ID_STYLE\n" in text)
+    r.check("sbatch passes MODEL_ENV on both run_experiment.py calls",
+            text.count('"${MODEL_ENV[@]}" python3 run_experiment.py') == 2)
     r.check("sbatch resets COND_ENV for every cond",
             "COND_ENV=()\n            case \"$COND\" in" in text)
     r.check("sbatch keeps the plain no-tools branch byte-stable",

@@ -376,6 +376,48 @@ def test_json_constraint_from_environment():
             os.environ["PDDL_JSON_CONSTRAINT"] = saved
 
 
+def test_tool_call_id_styles():
+    from pddl_eval.vllm_client import _to_openai_messages
+    msgs = [
+        {"role": "user", "content": "x"},
+        {"role": "assistant", "content": "",
+         "tool_calls": [{"function": {"name": "a", "arguments": {}}},
+                        {"function": {"name": "b", "arguments": {}}}]},
+        {"role": "tool", "content": "r1"},
+        {"role": "tool", "content": "r2"},
+    ]
+    # default: byte-identical to every earlier corpus
+    d = _to_openai_messages(msgs)
+    assert [c["id"] for c in d[1]["tool_calls"]] == ["call_1_0", "call_1_1"]
+    assert [m["tool_call_id"] for m in d[2:]] == ["call_1_0", "call_1_1"]
+    m9 = _to_openai_messages(msgs, "mistral9")
+    ids = [c["id"] for c in m9[1]["tool_calls"]]
+    assert ids == ["c00001000", "c00001001"]
+    assert all(len(i) == 9 and i.isalnum() for i in ids)
+    assert [m["tool_call_id"] for m in m9[2:]] == ids
+
+
+def test_tool_call_id_style_from_environment():
+    import os
+    saved = os.environ.get("PDDL_TOOL_CALL_ID_STYLE")
+    try:
+        os.environ.pop("PDDL_TOOL_CALL_ID_STYLE", None)
+        assert VLLMClient(base_url="http://test")._tool_call_id_style == "call"
+        os.environ["PDDL_TOOL_CALL_ID_STYLE"] = "mistral9"
+        assert VLLMClient(base_url="http://test")._tool_call_id_style == "mistral9"
+        os.environ["PDDL_TOOL_CALL_ID_STYLE"] = "bogus"
+        try:
+            VLLMClient(base_url="http://test")
+            raise AssertionError("expected ValueError")
+        except ValueError:
+            pass
+    finally:
+        if saved is None:
+            os.environ.pop("PDDL_TOOL_CALL_ID_STYLE", None)
+        else:
+            os.environ["PDDL_TOOL_CALL_ID_STYLE"] = saved
+
+
 def test_unknown_json_constraint_is_rejected():
     try:
         VLLMClient(base_url="http://test", json_constraint="guided")
