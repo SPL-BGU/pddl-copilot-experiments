@@ -102,6 +102,16 @@ EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 # wrapper via --export=ALL) so a model that lands on the VRAM-85%-guard
 # knife-edge can request a lower fraction.
 GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
+# Context window (vllm serve --max-model-len). 16384 is the window of every
+# corpus to date. submit_with_rtx.sh --max-model-len N sets a larger one for
+# the context-room cells (plan step D1c) and requires a --run-tag; the harness
+# is then told the same window (--num-ctx / --num-ctx-thinking) so the run's
+# summary records it. Default → serve and run_experiment.py calls unchanged.
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-16384}"
+CTX_ARGS=()
+if [ "$MAX_MODEL_LEN" != "16384" ]; then
+    CTX_ARGS=(--num-ctx "$MAX_MODEL_LEN" --num-ctx-thinking "$MAX_MODEL_LEN")
+fi
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
@@ -251,6 +261,7 @@ for MODEL in $MODELS; do
     # can confirm WHICH parsers + VRAM fraction actually loaded without
     # parsing vLLM's startup verbosity — a wrong --tool-call-parser silently
     # yields 0% tool extraction (memory reference_vllm_parser_per_model).
+    echo "  context window: --max-model-len $MAX_MODEL_LEN"
     echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-} ${CHAT_TEMPLATE_FLAG:-} ${EXTRA_SERVE_FLAGS:-}"
     [ "${HF_CACHE_IN_JOB:-0}" = "1" ] && echo "  hf cache: job scratch ($WORK/hf-cache)"
     env "${APPTAINER_ENV[@]}" apptainer exec --nv \
@@ -261,7 +272,7 @@ for MODEL in $MODELS; do
             --model "$HF_MODEL" \
             --host 0.0.0.0 \
             --port "$PORT" \
-            --max-model-len 16384 \
+            --max-model-len "$MAX_MODEL_LEN" \
             --enable-auto-tool-choice \
             --tool-call-parser "$TOOL_CALL_PARSER" \
             $REASONING_PARSER_FLAG \
@@ -484,6 +495,7 @@ for MODEL in $MODELS; do
                 "${STEERED_ARG[@]}" \
                 "${DOMAINS_DIR_ARG[@]}" \
                 "${DECOUPLED_ARGS[@]}" \
+                "${CTX_ARGS[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 

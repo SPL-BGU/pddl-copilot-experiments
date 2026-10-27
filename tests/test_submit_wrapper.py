@@ -10,6 +10,7 @@ unchanged, and with `--prompt-style neutral` the cell is named so that it can
 never share a results dir with a `tools_all_minimal` cell.
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -202,6 +203,40 @@ def test_json_constraint(r: TestResults) -> None:
             "COND_ARGS=(--conditions no-tools) ;;" in text)
 
 
+def test_max_model_len(r: TestResults) -> None:
+    rc, err = _dry("Qwen3.5:9B", "--tools-only", "--think-modes", "off",
+                   "--max-model-len", "32768", "--run-tag", "ctx32k")
+    r.check_eq("--max-model-len submit exits 0", rc, 0)
+    r.check_eq("--max-model-len --export list", _export(err),
+               "ALL,CELLS_LIST=Qwen3.5:9B|off|tools_all_minimal,"
+               "RUN_TAG=ctx32k,MAX_MODEL_LEN=32768")
+    for args, why in [
+        (("Qwen3.5:9B", "--tools-only", "--max-model-len", "32768"), "needs --run-tag"),
+        (("Qwen3.5:9B", "--tools-only", "--max-model-len", "16384", "--run-tag", "x"),
+         "must exceed 16384"),
+        (("Qwen3.5:9B", "--tools-only", "--max-model-len", "20000", "--run-tag", "x"),
+         "multiple of 1024"),
+        (("Qwen3.5:9B", "--tools-only", "--max-model-len", "32k", "--run-tag", "x"),
+         "integer"),
+    ]:
+        rc_bad, _ = _dry(*args)
+        r.check(f"--max-model-len {why}", rc_bad != 0)
+    # An inherited MAX_MODEL_LEN never reaches the job without the flag.
+    env = {**os.environ, "MAX_MODEL_LEN": "65536"}
+    p = subprocess.run(["bash", str(WRAPPER), "Qwen3.5:9B", "--tools-only",
+                        "--think-modes", "off", "--dry-run"],
+                       capture_output=True, text=True, env=env)
+    r.check("inherited MAX_MODEL_LEN not exported",
+            "MAX_MODEL_LEN" not in _export(p.stderr) and "context:" not in p.stderr)
+    r.check("wrapper unsets an inherited MAX_MODEL_LEN",
+            "\n    unset MAX_MODEL_LEN\n" in WRAPPER.read_text())
+    text = SBATCH.read_text()
+    r.check("sbatch defaults the window to 16384",
+            'MAX_MODEL_LEN="${MAX_MODEL_LEN:-16384}"' in text)
+    r.check("sbatch serves with $MAX_MODEL_LEN",
+            '--max-model-len "$MAX_MODEL_LEN" \\' in text)
+
+
 def main() -> None:
     r = TestResults("test_submit_wrapper")
     test_defaults_unchanged(r)
@@ -209,6 +244,7 @@ def main() -> None:
     test_rejected_combinations(r)
     test_sbatch_handles_the_new_cond(r)
     test_json_constraint(r)
+    test_max_model_len(r)
     r.report_and_exit()
 
 

@@ -56,6 +56,12 @@
 #   It requires --no-tools, and the no-tools cell is then named
 #   no-tools-jsonbound, so it writes to its own OUT_DIR.
 #
+# --max-model-len N: serve with a context window of N tokens instead of the
+#   16384 of every corpus to date (context room, plan step D1c). N must be a
+#   multiple of 1024 above 16384, and a --run-tag is required, so these cells
+#   never share an OUT_DIR with a 16K cell. Without the flag an inherited
+#   MAX_MODEL_LEN is dropped, so the default window cannot change by accident.
+#
 # --tasks "<list>": run only these tasks in every cell (space- or
 #   comma-separated, one quoted argument). Default (flag omitted): all 5. An
 #   empty list or an unknown task name is an error; repeats are dropped.
@@ -171,6 +177,7 @@ PROMPT_STYLE=""
 PROMPT_STYLE_GIVEN=0
 JSON_CONSTRAINT=""
 JSON_CONSTRAINT_GIVEN=0
+MAX_MODEL_LEN_OVERRIDE=""
 TASKS_OVERRIDE=""
 TASKS_GIVEN=0
 MODELS=()
@@ -205,6 +212,7 @@ while [[ $# -gt 0 ]]; do
         # mistaken for "flag not given".
         --prompt-style) PROMPT_STYLE_GIVEN=1; PROMPT_STYLE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         --json-constraint) JSON_CONSTRAINT_GIVEN=1; JSON_CONSTRAINT="${2-}"; shift; [ $# -gt 0 ] && shift ;;
+        --max-model-len) MAX_MODEL_LEN_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         --tasks) TASKS_GIVEN=1; TASKS_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -357,6 +365,20 @@ case "$JSON_CONSTRAINT" in
         echo "Error: --json-constraint must be 'guided_json' or 'structured_outputs' (got: $JSON_CONSTRAINT)" >&2
         exit 1 ;;
 esac
+if [ -n "$MAX_MODEL_LEN_OVERRIDE" ]; then
+    if ! [[ "$MAX_MODEL_LEN_OVERRIDE" =~ ^[0-9]+$ ]] || [ "$MAX_MODEL_LEN_OVERRIDE" -le 16384 ] \
+       || [ $(( MAX_MODEL_LEN_OVERRIDE % 1024 )) -ne 0 ]; then
+        echo "Error: --max-model-len expects a multiple of 1024 above 16384 (got: $MAX_MODEL_LEN_OVERRIDE)" >&2
+        exit 1
+    fi
+    if [ -z "$RUN_TAG" ]; then
+        echo "Error: --max-model-len requires --run-tag (a larger window must not write into a 16K cell's OUT_DIR)" >&2
+        exit 1
+    fi
+    export MAX_MODEL_LEN="$MAX_MODEL_LEN_OVERRIDE"
+else
+    unset MAX_MODEL_LEN
+fi
 if [ "$JSON_CONSTRAINT" = "structured_outputs" ] && [ "$NO_TOOLS" -ne 1 ]; then
     echo "Error: --json-constraint structured_outputs requires --no-tools (only the no-tools path sends a schema)" >&2
     exit 1
@@ -647,6 +669,9 @@ fi
 if [ -n "$RUN_TAG" ]; then
     EXPORT_LIST="${EXPORT_LIST},RUN_TAG=${RUN_TAG}"
 fi
+if [ -n "$MAX_MODEL_LEN_OVERRIDE" ]; then
+    EXPORT_LIST="${EXPORT_LIST},MAX_MODEL_LEN=${MAX_MODEL_LEN_OVERRIDE}"
+fi
 # --tasks subset (`^`-joined; see the validation block above). --prompt-style
 # needs no export of its own: it travels inside CELLS_LIST as the cond token.
 if [ -n "$TASKS_EXPORT" ]; then
@@ -774,6 +799,9 @@ if [ -n "$RUN_TAG" ]; then
 fi
 if [ -n "$PROMPT_STYLE" ] && [ "$PROMPT_STYLE" != "minimal" ]; then
     echo "  style:       $PROMPT_STYLE (with-tools cells become tools_all_${PROMPT_STYLE}; separate OUT_DIR and resume keys)" >&2
+fi
+if [ -n "$MAX_MODEL_LEN_OVERRIDE" ]; then
+    echo "  context:     --max-model-len $MAX_MODEL_LEN_OVERRIDE (not the 16384 default)" >&2
 fi
 if [ "$JSON_CONSTRAINT" = "structured_outputs" ]; then
     echo "  json:        structured_outputs (no-tools cells become no-tools-jsonbound; separate OUT_DIR)" >&2
