@@ -1,8 +1,9 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-10-10 (the weakness list is fully answered and the work
-now follows `weakness_action_plan.md`; `development/` was cut to the docs that work
-needs, see `MOVES.md`). Earlier refreshes, and the closed-work table this file used to
+*Content last refreshed: 2026-11-01 (C1, C2 in PR #121; B drafts on `main`; the D1
+smokes passed, harness PR #122; D1b built, one decision open). Before that 2026-10-10
+(the weakness list is fully answered and the work now follows `weakness_action_plan.md`;
+`development/` was cut to the docs that work needs, see `MOVES.md`). Earlier refreshes, and the closed-work table this file used to
 carry, are in git history and in `paper_notes_discussions.md`. Renamed from
 `remaining_work_20260811.md` on 2026-08-29.*
 
@@ -14,13 +15,17 @@ carry, are in git history and in `paper_notes_discussions.md`. Renamed from
 
 The paper becomes **two studies**. Study 1 is the main sweep: what the models do without
 tools and how often they call the tool (these numbers held up in the rerun: 11 of 12
-unaided cells and 25 of 30 tool cells within ±5 points). Study 2 is pre-registered on
+unaided cells and 25 of 30 tool cells met the ±5-point equivalence criterion; 27 of 30 by
+point estimate). Study 2 is pre-registered on
 the fixed setup: the delivered rerun (read out 2026-10-09) plus an extension (new model
 families, harder test items, context room, reasoning mode, the small models, a JSON
 control, open-model PlanBench). Then one restructure of the paper. **All of it is in
-`weakness_action_plan.md`, workstreams A to F.** A is done. Next: B (text drafts), C (the
-VAL check and the Study 1 numbers into `NUMBERS.md`), D1 (preparing the extension; every
-cluster step needs Omer's go-ahead), E1 (the outline).
+`weakness_action_plan.md`, workstreams A to F.** A is done. B: drafts on `main`
+(`draft_B1_B2_related_work.md`, `draft_B3_B5_methods.md`), waiting for Omer's read. C1
+and C2: PR #121 (VAL agrees on 1,731 of 1,732 plans; Study 1 block in `NUMBERS.md`). D1a,
+D1c, D1d: smokes passed (`reference/d1_smokes_20261027.md`), harness PR #122. D1b: built
+on local branch `fixtures/d1b-harder-items`, write-up and one decision open. Next: C3 to
+C5, D1e, D1f (the prereg), E1.
 
 ## Where each line stands
 
@@ -28,7 +33,7 @@ cluster step needs Omer's go-ahead), E1 (the outline).
 |---|---|
 | Main sweep, Study 1 (`sweep5v2-live`, `sweep6-live`) | data final. Unaided and tool-verified numbers reproduced by the rerun; its open-model delivered ranges are retired (biased low by the harness) |
 | Delivered rerun, Study 2 part 1 | **complete, read out 2026-10-09** by the frozen code (`reference/delivered_rerun_readout.md`). A separate-apparatus replication: parity failed at job level (Gemma 10/10, Qwen 15/20). R1 no delivered harm · R2 unresolved · R3 the title changes · R4 met · R5 the directive suppresses calling. Figures in `NUMBERS.md` |
-| Extension, Study 2 part 2 | planned (plan §4 D); not started |
+| Extension, Study 2 part 2 | preparation (D1) under way: four new families pass the parser smoke (official Gemma 4 BF16, gpt-oss-20b, Ministral 3 14B, Llama 3.1 8B); 32K and 64K windows work and cut empty final answers steeply; the JSON constraint now binds (opt-in). Harness PR #122. Not yet: D1e (PlanBench tools), D1f (prereg) |
 | PlanBench | in the tex (PR #114: equivalence test declared, corrected extractor beside the shipped numbers); open-model tools arm planned (D2) |
 | Steering control (nt-ster H4) | closed 2026-08-29, all six units PASS; in the tex appendix |
 | Frontier tier and budget probe | closed; in the tex |
@@ -111,5 +116,14 @@ ISS-013.
 
 ### Open decisions
 
-None blocking. The title is chosen in plan step E6, from the candidates in
+- **D1b and the frozen files.** The harder items need two invalid domains per folder to
+  balance validate_domain; the builder edited `run_experiment.py`, `pddl_eval/domains.py`
+  and `pddl_eval/runner.py`, which are in the frozen rerun package hash. Alternative with
+  no harness change: a second small tree for validate_domain, one problem per domain.
+- **Llama weights:** unsloth's ungated copy (in use) or Meta's gated repo.
+- **GPT-OSS effort level** for its wave-1 cells (it cannot switch reasoning off).
+- **The 35B calling rate did not replicate** in three cells (solve plain 68.0 → 82.7);
+  the tex's "68%" and the size inversion rest on it (`NUMBERS.md` T8a, PR #121).
+
+None of these blocks the next steps. The title is chosen in plan step E6, from the candidates in
 `reference/weakness_consolidated.md` Q6, once the results are in.
