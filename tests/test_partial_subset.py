@@ -135,6 +135,24 @@ def test_domain_without_negatives_field_survives(r: TestResults) -> None:
     r.check("no negatives synthesised", "negatives" not in out["gamma"])
 
 
+def test_extra_invalid_domains_capped(r: TestResults) -> None:
+    """D1b trees carry `extra_domains` (domain_neg02, ...). K caps the
+    invalid domains in all: domain_neg plus the first K-1 extras. A dict
+    without the key (the canonical `domains/` shape) gets no key back."""
+    domains = _synthetic_domains()
+    domains["alpha"]["negatives"]["extra_domains"] = [
+        f"(alpha-domain-neg{i:02d})" for i in range(2, 6)]
+    out = _apply_partial_subset(domains, 2)
+    r.check_eq("alpha keeps domain_neg + 1 extra",
+               out["alpha"]["negatives"]["extra_domains"], ["(alpha-domain-neg02)"])
+    r.check_eq("alpha still has domain_neg", out["alpha"]["negatives"]["domain"],
+               "(alpha-domain-neg)")
+    r.check("beta (no extras) gets no extra_domains key",
+            "extra_domains" not in out["beta"]["negatives"])
+    out1 = _apply_partial_subset(domains, 1)
+    r.check_eq("K=1 keeps no extra", out1["alpha"]["negatives"]["extra_domains"], [])
+
+
 if __name__ == "__main__":
     r = TestResults("test_partial_subset")
     test_k_zero_returns_input_unchanged(r)
@@ -145,4 +163,5 @@ if __name__ == "__main__":
     test_k_larger_than_available_keeps_all(r)
     test_returned_dict_does_not_share_mutable_substructures(r)
     test_domain_without_negatives_field_survives(r)
+    test_extra_invalid_domains_capped(r)
     r.report_and_exit()
