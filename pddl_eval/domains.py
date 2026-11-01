@@ -63,6 +63,23 @@ def load_domains(domains_dir: Path) -> dict:
 
             neg_domain_file = ddir / "domain_neg.pddl"
             neg_domain = neg_domain_file.read_text() if neg_domain_file.exists() else None
+            # Further invalid domains `domain_neg02.pddl`, `domain_neg03.pddl`,
+            # ... (the D1b harder items in `domains-hard/`, which balance
+            # validate_domain). The canonical `domains/` tree has none, so
+            # nothing below changes for it: the key is only set when such
+            # files exist.
+            extra_neg_files = sorted(ddir.glob("domain_neg[0-9]*.pddl"))
+            expected_names = [f"domain_neg{i:02d}.pddl"
+                              for i in range(2, 2 + len(extra_neg_files))]
+            if extra_neg_files and (
+                neg_domain is None
+                or [f.name for f in extra_neg_files] != expected_names
+            ):
+                raise SystemExit(
+                    f"{ddir}: extra invalid domains must be domain_neg02.pddl, "
+                    f"domain_neg03.pddl, ... next to domain_neg.pddl; found "
+                    f"{[f.name for f in extra_neg_files]}"
+                )
 
             neg_problem_files = sorted(ddir.glob("n[0-9]*.pddl"))
             neg_problems = [f.read_text() for f in neg_problem_files]
@@ -81,15 +98,18 @@ def load_domains(domains_dir: Path) -> dict:
                         "invalid": invalid_plans,
                     }
 
+            negatives = {
+                "domain": neg_domain,
+                "problems": neg_problems,
+                "plans_per_problem": plans_per_problem,
+            }
+            if extra_neg_files:
+                negatives["extra_domains"] = [f.read_text() for f in extra_neg_files]
             domains[ddir.name] = {
                 "type": dtype,
                 "domain": domain_file.read_text(),
                 "problems": problems,
-                "negatives": {
-                    "domain": neg_domain,
-                    "problems": neg_problems,
-                    "plans_per_problem": plans_per_problem,
-                },
+                "negatives": negatives,
             }
     return domains
 
@@ -250,6 +270,7 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
         positive_problems = dinfo["problems"]
         any_neg = (
             negs.get("domain") is not None
+            or bool(negs.get("extra_domains"))
             or bool(negs.get("problems"))
             or any(
                 bool(v.get("invalid"))
@@ -274,6 +295,20 @@ async def generate_ground_truth(mcp: MCPPlanner, domains: dict) -> dict:
                     "domain_valid": False,
                 }
                 print(f"    {dname}/domain_neg.pddl: negative ✓ (domain_valid=False)")
+
+            extra_list: list[dict] = []
+            for i, dom_text in enumerate(negs.get("extra_domains") or []):
+                fname = f"domain_neg{i + 2:02d}.pddl"
+                raw, verdict = await _validate_capture(mcp, {"domain": dom_text})
+                if verdict is not False:
+                    raise SystemExit(
+                        f"Negative fixture {dname}/{fname} validated as "
+                        f"valid={verdict!r} (expected False). Raw: {raw}"
+                    )
+                extra_list.append({"domain_pddl": dom_text, "domain_valid": False})
+                print(f"    {dname}/{fname}: negative ✓ (domain_valid=False)")
+            if extra_list:
+                neg_slot["extra_domains"] = extra_list
 
             neg_problems_list: list[dict] = []
             for i, prob_text in enumerate(negs.get("problems") or []):

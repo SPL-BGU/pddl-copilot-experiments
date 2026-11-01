@@ -181,6 +181,44 @@ def test_loader_shape_flat_layout(r: TestResults):
     plans = negs["plans_per_problem"]
     r.check_eq("p01 has 5 valid plans", len(plans["p01"]["valid"]), 5)
     r.check_eq("p01 has 5 invalid plans", len(plans["p01"]["invalid"]), 5)
+    r.check("canonical tree has no extra invalid domains",
+            all("extra_domains" not in d["negatives"] for d in domains.values()))
+
+
+def test_loader_hard_tree(r: TestResults):
+    """D1b `domains-hard/`: same layout, balanced valid/invalid per task, and
+    every file listed in the manifest with the sha256 it has on disk."""
+    import hashlib
+    import json
+    from pddl_eval.domains import load_domains
+    root = Path(__file__).resolve().parent.parent / "domains-hard"
+    if not root.is_dir():
+        r.check("domains-hard/ present", False, "missing")
+        return
+    domains = load_domains(root)
+    r.check_eq("hard tree has 20 domains", len(domains), 20)
+    for name, d in domains.items():
+        negs = d["negatives"]
+        n_prob = len(d["problems"])
+        n_bad_dom = (negs["domain"] is not None) + len(negs.get("extra_domains") or [])
+        r.check_eq(f"{name}: invalid domains == valid problems", n_bad_dom, n_prob)
+        r.check_eq(f"{name}: invalid problems == valid problems", len(negs["problems"]), n_prob)
+        for p, pp in negs["plans_per_problem"].items():
+            r.check_eq(f"{name}/{p}: invalid plans == valid plans",
+                       len(pp["invalid"]), len(pp["valid"]))
+            r.check_eq(f"{name}/{p}: valid plans distinct",
+                       len(set(pp["valid"])), len(pp["valid"]))
+    manifest = json.loads((root / "manifest.json").read_text())
+    on_disk = sorted(str(p.relative_to(root)) for p in root.rglob("*")
+                     if p.is_file() and p.parent != root)
+    r.check_eq("manifest lists every fixture file",
+               sorted(it["path"] for it in manifest["items"]), on_disk)
+    bad = [it["path"] for it in manifest["items"]
+           if hashlib.sha256((root / it["path"]).read_bytes()).hexdigest() != it["sha256"]]
+    r.check_eq("every file matches its manifest sha256", bad, [])
+    want = (root / "manifest.sha256").read_text().split()[0]
+    r.check_eq("manifest.sha256 matches manifest.json",
+               hashlib.sha256((root / "manifest.json").read_bytes()).hexdigest(), want)
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +241,7 @@ def main():
     test_domain_drop_predicates_block(r)
     test_strip_balanced_block_no_match(r)
     test_loader_shape_flat_layout(r)
+    test_loader_hard_tree(r)
     r.report_and_exit()
 
 

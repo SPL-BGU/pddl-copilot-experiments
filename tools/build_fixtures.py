@@ -320,10 +320,17 @@ async def cmd_seed_problems(
 # ---------------------------------------------------------------------------
 
 
-# Fast Downward / classic_planner search-strategy hints. The plugin's
-# `classic_planner` accepts an optional `search` argument (verified
-# against the plugin's MCP tool schema in CHANGELOG 2026-04-20). When the
-# argument is unsupported, we fall back to the default invocation.
+# Fast Downward / classic_planner search strategies. The plugin's
+# `classic_planner` takes them as its `strategy` argument (Literal of these
+# three names, pddl-solver `solver_server.py`, since 2026-03-27).
+#
+# Bug fixed 2026-10-27 (action plan D1b): this generator used to send the
+# strategy as `"search"`, a name the tool does not have. The server drops
+# unknown arguments silently, so every "strategy" call returned the default
+# lazy_greedy_cea plan and 49 of the 50 classical problems in `domains/` got
+# five copies of one valid plan (numeric problems get copies by design). The
+# fix applies to new builds only; the committed `domains/` fixtures were not
+# regenerated.
 CLASSICAL_STRATEGIES: tuple[str, ...] = (
     "lazy_greedy_cea",
     "astar_lmcut",
@@ -382,7 +389,7 @@ async def cmd_gen_valid_plans(
                         {
                             "domain": domain_pddl,
                             "problem": problem_pddl,
-                            "search": strat,
+                            "strategy": strat,
                         },
                     )
                     data = _safe_json_loads(raw)

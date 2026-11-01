@@ -6,6 +6,38 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-10-27 — Harder test items (D1b): a second fixture tree, the loader reads more than one invalid domain, the plan-strategy bug fixed
+
+**Motivation.** Action plan D1b: harder items beside the current ones, balanced valid
+against invalid on every validate task. Nothing in `domains/` changed and no existing
+corpus was touched. Details, counts and checks: `development/reference/d1b_harder_items.md`.
+
+**1. New tree `domains-hard/`, built by `tools/build_hard_fixtures.py`** (helpers
+`tools/_hard_items.py`, `tools/_enhsp_variants.py`; tests `tests/test_hard_items.py`).
+Same layout as `domains/`, so `run_experiment.py --domains-dir domains-hard` loads it;
+`domains-hard/manifest.json` lists every file with its sha256.
+
+**2. A domain folder may hold more than one invalid domain (`pddl_eval/domains.py`,
+`pddl_eval/runner.py`, `run_experiment.py`).** Files `domain_neg02.pddl`,
+`domain_neg03.pddl`, ... next to `domain_neg.pddl` are loaded into
+`negatives["extra_domains"]`, checked at startup like `domain_neg.pddl` (abort if the
+validator does not reject one), and each gets its own validate_domain job with the file
+stem as problem name (`domain_neg02`, ...). `--partial K` keeps `domain_neg` plus the
+first K-1 extras. The key is set only when such files exist, and `domains/` has none:
+the loaded data and the full job grid on `domains/` (9,120 jobs, and the `--partial 2`
+grid) were checked identical to the previous code. **Analysis code that labels
+validate_domain rows must treat every `domain_neg*` name as invalid.** The pinned
+`tools/e2e_regrade.py` (`truth_for`) and the analyzer's `build_deck.py` test
+`== "domain_neg"` and would call `domain_neg02` valid; they were not edited, since they
+only ever read `domains/` corpora.
+
+**3. `tools/build_fixtures.py` sent the Fast Downward strategy as `"search"`; the tool's
+argument is `strategy`.** The server drops unknown arguments silently, so every
+strategy call returned the default plan. That is why 49 of the 50 classical problems in
+`domains/` have five copies of one valid plan (the 50 numeric problems got copies by
+design, since `numeric_planner` has no strategy option). Fixed for new builds only; no
+fixture was regenerated.
+
 ## 2026-10-02 — Four harness fixes ahead of a full-storage rerun of the with-tools arms
 
 **Motivation.** The transcript re-analysis (`development/reanalysis_transcripts.md`,
