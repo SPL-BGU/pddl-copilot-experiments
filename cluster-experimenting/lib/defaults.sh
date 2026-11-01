@@ -36,12 +36,15 @@ PDDL_DEFAULT_SBATCH_CONDITIONS="tools_all_minimal"
 # lookup table is the single source of truth for canonical-tag →
 # (HF id, parser flags) used by both run_condition_vllm_rtx.sbatch and
 # submit_with_rtx.sh.
-PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B gemma4:26b-a4b)
+PDDL_VLLM_VERIFIED_MODELS=(qwen3.6:35b Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B gemma4:26b-a4b
+                           gemma4:26b-a4b-bf16 gpt-oss:20b ministral3:14b llama3.1:8b)
 
 # Extension candidates (plan step D1a): resolvable by vllm_lookup so they can
 # be smoke-tested, but not yet parser-verified. Move a model to
 # PDDL_VLLM_VERIFIED_MODELS only after its smoke shows extracted tool calls.
-PDDL_VLLM_CANDIDATE_MODELS=(gemma4:26b-a4b-bf16 gpt-oss:20b ministral3:14b llama3.1:8b)
+# Empty since 2026-11-01: the four D1a models passed
+# (development/reference/d1_smokes_20261027.md).
+PDDL_VLLM_CANDIDATE_MODELS=()
 
 # Resolve canonical model tag → (HF id, parser flags) for vLLM serve.
 # Exports HF_MODEL, TOOL_CALL_PARSER, REASONING_PARSER on success, plus
@@ -118,11 +121,10 @@ vllm_lookup() {
             REASONING_PARSER="none"
             MAX_NUM_BATCHED_TOKENS="4096"
             ;;
-        # --- Extension candidates (plan step D1a, 2026-10-27) ---------------
-        # Smoke-only until `submit_with_rtx.sh --smoke <model>` shows tool
-        # calls being extracted; only then do they join
-        # PDDL_VLLM_VERIFIED_MODELS. Parser names checked against the vLLM
-        # v0.20.2 registries (vllm/tool_parsers, vllm/reasoning).
+        # --- Extension models (plan step D1a, 2026-10-27) -------------------
+        # Parser names checked against the vLLM v0.20.2 registries
+        # (vllm/tool_parsers, vllm/reasoning); tool-call extraction verified
+        # by the D1a smokes (development/reference/d1_smokes_20261027.md).
         gemma4:26b-a4b-bf16)
             # Google's official BF16 weights of the same model as
             # gemma4:26b-a4b, with identical parser flags, so the only
