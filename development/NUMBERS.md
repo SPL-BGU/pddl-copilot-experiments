@@ -17,7 +17,7 @@ was made on the old paper branch. That branch was merged into `main` by PR #101
 (2026-09-18, merge commit, not squashed) and deleted, so every such hash is reachable on
 `main`. Docs cited by bare name moved on 2026-09-18; `MOVES.md` "Third wave" resolves them.
 
-*Last refreshed: 2026-10-27 (VAL cross-check block, plan step C1; Study 1 block: main-sweep calling, tool-verified, unaided and contamination figures, the clustered tests and the mixed-model refit, and the replication table; plan step C2). Before that: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-11-08 (frontier contamination block, Sonnet 4.6 by the T7 method; T7 marked as in the tex). Before that: 2026-10-27 (VAL cross-check block, plan step C1; Study 1 block: main-sweep calling, tool-verified, unaided and contamination figures, the clustered tests and the mixed-model refit, and the replication table; plan step C2). Before that: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -71,6 +71,27 @@ The retracted 13.5 / 0.0 pair is the single most dangerous stale number in the t
 it was published in earlier drafts before the overlay bug was found. Anything quoting
 a frontier solve or simulate figure below ~90 / outside those bands is pre-retraction.
 
+## Frontier contamination — Claude Sonnet 4.6, unaided (added 2026-11-08; in tex since the contamination-wording PR)
+
+Provenance: `tools/reanalysis/05_frontier_contamination.py`, output
+`tools/reanalysis/out/05_frontier_contamination.md`, over `results/sonnet-frontier/sweep5v2`
+(canonical) and `results/sonnet-frontier/sweep6` (anonymized): no-tools `success`, which is
+the delivered score on every task except simulate; 4,560 trials each side, every key shared.
+Method = T7 in the Study 1 block (`04_equivalence.py` `tost`, unchanged): paired on the exact
+trial key, a 90% cluster-robust interval with the wider of domain (k=20) and problem
+clustering governing, criterion met when the interval lies inside ±5. Post hoc: the tex's
+earlier test was whether two separate Wilson intervals overlap. simulate is left out because
+its stored `success` is the retired strict grade (the 45.0 / 38.3 row above).
+
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| solve, Δ anonymized − canonical | **−0.33 pp, 90% [−10.59, +9.93]** (domain-governed), 28.7 vs 28.3 → **criterion not met (unresolved)** | **[−6.0, +5.3]** (an unclustered paired 95% interval from the 2026-11-08 discussion; it ignores the domain clustering); "equivalent"; "no memorization on solve" |
+| validate_domain · validate_problem · validate_plan | **−1.94 [−4.67, +0.78]** met (ceiling, 93.6%) · **+0.83 [−1.33, +3.00]** met · **+0.03 [−1.17, +1.24]** met (ceiling, 97.3%) | validate_plan at 97.3% as "high-headroom" (it is a ceiling under the T7 rule) |
+| pooled | four exact tasks **−0.05 [−0.99, +0.89]**, met (ceiling: 91.1%, and 3,000 of the 4,260 trials are validate_plan) | the tex's former "pooled \|Δ\| = 0.5" (it pooled the retired simulate grade: −0.48 over five tasks) |
+| single solve answers that change under renaming | **75 of 300 (25.0%)**: 38 right→wrong, 37 wrong→right; **39 of 100** problems change their number of solved wordings | "39% of answers flip" (39 counts problems, not answers) |
+| baselines for that 25% (in no tex yet) | identical prompt sent again: **1.1%** of answer pairs differ (validate_plan valid plans, 34/2,988; validate_domain 0/600), canonical; 2.9% and 2.7% anonymized. Wording changed, same names (solve): **8.0%** canonical (24/300), 14.7% anonymized | the validation-task rate as the solve noise floor (an easier task; no exact solve repeats exist) |
+| solve per domain (15 trials a side) | down: blocksworld **11→3**, miconic 15→8, sailing 7→0; up: tpp **0→6**, farmland 3→8, satellite 3→8, gardening 6→11. **No domain survives Holm over the 20** (smallest adjusted p 0.156; exact McNemar, which ignores clustering) | any single domain as a memorization finding: with one renaming per domain, memorization cannot be told apart from a harder renaming |
+
 ## Job 2 — the delivered surface (batches 1+2, 2026-09-07/08)
 
 Provenance: `reference/job2_delivered_reframe_worknote.md` §2 (verdict table, derived from
@@ -105,7 +126,7 @@ Provenance: `results/derived/e2e_overlay/pooled_e2e_table.csv` (corpus `iss024d-
 
 **Warning (2026-10-02).** `pddl_eval/scoring.py` on `harness/delivered-rerun` (PR #113) strips a leaked Gemma channel prefix before extraction. The pinned `tools/e2e_regrade.py` imports those functions, so re-running it on the canonical Gemma tool cells now gives different delivered solve numbers from the frozen rows in this file. The frozen rows stay; any regenerated Gemma figure is a new reading and needs its own row.
 
-## Study 1 — main sweep figures (added 2026-10-27; in no tex yet)
+## Study 1 — main sweep figures (added 2026-10-27; T7 in tex since the contamination-wording PR of 2026-11-08, the rest in no tex yet)
 
 Plan step C2 (`weakness_action_plan.md` §4 C; settles C9 and C13). Study 1 is the main
 sweep: canonical corpus `results/sweep5v2-live`, with the anonymized twin
