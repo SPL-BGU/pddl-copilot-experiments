@@ -17,7 +17,7 @@ was made on the old paper branch. That branch was merged into `main` by PR #101
 (2026-09-18, merge commit, not squashed) and deleted, so every such hash is reachable on
 `main`. Docs cited by bare name moved on 2026-09-18; `MOVES.md` "Third wave" resolves them.
 
-*Last refreshed: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-10-27 (VAL cross-check block, plan step C1; Study 1 block: main-sweep calling, tool-verified, unaided and contamination figures, the clustered tests and the mixed-model refit, and the replication table; plan step C2). Before that: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -104,6 +104,317 @@ Provenance: `results/derived/e2e_overlay/pooled_e2e_table.csv` (corpus `iss024d-
 | rerun simulate mechanism layer, plain arm | **63.0 / 82.7 / 44.0 / 92.3%** (4B / 9B / Gemma / 35B; 189, 248, 132, 277 of 300) | the 3-model list "63, 83, 92%" |
 
 **Warning (2026-10-02).** `pddl_eval/scoring.py` on `harness/delivered-rerun` (PR #113) strips a leaked Gemma channel prefix before extraction. The pinned `tools/e2e_regrade.py` imports those functions, so re-running it on the canonical Gemma tool cells now gives different delivered solve numbers from the frozen rows in this file. The frozen rows stay; any regenerated Gemma figure is a new reading and needs its own row.
+
+## Study 1 — main sweep figures (added 2026-10-27; in no tex yet)
+
+Plan step C2 (`weakness_action_plan.md` §4 C; settles C9 and C13). Study 1 is the main
+sweep: canonical corpus `results/sweep5v2-live`, with the anonymized twin
+`results/sweep6-live` for the contamination rows only. Headline models Qwen3.5-9B,
+Gemma-26B (`gemma4_26b-a4b`) and Qwen3.6-35B, thinking off unless a row says otherwise.
+Arms: **unaided** = the no-tools cell, wordings v11–13; **plain** = the tools cell, v11–13;
+**steered** = the tools cell, v14–16. Trials per arm: solve 300, validate_domain 360 (300
+valid + 60 invalid), validate_problem 600, validate_plan 3,000, simulate 300, over 20
+domains. The six headline cells have 0 torn lines and 0 infrastructure-failure rows. The
+canonical Qwen3.5-9B tool cells were served by vLLM 0.22.0 ("Serving environment" below).
+
+**Provenance (all re-run 2026-10-27).**
+
+- `tools/reanalysis/01`–`04` (the Reproduce section of `reference/reanalysis_statistics.md`):
+  15/15 reproduction checks match, and every output is identical to the committed
+  `tools/reanalysis/out/` (the two CSVs differ only in line endings). T1, T5, T6 and T7
+  below come from these scripts.
+- Calling, correct given a call (T2, T3) and validate_domain balanced accuracy (T4):
+  `tools/reanalysis/s1_calling.py` (writes `out/s1_calling_sweep5v2-live.csv`) and
+  `s1_extra.py`; the tables are rendered by `s1_gen_md.py`. What they compute: rows =
+  `common.load_cell("sweep5v2-live", model, think, True)` filtered on the task and on
+  `variant in NEUT` (plain) or `in STER` (steered). Calling = mean of `called`, which is
+  the harness `tool_selected` (the task's own tool was called: a planner for solve, the
+  validator of the same name for validate_*, `get_state_transition` for simulate).
+  Interval = `common.cluster_boot(values, domains)`. Correct given a call = the same over
+  the called rows, on `mech`. Balanced accuracy = mean of the two class accuracies (valid =
+  problems `p01`–`p05`, invalid = `domain_neg`), interval from resampling the 20 domains
+  with `numpy.random.default_rng(20261002)`, 10,000 draws. These calling rates reproduce
+  all 7 rows of the tex `tab:decomp` and the counts of the Abstract block.
+- Replication (T8) through the frozen rerun package itself, read-only:
+  `tools.delivered_rerun.run.load_all(constants.REGISTERED, results/delivered-rerun,
+  results/sweep5v2-live)`, then `analysis.parity` and `analysis.part_c_parity` (package
+  hash `822aace…` as frozen; the grading step was not run). All 30 + 12 rows equal the
+  readout (`tools/reanalysis/s1_parity_rederive.py <out.json>`). The calling column of
+  T8a (`s1_calling_rerun_vs_main.py <out.json>`) is descriptive, not a registered test: same loader,
+  paired `tool_selected` differences, `stats.cluster_bootstrap(..., 0.90, 20)`.
+
+**Rules for this block.**
+
+- **Surface = mechanism layer only.** Tool arms: `success` = tool-verified (the tool was
+  called and its result matched the oracle). Unaided arm: `success` = the harness's
+  online grade of the model's own full answer. Both are exact on every row. Study 1's
+  delivered surface (the overlay's `e2e_strict` bounds, `reanalysis_statistics.md`
+  Table 3) is retired for the open models and is not carried here.
+- **Never pooled with Study 2**, and no rerun figure stands in for a cell of this block.
+  T8 only sets the two side by side.
+- **At-cap and grading.** An unaided answer cut by the output budget counts as a failure
+  (`truncated_no_answer`), so the unaided simulate 0.0 cells always carry the qualifier of
+  the Job 2 row ("0/3,000 format-exact on the shared-budget corpus"). The unaided grade
+  here is the harness online grade, not the Study 2 delivered grader: on the same rerun
+  rows, unaided solve is 9.7–10.7% online (T8b) and 21.3–25.3% delivered (readout E2).
+  Never set a T1 unaided figure against a Study 2 delivered figure.
+- **Intervals.** Single rates: domain-cluster percentile bootstrap, 95% (k = 20, 10,000
+  resamples, seed 20261002; `02_rates.csv` `boot_domain_*`). Where a rate is exactly 0 or
+  100% the bootstrap has zero width and the Wilson 95% interval is shown instead, marked
+  †. Paired contrasts: the wider of the domain (k = 20) and problem cluster-robust t 95%
+  intervals; domain governs unless marked "(problem)". The paper's Wilson × √2.7
+  intervals ignore the domain clustering and are two to five times too narrow on
+  validate_plan single rates (reanalysis item 1).
+- Never take a figure from `summary_*.json` (n = 0 stub rows for the condition that did
+  not run).
+
+| figure | **quote this** | source | do NOT quote |
+|---|---|---|---|
+| Gemma validate_plan calling, plain → steered | **20.7% (622/3,000) → 93.6% (2,808/3,000)**, 95% [9.0, 34.1] → [84.0, 100.0]; correct given a call 99.2% / 98.9%; 0 successes without a call | T2; same counts as the Abstract block row 2 | the Wilson interval [19.3, 22.2] as its uncertainty (ignores the domains) |
+| Gemma validate_plan availability, tool-verified | **−67.3 pp** [−79.7, −54.8] (87.8 unaided → 20.6 tool-verified), Holm p 1.5e−08 at m = 30. **Tool-verified only** | T5; reanalysis Table 2 | "−67 pp" as a delivered harm or a headline (Study 2 R1: delivered +0.9 [−1.2, 2.9]) |
+| Gemma validate_plan steering, tool-verified | **+72.0 pp** [57.5, 86.5] | T5; equals the nt-ster block's "+72.0pp with tools" | — |
+| paired verdicts, headline, think=off | **19 of 30** contrasts significant (18 favorable, plus the Gemma validate_plan harm); **all 19 survive Holm at m = 30**, two only just (9B validate_plan availability p_adj 0.046; Gemma validate_domain availability 0.050). At m = 60 those two and 35B validate_plan steering (0.063) drop; the other 16 survive every family up to m = 200. The m = 60 family counted the delivered surface, now retired, so the family size the paper uses is still to be decided | T5; reanalysis items 2 and 4, Table 5 | the "stricter than Bonferroni" argument for the √2.7 rule; 9B validate_plan steering (+2.9 [−0.6, +6.3]) as favorable; 35B validate_plan availability (−8.7 [−19.0, +1.5]) as significant |
+| mixed model, Gemma validate_plan steered vs plain | **log-odds +7.80, SE 0.29, 95% [7.23, 8.37]** (maximum likelihood, random intercept per instance; profile [7.25, 8.40]); with domain clustering the evidence is z ≈ 6 (GEE +3.87 [2.63, 5.12], population-averaged) | T6; reanalysis Table 4 | "+7.5, SD 0.10" (variational fit; the SD is about 3× too small); "the GEE agrees" as one quantity; z = 78 |
+| correct given a call, headline, think=off | 95.2% or higher in every cell except 9B simulate **81.2 / 83.3**, 9B validate_problem steered **90.2**, Gemma simulate **92.0 / 90.7** and 35B solve plain **92.6** | T2 | the tex appendix "≥92% throughout, except on 9B simulate" (misses 9B validate_problem steered and Gemma simulate steered); the tex "≥93% for both" on solve and validate_plan (35B solve plain is 92.6) |
+| calling under thinking on | validate_plan plain: Gemma **20.7% → 0.6%** (19/3,000), 9B 97.9 → **69.2%** (2,075/3,000), 35B 82.9 → **99.9%** (2,998/3,000) | T3 | — (Study 2 D3 measures this again on the fixed setup) |
+| validate_domain balanced accuracy | unaided **53.3 / 74.0 / 64.7** (9B / Gemma / 35B; frozen in the Job 2 block) → tool-verified steered **100.0 / 95.0 / 99.2** (plain 100.0 / 92.5 / 98.0) | T4 | these tool-verified values as delivered |
+| contamination, pooled, think=off | **criterion met at ±5 for all five models**; widest Qwen3.5-4B −2.02 [−4.33, +0.29] (90%) | T7 | "equivalent"; the tex `tab:contam` 4B "−2.1" (difference of the rounded rates; the paired Δ is −2.02) |
+| contamination, per task, headline | criterion met in 10 of 15 cells, 6 of them on a floor or ceiling (little information); **not met (unresolved) in 5**: validate_domain for all three, validate_problem for 9B and Gemma. Mean \|Δ\| 1.2 (max 3.7) over these 15; 1.1 over all 25 | T7 | "zero CI-disjoint cells" as a per-task null |
+| contamination, thinking on, pooled | **not met (unresolved)** for Qwen3.5-4B, 9B, 35B; met on a floor for 0.8B and Gemma | T7 | — |
+| replication, tool cells | **25 of 30 met the ±5 criterion** (Gemma 10/10, Qwen 15/20); not met: 9B simulate ×2, 35B solve ×2, 35B simulate plain. By point estimate, 27 of 30 are within ±5 | T8a; frozen in the "Delivered rerun — readout" parity row | "25 of 30 within 5 points" (25 is the equivalence criterion, the point-estimate count is 27); "the rerun reproduces the canonical cells" |
+| replication, unaided cells | **11 of 12 met**; 35B validate_domain +8.6 [2.8, 14.7] unresolved | T8b; frozen Part C row | — |
+| calling, rerun vs main sweep (descriptive) | within 1 point in 27 of 30 cells; **moved only in the three cells that failed the tool-verified criterion**: 35B solve plain 68.0 → 82.7 (+14.7 [10.7, 19.3]), steered 93.7 → 99.7 (+6.0), 35B simulate plain 76.3 → 99.7 (+23.3 [16.7, 30.7]). Cause not established in this pass (in the main sweep the 35B traced 66 simulate plans by hand without a call; in the rerun the same trials called the tool) | T8a | the 35B "calls the planner on only 68%", or the 9B-vs-35B "size inversion" on solve, without this caveat |
+| serving version, paired (reanalysis Table 7) | 0.20.2 − 0.22.0, Qwen3.5-0.8B with tools: **+0.43 [−0.27, +1.13]** (paired, 90%), criterion met; 8 of 10 task × arm cells meet it (10 of 10 against the second 0.22.0 run; the same version run twice: 7 of 10) | `tools/reanalysis/out/04_equivalence.md` (b) | as a replacement for the frozen unpaired row in "Serving environment" (that row stays) |
+
+### Study 1 per-cell tables (generated by the scripts above, not transcribed)
+
+Rates in percent; counts in parentheses. † = Wilson 95% (rate exactly 0 or 100%). Every
+other single-rate interval is the domain bootstrap 95%.
+
+#### T1. Unaided and tool-verified success (think=off)
+
+`success` per arm; the same rates as `02_rates.csv` (mechanism surface).
+
+| model | task | n per arm | unaided | tool-verified, plain | tool-verified, steered |
+|---|---|---|---|---|---|
+| Qwen3.5-9B | solve | 300 | 10.7 [6.3, 15.0] (32) | 99.3 [98.0, 100.0] (298) | 100.0 [98.7, 100.0]† (300) |
+| Qwen3.5-9B | validate_domain | 360 | 25.6 [17.5, 36.4] (92) | 100.0 [98.9, 100.0]† (360) | 100.0 [98.9, 100.0]† (360) |
+| Qwen3.5-9B | validate_problem | 600 | 65.7 [59.2, 71.5] (394) | 95.2 [93.2, 97.2] (571) | 90.2 [83.3, 95.5] (541) |
+| Qwen3.5-9B | validate_plan | 3,000 | 79.7 [73.7, 85.5] (2392) | 93.2 [88.2, 97.4] (2795) | 96.0 [91.9, 99.1] (2881) |
+| Qwen3.5-9B | simulate | 300 | 0.0 [0.0, 1.3]† (0) | 65.0 [56.3, 72.7] (195) | 83.0 [73.0, 91.7] (249) |
+| Gemma-26B | solve | 300 | 7.7 [4.0, 12.0] (23) | 99.3 [98.3, 100.0] (298) | 98.7 [96.3, 100.0] (296) |
+| Gemma-26B | validate_domain | 360 | 77.8 [65.6, 88.6] (280) | 97.5 [95.0, 99.4] (351) | 98.3 [96.1, 100.0] (354) |
+| Gemma-26B | validate_problem | 600 | 74.8 [68.8, 80.7] (449) | 99.7 [99.2, 100.0] (598) | 100.0 [99.4, 100.0]† (600) |
+| Gemma-26B | validate_plan | 3,000 | 87.8 [83.7, 91.4] (2635) | 20.6 [8.9, 33.9] (617) | 92.6 [83.2, 98.7] (2777) |
+| Gemma-26B | simulate | 300 | 0.0 [0.0, 1.3]† (0) | 91.7 [86.0, 96.7] (275) | 90.7 [83.0, 97.3] (272) |
+| Qwen3.6-35B | solve | 300 | 9.3 [6.3, 12.3] (28) | 63.0 [54.3, 71.7] (189) | 92.0 [87.0, 96.7] (276) |
+| Qwen3.6-35B | validate_domain | 360 | 67.8 [56.4, 78.3] (244) | 98.9 [97.2, 100.0] (356) | 99.7 [99.2, 100.0] (359) |
+| Qwen3.6-35B | validate_problem | 600 | 75.7 [71.2, 79.8] (454) | 96.8 [95.2, 98.2] (581) | 97.3 [95.5, 99.0] (584) |
+| Qwen3.6-35B | validate_plan | 3,000 | 90.9 [87.7, 93.9] (2727) | 82.2 [72.6, 90.6] (2465) | 99.3 [98.7, 99.8] (2978) |
+| Qwen3.6-35B | simulate | 300 | 0.0 [0.0, 1.3]† (0) | 74.7 [65.3, 83.0] (224) | 97.0 [93.3, 99.7] (291) |
+
+#### T2. Calling, and correct given a call (think=off)
+
+Calling = `tool_selected`. Correct given a call = tool-verified success among the trials that called. On this layer a trial without a call fails by construction: 0 successes without a call in all 30 cells.
+
+| model | task | calling, plain | calling, steered | correct given a call, plain | correct given a call, steered |
+|---|---|---|---|---|---|
+| Qwen3.5-9B | solve | 100.0 [98.7, 100.0]† (300/300) | 100.0 [98.7, 100.0]† (300/300) | 99.3 [98.0, 100.0] (298/300) | 100.0 [98.7, 100.0]† (300/300) |
+| Qwen3.5-9B | validate_domain | 100.0 [98.9, 100.0]† (360/360) | 100.0 [98.9, 100.0]† (360/360) | 100.0 [98.9, 100.0]† (360/360) | 100.0 [98.9, 100.0]† (360/360) |
+| Qwen3.5-9B | validate_problem | 100.0 [99.4, 100.0]† (600/600) | 100.0 [99.4, 100.0]† (600/600) | 95.2 [93.2, 97.2] (571/600) | 90.2 [83.3, 95.5] (541/600) |
+| Qwen3.5-9B | validate_plan | 97.9 [94.2, 100.0] (2937/3000) | 100.0 [99.9, 100.0]† (3000/3000) | 95.2 [90.7, 98.6] (2795/2937) | 96.0 [91.9, 99.1] (2881/3000) |
+| Qwen3.5-9B | simulate | 80.0 [76.0, 84.0] (240/300) | 99.7 [99.0, 100.0] (299/300) | 81.2 [69.6, 91.5] (195/240) | 83.3 [73.0, 92.3] (249/299) |
+| Gemma-26B | solve | 100.0 [98.7, 100.0]† (300/300) | 100.0 [98.7, 100.0]† (300/300) | 99.3 [98.3, 100.0] (298/300) | 98.7 [96.3, 100.0] (296/300) |
+| Gemma-26B | validate_domain | 100.0 [98.9, 100.0]† (360/360) | 100.0 [98.9, 100.0]† (360/360) | 97.5 [95.0, 99.4] (351/360) | 98.3 [96.1, 100.0] (354/360) |
+| Gemma-26B | validate_problem | 99.8 [99.5, 100.0] (599/600) | 100.0 [99.4, 100.0]† (600/600) | 99.8 [99.5, 100.0] (598/599) | 100.0 [99.4, 100.0]† (600/600) |
+| Gemma-26B | validate_plan | 20.7 [9.0, 34.1] (622/3000) | 93.6 [84.0, 100.0] (2808/3000) | 99.2 [97.8, 99.9]‡ (617/622) | 98.9 [98.2, 99.5] (2777/2808) |
+| Gemma-26B | simulate | 99.7 [99.0, 100.0] (299/300) | 100.0 [98.7, 100.0]† (300/300) | 92.0 [86.3, 97.0] (275/299) | 90.7 [83.0, 97.3] (272/300) |
+| Qwen3.6-35B | solve | 68.0 [60.0, 76.0] (204/300) | 93.7 [89.3, 97.3] (281/300) | 92.6 [86.9, 97.5] (189/204) | 98.2 [96.3, 99.7] (276/281) |
+| Qwen3.6-35B | validate_domain | 100.0 [98.9, 100.0]† (360/360) | 100.0 [98.9, 100.0]† (360/360) | 98.9 [97.2, 100.0] (356/360) | 99.7 [99.2, 100.0] (359/360) |
+| Qwen3.6-35B | validate_problem | 98.5 [97.8, 99.2] (591/600) | 100.0 [99.4, 100.0]† (600/600) | 98.3 [96.8, 99.5] (581/591) | 97.3 [95.5, 99.0] (584/600) |
+| Qwen3.6-35B | validate_plan | 82.9 [73.5, 91.1] (2487/3000) | 99.9 [99.7, 100.0] (2997/3000) | 99.1 [98.4, 99.7] (2465/2487) | 99.4 [98.8, 99.8] (2978/2997) |
+| Qwen3.6-35B | simulate | 76.3 [67.0, 84.3] (229/300) | 100.0 [98.7, 100.0]† (300/300) | 97.8 [94.5, 100.0] (224/229) | 97.0 [93.3, 99.7] (291/300) |
+
+‡ Only 13 of the 20 domains have a call in this cell, so the bootstrap runs over 13 clusters.
+
+#### T3. Calling with thinking on (think=on; plain / steered)
+
+| model | arm | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|
+| Qwen3.5-9B | plain | 59.0 [47.7, 69.7] | 99.4 [98.6, 100.0] | 98.7 [97.3, 99.7] | 69.2 [61.7, 76.0] | 94.0 [90.0, 97.3] |
+| Qwen3.5-9B | steered | 74.0 [65.3, 82.0] | 98.9 [97.8, 99.7] | 99.0 [98.2, 99.7] | 97.1 [95.9, 98.3] | 99.7 [99.0, 100.0] |
+| Gemma-26B | plain | 23.3 [15.7, 31.7] | 52.5 [36.7, 68.1] | 56.0 [43.7, 68.0] | 0.6 [0.0, 1.5] | 53.3 [45.0, 61.7] |
+| Gemma-26B | steered | 75.0 [60.3, 88.3] | 90.6 [82.8, 96.7] | 85.0 [74.2, 93.7] | 44.2 [29.6, 59.6] | 98.7 [97.3, 99.7] |
+| Qwen3.6-35B | plain | 78.3 [68.3, 87.7] | 100.0 [98.9, 100.0]† | 100.0 [99.4, 100.0]† | 99.9 [99.8, 100.0] | 99.3 [98.3, 100.0] |
+| Qwen3.6-35B | steered | 92.0 [86.0, 97.0] | 100.0 [98.9, 100.0]† | 100.0 [99.4, 100.0]† | 99.9 [99.7, 100.0] | 100.0 [98.7, 100.0]† |
+
+Counts behind the quoted cells (validate_plan plain): 9B 2,075/3,000, Gemma 19/3,000, 35B 2,998/3,000. For comparison, think=off: 97.9, 20.7, 82.9 (T2).
+
+#### T4. validate_domain balanced accuracy (think=off)
+
+Mean of the accuracy on the 300 valid and the 60 invalid trials (the fixtures run 5:1, so a constant VALID scores 83.3% pooled and 50% balanced). The 9B tool arms make no error in either class, so their bootstrap has zero width.
+
+| model | unaided | tool-verified, plain | tool-verified, steered |
+|---|---|---|---|
+| Qwen3.5-9B | 53.3 [48.3, 60.0] (valid 11.7 / invalid 95.0) | 100.0 [100.0, 100.0] (valid 100.0 / invalid 100.0) | 100.0 [100.0, 100.0] (valid 100.0 / invalid 100.0) |
+| Gemma-26B | 74.0 [63.3, 84.7] (valid 79.7 / invalid 68.3) | 92.5 [85.0, 98.3] (valid 100.0 / invalid 85.0) | 95.0 [88.3, 100.0] (valid 100.0 / invalid 90.0) |
+| Qwen3.6-35B | 64.7 [54.3, 74.8] (valid 69.3 / invalid 60.0) | 98.0 [94.3, 100.0] (valid 99.3 / invalid 96.7) | 99.2 [97.5, 100.0] (valid 100.0 / invalid 98.3) |
+
+#### T5. Paired, domain-clustered, Holm-corrected tests (think=off, mechanism layer)
+
+| model | task | contrast | first → second arm | Δ | clustered 95% CI | p | Holm p, m=30 | after Holm, m=30 | after Holm, m=60 | paper rule × √2.7 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Qwen3.5-9B | solve | avail. | 10.7 → 99.3 | +88.7 | [+83.4, +93.9] | 9.1e-19 | 2.6e-17 | FAV | FAV | FAV |
+| Qwen3.5-9B | solve | steer. | 99.3 → 100.0 | +0.7 | [-0.7, +2.1] | 0.330 | 1.000 | NS | NS | NS |
+| Qwen3.5-9B | validate_domain | avail. | 25.6 → 100.0 | +74.4 | [+64.0, +84.9] | 6.1e-12 | 1.5e-10 | FAV | FAV | FAV |
+| Qwen3.5-9B | validate_domain | steer. | 100.0 → 100.0 | +0.0 | [+0.0, +0.0] | 1.000 | 1.000 | NS | NS | NS |
+| Qwen3.5-9B | validate_problem | avail. | 65.7 → 95.2 | +29.5 | [+22.2, +36.8] | 6.8e-08 | 1.4e-06 | FAV | FAV | FAV |
+| Qwen3.5-9B | validate_problem | steer. | 95.2 → 90.2 | -5.0 | [-10.9, +0.9] | 0.093 | 0.916 | NS | NS | NS |
+| Qwen3.5-9B | validate_plan | avail. | 79.7 → 93.2 | +13.4 | [+5.0, +21.9] | 0.004 | 0.046 | FAV | **not significant** | FAV |
+| Qwen3.5-9B | validate_plan | steer. | 93.2 → 96.0 | +2.9 | [-0.6, +6.3] | 0.097 | 0.916 | **NS** | NS | FAV |
+| Qwen3.5-9B | simulate | avail. | 0.0 → 65.0 | +65.0 § | [+55.9, +74.1] | 5.9e-12 | 1.5e-10 | FAV | FAV | FAV |
+| Qwen3.5-9B | simulate | steer. | 65.0 → 83.0 | +18.0 § | [+13.4, +22.6] | 1.4e-07 | 2.5e-06 | FAV | FAV | FAV |
+| Gemma-26B | solve | avail. | 7.7 → 99.3 | +91.7 | [+87.3, +96.1] | 1.6e-20 | 4.9e-19 | FAV | FAV | FAV |
+| Gemma-26B | solve | steer. | 99.3 → 98.7 | -0.7 | [-2.9, +1.6] | 0.541 | 1.000 | NS | NS | NS |
+| Gemma-26B | validate_domain | avail. | 77.8 → 97.5 | +19.7 | [+7.1, +32.4] | 0.004 | 0.050 | FAV | **not significant** | FAV |
+| Gemma-26B | validate_domain | steer. | 97.5 → 98.3 | +0.8 | [-0.1, +1.8] | 0.083 | 0.916 | NS | NS | NS |
+| Gemma-26B | validate_problem | avail. | 74.8 → 99.7 | +24.8 | [+18.3, +31.3] | 1.7e-07 | 2.8e-06 | FAV | FAV | FAV |
+| Gemma-26B | validate_problem | steer. | 99.7 → 100.0 | +0.3 | [-0.1, +0.8] | 0.163 | 1.000 | NS | NS | NS |
+| Gemma-26B | validate_plan | avail. | 87.8 → 20.6 | -67.3 | [-79.7, -54.8] | 6.7e-10 | 1.5e-08 | AGAINST | AGAINST | AGAINST |
+| Gemma-26B | validate_plan | steer. | 20.6 → 92.6 | +72.0 | [+57.5, +86.5] | 2.8e-09 | 6.1e-08 | FAV | FAV | FAV |
+| Gemma-26B | simulate | avail. | 0.0 → 91.7 | +91.7 | [+85.9, +97.5] | 3.0e-18 | 8.3e-17 | FAV | FAV | FAV |
+| Gemma-26B | simulate | steer. | 91.7 → 90.7 | -1.0 | [-4.7, +2.7] | 0.577 | 1.000 | NS | NS | NS |
+| Qwen3.6-35B | solve | avail. | 9.3 → 63.0 | +53.7 § | [+45.7, +61.7] | 1.8e-11 | 4.2e-10 | FAV | FAV | FAV |
+| Qwen3.6-35B | solve | steer. | 63.0 → 92.0 | +29.0 § | [+21.6, +36.4] | 1.1e-07 | 2.1e-06 | FAV | FAV | FAV |
+| Qwen3.6-35B | validate_domain | avail. | 67.8 → 98.9 | +31.1 | [+18.4, +43.8] | 6.0e-05 | 9.5e-04 | FAV | FAV | FAV |
+| Qwen3.6-35B | validate_domain | steer. | 98.9 → 99.7 | +0.8 | [-0.4, +2.1] | 0.186 | 1.000 | NS | NS | NS |
+| Qwen3.6-35B | validate_problem | avail. | 75.7 → 96.8 | +21.2 | [+15.5, +26.8] (problem) | 7.9e-08 | 1.6e-06 | FAV | FAV | FAV |
+| Qwen3.6-35B | validate_problem | steer. | 96.8 → 97.3 | +0.5 | [-1.1, +2.1] (problem) | 0.550 | 1.000 | NS | NS | NS |
+| Qwen3.6-35B | validate_plan | avail. | 90.9 → 82.2 | -8.7 | [-19.0, +1.5] | 0.090 | 0.916 | **NS** | NS | AGAINST |
+| Qwen3.6-35B | validate_plan | steer. | 82.2 → 99.3 | +17.1 | [+7.4, +26.8] | 0.002 | 0.022 | FAV | **not significant** | FAV |
+| Qwen3.6-35B | simulate | avail. | 0.0 → 74.7 | +74.7 § | [+65.1, +84.2] | 1.1e-12 | 3.1e-11 | FAV | FAV | FAV |
+| Qwen3.6-35B | simulate | steer. | 74.7 → 97.0 | +22.3 § | [+12.8, +31.9] | 1.0e-04 | 0.002 | FAV | FAV | FAV |
+
+**Bold** verdict = differs from the paper rule (Wilson disjointness × √2.7), or lost to Holm. Holm m = 30 = the 30 rows of this table; m = 60 adds the 30 delivered-surface contrasts (`02_contrasts.csv` `holm_p_H60_both`). Exact sign-flip p-values on the 20 domain sums are in `02_contrasts.csv` (`p_signflip_domain`).
+
+§ An input cell did not meet the replication criterion (T8a). Tool-verified, main sweep vs rerun: 9B simulate plain 65.0 vs 68.0, steered 83.0 vs 87.0; 35B solve plain 63.0 vs 82.3, steered 92.0 vs 99.3; 35B simulate plain 74.7 vs 94.0 (steered met: 97.0 vs 95.7). Each § contrast is still a main-sweep measurement; the mark says its size is not reproduced on the fixed setup.
+
+#### T6. Mixed model: Gemma validate_plan, steered vs plain (think=off, tool-verified)
+
+6,000 trials, 1,000 instances (plan files), 20 domains; success 0.206 → 0.926. Of the 1,000 instances, 571 fail all three plain trials and pass all three steered ones.
+
+| fit | log-odds, steered vs plain | SE | 95% interval | z | what it estimates |
+|---|---|---|---|---|---|
+| **maximum likelihood, random intercept per instance** (Gauss-Hermite, 200 nodes; the likelihood `lme4::glmer` maximises) | **+7.80** | **0.29** | **[7.23, 8.37]**; profile [7.25, 8.40] | 26.8 | the effect within an instance |
+| conditional logistic, stratified on instance | +6.15 | 0.29 | [5.59, 6.72] | 21.2 | within an instance, no distribution assumed for the instance effect |
+| GEE, exchangeable, clustered on instance (k = 1,000) | +3.87 | 0.12 | [3.65, 4.10] | 33.5 | population-averaged |
+| GEE, exchangeable, clustered on domain (k = 20) | +3.87 | 0.64 | [2.63, 5.12] | 6.1 | population-averaged |
+| logistic, domain-cluster-robust SE, t(19) interval | +3.87 | 0.65 | [2.51, 5.24] | 5.9 | population-averaged |
+| variational Bayes (the fit the tex quotes, `.local/glmm_feasibility_probe.py`, rerun) | +7.53 | 0.10 (posterior SD) | [7.34, 7.72] | 78.1 | within an instance; **do not quote the SD** |
+
+Maximum-likelihood details: random-intercept SD 2.86; likelihood-ratio χ² 4,410 on 1 df; implied marginal rates 0.204 → 0.931 (observed 0.206 → 0.926); the same estimate to three decimals at 50 and 400 nodes. The same contrast as a paired difference in rate: +72.0 pp, 95% [57.5, 86.5] clustered on domain. The sign and the significance hold under every fit; the size of the log-odds depends on the model (the conditional fit is lower, a sign that a normal instance effect fits all-or-nothing instances poorly).
+
+#### T7. Contamination: anonymized − canonical, unaided (no-tools `success`)
+
+Δ in points, paired on the exact trial key; 90% interval, the wider of domain and problem clustering; criterion met = the whole interval inside ±5 (TOST at α = 0.05). Floor or ceiling = a canonical rate below 10% or above 90%. Per-task rows for the two small models are in `04_equivalence.md`.
+
+| model | cell | think | canonical | anonymized | Δ | governing 90% CI | verdict at ±5 |
+|---|---|---|---|---|---|---|---|
+| Qwen3.5-0.8B | pooled, 5 tasks | off | 45.9 | 45.8 | -0.11 | [-0.55, +0.34] (problem) | **criterion met** |
+| Qwen3.5-4B | pooled, 5 tasks | off | 58.2 | 56.1 | -2.02 | [-4.33, +0.29] | **criterion met** |
+| Qwen3.5-9B | solve | off | 10.7 | 11.3 | +0.67 | [-2.57, +3.91] (problem) | criterion met |
+| Qwen3.5-9B | validate_domain | off | 25.6 | 26.7 | +1.11 | [-4.66, +6.88] | criterion not met (unresolved) |
+| Qwen3.5-9B | validate_problem | off | 65.7 | 69.3 | +3.67 | [-1.24, +8.58] | criterion not met (unresolved) |
+| Qwen3.5-9B | validate_plan | off | 79.7 | 79.3 | -0.40 | [-2.94, +2.14] | criterion met |
+| Qwen3.5-9B | simulate | off | 0.0 | 0.0 | +0.00 | [+0.00, +0.00] | criterion met (floor: low information) |
+| Qwen3.5-9B | pooled, 5 tasks | off | 63.8 | 64.2 | +0.35 | [-1.52, +2.23] | **criterion met** |
+| Gemma-26B | solve | off | 7.7 | 8.0 | +0.33 | [-3.80, +4.47] | criterion met (floor: low information) |
+| Gemma-26B | validate_domain | off | 77.8 | 80.6 | +2.78 | [-2.03, +7.58] | criterion not met (unresolved) |
+| Gemma-26B | validate_problem | off | 74.8 | 77.8 | +3.00 | [-1.82, +7.82] | criterion not met (unresolved) |
+| Gemma-26B | validate_plan | off | 87.8 | 88.2 | +0.40 | [-2.36, +3.16] | criterion met |
+| Gemma-26B | simulate | off | 0.0 | 0.0 | +0.00 | [+0.00, +0.00] | criterion met (floor: low information) |
+| Gemma-26B | pooled, 5 tasks | off | 74.3 | 75.2 | +0.90 | [-0.71, +2.51] | **criterion met** |
+| Qwen3.6-35B | solve | off | 9.3 | 9.7 | +0.33 | [-3.26, +3.93] | criterion met (floor: low information) |
+| Qwen3.6-35B | validate_domain | off | 67.8 | 70.3 | +2.50 | [-4.38, +9.38] | criterion not met (unresolved) |
+| Qwen3.6-35B | validate_problem | off | 75.7 | 76.7 | +1.00 | [-1.99, +3.99] | criterion met |
+| Qwen3.6-35B | validate_plan | off | 90.9 | 89.0 | -1.87 | [-3.67, -0.07] | criterion met (ceiling: low information) |
+| Qwen3.6-35B | simulate | off | 0.0 | 0.0 | +0.00 | [+0.00, +0.00] | criterion met (floor: low information) |
+| Qwen3.6-35B | pooled, 5 tasks | off | 75.7 | 74.8 | -0.88 | [-2.22, +0.47] | **criterion met** |
+| Qwen3.5-0.8B | pooled, 5 tasks | on | 0.0 | 0.2 | +0.15 | [-0.01, +0.32] | **criterion met (floor: low information)** |
+| Qwen3.5-4B | pooled, 5 tasks | on | 19.1 | 14.5 | -4.56 | [-7.87, -1.25] | **criterion not met (unresolved)** |
+| Qwen3.5-9B | pooled, 5 tasks | on | 18.4 | 15.7 | -2.68 | [-5.44, +0.08] | **criterion not met (unresolved)** |
+| Gemma-26B | pooled, 5 tasks | on | 7.6 | 7.6 | +0.02 | [-1.01, +1.05] | **criterion met (floor: low information)** |
+| Qwen3.6-35B | pooled, 5 tasks | on | 74.3 | 71.0 | -3.27 | [-5.07, -1.47] | **criterion not met (unresolved)** |
+
+#### T8a. Replication, tool cells: tool-verified success, delivered rerun vs main sweep
+
+Δ = rerun − main, paired on the trial key (0 unpaired rows); 90% domain-cluster bootstrap; criterion met = interval inside [−5, +5] (prereg §3). The rerun differs from the main sweep in four ways (readout §2: full answer storage, the final-request retry, the leaked-prefix strip, and vLLM 0.20.2 for the 9B), so it is a separate-apparatus replication. The last column is descriptive: calling (`tool_selected`) on both sides, paired Δ with the same bootstrap. The readout's own "invocation" column counts any tool call, not the task's tool, so its rerun values differ from this column in three cells (readout vs here: 35B solve plain 87.7 vs 82.7, 9B simulate plain 81.3 vs 80.7, 9B validate_plan plain 97.9 vs 97.8); counted as any tool call, this run matches the readout in all 30.
+
+| model | task | arm | main sweep | rerun | Δ (rerun − main) | 90% CI | ±5 criterion | calling, main → rerun (Δ) |
+|---|---|---|---|---|---|---|---|---|
+| Gemma-26B | solve | plain | 99.3 | 98.7 | -0.7 | [-1.3, +0.0] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Gemma-26B | solve | steered | 98.7 | 100.0 | +1.3 | [+0.0, +3.3] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Gemma-26B | validate_domain | plain | 97.5 | 97.8 | +0.3 | [+0.0, +0.8] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Gemma-26B | validate_domain | steered | 98.3 | 98.9 | +0.6 | [+0.0, +1.7] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Gemma-26B | validate_problem | plain | 99.7 | 99.5 | -0.2 | [-0.7, +0.3] | met | 99.8 → 100.0 (+0.2 [+0.0, +0.5]) |
+| Gemma-26B | validate_problem | steered | 100.0 | 100.0 | +0.0 | [+0.0, +0.0] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Gemma-26B | validate_plan | plain | 20.6 | 19.9 | -0.7 | [-1.4, +0.0] | met | 20.7 → 20.0 (-0.7 [-1.5, +0.0]) |
+| Gemma-26B | validate_plan | steered | 92.6 | 92.1 | -0.4 | [-1.1, +0.1] | met | 93.6 → 93.1 (-0.5 [-1.1, -0.1]) |
+| Gemma-26B | simulate | plain | 91.7 | 90.7 | -1.0 | [-3.3, +1.3] | met | 99.7 → 99.7 (+0.0 [+0.0, +0.0]) |
+| Gemma-26B | simulate | steered | 90.7 | 90.7 | +0.0 | [-1.3, +1.7] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | solve | plain | 99.3 | 100.0 | +0.7 | [+0.0, +2.0] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | solve | steered | 100.0 | 100.0 | +0.0 | [+0.0, +0.0] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | validate_domain | plain | 100.0 | 100.0 | +0.0 | [+0.0, +0.0] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | validate_domain | steered | 100.0 | 100.0 | +0.0 | [+0.0, +0.0] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | validate_problem | plain | 95.2 | 94.8 | -0.3 | [-0.7, +0.0] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | validate_problem | steered | 90.2 | 91.0 | +0.8 | [+0.0, +1.7] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | validate_plan | plain | 93.2 | 92.5 | -0.6 | [-1.2, +0.0] | met | 97.9 → 97.8 (-0.1 [-0.6, +0.5]) |
+| Qwen3.5-9B | validate_plan | steered | 96.0 | 96.1 | +0.1 | [-0.2, +0.4] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.5-9B | simulate | plain | 65.0 | 68.0 | +3.0 | [-0.3, +6.7] | **not met (unresolved)** | 80.0 → 80.7 (+0.7 [-1.3, +2.7]) |
+| Qwen3.5-9B | simulate | steered | 83.0 | 87.0 | +4.0 | [+1.7, +6.7] | **not met (unresolved)** | 99.7 → 100.0 (+0.3 [+0.0, +1.0]) |
+| Qwen3.6-35B | solve | plain | 63.0 | 82.3 | +19.3 | [+14.3, +24.7] | **not met (unresolved)** | 68.0 → 82.7 (+14.7 [+10.7, +19.3]) |
+| Qwen3.6-35B | solve | steered | 92.0 | 99.3 | +7.3 | [+3.7, +11.3] | **not met (unresolved)** | 93.7 → 99.7 (+6.0 [+2.7, +9.7]) |
+| Qwen3.6-35B | validate_domain | plain | 98.9 | 98.6 | -0.3 | [-1.7, +1.1] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.6-35B | validate_domain | steered | 99.7 | 99.4 | -0.3 | [-1.4, +0.6] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.6-35B | validate_problem | plain | 96.8 | 97.2 | +0.3 | [-0.8, +1.5] | met | 98.5 → 99.3 (+0.8 [+0.2, +1.5]) |
+| Qwen3.6-35B | validate_problem | steered | 97.3 | 97.3 | +0.0 | [-1.0, +1.2] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+| Qwen3.6-35B | validate_plan | plain | 82.2 | 82.4 | +0.2 | [-3.9, +4.3] | met | 82.9 → 83.1 (+0.2 [-3.9, +4.3]) |
+| Qwen3.6-35B | validate_plan | steered | 99.3 | 99.1 | -0.1 | [-0.5, +0.2] | met | 99.9 → 100.0 (+0.1 [+0.0, +0.2]) |
+| Qwen3.6-35B | simulate | plain | 74.7 | 94.0 | +19.3 | [+11.7, +27.7] | **not met (unresolved)** | 76.3 → 99.7 (+23.3 [+16.7, +30.7]) |
+| Qwen3.6-35B | simulate | steered | 97.0 | 95.7 | -1.3 | [-2.3, -0.3] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
+
+#### T8b. Replication, unaided cells: harness online grade, rerun Part C vs main sweep (simulate excluded, prereg §2)
+
+| model | task | main sweep | rerun | Δ (rerun − main) | 90% CI | ±5 criterion |
+|---|---|---|---|---|---|---|
+| Gemma-26B | solve | 7.7 | 9.7 | +2.0 | [+0.0, +4.3] | met |
+| Gemma-26B | validate_domain | 77.8 | 79.4 | +1.7 | [+0.0, +3.6] | met |
+| Gemma-26B | validate_problem | 74.8 | 76.2 | +1.3 | [-0.5, +3.2] | met |
+| Gemma-26B | validate_plan | 87.8 | 88.3 | +0.5 | [-0.6, +1.5] | met |
+| Qwen3.5-9B | solve | 10.7 | 10.7 | +0.0 | [-2.7, +2.7] | met |
+| Qwen3.5-9B | validate_domain | 25.6 | 26.1 | +0.6 | [-0.3, +1.4] | met |
+| Qwen3.5-9B | validate_problem | 65.7 | 65.8 | +0.2 | [-1.5, +1.8] | met |
+| Qwen3.5-9B | validate_plan | 79.7 | 79.8 | +0.1 | [-0.8, +0.9] | met |
+| Qwen3.6-35B | solve | 9.3 | 10.0 | +0.7 | [-1.7, +3.0] | met |
+| Qwen3.6-35B | validate_domain | 67.8 | 76.4 | +8.6 | [+2.8, +14.7] | **not met (unresolved)** |
+| Qwen3.6-35B | validate_problem | 75.7 | 74.7 | -1.0 | [-2.5, +0.5] | met |
+| Qwen3.6-35B | validate_plan | 90.9 | 90.4 | -0.5 | [-1.8, +0.9] | met |
+
+Counts: tool cells 25 of 30 met (Gemma 10/10, Qwen 15/20), 27 of 30 within ±5 by point estimate; unaided cells 11 of 12 met, 11 of 12 within ±5 by point estimate. No row was unpaired on either side.
+
+## VAL cross-check of the answer key (C1; added 2026-10-27; in no tex yet)
+
+Plan step C1 (settles C8, D1). Method, every disagreement and the items VAL cannot read:
+`reference/val_crosscheck.md`; script `tools/val_crosscheck.py`; outputs in the gitignored
+`results/val-crosscheck/`. KCL VAL "Version 4" (the LLMs-Planning macOS build, sha256
+`44a07d6d…`, the binary of the PlanBench spot checks). pyval re-run locally reproduced every
+stored verdict first, so VAL is compared with the answer key as stored.
+
+| figure | value | source | do NOT quote |
+|---|---|---|---|
+| plans, VAL vs the answer key | **1,731 / 1,732 agree (99.94%, Wilson 95% [99.67, 99.99])**: all 1,000 validate_plan fixture plans; 731 / 732 distinct solve plans graded in the delivered rerun (classical 877/878, numeric 854/854). 10 more plans crash VAL (wrong argument count; pyval rejects all 10) and are not counted | `val_crosscheck.md` | "100% agreement"; any figure pooling plans with files |
+| the one disagreement | pyval accepts `pick-up` for the action `pick_up` (it retries `-` as `_`); one Part C no-tools trial (Qwen3.5-9B, blocksworld p02, wording 11). Post hoc, outside the frozen readout: Part C Qwen3.5-9B unaided solve would be 72 / 300 delivered, not 73 / 300 | `val_crosscheck.md` | a corrected figure in place of the frozen readout's |
+| domain and problem files, parse check | 184 / 238 (77.3% [71.6, 82.2]). Every miss is VAL being more lenient than PDDL: it accepts a stray `)` after the define, and treats a missing `:goal` as empty. VAL accepts all 120 valid files and rejects all 64 invalid files whose error is inside the define | `val_crosscheck.md` | "validate_domain / validate_problem labels checked by VAL" |
 
 ## Delivered rerun — readout (FROZEN 2026-10-09; in no tex yet)
 
@@ -252,13 +563,15 @@ The Job 2 block above pins every single-tool figure the prose quotes by value. T
 remaining per-cell numbers (each model × task × arm × reasoning-mode success rate,
 censoring bound and tool-verified count) are **deliberately not pinned row-by-row
 here**: the tex draws them from one artifact and they are regenerated from it, never
-copied from a deck, memo or earlier draft.
+copied from a deck, memo or earlier draft. Exception since 2026-10-27: the headline
+models' thinking-off mechanism-layer and unaided cells are pinned in the Study 1 block,
+generated from the scripts named there.
 
 | what | **the one source** | how the tex gets it | do NOT quote |
 |---|---|---|---|
 | delivered rates (`ok_strict`), censoring bounds `⟨low, high⟩`, tool-verified counts (`tv_ok/tv_n`), every corpus × bank × arm | `results/derived/e2e_overlay/pooled_e2e_table.csv` (460 rows, 2026-07-17), written by `.claude/skills/analyzer/scripts/e2e_pooled.py` over `results/derived/e2e_overlay/`; the paper's open-roster cells are the `sweep5v2-live` (+ `sweep6-live` twin) rows: `bank=neut` for arms `nt-neut` / `tl-neut`, `bank=ster` for arm `tl-ster` | figures: `paper/figures/make_paper_figures.py`, which reads the overlay JSONL through `e2e_overlay.load_e2e_cells`, the same aggregator used to generate the CSV; prose ranges and tables: `/verify-claims` against the same CSV | any per-cell number from `results/sweep5-cluster-20260530` (stale mirror), from the RQ decks (tool-verified surface, pre-reframe), or from `summary_*.json` `success_rate` (harness surface, not delivered) |
 | availability verdicts (FAVORABLE / AGAINST / UNDECIDED), think=off, 25 cells | `reference/job2_delivered_reframe_worknote.md` §2 (the table) + §6 (the verbatim script that recomputes it from the CSV; rerun with `Z *= √2.7` for the design-effect check) | the scorecard verdict column and the "13/25 UNDECIDED" row above | the memo's 2/25 (mode-pooled) |
-| invocation (CALL) rates | computed from the canonical `trials.jsonl` (`tool_selected` / `delegated` flags) by the figure generator; storage-exact in every corpus | funnel figure, mechanism-layer prose | — |
+| invocation (CALL) rates | computed from the canonical `trials.jsonl` (`tool_selected` / `delegated` flags) by the figure generator; storage-exact in every corpus. The headline open-model rates, with domain-clustered intervals, are pinned in the Study 1 block (T2, T3) | funnel figure, mechanism-layer prose | the generator's Wilson interval as the uncertainty of a Study 1 rate (Study 1 block, "Intervals") |
 
 Rule of thumb: a single-tool number that is not in the Job 2 block is re-derived from
 the CSV (the §6 script or `/verify-claims`), not searched for in the docs.
