@@ -134,6 +134,20 @@ extension prereg.
 **D4. Readout.** The frozen code runs on the live data; the figures go into `NUMBERS.md`;
 `paper_notes` gets an entry; Omer reads it before any prose is written.
 
+**D5. Added 2026-11-08: the answer to Corrêa, Pereira and Seipp (arXiv:2511.09378, "Frontier
+LLMs Rival State-of-the-Art Planners")**
+
+Omer approved these on 2026-11-08 (`paper_notes_discussions.md`). Each goes into the D1f
+prereg before any data. Frontier cells keep their own runner and are never pooled with
+Study 1 or Study 2.
+
+| item | what | status |
+|---|---|---|
+| D5a. Frontier thinking on | unaided solve with thinking on: Sonnet and Haiku, plus other frontier vendors (GPT, Gemini). Thinking-on answers are sampled (temperature 0 is not accepted), so repeats are needed; pin the Anthropic SDK (`requirements.txt` says only `>=0.40.0`, and API version 2026-10-21 rejects `temperature`); GPT and Gemini need a runner of their own and API keys | approved. Open: which Claude versions (Sonnet 4.6 and Haiku 4.5 for the within-model contrast with the existing thinking-off cells, the 5.5 family as the current tier). Itemized cost before any spend |
+| D5b. Larger problems | a size ladder from the IPC 2023 learning-track generators on the four domains we share with that track (blocksworld, miconic, rovers, satellite): unaided and tool-arm success, and the calling rate, against problem size. The tool arm cannot exceed what the planner solves in its time limit (check the plugin's setting in `../pddl-copilot`) | approved |
+| D5c. Claude tool arm on the renamed corpus | the frontier tool arm on `domains-anon` (it ran on the canonical corpus only), so "the planner's answer does not depend on names" is measured rather than assumed | approved |
+| D5d. Random strings and more renamings | a random-string copy of the corpus, and possibly two more themed renamings per domain for solve; separates memorization from "this renaming is harder" (`NUMBERS.md`, frontier contamination block) | asked whether it is worth it; recommendation given 2026-11-08, decision open |
+
 **Size and time.** About 190K trials in total, four times the rerun. The repair part is
 about 68K (reasoning mode and the small models). The rest is new science, mostly the new
 families. *Correction to Q11:* it put the (c) items at one to two reruns' worth; with the

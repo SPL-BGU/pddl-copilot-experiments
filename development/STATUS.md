@@ -1,6 +1,7 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-01 (C1, C2 in PR #121; B drafts on `main`; the D1
+*Content last refreshed: 2026-11-08 (contamination-wording paper PR, stacked on #121;
+plan step D5 added and approved, the answer to Corrêa et al.). Before that 2026-11-01 (C1, C2 in PR #121; B drafts on `main`; the D1
 smokes passed, harness PR #122; D1b built, one decision open). Before that 2026-10-10
 (the weakness list is fully answered and the work now follows `weakness_action_plan.md`;
 `development/` was cut to the docs that work needs, see `MOVES.md`). Earlier refreshes, and the closed-work table this file used to
@@ -24,8 +25,12 @@ control, open-model PlanBench). Then one restructure of the paper. **All of it i
 (`draft_B1_B2_related_work.md`, `draft_B3_B5_methods.md`), waiting for Omer's read. C1
 and C2: PR #121 (VAL agrees on 1,731 of 1,732 plans; Study 1 block in `NUMBERS.md`). D1a,
 D1c, D1d: smokes passed (`reference/d1_smokes_20261027.md`), harness PR #122. D1b: built
-on local branch `fixtures/d1b-harder-items`, write-up and one decision open. Next: C3 to
-C5, D1e, D1f (the prereg), E1.
+on local branch `fixtures/d1b-harder-items`, write-up and one decision open. The
+contamination wording in the tex now uses the paired, clustered ±5 test (paper PR from
+`claude/frontier-llms-paper-analysis-6jst6i`, stacked on #121: merge #121 first). Plan step
+D5, approved 2026-11-08, answers Corrêa et al.'s "Frontier LLMs Rival State-of-the-Art
+Planners": frontier thinking on, larger problems, the Claude tool arm on the renamed
+corpus. Next: C3 to C5, D1e, D1f (the prereg, now with D5), E1.
 
 ## Where each line stands
 
@@ -124,6 +129,9 @@ ISS-013.
 - **GPT-OSS effort level** for its wave-1 cells (it cannot switch reasoning off).
 - **The 35B calling rate did not replicate** in three cells (solve plain 68.0 → 82.7);
   the tex's "68%" and the size inversion rest on it (`NUMBERS.md` T8a, PR #121).
+- **D5a model versions:** Sonnet 4.6 and Haiku 4.5 (the within-model thinking contrast),
+  the 5.5 family (the current tier), or both; plus which GPT and Gemini models.
+- **D5d, the random-string corpus:** worth running or not (plan §4 D5).
 
 None of these blocks the next steps. The title is chosen in plan step E6, from the candidates in
 `reference/weakness_consolidated.md` Q6, once the results are in.
