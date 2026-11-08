@@ -71,7 +71,7 @@ The retracted 13.5 / 0.0 pair is the single most dangerous stale number in the t
 it was published in earlier drafts before the overlay bug was found. Anything quoting
 a frontier solve or simulate figure below ~90 / outside those bands is pre-retraction.
 
-## Frontier contamination — Claude Sonnet 4.6, unaided (added 2026-11-08; in tex since the contamination-wording PR)
+## Frontier contamination — Claude Sonnet 4.6, unaided (added 2026-11-08; in tex via PR #123)
 
 Provenance: `tools/reanalysis/05_frontier_contamination.py`, output
 `tools/reanalysis/out/05_frontier_contamination.md`, over `results/sonnet-frontier/sweep5v2`
@@ -126,7 +126,7 @@ Provenance: `results/derived/e2e_overlay/pooled_e2e_table.csv` (corpus `iss024d-
 
 **Warning (2026-10-02).** `pddl_eval/scoring.py` on `harness/delivered-rerun` (PR #113) strips a leaked Gemma channel prefix before extraction. The pinned `tools/e2e_regrade.py` imports those functions, so re-running it on the canonical Gemma tool cells now gives different delivered solve numbers from the frozen rows in this file. The frozen rows stay; any regenerated Gemma figure is a new reading and needs its own row.
 
-## Study 1 — main sweep figures (added 2026-10-27; T7 in tex since the contamination-wording PR of 2026-11-08, the rest in no tex yet)
+## Study 1 — main sweep figures (added 2026-10-27; T7 in tex via PR #123 (2026-11-08), the rest in no tex yet)
 
 Plan step C2 (`weakness_action_plan.md` §4 C; settles C9 and C13). Study 1 is the main
 sweep: canonical corpus `results/sweep5v2-live`, with the anonymized twin
