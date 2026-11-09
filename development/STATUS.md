@@ -174,7 +174,7 @@ ISS-013.
   descriptive row, outside the confirmatory set, never pooled with v11 to v13.
 - **Wave 1 families (Omer 2026-11-09, yes):** gpt-oss-20b and Llama 3.1 8B, plus the
   official Gemma weights. Ministral 3 14B is the wave-2 tier.
-- **D5 thinking pilot (Omer 2026-11-09, yes):** 20 keys per arm, Batch API, about $1.50
+- **D5 thinking pilot (Omer 2026-11-09, yes; ran 2026-11-09, PR #131, $1.69):** 20 keys per arm, Batch API, about $1.50
   to $10, hard cap $40. It measures thinking tokens and the answer-parse rate only; plan
   success is not computed, so the pilot does not peek at the outcome. The prereg declares
   it.
@@ -207,6 +207,8 @@ ISS-013.
 | #127 | D1b: new item kinds in three trees (`domains-hard/`, `-vd-a/`, `-vd-b/`), no harness change; write-up; provenance copy tool | no SLURM job id is stored in any results file, so the copy tool takes it as an argument; trees a and b need separate output folders |
 | #128 | C4: four example transcripts, drawn by a stated rule (seed 20261109) | found ISS-028 and ISS-029 |
 | #129 | checkpoints: remove 4 outdated deck files (7.2 MiB); every trial zip kept, `sweep5v2-live` byte-identical to `results/` | 5 questions for Omer in the PR |
+| #130 (draft) | ISS-027 scope and Gemma thinking: the read-only check scripts | to clean before any figure enters `NUMBERS.md` |
+| #131 | frontier: thinking-on mode for the batch runner; SDK pinned to 0.109.2; Corrêa 2-shot prompt vendored (from their CC-BY code release); the D5a pilot | pilot spent $1.69 (Batch); full D5a re-estimated at about $51 with the Batch API (about $33 to $72); `claude_api_batch.py` hash recorded in the budget-probe prereg changes (default request proven byte-identical) |
 
 ### Open decisions
 
