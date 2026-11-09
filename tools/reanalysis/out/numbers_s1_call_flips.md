@@ -1,0 +1,4 @@
+| figure | **quote this** | source | do NOT quote |
+|---|---|---|---|
+| call-state flips, 35B, plain arm (descriptive) | solve **88/300 (29.3%; 22 called → not, 66 not → called; calls 68.0 → 82.7)**; simulate **72/300 (24.0%; 1 called → not, 71 not → called; calls 76.3 → 99.7)**; validate_plan **397/3,000 (13.2%; 195 called → not, 202 not → called; calls 82.9 → 83.1)**. Every other 35B cell ≤ 6.7%; 9B and Gemma ≤ 3.3% in every cell | `s1_call_flips.py`; table below | **a single-run 35B plain calling rate alone** (Omer 2026-11-09: quote both runs, 68.0 and 82.7, and keep "bigger calls less" as a direction only) |
+| prompt check on the paired rows | prompt tokens equal on **2,955 of 2,955** single-turn pairs (rows that called a tool sum the prompt over turns and are not compared) | `s1_call_flips.py` | none |
