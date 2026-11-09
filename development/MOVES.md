@@ -25,6 +25,17 @@ The folder `checkpoints/contamination-live/` is gone with them. The other untrac
 files in the laptop's `checkpoints/` (`rq-sweep5v2/*.pptx`, `rq-sweep5v2/plots-unified/*.png`,
 `sweep6-live/.DS_Store`) were never in git and were not touched.
 
+**One more, same day** (decision 16 of `handoff_20261109.md`, the paper-branch item).
+The unified-deck PDF went after the `paper/main.tex` Results comment stopped citing
+it. **It was last changed at `a966f0e`** (unchanged from then until its removal); get it
+back with `git show a966f0e:<path> > <file>`.
+
+| deleted path | added | what it held | why it went |
+|---|---|---|---|
+| `checkpoints/rq-sweep5v2/pddl_copilot_rq_sweep5v2_unified.pdf` | `a966f0e` 2026-07-24 | a 59-page PDF export (LibreOffice, 2026-06-15; read with `pdfinfo`) of the June unified findings deck (`rq_deck.py --think unified`; `paper_notes_discussions.md` 2026-06-10 entry) | the deck's "locked" mechanism-layer values are replaced by the `NUMBERS.md` block "Study 1 — main sweep figures" (`tools/reanalysis/s1_*.py`); the only live citation, the `main.tex` Results comment, now points there. `rq_deck.py` still writes its decks to `checkpoints/rq-sweep5v2/` as an output folder (left as is); `CHANGELOG.md`, `paper_notes_discussions.md` and `reference/weakness_consolidated.md` name the folder in append-only or record text (left as is) |
+
+The folder `checkpoints/rq-sweep5v2/` is now empty in git.
+
 ## Results moved out of the repo, 2026-10-10
 
 `results/` is gitignored, so these moves are not in git history; this table is the
