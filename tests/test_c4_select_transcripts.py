@@ -96,10 +96,41 @@ def test_goal_text(r):
     r.check("init atom dropped", "(on a b)" not in g)
 
 
+def test_wrong_facts_split(r):
+    from collections import Counter
+    shapes = Counter({"tool plan, then extra lines": 18, "other": 10,
+                      "extra lines, then tool plan": 5, "same length, some actions differ": 5})
+    total, goal, text = c4.wrong_facts_split(shapes, 17)
+    r.check_eq("total and goal rows", (total, goal), (38, 17))
+    r.check_eq("the other rows, by shape", text,
+               "5 keep the tool plan's length with some actions changed (example 4's pool); "
+               "5 have extra lines before the tool plan; 1 has the tool plan followed by "
+               "extra lines that are not all goal facts; 10 have some other shape, not "
+               "classified further")
+    r.check("a shape with no rows left is not named",
+            "followed by" not in c4.wrong_facts_split(Counter(
+                {"tool plan, then extra lines": 2, "other": 1}), 2)[2])
+
+
+def test_tokens_text(r):
+    from types import SimpleNamespace as NS
+    base = dict(prompt=25517, completion=5140, turns=3, ctx_no_room_turns=0)
+    clipped = NS(**base, ctx_clipped_turns=2, ctx_clip_last_turn_max_tokens=4910,
+                 ctx_clip_last_turn_prompt_tokens=11474)
+    r.check_eq("clipped last turn shown", c4.tokens_text(clipped, "stop"),
+               "prompt 25,517 (summed over turns), completion 5,140, turns 3, clipped turns 2 "
+               "(last turn clipped to max_tokens 4,910, its prompt 11,474 tokens), no-room "
+               "turns 0, done_reason `stop`")
+    plain = NS(**base, ctx_clipped_turns=0, ctx_clip_last_turn_max_tokens=None,
+               ctx_clip_last_turn_prompt_tokens=None)
+    r.check("no clip: count only", "clipped turns 0, no-room" in c4.tokens_text(plain, "stop"))
+
+
 if __name__ == "__main__":
     r = TestResults("test_c4_select_transcripts")
     for fn in (test_fence, test_abridge_lines, test_keep_windows, test_doubt_flag,
                test_draw_order, test_pick, test_plan_actions, test_same_text,
-               test_plan_shape, test_run_diffs, test_goal_text):
+               test_plan_shape, test_run_diffs, test_goal_text, test_wrong_facts_split,
+               test_tokens_text):
         fn(r)
     r.report_and_exit()

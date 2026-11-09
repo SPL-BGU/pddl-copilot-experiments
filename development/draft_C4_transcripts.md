@@ -4,12 +4,12 @@ Written by `tools/reanalysis/c4_select_transcripts.py` (do not edit by hand; cha
 
 ## How the examples were chosen
 
-The rule was fixed before any row was drawn. Two parts of it were set after looking at the pools as a whole, never at a drawn row: the length caps (after the spread of answer lengths in each pool) and example 4's same-length filter (after the shape table below showed that most solve WRONG_FACTS rows are not copying mistakes). Rule 4b was added after a draw; it says so.
+The rule was fixed before any row was drawn. Two parts of it were set after looking at the pools as a whole, never at a drawn row: the length caps (after the spread of answer lengths in each pool) and example 4's same-length filter (after the shape table below showed that 17 of the 38 solve WRONG_FACTS rows are goal facts read as plan steps and that only 5 keep the tool plan's length with some actions changed). Example 1's list of doubt words (given below the numbered rules) was also chosen after looking: it was written with the readers' notes on the 60 no-call answers in view, and those notes include the notes on the row later drawn. The git history cannot show that the list was fixed before the draw, because the list, the draws and the readings first appear in the same commit. Rule 4b was added after a draw; it says so.
 
 1. Each example has an **eligible set**, defined by the filters in the tables below. Rows come from the three Part A tool cells of the delivered rerun (Gemma 4 26B-A4B, Qwen3.5-9B, Qwen3.6-35B-A3B; minimal system prompt; plain and steered wordings), loaded by the frozen loader and graded by the frozen delivered grader. The script first checks that its grades reproduce the E1 and E4 counts of the frozen readout.
 2. The eligible ids are sorted, then shuffled once with Python's `random.Random(20261109 + k)` for example k (seed **20261109**). The first id in that order is drawn.
 3. **Length caps** keep an excerpt to about a page: the final answer is at most 3,000 characters (example 1), 1,500 (example 2) and 3,000 (example 4). Example 3 has no answer to cap; its tool result is the point, so it is shown abridged.
-4. **Reading and redraw.** A person reads each drawn transcript in full. If it does not show what the example is meant to show (for example the verdict is right but the reasoning is wrong), the row is recorded below as rejected with the reason, and the next id in the same shuffled order is taken.
+4. **Reading and redraw.** Each drawn transcript is read in full. The readings recorded below were drafted by an AI session, Claude Code, on 2026-11-09 and pending Omer's confirmation. If a reading finds the row does not show what the example is meant to show (for example the verdict is right but the reasoning is wrong), the row is recorded below as rejected with the reason, and the next id in the same shuffled order is taken.
 4b. **Prompt-rebuild check** (automatic, run before the reading). For simulate and validate_plan rows that called a tool with a `plan` argument, the plan the model passed must be the plan in the rebuilt prompt (actions compared with parentheses, case and spacing ignored). A row that fails is skipped the same way, because its prompt cannot be shown as the model saw it. *This check was added after the first draw for example 3 failed it* (see side finding 2); it changes no eligible set, only which drawn rows can be shown, and the skipped row is listed with the reason.
 5. **Abridging.** Long PDDL, plans and tool output are cut to their first and last lines (domain 14+2, problem 8+10, plan 20+5, tool result 30+8 lines). In example 4 the answer and the planner result keep instead the lines around the steps that differ. Every cut is marked in the text as `[... N lines of X elided ...]`. A tool argument that equals the prompt's domain or problem text (byte for byte, once whitespace is collapsed, or once `;` comment lines are also dropped) is not repeated; the line says which. A single line longer than 300 characters is cut in the middle, also marked.
 6. **The prompt is not stored** in the rows. It is rebuilt with the harness's own `build_jobs` and `build_messages` from `domains/` and the pinned ground-truth cache. The tool schemas the model saw (all tools of `pddl-copilot` at `5e4f9c0`) are not reproduced.
@@ -94,7 +94,7 @@ On these problems nearly every with-tools row ended with no room for the final t
 | task / domain / problem / plan / wording | validate_plan / counters / p04 / b2 / v11 (plain arm) |
 | stored grade (tool-verified) | success=False, failure_reason=`tool_not_selected` |
 | delivered grade (frozen grader) | ok=True, reason=`verdict_stated_ok` |
-| tokens | prompt 3,580 (summed over turns), completion 588, turns 1, no-room turns 0, done_reason `stop` |
+| tokens | prompt 3,580 (summed over turns), completion 588, turns 1, clipped turns 0, no-room turns 0, done_reason `stop` |
 
 Drawn: position 1 of 24 in the shuffled order (seed 20261109 + 1). Trial id `gemma4_26b-a4b|validate_plan|plain|counters|p04|b2|v11`.
 
@@ -205,7 +205,7 @@ The goal is not satisfied.
 VERDICT: INVALID
 ```
 
-**Reading.** Confirmed (read in full on 2026-11-09, against `domains/numeric/counters/p04.pddl` and `p04_b2.plan`). Every rate starts at 0, so each `(increment c1)` adds 0 and `c1` stays at 8. The goal needs value(c0) + 1 <= value(c1), that is 15 <= 8, which fails. The answer reasons exactly this way and ends in `VERDICT: INVALID`: the right verdict for the right reason. It makes no tool call and does not mention a tool.
+**Reading** (drafted by an AI session, Claude Code, on 2026-11-09 and pending Omer's confirmation). Confirmed (read in full on 2026-11-09, against `domains/numeric/counters/p04.pddl` and `p04_b2.plan`). Every rate starts at 0, so each `(increment c1)` adds 0 and `c1` stays at 8. The goal needs value(c0) + 1 <= value(c1), that is 15 <= 8, which fails. The answer reasons exactly this way and ends in `VERDICT: INVALID`: the right verdict for the right reason. It makes no tool call and does not mention a tool.
 
 ---
 
@@ -220,7 +220,7 @@ VERDICT: INVALID
 | task / domain / problem / plan / wording | solve / miconic / p04 / - / v12 (plain arm) |
 | stored grade (tool-verified) | success=True, failure_reason=`ok` |
 | delivered grade (frozen grader) | ok=True, reason=`plan_valid`, plan extracted by `strict_lines` |
-| tokens | prompt 7,671 (summed over turns), completion 640, turns 2, no-room turns 0, done_reason `stop` |
+| tokens | prompt 7,671 (summed over turns), completion 640, turns 2, clipped turns 0, no-room turns 0, done_reason `stop` |
 
 Drawn: position 1 of 576 in the shuffled order (seed 20261109 + 2). Trial id `gemma4_26b-a4b|solve|plain|miconic|p04||v12`.
 
@@ -319,7 +319,7 @@ The model's intermediate assistant text is not stored; the rows keep each tool c
 (depart f0 p1)
 ```
 
-**Reading.** Confirmed (read in full on 2026-11-09). One planner call. After the leaked channel marker, the answer is the tool's 10 actions in the same order, nothing added and nothing dropped. The grader strips the marker once, extracts the 10 lines, and the validator accepts the plan.
+**Reading** (drafted by an AI session, Claude Code, on 2026-11-09 and pending Omer's confirmation). Confirmed (read in full on 2026-11-09). One planner call. After the leaked channel marker, the answer is the tool's 10 actions in the same order, nothing added and nothing dropped. The grader strips the marker once, extracts the 10 lines, and the validator accepts the plan.
 
 ---
 
@@ -335,7 +335,7 @@ The model's intermediate assistant text is not stored; the rows keep each tool c
 | stored grade (tool-verified) | success=True, failure_reason=`ok` |
 | delivered grade (frozen grader) | ok=False, reason=`no_room` |
 | E4 label (frozen e4.classify) | REFUSED_OR_CLIPPED_FINAL (final turn refused: prompt filled the window) |
-| tokens | prompt 20,987 (summed over turns), completion 1,042, turns 2, no-room turns 1, done_reason `length` |
+| tokens | prompt 20,987 (summed over turns), completion 1,042, turns 2, clipped turns 0, no-room turns 1, done_reason `length` |
 
 Drawn: position 2 of 686 in the shuffled order (seed 20261109 + 3). Trial id `qwen3_6_35b|simulate|steered|depots|p03||v16`.
 
@@ -468,7 +468,7 @@ The model's intermediate assistant text is not stored; the rows keep each tool c
 
 **Final answer:** empty. The last turn was never generated: the server refused it because the prompt (system, user, the tool call and its result) did not fit the 16,384-token window (`ctx_no_room_turns` = 1).
 
-**Reading.** Confirmed (read in full on 2026-11-09). The model passed the prompt's domain, problem and 11-action plan to `get_state_transition`. The tool's trajectory is right (stored success true). The result is 49,830 characters: a list of the changes at each step, then all 12 states (the initial one and one after each action), each listing every ground fact of the problem as true or false. The next turn would have had to hold the prompt and this result, which does not fit in 16,384 tokens, so the server refused it and the final answer is empty. The model never got a turn in which to relay the result.
+**Reading** (drafted by an AI session, Claude Code, on 2026-11-09 and pending Omer's confirmation). Confirmed (read in full on 2026-11-09). The model passed the prompt's domain, problem and 11-action plan to `get_state_transition`. The tool's trajectory is right (stored success true). The result is 49,830 characters: a list of the changes at each step, then all 12 states (the initial one and one after each action), each listing every ground fact of the problem as true or false. The next turn would have had to hold the prompt and this result, which does not fit in 16,384 tokens, so the server refused it and the final answer is empty. The model never got a turn in which to relay the result.
 
 ---
 
@@ -484,7 +484,9 @@ The model's intermediate assistant text is not stored; the rows keep each tool c
 | stored grade (tool-verified) | success=True, failure_reason=`ok` |
 | delivered grade (frozen grader) | ok=False, reason=`plan_invalid`, plan extracted by `strict_lines` |
 | E4 label (frozen e4.classify) | WRONG_FACTS (plan differs from the tool's plan) |
-| tokens | prompt 25,517 (summed over turns), completion 5,140, turns 3, no-room turns 0, done_reason `stop` |
+| tokens | prompt 25,517 (summed over turns), completion 5,140, turns 3, clipped turns 2 (last turn clipped to max_tokens 4,910, its prompt 11,474 tokens), no-room turns 0, done_reason `stop` |
+
+Context clipping: 2 turn(s) of this row ran with the output allowance (max_tokens) cut down so the turn fits the 16,384-token window. The last turn was one of them, with 4,910 tokens allowed, and it ended with done_reason `stop`, so the final answer was not cut short by the clip.
 
 Drawn: position 1 of 5 in the shuffled order (seed 20261109 + 4). Trial id `Qwen3_5_9B|solve|steered|drone|p05||v15`.
 
@@ -696,13 +698,13 @@ The planner found a valid plan. Let me output each action on its own line in the
 ```
 ````
 
-**Reading.** Confirmed (read in full on 2026-11-09). The classic planner failed on this numeric domain and the model then called the numeric planner, which returned a 110-action plan (stored grade: valid). The answer restates it as 110 lines but miscounts two runs of a repeated action: 7 `(decrease_y)` where the tool has 8, and 9 `(increase_y)` where the tool has 8. The length is unchanged and every other action matches; the validator rejects the restated plan. A transcription error in the plain sense: the model had the right plan and copied it wrong.
+**Reading** (drafted by an AI session, Claude Code, on 2026-11-09 and pending Omer's confirmation). Confirmed (read in full on 2026-11-09). The classic planner failed on this numeric domain and the model then called the numeric planner, which returned a 110-action plan (stored grade: valid). The answer restates it as 110 lines but miscounts two runs of a repeated action: 7 `(decrease_y)` where the tool has 8, and 9 `(increase_y)` where the tool has 8. The length is unchanged and every other action matches; the validator rejects the restated plan. A transcription error in the plain sense: the model had the right plan and copied it wrong.
 
 ---
 
 ## Notes for E3
 
 - **Captions must name the served build.** Gemma and Qwen3.6 were served as community AWQ 4-bit quantisations (`cyankiwi/...`), not the official weights; Qwen3.5-9B is the official release. Each excerpt's table says which.
-- **Example 4 pairs with the frontier passage** on transcription errors (`paper/main.tex`, subsection "The Delivery Gap"). Side finding 1 matters there: in this rerun, most solve rows the frozen E4 labels WRONG_FACTS are not copying mistakes but goal facts read as plan steps. Only the same-length shape (example 4's pool) is a transcription error by construction. Before the paper counts frontier failures as transcription errors, check that none of them is this extractor case: a quick look outside this script found one Haiku with-tools solve answer (depot p02) that repeats the tool's plan and then lists two goal facts. Whether the frontier grading counted that row among Haiku's "three transcription errors" was not checked.
+- **Example 4 pairs with the frontier passage** on transcription errors (`paper/main.tex`, subsection "The Delivery Gap"). Side finding 1 matters there: in this rerun, 17 of the 38 solve rows the frozen E4 labels WRONG_FACTS are goal facts read as plan steps. Of the other 21, 5 keep the tool plan's length with some actions changed (example 4's pool); 5 have extra lines before the tool plan; 1 has the tool plan followed by extra lines that are not all goal facts; 10 have some other shape, not classified further. Only the same-length shape (example 4's pool) is a transcription error by construction. Before the paper counts frontier failures as transcription errors, check that none of them is this extractor case: a quick look outside this script found one Haiku with-tools solve answer (depot p02) that repeats the tool's plan and then lists two goal facts. Whether the frontier grading counted that row among Haiku's "three transcription errors" was not checked.
 - **Example 3's first draw was skipped** because its prompt cannot be rebuilt from the cache (side finding 2). The shown row's plan passed the check.
 - The intermediate assistant turns (the text that carried each tool call) are not stored, so an excerpt shows the tool calls by name and arguments only.

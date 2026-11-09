@@ -21,10 +21,11 @@ and in `pools()`. For each example the eligible set is listed in a fixed order
 (the trial id, sorted), shuffled once with `random.Random(SEED + pool
 number)`, and the first row in that order is drawn. A drawn row whose plan
 argument does not match the rebuilt prompt is skipped (`rebuild_check`).
-Every drawn row is read by a person. If the reading finds the row does not
-show what the example is meant to show, the row is entered in READINGS as
-rejected, with the reason, and the next row in the same shuffled order is
-taken (the redraw rule). Nothing is picked by eye.
+Every drawn row is read in full. The readings in READINGS were drafted by an
+AI session (Claude Code) and are pending Omer's confirmation. If a reading
+finds the row does not show what the example is meant to show, the row is
+entered in READINGS as rejected, with the reason, and the next row in the
+same shuffled order is taken (the redraw rule). Nothing is picked by eye.
 
 The prompt is not stored in the trial rows. It is rebuilt with the harness's
 own `build_jobs` + `build_messages` (the same code path the run used) from the
@@ -86,7 +87,8 @@ VLLM = "0.20.2"
 
 # Readings of drawn rows: trial id -> (verdict, note). verdict is "confirmed"
 # or "rejected". A rejected row is skipped and the next in order is drawn.
-# Filled in after a person read each drawn transcript in full.
+# Drafted by an AI session (Claude Code) that read each drawn transcript in
+# full; pending Omer's confirmation (READINGS_STATUS is printed in the output).
 READINGS: dict[str, tuple[str, str]] = {
     "gemma4_26b-a4b|validate_plan|plain|counters|p04|b2|v11": ("confirmed", (
         "Confirmed (read in full on 2026-11-09, against `domains/numeric/counters/p04.pddl` "
@@ -118,6 +120,9 @@ READINGS: dict[str, tuple[str, str]] = {
         "matches; the validator rejects the restated plan. A transcription error in the "
         "plain sense: the model had the right plan and copied it wrong.")),
 }
+
+READINGS_STATUS = ("drafted by an AI session, Claude Code, on 2026-11-09 and pending "
+                   "Omer's confirmation")
 
 POOL_TITLES = {
     1: "Gemma skips the tool and judges the plan correctly in prose",
@@ -194,6 +199,42 @@ def plan_shape(tool: tuple, answer: tuple) -> str:
     if len(answer) == len(tool):
         return "same length, some actions differ"
     return "other"
+
+
+def wrong_facts_split(shapes: Counter, n_goal: int) -> tuple[int, int, str]:
+    """(all solve WRONG_FACTS rows, the goal-facts rows, the other rows by shape).
+
+    The goal-facts rows are a subset of "tool plan, then extra lines"; the
+    rest of that shape is named on its own."""
+    total = sum(shapes.values())
+    rest = Counter(shapes)
+    rest["tool plan, then extra lines"] -= n_goal
+    words = {"same length, some actions differ":
+             "{n} {row} the tool plan's length with some actions changed (example 4's pool)",
+             "extra lines, then tool plan": "{n} {row} extra lines before the tool plan",
+             "tool plan, then extra lines":
+             "{n} {row} the tool plan followed by extra lines that are not all goal facts",
+             "identical": "{n} {row} the tool plan exactly",
+             "other": "{n} {row} some other shape, not classified further"}
+    verbs = {"same length, some actions differ": ("keeps", "keep"),
+             "extra lines, then tool plan": ("has", "have"),
+             "tool plan, then extra lines": ("has", "have"),
+             "identical": ("matches", "match"),
+             "other": ("has", "have")}
+    parts = [words[s].format(n=rest[s], row=verbs[s][rest[s] != 1])
+             for s in words if rest[s] > 0]
+    return total, n_goal, "; ".join(parts)
+
+
+def tokens_text(t, done_reason: str) -> str:
+    """The tokens cell of an excerpt's table, with context clipping and no-room turns."""
+    s = (f"prompt {t.prompt:,} (summed over turns), completion {t.completion:,}, "
+         f"turns {t.turns}, clipped turns {t.ctx_clipped_turns}")
+    if t.ctx_clip_last_turn_max_tokens is not None:
+        s += (f" (last turn clipped to max_tokens {t.ctx_clip_last_turn_max_tokens:,}"
+              + (f", its prompt {t.ctx_clip_last_turn_prompt_tokens:,} tokens"
+                 if t.ctx_clip_last_turn_prompt_tokens is not None else "") + ")")
+    return s + f", no-room turns {t.ctx_no_room_turns}, done_reason `{done_reason}`"
 
 
 def goal_text(problem_pddl: str) -> str:
@@ -642,9 +683,17 @@ def excerpt(n: int, r, grades, gt_cache, domains, results: Path, lines_cache: di
           f"| delivered grade (frozen grader) | ok={g.ok}, reason=`{g.reason}`"
           + (f", plan extracted by `{g.extraction}`" if g.extraction else "") + " |",
           *([f"| E4 label (frozen e4.classify) | {e4} |"] if e4 else []),
-          f"| tokens | prompt {t.prompt:,} (summed over turns), completion {t.completion:,}, "
-          f"turns {t.turns}, no-room turns {t.ctx_no_room_turns}, done_reason "
-          f"`{r.done_reason}` |", ""]
+          f"| tokens | {tokens_text(t, r.done_reason)} |", ""]
+    if t.ctx_clipped_turns:
+        L += [f"Context clipping: {t.ctx_clipped_turns} turn(s) of this row ran with the "
+              "output allowance (max_tokens) cut down so the turn fits the "
+              f"{C.CONTEXT_WINDOW:,}-token window."
+              + ((f" The last turn was one of them, with {t.ctx_clip_last_turn_max_tokens:,} "
+                  f"tokens allowed, and it ended with done_reason `{r.done_reason}`"
+                  + (", so the final answer was not cut short by the clip."
+                     if r.done_reason == "stop" else "."))
+                 if t.ctx_clip_last_turn_max_tokens is not None else
+                 " The last turn ran unclipped."), ""]
     L += extra
     L += ["**System prompt** (rebuilt with `pddl_eval.runner.build_messages`):", "",
           fence(msgs[0]["content"]), "",
@@ -685,6 +734,8 @@ def excerpt(n: int, r, grades, gt_cache, domains, results: Path, lines_cache: di
 
 def render(args, rerun_a, rows, grades, gt_cache, domains, by_id, P) -> str:
     from tools.delivered_rerun import e4 as E4
+    n_wf, n_goal, wf_rest = wrong_facts_split(P[4]["shapes"], len(P[4]["goal_only"]))
+    n_same = P[4]["shapes"]["same length, some actions differ"]
     L = ["# C4: example transcripts from the delivered rerun, drawn by a stated rule", "",
          "Written by `tools/reanalysis/c4_select_transcripts.py` (do not edit by hand; change "
          "the script and rerun it). Plan step C4 (`development/weakness_action_plan.md`). "
@@ -694,8 +745,15 @@ def render(args, rerun_a, rows, grades, gt_cache, domains, by_id, P) -> str:
          "The rule was fixed before any row was drawn. Two parts of it were set after "
          "looking at the pools as a whole, never at a drawn row: the length caps (after "
          "the spread of answer lengths in each pool) and example 4's same-length filter "
-         "(after the shape table below showed that most solve WRONG_FACTS rows are not "
-         "copying mistakes). Rule 4b was added after a draw; it says so.", "",
+         f"(after the shape table below showed that {n_goal} of the {n_wf} solve "
+         "WRONG_FACTS rows are goal facts read as plan steps and that only "
+         f"{n_same} keep the tool plan's length with some actions changed). Example 1's "
+         "list of doubt words (given below the numbered rules) was also chosen after "
+         "looking: it was written with the readers' notes on the 60 no-call answers in "
+         "view, and those notes include the notes on the row later drawn. The git history "
+         "cannot show that the list was fixed before the draw, because the list, the draws "
+         "and the readings first appear in the same commit. Rule 4b was added after a draw; "
+         "it says so.", "",
          "1. Each example has an **eligible set**, defined by the filters in the tables below. "
          "Rows come from the three Part A tool cells of the delivered rerun (Gemma 4 26B-A4B, "
          "Qwen3.5-9B, Qwen3.6-35B-A3B; minimal system prompt; plain and steered wordings), "
@@ -708,10 +766,11 @@ def render(args, rerun_a, rows, grades, gt_cache, domains, by_id, P) -> str:
          f"{NOCALL_ANSWER_CAP:,} characters (example 1), {RELAY_ANSWER_CAP:,} (example 2) and "
          f"{WRONG_FACTS_ANSWER_CAP:,} (example 4). Example 3 has no answer to cap; its tool "
          "result is the point, so it is shown abridged.",
-         "4. **Reading and redraw.** A person reads each drawn transcript in full. If it does "
-         "not show what the example is meant to show (for example the verdict is right but "
-         "the reasoning is wrong), the row is recorded below as rejected with the reason, and "
-         "the next id in the same shuffled order is taken.",
+         "4. **Reading and redraw.** Each drawn transcript is read in full. The readings "
+         f"recorded below were {READINGS_STATUS}. If a reading finds the row does not show what the example is meant to show (for "
+         "example the verdict is right but the reasoning is wrong), the row is recorded "
+         "below as rejected with the reason, and the next id in the same shuffled order is "
+         "taken.",
          "4b. **Prompt-rebuild check** (automatic, run before the reading). For simulate and "
          "validate_plan rows that called a tool with a `plan` argument, the plan the model "
          "passed must be the plan in the rebuilt prompt (actions compared with parentheses, "
@@ -860,15 +919,17 @@ def render(args, rerun_a, rows, grades, gt_cache, domains, by_id, P) -> str:
         L += excerpt(k, r, grades, gt_cache, domains, args.results, lines_cache, extra,
                      windows)
         v = READINGS.get(chosen)
-        L += ["**Reading.** " + (v[1] if v else "PENDING: not yet read."), ""]
+        L += ["**Reading** (" + READINGS_STATUS + "). "
+              + (v[1] if v else "PENDING: not yet read."), ""]
     L += ["---", "", "## Notes for E3", "",
           "- **Captions must name the served build.** Gemma and Qwen3.6 were served as "
           "community AWQ 4-bit quantisations (`cyankiwi/...`), not the official weights; "
           "Qwen3.5-9B is the official release. Each excerpt's table says which.",
           "- **Example 4 pairs with the frontier passage** on transcription errors "
           "(`paper/main.tex`, subsection \"The Delivery Gap\"). Side finding 1 matters "
-          "there: in this rerun, most solve rows the frozen E4 labels WRONG_FACTS are not "
-          "copying mistakes but goal facts read as plan steps. Only the same-length shape "
+          f"there: in this rerun, {n_goal} of the {n_wf} solve rows the frozen E4 labels "
+          f"WRONG_FACTS are goal facts read as plan steps. Of the other {n_wf - n_goal}, "
+          f"{wf_rest}. Only the same-length shape "
           "(example 4's pool) is a transcription error by construction. Before the paper "
           "counts frontier failures as transcription errors, check that none of them is "
           "this extractor case: a quick look outside this script found one Haiku "
