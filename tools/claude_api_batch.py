@@ -49,11 +49,42 @@ Pilot gate (§7A): build the pilot (`--tasks validate_plan --max-per-task 50
 --corpus canonical`), submit, poll, grade — confirm think=off + parsing and
 that `grade`'s projected full cost ≤ budget BEFORE building/submitting the
 full corpora.
+
+Request-setting options (D5a, added 2026-11-09; every default reproduces the
+reference request byte for byte, tests/test_claude_api_batch.py proves it):
+  --model {claude-sonnet-4-6, claude-haiku-4-5, claude-sonnet-5-5}
+  build --thinking {off,on,between_tools}   off = no `thinking` key (reference)
+        --temperature-mode {zero,default}   zero = temperature 0 (reference);
+                                            default = omit it (the API's 1.0)
+        --thinking-budget N                 budget_tokens for thinking=on on
+                                            Sonnet 4.6 and Haiku 4.5
+        --effort LEVEL                      output_config.effort (Sonnet 5.5
+                                            only; the API defaults it to
+                                            high, D5a policy sends it
+                                            explicitly)
+        --max-tokens N                      alias of --num-predict
+        --limit N --seed S                  alias of --max-per-task; with
+                                            --seed the pool is shuffled first
+        --repeats R                         R requests per selected trial
+        --prompt-file PATH                  alternative user prompt template
+                                            (solve only; no system prompt and
+                                            no structured output)
+        --exclude-domains D ...             drop these domains from the pool
+        --gt-cache PATH                     cached ground truth (no MCP)
+  A batch built with any non-default request setting cannot be graded with
+  `grade` (it would write think=off trial keys); grading such cells is wired
+  when their prereg registers them. `poll` additionally writes
+  results_full.jsonl (thinking text, usage incl. thinking tokens, stop reason,
+  model id, SDK version, request settings per row) and batch_info.json.
 """
 
 import argparse
 import asyncio
+import hashlib
+import io
 import json
+import random
+import string
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -85,6 +116,7 @@ from tools._run_manifest import (
     ManifestError,
     build_manifest,
     ensure_manifest,
+    file_sha256,
     ground_truth_sha256,
     read_manifest,
     write_manifest,
@@ -103,9 +135,40 @@ MODEL = "claude-sonnet-4-6"
 LIST_PRICES = {
     "claude-sonnet-4-6": (3.0 / 1_000_000, 15.0 / 1_000_000),
     "claude-haiku-4-5": (1.0 / 1_000_000, 5.0 / 1_000_000),
+    # D5a (2026-11-09), claude-api skill model table: $2 / $10 per MTok.
+    "claude-sonnet-5-5": (2.0 / 1_000_000, 10.0 / 1_000_000),
 }
 BATCH_INPUT_PRICE_PER_TOK = LIST_PRICES[MODEL][0] / 2
 BATCH_OUTPUT_PRICE_PER_TOK = LIST_PRICES[MODEL][1] / 2
+
+# ---------------------------------------------------------------------------
+# Request settings (D5a). DEFAULT_SETTINGS is the reference apparatus: no
+# `thinking` key, temperature 0, the harness system + user prompts.
+# ---------------------------------------------------------------------------
+THINKING_MODES = ("off", "on", "between_tools")
+TEMPERATURE_MODES = ("zero", "default")
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+DEFAULT_SETTINGS = {
+    "thinking": "off",
+    "temperature_mode": "zero",
+    "thinking_budget": None,
+    "effort": None,
+    "prompt_file": None,
+}
+# Sonnet 4.6 and Haiku 4.5 turn thinking on with a manual budget ({type:
+# enabled, budget_tokens}). Sonnet 4.6 also accepts adaptive thinking, but
+# budget_tokens is used on both so their thinking cells match
+# (development/draft_D5_cost_and_correa.md, assumption 4).
+# Sonnet 5.5: `{type: disabled}`, budget_tokens and any non-default temperature
+# return a 400; omitting `thinking` runs adaptive thinking. Its two settings
+# are adaptive (thinking on) and between_tools (no extended thinking, effort
+# `high` or below). Effort is sent explicitly on both.
+ADAPTIVE_MODELS = ("claude-sonnet-5-5",)
+BETWEEN_TOOLS_MAX_EFFORT = ("low", "medium", "high")
+
+# Header terminator of a --prompt-file template (tools/prompts/*.txt).
+PROMPT_HEADER_END = "# ---- END HEADER: template body follows verbatim ----"
+PROMPT_BODY_SHA_PREFIX = "# body-sha256: "
 
 # Task set. §7A's decision was the 4 tasks simulate + validate_plan +
 # validate_problem + validate_domain (validate_domain added +$5 for the §1
@@ -140,29 +203,156 @@ J_GT, J_NP, J_PLAN = 8, 9, 10
 # ---------------------------------------------------------------------------
 
 
-def _build_request(custom_id: str, job: tuple) -> tuple[dict, dict]:
+def is_default_settings(settings: dict | None) -> bool:
+    """True when `settings` is the reference apparatus (or None)."""
+    return settings is None or {**DEFAULT_SETTINGS, **settings} == DEFAULT_SETTINGS
+
+
+def validate_settings(model: str, settings: dict, tasks=None) -> None:
+    """Refuse a request-setting combination the API would reject or that
+    would mislabel the cell. Raises ValueError with the reason.
+
+    Per-trial limits (budget < max_tokens) are checked in `_build_request`.
+    """
+    s = {**DEFAULT_SETTINGS, **settings}
+    unknown = set(s) - set(DEFAULT_SETTINGS)
+    if unknown:
+        raise ValueError(f"unknown request settings: {sorted(unknown)}")
+    if s["thinking"] not in THINKING_MODES:
+        raise ValueError(f"thinking must be one of {THINKING_MODES}")
+    if s["temperature_mode"] not in TEMPERATURE_MODES:
+        raise ValueError(f"temperature_mode must be one of {TEMPERATURE_MODES}")
+    if s["effort"] is not None and s["effort"] not in EFFORT_LEVELS:
+        raise ValueError(f"effort must be one of {EFFORT_LEVELS}")
+    if model not in LIST_PRICES:
+        raise ValueError(f"unknown model {model!r}")
+    if model in ADAPTIVE_MODELS:
+        if s["thinking"] == "off":
+            raise ValueError(
+                f"{model}: thinking 'off' is not available (`disabled` is a 400 and "
+                "omitting `thinking` runs adaptive thinking); use 'between_tools'")
+        if s["temperature_mode"] != "default":
+            raise ValueError(f"{model} rejects a non-default temperature; "
+                             "use --temperature-mode default")
+        if s["thinking_budget"] is not None:
+            raise ValueError(f"{model} rejects budget_tokens; control depth with --effort")
+        if s["effort"] is None:
+            raise ValueError(f"{model}: send --effort explicitly (D5a: 'high' on both arms)")
+        if s["thinking"] == "between_tools" and s["effort"] not in BETWEEN_TOOLS_MAX_EFFORT:
+            raise ValueError("between_tools is accepted only at effort high or below")
+    else:
+        if s["thinking"] == "between_tools":
+            raise ValueError(f"{model}: between_tools is a Sonnet 5.5 setting only")
+        if s["effort"] is not None:
+            raise ValueError(f"{model}: --effort is not used on this model in D5a")
+        if s["thinking"] == "on":
+            if s["thinking_budget"] is None or int(s["thinking_budget"]) < 1024:
+                raise ValueError(f"{model}: thinking 'on' needs --thinking-budget >= 1024")
+            if s["temperature_mode"] != "default":
+                raise ValueError("thinking 'on' requires --temperature-mode default "
+                                 "(the API rejects temperature 0 with thinking)")
+        elif s["thinking_budget"] is not None:
+            raise ValueError("--thinking-budget is only used with --thinking on")
+    if s["prompt_file"] is not None and tasks is not None and set(tasks) != {"solve"}:
+        raise ValueError("--prompt-file is a solve-only option")
+
+
+def load_prompt_template(path) -> dict:
+    """Read a --prompt-file template: header lines up to PROMPT_HEADER_END are
+    never sent; the body is everything after that line. When the header
+    records `# body-sha256: <hex>`, the body must match it."""
+    raw = Path(path).read_bytes().decode("utf-8")
+    marker = PROMPT_HEADER_END + "\n"
+    if marker not in raw:
+        raise ValueError(f"{path}: no '{PROMPT_HEADER_END}' line")
+    header, body = raw.split(marker, 1)
+    body_sha = hashlib.sha256(body.encode("utf-8")).hexdigest()
+    recorded = None
+    for line in header.splitlines():
+        if line.startswith(PROMPT_BODY_SHA_PREFIX):
+            recorded = line[len(PROMPT_BODY_SHA_PREFIX):].strip()
+    if recorded is not None and recorded != body_sha:
+        raise ValueError(f"{path}: body sha256 {body_sha} != recorded {recorded}")
+    return {
+        "path": str(path),
+        "body": body,
+        "body_sha256": body_sha,
+        "file_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+    }
+
+
+def fill_prompt_template(body: str, name: str, domain_pddl: str, problem_pddl: str) -> str:
+    """Fill a template the way Corrêa et al.'s create_end_to_end_prompt does:
+    $name = our domain folder name (it differs from the PDDL `(domain X)` name
+    for 9 of the 20 domains; see the template header); $domain = domain file
+    minus every line whose stripped text starts with ';'; $instance = the
+    problem file unchanged."""
+    lines = io.StringIO(domain_pddl).readlines()
+    domain = "".join(l for l in lines if not l.strip().startswith(";"))
+    return string.Template(body).substitute(
+        {"name": name, "domain": domain, "instance": problem_pddl})
+
+
+def _thinking_param(model: str, s: dict) -> dict | None:
+    if s["thinking"] == "off":
+        return None
+    if s["thinking"] == "between_tools":
+        return {"type": "between_tools"}
+    if model in ADAPTIVE_MODELS:
+        # display defaults to "omitted" (empty thinking text) on Sonnet 5.5;
+        # "summarized" returns the readable summary. Billing is the same.
+        return {"type": "adaptive", "display": "summarized"}
+    return {"type": "enabled", "budget_tokens": int(s["thinking_budget"])}
+
+
+def _build_request(custom_id: str, job: tuple, settings: dict | None = None,
+                   template: dict | None = None) -> tuple[dict, dict]:
     """Build one Anthropic batch request + its grading sidecar from a job tuple.
 
     Returns (request, sidecar). `request` is the `{custom_id, params}` dict
     the Batches API consumes; `sidecar` carries everything `grade` needs to
     map the response back and re-grade with `check_success`.
+
+    `settings=None` (or DEFAULT_SETTINGS) is the reference request: the same
+    keys, values and key order as before the D5a options existed.
+    `template` is a `load_prompt_template` result when --prompt-file is set.
     """
+    s = {**DEFAULT_SETTINGS, **(settings or {})}
     task = job[J_TASK]
     dpddl, ppddl = job[J_DPDDL], job[J_PPDDL]
     pv, gt, plan_label = job[J_PV], job[J_GT], job[J_PLAN]
     np_for_task = job[J_NP]
 
-    messages = build_messages(task, dpddl, ppddl, pv, with_tools=False, gt=gt)
-    system_text = messages[0]["content"]
-    user_text, output_config = format_for(task, messages[1]["content"], with_tools=False)
+    if template is not None:
+        if task != "solve":
+            raise ValueError("--prompt-file is a solve-only option")
+        system_text = None
+        user_text = fill_prompt_template(template["body"], job[J_DNAME], dpddl, ppddl)
+        output_config = None
+    else:
+        messages = build_messages(task, dpddl, ppddl, pv, with_tools=False, gt=gt)
+        system_text = messages[0]["content"]
+        user_text, output_config = format_for(task, messages[1]["content"], with_tools=False)
+
+    thinking = _thinking_param(MODEL, s)
+    if thinking and thinking.get("type") == "enabled" and \
+            thinking["budget_tokens"] >= np_for_task:
+        raise ValueError(f"budget_tokens {thinking['budget_tokens']} must be below "
+                         f"max_tokens {np_for_task}")
 
     params = {
         "model": MODEL,
         "max_tokens": np_for_task,
-        "temperature": 0,
-        "system": system_text,
-        "messages": [{"role": "user", "content": user_text}],
     }
+    if s["temperature_mode"] == "zero":
+        params["temperature"] = 0
+    if system_text is not None:
+        params["system"] = system_text
+    params["messages"] = [{"role": "user", "content": user_text}]
+    if thinking is not None:
+        params["thinking"] = thinking
+    if s["effort"] is not None:
+        output_config = dict(output_config or {}, effort=s["effort"])
     if output_config:
         params["output_config"] = output_config
     request = {"custom_id": custom_id, "params": params}
@@ -178,7 +368,85 @@ def _build_request(custom_id: str, job: tuple) -> tuple[dict, dict]:
         "problem_pddl": ppddl,
         "gt": gt,
     }
+    if not is_default_settings(s):
+        sidecar["request_settings"] = dict(s)
+        if template is not None:
+            sidecar["prompt_file_body_sha256"] = template["body_sha256"]
     return request, sidecar
+
+
+def request_settings_record(params: dict) -> dict:
+    """Every request setting of one request except the prompt text itself."""
+    rec = {k: v for k, v in params.items() if k not in ("system", "messages")}
+    rec["has_system_prompt"] = "system" in params
+    return rec
+
+
+def worst_case_list_cost(requests: list[dict], model: str,
+                         chars_per_token: float = 2.0) -> dict:
+    """Upper bound on the list-price cost of a batch: every request bills its
+    full max_tokens as output, and input is bounded by prompt characters /
+    `chars_per_token` (2.0 is below every measured ratio: 2.95 on Sonnet 4.6,
+    about 2.3 after Sonnet 5.5's ~1.3x tokenizer)."""
+    in_price, out_price = LIST_PRICES[model]
+    in_tok = out_tok = 0
+    for r in requests:
+        p = r["params"]
+        chars = len(p.get("system", "")) + sum(
+            len(m["content"]) for m in p["messages"])
+        in_tok += int(chars / chars_per_token) + 1
+        out_tok += int(p["max_tokens"])
+    return {
+        "n": len(requests),
+        "input_tokens_bound": in_tok,
+        "output_tokens_bound": out_tok,
+        "list_usd": round(in_tok * in_price + out_tok * out_price, 4),
+    }
+
+
+def _result_row(res, req_params: dict | None, side: dict | None,
+                sdk_version: str | None) -> dict:
+    """One results_full.jsonl row: the full answer, the thinking text, the
+    usage block as the API returned it (incl. output_tokens_details
+    .thinking_tokens when present), stop reason, model id, SDK version and
+    the request settings. No grading."""
+    row = {"custom_id": res.custom_id, "type": res.result.type,
+           "sdk_version": sdk_version}
+    if side is not None:
+        for k in ("task", "domain_name", "problem_name", "prompt_variant",
+                  "plan_label", "repeat"):
+            if k in side:
+                row[k] = side[k]
+    if req_params is not None:
+        row["request_settings"] = request_settings_record(req_params)
+    if res.result.type != "succeeded":
+        row["error"] = str(getattr(res.result, "error", res.result.type))
+        return row
+    msg = res.result.message
+    blocks = list(msg.content)
+    row["model_id"] = getattr(msg, "model", None)
+    row["stop_reason"] = msg.stop_reason
+    sd = getattr(msg, "stop_details", None)
+    row["stop_details"] = sd.model_dump(mode="json") if hasattr(sd, "model_dump") else sd
+    row["content_types"] = [b.type for b in blocks]
+    row["answer"] = "".join(b.text for b in blocks if b.type == "text")
+    row["thinking_text"] = "\n\n".join(
+        (getattr(b, "thinking", "") or "") for b in blocks if b.type == "thinking")
+    row["n_thinking_blocks"] = sum(1 for b in blocks if b.type == "thinking")
+    row["n_redacted_thinking_blocks"] = sum(
+        1 for b in blocks if b.type == "redacted_thinking")
+    usage = msg.usage
+    row["usage"] = usage.model_dump(mode="json") if hasattr(usage, "model_dump") else dict(vars(usage))
+    row["input_tokens"] = usage.input_tokens
+    row["output_tokens"] = usage.output_tokens
+    details = getattr(usage, "output_tokens_details", None)
+    thinking_tokens = getattr(details, "thinking_tokens", None) if details is not None else None
+    row["thinking_tokens"] = thinking_tokens
+    # The API documents output_tokens - thinking_tokens as the non-reasoning
+    # output; both numbers come from usage.
+    row["visible_output_tokens"] = (usage.output_tokens - thinking_tokens
+                                    if thinking_tokens is not None else None)
+    return row
 
 
 async def _grade_one(
@@ -274,21 +542,44 @@ def _trial_key_for(meta: dict) -> list:
 def _batch_manifest(*, corpus: str | None, domains_dir: str, tasks: list[str],
                     prompt_variants: list[int], num_predict: int | None,
                     snapshot_len: int | None, gt_sha: str,
-                    keys_file: str | None, max_per_task: int) -> dict:
+                    keys_file: str | None, max_per_task: int,
+                    extra: dict | None = None, gt_cache_sha: str | None = None,
+                    gt_cache_path: str | None = None) -> dict:
     """Manifest for the no-tools Batches path (single turn, no streaming; the
-    ground truth is always generated at build time, so only the content hash
-    is recorded)."""
+    ground truth is generated at build time unless --gt-cache is given).
+
+    `extra` is None for the reference apparatus, so its manifest keeps exactly
+    the fields it always had. A non-default build passes the D5a request
+    settings there and its temperature / think fields name them."""
+    temperature, think, sdk_version = 0, "off", None
+    if extra is not None:
+        s = extra["request_settings"]
+        temperature = 0 if s["temperature_mode"] == "zero" else "default (omitted)"
+        think = s["thinking"]
+        sdk_version = extra.get("sdk_version")
     return build_manifest(
         backend="anthropic-batch", model=MODEL, with_tools=False,
         tasks=list(tasks), corpus=corpus or "explicit", domains_dir=domains_dir,
         prompt_variants=prompt_variants, num_predict=num_predict,
         snapshot_len=snapshot_len, max_iterations=1, stream=False,
-        temperature=0, think="off", ground_truth_source="generated",
-        ground_truth_sha256=gt_sha, gt_cache_sha256=None, gt_cache_path=None,
-        sdk_version=None,
+        temperature=temperature, think=think,
+        ground_truth_source="cached" if gt_cache_sha else "generated",
+        ground_truth_sha256=gt_sha, gt_cache_sha256=gt_cache_sha,
+        gt_cache_path=gt_cache_path,
+        sdk_version=sdk_version,
         keys_files=[keys_file] if keys_file else None,
         limit=max_per_task or None,
+        extra=extra,
     )
+
+
+def seeded_order(jobs: list, seed: int) -> list:
+    """Deterministic shuffle of `jobs`: sort by the trial key first so the
+    result depends only on the set and the seed, not on enumeration order."""
+    pool = sorted(jobs, key=lambda j: (j[J_TASK], j[J_DNAME], j[J_PNAME],
+                                       j[J_PLAN], j[J_PV]))
+    random.Random(seed).shuffle(pool)
+    return pool
 
 
 def _project_cost(per_task: dict, counts: dict | None) -> dict:
@@ -322,18 +613,43 @@ async def cmd_build(args) -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
+    settings = {
+        "thinking": args.thinking,
+        "temperature_mode": args.temperature_mode,
+        "thinking_budget": args.thinking_budget,
+        "effort": args.effort,
+        "prompt_file": args.prompt_file,
+    }
+    try:
+        validate_settings(MODEL, settings, tasks=args.tasks)
+    except ValueError as exc:
+        sys.exit(f"[build] {exc}")
+    template = load_prompt_template(args.prompt_file) if args.prompt_file else None
+    nondefault = (not is_default_settings(settings) or args.repeats != 1
+                  or args.seed is not None or bool(args.exclude_domains))
+
     print(f"[build] corpus={args.corpus} domains-dir={domains_dir} tasks={args.tasks}")
     domains = load_domains(Path(domains_dir))
     if not domains:
         sys.exit(f"[build] no domains under {domains_dir}")
 
-    print("[build] connecting MCP for ground-truth generation...")
-    mcp = MCPPlanner()
-    await mcp.connect(resolve_plugin_dirs(args.marketplace_path))
-    try:
-        ground_truth = await generate_ground_truth(mcp, domains)
-    finally:
-        await mcp.close()
+    gt_cache_sha = None
+    if args.gt_cache:
+        gt_path = Path(args.gt_cache)
+        ground_truth = json.loads(gt_path.read_text())
+        gt_cache_sha = file_sha256(gt_path)
+        print(f"[build] ground truth: cached ({gt_path}, sha256 {gt_cache_sha[:12]}...)")
+    else:
+        if not args.marketplace_path:
+            sys.exit("[build] pass --marketplace-path (ground-truth generation) "
+                     "or --gt-cache")
+        print("[build] connecting MCP for ground-truth generation...")
+        mcp = MCPPlanner()
+        await mcp.connect(resolve_plugin_dirs(args.marketplace_path))
+        try:
+            ground_truth = await generate_ground_truth(mcp, domains)
+        finally:
+            await mcp.close()
 
     # Reuse the harness enumerator. conditions="no-tools" + the full active
     # variant set auto-selects the plain variants (11-13): build_jobs skips
@@ -380,16 +696,28 @@ async def cmd_build(args) -> None:
                 j for j in tjobs
                 if (j[J_TASK], j[J_DNAME], j[J_PNAME], j[J_PLAN], j[J_PV]) in wanted
             ]
+        if args.exclude_domains:
+            pool = [j for j in pool if j[J_DNAME] not in set(args.exclude_domains)]
+        if args.seed is not None:
+            pool = seeded_order(pool, args.seed)
         take = pool[: args.max_per_task] if args.max_per_task else pool
         counts[task] = {"full": full, "selected": len(take)}
         selected.extend(take)
 
     requests, sidecars = [], []
-    for idx, job in enumerate(selected):
-        cid = f"t{idx:06d}"
-        req, side = _build_request(cid, job)
-        requests.append(req)
-        sidecars.append(side)
+    idx = 0
+    for job in selected:
+        for rep in range(args.repeats):
+            cid = f"t{idx:06d}"
+            idx += 1
+            try:
+                req, side = _build_request(cid, job, settings, template)
+            except ValueError as exc:
+                sys.exit(f"[build] {exc}")
+            if args.repeats != 1:
+                side["repeat"] = rep
+            requests.append(req)
+            sidecars.append(side)
 
     (out / "batch_requests.jsonl").write_text(
         "".join(json.dumps(r) + "\n" for r in requests)
@@ -398,7 +726,7 @@ async def cmd_build(args) -> None:
         "".join(json.dumps(s) + "\n" for s in sidecars)
     )
     gt_sha = ground_truth_sha256(ground_truth)
-    (out / "counts.json").write_text(json.dumps({
+    counts_doc = {
         "model": MODEL, "corpus": args.corpus, "domains_dir": domains_dir,
         "tasks": args.tasks, "max_per_task": args.max_per_task,
         "num_variants": num_variants,
@@ -407,7 +735,28 @@ async def cmd_build(args) -> None:
         "num_predict": args.num_predict,
         "ground_truth_sha256": gt_sha,
         "per_task": counts, "total_requests": len(requests),
-    }, indent=2))
+    }
+    extra = None
+    if nondefault:
+        import anthropic  # recorded only; build sends nothing
+        extra = {
+            "request_settings": {**DEFAULT_SETTINGS, **settings},
+            "repeats": args.repeats,
+            "seed": args.seed,
+            "exclude_domains": sorted(args.exclude_domains or []),
+            "prompt_file_body_sha256": template["body_sha256"] if template else None,
+            "prompt_file_sha256": template["file_sha256"] if template else None,
+            "sdk_version": anthropic.__version__,
+            "anthropic_version_header": "2023-06-01",
+        }
+        counts_doc.update(extra)
+        (out / "request_settings.json").write_text(json.dumps(
+            dict(extra, model=MODEL,
+                 first_request_settings=request_settings_record(requests[0]["params"])
+                 if requests else None,
+                 worst_case=worst_case_list_cost(requests, MODEL)),
+            indent=2) + "\n")
+    (out / "counts.json").write_text(json.dumps(counts_doc, indent=2))
     # Run manifest (prereg §2.3 item 5), persisted in the batch dir BEFORE
     # `submit` — the first API call — so the settings the requests were built
     # under are on disk before any money moves. `grade` carries it into the
@@ -417,7 +766,13 @@ async def cmd_build(args) -> None:
         prompt_variants=sorted({j[J_PV] for j in selected}),
         num_predict=args.num_predict, snapshot_len=None, gt_sha=gt_sha,
         keys_file=args.keys_file, max_per_task=args.max_per_task,
+        extra=extra, gt_cache_sha=gt_cache_sha,
+        gt_cache_path=str(args.gt_cache) if args.gt_cache else None,
     ))
+    if nondefault:
+        wc = worst_case_list_cost(requests, MODEL)
+        print(f"[build] worst case (every request at max_tokens, list price): "
+              f"${wc['list_usd']:.2f} over {wc['n']} requests")
 
     print(f"[build] wrote {len(requests)} requests + {MANIFEST_NAME} -> {out}")
     for task in args.tasks:
@@ -445,6 +800,17 @@ def cmd_submit(args) -> None:
                  "current `build` so the settings are on disk before submission")
     if manifest["model"] != MODEL:
         sys.exit(f"[submit] batch was built for {manifest['model']}, not {MODEL}")
+    if args.max_list_cost is not None:
+        # Spend guard: the worst case (every request at max_tokens, list
+        # price) plus what earlier batches already cost at list price must
+        # stay under the cap, or nothing is sent.
+        wc = worst_case_list_cost(reqs, MODEL)
+        spent = args.already_spent_list_usd or 0.0
+        total = wc["list_usd"] + spent
+        print(f"[submit] worst case ${wc['list_usd']:.2f} + already spent "
+              f"${spent:.2f} = ${total:.2f} (cap ${args.max_list_cost:.2f}, list price)")
+        if total >= args.max_list_cost:
+            sys.exit("[submit] refused: the worst case would reach the spend cap")
     print(f"[submit] creating batch with {len(reqs)} requests ({MODEL})...")
     client = anthropic.Anthropic()
     batch = client.messages.batches.create(requests=reqs)
@@ -470,8 +836,23 @@ def cmd_poll(args) -> None:
               f"succeeded={rc.succeeded} errored={rc.errored}")
         time.sleep(args.interval)
 
+    # results.jsonl keeps its reference shape (the answer text only, what
+    # `grade` reads). results_full.jsonl is additive: thinking text, the
+    # usage block, stop details, model id, SDK version, request settings.
+    params_by_id = {}
+    for l in (bdir / "batch_requests.jsonl").read_text().splitlines():
+        if l:
+            r = json.loads(l)
+            params_by_id[r["custom_id"]] = r["params"]
+    side_by_id = {}
+    if (bdir / "sidecar.jsonl").exists():
+        for l in (bdir / "sidecar.jsonl").read_text().splitlines():
+            if l:
+                sd = json.loads(l)
+                side_by_id[sd["custom_id"]] = sd
     n = 0
-    with (bdir / "results.jsonl").open("w") as fh:
+    with (bdir / "results.jsonl").open("w") as fh, \
+            (bdir / "results_full.jsonl").open("w") as full_fh:
         for res in client.messages.batches.results(batch_id):
             rec = {"custom_id": res.custom_id, "type": res.result.type}
             if res.result.type == "succeeded":
@@ -485,8 +866,24 @@ def cmd_poll(args) -> None:
             else:
                 rec["error"] = str(getattr(res.result, "error", res.result.type))
             fh.write(json.dumps(rec) + "\n")
+            full_fh.write(json.dumps(_result_row(
+                res, params_by_id.get(res.custom_id), side_by_id.get(res.custom_id),
+                anthropic.__version__)) + "\n")
             n += 1
-    print(f"[poll] ended; wrote {n} results -> {bdir / 'results.jsonl'}")
+    rc = b.request_counts
+    (bdir / "batch_info.json").write_text(json.dumps({
+        "batch_id": b.id,
+        "created_at": b.created_at.isoformat() if b.created_at else None,
+        "ended_at": b.ended_at.isoformat() if b.ended_at else None,
+        "wall_seconds": ((b.ended_at - b.created_at).total_seconds()
+                         if b.created_at and b.ended_at else None),
+        "request_counts": {"succeeded": rc.succeeded, "errored": rc.errored,
+                           "canceled": rc.canceled, "expired": rc.expired,
+                           "processing": rc.processing},
+        "sdk_version": anthropic.__version__,
+    }, indent=2) + "\n")
+    print(f"[poll] ended; wrote {n} results -> {bdir / 'results.jsonl'} "
+          "(+ results_full.jsonl, batch_info.json)")
 
 
 # ---------------------------------------------------------------------------
@@ -516,6 +913,13 @@ async def cmd_grade(args) -> None:
     if built is None:
         sys.exit(f"[grade] {bdir} has no {MANIFEST_NAME}; rebuild + resubmit "
                  "so the results carry verifiable settings")
+    if "request_settings" in built:
+        # D5a: the trial keys and meta below are the think=off / T=0 reference
+        # apparatus. A cell built with other request settings is graded only
+        # once its prereg registers it and this path is extended for it.
+        sys.exit(f"[grade] {bdir} was built with non-default request settings "
+                 f"{built['request_settings']}; grading such cells is not wired "
+                 "(the D5a pilot is outcome-blind)")
     requested = dict(built, snapshot_len=args.snapshot_len)
     try:
         manifest = ensure_manifest(out_dir, requested)
@@ -614,7 +1018,8 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", choices=list(LIST_PRICES), default=MODEL,
-                   help="claude-sonnet-4-6 ($3/$15) or claude-haiku-4-5 ($1/$5); "
+                   help="claude-sonnet-4-6 ($3/$15), claude-haiku-4-5 ($1/$5) or "
+                        "claude-sonnet-5-5 ($2/$10); "
                         "batch price = list/2. Goes before the subcommand. Pass it "
                         "to build; grade reads the built model back from counts.json.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -625,11 +1030,37 @@ def main() -> None:
                         "Overrides --domains-dir.")
     b.add_argument("--domains-dir", default="domains",
                    help="explicit domains dir if --corpus not given")
-    b.add_argument("--marketplace-path", required=True,
-                   help="path to the pddl-copilot marketplace (for ground truth)")
+    b.add_argument("--marketplace-path", default=None,
+                   help="path to the pddl-copilot marketplace (for ground truth); "
+                        "required unless --gt-cache is given")
+    b.add_argument("--gt-cache", default=None,
+                   help="load ground truth from this JSON (tools/build_gt_cache.py "
+                        "output) instead of generating it over MCP")
     b.add_argument("--tasks", nargs="+", default=DEFAULT_TASKS)
-    b.add_argument("--max-per-task", type=int, default=0,
+    b.add_argument("--max-per-task", "--limit", dest="max_per_task", type=int, default=0,
                    help="cap each task to first-N jobs (pilot subset); 0 = full")
+    b.add_argument("--seed", type=int, default=None,
+                   help="with --limit: shuffle each task's pool with this seed "
+                        "(after sorting by trial key) before taking the first N")
+    b.add_argument("--repeats", type=int, default=1,
+                   help="requests per selected trial (default 1)")
+    b.add_argument("--exclude-domains", nargs="+", default=None,
+                   help="drop these domain names from the pool")
+    b.add_argument("--thinking", choices=THINKING_MODES, default="off",
+                   help="off = no thinking key (reference); on = budget_tokens "
+                        "(Sonnet 4.6, Haiku 4.5) or adaptive with summarized "
+                        "display (Sonnet 5.5); between_tools = Sonnet 5.5 only")
+    b.add_argument("--temperature-mode", choices=TEMPERATURE_MODES, default="zero",
+                   help="zero = temperature 0 (reference); default = omit it (1.0)")
+    b.add_argument("--thinking-budget", type=int, default=None,
+                   help="budget_tokens for --thinking on (Sonnet 4.6, Haiku 4.5)")
+    b.add_argument("--effort", choices=EFFORT_LEVELS, default=None,
+                   help="output_config.effort (Sonnet 5.5 only; the API defaults it to "
+                        "high, and D5a policy sends it explicitly)")
+    b.add_argument("--prompt-file", default=None,
+                   help="alternative user prompt template (tools/prompts/*.txt); "
+                        "solve only; sent as the only message, no system prompt, "
+                        "no structured output")
     b.add_argument("--num-variants", type=int, default=0,
                    help="how many ACTIVE_PROMPT_VARIANTS to enumerate (0 = all "
                         "active plain variants, the Sonnet default; 1 = single "
@@ -640,12 +1071,19 @@ def main() -> None:
                         "`full` counts stay the true full-grid size, so cost projection "
                         "still extrapolates the pilot to the real full N.")
     b.add_argument("--out", required=True, help="batch dir to write")
-    b.add_argument("--num-predict", type=int, default=None,
+    b.add_argument("--num-predict", "--max-tokens", dest="num_predict", type=int,
+                   default=None,
                    help="override the per-task max_tokens (frontier budget probe "
                         "legs C/D: 64000); default = DEFAULT_NUM_PREDICT[task]")
 
     s = sub.add_parser("submit", help="create the Anthropic batch")
     s.add_argument("--batch-dir", required=True)
+    s.add_argument("--max-list-cost", type=float, default=None,
+                   help="refuse to send unless worst case (every request at "
+                        "max_tokens, list price) + --already-spent-list-usd "
+                        "stays below this many dollars")
+    s.add_argument("--already-spent-list-usd", type=float, default=0.0,
+                   help="list-price spend of earlier batches under the same cap")
 
     pl = sub.add_parser("poll", help="poll until ended, fetch results")
     pl.add_argument("--batch-dir", required=True)

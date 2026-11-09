@@ -1,0 +1,678 @@
+# Corrêa, Pereira, Seipp end-to-end planning prompt (the "2-shot" prompt).
+#
+# Source: Zenodo record 10.5281/zenodo.17400964, "Code and experiment data
+# from the NeurIPS 2025 paper 'Classical Planning with LLM-Generated
+# Heuristics'", archive correa-et-al-neurips2025.zip
+# (md5 8e20619169553ec6eb8b5f10e262a2d9), file
+# src/llm_heuristics/templates/end_to_end_prompt.py
+# (sha256 17bed943c3d577cd33f39a07e5d15a80cadaacb8a5dd64b81a2677ecaa32122d),
+# the END_TO_END_PROMPT string literal, copied byte for byte below.
+#
+# Licence: the archive is released under CC BY 4.0,
+# https://creativecommons.org/licenses/by/4.0/ . Authors: Corrêa, Pereira
+# and Seipp. For the copyright holder line, see the archive's LICENSE.
+# Change made here: this header was added above the template; the template
+# text itself is unchanged.
+#
+# Why this file and not the paper's prompt.txt: arXiv:2511.09378v2 (TeX
+# source, prompt.txt, sha256
+# 6a39c0dbdd0bd9bc83dfec7664870a7a9f884404b74a74f1a3d121dc645e8f6d) says it
+# uses "the same prompt as" the NeurIPS 2025 paper, but its prompt.txt
+# replaces the target files AND the Gripper and Logistics example files and
+# plans with "[...]", so it cannot be sent as is. The code template is the
+# full prompt. Their own run logs print it as the "Final prompt"
+# (logs/2025-05-08-end-to-end-gemini/blocksworld/blocksworld_easy-p01.pddl.log
+# in the same archive). Two small differences from the paper's display are
+# kept as the code has them: the target instance tag is
+# <instance-file-example-1> (the paper shows <instance-file-1>), and the
+# Logistics plan closes with </plan-logistic>.
+#
+# Fill rule (mirrors their create_end_to_end_prompt in
+# src/llm_heuristics/prompt.py): string.Template.substitute with
+#   $name     = our domain folder name (domains/<kind>/<folder>),
+#   $domain   = the domain file with every line whose stripped text starts
+#               with ';' removed,
+#   $instance = the instance file, unchanged.
+# Nothing else is filled or edited. They send it as the only user message,
+# with no system prompt.
+#
+# $name is the folder name, which differs from the PDDL (domain X) name for
+# 9 of our 20 domains: gripper (gripper-strips), rovers (rover), tpp
+# (tpp-propositional), zenotravel (zeno-travel), block-grouping
+# (mt-block-grouping), counters (fo-counters-rnd), gardening
+# (mt-plant-watering-constrained), pogo_stick (polycraft) and
+# zenotravel-numeric (zenotravel). Of these, 5 are among the 19 D5a pilot
+# keys of this arm: block-grouping, gardening, tpp, zenotravel and
+# zenotravel-numeric. The D5a pilot sent the folder name, and the full run
+# sends it too.
+#
+# Exclusion: our domains/classical/gripper is also named gripper-strips but
+# is a typed multi-robot domain, so the Gripper example would show a
+# different domain under the same name. Gripper problems are excluded from
+# this arm (claude_api_batch.py build --exclude-domains gripper).
+#
+# The lines up to and including the END HEADER line are this header and are
+# never sent. The template body is everything after the END HEADER line.
+# Only the body hash below is checked when the file is loaded. The whole-file
+# sha256 also changes with the header: the D5a pilot manifest
+# (results/frontier-d5a-pilot/e/run_manifest.json) records
+# 572c3a8477d2f874e5a228df6303f173d317b70f7b1d685a81933be4fe2b90be, the file
+# before this header was corrected on 2026-11-09 (PR #131 review); the
+# body, and so every request, is the same.
+# body-sha256: e3ca10c40da0ddc6455120f9d622a3d4a5563998e51ca49101676fed0291fb86
+# ---- END HEADER: template body follows verbatim ----
+
+<problem-description>
+You are a highly-skilled professor in AI planning searching a plan for a PDDL task from the domain <domain>$name</domain>. You will be given the PDDL domain and the PDDL instance, and you need to return the plan in the format shown below. Next, you will receive a sequence of examples for your task and finally the definition of the $name domain.
+</problem-description>
+
+This is the PDDL domain file of the $name domain:
+<domain-file>
+$domain
+</domain-file>
+
+This is the PDDL instance file, for which you need to find a plan:
+<instance-file-example-1>
+$instance
+</instance-file-example-1>
+
+This is the PDDL domain file of another domain, called Gripper, which serves as an example:
+<gripper-domain-file>
+(define (domain gripper-strips)
+   (:predicates (room ?r)
+		(ball ?b)
+		(gripper ?g)
+		(at-robby ?r)
+		(at ?b ?r)
+		(free ?g)
+		(carry ?o ?g))
+
+   (:action move
+       :parameters  (?from ?to)
+       :precondition (and  (room ?from) (room ?to) (at-robby ?from))
+       :effect (and  (at-robby ?to)
+		     (not (at-robby ?from))))
+
+   (:action pick
+       :parameters (?obj ?room ?gripper)
+       :precondition  (and  (ball ?obj) (room ?room) (gripper ?gripper)
+			    (at ?obj ?room) (at-robby ?room) (free ?gripper))
+       :effect (and (carry ?obj ?gripper)
+		    (not (at ?obj ?room))
+		    (not (free ?gripper))))
+
+   (:action drop
+       :parameters  (?obj  ?room ?gripper)
+       :precondition  (and  (ball ?obj) (room ?room) (gripper ?gripper)
+			    (carry ?obj ?gripper) (at-robby ?room))
+       :effect (and (at ?obj ?room)
+		    (free ?gripper)
+		    (not (carry ?obj ?gripper)))))
+</gripper-domain-file>
+
+This is an example of an instance file from the Gripper domain:
+<gripper-instance-file-example>
+(define (problem strips-gripper-x-20)
+   (:domain gripper-strips)
+   (:objects rooma roomb ball42 ball41 ball40 ball39 ball38 ball37
+             ball36 ball35 ball34 ball33 ball32 ball31 ball30 ball29 ball28
+             ball27 ball26 ball25 ball24 ball23 ball22 ball21 ball20 ball19
+             ball18 ball17 ball16 ball15 ball14 ball13 ball12 ball11 ball10
+             ball9 ball8 ball7 ball6 ball5 ball4 ball3 ball2 ball1 left right)
+   (:init (room rooma)
+          (room roomb)
+          (ball ball42)
+          (ball ball41)
+          (ball ball40)
+          (ball ball39)
+          (ball ball38)
+          (ball ball37)
+          (ball ball36)
+          (ball ball35)
+          (ball ball34)
+          (ball ball33)
+          (ball ball32)
+          (ball ball31)
+          (ball ball30)
+          (ball ball29)
+          (ball ball28)
+          (ball ball27)
+          (ball ball26)
+          (ball ball25)
+          (ball ball24)
+          (ball ball23)
+          (ball ball22)
+          (ball ball21)
+          (ball ball20)
+          (ball ball19)
+          (ball ball18)
+          (ball ball17)
+          (ball ball16)
+          (ball ball15)
+          (ball ball14)
+          (ball ball13)
+          (ball ball12)
+          (ball ball11)
+          (ball ball10)
+          (ball ball9)
+          (ball ball8)
+          (ball ball7)
+          (ball ball6)
+          (ball ball5)
+          (ball ball4)
+          (ball ball3)
+          (ball ball2)
+          (ball ball1)
+          (at-robby rooma)
+          (free left)
+          (free right)
+          (at ball42 rooma)
+          (at ball41 rooma)
+          (at ball40 rooma)
+          (at ball39 rooma)
+          (at ball38 rooma)
+          (at ball37 rooma)
+          (at ball36 rooma)
+          (at ball35 rooma)
+          (at ball34 rooma)
+          (at ball33 rooma)
+          (at ball32 rooma)
+          (at ball31 rooma)
+          (at ball30 rooma)
+          (at ball29 rooma)
+          (at ball28 rooma)
+          (at ball27 rooma)
+          (at ball26 rooma)
+          (at ball25 rooma)
+          (at ball24 rooma)
+          (at ball23 rooma)
+          (at ball22 rooma)
+          (at ball21 rooma)
+          (at ball20 rooma)
+          (at ball19 rooma)
+          (at ball18 rooma)
+          (at ball17 rooma)
+          (at ball16 rooma)
+          (at ball15 rooma)
+          (at ball14 rooma)
+          (at ball13 rooma)
+          (at ball12 rooma)
+          (at ball11 rooma)
+          (at ball10 rooma)
+          (at ball9 rooma)
+          (at ball8 rooma)
+          (at ball7 rooma)
+          (at ball6 rooma)
+          (at ball5 rooma)
+          (at ball4 rooma)
+          (at ball3 rooma)
+          (at ball2 rooma)
+          (at ball1 rooma)
+          (gripper left)
+          (gripper right))
+   (:goal (and (at ball42 roomb)
+               (at ball41 roomb)
+               (at ball40 roomb)
+               (at ball39 roomb)
+               (at ball38 roomb)
+               (at ball37 roomb)
+               (at ball36 roomb)
+               (at ball35 roomb)
+               (at ball34 roomb)
+               (at ball33 roomb)
+               (at ball32 roomb)
+               (at ball31 roomb)
+               (at ball30 roomb)
+               (at ball29 roomb)
+               (at ball28 roomb)
+               (at ball27 roomb)
+               (at ball26 roomb)
+               (at ball25 roomb)
+               (at ball24 roomb)
+               (at ball23 roomb)
+               (at ball22 roomb)
+               (at ball21 roomb)
+               (at ball20 roomb)
+               (at ball19 roomb)
+               (at ball18 roomb)
+               (at ball17 roomb)
+               (at ball16 roomb)
+               (at ball15 roomb)
+               (at ball14 roomb)
+               (at ball13 roomb)
+               (at ball12 roomb)
+               (at ball11 roomb)
+               (at ball10 roomb)
+               (at ball9 roomb)
+               (at ball8 roomb)
+               (at ball7 roomb)
+               (at ball6 roomb)
+               (at ball5 roomb)
+               (at ball4 roomb)
+               (at ball3 roomb)
+               (at ball2 roomb)
+               (at ball1 roomb))))
+</gripper-instance-file-example>
+
+This is a plan for the Gripper instance above:
+<plan-gripper>
+(pick ball9 rooma right)
+(move rooma roomb)
+(drop ball9 roomb right)
+(move roomb rooma)
+(pick ball5 rooma right)
+(move rooma roomb)
+(drop ball5 roomb right)
+(move roomb rooma)
+(pick ball7 rooma right)
+(move rooma roomb)
+(drop ball7 roomb right)
+(move roomb rooma)
+(pick ball6 rooma right)
+(move rooma roomb)
+(drop ball6 roomb right)
+(move roomb rooma)
+(pick ball42 rooma right)
+(move rooma roomb)
+(drop ball42 roomb right)
+(move roomb rooma)
+(pick ball40 rooma right)
+(move rooma roomb)
+(drop ball40 roomb right)
+(move roomb rooma)
+(pick ball4 rooma right)
+(move rooma roomb)
+(drop ball4 roomb right)
+(move roomb rooma)
+(pick ball37 rooma right)
+(move rooma roomb)
+(drop ball37 roomb right)
+(move roomb rooma)
+(pick ball36 rooma right)
+(move rooma roomb)
+(drop ball36 roomb right)
+(move roomb rooma)
+(pick ball35 rooma right)
+(move rooma roomb)
+(drop ball35 roomb right)
+(move roomb rooma)
+(pick ball17 rooma right)
+(move rooma roomb)
+(drop ball17 roomb right)
+(move roomb rooma)
+(pick ball20 rooma right)
+(move rooma roomb)
+(drop ball20 roomb right)
+(move roomb rooma)
+(pick ball15 rooma right)
+(move rooma roomb)
+(drop ball15 roomb right)
+(move roomb rooma)
+(pick ball14 rooma right)
+(move rooma roomb)
+(drop ball14 roomb right)
+(move roomb rooma)
+(pick ball13 rooma right)
+(move rooma roomb)
+(drop ball13 roomb right)
+(move roomb rooma)
+(pick ball16 rooma right)
+(move rooma roomb)
+(drop ball16 roomb right)
+(move roomb rooma)
+(pick ball8 rooma right)
+(move rooma roomb)
+(drop ball8 roomb right)
+(move roomb rooma)
+(pick ball25 rooma right)
+(move rooma roomb)
+(drop ball25 roomb right)
+(move roomb rooma)
+(pick ball2 rooma right)
+(move rooma roomb)
+(drop ball2 roomb right)
+(move roomb rooma)
+(pick ball26 rooma right)
+(move rooma roomb)
+(drop ball26 roomb right)
+(move roomb rooma)
+(pick ball22 rooma right)
+(move rooma roomb)
+(drop ball22 roomb right)
+(move roomb rooma)
+(pick ball28 rooma right)
+(move rooma roomb)
+(drop ball28 roomb right)
+(move roomb rooma)
+(pick ball12 rooma right)
+(move rooma roomb)
+(drop ball12 roomb right)
+(move roomb rooma)
+(pick ball10 rooma right)
+(move rooma roomb)
+(drop ball10 roomb right)
+(move roomb rooma)
+(pick ball19 rooma right)
+(move rooma roomb)
+(drop ball19 roomb right)
+(move roomb rooma)
+(pick ball21 rooma right)
+(move rooma roomb)
+(drop ball21 roomb right)
+(move roomb rooma)
+(pick ball39 rooma right)
+(move rooma roomb)
+(drop ball39 roomb right)
+(move roomb rooma)
+(pick ball23 rooma right)
+(move rooma roomb)
+(drop ball23 roomb right)
+(move roomb rooma)
+(pick ball24 rooma right)
+(move rooma roomb)
+(drop ball24 roomb right)
+(move roomb rooma)
+(pick ball41 rooma right)
+(move rooma roomb)
+(drop ball41 roomb right)
+(move roomb rooma)
+(pick ball29 rooma right)
+(move rooma roomb)
+(drop ball29 roomb right)
+(move roomb rooma)
+(pick ball38 rooma right)
+(move rooma roomb)
+(drop ball38 roomb right)
+(move roomb rooma)
+(pick ball27 rooma right)
+(move rooma roomb)
+(drop ball27 roomb right)
+(move roomb rooma)
+(pick ball32 rooma right)
+(move rooma roomb)
+(drop ball32 roomb right)
+(move roomb rooma)
+(pick ball3 rooma right)
+(move rooma roomb)
+(drop ball3 roomb right)
+(move roomb rooma)
+(pick ball11 rooma right)
+(move rooma roomb)
+(drop ball11 roomb right)
+(move roomb rooma)
+(pick ball1 rooma right)
+(move rooma roomb)
+(drop ball1 roomb right)
+(move roomb rooma)
+(pick ball30 rooma right)
+(move rooma roomb)
+(drop ball30 roomb right)
+(move roomb rooma)
+(pick ball18 rooma right)
+(move rooma roomb)
+(drop ball18 roomb right)
+(move roomb rooma)
+(pick ball34 rooma right)
+(move rooma roomb)
+(drop ball34 roomb right)
+(move roomb rooma)
+(pick ball31 rooma right)
+(move rooma roomb)
+(drop ball31 roomb right)
+(move roomb rooma)
+(pick ball33 rooma right)
+(move rooma roomb)
+(drop ball33 roomb right)
+</plan-gripper>
+
+This is the PDDL domain file of another domain, called Logistics, to serve as a second example:
+<logistics-domain-file>
+(define (domain logistics-strips)
+  (:requirements :strips)
+  (:predicates 	(OBJ ?obj)
+	       	(TRUCK ?truck)
+               	(LOCATION ?loc)
+		(AIRPLANE ?airplane)
+                (CITY ?city)
+                (AIRPORT ?airport)
+		(at ?obj ?loc)
+		(in ?obj1 ?obj2)
+		(in-city ?obj ?city))
+
+(:action LOAD-TRUCK
+  :parameters
+   (?obj
+    ?truck
+    ?loc)
+  :precondition
+   (and (OBJ ?obj) (TRUCK ?truck) (LOCATION ?loc)
+   (at ?truck ?loc) (at ?obj ?loc))
+  :effect
+   (and (not (at ?obj ?loc)) (in ?obj ?truck)))
+
+(:action LOAD-AIRPLANE
+  :parameters
+   (?obj
+    ?airplane
+    ?loc)
+  :precondition
+   (and (OBJ ?obj) (AIRPLANE ?airplane) (LOCATION ?loc)
+   (at ?obj ?loc) (at ?airplane ?loc))
+  :effect
+   (and (not (at ?obj ?loc)) (in ?obj ?airplane)))
+
+(:action UNLOAD-TRUCK
+  :parameters
+   (?obj
+    ?truck
+    ?loc)
+  :precondition
+   (and (OBJ ?obj) (TRUCK ?truck) (LOCATION ?loc)
+        (at ?truck ?loc) (in ?obj ?truck))
+  :effect
+   (and (not (in ?obj ?truck)) (at ?obj ?loc)))
+
+(:action UNLOAD-AIRPLANE
+  :parameters
+   (?obj
+    ?airplane
+    ?loc)
+  :precondition
+   (and (OBJ ?obj) (AIRPLANE ?airplane) (LOCATION ?loc)
+        (in ?obj ?airplane) (at ?airplane ?loc))
+  :effect
+   (and (not (in ?obj ?airplane)) (at ?obj ?loc)))
+
+(:action DRIVE-TRUCK
+  :parameters
+   (?truck
+    ?loc-from
+    ?loc-to
+    ?city)
+  :precondition
+   (and (TRUCK ?truck) (LOCATION ?loc-from) (LOCATION ?loc-to) (CITY ?city)
+   (at ?truck ?loc-from)
+   (in-city ?loc-from ?city)
+   (in-city ?loc-to ?city))
+  :effect
+   (and (not (at ?truck ?loc-from)) (at ?truck ?loc-to)))
+
+(:action FLY-AIRPLANE
+  :parameters
+   (?airplane
+    ?loc-from
+    ?loc-to)
+  :precondition
+   (and (AIRPLANE ?airplane) (AIRPORT ?loc-from) (AIRPORT ?loc-to)
+	(at ?airplane ?loc-from))
+  :effect
+   (and (not (at ?airplane ?loc-from)) (at ?airplane ?loc-to)))
+)
+</logistics-domain-file>
+
+This is an example of an instance file from the Logistics domain:
+<logistics-instance-file-example>
+(define (problem strips-log-y-5)
+   (:domain logistics-strips)
+   (:objects package5 package4 package3 package2 package1 city8
+             city7 city6 city5 city4 city3 city2 city1 truck15 truck14
+             truck13 truck12 truck11 truck10 truck9 truck8 truck7 truck6
+             truck5 truck4 truck3 truck2 truck1 plane1 city8-2 city8-1
+             city7-2 city7-1 city6-2 city6-1 city5-2 city5-1 city4-2
+             city4-1 city3-2 city3-1 city2-2 city2-1 city1-2 city1-1
+             city8-3 city7-3 city6-3 city5-3 city4-3 city3-3 city2-3
+             city1-3)
+   (:init (obj package5)
+          (obj package4)
+          (obj package3)
+          (obj package2)
+          (obj package1)
+          (city city8)
+          (city city7)
+          (city city6)
+          (city city5)
+          (city city4)
+          (city city3)
+          (city city2)
+          (city city1)
+          (truck truck15)
+          (truck truck14)
+          (truck truck13)
+          (truck truck12)
+          (truck truck11)
+          (truck truck10)
+          (truck truck9)
+          (truck truck8)
+          (truck truck7)
+          (truck truck6)
+          (truck truck5)
+          (truck truck4)
+          (truck truck3)
+          (truck truck2)
+          (truck truck1)
+          (airplane plane1)
+          (location city8-2)
+          (location city8-1)
+          (location city7-2)
+          (location city7-1)
+          (location city6-2)
+          (location city6-1)
+          (location city5-2)
+          (location city5-1)
+          (location city4-2)
+          (location city4-1)
+          (location city3-2)
+          (location city3-1)
+          (location city2-2)
+          (location city2-1)
+          (location city1-2)
+          (location city1-1)
+          (airport city8-3)
+          (location city8-3)
+          (airport city7-3)
+          (location city7-3)
+          (airport city6-3)
+          (location city6-3)
+          (airport city5-3)
+          (location city5-3)
+          (airport city4-3)
+          (location city4-3)
+          (airport city3-3)
+          (location city3-3)
+          (airport city2-3)
+          (location city2-3)
+          (airport city1-3)
+          (location city1-3)
+          (in-city city8-3 city8)
+          (in-city city8-2 city8)
+          (in-city city8-1 city8)
+          (in-city city7-3 city7)
+          (in-city city7-2 city7)
+          (in-city city7-1 city7)
+          (in-city city6-3 city6)
+          (in-city city6-2 city6)
+          (in-city city6-1 city6)
+          (in-city city5-3 city5)
+          (in-city city5-2 city5)
+          (in-city city5-1 city5)
+          (in-city city4-3 city4)
+          (in-city city4-2 city4)
+          (in-city city4-1 city4)
+          (in-city city3-3 city3)
+          (in-city city3-2 city3)
+          (in-city city3-1 city3)
+          (in-city city2-3 city2)
+          (in-city city2-2 city2)
+          (in-city city2-1 city2)
+          (in-city city1-3 city1)
+          (in-city city1-2 city1)
+          (in-city city1-1 city1)
+          (at plane1 city3-3)
+          (at truck15 city8-2)
+          (at truck14 city7-2)
+          (at truck13 city6-1)
+          (at truck12 city5-2)
+          (at truck11 city4-1)
+          (at truck10 city3-2)
+          (at truck9 city2-1)
+          (at truck8 city1-2)
+          (at truck7 city6-1)
+          (at truck6 city3-2)
+          (at truck5 city1-3)
+          (at truck4 city4-3)
+          (at truck3 city1-3)
+          (at truck2 city7-1)
+          (at truck1 city8-1)
+          (at package5 city3-2)
+          (at package4 city5-1)
+          (at package3 city1-1)
+          (at package2 city5-2)
+          (at package1 city2-1))
+   (:goal (and (at package5 city6-3)
+               (at package4 city5-3)
+               (at package3 city8-3)
+               (at package2 city4-3)
+               (at package1 city6-3))))
+</logistics-instance-file-example>
+
+This is a plan for the Logistics instance above:
+<plan-logistics>
+(load-truck package2 truck12 city5-2)
+(drive-truck truck12 city5-2 city5-1 city5)
+(load-truck package1 truck9 city2-1)
+(drive-truck truck9 city2-1 city2-3 city2)
+(load-truck package4 truck12 city5-1)
+(drive-truck truck12 city5-1 city5-3 city5)
+(unload-truck package4 truck12 city5-3)
+(load-truck package5 truck10 city3-2)
+(drive-truck truck10 city3-2 city3-3 city3)
+(unload-truck package2 truck12 city5-3)
+(unload-truck package1 truck9 city2-3)
+(unload-truck package5 truck10 city3-3)
+(load-airplane package5 plane1 city3-3)
+(fly-airplane plane1 city3-3 city6-3)
+(unload-airplane package5 plane1 city6-3)
+(drive-truck truck3 city1-3 city1-1 city1)
+(load-truck package3 truck3 city1-1)
+(drive-truck truck3 city1-1 city1-3 city1)
+(fly-airplane plane1 city6-3 city5-3)
+(load-airplane package2 plane1 city5-3)
+(fly-airplane plane1 city5-3 city6-3)
+(unload-truck package3 truck3 city1-3)
+(fly-airplane plane1 city6-3 city4-3)
+(unload-airplane package2 plane1 city4-3)
+(fly-airplane plane1 city4-3 city2-3)
+(load-airplane package1 plane1 city2-3)
+(fly-airplane plane1 city2-3 city6-3)
+(unload-airplane package1 plane1 city6-3)
+(fly-airplane plane1 city6-3 city1-3)
+(load-airplane package3 plane1 city1-3)
+(fly-airplane plane1 city1-3 city8-3)
+(unload-airplane package3 plane1 city8-3)
+</plan-logistic>
+
+Provide only the plan for the given instance. Here is a checklist to help you with your task:
+1) The plan must be in the same format as the examples above.
+2) Use the tags "<plan>...</plan>" around the plan.
+3) The actions in the plan must be from the set of actions in the domain $name, that is, they must use the same name and same number of parameters as one of the action schemas.
+4) The plan must be valid, that is, each action must be applicable in the state it is applied in and the plan must end in a goal state.

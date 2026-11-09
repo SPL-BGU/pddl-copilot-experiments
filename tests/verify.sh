@@ -52,6 +52,7 @@ run_test test_claude_api_batch.py
 run_test test_claude_api_tools_probe.py
 run_test test_budget_probe_analysis.py
 run_test test_frontier_runner.py
+run_test test_d5a_pilot.py
 run_test test_vllm_client.py
 run_test test_submit_wrapper.py
 run_test test_reasoning_settings.py
