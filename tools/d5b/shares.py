@@ -204,7 +204,8 @@ def numbers_rows(r120: dict, r1800: dict, validate: list | None) -> str:
         rows.append(f"| D5b corpus, syntax check | {ok} / {len(validate)} files valid (4 IPC 2023 domain files + "
                     f"{len(validate) - 4} generated problems; pddl-pyvalidator 0.1.6 and KCL VAL both) | `validate.jsonl` | - |")
     dont = ("a share with a pending range as one number; these shares as a model result "
-            "(no model has run on these problems)")
+            "(no model has run on these problems); the cut-off as exact (wall clock, 12 runs at "
+            "once on a laptop, so a run near the limit can fall either side)")
     for lim in LIMITS:
         for strat, label in (("lazy_greedy_cea", "plugin default `lazy_greedy_cea`"), ("any", "any of the three strategies")):
             rows.append(f"| Fast Downward solved within {lim} s, {label} ({n_prob} problems, plan VAL-valid) | "
