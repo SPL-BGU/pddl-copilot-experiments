@@ -6,6 +6,72 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-11-09: Opt-in gpt-oss reasoning effort; opt-in storage of the reasoning trace
+
+Branch `harness/gptoss-effort`. No cluster job ran for this entry and no corpus was
+rewritten. Default requests and default rows are unchanged (a test compares the JSON
+body of three request shapes with what every corpus sent, and the request bytes and
+parsed replies of the old and new client were compared on the same shapes). No frozen
+file of the delivered-rerun package changed; its hash is still `822aace…`.
+
+**1. Reasoning effort for gpt-oss (`pddl_eval/vllm_client.py`,
+`cluster-experimenting/`).** Omer 2026-11-09: low effort in wave 1, medium in wave 2,
+always sent explicitly. `$PDDL_REASONING_EFFORT` (low, medium, high) makes the client
+send the top-level request field `reasoning_effort`. Checked in the vLLM v0.20.2 source:
+the Harmony renderer (`vllm/entrypoints/serve/render/serving.py`,
+`_make_request_with_harmony`) reads `request.reasoning_effort` into the system message,
+and `chat_template_kwargs` is never read on that path, so the field binds (unlike
+`guided_json`, which 0.20.2 dropped). With no field, openai-harmony writes its default,
+`Reasoning: medium`. `submit_with_rtx.sh --reasoning-effort "low default"` makes one
+cell per level, named `effort-<level>` where the think token usually sits
+(`slurm_vllm_gpt-oss_20b_effort-low_<cond>`), so these cells are labelled "low effort",
+never "thinking off". Only models marked `SUPPORTS_REASONING_EFFORT=1` in
+`lib/defaults.sh` (gpt-oss:20b) accept it. Before each gpt-oss cell the sbatch asks the
+server to render a one-line chat and prints the served system line
+(`cluster-experimenting/reasoning_settings.py system-line`); an effort cell whose line
+does not show its level is skipped. `run_experiment.py` is frozen, so the effort cannot
+go into `summary_*.json`; effort and stored-reasoning cells get
+`OUT_DIR/client_settings.json` instead.
+
+**2. The reasoning trace was never stored (NEW-2).** vLLM 0.20.2 returns the trace as
+`message.reasoning`; its response model has no `reasoning_content` field. The client
+read only `reasoning_content`, so the row field `thinking` is empty in all 68,400
+think-on rows of `sweep5v2-live` and all 68,400 of `sweep6-live`, including the 26,885
+and 25,512 of them that ended normally with an answer. This is a simpler cause than the
+2026-05-25 `think_overflow` entry below gives (the parser flushing only after a complete
+think block): even complete traces were dropped. The default read is kept, because filling `thinking` would
+let the frozen scoring code's `think_overflow` label fire and change failure labels.
+`$PDDL_STORE_REASONING=1` (`submit_with_rtx.sh --store-reasoning`, which requires
+`--run-tag`) also reads `message.reasoning`, so the trace reaches the existing row field
+`thinking` (capped at 4,096 characters by the frozen runner). A separate new row field
+would need an edit to the frozen `pddl_eval/runner.py`, so it was not added.
+
+**3. Two known effects of a stored trace (review of PR #126).**
+
+- *The trace is cut at 4,096 characters.* The cap is `THINKING_SNAPSHOT_LEN` in
+  `pddl_eval/runner.py`, which is inside the frozen package hash, so it stays. gpt-oss
+  `solve` traces are likely longer than that, so wave-2 (D3) analyses get only the
+  start of each trace. An analysis that needs the full trace must use a path outside
+  the frozen package or a later prereg.
+- *A cut-off answer gets a different label.* In `_classify_step_failure`
+  (`pddl_eval/scoring.py`, the check just above `FR_LOOP_EXHAUSTED`), a failed row
+  whose output cap fired (`done_reason == "length"`) with a non-empty `thinking`, an
+  empty response, no error and no tool-loop cap-hit is labelled `think_overflow`. With
+  `thinking` empty, as in every corpus so far, the same row became
+  `truncated_no_answer`. A cut-off row with some visible response keeps
+  `truncated_no_answer`. So on stored-trace cells, any count of cut-off answers must
+  take both labels. `tools/ntster_common.py` already does (`TRUNCATED_LOSS_REASONS`).
+  `tools/reanalysis/01_reproduce_frozen.py` and `bc_reproduce_numbers.py` counted only
+  `truncated_no_answer`; they now count both, through a `TRUNCATED_LOSS_REASONS` copy
+  in `tools/reanalysis/common.py` and `bc_common.py`. On the canonical corpora (where
+  `think_overflow` never occurs) both still reproduce the frozen figures (15/15 checks;
+  all checks pass). `tools/val_crosscheck.py` was left as it is because its sha256
+  (`e6e9a78b…`) is recorded in `reference/val_crosscheck.md`. Its online re-grade
+  applies only the truncation relabel, so on a stored-trace cell a stored
+  `think_overflow` row re-grades to `truncated_no_answer` and counts as a mismatch in
+  `pyval_regrade_reason_equals_stored`. Treat such rows as matching, or filter them,
+  before reading that count on new cells.
+
 ## 2026-11-09 — Corrections found by the 2026-11-09 audit (no code change in this entry)
 
 - **Gemma 4 does think when `enable_thinking=True`.** The 2026-05 entry on `planbench/engine.py::_vllm_chat` says "`gemma4` has no `<think>` tokens and ignores the kwarg". That is wrong: Gemma 4 uses `<|channel>thought … <channel|>`, its chat template adds `<|think|>` when thinking is on, and vLLM 0.20.2 has a `gemma4` reasoning parser. We serve Gemma with `REASONING_PARSER=none`, so the reasoning stays inside `response`. In sweep5v2-live all 4,560 no-tools think-on Gemma responses start with `thought\n` and run to the output cap far more often (validate_plan answers cut at the cap: 9 → 2,690 of 3,000). The "calling falls from 21% to 0.6%" finding is therefore a real thinking-on effect, mostly "thinking uses the budget before the call" (2,025 of the 2,981 plain validate_plan no-call rows ran out inside the thought channel).
