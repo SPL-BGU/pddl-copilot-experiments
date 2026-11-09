@@ -219,13 +219,15 @@ ISS-013.
 - **ISS-027 scope (checked 2026-11-09):** the case bug also hits the open-model simulate
   and validate_plan tool arms. The only frozen figures that move by more than 1 point are
   Gemma's Study 1 simulate tool-verified cells (91.7 → 95.0 plain, 90.7 → 94.0 steered)
-  and figures built on them. Open: who fixes pyval (it is `pddl-pyvalidator` 0.1.5, used
-  by the validator plugin), and that the extension pins the fixed version in D1f.
+  and figures built on them. **Decided (Omer 2026-11-09): we fix it** in `SPL-BGU/pyvalidator`
+  (`pddl-pyvalidator`, now 0.1.5), in a separate session, as a 0.1.6 release; then the
+  plugin's `requirements.txt` pins it and D1f records the version the extension grades
+  with. Frozen corpora are not re-graded in place.
 - **Gemma thinking (checked 2026-11-09):** Gemma really thinks with thinking on; its
   reasoning sits inside `response` because we serve it with no reasoning parser. The
   "21% to 0.6%" finding stands as a thinking-on effect (thinking uses the budget before
-  the call). Open for D3: serve Gemma with the `gemma4` reasoning parser or keep `none`
-  for parity with Study 1.
+  the call). **Decided (Omer 2026-11-09): wave 2 keeps `REASONING_PARSER=none` for
+  Gemma**, for direct comparison with Study 1; the D1f prereg states it.
 - **⚠️ STILL OPEN (Omer 2026-11-09: keep it open): E1, the six research questions
   against the two gates.** The tex frames its results as RQ1 to RQ6 plus a scorecard; the
   plan frames them as two gates (calling, delivery). The side-by-side and the suggestion

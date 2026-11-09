@@ -2537,3 +2537,11 @@ validated by an independent ranking subagent (the user asked for a second perspe
   different plan than the prompt held; ISS-030 the reasoning trace was never stored in
   any think-on row. Rule for all four: frozen figures stay, and corrected figures go
   beside them, post hoc.
+
+## 2026-11-09 (night) — pyval fix owned by us; Gemma keeps no reasoning parser in wave 2
+
+- **ISS-027:** we fix the case bug in `SPL-BGU/pyvalidator` ourselves, in a separate
+  session (release 0.1.6, then the plugin pins it). Frozen corpora keep their grades;
+  corrected figures appear beside them, post hoc.
+- **Gemma, wave 2 (thinking on):** keep `REASONING_PARSER=none`, as in Study 1, so the
+  thinking-on cells compare directly. No parser side run.
