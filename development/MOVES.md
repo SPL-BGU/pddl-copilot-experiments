@@ -6,7 +6,7 @@ Omer (2026-11-09): keep the full-corpus checkpoints, remove the outdated ones. E
 file under `checkpoints/` was dated by the commit that added it and by the newest file
 inside the zip, and each trials or overlay zip was compared (sha256 per member) with
 the copy in `results/`. The full-corpus zips all match their `results/` trees and stay;
-see the PR "checkpoints: remove outdated zips" for the full table. **The four files
+see PR #129 ("checkpoints: remove outdated zips") for the full table. **The four files
 deleted here were last present at commit `9c18949`**; get one back with
 
 ```
