@@ -125,13 +125,13 @@ ISS-013.
   (the rerun's pinned harness). Probably stale: the D1 smokes ran from
   `harness/d1a-new-families`, now merged. Re-check at the next go-ahead. Any SSH needs
   Omer's go-ahead first.
-- Laptop (2026-11-09): the merged worktrees `.claude/worktrees/agent-a87aa60a393adccef`
-  and `.claude/worktrees/d1a-harness`, the merged local branches (`analysis/val-crosscheck`,
-  `harness/d1a-new-families`, `worktree-agent-a87aa60a393adccef`,
-  `worktree-agent-affd62f64ea91abed`) and the merged remote branches
-  (`analysis/val-crosscheck`, `harness/d1a-new-families`,
-  `claude/frontier-llms-paper-analysis-6jst6i`) can go; Omer runs the deletion. Two old
-  stashes from `paper/aaai27` are Omer's to check.
+- Laptop: done 2026-11-09 (Omer ran it). The two merged worktrees and the merged local
+  and remote branches are deleted. Two old stashes from `paper/aaai27` are Omer's to
+  check.
+- Checkpoint zips (Omer 2026-11-09): keep the full-corpus checkpoints, remove the
+  outdated ones. An agent dates every zip (when it was committed, what is inside), checks
+  which scripts and docs pin each path, and proposes the removals in a PR; every removal
+  goes into `MOVES.md`.
 
 ### Decided 2026-11-09 (Omer)
 
@@ -142,7 +142,9 @@ ISS-013.
   `sweep5v2-live` are never touched. **The loader:** two small validate_domain trees
   (tree A with the first invalid domain, tree B with the second), no harness change.
 - **Llama weights:** keep unsloth's ungated copy if its weight files match Meta's byte
-  for byte (check running).
+  for byte. **Checked 2026-11-09: identical** (all four shards and the index match Meta's
+  LFS pointers; only small config and tokenizer metadata differ, with the same chat
+  template and stop tokens; `draft_release_licence_models.md` §2). Unsloth stands.
 - **GPT-OSS:** low effort in wave 1, medium in wave 2, sent explicitly; cells labelled
   "low effort", never "thinking off".
 - **The 35B calling rate:** quote both runs (68.0 and 82.7), keep "bigger calls less" as
@@ -162,21 +164,79 @@ ISS-013.
   families that passed the smoke go into the prereg now, each as a numbered tier with the
   same analysis, so adding one per wave needs only a go-ahead (no new prereg, no
   re-freeze).
+- **The Corrêa 2-shot prompt cell (plan D5e):** approved. Their prompt word for word
+  (instructions, the Gripper and Logistics worked examples, their checklist), then our
+  problem. Our Gripper problems are left out of this cell, because their example is a
+  solved Gripper problem; Logistics is not in our corpus. Sonnet 4.6, unaided solve:
+  thinking off at temperature 0 (matches the existing 28.7% cell) and thinking on with 3
+  repeats (matches D5a). Same grader; the pilot checks that the answer reader reads their
+  plan format, and if it does not, Omer is asked before anything changes. Reported as one
+  descriptive row, outside the confirmatory set, never pooled with v11 to v13.
+- **Wave 1 families (Omer 2026-11-09, yes):** gpt-oss-20b and Llama 3.1 8B, plus the
+  official Gemma weights. Ministral 3 14B is the wave-2 tier.
+- **D5 thinking pilot (Omer 2026-11-09, yes; ran 2026-11-09, PR #131, $1.69):** 20 keys per arm, Batch API, about $1.50
+  to $10, hard cap $40. It measures thinking tokens and the answer-parse rate only; plan
+  success is not computed, so the pilot does not peek at the outcome. The prereg declares
+  it.
+- **Later-wave models (Omer: keep only the ones of high value to the paper).**
+  Registered as numbered tiers, each still to pass the parser smoke:
+  - **GLM-4.7-Flash:** a third family with a real thinking on/off switch, so the
+    reasoning-mode finding (Gemma's calling falls from 21% to 0.6%) can be tested outside
+    Qwen and Gemma. A new vendor, and a fast MoE.
+  - **gpt-oss-120b:** the same family as the 20b at a larger size, so "bigger calls
+    less" (a direction only since the 35B flips) gets a test in a second family. A fast
+    MoE, but it needs a GPU to itself.
+
+  Passed over: Nemotron 3 Nano (adds a new architecture, which the paper's questions do
+  not ask about, and its prefix caching is unchecked), Granite 4.2 8B (dense and slow;
+  Llama already fills the 8B rung), Olmo 3 7B (its open training data would allow a
+  direct contamination search, but that is a separate project; its thinking variant is
+  a separate checkpoint, not a switch).
 - **Release:** the work is attributed to Omer and to BGU: a copyright line naming him and
   Ben-Gurion University (SPL-BGU), a `CITATION.cff`, a Zenodo DOI, CC-BY-4.0 for data, MIT
   or Apache-2.0 for code (whichever is more common for academic code). BGU's policy on
   student work is checked first.
 
+### Open PRs for Omer's review (opened 2026-11-09; each checked: all 27 frozen file hashes match, package `822aace…`)
+
+| PR | what | note |
+|---|---|---|
+| #124 | C3: Study 1 breakdowns and Study 2 tables into `NUMBERS.md`, by generator (1,290 and 325 self-checks pass) | edits `NUMBERS.md`, as #125 does: merge one, then rebase the other (the generators rewrite only their own marked blocks) |
+| #125 | 35B call flips (new T8c), Haiku tool arm on the renamed corpus, VAL on the Claude plans | found ISS-027 |
+| #126 | harness: opt-in reasoning effort for gpt-oss; opt-in storing of the reasoning trace | found ISS-030; holds the one-job smoke command for the next cluster go-ahead |
+| #127 | D1b: new item kinds in three trees (`domains-hard/`, `-vd-a/`, `-vd-b/`), no harness change; write-up; provenance copy tool | no SLURM job id is stored in any results file, so the copy tool takes it as an argument; trees a and b need separate output folders |
+| #128 | C4: four example transcripts, drawn by a stated rule (seed 20261109) | found ISS-028 and ISS-029 |
+| #129 | checkpoints: remove 4 outdated deck files (7.2 MiB); every trial zip kept, `sweep5v2-live` byte-identical to `results/` | 5 questions for Omer in the PR |
+| #130 (draft) | ISS-027 scope and Gemma thinking: the read-only check scripts | to clean before any figure enters `NUMBERS.md` |
+| #131 | frontier: thinking-on mode for the batch runner; SDK pinned to 0.109.2; Corrêa 2-shot prompt vendored (from their CC-BY code release); the D5a pilot | pilot spent $1.69 (Batch); full D5a re-estimated at about $51 with the Batch API (about $33 to $72); `claude_api_batch.py` hash recorded in the budget-probe prereg changes (default request proven byte-identical) |
+
 ### Open decisions
 
-- **Which two families go first** in wave 1 (Omer leans gpt-oss-20b and Llama 3.1 8B);
-  recommendation pending.
-- **The Corrêa 2-shot prompt cell:** Omer asked how the descriptive cell would work
-  before deciding.
-- **E1: the six research questions** against the two gates (calling and delivery): Omer
-  asked to see them side by side before deciding.
-- **Checkpoint zips:** Omer asked to archive the undated ones to `checkpoints/archive/`;
-  every zip under `checkpoints/` is undated, so which ones is to be confirmed.
+- **Tracking:** the proposal (`draft_tracking_proposal.md`: one `items.yaml`, rendered into
+  this file and checked against GitHub) has 9 questions for Omer.
+- **Licence holder:** BGU procedure 14-007 treats MSc research software as a possible
+  service invention owned by BGU or BGN; it says nothing on open-source licences or the
+  copyright line. Ask the advisor (the lab already ships MIT repos as "SPL@BGU"), then
+  BGN if needed. The agent recommends MIT for code.
+- **ISS-027 scope (checked 2026-11-09):** the case bug also hits the open-model simulate
+  and validate_plan tool arms. The only frozen figures that move by more than 1 point are
+  Gemma's Study 1 simulate tool-verified cells (91.7 → 95.0 plain, 90.7 → 94.0 steered)
+  and figures built on them. **Decided (Omer 2026-11-09): we fix it** in `SPL-BGU/pyvalidator`
+  (`pddl-pyvalidator`, now 0.1.5), in a separate session, as a 0.1.6 release; then the
+  plugin's `requirements.txt` pins it and D1f records the version the extension grades
+  with. Frozen corpora are not re-graded in place.
+- **Gemma thinking (checked 2026-11-09):** Gemma really thinks with thinking on; its
+  reasoning sits inside `response` because we serve it with no reasoning parser. The
+  "21% to 0.6%" finding stands as a thinking-on effect (thinking uses the budget before
+  the call). **Decided (Omer 2026-11-09): wave 2 keeps `REASONING_PARSER=none` for
+  Gemma**, for direct comparison with Study 1; the D1f prereg states it.
+- **⚠️ STILL OPEN (Omer 2026-11-09: keep it open): E1, the six research questions
+  against the two gates.** The tex frames its results as RQ1 to RQ6 plus a scorecard; the
+  plan frames them as two gates (calling, delivery). The side-by-side and the suggestion
+  (a baseline question plus one question per gate, problem size as a factor under each,
+  the scorecard dropped) were shown to Omer on 2026-11-09 and are in
+  `paper_notes_discussions.md` that day. Until Omer decides, no E step removes the RQs or
+  the scorecard from the tex, and E1 drafts carry both framings.
 - **Code licence** (MIT or Apache-2.0) and the copyright holder, after the BGU policy
   check.
 
