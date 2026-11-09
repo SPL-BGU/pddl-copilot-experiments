@@ -28,13 +28,13 @@ control, open-model PlanBench). Then one restructure of the paper. **All of it i
 `weakness_action_plan.md`, workstreams A to F.** A is done. B: drafts on `main`
 (`draft_B1_B2_related_work.md`, `draft_B3_B5_methods.md`), waiting for Omer's read; two
 agent-side gaps first (Corrêa et al. in B1; the C1 VAL figure in B4's TODO). C1, C2, C3:
-done (PRs #121, #124). C4: PR #128 open. D1a to D1d: done (PRs #122, #127; the D1b items
+done (PRs #121, #124). C4: done (PR #128; the transcript readings were drafted by an AI session and wait for Omer's confirmation). D1a to D1d: done (PRs #122, #127; the D1b items
 are in three trees, no harness change, `reference/d1b_harder_items.md`). The contamination
 wording in the tex uses the paired, clustered ±5 test (PR #123). Plan step D5 answers
 Corrêa et al.'s "Frontier LLMs Rival State-of-the-Art Planners" (D5a to D5e, all
-approved; the D5a pilot ran, PR #131). Four grading findings of 2026-11-09 are ISS-027 to
+approved; the D5a pilot ran and its PR #131 is merged; the full run with D5e is about $66, above the $51 approved, so Omer decides). Four grading findings of 2026-11-09 are ISS-027 to
 ISS-030. **Next: the work list in `handoff_20261109.md` §4** (tracking file, checkpoints
-follow-up, release files, #130 cleanup, B drafts, C5 and E1a, D1e, D5b ground truth, D1f,
+follow-up, release files, #130 (cleaned, still a draft), B drafts, C5 and E1a, D1e, D5b ground truth, D1f,
 one cluster go-ahead, then the D5a full run).
 
 ## Where each line stands
@@ -210,9 +210,16 @@ ISS-013.
 
 ### Open PRs (2026-11-09, end of day)
 
-Merged 2026-11-09: #121 to #127, #129, and the sibling's #60. Open: #128 (C4), #131
-(frontier thinking mode, SDK pin, D5a pilot), #130 (draft, ISS-027 and Gemma check
-scripts). Details and next steps: `handoff_20261109.md` §1.
+Merged 2026-11-09: #121 to #129, #131, and the sibling's #60; #124 to #129 and #131
+were reviewed and fixed first. Open: #130 (draft, ISS-027 and Gemma check scripts;
+cleaned and ready to leave draft when Omer decides; adds generated ISS-027 caveats
+beside T1, T2, T5, T8a and the mechanism row). When #130 merges, `tests/verify.sh`
+conflicts with #128's line; keep both. Details and next steps: `handoff_20261109.md` §1.
+
+`tests/test_delivered_rerun_analysis.py` (hash-pinned) fails 1 of 428 when run in the
+main checkout, already at `51fe971`: its "DEPENDENCIES cover every imported repo
+module" check counts `.venv/` site-packages, since the venv sits inside the repo. It
+passes from any worktree whose venv lives outside the repo. Not a code fault.
 
 ### Open decisions
 
