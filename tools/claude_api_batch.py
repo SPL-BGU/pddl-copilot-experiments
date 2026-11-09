@@ -59,7 +59,9 @@ reference request byte for byte, tests/test_claude_api_batch.py proves it):
         --thinking-budget N                 budget_tokens for thinking=on on
                                             Sonnet 4.6 and Haiku 4.5
         --effort LEVEL                      output_config.effort (Sonnet 5.5
-                                            only, where it is required)
+                                            only; the API defaults it to
+                                            high, D5a policy sends it
+                                            explicitly)
         --max-tokens N                      alias of --num-predict
         --limit N --seed S                  alias of --max-per-task; with
                                             --seed the pool is shuffled first
@@ -281,8 +283,10 @@ def load_prompt_template(path) -> dict:
 
 def fill_prompt_template(body: str, name: str, domain_pddl: str, problem_pddl: str) -> str:
     """Fill a template the way Corrêa et al.'s create_end_to_end_prompt does:
-    $name = domain name; $domain = domain file minus every line whose stripped
-    text starts with ';'; $instance = the problem file unchanged."""
+    $name = our domain folder name (it differs from the PDDL `(domain X)` name
+    for 9 of the 20 domains; see the template header); $domain = domain file
+    minus every line whose stripped text starts with ';'; $instance = the
+    problem file unchanged."""
     lines = io.StringIO(domain_pddl).readlines()
     domain = "".join(l for l in lines if not l.strip().startswith(";"))
     return string.Template(body).substitute(
@@ -1051,7 +1055,8 @@ def main() -> None:
     b.add_argument("--thinking-budget", type=int, default=None,
                    help="budget_tokens for --thinking on (Sonnet 4.6, Haiku 4.5)")
     b.add_argument("--effort", choices=EFFORT_LEVELS, default=None,
-                   help="output_config.effort (Sonnet 5.5 only, where it is required)")
+                   help="output_config.effort (Sonnet 5.5 only; the API defaults it to "
+                        "high, and D5a policy sends it explicitly)")
     b.add_argument("--prompt-file", default=None,
                    help="alternative user prompt template (tools/prompts/*.txt); "
                         "solve only; sent as the only message, no system prompt, "

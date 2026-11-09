@@ -1,12 +1,18 @@
-# Correa, Pereira, Seipp end-to-end planning prompt (the "2-shot" prompt).
+# Corrêa, Pereira, Seipp end-to-end planning prompt (the "2-shot" prompt).
 #
-# Source: Zenodo record 10.5281/zenodo.17400964 (CC-BY-4.0), "Code and
-# experiment data from the NeurIPS 2025 paper 'Classical Planning with
-# LLM-Generated Heuristics'", archive correa-et-al-neurips2025.zip
+# Source: Zenodo record 10.5281/zenodo.17400964, "Code and experiment data
+# from the NeurIPS 2025 paper 'Classical Planning with LLM-Generated
+# Heuristics'", archive correa-et-al-neurips2025.zip
 # (md5 8e20619169553ec6eb8b5f10e262a2d9), file
 # src/llm_heuristics/templates/end_to_end_prompt.py
 # (sha256 17bed943c3d577cd33f39a07e5d15a80cadaacb8a5dd64b81a2677ecaa32122d),
 # the END_TO_END_PROMPT string literal, copied byte for byte below.
+#
+# Licence: the archive is released under CC BY 4.0,
+# https://creativecommons.org/licenses/by/4.0/ . Authors: Corrêa, Pereira
+# and Seipp. For the copyright holder line, see the archive's LICENSE.
+# Change made here: this header was added above the template; the template
+# text itself is unchanged.
 #
 # Why this file and not the paper's prompt.txt: arXiv:2511.09378v2 (TeX
 # source, prompt.txt, sha256
@@ -23,12 +29,22 @@
 #
 # Fill rule (mirrors their create_end_to_end_prompt in
 # src/llm_heuristics/prompt.py): string.Template.substitute with
-#   $name     = the domain name,
+#   $name     = our domain folder name (domains/<kind>/<folder>),
 #   $domain   = the domain file with every line whose stripped text starts
 #               with ';' removed,
 #   $instance = the instance file, unchanged.
 # Nothing else is filled or edited. They send it as the only user message,
 # with no system prompt.
+#
+# $name is the folder name, which differs from the PDDL (domain X) name for
+# 9 of our 20 domains: gripper (gripper-strips), rovers (rover), tpp
+# (tpp-propositional), zenotravel (zeno-travel), block-grouping
+# (mt-block-grouping), counters (fo-counters-rnd), gardening
+# (mt-plant-watering-constrained), pogo_stick (polycraft) and
+# zenotravel-numeric (zenotravel). Of these, 5 are among the 19 D5a pilot
+# keys of this arm: block-grouping, gardening, tpp, zenotravel and
+# zenotravel-numeric. The D5a pilot sent the folder name, and the full run
+# sends it too.
 #
 # Exclusion: our domains/classical/gripper is also named gripper-strips but
 # is a typed multi-robot domain, so the Gripper example would show a
@@ -37,6 +53,12 @@
 #
 # The lines up to and including the END HEADER line are this header and are
 # never sent. The template body is everything after the END HEADER line.
+# Only the body hash below is checked when the file is loaded. The whole-file
+# sha256 also changes with the header: the D5a pilot manifest
+# (results/frontier-d5a-pilot/e/run_manifest.json) records
+# 572c3a8477d2f874e5a228df6303f173d317b70f7b1d685a81933be4fe2b90be, the file
+# before this header was corrected on 2026-11-09 (PR #131 review); the
+# body, and so every request, is the same.
 # body-sha256: e3ca10c40da0ddc6455120f9d622a3d4a5563998e51ca49101676fed0291fb86
 # ---- END HEADER: template body follows verbatim ----
 

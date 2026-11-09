@@ -6,9 +6,16 @@ checks on it instead of raising. This fixture hands each test a fresh
 collector and fails the test at teardown when any check failed, so
 `python3 -m pytest tests/test_<name>.py` runs the same assertions.
 """
+import sys
+from pathlib import Path
+
 import pytest
 
-from tests._helpers import TestResults
+# pytest puts tests/ (not the repo root) on sys.path when a test file is run
+# as a script from another directory (tests/test_c3_tables.py via verify.sh).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tests._helpers import TestResults  # noqa: E402
 
 
 @pytest.fixture
