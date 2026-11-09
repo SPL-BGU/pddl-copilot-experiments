@@ -32,7 +32,7 @@ done (PRs #121, #124). C4: done (PR #128; the transcript readings were drafted b
 are in three trees, no harness change, `reference/d1b_harder_items.md`). The contamination
 wording in the tex uses the paired, clustered ±5 test (PR #123). Plan step D5 answers
 Corrêa et al.'s "Frontier LLMs Rival State-of-the-Art Planners" (D5a to D5e, all
-approved; the D5a pilot ran and its PR #131 is merged; the full run with D5e is about $66, above the $51 approved, so Omer decides). Four grading findings of 2026-11-09 are ISS-027 to
+approved; the D5a pilot ran and its PR #131 is merged; the full run with D5e, about $66 with the Batch API, approved by Omer 2026-11-09, once the prereg holds it). Four grading findings of 2026-11-09 are ISS-027 to
 ISS-030. **Next: the work list in `handoff_20261109.md` §4** (tracking file, checkpoints
 follow-up, release files, #130 (cleaned, still a draft), B drafts, C5 and E1a, D1e, D5b ground truth, D1f,
 one cluster go-ahead, then the D5a full run).
