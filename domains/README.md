@@ -36,6 +36,35 @@ domains/
     └── zenotravel-numeric/  (PR-3, patty/ipc-2023 + hand-authored p02-p05)
 ```
 
+## Sources and licence terms
+
+This section says, for each domain tree, where its files come from and under what terms. It records only what the repo itself records. Where the repo does not record a licence, it says **unknown**. Those upstream licences still need to be checked at the source.
+
+The repo-wide rule is in the top-level `LICENSE` (code, MIT) and `LICENSE-DATA` (data we produced, CC BY 4.0). Files we copied from someone else keep their own terms. Files we made by changing a copied file (for example an invalid problem) are ours for the change, but the copied part keeps its original terms.
+
+### Upstream sources
+
+| Source | Domains | What we copied | Licence |
+|---|---|---|---|
+| Paper dataset snapshot `.local/pddl_mcp_dataset/` (Aug 2025), shipped with Benyamin et al., 2025 (arXiv:2509.12987) | barman, blocksworld, depots, rovers, satellite (classical); counters, depot, farmland, pogo_stick, sailing (numeric) | `domain.pddl` and the valid problems | **unknown**. The snapshot is not in the repo, and the repo does not record its licence or its public home. |
+| olam-compatible, https://github.com/olomes/olam-compatible | gripper, miconic, parking, tpp, zenotravel (classical) | `domain.pddl` and the valid problems | **unknown** (not recorded in the repo) |
+| matteocarde/patty, `files/` | block-grouping, gardening (numeric) | `domain.pddl` and the valid problems | **unknown** (not recorded in the repo) |
+| matteocarde/patty, IPC-2023 mirror | delivery, drone, zenotravel-numeric (numeric) | `domain.pddl` and the valid problems (for zenotravel-numeric, `p01` only) | **unknown** (not recorded in the repo) |
+
+### Per tree
+
+| Tree | Copied from upstream (upstream terms) | Made by us (CC BY 4.0, `LICENSE-DATA`) |
+|---|---|---|
+| `domains/` | `domain.pddl` and `p01`–`p05` in each domain, from the sources above | `domain_neg.pddl`, `n01`–`n05`, and all `.plan` files (built by `tools/build_fixtures.py`; plans come from the planners); zenotravel-numeric `p02`–`p05` (hand-written) |
+| `domains-anon/` | The same files as `domains/`, with every name rewritten by `tools/anon_rename.py`. The renamed files are still changed copies of the upstream files. | The rename maps in `domains-anon/_maps/` and the name changes themselves |
+| `domains-hard/`, `domains-hard-vd-a/`, `domains-hard-vd-b/` | `domain.pddl` and the chosen valid problems, copied from `domains/` | The plans, invalid domains, invalid problems, `manifest.json`, `manifest.sha256` and `planner_outputs.json` (built by `tools/build_hard_fixtures.py`; each `manifest.json` records the script, its hash and the seed) |
+
+### Other third-party material near the domains
+
+- **PlanBench** (the `planbench/` arm). `planbench/setup.sh` clones https://github.com/karthikv792/LLMs-Planning at setup time, so its files are not stored in this repo. The configs and prompts copied into `results/planbench/` come from it. Licence: **unknown** (not recorded in the repo).
+- **Corrêa, Pereira and Seipp prompt** (`tools/prompts/correa2026_2shot.txt`). CC BY 4.0, from their Zenodo record. The file's own header gives the source, the hashes and the one change we made.
+- **IPC 2023 learning benchmarks** (planned for plan item D5b, not in the repo yet). https://github.com/ipc2023-learning/benchmarks has **no licence file** at HEAD `19d6a8a` (checked 2026-11-09, `development/handoff_20261109.md`). Without a licence we cannot assume we may share copies of its domain files. Before any of those files are committed, decide how to handle this (see the D5b work).
+
 ## Per-domain layout (PR-3 flat layout, 62 files per domain)
 
 ```

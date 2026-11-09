@@ -192,5 +192,12 @@ work; a new paper is in progress (see `paper/`). Until it appears, cite the earl
 }
 ```
 
+## Licence
+
+- **Code:** MIT. See `LICENSE`.
+- **Data we produced** (run results, checkpoints, derived tables, and the fixtures we made): CC BY 4.0. See `LICENSE-DATA` for exactly what it covers.
+- **Third-party material** (benchmark domains, PlanBench files, the Corrêa et al. prompt, the AAAI style files) keeps its own terms. `domains/README.md` lists where each domain comes from.
+- **Citing this repo:** see `CITATION.cff`.
+
 ## Origin
 plugins implemented at [SPL-BGU/pddl-copilot](https://github.com/SPL-BGU/pddl-copilot). 
