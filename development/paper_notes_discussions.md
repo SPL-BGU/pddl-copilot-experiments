@@ -2518,3 +2518,22 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **sweep5v2-live is still valid** (Omer asked): it is the Study 1 corpus. The delivered
   rerun did not replace it; it reproduced its unaided and tool-verified numbers and
   retired only the open-model delivered ranges.
+
+## 2026-11-09 (evening) — Wave-1 families, the thinking pilot, later-wave models; new grading findings
+
+- **Decided (Omer):** wave 1 runs gpt-oss-20b and Llama 3.1 8B plus the official Gemma
+  weights; Ministral 3 14B is the wave-2 tier. The D5 thinking pilot is approved (20 keys
+  per arm, Batch API, hard cap $40); it measures thinking tokens and the parse rate only,
+  never plan success.
+- **Later-wave models, kept only where they add to the paper's questions:** GLM-4.7-Flash
+  (a third family with a thinking switch, for the reasoning-mode finding) and
+  gpt-oss-120b (a second family for "bigger calls less"). Nemotron 3 Nano, Granite 4.2 8B
+  and Olmo 3 7B are passed over.
+- **Four measurement findings from today's PRs, none yet in the tex:** ISS-027 the plan
+  grader is case-sensitive on object names (11 frontier plans; Sonnet's contamination gap
+  would read −4.33 instead of −0.33, still unresolved); ISS-028 a correct plan followed by
+  the goal facts is graded wrong (17 of the rerun's 38 "wrong facts" solve rows, so most
+  of those are not transcription errors); ISS-029 one simulate row graded against a
+  different plan than the prompt held; ISS-030 the reasoning trace was never stored in
+  any think-on row. Rule for all four: frozen figures stay, and corrected figures go
+  beside them, post hoc.

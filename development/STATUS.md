@@ -172,6 +172,26 @@ ISS-013.
   repeats (matches D5a). Same grader; the pilot checks that the answer reader reads their
   plan format, and if it does not, Omer is asked before anything changes. Reported as one
   descriptive row, outside the confirmatory set, never pooled with v11 to v13.
+- **Wave 1 families (Omer 2026-11-09, yes):** gpt-oss-20b and Llama 3.1 8B, plus the
+  official Gemma weights. Ministral 3 14B is the wave-2 tier.
+- **D5 thinking pilot (Omer 2026-11-09, yes):** 20 keys per arm, Batch API, about $1.50
+  to $10, hard cap $40. It measures thinking tokens and the answer-parse rate only; plan
+  success is not computed, so the pilot does not peek at the outcome. The prereg declares
+  it.
+- **Later-wave models (Omer: keep only the ones of high value to the paper).**
+  Registered as numbered tiers, each still to pass the parser smoke:
+  - **GLM-4.7-Flash:** a third family with a real thinking on/off switch, so the
+    reasoning-mode finding (Gemma's calling falls from 21% to 0.6%) can be tested outside
+    Qwen and Gemma. A new vendor, and a fast MoE.
+  - **gpt-oss-120b:** the same family as the 20b at a larger size, so "bigger calls
+    less" (a direction only since the 35B flips) gets a test in a second family. A fast
+    MoE, but it needs a GPU to itself.
+
+  Passed over: Nemotron 3 Nano (adds a new architecture, which the paper's questions do
+  not ask about, and its prefix caching is unchecked), Granite 4.2 8B (dense and slow;
+  Llama already fills the 8B rung), Olmo 3 7B (its open training data would allow a
+  direct contamination search, but that is a separate project; its thinking variant is
+  a separate checkpoint, not a switch).
 - **Release:** the work is attributed to Omer and to BGU: a copyright line naming him and
   Ben-Gurion University (SPL-BGU), a `CITATION.cff`, a Zenodo DOI, CC-BY-4.0 for data, MIT
   or Apache-2.0 for code (whichever is more common for academic code). BGU's policy on
@@ -190,14 +210,6 @@ ISS-013.
 
 ### Open decisions
 
-- **Which two families go first** in wave 1. Omer leans gpt-oss-20b and Llama 3.1 8B; the
-  agent agrees (two new vendors, opposite calling behaviour, both serving paths clean;
-  Ministral is the slowest and most fragile, so wave 2). Needs Omer's yes. More small or
-  MoE candidates for later tiers: GLM-4.7-Flash, Nemotron 3 Nano 30B-A3B, Granite 4.2 8B,
-  gpt-oss-120b, Olmo 3 7B (`draft_release_licence_models.md` §3).
-- **D5 pilot spend:** a 20-key thinking pilot, about $1.50 to $10 with the Batch API (cap
-  $38.59). The full D5 set is about $102 / $204 / $459 with the Batch API at low / mid /
-  high thinking use (`draft_D5_cost_and_correa.md`).
 - **Tracking:** the proposal (`draft_tracking_proposal.md`: one `items.yaml`, rendered into
   this file and checked against GitHub) has 9 questions for Omer.
 - **Licence holder:** BGU procedure 14-007 treats MSc research software as a possible
