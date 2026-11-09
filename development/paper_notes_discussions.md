@@ -2499,3 +2499,49 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Still open:** which two families go first; the Corrêa 2-shot prompt cell (Omer asked
   how it would work); the six research questions against the two gates (shown to Omer
   before E1 decides); which checkpoint zips to archive.
+
+## 2026-11-09 (later) — Corrêa 2-shot cell approved; the research questions stay open
+
+- **Approved (plan D5e):** a descriptive cell with Corrêa et al.'s 2-shot prompt, word for
+  word, on Sonnet 4.6 unaided solve, thinking off at temperature 0 and thinking on with 3
+  repeats. Our Gripper problems are left out, since their prompt shows a solved Gripper
+  problem. It answers whether the zero-shot prompt explains part of the 29% against their
+  results. One row, descriptive, never pooled with v11 to v13.
+- **Kept open on purpose (Omer): the six research questions against the two gates.** The
+  tex organises results as RQ1 to RQ6 plus a scorecard. Mapped onto the gates: RQ1 and RQ2
+  mix calling and delivery; RQ3 is mostly gate 1 (Gemma's calling falls to 21%, steering
+  repairs it, and 86.6% of its no-call answers are right anyway); RQ4 is the unaided
+  baseline plus gate 2 (the tool runs at 97 to 99%, its long output fills the window);
+  RQ5 and RQ6 are difficulty factors, not gates. The suggestion on the table: a baseline
+  question, one question per gate, problem size as a factor under each, and the scorecard
+  dropped (it rests on the retired ranges). No decision yet.
+- **sweep5v2-live is still valid** (Omer asked): it is the Study 1 corpus. The delivered
+  rerun did not replace it; it reproduced its unaided and tool-verified numbers and
+  retired only the open-model delivered ranges.
+
+## 2026-11-09 (evening) — Wave-1 families, the thinking pilot, later-wave models; new grading findings
+
+- **Decided (Omer):** wave 1 runs gpt-oss-20b and Llama 3.1 8B plus the official Gemma
+  weights; Ministral 3 14B is the wave-2 tier. The D5 thinking pilot is approved (20 keys
+  per arm, Batch API, hard cap $40); it measures thinking tokens and the parse rate only,
+  never plan success.
+- **Later-wave models, kept only where they add to the paper's questions:** GLM-4.7-Flash
+  (a third family with a thinking switch, for the reasoning-mode finding) and
+  gpt-oss-120b (a second family for "bigger calls less"). Nemotron 3 Nano, Granite 4.2 8B
+  and Olmo 3 7B are passed over.
+- **Four measurement findings from today's PRs, none yet in the tex:** ISS-027 the plan
+  grader is case-sensitive on object names (11 frontier plans; Sonnet's contamination gap
+  would read −4.33 instead of −0.33, still unresolved); ISS-028 a correct plan followed by
+  the goal facts is graded wrong (17 of the rerun's 38 "wrong facts" solve rows, so most
+  of those are not transcription errors); ISS-029 one simulate row graded against a
+  different plan than the prompt held; ISS-030 the reasoning trace was never stored in
+  any think-on row. Rule for all four: frozen figures stay, and corrected figures go
+  beside them, post hoc.
+
+## 2026-11-09 (night) — pyval fix owned by us; Gemma keeps no reasoning parser in wave 2
+
+- **ISS-027:** we fix the case bug in `SPL-BGU/pyvalidator` ourselves, in a separate
+  session (release 0.1.6, then the plugin pins it). Frozen corpora keep their grades;
+  corrected figures appear beside them, post hoc.
+- **Gemma, wave 2 (thinking on):** keep `REASONING_PARSER=none`, as in Study 1, so the
+  thinking-on cells compare directly. No parser side run.
