@@ -6,6 +6,51 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-11-09: D1b new item kinds in three fixture trees, no harness change; provenance copy tool; the plan-strategy bug fixed
+
+**Motivation.** Action plan D1b: new item kinds beside the current ones, balanced valid
+against invalid on every validate task. Decided by Omer on 2026-11-09: no harness change
+(the loader is a frozen file of the delivered-rerun package), validate_domain balanced
+through two small trees, results in a new sweep folder with provenance on every reused
+row. Nothing in `domains/` changed and no corpus was touched. Details, counts and
+checks: `development/reference/d1b_harder_items.md`.
+
+**1. Three new trees, built by `tools/build_hard_fixtures.py`** (helpers
+`tools/_hard_items.py`, `tools/_enhsp_variants.py`; tests `tests/test_hard_items.py`).
+All have the layout of `domains/` and load with the unchanged `load_domains` through
+`run_experiment.py --domains-dir`.
+- `domains-hard/`: every task except validate_domain (20 domains, 2 problems each).
+- `domains-hard-vd-a/` and `domains-hard-vd-b/`: validate_domain only. Each folder has
+  `domain.pddl`, one problem and one invalid domain, so each tree is 1:1, and the two
+  together give 2 valid and 2 invalid validate_domain items per domain.
+Each tree has its own `manifest.json` (every file with its sha256) and `manifest.sha256`;
+the main manifest names the hashes of the other two. No file named `domain_neg02.pddl`
+or similar is written: the frozen loader would skip it without a warning (its
+invalid-domain read is the single name `domain_neg.pddl`), and the build stops if it
+finds one. The first build of this work (commit `ad7771c`) instead changed
+`pddl_eval/domains.py`, `pddl_eval/runner.py` and `run_experiment.py` to read a second
+invalid domain; that change was dropped and all three files are back to `main`.
+
+**2. `tools/extension_copy_reused.py`** (tests `tests/test_extension_copy_reused.py`).
+Copies rerun rows that the extension reuses into the extension's own results folder.
+Each copied row is the source line byte for byte plus `reused_from_folder`,
+`reused_from_job`, `reused_from_sha256` and `copied_at` (top-level fields, which the
+resume loader ignores). It refuses a destination inside `delivered-rerun`,
+`sweep5v2-live`, `sweep6-live` or a `*_sweep6` folder, and never overwrites. The SLURM
+job id is not stored in any cell's summary or rows, so it is an argument (the ids are in
+the delivered-rerun prereg, section 8). Not run on real data. It also refuses a
+destination named like a hard-tree run (`-hard`, `-hard-vd-a`, `-hard-vd-b`) and one
+whose `trials.jsonl` already holds rows of a run: the resume key has no field for the
+tree, and the D1b trees reuse canonical item names for different files, so reused rows
+and hard-tree runs must never share a folder (write-up, section 6).
+
+**3. `tools/build_fixtures.py` sent the Fast Downward strategy as `"search"`; the tool's
+argument is `strategy`.** The server drops unknown arguments silently, so every
+strategy call returned the default plan. That is why 49 of the 50 classical problems in
+`domains/` have five copies of one valid plan (the 50 numeric problems got copies by
+design, since `numeric_planner` has no strategy option). Fixed for new builds only; no
+fixture was regenerated.
+
 ## 2026-11-09: Opt-in gpt-oss reasoning effort; opt-in storage of the reasoning trace
 
 Branch `harness/gptoss-effort`. No cluster job ran for this entry and no corpus was
