@@ -87,10 +87,13 @@ if [ -z "${MODELS:-}" ]; then
 fi
 : "${THINK_MODES:?Error: export THINK_MODES=... (e.g. \"on off\" or \"default\")}"
 
+# effort-<level> (submit_with_rtx.sh --reasoning-effort, gpt-oss only) runs
+# like `default` (no --think) and sends reasoning_effort=<level>; the token
+# names the cell, so a low-effort cell is labelled effort-low, never "off".
 for tm in $THINK_MODES; do
     case "$tm" in
-        on|off|default) ;;
-        *) echo "Error: invalid THINK_MODE=$tm (must be on|off|default)"; exit 1 ;;
+        on|off|default|effort-low|effort-medium|effort-high) ;;
+        *) echo "Error: invalid THINK_MODE=$tm (must be on|off|default|effort-low|effort-medium|effort-high)"; exit 1 ;;
     esac
 done
 
@@ -120,6 +123,14 @@ TASKS_ENV_OVERRIDE="${TASKS:-}"
 # no-tools-jsonbound cond (COND_ENV below). Drop any value inherited through
 # the wrapper's --export=ALL so a plain no-tools cell can never bind.
 unset PDDL_JSON_CONSTRAINT PDDL_TOOL_CALL_ID_STYLE
+# Same for the reasoning settings: PDDL_REASONING_EFFORT is set per effort-*
+# cell (EFFORT_ENV below), PDDL_STORE_REASONING only when the wrapper exported
+# STORE_REASONING=1 (--store-reasoning).
+unset PDDL_REASONING_EFFORT PDDL_STORE_REASONING
+RUN_ENV=()
+if [ "${STORE_REASONING:-0}" = "1" ]; then
+    RUN_ENV=(PDDL_STORE_REASONING=1)
+fi
 # submit_with_rtx.sh --tasks joins the task list with `^` (same separator as
 # CELLS_LIST) so the value survives sbatch's comma-separated --export list
 # without relying on embedded spaces. Map it back to the space-separated form
@@ -203,8 +214,17 @@ for MODEL in $MODELS; do
     # MAX_NUM_BATCHED_TOKENS. Unset between iterations so a leftover
     # MM-aware value from a previous model doesn't bleed into a
     # text-only model's serve command.
-    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS HF_REVISION HF_CACHE_IN_JOB TOOL_CALL_ID_STYLE
+    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS HF_REVISION HF_CACHE_IN_JOB TOOL_CALL_ID_STYLE \
+        SUPPORTS_REASONING_EFFORT
     vllm_lookup "$MODEL" || exit 1
+    # An effort-* cell on a model that ignores reasoning_effort would run a
+    # default cell under an effort label. The wrapper refuses it; so does this.
+    for tm in $THINK_MODES; do
+        if [[ "$tm" == effort-* ]] && [ "${SUPPORTS_REASONING_EFFORT:-0}" != "1" ]; then
+            echo "Error: THINK_MODE=$tm needs a model that reads reasoning_effort (gpt-oss); $MODEL does not"
+            exit 1
+        fi
+    done
     MAX_NUM_BATCHED_TOKENS_FLAG=""
     [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
         MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
@@ -336,6 +356,7 @@ for MODEL in $MODELS; do
     echo "Marketplace: $MARKETPLACE_PATH"
     echo "Server:      $LLM_BASE_URL"
     echo "Concurrency: $CONCURRENCY"
+    [ "${STORE_REASONING:-0}" = "1" ] && echo "Reasoning:   stored in the row's thinking field (PDDL_STORE_REASONING=1)"
 
     ### Smoke fast-path — skip the inner THINK × CONDITIONS loop. The
     ### --smoke flag tells run_experiment.py to iterate think×cond
@@ -385,8 +406,30 @@ for MODEL in $MODELS; do
 
     for THINK_MODE in $THINK_MODES; do
         THINK_ARG=()
-        if [ "$THINK_MODE" != "default" ]; then
-            THINK_ARG=(--think "$THINK_MODE")
+        EFFORT_ENV=()
+        EFFORT=""
+        case "$THINK_MODE" in
+            default) ;;
+            effort-*)
+                EFFORT="${THINK_MODE#effort-}"
+                EFFORT_ENV=(PDDL_REASONING_EFFORT="$EFFORT") ;;
+            *) THINK_ARG=(--think "$THINK_MODE") ;;
+        esac
+        # gpt-oss: log the Harmony system line the server builds for this
+        # cell's requests (render only, no generation). An effort cell whose
+        # line does not show its level is skipped: the effort did not bind.
+        HARMONY_LINE=""
+        if [ "${SUPPORTS_REASONING_EFFORT:-0}" = "1" ]; then
+            HARMONY_RC=0
+            HARMONY_LINE="$(python3 cluster-experimenting/reasoning_settings.py system-line \
+                --base-url "$LLM_BASE_URL" --model "$HF_MODEL" ${EFFORT:+--effort "$EFFORT"})" \
+                || HARMONY_RC=$?
+            echo "  $HARMONY_LINE"
+            if [ -n "$EFFORT" ] && [ "$HARMONY_RC" -ne 0 ]; then
+                echo "Error: reasoning_effort=$EFFORT is not on the served system line; skipping THINK=$THINK_MODE"
+                OVERALL_RC=1
+                continue
+            fi
         fi
 
         for COND in $CONDITIONS; do
@@ -443,6 +486,27 @@ for MODEL in $MODELS; do
             # results/slurm_vllm_*/ trees.
             OUT_DIR="${EXPT_ROOT}/results/slurm_vllm_${MODEL_TAG}_${THINK_MODE}_${COND}${RUN_TAG:+_$RUN_TAG}"
 
+            # Request settings the run's summary cannot hold (run_experiment.py
+            # is hashed into the frozen delivered-rerun package, so it is not
+            # edited). Written only for effort and stored-reasoning cells, so
+            # every other cell's OUT_DIR is unchanged.
+            if [ -n "$EFFORT" ] || [ "${STORE_REASONING:-0}" = "1" ]; then
+                mkdir -p "$OUT_DIR"
+                python3 cluster-experimenting/reasoning_settings.py write-settings \
+                    "$OUT_DIR/client_settings.json" \
+                    think_mode_token="$THINK_MODE" \
+                    reasoning_effort="$EFFORT" \
+                    store_reasoning="${STORE_REASONING:-0}" \
+                    cond="$COND" \
+                    tool_call_id_style="${TOOL_CALL_ID_STYLE:-call}" \
+                    max_model_len="$MAX_MODEL_LEN" \
+                    harmony_system_line="$HARMONY_LINE" \
+                    hf_model="$HF_MODEL" \
+                    hf_revision="${HF_REVISION:-}" \
+                    slurm_job_id="${SLURM_JOB_ID:-}" \
+                    || echo "Warning: could not write $OUT_DIR/client_settings.json"
+            fi
+
             SHARD_ARGS=()
             if [ -n "${SHARD:-}" ]; then
                 SHARD_ARGS=(--shard "$SHARD")
@@ -487,7 +551,7 @@ for MODEL in $MODELS; do
                 fi
             fi
 
-            env "${COND_ENV[@]}" "${MODEL_ENV[@]}" python3 run_experiment.py \
+            env "${COND_ENV[@]}" "${EFFORT_ENV[@]}" "${RUN_ENV[@]}" "${MODEL_ENV[@]}" python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
                 --llm-base-url "$LLM_BASE_URL" \

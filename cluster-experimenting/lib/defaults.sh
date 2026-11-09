@@ -59,7 +59,9 @@ PDDL_VLLM_CANDIDATE_MODELS=()
 # passed as --revision and --tokenizer-revision so the weights are fixed), and
 # HF_CACHE_IN_JOB=1 (download the weights into the job's scratch hf-cache),
 # and TOOL_CALL_ID_STYLE (the client's synthetic tool-call id shape, passed
-# to run_experiment.py as $PDDL_TOOL_CALL_ID_STYLE; see pddl_eval/vllm_client.py).
+# to run_experiment.py as $PDDL_TOOL_CALL_ID_STYLE; see pddl_eval/vllm_client.py),
+# and SUPPORTS_REASONING_EFFORT=1 (the model reads the request's
+# reasoning_effort, so submit_with_rtx.sh --reasoning-effort may name it).
 # Without HF_CACHE_IN_JOB the weights land in $HOME/.cache/huggingface:
 # apptainer sets HOME to the real home, so the bind onto
 # /root/.cache/huggingface is never used. That is how every earlier run
@@ -145,6 +147,10 @@ vllm_lookup() {
             HF_CACHE_IN_JOB=1
             TOOL_CALL_PARSER="openai"
             REASONING_PARSER="openai_gptoss"
+            # vLLM 0.20.2 puts the request's top-level reasoning_effort on
+            # the Harmony system line ("Reasoning: low"); no field means
+            # Harmony's default, medium. Cells: effort-<level> (never "off").
+            SUPPORTS_REASONING_EFFORT=1
             ;;
         ministral3:14b)
             # FP8, ~15.7 GB, no reasoning trace (Instruct variant). Served in

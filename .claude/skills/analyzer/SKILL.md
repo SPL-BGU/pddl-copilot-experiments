@@ -276,16 +276,17 @@ done
 
 # 5. Deck — first checkpoint needs a deck_config.py; copy from a previous one and edit
 #    MODEL_ORDER / MODEL_DISP / COND_ORDER / TITLE / SUBTITLE / SLIDE_CAPTIONS.
+#    Since 2026-11-09 (PR #129) checkpoints keep corpora only: the deck is a local
+#    build for sharing and is NOT committed (no .pptx.zip). Commit deck_config.py so
+#    the deck can be rebuilt from the zips.
 python3 .claude/skills/analyzer/scripts/build_deck.py \
     --config checkpoints/<name>/deck_config.py \
-    --out    checkpoints/<name>/pddl_copilot_<name>.pptx
-(cd checkpoints/<name> && zip pddl_copilot_<name>.pptx.zip pddl_copilot_<name>.pptx \
-    && rm pddl_copilot_<name>.pptx)
+    --out    checkpoints/<name>/pddl_copilot_<name>.pptx   # leave untracked
 
 # 6. Hand-write FOOTNOTE.md — scope, headline findings, caveats.
 #    NO template. FOOTNOTE.md is gitignored under checkpoints/**, so no tracked example exists.
 
-# 7. Commit tracked files (zip + csv + tex + deck_config + the .pptx.zip).
+# 7. Commit tracked files (trials zips + csv + tex + deck_config). Never the deck.
 #    .png and .md under checkpoints/** are gitignored by design — they rebuild from the zip + scripts.
 ```
 

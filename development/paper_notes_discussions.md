@@ -2545,3 +2545,11 @@ validated by an independent ranking subagent (the user asked for a second perspe
   corrected figures appear beside them, post hoc.
 - **Gemma, wave 2 (thinking on):** keep `REASONING_PARSER=none`, as in Study 1, so the
   thinking-on cells compare directly. No parser side run.
+
+## 2026-11-09 (late night) — C3 table caveats live in the paper captions
+
+- **Decided (Omer):** the generated C3 tex fragments (PR #124, `tools/reanalysis/out/tex/s1_*.tex`)
+  carry only the cell marks (¶ for unaided simulate). The explanation of the mark, the
+  ISS-027 note and the 35B both-runs note stay as `%` comments at the top of each
+  fragment and must be written into the caption of the table that wraps it. Whoever
+  places a fragment in the tex writes that caption.
