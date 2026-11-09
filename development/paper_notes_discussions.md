@@ -2461,3 +2461,41 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Bottom line:** the contamination sentences now say what the data support. The frontier
   tier gets a thinking-on probe and a scaling test, so the paper can answer "frontier LLMs
   rival planners" directly instead of leaving a 29%-against-68% gap to a reviewer.
+
+## 2026-11-09 — Repo audit of the open items; Omer's answers to twelve decisions
+
+- **Audit.** Four agents checked every open plan step against the files, branches and
+  commits. Corrections now in `STATUS.md` and the plan: PRs #121, #122 and #123 are all
+  merged; Haiku 4.5's tool arm on the renamed corpus already ran (2026-07-12,
+  1,520 trials) and was never reported, so D5c only owes Sonnet 4.6; the PlanBench
+  `vllm-tools` routing for D1e already exists on `main`; the D1b branch was local only
+  (pushed today) and its write-up file is cited but missing; the frontier SDK to pin is
+  `anthropic==0.109.2` (every frontier summary records it).
+- **The 35B calling rate.** At temperature 0 with identical prompts, about 29% of the
+  35B's plain solve trials change their call decision between the main sweep and the
+  rerun (agent count, being turned into a script and a `NUMBERS.md` row). **Decision:**
+  quote both runs (68.0 and 82.7), keep "bigger calls less" as a direction only, and put
+  the 35B cells in the extension's repeat check.
+- **D1b.** The extension gets a new sweep folder; reused rerun rows are copied in with a
+  field naming their source folder and job, and the prereg declares the reuse.
+  `delivered-rerun/` and `sweep5v2-live` are never touched. The loader question is
+  settled by two small validate_domain trees, no harness change.
+- **Llama 3.1 8B:** keep unsloth's ungated copy if its weight files match Meta's byte for
+  byte. **GPT-OSS:** low effort in wave 1, medium in wave 2, labelled "low effort".
+- **D5a:** Sonnet 4.6 and Haiku 4.5 thinking on, plus Sonnet 5.5 thinking on and off; a
+  thinking-off run at temperature 1 on the same problems, so thinking is not confused
+  with sampling; 3 repeats per problem; itemized cost before any spend. **D5d:** yes,
+  two random-string maps, unaided solve, Sonnet 4.6 and Haiku 4.5.
+- **D5b:** add some of Corrêa et al.'s IPC 2023 domains and problems. Ground truth first
+  (validate, solve with the planner, VAL every plan) and report the share the planner
+  solves within 120 s and 30 min before any model runs.
+- **Rosters.** PlanBench keeps the 4B (its failures are data). Wave 1 starts with two new
+  families plus the official Gemma weights; every family that passed the smoke goes into
+  the prereg now as a numbered tier with the same analysis, so a later family needs only
+  a go-ahead, not a new prereg. More small or MoE candidates are being looked up.
+- **Release:** attribution to Omer and BGU (SPL-BGU): a copyright line, `CITATION.cff`, a
+  Zenodo DOI, CC-BY-4.0 for data, MIT or Apache-2.0 for code; BGU's policy on student work
+  is checked first.
+- **Still open:** which two families go first; the Corrêa 2-shot prompt cell (Omer asked
+  how it would work); the six research questions against the two gates (shown to Omer
+  before E1 decides); which checkpoint zips to archive.

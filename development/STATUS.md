@@ -1,7 +1,10 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-08 (contamination-wording paper PR #123, stacked on #121;
-plan step D5 added and approved, the answer to Corrêa et al.). Before that 2026-11-01 (C1, C2 in PR #121; B drafts on `main`; the D1
+*Content last refreshed: 2026-11-09 (repo audit: PRs #121, #122 and #123 are all merged;
+Omer's answers to twelve open decisions, recorded under "Decided 2026-11-09" below and in
+`paper_notes_discussions.md`; `fixtures/d1b-harder-items` pushed to origin). Before that
+2026-11-08 (contamination-wording paper PR #123; plan step D5 added and approved, the
+answer to Corrêa et al.). Before that 2026-11-01 (C1, C2 in PR #121; B drafts on `main`; the D1
 smokes passed, harness PR #122; D1b built, one decision open). Before that 2026-10-10
 (the weakness list is fully answered and the work now follows `weakness_action_plan.md`;
 `development/` was cut to the docs that work needs, see `MOVES.md`). Earlier refreshes, and the closed-work table this file used to
@@ -22,15 +25,18 @@ the fixed setup: the delivered rerun (read out 2026-10-09) plus an extension (ne
 families, harder test items, context room, reasoning mode, the small models, a JSON
 control, open-model PlanBench). Then one restructure of the paper. **All of it is in
 `weakness_action_plan.md`, workstreams A to F.** A is done. B: drafts on `main`
-(`draft_B1_B2_related_work.md`, `draft_B3_B5_methods.md`), waiting for Omer's read. C1
-and C2: PR #121 (VAL agrees on 1,731 of 1,732 plans; Study 1 block in `NUMBERS.md`). D1a,
-D1c, D1d: smokes passed (`reference/d1_smokes_20261027.md`), harness PR #122. D1b: built
-on local branch `fixtures/d1b-harder-items`, write-up and one decision open. The
-contamination wording in the tex now uses the paired, clustered ±5 test (paper PR #123,
-stacked on #121: merge #121 first). Plan step
-D5, approved 2026-11-08, answers Corrêa et al.'s "Frontier LLMs Rival State-of-the-Art
-Planners": frontier thinking on, larger problems, the Claude tool arm on the renamed
-corpus. Next: C3 to C5, D1e, D1f (the prereg, now with D5), E1.
+(`draft_B1_B2_related_work.md`, `draft_B3_B5_methods.md`), waiting for Omer's read; two
+agent-side gaps first (Corrêa et al. in B1; the C1 VAL figure in B4's TODO). C1 and C2:
+done, merged in PR #121 (VAL agrees on 1,731 of 1,732 plans; Study 1 block in
+`NUMBERS.md`). D1a, D1c, D1d: smokes passed (`reference/d1_smokes_20261027.md`), harness
+merged in PR #122. D1b: built on branch `fixtures/d1b-harder-items` (pushed to origin
+2026-11-09; its write-up `reference/d1b_harder_items.md` is cited but not written); the
+loader decision is made (two small validate_domain trees, no harness change). The
+contamination wording in the tex uses the paired, clustered ±5 test (PR #123, merged
+2026-11-08). Plan step D5, approved 2026-11-08, answers Corrêa et al.'s "Frontier LLMs
+Rival State-of-the-Art Planners": frontier thinking on, larger problems, the Claude tool
+arm on the renamed corpus, random strings. Next: C3 (split C3a Study 1 / C3b Study 2), C4,
+C5, D1b rework, D1e, D1f (the prereg, now with D5 and the family tiers), E1.
 
 ## Where each line stands
 
@@ -38,11 +44,11 @@ corpus. Next: C3 to C5, D1e, D1f (the prereg, now with D5), E1.
 |---|---|
 | Main sweep, Study 1 (`sweep5v2-live`, `sweep6-live`) | data final. Unaided and tool-verified numbers reproduced by the rerun; its open-model delivered ranges are retired (biased low by the harness) |
 | Delivered rerun, Study 2 part 1 | **complete, read out 2026-10-09** by the frozen code (`reference/delivered_rerun_readout.md`). A separate-apparatus replication: parity failed at job level (Gemma 10/10, Qwen 15/20). R1 no delivered harm · R2 unresolved · R3 the title changes · R4 met · R5 the directive suppresses calling. Figures in `NUMBERS.md` |
-| Extension, Study 2 part 2 | preparation (D1) under way: four new families pass the parser smoke (official Gemma 4 BF16, gpt-oss-20b, Ministral 3 14B, Llama 3.1 8B); 32K and 64K windows work and cut empty final answers steeply; the JSON constraint now binds (opt-in). Harness PR #122. Not yet: D1e (PlanBench tools), D1f (prereg) |
+| Extension, Study 2 part 2 | preparation (D1) under way: four new families pass the parser smoke (official Gemma 4 BF16, gpt-oss-20b, Ministral 3 14B, Llama 3.1 8B); 32K and 64K windows work and cut empty final answers steeply; the JSON constraint now binds (opt-in). Harness merged (PR #122). Not yet: D1e (PlanBench tools: the `vllm-tools` path exists on `main`; plain and steered prompts, the PR #122 serve flags and a smoke remain), D1f (prereg) |
 | PlanBench | in the tex (PR #114: equivalence test declared, corrected extractor beside the shipped numbers); open-model tools arm planned (D2) |
 | Steering control (nt-ster H4) | closed 2026-08-29, all six units PASS; in the tex appendix |
-| Frontier tier and budget probe | closed; in the tex |
-| Paper | the 09-19 text plus PRs #110, #111, #114, #115 (merged 2026-10-09). Title D goes (R3); the restructure is plan §4 E |
+| Frontier tier and budget probe | closed for Study 1; in the tex. D5 adds new frontier cells (thinking on, larger problems, the renamed-corpus tool arm, random strings). Haiku 4.5's tool arm on the renamed corpus already ran (2026-07-12, `results/haiku-frontier/sweep6-with-tools`, 1,520 trials) and was never reported; only Sonnet's is missing |
+| Paper | the 09-19 text plus PRs #110, #111, #114, #115 (merged 2026-10-09) and #123 (contamination wording, merged 2026-11-08). Title D goes (R3); the restructure is plan §4 E |
 
 ## Rules that bind every step
 
@@ -115,23 +121,64 @@ ISS-013.
 
 ### N4 — Hygiene
 
-- Cluster checkout: checked 2026-10-10, it sits on `harness/delivered-rerun` at `4b2fe6e`
-  (the rerun's pinned harness), not on the dead `paper/iter2-decoupled-run`. D1 branches
-  from there. Any SSH needs Omer's go-ahead first.
+- Cluster checkout: checked 2026-10-10, it sat on `harness/delivered-rerun` at `4b2fe6e`
+  (the rerun's pinned harness). Probably stale: the D1 smokes ran from
+  `harness/d1a-new-families`, now merged. Re-check at the next go-ahead. Any SSH needs
+  Omer's go-ahead first.
+- Laptop (2026-11-09): the merged worktrees `.claude/worktrees/agent-a87aa60a393adccef`
+  and `.claude/worktrees/d1a-harness`, the merged local branches (`analysis/val-crosscheck`,
+  `harness/d1a-new-families`, `worktree-agent-a87aa60a393adccef`,
+  `worktree-agent-affd62f64ea91abed`) and the merged remote branches
+  (`analysis/val-crosscheck`, `harness/d1a-new-families`,
+  `claude/frontier-llms-paper-analysis-6jst6i`) can go; Omer runs the deletion. Two old
+  stashes from `paper/aaai27` are Omer's to check.
+
+### Decided 2026-11-09 (Omer)
+
+- **D1b, where the results live.** The extension gets a new sweep folder. Rerun rows it
+  reuses are copied in, and each copied row keeps a field naming its source folder and
+  job; the prereg declares the reuse (after the 35B flips, a rerun is not identical to
+  the original, so reused rows must stay identifiable). `delivered-rerun/` and
+  `sweep5v2-live` are never touched. **The loader:** two small validate_domain trees
+  (tree A with the first invalid domain, tree B with the second), no harness change.
+- **Llama weights:** keep unsloth's ungated copy if its weight files match Meta's byte
+  for byte (check running).
+- **GPT-OSS:** low effort in wave 1, medium in wave 2, sent explicitly; cells labelled
+  "low effort", never "thinking off".
+- **The 35B calling rate:** quote both runs (68.0 and 82.7), keep "bigger calls less" as
+  a direction only, and put the 35B cells in the extension's repeat check.
+- **D5a:** Sonnet 4.6 and Haiku 4.5 thinking on (the clean comparison), plus Sonnet 5.5
+  thinking on and off (the current tier); a thinking-off run at temperature 1 on the same
+  problems; each problem 3 times. Itemized cost to Omer before any spend.
+- **D5d:** yes, the cheapest form (two random-string maps per domain, unaided solve,
+  Sonnet 4.6 and Haiku 4.5, about 800 trials).
+- **D5b:** use some of Corrêa et al.'s (IPC 2023) domains and problems as additions.
+  Ground truth first: validate the domains and problems, solve with the planner, check
+  every plan with VAL, before any model runs. Report the share the planner solves within
+  120 s and within 30 min.
+- **PlanBench roster (D1e):** keep the 4B (its failures are data). More small or MoE
+  candidates to be suggested; each must pass the parser smoke.
+- **New families:** wave 1 starts with two families plus the official Gemma weights. All
+  families that passed the smoke go into the prereg now, each as a numbered tier with the
+  same analysis, so adding one per wave needs only a go-ahead (no new prereg, no
+  re-freeze).
+- **Release:** the work is attributed to Omer and to BGU: a copyright line naming him and
+  Ben-Gurion University (SPL-BGU), a `CITATION.cff`, a Zenodo DOI, CC-BY-4.0 for data, MIT
+  or Apache-2.0 for code (whichever is more common for academic code). BGU's policy on
+  student work is checked first.
 
 ### Open decisions
 
-- **D1b and the frozen files.** The harder items need two invalid domains per folder to
-  balance validate_domain; the builder edited `run_experiment.py`, `pddl_eval/domains.py`
-  and `pddl_eval/runner.py`, which are in the frozen rerun package hash. Alternative with
-  no harness change: a second small tree for validate_domain, one problem per domain.
-- **Llama weights:** unsloth's ungated copy (in use) or Meta's gated repo.
-- **GPT-OSS effort level** for its wave-1 cells (it cannot switch reasoning off).
-- **The 35B calling rate did not replicate** in three cells (solve plain 68.0 → 82.7);
-  the tex's "68%" and the size inversion rest on it (`NUMBERS.md` T8a, PR #121).
-- **D5a model versions:** Sonnet 4.6 and Haiku 4.5 (the within-model thinking contrast),
-  the 5.5 family (the current tier), or both; plus which GPT and Gemini models.
-- **D5d, the random-string corpus:** worth running or not (plan §4 D5).
+- **Which two families go first** in wave 1 (Omer leans gpt-oss-20b and Llama 3.1 8B);
+  recommendation pending.
+- **The Corrêa 2-shot prompt cell:** Omer asked how the descriptive cell would work
+  before deciding.
+- **E1: the six research questions** against the two gates (calling and delivery): Omer
+  asked to see them side by side before deciding.
+- **Checkpoint zips:** Omer asked to archive the undated ones to `checkpoints/archive/`;
+  every zip under `checkpoints/` is undated, so which ones is to be confirmed.
+- **Code licence** (MIT or Apache-2.0) and the copyright holder, after the BGU policy
+  check.
 
 None of these blocks the next steps. The title is chosen in plan step E6, from the candidates in
 `reference/weakness_consolidated.md` Q6, once the results are in.

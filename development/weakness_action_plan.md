@@ -2,7 +2,7 @@
 
 *Omer accepted every recommendation in `reference/weakness_consolidated.md` (Q5 to Q11) on
 2026-10-10. This file turns them into work: what is already done, what is left, in what
-order, and who does it. `STATUS.md` (N1b) tracks progress and points here. When every
+order, and who does it. `STATUS.md` (N1) tracks progress and points here. When every
 step is done, this file is deleted and its last commit recorded in `MOVES.md`.*
 
 ## 1. The paper we are building
@@ -14,7 +14,7 @@ should read as a study, not as a report on our harness:
 - **Study 1, the main sweep** (`sweep5v2-live`, with `sweep6-live` for contamination):
   what the models do without tools, how often they call the tool, and whether the call
   is right. These numbers held up in the rerun: 11 of 12 unaided cells and 25 of 30 tool
-  cells came back within 5 points.
+  cells met the ±5-point equivalence criterion (27 of 30 by point estimate).
 - **Study 2, pre-registered, on the fixed setup** (the delivered rerun plus the extension
   in §4 D): what reaches the final answer, across models, prompts, reasoning mode, how
   hard the test items are, and how much room the model has left to answer.
@@ -89,7 +89,7 @@ Done when the drafts are approved and merged, with every number in them taken fr
 
 | step | what | settles |
 |---|---|---|
-| C1 | **VAL cross-check.** Run KCL VAL (`../LLMs-Planning/planner_tools/VAL/validate`; a Linux build, so a local Linux container, or the cluster after Omer's go-ahead) on every validate_plan fixture plan and every solve plan graded in the rerun, and on domain and problem files as a parse check. One agreement figure into `NUMBERS.md`; every disagreement read by hand (VAL has known bugs on some numeric domains). It also checks the new items of D1b | C8, D1 |
+| C1 | **Done (PR #121, merged 2026-10-27):** VAL agrees on 1,731 of 1,732 plans, run with PlanBench's macOS x86_64 VAL build under Rosetta (`NUMBERS.md` VAL block); the Claude plans are not covered yet. *Original step:* run KCL VAL (`../LLMs-Planning/planner_tools/VAL/validate`) on every validate_plan fixture plan and every solve plan graded in the rerun, and on domain and problem files as a parse check. One agreement figure into `NUMBERS.md`; every disagreement read by hand (VAL has known bugs on some numeric domains). It also checks the new items of D1b | C8, D1 |
 | C2 | **Study 1 numbers into `NUMBERS.md`:** calling, tool-verified, unaided and contamination, with the paired, domain-clustered, Holm-corrected tests and the GLMM refit from `reference/reanalysis_statistics.md`. Plus the replication table (rerun against the main sweep: 25 of 30 and 11 of 12 cells) | C9, C13 |
 | C3 | **Study 2 descriptive tables** ready for the paper: per wording, per domain, classical against numeric, cost by price ratio, and the delivery-gap categories (E4 and the hand read) | C5, C12, C16, C21 |
 | C4 | **Three example transcripts** from the rerun: Gemma skipping the tool and judging the plan correctly in prose; a correct relay; a simulate trial where the tool result fills the window | C3, C21 |
@@ -107,10 +107,10 @@ extension prereg.
 | step | what | needs |
 |---|---|---|
 | D1a | **New families.** Two or three beyond Qwen and Gemma that fit the cluster GPUs (Llama, Mistral and GPT-OSS are the candidates), plus the official Gemma 4 weights. Each goes into `vllm_lookup` with its tool-call parser and through `submit_with_rtx.sh --smoke`. Any model whose tool calls are not clearly being extracted is rejected, because a wrong parser gives a silent 0%. Harness branch and PR | cluster go-ahead |
-| D1b | **Harder test items**, added beside the current ones (nothing existing changes): wrong plans that break a precondition mid-plan, distinct valid plans, domains with real errors, as many invalid items as valid. Built with `tools/build_fixtures.py`; every item checked by the oracle and by VAL (C1); the item list hashed | C1 first |
+| D1b | **Harder test items**, added beside the current ones (nothing existing changes): wrong plans that break a precondition mid-plan, distinct valid plans, domains with real errors, as many invalid items as valid. Built with the new `tools/build_hard_fixtures.py` (branch `fixtures/d1b-harder-items`; `build_fixtures.py` got only a strategy fix). Decided 2026-11-09: two small validate_domain trees and no harness change; results in a new sweep folder with a provenance field on every reused row (`STATUS.md`). Every item checked by the oracle and by VAL (C1); the item list hashed | C1 first |
 | D1c | **Context room.** A smoke of the tool arms on solve and simulate at a larger window, to choose a size that fits each model's GPU memory and to check that answers still parse. (The May 32K smoke broke the unaided answer format; the tool arms were fine then) | cluster go-ahead |
 | D1d | **JSON control.** One live probe to confirm why `guided_json` does not bind (the likely cause is the field name on vLLM 0.20.2), then a client version where it binds, used for the control cells only. Every other unaided cell keeps the rerun's behaviour, so it stays comparable with Part C | cluster go-ahead |
-| D1e | **Open-model PlanBench with tools.** Route PlanBench's per-instance query through the MCP tool client on vLLM (the design is in the deleted `PLANBENCH_HANDOFF_v2.md`: `git show 1fee730:development/archive/planbench/PLANBENCH_HANDOFF_v2.md`), define the plain and steered PlanBench prompts, and smoke it on one model | engineering, then a smoke |
+| D1e | **Open-model PlanBench with tools.** The routing exists on `main` (`planbench/engine.py` backend `vllm-tools`, `submit_planbench.sh --tools`). Left: plain and steered vLLM prompts that reuse the frozen WT format clause byte for byte; the PR #122 serve flags in the PlanBench sbatch; the ISS-025 patch path first; a smoke on one model. Roster (2026-11-09): keep the 4B. Design history: `git show 1fee730:development/archive/planbench/PLANBENCH_HANDOFF_v2.md` | engineering, then a smoke |
 | D1f | **The extension prereg** in `reference/`: the cells below; the endpoints; readings written before any data (for example: does the directive lower calling in other families; does "not calling costs nothing" hold on the harder plans; how delivery falls as context room shrinks); an anchor slice of the rerun, repeated to show the setup has not drifted; the analysis code; `/freeze-protocol`; the freeze | Omer reads it |
 
 **D2. Wave 1, thinking off (about three weeks of cluster time)**
@@ -144,8 +144,8 @@ Study 1 or Study 2.
 | item | what | status |
 |---|---|---|
 | D5a. Frontier thinking on | unaided solve with thinking on: Sonnet and Haiku, plus other frontier vendors (GPT, Gemini). Thinking-on answers are sampled (temperature 0 is not accepted), so repeats are needed; pin the Anthropic SDK (`requirements.txt` says only `>=0.40.0`, and API version 2026-10-21 rejects `temperature`); GPT and Gemini need a runner of their own and API keys | approved. Open: which Claude versions (Sonnet 4.6 and Haiku 4.5 for the within-model contrast with the existing thinking-off cells, the 5.5 family as the current tier). Itemized cost before any spend |
-| D5b. Larger problems | a size ladder from the IPC 2023 learning-track generators on the four domains we share with that track (blocksworld, miconic, rovers, satellite): unaided and tool-arm success, and the calling rate, against problem size. The tool arm cannot exceed what the planner solves in its time limit (check the plugin's setting in `../pddl-copilot`) | approved |
-| D5c. Claude tool arm on the renamed corpus | the frontier tool arm on `domains-anon` (it ran on the canonical corpus only), so "the planner's answer does not depend on names" is measured rather than assumed | approved |
+| D5b. Larger problems | a size ladder from the IPC 2023 learning-track generators on the four domains we share with that track (blocksworld, miconic, rovers, satellite): unaided and tool-arm success, and the calling rate, against problem size. The tool arm cannot exceed what the planner solves in its time limit (checked: the plugin's `PDDL_TIMEOUT` is 120 s, Fast Downward `lazy_greedy_cea` by default; Corrêa et al. gave planners 30 min). Corrêa et al. used 8 of the 10 track domains, without satellite, so only blocksworld, miconic and rovers overlap with their paper; our blocksworld uses different action names from IPC 2023's. Decided 2026-11-09: add some of their domains and problems; ground truth first (validate, solve, VAL every plan), and report the share solved within 120 s and 30 min before any model runs | approved |
+| D5c. Claude tool arm on the renamed corpus | the frontier tool arm on `domains-anon`. Correction 2026-11-09: Haiku 4.5's anon tool arm already ran (2026-07-12, `results/haiku-frontier/sweep6-with-tools`, 1,520 trials) and was never reported; only Sonnet 4.6's is missing. So "the planner's answer does not depend on names" is measured rather than assumed | approved |
 | D5d. Random strings and more renamings | a random-string copy of the corpus, and possibly two more themed renamings per domain for solve; separates memorization from "this renaming is harder" (`NUMBERS.md`, frontier contamination block) | asked whether it is worth it; recommendation given 2026-11-08, decision open |
 
 **Size and time.** About 190K trials in total, four times the rerun. The repair part is
@@ -184,8 +184,9 @@ the new numbers rather than applying the old drafts:
   output budget, not of model strength."
 - E8b: "The pattern is sharp and identical at both capability tiers."
 
-Group F, five candidate additions (none drafted; each is decided when E reaches its
-section): a structural-contamination clause (renaming is surface-only) in Contamination
+Group F, five candidate additions (each is decided when E reaches its section; the
+first is done, in the tex since PR #123, `main.tex` "The renaming is lexical"): a
+structural-contamination clause (renaming is surface-only) in Contamination
 Control or Limitations; a Future Work sentence on steering phrasing; a Future Work
 sentence on temperature (Limitations already says higher temperatures are untested); the
 classical-against-numeric cost split (now computed, C3); a symbol-map appendix paragraph
@@ -253,7 +254,7 @@ before any push.
 | C20 sentence-level errors | C5; E7 |
 | C21 breakdowns and examples | done (tables); C4; E2 and E3 |
 | C22 conference form, no code link | F1, F2 |
-| D1 VAL | C1; until C1 reports, the main suite is never described as "checked by VAL" |
+| D1 VAL | C1 reported: VAL agrees on 1,731 of 1,732 plans; domain and problem labels and the Claude plans are not VAL-checked (`NUMBERS.md` VAL block) |
 | D2 why parity failed | the appendix sentence: the fixes changed exactly the cells they were meant to |
 | D3 "straddling" | C5; moot once the ranges are retired |
 | D4 273,600 trials | E2 keeps the count and says what the trials support |

@@ -30,6 +30,7 @@ Four files answer almost every question:
 | `advisor_brief.md` | one page for the advisors and coauthors, with open `> ANSWER:` slots. Sending is on hold (R7); its top note says which questions still stand |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
+| `draft_B1_B2_related_work.md` · `draft_B3_B5_methods.md` | plan §4 B drafts, for Omer's read before the B paper PR |
 
 ## `reference/`: stable, never a status
 
@@ -44,8 +45,11 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
   behind the action plan.
 - `reanalysis_statistics.md` · `reanalysis_planbench.md` · `reanalysis_breakdowns_cost.md`
   · `reanalysis_transcripts.md`: the four re-analyses of 2026-10-02 (scripts in
-  `tools/reanalysis/`). Only the PlanBench figures are in `NUMBERS.md` so far; the rest
-  enter it in plan step C2.
+  `tools/reanalysis/`). The PlanBench figures and the statistics figures (the Study 1
+  block, plan step C2) are in `NUMBERS.md`; the breakdowns and cost figures enter it in
+  plan step C3a.
+- `val_crosscheck.md` (C1, the VAL check of the answer key) · `d1_smokes_20261027.md`
+  (the D1 smokes: new families, context room, the JSON constraint).
 
 **Study 2: the delivered rerun (pre-registered)**
 
