@@ -239,6 +239,83 @@ def test_max_model_len(r: TestResults) -> None:
             '--max-model-len "$MAX_MODEL_LEN" \\' in text)
 
 
+def test_reasoning_effort(r: TestResults) -> None:
+    """--reasoning-effort (gpt-oss) and --store-reasoning, 2026-11-09."""
+    rc, err = _dry("gpt-oss:20b", "--reasoning-effort", "low default",
+                   "--store-reasoning", "--partial", "1", "--tasks", "solve",
+                   "--run-tag", "effort-smoke")
+    r.check_eq("effort smoke submit exits 0", rc, 0)
+    r.check_eq(
+        "effort smoke --export list",
+        _export(err),
+        "ALL,CELLS_LIST=gpt-oss:20b|effort-low|no-tools"
+        "^gpt-oss:20b|effort-low|tools_all_minimal"
+        "^gpt-oss:20b|default|no-tools^gpt-oss:20b|default|tools_all_minimal,"
+        "PARTIAL_K=1,RUN_TAG=effort-smoke,STORE_REASONING=1,TASKS=solve",
+    )
+    r.check("no cell of an effort submit is labelled on/off",
+            "|off|" not in _export(err) and "|on|" not in _export(err), err)
+    # comma list, repeats dropped, with a cond flag
+    rc2, err2 = _dry("gpt-oss:20b", "--tools-only", "--reasoning-effort",
+                     "medium,medium")
+    r.check_eq("medium-only --export list", (rc2, _export(err2)),
+               (0, "ALL,CELLS_LIST=gpt-oss:20b|effort-medium|tools_all_minimal"))
+    # Without the new flags a gpt-oss submit is what it was.
+    base = _dry("gpt-oss:20b", "--tools-only", "--think-modes", "default")
+    r.check_eq("plain gpt-oss --export list", (base[0], _export(base[1])),
+               (0, "ALL,CELLS_LIST=gpt-oss:20b|default|tools_all_minimal"))
+    r.check("plain submit prints no effort/reasoning line",
+            "effort:" not in base[1] and "reasoning:" not in base[1])
+    for args, why in [
+        (("Qwen3.5:9B", "--reasoning-effort", "low"), "model without effort support"),
+        (("gpt-oss:20b", "Qwen3.5:9B", "--reasoning-effort", "low"), "mixed models"),
+        (("gpt-oss:20b", "--reasoning-effort", "off"), "'off' is not a level"),
+        (("gpt-oss:20b", "--reasoning-effort", "none"), "'none' is not accepted"),
+        (("gpt-oss:20b", "--reasoning-effort", ""), "empty list"),
+        (("gpt-oss:20b", "--reasoning-effort", "low", "--think-modes", "off"),
+         "with --think-modes"),
+        (("--smoke", "gpt-oss:20b", "--reasoning-effort", "low"), "with --smoke"),
+        (("gpt-oss:20b", "--reasoning-effort", "low", "--store-reasoning"),
+         "--store-reasoning without --run-tag"),
+        (("--smoke", "gpt-oss:20b", "--store-reasoning", "--run-tag", "x"),
+         "--store-reasoning with --smoke"),
+    ]:
+        rc_bad, err_bad = _dry(*args)
+        r.check(f"--reasoning-effort rejected: {why}",
+                rc_bad != 0 and "Error:" in err_bad and "DRY:" not in err_bad,
+                f"rc={rc_bad} {err_bad!r}")
+    # An inherited STORE_REASONING never reaches the job without the flag.
+    env = {**os.environ, "STORE_REASONING": "1"}
+    p = subprocess.run(["bash", str(WRAPPER), "gpt-oss:20b", "--tools-only",
+                        "--think-modes", "default", "--dry-run"],
+                       capture_output=True, text=True, env=env)
+    r.check("inherited STORE_REASONING not exported",
+            "STORE_REASONING" not in _export(p.stderr)
+            and "reasoning:" not in p.stderr, p.stderr)
+    r.check("wrapper unsets an inherited STORE_REASONING",
+            "\n    unset STORE_REASONING\n" in WRAPPER.read_text())
+    text = SBATCH.read_text()
+    r.check("sbatch accepts the effort think tokens",
+            "on|off|default|effort-low|effort-medium|effort-high) ;;" in text)
+    r.check("sbatch drops inherited reasoning settings",
+            "\nunset PDDL_REASONING_EFFORT PDDL_STORE_REASONING\n" in text)
+    r.check("sbatch sends the effort for effort-* cells only",
+            re.search(r"effort-\*\)\s*\n\s*EFFORT=\"\$\{THINK_MODE#effort-\}\"\s*\n"
+                      r"\s*EFFORT_ENV=\(PDDL_REASONING_EFFORT=\"\$EFFORT\"\) ;;",
+                      text) is not None)
+    r.check("sbatch passes no --think for an effort cell",
+            "            default) ;;\n            effort-*)" in text
+            and '*) THINK_ARG=(--think "$THINK_MODE") ;;' in text)
+    r.check("sbatch passes EFFORT_ENV and RUN_ENV to the main run",
+            'env "${COND_ENV[@]}" "${EFFORT_ENV[@]}" "${RUN_ENV[@]}" '
+            '"${MODEL_ENV[@]}" python3 run_experiment.py' in text)
+    r.check("sbatch checks the served Harmony line",
+            "reasoning_settings.py system-line" in text)
+    r.check("gpt-oss is the only model marked as reading reasoning_effort",
+            (REPO_ROOT / "cluster-experimenting/lib/defaults.sh").read_text()
+            .count("SUPPORTS_REASONING_EFFORT=1\n") == 1)
+
+
 def main() -> None:
     r = TestResults("test_submit_wrapper")
     test_defaults_unchanged(r)
@@ -247,6 +324,7 @@ def main() -> None:
     test_sbatch_handles_the_new_cond(r)
     test_json_constraint(r)
     test_max_model_len(r)
+    test_reasoning_effort(r)
     r.report_and_exit()
 
 

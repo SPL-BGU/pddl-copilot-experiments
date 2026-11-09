@@ -10,7 +10,7 @@ import csv
 from collections import Counter
 
 from common import (HEADLINE, MODELS, NEUT, OUT, OVERLAY, STER, TASKS,
-                    load_cell)
+                    TRUNCATED_LOSS_REASONS, load_cell)
 
 CHECKS: list[tuple[str, str, str, bool]] = []
 
@@ -48,7 +48,8 @@ def main() -> None:
             reasons.update(r["reason"] for r in rows)
     check("unaided simulate strict success / n (10 cells)", (ok, n), (0, 3000))
     check("unaided simulate failure mix",
-          (reasons["truncated_no_answer"], reasons["format_parse_fail"], reasons["result_mismatch"]),
+          (sum(reasons[x] for x in TRUNCATED_LOSS_REASONS), reasons["format_parse_fail"],
+           reasons["result_mismatch"]),
           (1772, 1202, 26))
 
     # 9B validate_domain delivered <99.7, 100.0> (359/360, c1)
