@@ -11,7 +11,12 @@ Built by `tools/build_hard_fixtures.py` (helpers `tools/_hard_items.py`,
 
 ## 1. What the items are
 
-Each kind is made so that a quick look is not enough to judge it.
+Each kind was built with the aim that a quick look would not be enough to judge it.
+Whether that aim is met is for the prereg to judge (section 7). Many invalid domain and
+problem files are one-letter changes to a declared name (`bock` for `block`, `onable`
+for `ontable`, `crae` for `crate`, `couner` for `counter`): 22 of the 40 invalid domains
+and 18 of the 40 invalid problems, every undeclared-predicate, undeclared-type and
+undeclared-function edit among them. A careful reader can spot such a change by eye.
 
 | task | valid items | invalid items |
 |---|---|---|
@@ -42,7 +47,18 @@ was dropped and validate_domain is balanced with two small trees instead:
 Trees a and b together: per domain, 2 valid jobs (`domain.pddl` with each problem) and
 2 invalid jobs (each invalid domain with its own problem). Tree a's invalid domain is
 the same file as `domains-hard/`'s `domain_neg.pddl`. **Do not run validate_domain on
-`domains-hard/`**: there it is 2 : 1.
+`domains-hard/`**: there it is 2 : 1. Nothing in the tooling stops such a run (the
+harness accepts `--tasks validate_domain` on any tree), so this instruction is the only
+safeguard.
+
+The two valid jobs of a domain are one prompt sent twice. The validate_domain prompts
+show only the domain (`pddl_eval/prompts.py`, every validate_domain template has
+`{domain}` and no `{problem}`), and both jobs carry the same `domain.pddl`, which is
+byte-identical to the one in `domains/`. So the 40 valid jobs per prompt variant are 20
+distinct valid items, all already in the canonical set, against 40 distinct invalid
+items (none of them in `domains/`). The job counts are balanced while the distinct
+items run 20 to 40. A confidence interval for validate_domain must cluster on the item
+(the file sent); a per-job count overstates the evidence on the valid side.
 
 No file named `domain_neg<digits>.pddl` exists in any tree; the build and the tests
 check this.
@@ -79,6 +95,22 @@ source problem in `domains/` (100 problems): 1 plan for 15, 2 for 18, 3 or more 
 
 Skipped: block-grouping p02 and p05, counters p02 and p03 (no edit met the halfway
 rule); each of those domains still has two problems.
+
+Overlap with `domains/` (checked 2026-11-09 by sha256 of every file against every file
+of `domains/`):
+
+| item | in the D1b trees | byte-identical to a file in `domains/` |
+|---|---|---|
+| valid plans | 78 | 40, each a valid plan of the same problem |
+| invalid plans | 78 | 2: `numeric/sailing/p01_b1` = `domains/numeric/sailing/p01_b2`, `numeric/delivery/p05_b1` = `domains/numeric/delivery/p05_b4` |
+| valid problems | 40 | 40 (copied by design) |
+| invalid problems | 40 | 0 |
+| valid domains | 20 per tree | 20 (copied by design) |
+| invalid domains | 40 distinct (a + b) | 0 |
+
+A comparison of D1b items with `domains/` should either drop the overlapping items or
+report them separately, since a model's answer on them is a second reading of an
+existing item.
 
 ## 4. How they were built and checked
 
@@ -142,30 +174,45 @@ should pin the three manifest hashes above.
 
 ## 6. How to run them
 
-The harness reads each tree unchanged. Run each tree into **its own output folder**:
+The harness reads each tree unchanged. Run each tree into **its own output folder**,
+named with the `-hard` suffix:
 
 ```
 # validate_problem, validate_plan
 python run_experiment.py --domains-dir domains-hard \
-  --tasks validate_problem validate_plan --output-dir <ext>/<cell>
+  --tasks validate_problem validate_plan --output-dir <ext>/<cell>-hard
 # validate_domain, two runs
 python run_experiment.py --domains-dir domains-hard-vd-a \
-  --tasks validate_domain --output-dir <ext>/<cell>-vd-a
+  --tasks validate_domain --output-dir <ext>/<cell>-hard-vd-a
 python run_experiment.py --domains-dir domains-hard-vd-b \
-  --tasks validate_domain --output-dir <ext>/<cell>-vd-b
+  --tasks validate_domain --output-dir <ext>/<cell>-hard-vd-b
 ```
 
 On the cluster the same comes from `submit_with_rtx.sh` with `--domains-dir` and a
-distinct `--run-tag` per tree (each tag gives its own `OUT_DIR`).
+distinct `--run-tag` per tree (each tag gives its own `OUT_DIR`); the tag must end the
+folder name with `-hard`, `-hard-vd-a` or `-hard-vd-b`.
 
-Two traps, both silent:
+**Reused rows and hard-tree runs must never share a folder.** Reused rows (section 8)
+go to `<ext>/<cell>`, named like the source cell, which never carries the `-hard`
+suffix. The resume key (`pddl_eval/resume.py`: model, task, domain, problem, plan label,
+prompt variant, run settings) records neither the tree nor the file content, and the
+D1b trees reuse canonical item names (`p03`, `v1` and `b1`, `n01` and `n02`,
+`domain_neg`) for different files. A hard-tree run into a folder holding reused rows
+would skip every new item whose key matches a reused row and grade the old answer in
+its place, with no warning. `tools/extension_copy_reused.py` refuses a destination whose
+name ends in `-hard`, `-hard-vd-a` or `-hard-vd-b`, and a destination whose
+`trials.jsonl` already holds rows without `reused_from_*` fields. The reverse order
+(a hard-tree run started in a folder of reused rows) is not caught by any tool, so the
+folder names above are the guard.
+
+Two more traps, both silent:
 
 - **Trees a and b must not share an output folder.** In both, the invalid domain job of
   a domain has the problem name `domain_neg`, so the two runs produce the same resume
   key; the second run would treat tree b's invalid-domain jobs as done and skip them.
 - **A result row does not say which tree it came from** (the run meta does not record
-  `--domains-dir`). The analysis must label rows by output folder: in a `-vd-b` folder,
-  `domain_neg` is the second invalid domain.
+  `--domains-dir`). The analysis must label rows by output folder: in a `-hard-vd-b`
+  folder, `domain_neg` is the second invalid domain.
 
 Solve and simulate on `domains-hard/` would not be new items: its problems are 40 of the
 100 problems of `domains/`, chosen for long plans, so such a run repeats existing
@@ -187,7 +234,8 @@ Decided 2026-11-09: the extension gets a new sweep folder (proposed
 `results/extension-live/<cell>/`). Rerun rows it reuses are copied in with
 `tools/extension_copy_reused.py`, which adds `reused_from_folder`, `reused_from_job`,
 `reused_from_sha256` and `copied_at` to every copied row and writes
-`reuse_provenance.json` next to it. `results/delivered-rerun/` and
+`reuse_provenance.json` next to it. The tool refuses a hard-tree folder name and a
+folder that already holds rows of a run (section 6). `results/delivered-rerun/` and
 `results/sweep5v2-live/` are only read. The SLURM job id is not stored in a cell's
 summary or rows, so the operator passes it (the ids are in `delivered_rerun_prereg.md`
 section 8; the 9B no-tools cell was resumed once, section 8c). The prereg declares the

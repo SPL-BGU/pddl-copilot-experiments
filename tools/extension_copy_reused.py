@@ -42,6 +42,17 @@ Refusals: the destination is inside a frozen corpus (`delivered-rerun`,
 overwrite); the source has an unreadable line or a key of the wrong length;
 the filter keeps no row.
 
+Reused rows and runs on the D1b trees (`domains-hard/`, `domains-hard-vd-a/`,
+`domains-hard-vd-b/`) must never share a folder. The resume key has no field
+for the tree or the item content, and those trees reuse canonical item names
+(`p03`, `v1`/`b1`, `n01`/`n02`, `domain_neg`) with different files. A
+hard-tree run into a folder holding reused rows would skip the new items as
+done and grade the old answers, with no warning. Two more refusals guard this:
+the destination name ends with the hard-tree run suffix (`-hard`,
+`-hard-vd-a`, `-hard-vd-b`; see `development/reference/d1b_harder_items.md`
+section 6), or `<dest>/trials.jsonl` already holds rows without
+`reused_from_*` fields (rows of a harness run).
+
 Proposed destination: `results/extension-live/<cell>/`, one folder per cell,
 named like the source cell. Do not run this on real data before the
 extension's prereg declares the reuse.
@@ -59,6 +70,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -74,6 +86,8 @@ PROTECTED_SUFFIXES = ("_sweep6",)
 PROVENANCE_FIELDS = ("reused_from_folder", "reused_from_job", "reused_from_sha256",
                      "copied_at")
 SIDECAR = "reuse_provenance.json"
+# Output-folder names reserved for runs on the D1b trees (d1b_harder_items.md §6).
+HARD_RUN_NAME = re.compile(r"-hard(-vd-[ab])?$")
 
 
 class Refuse(SystemExit):
@@ -117,6 +131,23 @@ def _summary_job_ids(cell_dir: Path) -> set[str]:
     return out
 
 
+def _harness_rows(trials: Path) -> int:
+    """Rows of an existing trials.jsonl that carry no `reused_from_*` field.
+    A line that does not parse counts as such a row (a torn harness write)."""
+    n = 0
+    for line in trials.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            n += 1
+            continue
+        if not isinstance(rec, dict) or not any(f in rec for f in PROVENANCE_FIELDS):
+            n += 1
+    return n
+
+
 def with_provenance(line: str, fields: dict) -> str:
     """The source line byte for byte, with `fields` added before its closing
     brace, so the copied row is the original record plus the new fields."""
@@ -149,7 +180,17 @@ def copy_reused(*, source: Path, source_job: str, model: str, tasks: list[str], 
         raise Refuse(f"destination {dest} is inside the frozen corpus {hit}")
     if dest == source.parent or dest in source.parents or source.parent in dest.parents:
         raise Refuse(f"destination {dest} is the source folder, contains it, or is inside it")
+    if HARD_RUN_NAME.search(dest.name):
+        raise Refuse(f"destination {dest} has a name reserved for runs on the D1b trees "
+                     f"(-hard, -hard-vd-a, -hard-vd-b); reused rows and hard-tree runs must "
+                     f"never share a folder (the resume key cannot tell their items apart)")
     out_path, side_path = dest / "trials.jsonl", dest / SIDECAR
+    if out_path.is_file():
+        n = _harness_rows(out_path)
+        if n:
+            raise Refuse(f"{out_path} already holds {n} row(s) without reused_from_* fields "
+                         f"(rows of a harness run); reused rows must never share a folder "
+                         f"with a run, since the resume key would mix their items")
     for p in (out_path, side_path):
         if p.exists():
             raise Refuse(f"{p} exists; this tool never overwrites")

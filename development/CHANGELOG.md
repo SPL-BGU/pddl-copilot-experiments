@@ -38,7 +38,11 @@ Each copied row is the source line byte for byte plus `reused_from_folder`,
 resume loader ignores). It refuses a destination inside `delivered-rerun`,
 `sweep5v2-live`, `sweep6-live` or a `*_sweep6` folder, and never overwrites. The SLURM
 job id is not stored in any cell's summary or rows, so it is an argument (the ids are in
-the delivered-rerun prereg, section 8). Not run on real data.
+the delivered-rerun prereg, section 8). Not run on real data. It also refuses a
+destination named like a hard-tree run (`-hard`, `-hard-vd-a`, `-hard-vd-b`) and one
+whose `trials.jsonl` already holds rows of a run: the resume key has no field for the
+tree, and the D1b trees reuse canonical item names for different files, so reused rows
+and hard-tree runs must never share a folder (write-up, section 6).
 
 **3. `tools/build_fixtures.py` sent the Fast Downward strategy as `"search"`; the tool's
 argument is `strategy`.** The server drops unknown arguments silently, so every

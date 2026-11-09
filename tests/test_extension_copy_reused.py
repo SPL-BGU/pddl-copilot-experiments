@@ -150,6 +150,45 @@ def test_refuses_source_folder_and_overwrite():
         assert not (dest2 / "trials.jsonl").exists()
 
 
+def test_refuses_hard_tree_run_names():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        src = _source(root, _lines())
+        ext = root / "results" / "extension-live"
+        for name in ("cellA-hard", "cellA-hard-vd-a", "cellA-hard-vd-b"):
+            msg = _refused(lambda: _copy(src, ext / name))
+            assert "reserved for runs on the D1b trees" in msg, msg
+            assert not (ext / name).exists()
+        # names that only look alike are fine
+        for name in ("cellA-hardware", "cellA-vd-a", "hard-cellA"):
+            _copy(src, ext / name)
+            assert (ext / name / "trials.jsonl").is_file()
+
+
+def test_refuses_dest_with_harness_rows():
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        src = _source(root, _lines())
+        dest = root / "results" / "extension-live" / "cellA"
+        dest.mkdir(parents=True)
+        run_rows = _lines()[:2]                          # rows a harness run wrote
+        (dest / "trials.jsonl").write_text("\n".join(run_rows) + "\n")
+        before = (dest / "trials.jsonl").read_bytes()
+        msg = _refused(lambda: _copy(src, dest))
+        assert "2 row(s) without reused_from_*" in msg, msg
+        assert (dest / "trials.jsonl").read_bytes() == before
+        assert not (dest / X.SIDECAR).exists()
+        # a torn harness line counts as a harness row
+        dest2 = root / "results" / "extension-live" / "cellT"
+        dest2.mkdir(parents=True)
+        (dest2 / "trials.jsonl").write_text('{"key": ["x"\n')
+        assert "1 row(s) without reused_from_*" in _refused(lambda: _copy(src, dest2))
+        # a folder holding only reused rows still gets the plain never-overwrite refusal
+        dest3 = root / "results" / "extension-live" / "cellR"
+        _copy(src, dest3)
+        assert "never overwrites" in _refused(lambda: _copy(src, dest3))
+
+
 def test_refuses_bad_inputs():
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
