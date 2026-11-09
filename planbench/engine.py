@@ -2,10 +2,13 @@
 
 Engine name format: ``pddl_copilot__<backend>__<model>``
   - backend: ``ollama`` | ``vllm`` | ``vllm-base`` | ``vllm-tools`` |
+             ``vllm-tools-plain`` | ``vllm-tools-steered`` |
              ``anthropic`` | ``anthropic-tools`` | ``anthropic-scaffold`` |
              ``anthropic-directive`` (the authoritative set lives in
              ``_parse_engine_name``; the three ``anthropic-*`` arms are the
-             PlanBench-WT prereg cells, t1-only).
+             PlanBench-WT prereg cells, t1-only; ``vllm-tools-plain`` /
+             ``-steered`` are the D1e open-model arms, t1-only, on the frozen
+             WT format clause — see ``_VLLM_TOOLS_ARMS``).
   - model:   the model tag, e.g. ``qwen3:0.6b`` (colons preserved by the
              double-underscore separator).
 
@@ -138,6 +141,12 @@ def _parse_engine_name(engine: str) -> tuple[str, str]:
         "vllm",
         "vllm-base",
         "vllm-tools",
+        # D1e open-model PlanBench with tools (t1 only): the two prompt arms,
+        # each with its own engine name so their response files (PlanBench
+        # caches by engine name) never mix with each other or with the
+        # legacy vllm-tools smokes. See _VLLM_TOOLS_ARMS.
+        "vllm-tools-plain",
+        "vllm-tools-steered",
         "anthropic",
         # PlanBench-WT prereg arms (prereg §10-R, tag prereg-planbench-wt-v1):
         # the tools cell and its matched no-tools control. Separate engine names
@@ -517,7 +526,7 @@ def _anthropic_done_reason(stop_reason) -> str:
 def _log_tool_calls(
     query, model_text, final_text, rendered, tool_calls_log, done_reason,
     loop_exhausted, usage=None, error=None, backend=None, model=None,
-    num_predict=None,
+    num_predict=None, system_sha256=None,
 ) -> None:
     """Emit a per-instance tool-call record.
 
@@ -584,6 +593,10 @@ def _log_tool_calls(
                 for tc in tool_calls_log
             ],
         }
+        # Only the D1e prompt arms pass it, so the records of every earlier
+        # arm keep their exact key set.
+        if system_sha256 is not None:
+            rec["system_sha256"] = system_sha256
         with open(path, "a") as fh:
             fh.write(json.dumps(rec) + "\n")
     except Exception as exc:
@@ -747,6 +760,110 @@ def _pb_scaffold(with_tools: bool) -> str:
         )
     policy = _PB_POLICY_TOOLS if with_tools else _PB_POLICY_NOTOOLS
     return policy + _PB_SHARED_T1_FORMAT
+
+
+# ---------------------------------------------------------------------------
+# D1e: open-model PlanBench with tools, plain and steered arms (t1 only)
+# ---------------------------------------------------------------------------
+#
+# Two system prompts for the vLLM tool loop. Both end in _PB_SHARED_T1_FORMAT,
+# the frozen WT format clause (v2, Omer 2026-08-01), appended from that same
+# constant (never retyped), so the answer shape the upstream extractor reads is
+# byte for byte the one the frontier WT cells were graded on. The tool list is attached in
+# both arms; the arms differ only in the policy text before the clause:
+#
+#   plain   — the role sentence alone ("You are a PDDL planning assistant.",
+#             byte-equal to pddl_eval.prompts.WITH_TOOLS_SYSTEM_NEUTRAL_BY_TASK
+#             ["solve"], the `neutral` system style of the 5-task arm). Tools
+#             are merely available: no instruction to use them or to
+#             formalize the natural-language task into PDDL.
+#   steered — _PB_POLICY_TOOLS, the frozen WT arm-A directive (the 5-task
+#             WITH_TOOLS_SYSTEM plus the NL->PDDL step). The whole steered
+#             prompt is therefore byte-identical to _pb_scaffold(True), the
+#             system prompt of the frontier anthropic-tools cells.
+#
+# Neither prompt names a tool. Each arm has its own backend token (engine
+# pddl_copilot__vllm-tools-<arm>__<tag>), so PlanBench's per-engine response
+# cache can never hand one arm's answers to the other. The returned answer is
+# the model's DELIVERED final text: tool-result rendering (Approach A) is not
+# consulted on these paths, the same structural bypass as anthropic-tools.
+# Pinned by tests/test_planbench_prompts.py (hashes and the byte relations).
+_PB_ROLE = "You are a PDDL planning assistant."
+
+_VLLM_TOOLS_ARMS: dict[str, str] = {
+    "vllm-tools-plain": _PB_ROLE + _PB_SHARED_T1_FORMAT,
+    "vllm-tools-steered": _PB_POLICY_TOOLS + _PB_SHARED_T1_FORMAT,
+}
+
+
+def _vllm_tools_arm_system(backend: str) -> str:
+    """System prompt of a D1e arm, refusing any task but t1.
+
+    Same guard and reason as ``_pb_scaffold``: the shared clause demands a
+    [PLAN] block, so a t3/t7 cell would be mis-prompted and still graded a
+    believable 0.0. SystemExit so the dispatch's blanket handler cannot turn
+    it into a run of empty answers.
+    """
+    task = os.environ.get("PDDL_COPILOT_TASK", "").strip().lower()
+    if task and task != "t1":
+        raise SystemExit(
+            f"backend={backend} is t1-only (_PB_SHARED_T1_FORMAT is "
+            f"t1-specific); got PDDL_COPILOT_TASK={task!r}"
+        )
+    return _VLLM_TOOLS_ARMS[backend]
+
+
+def _vllm_tools_arm_chat(query: str, model: str, max_tokens: int, backend: str) -> str:
+    """One PlanBench t1 instance through the vLLM MCP tool loop, D1e arm.
+
+    Same loop, client, MCP runtime, think flag and output cap as
+    ``_vllm_tools_chat``; only the system prompt and the delivered-answer rule
+    differ. Every instance writes a side-log record carrying the arm's backend
+    token and the system prompt's sha256, so a record always says which
+    prompt produced it.
+    """
+    from pddl_eval.chat import chat_with_tools
+
+    system = _vllm_tools_arm_system(backend)  # before any MCP connect
+    system_sha256 = hashlib.sha256(system.encode()).hexdigest()
+    loop, mcp, client = _get_tools_runtime()
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": query},
+    ]
+    think = os.environ.get("PDDL_COPILOT_THINK", "off").strip().lower()
+    think_flag = {"on": True, "off": False}.get(think, None)
+    num_predict = _effective_num_predict(max_tokens)
+    try:
+        text, tool_calls_log, done_reason, loop_exhausted, tokens, _thinking = (
+            loop.run_until_complete(
+                chat_with_tools(
+                    client=client,
+                    model=model,
+                    messages=messages,
+                    mcp=mcp,
+                    num_predict=num_predict,
+                    num_ctx=_NUM_CTX,
+                    think=think_flag,
+                )
+            )
+        )
+    except Exception as exc:
+        # Record the infra failure before the dispatch's blanket handler
+        # turns it into "" (same rationale as _anthropic_tools_chat).
+        _log_tool_calls(
+            query, "", "", False, [], "error", False,
+            error=str(exc)[:300], backend=backend, model=model,
+            num_predict=num_predict, system_sha256=system_sha256,
+        )
+        raise
+    text = text or ""
+    _log_tool_calls(
+        query, text, text, False, tool_calls_log, done_reason, loop_exhausted,
+        usage=tokens, backend=backend, model=model, num_predict=num_predict,
+        system_sha256=system_sha256,
+    )
+    return text.strip()
 
 
 _PB_ANTHROPIC_RUNTIME = None
@@ -1104,6 +1221,8 @@ def pddl_copilot_send_query(
             return _anthropic_directive_chat(query, model_tag, max_tokens)
         if backend == "vllm-tools":
             return _vllm_tools_chat(query, model_tag, max_tokens)
+        if backend in _VLLM_TOOLS_ARMS:
+            return _vllm_tools_arm_chat(query, model_tag, max_tokens, backend)
         # vllm-base is byte-identical no-tools inference to vllm; it exists only
         # to give the v2 no-tools-at-higher-num_predict baseline its OWN engine
         # name / results dir so it never collides with v1's frozen vllm__ 4096

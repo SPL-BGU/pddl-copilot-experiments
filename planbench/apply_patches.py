@@ -21,9 +21,12 @@ Anchored on stable strings (not line numbers):
    are the strictest, so a drifted upstream aborts after, not before, the
    grader patches.
 
-Each edit checks for both the original anchor (apply) and the patched form
-(skip). Exits 1 if neither is found — that means upstream moved and the
-anchor needs updating.
+Each edit checks for both the original anchor (apply) and the code it leaves
+behind (skip). The skip check is a per-edit sentinel on that code, never the
+``PATCH_MARKER`` comment alone, so hand-patched trees that carry the same code
+with other comments count as applied (ISS-025) and ``main()`` is idempotent:
+a second run changes no byte. Exits 1 if neither form is found — that means
+upstream moved and the anchor needs updating.
 
 Usage:
     python3 apply_patches.py <path-to-LLMs-Planning>
@@ -38,8 +41,35 @@ from pathlib import Path
 
 PATCH_MARKER = "pddl-copilot patch"
 
+# Per-edit sentinels (ISS-025). Each edit is recognised as "already applied"
+# by the CODE it leaves behind, never by the PATCH_MARKER comment alone. The
+# laptop's tree (external/LLMs-Planning, SPL-BGU fork commits 6aac3ad and
+# 0378bfe) carries hand-made versions of patches 1 to 3: the same code with
+# different comments and no marker. A marker-only guard then found neither the
+# marker nor the original anchor and sys.exit()ed at patch 1, so nothing after
+# it ran. Matching on the code itself accepts both forms.
+_INIT_SENTINEL = re.compile(r'openai\.api_key = os\.environ\.get\(\s*"OPENAI_API_KEY"')
+_LLM_UTILS_HEADER_SENTINELS = (
+    "StoppingCriteriaList = StoppingCriteria = None",
+    "    openai = None\n",
+)
+_LLM_UTILS_DISPATCH_SENTINELS = (
+    "engine.startswith('pddl_copilot__')",
+    "from planbench.engine import pddl_copilot_send_query",
+)
+
+
+def _rel(f: Path, pb_root: Path) -> Path:
+    return f.relative_to(pb_root)
+
 
 def patch_init(pb_root: Path) -> None:
+    """Tolerate a missing ``OPENAI_API_KEY`` in ``utils/__init__.py``.
+
+    Applied when the key is read with ``os.environ.get("OPENAI_API_KEY"``,
+    whatever comment follows (the patched form and the hand-patched form both
+    qualify).
+    """
     f = pb_root / "plan-bench" / "utils" / "__init__.py"
     text = f.read_text()
     needle = 'openai.api_key = os.environ["OPENAI_API_KEY"]'
@@ -47,22 +77,25 @@ def patch_init(pb_root: Path) -> None:
         'openai.api_key = os.environ.get("OPENAI_API_KEY", "")'
         f"  # {PATCH_MARKER}: tolerate missing key"
     )
-    if PATCH_MARKER in text:
-        print(f"[patch] {f.relative_to(pb_root)}: already applied")
+    if _INIT_SENTINEL.search(text):
+        print(f"[patch] {_rel(f, pb_root)}: already applied")
         return
     if needle not in text:
-        sys.exit(f"[patch] {f.relative_to(pb_root)}: anchor not found")
+        sys.exit(f"[patch] {_rel(f, pb_root)}: anchor not found")
     f.write_text(text.replace(needle, replace))
-    print(f"[patch] {f.relative_to(pb_root)}: tolerated openai.api_key")
+    print(f"[patch] {_rel(f, pb_root)}: tolerated openai.api_key")
 
 
 def patch_llm_utils(pb_root: Path) -> None:
+    """Tolerant imports (edit 1) and the ``pddl_copilot__`` dispatch (edit 2).
+
+    Each edit has its own sentinel, so a tree where only one of the two is
+    present (by hand or from an interrupted run) gets the other one, and a
+    tree with both is left byte-identical.
+    """
     f = pb_root / "plan-bench" / "utils" / "llm_utils.py"
     text = f.read_text()
-
-    if PATCH_MARKER in text:
-        print(f"[patch] {f.relative_to(pb_root)}: already applied")
-        return
+    did = []
 
     # --- Edit 1: tolerant imports at top of file ---
     old_header = (
@@ -85,9 +118,11 @@ def patch_llm_utils(pb_root: Path) -> None:
         "except ImportError:\n"
         "    openai = None\n"
     )
-    if old_header not in text:
-        sys.exit(f"[patch] {f.relative_to(pb_root)}: header anchor not found")
-    text = text.replace(old_header, new_header)
+    if not all(s in text for s in _LLM_UTILS_HEADER_SENTINELS):
+        if old_header not in text:
+            sys.exit(f"[patch] {_rel(f, pb_root)}: header anchor not found")
+        text = text.replace(old_header, new_header)
+        did.append("tolerant imports")
 
     # --- Edit 2: dispatch branch before the final ``else`` in send_query ---
     # Anchor on the unique combination "    else:" + the openai.Completion line
@@ -109,12 +144,17 @@ def patch_llm_utils(pb_root: Path) -> None:
         "            query, engine, max_tokens, model=model, stop=stop\n"
         "        )\n"
     )
-    if marker not in text:
-        sys.exit(f"[patch] {f.relative_to(pb_root)}: dispatch anchor not found")
-    text = text.replace(marker, dispatch + marker)
+    if not all(s in text for s in _LLM_UTILS_DISPATCH_SENTINELS):
+        if marker not in text:
+            sys.exit(f"[patch] {_rel(f, pb_root)}: dispatch anchor not found")
+        text = text.replace(marker, dispatch + marker)
+        did.append("pddl_copilot dispatch")
 
+    if not did:
+        print(f"[patch] {_rel(f, pb_root)}: already applied")
+        return
     f.write_text(text)
-    print(f"[patch] {f.relative_to(pb_root)}: tolerant imports + pddl_copilot dispatch")
+    print(f"[patch] {_rel(f, pb_root)}: {' + '.join(did)}")
 
 
 def patch_response_generation(pb_root: Path) -> None:
@@ -126,17 +166,15 @@ def patch_response_generation(pb_root: Path) -> None:
     2026-05-18: filter for [2, 3, 4] correctly processed those 3 then ran
     all 497 remaining BW instances). Snapshot to a set at function entry
     and use immutable membership tests in the loop.
+
+    Two edits, each with its own code sentinel (ISS-025), never the global
+    PATCH_MARKER: patch 6 (patch_instance_id_stamp) also writes the marker
+    into this file, so a marker guard would skip this fix once patch 6 had
+    run and bring back the 497-instance overrun.
     """
     f = pb_root / "plan-bench" / "response_generation.py"
     text = f.read_text()
-    # Guard on THIS patch's own edit, not the global PATCH_MARKER: patch 6
-    # (patch_instance_id_stamp) also injects PATCH_MARKER into this file, and
-    # the documented WT recipe applies patch 6 out-of-band — a global-marker
-    # guard would then skip this fix silently, resurrecting the
-    # self-destructing filter (497-instance overrun at API prices).
-    if "_specified_instances_set" in text:
-        print(f"[patch] {f.relative_to(pb_root)}: already applied")
-        return
+    did = []
 
     init_anchor = (
         "    def get_responses(self, task_name, specified_instances = [], run_till_completion=False):\n"
@@ -151,9 +189,11 @@ def patch_response_generation(pb_root: Path) -> None:
         "        _specified_instances_set = set(specified_instances or [])\n"
         "        output_dir = f\"responses/{self.data['domain_name']}/{self.engine}/\"\n"
     )
-    if init_anchor not in text:
-        sys.exit(f"[patch] {f.relative_to(pb_root)}: get_responses init anchor not found")
-    text = text.replace(init_anchor, init_new)
+    if "_specified_instances_set = set(" not in text:
+        if init_anchor not in text:
+            sys.exit(f"[patch] {_rel(f, pb_root)}: get_responses init anchor not found")
+        text = text.replace(init_anchor, init_new)
+        did.append("set snapshot")
 
     old_filter = (
         "                if len(specified_instances) > 0:\n"
@@ -167,12 +207,17 @@ def patch_response_generation(pb_root: Path) -> None:
         "                if _specified_instances_set and instance['instance_id'] not in _specified_instances_set:\n"
         "                    continue\n"
     )
-    if old_filter not in text:
-        sys.exit(f"[patch] {f.relative_to(pb_root)}: filter-block anchor not found")
-    text = text.replace(old_filter, new_filter)
+    if "instance['instance_id'] not in _specified_instances_set" not in text:
+        if old_filter not in text:
+            sys.exit(f"[patch] {_rel(f, pb_root)}: filter-block anchor not found")
+        text = text.replace(old_filter, new_filter)
+        did.append("no-mutate filter")
 
+    if not did:
+        print(f"[patch] {_rel(f, pb_root)}: already applied")
+        return
     f.write_text(text)
-    print(f"[patch] {f.relative_to(pb_root)}: filter no-mutate fix")
+    print(f"[patch] {_rel(f, pb_root)}: filter fix ({', '.join(did)})")
 
 
 def patch_response_evaluation(pb_root: Path) -> None:

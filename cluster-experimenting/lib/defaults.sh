@@ -217,6 +217,14 @@ vllm_reasoning_parser_flag() {
 PDDL_PLANBENCH_DEFAULT_TASKS="t1 t2 t3 t4 t5 t6 t7 t8_1 t8_2 t8_3"
 PDDL_PLANBENCH_DEFAULT_CONFIGS="blocksworld logistics depots"
 
+# D1e open-model PlanBench with tools (plain and steered arms, t1 only):
+# the default roster of `submit_planbench.sh --tools --prompt <arm>` when no
+# --models is given. Qwen only, as the v1 PlanBench roster (2026-06 decision:
+# Gemma left out of PlanBench). The 4B stays in (Omer 2026-11-09: its
+# failures are data). Further small or MoE candidates join only after their
+# parser smoke; the cells themselves are fixed by the D1f prereg.
+PDDL_PLANBENCH_TOOLS_MODELS=(Qwen3.5:4B Qwen3.5:9B qwen3.6:35b)
+
 # Local PlanBench checkout (cloned + patched + venv'd by planbench/setup.sh).
 # `external/` is gitignored — each host runs setup.sh once.
 PDDL_PLANBENCH_PATH="${PDDL_PLANBENCH_PATH:-$HOME/pddl-copilot-experiments/external/LLMs-Planning}"
