@@ -2553,3 +2553,17 @@ validated by an independent ranking subagent (the user asked for a second perspe
   ISS-027 note and the 35B both-runs note stay as `%` comments at the top of each
   fragment and must be written into the caption of the table that wraps it. Whoever
   places a fragment in the tex writes that caption.
+
+## 2026-11-09 (close) — Last decisions; handoff written
+
+- **Release:** BGN Technologies owns research artifacts by default, so the copyright line
+  names BGN; code MIT, data CC-BY-4.0; Omer is the author in `CITATION.cff` and on the
+  DOI, lab SPL-BGU.
+- **D5a full run:** approved (about $51 with the Batch API) once the prereg holds it;
+  when the loaded credits run out, decide next.
+- **Tracking:** Design A, one `items.yaml`, with the recommended answers to Q2 to Q9.
+- **Checkpoints:** refresh the frontier overlays to the 09-12 files, keep the sweep7 and
+  probe overlays (needed to rebuild the 460-row table), drop the dead lfs rule, fix the
+  stale `main.tex:651` comment, add a `checkpoints/frontier/` backup.
+- **pyval 0.1.6** released and pinned (sibling #60). The research questions stay open
+  (`draft_E1_research_questions.md`). Everything else is in `handoff_20261109.md`.
