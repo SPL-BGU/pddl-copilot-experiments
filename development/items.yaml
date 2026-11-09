@@ -1,0 +1,955 @@
+# items.yaml: the one place for the state of every open item and every decision.
+#
+# `python3 tools/tracking/items.py render` writes the live parts of STATUS.md from
+# this file; `python3 tools/tracking/items.py check` fails on any contradiction it can
+# test (add --offline to skip git and GitHub). Edit this file, never the rendered
+# blocks in STATUS.md. Design: draft_tracking_proposal.md, Design A (Omer 2026-11-09,
+# handoff_20261109.md decision 15).
+#
+# Schema, in short:
+#   workstreams  letter -> name. An item's workstream is the first letter of its id.
+#   lines        the study lines in STATUS "Where each line stands":
+#                  id, name, state (one sentence), items (ids), evidence (paths)
+#   items        id         plan step id (A1, D1b, D5a, ...); a new item takes the next
+#                           free number or letter in its workstream; X-## until sorted.
+#                           Ids are never reused; a dropped item stays, state dropped.
+#                title      what the item is, in one line
+#                state      todo | doing | blocked | review | done | dropped
+#                owner      agent | omer
+#                needs_omer none | decide | read | go-ahead | merge  (default none)
+#                waits_on   item or decision ids that must be closed or answered first
+#                branch, pr PR number or list of numbers; commit for a record-only step
+#                evidence   repo paths (an "#anchor" suffix is allowed); [] only for todo
+#                plan       where the step is described; issue: ISS-### link(s)
+#                hold       why a blocked item waits on nothing in this file
+#                was, note, updated
+#   decisions    id DEC-YYYYMMDD-NN, question, answer (the recorded form of Omer's
+#                words; empty while open), decided (date), affects (item ids),
+#                logged (the paper_notes "## " heading it starts with), note
+#
+# Rules: done needs evidence and a PR (or a commit for a record-only step); review
+# needs a PR or a branch; an answered decision needs its dated paper_notes entry.
+# The agent marks an item done once its PR is merged. ISS-### entries stay in
+# OPEN_ISSUES.md; items only link to them.
+
+workstreams:
+  A: Records
+  B: Text that does not depend on new numbers
+  C: Checks and analyses on data already on disk
+  D: Experiments on the fixed setup
+  E: The rewrite
+  F: Before submission
+  N: Advisor round
+  X: Not yet sorted into a workstream
+
+lines:
+  - id: study1
+    name: Main sweep, Study 1 (`sweep5v2-live`, `sweep6-live`)
+    state: >-
+      data final. Unaided and tool-verified numbers reproduced by the rerun; its
+      open-model delivered ranges are retired (biased low by the harness)
+    items: [C2, C3, C5, C9]
+    evidence: [development/NUMBERS.md]
+  - id: rerun
+    name: Delivered rerun, Study 2 part 1
+    state: >-
+      **complete, read out 2026-10-09** by the frozen code
+      (`reference/delivered_rerun_readout.md`). A separate-apparatus replication: parity
+      failed at job level (Gemma 10/10, Qwen 15/20). R1 no delivered harm · R2
+      unresolved · R3 the title changes · R4 met · R5 the directive suppresses calling.
+      Figures in `NUMBERS.md`
+    items: [C3, C4, C6, C8]
+    evidence: [development/reference/delivered_rerun_readout.md]
+  - id: extension
+    name: Extension, Study 2 part 2
+    state: >-
+      preparation (D1) under way: four new families pass the parser smoke (official
+      Gemma 4 BF16, gpt-oss-20b, Ministral 3 14B, Llama 3.1 8B); 32K and 64K windows work
+      and cut empty final answers steeply; the JSON constraint now binds (opt-in).
+      Harness merged (PR #122)
+    items: [D1a, D1b, D1c, D1d, D1e, D1f, D1g, D1i, D1j, D2, D3, D4]
+    evidence: [development/reference/d1_smokes_20261027.md]
+  - id: planbench
+    name: PlanBench
+    state: >-
+      in the tex (PR #114: equivalence test declared, corrected extractor beside the
+      shipped numbers); open-model tools arm planned (D1e, then D2)
+    items: [D1e, D1j, D2]
+    evidence: [development/reference/reanalysis_planbench.md]
+  - id: steering
+    name: Steering control (nt-ster H4)
+    state: closed 2026-08-29, all six units PASS; in the tex appendix
+    items: []
+    evidence: [development/reference/ntster_h4_final_readout_20260829.md]
+  - id: frontier
+    name: Frontier tier and budget probe
+    state: >-
+      closed for Study 1; in the tex. D5 adds new frontier cells (thinking on, larger
+      problems, the renamed-corpus tool arm, random strings). Haiku 4.5's tool arm on the
+      renamed corpus already ran (2026-07-12, `results/haiku-frontier/sweep6-with-tools`,
+      1,520 trials) and is analysed (PR #125); only Sonnet's is missing
+    items: [C9, D1g, D1h, D5a, D5b, D5c, D5d, D5e]
+    evidence: [development/reference/frontier_budget_probe_readout.md]
+  - id: paper
+    name: Paper
+    state: >-
+      the 09-19 text plus PRs #110, #111, #114, #115 (merged 2026-10-09) and #123
+      (contamination wording, merged 2026-11-09). Title D goes (R3); the restructure is
+      plan §4 E
+    items: [B1, B2, B3, B4, B5, B6, C5, E1, E1a, E2, E3, E4, E5, E6, E7, E8, X-03]
+    evidence: [paper/main.tex]
+
+items:
+  # ---------------------------------------------------------------- A. Records
+  - id: A1
+    title: >-
+      Records of the 2026-10-10 answers: answer slots filled, the plan linked from
+      STATUS and README, the paper_notes 10-10 entry
+    state: done
+    owner: agent
+    commit: ee7afb5
+    evidence: [development/weakness_action_plan.md, development/reference/weakness_consolidated.md]
+    plan: weakness_action_plan.md §4 A
+    updated: 2026-10-10
+  - id: A2
+    title: >-
+      Tracking, migration steps 1 to 3: `tools/tracking/items.py` (render, check) with
+      tests, `items.yaml` seeded, STATUS switched to rendered blocks
+    state: review
+    owner: agent
+    needs_omer: merge
+    branch: tracking/items-yaml
+    evidence: [tools/tracking/items.py, tests/test_tracking.py, development/items.yaml]
+    plan: draft_tracking_proposal.md §4 steps 1-3
+    note: Handoff §4 item 1. The PR body lists every contradiction found while seeding.
+    updated: 2026-11-09
+  - id: A3
+    title: >-
+      Tracking, steps 4 to 8: strip state from the plan; the check as a GitHub Action;
+      instruction updates (development/README.md, the development-log skill, CLAUDE.md,
+      resume-verify reads items.yaml first); the weekly read-only audit; a review after
+      two weeks
+    state: todo
+    owner: agent
+    waits_on: [A2]
+    evidence: [development/draft_tracking_proposal.md]
+    plan: draft_tracking_proposal.md §4 steps 4-8
+    updated: 2026-11-09
+
+  # ---------------------------------------------------------------- B. Text
+  - id: B1
+    title: >-
+      Related work: every reference looked up and verified; Positioning rewritten so
+      "none measures" no longer follows the La Malfa sentence (C17)
+    state: doing
+    owner: agent
+    waits_on: [B6]
+    evidence: [development/draft_B1_B2_related_work.md]
+    plan: weakness_action_plan.md §4 B
+    updated: 2026-11-09
+  - id: B2
+    title: >-
+      The arXiv delta: what arXiv:2509.12987 found and what this paper confirms or
+      reverses; reused in the cover letter (F3) (C17)
+    state: doing
+    owner: agent
+    waits_on: [B6]
+    evidence: [development/draft_B1_B2_related_work.md]
+    plan: weakness_action_plan.md §4 B
+    updated: 2026-11-09
+  - id: B3
+    title: >-
+      Test data and prompts in Methods; all user prompts and their three wordings in an
+      appendix; one sentence defining "prompt v11"; the frontier's single wording as a
+      limit (C11, C12)
+    state: doing
+    owner: agent
+    waits_on: [B6]
+    evidence: [development/draft_B3_B5_methods.md]
+    plan: weakness_action_plan.md §4 B
+    updated: 2026-11-09
+  - id: B4
+    title: >-
+      One plain "by construction" sentence; the checker named (`pyval` on
+      `unified-planning`); for solve, the planner and the validator are different
+      programs (C2, C8, D1)
+    state: doing
+    owner: agent
+    waits_on: [B6]
+    evidence: [development/draft_B3_B5_methods.md]
+    plan: weakness_action_plan.md §4 B
+    updated: 2026-11-09
+  - id: B5
+    title: >-
+      The two claims that go whatever the results: "direct empirical support for the
+      LLM-Modulo thesis" and "proves the capability boundary" (C18)
+    state: doing
+    owner: agent
+    waits_on: [B6]
+    evidence: [development/draft_B3_B5_methods.md]
+    plan: weakness_action_plan.md §4 B
+    updated: 2026-11-09
+  - id: B6
+    title: >-
+      Close the agent-side gaps in the B drafts before Omer's read: add Corrêa et al. to
+      B1, fill B4's VAL TODO, re-anchor the tex line numbers after #123, fold the open
+      questions into one answer list
+    state: todo
+    owner: agent
+    evidence: [development/draft_D5_cost_and_correa.md]
+    note: >-
+      Handoff §4 item 6 (it counts 21 open questions). Then B1 to B5 wait for Omer's
+      read, and one B PR follows his okay.
+    updated: 2026-11-09
+
+  # ---------------------------------------------------------------- C. Checks
+  - id: C1
+    title: >-
+      VAL cross-check of the answer key: VAL agrees on 1,731 of 1,732 plans (C8, D1)
+    state: done
+    owner: agent
+    pr: 121
+    evidence: [development/reference/val_crosscheck.md, development/NUMBERS.md]
+    plan: weakness_action_plan.md §4 C
+    note: >-
+      Domain and problem labels are not VAL-checked. The Claude plans were added by
+      PR #125 (C9).
+    updated: 2026-11-09
+  - id: C2
+    title: >-
+      Study 1 numbers into NUMBERS.md: calling, tool-verified, unaided and
+      contamination, with the paired, domain-clustered, Holm-corrected tests and the
+      GLMM refit; the replication table (C9, C13)
+    state: done
+    owner: agent
+    pr: 121
+    evidence: [development/NUMBERS.md, tools/reanalysis/s1_gen_md.py]
+    plan: weakness_action_plan.md §4 C
+    updated: 2026-11-09
+  - id: C3
+    title: >-
+      Study 1 breakdowns and Study 2 descriptive tables, by generator: per wording, per
+      domain, classical against numeric, cost by price ratio, delivery-gap categories
+    state: done
+    owner: agent
+    pr: 124
+    evidence: [tools/reanalysis/s1_breakdowns_md.py, tools/reanalysis/s2_gen_md.py, development/NUMBERS.md]
+    plan: weakness_action_plan.md §4 C
+    updated: 2026-11-09
+  - id: C4
+    title: Example transcripts from the delivered rerun, drawn by a stated rule (seeded draw 20261109)
+    state: done
+    owner: agent
+    pr: 128
+    evidence: [development/draft_C4_transcripts.md, tools/reanalysis/c4_select_transcripts.py]
+    plan: weakness_action_plan.md §4 C
+    note: The readings were drafted by an AI session; Omer's confirmation is item C6.
+    updated: 2026-11-09
+  - id: C5
+    title: >-
+      Retired-wording hit list for the tex, with an owner per hit (the Introduction,
+      `tab:vdom`, `tab:decomp` and the figures have none today): nothing from the
+      retired open-model delivered ranges survives outside the passages E replaces
+    state: todo
+    owner: agent
+    evidence: []
+    plan: weakness_action_plan.md §4 C
+    note: Handoff §4 item 7.
+    updated: 2026-11-09
+  - id: C6
+    title: Confirm the C4 transcript readings (drafted by an AI session)
+    state: todo
+    owner: omer
+    needs_omer: read
+    evidence: [development/draft_C4_transcripts.md]
+    updated: 2026-11-09
+  - id: C7
+    title: >-
+      ISS-027 scope and Gemma thinking: cleaned check scripts and the post hoc
+      ISS-027 figures beside the frozen ones
+    state: review
+    owner: agent
+    needs_omer: merge
+    branch: analysis/iss027-scope
+    pr: 130
+    issue: [ISS-027]
+    evidence: [development/OPEN_ISSUES.md]
+    note: >-
+      Draft PR. Cleaned into tools/reanalysis/iss027_{unaided,replay,common}.py and
+      gemma_think.py (each takes --results and halts on a failed self-check), with
+      tests/test_iss027.py and generated caveats beside T1, T2, T5, T8a and the mechanism
+      row. Omer takes it out of draft and merges. When it merges, tests/verify.sh
+      conflicts with #128's line (and with A2's): keep every line.
+    updated: 2026-11-09
+  - id: C8
+    title: >-
+      Post hoc splits beside the frozen figures: ISS-028 (real copying errors against
+      goal-list trailers; check the Haiku depot p02 row) and the one ISS-029 simulate row
+    state: todo
+    owner: agent
+    issue: [ISS-028, ISS-029]
+    evidence: []
+    note: "Handoff §4 item 5, the part left after #130."
+    updated: 2026-11-09
+  - id: C9
+    title: >-
+      35B call flips; Haiku 4.5 tool arm on the renamed corpus; VAL on the Claude solve
+      plans
+    state: done
+    owner: agent
+    pr: 125
+    evidence: [tools/reanalysis/s1_call_flips.py, tools/reanalysis/val_frontier_solve.py, development/NUMBERS.md]
+    updated: 2026-11-09
+
+  # ---------------------------------------------------------------- D. Experiments
+  - id: D1a
+    title: >-
+      New families: official Gemma 4 BF16, gpt-oss-20b, Ministral 3 14B and Llama 3.1 8B
+      pass the parser smoke
+    state: done
+    owner: agent
+    pr: 122
+    evidence: [development/reference/d1_smokes_20261027.md]
+    plan: weakness_action_plan.md §4 D1
+    updated: 2026-11-09
+  - id: D1b
+    title: >-
+      Harder test items: new item kinds in three item trees (two small validate_domain
+      trees), no harness change; a provenance copy tool for reused rows
+    state: done
+    owner: agent
+    pr: 127
+    evidence: [development/reference/d1b_harder_items.md, tools/extension_copy_reused.py, tools/build_hard_fixtures.py]
+    plan: weakness_action_plan.md §4 D1
+    updated: 2026-11-09
+  - id: D1c
+    title: Context room smoke; 32K and 64K windows work and cut empty final answers steeply
+    state: done
+    owner: agent
+    pr: 122
+    evidence: [development/reference/d1_smokes_20261027.md]
+    plan: weakness_action_plan.md §4 D1
+    updated: 2026-11-09
+  - id: D1d
+    title: JSON control; a client version where the JSON constraint binds (opt-in)
+    state: done
+    owner: agent
+    pr: 122
+    evidence: [development/reference/d1_smokes_20261027.md]
+    plan: weakness_action_plan.md §4 D1
+    updated: 2026-11-09
+  - id: D1e
+    title: >-
+      Open-model PlanBench with tools, engineering: ISS-025 first (patch sentinels in
+      `planbench/apply_patches.py`), then plain and steered vLLM prompts that reuse the
+      frozen WT format clause byte for byte, and the PR #122 serve flags in the PlanBench
+      sbatch; the roster keeps the 4B
+    state: todo
+    owner: agent
+    issue: [ISS-025]
+    evidence: []
+    plan: weakness_action_plan.md §4 D1
+    note: >-
+      The routing exists on main (planbench/engine.py backend vllm-tools,
+      submit_planbench.sh --tools). The one-model smoke is D1j. Handoff §4 item 8.
+    updated: 2026-11-09
+  - id: D1f
+    title: >-
+      The extension prereg in reference/: every cell and reading in one document, frozen
+      in stages (wave 1, wave 2, frontier)
+    state: todo
+    owner: agent
+    waits_on: [D1e, D1g]
+    issue: [ISS-027, ISS-028, ISS-029, ISS-030]
+    evidence: []
+    plan: weakness_action_plan.md §4 D1
+    note: >-
+      It must state: the family tiers; the anchor slice with the 35B cells and the
+      flip-rate endpoint; the reuse provenance; separate output folders for trees a and
+      b; "new item kinds" with a reading on whether accuracy drops; grading with
+      pddl-pyvalidator 0.1.6; the ISS-028 extractor rule; the ISS-029 plan source;
+      whether wave 2 stores the reasoning trace (ISS-030); Gemma parser none; GPT-OSS
+      effort levels and the date pin; the D5a to D5e cells and the declared pilot.
+      /freeze-protocol before each stage's freeze. Omer reads it before anything is
+      frozen. Handoff §4 item 10.
+    updated: 2026-11-09
+  - id: D1g
+    title: >-
+      D5b ground truth: vendor the IPC 2023 benchmarks at a pinned commit; generate fresh
+      problems; validate; Fast Downward at 120 s and 1800 s (three strategies); VAL every
+      plan; report the solve shares. No model runs before this
+    state: todo
+    owner: agent
+    evidence: []
+    plan: weakness_action_plan.md §4 D5
+    note: >-
+      github.com/ipc2023-learning/benchmarks, HEAD 19d6a8a on 2026-11-09, no licence file;
+      their domain files, not ours. Handoff §4 item 9.
+    updated: 2026-11-09
+  - id: D1h
+    title: >-
+      D5a thinking pilot (20 keys per arm, Batch API, $1.69): thinking mode in
+      `tools/claude_api_batch.py`, SDK pinned `anthropic==0.109.2`, the Corrêa 2-shot
+      prompt vendored
+    state: done
+    owner: agent
+    pr: 131
+    evidence: [tools/d5a_pilot.py, results/frontier-d5a-pilot/pilot_report.json, tools/prompts/correa2026_2shot.txt]
+    note: >-
+      It measured thinking tokens and the answer-parse rate only, never plan success.
+      The budget-probe prereg's recorded hash of claude_api_batch.py changed; the default
+      request was proven byte-identical.
+    updated: 2026-11-09
+  - id: D1i
+    title: >-
+      Opt-in gpt-oss reasoning effort (`PDDL_REASONING_EFFORT`, `--reasoning-effort`) and
+      opt-in reasoning-trace storing (`PDDL_STORE_REASONING=1`)
+    state: done
+    owner: agent
+    pr: 126
+    issue: [ISS-030]
+    evidence: [cluster-experimenting/reasoning_settings.py, tools/effort_smoke_check.py, tests/test_reasoning_settings.py]
+    note: >-
+      Trace storing is off by default, because a filled `thinking` changes failure labels
+      through the frozen scoring code. The cluster smoke is part of X-04.
+    updated: 2026-11-09
+  - id: D1j
+    title: Open-model PlanBench with tools, a smoke on one model (cluster)
+    state: todo
+    owner: agent
+    needs_omer: go-ahead
+    waits_on: [D1e]
+    evidence: []
+    plan: weakness_action_plan.md §4 D1 (D1e)
+    note: Can share the X-04 go-ahead if D1e is merged by then.
+    updated: 2026-11-09
+  - id: D2
+    title: >-
+      Wave 1, thinking off: the new families, the neutral 2 x 2, the 0.8B and 4B, harder
+      items, context room, the JSON control, open-model PlanBench
+    state: todo
+    owner: agent
+    needs_omer: go-ahead
+    waits_on: [D1f, D1j, X-04]
+    evidence: []
+    plan: weakness_action_plan.md §4 D2
+    updated: 2026-11-09
+  - id: D3
+    title: Wave 2, thinking on, with the main sweep's budgets
+    state: todo
+    owner: agent
+    needs_omer: go-ahead
+    waits_on: [D2]
+    evidence: []
+    plan: weakness_action_plan.md §4 D3
+    updated: 2026-11-09
+  - id: D4
+    title: >-
+      Readout: the frozen code on the live data; figures into NUMBERS.md; a paper_notes
+      entry; Omer reads it before any prose is written
+    state: todo
+    owner: agent
+    needs_omer: read
+    waits_on: [D2, D3]
+    evidence: []
+    plan: weakness_action_plan.md §4 D4
+    updated: 2026-11-09
+  - id: D5a
+    title: >-
+      Frontier thinking on, full run: Sonnet 4.6 and Haiku 4.5 thinking on, Sonnet 5.5
+      thinking on and off, thinking off at temperature 1, 3 repeats per problem (Batch
+      API; approved with D5e at about $66)
+    state: todo
+    owner: agent
+    waits_on: [D1f, D1h]
+    evidence: []
+    plan: weakness_action_plan.md §4 D5
+    note: Runs only after D1f holds the cells. Handoff §4 item 12.
+    updated: 2026-11-09
+  - id: D5b
+    title: >-
+      Larger problems: a size ladder from the IPC 2023 generators; unaided and tool-arm
+      success and the calling rate against problem size
+    state: todo
+    owner: agent
+    waits_on: [D1g, D1f]
+    evidence: []
+    plan: weakness_action_plan.md §4 D5
+    updated: 2026-11-09
+  - id: D5c
+    title: "Sonnet 4.6 tool arm on `domains-anon` (Haiku's ran and is analysed, PR #125)"
+    state: todo
+    owner: agent
+    waits_on: [D1f]
+    evidence: []
+    plan: weakness_action_plan.md §4 D5
+    updated: 2026-11-09
+  - id: D5d
+    title: Two random-string maps per domain, unaided solve, Sonnet 4.6 and Haiku 4.5
+    state: todo
+    owner: agent
+    waits_on: [D1f]
+    evidence: []
+    plan: weakness_action_plan.md §4 D5
+    updated: 2026-11-09
+  - id: D5e
+    title: >-
+      Corrêa et al.'s 2-shot prompt word for word, our Gripper problems left out; Sonnet
+      4.6, thinking off at T=0 and thinking on with 3 repeats; one descriptive row
+    state: todo
+    owner: agent
+    waits_on: [D1f]
+    evidence: []
+    plan: weakness_action_plan.md §4 D5
+    updated: 2026-11-09
+
+  # ---------------------------------------------------------------- E. Rewrite
+  - id: E1
+    title: >-
+      The outline: the research questions against the two gates (RQ1 to RQ6 and the
+      scorecard, or the suggested framing)
+    state: blocked
+    owner: agent
+    waits_on: [DEC-20261109-17]
+    evidence: [development/draft_E1_research_questions.md]
+    plan: weakness_action_plan.md §4 E
+    note: Until Omer decides, no E step removes RQ1 to RQ6 or the scorecard from the tex.
+    updated: 2026-11-09
+  - id: E1a
+    title: >-
+      The vocabulary: what each kept term means and which terms go; carries both RQ
+      framings while E1 stays open
+    state: todo
+    owner: agent
+    evidence: []
+    plan: weakness_action_plan.md §4 E (E1)
+    note: Handoff §4 item 7.
+    updated: 2026-11-09
+  - id: E2
+    title: Methods (with B3 and B4) and the Study 1 results
+    state: todo
+    owner: agent
+    waits_on: [C2, E1a]
+    evidence: []
+    plan: weakness_action_plan.md §4 E
+    updated: 2026-11-09
+  - id: E3
+    title: >-
+      Study 2 results: the delivered answers; gate 1 across families, prompts, reasoning
+      mode and harder items; gate 2 against context room; cost
+    state: todo
+    owner: agent
+    waits_on: [D4]
+    evidence: []
+    plan: weakness_action_plan.md §4 E
+    updated: 2026-11-09
+  - id: E4
+    title: The frontier tier and PlanBench, with the open models
+    state: todo
+    owner: agent
+    waits_on: [D4]
+    evidence: []
+    plan: weakness_action_plan.md §4 E
+    updated: 2026-11-09
+  - id: E5
+    title: Discussion with every claim scoped to the final numbers; Limitations; Conclusion
+    state: todo
+    owner: agent
+    waits_on: [D4]
+    evidence: []
+    plan: weakness_action_plan.md §4 E
+    updated: 2026-11-09
+  - id: E6
+    title: >-
+      Title (from the candidates in `reference/weakness_consolidated.md` Q6, checked
+      against the results) and abstract
+    state: todo
+    owner: agent
+    needs_omer: decide
+    waits_on: [E3, E4, E5]
+    evidence: []
+    plan: weakness_action_plan.md §4 E
+    updated: 2026-11-09
+  - id: E7
+    title: >-
+      Consistency-read leftovers: E3a, E3b and E8b rewritten from the new numbers; the
+      group F candidate additions (the first is in the tex since PR #123)
+    state: todo
+    owner: agent
+    waits_on: [D4]
+    evidence: []
+    plan: weakness_action_plan.md §4 E (E7)
+    updated: 2026-11-09
+  - id: E8
+    title: Contamination wording in the tex on the paired, clustered ±5 test
+    state: done
+    owner: agent
+    pr: 123
+    evidence: [paper/main.tex, development/NUMBERS.md]
+    updated: 2026-11-09
+
+  # ---------------------------------------------------------------- F. Submission
+  - id: F1
+    title: >-
+      JAIR reformat and de-anonymising (the author block, the links block, leaving
+      `[submission]` mode), done once after the venue is ratified
+    state: todo
+    owner: agent
+    waits_on: [N2]
+    evidence: []
+    plan: weakness_action_plan.md §4 F
+    updated: 2026-11-09
+  - id: F2
+    title: >-
+      Public code and data release, with the prereg documents linked and their hashes
+      stated; the Zenodo switch (needs an SPL-BGU org owner; time it against double-blind
+      review)
+    state: todo
+    owner: agent
+    waits_on: [F2a]
+    evidence: []
+    plan: weakness_action_plan.md §4 F
+    updated: 2026-11-09
+  - id: F2a
+    title: >-
+      Release files: `LICENSE` (MIT, BGN line), `LICENSE-DATA` (CC-BY-4.0),
+      `CITATION.cff` (holder BGN), notes on third-party domains in `domains/README.md`
+    state: todo
+    owner: agent
+    evidence: [development/draft_release_licence_models.md]
+    plan: weakness_action_plan.md §4 F (F2)
+    note: Handoff §4 item 4. Confirm BGN's exact legal name before publishing.
+    updated: 2026-11-09
+  - id: F3
+    title: >-
+      Cover letter with the arXiv:2509.12987 delta (B2, `reference/journal_decisions_memo.md`
+      §5); this also closes ISS-013
+    state: todo
+    owner: agent
+    waits_on: [B2]
+    issue: [ISS-013]
+    evidence: []
+    plan: weakness_action_plan.md §4 F
+    updated: 2026-11-09
+
+  # ---------------------------------------------------------------- N. Advisor round
+  - id: N2
+    title: >-
+      Advisor and coauthor round (`advisor_brief.md`): of its six questions, the venue,
+      the thesis requirement and recording the pivot still stand; only the JAIR reformat
+      waits on it
+    state: blocked
+    owner: omer
+    hold: >-
+      R7: Omer holds the round (09-19) and says when an advisor meeting happened. Never
+      a reason to hold a task.
+    evidence: [development/advisor_brief.md]
+    note: >-
+      Overtaken by the work: the cost deck, the rerun, Sonnet-tier PlanBench. No
+      coauthor has edited Overleaf since the 08-11 sync.
+    updated: 2026-11-09
+
+  # ---------------------------------------------------------------- X. Not yet sorted
+  - id: X-01
+    title: Checkpoints prune; four June deck zips removed
+    state: done
+    owner: agent
+    pr: 129
+    evidence: [development/MOVES.md]
+    updated: 2026-11-09
+  - id: X-02
+    title: >-
+      Checkpoints follow-up: refresh the haiku and sonnet frontier overlay zips and
+      `e2e-overlay/derived_reports.zip` with the 09-12 files (add
+      `results/derived/budget_probe/readout_{sonnet,haiku}.json`); keep the sweep7 and
+      probe overlays and add `e2e-overlay/README.md` (sweep7's rows are never quoted);
+      remove the dead `.gitattributes` lfs line; add a `checkpoints/frontier/` zip set;
+      fix the date of the NUMBERS.md "460 rows" table
+    state: todo
+    owner: agent
+    evidence: []
+    note: >-
+      Handoff §4 item 2. A rebuild without the sweep7 and probe overlays gives 442 rows,
+      not 460; the "2026-07-17" table had 456 rows, the 460-row one is from 09-12. The
+      frontier raw corpora (about 230 MB) exist only on the laptop.
+    updated: 2026-11-09
+  - id: X-03
+    title: >-
+      Paper: point the stale `main.tex:651` comment at NUMBERS.md's Study 1 block and
+      `tools/reanalysis/s1_*`, on a short paper branch (`sync_overleaf.sh pull` before
+      any push); then remove the `rq-sweep5v2` PDF with a MOVES.md row
+    state: todo
+    owner: agent
+    evidence: []
+    note: Handoff §4 item 3.
+    updated: 2026-11-09
+  - id: X-04
+    title: >-
+      Cluster round, one go-ahead: the gpt-oss effort and trace smoke (command in #126's
+      PR body); upgrade the validator plugin venv to `pddl-pyvalidator` 0.1.6
+      (`launch-server.sh` never upgrades an existing `.venv`); read the installed
+      versions (B3 Q6); re-check which commit the cluster checkout sits on
+    state: todo
+    owner: agent
+    needs_omer: go-ahead
+    issue: [ISS-027, ISS-030]
+    evidence: []
+    note: >-
+      Checked 2026-10-10, the checkout sat on harness/delivered-rerun at 4b2fe6e;
+      probably stale, since the D1 smokes ran from harness/d1a-new-families. Any SSH
+      needs Omer's go-ahead first. Handoff §4 item 11.
+    updated: 2026-11-09
+  - id: X-05
+    title: >-
+      Omer's laptop cleanup: nine agent worktrees under `.claude/worktrees/` (all for
+      merged PRs), `checkpoints/sweep6-live/.DS_Store`, the untracked `rq-sweep5v2` pptx
+      and PNGs, two old stashes from `paper/aaai27`
+    state: todo
+    owner: omer
+    evidence: [development/handoff_20261109.md]
+    note: >-
+      Earlier on 2026-11-09 Omer removed two merged worktrees and the merged branches of
+      that time. The merged branches of #121 to #129 and #131 are on origin again. The
+      marketplace plugin cache picks up validator 3.1.1 on the next plugin update.
+    updated: 2026-11-09
+
+decisions:
+  - id: DEC-20261108-01
+    question: Change the contamination wording in the tex now?
+    answer: >-
+      Yes, as a small paper PR stacked on #121: the paired, clustered ±5 criterion; the
+      test chosen after the sweep; the renaming lexical only; the unresolved per-task
+      cells marked; the frontier solve comparison called unresolved.
+    decided: 2026-11-08
+    affects: [E8]
+    logged: 2026-11-08
+  - id: DEC-20261108-02
+    question: Which experiments answer Corrêa et al. in the extension?
+    answer: >-
+      Approved for the extension prereg (plan D5): frontier thinking on (Sonnet and Haiku,
+      plus other frontier vendors such as GPT and Gemini); larger problems (a size ladder
+      from the IPC 2023 generators); the Claude tool arm on the renamed corpus.
+    decided: 2026-11-08
+    affects: [D5a, D5b, D5c, D1f]
+    logged: 2026-11-08
+  - id: DEC-20261109-01
+    question: "D1b: where do the results live, and how are the new item kinds loaded?"
+    answer: >-
+      A new sweep folder; reused rerun rows copied in with `reused_from_folder`,
+      `reused_from_job`, `reused_from_sha256`, `copied_at`
+      (`tools/extension_copy_reused.py`); the prereg declares the reuse.
+      `delivered-rerun/`, `sweep5v2-live`, `sweep6-live` never touched. Loader: two small
+      validate_domain trees (`domains-hard-vd-a/`, `-vd-b/`), no harness change. Trees a
+      and b must write to separate output folders (both name the invalid job
+      `domain_neg`). No SLURM job id is stored in any results file, so the copy tool
+      takes it as an argument (job ids are in `reference/delivered_rerun_prereg.md` §8).
+    decided: 2026-11-09
+    affects: [D1b, D1f]
+    logged: 2026-11-09 — Repo audit
+    note: >-
+      Why: after the 35B flips, a rerun is not identical to the original, so reused rows
+      must stay identifiable.
+  - id: DEC-20261109-02
+    question: "Llama 3.1 8B: which weights?"
+    answer: Unsloth's ungated copy stays (weights byte-identical to Meta's).
+    decided: 2026-11-09
+    affects: [D2, D1f]
+    logged: 2026-11-09 — Repo audit
+    note: >-
+      Omer's condition was "if its weight files match Meta's byte for byte". Checked
+      2026-11-09: all four shards and the index match Meta's LFS pointers; only small
+      config and tokenizer metadata differ, with the same chat template and stop tokens
+      (`draft_release_licence_models.md` §2).
+  - id: DEC-20261109-03
+    question: "GPT-OSS: which reasoning effort?"
+    answer: >-
+      Effort low in wave 1, medium in wave 2, sent explicitly (`PDDL_REASONING_EFFORT`,
+      `--reasoning-effort`); labelled "low effort", never "thinking off". gpt-oss puts the
+      current date in its system message; pin it if runs must be reproducible.
+    decided: 2026-11-09
+    affects: [D1i, D2, D3, D1f]
+    logged: 2026-11-09 — Repo audit
+  - id: DEC-20261109-04
+    question: "The 35B calling rate: which run is quoted?"
+    answer: >-
+      Quote both runs (68.0 and 82.7); "bigger calls less" is a direction only; the 35B
+      cells go into the extension's repeat check (anchor slice, with a trial-level
+      flip-rate endpoint).
+    decided: 2026-11-09
+    affects: [D1f, E2]
+    logged: 2026-11-09 — Repo audit
+  - id: DEC-20261109-05
+    question: "Families: which go in which wave?"
+    answer: >-
+      Wave 1 = gpt-oss-20b and Llama 3.1 8B plus the official Gemma 4 BF16; Ministral 3
+      14B = wave 2. Every family that passed the smoke is registered now as a numbered
+      tier with the same analysis, so adding one later needs only a go-ahead. Later tiers
+      (each must pass the parser smoke): GLM-4.7-Flash, gpt-oss-120b. Passed over:
+      Nemotron 3 Nano, Granite 4.2 8B, Olmo 3 7B.
+    decided: 2026-11-09
+    affects: [D1f, D2, D3]
+    logged: 2026-11-09 (evening)
+    note: >-
+      Omer: keep only the later-wave models of high value to the paper. GLM-4.7-Flash is
+      a third family with a real thinking on/off switch, so the reasoning-mode finding
+      (Gemma's calling falls from 21% to 0.6%) can be tested outside Qwen and Gemma; a
+      new vendor and a fast MoE. gpt-oss-120b is the same family as the 20b at a larger
+      size, so "bigger calls less" gets a test in a second family; a fast MoE that needs
+      a GPU to itself. Passed over: Nemotron 3 Nano (a new architecture the paper's
+      questions do not ask about; prefix caching unchecked), Granite 4.2 8B (dense and
+      slow; Llama already fills the 8B rung), Olmo 3 7B (open training data would allow a
+      direct contamination search, but that is a separate project; its thinking variant
+      is a separate checkpoint, not a switch).
+  - id: DEC-20261109-06
+    question: "Gemma, wave 2 (thinking on): which reasoning parser?"
+    answer: Keep `REASONING_PARSER=none`, as in Study 1. No parser side run.
+    decided: 2026-11-09
+    affects: [D3, D1f]
+    logged: 2026-11-09 (night)
+  - id: DEC-20261109-07
+    question: "PlanBench roster (D1e): keep the 4B?"
+    answer: Keep the 4B (its failures are data).
+    decided: 2026-11-09
+    affects: [D1e, D1j, D2]
+    logged: 2026-11-09 — Repo audit
+    note: More small or MoE candidates may be suggested; each must pass the parser smoke.
+  - id: DEC-20261109-08
+    question: "D5a: which models and settings, and the full run?"
+    answer: >-
+      Sonnet 4.6 and Haiku 4.5 thinking on; Sonnet 5.5 thinking on and off
+      (`between_tools`); thinking off at temperature 1 on the same problems; 3 repeats per
+      problem. Full run approved (about $51 with the Batch API, range $33 to $72; the D5e
+      cells add about $14 thinking on and $1.72 thinking off, so about $66 in all). Omer
+      has $186 loaded plus a work account; when the loaded credits are used up, decide
+      what comes next. It runs only after the D1f prereg holds the cells.
+    decided: 2026-11-09
+    affects: [D5a, D5e, D1f]
+    logged: 2026-11-09 (late night) — D5a
+    note: >-
+      Cost method (moved here from STATUS): the D5e thinking-on cell (95 problems x 3 =
+      285 trials) adds about $14 (about $10 to $19; 2-shot input from pilot arm e (7,626
+      tokens per trial), output = arm a's mean Sonnet 4.6 thinking (4,123 tokens,
+      bootstrap CI) plus arm e's mean answer (887), at Batch prices of $1.50 / $7.50 per
+      MTok); its thinking-off cell adds $1.72 (95 x 1). PR #131 review.
+  - id: DEC-20261109-09
+    question: "D5b: which larger problems?"
+    answer: >-
+      Add some of Corrêa et al.'s IPC 2023 domains and problems. Ground truth first
+      (validate, solve with the planner, VAL every plan), and report the share solved
+      within 120 s and within 30 min, before any model runs. Their 360 tasks are not
+      released; use the IPC 2023 generators (`github.com/ipc2023-learning/benchmarks`,
+      HEAD `19d6a8a` on 2026-11-09, no licence file) and their domain files, not ours.
+    decided: 2026-11-09
+    affects: [D1g, D5b]
+    logged: 2026-11-09 — Repo audit
+  - id: DEC-20261109-10
+    question: "D5c: what is still owed?"
+    answer: >-
+      Sonnet 4.6 tool arm on `domains-anon` (Haiku's already ran and is analysed, #125).
+    decided: 2026-11-09
+    affects: [D5c]
+    logged: 2026-11-09 — Repo audit
+  - id: DEC-20261109-11
+    question: "D5d: random strings, in which form?"
+    answer: Two random-string maps per domain, unaided solve, Sonnet 4.6 and Haiku 4.5.
+    decided: 2026-11-09
+    affects: [D5d]
+    logged: 2026-11-09 — Repo audit
+    note: The cheapest form, about 800 trials.
+  - id: DEC-20261109-12
+    question: "D5e: the Corrêa 2-shot prompt cell?"
+    answer: >-
+      Corrêa's 2-shot prompt word for word, our Gripper problems left out (their example
+      is a different Gripper domain under the same name); Sonnet 4.6, thinking off at T=0
+      and thinking on with 3 repeats; one descriptive row.
+    decided: 2026-11-09
+    affects: [D5e]
+    logged: 2026-11-09 (later)
+    note: >-
+      Their instructions, the Gripper and Logistics worked examples and their checklist,
+      then our problem; Logistics is not in our corpus. Thinking off at T=0 matches the
+      existing 28.7% cell; thinking on matches D5a. Same grader; the pilot checks that the
+      answer reader reads their plan format, and if it does not, Omer is asked before
+      anything changes. Outside the confirmatory set, never pooled with v11 to v13.
+  - id: DEC-20261109-13
+    question: "The pyval case bug (ISS-027): who fixes it, and what does the extension grade with?"
+    answer: >-
+      Fixed by us in `pddl-pyvalidator` 0.1.6 (released on PyPI) and pinned in the
+      validator plugin (sibling #60). The extension grades with 0.1.6 and D1f records it.
+    decided: 2026-11-09
+    affects: [D1f, C7, X-04]
+    logged: 2026-11-09 (night)
+    note: The cluster's plugin venv still needs the upgrade (X-04).
+  - id: DEC-20261109-14
+    question: "Release (plan F2): owner, licences, author?"
+    answer: >-
+      BGN Technologies owns research artifacts by default; no check needed. Code MIT, data
+      CC-BY-4.0 (only data we produced; third-party domains keep their terms). Copyright
+      line proposed: "Copyright (c) 2026 B.G. Negev Technologies and Applications Ltd.
+      (BGN Technologies)"; confirm BGN's exact legal name before publishing. Omer is the
+      author in `CITATION.cff` and on the Zenodo DOI, lab SPL-BGU. Mind double-blind
+      review: the named citation file and DOI may have to wait until after review.
+    decided: 2026-11-09
+    affects: [F2a, F2]
+    logged: 2026-11-09 (close)
+    note: >-
+      Replaces the earlier entry of the same day ("MIT or Apache-2.0 for code; BGU's
+      policy on student work is checked first").
+  - id: DEC-20261109-15
+    question: "Tracking: which design, and the answers to the proposal's Q2 to Q9?"
+    answer: >-
+      Design A of `draft_tracking_proposal.md`, with the recommended answers to Q2 to Q9:
+      read state in STATUS.md; a failed check on a record-only push is a red mark the
+      agent fixes the same day; the agent marks an item done once its PR is merged; ids
+      `DEC-YYYYMMDD-NN` and next-number-in-workstream (`X-##` until sorted); `ISS-###`
+      stay in `OPEN_ISSUES.md` with a link; seed open items and steps done since
+      2026-10-10; a weekly read-only audit; no dependency graph for now.
+    decided: 2026-11-09
+    affects: [A2, A3]
+    logged: 2026-11-09 (close)
+  - id: DEC-20261109-16
+    question: "Checkpoints: the five #129 questions?"
+    answer: >-
+      Refresh the haiku and sonnet frontier overlay zips and
+      `e2e-overlay/derived_reports.zip` with the 09-12 files (and add
+      `results/derived/budget_probe/readout_{sonnet,haiku}.json`); keep the sweep7 and
+      frontier-with-tools-probe overlays (a rebuild without them gives 442 rows, not 460)
+      and add an `e2e-overlay/README.md` saying sweep7's rows are never quoted; remove the
+      dead `.gitattributes` lfs line for `checkpoints/sweep5/*.zip`; fix the stale comment
+      at `paper/main.tex:651`, then remove the `rq-sweep5v2` PDF with a `MOVES.md` row.
+      Also add a `checkpoints/frontier/` zip set.
+    decided: 2026-11-09
+    affects: [X-02, X-03]
+    logged: 2026-11-09 (close)
+  - id: DEC-20261109-17
+    question: >-
+      E1: keep RQ1 to RQ6 and the scorecard, or move to the suggested framing (a baseline
+      question, one question per gate, problem size as a factor under each, the scorecard
+      dropped)?
+    affects: [E1, E1a]
+    logged: 2026-11-09 (later)
+    note: >-
+      Omer 2026-11-09: keep it open. Both framings side by side in
+      `draft_E1_research_questions.md`. Until he decides, no E step removes the RQs or the
+      scorecard from the tex, and E1 drafts carry both framings.
+  - id: DEC-20261109-18
+    question: "The D5 thinking pilot?"
+    answer: >-
+      Yes: 20 keys per arm, Batch API, about $1.50 to $10, hard cap $40. It measures
+      thinking tokens and the answer-parse rate only; plan success is not computed, so the
+      pilot does not peek at the outcome. The prereg declares it.
+    decided: 2026-11-09
+    affects: [D1h, D1f]
+    logged: 2026-11-09 (evening)
+    note: "Ran 2026-11-09, PR #131, $1.69."
+  - id: DEC-20261109-19
+    question: "C3 tex fragments: where do the table caveats live?"
+    answer: >-
+      The generated fragments (`tools/reanalysis/out/tex/s1_*.tex`) carry only the cell
+      marks (¶ for unaided simulate). The explanation of the mark, the ISS-027 note and the
+      35B both-runs note stay as `%` comments at the top of each fragment and must be
+      written into the caption of the table that wraps it. Whoever places a fragment in
+      the tex writes that caption.
+    decided: 2026-11-09
+    affects: [C3, E2, E3]
+    logged: 2026-11-09 (late night) — C3

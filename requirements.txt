@@ -30,3 +30,7 @@ scipy
 # present only transitively through mcp. tests/test_delivered_rerun_analysis.py
 # checks every third-party import of the frozen files is listed here.
 pydantic
+
+# YAML reader for the tracking file development/items.yaml
+# (tools/tracking/items.py render / check). Not used by the harness.
+pyyaml>=6.0
