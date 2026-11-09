@@ -62,6 +62,22 @@
 #   never share an OUT_DIR with a 16K cell. Without the flag an inherited
 #   MAX_MODEL_LEN is dropped, so the default window cannot change by accident.
 #
+# --reasoning-effort "<list>": gpt-oss reasoning effort, sent explicitly as
+#   the request's reasoning_effort (one quoted argument, space- or
+#   comma-separated: low, medium, high, default). It replaces the think axis:
+#   each level is its own cell, named effort-<level> where the think token
+#   usually sits (results/slurm_vllm_gpt-oss_20b_effort-low_<cond>[_<tag>]/),
+#   and `default` is the plain cell that sends no effort (Harmony's default,
+#   medium). A low-effort cell is never a "thinking off" cell. Only for models
+#   whose lookup sets SUPPORTS_REASONING_EFFORT=1 (gpt-oss:20b); exclusive
+#   with --think-modes and the smoke modes. Flag omitted: nothing changes.
+#
+# --store-reasoning: also keep the reasoning trace vLLM returns in
+#   `message.reasoning` in each row's `thinking` field ($PDDL_STORE_REASONING;
+#   see pddl_eval/vllm_client.py). That field is empty in every corpus so far,
+#   and filling it lets the think_overflow label fire, so the rows are not
+#   label-comparable with an older cell: requires --run-tag.
+#
 # --tasks "<list>": run only these tasks in every cell (space- or
 #   comma-separated, one quoted argument). Default (flag omitted): all 5. An
 #   empty list or an unknown task name is an error; repeats are dropped.
@@ -178,6 +194,9 @@ PROMPT_STYLE_GIVEN=0
 JSON_CONSTRAINT=""
 JSON_CONSTRAINT_GIVEN=0
 MAX_MODEL_LEN_OVERRIDE=""
+REASONING_EFFORT_LIST=""
+REASONING_EFFORT_GIVEN=0
+STORE_REASONING_FLAG=0
 TASKS_OVERRIDE=""
 TASKS_GIVEN=0
 MODELS=()
@@ -213,6 +232,8 @@ while [[ $# -gt 0 ]]; do
         --prompt-style) PROMPT_STYLE_GIVEN=1; PROMPT_STYLE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         --json-constraint) JSON_CONSTRAINT_GIVEN=1; JSON_CONSTRAINT="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         --max-model-len) MAX_MODEL_LEN_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
+        --reasoning-effort) REASONING_EFFORT_GIVEN=1; REASONING_EFFORT_LIST="${2-}"; shift; [ $# -gt 0 ] && shift ;;
+        --store-reasoning) STORE_REASONING_FLAG=1; shift ;;
         --tasks) TASKS_GIVEN=1; TASKS_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
@@ -384,6 +405,56 @@ if [ "$JSON_CONSTRAINT" = "structured_outputs" ] && [ "$NO_TOOLS" -ne 1 ]; then
     exit 1
 fi
 
+# --reasoning-effort "<list>": see the header. Each level becomes a think-axis
+# token (effort-<level>, or `default` for no field), so every level gets its
+# own OUT_DIR. The model check (SUPPORTS_REASONING_EFFORT) is in the model
+# gate below.
+EFFORT_THINK=()
+if [ "$REASONING_EFFORT_GIVEN" -eq 1 ]; then
+    read -ra _eff <<< "${REASONING_EFFORT_LIST//,/ }"
+    if [ "${#_eff[@]}" -eq 0 ]; then
+        echo "Error: --reasoning-effort expects at least one of low, medium, high, default" >&2
+        exit 1
+    fi
+    for _e in "${_eff[@]}"; do
+        case "$_e" in
+            low|medium|high) _tok="effort-$_e" ;;
+            default) _tok="default" ;;
+            *)
+                echo "Error: --reasoning-effort: unknown level '$_e' (expected low, medium, high or default)" >&2
+                exit 1 ;;
+        esac
+        case " ${EFFORT_THINK[*]} " in
+            *" $_tok "*) ;;
+            *) EFFORT_THINK+=("$_tok") ;;
+        esac
+    done
+    unset _eff _e _tok
+    if [ -n "$THINK_MODES_OVERRIDE" ]; then
+        echo "Error: --reasoning-effort replaces the think axis; drop --think-modes" >&2
+        exit 1
+    fi
+    if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+        echo "Error: --reasoning-effort cannot be combined with --smoke[-shuffle] (use --partial 1 for a small run)" >&2
+        exit 1
+    fi
+fi
+
+# --store-reasoning: see the header. Exported to the sbatch as
+# STORE_REASONING=1; an inherited STORE_REASONING is dropped otherwise.
+if [ "$STORE_REASONING_FLAG" -eq 1 ]; then
+    if [ -z "$RUN_TAG" ]; then
+        echo "Error: --store-reasoning requires --run-tag (rows with a stored trace must not share an OUT_DIR with rows without one)" >&2
+        exit 1
+    fi
+    if [ "$SMOKE" -eq 1 ] || [ "$SMOKE_SHUFFLE" -eq 1 ]; then
+        echo "Error: --store-reasoning cannot be combined with --smoke[-shuffle]" >&2
+        exit 1
+    fi
+else
+    unset STORE_REASONING
+fi
+
 # --tasks "<list>": restrict every cell to a subset of the 5 tasks (space- or
 # comma-separated, quoted as ONE argument). Passed to the sbatch as TASKS,
 # which it forwards as run_experiment.py --tasks. Normalised here to a
@@ -479,8 +550,14 @@ fi
 # The sbatch re-runs the same lookup at runtime for defense-in-depth.
 SBATCH_FILE="$SCRIPT_DIR/run_condition_vllm_rtx.sbatch"
 for m in "${MODELS[@]}"; do
+    unset SUPPORTS_REASONING_EFFORT
     vllm_lookup "$m" >/dev/null || exit 1
+    if [ "${#EFFORT_THINK[@]}" -gt 0 ] && [ "${SUPPORTS_REASONING_EFFORT:-0}" != "1" ]; then
+        echo "Error: --reasoning-effort: $m does not read reasoning_effort (only models with SUPPORTS_REASONING_EFFORT=1 in lib/defaults.sh, i.e. gpt-oss:20b)" >&2
+        exit 1
+    fi
 done
+unset SUPPORTS_REASONING_EFFORT
 
 # Default GPU: rtx_6000 (48 GB) — smoke-verified for the full active
 # roster (27B AWQ peaks 83% VRAM, 0.8B well below). rtx_pro_6000 (96 GB)
@@ -539,6 +616,11 @@ else
         EFF_THINK=("${DEFAULT_THINK_MODES[@]}")
     fi
     EFF_COND=("${DEFAULT_CONDITIONS[@]}")
+fi
+# --reasoning-effort: the effort levels are the think axis (validated above:
+# no --think-modes, no smoke).
+if [ "${#EFFORT_THINK[@]}" -gt 0 ]; then
+    EFF_THINK=("${EFFORT_THINK[@]}")
 fi
 
 # --prompt-style: rename the with-tools cond token to carry the style. A
@@ -671,6 +753,11 @@ if [ -n "$RUN_TAG" ]; then
 fi
 if [ -n "$MAX_MODEL_LEN_OVERRIDE" ]; then
     EXPORT_LIST="${EXPORT_LIST},MAX_MODEL_LEN=${MAX_MODEL_LEN_OVERRIDE}"
+fi
+# --reasoning-effort needs no export of its own: it travels inside CELLS_LIST
+# as the think token (effort-<level>).
+if [ "$STORE_REASONING_FLAG" -eq 1 ]; then
+    EXPORT_LIST="${EXPORT_LIST},STORE_REASONING=1"
 fi
 # --tasks subset (`^`-joined; see the validation block above). --prompt-style
 # needs no export of its own: it travels inside CELLS_LIST as the cond token.
@@ -805,6 +892,12 @@ if [ -n "$MAX_MODEL_LEN_OVERRIDE" ]; then
 fi
 if [ "$JSON_CONSTRAINT" = "structured_outputs" ]; then
     echo "  json:        structured_outputs (no-tools cells become no-tools-jsonbound; separate OUT_DIR)" >&2
+fi
+if [ "${#EFFORT_THINK[@]}" -gt 0 ]; then
+    echo "  effort:      ${EFFORT_THINK[*]} (gpt-oss reasoning_effort sent explicitly; one cell per level, separate OUT_DIR)" >&2
+fi
+if [ "$STORE_REASONING_FLAG" -eq 1 ]; then
+    echo "  reasoning:   stored in each row's thinking field (PDDL_STORE_REASONING=1)" >&2
 fi
 if [ -n "$TASKS_EXPORT" ]; then
     echo "  tasks:       ${TASKS_EXPORT//^/ } (subset; default is all 5)" >&2

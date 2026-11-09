@@ -6,6 +6,46 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-11-09: Opt-in gpt-oss reasoning effort; opt-in storage of the reasoning trace
+
+Branch `harness/gptoss-effort`. No cluster job ran for this entry and no corpus was
+rewritten. Default requests and default rows are unchanged (a test compares the JSON
+body of three request shapes with what every corpus sent, and the request bytes and
+parsed replies of the old and new client were compared on the same shapes). No frozen
+file of the delivered-rerun package changed; its hash is still `822aace…`.
+
+**1. Reasoning effort for gpt-oss (`pddl_eval/vllm_client.py`,
+`cluster-experimenting/`).** Omer 2026-11-09: low effort in wave 1, medium in wave 2,
+always sent explicitly. `$PDDL_REASONING_EFFORT` (low, medium, high) makes the client
+send the top-level request field `reasoning_effort`. Checked in the vLLM v0.20.2 source:
+the Harmony renderer (`vllm/entrypoints/serve/render/serving.py`,
+`_make_request_with_harmony`) reads `request.reasoning_effort` into the system message,
+and `chat_template_kwargs` is never read on that path, so the field binds (unlike
+`guided_json`, which 0.20.2 dropped). With no field, openai-harmony writes its default,
+`Reasoning: medium`. `submit_with_rtx.sh --reasoning-effort "low default"` makes one
+cell per level, named `effort-<level>` where the think token usually sits
+(`slurm_vllm_gpt-oss_20b_effort-low_<cond>`), so these cells are labelled "low effort",
+never "thinking off". Only models marked `SUPPORTS_REASONING_EFFORT=1` in
+`lib/defaults.sh` (gpt-oss:20b) accept it. Before each gpt-oss cell the sbatch asks the
+server to render a one-line chat and prints the served system line
+(`cluster-experimenting/reasoning_settings.py system-line`); an effort cell whose line
+does not show its level is skipped. `run_experiment.py` is frozen, so the effort cannot
+go into `summary_*.json`; effort and stored-reasoning cells get
+`OUT_DIR/client_settings.json` instead.
+
+**2. The reasoning trace was never stored (NEW-2).** vLLM 0.20.2 returns the trace as
+`message.reasoning`; its response model has no `reasoning_content` field. The client
+read only `reasoning_content`, so the row field `thinking` is empty in all 68,400
+think-on rows of `sweep5v2-live` and all 68,400 of `sweep6-live`, including the 26,885
+and 25,512 of them that ended normally with an answer. This is a simpler cause than the
+2026-05-25 `think_overflow` entry below gives (the parser flushing only after a complete
+think block): even complete traces were dropped. The default read is kept, because filling `thinking` would
+let the frozen scoring code's `think_overflow` label fire and change failure labels.
+`$PDDL_STORE_REASONING=1` (`submit_with_rtx.sh --store-reasoning`, which requires
+`--run-tag`) also reads `message.reasoning`, so the trace reaches the existing row field
+`thinking` (capped at 4,096 characters by the frozen runner). A separate new row field
+would need an edit to the frozen `pddl_eval/runner.py`, so it was not added.
+
 ## 2026-10-02 — Four harness fixes ahead of a full-storage rerun of the with-tools arms
 
 **Motivation.** The transcript re-analysis (`development/reanalysis_transcripts.md`,

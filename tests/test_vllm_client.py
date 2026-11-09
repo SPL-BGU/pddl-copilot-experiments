@@ -14,6 +14,7 @@ Two groups:
 Runs under pytest and as a plain script (tests/verify.sh).
 """
 import asyncio
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -435,6 +436,242 @@ def test_unknown_json_constraint_is_rejected():
     except ValueError:
         return
     raise AssertionError("expected ValueError")
+
+
+# ---------------------------------------------------------------------------
+# Reasoning effort and the reasoning trace (2026-11-09). These go through the
+# real openai SDK with an httpx mock transport, so they check the JSON body
+# that would reach vLLM and the SDK's parsing of vLLM 0.20.2's response shape
+# (`message.reasoning`, no `reasoning_content`).
+# ---------------------------------------------------------------------------
+
+_ENV_KEYS = ("PDDL_REASONING_EFFORT", "PDDL_STORE_REASONING",
+             "PDDL_JSON_CONSTRAINT", "PDDL_TOOL_CALL_ID_STYLE")
+
+
+class _Env:
+    """Set some PDDL_* variables (None = unset) and restore them after."""
+
+    def __init__(self, **values):
+        self.values = values
+
+    def __enter__(self):
+        import os
+        self.saved = {k: os.environ.get(k) for k in _ENV_KEYS}
+        for k in _ENV_KEYS:
+            os.environ.pop(k, None)
+        for k, v in self.values.items():
+            if v is not None:
+                os.environ[k] = v
+        return self
+
+    def __exit__(self, *exc):
+        import os
+        for k, v in self.saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def _wire_client(reply_message: dict, **client_kwargs):
+    """A VLLMClient whose AsyncOpenAI talks to a mock transport. Returns
+    (client, list of raw request bodies)."""
+    from openai import AsyncOpenAI
+    bodies: list[bytes] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(request.content)
+        return httpx.Response(200, json={
+            "id": "chatcmpl-test", "object": "chat.completion", "created": 0,
+            "model": "m",
+            "choices": [{"index": 0, "finish_reason": "stop",
+                         "message": {"role": "assistant", "tool_calls": [],
+                                     **reply_message}}],
+            "usage": {"prompt_tokens": 11, "completion_tokens": 22,
+                      "total_tokens": 33},
+        })
+
+    client = VLLMClient(base_url="http://test", **client_kwargs)
+    client._client = AsyncOpenAI(
+        base_url="http://test/v1", api_key="EMPTY",
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    return client, bodies
+
+
+_TOOL = {"type": "function", "function": {
+    "name": "validate_plan", "description": "d",
+    "parameters": {"type": "object", "properties": {}}}}
+
+# Three request shapes the harness sends: no-tools with a schema and think
+# off, with-tools think on (a replayed tool turn), and the decoupled call-1
+# shape (vllm_extra). For each, the exact JSON body every corpus so far sent.
+_SHAPES = [
+    ("no-tools schema think-off",
+     dict(messages=[{"role": "user", "content": "x"}],
+          options={"temperature": 0.0, "num_predict": 64}, think=False,
+          format=_SCHEMA),
+     {"model": "m", "messages": [{"role": "user", "content": "x"}],
+      "stream": False, "temperature": 0.0, "max_tokens": 64,
+      "chat_template_kwargs": {"enable_thinking": False},
+      "guided_json": _SCHEMA}),
+    ("tools think-on",
+     dict(messages=[{"role": "user", "content": "x"},
+                    {"role": "assistant", "content": "", "thinking": "t",
+                     "tool_calls": [{"function": {"name": "validate_plan",
+                                                  "arguments": {}}}]},
+                    {"role": "tool", "content": "ok"}],
+          tools=[_TOOL], options={"temperature": 0.0, "num_predict": 128},
+          think=True),
+     {"model": "m",
+      "messages": [{"role": "user", "content": "x"},
+                   {"role": "assistant", "content": "",
+                    "tool_calls": [{"id": "call_1_0", "type": "function",
+                                    "function": {"name": "validate_plan",
+                                                 "arguments": "{}"}}]},
+                   {"role": "tool", "tool_call_id": "call_1_0", "content": "ok"}],
+      "stream": False, "tools": [_TOOL], "tool_choice": "auto",
+      "temperature": 0.0, "max_tokens": 128,
+      "chat_template_kwargs": {"enable_thinking": True}}),
+    ("decoupled call-1 (vllm_extra, stop)",
+     dict(messages=[{"role": "user", "content": "x"}],
+          options={"num_predict": 32}, think=True, stop=["</think>"],
+          vllm_extra={"include_stop_str_in_output": True}),
+     {"model": "m", "messages": [{"role": "user", "content": "x"}],
+      "stream": False, "max_tokens": 32,
+      "chat_template_kwargs": {"enable_thinking": True},
+      "include_stop_str_in_output": True, "stop": ["</think>"]}),
+]
+
+
+def _send(client, kwargs) -> dict:
+    return asyncio.run(client.chat(model="m", **kwargs))
+
+
+def test_default_request_body_unchanged_on_the_wire():
+    """No new setting given: each body is exactly the pre-change one, and
+    the raw bytes do not depend on the new variables being unset or empty."""
+    for label, kwargs, expected in _SHAPES:
+        with _Env():
+            client, bodies = _wire_client({"content": "a", "reasoning": None})
+            _send(client, kwargs)
+        assert json.loads(bodies[0]) == expected, label
+        assert b"reasoning_effort" not in bodies[0], label
+        with _Env(PDDL_REASONING_EFFORT="", PDDL_STORE_REASONING="0"):
+            client2, bodies2 = _wire_client({"content": "a", "reasoning": None})
+            _send(client2, kwargs)
+        assert bodies2[0] == bodies[0], label
+        # Storing the trace changes only how the answer is read, never the request.
+        with _Env(PDDL_STORE_REASONING="1"):
+            client3, bodies3 = _wire_client({"content": "a", "reasoning": None})
+            _send(client3, kwargs)
+        assert bodies3[0] == bodies[0], label
+
+
+def test_reasoning_effort_is_a_top_level_field():
+    """vLLM 0.20.2 reads request.reasoning_effort (top level) for gpt-oss;
+    chat_template_kwargs is not read on the Harmony path."""
+    for level in ("low", "medium", "high"):
+        for label, kwargs, expected in _SHAPES:
+            with _Env(PDDL_REASONING_EFFORT=level):
+                client, bodies = _wire_client({"content": "a"})
+                _send(client, kwargs)
+            body = json.loads(bodies[0])
+            assert body.pop("reasoning_effort") == level, label
+            assert body == expected, label   # nothing else moved
+            assert "reasoning_effort" not in body.get("chat_template_kwargs", {})
+    # an explicit argument wins over the environment
+    with _Env(PDDL_REASONING_EFFORT="high"):
+        client, bodies = _wire_client({"content": "a"}, reasoning_effort="low")
+        _send(client, _SHAPES[0][1])
+    assert json.loads(bodies[0])["reasoning_effort"] == "low"
+
+
+def test_reasoning_effort_values_are_checked():
+    for bad in ("none", "minimal", "LOW", "off"):
+        with _Env(PDDL_REASONING_EFFORT=bad):
+            try:
+                VLLMClient(base_url="http://test")
+                raise AssertionError(f"expected ValueError for {bad!r}")
+            except ValueError:
+                pass
+    with _Env(PDDL_STORE_REASONING="yes"):
+        try:
+            VLLMClient(base_url="http://test")
+            raise AssertionError("expected ValueError for PDDL_STORE_REASONING=yes")
+        except ValueError:
+            pass
+
+
+def test_reasoning_trace_is_dropped_by_default():
+    """NEW-2: vLLM 0.20.2 returns the trace as `message.reasoning`. The
+    default read (reasoning_content) misses it, as in every stored corpus."""
+    with _Env():
+        client, _ = _wire_client({"content": "VERDICT: VALID",
+                                  "reasoning": "step 1 ... step 9"})
+        resp = _send(client, _SHAPES[0][1])
+    assert resp["message"]["thinking"] == ""
+    assert resp["message"]["content"] == "VERDICT: VALID"
+
+
+def test_reasoning_trace_is_stored_when_asked():
+    with _Env(PDDL_STORE_REASONING="1"):
+        client, _ = _wire_client({"content": "VERDICT: VALID",
+                                  "reasoning": "step 1 ... step 9"})
+        resp = _send(client, _SHAPES[0][1])
+    assert resp["message"]["thinking"] == "step 1 ... step 9"
+    assert resp["message"]["content"] == "VERDICT: VALID"
+    assert resp["eval_count"] == 22 and resp["prompt_eval_count"] == 11
+
+
+def test_non_think_rows_unchanged_when_storing():
+    """A turn with no trace (reasoning null or absent) reads the same with
+    and without the setting, apart from the wall-clock fields."""
+    for reply in ({"content": "a", "reasoning": None}, {"content": "a"},
+                  {"content": "a", "reasoning": ""}):
+        out = []
+        for flag in ("0", "1"):
+            with _Env(PDDL_STORE_REASONING=flag):
+                client, _ = _wire_client(reply)
+                resp = _send(client, _SHAPES[0][1])
+            resp.pop("total_duration"), resp.pop("eval_duration")
+            out.append(resp)
+        assert out[0] == out[1], reply
+        assert out[0]["message"]["thinking"] == ""
+
+
+def test_older_reasoning_content_field_still_read():
+    """A server that sends the old field name: read with or without the setting."""
+    for flag in ("0", "1"):
+        with _Env(PDDL_STORE_REASONING=flag):
+            client, _ = _wire_client({"content": "a", "reasoning_content": "old"})
+            resp = _send(client, _SHAPES[0][1])
+        assert resp["message"]["thinking"] == "old"
+
+
+def test_stored_trace_reaches_the_harness_thinking_value():
+    """chat_without_tools / chat_with_tools (frozen pddl_eval/chat.py) return
+    message.thinking as the value runner.py stores in the row's `thinking`."""
+    from pddl_eval.chat import chat_with_tools, chat_without_tools
+    with _Env(PDDL_STORE_REASONING="1"):
+        client, _ = _wire_client({"content": "VERDICT: VALID", "reasoning": "R"})
+        text, done, tokens, thinking = asyncio.run(chat_without_tools(
+            client, "m", [{"role": "user", "content": "x"}],
+            num_predict=64, num_ctx=16384, think=None))
+    assert (text, done, thinking) == ("VERDICT: VALID", "stop", "R")
+    mcp = SimpleNamespace(tools=[_TOOL])
+    with _Env(PDDL_STORE_REASONING="1"):
+        client, bodies = _wire_client({"content": "done", "reasoning": "R2"})
+        out = asyncio.run(chat_with_tools(
+            client, "m", [{"role": "user", "content": "x"}], mcp,
+            num_predict=64, num_ctx=16384, think=None))
+    assert out[0] == "done" and out[-1] == "R2"
+    with _Env():
+        client, _ = _wire_client({"content": "done", "reasoning": "R2"})
+        out = asyncio.run(chat_with_tools(
+            client, "m", [{"role": "user", "content": "x"}], mcp,
+            num_predict=64, num_ctx=16384, think=None))
+    assert out[-1] == ""
 
 
 if __name__ == "__main__":
