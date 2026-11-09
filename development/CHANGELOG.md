@@ -6,6 +6,12 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-11-09 — Corrections found by the 2026-11-09 audit (no code change in this entry)
+
+- **Gemma 4 does think when `enable_thinking=True`.** The 2026-05 entry on `planbench/engine.py::_vllm_chat` says "`gemma4` has no `<think>` tokens and ignores the kwarg". That is wrong: Gemma 4 uses `<|channel>thought … <channel|>`, its chat template adds `<|think|>` when thinking is on, and vLLM 0.20.2 has a `gemma4` reasoning parser. We serve Gemma with `REASONING_PARSER=none`, so the reasoning stays inside `response`. In sweep5v2-live all 4,560 no-tools think-on Gemma responses start with `thought\n` and run to the output cap far more often (validate_plan answers cut at the cap: 9 → 2,690 of 3,000). The "calling falls from 21% to 0.6%" finding is therefore a real thinking-on effect, mostly "thinking uses the budget before the call" (2,025 of the 2,981 plain validate_plan no-call rows ran out inside the thought channel).
+- **The reasoning trace was never stored** (ISS-030, PR #126): the client read `reasoning_content`, vLLM 0.20.2 sends `reasoning`. The 2026-05-25 explanation of why `think_overflow` never fires is mostly wrong for the same reason.
+- **pyval does not case-fold plan names** (ISS-027), which hits the simulate and validate_plan tools as well as unaided JSON plans.
+
 ## 2026-10-02 — Four harness fixes ahead of a full-storage rerun of the with-tools arms
 
 **Motivation.** The transcript re-analysis (`development/reanalysis_transcripts.md`,

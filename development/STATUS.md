@@ -216,13 +216,16 @@ ISS-013.
   service invention owned by BGU or BGN; it says nothing on open-source licences or the
   copyright line. Ask the advisor (the lab already ships MIT repos as "SPL@BGU"), then
   BGN if needed. The agent recommends MIT for code.
-- **Gemma thinking (side finding, unchecked):** the Gemma 4 model card describes a
-  thinking switch and vLLM 0.20.2 has a `gemma4` reasoning parser, while we serve Gemma
-  with `REASONING_PARSER=none` and the CHANGELOG says it ignores the kwarg. If the card
-  is right, Gemma's think=on cells may have thought for real. A read-only check of the
-  stored rows is owed before D3 relies on the "21% to 0.6%" finding.
-- **ISS-027 (new, P1):** the plan grader rejects correctly cased upper-case names; open
-  model rows still to check (`OPEN_ISSUES.md`).
+- **ISS-027 scope (checked 2026-11-09):** the case bug also hits the open-model simulate
+  and validate_plan tool arms. The only frozen figures that move by more than 1 point are
+  Gemma's Study 1 simulate tool-verified cells (91.7 → 95.0 plain, 90.7 → 94.0 steered)
+  and figures built on them. Open: who fixes pyval (it is `pddl-pyvalidator` 0.1.5, used
+  by the validator plugin), and that the extension pins the fixed version in D1f.
+- **Gemma thinking (checked 2026-11-09):** Gemma really thinks with thinking on; its
+  reasoning sits inside `response` because we serve it with no reasoning parser. The
+  "21% to 0.6%" finding stands as a thinking-on effect (thinking uses the budget before
+  the call). Open for D3: serve Gemma with the `gemma4` reasoning parser or keep `none`
+  for parity with Study 1.
 - **⚠️ STILL OPEN (Omer 2026-11-09: keep it open): E1, the six research questions
   against the two gates.** The tex frames its results as RQ1 to RQ6 plus a scorecard; the
   plan frames them as two gates (calling, delivery). The side-by-side and the suggestion
