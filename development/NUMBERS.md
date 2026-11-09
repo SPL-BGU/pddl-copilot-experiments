@@ -17,7 +17,7 @@ was made on the old paper branch. That branch was merged into `main` by PR #101
 (2026-09-18, merge commit, not squashed) and deleted, so every such hash is reachable on
 `main`. Docs cited by bare name moved on 2026-09-18; `MOVES.md` "Third wave" resolves them.
 
-*Last refreshed: 2026-11-09 (plan step C3: two generated sub-blocks, the Study 1 breakdowns by `tools/reanalysis/s1_breakdowns_md.py` and the Study 2 part 1 tables by `tools/reanalysis/s2_gen_md.py`; no existing row changed). Before that: 2026-11-08 (frontier contamination block, Sonnet 4.6 by the T7 method; T7 marked as in the tex). Before that: 2026-10-27 (VAL cross-check block, plan step C1; Study 1 block: main-sweep calling, tool-verified, unaided and contamination figures, the clustered tests and the mixed-model refit, and the replication table; plan step C2). Before that: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-11-09 (three generated additions, in no tex yet: call-state flips between the main sweep and the rerun, T8c; Haiku 4.5 tool arm on the renamed corpus, frontier contamination block; KCL VAL on the Claude solve plans, next to the C1 VAL block, which finds a case fault in the answer key; then plan step C3: two generated sub-blocks, the Study 1 breakdowns by `tools/reanalysis/s1_breakdowns_md.py` and the Study 2 part 1 tables by `tools/reanalysis/s2_gen_md.py`; no existing row changed). Before that: 2026-11-08 (frontier contamination block, Sonnet 4.6 by the T7 method; T7 marked as in the tex). Before that: 2026-10-27 (VAL cross-check block, plan step C1; Study 1 block: main-sweep calling, tool-verified, unaided and contamination figures, the clustered tests and the mixed-model refit, and the replication table; plan step C2). Before that: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -92,6 +92,26 @@ its stored `success` is the retired strict grade (the 45.0 / 38.3 row above).
 | baselines for that 25% (in no tex yet) | identical prompt sent again: **1.1%** of answer pairs differ (validate_plan valid plans, 34/2,988; validate_domain 0/600), canonical; 2.9% and 2.7% anonymized. Wording changed, same names (solve): **8.0%** canonical (24/300), 14.7% anonymized | the validation-task rate as the solve noise floor (an easier task; no exact solve repeats exist) |
 | solve per domain (15 trials a side) | down: blocksworld **11→3**, miconic 15→8, sailing 7→0; up: tpp **0→6**, farmland 3→8, satellite 3→8, gardening 6→11. **No domain survives Holm over the 20** (smallest adjusted p 0.156; exact McNemar, which ignores clustering) | any single domain as a memorization finding: with one renaming per domain, memorization cannot be told apart from a harder renaming |
 
+**Warning (2026-11-09):** the solve rows above use the stored grade, which rejects some correct canonical answers (a case fault in pyval; counts in "VAL on the Claude solve plans" below). The renamed side is not affected, so the stored Δ is biased toward zero.
+
+### Added 2026-11-09: Claude Haiku 4.5 with tools, renamed − canonical (in no tex yet)
+
+Provenance: `tools/reanalysis/06_frontier_tools_contamination.py`, output
+`tools/reanalysis/out/06_frontier_tools_contamination.md`, over
+`results/haiku-frontier/sweep5v2-with-tools` (canonical) and `results/haiku-frontier/sweep6-with-tools`
+(renamed; run 2026-07-12, never reported before). Variant 11, 1,520 trials a side, every key shared.
+Method = T7, unchanged (`04_equivalence.tost`), on both surfaces: tool-verified (`success`) and
+delivered (overlay `e2e_strict`, pairs determinate on both sides). Post hoc and descriptive.
+
+<!-- gen:06_frontier_tools_contamination -->
+| figure | **quote this** | do NOT quote |
+|---|---|---|
+| Haiku 4.5 with tools, renamed − canonical, tool-verified, per task (n = 100 / 120 / 200 / 1,000 / 100) | solve 100.0 → 100.0, +0.00 [+0.00, +0.00] criterion met (ceiling: low information); validate_domain 98.3 → 99.2, +0.83 [-1.71, +3.37] criterion met (ceiling: low information); validate_problem 96.5 → 97.0, +0.50 [-1.35, +2.35] (problem) criterion met (ceiling: low information); validate_plan 98.9 → 98.4, -0.50 [-1.05, +0.05] criterion met (ceiling: low information); simulate 97.0 → 98.0, +1.00 [-0.73, +2.73] criterion met (ceiling: low information) | "equivalent"; any of these as a memorization test: the tool arm sits at a ceiling, so a met criterion carries little information |
+| same, delivered (`e2e_strict`, pairs determinate on both sides) | solve 95.0 → 97.0, +2.00 [-2.95, +6.95] **criterion not met (unresolved)**; validate_domain 98.3 → 99.2, +0.83 [-1.71, +3.37] criterion met (ceiling: low information); validate_problem 96.5 → 96.5, +0.00 [-2.03, +2.03] (problem) criterion met (ceiling: low information); validate_plan 98.8 → 98.4, -0.40 [-0.94, +0.14] criterion met (ceiling: low information); simulate 59.0 → 55.4, -3.61 [-12.77, +5.54] **criterion not met (unresolved)**. Censored pairs left out: simulate 17, every other task 0 | simulate delivered as a point rate (it is bounded: see the table in `06_frontier_tools_contamination.md`) |
+| pooled, 5 tasks | tool-verified 98.5 → 98.4, -0.13 [-0.62, +0.36], criterion met (ceiling: low information); delivered 96.0 → 95.7, -0.27 [-1.11, +0.58], criterion met (ceiling: low information) (1,000 of the 1,520 trials are validate_plan) | none |
+| settings, canonical vs renamed cell | same model, sdk 0.109.2, temperature, max_iterations, tool filter, prompt style, variant and key set; max tokens not in the meta, same default per task and the same truncation pattern (19 vs 19 rows, all simulate). Mismatches: none. Rows re-run on resume: canonical simulate depot p01 (first run: exception, stored: ok; 2 snapshots) | none |
+<!-- /gen:06_frontier_tools_contamination -->
+
 ## Job 2 — the delivered surface (batches 1+2, 2026-09-07/08)
 
 Provenance: `reference/job2_delivered_reframe_worknote.md` §2 (verdict table, derived from
@@ -107,7 +127,7 @@ tables). Tex: `paper/aaai27` `125cc7a` + `dbea3d7` (pushed 2026-09-08, Overleaf 
 | frontier NT simulate, v11 slice (funnel NEED line) | Sonnet **⟨34, 53⟩** (c19/100); Haiku **⟨38, 68⟩** (c30/100) | 45.0 / 38.3 exact points (retired) |
 | frontier CALL rate, with-tools plain, every task | **100.0%** both tiers | — |
 | delivered cost-of-pass multiplier, pooled ≥9B, tl-ster ÷ nt-neut (canonical) | solve **0.65–1.64×**; vd 2.81–2.91×; vp 4.41–4.86×; vplan 4.11–5.16×; simulate not identified | the mechanism-layer 0.3–0.4× as a delivered figure |
-| frontier delivered cost-of-pass, solve | Sonnet **3.1×** (18.6K vs 6.0K tokens/pass); Haiku **6.1×** (48.5K vs 8.0K) | — |
+| frontier delivered cost-of-pass, solve | Sonnet **3.1×** (18.6K vs 6.0K tokens/pass); Haiku **6.1×** (48.5K vs 8.0K). Caveat (2026-11-09): the unaided side counts passes by the stored grade, which the pyval case fault (ISS-027) lowers; under VAL more unaided answers pass (Sonnet 28.7 → 32.7%, Haiku 22.0 → 25.0%), so the unaided tokens per pass would fall and both multipliers would rise. Not recomputed; counts in "VAL on the Claude solve plans" below | — |
 | frontier delivered cost-of-pass, simulate | Sonnet ⟨83.5K, 105.7K⟩ vs NT ⟨9.8K, 15.3K⟩ (**5.5–10.8×**); Haiku ⟨72.9K, 89.7K⟩ vs ⟨7.7K, 13.8K⟩ (5.3–11.6×) | — |
 | validate_domain balanced accuracy, delivered, steered arm | 9B **⟨100, 100⟩**; Gemma **⟨92.2, 95.0⟩**; 35B **⟨82.7, 99.2⟩** vs unaided 53.3 / 74.0 / 64.7 (plain: ⟨99.2,100⟩ / ⟨87.3,94.2⟩ / ⟨77.2,97.5⟩) | mechanism-layer 95–100 as delivered |
 | PlanBench funnel stages (Haiku WT, n=600) | clean FORMALIZE 96.3 → CALL 100 → plan found 69.7 → delivered **68.3** (first-draw); Mystery 97.8 → 100 → 95.3 → **71.8** | last-attempt 69.7 delivered |
@@ -423,6 +443,58 @@ Maximum-likelihood details: random-intercept SD 2.86; likelihood-ratio χ² 4,41
 
 Counts: tool cells 25 of 30 met (Gemma 10/10, Qwen 15/20), 27 of 30 within ±5 by point estimate; unaided cells 11 of 12 met, 11 of 12 within ±5 by point estimate. No row was unpaired on either side.
 
+#### T8c. Call-state flips, main sweep vs delivered rerun (added 2026-11-09; in no tex yet)
+
+Provenance: `tools/reanalysis/s1_call_flips.py` (rows through the frozen rerun package's loader, read-only).
+Per tool cell, the trials whose call state (`tool_selected`) differs between the two runs, paired on the
+trial key. Descriptive, post hoc; the calling column of T8a carries the paired interval.
+Decision (Omer, 2026-11-09): quote both runs for the 35B plain calling rate (68.0 and 82.7) and keep
+"bigger calls less" as a direction only.
+
+<!-- gen:s1_call_flips -->
+| figure | **quote this** | source | do NOT quote |
+|---|---|---|---|
+| call-state flips, 35B, plain arm (descriptive) | solve **88/300 (29.3%; 22 called → not, 66 not → called; calls 68.0 → 82.7)**; simulate **72/300 (24.0%; 1 called → not, 71 not → called; calls 76.3 → 99.7)**; validate_plan **397/3,000 (13.2%; 195 called → not, 202 not → called; calls 82.9 → 83.1)**. Every other 35B cell ≤ 6.7%; 9B and Gemma ≤ 3.3% in every cell | `s1_call_flips.py`; table below | **a single-run 35B plain calling rate alone** (Omer 2026-11-09: quote both runs, 68.0 and 82.7, and keep "bigger calls less" as a direction only) |
+| prompt check on the paired rows | prompt tokens equal on **2,955 of 2,955** single-turn pairs (rows that called a tool sum the prompt over turns and are not compared) | `s1_call_flips.py` | none |
+
+| model | task | arm | n paired | calls, main | calls, rerun | called → not | not → called | flips (% of n) | net | any-call flips | prompt equal, single-turn pairs |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Gemma-26B | solve | plain | 300 | 300 (100.0) | 300 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Gemma-26B | solve | steered | 300 | 300 (100.0) | 300 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Gemma-26B | validate_domain | plain | 360 | 360 (100.0) | 360 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Gemma-26B | validate_domain | steered | 360 | 360 (100.0) | 360 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Gemma-26B | validate_problem | plain | 600 | 599 (99.8) | 600 (100.0) | 0 | 1 | 1 (0.2) | +1 | 1 | 0 / 0 |
+| Gemma-26B | validate_problem | steered | 600 | 600 (100.0) | 600 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Gemma-26B | validate_plan | plain | 3,000 | 622 (20.7) | 600 (20.0) | 56 | 34 | 90 (3.0) | -22 | 90 | 2,344 / 2,344 |
+| Gemma-26B | validate_plan | steered | 3,000 | 2,808 (93.6) | 2,792 (93.1) | 37 | 21 | 58 (1.9) | -16 | 58 | 171 / 171 |
+| Gemma-26B | simulate | plain | 300 | 299 (99.7) | 299 (99.7) | 0 | 0 | 0 (0.0) | +0 | 0 | 1 / 1 |
+| Gemma-26B | simulate | steered | 300 | 300 (100.0) | 300 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | solve | plain | 300 | 300 (100.0) | 300 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | solve | steered | 300 | 300 (100.0) | 300 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | validate_domain | plain | 360 | 360 (100.0) | 360 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | validate_domain | steered | 360 | 360 (100.0) | 360 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | validate_problem | plain | 600 | 600 (100.0) | 600 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | validate_problem | steered | 600 | 600 (100.0) | 600 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | validate_plan | plain | 3,000 | 2,937 (97.9) | 2,935 (97.8) | 13 | 11 | 24 (0.8) | -2 | 22 | 52 / 52 |
+| Qwen3.5-9B | validate_plan | steered | 3,000 | 3,000 (100.0) | 3,000 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.5-9B | simulate | plain | 300 | 240 (80.0) | 242 (80.7) | 4 | 6 | 10 (3.3) | +2 | 9 | 53 / 53 |
+| Qwen3.5-9B | simulate | steered | 300 | 299 (99.7) | 300 (100.0) | 0 | 1 | 1 (0.3) | +1 | 1 | 0 / 0 |
+| Qwen3.6-35B | solve | plain | 300 | 204 (68.0) | 248 (82.7) | 22 | 66 | 88 (29.3) | +44 | 61 | 20 / 20 |
+| Qwen3.6-35B | solve | steered | 300 | 281 (93.7) | 299 (99.7) | 1 | 19 | 20 (6.7) | +18 | 10 | 0 / 0 |
+| Qwen3.6-35B | validate_domain | plain | 360 | 360 (100.0) | 360 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.6-35B | validate_domain | steered | 360 | 360 (100.0) | 360 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.6-35B | validate_problem | plain | 600 | 591 (98.5) | 596 (99.3) | 1 | 6 | 7 (1.2) | +5 | 7 | 3 / 3 |
+| Qwen3.6-35B | validate_problem | steered | 600 | 600 (100.0) | 600 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+| Qwen3.6-35B | validate_plan | plain | 3,000 | 2,487 (82.9) | 2,494 (83.1) | 195 | 202 | 397 (13.2) | +7 | 396 | 311 / 311 |
+| Qwen3.6-35B | validate_plan | steered | 3,000 | 2,997 (99.9) | 3,000 (100.0) | 0 | 3 | 3 (0.1) | +3 | 3 | 0 / 0 |
+| Qwen3.6-35B | simulate | plain | 300 | 229 (76.3) | 299 (99.7) | 1 | 71 | 72 (24.0) | +70 | 72 | 0 / 0 |
+| Qwen3.6-35B | simulate | steered | 300 | 300 (100.0) | 300 (100.0) | 0 | 0 | 0 (0.0) | +0 | 0 | 0 / 0 |
+
+Unpaired rows: 0. Rows with `tool_selected` null (counted as not called): 0. Prompt tokens equal on 2,955 of 2,955 single-turn pairs.
+
+Largest flip share per model: Gemma-26B 3.0%; Qwen3.5-9B 3.3%; Qwen3.6-35B 29.3%.
+<!-- /gen:s1_call_flips -->
+
 ### Study 1 breakdowns: per wording, per track, per domain (plan step C3a; added 2026-11-09; in no tex yet)
 
 Generated by `tools/reanalysis/s1_breakdowns_md.py` (rerun: `python3 tools/reanalysis/s1_breakdowns_md.py --results <abs path to results>`); `.tex` fragments in `tools/reanalysis/out/tex/s1_*.tex`. Descriptive breakdowns of the T1 and T2 cells: no test, no verdict.
@@ -706,6 +778,27 @@ stored verdict first, so VAL is compared with the answer key as stored.
 | plans, VAL vs the answer key | **1,731 / 1,732 agree (99.94%, Wilson 95% [99.67, 99.99])**: all 1,000 validate_plan fixture plans; 731 / 732 distinct solve plans graded in the delivered rerun (classical 877/878, numeric 854/854). 10 more plans crash VAL (wrong argument count; pyval rejects all 10) and are not counted | `val_crosscheck.md` | "100% agreement"; any figure pooling plans with files |
 | the one disagreement | pyval accepts `pick-up` for the action `pick_up` (it retries `-` as `_`); one Part C no-tools trial (Qwen3.5-9B, blocksworld p02, wording 11). Post hoc, outside the frozen readout: Part C Qwen3.5-9B unaided solve would be 72 / 300 delivered, not 73 / 300 | `val_crosscheck.md` | a corrected figure in place of the frozen readout's |
 | domain and problem files, parse check | 184 / 238 (77.3% [71.6, 82.2]). Every miss is VAL being more lenient than PDDL: it accepts a stray `)` after the define, and treats a missing `:goal` as empty. VAL accepts all 120 valid files and rejects all 64 invalid files whose error is inside the define | `val_crosscheck.md` | "validate_domain / validate_problem labels checked by VAL" |
+
+### Added 2026-11-09: VAL on the Claude solve plans (in no tex yet)
+
+Provenance: `tools/reanalysis/val_frontier_solve.py` (imports the C1 functions of `tools/val_crosscheck.py`),
+output `tools/reanalysis/out/val_frontier_solve.md` (every disagreement listed), item and row CSVs in the
+gitignored `results/val-crosscheck-frontier/`. Same VAL binary (sha256 `44a07d6d…`, under Rosetta) and the
+same `validate -v` call as C1. Plans: every plan a solve grader validated in the seven Claude cells with
+solve rows (Sonnet 4.6 unaided canonical and renamed, tool arm canonical; Haiku 4.5 unaided and tool arm,
+canonical and renamed), checked against `domains/` or `domains-anon/` as the overlay does. Harness verdict
+= live pyval through the plugin; it reproduced the stored `success` of every row it could rebuild and the
+overlay verdict of every delivered tool-arm plan. Unaided answers stored at the 16,384-character cap
+(all graded failures, counted in the output's row table) cannot be rebuilt and are left out.
+
+<!-- gen:val_frontier_solve -->
+| figure | value | source | do NOT quote |
+|---|---|---|---|
+| Claude solve plans, VAL vs the harness verdict (pyval) | **734 / 745 agree (98.52%, Wilson 95% [97.38, 99.17])** over the 771 distinct graded plans of Sonnet 4.6 and Haiku 4.5 (unaided and tool arm, canonical and renamed). Tool arm **219 / 219**; unaided 541 / 552. 16 of the agreeing plans (18 of all plans with a verdict from both) were bare `name arg` lines that VAL reads only once brackets are added. Not counted: 21 answers with no plan in them (prose; pyval returns an error shape, graded a failure) and 5 plans that crash VAL (each has a step with the wrong number of arguments, read by hand: gripper `drop` with 3 of 4, barman `empty_shot` with 2 of 3; pyval rejects all of them) | `val_frontier_solve.py`; `out/val_frontier_solve.md` | "100% agreement"; a figure that pools these with the C1 open-model plans |
+| the disagreements | **all 11 are one pyval fault**: the fixture declares upper-case names (satellite `Star0`, `GroundStation1`; pogo_stick `CRAFT_PLANK`), the model writes them exactly as declared, and pyval rejects the plan as `STRUCTURE_ERROR` ("not declared"). The same plan in lower case is VALID under pyval, and VAL accepts it as written (PDDL names are case-insensitive). Unaided, canonical corpus only: the renamed tree has no upper-case names, and the planner's plans are lower case. Other disagreements: 0 | `val_frontier_solve.md` | the C1 hyphen case as the only grader fault (that one was lenient; this one is strict) |
+| unaided solve trials whose grade changes under VAL | stored fail → VAL success: **Sonnet 4.6 12 of 300, Haiku 4.5 3 of 100**, canonical; renamed 0; success → fail: 0. Post hoc, Sonnet unaided solve canonical becomes 32.7% (stored 28.7%) | `val_rows.csv` | a corrected figure in place of the frozen ones |
+| effect on the frontier contamination test, unaided solve (renamed − canonical, T7 method, post hoc) | Sonnet 4.6: stored 28.7 → 28.3, -0.33 [-10.59, +9.93], criterion not met (unresolved); VAL grade 32.7 → 28.3, -4.33 [-14.38, +5.71], criterion not met (unresolved). Haiku 4.5 (v11 only): stored 22.0 → 19.0, -3.00 [-12.14, +6.14], criterion not met (unresolved); VAL grade 25.0 → 19.0, -6.00 [-17.25, +5.25], criterion not met (unresolved). The case fault lowers only the canonical side, so it biases the contrast toward zero | `val_frontier_solve.md` | the VAL-graded Δ as a replacement for the frozen −0.33 row (the grader change is post hoc) |
+<!-- /gen:val_frontier_solve -->
 
 ## Delivered rerun — readout (FROZEN 2026-10-09; in no tex yet)
 
@@ -1186,7 +1279,7 @@ may be added to the abstract without a row here.
 
 | abstract sentence | **quote this** | derivation | do NOT quote |
 |---|---|---|---|
-| frontier plan generation, unaided → with tool | **22–29% → 95%** (both tiers, delivered) | `pooled_e2e_table.csv`: solve tl-neut ok_strict 95/100 Sonnet and Haiku; nt-neut Haiku 22/100, Sonnet 86/300 = 28.7 | the open-weight "+66 to +73 pp" lift (tool-verified; delivered cells censored/UNDECIDED) |
+| frontier plan generation, unaided → with tool | **22–29% → 95%** (both tiers, delivered) | `pooled_e2e_table.csv`: solve tl-neut ok_strict 95/100 Sonnet and Haiku; nt-neut Haiku 22/100, Sonnet 86/300 = 28.7. Caveat (2026-11-09): the unaided figures use the stored grade, which the pyval case fault (ISS-027) lowers; under VAL they read Haiku 25.0 and Sonnet 32.7 (post hoc, "VAL on the Claude solve plans"). The 95% tool side agrees with VAL on every plan | the open-weight "+66 to +73 pp" lift (tool-verified; delivered cells censored/UNDECIDED) |
 | invocation on plan checking, merely available → steered; correct when it calls | **21% → 94%; 99%** | `sweep5v2-live/slurm_vllm_gemma4_26b-a4b_off_tools_all_minimal/trials.jsonl`, validate_plan: called (`tool_selected`) 622/3000 = 20.7% (v11–13) vs 2808/3000 = 93.6% (v14–16); P(ok \| called) 617/622 = 99.2% (98.9% steered); 0 successes without a call | "−67 pp" as a success drop (mechanism layer; delivered ⟨6.6, 99.6⟩ UNDECIDED) |
 | delivery gap by answer length, both frontier tiers | **≈0 on verdicts, 5 pp on plans, >33 pp on trajectories** | overlay table: vd/vp/vplan delivered vs tool-verified differ by ≤0.1 pp; solve 95 vs 100 = +5.0 both tiers; simulate Sonnet ⟨49, 62⟩ vs 99 (37–50), Haiku ⟨52, 64⟩ vs 97 (33–45) | any frontier simulate delivered *point* |
 | PlanBench obfuscated (Mystery) benchmark, without → with tools | **0 → 72%** | `verify_promotion.py` ALL CHECKS PASS: NT 0/600, WT 431/600 = 71.8 [68.1, 75.3] | clean WT 69.7 (last-attempt) |

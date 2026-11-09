@@ -412,6 +412,27 @@ failure doesn't lose earlier-condition results.
    Use this for models without a thinking switch (e.g. `gemma4*` historically;
    the rtx path now passes `on/off` to all models and lets the runtime ignore
    unsupported values).
+- `effort-low` / `effort-medium` / `effort-high`: gpt-oss only, from
+   `submit_with_rtx.sh --reasoning-effort "<levels>"`. Runs like `default`
+   (no `think` kwarg) and sends the top-level request field
+   `reasoning_effort=<level>`, which vLLM 0.20.2 writes onto the Harmony system
+   line (`Reasoning: low`). gpt-oss always reasons, so these cells are
+   "low effort", never "thinking off". A `default` gpt-oss cell sends no field
+   and gets Harmony's own default, `medium`. Before each gpt-oss cell the job
+   log prints the served line (`harmony system line: Reasoning: ...`, from
+   `reasoning_settings.py system-line`), and an effort cell whose line does not
+   show its level is skipped. Effort and stored-reasoning cells also get
+   `OUT_DIR/client_settings.json`, the request settings the summary cannot hold.
+
+`--store-reasoning` (requires `--run-tag`) keeps the reasoning trace in each
+row's `thinking` field. vLLM 0.20.2 returns the trace as `message.reasoning`,
+and the client's default read (`reasoning_content`) misses it, so `thinking` is
+empty in every corpus so far; see `pddl_eval/vllm_client.py`. Two effects to
+know before analysing such cells: the stored trace is cut at 4,096 characters
+(`THINKING_SNAPSHOT_LEN`, frozen), and an empty cut-off answer is labelled
+`think_overflow` where it used to be `truncated_no_answer`, so truncation
+counts must take both labels (`development/CHANGELOG.md`, 2026-11-09 entry,
+item 3).
 
 The paper reports "better of with- and without-thinking"; running both
 explicitly lets us reproduce that protocol systematically.
