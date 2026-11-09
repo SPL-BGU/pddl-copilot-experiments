@@ -12,9 +12,9 @@
 > Each reading says which RQ framing it serves under both options of
 > `draft_E1_research_questions.md` only where that is unambiguous.
 >
-> Slots marked **[FROM ITEM 5]** and **[FROM ITEM 9]** are filled from the PRs of
-> handoff items 5 (ISS-028/029 split) and 9 (D5b ground truth), which were running when
-> this draft was written.
+> Slots marked **[FROM ITEM 9]** are filled from the PR of handoff item 9 (D5b ground
+> truth), running when this draft was written. The ISS-028 and ISS-029 rules follow PR
+> #136's recommendations and are checked against it once it merges.
 
 Sources: `weakness_action_plan.md` §4 D (D1 to D5), `handoff_20261109.md` §2 decisions 1
 to 13 and §4 item 10, `STATUS.md` "Decided 2026-11-09", `reference/d1_smokes_20261027.md`,
@@ -93,16 +93,19 @@ It is one Study 2: the rerun's setup plus additive changes only (§2.3).
   cluster before the first trial and recorded (handoff item 11; B3 Q6).
 - **Anchor slice graded twice** (§4): with 0.1.6 and with the rerun's validator version,
   so drift is never confounded with the grader change.
-- **ISS-028 extractor rule (solve):** **[FROM ITEM 5]** the rule that separates a goal-list
-  trailer after an exact copy of the tool plan from a real copying error. Proposed shape:
-  a solve answer whose plan block equals the tool's plan step for step, followed only by a
-  restatement of goal facts, is graded on the plan block; any other trailing text is
-  graded as today. The rule is applied to extension rows and, post hoc and labelled, to
-  the rerun rows it is compared with, so both sides of a contrast use one rule.
-- **ISS-029 plan source (simulate):** **[FROM ITEM 5]** proposed: the grader uses the plan
-  that was in the trial's own prompt (read from the stored prompt), never a cached plan.
-  The freeze gate (§11, gate 4) checks on a fixture that a problem whose prompt plan and
-  cached plan differ is graded against the prompt plan.
+- **ISS-028 extractor rule (solve)** (PR #136's recommendation, handoff §6 decision 10): a
+  goal list after a correct plan does not fail the answer. The extractor **reads up to the
+  last action** and ignores trailing goal facts. Real copying errors (record: 5 of the
+  rerun's 38 wrong-facts solve rows) stay wrong. The rule is applied to extension rows
+  and, post hoc and labelled, to the rerun rows they are compared with, so both sides of
+  a contrast use one rule. The exact rule text is copied from `iss028_goal_trailers.py`
+  at the freeze. **[CHECK against #136 once merged]**
+- **ISS-029 plan source (simulate)** (PR #136's recommendation, handoff §6 decision 12):
+  the simulate prompt is **built from the same cached plan the grader uses**
+  (`results/derived/gt_cache.json`, hash recorded at the freeze), so prompt and grader
+  cannot disagree (in the rerun they disagreed on 6 of 100 problems). The freeze gate
+  (§11, gate 4) checks on a fixture that the plan in a built prompt equals the cached
+  plan for every simulate item.
 - Frozen corpora (`sweep5v2-live`, `sweep6-live`, `delivered-rerun`) are only read. Any
   rerun figure regraded under 0.1.6 or the ISS-028 rule is reported beside the frozen
   figure, labelled post hoc.
@@ -430,7 +433,7 @@ Blocking prerequisites (`/freeze-protocol` v2), each recorded here with evidence
 4. **Synthetic fixture run** (~30 rows, committed under `tests/`): censored and
    indeterminate rows, a zero-success arm, a duplicate overlay cell, a missing
    `snapshot_cap`, a known Δ per contrast, a tree-a/tree-b `domain_neg` collision, a
-   reused row, an ISS-028 trailer, an ISS-029 prompt/cache mismatch, and (wave 2) a
+   reused row, an ISS-028 trailer, an ISS-029 prompt built from the cached plan, and (wave 2) a
    stored-trace row whose success must equal the same row graded without the trace.
 5. **Adversarial review** of the freeze candidate (a different session, `/code-review`
    high or stronger), findings fixed before hashing.
