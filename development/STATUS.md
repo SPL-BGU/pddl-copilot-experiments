@@ -125,13 +125,13 @@ ISS-013.
   (the rerun's pinned harness). Probably stale: the D1 smokes ran from
   `harness/d1a-new-families`, now merged. Re-check at the next go-ahead. Any SSH needs
   Omer's go-ahead first.
-- Laptop (2026-11-09): the merged worktrees `.claude/worktrees/agent-a87aa60a393adccef`
-  and `.claude/worktrees/d1a-harness`, the merged local branches (`analysis/val-crosscheck`,
-  `harness/d1a-new-families`, `worktree-agent-a87aa60a393adccef`,
-  `worktree-agent-affd62f64ea91abed`) and the merged remote branches
-  (`analysis/val-crosscheck`, `harness/d1a-new-families`,
-  `claude/frontier-llms-paper-analysis-6jst6i`) can go; Omer runs the deletion. Two old
-  stashes from `paper/aaai27` are Omer's to check.
+- Laptop: done 2026-11-09 (Omer ran it). The two merged worktrees and the merged local
+  and remote branches are deleted. Two old stashes from `paper/aaai27` are Omer's to
+  check.
+- Checkpoint zips (Omer 2026-11-09): keep the full-corpus checkpoints, remove the
+  outdated ones. An agent dates every zip (when it was committed, what is inside), checks
+  which scripts and docs pin each path, and proposes the removals in a PR; every removal
+  goes into `MOVES.md`.
 
 ### Decided 2026-11-09 (Omer)
 
@@ -162,6 +162,14 @@ ISS-013.
   families that passed the smoke go into the prereg now, each as a numbered tier with the
   same analysis, so adding one per wave needs only a go-ahead (no new prereg, no
   re-freeze).
+- **The Corrêa 2-shot prompt cell (plan D5e):** approved. Their prompt word for word
+  (instructions, the Gripper and Logistics worked examples, their checklist), then our
+  problem. Our Gripper problems are left out of this cell, because their example is a
+  solved Gripper problem; Logistics is not in our corpus. Sonnet 4.6, unaided solve:
+  thinking off at temperature 0 (matches the existing 28.7% cell) and thinking on with 3
+  repeats (matches D5a). Same grader; the pilot checks that the answer reader reads their
+  plan format, and if it does not, Omer is asked before anything changes. Reported as one
+  descriptive row, outside the confirmatory set, never pooled with v11 to v13.
 - **Release:** the work is attributed to Omer and to BGU: a copyright line naming him and
   Ben-Gurion University (SPL-BGU), a `CITATION.cff`, a Zenodo DOI, CC-BY-4.0 for data, MIT
   or Apache-2.0 for code (whichever is more common for academic code). BGU's policy on
@@ -171,12 +179,13 @@ ISS-013.
 
 - **Which two families go first** in wave 1 (Omer leans gpt-oss-20b and Llama 3.1 8B);
   recommendation pending.
-- **The Corrêa 2-shot prompt cell:** Omer asked how the descriptive cell would work
-  before deciding.
-- **E1: the six research questions** against the two gates (calling and delivery): Omer
-  asked to see them side by side before deciding.
-- **Checkpoint zips:** Omer asked to archive the undated ones to `checkpoints/archive/`;
-  every zip under `checkpoints/` is undated, so which ones is to be confirmed.
+- **⚠️ STILL OPEN (Omer 2026-11-09: keep it open): E1, the six research questions
+  against the two gates.** The tex frames its results as RQ1 to RQ6 plus a scorecard; the
+  plan frames them as two gates (calling, delivery). The side-by-side and the suggestion
+  (a baseline question plus one question per gate, problem size as a factor under each,
+  the scorecard dropped) were shown to Omer on 2026-11-09 and are in
+  `paper_notes_discussions.md` that day. Until Omer decides, no E step removes the RQs or
+  the scorecard from the tex, and E1 drafts carry both framings.
 - **Code licence** (MIT or Apache-2.0) and the copyright holder, after the BGU policy
   check.
 

@@ -2499,3 +2499,22 @@ validated by an independent ranking subagent (the user asked for a second perspe
 - **Still open:** which two families go first; the Corrêa 2-shot prompt cell (Omer asked
   how it would work); the six research questions against the two gates (shown to Omer
   before E1 decides); which checkpoint zips to archive.
+
+## 2026-11-09 (later) — Corrêa 2-shot cell approved; the research questions stay open
+
+- **Approved (plan D5e):** a descriptive cell with Corrêa et al.'s 2-shot prompt, word for
+  word, on Sonnet 4.6 unaided solve, thinking off at temperature 0 and thinking on with 3
+  repeats. Our Gripper problems are left out, since their prompt shows a solved Gripper
+  problem. It answers whether the zero-shot prompt explains part of the 29% against their
+  results. One row, descriptive, never pooled with v11 to v13.
+- **Kept open on purpose (Omer): the six research questions against the two gates.** The
+  tex organises results as RQ1 to RQ6 plus a scorecard. Mapped onto the gates: RQ1 and RQ2
+  mix calling and delivery; RQ3 is mostly gate 1 (Gemma's calling falls to 21%, steering
+  repairs it, and 86.6% of its no-call answers are right anyway); RQ4 is the unaided
+  baseline plus gate 2 (the tool runs at 97 to 99%, its long output fills the window);
+  RQ5 and RQ6 are difficulty factors, not gates. The suggestion on the table: a baseline
+  question, one question per gate, problem size as a factor under each, and the scorecard
+  dropped (it rests on the retired ranges). No decision yet.
+- **sweep5v2-live is still valid** (Omer asked): it is the Study 1 corpus. The delivered
+  rerun did not replace it; it reproduced its unaided and tool-verified numbers and
+  retired only the open-model delivered ranges.
