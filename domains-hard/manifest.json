@@ -15,7 +15,7 @@
   ],
   "helpers_sha256": {
    "tools/_enhsp_variants.py": "6c58aa5ebb2dc43ade672b39e8fa5fb1aa26542b6c466930ae5c2a58cae5f591",
-   "tools/_hard_items.py": "d656d5142857a4e2146d9508c81f2ee865ae02eb94a11ef0e6e55aa065585b2c"
+   "tools/_hard_items.py": "30ad2a02c5d9f181bf794f7880943472f86766ed5409ca173a0d7a071a68411a"
   },
   "marketplace_commit": "5e4f9c0",
   "max_valid_plans": 2,
@@ -23,13 +23,18 @@
   "planner_outputs_sha256": "b25433605e3d2b05c7d1388271f88b0948d9a3b372407acfb9c61105a9519349",
   "problems_per_domain": 2,
   "script": "tools/build_hard_fixtures.py",
-  "script_sha256": "ae4f3909b3539f9b1e2499ce4cfa3c9590210322c66b7ad724be13dc5239b018",
+  "script_sha256": "c6f142f13cf9d5c5f7891af183c943917c8e51f42fc534ce3d979f90845273b0",
   "seed": 0,
   "src_dir": "domains",
+  "trees": [
+   "domains-hard",
+   "domains-hard-vd-a",
+   "domains-hard-vd-b"
+  ],
   "val_binary_sha256": "44a07d6d3b2917c7c3df8e3932a3b895a8062b4e0f5fa0343f9f1ad409c4a9fe"
  },
  "counts": {
-  "validate_domain/invalid": 40,
+  "validate_domain/invalid": 20,
   "validate_domain/valid": 20,
   "validate_plan/invalid": 78,
   "validate_plan/valid": 78,
@@ -62,6 +67,7 @@
     "section": "precondition",
     "used": "holing"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_predicate",
    "label": "invalid",
    "oracle": {
@@ -71,37 +77,6 @@
    },
    "path": "classical/barman/domain_neg.pddl",
    "sha256": "2d23512d15a5af03f0d956b4255bc2a775276ce8ec6930a1ef05062f3fdd399d",
-   "source": "domains/classical/barman/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "shake",
-    "after": "(cocktail_part2 ?b)",
-    "before": "(cocktail_part2 ?b ?d2)",
-    "declared_arity": 2,
-    "line": 133,
-    "section": "precondition",
-    "symbol": "cocktail_part2",
-    "symbol_kind": "pred",
-    "used_arity": 1
-   },
-   "kind": "wrong_arity",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: UPExpressionDefinitionError('In FluentExp, fluent: cocktail_part2 has arity 2 but 1 parameters were passed.')",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/barman/domain_neg02.pddl",
-   "sha256": "7d5b8fe34b8647807105afc52caff4f2ffe098ef1e66eae1ce2526ee5c714c99",
    "source": "domains/classical/barman/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -408,6 +383,7 @@
     "used": "bock",
     "variable": "?x"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_type",
    "label": "invalid",
    "oracle": {
@@ -417,35 +393,6 @@
    },
    "path": "classical/blocksworld/domain_neg.pddl",
    "sha256": "c2f61ebe88b4ed66bb29b8a993fbd8e345dc3e51c7417d37e3eaf4f4bb1dfa24",
-   "source": "domains/classical/blocksworld/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p03.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "put_down",
-    "after": "(onable ?x)",
-    "before": "(ontable ?x)",
-    "declared": "ontable",
-    "line": 27,
-    "section": "effect",
-    "used": "onable"
-   },
-   "kind": "undeclared_predicate",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Not able to handle: (onable ?x) found at line: 27, col 8 to line: 27, col 19",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/blocksworld/domain_neg02.pddl",
-   "sha256": "bea2c771ea960435a4aa22957dd1596250b94729ba1468b7b1765ad502691891",
    "source": "domains/classical/blocksworld/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -742,6 +689,7 @@
     "used_type": "place",
     "used_variable": "?p"
    },
+   "invalid_domain_slot": 1,
    "kind": "type_mismatch",
    "label": "invalid",
    "oracle": {
@@ -751,36 +699,6 @@
    },
    "path": "classical/depots/domain_neg.pddl",
    "sha256": "d22d4c6961e8b61cac46ba6799177dd54d733486803304a7ed2325ed51821004",
-   "source": "domains/classical/depots/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "drop",
-    "after": "(?x - hoist ?y - crae ?z - surface ?p - place)",
-    "before": "(?x - hoist ?y - crate ?z - surface ?p - place)",
-    "declared": "crate",
-    "line": 26,
-    "section": "parameters",
-    "used": "crae",
-    "variable": "?y"
-   },
-   "kind": "undeclared_type",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Undefined parameter's type: crae.",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/depots/domain_neg02.pddl",
-   "sha256": "54652c711732ab7995abdc8968d42f1fdadf999a237f6b0a88fbe8e3a6337657",
    "source": "domains/classical/depots/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -1078,6 +996,7 @@
     "symbol_kind": "pred",
     "used_arity": 1
    },
+   "invalid_domain_slot": 1,
    "kind": "wrong_arity",
    "label": "invalid",
    "oracle": {
@@ -1087,38 +1006,6 @@
    },
    "path": "classical/gripper/domain_neg.pddl",
    "sha256": "3584bc43961b5bbc8cb434332854e4643811102768c45ef32f0596385b083f21",
-   "source": "domains/classical/gripper/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p03.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "pick",
-    "after": "(at ?obj ?g)",
-    "before": "(at ?obj ?room)",
-    "declared_type": "room",
-    "line": 19,
-    "section": "effect",
-    "symbol": "at",
-    "symbol_kind": "pred",
-    "used_type": "gripper",
-    "used_variable": "?g"
-   },
-   "kind": "type_mismatch",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: UPTypeError(\"The expression 'at(obj, g)' is not well-formed\")",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/gripper/domain_neg02.pddl",
-   "sha256": "e52aee2c1daa86994b0dec5977798d577a59555ec486674ef857f1493267b4bf",
    "source": "domains/classical/gripper/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -1419,6 +1306,7 @@
     "section": "effect",
     "used": "lit-at"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_predicate",
    "label": "invalid",
    "oracle": {
@@ -1428,37 +1316,6 @@
    },
    "path": "classical/miconic/domain_neg.pddl",
    "sha256": "6ff0ca65d2b861e902ee95be7e97148fa27f631ae7727b7c7d20a880f095dc47",
-   "source": "domains/classical/miconic/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "depart",
-    "after": "(boarded ?p ?f)",
-    "before": "(boarded ?p)",
-    "declared_arity": 1,
-    "line": 21,
-    "section": "effect",
-    "symbol": "boarded",
-    "symbol_kind": "pred",
-    "used_arity": 2
-   },
-   "kind": "wrong_arity",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: UPExpressionDefinitionError('In FluentExp, fluent: boarded has arity 1 but 2 parameters were passed.')",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/miconic/domain_neg02.pddl",
-   "sha256": "cf5ac8c5572fef90394448323ecb810e8dc7bc9b8b929cb95d870e43a2858245",
    "source": "domains/classical/miconic/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -1712,6 +1569,7 @@
     "used_type": "curb",
     "used_variable": "?curbsrc"
    },
+   "invalid_domain_slot": 1,
    "kind": "type_mismatch",
    "label": "invalid",
    "oracle": {
@@ -1721,36 +1579,6 @@
    },
    "path": "classical/parking/domain_neg.pddl",
    "sha256": "8b49167ad40d598cb45d6bc737724d5f7d6638a5c2475137b8a1f7ae4c12238d",
-   "source": "domains/classical/parking/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p01.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "move-car-to-car",
-    "after": "(?car - car ?carsrc - cars ?cardest - car)",
-    "before": "(?car - car ?carsrc - car ?cardest - car)",
-    "declared": "car",
-    "line": 63,
-    "section": "parameters",
-    "used": "cars",
-    "variable": "?carsrc"
-   },
-   "kind": "undeclared_type",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Undefined parameter's type: cars.",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/parking/domain_neg02.pddl",
-   "sha256": "e5641dc95a4aa452e14cb9849ce3e64fa18a8a22930fdf38c7a27d9fb6d52dc5",
    "source": "domains/classical/parking/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -2056,6 +1884,7 @@
     "used_type": "rover",
     "used_variable": "?r"
    },
+   "invalid_domain_slot": 1,
    "kind": "type_mismatch",
    "label": "invalid",
    "oracle": {
@@ -2065,36 +1894,6 @@
    },
    "path": "classical/rovers/domain_neg.pddl",
    "sha256": "5295e9c9ee6aa5b62a753d97911c849cf6aaba16033dac48bd8350876acdd08c",
-   "source": "domains/classical/rovers/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "communicate_image_data",
-    "after": "(?r - rover ?l - lader ?o - objective ?m - mode ?x - waypoint ?y - waypoint)",
-    "before": "(?r - rover ?l - lander ?o - objective ?m - mode ?x - waypoint ?y - waypoint)",
-    "declared": "lander",
-    "line": 86,
-    "section": "parameters",
-    "used": "lader",
-    "variable": "?l"
-   },
-   "kind": "undeclared_type",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Undefined parameter's type: lader.",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/rovers/domain_neg02.pddl",
-   "sha256": "264951c63de4426bb36429e89b9927459988a67e38457aaf381ed67a36741ab8",
    "source": "domains/classical/rovers/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -2390,6 +2189,7 @@
     "section": "effect",
     "used": "caibrated"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_predicate",
    "label": "invalid",
    "oracle": {
@@ -2399,37 +2199,6 @@
    },
    "path": "classical/satellite/domain_neg.pddl",
    "sha256": "f0c2e182e2c4125328d307ebcdf284329698ac89256fb9b94335ba780406b77d",
-   "source": "domains/classical/satellite/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "calibrate",
-    "after": "(calibration_target ?i)",
-    "before": "(calibration_target ?i ?d)",
-    "declared_arity": 2,
-    "line": 38,
-    "section": "precondition",
-    "symbol": "calibration_target",
-    "symbol_kind": "pred",
-    "used_arity": 1
-   },
-   "kind": "wrong_arity",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: UPExpressionDefinitionError('In FluentExp, fluent: calibration_target has arity 2 but 1 parameters were passed.')",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/satellite/domain_neg02.pddl",
-   "sha256": "86daeeaac7d3cf3304b73833b1226540310df6db0276c1d0df84dc827990c0ad",
    "source": "domains/classical/satellite/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -2727,6 +2496,7 @@
     "section": "precondition",
     "used": "nexts"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_predicate",
    "label": "invalid",
    "oracle": {
@@ -2736,37 +2506,6 @@
    },
    "path": "classical/tpp/domain_neg.pddl",
    "sha256": "6e2ee9e43e95b49f860b2a3f2b304068d7af0abd3a900c7890ed76444b92ebe9",
-   "source": "domains/classical/tpp/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "buy",
-    "after": "(ready-to-load ?g ?m)",
-    "before": "(ready-to-load ?g ?m ?l3)",
-    "declared_arity": 3,
-    "line": 56,
-    "section": "precondition",
-    "symbol": "ready-to-load",
-    "symbol_kind": "pred",
-    "used_arity": 2
-   },
-   "kind": "wrong_arity",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: UPExpressionDefinitionError('In FluentExp, fluent: ready-to-load has arity 3 but 2 parameters were passed.')",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/tpp/domain_neg02.pddl",
-   "sha256": "bcd3eb535158b0dc58973dcb9e9522551fea99d577da1b390845a526de6d77e8",
    "source": "domains/classical/tpp/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -3063,6 +2802,7 @@
     "used_type": "flevel",
     "used_variable": "?l1"
    },
+   "invalid_domain_slot": 1,
    "kind": "type_mismatch",
    "label": "invalid",
    "oracle": {
@@ -3072,36 +2812,6 @@
    },
    "path": "classical/zenotravel/domain_neg.pddl",
    "sha256": "5c47bc47d78e33b1971ee289e0120c805bbba010653fb55320df047d35efb127",
-   "source": "domains/classical/zenotravel/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "board",
-    "after": "(?p - person ?a - arcraft ?c - city)",
-    "before": "(?p - person ?a - aircraft ?c - city)",
-    "declared": "aircraft",
-    "line": 12,
-    "section": "parameters",
-    "used": "arcraft",
-    "variable": "?a"
-   },
-   "kind": "undeclared_type",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Undefined parameter's type: arcraft.",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "classical/zenotravel/domain_neg02.pddl",
-   "sha256": "6f4904fc24f49d7239af4f7b6dea7374e406f75a7370ff5609554d2d96224bbd",
    "source": "domains/classical/zenotravel/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -3406,6 +3116,7 @@
     "used": "bock",
     "variable": "?b"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_type",
    "label": "invalid",
    "oracle": {
@@ -3415,35 +3126,6 @@
    },
    "path": "numeric/block-grouping/domain_neg.pddl",
    "sha256": "5319d2398995e902ebaca07f98adfb2c0789864dc7d8f2d04ba3a579e389404c",
-   "source": "domains/numeric/block-grouping/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p01.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "move_block_up",
-    "after": "(mx_y)",
-    "before": "(max_y)",
-    "declared": "max_y",
-    "line": 29,
-    "section": "precondition",
-    "used": "mx_y"
-   },
-   "kind": "undeclared_function",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Found invalid expression: mx_y. From line: 29, col 42 to line: 29, col 46",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/block-grouping/domain_neg02.pddl",
-   "sha256": "8dddd8baa11fc51976a41b7774f90fcb60f8c8e22398692eb2e4ea2d6e7d39bb",
    "source": "domains/numeric/block-grouping/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -3693,6 +3375,7 @@
     "used": "couner",
     "variable": "?c"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_type",
    "label": "invalid",
    "oracle": {
@@ -3702,35 +3385,6 @@
    },
    "path": "numeric/counters/domain_neg.pddl",
    "sha256": "c7e0ece2e57b67b2e890717d428407620783bc68606cdf92d68406bd94650340",
-   "source": "domains/numeric/counters/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p01.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "increase_rate",
-    "after": "(rae_value ?c)",
-    "before": "(rate_value ?c)",
-    "declared": "rate_value",
-    "line": 30,
-    "section": "effect",
-    "used": "rae_value"
-   },
-   "kind": "undeclared_function",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Not able to handle: (rae_value ?c) found at line: 30, col 33 to line: 30, col 47",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/counters/domain_neg02.pddl",
-   "sha256": "c0c75eb376355863778a991459f79b3c050f374d5c371b8c0c2c76eba4213078",
    "source": "domains/numeric/counters/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -4028,6 +3682,7 @@
     "used_type": "item",
     "used_variable": "?i"
    },
+   "invalid_domain_slot": 1,
    "kind": "type_mismatch",
    "label": "invalid",
    "oracle": {
@@ -4037,35 +3692,6 @@
    },
    "path": "numeric/delivery/domain_neg.pddl",
    "sha256": "46d0de6e657d641557bfc6c2659686209b336bd21d2b0496b9d5a4c0faa804cf",
-   "source": "domains/numeric/delivery/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "pick",
-    "after": "(frees ?a)",
-    "before": "(free ?a)",
-    "declared": "free",
-    "line": 35,
-    "section": "precondition",
-    "used": "frees"
-   },
-   "kind": "undeclared_predicate",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Not able to handle: (frees ?a) found at line: 35, col 54 to line: 35, col 64",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/delivery/domain_neg02.pddl",
-   "sha256": "4364a61896b55ec03aa9579fa303694aa363ac347e3553fc79d75ec8d18c3fd5",
    "source": "domains/numeric/delivery/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -4371,6 +3997,7 @@
     "symbol_kind": "pred",
     "used_arity": 1
    },
+   "invalid_domain_slot": 1,
    "kind": "wrong_arity",
    "label": "invalid",
    "oracle": {
@@ -4380,35 +4007,6 @@
    },
    "path": "numeric/depot/domain_neg.pddl",
    "sha256": "5f9f73ee41f0698aee6ebb641363e0f8f9c69f95aebce2ab0c1771c343553a2b",
-   "source": "domains/numeric/depot/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p01.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "drop",
-    "after": "(lfting ?x ?y)",
-    "before": "(lifting ?x ?y)",
-    "declared": "lifting",
-    "line": 37,
-    "section": "precondition",
-    "used": "lfting"
-   },
-   "kind": "undeclared_predicate",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Not able to handle: (lfting ?x ?y) found at line: 37, col 53 to line: 37, col 67",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/depot/domain_neg02.pddl",
-   "sha256": "af0287d89983f53daf8730b81885a42a315846cc40005b9e0c0a878780001056",
    "source": "domains/numeric/depot/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -4704,6 +4302,7 @@
     "section": "precondition",
     "used": "mx_y"
    },
+   "invalid_domain_slot": 1,
    "kind": "undeclared_function",
    "label": "invalid",
    "oracle": {
@@ -4713,35 +4312,6 @@
    },
    "path": "numeric/drone/domain_neg.pddl",
    "sha256": "8ad7c9915f8b96dab96477a9484de846f7dc884d20813d2f1020fc2665bb8ff1",
-   "source": "domains/numeric/drone/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p04.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "visit",
-    "after": "(viited ?l)",
-    "before": "(visited ?l)",
-    "declared": "visited",
-    "line": 105,
-    "section": "effect",
-    "used": "viited"
-   },
-   "kind": "undeclared_predicate",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Not able to handle: (viited ?l) found at line: 105, col 22 to line: 105, col 33",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/drone/domain_neg02.pddl",
-   "sha256": "8c4464617294c804c34d50e1bfb1fe969500189e84c9701ddb603289fc33b6ba",
    "source": "domains/numeric/drone/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -5041,6 +4611,7 @@
     "symbol_kind": "pred",
     "used_arity": 1
    },
+   "invalid_domain_slot": 1,
    "kind": "wrong_arity",
    "label": "invalid",
    "oracle": {
@@ -5050,36 +4621,6 @@
    },
    "path": "numeric/farmland/domain_neg.pddl",
    "sha256": "b0f8499710af78b6151869bba229f4bd4b76715901ea58fd4f4b30f72341e66c",
-   "source": "domains/numeric/farmland/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p01.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "move-slow",
-    "after": "(?f1 - farms ?f2 - farm)",
-    "before": "(?f1 - farm ?f2 - farm)",
-    "declared": "farm",
-    "line": 27,
-    "section": "parameters",
-    "used": "farms",
-    "variable": "?f1"
-   },
-   "kind": "undeclared_type",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Undefined parameter's type: farms.",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/farmland/domain_neg02.pddl",
-   "sha256": "2fc3bf2b0b673708541873eaaf56a7b19878248931f973dab75d9936e5d57d1e",
    "source": "domains/numeric/farmland/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -5376,6 +4917,7 @@
     "used_type": "agent",
     "used_variable": "?a"
    },
+   "invalid_domain_slot": 1,
    "kind": "type_mismatch",
    "label": "invalid",
    "oracle": {
@@ -5385,36 +4927,6 @@
    },
    "path": "numeric/gardening/domain_neg.pddl",
    "sha256": "2443a93df5a5c9b7c0effc22e09dd3cf85ff69ae508258e91a69e86bd279e963",
-   "source": "domains/numeric/gardening/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p02.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "move_down_right",
-    "after": "(?a - agents)",
-    "before": "(?a - agent)",
-    "declared": "agent",
-    "line": 86,
-    "section": "parameters",
-    "used": "agents",
-    "variable": "?a"
-   },
-   "kind": "undeclared_type",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Undefined parameter's type: agents.",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/gardening/domain_neg02.pddl",
-   "sha256": "d8323141fbf2d650f175da6332a0dd05aae16dbbaade88c72aedd0b134054fa3",
    "source": "domains/numeric/gardening/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -5726,6 +5238,7 @@
     "symbol_kind": "pred",
     "used_arity": 2
    },
+   "invalid_domain_slot": 1,
    "kind": "wrong_arity",
    "label": "invalid",
    "oracle": {
@@ -5735,35 +5248,6 @@
    },
    "path": "numeric/pogo_stick/domain_neg.pddl",
    "sha256": "7736a89e66d5f28ff57eb39680f1469068b62cbde1f372c41f7e6b09751e9014",
-   "source": "domains/numeric/pogo_stick/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p02.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "craft_tree_tap",
-    "after": "(count_planks_in_invetory)",
-    "before": "(count_planks_in_inventory)",
-    "declared": "count_planks_in_inventory",
-    "line": 86,
-    "section": "precondition",
-    "used": "count_planks_in_invetory"
-   },
-   "kind": "undeclared_function",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Found invalid expression: count_planks_in_invetory. From line: 86, col 18 to line: 86, col 42",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/pogo_stick/domain_neg02.pddl",
-   "sha256": "4b3863741436d630668d41a56fa459f1c4664ca972b933ed171e1a24b0eb47e1",
    "source": "domains/numeric/pogo_stick/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -6060,6 +5544,7 @@
     "used_type": "person",
     "used_variable": "?t"
    },
+   "invalid_domain_slot": 1,
    "kind": "type_mismatch",
    "label": "invalid",
    "oracle": {
@@ -6069,35 +5554,6 @@
    },
    "path": "numeric/sailing/domain_neg.pddl",
    "sha256": "7e1a7a328b87618f1da2f3f0b5e19cbf400ca8091d52f7f2638101aa15e15134",
-   "source": "domains/numeric/sailing/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p01.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "save_person",
-    "after": "(saed ?t)",
-    "before": "(saved ?t)",
-    "declared": "saved",
-    "line": 58,
-    "section": "effect",
-    "used": "saed"
-   },
-   "kind": "undeclared_predicate",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: Not able to handle: (saed ?t) found at line: 58, col 23 to line: 58, col 32",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/sailing/domain_neg02.pddl",
-   "sha256": "4a016b34c572031d61cbf6c6297f269a05eb1566655926e0499a892799f3875a",
    "source": "domains/numeric/sailing/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -6410,6 +5866,7 @@
     "symbol_kind": "pred",
     "used_arity": 1
    },
+   "invalid_domain_slot": 1,
    "kind": "wrong_arity",
    "label": "invalid",
    "oracle": {
@@ -6419,38 +5876,6 @@
    },
    "path": "numeric/zenotravel-numeric/domain_neg.pddl",
    "sha256": "aec83010e0e26eb1db0d456bb9284d1000c4a913df18d905d26ebe0776f87ddb",
-   "source": "domains/numeric/zenotravel-numeric/domain.pddl (one edit)",
-   "task": "validate_domain",
-   "val": {
-    "crashed_after_message": true,
-    "detail": "Type problem in domain description!",
-    "verdict": "invalid"
-   },
-   "val_pair_problem": "p01.pddl",
-   "val_recheck": "invalid"
-  },
-  {
-   "edit": {
-    "action": "fly-fast",
-    "after": "(located ?c1 ?c2)",
-    "before": "(located ?a ?c2)",
-    "declared_type": "locatable",
-    "line": 55,
-    "section": "effect",
-    "symbol": "located",
-    "symbol_kind": "pred",
-    "used_type": "city",
-    "used_variable": "?c1"
-   },
-   "kind": "type_mismatch",
-   "label": "invalid",
-   "oracle": {
-    "error": "[ERROR] Failed to parse domain domain.pddl: UPTypeError(\"The expression 'located(c1, c2)' is not well-formed\")",
-    "status": "SYNTAX_ERROR",
-    "verdict": false
-   },
-   "path": "numeric/zenotravel-numeric/domain_neg02.pddl",
-   "sha256": "3e7350a64128c02898abeb602bdc7720977d8cc3be0b03ad2885820645ad0f7a",
    "source": "domains/numeric/zenotravel-numeric/domain.pddl (one edit)",
    "task": "validate_domain",
    "val": {
@@ -6733,11 +6158,11 @@
   }
  ],
  "kinds": {
-  "validate_domain/type_mismatch": 9,
-  "validate_domain/undeclared_function": 4,
-  "validate_domain/undeclared_predicate": 9,
-  "validate_domain/undeclared_type": 9,
-  "validate_domain/wrong_arity": 9,
+  "validate_domain/type_mismatch": 7,
+  "validate_domain/undeclared_function": 1,
+  "validate_domain/undeclared_predicate": 4,
+  "validate_domain/undeclared_type": 3,
+  "validate_domain/wrong_arity": 5,
   "validate_plan/midplan_delete": 20,
   "validate_plan/midplan_replace_other_action": 16,
   "validate_plan/midplan_replace_sibling_grounding": 16,
@@ -10830,6 +10255,7 @@
    "why": "VAL accepted the file"
   }
  ],
+ "role": "every task except validate_domain (here validate_domain is 2 valid : 1 invalid per folder; use the validate_domain trees instead)",
  "skipped": [
   {
    "domain": "block-grouping",
@@ -10853,7 +10279,134 @@
   }
  ],
  "val_recheck": {
-  "agree": 296
+  "agree": 276
  },
- "what": "D1b harder test items (development/reference/d1b_harder_items.md)"
+ "validate_domain_combined": {
+  "jobs_per_variant": {
+   "barman": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "block-grouping": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "blocksworld": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "counters": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "delivery": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "depot": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "depots": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "drone": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "farmland": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "gardening": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "gripper": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "miconic": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "parking": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "pogo_stick": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "rovers": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "sailing": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "satellite": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "tpp": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "zenotravel": {
+    "invalid": 2,
+    "valid": 2
+   },
+   "zenotravel-numeric": {
+    "invalid": 2,
+    "valid": 2
+   }
+  },
+  "kinds": {
+   "type_mismatch": 9,
+   "undeclared_function": 4,
+   "undeclared_predicate": 9,
+   "undeclared_type": 9,
+   "wrong_arity": 9
+  },
+  "totals": {
+   "invalid": 40,
+   "valid": 40
+  }
+ },
+ "validate_domain_trees": {
+  "domains-hard-vd-a": {
+   "counts": {
+    "paired_problem/valid": 20,
+    "validate_domain/invalid": 20,
+    "validate_domain/valid": 20
+   },
+   "kinds": {
+    "validate_domain/type_mismatch": 7,
+    "validate_domain/undeclared_function": 1,
+    "validate_domain/undeclared_predicate": 4,
+    "validate_domain/undeclared_type": 3,
+    "validate_domain/wrong_arity": 5
+   },
+   "manifest_sha256": "b561b7a6a535addf5f9b177dcfa41f7491575c135a74e6ee1a8dc6a0c03ed31d"
+  },
+  "domains-hard-vd-b": {
+   "counts": {
+    "paired_problem/valid": 20,
+    "validate_domain/invalid": 20,
+    "validate_domain/valid": 20
+   },
+   "kinds": {
+    "validate_domain/type_mismatch": 2,
+    "validate_domain/undeclared_function": 3,
+    "validate_domain/undeclared_predicate": 5,
+    "validate_domain/undeclared_type": 6,
+    "validate_domain/wrong_arity": 4
+   },
+   "manifest_sha256": "4fdcf8eedb96af6805b6b1631983a003fef96ff3c1ac0e2d1a687cc321f7f4c6"
+  }
+ },
+ "what": "D1b new item kinds (development/reference/d1b_harder_items.md)"
 }

@@ -1,9 +1,11 @@
-#!/usr/bin/env python3
-"""Build the harder test items (action plan D1b) as a new fixture tree.
+"""Build the D1b new item kinds as new fixture trees (no harness change).
 
 Reads the canonical tree (`--src-dir`, normally `domains/`, never written)
-and writes a sibling tree (`--out-dir`, normally `domains-hard/`) in the same
-flat layout, so `run_experiment.py --domains-dir domains-hard` loads it:
+and writes three sibling trees in the same flat layout, which the frozen
+loader (`pddl_eval.domains.load_domains` on `main`) reads unchanged through
+`run_experiment.py --domains-dir`:
+
+  `--out-dir` (normally `domains-hard/`): every task except validate_domain
 
     <track>/<domain>/domain.pddl            the same valid domain (copied)
     <track>/<domain>/pNN.pddl               a subset of the same valid problems
@@ -11,14 +13,34 @@ flat layout, so `run_experiment.py --domains-dir domains-hard` loads it:
     <track>/<domain>/pNN_vK.plan            distinct valid plans (planners)
     <track>/<domain>/pNN_bK.plan            invalid plans: a precondition fails
                                             at or after the halfway step
-    <track>/<domain>/domain_neg.pddl,       invalid domains with one real error
-                     domain_neg02.pddl ...  (as many as valid problems)
+    <track>/<domain>/domain_neg.pddl        the first invalid domain
     <track>/<domain>/nNN.pddl               invalid problems with one real error
                                             (as many as valid problems)
     manifest.json, manifest.sha256          every item, its sha256, how it was
                                             made, the oracle and VAL verdicts
     planner_outputs.json                    raw planner plans; pass it back as
                                             --cache-json to rebuild the same tree
+
+  `<out-dir>-vd-a/`, `<out-dir>-vd-b/` (one per chosen problem): validate_domain
+
+    <track>/<domain>/domain.pddl            the same valid domain (copied)
+    <track>/<domain>/pNN.pddl               ONE valid problem (tree a: the first
+                                            chosen problem by name, tree b: the
+                                            second)
+    <track>/<domain>/domain_neg.pddl        tree a: the first invalid domain,
+                                            tree b: the second
+    manifest.json, manifest.sha256
+
+Why two small trees. The frozen loader reads one invalid domain per folder,
+by the exact name `domain_neg.pddl`, and the runner emits one validate_domain
+job per valid problem plus one for `domain_neg`. A folder with two problems
+therefore gives a 2:1 valid:invalid grid, and a second file such as
+`domain_neg02.pddl` would be ignored without a warning (no glob reads it).
+Editing the loader would change frozen files of the delivered-rerun package, so
+each validate_domain tree holds one problem and one invalid domain (1:1),
+and trees a and b together give the full balanced grid. No file named
+`domain_neg<digits>.pddl` is written anywhere; the build stops if it finds
+one.
 
 How each kind is made (details in development/reference/d1b_harder_items.md):
 
@@ -48,9 +70,11 @@ How each kind is made (details in development/reference/d1b_harder_items.md):
 
 The oracle is the pddl-validator plugin called exactly as the harness calls
 it (`pddl_eval.domains._validate_capture` over `MCPPlanner`). After writing,
-the new tree is loaded with `pddl_eval.domains.load_domains` and checked by
-the harness's own fail-fast pass (`generate_ground_truth`), and every item is
-re-checked by VAL from disk.
+each new tree is loaded with `pddl_eval.domains.load_domains` and checked by
+the harness's own fail-fast pass (`generate_ground_truth`), the
+validate_domain grid of trees a and b together is checked to be balanced in
+every domain, and every item is re-checked by VAL from disk. Each tree gets
+its own manifest; the main one names the hashes of the others.
 
     .venv/bin/python tools/build_hard_fixtures.py \\
         --src-dir domains --out-dir domains-hard \\
@@ -59,6 +83,8 @@ re-checked by VAL from disk.
         --val /path/to/copy/of/VAL/validate --val-prefix "arch -x86_64" \\
         [--problems-per-domain 2] [--max-valid-plans 2] [--seed 0] \\
         [--cache-json /tmp/pool.json] [--force]
+
+  --force deletes and rebuilds all three trees.
 """
 from __future__ import annotations
 
@@ -513,16 +539,19 @@ def load_source(src_dir: Path, only: set[str] | None) -> dict:
 
 async def build(args: argparse.Namespace) -> None:
     src_dir, out_dir = Path(args.src_dir).resolve(), Path(args.out_dir).resolve()
-    if out_dir == src_dir or src_dir in out_dir.parents:
-        raise SystemExit("--out-dir must not be inside --src-dir")
+    vd_dirs = vd_dirs_for(out_dir, args.problems_per_domain)
+    for d_ in [out_dir] + vd_dirs:
+        if d_ == src_dir or src_dir in d_.parents or d_ in src_dir.parents:
+            raise SystemExit(f"{d_} must not be inside --src-dir or contain it")
     # Read the planner cache first: it may live inside --out-dir
     # (domains-hard/planner_outputs.json), which --force deletes.
     cache_path = Path(args.cache_json) if args.cache_json else None
     cache = json.loads(cache_path.read_text()) if cache_path and cache_path.exists() else {}
-    if out_dir.exists():
-        if not args.force:
-            raise SystemExit(f"{out_dir} exists; pass --force to rebuild it")
-        shutil.rmtree(out_dir)
+    for d_ in [out_dir] + vd_dirs:
+        if d_.exists():
+            if not args.force:
+                raise SystemExit(f"{d_} exists; pass --force to rebuild it")
+            shutil.rmtree(d_)
     src = load_source(src_dir, set(args.domains) if args.domains else None)
     val = Val(Path(args.val).resolve(), shlex.split(args.val_prefix or ""))
     plugins = Path(args.marketplace_path).resolve() / "plugins"
@@ -541,7 +570,8 @@ async def build(args: argparse.Namespace) -> None:
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "planner_outputs.json").write_text(cache_text)
 
-        items: list[dict] = []          # one per written file
+        items: list[dict] = []          # one per written file of the main tree
+        vd_items: list[list[dict]] = [[] for _ in vd_dirs]   # per validate_domain tree
         exclusions: list[dict] = []     # candidates the oracle and VAL disagreed on
         skipped: list[dict] = []        # what could not be built, and why
         dkind_counts: dict[str, Counter] = {"classical": Counter(), "numeric": Counter()}
@@ -637,14 +667,16 @@ async def build(args: argparse.Namespace) -> None:
                         "oracle": {"verdict": False, "status": rec["oracle_status"]},
                         "val": rec["val"]})
 
-            # ---- invalid domains: one per chosen problem
+            # ---- invalid domains: one per chosen problem. Slot k goes to the
+            # validate_domain tree k, paired with the k-th chosen problem by
+            # name (the only problem in that tree, so the one the harness
+            # pairs it with); slot 0 is also the main tree's domain_neg.pddl.
             n_inv = len(chosen)
-            # VAL needs a problem to parse a domain; use the one the harness
-            # pairs with the invalid domain (the first valid problem by name).
-            pair_name = sorted(c[0] for c in chosen)[0]
-            pair = d["problems"][pair_name]
+            by_name = sorted(c[0] for c in chosen)
             used_kinds: list[str] = []
             for slot in range(n_inv):
+                pair_name = by_name[slot]
+                pair = d["problems"][pair_name]
                 done = None
                 for kind in _kind_order(DOMAIN_KINDS[track], dkind_counts[track], di + slot):
                     if kind in used_kinds:
@@ -659,13 +691,27 @@ async def build(args: argparse.Namespace) -> None:
                     continue
                 used_kinds.append(done["kind"])
                 dkind_counts[track][done["kind"]] += 1
-                fname = "domain_neg.pddl" if slot == 0 else f"domain_neg{slot + 1:02d}.pddl"
-                (ddir_out / fname).write_text(done["text"])
-                items.append({"path": f"{track}/{dname}/{fname}", "task": "validate_domain",
-                              "label": "invalid", "kind": done["kind"],
-                              "source": f"{src_dir.name}/{track}/{dname}/domain.pddl (one edit)",
-                              "edit": done["detail"], "oracle": done["oracle"], "val": done["val"],
-                              "val_pair_problem": f"{pair_name}.pddl"})
+                rec = {"task": "validate_domain", "label": "invalid", "kind": done["kind"],
+                       "source": f"{src_dir.name}/{track}/{dname}/domain.pddl (one edit)",
+                       "invalid_domain_slot": slot + 1,
+                       "edit": done["detail"], "oracle": done["oracle"], "val": done["val"],
+                       "val_pair_problem": f"{pair_name}.pddl"}
+                if slot == 0:
+                    (ddir_out / "domain_neg.pddl").write_text(done["text"])
+                    items.append({"path": f"{track}/{dname}/domain_neg.pddl", **rec})
+                vdir = vd_dirs[slot] / track / dname
+                vdir.mkdir(parents=True, exist_ok=True)
+                (vdir / "domain.pddl").write_bytes((d["dir"] / "domain.pddl").read_bytes())
+                (vdir / f"{pair_name}.pddl").write_bytes((d["dir"] / f"{pair_name}.pddl").read_bytes())
+                (vdir / "domain_neg.pddl").write_text(done["text"])
+                vd_items[slot] += [
+                    {"path": f"{track}/{dname}/domain.pddl", "task": "validate_domain",
+                     "label": "valid", "kind": "valid_domain",
+                     "source": f"{src_dir.name}/{track}/{dname}/domain.pddl (copied)"},
+                    {"path": f"{track}/{dname}/{pair_name}.pddl", "task": "paired_problem",
+                     "label": "valid", "kind": "valid_problem",
+                     "source": f"{src_dir.name}/{track}/{dname}/{pair_name}.pddl (copied)"},
+                    {"path": f"{track}/{dname}/domain_neg.pddl", **rec}]
 
             # ---- invalid problems: one per chosen problem, edited from it
             used_kinds = []
@@ -692,61 +738,84 @@ async def build(args: argparse.Namespace) -> None:
                               "source": f"{src_dir.name}/{track}/{dname}/{pname}.pddl (one edit)",
                               "edit": done["detail"], "oracle": done["oracle"], "val": done["val"]})
 
-        # ---- the harness's own fail-fast pass over the new tree
-        print("== harness check (load_domains + generate_ground_truth)", file=sys.stderr)
-        loaded = load_domains(out_dir)
-        gt = await generate_ground_truth(mcp, loaded)
-        harness = {"domains": len(loaded), "problems": sum(len(x["problems"]) for x in loaded.values()),
-                   "solvable": sum(1 for dn in gt for pn, e in gt[dn].items()
-                                   if pn != "_negatives" and e.get("solvable"))}
+        trees = [(out_dir, items)] + [(r, its) for r, its in zip(vd_dirs, vd_items) if its]
 
-        # ---- VAL from disk, every item
+        # ---- no stray invalid-domain file the frozen loader would ignore
+        stray = [f"{r.name}/{p}" for r, _ in trees for p in stray_negatives(r)]
+        if stray:
+            raise SystemExit(f"files the frozen loader would ignore: {stray}")
+
+        # ---- the harness's own fail-fast pass over every new tree
+        harness: dict = {}
+        for root, _its in trees:
+            print(f"== harness check {root.name} (load_domains + generate_ground_truth)",
+                  file=sys.stderr)
+            loaded = load_domains(root)
+            gt = await generate_ground_truth(mcp, loaded)
+            harness[root.name] = {
+                "domains": len(loaded), "problems": sum(len(x["problems"]) for x in loaded.values()),
+                "solvable": sum(1 for dn in gt for pn, e in gt[dn].items()
+                                if pn != "_negatives" and e.get("solvable"))}
+
+        # ---- validate_domain grid as the frozen loader emits it
+        grids = {root.name: validate_domain_grid(root) for root, _ in trees}
+        combined = combine_grids([grids[r.name] for r, _ in trees[1:]])
+        unbalanced = {dn: g for dn, g in combined.items() if g["valid"] != g["invalid"]}
+        if unbalanced:
+            raise SystemExit(f"validate_domain trees are not balanced: {unbalanced}")
+
+        # ---- VAL from disk, every item of every tree
         print("== VAL re-check from disk", file=sys.stderr)
-        val_recheck = Counter()
-        for it in items:
-            p = out_dir / it["path"]
-            ddir = p.parent
-            dom = (ddir / "domain.pddl").read_text()
-            first_p = sorted(ddir.glob("p[0-9]*.pddl"))[0].read_text()
-            if it["path"].endswith(".plan"):
-                pname = p.name.split("_")[0]
-                v = val.plan(dom, (ddir / f"{pname}.pddl").read_text(), p.read_text())
-            elif p.name.startswith("domain"):
-                v = val.parse(p.read_text(), first_p)
-            else:
-                v = val.parse(dom, p.read_text())
-            agree = (v["verdict"] == "valid") == (it["label"] == "valid") and v["verdict"] != "cannot_handle"
-            it["val_recheck"] = v["verdict"]
-            val_recheck["agree" if agree else "disagree"] += 1
+        rechecks = {root.name: val_recheck(val, root, its) for root, its in trees}
 
-        # ---- manifest
-        for it in items:
-            it["sha256"] = _sha((out_dir / it["path"]).read_bytes())
-        items.sort(key=lambda x: x["path"])
-        counts = Counter((it["task"], it["label"]) for it in items)
-        manifest = {
-            "what": "D1b harder test items (development/reference/d1b_harder_items.md)",
-            "build": {
-                "script": "tools/build_hard_fixtures.py",
-                "script_sha256": _sha((REPO / "tools/build_hard_fixtures.py").read_bytes()),
-                "helpers_sha256": {f: _sha((REPO / f).read_bytes()) for f in
-                                   ("tools/_hard_items.py", "tools/_enhsp_variants.py")},
-                "seed": args.seed, "problems_per_domain": args.problems_per_domain,
-                "max_valid_plans": args.max_valid_plans, "min_plan_len": MIN_PLAN_LEN,
-                "enhsp_timeout_s": args.enhsp_timeout, "enhsp_configs": list(ENHSP_CONFIGS),
-                "fd_strategies": list(FD_STRATEGIES),
-                "marketplace_commit": _git_head(Path(args.marketplace_path)),
-                "val_binary_sha256": _sha(Path(args.val).read_bytes()),
-                "src_dir": src_dir.name,
-                "planner_outputs_sha256": _sha(cache_text),
-            },
-            "counts": {f"{t}/{lab}": c for (t, lab), c in sorted(counts.items())},
-            "kinds": {f"{it_task}/{kind}": c for (it_task, kind), c in sorted(
-                Counter((it["task"], it["kind"]) for it in items if it["label"] == "invalid").items())},
-            "harness_check": harness,
-            "val_recheck": dict(val_recheck),
+        # ---- manifests: the validate_domain trees first, the main one names their hashes
+        build_info = {
+            "script": "tools/build_hard_fixtures.py",
+            "script_sha256": _sha((REPO / "tools/build_hard_fixtures.py").read_bytes()),
+            "helpers_sha256": {f: _sha((REPO / f).read_bytes()) for f in
+                               ("tools/_hard_items.py", "tools/_enhsp_variants.py")},
+            "seed": args.seed, "problems_per_domain": args.problems_per_domain,
+            "max_valid_plans": args.max_valid_plans, "min_plan_len": MIN_PLAN_LEN,
+            "enhsp_timeout_s": args.enhsp_timeout, "enhsp_configs": list(ENHSP_CONFIGS),
+            "fd_strategies": list(FD_STRATEGIES),
+            "marketplace_commit": _git_head(Path(args.marketplace_path)),
+            "val_binary_sha256": _sha(Path(args.val).read_bytes()),
+            "src_dir": src_dir.name,
+            "planner_outputs_sha256": _sha(cache_text),
+            "trees": [r.name for r, _ in trees],
+        }
+        vd_summary: dict = {}
+        for k, (root, its) in enumerate(trees[1:]):
+            m = tree_manifest(root, its)
+            m.update({
+                "what": "D1b new item kinds, validate_domain tree "
+                        f"{root.name} (development/reference/d1b_harder_items.md)",
+                "role": f"validate_domain only: one valid problem and one invalid domain "
+                        f"(slot {k + 1}) per folder; run every tree named in "
+                        f"validate_domain_trees of {out_dir.name}/manifest.json, each "
+                        "to its own --output-dir",
+                "build": build_info, "harness_check": harness[root.name],
+                "val_recheck": rechecks[root.name],
+                "validate_domain_jobs_per_variant": grids[root.name]})
+            h = write_manifest(root, m)
+            vd_summary[root.name] = {"manifest_sha256": h, "counts": m["counts"],
+                                     "kinds": m["kinds"]}
+        manifest = tree_manifest(out_dir, items)
+        manifest.update({
+            "what": "D1b new item kinds (development/reference/d1b_harder_items.md)",
+            "role": "every task except validate_domain (here validate_domain is 2 valid : "
+                    "1 invalid per folder; use the validate_domain trees instead)",
+            "build": build_info,
+            "harness_check": harness[out_dir.name],
+            "val_recheck": rechecks[out_dir.name],
+            "validate_domain_trees": vd_summary,
+            "validate_domain_combined": {
+                "jobs_per_variant": combined,
+                "totals": {lab: sum(g[lab] for g in combined.values()) for lab in ("valid", "invalid")},
+                "kinds": dict(sorted(Counter(
+                    it["kind"] for _r, its in trees[1:] for it in its
+                    if it["task"] == "validate_domain" and it["label"] == "invalid").items()))},
             "oracle_calls": dict(oracle.calls),
-            "items": items,
             "plan_pool": {dn: {pn: {"distinct_valid": len(v["plans"]),
                                     "sources": [p["sources"] for p in v["plans"]],
                                     "lengths": [len(p["steps"]) for p in v["plans"]],
@@ -758,17 +827,110 @@ async def build(args: argparse.Namespace) -> None:
             "exclusions": exclusions,
             "skipped": skipped,
             "rejected_file_candidates": file_logs,
-        }
-        mtext = json.dumps(manifest, indent=1, sort_keys=True, default=str) + "\n"
-        (out_dir / "manifest.json").write_text(mtext)
-        h = _sha(mtext)
-        (out_dir / "manifest.sha256").write_text(f"{h}  manifest.json\n")
+        })
+        h = write_manifest(out_dir, manifest)
         print(json.dumps({"counts": manifest["counts"], "kinds": manifest["kinds"],
-                          "harness_check": harness, "val_recheck": dict(val_recheck),
+                          "validate_domain_combined": manifest["validate_domain_combined"]["totals"],
+                          "harness_check": harness, "val_recheck": rechecks,
                           "exclusions": len(exclusions), "skipped": skipped,
-                          "manifest_sha256": h}, indent=1))
+                          "manifest_sha256": {out_dir.name: h,
+                                              **{n: v["manifest_sha256"]
+                                                 for n, v in vd_summary.items()}}}, indent=1))
     finally:
         await mcp.close()
+
+
+# ---------------------------------------------------------------------------
+# Tree helpers (pure apart from reading the tree; unit-tested)
+# ---------------------------------------------------------------------------
+
+_STRAY_NEG_RE = re.compile(r"^domain_neg\d+\.pddl$")
+
+
+def vd_dirs_for(out_dir: Path, n: int) -> list[Path]:
+    """`domains-hard` -> [`domains-hard-vd-a`, `domains-hard-vd-b`, ...]."""
+    if not 1 <= n <= 26:
+        raise ValueError(f"need 1..26 validate_domain trees, got {n}")
+    return [out_dir.parent / f"{out_dir.name}-vd-{chr(ord('a') + i)}" for i in range(n)]
+
+
+def stray_negatives(root: Path) -> list[str]:
+    """Files like `domain_neg02.pddl`: the frozen loader reads only
+    `domain_neg.pddl`, so these would be skipped without a warning."""
+    return sorted(str(p.relative_to(root)) for p in root.rglob("*.pddl")
+                  if _STRAY_NEG_RE.match(p.name))
+
+
+def validate_domain_grid(root: Path) -> dict:
+    """validate_domain jobs per prompt variant that the frozen harness emits
+    for this tree: one valid job per problem, one invalid job if the folder
+    has `domain_neg.pddl` (pddl_eval/runner.py build_jobs)."""
+    return {dn: {"valid": len(d["problems"]),
+                 "invalid": int(d["negatives"]["domain"] is not None)}
+            for dn, d in sorted(load_domains(root).items())}
+
+
+def combine_grids(grids: list[dict]) -> dict:
+    out: dict = {}
+    for g in grids:
+        for dn, c in g.items():
+            acc = out.setdefault(dn, {"valid": 0, "invalid": 0})
+            acc["valid"] += c["valid"]
+            acc["invalid"] += c["invalid"]
+    return dict(sorted(out.items()))
+
+
+def val_recheck(val: Val, root: Path, items: list[dict]) -> dict:
+    """Re-check every item from disk with VAL. A domain file is parsed with
+    the folder's first problem by name, the one the harness pairs it with."""
+    counts = Counter()
+    for it in items:
+        p = root / it["path"]
+        ddir = p.parent
+        dom = (ddir / "domain.pddl").read_text()
+        first_p = sorted(ddir.glob("p[0-9]*.pddl"))[0].read_text()
+        if it["path"].endswith(".plan"):
+            pname = p.name.split("_")[0]
+            v = val.plan(dom, (ddir / f"{pname}.pddl").read_text(), p.read_text())
+        elif p.name.startswith("domain"):
+            v = val.parse(p.read_text(), first_p)
+        else:
+            v = val.parse(dom, p.read_text())
+        agree = (v["verdict"] == "valid") == (it["label"] == "valid") and v["verdict"] != "cannot_handle"
+        it["val_recheck"] = v["verdict"]
+        counts["agree" if agree else "disagree"] += 1
+    return dict(counts)
+
+
+def tree_manifest(root: Path, items: list[dict]) -> dict:
+    """Items sorted by path with their sha256 from disk, plus counts and
+    kinds; the file list must equal the fixture files on disk."""
+    for it in items:
+        it["sha256"] = _sha((root / it["path"]).read_bytes())
+    items.sort(key=lambda x: x["path"])
+    listed = [it["path"] for it in items]
+    if len(set(listed)) != len(listed):
+        raise SystemExit(f"{root.name}: a file is listed twice in the manifest")
+    on_disk = sorted(str(p.relative_to(root)) for p in root.rglob("*")
+                     if p.is_file() and p.parent != root)
+    if listed != on_disk:
+        raise SystemExit(f"{root.name}: manifest and files on disk differ: "
+                         f"{sorted(set(listed) ^ set(on_disk))[:10]}")
+    counts = Counter((it["task"], it["label"]) for it in items)
+    return {
+        "counts": {f"{t}/{lab}": c for (t, lab), c in sorted(counts.items())},
+        "kinds": {f"{t}/{kind}": c for (t, kind), c in sorted(
+            Counter((it["task"], it["kind"]) for it in items if it["label"] == "invalid").items())},
+        "items": items,
+    }
+
+
+def write_manifest(root: Path, manifest: dict) -> str:
+    text = json.dumps(manifest, indent=1, sort_keys=True, default=str) + "\n"
+    (root / "manifest.json").write_text(text)
+    h = _sha(text)
+    (root / "manifest.sha256").write_text(f"{h}  manifest.json\n")
+    return h
 
 
 def _git_head(path: Path) -> str:
@@ -780,7 +942,7 @@ def _git_head(path: Path) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--src-dir", required=True, help="canonical fixtures tree (read only)")
-    ap.add_argument("--out-dir", required=True, help="new tree to write (e.g. domains-hard)")
+    ap.add_argument("--out-dir", required=True, help="main tree to write (e.g. domains-hard); the validate_domain trees go next to it as <out-dir>-vd-a, -vd-b, ...")
     ap.add_argument("--marketplace-path", required=True, help="pddl-copilot checkout")
     ap.add_argument("--solver-python", required=True,
                     help="python of the pddl-solver plugin venv (runs _enhsp_variants.py)")
@@ -792,7 +954,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--cache-json", default=None, help="planner-output cache (speeds up reruns)")
     ap.add_argument("--domains", nargs="+", default=None, help="restrict to these domains")
-    ap.add_argument("--force", action="store_true", help="delete and rebuild --out-dir")
+    ap.add_argument("--force", action="store_true", help="delete and rebuild --out-dir and its validate_domain trees")
     asyncio.run(build(ap.parse_args()))
 
 

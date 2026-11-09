@@ -1,4 +1,4 @@
-"""Unit tests for tools._hard_items (D1b harder-item mutation primitives).
+"""Unit tests for tools._hard_items (mutation primitives for the D1b new item kinds).
 
 Run standalone: `python3 tests/test_hard_items.py`
 Or via the shell wrapper: `bash tests/verify.sh`
@@ -160,6 +160,126 @@ def test_plan_edits(r: TestResults):
     r.check_eq("plan_steps normalises", H.plan_steps("(A  b)\n\n ; c\n(c d)\n"), ["(a b)", "(c d)"])
 
 
+# ---------------------------------------------------------------------------
+# The three trees (tools/build_hard_fixtures.py tree helpers + the committed
+# trees). No harness change: everything below goes through main's loader.
+# ---------------------------------------------------------------------------
+
+REPO = Path(__file__).resolve().parent.parent
+TREES = ("domains-hard", "domains-hard-vd-a", "domains-hard-vd-b")
+
+
+def _mini_tree(root: Path, folders: dict) -> None:
+    """folders: {name: [file names]}; each file holds a one-line comment."""
+    for name, files in folders.items():
+        d = root / "classical" / name
+        d.mkdir(parents=True)
+        for f in files:
+            (d / f).write_text(f"; {f}\n")
+
+
+def test_tree_helpers(r: TestResults):
+    import tempfile
+    from tools import build_hard_fixtures as B
+    out = Path("/x/domains-hard")
+    r.check_eq("vd tree names", [p.name for p in B.vd_dirs_for(out, 2)],
+               ["domains-hard-vd-a", "domains-hard-vd-b"])
+    r.check_eq("vd trees sit next to the main tree",
+               {p.parent for p in B.vd_dirs_for(out, 3)}, {Path("/x")})
+    with tempfile.TemporaryDirectory() as td:
+        a, b, m = Path(td) / "a", Path(td) / "b", Path(td) / "m"
+        _mini_tree(a, {"d1": ["domain.pddl", "domain_neg.pddl", "p01.pddl"],
+                       "d2": ["domain.pddl", "domain_neg.pddl", "p03.pddl"]})
+        _mini_tree(b, {"d1": ["domain.pddl", "domain_neg.pddl", "p02.pddl"]})
+        _mini_tree(m, {"d1": ["domain.pddl", "domain_neg.pddl", "domain_neg02.pddl",
+                              "p01.pddl", "p02.pddl"]})
+        r.check_eq("stray domain_neg02 found", B.stray_negatives(m),
+                   ["classical/d1/domain_neg02.pddl"])
+        r.check_eq("no stray in a clean tree", B.stray_negatives(a), [])
+        r.check_eq("main's loader gives 2:1 on a two-problem folder (why there are two trees)",
+                   B.validate_domain_grid(m), {"d1": {"valid": 2, "invalid": 1}})
+        ga, gb = B.validate_domain_grid(a), B.validate_domain_grid(b)
+        r.check_eq("one-problem folder is 1:1", ga["d1"], {"valid": 1, "invalid": 1})
+        r.check_eq("a + b combined", B.combine_grids([ga, gb]),
+                   {"d1": {"valid": 2, "invalid": 2}, "d2": {"valid": 1, "invalid": 1}})
+        items = [{"path": f"classical/d1/{f}", "task": "t", "label": "valid", "kind": "k"}
+                 for f in ("domain.pddl", "domain_neg.pddl")]
+        try:
+            B.tree_manifest(b, items)
+            r.check("manifest missing a file refused", False, "no error")
+        except SystemExit:
+            r.check("manifest missing a file refused", True)
+        items.append({"path": "classical/d1/p02.pddl", "task": "t", "label": "invalid",
+                      "kind": "k2"})
+        m_ = B.tree_manifest(b, items)
+        r.check_eq("manifest counts", m_["counts"], {"t/invalid": 1, "t/valid": 2})
+        r.check("manifest has sha256 per item",
+                all(len(it["sha256"]) == 64 for it in m_["items"]))
+
+
+def test_committed_trees(r: TestResults):
+    """The committed trees: hashes match their manifests, no file the frozen
+    loader would skip, validate_domain balanced over trees a and b together,
+    and the other tasks balanced in domains-hard."""
+    import hashlib
+    import json
+    from pddl_eval.domains import load_domains
+    from tools import build_hard_fixtures as B
+    if not all((REPO / t).is_dir() for t in TREES):
+        r.check("committed trees present", False, str(TREES))
+        return
+    loaded = {}
+    for t in TREES:
+        root = REPO / t
+        man = json.loads((root / "manifest.json").read_text())
+        want = (root / "manifest.sha256").read_text().split()[0]
+        r.check_eq(f"{t}: manifest.sha256", hashlib.sha256(
+            (root / "manifest.json").read_bytes()).hexdigest(), want)
+        on_disk = sorted(str(p.relative_to(root)) for p in root.rglob("*")
+                         if p.is_file() and p.parent != root)
+        r.check_eq(f"{t}: manifest lists every file", sorted(i["path"] for i in man["items"]),
+                   on_disk)
+        bad = [i["path"] for i in man["items"]
+               if hashlib.sha256((root / i["path"]).read_bytes()).hexdigest() != i["sha256"]]
+        r.check_eq(f"{t}: every file matches its sha256", bad, [])
+        r.check_eq(f"{t}: no domain_neg<digits>.pddl", B.stray_negatives(root), [])
+        r.check_eq(f"{t}: VAL re-check agrees on every item",
+                   man["val_recheck"].get("disagree", 0), 0)
+        r.check(f"{t}: every invalid item rejected by the oracle and VAL",
+                all(i["oracle"]["verdict"] is False and i["val"]["verdict"] == "invalid"
+                    for i in man["items"] if i["label"] == "invalid"))
+        loaded[t] = load_domains(root)
+    main_m = json.loads((REPO / TREES[0] / "manifest.json").read_text())
+    for t in TREES[1:]:
+        r.check_eq(f"main manifest names {t}'s hash",
+                   main_m["validate_domain_trees"][t]["manifest_sha256"],
+                   (REPO / t / "manifest.sha256").read_text().split()[0])
+    hard, va, vb = (loaded[t] for t in TREES)
+    combined = B.combine_grids([B.validate_domain_grid(REPO / t) for t in TREES[1:]])
+    r.check_eq("validate_domain: a + b covers every domain", sorted(combined), sorted(hard))
+    r.check("validate_domain: a + b balanced in every domain",
+            all(g["valid"] == g["invalid"] for g in combined.values()), str(combined))
+    for name, d in hard.items():
+        pa, pb = set(va[name]["problems"]), set(vb[name]["problems"])
+        r.check_eq(f"{name}: a and b hold the main tree's problems, one each",
+                   (sorted(pa | pb), len(pa), len(pb), pa & pb),
+                   (sorted(d["problems"]), 1, 1, set()))
+        r.check_eq(f"{name}: tree a's invalid domain is the main tree's",
+                   va[name]["negatives"]["domain"], d["negatives"]["domain"])
+        r.check(f"{name}: trees a and b have different invalid domains",
+                va[name]["negatives"]["domain"] != vb[name]["negatives"]["domain"])
+        r.check_eq(f"{name}: same valid domain in all trees",
+                   {va[name]["domain"], vb[name]["domain"]}, {d["domain"]})
+        negs = d["negatives"]
+        r.check_eq(f"{name}: invalid problems == valid problems",
+                   len(negs["problems"]), len(d["problems"]))
+        for p, pp in negs["plans_per_problem"].items():
+            r.check_eq(f"{name}/{p}: invalid plans == valid plans",
+                       len(pp["invalid"]), len(pp["valid"]))
+            r.check_eq(f"{name}/{p}: valid plans distinct",
+                       len(set(pp["valid"])), len(pp["valid"]))
+
+
 def main():
     r = TestResults("test_hard_items")
     test_reader(r)
@@ -169,6 +289,8 @@ def main():
     test_problem_mutators(r)
     test_single_type_domain_has_no_type_mismatch(r)
     test_plan_edits(r)
+    test_tree_helpers(r)
+    test_committed_trees(r)
     r.report_and_exit()
 
 

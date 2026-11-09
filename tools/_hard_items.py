@@ -1,4 +1,4 @@
-"""Pure-text PDDL helpers for the harder test items (action plan D1b).
+"""Pure-text PDDL helpers for the D1b new item kinds (action plan D1b).
 
 Used by `tools/build_hard_fixtures.py`. No MCP, no planner, no I/O: every
 function takes text and returns text plus a record of what changed, so the

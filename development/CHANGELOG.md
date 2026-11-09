@@ -6,30 +6,39 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
-## 2026-10-27 — Harder test items (D1b): a second fixture tree, the loader reads more than one invalid domain, the plan-strategy bug fixed
+## 2026-11-09: D1b new item kinds in three fixture trees, no harness change; provenance copy tool; the plan-strategy bug fixed
 
-**Motivation.** Action plan D1b: harder items beside the current ones, balanced valid
-against invalid on every validate task. Nothing in `domains/` changed and no existing
-corpus was touched. Details, counts and checks: `development/reference/d1b_harder_items.md`.
+**Motivation.** Action plan D1b: new item kinds beside the current ones, balanced valid
+against invalid on every validate task. Decided by Omer on 2026-11-09: no harness change
+(the loader is a frozen file of the delivered-rerun package), validate_domain balanced
+through two small trees, results in a new sweep folder with provenance on every reused
+row. Nothing in `domains/` changed and no corpus was touched. Details, counts and
+checks: `development/reference/d1b_harder_items.md`.
 
-**1. New tree `domains-hard/`, built by `tools/build_hard_fixtures.py`** (helpers
+**1. Three new trees, built by `tools/build_hard_fixtures.py`** (helpers
 `tools/_hard_items.py`, `tools/_enhsp_variants.py`; tests `tests/test_hard_items.py`).
-Same layout as `domains/`, so `run_experiment.py --domains-dir domains-hard` loads it;
-`domains-hard/manifest.json` lists every file with its sha256.
+All have the layout of `domains/` and load with the unchanged `load_domains` through
+`run_experiment.py --domains-dir`.
+- `domains-hard/`: every task except validate_domain (20 domains, 2 problems each).
+- `domains-hard-vd-a/` and `domains-hard-vd-b/`: validate_domain only. Each folder has
+  `domain.pddl`, one problem and one invalid domain, so each tree is 1:1, and the two
+  together give 2 valid and 2 invalid validate_domain items per domain.
+Each tree has its own `manifest.json` (every file with its sha256) and `manifest.sha256`;
+the main manifest names the hashes of the other two. No file named `domain_neg02.pddl`
+or similar is written: the frozen loader would skip it without a warning (its
+invalid-domain read is the single name `domain_neg.pddl`), and the build stops if it
+finds one. The first build of this work (commit `ad7771c`) instead changed
+`pddl_eval/domains.py`, `pddl_eval/runner.py` and `run_experiment.py` to read a second
+invalid domain; that change was dropped and all three files are back to `main`.
 
-**2. A domain folder may hold more than one invalid domain (`pddl_eval/domains.py`,
-`pddl_eval/runner.py`, `run_experiment.py`).** Files `domain_neg02.pddl`,
-`domain_neg03.pddl`, ... next to `domain_neg.pddl` are loaded into
-`negatives["extra_domains"]`, checked at startup like `domain_neg.pddl` (abort if the
-validator does not reject one), and each gets its own validate_domain job with the file
-stem as problem name (`domain_neg02`, ...). `--partial K` keeps `domain_neg` plus the
-first K-1 extras. The key is set only when such files exist, and `domains/` has none:
-the loaded data and the full job grid on `domains/` (9,120 jobs, and the `--partial 2`
-grid) were checked identical to the previous code. **Analysis code that labels
-validate_domain rows must treat every `domain_neg*` name as invalid.** The pinned
-`tools/e2e_regrade.py` (`truth_for`) and the analyzer's `build_deck.py` test
-`== "domain_neg"` and would call `domain_neg02` valid; they were not edited, since they
-only ever read `domains/` corpora.
+**2. `tools/extension_copy_reused.py`** (tests `tests/test_extension_copy_reused.py`).
+Copies rerun rows that the extension reuses into the extension's own results folder.
+Each copied row is the source line byte for byte plus `reused_from_folder`,
+`reused_from_job`, `reused_from_sha256` and `copied_at` (top-level fields, which the
+resume loader ignores). It refuses a destination inside `delivered-rerun`,
+`sweep5v2-live`, `sweep6-live` or a `*_sweep6` folder, and never overwrites. The SLURM
+job id is not stored in any cell's summary or rows, so it is an argument (the ids are in
+the delivered-rerun prereg, section 8). Not run on real data.
 
 **3. `tools/build_fixtures.py` sent the Fast Downward strategy as `"search"`; the tool's
 argument is `strategy`.** The server drops unknown arguments silently, so every
