@@ -177,6 +177,17 @@ ISS-013.
   or Apache-2.0 for code (whichever is more common for academic code). BGU's policy on
   student work is checked first.
 
+### Open PRs for Omer's review (opened 2026-11-09; each checked: all 27 frozen file hashes match, package `822aace…`)
+
+| PR | what | note |
+|---|---|---|
+| #124 | C3: Study 1 breakdowns and Study 2 tables into `NUMBERS.md`, by generator (1,290 and 325 self-checks pass) | edits `NUMBERS.md`, as #125 does: merge one, then rebase the other (the generators rewrite only their own marked blocks) |
+| #125 | 35B call flips (new T8c), Haiku tool arm on the renamed corpus, VAL on the Claude plans | found ISS-027 |
+| #126 | harness: opt-in reasoning effort for gpt-oss; opt-in storing of the reasoning trace | found ISS-030; holds the one-job smoke command for the next cluster go-ahead |
+| #127 | D1b: new item kinds in three trees (`domains-hard/`, `-vd-a/`, `-vd-b/`), no harness change; write-up; provenance copy tool | no SLURM job id is stored in any results file, so the copy tool takes it as an argument; trees a and b need separate output folders |
+| #128 | C4: four example transcripts, drawn by a stated rule (seed 20261109) | found ISS-028 and ISS-029 |
+| #129 | checkpoints: remove 4 outdated deck files (7.2 MiB); every trial zip kept, `sweep5v2-live` byte-identical to `results/` | 5 questions for Omer in the PR |
+
 ### Open decisions
 
 - **Which two families go first** in wave 1. Omer leans gpt-oss-20b and Llama 3.1 8B; the
