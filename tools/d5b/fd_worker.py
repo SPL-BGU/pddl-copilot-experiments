@@ -18,8 +18,9 @@ and problem files. VAL time is not part of the planner time.
 
 pddl-pyvalidator (the harness grader, PDDLValidator().validate as the
 pddl-validator plugin calls it) is NOT run here by default: on these sizes it
-takes minutes per plan (535 s for a 734-step miconic plan, against 1.8 s for
-KCL VAL), which held planner slots and loaded the cores the timed runs share.
+takes minutes per plan on the long plans where KCL VAL takes about a second
+(tools.d5b.shares prints the slowest pyval check), which held planner slots
+and loaded the cores the timed runs share.
 `pipeline val --checker pyval` runs it on every plan after the solve passes;
 `--pyval` here restores the inline check.
 """
