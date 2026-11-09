@@ -24,6 +24,15 @@ BLOCKS = {
     "s1_call_flips": ["numbers_s1_call_flips.md", "s1_call_flips_table.md"],
     "06_frontier_tools_contamination": ["numbers_06_frontier_tools_contamination.md"],
     "val_frontier_solve": ["numbers_val_frontier_solve.md"],
+    # ISS-027 post hoc corrections (iss027_replay.py, iss027_unaided.py): the table, and
+    # one caveat line after each table holding a figure that moves
+    "iss027": ["numbers_iss027.md"],
+    "iss027_mech": ["numbers_iss027_mech.md"],
+    "iss027_summary": ["numbers_iss027_summary.md"],
+    "iss027_t1": ["numbers_iss027_t1.md"],
+    "iss027_t2": ["numbers_iss027_t2.md"],
+    "iss027_t5": ["numbers_iss027_t5.md"],
+    "iss027_t8a": ["numbers_iss027_t8a.md"],
 }
 
 

@@ -58,6 +58,7 @@ run_test test_reasoning_settings.py
 run_test test_delivered_rerun_analysis.py
 run_test test_c3_tables.py
 run_test test_reanalysis_flips_anon_val.py
+run_test test_iss027.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"
