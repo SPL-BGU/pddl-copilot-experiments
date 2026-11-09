@@ -5,7 +5,8 @@ No model runs. This folder builds the planner ground truth that must exist
 before any model sees these problems: fresh problems from the IPC 2023
 learning-track generators, a syntax check of every domain and problem, Fast
 Downward at 120 s and 1800 s with the pddl-solver plugin's three strategies,
-and a VAL check of every plan found.
+and a VAL check of every plan found (KCL VAL; the harness grader
+pddl-pyvalidator is compared with it).
 
 ## What is committed and what is not
 
@@ -42,7 +43,21 @@ Copied from `../pddl-copilot/plugins/pddl-solver/server/solver_server.py`
 params={"fast_downward_search_config": ...})`, `solve(timeout=T)`, the three
 `FD_STRATEGIES` (`lazy_greedy_cea`, the plugin default; `lazy_greedy_ff`;
 `astar_lmcut`). Versions as in the laptop plugin venv: unified_planning 1.3.0,
-up_fast_downward 0.5.2. VAL is pddl-pyvalidator 0.1.6.
+up_fast_downward 0.5.2.
+
+## VAL
+
+Every plan is checked by KCL VAL, the macOS build C1 used
+(`development/reference/val_crosscheck.md`; sha256 `44a07d6d…`, "Version 4",
+run under Rosetta), right after the planner returns. "Solved" in the shares
+means a plan that VAL accepts. The harness grader, pddl-pyvalidator 0.1.6, is
+run on the same plans afterwards (`val --checker pyval`) and compared with VAL
+in the shares' Checks part. It is not part of the timed passes because it is
+slow on long plans: minutes per plan where VAL takes well under a second
+(`shares` prints the slowest check). The 120 s pass first ran pyval inline;
+those records carry it as `val_*`, which the readers rename to `pyval_*`.
+
+Every domain and problem file also goes through both checkers (`validate`).
 
 Differences from the plugin, all needed to run this as a batch:
 
@@ -69,12 +84,17 @@ PY=external/d5b-venv/bin/python
 $PY -m tools.d5b.pipeline repro-ipc      # 360 of 360 IPC testing problems rebuilt byte for byte
 $PY -m tools.d5b.pipeline generate       # 120 problems -> external/d5b-work/problems
 $PY -m tools.d5b.manifest --check        # hashes match manifest.json
-$PY -m tools.d5b.pipeline validate       # every domain and problem, pddl-pyvalidator
+mkdir -p external/kcl-val && cp ../LLMs-Planning/planner_tools/VAL/bin/MacOSExecutables/validate external/kcl-val/
+#   (the PlanBench clone; on the laptop it is external/LLMs-Planning in the main checkout)
+$PY -m tools.d5b.pipeline validate       # every domain and problem, pddl-pyvalidator and KCL VAL
 $PY -m tools.d5b.pipeline solve --time-limit 120
-$PY -m tools.d5b.pipeline val --time-limit 120     # only if some VAL check was cut off
-$PY -m tools.d5b.pipeline solve --time-limit 1800  # resumable; --max-hours N stops starting jobs
-$PY -m tools.d5b.pipeline val --time-limit 1800
-python -m tools.d5b.shares               # the solved shares (repo venv is fine)
+$PY -m tools.d5b.pipeline val --time-limit 120 --checker kcl    # only if a VAL check was cut off
+$PY -m tools.d5b.pipeline solve --time-limit 1800 --order small-first  # resumable; --max-hours N
+$PY -m tools.d5b.pipeline val --time-limit 1800 --checker kcl
+$PY -m tools.d5b.pipeline val --time-limit 120 --checker pyval  # slow; resumable; --max-hours N
+$PY -m tools.d5b.pipeline val --time-limit 1800 --checker pyval
+python -m tools.d5b.shares --write       # prints the shares; writes tools/reanalysis/out/{d5b_shares,numbers_d5b_shares}.md
+.venv/bin/python tools/reanalysis/numbers_fill.py   # copies the rows into NUMBERS.md
 ```
 
 Tests: `python3 tests/test_d5b.py` (standard library only).

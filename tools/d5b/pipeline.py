@@ -5,10 +5,20 @@ Run with the D5b scratch venv (tools/d5b/requirements.txt), from the repo root:
     PY=external/d5b-venv/bin/python
     $PY -m tools.d5b.pipeline generate            # IPC generators -> external/d5b-work/problems
     $PY -m tools.d5b.manifest --check             # hashes match tools/d5b/manifest.json
-    $PY -m tools.d5b.pipeline validate            # pyvalidator syntax check, every domain+problem
-    $PY -m tools.d5b.pipeline solve --time-limit 120
+    $PY -m tools.d5b.pipeline validate            # pyvalidator + KCL VAL, every domain+problem
+    $PY -m tools.d5b.pipeline solve --time-limit 120    # KCL VAL on every plan, inline
+    $PY -m tools.d5b.pipeline val --time-limit 120 --checker kcl    # only if a VAL check was cut off
     $PY -m tools.d5b.pipeline solve --time-limit 1800   # only pairs unsolved at 120 s
+    $PY -m tools.d5b.pipeline val --time-limit 1800 --checker kcl
+    $PY -m tools.d5b.pipeline val --time-limit 120 --checker pyval  # harness grader, slow
+    $PY -m tools.d5b.pipeline val --time-limit 1800 --checker pyval
     python -m tools.d5b.shares                    # solved shares (repo venv is fine)
+
+VAL. "Solved" means a plan that KCL VAL accepts (tools/d5b/kval.py: the macOS
+build C1 used, sha256 44a07d6d...). The harness grader, pddl-pyvalidator 0.1.6,
+is run on the same plans afterwards with `val --checker pyval` and compared
+with VAL in tools.d5b.shares; it is far too slow on long plans to run inside
+the timed passes (minutes per plan where VAL takes seconds).
 
 All outputs go under --work (default external/d5b-work, gitignored). Nothing
 is written under results/.
@@ -43,7 +53,7 @@ import sys
 import time
 from pathlib import Path
 
-from tools.d5b import ladder
+from tools.d5b import kval, ladder, shares
 from tools.d5b.manifest import problem_relpath
 
 REPO = Path(__file__).resolve().parents[2]
@@ -112,24 +122,32 @@ def cmd_repro_ipc(a) -> int:
 
 # --------------------------------------------------------------------- validate
 def cmd_validate(a) -> int:
+    """Every domain + problem through pddl-pyvalidator (`valid`) and KCL VAL
+    (`kval_valid`; a domain file is checked together with its first problem,
+    since VAL needs both)."""
     from pyval import PDDLValidator
     import importlib.metadata as md
 
     clone, work = a.clone.resolve(), a.work.resolve()
+    kbin = _kcl_bin(a)
     out = work / "validate.jsonl"
     bad = 0
     with open(out, "w") as f:
-        f.write(json.dumps({"_header": True, "pddl-pyvalidator": md.version("pddl-pyvalidator")}) + "\n")
+        f.write(json.dumps({"_header": True, "pddl-pyvalidator": md.version("pddl-pyvalidator"),
+                            "kcl_val_sha256": kval.binary_sha256(kbin)}) + "\n")
         for d in ladder.DOMAINS:
             r = PDDLValidator().validate_syntax(str(clone / d / "domain.pddl"), None)
-            rec = {"file": f"{d}/domain.pddl", "valid": bool(r.is_valid), "status": str(r.status)}
-            bad += not rec["valid"]
+            first = work / problem_relpath(d, ladder.TIERS[0], "p01.pddl")
+            k = kval.check_files(kbin, str(clone / d / "domain.pddl"), str(first))
+            rec = {"file": f"{d}/domain.pddl", "valid": bool(r.is_valid), "status": str(r.status), **k}
+            bad += not (rec["valid"] and rec["kval_valid"])
             f.write(json.dumps(rec) + "\n"); f.flush()
         for s in ladder.ladder():
             rel = problem_relpath(s.domain, s.tier, s.problem_name)
             r = PDDLValidator().validate_syntax(str(clone / s.domain / "domain.pddl"), str(work / rel))
-            rec = {"file": rel, "valid": bool(r.is_valid), "status": str(r.status)}
-            if not rec["valid"]:
+            k = kval.check_files(kbin, str(clone / s.domain / "domain.pddl"), str(work / rel))
+            rec = {"file": rel, "valid": bool(r.is_valid), "status": str(r.status), **k}
+            if not (rec["valid"] and rec["kval_valid"]):
                 bad += 1
                 rec["report"] = r.report()[-2000:]
             f.write(json.dumps(rec) + "\n"); f.flush()
@@ -148,7 +166,7 @@ def _load_final(path: Path) -> dict:
             r = json.loads(line)
             if r.get("_header") or r.get("status") == "requeued":
                 continue
-            done[r["key"]] = r
+            done[r["key"]] = shares.normalize(r)
     return done
 
 
@@ -161,13 +179,12 @@ def jobs_for(time_limit: int, work: Path, base_limit: int = 120) -> list[tuple[s
     missing = [p for p in pairs if job_key(p[0], p[1], base_limit) not in base]
     if missing:
         raise SystemExit(f"{len(missing)} pairs have no {base_limit} s record; finish that pass first")
-    unval = [k for k, r in base.items() if r.get("status") == "solved" and not isinstance(r.get("val_valid"), bool)]
+    unval = [k for k, r in base.items() if shares.is_solved(r) is None]
     if unval:
-        raise SystemExit(f"{len(unval)} plans of the {base_limit} s pass have no VAL verdict; run `val` first")
-    # Deterministic search: only pairs unsolved (or with an invalid plan) at the base limit.
-    return [p for p in pairs
-            if not (base[job_key(p[0], p[1], base_limit)].get("status") == "solved"
-                    and base[job_key(p[0], p[1], base_limit)].get("val_valid"))]
+        raise SystemExit(f"{len(unval)} plans of the {base_limit} s pass have no KCL VAL verdict; "
+                         f"run `val --checker kcl` first")
+    # Deterministic search: only pairs unsolved (or with a VAL-rejected plan) at the base limit.
+    return [p for p in pairs if shares.is_solved(base[job_key(p[0], p[1], base_limit)]) is False]
 
 
 def _tree_rss(proc) -> int:
@@ -199,6 +216,15 @@ def _kill_tree(proc) -> None:
     psutil.wait_procs(procs, timeout=10)
 
 
+def _kcl_bin(a) -> Path:
+    b = Path(a.kcl_val)
+    if not b.exists():
+        raise SystemExit(f"KCL VAL binary not found at {b}; see tools/d5b/kval.py")
+    if kval.binary_sha256(b) != kval.EXPECTED_SHA256:
+        print(f"warning: {b} is not the C1 VAL build (sha256 differs)", file=sys.stderr)
+    return b
+
+
 def _header(a, n_jobs: int) -> dict:
     import importlib.metadata as md
     import psutil
@@ -212,6 +238,7 @@ def _header(a, n_jobs: int) -> dict:
         "versions": {p: md.version(p) for p in
                      ("unified-planning", "up-fast-downward", "pddl-pyvalidator", "psutil")},
         "ipc_commit": ladder.IPC_COMMIT,
+        "kcl_val_sha256": kval.binary_sha256(_kcl_bin(a)),
     }
 
 
@@ -219,6 +246,7 @@ def cmd_solve(a) -> int:
     import psutil
 
     clone, work = a.clone.resolve(), a.work.resolve()
+    kbin = _kcl_bin(a)
     out = runs_file(work, a.time_limit)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmpdir = work / "tmp" / str(a.time_limit)
@@ -260,7 +288,7 @@ def cmd_solve(a) -> int:
         write(rec)
         n_done += 1
         print(f"[{n_done}] {key}: {rec.get('status')} "
-              f"{rec.get('solve_time', rec['wall'])}s val={rec.get('val_valid')}", flush=True)
+              f"{rec.get('solve_time', rec['wall'])}s val={rec.get('kval_valid')}", flush=True)
 
     def kill(key, reason, requeue=False) -> bool:
         """Kill a running job. If the planner had already finished (the job
@@ -272,7 +300,7 @@ def cmd_solve(a) -> int:
         r["log"].close()
         planned = json.loads(r["json"].read_text()) if r["json"].exists() else None
         if planned and planned.get("status") == "solved":
-            planned.update(val_valid=None, val_status="VAL_NOT_FINISHED", val_killed_by=reason)
+            planned.update(val_killed_by=reason)
             finish(key, planned)
             return True
         if requeue:
@@ -301,7 +329,7 @@ def cmd_solve(a) -> int:
             proc = subprocess.Popen(
                 [sys.executable, "-m", "tools.d5b.fd_worker", "--domain", str(clone / dom / "domain.pddl"),
                  "--problem", str(work / rel), "--strategy", st, "--timeout", str(a.time_limit),
-                 "--plan-out", str(plan), "--json-out", str(jpath)],
+                 "--plan-out", str(plan), "--json-out", str(jpath), "--kcl-val", str(kbin)],
                 cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
             running[key] = {"proc": proc, "ps": psutil.Process(proc.pid), "start": time.time(),
                             "peak": 0, "peak_now": 0, "rel": rel, "strategy": st, "json": jpath, "log": log}
@@ -336,30 +364,46 @@ def cmd_solve(a) -> int:
 
 # -------------------------------------------------------------------------- val
 def _val_one(args):
-    from tools.d5b.fd_worker import validate_plan
-    key, rec, domain, problem = args
-    return key, rec, validate_plan(domain, problem, rec["plan_file"])
+    checker, kbin, key, rec, domain, problem = args
+    if checker == "kcl":
+        return key, rec, kval.check_plan(kbin, domain, problem, rec["plan_file"])
+    from tools.d5b.fd_worker import pyval_plan
+    return key, rec, pyval_plan(domain, problem, rec["plan_file"])
 
 
 def cmd_val(a) -> int:
-    """Finish VAL for plans whose check was cut off (no time limit; VAL time is
-    not planner time). Appends an updated record per plan; the last record of
-    a key wins when the file is read."""
-    from concurrent.futures import ProcessPoolExecutor
+    """Add a VAL verdict to every plan of a pass that lacks one: `--checker kcl`
+    (KCL VAL, normally done inline; this finishes checks that were cut off) or
+    `--checker pyval` (pddl-pyvalidator 0.1.6, the harness grader; no time
+    limit, it is slow on long plans). Appends one updated record per plan; the
+    last record of a key wins when the file is read, so this is resumable."""
+    from concurrent.futures import ProcessPoolExecutor, as_completed
 
     clone, work = a.clone.resolve(), a.work.resolve()
+    kbin = _kcl_bin(a) if a.checker == "kcl" else None
+    field = "kval_valid" if a.checker == "kcl" else "pyval_valid"
     out = runs_file(work, a.time_limit)
-    todo = [(k, r, str(clone / r["domain"] / "domain.pddl"), str(work / r["problem"]))
+    todo = [(a.checker, kbin, k, r, str(clone / r["domain"] / "domain.pddl"), str(work / r["problem"]))
             for k, r in _load_final(out).items()
-            if r.get("status") == "solved" and not isinstance(r.get("val_valid"), bool)]
-    print(f"val {a.time_limit}s: {len(todo)} plans without a VAL verdict", flush=True)
+            if r.get("status") == "solved" and not isinstance(r.get(field), bool)]
+    todo.sort(key=lambda t: t[3].get("plan_len") or 0)  # short plans first
+    print(f"val {a.time_limit}s --checker {a.checker}: {len(todo)} plans without a verdict", flush=True)
+    deadline = time.time() + a.max_hours * 3600 if a.max_hours else None
     with ProcessPoolExecutor(max_workers=a.workers) as ex:
-        for key, rec, v in ex.map(_val_one, todo):
+        futs = [ex.submit(_val_one, t) for t in todo]
+        for fut in as_completed(futs):
+            key, rec, v = fut.result()
             rec = dict(rec, **v)
-            rec["val_completed_later"] = True
+            rec[f"{a.checker}_added_later"] = True
             with open(out, "a") as f:
                 f.write(json.dumps(rec, sort_keys=True) + "\n")
-            print(f"{key}: val={rec['val_valid']} ({rec['val_time']}s)", flush=True)
+            print(f"{key}: {field}={rec[field]} ({rec.get(field.replace('_valid', '_time'))}s, "
+                  f"{rec.get('plan_len')} steps)", flush=True)
+            if deadline and time.time() > deadline:
+                print("max hours reached: cancelling the checks not started", flush=True)
+                for f_ in futs:
+                    f_.cancel()
+                break
     return 0
 
 
@@ -367,6 +411,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="D5b ground truth pipeline")
     ap.add_argument("--clone", type=Path, default=REPO / "external" / "ipc2023-learning")
     ap.add_argument("--work", type=Path, default=REPO / "external" / "d5b-work")
+    ap.add_argument("--kcl-val", type=Path, default=kval.DEFAULT_BIN, help="KCL VAL `validate` binary")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("generate")
     sub.add_parser("repro-ipc")
@@ -384,7 +429,9 @@ def main(argv=None) -> int:
     s.add_argument("--limit-jobs", type=int, default=0, help="debug: run only the first N jobs")
     v = sub.add_parser("val")
     v.add_argument("--time-limit", type=int, required=True)
+    v.add_argument("--checker", choices=("kcl", "pyval"), required=True)
     v.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) - 2))
+    v.add_argument("--max-hours", type=float, default=None)
     a = ap.parse_args(argv)
     return {"val": cmd_val, "generate": cmd_generate, "repro-ipc": cmd_repro_ipc, "validate": cmd_validate, "solve": cmd_solve}[a.cmd](a)
 

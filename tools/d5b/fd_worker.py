@@ -1,4 +1,4 @@
-"""One D5b planner run: Fast Downward through unified-planning, then VAL.
+"""One D5b planner run: Fast Downward through unified-planning, then KCL VAL.
 
 Runs in its own process (started by tools.d5b.pipeline), so the parent can
 watch its memory and kill it. Needs the D5b scratch venv
@@ -13,9 +13,15 @@ planner.solve(problem, timeout=T) with the working directory pinned to a fresh
 temp folder. The timeout covers the Fast Downward subprocess (translate plus
 search), as in the plugin; parsing is outside it. The plan is extracted the way
 the plugin does it (lowercase "(name arg ...)"), written one action per line,
-and checked with pddl-pyvalidator (PDDLValidator().validate, as the
-pddl-validator plugin does) against the original IPC domain and problem files.
-VAL time is not part of the planner time.
+and checked with KCL VAL (tools/d5b/kval.py) against the original IPC domain
+and problem files. VAL time is not part of the planner time.
+
+pddl-pyvalidator (the harness grader, PDDLValidator().validate as the
+pddl-validator plugin calls it) is NOT run here by default: on these sizes it
+takes minutes per plan (535 s for a 734-step miconic plan, against 1.8 s for
+KCL VAL), which held planner slots and loaded the cores the timed runs share.
+`pipeline val --checker pyval` runs it on every plan after the solve passes;
+`--pyval` here restores the inline check.
 """
 from __future__ import annotations
 
@@ -47,16 +53,16 @@ def _extract_plan(result) -> list[str]:
     return actions
 
 
-def validate_plan(domain: str, problem: str, plan_file: str) -> dict:
+def pyval_plan(domain: str, problem: str, plan_file: str) -> dict:
     """pddl-pyvalidator verdict on one plan file (no time limit)."""
     from pyval import PDDLValidator
     t = time.time()
     try:
         v = PDDLValidator().validate(domain, problem, plan_file)
-        out = {"val_valid": bool(v.is_valid), "val_status": str(v.status)}
+        out = {"pyval_valid": bool(v.is_valid), "pyval_status": str(v.status)}
     except Exception as e:  # noqa: BLE001
-        out = {"val_valid": False, "val_status": "VAL_ERROR", "val_message": str(e)[-2000:]}
-    out["val_time"] = round(time.time() - t, 3)
+        out = {"pyval_valid": False, "pyval_status": "VAL_ERROR", "pyval_message": str(e)[-2000:]}
+    out["pyval_time"] = round(time.time() - t, 3)
     return out
 
 
@@ -68,7 +74,7 @@ def write_json(path: str, rec: dict) -> None:
 
 
 def run(domain: str, problem: str, strategy: str, timeout: int, plan_out: str,
-        checkpoint=lambda rec: None) -> dict:
+        checkpoint=lambda rec: None, kcl_val=None, pyval: bool = False) -> dict:
     from unified_planning.io import PDDLReader
     from unified_planning.shortcuts import OneshotPlanner, get_environment
     import unified_planning.engines.results as up_results
@@ -115,13 +121,17 @@ def run(domain: str, problem: str, strategy: str, timeout: int, plan_out: str,
             os.makedirs(os.path.dirname(plan_out), exist_ok=True)
             with open(plan_out, "w") as f:
                 f.write("".join(a + "\n" for a in plan))
-            rec.update(status="solved", plan_len=len(plan), plan_file=plan_out,
-                       val_valid=None, val_status="PENDING")
-            # Planner result first: if VAL is then killed (memory or wall
-            # guard), the parent still records the plan, and
-            # `pipeline val` finishes the check later.
+            rec.update(status="solved", plan_len=len(plan), plan_file=plan_out)
+            # Planner result first: if a check is then killed (memory or wall
+            # guard), the parent still records the plan, and `pipeline val`
+            # finishes the check later.
             checkpoint(rec)
-            rec.update(validate_plan(domain, problem, plan_out))
+            if kcl_val:
+                from tools.d5b.kval import check_plan
+                rec.update(check_plan(kcl_val, domain, problem, plan_out))
+                checkpoint(rec)
+            if pyval:
+                rec.update(pyval_plan(domain, problem, plan_out))
         elif st in (up_results.PlanGenerationResultStatus.UNSOLVABLE_PROVEN,
                     up_results.PlanGenerationResultStatus.UNSOLVABLE_INCOMPLETELY):
             rec["status"] = "unsolvable"
@@ -145,9 +155,11 @@ def main(argv=None) -> int:
     ap.add_argument("--timeout", type=int, required=True)
     ap.add_argument("--plan-out", required=True)
     ap.add_argument("--json-out", required=True)
+    ap.add_argument("--kcl-val", default=None, help="KCL VAL binary; omit to skip")
+    ap.add_argument("--pyval", action="store_true", help="also run pddl-pyvalidator inline")
     a = ap.parse_args(argv)
     rec = run(a.domain, a.problem, a.strategy, a.timeout, a.plan_out,
-              checkpoint=lambda r: write_json(a.json_out, r))
+              checkpoint=lambda r: write_json(a.json_out, r), kcl_val=a.kcl_val, pyval=a.pyval)
     write_json(a.json_out, rec)
     return 0
 

@@ -145,7 +145,7 @@ def _rec(problem, strategy, lim, status, valid=None, t=1.0):
     d = {"key": f"{problem}|{strategy}|{lim}", "problem": problem, "strategy": strategy,
          "time_limit": lim, "status": status, "solve_time": t}
     if valid is not None:
-        d["val_valid"] = valid
+        d["kval_valid"] = valid
     return d
 
 
@@ -229,18 +229,18 @@ def test_shares(r: TestResults) -> None:
                    {"solved": 1, "unsolved": 1})
         r.check_eq("miconic hard any 1800 pending", dict(c[("miconic", "hard", "any", 1800)]), {"pending": 1})
         r.check_eq("miconic hard cea 1800", dict(c[("miconic", "hard", "lazy_greedy_cea", 1800)]), {"unsolved": 1})
-        unv = dict(r120[(A, "lazy_greedy_cea")], val_valid=None, val_status="VAL_NOT_FINISHED")
+        unv = dict(r120[(A, "lazy_greedy_cea")], kval_valid=None)
         o2 = shares.pair_outcomes({(A, "lazy_greedy_cea"): unv}, {})
-        r.check_eq("VAL unfinished = pending at both limits", o2[(A, "lazy_greedy_cea")], {120: None, 1800: None})
+        r.check_eq("no KCL VAL verdict = pending at both limits", o2[(A, "lazy_greedy_cea")], {120: None, 1800: None})
         r.check_eq("not solved status", shares.is_solved(_rec(A, "x", 120, "memout_cap")), False)
         r.check_eq("fmt plain", shares.fmt(Counter(solved=1, unsolved=1)), "1/2 (50%)")
         r.check_eq("fmt pending", shares.fmt(Counter(solved=1, unsolved=1, pending=2)),
                    "1-3/4 (25-75%, 2 pending)")
         rep = shares.report(r120, r1800)
-        r.check("report counts VAL rejection", "plans rejected by VAL: 1" in rep, rep)
-        r.check("report counts pending", "or VAL unfinished): 2" in rep, rep)
+        r.check("report counts VAL rejection", "plans rejected by KCL VAL: 1" in rep, rep)
+        r.check("report counts pending", "or no VAL verdict yet): 2" in rep, rep)
         r.check("report flags near-limit solve", "took over half the limit: 1" in rep, rep)
-        rows = shares.numbers_rows(r120, r1800, [{"valid": True}] * 5)
+        rows = shares.numbers_rows(r120, r1800, [{"valid": True, "kval_valid": True}] * 5)
         r.check_eq("numbers rows: header + 2 + syntax + 4 share rows + VAL row", rows.count("\n"), 8)
         r.check("numbers rows: syntax row", "5 / 5 files valid" in rows, rows)
         r.check("numbers rows: VAL row", "| 1 of 4 |" in rows, rows)
@@ -249,8 +249,40 @@ def test_shares(r: TestResults) -> None:
                 "medium -, hard 0/1 (0%)" in rows, rows)
 
 
+def test_kval_classify(r: TestResults) -> None:
+    from tools.d5b import kval
+    ok = "Checking plan: x.plan\nPlan size: 3\nPlan executed successfully - checking goal\nPlan valid\n"
+    r.check_eq("valid plan", kval.classify_plan(0, ok), (True, "plan_valid", 3))
+    goal = "Checking plan: x.plan\nPlan size: 5\nPlan executed successfully - checking goal\nGoal not satisfied\nPlan invalid\n"
+    r.check_eq("goal not satisfied", kval.classify_plan(0, goal), (False, "goal_not_satisfied", 5))
+    bad = "Checking plan: x.plan\nPlan size: 2\nPlan failed to execute\n"
+    r.check_eq("failed to execute", kval.classify_plan(0, bad)[:2], (False, "failed_to_execute"))
+    r.check_eq("no verdict", kval.classify_plan(-11, "")[0], None)
+    r.check_eq("parse ok", kval.classify_parse(0, ""), (True, "accepted"))
+    r.check_eq("parse error", kval.classify_parse(0, "Problem in domain definition!\n")[0], False)
+
+
+def test_normalize_and_pyval_checks(r: TestResults) -> None:
+    A = "problems/blocksworld/easy/p01.pddl"
+    legacy = dict(_rec(A, "lazy_greedy_cea", 120, "solved", True, t=1.0), plan_len=4,
+                  val_valid=True, val_status="VALID", val_time=2.5)
+    n = shares.normalize(legacy)
+    r.check_eq("legacy val_* -> pyval_*", (n.get("pyval_valid"), n.get("pyval_time"), "val_valid" in n),
+               (True, 2.5, False))
+    r.check_eq("normalize leaves new records alone", shares.normalize(n), n)
+    b = dict(_rec(A, "lazy_greedy_ff", 120, "solved", True), plan_len=9, pyval_valid=False, pyval_time=30.0)
+    c = dict(_rec(A, "astar_lmcut", 120, "solved", True), plan_len=4)
+    r120 = {(A, "lazy_greedy_cea"): n, (A, "lazy_greedy_ff"): b, (A, "astar_lmcut"): c}
+    lines = shares.checks(r120, {}, shares.pair_outcomes(r120, {}))
+    py = [x for x in lines if "pddl-pyvalidator" in x][0]
+    r.check("pyval coverage and agreement", "run on 2 of 3 plans; agrees with KCL VAL on 1 of 2" in py, py)
+    r.check("slowest pyval check named", "slowest pyval check 30 s for a 9-step plan" in py, py)
+
+
 def main() -> None:
     r = TestResults("test_d5b")
+    test_kval_classify(r)
+    test_normalize_and_pyval_checks(r)
     test_ladder(r)
     test_ipc_testing_params(r)
     test_strategies_match_plugin(r)

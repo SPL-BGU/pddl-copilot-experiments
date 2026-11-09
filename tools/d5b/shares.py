@@ -6,7 +6,9 @@ Standard library only (runs in the repo venv):
 
 Reads <work>/runs/fd_120s.jsonl and, if present, fd_1800s.jsonl, written by
 tools.d5b.pipeline solve. A (problem, strategy) pair counts as solved only if
-the planner returned a plan AND pddl-pyvalidator accepted it (VAL every plan).
+the planner returned a plan AND KCL VAL accepted it (VAL every plan). The
+harness grader, pddl-pyvalidator 0.1.6, is checked against KCL VAL on every
+plan it has been run on (`pipeline val --checker pyval`), in the Checks part.
 
 Within 1800 s = solved in the 120 s pass, or solved in the 1800 s pass. The
 1800 s pass only runs the pairs unsolved at 120 s (searches are deterministic);
@@ -29,9 +31,22 @@ LIMITS = (120, 1800)
 DEFAULT_WORK = Path(__file__).resolve().parents[2] / "external" / "d5b-work"
 
 
+def normalize(r: dict) -> dict:
+    """Records from the first runs of the 120 s pass (before KCL VAL was
+    added) carry the inline pddl-pyvalidator verdict as val_*; rename it to
+    pyval_* so every record uses one set of field names."""
+    if "val_valid" in r and "pyval_valid" not in r:
+        r = dict(r)
+        for k in ("valid", "status", "time", "message"):
+            if f"val_{k}" in r:
+                r[f"pyval_{k}"] = r.pop(f"val_{k}")
+    return r
+
+
 def load(path: Path) -> dict:
     """key -> final record. Header lines and requeue notes are skipped; a later
-    final record for the same key replaces an earlier one."""
+    final record for the same key replaces an earlier one (that is how
+    `pipeline val` adds a verdict)."""
     out = {}
     if not path.exists():
         return out
@@ -41,19 +56,19 @@ def load(path: Path) -> dict:
         r = json.loads(line)
         if r.get("_header") or r.get("status") == "requeued":
             continue
-        out[(r["problem"], r["strategy"])] = r
+        out[(r["problem"], r["strategy"])] = normalize(r)
     return out
 
 
 def is_solved(rec: dict | None) -> bool | None:
-    """True = plan found and VAL-valid; False = not solved (or VAL rejected
-    the plan); None = no record yet, or a plan whose VAL check has not
-    finished (`pipeline val` completes it)."""
+    """True = plan found and KCL VAL accepted it; False = not solved, or VAL
+    rejected the plan; None = no record yet, or a plan with no KCL VAL verdict
+    yet (`pipeline val --checker kcl` adds it)."""
     if rec is None:
         return None
     if rec.get("status") != "solved":
         return False
-    v = rec.get("val_valid")
+    v = rec.get("kval_valid")
     return v if isinstance(v, bool) else None
 
 
@@ -127,22 +142,41 @@ def report(r120: dict, r1800: dict) -> str:
                     tot.update(c[(d, t, s, lim)])
                 row.append(fmt(tot))
             lines.append(f"| all four | {t} | " + " | ".join(row) + " |")
-    # checks
     lines.append("\n## Checks\n")
+    lines.extend("- " + x for x in checks(r120, r1800, outcomes))
+    return "\n".join(lines)
+
+
+def checks(r120: dict, r1800: dict, outcomes: dict) -> list[str]:
+    out = []
     for lim, recs in ((120, r120), (1800, r1800)):
         if not recs:
-            lines.append(f"- {lim} s pass: no records")
+            out.append(f"{lim} s pass: no records")
             continue
         st = Counter(r.get("status") for r in recs.values())
-        invalid = sum(1 for r in recs.values() if r.get("status") == "solved" and r.get("val_valid") is False)
-        unval = sum(1 for r in recs.values() if r.get("status") == "solved" and is_solved(r) is None)
-        near = sum(1 for r in recs.values() if is_solved(r) and (r.get("solve_time") or 0) > 0.5 * lim)
-        lines.append(f"- {lim} s pass: {len(recs)} runs; statuses {dict(sorted(st.items()))}; "
-                     f"plans rejected by VAL: {invalid}; plans with VAL unfinished: {unval}; solved runs that took over half the limit: {near}")
+        plans = [r for r in recs.values() if r.get("status") == "solved"]
+        rej = sum(1 for r in plans if r.get("kval_valid") is False)
+        nov = sum(1 for r in plans if not isinstance(r.get("kval_valid"), bool))
+        size_bad = sum(1 for r in plans if r.get("kval_plan_size") not in (None, r.get("plan_len")))
+        near = sum(1 for r in plans if is_solved(r) and (r.get("solve_time") or 0) > 0.5 * lim)
+        out.append(f"{lim} s pass: {len(recs)} runs; statuses {dict(sorted(st.items()))}; "
+                   f"plans rejected by KCL VAL: {rej}; plans with no KCL VAL verdict yet: {nov}; "
+                   f"VAL plan size differs from the plan length: {size_bad}; "
+                   f"solved runs that took over half the limit: {near}")
+        py = [r for r in plans if isinstance(r.get("pyval_valid"), bool)]
+        agree = sum(1 for r in py if r["pyval_valid"] == r.get("kval_valid"))
+        both = sum(1 for r in py if isinstance(r.get("kval_valid"), bool))
+        line = (f"{lim} s pass, pddl-pyvalidator 0.1.6 (the harness grader): run on {len(py)} of "
+                f"{len(plans)} plans; agrees with KCL VAL on {agree} of {both} checked by both")
+        if py:
+            slow = max(py, key=lambda r: r.get("pyval_time") or 0)
+            line += (f"; slowest pyval check {slow.get('pyval_time', 0):.0f} s for a "
+                     f"{slow.get('plan_len')}-step plan ({slow['problem'].split('/', 1)[1]}, {slow['strategy']})")
+        out.append(line)
     n_pending = sum(1 for o in outcomes.values() if o[1800] is None)
-    lines.append(f"- pairs pending within 1800 s (unsolved at 120 s and not yet run at 1800 s, "
-                 f"or VAL unfinished): {n_pending}")
-    return "\n".join(lines)
+    out.append(f"pairs pending within 1800 s (unsolved at 120 s and not yet run at 1800 s, "
+               f"or no VAL verdict yet): {n_pending}")
+    return out
 
 
 def _tier_line(c: dict, domains: list, strategy: str, lim: int) -> str:
@@ -166,19 +200,26 @@ def numbers_rows(r120: dict, r1800: dict, validate: list | None) -> str:
     n_prob = len({p for p, _ in outcomes})
     rows = ["| figure | value | source | do NOT quote |", "|---|---|---|---|"]
     if validate is not None:
-        ok = sum(1 for v in validate if v.get("valid"))
+        ok = sum(1 for v in validate if v.get("valid") and v.get("kval_valid") is True)
         rows.append(f"| D5b corpus, syntax check | {ok} / {len(validate)} files valid (4 IPC 2023 domain files + "
-                    f"{len(validate) - 4} generated problems; pddl-pyvalidator 0.1.6) | `validate.jsonl` | - |")
+                    f"{len(validate) - 4} generated problems; pddl-pyvalidator 0.1.6 and KCL VAL both) | `validate.jsonl` | - |")
     dont = ("a share with a pending range as one number; these shares as a model result "
             "(no model has run on these problems)")
     for lim in LIMITS:
         for strat, label in (("lazy_greedy_cea", "plugin default `lazy_greedy_cea`"), ("any", "any of the three strategies")):
             rows.append(f"| Fast Downward solved within {lim} s, {label} ({n_prob} problems, plan VAL-valid) | "
                         f"**{_tier_line(c, domains, strat, lim)}** | `tools/d5b/shares.py` | {dont} |")
-    inval = sum(1 for recs in (r120, r1800) for r in recs.values()
-                if r.get("status") == "solved" and r.get("val_valid") is False)
-    n_plans = sum(1 for recs in (r120, r1800) for r in recs.values() if r.get("status") == "solved")
-    rows.append(f"| plans found, rejected by VAL | {inval} of {n_plans} | `tools/d5b/shares.py` | - |")
+    plans = [r for recs in (r120, r1800) for r in recs.values() if r.get("status") == "solved"]
+    rej = sum(1 for r in plans if r.get("kval_valid") is False)
+    rows.append(f"| plans found, rejected by KCL VAL | {rej} of {len(plans)} | `tools/d5b/shares.py` | - |")
+    py = [r for r in plans if isinstance(r.get("pyval_valid"), bool) and isinstance(r.get("kval_valid"), bool)]
+    agree = sum(1 for r in py if r["pyval_valid"] == r["kval_valid"])
+    if py:
+        slow = max(py, key=lambda r: r.get("pyval_time") or 0)
+        rows.append(f"| pddl-pyvalidator 0.1.6 (the harness grader) vs KCL VAL on the planner's plans | "
+                    f"agrees on {agree} of {len(py)} plans checked by both ({len(plans) - len(py)} not checked "
+                    f"by pyval yet); slowest pyval check {slow.get('pyval_time', 0):.0f} s for a "
+                    f"{slow.get('plan_len')}-step plan | `tools/d5b/shares.py` | - |")
     return "\n".join(rows) + "\n"
 
 
