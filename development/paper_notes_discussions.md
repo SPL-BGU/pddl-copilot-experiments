@@ -2560,9 +2560,7 @@ validated by an independent ranking subagent (the user asked for a second perspe
   names BGN; code MIT, data CC-BY-4.0; Omer is the author in `CITATION.cff` and on the
   DOI, lab SPL-BGU.
 - **D5a full run:** approved (about $51 with the Batch API) once the prereg holds it;
-  when the loaded credits run out, decide next. (Added in the PR #131 review: the $51
-  leaves out D5e, whose thinking-on cell adds about $14, range $10 to $19, and its
-  thinking-off cell $1.72, so about $66 in all; method in `STATUS.md`.)
+  when the loaded credits run out, decide next.
 - **Tracking:** Design A, one `items.yaml`, with the recommended answers to Q2 to Q9.
 - **Checkpoints:** refresh the frontier overlays to the 09-12 files, keep the sweep7 and
   probe overlays (needed to rebuild the 460-row table), drop the dead lfs rule, fix the
