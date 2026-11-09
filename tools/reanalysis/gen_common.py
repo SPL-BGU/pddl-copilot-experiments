@@ -63,9 +63,9 @@ def md_table(headers: list[str], rows: list[list]) -> str:
 _TEX = [("\\", r"\textbackslash{}"), ("&", r"\&"), ("%", r"\%"), ("$", r"\$"), ("#", r"\#"),
         ("_", r"\_"), ("{", r"\{"), ("}", r"\}"), ("~", r"\textasciitilde{}"),
         ("^", r"\textasciicircum{}")]
-_TEX_SYM = {"†": r"$^{\dagger}$", "‡": r"$^{\ddagger}$", "−": "$-$", "–": "--", "→": r"$\to$",
-            "×": r"$\times$", "÷": r"$\div$", "≥": r"$\geq$", "≤": r"$\leq$", "±": r"$\pm$",
-            "·": r"$\cdot$", "Δ": r"$\Delta$"}
+_TEX_SYM = {"†": r"$^{\dagger}$", "‡": r"$^{\ddagger}$", "¶": r"$^{\P}$", "−": "$-$", "–": "--",
+            "→": r"$\to$", "×": r"$\times$", "÷": r"$\div$", "≥": r"$\geq$", "≤": r"$\leq$",
+            "±": r"$\pm$", "·": r"$\cdot$", "Δ": r"$\Delta$"}
 
 
 def tex_escape(s: str) -> str:

@@ -38,6 +38,7 @@ def test_splice_refuses_missing_or_misordered_markers(text):
 def test_tex_escape():
     assert G.tex_escape("validate_plan 5%") == r"validate\_plan 5\%"
     assert G.tex_escape("**31.0** †") == r"31.0 $^{\dagger}$"
+    assert G.tex_escape("0.0 [0.0, 3.7]†¶") == r"0.0 [0.0, 3.7]$^{\dagger}$$^{\P}$"
     assert G.tex_escape("`a_b` 1–2 → x") == r"a\_b 1--2 $\to$ x"
     assert G.tex_escape("a\\b") == r"a\textbackslash{}b"
 
