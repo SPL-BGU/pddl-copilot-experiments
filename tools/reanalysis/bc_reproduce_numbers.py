@@ -87,7 +87,8 @@ def main() -> int:
             mix[r["failure_reason"]] = mix.get(r["failure_reason"], 0) + 1
     check("simulate no-tools rows", tot, 3000)
     check("simulate no-tools strict successes", ok, 0)
-    check("failure mix", (mix.get("truncated_no_answer"), mix.get("format_parse_fail"),
+    check("failure mix", (sum(mix.get(x, 0) for x in C.TRUNCATED_LOSS_REASONS),
+                          mix.get("format_parse_fail"),
                           mix.get("result_mismatch")), (1772, 1202, 26))
 
     print("4. NUMBERS.md Job 2: delivered cost-of-pass multiplier, pooled >=9B, tl-ster / nt-neut")

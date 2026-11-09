@@ -1,8 +1,9 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-09 (repo audit: PRs #121, #122 and #123 are all merged;
-Omer's answers to twelve open decisions, recorded under "Decided 2026-11-09" below and in
-`paper_notes_discussions.md`; `fixtures/d1b-harder-items` pushed to origin). Before that
+*Content last refreshed: 2026-11-09, end of day (every open decision answered except E1,
+which Omer keeps open; PRs #121 to #127 and #129 merged; pyval 0.1.6 pinned in the sibling
+repo; the work list for the next sessions is in `handoff_20261109.md`). Earlier that day:
+the repo audit and Omer's first twelve answers (`paper_notes_discussions.md`). Before that
 2026-11-08 (contamination-wording paper PR #123; plan step D5 added and approved, the
 answer to Corrêa et al.). Before that 2026-11-01 (C1, C2 in PR #121; B drafts on `main`; the D1
 smokes passed, harness PR #122; D1b built, one decision open). Before that 2026-10-10
@@ -26,17 +27,15 @@ families, harder test items, context room, reasoning mode, the small models, a J
 control, open-model PlanBench). Then one restructure of the paper. **All of it is in
 `weakness_action_plan.md`, workstreams A to F.** A is done. B: drafts on `main`
 (`draft_B1_B2_related_work.md`, `draft_B3_B5_methods.md`), waiting for Omer's read; two
-agent-side gaps first (Corrêa et al. in B1; the C1 VAL figure in B4's TODO). C1 and C2:
-done, merged in PR #121 (VAL agrees on 1,731 of 1,732 plans; Study 1 block in
-`NUMBERS.md`). D1a, D1c, D1d: smokes passed (`reference/d1_smokes_20261027.md`), harness
-merged in PR #122. D1b: built on branch `fixtures/d1b-harder-items` (pushed to origin
-2026-11-09; its write-up `reference/d1b_harder_items.md` is cited but not written); the
-loader decision is made (two small validate_domain trees, no harness change). The
-contamination wording in the tex uses the paired, clustered ±5 test (PR #123, merged
-2026-11-08). Plan step D5, approved 2026-11-08, answers Corrêa et al.'s "Frontier LLMs
-Rival State-of-the-Art Planners": frontier thinking on, larger problems, the Claude tool
-arm on the renamed corpus, random strings. Next: C3 (split C3a Study 1 / C3b Study 2), C4,
-C5, D1b rework, D1e, D1f (the prereg, now with D5 and the family tiers), E1.
+agent-side gaps first (Corrêa et al. in B1; the C1 VAL figure in B4's TODO). C1, C2, C3:
+done (PRs #121, #124). C4: PR #128 open. D1a to D1d: done (PRs #122, #127; the D1b items
+are in three trees, no harness change, `reference/d1b_harder_items.md`). The contamination
+wording in the tex uses the paired, clustered ±5 test (PR #123). Plan step D5 answers
+Corrêa et al.'s "Frontier LLMs Rival State-of-the-Art Planners" (D5a to D5e, all
+approved; the D5a pilot ran, PR #131). Four grading findings of 2026-11-09 are ISS-027 to
+ISS-030. **Next: the work list in `handoff_20261109.md` §4** (tracking file, checkpoints
+follow-up, release files, #130 cleanup, B drafts, C5 and E1a, D1e, D5b ground truth, D1f,
+one cluster go-ahead, then the D5a full run).
 
 ## Where each line stands
 
@@ -128,10 +127,10 @@ ISS-013.
 - Laptop: done 2026-11-09 (Omer ran it). The two merged worktrees and the merged local
   and remote branches are deleted. Two old stashes from `paper/aaai27` are Omer's to
   check.
-- Checkpoint zips (Omer 2026-11-09): keep the full-corpus checkpoints, remove the
-  outdated ones. An agent dates every zip (when it was committed, what is inside), checks
-  which scripts and docs pin each path, and proposes the removals in a PR; every removal
-  goes into `MOVES.md`.
+- Checkpoint zips: four June deck files removed (PR #129); the follow-up (fresh frontier
+  overlays, an `e2e-overlay` README, the dead lfs line, a `checkpoints/frontier/` backup)
+  is decided, `handoff_20261109.md` decision 16.
+- Laptop, Omer's to run: nine agent worktrees under `.claude/worktrees/` (handoff §5).
 
 ### Decided 2026-11-09 (Omer)
 
@@ -174,7 +173,7 @@ ISS-013.
   descriptive row, outside the confirmatory set, never pooled with v11 to v13.
 - **Wave 1 families (Omer 2026-11-09, yes):** gpt-oss-20b and Llama 3.1 8B, plus the
   official Gemma weights. Ministral 3 14B is the wave-2 tier.
-- **D5 thinking pilot (Omer 2026-11-09, yes):** 20 keys per arm, Batch API, about $1.50
+- **D5 thinking pilot (Omer 2026-11-09, yes; ran 2026-11-09, PR #131, $1.69):** 20 keys per arm, Batch API, about $1.50
   to $10, hard cap $40. It measures thinking tokens and the answer-parse rate only; plan
   success is not computed, so the pilot does not peek at the outcome. The prereg declares
   it.
@@ -192,46 +191,33 @@ ISS-013.
   Llama already fills the 8B rung), Olmo 3 7B (its open training data would allow a
   direct contamination search, but that is a separate project; its thinking variant is
   a separate checkpoint, not a switch).
-- **Release:** the work is attributed to Omer and to BGU: a copyright line naming him and
-  Ben-Gurion University (SPL-BGU), a `CITATION.cff`, a Zenodo DOI, CC-BY-4.0 for data, MIT
-  or Apache-2.0 for code (whichever is more common for academic code). BGU's policy on
-  student work is checked first.
+- **Release (final):** BGN Technologies owns research artifacts by default (Omer; no check
+  needed). Code MIT, data CC-BY-4.0, copyright line naming BGN (confirm its exact legal
+  name), Omer as author in `CITATION.cff` and on the Zenodo DOI, lab SPL-BGU.
+- **D5a full run:** approved (about $51 with the Batch API), after D1f holds the cells.
+  Omer has $186 loaded plus a work account; when the loaded credits run out, decide next.
+- **pyval case fix (ISS-027):** `pddl-pyvalidator` 0.1.6 released by Omer; pinned in the
+  validator plugin 3.1.1 (SPL-BGU/pddl-copilot #60, merged). The cluster's plugin venv
+  still needs the upgrade (`launch-server.sh` never upgrades an existing `.venv`).
+- **Gemma, wave 2:** `REASONING_PARSER=none`, as in Study 1.
+- **Tracking:** Design A (`development/items.yaml`, rendered and checked), with the
+  recommended answers to the proposal's Q2 to Q9 (`handoff_20261109.md` decision 15).
+- **Checkpoints:** the agent's five recommendations accepted (`handoff_20261109.md`
+  decision 16).
 
-### Open PRs for Omer's review (opened 2026-11-09; each checked: all 27 frozen file hashes match, package `822aace…`)
+### Open PRs (2026-11-09, end of day)
 
-| PR | what | note |
-|---|---|---|
-| #124 | C3: Study 1 breakdowns and Study 2 tables into `NUMBERS.md`, by generator (1,290 and 325 self-checks pass) | edits `NUMBERS.md`, as #125 does: merge one, then rebase the other (the generators rewrite only their own marked blocks) |
-| #125 | 35B call flips (new T8c), Haiku tool arm on the renamed corpus, VAL on the Claude plans | found ISS-027 |
-| #126 | harness: opt-in reasoning effort for gpt-oss; opt-in storing of the reasoning trace | found ISS-030; holds the one-job smoke command for the next cluster go-ahead |
-| #127 | D1b: new item kinds in three trees (`domains-hard/`, `-vd-a/`, `-vd-b/`), no harness change; write-up; provenance copy tool | no SLURM job id is stored in any results file, so the copy tool takes it as an argument; trees a and b need separate output folders |
-| #128 | C4: four example transcripts, drawn by a stated rule (seed 20261109) | found ISS-028 and ISS-029 |
-| #129 | checkpoints: remove 4 outdated deck files (7.2 MiB); every trial zip kept, `sweep5v2-live` byte-identical to `results/` | 5 questions for Omer in the PR |
+Merged 2026-11-09: #121 to #127, #129, and the sibling's #60. Open: #128 (C4), #131
+(frontier thinking mode, SDK pin, D5a pilot), #130 (draft, ISS-027 and Gemma check
+scripts). Details and next steps: `handoff_20261109.md` §1.
 
 ### Open decisions
 
-- **Tracking:** the proposal (`draft_tracking_proposal.md`: one `items.yaml`, rendered into
-  this file and checked against GitHub) has 9 questions for Omer.
-- **Licence holder:** BGU procedure 14-007 treats MSc research software as a possible
-  service invention owned by BGU or BGN; it says nothing on open-source licences or the
-  copyright line. Ask the advisor (the lab already ships MIT repos as "SPL@BGU"), then
-  BGN if needed. The agent recommends MIT for code.
-- **Gemma thinking (side finding, unchecked):** the Gemma 4 model card describes a
-  thinking switch and vLLM 0.20.2 has a `gemma4` reasoning parser, while we serve Gemma
-  with `REASONING_PARSER=none` and the CHANGELOG says it ignores the kwarg. If the card
-  is right, Gemma's think=on cells may have thought for real. A read-only check of the
-  stored rows is owed before D3 relies on the "21% to 0.6%" finding.
-- **ISS-027 (new, P1):** the plan grader rejects correctly cased upper-case names; open
-  model rows still to check (`OPEN_ISSUES.md`).
 - **⚠️ STILL OPEN (Omer 2026-11-09: keep it open): E1, the six research questions
-  against the two gates.** The tex frames its results as RQ1 to RQ6 plus a scorecard; the
-  plan frames them as two gates (calling, delivery). The side-by-side and the suggestion
-  (a baseline question plus one question per gate, problem size as a factor under each,
-  the scorecard dropped) were shown to Omer on 2026-11-09 and are in
-  `paper_notes_discussions.md` that day. Until Omer decides, no E step removes the RQs or
-  the scorecard from the tex, and E1 drafts carry both framings.
-- **Code licence** (MIT or Apache-2.0) and the copyright holder, after the BGU policy
-  check.
+  against the two gates.** Existing RQ1 to RQ6 and the suggestion (a baseline question,
+  one question per gate, problem size as a factor, the scorecard dropped) side by side in
+  `draft_E1_research_questions.md`. Until Omer decides, no E step removes the RQs or the
+  scorecard from the tex, and E1 drafts carry both framings.
 
 None of these blocks the next steps. The title is chosen in plan step E6, from the candidates in
 `reference/weakness_consolidated.md` Q6, once the results are in.

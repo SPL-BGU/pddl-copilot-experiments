@@ -37,6 +37,18 @@ Knobs translated:
     vLLM-only request fields the decoupled-budget think path needs:
     continue_final_message / add_generation_prompt (2-call continuation)
     and include_stop_str_in_output. See chat_without_tools_decoupled.
+  * $PDDL_REASONING_EFFORT    → top-level reasoning_effort (opt-in, unset by
+    default; see VLLMClient.__init__). gpt-oss only.
+
+Reasoning trace (checked against vLLM v0.20.2, 2026-11-09): the server puts
+the trace in `message.reasoning`. It has no `reasoning_content` field
+(ChatMessage in vllm/entrypoints/openai/chat_completion/protocol.py), so the
+default read below returns "" for every row, and no stored row of
+sweep5v2-live, sweep6-live or delivered-rerun carries a trace. The default
+stays that way, because the frozen scoring code reads `message.thinking`
+(FR_THINK_OVERFLOW, the decoupled reconstruction in chat.py). $PDDL_STORE_
+REASONING=1 also reads `message.reasoning`, so the row's `thinking` field
+fills (opt-in, for new cells only).
 
 Streaming is forced off — tracks vLLM/Qwen3 hermes streaming bug
 vllm-project/vllm#31871 (May 2026) where partial tool_call XML can be
@@ -169,6 +181,9 @@ def _clip_candidates(base: int, fine: bool) -> list[int]:
 
 JSON_CONSTRAINT_CHOICES = ("guided_json", "structured_outputs")
 TOOL_CALL_ID_STYLES = ("call", "mistral9")
+# The values vLLM 0.20.2 accepts for a gpt-oss (Harmony) model. The request
+# model also allows "none", but the Harmony renderer raises on it.
+REASONING_EFFORT_CHOICES = ("low", "medium", "high")
 
 
 class VLLMClient:
@@ -176,7 +191,9 @@ class VLLMClient:
 
     def __init__(self, base_url: str | None = None,
                  json_constraint: str | None = None,
-                 tool_call_id_style: str | None = None):
+                 tool_call_id_style: str | None = None,
+                 reasoning_effort: str | None = None,
+                 store_reasoning: bool | None = None):
         # Which request field carries a format=<schema dict>. "guided_json"
         # is what every corpus before 2026-10-27 sent; vLLM 0.20.2 has no
         # such field and drops unknown fields with only a DEBUG log
@@ -206,6 +223,35 @@ class VLLMClient:
         self._tool_call_id_style = tool_call_id_style
         if tool_call_id_style != "call":
             print(f"VLLMClient: tool_call_id style {tool_call_id_style}", file=sys.stderr)
+        # gpt-oss reasoning effort (plan step D1a; Omer 2026-11-09: low in
+        # wave 1, medium in wave 2, always sent explicitly). Sent as the
+        # top-level request field `reasoning_effort`: in vLLM 0.20.2 the
+        # Harmony renderer (vllm/entrypoints/serve/render/serving.py,
+        # _make_request_with_harmony) reads request.reasoning_effort into the
+        # system message ("Reasoning: low"); chat_template_kwargs is never
+        # read on that path. Unset (the default) sends nothing, and Harmony
+        # then writes its own default, "Reasoning: medium". From
+        # $PDDL_REASONING_EFFORT when the argument is None; the sbatch sets it
+        # only for effort-<level> cells.
+        if reasoning_effort is None:
+            reasoning_effort = os.environ.get("PDDL_REASONING_EFFORT") or None
+        if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
+            raise ValueError(f"reasoning_effort must be one of "
+                             f"{REASONING_EFFORT_CHOICES} (got {reasoning_effort!r})")
+        self._reasoning_effort = reasoning_effort
+        if reasoning_effort is not None:
+            print(f"VLLMClient: reasoning_effort {reasoning_effort}", file=sys.stderr)
+        # Read the trace from `message.reasoning` (the field vLLM 0.20.2
+        # fills) into message.thinking. Off by default: see the module
+        # docstring. From $PDDL_STORE_REASONING ("1" on, "0" or unset off).
+        if store_reasoning is None:
+            flag = os.environ.get("PDDL_STORE_REASONING") or "0"
+            if flag not in ("0", "1"):
+                raise ValueError(f"PDDL_STORE_REASONING must be 0 or 1 (got {flag!r})")
+            store_reasoning = flag == "1"
+        self._store_reasoning = bool(store_reasoning)
+        if self._store_reasoning:
+            print("VLLMClient: storing message.reasoning as thinking", file=sys.stderr)
         base_url = (base_url or _DEFAULT_BASE_URL).rstrip("/")
         if not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
@@ -253,6 +299,11 @@ class VLLMClient:
                 extra_body["guided_json"] = format
         elif format == "json":
             kwargs["response_format"] = {"type": "json_object"}
+        # extra_body keys are merged into the top level of the JSON body, so
+        # this is the top-level `reasoning_effort` field whatever the openai
+        # SDK version (the SDK's own keyword exists only in newer releases).
+        if self._reasoning_effort is not None:
+            extra_body["reasoning_effort"] = self._reasoning_effort
         # vLLM-only request fields (continue_final_message, add_generation_prompt,
         # include_stop_str_in_output). Merged last so callers can override the
         # think/format defaults above when a 2-call continuation needs to.
@@ -279,7 +330,7 @@ class VLLMClient:
                 raise
             return await self._retry_after_ctx_overflow(kwargs, parsed, t0)
         wall_ns = time.perf_counter_ns() - t0
-        return _to_ollama_response(resp, wall_ns)
+        return _to_ollama_response(resp, wall_ns, self._store_reasoning)
 
     async def _retry_after_ctx_overflow(
         self, kwargs: dict, parsed: tuple[int, int], t0: int,
@@ -336,7 +387,7 @@ class VLLMClient:
                 reported_prompt = retry_parsed[1]
                 continue
             wall_ns = time.perf_counter_ns() - t0
-            out = _to_ollama_response(resp, wall_ns)
+            out = _to_ollama_response(resp, wall_ns, self._store_reasoning)
             # Present ONLY on clipped turns, so readers of unclipped
             # responses (and of every pre-2026-10-02 corpus) see no change.
             # `num_predict_measured_prompt` is the probe's measurement (None
@@ -415,8 +466,26 @@ def _to_openai_messages(messages: list, id_style: str = "call") -> list:
     return out
 
 
-def _to_ollama_response(resp, wall_ns: int) -> dict:
-    """Translate an OpenAI ChatCompletion into the dict shape the harness reads."""
+def _message_reasoning(msg) -> str:
+    """The reasoning trace vLLM 0.20.2 returns in `message.reasoning`.
+
+    The openai SDK keeps fields it does not declare as pydantic extras, which
+    attribute access reaches; `model_extra` is the fallback. "" when absent,
+    null, or not a string (a non-thinking turn has `reasoning: null`)."""
+    val = getattr(msg, "reasoning", None)
+    if val is None:
+        extra = getattr(msg, "model_extra", None)
+        if isinstance(extra, dict):
+            val = extra.get("reasoning")
+    return val if isinstance(val, str) else ""
+
+
+def _to_ollama_response(resp, wall_ns: int, store_reasoning: bool = False) -> dict:
+    """Translate an OpenAI ChatCompletion into the dict shape the harness reads.
+
+    `store_reasoning` (VLLMClient's $PDDL_STORE_REASONING) also reads
+    `message.reasoning` into message.thinking; off, the dict is exactly what
+    every earlier corpus got."""
     choice = resp.choices[0]
     msg = choice.message
 
@@ -437,10 +506,14 @@ def _to_ollama_response(resp, wall_ns: int) -> dict:
                 },
             })
 
-    # `--reasoning-parser qwen3` populates message.reasoning_content; without
-    # it, Qwen3's <think>…</think> remains inline in content and scoring's
-    # extract_* fallback handles the inline form.
+    # Written for `reasoning_content`, the field name of older vLLM releases.
+    # vLLM 0.20.2 returns `reasoning` instead, so this read is "" on every
+    # stored corpus (module docstring); kept as is so default rows do not
+    # change. Without a reasoning parser, Qwen3's <think>…</think> stays
+    # inline in content and scoring's extract_* fallback handles it.
     thinking = getattr(msg, "reasoning_content", None) or ""
+    if store_reasoning and not thinking:
+        thinking = _message_reasoning(msg)
 
     out_msg: dict = {
         "role": "assistant",

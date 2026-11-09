@@ -45,6 +45,14 @@ OUT_DIR = Path(__file__).resolve().parent / "out" / "breakdowns_cost"
 DOMAINS_DIR = REPO / "domains"
 
 TASKS = ["solve", "validate_domain", "validate_problem", "validate_plan", "simulate"]
+
+# Failure reasons that mean "the output cap cut the answer off". Same set as
+# tools/ntster_common.py TRUNCATED_LOSS_REASONS (copied, not imported: that file
+# is hash-pinned). Once the row field `thinking` is filled (PDDL_STORE_REASONING=1,
+# PR #126), the frozen scoring code labels an empty cut-off answer think_overflow
+# instead of truncated_no_answer, so a truncation count must take both.
+TRUNCATED_LOSS_REASONS = ("truncated_no_answer", "think_overflow")
+
 ARMS = ["nt-neut", "tl-neut", "tl-ster"]
 ARM_DISP = {"nt-neut": "no-tools", "tl-neut": "tools-plain", "tl-ster": "tools-steered"}
 

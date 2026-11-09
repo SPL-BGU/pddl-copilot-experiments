@@ -6,6 +6,123 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-11-09: D1b new item kinds in three fixture trees, no harness change; provenance copy tool; the plan-strategy bug fixed
+
+**Motivation.** Action plan D1b: new item kinds beside the current ones, balanced valid
+against invalid on every validate task. Decided by Omer on 2026-11-09: no harness change
+(the loader is a frozen file of the delivered-rerun package), validate_domain balanced
+through two small trees, results in a new sweep folder with provenance on every reused
+row. Nothing in `domains/` changed and no corpus was touched. Details, counts and
+checks: `development/reference/d1b_harder_items.md`.
+
+**1. Three new trees, built by `tools/build_hard_fixtures.py`** (helpers
+`tools/_hard_items.py`, `tools/_enhsp_variants.py`; tests `tests/test_hard_items.py`).
+All have the layout of `domains/` and load with the unchanged `load_domains` through
+`run_experiment.py --domains-dir`.
+- `domains-hard/`: every task except validate_domain (20 domains, 2 problems each).
+- `domains-hard-vd-a/` and `domains-hard-vd-b/`: validate_domain only. Each folder has
+  `domain.pddl`, one problem and one invalid domain, so each tree is 1:1, and the two
+  together give 2 valid and 2 invalid validate_domain items per domain.
+Each tree has its own `manifest.json` (every file with its sha256) and `manifest.sha256`;
+the main manifest names the hashes of the other two. No file named `domain_neg02.pddl`
+or similar is written: the frozen loader would skip it without a warning (its
+invalid-domain read is the single name `domain_neg.pddl`), and the build stops if it
+finds one. The first build of this work (commit `ad7771c`) instead changed
+`pddl_eval/domains.py`, `pddl_eval/runner.py` and `run_experiment.py` to read a second
+invalid domain; that change was dropped and all three files are back to `main`.
+
+**2. `tools/extension_copy_reused.py`** (tests `tests/test_extension_copy_reused.py`).
+Copies rerun rows that the extension reuses into the extension's own results folder.
+Each copied row is the source line byte for byte plus `reused_from_folder`,
+`reused_from_job`, `reused_from_sha256` and `copied_at` (top-level fields, which the
+resume loader ignores). It refuses a destination inside `delivered-rerun`,
+`sweep5v2-live`, `sweep6-live` or a `*_sweep6` folder, and never overwrites. The SLURM
+job id is not stored in any cell's summary or rows, so it is an argument (the ids are in
+the delivered-rerun prereg, section 8). Not run on real data. It also refuses a
+destination named like a hard-tree run (`-hard`, `-hard-vd-a`, `-hard-vd-b`) and one
+whose `trials.jsonl` already holds rows of a run: the resume key has no field for the
+tree, and the D1b trees reuse canonical item names for different files, so reused rows
+and hard-tree runs must never share a folder (write-up, section 6).
+
+**3. `tools/build_fixtures.py` sent the Fast Downward strategy as `"search"`; the tool's
+argument is `strategy`.** The server drops unknown arguments silently, so every
+strategy call returned the default plan. That is why 49 of the 50 classical problems in
+`domains/` have five copies of one valid plan (the 50 numeric problems got copies by
+design, since `numeric_planner` has no strategy option). Fixed for new builds only; no
+fixture was regenerated.
+
+## 2026-11-09: Opt-in gpt-oss reasoning effort; opt-in storage of the reasoning trace
+
+Branch `harness/gptoss-effort`. No cluster job ran for this entry and no corpus was
+rewritten. Default requests and default rows are unchanged (a test compares the JSON
+body of three request shapes with what every corpus sent, and the request bytes and
+parsed replies of the old and new client were compared on the same shapes). No frozen
+file of the delivered-rerun package changed; its hash is still `822aace…`.
+
+**1. Reasoning effort for gpt-oss (`pddl_eval/vllm_client.py`,
+`cluster-experimenting/`).** Omer 2026-11-09: low effort in wave 1, medium in wave 2,
+always sent explicitly. `$PDDL_REASONING_EFFORT` (low, medium, high) makes the client
+send the top-level request field `reasoning_effort`. Checked in the vLLM v0.20.2 source:
+the Harmony renderer (`vllm/entrypoints/serve/render/serving.py`,
+`_make_request_with_harmony`) reads `request.reasoning_effort` into the system message,
+and `chat_template_kwargs` is never read on that path, so the field binds (unlike
+`guided_json`, which 0.20.2 dropped). With no field, openai-harmony writes its default,
+`Reasoning: medium`. `submit_with_rtx.sh --reasoning-effort "low default"` makes one
+cell per level, named `effort-<level>` where the think token usually sits
+(`slurm_vllm_gpt-oss_20b_effort-low_<cond>`), so these cells are labelled "low effort",
+never "thinking off". Only models marked `SUPPORTS_REASONING_EFFORT=1` in
+`lib/defaults.sh` (gpt-oss:20b) accept it. Before each gpt-oss cell the sbatch asks the
+server to render a one-line chat and prints the served system line
+(`cluster-experimenting/reasoning_settings.py system-line`); an effort cell whose line
+does not show its level is skipped. `run_experiment.py` is frozen, so the effort cannot
+go into `summary_*.json`; effort and stored-reasoning cells get
+`OUT_DIR/client_settings.json` instead.
+
+**2. The reasoning trace was never stored (NEW-2).** vLLM 0.20.2 returns the trace as
+`message.reasoning`; its response model has no `reasoning_content` field. The client
+read only `reasoning_content`, so the row field `thinking` is empty in all 68,400
+think-on rows of `sweep5v2-live` and all 68,400 of `sweep6-live`, including the 26,885
+and 25,512 of them that ended normally with an answer. This is a simpler cause than the
+2026-05-25 `think_overflow` entry below gives (the parser flushing only after a complete
+think block): even complete traces were dropped. The default read is kept, because filling `thinking` would
+let the frozen scoring code's `think_overflow` label fire and change failure labels.
+`$PDDL_STORE_REASONING=1` (`submit_with_rtx.sh --store-reasoning`, which requires
+`--run-tag`) also reads `message.reasoning`, so the trace reaches the existing row field
+`thinking` (capped at 4,096 characters by the frozen runner). A separate new row field
+would need an edit to the frozen `pddl_eval/runner.py`, so it was not added.
+
+**3. Two known effects of a stored trace (review of PR #126).**
+
+- *The trace is cut at 4,096 characters.* The cap is `THINKING_SNAPSHOT_LEN` in
+  `pddl_eval/runner.py`, which is inside the frozen package hash, so it stays. gpt-oss
+  `solve` traces are likely longer than that, so wave-2 (D3) analyses get only the
+  start of each trace. An analysis that needs the full trace must use a path outside
+  the frozen package or a later prereg.
+- *A cut-off answer gets a different label.* In `_classify_step_failure`
+  (`pddl_eval/scoring.py`, the check just above `FR_LOOP_EXHAUSTED`), a failed row
+  whose output cap fired (`done_reason == "length"`) with a non-empty `thinking`, an
+  empty response, no error and no tool-loop cap-hit is labelled `think_overflow`. With
+  `thinking` empty, as in every corpus so far, the same row became
+  `truncated_no_answer`. A cut-off row with some visible response keeps
+  `truncated_no_answer`. So on stored-trace cells, any count of cut-off answers must
+  take both labels. `tools/ntster_common.py` already does (`TRUNCATED_LOSS_REASONS`).
+  `tools/reanalysis/01_reproduce_frozen.py` and `bc_reproduce_numbers.py` counted only
+  `truncated_no_answer`; they now count both, through a `TRUNCATED_LOSS_REASONS` copy
+  in `tools/reanalysis/common.py` and `bc_common.py`. On the canonical corpora (where
+  `think_overflow` never occurs) both still reproduce the frozen figures (15/15 checks;
+  all checks pass). `tools/val_crosscheck.py` was left as it is because its sha256
+  (`e6e9a78b…`) is recorded in `reference/val_crosscheck.md`. Its online re-grade
+  applies only the truncation relabel, so on a stored-trace cell a stored
+  `think_overflow` row re-grades to `truncated_no_answer` and counts as a mismatch in
+  `pyval_regrade_reason_equals_stored`. Treat such rows as matching, or filter them,
+  before reading that count on new cells.
+
+## 2026-11-09 — Corrections found by the 2026-11-09 audit (no code change in this entry)
+
+- **Gemma 4 does think when `enable_thinking=True`.** The 2026-05 entry on `planbench/engine.py::_vllm_chat` says "`gemma4` has no `<think>` tokens and ignores the kwarg". That is wrong: Gemma 4 uses `<|channel>thought … <channel|>`, its chat template adds `<|think|>` when thinking is on, and vLLM 0.20.2 has a `gemma4` reasoning parser. We serve Gemma with `REASONING_PARSER=none`, so the reasoning stays inside `response`. In sweep5v2-live all 4,560 no-tools think-on Gemma responses start with `thought\n` and run to the output cap far more often (validate_plan answers cut at the cap: 9 → 2,690 of 3,000). The "calling falls from 21% to 0.6%" finding is therefore a real thinking-on effect, mostly "thinking uses the budget before the call" (2,025 of the 2,981 plain validate_plan no-call rows ran out inside the thought channel).
+- **The reasoning trace was never stored** (ISS-030, PR #126): the client read `reasoning_content`, vLLM 0.20.2 sends `reasoning`. The 2026-05-25 explanation of why `think_overflow` never fires is mostly wrong for the same reason.
+- **pyval does not case-fold plan names** (ISS-027), which hits the simulate and validate_plan tools as well as unaided JSON plans.
+
 ## 2026-10-02 — Four harness fixes ahead of a full-storage rerun of the with-tools arms
 
 **Motivation.** The transcript re-analysis (`development/reanalysis_transcripts.md`,

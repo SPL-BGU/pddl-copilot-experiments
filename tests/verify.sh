@@ -38,6 +38,8 @@ run_test test_scoring.py
 run_test test_check_success.py
 run_test test_simulate_q1.py
 run_test test_fixtures.py
+run_test test_hard_items.py
+run_test test_extension_copy_reused.py
 run_test test_runner.py
 run_test test_chat_decoupled.py
 run_test test_drift_check.py
@@ -53,7 +55,10 @@ run_test test_frontier_runner.py
 run_test test_d5a_pilot.py
 run_test test_vllm_client.py
 run_test test_submit_wrapper.py
+run_test test_reasoning_settings.py
 run_test test_delivered_rerun_analysis.py
+run_test test_c3_tables.py
+run_test test_reanalysis_flips_anon_val.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"
