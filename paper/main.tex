@@ -187,7 +187,7 @@ frontier tiers, so the gap tracks answer length rather than model strength.
 unaided baseline is floored, and is a luxury where it is already strong.
 \item Robustness evidence: the verdict pattern reproduces under reasoning mode
 through budget-insensitive statistics, and an anonymized-domain contamination
-probe returns null.
+probe detects no memorization effect with reasoning off.
 \end{itemize}
 
 \section{Background and Related Work}
@@ -627,14 +627,19 @@ $0$ in both modes, where a benefit with no baseline cannot be budget-confounded)
 \subsection{Contamination Control}
 Because the domains are public, an unaided baseline could be inflated by
 memorization. A separate sweep re-ran the entire matrix on structurally identical
-domains with every surface symbol (domain, predicate, and object names) renamed.
-Under \emph{think}~=~off the clean no-tools probe is near-null (mean
-$|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$ success $1.1$\,pp, max $3.7$, with zero
-CI-disjoint task cells), so where the baseline has headroom it carries no
-detectable memorization signal, and the availability gap (tool arm minus this
-clean baseline) therefore cannot be a contamination artifact on the baseline
-side. The only CI-disjoint cells appeared under \emph{think}~=~on and
-trace to tokenization rather than memory: the renamed prompts ran $\approx$5\% longer,
+domains with every surface symbol (the names of the domain and of its types,
+predicates, functions, actions, constants and objects) renamed to words from an
+unrelated theme. The renaming is lexical: action arities and the precondition and
+effect structure are unchanged, so the probe tests memorization of names, not of
+structure. We pair the two corpora trial by trial and count a difference as negligible
+when its $90\%$ interval, clustered by domain or by problem (whichever is wider), lies
+inside $\pm5$\,pp, a test chosen after the sweep. Under \emph{think}~=~off this
+criterion is met for every model pooled over the five tasks, and no headline per-task
+interval admits a canonical advantage of $5$\,pp or more (Results), so the data rule
+out a memorization advantage of that size on the baseline the availability gap is
+measured from. Under \emph{think}~=~on the criterion is not met for three Qwen models,
+with the renamed corpus lower. There the clearest cell traces to tokenization rather
+than memory: the renamed prompts ran $\approx$5\% longer,
 so more trials truncated under the shared budget while success-given-completion
 was unchanged. This is itself a live demonstration of the budget confound the
 cross-mode analysis controls for.
@@ -669,7 +674,7 @@ against the unaided rate as a reference line.
 \midrule
 Open-weight sweeps, canonical $+$ anonymized (no-tools arm) & full text at online
 grading; stored copies are $500$-char snapshots & exact $[a,\,b]$; \emph{simulate} \cbnd{a}{b} & unaided baselines; the
-contamination null \\
+contamination comparison \\
 Open-weight sweeps (tool arms) & $500$-char snapshot & bounds \cbnd{a}{b} &
 availability and steering verdicts at claim-adverse bounds; straddling cells stay
 \emph{undecided} \\
@@ -1226,19 +1231,26 @@ budget-confounded); the \emph{validate\_*} tasks are budget-dependent, their lar
 
 \textbf{Contamination.} Because the domains are public, we re-ran the matrix on
 structurally identical domains with all surface names renamed
-(Table~\ref{tab:contam}). The \emph{think}=off no-tools probe is near-null (mean
-$|\Delta(\mathrm{canonical}-\mathrm{anonymized})|$ success $1.1$\,pp, max $3.7$, with
-zero CI-disjoint task cells), so the unaided baseline carries no detectable
-memorization signal where it has headroom, and the availability gaps are not a
-contamination artifact. The per-task breakdown (Table~\ref{tab:contam-pertask})
-sharpens this: across the $15$ $\geq$9B (model\,$\times$\,task) cells the mean
-$|\Delta|$ is $1.2$\,pp (max $3.7$), confirming the null task-by-task, and the
-largest drifts all favor the \emph{anonymized} corpus, the opposite of the
-direction memorization of the public domains would produce. The only CI-disjoint cell anywhere is \emph{validate\_plan}
-under \emph{think}=on, and it traces to tokenization rather than memory: the renamed
-prompts run $\approx$5\% longer and so truncate more under the shared budget, so
-success falls $4$--$6$\,pp in lockstep with completion while success-given-completion
-is unchanged. This is itself a demonstration of the budget confound above.
+(Table~\ref{tab:contam}). Paired trial by trial, the \emph{think}=off no-tools rates
+of the two corpora meet the $\pm5$\,pp criterion for every model when pooled over the
+five tasks (the widest interval is Qwen3.5-4B's, $-2.0$\,pp, $[-4.3, +0.3]$), so we
+detect no memorization effect on the unaided baseline. The pooled rate is dominated by
+\emph{validate\_plan} ($3{,}000$ of $4{,}560$ trials), so the per-task breakdown
+(Table~\ref{tab:contam-pertask}) carries more information. Across the $15$ $\geq$9B
+(model\,$\times$\,task) cells the mean $|\Delta|$ is $1.2$\,pp (max $3.7$). The
+criterion is met in $10$ cells, $6$ of them at a floor or ceiling where they say
+little, and not met in $5$ (\emph{validate\_domain} for all three models,
+\emph{validate\_problem} for Qwen3.5-9B and Gemma-MoE-26B). In each of those five the
+renamed corpus scores higher, the opposite of the direction memorization of the public
+domains would produce, and no per-task interval admits a canonical advantage of
+$5$\,pp or more. Under \emph{think}=on the criterion is not met for Qwen3.5-4B,
+Qwen3.5-9B and Qwen3.6-35B: pooled, the renamed corpus scores $2.7$ to $4.6$\,pp
+lower, the direction memorization would produce. In this mode the shared budget
+truncates many trials, and the renamed prompts run $\approx$5\% longer. In
+\emph{validate\_plan}, where the two corpora's $95\%$ intervals separate, success falls
+$4$--$6$\,pp in lockstep with completion while success-given-completion is unchanged,
+so that cell traces to tokenization rather than memory. This is itself a
+demonstration of the budget confound above.
 
 \textbf{A budget-decoupled control.} Because the shared decode budget confounds the
 \emph{think}=on unaided baseline, we re-ran the unaided arm under the decoupled
@@ -1264,10 +1276,17 @@ open-roster control
 ($22$--$40\%$ at $\geq$4B; Results). Unaided state tracking grows with model
 capability once format and budget pressures are removed; the open-weight roster's
 apparent zero reflects those pressures ($68\%$ unparseable, $29\%$ truncated;
-Figure~\ref{fig:failtax}) and does not carry over to the stronger model. The contamination null extends to the frontier: every task's Wilson
-intervals overlap between corpora, the high-headroom validation probes
-(\emph{validate\_plan} at $97.3\%$, \emph{validate\_problem} near $90\%$) drift by
-at most $1.9$\,pp, and the pooled $|\Delta|$ is $0.5$\,pp. The \emph{simulate}
+Figure~\ref{fig:failtax}) and does not carry over to the stronger model. On
+contamination the frontier comparison says less than the open-weight one. Paired
+trial by trial, the three validation tasks meet the $\pm5$\,pp criterion
+(\emph{validate\_domain} $-1.9$\,pp, \emph{validate\_problem} $+0.8$,
+\emph{validate\_plan} $+0.0$), but two of them sit at a ceiling. \emph{Solve} is
+unresolved: its totals agree ($28.7\%$ and $28.3\%$), yet its $90\%$ interval,
+clustered by domain, is $[-10.6, +9.9]$\,pp, because single domains move in both
+directions under renaming (\emph{blocksworld} falls from $11$ to $3$ of $15$ solved
+answers, \emph{tpp} rises from $0$ to $6$). With one renaming per domain we cannot
+tell a memorized domain from a harder renaming, so we report no memorization effect
+at the frontier, and no equivalence on \emph{solve} either. The \emph{simulate}
 cells are censoring bounds on both corpora and their bounds overlap broadly, so
 no drift is claimed there, while noting it is the one cell a stronger
 contamination design should revisit.
@@ -1295,25 +1314,26 @@ essentially every trial).
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{@{}lccc@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Model} & \textbf{Canonical} & \textbf{Anonymized} & $\Delta$ \\
+\textbf{Model} & \textbf{Canon.} & \textbf{Anon.} & $\Delta$ & \textbf{90\% CI} \\
 \midrule
-Qwen3.5-0.8B  & 45.9 & 45.8 & $-0.1$ \\
-Qwen3.5-4B    & 58.2 & 56.1 & $-2.1$ \\
-Qwen3.5-9B    & 63.8 & 64.2 & $+0.4$ \\
-Gemma-MoE-26B & 74.3 & 75.2 & $+0.9$ \\
-Qwen3.6-35B   & 75.7 & 74.8 & $-0.9$ \\
+Qwen3.5-0.8B  & 45.9 & 45.8 & $-0.11$ & $[-0.55, +0.34]$ \\
+Qwen3.5-4B    & 58.2 & 56.1 & $-2.02$ & $[-4.33, +0.29]$ \\
+Qwen3.5-9B    & 63.8 & 64.2 & $+0.35$ & $[-1.52, +2.23]$ \\
+Gemma-MoE-26B & 74.3 & 75.2 & $+0.90$ & $[-0.71, +2.51]$ \\
+Qwen3.6-35B   & 75.7 & 74.8 & $-0.88$ & $[-2.22, +0.47]$ \\
 \bottomrule
 \end{tabular}
 \caption{Contamination control: no-tools success rate (\%, \emph{think}=off, pooled
 over the five tasks) on the canonical vs.\ anonymized-domain corpus, per model
-($N=4{,}560$ trials each side). Every model's Wilson 95\% intervals overlap between
-corpora ($\Delta$ within noise), and across all $25$ (model$\times$task) cells the
-mean $|\Delta|$ is $1.1$\,pp (max $3.7$) with \emph{zero} CI-disjoint cells: the
-unaided baseline carries no memorization signal. The null is informative where the
-baseline has headroom (e.g.\ Gemma-MoE-26B, Qwen3.6-35B) and uninformative at the
-floor.}
+($N=4{,}560$ trials each side). $\Delta=$ anonymized $-$ canonical (pp), paired trial
+by trial, with a $90\%$ interval clustered by domain or problem, whichever is wider.
+Every interval lies inside $\pm5$\,pp, so no model shows a detectable memorization
+effect at that resolution; the per-task cells, five of fifteen unresolved, are in
+Table~\ref{tab:contam-pertask}. The comparison is informative where the baseline has
+headroom (e.g.\ Gemma-MoE-26B, Qwen3.6-35B) and uninformative at the floor.}
 \label{tab:contam}
 \end{table}
 
@@ -1336,15 +1356,16 @@ floor.}
 corpus ($300$ \emph{simulate}, $300$ \emph{solve}, $600$ \emph{validate\_problem},
 $360$ \emph{validate\_domain}, $3{,}000$ \emph{validate\_plan}; $4{,}560$ each side,
 matching Table~\ref{tab:contam}). Sign convention $\Delta=$ anonymized $-$ canonical,
-as in Tables~\ref{tab:contam}--\ref{tab:contam-pertask}. $^\dagger$\emph{solve} stays
-near its unaided floor, so it proves the capability boundary at the frontier but
-carries limited contamination headroom. $^{\S}$\emph{simulate} cells are
-censoring bounds \cbnd{a}{b} after de-censoring from raw batch output ($59$ and
-$64$ of $300$ trials still indeterminate), so no drift value is computed for
-that row. Every exact task's Wilson $95\%$ interval overlaps
-between corpora (validation drifts $\leq 1.9$\,pp; pooled $|\Delta|=0.5$\,pp) and
-the \emph{simulate} bounds overlap broadly, so the memorization
-null extends to a strong proprietary model.}
+as in Tables~\ref{tab:contam}--\ref{tab:contam-pertask}, paired trial by trial.
+$^\dagger$The \emph{solve} totals agree, but single domains move in both directions
+under renaming, so the $90\%$ interval clustered by domain is wide,
+$[-10.6, +9.9]$\,pp, and the $\pm5$\,pp criterion is not met. $^{\S}$\emph{simulate}
+cells are censoring bounds \cbnd{a}{b} after de-censoring from raw batch output ($59$
+and $64$ of $300$ trials still indeterminate), so no drift value is computed for that
+row. The three validation tasks meet the criterion (\emph{validate\_domain} and
+\emph{validate\_plan} at a ceiling) and the \emph{simulate} bounds overlap broadly:
+no memorization effect is detected on the frontier model, but one is not ruled out on
+\emph{solve}.}
 \label{tab:frontier}
 \end{table}
 
@@ -1688,7 +1709,8 @@ instances, not decoding variance; robustness to higher temperatures is untested.
 The roster is five open-weight models from two families, so our claims concern the
 \emph{regime structure} of when a tool helps these models rather than a leaderboard.
 The unaided side of that structure partially extends to a strong proprietary model:
-Claude Sonnet 4.6 reproduces the \emph{solve} floor and the contamination null, while
+Claude Sonnet 4.6 reproduces the \emph{solve} floor (with no detectable memorization
+effect, although its \emph{solve} comparison across corpora is unresolved), while
 on \emph{simulate} it recovers substantial unaided success (\cbnd{41.7}{61.3}),
 consistent
 with the budget-decoupled control on the open-weight roster ($22$--$40\%$), so that task's
@@ -1809,8 +1831,8 @@ limit tool-augmented performance throughout, and neither is capability or tool
 accuracy: the \emph{invocation rate}, which decides whether the verified path
 is taken at all, and the \emph{delivery gap}, which decides how much of the
 verified result survives into the answer and grows with answer length. Both
-survive reasoning mode and an anonymized-domain
-contamination control. For practitioners, a planner or validator behind
+survive reasoning mode, and the anonymized-domain control detects no memorization
+effect on the unaided baseline with reasoning off. For practitioners, a planner or validator behind
 a tool interface helps an LLM most when the task exceeds the model's unaided reach,
 the model is actually prompted to call the tool, and the output budget leaves
 room to deliver what the tool returns. Availability alone does
@@ -1903,11 +1925,15 @@ competent baseline.}
 \end{table}
 
 \paragraph{Per-task contamination.}
-Table~\ref{tab:contam-pertask} disaggregates the pooled contamination null of
+Table~\ref{tab:contam-pertask} disaggregates the pooled comparison of
 Table~\ref{tab:contam}, which is dominated by \emph{validate\_plan} (3{,}000 of
-4{,}560 trials). The per-task drifts are uniformly small, and the largest favor the
-anonymized corpus, the opposite of the direction memorization of the public
-domains would produce.
+4{,}560 trials). The $\pm5$\,pp criterion is met in $10$ of the $15$ cells, $6$ of them
+at a floor or ceiling (a canonical rate below $10\%$ or above $90\%$), where it carries
+little information. It is not met in the $5$ cells marked $^\dagger$, all on
+\emph{validate\_domain} or \emph{validate\_problem}. In each of them the anonymized
+corpus scores higher, the opposite of the direction memorization of the public
+domains would produce, and no interval in the table admits a canonical advantage of
+$5$\,pp or more.
 
 \begin{table}[t]
 \centering
@@ -1917,16 +1943,17 @@ domains would produce.
 \toprule
 \textbf{Model} & \emph{solve} & \emph{v\_dom} & \emph{v\_prob} & \emph{v\_plan} & \emph{sim} \\
 \midrule
-Qwen3.5-9B    & $+0.7$ & $+1.1$ & $+3.7$ & $-0.4$ & $+0.0$ \\
-Gemma-MoE-26B & $+0.3$ & $+2.8$ & $+3.0$ & $+0.4$ & $+0.0$ \\
-Qwen3.6-35B   & $+0.3$ & $+2.5$ & $+1.0$ & $-1.9$ & $+0.0$ \\
+Qwen3.5-9B    & $+0.7$ & $+1.1^\dagger$ & $+3.7^\dagger$ & $-0.4$ & $+0.0$ \\
+Gemma-MoE-26B & $+0.3$ & $+2.8^\dagger$ & $+3.0^\dagger$ & $+0.4$ & $+0.0$ \\
+Qwen3.6-35B   & $+0.3$ & $+2.5^\dagger$ & $+1.0$ & $-1.9$ & $+0.0$ \\
 \bottomrule
 \end{tabular}
 \caption{Per-task contamination control: $\Delta=$ anonymized $-$ canonical no-tools
 success (pp, \emph{think}=off, $\geq$9B; same sign convention as
-Table~\ref{tab:contam}). Mean $|\Delta|=1.2$\,pp, max $3.7$, over $15$ cells; the
-largest drifts favor the anonymized corpus. The \emph{sim} column is the
-format-exact grade, $0\%$ on both corpora.}
+Table~\ref{tab:contam}), paired trial by trial. Mean $|\Delta|=1.2$\,pp, max $3.7$,
+over $15$ cells. $^\dagger$The $\pm5$\,pp criterion is not met: the $90\%$ interval,
+clustered by domain, reaches above $+5$\,pp. In every other cell it is met. The
+\emph{sim} column is the format-exact grade, $0\%$ on both corpora.}
 \label{tab:contam-pertask}
 \end{table}
 

@@ -590,6 +590,11 @@ other occurrence. Line 119 cites LLM-Modulo only for "known to be unreliable" an
 
 ### B5.1 Table caption (tex 1339-1341)
 
+> **Superseded 2026-11-08.** The contamination-wording PR rewrites this whole note: the
+> boundary clause goes, and so does "limited contamination headroom" (solve at 28.7% is
+> not a floor, and its paired interval is the widest of the four exact tasks). Row 1 of the
+> table above needs no further edit; rows 2 to 5 stand.
+
 Minimal deletion; the rest of the note is the author's contamination point and is left.
 
 ```latex

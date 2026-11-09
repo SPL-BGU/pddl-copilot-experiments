@@ -2416,3 +2416,48 @@ validated by an independent ranking subagent (the user asked for a second perspe
   about two and a half.
 - **Bottom line:** no rerun of the main sweep; the extension is new science plus two
   repairs (reasoning mode, small models).
+
+## 2026-11-08 — The answer to Corrêa et al. ("Frontier LLMs Rival State-of-the-Art Planners"): contamination wording fixed now; four experiments added to the extension
+
+- **Source.** Corrêa, Pereira, Seipp, arXiv:2511.09378 (v1, Nov 2025, "The 2025 Planning
+  Performance of Frontier Large Language Models"; v2, May 2026, "Frontier LLMs Rival
+  State-of-the-Art Planners"). Reasoning models plan end to end on 360 newly generated IPC
+  2023 learning-track tasks (8 domains); plans are checked with VAL. v2: Gemini 3.1 Pro 245,
+  GPT-5 205, LAMA 204, the two 2023 winners 227 and 234. Random-string names are their
+  contamination control. Headline figures were checked by web search only; arxiv.org is
+  blocked from the cloud session, so their method details are not verified.
+- **The renaming result, recomputed by the T7 method** (`tools/reanalysis/05_frontier_contamination.py`).
+  Sonnet 4.6 unaided solve 28.7 vs 28.3, Δ −0.33, 90% [−10.59, +9.93] with domain
+  clustering governing: unresolved. The unclustered paired interval of about −6 to +5
+  quoted earlier in the discussion ignores the domain clustering and is withdrawn. 75 of
+  300 answers change (25.0%), against 8.0% for a wording change and about 1% for an
+  identical prompt; blocksworld 11 → 3, tpp 0 → 6; no domain survives Holm. The three
+  validation tasks meet ±5, two at a ceiling. All rows in `NUMBERS.md`, frontier
+  contamination block.
+- **Decision (Omer): the contamination rewording goes in now as a small paper PR.** Branch
+  `claude/frontier-llms-paper-analysis-6jst6i`, stacked on PR #121 (it quotes T7). The tex
+  no longer says the baseline "carries no memorization signal", that the null "extends to a
+  strong proprietary model", or "zero CI-disjoint cells"; it uses the paired, clustered ±5
+  criterion, says the test was chosen after the sweep and that the renaming is lexical only,
+  marks the 5 unresolved per-task cells, and calls the frontier solve comparison
+  unresolved. The B5.1 caption edit is covered by it.
+- **Decision (Omer): approved for the extension prereg (plan §4 D5).** Frontier thinking on
+  (Sonnet and Haiku, plus other frontier vendors such as GPT and Gemini); larger problems (a
+  size ladder from the IPC 2023 generators); the Claude tool arm on the renamed corpus.
+  **Open:** which Claude versions (4.6 and 4.5 for the within-model thinking contrast, the
+  5.5 family as the current tier); whether the random-string corpus is worth it.
+- **Corrections to the comparison summary, so they are not repeated.**
+  - Our fixtures have 2–35 objects and 2–110-step reference plans, not "3–6 blocks, 2–34
+    steps".
+  - The VAL check has a result (1,731 of 1,732 plans, PR #121), but it does not cover the
+    Claude plans.
+  - The planner also built the answer key.
+  - Sonnet's unaided solve answers have a median of 130 output tokens, and only 2 of 300 hit
+    the 8K cap, so the gap to reasoning models is thinking, not budget.
+  - Our reference plans are not optimal: Sonnet beat the reference length on 19 of its 86
+    valid plans.
+  - Pre-registration covers Study 2 only.
+  - The B1 related-work draft must add Corrêa et al.
+- **Bottom line:** the contamination sentences now say what the data support. The frontier
+  tier gets a thinking-on probe and a scaling test, so the paper can answer "frontier LLMs
+  rival planners" directly instead of leaving a 29%-against-68% gap to a reviewer.
