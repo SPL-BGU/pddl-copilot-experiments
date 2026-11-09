@@ -46,6 +46,32 @@ let the frozen scoring code's `think_overflow` label fire and change failure lab
 `thinking` (capped at 4,096 characters by the frozen runner). A separate new row field
 would need an edit to the frozen `pddl_eval/runner.py`, so it was not added.
 
+**3. Two known effects of a stored trace (review of PR #126).**
+
+- *The trace is cut at 4,096 characters.* The cap is `THINKING_SNAPSHOT_LEN` in
+  `pddl_eval/runner.py`, which is inside the frozen package hash, so it stays. gpt-oss
+  `solve` traces are likely longer than that, so wave-2 (D3) analyses get only the
+  start of each trace. An analysis that needs the full trace must use a path outside
+  the frozen package or a later prereg.
+- *A cut-off answer gets a different label.* In `_classify_step_failure`
+  (`pddl_eval/scoring.py`, the check just above `FR_LOOP_EXHAUSTED`), a failed row
+  whose output cap fired (`done_reason == "length"`) with a non-empty `thinking`, an
+  empty response, no error and no tool-loop cap-hit is labelled `think_overflow`. With
+  `thinking` empty, as in every corpus so far, the same row became
+  `truncated_no_answer`. A cut-off row with some visible response keeps
+  `truncated_no_answer`. So on stored-trace cells, any count of cut-off answers must
+  take both labels. `tools/ntster_common.py` already does (`TRUNCATED_LOSS_REASONS`).
+  `tools/reanalysis/01_reproduce_frozen.py` and `bc_reproduce_numbers.py` counted only
+  `truncated_no_answer`; they now count both, through a `TRUNCATED_LOSS_REASONS` copy
+  in `tools/reanalysis/common.py` and `bc_common.py`. On the canonical corpora (where
+  `think_overflow` never occurs) both still reproduce the frozen figures (15/15 checks;
+  all checks pass). `tools/val_crosscheck.py` was left as it is because its sha256
+  (`e6e9a78b…`) is recorded in `reference/val_crosscheck.md`. Its online re-grade
+  applies only the truncation relabel, so on a stored-trace cell a stored
+  `think_overflow` row re-grades to `truncated_no_answer` and counts as a mismatch in
+  `pyval_regrade_reason_equals_stored`. Treat such rows as matching, or filter them,
+  before reading that count on new cells.
+
 ## 2026-11-09 — Corrections found by the 2026-11-09 audit (no code change in this entry)
 
 - **Gemma 4 does think when `enable_thinking=True`.** The 2026-05 entry on `planbench/engine.py::_vllm_chat` says "`gemma4` has no `<think>` tokens and ignores the kwarg". That is wrong: Gemma 4 uses `<|channel>thought … <channel|>`, its chat template adds `<|think|>` when thinking is on, and vLLM 0.20.2 has a `gemma4` reasoning parser. We serve Gemma with `REASONING_PARSER=none`, so the reasoning stays inside `response`. In sweep5v2-live all 4,560 no-tools think-on Gemma responses start with `thought\n` and run to the output cap far more often (validate_plan answers cut at the cap: 9 → 2,690 of 3,000). The "calling falls from 21% to 0.6%" finding is therefore a real thinking-on effect, mostly "thinking uses the budget before the call" (2,025 of the 2,981 plain validate_plan no-call rows ran out inside the thought channel).

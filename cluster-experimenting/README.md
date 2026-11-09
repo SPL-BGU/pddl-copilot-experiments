@@ -427,7 +427,12 @@ failure doesn't lose earlier-condition results.
 `--store-reasoning` (requires `--run-tag`) keeps the reasoning trace in each
 row's `thinking` field. vLLM 0.20.2 returns the trace as `message.reasoning`,
 and the client's default read (`reasoning_content`) misses it, so `thinking` is
-empty in every corpus so far; see `pddl_eval/vllm_client.py`.
+empty in every corpus so far; see `pddl_eval/vllm_client.py`. Two effects to
+know before analysing such cells: the stored trace is cut at 4,096 characters
+(`THINKING_SNAPSHOT_LEN`, frozen), and an empty cut-off answer is labelled
+`think_overflow` where it used to be `truncated_no_answer`, so truncation
+counts must take both labels (`development/CHANGELOG.md`, 2026-11-09 entry,
+item 3).
 
 The paper reports "better of with- and without-thinking"; running both
 explicitly lets us reproduce that protocol systematically.
