@@ -6,7 +6,7 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## Index (added 2026-08-29, re-verified 2026-09-18 — scan this before reading the entries)
 
-**5 open · 3 no work owed · 13 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
+**6 open · 3 no work owed · 13 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
 in place under their severity heading; they are history, not work.
 
 | open | one-line |
@@ -16,6 +16,7 @@ in place under their severity heading; they are history, not work.
 | ISS-019 | tool-error message extraction is name-unscoped — latent, never observed |
 | ISS-020 | `validate_domain` neg-arm pairing 5:1 vs 5:5 — **frozen by corpus identity**: fixing it changes the trial set, so it waits for a fresh sweep |
 | ISS-025 | `planbench/apply_patches.py main()` can't run end-to-end on the hand-edited external tree |
+| ISS-027 | the plan grader (pyval) rejects correctly cased upper-case object names: 11 frontier solve plans graded wrong; open-model rows not yet checked (added 2026-11-09) |
 
 | no work owed (stays listed) | why |
 |---|---|
@@ -28,6 +29,13 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026; struck 2026-09-18: ISS-003, 
 ---
 
 ## P1 — Methodology
+
+### ISS-027 · Plan grader is case-sensitive on object names; PDDL is not (added 2026-11-09)
+**Source.** VAL cross-check of the Claude solve plans, PR #125 (`tools/reanalysis/val_frontier_solve.py`), 2026-11-09.
+**Evidence.** VAL and the harness grader (pyval) agree on 734 of 745 frontier solve plans. All 11 disagreements are one fault: some canonical fixtures declare upper-case names (satellite `Star0`, `GroundStation1` in `p02`/`p03`; pogo_stick `CRAFT_PLANK` in `domain.pddl`). When Claude writes the name exactly as declared, pyval rejects the plan as "not declared"; the same plan in lower case passes pyval, and VAL accepts it as written. PDDL names are case-insensitive, so pyval is wrong here. Only unaided canonical answers are hit (the renamed tree has no upper-case names; the planner writes lower case).
+**Impact.** Under VAL, 12 of 300 Sonnet 4.6 and 3 of 100 Haiku 4.5 unaided canonical solve trials would pass instead of fail. Sonnet's frozen contamination solve gap of −0.33 [−10.59, +9.93] would read −4.33 [−14.38, +5.71] post hoc: still unresolved, so the PR #123 wording stands, but the frozen figure is biased. A warning sits beside that row in `NUMBERS.md` (PR #125). **Not yet checked:** the open-model unaided solve rows (Study 1 and the rerun) and the open-model T7 tests; C1 covered only the rerun's open-model plans and found 1,731 of 1,732 in agreement.
+**Fix.** (1) Check the open-model rows for the same fault (read-only, local). (2) The grader fix belongs in `../pddl-copilot/plugins/pddl-validator/server/` (case-fold names before the declaration check), with a test, in that repo. (3) Frozen corpora are never re-graded in place: a corrected figure is reported post hoc beside the frozen one, as the PlanBench corrected extractor was (PR #114). (4) The extension's grader version is fixed in the D1f prereg.
+**Files.** `../pddl-copilot/plugins/pddl-validator/server/validator_server.py`; `tools/reanalysis/val_frontier_solve.py` (PR #125).
 
 ### ISS-024 · `_normalize_trajectory` predicate-syntax gap floored no-tools `simulate` at 0% (frontier-fixed)
 **Source.** Frontier Haiku no-tools grading, 2026-06-23 (`development/reference/grading_artifacts_findings.md`, `development/archive/plans-executed/simulate_normalizer_fix_plan.md`).

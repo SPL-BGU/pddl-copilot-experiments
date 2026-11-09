@@ -142,7 +142,9 @@ ISS-013.
   `sweep5v2-live` are never touched. **The loader:** two small validate_domain trees
   (tree A with the first invalid domain, tree B with the second), no harness change.
 - **Llama weights:** keep unsloth's ungated copy if its weight files match Meta's byte
-  for byte (check running).
+  for byte. **Checked 2026-11-09: identical** (all four shards and the index match Meta's
+  LFS pointers; only small config and tokenizer metadata differ, with the same chat
+  template and stop tokens; `draft_release_licence_models.md` §2). Unsloth stands.
 - **GPT-OSS:** low effort in wave 1, medium in wave 2, sent explicitly; cells labelled
   "low effort", never "thinking off".
 - **The 35B calling rate:** quote both runs (68.0 and 82.7), keep "bigger calls less" as
@@ -177,8 +179,27 @@ ISS-013.
 
 ### Open decisions
 
-- **Which two families go first** in wave 1 (Omer leans gpt-oss-20b and Llama 3.1 8B);
-  recommendation pending.
+- **Which two families go first** in wave 1. Omer leans gpt-oss-20b and Llama 3.1 8B; the
+  agent agrees (two new vendors, opposite calling behaviour, both serving paths clean;
+  Ministral is the slowest and most fragile, so wave 2). Needs Omer's yes. More small or
+  MoE candidates for later tiers: GLM-4.7-Flash, Nemotron 3 Nano 30B-A3B, Granite 4.2 8B,
+  gpt-oss-120b, Olmo 3 7B (`draft_release_licence_models.md` §3).
+- **D5 pilot spend:** a 20-key thinking pilot, about $1.50 to $10 with the Batch API (cap
+  $38.59). The full D5 set is about $102 / $204 / $459 with the Batch API at low / mid /
+  high thinking use (`draft_D5_cost_and_correa.md`).
+- **Tracking:** the proposal (`draft_tracking_proposal.md`: one `items.yaml`, rendered into
+  this file and checked against GitHub) has 9 questions for Omer.
+- **Licence holder:** BGU procedure 14-007 treats MSc research software as a possible
+  service invention owned by BGU or BGN; it says nothing on open-source licences or the
+  copyright line. Ask the advisor (the lab already ships MIT repos as "SPL@BGU"), then
+  BGN if needed. The agent recommends MIT for code.
+- **Gemma thinking (side finding, unchecked):** the Gemma 4 model card describes a
+  thinking switch and vLLM 0.20.2 has a `gemma4` reasoning parser, while we serve Gemma
+  with `REASONING_PARSER=none` and the CHANGELOG says it ignores the kwarg. If the card
+  is right, Gemma's think=on cells may have thought for real. A read-only check of the
+  stored rows is owed before D3 relies on the "21% to 0.6%" finding.
+- **ISS-027 (new, P1):** the plan grader rejects correctly cased upper-case names; open
+  model rows still to check (`OPEN_ISSUES.md`).
 - **⚠️ STILL OPEN (Omer 2026-11-09: keep it open): E1, the six research questions
   against the two gates.** The tex frames its results as RQ1 to RQ6 plus a scorecard; the
   plan frames them as two gates (calling, delivery). The side-by-side and the suggestion
