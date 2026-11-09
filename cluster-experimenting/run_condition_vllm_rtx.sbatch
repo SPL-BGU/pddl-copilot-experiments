@@ -71,6 +71,7 @@ if [ -n "${CELLS_LIST:-}" ]; then
             no-tools)               _CTAG="notools" ;;
             tools_all_minimal)      _CTAG="tools-all" ;;
             tools_all_neutral)      _CTAG="tools-all-neutral" ;;
+            no-tools-jsonbound)     _CTAG="notools-jsonbound" ;;
             @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
         esac
@@ -101,10 +102,24 @@ EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 # wrapper via --export=ALL) so a model that lands on the VRAM-85%-guard
 # knife-edge can request a lower fraction.
 GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
+# Context window (vllm serve --max-model-len). 16384 is the window of every
+# corpus to date. submit_with_rtx.sh --max-model-len N sets a larger one for
+# the context-room cells (plan step D1c) and requires a --run-tag; the harness
+# is then told the same window (--num-ctx / --num-ctx-thinking) so the run's
+# summary records it. Default → serve and run_experiment.py calls unchanged.
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-16384}"
+CTX_ARGS=()
+if [ "$MAX_MODEL_LEN" != "16384" ]; then
+    CTX_ARGS=(--num-ctx "$MAX_MODEL_LEN" --num-ctx-thinking "$MAX_MODEL_LEN")
+fi
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 CONCURRENCY="${CONCURRENCY:-4}"
 CONDITIONS="${CONDITIONS:-$PDDL_DEFAULT_SBATCH_CONDITIONS}"
 TASKS_ENV_OVERRIDE="${TASKS:-}"
+# PDDL_JSON_CONSTRAINT is set per run_experiment.py call, only for the
+# no-tools-jsonbound cond (COND_ENV below). Drop any value inherited through
+# the wrapper's --export=ALL so a plain no-tools cell can never bind.
+unset PDDL_JSON_CONSTRAINT PDDL_TOOL_CALL_ID_STYLE
 # submit_with_rtx.sh --tasks joins the task list with `^` (same separator as
 # CELLS_LIST) so the value survives sbatch's comma-separated --export list
 # without relying on embedded spaces. Map it back to the space-separated form
@@ -188,11 +203,40 @@ for MODEL in $MODELS; do
     # MAX_NUM_BATCHED_TOKENS. Unset between iterations so a leftover
     # MM-aware value from a previous model doesn't bleed into a
     # text-only model's serve command.
-    unset MAX_NUM_BATCHED_TOKENS
+    unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS HF_REVISION HF_CACHE_IN_JOB TOOL_CALL_ID_STYLE
     vllm_lookup "$MODEL" || exit 1
     MAX_NUM_BATCHED_TOKENS_FLAG=""
     [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
         MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
+    # Optional per-model extras (lib/defaults.sh). Both stay empty for the
+    # models verified before 2026-10-27, so their serve command is unchanged.
+    # The template path is under $EXPT_ROOT, inside $HOME, which apptainer
+    # binds by default.
+    CHAT_TEMPLATE_FLAG=""
+    if [ -n "${CHAT_TEMPLATE:-}" ]; then
+        if [ ! -f "$EXPT_ROOT/$CHAT_TEMPLATE" ]; then
+            echo "Error: chat template $EXPT_ROOT/$CHAT_TEMPLATE not found"; exit 1
+        fi
+        CHAT_TEMPLATE_FLAG="--chat-template $EXPT_ROOT/$CHAT_TEMPLATE"
+    fi
+    EXTRA_SERVE_FLAGS="${EXTRA_SERVE_ARGS:-}"
+    if [ -n "${HF_REVISION:-}" ]; then
+        EXTRA_SERVE_FLAGS="$EXTRA_SERVE_FLAGS --revision $HF_REVISION --tokenizer-revision $HF_REVISION"
+    fi
+    # HF_CACHE_IN_JOB=1: point HF_HOME inside the container at the bound
+    # scratch hf-cache, so the weights download to job scratch, not $HOME.
+    # Passed through `env` as APPTAINERENV_HF_HOME; unset otherwise, so the
+    # older models keep reading their $HOME cache exactly as before.
+    # Client-side per-model setting, passed to every run_experiment.py call
+    # of this model (MODEL_ENV); empty for the older models.
+    MODEL_ENV=()
+    if [ -n "${TOOL_CALL_ID_STYLE:-}" ]; then
+        MODEL_ENV=(PDDL_TOOL_CALL_ID_STYLE="$TOOL_CALL_ID_STYLE")
+    fi
+    APPTAINER_ENV=()
+    if [ "${HF_CACHE_IN_JOB:-0}" = "1" ]; then
+        APPTAINER_ENV=(APPTAINERENV_HF_HOME=/root/.cache/huggingface)
+    fi
     # Build --reasoning-parser flag via the shared helper. Families with
     # no reasoning trace (gemma4, REASONING_PARSER=none) get an empty
     # string so the flag is omitted — passing `--reasoning-parser none`
@@ -223,8 +267,10 @@ for MODEL in $MODELS; do
     # can confirm WHICH parsers + VRAM fraction actually loaded without
     # parsing vLLM's startup verbosity — a wrong --tool-call-parser silently
     # yields 0% tool extraction (memory reference_vllm_parser_per_model).
-    echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-}"
-    apptainer exec --nv \
+    echo "  context window: --max-model-len $MAX_MODEL_LEN"
+    echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-} ${CHAT_TEMPLATE_FLAG:-} ${EXTRA_SERVE_FLAGS:-}"
+    [ "${HF_CACHE_IN_JOB:-0}" = "1" ] && echo "  hf cache: job scratch ($WORK/hf-cache)"
+    env "${APPTAINER_ENV[@]}" apptainer exec --nv \
         --bind "$WORK/hf-cache:/root/.cache/huggingface" \
         --writable-tmpfs \
         "$SIF_VLLM" \
@@ -232,13 +278,15 @@ for MODEL in $MODELS; do
             --model "$HF_MODEL" \
             --host 0.0.0.0 \
             --port "$PORT" \
-            --max-model-len 16384 \
+            --max-model-len "$MAX_MODEL_LEN" \
             --enable-auto-tool-choice \
             --tool-call-parser "$TOOL_CALL_PARSER" \
             $REASONING_PARSER_FLAG \
             --gpu-memory-utilization "$GPU_MEM_UTIL" \
             --enable-prefix-caching \
             $MAX_NUM_BATCHED_TOKENS_FLAG \
+            $CHAT_TEMPLATE_FLAG \
+            $EXTRA_SERVE_FLAGS \
             > "$SERVE_LOG" 2>&1 &
     VLLM_PID=$!
     trap 'echo "Shutting down..."; kill $VLLM_PID 2>/dev/null || true; preserve_serve_logs; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT
@@ -314,7 +362,7 @@ for MODEL in $MODELS; do
         echo "===================================================================="
         echo "MODEL: $MODEL   smoke ($SMOKE_FLAG)   started $(date)"
         echo "===================================================================="
-        python3 run_experiment.py \
+        env "${MODEL_ENV[@]}" python3 run_experiment.py \
             --marketplace-path "$MARKETPLACE_PATH" \
             --models "$HF_MODEL" \
             --llm-base-url "$LLM_BASE_URL" \
@@ -358,8 +406,18 @@ for MODEL in $MODELS; do
                 TASKS_ARG=()
             fi
 
+            COND_ENV=()
             case "$COND" in
                 no-tools)
+                    COND_ARGS=(--conditions no-tools) ;;
+                no-tools-jsonbound)
+                    COND_ENV=(PDDL_JSON_CONSTRAINT=structured_outputs)
+                    # submit_with_rtx.sh --json-constraint structured_outputs
+                    # (JSON control, plan step D1d): the no-tools schema is
+                    # sent in the field vLLM 0.20.2 reads, so it binds. The
+                    # cond token gives these cells their own OUT_DIR.
+                    # Carried by $PDDL_JSON_CONSTRAINT (read by VLLMClient), set
+                    # on this run_experiment.py call only (COND_ENV below).
                     COND_ARGS=(--conditions no-tools) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
@@ -429,7 +487,7 @@ for MODEL in $MODELS; do
                 fi
             fi
 
-            python3 run_experiment.py \
+            env "${COND_ENV[@]}" "${MODEL_ENV[@]}" python3 run_experiment.py \
                 --marketplace-path "$MARKETPLACE_PATH" \
                 --models "$HF_MODEL" \
                 --llm-base-url "$LLM_BASE_URL" \
@@ -443,6 +501,7 @@ for MODEL in $MODELS; do
                 "${STEERED_ARG[@]}" \
                 "${DOMAINS_DIR_ARG[@]}" \
                 "${DECOUPLED_ARGS[@]}" \
+                "${CTX_ARGS[@]}" \
                 --output-dir "$OUT_DIR"
             RC=$?
 

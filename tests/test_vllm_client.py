@@ -62,6 +62,17 @@ def test_parse_ctx_overflow_new_format():
     assert _parse_ctx_overflow(_make_err(body)) == (16384, 10240)
 
 
+def test_parse_ctx_overflow_exact_format():
+    """Mistral-tokenizer body (vLLM 0.20.2, 2026-10-27): the exact prompt count."""
+    body = (
+        "Error code: 400 - {'error': {'message': \"This model's maximum "
+        "context length is 16384 tokens. However, you requested 8192 output "
+        "tokens and your prompt contains 8310 input tokens, for a total of "
+        "16502 tokens. Please reduce the length of the input...\""
+    )
+    assert _parse_ctx_overflow(_make_err(body)) == (16384, 8310)
+
+
 def test_parse_ctx_overflow_returns_none_for_unrelated_400():
     """A non-overflow 400 must return None so the caller re-raises."""
     body = "Error code: 400 - Bad Request: tool argument schema mismatch."
@@ -312,6 +323,118 @@ def test_record_ctx_clip_keys_absent_by_default():
     assert "ctx_clip_last_turn_prompt_tokens" not in tokens
     _record_ctx_clip(tokens, {"ctx_overflow_no_room": True})
     assert tokens["ctx_no_room_turns"] == 1
+
+
+class _CaptureCompletions:
+    """Records the kwargs of each create() call; always answers."""
+
+    def __init__(self):
+        self.calls: list[dict] = []
+
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        msg = SimpleNamespace(content="{}", tool_calls=None, reasoning_content=None)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=msg, finish_reason="stop")],
+            usage=SimpleNamespace(prompt_tokens=10, completion_tokens=2),
+        )
+
+
+def _sent_extra_body(json_constraint: str | None, fmt) -> dict:
+    fake = _CaptureCompletions()
+    client = (VLLMClient(base_url="http://test") if json_constraint is None
+              else VLLMClient(base_url="http://test", json_constraint=json_constraint))
+    client._client = SimpleNamespace(chat=SimpleNamespace(completions=fake))
+    asyncio.run(client.chat(model="m", messages=[{"role": "user", "content": "x"}],
+                            options={"num_predict": 64}, format=fmt))
+    return fake.calls[0].get("extra_body", {})
+
+
+_SCHEMA = {"type": "object", "properties": {"verdict": {"type": "string"}}}
+
+
+def test_schema_default_field_is_guided_json():
+    # The default must stay exactly what every earlier corpus sent.
+    assert _sent_extra_body(None, _SCHEMA) == {"guided_json": _SCHEMA}
+    assert _sent_extra_body("guided_json", _SCHEMA) == {"guided_json": _SCHEMA}
+
+
+def test_schema_structured_outputs_field():
+    assert _sent_extra_body("structured_outputs", _SCHEMA) == {
+        "structured_outputs": {"json": _SCHEMA}}
+
+
+def test_json_object_format_ignores_the_switch():
+    # format="json" goes through response_format under both settings.
+    assert _sent_extra_body("structured_outputs", "json") == {}
+
+
+def test_json_constraint_from_environment():
+    import os
+    saved = os.environ.get("PDDL_JSON_CONSTRAINT")
+    try:
+        os.environ["PDDL_JSON_CONSTRAINT"] = "structured_outputs"
+        assert _sent_extra_body(None, _SCHEMA) == {
+            "structured_outputs": {"json": _SCHEMA}}
+        # an explicit argument wins over the environment
+        assert _sent_extra_body("guided_json", _SCHEMA) == {"guided_json": _SCHEMA}
+        os.environ["PDDL_JSON_CONSTRAINT"] = ""
+        assert _sent_extra_body(None, _SCHEMA) == {"guided_json": _SCHEMA}
+    finally:
+        if saved is None:
+            os.environ.pop("PDDL_JSON_CONSTRAINT", None)
+        else:
+            os.environ["PDDL_JSON_CONSTRAINT"] = saved
+
+
+def test_tool_call_id_styles():
+    from pddl_eval.vllm_client import _to_openai_messages
+    msgs = [
+        {"role": "user", "content": "x"},
+        {"role": "assistant", "content": "",
+         "tool_calls": [{"function": {"name": "a", "arguments": {}}},
+                        {"function": {"name": "b", "arguments": {}}}]},
+        {"role": "tool", "content": "r1"},
+        {"role": "tool", "content": "r2"},
+    ]
+    # default: byte-identical to every earlier corpus
+    d = _to_openai_messages(msgs)
+    assert [c["id"] for c in d[1]["tool_calls"]] == ["call_1_0", "call_1_1"]
+    assert [m["tool_call_id"] for m in d[2:]] == ["call_1_0", "call_1_1"]
+    m9 = _to_openai_messages(msgs, "mistral9")
+    ids = [c["id"] for c in m9[1]["tool_calls"]]
+    assert ids == ["c00001000", "c00001001"]
+    assert all(len(i) == 9 and i.isalnum() for i in ids)
+    assert [m["tool_call_id"] for m in m9[2:]] == ids
+
+
+def test_tool_call_id_style_from_environment():
+    import os
+    saved = os.environ.get("PDDL_TOOL_CALL_ID_STYLE")
+    try:
+        os.environ.pop("PDDL_TOOL_CALL_ID_STYLE", None)
+        assert VLLMClient(base_url="http://test")._tool_call_id_style == "call"
+        os.environ["PDDL_TOOL_CALL_ID_STYLE"] = "mistral9"
+        assert VLLMClient(base_url="http://test")._tool_call_id_style == "mistral9"
+        os.environ["PDDL_TOOL_CALL_ID_STYLE"] = "bogus"
+        try:
+            VLLMClient(base_url="http://test")
+            raise AssertionError("expected ValueError")
+        except ValueError:
+            pass
+    finally:
+        if saved is None:
+            os.environ.pop("PDDL_TOOL_CALL_ID_STYLE", None)
+        else:
+            os.environ["PDDL_TOOL_CALL_ID_STYLE"] = saved
+
+
+def test_unknown_json_constraint_is_rejected():
+    try:
+        VLLMClient(base_url="http://test", json_constraint="guided")
+    except ValueError:
+        return
+    raise AssertionError("expected ValueError")
 
 
 if __name__ == "__main__":
