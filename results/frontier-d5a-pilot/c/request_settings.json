@@ -1,0 +1,53 @@
+{
+  "request_settings": {
+    "thinking": "on",
+    "temperature_mode": "default",
+    "thinking_budget": null,
+    "effort": "high",
+    "prompt_file": null
+  },
+  "repeats": 1,
+  "seed": null,
+  "exclude_domains": [],
+  "prompt_file_body_sha256": null,
+  "prompt_file_sha256": null,
+  "sdk_version": "0.109.2",
+  "anthropic_version_header": "2023-06-01",
+  "model": "claude-sonnet-5-5",
+  "first_request_settings": {
+    "model": "claude-sonnet-5-5",
+    "max_tokens": 64000,
+    "thinking": {
+      "type": "adaptive",
+      "display": "summarized"
+    },
+    "output_config": {
+      "format": {
+        "type": "json_schema",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "plan": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "plan"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "effort": "high"
+    },
+    "has_system_prompt": true
+  },
+  "worst_case": {
+    "n": 20,
+    "input_tokens_bound": 34453,
+    "output_tokens_bound": 1280000,
+    "list_usd": 12.8689
+  }
+}

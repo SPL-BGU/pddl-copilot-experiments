@@ -1,0 +1,44 @@
+{
+  "anthropic_version_header": "2023-06-01",
+  "backend": "anthropic-batch",
+  "conditions": "no-tools",
+  "corpus": "canonical",
+  "created_at": "2026-11-09T12:21:15+0200",
+  "domains_dir": "domains",
+  "exclude_domains": [],
+  "ground_truth": "cached",
+  "ground_truth_sha256": "2557f828ccad91f811f4aa3d7cc55b2a2bf4d2d9c828f1b8b09d8b0b7b9108ff",
+  "gt_cache_path": "/Users/omereliyahu/personal/pddl-copilot-experiments/results/derived/gt_cache.json",
+  "gt_cache_sha256": "77d4184ed872dd4bd7a22747c2e716eb74b86edc94420e47c92daf1684d04c7e",
+  "keys_files": [
+    "results/frontier-d5a-pilot/keys/haiku_v11_keys.jsonl"
+  ],
+  "limit": null,
+  "manifest_version": 1,
+  "max_iterations": 1,
+  "model": "claude-haiku-4-5",
+  "num_predict": 64000,
+  "prompt_file_body_sha256": null,
+  "prompt_file_sha256": null,
+  "prompt_variants": [
+    11
+  ],
+  "repeats": 1,
+  "request_settings": {
+    "effort": null,
+    "prompt_file": null,
+    "temperature_mode": "default",
+    "thinking": "on",
+    "thinking_budget": 32000
+  },
+  "sdk_version": "0.109.2",
+  "seed": null,
+  "snapshot_len": null,
+  "stream": false,
+  "tasks": [
+    "solve"
+  ],
+  "temperature": "default (omitted)",
+  "think": "on",
+  "with_tools": false
+}

@@ -1,0 +1,14 @@
+{
+  "batch_id": "msgbatch_01JAxqHwTFsrSDJf4wF9XLXw",
+  "created_at": "2026-11-09T10:25:47.070738+00:00",
+  "ended_at": "2026-11-09T10:27:32.918694+00:00",
+  "wall_seconds": 105.847956,
+  "request_counts": {
+    "succeeded": 20,
+    "errored": 0,
+    "canceled": 0,
+    "expired": 0,
+    "processing": 0
+  },
+  "sdk_version": "0.109.2"
+}

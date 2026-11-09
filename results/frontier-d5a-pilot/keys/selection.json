@@ -1,0 +1,14 @@
+{
+  "source": "results/sonnet-frontier/sweep5v2/trials.jsonl",
+  "seed": 20261109,
+  "n": 20,
+  "rule": "sort solve keys (domain, problem, plan_label, variant); random.Random(seed).shuffle; take the first n with distinct (domain, problem)",
+  "variants": {
+    "12": 7,
+    "13": 9,
+    "11": 4
+  },
+  "correa_excluded_domains": [
+    "gripper"
+  ]
+}
