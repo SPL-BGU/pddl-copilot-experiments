@@ -195,6 +195,9 @@ ISS-013.
   needed). Code MIT, data CC-BY-4.0, copyright line naming BGN (confirm its exact legal
   name), Omer as author in `CITATION.cff` and on the Zenodo DOI, lab SPL-BGU.
 - **D5a full run:** approved (about $51 with the Batch API), after D1f holds the cells.
+  The $51 leaves out D5e. Its thinking-on cell (95 problems x 3 = 285 trials) adds about
+  $14 (about $10 to $19; 2-shot input from pilot arm e (7,626 tokens per trial), output = arm a's mean Sonnet 4.6 thinking (4,123 tokens, bootstrap CI) plus arm e's mean answer (887), at Batch prices of $1.50 / $7.50 per MTok); its thinking-off cell adds $1.72 (95 x1). With D5e,
+  about $66 with the Batch API (PR #131 review).
   Omer has $186 loaded plus a work account; when the loaded credits run out, decide next.
 - **pyval case fix (ISS-027):** `pddl-pyvalidator` 0.1.6 released by Omer; pinned in the
   validator plugin 3.1.1 (SPL-BGU/pddl-copilot #60, merged). The cluster's plugin venv
