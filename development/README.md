@@ -32,7 +32,7 @@ Four files answer almost every question:
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
 | `draft_B1_B2_related_work.md` · `draft_B3_B5_methods.md` | plan §4 B drafts, for Omer's read before the B paper PR |
 | `handoff_20261109.md` | the 2026-11-09 decisions in final form and the ordered work list; delete when its items move into `items.yaml` |
-| `draft_E1_research_questions.md` · `draft_tracking_proposal.md` · `draft_D5_cost_and_correa.md` · `draft_release_licence_models.md` | live drafts: the open RQ question; the tracking design (A chosen); D5 cost and the Corrêa facts; licence and model research. (`draft_C4_transcripts.md` arrives with PR #128) |
+| `draft_E1_research_questions.md` · `draft_tracking_proposal.md` · `draft_D5_cost_and_correa.md` · `draft_release_licence_models.md` | live drafts: the open RQ question; the tracking design (A chosen); D5 cost and the Corrêa facts; licence and model research. `draft_C4_transcripts.md` (merged with PR #128) holds the C4 transcripts, readings awaiting Omer's confirmation |
 
 ## `reference/`: stable, never a status
 

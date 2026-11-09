@@ -1,7 +1,7 @@
 # STATUS — what is actually left
 
 *Content last refreshed: 2026-11-09, end of day (every open decision answered except E1,
-which Omer keeps open; PRs #121 to #127 and #129 merged; pyval 0.1.6 pinned in the sibling
+which Omer keeps open; PRs #121 to #129 and #131 merged, only draft #130 open; pyval 0.1.6 pinned in the sibling
 repo; the work list for the next sessions is in `handoff_20261109.md`). Earlier that day:
 the repo audit and Omer's first twelve answers (`paper_notes_discussions.md`). Before that
 2026-11-08 (contamination-wording paper PR #123; plan step D5 added and approved, the
