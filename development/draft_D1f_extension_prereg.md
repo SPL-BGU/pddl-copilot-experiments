@@ -12,9 +12,8 @@
 > Each reading says which RQ framing it serves under both options of
 > `draft_E1_research_questions.md` only where that is unambiguous.
 >
-> Slots marked **[FROM ITEM 9]** are filled from the PR of handoff item 9 (D5b ground
-> truth), running when this draft was written. The ISS-028 and ISS-029 rules follow PR
-> #136's recommendations and are checked against it once it merges.
+> The ISS-028 and ISS-029 rules come from PR #136 and the D5b ground truth from PR #138
+> (both open). If either PR changes before it merges, these sections follow it.
 
 Sources: `weakness_action_plan.md` §4 D (D1 to D5), `handoff_20261109.md` §2 decisions 1
 to 13 and §4 item 10, `STATUS.md` "Decided 2026-11-09", `reference/d1_smokes_20261027.md`,
@@ -46,7 +45,8 @@ readings below:
 - **The D5a pilot** (PR #131, $1.69): thinking-token counts and the answer-parse rate on
   20 keys per arm. Plan success was not computed (§9.4).
 - **D5b ground truth** (item 9): the share of the new IPC 2023 problems the planner
-  solves at 120 s and 1800 s. **[FROM ITEM 9]**
+  solves at 120 s and 1800 s (PR #138, `NUMBERS.md` D5b block; the 1800 s pass on the
+  hard tier was still running when this was written).
 - Frontier Study 1 cells (thinking off), the contamination probe, the budget probe.
 
 ---
@@ -94,12 +94,16 @@ It is one Study 2: the rerun's setup plus additive changes only (§2.3).
 - **Anchor slice graded twice** (§4): with 0.1.6 and with the rerun's validator version,
   so drift is never confounded with the grader change.
 - **ISS-028 extractor rule (solve)** (PR #136's recommendation, handoff §6 decision 10): a
-  goal list after a correct plan does not fail the answer. The extractor **reads up to the
-  last action** and ignores trailing goal facts. Real copying errors (record: 5 of the
+  goal list after a correct plan does not fail the answer. The extractor reads the plan
+  as the frozen grader does, then **drops the run of lines at the very end in which every
+  line is a positive goal fact of the problem** (lower case, spaces collapsed, outer
+  brackets normalised). Lines are never dropped from the middle, and nothing is dropped
+  if that would leave an empty plan (`strip_goal_trailer`,
+  `tools/reanalysis/iss028_029_common.py`, PR #136). Real copying errors (record: 5 of the
   rerun's 38 wrong-facts solve rows) stay wrong. The rule is applied to extension rows
   and, post hoc and labelled, to the rerun rows they are compared with, so both sides of
   a contrast use one rule. The exact rule text is copied from `iss028_goal_trailers.py`
-  at the freeze. **[CHECK against #136 once merged]**
+  at the freeze.
 - **ISS-029 plan source (simulate)** (PR #136's recommendation, handoff §6 decision 12):
   the simulate prompt is **built from the same cached plan the grader uses**
   (`results/derived/gt_cache.json`, hash recorded at the freeze), so prompt and grader
@@ -222,7 +226,7 @@ unaided cell. Cost approved: about $66 in all with D5e (decision 8).
 | D5a-1 | unaided solve, thinking on | Sonnet 4.6, Haiku 4.5 | 3 repeats per problem | within-model contrast with the existing thinking-off cells |
 | D5a-2 | unaided solve, thinking on and `between_tools` | Sonnet 5.5 | 3 repeats | 5.5 rejects non-default temperature: both arms at T=1, effort `high` sent explicitly so only thinking differs |
 | D5a-3 | thinking off at temperature 1, same problems | Sonnet 4.6, Haiku 4.5 | 3 repeats | separates sampling from thinking |
-| D5b | size ladder: unaided and tool arm, calling rate, against size | to decide (Q6) | **[FROM ITEM 9]** | no model run until the ground truth is in (item 9); the tool arm cannot exceed the planner's 120 s share |
+| D5b | size ladder: unaided and tool arm, calling rate, against size | to decide (Q6) | 4 IPC 2023 domains (blocksworld, miconic, rovers, satellite; IPC's domain files) x 3 tiers copying IPC's easy, medium and hard test ranges x 10 fresh problems (seeds 5001-5010, 5101-5110, 5201-5210), IPC repo at `19d6a8a`; tiers sent to models per Q10 | the tool arm cannot exceed the planner's 120 s share; graded per Q11 |
 | D5c | tool arm on `domains-anon` | Sonnet 4.6 | 100 x1 solve; simulate as the budget probe | Haiku 4.5's already ran (2026-07-12, 1,520 trials, #125) |
 | D5d | two random-string maps per domain, unaided solve | Sonnet 4.6, Haiku 4.5 | about 800 | memorization against "this renaming is harder" |
 | D5e | Corrêa et al.'s 2-shot prompt word for word, our Gripper problems left out | Sonnet 4.6 | 95 x1 thinking off T=0; 95 x3 thinking on | one descriptive row, outside the confirmatory set, never pooled with v11 to v13 |
@@ -357,7 +361,9 @@ two models.
   than 5.
 - **R10 (D5b).** Unaided and tool-arm solve rates and the calling rate against the size
   tier; the tool arm's ceiling is the planner's 120 s share from item 9, reported beside
-  it. **[FROM ITEM 9: the tiers and the planner shares]**
+  it, by problem (each D5b result row carries whether the plugin's default strategy
+  solved that problem at 120 s). Tiers and planner shares: PR #138 and the `NUMBERS.md`
+  D5b block, quoted from there only.
 - **R11 (D5d).** Random-string solve against the themed renaming and the original; the
   reading of `NUMBERS.md`'s contamination block is "memorization" only if random strings
   recover the original's rate and the themed renaming does not.
@@ -472,3 +478,12 @@ files is a numbered deviation here, with a re-freeze.
 9. **Q9** R6's bar for calling the items "harder" (below −5 for unaided accuracy in at
    least two of three validate tasks): accept or change.
    > ANSWER:
+10. **Q10** which D5b tiers go to the models: recommended easy and medium; hard only with
+    the planner-solved label beside every result (PR #138: at 120 s the plugin default
+    leaves many hard problems unsolved, and no strategy solves a hard blocksworld problem).
+    > ANSWER:
+11. **Q11** grading D5b plans: `pddl-pyvalidator` took up to 1,286 s on one 537-step plan
+    (PR #138), so long model plans could hit the harness's time limits. Recommended: grade
+    D5b with KCL VAL (the build pinned in PR #138, agreeing with pyvalidator on 208 of 208
+    plans), pyvalidator beside it, and write that into §2.2.
+    > ANSWER:
