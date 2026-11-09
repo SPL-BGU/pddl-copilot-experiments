@@ -135,6 +135,24 @@ def test_render28(r):
     r.check("labelled post hoc and do-not-quote", "post hoc" in s and "Do NOT quote" in s)
     r.check("Haiku membership stated", "depot p02 **is one of them**" in s)
     r.check("class counts", "**3** repeat the tool's plan" in s and "**2** are copying errors" in s)
+    r.check("no raw trials: shape not re-checked", "not re-checked" in s)
+
+
+def test_render28_haiku_raw(r):
+    res = _res28()
+    res["haiku"].update(raw="trials.jsonl", rows=[
+        {"domain": "a", "problem": "p01", "class": K.OTHER, "answer_len": 1, "tool_len": 56,
+         "stripped_valid": None},
+        {"domain": "depot", "problem": "p02", "class": K.GOAL_TRAILER, "answer_len": 7,
+         "tool_len": 5, "stripped_valid": True}])
+    s = T28.render_numbers(res, lambda m: m)
+    r.check("raw rows classified, with lengths",
+            "a p01 other (1 plan lines extracted, tool plan 56 actions)" in s
+            and "depot p02 goal_trailer (7 plan lines extracted, tool plan 5 actions, "
+                "trailing goal facts dropped: valid)" in s)
+    r.check("copy-error and short-answer counts",
+            "0 of 2 are copying errors by this rule, 1 write fewer lines" in s)
+    r.check("no 'not re-checked' note when raw is read", "not re-checked" not in s)
 
 
 def test_render29(r):
@@ -166,11 +184,22 @@ def test_committed_outputs(r):
                (38, {K.GOAL_TRAILER: 17, K.COPY_ERROR: 5, K.OTHER: 16}))
     r.check_eq("self-check cells", res["self_check"], {"checks": 24, "equal": 24})
     r.check_eq("C4 rule gives the same rows", res["c4_rule_differs"], [])
+    j29 = OUT / "iss029_simulate_plan.json"
+    if not j29.exists():
+        r.check("committed iss029 output present", False, str(j29))
+        return
+    res29 = json.loads(j29.read_text())
+    r.check_eq("numbers_iss029.md is the render of the JSON",
+               (OUT / "numbers_iss029.md").read_text(), T29.render_numbers(res29, gen_common.model_name))
+    r.check_eq("iss029 ran on the pinned cache", res29["pinned_cache"], True)
+    r.check_eq("iss029 counts (record: 6 of 100, 1 Part C row)",
+               (len(res29["differ"]), res29["problems_total"], res29["part_c_online_ok_delivered_wrong"]),
+               (6, 100, ["qwen3_6_35b|simulate|plain|gripper|p03||v11"]))
 
 
 if __name__ == "__main__":
     r = TestResults("test_iss028_iss029")
     for fn in (test_goal_atoms, test_classify, test_strip, test_run_plans, test_render28,
-               test_render29, test_committed_outputs):
+               test_render28_haiku_raw, test_render29, test_committed_outputs):
         fn(r)
     r.report_and_exit()

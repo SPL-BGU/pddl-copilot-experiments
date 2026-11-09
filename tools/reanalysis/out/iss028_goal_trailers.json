@@ -204,20 +204,56 @@
  "frozen_wrong_facts": 38,
  "haiku": {
   "depot_p02_is_counted": true,
-  "note": "haiku-frontier/sweep5v2-with-tools/trials.jsonl not found: the shape of these rows is not checked here, only their membership",
   "overlay": "derived/e2e_overlay/haiku-frontier/sweep5v2-with-tools.e2e.jsonl",
   "plan_invalid": [
    "counters p05",
    "depot p02",
    "parking p05"
   ],
-  "raw": null,
+  "raw": "haiku-frontier/sweep5v2-with-tools/trials.jsonl",
   "reasons": {
    "no_plan_extracted": 2,
    "plan_invalid": 3,
    "plan_valid": 95
   },
-  "rows": [],
+  "rows": [
+   {
+    "answer_len": 1,
+    "class": "other",
+    "domain": "counters",
+    "extra": null,
+    "extraction": "tolerant_lines",
+    "problem": "p05",
+    "shape": "other",
+    "stripped_valid": null,
+    "tool_len": 56
+   },
+   {
+    "answer_len": 7,
+    "class": "goal_trailer",
+    "domain": "depot",
+    "extra": [
+     "(on crate1 crate2)",
+     "(on crate2 pallet0)"
+    ],
+    "extraction": "tolerant_lines",
+    "problem": "p02",
+    "shape": "tool plan, then extra lines",
+    "stripped_valid": true,
+    "tool_len": 5
+   },
+   {
+    "answer_len": 11,
+    "class": "other",
+    "domain": "parking",
+    "extra": null,
+    "extraction": "tolerant_lines",
+    "problem": "p05",
+    "shape": "other",
+    "stripped_valid": null,
+    "tool_len": 121
+   }
+  ],
   "solve_rows": 100
  },
  "other_by_shape": {
@@ -851,8 +887,8 @@
  "verdict_source": {
   "frozen_plans": {
    "env": {
-    "marketplace_head": "df0bdf6d4a15e7bb5fecd47d60a6eb39f5f33b51",
-    "mcp": "1.30.0",
+    "marketplace_head": "e428f17fd0b211f502955b11177687d544b68277",
+    "mcp": "1.26.0",
     "pyval": "0.1.5",
     "unified_planning": "1.3.0",
     "validator_server_modified": false,
@@ -864,8 +900,8 @@
   },
   "stripped_plans": {
    "env": {
-    "marketplace_head": "df0bdf6d4a15e7bb5fecd47d60a6eb39f5f33b51",
-    "mcp": "1.30.0",
+    "marketplace_head": "e428f17fd0b211f502955b11177687d544b68277",
+    "mcp": "1.26.0",
     "pyval": "0.1.5",
     "unified_planning": "1.3.0",
     "validator_server_modified": false,

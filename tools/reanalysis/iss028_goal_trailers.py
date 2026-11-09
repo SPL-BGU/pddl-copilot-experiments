@@ -314,8 +314,15 @@ def render_numbers(res: dict, name) -> str:
               "the \"three transcription errors\" of the paper's delivery-gap paragraph, so depot p02 "
               + ("**is one of them**" if h["depot_p02_is_counted"] else "is **not** one of them"))
         if h["raw"]:
-            hk += ". By the rule above: " + "; ".join(
-                f"{x['domain']} {x['problem']} {x['class']}" for x in h["rows"]) + "."
+            hk += ". By the rule above (raw trials read): " + "; ".join(
+                f"{x['domain']} {x['problem']} {x['class']} ({x['answer_len']} plan lines "
+                f"extracted, tool plan {x['tool_len']} actions"
+                + (", trailing goal facts dropped: valid" if x["stripped_valid"] else "")
+                + ")" for x in h["rows"]) + (
+                f"; {sum(x['class'] == K.COPY_ERROR for x in h['rows'])} of "
+                f"{len(h['rows'])} are copying errors by this rule, "
+                f"{sum(x['class'] == K.OTHER and x['answer_len'] < x['tool_len'] for x in h['rows'])} "
+                "write fewer lines than the tool plan has actions.")
         else:
             hk += (". Its shape (C4: the tool plan, then two goal facts) is not re-checked by the "
                    "script here: the raw Haiku with-tools trials are not in this checkout.")
