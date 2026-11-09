@@ -1,7 +1,8 @@
 """Self-checks for the 2026-11-09 reanalysis scripts (no results data needed).
 
   tools/reanalysis/s1_call_flips.py           flip counting
-  tools/reanalysis/val_frontier_solve.py      bare-line rule, action names, delivered extraction
+  tools/reanalysis/val_frontier_solve.py      bare-line rule, action names, delivered extraction,
+                                              --render-only reproduces the committed NUMBERS rows
   tools/reanalysis/numbers_fill.py            marker replacement in NUMBERS.md
 
 Run standalone: `python3 tests/test_reanalysis_flips_anon_val.py` (also in `bash tests/verify.sh`)
@@ -49,6 +50,11 @@ def test_delivered_plan_extraction():
     assert vfs.delivered_plan("x" * vfs.SNAPSHOT_CAP) == ()  # an answer cut at the cap is not rebuilt
 
 
+def test_render_only_matches_committed():
+    committed = (vfs.OUT / "numbers_val_frontier_solve.md").read_text()
+    assert "\n".join(vfs.render_only()) + "\n" == committed
+
+
 def test_numbers_fill(tmp_path):
     for name, files in numbers_fill.BLOCKS.items():
         for f in files:
@@ -65,6 +71,7 @@ if __name__ == "__main__":
     test_flip_counts()
     test_bare_action_lines_and_actions()
     test_delivered_plan_extraction()
+    test_render_only_matches_committed()
     with tempfile.TemporaryDirectory() as d:
         test_numbers_fill(Path(d))
-    print("4 checks passed")
+    print("5 checks passed")

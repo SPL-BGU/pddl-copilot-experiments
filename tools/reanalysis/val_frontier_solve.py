@@ -45,6 +45,11 @@ Run (from the repo root; needs the VAL binary and ../pddl-copilot):
 Writes the items and rows CSVs plus a summary JSON to --out-dir (default
 results/val-crosscheck-frontier, gitignored), and
 tools/reanalysis/out/val_frontier_solve.md + numbers_val_frontier_solve.md.
+
+  .venv/bin/python tools/reanalysis/val_frontier_solve.py --render-only
+rewrites only out/numbers_val_frontier_solve.md, from the committed
+out/val_frontier_solve.json and the post hoc table of out/val_frontier_solve.md
+(no VAL binary, no pyval, no results data).
 """
 from __future__ import annotations
 
@@ -111,15 +116,104 @@ def delivered_plan(resp: str) -> tuple[str, ...]:
     return tuple(lines)
 
 
+def _eq04():
+    spec = importlib.util.spec_from_file_location("eq04", Path(__file__).with_name("04_equivalence.py"))
+    eq04 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(eq04)
+    return eq04
+
+
+CONTAM_ROW = re.compile(
+    r"^\| (Sonnet 4\.6|Haiku 4\.5) unaided solve, (stored grade|VAL grade) \| (\d+) \| ([\d.]+) \| ([\d.]+) \| "
+    r"([+-][\d.]+) \| \[([+-][\d.]+), ([+-][\d.]+)\] \| (\w+) \(k=\d+\) \|.*\| ([^|]+) \|$")
+
+
+def render_only() -> list[str]:
+    """Rebuild out/numbers_val_frontier_solve.md from the committed outputs
+    (out/val_frontier_solve.json for the counts, the post hoc table of
+    out/val_frontier_solve.md for the T7 results) without pyval or VAL."""
+    js = json.loads((OUT / "val_frontier_solve.json").read_text())
+    contam = {}
+    for ln in (OUT / "val_frontier_solve.md").read_text().splitlines():
+        m = CONTAM_ROW.match(ln)
+        if m:
+            verdict = m.group(10).strip()
+            flag = re.search(r"\((.+): low information\)", verdict)
+            contam[(m.group(1), m.group(2))] = dict(
+                n=int(m.group(3)), ra=float(m.group(4)), rb=float(m.group(5)), est=float(m.group(6)),
+                lo=float(m.group(7)), hi=float(m.group(8)), gov=m.group(9),
+                met=verdict.startswith("criterion met"), flag=flag.group(1) if flag else "")
+    if len(contam) != 4:
+        raise SystemExit(f"post hoc table in out/val_frontier_solve.md: {len(contam)} of 4 rows found")
+    return numbers_rows(js["items"], js["classes"], js["rows"], contam)
+
+
+def numbers_rows(summ: dict, klasses: dict, rc: dict, contam: dict) -> list[str]:
+    """The NUMBERS.md rows (out/numbers_val_frontier_solve.md) from the item
+    summary, the plan classes, the row counters and the four post hoc T7 results."""
+    rc = Counter(rc)
+    eq04 = _eq04()
+
+    def g(model, arm, corpus, key):
+        return rc[f"{model} | {arm} | {corpus}/{key}"]
+    al, tl, un = summ["all plans"], summ["arm: tool arm"], summ["arm: unaided"]
+    fs = {m: g(m, "unaided", "canonical", "online_fail_to_success") for m in ("Sonnet 4.6", "Haiku 4.5")}
+    sf = sum(rc[k] for k in rc if k.endswith("/online_success_to_fail"))
+    fs_ren = sum(g(m, "unaided", "renamed", "online_fail_to_success") for m in ("Sonnet 4.6", "Haiku 4.5"))
+
+    def cr(r):
+        return (f"{r['ra']:.1f} → {r['rb']:.1f}, {r['est']:+.2f} [{r['lo']:+.2f}, {r['hi']:+.2f}]"
+                f"{'' if r['gov'] == 'domain' else ' (problem)'}, {eq04.label(r)}")
+    N = ["| figure | value | source | do NOT quote |", "|---|---|---|---|",
+         f"| Claude solve plans, VAL vs the harness verdict (pyval) | **{al['agree']:,} / {al['handled']:,} agree "
+         f"({100 * al['agree'] / al['handled']:.2f}%, Wilson 95% [{al['lo']:.2f}, {al['hi']:.2f}])** over the "
+         f"{al['n']:,} distinct graded plans of Sonnet 4.6 and Haiku 4.5 (unaided and tool arm, canonical and renamed). "
+         f"Tool arm **{tl['agree']} / {tl['handled']}**; unaided {un['agree']} / {un['handled']}. "
+         f"{klasses.get('agree, with brackets added', 0)} of the agreeing plans ({al['bracketed']} of all plans with "
+         f"a verdict from both) were bare `name arg` lines that VAL reads only once brackets are added. "
+         f"Not counted: {al['pyval_error']} answers with no plan in them (prose; pyval returns an error shape, graded a "
+         f"failure) and {al['val_cannot']} plans that crash VAL (each has a step with the wrong number of arguments, read by hand: gripper `drop` with 3 of 4, barman `empty_shot` with 2 of 3; pyval rejects all of them) "
+         f"| `val_frontier_solve.py`; `out/val_frontier_solve.md` | \"100% agreement\"; a figure that pools these with the "
+         f"C1 open-model plans |",
+         f"| the disagreements | **all {al['case']} are one pyval fault**: the fixture declares upper-case names "
+         f"(satellite `Star0`, `GroundStation1`; pogo_stick `CRAFT_PLANK`), the model writes them exactly as declared, "
+         f"and pyval rejects the plan as `STRUCTURE_ERROR` (\"not declared\"). The same plan in lower case is VALID "
+         f"under pyval, and VAL accepts it as written (PDDL names are case-insensitive). Unaided, canonical corpus only: "
+         f"the renamed tree has no upper-case names, and the planner's plans are lower case. Other disagreements: "
+         f"{al['other']} | `val_frontier_solve.md` | the C1 hyphen case as the only grader fault (that one was lenient; "
+         f"this one is strict) |",
+         f"| unaided solve trials whose grade changes under VAL | stored fail → VAL success: **Sonnet 4.6 {fs['Sonnet 4.6']} "
+         f"of 300, Haiku 4.5 {fs['Haiku 4.5']} of 100**, canonical; renamed {fs_ren}; success → fail: {sf}. Post hoc, "
+         f"Sonnet unaided solve canonical becomes {contam[('Sonnet 4.6', 'VAL grade')]['ra']:.1f}% (stored "
+         f"{contam[('Sonnet 4.6', 'stored grade')]['ra']:.1f}%) | `val_rows.csv` | a corrected figure in place of the "
+         f"frozen ones |",
+         f"| effect on the frontier contamination test, unaided solve (renamed − canonical, T7 method, post hoc) | "
+         f"Sonnet 4.6: stored {cr(contam[('Sonnet 4.6', 'stored grade')])}; VAL grade "
+         f"{cr(contam[('Sonnet 4.6', 'VAL grade')])}. Haiku 4.5 (v11 only): stored "
+         f"{cr(contam[('Haiku 4.5', 'stored grade')])}; VAL grade {cr(contam[('Haiku 4.5', 'VAL grade')])}. The "
+         f"case fault lowers only the canonical side, so it biases the contrast toward zero | `val_frontier_solve.md` | "
+         f"the VAL-graded Δ as a replacement for the frozen −0.33 row (the grader change is post hoc) |"]
+    return N
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--val", type=Path, required=True)
+    ap.add_argument("--val", type=Path)
     ap.add_argument("--val-prefix", default="")
-    ap.add_argument("--marketplace-path", type=Path, required=True)
+    ap.add_argument("--marketplace-path", type=Path)
     ap.add_argument("--results", type=Path, default=REPO / "results")
     ap.add_argument("--out-dir", type=Path, default=None)
     ap.add_argument("--jobs", type=int, default=8)
+    ap.add_argument("--render-only", action="store_true",
+                    help="rewrite out/numbers_val_frontier_solve.md from the committed outputs; no pyval, no VAL")
     args = ap.parse_args(argv)
+    if args.render_only:
+        N = render_only()
+        (OUT / "numbers_val_frontier_solve.md").write_text("\n".join(N) + "\n")
+        print("\n".join(N))
+        return 0
+    if args.val is None or args.marketplace_path is None:
+        ap.error("--val and --marketplace-path are required unless --render-only is given")
     out_dir = args.out_dir or (REPO / "results" / "val-crosscheck-frontier")
 
     runner = vc.ValRunner(args.val, shlex.split(args.val_prefix), 120.0)
@@ -437,9 +531,7 @@ def main(argv=None) -> int:
         L += [f"- {desc(it)}" for it in all_items if it.klass == kl]
         L.append("")
     # ------------------------------------------------------------ effect on the contamination test
-    spec = importlib.util.spec_from_file_location("eq04", Path(__file__).with_name("04_equivalence.py"))
-    eq04 = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(eq04)
+    eq04 = _eq04()
     L += ["## Post hoc: unaided solve, renamed − canonical, stored grade vs VAL grade (T7 method)", "",
           "VAL grade = the online grade with VAL in pyval's place, on rows where VAL read every plan the "
           "grader sent; other rows keep the stored grade.", "", eq04.HEAD]
@@ -454,44 +546,7 @@ def main(argv=None) -> int:
     OUT.mkdir(exist_ok=True)
     (OUT / "val_frontier_solve.md").write_text("\n".join(L) + "\n")
 
-    def g(model, arm, corpus, key):
-        return rc[f"{model} | {arm} | {corpus}/{key}"]
-    al, tl, un = summ["all plans"], summ["arm: tool arm"], summ["arm: unaided"]
-    fs = {m: g(m, "unaided", "canonical", "online_fail_to_success") for m in ("Sonnet 4.6", "Haiku 4.5")}
-    sf = sum(rc[k] for k in rc if k.endswith("/online_success_to_fail"))
-    fs_ren = sum(g(m, "unaided", "renamed", "online_fail_to_success") for m in ("Sonnet 4.6", "Haiku 4.5"))
-
-    def cr(r):
-        return (f"{r['ra']:.1f} → {r['rb']:.1f}, {r['est']:+.2f} [{r['lo']:+.2f}, {r['hi']:+.2f}]"
-                f"{'' if r['gov'] == 'domain' else ' (problem)'}, {eq04.label(r)}")
-    N = ["| figure | value | source | do NOT quote |", "|---|---|---|---|",
-         f"| Claude solve plans, VAL vs the harness verdict (pyval) | **{al['agree']:,} / {al['handled']:,} agree "
-         f"({100 * al['agree'] / al['handled']:.2f}%, Wilson 95% [{al['lo']:.2f}, {al['hi']:.2f}])** over the "
-         f"{al['n']:,} distinct graded plans of Sonnet 4.6 and Haiku 4.5 (unaided and tool arm, canonical and renamed). "
-         f"Tool arm **{tl['agree']} / {tl['handled']}**; unaided {un['agree']} / {un['handled']}. "
-         f"{al['bracketed']} of the agreeing plans were bare `name arg` lines that VAL reads only once brackets are added. "
-         f"Not counted: {al['pyval_error']} answers with no plan in them (prose; pyval returns an error shape, graded a "
-         f"failure) and {al['val_cannot']} plans that crash VAL (each has a step with the wrong number of arguments, read by hand: gripper `drop` with 3 of 4, barman `empty_shot` with 2 of 3; pyval rejects all of them) "
-         f"| `val_frontier_solve.py`; `out/val_frontier_solve.md` | \"100% agreement\"; a figure that pools these with the "
-         f"C1 open-model plans |",
-         f"| the disagreements | **all {al['case']} are one pyval fault**: the fixture declares upper-case names "
-         f"(satellite `Star0`, `GroundStation1`; pogo_stick `CRAFT_PLANK`), the model writes them exactly as declared, "
-         f"and pyval rejects the plan as `STRUCTURE_ERROR` (\"not declared\"). The same plan in lower case is VALID "
-         f"under pyval, and VAL accepts it as written (PDDL names are case-insensitive). Unaided, canonical corpus only: "
-         f"the renamed tree has no upper-case names, and the planner's plans are lower case. Other disagreements: "
-         f"{al['other']} | `val_frontier_solve.md` | the C1 hyphen case as the only grader fault (that one was lenient; "
-         f"this one is strict) |",
-         f"| unaided solve trials whose grade changes under VAL | stored fail → VAL success: **Sonnet 4.6 {fs['Sonnet 4.6']} "
-         f"of 300, Haiku 4.5 {fs['Haiku 4.5']} of 100**, canonical; renamed {fs_ren}; success → fail: {sf}. Post hoc, "
-         f"Sonnet unaided solve canonical becomes {contam[('Sonnet 4.6', 'VAL grade')]['ra']:.1f}% (stored "
-         f"{contam[('Sonnet 4.6', 'stored grade')]['ra']:.1f}%) | `val_rows.csv` | a corrected figure in place of the "
-         f"frozen ones |",
-         f"| effect on the frontier contamination test, unaided solve (renamed − canonical, T7 method, post hoc) | "
-         f"Sonnet 4.6: stored {cr(contam[('Sonnet 4.6', 'stored grade')])}; VAL grade "
-         f"{cr(contam[('Sonnet 4.6', 'VAL grade')])}. Haiku 4.5 (v11 only): stored "
-         f"{cr(contam[('Haiku 4.5', 'stored grade')])}; VAL grade {cr(contam[('Haiku 4.5', 'VAL grade')])}. The "
-         f"case fault lowers only the canonical side, so it biases the contrast toward zero | `val_frontier_solve.md` | "
-         f"the VAL-graded Δ as a replacement for the frozen −0.33 row (the grader change is post hoc) |"]
+    N = numbers_rows(summ, klasses, rc, contam)
     (OUT / "numbers_val_frontier_solve.md").write_text("\n".join(N) + "\n")
     print("\n".join(N))
     (OUT / "val_frontier_solve.json").write_text(json.dumps(
