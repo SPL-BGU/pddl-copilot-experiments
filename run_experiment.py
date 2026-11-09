@@ -253,11 +253,6 @@ def _apply_partial_subset(domains: dict, k: int) -> dict:
                     if p in kept_set
                 },
             }
-            # D1b trees (`domains-hard/`) may hold more than one invalid
-            # domain; keep at most K in all (domain_neg + the first K-1
-            # extras). Absent for `domains/`, so its subset is unchanged.
-            if "extra_domains" in negs:
-                new_negatives["extra_domains"] = list(negs["extra_domains"][:max(k - 1, 0)])
         out[dname] = {**dinfo, "problems": new_problems}
         if new_negatives is not None:
             out[dname]["negatives"] = new_negatives

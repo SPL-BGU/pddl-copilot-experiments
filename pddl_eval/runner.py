@@ -823,20 +823,6 @@ def build_jobs(
                                 with_tools=with_tools, gt_frag=gt_frag,
                                 np_for_task=np_for_task, plan_label="",
                             )
-                        # Further invalid domains (`domain_neg02.pddl`, ...;
-                        # only the D1b `domains-hard/` tree has them). The
-                        # pname is the file stem, so it starts with
-                        # "domain_neg" like the first one.
-                        for j, xneg in enumerate(negs.get("extra_domains") or []):
-                            for pv in ACTIVE_PROMPT_VARIANTS[:num_variants]:
-                                _emit_job(
-                                    model=model, task=task, dname=dname,
-                                    dpddl=xneg["domain_pddl"],
-                                    pname=f"domain_neg{j + 2:02d}",
-                                    ppddl=positive_first, pv=pv,
-                                    with_tools=with_tools, gt_frag=gt_frag,
-                                    np_for_task=np_for_task, plan_label="",
-                                )
                     elif task == "validate_problem":
                         for i, neg in enumerate(negs.get("problems") or []):
                             gt_frag = {

@@ -507,34 +507,6 @@ def test_build_jobs_no_tools_grid(r: TestResults) -> None:
     pnames = sorted(j[4] for j in pjobs)  # pname is index 4
     r.check_eq("validate_problem includes negative n01", pnames, ["n01", "p1", "p2"])
 
-    # validate_domain: 2 positives (one per problem) + domain_neg → 3 jobs;
-    # no `extra_domains` key, so the canonical-tree grid is unchanged.
-    neg_dom = {"domain_pddl": "(bad-dom)", "domain_valid": False}
-    ground_truth["d1"]["_negatives"]["domain"] = neg_dom
-    djobs, _ = build_jobs(
-        models=["m"], tasks=["validate_domain"], domains=domains,
-        ground_truth=ground_truth, num_variants=1, conditions="no-tools",
-        tool_filter="all", prompt_style="minimal", think_tag="off",
-    )
-    r.check_eq("validate_domain pnames (canonical shape)",
-               sorted(j[4] for j in djobs), ["domain_neg", "p1", "p2"])
-
-    # D1b tree: one more invalid domain → its own job, pname = file stem,
-    # the domain text of that file, and the same invalid-domain gt.
-    ground_truth["d1"]["_negatives"]["extra_domains"] = [
-        {"domain_pddl": "(bad-dom-2)", "domain_valid": False}]
-    xjobs, xkeys = build_jobs(
-        models=["m"], tasks=["validate_domain"], domains=domains,
-        ground_truth=ground_truth, num_variants=1, conditions="no-tools",
-        tool_filter="all", prompt_style="minimal", think_tag="off",
-    )
-    r.check_eq("validate_domain pnames with an extra invalid domain",
-               sorted(j[4] for j in xjobs), ["domain_neg", "domain_neg02", "p1", "p2"])
-    extra = [j for j in xjobs if j[4] == "domain_neg02"][0]
-    r.check_eq("extra job sends the extra domain text", extra[3], "(bad-dom-2)")
-    r.check_eq("extra job is graded invalid", extra[8]["domain_valid"], False)
-    r.check_eq("distinct trial keys", len(xkeys), len(xjobs))
-
 
 class _CannedClient:
     """Minimal VLLMClient stand-in: returns one canned response dict."""
