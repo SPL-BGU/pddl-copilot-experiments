@@ -6,7 +6,7 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## Index (added 2026-08-29, re-verified 2026-09-18 — scan this before reading the entries)
 
-**5 open · 3 no work owed · 13 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
+**9 open · 3 no work owed · 13 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
 in place under their severity heading; they are history, not work.
 
 | open | one-line |
@@ -16,6 +16,10 @@ in place under their severity heading; they are history, not work.
 | ISS-019 | tool-error message extraction is name-unscoped — latent, never observed |
 | ISS-020 | `validate_domain` neg-arm pairing 5:1 vs 5:5 — **frozen by corpus identity**: fixing it changes the trial set, so it waits for a fresh sweep |
 | ISS-025 | `planbench/apply_patches.py main()` can't run end-to-end on the hand-edited external tree |
+| ISS-027 | pyval does not case-fold plan names: hits frontier and Qwen unaided solve, and the open-model simulate and validate_plan tool arms (Gemma simulate tool-verified 91.7 → 95.0 if fixed) (added 2026-11-09) |
+| ISS-028 | solve answers that copy the tool's plan and then list the goal facts are graded as wrong plans: 17 of the rerun's 38 "wrong facts" solve rows (added 2026-11-09) |
+| ISS-029 | simulate: for 6 of 100 problems the run's plan differs from the cached plan the grader uses; 1 Part C row graded wrong (added 2026-11-09) |
+| ISS-030 | the reasoning trace was never stored: `thinking` is empty in every think-on row (client read `reasoning_content`, vLLM 0.20.2 sends `reasoning`) (added 2026-11-09) |
 
 | no work owed (stays listed) | why |
 |---|---|
@@ -28,6 +32,38 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026; struck 2026-09-18: ISS-003, 
 ---
 
 ## P1 — Methodology
+
+### ISS-027 · Plan grader is case-sensitive on object names; PDDL is not (added 2026-11-09)
+**Source.** VAL cross-check of the Claude solve plans, PR #125 (`tools/reanalysis/val_frontier_solve.py`), 2026-11-09.
+**Evidence.** VAL and the harness grader (pyval) agree on 734 of 745 frontier solve plans. All 11 disagreements are one fault: some canonical fixtures declare upper-case names (satellite `Star0`, `GroundStation1` in `p02`/`p03`; pogo_stick `CRAFT_PLANK` in `domain.pddl`). When Claude writes the name exactly as declared, pyval rejects the plan as "not declared"; the same plan in lower case passes pyval, and VAL accepts it as written. PDDL names are case-insensitive, so pyval is wrong here. Only unaided canonical answers are hit (the renamed tree has no upper-case names; the planner writes lower case).
+**Impact.** Under VAL, 12 of 300 Sonnet 4.6 and 3 of 100 Haiku 4.5 unaided canonical solve trials would pass instead of fail. Sonnet's frozen contamination solve gap of −0.33 [−10.59, +9.93] would read −4.33 [−14.38, +5.71] post hoc: still unresolved, so the PR #123 wording stands, but the frozen figure is biased. A warning sits beside that row in `NUMBERS.md` (PR #125). **Not yet checked:** the open-model unaided solve rows (Study 1 and the rerun) and the open-model T7 tests; C1 covered only the rerun's open-model plans and found 1,731 of 1,732 in agreement.
+**Fix.** (1) Check the open-model rows for the same fault (read-only, local). (2) The grader fix belongs in `../pddl-copilot/plugins/pddl-validator/server/` (case-fold names before the declaration check), with a test, in that repo. (3) Frozen corpora are never re-graded in place: a corrected figure is reported post hoc beside the frozen one, as the PlanBench corrected extractor was (PR #114). (4) The extension's grader version is fixed in the D1f prereg.
+**Scope, checked 2026-11-09 (read-only re-grade and tool-call replay; scripts on branch `analysis/iss027-scope`).**
+- *Where:* unified_planning lower-cases the domain and problem on read (`unified_planning/io/pddl_reader.py:2118,2122`); pyval's plan reader keeps the case (`pyval/validator.py:214-225`) and its name lookup tries only `-`→`_`, never lower case (`validator.py:248-254`); errors at `validator.py:144,166`. `pddl-pyvalidator` 0.1.5. `get_state_transition` goes through the same path, so the simulate tool is hit too.
+- *Fixtures:* satellite p02 to p05 (objects), pogo_stick `domain.pddl` and `domain_neg.pddl` (action names). `domains-anon/` and every `.plan` fixture are clean, so sweep6-live is never hit.
+- *Unaided solve:* the text extractors lower-case plans; only JSON-form answers keep case. sweep5v2-live: 9B off +2 (10.7 → 11.3), 9B on +1 to +5, 35B on +6 to +7 (+2.0 to 2.3 points; ranges because some answers are cut at the 500-character snapshot). Gemma, 0.8B, 35B off: 0. Rerun Part C: 0 of 81.
+- *Tool arms (new):* models often rewrite the fixture plan with the fixture's own capitals before calling `get_state_transition` or `validate_plan`; the tool answers STRUCTURE_ERROR. Replayed with the plan lower-cased: sweep5v2-live Gemma off simulate +10 plain (91.7 → 95.0) and +10 steered (90.7 → 94.0); Gemma on simulate +6 / +2; 4B and 9B small; rerun Gemma simulate +9 per arm (90.7 → 93.7), 35B +2 / +2; iss024d Gemma +4 / +3. A replay changes only the tool answer, not the rest of the conversation, so delivered answers cannot be re-graded this way.
+- *Frozen figures that move by more than 1 point:* only Gemma's Study 1 simulate tool-verified cells and the figures built on them (T5 availability +91.7 → +95.0; "correct given a call" 92.0 / 90.7 → 95.3 / 94.0), the iss024d Gemma mechanism figure (44.0 → 45.3), and one non-headline equivalence row (35B solve thinking on). T1 unaided solve, T7 contamination headlines, the rerun's solve E1/E2 and the T8a parity verdicts move by under 1 point or not at all.
+**Upstream fix (2026-11-09).** `pddl-pyvalidator` 0.1.6 looks names up case-insensitively (SPL-BGU/pyvalidator #3, on PyPI); the validator plugin 3.1.1 requires it (SPL-BGU/pddl-copilot #60, merged). Checked on satellite p02: the plan written with the declared capitals now passes `validate_plan` and `get_state_transition`. Stays open until the post hoc figures are beside the frozen ones (draft PR #130) and the cluster venv is upgraded.
+**Files.** `../pddl-copilot/plugins/pddl-validator/server/validator_server.py`; `tools/reanalysis/val_frontier_solve.py` (PR #125).
+
+### ISS-028 · Goal facts after a correct plan are read as plan steps (added 2026-11-09)
+**Source.** C4 transcript draw, PR #128 (`tools/reanalysis/c4_select_transcripts.py`), 2026-11-09.
+**Evidence.** Of the 38 delivered-rerun solve rows that the frozen E4 labels as wrong facts, 17 (15 Qwen3.5-9B, 2 Qwen3.6-35B) copy the tool's valid plan exactly and then list the goal facts in parentheses. The solve extractor reads those facts as extra plan steps, so the plan fails. Only 5 of the 38 are real copying errors. One Haiku frontier answer (depot p02) has the same shape; whether it is one of Haiku's three counted transcription errors is not checked.
+**Impact.** The frozen solve delivered counts for those cells are low by up to 17 rows, and the paper's "transcription errors" wording needs the split. Whether a trailing goal list should fail is a grading-rule choice, not a model fault to fix.
+**Fix.** Never re-grade the frozen readout in place. Report a post hoc split (real copying errors against goal-list trailers) beside the frozen counts, as PR #114 did for PlanBench. Decide in the D1f prereg whether the extension's extractor stops at a goal list. Check the frontier Haiku row.
+
+### ISS-029 · Simulate prompt plan can differ from the cached plan the grader uses (added 2026-11-09)
+**Source.** C4 transcript draw, PR #128, 2026-11-09.
+**Evidence.** For 6 of 100 simulate problems (barman p01 to p05, gripper p03) the plan in the run's prompt was computed fresh at harness start and differs from the plan in the ground-truth cache. Almost every such row had no room for an answer, so it was never graded against the cache. One Part C row (`qwen3_6_35b|simulate|plain|gripper|p03||v11`) simulated the run's plan correctly and is graded wrong.
+**Impact.** 1 of 900 Part C simulate rows. Small, but the grader should compare with the plan that was actually in the prompt.
+**Fix.** For the extension: build the simulate prompt from the cached plan, or grade against the plan in the prompt; fix the choice in D1f. Note the 1 row beside the frozen figure.
+
+### ISS-030 · The reasoning trace was never stored (added 2026-11-09)
+**Source.** GPT-OSS effort work, PR #126, 2026-11-09.
+**Evidence.** vLLM 0.20.2 returns the trace in `message.reasoning`; `pddl_eval/vllm_client.py` read only `reasoning_content`. `thinking` is empty in 68,400 of 68,400 think-on rows of `sweep5v2-live` and of `sweep6-live`, including 26,885 and 25,512 rows that finished with an answer. This is also why `FR_THINK_OVERFLOW` never fires (the 2026-05-25 CHANGELOG explanation is mostly wrong).
+**Impact.** No stored corpus holds a reasoning trace; think-on findings can only use token counts. Wave 2 (D3) needs it.
+**Fix.** PR #126 adds the opt-in `PDDL_STORE_REASONING=1`. It is off by default, because a filled `thinking` changes failure labels through the frozen scoring code; D1f states whether wave 2 turns it on and how the labels are read.
 
 ### ISS-024 · `_normalize_trajectory` predicate-syntax gap floored no-tools `simulate` at 0% (frontier-fixed)
 **Source.** Frontier Haiku no-tools grading, 2026-06-23 (`development/reference/grading_artifacts_findings.md`, `development/archive/plans-executed/simulate_normalizer_fix_plan.md`).

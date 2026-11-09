@@ -1,0 +1,842 @@
+[
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "solve",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "solve",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "validate_domain",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "validate_domain",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "validate_problem",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 600,
+   "main": 599,
+   "rerun": 600,
+   "lost": 0,
+   "won": 1,
+   "flips": 1,
+   "net": 1
+  },
+  "any": {
+   "n": 600,
+   "main": 599,
+   "rerun": 600,
+   "lost": 0,
+   "won": 1,
+   "flips": 1,
+   "net": 1
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "validate_problem",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "validate_plan",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 3000,
+   "main": 622,
+   "rerun": 600,
+   "lost": 56,
+   "won": 34,
+   "flips": 90,
+   "net": -22
+  },
+  "any": {
+   "n": 3000,
+   "main": 622,
+   "rerun": 600,
+   "lost": 56,
+   "won": 34,
+   "flips": 90,
+   "net": -22
+  },
+  "single_turn_pairs": 2344,
+  "prompt_equal": 2344,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "validate_plan",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 3000,
+   "main": 2808,
+   "rerun": 2792,
+   "lost": 37,
+   "won": 21,
+   "flips": 58,
+   "net": -16
+  },
+  "any": {
+   "n": 3000,
+   "main": 2808,
+   "rerun": 2792,
+   "lost": 37,
+   "won": 21,
+   "flips": 58,
+   "net": -16
+  },
+  "single_turn_pairs": 171,
+  "prompt_equal": 171,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "simulate",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 299,
+   "rerun": 299,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 300,
+   "main": 299,
+   "rerun": 299,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 1,
+  "prompt_equal": 1,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "gemma4_26b-a4b",
+  "task": "simulate",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "solve",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "solve",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "validate_domain",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "validate_domain",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "validate_problem",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "validate_problem",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "validate_plan",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 3000,
+   "main": 2937,
+   "rerun": 2935,
+   "lost": 13,
+   "won": 11,
+   "flips": 24,
+   "net": -2
+  },
+  "any": {
+   "n": 3000,
+   "main": 2937,
+   "rerun": 2937,
+   "lost": 11,
+   "won": 11,
+   "flips": 22,
+   "net": 0
+  },
+  "single_turn_pairs": 52,
+  "prompt_equal": 52,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "validate_plan",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 3000,
+   "main": 3000,
+   "rerun": 3000,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 3000,
+   "main": 3000,
+   "rerun": 3000,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "simulate",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 240,
+   "rerun": 242,
+   "lost": 4,
+   "won": 6,
+   "flips": 10,
+   "net": 2
+  },
+  "any": {
+   "n": 300,
+   "main": 241,
+   "rerun": 244,
+   "lost": 3,
+   "won": 6,
+   "flips": 9,
+   "net": 3
+  },
+  "single_turn_pairs": 53,
+  "prompt_equal": 53,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "Qwen3_5_9B",
+  "task": "simulate",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 299,
+   "rerun": 300,
+   "lost": 0,
+   "won": 1,
+   "flips": 1,
+   "net": 1
+  },
+  "any": {
+   "n": 300,
+   "main": 299,
+   "rerun": 300,
+   "lost": 0,
+   "won": 1,
+   "flips": 1,
+   "net": 1
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "solve",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 204,
+   "rerun": 248,
+   "lost": 22,
+   "won": 66,
+   "flips": 88,
+   "net": 44
+  },
+  "any": {
+   "n": 300,
+   "main": 236,
+   "rerun": 263,
+   "lost": 17,
+   "won": 44,
+   "flips": 61,
+   "net": 27
+  },
+  "single_turn_pairs": 20,
+  "prompt_equal": 20,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "solve",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 281,
+   "rerun": 299,
+   "lost": 1,
+   "won": 19,
+   "flips": 20,
+   "net": 18
+  },
+  "any": {
+   "n": 300,
+   "main": 291,
+   "rerun": 299,
+   "lost": 1,
+   "won": 9,
+   "flips": 10,
+   "net": 8
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "validate_domain",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "validate_domain",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 360,
+   "main": 360,
+   "rerun": 360,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "validate_problem",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 600,
+   "main": 591,
+   "rerun": 596,
+   "lost": 1,
+   "won": 6,
+   "flips": 7,
+   "net": 5
+  },
+  "any": {
+   "n": 600,
+   "main": 591,
+   "rerun": 596,
+   "lost": 1,
+   "won": 6,
+   "flips": 7,
+   "net": 5
+  },
+  "single_turn_pairs": 3,
+  "prompt_equal": 3,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "validate_problem",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 600,
+   "main": 600,
+   "rerun": 600,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "validate_plan",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 3000,
+   "main": 2487,
+   "rerun": 2494,
+   "lost": 195,
+   "won": 202,
+   "flips": 397,
+   "net": 7
+  },
+  "any": {
+   "n": 3000,
+   "main": 2488,
+   "rerun": 2494,
+   "lost": 195,
+   "won": 201,
+   "flips": 396,
+   "net": 6
+  },
+  "single_turn_pairs": 311,
+  "prompt_equal": 311,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "validate_plan",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 3000,
+   "main": 2997,
+   "rerun": 3000,
+   "lost": 0,
+   "won": 3,
+   "flips": 3,
+   "net": 3
+  },
+  "any": {
+   "n": 3000,
+   "main": 2997,
+   "rerun": 3000,
+   "lost": 0,
+   "won": 3,
+   "flips": 3,
+   "net": 3
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "simulate",
+  "arm": "plain",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 229,
+   "rerun": 299,
+   "lost": 1,
+   "won": 71,
+   "flips": 72,
+   "net": 70
+  },
+  "any": {
+   "n": 300,
+   "main": 229,
+   "rerun": 299,
+   "lost": 1,
+   "won": 71,
+   "flips": 72,
+   "net": 70
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ },
+ {
+  "model": "qwen3_6_35b",
+  "task": "simulate",
+  "arm": "steered",
+  "unpaired": 0,
+  "sel": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "any": {
+   "n": 300,
+   "main": 300,
+   "rerun": 300,
+   "lost": 0,
+   "won": 0,
+   "flips": 0,
+   "net": 0
+  },
+  "single_turn_pairs": 0,
+  "prompt_equal": 0,
+  "sel_none_main": 0,
+  "sel_none_rerun": 0
+ }
+]
