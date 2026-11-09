@@ -800,6 +800,33 @@ overlay verdict of every delivered tool-arm plan. Unaided answers stored at the 
 | effect on the frontier contamination test, unaided solve (renamed − canonical, T7 method, post hoc) | Sonnet 4.6: stored 28.7 → 28.3, -0.33 [-10.59, +9.93], criterion not met (unresolved); VAL grade 32.7 → 28.3, -4.33 [-14.38, +5.71], criterion not met (unresolved). Haiku 4.5 (v11 only): stored 22.0 → 19.0, -3.00 [-12.14, +6.14], criterion not met (unresolved); VAL grade 25.0 → 19.0, -6.00 [-17.25, +5.25], criterion not met (unresolved). The case fault lowers only the canonical side, so it biases the contrast toward zero | `val_frontier_solve.md` | the VAL-graded Δ as a replacement for the frozen −0.33 row (the grader change is post hoc) |
 <!-- /gen:val_frontier_solve -->
 
+## D5b ground truth: Fast Downward on the IPC 2023 size ladder (added 2026-11-09; in no tex yet; no model runs)
+
+Plan row D5b, handoff 2026-11-09 item 9. Planner figures only: no model has seen these
+problems. Source `github.com/ipc2023-learning/benchmarks` at `19d6a8ad4b35…` (no licence
+file, so only the commit, the generator spec, the seeds and a sha256 manifest are committed:
+`tools/d5b/manifest.json`). 120 fresh problems: blocksworld, miconic, rovers, satellite (IPC's
+own domain files), three tiers that copy IPC's testing tiers easy, medium and hard, 10 per
+tier, seeds 5001-5010 / 5101-5110 / 5201-5210. Fast Downward through unified-planning 1.3.0
+and up-fast-downward 0.5.2 with the pddl-solver plugin's three strategies; wall-clock limits
+120 s and 1800 s, 8 GiB per run, up to 12 runs at once on the laptop (14 cores, 24 GiB). The
+1800 s pass runs only the pairs unsolved at 120 s (deterministic search). Solved = a plan KCL
+VAL accepts (the C1 build, sha256 `44a07d6d…`). Method and regeneration: `tools/d5b/README.md`;
+runs in the gitignored `external/d5b-work/runs/`; rows printed by `python -m tools.d5b.shares
+--write` (full tables in `tools/reanalysis/out/d5b_shares.md`).
+
+<!-- gen:d5b_shares -->
+| figure | value | source | do NOT quote |
+|---|---|---|---|
+| D5b corpus, syntax check | 124 / 124 files valid (4 IPC 2023 domain files + 120 generated problems; pddl-pyvalidator 0.1.6 and KCL VAL both) | `validate.jsonl` | - |
+| Fast Downward solved within 120 s, plugin default `lazy_greedy_cea` (120 problems, plan VAL-valid) | **easy 40/40 (100%), medium 31/40 (78%), hard 15/40 (38%). Per domain: blocksworld: easy 10/10, medium 6/10, hard 0/10; miconic: easy 10/10, medium 10/10, hard 4/10; rovers: easy 10/10, medium 5/10, hard 1/10; satellite: easy 10/10, medium 10/10, hard 10/10** | `tools/d5b/shares.py` | a share with a pending range as one number; these shares as a model result (no model has run on these problems); the cut-off as exact (wall clock, 12 runs at once on a laptop, so a run near the limit can fall either side) |
+| Fast Downward solved within 120 s, any of the three strategies (120 problems, plan VAL-valid) | **easy 40/40 (100%), medium 34/40 (85%), hard 21/40 (52%). Per domain: blocksworld: easy 10/10, medium 6/10, hard 0/10; miconic: easy 10/10, medium 10/10, hard 10/10; rovers: easy 10/10, medium 8/10, hard 1/10; satellite: easy 10/10, medium 10/10, hard 10/10** | `tools/d5b/shares.py` | a share with a pending range as one number; these shares as a model result (no model has run on these problems); the cut-off as exact (wall clock, 12 runs at once on a laptop, so a run near the limit can fall either side) |
+| Fast Downward solved within 1800 s, plugin default `lazy_greedy_cea` (120 problems, plan VAL-valid) | **easy 40/40 (100%), medium 38/40 (95%), hard 16-33/40 (40-82%, 17 pending). Per domain: blocksworld: easy 10/10, medium 9/10, hard 0-5/10; miconic: easy 10/10, medium 10/10, hard 4-10/10; rovers: easy 10/10, medium 9/10, hard 2-8/10; satellite: easy 10/10, medium 10/10, hard 10/10** | `tools/d5b/shares.py` | a share with a pending range as one number; these shares as a model result (no model has run on these problems); the cut-off as exact (wall clock, 12 runs at once on a laptop, so a run near the limit can fall either side) |
+| Fast Downward solved within 1800 s, any of the three strategies (120 problems, plan VAL-valid) | **easy 40/40 (100%), medium 39/40 (98%), hard 22-33/40 (55-82%, 11 pending). Per domain: blocksworld: easy 10/10, medium 9/10, hard 0-5/10; miconic: easy 10/10, medium 10/10, hard 10/10; rovers: easy 10/10, medium 10/10, hard 2-8/10; satellite: easy 10/10, medium 10/10, hard 10/10** | `tools/d5b/shares.py` | a share with a pending range as one number; these shares as a model result (no model has run on these problems); the cut-off as exact (wall clock, 12 runs at once on a laptop, so a run near the limit can fall either side) |
+| plans found, rejected by KCL VAL | 0 of 225 | `tools/d5b/shares.py` | - |
+| pddl-pyvalidator 0.1.6 (the harness grader) vs KCL VAL on the planner's plans | agrees on 208 of 208 plans checked by both (17 not checked by pyval yet); slowest pyval check 1286 s for a 537-step plan | `tools/d5b/shares.py` | - |
+<!-- /gen:d5b_shares -->
+
 ## Delivered rerun — readout (FROZEN 2026-10-09; in no tex yet)
 
 Provenance: `reference/delivered_rerun_readout.md` / `.json` (frozen code `d558946`, package `822aace…`; summary and sha256s in `reference/delivered_rerun_prereg.md` §8c). Data: `results/delivered-rerun/` (seven cells, cluster run tag `delivered-rerun` / `delivered-rerun-neutral`). **Parity failed at job level, so every figure below is a separate-apparatus replication**: it never replaces a canonical-cell figure and is never pooled with one.

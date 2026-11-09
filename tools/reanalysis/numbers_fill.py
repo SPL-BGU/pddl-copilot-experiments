@@ -24,6 +24,7 @@ BLOCKS = {
     "s1_call_flips": ["numbers_s1_call_flips.md", "s1_call_flips_table.md"],
     "06_frontier_tools_contamination": ["numbers_06_frontier_tools_contamination.md"],
     "val_frontier_solve": ["numbers_val_frontier_solve.md"],
+    "d5b_shares": ["numbers_d5b_shares.md"],
 }
 
 
