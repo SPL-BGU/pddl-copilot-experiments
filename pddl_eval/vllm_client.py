@@ -28,7 +28,9 @@ Knobs translated:
   * options.num_ctx           → ignored (server-side via --max-model-len)
   * keep_alive                → ignored (server-side via TTL or none)
   * think (qwen3 thinking)    → extra_body.chat_template_kwargs.enable_thinking
-  * format=<schema dict>      → extra_body.guided_json
+  * format=<schema dict>      → extra_body.guided_json (default), or
+    extra_body.structured_outputs={"json": schema} when the client is built
+    with json_constraint="structured_outputs" (see VLLMClient.__init__)
   * format="json"             → response_format={"type": "json_object"}
   * stop=[...]                → stop (OpenAI standard sampling param)
   * vllm_extra={...}          → merged into extra_body verbatim. Carries
@@ -56,7 +58,9 @@ truncation.
 """
 
 import json
+import os
 import re
+import sys
 import time
 
 from openai import AsyncOpenAI, BadRequestError
@@ -81,9 +85,13 @@ _DEFAULT_BASE_URL = "http://localhost:8000"
 #     length-truncated response. The audit found 24 600 such rows across
 #     the corpus. The `(?:at least|upper bound for)` alternation below
 #     matches both shapes; regression test in tests/test_vllm_client.py.
+#   * 2026-10-27: vLLM's Mistral tokenizer path reports the exact count
+#     ("your prompt contains 8310 input tokens"); `contains` added. No stored
+#     row of sweep5v2-live or delivered-rerun holds any overflow error, so
+#     the older models' behaviour is unchanged.
 _CTX_OVERFLOW_RE = re.compile(
     r"maximum context length is (\d+) tokens.*?"
-    r"(?:at least|upper bound for) (\d+) input tokens",
+    r"(?:at least|upper bound for|contains) (\d+) input tokens",
     re.DOTALL,
 )
 # The prompt-token count in vLLM's 400 body is a LOWER BOUND, not a
@@ -159,10 +167,45 @@ def _clip_candidates(base: int, fine: bool) -> list[int]:
     return out
 
 
+JSON_CONSTRAINT_CHOICES = ("guided_json", "structured_outputs")
+TOOL_CALL_ID_STYLES = ("call", "mistral9")
+
+
 class VLLMClient:
     """Async vLLM client exposing chat() / aclose()."""
 
-    def __init__(self, base_url: str | None = None):
+    def __init__(self, base_url: str | None = None,
+                 json_constraint: str | None = None,
+                 tool_call_id_style: str | None = None):
+        # Which request field carries a format=<schema dict>. "guided_json"
+        # is what every corpus before 2026-10-27 sent; vLLM 0.20.2 has no
+        # such field and drops unknown fields with only a DEBUG log
+        # (OpenAIBaseModel, extra="allow"), so that schema never bound.
+        # "structured_outputs" sends it as structured_outputs={"json": schema},
+        # the field 0.20.2 reads. Opt-in, for the JSON control cells only
+        # (plan step D1d). When the argument is None the value comes from
+        # $PDDL_JSON_CONSTRAINT, which the sbatch sets only for the
+        # no-tools-jsonbound cond; this keeps run_experiment.py (hashed into
+        # the frozen delivered-rerun analysis) byte-identical.
+        if json_constraint is None:
+            json_constraint = os.environ.get("PDDL_JSON_CONSTRAINT") or "guided_json"
+        if json_constraint not in JSON_CONSTRAINT_CHOICES:
+            raise ValueError(f"json_constraint must be one of "
+                             f"{JSON_CONSTRAINT_CHOICES} (got {json_constraint!r})")
+        self._json_constraint = json_constraint
+        if json_constraint != "guided_json":
+            print(f"VLLMClient: JSON schema sent as {json_constraint}", file=sys.stderr)
+        # Synthetic tool_call_id shape (see _to_openai_messages). Set per
+        # model by the sbatch from lib/defaults.sh TOOL_CALL_ID_STYLE; unset
+        # for every model verified before 2026-10-27.
+        if tool_call_id_style is None:
+            tool_call_id_style = os.environ.get("PDDL_TOOL_CALL_ID_STYLE") or "call"
+        if tool_call_id_style not in TOOL_CALL_ID_STYLES:
+            raise ValueError(f"tool_call_id_style must be one of "
+                             f"{TOOL_CALL_ID_STYLES} (got {tool_call_id_style!r})")
+        self._tool_call_id_style = tool_call_id_style
+        if tool_call_id_style != "call":
+            print(f"VLLMClient: tool_call_id style {tool_call_id_style}", file=sys.stderr)
         base_url = (base_url or _DEFAULT_BASE_URL).rstrip("/")
         if not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
@@ -182,7 +225,7 @@ class VLLMClient:
         stop: list[str] | None = None,
         vllm_extra: dict | None = None,
     ) -> dict:
-        oa_messages = _to_openai_messages(messages)
+        oa_messages = _to_openai_messages(messages, self._tool_call_id_style)
 
         kwargs: dict = {
             "model": model,
@@ -204,7 +247,10 @@ class VLLMClient:
         if think is not None:
             extra_body["chat_template_kwargs"] = {"enable_thinking": bool(think)}
         if isinstance(format, dict):
-            extra_body["guided_json"] = format
+            if self._json_constraint == "structured_outputs":
+                extra_body["structured_outputs"] = {"json": format}
+            else:
+                extra_body["guided_json"] = format
         elif format == "json":
             kwargs["response_format"] = {"type": "json_object"}
         # vLLM-only request fields (continue_final_message, add_generation_prompt,
@@ -311,7 +357,7 @@ class VLLMClient:
         await self._client.close()
 
 
-def _to_openai_messages(messages: list) -> list:
+def _to_openai_messages(messages: list, id_style: str = "call") -> list:
     """Translate harness-shape messages into OpenAI chat-completions shape.
 
     Synthetic tool_call_ids are minted per assistant turn so subsequent
@@ -319,6 +365,11 @@ def _to_openai_messages(messages: list) -> list:
     the matching call by FIFO order. This mirrors how the harness's tool loop
     appends tool results immediately after the assistant turn that produced
     the calls — a queue-style match is sufficient.
+
+    `id_style` "call" (default) mints `call_<n>_<i>`, as every corpus before
+    2026-10-27 did. "mistral9" mints 9 alphanumeric characters
+    (`c<n:05d><i:03d>`), the only shape vLLM's Mistral tokenizer accepts
+    (it rejects `call_2_0` with a 400). Both are deterministic.
     """
     out: list = []
     pending_ids: list[str] = []
@@ -331,7 +382,10 @@ def _to_openai_messages(messages: list) -> list:
                 fn = tc.get("function") or {}
                 args = fn.get("arguments", {})
                 args_str = args if isinstance(args, str) else json.dumps(args)
-                tcid = tc.get("id") or f"call_{len(out)}_{i}"
+                tcid = tc.get("id") or (
+                    f"c{len(out):05d}{i:03d}" if id_style == "mistral9"
+                    else f"call_{len(out)}_{i}"
+                )
                 pending_ids.append(tcid)
                 new_calls.append({
                     "id": tcid,
@@ -348,7 +402,8 @@ def _to_openai_messages(messages: list) -> list:
             })
         elif role == "tool":
             tcid = m.get("tool_call_id") or (
-                pending_ids.pop(0) if pending_ids else "call_unknown"
+                pending_ids.pop(0) if pending_ids
+                else ("unknown00" if id_style == "mistral9" else "call_unknown")
             )
             out.append({
                 "role": "tool",
