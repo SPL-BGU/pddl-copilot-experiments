@@ -1,5 +1,30 @@
 # MOVES.md — old path → new path, and deleted files
 
+## Checkpoints pruned, 2026-11-09
+
+Omer (2026-11-09): keep the full-corpus checkpoints, remove the outdated ones. Every
+file under `checkpoints/` was dated by the commit that added it and by the newest file
+inside the zip, and each trials or overlay zip was compared (sha256 per member) with
+the copy in `results/`. The full-corpus zips all match their `results/` trees and stay;
+see the PR "checkpoints: remove outdated zips" for the full table. **The four files
+deleted here were last present at commit `9c18949`**; get one back with
+
+```
+git show 9c18949:<path> > <file>    # read it (the zips are binary, so write to a file)
+git checkout 9c18949 -- <path>      # restore it into the tree
+```
+
+| deleted path | added | what it held | why it went |
+|---|---|---|---|
+| `checkpoints/sweep5v2-live/pddl_copilot_sweep5v2_live.pptx.zip` | `edec72a` 2026-06-02 | the sweep-5v2 deck, built 2026-06-01 | runner `success` figures from before the 2026-07-17 regrade and the 2026-09-07 delivered reframe; `NUMBERS.md` says per-cell numbers are never copied from a deck. Rebuild with `build_deck.py --config checkpoints/sweep5v2-live/deck_config.py` (the config stays) |
+| `checkpoints/sweep6-live/pddl_copilot_sweep6_live.pptx.zip` | `edec72a` 2026-06-02 (touched `2a1298c` 2026-06-16) | the sweep-6 (anonymized) deck, built 2026-06-02 | same as above; config `checkpoints/sweep6-live/deck_config.py` stays |
+| `checkpoints/contamination-live/pddl_copilot_contamination_live.pptx.zip` | `edec72a` 2026-06-02 | the June canonical-vs-anonymized contamination deck | the contamination figures now come from T7 (`tools/reanalysis/`, `NUMBERS.md` Study 1 block). Cited by `paper_notes_discussions.md` 2026-06 entry (append-only, left as is) and as the example `--out` path in the analyzer skill's `build_compare_deck.py` section (the script creates the folder) |
+| `checkpoints/contamination-live/build_contamination.py` | `edec72a` 2026-06-02 | the one-off `.local/` builder of that deck | nothing else uses it; `build_compare_deck.py` is the maintained builder |
+
+The folder `checkpoints/contamination-live/` is gone with them. The other untracked
+files in the laptop's `checkpoints/` (`rq-sweep5v2/*.pptx`, `rq-sweep5v2/plots-unified/*.png`,
+`sweep6-live/.DS_Store`) were never in git and were not touched.
+
 ## Results moved out of the repo, 2026-10-10
 
 `results/` is gitignored, so these moves are not in git history; this table is the
