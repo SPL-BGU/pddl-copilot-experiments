@@ -14,6 +14,18 @@ response generation. **The with-tools arm also ran and is closed** (ISS-022, PR 
 `development/NUMBERS.md`), analysis scripts in `planbench/analysis/`, data in
 `results/planbench/wt-anthropic-20260801/`.
 
+**Open-model arm with tools (plan D1e, 2026-11-09).** Two prompt arms for the
+vLLM tool loop, t1 only, each its own engine (so their response files never mix):
+`pddl_copilot__vllm-tools-plain__<tag>` (role sentence + the frozen WT format
+clause, tools merely available) and `pddl_copilot__vllm-tools-steered__<tag>`
+(byte-identical to the frontier WT tools prompt, `_pb_scaffold(True)`). Both end
+in `_PB_SHARED_T1_FORMAT` byte for byte (`tests/test_planbench_d1e_prompts.py`).
+Submit with `submit_planbench.sh --tools --prompt plain|steered`; without
+`--models` it runs the D1e roster `PDDL_PLANBENCH_TOOLS_MODELS` in
+`lib/defaults.sh` (Qwen3.5:4B, Qwen3.5:9B, qwen3.6:35b). The tools sbatch passes
+each model's serve flags from `lib/defaults.sh` the way the main sweep sbatch
+does (PR #122, #126). The cells are fixed by the D1f prereg; the smoke is D1j.
+
 ---
 
 ## Quick start (laptop)
@@ -117,7 +129,10 @@ planbench/
 ├── apply_patches.py      — idempotent in-place edits to the LLMs-Planning
 │                           tree: tolerate missing OPENAI_API_KEY, add the
 │                           pddl_copilot__* dispatch, fix the upstream
-│                           --specific_instances self-destructing filter
+│                           --specific_instances self-destructing filter,
+│                           t3 grader robustness, the WT instance-id stamp.
+│                           Each edit skips on a sentinel in its own code, so
+│                           hand-patched trees count as patched (ISS-025)
 └── README.md             — this file
 ```
 

@@ -27,12 +27,20 @@
 # run_planbench_tools_rtx.sbatch (engine pddl_copilot__vllm-tools__<tag>,
 # .venv-tools, plugin pre-warm) instead of the v1 vanilla sbatch.
 #
+# --prompt plain|steered (with --tools; D1e) picks the open-model prompt arm:
+# engine pddl_copilot__vllm-tools-<arm>__<tag>, t1 only, both arms on the
+# frozen WT format clause (planbench/engine.py _VLLM_TOOLS_ARMS). Without
+# --prompt the tools arm keeps its pre-D1e prompt (engine vllm-tools). With
+# --tools --prompt and no --models, the models are the D1e PlanBench roster,
+# PDDL_PLANBENCH_TOOLS_MODELS in lib/defaults.sh (the 4B kept).
+#
 # Usage:
 #   bash submit_planbench.sh --models Qwen3.5:0.8B Qwen3.5:4B
 #   bash submit_planbench.sh --models Qwen3.5:0.8B --tasks t1 t3 --configs blocksworld
 #   bash submit_planbench.sh --smoke              # 1 model × 1 task × 1 config × 3 instances
 #   bash submit_planbench.sh --smoke --gpu rtx_3090 --gpu-mem-util 0.80
 #   bash submit_planbench.sh --tools --smoke --gpu rtx_3090 --gpu-mem-util 0.80  # v2 tools smoke
+#   bash submit_planbench.sh --tools --prompt steered --smoke --models Qwen3.5:4B --num-predict 8192  # D1j
 #   bash submit_planbench.sh --time 12:00:00 --models Qwen3.5:0.8B
 #   bash submit_planbench.sh --dry-run --models Qwen3.5:0.8B
 
@@ -55,9 +63,10 @@ DRY_RUN=0
 TOOLS=0
 BASE=0
 NUM_PREDICT_OVERRIDE=""
+PROMPT_ARM=""
 
 usage() {
-    sed -n '2,37p' "$0" >&2
+    sed -n '2,45p' "$0" >&2
     exit 1
 }
 
@@ -98,11 +107,34 @@ while [[ $# -gt 0 ]]; do
         --tools) TOOLS=1; shift ;;
         --base) BASE=1; shift ;;
         --num-predict) NUM_PREDICT_OVERRIDE="$2"; shift 2 ;;
+        --prompt) PROMPT_ARM="$2"; shift 2 ;;
         --dry-run) DRY_RUN=1; shift ;;
         -h|--help) usage ;;
         *) echo "Unknown arg: $1" >&2; usage ;;
     esac
 done
+
+if [[ -n "$PROMPT_ARM" ]]; then
+    case "$PROMPT_ARM" in
+        plain|steered) ;;
+        *) echo "Error: --prompt expects plain or steered (got: $PROMPT_ARM)" >&2; exit 1 ;;
+    esac
+    if [[ "$TOOLS" -ne 1 ]]; then
+        echo "Error: --prompt needs --tools (the arms are tool-loop prompts)" >&2; exit 1
+    fi
+    if [[ -n "$TASKS" && "$TASKS" != "t1" ]]; then
+        echo "Error: --prompt $PROMPT_ARM is t1-only (got --tasks $TASKS)" >&2; exit 1
+    fi
+    TASKS="t1"
+    # No --models: the D1e roster (a smoke takes its first model only).
+    if [[ "${#MODELS[@]}" -eq 0 ]]; then
+        if [[ "$SMOKE" -eq 1 ]]; then
+            MODELS=("${PDDL_PLANBENCH_TOOLS_MODELS[0]}")
+        else
+            MODELS=("${PDDL_PLANBENCH_TOOLS_MODELS[@]}")
+        fi
+    fi
+fi
 
 # Defaults
 if [[ "$SMOKE" -eq 1 ]]; then
@@ -138,6 +170,7 @@ echo "  smoke    = $SMOKE"
 echo "  tools    = $TOOLS"
 echo "  base     = $BASE"
 echo "  num_pred = ${NUM_PREDICT_OVERRIDE:-<engine default 4096>}"
+echo "  prompt   = ${PROMPT_ARM:-<legacy>}"
 [[ "$DRY_RUN" -eq 1 ]] && echo "  (dry-run — not submitting)"
 
 if [[ "$TOOLS" -eq 1 && "$BASE" -eq 1 ]]; then
@@ -148,7 +181,7 @@ fi
 # untouched). Neither → the v1 vanilla leaderboard sbatch (engine vllm).
 if [[ "$TOOLS" -eq 1 ]]; then
     SBATCH_FILE="$SCRIPT_DIR/run_planbench_tools_rtx.sbatch"
-    JOB_KIND="tools_"
+    JOB_KIND="tools_${PROMPT_ARM:+${PROMPT_ARM}_}"
 elif [[ "$BASE" -eq 1 ]]; then
     SBATCH_FILE="$SCRIPT_DIR/run_planbench_rtx.sbatch"
     JOB_KIND="base_"
@@ -195,6 +228,10 @@ for MODEL in "${MODELS[@]}"; do
     # 18019718). Same value for both arms = clean tools-vs-no-tools baseline.
     if [[ -n "$NUM_PREDICT_OVERRIDE" ]]; then
         EXPORTS="$EXPORTS,NUM_PREDICT=$NUM_PREDICT_OVERRIDE"
+    fi
+    # --prompt → the D1e prompt arm (run_planbench_tools_rtx.sbatch reads it).
+    if [[ -n "$PROMPT_ARM" ]]; then
+        EXPORTS="$EXPORTS,PROMPT_ARM=$PROMPT_ARM"
     fi
     # --base → vllm-base engine (v2 no-tools baseline, own results dir).
     if [[ "$BASE" -eq 1 ]]; then

@@ -6,7 +6,7 @@ Severity legend: **P1** blocks paper-comparable numbers. **P2** distorts interpr
 
 ## Index (added 2026-08-29, re-verified 2026-09-18 — scan this before reading the entries)
 
-**9 open · 3 no work owed · 13 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
+**8 open · 3 no work owed · 14 closed.** Closed entries keep their `~~ISS-###~~` strikethrough and stay
 in place under their severity heading; they are history, not work.
 
 | open | one-line |
@@ -15,7 +15,6 @@ in place under their severity heading; they are history, not work.
 | ISS-013 | paper-diff audit vs arXiv:2509.12987 (our own earlier version) — closes with the cover-letter delta, `STATUS.md` N3 |
 | ISS-019 | tool-error message extraction is name-unscoped — latent, never observed |
 | ISS-020 | `validate_domain` neg-arm pairing 5:1 vs 5:5 — **frozen by corpus identity**: fixing it changes the trial set, so it waits for a fresh sweep |
-| ISS-025 | `planbench/apply_patches.py main()` can't run end-to-end on the hand-edited external tree |
 | ISS-027 | pyval does not case-fold plan names: hits frontier and Qwen unaided solve, and the open-model simulate and validate_plan tool arms (Gemma simulate tool-verified 91.7 → 95.0 if fixed) (added 2026-11-09) |
 | ISS-028 | solve answers that copy the tool's plan and then list the goal facts are graded as wrong plans: 17 of the rerun's 38 "wrong facts" solve rows (added 2026-11-09) |
 | ISS-029 | simulate: for 6 of 100 problems the run's plan differs from the cached plan the grader uses; 1 Part C row graded wrong (added 2026-11-09) |
@@ -27,7 +26,7 @@ in place under their severity heading; they are history, not work.
 | ISS-021 | gemma4:26b-a4b simulate prompts exceed 16K ctx — accepted limitation, decision recorded in the entry |
 | ISS-012 | truncation override skips `FR_VERDICT_MISMATCH` — option (a) "leave as is" is what shipped: stated in the `_apply_truncation_override` docstring, pinned by `test_truncation_override`, and every canonical corpus was graded under it. The "re-evaluate after the next sweep" note was never acted on and no log records a formal decision |
 
-Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026; struck 2026-09-18: ISS-003, 008, 010 (moot), ISS-017 (closed in substance), ISS-022 (PR #93).
+Closed: ISS-002, 006, 007, 009, 011, 018, 023, 025, 026; struck 2026-09-18: ISS-003, 008, 010 (moot), ISS-017 (closed in substance), ISS-022 (PR #93).
 
 ---
 
@@ -227,12 +226,13 @@ Closed: ISS-002, 006, 007, 009, 011, 018, 023, 026; struck 2026-09-18: ISS-003, 
 
 ---
 
-### ISS-025 · `planbench/apply_patches.py main()` cannot run end-to-end on the current external tree
+### ~~ISS-025~~ · `planbench/apply_patches.py main()` cannot run end-to-end on the current external tree — RESOLVED 2026-11-09 (branch `planbench/d1e-engineering`)
 **Source.** PR #93 review, 2026-08-06; first documented in `development/archive/planbench/PLANBENCH_WT_HANDOFF.md` ("main() cannot be run end-to-end on this tree") but filed nowhere trackable.
 **Evidence.** `external/LLMs-Planning/plan-bench/utils/__init__.py` and `utils/llm_utils.py` were hand-edited without the patch marker (e.g. `openai.api_key = os.environ.get("OPENAI_API_KEY", "")` replaced the anchor `patch_init` greps for), so `patch_init` `sys.exit`s at the first patch and nothing after it is reachable from the documented entry point. Patch 6 (the WT instance-id stamp) had to be applied by calling `patch_instance_id_stamp` directly — a recipe now baked into three handoff docs.
 **Impact.** A fresh session following `python planbench/apply_patches.py external/LLMs-Planning` on this tree gets an abort that looks like upstream drift; on a genuinely fresh clone main() works, so the failure is machine-state-dependent and confusing. The out-of-band patch-6 recipe also used to poison patch 4's global-marker skip-guard (fixed in the PR #93 review pass: patch 4 now guards on its own edit sentinel, and patch 6 runs last).
 **Fix.** Teach `patch_init`/`patch_llm_utils` to recognize the hand-patched forms as "already applied" (per-edit sentinels, like `patch_response_evaluation`), or re-apply the marker comments to the external tree so the anchors match again.
 **Files.** `planbench/apply_patches.py` (patch_init, patch_llm_utils); `external/LLMs-Planning/plan-bench/utils/` (hand-edited state).
+**Resolution (2026-11-09, branch `planbench/d1e-engineering`).** The first fix option: every edit of patches 1 to 4 now skips on a sentinel in the code it leaves behind (`os.environ.get("OPENAI_API_KEY"`, the tolerant-import lines, `engine.startswith('pddl_copilot__')`, the `_specified_instances_set` lines), never on `PATCH_MARKER` alone, so a tree with only one of two edits gets the missing one. Checked on copies, never on the main checkout's tree: the laptop tree (fork commits `6aac3ad` + `0378bfe` + the uncommitted patch-6 stamp) runs `main()` to exit 0 with no byte changed (the old code exits 1 at patch 1); a fresh clone of upstream `karthikv792/LLMs-Planning` at `fc638a1` (what `setup.sh`'s `main` resolves to on 2026-11-09; `setup.sh` pins no commit) gets all six patches, byte-identical to the old code's output, and a second run is a no-op; fork commit `6aac3ad` alone gets only the missing dispatch and stamp. Tests: `tests/test_planbench_apply_patches.py`. The external tree itself was not edited.
 
 ---
 

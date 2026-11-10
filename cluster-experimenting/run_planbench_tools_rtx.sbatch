@@ -29,7 +29,19 @@
 ###   PLANBENCH_TASKS    — space-separated, default = all 10
 ###   PLANBENCH_CONFIGS  — space-separated, default = blocksworld logistics depots
 ###   PLANBENCH_INSTANCES— space-separated instance ids, default = "" (full set)
-###   THINK              — on|off|default, default = off (baselines non-thinking)
+###   THINK              — on|off|default|effort-<low|medium|high>, default = off
+###                        (baselines non-thinking). effort-* is for models whose
+###                        lookup sets SUPPORTS_REASONING_EFFORT=1 (gpt-oss:20b):
+###                        it runs like `default` and sends reasoning_effort, as
+###                        run_condition_vllm_rtx.sbatch does. ministral3:14b
+###                        needs THINK=default (its tokenizer rejects
+###                        chat_template_kwargs).
+###   PROMPT_ARM         — legacy|plain|steered, default = legacy. legacy is the
+###                        pre-D1e engine pddl_copilot__vllm-tools__<tag> (its
+###                        prompt unchanged). plain / steered are the D1e arms,
+###                        engines pddl_copilot__vllm-tools-<arm>__<tag>, t1 only,
+###                        both on the frozen WT format clause
+###                        (planbench/engine.py _VLLM_TOOLS_ARMS).
 ###   GPU_MEM_UTIL       — vLLM KV-cache VRAM fraction, default 0.85.
 ###   PDDL_MARKETPLACE_PATH — pddl-copilot clone with plugins/, default
 ###                        $HOME/pddl-copilot.
@@ -70,20 +82,85 @@ echo "[env-debug] decoded PLANBENCH_TASKS=\"$PLANBENCH_TASKS\""
 echo "[env-debug] decoded PLANBENCH_CONFIGS=\"$PLANBENCH_CONFIGS\""
 echo "[env-debug] decoded PLANBENCH_INSTANCES=\"$PLANBENCH_INSTANCES\""
 THINK="${THINK:-off}"
+PROMPT_ARM="${PROMPT_ARM:-legacy}"
 GPU_MEM_UTIL="${GPU_MEM_UTIL:-0.85}"
 EXPT_ROOT="${EXPT_ROOT:-$HOME/pddl-copilot-experiments}"
 PLANBENCH_ROOT="$EXPT_ROOT/external/LLMs-Planning"
 MARKETPLACE_PATH="${PDDL_MARKETPLACE_PATH:-$HOME/pddl-copilot}"
 PLANBENCH_PLUGINS="${PDDL_PLANBENCH_PLUGINS:-pddl-solver pddl-validator}"
 
+### Prompt arm → engine backend token (D1e) ###
+case "$PROMPT_ARM" in
+    legacy)  ENGINE_BACKEND="vllm-tools" ;;
+    plain)   ENGINE_BACKEND="vllm-tools-plain" ;;
+    steered) ENGINE_BACKEND="vllm-tools-steered" ;;
+    *) echo "Error: PROMPT_ARM=$PROMPT_ARM (must be legacy|plain|steered)" >&2; exit 1 ;;
+esac
+if [ "$PROMPT_ARM" != "legacy" ] && [ "$PLANBENCH_TASKS" != "t1" ]; then
+    # The arms' format clause is t1-only; the engine would SystemExit on every
+    # other task. Refuse here, before the GPU job loads a model.
+    echo "Error: PROMPT_ARM=$PROMPT_ARM is t1-only; got PLANBENCH_TASKS=\"$PLANBENCH_TASKS\"" >&2
+    exit 1
+fi
+case "$THINK" in
+    on|off|default|effort-low|effort-medium|effort-high) ;;
+    *) echo "Error: THINK=$THINK (must be on|off|default|effort-low|effort-medium|effort-high)" >&2; exit 1 ;;
+esac
+
 ### Resolve model → HF id + serve flags (shared with the 5-task arm) ###
-unset MAX_NUM_BATCHED_TOKENS
+# Same per-model handling as run_condition_vllm_rtx.sbatch (PR #122, #126):
+# every optional extra is unset first so nothing leaks in through the
+# environment, then lib/defaults.sh sets the ones this model needs. All of
+# them stay empty for the models verified before 2026-10-27 (Qwen3.5,
+# Qwen3.6-35B, the AWQ Gemma), so their serve command is unchanged.
+unset MAX_NUM_BATCHED_TOKENS CHAT_TEMPLATE EXTRA_SERVE_ARGS HF_REVISION HF_CACHE_IN_JOB TOOL_CALL_ID_STYLE \
+    SUPPORTS_REASONING_EFFORT
+unset PDDL_TOOL_CALL_ID_STYLE PDDL_REASONING_EFFORT PDDL_STORE_REASONING
 vllm_lookup "$MODEL" || exit 1
 MAX_NUM_BATCHED_TOKENS_FLAG=""
 [ -n "${MAX_NUM_BATCHED_TOKENS:-}" ] && \
     MAX_NUM_BATCHED_TOKENS_FLAG="--max-num-batched-tokens $MAX_NUM_BATCHED_TOKENS"
 REASONING_PARSER_FLAG="$(vllm_reasoning_parser_flag)"
 MODEL_TAG=$(echo "$MODEL" | tr '/:.' '___')
+# The template path is under $EXPT_ROOT, inside $HOME, which apptainer binds.
+CHAT_TEMPLATE_FLAG=""
+if [ -n "${CHAT_TEMPLATE:-}" ]; then
+    if [ ! -f "$EXPT_ROOT/$CHAT_TEMPLATE" ]; then
+        echo "Error: chat template $EXPT_ROOT/$CHAT_TEMPLATE not found"; exit 1
+    fi
+    CHAT_TEMPLATE_FLAG="--chat-template $EXPT_ROOT/$CHAT_TEMPLATE"
+fi
+EXTRA_SERVE_FLAGS="${EXTRA_SERVE_ARGS:-}"
+if [ -n "${HF_REVISION:-}" ]; then
+    EXTRA_SERVE_FLAGS="$EXTRA_SERVE_FLAGS --revision $HF_REVISION --tokenizer-revision $HF_REVISION"
+fi
+# HF_CACHE_IN_JOB=1: weights download to the job's scratch hf-cache, not $HOME.
+APPTAINER_ENV=()
+if [ "${HF_CACHE_IN_JOB:-0}" = "1" ]; then
+    APPTAINER_ENV=(APPTAINERENV_HF_HOME=/root/.cache/huggingface)
+fi
+# Client-side per-model setting, read by pddl_eval.vllm_client.VLLMClient
+# (the engine's tool loop uses it); exported below with the other env.
+# effort-<level>: run as `default` (no chat_template_kwargs) and send
+# reasoning_effort=<level>. A model that ignores the field would run a default
+# cell under an effort label, so refuse it, as the main sbatch does.
+EFFORT=""
+ENGINE_THINK="$THINK"
+if [[ "$THINK" == effort-* ]]; then
+    if [ "${SUPPORTS_REASONING_EFFORT:-0}" != "1" ]; then
+        echo "Error: THINK=$THINK needs a model that reads reasoning_effort (gpt-oss); $MODEL does not" >&2
+        exit 1
+    fi
+    EFFORT="${THINK#effort-}"
+    ENGINE_THINK="default"
+fi
+if [ "${TOOL_CALL_ID_STYLE:-}" = "mistral9" ] && [ "$THINK" != "default" ]; then
+    # lib/defaults.sh: Mistral's tokenizer rejects any request carrying
+    # chat_template_kwargs, which THINK=on/off sends. Every request would fail
+    # and PlanBench would grade a run of empty answers.
+    echo "Error: $MODEL must run with THINK=default (got THINK=$THINK)" >&2
+    exit 1
+fi
 
 ### Workspace on /scratch — ENOSPC fallback to /tmp (mirrors vLLM sbatch) ###
 WORK=""
@@ -125,8 +202,9 @@ done
 # sends `tools`, so vLLM must extract the model's tool calls.
 SERVE_LOG="$EXPT_ROOT/cluster-experimenting/logs/${SLURM_JOBID:-local}-vllm-tools-${MODEL_TAG}.log"
 echo "Starting vLLM on localhost:$PORT serving $HF_MODEL (served as $MODEL)"
-echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-}"
-apptainer exec --nv \
+echo "  serve flags: --tool-call-parser $TOOL_CALL_PARSER ${REASONING_PARSER_FLAG:-(no reasoning-parser)} --gpu-memory-utilization $GPU_MEM_UTIL ${MAX_NUM_BATCHED_TOKENS_FLAG:-} ${CHAT_TEMPLATE_FLAG:-} ${EXTRA_SERVE_FLAGS:-}"
+[ "${HF_CACHE_IN_JOB:-0}" = "1" ] && echo "  hf cache: job scratch ($WORK/hf-cache)"
+env "${APPTAINER_ENV[@]}" apptainer exec --nv \
     --bind "$WORK/hf-cache:/root/.cache/huggingface" \
     --writable-tmpfs \
     "$SIF_VLLM" \
@@ -142,6 +220,8 @@ apptainer exec --nv \
         --gpu-memory-utilization "$GPU_MEM_UTIL" \
         --enable-prefix-caching \
         $MAX_NUM_BATCHED_TOKENS_FLAG \
+        $CHAT_TEMPLATE_FLAG \
+        $EXTRA_SERVE_FLAGS \
         > "$SERVE_LOG" 2>&1 &
 VLLM_PID=$!
 trap 'echo "Shutting down..."; kill $VLLM_PID 2>/dev/null || true; wait 2>/dev/null || true; cd ~; rm -rf "$WORK"' EXIT
@@ -186,6 +266,23 @@ fi
 ENV_NAME="${ENV_NAME:-pddl_copilot}"
 module load anaconda
 source activate "$ENV_NAME"
+
+### gpt-oss: check the effort the served model really gets (main sbatch idiom) ###
+# Render-only request (no generation); the job log shows the Harmony system
+# line. An effort cell whose line does not show its level is refused. Runs
+# after the conda env is active: reasoning_settings.py needs python>=3.10.
+HARMONY_LINE=""
+if [ "${SUPPORTS_REASONING_EFFORT:-0}" = "1" ]; then
+    HARMONY_RC=0
+    HARMONY_LINE="$(python3 "$EXPT_ROOT/cluster-experimenting/reasoning_settings.py" system-line \
+        --base-url "http://localhost:$PORT/v1" --model "$MODEL" ${EFFORT:+--effort "$EFFORT"})" \
+        || HARMONY_RC=$?
+    echo "  $HARMONY_LINE"
+    if [ -n "$EFFORT" ] && [ "$HARMONY_RC" -ne 0 ]; then
+        echo "Error: reasoning_effort=$EFFORT is not on the served system line; aborting" >&2
+        exit 3
+    fi
+fi
 
 ### Provision PlanBench + the TOOLS venv (idempotent) -----------------------
 # setup.sh --tools clones/patches the checkout, builds VAL/PR2/FD, and creates
@@ -233,23 +330,26 @@ source "$PLANBENCH_TOOLS_VENV/bin/activate"
 # tool-call transcript for content-validation; PDDL_COPILOT_THINK toggles
 # qwen3 thinking.
 export VLLM_BASE="http://localhost:$PORT/v1"
-export PDDL_COPILOT_THINK="$THINK"
+export PDDL_COPILOT_THINK="$ENGINE_THINK"
+[ -n "${TOOL_CALL_ID_STYLE:-}" ] && export PDDL_TOOL_CALL_ID_STYLE="$TOOL_CALL_ID_STYLE"
+[ -n "$EFFORT" ] && export PDDL_REASONING_EFFORT="$EFFORT"
 export PDDL_MARKETPLACE_PATH="$MARKETPLACE_PATH"
 export PDDL_PLANBENCH_PLUGINS="$PLANBENCH_PLUGINS"
-export PDDL_COPILOT_TOOLLOG="$EXPT_ROOT/cluster-experimenting/logs/${SLURM_JOBID:-local}-toolcalls-${MODEL_TAG}.jsonl"
+export PDDL_COPILOT_TOOLLOG="$EXPT_ROOT/cluster-experimenting/logs/${SLURM_JOBID:-local}-toolcalls-${ENGINE_BACKEND}-${MODEL_TAG}.jsonl"
 # Raise the per-instance output cap (engine.py floors at 4096). Set NUM_PREDICT
 # to the single-task sweep's solve cap (8192) so plan-generation answers don't
 # truncate; same value as the no-tools arm for a clean baseline.
 [ -n "${NUM_PREDICT:-}" ] && export PDDL_COPILOT_NUM_PREDICT="$NUM_PREDICT"
 
-ENGINE="pddl_copilot__vllm-tools__${MODEL}"
+ENGINE="pddl_copilot__${ENGINE_BACKEND}__${MODEL}"
 echo "Engine:      $ENGINE"
+echo "Prompt arm:  $PROMPT_ARM"
 echo "VLLM_BASE:   $VLLM_BASE"
 echo "Marketplace: $MARKETPLACE_PATH (plugins: $PLANBENCH_PLUGINS)"
 echo "Tool log:    $PDDL_COPILOT_TOOLLOG"
 echo "Tasks:       $PLANBENCH_TASKS"
 echo "Configs:     $PLANBENCH_CONFIGS"
-echo "Think:       $THINK"
+echo "Think:       $THINK${EFFORT:+ (engine think=default, reasoning_effort=$EFFORT)}"
 
 ### Inner loop: task × config -----------------------------------------------
 cd "$PLANBENCH_ROOT/plan-bench"
@@ -301,7 +401,11 @@ for TASK in $PLANBENCH_TASKS; do
 done
 
 ### Rsync results into our results/planbench/<tag>/ namespace --------------
-OUT_DIR="$EXPT_ROOT/results/planbench/slurm_tools_${MODEL_TAG}_${SLURM_JOB_ID}"
+if [ "$PROMPT_ARM" = "legacy" ]; then
+    OUT_DIR="$EXPT_ROOT/results/planbench/slurm_tools_${MODEL_TAG}_${SLURM_JOB_ID}"
+else
+    OUT_DIR="$EXPT_ROOT/results/planbench/slurm_tools-${PROMPT_ARM}_${MODEL_TAG}_${SLURM_JOB_ID}"
+fi
 mkdir -p "$OUT_DIR"
 echo
 echo "Rsyncing PlanBench results → $OUT_DIR"
@@ -315,9 +419,16 @@ cat > "$OUT_DIR/manifest.json" <<EOF
 {
   "model": "$MODEL",
   "hf_model": "$HF_MODEL",
-  "backend": "vllm-tools",
+  "backend": "$ENGINE_BACKEND",
   "engine": "$ENGINE",
+  "prompt_arm": "$PROMPT_ARM",
   "think": "$THINK",
+  "reasoning_effort": "$EFFORT",
+  "tool_call_parser": "$TOOL_CALL_PARSER",
+  "reasoning_parser": "${REASONING_PARSER:-}",
+  "hf_revision": "${HF_REVISION:-}",
+  "chat_template": "${CHAT_TEMPLATE:-}",
+  "tool_call_id_style": "${TOOL_CALL_ID_STYLE:-}",
   "tasks": "$PLANBENCH_TASKS",
   "configs": "$PLANBENCH_CONFIGS",
   "instances": "$PLANBENCH_INSTANCES",

@@ -6,6 +6,43 @@ Scope covers both this repo (`pddl-copilot-experiments`) and the sibling MCP plu
 
 ---
 
+## 2026-11-09: D1e engineering: PlanBench patcher idempotent (ISS-025), plain and steered vLLM tool prompts, serve flags in the tools sbatch
+
+**Motivation.** Action plan D1e (open-model PlanBench with tools), handoff 2026-11-09 item 8.
+No model was run and no corpus was touched; the smoke is D1j and needs a cluster go-ahead.
+
+**1. ISS-025 closed** (`planbench/apply_patches.py`, tests `tests/test_planbench_apply_patches.py`).
+Patches 1 to 4 skip on a sentinel in the code each edit leaves behind, never on the
+`PATCH_MARKER` comment alone, so the laptop's hand-patched tree runs `main()` to exit 0 and
+a second run of `main()` changes no byte. On a fresh upstream clone (`fc638a1`) the output is
+byte-identical to the old code's. Record in `OPEN_ISSUES.md` ISS-025.
+
+**2. Two prompt arms for the vLLM tool loop** (`planbench/engine.py` `_VLLM_TOOLS_ARMS`,
+backends `vllm-tools-plain` and `vllm-tools-steered`, tests
+`tests/test_planbench_d1e_prompts.py`). t1 only. Both end in the frozen WT format clause
+`_PB_SHARED_T1_FORMAT` (sha256 `b5b66189…`, the prereg's quoted text) byte for byte. Plain:
+`"You are a PDDL planning assistant."` (the 5-task arm's `neutral` solve sentence) before the
+clause. Steered: the frontier WT tools prompt `_pb_scaffold(True)` byte for byte (sha256
+`61e8b86d…`). Delivered answer, no tool-result rendering. Side-log records carry the backend
+token and the system prompt's sha256 (`system_sha256`, written only by these two arms). The
+pre-D1e `vllm-tools` prompt is unchanged (pinned by the same test).
+
+**3. Tools sbatch serve flags** (`cluster-experimenting/run_planbench_tools_rtx.sbatch`, tests
+`tests/test_planbench_submit.py`). The per-model extras of `lib/defaults.sh` are passed as
+`run_condition_vllm_rtx.sbatch` passes them: chat template, extra serve args, pinned revision,
+weights to job scratch (PR #122), the client's tool-call id style, `THINK=effort-<level>` with
+the Harmony system-line check (PR #126). `PROMPT_ARM=legacy|plain|steered` picks the engine;
+non-t1 tasks are refused for the arms; `ministral3:14b` is refused unless `THINK=default`. Empty
+for the models verified before 2026-10-27, so their serve command is unchanged. The context
+window stays 16384 (no `MAX_MODEL_LEN` here: the engine name, which keys PlanBench's response
+cache, does not carry it). `run_planbench_rtx.sbatch` (no tools) is not changed.
+
+**4. Roster** (`lib/defaults.sh` `PDDL_PLANBENCH_TOOLS_MODELS`): Qwen3.5:4B, Qwen3.5:9B,
+qwen3.6:35b, the 4B kept (Omer 2026-11-09). `submit_planbench.sh --tools --prompt <arm>` uses it
+when no `--models` is given (a smoke takes the first model).
+
+---
+
 ## 2026-11-09: D1b new item kinds in three fixture trees, no harness change; provenance copy tool; the plan-strategy bug fixed
 
 **Motivation.** Action plan D1b: new item kinds beside the current ones, balanced valid
