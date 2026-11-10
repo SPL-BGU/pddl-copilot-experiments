@@ -1,0 +1,29 @@
+# Copyright holder: B.G. Negev Technologies and Applications Ltd. (BGN Technologies).
+# Code: MIT (LICENSE). Data we produced: CC-BY-4.0 (LICENSE-DATA).
+# Still to add at the first tagged release: version, date-released, the Zenodo
+# DOI, the author's ORCID, any co-authors, and preferred-citation (the journal
+# paper, once it is no longer anonymous).
+cff-version: 1.2.0
+message: "If you use this software or data, please cite it as below."
+title: "pddl-copilot-experiments: evaluation harness for the PDDL Planning Copilot study"
+type: software
+authors:
+  - family-names: Eliyahu
+    given-names: Omer
+    affiliation: "Ben-Gurion University of the Negev (SPL-BGU)"
+repository-code: "https://github.com/SPL-BGU/pddl-copilot-experiments"
+license: MIT
+keywords:
+  - PDDL
+  - automated planning
+  - LLM
+  - tool use
+  - MCP
+  - evaluation
+references:
+  - type: software
+    title: "pddl-copilot (MCP planning tools marketplace)"
+    authors:
+      - name: "SPL-BGU"
+    repository-code: "https://github.com/SPL-BGU/pddl-copilot"
+    license: MIT
