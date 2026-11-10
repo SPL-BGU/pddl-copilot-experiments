@@ -1,0 +1,118 @@
+{
+ "differ": [
+  {
+   "cache_len": 28,
+   "domain": "barman",
+   "modal": 17,
+   "no_room_rows": 18,
+   "problem": "p01",
+   "rows": 18,
+   "run_len": 30,
+   "with_plan": 18
+  },
+  {
+   "cache_len": 14,
+   "domain": "barman",
+   "modal": 17,
+   "no_room_rows": 17,
+   "problem": "p02",
+   "rows": 18,
+   "run_len": 14,
+   "with_plan": 17
+  },
+  {
+   "cache_len": 34,
+   "domain": "barman",
+   "modal": 18,
+   "no_room_rows": 18,
+   "problem": "p03",
+   "rows": 18,
+   "run_len": 30,
+   "with_plan": 18
+  },
+  {
+   "cache_len": 59,
+   "domain": "barman",
+   "modal": 18,
+   "no_room_rows": 18,
+   "problem": "p04",
+   "rows": 18,
+   "run_len": 61,
+   "with_plan": 18
+  },
+  {
+   "cache_len": 65,
+   "domain": "barman",
+   "modal": 18,
+   "no_room_rows": 18,
+   "problem": "p05",
+   "rows": 18,
+   "run_len": 61,
+   "with_plan": 18
+  },
+  {
+   "cache_len": 11,
+   "domain": "gripper",
+   "modal": 18,
+   "no_room_rows": 18,
+   "problem": "p03",
+   "rows": 18,
+   "run_len": 11,
+   "with_plan": 18
+  }
+ ],
+ "part_c_cells": [
+  {
+   "flips": 0,
+   "k_frozen": 72,
+   "model": "gemma4_26b-a4b",
+   "n": 300
+  },
+  {
+   "flips": 0,
+   "k_frozen": 28,
+   "model": "Qwen3_5_9B",
+   "n": 300
+  },
+  {
+   "flips": 1,
+   "k_frozen": 53,
+   "model": "qwen3_6_35b",
+   "n": 300
+  }
+ ],
+ "part_c_online_ok_delivered_wrong": [
+  "qwen3_6_35b|simulate|plain|gripper|p03||v11"
+ ],
+ "part_c_other_fault": [],
+ "part_c_rows": 900,
+ "pinned_cache": true,
+ "post_hoc": [
+  {
+   "donor_rows": 18,
+   "frozen": "trajectory_mismatch",
+   "id": "qwen3_6_35b|simulate|plain|gripper|p03||v11",
+   "model": "qwen3_6_35b",
+   "oracle_from": "Qwen3_5_9B|simulate|plain|gripper|p03||v11",
+   "post_hoc": "trajectory_ok",
+   "post_hoc_ok": true
+  }
+ ],
+ "problems_total": 100,
+ "readout_checks": 15,
+ "readout_differences": [],
+ "tool_rows_ok_with_room_delivered_wrong": [],
+ "undetermined": [
+  "block-grouping p01",
+  "block-grouping p02",
+  "counters p01",
+  "counters p02",
+  "counters p03",
+  "counters p05",
+  "drone p04",
+  "drone p05",
+  "gardening p03",
+  "pogo_stick p02",
+  "sailing p01"
+ ]
+}

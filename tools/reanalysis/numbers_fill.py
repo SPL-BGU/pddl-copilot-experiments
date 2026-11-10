@@ -24,6 +24,12 @@ BLOCKS = {
     "s1_call_flips": ["numbers_s1_call_flips.md", "s1_call_flips_table.md"],
     "06_frontier_tools_contamination": ["numbers_06_frontier_tools_contamination.md"],
     "val_frontier_solve": ["numbers_val_frontier_solve.md"],
+    # ISS-028 post hoc split of the delivered rerun's solve WRONG_FACTS rows
+    # (iss028_goal_trailers.py)
+    "iss028": ["numbers_iss028.md"],
+    # ISS-029 simulate prompt plan vs cached plan (iss029_simulate_plan.py; needs
+    # the pinned results/derived/gt_cache.json)
+    "iss029": ["numbers_iss029.md"],
 }
 
 
