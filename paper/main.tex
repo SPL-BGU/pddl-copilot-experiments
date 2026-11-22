@@ -640,8 +640,10 @@ reasoning parsers are byte-identical between the two releases. Re-running one
 affected cell (Qwen3.5-0.8B, \emph{think}=off, 9{,}120 trials) on 0.20.2
 reproduced its 0.22.0 results within run-to-run noise: pooled $+0.4$\,pp, 95\% CI
 $[-0.9,\,+1.7]$, with no task--arm cell CI-disjoint.}
-\omer{PLACEHOLDER: add the dates on which each corpus was run (main sweep, rerun) and
-on which the Claude models were queried; the venue's reproducibility rules ask for them.}
+The main sweep ran between 24 May and 2 June 2026, and the rerun between 3 and 9 October
+2026. The Claude models were queried on 25 June and 12 July 2026 for the unaided runs and
+the runs with tools, between 1 and 6 August 2026 for PlanBench, and on 12 September 2026
+for the output-budget probe.
 Decoding is deterministic
 (temperature~0), so each trial is a single fixed sample. The confidence
 intervals we report measure sampling uncertainty over the test instances, which we
@@ -1666,12 +1668,13 @@ With the tool under the steered prompt, tool-verified balanced accuracy is
 $100.0\%$ (9B), $95.0\%$ (Gemma) and $99.2\%$ (35B), against $53\%$, $74\%$ and
 $65\%$ unaided. The Technical Appendix gives the per-class figures.
 
-The 0.8B model behaves differently on these two tasks. It calls the right tool
-but omits required arguments.
-\omer{PLACEHOLDER: the 0.8B tool-verified rates on validate\_domain and
-validate\_problem (main sweep, think=off) are needed to support this sentence.
-The delivered bounds that stood here are retired, and NUMBERS.md has no
-tool-verified figure for this model on these tasks.}
+The 0.8B model behaves differently on the two tasks. On \emph{validate\_domain} its
+tool-verified rate under the plain prompt is $87.5\%$, against $80.8\%$ unaided (pooled
+rates). On \emph{validate\_problem} it calls the validator in $95.3\%$ of the
+plain-prompt trials, yet its tool-verified rate is $26.2\%$, below its unaided $51.2\%$.
+In $375$ of those $600$ trials a call to the validator leaves out the required problem
+argument. The steered prompt does not repair this: the tool-verified rate is $18.5\%$,
+and the argument is missing in $470$ of the $600$ trials.
 
 Steering does not help either validation task at the tool-verified level
 ($-5$ to ${+}1$\,pp). The one CI-disjoint movement, a $-5$\,pp dip on

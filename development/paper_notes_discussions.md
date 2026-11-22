@@ -54,3 +54,17 @@
   call page or in the AAAI-27 kit in the repo (AAAI has one for its own conferences);
   the call lists Shahaf Shperberg (BGU) as a program chair.
 - **Decided (Omer, 2026-11-22): merge PR #140; his edits come after.** Merged as `5f1feae`.
+
+## 2026-11-22 (late night) — Two placeholders filled: run dates, and the 0.8B on the validation tasks
+
+- **Run and query dates** are in the paper (Models and Serving) and in `NUMBERS.md` ("Run
+  and query dates") with their sources: main sweep jobs 2026-05-24 to 06-02; rerun
+  2026-10-03 to 10-09; Claude queried 06-25 and 07-12 (the 07-15 stamp is a re-grade, not a
+  query), 08-01 to 08-06 for PlanBench, 09-12 for the output-budget probe.
+- **Qwen3.5-0.8B, main sweep, think=off** (`tools/reanalysis/s1_small_model_validation.py`,
+  `NUMBERS.md` T1b): validate_domain 80.8% unaided, 87.5% tool-verified plain;
+  validate_problem 51.2% unaided, 26.2% tool-verified plain, with a missing required
+  argument in 375 of 600 plain trials (470 of 600 steered). **The earlier sentence said the
+  model omits arguments on both tasks; that holds for validate_problem only**, and the
+  paper now says so.
+- Two placeholders remain, both Omer's choices: the title and the future-work list.
