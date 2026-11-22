@@ -2303,8 +2303,8 @@ produces unaided.
 models rarely pick a wrong tool. The open issue there is whether they call at all, and
 one sentence that names the tool closes most of that gap in every model we measured.
 On \emph{solve} the models call more than the task needs. Much of the addition is a
-check of the planner's plan, which costs tokens and does not harm the answer. Calling
-the planner that does not fit the domain is a different matter: a numeric planner
+check of the planner's plan, which costs tokens. Calling the planner that does not fit
+the domain is a different matter: a numeric planner
 still returns a valid plan for a classical problem, and that plan can be far longer
 than the reference. With thinking on, two of the three larger open-weight models call
 the right tool less often, so reasoning mode and tool calling are not independent
@@ -2357,7 +2357,9 @@ not a clean remedy: in pilot runs, enlarging the shared decode budget (a larger 
 allowance, not a cap reserved separately for the final answer) degraded output-format adherence
 (more trials emitted unparseable answers), so it trades the truncation confound for a parsing one
 rather than removing it, which is again why we read cross-mode evidence through the budget-insensitive
-robust floor. Decoding is deterministic (temperature~0), so each
+robust floor. \omer{PLACEHOLDER: add the dates on which each corpus was run (main sweep, rerun) and
+on which the Claude models were queried; the venue's reproducibility rules ask for them.}
+Decoding is deterministic (temperature~0), so each
 trial is a single sample and our intervals quantify uncertainty over the fixture
 instances, not decoding variance; robustness to higher temperatures is untested.
 The roster is five open-weight models from two families, so our claims concern the
@@ -2445,8 +2447,8 @@ longer planned.}
 Four extensions follow from the limits above. The first is a test set that includes
 problems the planner cannot solve within its time limit, so that the benefit of the
 tools can be followed past the point where the planner itself gives out. The second is
-the tool arm for reasoning models, which we ran only in the main sweep, where answers
-were not stored in full. The third is a direct test of the reading in RQ3, by varying
+a full treatment of reasoning mode: RQ1 and RQ3 are reported here with thinking off
+only. The third is a direct test of the reading in RQ3, by varying
 the room that the context window leaves for the final answer. The fourth is the same
 three questions on planning formalisms that our test set does not cover, such as
 temporal planning.
