@@ -125,3 +125,11 @@
   paper's explanation of them (RQ3 pilot paragraph, Discussion) and `NUMBERS.md` "RQ3
   pilot". **Consequence for RQ3 in general:** the simulate loss should not be described as
   the model failing to copy the tool's output.
+
+## 2026-11-22 (late night) — PR #141 merged
+
+- **Decided (Omer):** merge PR #141. Merged as `05ab4e5`; the paper on `main` and on
+  Overleaf now has the run dates, the corrected 0.8B sentence and the context-window pilot
+  of RQ3 with its explanation.
+- **Still open, for discussion:** whether the abstract, introduction and conclusion qualify
+  the "70 to 91% lost" figure (`STATUS.md`, item 0).
