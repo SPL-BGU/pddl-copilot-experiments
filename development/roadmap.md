@@ -78,8 +78,9 @@ Checked against the trial files on 2026-11-22. Two facts drive most of this tabl
 | RQ3 use of the output | tool result and full final answer side by side in the rerun and the Claude runs; the rerun rows are the frozen readout's loss cells restated, with their categories | tables done (`NUMBERS.md`, "RQ3 metrics") |
 
 **Limits to state in the paper:** the delivered comparison covers five models (three
-open ones with thinking off, two Claude models); in the rerun the unaided answers had a
-JSON format constraint and the tool answers did not; the same planner and validator
+open ones with thinking off, two Claude models); the unaided arm asks for its answer
+format in the prompt only, and the JSON-schema constraint meant for it never took effect,
+so an unaided failure can be a failure of format as well as of content; the same planner and validator
 that the model calls also built the answer key (the VAL cross-check answers most of
 this); the planner solves all 100 problems, so the data does not show where the planner
 itself gives out.

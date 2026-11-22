@@ -663,9 +663,11 @@ def render(res: dict) -> str:
       "final answers only. Open models: the delivered rerun (thinking off; no tools = Part C, "
       "tools = Part A), graded by the frozen package. Claude: the frontier runs, wording v11, "
       "never pooled with the open models. Intervals are 95% domain-cluster bootstrap "
-      "percentile intervals, in percent (or points for differences). In the rerun the "
-      "no-tools answers were sampled under a JSON format constraint and the tool answers "
-      "were not.*")
+      "percentile intervals, in percent (or points for differences). The no-tools arm "
+      "asks for its answer format in the prompt only (JSON on solve and simulate, a verdict "
+      "line on the validation tasks); the JSON-schema constraint meant for that arm never "
+      "took effect, so an unaided failure can be a failure of format as well as of "
+      "content.*")
     w("")
     w("#### RQ1-1. validate_plan: false positives and false negatives")
     w("")
