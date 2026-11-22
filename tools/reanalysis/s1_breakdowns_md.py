@@ -21,7 +21,8 @@ self-checks run first and halt on a mismatch (exit 2): pooled counts equal the T
 and T2 rows of NUMBERS.md, and the per-wording, per-track and per-domain counts
 equal the committed `out/breakdowns_cost/*_sweep5v2-live.csv` of the earlier scripts,
 the 35B main-sweep calling rates quoted from T8a equal the pooled counts here, and the
-"from" values of the ISS-027 caveat equal the pooled counts here.
+"from" values of the ISS-027 caveat (read from out/iss027_replay.json and
+out/iss027_unaided.json) equal the pooled counts here.
 
 Three caveats are rendered with the tables (md and the `.tex` notes): the unaided
 simulate cells carry the format-exact qualifier of the Job 2 row (marked ¶); the success
@@ -44,6 +45,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import common  # noqa: E402
 import gen_common as G  # noqa: E402
+import iss027_common  # noqa: E402
 from bc_common import domain_track  # noqa: E402
 
 TAG = "s1_breakdowns_md.py"
@@ -60,12 +62,12 @@ QUAL_NOTE = ("¶ = unaided simulate, format-exact on the shared-budget corpus (t
              "the output budget counts as a failure, so never read this 0 as a capability floor; "
              "the capability figure is the decoupled control, 22–40% content-correct at ≥4B.")
 
-# ISS-027 (OPEN_ISSUES.md, scope checked 2026-11-09 on branch analysis/iss027-scope):
-# trials of these pooled think=off cells that pass once the grader case-folds names, and
-# the pooled rate before and after as the scope record states it (self-checked here).
-ISS027_MOVES = {("gemma4_26b-a4b", "simulate", "plain"): (10, 91.7, 95.0),
-                ("gemma4_26b-a4b", "simulate", "steered"): (10, 90.7, 94.0),
-                ("Qwen3_5_9B", "solve", "unaided"): (2, 10.7, 11.3)}
+# ISS-027 (OPEN_ISSUES.md): {(model, task, arm): (trials that pass once the grader
+# case-folds names, pooled rate before, after)} for every pooled think=off cell that
+# moves. Read in main() from out/iss027_replay.json and out/iss027_unaided.json (the
+# outputs of iss027_replay.py and iss027_unaided.py); the "before" rates are
+# self-checked against the pooled counts here.
+ISS027_MOVES: dict[tuple, tuple] = {}
 
 
 class Halt(Exception):
@@ -259,16 +261,15 @@ def render(res, models, tasks, track, checks, tex_dir: Path | None, numbers_text
     iss_moves = [(m, t, arm, d[0]) for (m, t, arm), d in ISS027_MOVES.items()
                  if m in models and t in tasks]
     iss_list = "; ".join(f"{G.model_name(m)} {t} {'unaided' if arm == 'unaided' else 'tool-verified ' + arm} "
-                         f"{prate(m, t, arm)} → {prate(m, t, arm, add=d)} (+{d} trials)"
+                         f"{prate(m, t, arm)} → {prate(m, t, arm, add=d)} (+{d} trial{'s' if d != 1 else ''})"
                          for m, t, arm, d in iss_moves)
     ISS027_NOTE = ("ISS-027 (open, `OPEN_ISSUES.md`): the plan grader (pyval 0.1.5) is case-sensitive on "
                    "object and action names, and PDDL is case-insensitive, so a plan that copies the "
                    "capitals of the satellite p02–p05 or pogo_stick fixtures is graded wrong. This hits "
                    "unaided solve and the simulate and validate_plan tool arms. The success cells are the "
                    "frozen grades; a corrected figure goes beside them post hoc. Pooled cells that would "
-                   "move (think=off): " + iss_list + ". Every other pooled frozen figure here moves by "
-                   "1 point or less, but a single wording or domain cell can move more. Calling is not "
-                   "affected.")
+                   "move (think=off): " + iss_list + ". No other pooled cell moves, but a single wording "
+                   "or domain cell can move more than its pooled cell. Calling is not affected.")
     t8a = parse_numbers_t8a_calling(numbers_text) if QWEN35 in models else {}
     moved = [(t, arm, v) for (name, t, arm), v in t8a.items()
              if name == G.model_name(QWEN35) and abs(v[1] - v[0]) >= 1.0]
@@ -451,6 +452,12 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     common.RESULTS = args.results
     common.OVERLAY = args.results / "derived" / "e2e_overlay"
+    global ISS027_MOVES
+    try:
+        ISS027_MOVES = iss027_common.s1_moves(args.out_dir)
+    except (OSError, ValueError) as e:
+        print(f"HALT: ISS-027 moves: {e}", file=sys.stderr)
+        return 2
     try:
         cells = load(args.models)
         tasks = sorted({r["task"] for m in args.models for r in cells[m]["tools"]}, key=task_key)

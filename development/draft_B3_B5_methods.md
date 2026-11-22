@@ -1,9 +1,175 @@
 # Draft: steps B3, B4 and B5 (Methods text on test data, prompts, the checker; two claims)
 
 *2026-10-27. Drafts for `weakness_action_plan.md` §4 B, rows B3 to B5. Nothing in `paper/`
-was changed and nothing was committed. Tex line numbers are at `main` `d57dd68`. The
-edits below move later lines, so apply them bottom-up or by the quoted anchor text.
-When Omer okays this, the PR follows; `/verify-claims` runs on that PR.*
+was changed and nothing was committed. The edits below move later lines, so apply them
+bottom-up or by the quoted anchor text. When Omer okays this, the PR follows;
+`/verify-claims` runs on that PR.*
+
+*Refreshed 2026-11-09 (handoff item 6). Tex line numbers are now at `main` `130193e`: every
+anchor was re-found by its quoted text after PR #123 shifted the lines from about tex 630
+on (the anchors before that did not move). B4's VAL slot is filled from `NUMBERS.md`. The
+open questions of both B drafts are in one answer list just below. Code line numbers in
+the grounding tables are still at `d57dd68` (this repo) and `2850bc4` (plugins). For
+`tools/claude_api_batch.py`, which PR #131 edited, read them from that file at `bbcf111`
+(`MOVES.md`, row of 2026-11-09).*
+
+---
+
+## Answer list for Omer (both B drafts)
+
+This one list holds all the open questions of the two B drafts: items 1 to 12 come from
+`draft_B1_B2_related_work.md` §5 and items 13 to 21 from the end of this file (21 in all,
+as the handoff counted). Items 22 and 23 are new from the 2026-11-09 refresh. The question
+text is kept as it was. The recommendation is the choice the draft makes now (or, where
+the draft made none, mine, marked "Mine"), and a status line says what has changed since
+2026-10-27. **None of the 21 had been answered by Omer when this list was made** (checked
+against `paper_notes_discussions.md`, `STATUS.md` and `handoff_20261109.md` §2 on
+2026-11-09). Write your answer after "ANSWER:".
+
+**From B1 and B2 (`draft_B1_B2_related_work.md`)**
+
+1. **Where B2 goes in the paper.** I made it its own short subsection at the end of §2
+   ("Relation to the Preliminary Study", `\label{sec:prelim}`, which Positioning points
+   to). The other options are the last paragraph of Positioning, or the Introduction.
+   *Recommendation:* its own subsection, as drafted.
+   > ANSWER:
+2. **The "scored by tool selection" description is not quite what the arXiv paper did.**
+   Its text says final answers were also checked (with VAL, the simulator, and by hand),
+   and the correct tool call was an extra requirement. The draft says this: success
+   needed both, so calling and delivery were folded into one number. The same correction
+   applies to the memory note and to the cover letter. Is this the framing you want?
+   *Recommendation:* yes, and the same words in the cover letter (F3).
+   > ANSWER:
+3. **The tool suite changed after the arXiv version.** That paper used Metric-FF for
+   numeric planning and a VAL wrapper. Ours uses ENHSP and validators on
+   `unified-planning`. The tex (line 314) says the suite "packages the Planning Copilot
+   tools" of the arXiv paper. The draft says "an earlier version of this tool suite".
+   Should B3/B4 state the change, and should B2 mention it?
+   *Recommendation:* the draft keeps "an earlier version of this tool suite" in B2 and
+   states the change nowhere else yet. Mine: one sentence in B3.1 naming the two changes,
+   and B2 as drafted.
+   > ANSWER:
+4. **Calling figures in B2.** I used Study 1's 21% to 94% (the abstract's figures). Study 2
+   has its own: 20.0% plain and 93.1% steered (R5 table). Using Study 2 would keep the
+   whole Gemma passage inside one study. Which one?
+   *Recommendation:* the draft uses Study 1, the abstract's figures. The two studies sit in
+   separate sentences and are not combined.
+   > ANSWER:
+5. **Self-citation wording after de-anonymizing (F1).** The draft says "a preliminary study
+   of an earlier version of this tool suite", in the third person. Under JAIR, once
+   de-anonymized, it could say "the preliminary version of this work". Your call when F1
+   happens.
+   *Recommendation:* third person until F1.
+   > ANSWER:
+6. **Model name.** The draft uses "Gemma-MoE-26B" as the tex does now. E1 fixes the
+   vocabulary, so this may change.
+   *Recommendation:* keep the tex name until E1a decides.
+   > ANSWER:
+7. **The two Qwen validate_plan gains** (+14.2 for the 9B and +7.4 for the 35B, readout E2)
+   would show that skipping the tool is model-specific. They are not in `NUMBERS.md` yet,
+   so the draft leaves them out. Add a row and a clause?
+   *Recommendation:* left out, as drafted. If you want the clause, a script adds the
+   `NUMBERS.md` row first. *Status 2026-11-09:* still not in `NUMBERS.md`.
+   > ANSWER:
+8. **MCP benchmarks.** MCP-Universe and MCP-AgentBench are arXiv only. MCPAgentBench is a
+   workshop paper (REALM at EMNLP 2026, per its arXiv record). MCP-Bench is ICLR 2026.
+   Keep all four, or only MCP-Bench and MCP-Universe?
+   *Recommendation:* the draft keeps all four, each cited for its own design point.
+   > ANSWER:
+9. **HAL** is cited once, for reporting accuracy against cost. Keep it or drop it?
+   *Recommendation:* keep it, as drafted; our cost-of-pass analysis follows that practice.
+   > ANSWER:
+10. **The Introduction (lines 123 to 133) repeats the old three-lines framing**, including
+    "has not been answered cleanly". It should match the new Positioning when E rewrites
+    the Introduction. I did not touch it.
+    *Recommendation:* leave it to the Introduction rewrite in E, and put it on the C5 hit
+    list. *Status 2026-11-09:* the line numbers still hold at `130193e` (the quoted text is
+    on line 130; the paragraph runs to line 137).
+    > ANSWER:
+11. **Optional references** (listed under §3, verified, not used): Chain of Thoughtlessness,
+    LLM-Modulo for travel planning, The Illusion of Thinking. Add any?
+    *Recommendation:* none (the draft adds none).
+    > ANSWER:
+12. **Thinking mode in B2.** The arXiv paper reported the better of each model's two
+    modes. The new Study 1 block in `NUMBERS.md` (added today by the C2 work, not yet
+    committed) has Gemma's validate_plan calling falling from 20.7% to 0.6% with thinking
+    on. One sentence on this would show why reporting modes separately matters. Add it
+    once that block is final? (Study 2's D3 measures it again on the fixed setup.)
+    *Recommendation:* yes. *Status 2026-11-09:* the block is merged (PR #121). The figure is
+    in `NUMBERS.md` "Study 1", row "calling under thinking on" (Gemma 20.7% → 0.6%,
+    19/3,000). The handoff (§3) records that Gemma really thinks with thinking on, so the
+    fall stands as a thinking-on effect.
+    > ANSWER:
+
+**From B3 to B5 (this file)**
+
+13. The test-data counts in B3 are not in `NUMBERS.md`. Add the block at the end of this
+    file to `NUMBERS.md` in the same PR? *Recommendation:* yes.
+    > ANSWER:
+14. `reanalysis_breakdowns_cost.md` §4.3 has the block-grouping error. Add a one-line dated
+    correction there, or leave the record alone and let `NUMBERS.md` carry the right value?
+    *Recommendation:* the draft gives no pick. Mine: leave the record alone and let the
+    `NUMBERS.md` block carry the right value; its "do NOT quote" column already names the
+    wrong split.
+    > ANSWER:
+15. B3.2 puts the full test-data description in the Methods body. Keep it there, or keep
+    one short paragraph in the body and move the counts to the appendix?
+    *Recommendation:* the draft keeps it in the body (C11 says the test data are barely
+    described, and a journal has room).
+    > ANSWER:
+16. The draft says "wording" instead of "paraphrase" and "plain wordings" instead of
+    "neutral paraphrases", so "neutral" stays free for the system-message arm. Adopt this
+    throughout in E1? *Recommendation:* yes, in E1a.
+    > ANSWER:
+17. The default solve system message contains "arXiv:2509.12987". Keep it verbatim in the
+    appendix (it is what the models saw) and accept that it names our earlier paper?
+    *Recommendation:* the draft keeps it verbatim. Mine, in addition: under double-blind
+    review it names our earlier paper, so mask it until F1.
+    > ANSWER:
+18. There is no citation for `unified-planning` in `refs.bib`, and `pyval` has no paper.
+    Have B1 verify and add one for `unified-planning`, and cite `pddl-pyvalidator` by
+    package and version in a footnote? The exact versions on the cluster are not recorded
+    anywhere I could find (laptop: `pddl-pyvalidator` 0.1.5, `unified-planning` 1.3.0).
+    Reading them off the cluster needs your go-ahead.
+    *Recommendation:* yes to both. *Status 2026-11-09:* reading the cluster versions is part
+    of the one cluster go-ahead in `handoff_20261109.md` §4 item 11. The extension grades
+    with `pddl-pyvalidator` 0.1.6 (handoff decision 13, the case fix), so the footnote must
+    name the version for each study.
+    > ANSWER:
+19. Add the Sonnet failure split (205 of its 214 unaided solve failures are wrong plans) to
+    B5.2? It is not in `NUMBERS.md`, so it is left out for now.
+    *Recommendation:* leave it out. *Status 2026-11-09:* the split was counted before the
+    pyval case fault (ISS-027) was found. Under VAL, 12 of Sonnet's 300 canonical unaided
+    solve trials move from fail to success (`NUMBERS.md` "VAL on the Claude solve plans"),
+    so the split needs a recount by script first.
+    > ANSWER:
+20. The Background sentence (B5.3) sits in the section B1 rewrites. Apply it with B5, or
+    hand it to B1?
+    *Recommendation:* the draft gives no pick. Mine: hand it to B1. B1's §1 already
+    replaces tex 193 to 273, and with it the sentence at 215 to 217.
+    > ANSWER:
+21. Should noticed items 2, 3 and 4 get their small fixes in this PR, or wait for E2, E4
+    and E5? *Recommendation:* the draft gives no pick. Mine: wait, so the B PR stays small,
+    and add the three to the C5 hit list.
+    > ANSWER:
+
+**New from the 2026-11-09 refresh**
+
+22. **How to show the pyval case fault (ISS-027) beside frozen figures in the B text.** B4.1
+    now says the stored grades are reported with the VAL grades beside them, labelled post
+    hoc. Two drafted sentences quote frozen unaided solve figures that the fault lowers:
+    B2's "22--29% unaided" and B5.2's Sonnet "28.7%". Under VAL they read Haiku 25.0 and
+    Sonnet 32.7 (`NUMBERS.md` "VAL on the Claude solve plans"; Sonnet is still under a
+    third, so B5.2's wording holds). *Recommendation (mine):* keep the frozen figure in the
+    sentence and add the VAL reading in a short parenthesis or footnote marked post hoc.
+    Never replace the frozen figure.
+    > ANSWER:
+23. **Which version of Corrêa et al. to cite.** The B1 draft cites arXiv:2511.09378 v2 (key
+    `correa2025frontier`). A 2026 CACM version exists under a different title (Seipp's lab
+    page, per `draft_D5_cost_and_correa.md`). *Recommendation (mine):* cite arXiv v2 now,
+    since that is the text D5 checked; switch to CACM only after its details and the
+    authors' given names are verified.
+    > ANSWER:
 
 **What is here**
 
@@ -12,16 +178,16 @@ When Omer okays this, the PR follows; `/verify-claims` runs on that PR.*
 | B3 | B3.1 Tool Suite: seven tools, PDDL pasted, `pyval` named | 305 to 313 (anchor "Five tools cover the") and 318 to 320 | C11 |
 | B3 | B3.2 Test data and Prompts paragraphs, "prompt v11", the frontier's single wording | 366 to 381 (whole paragraph) | C11, C12 |
 | B3 | B3.3 small fixes ("appended", "complete prompt bank ships") | 453, 461 to 462, 493 | C11 |
-| B3 | B3.4 appendix: Prompts (verbatim) and Test data per domain (table) | new, after line 2215 | C11, C12 |
+| B3 | B3.4 appendix: Prompts (verbatim) and Test data per domain (table) | new, after line 2242 | C11, C12 |
 | B4 | B4.1 the "by construction" sentence, the checker named, solve uses two programs | 328 to 334 (anchor "Before any model is run") | C2, C8, D1 |
 | B4 | B4.2 table row and caption, optional "sound" and Metrics edits | 353, 360 to 362, 301, 523 | C2, C8 |
-| B5 | B5.1 to B5.4 the two claims, every occurrence | 1339 to 1341, 1654 to 1668, 215 to 217 | C18 |
+| B5 | B5.1 to B5.3 the two claims, every occurrence | 1360 to 1362 (already rewritten by PR #123), 1675 to 1689, 215 to 217 | C18 |
 
 **Rules followed.** Every experiment number comes from `NUMBERS.md` (section named in the
 grounding tables). The test-data counts in B3 are not experiment results and are not in
 `NUMBERS.md` yet. They come from `reference/reanalysis_breakdowns_cost.md` §4 and from my own
 recount of `domains/` today. A ready-to-paste `NUMBERS.md` block for them is at the end
-(question 1). The rerun readout's false sentence about sampling "under the per-task JSON
+(answer list item 13). The rerun readout's false sentence about sampling "under the per-task JSON
 constraint" is not used anywhere. The suite is never called "checked by VAL".
 
 **One correction to a reference doc.** `reanalysis_breakdowns_cost.md` §4.3 says 12 of the 20
@@ -162,7 +328,7 @@ Notes on B3.2:
 | 461 to 462 | "The complete prompt bank ships with the released harness." | "The Technical Appendix (Prompts) gives every prompt verbatim." | the appendix now has them |
 | 493 | "the steering contrast appends the single directive shown to the neutral user prompt" | "the steering contrast adds the single directive shown to the plain user prompt, after the task statement and before the PDDL" | same as line 453 |
 
-### B3.4 Appendix blocks (new, insert after tex line 2215, the end of "Canonical trajectory normalization", before the Reproducibility Checklist comment)
+### B3.4 Appendix blocks (new, insert after tex line 2242, the end of "Canonical trajectory normalization", before the Reproducibility Checklist comment)
 
 The listings were generated from `pddl_eval/prompts.py` by a script, not typed. The script
 also checked that each steered wording equals the plain wording plus one sentence at the
@@ -493,7 +659,7 @@ recomputed it today from `domains/` or the canonical corpus with a throwaway scr
 | objects 2 to 35 (median 9); plan 2 to 110 (median 11.5); domain files 686 to 5,542 chars; per-domain table | recount; every per-domain row matches `reanalysis_breakdowns_cost.md` §4.3 |
 | 4,560 per cell and the per-task split | tex 376-378; `runner.py:715-865` (job builder); `NUMBERS.md` "Corpus scale" (273,600 = 5 × 2 × 3 × 4,560 × 2) |
 | validate_domain 100 valid to 20 invalid per wording; always-VALID scores 83% | `runner.py:738-784` (one positive job per problem), `:803-825` (one negative per domain); 100 / 120 = 83.3% |
-| balanced accuracy reported for validate_domain | tex 1762 |
+| balanced accuracy reported for validate_domain | tex 1784 |
 | 1,803 and 120 distinct prompts | `prompts.py:403-412` (validate_domain prompt holds only `{domain}`); (101 + 500) × 3 = 1,803; (20 + 20) × 3 = 120; `reanalysis_breakdowns_cost.md` §4 summary |
 | simulate shows the planner's plan, whose trajectory is the key | `runner.py:750-758` (simulate keeps the oracle `gt`); `domains.py:182-196` |
 | bin cut points | `.claude/skills/analyzer/scripts/rq_deck.py:482-515` (validate_plan bins use valid plans only, `:499-500`); `reanalysis_breakdowns_cost.md` §4.3 item 4 |
@@ -507,7 +673,7 @@ recomputed it today from `domains/` or the canonical corpus with a throwaway scr
 | wording moves unaided success and the call rate | `NUMBERS.md` "Delivered rerun — descriptive secondary analyses", row "Gemma validate_plan invocation by wording" (31.0 / 25.1 / 3.9); `NUMBERS.md` "nt-ster H4", "Tex cross-check rows", row "F gate ranges" (solve 14.0–31.0, simulate 5.56–36.33) |
 | frontier runs use the same message builder | `frontier_runner.py:135`; `tools/claude_api_batch.py:155` |
 | frontier unaided format details | `tools/_claude_api_common.py:21-25` (simulate sentence), `:31-36` (solve schema), `:56-62`; `claude_api_batch.py:155-167` (`output_config`) |
-| unaided format constraint did not take effect | tex 443-445 and 1732-1740 (PR #110) |
+| unaided format constraint did not take effect | tex 443-445 and 1754-1762 (PR #110) |
 
 ---
 
@@ -517,7 +683,13 @@ recomputed it today from `domains/` or the canonical corpus with a throwaway scr
 
 The sentence the plan asks for is the fifth one below ("On the verdict tasks and
 \emph{simulate} the checker is the tool, ..."). The no-call half, now only in the appendix
-(tex 1856-1858), comes into the body in the sentence after it, as C2 asks.
+(tex 1878-1880), comes into the body in the sentence after it, as C2 asks.
+
+The VAL sentences (filled in 2026-11-09, plan step C1, replacing the `TODO(C1)` comment)
+follow the same-program sentence, because they test it. They state what VAL checked and
+what it did not: plans only, never the domain and problem labels, never the simulate
+trajectories. The open-model and the Claude plan checks are separate rows of `NUMBERS.md`
+and are not pooled.
 
 ```latex
 Before any model is run, an oracle makes the answer key by calling the same tools on
@@ -534,9 +706,26 @@ with intact arguments, and it does not measure the tools' own accuracy. On
 finds the plan and \texttt{pyval} checks it, although both read the PDDL through the
 parser of \texttt{unified-planning}. On the other four tasks the tool and the answer
 key are the same program, so a fault in \texttt{pyval} would go unseen on the tool
-side and would count against an unaided answer that disagreed with it.
-% TODO(C1): when the VAL cross-check reports, add its agreement figure here from
-% NUMBERS.md. Until then the suite is not described as checked by VAL.
+side and would count against an unaided answer that disagreed with it. We therefore
+checked the plan side of the answer key with an outside validator, VAL
+\citep{howey2004val}. VAL agrees with \texttt{pyval} on $1{,}731$ of $1{,}732$ plans
+($99.94\%$, Wilson 95\% interval $[99.67, 99.99]$): all $1{,}000$ \emph{validate\_plan}
+test plans and $731$ of the $732$ distinct \emph{solve} plans graded in the delivered
+rerun. In the one disagreement \texttt{pyval} accepts \texttt{pick-up} for the action
+\texttt{pick\_up}. A second check covers the $745$ \emph{solve} plans of the two Claude
+models that both validators could read. VAL agrees on $734$ ($98.52\%$, $[97.38,
+99.17]$), and on all $219$ plans of the tool arm. All $11$ disagreements are one fault
+of \texttt{pyval}. When an unaided answer writes an upper-case name exactly as the test
+file declares it, \texttt{pyval} rejects the plan, although PDDL names are
+case-insensitive. This fault lowers a few unaided \emph{solve} grades. It also fails
+some tool calls in which the model rewrote a plan with the file's capitals before
+passing it to \texttt{validate\_plan} or \texttt{get\_state\_transition}. We report the
+grades as stored and give the VAL grades beside them, labelled post hoc. VAL does not
+confirm the rest of the key. On the domain and problem files it agrees with the labels
+on only $184$ of $238$ ($77.3\%$). Every miss is an invalid file that VAL accepts,
+because VAL ignores text after the \texttt{define} form and reads a missing goal as an
+empty one. Those labels rest on a strict reading of the PDDL grammar. The
+\emph{simulate} trajectories were not checked with VAL.
 Grading is end-to-end and strict (Table~\ref{tab:tasks}): a \emph{solve} answer counts
 only if \texttt{pyval} accepts the returned plan;
 ```
@@ -549,7 +738,7 @@ entire trajectory equals the oracle's ...".
 | tex line | now | change to | required? |
 |---|---|---|---|
 | 353 | `solve & returned plan is certified valid (goal reached, all preconditions hold) \\` | `solve & \texttt{pyval} accepts the returned plan (every precondition holds and the goal is reached) \\` | yes (names the certifier) |
-| 361 to 362 | "Each task has a single relevant, correct-by-construction tool per instance (\emph{solve} selects the classical or numeric planner)." | "Each task has one matching tool per instance (on \emph{solve}, the classical or the numeric planner)." | optional |
+| 360 to 362 | "Each task has a single relevant, correct-by-construction tool per instance (\emph{solve} selects the classical or numeric planner)." | "Each task has one matching tool per instance (on \emph{solve}, the classical or the numeric planner)." | optional |
 | 301 | "a suite of sound symbolic planners and validators" | "a suite of symbolic planners and validators" | optional (C8 objects to calling the validator "sound" with no independent check) |
 | after 523 ("whatever the final message then said.") | (nothing) | "Because the answer key comes from the same tools, this layer mostly records whether the model called the matching tool with intact arguments (Tasks, Oracle, and Fixtures)." | optional |
 
@@ -563,13 +752,23 @@ entire trajectory equals the oracle's ...".
 | solve has no key plan; it counts if `pyval` accepts the plan for the original files | `scoring.py:500-545`: the planner's plan goes to `_validate_model_plan` (`:515`) with the harness's own `domain_pddl` and `problem_pddl`; `_validate_model_plan` calls `validate_plan` (`:409-433`); unaided and delivered answers use the same call (`:533`; `tools/e2e_regrade.py:69-72`) |
 | tool-verified on the verdict tasks compares the tool's verdict on the model's arguments with the key | `scoring.py:547-575` (`:566` `if verdict == truth`) |
 | tool-verified on simulate compares the tool's trajectory with the key | `scoring.py:591-617` (`:613`) |
-| no call fails at that layer | `scoring.py:497-498` (`if with_tools and not tool_calls: return False, False, FR_TOOL_NOT_SELECTED`); tex appendix 1856-1858 |
-| "on the unchanged task files" is needed | tex `tab:decomp` 1843-1849: P(correct given a call) is 92.6 to 99.4, so calls do fail; `development/CHANGELOG.md:1158` (an audit found the model had edited the plan before passing it to the tool) |
+| no call fails at that layer | `scoring.py:497-498` (`if with_tools and not tool_calls: return False, False, FR_TOOL_NOT_SELECTED`); tex appendix 1878-1880; `NUMBERS.md` "Study 1" block, note under the T2 table ("0 successes without a call in all 30 cells", merged in PR #121) |
+| "on the unchanged task files" is needed | tex `tab:decomp` 1865-1871: P(correct given a call) is 92.6 to 99.4, so calls do fail; `development/CHANGELOG.md:1158` (an audit found the model had edited the plan before passing it to the tool) |
 | solve: two programs, one shared parser | planner side `solver_server.py:17-18`, `:239`, `:275` at `2850bc4`; checker side `pyval/syntax_checker.py:5`, `pyval/plan_simulator.py:7` |
 | not "checked by VAL" | `reference/weakness_consolidated.md` D1; `weakness_action_plan.md` §5 row D1; `paper_notes_discussions.md:49` |
 | the same-program limit on four tasks | C8; negatives accepted only on `pyval` rejection (`build_fixtures.py:475`, `:539`, `:591`) |
+| VAL agrees on 1,731 of 1,732 plans (99.94%, Wilson 95% [99.67, 99.99]); all 1,000 validate_plan test plans; 731 of 732 distinct solve plans of the delivered rerun | `NUMBERS.md` "VAL cross-check of the answer key (C1)", row "plans, VAL vs the answer key"; method in `reference/val_crosscheck.md`, script `tools/val_crosscheck.py`. Scope: 10 more plans crash VAL and are not counted (pyval rejects all 10). Do not write "100% agreement" or pool these plans with the files |
+| the one disagreement is `pick-up` read as `pick_up` | `NUMBERS.md` C1 block, row "the one disagreement" |
+| 745 Claude solve plans; VAL agrees on 734 (98.52%, [97.38, 99.17]); tool arm 219 of 219 | `NUMBERS.md` "Added 2026-11-09: VAL on the Claude solve plans" (PR #125, generated by `tools/reanalysis/val_frontier_solve.py`), first row. Scope: Sonnet 4.6 and Haiku 4.5, unaided and tool arm, canonical and renamed; 771 distinct graded plans, of which 21 answers hold no plan and 5 plans crash VAL, so 745 have a verdict from both. Never pooled with the C1 plans |
+| all 11 disagreements are one case fault, unaided canonical answers only | same block, row "the disagreements"; `OPEN_ISSUES.md` ISS-027 |
+| the fault also fails some tool calls on plans rewritten in the file's capitals | `OPEN_ISSUES.md` ISS-027, "Scope", item "Tool arms" (no figure quoted here; the post hoc figures are in draft PR #130 and are not on `main` yet) |
+| stored grades kept, VAL grades beside them, post hoc | frozen-corpus rule (`CLAUDE.md`, `handoff_20261109.md` §1); `NUMBERS.md` same block, rows 3 and 4 ("do NOT quote": a corrected figure in place of the frozen one). Answer list item 22 |
+| files: 184 of 238 (77.3%); every miss an invalid file VAL accepts (stray `)` after the define, missing `:goal`) | `NUMBERS.md` C1 block, row "domain and problem files, parse check" ("do NOT quote: validate_domain / validate_problem labels checked by VAL"); `reference/val_crosscheck.md` bottom line (2 more problem files crash VAL and are not counted) |
+| simulate trajectories not checked with VAL | `reference/val_crosscheck.md`, "What this means for the paper" ("Simulate is not covered by this check") |
+| VAL is cited as `howey2004val` | already in `paper/refs.bib` and the tex (line 202) |
 
-No numbers appear in B4.
+B4 had no numbers until the VAL sentences were added on 2026-11-09. Every number in them is
+in the rows above; the two Wilson intervals were recomputed from the counts and match.
 
 ---
 
@@ -579,16 +778,16 @@ No numbers appear in B4.
 
 | # | tex lines | text now | action |
 |---|---|---|---|
-| 1 | 1339-1341 | `$^\dagger$\emph{solve} stays near its unaided floor, so it proves the capability boundary at the frontier but carries limited contamination headroom.` (caption of `tab:frontier`) | delete the boundary clause (B5.1) |
-| 2 | 1654-1658 | "Third, our results are direct empirical support for the LLM-Modulo thesis \citep{kambhampati2024llmmodulo} that LLMs should be paired with sound external verifiers, and a refinement of it: the pairing pays off only when the orchestration actually routes work to the verifier, and naive availability does not guarantee that routing." | replace (B5.2) |
-| 3 | 1658-1662 | "The \emph{solve} boundary is not an artifact of our open-weight roster's scale: ... so the necessity of an external solver reflects a capability boundary rather than the limited scale of the models we tested." | replace; this is the body form of claim 1 (C18 quotes it) (B5.2) |
-| 4 | 1663-1668 | "... so the simulator's necessity is a matter of degree rather than an absolute boundary; the tool's verified work on that task (...) moreover largely fails to reach" | adjust, because it leans on the boundary sentence (B5.2) |
+| 1 | 1339-1341 at `d57dd68`; **gone** at `130193e` | `$^\dagger$\emph{solve} stays near its unaided floor, so it proves the capability boundary at the frontier but carries limited contamination headroom.` (caption of `tab:frontier`) | done by PR #123: the quoted text no longer exists. The caption's dagger note is now tex 1360-1362 ("The \emph{solve} totals agree, but single domains move in both directions ...") and needs no B5 edit (B5.1) |
+| 2 | 1675-1679 | "Third, our results are direct empirical support for the LLM-Modulo thesis \citep{kambhampati2024llmmodulo} that LLMs should be paired with sound external verifiers, and a refinement of it: the pairing pays off only when the orchestration actually routes work to the verifier, and naive availability does not guarantee that routing." | replace (B5.2) |
+| 3 | 1679-1683 | "The \emph{solve} boundary is not an artifact of our open-weight roster's scale: ... so the necessity of an external solver reflects a capability boundary rather than the limited scale of the models we tested." | replace; this is the body form of claim 1 (C18 quotes it) (B5.2) |
+| 4 | 1684-1689 | "... so the simulator's necessity is a matter of degree rather than an absolute boundary; the tool's verified work on that task (...) moreover largely fails to reach" | adjust, because it leans on the boundary sentence (B5.2) |
 | 5 | 215-217 | "The present study is empirical evidence for exactly this division of labour: we measure what an LLM gains when a sound planner or validator is available as a callable tool, rather than asking the model to be the planner." | replace; same claim as 2 in the Background. B1 is rewriting this section, so this one may go with B1 (B5.3) |
 
 A grep for "LLM-Modulo", "Modulo", "boundary", "thesis", "necessity" and "prove" finds no
 other occurrence. Line 119 cites LLM-Modulo only for "known to be unreliable" and stays.
 
-### B5.1 Table caption (tex 1339-1341)
+### B5.1 Table caption (was tex 1339-1341 at `d57dd68`; now tex 1360-1362, already rewritten)
 
 > **Superseded 2026-11-08.** The contamination-wording PR rewrites this whole note: the
 > boundary clause goes, and so does "limited contamination headroom" (solve at 28.7% is
@@ -602,7 +801,7 @@ $^\dagger$\emph{solve} stays near its unaided floor, so it carries limited conta
 headroom.
 ```
 
-### B5.2 Discussion (replaces tex 1654 from "Third, our results are direct empirical" through 1668 "moreover largely fails to reach")
+### B5.2 Discussion (replaces tex 1675 from "Third, our results are direct empirical" through 1689 "moreover largely fails to reach")
 
 ```latex
 Third, the results bear on the LLM-Modulo proposal \citep{kambhampati2024llmmodulo},
@@ -638,15 +837,15 @@ validator, and no generate-and-test loop runs. We measure what that hand-off gai
 
 | claim | backed by |
 |---|---|
-| Sonnet 4.6 unaided solve 28.7% | `NUMBERS.md` "Abstract — the four figures", row "frontier plan generation" (Sonnet 86/300 = 28.7); recount of `results/sonnet-frontier/sweep5v2/trials.jsonl`: 86 of 300 |
+| Sonnet 4.6 unaided solve 28.7% | `NUMBERS.md` "Abstract — the four figures", row "frontier plan generation" (Sonnet 86/300 = 28.7); recount of `results/sonnet-frontier/sweep5v2/trials.jsonl`: 86 of 300. **Caveat (2026-11-09):** this is the stored grade, which the pyval case fault (ISS-027) lowers; under VAL it reads 32.7% (post hoc, `NUMBERS.md` "VAL on the Claude solve plans", row 3), still under a third, so the sentence holds. The frozen 28.7 stays in the sentence; answer list item 22 asks how to show the VAL reading |
 | thinking off, 8,192-token cap on the frontier unaided solve | `tools/claude_api_batch.py:37-39` (no `thinking` parameter; `max_tokens` = the per-task cap), `:161`; `runner.py:100-101` (solve 8,192); recount: the two truncated Sonnet solve answers stop at exactly 8,192 output tokens |
 | one decision, no generate-and-test loop | design of every arm (`chat.py:278-367`: the model may call tools, nothing re-prompts it with a critique); C18 ("no generate-and-verify loop is tested") |
-| call rate varies widely across models and prompts | `NUMBERS.md` "Abstract", row "invocation on plan checking" (Gemma 21% plain, 94% steered); tex `tab:decomp` 1843-1847 (plain-arm call rate 20.7 Gemma, 82.9 Qwen3.6-35B, 97.9 Qwen3.5-9B); `NUMBERS.md` rerun secondary row "invocation by wording" (31.0 / 25.1 / 3.9). The C2 work is adding a "Study 1" block to `NUMBERS.md` (uncommitted today); once it lands, cite its T2 table here and for B4's no-call sentence ("0 successes without a call in all 30 cells") |
+| call rate varies widely across models and prompts | `NUMBERS.md` "Abstract", row "invocation on plan checking" (Gemma 21% plain, 94% steered); tex `tab:decomp` 1865-1869 (plain-arm call rate 20.7 Gemma, 82.9 Qwen3.6-35B, 97.9 Qwen3.5-9B); `NUMBERS.md` rerun secondary row "invocation by wording" (31.0 / 25.1 / 3.9). The C2 work is adding a "Study 1" block to `NUMBERS.md` (uncommitted today); once it lands, cite its T2 table here and for B4's no-call sentence ("0 successes without a call in all 30 cells"). *Landed (PR #121):* `NUMBERS.md` "Study 1" block, row "Gemma validate_plan calling" and the T2 table with its note; now cited in the B4 grounding |
 | simulate 22–40% decoupled control | `NUMBERS.md` "Job 2" block, row "open-roster unaided simulate" |
 | simulate ⟨41.7, 61.3⟩ Sonnet unaided | `NUMBERS.md` "Frontier e2e", row "simulate, no-tools" |
 | 97–99% mechanism layer (unchanged text) | `NUMBERS.md` "Abstract", row "delivery gap" (Sonnet 99, Haiku 97) |
 
-Not used in the LaTeX, offered in question 7: of Sonnet's 214 failed unaided solve trials,
+Not used in the LaTeX, offered in answer list item 19: of Sonnet's 214 failed unaided solve trials,
 205 are plans `pyval` rejects, 7 are plans the validator could not process and 2 hit the
 output cap (recount, `failure_reason` in the same file). Most of its failures are wrong plans.
 
@@ -663,21 +862,27 @@ output cap (recount, `failure_reason` in the same file). Most of its failures ar
    selection rather than parameter construction". With the PDDL pasted into the prompt, the
    model copies a few thousand characters into each call, and P(correct given a call) is
    92.6 to 99.4 (`tab:decomp`). E2 should revisit that sentence.
-3. Tex 1782-1786 (Future Work) calls the with-tools arm on proprietary models an open
+3. Tex 1804-1808 (Future Work) calls the with-tools arm on proprietary models an open
    question. The frontier tool arm exists, and both tiers call the tool on every trial
    (`NUMBERS.md` "Job 2", "frontier CALL rate"). For E5.
 4. The frontier unaided arm is not prompt-identical to the open models (solve through the
    provider's structured-output parameter, simulate with one extra sentence). The tex does
    not say this. B3.4 now states it. It matters for C6 and E4.
 5. The default solve system message cites "arXiv:2509.12987". The appendix shows it
-   verbatim (question 5).
+   verbatim (answer list item 17).
 6. C18's other claims ("law", "survives reasoning mode", "a single imperative sentence
-   sufficed" at tex 1819-1821, "neither is capability or tool accuracy" at 1808) are left
-   for E5, as the plan says.
+   sufficed", "neither is capability or tool accuracy") are left
+   for E5, as the plan says. Where they are at `130193e` (re-checked 2026-11-09): "neither
+   is capability or tool accuracy" at tex 1830 to 1831; "survives reasoning mode" at 1833
+   to 1834, now reworded by PR #123 ("Both survive reasoning mode, and the
+   anonymized-domain control detects no memorization effect ..."); "a single imperative
+   sentence sufficed" at 1839. The old anchor "1819-1821" did not hold even at `d57dd68`
+   (those phrases were at 1808 to 1817 there). The word "law" is not in the tex at either
+   commit, so that claim cannot be located.
 
 ---
 
-## Proposed `NUMBERS.md` block (question 1)
+## Proposed `NUMBERS.md` block (answer list item 13)
 
 ```markdown
 ## Test data (fixtures) — counts quoted in Methods (added 2026-10-XX)
@@ -704,25 +909,7 @@ Provenance: `reference/reanalysis_breakdowns_cost.md` §4, rechecked against `do
 
 ## Open questions for Omer
 
-1. The test-data counts in B3 are not in `NUMBERS.md`. Add the block above to `NUMBERS.md`
-   in the same PR? (My pick: yes.)
-2. `reanalysis_breakdowns_cost.md` §4.3 has the block-grouping error. Add a one-line dated
-   correction there, or leave the record alone and let `NUMBERS.md` carry the right value?
-3. B3.2 puts the full test-data description in the Methods body. Keep it there, or keep
-   one short paragraph in the body and move the counts to the appendix?
-4. The draft says "wording" instead of "paraphrase" and "plain wordings" instead of
-   "neutral paraphrases", so "neutral" stays free for the system-message arm. Adopt this
-   throughout in E1?
-5. The default solve system message contains "arXiv:2509.12987". Keep it verbatim in the
-   appendix (it is what the models saw) and accept that it names our earlier paper?
-6. There is no citation for `unified-planning` in `refs.bib`, and `pyval` has no paper.
-   Have B1 verify and add one for `unified-planning`, and cite `pddl-pyvalidator` by
-   package and version in a footnote? The exact versions on the cluster are not recorded
-   anywhere I could find (laptop: `pddl-pyvalidator` 0.1.5, `unified-planning` 1.3.0).
-   Reading them off the cluster needs your go-ahead.
-7. Add the Sonnet failure split (205 of its 214 unaided solve failures are wrong plans) to
-   B5.2? It is not in `NUMBERS.md`, so it is left out for now.
-8. The Background sentence (B5.3) sits in the section B1 rewrites. Apply it with B5, or
-   hand it to B1?
-9. Should noticed items 2, 3 and 4 get their small fixes in this PR, or wait for E2, E4
-   and E5?
+The nine questions that were here moved on 2026-11-09 into the "Answer list for Omer" at
+the top of this file. They are items 13 to 21 there, in the same order and with the same
+wording, each with a recommendation and an answer slot. None had been answered when they
+moved.

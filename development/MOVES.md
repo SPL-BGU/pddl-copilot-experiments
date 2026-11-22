@@ -1,5 +1,22 @@
 # MOVES.md — old path → new path, and deleted files
 
+## The replan of 2026-11-22
+
+After Omer's advisor meeting (ICAPS 2027, three research questions, the thesis first)
+the plan became `roadmap.md`. The files below were **last present at their old paths at
+commit `edb7267`**; read or restore one with
+
+```
+git show edb7267:<old path>
+git checkout edb7267 -- <old path>
+```
+
+| old path | what happened | why |
+|---|---|---|
+| `development/weakness_action_plan.md` | moved to `development/reference/weakness_action_plan.md` | no longer the plan, but its step labels (A1, B1 to B5, C1 to C5, D1a to D5e, E1 to E7, F1 to F3) are cited across `NUMBERS.md`, the drafts, the logs and `tools/reanalysis/c4_select_transcripts.py`, and its §5 says where each weakness ends. Read it as a record, never as a to-do list |
+| `development/handoff_20261109.md` | deleted | the 2026-11-09 work list followed the earlier plan. What still matters moved into `STATUS.md` (open PRs, the frozen check, data in a fresh checkout, hygiene); the 2026-11-09 decisions are in `paper_notes_discussions.md` |
+| `development/draft_E1_research_questions.md` | deleted | the open question it held (RQ1 to RQ6 against a two-gate framing) was settled by the advisors: the three questions of `roadmap.md` §2 |
+
 ## Checkpoints pruned, 2026-11-09
 
 Omer (2026-11-09): keep the full-corpus checkpoints, remove the outdated ones. Every

@@ -1,0 +1,1 @@
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** Correct given a call, names case-folded: Qwen3.5-9B simulate plain 81.2 → 81.7 (196/240); Gemma-26B simulate plain 92.0 → 95.3 (285/299); Gemma-26B simulate steered 90.7 → 94.0 (282/300); Gemma-26B validate_plan steered 98.9 → 98.9 (2778/2808). Calling does not change.

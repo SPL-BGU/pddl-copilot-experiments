@@ -22,7 +22,7 @@ Tests vLLM-served LLMs **with** and **without** MCP planning tools on 5 PDDL tas
 - Two success layers exist: *tool-verified* (scored live by the harness) and *delivered* (the final answer re-graded offline by `tools/e2e_regrade.py`). See "How It Works" below and `EXPERIMENTS_FLOW.md` §14.
 - Frontier (Claude API) runs use `tools/frontier_runner.py` and `tools/claude_api_batch.py`, not `run_experiment.py`.
 - PlanBench arm? See `planbench/README.md`; its numbers are in `development/reference/planbench_wt_results_20260803.md`.
-- The paper (`paper/`) targets JAIR, with TMLR as the fallback.
+- The paper (`paper/`) targets ICAPS 2027 (decided 2026-11-22). The plan the work follows is `development/roadmap.md`.
 
 ## Prerequisites
 

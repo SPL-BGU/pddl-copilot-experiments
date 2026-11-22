@@ -17,7 +17,7 @@ was made on the old paper branch. That branch was merged into `main` by PR #101
 (2026-09-18, merge commit, not squashed) and deleted, so every such hash is reachable on
 `main`. Docs cited by bare name moved on 2026-09-18; `MOVES.md` "Third wave" resolves them.
 
-*Last refreshed: 2026-11-09 (three generated additions, in no tex yet: call-state flips between the main sweep and the rerun, T8c; Haiku 4.5 tool arm on the renamed corpus, frontier contamination block; KCL VAL on the Claude solve plans, next to the C1 VAL block, which finds a case fault in the answer key; then plan step C3: two generated sub-blocks, the Study 1 breakdowns by `tools/reanalysis/s1_breakdowns_md.py` and the Study 2 part 1 tables by `tools/reanalysis/s2_gen_md.py`; no existing row changed). Before that: 2026-11-08 (frontier contamination block, Sonnet 4.6 by the T7 method; T7 marked as in the tex). Before that: 2026-10-27 (VAL cross-check block, plan step C1; Study 1 block: main-sweep calling, tool-verified, unaided and contamination figures, the clustered tests and the mixed-model refit, and the replication table; plan step C2). Before that: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
+*Last refreshed: 2026-11-09 (three generated additions, in no tex yet: call-state flips between the main sweep and the rerun, T8c; Haiku 4.5 tool arm on the renamed corpus, frontier contamination block; KCL VAL on the Claude solve plans, next to the C1 VAL block, which finds a case fault in the answer key; then plan step C3: two generated sub-blocks, the Study 1 breakdowns by `tools/reanalysis/s1_breakdowns_md.py` and the Study 2 part 1 tables by `tools/reanalysis/s2_gen_md.py`; no existing row changed; later the same day, generated post hoc ISS-028 and ISS-029 lines beside the delivered-rerun readout, both run on the laptop with the pinned ground-truth cache and the raw Haiku trials). Before that: 2026-11-08 (frontier contamination block, Sonnet 4.6 by the T7 method; T7 marked as in the tex). Before that: 2026-10-27 (VAL cross-check block, plan step C1; Study 1 block: main-sweep calling, tool-verified, unaided and contamination figures, the clustered tests and the mixed-model refit, and the replication table; plan step C2). Before that: 2026-10-09 (delivered-rerun readout block). Before that: 2026-10-03 (PlanBench equivalence + post hoc regrade rows; consistency-read figures; Gemma-prefix warning). Before that: 2026-09-18 (doc cleanup: provenance paths repointed after the moves, the note above added, the budget-probe row now names its readout; no figure changed). Earlier the same day (abstract cross-check block added: the four abstract figures + the Gemma invocation counts, verified for `paper/aaai27` `b27ef23`). 2026-09-14 (serving-environment block: tex pushed + Overleaf-synced, disclosure kept per Omer). 2026-09-13 (housekeeping: the "Single-tool suite — per-cell figures" block replaces the "to be pinned as Job 2 writes" placeholder; Job 2 tex note updated to pushed. Earlier the same day — nt-ster block: tex cross-check rows + factorial row extended as Job 3 landed and was pushed; frontier budget probe row frozen).*
 
 ## PlanBench — with-tools arm (CLOSED 2026-08-06/11; Act 4)
 
@@ -144,6 +144,10 @@ Provenance: `results/derived/e2e_overlay/pooled_e2e_table.csv` (corpus `iss024d-
 | frontier delivered vs verified | delivered at **two thirds** of the verified rate or less (64/97 = 0.66 Haiku high end; 62/99 = 0.63 Sonnet) | "half that or less" |
 | rerun simulate mechanism layer, plain arm | **63.0 / 82.7 / 44.0 / 92.3%** (4B / 9B / Gemma / 35B; 189, 248, 132, 277 of 300) | the 3-model list "63, 83, 92%" |
 
+<!-- gen:iss027_mech -->
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** Gemma plain 44.0% (132 of 300) reads 45.3% (136 of 300, +4 trials) with plan names case-folded. On the same corpus Qwen3.5-4B simulate steered 73.3 → 73.7 (+1); Gemma-26B simulate steered 92.0 → 93.0 (+3) move as well. The plain-arm values of Qwen3.5-4B, Qwen3.5-9B, Qwen3.6-35B in this row do not move.
+<!-- /gen:iss027_mech -->
+
 **Warning (2026-10-02).** `pddl_eval/scoring.py` on `harness/delivered-rerun` (PR #113) strips a leaked Gemma channel prefix before extraction. The pinned `tools/e2e_regrade.py` imports those functions, so re-running it on the canonical Gemma tool cells now gives different delivered solve numbers from the frozen rows in this file. The frozen rows stay; any regenerated Gemma figure is a new reading and needs its own row.
 
 ## Study 1 — main sweep figures (added 2026-10-27; T7 in tex via PR #123 (2026-11-08), the rest in no tex yet)
@@ -227,6 +231,10 @@ canonical Qwen3.5-9B tool cells were served by vLLM 0.22.0 ("Serving environment
 | calling, rerun vs main sweep (descriptive) | within 1 point in 27 of 30 cells; **moved only in the three cells that failed the tool-verified criterion**: 35B solve plain 68.0 → 82.7 (+14.7 [10.7, 19.3]), steered 93.7 → 99.7 (+6.0), 35B simulate plain 76.3 → 99.7 (+23.3 [16.7, 30.7]). Cause not established in this pass (in the main sweep the 35B traced 66 simulate plans by hand without a call; in the rerun the same trials called the tool) | T8a | the 35B "calls the planner on only 68%", or the 9B-vs-35B "size inversion" on solve, without this caveat |
 | serving version, paired (reanalysis Table 7) | 0.20.2 − 0.22.0, Qwen3.5-0.8B with tools: **+0.43 [−0.27, +1.13]** (paired, 90%), criterion met; 8 of 10 task × arm cells meet it (10 of 10 against the second 0.22.0 run; the same version run twice: 7 of 10) | `tools/reanalysis/out/04_equivalence.md` (b) | as a replacement for the frozen unpaired row in "Serving environment" (that row stays) |
 
+<!-- gen:iss027_summary -->
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** Gemma simulate correct given a call reads 95.3 / 94.0 with plan names case-folded (frozen 92.0 / 90.7); see T2.
+<!-- /gen:iss027_summary -->
+
 ### Study 1 per-cell tables (generated by the scripts above, not transcribed)
 
 Rates in percent; counts in parentheses. † = Wilson 95% (rate exactly 0 or 100%). Every
@@ -254,6 +262,10 @@ other single-rate interval is the domain bootstrap 95%.
 | Qwen3.6-35B | validate_plan | 3,000 | 90.9 [87.7, 93.9] (2727) | 82.2 [72.6, 90.6] (2465) | 99.3 [98.7, 99.8] (2978) |
 | Qwen3.6-35B | simulate | 300 | 0.0 [0.0, 1.3]† (0) | 74.7 [65.3, 83.0] (224) | 97.0 [93.3, 99.7] (291) |
 
+<!-- gen:iss027_t1 -->
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** With plan names case-folded, these cells move: Qwen3.5-9B simulate tool-verified plain 65.0 → 65.3 (+1 trial); Qwen3.5-9B solve unaided 10.7 → 11.3 (+2 trials); Gemma-26B simulate tool-verified plain 91.7 → 95.0 (+10 trials); Gemma-26B simulate tool-verified steered 90.7 → 94.0 (+10 trials); Gemma-26B validate_plan tool-verified steered 92.6 → 92.6 (+1 trial). No other cell of this table moves. Counts and method: "ISS-027 post hoc corrections" below.
+<!-- /gen:iss027_t1 -->
+
 #### T2. Calling, and correct given a call (think=off)
 
 Calling = `tool_selected`. Correct given a call = tool-verified success among the trials that called. On this layer a trial without a call fails by construction: 0 successes without a call in all 30 cells.
@@ -277,6 +289,10 @@ Calling = `tool_selected`. Correct given a call = tool-verified success among th
 | Qwen3.6-35B | simulate | 76.3 [67.0, 84.3] (229/300) | 100.0 [98.7, 100.0]† (300/300) | 97.8 [94.5, 100.0] (224/229) | 97.0 [93.3, 99.7] (291/300) |
 
 ‡ Only 13 of the 20 domains have a call in this cell, so the bootstrap runs over 13 clusters.
+
+<!-- gen:iss027_t2 -->
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** Correct given a call, names case-folded: Qwen3.5-9B simulate plain 81.2 → 81.7 (196/240); Gemma-26B simulate plain 92.0 → 95.3 (285/299); Gemma-26B simulate steered 90.7 → 94.0 (282/300); Gemma-26B validate_plan steered 98.9 → 98.9 (2778/2808). Calling does not change.
+<!-- /gen:iss027_t2 -->
 
 #### T3. Calling with thinking on (think=on; plain / steered)
 
@@ -339,6 +355,10 @@ Mean of the accuracy on the 300 valid and the 60 invalid trials (the fixtures ru
 **Bold** verdict = differs from the paper rule (Wilson disjointness × √2.7), or lost to Holm. Holm m = 30 = the 30 rows of this table; m = 60 adds the 30 delivered-surface contrasts (`02_contrasts.csv` `holm_p_H60_both`). Exact sign-flip p-values on the 20 domain sums are in `02_contrasts.csv` (`p_signflip_domain`).
 
 § An input cell did not meet the replication criterion (T8a). Tool-verified, main sweep vs rerun: 9B simulate plain 65.0 vs 68.0, steered 83.0 vs 87.0; 35B solve plain 63.0 vs 82.3, steered 92.0 vs 99.3; 35B simulate plain 74.7 vs 94.0 (steered met: 97.0 vs 95.7). Each § contrast is still a main-sweep measurement; the mark says its size is not reproduced on the fixed setup.
+
+<!-- gen:iss027_t5 -->
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** Δ with plan names case-folded, point estimates (the clustered intervals and Holm p-values are not recomputed): Qwen3.5-9B solve availability +88.7 → +88.0; Qwen3.5-9B simulate availability +65.0 → +65.3; Qwen3.5-9B simulate steering +18.0 → +17.7; Gemma-26B validate_plan steering +72.0 → +72.0; Gemma-26B simulate availability +91.7 → +95.0; Gemma-26B simulate steering -1.0 → -1.0. No other row of T5 moves.
+<!-- /gen:iss027_t5 -->
 
 #### T6. Mixed model: Gemma validate_plan, steered vs plain (think=off, tool-verified)
 
@@ -424,6 +444,10 @@ Maximum-likelihood details: random-intercept SD 2.86; likelihood-ratio χ² 4,41
 | Qwen3.6-35B | simulate | plain | 74.7 | 94.0 | +19.3 | [+11.7, +27.7] | **not met (unresolved)** | 76.3 → 99.7 (+23.3 [+16.7, +30.7]) |
 | Qwen3.6-35B | simulate | steered | 97.0 | 95.7 | -1.3 | [-2.3, -0.3] | met | 100.0 → 100.0 (+0.0 [+0.0, +0.0]) |
 
+<!-- gen:iss027_t8a -->
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** Tool-verified cells that move with plan names case-folded (point estimates; the paired intervals and the ±5 verdicts are not recomputed): Qwen3.5-9B simulate plain: main 65.0 → 65.3, rerun 68.0 → 68.0, Δ +3.0 → +2.7; Gemma-26B validate_plan steered: main 92.6 → 92.6, rerun 92.1 → 92.1, Δ -0.4 → -0.5; Gemma-26B simulate plain: main 91.7 → 95.0, rerun 90.7 → 93.7, Δ -1.0 → -1.3; Gemma-26B simulate steered: main 90.7 → 94.0, rerun 90.7 → 93.7, Δ +0.0 → -0.3; Qwen3.6-35B simulate plain: main 74.7 → 74.7, rerun 94.0 → 94.7, Δ +19.3 → +20.0; Qwen3.6-35B simulate steered: main 97.0 → 97.0, rerun 95.7 → 96.3, Δ -1.3 → -0.7. Calling does not change.
+<!-- /gen:iss027_t8a -->
+
 #### T8b. Replication, unaided cells: harness online grade, rerun Part C vs main sweep (simulate excluded, prereg §2)
 
 | model | task | main sweep | rerun | Δ (rerun − main) | 90% CI | ±5 criterion |
@@ -500,13 +524,13 @@ Largest flip share per model: Gemma-26B 3.0%; Qwen3.5-9B 3.3%; Qwen3.6-35B 29.3%
 Generated by `tools/reanalysis/s1_breakdowns_md.py` (rerun: `python3 tools/reanalysis/s1_breakdowns_md.py --results <abs path to results>`); `.tex` fragments in `tools/reanalysis/out/tex/s1_*.tex`. Descriptive breakdowns of the T1 and T2 cells: no test, no verdict.
 
 <!-- BEGIN GENERATED: s1_breakdowns_md.py (do not edit by hand; rerun the generator) -->
-*Generated by `tools/reanalysis/s1_breakdowns_md.py`; do not edit between the markers, rerun the script. Self-check: 1303 of 1303 pass (75 pooled counts equal T1 and T2 above; every per-wording, per-track and per-domain count equals the committed `tools/reanalysis/out/breakdowns_cost/*_sweep5v2-live.csv` of `bc_per_wording.py` and `bc_per_domain.py`; 10 35B main-sweep calling rates equal the T8a calling column; 3 ISS-027 before/after rates follow from the pooled counts).*
+*Generated by `tools/reanalysis/s1_breakdowns_md.py`; do not edit between the markers, rerun the script. Self-check: 1305 of 1305 pass (75 pooled counts equal T1 and T2 above; every per-wording, per-track and per-domain count equals the committed `tools/reanalysis/out/breakdowns_cost/*_sweep5v2-live.csv` of `bc_per_wording.py` and `bc_per_domain.py`; 10 35B main-sweep calling rates equal the T8a calling column; 5 ISS-027 before/after rates follow from the pooled counts).*
 
 **Apparatus: Study 1 only** (main sweep, `results/sweep5v2-live`, think=off, the headline models; never pooled with a Study 2 table). **Mechanism layer only**: *unaided* = the no-tools cell's online grade (wordings v11–13); *calling* = `tool_selected` (the task's own tool was called); *tool-verified* = `success` on the tools cell. **Why no delivered tool-arm column**: the breakdowns of 2026-10-02 (`reference/reanalysis_breakdowns_cost.md`) also showed the overlay's delivered bounds for the tool arms; that surface is retired for the open models in Study 1 (Rules above), and on the main sweep many of those cells are wide censoring bounds set by the 500-character answer storage. The delivered surface on the fixed setup is in the Study 2 tables below. Intervals as in the Rules above (domain bootstrap 95%; † = Wilson at 0 or 100%); a track subset resamples only its own domains.
 
 **Unaided simulate.** ¶ = unaided simulate, format-exact on the shared-budget corpus (the qualifier of the Job 2 row: "0/3,000 format-exact on the shared-budget corpus"). An answer cut by the output budget counts as a failure, so never read this 0 as a capability floor; the capability figure is the decoupled control, 22–40% content-correct at ≥4B.
 
-**Grader caveat.** ISS-027 (open, `OPEN_ISSUES.md`): the plan grader (pyval 0.1.5) is case-sensitive on object and action names, and PDDL is case-insensitive, so a plan that copies the capitals of the satellite p02–p05 or pogo_stick fixtures is graded wrong. This hits unaided solve and the simulate and validate_plan tool arms. The success cells are the frozen grades; a corrected figure goes beside them post hoc. Pooled cells that would move (think=off): Gemma-26B simulate tool-verified plain 91.7 → 95.0 (+10 trials); Gemma-26B simulate tool-verified steered 90.7 → 94.0 (+10 trials); Qwen3.5-9B solve unaided 10.7 → 11.3 (+2 trials). Every other pooled frozen figure here moves by 1 point or less, but a single wording or domain cell can move more. Calling is not affected.
+**Grader caveat.** ISS-027 (open, `OPEN_ISSUES.md`): the plan grader (pyval 0.1.5) is case-sensitive on object and action names, and PDDL is case-insensitive, so a plan that copies the capitals of the satellite p02–p05 or pogo_stick fixtures is graded wrong. This hits unaided solve and the simulate and validate_plan tool arms. The success cells are the frozen grades; a corrected figure goes beside them post hoc. Pooled cells that would move (think=off): Qwen3.5-9B simulate tool-verified plain 65.0 → 65.3 (+1 trial); Gemma-26B simulate tool-verified plain 91.7 → 95.0 (+10 trials); Gemma-26B simulate tool-verified steered 90.7 → 94.0 (+10 trials); Gemma-26B validate_plan tool-verified steered 92.6 → 92.6 (+1 trial); Qwen3.5-9B solve unaided 10.7 → 11.3 (+2 trials). No other pooled cell moves, but a single wording or domain cell can move more than its pooled cell. Calling is not affected.
 
 **35B calling.** Qwen3.6-35B calling cells: main sweep alone. The 35B calling rate is quoted as both runs, main sweep and delivered rerun (decided 2026-11-09, `STATUS.md`), and "bigger calls less" stays a direction only; see S1-Q, T8a and T8c (call-state flips).
 
@@ -517,7 +541,7 @@ Generated by `tools/reanalysis/s1_breakdowns_md.py` (rerun: `python3 tools/reana
 | Gemma validate_plan calling, plain, by wording (descriptive) | w1 **31.2** (312/1000) · w2 **26.8** (268/1000) · w3 **4.2** (42/1000); pooled (T2) 20.7%, their mean (equal n) | "21%" without its wording range; a single wording's rate as a test |
 | unaided solve, by wording (descriptive) | Qwen3.5-9B w1 **2.0** (2/100) · w2 **29.0** (29/100) · w3 **1.0** (1/100); Gemma-26B w1 **1.0** (1/100) · w2 **16.0** (16/100) · w3 **6.0** (6/100); Qwen3.6-35B w1 **0.0** (0/100) · w2 **28.0** (28/100) · w3 **0.0** (0/100) (frozen grades; ISS-027 would add 2 Qwen3.5-9B trials over the three wordings) | the pooled unaided solve rate (T1) as if it did not depend on the wording |
 | Qwen3.6-35B calling, any cell of S1-W, S1-T or S1-D | no single-run figure. Quote both runs: solve plain **68.0** (main sweep) and **82.7** (delivered rerun), Δ +14.7 [+10.7, +19.3]; solve steered **93.7** (main sweep) and **99.7** (delivered rerun), Δ +6.0 [+2.7, +9.7]; simulate plain **76.3** (main sweep) and **99.7** (delivered rerun), Δ +23.3 [+16.7, +30.7] (T8a; the trials that flip are in T8c). "Bigger calls less" is a direction only (decided 2026-11-09, `STATUS.md`) | a 35B per-wording, per-track or per-domain calling rate from the main sweep alone; the 9B-vs-35B size inversion as a measured effect |
-| success cells hit by ISS-027 (grader case fault) | the frozen value, with the ISS-027 caveat; corrected value beside it, post hoc: Gemma-26B simulate tool-verified plain 91.7 → 95.0 (+10 trials); Gemma-26B simulate tool-verified steered 90.7 → 94.0 (+10 trials); Qwen3.5-9B solve unaided 10.7 → 11.3 (+2 trials) | a re-graded value in place of the frozen one; the frozen value without the caveat |
+| success cells hit by ISS-027 (grader case fault) | the frozen value, with the ISS-027 caveat; corrected value beside it, post hoc: Qwen3.5-9B simulate tool-verified plain 65.0 → 65.3 (+1 trial); Gemma-26B simulate tool-verified plain 91.7 → 95.0 (+10 trials); Gemma-26B simulate tool-verified steered 90.7 → 94.0 (+10 trials); Gemma-26B validate_plan tool-verified steered 92.6 → 92.6 (+1 trial); Qwen3.5-9B solve unaided 10.7 → 11.3 (+2 trials) | a re-graded value in place of the frozen one; the frozen value without the caveat |
 | unaided simulate cells (¶) | 0.0 **format-exact on the shared-budget corpus**, always with that qualifier (Job 2 row) | a bare 0.0 or 0% read as a capability floor |
 | tool-arm figures in these tables | tool-verified and calling only | any Study 1 delivered tool-arm figure from `bc_per_wording.py` or `bc_per_domain.py` (retired surface) |
 
@@ -800,6 +824,26 @@ overlay verdict of every delivered tool-arm plan. Unaided answers stored at the 
 | effect on the frontier contamination test, unaided solve (renamed − canonical, T7 method, post hoc) | Sonnet 4.6: stored 28.7 → 28.3, -0.33 [-10.59, +9.93], criterion not met (unresolved); VAL grade 32.7 → 28.3, -4.33 [-14.38, +5.71], criterion not met (unresolved). Haiku 4.5 (v11 only): stored 22.0 → 19.0, -3.00 [-12.14, +6.14], criterion not met (unresolved); VAL grade 25.0 → 19.0, -6.00 [-17.25, +5.25], criterion not met (unresolved). The case fault lowers only the canonical side, so it biases the contrast toward zero | `val_frontier_solve.md` | the VAL-graded Δ as a replacement for the frozen −0.33 row (the grader change is post hoc) |
 <!-- /gen:val_frontier_solve -->
 
+### Added 2026-11-09: ISS-027 post hoc corrections, open models (in no tex yet)
+
+Provenance: `tools/reanalysis/iss027_replay.py` (the stored simulate and validate_plan tool calls replayed with the plan lower-cased) and `tools/reanalysis/iss027_unaided.py` (unaided solve re-graded with the plan lower-cased), both read-only over the canonical corpora (`sweep5v2-live`, `sweep6-live`, `delivered-rerun`, and `iss024d-e2e-live` for the mechanism row of the 2026-10-03 block). The fault is ISS-027 (`OPEN_ISSUES.md`): pyval 0.1.5 rejects a plan that writes a fixture name with the fixture's own capitals. The frozen figures stay where they are; the post hoc values below sit beside them, and a short generated caveat follows each table that holds a moved figure (T1, T2, T5, T8a, the Study 1 summary and the 2026-10-03 block).
+
+<!-- gen:iss027 -->
+*Generated by `tools/reanalysis/iss027_replay.py` and `iss027_unaided.py` (outputs `tools/reanalysis/out/iss027_*.{json,md}`); do not edit between the markers, rerun the scripts. pddl-pyvalidator 0.1.5 (the frozen grader; 0.1.6 folds case), sibling `../pddl-copilot` at `e428f17fd0`. Self-check: 665 of 666 replayed tool calls return the stored result (1 known wording difference in the free-text report, same verdict, listed in `iss027_replay.md`); the harness rule on the as-is replay equals the stored `success` on all 179 replayed rows; the unaided re-grade equals the stored `success` on all 3,236 rows not cut at the snapshot cap.*
+
+| figure | frozen → post hoc (names case-folded) | source | do NOT quote |
+|---|---|---|---|
+| Study 1, think=off, headline (T1, T2, T5) | Qwen3.5-9B simulate tool-verified plain 65.0 → 65.3 (+1); Qwen3.5-9B solve unaided 10.7 → 11.3 (+2); Gemma-26B simulate tool-verified plain 91.7 → 95.0 (+10); Gemma-26B simulate tool-verified steered 90.7 → 94.0 (+10); Gemma-26B validate_plan tool-verified steered 92.6 → 92.6 (+1) | `iss027_replay.md`, `iss027_unaided.md` | a post hoc value in place of the frozen one; the frozen value without this caveat |
+| Study 1, think=on (main sweep) | Qwen3.5-4B simulate tool-verified plain 63.7 → 64.3 (+2); Qwen3.5-4B simulate tool-verified steered 74.7 → 75.0 (+1); Qwen3.5-4B validate_plan tool-verified steered 73.1 → 73.1 (+1); Qwen3.5-9B solve unaided 27.0 → 27.3–28.7 (+1 to +5); Gemma-26B simulate tool-verified plain 44.0 → 46.0 (+6); Gemma-26B simulate tool-verified steered 91.0 → 91.7 (+2); Qwen3.6-35B solve unaided 38.3 → 40.3–40.7 (+6 to +7) | same | same |
+| Study 1, think=off, Qwen3.5-0.8B and 4B | Qwen3.5-4B validate_plan tool-verified steered 79.5 → 79.6 (+2) | same | same |
+| contamination twin (`sweep6-live`, renamed tree, no capitals declared) | off: none; on: none | same | — |
+| delivered rerun, tool-verified (T8a inputs) | Gemma-26B simulate tool-verified plain 90.7 → 93.7 (+9); Gemma-26B simulate tool-verified steered 90.7 → 93.7 (+9); Qwen3.6-35B simulate tool-verified plain 94.0 → 94.7 (+2); Qwen3.6-35B simulate tool-verified steered 95.7 → 96.3 (+2) | `iss027_replay.md` | same |
+| delivered rerun, solve graded from the answer (Part C online and delivered, tool-arm delivered E1/E2) | **0 flips**; Part C has 81 rows on the affected fixtures and none of their plans keeps a capital | `iss027_unaided.md` | — |
+| rerun simulate mechanism layer (`iss024d-e2e-live`, think on) | Qwen3.5-4B simulate tool-verified steered 73.3 → 73.7 (+1); Gemma-26B simulate tool-verified plain 44.0 → 45.3 (+4); Gemma-26B simulate tool-verified steered 92.0 → 93.0 (+3) | `iss027_replay.md` | same |
+
+Ranges ("+a to +b") come from unaided answers stored cut at the 500-character snapshot: the low end re-grades what is stored; the high end adds the cut answers whose stored reason is `plan_invalid` and whose visible JSON writes a capitalised fixture name. A replay changes only the tool's answer, so it corrects the tool-verified grade only; the delivered grade of the tool arms stays as stored. Every flip is on satellite p02–p05 or pogo_stick. Not recomputed here: intervals, p-values and equivalence verdicts (point estimates only).
+<!-- /gen:iss027 -->
+
 ## Delivered rerun — readout (FROZEN 2026-10-09; in no tex yet)
 
 Provenance: `reference/delivered_rerun_readout.md` / `.json` (frozen code `d558946`, package `822aace…`; summary and sha256s in `reference/delivered_rerun_prereg.md` §8c). Data: `results/delivered-rerun/` (seven cells, cluster run tag `delivered-rerun` / `delivered-rerun-neutral`). **Parity failed at job level, so every figure below is a separate-apparatus replication**: it never replaces a canonical-cell figure and is never pooled with one.
@@ -816,6 +860,22 @@ Provenance: `reference/delivered_rerun_readout.md` / `.json` (frozen code `d5589
 | E2 solve delivered, tools-plain − unaided | **+71.0 / +64.3 / +51.7** (Gemma / 9B / 35B) | the canonical tool-verified "+66 to +73" as delivered |
 | E2 simulate, Gemma | **−15.7** [−24.7, −6.7], Holm p 0.018 (tools worse; 8.3 vs 24.0) | — |
 | E1 simulate delivered, tool arms | Gemma **8.3** both arms · 9B **17.3 / 16.3** · 35B **28.3 / 25.7** (plain / steered); no-room share **42.7–53.0%** | the 2026-10-03 "at most 21%" row above (`iss024d` apparatus), as a figure of this run |
+
+### Added 2026-11-09: post hoc splits beside the frozen readout (ISS-028, ISS-029; in no tex yet)
+
+The frozen rows above stay the record. These lines are post hoc and descriptive; never quote one in place of a frozen figure.
+
+<!-- gen:iss028 -->
+*Generated by `tools/reanalysis/iss028_goal_trailers.py` (output `tools/reanalysis/out/iss028_goal_trailers.{json,md}`); do not edit between the markers, rerun the script. Self-check: the frozen grader reproduces the readout's solve figures (E1, Part C, E2, E3, E4, R4: 24 of 24 equal), and the three classes sum to the frozen total.*
+
+**ISS-028, post hoc (goal facts after a correct plan; the frozen values above stay).** Of the **38** solve rows the frozen E4 labels WRONG_FACTS: **17** repeat the tool's plan exactly and then list goal facts (Qwen3.5-9B 15, Qwen3.6-35B 2); **5** are copying errors (the tool plan's length, some actions changed; Qwen3.5-9B 3, Gemma-26B 1, Qwen3.6-35B 1); **16** are other shapes (extra lines, then tool plan 5; other 10; tool plan, then extra lines 1). With the trailing goal facts dropped and the plan validated again (post hoc extractor rule, every solve row graded `plan_invalid`), delivered solve moves in these cells: Qwen3.5-9B solve plain 266/300 (88.7%) → 275/300 (91.7%); Qwen3.5-9B solve steered 267/300 (89.0%) → 273/300 (91.0%); Qwen3.6-35B solve steered 262/300 (87.3%) → 264/300 (88.0%); Qwen3.6-35B solve unaided (Part C) 76/300 (25.3%) → 78/300 (26.0%). No other rerun solve cell moves (14 more rows lose a goal trailer but stay invalid). Figures built on these cells, point estimates only (intervals, p-values and readings not recomputed): E2 solve (tools plain − unaided) Qwen3.5-9B +64.3 → +67.3; E2 solve (tools plain − unaided) Qwen3.6-35B +51.7 → +51.0; E3 solve (steered − plain) Qwen3.5-9B +0.3 → -0.7; E3 solve (steered − plain) Qwen3.6-35B +10.3 → +11.0; R4 (tool-verified, full answer, delivered) Qwen3.5-9B 95.0% of 561 → 97.7%; R4 (tool-verified, full answer, delivered) Qwen3.6-35B 95.2% of 498 → 96.0%. Do NOT quote a post hoc value in place of the frozen E1 / E2 / E3 / E4 / R4 figure, or "transcription errors" for all 38 rows. Frontier Haiku 4.5 with tools: the overlay grades 3 of 100 solve rows `plan_invalid` (counters p05, depot p02, parking p05); these are the "three transcription errors" of the paper's delivery-gap paragraph, so depot p02 **is one of them**. By the rule above (raw trials read): counters p05 other (1 plan lines extracted, tool plan 56 actions); depot p02 goal_trailer (7 plan lines extracted, tool plan 5 actions, trailing goal facts dropped: valid); parking p05 other (11 plan lines extracted, tool plan 121 actions); 0 of 3 are copying errors by this rule, 2 write fewer lines than the tool plan has actions.
+<!-- /gen:iss028 -->
+
+<!-- gen:iss029 -->
+*Generated by `tools/reanalysis/iss029_simulate_plan.py` (output `tools/reanalysis/out/iss029_simulate_plan.{json,md}`); do not edit between the markers, rerun the script. Self-check: the ground-truth cache matches the pinned hash; the frozen grader reproduces the readout's simulate E1, Part C and E4 rows (15 cells); every Part C row the online grade passes and the delivered grade fails is on a listed problem and simulates the run's plan.*
+
+**ISS-029, post hoc (simulate prompt plan vs cached plan; the frozen values above stay).** For **6 of 100** simulate problems the plan the run's with-tools rows passed to the tool (so the plan in the prompt) is not the cached plan the delivered grader uses: barman p01 (30 vs 28 actions), barman p02 (14 vs 14 actions), barman p03 (30 vs 34 actions), barman p04 (61 vs 59 actions), barman p05 (61 vs 65 actions), gripper p03 (11 vs 11 actions). Of the 900 Part C simulate rows, **1** pass the online grade and fail the delivered grade: `qwen3_6_35b|simulate|plain|gripper|p03||v11`. Graded against the run plan's trajectory: Qwen3.6-35B simulate unaided (Part C) 53/300 (17.7%) → 54/300 (18.0%). With-tools rows on these problems that pass online, had room and fail delivered: 0. Do NOT quote the post hoc count in place of the frozen E2 simulate figure.
+<!-- /gen:iss029 -->
 
 ## Delivered rerun — descriptive secondary analyses (prereg §6, §8b 13; 2026-10-09; in no tex yet)
 
@@ -1197,6 +1257,262 @@ Gap rows = the tool returned the right result but the delivered answer is graded
 | all | 1511 | WRONG_FACTS | 207 | 5 | 212 |  |
 | all | 1511 | WRONG_WRAPPER | 9 | 218 | 227 | 174 |
 <!-- END GENERATED: s2_gen_md.py -->
+
+Solve WRONG_FACTS in S2-E: most of these rows are a correct plan followed by the goal facts, not copying errors. The split is the post hoc ISS-028 line under "Delivered rerun — readout" above; the frozen E4 column stays the record.
+
+## RQ1 metrics — the advisors' four metrics (added 2026-11-22; post hoc, exploratory; in no tex yet)
+
+The metrics set at the advisor meeting of 2026-11-22 (`roadmap.md` §2), computed on data
+already on disk by `tools/reanalysis/rq1_metrics.py` (rerun: `python -m tools.reanalysis.rq1_metrics --numbers`;
+tests in `tests/test_rq1_metrics.py`). How to read the block:
+
+- **Not a registered endpoint.** The frozen readout of the delivered rerun stays the record.
+  These are new views of the same graded answers. The script halts unless the frozen
+  package hash, the pinned ground-truth cache and the readout's E1 and E2 delivered counts
+  all reproduce, so every table sits on the readout's exact grades.
+- **Delivered answers only**, from the two sources that stored them in full: the delivered
+  rerun (three open models, thinking off) and the Claude runs (wording v11 in both arms).
+  The main sweep is not used (500-character answers). Open models and Claude are never pooled.
+- **Frozen grades.** The corrections of ISS-027 (plan-name case) and ISS-028 (a correct plan
+  followed by the goal facts) are not applied here; they lower some solve cells slightly
+  (the corrected figures are the ISS-027 and ISS-028 post hoc lines elsewhere in this file,
+  from PRs #130 and #136, merged 2026-11-22).
+- **The unaided arm of the rerun answered under a JSON format constraint** and the tool arms
+  did not, so a tools-against-unaided difference in the rerun is not the tool's effect alone.
+- **Simulate:** six problems are left out because the run's plan was not the cached plan
+  (ISS-029; the script finds the same six as the record). "States, salvaged" is more
+  lenient than the frozen grader. Claude answers were stored up to 16,384 characters, so
+  a Claude trace cut by storage scores lower than what the model wrote.
+- **Planner runtime** is the `solve_time` the solver plugin returns with each plan, as
+  measured during the runs on the cluster. It spans 0.15 s to 22.3 s with two thirds of
+  the problems under 0.32 s, so on this corpus it separates problems far less than plan
+  length does.
+
+<!-- BEGIN GENERATED: RQ1-METRICS (do not edit by hand; rerun the generator) -->
+*Generated by `tools/reanalysis/rq1_metrics.py`. Post hoc and descriptive; delivered final answers only. Open models: the delivered rerun (thinking off; no tools = Part C, tools = Part A), graded by the frozen package. Claude: the frontier runs, wording v11, never pooled with the open models. Intervals are 95% domain-cluster bootstrap percentile intervals, in percent (or points for differences). In the rerun the no-tools answers were sampled under a JSON format constraint and the tool answers were not.*
+
+#### RQ1-1. validate_plan: false positives and false negatives
+
+FN = a valid plan rejected (share of valid plans). FP = a broken plan accepted (share of broken plans). "No verdict" = the final answer states no readable verdict; it is counted in neither rate.
+
+| model | arm | valid plans | FN | FN rate | no verdict | broken plans | FP | FP rate | no verdict | verdict right |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 500 | 31 | 6.2 [2.6, 10.2] | 0 | 500 | 54 | 10.8 [6.0, 16.4] | 0 | 91.5 [87.9, 94.7] |
+| Claude Haiku 4.5 | tools | 500 | 10 | 2.0 [0.0, 5.0] | 0 | 500 | 2 | 0.4 [0.0, 1.0] | 0 | 98.8 [97.3, 99.9] |
+| Claude Sonnet 4.6 | no tools | 500 | 8 | 1.6 [0.0, 4.0] | 0 | 500 | 21 | 4.2 [1.6, 7.2] | 0 | 97.1 [95.5, 98.5] |
+| Claude Sonnet 4.6 | tools | 500 | 0 | 0.0 [0.0, 0.0] | 0 | 500 | 0 | 0.0 [0.0, 0.0] | 0 | 100.0 [100.0, 100.0] |
+| Gemma-26B | no tools | 1500 | 205 | 13.7 [8.1, 19.9] | 6 | 1500 | 135 | 9.0 [6.1, 12.2] | 5 | 88.3 [84.1, 92.0] |
+| Gemma-26B | tools, plain | 1500 | 155 | 10.3 [6.1, 14.9] | 9 | 1500 | 147 | 9.8 [5.6, 14.7] | 14 | 89.2 [84.6, 93.1] |
+| Gemma-26B | tools, steered | 1500 | 42 | 2.8 [0.4, 6.2] | 9 | 1500 | 43 | 2.9 [0.9, 5.7] | 7 | 96.6 [93.1, 98.9] |
+| Qwen3.5-9B | no tools | 1500 | 386 | 25.7 [15.4, 36.6] | 26 | 1500 | 166 | 11.1 [7.3, 15.1] | 28 | 79.8 [74.0, 85.5] |
+| Qwen3.5-9B | tools, plain | 1500 | 85 | 5.7 [1.9, 10.5] | 42 | 1500 | 26 | 1.7 [0.0, 5.1] | 26 | 94.0 [89.4, 97.6] |
+| Qwen3.5-9B | tools, steered | 1500 | 61 | 4.1 [1.1, 7.6] | 19 | 1500 | 28 | 1.9 [0.0, 5.5] | 14 | 95.9 [92.1, 98.8] |
+| Qwen3.6-35B | no tools | 1500 | 127 | 8.5 [3.8, 13.6] | 27 | 1500 | 117 | 7.8 [5.3, 10.3] | 16 | 90.4 [87.3, 93.3] |
+| Qwen3.6-35B | tools, plain | 1500 | 14 | 0.9 [0.1, 2.1] | 16 | 1500 | 33 | 2.2 [1.0, 3.5] | 2 | 97.8 [96.7, 98.9] |
+| Qwen3.6-35B | tools, steered | 1500 | 11 | 0.7 [0.0, 1.7] | 14 | 1500 | 13 | 0.9 [0.2, 1.9] | 3 | 98.6 [97.8, 99.4] |
+
+Paired change, tools minus no tools, on the same plan and wording (points; negative = fewer errors with tools):
+
+| model | tool arm | error | pairs | change |
+|---|---|---|---|---|
+| Claude Haiku 4.5 | tools | FN | 500 | -4.2 [-8.2, -0.2] |
+| Claude Haiku 4.5 | tools | FP | 500 | -10.4 [-16.2, -5.6] |
+| Claude Sonnet 4.6 | tools | FN | 500 | -1.6 [-4.0, +0.0] |
+| Claude Sonnet 4.6 | tools | FP | 500 | -4.2 [-7.2, -1.6] |
+| Gemma-26B | tools, plain | FN | 1500 | -3.3 [-7.2, +0.3] |
+| Gemma-26B | tools, plain | FP | 1500 | +0.8 [-1.6, +3.3] |
+| Qwen3.5-9B | tools, plain | FN | 1500 | -20.1 [-31.6, -9.3] |
+| Qwen3.5-9B | tools, plain | FP | 1500 | -9.3 [-14.6, -3.5] |
+| Qwen3.6-35B | tools, plain | FN | 1500 | -7.5 [-12.4, -3.3] |
+| Qwen3.6-35B | tools, plain | FP | 1500 | -5.6 [-8.2, -3.1] |
+
+False positives by broken-plan label (accepted / shown):
+
+| model | arm | b1 | b2 | b3 | b4 | b5 |
+|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 8/100 | 4/100 | 7/100 | 15/100 | 20/100 |
+| Claude Haiku 4.5 | tools | 0/100 | 0/100 | 0/100 | 0/100 | 2/100 |
+| Claude Sonnet 4.6 | no tools | 0/100 | 2/100 | 3/100 | 3/100 | 13/100 |
+| Claude Sonnet 4.6 | tools | 0/100 | 0/100 | 0/100 | 0/100 | 0/100 |
+| Gemma-26B | no tools | 8/300 | 17/300 | 14/300 | 33/300 | 63/300 |
+| Gemma-26B | tools, plain | 10/300 | 21/300 | 22/300 | 37/300 | 57/300 |
+| Gemma-26B | tools, steered | 7/300 | 6/300 | 3/300 | 15/300 | 12/300 |
+| Qwen3.5-9B | no tools | 28/300 | 26/300 | 19/300 | 34/300 | 59/300 |
+| Qwen3.5-9B | tools, plain | 6/300 | 8/300 | 5/300 | 4/300 | 3/300 |
+| Qwen3.5-9B | tools, steered | 6/300 | 9/300 | 3/300 | 6/300 | 4/300 |
+| Qwen3.6-35B | no tools | 7/300 | 14/300 | 10/300 | 34/300 | 52/300 |
+| Qwen3.6-35B | tools, plain | 5/300 | 1/300 | 1/300 | 5/300 | 21/300 |
+| Qwen3.6-35B | tools, steered | 5/300 | 1/300 | 0/300 | 1/300 | 6/300 |
+
+#### RQ1-2. simulate: share of states right, against trace length
+
+"Exact" = the whole trace equals the oracle (the frozen grade). "States" = mean share of the oracle's states that the answer has right at the same position. "Prefix" = mean share of the trace that is right before the first wrong state. "No trace" = answers with no readable trace (they score 0 on all three). "States, salvaged" = the same as "states", but for an answer cut off mid-trace the complete leading steps are read too ("salvaged" counts those answers); it is more lenient than the frozen grader. Trace length = number of actions. Left out (ISS-029, the run's plan is not the cached plan): barman/p01, barman/p02, barman/p03, barman/p04, barman/p05, gripper/p03. Run plan undetermined (kept): block-grouping/p01, block-grouping/p02, counters/p01, counters/p02, counters/p03, counters/p05, drone/p04, drone/p05, gardening/p03, pogo_stick/p02, sailing/p01.
+
+| model | arm | trials | exact | states | prefix | no trace | states, salvaged | salvaged | Spearman, states vs length |
+|---|---|---|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 94 | 40.4 [24.2, 57.8] ‡26 | 46.9 [29.5, 63.8] | 44.2 [27.1, 61.2] | 34 | 62.2 [46.4, 77.4] | 34 | -0.48 (p=0.000) |
+| Claude Haiku 4.5 | tools | 94 | 54.3 [41.1, 67.7] ‡10 | 60.9 [47.8, 73.5] | 56.8 [43.4, 69.9] | 31 | 72.4 [60.9, 83.3] | 21 | -0.65 (p=0.000) |
+| Claude Sonnet 4.6 | no tools | 94 | 35.1 [20.2, 51.1] ‡15 | 36.7 [22.0, 52.9] | 36.0 [21.3, 52.1] | 57 | 77.7 [64.9, 88.6] | 57 | -0.58 (p=0.000) |
+| Claude Sonnet 4.6 | tools | 94 | 51.1 [37.9, 64.5] ‡9 | 58.5 [48.3, 69.6] | 58.5 [48.3, 69.6] | 23 | 59.8 [49.3, 71.1] | 5 | -0.52 (p=0.000) |
+| Gemma-26B | no tools | 282 | 25.5 [14.9, 36.5] | 32.5 [22.0, 42.9] | 30.0 [19.8, 40.4] | 143 | 36.9 [25.7, 48.0] | 41 | -0.26 (p=0.000) |
+| Gemma-26B | tools, plain | 282 | 8.9 [4.6, 14.2] | 11.0 [6.6, 16.1] | 10.1 [5.7, 15.3] | 238 | 12.2 [7.6, 17.2] | 10 | -0.34 (p=0.000) |
+| Gemma-26B | tools, steered | 282 | 8.9 [4.6, 13.7] | 11.4 [6.6, 16.7] | 10.2 [5.6, 15.2] | 238 | 12.6 [7.9, 17.8] | 11 | -0.38 (p=0.000) |
+| Qwen3.5-9B | no tools | 282 | 9.9 [4.2, 16.7] | 18.5 [10.9, 27.1] | 17.2 [10.2, 25.3] | 94 | 21.7 [14.1, 30.0] | 58 | -0.52 (p=0.000) |
+| Qwen3.5-9B | tools, plain | 282 | 18.4 [8.9, 29.1] | 24.3 [14.6, 34.9] | 22.4 [13.2, 32.6] | 166 | 24.7 [14.9, 35.3] | 4 | -0.55 (p=0.000) |
+| Qwen3.5-9B | tools, steered | 282 | 17.4 [8.9, 27.4] | 22.1 [13.4, 32.4] | 20.3 [11.7, 30.6] | 188 | 22.4 [13.5, 32.8] | 2 | -0.58 (p=0.000) |
+| Qwen3.6-35B | no tools | 282 | 18.8 [11.2, 27.3] | 24.9 [17.3, 33.2] | 24.2 [16.5, 32.4] | 102 | 29.5 [21.7, 37.8] | 31 | -0.23 (p=0.000) |
+| Qwen3.6-35B | tools, plain | 282 | 30.1 [18.1, 43.7] | 36.7 [24.5, 50.0] | 35.7 [23.5, 48.8] | 152 | 38.5 [26.3, 51.4] | 8 | -0.73 (p=0.000) |
+| Qwen3.6-35B | tools, steered | 282 | 27.3 [16.5, 39.4] | 33.0 [21.4, 45.4] | 32.2 [20.5, 44.6] | 168 | 34.1 [22.8, 46.3] | 6 | -0.70 (p=0.000) |
+
+States are compared position by position. Moving the answer by one position would match more states in 7 of the 641 readable answers that are not exact, so an off-by-one trace is not what drives these scores.
+
+‡ n = Claude answers cut at the storage cap, exact grade unknown (counted as not exact here; their states are scored on what was stored).
+
+Mean share by trace length, "states" (trials in the bin):
+
+| model | arm | 1–5 actions | 6–10 actions | 11–20 actions | 21–40 actions | 41+ actions |
+|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 59.9 [29.3, 90.7] (21) | 75.2 [51.8, 91.1] (27) | 37.8 [17.4, 63.2] (19) | 17.6 [0.0, 41.2] (17) | 10.0 [0.0, 23.1] (10) |
+| Claude Haiku 4.5 | tools | 94.9 [87.1, 100.0] (21) | 90.4 [79.3, 98.6] (27) | 46.7 [22.2, 77.1] (19) | 17.9 [0.0, 41.2] (17) | 10.0 [0.0, 23.1] (10) |
+| Claude Sonnet 4.6 | no tools | 60.3 [30.8, 96.1] (21) | 73.6 [49.5, 92.4] (27) | 10.5 [0.0, 29.4] (19) | 0.0 [0.0, 0.0] (17) | 0.0 [0.0, 0.0] (10) |
+| Claude Sonnet 4.6 | tools | 76.2 [52.6, 100.0] (21) | 81.9 [64.7, 96.3] (27) | 65.8 [49.6, 82.9] (19) | 22.8 [5.8, 41.6] (17) | 4.9 [0.0, 12.2] (10) |
+| Gemma-26B | no tools | 41.6 [21.6, 59.4] (63) | 44.7 [28.5, 57.9] (81) | 29.2 [18.6, 40.7] (57) | 20.5 [1.9, 42.0] (51) | 6.7 [0.0, 15.4] (30) |
+| Gemma-26B | tools, plain | 24.5 [14.1, 36.4] (63) | 18.1 [8.5, 27.5] (81) | 1.8 [0.0, 6.2] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Gemma-26B | tools, steered | 28.3 [17.3, 36.9] (63) | 16.5 [8.3, 24.1] (81) | 1.8 [0.0, 6.2] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.5-9B | no tools | 29.1 [18.7, 43.2] (63) | 34.4 [20.0, 44.2] (81) | 6.6 [2.2, 13.9] (57) | 2.6 [0.4, 7.7] (51) | 3.0 [0.0, 6.9] (30) |
+| Qwen3.5-9B | tools, plain | 56.7 [41.0, 72.5] (63) | 37.2 [19.5, 54.6] (81) | 3.9 [0.9, 8.2] (57) | 1.1 [0.4, 2.0] (51) | 0.1 [0.0, 0.3] (30) |
+| Qwen3.5-9B | tools, steered | 47.8 [36.6, 60.5] (63) | 38.2 [19.5, 56.8] (81) | 2.2 [0.0, 6.7] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.6-35B | no tools | 31.2 [15.6, 47.6] (63) | 41.2 [27.3, 53.0] (81) | 20.2 [11.2, 32.5] (57) | 11.0 [1.5, 21.3] (51) | 0.5 [0.1, 0.8] (30) |
+| Qwen3.6-35B | tools, plain | 82.9 [72.1, 91.2] (63) | 58.9 [36.9, 77.9] (81) | 2.5 [0.0, 7.1] (57) | 4.3 [0.0, 12.2] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.6-35B | tools, steered | 78.1 [67.4, 88.4] (63) | 50.8 [33.2, 65.5] (81) | 4.6 [0.5, 10.5] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+
+Mean share by trace length, "states, salvaged" (trials in the bin):
+
+| model | arm | 1–5 actions | 6–10 actions | 11–20 actions | 21–40 actions | 41+ actions |
+|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 59.9 [29.3, 90.7] (21) | 82.0 [63.8, 93.9] (27) | 67.5 [55.4, 78.8] (19) | 43.8 [22.7, 66.6] (17) | 34.4 [3.7, 62.3] (10) |
+| Claude Haiku 4.5 | tools | 94.9 [87.1, 100.0] (21) | 90.4 [79.3, 98.6] (27) | 75.9 [61.4, 89.7] (19) | 40.5 [14.5, 68.7] (17) | 24.2 [4.4, 47.7] (10) |
+| Claude Sonnet 4.6 | no tools | 79.4 [48.6, 100.0] (21) | 95.2 [85.1, 100.0] (27) | 85.9 [76.7, 96.0] (19) | 56.3 [36.4, 77.8] (17) | 47.5 [15.4, 77.0] (10) |
+| Claude Sonnet 4.6 | tools | 76.2 [52.6, 100.0] (21) | 81.9 [64.7, 96.3] (27) | 65.8 [49.6, 82.9] (19) | 27.9 [7.7, 47.6] (17) | 8.7 [1.5, 20.7] (10) |
+| Gemma-26B | no tools | 41.9 [21.9, 59.5] (63) | 44.7 [28.5, 57.9] (81) | 37.1 [24.5, 49.3] (57) | 25.8 [9.0, 45.9] (51) | 23.8 [4.4, 44.3] (30) |
+| Gemma-26B | tools, plain | 25.1 [14.7, 36.5] (63) | 18.5 [8.9, 27.8] (81) | 3.6 [0.0, 9.3] (57) | 3.1 [0.0, 8.8] (51) | 0.0 [0.0, 0.0] (30) |
+| Gemma-26B | tools, steered | 29.2 [19.9, 36.9] (63) | 17.6 [9.4, 24.8] (81) | 3.6 [0.0, 9.3] (57) | 1.9 [0.0, 5.4] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.5-9B | no tools | 29.1 [18.7, 43.2] (63) | 35.2 [21.1, 44.7] (81) | 14.6 [7.4, 21.2] (57) | 6.6 [3.0, 12.3] (51) | 8.9 [0.2, 19.1] (30) |
+| Qwen3.5-9B | tools, plain | 56.7 [41.0, 72.5] (63) | 38.1 [21.0, 54.9] (81) | 4.3 [1.0, 9.0] (57) | 1.1 [0.4, 2.0] (51) | 0.1 [0.0, 0.3] (30) |
+| Qwen3.5-9B | tools, steered | 47.8 [36.6, 60.5] (63) | 38.9 [20.6, 57.1] (81) | 2.7 [0.0, 7.5] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.6-35B | no tools | 31.2 [15.6, 47.6] (63) | 41.2 [27.3, 53.0] (81) | 27.9 [19.7, 37.3] (57) | 21.5 [8.9, 37.2] (51) | 11.1 [0.9, 20.8] (30) |
+| Qwen3.6-35B | tools, plain | 82.9 [72.1, 91.2] (63) | 60.4 [40.1, 78.2] (81) | 4.7 [0.7, 10.4] (57) | 9.0 [0.0, 21.8] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.6-35B | tools, steered | 78.1 [67.4, 88.4] (63) | 51.5 [34.1, 65.7] (81) | 5.3 [0.9, 11.5] (57) | 4.5 [0.0, 10.1] (51) | 0.0 [0.0, 0.0] (30) |
+
+Mean share by trace length, "exact" (trials in the bin):
+
+| model | arm | 1–5 actions | 6–10 actions | 11–20 actions | 21–40 actions | 41+ actions |
+|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 52.4 [20.8, 84.2] (21) | 66.7 [39.1, 87.0] (27) | 26.3 [9.1, 47.4] (19) | 17.6 [0.0, 41.2] (17) | 10.0 [0.0, 23.1] (10) |
+| Claude Haiku 4.5 | tools | 81.0 [58.3, 100.0] (21) | 81.5 [63.2, 94.1] (27) | 42.1 [17.6, 70.6] (19) | 17.6 [0.0, 41.2] (17) | 10.0 [0.0, 23.1] (10) |
+| Claude Sonnet 4.6 | no tools | 57.1 [29.2, 93.8] (21) | 70.4 [45.0, 90.0] (27) | 10.5 [0.0, 29.4] (19) | 0.0 [0.0, 0.0] (17) | 0.0 [0.0, 0.0] (10) |
+| Claude Sonnet 4.6 | tools | 76.2 [52.6, 100.0] (21) | 81.5 [63.6, 96.3] (27) | 42.1 [17.6, 72.2] (19) | 11.8 [0.0, 27.8] (17) | 0.0 [0.0, 0.0] (10) |
+| Gemma-26B | no tools | 36.5 [16.7, 55.1] (63) | 34.6 [17.9, 50.7] (81) | 17.5 [5.6, 30.3] (57) | 19.6 [0.0, 41.7] (51) | 3.3 [0.0, 7.7] (30) |
+| Gemma-26B | tools, plain | 17.5 [8.7, 27.5] (63) | 16.0 [5.8, 26.2] (81) | 1.8 [0.0, 6.2] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Gemma-26B | tools, steered | 20.6 [11.8, 28.4] (63) | 13.6 [4.3, 22.2] (81) | 1.8 [0.0, 6.2] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.5-9B | no tools | 15.9 [4.8, 30.0] (63) | 19.8 [7.9, 28.1] (81) | 3.5 [0.0, 11.1] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.5-9B | tools, plain | 47.6 [24.6, 69.8] (63) | 25.9 [8.0, 45.2] (81) | 1.8 [0.0, 6.2] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.5-9B | tools, steered | 38.1 [20.5, 57.4] (63) | 29.6 [10.1, 49.4] (81) | 1.8 [0.0, 6.2] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.6-35B | no tools | 25.4 [12.1, 39.4] (63) | 33.3 [16.7, 47.5] (81) | 12.3 [3.7, 24.1] (57) | 5.9 [0.0, 16.7] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.6-35B | tools, plain | 71.4 [56.1, 85.2] (63) | 48.1 [21.8, 71.3] (81) | 1.8 [0.0, 6.2] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+| Qwen3.6-35B | tools, steered | 68.3 [52.4, 85.2] (63) | 39.5 [17.3, 58.6] (81) | 3.5 [0.0, 9.5] (57) | 0.0 [0.0, 0.0] (51) | 0.0 [0.0, 0.0] (30) |
+
+#### RQ1-3. solve: delivered success against problem hardness
+
+Hardness 1: reference plan length (actions). Hardness 2: the planner's own runtime, the median `solve_time` over the planner calls the rerun models made on the problem (100 problems timed, 0.15 s to 22.30 s; thirds cut at 0.20 s and 0.32 s). Plan length and planner runtime: Spearman +0.52 (p=0.000). The planner solves every problem in this corpus, so the hard end, where the planner itself fails, is not covered.
+
+| model | arm | solved | Spearman, solved vs plan length | Spearman, solved vs planner runtime |
+|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 22.0 [9.0, 37.0] | -0.33 (p=0.001) | -0.32 (p=0.001) |
+| Claude Haiku 4.5 | tools | 95.0 [90.0, 99.0] | +0.03 (p=0.765) | -0.12 (p=0.241) |
+| Claude Sonnet 4.6 | no tools | 29.0 [17.0, 42.0] | -0.54 (p=0.000) | -0.32 (p=0.001) |
+| Claude Sonnet 4.6 | tools | 95.0 [91.0, 98.0] | -0.25 (p=0.012) | -0.17 (p=0.099) |
+| Gemma-26B | no tools | 21.3 [13.0, 30.3] | -0.32 (p=0.001) | -0.11 (p=0.288) |
+| Gemma-26B | tools, plain | 92.3 [87.3, 97.0] | -0.44 (p=0.000) | -0.46 (p=0.000) |
+| Gemma-26B | tools, steered | 95.3 [91.3, 98.7] | -0.40 (p=0.000) | -0.33 (p=0.001) |
+| Qwen3.5-9B | no tools | 24.3 [16.3, 32.3] | -0.29 (p=0.003) | -0.02 (p=0.832) |
+| Qwen3.5-9B | tools, plain | 88.7 [82.0, 94.7] | -0.56 (p=0.000) | -0.29 (p=0.003) |
+| Qwen3.5-9B | tools, steered | 89.0 [82.7, 94.3] | -0.53 (p=0.000) | -0.21 (p=0.034) |
+| Qwen3.6-35B | no tools | 25.3 [16.3, 35.7] | -0.34 (p=0.000) | +0.03 (p=0.738) |
+| Qwen3.6-35B | tools, plain | 77.0 [69.7, 83.7] | -0.34 (p=0.001) | -0.09 (p=0.390) |
+| Qwen3.6-35B | tools, steered | 87.3 [81.7, 92.3] | -0.51 (p=0.000) | -0.30 (p=0.003) |
+
+Solved, by reference plan length (trials in the bin):
+
+| model | arm | 1–5 | 6–10 | 11–20 | 21–40 | 41+ |
+|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 28.6 [11.1, 56.2] (21) | 40.7 [15.0, 64.0] (27) | 19.0 [0.0, 42.9] (21) | 5.3 [0.0, 16.7] (19) | 0.0 [0.0, 0.0] (12) |
+| Claude Haiku 4.5 | tools | 85.7 [68.4, 100.0] (21) | 100.0 [100.0, 100.0] (27) | 100.0 [100.0, 100.0] (21) | 100.0 [100.0, 100.0] (19) | 83.3 [68.8, 100.0] (12) |
+| Claude Sonnet 4.6 | no tools | 61.9 [36.7, 88.2] (21) | 48.1 [27.3, 67.7] (27) | 9.5 [0.0, 26.3] (21) | 5.3 [0.0, 16.7] (19) | 0.0 [0.0, 0.0] (12) |
+| Claude Sonnet 4.6 | tools | 100.0 [100.0, 100.0] (21) | 100.0 [100.0, 100.0] (27) | 95.2 [83.3, 100.0] (21) | 89.5 [79.2, 100.0] (19) | 83.3 [68.8, 100.0] (12) |
+| Gemma-26B | no tools | 38.1 [18.5, 59.3] (63) | 22.2 [9.9, 38.7] (81) | 15.9 [4.9, 31.5] (63) | 14.0 [3.3, 26.3] (57) | 11.1 [0.0, 22.2] (36) |
+| Gemma-26B | tools, plain | 100.0 [100.0, 100.0] (63) | 97.5 [91.7, 100.0] (81) | 98.4 [95.0, 100.0] (63) | 91.2 [81.2, 100.0] (57) | 58.3 [41.7, 75.0] (36) |
+| Gemma-26B | tools, steered | 100.0 [100.0, 100.0] (63) | 100.0 [100.0, 100.0] (81) | 100.0 [100.0, 100.0] (63) | 96.5 [88.9, 100.0] (57) | 66.7 [48.7, 87.9] (36) |
+| Qwen3.5-9B | no tools | 39.7 [19.8, 61.4] (63) | 27.2 [16.7, 37.7] (81) | 19.0 [8.0, 33.3] (63) | 15.8 [4.2, 28.8] (57) | 13.9 [2.6, 25.6] (36) |
+| Qwen3.5-9B | tools, plain | 100.0 [100.0, 100.0] (63) | 100.0 [100.0, 100.0] (81) | 98.4 [95.0, 100.0] (63) | 80.7 [68.3, 95.2] (57) | 38.9 [12.8, 66.7] (36) |
+| Qwen3.5-9B | tools, steered | 100.0 [100.0, 100.0] (63) | 98.8 [95.8, 100.0] (81) | 95.2 [91.3, 100.0] (63) | 84.2 [73.0, 96.3] (57) | 44.4 [18.2, 71.8] (36) |
+| Qwen3.6-35B | no tools | 38.1 [18.8, 60.3] (63) | 32.1 [22.9, 44.4] (81) | 23.8 [12.5, 37.0] (63) | 19.3 [2.0, 41.7] (57) | 0.0 [0.0, 0.0] (36) |
+| Qwen3.6-35B | tools, plain | 85.7 [76.2, 95.0] (63) | 88.9 [81.3, 95.1] (81) | 82.5 [63.8, 96.7] (63) | 70.2 [56.1, 85.2] (57) | 36.1 [19.4, 54.5] (36) |
+| Qwen3.6-35B | tools, steered | 98.4 [95.8, 100.0] (63) | 93.8 [90.0, 97.5] (81) | 98.4 [95.7, 100.0] (63) | 86.0 [78.3, 93.8] (57) | 36.1 [20.8, 48.9] (36) |
+
+Solved, by planner runtime (trials in the bin):
+
+| model | arm | fast third | middle third | slow third |
+|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 38.2 [6.9, 67.4] (34) | 15.2 [3.0, 32.1] (33) | 12.1 [0.0, 23.7] (33) |
+| Claude Haiku 4.5 | tools | 100.0 [100.0, 100.0] (34) | 90.9 [77.8, 100.0] (33) | 93.9 [84.4, 100.0] (33) |
+| Claude Sonnet 4.6 | no tools | 41.2 [15.4, 64.9] (34) | 33.3 [15.6, 51.7] (33) | 12.1 [0.0, 23.7] (33) |
+| Claude Sonnet 4.6 | tools | 100.0 [100.0, 100.0] (34) | 97.0 [89.7, 100.0] (33) | 87.9 [76.7, 97.0] (33) |
+| Gemma-26B | no tools | 22.5 [9.2, 37.5] (102) | 26.3 [6.9, 45.4] (99) | 15.2 [3.2, 27.0] (99) |
+| Gemma-26B | tools, plain | 99.0 [96.7, 100.0] (102) | 98.0 [95.1, 100.0] (99) | 79.8 [69.9, 90.1] (99) |
+| Gemma-26B | tools, steered | 100.0 [100.0, 100.0] (102) | 99.0 [97.0, 100.0] (99) | 86.9 [75.0, 95.5] (99) |
+| Qwen3.5-9B | no tools | 23.5 [11.1, 34.4] (102) | 28.3 [11.8, 42.9] (99) | 21.2 [11.7, 29.7] (99) |
+| Qwen3.5-9B | tools, plain | 97.1 [92.2, 100.0] (102) | 91.9 [81.8, 100.0] (99) | 76.8 [60.0, 89.5] (99) |
+| Qwen3.5-9B | tools, steered | 95.1 [90.5, 98.9] (102) | 92.9 [84.0, 100.0] (99) | 78.8 [62.2, 91.0] (99) |
+| Qwen3.6-35B | no tools | 17.6 [10.1, 25.0] (102) | 34.3 [17.2, 54.2] (99) | 24.2 [8.3, 44.8] (99) |
+| Qwen3.6-35B | tools, plain | 78.4 [63.2, 88.6] (102) | 80.8 [67.9, 90.6] (99) | 71.7 [58.3, 82.8] (99) |
+| Qwen3.6-35B | tools, steered | 95.1 [92.9, 97.8] (102) | 90.9 [82.8, 97.2] (99) | 75.8 [61.5, 86.5] (99) |
+
+#### RQ1-4. solve: length of the valid delivered plans
+
+Only trials whose delivered plan is valid. Reference = the answer key's plan for the same problem (the planners' default any-plan search, not a shortest plan). Ratio of sums = total delivered actions / total reference actions over those trials.
+
+| model | arm | valid plans / trials | mean length | mean reference length | ratio of sums | median ratio | shorter | equal | longer | largest ratio | same length as the tool's plan |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 22/100 | 8.55 | 8.41 | 1.02 | 1.00 | 6 | 10 | 6 | 2.00 | – |
+| Claude Haiku 4.5 | tools | 95/100 | 19.66 | 19.73 | 1.00 | 1.00 | 1 | 91 | 3 | 8.67 | 93/95 |
+| Claude Sonnet 4.6 | no tools | 29/100 | 6.59 | 7.03 | 0.94 | 1.00 | 7 | 21 | 1 | 1.50 | – |
+| Claude Sonnet 4.6 | tools | 95/100 | 23.56 | 18.92 | 1.25 | 1.00 | 4 | 85 | 6 | 61.40 | 94/95 |
+| Gemma-26B | no tools | 64/300 | 9.67 | 12.97 | 0.75 | 1.00 | 15 | 45 | 4 | 1.67 | – |
+| Gemma-26B | tools, plain | 277/300 | 16.89 | 16.81 | 1.00 | 1.00 | 5 | 259 | 13 | 1.21 | 269/277 |
+| Gemma-26B | tools, steered | 286/300 | 17.38 | 17.35 | 1.00 | 1.00 | 4 | 270 | 12 | 1.07 | 280/286 |
+| Qwen3.5-9B | no tools | 73/300 | 11.33 | 13.67 | 0.83 | 1.00 | 20 | 40 | 13 | 2.00 | – |
+| Qwen3.5-9B | tools, plain | 266/300 | 14.91 | 14.92 | 1.00 | 1.00 | 6 | 252 | 8 | 1.07 | 262/266 |
+| Qwen3.5-9B | tools, steered | 267/300 | 15.44 | 15.44 | 1.00 | 1.00 | 6 | 253 | 8 | 1.11 | 263/267 |
+| Qwen3.6-35B | no tools | 76/300 | 11.79 | 11.14 | 1.06 | 1.00 | 15 | 44 | 17 | 3.18 | – |
+| Qwen3.6-35B | tools, plain | 231/300 | 15.33 | 15.42 | 0.99 | 1.00 | 10 | 214 | 7 | 1.29 | 213/214 |
+| Qwen3.6-35B | tools, steered | 262/300 | 15.34 | 15.23 | 1.01 | 1.00 | 4 | 248 | 10 | 8.67 | 257/262 |
+
+"Same length as the tool's plan" = of the valid delivered plans in a trial where a planner call returned a plan, how many have that plan's length. The planner's plan can be much longer than the reference when the model picks another search strategy or the search takes another path; planner calls behind the valid plans, by strategy (all / those longer than the reference):
+
+| model | arm | planner calls by strategy | of which longer than reference |
+|---|---|---|---|
+| Claude Haiku 4.5 | tools | classic_planner:default 42, classic_planner:lazy_greedy_cea 2, numeric_planner:default 51 | numeric_planner:default 3 |
+| Claude Sonnet 4.6 | tools | classic_planner:default 38, classic_planner:lazy_greedy_ff 6, numeric_planner:default 51 | classic_planner:lazy_greedy_ff 2, numeric_planner:default 4 |
+| Gemma-26B | tools, plain | classic_planner:default 140, classic_planner:lazy_greedy_cea 3, classic_planner:lazy_greedy_ff 2, numeric_planner:default 132 | classic_planner:default 5, numeric_planner:default 8 |
+| Gemma-26B | tools, steered | classic_planner:default 144, classic_planner:lazy_greedy_cea 4, numeric_planner:default 138 | classic_planner:default 6, numeric_planner:default 6 |
+| Qwen3.5-9B | tools, plain | classic_planner:default 141, numeric_planner:default 125 | classic_planner:default 6, numeric_planner:default 2 |
+| Qwen3.5-9B | tools, steered | classic_planner:default 140, numeric_planner:astar_lmcut 1, numeric_planner:default 126 | classic_planner:default 5, numeric_planner:default 3 |
+| Qwen3.6-35B | tools, plain | classic_planner:default 10, classic_planner:lazy_greedy_cea 91, numeric_planner:astar_lmcut 1, numeric_planner:default 112 | classic_planner:lazy_greedy_cea 3 |
+| Qwen3.6-35B | tools, steered | classic_planner:astar_lmcut 1, classic_planner:default 64, classic_planner:lazy_greedy_cea 69, numeric_planner:default 128 | classic_planner:lazy_greedy_cea 3, numeric_planner:default 7 |
+
+Claude rows read: Claude Sonnet 4.6 / no tools: 1520 rows, 19 with an unknown delivered grade; Claude Sonnet 4.6 / tools: 1520 rows, 13 with an unknown delivered grade; Claude Haiku 4.5 / no tools: 1520 rows, 30 with an unknown delivered grade; Claude Haiku 4.5 / tools: 1520 rows, 12 with an unknown delivered grade.
+<!-- END GENERATED: RQ1-METRICS -->
 
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29; IN TEX 2026-09-12/13, `paper/aaai27` `6027d68` + `7c0502a`, pushed + Overleaf `2ab9bb5`)
 

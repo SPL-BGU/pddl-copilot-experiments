@@ -1,0 +1,915 @@
+{
+ "by_class": {
+  "copy_error": 5,
+  "goal_trailer": 17,
+  "other": 16
+ },
+ "by_class_model": {
+  "copy_error": {
+   "Qwen3_5_9B": 3,
+   "gemma4_26b-a4b": 1,
+   "qwen3_6_35b": 1
+  },
+  "goal_trailer": {
+   "Qwen3_5_9B": 15,
+   "qwen3_6_35b": 2
+  },
+  "other": {
+   "Qwen3_5_9B": 5,
+   "gemma4_26b-a4b": 8,
+   "qwen3_6_35b": 3
+  }
+ },
+ "c4_rule_differs": [],
+ "cells": [
+  {
+   "arm": "plain",
+   "flip_ids": [
+    "Qwen3_5_9B|solve|plain|barman|p05||v11",
+    "Qwen3_5_9B|solve|plain|depots|p04||v11",
+    "Qwen3_5_9B|solve|plain|depots|p04||v13",
+    "Qwen3_5_9B|solve|plain|depots|p05||v11",
+    "Qwen3_5_9B|solve|plain|depot|p04||v13",
+    "Qwen3_5_9B|solve|plain|satellite|p05||v13",
+    "Qwen3_5_9B|solve|plain|tpp|p03||v11",
+    "Qwen3_5_9B|solve|plain|tpp|p03||v13",
+    "Qwen3_5_9B|solve|plain|tpp|p05||v13"
+   ],
+   "flips": 9,
+   "k_frozen": 266,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "part": "A",
+   "stripped_still_invalid": 0
+  },
+  {
+   "arm": "steered",
+   "flip_ids": [
+    "Qwen3_5_9B|solve|steered|blocksworld|p04||v16",
+    "Qwen3_5_9B|solve|steered|depots|p04||v16",
+    "Qwen3_5_9B|solve|steered|depots|p05||v14",
+    "Qwen3_5_9B|solve|steered|rovers|p01||v16",
+    "Qwen3_5_9B|solve|steered|satellite|p05||v16",
+    "Qwen3_5_9B|solve|steered|tpp|p05||v16"
+   ],
+   "flips": 6,
+   "k_frozen": 267,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "part": "A",
+   "stripped_still_invalid": 0
+  },
+  {
+   "arm": "plain",
+   "flip_ids": [],
+   "flips": 0,
+   "k_frozen": 277,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "part": "A",
+   "stripped_still_invalid": 1
+  },
+  {
+   "arm": "steered",
+   "flip_ids": [],
+   "flips": 0,
+   "k_frozen": 286,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "part": "A",
+   "stripped_still_invalid": 2
+  },
+  {
+   "arm": "plain",
+   "flip_ids": [],
+   "flips": 0,
+   "k_frozen": 231,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "part": "A",
+   "stripped_still_invalid": 0
+  },
+  {
+   "arm": "steered",
+   "flip_ids": [
+    "qwen3_6_35b|solve|steered|blocksworld|p04||v16",
+    "qwen3_6_35b|solve|steered|satellite|p01||v16"
+   ],
+   "flips": 2,
+   "k_frozen": 262,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "part": "A",
+   "stripped_still_invalid": 0
+  },
+  {
+   "arm": "unaided",
+   "flip_ids": [],
+   "flips": 0,
+   "k_frozen": 73,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "part": "C",
+   "stripped_still_invalid": 3
+  },
+  {
+   "arm": "unaided",
+   "flip_ids": [],
+   "flips": 0,
+   "k_frozen": 64,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "part": "C",
+   "stripped_still_invalid": 4
+  },
+  {
+   "arm": "unaided",
+   "flip_ids": [
+    "qwen3_6_35b|solve|plain|delivery|p03||v12",
+    "qwen3_6_35b|solve|plain|zenotravel-numeric|p01||v13"
+   ],
+   "flips": 2,
+   "k_frozen": 76,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "part": "C",
+   "stripped_still_invalid": 4
+  }
+ ],
+ "derived": [
+  {
+   "figure": "E2",
+   "frozen": 71.0,
+   "model": "gemma4_26b-a4b",
+   "post_hoc": 71.0
+  },
+  {
+   "figure": "E2",
+   "frozen": 64.33333333333333,
+   "model": "Qwen3_5_9B",
+   "post_hoc": 67.33333333333333
+  },
+  {
+   "figure": "E2",
+   "frozen": 51.666666666666664,
+   "model": "qwen3_6_35b",
+   "post_hoc": 51.0
+  },
+  {
+   "figure": "E3",
+   "frozen": 3.0,
+   "model": "gemma4_26b-a4b",
+   "post_hoc": 3.0
+  },
+  {
+   "figure": "E3",
+   "frozen": 0.3333333333333333,
+   "model": "Qwen3_5_9B",
+   "post_hoc": -0.6666666666666666
+  },
+  {
+   "figure": "E3",
+   "frozen": 10.333333333333334,
+   "model": "qwen3_6_35b",
+   "post_hoc": 11.0
+  },
+  {
+   "figure": "R4",
+   "frozen": 95.00891265597149,
+   "k_frozen": 533,
+   "k_post_hoc": 548,
+   "model": "Qwen3_5_9B",
+   "n": 561,
+   "post_hoc": 97.68270944741533
+  },
+  {
+   "figure": "R4",
+   "frozen": 97.74305555555556,
+   "k_frozen": 563,
+   "k_post_hoc": 563,
+   "model": "gemma4_26b-a4b",
+   "n": 576,
+   "post_hoc": 97.74305555555556
+  },
+  {
+   "figure": "R4",
+   "frozen": 95.18072289156626,
+   "k_frozen": 474,
+   "k_post_hoc": 478,
+   "model": "qwen3_6_35b",
+   "n": 498,
+   "post_hoc": 95.9839357429719
+  }
+ ],
+ "frozen_wrong_facts": 38,
+ "haiku": {
+  "depot_p02_is_counted": true,
+  "overlay": "derived/e2e_overlay/haiku-frontier/sweep5v2-with-tools.e2e.jsonl",
+  "plan_invalid": [
+   "counters p05",
+   "depot p02",
+   "parking p05"
+  ],
+  "raw": "haiku-frontier/sweep5v2-with-tools/trials.jsonl",
+  "reasons": {
+   "no_plan_extracted": 2,
+   "plan_invalid": 3,
+   "plan_valid": 95
+  },
+  "rows": [
+   {
+    "answer_len": 1,
+    "class": "other",
+    "domain": "counters",
+    "extra": null,
+    "extraction": "tolerant_lines",
+    "problem": "p05",
+    "shape": "other",
+    "stripped_valid": null,
+    "tool_len": 56
+   },
+   {
+    "answer_len": 7,
+    "class": "goal_trailer",
+    "domain": "depot",
+    "extra": [
+     "(on crate1 crate2)",
+     "(on crate2 pallet0)"
+    ],
+    "extraction": "tolerant_lines",
+    "problem": "p02",
+    "shape": "tool plan, then extra lines",
+    "stripped_valid": true,
+    "tool_len": 5
+   },
+   {
+    "answer_len": 11,
+    "class": "other",
+    "domain": "parking",
+    "extra": null,
+    "extraction": "tolerant_lines",
+    "problem": "p05",
+    "shape": "other",
+    "stripped_valid": null,
+    "tool_len": 121
+   }
+  ],
+  "solve_rows": 100
+ },
+ "other_by_shape": {
+  "extra lines, then tool plan": 5,
+  "other": 10,
+  "tool plan, then extra lines": 1
+ },
+ "rows": [
+  {
+   "answer_len": 65,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "barman",
+   "extra": [
+    "(contains shot1 cocktail2)",
+    "(contains shot2 cocktail1)",
+    "(contains shot3 cocktail3)",
+    "(contains shot4 ingredient1)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|barman|p05||v11",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 61
+  },
+  {
+   "answer_len": 65,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "barman",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|plain|barman|p05||v13",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "extra lines, then tool plan",
+   "stripped_valid": null,
+   "tool_len": 61
+  },
+  {
+   "answer_len": 35,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "block-grouping",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|plain|block-grouping|p01||v12",
+   "model": "Qwen3_5_9B",
+   "problem": "p01",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 36
+  },
+  {
+   "answer_len": 26,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "depots",
+   "extra": [
+    "(on crate0 pallet2)",
+    "(on crate1 pallet1)",
+    "(on crate2 crate3)",
+    "(on crate3 crate1)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|depots|p04||v11",
+   "model": "Qwen3_5_9B",
+   "problem": "p04",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 22
+  },
+  {
+   "answer_len": 26,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "depots",
+   "extra": [
+    "(on crate0 pallet2)",
+    "(on crate1 pallet1)",
+    "(on crate2 crate3)",
+    "(on crate3 crate1)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|depots|p04||v13",
+   "model": "Qwen3_5_9B",
+   "problem": "p04",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 22
+  },
+  {
+   "answer_len": 26,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "depots",
+   "extra": [
+    "(on crate0 pallet1)",
+    "(on crate1 pallet2)",
+    "(on crate2 pallet3)",
+    "(on crate3 pallet0)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|depots|p05||v11",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 22
+  },
+  {
+   "answer_len": 35,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "depot",
+   "extra": [
+    "(on crate0 pallet1)",
+    "(on crate2 pallet0)",
+    "(on crate3 crate4)",
+    "(on crate4 pallet2)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|depot|p04||v13",
+   "model": "Qwen3_5_9B",
+   "problem": "p04",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 31
+  },
+  {
+   "answer_len": 64,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "copy_error",
+   "domain": "drone",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|plain|drone|p04||v12",
+   "model": "Qwen3_5_9B",
+   "problem": "p04",
+   "shape": "same length, some actions differ",
+   "stripped_valid": null,
+   "tool_len": 64
+  },
+  {
+   "answer_len": 79,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "sailing",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|plain|sailing|p01||v12",
+   "model": "Qwen3_5_9B",
+   "problem": "p01",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 82
+  },
+  {
+   "answer_len": 15,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "satellite",
+   "extra": [
+    "(have_image planet3 thermograph0)",
+    "(have_image planet4 thermograph0)",
+    "(have_image planet5 thermograph0)",
+    "(have_image phenomenon6 thermograph0)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|satellite|p05||v13",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 11
+  },
+  {
+   "answer_len": 32,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "tpp",
+   "extra": [
+    "(stored goods1 level1)",
+    "(stored goods2 level2)",
+    "(stored goods3 level2)",
+    "(stored goods4 level1)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|tpp|p03||v11",
+   "model": "Qwen3_5_9B",
+   "problem": "p03",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 28
+  },
+  {
+   "answer_len": 32,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "tpp",
+   "extra": [
+    "(stored goods1 level1)",
+    "(stored goods2 level2)",
+    "(stored goods3 level2)",
+    "(stored goods4 level1)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|tpp|p03||v13",
+   "model": "Qwen3_5_9B",
+   "problem": "p03",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 28
+  },
+  {
+   "answer_len": 41,
+   "arm": "plain",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "tpp",
+   "extra": [
+    "(stored goods1 level2)",
+    "(stored goods2 level3)",
+    "(stored goods3 level1)",
+    "(stored goods4 level1)",
+    "(stored goods5 level1)"
+   ],
+   "id": "Qwen3_5_9B|solve|plain|tpp|p05||v13",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 36
+  },
+  {
+   "answer_len": 4,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "barman",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|steered|barman|p05||v16",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 61
+  },
+  {
+   "answer_len": 11,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "blocksworld",
+   "extra": [
+    "(on b2 b5)",
+    "(on b3 b2)",
+    "(on b4 b1)"
+   ],
+   "id": "Qwen3_5_9B|solve|steered|blocksworld|p04||v16",
+   "model": "Qwen3_5_9B",
+   "problem": "p04",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 8
+  },
+  {
+   "answer_len": 26,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "depots",
+   "extra": [
+    "(on crate0 pallet2)",
+    "(on crate1 pallet1)",
+    "(on crate2 crate3)",
+    "(on crate3 crate1)"
+   ],
+   "id": "Qwen3_5_9B|solve|steered|depots|p04||v16",
+   "model": "Qwen3_5_9B",
+   "problem": "p04",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 22
+  },
+  {
+   "answer_len": 26,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "depots",
+   "extra": [
+    "(on crate0 pallet1)",
+    "(on crate1 pallet2)",
+    "(on crate2 pallet3)",
+    "(on crate3 pallet0)"
+   ],
+   "id": "Qwen3_5_9B|solve|steered|depots|p05||v14",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 22
+  },
+  {
+   "answer_len": 64,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "copy_error",
+   "domain": "drone",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|steered|drone|p04||v15",
+   "model": "Qwen3_5_9B",
+   "problem": "p04",
+   "shape": "same length, some actions differ",
+   "stripped_valid": null,
+   "tool_len": 64
+  },
+  {
+   "answer_len": 110,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "copy_error",
+   "domain": "drone",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|steered|drone|p05||v15",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "same length, some actions differ",
+   "stripped_valid": null,
+   "tool_len": 110
+  },
+  {
+   "answer_len": 15,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "rovers",
+   "extra": [
+    "(communicated_soil_data waypoint2)",
+    "(communicated_image_data objective0 low_res)",
+    "(communicated_image_data objective0 colour)"
+   ],
+   "id": "Qwen3_5_9B|solve|steered|rovers|p01||v16",
+   "model": "Qwen3_5_9B",
+   "problem": "p01",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 12
+  },
+  {
+   "answer_len": 15,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "satellite",
+   "extra": [
+    "(have_image planet3 thermograph0)",
+    "(have_image planet4 thermograph0)",
+    "(have_image planet5 thermograph0)",
+    "(have_image phenomenon6 thermograph0)"
+   ],
+   "id": "Qwen3_5_9B|solve|steered|satellite|p05||v16",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 11
+  },
+  {
+   "answer_len": 32,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "tpp",
+   "extra": null,
+   "id": "Qwen3_5_9B|solve|steered|tpp|p03||v16",
+   "model": "Qwen3_5_9B",
+   "problem": "p03",
+   "shape": "extra lines, then tool plan",
+   "stripped_valid": null,
+   "tool_len": 28
+  },
+  {
+   "answer_len": 41,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "tpp",
+   "extra": [
+    "(stored goods1 level2)",
+    "(stored goods2 level3)",
+    "(stored goods3 level1)",
+    "(stored goods4 level1)",
+    "(stored goods5 level1)"
+   ],
+   "id": "Qwen3_5_9B|solve|steered|tpp|p05||v16",
+   "model": "Qwen3_5_9B",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 36
+  },
+  {
+   "answer_len": 86,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "barman",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|plain|barman|p04||v12",
+   "model": "gemma4_26b-a4b",
+   "problem": "p04",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 61
+  },
+  {
+   "answer_len": 30,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "pogo_stick",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|plain|pogo_stick|p01||v13",
+   "model": "gemma4_26b-a4b",
+   "problem": "p01",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 10
+  },
+  {
+   "answer_len": 41,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "pogo_stick",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|plain|pogo_stick|p02||v11",
+   "model": "gemma4_26b-a4b",
+   "problem": "p02",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 23
+  },
+  {
+   "answer_len": 25,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "pogo_stick",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|plain|pogo_stick|p02||v13",
+   "model": "gemma4_26b-a4b",
+   "problem": "p02",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 23
+  },
+  {
+   "answer_len": 21,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "pogo_stick",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|plain|pogo_stick|p03||v11",
+   "model": "gemma4_26b-a4b",
+   "problem": "p03",
+   "shape": "extra lines, then tool plan",
+   "stripped_valid": null,
+   "tool_len": 10
+  },
+  {
+   "answer_len": 18,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "copy_error",
+   "domain": "pogo_stick",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|plain|pogo_stick|p05||v12",
+   "model": "gemma4_26b-a4b",
+   "problem": "p05",
+   "shape": "same length, some actions differ",
+   "stripped_valid": null,
+   "tool_len": 18
+  },
+  {
+   "answer_len": 76,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "counters",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|steered|counters|p01||v14",
+   "model": "gemma4_26b-a4b",
+   "problem": "p01",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 73
+  },
+  {
+   "answer_len": 40,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "delivery",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|steered|delivery|p02||v14",
+   "model": "gemma4_26b-a4b",
+   "problem": "p02",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 22
+  },
+  {
+   "answer_len": 40,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "delivery",
+   "extra": null,
+   "id": "gemma4_26b-a4b|solve|steered|delivery|p02||v15",
+   "model": "gemma4_26b-a4b",
+   "problem": "p02",
+   "shape": "other",
+   "stripped_valid": null,
+   "tool_len": 22
+  },
+  {
+   "answer_len": 73,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "copy_error",
+   "domain": "counters",
+   "extra": null,
+   "id": "qwen3_6_35b|solve|plain|counters|p01||v12",
+   "model": "qwen3_6_35b",
+   "problem": "p01",
+   "shape": "same length, some actions differ",
+   "stripped_valid": null,
+   "tool_len": 73
+  },
+  {
+   "answer_len": 13,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "pogo_stick",
+   "extra": null,
+   "id": "qwen3_6_35b|solve|plain|pogo_stick|p03||v11",
+   "model": "qwen3_6_35b",
+   "problem": "p03",
+   "shape": "extra lines, then tool plan",
+   "stripped_valid": null,
+   "tool_len": 10
+  },
+  {
+   "answer_len": 8,
+   "arm": "plain",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "zenotravel",
+   "extra": null,
+   "id": "qwen3_6_35b|solve|plain|zenotravel|p02||v12",
+   "model": "qwen3_6_35b",
+   "problem": "p02",
+   "shape": "extra lines, then tool plan",
+   "stripped_valid": null,
+   "tool_len": 4
+  },
+  {
+   "answer_len": 11,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "blocksworld",
+   "extra": [
+    "(on b2 b5)",
+    "(on b3 b2)",
+    "(on b4 b1)"
+   ],
+   "id": "qwen3_6_35b|solve|steered|blocksworld|p04||v16",
+   "model": "qwen3_6_35b",
+   "problem": "p04",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 8
+  },
+  {
+   "answer_len": 18,
+   "arm": "steered",
+   "c4_rule": false,
+   "class": "other",
+   "domain": "miconic",
+   "extra": null,
+   "id": "qwen3_6_35b|solve|steered|miconic|p05||v15",
+   "model": "qwen3_6_35b",
+   "problem": "p05",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": null,
+   "tool_len": 9
+  },
+  {
+   "answer_len": 9,
+   "arm": "steered",
+   "c4_rule": true,
+   "class": "goal_trailer",
+   "domain": "satellite",
+   "extra": [
+    "(pointing satellite1 groundstation0)",
+    "(pointing satellite2 groundstation0)",
+    "(have_image planet1 spectrograph0)"
+   ],
+   "id": "qwen3_6_35b|solve|steered|satellite|p01||v16",
+   "model": "qwen3_6_35b",
+   "problem": "p01",
+   "shape": "tool plan, then extra lines",
+   "stripped_valid": true,
+   "tool_len": 6
+  }
+ ],
+ "self_check": {
+  "checks": 24,
+  "equal": 24
+ },
+ "tool_arm_flips_outside_wrong_facts": [],
+ "trailer_rows_not_flipped": [],
+ "verdict_source": {
+  "frozen_plans": {
+   "env": {
+    "marketplace_head": "e428f17fd0b211f502955b11177687d544b68277",
+    "mcp": "1.26.0",
+    "pyval": "0.1.5",
+    "unified_planning": "1.3.0",
+    "validator_server_modified": false,
+    "validator_server_sha256": "bada05b55444600fa9c623cdae2ca38f40e22559b67d6c97b375edfcbf9ddf8a"
+   },
+   "from_table": 0,
+   "live": 740,
+   "table": null
+  },
+  "stripped_plans": {
+   "env": {
+    "marketplace_head": "e428f17fd0b211f502955b11177687d544b68277",
+    "mcp": "1.26.0",
+    "pyval": "0.1.5",
+    "unified_planning": "1.3.0",
+    "validator_server_modified": false,
+    "validator_server_sha256": "bada05b55444600fa9c623cdae2ca38f40e22559b67d6c97b375edfcbf9ddf8a"
+   },
+   "from_table": 0,
+   "live": 25,
+   "table": null
+  }
+ }
+}

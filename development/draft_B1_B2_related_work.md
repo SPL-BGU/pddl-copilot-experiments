@@ -3,9 +3,14 @@
 *Drafted 2026-10-27 for `weakness_action_plan.md` §4 B (B1, B2; settles C17). Nothing here
 is in `paper/` yet. After Omer reads it, it goes in as one PR with the other B drafts.*
 
+*Refreshed 2026-11-09 (handoff item 6): Corrêa et al. added (§1, §2, §3); tex line numbers
+re-checked against `paper/main.tex` at `main` `130193e` (after PR #123); the questions of §5
+moved into the one answer list at the top of `draft_B3_B5_methods.md`.*
+
 **How to read this file.** §1 is the LaTeX for §2 of the paper, ready to paste. §2 is the
 BibTeX for the new references. §3 is the check behind every reference. §4 is the B2
-paragraph and where each of its numbers comes from. §5 lists the questions for Omer.
+paragraph and where each of its numbers comes from. §5 points to the questions for Omer,
+which now sit in one list at the top of `draft_B3_B5_methods.md` (items 1 to 12 there).
 
 **About the evidence column in §3.** Each claim is checked against the paper's own text.
 The table gives the location (section, table or figure) and the numbers exactly, but
@@ -35,13 +40,18 @@ themselves, and propose LLM-Modulo frameworks, in which the model works in a loo
 sound external verifiers. Our study tests a simpler arrangement. The model may hand a
 single task to a sound tool, and there is no generate-and-verify loop.
 
-Reasoning models raised these scores without closing the gap on larger or obfuscated
-problems. On PlanBench's $600$ Blocksworld problems, o1-preview produced a correct plan for
+Reasoning models raised these scores, at first without closing the gap on larger or
+obfuscated problems. On PlanBench's $600$ Blocksworld problems, o1-preview produced a correct plan for
 $97.8\%$, but for $52.8\%$ of the obfuscated Mystery Blocksworld problems and $23.6\%$ of
 $110$ larger Blocksworld problems \citep{valmeekam2024o1prelim}. The journal version of
 that evaluation adds that the gains come with large and unpredictable inference costs, and
 that o1 improves further inside a compound system with a sound verifier
-\citep{valmeekam2025o1tmlr}.
+\citep{valmeekam2025o1tmlr}. In a later evaluation, \citet{correa2025frontier} give
+frontier LLMs the PDDL files of $360$ newly generated tasks from $8$ domains of the IPC
+2023 learning track, with two solved examples in the prompt, one attempt per task and no
+tools. They check each plan with VAL and report that frontier LLMs now rival
+state-of-the-art planners, and they replace every name with a random string to control
+for memorization.
 
 Other benchmarks split planning into the judgments a planner makes along the way.
 ACPBench \citep{kokel2025acpbench} generates boolean and multiple-choice questions from
@@ -137,7 +147,8 @@ relevant tool, and that tool is sound, so the closest analog is single-call func
 selection.
 
 \subsection{Positioning}
-The planner and verifier studies above measure what a model does alone. The formalizer
+The planner and verifier studies above, the frontier comparison of
+\citet{correa2025frontier} among them, measure what a model does alone. The formalizer
 pipelines and the system of \citet{lamalfa2026endtoend} measure what a model achieves
 together with a solver, and the call to the solver is part of the pipeline.
 \citet{gobel2026agentic} give the model simulator tools but no planner, and a run ends
@@ -169,19 +180,20 @@ that keeps the same prompt and removes only the tools (Section~\ref{sec:planbenc
 
 | current tex | draft | reason |
 |---|---|---|
-| "The present study is empirical evidence for exactly this division of labour" (line 214) | removed; replaced by "Our study tests a simpler arrangement ... no generate-and-verify loop" | C18 / B5: no generate-and-verify loop is tested, only single-call delegation |
-| "treats the LLM not as the planner but as a formalizer" (line 218) | "uses the LLM as a formalizer" | "not X but Y" reversal |
-| Tantakoun parenthetical: "the consensus is that pairing an LLM translator with a sound solver outperforms end-to-end LLM planning" (line 226) | the survey's framing (LLMs write models for planners) and its note that end-to-end LLM planning lacks soundness guarantees | the "consensus ... outperforms" claim is not in the survey; the replacement is (§3, row `tantakoun2025survey`) |
+| "The present study is empirical evidence for exactly this division of labour" (lines 215 to 216) | removed; replaced by "Our study tests a simpler arrangement ... no generate-and-verify loop" | C18 / B5: no generate-and-verify loop is tested, only single-call delegation |
+| "treats the LLM not as the planner but as a formalizer" (line 220) | "uses the LLM as a formalizer" | "not X but Y" reversal |
+| Tantakoun parenthetical: "the consensus is that pairing an LLM translator with a sound solver outperforms end-to-end LLM planning" (lines 226 to 227) | the survey's framing (LLMs write models for planners) and its note that end-to-end LLM planning lacks soundness guarantees | the "consensus ... outperforms" claim is not in the survey; the replacement is (§3, row `tantakoun2025survey`) |
 | Huang and Zhang: 70/100 vs 0/100 only | adds that o3-mini scored 74/100 as a planner and that the authors call the results mixed | the verified caveat; without it the rescue reads as universal |
 | La Malfa: "raise PlanBench averages by about 15 points" | the exact 76.6 to 91.6 for GPT-5-mini, and that success was judged by GPT-5-mini | exact figure; the LLM judge matters for Positioning |
-| "This literature largely studies the generation of PDDL ... We instead evaluate ..." (lines 238 to 241) | moved into Positioning, rewritten | the old sentence carried an "instead" reversal and a claim now stated more narrowly |
+| "This literature largely studies the generation of PDDL ... We instead evaluate ..." (lines 236 to 239) | moved into Positioning, rewritten | the old sentence carried an "instead" reversal and a claim now stated more narrowly |
 | Positioning: "none measures what a model gains when a sound planner or validator is available as a callable tool ..." (line 261) | "how often a model calls a sound tool that it is free to skip is not measured"; "We know of no earlier study that reports the two separately for planning tasks"; the preliminary study named as the closest | C17: the old claim was false given La Malfa et al. and our own arXiv version. The new claim is about the two gates only, and is true of every study cited |
 | Positioning's list of our design features ("five single-tool-use PDDL tasks ... signed significance ...") | removed | the Introduction carries the contributions; "signed significance" is vocabulary E1 will decide on |
 | "Our setting sits deliberately at the simple end of this spectrum: each task admits exactly one ... rather than long-horizon orchestration" (lines 252 to 255) | "Our setting is at the simple end of this range. Each task has one relevant tool ..." | colon reveal and "rather than" reversal |
+| (nothing on Corrêa et al.) | two sentences at the end of the reasoning-models paragraph; the opening sentence of that paragraph now says "at first without closing the gap"; Positioning names it among the studies that measure a model alone | added 2026-11-09 (handoff item 6, `paper_notes_discussions.md` 2026-11-08: "The B1 related-work draft must add Corrêa et al."). The facts are only those verified in `draft_D5_cost_and_correa.md` Part 1 (§3, row `correa2025frontier`). Without "at first", the paragraph's opening would contradict the paper it now cites |
 
-New references: 18 (two o1 papers, ACPBench, ACPBench Hard, the self-critique paper, Stechly
-et al., Huang et al. 2024, Planetarium, LLMFP, Göbel et al., MetaTool, When2Call, SMART, four
-MCP benchmarks, HAL). Existing keys reused: `valmeekam2023planbench`,
+New references: 19 (two o1 papers, Corrêa et al., ACPBench, ACPBench Hard, the self-critique
+paper, Stechly et al., Huang et al. 2024, Planetarium, LLMFP, Göbel et al., MetaTool, When2Call,
+SMART, four MCP benchmarks, HAL). Existing keys reused: `valmeekam2023planbench`,
 `kambhampati2024llmmodulo`, `liu2023llmp`, `guan2023world`, `pallagani2022plansformer`,
 `silver2024generalized`, `tantakoun2025survey`, `huang2025limit`, `lamalfa2026endtoend`,
 `schick2023toolformer`, `qin2024toolllm`, `anthropic2024mcp`, `bfcl2025`, `yao2024taubench`,
@@ -189,7 +201,7 @@ MCP benchmarks, HAL). Existing keys reused: `valmeekam2023planbench`,
 
 Style check on §1 and §4 (run on this file): no em-dashes; one "instead of" (LLMFP, a plain
 description of what it formalizes into); no "not X but Y"; no "notably", "crucially",
-"striking", "load-bearing".
+"striking", "load-bearing". Re-run 2026-11-09 after the Corrêa sentences: same result.
 
 ---
 
@@ -341,6 +353,30 @@ Append to `paper/refs.bib`. Every field below was checked against the source nam
 The existing `benyamin2025copilot` entry is correct as it stands (title, four authors,
 arXiv:2509.12987; checked against the arXiv record, v1 is the only version).
 
+### Proposed entry for Corrêa et al. (added 2026-11-09; not ready to append yet)
+
+`paper/refs.bib` is not edited here. Unlike the entries above, this one is not fully
+checked: `draft_D5_cost_and_correa.md` gives the surnames, Seipp's given name (from his lab
+page), the arXiv number, both version dates and titles, and the CACM title, but not the
+other two given names. Read them off the arXiv record before the entry goes in.
+
+```bibtex
+@misc{correa2025frontier,
+  title         = {Frontier Large Language Models Rival State-of-the-Art Planners},
+  % TODO before refs.bib: given names of Corrêa and Pereira from the arXiv record
+  author        = {Corr{\^e}a and Pereira and Seipp, Jendrik},
+  year          = {2025},
+  eprint        = {2511.09378},
+  archivePrefix = {arXiv},
+  note          = {Version 2, May 2026. Version 1 (November 2025) is titled ``The 2025 Planning Performance of Frontier Large Language Models''}
+}
+```
+
+The key uses 2025, the year of the arXiv number. If the CACM 2026 version ("Frontier LLMs
+Are Becoming Competitive with State-of-the-Art Planners", listed on Seipp's lab page) is
+the one to cite, its volume, issue and pages are not verified yet (answer list item 23 of
+`draft_B3_B5_methods.md`).
+
 ---
 
 ## 3. Verification table
@@ -370,6 +406,7 @@ version named.
 | `hao2025llmfp` | Hao, Zhang, Fan. Planning Anything with Rigor (LLMFP). ICLR 2025. arXiv:2410.12112 | https://mlanthology.org/iclr/2025/hao2025iclr-planning/ | optimization problems for an SMT solver; GPT-4o optimal rate 96.2 / 77.7 on Blocksworld / Mystery vs direct 41.5 / 0.8; 602 queries each | Table 2 (optimal rate, multi-step problems): Direct GPT-4o 41.5 / 0.8, LLMFP GPT-4o 96.2 / 77.7. §3 pipeline uses SMT. App. task descriptions: 602 queries per domain | verified (n and figures also 2026-08-06). Note: direct o1-preview reaches 88.4 / 31.9 in the same table; we do not quote it |
 | `lamalfa2026endtoend` (existing) | La Malfa, Zhu, Marro, Bernardini, Wooldridge. End-to-end PDDL Planning with Hardcoded and Dynamic Agents. arXiv:2512.09629 v2 (8 May 2026) | https://arxiv.org/abs/2512.09629 | orchestrator writes PDDL, agents refine, validated files go to an external planner; GPT-5-mini PlanBench average 76.6 to 91.6; 3 runs x 50 per task; GPT-5-mini as judge | Abstract (pipeline). §4.1: 91.6 ± 1.6 vs 76.6 ± 23.2 for GPT-5-mini. Table 1 caption: three independent runs of 50 problems each. §4 setup: GPT-5-mini used as the judge | verified (figures also 2026-08-06; the judge is new today) |
 | `gobel2026agentic` | Göbel, Lorang, Zips, Glück. Agentic LLM Planning via Step-Wise PDDL Simulation: An Empirical Characterisation. arXiv:2603.06064 | https://arxiv.org/abs/2603.06064 | MCP step-wise simulator, Claude Haiku 4.5; 102 IPC Blocksworld; 66.7 vs 63.7; 5.7x token cost per solution; no planner tool; run ends when the validator accepts | Abstract (all figures). §III-A: the seven tools, none a planner. §III-B: the agentic run continues until the plan-validation tool confirms a valid plan | verified |
+| `correa2025frontier` (added 2026-11-09) | Corrêa, Pereira, Seipp. Frontier Large Language Models Rival State-of-the-Art Planners. arXiv:2511.09378 v2 (2026-05-15); v1 (2025-11-12) "The 2025 Planning Performance of Frontier Large Language Models" | https://arxiv.org/abs/2511.09378 | 360 newly generated tasks, 8 IPC 2023 learning-track domains; two solved examples in the prompt; one attempt, no tools; plans checked with VAL; frontier LLMs now rival state-of-the-art planners (the v2 title); random-string names as the memorization control | All from `draft_D5_cost_and_correa.md` Part 1: (a) the prompt has a Gripper and a Logistics example with domain, instance and plan; (b) 45 new tasks per domain from the IPC test set's parameter distributions, the 8 domains named, every action, predicate and object name replaced by a random string; (d) one attempt per task, no tools, plans checked with VAL, planners given 30 minutes and 8 GiB. "Rival" is the v2 title | facts verified in D5 (2026-11-09, read from the v2 TeX source and HTML). **Not verified and not used:** the per-model solved counts (checked by web search only, `paper_notes_discussions.md` 2026-11-08), the given names of the first two authors, the CACM version's details |
 | `huang2024metatool` | Huang et al. MetaTool Benchmark for LLMs: Deciding Whether to Use Tools and Which to Use. ICLR 2024. arXiv:2310.03128 | https://mlanthology.org/iclr/2024/huang2024iclr-metatool/ | asks the model directly whether a query needs a tool; most models lack this awareness | §2.3.1: the model is asked whether it needs a tool and must answer yes or no. §1 contributions and Conclusion: most LLMs lack good tool-usage awareness | verified |
 | `ross2025when2call` | Ross, Mahabaleshwarkar, Suhara. When2Call: When (not) to Call Tools. NAACL 2025 (Long), 3391-3409. arXiv:2504.18851 | https://aclanthology.org/2025.naacl-long.174/ | four-way choice including a tool call; items built so a direct answer is always a hallucination | §2.1: answer types (a) direct answer, (b) tool call, (c) follow-up question, (d) unable to answer; all questions require tool use, so (a) is always a hallucination | verified |
 | `qian2025smart` | Qian et al. SMART: Self-Aware Agent for Tool Overuse Mitigation. Findings of ACL 2025, 4604-4621. arXiv:2502.11435 | https://aclanthology.org/2025.findings-acl.239/ | tool overuse: calling tools for tasks solvable from parametric knowledge | Abstract: defines Tool Overuse as unnecessary reliance on tools for tasks solvable with parametric knowledge | verified |
@@ -457,12 +494,12 @@ About this paper (every figure from `development/NUMBERS.md`):
 |---|---|---|
 | 273,600 open-weight trials over two corpora; anonymized-domain control | "Corpus scale"; "Abstract — the four figures", scale-clause row | five open-weight models; never paired with "seven models" |
 | +51.7 to +71.0 delivered solve, three open models | "Delivered rerun — readout (FROZEN 2026-10-09)", row "E2 solve delivered, tools-plain − unaided" (+71.0 / +64.3 / +51.7) | Study 2; separate-apparatus replication |
-| frontier 22–29% to 95% | "Abstract — the four figures", row "frontier plan generation" | delivered, both frontier tiers |
+| frontier 22–29% to 95% | "Abstract — the four figures", row "frontier plan generation" | delivered, both frontier tiers. **Caveat (2026-11-09):** the unaided side is the stored grade, which the pyval case fault (ISS-027) lowers; under VAL it reads Haiku 25.0 and Sonnet 32.7 (post hoc, NUMBERS.md "VAL on the Claude solve plans"). The 95% tool side agrees with VAL on every plan. The paragraph keeps the frozen figure; answer list item 22 asks whether to add the VAL reading beside it |
 | 0 of 3,000 format-exact under the shared budget; 22–40% content-correct at ≥4B when decoupled | "Job 2 — the delivered surface", last row (open-roster unaided simulate) | the qualifier is mandatory; carried in the sentence |
 | Gemma 21% vs 94% calling on validate_plan | "Abstract — the four figures", row "invocation on plan checking"; the same counts (622/3,000 and 2,808/3,000) are in the new "Study 1 — main sweep figures" block, row "Gemma validate_plan calling" | Study 1 (`sweep5v2-live`), steering is the user-turn sentence (v14–16). No interval quoted; if one is added, use the clustered [9.0, 34.1] / [84.0, 100.0] from the Study 1 block, never the Wilson interval |
 | 89.2 vs 88.3, +0.9, 95% CI [−1.2, 2.9] | "Delivered rerun — readout", row "R1"; CI level from `reference/delivered_rerun_readout.md` line 208 | registered reading "No delivered harm" |
 | no-room share 42.7–53.0% of tool-arm simulate trials | "Delivered rerun — readout", row "E1 simulate delivered, tool arms" | the range over the three models' tool arms |
-| Gemma simulate −15.7, 95% CI [−24.7, −6.7] | "Delivered rerun — readout", row "E2 simulate, Gemma" | Holm p 0.018 (not quoted) |
+| Gemma simulate −15.7, 95% CI [−24.7, −6.7] | "Delivered rerun — readout", row "E2 simulate, Gemma" | Holm p 0.018 (not quoted). Note (2026-11-09): the pyval case fault (ISS-027) also touches the rerun's simulate tool arms, where some tool calls failed on a plan written in the fixture's capitals. A replay can change only the tool answer, so the delivered figure cannot be re-graded that way and stands as frozen (`OPEN_ISSUES.md` ISS-027, scope) |
 
 The paragraph quotes no tool-verified figure as a delivered one and does not use the
 retired open-model delivered ranges. Study 1 (calling) and Study 2 (delivered) figures sit
@@ -472,42 +509,7 @@ in separate sentences and are not combined into one number.
 
 ## 5. Open questions for Omer
 
-1. **Where B2 goes in the paper.** I made it its own short subsection at the end of §2
-   ("Relation to the Preliminary Study", `\label{sec:prelim}`, which Positioning points
-   to). The other options are the last paragraph of Positioning, or the Introduction.
-2. **The "scored by tool selection" description is not quite what the arXiv paper did.**
-   Its text says final answers were also checked (with VAL, the simulator, and by hand),
-   and the correct tool call was an extra requirement. The draft says this: success
-   needed both, so calling and delivery were folded into one number. The same correction
-   applies to the memory note and to the cover letter. Is this the framing you want?
-3. **The tool suite changed after the arXiv version.** That paper used Metric-FF for
-   numeric planning and a VAL wrapper. Ours uses ENHSP and validators on
-   `unified-planning`. The tex (line 314) says the suite "packages the Planning Copilot
-   tools" of the arXiv paper. The draft says "an earlier version of this tool suite".
-   Should B3/B4 state the change, and should B2 mention it?
-4. **Calling figures in B2.** I used Study 1's 21% to 94% (the abstract's figures). Study 2
-   has its own: 20.0% plain and 93.1% steered (R5 table). Using Study 2 would keep the
-   whole Gemma passage inside one study. Which one?
-5. **Self-citation wording after de-anonymizing (F1).** The draft says "a preliminary study
-   of an earlier version of this tool suite", in the third person. Under JAIR, once
-   de-anonymized, it could say "the preliminary version of this work". Your call when F1
-   happens.
-6. **Model name.** The draft uses "Gemma-MoE-26B" as the tex does now. E1 fixes the
-   vocabulary, so this may change.
-7. **The two Qwen validate_plan gains** (+14.2 for the 9B and +7.4 for the 35B, readout E2)
-   would show that skipping the tool is model-specific. They are not in `NUMBERS.md` yet,
-   so the draft leaves them out. Add a row and a clause?
-8. **MCP benchmarks.** MCP-Universe and MCP-AgentBench are arXiv only. MCPAgentBench is a
-   workshop paper (REALM at EMNLP 2026, per its arXiv record). MCP-Bench is ICLR 2026.
-   Keep all four, or only MCP-Bench and MCP-Universe?
-9. **HAL** is cited once, for reporting accuracy against cost. Keep it or drop it?
-10. **The Introduction (lines 123 to 133) repeats the old three-lines framing**, including
-    "has not been answered cleanly". It should match the new Positioning when E rewrites
-    the Introduction. I did not touch it.
-11. **Optional references** (listed under §3, verified, not used): Chain of Thoughtlessness,
-    LLM-Modulo for travel planning, The Illusion of Thinking. Add any?
-12. **Thinking mode in B2.** The arXiv paper reported the better of each model's two
-    modes. The new Study 1 block in `NUMBERS.md` (added today by the C2 work, not yet
-    committed) has Gemma's validate_plan calling falling from 20.7% to 0.6% with thinking
-    on. One sentence on this would show why reporting modes separately matters. Add it
-    once that block is final? (Study 2's D3 measures it again on the fixed setup.)
+The twelve questions that were here moved on 2026-11-09 into one numbered answer list at
+the top of `draft_B3_B5_methods.md` ("Answer list for Omer"). They are items 1 to 12 there,
+in the same order and with the same wording, each with the draft's recommendation and an
+answer slot. None had been answered when they moved.
