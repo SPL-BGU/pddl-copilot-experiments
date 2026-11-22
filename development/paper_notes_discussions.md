@@ -209,3 +209,21 @@
 - **Decided (Omer):** keep the harness attachment and the anonymity sweep open until the
   submission is near; the comment switch in the tex stays on; the arXiv number in the
   appendix prompt stays as it is.
+
+## 2026-11-22 (late night) — The three Future Work gaps answered
+
+- **JSON constraint, Omer's question: was it wrong instructions?** No. The prompts were
+  not the cause. The harness sent the schema in a request field (`guided_json`) that the
+  pinned vLLM v0.20.2 no longer has, and vLLM drops unknown fields with a DEBUG log only,
+  so the constraint never reached the decoder (`reference/d1_smokes_20261027.md` D1d;
+  the binding field is `structured_outputs`). The one prompt-side flaw is a consequence:
+  the unaided solve and simulate prompts tell the model to follow "the JSON schema
+  provided by the format constraint", which did not exist. Validation tasks were never
+  asked for JSON and grade from the `VERDICT:` line (0.0% parse failures). The D1d probe
+  shows binding the format moves scores both ways (validate_plan -26 points on one
+  slice), so a bound run is a different condition, not a repair.
+- **Why the model must restate the tool's output (Omer):** a fair and very interesting
+  discussion point. To be raised in the paper's discussion (and with the advisors), not
+  only as future work.
+- **Roster (Omer):** two open-weight families is fine enough. If more models are
+  preferred, the paid API (Claude) side can be enriched. No change to the paper now.

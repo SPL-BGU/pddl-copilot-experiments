@@ -86,7 +86,10 @@ checked mechanically, not as content.
    it is changed. The solve and simulate panels print small at half width.
 3. **Raised by the review of Future Work, for Omer:** three limits named in the paper have
    no direction in the list (the JSON constraint that never took effect; why the model must
-   restate the tool's output at all; the roster of two open-weight families). The appendix
+   restate the tool's output at all; the roster of two open-weight families).
+   **Omer, 2026-11-22:** the JSON fault was a harness request-field bug, not the
+   instructions; restating is a fair discussion point to raise; the roster is fine, and
+   the paid API models can be enriched if more are wanted. The appendix
    still describes an earlier full-storage thinking-on rerun, so a reader may ask why RQ1
    and RQ3 are thinking-off only.
 4. **Anonymity** (the call, read 2026-11-22: submissions must be anonymous for
