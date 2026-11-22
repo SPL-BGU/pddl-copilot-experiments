@@ -191,3 +191,9 @@
 - **Decided (Omer):** do not mention this in the RQ3 results. It is not relevant enough to
   the result and would confuse; simplicity comes first. The one Methods sentence that says
   RQ1 leaves the six problems out stays.
+
+## 2026-11-22 (late night) — PR #143 merged
+
+- **Decided (Omer):** shorten the mentions of the six left-out simulate problems, push and
+  merge. Methods and RQ1 now each say it in one short clause; RQ3 does not discuss it.
+- PR #143 (the RQ3 simulate re-grade) is merged and on Overleaf.

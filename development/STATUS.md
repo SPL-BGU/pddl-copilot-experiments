@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-22, late night (PRs #141 and #142 merged and on Overleaf). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-22, late night (PRs #141, #142 and #143 merged and on Overleaf). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -61,8 +61,8 @@ checked mechanically, not as content.
 
 **Open paper items**
 
-0. **The "70 to 91% lost" figure now carries its qualifier** (PR with the re-grade,
-   waiting for Omer's merge). RQ3 simulate on the full rerun was graded a second time,
+0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
+   2026-11-22). RQ3 simulate on the full rerun was graded a second time,
    post hoc, with a reader that also accepts one JSON object per line: 66 to 80% lost
    (`NUMBERS.md`, "RQ3 simulate — layout-tolerant re-grade"). The paper has the table, a
    paragraph, and the qualifier in the abstract, introduction and discussion. Not done:
@@ -147,8 +147,8 @@ from the checkpoint zips (`checkpoints/delivered-rerun/README.md`, "Restore");
 
 Merged 2026-11-22: #130, #133, #135, #136, #138 (each checked on the laptop data first),
 #139 (the paper rewrite), #140 (the wording and consistency pass) and #141 (run dates,
-the 0.8B correction, the context-window pilot, the advisor list) and #142 (figures
-redrawn, future-work list, two Methods corrections). Closed: #132, #137 (branches kept). **Open, on hold:** #134 (release
+the 0.8B correction, the context-window pilot, the advisor list) #142 (figures
+redrawn, future-work list, two Methods corrections) and #143 (the RQ3 simulate re-grade). Closed: #132, #137 (branches kept). **Open, on hold:** #134 (release
 files: licences, `CITATION.cff`), while a submission is under anonymous review. Release
 terms are decided: code MIT, data CC BY 4.0, BGN Technologies as owner (confirm its exact
 legal name), Omer as author, lab SPL-BGU.
