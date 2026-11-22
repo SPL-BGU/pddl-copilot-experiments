@@ -408,7 +408,8 @@ argument schema. The model reads a task description, selects a tool, emits a
 structured call and receives the tool's result. Every tool trial, open-weight or
 frontier, exposes the same seven tools from two plugins. The solver plugin provides a classical planner (Fast Downward
 \citep{helmert2006fastdownward}), a numeric planner (ENHSP \citep{scala2016enhsp}) and
-a tool that saves a plan to a file. The validator plugin provides
+a tool that saves a plan to a file. Each planner call has a wall-clock limit of
+$120$ seconds. The validator plugin provides
 \texttt{validate\_domain}, \texttt{validate\_problem} and \texttt{validate\_plan}, which
 return a VALID or INVALID verdict, and \texttt{get\_state\_transition}, which returns
 the state trajectory a plan induces. The four validator tools run \texttt{pyval} (the
@@ -1316,8 +1317,8 @@ fits the domain. Brackets are 95\% domain-cluster bootstrap intervals.}
 \label{tab:rq2-thinking}
 \end{table*}
 
-\paragraph{Reasoning mode.} Only the main sweep ran with thinking on
-(Table~\ref{tab:rq2-thinking}). Under the plain prompt, Gemma-MoE-26B calls the right
+\paragraph{Reasoning mode.} Of the runs used for this question, only the main sweep
+ran with thinking on (Table~\ref{tab:rq2-thinking}). Under the plain prompt, Gemma-MoE-26B calls the right
 tool less often on every task once thinking is on: in $0.6\%$ of the
 \emph{validate\_plan} trials, and in $23.3\%$ to $56.0\%$ of the trials of the other
 four tasks. Qwen3.5-9B falls on \emph{solve} (from $99.3\%$ to $57.0\%$) and on
@@ -2479,19 +2480,28 @@ its negative-arm interval. We therefore report balanced accuracy for that task, 
 like $F_1$, is not inflated by the imbalance that a pooled metric would reward.
 
 \section{Future Work}
-Four extensions follow from the limits above. The first is a test set that includes
-problems the planner cannot solve within its time limit, so that the benefit of the
-tools can be followed past the point where the planner itself gives out. The second is
-a full treatment of reasoning mode: RQ1 and RQ3 are reported here with thinking off
-only. The third is a registered version of the context-window pilot
-of RQ3, which should vary the output allowance as well. The fourth is the same
-three questions on planning formalisms that our test set does not cover, such as
-temporal planning.
+Four extensions follow from limits stated in this paper. The first is a test set that
+includes problems the planner does not solve within its time limit. On such a problem a
+planner call returns a timeout, so the comparison with the unaided model would show what
+a model delivers when its tool fails, and up to which problem size the tools still raise
+the share of problems solved. The second is reasoning mode. RQ1 and RQ3 are reported
+here with thinking off only. Answering them with thinking on needs complete stored
+answers and a decode budget reserved for the final answer, because in the main sweep the
+reasoning and the answer shared one budget. The third is a registered experiment on the
+state traces that RQ3 counts as lost. The pilot enlarged the context window for the
+open-weight models, and the output-budget probe enlarged the output allowance for the
+Claude models, so neither varied both settings on one model. The experiment would cross
+the two settings. The fourth is to ask the three questions on planning formalisms that
+our tool suite and test set do not cover, such as temporal planning, for which the suite
+has no planner.
 
-A fifth direction goes beyond the three questions. The tools studied here assume
-that the domain is given. A model could also be given tools for learning an action
-model from observed traces, and the domain it produces could then be compared with
-the output of an action-model learning algorithm run on the same traces.
+A fifth direction goes beyond the three questions. The planners and validators studied
+here take a PDDL domain as input, and none of them produces one. Algorithms for learning
+action models produce a domain from observed plan executions
+\citep{yang2007arms, aineto2019fama, juba2021sam}, and \citet{arora2018review} survey
+them. A language model could be given such an algorithm as a tool, and the domain it
+delivers could then be compared with the domain that the algorithm learns from the same
+executions without a language model.
 
 \section{Conclusion}
 We asked three questions about giving a language model sound PDDL tools. The tools

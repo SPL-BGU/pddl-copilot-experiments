@@ -133,3 +133,21 @@
   of RQ3 with its explanation.
 - **Still open, for discussion:** whether the abstract, introduction and conclusion qualify
   the "70 to 91% lost" figure (`STATUS.md`, item 0).
+
+## 2026-11-22 (late night) — Figures redrawn, future-work list written and reviewed
+
+- **Decided (Omer):** the future-work list is the four extensions plus learning action
+  models with a language model (he may trim later); the smaller items PR #140 left open
+  are approved as written; the five older figures are to be redrawn by a subagent and the
+  Future Work section reviewed by another.
+- **Figures (subagent, checked by the main session by eye and by compile):** funnel bottom
+  row, solve, simulate, failure taxonomy and the token figure no longer draw the retired
+  open-weight delivered bounds. Open-weight tool bars are now tool-verified rates; the
+  failure figure shows the no-tools arm only, with simulate from the run-time grade; the
+  token figure shows tokens only.
+- **Future Work (review subagent, fixes applied):** each item now says what would be
+  learned; the fifth direction names the comparison (the learning algorithm with and
+  without a language model) and cites four references checked on Crossref.
+- **Also corrected:** the Methods sentence that said the schema enforces required
+  arguments; a Methods sentence now gives the planner's 120-second limit.
+- **Not decided:** the layout-tolerant re-grade of RQ3 simulate on the full rerun.
