@@ -408,7 +408,8 @@ argument schema. The model reads a task description, selects a tool, emits a
 structured call and receives the tool's result. Every tool trial, open-weight or
 frontier, exposes the same seven tools from two plugins. The solver plugin provides a classical planner (Fast Downward
 \citep{helmert2006fastdownward}), a numeric planner (ENHSP \citep{scala2016enhsp}) and
-a tool that saves a plan to a file. The validator plugin provides
+a tool that saves a plan to a file. Each planner call has a wall-clock limit of
+$120$ seconds. The validator plugin provides
 \texttt{validate\_domain}, \texttt{validate\_problem} and \texttt{validate\_plan}, which
 return a VALID or INVALID verdict, and \texttt{get\_state\_transition}, which returns
 the state trajectory a plan induces. The four validator tools run \texttt{pyval} (the
@@ -745,9 +746,11 @@ in the sense of the Berkeley Function-Calling Leaderboard \citep{bfcl2025}. The
 plain arm measures \emph{relevance detection}: whether the model calls the right
 tool when the tool is offered and the user message does not name it. The steered
 arm measures \emph{function selection}: whether a model that is told to use a tool
-picks the correct one. Because each tool's schema enforces its required
-arguments, argument-filling errors are largely structural, so the steered
-contrast isolates selection rather than parameter construction.
+picks the correct one. Each tool's schema names its required arguments, but
+nothing forces a model to supply them, and a call that leaves one out returns an
+error. The steered contrast therefore covers selection together with argument
+construction. The records keep the two apart, and the Supporting Analyses report
+one model for which a missing argument is the main failure.
 A fourth, \emph{control} arm, the steering directive with the tools still
 removed, tests whether the directive alone moves the no-tools rate. It serves
 only as a control. Its result is reported beside the steering finding (Supporting
@@ -1314,8 +1317,8 @@ fits the domain. Brackets are 95\% domain-cluster bootstrap intervals.}
 \label{tab:rq2-thinking}
 \end{table*}
 
-\paragraph{Reasoning mode.} Only the main sweep ran with thinking on
-(Table~\ref{tab:rq2-thinking}). Under the plain prompt, Gemma-MoE-26B calls the right
+\paragraph{Reasoning mode.} Of the runs used for this question, only the main sweep
+ran with thinking on (Table~\ref{tab:rq2-thinking}). Under the plain prompt, Gemma-MoE-26B calls the right
 tool less often on every task once thinking is on: in $0.6\%$ of the
 \emph{validate\_plan} trials, and in $23.3\%$ to $56.0\%$ of the trials of the other
 four tasks. Qwen3.5-9B falls on \emph{solve} (from $99.3\%$ to $57.0\%$) and on
@@ -1491,8 +1494,9 @@ gap is +tool(steered)~$-$~+tool(plain). A gap is called significant when the two
 arms' 95\% intervals are disjoint (Methodology). Table~\ref{tab:howtoread} lists,
 for each corpus, what was stored and what this section reports from it.
 Figure~\ref{fig:funnel} shows, for the with-tools cells, how many trials call the
-tool, how many obtain a correct tool result, and how many deliver a correct
-answer, against the unaided rate as a reference line.
+tool and how many obtain a correct tool result, against the unaided rate as a
+reference line. For the frontier models and PlanBench it also shows how many
+deliver a correct answer.
 
 \begin{table*}[t]
 \centering
@@ -1533,7 +1537,8 @@ pre-registered rerun (RQ1 and RQ3), which is not part of this table.}
 \includegraphics[width=\textwidth]{figures/funnel.pdf}
 \caption{The funnel. Each bar is a share of all with-tools trials: the trials that
 call the tool (\textsc{call}), the trials in which a tool response holds a correct
-result (tool-verified), and the trials that deliver a correct answer. The bars are
+result (tool-verified), and, in the top row, the trials that deliver a correct
+answer. The bars are
 marginal shares and are not nested conditionals. The dashed line is the no-tools
 rate on the same task (\textsc{need}); it is drawn as a reference because arms are
 never pooled. Top row: the two frontier models on the canonical corpus (prompt
@@ -1542,10 +1547,10 @@ are censoring bounds \cbnd{a}{b}. The PlanBench sequence starts with a
 \textsc{formalize} stage (the model's PDDL matches the gold problem), because the
 prompt supplies no PDDL there, and its delivered bars use the first-attempt counts
 ($410/600$ and $431/600$). Bottom row: the three $\geq$9B open-weight models on
-the validation tasks, main sweep, plain arm, \emph{think}=off. In this row the
-\textsc{call} and tool-verified bars are exact. The third, hatched bar is a bound
-computed from the $500$-character snapshots. We do not read it in this paper; the
-delivered comparison for these models is in RQ1 and RQ3.}
+the validation tasks, main sweep, plain arm, \emph{think}=off. This row draws the
+\textsc{call} and tool-verified bars, and both are exact. The main sweep gives no
+delivered rate for these cells, so the row has no third bar; the delivered
+comparison for these models is in RQ1 and RQ3.}
 \label{fig:funnel}
 \end{figure*}
 
@@ -1554,19 +1559,21 @@ delivered comparison for these models is in RQ1 and RQ3.}
 \includegraphics[width=0.49\textwidth]{figures/solve.pdf}\hfill
 \includegraphics[width=0.49\textwidth]{figures/simulate.pdf}
 \caption{\emph{Solve} (left) and \emph{simulate} (right). Whiskers are Wilson 95\%
-intervals on exact cells, hatched segments are censoring bounds \cbnd{a}{b}, and
-the dotted tick above a tool bar marks the tool-verified rate. Frontier panels
-(prompt v11): on \emph{solve} both models deliver $95.0\%$ with the tool, against
+intervals on exact cells. Frontier panels (prompt v11): the bars are delivered
+rates, hatched segments are censoring bounds \cbnd{a}{b}, and the dotted tick
+above a tool bar marks the tool-verified rate. On \emph{solve} both models
+deliver $95.0\%$ with the tool, against
 $22$--$29\%$ unaided and a tool-verified rate of $100\%$. On \emph{simulate} the
 delivered bounds are \cbnd{49}{62} (Sonnet) and \cbnd{52}{64} (Haiku) against
 unaided \cbnd{34}{53} and \cbnd{38}{68} on the same prompt-v11 slice ($n{=}100$),
-and the bounds do not separate the two arms. Open-weight panels: on \emph{solve}
-the grey bars are the main sweep's unaided rates ($8$--$11\%$ for the shaded
-$\geq$9B models, \emph{think}=off) and the dotted ticks are its tool-verified
-rates. The hatched open-weight tool bars are censoring bounds, taken on
-\emph{solve} from the main sweep and on \emph{simulate} from an earlier rerun
-with \emph{think}=on. We do not read them in this paper; RQ1 and RQ3 report the
-delivered rates of these models.}
+and the bounds do not separate the two arms. Open-weight panels (main sweep,
+\emph{think}=off; the shaded models are the $\geq$9B ones): the grey bars are the
+unaided rates, and the blue and orange bars are the tool-verified rates of the
+plain and the steered arm, the share of with-tools trials in which a tool
+response held a correct result. The main sweep gives no delivered rate for these
+arms; RQ1 and RQ3 report the delivered rates of these models. Unaided
+\emph{solve} is $8$--$11\%$ for the shaded models, and the unaided format-exact
+rate on \emph{simulate} is $0\%$ for every model.}
 \label{fig:solesource}
 \end{figure*}
 
@@ -1625,18 +1632,16 @@ track state at all.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/failure_taxonomy.pdf}
-\caption{Outcome of every trial by task and arm ($\geq$9B, \emph{think}=off,
-canonical corpus, pooled), graded from the stored $500$-character snapshots, each
-bar normalized to $100\%$. Every trial is \emph{delivered ok} or exactly one other
-outcome: \emph{censored} (the snapshot ends before the answer can be graded),
-\emph{truncated} (the budget ran out with no answer), \emph{unparseable}, or
-\emph{wrong content}. This section reads the no-tools bars. Unaided \emph{solve}
-is $67\%$ unparseable and $15\%$ truncated, and the unaided validation baselines
-fail by wrong content ($13$--$40\%$). Unaided \emph{simulate} is $93\%$ censored
-under this grader; its anatomy under the run-time grader ($68\%$ unparseable,
-$29\%$ truncated) is quoted in the text. On the tool arms most of the remaining
-mass is censored, which is why the main sweep gives no delivered rate for them.
-RQ3 reports the loss categories for the tool arms from the rerun.}
+\caption{Outcome of every no-tools trial by task ($\geq$9B, \emph{think}=off,
+canonical corpus, pooled), as the harness graded the full answer at run time,
+each bar normalized to $100\%$. Every trial is \emph{correct} or exactly one
+other outcome: \emph{truncated} (the budget ran out with no answer),
+\emph{unparseable}, or \emph{wrong content}. Unaided \emph{solve} is $67\%$
+unparseable and $15\%$ truncated, and the unaided validation baselines fail by
+wrong content ($13$--$40\%$). Unaided \emph{simulate} is $68\%$ unparseable and
+$29\%$ truncated. The tool arms are not drawn, because the main sweep gives no
+delivered rate for them. RQ3 reports the loss categories for the tool arms from
+the rerun.}
 \label{fig:failtax}
 \end{figure*}
 
@@ -1837,13 +1842,12 @@ with the tools, delivered success falls on the longest plans (RQ1).
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/token_quadrant.pdf}
-\caption{Tokens per trial in the main sweep ($\geq$9B, \emph{think}=off). The
-horizontal axis is the mean total tokens per trial on a log scale, and each arrow
-runs from the no-tools arm to the steered tool arm. Every arrow points right: the
-tool arm always uses more tokens per trial. The vertical position of the tool-arm
-end of each arrow, the translucent bars and the cost-of-pass ranges printed in
-the panels come from the main sweep's delivered bounds, which we do not read in
-this paper.}
+\caption{Tokens per trial in the main sweep ($\geq$9B, \emph{think}=off), with
+one panel per model and one row per task. The horizontal axis is the mean total
+tokens per trial (input~$+$~output, summed over turns) on a log scale. In each
+row the vertical tick marks the no-tools arm, the circle the plain tool arm and
+the diamond the steered tool arm. Both tool-arm markers lie to the right of the
+tick in every row: the tool arms always use more tokens per trial.}
 \label{fig:tokens}
 \end{figure*}
 
@@ -2476,19 +2480,28 @@ its negative-arm interval. We therefore report balanced accuracy for that task, 
 like $F_1$, is not inflated by the imbalance that a pooled metric would reward.
 
 \section{Future Work}
-\omer{PLACEHOLDER: confirm with the advisors which directions to list. The four below
-follow directly from the limits of the three research questions; the earlier list
-(a stronger model on PlanBench, multi-tool and iterative settings, fine-tuning for
-invocation, a budget-decoupled design) was removed because parts of it are done or no
-longer planned.}
-Four extensions follow from the limits above. The first is a test set that includes
-problems the planner cannot solve within its time limit, so that the benefit of the
-tools can be followed past the point where the planner itself gives out. The second is
-a full treatment of reasoning mode: RQ1 and RQ3 are reported here with thinking off
-only. The third is a registered version of the context-window pilot
-of RQ3, which should vary the output allowance as well. The fourth is the same
-three questions on planning formalisms that our test set does not cover, such as
-temporal planning.
+Four extensions follow from limits stated in this paper. The first is a test set that
+includes problems the planner does not solve within its time limit. On such a problem a
+planner call returns a timeout, so the comparison with the unaided model would show what
+a model delivers when its tool fails, and up to which problem size the tools still raise
+the share of problems solved. The second is reasoning mode. RQ1 and RQ3 are reported
+here with thinking off only. Answering them with thinking on needs complete stored
+answers and a decode budget reserved for the final answer, because in the main sweep the
+reasoning and the answer shared one budget. The third is a registered experiment on the
+state traces that RQ3 counts as lost. The pilot enlarged the context window for the
+open-weight models, and the output-budget probe enlarged the output allowance for the
+Claude models, so neither varied both settings on one model. The experiment would cross
+the two settings. The fourth is to ask the three questions on planning formalisms that
+our tool suite and test set do not cover, such as temporal planning, for which the suite
+has no planner.
+
+A fifth direction goes beyond the three questions. The planners and validators studied
+here take a PDDL domain as input, and none of them produces one. Algorithms for learning
+action models produce a domain from observed plan executions
+\citep{yang2007arms, aineto2019fama, juba2021sam}, and \citet{arora2018review} survey
+them. A language model could be given such an algorithm as a tool, and the domain it
+delivers could then be compared with the domain that the algorithm learns from the same
+executions without a language model.
 
 \section{Conclusion}
 We asked three questions about giving a language model sound PDDL tools. The tools
