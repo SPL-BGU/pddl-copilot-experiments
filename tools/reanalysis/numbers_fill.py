@@ -25,6 +25,21 @@ BLOCKS = {
     "06_frontier_tools_contamination": ["numbers_06_frontier_tools_contamination.md"],
     "val_frontier_solve": ["numbers_val_frontier_solve.md"],
     "d5b_shares": ["numbers_d5b_shares.md"],
+    # ISS-027 post hoc corrections (iss027_replay.py, iss027_unaided.py): the table, and
+    # one caveat line after each table holding a figure that moves
+    "iss027": ["numbers_iss027.md"],
+    "iss027_mech": ["numbers_iss027_mech.md"],
+    "iss027_summary": ["numbers_iss027_summary.md"],
+    "iss027_t1": ["numbers_iss027_t1.md"],
+    "iss027_t2": ["numbers_iss027_t2.md"],
+    "iss027_t5": ["numbers_iss027_t5.md"],
+    "iss027_t8a": ["numbers_iss027_t8a.md"],
+    # ISS-028 post hoc split of the delivered rerun's solve WRONG_FACTS rows
+    # (iss028_goal_trailers.py)
+    "iss028": ["numbers_iss028.md"],
+    # ISS-029 simulate prompt plan vs cached plan (iss029_simulate_plan.py; needs
+    # the pinned results/derived/gt_cache.json)
+    "iss029": ["numbers_iss029.md"],
 }
 
 

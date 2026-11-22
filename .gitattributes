@@ -1,5 +1,3 @@
-checkpoints/sweep5/*.zip filter=lfs diff=lfs merge=lfs -text
-
 # Committed experiment corpora are DATA, not source. Without this a data-archive
 # PR reads as unreviewable — PR #93 landed 107 changed files, 73 of them the
 # frozen PlanBench-WT archive, burying the ~34 files a human actually reviews.

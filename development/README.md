@@ -18,7 +18,7 @@ Four files answer almost every question:
 | start here | for |
 |---|---|
 | **`STATUS.md`** | what is left to do. Single stable entry point, **edited in place**; never write a dated successor |
-| **`weakness_action_plan.md`** | the plan the work follows: workstreams A to F, the experiment extension, the rewrite outline, and where every weakness ends |
+| **`roadmap.md`** | the plan the work follows since 2026-11-22: the three research questions and their metrics, which data answers each, milestones M1 to M6, what happened to each earlier item, and the decisions waiting for Omer |
 | **`NUMBERS.md`** | the frozen value of every headline figure and the stale readings it replaces. **Check before quoting anything** |
 | **`MOVES.md`** | old path to new path (the reorganisations of 2026-08-29 and 2026-09-18) and every file deleted on 2026-10-10. Resolves the old paths cited in the append-only logs and in hash-pinned scripts |
 
@@ -26,13 +26,17 @@ Four files answer almost every question:
 
 | doc | what it is |
 |---|---|
-| `STATUS.md` · `weakness_action_plan.md` · `NUMBERS.md` · `MOVES.md` | the four above |
-| `advisor_brief.md` | one page for the advisors and coauthors, with open `> ANSWER:` slots. Sending is on hold (R7); its top note says which questions still stand |
+| `STATUS.md` · `roadmap.md` · `NUMBERS.md` · `MOVES.md` | the four above |
+| `advisor_brief.md` | one page written for the advisors before the 2026-11-22 meeting. Overtaken by that meeting (venue and research questions are decided); kept until Omer answers `roadmap.md` §7, decision 6 |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
-| `draft_B1_B2_related_work.md` · `draft_B3_B5_methods.md` | plan §4 B drafts, for Omer's read before the B paper PR |
-| `handoff_20261109.md` | the 2026-11-09 decisions in final form and the ordered work list; delete when its items move into `items.yaml` |
-| `draft_E1_research_questions.md` · `draft_C5_E1a.md` · `draft_tracking_proposal.md` · `draft_D5_cost_and_correa.md` · `draft_release_licence_models.md` | live drafts: the open RQ question; the C5 hit list (retired wording and figures still in the tex, an owner per hit) and the E1a vocabulary (both RQ framings); the tracking design (A chosen); D5 cost and the Corrêa facts; licence and model research. `draft_C4_transcripts.md` (merged with PR #128) holds the C4 transcripts, readings awaiting Omer's confirmation |
+| `thesis_literature_review.md` | **M1: the thesis literature review, first full draft** (2026-11-22), with a reading list, a "to verify" list and questions for Omer |
+| `draft_B1_B2_related_work.md` | the related-work draft, every reference looked up and verified. **The base of the thesis literature review (M1)** |
+| `draft_B3_B5_methods.md` · `draft_C4_transcripts.md` | test data, prompts and grading facts; four example transcripts (readings await Omer's confirmation). **The base of the RQ1 experimental setting (M3)** |
+| `draft_C5_E1a.md` | the hit list of retired wording and figures still in the tex. **The checklist for M5**; its two RQ framings are overtaken by the three RQs |
+| `draft_D5_cost_and_correa.md` · `draft_release_licence_models.md` | the verified Corrêa et al. facts (used by M1) and the cost notes; licence and model research for the release |
+| `draft_advisor_correa_comparison.md` (+ two `.docx`) | Omer's outline for the advisor discussion of 2026-11-22; not committed |
+| `draft_D1f_extension_prereg.md` · `draft_tracking_proposal.md` | **parked, off the path since 2026-11-22**: the extension's prereg draft (nothing frozen, nothing run) and the tracking design. Deleted once Omer answers `roadmap.md` §7, decision 6 |
 
 ## `reference/`: stable, never a status
 
@@ -45,6 +49,10 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
 - `weakness_consolidated.md`: the two reviews merged and verified (C1 to C22,
   disagreements D1 to D8) and the decisions Q1 to Q11 with Omer's answers. The "why"
   behind the action plan.
+- `weakness_action_plan.md`: the plan of 2026-10-10 to 2026-11-22 (workstreams A to F,
+  the extension, the two-study outline, where each weakness ends). **Replaced by
+  `roadmap.md`.** Kept because its step labels (B1, C3, D5b and so on) are cited
+  everywhere; never read it as a to-do list.
 - `reanalysis_statistics.md` · `reanalysis_planbench.md` · `reanalysis_breakdowns_cost.md`
   · `reanalysis_transcripts.md`: the four re-analyses of 2026-10-02 (scripts in
   `tools/reanalysis/`). The PlanBench figures and the statistics figures (the Study 1
@@ -83,7 +91,8 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
   and `submit_with_rtx.sh`)
 - `serving_env_20260913.md` (the serving environment) · `cluster_user_guide.md` (BGU CIS
   HPC)
-- `journal_decisions_memo.md` (the journal pivot: venue §5, advisor questions §10; ⚠️ it
+- `journal_decisions_memo.md` (the journal pivot of 2026-08, itself overtaken on
+  2026-11-22 by ICAPS 2027: venue §5, advisor questions §10; ⚠️ it
   says "227k trials" in three places, the figure is **273,600**, see `NUMBERS.md`) ·
   `title_abstract_candidates.md` (§4 the scale audit, §5 Omer's answers on the abstract)
 

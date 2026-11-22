@@ -1,5 +1,22 @@
 # MOVES.md — old path → new path, and deleted files
 
+## The replan of 2026-11-22
+
+After Omer's advisor meeting (ICAPS 2027, three research questions, the thesis first)
+the plan became `roadmap.md`. The files below were **last present at their old paths at
+commit `edb7267`**; read or restore one with
+
+```
+git show edb7267:<old path>
+git checkout edb7267 -- <old path>
+```
+
+| old path | what happened | why |
+|---|---|---|
+| `development/weakness_action_plan.md` | moved to `development/reference/weakness_action_plan.md` | no longer the plan, but its step labels (A1, B1 to B5, C1 to C5, D1a to D5e, E1 to E7, F1 to F3) are cited across `NUMBERS.md`, the drafts, the logs and `tools/reanalysis/c4_select_transcripts.py`, and its §5 says where each weakness ends. Read it as a record, never as a to-do list |
+| `development/handoff_20261109.md` | deleted | the 2026-11-09 work list followed the earlier plan. What still matters moved into `STATUS.md` (open PRs, the frozen check, data in a fresh checkout, hygiene); the 2026-11-09 decisions are in `paper_notes_discussions.md` |
+| `development/draft_E1_research_questions.md` | deleted | the open question it held (RQ1 to RQ6 against a two-gate framing) was settled by the advisors: the three questions of `roadmap.md` §2 |
+
 ## Checkpoints pruned, 2026-11-09
 
 Omer (2026-11-09): keep the full-corpus checkpoints, remove the outdated ones. Every
@@ -24,6 +41,17 @@ git checkout 9c18949 -- <path>      # restore it into the tree
 The folder `checkpoints/contamination-live/` is gone with them. The other untracked
 files in the laptop's `checkpoints/` (`rq-sweep5v2/*.pptx`, `rq-sweep5v2/plots-unified/*.png`,
 `sweep6-live/.DS_Store`) were never in git and were not touched.
+
+**One more, same day** (decision 16 of `handoff_20261109.md`, the paper-branch item).
+The unified-deck PDF went after the `paper/main.tex` Results comment stopped citing
+it. **It was last changed at `a966f0e`** (unchanged from then until its removal); get it
+back with `git show a966f0e:<path> > <file>`.
+
+| deleted path | added | what it held | why it went |
+|---|---|---|---|
+| `checkpoints/rq-sweep5v2/pddl_copilot_rq_sweep5v2_unified.pdf` | `a966f0e` 2026-07-24 | a 59-page PDF export (LibreOffice, 2026-06-15; read with `pdfinfo`) of the June unified findings deck (`rq_deck.py --think unified`; `paper_notes_discussions.md` 2026-06-10 entry) | the deck's "locked" mechanism-layer values are replaced by the `NUMBERS.md` block "Study 1 — main sweep figures" (`tools/reanalysis/s1_*.py`); the only live citation, the `main.tex` Results comment, now points there. `rq_deck.py` still writes its decks to `checkpoints/rq-sweep5v2/` as an output folder (left as is); `CHANGELOG.md`, `paper_notes_discussions.md` and `reference/weakness_consolidated.md` name the folder in append-only or record text (left as is) |
+
+The folder `checkpoints/rq-sweep5v2/` is now empty in git.
 
 ## Results moved out of the repo, 2026-10-10
 
