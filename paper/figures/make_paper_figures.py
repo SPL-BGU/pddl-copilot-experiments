@@ -1,26 +1,36 @@
-"""Regenerate the paper's Results figures as vector PDFs — DELIVERED surface.
+"""Regenerate the paper's Supporting-Analyses figures as vector PDFs.
 
-D-J2 batch 2 (2026-09-08, development/reference/job2_delivered_reframe_worknote.md §7b):
-every success-type figure now draws the DELIVERED rate (`e2e_strict`, the
-paper's single primary surface) read through the analyzer's shared overlay
-aggregator (`e2e_overlay.load_e2e_cells` over results/derived/e2e_overlay/),
-so no figure can drift from the pooled table. Tool-verified stays visible
-only as the labeled mechanism layer (faint ticks; Fig. mechanism).
+What each corpus supports (paper, table "What each corpus stored"):
 
-Value shapes follow the paper's how-to-read table: an exact cell draws a
-solid bar with a Wilson 95% whisker; a censoring bound <low, high> draws a
-solid bar to `low` with a hatched extension to `high` — never a point.
+  * Open-weight main sweep (results/sweep5v2-live). The final answer was stored
+    only up to 500 characters, so the sweep gives NO delivered rate for its tool
+    arms. These figures draw three exact quantities from it and nothing else:
+    the unaided rate (the harness's run-time grade of the full answer), the
+    calling rate and the tool-verified rate. The delivered bounds that the e2e
+    overlay computed from the snapshots are retired for the open-weight models
+    and are not drawn anywhere (redraw of 2026-11-22). The code that drew them
+    (hatched open-weight bars, the cost-of-pass ranges of `_cop_range`, the
+    overlay failure mix) last existed at commit 6c7de81.
+  * Frontier runs (Claude Haiku 4.5, Sonnet 4.6) and PlanBench. Delivered
+    rates, read through the analyzer's overlay aggregator
+    (`e2e_overlay.load_e2e_cells`). Exact, except frontier simulate, which is a
+    censoring bound <low, high>: solid bar to `low`, hatched extension to
+    `high`, never a point.
+
+The delivered comparison for the open-weight models comes from the rerun and has
+its own figures (tools/reanalysis/rq1_figures.py -> rq1_*.pdf).
 
 Outputs (vector PDF, into this directory):
-  funnel.pdf                         — Fig 1, within-arm cascade per tier
-                                        (CALL -> tool-correct -> delivered;
-                                        NEED = no-tools reference line);
-                                        open-roster validate_* panels;
-                                        PlanBench panel with the FORMALIZE bar
-  solve.pdf, simulate.pdf            — success by arm on the delivered surface
-  mechanism_validate_plan.pdf        — unchanged (mechanism layer, exact)
-  token_quadrant.pdf                 — tokens vs DELIVERED success
-  failure_taxonomy.pdf               — delivered-surface outcome composition
+  funnel.pdf                  top row: frontier and PlanBench cascades
+                              (CALL -> tool-verified -> delivered; NEED = the
+                              no-tools reference line); bottom row: open-weight
+                              validate_* cells, CALL and tool-verified only
+  solve.pdf, simulate.pdf     open-weight panel: unaided and tool-verified
+                              rates; frontier panel: delivered success by arm
+  mechanism_validate_plan.pdf calling and tool-verified rates (exact)
+  token_quadrant.pdf          mean total tokens per trial by arm (file name
+                              kept for the tex; no success axis any more)
+  failure_taxonomy.pdf        outcome of the unaided trials, run-time grade
 
 Run from anywhere:
   python3 paper/figures/make_paper_figures.py
@@ -58,6 +68,9 @@ TASK_SHORT = {"validate_domain": "val.\ndomain", "validate_problem": "val.\nprob
 TIERS = [("haiku", "Claude Haiku 4.5", "haiku-frontier"),
          ("sonnet", "Claude Sonnet 4.6", "sonnet-frontier")]
 C_CALL, C_TV, C_DELIV, C_NEED = "#BBC1CA", "#8FB8D6", rq.C_BRAND, rq.C_INK
+SWEEP_ARM_LABEL = {"nt-neut": "no-tools: unaided rate",
+                   "tl-neut": "+tool (plain): tool-verified rate",
+                   "tl-ster": "+tool (steered): tool-verified rate"}
 
 
 def _savepdf(fig, name: str) -> Path:
@@ -69,7 +82,23 @@ def _savepdf(fig, name: str) -> Path:
 
 
 # ----------------------------------------------------------------------------
-# Delivered data layer (overlay = the only source of e2e verdicts)
+# Open-weight main sweep: exact run-time quantities only (no delivered rate)
+# ----------------------------------------------------------------------------
+def _exact(c) -> dict:
+    """rq.Cell -> the exact-cell dict the drawing helpers take."""
+    return {"n": c.n, "ok": c.s, "cens": 0, "low": c.rate, "high": c.rate,
+            "exact": True}
+
+
+def sweep_rate(model: str, task: str, arm: str) -> dict:
+    """Main sweep, think=off. no-tools arm: the unaided rate (the harness's
+    grade of the full answer, made at run time). Tool arms: the tool-verified
+    rate (a tool response held a correct result). Both exact."""
+    return _exact(rq.cell_success(model, task, arm))
+
+
+# ----------------------------------------------------------------------------
+# Frontier delivered data layer (overlay = the only source of e2e verdicts)
 # ----------------------------------------------------------------------------
 _E2E: dict[str, dict] = {}
 
@@ -78,12 +107,6 @@ def e2e_cells(corpus: str) -> dict:
     if corpus not in _E2E:
         _E2E[corpus] = load_e2e_cells(corpus, OVERLAY)
     return _E2E[corpus]
-
-
-def deliv(model: str, task: str, arm: str, *, corpus: str = "sweep5v2-live",
-          think: str = THINK, run_tag: str = "") -> dict | None:
-    cond = "no-tools" if arm == "nt-neut" else "tools_all_minimal"
-    return e2e_cells(corpus).get((model, think, cond, run_tag, arm, task))
 
 
 def frontier_wt(tier_corpus: str, task: str) -> dict:
@@ -117,19 +140,14 @@ def frontier_call(tier_corpus: str, task: str) -> tuple[int, int]:
     return c, n
 
 
-def overlay_rows(model: str, cond: str, corpus: str = "sweep5v2-live",
-                 think: str = THINK) -> list[dict]:
-    p = OVERLAY / corpus / f"slurm_vllm_{model}_{think}_{cond}.e2e.jsonl"
-    return [json.loads(ln) for ln in p.open()]
-
-
 # ----------------------------------------------------------------------------
 # Drawing helpers
 # ----------------------------------------------------------------------------
 def bar_cell(ax, x, cell: dict | None, w: float, color: str, *, label=None,
              zorder=3, show_ci=True):
-    """Delivered bar for one cell: solid to `low`; hatched `low..high` when the
-    cell is a censoring bound; Wilson whisker when exact. Returns the bar."""
+    """Bar for one cell: solid to `low`; hatched `low..high` when the cell is
+    a censoring bound (frontier simulate only); Wilson whisker when exact.
+    Returns the bar."""
     if not cell or not cell.get("n"):
         return None
     lo, hi = cell["low"] * 100, cell["high"] * 100
@@ -146,8 +164,8 @@ def bar_cell(ax, x, cell: dict | None, w: float, color: str, *, label=None,
 
 
 def need_line(ax, x0, x1, cell: dict | None, *, label=None):
-    """NEED = the no-tools delivered reference, a line (exact) or a translucent
-    band (bound). Never a bar: arms are never pooled."""
+    """NEED = the no-tools reference, a line (exact) or a translucent band
+    (bound, frontier simulate only). Never a bar: arms are never pooled."""
     if not cell or not cell.get("n"):
         return
     lo, hi = cell["low"] * 100, cell["high"] * 100
@@ -208,12 +226,15 @@ def planbench_stages() -> dict[str, dict]:
 
 
 def _cascade_panel(ax, groups, stages, need, *, title, xlabels, stage_labels,
-                   colors, ymax=108, legend=False):
+                   colors, ymax=108, legend=False, slots=None):
     """groups: list of per-group dicts {stage_name: cell_or_rate}; stages: the
-    ordered stage keys; need: per-group cell for the reference line."""
+    ordered stage keys; need: per-group cell for the reference line. `slots`
+    sets the bar width to 0.8/slots when a panel draws fewer stages than the
+    other row (the open-weight row has two), so its bars do not grow fat."""
     ax.set_axisbelow(True)
     k = len(stages)
-    w = 0.8 / k
+    w = 0.8 / (slots or k)
+    half = k * w / 2 + 0.05
     x = np.arange(len(groups))
     for si, (skey, slabel, col) in enumerate(zip(stages, stage_labels, colors)):
         for gi, g in enumerate(groups):
@@ -231,7 +252,7 @@ def _cascade_panel(ax, groups, stages, need, *, title, xlabels, stage_labels,
                 ax.text(cx, min(cell * 100, ymax - 3) + 1.2, f"{cell*100:.0f}",
                         ha="center", va="bottom", fontsize=6.5, color=rq.C_INK, zorder=6)
     for gi, g in enumerate(groups):
-        need_line(ax, x[gi] - 0.45, x[gi] + 0.45, need[gi],
+        need_line(ax, x[gi] - half, x[gi] + half, need[gi],
                   label=("no-tools (NEED)" if gi == 0 else None))
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels, fontsize=7.5)
@@ -283,26 +304,25 @@ def fig_funnel(save_name: str) -> Path:
     for hh, ll in zip(h, l):
         if ll.startswith("FORMALIZE") or ll == "tool plan found":
             handles.append(hh); labels.append(ll)
-    # Row 2: open roster validate_* (plain arm, canonical, think=off)
+    # Row 2: open roster validate_* (plain arm, canonical, think=off). CALL and
+    # tool-verified only: the main sweep has no delivered rate for these cells.
     vtasks = ["validate_domain", "validate_problem", "validate_plan"]
     for ax, m in zip(axes[1], rq.MODELS_9B):
         groups, need = [], []
         for t in vtasks:
-            d = deliv(m, t, "tl-neut")
             groups.append({"call": rq.cell_toolsel(m, t, "tl-neut").rate,
-                           "tv": d["tv_ok"] / d["tv_n"], "deliv": d})
-            need.append(deliv(m, t, "nt-neut"))
-        _cascade_panel(ax, groups, ["call", "tv", "deliv"], need,
+                           "tv": rq.cell_success(m, t, "tl-neut").rate})
+            need.append(sweep_rate(m, t, "nt-neut"))
+        _cascade_panel(ax, groups, ["call", "tv"], need,
                        title=f"{rq.MODEL_DISP[m]} · with-tools (plain), canonical, think=off",
                        xlabels=[TASK_SHORT[t] for t in vtasks],
-                       stage_labels=["tool called (CALL)", "tool result correct",
-                                     "delivered correct"],
-                       colors=[C_CALL, C_TV, C_DELIV])
+                       stage_labels=["tool called (CALL)", "tool result correct"],
+                       colors=[C_CALL, C_TV], slots=2.5)
     axes[0][0].set_ylabel("share of with-tools trials (%)")
     axes[1][0].set_ylabel("share of with-tools trials (%)")
-    fig.suptitle("The funnel: of every with-tools trial, how many call the tool, get a "
-                 "correct tool result, and deliver a correct answer  ·  dashed = no-tools "
-                 "delivered (NEED); hatched = censoring bound",
+    fig.suptitle("The funnel: share of with-tools trials that call the tool, get a "
+                 "correct tool result and (top row) deliver a correct answer  ·  dashed = "
+                 "no-tools rate (NEED); hatched = censoring bound",
                  fontsize=10.5, fontweight="bold", color=rq.C_INK, y=1.01)
     fig.legend(handles, labels, loc="lower center", ncol=6, frameon=False,
                bbox_to_anchor=(0.5, -0.045), fontsize=8)
@@ -311,12 +331,15 @@ def fig_funnel(save_name: str) -> Path:
 
 
 # ----------------------------------------------------------------------------
-# Fig — success by arm on the delivered surface (solve / simulate)
+# Fig — solve / simulate: open-weight sweep panel beside the frontier panel
 # ----------------------------------------------------------------------------
-def _roster_panel(ax, task: str, *, corpus: str, run_tag: str, think: str,
-                  models: list[str], arms: list[str], title: str, tv_ticks=True,
-                  legend=True):
+def _sweep_panel(ax, task: str, *, models: list[str], title: str):
+    """Open-weight panel, main sweep, think=off. Grey bar = unaided rate;
+    coloured bars = TOOL-VERIFIED rate of each tool arm. Every cell is exact:
+    solid bar, Wilson 95% whisker, value above the whisker. No delivered
+    quantity is drawn here (the sweep has none for its tool arms)."""
     ax.set_axisbelow(True)
+    arms = rq.ARMS
     x = np.arange(len(models))
     w = 0.8 / len(arms)
     YMAX = 108
@@ -328,19 +351,20 @@ def _roster_panel(ax, task: str, *, corpus: str, run_tag: str, think: str,
     for i, arm in enumerate(arms):
         for j, m in enumerate(models):
             cx = x[j] + (i - (len(arms) - 1) / 2) * w
-            cell = deliv(m, task, arm, corpus=corpus, think=think, run_tag=run_tag)
+            cell = sweep_rate(m, task, arm)
             bar_cell(ax, cx, cell, w * 0.95, rq.ARM_COLOR[arm],
-                     label=(rq.ARM_DISP[arm] if j == 0 else None))
-            _label_top(ax, cx, cell, ymax=YMAX)
-            if tv_ticks and cell and cell.get("tv_n") and arm != "nt-neut":
-                tv_tick(ax, cx, w * 0.95, cell["tv_ok"] / cell["tv_n"] * 100)
+                     label=(SWEEP_ARM_LABEL[arm] if j == 0 else None))
+            top = wilson_ci(cell["ok"], cell["n"])[1] * 100
+            ax.text(cx, min(top, YMAX - 5) + 1.0, f"{cell['low'] * 100:.0f}",
+                    ha="center", va="bottom", fontsize=6.5, color=rq.C_INK, zorder=6)
     ax.set_xticks(x)
     ax.set_xticklabels([rq.MODEL_DISP[m] for m in models], rotation=12)
     ax.set_title(title, fontsize=9.5)
+    ax.set_ylabel("unaided rate / tool-verified rate (%)")
     ax.grid(axis="y")
     rq._despine(ax)
-    if legend:
-        ax.legend(loc="upper left", fontsize=7, framealpha=0.92)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=3, fontsize=7,
+              frameon=False, columnspacing=1.4, handlelength=1.4)
 
 
 def _frontier_panel(ax, task: str, *, title: str):
@@ -361,43 +385,38 @@ def _frontier_panel(ax, task: str, *, title: str):
     ax.set_xticks(x)
     ax.set_xticklabels([d for _, d, _ in TIERS], rotation=0)
     ax.set_title(title, fontsize=9.5)
+    ax.set_ylabel("delivered success (%)")
     ax.grid(axis="y")
     rq._despine(ax)
     ax.legend(loc="upper left", fontsize=7, framealpha=0.92)
 
 
-def fig_solve(save_name: str) -> Path:
+def _fig_sweep_and_frontier(task: str, save_name: str, *, frontier_note: str) -> Path:
     fig, (axL, axR) = plt.subplots(1, 2, figsize=(11.0, 4.2),
                                    gridspec_kw={"width_ratios": [2.2, 1]})
-    _roster_panel(axL, "solve", corpus="sweep5v2-live", run_tag="", think=THINK,
-                  models=rq.CHART_MODELS, arms=rq.ARMS,
-                  title=f"open-weight roster · canonical corpus · think={THINK}")
-    _frontier_panel(axR, "solve", title="frontier tiers · canonical · prompt v11")
-    axL.set_ylabel("delivered success (%)")
-    fig.suptitle("solve — delivered success by arm  ·  hatched = censoring bound; "
-                 "dotted tick = tool-verified (mechanism layer)",
+    _sweep_panel(axL, task, models=rq.CHART_MODELS,
+                 title=f"open-weight models · main sweep · think={THINK} · "
+                       "tool bars are tool-verified rates")
+    _frontier_panel(axR, task, title="frontier tiers · canonical · prompt v11")
+    fig.suptitle(f"{task}  ·  open-weight: unaided and tool-verified rates  ·  "
+                 f"frontier: delivered success ({frontier_note})",
                  fontsize=10.5, fontweight="bold", color=rq.C_INK, y=1.02)
     fig.tight_layout()
     return _savepdf(fig, save_name)
+
+
+def fig_solve(save_name: str) -> Path:
+    return _fig_sweep_and_frontier("solve", save_name,
+                                   frontier_note="dotted tick = tool-verified")
 
 
 def fig_simulate(save_name: str) -> Path:
-    fig, (axL, axR) = plt.subplots(1, 2, figsize=(11.0, 4.2),
-                                   gridspec_kw={"width_ratios": [2.2, 1]})
-    # Canonical open-roster simulate is censored on both arms (vacuous bounds),
-    # so the open-roster delivered picture is the independent full-storage
-    # rerun (iss024d, think=on, parser off) — a separate apparatus, labeled.
-    _roster_panel(axL, "simulate", corpus="iss024d-e2e-live", run_tag="iss024d-e2e",
-                  think="on", models=rq.CHART_MODELS, arms=["tl-neut", "tl-ster"],
-                  title="open-weight roster · independent full-storage rerun "
-                        "(think=on, separate apparatus)")
-    _frontier_panel(axR, "simulate", title="frontier tiers · canonical · prompt v11")
-    axL.set_ylabel("delivered success (%)")
-    fig.suptitle("simulate — delivered success by arm  ·  hatched = censoring bound; "
-                 "dotted tick = tool-verified (mechanism layer)",
-                 fontsize=10.5, fontweight="bold", color=rq.C_INK, y=1.02)
-    fig.tight_layout()
-    return _savepdf(fig, save_name)
+    # Open-weight panel: the main sweep's own unaided rate (0 format-exact on
+    # every model) and tool-verified rates. The earlier think=on full-storage
+    # rerun (iss024d) that this panel used to draw is no longer in the paper.
+    return _fig_sweep_and_frontier(
+        "simulate", save_name,
+        frontier_note="hatched = censoring bound; dotted tick = tool-verified")
 
 
 # ----------------------------------------------------------------------------
@@ -454,199 +473,139 @@ def fig_mechanism(task: str, save_name: str) -> Path:
 
 
 # ----------------------------------------------------------------------------
-# Fig — token quadrant on the delivered surface
+# Fig — tokens per trial by arm (tokens only; no success axis)
 # ----------------------------------------------------------------------------
-def _pooled_deliv(task: str, arm: str) -> dict:
-    """Pooled (≥9B) delivered aggregate: n, ok, cens, low, high."""
-    n = ok = cens = 0
-    for m in rq.MODELS_9B:
-        c = deliv(m, task, arm)
-        if c:
-            n += c["n"]; ok += c["ok"]; cens += c["cens"]
-    return {"n": n, "ok": ok, "cens": cens, "low": ok / n if n else 0.0,
-            "high": (ok + cens) / n if n else 0.0}
+# Two-colour categorical pair for the tool arms, validated with the dataviz
+# skill's validate_palette.js on a white surface (all pairs: CVD dE 24.7,
+# normal-vision dE 33.6, both >= 3:1). The no-tools arm carries no hue: it is
+# the ink-coloured start tick. Marker shape repeats the arm identity.
+TOK_C = {"tl-neut": "#2a78d6", "tl-ster": "#eb6834"}
+TOK_MARK = {"tl-neut": "o", "tl-ster": "D"}
+TOK_LANE = {"tl-neut": -0.17, "tl-ster": +0.17}   # plain above, steered below
 
 
-def _pooled_tokens(task: str, arm: str) -> int:
-    rows = [r for r in rq._pooled_rows(rq.MODELS_9B, arm)
-            if r["task"] == task and r.get("tokens")]
-    return sum(int(r["tokens"].get("prompt", 0) or 0)
-               + int(r["tokens"].get("completion", 0) or 0) for r in rows)
-
-
-def _cop_range(task: str, arm: str) -> tuple[float, float]:
-    """Delivered cost-of-pass as a range: Σtokens ÷ (ok+cens) .. Σtokens ÷ ok."""
-    d, tok = _pooled_deliv(task, arm), _pooled_tokens(task, arm)
-    lo = tok / (d["ok"] + d["cens"]) if d["ok"] + d["cens"] else float("inf")
-    hi = tok / d["ok"] if d["ok"] else float("inf")
-    return lo, hi
+def _mean_tokens(model: str, task: str, arm: str) -> float:
+    """Mean total tokens per trial (input + output, summed over turns)."""
+    st = bd.token_stats(bd.CELLS.get((model, THINK, arm), []), task)
+    assert st["n"], (model, task, arm)
+    return st["total"]
 
 
 def fig_token_quadrant(save_name: str) -> Path:
-    fig, axes = plt.subplots(1, len(rq.ALL_TASKS), figsize=(13.2, 3.6), sharey=True)
-    for ax, task in zip(axes, rq.ALL_TASKS):
+    """Dumbbell per (model, task): the tick is the no-tools arm, and one line
+    runs from it to each tool arm's marker. One panel per model, one row per
+    task, one shared log axis."""
+    from matplotlib.lines import Line2D
+    tasks = rq.ALL_TASKS
+    fig, axes = plt.subplots(1, len(rq.MODELS_9B), figsize=(8.6, 2.9), sharey=True)
+    y = np.arange(len(tasks))
+    for ax, m in zip(axes, rq.MODELS_9B):
         ax.set_axisbelow(True)
-        for m in rq.MODELS_9B:
-            st0 = bd.token_stats(bd.CELLS.get((m, THINK, "nt-neut"), []), task)
-            st1 = bd.token_stats(bd.CELLS.get((m, THINK, "tl-ster"), []), task)
-            c0, c1 = deliv(m, task, "nt-neut"), deliv(m, task, "tl-ster")
-            if not (st0["n"] and st1["n"] and c0 and c1):
-                continue
-            x0, y0, y0h = st0["total"], c0["low"] * 100, c0["high"] * 100
-            x1, y1, y1h = st1["total"], c1["low"] * 100, c1["high"] * 100
-            col = rq.MODEL_COLOR[m]
-            ax.annotate("", xy=(x1, y1), xytext=(x0, y0), zorder=3,
-                        arrowprops=dict(arrowstyle="-|>", color=col, lw=1.6,
-                                        shrinkA=4, shrinkB=4, alpha=0.9))
-            for xx, yy, yh in ((x0, y0, y0h), (x1, y1, y1h)):
-                if yh > yy + 1e-9:   # censoring bound: vertical hatched range
-                    ax.vlines(xx, yy, yh, color=col, lw=3.5, alpha=0.25, zorder=2)
-            ax.scatter([x0], [y0], s=26, color="white", edgecolor=col,
-                       linewidth=1.4, zorder=4)
-            ax.scatter([x1], [y1], s=30, color=col, edgecolor="white",
-                       linewidth=0.8, zorder=4,
-                       label=rq.MODEL_DISP[m] if task == rq.ALL_TASKS[0] else None)
-        nt_lo, nt_hi = _cop_range(task, "nt-neut")
-        tl_lo, tl_hi = _cop_range(task, "tl-ster")
-        if nt_hi == float("inf") or tl_hi == float("inf"):
-            label, col = "cost-of-pass: censored on canonical", rq.C_SOFT
-        else:
-            m_lo, m_hi = tl_lo / nt_hi, tl_hi / nt_lo
-            col = "#2E7D32" if m_hi < 1 else rq.C_SOFT
-            label = (f"cost-of-pass {m_lo:.1f}×" if abs(m_hi - m_lo) < 0.05
-                     else f"cost-of-pass {m_lo:.1f}–{m_hi:.1f}×")
-        ax.text(0.5, 0.045, label, transform=ax.transAxes, ha="center",
-                va="bottom", fontsize=7.5, fontweight="bold", color=col,
-                bbox=dict(boxstyle="round,pad=0.22", fc="white", ec=rq.C_RULE,
-                          lw=0.7, alpha=0.92), zorder=6)
+        for i, task in enumerate(tasks):
+            x0 = _mean_tokens(m, task, "nt-neut")
+            ax.vlines(x0, i - 0.32, i + 0.32, color=rq.C_INK, lw=2.0, zorder=4,
+                      capstyle="round")
+            for arm in ("tl-neut", "tl-ster"):
+                x1, yy = _mean_tokens(m, task, arm), i + TOK_LANE[arm]
+                ax.hlines(yy, x0, x1, color=rq.C_SPINE, lw=1.3, zorder=2)
+                ax.scatter([x1], [yy], s=(34 if arm == "tl-neut" else 28),
+                           marker=TOK_MARK[arm], color=TOK_C[arm], edgecolor="white",
+                           linewidth=1.0, zorder=5)
         ax.set_xscale("log")
-        ax.set_xlim(500, 60000)
-        ax.set_ylim(-4, 106)
-        ax.set_title(rq.TASK_DISP[task], fontsize=9.5)
-        ax.set_xlabel("tokens/trial (log)", fontsize=8)
-        ax.xaxis.set_major_locator(mticker.LogLocator(base=10, numticks=6))
-        ax.xaxis.set_major_formatter(mticker.LogFormatterMathtext(base=10))
-        ax.xaxis.set_minor_formatter(mticker.NullFormatter())
-        ax.grid(True, which="major", axis="both")
+        ax.set_xlim(1000, 32000)
+        ax.set_xticks([1000, 2000, 5000, 10000, 20000])
+        ax.set_xticklabels(["1K", "2K", "5K", "10K", "20K"])
+        ax.xaxis.set_minor_locator(mticker.NullLocator())
+        ax.set_ylim(len(tasks) - 0.45, -0.55)
+        ax.set_yticks(y)
+        ax.set_yticklabels([rq.TASK_DISP[t] for t in tasks])
+        ax.set_title(rq.MODEL_DISP[m], fontsize=9.5)
+        ax.grid(True, which="major", axis="x")
         rq._despine(ax)
-    axes[0].set_ylabel("delivered success (%)")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False,
-               bbox_to_anchor=(0.5, -0.09), fontsize=8)
-    fig.suptitle("What the tokens buy — total tokens/trial vs DELIVERED success, "
-                 f"arrows run no-tools (open) to +tool steered (filled)  ·  ≥9B, think={THINK}; "
-                 "translucent bars = censoring bound",
-                 fontsize=10.5, fontweight="bold", color=rq.C_INK, y=1.05)
+    axes[1].set_xlabel("mean total tokens per trial (log scale)")
+    handles = [
+        Line2D([], [], color=rq.C_INK, marker="|", markersize=10, markeredgewidth=2.0,
+               linestyle="none", label="no-tools"),
+        Line2D([], [], color=TOK_C["tl-neut"], marker=TOK_MARK["tl-neut"], markersize=6,
+               markeredgecolor="white", linestyle="none", label="+tool (plain)"),
+        Line2D([], [], color=TOK_C["tl-ster"], marker=TOK_MARK["tl-ster"], markersize=5.5,
+               markeredgecolor="white", linestyle="none", label="+tool (steered)"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=3, frameon=False,
+               bbox_to_anchor=(0.5, -0.08), fontsize=8)
+    fig.suptitle("Tokens per trial by arm (input + output, summed over turns)  ·  "
+                 f"≥9B, think={THINK}, main sweep",
+                 fontsize=10.5, fontweight="bold", color=rq.C_INK, y=1.03)
     fig.tight_layout()
     return _savepdf(fig, save_name)
 
 
 # ----------------------------------------------------------------------------
-# Fig — failure taxonomy on the delivered surface (per task × arm, pooled ≥9B)
+# Fig — outcome of the unaided trials (per task, pooled ≥9B, run-time grade)
 # ----------------------------------------------------------------------------
-# Delivered outcome categories. Tool-arm rows come from the overlay e2e_reason;
-# no-tools rows on the canonical corpus keep their online (already delivered)
-# grade, whose failure_reason is read from the raw trial.
-E2E_TO_CAT = {
-    "verdict_stated_ok": "delivered ok", "plan_valid": "delivered ok",
-    "trajectory_ok": "delivered ok",
-    "censored_at_snapshot_cap": "censored (bound)",
-    "truncated_empty": "truncated",
-    "delegation_terminal_credit": "tool call, no answer",
-    "empty_stop_not_tool_verified": "tool call, no answer",
-    "empty_response": "unparseable",
-    "format_parse_fail": "unparseable", "no_plan_extracted": "unparseable",
-    "no_verdict_stated": "unparseable",
-    "verdict_stated_wrong": "wrong content", "plan_invalid": "wrong content",
-    "trajectory_mismatch": "wrong content",
-    "no_ground_truth": "censored (bound)",
-    "plan_validation_transport_error": "censored (bound)",
-}
+# No-tools arm only. The harness graded each unaided answer in full while the
+# run was in progress, so every trial is correct or carries one failure_reason.
+# The tool arms are not drawn: the main sweep has no delivered grade for them.
 FR_TO_CAT = {
     "truncated_no_answer": "truncated", "think_overflow": "truncated",
     "format_parse_fail": "unparseable", "verdict_mismatch": "wrong content",
     "plan_invalid": "wrong content", "result_mismatch": "wrong content",
 }
-CAT_ORDER = ["delivered ok", "censored (bound)", "truncated", "tool call, no answer",
-             "unparseable", "wrong content"]
-CAT_COLOR = {
-    "delivered ok": "#6A994E", "censored (bound)": "#D9DEE5", "truncated": "#9AA3AE",
-    "tool call, no answer": "#E07B39", "unparseable": "#8E5572", "wrong content": "#C44E52",
-}
+CAT_ORDER = ["correct", "truncated", "unparseable", "wrong content"]
+CAT_COLOR = {"correct": "#6A994E", "truncated": "#9AA3AE", "unparseable": "#8E5572",
+             "wrong content": "#C44E52"}
+CAT_INK = {"correct": "white", "truncated": rq.C_INK, "unparseable": "white",
+           "wrong content": "white"}
 
 
-def _raw_index(model: str, cond: str) -> dict:
-    """Raw trials of one (model, think=off, cond) keyed by trial identity, for
-    the no-tools rows whose overlay reason is `stored_online_grade`."""
-    arms = ["nt-neut"] if cond == "no-tools" else ["tl-neut", "tl-ster"]
-    idx = {}
-    for arm in arms:
-        for r in bd.CELLS.get((model, THINK, arm), []):
-            idx[(r["task"], r["domain_name"], r["problem_name"],
-                 r.get("plan_label") or "", r["prompt_variant"])] = r
-    return idx
-
-
-def _cell_failure_mix(task: str, arm: str) -> dict:
+def _unaided_outcome_mix(task: str) -> dict:
     counts = {c: 0 for c in CAT_ORDER}
     n = 0
     for m in rq.MODELS_9B:
-        cond = "no-tools" if arm == "nt-neut" else "tools_all_minimal"
-        raw = _raw_index(m, cond)
-        for r in overlay_rows(m, cond):
+        for r in bd.CELLS.get((m, THINK, "nt-neut"), []):
             if r["task"] != task:
                 continue
-            pv = r["prompt_variant"]
-            if arm == "tl-neut" and pv >= 14 or arm == "tl-ster" and pv <= 13:
-                continue
             n += 1
-            reason = r["e2e_reason"]
-            if reason == "stored_online_grade":
-                if r["e2e_strict"] is True:
-                    cat = "delivered ok"
-                else:
-                    fr = raw.get((task, r["domain_name"], r["problem_name"],
-                                  r.get("plan_label") or "", pv), {}).get("failure_reason")
-                    cat = FR_TO_CAT.get(fr, "wrong content")
+            if r["success"]:
+                cat = "correct"
             else:
-                cat = E2E_TO_CAT.get(reason)
-                if cat is None:
-                    raise KeyError(f"unmapped e2e_reason {reason!r}")
+                fr = r.get("failure_reason")
+                if fr not in FR_TO_CAT:
+                    raise KeyError(f"unmapped failure_reason {fr!r}")
+                cat = FR_TO_CAT[fr]
             counts[cat] += 1
-    return {c: (counts[c] / n * 100 if n else 0.0) for c in CAT_ORDER} | {"n": n}
+    assert n, task
+    return {c: counts[c] / n * 100 for c in CAT_ORDER} | {"n": n}
 
 
 def fig_failure_taxonomy(save_name: str) -> Path:
-    arms = rq.ARMS
-    # legend shows only categories with mass somewhere in this figure
-    all_mixes = [_cell_failure_mix(t, a) for t in rq.ALL_TASKS for a in arms]
-    present = {c for c in CAT_ORDER if any(mx[c] > 0 for mx in all_mixes)}
-    fig, axes = plt.subplots(1, len(rq.ALL_TASKS), figsize=(13.2, 3.7), sharey=True)
-    for ax, task in zip(axes, rq.ALL_TASKS):
-        ax.set_axisbelow(True)
-        x = np.arange(len(arms))
-        bottoms = np.zeros(len(arms))
-        mixes = [_cell_failure_mix(task, a) for a in arms]
-        for cat in CAT_ORDER:
-            vals = np.array([mx[cat] for mx in mixes])
-            ax.bar(x, vals, 0.74, bottom=bottoms, color=CAT_COLOR[cat],
-                   edgecolor="white", linewidth=0.5, zorder=3,
-                   hatch=(HATCH if cat == "censored (bound)" else None),
-                   label=cat if (task == rq.ALL_TASKS[0] and cat in present) else None)
-            bottoms += vals
-        ax.set_xticks(x)
-        ax.set_xticklabels(["no-tools", "+plain", "+steered"], rotation=18, fontsize=7.5)
-        ax.set_ylim(0, 100)
-        ax.set_title(rq.TASK_DISP[task], fontsize=9.5)
-        ax.grid(axis="y")
-        rq._despine(ax)
-    axes[0].set_ylabel("share of trials (%)")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(present), frameon=False,
-               bbox_to_anchor=(0.5, -0.06), fontsize=8)
-    fig.suptitle("How answers fail on the delivered surface — per-trial outcome composition "
-                 f"by task and arm  ·  ≥9B, think={THINK}, canonical corpus",
-                 fontsize=10.5, fontweight="bold", color=rq.C_INK, y=1.04)
+    tasks = rq.ALL_TASKS
+    mixes = [_unaided_outcome_mix(t) for t in tasks]
+    fig, ax = plt.subplots(figsize=(8.6, 2.7))
+    ax.set_axisbelow(True)
+    y = np.arange(len(tasks))
+    left = np.zeros(len(tasks))
+    for cat in CAT_ORDER:
+        vals = np.array([mx[cat] for mx in mixes])
+        ax.barh(y, vals, 0.66, left=left, color=CAT_COLOR[cat], edgecolor="white",
+                linewidth=0.8, zorder=3, label=cat)
+        for yi, v, l0 in zip(y, vals, left):
+            if v >= 5.0:          # print the share only where it fits the segment
+                ax.text(l0 + v / 2, yi, f"{v:.0f}", ha="center", va="center",
+                        fontsize=7, color=CAT_INK[cat], zorder=5)
+        left += vals
+    ax.set_yticks(y)
+    ax.set_yticklabels([rq.TASK_DISP[t] for t in tasks])
+    ax.set_ylim(len(tasks) - 0.45, -0.55)
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("share of no-tools trials (%)")
+    ax.grid(axis="x")
+    rq._despine(ax)
+    fig.legend(*ax.get_legend_handles_labels(), loc="lower center", ncol=len(CAT_ORDER),
+               frameon=False, bbox_to_anchor=(0.5, -0.07), fontsize=8)
+    fig.suptitle("Outcome of the unaided (no-tools) trials by task, graded at run time  ·  "
+                 f"≥9B, think={THINK}, canonical corpus",
+                 fontsize=10.5, fontweight="bold", color=rq.C_INK, y=1.03)
     fig.tight_layout()
     return _savepdf(fig, save_name)
 
@@ -663,17 +622,23 @@ def main() -> int:
     fig_token_quadrant("token_quadrant.pdf")
     fig_failure_taxonomy("failure_taxonomy.pdf")
     # sanity prints for the paper text (verify-claims anchors)
-    print("\ndelivered cost-of-pass multipliers (tl-ster ÷ nt-neut, pooled ≥9B, range):")
+    print("\nmean total tokens per trial (≥9B, think=off): no-tools / plain / steered")
+    for m in rq.MODELS_9B:
+        for t in rq.ALL_TASKS:
+            a, b, c = (_mean_tokens(m, t, arm) for arm in rq.ARMS)
+            print(f"  {m:16s} {t:18s} {a:7.0f} / {b:7.0f} / {c:7.0f}   "
+                  f"x{b / a:.1f} plain, x{c / a:.1f} steered")
+    print("\nunaided outcome mix (≥9B pooled, no-tools, run-time grade):")
     for t in rq.ALL_TASKS:
-        nt_lo, nt_hi = _cop_range(t, "nt-neut"); tl_lo, tl_hi = _cop_range(t, "tl-ster")
-        if nt_hi == float("inf") or tl_hi == float("inf"):
-            print(f"  {t:18s} censored on canonical")
-        else:
-            print(f"  {t:18s} {tl_lo/nt_hi:.2f}–{tl_hi/nt_lo:.2f}×")
-    print("\ndelivered failure mix (≥9B, no-tools):")
-    for t in rq.ALL_TASKS:
-        mix = _cell_failure_mix(t, "nt-neut")
-        print(f"  {t:18s} " + ", ".join(f"{c} {mix[c]:.1f}%" for c in CAT_ORDER if mix[c] > 0.5))
+        mix = _unaided_outcome_mix(t)
+        print(f"  {t:18s} n={mix['n']:5d}  "
+              + ", ".join(f"{c} {mix[c]:.1f}%" for c in CAT_ORDER if mix[c] > 0))
+    print("\nopen-weight sweep cells drawn in solve.pdf / simulate.pdf "
+          "(unaided / tool-verified plain / tool-verified steered):")
+    for t in ("solve", "simulate"):
+        for m in rq.CHART_MODELS:
+            print(f"  {t:9s} {m:16s} "
+                  + " / ".join(f"{sweep_rate(m, t, a)['low'] * 100:5.1f}" for a in rq.ARMS))
     print("\nfrontier funnel (CALL / tool-correct / delivered low–high / NEED v11):")
     for tier, disp, corpus in TIERS:
         for t in rq.ALL_TASKS:
