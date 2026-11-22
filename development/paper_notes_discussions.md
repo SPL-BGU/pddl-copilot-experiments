@@ -197,3 +197,15 @@
 - **Decided (Omer):** shorten the mentions of the six left-out simulate problems, push and
   merge. Methods and RQ1 now each say it in one short clause; RQ3 does not discuss it.
 - PR #143 (the RQ3 simulate re-grade) is merged and on Overleaf.
+
+## 2026-11-22 (late night) — Track view; the program-chair item dropped
+
+- **Session's recommendation (not a decision):** the main track, as an empirical and
+  evaluation paper; a demo of the tool stays possible later. The decision not to fix a
+  track stands.
+- **Decided (Omer):** the program-chair conflict is not an item for us. The co-author who
+  chairs the program handles the conference's rule himself, as for any paper by his
+  students. Removed from `roadmap.md` §8.
+- **Decided (Omer):** keep the harness attachment and the anonymity sweep open until the
+  submission is near; the comment switch in the tex stays on; the arXiv number in the
+  appendix prompt stays as it is.
