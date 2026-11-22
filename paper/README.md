@@ -2,7 +2,7 @@
 
 This directory holds the paper: a full manuscript (25 pages), not a scaffold.
 
-- **Target venue:** ICAPS 2027, perhaps the demo track (advisors, 2026-11-22). JAIR and
+- **Target venue:** ICAPS 2027 (advisors, 2026-11-22), with no track fixed on purpose. JAIR and
   TMLR are no longer the target; AAAI-27 was dropped on 2026-08-30.
 - **Typesetting:** the AAAI-27 author kit (`aaai2027.sty`, `[submission]` mode), which is
   the format ICAPS 2027 asks for, and still **anonymous**. Write in that format with no

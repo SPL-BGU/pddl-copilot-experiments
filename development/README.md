@@ -18,7 +18,7 @@ Four files answer almost every question:
 | start here | for |
 |---|---|
 | **`STATUS.md`** | what is left to do. Single stable entry point, **edited in place**; never write a dated successor |
-| **`roadmap.md`** | the plan the work follows since 2026-11-22: the three research questions and their metrics, which data answers each, milestones M1 to M6, what happened to each earlier item, and the decisions waiting for Omer |
+| **`roadmap.md`** | the plan the work follows since 2026-11-22: the goal (complete the paper), the three research questions and their metrics, which data answers each, milestones M1 to M5, and the one decision waiting for Omer |
 | **`NUMBERS.md`** | the frozen value of every headline figure and the stale readings it replaces. **Check before quoting anything** |
 | **`MOVES.md`** | old path to new path (the reorganisations of 2026-08-29 and 2026-09-18) and every file deleted on 2026-10-10. Resolves the old paths cited in the append-only logs and in hash-pinned scripts |
 
@@ -27,16 +27,14 @@ Four files answer almost every question:
 | doc | what it is |
 |---|---|
 | `STATUS.md` · `roadmap.md` · `NUMBERS.md` · `MOVES.md` | the four above |
-| `advisor_brief.md` | one page written for the advisors before the 2026-11-22 meeting. Overtaken by that meeting (venue and research questions are decided); kept until Omer answers `roadmap.md` §7, decision 6 |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
-| `thesis_literature_review.md` | **M1: the thesis literature review, first full draft** (2026-11-22), with a reading list, a "to verify" list and questions for Omer |
-| `draft_B1_B2_related_work.md` | the related-work draft, every reference looked up and verified. **The base of the thesis literature review (M1)** |
-| `draft_B3_B5_methods.md` · `draft_C4_transcripts.md` | test data, prompts and grading facts; four example transcripts (readings await Omer's confirmation). **The base of the RQ1 experimental setting (M3)** |
+| `thesis_literature_review.md` | **M1: the literature review, first full draft** (2026-11-22; the paper's related-work section is written from it), with a reading list, a "to verify" list and questions for Omer |
+| `draft_B1_B2_related_work.md` | the related-work draft, every reference looked up and verified. **The base of the literature review (M1)** |
+| `draft_B3_B5_methods.md` · `draft_C4_transcripts.md` | test data, prompts and grading facts; four example transcripts (readings await Omer's confirmation). **The base of the RQ1 experimental setting in the paper (M3)** |
 | `draft_C5_E1a.md` | the hit list of retired wording and figures still in the tex. **The checklist for M5**; its two RQ framings are overtaken by the three RQs |
 | `draft_D5_cost_and_correa.md` · `draft_release_licence_models.md` | the verified Corrêa et al. facts (used by M1) and the cost notes; licence and model research for the release |
 | `draft_advisor_correa_comparison.md` (+ two `.docx`) | Omer's outline for the advisor discussion of 2026-11-22; not committed |
-| `draft_D1f_extension_prereg.md` · `draft_tracking_proposal.md` | **parked, off the path since 2026-11-22**: the extension's prereg draft (nothing frozen, nothing run) and the tracking design. Deleted once Omer answers `roadmap.md` §7, decision 6 |
 
 ## `reference/`: stable, never a status
 

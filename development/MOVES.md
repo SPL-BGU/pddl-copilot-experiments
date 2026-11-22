@@ -17,6 +17,16 @@ git checkout edb7267 -- <old path>
 | `development/handoff_20261109.md` | deleted | the 2026-11-09 work list followed the earlier plan. What still matters moved into `STATUS.md` (open PRs, the frozen check, data in a fresh checkout, hygiene); the 2026-11-09 decisions are in `paper_notes_discussions.md` |
 | `development/draft_E1_research_questions.md` | deleted | the open question it held (RQ1 to RQ6 against a two-gate framing) was settled by the advisors: the three questions of `roadmap.md` §2 |
 
+Later the same day Omer confirmed that work outside the three questions is dropped, not
+parked. Three more files went; they were **last present at commit `8dce9b6`** (same two
+commands, with `8dce9b6`):
+
+| old path | what happened | why |
+|---|---|---|
+| `development/draft_D1f_extension_prereg.md` | deleted | the prereg draft of the extension (new model families, the thinking-on rerun, harder items, the Corrêa follow-up runs). Never frozen, nothing ran from it, and no new runs are planned |
+| `development/draft_tracking_proposal.md` | deleted | the tracking design behind PR #132, which is closed; the plan is tracked in `STATUS.md` |
+| `development/advisor_brief.md` | deleted | the one-page brief written for the advisors before the meeting of 2026-11-22. The meeting answered or overtook its questions |
+
 ## Checkpoints pruned, 2026-11-09
 
 Omer (2026-11-09): keep the full-corpus checkpoints, remove the outdated ones. Every

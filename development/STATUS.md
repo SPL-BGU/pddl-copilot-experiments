@@ -1,11 +1,11 @@
 # STATUS — what is actually left
 
 *Content last refreshed: 2026-11-22 (replan after Omer's advisor meeting: ICAPS 2027,
-three research questions, the thesis comes first; the plan is now `roadmap.md`). Before
-that 2026-11-09 (the audit day: PRs #121 to #129 and #131 merged, the extension's
-decisions taken, the handoff written). Earlier refreshes, the extension's decisions of
-2026-11-09 and the closed-work tables this file used to carry are in git history and in
-`paper_notes_discussions.md`. Renamed from `remaining_work_20260811.md` on 2026-08-29.*
+three research questions, and the goal is to complete the paper; the plan is
+`roadmap.md`). Before that 2026-11-09 (the audit day: PRs #121 to #129 and #131 merged).
+Earlier refreshes and the closed-work tables this file used to carry are in git history
+and in `paper_notes_discussions.md`. Renamed from `remaining_work_20260811.md` on
+2026-08-29.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Update this file and move its date
@@ -13,29 +13,27 @@ decisions taken, the handoff written). Earlier refreshes, the extension's decisi
 
 ## The one-paragraph answer
 
-The advisors set the direction on 2026-11-22. The venue is **ICAPS 2027**, perhaps the
-demo track. The work is organised around **three research questions**: RQ1, do PDDL
-tools help an LLM do planning-related tasks; RQ2, does the LLM choose the right tool;
-RQ3, does it use the tool's output properly. Two action items come first, both for the
-thesis: **start the literature review**, and **finish RQ1 and write it in the thesis
-doc** (experimental setting and results). Almost all the data is already on disk, so
-what is left is analysis and writing; the planned extension (about 190K new trials) is
-off the path. **Everything is in `roadmap.md`**: the metrics per question, which data
-answers each one, milestones M1 to M6, what happened to each earlier item, and six
-decisions waiting for Omer. **M1 and M2 have first results (2026-11-22). Next: Omer
-reads the literature review draft and the RQ1 tables and answers `roadmap.md` §7; then
-M3, RQ1 in the thesis doc.**
+**The goal is to complete the paper**, and the goals are set by the decisions of Omer
+and his advisors. The venue is **ICAPS 2027**, with no track fixed on purpose. The paper
+is the thesis: Omer's thesis is composed of his papers, so there is no separate thesis
+document. The work is organised around **three research questions**: RQ1, do PDDL tools
+help an LLM do planning-related tasks; RQ2, does the LLM choose the right tool; RQ3,
+does it use the tool's output properly. The advisors' two action items, the literature
+review and RQ1 written up with its experimental setting and results, land in the paper.
+**No new runs**: the questions are answered from data already on disk. Everything is in
+`roadmap.md`. **M1 and M2 have first results (2026-11-22). Next: Omer answers the
+metric definitions (`roadmap.md` §6) and reads the literature review draft and the RQ1
+tables; then M3, RQ1 in the paper.**
 
 ## Milestones (`roadmap.md` §4)
 
 | # | milestone | state |
 |---|---|---|
-| M1 | Literature review, first full draft (for the thesis) | **draft written 2026-11-22**, `thesis_literature_review.md` (53 papers, 11 of them checked fresh that day; nine wanted papers listed as "to verify"; four questions for Omer at its end). Waits for Omer's read |
-| M2 | RQ1 analysis: FP/FN on validate_plan, simulate against trace length, solved against hardness, plan length | **first tables done 2026-11-22**: `tools/reanalysis/rq1_metrics.py` (reproduces the frozen readout's counts before computing anything), tables in `NUMBERS.md` "RQ1 metrics", five models. No new run was needed; the planner's runtime was already in the tool results. Left: Omer's read, figures, the object-count view, the shortest-plan pass if wanted |
-| M3 | RQ1 in the thesis doc: experimental setting and results | waits for M2; its base is `draft_B3_B5_methods.md` and `draft_C4_transcripts.md` |
-| M4 | RQ2 (tool choice) and RQ3 (use of the output): analysis and text | not started; data on disk |
-| M5 | The paper follows the three RQs | waits for M2 and M4, and for the track decision |
-| M6 | Demo material, if the demo track is chosen | waits for the 2027 demo call |
+| M1 | Literature review, and from it the paper's related-work section | **draft written 2026-11-22**, `thesis_literature_review.md` (53 papers, 11 of them checked fresh that day; nine wanted papers listed as "to verify"; four questions for Omer at its end). Waits for Omer's read |
+| M2 | RQ1 analysis: FP/FN on validate_plan, simulate against trace length, solved against hardness, plan length | **first tables done 2026-11-22**: `tools/reanalysis/rq1_metrics.py` (reproduces the frozen readout's counts before computing anything), tables in `NUMBERS.md` "RQ1 metrics", five models. Left: Omer's answer on the metric definitions, figures, the object-count view |
+| M3 | RQ1 in the paper: experimental setting and results | waits for M2; its base is `draft_B3_B5_methods.md` and `draft_C4_transcripts.md` |
+| M4 | RQ2 (tool choice) and RQ3 (use of the output): analysis, then in the paper | not started; data on disk |
+| M5 | The whole paper follows the three RQs | after M3 and M4 |
 
 ## Where each line of data stands
 
@@ -46,7 +44,7 @@ M3, RQ1 in the thesis doc.**
 | Claude runs (Sonnet 4.6, Haiku 4.5) | data final, full answers stored; their own runner, never pooled with the open models. Haiku's tool arm on the renamed corpus ran on 2026-07-12 and is analysed (PR #125) |
 | PlanBench | closed; in the tex (PR #114) |
 | Steering control (nt-ster H4) | closed 2026-08-29, all six units PASS; in the tex appendix |
-| The extension (Study 2 part 2) | **off the path** (2026-11-22). Its preparation is merged (new families pass the parser smoke, larger context windows work, the JSON constraint binds on request, the harder test items are built and VAL-checked) but no model ran on any of it. Nothing runs without a new go-ahead |
+| Built but never run: new model families, larger context windows, the binding JSON constraint, harder test items, the 120 larger IPC 2023 problems with planner ground truth | merged code and data, kept as they are. No model ran on any of it, and no run is planned (Omer, 2026-11-22: no new runs) |
 | Paper | the 09-19 text plus PRs #110, #111, #114, #115 and #123. Still organised by RQ1 to RQ6 and the scorecard; M5 replaces them. Already typeset with the AAAI-27 author kit, which is what ICAPS 2027 asks for |
 
 ## Rules that bind every step
@@ -96,12 +94,10 @@ come from the checkpoint zips (`checkpoints/delivered-rerun/README.md`, "Restore
 
 ## Venue and outside facts
 
-- **ICAPS 2027** (advisors, 2026-11-22), June 27 to July 2, 2027, Columbia, SC.
-  Main-track dates from the official call, read 2026-11-22: abstract **2026-12-07**,
-  paper **2026-12-14** (UTC-12), AAAI-27 author kit. The 2027 demo call is not published
-  yet; in 2026 the demo track asked for a short abstract in the AAAI template and a
-  video of at most 10 minutes, due in early April. Which track: `roadmap.md` §7,
-  decision 1.
+- **ICAPS 2027** (advisors, 2026-11-22), June 27 to July 2, 2027, Columbia, SC. **No
+  track is fixed** (Omer, 2026-11-22). Facts only, from the official call read that day:
+  the main track's abstract is due 2026-12-07 and its paper 2026-12-14 (UTC-12), in the
+  AAAI-27 author kit; the 2027 demo call is not published yet.
 - **Writing:** the venue's format only, no word cap (advisors, 2026-11-22).
 - **JAIR and TMLR:** no longer the target. AAAI-27: dropped earlier, the deadline passed.
 - **Budget:** a grant covers what is planned (Omer 2026-10-10). No spend is planned now.
@@ -110,7 +106,7 @@ come from the checkpoint zips (`checkpoints/delivered-rerun/README.md`, "Restore
 
 - **Who sets the goal (Omer, 2026-11-22):** from now on the project's goals are set by
   the decisions of Omer and his advisors. The agent recommends and carries out; it does
-  not add goals, reframe the research questions or bring back parked work by itself.
+  not add goals, reframe the research questions or bring back dropped work by itself.
 - **Research questions:** the three of `roadmap.md` §2 (advisors, 2026-11-22). The old
   open decision E1 is closed by this.
 - **The advisor meeting happened** (reported 2026-11-22), so the hold R7 on sending the
@@ -123,8 +119,8 @@ come from the checkpoint zips (`checkpoints/delivered-rerun/README.md`, "Restore
   the validator plugin 3.1.1 (SPL-BGU/pddl-copilot #60). The cluster's plugin venv still
   holds the old version (`launch-server.sh` never upgrades an existing `.venv`); it
   matters only if something runs there again.
-- Not planned: the BF16-35B precision control, the schema-salience probe, Sonnet-tier
-  PlanBench, and now the extension and the Corrêa follow-up runs (`roadmap.md` §5).
+- **No new runs** (Omer, 2026-11-22). Every planned experiment and feature that does
+  not serve the three questions is dropped, not parked.
 
 ## Open PRs (2026-11-22)
 
@@ -144,7 +140,7 @@ frozen package hash is unchanged. Conflicts with `main` were additive (lists and
   triggered succeeded.
 - **#138** ground truth for 120 larger IPC 2023 problems. The 1800 s pass on the hard
   tier is still partly done (17 and 11 runs pending in the two 1800 s rows of
-  `NUMBERS.md`), and no model has run on these problems.
+  `NUMBERS.md`). No model has run on these problems and none is planned to.
 
 **Closed 2026-11-22** (Omer accepted the recommendation): **#132** (tracking file seeded
 with the earlier plan) and **#137** (PlanBench tool prompts for the open models). Both
@@ -165,6 +161,5 @@ name Omer and BGU.
 
 ## Open decisions
 
-The six in `roadmap.md` §7: the ICAPS track; where the thesis doc lives; whether any
-new run is wanted (the larger problems, Claude with thinking on); the open PRs; the
-metric definitions; the parked drafts. None of them blocks M1.
+One: the RQ1 metric definitions, `roadmap.md` §6 (six choices, each with the other
+option beside it). The first five decisions of the replan are answered (`roadmap.md` §7).
