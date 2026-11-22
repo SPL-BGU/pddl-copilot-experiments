@@ -1,13 +1,15 @@
-# paper/ — the journal manuscript
+# paper/ — the manuscript
 
 This directory holds the paper: a full manuscript (25 pages), not a scaffold.
 
-- **Target venue:** JAIR, with TMLR as the fallback. AAAI-27 was dropped on 2026-08-30.
-- **Typesetting today:** still the AAAI-27 style (`aaai2027.sty`, `[submission]` mode), and
-  still **anonymous**. The reformat to the journal style, and adding the author block and
-  repository links, is one pre-submission step tracked in `development/STATUS.md` (N3).
-  Until then keep author names, affiliations, acknowledgements and self-identifying links
+- **Target venue:** ICAPS 2027, perhaps the demo track (advisors, 2026-11-22). JAIR and
+  TMLR are no longer the target; AAAI-27 was dropped on 2026-08-30.
+- **Typesetting:** the AAAI-27 author kit (`aaai2027.sty`, `[submission]` mode), which is
+  the format ICAPS 2027 asks for, and still **anonymous**. Write in that format with no
+  word cap. Keep author names, affiliations, acknowledgements and self-identifying links
   out of the tex.
+- **Structure to come:** the tex is still organised by RQ1 to RQ6 and the scorecard. The
+  three research questions of `development/roadmap.md` replace them (milestone M5).
 - **What is left to do** is in `development/STATUS.md`. **Which value of a figure to quote**
   is in `development/NUMBERS.md`. Check both before editing a claim.
 
