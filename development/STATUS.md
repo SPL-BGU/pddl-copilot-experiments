@@ -21,18 +21,19 @@ help an LLM do planning-related tasks; RQ2, does the LLM choose the right tool; 
 does it use the tool's output properly. The advisors' two action items, the literature
 review and RQ1 written up with its experimental setting and results, land in the paper.
 **No new runs**: the questions are answered from data already on disk. Everything is in
-`roadmap.md`. **M1 and M2 have first results (2026-11-22). Next: the rest of M2 (figures, the
-object-count view) and M4's analysis; Omer reads the literature review draft and the RQ1
-tables; then M3, RQ1 in the paper.**
+`roadmap.md`. **All the analysis for the three questions is done (2026-11-22): the RQ1, RQ2 and RQ3
+tables are in `NUMBERS.md`, and the literature review has a first draft. No paper text
+is written yet. Next: Omer reads the literature review draft and the tables; then M3,
+RQ1 in the paper.**
 
 ## Milestones (`roadmap.md` §4)
 
 | # | milestone | state |
 |---|---|---|
 | M1 | Literature review, and from it the paper's related-work section | **draft written 2026-11-22**, `thesis_literature_review.md` (53 papers, 11 of them checked fresh that day; nine wanted papers listed as "to verify"; four questions for Omer at its end). Waits for Omer's read |
-| M2 | RQ1 analysis: FP/FN on validate_plan, simulate against trace length, solved against hardness, plan length | **first tables done 2026-11-22**: `tools/reanalysis/rq1_metrics.py` (reproduces the frozen readout's counts before computing anything), tables in `NUMBERS.md` "RQ1 metrics", five models. The metric definitions are kept for now (Omer). Left: figures, the object-count view |
-| M3 | RQ1 in the paper: experimental setting and results | waits for M2; its base is `draft_B3_B5_methods.md` and `draft_C4_transcripts.md` |
-| M4 | RQ2 (tool choice) and RQ3 (use of the output): analysis, then in the paper | not started; data on disk |
+| M2 | RQ1 analysis: FP/FN on validate_plan, simulate against trace length, solved against hardness, plan length | **done 2026-11-22**: `tools/reanalysis/rq1_metrics.py` (reproduces the frozen readout's counts before computing anything), tables in `NUMBERS.md` "RQ1 metrics", five models, with the object-count view; three figures by `rq1_figures.py` in `tools/reanalysis/out/figs/`. The metric definitions are kept for now (Omer). Waits for Omer's read |
+| M3 | RQ1 in the paper: experimental setting and results | **next**; its base is `draft_B3_B5_methods.md`, `draft_C4_transcripts.md` and the RQ1 tables and figures |
+| M4 | RQ2 (tool choice) and RQ3 (use of the output): analysis, then in the paper | **analysis done 2026-11-22**: `tools/reanalysis/rq23_metrics.py`, tables in `NUMBERS.md` "RQ2 metrics" and "RQ3 metrics" (RQ3's rerun rows are the frozen readout's E4 cells, all 30 reproduced). The text waits for M3 |
 | M5 | The whole paper follows the three RQs | after M3 and M4 |
 
 ## Where each line of data stands

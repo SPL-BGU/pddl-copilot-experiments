@@ -72,10 +72,10 @@ Checked against the trial files on 2026-11-22. Two facts drive most of this tabl
 |---|---|---|
 | RQ1-1 FP/FN, validate_plan | every problem has 5 valid and 5 broken plans, labelled per trial; unaided and tool arms; rerun (3 open models) and Claude Sonnet 4.6 and Haiku 4.5 | tables done (`NUMBERS.md`, "RQ1 metrics") |
 | RQ1-2 simulate vs length | stored traces graded state by state against the answer key | tables done |
-| RQ1-3 solved vs hardness | success per problem, the reference plan length, and the planner's runtime (the solver returns it with every plan, so it is in the tool results) | tables done; the object-count view is still to add |
+| RQ1-3 solved vs hardness | success per problem, the reference plan length, the planner's runtime (the solver returns it with every plan, so it is in the tool results) and the object count | tables done |
 | RQ1-4 plan length | full delivered plans; the planner's plan inside each tool call | tables done |
-| RQ2 tool choice | tool names per trial for every tool trial: main sweep, rerun, Claude; thinking off and on; the plain, steered and neutral prompts | script to write |
-| RQ3 use of the output | tool result and full final answer side by side in the rerun and the Claude runs; the frozen rerun readout has the loss tables, and the ISS-028 split separates real copying errors from correct plans with extra text | to restate as the advisors' metric |
+| RQ2 tool choice | tool names per trial for every tool trial: main sweep, rerun, Claude; thinking off and on; the plain, steered and neutral prompts | tables done (`NUMBERS.md`, "RQ2 metrics") |
+| RQ3 use of the output | tool result and full final answer side by side in the rerun and the Claude runs; the rerun rows are the frozen readout's loss cells restated, with their categories | tables done (`NUMBERS.md`, "RQ3 metrics") |
 
 **Limits to state in the paper:** the delivered comparison covers five models (three
 open ones with thinking off, two Claude models); in the rerun the unaided answers had a
@@ -91,9 +91,9 @@ In this order. M1 and M2 ran in parallel and have first results.
 | # | milestone | what "done" means | state |
 |---|---|---|---|
 | M1 | **Literature review** | a full review that leads to the three RQs, every cited paper checked, and from it the paper's related-work section | first draft written 2026-11-22 (`thesis_literature_review.md`, 53 papers); waits for Omer's read |
-| M2 | **RQ1 analysis** | the four metrics computed by a script, tables and figures, every figure in `NUMBERS.md` | first tables done 2026-11-22 (`tools/reanalysis/rq1_metrics.py`); left: figures, the object-count view |
-| M3 | **RQ1 in the paper** | the experimental setting (how the domains, problems and plans were generated; how the prompts were generated; one or two examples per task, from `draft_B3_B5_methods.md` and `draft_C4_transcripts.md`) and the RQ1 results | waits for M2 |
-| M4 | **RQ2 and RQ3: analysis, then in the paper** | the tool-choice percentages and the "right output, wrong answer" share in `NUMBERS.md`, then written up like M3 | not started |
+| M2 | **RQ1 analysis** | the four metrics computed by a script, tables and figures, every figure in `NUMBERS.md` | done 2026-11-22 (`tools/reanalysis/rq1_metrics.py`, `rq1_figures.py`); waits for Omer's read |
+| M3 | **RQ1 in the paper** | the experimental setting (how the domains, problems and plans were generated; how the prompts were generated; one or two examples per task, from `draft_B3_B5_methods.md` and `draft_C4_transcripts.md`) and the RQ1 results | next |
+| M4 | **RQ2 and RQ3: analysis, then in the paper** | the tool-choice percentages and the "right output, wrong answer" share in `NUMBERS.md`, then written up like M3 | analysis done 2026-11-22 (`tools/reanalysis/rq23_metrics.py`); the text follows M3 |
 | M5 | **The whole paper follows the three RQs** | RQ1 to RQ6 and the scorecard gone; introduction, discussion, abstract and title rewritten to the three questions; retired wording removed (hit list in `draft_C5_E1a.md`); Corrêa et al. cited and the unaided-planning claims limited to our models and settings | after M3 and M4 |
 
 What the new work stands on: the related-work draft (`draft_B1_B2_related_work.md`),
@@ -126,7 +126,7 @@ for now. They can still change; a change means rerunning `rq1_metrics.py`, not n
 | | definition | the other option |
 |---|---|---|
 | a | **Simulate, what is scored.** Three scores against trace length: the whole trace exactly right; the share of single states right; and a lenient version of the second that also reads the complete leading steps of an answer cut off mid-trace. The lenient one is more forgiving than the frozen grader and is shown beside the strict score | exact traces only; or without the lenient score |
-| b | **Solve, what "hard" means.** The reference plan length. The planner's runtime is shown beside it, but it barely varies on our problems. Object count as a second view, still to add | plan length only |
+| b | **Solve, what "hard" means.** The reference plan length. The planner's runtime is shown beside it, but it barely varies on our problems. Object count as a second view | plan length only |
 | c | **Plan length, compared with what.** The answer key's plan and the plan the tool returned. Neither is a shortest plan | add shortest-plan lengths (needs one more local planner pass on the classical domains) |
 | d | **RQ2, what "the right tool" is for solve.** The planner that fits the domain (classical or numeric). A plan check called after the planner counts under "other tools called", and is also shown on its own line, since checking a plan is not a mistake | count it as a plain extra call |
 | e | **validate_plan, answers with no verdict.** Their own column, counted as neither a false positive nor a false negative | fold them into the errors |
