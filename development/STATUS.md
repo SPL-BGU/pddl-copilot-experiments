@@ -22,9 +22,9 @@ does it use the tool's output properly. The advisors' two action items, the lite
 review and RQ1 written up with its experimental setting and results, land in the paper.
 **No new runs**: the questions are answered from data already on disk. Everything is in
 `roadmap.md`. **All the analysis for the three questions is done (2026-11-22): the RQ1, RQ2 and RQ3
-tables are in `NUMBERS.md`, and the literature review has a first draft. No paper text
-is written yet. Next: Omer reads the literature review draft and the tables; then M3,
-RQ1 in the paper.**
+tables are in `NUMBERS.md`, and the literature review has a first draft. The paper rewrite has
+started on draft PR #139 (the three questions and the RQ1 results section). Next on that
+branch: RQ2 and RQ3, the experimental setting, then the rest of the paper.**
 
 ## Milestones (`roadmap.md` §4)
 
@@ -32,7 +32,7 @@ RQ1 in the paper.**
 |---|---|---|
 | M1 | Literature review, and from it the paper's related-work section | **draft written 2026-11-22**, `thesis_literature_review.md` (53 papers, 11 of them checked fresh that day; nine wanted papers listed as "to verify"; four questions for Omer at its end). Waits for Omer's read |
 | M2 | RQ1 analysis: FP/FN on validate_plan, simulate against trace length, solved against hardness, plan length | **done 2026-11-22**: `tools/reanalysis/rq1_metrics.py` (reproduces the frozen readout's counts before computing anything), tables in `NUMBERS.md` "RQ1 metrics", five models, with the object-count view; three figures by `rq1_figures.py` in `tools/reanalysis/out/figs/`. The metric definitions are kept for now (Omer). Waits for Omer's read |
-| M3 | RQ1 in the paper: experimental setting and results | **next**; its base is `draft_B3_B5_methods.md`, `draft_C4_transcripts.md` and the RQ1 tables and figures |
+| M3 | RQ1 in the paper: experimental setting and results | **in progress**: draft PR #139 (`paper/three-rqs`) replaces the six questions and the scorecard with the three questions and adds the RQ1 results section (four generated tables, three figures). Not yet in: how the test data and prompts were generated, and the examples per task. The PR stays a draft until the Results are fully rewritten, so nothing reaches Overleaf half-done |
 | M4 | RQ2 (tool choice) and RQ3 (use of the output): analysis, then in the paper | **analysis done 2026-11-22**: `tools/reanalysis/rq23_metrics.py`, tables in `NUMBERS.md` "RQ2 metrics" and "RQ3 metrics" (RQ3's rerun rows are the frozen readout's E4 cells, all 30 reproduced). The text waits for M3 |
 | M5 | The whole paper follows the three RQs | after M3 and M4 |
 
@@ -146,6 +146,10 @@ frozen package hash is unchanged. Conflicts with `main` were additive (lists and
 **Closed 2026-11-22** (Omer accepted the recommendation): **#132** (tracking file seeded
 with the earlier plan) and **#137** (PlanBench tool prompts for the open models). Both
 branches are kept.
+
+**Open, draft:** **#139** (`paper/three-rqs`), the paper rewritten around the three
+research questions. It grows commit by commit and is merged once, when the Results are
+done; merging it pushes to Overleaf.
 
 **Still open, on hold by decision:** **#134** (release files: licences, `CITATION.cff`,
 domain sources). It waits while a submission is under anonymous review, because the files
