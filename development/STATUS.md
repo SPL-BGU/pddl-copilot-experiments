@@ -89,10 +89,16 @@ checked mechanically, not as content.
    restate the tool's output at all; the roster of two open-weight families). The appendix
    still describes an earlier full-storage thinking-on rerun, so a reader may ask why RQ1
    and RQ3 are thinking-off only.
-4. **Before any anonymous submission:** turn off `\addcommentstrue` (it prints every
-   `[Omer: ...]` note) and strip the co-author comment macros; the verbatim solve system
-   prompt in the appendix contains the arXiv number of the group's earlier paper. The new
-   reference to Juba, Le and Stern is cited beside two others on purpose.
+4. **Before any anonymous submission** (checked 2026-11-22; the paper is already in the
+   kit's anonymous mode, with no author names, affiliation, acknowledgement or link):
+   - set `\addcommentsfalse` (line 66). No co-author note is in the text today, but any
+     note added on Overleaf would print with the co-author's name;
+   - decide on the arXiv number of the group's earlier paper inside the verbatim solve
+     system prompt in the appendix (keep, or mask in the printed prompt with a footnote);
+   - "released harness" and "released prompt bank" are named with no link: an anonymous
+     copy of the code is needed if the venue asks for one (PR #134 is on hold for this);
+   - check the PDF's metadata, and keep the earlier paper and Juba, Le and Stern cited in
+     the third person.
 
 **Approved as written (Omer, 2026-11-22):** the removal of the earlier thinking-on rerun's
 bounds and table row; "the plan in the final answer does not validate" for the Claude
