@@ -2018,7 +2018,20 @@ One class per answer, first match wins: *no room left, or empty*; *the tool ran 
 | Qwen3.6-35B | plain | 194 | 151 (78%) | 0 (0%) | 0 (0%) | 35 (18%) | 0 (0%) | 8 (4%) | 0 (0%) | 17 |
 | Qwen3.6-35B | steered | 189 | 155 (82%) | 0 (0%) | 0 (0%) | 33 (17%) | 0 (0%) | 1 (1%) | 0 (0%) | 18 |
 
-The last column counts answers on the six problems of ISS-029 (the plan in the prompt is not the answer key's plan, so the tool's own trace is not the answer key's). They are tool-right by the run-time grade and could not pass the delivered grade with any answer; all of them are in the no-room class.
+The last column counts answers on the six problems of ISS-029 (the plan in the prompt is not the answer key's plan, so the tool's own trace is not the answer key's). They are tool-right by the run-time grade, and a copy of the tool's own trace would not pass the delivered grade; all of them are in the no-room class.
+
+#### Sensitivity: without the trials whose tool trace is not the answer key's
+
+The same two shares with those trials left out of the base. "Left out" = tool-right trials in which the trace the tool returned is not the answer key's trace; "of which empty" = their final answer is empty, so the difference of plans changed no grade.
+
+| model | prompt | left out | of which lost | of which empty | tool right | lost, frozen | frozen share | lost, lenient | lenient share |
+|---|---|---|---|---|---|---|---|---|---|
+| Gemma-26B | plain | 18 | 18 | 18 | 254 | 229 | 90.2 [84.6, 95.0] | 194 | 76.4 [66.0, 85.9] |
+| Gemma-26B | steered | 18 | 18 | 18 | 254 | 230 | 90.6 [85.3, 95.3] | 199 | 78.3 [65.9, 89.2] |
+| Qwen3.5-9B | plain | 13 | 13 | 13 | 191 | 139 | 72.8 [58.3, 86.4] | 139 | 72.8 [58.3, 86.4] |
+| Qwen3.5-9B | steered | 15 | 15 | 15 | 246 | 197 | 80.1 [68.9, 89.5] | 195 | 79.3 [68.2, 88.9] |
+| Qwen3.6-35B | plain | 17 | 17 | 17 | 265 | 180 | 67.9 [54.1, 80.7] | 177 | 66.8 [52.9, 79.6] |
+| Qwen3.6-35B | steered | 18 | 18 | 18 | 269 | 192 | 71.4 [59.2, 82.5] | 171 | 63.6 [49.3, 76.9] |
 
 #### Inside "full-length trace, a step differs"
 

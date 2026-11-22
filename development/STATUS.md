@@ -66,8 +66,10 @@ checked mechanically, not as content.
    post hoc, with a reader that also accepts one JSON object per line: 66 to 80% lost
    (`NUMBERS.md`, "RQ3 simulate — layout-tolerant re-grade"). The paper has the table, a
    paragraph, and the qualifier in the abstract, introduction and discussion. Not done:
-   the same second grading for the Claude runs; a version without the six problems whose
-   prompt plan differs from the answer key's (99 of the lost answers sit on them).
+   the same second grading for the Claude runs. The six problems whose prompt plan differs
+   from the answer key's hold 99 of the lost answers; all 99 are empty answers, and without
+   them the shares are 68 to 91% (registered) and 64 to 79% (line reader), filed and in the
+   paper.
    **Wording corrected:** the October reading of the undecided answers was made by two
    language-model readers with a third reading, not by people; the paper now says so.
 1. **PR #142 is merged** (Omer, 2026-11-22): the five older figures redrawn without the

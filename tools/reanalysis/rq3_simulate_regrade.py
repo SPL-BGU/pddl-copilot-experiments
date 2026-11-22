@@ -234,6 +234,7 @@ def regrade(cells, grades, gt_cache, readout, hand: dict, filed: dict):
             doms = [r.domain for r in tv]
             frozen, lenient, reading, classes, kinds = [], [], [], Counter(), Counter()
             sub = Counter()
+            other_plan, other_plan_empty = [], 0   # the tool's own trace is not the answer key's
             for r in tv:
                 x = grades[(r.cell, r.trial_key)]
                 lost = x.ok is False
@@ -250,6 +251,8 @@ def regrade(cells, grades, gt_cache, readout, hand: dict, filed: dict):
                         missed[hr["category"]] += 1
                 frozen.append(lost)
                 lenient.append(lost and not line_ok)
+                other_plan.append(E4._last_tool_trajectory(r) != oracle)
+                other_plan_empty += other_plan[-1] and not (r.response or "").strip()
                 reading.append(lost and not line_ok
                                and not (hr is not None and hr["human_correct"] == "yes"))
                 if lost and not line_ok:
@@ -282,6 +285,16 @@ def regrade(cells, grades, gt_cache, readout, hand: dict, filed: dict):
                 "same_length_differs_in": dict(sorted(kinds.items(), key=lambda kv: -kv[1])),
                 "detail": dict(sorted(sub.items())),
             }
+            keep = [i for i, o in enumerate(other_plan) if not o]
+            kd = [doms[i] for i in keep]
+            cell["without_other_plan"] = {
+                "n_left_out": len(tv) - len(keep), "n_left_out_lost": sum(
+                    f for f, o in zip(frozen, other_plan) if o),
+                "n_left_out_empty_answer": other_plan_empty,
+                "n_tool_right": len(keep), "n_lost_frozen": sum(frozen[i] for i in keep),
+                "n_lost_lenient": sum(lenient[i] for i in keep),
+                "lost_frozen": R1.boot([frozen[i] for i in keep], kd),
+                "lost_lenient": R1.boot([lenient[i] for i in keep], kd)}
             if sum(cell["classes"].values()) != cell["n_lost_lenient"]:
                 bad.append(f"{m}/{arm}: the classes do not sum to the answers still lost")
             f = filed.get((cell["model"], arm))
@@ -343,8 +356,21 @@ def render(cells: list[dict], confusion: Counter, missed: Counter) -> str:
     w("")
     w("The last column counts answers on the six problems of ISS-029 (the plan in the prompt "
       "is not the answer key's plan, so the tool's own trace is not the answer key's). They "
-      "are tool-right by the run-time grade and could not pass the delivered grade with any "
-      "answer; all of them are in the no-room class.")
+      "are tool-right by the run-time grade, and a copy of the tool's own trace would not "
+      "pass the delivered grade; all of them are in the no-room class.")
+    w("")
+    w("#### Sensitivity: without the trials whose tool trace is not the answer key's")
+    w("")
+    w("The same two shares with those trials left out of the base. \"Left out\" = tool-right "
+      "trials in which the trace the tool returned is not the answer key's trace; \"of which "
+      "empty\" = their final answer is empty, so the difference of plans changed no grade.")
+    w("")
+    w(md_table(["model", "prompt", "left out", "of which lost", "of which empty", "tool right",
+                "lost, frozen", "frozen share", "lost, lenient", "lenient share"],
+               [[c["model"], c["arm"], x["n_left_out"], x["n_left_out_lost"],
+                 x["n_left_out_empty_answer"], x["n_tool_right"], x["n_lost_frozen"],
+                 R1.cell(x["lost_frozen"]), x["n_lost_lenient"], R1.cell(x["lost_lenient"])]
+                for c in cells for x in [c["without_other_plan"]]]))
     w("")
     w("#### Inside \"full-length trace, a step differs\"")
     w("")

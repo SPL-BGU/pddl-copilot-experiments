@@ -72,6 +72,28 @@
     "numbers: a number wrong": 5,
     "numbers: numbers left out": 13,
     "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 18,
+    "n_left_out_lost": 18,
+    "n_left_out_empty_answer": 18,
+    "n_tool_right": 254,
+    "n_lost_frozen": 229,
+    "n_lost_lenient": 194,
+    "lost_frozen": {
+     "est": 90.15748031496062,
+     "lo": 84.58425534512492,
+     "hi": 95.0,
+     "k": 19,
+     "n": 254
+    },
+    "lost_lenient": {
+     "est": 76.37795275590551,
+     "lo": 65.99169542709232,
+     "hi": 85.9378228305785,
+     "k": 19,
+     "n": 254
+    }
    }
   },
   {
@@ -143,6 +165,28 @@
     "numbers: numbers left out": 11,
     "shifted_by_one": 0,
     "shorter": 1
+   },
+   "without_other_plan": {
+    "n_left_out": 18,
+    "n_left_out_lost": 18,
+    "n_left_out_empty_answer": 18,
+    "n_tool_right": 254,
+    "n_lost_frozen": 230,
+    "n_lost_lenient": 199,
+    "lost_frozen": {
+     "est": 90.5511811023622,
+     "lo": 85.3279172029172,
+     "hi": 95.3307392996109,
+     "k": 19,
+     "n": 254
+    },
+    "lost_lenient": {
+     "est": 78.34645669291339,
+     "lo": 65.86184888251894,
+     "hi": 89.18945945945946,
+     "k": 19,
+     "n": 254
+    }
    }
   },
   {
@@ -211,6 +255,28 @@
     "no_room_key_from_another_plan": 13,
     "no_tool_map": 0,
     "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 13,
+    "n_left_out_lost": 13,
+    "n_left_out_empty_answer": 13,
+    "n_tool_right": 191,
+    "n_lost_frozen": 139,
+    "n_lost_lenient": 139,
+    "lost_frozen": {
+     "est": 72.77486910994764,
+     "lo": 58.33228643216082,
+     "hi": 86.36363636363636,
+     "k": 19,
+     "n": 191
+    },
+    "lost_lenient": {
+     "est": 72.77486910994764,
+     "lo": 58.33228643216082,
+     "hi": 86.36363636363636,
+     "k": 19,
+     "n": 191
+    }
    }
   },
   {
@@ -284,6 +350,28 @@
     "numbers: numbers left out": 1,
     "shifted_by_one": 0,
     "shorter": 1
+   },
+   "without_other_plan": {
+    "n_left_out": 15,
+    "n_left_out_lost": 15,
+    "n_left_out_empty_answer": 15,
+    "n_tool_right": 246,
+    "n_lost_frozen": 197,
+    "n_lost_lenient": 195,
+    "lost_frozen": {
+     "est": 80.08130081300813,
+     "lo": 68.93931334622825,
+     "hi": 89.54021105341869,
+     "k": 19,
+     "n": 246
+    },
+    "lost_lenient": {
+     "est": 79.26829268292683,
+     "lo": 68.2350192413414,
+     "hi": 88.88888888888889,
+     "k": 19,
+     "n": 246
+    }
    }
   },
   {
@@ -352,6 +440,28 @@
     "numbers: a number wrong": 1,
     "numbers: numbers left out": 9,
     "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 17,
+    "n_left_out_lost": 17,
+    "n_left_out_empty_answer": 17,
+    "n_tool_right": 265,
+    "n_lost_frozen": 180,
+    "n_lost_lenient": 177,
+    "lost_frozen": {
+     "est": 67.9245283018868,
+     "lo": 54.073573573573576,
+     "hi": 80.68181818181817,
+     "k": 19,
+     "n": 265
+    },
+    "lost_lenient": {
+     "est": 66.79245283018868,
+     "lo": 52.917794507415564,
+     "hi": 79.63075880758805,
+     "k": 19,
+     "n": 265
+    }
    }
   },
   {
@@ -419,6 +529,28 @@
     "no_tool_map": 0,
     "numbers: numbers left out": 7,
     "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 18,
+    "n_left_out_lost": 18,
+    "n_left_out_empty_answer": 18,
+    "n_tool_right": 269,
+    "n_lost_frozen": 192,
+    "n_lost_lenient": 171,
+    "lost_frozen": {
+     "est": 71.37546468401487,
+     "lo": 59.176029962546814,
+     "hi": 82.5099650868588,
+     "k": 19,
+     "n": 269
+    },
+    "lost_lenient": {
+     "est": 63.56877323420075,
+     "lo": 49.280575539568346,
+     "hi": 76.89600111080254,
+     "k": 19,
+     "n": 269
+    }
    }
   }
  ],
