@@ -40,6 +40,8 @@ BLOCKS = {
     # ISS-029 simulate prompt plan vs cached plan (iss029_simulate_plan.py; needs
     # the pinned results/derived/gt_cache.json)
     "iss029": ["numbers_iss029.md"],
+    # Qwen3.5-0.8B on the two file-validation tasks (s1_small_model_validation.py)
+    "s1_small_model_validation": ["numbers_s1_small_model_validation.md"],
 }
 
 
