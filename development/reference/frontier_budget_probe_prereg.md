@@ -459,6 +459,8 @@ freeze commit; re-verify after the PR #98 merge):**
 | `tests/test_budget_probe_analysis.py` | `e3cb93ebce1270aef68fa17e2631eece8d21e37bcc875ce6433422231a4c7c36` | gate-4 fixture (recorded) |
 | `tests/test_frontier_runner.py` | `74f0f4f9a1a73c5b4b33cef6468147855ee2265ac25ece3c4172a1482833732d` | apparatus regression tests (recorded) |
 
+*Post-freeze note (2026-11-09):* `tools/claude_api_batch.py` was edited after the freeze (PR #131). The recorded sha `a56ccfe2bf24914a656c8b3b7ea012d87d35c8730cffb2f728e3a5df5469e94d` is the file at commit `bbcf11170c065bca2a8afa17b903e5b6b2f33981` (unchanged on `main` through `f909e58c323d21a56e89b629d9c3c3386d7fc781`, the last `main` commit before the PR's change). Read the cited line numbers from `git show bbcf111:tools/claude_api_batch.py`. The default request is byte-identical (8 full builds compared).
+
 **Reference cell key sets** (`jq -c .key <cell>/trials.jsonl | grep '"simulate"' | sort | sha256sum`,
 100 keys each): Sonnet `results/sonnet-frontier/sweep5v2-with-tools`
 `bdaab77325abf8598678a321ae0f489ac6b69689013090b40a3238569b673207`; Haiku

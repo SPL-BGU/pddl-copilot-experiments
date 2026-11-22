@@ -1,0 +1,379 @@
+{
+  "arms": {
+    "a": {
+      "model": "claude-sonnet-4-6",
+      "model_ids": [
+        "claude-sonnet-4-6"
+      ],
+      "sdk_versions": [
+        "0.109.2"
+      ],
+      "n": 20,
+      "n_succeeded": 20,
+      "errors": [],
+      "max_tokens": [
+        64000
+      ],
+      "thinking_tokens": {
+        "n": 20,
+        "median": 1654.0,
+        "p90": 10673,
+        "max": 18997,
+        "mean": 4122.95
+      },
+      "thinking_tokens_reported": 20,
+      "thinking_blocks_nonempty": 20,
+      "visible_output_tokens": {
+        "n": 20,
+        "median": 180.5,
+        "p90": 465,
+        "max": 618,
+        "mean": 223.65
+      },
+      "output_tokens": {
+        "n": 20,
+        "median": 1755.5,
+        "p90": 11169,
+        "max": 19185,
+        "mean": 4346.6
+      },
+      "output_tokens_mean_ci95": [
+        2285.6,
+        6859.45
+      ],
+      "input_tokens": {
+        "n": 20,
+        "median": 1458.0,
+        "p90": 1959,
+        "max": 2602,
+        "mean": 1539.15
+      },
+      "stop_reasons": {
+        "end_turn": 20
+      },
+      "share_at_max_tokens": 0.0,
+      "parse_rate": 1.0,
+      "parse_paths": {
+        "json": 20
+      },
+      "wall_seconds": 189.035735,
+      "cost_batch_usd": 0.6981645,
+      "cost_list_usd": 1.396329
+    },
+    "b": {
+      "model": "claude-haiku-4-5",
+      "model_ids": [
+        "claude-haiku-4-5-20251001"
+      ],
+      "sdk_versions": [
+        "0.109.2"
+      ],
+      "n": 20,
+      "n_succeeded": 20,
+      "errors": [],
+      "max_tokens": [
+        64000
+      ],
+      "thinking_tokens": {
+        "n": 20,
+        "median": 7195.0,
+        "p90": 16638,
+        "max": 23455,
+        "mean": 8855.25
+      },
+      "thinking_tokens_reported": 20,
+      "thinking_blocks_nonempty": 20,
+      "visible_output_tokens": {
+        "n": 20,
+        "median": 182.5,
+        "p90": 432,
+        "max": 923,
+        "mean": 238.55
+      },
+      "output_tokens": {
+        "n": 20,
+        "median": 7292.0,
+        "p90": 16799,
+        "max": 24106,
+        "mean": 9093.8
+      },
+      "output_tokens_mean_ci95": [
+        6462.7,
+        12119.95
+      ],
+      "input_tokens": {
+        "n": 20,
+        "median": 1457.5,
+        "p90": 1959,
+        "max": 2600,
+        "mean": 1538.9
+      },
+      "stop_reasons": {
+        "end_turn": 20
+      },
+      "share_at_max_tokens": 0.0,
+      "parse_rate": 1.0,
+      "parse_paths": {
+        "json": 20
+      },
+      "wall_seconds": 186.509044,
+      "cost_batch_usd": 0.470079,
+      "cost_list_usd": 0.940158
+    },
+    "c": {
+      "model": "claude-sonnet-5-5",
+      "model_ids": [
+        "claude-sonnet-5-5"
+      ],
+      "sdk_versions": [
+        "0.109.2"
+      ],
+      "n": 20,
+      "n_succeeded": 20,
+      "errors": [],
+      "max_tokens": [
+        64000
+      ],
+      "thinking_tokens": {
+        "n": 20,
+        "median": 323.0,
+        "p90": 1187,
+        "max": 2825,
+        "mean": 575.6
+      },
+      "thinking_tokens_reported": 20,
+      "thinking_blocks_nonempty": 16,
+      "visible_output_tokens": {
+        "n": 20,
+        "median": 205.0,
+        "p90": 540,
+        "max": 688,
+        "mean": 249.8
+      },
+      "output_tokens": {
+        "n": 20,
+        "median": 472.0,
+        "p90": 1837,
+        "max": 3013,
+        "mean": 825.4
+      },
+      "output_tokens_mean_ci95": [
+        518.85,
+        1186.65
+      ],
+      "input_tokens": {
+        "n": 20,
+        "median": 1747.0,
+        "p90": 2465,
+        "max": 2864,
+        "mean": 1852.85
+      },
+      "stop_reasons": {
+        "end_turn": 20
+      },
+      "share_at_max_tokens": 0.0,
+      "parse_rate": 1.0,
+      "parse_paths": {
+        "json": 20
+      },
+      "wall_seconds": 130.452727,
+      "cost_batch_usd": 0.11959700000000001,
+      "cost_list_usd": 0.23919400000000002
+    },
+    "d": {
+      "model": "claude-sonnet-5-5",
+      "model_ids": [
+        "claude-sonnet-5-5"
+      ],
+      "sdk_versions": [
+        "0.109.2"
+      ],
+      "n": 20,
+      "n_succeeded": 20,
+      "errors": [],
+      "max_tokens": [
+        64000
+      ],
+      "thinking_tokens": {
+        "n": 20,
+        "median": 0.0,
+        "p90": 0,
+        "max": 0,
+        "mean": 0.0
+      },
+      "thinking_tokens_reported": 20,
+      "thinking_blocks_nonempty": 0,
+      "visible_output_tokens": {
+        "n": 20,
+        "median": 141.5,
+        "p90": 539,
+        "max": 714,
+        "mean": 241.75
+      },
+      "output_tokens": {
+        "n": 20,
+        "median": 141.5,
+        "p90": 539,
+        "max": 714,
+        "mean": 241.75
+      },
+      "output_tokens_mean_ci95": [
+        160.85,
+        334.0
+      ],
+      "input_tokens": {
+        "n": 20,
+        "median": 1746.0,
+        "p90": 2464,
+        "max": 2863,
+        "mean": 1851.85
+      },
+      "stop_reasons": {
+        "end_turn": 20
+      },
+      "share_at_max_tokens": 0.0,
+      "parse_rate": 1.0,
+      "parse_paths": {
+        "json": 20
+      },
+      "wall_seconds": 105.847956,
+      "cost_batch_usd": 0.061212,
+      "cost_list_usd": 0.122424
+    },
+    "e": {
+      "model": "claude-sonnet-4-6",
+      "model_ids": [
+        "claude-sonnet-4-6"
+      ],
+      "sdk_versions": [
+        "0.109.2"
+      ],
+      "n": 19,
+      "n_succeeded": 19,
+      "errors": [],
+      "max_tokens": [
+        8192
+      ],
+      "thinking_tokens": {
+        "n": 0,
+        "median": null,
+        "p90": null,
+        "max": null,
+        "mean": null
+      },
+      "thinking_tokens_reported": 0,
+      "thinking_blocks_nonempty": 0,
+      "visible_output_tokens": {
+        "n": 19,
+        "median": 852,
+        "p90": 1491,
+        "max": 1536,
+        "mean": 886.5263157894736
+      },
+      "output_tokens": {
+        "n": 19,
+        "median": 852,
+        "p90": 1491,
+        "max": 1536,
+        "mean": 886.5263157894736
+      },
+      "output_tokens_mean_ci95": [
+        740.4736842105264,
+        1035.6842105263158
+      ],
+      "input_tokens": {
+        "n": 19,
+        "median": 7591,
+        "p90": 8206,
+        "max": 8683,
+        "mean": 7626.0
+      },
+      "stop_reasons": {
+        "end_turn": 19
+      },
+      "share_at_max_tokens": 0.0,
+      "parse_rate": 1.0,
+      "parse_paths": {
+        "plan_tags": 19
+      },
+      "wall_seconds": 97.229774,
+      "cost_batch_usd": 0.343671,
+      "cost_list_usd": 0.687342
+    }
+  },
+  "full_set_estimate_batch": [
+    {
+      "line": "Sonnet 4.6 thinking on, 300 keys x3",
+      "trials": 900,
+      "model": "claude-sonnet-4-6",
+      "input_per_trial": 1539,
+      "output_per_trial": 4347,
+      "batch_usd": 31.42,
+      "source": "pilot arm a (n=20)",
+      "batch_usd_ci95": [
+        17.51,
+        48.38
+      ]
+    },
+    {
+      "line": "Haiku 4.5 thinking on, 100 keys x3",
+      "trials": 300,
+      "model": "claude-haiku-4-5",
+      "input_per_trial": 1539,
+      "output_per_trial": 9094,
+      "batch_usd": 7.05,
+      "source": "pilot arm b (n=20)",
+      "batch_usd_ci95": [
+        5.08,
+        9.32
+      ]
+    },
+    {
+      "line": "Sonnet 5.5 thinking on (adaptive), 300 x3",
+      "trials": 900,
+      "model": "claude-sonnet-5-5",
+      "input_per_trial": 1853,
+      "output_per_trial": 825,
+      "batch_usd": 5.38,
+      "source": "pilot arm c (n=20)",
+      "batch_usd_ci95": [
+        4.0,
+        7.01
+      ]
+    },
+    {
+      "line": "Sonnet 5.5 between_tools, 300 x3",
+      "trials": 900,
+      "model": "claude-sonnet-5-5",
+      "input_per_trial": 1852,
+      "output_per_trial": 242,
+      "batch_usd": 2.75,
+      "source": "pilot arm d (n=20)",
+      "batch_usd_ci95": [
+        2.39,
+        3.17
+      ]
+    },
+    {
+      "line": "Sonnet 4.6 thinking off, T=1, x3",
+      "trials": 900,
+      "model": "claude-sonnet-4-6",
+      "input_per_trial": 1457,
+      "output_per_trial": 261,
+      "batch_usd": 3.73,
+      "source": "existing T=0 cell means (draft)"
+    },
+    {
+      "line": "Haiku 4.5 thinking off, T=1, x3",
+      "trials": 300,
+      "model": "claude-haiku-4-5",
+      "input_per_trial": 1456,
+      "output_per_trial": 304,
+      "batch_usd": 0.45,
+      "source": "existing T=0 cell means (draft)"
+    }
+  ],
+  "total_cost_batch_usd": 1.6927235,
+  "total_cost_list_usd": 3.385447,
+  "note": "outcome-blind: no plan validity or success rate computed"
+}

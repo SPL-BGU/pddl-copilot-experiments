@@ -36,12 +36,12 @@ Frontier token accounting, three ways (all from the same stored fields):
                 multipliers written in tools/frontier_runner.py:70 and applied
                 at :522-523
   as-billed     cache-billed tools arm at list price vs the no-tools arm at the
-                Batch API price (list / 2, tools/claude_api_batch.py:101-108);
+                Batch API price (list / 2, tools/claude_api_batch.py:133-142);
                 the no-tools frontier arm really ran through the Batch API.
 List prices come from the repo, not from memory: tools/frontier_runner.py:71-74
 (PRICES: claude-sonnet-4-6 $3 in / $15 out, claude-haiku-4-5 $1 in / $5 out per
 million tokens; the same table is in tools/frontier_ab_compare.py:30-33 and
-tools/claude_api_batch.py:103-106). Both are 5:1.
+tools/claude_api_batch.py:135-140). Both are 5:1.
 
 Latency is not attempted: the batched server multiplexes trials, so per-trial
 wall-clock is not recoverable from the logs.

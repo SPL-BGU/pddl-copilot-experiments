@@ -1,0 +1,33 @@
+{
+  "model": "claude-sonnet-5-5",
+  "corpus": "canonical",
+  "domains_dir": "domains",
+  "tasks": [
+    "solve"
+  ],
+  "max_per_task": 0,
+  "num_variants": 6,
+  "num_predict": 64000,
+  "ground_truth_sha256": "2557f828ccad91f811f4aa3d7cc55b2a2bf4d2d9c828f1b8b09d8b0b7b9108ff",
+  "per_task": {
+    "solve": {
+      "full": 300,
+      "selected": 20
+    }
+  },
+  "total_requests": 20,
+  "request_settings": {
+    "thinking": "on",
+    "temperature_mode": "default",
+    "thinking_budget": null,
+    "effort": "high",
+    "prompt_file": null
+  },
+  "repeats": 1,
+  "seed": null,
+  "exclude_domains": [],
+  "prompt_file_body_sha256": null,
+  "prompt_file_sha256": null,
+  "sdk_version": "0.109.2",
+  "anthropic_version_header": "2023-06-01"
+}

@@ -33,6 +33,12 @@ BLOCKS = {
     "iss027_t2": ["numbers_iss027_t2.md"],
     "iss027_t5": ["numbers_iss027_t5.md"],
     "iss027_t8a": ["numbers_iss027_t8a.md"],
+    # ISS-028 post hoc split of the delivered rerun's solve WRONG_FACTS rows
+    # (iss028_goal_trailers.py)
+    "iss028": ["numbers_iss028.md"],
+    # ISS-029 simulate prompt plan vs cached plan (iss029_simulate_plan.py; needs
+    # the pinned results/derived/gt_cache.json)
+    "iss029": ["numbers_iss029.md"],
 }
 
 

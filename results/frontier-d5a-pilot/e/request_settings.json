@@ -1,0 +1,31 @@
+{
+  "request_settings": {
+    "thinking": "off",
+    "temperature_mode": "zero",
+    "thinking_budget": null,
+    "effort": null,
+    "prompt_file": "tools/prompts/correa2026_2shot.txt"
+  },
+  "repeats": 1,
+  "seed": null,
+  "exclude_domains": [
+    "gripper"
+  ],
+  "prompt_file_body_sha256": "e3ca10c40da0ddc6455120f9d622a3d4a5563998e51ca49101676fed0291fb86",
+  "prompt_file_sha256": "572c3a8477d2f874e5a228df6303f173d317b70f7b1d685a81933be4fe2b90be",
+  "sdk_version": "0.109.2",
+  "anthropic_version_header": "2023-06-01",
+  "model": "claude-sonnet-4-6",
+  "first_request_settings": {
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 8192,
+    "temperature": 0,
+    "has_system_prompt": false
+  },
+  "worst_case": {
+    "n": 19,
+    "input_tokens_bound": 195076,
+    "output_tokens_bound": 155648,
+    "list_usd": 2.9199
+  }
+}

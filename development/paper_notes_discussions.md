@@ -2567,3 +2567,11 @@ validated by an independent ranking subagent (the user asked for a second perspe
   stale `main.tex:651` comment, add a `checkpoints/frontier/` backup.
 - **pyval 0.1.6** released and pinned (sibling #60). The research questions stay open
   (`draft_E1_research_questions.md`). Everything else is in `handoff_20261109.md`.
+
+## 2026-11-09 (late night) — D5a full-run budget raised to about $66
+
+- **Decided (Omer):** the full D5a run is approved at about $66 with the Batch API (range
+  about $45 to $93), replacing the earlier about $51. The difference is plan step D5e,
+  the Corrêa 2-shot cells, which the $51 left out: about $14 for the thinking-on cell
+  (95 problems x 3) and $1.72 for the thinking-off cell. Method in `STATUS.md`. The run
+  still waits for the prereg to hold it.

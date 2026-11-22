@@ -3,7 +3,11 @@ openai>=1.40.0
 # Anthropic Message Batches API for the Sonnet-4.6 frontier no-tools run
 # (tools/claude_api_batch.py). Offline, batched (-50%); not used by the vLLM
 # single-task harness.
-anthropic>=0.40.0
+# Pinned exactly (2026-11-09, D5a): every frontier cell ran on 0.109.2, which
+# sends anthropic-version 2023-06-01. Fresh 2.x installs send API version
+# 2026-10-21, which rejects `temperature` on every model and would break the
+# T=0 cells. Move the pin only together with an API-version decision.
+anthropic==0.109.2
 
 # JSON-Schema validation for tools/guided_json_audit.py: the ISS-024(b) audit
 # checks stored responses against TASK_SCHEMAS itself (the object handed to
