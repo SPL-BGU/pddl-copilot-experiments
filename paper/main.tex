@@ -642,6 +642,8 @@ reasoning parsers are byte-identical between the two releases. Re-running one
 affected cell (Qwen3.5-0.8B, \emph{think}=off, 9{,}120 trials) on 0.20.2
 reproduced its 0.22.0 results within run-to-run noise: pooled $+0.4$\,pp, 95\% CI
 $[-0.9,\,+1.7]$, with no task--arm cell CI-disjoint.}
+\omer{PLACEHOLDER: add the dates on which each corpus was run (main sweep, rerun) and
+on which the Claude models were queried; the venue's reproducibility rules ask for them.}
 Decoding is deterministic
 (temperature~0), so each trial is a single fixed sample and the confidence
 intervals we report quantify sampling uncertainty over the fixture instances
@@ -2357,9 +2359,7 @@ not a clean remedy: in pilot runs, enlarging the shared decode budget (a larger 
 allowance, not a cap reserved separately for the final answer) degraded output-format adherence
 (more trials emitted unparseable answers), so it trades the truncation confound for a parsing one
 rather than removing it, which is again why we read cross-mode evidence through the budget-insensitive
-robust floor. \omer{PLACEHOLDER: add the dates on which each corpus was run (main sweep, rerun) and
-on which the Claude models were queried; the venue's reproducibility rules ask for them.}
-Decoding is deterministic (temperature~0), so each
+robust floor. Decoding is deterministic (temperature~0), so each
 trial is a single sample and our intervals quantify uncertainty over the fixture
 instances, not decoding variance; robustness to higher temperatures is untested.
 The roster is five open-weight models from two families, so our claims concern the
