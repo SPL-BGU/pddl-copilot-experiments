@@ -543,8 +543,7 @@ repeat a prompt exactly. The valid-domain prompt holds only the domain, so it re
 once per problem, and the five valid plans of a problem are almost always one plan. Per
 arm, \emph{validate\_plan} has 1{,}803 distinct prompts in 3{,}000 trials and
 \emph{validate\_domain} has 120 in 360. The plan in a \emph{simulate} prompt is the
-planner's plan, the one whose trajectory is the answer key. Six problems are an
-exception in the delivered grading of the rerun, and RQ1 leaves them out. The
+planner's plan, and for all but six problems its trajectory is the answer key. The
 difficulty bins in
 the Supporting Analyses split the trials into thirds. By reference plan length they are at most 8, 9
 to 19, and more than 19 steps (on \emph{validate\_plan}, valid plans only). By object
@@ -1065,8 +1064,8 @@ is the set of true predicates together with the numeric values. Many answers are
 off before the trace ends. They are then unreadable as JSON, and they score zero on
 both measures. A third, lenient score also reads the complete leading steps of such an
 answer. It is more forgiving than our grader, and we report it only beside the strict
-score. Six of the $100$ problems are left out here because the plan shown in the
-prompt was not the plan that the oracle trace belongs to, which leaves $94$.
+score. The six problems whose prompt plan is not the answer key's plan are left out
+here, which leaves $94$.
 
 State accuracy falls with trace length in every model and arm
 (Figure~\ref{fig:rq1-simulate}; $\rho$ between $-0.23$ and $-0.73$ across the thirteen
