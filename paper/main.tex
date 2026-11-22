@@ -35,7 +35,7 @@
 
 % Recommended for better-looking tables.
 \usepackage{booktabs}
-% array for ragged-right p{} columns in the scorecard table.
+% array for ragged-right p{} columns in tables.
 \usepackage{array}
 
 % amsmath for \text in the P(call) x P(correct|call) decomposition notation.
@@ -582,10 +582,7 @@ Verdicts use a \emph{signed} significance rule. A per-model gap counts as
 favorable evidence only when the two arms' 95\% intervals are disjoint
 \emph{and} the gap points the hypothesized way (the tool helps); a disjoint gap
 pointing the other way is tallied separately as significant-\emph{against}, which
-we treat as a finding in its own right. A research question reads \textsc{yes} when favorable
-significant gaps dominate with none against, \textsc{mixed} when significant
-against-gaps are present, and \textsc{no} when no significant favorable movement
-exists. This sign-awareness matters: on \emph{validate\_plan} mere tool
+we treat as a finding in its own right. This sign-awareness matters: on \emph{validate\_plan} mere tool
 availability collapses one $\geq$9B model's validator invocation to $21\%$ of
 trials, a mechanism-layer drop of $-67$\,pp in tool-verified success, and a
 sign-blind disjointness test would credit that highly significant movement as
@@ -731,90 +728,316 @@ use the first-draw counts ($410/600$ and $431/600$).}
 \label{fig:funnel}
 \end{figure*}
 
-We organize the evaluation around six research questions. The first four ask,
-per task, whether and how the tool helps; the last two ask whether its advantage
-tracks two difficulty axes:
+We organize the evaluation around three research questions.
 \begin{enumerate}
-\item[\textbf{RQ1.}] On the two file-validation tasks (\emph{validate\_domain},
-\emph{validate\_problem}), where the unaided model has some competence, does tool
-availability add value?
-\item[\textbf{RQ2.}] On \emph{solve}, can the unaided model find valid plans, and how
-much does the tool add?
-\item[\textbf{RQ3.}] On \emph{validate\_plan}, a task the unaided model already does
-well, does mere availability help or hurt, and does steering change the answer?
-\item[\textbf{RQ4.}] On \emph{simulate}, can the unaided model produce an exact state
-trajectory at all?
-\item[\textbf{RQ5.}] Does the tool's advantage grow with plan length?
-\item[\textbf{RQ6.}] Does it grow with object count?
+\item[\textbf{RQ1.}] Do PDDL tools help an LLM do planning-related tasks? We compare
+the same model with and without the tools on four measures: the false positives and
+false negatives of its plan verdicts (\emph{validate\_plan}); the share of simulated
+states that are correct, as a function of the length of the simulation
+(\emph{simulate}); the share of problems solved, as a function of how hard the problem
+is (\emph{solve}); and the length of the plans it delivers (\emph{solve}).
+\item[\textbf{RQ2.}] Does the LLM know to choose the right PDDL tool? Every tool is
+offered, and we report the share of trials that call exactly the right tool and no
+other, the share that call the right tool at all, and the share that call other tools
+as well.
+\item[\textbf{RQ3.}] Does the LLM know how to use the tool's output? We report the
+share of trials in which the tool returned the right result and the model's final
+answer was still wrong.
 \end{enumerate}
 
-Two regime vocabularies appear below and should not be conflated. A \emph{task} axis
-sorts the five tasks by their unaided baseline: \emph{sole-source} (essentially
-no unaided success as deployed), \emph{headroom} (a weak but improvable baseline), and \emph{mixed}
-(availability can hurt). A separate \emph{cross-mode} axis (Robustness) sorts tasks
-by whether the realizable benefit survives reasoning mode: \emph{robust},
-\emph{budget-dependent}, and again \emph{sole-source}. The two axes share only the
-word sole-source (a task with no baseline is sole-source either way) and are
-otherwise independent. Table~\ref{tab:scorecard} is the task-axis scorecard: two
-tasks (\emph{solve}, \emph{simulate}) essentially do not happen \emph{unaided}
-under the deployed budget and format requirements;
-two (\emph{validate\_domain}, \emph{validate\_problem}) are improved over weak
-baselines; and one (\emph{validate\_plan}) is a two-layer case. There, at the
-mechanism layer, mere availability collapses invocation for two of three
-$\geq$9B models and a one-sentence nudge repairs it; at the delivered surface
-the canonical corpus is censored into bounds that cannot decide the harm, and
-the full-storage rerun shows that the model that stops \emph{calling} often
-still \emph{answers} correctly, so the two layers genuinely disagree.
+\subsection{RQ1: Do the Tools Help?}
+\label{sec:rq1}
+% Every number in this subsection is generated: tools/reanalysis/rq1_metrics.py
+% (development/NUMBERS.md, block "RQ1 metrics"); table rows by tools/reanalysis/rq1_tex.py,
+% figures by tools/reanalysis/rq1_figures.py. Do not edit a number here by hand.
+\paragraph{Data.} All four measures need the model's complete final answer. The main
+sweep stored only the first $500$ characters of each answer, so this subsection uses
+the two corpora that kept answers in full. The first is a pre-registered rerun of the
+three $\geq$9B open-weight models with thinking off, on the fixtures, prompts and
+budgets of the main sweep: $13{,}680$ unaided trials and $27{,}360$ trials with the
+tools offered, half under the plain wordings and half under the steered ones. It
+stores answers up to $65{,}536$ characters, lowers the output allowance when the
+server would otherwise refuse the final request for lack of room in the context
+window, and grades both arms with one rule. The rerun did not meet its registered
+parity criterion against the main sweep at the level of whole jobs (Gemma-MoE-26B met
+it in $10$ of $10$ cells; the two Qwen models in $15$ of $20$, where $18$ were
+required). We therefore treat it as a replication under a separate apparatus: its
+figures are never pooled with main-sweep figures and never stand in for them. The
+second corpus is the two frontier runs, Claude Haiku~4.5 and Claude Sonnet~4.6, where
+both arms ran wording v11 and answers were stored up to $16{,}384$ characters.
+Open-weight and frontier figures appear side by side and are never pooled. The four
+measures were defined after these data were collected. They are exploratory views of
+answers that were already graded, and none of them is a registered endpoint. Intervals
+are 95\% percentile bootstrap intervals that resample whole domains. As in every
+unaided cell of this paper, the answer format of the no-tools arm was requested in the
+prompt alone, so an unaided failure can be a failure of format as well as of content
+(Limitations).
 
 \begin{table*}[t]
 \centering
 \footnotesize
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.16\textwidth}
-                >{\raggedright\arraybackslash}p{0.14\textwidth}
-                p{0.63\textwidth}@{}}
+\begin{tabular}{@{}llrrrr@{}}
 \toprule
-\textbf{RQ / task} & \textbf{verdict} & \textbf{evidence ($\geq$9B, \emph{think}=off)} \\
+\textbf{Model} & \textbf{Arm} & \textbf{False negatives (\%)} & \textbf{False positives (\%)} &
+\textbf{No verdict} & \textbf{Verdict right (\%)} \\
 \midrule
-RQ1 \emph{validate\_domain} / \emph{validate\_problem} & \textsc{yes} &
-\emph{validate\_domain}: delivered lower bounds $92$--$100\%$ with the tool
-against exact unaided $26$--$78\%$; favorable for all three even if every
-censored trial failed. \emph{validate\_problem}: favorable for the 9B
-(\cbnd{92.2}{95.3} vs $65.7$); Gemma favorable at 95\% but not after the clustering
-correction; the 35B cell straddles and stays undecided; none against \\
-RQ2 \emph{solve} & \textsc{yes} & unaided floored at $8$--$11\%$ (exact); at the
-frontier tier the lift is exact and delivered: $22\!\to\!95\%$ (Haiku),
-$29\!\to\!95\%$ (Sonnet). Open-roster tool cells are bounds: the 9B survives the
-worst case (\cbnd{26.0}{58.7} vs $10.7$), a margin under $1$\,pp after the
-clustering correction, so we read it as exploratory; Gemma and the 35B are
-undecided \\
-RQ3 \emph{validate\_plan} & \textsc{undecided} (delivered); \textsc{mixed}
-(mechanism) & at the mechanism layer availability collapses Gemma's invocation
-to $21\%$ of trials ($-67$\,pp tool-verified) and steering repairs it; on the
-delivered surface all three canonical cells are censored into straddling bounds,
-and the full-storage rerun \emph{inverts} the Gemma cell: delivered
-\cbnd{30.0}{63.1} against tool-verified $0.9\%$ \\
-RQ4 \emph{simulate} & \textsc{no} as deployed & unaided: $0\%$ format-exact on
-the canonical corpus; $22$--$40\%$ content-correct once budgets are
-decoupled, and \cbnd{41.7}{61.3} at the frontier. With tools, delivered is
-undecided on the canonical corpus and \cbnd{49}{62} (Sonnet) / \cbnd{52}{64}
-(Haiku) at the frontier, not separated from the frontier unaided cell; the mechanism layer runs
-at $97$--$99\%$, and that delivery gap is the finding \\
-RQ5 plan length & \textsc{yes} (mechanism layer) & \emph{validate\_plan}
-advantage widens $+5\!\to\!+7\!\to\!+27$\,pp with reference length \\
-RQ6 object count & \textsc{no} (mechanism layer) & \emph{validate\_problem}
-advantage flat ($+22/{+}23/{+}23$\,pp) across object-count bins \\
+% rows generated by tools/reanalysis/rq1_tex.py (rq1_verdicts.tex)
+Qwen3.5-9B & no-tools & $25.7$ {\scriptsize$[15.4,\,36.6]$} & $11.1$ {\scriptsize$[7.3,\,15.1]$} & $54$ / $3000$ & $79.8$ {\scriptsize$[74.0,\,85.5]$} \\
+ & +tool (plain) & $5.7$ {\scriptsize$[1.9,\,10.5]$} & $1.7$ {\scriptsize$[0.0,\,5.1]$} & $68$ / $3000$ & $94.0$ {\scriptsize$[89.4,\,97.6]$} \\
+ & +tool (steered) & $4.1$ {\scriptsize$[1.1,\,7.6]$} & $1.9$ {\scriptsize$[0.0,\,5.5]$} & $33$ / $3000$ & $95.9$ {\scriptsize$[92.1,\,98.8]$} \\
+\addlinespace
+Gemma-MoE-26B & no-tools & $13.7$ {\scriptsize$[8.1,\,19.9]$} & $9.0$ {\scriptsize$[6.1,\,12.2]$} & $11$ / $3000$ & $88.3$ {\scriptsize$[84.1,\,92.0]$} \\
+ & +tool (plain) & $10.3$ {\scriptsize$[6.1,\,14.9]$} & $9.8$ {\scriptsize$[5.6,\,14.7]$} & $23$ / $3000$ & $89.2$ {\scriptsize$[84.6,\,93.1]$} \\
+ & +tool (steered) & $2.8$ {\scriptsize$[0.4,\,6.2]$} & $2.9$ {\scriptsize$[0.9,\,5.7]$} & $16$ / $3000$ & $96.6$ {\scriptsize$[93.1,\,98.9]$} \\
+\addlinespace
+Qwen3.6-35B & no-tools & $8.5$ {\scriptsize$[3.8,\,13.6]$} & $7.8$ {\scriptsize$[5.3,\,10.3]$} & $43$ / $3000$ & $90.4$ {\scriptsize$[87.3,\,93.3]$} \\
+ & +tool (plain) & $0.9$ {\scriptsize$[0.1,\,2.1]$} & $2.2$ {\scriptsize$[1.0,\,3.5]$} & $18$ / $3000$ & $97.8$ {\scriptsize$[96.7,\,98.9]$} \\
+ & +tool (steered) & $0.7$ {\scriptsize$[0.0,\,1.7]$} & $0.9$ {\scriptsize$[0.2,\,1.9]$} & $17$ / $3000$ & $98.6$ {\scriptsize$[97.8,\,99.4]$} \\
+\addlinespace
+Claude Haiku~4.5 & no-tools & $6.2$ {\scriptsize$[2.6,\,10.2]$} & $10.8$ {\scriptsize$[6.0,\,16.4]$} & $0$ / $1000$ & $91.5$ {\scriptsize$[87.9,\,94.7]$} \\
+ & +tool (plain) & $2.0$ {\scriptsize$[0.0,\,5.0]$} & $0.4$ {\scriptsize$[0.0,\,1.0]$} & $0$ / $1000$ & $98.8$ {\scriptsize$[97.3,\,99.9]$} \\
+\addlinespace
+Claude Sonnet~4.6 & no-tools & $1.6$ {\scriptsize$[0.0,\,4.0]$} & $4.2$ {\scriptsize$[1.6,\,7.2]$} & $0$ / $1000$ & $97.1$ {\scriptsize$[95.5,\,98.5]$} \\
+ & +tool (plain) & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0$ / $1000$ & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
 \bottomrule
 \end{tabular}
-\caption{Scorecard: six research questions on the delivered surface. A gap
-counts as favorable evidence only if the two arms' 95\% intervals are disjoint
-\emph{and} it points the hypothesized way; disjoint gaps pointing the other way
-are tallied as significant-against (Methodology). Cells written \cbnd{a}{b} are
-censoring bounds and support a verdict only at their claim-adverse end; rows
-marked mechanism layer are computed on tool-verified rates, which are exact in
-every corpus, and are labeled because they measure the tool path rather than the
-delivered answer.}
-\label{tab:scorecard}
+\caption{RQ1, plan verdicts on \emph{validate\_plan} (delivered final answers,
+\emph{think}=off). Each problem contributes five valid and five broken plans. False
+negatives are valid plans the model rejected, as a share of the valid plans; false
+positives are broken plans it accepted, as a share of the broken plans. \emph{No
+verdict} counts final answers that state no readable verdict, out of all trials of the
+cell; they enter neither error rate. Open-weight rows are the pre-registered rerun and
+Claude rows are the frontier runs (wording v11); the two are never pooled. Brackets
+are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq1-verdicts}
 \end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.86\textwidth]{figures/rq1_validate_plan_errors.pdf}
+\caption{RQ1, verdict errors on \emph{validate\_plan} by model and arm
+(Table~\ref{tab:rq1-verdicts}). Grey: no-tools. Blue: tools offered, plain prompt.
+Orange: tools offered, steered prompt (not run for Claude). Whiskers are 95\%
+domain-cluster bootstrap intervals.}
+\label{fig:rq1-verdicts}
+\end{figure*}
+
+\paragraph{Plan verdicts: false positives and false negatives.} Each problem
+contributes five valid and five broken plans, so the two kinds of error can be read
+separately (Table~\ref{tab:rq1-verdicts}, Figure~\ref{fig:rq1-verdicts}). Without
+tools, the open-weight models reject between $8.5\%$ and $25.7\%$ of the valid plans
+and accept between $7.8\%$ and $11.1\%$ of the broken ones. With the tools offered
+under the plain prompt, both error rates fall for the two Qwen models. Paired on the
+same plan and wording, the false-negative rate of Qwen3.5-9B changes by $-20.1$ points
+$[-31.6,\,-9.3]$ and its false-positive rate by $-9.3$ $[-14.6,\,-3.5]$; for
+Qwen3.6-35B the changes are $-7.5$ $[-12.4,\,-3.3]$ and $-5.6$ $[-8.2,\,-3.1]$.
+Gemma-MoE-26B is the exception. Its error rates under the plain prompt stay close to
+its unaided ones ($-3.3$ $[-7.2,\,0.3]$ and $+0.8$ $[-1.6,\,3.3]$), which matches how
+seldom it calls the validator under that prompt (RQ2). With the steering sentence its
+rates drop to $2.8\%$ and $2.9\%$. At the frontier, Sonnet makes no verdict error with
+the tool in $1{,}000$ trials, and Haiku's false-positive rate falls from $10.8\%$ to
+$0.4\%$.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Arm} & \textbf{Exact trace (\%)} & \textbf{States, strict (\%)} &
+\textbf{States, lenient (\%)} & \textbf{No trace} & $\boldsymbol{\rho}$ \\
+\midrule
+% rows generated by tools/reanalysis/rq1_tex.py (rq1_simulate.tex)
+Qwen3.5-9B & no-tools & $9.9$ {\scriptsize$[4.2,\,16.7]$} & $18.5$ {\scriptsize$[10.9,\,27.1]$} & $21.7$ {\scriptsize$[14.1,\,30.0]$} & $94$ / $282$ & $-0.52$ \\
+ & +tool (plain) & $18.4$ {\scriptsize$[8.9,\,29.1]$} & $24.3$ {\scriptsize$[14.6,\,34.9]$} & $24.7$ {\scriptsize$[14.9,\,35.3]$} & $166$ / $282$ & $-0.55$ \\
+ & +tool (steered) & $17.4$ {\scriptsize$[8.9,\,27.4]$} & $22.1$ {\scriptsize$[13.4,\,32.4]$} & $22.4$ {\scriptsize$[13.5,\,32.8]$} & $188$ / $282$ & $-0.58$ \\
+\addlinespace
+Gemma-MoE-26B & no-tools & $25.5$ {\scriptsize$[14.9,\,36.5]$} & $32.5$ {\scriptsize$[22.0,\,42.9]$} & $36.9$ {\scriptsize$[25.7,\,48.0]$} & $143$ / $282$ & $-0.26$ \\
+ & +tool (plain) & $8.9$ {\scriptsize$[4.6,\,14.2]$} & $11.0$ {\scriptsize$[6.6,\,16.1]$} & $12.2$ {\scriptsize$[7.6,\,17.2]$} & $238$ / $282$ & $-0.34$ \\
+ & +tool (steered) & $8.9$ {\scriptsize$[4.6,\,13.7]$} & $11.4$ {\scriptsize$[6.6,\,16.7]$} & $12.6$ {\scriptsize$[7.9,\,17.8]$} & $238$ / $282$ & $-0.38$ \\
+\addlinespace
+Qwen3.6-35B & no-tools & $18.8$ {\scriptsize$[11.2,\,27.3]$} & $24.9$ {\scriptsize$[17.3,\,33.2]$} & $29.5$ {\scriptsize$[21.7,\,37.8]$} & $102$ / $282$ & $-0.23$ \\
+ & +tool (plain) & $30.1$ {\scriptsize$[18.1,\,43.7]$} & $36.7$ {\scriptsize$[24.5,\,50.0]$} & $38.5$ {\scriptsize$[26.3,\,51.4]$} & $152$ / $282$ & $-0.73$ \\
+ & +tool (steered) & $27.3$ {\scriptsize$[16.5,\,39.4]$} & $33.0$ {\scriptsize$[21.4,\,45.4]$} & $34.1$ {\scriptsize$[22.8,\,46.3]$} & $168$ / $282$ & $-0.70$ \\
+\addlinespace
+Claude Haiku~4.5 & no-tools & $40.4$ {\scriptsize$[24.2,\,57.8]$}$^{\ddagger26}$ & $46.9$ {\scriptsize$[29.5,\,63.8]$} & $62.2$ {\scriptsize$[46.4,\,77.4]$} & $34$ / $94$ & $-0.48$ \\
+ & +tool (plain) & $54.3$ {\scriptsize$[41.1,\,67.7]$}$^{\ddagger10}$ & $60.9$ {\scriptsize$[47.8,\,73.5]$} & $72.4$ {\scriptsize$[60.9,\,83.3]$} & $31$ / $94$ & $-0.65$ \\
+\addlinespace
+Claude Sonnet~4.6 & no-tools & $35.1$ {\scriptsize$[20.2,\,51.1]$}$^{\ddagger15}$ & $36.7$ {\scriptsize$[22.0,\,52.9]$} & $77.7$ {\scriptsize$[64.9,\,88.6]$} & $57$ / $94$ & $-0.58$ \\
+ & +tool (plain) & $51.1$ {\scriptsize$[37.9,\,64.5]$}$^{\ddagger9}$ & $58.5$ {\scriptsize$[48.3,\,69.6]$} & $59.8$ {\scriptsize$[49.3,\,71.1]$} & $23$ / $94$ & $-0.52$ \\
+\bottomrule
+\end{tabular}
+\caption{RQ1, \emph{simulate} (delivered final answers, \emph{think}=off, $94$
+problems). \emph{Exact trace}: every state equals the oracle's, which is our grader.
+\emph{States, strict}: mean share of the oracle's states that the answer
+reproduces at the same position. \emph{Lenient}: the same, also reading the complete
+leading steps of an answer that was cut off mid-trace. \emph{No trace} counts
+answers from which the grader reads no trace, out of the cell's trials. $\rho$ is the
+Spearman correlation between the strict state share and the number of actions in the
+trace. $\ddagger n$: $n$ Claude answers were cut at the storage limit, so their exact
+grade is unknown; they count as not exact here and their states are scored on what was
+stored. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq1-simulate}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/rq1_simulate_by_length.pdf}
+\caption{RQ1, share of states right on \emph{simulate} against the length of the
+trace, strict score (top) and lenient score (bottom); see
+Table~\ref{tab:rq1-simulate} for the definitions. Grey dashed: no-tools. Blue: tools
+offered, plain prompt. Orange: tools offered, steered prompt. Whiskers are 95\%
+domain-cluster bootstrap intervals; bins hold between $10$ and $81$ trials.}
+\label{fig:rq1-simulate}
+\end{figure*}
+
+\paragraph{State traces against trace length.} Our \emph{simulate} grader is
+all-or-nothing: a trace counts only if every state equals the oracle's. To see how
+correctness changes with length we also score each answer state by state, as the share
+of the oracle's states that the answer reproduces at the same position, where a state
+is the set of true predicates together with the numeric values. Many answers are cut
+off before the trace ends. They are then unreadable as JSON, and they score zero on
+both measures. A third, lenient score also reads the complete leading steps of such an
+answer. It is more forgiving than our grader, and we report it only beside the strict
+score. Six of the $100$ problems are left out here because the plan shown in the
+prompt was not the plan that the oracle trace belongs to, which leaves $94$.
+
+State accuracy falls with trace length in every model and arm
+(Figure~\ref{fig:rq1-simulate}; $\rho$ between $-0.23$ and $-0.73$ across the thirteen
+cells of Table~\ref{tab:rq1-simulate}). Beyond $40$ actions, ten of the thirteen cells
+contain no exact trace, and the best cell reaches $10\%$. Averaged over lengths, the
+tools raise the share of exact traces for both Qwen models and both Claude models, for
+example from $18.8\%$ to $30.1\%$ for Qwen3.6-35B and from $35.1\%$ to $51.1\%$ for
+Sonnet, with overlapping intervals in each case. For Gemma-MoE-26B the tools lower it,
+from $25.5\%$ to $8.9\%$. The tool arms fail mostly by delivering no readable trace
+($238$ of Gemma's $282$ plain-arm answers), a loss that RQ3 examines. The lenient
+score changes one reading. Sonnet's unaided strict score is $36.7\%$ and its lenient
+score is $77.7\%$, above the $59.8\%$ of its tool arm: most of its unaided failures are
+traces that are right as far as they go and end early. Both Claude figures are lower
+bounds where storage cut the answer.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+& & & \multicolumn{3}{c}{\textbf{Spearman $\boldsymbol{\rho}$ of success with}} \\
+\cmidrule(l){4-6}
+\textbf{Model} & \textbf{Arm} & \textbf{Solved (\%)} & \textbf{plan length} &
+\textbf{object count} & \textbf{planner runtime} \\
+\midrule
+% rows generated by tools/reanalysis/rq1_tex.py (rq1_solve.tex)
+Qwen3.5-9B & no-tools & $24.3$ {\scriptsize$[16.3,\,32.3]$} & $-0.29$ & $-0.47$ & $-0.02$ \\
+ & +tool (plain) & $88.7$ {\scriptsize$[82.0,\,94.7]$} & $-0.56$ & $-0.08$ & $-0.29$ \\
+ & +tool (steered) & $89.0$ {\scriptsize$[82.7,\,94.3]$} & $-0.53$ & $-0.07$ & $-0.21$ \\
+\addlinespace
+Gemma-MoE-26B & no-tools & $21.3$ {\scriptsize$[13.0,\,30.3]$} & $-0.32$ & $-0.39$ & $-0.11$ \\
+ & +tool (plain) & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $-0.44$ & $-0.40$ & $-0.46$ \\
+ & +tool (steered) & $95.3$ {\scriptsize$[91.3,\,98.7]$} & $-0.40$ & $-0.13$ & $-0.33$ \\
+\addlinespace
+Qwen3.6-35B & no-tools & $25.3$ {\scriptsize$[16.3,\,35.7]$} & $-0.34$ & $-0.42$ & $+0.03$ \\
+ & +tool (plain) & $77.0$ {\scriptsize$[69.7,\,83.7]$} & $-0.34$ & $-0.30$ & $-0.09$ \\
+ & +tool (steered) & $87.3$ {\scriptsize$[81.7,\,92.3]$} & $-0.51$ & $-0.07$ & $-0.30$ \\
+\addlinespace
+Claude Haiku~4.5 & no-tools & $22.0$ {\scriptsize$[9.0,\,37.0]$} & $-0.33$ & $-0.24$ & $-0.32$ \\
+ & +tool (plain) & $95.0$ {\scriptsize$[90.0,\,99.0]$} & $+0.03$ & $-0.02$ & $-0.12$ \\
+\addlinespace
+Claude Sonnet~4.6 & no-tools & $29.0$ {\scriptsize$[17.0,\,42.0]$} & $-0.54$ & $-0.42$ & $-0.32$ \\
+ & +tool (plain) & $95.0$ {\scriptsize$[91.0,\,98.0]$} & $-0.25$ & $-0.01$ & $-0.17$ \\
+\bottomrule
+\end{tabular}
+\caption{RQ1, \emph{solve} (delivered final answers, \emph{think}=off, $100$
+problems). \emph{Solved}: the delivered plan is valid. The three right-hand columns
+are Spearman correlations, over the $100$ problems, between a problem's share of
+solved trials and three measures of its hardness: the length of the reference plan,
+the number of objects, and the planner's own runtime on it. Brackets are 95\%
+domain-cluster bootstrap intervals.}
+\label{tab:rq1-solve}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/rq1_solve_by_length.pdf}
+\caption{RQ1, share of problems solved against the length of the reference plan.
+Grey dashed: no-tools. Blue: tools offered, plain prompt. Orange: tools offered,
+steered prompt. Whiskers are 95\% domain-cluster bootstrap intervals; open-weight bins
+hold between $36$ and $81$ trials and Claude bins between $12$ and $27$.}
+\label{fig:rq1-solve}
+\end{figure*}
+
+\paragraph{Problems solved against hardness.} We measure hardness by the length of the
+reference plan, with the number of objects as a second view. The planner's own
+runtime, which the solver returns with every plan, separates these problems poorly: it
+ranges from $0.15$\,s to $22.3$\,s, and two thirds of the problems take under
+$0.32$\,s. Without tools the five models solve between $21.3\%$ and $29.0\%$ of the
+problems, and success falls with plan length in each of them ($\rho$ from $-0.29$ to
+$-0.54$; Table~\ref{tab:rq1-solve}, Figure~\ref{fig:rq1-solve}). Sonnet solves
+$61.9\%$ of the problems whose reference plan has at most five actions and none of
+those with more than $40$. With the tools the models deliver a valid plan in $77.0\%$
+to $95.3\%$ of the trials. For the open-weight models this share still falls on the
+longest plans, to between $36.1\%$ and $58.3\%$ under the plain prompt, while both
+Claude models stay at $83.3\%$. The planner solves every problem of this corpus when
+it is called, so the drop on long plans arises largely after the tool has answered
+(RQ3). For the same reason the corpus says nothing about problems that the planner
+itself cannot solve.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Arm} & \textbf{Valid plans} & \textbf{Mean len.} &
+\textbf{Mean ref.} & \textbf{Median ratio} & \textbf{$<$ / $=$ / $>$ ref.} &
+\textbf{Max ratio} & \textbf{$=$ tool's} \\
+\midrule
+% rows generated by tools/reanalysis/rq1_tex.py (rq1_planlen.tex)
+Qwen3.5-9B & no-tools & $73$ / $300$ & $11.3$ & $13.7$ & $1.00$ & $20$ / $40$ / $13$ & $2.0$ & -- \\
+ & +tool (plain) & $266$ / $300$ & $14.9$ & $14.9$ & $1.00$ & $6$ / $252$ / $8$ & $1.1$ & $262$ / $266$ \\
+ & +tool (steered) & $267$ / $300$ & $15.4$ & $15.4$ & $1.00$ & $6$ / $253$ / $8$ & $1.1$ & $263$ / $267$ \\
+\addlinespace
+Gemma-MoE-26B & no-tools & $64$ / $300$ & $9.7$ & $13.0$ & $1.00$ & $15$ / $45$ / $4$ & $1.7$ & -- \\
+ & +tool (plain) & $277$ / $300$ & $16.9$ & $16.8$ & $1.00$ & $5$ / $259$ / $13$ & $1.2$ & $269$ / $277$ \\
+ & +tool (steered) & $286$ / $300$ & $17.4$ & $17.3$ & $1.00$ & $4$ / $270$ / $12$ & $1.1$ & $280$ / $286$ \\
+\addlinespace
+Qwen3.6-35B & no-tools & $76$ / $300$ & $11.8$ & $11.1$ & $1.00$ & $15$ / $44$ / $17$ & $3.2$ & -- \\
+ & +tool (plain) & $231$ / $300$ & $15.3$ & $15.4$ & $1.00$ & $10$ / $214$ / $7$ & $1.3$ & $213$ / $214$ \\
+ & +tool (steered) & $262$ / $300$ & $15.3$ & $15.2$ & $1.00$ & $4$ / $248$ / $10$ & $8.7$ & $257$ / $262$ \\
+\addlinespace
+Claude Haiku~4.5 & no-tools & $22$ / $100$ & $8.5$ & $8.4$ & $1.00$ & $6$ / $10$ / $6$ & $2.0$ & -- \\
+ & +tool (plain) & $95$ / $100$ & $19.7$ & $19.7$ & $1.00$ & $1$ / $91$ / $3$ & $8.7$ & $93$ / $95$ \\
+\addlinespace
+Claude Sonnet~4.6 & no-tools & $29$ / $100$ & $6.6$ & $7.0$ & $1.00$ & $7$ / $21$ / $1$ & $1.5$ & -- \\
+ & +tool (plain) & $95$ / $100$ & $23.6$ & $18.9$ & $1.00$ & $4$ / $85$ / $6$ & $61.4$ & $94$ / $95$ \\
+\bottomrule
+\end{tabular}
+\caption{RQ1, length of the valid delivered plans on \emph{solve} (\emph{think}=off).
+\emph{Valid plans}: trials with a valid delivered plan, out of the cell's trials.
+\emph{Mean len.} and \emph{Mean ref.}: mean number of actions of the delivered plan and of
+the reference plan on the same trials. \emph{Ratio}: delivered length over reference length. \emph{$<$ / $=$ / $>$ ref.}: valid plans
+shorter than, as long as, and longer than the reference. \emph{$=$ tool's}: of the valid plans from a
+trial in which a planner call returned a plan, how many have that plan's length. The
+reference plan comes from the planners' default search, which stops at the first plan
+it finds, so it is a common baseline and is not a shortest plan.}
+\label{tab:rq1-planlen}
+\end{table*}
+
+\paragraph{Plan length.} Among the valid delivered plans we compare the number of
+actions with the reference plan for the same problem (Table~\ref{tab:rq1-planlen}).
+Valid unaided plans are about as long as the reference. The median ratio is $1.00$ for
+all five models, and each model has some plans that are shorter and some that are
+longer. With the tools, the delivered plan has the length of the plan that the planner
+returned in nearly every trial, for example in $262$ of $266$ for Qwen3.5-9B under the
+plain prompt, so the quality of a plan delivered with tools is the planner's. That
+plan is occasionally much longer than the reference. In the largest case Sonnet
+delivered a valid $307$-action plan for a parking problem whose reference plan has $5$
+actions, after it called the numeric planner on this classical domain.
+
+% ----------------------------------------------------------------------------------
+% The subsections below predate the three-question organisation (2026-11-22). They are
+% being rewritten: RQ2 (tool choice) and RQ3 (use of the output) next, then the rest
+% (development/roadmap.md, milestones M4 and M5).
+% ----------------------------------------------------------------------------------
 
 \begin{figure*}[t]
 \centering
@@ -854,8 +1077,7 @@ roster the tool arm's delivered rates are censoring bounds: the 9B's
 \cbnd{26.0}{58.7} clears its $10.7\%$ baseline even if every censored trial
 failed, though by under a point once the clustering correction is applied, so we
 read it as exploratory; Gemma (\cbnd{14.3}{35.3}) and the 35B
-(\cbnd{12.7}{53.7}) straddle and stay undecided (RQ2 \textsc{yes}, carried by
-the frontier tier and the baseline floor). The mechanism layer points to invocation as the reason the
+(\cbnd{12.7}{53.7}) straddle and stay undecided. The mechanism layer points to invocation as the reason the
 open-roster bounds sit so far under their tool-verified rates of $63$--$99\%$. Where the plain arm leaves headroom (Qwen3.6-35B invokes the
 planner on only $68\%$ of trials) steering raises invocation
 to $94\%$, and every $\geq$9B model is $\geq$93\%
@@ -1009,8 +1231,7 @@ and undecided where it cannot: the 9B rises to \cbnd{92.2}{95.3}, clearing its
 baseline even if every censored trial failed; Gemma's \cbnd{84.3}{99.8} clears at
 the 95\% level but by too little to survive the paraphrase-clustering correction,
 so we flag it as near-threshold; and the 35B's \cbnd{74.7}{97.8} straddles its
-$75.7\%$ baseline and stays undecided. No model moves against (RQ1 \textsc{yes},
-qualified). \emph{Validate\_domain} behaves
+$75.7\%$ baseline and stays undecided. No model moves against. \emph{Validate\_domain} behaves
 differently. Because its fixtures run $5{:}1$ valid-to-invalid, a constant
 ``VALID'' already scores $83\%$; yet unaided, every $\geq$9B model lands \emph{at or
 below} that trivial line (pooled $26$--$78\%$) and discrimination is unreliable across
@@ -1124,7 +1345,7 @@ These two difficulty analyses run at the mechanism layer (the tool-arm side of
 each bin contrast is tool-verified, since binned delivered rates on the
 canonical corpus are bounds too wide to compare), and are labeled accordingly.
 An advantage can only be \emph{seen} to change where the no-tools baseline has room
-to move, which makes \emph{validate\_plan} the case where this is visible (RQ5 \textsc{yes}):
+to move, which makes \emph{validate\_plan} the case where this is visible:
 as the reference plan lengthens, unaided accuracy degrades
 ($94\!\to\!91\!\to\!62\%$ over short/medium/long bins) while the tool path holds
 ($\approx99\!\to\!98\!\to\!89\%$), so the gap widens $+5\!\to\!+7\!\to\!+27$\,pp;
@@ -1136,7 +1357,7 @@ ceiling); \emph{simulate}'s gap is large but \emph{declines}
 floored at a format-exact $0$, the tool arm itself degrades on long trajectories, the one place
 tool-assisted success erodes with difficulty. Object count, by contrast, moves
 nothing: the \emph{validate\_problem} gap is flat at $+22/{+}23/{+}23$\,pp and the
-other tasks are flat too (RQ6 \textsc{no}). The tool's advantage tracks plan length
+other tasks are flat too. The tool's advantage tracks plan length
 and is flat in object count.
 
 \begin{figure*}[t]
@@ -1214,8 +1435,7 @@ makes the tool look better, we do not report.)
 \subsection{Robustness: Reasoning Mode and Contamination}
 \textbf{Reasoning mode.} At the mechanism layer, the same signed rule applied to
 the \emph{think}=on
-corpus reproduces the \emph{think}=off mechanism-layer pattern (\textsc{yes}/\textsc{yes}/\textsc{mixed}/%
-\textsc{yes}, RQ5 \textsc{yes}, RQ6 \textsc{no}); the delivered surface under
+corpus reproduces the \emph{think}=off mechanism-layer pattern; the delivered surface under
 \emph{think}=on carries the same censoring bounds as at \emph{think}=off and adds
 no decided cell. But the raw \emph{think}=on
 gaps are budget-confounded: reasoning and answer share one decode budget
