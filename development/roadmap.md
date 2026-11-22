@@ -179,7 +179,7 @@ Omer raises these; nothing here is planned work until he reports a decision.
 ## 9. Beyond this paper
 
 A direction Omer named on 2026-11-22. It is **not work for the current paper** and nothing
-of it is planned or built. The paper's Future Work section names it as a fifth direction
+of it is planned or built. The paper's Future Work section names it as a further direction
 (approved by Omer the same day).
 
 - **Learning domains and action models with an LLM.** Give the model tools or scripts

@@ -2546,7 +2546,7 @@ its negative-arm interval. We therefore report balanced accuracy for that task, 
 like $F_1$, is not inflated by the imbalance that a pooled metric would reward.
 
 \section{Future Work}
-Four extensions follow from limits stated in this paper. The first is a test set that
+Five extensions follow from limits stated in this paper. The first is a test set that
 includes problems the planner does not solve within its time limit. On such a problem a
 planner call returns a timeout, so the comparison with the unaided model would show what
 a model delivers when its tool fails, and up to which problem size the tools still raise
@@ -2557,11 +2557,16 @@ reasoning and the answer shared one budget. The third is a registered experiment
 state traces that RQ3 counts as lost. The pilot enlarged the context window for the
 open-weight models, and the output-budget probe enlarged the output allowance for the
 Claude models, so neither varied both settings on one model. The experiment would cross
-the two settings. The fourth is to ask the three questions on planning formalisms that
-our tool suite and test set do not cover, such as temporal planning, for which the suite
-has no planner.
+the two settings. The fourth asks whether the model should restate the tool's output at
+all. A correct plan or state trace returned by a tool is often lost when the model
+restates it, and the loss grows with the length of what must be restated. A design in
+which the tool's result is passed to the answer directly, and the model only chooses the
+tool and checks its result, would show how much of the loss is due to the restatement
+itself. The fifth is to ask the three questions on planning formalisms that our tool
+suite and test set do not cover, such as temporal planning, for which the suite has no
+planner.
 
-A fifth direction goes beyond the three questions. The planners and validators studied
+A further direction goes beyond the three questions. The planners and validators studied
 here take a PDDL domain as input, and none of them produces one. Algorithms for learning
 action models produce a domain from observed plan executions
 \citep{yang2007arms, aineto2019fama, juba2021sam}, and \citet{arora2018review} survey

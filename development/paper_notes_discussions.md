@@ -227,3 +227,8 @@
   only as future work.
 - **Roster (Omer):** two open-weight families is fine enough. If more models are
   preferred, the paid API (Claude) side can be enriched. No change to the paper now.
+- **Decided (Omer), later the same night:** add the restating question to Future Work. It is
+  the fourth of now five extensions (temporal planning moves to fifth; learning action
+  models is renamed "a further direction"). The sentence claims only what the Discussion
+  already states: a correct plan or trace is often lost in the restatement, and the loss
+  grows with its length.
