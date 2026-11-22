@@ -363,22 +363,110 @@ task has a single relevant, correct-by-construction tool per instance
 \label{tab:tasks}
 \end{table}
 
-The fixture corpus is 20 PDDL domains: 10 classical (e.g., blocksworld,
-gripper, rovers, satellite, depots) and 10 numeric (e.g., counters, farmland,
-sailing, drone), assembled from standard planning domains and public benchmark
-suites. Each domain ships
-matched valid and mutated-invalid files so the verdict tasks score against both
-positive and negative instances (balanced one-to-one for \emph{validate\_problem}
-and \emph{validate\_plan}; \emph{validate\_domain} carries a $5{:}1$
-positive-to-negative ratio, which widens its negative-arm interval). Every committed positive is
-re-validated and every negative is confirmed rejected at startup, so a fixture
-that drifts from its label aborts the run. Holding model, reasoning mode, and arm
-fixed, one cell comprises 4{,}560 graded trials: \emph{solve} 300,
-\emph{validate\_domain} 360, \emph{validate\_problem} 600, \emph{validate\_plan}
-3{,}000, and \emph{simulate} 300. Each cell spans three neutral paraphrases per
-task (imperative, declarative, interrogative framings), a linguistic-robustness
-probe; the steering directive introduced below is held byte-identical across the
-three, isolating steering variance from paraphrase variance.
+\paragraph{Test data.} The test set has 20 PDDL domains, 10 classical (e.g.,
+blocksworld, gripper, rovers, satellite, depots) and 10 numeric (e.g., counters,
+farmland, sailing, drone). Ten come from the dataset of \citet{benyamin2025copilot}
+and ten from public benchmark suites. Four problems of one numeric domain are small
+hand-written variants. Each domain has one valid and one invalid domain file, five
+valid and five invalid problems, and five valid and five invalid plans for each valid
+problem, 1{,}240 files in all. The valid plans come from the planners. For 99 of the
+100 problems the five valid plan files are copies of one plan.
+
+Every invalid file is an edit of a valid one, kept only if \texttt{pyval} rejected it,
+and the harness checks every label again at startup. Of the 20 invalid domains, 13
+differ from the valid file only by an unbalanced parenthesis, 5 use an undeclared
+predicate and 2 drop the hyphen of a typed parameter list. The ten domains added for
+this study all received the generator's first edit, one extra closing parenthesis. The
+ten from the earlier dataset kept their hand-made invalid files. The 100 invalid
+problems are edits of each domain's first problem. Of these, 45 use an object or
+predicate that is not declared, 20 have an unbalanced parenthesis, 26 have no goal (13
+of them also an extra parenthesis), and 9 have no objects block or no initial-state
+block. The 500 invalid plans keep every action name and argument count legal, so each
+error lies in what the plan does. In 400 of them steps were deleted (290 from the
+middle and 110 from the end), 74 swap the first two arguments of one step, 17 repeat a
+step, and 9 are hand-made files from the earlier dataset. In all, 380 of the 500 are
+exactly one step shorter than the valid plan they came from. A valid problem declares
+2 to 35 objects (median 9), and its reference plan has 2 to 110 steps (median 11.5).
+Domain files run from 686 to 5{,}542 characters. Table~\ref{tab:domain-sizes} in the
+Technical Appendix gives the sizes per domain.
+
+One cell holds 4{,}560 trials: \emph{solve} 300, \emph{validate\_domain} 360,
+\emph{validate\_problem} 600, \emph{validate\_plan} 3{,}000 and \emph{simulate} 300,
+split evenly over three prompt wordings. Valid and invalid items are balanced on
+\emph{validate\_problem} and \emph{validate\_plan}. On \emph{validate\_domain} each
+wording has 100 valid trials (one per problem) and 20 invalid ones, so a model that
+always answers VALID scores 83\%, and we report balanced accuracy there. Many trials
+repeat a prompt exactly. The valid-domain prompt holds only the domain, so it repeats
+once per problem, and the five valid plans of a problem are almost always one plan. Per
+arm, \emph{validate\_plan} has 1{,}803 distinct prompts in 3{,}000 trials and
+\emph{validate\_domain} has 120 in 360. The plan in a \emph{simulate} prompt is the
+planner's plan, the one whose trajectory is the answer key. The difficulty bins in
+Results split the trials into thirds. By reference plan length they are at most 8, 9
+to 19, and more than 19 steps (on \emph{validate\_plan}, valid plans only). By object
+count they are at most 6, 7 to 14, and more than 14 objects (at most 5, 6 to 13, and
+more than 13 on \emph{validate\_problem}).
+
+\paragraph{Prompts.} Each trial sends one system message and one user message. The
+user message states the task in one of three wordings and then pastes in full the
+PDDL the task needs. That is the domain file, the problem file except on
+\emph{validate\_domain}, and the plan, one action per line, on \emph{validate\_plan}
+and \emph{simulate}. The message gives no file paths. With the system message, a
+prompt runs from about 1{,}000 to 10{,}100 characters. On the three verdict tasks the
+wordings differ only in the opening sentence, two of them instructions and one a
+question, and all three end with the same required verdict line. On \emph{solve} and
+\emph{simulate} all three wordings are instructions, and they also describe the answer
+format in different words. For example, only the second \emph{solve} wording asks for
+each action on its own line. The steered arm adds one sentence that names the tool at
+the end of the task statement, before the PDDL, and this sentence is the same for all
+three wordings of a task. The system message depends only on the task and the arm. The
+Technical Appendix (Prompts) gives every wording, system message and steering sentence
+verbatim. We refer to the plain wordings by their indices in the released prompt bank,
+v11, v12 and v13, and to their steered forms as v14 to v16, so ``prompt v11'' is the
+first plain wording. The frontier tool runs used v11 only, and so did the Haiku
+unaided run. The Sonnet unaided run used all three wordings. On the open-weight models
+the wording moves both unaided success and how often a model calls the tool, so the
+frontier results rest on a single wording and may not hold for the other two.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.13\textwidth}
+                >{\raggedright\arraybackslash}p{0.40\textwidth}
+                >{\raggedright\arraybackslash}p{0.40\textwidth}@{}}
+\toprule
+\textbf{Task} & \textbf{What the model is given} & \textbf{Correct answer} \\
+\midrule
+\emph{solve} & the domain and the problem (three blocks; \texttt{b2} is on \texttt{b1},
+\texttt{b3} is on the table; goal \texttt{(on b3 b1)}) & any valid plan, for example
+\texttt{(unstack b2 b1)}, \texttt{(put\_down b2)}, \texttt{(pick\_up b3)},
+\texttt{(stack b3 b1)} \\
+\addlinespace
+\emph{validate\_plan} & the domain, the problem and a plan. Valid item: the four-action
+plan above. Broken item: the same plan with \texttt{(put\_down b2)} deleted, so the
+arm picks up \texttt{b3} while it still holds \texttt{b2} & \textsc{valid} for the
+first, \textsc{invalid} for the second \\
+\addlinespace
+\emph{validate\_domain} & a domain file. Valid item: the blocksworld domain. Broken
+item: the same file with one closing parenthesis removed & \textsc{valid} for the
+first, \textsc{invalid} for the second \\
+\addlinespace
+\emph{validate\_problem} & the domain and a problem. Valid item: the problem above.
+Broken item: the same problem with the fact \texttt{(on b4 b1)} added to the initial
+state, where \texttt{b4} is not a declared object & \textsc{valid} for the first,
+\textsc{invalid} for the second \\
+\addlinespace
+\emph{simulate} & the domain, the problem and the four-action plan & the five states
+the plan passes through. Step~0 is the initial state: \texttt{(handempty)},
+\texttt{(ontable b1)}, \texttt{(on b2 b1)}, \texttt{(ontable b3)}, \texttt{(clear b2)},
+\texttt{(clear b3)}. After \texttt{(unstack b2 b1)}: \texttt{(holding b2)},
+\texttt{(clear b1)}, \texttt{(ontable b1)}, \texttt{(ontable b3)}, \texttt{(clear b3)}.
+Every state must list exactly the predicates that hold \\
+\bottomrule
+\end{tabular}
+\caption{One test item per task, all from the first blocksworld problem of the test
+set. The prompt wordings for each task are in the Technical Appendix (Prompts).}
+\label{tab:task-examples}
+\end{table*}
 
 \subsection{Models and Serving}
 We evaluate five open-weight instruction-tuned models spanning over an order of
@@ -642,91 +730,9 @@ was unchanged. This is itself a live demonstration of the budget confound the
 cross-mode analysis controls for.
 
 \section{Results}
-% Delivered-surface reframe (D-J2, 2026-09-07). Open-roster delivered numbers come
-% from results/derived/e2e_overlay/pooled_e2e_table.csv (gitignored; a copy is in
-% checkpoints/e2e-overlay/derived_reports.zip); verdicts from
-% development/reference/job2_delivered_reframe_worknote.md (frozen values:
-% development/NUMBERS.md, block "Job 2 — the delivered surface").
-% Study 1 numbers (main sweep: tool-verified, calling, unaided, contamination): the
-% frozen values are in development/NUMBERS.md, block "Study 1 — main sweep figures",
-% generated by tools/reanalysis/s1_*.py and tools/reanalysis/01-04. Check that block
-% before quoting a Study 1 number here.
-Unless stated otherwise, every figure is \emph{think}~=~off (the unconfounded
-read) on the three $\geq$9B models, with reasoning mode treated separately in the
-Robustness subsection. All headline rates are \emph{delivered} (Methodology): the
-model's own final answer graded against the oracle, with tool-verified rates
-appearing only as the labeled mechanism layer. The \emph{availability} gap is
-+tool(plain)~$-$~no-tools and the \emph{steering} gap is
-+tool(steered)~$-$~+tool(plain), each significant when the two arms' 95\%
-intervals are disjoint; where a cell is a censoring bound \cbnd{a}{b}, the gap is
-asserted only if it survives the claim-adverse end. Table~\ref{tab:howtoread}
-says, for each corpus, which value shape its delivered rates take and why, and
-its footnotes list the claims this discipline forbids; we recommend reading it
-before any table below. Figure~\ref{fig:funnel} draws the same discipline for
-every with-tools cell that can be drawn: of all trials, how many call the tool,
-how many obtain a correct tool result, and how many deliver a correct answer,
-against the unaided rate as a reference line.
-
-\begin{table*}[t]
-\centering
-\footnotesize
-\begin{tabular}{@{}p{0.26\textwidth}p{0.20\textwidth}p{0.13\textwidth}p{0.31\textwidth}@{}}
-\toprule
-\textbf{Corpus (arms)} & \textbf{Final-answer storage} & \textbf{Delivered shape} & \textbf{What it can support} \\
-\midrule
-Open-weight sweeps, canonical $+$ anonymized (no-tools arm) & full text at online
-grading; stored copies are $500$-char snapshots & exact $[a,\,b]$; \emph{simulate} \cbnd{a}{b} & unaided baselines; the
-contamination comparison \\
-Open-weight sweeps (tool arms) & $500$-char snapshot & bounds \cbnd{a}{b} &
-availability and steering verdicts at claim-adverse bounds; straddling cells stay
-\emph{undecided} \\
-Frontier runs, Claude Haiku~4.5 $+$ Sonnet~4.6 (both arms) & $16$K snapshot;
-no-tools de-censored from raw batch output & exact, except \emph{simulate}
-\cbnd{a}{b} & exact delivered lifts and the delivery gap at two capability tiers \\
-Output-budget probe, frontier (both arms; \emph{simulate}, $n{=}100$ per cell,
-same trial keys as the canonical cells) & $64{,}000$-token allowance; $256$K-char
-storage & exact & the budget component of the delivery gap; reported beside, never
-pooled with, the canonical cells \\
-Independent full-storage rerun (tool arms, \emph{think}=on, reasoning parser off)
-& full text & exact or near-exact & separate-apparatus replication;
-\emph{within}-corpus contrasts only \\
-Budget-decoupled control (no-tools) & full text & exact & the unaided-capability
-question only \\
-\bottomrule
-\end{tabular}
-\caption{How to read our numbers: one primary surface (delivered), three value
-shapes, fixed by what each corpus stored. Wilson 95\% intervals print as
-$[a,\,b]$; censoring bounds print as \cbnd{a}{b} and are never resolved by
-optimism. Four claims are ruled out by construction and do not appear in this
-paper: (i) no delivered-vs-tool-verified gap is computed across corpora, only
-within one; (ii) an undecided open-roster cell is never resolved by importing the
-full-storage rerun, whose job-level parity with the canonical sweep failed (it is a
-replication under a different apparatus and does not repair the canonical cells); (iii) no claim that tools
-are the sole source of \emph{simulate} success is made at the delivered level;
-(iv) the rerun's \emph{solve} cells carry a known parser-off truncation shift and
-are excluded from headline use.}
-\label{tab:howtoread}
-\end{table*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{figures/funnel.pdf}
-\caption{The funnel. For every with-tools trial, the share that calls the tool
-(\textsc{call}), obtains a correct tool result (the mechanism layer), and
-delivers a correct answer (the primary surface); the dashed line is the
-no-tools delivered rate on the same task (\textsc{need}), drawn as a reference
-and never as a bar, because arms are never pooled. Top row: the two frontier
-tiers on the canonical corpus (prompt v11) and the PlanBench arm, whose
-sequence gains a leading \textsc{formalize} stage (the model's PDDL matches the
-gold problem) because the prompt supplies no PDDL there. Bottom row: the three
-$\geq$9B open-weight models on the validation tasks, plain arm,
-\emph{think}=off; this corpus's \emph{solve} and \emph{simulate} tool cells are
-censoring bounds too wide to draw and are reported in Figure~\ref{fig:solesource}
-and the text. Bars are marginal shares of all trials, not nested conditionals;
-hatched segments are censoring bounds \cbnd{a}{b}; the PlanBench delivered bars
-use the first-draw counts ($410/600$ and $431/600$).}
-\label{fig:funnel}
-\end{figure*}
+This section answers the three research questions in turn. The analyses that
+predate them, which cover the main sweep task by task together with cost, reasoning
+mode and contamination, follow in Section~\ref{sec:supporting}.
 
 We organize the evaluation around three research questions.
 \begin{enumerate}
@@ -1033,11 +1039,303 @@ plan is occasionally much longer than the reference. In the largest case Sonnet
 delivered a valid $307$-action plan for a parking problem whose reference plan has $5$
 actions, after it called the numeric planner on this classical domain.
 
-% ----------------------------------------------------------------------------------
-% The subsections below predate the three-question organisation (2026-11-22). They are
-% being rewritten: RQ2 (tool choice) and RQ3 (use of the output) next, then the rest
-% (development/roadmap.md, milestones M4 and M5).
-% ----------------------------------------------------------------------------------
+\subsection{RQ2: Does the Model Choose the Right Tool?}
+\label{sec:rq2}
+% Every number in this subsection is generated: tools/reanalysis/rq23_metrics.py
+% (development/NUMBERS.md, block "RQ2 metrics"); table rows by tools/reanalysis/rq23_tex.py.
+Every with-tools trial offers all seven tools. We sort each trial by the set of tools
+it called: no tool; only the right tool; the right tool and at least one other; other
+tools only. The right tool is the task's validator on the three validation tasks, the
+state-transition tool on \emph{simulate}, and on \emph{solve} the planner that fits the
+domain (the classical planner on a classical domain, the numeric planner on a numeric
+one). On \emph{solve} this is stricter than the invocation rate used elsewhere in this
+paper, which accepts either planner. The classification reads the stored tool calls,
+which every corpus kept in full, so this question can use the main sweep as well as
+the rerun and the frontier runs. The three corpora are never pooled. Like the measures
+of RQ1, the classification was defined after the data were collected.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Prompt} & \textbf{\emph{validate\_domain}} &
+\textbf{\emph{validate\_problem}} & \textbf{\emph{validate\_plan}} & \textbf{\emph{solve}} &
+\textbf{\emph{simulate}} \\
+\midrule
+% rows generated by tools/reanalysis/rq23_tex.py (rq2_choice.tex)
+\multicolumn{7}{@{}l}{\emph{Exactly the right tool and no other (\%)}} \\
+Qwen3.5-9B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.3$ {\scriptsize$[98.3,\,100.0]$} & $95.4$ {\scriptsize$[91.0,\,98.9]$} & $39.0$ {\scriptsize$[22.3,\,56.7]$} & $68.3$ {\scriptsize$[58.7,\,76.7]$} \\
+ & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.5$ {\scriptsize$[98.5,\,100.0]$} & $47.7$ {\scriptsize$[29.0,\,66.7]$} & $87.7$ {\scriptsize$[76.0,\,96.7]$} \\
+Gemma-MoE-26B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $91.8$ {\scriptsize$[88.7,\,95.0]$} & $20.0$ {\scriptsize$[8.5,\,33.0]$} & $28.7$ {\scriptsize$[17.3,\,41.0]$} & $91.0$ {\scriptsize$[84.3,\,96.7]$} \\
+ & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $95.0$ {\scriptsize$[92.5,\,97.3]$} & $93.1$ {\scriptsize$[82.9,\,99.9]$} & $44.0$ {\scriptsize$[30.7,\,57.3]$} & $93.0$ {\scriptsize$[87.0,\,98.0]$} \\
+Qwen3.6-35B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $97.2$ {\scriptsize$[95.8,\,98.5]$} & $82.7$ {\scriptsize$[71.6,\,91.9]$} & $22.3$ {\scriptsize$[15.0,\,30.0]$} & $95.3$ {\scriptsize$[91.0,\,98.7]$} \\
+ & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.7$ {\scriptsize$[99.2,\,100.0]$} & $43.0$ {\scriptsize$[31.0,\,55.7]$} & $97.7$ {\scriptsize$[95.3,\,99.7]$} \\
+Claude Haiku~4.5 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.0$ {\scriptsize$[97.5,\,100.0]$} & $99.9$ {\scriptsize$[99.7,\,100.0]$} & $1.0$ {\scriptsize$[0.0,\,3.0]$} & $98.0$ {\scriptsize$[95.0,\,100.0]$} \\
+Claude Sonnet~4.6 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.4$ {\scriptsize$[98.9,\,99.8]$} & $65.0$ {\scriptsize$[49.0,\,80.0]$} & $99.0$ {\scriptsize$[97.0,\,100.0]$} \\
+\addlinespace
+\multicolumn{7}{@{}l}{\emph{The right tool was called (\%)}} \\
+Qwen3.5-9B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $97.8$ {\scriptsize$[94.5,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $80.7$ {\scriptsize$[76.0,\,85.3]$} \\
+ & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
+Gemma-MoE-26B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $20.0$ {\scriptsize$[8.5,\,33.1]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.7$ {\scriptsize$[99.0,\,100.0]$} \\
+ & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $93.1$ {\scriptsize$[82.9,\,99.9]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
+Qwen3.6-35B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.3$ {\scriptsize$[98.7,\,99.8]$} & $83.1$ {\scriptsize$[71.8,\,92.4]$} & $82.7$ {\scriptsize$[75.7,\,89.3]$} & $99.7$ {\scriptsize$[99.0,\,100.0]$} \\
+ & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $98.3$ {\scriptsize$[96.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
+Claude Haiku~4.5 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $95.0$ {\scriptsize$[85.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
+Claude Sonnet~4.6 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $95.0$ {\scriptsize$[85.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
+\addlinespace
+\multicolumn{7}{@{}l}{\emph{Another tool was called (\%)}} \\
+Qwen3.5-9B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.7$ {\scriptsize$[0.0,\,1.7]$} & $2.5$ {\scriptsize$[0.2,\,6.2]$} & $61.0$ {\scriptsize$[43.3,\,77.7]$} & $13.0$ {\scriptsize$[5.7,\,22.3]$} \\
+ & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.5$ {\scriptsize$[0.0,\,1.5]$} & $52.3$ {\scriptsize$[33.3,\,71.0]$} & $12.3$ {\scriptsize$[3.3,\,24.0]$} \\
+Gemma-MoE-26B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $8.2$ {\scriptsize$[5.0,\,11.3]$} & $0.0$ {\scriptsize$[0.0,\,0.1]$} & $71.3$ {\scriptsize$[59.0,\,82.7]$} & $8.7$ {\scriptsize$[3.0,\,15.3]$} \\
+ & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $5.0$ {\scriptsize$[2.7,\,7.5]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $56.0$ {\scriptsize$[42.7,\,69.3]$} & $7.0$ {\scriptsize$[2.0,\,13.0]$} \\
+Qwen3.6-35B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $2.2$ {\scriptsize$[0.8,\,3.5]$} & $0.4$ {\scriptsize$[0.0,\,0.9]$} & $65.3$ {\scriptsize$[58.3,\,72.7]$} & $4.3$ {\scriptsize$[1.0,\,8.7]$} \\
+ & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.3$ {\scriptsize$[0.0,\,0.8]$} & $56.7$ {\scriptsize$[44.0,\,68.3]$} & $2.3$ {\scriptsize$[0.3,\,4.7]$} \\
+Claude Haiku~4.5 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $1.0$ {\scriptsize$[0.0,\,2.5]$} & $0.1$ {\scriptsize$[0.0,\,0.3]$} & $99.0$ {\scriptsize$[97.0,\,100.0]$} & $2.0$ {\scriptsize$[0.0,\,5.0]$} \\
+Claude Sonnet~4.6 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.6$ {\scriptsize$[0.2,\,1.1]$} & $35.0$ {\scriptsize$[20.0,\,51.0]$} & $1.0$ {\scriptsize$[0.0,\,3.0]$} \\
+\bottomrule
+\end{tabular}
+\caption{RQ2, tool choice with all seven tools offered (\emph{think}=off). Shares of
+the cell's trials. The first panel counts trials that called only the right tool; the
+second, trials that called the right tool, alone or with others; the third, trials
+that called some other tool, with or without the right one. On \emph{solve} the right
+tool is the planner that fits the domain. Open-weight rows are the pre-registered
+rerun and Claude rows are the frontier runs (plain prompt, wording v11); the two are
+never pooled. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq2-choice}
+\end{table*}
+
+\paragraph{Validation tasks and \emph{simulate}.} On these four tasks a model that
+calls a tool almost always calls the right one and nothing else: the share of trials
+with another tool is at most $13.0\%$ in any open-weight cell and at most $2.0\%$ for
+Claude (Table~\ref{tab:rq2-choice}). What varies is whether the model calls at all.
+Under the plain prompt Gemma-MoE-26B calls the plan validator in $20.0\%$ of the
+trials and Qwen3.6-35B in $83.1\%$, and Qwen3.5-9B calls the state-transition tool in
+$80.7\%$. The steering sentence raises these three shares to $93.1\%$, $100.0\%$ and
+$100.0\%$. In the rerun's registered comparison on Gemma-MoE-26B, removing the
+sentence of the system prompt that tells the model to use the available tool raised
+its calling under the plain wordings from $20.0\%$ to $26.9\%$ ($+6.9$ points, 90\%
+interval $[3.6,\,10.7]$). The registered reading is that the sentence suppresses calling;
+most of the low rate remains without it. Both Claude
+models call the right tool in every trial of these four tasks.
+
+\paragraph{\emph{Solve}.} On \emph{solve} the models call more than they need. The
+fitting planner is called in every plain-prompt trial by Gemma-MoE-26B and Qwen3.5-9B
+and in $82.7\%$ by Qwen3.6-35B, yet only $22.3\%$ to $39.0\%$ of the trials call it and
+nothing else. For Gemma-MoE-26B the addition is mostly a check of the plan: in $175$
+of its $214$ trials with an extra call, the only other tool is the plan validator. For
+Qwen3.5-9B it is mostly the other planner ($138$ of $183$). Sonnet calls exactly the
+fitting planner in $65$ of $100$ trials and Haiku in $1$ of $100$, and each of them
+calls only the planner that does not fit the domain in $5$ trials. A numeric planner
+still solves a classical problem, which is one way the long plans of
+Table~\ref{tab:rq1-planlen} arise.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Think} & \textbf{\emph{validate\_domain}} & \textbf{\emph{validate\_problem}} &
+\textbf{\emph{validate\_plan}} & \textbf{\emph{solve}} & \textbf{\emph{simulate}} \\
+\midrule
+% rows generated by tools/reanalysis/rq23_tex.py (rq2_thinking.tex)
+Qwen3.5-0.8B & off & $98.6$ {\scriptsize$[95.8,\,100.0]$} & $95.3$ {\scriptsize$[89.5,\,99.3]$} & $92.8$ {\scriptsize$[86.7,\,97.7]$} & $54.7$ {\scriptsize$[39.0,\,69.7]$} & $48.3$ {\scriptsize$[36.0,\,60.0]$} \\
+ & on & $90.3$ {\scriptsize$[83.9,\,95.6]$} & $94.3$ {\scriptsize$[89.8,\,97.7]$} & $68.6$ {\scriptsize$[57.6,\,79.0]$} & $36.0$ {\scriptsize$[26.3,\,46.0]$} & $32.7$ {\scriptsize$[25.3,\,40.0]$} \\
+Qwen3.5-4B & off & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.8$ {\scriptsize$[99.5,\,100.0]$} & $99.9$ {\scriptsize$[99.8,\,100.0]$} & $92.0$ {\scriptsize$[83.3,\,98.7]$} & $96.7$ {\scriptsize$[94.3,\,98.7]$} \\
+ & on & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $98.8$ {\scriptsize$[97.9,\,99.5]$} & $78.3$ {\scriptsize$[66.3,\,89.0]$} & $98.3$ {\scriptsize$[97.0,\,99.7]$} \\
+Qwen3.5-9B & off & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $97.9$ {\scriptsize$[94.2,\,100.0]$} & $99.3$ {\scriptsize$[98.0,\,100.0]$} & $80.0$ {\scriptsize$[76.0,\,84.0]$} \\
+ & on & $99.4$ {\scriptsize$[98.6,\,100.0]$} & $98.7$ {\scriptsize$[97.3,\,99.7]$} & $69.2$ {\scriptsize$[61.7,\,76.0]$} & $57.0$ {\scriptsize$[45.3,\,68.7]$} & $94.0$ {\scriptsize$[90.0,\,97.3]$} \\
+Gemma-MoE-26B & off & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.8$ {\scriptsize$[99.5,\,100.0]$} & $20.7$ {\scriptsize$[9.0,\,34.1]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.7$ {\scriptsize$[99.0,\,100.0]$} \\
+ & on & $52.5$ {\scriptsize$[36.7,\,68.1]$} & $56.0$ {\scriptsize$[43.7,\,68.0]$} & $0.6$ {\scriptsize$[0.0,\,1.5]$} & $23.3$ {\scriptsize$[15.7,\,31.7]$} & $53.3$ {\scriptsize$[45.0,\,61.7]$} \\
+Qwen3.6-35B & off & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $98.5$ {\scriptsize$[97.8,\,99.2]$} & $82.9$ {\scriptsize$[73.5,\,91.1]$} & $64.3$ {\scriptsize$[56.3,\,72.3]$} & $76.3$ {\scriptsize$[67.0,\,84.3]$} \\
+ & on & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.9$ {\scriptsize$[99.8,\,100.0]$} & $75.0$ {\scriptsize$[62.7,\,86.3]$} & $99.3$ {\scriptsize$[98.3,\,100.0]$} \\
+\bottomrule
+\end{tabular}
+\caption{RQ2, share of trials that called the right tool (\%), main sweep, plain
+prompt, with thinking off and on. On \emph{solve} the right tool is the planner that
+fits the domain. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq2-thinking}
+\end{table*}
+
+\paragraph{Reasoning mode.} Only the main sweep ran with thinking on
+(Table~\ref{tab:rq2-thinking}). Under the plain prompt, Gemma-MoE-26B calls the right
+tool less often on every task once thinking is on: in $0.6\%$ of the
+\emph{validate\_plan} trials, and in $23.3\%$ to $56.0\%$ of the trials of the other
+four tasks. Qwen3.5-9B falls on \emph{solve} (from $99.3\%$ to $57.0\%$) and on
+\emph{validate\_plan} (from $97.9\%$ to $69.2\%$). Qwen3.6-35B does not fall on any
+task. Its plain-prompt calling also differs between the main sweep and the rerun, on
+\emph{solve} ($64.3\%$ against $82.7\%$) and on \emph{simulate} ($76.3\%$ against
+$99.7\%$), so we quote both runs and read its level with care.
+
+\subsection{RQ3: Does the Model Use the Tool's Output?}
+\label{sec:rq3}
+% Every number in this subsection is generated: tools/reanalysis/rq23_metrics.py
+% (development/NUMBERS.md, block "RQ3 metrics"); the rerun cells are the frozen readout's
+% E4 cells. Table rows by tools/reanalysis/rq23_tex.py.
+For this question we take the trials in which the right tool returned the right
+result, and ask how often the delivered final answer is still wrong
+(Table~\ref{tab:rq3-lost}). This needs the complete final answer, so it uses the rerun
+and the frontier runs. For the rerun it is a registered endpoint, with loss categories
+that were fixed before the data were read.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Prompt} & \textbf{\emph{validate\_domain}} &
+\textbf{\emph{validate\_problem}} & \textbf{\emph{validate\_plan}} & \textbf{\emph{solve}} &
+\textbf{\emph{simulate}} \\
+\midrule
+% rows generated by tools/reanalysis/rq23_tex.py (rq3_lost.tex)
+Qwen3.5-9B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.7$ {\scriptsize$[0.1,\,1.7]$} & $11.3$ {\scriptsize$[5.3,\,18.0]$} & $74.5$ {\scriptsize$[60.4,\,87.7]$} \\
+ & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.4$ {\scriptsize$[0.0,\,0.9]$} & $0.2$ {\scriptsize$[0.0,\,0.7]$} & $11.0$ {\scriptsize$[5.7,\,17.3]$} & $81.2$ {\scriptsize$[70.5,\,90.4]$} \\
+Gemma-MoE-26B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $6.4$ {\scriptsize$[2.1,\,11.2]$} & $90.8$ {\scriptsize$[85.4,\,95.5]$} \\
+ & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.3$ {\scriptsize$[0.0,\,0.8]$} & $0.1$ {\scriptsize$[0.0,\,0.3]$} & $4.7$ {\scriptsize$[1.3,\,8.7]$} & $91.2$ {\scriptsize$[86.0,\,95.8]$} \\
+Qwen3.6-35B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $1.7$ {\scriptsize$[0.5,\,3.1]$} & $0.7$ {\scriptsize$[0.0,\,1.4]$} & $13.4$ {\scriptsize$[7.6,\,19.8]$} & $69.9$ {\scriptsize$[56.5,\,82.4]$} \\
+ & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.5$ {\scriptsize$[0.1,\,1.1]$} & $12.1$ {\scriptsize$[6.8,\,17.8]$} & $73.2$ {\scriptsize$[61.3,\,84.2]$} \\
+Claude Haiku~4.5 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.1$ {\scriptsize$[0.0,\,0.3]$} & $5.0$ {\scriptsize$[1.0,\,10.0]$} & $34.0$ {\scriptsize$[21.6,\,46.5]$}$^{\ddagger12}$ \\
+Claude Sonnet~4.6 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $5.0$ {\scriptsize$[2.0,\,9.0]$} & $38.4$ {\scriptsize$[26.3,\,51.0]$}$^{\ddagger13}$ \\
+\bottomrule
+\end{tabular}
+\caption{RQ3, share of correct tool results that do not reach the final answer (\%,
+\emph{think}=off). The base of each cell is its trials in which the right tool
+returned the right result; the cell is the share of those whose delivered final answer
+is wrong. Open-weight rows are the pre-registered rerun and Claude rows are the
+frontier runs (wording v11); the two are never pooled. $\ddagger n$: $n$ further Claude
+answers were cut at the storage limit and have an unknown grade; they count as not
+lost here, so the true share lies between the value shown and that value with those
+$n$ added. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq3-lost}
+\end{table*}
+
+Verdicts reach the answer. Over the three validation tasks the open-weight models
+lose $76$ of $20{,}086$ correct tool results, at most $1.7\%$ in any cell, and Claude
+loses $1$ of $2{,}610$. Plans are lost more often: between $4.7\%$ and $13.4\%$ of the
+correct planner results in the rerun, and $5.0\%$ for each Claude model. State traces
+are lost most of the time. The open-weight models lose between $69.9\%$ and $91.2\%$ of
+the correct traces the tool returned. Sonnet loses at least $38.4\%$ and Haiku at least
+$34.0\%$, with $13$ and $12$ further answers cut by storage.
+
+The registered categories say where the open-weight losses come from. Under the plain
+prompt, $52$ of the $86$ lost plans and $405$ of the $596$ lost traces are final turns
+that the server refused or clipped, because the conversation, which by then held the
+tool's result, left no room in the context window. In $22$ of the lost plans and $79$
+of the lost traces the delivered content differs from the tool's, and $102$ lost
+traces could not be assigned by a fixed rule. A later reading of the plans whose
+content differs, over both prompts, found that $17$ of the $38$ repeat the tool's plan
+exactly and then list the goal facts, which our extractor reads as extra steps, and
+that $5$ change an action. That reading is post hoc. The loss of traces also explains
+the one case in RQ1 where the tools make a model worse: Gemma-MoE-26B calls the
+state-transition tool in $99.7\%$ of its plain-prompt trials and then loses $90.8\%$ of
+the correct results it gets back.
+
+\section{Supporting Analyses}
+\label{sec:supporting}
+The analyses in this section were carried out before the three research questions
+were fixed, and they are organized by task. They rest on the main sweep, on the
+frontier runs and on separate controls, and they cover what the three questions do not
+ask: the unaided baseline in the main sweep, the invocation mechanism, difficulty,
+cost, reasoning mode and contamination.
+
+% Delivered-surface reframe (D-J2, 2026-09-07). Open-roster delivered numbers come
+% from results/derived/e2e_overlay/pooled_e2e_table.csv (gitignored; a copy is in
+% checkpoints/e2e-overlay/derived_reports.zip); verdicts from
+% development/reference/job2_delivered_reframe_worknote.md (frozen values:
+% development/NUMBERS.md, block "Job 2 — the delivered surface").
+% Study 1 numbers (main sweep: tool-verified, calling, unaided, contamination): the
+% frozen values are in development/NUMBERS.md, block "Study 1 — main sweep figures",
+% generated by tools/reanalysis/s1_*.py and tools/reanalysis/01-04. Check that block
+% before quoting a Study 1 number here.
+Unless stated otherwise, every figure is \emph{think}~=~off (the unconfounded
+read) on the three $\geq$9B models, with reasoning mode treated separately in the
+Robustness subsection. All headline rates are \emph{delivered} (Methodology): the
+model's own final answer graded against the oracle, with tool-verified rates
+appearing only as the labeled mechanism layer. The \emph{availability} gap is
++tool(plain)~$-$~no-tools and the \emph{steering} gap is
++tool(steered)~$-$~+tool(plain), each significant when the two arms' 95\%
+intervals are disjoint; where a cell is a censoring bound \cbnd{a}{b}, the gap is
+asserted only if it survives the claim-adverse end. Table~\ref{tab:howtoread}
+says, for each corpus, which value shape its delivered rates take and why, and
+its footnotes list the claims this discipline forbids; we recommend reading it
+before any table below. Figure~\ref{fig:funnel} draws the same discipline for
+every with-tools cell that can be drawn: of all trials, how many call the tool,
+how many obtain a correct tool result, and how many deliver a correct answer,
+against the unaided rate as a reference line.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{@{}p{0.26\textwidth}p{0.20\textwidth}p{0.13\textwidth}p{0.31\textwidth}@{}}
+\toprule
+\textbf{Corpus (arms)} & \textbf{Final-answer storage} & \textbf{Delivered shape} & \textbf{What it can support} \\
+\midrule
+Open-weight sweeps, canonical $+$ anonymized (no-tools arm) & full text at online
+grading; stored copies are $500$-char snapshots & exact $[a,\,b]$; \emph{simulate} \cbnd{a}{b} & unaided baselines; the
+contamination comparison \\
+Open-weight sweeps (tool arms) & $500$-char snapshot & bounds \cbnd{a}{b} &
+availability and steering verdicts at claim-adverse bounds; straddling cells stay
+\emph{undecided} \\
+Frontier runs, Claude Haiku~4.5 $+$ Sonnet~4.6 (both arms) & $16$K snapshot;
+no-tools de-censored from raw batch output & exact, except \emph{simulate}
+\cbnd{a}{b} & exact delivered lifts and the delivery gap at two capability tiers \\
+Output-budget probe, frontier (both arms; \emph{simulate}, $n{=}100$ per cell,
+same trial keys as the canonical cells) & $64{,}000$-token allowance; $256$K-char
+storage & exact & the budget component of the delivery gap; reported beside, never
+pooled with, the canonical cells \\
+Independent full-storage rerun (tool arms, \emph{think}=on, reasoning parser off)
+& full text & exact or near-exact & separate-apparatus replication;
+\emph{within}-corpus contrasts only \\
+Budget-decoupled control (no-tools) & full text & exact & the unaided-capability
+question only \\
+\bottomrule
+\end{tabular}
+\caption{How to read our numbers: one primary surface (delivered), three value
+shapes, fixed by what each corpus stored. Wilson 95\% intervals print as
+$[a,\,b]$; censoring bounds print as \cbnd{a}{b} and are never resolved by
+optimism. Four claims are ruled out by construction and do not appear in this
+paper: (i) no delivered-vs-tool-verified gap is computed across corpora, only
+within one; (ii) an undecided open-roster cell is never resolved by importing the
+full-storage rerun, whose job-level parity with the canonical sweep failed (it is a
+replication under a different apparatus and does not repair the canonical cells); (iii) no claim that tools
+are the sole source of \emph{simulate} success is made at the delivered level;
+(iv) the rerun's \emph{solve} cells carry a known parser-off truncation shift and
+are excluded from headline use.}
+\label{tab:howtoread}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/funnel.pdf}
+\caption{The funnel. For every with-tools trial, the share that calls the tool
+(\textsc{call}), obtains a correct tool result (the mechanism layer), and
+delivers a correct answer (the primary surface); the dashed line is the
+no-tools delivered rate on the same task (\textsc{need}), drawn as a reference
+and never as a bar, because arms are never pooled. Top row: the two frontier
+tiers on the canonical corpus (prompt v11) and the PlanBench arm, whose
+sequence gains a leading \textsc{formalize} stage (the model's PDDL matches the
+gold problem) because the prompt supplies no PDDL there. Bottom row: the three
+$\geq$9B open-weight models on the validation tasks, plain arm,
+\emph{think}=off; this corpus's \emph{solve} and \emph{simulate} tool cells are
+censoring bounds too wide to draw and are reported in Figure~\ref{fig:solesource}
+and the text. Bars are marginal shares of all trials, not nested conditionals;
+hatched segments are censoring bounds \cbnd{a}{b}; the PlanBench delivered bars
+use the first-draw counts ($410/600$ and $431/600$).}
+\label{fig:funnel}
+\end{figure*}
+
+Two regime vocabularies appear below and should not be conflated. A \emph{task} axis
+sorts the five tasks by their unaided baseline: \emph{sole-source} (essentially
+no unaided success as deployed), \emph{headroom} (a weak but improvable baseline), and \emph{mixed}
+(availability can hurt). A separate \emph{cross-mode} axis (Robustness) sorts tasks
+by whether the realizable benefit survives reasoning mode: \emph{robust},
+\emph{budget-dependent}, and again \emph{sole-source}. The two axes share only the
+word sole-source (a task with no baseline is sole-source either way) and are
+otherwise independent.
+
 
 \begin{figure*}[t]
 \centering
@@ -2493,6 +2791,301 @@ extra predicate in \emph{any} state fails the entire trajectory.
 }
 \newcommand{\question}[2]{\normalcolor\checkitem #1 #2 \color{blue}}
 \newcommand{\ifyespoints}[1]{\makebox[0pt][l]{\hspace{-15pt}\normalcolor #1}}
+
+\paragraph{Prompts.}
+Every trial sends one system message and one user message, built by the same function
+for the open-weight and the frontier runs. In the listings below, \texttt{<domain>},
+\texttt{<problem>} and \texttt{<plan>} stand for the full text the harness pastes in,
+the plan as one action per line. The plain wordings v11 to v13 are shared by the
+unaided arm and the plain tool arm. The steered form (v14, v15 or v16) of a wording
+adds the task's steering sentence, after a space, at the end of the first paragraph. On
+\emph{simulate} the sentence is added as its own line after the example step. The
+steering control's unaided arm uses the steered forms. The system message depends only
+on the task and the arm. The tool arms use the default form in Study~1 and in the
+frontier runs, and Study~2 adds the neutral form, which keeps only the first sentence.
+The unaided \emph{solve} and \emph{simulate} system messages refer to a format
+constraint. That constraint was requested from the server but did not take effect
+(Limitations). The frontier unaided runs differ from this in two details. For
+\emph{solve} the plan was requested through the provider's structured-output parameter
+with a schema holding a list of action strings. For \emph{simulate} one sentence was
+appended to the user message:
+\begin{lstlisting}[numbers=none]
+Return ONLY a single JSON object (no prose, no markdown code fences) of the form {"trajectory": [ ...steps... ]}, where each step matches the example above (keys: step, action, state.boolean, state.numeric).
+\end{lstlisting}
+
+\noindent\emph{solve}, user message, three plain wordings
+\begin{lstlisting}[numbers=none]
+--- wording 1 (v11) ---
+Solve this PDDL planning problem and return a plan. Each step must be a single parenthesised PDDL action, e.g. `(pick-up a)`.
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+--- wording 2 (v12) ---
+Find a valid plan for this PDDL problem. Output each action on its own line in parenthesised PDDL form, e.g. `(unstack a b)`.
+
+Domain definition:
+<domain>
+
+Problem definition:
+<problem>
+
+--- wording 3 (v13) ---
+Generate a plan that solves the following planning problem. Each action in your plan must be a single parenthesised PDDL form, e.g. `(stack a b)`.
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+--- steering sentence (v14-v16) ---
+Use the planner tool with the domain and problem as arguments.
+\end{lstlisting}
+
+\noindent\emph{validate\_domain}, user message, three plain wordings
+\begin{lstlisting}[numbers=none]
+--- wording 1 (v11) ---
+Check if this PDDL domain definition has valid syntax.
+
+<domain>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- wording 2 (v12) ---
+Validate the following PDDL domain for syntactic correctness.
+
+<domain>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- wording 3 (v13) ---
+Is this PDDL domain syntactically correct?
+
+<domain>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- steering sentence (v14-v16) ---
+Use the validate_domain tool with the domain as its argument.
+\end{lstlisting}
+
+\noindent\emph{validate\_problem}, user message, three plain wordings
+\begin{lstlisting}[numbers=none]
+--- wording 1 (v11) ---
+Check if this PDDL problem has valid syntax given the domain.
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- wording 2 (v12) ---
+Validate the syntax of this PDDL problem against its domain.
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- wording 3 (v13) ---
+Is this PDDL problem file syntactically correct for the given domain?
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- steering sentence (v14-v16) ---
+Use the validate_problem tool with the domain and problem as arguments.
+\end{lstlisting}
+
+\noindent\emph{validate\_plan}, user message, three plain wordings
+\begin{lstlisting}[numbers=none]
+--- wording 1 (v11) ---
+Validate whether this plan is correct for the given domain and problem.
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+Plan:
+<plan>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- wording 2 (v12) ---
+Check if the following plan solves the PDDL problem.
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+Plan:
+<plan>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- wording 3 (v13) ---
+Is this plan valid for the given planning problem?
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+Plan:
+<plan>
+
+End your response with exactly one line: VERDICT: VALID or VERDICT: INVALID
+
+--- steering sentence (v14-v16) ---
+Use the validate_plan tool with the domain, problem, and plan as arguments.
+\end{lstlisting}
+
+\noindent\emph{simulate}, user message, three plain wordings
+\begin{lstlisting}[numbers=none]
+--- wording 1 (v11) ---
+Simulate this plan and return the trajectory. Step 0 is the initial state from the problem with `action` empty. Each later step records the action executed. `state.boolean` lists EVERY predicate that holds in that state, each as a parenthesised lowercase form, e.g. `(on a b)`; `state.numeric` is the fluents map.
+Example step: {"step": 0, "action": "", "state": {"boolean": ["(on a b)", "(clear c)"], "numeric": {}}}
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+Plan:
+<plan>
+
+--- wording 2 (v12) ---
+Step through this plan action by action. For each step emit `action` (the action just executed, or empty for step 0) and `state.boolean` listing every currently-true predicate in parenthesised PDDL form, e.g. `(on a b)`.
+Example step: {"step": 1, "action": "(unstack a b)", "state": {"boolean": ["(holding a)", "(clear b)"], "numeric": {}}}
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+Plan:
+<plan>
+
+--- wording 3 (v13) ---
+Show the state at each step of this plan. Step 0 = initial state with empty `action`. Each `state.boolean` entry lists every predicate that holds in that state, parenthesised and lowercase; `state.numeric` is the fluents map (empty for purely-symbolic domains).
+Example step: {"step": 0, "action": "", "state": {"boolean": ["(ontable a)", "(clear a)"], "numeric": {}}}
+
+Domain:
+<domain>
+
+Problem:
+<problem>
+
+Plan:
+<plan>
+
+--- steering sentence (v14-v16) ---
+Use the get_state_transition tool with the domain, problem, and plan as arguments.
+\end{lstlisting}
+
+\noindent System messages
+\begin{lstlisting}[numbers=none]
+--- solve, unaided arm ---
+You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning; conform to the JSON schema provided by the format constraint.
+--- solve, tool arms (default) ---
+You are a PDDL planning assistant. LLMs cannot reliably generate correct plans from training alone (arXiv:2509.12987). Use the available planner tool to produce the plan.
+--- solve, tool arms (neutral style, Study 2) ---
+You are a PDDL planning assistant.
+
+--- validate_domain, unaided arm ---
+You are a PDDL validation assistant. PDDL validation tools are not available in this evaluation. Analyze the domain syntax using your own reasoning; end your response with exactly one line: VERDICT: VALID or VERDICT: INVALID.
+--- validate_domain, tool arms (default) ---
+You are a PDDL validation assistant. LLMs cannot reliably check PDDL syntax from training alone. Use the available validation tool to check the domain.
+--- validate_domain, tool arms (neutral style, Study 2) ---
+You are a PDDL validation assistant.
+
+--- validate_problem, unaided arm ---
+You are a PDDL validation assistant. PDDL validation tools are not available in this evaluation. Analyze the problem against its domain using your own reasoning; end your response with exactly one line: VERDICT: VALID or VERDICT: INVALID.
+--- validate_problem, tool arms (default) ---
+You are a PDDL validation assistant. LLMs cannot reliably check PDDL syntax from training alone. Use the available validation tool to check the problem against its domain.
+--- validate_problem, tool arms (neutral style, Study 2) ---
+You are a PDDL validation assistant.
+
+--- validate_plan, unaided arm ---
+You are a PDDL validation assistant. PDDL validation tools are not available in this evaluation. Analyze whether the plan solves the problem using your own reasoning; end your response with exactly one line: VERDICT: VALID or VERDICT: INVALID.
+--- validate_plan, tool arms (default) ---
+You are a PDDL validation assistant. LLMs cannot reliably check plan correctness from training alone. Use the available validation tool to check whether the plan solves the problem.
+--- validate_plan, tool arms (neutral style, Study 2) ---
+You are a PDDL validation assistant.
+
+--- simulate, unaided arm ---
+You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; conform to the JSON schema provided by the format constraint (per-step state with boolean predicates and numeric fluents).
+--- simulate, tool arms (default) ---
+You are a PDDL simulation assistant. LLMs cannot reliably trace state transitions through a plan from training alone. Use the available simulation tool to compute the trajectory.
+--- simulate, tool arms (neutral style, Study 2) ---
+You are a PDDL simulation assistant.
+\end{lstlisting}
+
+\paragraph{Test data per domain.}
+Table~\ref{tab:domain-sizes} gives the size of each domain. The classical domains are
+barman, blocksworld, depots, rovers and satellite from the earlier dataset, and
+gripper, miconic, parking, tpp and zenotravel from the \texttt{olam-compatible}
+collection. The numeric domains are counters, depot, farmland, pogo\_stick and sailing
+from the earlier dataset, and block-grouping, delivery, drone, gardening and
+zenotravel-numeric from a public mirror of the numeric planning benchmarks.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{Domain} & \textbf{Track} & \textbf{Chars} & \textbf{Act.} & \textbf{Objects} & \textbf{Plan len.} \\
+\midrule
+barman & classical & 5542 & 12 & 13--20 & 14--65 \\
+blocksworld & classical & 1164 & 4 & 3--6 & 2--16 \\
+depots & classical & 1521 & 5 & 9--24 & 5--22 \\
+gripper & classical & 984 & 3 & 7--19 & 3--14 \\
+miconic & classical & 1003 & 4 & 3--7 & 3--10 \\
+parking & classical & 1852 & 4 & 6--10 & 3--7 \\
+rovers & classical & 3967 & 9 & 11--19 & 12--34 \\
+satellite & classical & 1717 & 5 & 9--21 & 6--15 \\
+tpp & classical & 2279 & 4 & 8--18 & 13--36 \\
+zenotravel & classical & 1579 & 5 & 12--18 & 4--10 \\
+block-grouping & numeric & 1556 & 4 & 5--5 & 10--36 \\
+counters & numeric & 1228 & 4 & 3--5 & 8--56 \\
+delivery & numeric & 2185 & 5 & 13--22 & 14--46 \\
+depot & numeric & 1819 & 5 & 9--21 & 5--62 \\
+drone & numeric & 2701 & 8 & 2--18 & 5--110 \\
+farmland & numeric & 686 & 2 & 4--15 & 3--19 \\
+gardening & numeric & 3779 & 10 & 3--3 & 5--86 \\
+pogo\_stick & numeric & 3330 & 7 & 35--35 & 10--23 \\
+sailing & numeric & 1805 & 8 & 3--3 & 4--100 \\
+zenotravel-numeric & numeric & 2215 & 5 & 4--7 & 3--14 \\
+\bottomrule
+\end{tabular}
+\caption{Size of each test domain. Chars is the length of the valid domain file in
+characters and Actions the number of action schemas. Objects and Plan length are the
+range over the five valid problems, the plan length counted on the planner's plan.}
+\label{tab:domain-sizes}
+\end{table}
 
 \section*{Reproducibility Checklist}
 
