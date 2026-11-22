@@ -1,0 +1,7082 @@
+{
+ "frozen_package_sha256": "822aace9ef8a6493592b5b08d73091094fd2602fc0180d1482af83db1ee45cc9",
+ "rq2": {
+  "cells": [
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 63,
+     "right_plus": 101,
+     "other_only": 136
+    },
+    "exactly_right": {
+     "est": 21.0,
+     "lo": 9.333333333333334,
+     "hi": 35.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 54.666666666666664,
+     "lo": 39.0,
+     "hi": 69.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 79.0,
+     "lo": 65.0,
+     "hi": 90.66666666666666,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 216,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 102,
+     "right_plus": 64,
+     "other_only": 134
+    },
+    "exactly_right": {
+     "est": 34.0,
+     "lo": 17.333333333333336,
+     "hi": 52.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 55.333333333333336,
+     "lo": 36.0,
+     "hi": 73.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 66.0,
+     "lo": 47.66666666666667,
+     "hi": 82.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 191,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 5,
+     "right_only": 295,
+     "right_plus": 60,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 81.94444444444444,
+     "lo": 76.38888888888889,
+     "hi": 87.77777777777777,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 98.61111111111111,
+     "lo": 95.83333333333334,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 16.666666666666664,
+     "lo": 10.833333333333334,
+     "hi": 22.5,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 1.3888888888888888,
+     "lo": 0.0,
+     "hi": 4.166666666666666,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 334,
+     "right_plus": 26,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 92.77777777777779,
+     "lo": 85.55555555555556,
+     "hi": 98.33333333333333,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 7.222222222222221,
+     "lo": 1.6666666666666667,
+     "hi": 14.444444444444443,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 453,
+     "right_plus": 119,
+     "other_only": 28
+    },
+    "exactly_right": {
+     "est": 75.5,
+     "lo": 64.66666666666666,
+     "hi": 85.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 95.33333333333334,
+     "lo": 89.5,
+     "hi": 99.33333333333333,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 24.5,
+     "lo": 14.333333333333334,
+     "hi": 35.333333333333336,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 593,
+     "right_plus": 7,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.83333333333333,
+     "lo": 97.83333333333334,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 1.1666666666666667,
+     "lo": 0.33333333333333337,
+     "hi": 2.166666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 2,
+     "right_only": 2621,
+     "right_plus": 163,
+     "other_only": 214
+    },
+    "exactly_right": {
+     "est": 87.36666666666667,
+     "lo": 80.06666666666666,
+     "hi": 93.56749999999998,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 92.80000000000001,
+     "lo": 86.7,
+     "hi": 97.7,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 12.566666666666668,
+     "lo": 6.366666666666666,
+     "hi": 19.833333333333332,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.06666666666666667,
+     "lo": 0.0,
+     "hi": 0.16666666666666669,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 0,
+     "right_only": 2803,
+     "right_plus": 197,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 93.43333333333334,
+     "lo": 88.93333333333334,
+     "hi": 97.23333333333333,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 6.566666666666666,
+     "lo": 2.7666666666666666,
+     "hi": 11.066666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 4,
+     "right_only": 67,
+     "right_plus": 78,
+     "other_only": 151
+    },
+    "exactly_right": {
+     "est": 22.333333333333332,
+     "lo": 13.666666666666666,
+     "hi": 32.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 48.333333333333336,
+     "lo": 36.0,
+     "hi": 60.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 76.33333333333333,
+     "lo": 65.0,
+     "hi": 86.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 1.3333333333333335,
+     "lo": 0.0,
+     "hi": 4.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 162,
+     "right_plus": 138,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 54.0,
+     "lo": 43.333333333333336,
+     "hi": 65.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 46.0,
+     "lo": 34.66666666666667,
+     "hi": 56.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 76,
+     "right_only": 46,
+     "right_plus": 128,
+     "other_only": 50
+    },
+    "exactly_right": {
+     "est": 15.333333333333332,
+     "lo": 8.333333333333332,
+     "hi": 23.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 57.99999999999999,
+     "lo": 44.99166666666674,
+     "hi": 70.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 59.333333333333336,
+     "lo": 50.33333333333333,
+     "hi": 68.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 25.333333333333336,
+     "lo": 16.0,
+     "hi": 35.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 113,
+    "plan_check_only": 2
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 145,
+     "right_only": 35,
+     "right_plus": 73,
+     "other_only": 47
+    },
+    "exactly_right": {
+     "est": 11.666666666666666,
+     "lo": 6.333333333333334,
+     "hi": 17.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 36.0,
+     "lo": 26.333333333333332,
+     "hi": 46.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 40.0,
+     "lo": 34.0,
+     "hi": 46.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 48.333333333333336,
+     "lo": 40.33333333333333,
+     "hi": 56.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 69,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 35,
+     "right_only": 300,
+     "right_plus": 25,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 83.33333333333334,
+     "lo": 76.66666666666667,
+     "hi": 89.16666666666667,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 90.27777777777779,
+     "lo": 83.88888888888889,
+     "hi": 95.55555555555556,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 6.944444444444445,
+     "lo": 3.3333333333333335,
+     "hi": 11.38888888888889,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 9.722222222222223,
+     "lo": 4.444444444444445,
+     "hi": 16.11111111111111,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 29,
+     "right_only": 318,
+     "right_plus": 13,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 88.33333333333333,
+     "lo": 83.05555555555556,
+     "hi": 92.77777777777779,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 91.94444444444444,
+     "lo": 87.22222222222223,
+     "hi": 96.11111111111111,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 3.6111111111111107,
+     "lo": 2.2222222222222223,
+     "hi": 5.277777777777778,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 8.055555555555555,
+     "lo": 3.888888888888889,
+     "hi": 12.777777777777777,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 25,
+     "right_only": 452,
+     "right_plus": 114,
+     "other_only": 9
+    },
+    "exactly_right": {
+     "est": 75.33333333333333,
+     "lo": 68.83333333333333,
+     "hi": 81.16666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 94.33333333333334,
+     "lo": 89.83333333333333,
+     "hi": 97.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 20.5,
+     "lo": 15.166666666666668,
+     "hi": 26.333333333333332,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 4.166666666666666,
+     "lo": 1.0,
+     "hi": 8.666666666666668,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 18,
+     "right_only": 495,
+     "right_plus": 81,
+     "other_only": 6
+    },
+    "exactly_right": {
+     "est": 82.5,
+     "lo": 77.33333333333333,
+     "hi": 87.33333333333333,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 96.0,
+     "lo": 94.0,
+     "hi": 97.83333333333334,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 14.499999999999998,
+     "lo": 9.666666666666666,
+     "hi": 19.5,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 3.0,
+     "lo": 1.3333333333333335,
+     "hi": 4.833333333333333,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 664,
+     "right_only": 1479,
+     "right_plus": 579,
+     "other_only": 278
+    },
+    "exactly_right": {
+     "est": 49.3,
+     "lo": 40.2,
+     "hi": 58.233333333333334,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 68.60000000000001,
+     "lo": 57.63333333333334,
+     "hi": 79.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 28.566666666666666,
+     "lo": 22.53333333333333,
+     "hi": 34.76749999999999,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 22.133333333333333,
+     "lo": 13.600000000000001,
+     "hi": 31.000833333333322,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 524,
+     "right_only": 1666,
+     "right_plus": 620,
+     "other_only": 190
+    },
+    "exactly_right": {
+     "est": 55.53333333333333,
+     "lo": 47.599999999999994,
+     "hi": 63.5,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 76.2,
+     "lo": 69.29916666666666,
+     "hi": 82.53333333333333,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 27.0,
+     "lo": 21.2,
+     "hi": 33.26749999999999,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 17.466666666666665,
+     "lo": 10.66583333333334,
+     "hi": 24.9,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 148,
+     "right_only": 48,
+     "right_plus": 50,
+     "other_only": 54
+    },
+    "exactly_right": {
+     "est": 16.0,
+     "lo": 12.0,
+     "hi": 20.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 32.666666666666664,
+     "lo": 25.333333333333336,
+     "hi": 40.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 34.66666666666667,
+     "lo": 28.333333333333332,
+     "hi": 41.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 49.333333333333336,
+     "lo": 41.66666666666667,
+     "hi": 57.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-0.8B",
+    "think": "on",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 38,
+     "right_only": 149,
+     "right_plus": 95,
+     "other_only": 18
+    },
+    "exactly_right": {
+     "est": 49.666666666666664,
+     "lo": 40.666666666666664,
+     "hi": 58.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 81.33333333333333,
+     "lo": 73.33333333333333,
+     "hi": 88.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 37.666666666666664,
+     "lo": 30.333333333333336,
+     "hi": 45.34166666666654,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 12.666666666666668,
+     "lo": 6.333333333333334,
+     "hi": 20.333333333333332,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 114,
+     "right_plus": 162,
+     "other_only": 24
+    },
+    "exactly_right": {
+     "est": 38.0,
+     "lo": 26.333333333333332,
+     "hi": 49.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 92.0,
+     "lo": 83.33333333333334,
+     "hi": 98.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 62.0,
+     "lo": 50.33333333333333,
+     "hi": 73.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 51,
+    "plan_check_only": 35
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 121,
+     "right_plus": 168,
+     "other_only": 11
+    },
+    "exactly_right": {
+     "est": 40.33333333333333,
+     "lo": 28.333333333333332,
+     "hi": 53.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 96.33333333333334,
+     "lo": 90.66666666666666,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 59.66666666666667,
+     "lo": 47.0,
+     "hi": 71.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 43,
+    "plan_check_only": 27
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 489,
+     "right_plus": 110,
+     "other_only": 1
+    },
+    "exactly_right": {
+     "est": 81.5,
+     "lo": 69.83333333333334,
+     "hi": 91.5,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 99.83333333333333,
+     "lo": 99.5,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 18.5,
+     "lo": 8.5,
+     "hi": 30.166666666666668,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 548,
+     "right_plus": 52,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 91.33333333333333,
+     "lo": 84.83333333333334,
+     "hi": 96.5,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 8.666666666666668,
+     "lo": 3.5000000000000004,
+     "hi": 15.166666666666668,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 0,
+     "right_only": 2409,
+     "right_plus": 589,
+     "other_only": 2
+    },
+    "exactly_right": {
+     "est": 80.30000000000001,
+     "lo": 72.86666666666667,
+     "hi": 87.1,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 99.93333333333332,
+     "lo": 99.8,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 19.7,
+     "lo": 12.9,
+     "hi": 27.133333333333333,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 0,
+     "right_only": 2804,
+     "right_plus": 196,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 93.46666666666667,
+     "lo": 89.4,
+     "hi": 97.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 6.533333333333332,
+     "lo": 3.0,
+     "hi": 10.6,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 7,
+     "right_only": 232,
+     "right_plus": 58,
+     "other_only": 3
+    },
+    "exactly_right": {
+     "est": 77.33333333333333,
+     "lo": 65.33333333333333,
+     "hi": 87.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 96.66666666666667,
+     "lo": 94.33333333333334,
+     "hi": 98.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 20.333333333333332,
+     "lo": 10.0,
+     "hi": 32.00833333333321,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 2.3333333333333335,
+     "lo": 0.6666666666666667,
+     "hi": 4.333333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 240,
+     "right_plus": 60,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 80.0,
+     "lo": 67.66666666666666,
+     "hi": 90.66666666666666,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 20.0,
+     "lo": 9.333333333333334,
+     "hi": 32.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 56,
+     "right_only": 124,
+     "right_plus": 111,
+     "other_only": 9
+    },
+    "exactly_right": {
+     "est": 41.333333333333336,
+     "lo": 31.333333333333336,
+     "hi": 51.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 78.33333333333333,
+     "lo": 66.33333333333333,
+     "hi": 89.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 40.0,
+     "lo": 32.33333333333333,
+     "hi": 48.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 18.666666666666668,
+     "lo": 9.666666666666666,
+     "hi": 29.333333333333332,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 18,
+    "plan_check_only": 41
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 39,
+     "right_only": 164,
+     "right_plus": 88,
+     "other_only": 9
+    },
+    "exactly_right": {
+     "est": 54.666666666666664,
+     "lo": 43.666666666666664,
+     "hi": 65.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 84.0,
+     "lo": 75.33333333333333,
+     "hi": 91.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 32.33333333333333,
+     "lo": 23.666666666666668,
+     "hi": 42.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 13.0,
+     "lo": 6.666666666666667,
+     "hi": 21.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 16,
+    "plan_check_only": 51
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 1,
+     "right_only": 359,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.72222222222223,
+     "lo": 99.16666666666667,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 99.72222222222223,
+     "lo": 99.16666666666667,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.2777777777777778,
+     "lo": 0.0,
+     "hi": 0.8333333333333334,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 592,
+     "right_plus": 8,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.66666666666667,
+     "lo": 97.33333333333334,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 1.3333333333333335,
+     "lo": 0.33333333333333337,
+     "hi": 2.666666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 1,
+     "right_only": 593,
+     "right_plus": 6,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.83333333333333,
+     "lo": 97.83333333333334,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 99.83333333333333,
+     "lo": 99.5,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 1.0,
+     "lo": 0.16666666666666669,
+     "hi": 2.0,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.16666666666666669,
+     "lo": 0.0,
+     "hi": 0.5,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 24,
+     "right_only": 2850,
+     "right_plus": 113,
+     "other_only": 13
+    },
+    "exactly_right": {
+     "est": 95.0,
+     "lo": 93.33333333333333,
+     "hi": 96.6,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 98.76666666666667,
+     "lo": 97.93333333333332,
+     "hi": 99.5,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 4.2,
+     "lo": 2.7666666666666666,
+     "hi": 5.766666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.8,
+     "lo": 0.3,
+     "hi": 1.4333333333333333,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 24,
+     "right_only": 2967,
+     "right_plus": 9,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.9,
+     "lo": 98.23333333333333,
+     "hi": 99.46666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 99.2,
+     "lo": 98.53333333333333,
+     "hi": 99.7,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.3,
+     "lo": 0.06666666666666667,
+     "hi": 0.7000000000000001,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.8,
+     "lo": 0.3,
+     "hi": 1.4666666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 4,
+     "right_only": 258,
+     "right_plus": 37,
+     "other_only": 1
+    },
+    "exactly_right": {
+     "est": 86.0,
+     "lo": 79.66666666666666,
+     "hi": 92.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 98.33333333333333,
+     "lo": 97.0,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 12.666666666666668,
+     "lo": 7.000000000000001,
+     "hi": 19.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 1.3333333333333335,
+     "lo": 0.33333333333333337,
+     "hi": 2.666666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-4B",
+    "think": "on",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 4,
+     "right_only": 282,
+     "right_plus": 14,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 94.0,
+     "lo": 90.0,
+     "hi": 97.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 98.66666666666667,
+     "lo": 97.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 4.666666666666667,
+     "lo": 1.3333333333333335,
+     "hi": 8.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 1.3333333333333335,
+     "lo": 0.0,
+     "hi": 3.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 120,
+     "right_plus": 178,
+     "other_only": 2
+    },
+    "exactly_right": {
+     "est": 40.0,
+     "lo": 23.333333333333332,
+     "hi": 57.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.33333333333333,
+     "lo": 98.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 60.0,
+     "lo": 42.333333333333336,
+     "hi": 76.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 130,
+    "plan_check_only": 42
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 153,
+     "right_plus": 147,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 51.0,
+     "lo": 31.658333333333406,
+     "hi": 70.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 49.0,
+     "lo": 29.333333333333332,
+     "hi": 68.34166666666654,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 130,
+    "plan_check_only": 17
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 597,
+     "right_plus": 3,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.5,
+     "lo": 98.5,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.5,
+     "lo": 0.0,
+     "hi": 1.5,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 600,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 63,
+     "right_only": 2878,
+     "right_plus": 59,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 95.93333333333334,
+     "lo": 91.53333333333333,
+     "hi": 99.26666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 97.89999999999999,
+     "lo": 94.23333333333333,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 1.9666666666666666,
+     "lo": 0.13333333333333333,
+     "hi": 5.034166666666655,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 2.1,
+     "lo": 0.0,
+     "hi": 5.766666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 0,
+     "right_only": 2996,
+     "right_plus": 4,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.86666666666667,
+     "lo": 99.6,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.13333333333333333,
+     "lo": 0.0,
+     "hi": 0.4,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 59,
+     "right_only": 212,
+     "right_plus": 28,
+     "other_only": 1
+    },
+    "exactly_right": {
+     "est": 70.66666666666667,
+     "lo": 61.66666666666667,
+     "hi": 78.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 80.0,
+     "lo": 76.0,
+     "hi": 84.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 9.666666666666666,
+     "lo": 3.3333333333333335,
+     "hi": 17.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 19.666666666666664,
+     "lo": 15.333333333333332,
+     "hi": 24.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 1,
+     "right_only": 267,
+     "right_plus": 32,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 89.0,
+     "lo": 77.66666666666666,
+     "hi": 97.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.66666666666667,
+     "lo": 99.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 10.666666666666668,
+     "lo": 2.0,
+     "hi": 22.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 1.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 73,
+     "right_only": 75,
+     "right_plus": 141,
+     "other_only": 11
+    },
+    "exactly_right": {
+     "est": 25.0,
+     "lo": 16.99166666666674,
+     "hi": 33.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 72.0,
+     "lo": 63.0,
+     "hi": 80.66666666666666,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 50.66666666666667,
+     "lo": 42.0,
+     "hi": 59.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 24.333333333333336,
+     "lo": 16.666666666666664,
+     "hi": 32.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 35,
+    "plan_check_only": 98
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 116,
+     "right_only": 26,
+     "right_plus": 145,
+     "other_only": 13
+    },
+    "exactly_right": {
+     "est": 8.666666666666668,
+     "lo": 4.666666666666667,
+     "hi": 13.333333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 56.99999999999999,
+     "lo": 45.33333333333333,
+     "hi": 68.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 52.666666666666664,
+     "lo": 43.0,
+     "hi": 62.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 38.666666666666664,
+     "lo": 27.333333333333332,
+     "hi": 50.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 56,
+    "plan_check_only": 61
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 2,
+     "right_only": 358,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.44444444444444,
+     "lo": 98.61111111111111,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 99.44444444444444,
+     "lo": 98.61111111111111,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.5555555555555556,
+     "lo": 0.0,
+     "hi": 1.3888888888888888,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 4,
+     "right_only": 356,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.88888888888889,
+     "lo": 97.77777777777777,
+     "hi": 99.72222222222223,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 98.88888888888889,
+     "lo": 97.77777777777777,
+     "hi": 99.72222222222223,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 1.1111111111111112,
+     "lo": 0.2777777777777778,
+     "hi": 2.2222222222222223,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 6,
+     "right_only": 593,
+     "right_plus": 1,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.83333333333333,
+     "lo": 98.0,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 99.0,
+     "lo": 98.16666666666667,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.16666666666666669,
+     "lo": 0.0,
+     "hi": 0.5,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 1.0,
+     "lo": 0.33333333333333337,
+     "hi": 1.8333333333333333,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 6,
+     "right_only": 572,
+     "right_plus": 20,
+     "other_only": 2
+    },
+    "exactly_right": {
+     "est": 95.33333333333334,
+     "lo": 92.0,
+     "hi": 98.16666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 98.66666666666667,
+     "lo": 97.33333333333334,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 3.6666666666666665,
+     "lo": 1.1666666666666667,
+     "hi": 6.666666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 1.0,
+     "lo": 0.33333333333333337,
+     "hi": 1.8333333333333333,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 923,
+     "right_only": 2034,
+     "right_plus": 41,
+     "other_only": 2
+    },
+    "exactly_right": {
+     "est": 67.80000000000001,
+     "lo": 60.099999999999994,
+     "hi": 74.93333333333332,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 69.16666666666667,
+     "lo": 61.73333333333333,
+     "hi": 76.03333333333333,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 1.4333333333333333,
+     "lo": 0.7666666666666666,
+     "hi": 2.2666666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 30.766666666666666,
+     "lo": 23.9,
+     "hi": 38.233333333333334,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 86,
+     "right_only": 2913,
+     "right_plus": 1,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 97.1,
+     "lo": 95.86666666666666,
+     "hi": 98.26666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 97.13333333333334,
+     "lo": 95.89999999999999,
+     "hi": 98.3,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.03333333333333333,
+     "lo": 0.0,
+     "hi": 0.1,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 2.8666666666666667,
+     "lo": 1.7000000000000002,
+     "hi": 4.1000000000000005,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 18,
+     "right_only": 272,
+     "right_plus": 10,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 90.66666666666666,
+     "lo": 84.0,
+     "hi": 96.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 94.0,
+     "lo": 90.0,
+     "hi": 97.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 3.3333333333333335,
+     "lo": 0.33333333333333337,
+     "hi": 8.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 6.0,
+     "lo": 2.666666666666667,
+     "hi": 10.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.5-9B",
+    "think": "on",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 1,
+     "right_only": 294,
+     "right_plus": 5,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.0,
+     "lo": 95.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.66666666666667,
+     "lo": 99.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 1.6666666666666667,
+     "lo": 0.0,
+     "hi": 4.666666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 1.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 88,
+     "right_plus": 212,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 29.333333333333332,
+     "lo": 18.0,
+     "hi": 41.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 70.66666666666667,
+     "lo": 58.666666666666664,
+     "hi": 82.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 48,
+    "plan_check_only": 163
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 152,
+     "right_plus": 145,
+     "other_only": 3
+    },
+    "exactly_right": {
+     "est": 50.66666666666667,
+     "lo": 37.0,
+     "hi": 63.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.0,
+     "lo": 97.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 49.333333333333336,
+     "lo": 36.333333333333336,
+     "hi": 63.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 19,
+    "plan_check_only": 129
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 1,
+     "right_only": 545,
+     "right_plus": 54,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 90.83333333333333,
+     "lo": 87.5,
+     "hi": 94.16666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 99.83333333333333,
+     "lo": 99.5,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 9.0,
+     "lo": 5.666666666666666,
+     "hi": 12.333333333333334,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.16666666666666669,
+     "lo": 0.0,
+     "hi": 0.5,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 567,
+     "right_plus": 33,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 94.5,
+     "lo": 92.0,
+     "hi": 96.83333333333334,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 5.5,
+     "lo": 3.166666666666667,
+     "hi": 8.0,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 2378,
+     "right_only": 620,
+     "right_plus": 2,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 20.666666666666668,
+     "lo": 8.999166666666673,
+     "hi": 34.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 20.733333333333334,
+     "lo": 9.032500000000008,
+     "hi": 34.06749999999999,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.06666666666666667,
+     "lo": 0.0,
+     "hi": 0.16666666666666669,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 79.26666666666667,
+     "lo": 65.9325,
+     "hi": 90.96749999999997,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 192,
+     "right_only": 2808,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 93.60000000000001,
+     "lo": 84.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 93.60000000000001,
+     "lo": 84.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 6.4,
+     "lo": 0.0,
+     "hi": 16.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 1,
+     "right_only": 278,
+     "right_plus": 21,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 92.66666666666666,
+     "lo": 86.66666666666667,
+     "hi": 97.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.66666666666667,
+     "lo": 99.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 7.000000000000001,
+     "lo": 2.0,
+     "hi": 13.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 1.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 284,
+     "right_plus": 16,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 94.66666666666667,
+     "lo": 88.66666666666667,
+     "hi": 99.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 5.333333333333334,
+     "lo": 0.6666666666666667,
+     "hi": 11.333333333333332,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 230,
+     "right_only": 35,
+     "right_plus": 35,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 11.666666666666666,
+     "lo": 6.333333333333334,
+     "hi": 17.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 23.333333333333332,
+     "lo": 15.666666666666668,
+     "hi": 31.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 11.666666666666666,
+     "lo": 6.333333333333334,
+     "hi": 18.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 76.66666666666667,
+     "lo": 68.33333333333333,
+     "hi": 84.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 29,
+    "plan_check_only": 6
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 75,
+     "right_only": 150,
+     "right_plus": 73,
+     "other_only": 2
+    },
+    "exactly_right": {
+     "est": 50.0,
+     "lo": 35.333333333333336,
+     "hi": 65.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 74.33333333333333,
+     "lo": 59.66666666666667,
+     "hi": 87.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 25.0,
+     "lo": 14.325000000000074,
+     "hi": 37.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 25.0,
+     "lo": 11.666666666666666,
+     "hi": 39.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 65,
+    "plan_check_only": 9
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 171,
+     "right_only": 189,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 52.5,
+     "lo": 36.666666666666664,
+     "hi": 68.05555555555556,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 52.5,
+     "lo": 36.666666666666664,
+     "hi": 68.05555555555556,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 47.5,
+     "lo": 31.944444444444443,
+     "hi": 63.33333333333333,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 34,
+     "right_only": 326,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 90.55555555555556,
+     "lo": 82.77777777777777,
+     "hi": 96.66666666666667,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 90.55555555555556,
+     "lo": 82.77777777777777,
+     "hi": 96.66666666666667,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 9.444444444444445,
+     "lo": 3.3333333333333335,
+     "hi": 17.22222222222222,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 263,
+     "right_only": 322,
+     "right_plus": 14,
+     "other_only": 1
+    },
+    "exactly_right": {
+     "est": 53.666666666666664,
+     "lo": 41.833333333333336,
+     "hi": 65.5,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 56.00000000000001,
+     "lo": 43.666666666666664,
+     "hi": 68.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 2.5,
+     "lo": 0.8333333333333334,
+     "hi": 4.666666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 43.833333333333336,
+     "lo": 31.833333333333336,
+     "hi": 56.166666666666664,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 90,
+     "right_only": 510,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 85.0,
+     "lo": 74.16666666666667,
+     "hi": 93.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 85.0,
+     "lo": 74.16666666666667,
+     "hi": 93.66666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 15.0,
+     "lo": 6.333333333333334,
+     "hi": 25.833333333333336,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 2981,
+     "right_only": 19,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 0.6333333333333333,
+     "lo": 0.0,
+     "hi": 1.5333333333333332,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 0.6333333333333333,
+     "lo": 0.0,
+     "hi": 1.5333333333333332,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 99.36666666666667,
+     "lo": 98.46666666666667,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 1673,
+     "right_only": 1327,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 44.233333333333334,
+     "lo": 29.633333333333333,
+     "hi": 59.56666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 44.233333333333334,
+     "lo": 29.633333333333333,
+     "hi": 59.56666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 55.766666666666666,
+     "lo": 40.43333333333333,
+     "hi": 70.36666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 137,
+     "right_only": 141,
+     "right_plus": 19,
+     "other_only": 3
+    },
+    "exactly_right": {
+     "est": 47.0,
+     "lo": 38.333333333333336,
+     "hi": 55.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 53.333333333333336,
+     "lo": 45.0,
+     "hi": 61.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 7.333333333333333,
+     "lo": 4.333333333333334,
+     "hi": 10.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 45.666666666666664,
+     "lo": 37.666666666666664,
+     "hi": 53.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Gemma-26B",
+    "think": "on",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 4,
+     "right_only": 293,
+     "right_plus": 3,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 97.66666666666667,
+     "lo": 96.0,
+     "hi": 99.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 98.66666666666667,
+     "lo": 97.33333333333334,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 1.0,
+     "lo": 0.0,
+     "hi": 2.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 1.3333333333333335,
+     "lo": 0.33333333333333337,
+     "hi": 2.666666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 64,
+     "right_only": 83,
+     "right_plus": 110,
+     "other_only": 43
+    },
+    "exactly_right": {
+     "est": 27.666666666666668,
+     "lo": 21.0,
+     "hi": 33.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 64.33333333333333,
+     "lo": 56.333333333333336,
+     "hi": 72.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 51.0,
+     "lo": 40.0,
+     "hi": 61.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 21.333333333333336,
+     "lo": 13.666666666666666,
+     "hi": 29.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 50,
+    "plan_check_only": 61
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 9,
+     "right_only": 134,
+     "right_plus": 144,
+     "other_only": 13
+    },
+    "exactly_right": {
+     "est": 44.666666666666664,
+     "lo": 34.333333333333336,
+     "hi": 54.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 92.66666666666666,
+     "lo": 88.0,
+     "hi": 97.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 52.33333333333333,
+     "lo": 42.0,
+     "hi": 62.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 3.0,
+     "lo": 1.0,
+     "hi": 5.666666666666666,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 25,
+    "plan_check_only": 83
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 9,
+     "right_only": 570,
+     "right_plus": 21,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 95.0,
+     "lo": 93.66666666666667,
+     "hi": 96.16666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 98.5,
+     "lo": 97.83333333333334,
+     "hi": 99.16666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 3.5000000000000004,
+     "lo": 2.166666666666667,
+     "hi": 5.166666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 1.5,
+     "lo": 0.8333333333333334,
+     "hi": 2.166666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 596,
+     "right_plus": 4,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.33333333333333,
+     "lo": 98.66666666666667,
+     "hi": 99.83333333333333,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.6666666666666667,
+     "lo": 0.16666666666666669,
+     "hi": 1.3333333333333335,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 512,
+     "right_only": 2475,
+     "right_plus": 12,
+     "other_only": 1
+    },
+    "exactly_right": {
+     "est": 82.5,
+     "lo": 73.03333333333333,
+     "hi": 90.76666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 82.89999999999999,
+     "lo": 73.46666666666667,
+     "hi": 91.10000000000001,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.4333333333333333,
+     "lo": 0.16666666666666669,
+     "hi": 0.7333333333333333,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 17.066666666666666,
+     "lo": 8.899166666666673,
+     "hi": 26.434166666666652,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 3,
+     "right_only": 2942,
+     "right_plus": 55,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.06666666666666,
+     "lo": 94.66666666666667,
+     "hi": 99.93333333333332,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 99.9,
+     "lo": 99.73333333333333,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 1.8333333333333333,
+     "lo": 0.0,
+     "hi": 5.266666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.1,
+     "lo": 0.0,
+     "hi": 0.26666666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 71,
+     "right_only": 222,
+     "right_plus": 7,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 74.0,
+     "lo": 64.66666666666666,
+     "hi": 82.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 76.33333333333333,
+     "lo": 67.0,
+     "hi": 84.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 2.3333333333333335,
+     "lo": 0.0,
+     "hi": 5.333333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 23.666666666666668,
+     "lo": 15.666666666666668,
+     "hi": 33.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 298,
+     "right_plus": 2,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.33333333333333,
+     "lo": 98.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 0.6666666666666667,
+     "lo": 0.0,
+     "hi": 2.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 62,
+     "right_only": 87,
+     "right_plus": 138,
+     "other_only": 13
+    },
+    "exactly_right": {
+     "est": 28.999999999999996,
+     "lo": 19.666666666666664,
+     "hi": 39.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 75.0,
+     "lo": 62.66666666666667,
+     "hi": 86.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 50.33333333333333,
+     "lo": 40.33333333333333,
+     "hi": 60.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 20.666666666666668,
+     "lo": 11.666666666666666,
+     "hi": 30.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 14,
+    "plan_check_only": 101
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 24,
+     "right_only": 165,
+     "right_plus": 103,
+     "other_only": 8
+    },
+    "exactly_right": {
+     "est": 55.00000000000001,
+     "lo": 46.33333333333333,
+     "hi": 64.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 89.33333333333333,
+     "lo": 79.33333333333333,
+     "hi": 97.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 37.0,
+     "lo": 30.0,
+     "hi": 44.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 8.0,
+     "lo": 3.0,
+     "hi": 14.000000000000002,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 8,
+    "plan_check_only": 83
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 597,
+     "right_plus": 3,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.5,
+     "lo": 99.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.5,
+     "lo": 0.0,
+     "hi": 1.0,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 598,
+     "right_plus": 2,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.66666666666667,
+     "lo": 99.16666666666667,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 0.8333333333333334,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 2,
+     "right_only": 2996,
+     "right_plus": 2,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.86666666666667,
+     "lo": 99.7,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 99.93333333333332,
+     "lo": 99.8,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.06666666666666667,
+     "lo": 0.0,
+     "hi": 0.16666666666666669,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.06666666666666667,
+     "lo": 0.0,
+     "hi": 0.2,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 3,
+     "right_only": 2992,
+     "right_plus": 5,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.73333333333333,
+     "lo": 99.36666666666667,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 99.9,
+     "lo": 99.7,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.16666666666666669,
+     "lo": 0.0,
+     "hi": 0.46666666666666673,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.1,
+     "lo": 0.0,
+     "hi": 0.3,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 2,
+     "right_only": 292,
+     "right_plus": 6,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 97.33333333333334,
+     "lo": 95.33333333333334,
+     "hi": 99.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.33333333333333,
+     "lo": 98.33333333333333,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 2.0,
+     "lo": 0.6666666666666667,
+     "hi": 3.6666666666666665,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.6666666666666667,
+     "lo": 0.0,
+     "hi": 1.6666666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "main sweep",
+    "model": "Qwen3.6-35B",
+    "think": "on",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 297,
+     "right_plus": 3,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.0,
+     "lo": 98.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 1.0,
+     "lo": 0.0,
+     "hi": 2.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 86,
+     "right_plus": 214,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 28.666666666666668,
+     "lo": 17.333333333333336,
+     "hi": 41.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 71.33333333333334,
+     "lo": 59.0,
+     "hi": 82.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 38,
+    "plan_check_only": 175
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 132,
+     "right_plus": 168,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 44.0,
+     "lo": 30.666666666666664,
+     "hi": 57.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 56.00000000000001,
+     "lo": 42.66666666666667,
+     "hi": 69.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 28,
+    "plan_check_only": 140
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 551,
+     "right_plus": 49,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 91.83333333333333,
+     "lo": 88.66666666666667,
+     "hi": 95.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 8.166666666666666,
+     "lo": 5.0,
+     "hi": 11.333333333333332,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 570,
+     "right_plus": 30,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 95.0,
+     "lo": 92.5,
+     "hi": 97.33333333333334,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 5.0,
+     "lo": 2.666666666666667,
+     "hi": 7.5,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 208,
+     "right_only": 2792,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 93.06666666666666,
+     "lo": 82.86666666666666,
+     "hi": 99.86666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 93.06666666666666,
+     "lo": 82.86666666666666,
+     "hi": 99.86666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 6.933333333333333,
+     "lo": 0.13333333333333333,
+     "hi": 17.133333333333333,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 2400,
+     "right_only": 599,
+     "right_plus": 1,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 19.966666666666665,
+     "lo": 8.533333333333333,
+     "hi": 33.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 20.0,
+     "lo": 8.533333333333333,
+     "hi": 33.06666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.03333333333333333,
+     "lo": 0.0,
+     "hi": 0.1,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 80.0,
+     "lo": 66.93333333333334,
+     "hi": 91.46666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 1,
+     "right_only": 273,
+     "right_plus": 26,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 91.0,
+     "lo": 84.33333333333334,
+     "hi": 96.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.66666666666667,
+     "lo": 99.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 8.666666666666668,
+     "lo": 3.0,
+     "hi": 15.333333333333332,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 1.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 279,
+     "right_plus": 21,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 93.0,
+     "lo": 87.0,
+     "hi": 98.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 7.000000000000001,
+     "lo": 2.0,
+     "hi": 13.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 117,
+     "right_plus": 183,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 39.0,
+     "lo": 22.333333333333332,
+     "hi": 56.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 61.0,
+     "lo": 43.333333333333336,
+     "hi": 77.66666666666666,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 138,
+    "plan_check_only": 37
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 143,
+     "right_plus": 157,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 47.66666666666667,
+     "lo": 28.999999999999996,
+     "hi": 66.66666666666666,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 52.33333333333333,
+     "lo": 33.33333333333333,
+     "hi": 71.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 135,
+    "plan_check_only": 21
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 596,
+     "right_plus": 4,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.33333333333333,
+     "lo": 98.33333333333333,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.6666666666666667,
+     "lo": 0.0,
+     "hi": 1.6666666666666667,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 600,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 63,
+     "right_only": 2863,
+     "right_plus": 72,
+     "other_only": 2
+    },
+    "exactly_right": {
+     "est": 95.43333333333334,
+     "lo": 91.03333333333333,
+     "hi": 98.86666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 97.83333333333334,
+     "lo": 94.5,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 2.466666666666667,
+     "lo": 0.16666666666666669,
+     "hi": 6.166666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 2.1,
+     "lo": 0.0,
+     "hi": 5.366666666666667,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 0,
+     "right_only": 2985,
+     "right_plus": 15,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.5,
+     "lo": 98.5,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.5,
+     "lo": 0.0,
+     "hi": 1.5,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 56,
+     "right_only": 205,
+     "right_plus": 37,
+     "other_only": 2
+    },
+    "exactly_right": {
+     "est": 68.33333333333333,
+     "lo": 58.666666666666664,
+     "hi": 76.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 80.66666666666666,
+     "lo": 76.0,
+     "hi": 85.33333333333334,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 13.0,
+     "lo": 5.666666666666666,
+     "hi": 22.333333333333332,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 18.666666666666668,
+     "lo": 14.000000000000002,
+     "hi": 23.333333333333332,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 263,
+     "right_plus": 37,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 87.66666666666667,
+     "lo": 76.0,
+     "hi": 96.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 12.333333333333334,
+     "lo": 3.3333333333333335,
+     "hi": 24.0,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 37,
+     "right_only": 67,
+     "right_plus": 181,
+     "other_only": 15
+    },
+    "exactly_right": {
+     "est": 22.333333333333332,
+     "lo": 15.0,
+     "hi": 30.0,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 82.66666666666667,
+     "lo": 75.66666666666667,
+     "hi": 89.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 65.33333333333333,
+     "lo": 58.333333333333336,
+     "hi": 72.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 12.333333333333334,
+     "lo": 6.666666666666667,
+     "hi": 18.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 50,
+    "plan_check_only": 100
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "solve",
+    "n": 300,
+    "counts": {
+     "none": 1,
+     "right_only": 129,
+     "right_plus": 166,
+     "other_only": 4
+    },
+    "exactly_right": {
+     "est": 43.0,
+     "lo": 31.0,
+     "hi": 55.666666666666664,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 98.33333333333333,
+     "lo": 96.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 56.666666666666664,
+     "lo": 44.0,
+     "hi": 68.33333333333333,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 1.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 18,
+    "plan_check_only": 85
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n": 360,
+    "counts": {
+     "none": 0,
+     "right_only": 360,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 4,
+     "right_only": 583,
+     "right_plus": 13,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 97.16666666666667,
+     "lo": 95.83333333333334,
+     "hi": 98.5,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 99.33333333333333,
+     "lo": 98.66666666666667,
+     "hi": 99.83333333333333,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 2.166666666666667,
+     "lo": 0.8333333333333334,
+     "hi": 3.5000000000000004,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.6666666666666667,
+     "lo": 0.16666666666666669,
+     "hi": 1.3333333333333335,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n": 600,
+    "counts": {
+     "none": 0,
+     "right_only": 600,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 600
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 506,
+     "right_only": 2482,
+     "right_plus": 12,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 82.73333333333333,
+     "lo": 71.56666666666666,
+     "hi": 91.93333333333334,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 83.13333333333334,
+     "lo": 71.83333333333334,
+     "hi": 92.43333333333334,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.4,
+     "lo": 0.03333333333333333,
+     "hi": 0.8999999999999999,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 16.866666666666667,
+     "lo": 7.566666666666666,
+     "hi": 28.166666666666668,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 0,
+     "right_only": 2991,
+     "right_plus": 9,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.7,
+     "lo": 99.23333333333333,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.3,
+     "lo": 0.0,
+     "hi": 0.7666666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 1,
+     "right_only": 286,
+     "right_plus": 13,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 95.33333333333334,
+     "lo": 91.0,
+     "hi": 98.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 99.66666666666667,
+     "lo": 99.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 4.333333333333334,
+     "lo": 1.0,
+     "hi": 8.674999999999878,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 1.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "think": "off",
+    "arm": "steered",
+    "task": "simulate",
+    "n": 300,
+    "counts": {
+     "none": 0,
+     "right_only": 293,
+     "right_plus": 7,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 97.66666666666667,
+     "lo": 95.33333333333334,
+     "hi": 99.66666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_called": {
+     "est": 2.3333333333333335,
+     "lo": 0.33333333333333337,
+     "hi": 4.666666666666667,
+     "k": 20,
+     "n": 300
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 300
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "neutral, plain",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 2194,
+     "right_only": 806,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 26.866666666666667,
+     "lo": 14.465833333333341,
+     "hi": 40.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 26.866666666666667,
+     "lo": 14.465833333333341,
+     "hi": 40.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 73.13333333333333,
+     "lo": 60.0,
+     "hi": 85.53416666666665,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "think": "off",
+    "arm": "neutral, steered",
+    "task": "validate_plan",
+    "n": 3000,
+    "counts": {
+     "none": 57,
+     "right_only": 2943,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.1,
+     "lo": 95.83333333333334,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "right_called": {
+     "est": 98.1,
+     "lo": 95.83333333333334,
+     "hi": 100.0,
+     "k": 20,
+     "n": 3000
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 3000
+    },
+    "no_call": {
+     "est": 1.9,
+     "lo": 0.0,
+     "hi": 4.166666666666666,
+     "k": 20,
+     "n": 3000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 100,
+    "counts": {
+     "none": 0,
+     "right_only": 99,
+     "right_plus": 1,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.0,
+     "lo": 97.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 100
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_called": {
+     "est": 1.0,
+     "lo": 0.0,
+     "hi": 3.0,
+     "k": 20,
+     "n": 100
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 100,
+    "counts": {
+     "none": 0,
+     "right_only": 65,
+     "right_plus": 30,
+     "other_only": 5
+    },
+    "exactly_right": {
+     "est": 65.0,
+     "lo": 49.0,
+     "hi": 80.0,
+     "k": 20,
+     "n": 100
+    },
+    "right_called": {
+     "est": 95.0,
+     "lo": 85.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_called": {
+     "est": 35.0,
+     "lo": 20.0,
+     "hi": 51.0,
+     "k": 20,
+     "n": 100
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_planner": 5,
+    "plan_check_only": 1
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 120,
+    "counts": {
+     "none": 0,
+     "right_only": 120,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 120
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 120
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 120
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 120
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 1000,
+    "counts": {
+     "none": 0,
+     "right_only": 994,
+     "right_plus": 6,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.4,
+     "lo": 98.9,
+     "hi": 99.8,
+     "k": 20,
+     "n": 1000
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 1000
+    },
+    "other_called": {
+     "est": 0.6,
+     "lo": 0.2,
+     "hi": 1.0999999999999999,
+     "k": 20,
+     "n": 1000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 1000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 200,
+    "counts": {
+     "none": 0,
+     "right_only": 200,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 200
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 200
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 200
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 200
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "think": "off",
+    "arm": "plain",
+    "task": "simulate",
+    "n": 100,
+    "counts": {
+     "none": 0,
+     "right_only": 98,
+     "right_plus": 2,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 98.0,
+     "lo": 95.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 100
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_called": {
+     "est": 2.0,
+     "lo": 0.0,
+     "hi": 5.0,
+     "k": 20,
+     "n": 100
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "think": "off",
+    "arm": "plain",
+    "task": "solve",
+    "n": 100,
+    "counts": {
+     "none": 0,
+     "right_only": 1,
+     "right_plus": 94,
+     "other_only": 5
+    },
+    "exactly_right": {
+     "est": 1.0,
+     "lo": 0.0,
+     "hi": 3.0,
+     "k": 20,
+     "n": 100
+    },
+    "right_called": {
+     "est": 95.0,
+     "lo": 85.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_called": {
+     "est": 99.0,
+     "lo": 97.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 100
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 100
+    },
+    "other_planner": 6,
+    "plan_check_only": 10
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n": 120,
+    "counts": {
+     "none": 0,
+     "right_only": 120,
+     "right_plus": 0,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 120
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 120
+    },
+    "other_called": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 120
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 120
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n": 1000,
+    "counts": {
+     "none": 0,
+     "right_only": 999,
+     "right_plus": 1,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.9,
+     "lo": 99.7,
+     "hi": 100.0,
+     "k": 20,
+     "n": 1000
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 1000
+    },
+    "other_called": {
+     "est": 0.1,
+     "lo": 0.0,
+     "hi": 0.3,
+     "k": 20,
+     "n": 1000
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 1000
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "think": "off",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n": 200,
+    "counts": {
+     "none": 0,
+     "right_only": 198,
+     "right_plus": 2,
+     "other_only": 0
+    },
+    "exactly_right": {
+     "est": 99.0,
+     "lo": 97.5,
+     "hi": 100.0,
+     "k": 20,
+     "n": 200
+    },
+    "right_called": {
+     "est": 100.0,
+     "lo": 100.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 200
+    },
+    "other_called": {
+     "est": 1.0,
+     "lo": 0.0,
+     "hi": 2.5,
+     "k": 20,
+     "n": 200
+    },
+    "no_call": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 200
+    },
+    "other_planner": 0,
+    "plan_check_only": 0
+   }
+  ],
+  "rows": 127600
+ },
+ "rq3": {
+  "rerun": [
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "plain",
+    "task": "solve",
+    "n_trials": 300,
+    "n_tool_right": 296,
+    "n_lost": 19,
+    "n_unknown": 0,
+    "lost": {
+     "est": 6.418918918918918,
+     "lo": 2.0689655172413794,
+     "hi": 11.224489795918368,
+     "k": 20,
+     "n": 296
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 10,
+     "WRONG_WRAPPER": 3,
+     "WRONG_FACTS": 6
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "steered",
+    "task": "solve",
+    "n_trials": 300,
+    "n_tool_right": 300,
+    "n_lost": 14,
+    "n_unknown": 0,
+    "lost": {
+     "est": 4.666666666666667,
+     "lo": 1.3333333333333335,
+     "hi": 8.666666666666668,
+     "k": 20,
+     "n": 300
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 10,
+     "WRONG_WRAPPER": 1,
+     "WRONG_FACTS": 3
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n_trials": 360,
+    "n_tool_right": 352,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 352
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n_trials": 360,
+    "n_tool_right": 356,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 356
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n_trials": 600,
+    "n_tool_right": 597,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 597
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n_trials": 600,
+    "n_tool_right": 600,
+    "n_lost": 2,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.33333333333333337,
+     "lo": 0.0,
+     "hi": 0.8333333333333334,
+     "k": 20,
+     "n": 600
+    },
+    "why": {
+     "WRONG_FACTS": 2
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n_trials": 3000,
+    "n_tool_right": 596,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 13,
+     "n": 596
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n_trials": 3000,
+    "n_tool_right": 2764,
+    "n_lost": 3,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.10853835021707671,
+     "lo": 0.0,
+     "hi": 0.2810987455646441,
+     "k": 20,
+     "n": 2764
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 2,
+     "NEEDS_READING": 1
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "plain",
+    "task": "simulate",
+    "n_trials": 300,
+    "n_tool_right": 272,
+    "n_lost": 247,
+    "n_unknown": 0,
+    "lost": {
+     "est": 90.80882352941177,
+     "lo": 85.35714285714285,
+     "hi": 95.52871973887025,
+     "k": 20,
+     "n": 272
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 148,
+     "WRONG_FACTS": 18,
+     "NEEDS_READING": 81
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Gemma-26B",
+    "arm": "steered",
+    "task": "simulate",
+    "n_trials": 300,
+    "n_tool_right": 272,
+    "n_lost": 248,
+    "n_unknown": 0,
+    "lost": {
+     "est": 91.17647058823529,
+     "lo": 86.03752774694784,
+     "hi": 95.83333333333334,
+     "k": 20,
+     "n": 272
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 151,
+     "WRONG_FACTS": 18,
+     "NEEDS_READING": 79
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "plain",
+    "task": "solve",
+    "n_trials": 300,
+    "n_tool_right": 300,
+    "n_lost": 34,
+    "n_unknown": 0,
+    "lost": {
+     "est": 11.333333333333332,
+     "lo": 5.333333333333334,
+     "hi": 18.0,
+     "k": 20,
+     "n": 300
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 20,
+     "ABRIDGED": 1,
+     "WRONG_FACTS": 13
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "steered",
+    "task": "solve",
+    "n_trials": 300,
+    "n_tool_right": 300,
+    "n_lost": 33,
+    "n_unknown": 0,
+    "lost": {
+     "est": 11.0,
+     "lo": 5.666666666666666,
+     "hi": 17.333333333333336,
+     "k": 20,
+     "n": 300
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 19,
+     "SUMMARY_ONLY": 2,
+     "ABRIDGED": 2,
+     "WRONG_FACTS": 10
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n_trials": 360,
+    "n_tool_right": 360,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n_trials": 360,
+    "n_tool_right": 360,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 360
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n_trials": 600,
+    "n_tool_right": 569,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 569
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n_trials": 600,
+    "n_tool_right": 546,
+    "n_lost": 2,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.3663003663003663,
+     "lo": 0.0,
+     "hi": 0.9259259259259258,
+     "k": 20,
+     "n": 546
+    },
+    "why": {
+     "WRONG_FACTS": 1,
+     "NEEDS_READING": 1
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n_trials": 3000,
+    "n_tool_right": 2776,
+    "n_lost": 20,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.7204610951008645,
+     "lo": 0.07160694967811185,
+     "hi": 1.7088083784416996,
+     "k": 20,
+     "n": 2776
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 13,
+     "WRONG_FACTS": 3,
+     "NEEDS_READING": 4
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n_trials": 3000,
+    "n_tool_right": 2884,
+    "n_lost": 7,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.24271844660194172,
+     "lo": 0.0,
+     "hi": 0.7436260623229463,
+     "k": 20,
+     "n": 2884
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 1,
+     "NO_FINAL_ANSWER": 1,
+     "WRONG_FACTS": 1,
+     "NEEDS_READING": 4
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "plain",
+    "task": "simulate",
+    "n_trials": 300,
+    "n_tool_right": 204,
+    "n_lost": 152,
+    "n_unknown": 0,
+    "lost": {
+     "est": 74.50980392156863,
+     "lo": 60.40584007639344,
+     "hi": 87.70075882054192,
+     "k": 20,
+     "n": 204
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 106,
+     "ABRIDGED": 1,
+     "WRONG_FACTS": 35,
+     "NEEDS_READING": 10
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.5-9B",
+    "arm": "steered",
+    "task": "simulate",
+    "n_trials": 300,
+    "n_tool_right": 261,
+    "n_lost": 212,
+    "n_unknown": 0,
+    "lost": {
+     "est": 81.22605363984674,
+     "lo": 70.45413072329131,
+     "hi": 90.38499999999999,
+     "k": 20,
+     "n": 261
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 132,
+     "ABRIDGED": 1,
+     "NUMERIC_OMITTED": 1,
+     "WRONG_FACTS": 40,
+     "NEEDS_READING": 38
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "plain",
+    "task": "solve",
+    "n_trials": 300,
+    "n_tool_right": 247,
+    "n_lost": 33,
+    "n_unknown": 0,
+    "lost": {
+     "est": 13.360323886639677,
+     "lo": 7.575606664252084,
+     "hi": 19.758064516129032,
+     "k": 20,
+     "n": 247
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 22,
+     "SUMMARY_ONLY": 1,
+     "ABRIDGED": 4,
+     "WRONG_WRAPPER": 3,
+     "WRONG_FACTS": 3
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "steered",
+    "task": "solve",
+    "n_trials": 300,
+    "n_tool_right": 298,
+    "n_lost": 36,
+    "n_unknown": 0,
+    "lost": {
+     "est": 12.080536912751679,
+     "lo": 6.756756756756757,
+     "hi": 17.845117845117844,
+     "k": 20,
+     "n": 298
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 23,
+     "SUMMARY_ONLY": 3,
+     "ABRIDGED": 3,
+     "WRONG_WRAPPER": 2,
+     "WRONG_FACTS": 3,
+     "NEEDS_READING": 2
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n_trials": 360,
+    "n_tool_right": 355,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 355
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "steered",
+    "task": "validate_domain",
+    "n_trials": 360,
+    "n_tool_right": 358,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 358
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n_trials": 600,
+    "n_tool_right": 583,
+    "n_lost": 10,
+    "n_unknown": 0,
+    "lost": {
+     "est": 1.7152658662092626,
+     "lo": 0.5172413793103449,
+     "hi": 3.0927835051546393,
+     "k": 20,
+     "n": 583
+    },
+    "why": {
+     "WRONG_FACTS": 1,
+     "NEEDS_READING": 9
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "steered",
+    "task": "validate_problem",
+    "n_trials": 600,
+    "n_tool_right": 584,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 584
+    },
+    "why": {}
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n_trials": 3000,
+    "n_tool_right": 2472,
+    "n_lost": 17,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.6877022653721683,
+     "lo": 0.04482044359484867,
+     "hi": 1.4397009293690979,
+     "k": 20,
+     "n": 2472
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 4,
+     "WRONG_FACTS": 1,
+     "NEEDS_READING": 12
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "steered",
+    "task": "validate_plan",
+    "n_trials": 3000,
+    "n_tool_right": 2974,
+    "n_lost": 15,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.5043712172158709,
+     "lo": 0.06709158000670916,
+     "hi": 1.1085078003944215,
+     "k": 20,
+     "n": 2974
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 2,
+     "NEEDS_READING": 13
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "plain",
+    "task": "simulate",
+    "n_trials": 300,
+    "n_tool_right": 282,
+    "n_lost": 197,
+    "n_unknown": 0,
+    "lost": {
+     "est": 69.8581560283688,
+     "lo": 56.457564575645755,
+     "hi": 82.3943661971831,
+     "k": 20,
+     "n": 282
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 151,
+     "NUMERIC_OMITTED": 9,
+     "WRONG_FACTS": 26,
+     "NEEDS_READING": 11
+    }
+   },
+   {
+    "corpus": "rerun",
+    "model": "Qwen3.6-35B",
+    "arm": "steered",
+    "task": "simulate",
+    "n_trials": 300,
+    "n_tool_right": 287,
+    "n_lost": 210,
+    "n_unknown": 0,
+    "lost": {
+     "est": 73.17073170731707,
+     "lo": 61.32404181184668,
+     "hi": 84.23029927062183,
+     "k": 20,
+     "n": 287
+    },
+    "why": {
+     "REFUSED_OR_CLIPPED_FINAL": 155,
+     "NUMERIC_OMITTED": 7,
+     "WRONG_FACTS": 23,
+     "NEEDS_READING": 25
+    }
+   }
+  ],
+  "Claude": [
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "arm": "plain",
+    "task": "solve",
+    "n_trials": 100,
+    "n_tool_right": 100,
+    "n_lost": 5,
+    "n_unknown": 0,
+    "lost": {
+     "est": 5.0,
+     "lo": 2.0,
+     "hi": 9.0,
+     "k": 20,
+     "n": 100
+    },
+    "why": {
+     "plan_invalid": 5
+    }
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n_trials": 120,
+    "n_tool_right": 115,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 115
+    },
+    "why": {}
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n_trials": 200,
+    "n_tool_right": 196,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 196
+    },
+    "why": {}
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n_trials": 1000,
+    "n_tool_right": 999,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 999
+    },
+    "why": {}
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Sonnet 4.6",
+    "arm": "plain",
+    "task": "simulate",
+    "n_trials": 100,
+    "n_tool_right": 99,
+    "n_lost": 38,
+    "n_unknown": 13,
+    "lost": {
+     "est": 38.38383838383838,
+     "lo": 26.262626262626267,
+     "hi": 51.0,
+     "k": 20,
+     "n": 99
+    },
+    "why": {
+     "trajectory_mismatch": 17,
+     "format_parse_fail": 21
+    }
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "arm": "plain",
+    "task": "solve",
+    "n_trials": 100,
+    "n_tool_right": 100,
+    "n_lost": 5,
+    "n_unknown": 0,
+    "lost": {
+     "est": 5.0,
+     "lo": 1.0,
+     "hi": 10.0,
+     "k": 20,
+     "n": 100
+    },
+    "why": {
+     "no_plan_extracted": 2,
+     "plan_invalid": 3
+    }
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "arm": "plain",
+    "task": "validate_domain",
+    "n_trials": 120,
+    "n_tool_right": 118,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 118
+    },
+    "why": {}
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "arm": "plain",
+    "task": "validate_problem",
+    "n_trials": 200,
+    "n_tool_right": 193,
+    "n_lost": 0,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "k": 20,
+     "n": 193
+    },
+    "why": {}
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "arm": "plain",
+    "task": "validate_plan",
+    "n_trials": 1000,
+    "n_tool_right": 989,
+    "n_lost": 1,
+    "n_unknown": 0,
+    "lost": {
+     "est": 0.10111223458038424,
+     "lo": 0.0,
+     "hi": 0.3048780487804878,
+     "k": 20,
+     "n": 989
+    },
+    "why": {
+     "verdict_stated_wrong": 1
+    }
+   },
+   {
+    "corpus": "Claude",
+    "model": "Claude Haiku 4.5",
+    "arm": "plain",
+    "task": "simulate",
+    "n_trials": 100,
+    "n_tool_right": 97,
+    "n_lost": 33,
+    "n_unknown": 12,
+    "lost": {
+     "est": 34.02061855670103,
+     "lo": 21.645881831282594,
+     "hi": 46.464646464646464,
+     "k": 20,
+     "n": 97
+    },
+    "why": {
+     "trajectory_mismatch": 15,
+     "format_parse_fail": 17,
+     "truncated_empty": 1
+    }
+   }
+  ]
+ }
+}

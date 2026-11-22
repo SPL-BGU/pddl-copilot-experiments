@@ -65,6 +65,7 @@ run_test test_d5b.py
 run_test test_refresh_frontier_overlays.py
 run_test test_iss028_iss029.py
 run_test test_rq1_metrics.py
+run_test test_rq23_metrics.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"

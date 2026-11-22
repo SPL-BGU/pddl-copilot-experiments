@@ -1451,23 +1451,23 @@ Mean share by trace length, "exact" (trials in the bin):
 
 #### RQ1-3. solve: delivered success against problem hardness
 
-Hardness 1: reference plan length (actions). Hardness 2: the planner's own runtime, the median `solve_time` over the planner calls the rerun models made on the problem (100 problems timed, 0.15 s to 22.30 s; thirds cut at 0.20 s and 0.32 s). Plan length and planner runtime: Spearman +0.52 (p=0.000). The planner solves every problem in this corpus, so the hard end, where the planner itself fails, is not covered.
+Hardness 1: reference plan length (actions). Hardness 2: the planner's own runtime, the median `solve_time` over the planner calls the rerun models made on the problem (100 problems timed, 0.15 s to 22.30 s; thirds cut at 0.20 s and 0.32 s). Plan length and planner runtime: Spearman +0.52 (p=0.000). Second view: the number of objects in the problem (2 to 35; thirds cut at 6 and 14); plan length and object count: Spearman +0.38 (p=0.000). The planner solves every problem in this corpus, so the hard end, where the planner itself fails, is not covered.
 
-| model | arm | solved | Spearman, solved vs plan length | Spearman, solved vs planner runtime |
-|---|---|---|---|---|
-| Claude Haiku 4.5 | no tools | 22.0 [9.0, 37.0] | -0.33 (p=0.001) | -0.32 (p=0.001) |
-| Claude Haiku 4.5 | tools | 95.0 [90.0, 99.0] | +0.03 (p=0.765) | -0.12 (p=0.241) |
-| Claude Sonnet 4.6 | no tools | 29.0 [17.0, 42.0] | -0.54 (p=0.000) | -0.32 (p=0.001) |
-| Claude Sonnet 4.6 | tools | 95.0 [91.0, 98.0] | -0.25 (p=0.012) | -0.17 (p=0.099) |
-| Gemma-26B | no tools | 21.3 [13.0, 30.3] | -0.32 (p=0.001) | -0.11 (p=0.288) |
-| Gemma-26B | tools, plain | 92.3 [87.3, 97.0] | -0.44 (p=0.000) | -0.46 (p=0.000) |
-| Gemma-26B | tools, steered | 95.3 [91.3, 98.7] | -0.40 (p=0.000) | -0.33 (p=0.001) |
-| Qwen3.5-9B | no tools | 24.3 [16.3, 32.3] | -0.29 (p=0.003) | -0.02 (p=0.832) |
-| Qwen3.5-9B | tools, plain | 88.7 [82.0, 94.7] | -0.56 (p=0.000) | -0.29 (p=0.003) |
-| Qwen3.5-9B | tools, steered | 89.0 [82.7, 94.3] | -0.53 (p=0.000) | -0.21 (p=0.034) |
-| Qwen3.6-35B | no tools | 25.3 [16.3, 35.7] | -0.34 (p=0.000) | +0.03 (p=0.738) |
-| Qwen3.6-35B | tools, plain | 77.0 [69.7, 83.7] | -0.34 (p=0.001) | -0.09 (p=0.390) |
-| Qwen3.6-35B | tools, steered | 87.3 [81.7, 92.3] | -0.51 (p=0.000) | -0.30 (p=0.003) |
+| model | arm | solved | Spearman, solved vs plan length | Spearman, solved vs planner runtime | Spearman, solved vs object count |
+|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 22.0 [9.0, 37.0] | -0.33 (p=0.001) | -0.32 (p=0.001) | -0.24 (p=0.015) |
+| Claude Haiku 4.5 | tools | 95.0 [90.0, 99.0] | +0.03 (p=0.765) | -0.12 (p=0.241) | -0.02 (p=0.844) |
+| Claude Sonnet 4.6 | no tools | 29.0 [17.0, 42.0] | -0.54 (p=0.000) | -0.32 (p=0.001) | -0.42 (p=0.000) |
+| Claude Sonnet 4.6 | tools | 95.0 [91.0, 98.0] | -0.25 (p=0.012) | -0.17 (p=0.099) | -0.01 (p=0.937) |
+| Gemma-26B | no tools | 21.3 [13.0, 30.3] | -0.32 (p=0.001) | -0.11 (p=0.288) | -0.39 (p=0.000) |
+| Gemma-26B | tools, plain | 92.3 [87.3, 97.0] | -0.44 (p=0.000) | -0.46 (p=0.000) | -0.40 (p=0.000) |
+| Gemma-26B | tools, steered | 95.3 [91.3, 98.7] | -0.40 (p=0.000) | -0.33 (p=0.001) | -0.13 (p=0.189) |
+| Qwen3.5-9B | no tools | 24.3 [16.3, 32.3] | -0.29 (p=0.003) | -0.02 (p=0.832) | -0.47 (p=0.000) |
+| Qwen3.5-9B | tools, plain | 88.7 [82.0, 94.7] | -0.56 (p=0.000) | -0.29 (p=0.003) | -0.08 (p=0.449) |
+| Qwen3.5-9B | tools, steered | 89.0 [82.7, 94.3] | -0.53 (p=0.000) | -0.21 (p=0.034) | -0.07 (p=0.484) |
+| Qwen3.6-35B | no tools | 25.3 [16.3, 35.7] | -0.34 (p=0.000) | +0.03 (p=0.738) | -0.42 (p=0.000) |
+| Qwen3.6-35B | tools, plain | 77.0 [69.7, 83.7] | -0.34 (p=0.001) | -0.09 (p=0.390) | -0.30 (p=0.003) |
+| Qwen3.6-35B | tools, steered | 87.3 [81.7, 92.3] | -0.51 (p=0.000) | -0.30 (p=0.003) | -0.07 (p=0.494) |
 
 Solved, by reference plan length (trials in the bin):
 
@@ -1505,6 +1505,24 @@ Solved, by planner runtime (trials in the bin):
 | Qwen3.6-35B | tools, plain | 78.4 [63.2, 88.6] (102) | 80.8 [67.9, 90.6] (99) | 71.7 [58.3, 82.8] (99) |
 | Qwen3.6-35B | tools, steered | 95.1 [92.9, 97.8] (102) | 90.9 [82.8, 97.2] (99) | 75.8 [61.5, 86.5] (99) |
 
+Solved, by number of objects (trials in the bin):
+
+| model | arm | fewest objects | middle third | most objects |
+|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 33.3 [13.2, 58.1] (39) | 20.7 [3.3, 44.4] (29) | 9.4 [0.0, 25.0] (32) |
+| Claude Haiku 4.5 | tools | 97.4 [92.1, 100.0] (39) | 89.7 [76.7, 100.0] (29) | 96.9 [90.3, 100.0] (32) |
+| Claude Sonnet 4.6 | no tools | 51.3 [30.4, 71.9] (39) | 20.7 [6.2, 39.1] (29) | 9.4 [0.0, 17.6] (32) |
+| Claude Sonnet 4.6 | tools | 94.9 [88.6, 100.0] (39) | 96.6 [87.5, 100.0] (29) | 93.8 [82.1, 100.0] (32) |
+| Gemma-26B | no tools | 35.0 [24.3, 45.7] (117) | 14.9 [3.2, 30.8] (87) | 10.4 [2.4, 19.2] (96) |
+| Gemma-26B | tools, plain | 97.4 [92.1, 100.0] (117) | 98.9 [96.7, 100.0] (87) | 80.2 [70.0, 91.4] (96) |
+| Gemma-26B | tools, steered | 96.6 [89.5, 100.0] (117) | 100.0 [100.0, 100.0] (87) | 89.6 [78.6, 97.8] (96) |
+| Qwen3.5-9B | no tools | 40.2 [33.3, 48.4] (117) | 17.2 [6.7, 30.8] (87) | 11.5 [3.8, 19.4] (96) |
+| Qwen3.5-9B | tools, plain | 86.3 [75.2, 96.6] (117) | 97.7 [93.3, 100.0] (87) | 83.3 [66.7, 94.7] (96) |
+| Qwen3.5-9B | tools, steered | 86.3 [75.2, 96.3] (117) | 96.6 [92.2, 100.0] (87) | 85.4 [69.3, 95.5] (96) |
+| Qwen3.6-35B | no tools | 43.6 [26.7, 59.7] (117) | 16.1 [10.0, 23.3] (87) | 11.5 [5.4, 19.2] (96) |
+| Qwen3.6-35B | tools, plain | 84.6 [73.5, 93.3] (117) | 77.0 [64.3, 88.9] (87) | 67.7 [57.8, 77.0] (96) |
+| Qwen3.6-35B | tools, steered | 87.2 [78.7, 94.6] (117) | 93.1 [90.0, 96.5] (87) | 82.3 [67.7, 95.1] (96) |
+
 #### RQ1-4. solve: length of the valid delivered plans
 
 Only trials whose delivered plan is valid. Reference = the answer key's plan for the same problem (the planners' default any-plan search, not a shortest plan). Ratio of sums = total delivered actions / total reference actions over those trials.
@@ -1540,6 +1558,327 @@ Only trials whose delivered plan is valid. Reference = the answer key's plan for
 
 Claude rows read: Claude Sonnet 4.6 / no tools: 1520 rows, 19 with an unknown delivered grade; Claude Sonnet 4.6 / tools: 1520 rows, 13 with an unknown delivered grade; Claude Haiku 4.5 / no tools: 1520 rows, 30 with an unknown delivered grade; Claude Haiku 4.5 / tools: 1520 rows, 12 with an unknown delivered grade.
 <!-- END GENERATED: RQ1-METRICS -->
+
+## RQ2 metrics — tool choice (added 2026-11-22; post hoc, exploratory; in no tex yet)
+
+The advisors' RQ2 metrics (`roadmap.md` §2), from the stored tool calls, by
+`tools/reanalysis/rq23_metrics.py` (rerun: `python -m tools.reanalysis.rq23_metrics --numbers`;
+tests in `tests/test_rq23_metrics.py`). How to read the block:
+
+- **Four classes per trial**, by the set of tools it called: no call; only the right tool;
+  the right tool and another; other tools only. "Exactly right" is the second class, "the
+  right tool was called" is the second plus the third, "another tool was called" is the
+  third plus the fourth.
+- **Solve is graded more strictly here than by the harness.** The right tool is the planner
+  that fits the domain; the harness's calling figures (Study 1 block, T2 and T3) accept
+  either planner. So a solve calling rate here can be lower than the frozen one. On the
+  four other tasks "the right tool was called" equals the frozen calling rate.
+- **A plan check after the planner counts as another tool** and is also shown on its own,
+  since checking a plan is not a mistake.
+- **Three separate apparatus, never pooled:** the main sweep (also the only source for
+  thinking on), the rerun, the Claude runs. The 35B plain cells differ between the main
+  sweep and the rerun (the calling flips of T8c); quote both.
+
+<!-- BEGIN GENERATED: RQ2-METRICS (do not edit by hand; rerun the generator) -->
+*Generated by `tools/reanalysis/rq23_metrics.py`. Post hoc and descriptive. Every with-tools trial offered all seven tools. Rates are percent of the cell's trials with 95% domain-cluster bootstrap percentile intervals. The three corpora are separate apparatus and are never pooled. "Plain" = tools offered with no instruction to use one; "steered" = one added sentence naming the tool; "neutral prompt" = the system prompt without its use-the-tool policy sentence (Gemma, validate_plan only). Self-check: the harness rule applied to the stored calls equals the stored `tool_selected` on all 127600 rows.*
+
+#### RQ2. Main sweep (Study 1), five open models, thinking off and on
+
+Share of trials where exactly the right tool and no other (higher is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Qwen3.5-0.8B | off | plain | 21.0 [9.3, 35.0] | 81.9 [76.4, 87.8] | 75.5 [64.7, 85.7] | 87.4 [80.1, 93.6] | 22.3 [13.7, 32.0] |
+| Qwen3.5-0.8B | off | steered | 34.0 [17.3, 52.3] | 92.8 [85.6, 98.3] | 98.8 [97.8, 99.7] | 93.4 [88.9, 97.2] | 54.0 [43.3, 65.3] |
+| Qwen3.5-0.8B | on | steered | 15.3 [8.3, 23.0] | 88.3 [83.1, 92.8] | 82.5 [77.3, 87.3] | 55.5 [47.6, 63.5] | 49.7 [40.7, 58.7] |
+| Qwen3.5-0.8B | on | plain | 11.7 [6.3, 17.7] | 83.3 [76.7, 89.2] | 75.3 [68.8, 81.2] | 49.3 [40.2, 58.2] | 16.0 [12.0, 20.0] |
+| Qwen3.5-4B | off | plain | 38.0 [26.3, 49.7] | 100.0 [100.0, 100.0] | 81.5 [69.8, 91.5] | 80.3 [72.9, 87.1] | 77.3 [65.3, 87.7] |
+| Qwen3.5-4B | off | steered | 40.3 [28.3, 53.0] | 100.0 [100.0, 100.0] | 91.3 [84.8, 96.5] | 93.5 [89.4, 97.0] | 80.0 [67.7, 90.7] |
+| Qwen3.5-4B | on | plain | 41.3 [31.3, 51.3] | 100.0 [100.0, 100.0] | 98.7 [97.3, 99.7] | 95.0 [93.3, 96.6] | 86.0 [79.7, 92.0] |
+| Qwen3.5-4B | on | steered | 54.7 [43.7, 65.3] | 99.7 [99.2, 100.0] | 98.8 [97.8, 99.7] | 98.9 [98.2, 99.5] | 94.0 [90.0, 97.3] |
+| Qwen3.5-9B | off | plain | 40.0 [23.3, 57.7] | 100.0 [100.0, 100.0] | 99.5 [98.5, 100.0] | 95.9 [91.5, 99.3] | 70.7 [61.7, 78.0] |
+| Qwen3.5-9B | off | steered | 51.0 [31.7, 70.7] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.9 [99.6, 100.0] | 89.0 [77.7, 97.7] |
+| Qwen3.5-9B | on | steered | 25.0 [17.0, 33.7] | 98.9 [97.8, 99.7] | 98.8 [98.0, 99.7] | 97.1 [95.9, 98.3] | 98.0 [95.0, 100.0] |
+| Qwen3.5-9B | on | plain | 8.7 [4.7, 13.3] | 99.4 [98.6, 100.0] | 95.3 [92.0, 98.2] | 67.8 [60.1, 74.9] | 90.7 [84.0, 96.0] |
+| Gemma-26B | off | plain | 29.3 [18.0, 41.3] | 100.0 [100.0, 100.0] | 90.8 [87.5, 94.2] | 20.7 [9.0, 34.0] | 92.7 [86.7, 97.7] |
+| Gemma-26B | off | steered | 50.7 [37.0, 63.7] | 100.0 [100.0, 100.0] | 94.5 [92.0, 96.8] | 93.6 [84.0, 100.0] | 94.7 [88.7, 99.3] |
+| Gemma-26B | on | plain | 11.7 [6.3, 17.7] | 52.5 [36.7, 68.1] | 53.7 [41.8, 65.5] | 0.6 [0.0, 1.5] | 47.0 [38.3, 55.7] |
+| Gemma-26B | on | steered | 50.0 [35.3, 65.3] | 90.6 [82.8, 96.7] | 85.0 [74.2, 93.7] | 44.2 [29.6, 59.6] | 97.7 [96.0, 99.3] |
+| Qwen3.6-35B | off | plain | 27.7 [21.0, 33.7] | 100.0 [100.0, 100.0] | 95.0 [93.7, 96.2] | 82.5 [73.0, 90.8] | 74.0 [64.7, 82.3] |
+| Qwen3.6-35B | off | steered | 44.7 [34.3, 54.7] | 100.0 [100.0, 100.0] | 99.3 [98.7, 99.8] | 98.1 [94.7, 99.9] | 99.3 [98.0, 100.0] |
+| Qwen3.6-35B | on | plain | 29.0 [19.7, 39.0] | 100.0 [100.0, 100.0] | 99.5 [99.0, 100.0] | 99.9 [99.7, 100.0] | 97.3 [95.3, 99.0] |
+| Qwen3.6-35B | on | steered | 55.0 [46.3, 64.0] | 100.0 [100.0, 100.0] | 99.7 [99.2, 100.0] | 99.7 [99.4, 100.0] | 99.0 [98.0, 100.0] |
+
+Share of trials where the right tool was called (higher is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Qwen3.5-0.8B | off | plain | 54.7 [39.0, 69.7] | 98.6 [95.8, 100.0] | 95.3 [89.5, 99.3] | 92.8 [86.7, 97.7] | 48.3 [36.0, 60.0] |
+| Qwen3.5-0.8B | off | steered | 55.3 [36.0, 73.7] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] |
+| Qwen3.5-0.8B | on | steered | 58.0 [45.0, 70.7] | 91.9 [87.2, 96.1] | 96.0 [94.0, 97.8] | 76.2 [69.3, 82.5] | 81.3 [73.3, 88.7] |
+| Qwen3.5-0.8B | on | plain | 36.0 [26.3, 46.0] | 90.3 [83.9, 95.6] | 94.3 [89.8, 97.7] | 68.6 [57.6, 79.0] | 32.7 [25.3, 40.0] |
+| Qwen3.5-4B | off | plain | 92.0 [83.3, 98.7] | 100.0 [100.0, 100.0] | 99.8 [99.5, 100.0] | 99.9 [99.8, 100.0] | 96.7 [94.3, 98.7] |
+| Qwen3.5-4B | off | steered | 96.3 [90.7, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] |
+| Qwen3.5-4B | on | plain | 78.3 [66.3, 89.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 98.8 [97.9, 99.5] | 98.3 [97.0, 99.7] |
+| Qwen3.5-4B | on | steered | 84.0 [75.3, 91.3] | 99.7 [99.2, 100.0] | 99.8 [99.5, 100.0] | 99.2 [98.5, 99.7] | 98.7 [97.0, 100.0] |
+| Qwen3.5-9B | off | plain | 99.3 [98.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 97.9 [94.2, 100.0] | 80.0 [76.0, 84.0] |
+| Qwen3.5-9B | off | steered | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.7 [99.0, 100.0] |
+| Qwen3.5-9B | on | steered | 72.0 [63.0, 80.7] | 98.9 [97.8, 99.7] | 99.0 [98.2, 99.7] | 97.1 [95.9, 98.3] | 99.7 [99.0, 100.0] |
+| Qwen3.5-9B | on | plain | 57.0 [45.3, 68.7] | 99.4 [98.6, 100.0] | 98.7 [97.3, 99.7] | 69.2 [61.7, 76.0] | 94.0 [90.0, 97.3] |
+| Gemma-26B | off | plain | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.8 [99.5, 100.0] | 20.7 [9.0, 34.1] | 99.7 [99.0, 100.0] |
+| Gemma-26B | off | steered | 99.0 [97.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 93.6 [84.0, 100.0] | 100.0 [100.0, 100.0] |
+| Gemma-26B | on | plain | 23.3 [15.7, 31.7] | 52.5 [36.7, 68.1] | 56.0 [43.7, 68.0] | 0.6 [0.0, 1.5] | 53.3 [45.0, 61.7] |
+| Gemma-26B | on | steered | 74.3 [59.7, 87.7] | 90.6 [82.8, 96.7] | 85.0 [74.2, 93.7] | 44.2 [29.6, 59.6] | 98.7 [97.3, 99.7] |
+| Qwen3.6-35B | off | plain | 64.3 [56.3, 72.3] | 100.0 [100.0, 100.0] | 98.5 [97.8, 99.2] | 82.9 [73.5, 91.1] | 76.3 [67.0, 84.3] |
+| Qwen3.6-35B | off | steered | 92.7 [88.0, 97.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.9 [99.7, 100.0] | 100.0 [100.0, 100.0] |
+| Qwen3.6-35B | on | plain | 75.0 [62.7, 86.3] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.9 [99.8, 100.0] | 99.3 [98.3, 100.0] |
+| Qwen3.6-35B | on | steered | 89.3 [79.3, 97.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.9 [99.7, 100.0] | 100.0 [100.0, 100.0] |
+
+Share of trials where another tool was called, with or without the right one (lower is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Qwen3.5-0.8B | off | plain | 79.0 [65.0, 90.7] | 16.7 [10.8, 22.5] | 24.5 [14.3, 35.3] | 12.6 [6.4, 19.8] | 76.3 [65.0, 86.0] |
+| Qwen3.5-0.8B | off | steered | 66.0 [47.7, 82.7] | 7.2 [1.7, 14.4] | 1.2 [0.3, 2.2] | 6.6 [2.8, 11.1] | 46.0 [34.7, 56.7] |
+| Qwen3.5-0.8B | on | steered | 59.3 [50.3, 68.3] | 3.6 [2.2, 5.3] | 14.5 [9.7, 19.5] | 27.0 [21.2, 33.3] | 37.7 [30.3, 45.3] |
+| Qwen3.5-0.8B | on | plain | 40.0 [34.0, 46.0] | 6.9 [3.3, 11.4] | 20.5 [15.2, 26.3] | 28.6 [22.5, 34.8] | 34.7 [28.3, 41.0] |
+| Qwen3.5-4B | off | plain | 62.0 [50.3, 73.7] | 0.0 [0.0, 0.0] | 18.5 [8.5, 30.2] | 19.7 [12.9, 27.1] | 20.3 [10.0, 32.0] |
+| Qwen3.5-4B | off | steered | 59.7 [47.0, 71.7] | 0.0 [0.0, 0.0] | 8.7 [3.5, 15.2] | 6.5 [3.0, 10.6] | 20.0 [9.3, 32.3] |
+| Qwen3.5-4B | on | plain | 40.0 [32.3, 48.3] | 0.0 [0.0, 0.0] | 1.3 [0.3, 2.7] | 4.2 [2.8, 5.8] | 12.7 [7.0, 19.0] |
+| Qwen3.5-4B | on | steered | 32.3 [23.7, 42.0] | 0.0 [0.0, 0.0] | 1.0 [0.2, 2.0] | 0.3 [0.1, 0.7] | 4.7 [1.3, 8.7] |
+| Qwen3.5-9B | off | plain | 60.0 [42.3, 76.7] | 0.0 [0.0, 0.0] | 0.5 [0.0, 1.5] | 2.0 [0.1, 5.0] | 9.7 [3.3, 17.7] |
+| Qwen3.5-9B | off | steered | 49.0 [29.3, 68.3] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.1 [0.0, 0.4] | 10.7 [2.0, 22.0] |
+| Qwen3.5-9B | on | steered | 50.7 [42.0, 59.7] | 0.0 [0.0, 0.0] | 0.2 [0.0, 0.5] | 0.0 [0.0, 0.1] | 1.7 [0.0, 4.7] |
+| Qwen3.5-9B | on | plain | 52.7 [43.0, 62.0] | 0.0 [0.0, 0.0] | 3.7 [1.2, 6.7] | 1.4 [0.8, 2.3] | 3.3 [0.3, 8.0] |
+| Gemma-26B | off | plain | 70.7 [58.7, 82.0] | 0.0 [0.0, 0.0] | 9.0 [5.7, 12.3] | 0.1 [0.0, 0.2] | 7.0 [2.0, 13.0] |
+| Gemma-26B | off | steered | 49.3 [36.3, 63.0] | 0.0 [0.0, 0.0] | 5.5 [3.2, 8.0] | 0.0 [0.0, 0.0] | 5.3 [0.7, 11.3] |
+| Gemma-26B | on | plain | 11.7 [6.3, 18.0] | 0.0 [0.0, 0.0] | 2.5 [0.8, 4.7] | 0.0 [0.0, 0.0] | 7.3 [4.3, 10.7] |
+| Gemma-26B | on | steered | 25.0 [14.3, 37.3] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 1.0 [0.0, 2.0] |
+| Qwen3.6-35B | off | plain | 51.0 [40.0, 61.7] | 0.0 [0.0, 0.0] | 3.5 [2.2, 5.2] | 0.4 [0.2, 0.7] | 2.3 [0.0, 5.3] |
+| Qwen3.6-35B | off | steered | 52.3 [42.0, 62.7] | 0.0 [0.0, 0.0] | 0.7 [0.2, 1.3] | 1.8 [0.0, 5.3] | 0.7 [0.0, 2.0] |
+| Qwen3.6-35B | on | plain | 50.3 [40.3, 60.3] | 0.0 [0.0, 0.0] | 0.5 [0.0, 1.0] | 0.1 [0.0, 0.2] | 2.0 [0.7, 3.7] |
+| Qwen3.6-35B | on | steered | 37.0 [30.0, 44.3] | 0.0 [0.0, 0.0] | 0.3 [0.0, 0.8] | 0.2 [0.0, 0.5] | 1.0 [0.0, 2.0] |
+
+Share of trials where no tool was called:
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Qwen3.5-0.8B | off | plain | 0.0 [0.0, 0.0] | 1.4 [0.0, 4.2] | 0.0 [0.0, 0.0] | 0.1 [0.0, 0.2] | 1.3 [0.0, 4.0] |
+| Qwen3.5-0.8B | off | steered | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] |
+| Qwen3.5-0.8B | on | steered | 25.3 [16.0, 35.7] | 8.1 [3.9, 12.8] | 3.0 [1.3, 4.8] | 17.5 [10.7, 24.9] | 12.7 [6.3, 20.3] |
+| Qwen3.5-0.8B | on | plain | 48.3 [40.3, 56.3] | 9.7 [4.4, 16.1] | 4.2 [1.0, 8.7] | 22.1 [13.6, 31.0] | 49.3 [41.7, 57.3] |
+| Qwen3.5-4B | off | plain | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 2.3 [0.7, 4.3] |
+| Qwen3.5-4B | off | steered | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] |
+| Qwen3.5-4B | on | plain | 18.7 [9.7, 29.3] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.8 [0.3, 1.4] | 1.3 [0.3, 2.7] |
+| Qwen3.5-4B | on | steered | 13.0 [6.7, 21.0] | 0.3 [0.0, 0.8] | 0.2 [0.0, 0.5] | 0.8 [0.3, 1.5] | 1.3 [0.0, 3.0] |
+| Qwen3.5-9B | off | plain | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 2.1 [0.0, 5.8] | 19.7 [15.3, 24.0] |
+| Qwen3.5-9B | off | steered | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.3 [0.0, 1.0] |
+| Qwen3.5-9B | on | steered | 24.3 [16.7, 32.7] | 1.1 [0.3, 2.2] | 1.0 [0.3, 1.8] | 2.9 [1.7, 4.1] | 0.3 [0.0, 1.0] |
+| Qwen3.5-9B | on | plain | 38.7 [27.3, 50.0] | 0.6 [0.0, 1.4] | 1.0 [0.3, 1.8] | 30.8 [23.9, 38.2] | 6.0 [2.7, 10.0] |
+| Gemma-26B | off | plain | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.2 [0.0, 0.5] | 79.3 [65.9, 91.0] | 0.3 [0.0, 1.0] |
+| Gemma-26B | off | steered | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 6.4 [0.0, 16.0] | 0.0 [0.0, 0.0] |
+| Gemma-26B | on | plain | 76.7 [68.3, 84.3] | 47.5 [31.9, 63.3] | 43.8 [31.8, 56.2] | 99.4 [98.5, 100.0] | 45.7 [37.7, 53.7] |
+| Gemma-26B | on | steered | 25.0 [11.7, 39.7] | 9.4 [3.3, 17.2] | 15.0 [6.3, 25.8] | 55.8 [40.4, 70.4] | 1.3 [0.3, 2.7] |
+| Qwen3.6-35B | off | plain | 21.3 [13.7, 29.7] | 0.0 [0.0, 0.0] | 1.5 [0.8, 2.2] | 17.1 [8.9, 26.4] | 23.7 [15.7, 33.0] |
+| Qwen3.6-35B | off | steered | 3.0 [1.0, 5.7] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.1 [0.0, 0.3] | 0.0 [0.0, 0.0] |
+| Qwen3.6-35B | on | plain | 20.7 [11.7, 30.3] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.1 [0.0, 0.2] | 0.7 [0.0, 1.7] |
+| Qwen3.6-35B | on | steered | 8.0 [3.0, 14.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.1 [0.0, 0.3] | 0.0 [0.0, 0.0] |
+
+Solve, counts behind the shares (trials; the right tool is the planner that fits the domain):
+
+| model | thinking | prompt | trials | no call | right only | right + other | other only | called the other planner | right planner + a plan check only |
+|---|---|---|---|---|---|---|---|---|---|
+| Qwen3.5-0.8B | off | plain | 300 | 0 | 63 | 101 | 136 | 216 | 0 |
+| Qwen3.5-0.8B | off | steered | 300 | 0 | 102 | 64 | 134 | 191 | 0 |
+| Qwen3.5-0.8B | on | steered | 300 | 76 | 46 | 128 | 50 | 113 | 2 |
+| Qwen3.5-0.8B | on | plain | 300 | 145 | 35 | 73 | 47 | 69 | 0 |
+| Qwen3.5-4B | off | plain | 300 | 0 | 114 | 162 | 24 | 51 | 35 |
+| Qwen3.5-4B | off | steered | 300 | 0 | 121 | 168 | 11 | 43 | 27 |
+| Qwen3.5-4B | on | plain | 300 | 56 | 124 | 111 | 9 | 18 | 41 |
+| Qwen3.5-4B | on | steered | 300 | 39 | 164 | 88 | 9 | 16 | 51 |
+| Qwen3.5-9B | off | plain | 300 | 0 | 120 | 178 | 2 | 130 | 42 |
+| Qwen3.5-9B | off | steered | 300 | 0 | 153 | 147 | 0 | 130 | 17 |
+| Qwen3.5-9B | on | steered | 300 | 73 | 75 | 141 | 11 | 35 | 98 |
+| Qwen3.5-9B | on | plain | 300 | 116 | 26 | 145 | 13 | 56 | 61 |
+| Gemma-26B | off | plain | 300 | 0 | 88 | 212 | 0 | 48 | 163 |
+| Gemma-26B | off | steered | 300 | 0 | 152 | 145 | 3 | 19 | 129 |
+| Gemma-26B | on | plain | 300 | 230 | 35 | 35 | 0 | 29 | 6 |
+| Gemma-26B | on | steered | 300 | 75 | 150 | 73 | 2 | 65 | 9 |
+| Qwen3.6-35B | off | plain | 300 | 64 | 83 | 110 | 43 | 50 | 61 |
+| Qwen3.6-35B | off | steered | 300 | 9 | 134 | 144 | 13 | 25 | 83 |
+| Qwen3.6-35B | on | plain | 300 | 62 | 87 | 138 | 13 | 14 | 101 |
+| Qwen3.6-35B | on | steered | 300 | 24 | 165 | 103 | 8 | 8 | 83 |
+
+#### RQ2. Delivered rerun (Study 2), thinking off
+
+Share of trials where exactly the right tool and no other (higher is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Gemma-26B | off | plain | 28.7 [17.3, 41.0] | 100.0 [100.0, 100.0] | 91.8 [88.7, 95.0] | 20.0 [8.5, 33.0] | 91.0 [84.3, 96.7] |
+| Gemma-26B | off | steered | 44.0 [30.7, 57.3] | 100.0 [100.0, 100.0] | 95.0 [92.5, 97.3] | 93.1 [82.9, 99.9] | 93.0 [87.0, 98.0] |
+| Qwen3.5-9B | off | plain | 39.0 [22.3, 56.7] | 100.0 [100.0, 100.0] | 99.3 [98.3, 100.0] | 95.4 [91.0, 98.9] | 68.3 [58.7, 76.7] |
+| Qwen3.5-9B | off | steered | 47.7 [29.0, 66.7] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.5 [98.5, 100.0] | 87.7 [76.0, 96.7] |
+| Qwen3.6-35B | off | plain | 22.3 [15.0, 30.0] | 100.0 [100.0, 100.0] | 97.2 [95.8, 98.5] | 82.7 [71.6, 91.9] | 95.3 [91.0, 98.7] |
+| Qwen3.6-35B | off | steered | 43.0 [31.0, 55.7] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.7 [99.2, 100.0] | 97.7 [95.3, 99.7] |
+| Gemma-26B | off | neutral prompt, plain | – | – | – | 26.9 [14.5, 40.0] | – |
+| Gemma-26B | off | neutral prompt, steered | – | – | – | 98.1 [95.8, 100.0] | – |
+
+Share of trials where the right tool was called (higher is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Gemma-26B | off | plain | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 20.0 [8.5, 33.1] | 99.7 [99.0, 100.0] |
+| Gemma-26B | off | steered | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 93.1 [82.9, 99.9] | 100.0 [100.0, 100.0] |
+| Qwen3.5-9B | off | plain | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 97.8 [94.5, 100.0] | 80.7 [76.0, 85.3] |
+| Qwen3.5-9B | off | steered | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] |
+| Qwen3.6-35B | off | plain | 82.7 [75.7, 89.3] | 100.0 [100.0, 100.0] | 99.3 [98.7, 99.8] | 83.1 [71.8, 92.4] | 99.7 [99.0, 100.0] |
+| Qwen3.6-35B | off | steered | 98.3 [96.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] |
+| Gemma-26B | off | neutral prompt, plain | – | – | – | 26.9 [14.5, 40.0] | – |
+| Gemma-26B | off | neutral prompt, steered | – | – | – | 98.1 [95.8, 100.0] | – |
+
+Share of trials where another tool was called, with or without the right one (lower is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Gemma-26B | off | plain | 71.3 [59.0, 82.7] | 0.0 [0.0, 0.0] | 8.2 [5.0, 11.3] | 0.0 [0.0, 0.1] | 8.7 [3.0, 15.3] |
+| Gemma-26B | off | steered | 56.0 [42.7, 69.3] | 0.0 [0.0, 0.0] | 5.0 [2.7, 7.5] | 0.0 [0.0, 0.0] | 7.0 [2.0, 13.0] |
+| Qwen3.5-9B | off | plain | 61.0 [43.3, 77.7] | 0.0 [0.0, 0.0] | 0.7 [0.0, 1.7] | 2.5 [0.2, 6.2] | 13.0 [5.7, 22.3] |
+| Qwen3.5-9B | off | steered | 52.3 [33.3, 71.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.5 [0.0, 1.5] | 12.3 [3.3, 24.0] |
+| Qwen3.6-35B | off | plain | 65.3 [58.3, 72.7] | 0.0 [0.0, 0.0] | 2.2 [0.8, 3.5] | 0.4 [0.0, 0.9] | 4.3 [1.0, 8.7] |
+| Qwen3.6-35B | off | steered | 56.7 [44.0, 68.3] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.3 [0.0, 0.8] | 2.3 [0.3, 4.7] |
+| Gemma-26B | off | neutral prompt, plain | – | – | – | 0.0 [0.0, 0.0] | – |
+| Gemma-26B | off | neutral prompt, steered | – | – | – | 0.0 [0.0, 0.0] | – |
+
+Share of trials where no tool was called:
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Gemma-26B | off | plain | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 80.0 [66.9, 91.5] | 0.3 [0.0, 1.0] |
+| Gemma-26B | off | steered | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 6.9 [0.1, 17.1] | 0.0 [0.0, 0.0] |
+| Qwen3.5-9B | off | plain | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 2.1 [0.0, 5.4] | 18.7 [14.0, 23.3] |
+| Qwen3.5-9B | off | steered | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] |
+| Qwen3.6-35B | off | plain | 12.3 [6.7, 18.7] | 0.0 [0.0, 0.0] | 0.7 [0.2, 1.3] | 16.9 [7.6, 28.2] | 0.3 [0.0, 1.0] |
+| Qwen3.6-35B | off | steered | 0.3 [0.0, 1.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] |
+| Gemma-26B | off | neutral prompt, plain | – | – | – | 73.1 [60.0, 85.5] | – |
+| Gemma-26B | off | neutral prompt, steered | – | – | – | 1.9 [0.0, 4.2] | – |
+
+Solve, counts behind the shares (trials; the right tool is the planner that fits the domain):
+
+| model | thinking | prompt | trials | no call | right only | right + other | other only | called the other planner | right planner + a plan check only |
+|---|---|---|---|---|---|---|---|---|---|
+| Gemma-26B | off | plain | 300 | 0 | 86 | 214 | 0 | 38 | 175 |
+| Gemma-26B | off | steered | 300 | 0 | 132 | 168 | 0 | 28 | 140 |
+| Qwen3.5-9B | off | plain | 300 | 0 | 117 | 183 | 0 | 138 | 37 |
+| Qwen3.5-9B | off | steered | 300 | 0 | 143 | 157 | 0 | 135 | 21 |
+| Qwen3.6-35B | off | plain | 300 | 37 | 67 | 181 | 15 | 50 | 100 |
+| Qwen3.6-35B | off | steered | 300 | 1 | 129 | 166 | 4 | 18 | 85 |
+
+#### RQ2. Claude runs, wording v11
+
+Share of trials where exactly the right tool and no other (higher is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Claude Sonnet 4.6 | off | plain | 65.0 [49.0, 80.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 99.4 [98.9, 99.8] | 99.0 [97.0, 100.0] |
+| Claude Haiku 4.5 | off | plain | 1.0 [0.0, 3.0] | 100.0 [100.0, 100.0] | 99.0 [97.5, 100.0] | 99.9 [99.7, 100.0] | 98.0 [95.0, 100.0] |
+
+Share of trials where the right tool was called (higher is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Claude Sonnet 4.6 | off | plain | 95.0 [85.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] |
+| Claude Haiku 4.5 | off | plain | 95.0 [85.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] | 100.0 [100.0, 100.0] |
+
+Share of trials where another tool was called, with or without the right one (lower is better):
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Claude Sonnet 4.6 | off | plain | 35.0 [20.0, 51.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.6 [0.2, 1.1] | 1.0 [0.0, 3.0] |
+| Claude Haiku 4.5 | off | plain | 99.0 [97.0, 100.0] | 0.0 [0.0, 0.0] | 1.0 [0.0, 2.5] | 0.1 [0.0, 0.3] | 2.0 [0.0, 5.0] |
+
+Share of trials where no tool was called:
+
+| model | thinking | prompt | solve | validate_domain | validate_problem | validate_plan | simulate |
+|---|---|---|---|---|---|---|---|
+| Claude Sonnet 4.6 | off | plain | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] |
+| Claude Haiku 4.5 | off | plain | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] | 0.0 [0.0, 0.0] |
+
+Solve, counts behind the shares (trials; the right tool is the planner that fits the domain):
+
+| model | thinking | prompt | trials | no call | right only | right + other | other only | called the other planner | right planner + a plan check only |
+|---|---|---|---|---|---|---|---|---|---|
+| Claude Sonnet 4.6 | off | plain | 100 | 0 | 65 | 30 | 5 | 5 | 1 |
+| Claude Haiku 4.5 | off | plain | 100 | 0 | 1 | 94 | 5 | 6 | 10 |
+<!-- END GENERATED: RQ2-METRICS -->
+
+## RQ3 metrics — use of the tool's output (added 2026-11-22; post hoc, exploratory; in no tex yet)
+
+The advisors' RQ3 metric: of the trials where the tool returned the right result, the
+share whose delivered final answer is wrong. Same script as RQ2. How to read the block:
+
+- **The rerun rows are the frozen readout's E4 cells**, restated; the script halts unless
+  all 30 reproduce. Nothing here replaces E4.
+- **Most losses on simulate and solve are not wrong content.** The largest category is a
+  final turn that was refused or clipped because the tool's result had filled the context
+  window. Read the "why" column before calling a loss a copying error.
+- **Claude simulate is a range:** answers cut at the storage cap have an unknown grade.
+- **Frozen grades:** the ISS-028 split (a correct plan followed by the goal facts) is not
+  applied; it is the post hoc line under "Delivered rerun — readout".
+
+<!-- BEGIN GENERATED: RQ3-METRICS (do not edit by hand; rerun the generator) -->
+*Generated by `tools/reanalysis/rq23_metrics.py`. Post hoc and descriptive. "Tool right" = trials where the right tool returned the right result (tool-verified). "Lost" = of those, the delivered final answer is wrong; share in percent with a 95% domain-cluster bootstrap percentile interval. Rerun cells are the frozen readout's E4 cells (the script halts unless all 30 reproduce); the "why" column is E4's frozen categories in plain words. Claude: delivered grade from the e2e overlay; "unknown" = answers cut at the 16,384-character storage cap, counted as not lost in the share, so the true share lies between lost and lost + unknown. Open models and Claude are never pooled. Frozen grades: ISS-028 (a correct plan followed by the goal facts counts as lost on solve) is not corrected here; its post hoc split is the ISS-028 line under "Delivered rerun — readout".*
+
+#### RQ3. Delivered rerun, three open models, thinking off
+
+| model | prompt | task | trials | tool right | lost | lost, share of tool right | why (count) |
+|---|---|---|---|---|---|---|---|
+| Gemma-26B | plain | solve | 300 | 296 | 19 | 6.4 [2.1, 11.2] | final turn refused or clipped (no room left) 10; content differs from the tool's 6; right content, unreadable format 3 |
+| Gemma-26B | steered | solve | 300 | 300 | 14 | 4.7 [1.3, 8.7] | final turn refused or clipped (no room left) 10; content differs from the tool's 3; right content, unreadable format 1 |
+| Gemma-26B | plain | validate_domain | 360 | 352 | 0 | 0.0 [0.0, 0.0] | – |
+| Gemma-26B | steered | validate_domain | 360 | 356 | 0 | 0.0 [0.0, 0.0] | – |
+| Gemma-26B | plain | validate_problem | 600 | 597 | 0 | 0.0 [0.0, 0.0] | – |
+| Gemma-26B | steered | validate_problem | 600 | 600 | 2 | 0.3 [0.0, 0.8] | content differs from the tool's 2 |
+| Gemma-26B | plain | validate_plan | 3000 | 596 | 0 | 0.0 [0.0, 0.0] | – |
+| Gemma-26B | steered | validate_plan | 3000 | 2764 | 3 | 0.1 [0.0, 0.3] | final turn refused or clipped (no room left) 2; not decidable by rule 1 |
+| Gemma-26B | plain | simulate | 300 | 272 | 247 | 90.8 [85.4, 95.5] | final turn refused or clipped (no room left) 148; not decidable by rule 81; content differs from the tool's 18 |
+| Gemma-26B | steered | simulate | 300 | 272 | 248 | 91.2 [86.0, 95.8] | final turn refused or clipped (no room left) 151; not decidable by rule 79; content differs from the tool's 18 |
+| Qwen3.5-9B | plain | solve | 300 | 300 | 34 | 11.3 [5.3, 18.0] | final turn refused or clipped (no room left) 20; content differs from the tool's 13; output shortened 1 |
+| Qwen3.5-9B | steered | solve | 300 | 300 | 33 | 11.0 [5.7, 17.3] | final turn refused or clipped (no room left) 19; content differs from the tool's 10; a summary, not the output 2; output shortened 2 |
+| Qwen3.5-9B | plain | validate_domain | 360 | 360 | 0 | 0.0 [0.0, 0.0] | – |
+| Qwen3.5-9B | steered | validate_domain | 360 | 360 | 0 | 0.0 [0.0, 0.0] | – |
+| Qwen3.5-9B | plain | validate_problem | 600 | 569 | 0 | 0.0 [0.0, 0.0] | – |
+| Qwen3.5-9B | steered | validate_problem | 600 | 546 | 2 | 0.4 [0.0, 0.9] | content differs from the tool's 1; not decidable by rule 1 |
+| Qwen3.5-9B | plain | validate_plan | 3000 | 2776 | 20 | 0.7 [0.1, 1.7] | final turn refused or clipped (no room left) 13; not decidable by rule 4; content differs from the tool's 3 |
+| Qwen3.5-9B | steered | validate_plan | 3000 | 2884 | 7 | 0.2 [0.0, 0.7] | not decidable by rule 4; final turn refused or clipped (no room left) 1; no final answer 1; content differs from the tool's 1 |
+| Qwen3.5-9B | plain | simulate | 300 | 204 | 152 | 74.5 [60.4, 87.7] | final turn refused or clipped (no room left) 106; content differs from the tool's 35; not decidable by rule 10; output shortened 1 |
+| Qwen3.5-9B | steered | simulate | 300 | 261 | 212 | 81.2 [70.5, 90.4] | final turn refused or clipped (no room left) 132; content differs from the tool's 40; not decidable by rule 38; output shortened 1; numeric values left out 1 |
+| Qwen3.6-35B | plain | solve | 300 | 247 | 33 | 13.4 [7.6, 19.8] | final turn refused or clipped (no room left) 22; output shortened 4; right content, unreadable format 3; content differs from the tool's 3; a summary, not the output 1 |
+| Qwen3.6-35B | steered | solve | 300 | 298 | 36 | 12.1 [6.8, 17.8] | final turn refused or clipped (no room left) 23; a summary, not the output 3; output shortened 3; content differs from the tool's 3; right content, unreadable format 2; not decidable by rule 2 |
+| Qwen3.6-35B | plain | validate_domain | 360 | 355 | 0 | 0.0 [0.0, 0.0] | – |
+| Qwen3.6-35B | steered | validate_domain | 360 | 358 | 0 | 0.0 [0.0, 0.0] | – |
+| Qwen3.6-35B | plain | validate_problem | 600 | 583 | 10 | 1.7 [0.5, 3.1] | not decidable by rule 9; content differs from the tool's 1 |
+| Qwen3.6-35B | steered | validate_problem | 600 | 584 | 0 | 0.0 [0.0, 0.0] | – |
+| Qwen3.6-35B | plain | validate_plan | 3000 | 2472 | 17 | 0.7 [0.0, 1.4] | not decidable by rule 12; final turn refused or clipped (no room left) 4; content differs from the tool's 1 |
+| Qwen3.6-35B | steered | validate_plan | 3000 | 2974 | 15 | 0.5 [0.1, 1.1] | not decidable by rule 13; final turn refused or clipped (no room left) 2 |
+| Qwen3.6-35B | plain | simulate | 300 | 282 | 197 | 69.9 [56.5, 82.4] | final turn refused or clipped (no room left) 151; content differs from the tool's 26; not decidable by rule 11; numeric values left out 9 |
+| Qwen3.6-35B | steered | simulate | 300 | 287 | 210 | 73.2 [61.3, 84.2] | final turn refused or clipped (no room left) 155; not decidable by rule 25; content differs from the tool's 23; numeric values left out 7 |
+
+#### RQ3. Claude runs, wording v11
+
+| model | prompt | task | trials | tool right | lost | unknown | lost, share of tool right | why (count) |
+|---|---|---|---|---|---|---|---|---|
+| Claude Sonnet 4.6 | plain | solve | 100 | 100 | 5 | 0 | 5.0 [2.0, 9.0] | plan_invalid 5 |
+| Claude Sonnet 4.6 | plain | validate_domain | 120 | 115 | 0 | 0 | 0.0 [0.0, 0.0] | – |
+| Claude Sonnet 4.6 | plain | validate_problem | 200 | 196 | 0 | 0 | 0.0 [0.0, 0.0] | – |
+| Claude Sonnet 4.6 | plain | validate_plan | 1000 | 999 | 0 | 0 | 0.0 [0.0, 0.0] | – |
+| Claude Sonnet 4.6 | plain | simulate | 100 | 99 | 38 | 13 | 38.4 [26.3, 51.0] | format_parse_fail 21; trajectory_mismatch 17 |
+| Claude Haiku 4.5 | plain | solve | 100 | 100 | 5 | 0 | 5.0 [1.0, 10.0] | plan_invalid 3; no_plan_extracted 2 |
+| Claude Haiku 4.5 | plain | validate_domain | 120 | 118 | 0 | 0 | 0.0 [0.0, 0.0] | – |
+| Claude Haiku 4.5 | plain | validate_problem | 200 | 193 | 0 | 0 | 0.0 [0.0, 0.0] | – |
+| Claude Haiku 4.5 | plain | validate_plan | 1000 | 989 | 1 | 0 | 0.1 [0.0, 0.3] | verdict_stated_wrong 1 |
+| Claude Haiku 4.5 | plain | simulate | 100 | 97 | 33 | 12 | 34.0 [21.6, 46.5] | format_parse_fail 17; trajectory_mismatch 15; truncated_empty 1 |
+<!-- END GENERATED: RQ3-METRICS -->
 
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29; IN TEX 2026-09-12/13, `paper/aaai27` `6027d68` + `7c0502a`, pushed + Overleaf `2ab9bb5`)
 

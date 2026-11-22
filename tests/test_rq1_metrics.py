@@ -95,6 +95,20 @@ def test_plan_argument_rejects_empty():
     assert R.plan_argument([]) is None
 
 
+def test_count_objects_skips_types_and_comments():
+    typed = "(define (problem p) (:objects a b - block ; two blocks\n c - table d)\n (:init))"
+    assert R.count_objects(typed) == 4
+    assert R.count_objects("(define (problem p) (:OBJECTS x y z) (:init))") == 3
+    assert R.count_objects("(define (problem p) (:init))") is None
+
+
+def test_tercile_namer():
+    name, cuts = R.tercile_namer([1, 2, 3, 4, 5, 6])
+    assert [name(v) for v in (1, 3, 4, 6)] == ["low third", "middle third", "middle third",
+                                               "high third"]
+    assert name(None) is None and len(cuts) == 2
+
+
 def test_bins_cover_every_length():
     assert [R.bin_of(n) for n in (1, 5, 6, 20, 21, 40, 41, 500)] == \
         ["1–5", "1–5", "6–10", "11–20", "21–40", "21–40", "41+", "41+"]

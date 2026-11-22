@@ -81,6 +81,7 @@ FRONTIER = {  # paper name -> (unaided corpus, tool corpus)
     "Claude Haiku 4.5": ("haiku-frontier/sweep5v2", "haiku-frontier/sweep5v2-with-tools"),
 }
 FRONTIER_VARIANT = 11
+OBJ_BINS = ("fewest objects", "middle third", "most objects")
 SIM_PLAN_AGREEMENT = 0.9   # share of tool rows that must pass one same plan (as ISS-029)
 ARM_NAMES = {"none": "no tools", "plain": "tools, plain", "steered": "tools, steered",
              "tools": "tools"}
@@ -200,6 +201,38 @@ def confusion(truths: list[bool], verdicts: list[bool | None]) -> dict:
             "fp": c[("broken", "accept")], "broken_none": c[("broken", "none")]}
 
 
+def count_objects(problem_text: str) -> int | None:
+    """Objects declared in a problem's `(:objects ...)` block: `o1 o2 - type o3`
+    counts o1, o2 and o3 (the token after each `-` is a type). Comments are
+    dropped first. None when there is no such block. Same rule as the
+    analyzer's `gen_meta.obj_count`."""
+    text = re.sub(r";[^\n]*", "", problem_text)
+    m = re.search(r"\(:objects\b([^()]*)\)", text, re.IGNORECASE)
+    if m is None:
+        return None
+    count, expect_type = 0, False
+    for tok in m.group(1).split():
+        if tok == "-":
+            expect_type = True
+        elif expect_type:
+            expect_type = False
+        else:
+            count += 1
+    return count
+
+
+def tercile_namer(values: list[float], names=("low third", "middle third", "high third")):
+    """A function that names the third a value falls in (cuts at the 1/3 and
+    2/3 quantiles of `values`), and the two cuts."""
+    cuts = [float(np.quantile(sorted(values), q)) for q in (1 / 3, 2 / 3)] if values else []
+
+    def name(v):
+        if v is None or not cuts:
+            return None
+        return names[0] if v <= cuts[0] else (names[1] if v <= cuts[1] else names[2])
+    return name, cuts
+
+
 def norm_action(a: str) -> str:
     return " ".join(str(a).replace("(", " ").replace(")", " ").lower().split())
 
@@ -255,7 +288,14 @@ def rec(model, arm, task, domain, problem, plan_label, variant, ok, verdict, pla
             "plan": plan, "response": response, "tool_calls": tool_calls}
 
 
-def load_rerun(args) -> tuple[list[dict], dict]:
+def load_rerun_cells(args) -> tuple[dict, dict, dict]:
+    """The delivered rerun through the frozen package: (cells, grades, gt_cache).
+
+    `cells` is `run.load_all` (rerun_a = tools, rerun_b = Gemma neutral prompt,
+    rerun_c = no tools); `grades` maps (cell name, trial key) to the frozen
+    delivered grade of every rerun row. Halts unless the package hash, the
+    pinned ground-truth cache and the readout's E1 and E2 delivered counts all
+    reproduce."""
     if RUN.package_sha256() != FROZEN_SHA:
         raise Halt("the frozen package tools/delivered_rerun changed (hash is not 822aace...)")
     RUN.check_domains(args.domains_dir)
@@ -266,9 +306,9 @@ def load_rerun(args) -> tuple[list[dict], dict]:
     design = C.REGISTERED
     C.assert_registered(design)
     cells = RUN.load_all(design, args.rerun_root, args.canonical_root)
-    rerun_a, rerun_c = cells["rerun_a"], cells["rerun_c"]
-    rows = [r for lc in rerun_a.values() for r in lc.rows] + \
-           [r for lc in rerun_c.values() for r in lc.rows]
+    rerun_a, rerun_b, rerun_c = cells["rerun_a"], cells["rerun_b"], cells["rerun_c"]
+    rows = ([r for lc in rerun_a.values() for r in lc.rows] + list(rerun_b.rows)
+            + [r for lc in rerun_c.values() for r in lc.rows])
     need = G.solve_plans_to_validate(rows)
     table = {(e["domain"], e["problem"], tuple(e["plan"])): e["valid"]
              for e in json.loads(args.plan_verdicts.read_text())}
@@ -296,9 +336,13 @@ def load_rerun(args) -> tuple[list[dict], dict]:
                        f"{e['a_pct']:.4f}")
     if bad:
         raise Halt("grades do not reproduce the frozen readout:\n  " + "\n  ".join(bad))
+    return cells, grades, gt_cache
 
+
+def load_rerun(args) -> tuple[list[dict], dict]:
+    cells, grades, gt_cache = load_rerun_cells(args)
     out = []
-    for part, cellmap in (("A", rerun_a), ("C", rerun_c)):
+    for part, cellmap in (("A", cells["rerun_a"]), ("C", cells["rerun_c"])):
         for m, lc in cellmap.items():
             for r in lc.rows:
                 g = grades[(r.cell, r.trial_key)]
@@ -374,7 +418,7 @@ def load_frontier(args) -> tuple[list[dict], dict]:
 
 
 # ------------------------------------------------------------------ hardness
-def problem_facts(rows: list[dict], gt_cache: dict) -> dict:
+def problem_facts(rows: list[dict], gt_cache: dict, domains_dir: Path | None = None) -> dict:
     """Per solve/simulate problem: reference plan length, oracle trace length,
     planner runtime (median solve_time over the planner calls that returned a
     plan), and whether the run's simulate plan differs from the cached one."""
@@ -391,6 +435,10 @@ def problem_facts(rows: list[dict], gt_cache: dict) -> dict:
                 if plan:
                     sim_plans[(r["domain"], r["problem"])][plan] += 1
                 break
+    objects = {}
+    if domains_dir is not None:
+        for fp in domains_dir.glob("*/*/p[0-9]*.pddl"):
+            objects[(fp.parent.name, fp.stem)] = count_objects(fp.read_text())
     facts = {}
     for d, probs in gt_cache.items():
         for p, e in probs.items():
@@ -409,6 +457,7 @@ def problem_facts(rows: list[dict], gt_cache: dict) -> dict:
             ts = times.get((d, p), [])
             facts[(d, p)] = {
                 "ref_len": len(e["plan"]),
+                "objects": objects.get((d, p)),
                 "trace_actions": (len(oracle) - 1) if oracle else None,
                 "planner_time": statistics.median(ts) if ts else None,
                 "planner_calls": len(ts),
@@ -513,13 +562,10 @@ def metric2(rows: list[dict], gt_cache: dict, facts: dict) -> dict:
 def metric3(rows: list[dict], facts: dict) -> dict:
     solve = [r for r in rows if r["task"] == "solve"]
     tvals = sorted(f["planner_time"] for f in facts.values() if f["planner_time"] is not None)
-    cuts = [float(np.quantile(tvals, q)) for q in (1 / 3, 2 / 3)] if tvals else []
-
-    def tbin(t):
-        if t is None:
-            return None
-        return "fast third" if t <= cuts[0] else ("middle third" if t <= cuts[1] else "slow third")
-    cells_len, cells_time, corr = [], [], []
+    tbin, cuts = tercile_namer(tvals, ("fast third", "middle third", "slow third"))
+    ovals = sorted(f["objects"] for f in facts.values())
+    obin, ocuts = tercile_namer(ovals, OBJ_BINS)
+    cells_len, cells_time, cells_obj, corr = [], [], [], []
     for (m, arm), rs in groups(solve, "solve"):
         for lab in bin_labels():
             sub = [r for r in rs if bin_of(facts[(r["domain"], r["problem"])]["ref_len"]) == lab]
@@ -535,6 +581,13 @@ def metric3(rows: list[dict], facts: dict) -> dict:
                                    "problems": len({(r["domain"], r["problem"]) for r in sub}),
                                    "solved": boot([r["ok"] is True for r in sub],
                                                   [r["domain"] for r in sub])})
+        for lab in OBJ_BINS:
+            sub = [r for r in rs if obin(facts[(r["domain"], r["problem"])]["objects"]) == lab]
+            if sub:
+                cells_obj.append({"model": m, "arm": arm, "bin": lab, "n": len(sub),
+                                  "problems": len({(r["domain"], r["problem"]) for r in sub}),
+                                  "solved": boot([r["ok"] is True for r in sub],
+                                                 [r["domain"] for r in sub])})
         per = defaultdict(list)
         for r in rs:
             per[(r["domain"], r["problem"])].append(r["ok"] is True)
@@ -544,14 +597,19 @@ def metric3(rows: list[dict], facts: dict) -> dict:
         corr.append({"model": m, "arm": arm, "problems": len(keys),
                      "solved": boot([r["ok"] is True for r in rs], [r["domain"] for r in rs]),
                      "rho_len": spearman([facts[k]["ref_len"] for k in keys], share),
+                     "rho_obj": spearman([facts[k]["objects"] for k in keys], share),
                      "rho_time": spearman([facts[k]["planner_time"] for k in tk],
                                           [sum(per[k]) / len(per[k]) for k in tk])})
     hard = {"time_cuts_s": cuts, "problems_timed": len(tvals),
+            "object_cuts": ocuts, "objects_min": ovals[0], "objects_max": ovals[-1],
+            "rho_len_objects": spearman([f["ref_len"] for f in facts.values()],
+                                        [f["objects"] for f in facts.values()]),
             "time_min_s": tvals[0] if tvals else None, "time_max_s": tvals[-1] if tvals else None,
             "rho_len_time": spearman(
                 [f["ref_len"] for f in facts.values() if f["planner_time"] is not None],
                 [f["planner_time"] for f in facts.values() if f["planner_time"] is not None])}
-    return {"by_length": cells_len, "by_time": cells_time, "corr": corr, "hardness": hard}
+    return {"by_length": cells_len, "by_time": cells_time, "by_objects": cells_obj, "corr": corr,
+            "hardness": hard}
 
 
 def last_tool_plan(r: dict) -> tuple[list | None, str | None]:
@@ -686,17 +744,21 @@ def render(res: dict) -> str:
       f"({h['problems_timed']} problems timed, {f2(h['time_min_s'])} s to "
       f"{f2(h['time_max_s'])} s; thirds cut at {f2(h['time_cuts_s'][0])} s and "
       f"{f2(h['time_cuts_s'][1])} s). Plan length and planner runtime: Spearman "
-      f"{rho_cell(h['rho_len_time'])}. The planner solves every problem in this corpus, so "
-      f"the hard end, where the planner itself fails, is not covered.")
+      f"{rho_cell(h['rho_len_time'])}. Second view: the number of objects in the problem "
+      f"({h['objects_min']} to {h['objects_max']}; thirds cut at {h['object_cuts'][0]:.0f} and "
+      f"{h['object_cuts'][1]:.0f}); plan length and object count: Spearman "
+      f"{rho_cell(h['rho_len_objects'])}. The planner solves every problem in this corpus, "
+      f"so the hard end, where the planner itself fails, is not covered.")
     w("")
     w(md_table(["model", "arm", "solved", "Spearman, solved vs plan length",
-                "Spearman, solved vs planner runtime"],
+                "Spearman, solved vs planner runtime", "Spearman, solved vs object count"],
                [[c["model"], ARM_NAMES[c["arm"]], cell(c["solved"]), rho_cell(c["rho_len"]),
-                 rho_cell(c["rho_time"])] for c in res["m3"]["corr"]]))
+                 rho_cell(c["rho_time"]), rho_cell(c["rho_obj"])] for c in res["m3"]["corr"]]))
     w("")
     for key, title, labs in (("by_length", "reference plan length", bin_labels()),
                              ("by_time", "planner runtime",
-                              ["fast third", "middle third", "slow third"])):
+                              ["fast third", "middle third", "slow third"]),
+                             ("by_objects", "number of objects", list(OBJ_BINS))):
         by = {(c["model"], c["arm"], c["bin"]): c for c in res["m3"][key]}
         w(f"Solved, by {title} (trials in the bin):")
         w("")
@@ -740,8 +802,7 @@ def render(res: dict) -> str:
 
 
 # ------------------------------------------------------------------ main
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+def add_data_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--results", type=Path, default=REPO / "results")
     ap.add_argument("--rerun-root", type=Path)
     ap.add_argument("--canonical-root", type=Path)
@@ -753,16 +814,27 @@ def main(argv=None) -> int:
     ap.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "out")
     ap.add_argument("--numbers", action="store_true",
                     help="splice the tables into development/NUMBERS.md")
-    args = ap.parse_args(argv)
+
+
+def fill_data_args(args) -> None:
     args.rerun_root = args.rerun_root or args.results / "delivered-rerun"
     args.canonical_root = args.canonical_root or args.results / "sweep5v2-live"
     args.gt_cache = args.gt_cache or args.results / "derived" / "gt_cache.json"
     args.plan_verdicts = (args.plan_verdicts
                           or args.results / "delivered-rerun-secondary" / "plan_verdicts.json")
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    add_data_args(ap)
+    args = ap.parse_args(argv)
+    fill_data_args(args)
     try:
         rerun, gt_cache = load_rerun(args)
         frontier, notes = load_frontier(args)
-        facts = problem_facts(rerun, gt_cache)
+        facts = problem_facts(rerun, gt_cache, args.domains_dir)
+        if any(f["objects"] is None for f in facts.values()):
+            raise Halt("a solvable problem has no readable (:objects ...) block")
         rows = rerun + frontier
         res = {"frozen_package_sha256": FROZEN_SHA, "frontier_notes": notes,
                "m1": metric1(rows), "m2": metric2(rows, gt_cache, facts),

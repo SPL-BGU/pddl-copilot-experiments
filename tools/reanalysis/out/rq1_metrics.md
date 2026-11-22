@@ -133,23 +133,23 @@ Mean share by trace length, "exact" (trials in the bin):
 
 #### RQ1-3. solve: delivered success against problem hardness
 
-Hardness 1: reference plan length (actions). Hardness 2: the planner's own runtime, the median `solve_time` over the planner calls the rerun models made on the problem (100 problems timed, 0.15 s to 22.30 s; thirds cut at 0.20 s and 0.32 s). Plan length and planner runtime: Spearman +0.52 (p=0.000). The planner solves every problem in this corpus, so the hard end, where the planner itself fails, is not covered.
+Hardness 1: reference plan length (actions). Hardness 2: the planner's own runtime, the median `solve_time` over the planner calls the rerun models made on the problem (100 problems timed, 0.15 s to 22.30 s; thirds cut at 0.20 s and 0.32 s). Plan length and planner runtime: Spearman +0.52 (p=0.000). Second view: the number of objects in the problem (2 to 35; thirds cut at 6 and 14); plan length and object count: Spearman +0.38 (p=0.000). The planner solves every problem in this corpus, so the hard end, where the planner itself fails, is not covered.
 
-| model | arm | solved | Spearman, solved vs plan length | Spearman, solved vs planner runtime |
-|---|---|---|---|---|
-| Claude Haiku 4.5 | no tools | 22.0 [9.0, 37.0] | -0.33 (p=0.001) | -0.32 (p=0.001) |
-| Claude Haiku 4.5 | tools | 95.0 [90.0, 99.0] | +0.03 (p=0.765) | -0.12 (p=0.241) |
-| Claude Sonnet 4.6 | no tools | 29.0 [17.0, 42.0] | -0.54 (p=0.000) | -0.32 (p=0.001) |
-| Claude Sonnet 4.6 | tools | 95.0 [91.0, 98.0] | -0.25 (p=0.012) | -0.17 (p=0.099) |
-| Gemma-26B | no tools | 21.3 [13.0, 30.3] | -0.32 (p=0.001) | -0.11 (p=0.288) |
-| Gemma-26B | tools, plain | 92.3 [87.3, 97.0] | -0.44 (p=0.000) | -0.46 (p=0.000) |
-| Gemma-26B | tools, steered | 95.3 [91.3, 98.7] | -0.40 (p=0.000) | -0.33 (p=0.001) |
-| Qwen3.5-9B | no tools | 24.3 [16.3, 32.3] | -0.29 (p=0.003) | -0.02 (p=0.832) |
-| Qwen3.5-9B | tools, plain | 88.7 [82.0, 94.7] | -0.56 (p=0.000) | -0.29 (p=0.003) |
-| Qwen3.5-9B | tools, steered | 89.0 [82.7, 94.3] | -0.53 (p=0.000) | -0.21 (p=0.034) |
-| Qwen3.6-35B | no tools | 25.3 [16.3, 35.7] | -0.34 (p=0.000) | +0.03 (p=0.738) |
-| Qwen3.6-35B | tools, plain | 77.0 [69.7, 83.7] | -0.34 (p=0.001) | -0.09 (p=0.390) |
-| Qwen3.6-35B | tools, steered | 87.3 [81.7, 92.3] | -0.51 (p=0.000) | -0.30 (p=0.003) |
+| model | arm | solved | Spearman, solved vs plan length | Spearman, solved vs planner runtime | Spearman, solved vs object count |
+|---|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 22.0 [9.0, 37.0] | -0.33 (p=0.001) | -0.32 (p=0.001) | -0.24 (p=0.015) |
+| Claude Haiku 4.5 | tools | 95.0 [90.0, 99.0] | +0.03 (p=0.765) | -0.12 (p=0.241) | -0.02 (p=0.844) |
+| Claude Sonnet 4.6 | no tools | 29.0 [17.0, 42.0] | -0.54 (p=0.000) | -0.32 (p=0.001) | -0.42 (p=0.000) |
+| Claude Sonnet 4.6 | tools | 95.0 [91.0, 98.0] | -0.25 (p=0.012) | -0.17 (p=0.099) | -0.01 (p=0.937) |
+| Gemma-26B | no tools | 21.3 [13.0, 30.3] | -0.32 (p=0.001) | -0.11 (p=0.288) | -0.39 (p=0.000) |
+| Gemma-26B | tools, plain | 92.3 [87.3, 97.0] | -0.44 (p=0.000) | -0.46 (p=0.000) | -0.40 (p=0.000) |
+| Gemma-26B | tools, steered | 95.3 [91.3, 98.7] | -0.40 (p=0.000) | -0.33 (p=0.001) | -0.13 (p=0.189) |
+| Qwen3.5-9B | no tools | 24.3 [16.3, 32.3] | -0.29 (p=0.003) | -0.02 (p=0.832) | -0.47 (p=0.000) |
+| Qwen3.5-9B | tools, plain | 88.7 [82.0, 94.7] | -0.56 (p=0.000) | -0.29 (p=0.003) | -0.08 (p=0.449) |
+| Qwen3.5-9B | tools, steered | 89.0 [82.7, 94.3] | -0.53 (p=0.000) | -0.21 (p=0.034) | -0.07 (p=0.484) |
+| Qwen3.6-35B | no tools | 25.3 [16.3, 35.7] | -0.34 (p=0.000) | +0.03 (p=0.738) | -0.42 (p=0.000) |
+| Qwen3.6-35B | tools, plain | 77.0 [69.7, 83.7] | -0.34 (p=0.001) | -0.09 (p=0.390) | -0.30 (p=0.003) |
+| Qwen3.6-35B | tools, steered | 87.3 [81.7, 92.3] | -0.51 (p=0.000) | -0.30 (p=0.003) | -0.07 (p=0.494) |
 
 Solved, by reference plan length (trials in the bin):
 
@@ -186,6 +186,24 @@ Solved, by planner runtime (trials in the bin):
 | Qwen3.6-35B | no tools | 17.6 [10.1, 25.0] (102) | 34.3 [17.2, 54.2] (99) | 24.2 [8.3, 44.8] (99) |
 | Qwen3.6-35B | tools, plain | 78.4 [63.2, 88.6] (102) | 80.8 [67.9, 90.6] (99) | 71.7 [58.3, 82.8] (99) |
 | Qwen3.6-35B | tools, steered | 95.1 [92.9, 97.8] (102) | 90.9 [82.8, 97.2] (99) | 75.8 [61.5, 86.5] (99) |
+
+Solved, by number of objects (trials in the bin):
+
+| model | arm | fewest objects | middle third | most objects |
+|---|---|---|---|---|
+| Claude Haiku 4.5 | no tools | 33.3 [13.2, 58.1] (39) | 20.7 [3.3, 44.4] (29) | 9.4 [0.0, 25.0] (32) |
+| Claude Haiku 4.5 | tools | 97.4 [92.1, 100.0] (39) | 89.7 [76.7, 100.0] (29) | 96.9 [90.3, 100.0] (32) |
+| Claude Sonnet 4.6 | no tools | 51.3 [30.4, 71.9] (39) | 20.7 [6.2, 39.1] (29) | 9.4 [0.0, 17.6] (32) |
+| Claude Sonnet 4.6 | tools | 94.9 [88.6, 100.0] (39) | 96.6 [87.5, 100.0] (29) | 93.8 [82.1, 100.0] (32) |
+| Gemma-26B | no tools | 35.0 [24.3, 45.7] (117) | 14.9 [3.2, 30.8] (87) | 10.4 [2.4, 19.2] (96) |
+| Gemma-26B | tools, plain | 97.4 [92.1, 100.0] (117) | 98.9 [96.7, 100.0] (87) | 80.2 [70.0, 91.4] (96) |
+| Gemma-26B | tools, steered | 96.6 [89.5, 100.0] (117) | 100.0 [100.0, 100.0] (87) | 89.6 [78.6, 97.8] (96) |
+| Qwen3.5-9B | no tools | 40.2 [33.3, 48.4] (117) | 17.2 [6.7, 30.8] (87) | 11.5 [3.8, 19.4] (96) |
+| Qwen3.5-9B | tools, plain | 86.3 [75.2, 96.6] (117) | 97.7 [93.3, 100.0] (87) | 83.3 [66.7, 94.7] (96) |
+| Qwen3.5-9B | tools, steered | 86.3 [75.2, 96.3] (117) | 96.6 [92.2, 100.0] (87) | 85.4 [69.3, 95.5] (96) |
+| Qwen3.6-35B | no tools | 43.6 [26.7, 59.7] (117) | 16.1 [10.0, 23.3] (87) | 11.5 [5.4, 19.2] (96) |
+| Qwen3.6-35B | tools, plain | 84.6 [73.5, 93.3] (117) | 77.0 [64.3, 88.9] (87) | 67.7 [57.8, 77.0] (96) |
+| Qwen3.6-35B | tools, steered | 87.2 [78.7, 94.6] (117) | 93.1 [90.0, 96.5] (87) | 82.3 [67.7, 95.1] (96) |
 
 #### RQ1-4. solve: length of the valid delivered plans
 
