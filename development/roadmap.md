@@ -91,7 +91,7 @@ In this order. M1 and M2 ran in parallel and have first results.
 | # | milestone | what "done" means | state |
 |---|---|---|---|
 | M1 | **Literature review** | a full review that leads to the three RQs, every cited paper checked, and from it the paper's related-work section | first draft written 2026-11-22 (`thesis_literature_review.md`, 53 papers); waits for Omer's read |
-| M2 | **RQ1 analysis** | the four metrics computed by a script, tables and figures, every figure in `NUMBERS.md` | first tables done 2026-11-22 (`tools/reanalysis/rq1_metrics.py`); left: Omer's answer on the metric definitions (§6), figures, the object-count view |
+| M2 | **RQ1 analysis** | the four metrics computed by a script, tables and figures, every figure in `NUMBERS.md` | first tables done 2026-11-22 (`tools/reanalysis/rq1_metrics.py`); left: figures, the object-count view |
 | M3 | **RQ1 in the paper** | the experimental setting (how the domains, problems and plans were generated; how the prompts were generated; one or two examples per task, from `draft_B3_B5_methods.md` and `draft_C4_transcripts.md`) and the RQ1 results | waits for M2 |
 | M4 | **RQ2 and RQ3: analysis, then in the paper** | the tool-choice percentages and the "right output, wrong answer" share in `NUMBERS.md`, then written up like M3 | not started |
 | M5 | **The whole paper follows the three RQs** | RQ1 to RQ6 and the scorecard gone; introduction, discussion, abstract and title rewritten to the three questions; retired wording removed (hit list in `draft_C5_E1a.md`); Corrêa et al. cited and the unaided-planning claims limited to our models and settings | after M3 and M4 |
@@ -118,10 +118,10 @@ Everything else in the earlier plan is dropped. It is recorded in
 - A short branch and a PR for code and paper edits, unless Omer says otherwise; Omer merges. Ping Omer before any SSH or
   SLURM action.
 
-## 6. Open decision: the RQ1 metric definitions
+## 6. The RQ1 metric definitions (kept for now)
 
-These are the choices I made while building the RQ1 tables. They stand unless Omer
-changes them.
+These are the choices made while building the RQ1 tables. Omer, 2026-11-22: keep them
+for now. They can still change; a change means rerunning `rq1_metrics.py`, not new data.
 
 | | definition | the other option |
 |---|---|---|
@@ -132,7 +132,7 @@ changes them.
 | e | **validate_plan, answers with no verdict.** Their own column, counted as neither a false positive nor a false negative | fold them into the errors |
 | f | **RQ2 and RQ3, the headline prompt.** The plain prompt (tools offered, no push to use them); the steered and neutral prompts as extra rows | the steered prompt as the headline |
 
-> ANSWER (keep / change: ...):
+> ANSWER: **ANSWERED 2026-11-22 (Omer): keep for now.**
 
 ## 7. Answered (2026-11-22, Omer)
 
