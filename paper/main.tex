@@ -84,9 +84,9 @@
 
 \begin{abstract}
 Planners and validators are correct by construction, and language models can now
-call them as tools. We ask three questions about that access. Do the tools help a
-model on planning-related tasks? Does the model choose the right tool? Does it use
-what the tool returns? We evaluate five open-weight and two frontier models on five
+call them as tools. We ask three questions about that access: whether the tools help
+a model on planning-related tasks, whether the model chooses the right tool, and
+whether it uses what the tool returns. We evaluate five open-weight and two frontier models on five
 PDDL tasks, with and without a suite of seven planning tools, and a deterministic
 oracle grades the final answer each model delivers. The tools help on most measures.
 With them the models deliver a valid plan in $77$--$95\%$ of trials, against
@@ -94,9 +94,9 @@ $21$--$29\%$ without, and verdict errors on plans fall for four of the five mode
 measured. The benefit shrinks as problems grow, and state traces degrade with length
 in every model. Models usually choose the right tool, but one calls the plan validator
 in only $20\%$ of trials until a single sentence tells it to, and on plan generation
-models often add calls they do not need. Using the output is the weak point for long
-answers: almost no verdict is lost, $5$--$13\%$ of correct plans are lost, and the
-open-weight models lose $70$--$91\%$ of correct state traces, mostly because the
+models often add calls they do not need. The tool's output is often lost when the
+answer is long. Almost no verdict is lost, but $5$--$13\%$ of correct plans are, and
+the open-weight models lose $70$--$91\%$ of correct state traces, mostly because the
 tool's result fills the context window and leaves no room for the answer. On
 PlanBench, the same tools lift an obfuscated benchmark from $0$ to $72\%$. The study
 grades $273{,}600$ open-weight trials over public and renamed domains, and a
@@ -113,18 +113,18 @@ pre-registered rerun of $47{,}040$ trials that stores every answer in full.
 % DRAFT 2026-06-14 (goal 1, partial).
 % Findings preview must match Results; no "first" claims.
 Large language models are increasingly deployed as agents that call external
-tools, and automated planning is an unusually clean setting in which to ask
-whether that helps. Decades of research have produced planners and validators that
-are \emph{correct by construction}: a plan a sound solver returns provably reaches
-the goal, and a verdict a sound validator issues is sound
-\citep{helmert2006fastdownward, howey2004val}. If a language model can simply
-\emph{call} such a tool, it should be able to offload the parts of a PDDL
-task (search, state tracking, and plan checking) on which language models are
-known to be unreliable \citep{valmeekam2023planbench, kambhampati2024llmmodulo}.
-Whether this actually helps, whether the model picks the right tool, and whether it
-then uses what the tool returns, are the questions we study.
+tools, and automated planning is a clean setting in which to ask whether that
+helps. Decades of research have produced planners and validators that
+are \emph{correct by construction}: a plan that a sound solver returns provably
+reaches the goal, and a verdict that a sound validator issues is correct
+\citep{helmert2006fastdownward, howey2004val}. A language model that can call such
+a tool should be able to hand over the parts of a PDDL task on which language
+models are known to be unreliable, namely search, state tracking and plan checking
+\citep{valmeekam2023planbench, kambhampati2024llmmodulo}. We study whether this
+helps, whether the model picks the right tool, and whether it then uses what the
+tool returns.
 
-These questions are not settled. One line of work tests LLMs \emph{as} planners.
+These questions are not settled. One line of work tests LLMs as planners.
 Earlier models fell well short of solvers \citep{valmeekam2023planbench}, and the
 newest frontier reasoning models are reported to rival strong planners on freshly
 generated tasks \citep{correa2025frontier}. Both results describe the model alone. A
@@ -139,8 +139,9 @@ We evaluate five PDDL tasks (\emph{solve}, \emph{validate\_domain},
 \emph{validate\_problem}, \emph{validate\_plan}, \emph{simulate}) on five open-weight
 models from the Qwen and Gemma families and on two frontier models, Claude Haiku~4.5
 and Claude Sonnet~4.6. Each model answers every task without tools and with a suite of
-seven planning tools offered through the Model Context Protocol, under a plain prompt
-and under a prompt with one added sentence that names the tool. A deterministic oracle
+seven planning tools offered through the Model Context Protocol. The open-weight
+models are also run under a prompt with one added sentence that names the tool. A
+deterministic oracle
 grades the final answer the model delivers, and every proportion carries a confidence
 interval. The main sweep holds $273{,}600$ open-weight trials over the public domains
 and over a renamed copy that controls for memorized domains. That sweep stored only
@@ -197,12 +198,12 @@ initial state into one that satisfies a goal. The Planning Domain Definition Lan
 research have produced sound, complete solvers such as Fast Downward
 \citep{helmert2006fastdownward} and FF \citep{hoffmann2001ff} for classical planning and
 ENHSP \citep{scala2016enhsp} for numeric planning, together with plan validators such as
-VAL \citep{howey2004val}. These systems are correct by construction: a plan they return
-provably reaches the goal, and a verdict they issue is sound. They are, however, brittle to
-the formal-modelling step: a domain or problem must be expressed in precise PDDL before
-any solver can run. Where a model must reason in the solver's place, numeric domains are the
-harder regime: tracking arithmetic effects on continuous fluents adds to the discrete
-state-tracking that language models already struggle with.
+VAL \citep{howey2004val}. These systems are correct by construction. A plan they return
+provably reaches the goal, and a verdict they issue is correct. They depend, however, on
+the formal modelling step, since a domain or problem must be written in precise PDDL
+before any solver can run. Where a model must reason in the solver's place, numeric
+domains are harder, because tracking arithmetic effects on continuous fluents adds to the
+discrete state tracking that language models already find difficult.
 
 \subsection{LLMs as Planners and as Plan Checkers}
 PlanBench \citep{valmeekam2023planbench} gives a model a planning problem in natural
@@ -265,8 +266,7 @@ Mystery Blocksworld, GPT-4o as a formalizer produced $70$ of $100$ correct plans
 $0$ of $100$ as a planner, graded with VAL. The advantage is not universal. o3-mini scored
 $74$ of $100$ as a planner on the same data, and the authors describe the results as
 mixed across models. Their work is the published starting point for our PlanBench
-section, where we repeat the rescue result and add the control it was missing
-(Section~\ref{sec:planbench}).
+section, where we repeat the rescue result and add the control it was missing.
 
 Two further results bear on how such pipelines are graded. Planetarium
 \citep{zuo2025planetarium} checks generated PDDL problems for semantic equivalence with
@@ -331,18 +331,19 @@ tool that it is free to skip is not measured. The tool-calling benchmarks do mea
 decision, on items where the right choice is fixed in advance, and they score the
 decision itself.
 
-This paper measures two quantities on PDDL tasks with sound planning tools. The first is
+Besides comparing the same model with and without the tools, this paper measures two
+quantities on PDDL tasks with sound planning tools. The first is
 how often a model calls the tool, under a plain prompt and when one added
 sentence asks for it. The second is how often a correct tool result reaches the model's
 final answer, which a deterministic checker grades. We know of no earlier study that
-reports the two separately for planning tasks. The closest is a preliminary study of an
-earlier version of this tool suite \citep{benyamin2025copilot}, which folded both into
-one success rate (Section~\ref{sec:prelim}). Our main tasks hand the model complete PDDL
+reports the two separately for planning tasks. The closest is a preliminary study by \citet{benyamin2025copilot} of an
+earlier version of the tool suite we use, which folded both into one success rate
+(see the last subsection of this section). Our main tasks hand the model complete PDDL
 files, so they do not test whether the model can write PDDL. We test that step on
 PlanBench \citep{valmeekam2023planbench}, where the prompts are plain English and the
-model must write the PDDL before it can call a planner. That section re-measures the
-no-tools baseline against the published figures and compares the tools with a control
-that keeps the same prompt and removes only the tools (Section~\ref{sec:planbench}).
+model must write the PDDL before it can call a planner. The PlanBench section
+re-measures the no-tools baseline against the published figures and compares the tools
+with a control that keeps the same prompt and removes only the tools.
 
 \subsection{Relation to the Preliminary Study}
 \label{sec:prelim}
@@ -442,8 +443,8 @@ the planner's plan. \emph{Solve} has no key plan, and a returned plan counts if
 \texttt{pyval} accepts it for the original domain and problem. On the verdict tasks
 and \emph{simulate} the checker is the tool, so the tool-verified outcome (defined
 under Metrics) is correct by construction whenever the model calls the matching tool
-on the unchanged task files. On every task a trial with no call fails at that layer by
-construction. That layer therefore measures whether the model calls the right tool
+on the unchanged task files. On every task a trial with no call fails that grade by
+construction. The tool-verified grade therefore measures whether the model calls the right tool
 with intact arguments, and it does not measure the tools' own accuracy. On
 \emph{solve} the tool and the checker are different programs. Fast Downward or ENHSP
 finds the plan and \texttt{pyval} checks it, although both read the PDDL through the
@@ -670,9 +671,10 @@ wordings each frontier run used. Their answers are stored up to $16{,}384$
 characters.
 
 \subsection{The Three-Arm Design}
-Every (model, mode, task) is run in three primary arms, and a fourth, control arm
-is described below. Arms are scored separately and never pooled, and every
-comparison is between two arms of the same cell:
+For the open-weight models, every (model, mode, task) is run in three primary
+arms, and a fourth, control arm is described below. The frontier models are run in
+the first two. Arms are scored separately and never pooled, and every comparison is
+between two arms of the same cell:
 \begin{itemize}
 \item \textbf{no-tools}: the model answers from parametric knowledge. The PDDL
 tools are removed and the answer format is requested in the system prompt alone: a
@@ -880,11 +882,9 @@ more trials were truncated under the shared budget while success given completio
 was unchanged.
 
 \section{Results}
-This section answers the three research questions in turn. The analyses that
+This section answers three research questions in turn. The analyses that
 predate them, which cover the main sweep task by task together with cost, reasoning
-mode and contamination, follow in Section~\ref{sec:supporting}.
-
-We organize the evaluation around three research questions.
+mode and contamination, follow in the Supporting Analyses. The questions are:
 \begin{enumerate}
 \item[\textbf{RQ1.}] Do PDDL tools help an LLM do planning-related tasks? We compare
 the same model with and without the tools on four measures: the false positives and
@@ -1409,12 +1409,13 @@ share of with-tools trials in which a tool response held a correct result
 (Methodology). Tool calls and their results were stored in full. The final answer
 was stored only up to $500$ characters, so the main sweep gives no delivered rate
 for its tool arms and we report none. The delivered comparison for the open-weight
-models comes from the pre-registered rerun and is in Sections~\ref{sec:rq1}
-and~\ref{sec:rq3}. The unaided grade of the main sweep is also a different grader
-from the delivered grader of RQ1. On the same unaided \emph{solve} answers of the
-rerun, the first gives $9.7$--$10.7\%$ and the second $21.3$--$25.3\%$. Unaided
-figures in this section should therefore be compared with one another, and not
-with the unaided figures of RQ1.
+models comes from the pre-registered rerun and is reported under RQ1 and RQ3.
+
+The unaided rate of the main sweep also comes from a different grader than the
+delivered rates of RQ1. On the same unaided \emph{solve} answers of the rerun, the
+run-time grader gives $9.7$--$10.7\%$ and the delivered grader $21.3$--$25.3\%$.
+Unaided figures in this section should therefore be compared with one another, and
+not with the unaided figures of RQ1.
 
 The frontier runs stored answers up to $16{,}384$ characters, so their delivered
 rates are exact on four tasks. On \emph{simulate} some stored answers end before
@@ -1461,8 +1462,7 @@ Wilson 95\% intervals print as $[a,\,b]$ and censoring bounds as \cbnd{a}{b}. A
 bound is never narrowed by assuming that ungraded trials succeeded. A difference
 between a delivered rate and a tool-verified rate is computed only within one
 corpus. The delivered comparison for the open-weight models uses the
-pre-registered rerun (Sections~\ref{sec:rq1} and~\ref{sec:rq3}), which is not part
-of this table.}
+pre-registered rerun (RQ1 and RQ3), which is not part of this table.}
 \label{tab:howtoread}
 \end{table*}
 
@@ -2102,7 +2102,7 @@ that margin. The preregistration also names $\pm10$ points for the same comparis
 a requirement of its mechanism check, and at $\pm10$ the criterion is met ($p=0.008$).
 The interval is wide because the two domains disagree on $43\%$ of instances. The small
 gap also depends on a notation loss in the Mystery cell. With the corrected extractor
-of Section~\ref{sec:pb-distort}, Mystery is $24.2$ points higher.
+described below (What Could Distort These Numbers), Mystery is $24.2$ points higher.
 
 \begin{table}[t]
 \centering
@@ -2128,15 +2128,15 @@ per cell, all graded in one pass by the benchmark's script using VAL. The two ar
 the same system message word for word and differ only in whether any tools are attached.
 $\Delta$ is paired instance by instance and tested with an exact McNemar test. The
 Blocksworld $+$tools cell is the cautious reading described in the text. The rows
-marked \emph{post hoc} regrade the same responses with the corrected plan extractor of
-Section~\ref{sec:pb-distort}. They were not preregistered, and the rows above them are
+marked \emph{post hoc} regrade the same responses with the corrected plan extractor
+(What Could Distort These Numbers). They were not preregistered, and the rows above them are
 the primary result. No published figures appear in this table.}
 \label{tab:pb-wt}
 \end{table}
 
 \subsection{Was It the Tools or the Instructions?}
 Attaching tools also changes the prompt, because the model is told that the tools exist.
-That raises a fair objection: perhaps the instruction alone is what helps. We planned a
+One objection is that the instruction alone may be what helps. We planned a
 four-step comparison on Mystery before running it and ran each step on all $600$
 instances (Table~\ref{tab:pb-ladder}). The published prompt on its own scores $0.7\%$.
 Our system message with no tools scores $0.0\%$. Our system message with the tool
@@ -2164,7 +2164,7 @@ tools are attached.}
 \label{tab:pb-ladder}
 \end{table}
 
-\subsection{What the Tools Actually Fix}
+\subsection{What the Tools Fix}
 The natural explanation for the Mystery collapse is that renaming the vocabulary breaks
 the model's ability to search for a plan. Our with-tools data point somewhere else. For
 every trial we recovered the PDDL the model sent to the planner and compared it against
@@ -2189,8 +2189,8 @@ the renamed cell scores a little higher than the standard one.
 This adds a step to the failure sequence we track for our own tasks. When the prompt
 already contains PDDL, a with-tools trial can fail in three ways: the model never calls
 the tool, it calls with bad arguments, or it fails to report what came back. PlanBench
-puts an earlier step in front of those: can the model write the problem down in the
-tool's language at all? We treat \textsc{formalize} as the first stage of the PlanBench
+puts an earlier step in front of those, which is writing the problem down in the
+tool's language. We treat \textsc{formalize} as the first stage of the PlanBench
 sequence (Figure~\ref{fig:funnel}, top right, draws all four stages), and it belongs to
 the benchmark, because it cannot arise anywhere the PDDL is supplied. Once a plan clears that stage and the extractor, the delegated search is right
 $95.9\%$ of the time on Blocksworld and $97.3\%$ on Mystery.
@@ -2253,18 +2253,19 @@ about \$$46$ including the calibration runs, or roughly \$$0.017$ per trial.
 result. What a user receives depends on two further steps that the guarantee does not
 cover: the model has to call the tool, and the tool's result has to reach the final
 answer. RQ2 and RQ3 measure these two steps, and RQ1 measures their combined effect.
-Where both steps hold, the benefit is large: the models deliver a valid plan in
-$77$--$95\%$ of the trials with the tools, against $21$--$29\%$ without. Where the
-first step fails, the tools change little. Gemma-MoE-26B calls the plan validator in
-$20.0\%$ of the plain-prompt trials, and its verdict errors with the tools offered are
-close to its unaided ones. Where the second step fails, the tools can make the answer
-worse. The same model calls the state-transition tool in $99.7\%$ of its trials, loses
+When both steps hold, the benefit is large: the models deliver a valid plan in
+$77$--$95\%$ of the trials with the tools, against $21$--$29\%$ without. If the model
+does not call the tool, the tools change little. Gemma-MoE-26B calls the plan
+validator in $20.0\%$ of the plain-prompt trials, and its verdict errors with the tools
+offered are close to its unaided ones. If the result does not reach the answer, the
+tools can make the answer worse. The same model calls the state-transition tool in $99.7\%$ of its trials, loses
 $90.8\%$ of the correct traces it gets back, and ends with fewer exact traces than it
 produces unaided.
 
 \paragraph{Choosing the tool.} On the validation tasks and on \emph{simulate} the
 models rarely pick a wrong tool. The open issue there is whether they call at all, and
-one sentence that names the tool closes most of that gap in every model we measured.
+one sentence that names the tool closes most of that gap in each of the three
+open-weight models on which we ran it.
 On \emph{solve} the models call more than the task needs. Much of the addition is a
 check of the planner's plan, which costs tokens. Calling the planner that does not fit
 the domain is a different matter: a numeric planner
@@ -2279,8 +2280,10 @@ length of what must be restated. In the open-weight runs the largest registered 
 is a final turn that was refused or cut because the conversation, which already held
 the tool's result, had filled the context window. This suggests that the loss depends
 on how much room the answer has left, and less on the content of the tool's result. We
-did not vary the window size or the output allowance in these runs, so we state this
-as a reading of the registered categories and leave the test to future work.
+did not vary the window size or the output allowance in the open-weight runs, so we
+state this as a reading of the registered categories and leave the test to future
+work. For the two Claude models, the output-budget probe raised the output allowance
+on \emph{simulate} (Supporting Analyses).
 
 \paragraph{Unaided planning.} Our unaided models solve $21$--$29\%$ of a set of small
 problems, with thinking off and a prompt without solved examples. \citet{correa2025frontier}
@@ -2420,16 +2423,17 @@ temporal planning.
 
 \section{Conclusion}
 We asked three questions about giving a language model sound PDDL tools. The tools
-help on most of what we measured: valid plans rise from $21$--$29\%$ of the trials to
+help on most of what we measured. Valid plans rise from $21$--$29\%$ of the trials to
 $77$--$95\%$, and verdict errors on plans fall for four of five models. The benefit
 shrinks as problems grow, and state traces degrade with length with or without the
-tools. The models usually choose the right tool, with two qualifications: one model
-seldom calls the plan validator until a sentence tells it to, and on plan generation
-the models add calls, some of them to a planner that does not fit the domain. The step
-that fails most often is the last one. A correct verdict almost always reaches the
-answer, a correct plan is lost in $5$--$13\%$ of the trials, and a correct state trace
-is lost in most of them, largely because the tool's result leaves no room in the
-context window for the answer. A planner or a validator behind a tool interface
+tools. The models usually choose the right tool. One model, however, seldom calls the
+plan validator until a sentence tells it to, and on plan generation the models add
+calls, some of them to a planner that does not fit the domain. The last step,
+delivering the tool's result, fails most often. A correct verdict almost always reaches the
+answer, and a correct plan is lost in $5$--$13\%$ of the trials. A correct state trace
+is lost in most of the trials by the open-weight models and in at least a third by the
+Claude models. For the open-weight models the main cause is that the tool's result
+leaves no room in the context window for the answer. A planner or a validator behind a tool interface
 therefore helps a language model most when the model is told to call it, calls the one
 that fits the task, and has room to deliver what it returns.
 
@@ -2785,8 +2789,8 @@ after the preregistration was ratified. First, the control roster was expanded
 from three models to four after interim results were seen. The preregistration
 fixed the roster at Qwen3.5-9B, Gemma-MoE-26B and Qwen3.6-35B. With those three
 \emph{think}=off units complete and passing, we measured the with-tools steering
-effect the control was designed to test across the full roster at the mechanism
-layer and found that Qwen3.5-4B carried a larger effect ($+6.9$\,pp pooled,
+effect the control was designed to test across the full roster, in the tool-verified
+rate, and found that Qwen3.5-4B carried a larger effect ($+6.9$\,pp pooled,
 $+9.6$\,pp on \emph{validate\_plan}) than the controlled Qwen3.5-9B
 ($+2.5$\,pp), while Qwen3.5-0.8B showed no pooled effect ($+0.0$\,pp) and so
 gives the control nothing to test. We added a Qwen3.5-4B \emph{think}=off unit with apparatus
@@ -2820,19 +2824,19 @@ checkpointed corpus. The corrected analysis preserved all six unit verdicts and
 the paper-level branch. The figures reported here are the corrected values.
 
 \paragraph{Canonical trajectory normalization (\emph{simulate}).}
-A \emph{simulate} answer is graded by deep-equality against the oracle trajectory
+A \emph{simulate} answer is graded by deep equality against the oracle trajectory
 after a canonical normal form is applied to both, so the open-weight roster's $0\%$
-unaided rate is not an artifact of predicate notation in the grader. Per state, the boolean predicate list is
-case-folded, whitespace-collapsed, and sorted; predicate atoms are compared in a
-notation-neutral form, so an s-expression rendering \texttt{(on a b)} and a
-functional rendering \texttt{on(a,b)} match; and numeric fluents are keyed by their
-canonical parenthesised form. Case, internal spacing, notation style, and ordering
-therefore never affect the verdict;
-only the set of true predicates and the fluent values do. For example, an oracle
+unaided rate in the main sweep is not an artifact of predicate notation in the grader.
+Per state, the boolean predicate list is case-folded, whitespace-collapsed and sorted.
+Predicate atoms are compared in a notation-neutral form, so an s-expression rendering
+\texttt{(on a b)} and a functional rendering \texttt{on(a,b)} match. Numeric fluents
+are keyed by their canonical parenthesised form. Case, internal spacing, notation
+style and ordering therefore never affect the verdict. Only the set of true
+predicates and the fluent values do. For example, an oracle
 state whose true predicates are \texttt{(clear c)} and \texttt{(on a b)} is matched by
 a model state listing \texttt{(ON A  b)} then \texttt{(clear c)}, and a numeric fluent
-\texttt{(fuel t1)} of value \texttt{5} matches \texttt{5.0}; but a single missing or
-extra predicate in \emph{any} state fails the entire trajectory.
+\texttt{(fuel t1)} of value \texttt{5} matches \texttt{5.0}. A single missing or
+extra predicate in any state fails the entire trajectory.
 
 % ===== Reproducibility Checklist =====================================
 % Inlined from authorkit27/ReproducibilityChecklist.tex. AAAI-27 requires a
@@ -2872,8 +2876,9 @@ unaided arm and the plain tool arm. The steered form (v14, v15 or v16) of a word
 adds the task's steering sentence, after a space, at the end of the first paragraph. On
 \emph{simulate} the sentence is added as its own line after the example step. The
 steering control's unaided arm uses the steered forms. The system message depends only
-on the task and the arm. The tool arms use the default form in Study~1 and in the
-frontier runs, and Study~2 adds the neutral form, which keeps only the first sentence.
+on the task and the arm. The tool arms use the default form in the main sweep, in the
+rerun and in the frontier runs. The rerun adds the neutral form, which keeps only the
+first sentence.
 The unaided \emph{solve} and \emph{simulate} system messages refer to a format
 constraint. That constraint was requested from the server but did not take effect
 (Limitations). The frontier unaided runs differ from this in two details. For
@@ -3082,35 +3087,35 @@ Use the get_state_transition tool with the domain, problem, and plan as argument
 You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning; conform to the JSON schema provided by the format constraint.
 --- solve, tool arms (default) ---
 You are a PDDL planning assistant. LLMs cannot reliably generate correct plans from training alone (arXiv:2509.12987). Use the available planner tool to produce the plan.
---- solve, tool arms (neutral style, Study 2) ---
+--- solve, tool arms (neutral style, rerun) ---
 You are a PDDL planning assistant.
 
 --- validate_domain, unaided arm ---
 You are a PDDL validation assistant. PDDL validation tools are not available in this evaluation. Analyze the domain syntax using your own reasoning; end your response with exactly one line: VERDICT: VALID or VERDICT: INVALID.
 --- validate_domain, tool arms (default) ---
 You are a PDDL validation assistant. LLMs cannot reliably check PDDL syntax from training alone. Use the available validation tool to check the domain.
---- validate_domain, tool arms (neutral style, Study 2) ---
+--- validate_domain, tool arms (neutral style, rerun) ---
 You are a PDDL validation assistant.
 
 --- validate_problem, unaided arm ---
 You are a PDDL validation assistant. PDDL validation tools are not available in this evaluation. Analyze the problem against its domain using your own reasoning; end your response with exactly one line: VERDICT: VALID or VERDICT: INVALID.
 --- validate_problem, tool arms (default) ---
 You are a PDDL validation assistant. LLMs cannot reliably check PDDL syntax from training alone. Use the available validation tool to check the problem against its domain.
---- validate_problem, tool arms (neutral style, Study 2) ---
+--- validate_problem, tool arms (neutral style, rerun) ---
 You are a PDDL validation assistant.
 
 --- validate_plan, unaided arm ---
 You are a PDDL validation assistant. PDDL validation tools are not available in this evaluation. Analyze whether the plan solves the problem using your own reasoning; end your response with exactly one line: VERDICT: VALID or VERDICT: INVALID.
 --- validate_plan, tool arms (default) ---
 You are a PDDL validation assistant. LLMs cannot reliably check plan correctness from training alone. Use the available validation tool to check whether the plan solves the problem.
---- validate_plan, tool arms (neutral style, Study 2) ---
+--- validate_plan, tool arms (neutral style, rerun) ---
 You are a PDDL validation assistant.
 
 --- simulate, unaided arm ---
 You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; conform to the JSON schema provided by the format constraint (per-step state with boolean predicates and numeric fluents).
 --- simulate, tool arms (default) ---
 You are a PDDL simulation assistant. LLMs cannot reliably trace state transitions through a plan from training alone. Use the available simulation tool to compute the trajectory.
---- simulate, tool arms (neutral style, Study 2) ---
+--- simulate, tool arms (neutral style, rerun) ---
 You are a PDDL simulation assistant.
 \end{lstlisting}
 
