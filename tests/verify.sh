@@ -61,6 +61,7 @@ run_test test_c3_tables.py
 run_test test_reanalysis_flips_anon_val.py
 run_test test_iss027.py
 run_test test_c4_select_transcripts.py
+run_test test_d5b.py
 run_test test_refresh_frontier_overlays.py
 run_test test_iss028_iss029.py
 run_test test_rq1_metrics.py

@@ -1,0 +1,1728 @@
+{
+ "domain_files": {
+  "blocksworld": "b8d57f2aa9546b501891623a3951b437ae63473d5fe57db99124261823b4973e",
+  "miconic": "8eab00ad60b73fcfa0cced8652024cb5ab89b36f6d9744c6f11027460f7635fc",
+  "rovers": "672381d820c490dbd5036caa6b8096aa95c6e9ac3ebd789dbc512949dfe7bf4b",
+  "satellite": "995dbb92f08e684dce930a81eabd100d14da636ed724659f3e0db82ffadf740b"
+ },
+ "problems": {
+  "problems/blocksworld/easy/p01.pddl": {
+   "command": "python blocksworld.py -b 5 -out easy -id 1 --seed 5001",
+   "domain": "blocksworld",
+   "instance_id": 1,
+   "params": {
+    "blocks": 5
+   },
+   "seed": 5001,
+   "sha256": "ff5ee95499b1cf4dcf5eb3ef44394ff8002a0623d1b17af2c9ff439fb9b4facc",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p02.pddl": {
+   "command": "python blocksworld.py -b 7 -out easy -id 2 --seed 5002",
+   "domain": "blocksworld",
+   "instance_id": 2,
+   "params": {
+    "blocks": 7
+   },
+   "seed": 5002,
+   "sha256": "12bb627000e016867efbddb2d54e77ffeaf7c9e2534bc09588e0ff04787b920a",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p03.pddl": {
+   "command": "python blocksworld.py -b 10 -out easy -id 3 --seed 5003",
+   "domain": "blocksworld",
+   "instance_id": 3,
+   "params": {
+    "blocks": 10
+   },
+   "seed": 5003,
+   "sha256": "645b4a044e1e4928c231e9a8cb758283d83d504b6cedb3cde69492af81cfef2e",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p04.pddl": {
+   "command": "python blocksworld.py -b 12 -out easy -id 4 --seed 5004",
+   "domain": "blocksworld",
+   "instance_id": 4,
+   "params": {
+    "blocks": 12
+   },
+   "seed": 5004,
+   "sha256": "623d8f79a403e8bbbbe126f6b22027ace1e8d2753b3165b0c7a49f5f23e2c569",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p05.pddl": {
+   "command": "python blocksworld.py -b 15 -out easy -id 5 --seed 5005",
+   "domain": "blocksworld",
+   "instance_id": 5,
+   "params": {
+    "blocks": 15
+   },
+   "seed": 5005,
+   "sha256": "b234466b10f5876f0a2f05f361ee848f6916e66c46afaff66ea9385578367fad",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p06.pddl": {
+   "command": "python blocksworld.py -b 17 -out easy -id 6 --seed 5006",
+   "domain": "blocksworld",
+   "instance_id": 6,
+   "params": {
+    "blocks": 17
+   },
+   "seed": 5006,
+   "sha256": "4facfcf825162b2e64153ac133478c146f10f341a10d52b82858b887f507dcfd",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p07.pddl": {
+   "command": "python blocksworld.py -b 20 -out easy -id 7 --seed 5007",
+   "domain": "blocksworld",
+   "instance_id": 7,
+   "params": {
+    "blocks": 20
+   },
+   "seed": 5007,
+   "sha256": "f0293e9966e6f12e774a770bfeefefc1807bce2d4ad52b9256d5fc5e64262a79",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p08.pddl": {
+   "command": "python blocksworld.py -b 22 -out easy -id 8 --seed 5008",
+   "domain": "blocksworld",
+   "instance_id": 8,
+   "params": {
+    "blocks": 22
+   },
+   "seed": 5008,
+   "sha256": "f072d96f50b34c791bd2d1db02cde86967d2cd94e0c9c64aacded43c0889e406",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p09.pddl": {
+   "command": "python blocksworld.py -b 25 -out easy -id 9 --seed 5009",
+   "domain": "blocksworld",
+   "instance_id": 9,
+   "params": {
+    "blocks": 25
+   },
+   "seed": 5009,
+   "sha256": "521a7e95cd976295d2d763a14ee6e8f8c453847010e85467d79b3f69d666b403",
+   "tier": "easy"
+  },
+  "problems/blocksworld/easy/p10.pddl": {
+   "command": "python blocksworld.py -b 27 -out easy -id 10 --seed 5010",
+   "domain": "blocksworld",
+   "instance_id": 10,
+   "params": {
+    "blocks": 27
+   },
+   "seed": 5010,
+   "sha256": "7431c7973ce4ffdcdfbe4abe0908af840782aee2d3447be432a07553e3f7acd5",
+   "tier": "easy"
+  },
+  "problems/blocksworld/hard/p01.pddl": {
+   "command": "python blocksworld.py -b 160 -out hard -id 1 --seed 5201",
+   "domain": "blocksworld",
+   "instance_id": 1,
+   "params": {
+    "blocks": 160
+   },
+   "seed": 5201,
+   "sha256": "74071eb46a087f234230820f048b2844c288e033723f8284abc2155e63147f60",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p02.pddl": {
+   "command": "python blocksworld.py -b 194 -out hard -id 2 --seed 5202",
+   "domain": "blocksworld",
+   "instance_id": 2,
+   "params": {
+    "blocks": 194
+   },
+   "seed": 5202,
+   "sha256": "32a8b138a4c5426a02fe44f175bf5dbef50beb7d52ddd4ff3f94c53de8390b0e",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p03.pddl": {
+   "command": "python blocksworld.py -b 228 -out hard -id 3 --seed 5203",
+   "domain": "blocksworld",
+   "instance_id": 3,
+   "params": {
+    "blocks": 228
+   },
+   "seed": 5203,
+   "sha256": "b816564831c786bd7d3c09b6450c7cc9523ad1e3169fff4911833cfd6388821c",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p04.pddl": {
+   "command": "python blocksworld.py -b 262 -out hard -id 4 --seed 5204",
+   "domain": "blocksworld",
+   "instance_id": 4,
+   "params": {
+    "blocks": 262
+   },
+   "seed": 5204,
+   "sha256": "976c0ac6f05bb21d232af5380cb6d240fa327d0e8c69ed073fa0cd8077952c7e",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p05.pddl": {
+   "command": "python blocksworld.py -b 296 -out hard -id 5 --seed 5205",
+   "domain": "blocksworld",
+   "instance_id": 5,
+   "params": {
+    "blocks": 296
+   },
+   "seed": 5205,
+   "sha256": "d18d04f07b167d389c8cfd03e2d4ef2ffa92893c1c8ece61e24d2088077d16bc",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p06.pddl": {
+   "command": "python blocksworld.py -b 330 -out hard -id 6 --seed 5206",
+   "domain": "blocksworld",
+   "instance_id": 6,
+   "params": {
+    "blocks": 330
+   },
+   "seed": 5206,
+   "sha256": "c86a60dfc211855d236da9d09556d012123e55c8f87bbc63c5e87456a1db275d",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p07.pddl": {
+   "command": "python blocksworld.py -b 364 -out hard -id 7 --seed 5207",
+   "domain": "blocksworld",
+   "instance_id": 7,
+   "params": {
+    "blocks": 364
+   },
+   "seed": 5207,
+   "sha256": "4ae86d74f82bf411fc19a54fb7f64deab96ecca19e4f9e493486f51ca16c5ea9",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p08.pddl": {
+   "command": "python blocksworld.py -b 398 -out hard -id 8 --seed 5208",
+   "domain": "blocksworld",
+   "instance_id": 8,
+   "params": {
+    "blocks": 398
+   },
+   "seed": 5208,
+   "sha256": "b115d8d6c94f587e59613bc68ddbd90d34a9039bd1db6760750d82237de90ff9",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p09.pddl": {
+   "command": "python blocksworld.py -b 432 -out hard -id 9 --seed 5209",
+   "domain": "blocksworld",
+   "instance_id": 9,
+   "params": {
+    "blocks": 432
+   },
+   "seed": 5209,
+   "sha256": "2fda00aebd29d648e1a3af555753cf12304f00cde1207aa48dc7a5efd6659572",
+   "tier": "hard"
+  },
+  "problems/blocksworld/hard/p10.pddl": {
+   "command": "python blocksworld.py -b 466 -out hard -id 10 --seed 5210",
+   "domain": "blocksworld",
+   "instance_id": 10,
+   "params": {
+    "blocks": 466
+   },
+   "seed": 5210,
+   "sha256": "ec0b925610e51048068d688e36f696a817572e89c64692ffa1fd4690b4ed3e06",
+   "tier": "hard"
+  },
+  "problems/blocksworld/medium/p01.pddl": {
+   "command": "python blocksworld.py -b 35 -out medium -id 1 --seed 5101",
+   "domain": "blocksworld",
+   "instance_id": 1,
+   "params": {
+    "blocks": 35
+   },
+   "seed": 5101,
+   "sha256": "f42733c1b88dd1568aeaa9f276778b70bde33096dcc8af490051835395814780",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p02.pddl": {
+   "command": "python blocksworld.py -b 46 -out medium -id 2 --seed 5102",
+   "domain": "blocksworld",
+   "instance_id": 2,
+   "params": {
+    "blocks": 46
+   },
+   "seed": 5102,
+   "sha256": "d2defb687d9d1415a3ab30dc06b821d027e0037a29dc24a758c4ce0151384328",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p03.pddl": {
+   "command": "python blocksworld.py -b 58 -out medium -id 3 --seed 5103",
+   "domain": "blocksworld",
+   "instance_id": 3,
+   "params": {
+    "blocks": 58
+   },
+   "seed": 5103,
+   "sha256": "b9388fd39ad834bb09967cc972673009cdad67b34ef87095a4dc71e350b28a3b",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p04.pddl": {
+   "command": "python blocksworld.py -b 69 -out medium -id 4 --seed 5104",
+   "domain": "blocksworld",
+   "instance_id": 4,
+   "params": {
+    "blocks": 69
+   },
+   "seed": 5104,
+   "sha256": "1dac56986af1632111a154bdd4178e4656e0cab5d594be4c724c1212ef3a7a11",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p05.pddl": {
+   "command": "python blocksworld.py -b 81 -out medium -id 5 --seed 5105",
+   "domain": "blocksworld",
+   "instance_id": 5,
+   "params": {
+    "blocks": 81
+   },
+   "seed": 5105,
+   "sha256": "2497741a2363c34a7fb3e25c56fd0e2cd18fc1c693b1701ad028b5e1f8c6a407",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p06.pddl": {
+   "command": "python blocksworld.py -b 92 -out medium -id 6 --seed 5106",
+   "domain": "blocksworld",
+   "instance_id": 6,
+   "params": {
+    "blocks": 92
+   },
+   "seed": 5106,
+   "sha256": "bb6abdcdd787809671c697fc98f092b263068e73f0b4ef2e9fa8153a57b0ebb7",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p07.pddl": {
+   "command": "python blocksworld.py -b 104 -out medium -id 7 --seed 5107",
+   "domain": "blocksworld",
+   "instance_id": 7,
+   "params": {
+    "blocks": 104
+   },
+   "seed": 5107,
+   "sha256": "d5e3443408453ca02136cef7828da7f464be3e93b909b169adfc85ffae317f88",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p08.pddl": {
+   "command": "python blocksworld.py -b 115 -out medium -id 8 --seed 5108",
+   "domain": "blocksworld",
+   "instance_id": 8,
+   "params": {
+    "blocks": 115
+   },
+   "seed": 5108,
+   "sha256": "c19d563121764b8ac56247f2402043f0a1c21bd5ba13b58a37fe91f37f7d7535",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p09.pddl": {
+   "command": "python blocksworld.py -b 127 -out medium -id 9 --seed 5109",
+   "domain": "blocksworld",
+   "instance_id": 9,
+   "params": {
+    "blocks": 127
+   },
+   "seed": 5109,
+   "sha256": "97b42963f476de496bcbb97147c139bc93a72848c65263fbdcb868dbe93d14fe",
+   "tier": "medium"
+  },
+  "problems/blocksworld/medium/p10.pddl": {
+   "command": "python blocksworld.py -b 138 -out medium -id 10 --seed 5110",
+   "domain": "blocksworld",
+   "instance_id": 10,
+   "params": {
+    "blocks": 138
+   },
+   "seed": 5110,
+   "sha256": "ffc8e9fdf538f3aba1023e687d52a3408fada974de6cc0704dc1f4d8159f1d39",
+   "tier": "medium"
+  },
+  "problems/miconic/easy/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 1 -f 4 -o easy -i 1 --seed 5001",
+   "domain": "miconic",
+   "instance_id": 1,
+   "params": {
+    "floors": 4,
+    "passengers": 1
+   },
+   "seed": 5001,
+   "sha256": "3ff9c5dc5dd905e3d89772c79131ef62b68ab0496380a2fb7f73f741b947988c",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 2 -f 5 -o easy -i 2 --seed 5002",
+   "domain": "miconic",
+   "instance_id": 2,
+   "params": {
+    "floors": 5,
+    "passengers": 2
+   },
+   "seed": 5002,
+   "sha256": "c3340988d37130f01eb90724b4d0eaa471d8c72b3c0a26a07ec17e2f6847f3cc",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 3 -f 7 -o easy -i 3 --seed 5003",
+   "domain": "miconic",
+   "instance_id": 3,
+   "params": {
+    "floors": 7,
+    "passengers": 3
+   },
+   "seed": 5003,
+   "sha256": "38ea8208a3c21bba3004dad81382175df08afc5945308f0d9a1ab78d05f5ca2e",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 4 -f 9 -o easy -i 4 --seed 5004",
+   "domain": "miconic",
+   "instance_id": 4,
+   "params": {
+    "floors": 9,
+    "passengers": 4
+   },
+   "seed": 5004,
+   "sha256": "e04e42d7702c999a49ed97b0378dc3626893c5b64728bbb43bb2d57dcd5e8516",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 5 -f 10 -o easy -i 5 --seed 5005",
+   "domain": "miconic",
+   "instance_id": 5,
+   "params": {
+    "floors": 10,
+    "passengers": 5
+   },
+   "seed": 5005,
+   "sha256": "a8747671a984812b6701994f648336ab85797b34ae29333d5b32f158a7e6b1fb",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 6 -f 12 -o easy -i 6 --seed 5006",
+   "domain": "miconic",
+   "instance_id": 6,
+   "params": {
+    "floors": 12,
+    "passengers": 6
+   },
+   "seed": 5006,
+   "sha256": "5c10328aeee69f73f43cb1dbdc1ba82cfdebc91229ab5ad06ab3675b2f6192f6",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 7 -f 14 -o easy -i 7 --seed 5007",
+   "domain": "miconic",
+   "instance_id": 7,
+   "params": {
+    "floors": 14,
+    "passengers": 7
+   },
+   "seed": 5007,
+   "sha256": "ac5e2085bc2f885a13c0dc8486d9e93f7231efc7676ff197e566047eb671455e",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 8 -f 15 -o easy -i 8 --seed 5008",
+   "domain": "miconic",
+   "instance_id": 8,
+   "params": {
+    "floors": 15,
+    "passengers": 8
+   },
+   "seed": 5008,
+   "sha256": "f7c636d72e471ee42de9b24c75024acfb5d1925c56e507bd7745a6461a580ed7",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 9 -f 17 -o easy -i 9 --seed 5009",
+   "domain": "miconic",
+   "instance_id": 9,
+   "params": {
+    "floors": 17,
+    "passengers": 9
+   },
+   "seed": 5009,
+   "sha256": "9431d7eb4dfc2b59fb303b4bca77094400177cf135cc389c1802ce19f421f38c",
+   "tier": "easy"
+  },
+  "problems/miconic/easy/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 10 -f 19 -o easy -i 10 --seed 5010",
+   "domain": "miconic",
+   "instance_id": 10,
+   "params": {
+    "floors": 19,
+    "passengers": 10
+   },
+   "seed": 5010,
+   "sha256": "9619b3b426d8408529ef03b90878c1b47fdd6eb80c54441c3dc306a7bfeb70b5",
+   "tier": "easy"
+  },
+  "problems/miconic/hard/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 50 -f 80 -o hard -i 1 --seed 5201",
+   "domain": "miconic",
+   "instance_id": 1,
+   "params": {
+    "floors": 80,
+    "passengers": 50
+   },
+   "seed": 5201,
+   "sha256": "889b6383e671e57a1414777d41af78719513d16da3709ad2384bc8cc42282b4a",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 95 -f 92 -o hard -i 2 --seed 5202",
+   "domain": "miconic",
+   "instance_id": 2,
+   "params": {
+    "floors": 92,
+    "passengers": 95
+   },
+   "seed": 5202,
+   "sha256": "46fbccdd57b2c12fe920a83a90e1ebffc26852e8e3b9c67ba351d11dca0029b2",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 140 -f 104 -o hard -i 3 --seed 5203",
+   "domain": "miconic",
+   "instance_id": 3,
+   "params": {
+    "floors": 104,
+    "passengers": 140
+   },
+   "seed": 5203,
+   "sha256": "43bd7887f751cd66fd6637920f00a13ceceb3cb6b41f32dae4303a2689fe2047",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 185 -f 116 -o hard -i 4 --seed 5204",
+   "domain": "miconic",
+   "instance_id": 4,
+   "params": {
+    "floors": 116,
+    "passengers": 185
+   },
+   "seed": 5204,
+   "sha256": "b68921e3cb7078d396c5c713212574d32c0dedce0db53b909d905b4e555afeda",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 230 -f 128 -o hard -i 5 --seed 5205",
+   "domain": "miconic",
+   "instance_id": 5,
+   "params": {
+    "floors": 128,
+    "passengers": 230
+   },
+   "seed": 5205,
+   "sha256": "078db32e48ea96ee0e3fd258283d0cc07b059b639753293dfbd227e47fa68e55",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 275 -f 140 -o hard -i 6 --seed 5206",
+   "domain": "miconic",
+   "instance_id": 6,
+   "params": {
+    "floors": 140,
+    "passengers": 275
+   },
+   "seed": 5206,
+   "sha256": "052c7750f81a92f50c3e0a9f4c2afc2dc9382c53705878d7847d2b77e24d48d6",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 320 -f 152 -o hard -i 7 --seed 5207",
+   "domain": "miconic",
+   "instance_id": 7,
+   "params": {
+    "floors": 152,
+    "passengers": 320
+   },
+   "seed": 5207,
+   "sha256": "de477a57ab359a4c9e295196878261cd0e6de680965c1f4830ab7aad64708921",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 365 -f 164 -o hard -i 8 --seed 5208",
+   "domain": "miconic",
+   "instance_id": 8,
+   "params": {
+    "floors": 164,
+    "passengers": 365
+   },
+   "seed": 5208,
+   "sha256": "641700e36640f7faf826ab3087c8ce4a9898e2c0676593ed3c99ecb14a4501cc",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 410 -f 176 -o hard -i 9 --seed 5209",
+   "domain": "miconic",
+   "instance_id": 9,
+   "params": {
+    "floors": 176,
+    "passengers": 410
+   },
+   "seed": 5209,
+   "sha256": "f3c03c190c8108d64f429af3ee8894e1e17ca9787a63a73ee703b117d7754975",
+   "tier": "hard"
+  },
+  "problems/miconic/hard/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 455 -f 188 -o hard -i 10 --seed 5210",
+   "domain": "miconic",
+   "instance_id": 10,
+   "params": {
+    "floors": 188,
+    "passengers": 455
+   },
+   "seed": 5210,
+   "sha256": "53373f34cd9e0f9ad7fc9ea24e9fa255fb236606c62aed92d2e4127428b9540d",
+   "tier": "hard"
+  },
+  "problems/miconic/medium/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 20 -f 30 -o medium -i 1 --seed 5101",
+   "domain": "miconic",
+   "instance_id": 1,
+   "params": {
+    "floors": 30,
+    "passengers": 20
+   },
+   "seed": 5101,
+   "sha256": "ed039310d653998d0c464361fbe5cc8de7a5bfa37d50c2b61544a7e2f204b4ed",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 26 -f 33 -o medium -i 2 --seed 5102",
+   "domain": "miconic",
+   "instance_id": 2,
+   "params": {
+    "floors": 33,
+    "passengers": 26
+   },
+   "seed": 5102,
+   "sha256": "d1358c8989913d2ba01cf8015fff4214169000661a65e13f46ec69d153622eac",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 32 -f 36 -o medium -i 3 --seed 5103",
+   "domain": "miconic",
+   "instance_id": 3,
+   "params": {
+    "floors": 36,
+    "passengers": 32
+   },
+   "seed": 5103,
+   "sha256": "a762694f144adf40ae462fb1ded1e27ba55ce0c9e23cedee52bbb7cdeb9c8d1b",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 38 -f 39 -o medium -i 4 --seed 5104",
+   "domain": "miconic",
+   "instance_id": 4,
+   "params": {
+    "floors": 39,
+    "passengers": 38
+   },
+   "seed": 5104,
+   "sha256": "029a25226ec6f6de1c1747dfc2184da505080c3e1866ad371cbd94909747ffe7",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 44 -f 42 -o medium -i 5 --seed 5105",
+   "domain": "miconic",
+   "instance_id": 5,
+   "params": {
+    "floors": 42,
+    "passengers": 44
+   },
+   "seed": 5105,
+   "sha256": "605e9e289d0e983a9329dbe5de881348502c0ec37f0a5eae408d5d7e5971f05a",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 50 -f 45 -o medium -i 6 --seed 5106",
+   "domain": "miconic",
+   "instance_id": 6,
+   "params": {
+    "floors": 45,
+    "passengers": 50
+   },
+   "seed": 5106,
+   "sha256": "e0af908b813b7a1d85c9b8044113d15fd5a7c518131129f05e865034c141e311",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 56 -f 48 -o medium -i 7 --seed 5107",
+   "domain": "miconic",
+   "instance_id": 7,
+   "params": {
+    "floors": 48,
+    "passengers": 56
+   },
+   "seed": 5107,
+   "sha256": "8d4e9013e85089474c28c9dd337fc58a9fd7a6c1272f5a86374f3c186e011052",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 62 -f 51 -o medium -i 8 --seed 5108",
+   "domain": "miconic",
+   "instance_id": 8,
+   "params": {
+    "floors": 51,
+    "passengers": 62
+   },
+   "seed": 5108,
+   "sha256": "dc5f20d338fc7b0ad09d4da7a26f546ac1fdfa1c39db1aea097f245d65ad4f8c",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 68 -f 54 -o medium -i 9 --seed 5109",
+   "domain": "miconic",
+   "instance_id": 9,
+   "params": {
+    "floors": 54,
+    "passengers": 68
+   },
+   "seed": 5109,
+   "sha256": "bfe276441f47fe6c13622a5f33a6446fa4443c995fdf6373142953f6f7144b55",
+   "tier": "medium"
+  },
+  "problems/miconic/medium/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python miconic.py -p 74 -f 57 -o medium -i 10 --seed 5110",
+   "domain": "miconic",
+   "instance_id": 10,
+   "params": {
+    "floors": 57,
+    "passengers": 74
+   },
+   "seed": 5110,
+   "sha256": "526cd955f278ffbe846e992f07a6088ee0a289281523648b766add9868a27398",
+   "tier": "medium"
+  },
+  "problems/rovers/easy/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 1 -w 4 -c 1 -o 1 -out easy -id 1 --seed 5001",
+   "domain": "rovers",
+   "instance_id": 1,
+   "params": {
+    "cameras": 1,
+    "objectives": 1,
+    "rovers": 1,
+    "waypoints": 4
+   },
+   "seed": 5001,
+   "sha256": "118a863dca0d7ed5a1638a792db468a94cf4caa70bdbe006944515f6dab3e9f5",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 1 -w 4 -c 1 -o 2 -out easy -id 2 --seed 5002",
+   "domain": "rovers",
+   "instance_id": 2,
+   "params": {
+    "cameras": 1,
+    "objectives": 2,
+    "rovers": 1,
+    "waypoints": 4
+   },
+   "seed": 5002,
+   "sha256": "f7013a2e90490cb167fe9b61e372f161acf92260edbafd051e133ce82a095548",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 1 -w 5 -c 1 -o 3 -out easy -id 3 --seed 5003",
+   "domain": "rovers",
+   "instance_id": 3,
+   "params": {
+    "cameras": 1,
+    "objectives": 3,
+    "rovers": 1,
+    "waypoints": 5
+   },
+   "seed": 5003,
+   "sha256": "9d1d9708252f7f910028d665c49c828fe190a8b13f2cfddd211ef86eb0cc00f8",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 2 -w 6 -c 2 -o 4 -out easy -id 4 --seed 5004",
+   "domain": "rovers",
+   "instance_id": 4,
+   "params": {
+    "cameras": 2,
+    "objectives": 4,
+    "rovers": 2,
+    "waypoints": 6
+   },
+   "seed": 5004,
+   "sha256": "03ae770d5a9ada24951bb8aef673d5fd9394487818cbc0f0f95777dc82b69966",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 2 -w 6 -c 2 -o 5 -out easy -id 5 --seed 5005",
+   "domain": "rovers",
+   "instance_id": 5,
+   "params": {
+    "cameras": 2,
+    "objectives": 5,
+    "rovers": 2,
+    "waypoints": 6
+   },
+   "seed": 5005,
+   "sha256": "0685125d031654b957c766f4018cfb3d11b923335f28af93808c75d042d80b9b",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 3 -w 7 -c 3 -o 6 -out easy -id 6 --seed 5006",
+   "domain": "rovers",
+   "instance_id": 6,
+   "params": {
+    "cameras": 3,
+    "objectives": 6,
+    "rovers": 3,
+    "waypoints": 7
+   },
+   "seed": 5006,
+   "sha256": "2b3670461a18c3e85e922db61214b8cbd5a595d95fb739b2e75b55fd7c8bf086",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 3 -w 8 -c 3 -o 7 -out easy -id 7 --seed 5007",
+   "domain": "rovers",
+   "instance_id": 7,
+   "params": {
+    "cameras": 3,
+    "objectives": 7,
+    "rovers": 3,
+    "waypoints": 8
+   },
+   "seed": 5007,
+   "sha256": "f5cc85fc60a35a261c980841128dac60494edfa389a4ba70caec689eb66f5767",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 3 -w 8 -c 3 -o 8 -out easy -id 8 --seed 5008",
+   "domain": "rovers",
+   "instance_id": 8,
+   "params": {
+    "cameras": 3,
+    "objectives": 8,
+    "rovers": 3,
+    "waypoints": 8
+   },
+   "seed": 5008,
+   "sha256": "f2322bb0e3d062a9a9364cadf48845197ab21eeff15bb4290627aebc0db0b154",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 4 -w 9 -c 4 -o 9 -out easy -id 9 --seed 5009",
+   "domain": "rovers",
+   "instance_id": 9,
+   "params": {
+    "cameras": 4,
+    "objectives": 9,
+    "rovers": 4,
+    "waypoints": 9
+   },
+   "seed": 5009,
+   "sha256": "abf3335405bd9d0a78a406ef523694217eda7f6dae13cc1167db70e876f6e633",
+   "tier": "easy"
+  },
+  "problems/rovers/easy/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 4 -w 10 -c 4 -o 10 -out easy -id 10 --seed 5010",
+   "domain": "rovers",
+   "instance_id": 10,
+   "params": {
+    "cameras": 4,
+    "objectives": 10,
+    "rovers": 4,
+    "waypoints": 10
+   },
+   "seed": 5010,
+   "sha256": "406ce046fbe3c19d0541f4e3bfbda7523fda30003f5501d6f8399ebde329944f",
+   "tier": "easy"
+  },
+  "problems/rovers/hard/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 15 -w 100 -c 60 -o 100 -out hard -id 1 --seed 5201",
+   "domain": "rovers",
+   "instance_id": 1,
+   "params": {
+    "cameras": 60,
+    "objectives": 100,
+    "rovers": 15,
+    "waypoints": 100
+   },
+   "seed": 5201,
+   "sha256": "984635cc132c4a47f5064258d1b96808c871f417b1ceae266c7bc61f71c1e405",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 16 -w 110 -c 64 -o 114 -out hard -id 2 --seed 5202",
+   "domain": "rovers",
+   "instance_id": 2,
+   "params": {
+    "cameras": 64,
+    "objectives": 114,
+    "rovers": 16,
+    "waypoints": 110
+   },
+   "seed": 5202,
+   "sha256": "a1880dc0e52f63845e24d1e929b9146491075b1d988bb1f29929ffe7ffca1299",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 18 -w 120 -c 68 -o 128 -out hard -id 3 --seed 5203",
+   "domain": "rovers",
+   "instance_id": 3,
+   "params": {
+    "cameras": 68,
+    "objectives": 128,
+    "rovers": 18,
+    "waypoints": 120
+   },
+   "seed": 5203,
+   "sha256": "45c4751b052df1d934699c7f8c7788bd9964e90e51fffb3c54ba9b0181115e31",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 19 -w 130 -c 72 -o 142 -out hard -id 4 --seed 5204",
+   "domain": "rovers",
+   "instance_id": 4,
+   "params": {
+    "cameras": 72,
+    "objectives": 142,
+    "rovers": 19,
+    "waypoints": 130
+   },
+   "seed": 5204,
+   "sha256": "ae0e43d80df26f12242e064482636a2eba1ec077c1f9793ba5d7086c9676931a",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 21 -w 140 -c 76 -o 156 -out hard -id 5 --seed 5205",
+   "domain": "rovers",
+   "instance_id": 5,
+   "params": {
+    "cameras": 76,
+    "objectives": 156,
+    "rovers": 21,
+    "waypoints": 140
+   },
+   "seed": 5205,
+   "sha256": "561cea5b5bd427870017f8575b24f5b64d362fd777b3a435019fdf28227aa193",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 23 -w 150 -c 80 -o 170 -out hard -id 6 --seed 5206",
+   "domain": "rovers",
+   "instance_id": 6,
+   "params": {
+    "cameras": 80,
+    "objectives": 170,
+    "rovers": 23,
+    "waypoints": 150
+   },
+   "seed": 5206,
+   "sha256": "c6ff0b3db3b8d97749f81dec893e8bbbc62f9134771d41f4a8d3a65cf4cd4ee3",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 24 -w 160 -c 84 -o 184 -out hard -id 7 --seed 5207",
+   "domain": "rovers",
+   "instance_id": 7,
+   "params": {
+    "cameras": 84,
+    "objectives": 184,
+    "rovers": 24,
+    "waypoints": 160
+   },
+   "seed": 5207,
+   "sha256": "48966b0f0b89fb6b75384187376aa1c12f47fc9dc9af576145689cc9ccf23b6d",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 26 -w 170 -c 88 -o 198 -out hard -id 8 --seed 5208",
+   "domain": "rovers",
+   "instance_id": 8,
+   "params": {
+    "cameras": 88,
+    "objectives": 198,
+    "rovers": 26,
+    "waypoints": 170
+   },
+   "seed": 5208,
+   "sha256": "7d867125abc626d06d11dd216bbfbc0eab276fdec6bdeee9dd3585a8cf5e6594",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 27 -w 180 -c 92 -o 212 -out hard -id 9 --seed 5209",
+   "domain": "rovers",
+   "instance_id": 9,
+   "params": {
+    "cameras": 92,
+    "objectives": 212,
+    "rovers": 27,
+    "waypoints": 180
+   },
+   "seed": 5209,
+   "sha256": "a734798286a512246166c91bbf4947f8e2f005ceaaa9871c32f86273b7163dff",
+   "tier": "hard"
+  },
+  "problems/rovers/hard/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 29 -w 190 -c 96 -o 226 -out hard -id 10 --seed 5210",
+   "domain": "rovers",
+   "instance_id": 10,
+   "params": {
+    "cameras": 96,
+    "objectives": 226,
+    "rovers": 29,
+    "waypoints": 190
+   },
+   "seed": 5210,
+   "sha256": "9db29859d48433fbedd5e4b90f75881fd18d95613a2d1df6b52a56d21422389c",
+   "tier": "hard"
+  },
+  "problems/rovers/medium/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 5 -w 15 -c 5 -o 15 -out medium -id 1 --seed 5101",
+   "domain": "rovers",
+   "instance_id": 1,
+   "params": {
+    "cameras": 5,
+    "objectives": 15,
+    "rovers": 5,
+    "waypoints": 15
+   },
+   "seed": 5101,
+   "sha256": "b75182b1233e2c2c97f7ce772ea95718343ccedfaf3e114b7d23f1f1b120b011",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 5 -w 22 -c 9 -o 22 -out medium -id 2 --seed 5102",
+   "domain": "rovers",
+   "instance_id": 2,
+   "params": {
+    "cameras": 9,
+    "objectives": 22,
+    "rovers": 5,
+    "waypoints": 22
+   },
+   "seed": 5102,
+   "sha256": "5087be41ca1a862ff8439ce4b8ddcf4b3421574d8be8dec0d9e7d7816115d134",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 6 -w 30 -c 14 -o 30 -out medium -id 3 --seed 5103",
+   "domain": "rovers",
+   "instance_id": 3,
+   "params": {
+    "cameras": 14,
+    "objectives": 30,
+    "rovers": 6,
+    "waypoints": 30
+   },
+   "seed": 5103,
+   "sha256": "0174ca554d85414881df1efdbb057971171cb7eee9d2726981018569ac47afcf",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 6 -w 37 -c 18 -o 37 -out medium -id 4 --seed 5104",
+   "domain": "rovers",
+   "instance_id": 4,
+   "params": {
+    "cameras": 18,
+    "objectives": 37,
+    "rovers": 6,
+    "waypoints": 37
+   },
+   "seed": 5104,
+   "sha256": "bba274e139d21ffed86728534ac8df43023fbdc03bd21cd683cacdb9cd651a3e",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 7 -w 45 -c 23 -o 45 -out medium -id 5 --seed 5105",
+   "domain": "rovers",
+   "instance_id": 5,
+   "params": {
+    "cameras": 23,
+    "objectives": 45,
+    "rovers": 7,
+    "waypoints": 45
+   },
+   "seed": 5105,
+   "sha256": "362a78b775bab2ab23dbb0f422ee89ac17e5c57dbd112fb3194aa37546002074",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 8 -w 53 -c 28 -o 53 -out medium -id 6 --seed 5106",
+   "domain": "rovers",
+   "instance_id": 6,
+   "params": {
+    "cameras": 28,
+    "objectives": 53,
+    "rovers": 8,
+    "waypoints": 53
+   },
+   "seed": 5106,
+   "sha256": "6f307b219b39202c3dff0b007df7da2530fc10f7bc0537010f011b8f57549f84",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 8 -w 60 -c 32 -o 60 -out medium -id 7 --seed 5107",
+   "domain": "rovers",
+   "instance_id": 7,
+   "params": {
+    "cameras": 32,
+    "objectives": 60,
+    "rovers": 8,
+    "waypoints": 60
+   },
+   "seed": 5107,
+   "sha256": "c90ebf2a58e08a69b03538703890f5b67295e848cc5b7f0f9dde3f07b1b5e192",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 9 -w 68 -c 37 -o 68 -out medium -id 8 --seed 5108",
+   "domain": "rovers",
+   "instance_id": 8,
+   "params": {
+    "cameras": 37,
+    "objectives": 68,
+    "rovers": 9,
+    "waypoints": 68
+   },
+   "seed": 5108,
+   "sha256": "daae90d460b4b9843ecba058f6140104b7dd5d56d0915b296bf13617bfbb61b7",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 9 -w 75 -c 41 -o 75 -out medium -id 9 --seed 5109",
+   "domain": "rovers",
+   "instance_id": 9,
+   "params": {
+    "cameras": 41,
+    "objectives": 75,
+    "rovers": 9,
+    "waypoints": 75
+   },
+   "seed": 5109,
+   "sha256": "239390df783361fb00a768453917d5458ef996a3302d76d0fdb407ba34d2e277",
+   "tier": "medium"
+  },
+  "problems/rovers/medium/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python rovers.py -r 10 -w 83 -c 46 -o 83 -out medium -id 10 --seed 5110",
+   "domain": "rovers",
+   "instance_id": 10,
+   "params": {
+    "cameras": 46,
+    "objectives": 83,
+    "rovers": 10,
+    "waypoints": 83
+   },
+   "seed": 5110,
+   "sha256": "4494609c3ac6281d211b6bf68db4c6fbf037e4725807c3f1a50c7ec19a4277c8",
+   "tier": "medium"
+  },
+  "problems/satellite/easy/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 3 -i 3 -m 1 -d 4 -o easy -id 1 --seed 5001",
+   "domain": "satellite",
+   "instance_id": 1,
+   "params": {
+    "directions": 4,
+    "instruments": 3,
+    "modes": 1,
+    "satellites": 3
+   },
+   "seed": 5001,
+   "sha256": "46bade68abbcd02c4b73a99a75694d1e4e90af683a95b0b3b152880f64002167",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 3 -i 4 -m 1 -d 4 -o easy -id 2 --seed 5002",
+   "domain": "satellite",
+   "instance_id": 2,
+   "params": {
+    "directions": 4,
+    "instruments": 4,
+    "modes": 1,
+    "satellites": 3
+   },
+   "seed": 5002,
+   "sha256": "780a3b430fd1bdb76a5fdddd408877232f68df38b9120da76858cd43abebd0b2",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 4 -i 6 -m 1 -d 5 -o easy -id 3 --seed 5003",
+   "domain": "satellite",
+   "instance_id": 3,
+   "params": {
+    "directions": 5,
+    "instruments": 6,
+    "modes": 1,
+    "satellites": 4
+   },
+   "seed": 5003,
+   "sha256": "37b7a4047e7e60a7659ff99729eb24d628986ab59eba86a18e1797943f93d21c",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 5 -i 8 -m 1 -d 6 -o easy -id 4 --seed 5004",
+   "domain": "satellite",
+   "instance_id": 4,
+   "params": {
+    "directions": 6,
+    "instruments": 8,
+    "modes": 1,
+    "satellites": 5
+   },
+   "seed": 5004,
+   "sha256": "b3e12b7578687863cd60062891e11ba1827baaf6210955416eda77162c14692e",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 6 -i 10 -m 2 -d 6 -o easy -id 5 --seed 5005",
+   "domain": "satellite",
+   "instance_id": 5,
+   "params": {
+    "directions": 6,
+    "instruments": 10,
+    "modes": 2,
+    "satellites": 6
+   },
+   "seed": 5005,
+   "sha256": "2931f0b9dbaa06433cd51b285d609a43d9ae6af006fbc7dce33ca1f70cc55101",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 7 -i 12 -m 2 -d 7 -o easy -id 6 --seed 5006",
+   "domain": "satellite",
+   "instance_id": 6,
+   "params": {
+    "directions": 7,
+    "instruments": 12,
+    "modes": 2,
+    "satellites": 7
+   },
+   "seed": 5006,
+   "sha256": "64905ad201b23b104a07df3d27ec94493189ae955f5951e07bc9710e7e90c271",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 7 -i 13 -m 2 -d 8 -o easy -id 7 --seed 5007",
+   "domain": "satellite",
+   "instance_id": 7,
+   "params": {
+    "directions": 8,
+    "instruments": 13,
+    "modes": 2,
+    "satellites": 7
+   },
+   "seed": 5007,
+   "sha256": "463f3290dff93203cd686e1be0bfc0c06e5d9d30a08ece45e5fc83bdc5150021",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 8 -i 15 -m 3 -d 8 -o easy -id 8 --seed 5008",
+   "domain": "satellite",
+   "instance_id": 8,
+   "params": {
+    "directions": 8,
+    "instruments": 15,
+    "modes": 3,
+    "satellites": 8
+   },
+   "seed": 5008,
+   "sha256": "1c1ba95e3a572b9b0bfb46276448469b96ffe6e3c724c40db38a80ed3f9d22d5",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 9 -i 17 -m 3 -d 9 -o easy -id 9 --seed 5009",
+   "domain": "satellite",
+   "instance_id": 9,
+   "params": {
+    "directions": 9,
+    "instruments": 17,
+    "modes": 3,
+    "satellites": 9
+   },
+   "seed": 5009,
+   "sha256": "33428d0da963b23f78d6c4396de2326bd1fa0060c53581d58e958d5f92539504",
+   "tier": "easy"
+  },
+  "problems/satellite/easy/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 10 -i 19 -m 3 -d 10 -o easy -id 10 --seed 5010",
+   "domain": "satellite",
+   "instance_id": 10,
+   "params": {
+    "directions": 10,
+    "instruments": 19,
+    "modes": 3,
+    "satellites": 10
+   },
+   "seed": 5010,
+   "sha256": "35e010bffb7e0880eb59418ca90cd4696820cfc82c895768fd6fa38787f4ddd1",
+   "tier": "easy"
+  },
+  "problems/satellite/hard/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 50 -i 50 -m 5 -d 40 -o hard -id 1 --seed 5201",
+   "domain": "satellite",
+   "instance_id": 1,
+   "params": {
+    "directions": 40,
+    "instruments": 50,
+    "modes": 5,
+    "satellites": 50
+   },
+   "seed": 5201,
+   "sha256": "e408e0fca60c6ec62440e81f5ffe0f81677196f483bfee8408732f774fb3436f",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 55 -i 65 -m 5 -d 46 -o hard -id 2 --seed 5202",
+   "domain": "satellite",
+   "instance_id": 2,
+   "params": {
+    "directions": 46,
+    "instruments": 65,
+    "modes": 5,
+    "satellites": 55
+   },
+   "seed": 5202,
+   "sha256": "679710ba317b7b0a487e08de99f49754769f1b7bb39537fe72dd58ab80a43725",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 60 -i 80 -m 6 -d 52 -o hard -id 3 --seed 5203",
+   "domain": "satellite",
+   "instance_id": 3,
+   "params": {
+    "directions": 52,
+    "instruments": 80,
+    "modes": 6,
+    "satellites": 60
+   },
+   "seed": 5203,
+   "sha256": "a7f5bc7deee8c38b7b95a3ee81a4907159d3a169836c2ed23b3f3eb9b3687edc",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 65 -i 95 -m 6 -d 58 -o hard -id 4 --seed 5204",
+   "domain": "satellite",
+   "instance_id": 4,
+   "params": {
+    "directions": 58,
+    "instruments": 95,
+    "modes": 6,
+    "satellites": 65
+   },
+   "seed": 5204,
+   "sha256": "25c907ef77d25ef5a126137749ac9ad120b07c7bc6d5a0508fbf42b7bd4eb7f4",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 70 -i 110 -m 7 -d 64 -o hard -id 5 --seed 5205",
+   "domain": "satellite",
+   "instance_id": 5,
+   "params": {
+    "directions": 64,
+    "instruments": 110,
+    "modes": 7,
+    "satellites": 70
+   },
+   "seed": 5205,
+   "sha256": "6d6acdb7fa9a428af3fc60cd7b31ea493254a1c7eb1ab4aea822935ec0b242cd",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 75 -i 125 -m 8 -d 70 -o hard -id 6 --seed 5206",
+   "domain": "satellite",
+   "instance_id": 6,
+   "params": {
+    "directions": 70,
+    "instruments": 125,
+    "modes": 8,
+    "satellites": 75
+   },
+   "seed": 5206,
+   "sha256": "7159b2ce3a449ec73cff02427925c00d3c86efbb458ba313186b58b821a8a98a",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 80 -i 140 -m 8 -d 76 -o hard -id 7 --seed 5207",
+   "domain": "satellite",
+   "instance_id": 7,
+   "params": {
+    "directions": 76,
+    "instruments": 140,
+    "modes": 8,
+    "satellites": 80
+   },
+   "seed": 5207,
+   "sha256": "25d04641ced58bbf8fe67e19301514085349b45a53525cfcf30a989cb6aadd35",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 85 -i 155 -m 9 -d 82 -o hard -id 8 --seed 5208",
+   "domain": "satellite",
+   "instance_id": 8,
+   "params": {
+    "directions": 82,
+    "instruments": 155,
+    "modes": 9,
+    "satellites": 85
+   },
+   "seed": 5208,
+   "sha256": "76483a7c16c727550591333d695be384e3dcaba17a15bf90083a458070cb85d6",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 90 -i 170 -m 9 -d 88 -o hard -id 9 --seed 5209",
+   "domain": "satellite",
+   "instance_id": 9,
+   "params": {
+    "directions": 88,
+    "instruments": 170,
+    "modes": 9,
+    "satellites": 90
+   },
+   "seed": 5209,
+   "sha256": "2eb04cdf70bf4c10aa091166453ef0ecce77b0e7d0873eadd6558867bda1d316",
+   "tier": "hard"
+  },
+  "problems/satellite/hard/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 95 -i 185 -m 10 -d 94 -o hard -id 10 --seed 5210",
+   "domain": "satellite",
+   "instance_id": 10,
+   "params": {
+    "directions": 94,
+    "instruments": 185,
+    "modes": 10,
+    "satellites": 95
+   },
+   "seed": 5210,
+   "sha256": "6458ecb59e6421563b10d597093817773dc3ddcda345ce590ad2792712af859b",
+   "tier": "hard"
+  },
+  "problems/satellite/medium/p01.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 15 -i 15 -m 3 -d 15 -o medium -id 1 --seed 5101",
+   "domain": "satellite",
+   "instance_id": 1,
+   "params": {
+    "directions": 15,
+    "instruments": 15,
+    "modes": 3,
+    "satellites": 15
+   },
+   "seed": 5101,
+   "sha256": "696ae8ece1118e4811122e5dbe2d4b4fb97f0dda51bfcb86c24e8f6726355b5e",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p02.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 17 -i 21 -m 3 -d 16 -o medium -id 2 --seed 5102",
+   "domain": "satellite",
+   "instance_id": 2,
+   "params": {
+    "directions": 16,
+    "instruments": 21,
+    "modes": 3,
+    "satellites": 17
+   },
+   "seed": 5102,
+   "sha256": "304b48126a17279dd96502a491f6944014ffcdea7a73d71468016255267d4c82",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p03.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 20 -i 28 -m 3 -d 18 -o medium -id 3 --seed 5103",
+   "domain": "satellite",
+   "instance_id": 3,
+   "params": {
+    "directions": 18,
+    "instruments": 28,
+    "modes": 3,
+    "satellites": 20
+   },
+   "seed": 5103,
+   "sha256": "b13f6343035dd5487fc74e91688432db5d1b4a7bcad108eb33edefca8784837a",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p04.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 22 -i 34 -m 3 -d 19 -o medium -id 4 --seed 5104",
+   "domain": "satellite",
+   "instance_id": 4,
+   "params": {
+    "directions": 19,
+    "instruments": 34,
+    "modes": 3,
+    "satellites": 22
+   },
+   "seed": 5104,
+   "sha256": "001d1000ef06710572f0e75db4f64ccb947b5b3909a0f27711c5eba4b2aa27d6",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p05.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 25 -i 41 -m 4 -d 21 -o medium -id 5 --seed 5105",
+   "domain": "satellite",
+   "instance_id": 5,
+   "params": {
+    "directions": 21,
+    "instruments": 41,
+    "modes": 4,
+    "satellites": 25
+   },
+   "seed": 5105,
+   "sha256": "13984c9dc73b03ee9dbed0897a74f9ba4255942853d44ecb583bc1bdb24e0db8",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p06.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 28 -i 48 -m 4 -d 23 -o medium -id 6 --seed 5106",
+   "domain": "satellite",
+   "instance_id": 6,
+   "params": {
+    "directions": 23,
+    "instruments": 48,
+    "modes": 4,
+    "satellites": 28
+   },
+   "seed": 5106,
+   "sha256": "732b30b2114504a8b59e22be913d095aed1c0b78adc0b6f7523ca40f754a4c1b",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p07.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 30 -i 54 -m 4 -d 24 -o medium -id 7 --seed 5107",
+   "domain": "satellite",
+   "instance_id": 7,
+   "params": {
+    "directions": 24,
+    "instruments": 54,
+    "modes": 4,
+    "satellites": 30
+   },
+   "seed": 5107,
+   "sha256": "57db83b9f98b019309d2df783b17ee404f21e47fbfdc74081df20e732903d281",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p08.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 33 -i 61 -m 5 -d 26 -o medium -id 8 --seed 5108",
+   "domain": "satellite",
+   "instance_id": 8,
+   "params": {
+    "directions": 26,
+    "instruments": 61,
+    "modes": 5,
+    "satellites": 33
+   },
+   "seed": 5108,
+   "sha256": "a7813a477ffdbcc5c46220207bd3efc56e1768afc062b166e96208545abc1202",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p09.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 35 -i 67 -m 5 -d 27 -o medium -id 9 --seed 5109",
+   "domain": "satellite",
+   "instance_id": 9,
+   "params": {
+    "directions": 27,
+    "instruments": 67,
+    "modes": 5,
+    "satellites": 35
+   },
+   "seed": 5109,
+   "sha256": "658823120e37bd363cf41cc2490a9f8a1fb808fb9c88fc217e6e433df6f5e4bf",
+   "tier": "medium"
+  },
+  "problems/satellite/medium/p10.pddl": {
+   "command": "PYTHONHASHSEED=0 python satellite.py -s 38 -i 74 -m 5 -d 29 -o medium -id 10 --seed 5110",
+   "domain": "satellite",
+   "instance_id": 10,
+   "params": {
+    "directions": 29,
+    "instruments": 74,
+    "modes": 5,
+    "satellites": 38
+   },
+   "seed": 5110,
+   "sha256": "21e97a84b6fcdf679bfe904251b29601e68bbdfe63890c4c890562dc75e96233",
+   "tier": "medium"
+  }
+ },
+ "spec": {
+  "domains": [
+   "blocksworld",
+   "miconic",
+   "rovers",
+   "satellite"
+  ],
+  "how_run": "python <clone>/<domain>/<command>, cwd=<work>/problems/<domain>, PYTHONPATH=<clone>, output folder = the tier name",
+  "ipc_test_ranges": {
+   "blocksworld": {
+    "easy": {
+     "blocks": [
+      5,
+      30
+     ]
+    },
+    "hard": {
+     "blocks": [
+      160,
+      500
+     ]
+    },
+    "medium": {
+     "blocks": [
+      35,
+      150
+     ]
+    }
+   },
+   "miconic": {
+    "easy": {
+     "floors": [
+      4,
+      20
+     ],
+     "passengers": [
+      1,
+      10
+     ]
+    },
+    "hard": {
+     "floors": [
+      80,
+      200
+     ],
+     "passengers": [
+      50,
+      500
+     ]
+    },
+    "medium": {
+     "floors": [
+      30,
+      60
+     ],
+     "passengers": [
+      20,
+      80
+     ]
+    }
+   },
+   "rovers": {
+    "easy": {
+     "cameras": [
+      1,
+      4
+     ],
+     "objectives": [
+      1,
+      10
+     ],
+     "rovers": [
+      1,
+      4
+     ],
+     "waypoints": [
+      4,
+      10
+     ]
+    },
+    "hard": {
+     "cameras": [
+      60,
+      100
+     ],
+     "objectives": [
+      100,
+      200
+     ],
+     "rovers": [
+      15,
+      30
+     ],
+     "waypoints": [
+      100,
+      200
+     ]
+    },
+    "medium": {
+     "cameras": [
+      5,
+      50
+     ],
+     "objectives": [
+      15,
+      80
+     ],
+     "rovers": [
+      5,
+      10
+     ],
+     "waypoints": [
+      15,
+      90
+     ]
+    }
+   },
+   "satellite": {
+    "easy": {
+     "directions": [
+      4,
+      10
+     ],
+     "instruments": [
+      3,
+      20
+     ],
+     "modes": [
+      1,
+      3
+     ],
+     "satellites": [
+      3,
+      10
+     ]
+    },
+    "hard": {
+     "directions": [
+      40,
+      100
+     ],
+     "instruments": [
+      50,
+      200
+     ],
+     "modes": [
+      5,
+      10
+     ],
+     "satellites": [
+      50,
+      100
+     ]
+    },
+    "medium": {
+     "directions": [
+      15,
+      30
+     ],
+     "instruments": [
+      15,
+      80
+     ],
+     "modes": [
+      3,
+      5
+     ],
+     "satellites": [
+      15,
+      40
+     ]
+    }
+   }
+  },
+  "n_per_tier": 10,
+  "seed_base": {
+   "easy": 5001,
+   "hard": 5201,
+   "medium": 5101
+  },
+  "source_commit": "19d6a8ad4b354328154a2cc1f1a95f7c09fa9db6",
+  "source_repo": "https://github.com/ipc2023-learning/benchmarks",
+  "tiers": [
+   "easy",
+   "medium",
+   "hard"
+  ]
+ }
+}

@@ -1,0 +1,12 @@
+# D5b scratch venv (external/d5b-venv, gitignored). Planner versions match the
+# laptop's pddl-solver plugin venv (unified_planning 1.3.0, up_fast_downward
+# 0.5.2); the validator is the 0.1.6 the D1f prereg names. Built with Python 3.14.3.
+#   /opt/homebrew/bin/python3.14 -m venv external/d5b-venv
+#   external/d5b-venv/bin/pip install -r tools/d5b/requirements.txt
+unified-planning==1.3.0
+up-fast-downward==0.5.2
+pddl-pyvalidator==0.1.6
+setuptools==80.10.2
+psutil==7.2.2
+# the IPC 2023 rovers generator imports benchmarking_utils, which imports tqdm
+tqdm==4.70.1
