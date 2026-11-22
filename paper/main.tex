@@ -745,9 +745,11 @@ in the sense of the Berkeley Function-Calling Leaderboard \citep{bfcl2025}. The
 plain arm measures \emph{relevance detection}: whether the model calls the right
 tool when the tool is offered and the user message does not name it. The steered
 arm measures \emph{function selection}: whether a model that is told to use a tool
-picks the correct one. Because each tool's schema enforces its required
-arguments, argument-filling errors are largely structural, so the steered
-contrast isolates selection rather than parameter construction.
+picks the correct one. Each tool's schema names its required arguments, but
+nothing forces a model to supply them, and a call that leaves one out returns an
+error. The steered contrast therefore covers selection together with argument
+construction. The records keep the two apart, and the Supporting Analyses report
+one model for which a missing argument is the main failure.
 A fourth, \emph{control} arm, the steering directive with the tools still
 removed, tests whether the directive alone moves the no-tools rate. It serves
 only as a control. Its result is reported beside the steering finding (Supporting
@@ -2476,11 +2478,6 @@ its negative-arm interval. We therefore report balanced accuracy for that task, 
 like $F_1$, is not inflated by the imbalance that a pooled metric would reward.
 
 \section{Future Work}
-\omer{PLACEHOLDER: confirm with the advisors which directions to list. The four below
-follow directly from the limits of the three research questions; the earlier list
-(a stronger model on PlanBench, multi-tool and iterative settings, fine-tuning for
-invocation, a budget-decoupled design) was removed because parts of it are done or no
-longer planned.}
 Four extensions follow from the limits above. The first is a test set that includes
 problems the planner cannot solve within its time limit, so that the benefit of the
 tools can be followed past the point where the planner itself gives out. The second is
@@ -2489,6 +2486,11 @@ only. The third is a registered version of the context-window pilot
 of RQ3, which should vary the output allowance as well. The fourth is the same
 three questions on planning formalisms that our test set does not cover, such as
 temporal planning.
+
+A fifth direction goes beyond the three questions. The tools studied here assume
+that the domain is given. A model could also be given tools for learning an action
+model from observed traces, and the domain it produces could then be compared with
+the output of an action-model learning algorithm run on the same traces.
 
 \section{Conclusion}
 We asked three questions about giving a language model sound PDDL tools. The tools
