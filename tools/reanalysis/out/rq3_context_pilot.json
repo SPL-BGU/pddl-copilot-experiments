@@ -1,0 +1,539 @@
+{
+ "cells": [
+  {
+   "model": "Gemma-26B",
+   "task": "solve",
+   "window": "16K",
+   "n": 120,
+   "empty": 8,
+   "tool_right": 120,
+   "lost": 11,
+   "why": {
+    "no_room": 8,
+    "plan_invalid": 2,
+    "no_plan_extracted": 1
+   },
+   "lost_cut_by_output_cap": 8,
+   "lost_share": {
+    "est": 9.166666666666666,
+    "lo": 0.0,
+    "hi": 21.666666666666668,
+    "k": 20,
+    "n": 120
+   },
+   "delivered": {
+    "est": 90.83333333333333,
+    "lo": 78.33333333333333,
+    "hi": 100.0,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Gemma-26B",
+   "task": "solve",
+   "window": "32K",
+   "n": 120,
+   "empty": 4,
+   "tool_right": 120,
+   "lost": 7,
+   "why": {
+    "empty_stop": 4,
+    "plan_invalid": 2,
+    "no_plan_extracted": 1
+   },
+   "lost_cut_by_output_cap": 0,
+   "lost_share": {
+    "est": 5.833333333333333,
+    "lo": 0.0,
+    "hi": 16.666666666666664,
+    "k": 20,
+    "n": 120
+   },
+   "delivered": {
+    "est": 94.16666666666667,
+    "lo": 83.33333333333334,
+    "hi": 100.0,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Gemma-26B",
+   "task": "solve",
+   "window": "64K",
+   "n": 120,
+   "empty": 1,
+   "tool_right": 119,
+   "lost": 6,
+   "why": {
+    "no_plan_extracted": 4,
+    "plan_invalid": 2
+   },
+   "lost_cut_by_output_cap": 0,
+   "lost_share": {
+    "est": 5.042016806722689,
+    "lo": 0.0,
+    "hi": 15.254237288135593,
+    "k": 20,
+    "n": 119
+   },
+   "delivered": {
+    "est": 94.16666666666667,
+    "lo": 83.33333333333334,
+    "hi": 100.0,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "window": "16K",
+   "n": 114,
+   "empty": 49,
+   "tool_right": 107,
+   "lost": 99,
+   "why": {
+    "format_parse_fail": 43,
+    "no_room": 42,
+    "trajectory_mismatch": 14
+   },
+   "lost_cut_by_output_cap": 53,
+   "lost_share": {
+    "est": 92.5233644859813,
+    "lo": 85.18518518518519,
+    "hi": 98.14814814814815,
+    "k": 18,
+    "n": 107
+   },
+   "delivered": {
+    "est": 7.017543859649122,
+    "lo": 1.7543859649122806,
+    "hi": 14.035087719298245,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "window": "32K",
+   "n": 114,
+   "empty": 17,
+   "tool_right": 106,
+   "lost": 91,
+   "why": {
+    "format_parse_fail": 60,
+    "trajectory_mismatch": 19,
+    "no_room": 12
+   },
+   "lost_cut_by_output_cap": 26,
+   "lost_share": {
+    "est": 85.84905660377359,
+    "lo": 76.41509433962264,
+    "hi": 93.52749433106563,
+    "k": 18,
+    "n": 106
+   },
+   "delivered": {
+    "est": 13.157894736842104,
+    "lo": 5.263157894736842,
+    "hi": 21.929824561403507,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "window": "64K",
+   "n": 114,
+   "empty": 12,
+   "tool_right": 105,
+   "lost": 88,
+   "why": {
+    "format_parse_fail": 58,
+    "trajectory_mismatch": 18,
+    "no_room": 12
+   },
+   "lost_cut_by_output_cap": 20,
+   "lost_share": {
+    "est": 83.80952380952381,
+    "lo": 74.03846153846155,
+    "hi": 92.38095238095238,
+    "k": 18,
+    "n": 105
+   },
+   "delivered": {
+    "est": 14.912280701754385,
+    "lo": 7.017543859649122,
+    "hi": 23.684210526315788,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "window": "16K",
+   "n": 120,
+   "empty": 17,
+   "tool_right": 120,
+   "lost": 23,
+   "why": {
+    "no_room": 17,
+    "plan_invalid": 4,
+    "no_plan_extracted": 2
+   },
+   "lost_cut_by_output_cap": 19,
+   "lost_share": {
+    "est": 19.166666666666668,
+    "lo": 5.0,
+    "hi": 36.666666666666664,
+    "k": 20,
+    "n": 120
+   },
+   "delivered": {
+    "est": 80.83333333333333,
+    "lo": 63.33333333333333,
+    "hi": 95.0,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "window": "32K",
+   "n": 120,
+   "empty": 14,
+   "tool_right": 120,
+   "lost": 19,
+   "why": {
+    "no_room": 13,
+    "no_plan_extracted": 3,
+    "plan_invalid": 2,
+    "empty_stop": 1
+   },
+   "lost_cut_by_output_cap": 13,
+   "lost_share": {
+    "est": 15.833333333333332,
+    "lo": 4.166666666666666,
+    "hi": 30.833333333333336,
+    "k": 20,
+    "n": 120
+   },
+   "delivered": {
+    "est": 84.16666666666667,
+    "lo": 69.16666666666667,
+    "hi": 95.83333333333334,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "window": "64K",
+   "n": 120,
+   "empty": 7,
+   "tool_right": 120,
+   "lost": 20,
+   "why": {
+    "plan_invalid": 12,
+    "empty_stop": 6,
+    "no_plan_extracted": 1,
+    "no_room": 1
+   },
+   "lost_cut_by_output_cap": 6,
+   "lost_share": {
+    "est": 16.666666666666664,
+    "lo": 4.166666666666666,
+    "hi": 31.666666666666664,
+    "k": 20,
+    "n": 120
+   },
+   "delivered": {
+    "est": 83.33333333333334,
+    "lo": 68.33333333333333,
+    "hi": 95.83333333333334,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "window": "16K",
+   "n": 114,
+   "empty": 48,
+   "tool_right": 85,
+   "lost": 62,
+   "why": {
+    "no_room": 34,
+    "trajectory_mismatch": 16,
+    "format_parse_fail": 12
+   },
+   "lost_cut_by_output_cap": 38,
+   "lost_share": {
+    "est": 72.94117647058823,
+    "lo": 56.32183908045977,
+    "hi": 88.37209302325581,
+    "k": 17,
+    "n": 85
+   },
+   "delivered": {
+    "est": 20.175438596491226,
+    "lo": 8.771929824561402,
+    "hi": 33.33333333333333,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "window": "32K",
+   "n": 114,
+   "empty": 16,
+   "tool_right": 83,
+   "lost": 55,
+   "why": {
+    "trajectory_mismatch": 29,
+    "format_parse_fail": 16,
+    "no_room": 10
+   },
+   "lost_cut_by_output_cap": 10,
+   "lost_share": {
+    "est": 66.26506024096386,
+    "lo": 50.0,
+    "hi": 82.05357142857139,
+    "k": 17,
+    "n": 83
+   },
+   "delivered": {
+    "est": 24.561403508771928,
+    "lo": 13.157894736842104,
+    "hi": 37.719298245614034,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "window": "64K",
+   "n": 114,
+   "empty": 12,
+   "tool_right": 84,
+   "lost": 58,
+   "why": {
+    "trajectory_mismatch": 34,
+    "format_parse_fail": 19,
+    "no_room": 5
+   },
+   "lost_cut_by_output_cap": 9,
+   "lost_share": {
+    "est": 69.04761904761905,
+    "lo": 52.05342465753425,
+    "hi": 84.88372093023256,
+    "k": 17,
+    "n": 84
+   },
+   "delivered": {
+    "est": 22.807017543859647,
+    "lo": 10.526315789473683,
+    "hi": 35.96491228070175,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "window": "16K",
+   "n": 120,
+   "empty": 17,
+   "tool_right": 109,
+   "lost": 22,
+   "why": {
+    "no_room": 16,
+    "plan_invalid": 3,
+    "no_plan_extracted": 3
+   },
+   "lost_cut_by_output_cap": 16,
+   "lost_share": {
+    "est": 20.18348623853211,
+    "lo": 6.422018348623854,
+    "hi": 35.78154751601175,
+    "k": 20,
+    "n": 109
+   },
+   "delivered": {
+    "est": 75.0,
+    "lo": 60.0,
+    "hi": 88.33333333333333,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "window": "32K",
+   "n": 120,
+   "empty": 2,
+   "tool_right": 105,
+   "lost": 15,
+   "why": {
+    "plan_invalid": 10,
+    "no_plan_extracted": 3,
+    "empty_stop": 2
+   },
+   "lost_cut_by_output_cap": 2,
+   "lost_share": {
+    "est": 14.285714285714285,
+    "lo": 2.912621359223301,
+    "hi": 28.57142857142857,
+    "k": 20,
+    "n": 105
+   },
+   "delivered": {
+    "est": 78.33333333333333,
+    "lo": 65.0,
+    "hi": 90.0,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "window": "64K",
+   "n": 120,
+   "empty": 1,
+   "tool_right": 108,
+   "lost": 12,
+   "why": {
+    "plan_invalid": 6,
+    "no_plan_extracted": 5,
+    "empty_stop": 1
+   },
+   "lost_cut_by_output_cap": 0,
+   "lost_share": {
+    "est": 11.11111111111111,
+    "lo": 0.0,
+    "hi": 23.684210526315788,
+    "k": 20,
+    "n": 108
+   },
+   "delivered": {
+    "est": 83.33333333333334,
+    "lo": 72.5,
+    "hi": 92.5,
+    "k": 20,
+    "n": 120
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "window": "16K",
+   "n": 114,
+   "empty": 48,
+   "tool_right": 107,
+   "lost": 69,
+   "why": {
+    "no_room": 41,
+    "trajectory_mismatch": 19,
+    "format_parse_fail": 9
+   },
+   "lost_cut_by_output_cap": 53,
+   "lost_share": {
+    "est": 64.48598130841121,
+    "lo": 45.63106796116505,
+    "hi": 82.0754716981132,
+    "k": 19,
+    "n": 107
+   },
+   "delivered": {
+    "est": 33.33333333333333,
+    "lo": 16.666666666666664,
+    "hi": 51.77631578947337,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "window": "32K",
+   "n": 114,
+   "empty": 14,
+   "tool_right": 112,
+   "lost": 55,
+   "why": {
+    "trajectory_mismatch": 28,
+    "format_parse_fail": 14,
+    "no_room": 13
+   },
+   "lost_cut_by_output_cap": 25,
+   "lost_share": {
+    "est": 49.107142857142854,
+    "lo": 33.6283185840708,
+    "hi": 64.60176991150442,
+    "k": 19,
+    "n": 112
+   },
+   "delivered": {
+    "est": 50.0,
+    "lo": 34.21052631578947,
+    "hi": 64.91228070175438,
+    "k": 19,
+    "n": 114
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "window": "64K",
+   "n": 114,
+   "empty": 7,
+   "tool_right": 112,
+   "lost": 55,
+   "why": {
+    "format_parse_fail": 26,
+    "trajectory_mismatch": 23,
+    "no_room": 6
+   },
+   "lost_cut_by_output_cap": 23,
+   "lost_share": {
+    "est": 49.107142857142854,
+    "lo": 32.432432432432435,
+    "hi": 66.07142857142857,
+    "k": 19,
+    "n": 112
+   },
+   "delivered": {
+    "est": 50.0,
+    "lo": 33.33333333333333,
+    "hi": 66.66666666666666,
+    "k": 19,
+    "n": 114
+   }
+  }
+ ],
+ "skipped": {
+  "Gemma-26B": [
+   "barman/p01"
+  ],
+  "Qwen3.5-9B": [
+   "barman/p01"
+  ],
+  "Qwen3.6-35B": [
+   "barman/p01"
+  ]
+ },
+ "live_validated": 46
+}

@@ -68,3 +68,23 @@
   model omits arguments on both tasks; that holds for validate_problem only**, and the
   paper now says so.
 - Two placeholders remain, both Omer's choices: the title and the future-work list.
+
+## 2026-11-22 (late night) — The context-window pilot, graded for RQ3: room removes empty answers, not most of the loss
+
+- **Omer's position:** the October smoke is enough to establish the context-window point
+  if compared on the same trials; no further compute is needed. He invited argument.
+- **What the same data show once graded for RQ3** (`tools/reanalysis/rq3_context_pilot.py`,
+  `NUMBERS.md` "RQ3 pilot"; 16K rerun against the 32K and 64K smoke runs, matched trials,
+  frozen delivered grader): on simulate, empty final answers fall from 42 to 43% at 16K to
+  6 to 11% at 64K, but the share of correct tool results that are lost falls only from
+  92.5 to 83.8% (Gemma), 72.9 to 69.0% (9B) and 64.5 to 49.1% (35B). At 64K the lost
+  answers are mostly unreadable or mismatched traces.
+- **Bottom line:** agreed that no further compute is needed for this point. The point
+  itself is different from what the smoke table suggested and from what the session told
+  Omer earlier the same day: room in the window explains the empty answers and a part of
+  the loss, and most lost traces stay lost with room.
+- **Paper (PR #141):** a pilot paragraph and table in RQ3; the abstract, introduction,
+  discussion, future work and conclusion no longer say the window is the main cause of
+  the loss. The frontier APIs were not used: a window of 16K is a property of the
+  open-weight serving setup, and the Claude runs have the output-budget probe.
+- **Title (Omer):** keep the working title for now.
