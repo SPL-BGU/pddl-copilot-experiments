@@ -61,12 +61,18 @@ checked mechanically, not as content.
 
 **Open paper items**
 
-0. **The "70 to 91% lost" figure in the abstract, introduction and conclusion is bare.**
-   The RQ3 section says that on simulate this share also counts correct traces in a layout
-   the grader does not read, and errors in converting the tool's state format (`NUMBERS.md`,
-   "RQ3 pilot"). Decide whether the front matter carries that qualifier. A post hoc,
-   layout-tolerant re-grade of the full rerun would give the qualified figure; it is a
-   recommendation of the session, waiting for Omer's answer.
+0. **The "70 to 91% lost" figure now carries its qualifier** (PR with the re-grade,
+   waiting for Omer's merge). RQ3 simulate on the full rerun was graded a second time,
+   post hoc, with a reader that also accepts one JSON object per line: 66 to 80% lost
+   (`NUMBERS.md`, "RQ3 simulate — layout-tolerant re-grade"). The paper has the table, a
+   paragraph, and the qualifier in the abstract, introduction and discussion. Not done:
+   the same second grading for the Claude runs. The six problems whose prompt plan differs
+   from the answer key's hold 99 of the lost answers; all 99 are empty answers, and without
+   them the shares are 68 to 91% (registered) and 64 to 79% (line reader), filed in
+   `NUMBERS.md`. Omer, 2026-11-22: keep this out of the RQ3 text for simplicity, since
+   it does not change the result; the Methods sentence on the six problems stays.
+   **Wording corrected:** the October reading of the undecided answers was made by two
+   language-model readers with a third reading, not by people; the paper now says so.
 1. **PR #142 is merged** (Omer, 2026-11-22): the five older figures redrawn without the
    retired open-weight delivered bounds; the future-work list with four verified
    references on action-model learning; the Methods sentence on required arguments

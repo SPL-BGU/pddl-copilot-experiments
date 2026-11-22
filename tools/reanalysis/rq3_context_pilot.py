@@ -98,12 +98,10 @@ def smoke_rows(root: Path, model: str, tag: str) -> list:
     return list(rows.values())
 
 
-def line_reader_exact(response: str, oracle) -> bool:
-    """A more lenient reading than the frozen grader: every line that is one JSON
-    object is taken as one step, and the steps must equal the oracle trace exactly.
-    The frozen grader reads a single JSON value only, so a trace written one object
-    per line fails it whatever its content. This is the mechanical aid the hand
-    read of the rerun's undecided rows used (reference/delivered_rerun_secondary)."""
+def line_reader_steps(response: str) -> list[dict] | None:
+    """The trace an answer holds when every line that is one JSON object is taken
+    as one step, normalised like every other trace. None when no such line is
+    found or the lines do not form a trace."""
     objs = []
     for ln in strip_leaked_channel_prefix(response or "").splitlines():
         ln = ln.strip().rstrip(",")
@@ -115,10 +113,22 @@ def line_reader_exact(response: str, oracle) -> bool:
             continue
         if isinstance(o, dict):
             objs.append(o)
-    if not objs or oracle is None:
-        return False
+    if not objs:
+        return None
     steps, _compliant = _coerce_simulate_trajectory(json.dumps(objs))
-    return steps is not None and _normalize_trajectory(steps) == oracle
+    return None if steps is None else _normalize_trajectory(steps)
+
+
+def line_reader_exact(response: str, oracle) -> bool:
+    """A more lenient reading than the frozen grader: every line that is one JSON
+    object is taken as one step, and the steps must equal the oracle trace exactly.
+    The frozen grader reads a single JSON value only, so a trace written one object
+    per line fails it whatever its content. This is the mechanical aid the hand
+    read of the rerun's undecided rows used (reference/delivered_rerun_secondary)."""
+    if oracle is None:
+        return False
+    steps = line_reader_steps(response)
+    return steps is not None and steps == oracle
 
 
 def run_plan(rows) -> dict:

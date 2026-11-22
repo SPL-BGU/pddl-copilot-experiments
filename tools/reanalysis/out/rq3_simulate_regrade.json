@@ -1,0 +1,567 @@
+{
+ "frozen_package_sha256": "822aace9ef8a6493592b5b08d73091094fd2602fc0180d1482af83db1ee45cc9",
+ "post_hoc": true,
+ "cells": [
+  {
+   "model": "Gemma-26B",
+   "arm": "plain",
+   "n_trials": 300,
+   "n_tool_right": 272,
+   "n_lost_frozen": 247,
+   "n_right_under_line_reader": 35,
+   "n_lost_lenient": 212,
+   "n_lost_after_reading": 193,
+   "lost_frozen": {
+    "est": 90.80882352941177,
+    "lo": 85.35714285714285,
+    "hi": 95.52871973887025,
+    "k": 20,
+    "n": 272
+   },
+   "lost_lenient": {
+    "est": 77.94117647058823,
+    "lo": 67.50857879093263,
+    "hi": 87.41007194244604,
+    "k": 20,
+    "n": 272
+   },
+   "difference": {
+    "est": -12.867647058823529,
+    "lo": -18.587360594795538,
+    "hi": -7.718623481781386,
+    "k": 20,
+    "n": 272
+   },
+   "lost_after_reading": {
+    "est": 70.95588235294117,
+    "lo": 58.24093816631131,
+    "hi": 82.56227758007117,
+    "k": 20,
+    "n": 272
+   },
+   "frozen_categories": {
+    "REFUSED_OR_CLIPPED_FINAL": 148,
+    "WRONG_FACTS": 18,
+    "NEEDS_READING": 81
+   },
+   "classes": {
+    "no_room_or_empty": 148,
+    "tool_ran_another_plan": 0,
+    "cut_at_output_cap": 0,
+    "same_length": 38,
+    "wrong_length": 5,
+    "unreadable": 21,
+    "other": 0
+   },
+   "same_length_differs_in": {
+    "numbers": 18,
+    "facts": 17,
+    "facts + numbers": 2,
+    "a fact listed twice": 1
+   },
+   "detail": {
+    "conversion_only": 13,
+    "drops_first_state": 0,
+    "facts: false listed as true": 9,
+    "facts: false listed as true, and true omitted": 2,
+    "facts: lists a predicate the tool's map does not hold": 4,
+    "facts: true omitted": 2,
+    "longer": 5,
+    "no_room_key_from_another_plan": 18,
+    "no_tool_map": 0,
+    "numbers: a number wrong": 5,
+    "numbers: numbers left out": 13,
+    "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 18,
+    "n_left_out_lost": 18,
+    "n_left_out_empty_answer": 18,
+    "n_tool_right": 254,
+    "n_lost_frozen": 229,
+    "n_lost_lenient": 194,
+    "lost_frozen": {
+     "est": 90.15748031496062,
+     "lo": 84.58425534512492,
+     "hi": 95.0,
+     "k": 19,
+     "n": 254
+    },
+    "lost_lenient": {
+     "est": 76.37795275590551,
+     "lo": 65.99169542709232,
+     "hi": 85.9378228305785,
+     "k": 19,
+     "n": 254
+    }
+   }
+  },
+  {
+   "model": "Gemma-26B",
+   "arm": "steered",
+   "n_trials": 300,
+   "n_tool_right": 272,
+   "n_lost_frozen": 248,
+   "n_right_under_line_reader": 31,
+   "n_lost_lenient": 217,
+   "n_lost_after_reading": 200,
+   "lost_frozen": {
+    "est": 91.17647058823529,
+    "lo": 86.03752774694784,
+    "hi": 95.83333333333334,
+    "k": 20,
+    "n": 272
+   },
+   "lost_lenient": {
+    "est": 79.77941176470588,
+    "lo": 67.5760512589349,
+    "hi": 90.25294419881284,
+    "k": 20,
+    "n": 272
+   },
+   "difference": {
+    "est": -11.397058823529411,
+    "lo": -18.84057971014493,
+    "hi": -5.338078291814947,
+    "k": 20,
+    "n": 272
+   },
+   "lost_after_reading": {
+    "est": 73.52941176470588,
+    "lo": 60.16244283536586,
+    "hi": 85.50199342707828,
+    "k": 20,
+    "n": 272
+   },
+   "frozen_categories": {
+    "REFUSED_OR_CLIPPED_FINAL": 151,
+    "WRONG_FACTS": 18,
+    "NEEDS_READING": 79
+   },
+   "classes": {
+    "no_room_or_empty": 151,
+    "tool_ran_another_plan": 0,
+    "cut_at_output_cap": 0,
+    "same_length": 35,
+    "wrong_length": 10,
+    "unreadable": 21,
+    "other": 0
+   },
+   "same_length_differs_in": {
+    "facts": 21,
+    "numbers": 11,
+    "facts + numbers": 3
+   },
+   "detail": {
+    "conversion_only": 14,
+    "drops_first_state": 0,
+    "facts: false listed as true": 8,
+    "facts: false listed as true, and true omitted": 2,
+    "facts: lists a predicate the tool's map does not hold": 7,
+    "facts: true omitted": 4,
+    "longer": 9,
+    "no_room_key_from_another_plan": 18,
+    "no_tool_map": 0,
+    "numbers: numbers left out": 11,
+    "shifted_by_one": 0,
+    "shorter": 1
+   },
+   "without_other_plan": {
+    "n_left_out": 18,
+    "n_left_out_lost": 18,
+    "n_left_out_empty_answer": 18,
+    "n_tool_right": 254,
+    "n_lost_frozen": 230,
+    "n_lost_lenient": 199,
+    "lost_frozen": {
+     "est": 90.5511811023622,
+     "lo": 85.3279172029172,
+     "hi": 95.3307392996109,
+     "k": 19,
+     "n": 254
+    },
+    "lost_lenient": {
+     "est": 78.34645669291339,
+     "lo": 65.86184888251894,
+     "hi": 89.18945945945946,
+     "k": 19,
+     "n": 254
+    }
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "arm": "plain",
+   "n_trials": 300,
+   "n_tool_right": 204,
+   "n_lost_frozen": 152,
+   "n_right_under_line_reader": 0,
+   "n_lost_lenient": 152,
+   "n_lost_after_reading": 147,
+   "lost_frozen": {
+    "est": 74.50980392156863,
+    "lo": 60.40584007639344,
+    "hi": 87.70075882054192,
+    "k": 20,
+    "n": 204
+   },
+   "lost_lenient": {
+    "est": 74.50980392156863,
+    "lo": 60.40584007639344,
+    "hi": 87.70075882054192,
+    "k": 20,
+    "n": 204
+   },
+   "difference": {
+    "est": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "k": 20,
+    "n": 204
+   },
+   "lost_after_reading": {
+    "est": 72.05882352941177,
+    "lo": 57.64176006195281,
+    "hi": 85.87071341090017,
+    "k": 20,
+    "n": 204
+   },
+   "frozen_categories": {
+    "REFUSED_OR_CLIPPED_FINAL": 106,
+    "ABRIDGED": 1,
+    "WRONG_FACTS": 35,
+    "NEEDS_READING": 10
+   },
+   "classes": {
+    "no_room_or_empty": 106,
+    "tool_ran_another_plan": 0,
+    "cut_at_output_cap": 0,
+    "same_length": 37,
+    "wrong_length": 1,
+    "unreadable": 8,
+    "other": 0
+   },
+   "same_length_differs_in": {
+    "facts": 37
+   },
+   "detail": {
+    "conversion_only": 34,
+    "drops_first_state": 0,
+    "facts: false listed as true": 13,
+    "facts: false listed as true, and true omitted": 15,
+    "facts: lists a predicate the tool's map does not hold": 3,
+    "facts: true omitted": 6,
+    "longer": 1,
+    "no_room_key_from_another_plan": 13,
+    "no_tool_map": 0,
+    "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 13,
+    "n_left_out_lost": 13,
+    "n_left_out_empty_answer": 13,
+    "n_tool_right": 191,
+    "n_lost_frozen": 139,
+    "n_lost_lenient": 139,
+    "lost_frozen": {
+     "est": 72.77486910994764,
+     "lo": 58.33228643216082,
+     "hi": 86.36363636363636,
+     "k": 19,
+     "n": 191
+    },
+    "lost_lenient": {
+     "est": 72.77486910994764,
+     "lo": 58.33228643216082,
+     "hi": 86.36363636363636,
+     "k": 19,
+     "n": 191
+    }
+   }
+  },
+  {
+   "model": "Qwen3.5-9B",
+   "arm": "steered",
+   "n_trials": 300,
+   "n_tool_right": 261,
+   "n_lost_frozen": 212,
+   "n_right_under_line_reader": 2,
+   "n_lost_lenient": 210,
+   "n_lost_after_reading": 197,
+   "lost_frozen": {
+    "est": 81.22605363984674,
+    "lo": 70.45413072329131,
+    "hi": 90.38499999999999,
+    "k": 20,
+    "n": 261
+   },
+   "lost_lenient": {
+    "est": 80.45977011494253,
+    "lo": 69.6969696969697,
+    "hi": 89.81818181818181,
+    "k": 20,
+    "n": 261
+   },
+   "difference": {
+    "est": -0.7662835249042145,
+    "lo": -1.9157088122605364,
+    "hi": 0.0,
+    "k": 20,
+    "n": 261
+   },
+   "lost_after_reading": {
+    "est": 75.47892720306514,
+    "lo": 64.04423863476096,
+    "hi": 85.99283618017543,
+    "k": 20,
+    "n": 261
+   },
+   "frozen_categories": {
+    "REFUSED_OR_CLIPPED_FINAL": 132,
+    "ABRIDGED": 1,
+    "NUMERIC_OMITTED": 1,
+    "WRONG_FACTS": 40,
+    "NEEDS_READING": 38
+   },
+   "classes": {
+    "no_room_or_empty": 132,
+    "tool_ran_another_plan": 0,
+    "cut_at_output_cap": 0,
+    "same_length": 41,
+    "wrong_length": 1,
+    "unreadable": 36,
+    "other": 0
+   },
+   "same_length_differs_in": {
+    "facts": 36,
+    "facts + numbers": 3,
+    "a fact listed twice": 1,
+    "numbers": 1
+   },
+   "detail": {
+    "conversion_only": 33,
+    "drops_first_state": 0,
+    "facts: false listed as true": 8,
+    "facts: false listed as true, and true omitted": 18,
+    "facts: lists a predicate the tool's map does not hold": 3,
+    "facts: true omitted": 7,
+    "no_room_key_from_another_plan": 15,
+    "no_tool_map": 0,
+    "numbers: numbers left out": 1,
+    "shifted_by_one": 0,
+    "shorter": 1
+   },
+   "without_other_plan": {
+    "n_left_out": 15,
+    "n_left_out_lost": 15,
+    "n_left_out_empty_answer": 15,
+    "n_tool_right": 246,
+    "n_lost_frozen": 197,
+    "n_lost_lenient": 195,
+    "lost_frozen": {
+     "est": 80.08130081300813,
+     "lo": 68.93931334622825,
+     "hi": 89.54021105341869,
+     "k": 19,
+     "n": 246
+    },
+    "lost_lenient": {
+     "est": 79.26829268292683,
+     "lo": 68.2350192413414,
+     "hi": 88.88888888888889,
+     "k": 19,
+     "n": 246
+    }
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "arm": "plain",
+   "n_trials": 300,
+   "n_tool_right": 282,
+   "n_lost_frozen": 197,
+   "n_right_under_line_reader": 3,
+   "n_lost_lenient": 194,
+   "n_lost_after_reading": 187,
+   "lost_frozen": {
+    "est": 69.8581560283688,
+    "lo": 56.457564575645755,
+    "hi": 82.3943661971831,
+    "k": 20,
+    "n": 282
+   },
+   "lost_lenient": {
+    "est": 68.79432624113475,
+    "lo": 55.326277692476424,
+    "hi": 81.42922077922077,
+    "k": 20,
+    "n": 282
+   },
+   "difference": {
+    "est": -1.0638297872340425,
+    "lo": -2.2058823529411766,
+    "hi": 0.0,
+    "k": 20,
+    "n": 282
+   },
+   "lost_after_reading": {
+    "est": 66.31205673758865,
+    "lo": 52.54237288135594,
+    "hi": 79.28599330357142,
+    "k": 20,
+    "n": 282
+   },
+   "frozen_categories": {
+    "REFUSED_OR_CLIPPED_FINAL": 151,
+    "NUMERIC_OMITTED": 9,
+    "WRONG_FACTS": 26,
+    "NEEDS_READING": 11
+   },
+   "classes": {
+    "no_room_or_empty": 151,
+    "tool_ran_another_plan": 0,
+    "cut_at_output_cap": 0,
+    "same_length": 35,
+    "wrong_length": 0,
+    "unreadable": 8,
+    "other": 0
+   },
+   "same_length_differs_in": {
+    "facts": 25,
+    "numbers": 10
+   },
+   "detail": {
+    "conversion_only": 25,
+    "facts: false listed as true": 2,
+    "facts: false listed as true, and true omitted": 9,
+    "facts: true omitted": 14,
+    "no_room_key_from_another_plan": 17,
+    "no_tool_map": 0,
+    "numbers: a number wrong": 1,
+    "numbers: numbers left out": 9,
+    "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 17,
+    "n_left_out_lost": 17,
+    "n_left_out_empty_answer": 17,
+    "n_tool_right": 265,
+    "n_lost_frozen": 180,
+    "n_lost_lenient": 177,
+    "lost_frozen": {
+     "est": 67.9245283018868,
+     "lo": 54.073573573573576,
+     "hi": 80.68181818181817,
+     "k": 19,
+     "n": 265
+    },
+    "lost_lenient": {
+     "est": 66.79245283018868,
+     "lo": 52.917794507415564,
+     "hi": 79.63075880758805,
+     "k": 19,
+     "n": 265
+    }
+   }
+  },
+  {
+   "model": "Qwen3.6-35B",
+   "arm": "steered",
+   "n_trials": 300,
+   "n_tool_right": 287,
+   "n_lost_frozen": 210,
+   "n_right_under_line_reader": 21,
+   "n_lost_lenient": 189,
+   "n_lost_after_reading": 188,
+   "lost_frozen": {
+    "est": 73.17073170731707,
+    "lo": 61.32404181184668,
+    "hi": 84.23029927062183,
+    "k": 20,
+    "n": 287
+   },
+   "lost_lenient": {
+    "est": 65.85365853658537,
+    "lo": 52.04047159404303,
+    "hi": 79.09407665505228,
+    "k": 20,
+    "n": 287
+   },
+   "difference": {
+    "est": -7.317073170731707,
+    "lo": -10.915492957746478,
+    "hi": -3.873239436619718,
+    "k": 20,
+    "n": 287
+   },
+   "lost_after_reading": {
+    "est": 65.50522648083623,
+    "lo": 51.5358361774744,
+    "hi": 78.89273356401384,
+    "k": 20,
+    "n": 287
+   },
+   "frozen_categories": {
+    "REFUSED_OR_CLIPPED_FINAL": 155,
+    "NUMERIC_OMITTED": 7,
+    "WRONG_FACTS": 23,
+    "NEEDS_READING": 25
+   },
+   "classes": {
+    "no_room_or_empty": 155,
+    "tool_ran_another_plan": 0,
+    "cut_at_output_cap": 0,
+    "same_length": 33,
+    "wrong_length": 0,
+    "unreadable": 1,
+    "other": 0
+   },
+   "same_length_differs_in": {
+    "facts": 26,
+    "numbers": 7
+   },
+   "detail": {
+    "conversion_only": 26,
+    "facts: false listed as true": 5,
+    "facts: false listed as true, and true omitted": 5,
+    "facts: true omitted": 16,
+    "no_room_key_from_another_plan": 18,
+    "no_tool_map": 0,
+    "numbers: numbers left out": 7,
+    "shifted_by_one": 0
+   },
+   "without_other_plan": {
+    "n_left_out": 18,
+    "n_left_out_lost": 18,
+    "n_left_out_empty_answer": 18,
+    "n_tool_right": 269,
+    "n_lost_frozen": 192,
+    "n_lost_lenient": 171,
+    "lost_frozen": {
+     "est": 71.37546468401487,
+     "lo": 59.176029962546814,
+     "hi": 82.5099650868588,
+     "k": 19,
+     "n": 269
+    },
+    "lost_lenient": {
+     "est": 63.56877323420075,
+     "lo": 49.280575539568346,
+     "hi": 76.89600111080254,
+     "k": 19,
+     "n": 269
+    }
+   }
+  }
+ ],
+ "october_reading_vs_line_reader": {
+  "no|not right": 90,
+  "yes|not right": 62,
+  "yes|right": 92
+ },
+ "judged_right_not_read_by_line_reader": {
+  "WRONG_WRAPPER": 56,
+  "ABRIDGED": 4,
+  "NUMERIC_OMITTED": 2
+ }
+}
