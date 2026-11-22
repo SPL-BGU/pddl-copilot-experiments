@@ -53,3 +53,4 @@
 - **Outside facts found the same evening:** no rule on LLM-written text on the ICAPS 2027
   call page or in the AAAI-27 kit in the repo (AAAI has one for its own conferences);
   the call lists Shahaf Shperberg (BGU) as a program chair.
+- **Decided (Omer, 2026-11-22): merge PR #140; his edits come after.** Merged as `5f1feae`.
