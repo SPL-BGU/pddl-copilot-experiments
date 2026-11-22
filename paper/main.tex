@@ -1428,11 +1428,20 @@ same trials of the rerun at 16K (Table~\ref{tab:rq3-pilot}). On \emph{simulate} 
 share of empty final answers falls from $42$--$43\%$ at 16K to $6$--$11\%$ at 64K. The
 share of correct tool results that are lost falls much less: from $92.5\%$ to $83.8\%$
 for Gemma-MoE-26B, from $72.9\%$ to $69.0\%$ for Qwen3.5-9B, and from $64.5\%$ to
-$49.1\%$ for Qwen3.6-35B. At 64K most of the lost answers are traces that the grader
-cannot read or that differ from the oracle's. On \emph{solve} the loss falls from
+$49.1\%$ for Qwen3.6-35B. On \emph{solve} the loss falls from
 $9.2\%$ to $5.0\%$, from $19.2\%$ to $16.7\%$ and from $20.2\%$ to $11.1\%$ for the same
 three models. Room in the context window therefore accounts for the empty answers and
-for a part of the loss, and most lost traces stay lost when there is room. The pilot is
+for a part of the loss. Two properties of the task contribute to the rest. The
+first is layout. Our grader reads a single JSON value, so a trace written as one JSON
+object per line fails it whatever its content. Reading such traces as well lowers the
+loss of Gemma-MoE-26B at 64K from $83.8\%$ to $72.4\%$ and that of Qwen3.6-35B from
+$49.1\%$ to $46.4\%$, and leaves Qwen3.5-9B at $69.0\%$. In the rerun, two readers judged
+$154$ of the $244$ \emph{simulate} answers that no fixed rule could decide to be right. The second is
+conversion. The state-transition tool returns each state as a map from every predicate
+to true or false, in a functional notation, while the answer must list only the true
+predicates. Delivering a trace is therefore a conversion of the tool's result and not a
+copy of it, and the models make errors in it even on traces of five states. The loss
+that RQ3 reports for \emph{simulate} should be read with both properties in mind. The pilot is
 small ($114$ to $120$ trials per cell), its three window sizes were run as separate
 jobs weeks apart, and the intervals of the three sizes overlap in every cell.
 
@@ -2332,12 +2341,15 @@ settings.
 A plan or a state trace has to be restated in the answer, and the loss grows with the
 length of what must be restated. In the open-weight runs the largest registered cause
 is a final turn that was refused or cut because the conversation, which already held
-the tool's result, had filled the context window. More room does not recover most of these results. In a pilot
+the tool's result, had filled the context window. More room recovers a part of these results. In a pilot
 with 32K and 64K windows the empty answers largely disappear, while the share of correct
-traces that are lost falls by $4$ to $15$ points and stays between $49\%$ and $84\%$.
-The answers that replace the empty ones are mostly traces that the grader cannot read or
-that differ from the tool's. The pilot is small and was not registered, so we read it as
-evidence that room is needed for the restatement and does not by itself secure it.
+traces that our grader counts as lost falls by $4$ to $15$ points and stays between
+$49\%$ and $84\%$. Two properties of the \emph{simulate} task contribute to what
+remains. The grader accepts one layout of the trace, and some correct traces are written
+in another. The tool also returns states in a form that differs from the form the answer
+must take, so the model has to convert the result and cannot copy it. On this task the
+figure therefore measures layout and conversion as well as the model's use of the tool's
+content. The pilot is small and was not registered.
 For the two Claude models, the output-budget probe raised the output allowance
 on \emph{simulate} (Supporting Analyses).
 

@@ -35,11 +35,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from pddl_eval.scoring import strip_leaked_channel_prefix
+from pddl_eval.scoring import (_coerce_simulate_trajectory, _normalize_trajectory,
+                               strip_leaked_channel_prefix)
 from tools.delivered_rerun import constants as C
+from tools.delivered_rerun import e4 as E4
 from tools.delivered_rerun import grade as G
 from tools.delivered_rerun import run as RUN
 from tools.delivered_rerun import schema as S
+from tools.e2e_regrade import oracle_canon_for
 from tools.reanalysis import rq1_metrics as R1
 from tools.reanalysis.gen_common import md_table, model_name, write_numbers
 
@@ -93,6 +96,29 @@ def smoke_rows(root: Path, model: str, tag: str) -> list:
                 infra_failure=False)
             rows[row.trial_key] = row
     return list(rows.values())
+
+
+def line_reader_exact(response: str, oracle) -> bool:
+    """A more lenient reading than the frozen grader: every line that is one JSON
+    object is taken as one step, and the steps must equal the oracle trace exactly.
+    The frozen grader reads a single JSON value only, so a trace written one object
+    per line fails it whatever its content. This is the mechanical aid the hand
+    read of the rerun's undecided rows used (reference/delivered_rerun_secondary)."""
+    objs = []
+    for ln in strip_leaked_channel_prefix(response or "").splitlines():
+        ln = ln.strip().rstrip(",")
+        if not (ln.startswith("{") and ln.endswith("}")):
+            continue
+        try:
+            o = json.loads(ln)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(o, dict):
+            objs.append(o)
+    if not objs or oracle is None:
+        return False
+    steps, _compliant = _coerce_simulate_trajectory(json.dumps(objs))
+    return steps is not None and _normalize_trajectory(steps) == oracle
 
 
 def run_plan(rows) -> dict:
@@ -167,15 +193,26 @@ def main(argv=None) -> int:
                     tool_right = [(r, x) for r, x in zip(rs, g) if r.success is True]
                     lost = [x.ok is False for _, x in tool_right]
                     why = defaultdict(int)
+                    rescued = 0
                     for r, x in tool_right:
                         if x.ok is False:
-                            why[x.reason] += 1
+                            why[E4.classify(r, x, gt_cache)[0]] += 1
+                            if task == "simulate" and line_reader_exact(
+                                    r.response, oracle_canon_for(gt_cache, {
+                                        "domain_name": r.domain, "problem_name": r.problem})):
+                                rescued += 1
+                    lenient = [(x.ok is False) and not (task == "simulate" and line_reader_exact(
+                        r.response, oracle_canon_for(gt_cache, {"domain_name": r.domain,
+                                                                "problem_name": r.problem})))
+                               for r, x in tool_right]
                     out.append({
                         "model": model_name(m), "task": task, "window": w, "n": len(rs),
                         "empty": sum(not strip_leaked_channel_prefix(r.response).strip()
                                      for r in rs),
                         "tool_right": len(tool_right), "lost": sum(lost),
                         "why": dict(sorted(why.items(), key=lambda kv: -kv[1])),
+                        "right_under_line_reader": rescued,
+                        "lost_share_lenient": R1.boot(lenient, [r.domain for r, _ in tool_right]),
                         "lost_cut_by_output_cap": sum(
                             1 for r, x in tool_right if x.ok is False
                             and r.done_reason == "length"),
@@ -191,16 +228,23 @@ def main(argv=None) -> int:
          "and 64K smoke runs of 2026-10-27 all hold; every row graded by the frozen delivered "
          "grader. \"Tool right\" = the right tool returned the right result. \"Lost\" = of "
          "those, the delivered final answer is wrong. Intervals are 95% domain-cluster "
-         "bootstrap. Separate jobs weeks apart, 20 problems, nothing registered. Simulate "
+         "bootstrap. Separate jobs weeks apart, 20 problems, nothing registered. The "
+         "categories are those of the frozen readout's E4 (`tools/delivered_rerun/e4.py`); "
+         "NEEDS_READING marks answers a fixed rule cannot decide. \"After also reading one "
+         "object per line\" is a more lenient grade than the frozen one: a trace written as "
+         "one JSON object per line counts when it equals the oracle trace exactly. Simulate "
          "problems left out because a run's plan is not the cached plan: "
          + "; ".join(f"{k}: {', '.join(v) or 'none'}" for k, v in skipped.items())
          + f". Solve plans validated live for this table: {live}.*", ""]
     L.append(md_table(["model", "task", "window", "trials", "empty final answer", "tool right",
                        "lost", "lost, share of tool right", "delivered right",
-                       "lost answers by grader reason", "lost answers that stopped at the output cap"],
+                       "lost, share after also reading one object per line",
+                       "lost answers by registered category",
+                       "lost answers that stopped at the output cap"],
                       [[c["model"], c["task"], c["window"], c["n"],
                         f"{c['empty']} ({100 * c['empty'] / c['n']:.1f}%)", c["tool_right"],
                         c["lost"], R1.cell(c["lost_share"]), R1.cell(c["delivered"]),
+                        R1.cell(c["lost_share_lenient"]) if c["task"] == "simulate" else "–",
                         "; ".join(f"{k} {v}" for k, v in c["why"].items()) or "–",
                         c["lost_cut_by_output_cap"]]
                        for c in out]))

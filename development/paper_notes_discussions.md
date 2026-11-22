@@ -104,3 +104,24 @@
   such an algorithm. Recorded in `roadmap.md` §9; nothing planned or built.
 - **To discuss with the advisors (Omer):** the larger-problems experiment, with the other
   items of `roadmap.md` §8.
+
+## 2026-11-22 (late night) — Omer's challenge to the pilot: is a technical fault hiding the recovery?
+
+- **Omer's point:** a larger window should also raise success; perhaps the pilot's setup
+  was faulty or outdated, and its metrics should be discarded.
+- **Checked:** no fault in the pilot's setup (same harness line, matched trials, frozen
+  grader, the 2026-10-27 runs). Delivered success does rise with the window (Gemma 7.0 to
+  14.9%, 35B 33.3 to 50.0%, 9B 20.2 to 22.8%). His suspicion is right about the measure:
+  on simulate the "lost" share mixes three things.
+  1. *No room* in the window: what the larger window removes.
+  2. *Layout:* the grader reads a single JSON value; a trace written one object per line
+     fails whatever its content. Reading those too lowers Gemma's loss at 64K from 83.8 to
+     72.4% and the 35B's from 49.1 to 46.4%. The rerun's hand read judged 154 of 244
+     undecided simulate answers right.
+  3. *Conversion:* the state tool returns each state as a map of every predicate to true
+     or false in functional notation, and the answer must list the true predicates only.
+     Delivering a trace is a conversion, not a copy; a model got a five-state trace wrong.
+- **Kept:** the pilot's figures (they are right for the frozen grader). **Changed:** the
+  paper's explanation of them (RQ3 pilot paragraph, Discussion) and `NUMBERS.md` "RQ3
+  pilot". **Consequence for RQ3 in general:** the simulate loss should not be described as
+  the model failing to copy the tool's output.
