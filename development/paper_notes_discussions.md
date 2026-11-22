@@ -160,3 +160,24 @@
   finishing one gets in the way of the other. A thesis document is not a concern for now.
 - **RQ1 metric definitions (roadmap §6):** (a) "excellent", (d) "nice"; (b), (e) and (f)
   explained to him in chat. Nothing changed.
+
+## 2026-11-22 (late night) — RQ3 simulate graded a second time on the full rerun (Omer: yes)
+
+- **Decided (Omer):** run the layout-tolerant re-grade; metric definitions (b), (e), (f)
+  are fine after the explanation.
+- **Result** (`tools/reanalysis/rq3_simulate_regrade.py`, `NUMBERS.md` "RQ3 simulate —
+  layout-tolerant re-grade (post hoc)"; frozen figures stay the record): reading a trace
+  written one JSON object per line lowers the lost share from 69.9-91.2% to 65.9-80.5%.
+  The change is large for Gemma (about 12 points), 7 points for the 35B under the steered
+  prompt, and at most 1 point in the other three cells.
+- **What is still lost (1,174 answers):** 843 have no room or are empty; 219 give a
+  full-length trace with a wrong step, 145 of them with only the true/false conversion
+  wrong; 112 have another length or no readable trace.
+- **Bottom line:** layout does not explain the finding (at most 13 points in one model).
+  At 16K most lost traces have no room, and the pilot shows that room alone does not
+  recover most of them. Conversion errors are real but cannot be given as a share of all
+  losses.
+- **Two corrections that came out of it:** the October "hand read" was made by two
+  language-model readers with a third reading, not by people (paper and `NUMBERS.md` note
+  corrected); 99 of the lost answers sit on the six problems whose prompt plan differs
+  from the answer key's (now said in the paper).

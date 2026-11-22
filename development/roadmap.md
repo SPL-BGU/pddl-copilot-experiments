@@ -137,7 +137,7 @@ for now. They can still change; a change means rerunning `rq1_metrics.py`, not n
 
 > ANSWER: **ANSWERED 2026-11-22 (Omer): keep for now.**
 > Later the same day (Omer): (a) is excellent, (d) is nice; (b), (e) and (f) needed an
-> explanation, given in chat. No definition is changed.
+> explanation, given in chat. No definition is changed. After the explanation: all three are fine (Omer).
 
 ## 7. Answered (2026-11-22, Omer)
 

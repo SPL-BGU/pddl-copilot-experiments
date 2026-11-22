@@ -381,6 +381,29 @@ def render(cells: list[dict], confusion: Counter, missed: Counter) -> str:
     return "\n".join(L) + "\n"
 
 
+def tex_rows(cells: list[dict]) -> str:
+    """The rows of the paper's table (pasted into the tex, never edited there)."""
+    names = {"Gemma-26B": "Gemma-MoE-26B"}
+    by = {(c["model"], c["arm"]): c for c in cells}
+
+    def share(b: dict, signed: bool = False) -> str:
+        f = "{:+.1f}" if signed else "{:.1f}"
+        return (f"${f.format(b['est'])}$ {{\\scriptsize$[{f.format(b['lo'])},"
+                f"\\,{f.format(b['hi'])}]$}}")
+
+    rows = []
+    for m in ("Qwen3.5-9B", "Gemma-26B", "Qwen3.6-35B"):
+        for i, arm in enumerate(("plain", "steered")):
+            c = by[(m, arm)]
+            k = c["classes"]
+            rows.append(" & ".join([
+                names.get(m, m) if i == 0 else "", arm, f"${c['n_tool_right']}$",
+                share(c["lost_frozen"]), share(c["lost_lenient"]),
+                share(c["difference"], signed=True), f"${k['no_room_or_empty']}$",
+                f"${k['same_length']}$", f"${k['wrong_length'] + k['unreadable']}$"]) + r" \\")
+    return "\n".join(rows) + "\n"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     R1.add_data_args(ap)
@@ -406,6 +429,8 @@ def main(argv=None) -> int:
         "october_reading_vs_line_reader": {f"{a}|{b}": v for (a, b), v in sorted(confusion.items())},
         "judged_right_not_read_by_line_reader": dict(missed)}, indent=1) + "\n")
     (args.out / "rq3_simulate_regrade.md").write_text(md)
+    (args.out / "tex").mkdir(exist_ok=True)
+    (args.out / "tex" / "rq3_simulate_regrade.tex").write_text(tex_rows(out))
     print(md)
     if args.numbers:
         changed = write_numbers(REPO / "development" / "NUMBERS.md", TAG, md)

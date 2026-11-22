@@ -1915,8 +1915,10 @@ compares them with the same trials of the 16K rerun. How to read the block:
   hides a technical fault):** no fault in the pilot's setup was found. Two properties of
   the task explain the residue. (1) *Layout.* The frozen grader reads one JSON value; a
   trace written one object per line fails it whatever its content. Reading such traces too
-  lowers Gemma's loss by 11 to 17 points and the Qwen models' by 0 to 4. The rerun's hand
-  read judged 180 of the 290 undecided answers right to a human reader, 154 of the 244
+  lowers Gemma's loss by 11 to 17 points and the Qwen models' by 0 to 4. The rerun's October
+  reading (two language-model readers and a third reading for disagreements; NOT people,
+  although the older rows of this file call it a "hand read" and "right to a human
+  reader") judged 180 of the 290 undecided answers right in content, 154 of the 244
   on simulate (`reference/delivered_rerun_secondary/secondary.json`, `e4_readings`). (2) *Conversion.* The
   state tool returns every state as a map from each predicate to true or false, in
   functional notation (`on(b2, b1)`), while the answer must list the true predicates only.
