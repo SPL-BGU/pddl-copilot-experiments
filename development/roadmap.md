@@ -128,6 +128,9 @@ housekeeping (PR #133).
 
 ## 6. Rules that still bind
 
+- **The goals are set by the decisions of Omer and his advisors** (Omer, 2026-11-22).
+  This file follows those decisions. A recommendation here is only that until Omer
+  answers it, and nothing parked in §5 comes back without his word.
 - `NUMBERS.md` before any figure in prose; canonical corpora only; `/verify-claims` on
   every paper edit that carries a number.
 - Study 1 and Study 2 are never pooled, and a rerun figure never stands in for a
@@ -174,13 +177,11 @@ decide on the larger problems. Keep D5a parked unless the main track is chosen.
 > ANSWER:
 
 **4. The open PRs.**
-**Done 2026-11-22:** #130, #136 (grader corrections, used by RQ1 and RQ3), #133
-(checkpoints), #135 (a tex comment) and #138 (the larger problems' ground truth, data
-only) are merged, each after its scripts reproduced on the laptop data. *(rec)* for the
-rest: close #132
-(tracking) and #137 (PlanBench tools). Keep #134 (release files) on hold.
+*(rec)* Merge #130, #136, #133, #135 and #138; close #132 (tracking) and #137 (PlanBench
+tools); keep #134 (release files) on hold.
 
-> ANSWER:
+> ANSWER: **ANSWERED 2026-11-22 (Omer): accepted.** The five were merged after each
+> reproduced on the laptop data, #132 and #137 are closed (branches kept), #134 stays on hold.
 
 **5. Metric definitions I filled in.** They stand unless you change them.
 

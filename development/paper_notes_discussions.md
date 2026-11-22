@@ -1,7 +1,4 @@
 
-- **PRs #133, #135 and #138 merged too (Omer: yes).** Same checks. #133: 19 tests, the
-  460 and 456 row counts confirmed on the laptop files. #135: comment lines only in
-  `main.tex`; the Overleaf sync succeeded. #138: 133 tests, the solved-share tables rerun
-  from the laptop's planner records are identical, and the 124 file hashes match the
-  manifest. Open now: #132 (tracking), #134 (release files, on hold), #137 (PlanBench
-  tools).
+- **Decided (Omer, 2026-11-22):** the recommendation on the remaining PRs is accepted:
+  #132 and #137 closed (branches kept), #134 stays on hold. **Standing rule from the same
+  message: from now on the goal is set by the decisions made by Omer and his advisors.**

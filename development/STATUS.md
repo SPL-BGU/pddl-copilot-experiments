@@ -108,6 +108,9 @@ come from the checkpoint zips (`checkpoints/delivered-rerun/README.md`, "Restore
 
 ## Decided and still binding
 
+- **Who sets the goal (Omer, 2026-11-22):** from now on the project's goals are set by
+  the decisions of Omer and his advisors. The agent recommends and carries out; it does
+  not add goals, reframe the research questions or bring back parked work by itself.
 - **Research questions:** the three of `roadmap.md` §2 (advisors, 2026-11-22). The old
   open decision E1 is closed by this.
 - **The advisor meeting happened** (reported 2026-11-22), so the hold R7 on sending the
@@ -143,13 +146,13 @@ frozen package hash is unchanged. Conflicts with `main` were additive (lists and
   tier is still partly done (17 and 11 runs pending in the two 1800 s rows of
   `NUMBERS.md`), and no model has run on these problems.
 
-Still open. Recommendations under the new plan; Omer decides (`roadmap.md` §7, decision 4).
+**Closed 2026-11-22** (Omer accepted the recommendation): **#132** (tracking file seeded
+with the earlier plan) and **#137** (PlanBench tool prompts for the open models). Both
+branches are kept.
 
-| PR | what | recommendation |
-|---|---|---|
-| #134 | Release files: licences, `CITATION.cff`, domain sources | hold while a submission is under anonymous review (the files name Omer and BGU) |
-| #132 | Tracking file `items.yaml` seeded with the earlier plan | close |
-| #137 | PlanBench tool prompts for the open models | close, or leave open if PlanBench with tools comes back |
+**Still open, on hold by decision:** **#134** (release files: licences, `CITATION.cff`,
+domain sources). It waits while a submission is under anonymous review, because the files
+name Omer and BGU.
 
 ## Hygiene (Omer's to run)
 
