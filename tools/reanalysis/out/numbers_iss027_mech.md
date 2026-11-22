@@ -1,0 +1,1 @@
+**ISS-027, post hoc (grader case fault; the frozen values above stay).** Gemma plain 44.0% (132 of 300) reads 45.3% (136 of 300, +4 trials) with plan names case-folded. On the same corpus Qwen3.5-4B simulate steered 73.3 → 73.7 (+1); Gemma-26B simulate steered 92.0 → 93.0 (+3) move as well. The plain-arm values of Qwen3.5-4B, Qwen3.5-9B, Qwen3.6-35B in this row do not move.
