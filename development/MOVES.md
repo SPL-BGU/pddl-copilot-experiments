@@ -27,6 +27,19 @@ commands, with `8dce9b6`):
 | `development/draft_tracking_proposal.md` | deleted | the tracking design behind PR #132, which is closed; the plan is tracked in `STATUS.md` |
 | `development/advisor_brief.md` | deleted | the one-page brief written for the advisors before the meeting of 2026-11-22. The meeting answered or overtook its questions |
 
+**Evening of 2026-11-22, after the paper rewrite was merged (PR #139).** `development/`
+was cut to what is still acted on. The files below were **last present at their old paths
+at commit `fbac233`**.
+
+| old path | what happened | why |
+|---|---|---|
+| `development/draft_B1_B2_related_work.md` | moved to `development/reference/` | its text is in the paper; its §3 is the check behind every reference |
+| `development/draft_B3_B5_methods.md` | moved to `development/reference/` | its paragraphs and appendix are in the paper; kept for their grounding |
+| `development/draft_D5_cost_and_correa.md` | moved to `development/reference/` | the verified Corrêa facts; cited by `tools/d5a_pilot.py` and `tools/claude_api_batch.py` under the old path (left as written) |
+| `development/draft_release_licence_models.md` | moved to `development/reference/` | the licence research behind PR #134 |
+| `development/draft_C4_transcripts.md` | deleted | the example transcripts were not used; the paper shows one test item per task in a table. `tools/reanalysis/c4_select_transcripts.py` still names it and can redraw them |
+| `development/reference/journal_decisions_memo.md` | deleted | the journal pivot of 2026-08, overtaken by ICAPS 2027; it also carried a stale trial count (227k for 273,600) |
+
 ## Checkpoints pruned, 2026-11-09
 
 Omer (2026-11-09): keep the full-corpus checkpoints, remove the outdated ones. Every

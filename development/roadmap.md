@@ -91,17 +91,17 @@ In this order. M1 and M2 ran in parallel and have first results.
 
 | # | milestone | what "done" means | state |
 |---|---|---|---|
-| M1 | **Literature review** | a full review that leads to the three RQs, every cited paper checked, and from it the paper's related-work section | first draft written 2026-11-22 (`thesis_literature_review.md`, 53 papers); waits for Omer's read |
-| M2 | **RQ1 analysis** | the four metrics computed by a script, tables and figures, every figure in `NUMBERS.md` | done 2026-11-22 (`tools/reanalysis/rq1_metrics.py`, `rq1_figures.py`); waits for Omer's read |
-| M3 | **RQ1 in the paper** | the experimental setting (how the domains, problems and plans were generated; how the prompts were generated; one or two examples per task, from `draft_B3_B5_methods.md` and `draft_C4_transcripts.md`) and the RQ1 results | next |
-| M4 | **RQ2 and RQ3: analysis, then in the paper** | the tool-choice percentages and the "right output, wrong answer" share in `NUMBERS.md`, then written up like M3 | analysis done 2026-11-22 (`tools/reanalysis/rq23_metrics.py`); the text follows M3 |
-| M5 | **The whole paper follows the three RQs** | RQ1 to RQ6 and the scorecard gone; introduction, discussion, abstract and title rewritten to the three questions; retired wording removed (hit list in `draft_C5_E1a.md`); Corrêa et al. cited and the unaided-planning claims limited to our models and settings | after M3 and M4 |
+| M1 | **Literature review** | a full review that leads to the three RQs, every cited paper checked, and from it the paper's related-work section | draft written (`thesis_literature_review.md`, 53 papers); the paper's related-work section is in (the verified draft, with Corrêa et al.). Left: Omer's read, the nine "to verify" papers |
+| M2 | **RQ1 analysis** | the four metrics computed by a script, tables and figures, every figure in `NUMBERS.md` | done 2026-11-22 (`tools/reanalysis/rq1_metrics.py`, `rq1_figures.py`) |
+| M3 | **RQ1 in the paper** | the experimental setting (how the domains, problems and plans were generated; how the prompts were generated; one test item per task) and the RQ1 results | done and merged 2026-11-22 (PR #139). Left: Omer's read |
+| M4 | **RQ2 and RQ3: analysis, then in the paper** | the tool-choice percentages and the "right output, wrong answer" share in `NUMBERS.md`, then written up like M3 | done and merged 2026-11-22 (PR #139). Left: Omer's read |
+| M5 | **The whole paper follows the three RQs** | RQ1 to RQ6 and the scorecard gone; introduction, discussion, abstract and title rewritten to the three questions; retired wording removed; Corrêa et al. cited and the unaided-planning claims limited to our models and settings | mostly done and merged 2026-11-22 (PR #139). **Left:** three placeholders for Omer (title, run dates, future-work list); the Supporting Analyses section still carries the older bounds and vocabulary and needs a pass with the search terms of `draft_C5_E1a.md` §1.4; a consistency read of the whole paper |
 
-What the new work stands on: the related-work draft (`draft_B1_B2_related_work.md`),
-the methods draft and example transcripts, the Study 1 numbers, the VAL cross-check,
-the delivered rerun and its frozen readout, the Claude runs, PlanBench and the steering
-control (data final), and the grader findings ISS-027 to ISS-030 (corrected figures
-beside the frozen ones).
+What the paper stands on: the Study 1 numbers, the VAL cross-check, the delivered rerun
+and its frozen readout, the Claude runs, PlanBench and the steering control (data
+final), the grader findings ISS-027 to ISS-030 (corrected figures beside the frozen
+ones), and the verified drafts now in `reference/` (related work, methods, the Corrêa
+facts).
 
 Everything else in the earlier plan is dropped. It is recorded in
 `reference/weakness_action_plan.md`, and nothing in it is planned work.

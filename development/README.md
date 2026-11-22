@@ -18,7 +18,7 @@ Four files answer almost every question:
 | start here | for |
 |---|---|
 | **`STATUS.md`** | what is left to do. Single stable entry point, **edited in place**; never write a dated successor |
-| **`roadmap.md`** | the plan the work follows since 2026-11-22: the goal (complete the paper), the three research questions and their metrics, which data answers each, milestones M1 to M5, and the one decision waiting for Omer |
+| **`roadmap.md`** | the plan the work follows since 2026-11-22: the goal (complete the paper), the three research questions and their metrics, which data answers each, milestones M1 to M5 and their state, and the decisions already answered |
 | **`NUMBERS.md`** | the frozen value of every headline figure and the stale readings it replaces. **Check before quoting anything** |
 | **`MOVES.md`** | old path to new path (the reorganisations of 2026-08-29 and 2026-09-18) and every file deleted on 2026-10-10. Resolves the old paths cited in the append-only logs and in hash-pinned scripts |
 
@@ -29,11 +29,8 @@ Four files answer almost every question:
 | `STATUS.md` · `roadmap.md` · `NUMBERS.md` · `MOVES.md` | the four above |
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
-| `thesis_literature_review.md` | **M1: the literature review, first full draft** (2026-11-22; the paper's related-work section is written from it), with a reading list, a "to verify" list and questions for Omer |
-| `draft_B1_B2_related_work.md` | the related-work draft, every reference looked up and verified. **The base of the literature review (M1)** |
-| `draft_B3_B5_methods.md` · `draft_C4_transcripts.md` | test data, prompts and grading facts; four example transcripts (readings await Omer's confirmation). **The base of the RQ1 experimental setting in the paper (M3)** |
-| `draft_C5_E1a.md` | the hit list of retired wording and figures still in the tex. **The checklist for M5**; its two RQ framings are overtaken by the three RQs |
-| `draft_D5_cost_and_correa.md` · `draft_release_licence_models.md` | the verified Corrêa et al. facts (used by M1) and the cost notes; licence and model research for the release |
+| `thesis_literature_review.md` | the literature review, first full draft (2026-11-22), with a reading list, a "to verify" list and questions for Omer. Waits for his read |
+| `draft_C5_E1a.md` | the hit list of retired wording and figures in the tex, from before the rewrite. **Only its search terms (§1.4) are still used**, for the pass over the paper's Supporting Analyses section (`STATUS.md`, next step 6); its line numbers and its two RQ framings are stale |
 | `draft_advisor_correa_comparison.md` (+ two `.docx`) | Omer's outline for the advisor discussion of 2026-11-22; not committed |
 
 ## `reference/`: stable, never a status
@@ -41,6 +38,18 @@ Four files answer almost every question:
 Files here are not rewritten after they move in. Several were written before 2026-09-18
 and say "edit on `paper/aaai27`" or name other old paths. Read that as history: the
 paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
+
+**Drafts whose text is now in the paper** (kept for the checks behind them)
+
+- `draft_B1_B2_related_work.md`: the related-work section and the paragraph on the
+  preliminary study, with the check behind every reference (§3). `thesis_literature_review.md`
+  cites that table as "B1 §3".
+- `draft_B3_B5_methods.md`: the test-data, prompts, tool-suite and answer-key paragraphs and
+  the prompts appendix, with their grounding. Its answer list for Omer is overtaken by his
+  read of the merged paper.
+- `draft_D5_cost_and_correa.md`: the verified facts about Corrêa, Pereira and Seipp (Part 1).
+  Its cost notes belong to runs that are no longer planned.
+- `draft_release_licence_models.md`: the licence research behind PR #134 (on hold).
 
 **The weakness review and what came out of it**
 
@@ -89,10 +98,7 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
   and `submit_with_rtx.sh`)
 - `serving_env_20260913.md` (the serving environment) · `cluster_user_guide.md` (BGU CIS
   HPC)
-- `journal_decisions_memo.md` (the journal pivot of 2026-08, itself overtaken on
-  2026-11-22 by ICAPS 2027: venue §5, advisor questions §10; ⚠️ it
-  says "227k trials" in three places, the figure is **273,600**, see `NUMBERS.md`) ·
-  `title_abstract_candidates.md` (§4 the scale audit, §5 Omer's answers on the abstract)
+- `title_abstract_candidates.md` (§4 the scale audit, §5 Omer's answers on the abstract)
 
 ## House rules
 

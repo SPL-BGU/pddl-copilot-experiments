@@ -8,8 +8,10 @@ This directory holds the paper: a full manuscript (25 pages), not a scaffold.
   the format ICAPS 2027 asks for, and still **anonymous**. Write in that format with no
   word cap. Keep author names, affiliations, acknowledgements and self-identifying links
   out of the tex.
-- **Structure to come:** the tex is still organised by RQ1 to RQ6 and the scorecard. The
-  three research questions of `development/roadmap.md` replace them (milestone M5).
+- **Structure:** Results answer three research questions (RQ1 to RQ3); the older
+  task-by-task results sit in a Supporting Analyses section. The RQ tables are pasted from
+  generators (`tools/reanalysis/rq1_tex.py`, `rq23_tex.py`); never edit their numbers by
+  hand. Search `PLACEHOLDER` for what Omer still has to fill.
 - **What is left to do** is in `development/STATUS.md`. **Which value of a figure to quote**
   is in `development/NUMBERS.md`. Check both before editing a claim.
 
