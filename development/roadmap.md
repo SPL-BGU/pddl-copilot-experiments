@@ -173,7 +173,8 @@ Omer raises these; nothing here is planned work until he reports a decision.
 3. **The new direction of §9**, as a possible next project.
 4. **Venue matters:** which rule on LLM-written text applies (none is stated on the ICAPS
    2027 call page or in the author kit in the repo); the conference's rule for a program
-   chair who is a co-author (the call lists Shahaf Shperberg as a program chair); the
+   chair who is a co-author (the call lists Shahaf Shperberg as a program chair, and he is
+   a co-author of this paper: Omer, 2026-11-22; ask him which rule applies); the
    track; and how the paper is fitted to the venue's submission types.
 
 ## 9. Beyond this paper
