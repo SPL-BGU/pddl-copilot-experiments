@@ -145,3 +145,40 @@ for now. They can still change; a change means rerunning `rq1_metrics.py`, not n
   submission is under anonymous review.
 - **Parked drafts:** deleted (`MOVES.md`), together with every planned experiment and
   feature that does not serve the three questions.
+
+## 8. To discuss with the advisors
+
+Omer raises these; nothing here is planned work until he reports a decision.
+
+1. **Running the models on the larger problems** (the first future-work item of the paper).
+   It is the only open item tied to a metric the advisors named: problems solved as a
+   function of hardness. On our 100 problems the planner solves everything, so the hard
+   end is missing. Ground truth for 120 larger IPC 2023 problems is built
+   (`NUMBERS.md`, "D5b ground truth"). It needs new model runs, which the current
+   decision rules out. What is known about the planner's failures there (checked
+   2026-11-22 on the run records): every unsolved run is a timeout, none is a memory
+   limit or an error; 6 problems unsolved at 120 s are solved at 1800 s; 19 problems are
+   solved by no strategy so far (10 hard blocksworld, 8 hard rovers, 1 medium
+   blocksworld), and the 1800 s pass on the hard tier is not finished. Every plan found
+   is VAL-valid. That the 19 are solvable at all is assumed from the IPC generators and
+   has not been checked independently. The planner here is Fast Downward with three
+   simple search settings on a laptop, far weaker than the competition planners that
+   Corrêa et al. ran for 30 minutes each, so "the planner fails" in our data and in
+   theirs are not the same statement.
+2. **The future-work list of the paper** (the one placeholder left in `paper/main.tex`).
+3. **The new direction of §9**, as a possible next project.
+4. **Venue matters:** which rule on LLM-written text applies (none is stated on the ICAPS
+   2027 call page or in the author kit in the repo); the conference's rule for a program
+   chair who is a co-author (the call lists Shahaf Shperberg as a program chair); the
+   track; and how the paper is fitted to the venue's submission types.
+
+## 9. Beyond this paper
+
+A direction Omer named on 2026-11-22. It is **not for the current paper** and nothing of
+it is planned or built.
+
+- **Learning domains and action models with an LLM.** Give the model tools or scripts
+  for action-model learning, and compare what it learns against an action-model
+  learning algorithm on the same data ("simulating the learning against such an
+  algorithm"). The design is open: which learning algorithm, which tools the model gets,
+  and how a learned model is scored are all still to be decided by Omer and his advisors.

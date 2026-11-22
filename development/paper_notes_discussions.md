@@ -88,3 +88,19 @@
   the loss. The frontier APIs were not used: a window of 16K is a property of the
   open-weight serving setup, and the Claude runs have the output-budget probe.
 - **Title (Omer):** keep the working title for now.
+
+## 2026-11-22 (late night) — Planner failures checked; a new future direction; the advisor list
+
+- **Omer's question:** in Corrêa et al. the model succeeds where the planner fails, which
+  looks odd; did we validate the planner failures?
+- **Ours, checked on the run records of the 120 larger problems:** all 231 unsolved runs
+  ended in a timeout (no memory limit hit, peak 6.0 GiB under an 8 GiB cap; no error).
+  Six problems unsolved at 120 s are solved at 1800 s. Nineteen are solved by no strategy
+  so far, and the 1800 s pass on the hard tier is unfinished. Plans found: all VAL-valid.
+  Not checked: that the nineteen are solvable. **Theirs:** we never ran their benchmark
+  (it is not released), so we validated nothing about their planners' failures.
+- **New direction (Omer), not for the current paper:** learning domains and action models
+  with an LLM, by giving it action-model learning tools or scripts and comparing against
+  such an algorithm. Recorded in `roadmap.md` §9; nothing planned or built.
+- **To discuss with the advisors (Omer):** the larger-problems experiment, with the other
+  items of `roadmap.md` §8.
