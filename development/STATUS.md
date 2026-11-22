@@ -1,7 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-22, late night (PR #141 merged; a PR with the redrawn figures and
-the future-work list is open). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-22, late night (PRs #141 and #142 merged and on Overleaf). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -68,13 +67,12 @@ checked mechanically, not as content.
    "RQ3 pilot"). Decide whether the front matter carries that qualifier. A post hoc,
    layout-tolerant re-grade of the full rerun would give the qualified figure; it is a
    recommendation of the session, waiting for Omer's answer.
-1. **PR with the figures and the future-work list** (branch `paper/figures-futurework`),
-   waiting for Omer's merge. It holds: the five older figures redrawn without the retired
-   open-weight delivered bounds; the future-work list with four verified references on
-   action-model learning; the Methods sentence on required arguments corrected; a Methods
-   sentence giving the planner's 120-second limit (the plugin default; that no cluster job
-   overrode it is not checked); "only the main sweep ran with thinking on" narrowed to the
-   runs used for RQ2.
+1. **PR #142 is merged** (Omer, 2026-11-22): the five older figures redrawn without the
+   retired open-weight delivered bounds; the future-work list with four verified
+   references on action-model learning; the Methods sentence on required arguments
+   corrected; a Methods sentence giving the planner's 120-second limit (the plugin default;
+   that no cluster job overrode it is not checked); "only the main sweep ran with thinking
+   on" narrowed to the runs used for RQ2.
 2. **Left by the figure redraw:** "What the Tool Costs" says the tool raises tokens by
    about 4 to 6 times on the larger models. That holds for the steered arm; the redrawn
    figure also shows the plain arm, where one cell is 2.6 times (Gemma on validate_plan,
@@ -143,7 +141,8 @@ from the checkpoint zips (`checkpoints/delivered-rerun/README.md`, "Restore");
 
 Merged 2026-11-22: #130, #133, #135, #136, #138 (each checked on the laptop data first),
 #139 (the paper rewrite), #140 (the wording and consistency pass) and #141 (run dates,
-the 0.8B correction, the context-window pilot, the advisor list). Closed: #132, #137 (branches kept). **Open, on hold:** #134 (release
+the 0.8B correction, the context-window pilot, the advisor list) and #142 (figures
+redrawn, future-work list, two Methods corrections). Closed: #132, #137 (branches kept). **Open, on hold:** #134 (release
 files: licences, `CITATION.cff`), while a submission is under anonymous review. Release
 terms are decided: code MIT, data CC BY 4.0, BGN Technologies as owner (confirm its exact
 legal name), Omer as author, lab SPL-BGU.

@@ -15,7 +15,9 @@ What was decided:
 
 - **Venue: ICAPS 2027.** No track is fixed, on purpose: planning around one track
   would pull the work away from the other if the choice changes (Omer, 2026-11-22).
-  The paper is written as the best full paper it can be.
+  The paper is written as the best full paper it can be. Omer, later the same day: aim
+  for the fuller paper; a shorter submission type can be cut from it, unless finishing one
+  gets in the way of the other. A separate thesis document is not a concern for now.
 - **Paper writing: the venue's format only** (the AAAI-27 author kit, already in use).
   No word cap while writing.
 - **The paper is the thesis.** Omer's thesis is composed of his papers, so there is no
@@ -134,6 +136,8 @@ for now. They can still change; a change means rerunning `rq1_metrics.py`, not n
 | f | **RQ2 and RQ3, the headline prompt.** The plain prompt (tools offered, no push to use them); the steered and neutral prompts as extra rows | the steered prompt as the headline |
 
 > ANSWER: **ANSWERED 2026-11-22 (Omer): keep for now.**
+> Later the same day (Omer): (a) is excellent, (d) is nice; (b), (e) and (f) needed an
+> explanation, given in chat. No definition is changed.
 
 ## 7. Answered (2026-11-22, Omer)
 

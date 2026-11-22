@@ -151,3 +151,12 @@
 - **Also corrected:** the Methods sentence that said the schema enforces required
   arguments; a Methods sentence now gives the planner's 120-second limit.
 - **Not decided:** the layout-tolerant re-grade of RQ3 simulate on the full rerun.
+
+## 2026-11-22 (late night) — PR #142 merged; Omer's read of the roadmap
+
+- **Decided (Omer):** merge PR #142 (merged as `c4ab052`).
+- **Aim (Omer):** do the best research we can for ICAPS. The track is not a concern: a
+  paper written for the fuller track has what a shorter submission needs, unless
+  finishing one gets in the way of the other. A thesis document is not a concern for now.
+- **RQ1 metric definitions (roadmap §6):** (a) "excellent", (d) "nice"; (b), (e) and (f)
+  explained to him in chat. Nothing changed.
