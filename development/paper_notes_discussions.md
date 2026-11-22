@@ -181,3 +181,13 @@
   language-model readers with a third reading, not by people (paper and `NUMBERS.md` note
   corrected); 99 of the lost answers sit on the six problems whose prompt plan differs
   from the answer key's (now said in the paper).
+
+## 2026-11-22 (late night) — The six mismatched problems stay out of the RQ3 text
+
+- **Checked:** the six problems whose prompt plan differs from the answer key's hold 99 of
+  the lost simulate answers. All 99 are empty answers, so the mismatch changed no grade;
+  without them the lost share moves by at most 2 points (`NUMBERS.md`, re-grade block,
+  "Sensitivity").
+- **Decided (Omer):** do not mention this in the RQ3 results. It is not relevant enough to
+  the result and would confuse; simplicity comes first. The one Methods sentence that says
+  RQ1 leaves the six problems out stays.

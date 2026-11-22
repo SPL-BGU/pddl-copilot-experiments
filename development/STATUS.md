@@ -68,8 +68,9 @@ checked mechanically, not as content.
    paragraph, and the qualifier in the abstract, introduction and discussion. Not done:
    the same second grading for the Claude runs. The six problems whose prompt plan differs
    from the answer key's hold 99 of the lost answers; all 99 are empty answers, and without
-   them the shares are 68 to 91% (registered) and 64 to 79% (line reader), filed and in the
-   paper.
+   them the shares are 68 to 91% (registered) and 64 to 79% (line reader), filed in
+   `NUMBERS.md`. Omer, 2026-11-22: keep this out of the RQ3 text for simplicity, since
+   it does not change the result; the Methods sentence on the six problems stays.
    **Wording corrected:** the October reading of the undecided answers was made by two
    language-model readers with a third reading, not by people; the paper now says so.
 1. **PR #142 is merged** (Omer, 2026-11-22): the five older figures redrawn without the
