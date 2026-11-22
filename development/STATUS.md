@@ -98,8 +98,10 @@ checked mechanically, not as content.
    - The arXiv number of the group's earlier paper inside the verbatim solve prompt in
      the appendix: the session recommends keeping it, because the paper already cites
      that work by name in the third person and the number adds nothing. Omer's call.
-   - Any code or data sent with the submission must be an anonymous copy (PR #134 is on
-     hold for this). Check the PDF's metadata on the final file.
+   - **Left open as premature (Omer, 2026-11-22):** attaching the harness or data, and a
+     full anonymity sweep of the paper. Neither is worked on until the submission is
+     near. When it is: anything attached must be an anonymous copy (PR #134 is on hold
+     for this), and the final PDF's metadata is checked.
 
 **Approved as written (Omer, 2026-11-22):** the removal of the earlier thinking-on rerun's
 bounds and table row; "the plan in the final answer does not validate" for the Claude
