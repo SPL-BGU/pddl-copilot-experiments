@@ -174,9 +174,10 @@ decide on the larger problems. Keep D5a parked unless the main track is chosen.
 > ANSWER:
 
 **4. The open PRs.**
-**Done 2026-11-22:** #130 and #136 (grader corrections, used by RQ1 and RQ3) are merged,
-after their scripts reproduced on the laptop data. *(rec)* for the rest: merge #133
-(checkpoints), #135 (a tex comment), #138 (the larger problems' ground truth, data only). Close #132
+**Done 2026-11-22:** #130, #136 (grader corrections, used by RQ1 and RQ3), #133
+(checkpoints), #135 (a tex comment) and #138 (the larger problems' ground truth, data
+only) are merged, each after its scripts reproduced on the laptop data. *(rec)* for the
+rest: close #132
 (tracking) and #137 (PlanBench tools). Keep #134 (release files) on hold.
 
 > ANSWER:

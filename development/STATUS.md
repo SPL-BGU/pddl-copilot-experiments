@@ -125,19 +125,28 @@ come from the checkpoint zips (`checkpoints/delivered-rerun/README.md`, "Restore
 
 ## Open PRs (2026-11-22)
 
-**Merged 2026-11-22** (Omer: merge if correct; each was checked first by running its
-tests and scripts on the laptop data, which reproduced the committed outputs, with the
-frozen package hash unchanged): **#136** (ISS-028 and ISS-029 post hoc splits) and
-**#130** (ISS-027 scope and Gemma thinking; taken out of draft, its conflict with `main`
-in `tests/verify.sh` and `numbers_fill.py` resolved by keeping both sides).
+**Merged 2026-11-22** (Omer: merge the ones that are correct). Each was checked first:
+its tests pass, its scripts rerun on the laptop data give the committed outputs, and the
+frozen package hash is unchanged. Conflicts with `main` were additive (lists and
+`NUMBERS.md` blocks where both sides added lines) and were resolved by keeping both.
+
+- **#136** ISS-028 and ISS-029 post hoc splits, and **#130** ISS-027 scope and Gemma
+  thinking (taken out of draft).
+- **#133** checkpoints follow-up. Its refresh script was run in check mode only; the
+  write step is still Omer's to run on the laptop
+  (`python3 tools/checkpoints/refresh_frontier_overlays.py --write --force`). Until then
+  `checkpoints/e2e-overlay/derived_reports.zip` holds the 07-17 table (456 rows), not
+  the 460-row one.
+- **#135** a comment in `main.tex` and the old deck PDF removed. The Overleaf sync it
+  triggered succeeded.
+- **#138** ground truth for 120 larger IPC 2023 problems. The 1800 s pass on the hard
+  tier is still partly done (17 and 11 runs pending in the two 1800 s rows of
+  `NUMBERS.md`), and no model has run on these problems.
 
 Still open. Recommendations under the new plan; Omer decides (`roadmap.md` §7, decision 4).
 
 | PR | what | recommendation |
 |---|---|---|
-| #138 | Ground truth for 120 larger IPC 2023 problems (planner at 120 s and 1800 s, VAL on every plan) | merge as data; the 1800 s pass on the hard tier is partly done (resumable command in the PR). Whether models run on them: decision 3 |
-| #133 | Checkpoints follow-up | merge; then run `tools/checkpoints/refresh_frontier_overlays.py` on the laptop |
-| #135 | A tex comment pointing at `NUMBERS.md`; an old deck PDF removed | merge (the Overleaf Action pulls first) |
 | #134 | Release files: licences, `CITATION.cff`, domain sources | hold while a submission is under anonymous review (the files name Omer and BGU) |
 | #132 | Tracking file `items.yaml` seeded with the earlier plan | close |
 | #137 | PlanBench tool prompts for the open models | close, or leave open if PlanBench with tools comes back |
