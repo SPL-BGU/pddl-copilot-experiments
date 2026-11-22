@@ -89,16 +89,17 @@ checked mechanically, not as content.
    restate the tool's output at all; the roster of two open-weight families). The appendix
    still describes an earlier full-storage thinking-on rerun, so a reader may ask why RQ1
    and RQ3 are thinking-off only.
-4. **Before any anonymous submission** (checked 2026-11-22; the paper is already in the
-   kit's anonymous mode, with no author names, affiliation, acknowledgement or link):
-   - set `\addcommentsfalse` (line 66). No co-author note is in the text today, but any
-     note added on Overleaf would print with the co-author's name;
-   - decide on the arXiv number of the group's earlier paper inside the verbatim solve
-     system prompt in the appendix (keep, or mask in the printed prompt with a footnote);
-   - "released harness" and "released prompt bank" are named with no link: an anonymous
-     copy of the code is needed if the venue asks for one (PR #134 is on hold for this);
-   - check the PDF's metadata, and keep the earlier paper and Juba, Le and Stern cited in
-     the third person.
+4. **Anonymity** (the call, read 2026-11-22: submissions must be anonymous for
+   double-blind review or they are desk-rejected; own prior work is cited in the third
+   person; links and supplementary material must be anonymized). The paper is already in
+   the kit's anonymous mode, with no author names, affiliation, acknowledgement or link.
+   - The comment switch stays on (Omer, 2026-11-22). No co-author note is in the text
+     today; if one appears it is cleared before submission, and everyone double-checks.
+   - The arXiv number of the group's earlier paper inside the verbatim solve prompt in
+     the appendix: the session recommends keeping it, because the paper already cites
+     that work by name in the third person and the number adds nothing. Omer's call.
+   - Any code or data sent with the submission must be an anonymous copy (PR #134 is on
+     hold for this). Check the PDF's metadata on the final file.
 
 **Approved as written (Omer, 2026-11-22):** the removal of the earlier thinking-on rerun's
 bounds and table row; "the plan in the final answer does not validate" for the Claude
