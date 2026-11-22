@@ -31,3 +31,25 @@
 - **Cleanup:** four drafts whose text is in the paper moved to `reference/`; the C4
   transcripts draft and the journal memo deleted (`MOVES.md`). `STATUS.md` is rewritten as
   a short list of next steps.
+
+## 2026-11-22 (night) — Second agent's paper pass: PR #140, checked, waiting for Omer
+
+- **Instruction (Omer):** send another agent to do the Supporting Analyses pass and the
+  consistency read, and have it remove the usual machine-writing habits so the text is
+  easier for him to refine.
+- **Done on PR #140** (three commits by the agent, one by the main session): the retired
+  open-weight delivered bounds and their verdicts are out of the Supporting Analyses,
+  Methods, Limitations and the appendix; retired vocabulary removed (robust floor,
+  realizable benefit, sole-source, mechanism layer, claim-adverse, invocation rate);
+  section references that printed empty are replaced by section names; prose pass over
+  the whole paper (no em-dashes, colon reveals, rhetorical questions, emphasis words).
+- **Checked by the main session:** clean compile; generated table rows identical to the
+  generators; the only numbers new to the file trace to `NUMBERS.md`; placeholders intact.
+  One sentence of the main session's own was corrected: the prompt-only answer format
+  holds for the open-weight runs, while the Claude solve runs used the provider's
+  structured output.
+- **Not checked:** the 21 dropped or altered claims as content (listed in the PR body with
+  old and new text); figures that still draw retired bounds; float order.
+- **Outside facts found the same evening:** no rule on LLM-written text on the ICAPS 2027
+  call page or in the AAAI-27 kit in the repo (AAAI has one for its own conferences);
+  the call lists Shahaf Shperberg (BGU) as a program chair.
