@@ -2179,6 +2179,135 @@ only, gitignored; harness branch `harness/d1a-new-families`). How to read the bl
 | simulate | trajectory_mismatch -> format_parse_fail | 1 |
 <!-- END GENERATED: JSON-CONSTRAINT-PILOT -->
 
+## RQ1 solve and simulate — layout-tolerant re-grade of both arms (added 2026-11-23; post hoc, exploratory; in no tex yet)
+
+Does the frozen grader read the plan the model delivered? On solve it reads JSON only
+when the whole answer is the JSON object, and otherwise collects every action-shaped
+line of the answer. Most unaided solve answers of the rerun reason first and then give
+the plan as JSON in a code block, the layout the unaided system prompt asks for when it
+points to a schema the model never received. `tools/reanalysis/rq1_layout_regrade.py`
+(rerun: `.venv/bin/python -m tools.reanalysis.rq1_layout_regrade --numbers`) keeps every
+frozen grade and adds one reading beside it, with the same reader on the unaided arm and
+on both tool arms. A second agent reviewed the code and read answers in full before
+filing (model reader, not a person; its findings are in the limits below). How to read
+the block:
+
+- **The frozen figure stays the record.** Every figure in the "layout-tolerant" columns
+  is post hoc and is quoted only beside its frozen figure.
+- **Unaided solve about doubles for two models.** Frozen 21.3 / 24.3 / 25.3% (Gemma-26B /
+  Qwen3.5-9B / Qwen3.6-35B); with the plan of the last code block read, 48.0 / 38.3 /
+  48.0%. The tool arms move by 0.0 to 3.3 points.
+- **The tools still win on solve, by less.** Tools (plain prompt) minus no tools, paired:
+  frozen +71.0 / +64.3 / +51.7 points; layout-tolerant +44.3 / +53.7 / +30.3. Every
+  interval excludes zero under both readings.
+- **Simulate.** The line reader of the RQ3 re-grade raises Gemma-26B in every arm by 10
+  to 12 points (unaided 24.0 to 36.3%; plain tool arm 8.3 to 20.0%), so its contrast does
+  not move (-15.7 frozen, -16.3 layout-tolerant). The two Qwen contrasts stay within 3
+  points of the frozen ones, and each changes sides of zero at the edge of its interval:
+  Qwen3.5-9B +8.0 [-0.3, +17.0] to +11.0 [+2.7, +20.3]; Qwen3.6-35B +10.7 [+2.0, +19.0]
+  to +8.0 [-0.3, +16.3].
+- **Why answers turn right.** On unaided solve the frozen grader read no plan at all in
+  95 of the 201 answers that turn right, and in the other 106 it graded action-shaped
+  lines collected from the reasoning. In the tool arms the 20 answers that turn right
+  were all read as lines with something added after the plan.
+- **Case folded** is the same reading with every deciding plan sent in lower case, which
+  is what a case-insensitive validator returns (ISS-027): unaided solve 48.7 / 40.0 /
+  51.7%.
+- **Do NOT quote** a layout-tolerant figure without its frozen figure; "the unaided
+  models solve 38 to 48%" as the paper's baseline (it is a second reading, added after
+  the data were seen); "the wrong system prompt lowered the baseline by N points" (the
+  re-grade measures what the grader did not read in the answers we have; what the models
+  would have written under a corrected prompt is unmeasured); these figures for the main
+  sweep (500-character answers) or for the Claude runs (not re-read here; their unaided
+  solve answers were requested through the provider's structured-output setting).
+- **The layout-tolerant solve figure is a lower bound.** The reader rescues a plan only
+  when it is in a code block. A final plan written as a list in prose, below earlier
+  action-shaped lines, is still graded on all those lines together. The review's own
+  count (a heuristic, not filed): at least 11 more finished unaided answers end with
+  such a list that validates, 9 of them Qwen3.6-35B (about 3 points for that model).
+- **The 11 unaided answers that turn wrong** (frozen right, block wrong; 1 / 5 / 5),
+  read in full by the review: in 6 the block is the same plan as the prose list, written
+  with capitals, and passes when case is folded; in 4 the model's final JSON differs
+  from a correct list it wrote just above, so the frozen grade had credited a plan the
+  model did not deliver in the end; 1 is debatable (Gemma-26B, pogo_stick p02, wording
+  12: the answer corrects a step in prose and then repeats the uncorrected JSON).
+- **What the review's reading found.** Of 41 unaided answers read in full (all 11 above
+  and 30 sampled from the 201 that turn right, 10 per model), the last block is the
+  model's final plan in 40; the one debatable case is the one above. All 20 tool-arm
+  answers that turn right have the final plan in the block; in 15 the frozen reader had
+  added goal-recap bullets to the plan (all Qwen3.5-9B).
+- **Case.** A block of action lines is lower-cased, as the frozen line readers do. A
+  JSON block keeps the model's capitals, as the frozen JSON reader does. So the main
+  column still charges JSON answers for capitals under validator 0.1.5; only the "case
+  folded" column treats the two alike.
+- **Limits.** One rule, fixed after the layouts were seen. A fence left open is not a
+  block, so in an answer cut at the output cap the last closed block is read: 23
+  unaided answers are read this way and 2 of them turn right (Gemma-26B sailing p01
+  wording 11; Qwen3.5-9B depots p05 wording 11), each a complete plan followed by an
+  unfinished re-check. Thinking off, three models, the delivered rerun only.
+- **What it touches in the paper (Omer's decision; nothing is changed):** the unaided
+  solve range "21 to 29%" in the abstract, the introduction, RQ1, the discussion, the
+  related-work paragraph and the conclusion, which for the open models is the frozen
+  grade.
+
+<!-- BEGIN GENERATED: RQ1-LAYOUT-REGRADE (do not edit by hand; rerun the generator) -->
+*Generated by `tools/reanalysis/rq1_layout_regrade.py`. **Post hoc and exploratory; the frozen readout is the record and nothing here replaces it.** Delivered rerun, three open models, thinking off, solve and simulate, all 100 problems, 300 trials per cell. "Frozen" = the frozen delivered grade, recomputed with the frozen functions (it equals the filed readout or the script halts). "Layout-tolerant" = on solve, the plan in the last code block of the answer when that block holds a plan (a JSON list of actions, an object with a `plan` list, or action lines only) replaces the frozen reading, whichever way that moves the grade; on simulate, a trace written one JSON object per line also counts when it equals the answer key. The same reader on every arm. "Difference" = layout-tolerant minus frozen on the same trials, in points. "Case folded" = layout-tolerant with every deciding plan sent to the validator in lower case (ISS-027). Intervals are 95% domain-cluster bootstrap. Validator: pddl-pyvalidator 0.1.5 in process through the plugin server at sibling commit `e428f17`; it returned the stored verdict for all 740 plans of the frozen grade before any new plan was read; answers whose block plan had no stored verdict: 331 (312 distinct plans). "Stopped at the output cap" counts, among the answers the tolerant reader decides, those cut at the cap after their last closed block, and how many of them turn right.*
+
+#### RQ1 layout re-grade: delivered right, frozen beside the layout-tolerant reading
+
+| model | task | arm | trials | frozen (record) | layout-tolerant | difference (points) | wrong to right / right to wrong | case folded | answers the tolerant reader decides | of those, stopped at the output cap (turn right) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Gemma-26B | solve | no tools | 300 | 64 · 21.3 [13.0, 30.3] | 144 · 48.0 [32.3, 63.3] | +26.7 [+17.0, +36.7] | 81 / 1 | 146 · 48.7 [33.3, 63.7] | JSON plan in the last block 260 | 10 (1) |
+| Gemma-26B | solve | tools, plain | 300 | 277 · 92.3 [87.3, 97.0] | 277 · 92.3 [87.3, 97.0] | +0.0 [+0.0, +0.0] | 0 / 0 | 277 · 92.3 [87.3, 97.0] | action lines in the last block 37 | 0 (0) |
+| Gemma-26B | solve | tools, steered | 300 | 286 · 95.3 [91.3, 98.7] | 286 · 95.3 [91.3, 98.7] | +0.0 [+0.0, +0.0] | 0 / 0 | 286 · 95.3 [91.3, 98.7] | action lines in the last block 85 | 0 (0) |
+| Gemma-26B | simulate | no tools | 300 | 72 · 24.0 [13.7, 34.7] | 109 · 36.3 [21.3, 52.0] | +12.3 [+7.3, +17.3] | 37 / 0 | – | one JSON object per line 37 | 0 (0) |
+| Gemma-26B | simulate | tools, plain | 300 | 25 · 8.3 [4.0, 13.3] | 60 · 20.0 [11.3, 29.7] | +11.7 [+7.0, +16.7] | 35 / 0 | – | one JSON object per line 35 | 0 (0) |
+| Gemma-26B | simulate | tools, steered | 300 | 25 · 8.3 [4.3, 13.0] | 56 · 18.7 [9.0, 30.0] | +10.3 [+4.7, +17.0] | 31 / 0 | – | one JSON object per line 31 | 0 (0) |
+| Qwen3.5-9B | solve | no tools | 300 | 73 · 24.3 [16.3, 32.3] | 115 · 38.3 [26.3, 50.3] | +14.0 [+8.7, +19.0] | 47 / 5 | 120 · 40.0 [28.7, 51.3] | JSON plan in the last block 198; action lines in the last block 27 | 13 (1) |
+| Qwen3.5-9B | solve | tools, plain | 300 | 266 · 88.7 [82.0, 94.7] | 276 · 92.0 [85.3, 97.7] | +3.3 [+0.7, +6.3] | 10 / 0 | 276 · 92.0 [85.3, 97.7] | action lines in the last block 235 | 0 (0) |
+| Qwen3.5-9B | solve | tools, steered | 300 | 267 · 89.0 [82.7, 94.3] | 272 · 90.7 [84.3, 96.3] | +1.7 [+0.0, +3.7] | 5 / 0 | 272 · 90.7 [84.3, 96.3] | action lines in the last block 216 | 0 (0) |
+| Qwen3.5-9B | simulate | no tools | 300 | 28 · 9.3 [4.0, 16.0] | 28 · 9.3 [4.0, 16.0] | +0.0 [+0.0, +0.0] | 0 / 0 | – | – | 0 (0) |
+| Qwen3.5-9B | simulate | tools, plain | 300 | 52 · 17.3 [8.0, 27.7] | 61 · 20.3 [10.3, 31.3] | +3.0 [+1.3, +5.0] | 9 / 0 | – | one JSON object per line 9 | 0 (0) |
+| Qwen3.5-9B | simulate | tools, steered | 300 | 49 · 16.3 [8.0, 26.0] | 51 · 17.0 [8.7, 26.7] | +0.7 [+0.0, +1.7] | 2 / 0 | – | one JSON object per line 2 | 0 (0) |
+| Qwen3.6-35B | solve | no tools | 300 | 76 · 25.3 [16.3, 35.7] | 144 · 48.0 [36.3, 60.0] | +22.7 [+14.0, +31.0] | 73 / 5 | 155 · 51.7 [41.0, 62.3] | JSON plan in the last block 204; action lines in the last block 14 | 0 (0) |
+| Qwen3.6-35B | solve | tools, plain | 300 | 231 · 77.0 [69.7, 83.7] | 235 · 78.3 [71.3, 84.7] | +1.3 [+0.3, +2.7] | 4 / 0 | 235 · 78.3 [71.3, 84.7] | action lines in the last block 223 | 3 (0) |
+| Qwen3.6-35B | solve | tools, steered | 300 | 262 · 87.3 [81.7, 92.3] | 263 · 87.7 [82.0, 92.7] | +0.3 [+0.0, +1.0] | 1 / 0 | 263 · 87.7 [82.0, 92.7] | JSON plan in the last block 1; action lines in the last block 223 | 2 (0) |
+| Qwen3.6-35B | simulate | no tools | 300 | 53 · 17.7 [10.3, 25.7] | 64 · 21.3 [12.3, 32.0] | +3.7 [+1.0, +7.3] | 11 / 0 | – | one JSON object per line 11 | 0 (0) |
+| Qwen3.6-35B | simulate | tools, plain | 300 | 85 · 28.3 [16.3, 41.3] | 88 · 29.3 [17.3, 42.3] | +1.0 [+0.0, +2.0] | 3 / 0 | – | one JSON object per line 3 | 0 (0) |
+| Qwen3.6-35B | simulate | tools, steered | 300 | 77 · 25.7 [15.0, 37.0] | 98 · 32.7 [20.0, 46.0] | +7.0 [+3.7, +10.3] | 21 / 0 | – | one JSON object per line 21 | 0 (0) |
+
+#### RQ1 layout re-grade: tools (plain prompt) minus no tools, paired on the trial key (the readout's E2)
+
+| model | task | pairs | frozen (equals the filed E2) | layout-tolerant | layout-tolerant, case folded |
+|---|---|---|---|---|---|
+| Gemma-26B | solve | 300 | +71.0 [+62.0, +79.7] | +44.3 [+30.0, +58.7] | +43.7 [+30.0, +57.7] |
+| Gemma-26B | simulate | 300 | -15.7 [-24.7, -6.7] | -16.3 [-28.7, -4.3] | – |
+| Qwen3.5-9B | solve | 300 | +64.3 [+54.0, +74.7] | +53.7 [+39.0, +68.7] | +52.0 [+37.7, +66.3] |
+| Qwen3.5-9B | simulate | 300 | +8.0 [-0.3, +17.0] | +11.0 [+2.7, +20.3] | – |
+| Qwen3.6-35B | solve | 300 | +51.7 [+42.3, +60.0] | +30.3 [+19.3, +41.3] | +26.7 [+17.0, +36.3] |
+| Qwen3.6-35B | simulate | 300 | +10.7 [+2.0, +19.0] | +8.0 [-0.3, +16.3] | – |
+
+#### RQ1 layout re-grade: the frozen grade of the answers the tolerant reading turns right
+
+| model | task | arm | turned right | their frozen reason (how the frozen grader read the plan) |
+|---|---|---|---|---|
+| Gemma-26B | solve | no tools | 81 | no_plan_extracted (no plan read) 46; plan_invalid (tolerant_lines) 32; plan_invalid (strict_lines) 3 |
+| Gemma-26B | simulate | no tools | 37 | format_parse_fail 37 |
+| Gemma-26B | simulate | tools, plain | 35 | format_parse_fail 35 |
+| Gemma-26B | simulate | tools, steered | 31 | format_parse_fail 31 |
+| Qwen3.5-9B | solve | no tools | 47 | no_plan_extracted (no plan read) 24; plan_invalid (tolerant_lines) 22; plan_invalid (strict_lines) 1 |
+| Qwen3.5-9B | solve | tools, plain | 10 | plan_invalid (strict_lines) 10 |
+| Qwen3.5-9B | solve | tools, steered | 5 | plan_invalid (strict_lines) 5 |
+| Qwen3.5-9B | simulate | tools, plain | 9 | format_parse_fail 9 |
+| Qwen3.5-9B | simulate | tools, steered | 2 | format_parse_fail 2 |
+| Qwen3.6-35B | solve | no tools | 73 | plan_invalid (tolerant_lines) 47; no_plan_extracted (no plan read) 25; plan_invalid (strict_lines) 1 |
+| Qwen3.6-35B | solve | tools, plain | 4 | plan_invalid (strict_lines) 4 |
+| Qwen3.6-35B | solve | tools, steered | 1 | plan_invalid (strict_lines) 1 |
+| Qwen3.6-35B | simulate | no tools | 11 | format_parse_fail 11 |
+| Qwen3.6-35B | simulate | tools, plain | 3 | format_parse_fail 3 |
+| Qwen3.6-35B | simulate | tools, steered | 21 | format_parse_fail 21 |
+<!-- END GENERATED: RQ1-LAYOUT-REGRADE -->
+
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29; IN TEX 2026-09-12/13, `paper/aaai27` `6027d68` + `7c0502a`, pushed + Overleaf `2ab9bb5`)
 
 Provenance for all rows: `reference/ntster_h4_final_readout_20260829.md`.
