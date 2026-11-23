@@ -514,6 +514,15 @@ for MODEL in $MODELS; do
             # records its system-text setting here; no other cell gets either.
             SETTINGS_EXTRA=()
             if [ "${SYSTEM_AUDIT:-0}" = "1" ]; then
+                # A control cell starts in its own folder. Rows with no audit
+                # log beside them were written by an earlier corpus (the
+                # registered cell keeps the plain no-tools token, so only the
+                # run tag separates it). A resubmitted control cell has both.
+                if [ -s "$OUT_DIR/trials.jsonl" ] && [ ! -e "$OUT_DIR/system_prompt_audit.jsonl" ]; then
+                    echo "Error: $OUT_DIR holds trials but no system_prompt_audit.jsonl; a --no-tools-system cell must not run in an earlier corpus's folder (use a new --run-tag)"
+                    OVERALL_RC=1
+                    continue
+                fi
                 mkdir -p "$OUT_DIR"
                 COND_ENV+=(PDDL_SYSTEM_AUDIT_LOG="$OUT_DIR/system_prompt_audit.jsonl")
                 _SYS_MODE="registered"

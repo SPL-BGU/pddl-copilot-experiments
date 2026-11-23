@@ -431,11 +431,33 @@ def test_no_tools_system(r: TestResults) -> None:
     r.check("sbatch names the new cells in the job-name case",
             'no-tools-syspointer-off) _CTAG="notools-syspointer-off" ;;' in text
             and 'no-tools-sysformat)     _CTAG="notools-sysformat" ;;' in text)
-    r.check("sbatch sets the audit log only under SYSTEM_AUDIT=1",
-            re.search(r'if \[ "\$\{SYSTEM_AUDIT:-0\}" = "1" \]; then\s*\n'
+    block = re.search(r'if \[ "\$\{SYSTEM_AUDIT:-0\}" = "1" \]; then\s*\n'
+                      r'(?:\s*#[^\n]*\n)*'
+                      r'\s*(if \[ -s "\$OUT_DIR/trials.jsonl" \] && '
+                      r'\[ ! -e "\$OUT_DIR/system_prompt_audit.jsonl" \]); then\s*\n'
+                      r'\s*echo "Error:[^\n]*\n'
+                      r'\s*OVERALL_RC=1\s*\n\s*continue\s*\n\s*fi\s*\n'
                       r'\s*mkdir -p "\$OUT_DIR"\s*\n'
                       r'\s*COND_ENV\+=\(PDDL_SYSTEM_AUDIT_LOG="\$OUT_DIR/'
-                      r'system_prompt_audit.jsonl"\)', text) is not None)
+                      r'system_prompt_audit.jsonl"\)', text)
+    r.check("sbatch sets the audit log only under SYSTEM_AUDIT=1, after the folder guard",
+            block is not None)
+    # The guard itself, run on three folder states: rows of an earlier corpus
+    # (refused), a resubmitted control cell (allowed), a fresh folder (allowed).
+    if block is not None:
+        with tempfile.TemporaryDirectory() as td:
+            for name, files, refused in (
+                    ("earlier", {"trials.jsonl": "{}\n"}, True),
+                    ("resubmit", {"trials.jsonl": "{}\n", "system_prompt_audit.jsonl": "{}\n"}, False),
+                    ("empty-trials", {"trials.jsonl": ""}, False),
+                    ("fresh", {}, False)):
+                d = Path(td) / name
+                d.mkdir()
+                for fn, body in files.items():
+                    (d / fn).write_text(body)
+                rc = subprocess.run(["bash", "-c", f'{block.group(1)}; then exit 7; fi'],
+                                    env={**os.environ, "OUT_DIR": str(d)}).returncode
+                r.check_eq(f"folder guard: {name}", rc == 7, refused)
     r.check("the audit log is set after OUT_DIR is computed",
             text.index('OUT_DIR="${EXPT_ROOT}/results/slurm_vllm_')
             < text.index("COND_ENV+=(PDDL_SYSTEM_AUDIT_LOG="))
