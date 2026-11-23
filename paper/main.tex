@@ -2522,11 +2522,9 @@ $65{,}874$ such responses ($1.92\%$ of the $12{,}176$ stored in full). The
 \emph{solve} and \emph{simulate} prompts thus pointed the model to a schema
 ``provided by the format constraint'' that it never received. The unaided results on
 those two tasks were obtained under a prompt-level format instruction alone. What a
-working constraint would have produced is measured only in a pilot on one model
-(Technical Appendix, Table~\ref{tab:json-pilot}). There the constraint took effect for
-Qwen3.5-9B, and the unaided rate fell on \emph{solve} (from $25.0\%$ to $5.0\%$) and on
-\emph{validate\_plan} (from $83.3\%$ to $57.5\%$). On the other three tasks the
-interval of the difference includes zero. For the other models it is unmeasured.
+working constraint would have produced is measured only in a pilot on one model, which
+the Technical Appendix reports (Table~\ref{tab:json-pilot}). For the other models it is
+unmeasured.
 
 The largest constraint that we imposed on ourselves is storage. The main sweep
 stored final answers as $500$-character snapshots, a decision made before the
