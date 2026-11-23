@@ -377,3 +377,40 @@
   texts (solve / simulate): O `dd835ea2…` / `dfd6bead…`, A `1cf4b9b6…` / `c99db112…`,
   B `15673b12…` / `79cb3435…`; the full digests are in `pddl_eval/control_prompts.py`.
   Nothing was run on a model and the cluster was not contacted.
+
+## 2026-11-23 (evening) — The control: harness merged, cell B reworded, analysis frozen
+
+- **PR #147 merged (Omer: "consider it as my approval").** An independent review of the
+  diff found no blocker. One gap fixed first: the registered cell keeps the plain
+  `no-tools` folder token, so a control cell now refuses a folder that holds trials but
+  no audit log.
+- **Found by the freeze review of the analysis: cell B's first wording could go unread.**
+  "End your response with the plan alone, one action per line" invites reasoning that
+  lists steps and then a plan with no code block. The frozen solve reader collects every
+  action-shaped line, so it grades reasoning and plan together; the second reading only
+  reads code blocks. On simulate neither reader reads an object given after prose
+  without a code block (checked on 25 stored Part C traces that are right as a
+  whole-JSON answer: 25 of 25 still read when fenced after prose, 0 of 25 unfenced).
+- **Decided (Omer): change cell B to ask for the final answer in a fenced code block.**
+  PR #148, merged on his word. The first wording was never run. New sha256: solve
+  `3dbc1baf…`, simulate `7ccf5d9d…` (full digests in the registration).
+- **Registration written and the analysis frozen** before any row of the control
+  exists: `reference/control_prompt_fix_prereg.md`, package hash `825dab63…` at
+  `3b355c3`. Gates: typed loader, constants as raised checks, clause map, synthetic
+  fixture (441 checks), independent review with a verification pass.
+- **Registered beyond the plan (session's additions, told to Omer in chat):** a fourth
+  contrast, tools (plain wording, Part A of the rerun) minus cell B, because the paper's
+  RQ1 comparison will use the reported baseline and crosses two runs; Holm-adjusted
+  sign-flip p-values beside every contrast, with the readings on the unadjusted 95%
+  interval as in the rerun; a count of unread final answers per cell, with a tripwire
+  on cell B at 5%.
+- **Known in advance and written into the registration:** on solve the frozen grade can
+  stay low in every cell for the grader's own reason, so the second reading is the one
+  that follows the answer the model gave.
+- **Open, Omer's decision (to be fixed before the full run is submitted):** which
+  figure of cell B the text quotes. Written as the frozen grade, with both figures
+  where they differ by more than 5 points. The session's recommendation: the second
+  reading on solve and simulate, for the unaided arm and for the tool arm in the same
+  comparison, with the frozen grade in the appendix. It gives one baseline and leans
+  toward the unaided arm; it changes the reading RQ1 quotes on these two tasks.
+- **Nothing was run on a model and the cluster was not contacted.**

@@ -71,6 +71,7 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
 
 **Study 2: the delivered rerun (pre-registered)**
 
+- `control_prompt_fix_prereg.md` (the corrected-prompt control: registration and freeze record, 2026-11-23) · `control_prompt_fix_traceability.md` (its clause-to-code map) ·
 - `delivered_rerun_prereg.md` (design of record and freeze record) ·
   `delivered_rerun_traceability.md` (prereg clause to code, freeze gate 3) ·
   `delivered_rerun_readout.md` / `.json` (frozen output; its E2 caveat about a JSON

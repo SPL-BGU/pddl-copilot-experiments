@@ -15,10 +15,13 @@ existed.
 
 **Status of this document.** Sections 1 to 8 are the registration. Section 9 is the
 freeze record and section 10 the smoke record; both are filled in as the steps happen.
-Section 11 lists deviations. Two points of sections 4 and 6 are marked **[Omer]**: they
-are choices the plan left open, written here as the session recommends, and his to
-change before the freeze. After the freeze nothing in sections 1 to 8 changes without an
-entry in section 11.
+Section 11 lists deviations. The analysis code was frozen on 2026-11-23 (section 9).
+Two points of sections 4 and 6 are marked **[Omer]**: they are choices the plan left
+open, written here as the session recommended. The multiplicity rule of section 4
+stands as written unless he changes it. Rule 5 of section 6 is still his to choose; no
+code depends on it, and it is fixed before the full run is submitted. Apart from that
+one rule, nothing in sections 1 to 8 changes after the freeze without an entry in
+section 11.
 
 ---
 
@@ -442,17 +445,22 @@ rate of the same model and task; a cell in which the frozen grader can read no a
 at all on one of the two tasks; and, **for cell B only**, a model and task in which
 more than 5% of the answers (more than 15 of 300) are unread final answers, as defined
 next. Cell B is the baseline the paper reports, so it is the cell this tripwire guards.
-Under the registered text the count is already known to pass 5% for Qwen3.6-35B (16 of
-300 on solve and 22 on simulate in Part C), so for cells O and A it is reported and
-does not halt.
+Under the registered text the count is already known to pass 5% in one case
+(Qwen3.6-35B on simulate in Part C, 21 of 300; the other five Part C counts are 1 to
+11), so for cells O and A it is reported and does not halt.
 
 **Unread final answers (descriptive, and the fourth tripwire).** An answer that is wrong
 under both readings and ends with what looks like its final answer in a place neither
 reader reads. The answer did not stop at the output cap (a cut answer has no final
-answer). On solve: the answer has no plan block; its last non-empty line, a closing
-code fence aside, is one action line; and the plan the frozen reader took is not just
-the run of action lines the answer ends with (when it is, the frozen reader did read
-the final answer, and the plan was simply wrong). On simulate: the frozen grader read
+answer). On solve, one of two shapes. (i) The answer has no plan block; its last
+non-empty line, a closing code fence aside, is one action line; and the plan the frozen
+reader took is not just the run of action lines the answer ends with (when it is, the
+frozen reader did read the final answer, and the plan was simply wrong). (ii) The
+answer's last closed code block is not a plan block and yet holds at least one
+parenthesised action (for example action lines with comments, or a planner's listing
+with times and costs). Shape (ii) is counted whatever the frozen reader took, so the
+count can include a block the frozen reader happened to read; it errs on the side of
+counting. On simulate: the frozen grader read
 no trace from the answer at all (its reason is `format_parse_fail`; a trace that was
 read and is wrong does not count), the layout is "neither", and the answer, a closing
 code fence aside, ends with a closing brace or bracket. Neither reader reads such an answer as the model's final answer. The count is
@@ -461,21 +469,69 @@ is seen and not read as a baseline held down by content.
 
 ---
 
-## 9. Freeze record (to be completed before the full run's data is read)
+## 9. Freeze record
+
+**FROZEN 2026-11-23.** No row of the control existed at freeze time; nothing had been
+submitted to the cluster. The analysis does not read a row of the full run unless it is
+started with the package hash below.
 
 | item | value |
 |---|---|
-| harness commit on the cluster | *to be filled in: `main` at the merge commit of PR #148* |
-| tools repo `pddl-copilot` on the laptop (validator route) | *to be filled in at the freeze* |
-| analysis branch and commit | *to be filled in* |
-| package hash (`--i-have-frozen`) | *to be filled in* |
-| gates | *to be filled in: 1 typed loader, 2 constants as asserts, 3 traceability map, 4 synthetic fixture, 5 independent review* |
+| harness commit | `main` at `9109179c19d01196b1e3ac03ee0e43fb984e9c58` (merge of PR #148; PR #147 merged before it at `1cfb097`). The cluster checkout must be at this commit for the smoke and the full run; *its `git rev-parse HEAD` is to be recorded here before the smoke* |
+| tools repo `pddl-copilot` on the laptop (validator route) | `e428f17fd0b211f502955b11177687d544b68277`; validator server file sha256 `bada05b55444600fa9c623cdae2ca38f40e22559b67d6c97b375edfcbf9ddf8a` (equal to the filed re-grade's); pddl-pyvalidator 0.1.5 |
+| analysis branch and commit | `analysis/control-prompt-fix-prereg` at `3b355c3c28f2ec54853311ca6f224fa8a6de28c4` |
+| package hash (`--i-have-frozen`) | **`825dab6313ef2d18c33bed8d584d596e29b35f92eff6c41f0325045602bf0d79`** (the analysis script and the 30 repo files it imports, among them the whole frozen package of the rerun, whose own hash is still `822aace9…`) |
+| gate 1, typed loader | every row through the rerun's frozen `schema.parse_row`; unknown values, duplicate keys and wrong layers halt |
+| gate 2, constants as raised checks | the six text digests, models, sizes, k = 20, margin, level, resamples and seed, VOID and pairing fractions, Holm family, validator release, caps, tripwire thresholds; refuses `python -O` |
+| gate 3, traceability map | `development/reference/control_prompt_fix_traceability.md`: every clause of sections 2 to 8 to its code line and its fixture check. Three points of section 2.3 have no code and are records of this section and section 10, as section 2.3 says |
+| gate 4, synthetic fixture | `tests/test_control_prompt_fix.py`, 441 checks with hand-computed values and refusals; expected values recomputed by the reviewer for three cases |
+| gate 5, independent review | a second agent that did not write the code, 2026-11-23: no code path giving a wrong number; 1 design finding (cell B's layout, fixed by the wording change of section 2.1 and the unread-final-answer count of section 8), 5 should-fix (all fixed), 7 notes (5 fixed, 2 declined: binding `--i-have-frozen` to this record, and a storage-cut case that cannot occur). A verification pass by the same reviewer confirmed the fixes and found 2 more items (one more unread shape; a stale count in this document), both fixed. The last change after that pass (shape (ii) of section 8) was checked by the fixture and the dry run, not by a third review |
+| dry run on existing data | each control cell filled with the Part C rows of its model: C1, C2 and C3 exactly 0 with interval [0, 0], k = 20, 300 pairs; C4 equal to the filed E2 under the frozen grade and to the filed re-grade under the second reading; every cell equal to the filed re-grade; the validator route returned the stored verdict for 712 plans before any new one. The cell B tripwire fired once, as expected on old data (Qwen3.6-35B simulate, 21 of 300), and was released by its id |
+| open at the freeze | section 6 rule 5 (which figure of cell B the text quotes) is Omer's and is written as the session recommended at first. No code depends on it. It is settled before the full run is submitted, and the answer is recorded here |
 | serving version | *to be filled in from the smoke* |
 | submit command (smoke and full run) | *to be filled in, verbatim* |
 | job ids and dates | *to be filled in* |
 | GPU class, memory, requests at a time (from the job log) | *to be filled in* |
 
-**sha256 of the frozen files:** *to be filled in at the freeze.*
+**sha256 of the frozen files** (at `3b355c3`). Any later edit to one of the files of the
+package hash is a declared deviation in section 11, followed by a new freeze.
+
+| file | sha256 |
+|---|---|
+| `pddl_eval/__init__.py` | `0164c8d1cca872a3be65dd2461d627b95cdae8dc4b23ef4a6c6871b632c1e3db` |
+| `pddl_eval/chat.py` | `f195e0889bc0003c6faf2050bbdec28d525ace5cc9ecacf7c1be3a2b28426907` |
+| `pddl_eval/control_prompts.py` | `9e6380e08fb9704db5edac82efe216ff4ec518abcaf1d94874e266c0e06adff4` |
+| `pddl_eval/domains.py` | `6f2a7f98c7327b535fa3d489f31555969b94fc03b735fb2735f2c96527aa7a94` |
+| `pddl_eval/prompts.py` | `f12c19e9026bea463cdb5cf0b1e9ece96104e419a1bf51f9f1b0bf5dddd32e92` |
+| `pddl_eval/resume.py` | `f4abc5d4843204f42e7099f7eedfcc4ff3e3763d7b2848db4dfae0a154ba72c9` |
+| `pddl_eval/runner.py` | `95213c61e343447d76f16be7bb1dcb0cfa3798d0febf14a440a352a11bd6f1cb` |
+| `pddl_eval/schemas.py` | `335b62a6d2907eace6694f899e1d54f87764e85e8deb6c65aaba7c20b45528ef` |
+| `pddl_eval/scoring.py` | `13444404ed07f5fe06216248b742d8d286da7caad631ccab6b374837ed237299` |
+| `pddl_eval/summary.py` | `6b3475163cee2b35f7ce816d00b1886b6c788b1d2caa6c083ff0b518e4eebb36` |
+| `run_experiment.py` | `38f0b5d4fb1dba014efbfadaa101444f8a1b183d12fd92ed6a45d92e4addad29` |
+| `tools/__init__.py` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `tools/_run_manifest.py` | `08db2b20be699c818e47e15e589639d4294a40be1a6707b5a1e8c5acf2152c45` |
+| `tools/delivered_rerun/__init__.py` | `1450beb6fe7ba5d573676ca1825a4cba39b4d73cb82159d903e436e6e8675917` |
+| `tools/delivered_rerun/analysis.py` | `ec915da3da9eda78870e7cc26cb5bcf0d145cfb21dd7d7f846c2ec00a530de8b` |
+| `tools/delivered_rerun/constants.py` | `879daf12ce176a71f7d7c2137b73c21a7844ff562dde9b07da4d67b60bc9a1b9` |
+| `tools/delivered_rerun/e4.py` | `2ad776ee4b648971d0459c613db85d34326d8c3c6ec330ee75f5c71893a2c25b` |
+| `tools/delivered_rerun/grade.py` | `1588646c021ce23126d11b716bad9c24f794e72894b0e73f261dc206b32b617e` |
+| `tools/delivered_rerun/readout.py` | `ffddae5576d396d1bd69e2baee8958892a91f96856f9fae035c0be3bc5c78590` |
+| `tools/delivered_rerun/run.py` | `8410090db908cfb01622cbfd4d7f97204b82139c434d03e92da03fbd5e68f940` |
+| `tools/delivered_rerun/schema.py` | `5e33d6bd16ebcdf6b7298002d5929d07b7601f32b586c93933a176688e9aa66e` |
+| `tools/delivered_rerun/stats.py` | `f37950779694741c106b0a8d20e6d4afe9d10573a658edd7e3efdd8c726d87a0` |
+| `tools/delivered_rerun/tripwires.py` | `f53193a5f2b40ec9bae3cbe64df4b44691f2dca54cb494eb60fb79d640145ae4` |
+| `tools/e2e_regrade.py` | `45dcf74a23b5d2b1d79028fd1733a9ba7884ba7f62f84c7ffa4febd100c4b11a` |
+| `tools/gt_cache_gate.py` | `1181781e674f212c7d62c4fcdb6d50eb7ee9e650887d8e2bd95937609d8f3897` |
+| `tools/reanalysis/control_prompt_fix.py` | `ce2369c83d0c0d3b46aaf46fa28b8fc05430a40585a44da79281326af101bc53` |
+| `tools/reanalysis/gen_common.py` | `97a28322bfcc2990b5564c59a968d28af874142a50536ec53995a3c21458bcd4` |
+| `tools/reanalysis/iss027_common.py` | `33e0b4a34c11fb71456efb05228e4b86b15b691353e538910725f2199d4af4b5` |
+| `tools/reanalysis/rq1_layout_regrade.py` | `557c603618017946d0109cb01b9de6868f4db5a5fcf4c04a50c68fb6ebf3cd79` |
+| `tools/reanalysis/rq1_metrics.py` | `b2fc5edcbed5095dba4865e7deaacc81a946626f661b668b895bfd0e98e175fe` |
+| `tools/reanalysis/rq3_context_pilot.py` | `af92e8dc190c1c92ac6023fa1e3a31024b28ad1ddc917d74ab66ca54fef2b549` |
+| `development/reference/control_prompt_fix_traceability.md` (outside the package hash) | `5595d8adfe4630bf9ef596d76b16ff90bd76268f782a89709ad69af8647b669d` |
+| `tests/test_control_prompt_fix.py` (outside the package hash) | `2050e07cc93203b0af5c7694b1ffa050f7a0d940d9342bc152d31a343490b83a` |
+| `tests/fixtures/control_prompt_fix/build_fixture.py` (outside the package hash) | `fa252eff49865f8aab7008c1abc4f75e2afac51e34cb7b258299faeb76b6c537` |
 
 ---
 
