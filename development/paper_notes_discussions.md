@@ -233,4 +233,23 @@
   grade (solve 10.0% to 5.0%, simulate +6.7); the frozen delivered grade replaces it.
 - **Left open:** unaided simulate in the rerun has 12 to 29% format failures by the run-time grade and no
   layout-tolerant reading yet (the RQ3 line reader covers the tool arms only).
+- **Corrected the same day, on Omer's challenge** (is a wrong description not misleading,
+  and how did it not misguide the models?). "The error was only in how it was described"
+  is too strong. There are two wrong descriptions. The one to the reader is fixed by the
+  paper's text. The one to the model is inside the data: on solve and simulate the
+  no-tools system prompt says "conform to the JSON schema provided by the format
+  constraint", a schema the model never received, and the simulate user prompt shows one
+  example step without the outer `{"trajectory": [...]}` wrapper
+  (`pddl_eval/prompts.py`, `WITHOUT_TOOLS_SYSTEM_BY_TASK`). The three validation tasks are
+  untouched: their prompts ask for a `VERDICT:` line and never mention a schema.
+- **What is and is not shown.** It cannot be shown that the pointer did not hold the
+  unaided solve and simulate scores down. The pilot bounds it for one model on simulate
+  only (shape forced: +3.3 points [-5.0, +11.7]); the constraint itself is a different
+  condition, so the pilot does not test the prompt. Gemma and the 35B are unmeasured.
+- **Session's recommendation (not a decision):** the run that would answer it is a small
+  control, not the constrained rerun: unaided solve and simulate with a corrected system
+  prompt and no constraint, three headline models, beside Part C and never in its place.
+  It goes against the no-new-runs line of `roadmap.md` (2026-11-22). Omer asked for the
+  plan to be drafted in a separate worktree (`development/control_prompt_fix_plan.md`,
+  branch of that worktree; a proposal until he rules).
 

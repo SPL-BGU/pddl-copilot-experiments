@@ -73,6 +73,13 @@ trials per task, not registered. **Session's recommendation, not a decision:** n
 rerun of the unaided arm under the constraint (it would be a new condition that cannot
 replace Part C, and in the pilot it lowers the baseline on two tasks). Omer asked for the pilot; he
 has not ruled on the rerun.
+**Open, raised by Omer the same day:** the no-tools system prompt on solve and simulate
+points the model to a schema it never received (`pddl_eval/prompts.py`), so the flaw is
+inside the data of those two tasks and the paper's text cannot repair it; the validation
+tasks are untouched. Whether it lowered the baseline is not measured (the pilot tests the
+constraint, not the prompt). A plan for a small corrected-prompt control is being drafted
+in a separate worktree (`development/control_prompt_fix_plan.md`); it is a proposal that
+goes against "No run is planned" below until Omer rules.
 
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,
