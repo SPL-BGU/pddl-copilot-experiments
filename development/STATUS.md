@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-23 (the JSON constraint pilot, in a PR for Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-23 (the JSON constraint pilot, PR #145, for Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -61,7 +61,7 @@ checked mechanically, not as content.
 
 **Open paper items**
 
-**The JSON constraint pilot (2026-11-23, in a PR for Omer's read).** The October probe
+**The JSON constraint pilot (2026-11-23, PR #145, for Omer's read).** The October probe
 that ran the same 480 unaided trials of Qwen3.5-9B with and without a constraint that
 takes effect is now graded with the frozen delivered grader
 (`tools/reanalysis/json_constraint_pilot.py`; `NUMBERS.md`, "JSON constraint pilot").

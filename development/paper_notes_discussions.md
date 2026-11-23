@@ -223,7 +223,7 @@
   or be pooled with Part C, and in the probe it lowers the baseline on two tasks. In the rerun's
   unaided answers the validation tasks have no format failures at all, and solve is
   already reported under the delivered grader, which reads a plan in any layout.
-- **Decided (Omer):** build the pilot. Done in one PR: the probe graded with the frozen
+- **Decided (Omer):** build the pilot. Done in PR #145: the probe graded with the frozen
   delivered grader (`tools/reanalysis/json_constraint_pilot.py`), `NUMBERS.md` ("JSON
   constraint pilot"), a table and a paragraph in the Technical Appendix, and the
   Limitations sentence.
