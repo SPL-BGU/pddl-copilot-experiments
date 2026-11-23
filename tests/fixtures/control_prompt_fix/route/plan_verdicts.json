@@ -349,11 +349,31 @@
   "valid": false
  },
  {
+  "domain": "d01",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d02",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d02",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -367,11 +387,31 @@
   "valid": false
  },
  {
+  "domain": "d03",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d04",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d04",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -385,11 +425,31 @@
   "valid": false
  },
  {
+  "domain": "d05",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d06",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d06",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -403,11 +463,31 @@
   "valid": false
  },
  {
+  "domain": "d07",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d08",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d08",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -421,11 +501,31 @@
   "valid": false
  },
  {
+  "domain": "d09",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d10",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d10",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -439,11 +539,31 @@
   "valid": false
  },
  {
+  "domain": "d11",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d12",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d12",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -457,11 +577,31 @@
   "valid": false
  },
  {
+  "domain": "d13",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d14",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d14",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -475,11 +615,31 @@
   "valid": false
  },
  {
+  "domain": "d15",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d16",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d16",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -493,11 +653,31 @@
   "valid": false
  },
  {
+  "domain": "d17",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d18",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d18",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  },
@@ -511,11 +691,31 @@
   "valid": false
  },
  {
+  "domain": "d19",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
+  ],
+  "valid": false
+ },
+ {
   "domain": "d20",
   "problem": "p01",
   "plan": [
    "(Go L1 L2)",
    "(Stop R)"
+  ],
+  "valid": false
+ },
+ {
+  "domain": "d20",
+  "problem": "p01",
+  "plan": [
+   "(go l1 l3)",
+   "(go l1 l2)",
+   "(stop r)"
   ],
   "valid": false
  }

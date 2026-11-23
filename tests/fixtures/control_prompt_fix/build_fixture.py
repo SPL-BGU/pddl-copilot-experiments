@@ -57,6 +57,7 @@ CLUSTER = "/home/omereliy/pddl-copilot-experiments/results"
 PLAN = ["(go l1 l2)", "(stop r)"]          # valid in every domain
 WRONG = ["(go l1 l3)"]                     # invalid
 CAPS = ["(Go L1 L2)", "(Stop R)"]          # invalid on release 0.1.5; lower case is PLAN
+TRIED = ["(go l1 l3)", "(go l1 l2)", "(stop r)"]   # a tried step read with the final plan
 TRAJ = [{"step": 0, "action": "", "state": {"boolean": ["(at r l1)"], "numeric": {}}},
         {"step": 1, "action": "(go l1 l2)", "state": {"boolean": ["(at r l2)"], "numeric": {}}}]
 TRAJ_WRONG = [TRAJ[0], {"step": 1, "action": "(go l1 l2)",
@@ -73,6 +74,11 @@ ANSWERS = {
     "json_block": ("I move the robot from l1 to l2, then stop.\n" + FENCE + "json\n"
                    + json.dumps({"plan": PLAN}) + "\n" + FENCE),
     "wrong_lines": "\n".join(WRONG),
+    # a wrong plan in a JSON block (read by the second reading, wrong both ways)
+    "wrong_block": "Plan:\n" + FENCE + "json\n" + json.dumps(WRONG) + "\n" + FENCE,
+    # unread final answer, solve: a tried step, then the final plan as action lines
+    # with no block; the frozen reader takes all action lines together (invalid)
+    "unread_solve": "(go l1 l3)\nNo, that fails.\n" + "\n".join(PLAN),
     # a JSON plan with capitals in the last block (second wrong, case folded right)
     "caps_block": "Here is the plan.\n" + FENCE + "json\n" + json.dumps(CAPS) + "\n" + FENCE,
     # right action lines, then a wrong JSON plan in the last block (right to wrong)
@@ -88,6 +94,9 @@ ANSWERS = {
     "trace_wrong": json.dumps({"trajectory": TRAJ_WRONG}),
     "per_line": "\n".join(json.dumps(s) for s in TRAJ),
     "per_line_wrong": "\n".join(json.dumps(s) for s in TRAJ_WRONG),
+    # unread final answer, simulate: prose, then the right trace on its last line
+    # (neither reader reads it: not one JSON value, and one line is no trace)
+    "unread_sim": "The final trajectory is:\n" + json.dumps({"trajectory": TRAJ}),
 }
 # Answers the frozen grade counts right (for the stored online grade fields only).
 STORED_OK = {"right", "right_to_wrong", "lines_block", "trace"}
@@ -110,12 +119,14 @@ PLANTS = {
     (G, "solve", "B"): _all("json_block", 11),
     (G, "solve", "C"): _all("json_block", 11),
     # Gemma simulate: O and Part C give a wrong trace on v11; in O, d05 v11 is a
-    # harness exception row (1 of 120, kept and graded as it is).
-    (G, "simulate", "O"): {**_all("trace_wrong", 11), ("d05", 11): "exception"},
+    # harness exception row (1 of 120, kept and graded as it is) and d01..d03 v11
+    # are unread final answers (3 of 60: exactly the fourth tripwire's threshold).
+    (G, "simulate", "O"): {**_all("trace_wrong", 11), ("d05", 11): "exception",
+                           **_all("unread_sim", 11, DOMAINS[:3])},
     (G, "simulate", "C"): _all("trace_wrong", 11),
     # Qwen3.5-9B solve: the four layout plants in every cell; A wrong on v12.
     (Q9, "solve", "O"): dict(SPECIAL_Q9_SOLVE),
-    (Q9, "solve", "A"): {**_all("wrong_lines", 12), **SPECIAL_Q9_SOLVE},
+    (Q9, "solve", "A"): {**_all("wrong_block", 12), **SPECIAL_Q9_SOLVE},
     (Q9, "solve", "B"): dict(SPECIAL_Q9_SOLVE),
     (Q9, "solve", "C"): dict(SPECIAL_Q9_SOLVE),
     (Q9, "solve", "P"): dict(SPECIAL_Q9_SOLVE),
@@ -128,7 +139,8 @@ PLANTS = {
     (Q9, "simulate", "P"): {("d20", 13): "per_line_wrong"},
     # Qwen3.6-35B solve: O has no plan on d01 (v11 is cut by storage at the
     # output cap: accepted and counted); Part A wrong on v13.
-    (Q35, "solve", "O"): {("d01", 11): "storage_cut", ("d01", 12): "prose",
+    # d01 v12 is an unread final answer.
+    (Q35, "solve", "O"): {("d01", 11): "storage_cut", ("d01", 12): "unread_solve",
                           ("d01", 13): "prose"},
     (Q35, "solve", "P"): _all("wrong_lines", 13),
     # Qwen3.6-35B simulate: O and Part C write the right trace one object per line
@@ -311,7 +323,7 @@ def build(out: Path) -> None:
     (out / "SYNTHETIC_FIXTURE").write_text(
         "Synthetic fixture for tests/test_control_prompt_fix.py. Not experiment data.\n")
     design = {"per_task_cell": 60, "per_folder": 120, "per_wording": 40,
-              "per_task_wording": 20, "k_domains": 20}
+              "per_task_wording": 20, "k_domains": 20, "domains": list(DOMAINS)}
     (out / "design.json").write_text(json.dumps(design, indent=1, sort_keys=True) + "\n")
     gt = {d: {"p01": {"trace": json.dumps({"valid": True, "trajectory": ORACLE})}}
           for d in DOMAINS}
@@ -320,8 +332,8 @@ def build(out: Path) -> None:
         {"domain": d, "problem": "p01", "plan": PLAN, "valid": True},
         {"domain": d, "problem": "p01", "plan": WRONG, "valid": False})]
     (out / "plan_verdicts.json").write_text(json.dumps(stored, indent=1) + "\n")
-    route = stored + [{"domain": d, "problem": "p01", "plan": CAPS, "valid": False}
-                      for d in DOMAINS]
+    route = stored + [{"domain": d, "problem": "p01", "plan": pl, "valid": False}
+                      for d in DOMAINS for pl in (CAPS, TRIED)]
     (out / "route").mkdir(exist_ok=True)
     (out / "route" / "plan_verdicts.json").write_text(json.dumps(route, indent=1) + "\n")
     job = 24000001

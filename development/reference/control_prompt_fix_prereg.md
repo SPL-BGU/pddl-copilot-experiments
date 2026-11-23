@@ -55,17 +55,31 @@ Three cells per model. Only the system message differs between them.
 |---|---|---|---|
 | **O** | the registered text of Part C, unchanged | `registered` | `no-tools` |
 | **A** | the reference to the schema removed | `no-pointer` | `no-tools-syspointer-off` |
-| **B** | the answer format stated | `format-stated` | `no-tools-sysformat` |
+| **B** | the answer format stated, with the final answer in a fenced code block | `format-stated` | `no-tools-sysformat` |
 
 The six texts are in `pddl_eval/prompts.py` (O, `WITHOUT_TOOLS_SYSTEM_BY_TASK`) and
 `pddl_eval/control_prompts.py` (A and B), and are printed in section 2 of the plan. They
-are fixed by their sha256 (utf-8):
+are fixed by their sha256 (utf-8).
+
+**Cell B, as run.** The end of its third sentence reads:
+
+- solve: "…; end your response with the plan alone in a fenced code block, one
+  parenthesised PDDL action per line."
+- simulate: "…; end your response with a fenced code block that holds a single JSON
+  object of the form {"trajectory": [ ...steps... ]}, where each step has the keys
+  step, action and state (state.boolean and state.numeric)."
+
+The words "in a fenced code block" were added on 2026-11-23 (Omer; PR #148), before
+any trial, after the independent review of the analysis showed that an unfenced final
+answer after prose is read by neither reader of section 3. A final code block is read:
+by the frozen grader on simulate, and by the second reading on solve. The plan's
+section 2 has the earlier wording and a note.
 
 | cell | solve | simulate |
 |---|---|---|
 | O | `dd835ea2f66c73f8f26cb80b11afae9030aac316f102fb54a433498b6e23de83` | `dfd6beadb3e815e769fd31bd88f99ed78c0cfb6c9b74001fe442cc0b2bbc5ccd` |
 | A | `1cf4b9b6a7652fa90dc36cd41b98e3a312bebe6be3a427e3f16a62c4a7b2dfa8` | `c99db1124156372ea0e0a88b41779c4b9aa62167821a99272fa886f8b1774553` |
-| B | `15673b12344cb57ee47fa5c365fb271b4b4df2c745b90e3df77642314680960b` | `79cb34355be9d069f7f0da01eb503941199352c87c2cb7eef21ebc675b4f7955` |
+| B | `3dbc1baf9e2670b024a7fec73b2fe7031c5fa5a5c13b711a12b18debf0ad0588` | `7ccf5d9deccd98e72590f3649113929ea099ba855a72db1c571e91b6d1d47cf9` |
 
 ### 2.2 Models, tasks and size
 
@@ -91,9 +105,9 @@ Everything but the system message, and the date.
   Temperature 0. Four requests at a time. Answers stored up to 65,536 characters.
 - vLLM 0.20.2 from the shared `~/vllm.sif`. GPU class `rtx_6000`, one model alone on its
   card, `--mem=48G`.
-- The harness: `main` at the merge commit of PR #147, recorded in section 9. That PR is
-  additive; no file of the frozen package hash `822aace9…` differs from the harness of
-  Part C.
+- The harness: `main` at the merge commit of PR #148 (the control cells of PR #147 with
+  the final wording of cell B), recorded in section 9. Both PRs are additive; no file
+  of the frozen package hash `822aace9…` differs from the harness of Part C.
 
 **How each of these is assured.** The analysis checks what the synced files hold
 (section 7: the system text sent, the window, the caps, temperature, thinking, the
@@ -163,10 +177,16 @@ Both readers are lenient about layout only. The frozen grade answers "did the ba
 as the paper measures it, move". The second reading answers "did what the models wrote
 move". Neither replaces the other.
 
-**Why both.** Cell B asks for a layout the frozen grader reads. Under cell O most solve
-answers end with a JSON plan in a code block, which the frozen grader does not read. So
-B minus O by the frozen grade is, by construction, partly a statement about the grader.
-The second reading removes that part.
+**Why both.** The frozen solve reader collects every action-shaped line of an answer,
+wherever it stands, and reads JSON only when the whole answer is the JSON object. An
+answer that reasons first and then gives its plan in a code block is therefore graded
+by the frozen grade on the reasoning lines and the plan together, or on no plan at all.
+That is the layout of most solve answers under cell O, and it is the layout cell B
+asks for. So on solve the frozen grade can stay low in every cell for a reason that is
+the grader's, and the second reading, which reads the last code block alone, is the
+reading that follows the answer the model gave. On simulate both readers read a final
+code block. This is known before the data and is why both readings are registered for
+every rate and every contrast.
 
 **Validator.** Every solve plan of the control, under both readings, is validated in
 process with pddl-pyvalidator **0.1.5**, the release of the rerun's readout, through
@@ -320,7 +340,7 @@ Fixed here, before any data is read:
 
 ## 7. Execution
 
-- **Order.** Harness change merged (PR #147) → this registration and the freeze
+- **Order.** Harness change merged (PRs #147 and #148) → this registration and the freeze
   (section 9) → smoke → full run → sync → frozen analysis → readout and a `NUMBERS.md`
   entry. Every SSH or SLURM action needs Omer's explicit go-ahead; the smoke and the
   full run are asked for separately.
@@ -419,14 +439,21 @@ Reported per model, task and cell, with counts:
 readout): a count of right answers that is the same in all nine cells of a task, under
 either reading; a cell of O whose frozen rate is more than 20 points from the Part C
 rate of the same model and task; a cell in which the frozen grader can read no answer
-at all on one of the two tasks; and a cell and task in which more than 5% of the
-answers (more than 15 of 300) are unread final answers, as defined next.
+at all on one of the two tasks; and, **for cell B only**, a model and task in which
+more than 5% of the answers (more than 15 of 300) are unread final answers, as defined
+next. Cell B is the baseline the paper reports, so it is the cell this tripwire guards.
+Under the registered text the count is already known to pass 5% for Qwen3.6-35B (16 of
+300 on solve and 22 on simulate in Part C), so for cells O and A it is reported and
+does not halt.
 
 **Unread final answers (descriptive, and the fourth tripwire).** An answer that is wrong
-under both readings and ends with what looks like its final answer outside a code
-block: on solve, the last non-empty line is one action line and the answer has no plan
-block; on simulate, the layout is "neither" and the answer ends with a closing brace or
-bracket. Neither reader reads such an answer as the model's final answer. The count is
+under both readings and ends with what looks like its final answer in a place neither
+reader reads. The answer did not stop at the output cap (a cut answer has no final
+answer). On solve: the answer has no plan block; its last non-empty line, a closing
+code fence aside, is one action line; and the plan the frozen reader took is not just
+the run of action lines the answer ends with (when it is, the frozen reader did read
+the final answer, and the plan was simply wrong). On simulate: the layout is "neither"
+and the answer, a closing code fence aside, ends with a closing brace or bracket. Neither reader reads such an answer as the model's final answer. The count is
 reported per model, task and cell. It is given so that a baseline held down by layout
 is seen and not read as a baseline held down by content.
 
@@ -436,7 +463,7 @@ is seen and not read as a baseline held down by content.
 
 | item | value |
 |---|---|
-| harness commit on the cluster | *to be filled in: `main` at the merge commit of PR #147* |
+| harness commit on the cluster | *to be filled in: `main` at the merge commit of PR #148* |
 | tools repo `pddl-copilot` on the laptop (validator route) | *to be filled in at the freeze* |
 | analysis branch and commit | *to be filled in* |
 | package hash (`--i-have-frozen`) | *to be filled in* |

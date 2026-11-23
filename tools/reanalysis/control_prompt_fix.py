@@ -58,14 +58,14 @@ from pathlib import Path
 from pddl_eval import control_prompts as CP
 from pddl_eval.domains import load_domains
 from pddl_eval.prompts import WITHOUT_TOOLS_SYSTEM_BY_TASK
-from pddl_eval.scoring import (_parse_validation_verdict, _safe_json_loads, _strip_md_fence,
-                               strip_leaked_channel_prefix)
+from pddl_eval.runner import DEFAULT_NUM_PREDICT
+from pddl_eval.scoring import _safe_json_loads, _strip_md_fence, strip_leaked_channel_prefix
 from tools.delivered_rerun import constants as C
 from tools.delivered_rerun import grade as G
 from tools.delivered_rerun import run as RUN
 from tools.delivered_rerun import schema as S
 from tools.delivered_rerun import stats as ST
-from tools.e2e_regrade import oracle_canon_for
+from tools.e2e_regrade import _TOLERANT_ACTION_RE, oracle_canon_for
 from tools.gt_cache_gate import PREREG_PINNED_HASH, canonical_hash  # noqa: F401 (hashed dep)
 from tools.reanalysis import iss027_common as C27
 from tools.reanalysis import rq1_layout_regrade as RG
@@ -157,8 +157,9 @@ QUOTE_BOTH_POINTS = 5.0
 SMOKE_NONEMPTY = 0.95
 VOID_FRAC = 0.01
 PAIRING_MIN = 0.99
-# section 8: tripwire.
+# section 8: tripwires.
 TRIPWIRE_POINTS = 20.0
+UNREAD_FRAC = 0.05            # more than 5% unread final answers (15 of 300)
 
 READING_WORDS = {"frozen": "frozen grade (the registered measure)",
                  "second": "second reading (layout-tolerant)"}
@@ -239,6 +240,8 @@ def check_constants() -> None:
     _check(C.STYLE_A == "minimal", "prompt style of Part C")
     _check(g["CONTEXT_WINDOW"] == 16_384 == C.CONTEXT_WINDOW, "16,384-token window")
     _check(g["OUTPUT_CAP"] == {"solve": 8_192, "simulate": 6_144}, "output caps")
+    _check(all(g["OUTPUT_CAP"][t] == DEFAULT_NUM_PREDICT[t] for t in g["TASKS"]),
+           "output caps are the harness's DEFAULT_NUM_PREDICT")
     _check(g["STORAGE_CAP"] == 65_536 == C.STORAGE_CAP, "storage cap 65,536")
     _check(g["VLLM_VERSION"] == "0.20.2", "vLLM 0.20.2")
     _check(g["RUN_TAG"] == "control-promptfix", "run tag")
@@ -263,6 +266,7 @@ def check_constants() -> None:
            "exception reasons of the rerun")
     _check(g["PAIRING_MIN"] == 0.99, "pairing 99%")
     _check(g["TRIPWIRE_POINTS"] == 20.0, "tripwire 20 points")
+    _check(g["UNREAD_FRAC"] == 0.05, "unread final answers: more than 5%")
 
 
 def check_design(design: Design, registered: bool) -> None:
@@ -275,6 +279,7 @@ def check_design(design: Design, registered: bool) -> None:
         _check(design.per_task_wording == 100, "100 problems per task and wording")
         _check(design.k_domains == 20, "k = 20 domains")
         _check(design.per_folder * len(CELLS) * len(MODELS) == 5_400, "5,400 trials")
+        _check(UNREAD_FRAC * design.per_task_cell == 15, "the fourth tripwire: more than 15 of 300")
     _check(design.per_folder == design.per_task_cell * len(TASKS), "rows per folder")
     _check(design.per_folder == design.per_wording * len(WORDINGS), "rows per wording")
     _check(design.per_task_cell == design.per_task_wording * len(WORDINGS),
@@ -346,7 +351,8 @@ class Folder:
     void_rule_rows: int             # exception or infrastructure failure
 
 
-def read_folder(root: Path, spec: S.CellSpec, model: str, cell: str) -> Folder:
+def read_folder(root: Path, spec: S.CellSpec, model: str, cell: str,
+                domains: frozenset | None = None) -> Folder:
     """One cell folder through the frozen `schema.parse_row`.
 
     A row cut by storage is refused by the frozen loader. Section 7: it is
@@ -385,6 +391,9 @@ def read_folder(root: Path, spec: S.CellSpec, model: str, cell: str) -> Folder:
                     was_cut = True
                     obj = {**obj, "result": {**res, "response_truncated_by_storage": False}}
             row = S.parse_row(obj, spec, where)
+            if domains is not None and row.domain not in domains:
+                raise Halt(f"{where}: domain {row.domain!r} is not one of the fixture's own "
+                           f"(fixture mode reads synthetic rows only)")
             if row.trial_key in seen:
                 raise Halt(f"{where}: duplicate trial key {row.trial_key} (section 7)")
             seen.add(row.trial_key)
@@ -407,16 +416,54 @@ def check_void(f: Folder) -> None:
                    f"from scratch under the run tag {R2_TAG}, not analysed")
 
 
-def load_control(root: Path, design: Design, tags: dict[str, str]) -> dict:
+def load_control(root: Path, design: Design, tags: dict[str, str],
+                 domains: frozenset | None = None) -> dict:
     """{model: {cell: Folder}} for the nine cells, with the section 7 load rules."""
     out = {}
     for m in MODEL_ORDER:
         out[m] = {}
         for cell in CELLS:
-            f = read_folder(root, control_spec(design, m, cell, tags[m]), m, cell)
+            f = read_folder(root, control_spec(design, m, cell, tags[m]), m, cell, domains)
             check_void(f)
             out[m][cell] = f
     return out
+
+
+def first_run_void(root: Path, design: Design, model: str,
+                   domains: frozenset | None = None) -> str:
+    """Section 7: the second run of a model is read only after the analysis has found
+    a cell of that model's first run VOID, by the exception rule or the pairing rule.
+    Returns the VOID finding; halts when the first run is missing, short, refused by
+    the loader for another reason, or not VOID."""
+    folders = {}
+    for cell in CELLS:
+        spec = control_spec(design, model, cell, RUN_TAG)
+        try:
+            folders[cell] = read_folder(root, spec, model, cell, domains)
+        except S.SchemaError as e:
+            raise Halt(f"--r2-models {model}: the first run cannot be read ({e}); the second "
+                       f"run is read only after a VOID first run") from e
+    for cell in CELLS:
+        try:
+            check_void(folders[cell])
+        except Halt as e:
+            return str(e)
+    try:
+        check_pairing({model: folders}, design)
+    except Halt as e:
+        return str(e)
+    raise Halt(f"--r2-models {model}: no cell of the first run is VOID, so the second run "
+               f"({R2_TAG}) is not read")
+
+
+def resolve_tags(root: Path, design: Design, r2_arg: str,
+                 domains: frozenset | None = None) -> tuple[dict, dict]:
+    """The run tag of each model's cells, and the VOID finding behind every r2 model."""
+    r2 = {x for x in r2_arg.split(",") if x}
+    if not r2 <= set(MODELS):
+        raise Halt(f"--r2-models: unknown model tags {sorted(r2 - set(MODELS))}")
+    found = {m: first_run_void(root, design, m, domains) for m in sorted(r2)}
+    return {m: (R2_TAG if m in r2 else RUN_TAG) for m in MODEL_ORDER}, found
 
 
 def check_pairing(control: dict, design: Design) -> dict:
@@ -476,12 +523,13 @@ def check_audit(cell_dir: Path, model: str, cell: str, rows) -> Counter:
     system sha256 is the registered one of this cell for one of its two tasks;
     the stored text, where a line carries it, is that text byte for byte; mode
     names the cell's text; cell O not swapped, A and B swapped; no tools; the
-    model id of the cell. The audit also has at least one line per row of each
-    task, so it covers every trial."""
+    model id of the cell. So that the log covers every trial, each task has at least
+    as many lines as rows and exactly as many different user texts as rows."""
     where = cell_dir.name
     by_sha = {SYSTEM_SHA256[cell][t]: t for t in TASKS}
     users: Counter = Counter()
     per_task: Counter = Counter()
+    distinct: dict[str, set] = {t: set() for t in TASKS}
     for i, o in enumerate(audit_lines(cell_dir / "system_prompt_audit.jsonl", where), 1):
         keys = set(o)
         if not (AUDIT_KEYS <= keys <= AUDIT_KEYS | {"system_text"}):
@@ -510,11 +558,15 @@ def check_audit(cell_dir: Path, model: str, cell: str, rows) -> Counter:
             raise AuditFailed(f"{where}: audit line {i}: user sha256 is not a sha256")
         users[o["user_sha256"]] += 1
         per_task[task] += 1
+        distinct[task].add(o["user_sha256"])
     rows_per_task = Counter(r.task for r in rows)
     for t in TASKS:
         if per_task[t] < rows_per_task[t]:
             raise AuditFailed(f"{where}: {per_task[t]} audit lines for {t}, fewer than its "
                               f"{rows_per_task[t]} rows")
+        if len(distinct[t]) != rows_per_task[t]:
+            raise AuditFailed(f"{where}: {len(distinct[t])} different user texts for {t}, the "
+                              f"cell has {rows_per_task[t]} rows of it")
     return users
 
 
@@ -567,11 +619,12 @@ def serve_versions(text: str) -> list[str]:
 
 
 def check_serve_log(serve_logs: Path, cell_dir: Path, model: str, settings: dict) -> str:
-    """Section 7 item 7: the serve log of the cell's job shows vLLM 0.20.2.
+    """Section 7 item 7: the serve log of the last job that wrote the cell (the job
+    client_settings.json names) shows vLLM 0.20.2 and no other version.
 
     The sbatch keeps the log as cluster-experimenting/logs/<job id>-vllm-<model tag>.log
-    on the cluster; the job id is the one client_settings.json records (the last job
-    that wrote this cell). Every version banner in it must be 0.20.2."""
+    on the cluster. Earlier jobs of a resumed cell are read on the cluster and recorded
+    in section 9, not here."""
     job = settings.get("slurm_job_id")
     if not isinstance(job, str) or not job:
         raise AuditFailed(f"{cell_dir.name}: client_settings.json has no slurm_job_id")
@@ -721,11 +774,13 @@ def smoke_check(root: Path, serve_logs: Path | None, version_note: str | None,
              3: f"in every cell at least {100 * SMOKE_NONEMPTY:.0f}% of the stored answers "
                 f"are non-empty",
              4: "audit log: registered system sha256 and text, swapped flag, no tools, the "
-                "cell's model, at least one line per row of each task",
+                "cell's model, at least one line and one different user text per row of each "
+                "task",
              5: "the same set of user messages in the three cells of a model",
              6: "client_settings.json names the cell's system text",
-             7: f"the serve log of the job that wrote each cell shows vLLM {VLLM_VERSION} "
-                f"and no other version"}
+             7: f"the serve log of the last job that wrote each cell (the job its "
+                f"client_settings.json names) shows vLLM {VLLM_VERSION} and no other version; "
+                f"earlier jobs of a resumed cell are read on the cluster (section 9)"}
     out(f"Smoke check (prereg section 7): {root}, run tag {SMOKE_TAG}, "
         f"{len(MODEL_ORDER) * len(CELLS)} cell folders")
     ok = True
@@ -768,12 +823,29 @@ class Graded:
     completion: int
     is_exception: bool
     readable: bool
+    unread: bool            # section 8: an unread final answer
 
 
 UNREADABLE = frozenset({"no_plan_extracted", "format_parse_fail", "empty_stop",
                         "truncated_empty", "no_room", "exception"})
 NO_PLAN_BLOCK = "no plan block"
 ONE_OBJECT, PER_LINE, NEITHER = "one JSON object", "one object per line", "neither"
+
+
+def unread_final(task: str, response: str, frozen: bool, second: bool, layout: str) -> bool:
+    """Section 8: wrong under both readings and ending with what looks like its final
+    answer outside a code block. Solve: the last non-empty line is one action line
+    (the tolerant action pattern the re-grade uses) and the answer has no plan block.
+    Simulate: the layout is "neither" and the answer, after the leaked prefix and
+    trailing white space are removed, ends with } or ]."""
+    if frozen or second:
+        return False
+    text = strip_leaked_channel_prefix(response or "")
+    if task == "solve":
+        lines = [ln for ln in text.splitlines() if ln.strip()]
+        return (len(lines) > 0 and _TOLERANT_ACTION_RE.match(lines[-1]) is not None
+                and RG.block_plan(response) is None)
+    return layout == NEITHER and text.rstrip().endswith(("}", "]"))
 
 
 def ok_of(g: G.Delivered) -> bool:
@@ -838,11 +910,36 @@ def live_route(marketplace: Path, domains_dir: Path):
         raw = loop.run_until_complete(C27.call_tool(vs, "validate_plan", {
             "domain": domains[d]["domain"], "problem": domains[d]["problems"][p],
             "plan": "\n".join(plan)}))
-        v = _parse_validation_verdict(raw)
-        if v is None:
-            raise Halt(f"validator gave no verdict for {d}/{p}: {str(raw)[:200]}")
-        return v
+        return validator_verdict(raw, f"{d}/{p}")
     return fn
+
+
+def validator_verdict(raw, where: str) -> bool:
+    """The verdict of one validate_plan answer ({"valid": bool, "status", "report"}).
+    Section 3: halts unless `valid` is a real true or false (no truthiness, no error
+    answer). For a well-formed answer this is what `_parse_validation_verdict` returns."""
+    data = _safe_json_loads(raw) if isinstance(raw, str) else None
+    if not isinstance(data, dict) or data.get("error") is True or "valid" not in data:
+        raise Halt(f"validator gave no verdict for {where}: {str(raw)[:200]}")
+    if not isinstance(data["valid"], bool):
+        raise Halt(f"validator verdict for {where} is {data['valid']!r}, not true or false")
+    return data["valid"]
+
+
+def check_validator_env(env: dict, filed_env: dict | None) -> None:
+    """Section 3: release 0.1.5, the server file unedited, and the same server file (by
+    sha256) as the filed re-grade used."""
+    bad = list(C27.check_environment(env))
+    if env.get("pyval") != PYVALIDATOR:
+        bad.append(f"pddl-pyvalidator is {env.get('pyval')}, registered {PYVALIDATOR}")
+    if not isinstance(filed_env, dict) or "validator_server_sha256" not in filed_env:
+        bad.append("the filed re-grade records no validator_server_sha256")
+    elif env.get("validator_server_sha256") != filed_env["validator_server_sha256"]:
+        bad.append(f"validator_server.py sha256 {str(env.get('validator_server_sha256'))[:12]} "
+                   f"differs from the filed re-grade's "
+                   f"{str(filed_env['validator_server_sha256'])[:12]}")
+    if bad:
+        raise Halt("validator environment: " + "; ".join(bad))
 
 
 def table_route(table: dict):
@@ -910,7 +1007,8 @@ def grade_rows(pairs, verdict: Verdicts, gt_cache: dict) -> dict:
             key=r.trial_key, domain=r.domain, variant=r.variant, frozen=ok_of(g), second=second,
             folded=folded, reason=g.reason, layout=layout, at_cap=r.done_reason == "length",
             completion=r.tokens.completion, is_exception=r.is_exception,
-            readable=g.reason not in UNREADABLE)
+            readable=g.reason not in UNREADABLE,
+            unread=unread_final(r.task, r.response, ok_of(g), second, layout))
     return out
 
 
@@ -958,14 +1056,23 @@ def load_rerun_live(args) -> Rerun:
                  note=f"delivered rerun at {args.rerun_root}")
 
 
-def load_rerun_fixture(root: Path, design: Design) -> Rerun:
+def fixture_domains(root: Path) -> frozenset:
+    """Fixture mode reads the fixture's own domains only (design.json), so real cell
+    folders cannot be fed through it."""
+    names = json.loads((root / "design.json").read_text()).get("domains")
+    if not isinstance(names, list) or not names:
+        raise Halt("fixture mode: design.json lists no domains")
+    return frozenset(names)
+
+
+def load_rerun_fixture(root: Path, design: Design, domains: frozenset) -> Rerun:
     gt_cache = json.loads((root / "gt_cache.json").read_text())
     stored = RUN.fixture_verdicts(root)
     part_c, part_a = {}, {}
     for m in MODEL_ORDER:
         for part, out in (("C", part_c), ("A", part_a)):
             spec = rerun_spec(design, m, part)
-            f = read_folder(root / "rerun", spec, m, part)
+            f = read_folder(root / "rerun", spec, m, part, domains)
             check_void(f)
             graded = {r.trial_key: G.grade(r, gt_cache, stored) for r in f.rows}
             out[m] = _split(f.rows, lambda r: graded[r.trial_key])
@@ -1154,7 +1261,7 @@ def r4_reading(fz: dict, sc: dict, moved: bool, control_dates: str) -> dict:
     """Section 5, R4 (C4, both readings, with the dates of the two runs)."""
     s = (f"frozen grade: {fz['label']} ({ci_text(fz)}); second reading: {sc['label']} "
          f"({ci_text(sc)}); Part A: {PART_A_DATES}; the control: {control_dates}")
-    if moved:
+    if moved and "across a setup that moved" not in s:
         s += "; across a setup that moved"
     return {"sentence": s, "across_a_setup_that_moved": moved,
             "holm_notes": holm_notes(("frozen", fz), ("second", sc))}
@@ -1229,7 +1336,13 @@ def analyse(design: Design, control: dict, rr: Rerun, verdict: Verdicts, mode: s
     _check(len(contrasts) == N_CONTRASTS * len(READINGS), "24 contrasts under two readings")
     by_c = {(e["name"], e["reading"], e["model"], e["task"]): e for e in contrasts}
 
-    # Registered readings and the rule-5 flag.
+    # Registered readings and the rule-5 flag. Where R3 says the setup moved, the C4
+    # labels themselves carry the words (R4).
+    for m in MODEL_ORDER:
+        for t in TASKS:
+            if r3_reading(by_c[("C3", "frozen", m, t)])["moved"]:
+                for rd in READINGS:
+                    by_c[("C4", rd, m, t)]["label"] += "; across a setup that moved"
     readings = []
     for m in MODEL_ORDER:
         for t in TASKS:
@@ -1267,6 +1380,11 @@ def analyse(design: Design, control: dict, rr: Rerun, verdict: Verdicts, mode: s
                 if not any(x.readable for x in g_ctrl[(m, cell, t)].values()):
                     fired[f"T3:{m}:{cell}:{t}"] = (f"cell {cell} of {m}: the frozen grader can "
                                                    f"read no answer at all on {t}")
+                n_unread = sum(x.unread for x in g_ctrl[(m, cell, t)].values())
+                if n_unread > UNREAD_FRAC * design.per_task_cell:
+                    fired[f"T4:{m}:{cell}:{t}"] = (
+                        f"cell {cell} of {m}, {t}: {n_unread} unread final answers of "
+                        f"{design.per_task_cell} (more than {100 * UNREAD_FRAC:.0f}%)")
     unaudited = {i: v for i, v in fired.items() if i not in audit_notes}
     if unaudited:
         raise Halt("readout tripwire(s) fired (section 8); audit before any readout "
@@ -1276,6 +1394,10 @@ def analyse(design: Design, control: dict, rr: Rerun, verdict: Verdicts, mode: s
         raise Halt(f"audit notes for tripwires that did not fire: {sorted(extra)}")
 
     secondary = secondary_tables(design, g_ctrl)
+    unread_rerun = [{"model": m, "task": t, "part": part,
+                     "unread": sum(x.unread for x in src[m][t].values())}
+                    for m in MODEL_ORDER for t in TASKS
+                    for part, src in (("Part C", g_c), ("Part A", g_a))]
     corpus = [{"cell": f.spec.name, "rows": len(f.rows), "torn_lines": f.torn_lines,
                "exception_rows": f.exception_rows, "infra_rows": f.infra_rows,
                "storage_cut_accepted": len(f.storage_cut)}
@@ -1286,7 +1408,7 @@ def analyse(design: Design, control: dict, rr: Rerun, verdict: Verdicts, mode: s
         "rerun": rr.note, "corpus": corpus, "audit": audit,
         "route_checked_plans": checked, "validated_plans": len(verdict.cache),
         "rates": rates, "contrasts": contrasts, "readings": readings,
-        "secondary": secondary, "tripwires_audited": {i: {"fired": fired[i],
+        "secondary": secondary, "unread_rerun": unread_rerun, "tripwires_audited": {i: {"fired": fired[i],
                                                           "note": audit_notes[i]}
                                                       for i in fired},
     }
@@ -1313,7 +1435,8 @@ def secondary_tables(design: Design, g_ctrl: dict) -> list[dict]:
              "readable": sum(x.readable for x in vals),
              "failure_reasons": dict(sorted(Counter(x.reason for x in vals
                                                     if x.frozen is False).items())),
-             "folded_k": sum(x.folded for x in vals)}
+             "folded_k": sum(x.folded for x in vals),
+             "unread_final_answers": sum(x.unread for x in vals)}
         if cell != "O":
             o = g_ctrl[(m, "O", t)]
             e["moves_from_O"] = {f"{a} -> {b}": n for (a, b), n in sorted(
@@ -1414,11 +1537,11 @@ def render(res: dict) -> str:
     L.append("")
     L.append("#### Control prompt fix: by wording (secondary, descriptive)")
     L.append("")
-    L.append(f"Reading: both, right answers of {res['secondary'][0]['per_wording_n']['11']} "
-             f"trials per wording; {common}.")
+    L.append(f"Reading: both. The count of right answers by wording, "
+             f"{res['secondary'][0]['per_wording_n']['11']} trials each; {common}.")
     L.append("")
     L.append(md_table(
-        ["model", "task", "cell"] + [f"v{v} frozen / second" for v in WORDINGS],
+        ["model", "task", "cell"] + [f"v{v}: count right, frozen / second" for v in WORDINGS],
         [[model_name(s["model"]), s["task"], CELL_WORDS[s["cell"]]]
          + [f"{s['by_wording'][str(v)]['frozen']} / {s['by_wording'][str(v)]['second']}"
             for v in WORDINGS] for s in res["secondary"]]))
@@ -1427,14 +1550,20 @@ def render(res: dict) -> str:
              "(secondary, descriptive)")
     L.append("")
     L.append(f"Reading: frozen grade for the reasons; layout as the second reading sees it. "
-             f"{common}.")
+             f"An unread final answer is wrong under both readings and ends with what looks "
+             f"like its final answer outside a code block (solve: the last non-empty line is "
+             f"one action line and there is no plan block; simulate: layout neither, the "
+             f"answer ends with a closing brace or bracket). The rerun's rows: "
+             + "; ".join(f"{model_name(u['model'])} {u['task']} {u['part']} {u['unread']}"
+                         for u in res["unread_rerun"]) + f". {common}.")
     L.append("")
     L.append(md_table(
         ["model", "task", "cell", "trials", "layout", "stopped at the output cap",
-         "mean answer tokens", "exception rows", "frozen reason of each failure"],
+         "mean answer tokens", "exception rows", "unread final answers",
+         "frozen reason of each failure"],
         [[model_name(s["model"]), s["task"], CELL_WORDS[s["cell"]], s["n"],
           "; ".join(f"{k} {v}" for k, v in s["layout"].items()), s["at_output_cap"],
-          f"{s['mean_answer_tokens']:.0f}", s["exception_rows"],
+          f"{s['mean_answer_tokens']:.0f}", s["exception_rows"], s["unread_final_answers"],
           "; ".join(f"{k} {v}" for k, v in s["failure_reasons"].items()) or "–"]
          for s in res["secondary"]]))
     L.append("")
@@ -1541,14 +1670,15 @@ def main(argv: list[str] | None = None) -> int:
             if args.out.resolve() == (Path(__file__).resolve().parent / "out").resolve():
                 raise Halt("fixture mode needs its own --out (not tools/reanalysis/out)")
             design = fixture_design(root)
-            tags = {m: RUN_TAG for m in MODEL_ORDER}
+            domains = fixture_domains(root)
             control_root = root / "control"
-            control = load_control(control_root, design, tags)
+            tags, r2_found = resolve_tags(control_root, design, args.r2_models, domains)
+            control = load_control(control_root, design, tags, domains)
             shared = check_pairing(control, design)
             audit = audit_control(control_root, control,
                                   None if args.version_checked_by_hand else root / "serve_logs",
                                   args.version_checked_by_hand)
-            rr = load_rerun_fixture(root, design)
+            rr = load_rerun_fixture(root, design, domains)
             verdict = Verdicts(table_route(RUN.fixture_verdicts(root / "route")))
             env = {"validator": "fixture table"}
             mode = "fixture"
@@ -1561,11 +1691,8 @@ def main(argv: list[str] | None = None) -> int:
             R1.fill_data_args(args)
             design = REGISTERED
             check_design(design, registered=True)
-            r2 = {x for x in args.r2_models.split(",") if x}
-            if not r2 <= set(MODELS):
-                raise Halt(f"--r2-models: unknown model tags {sorted(r2 - set(MODELS))}")
-            tags = {m: (R2_TAG if m in r2 else RUN_TAG) for m in MODEL_ORDER}
             control_root = args.control_root or args.results / RUN_TAG
+            tags, r2_found = resolve_tags(control_root, design, args.r2_models)
             control = load_control(control_root, design, tags)
             shared = check_pairing(control, design)
             audit = audit_control(control_root, control, args.serve_logs,
@@ -1575,9 +1702,7 @@ def main(argv: list[str] | None = None) -> int:
             except (OSError, subprocess.CalledProcessError) as e:
                 raise Halt(f"--marketplace {args.marketplace}: cannot read the validator "
                            f"environment ({type(e).__name__})") from e
-            bad = C27.check_environment(env)
-            if bad or env["pyval"] != PYVALIDATOR:
-                raise Halt("validator environment: " + "; ".join(bad or [env["pyval"]]))
+            check_validator_env(env, json.loads(args.regrade_json.read_text()).get("environment"))
             rr = load_rerun_live(args)
             verdict = Verdicts(live_route(args.marketplace, args.domains_dir))
             mode = "live"
@@ -1586,6 +1711,7 @@ def main(argv: list[str] | None = None) -> int:
         res["shared_keys"] = shared
         res["environment"] = env
         res["run_tags"] = tags
+        res["first_run_void"] = r2_found
         try:
             md = render(res)
             js = json.dumps(res, indent=1, sort_keys=True, default=list) + "\n"

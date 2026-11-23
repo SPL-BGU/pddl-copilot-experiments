@@ -303,8 +303,9 @@ CONTRASTS = {
     ("C4", "frozen", GM, "solve"): S1 + (HOLM6, "tools ahead"),
     ("C4", "second", GM, "solve"): (0.0, 0.0, 0.0, 1.0, 1.0, "no difference shown"),
     # Q35 solve: Part A wrong on v13 in every domain.
-    ("C4", "frozen", Q35, "solve"): F1 + (HOLM6, "no tools ahead"),
-    ("C4", "second", Q35, "solve"): F1 + (HOLM6, "no tools ahead"),
+    # R3 says the setup moved for Q35 solve, so the C4 label carries the words too.
+    ("C4", "frozen", Q35, "solve"): F1 + (HOLM6, "no tools ahead; across a setup that moved"),
+    ("C4", "second", Q35, "solve"): F1 + (HOLM6, "no tools ahead; across a setup that moved"),
     **{("C4", rd, m, t): (0.0, 0.0, 0.0, 1.0, 1.0, "no difference shown")
        for rd in ("frozen", "second") for m, t in ((GM, "simulate"), (Q9, "solve"),
                                                     (Q9, "simulate"), (Q35, "simulate"))},
@@ -430,16 +431,39 @@ def test_base(r, res):
                {M.ONE_OBJECT: 56, M.PER_LINE: 4})
     s = by(res, "secondary", model=GM, task="simulate", cell="O")
     r.check_eq("exception row graded as it is", (s["exception_rows"], s["failure_reasons"]),
-               (1, {"exception": 1, "trajectory_mismatch": 19}))
+               (1, {"exception": 1, "format_parse_fail": 3, "trajectory_mismatch": 16}))
+    r.check_eq("layout Gemma simulate O (3 unread answers and the exception row: neither)",
+               s["layout"], {M.ONE_OBJECT: 56, M.NEITHER: 4})
+    # Unread final answers (section 8). Control: Gemma simulate O d01..d03 v11
+    # (prose, then the trace on its last line) = 3, exactly 5% of 60, so T4 does
+    # not fire; Qwen3.6-35B solve O d01 v12 (a tried step, then the plan as action
+    # lines, no block) = 1; every other cell 0. A wrong plan in a JSON block (Qwen3.5-9B
+    # A v12) has a plan block, so it is not counted.
+    unread = {(s["model"], s["task"], s["cell"]): s["unread_final_answers"]
+              for s in res["secondary"]}
+    r.check_eq("unread final answers per cell",
+               {k: v for k, v in unread.items() if v},
+               {(GM, "simulate", "O"): 3, (Q35, "solve", "O"): 1})
+    r.check_eq("unread final answers counted in every cell", len(unread), 18)
+    # The rerun: Part A Qwen3.6-35B solve v13 is the wrong plan as bare action lines in
+    # all 20 domains; the registered definition counts it (wrong both ways, last line
+    # an action line, no plan block).
+    r.check_eq("unread final answers of the rerun rows",
+               {(u["model"], u["task"], u["part"]): u["unread"]
+                for u in res["unread_rerun"] if u["unread"]}, {(Q35, "solve", "Part A"): 20})
+    r.check_eq("no tripwire fired in the base fixture", res["tripwires_audited"], {})
     s = by(res, "secondary", model=GM, task="solve", cell="A")
     r.check_eq("moves O -> A Gemma solve", s["moves_from_O"],
                {"no_plan_extracted -> plan_valid": 20, "plan_valid -> plan_valid": 40})
     s = by(res, "secondary", model=Q35, task="solve", cell="O")
     r.check_eq("Q35 solve O at cap (the storage-cut row)", s["at_output_cap"], 1)
     # Route: R and W stored for every domain (40 plans) checked first; CAPS of d10
-    # validated new (41 in all).
+    # and the three-action plan of Q35 solve O d01 validated new (42 in all).
     r.check_eq("route checked / validated", (res["route_checked_plans"], res["validated_plans"]),
-               (40, 41))
+               (40, 42))
+    r.check("C4 label in the table carries the moved-setup words",
+            "no tools ahead; across a setup that moved" in res["_md"])
+    r.check("wording table gives counts", "v11: count right, frozen / second" in res["_md"])
     md = res["_md"]
     r.check("markdown states the count of contrasts with every table",
             md.count("24 contrasts, each under two readings") >= 8)
@@ -692,6 +716,17 @@ def test_tripwires(r):
                 code == 2 and "T1:simulate:frozen" in err and "T1:simulate:second" in err, err[-600:])
     finally:
         shutil.rmtree(root.parent)
+    # T4: a fourth unread final answer in Gemma simulate O (4 of 60 > 5%); the base
+    # fixture holds 3 there (exactly 5%) and does not fire.
+    root = copy_fixture()
+    try:
+        set_answer(root, GM, "O", "simulate", "d04", 11, "unread_sim")
+        code, err, _, _ = run_fixture(root)
+        r.check("T4 fires above 5% unread final answers",
+                code == 2 and "T4:gemma4_26b-a4b:O:simulate" in err
+                and "4 unread final answers of 60" in err, err[-500:])
+    finally:
+        shutil.rmtree(root.parent)
     # T3: a cell in which the frozen grader reads no answer on ONE task (solve made
     # all prose in Qwen3.5-9B B; its simulate answers stay readable).
     root = copy_fixture()
@@ -791,7 +826,7 @@ def test_constants(r):
         "HOLM_ALPHA": 0.10, "CONTRASTS": ("C1", "C2", "C3"), "N_CONTRASTS": 12,
         "READINGS": ("frozen",), "PART_A_DATES": "2026-10-03", "QUOTE_BOTH_POINTS": 10.0,
         "SMOKE_NONEMPTY": 0.90, "VOID_FRAC": 0.05, "PAIRING_MIN": 0.95,
-        "TRIPWIRE_POINTS": 10.0,
+        "TRIPWIRE_POINTS": 10.0, "UNREAD_FRAC": 0.10,
     }
     for name, value in flips.items():
         old = getattr(M, name)
@@ -895,6 +930,15 @@ def test_smoke(r):
         code, text = smoke_run(root)
         r.check("smoke: a clean mini smoke passes",
                 code == 0 and "RESULT: PASS" in text and text.count(": PASS:") == 7, text)
+        r.check("smoke: item 7 names the last job's serve log",
+                "the serve log of the last job that wrote each cell" in text, text)
+        d = tmp / "torn"
+        shutil.copytree(root, d)
+        p = smoke_dir(d, Q9, "O") / "trials.jsonl"
+        p.write_text(p.read_text() + '{"key": ["Qwen/Qwen3.5-9B"\n')
+        code, text = smoke_run(d)
+        r.check("smoke: a half-written line fails item 2",
+                code == 1 and "item 2: FAIL" in text and "torn line" in text, text)
         code, text = smoke_run(root, extra=[None])
         r.check("smoke: item 7 NOT CHECKED without serve logs or a note",
                 code == 1 and "item 7: NOT CHECKED" in text, text)
@@ -978,6 +1022,224 @@ def test_smoke(r):
         shutil.rmtree(tmp)
 
 
+# ------------------------------------------------------------------ review findings (gate 5)
+def _row_edit(model, cell, task, dom, v, **kw):
+    """Edit one control row's result fields in place (key left as it is)."""
+    def mut(root):
+        def fn(recs):
+            recs[find(recs, task, dom, v)]["result"].update(kw)
+            return recs
+        edit_jsonl(cdir(root, model, cell) / "trials.jsonl", fn)
+    return mut
+
+
+def _row_tokens(model, cell, task, dom, v, **kw):
+    def mut(root):
+        def fn(recs):
+            recs[find(recs, task, dom, v)]["result"]["tokens"].update(kw)
+            return recs
+        edit_jsonl(cdir(root, model, cell) / "trials.jsonl", fn)
+    return mut
+
+
+def _meta(model, cell, **kw):
+    def mut(root):
+        p = next(cdir(root, model, cell).glob("summary_*.json"))
+        edit_json(p, lambda s: s["meta"].update(kw))
+    return mut
+
+
+def _write_text(rel, text, append=False):
+    def mut(root):
+        p = root / rel
+        p.write_text((p.read_text() if append else "") + text)
+    return mut
+
+
+def test_review_refusals(r):
+    # Apparatus (section 7): caps and the summary.
+    expect_halt(r, "apparatus: an answer longer than its cap",
+                _row_tokens(Q9, "O", "solve", "d02", 11, completion=9000),
+                "an answer of 9000 tokens, cap 8192")
+    expect_halt(r, "apparatus: stopped at the cap with fewer tokens than the cap",
+                lambda root: (_row_edit(Q9, "O", "simulate", "d02", 11, done_reason="length",
+                                        truncated=True)(root),
+                              _row_tokens(Q9, "O", "simulate", "d02", 11, completion=100)(root)),
+                "stopped at the cap after 100 tokens, registered cap 6144")
+    for field, value in (("temperature", 0.7), ("think", "on"), ("conditions", "tools"),
+                         ("models", ["Qwen/Qwen3.5-4B"])):
+        expect_halt(r, f"apparatus: summary {field}", _meta(GM, "A", **{field: value}),
+                    f"meta {field}=")
+    # Audit (item 4).
+    expect_halt(r, "audit: an unknown key", _audit(Q9, "O", _set_line(4, extra=1)), "has keys")
+    expect_halt(r, "audit: the wrong model",
+                _audit(Q9, "O", _set_line(4, model="Qwen/Qwen3.5-4B")),
+                "model 'Qwen/Qwen3.5-4B'")
+    expect_halt(r, "audit: the wrong mode", _audit(Q9, "A", _set_line(4, mode="format-stated")),
+                "mode 'format-stated', cell A is 'no-pointer'")
+    expect_halt(r, "audit: an empty file",
+                _write_text(f"control/{BF.folder(Q9, 'B', BF.RUN_TAG)}/system_prompt_audit.jsonl",
+                            ""), "the audit log is empty")
+    expect_halt(r, "audit: a line that is not JSON",
+                _write_text(f"control/{BF.folder(Q9, 'B', BF.RUN_TAG)}/system_prompt_audit.jsonl",
+                            "{not json\n", append=True), "is not JSON")
+    # Two lines of one task share one user text: 59 different texts for 60 rows.
+    def _same_user(root):
+        def fn(recs):
+            recs[1]["user_sha256"] = recs[2]["user_sha256"]
+            return recs
+        edit_jsonl(cdir(root, Q35, "O") / "system_prompt_audit.jsonl", fn)
+    expect_halt(r, "audit: fewer different user texts than rows of a task", _same_user,
+                "59 different user texts for solve, the cell has 60 rows of it")
+    # Settings (item 6).
+    expect_halt(r, "client_settings.json cond of another cell",
+                _settings(GM, "A", cond="no-tools-sysformat"), "client_settings.json cond=")
+    expect_halt(r, "client_settings.json hf_model of another model",
+                _settings(GM, "A", hf_model="Qwen/Qwen3.5-9B"), "client_settings.json hf_model=")
+    # Serve log (item 7) with no banner.
+    expect_halt(r, "a serve log with no version banner",
+                _write_text(f"serve_logs/24000002-vllm-{Q9}.log", "INFO starting\n"),
+                "has no vLLM version banner")
+    # Fixture mode reads its own domains only (H).
+    def _foreign(root):
+        def fn(recs):
+            i = find(recs, "solve", "d07", 12)
+            recs[i]["result"]["domain_name"] = "blocksworld"
+            recs[i]["key"][2] = "blocksworld"
+            return recs
+        edit_jsonl(cdir(root, GM, "O") / "trials.jsonl", fn)
+    expect_halt(r, "fixture mode refuses a domain outside the fixture's own", _foreign,
+                "domain 'blocksworld' is not one of the fixture's own")
+    expect_halt(r, "fixture mode needs the fixture's domain list",
+                lambda root: edit_json(root / "design.json", lambda d: d.pop("domains")),
+                "design.json lists no domains")
+    # A half-written line in live mode: counted, skipped, the run goes on.
+    root = copy_fixture()
+    try:
+        _write_text(f"control/{BF.folder(Q9, 'A', BF.RUN_TAG)}/trials.jsonl",
+                    '{"key": ["Qwen/Qwen3.5-9B", "solve"\n', append=True)(root)
+        code, err, res, _ = run_fixture(root)
+        torn = {c["cell"]: c["torn_lines"] for c in res["corpus"]} if res else {}
+        r.check("a half-written line is counted and skipped",
+                code == 0 and torn.get(BF.folder(Q9, "A", BF.RUN_TAG)) == 1
+                and sum(torn.values()) == 1, err[-300:])
+    finally:
+        shutil.rmtree(root.parent)
+
+
+def _make_r2(root, model):
+    """Copy a model's three first-run cells to the second-run tag (folder names and
+    the audit-log path in client_settings.json follow)."""
+    for cell in BF.CELLS:
+        src = cdir(root, model, cell)
+        dst = root / "control" / BF.folder(model, cell, "control-promptfix-r2")
+        shutil.copytree(src, dst)
+        edit_json(dst / "client_settings.json", lambda s, d=dst: s.update(
+            system_audit_log=f"{BF.CLUSTER}/{d.name}/system_prompt_audit.jsonl"))
+
+
+def test_r2(r):
+    extra = ["--r2-models", Q9]
+    # Accepted after a VOID first run (exception rule): two exception rows in Q9 B.
+    root = copy_fixture()
+    try:
+        _make_r2(root, Q9)
+        _two_exceptions(root)
+        code, err, res, _ = run_fixture(root, extra)
+        r.check("r2 read after a VOID first run (exception rule)",
+                code == 0 and res["run_tags"][Q9] == "control-promptfix-r2"
+                and "VOID (section 7)" in res["first_run_void"][Q9]
+                and res["run_tags"][GM] == "control-promptfix", err[-300:])
+        if res is not None:
+            e = by(res, "rates", model=Q9, task="solve", cell="A")
+            r.check_eq("r2 cells give the r2 rows' rates", e["frozen"]["right"], 38)
+    finally:
+        shutil.rmtree(root.parent)
+    # Accepted after a VOID first run (pairing rule).
+    root = copy_fixture()
+    try:
+        _make_r2(root, Q9)
+        _rename_problem(("A",), n=2)(root)
+        code, err, res, _ = run_fixture(root, extra)
+        r.check("r2 read after a VOID first run (pairing rule)",
+                code == 0 and "share 118 of 120" in res["first_run_void"][Q9], err[-300:])
+    finally:
+        shutil.rmtree(root.parent)
+    # Refused when the first run is not VOID.
+    expect_halt(r, "r2 refused when the first run is not VOID", lambda root: _make_r2(root, Q9),
+                "no cell of the first run is VOID", extra=extra)
+    # Refused when the first run is missing.
+    def _missing(root):
+        _make_r2(root, Q9)
+        shutil.rmtree(cdir(root, Q9, "O"))
+    expect_halt(r, "r2 refused when the first run is missing", _missing,
+                "the first run cannot be read", extra=extra)
+    expect_halt(r, "r2 refused for an unknown model", lambda root: None,
+                "unknown model tags", extra=["--r2-models", "llama"])
+
+
+def test_validator_units(r):
+    r.check_eq("validator answer, valid", M.validator_verdict(
+        '{"valid": true, "status": "VALID", "report": ""}', "t"), True)
+    r.check_eq("validator answer, invalid", M.validator_verdict(
+        '{"valid": false, "status": "INVALID", "report": "x"}', "t"), False)
+    for label, raw in (("valid is 1", '{"valid": 1}'), ("valid is a string", '{"valid": "true"}'),
+                       ("an error answer", '{"error": true, "message": "boom"}'),
+                       ("no valid field", '{"status": "VALID"}'), ("not JSON", "Traceback ..."),
+                       ("not a string", None)):
+        try:
+            M.validator_verdict(raw, "t")
+            r.check(f"validator answer refused: {label}", False)
+        except M.Halt as e:
+            r.check(f"validator answer refused: {label}", "verdict" in str(e), str(e))
+    filed = json.loads((REPO_ROOT / "tools/reanalysis/out/rq1_layout_regrade.json")
+                       .read_text())["environment"]
+    r.check("the filed re-grade records the validator server sha256",
+            len(filed.get("validator_server_sha256", "")) == 64)
+    good = dict(filed)
+    try:
+        M.check_validator_env(good, filed)
+        r.check("validator environment as filed passes", True)
+    except M.Halt as e:
+        r.check("validator environment as filed passes", False, str(e))
+    for label, env, f, needle in (
+            ("release 0.1.6", {**good, "pyval": "0.1.6"}, filed, "0.1.6"),
+            ("server file edited", {**good, "validator_server_modified": True}, filed,
+             "uncommitted"),
+            ("server file differs", {**good, "validator_server_sha256": "0" * 64}, filed,
+             "differs from the filed re-grade"),
+            ("no filed record", good, {}, "records no validator_server_sha256")):
+        try:
+            M.check_validator_env(env, f)
+            r.check(f"validator environment refused: {label}", False)
+        except M.Halt as e:
+            r.check(f"validator environment refused: {label}", needle in str(e), str(e))
+
+
+def test_unread_units(r):
+    A = BF.ANSWERS
+    cases = (("solve", A["wrong_lines"], "a wrong plan as bare action lines", True),
+             ("solve", A["unread_solve"], "a tried step, then the plan as lines", True),
+             ("solve", A["wrong_block"], "a wrong plan in a JSON block", False),
+             ("solve", A["unclosed"], "an unclosed fence", False),
+             ("solve", A["prose"], "prose", False),
+             ("solve", "<|channel>thought\n<channel|>(go l1 l3)\n", "behind the leaked prefix",
+              True),
+             ("simulate", A["unread_sim"], "prose, then the trace on the last line", True),
+             ("simulate", A["unread_sim"] + "  \n", "trailing white space", True),
+             ("simulate", A["trace_wrong"], "one JSON object", False),
+             ("simulate", A["per_line_wrong"], "one object per line", False),
+             ("simulate", "The answer is (at r l2).", "prose", False))
+    for task, resp, label, want in cases:
+        lay = M.simulate_layout(resp) if task == "simulate" else M.NO_PLAN_BLOCK
+        r.check_eq(f"unread final answer: {task}, {label}",
+                   M.unread_final(task, resp, False, False, lay), want)
+    r.check_eq("unread: right under either reading is never counted",
+               (M.unread_final("solve", A["wrong_lines"], True, False, M.NO_PLAN_BLOCK),
+                M.unread_final("simulate", A["unread_sim"], False, True, M.NEITHER)),
+               (False, False))
+
+
 def main():
     r = TestResults("control_prompt_fix")
     test_fixture_is_builder_output(r)
@@ -987,6 +1249,10 @@ def main():
     if res is not None:
         test_base(r, res)
     test_refusals(r)
+    test_review_refusals(r)
+    test_r2(r)
+    test_validator_units(r)
+    test_unread_units(r)
     test_tripwires(r)
     test_live_gate(r)
     test_package_hash(r)
