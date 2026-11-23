@@ -16,12 +16,11 @@ existed.
 **Status of this document.** Sections 1 to 8 are the registration. Section 9 is the
 freeze record and section 10 the smoke record; both are filled in as the steps happen.
 Section 11 lists deviations. The analysis code was frozen on 2026-11-23 (section 9).
-Two points of sections 4 and 6 are marked **[Omer]**: they are choices the plan left
-open, written here as the session recommended. The multiplicity rule of section 4
-stands as written unless he changes it. Rule 5 of section 6 is still his to choose; no
-code depends on it, and it is fixed before the full run is submitted. Apart from that
-one rule, nothing in sections 1 to 8 changes after the freeze without an entry in
-section 11.
+The multiplicity rule of section 4 is marked **[Omer]**: it is a choice the plan left
+open, written as the session recommended, and it stands unless he changes it before
+the full run is submitted. Rule 5 of section 6 was open at the freeze and he settled it
+the same day, before any trial (the second reading). Nothing in sections 1 to 8
+changes from here on without an entry in section 11.
 
 ---
 
@@ -331,11 +330,22 @@ Fixed here, before any data is read:
 3. **Part C stays in the appendix as the registered record**, with a short note on why
    the arm was run again.
 4. **Both readings are registered for every rate and every contrast.**
-5. **Which figure of cell B the text quotes [Omer].** The frozen grade, since it is the
-   paper's measure everywhere else. The second reading stands beside it in the table.
-   If the two differ by more than 5 points for a model and task, the text gives both
-   figures wherever it gives one for that model and task. This rule is fixed now so
-   that the figure is not chosen after the data are seen.
+5. **Which figure of cell B the text quotes (Omer, 2026-11-23, after the freeze of the
+   code and before any trial).** The **second reading**, on solve and simulate. The
+   tool arm in the same comparison is quoted under the second reading too (C4 under
+   the second reading; the tool-arm rates of the filed re-grade), so both arms are read
+   the same way. The frozen grade of every rate and contrast stands beside it in the
+   appendix table as the registered record. The paper says, where it first quotes the
+   figure, that this reading was added after the rerun's data were seen and before any
+   answer of the control existed. The reason is the one section 3 gives: the frozen
+   solve reader mixes action-shaped lines of the reasoning into the plan, so on solve
+   it does not follow the answer the model gave. The rule is fixed now so that the
+   figure is not chosen after the data are seen. It covers the three open models. How
+   the Claude rates stand beside these figures is part of the paper step, not of this
+   registration (on solve their filed rates are the same under both readings).
+   *First draft of this rule, replaced:* the frozen grade in the text, with both figures
+   where the two readings differ by more than 5 points. The analysis still prints that
+   gap per model and task; it is now descriptive.
 6. **No paper edit is part of this registration.** The readout is reported to Omer; the
    paper change is a separate step after he has read it.
 
@@ -487,7 +497,7 @@ started with the package hash below.
 | gate 4, synthetic fixture | `tests/test_control_prompt_fix.py`, 441 checks with hand-computed values and refusals; expected values recomputed by the reviewer for three cases |
 | gate 5, independent review | a second agent that did not write the code, 2026-11-23: no code path giving a wrong number; 1 design finding (cell B's layout, fixed by the wording change of section 2.1 and the unread-final-answer count of section 8), 5 should-fix (all fixed), 7 notes (5 fixed, 2 declined: binding `--i-have-frozen` to this record, and a storage-cut case that cannot occur). A verification pass by the same reviewer confirmed the fixes and found 2 more items (one more unread shape; a stale count in this document), both fixed. The last change after that pass (shape (ii) of section 8) was checked by the fixture and the dry run, not by a third review |
 | dry run on existing data | each control cell filled with the Part C rows of its model: C1, C2 and C3 exactly 0 with interval [0, 0], k = 20, 300 pairs; C4 equal to the filed E2 under the frozen grade and to the filed re-grade under the second reading; every cell equal to the filed re-grade; the validator route returned the stored verdict for 712 plans before any new one. The cell B tripwire fired once, as expected on old data (Qwen3.6-35B simulate, 21 of 300), and was released by its id |
-| open at the freeze | section 6 rule 5 (which figure of cell B the text quotes) is Omer's and is written as the session recommended at first. No code depends on it. It is settled before the full run is submitted, and the answer is recorded here |
+| open at the freeze, settled the same day | section 6 rule 5 (which figure of cell B the text quotes) was Omer's to choose and was open when the code was frozen. **Settled 2026-11-23, before anything was submitted: the second reading** (section 6, rule 5). No code depends on it and the package hash is unchanged |
 | serving version | *to be filled in from the smoke* |
 | submit command (smoke and full run) | *to be filled in, verbatim* |
 | job ids and dates | *to be filled in* |

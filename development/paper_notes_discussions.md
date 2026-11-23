@@ -414,3 +414,14 @@
   comparison, with the frozen grade in the appendix. It gives one baseline and leans
   toward the unaided arm; it changes the reading RQ1 quotes on these two tasks.
 - **Nothing was run on a model and the cluster was not contacted.**
+- **Decided (Omer), same evening: the paper quotes the second reading for cell B**, on
+  solve and simulate, and quotes the tool arm in the same comparison under the second
+  reading too. The frozen grade stays in the appendix table as the registered record.
+  Written into the registration (section 6, rule 5) after the code was frozen and
+  before any trial; the package hash `825dab63…` is unchanged. What it means for the
+  paper step, not done now: RQ1's solve and simulate figures for the open models change
+  reading (the tool arms move by 0.0 to 3.3 points on solve; Gemma's simulate levels
+  rise by 10 to 12 points in every arm, its contrast does not move); the paper must say
+  in one sentence that the reading was added after the rerun's data were seen and
+  before the control's; how the Claude rates stand beside these figures is to be
+  settled then.

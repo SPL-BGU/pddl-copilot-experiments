@@ -141,12 +141,13 @@ Where the control stands, in its order of work:
    control exists. All five freeze gates passed (441 fixture checks; an independent
    review and its verification pass). A dry run on the existing Part C rows gave zero
    for the within-run contrasts and reproduced the filed figures.
-   **One choice is still Omer's, to be fixed before the full run is submitted**
-   (section 6, rule 5): which figure of cell B the text quotes. Written as the frozen
-   grade, with both figures where they differ by more than 5 points. The session now
-   recommends the second reading on solve and simulate for both arms, with the frozen
-   grade in the appendix, because the frozen solve reader mixes action-shaped lines of
-   the reasoning into the plan. No code depends on the choice.
+   **Which figure of cell B the paper quotes (Omer, 2026-11-23): the second reading**,
+   on solve and simulate, for the unaided arm and for the tool arm in the same
+   comparison; the frozen grade stays in the appendix table as the registered record
+   (section 6, rule 5). Decided after the code was frozen and before any trial; no code
+   depends on it and the hash is unchanged. For the paper step later: this changes the
+   reading RQ1 quotes on these two tasks, and the levels quoted for Gemma on simulate
+   (10 to 12 points higher in every arm under the second reading).
    Registered beyond the plan, for Omer to know: a fourth contrast (tools, plain
    wording, minus cell B; it crosses two runs and is labelled by the drift check);
    Holm-adjusted p-values beside every contrast; a count of "unread final answers" per
