@@ -87,7 +87,24 @@ layout most unaided solve answers of the rerun use. Scoping counts put unaided s
 40 to 52% with that block read, against the frozen 21.3 to 25.3%. These are not filed
 figures and are not to be quoted (`paper_notes_discussions.md`, 2026-11-23). The abstract
 and RQ1 quote the frozen figure. A reviewed post hoc re-grade of both arms needs no run
-and is the plan's first step; Omer has not ruled on it.
+and is the plan's first step.
+**The re-grade is done (Omer: yes, 2026-11-23; PR #146, for his read).**
+`tools/reanalysis/rq1_layout_regrade.py`; `NUMBERS.md`, "RQ1 solve and simulate —
+layout-tolerant re-grade of both arms". Same reader on the unaided arm and on both tool
+arms, new plans validated with the readout's validator release, frozen column equal to
+the filed readout, reviewed by a second agent that read answers in full. Unaided solve:
+frozen 21.3 / 24.3 / 25.3% (Gemma-26B / Qwen3.5-9B / Qwen3.6-35B), layout-tolerant 48.0 /
+38.3 / 48.0%; the tool arms move by 0.0 to 3.3 points. Tools (plain) minus no tools on
+solve: +71.0 / +64.3 / +51.7 frozen, +44.3 / +53.7 / +30.3 layout-tolerant, every
+interval above zero. On simulate no contrast moves by more than 3 points. The frozen
+figures stay the record; the others are post hoc and are quoted only beside them.
+**In the paper too (Omer: yes, 2026-11-23; same PR, for his read):** RQ1 has a paragraph
+and a table (rq1-regrade) on the second grading of solve; the frozen "21 to 29%" keeps
+its place in the abstract, introduction, discussion, related work and conclusion with
+"22 to 48%" beside it (five models; the Claude rates do not change, since none of their
+unaided answers has the layout); Limitations points to the table. All of this text was
+written by the session and has not had his read. The control run of the plan is still a
+proposal.
 
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,

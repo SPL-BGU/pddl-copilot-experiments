@@ -278,3 +278,39 @@
 - **What it touches, for Omer:** the abstract and RQ1 quote unaided solve at 21 to 29%.
   For the open models that is the frozen grade. The earlier statement in this entry and
   in chat that the format loss on solve was already neutralised is withdrawn.
+- **Decided (Omer), same day: do the re-grade of the stored answers (no run).** Done in
+  PR #146: `tools/reanalysis/rq1_layout_regrade.py`, with `NUMBERS.md` ("RQ1 solve
+  and simulate — layout-tolerant re-grade of both arms"). It replaces the scoping counts
+  above. The rule: on solve, the plan in the last code block of the answer, when that
+  block holds a plan, replaces the frozen reading in both directions; on simulate, the RQ3
+  line reader beside the frozen grade. The same reader on all three arms. New plans were
+  validated with pyvalidator 0.1.5, the readout's release, after that route returned the
+  stored verdict for all 740 plans of the frozen grade.
+- **Bottom line of the re-grade.** Unaided solve 21.3 / 24.3 / 25.3% frozen against 48.0 /
+  38.3 / 48.0% layout-tolerant (Gemma-26B / Qwen3.5-9B / Qwen3.6-35B); with case folded
+  48.7 / 40.0 / 51.7%, which are the scoping counts. Tool arms +0.0 to +3.3 points. The
+  solve contrast shrinks by 11 to 27 points and stays far above zero (+44.3 / +53.7 /
+  +30.3). Simulate: Gemma rises 10 to 12 points in every arm, so its contrast holds
+  (-15.7 to -16.3); the two Qwen contrasts move by 3 points or less.
+- **The review** (a second agent; code and 76 answers read in full): no defect that
+  changes a figure; the last block is the model's final plan in 40 of 41 unaided answers
+  read and in all 20 tool-arm answers that turn right. It also found that the
+  layout-tolerant figure is still a lower bound: a final plan given as a prose list is
+  not rescued (at least 11 more unaided answers by its count, 9 for the 35B).
+- **Also checked:** the JSON constraint pilot's solve grades (15 of 60 and 3 of 60) are
+  the same when its plans are validated with 0.1.5; its 62 live verdicts had come from
+  the plugin's 0.1.6.
+- **Open, Omer's decision:** how the paper states the unaided solve baseline. The six
+  "21 to 29%" sentences quote the frozen grade for the open models. The session's view:
+  the frozen figure stays the record and the second reading is stated beside it, as was
+  done for the RQ3 "70 to 91% lost" figure. Nothing in the paper is changed.
+- **Decided (Omer), same day: add the second reading to the paper.** Done in PR #146.
+  The frozen range stays in every sentence and "22 to 48%" stands beside it (abstract,
+  introduction, discussion, related work, conclusion). The range is over the five
+  models: the Claude rates are unchanged (0 of 200 unaided Claude solve answers hold a
+  plan in a code block), so the low end is Haiku's 22.0%. RQ1 has a new paragraph and
+  Table rq1-regrade with rows pasted from the generator; Limitations points to it. The
+  paper's words: "registered" for the frozen grade, "second reading" for the other.
+  The paragraph says the second reading may still understate the unaided rate and
+  gives one sentence on simulate (no contrast moves by more than 3.0 points). Overleaf
+  was checked before the edit: its copy equals `main` (no co-author edits).
