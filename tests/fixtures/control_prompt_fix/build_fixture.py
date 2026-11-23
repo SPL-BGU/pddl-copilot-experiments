@@ -58,6 +58,8 @@ PLAN = ["(go l1 l2)", "(stop r)"]          # valid in every domain
 WRONG = ["(go l1 l3)"]                     # invalid
 CAPS = ["(Go L1 L2)", "(Stop R)"]          # invalid on release 0.1.5; lower case is PLAN
 TRIED = ["(go l1 l3)", "(go l1 l2)", "(stop r)"]   # a tried step read with the final plan
+TRIED_CUT = ["(go l1 l3)", "(go l1 l2)"]          # the same, cut at the output cap
+TRIED_FENCED = ["(go l1 l2)", "(go l1 l3)"]       # a reasoning step, then a fenced wrong plan
 TRAJ = [{"step": 0, "action": "", "state": {"boolean": ["(at r l1)"], "numeric": {}}},
         {"step": 1, "action": "(go l1 l2)", "state": {"boolean": ["(at r l2)"], "numeric": {}}}]
 TRAJ_WRONG = [TRAJ[0], {"step": 1, "action": "(go l1 l2)",
@@ -79,6 +81,12 @@ ANSWERS = {
     # unread final answer, solve: a tried step, then the final plan as action lines
     # with no block; the frozen reader takes all action lines together (invalid)
     "unread_solve": "(go l1 l3)\nNo, that fails.\n" + "\n".join(PLAN),
+    # the same answer stopped at the output cap (not counted: a cut answer)
+    "unread_solve_cut": "(go l1 l3)\nNo, that fails.\n(go l1 l2)",
+    # a reasoning step, then a fenced block of a comment and an action line: not a plan
+    # block, the last line before the closing fence is an action line, and the frozen
+    # reader took both action lines (counted)
+    "comment_block": "(go l1 l2)\nThen:\n" + FENCE + "\n; final\n(go l1 l3)\n" + FENCE,
     # a JSON plan with capitals in the last block (second wrong, case folded right)
     "caps_block": "Here is the plan.\n" + FENCE + "json\n" + json.dumps(CAPS) + "\n" + FENCE,
     # right action lines, then a wrong JSON plan in the last block (right to wrong)
@@ -97,10 +105,17 @@ ANSWERS = {
     # unread final answer, simulate: prose, then the right trace on its last line
     # (neither reader reads it: not one JSON value, and one line is no trace)
     "unread_sim": "The final trajectory is:\n" + json.dumps({"trajectory": TRAJ}),
+    # the same stopped at the output cap (not counted)
+    "unread_sim_cut": "The final trajectory is:\n" + json.dumps({"trajectory": TRAJ}),
+    # a wrong trace in a final fenced block after prose: the frozen grader reads it
+    # (and finds it wrong), so it is not an unread answer although its layout is
+    # "neither" and it ends with } once the closing fence is set aside
+    "fenced_wrong_read": ("The final trajectory is:\n" + FENCE + "json\n"
+                          + json.dumps({"trajectory": TRAJ_WRONG}, indent=1) + "\n" + FENCE),
 }
 # Answers the frozen grade counts right (for the stored online grade fields only).
 STORED_OK = {"right", "right_to_wrong", "lines_block", "trace"}
-AT_CAP = {"unclosed", "storage_cut"}
+AT_CAP = {"unclosed", "storage_cut", "unread_solve_cut", "unread_sim_cut"}
 STORAGE_TEXT = ("I am still thinking about where the robot should go next. " * 1200)[:65_536]
 
 
@@ -119,29 +134,34 @@ PLANTS = {
     (G, "solve", "B"): _all("json_block", 11),
     (G, "solve", "C"): _all("json_block", 11),
     # Gemma simulate: O and Part C give a wrong trace on v11; in O, d05 v11 is a
-    # harness exception row (1 of 120, kept and graded as it is) and d01..d03 v11
-    # are unread final answers (3 of 60: exactly the fourth tripwire's threshold).
+    # harness exception row (1 of 120, kept and graded as it is), d01..d04 v11 are
+    # unread final answers (4 of 60, above the threshold, but cell O never trips the
+    # fourth tripwire), d06 v11 is the same answer cut at the output cap and d07 v11
+    # a fenced wrong trace the frozen grader read (not counted).
     (G, "simulate", "O"): {**_all("trace_wrong", 11), ("d05", 11): "exception",
-                           **_all("unread_sim", 11, DOMAINS[:3])},
+                           **_all("unread_sim", 11, DOMAINS[:4]),
+                           ("d06", 11): "unread_sim_cut", ("d07", 11): "fenced_wrong_read"},
     (G, "simulate", "C"): _all("trace_wrong", 11),
     # Qwen3.5-9B solve: the four layout plants in every cell; A wrong on v12.
     (Q9, "solve", "O"): dict(SPECIAL_Q9_SOLVE),
-    (Q9, "solve", "A"): {**_all("wrong_block", 12), **SPECIAL_Q9_SOLVE},
+    (Q9, "solve", "A"): {**_all("wrong_block", 12), **SPECIAL_Q9_SOLVE,
+                         ("d01", 12): "comment_block"},
     (Q9, "solve", "B"): dict(SPECIAL_Q9_SOLVE),
     (Q9, "solve", "C"): dict(SPECIAL_Q9_SOLVE),
     (Q9, "solve", "P"): dict(SPECIAL_Q9_SOLVE),
     # Qwen3.5-9B simulate: one wrong trace in O and Part C (d01 v11); a wrong
-    # trace written one object per line in every cell (d20 v13).
-    (Q9, "simulate", "O"): {("d01", 11): "trace_wrong", ("d20", 13): "per_line_wrong"},
-    (Q9, "simulate", "A"): {("d20", 13): "per_line_wrong"},
-    (Q9, "simulate", "B"): {("d20", 13): "per_line_wrong"},
-    (Q9, "simulate", "C"): {("d01", 11): "trace_wrong", ("d20", 13): "per_line_wrong"},
-    (Q9, "simulate", "P"): {("d20", 13): "per_line_wrong"},
+    # trace written one object per line in every cell (d17 v13); unread final
+    # answers in every cell on d18..d20 v13 (cell B: 3 of 60, exactly at the
+    # fourth tripwire's threshold, so it does not fire).
+    **{(Q9, "simulate", c): {("d17", 13): "per_line_wrong",
+                              **_all("unread_sim", 13, DOMAINS[17:20]),
+                              **({("d01", 11): "trace_wrong"} if c in ("O", "C") else {})}
+       for c in ("O", "A", "B", "C", "P")},
     # Qwen3.6-35B solve: O has no plan on d01 (v11 is cut by storage at the
     # output cap: accepted and counted); Part A wrong on v13.
-    # d01 v12 is an unread final answer.
+    # d01 v12 is an unread final answer; d01 v13 is the same answer cut at the cap.
     (Q35, "solve", "O"): {("d01", 11): "storage_cut", ("d01", 12): "unread_solve",
-                          ("d01", 13): "prose"},
+                          ("d01", 13): "unread_solve_cut"},
     (Q35, "solve", "P"): _all("wrong_lines", 13),
     # Qwen3.6-35B simulate: O and Part C write the right trace one object per line
     # on d01..d04 v11.
@@ -312,7 +332,7 @@ FILED_REGRADE = {
     (G, "solve", "unaided"): (60, 40, 60, 60), (G, "solve", "plain"): (60, 60, 60, 60),
     (G, "simulate", "unaided"): (60, 40, 40, 40), (G, "simulate", "plain"): (60, 60, 60, 60),
     (Q9, "solve", "unaided"): (60, 58, 57, 58), (Q9, "solve", "plain"): (60, 58, 57, 58),
-    (Q9, "simulate", "unaided"): (60, 58, 58, 58), (Q9, "simulate", "plain"): (60, 59, 59, 59),
+    (Q9, "simulate", "unaided"): (60, 55, 55, 55), (Q9, "simulate", "plain"): (60, 56, 56, 56),
     (Q35, "solve", "unaided"): (60, 60, 60, 60), (Q35, "solve", "plain"): (60, 40, 40, 40),
     (Q35, "simulate", "unaided"): (60, 56, 60, 60), (Q35, "simulate", "plain"): (60, 60, 60, 60),
 }
@@ -333,7 +353,7 @@ def build(out: Path) -> None:
         {"domain": d, "problem": "p01", "plan": WRONG, "valid": False})]
     (out / "plan_verdicts.json").write_text(json.dumps(stored, indent=1) + "\n")
     route = stored + [{"domain": d, "problem": "p01", "plan": pl, "valid": False}
-                      for d in DOMAINS for pl in (CAPS, TRIED)]
+                      for d in DOMAINS for pl in (CAPS, TRIED, TRIED_CUT, TRIED_FENCED)]
     (out / "route").mkdir(exist_ok=True)
     (out / "route" / "plan_verdicts.json").write_text(json.dumps(route, indent=1) + "\n")
     job = 24000001

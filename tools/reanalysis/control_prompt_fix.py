@@ -117,8 +117,8 @@ SYSTEM_SHA256 = {
           "simulate": "dfd6beadb3e815e769fd31bd88f99ed78c0cfb6c9b74001fe442cc0b2bbc5ccd"},
     "A": {"solve": "1cf4b9b6a7652fa90dc36cd41b98e3a312bebe6be3a427e3f16a62c4a7b2dfa8",
           "simulate": "c99db1124156372ea0e0a88b41779c4b9aa62167821a99272fa886f8b1774553"},
-    "B": {"solve": "15673b12344cb57ee47fa5c365fb271b4b4df2c745b90e3df77642314680960b",
-          "simulate": "79cb34355be9d069f7f0da01eb503941199352c87c2cb7eef21ebc675b4f7955"},
+    "B": {"solve": "3dbc1baf9e2670b024a7fec73b2fe7031c5fa5a5c13b711a12b18debf0ad0588",
+          "simulate": "7ccf5d9deccd98e72590f3649113929ea099ba855a72db1c571e91b6d1d47cf9"},
 }
 # section 2.2: models (folder tag -> model id), tasks, wordings.
 MODELS = {
@@ -159,7 +159,7 @@ VOID_FRAC = 0.01
 PAIRING_MIN = 0.99
 # section 8: tripwires.
 TRIPWIRE_POINTS = 20.0
-UNREAD_FRAC = 0.05            # more than 5% unread final answers (15 of 300)
+UNREAD_FRAC = 0.05            # cell B: more than 5% unread final answers (15 of 300)
 
 READING_WORDS = {"frozen": "frozen grade (the registered measure)",
                  "second": "second reading (layout-tolerant)"}
@@ -832,20 +832,54 @@ NO_PLAN_BLOCK = "no plan block"
 ONE_OBJECT, PER_LINE, NEITHER = "one JSON object", "one object per line", "neither"
 
 
-def unread_final(task: str, response: str, frozen: bool, second: bool, layout: str) -> bool:
-    """Section 8: wrong under both readings and ending with what looks like its final
-    answer outside a code block. Solve: the last non-empty line is one action line
-    (the tolerant action pattern the re-grade uses) and the answer has no plan block.
-    Simulate: the layout is "neither" and the answer, after the leaked prefix and
-    trailing white space are removed, ends with } or ]."""
-    if frozen or second:
+def _norm_action(line: str) -> str:
+    """One action as `block_plan` normalises an action line: the parenthesised text
+    from the first "(" to the first ")", white space collapsed, lower case."""
+    inner = line[line.find("("):]
+    inner = inner[: inner.find(")") + 1]
+    return " ".join(inner.split()).lower()
+
+
+def _closing_fence_aside(lines: list[str]) -> list[str]:
+    """The non-empty lines of an answer with one final closing code fence left out."""
+    return lines[:-1] if lines and lines[-1].strip() == "```" else lines
+
+
+def unread_final(task: str, response: str, frozen: bool, second: bool, layout: str,
+                 at_cap: bool, frozen_plan: tuple[str, ...], frozen_reason: str) -> bool:
+    """Section 8, an unread final answer: wrong under both readings, did not stop at
+    the output cap, and ends with what looks like its final answer in a place neither
+    reader reads. Text read after the leaked-prefix strip.
+
+    Solve: no plan block (`block_plan` is None); the last non-empty line, a closing
+    code fence aside, is one action line (the tolerant action pattern of the
+    re-grade); and the frozen reader's plan is not just the run of action lines the
+    answer ends with. That run is the longest sequence of consecutive non-empty lines
+    at the end (closing fence aside) that each match the pattern. Both the run and
+    the frozen plan are normalised as `block_plan` normalises action lines (the
+    parenthesised text, white space collapsed, lower case) before they are compared.
+    No frozen plan at all counts as unread.
+    Simulate: the frozen grader read no trace at all (its reason is
+    "format_parse_fail"; a trace that was read and is wrong does not count), layout
+    "neither", and the answer, a closing code fence aside and trailing white space
+    removed, ends with } or ]."""
+    if frozen or second or at_cap:
         return False
     text = strip_leaked_channel_prefix(response or "")
+    lines = _closing_fence_aside([ln for ln in text.splitlines() if ln.strip()])
     if task == "solve":
-        lines = [ln for ln in text.splitlines() if ln.strip()]
-        return (len(lines) > 0 and _TOLERANT_ACTION_RE.match(lines[-1]) is not None
-                and RG.block_plan(response) is None)
-    return layout == NEITHER and text.rstrip().endswith(("}", "]"))
+        if RG.block_plan(response) is not None or not lines \
+                or _TOLERANT_ACTION_RE.match(lines[-1]) is None:
+            return False
+        run: list[str] = []
+        for ln in reversed(lines):
+            if _TOLERANT_ACTION_RE.match(ln) is None:
+                break
+            run.insert(0, _norm_action(ln))
+        return tuple(_norm_action(a) for a in frozen_plan) != tuple(run)
+    tail = "\n".join(lines).rstrip()
+    return (frozen_reason == "format_parse_fail" and layout == NEITHER
+            and tail.endswith(("}", "]")))
 
 
 def ok_of(g: G.Delivered) -> bool:
@@ -1008,7 +1042,8 @@ def grade_rows(pairs, verdict: Verdicts, gt_cache: dict) -> dict:
             folded=folded, reason=g.reason, layout=layout, at_cap=r.done_reason == "length",
             completion=r.tokens.completion, is_exception=r.is_exception,
             readable=g.reason not in UNREADABLE,
-            unread=unread_final(r.task, r.response, ok_of(g), second, layout))
+            unread=unread_final(r.task, r.response, ok_of(g), second, layout,
+                                r.done_reason == "length", plan_of(g), g.reason))
     return out
 
 
@@ -1380,8 +1415,10 @@ def analyse(design: Design, control: dict, rr: Rerun, verdict: Verdicts, mode: s
                 if not any(x.readable for x in g_ctrl[(m, cell, t)].values()):
                     fired[f"T3:{m}:{cell}:{t}"] = (f"cell {cell} of {m}: the frozen grader can "
                                                    f"read no answer at all on {t}")
+                # The fourth tripwire guards cell B only (the reported baseline);
+                # for O and A the count is reported and never halts.
                 n_unread = sum(x.unread for x in g_ctrl[(m, cell, t)].values())
-                if n_unread > UNREAD_FRAC * design.per_task_cell:
+                if cell == "B" and n_unread > UNREAD_FRAC * design.per_task_cell:
                     fired[f"T4:{m}:{cell}:{t}"] = (
                         f"cell {cell} of {m}, {t}: {n_unread} unread final answers of "
                         f"{design.per_task_cell} (more than {100 * UNREAD_FRAC:.0f}%)")
@@ -1550,10 +1587,12 @@ def render(res: dict) -> str:
              "(secondary, descriptive)")
     L.append("")
     L.append(f"Reading: frozen grade for the reasons; layout as the second reading sees it. "
-             f"An unread final answer is wrong under both readings and ends with what looks "
-             f"like its final answer outside a code block (solve: the last non-empty line is "
-             f"one action line and there is no plan block; simulate: layout neither, the "
-             f"answer ends with a closing brace or bracket). The rerun's rows: "
+             f"An unread final answer is wrong under both readings, did not stop at the "
+             f"output cap, and ends with what looks like its final answer where neither reader "
+             f"reads it (solve: no plan block, the last line, a closing fence aside, is an "
+             f"action line, and the frozen reader's plan is not just the action lines the "
+             f"answer ends with; simulate: the frozen grader read no trace, layout neither, "
+             f"the answer ends with a closing brace or bracket). The fourth tripwire applies to cell B only. The rerun's rows: "
              + "; ".join(f"{model_name(u['model'])} {u['task']} {u['part']} {u['unread']}"
                          for u in res["unread_rerun"]) + f". {common}.")
     L.append("")

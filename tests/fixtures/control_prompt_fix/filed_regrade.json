@@ -5,18 +5,18 @@
    "task": "simulate",
    "arm": "plain",
    "n": 60,
-   "frozen_k": 59,
-   "tolerant_k": 59,
-   "folded_k": 59
+   "frozen_k": 56,
+   "tolerant_k": 56,
+   "folded_k": 56
   },
   {
    "tag": "Qwen3_5_9B",
    "task": "simulate",
    "arm": "unaided",
    "n": 60,
-   "frozen_k": 58,
-   "tolerant_k": 58,
-   "folded_k": 58
+   "frozen_k": 55,
+   "tolerant_k": 55,
+   "folded_k": 55
   },
   {
    "tag": "Qwen3_5_9B",

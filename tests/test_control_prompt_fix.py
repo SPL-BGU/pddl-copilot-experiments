@@ -237,11 +237,12 @@ RATES = {
     (Q9, "solve", "O"): (58, 57, 58), (Q9, "solve", "A"): (38, 37, 38),
     (Q9, "solve", "B"): (58, 57, 58), (Q9, "solve", "Part C"): (58, 57, 58),
     (Q9, "solve", "Part A"): (58, 57, 58),
-    # Qwen3.5-9B simulate: d20 v13 a wrong trace one object per line everywhere;
-    # O and Part C also wrong on d01 v11: 58; the rest 59.
-    (Q9, "simulate", "O"): (58, 58, 58), (Q9, "simulate", "A"): (59, 59, 59),
-    (Q9, "simulate", "B"): (59, 59, 59), (Q9, "simulate", "Part C"): (58, 58, 58),
-    (Q9, "simulate", "Part A"): (59, 59, 59),
+    # Qwen3.5-9B simulate: in every cell d17 v13 a wrong trace one object per line
+    # and d18..d20 v13 unread final answers (4 wrong); O and Part C also wrong on
+    # d01 v11: 55; the rest 56.
+    (Q9, "simulate", "O"): (55, 55, 55), (Q9, "simulate", "A"): (56, 56, 56),
+    (Q9, "simulate", "B"): (56, 56, 56), (Q9, "simulate", "Part C"): (55, 55, 55),
+    (Q9, "simulate", "Part A"): (56, 56, 56),
     # Qwen3.6-35B solve: O has no plan on d01 (three wordings): 57. Part A wrong
     # on v13 in all domains: 40.
     (Q35, "solve", "O"): (57, 57, 57), (Q35, "solve", "A"): (60, 60, 60),
@@ -431,36 +432,47 @@ def test_base(r, res):
                {M.ONE_OBJECT: 56, M.PER_LINE: 4})
     s = by(res, "secondary", model=GM, task="simulate", cell="O")
     r.check_eq("exception row graded as it is", (s["exception_rows"], s["failure_reasons"]),
-               (1, {"exception": 1, "format_parse_fail": 3, "trajectory_mismatch": 16}))
-    r.check_eq("layout Gemma simulate O (3 unread answers and the exception row: neither)",
-               s["layout"], {M.ONE_OBJECT: 56, M.NEITHER: 4})
-    # Unread final answers (section 8). Control: Gemma simulate O d01..d03 v11
-    # (prose, then the trace on its last line) = 3, exactly 5% of 60, so T4 does
-    # not fire; Qwen3.6-35B solve O d01 v12 (a tried step, then the plan as action
-    # lines, no block) = 1; every other cell 0. A wrong plan in a JSON block (Qwen3.5-9B
-    # A v12) has a plan block, so it is not counted.
+               (1, {"exception": 1, "format_parse_fail": 5, "trajectory_mismatch": 14}))
+    r.check_eq("layout Gemma simulate O (4 unread, 1 cut, 1 fenced read, the exception "
+               "row: neither)", s["layout"], {M.ONE_OBJECT: 53, M.NEITHER: 7})
+    # Unread final answers (section 8), hand counts:
+    #  Gemma simulate O: d01..d04 v11 (prose, then the trace on its last line) = 4;
+    #    d06 v11 is the same answer cut at the cap, not counted; d07 v11 is a fenced
+    #    wrong trace the frozen grader read (trajectory_mismatch), not counted. 4 > 3 (5% of 60), but
+    #    the fourth tripwire guards cell B only, so it does not fire.
+    #  Qwen3.5-9B simulate, every cell: d18..d20 v13 = 3. In cell B 3 is exactly 5% of
+    #    60: not more, so it does not fire. (d17 v13, one object per line, is not
+    #    "neither".)
+    #  Qwen3.5-9B solve A: d01 v12, a reasoning action line then a fenced comment and
+    #    action line: the frozen plan (2 actions) is not the trailing run (1) = 1. The
+    #    other 19 wrong plans of v12 are JSON blocks (a plan block), not counted.
+    #  Qwen3.6-35B solve O: d01 v12, a tried step then the plan as lines = 1; d01 v13,
+    #    the same cut at the cap, not counted.
     unread = {(s["model"], s["task"], s["cell"]): s["unread_final_answers"]
               for s in res["secondary"]}
     r.check_eq("unread final answers per cell",
                {k: v for k, v in unread.items() if v},
-               {(GM, "simulate", "O"): 3, (Q35, "solve", "O"): 1})
+               {(GM, "simulate", "O"): 4, (Q9, "simulate", "O"): 3, (Q9, "simulate", "A"): 3,
+                (Q9, "simulate", "B"): 3, (Q9, "solve", "A"): 1, (Q35, "solve", "O"): 1})
     r.check_eq("unread final answers counted in every cell", len(unread), 18)
-    # The rerun: Part A Qwen3.6-35B solve v13 is the wrong plan as bare action lines in
-    # all 20 domains; the registered definition counts it (wrong both ways, last line
-    # an action line, no plan block).
+    # The rerun: Qwen3.5-9B simulate d18..d20 v13 in Part C and Part A = 3 each. Part A
+    # Qwen3.6-35B solve v13, a wrong plan as bare action lines with nothing above it,
+    # is read by the frozen reader as it ends, so it is not counted.
     r.check_eq("unread final answers of the rerun rows",
                {(u["model"], u["task"], u["part"]): u["unread"]
-                for u in res["unread_rerun"] if u["unread"]}, {(Q35, "solve", "Part A"): 20})
+                for u in res["unread_rerun"] if u["unread"]},
+               {(Q9, "simulate", "Part C"): 3, (Q9, "simulate", "Part A"): 3})
     r.check_eq("no tripwire fired in the base fixture", res["tripwires_audited"], {})
     s = by(res, "secondary", model=GM, task="solve", cell="A")
     r.check_eq("moves O -> A Gemma solve", s["moves_from_O"],
                {"no_plan_extracted -> plan_valid": 20, "plan_valid -> plan_valid": 40})
     s = by(res, "secondary", model=Q35, task="solve", cell="O")
-    r.check_eq("Q35 solve O at cap (the storage-cut row)", s["at_output_cap"], 1)
-    # Route: R and W stored for every domain (40 plans) checked first; CAPS of d10
-    # and the three-action plan of Q35 solve O d01 validated new (42 in all).
+    r.check_eq("Q35 solve O at cap (the storage-cut row and the cut answer)",
+               s["at_output_cap"], 2)
+    # Route: R and W stored for every domain (40 plans) checked first; then new: CAPS
+    # of d10, and the three d01 plans of the tried-step answers (whole, cut, fenced).
     r.check_eq("route checked / validated", (res["route_checked_plans"], res["validated_plans"]),
-               (40, 42))
+               (40, 44))
     r.check("C4 label in the table carries the moved-setup words",
             "no tools ahead; across a setup that moved" in res["_md"])
     r.check("wording table gives counts", "v11: count right, frozen / second" in res["_md"])
@@ -716,15 +728,18 @@ def test_tripwires(r):
                 code == 2 and "T1:simulate:frozen" in err and "T1:simulate:second" in err, err[-600:])
     finally:
         shutil.rmtree(root.parent)
-    # T4: a fourth unread final answer in Gemma simulate O (4 of 60 > 5%); the base
-    # fixture holds 3 there (exactly 5%) and does not fire.
+    # T4 (cell B only): a fourth unread final answer in Qwen3.5-9B simulate B (4 of 60
+    # > 5%) fires. The base fixture holds 3 there (exactly 5%) and 4 in Gemma
+    # simulate O, and neither fires. The new answer only replaces a right one, so only
+    # B's counts move; the run halts at the tripwire.
     root = copy_fixture()
     try:
-        set_answer(root, GM, "O", "simulate", "d04", 11, "unread_sim")
+        set_answer(root, Q9, "B", "simulate", "d16", 13, "unread_sim")
         code, err, _, _ = run_fixture(root)
-        r.check("T4 fires above 5% unread final answers",
-                code == 2 and "T4:gemma4_26b-a4b:O:simulate" in err
-                and "4 unread final answers of 60" in err, err[-500:])
+        r.check("T4 fires in cell B above 5% unread final answers",
+                code == 2 and "T4:Qwen3_5_9B:B:simulate" in err
+                and "4 unread final answers of 60" in err and "T4:gemma4" not in err,
+                err[-500:])
     finally:
         shutil.rmtree(root.parent)
     # T3: a cell in which the frozen grader reads no answer on ONE task (solve made
@@ -1216,29 +1231,70 @@ def test_validator_units(r):
             r.check(f"validator environment refused: {label}", needle in str(e), str(e))
 
 
+def sim_reason(resp: str, gt: dict) -> str:
+    """The frozen grade reason of a simulate answer on fixture domain d01."""
+    from tools.delivered_rerun import schema as S
+    row = BF.make_row(Q9, "simulate", "d01", 11, "trace")
+    row = {**row, "response": resp}
+    spec = M.control_spec(M.SMOKE, Q9, "O", BF.RUN_TAG)
+    parsed = S.parse_row({"key": BF.key_of(row), "result": row}, spec, "t")
+    return G.grade(parsed, gt, {}).reason
+
+
 def test_unread_units(r):
     A = BF.ANSWERS
-    cases = (("solve", A["wrong_lines"], "a wrong plan as bare action lines", True),
-             ("solve", A["unread_solve"], "a tried step, then the plan as lines", True),
-             ("solve", A["wrong_block"], "a wrong plan in a JSON block", False),
-             ("solve", A["unclosed"], "an unclosed fence", False),
-             ("solve", A["prose"], "prose", False),
-             ("solve", "<|channel>thought\n<channel|>(go l1 l3)\n", "behind the leaked prefix",
-              True),
-             ("simulate", A["unread_sim"], "prose, then the trace on the last line", True),
-             ("simulate", A["unread_sim"] + "  \n", "trailing white space", True),
-             ("simulate", A["trace_wrong"], "one JSON object", False),
-             ("simulate", A["per_line_wrong"], "one object per line", False),
-             ("simulate", "The answer is (at r l2).", "prose", False))
-    for task, resp, label, want in cases:
+    fence = "```"
+    # A closing fence aside: a block opened without a newline after the fence is not
+    # a block either reader reads, so the frozen grader reads no trace from it.
+    fenced_sim = ("Here:\n" + fence + json.dumps({"trajectory": BF.TRAJ}, indent=1) + "\n"
+                  + fence)
+    # A fenced wrong trace after prose: the frozen grader reads the block (and finds it
+    # wrong), so it is not an unread answer.
+    fenced_read = ("Here:\n" + fence + "json\n" + json.dumps({"trajectory": BF.TRAJ_WRONG},
+                                                             indent=1) + "\n" + fence)
+    gt = json.loads((FIXTURE / "gt_cache.json").read_text())
+    # (task, answer, label, stopped at the cap, counted)
+    cases = (("solve", A["wrong_lines"], "a plain wrong plan as bare lines, nothing above", False,
+              False),
+             ("solve", A["unread_solve"], "a tried step, then the plan as lines", False, True),
+             ("solve", A["unread_solve_cut"], "the same, cut at the output cap", True, False),
+             ("solve", A["comment_block"], "a reasoning step, then a fenced comment and action",
+              False, True),
+             ("solve", "Plan:\n" + fence + "\n; final\n(go l1 l3)\n" + fence,
+              "a fenced comment and action line, nothing above (frozen reads the same line)",
+              False, False),
+             ("solve", "Reasoning only.\n(Go  L1   L3)", "the run normalised like block_plan",
+              False, False),
+             ("solve", A["wrong_block"], "a wrong plan in a JSON block", False, False),
+             ("solve", A["unclosed"], "an unclosed fence", True, False),
+             ("solve", A["prose"], "prose", False, False),
+             ("simulate", A["unread_sim"], "prose, then the trace on the last line", False, True),
+             ("simulate", A["unread_sim"] + "  \n", "trailing white space", False, True),
+             ("simulate", A["unread_sim_cut"], "the same, cut at the output cap", True, False),
+             ("simulate", fenced_sim, "a closing fence aside (no trace read)", False, True),
+             ("simulate", fenced_read, "a fenced wrong trace the frozen grader read", False,
+              False),
+             ("simulate", A["trace_wrong"], "one JSON object", False, False),
+             ("simulate", A["per_line_wrong"], "one object per line", False, False),
+             ("simulate", "The answer is (at r l2).", "prose", False, False))
+    for task, resp, label, cap, want in cases:
         lay = M.simulate_layout(resp) if task == "simulate" else M.NO_PLAN_BLOCK
+        frozen_plan = G.solve_plan(resp)[0] if task == "solve" else ()
+        reason = sim_reason(resp, gt) if task == "simulate" else "no_plan_extracted"
         r.check_eq(f"unread final answer: {task}, {label}",
-                   M.unread_final(task, resp, False, False, lay), want)
+                   M.unread_final(task, resp, False, False, lay, cap, frozen_plan, reason), want)
+    r.check_eq("the fenced wrong trace is read by the frozen grader",
+               sim_reason(fenced_read, gt), "trajectory_mismatch")
+    r.check_eq("unread: no frozen plan at all counts",
+               M.unread_final("solve", A["wrong_lines"], False, False, M.NO_PLAN_BLOCK, False, (),
+                              "no_plan_extracted"),
+               True)
     r.check_eq("unread: right under either reading is never counted",
-               (M.unread_final("solve", A["wrong_lines"], True, False, M.NO_PLAN_BLOCK),
-                M.unread_final("simulate", A["unread_sim"], False, True, M.NEITHER)),
+               (M.unread_final("solve", A["unread_solve"], True, False, M.NO_PLAN_BLOCK, False,
+                               tuple(BF.TRIED), "plan_valid"),
+                M.unread_final("simulate", A["unread_sim"], False, True, M.NEITHER, False, (),
+                               "format_parse_fail")),
                (False, False))
-
 
 def main():
     r = TestResults("control_prompt_fix")

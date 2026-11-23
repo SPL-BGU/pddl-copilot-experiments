@@ -5,7 +5,7 @@
    "model": "Qwen3_5_9B",
    "task": "simulate",
    "arm": "plain",
-   "delivered_k": 59,
+   "delivered_k": 56,
    "n": 60
   },
   {
@@ -48,7 +48,7 @@
   {
    "model": "Qwen3_5_9B",
    "task": "simulate",
-   "a_pct": 96.66666666666667
+   "a_pct": 91.66666666666667
   },
   {
    "model": "Qwen3_5_9B",

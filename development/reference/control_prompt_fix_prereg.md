@@ -452,8 +452,10 @@ reader reads. The answer did not stop at the output cap (a cut answer has no fin
 answer). On solve: the answer has no plan block; its last non-empty line, a closing
 code fence aside, is one action line; and the plan the frozen reader took is not just
 the run of action lines the answer ends with (when it is, the frozen reader did read
-the final answer, and the plan was simply wrong). On simulate: the layout is "neither"
-and the answer, a closing code fence aside, ends with a closing brace or bracket. Neither reader reads such an answer as the model's final answer. The count is
+the final answer, and the plan was simply wrong). On simulate: the frozen grader read
+no trace from the answer at all (its reason is `format_parse_fail`; a trace that was
+read and is wrong does not count), the layout is "neither", and the answer, a closing
+code fence aside, ends with a closing brace or bracket. Neither reader reads such an answer as the model's final answer. The count is
 reported per model, task and cell. It is given so that a baseline held down by layout
 is seen and not read as a baseline held down by content.
 
