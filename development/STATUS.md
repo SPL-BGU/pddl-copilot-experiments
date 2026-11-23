@@ -121,7 +121,7 @@ readout. "No run is planned" below has this one exception.
 
 Where the control stands, in its order of work:
 
-1. **Harness change: built, PR open for Omer's merge** (branch
+1. **Harness change: built, PR #147 open for Omer's merge** (branch
    `harness/control-prompt-cells`). Opt-in and additive: the texts of cells A and B are
    in `pddl_eval/control_prompts.py`; the client swaps the system message only when
    `$PDDL_NO_TOOLS_SYSTEM` is set, and refuses any message that is not the registered
