@@ -499,9 +499,9 @@ started with the package hash below.
 | dry run on existing data | each control cell filled with the Part C rows of its model: C1, C2 and C3 exactly 0 with interval [0, 0], k = 20, 300 pairs; C4 equal to the filed E2 under the frozen grade and to the filed re-grade under the second reading; every cell equal to the filed re-grade; the validator route returned the stored verdict for 712 plans before any new one. The cell B tripwire fired once, as expected on old data (Qwen3.6-35B simulate, 21 of 300), and was released by its id |
 | open at the freeze, settled the same day | section 6 rule 5 (which figure of cell B the text quotes) was Omer's to choose and was open when the code was frozen. **Settled 2026-11-23, before anything was submitted: the second reading** (section 6, rule 5). No code depends on it and the package hash is unchanged |
 | serving version | vLLM **0.20.2** in the serve log of all nine smoke cells (2026-11-23); the full run's logs are checked again by the analysis |
-| submit command (smoke and full run) | *to be filled in, verbatim* |
-| job ids and dates | *to be filled in* |
-| GPU class, memory, requests at a time (from the job log) | *to be filled in* |
+| submit command (smoke and full run) | Smoke: in section 10. Full run, from `~/pddl-copilot-experiments` on the login node, after a dry run of the same command: `bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b --no-tools --think-modes off --tasks "solve simulate" --no-tools-system "registered no-pointer format-stated" --run-tag control-promptfix --gpu-type rtx_6000 --time 12:00:00` (the smoke's command without `--partial 1`, with the run tag `control-promptfix`) |
+| job ids and dates | Smoke: job 24432950, 2026-11-23 (section 10). Full run: job **24445482**, submitted 2026-11-23 19:40 IST on Omer's go-ahead of the same day, one array of nine tasks (0 to 8), cluster checkout at `9109179`, tools repo at `5e4f9c0`, no folder of this run tag existed before. `--time=12:00:00` read back from the queue. Task job ids and end dates: *to be filled in when the run ends* |
+| GPU class, memory, requests at a time (from the job log) | Smoke: `NVIDIA RTX 6000 Ada Generation`, `--mem=48G`, `Concurrency: 4` (section 10). Full run: requested `rtx_6000:1` and `--mem=48G` per task; the job-log reading is *to be filled in when the run ends* |
 
 **sha256 of the frozen files** (at `3b355c3`). Any later edit to one of the files of the
 package hash is a declared deviation in section 11, followed by a new freeze.

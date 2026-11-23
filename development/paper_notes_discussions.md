@@ -433,3 +433,10 @@
   (1.2 to 3.1 hours each) will likely be stopped and resumed too; the design resumes in
   place and the registration allows it. The full run waits for Omer's separate
   go-ahead.
+- **Full run submitted (2026-11-23 19:40 IST, job 24445482; Omer: "Yes, submit it").**
+  The smoke's command without `--partial 1`, run tag `control-promptfix`, nine cells in
+  one array so O, A and B share a window; `--time=12:00:00` read back from the queue.
+  Cluster at `9109179`, tools repo at `5e4f9c0`; the preflight script was not run.
+  During the run only job states and row counts are read. A requeued task writes its
+  serve log again from the start, so the earlier starts' logs are lost; the watcher
+  notes each serve log's vLLM version line at every check to keep them on record.

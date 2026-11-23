@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-23 (the corrected-prompt control: harness merged, cell B reworded, registration written, its analysis frozen at `825dab63…`, the smoke passed, the full run not started; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-23 (the corrected-prompt control: harness merged, cell B reworded, registration written, its analysis frozen at `825dab63…`, the smoke passed, the full run submitted as job 24445482 and running; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -163,9 +163,13 @@ Where the control stands, in its order of work:
    `5e4f9c0` with validator 0.1.5, as for Part C (the preflight script was not run for
    that reason). Synced to `results/control-promptfix-smoke/`. No smoke rate was read.
    Record: section 10 of the registration.
-4. **Full run**: only after the smoke passes; needs its own go-ahead, **by 2026-11-30
-   for the paper, by 2026-11-25 if the abstract of 2026-12-07 is to quote the new
-   baseline.**
+4. **Full run: submitted, running** (2026-11-23 19:40 IST, job 24445482, Omer's
+   go-ahead the same day). The smoke's command without `--partial 1`, run tag
+   `control-promptfix`, one array of nine cells, `--time=12:00:00` read back from the
+   queue. A cell is complete at 600 rows; a short cell is resumed, not analysed. Until
+   the frozen analysis runs, only job states and row counts are read. A requeued task
+   writes its serve log again, so the watcher notes each log's vLLM version line at
+   every check.
 5. Sync, the frozen analysis, a readout and a `NUMBERS.md` entry. Then stop: the paper
    change is a separate step.
 
