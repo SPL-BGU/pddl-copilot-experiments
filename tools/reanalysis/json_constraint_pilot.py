@@ -235,7 +235,7 @@ def main(argv=None) -> int:
          f"read from its leading `\"verdict\"` field when it has one (a constrained answer "
          f"that stops at the output cap inside its reason). \"Rerun, same trials\" = the "
          f"frozen grade of the delivered rerun's unaided cell on the same trial keys. One "
-         f"model, 20 problems, nothing registered. Answers cut by storage (all stopped at the "
+         f"model, the first problem of each of 20 domains, nothing registered. Answers cut by storage (all stopped at the "
          f"output cap; graded on the stored 65,536 characters): prompt only {n_cut[PLAIN]}, "
          f"constraint {n_cut[BOUND]}. Solve plans validated live for this table: "
          f"{len(missing)}.*", ""]
