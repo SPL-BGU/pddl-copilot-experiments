@@ -1,0 +1,102 @@
+{
+ "d01": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d02": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d03": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d04": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d05": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d06": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d07": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d08": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d09": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d10": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d11": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d12": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d13": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d14": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d15": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d16": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d17": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d18": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d19": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ },
+ "d20": {
+  "p01": {
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  }
+ }
+}

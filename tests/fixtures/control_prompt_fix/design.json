@@ -1,0 +1,7 @@
+{
+ "k_domains": 20,
+ "per_folder": 120,
+ "per_task_cell": 60,
+ "per_task_wording": 20,
+ "per_wording": 40
+}
