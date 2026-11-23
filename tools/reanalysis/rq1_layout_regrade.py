@@ -59,7 +59,8 @@ Contrast. "Tools minus unaided" is the readout's E2: the plain tool arm minus th
 unaided arm, paired on the trial key (the two share their user prompts). The frozen
 column must equal the filed E2 estimate.
 
-Outputs (tools/reanalysis/out/): rq1_layout_regrade.json and .md; with --numbers
+Outputs (tools/reanalysis/out/): rq1_layout_regrade.json and .md, and
+tex/rq1_layout_regrade.tex (the rows of the paper's solve table); with --numbers
 the markdown is spliced into development/NUMBERS.md (tag RQ1-LAYOUT-REGRADE).
 """
 from __future__ import annotations
@@ -344,6 +345,25 @@ def main(argv=None) -> int:
          "distinct_new_block_plans": n_new_plans},
         indent=1) + "\n")
     (args.out / "rq1_layout_regrade.md").write_text(md)
+
+    # tex rows of the paper's solve table (Table rq1-regrade): pasted, never edited by hand
+    def tex_cell(b: dict, signed: bool = False) -> str:
+        f = "+.1f" if signed else ".1f"
+        return f"${b['est']:{f}}$ {{\\scriptsize$[{b['lo']:{f}},\\,{b['hi']:{f}}]$}}"
+
+    paper_names = {"Gemma-26B": "Gemma-MoE-26B"}
+    by = {(c["tag"], c["task"], c["arm"]): c for c in table}
+    e2 = {(e["tag"], e["task"]): e for e in contrasts}
+    tex = []
+    for m in ("Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"):       # the order of Table rq1-solve
+        u, t, d = by[(m, "solve", "unaided")], by[(m, "solve", "plain")], e2[(m, "solve")]
+        tex.append(" & ".join([
+            paper_names.get(u["model"], u["model"]),
+            tex_cell(u["frozen"]), tex_cell(u["tolerant"]),
+            tex_cell(t["frozen"]), tex_cell(t["tolerant"]),
+            tex_cell(d["frozen"], signed=True), tex_cell(d["tolerant"], signed=True)]) + r" \\")
+    (args.out / "tex").mkdir(exist_ok=True)
+    (args.out / "tex" / "rq1_layout_regrade.tex").write_text("\n".join(tex) + "\n")
     print(md)
     if args.numbers:
         changed = write_numbers(REPO / "development" / "NUMBERS.md", TAG, md)
