@@ -65,7 +65,7 @@ from tools.delivered_rerun import grade as G
 from tools.delivered_rerun import run as RUN
 from tools.delivered_rerun import schema as S
 from tools.delivered_rerun import stats as ST
-from tools.e2e_regrade import _TOLERANT_ACTION_RE, oracle_canon_for
+from tools.e2e_regrade import _FENCED_BLOCK_RE, _TOLERANT_ACTION_RE, oracle_canon_for
 from tools.gt_cache_gate import PREREG_PINNED_HASH, canonical_hash  # noqa: F401 (hashed dep)
 from tools.reanalysis import iss027_common as C27
 from tools.reanalysis import rq1_layout_regrade as RG
@@ -851,14 +851,19 @@ def unread_final(task: str, response: str, frozen: bool, second: bool, layout: s
     the output cap, and ends with what looks like its final answer in a place neither
     reader reads. Text read after the leaked-prefix strip.
 
-    Solve: no plan block (`block_plan` is None); the last non-empty line, a closing
-    code fence aside, is one action line (the tolerant action pattern of the
-    re-grade); and the frozen reader's plan is not just the run of action lines the
-    answer ends with. That run is the longest sequence of consecutive non-empty lines
-    at the end (closing fence aside) that each match the pattern. Both the run and
-    the frozen plan are normalised as `block_plan` normalises action lines (the
-    parenthesised text, white space collapsed, lower case) before they are compared.
-    No frozen plan at all counts as unread.
+    Solve, either of two shapes, both with no plan block (`block_plan` is None):
+    (ii) the answer has at least one closed fenced block (`e2e_regrade._FENCED_BLOCK_RE`
+    on the stripped text, as `block_plan` finds blocks) and the LAST one holds a
+    parenthesised action somewhere (`rq1_layout_regrade._ACTION`, searched, not
+    matched); counted whatever the frozen reader took.
+    (i) the last non-empty line, a closing code fence aside, is one action line (the
+    tolerant action pattern of the re-grade, `e2e_regrade._TOLERANT_ACTION_RE`); and
+    the frozen reader's plan is not just the run of action lines the answer ends with.
+    That run is the longest sequence of consecutive non-empty lines at the end
+    (closing fence aside) that each match the pattern. Both the run and the frozen
+    plan are normalised as `block_plan` normalises action lines (the parenthesised
+    text, white space collapsed, lower case) before they are compared. No frozen plan
+    at all counts as unread.
     Simulate: the frozen grader read no trace at all (its reason is
     "format_parse_fail"; a trace that was read and is wrong does not count), layout
     "neither", and the answer, a closing code fence aside and trailing white space
@@ -868,8 +873,12 @@ def unread_final(task: str, response: str, frozen: bool, second: bool, layout: s
     text = strip_leaked_channel_prefix(response or "")
     lines = _closing_fence_aside([ln for ln in text.splitlines() if ln.strip()])
     if task == "solve":
-        if RG.block_plan(response) is not None or not lines \
-                or _TOLERANT_ACTION_RE.match(lines[-1]) is None:
+        if RG.block_plan(response) is not None:
+            return False
+        blocks = _FENCED_BLOCK_RE.findall(text)
+        if blocks and RG._ACTION.search(blocks[-1]) is not None:
+            return True                                            # shape (ii)
+        if not lines or _TOLERANT_ACTION_RE.match(lines[-1]) is None:
             return False
         run: list[str] = []
         for ln in reversed(lines):
@@ -1591,7 +1600,8 @@ def render(res: dict) -> str:
              f"output cap, and ends with what looks like its final answer where neither reader "
              f"reads it (solve: no plan block, the last line, a closing fence aside, is an "
              f"action line, and the frozen reader's plan is not just the action lines the "
-             f"answer ends with; simulate: the frozen grader read no trace, layout neither, "
+             f"answer ends with, or the last closed block is not a plan block but holds an "
+             f"action; simulate: the frozen grader read no trace, layout neither, "
              f"the answer ends with a closing brace or bracket). The fourth tripwire applies to cell B only. The rerun's rows: "
              + "; ".join(f"{model_name(u['model'])} {u['task']} {u['part']} {u['unread']}"
                          for u in res["unread_rerun"]) + f". {common}.")

@@ -87,6 +87,15 @@ ANSWERS = {
     # block, the last line before the closing fence is an action line, and the frozen
     # reader took both action lines (counted)
     "comment_block": "(go l1 l2)\nThen:\n" + FENCE + "\n; final\n(go l1 l3)\n" + FENCE,
+    # shape (ii): a last block of action lines with ; comments (not a plan block; the
+    # frozen reader takes no plan): counted
+    "semicolon_block": ("Plan:\n" + FENCE + "\n(go l1 l2) ; move\n(stop r) ; done\n"
+                        + FENCE),
+    # shape (ii): a planner-style listing with times and costs: counted
+    "planner_block": ("Plan:\n" + FENCE + "\n0.000: (go l1 l2) [1]\n1.000: (stop r) [1]\n"
+                      + FENCE),
+    # a last block of prose only: not counted
+    "prose_block": "Notes:\n" + FENCE + "\nThe robot moves to l2.\n" + FENCE,
     # a JSON plan with capitals in the last block (second wrong, case folded right)
     "caps_block": "Here is the plan.\n" + FENCE + "json\n" + json.dumps(CAPS) + "\n" + FENCE,
     # right action lines, then a wrong JSON plan in the last block (right to wrong)
@@ -144,8 +153,12 @@ PLANTS = {
     (G, "simulate", "C"): _all("trace_wrong", 11),
     # Qwen3.5-9B solve: the four layout plants in every cell; A wrong on v12.
     (Q9, "solve", "O"): dict(SPECIAL_Q9_SOLVE),
+    # v12 d01..d04: a fenced comment after a reasoning step, a ;-commented block, a
+    # planner listing (all counted as unread), a prose block (not counted); the other
+    # v12 answers are wrong plans in a JSON block (a plan block, not counted).
     (Q9, "solve", "A"): {**_all("wrong_block", 12), **SPECIAL_Q9_SOLVE,
-                         ("d01", 12): "comment_block"},
+                         ("d01", 12): "comment_block", ("d02", 12): "semicolon_block",
+                         ("d03", 12): "planner_block", ("d04", 12): "prose_block"},
     (Q9, "solve", "B"): dict(SPECIAL_Q9_SOLVE),
     (Q9, "solve", "C"): dict(SPECIAL_Q9_SOLVE),
     (Q9, "solve", "P"): dict(SPECIAL_Q9_SOLVE),

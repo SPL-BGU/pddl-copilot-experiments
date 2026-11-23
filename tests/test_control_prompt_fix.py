@@ -443,9 +443,11 @@ def test_base(r, res):
     #  Qwen3.5-9B simulate, every cell: d18..d20 v13 = 3. In cell B 3 is exactly 5% of
     #    60: not more, so it does not fire. (d17 v13, one object per line, is not
     #    "neither".)
-    #  Qwen3.5-9B solve A: d01 v12, a reasoning action line then a fenced comment and
-    #    action line: the frozen plan (2 actions) is not the trailing run (1) = 1. The
-    #    other 19 wrong plans of v12 are JSON blocks (a plan block), not counted.
+    #  Qwen3.5-9B solve A, v12: d01 a reasoning action line then a fenced comment and
+    #    action line (shapes i and ii); d02 a block of ;-commented action lines and d03
+    #    a planner listing (shape ii, the frozen reader took no plan) = 3; d04 a block of
+    #    prose only is not counted; the other 16 are wrong plans in a JSON block (a
+    #    plan block), not counted. Cell A, so the cell B thresholds are untouched.
     #  Qwen3.6-35B solve O: d01 v12, a tried step then the plan as lines = 1; d01 v13,
     #    the same cut at the cap, not counted.
     unread = {(s["model"], s["task"], s["cell"]): s["unread_final_answers"]
@@ -453,7 +455,7 @@ def test_base(r, res):
     r.check_eq("unread final answers per cell",
                {k: v for k, v in unread.items() if v},
                {(GM, "simulate", "O"): 4, (Q9, "simulate", "O"): 3, (Q9, "simulate", "A"): 3,
-                (Q9, "simulate", "B"): 3, (Q9, "solve", "A"): 1, (Q35, "solve", "O"): 1})
+                (Q9, "simulate", "B"): 3, (Q9, "solve", "A"): 3, (Q35, "solve", "O"): 1})
     r.check_eq("unread final answers counted in every cell", len(unread), 18)
     # The rerun: Qwen3.5-9B simulate d18..d20 v13 in Part C and Part A = 3 each. Part A
     # Qwen3.6-35B solve v13, a wrong plan as bare action lines with nothing above it,
@@ -1261,11 +1263,22 @@ def test_unread_units(r):
              ("solve", A["comment_block"], "a reasoning step, then a fenced comment and action",
               False, True),
              ("solve", "Plan:\n" + fence + "\n; final\n(go l1 l3)\n" + fence,
-              "a fenced comment and action line, nothing above (frozen reads the same line)",
-              False, False),
+              "a fenced comment and action line, nothing above: shape (ii) counts it whatever "
+              "the frozen reader took", False, True),
+             ("solve", "Plan:\n" + fence + "\n(go l1 l3)\n" + fence,
+              "a last block that is a valid plan block (action lines), wrong", False, False),
              ("solve", "Reasoning only.\n(Go  L1   L3)", "the run normalised like block_plan",
               False, False),
-             ("solve", A["wrong_block"], "a wrong plan in a JSON block", False, False),
+             ("solve", A["wrong_block"], "a wrong plan in a JSON block (plan block)", False,
+              False),
+             ("solve", A["semicolon_block"], "shape (ii): a block of ;-commented actions",
+              False, True),
+             ("solve", A["planner_block"], "shape (ii): a planner listing", False, True),
+             ("solve", A["prose_block"], "a last block of prose only", False, False),
+             ("solve", A["semicolon_block"], "shape (ii), cut at the output cap", True, False),
+             ("solve", "Earlier:\n" + fence + "\n(go l1 l2) ; x\n" + fence + "\nNotes:\n"
+              + fence + "\nno actions here\n" + fence,
+              "shape (ii) reads the LAST closed block only", False, False),
              ("solve", A["unclosed"], "an unclosed fence", True, False),
              ("solve", A["prose"], "prose", False, False),
              ("simulate", A["unread_sim"], "prose, then the trace on the last line", False, True),

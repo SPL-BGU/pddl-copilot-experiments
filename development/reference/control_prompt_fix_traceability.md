@@ -18,7 +18,7 @@ Shared mechanics used by many entries:
 
 - every registered constant is a raised check in `check_constants` (CPF:209)
   and `check_design` (CPF:272), called at import (CPF:296) and again in `main`
-  (CPF:1695); the checks raise `RegisteredCheckFailed` and are not `assert`
+  (CPF:1705); the checks raise `RegisteredCheckFailed` and are not `assert`
   statements, so `python -O` cannot strip them (the frozen `constants.py` also
   refuses `-O`). T:test_constants flips each constant and each design field and
   sees the check fire; T:test_package_hash checks `-O` is refused.
@@ -26,9 +26,9 @@ Shared mechanics used by many entries:
   (CPF:354) with a `CellSpec` made by `dataclasses.replace` from `spec_rerun_c`
   (`control_spec`, CPF:321), and through the frozen `schema._check_completeness`
   (CPF:403).
-- grade fields are read only through `ok_of` (CPF:885, raises unless the frozen
-  `ok` is a bool) and `plan_of` (CPF:891); estimator code reads `Graded` records
-  (CPF:813) built in `grade_rows` (CPF:1033).
+- grade fields are read only through `ok_of` (CPF:894, raises unless the frozen
+  `ok` is a bool) and `plan_of` (CPF:900); estimator code reads `Graded` records
+  (CPF:813) built in `grade_rows` (CPF:1042).
 
 ---
 
@@ -82,7 +82,7 @@ CPF:213); the cell spec admits only these tasks. T:test_constants.
 
 `REGISTERED` (CPF:186) checked in `check_design` (CPF:275-282); `WORDINGS`
 (CPF:131, CPF:238); frozen completeness (CPF:403); graded cells and contrasts
-hold 300 (in `analyse`, CPF:1306). T:test_refusals ("a short cell"),
+hold 300 (in `analyse`, CPF:1315). T:test_refusals ("a short cell"),
 T:test_constants.
 
 ### 2.3 What is identical to Part C
@@ -113,7 +113,7 @@ vLLM: section 7 item 7. GPU class and memory: NOT IMPLEMENTED 3.
 > the frozen package hash `822aace9…` differs from the harness of Part C."
 
 `rq1_metrics.load_rerun_cells` halts unless the frozen package hash is
-`822aace9…` (`load_rerun_live`, CPF:1077); the frozen files are hashed with this
+`822aace9…` (`load_rerun_live`, CPF:1086); the frozen files are hashed with this
 script (`DEPENDENCIES`, CPF:85-99). T:test_package_hash. The commit itself is a
 section 9 record (not code).
 
@@ -123,8 +123,8 @@ section 9 record (not code).
 > recorded in section 9 from the submit output and the cluster-ops status script, and the
 > readout prints the dates (only the last job id of a cell is kept in its folder)."
 
-`--control-dates` is required (CPF:1702) and printed in the header and in every R4
-sentence (`r4_reading`, CPF:1295); the last job id of each cell is written to
+`--control-dates` is required (CPF:1712) and printed in the header and in every R4
+sentence (`r4_reading`, CPF:1304); the last job id of each cell is written to
 the output (`audit_control`, CPF:682). The job ids are a section 9 record (not
 code). T:test_base ("R4 carries both dates").
 
@@ -141,7 +141,7 @@ T:test_constants.
 Control folders carry the control's run tag; Part C and Part A enter only C3, C4
 and the reproduction checks, each in its own column (`analyse`); the smoke is
 read only by `smoke_check` (CPF:710), which builds smoke names only; fixture
-mode reads the fixture's own domains only (`fixture_domains`, CPF:1094; check at
+mode reads the fixture's own domains only (`fixture_domains`, CPF:1103; check at
 CPF:394). The script writes only its own outputs. T:test_smoke ("the full-run
 folders are never read"), T:test_review_refusals ("fixture mode refuses a domain
 outside the fixture's own").
@@ -153,8 +153,8 @@ outside the fixture's own").
 > "A trial is right when the frozen delivered grader says so: (...) Rates are per model, task
 > and cell, over the three wordings together (n = 300)."
 
-`frozen_grades` (CPF:1050) calls `G.grade`; `rate` (CPF:1173) per (model, task,
-cell) in `analyse` (CPF:1332). T:test_base, T:test_planted_answers.
+`frozen_grades` (CPF:1059) calls `G.grade`; `rate` (CPF:1182) per (model, task,
+cell) in `analyse` (CPF:1341). T:test_base, T:test_planted_answers.
 
 > "**The second reading: layout-tolerant.** Registered beside the frozen grade for every rate and
 > every contrast. It is the reading of the filed re-grade (`tools/reanalysis/rq1_layout_regrade.py`).
@@ -165,14 +165,14 @@ cell) in `analyse` (CPF:1332). T:test_base, T:test_planted_answers.
 The two readers, `rq1_layout_regrade.block_plan` and
 `rq3_context_pilot.line_reader_exact`, are imported unchanged. The combining
 rule lives inside `rq1_layout_regrade.main()` there and is re-implemented in
-`second_reading` (CPF:1008): the frozen plan is the default; a block plan
-replaces it and decides (CPF:1018); the case-folded column re-validates the
-deciding plan in lower case only when it has a capital (CPF:1023); on simulate
-`line_reader_exact` is added only when the frozen grade is wrong (CPF:1029).
-`check_filed_regrade` (CPF:1141) halts unless this reproduces
+`second_reading` (CPF:1017): the frozen plan is the default; a block plan
+replaces it and decides (CPF:1027); the case-folded column re-validates the
+deciding plan in lower case only when it has a capital (CPF:1032); on simulate
+`line_reader_exact` is added only when the frozen grade is wrong (CPF:1038).
+`check_filed_regrade` (CPF:1150) halts unless this reproduces
 `tools/reanalysis/out/rq1_layout_regrade.json` (`frozen_k`, `tolerant_k`,
 `folded_k`) on every Part C and Part A (plain) cell. Every rate and contrast
-carries both readings (`analyse`, CPF:1332 and CPF:1345). T:test_refusals ("the
+carries both readings (`analyse`, CPF:1341 and CPF:1354). T:test_refusals ("the
 second reading does not reproduce the filed re-grade"); the dry run reproduced
 all 12 filed cells.
 
@@ -181,7 +181,7 @@ all 12 filed cells.
 > frozen grade." simulate: "A trace written one JSON object per line also counts when it equals
 > the answer key exactly (...). An answer the frozen grader already counts right stays right."
 
-CPF:1018-1029. T:test_planted_answers, T:test_base.
+CPF:1027-1038. T:test_planted_answers, T:test_base.
 
 > "**Validator.** Every solve plan of the control, under both readings, is validated in process
 > with pddl-pyvalidator **0.1.5**, (...) through the route of the filed re-grade (...). The analysis
@@ -191,13 +191,13 @@ CPF:1018-1029. T:test_planted_answers, T:test_base.
 > plan the frozen grade used on the rerun's solve rows that the analysis reads (Part C, and the
 > plain wording of Part A for C4)."
 
-One `Verdicts` (CPF:913) for both readings; `live_route` (CPF:934) through the
-plugin server loaded in process; the verdict by `validator_verdict` (CPF:951),
-which halts unless `valid` is a real bool (CPF:958) and on an error answer;
+One `Verdicts` (CPF:922) for both readings; `live_route` (CPF:943) through the
+plugin server loaded in process; the verdict by `validator_verdict` (CPF:960),
+which halts unless `valid` is a real bool (CPF:967) and on an error answer;
 release, an edited server file and the server file's sha256 against the
 `environment` block of the filed re-grade (`validator_server_sha256`) in
-`check_validator_env` (CPF:963, called at CPF:1744); `check_route` (CPF:988)
-before any control row is graded (CPF:1313). T:test_validator_units (well-formed
+`check_validator_env` (CPF:972, called at CPF:1754); `check_route` (CPF:997)
+before any control row is graded (CPF:1322). T:test_validator_units (well-formed
 answers, `valid` 1 or "true", error answer, no field, not JSON; release 0.1.6,
 edited file, different sha256, no filed record), T:test_refusals ("the route
 disagrees with a stored verdict"). The live route itself is exercised by the dry
@@ -205,7 +205,7 @@ run, which reproduced the filed figures.
 
 > "**Case folded (descriptive, not a registered reading).** (...) No reading of section 5 uses it."
 
-CPF:1023; no reading function reads it. T:test_planted_answers, T:test_base.
+CPF:1032; no reading function reads it. T:test_planted_answers, T:test_base.
 
 ---
 
@@ -214,37 +214,37 @@ CPF:1023; no reading function reads it. T:test_planted_answers, T:test_base.
 > "All contrasts are paired on the trial key (...), per model and task, in points, under both
 > readings." The table of C1 to C4, six each.
 
-`paired` (CPF:1179) on the frozen trial key; the four contrasts and both readings
-in `analyse` (CPF:1345); Holm family size 6 (CPF:1366); total 48 checked.
+`paired` (CPF:1188) on the frozen trial key; the four contrasts and both readings
+in `analyse` (CPF:1354); Holm family size 6 (CPF:1375); total 48 checked.
 T:test_base.
 
 > "C3 and C4 use rows of the delivered rerun for the same 300 trial keys. Their frozen grades are
 > recomputed with the frozen functions and must reproduce the filed readout, and their second
 > reading must reproduce the filed re-grade, or the analysis halts."
 
-`load_rerun_live` (CPF:1077, through `rq1_metrics.load_rerun_cells`),
-`check_filed_readout` (CPF:1120), `check_filed_regrade` (CPF:1141).
+`load_rerun_live` (CPF:1086, through `rq1_metrics.load_rerun_cells`),
+`check_filed_readout` (CPF:1129), `check_filed_regrade` (CPF:1150).
 T:test_refusals.
 
 > "**Intervals.** 95% percentile intervals from the frozen domain-cluster bootstrap (...) 20 domains
 > (...) 10,000 resamples, seed 20261002. The analysis asserts 20 domains in every contrast. Rates
 > carry the same interval."
 
-`boot` (CPF:1162) with `k_expected = 20`, re-checking k and the level; constants
+`boot` (CPF:1171) with `k_expected = 20`, re-checking k and the level; constants
 at CPF:251-254. T:test_base, T:test_constants.
 
 > "**Margin.** M = **5 points**" and the reading of C1 to C3: "criterion met (...), endpoints
 > included; a difference is shown (...); unresolved: neither." "A contrast can meet the criterion
 > and show a difference at once"
 
-`MARGIN` (CPF:143); `contrast_label` (CPF:1191). T:test_base (the endpoint 5.0 is
+`MARGIN` (CPF:143); `contrast_label` (CPF:1200). T:test_base (the endpoint 5.0 is
 inside), T:test_labels (met and shown at once, on synthetic values: 3 trials per
 domain cannot produce it in the fixture).
 
 > "**The reading of C4.** "Tools ahead" (...) "no tools ahead" (...) "no difference shown" otherwise."
 
-`c4_label` (CPF:1205). Where R3 says the setup moved, the C4 label of both
-readings also carries "across a setup that moved" (CPF:1380), so the words are
+`c4_label` (CPF:1214). Where R3 says the setup moved, the C4 label of both
+readings also carries "across a setup that moved" (CPF:1389), so the words are
 in the contrast table itself. T:test_base (Qwen3.6-35B solve C4 labels; "C4 label
 in the table carries the moved-setup words"), T:test_labels.
 
@@ -255,10 +255,10 @@ in the table carries the moved-setup words"), T:test_labels.
 > beside any sentence of R1, R2 or R4 that rests on such a contrast. The count of contrasts (24,
 > each under two readings) is stated with every table."
 
-Frozen `signflip_exact_p` and `holm` (`paired`, CPF:1179; CPF:1366); the words in
-`contrast_label` and `c4_label`; the notes from `holm_notes` (CPF:1261) beside
-R1, R2 (`r12_reading`, CPF:1267) and R4 (`r4_reading`, CPF:1295), printed by
-`render` (`with_notes`, CPF:1554); the count sentence `common` (CPF:1491) under
+Frozen `signflip_exact_p` and `holm` (`paired`, CPF:1188; CPF:1375); the words in
+`contrast_label` and `c4_label`; the notes from `holm_notes` (CPF:1270) beside
+R1, R2 (`r12_reading`, CPF:1276) and R4 (`r4_reading`, CPF:1304), printed by
+`render` (`with_notes`, CPF:1563); the count sentence `common` (CPF:1500) under
 every table. T:test_base, T:test_labels ("R4 Holm note").
 
 ---
@@ -270,30 +270,30 @@ every table. T:test_base, T:test_labels ("R4 Holm note").
 > below whose condition holds, in the order listed. (...) "Unresolved" is given only when no case
 > holds. "A rise" means the 95% interval is above 0, "a fall" that it is below 0."
 
-`r12_reading` (CPF:1267): both labels with intervals; a sentence for every case
-(a) to (d) that holds, in order; (e) only when none holds; `rise` (CPF:1221)
-lo > 0, `fall` (CPF:1225) hi < 0. Printed by `render`. A pattern no case (a) to
+`r12_reading` (CPF:1276): both labels with intervals; a sentence for every case
+(a) to (d) that holds, in order; (e) only when none holds; `rise` (CPF:1230)
+lo > 0, `fall` (CPF:1234) hi < 0. Printed by `render`. A pattern no case (a) to
 (d) names, such as a rise under the second reading only, gets (e) "unresolved"
 with its two labels. T:test_base, T:test_labels ("a sentence for a and for b, in
 order", "a rise under the second reading only").
 
 > R1 (a) to (e) and R2 (a) to (e), as written out in the prereg.
 
-`R_SENTENCES` (CPF:1233), verbatim; (b) and (e) carry both estimates and
-intervals (`WITH_INTERVALS`, CPF:1258). T:test_base (each sentence verbatim),
+`R_SENTENCES` (CPF:1242), verbatim; (b) and (e) carry both estimates and
+intervals (`WITH_INTERVALS`, CPF:1267). T:test_base (each sentence verbatim),
 T:test_labels ("R2 fall sentence").
 
 > "**R3. Drift. (C3, frozen grade.)** (...) the levels of the control are not set beside the levels
 > of Part C for that model and task. C1 and C2 do not depend on R3"
 
-`r3_reading` (CPF:1284); `render` leaves Part C out of the rate table there
-(CPF:1513, CPF:1530). T:test_base.
+`r3_reading` (CPF:1293); `render` leaves Part C out of the rate table there
+(CPF:1522, CPF:1539). T:test_base.
 
 > "**R4.** Reported per model and task under both readings, always with the dates of the two runs
 > (...). Where R3 says the setup moved, the C4 entry of that model and task carries the words
 > "across a setup that moved"."
 
-`r4_reading` (CPF:1295); the C4 labels themselves (CPF:1380). T:test_base.
+`r4_reading` (CPF:1304); the C4 labels themselves (CPF:1389). T:test_base.
 
 > "A reading that would be wrong, named in advance." "The rerun's E2 (...) stays in the appendix."
 
@@ -305,12 +305,12 @@ Not code (paper text). No label says "unchanged" or "as good as".
 
 > Rules 1 to 3 and 6.
 
-Paper text; rules 1 and 2 are stated in the rate table's header (CPF:1517).
+Paper text; rules 1 and 2 are stated in the rate table's header (CPF:1526).
 
 > "4. **Both readings are registered for every rate and every contrast.**" "5. (...) If the two
 > differ by more than 5 points (...) the text gives both figures (...)."
 
-Both readings everywhere (`analyse`); `rule5` (CPF:1394). T:test_base.
+Both readings everywhere (`analyse`); `rule5` (CPF:1403). T:test_base.
 
 ---
 
@@ -385,8 +385,8 @@ version banner"), T:test_smoke ("item 7 names the last job's serve log").
 > "**The same audit checks (items 4 to 7) are preconditions of the analysis** on the full run.
 > If one fails, the analysis halts before any answer is graded."
 
-`audit_control` (CPF:682), called in `main` before the rerun is loaded (CPF:1717,
-CPF:1737); item 7 with neither logs nor note halts (CPF:688). T:test_refusals.
+`audit_control` (CPF:682), called in `main` before the rerun is loaded (CPF:1727,
+CPF:1747); item 7 with neither logs nor note halts (CPF:688). T:test_refusals.
 
 > "**Apparatus checks, also preconditions of the analysis** (...): `client_settings.json` gives the
 > 16,384-token window and thinking off; the run's summary gives the 16,384-token window,
@@ -410,7 +410,7 @@ answer stopped at the cap with fewer tokens).
 a model named in `--r2-models` has its first-run cells loaded and checked, and
 its second run is read only when a first-run cell is VOID by the exception rule
 or the pairing rule; a missing, short or otherwise refused first run, or one
-that is not VOID, halts (called at CPF:1714 and CPF:1734). T:test_refusals
+that is not VOID, halts (called at CPF:1724 and CPF:1744). T:test_refusals
 ("exception rows above 1% -> VOID"), T:test_r2 (accepted after a VOID first run
 by either rule; refused when the first run is not VOID, when it is missing, and
 for an unknown model).
@@ -420,7 +420,7 @@ for an unknown model).
 > a difference halts the analysis. So in an analysed run the unpaired count is zero, and it is printed."
 
 `check_pairing` (CPF:469) right after loading; `check_keys_equal_part_c`
-(CPF:484, called at CPF:1311); the unpaired count is a column of the contrast
+(CPF:484, called at CPF:1320); the unpaired count is a column of the contrast
 tables. T:test_refusals, T:test_base.
 
 > "**Exception rows at or under 1%** stay in the denominator and are graded as they are (...).
@@ -435,7 +435,7 @@ half-written line is counted and skipped").
 > "**The analysis does not read a row of the full run** unless it is started with the package hash
 > recorded in section 9 (`--i-have-frozen`)."
 
-`package_sha256` (CPF:308); the gate at CPF:1725, before any read. T:test_live_gate,
+`package_sha256` (CPF:308); the gate at CPF:1735, before any read. T:test_live_gate,
 T:test_package_hash.
 
 ---
@@ -444,20 +444,20 @@ T:test_package_hash.
 
 > "the count of right answers by wording (v11, v12, v13; 100 trials each), under both readings;"
 
-`by_wording` (CPF:1464); the table header says "count right". T:test_base
+`by_wording` (CPF:1473); the table header says "count right". T:test_base
 ("wording table gives counts").
 
 > "the layout of the answer: (...) on simulate, whether the answer is one JSON object (the whole
 > answer, after the leaked prefix and one enclosing code fence are removed, parses as an object),
 > one object per line (at least two lines that each parse as an object), or neither;"
 
-`layout` (CPF:1468) from `block_plan` and `simulate_layout` (CPF:895). T:test_base.
+`layout` (CPF:1477) from `block_plan` and `simulate_layout` (CPF:904). T:test_base.
 
 > "answers that stopped at the output cap; mean answer tokens;" "the frozen grade's reason for each
 > failure, and how each trial moved from O to A and from O to B;" "the case-folded column of section
 > 3;" "the Holm-adjusted p-values of section 4."
 
-`secondary_tables` (CPF:1457): CPF:1469, CPF:1473, CPF:1475, CPF:1479; `p_holm`
+`secondary_tables` (CPF:1466): CPF:1478, CPF:1482, CPF:1484, CPF:1488; `p_holm`
 on every contrast. T:test_base.
 
 > "**Tripwires that halt the readout until audited** (the audit is recorded in the readout): a
@@ -468,47 +468,56 @@ on every contrast. T:test_base.
 > final answers, as defined next. Cell B is the baseline the paper reports, so it is the cell this
 > tripwire guards. (...) so for cells O and A it is reported and does not halt."
 
-In `analyse`: T1 (CPF:1404), T2 (CPF:1411), T3 per cell and task (CPF:1416), T4
+In `analyse`: T1 (CPF:1413), T2 (CPF:1420), T3 per cell and task (CPF:1425), T4
 for cell B only, with `UNREAD_FRAC` (CPF:162, checked CPF:269 and as 15 of 300
-at CPF:282) (CPF:1421); cells O and A and the rerun rows are counted and never
-halt. A fired tripwire halts unless released with a note (CPF:1425, the frozen
-`run.load_audit_notes` at CPF:1698). T:test_tripwires (T1; T2 with and without a
+at CPF:282) (CPF:1430); cells O and A and the rerun rows are counted and never
+halt. A fired tripwire halts unless released with a note (CPF:1434, the frozen
+`run.load_audit_notes` at CPF:1708). T:test_tripwires (T1; T2 with and without a
 note; T3 on one task; T4 in cell B at 4 of 60), T:test_base (cell B at 3 of 60,
 exactly 5%, and cell O at 4 of 60: neither fires).
 
 > "**Unread final answers (descriptive, and the fourth tripwire).** An answer that is wrong under
 > both readings and ends with what looks like its final answer in a place neither reader reads. The
-> answer did not stop at the output cap (a cut answer has no final answer). On solve: the answer has
-> no plan block; its last non-empty line, a closing code fence aside, is one action line; and the
-> plan the frozen reader took is not just the run of action lines the answer ends with (when it is,
-> the frozen reader did read the final answer, and the plan was simply wrong). On simulate: the
-> frozen grader read no trace from the answer at all (its reason is `format_parse_fail`; a trace
-> that was read and is wrong does not count), the layout is "neither", and the answer, a closing
-> code fence aside, ends with a closing brace or bracket. (...) The count is reported per model,
-> task and cell."
+> answer did not stop at the output cap (a cut answer has no final answer). On solve, one of two
+> shapes. (i) The answer has no plan block; its last non-empty line, a closing code fence aside, is
+> one action line; and the plan the frozen reader took is not just the run of action lines the
+> answer ends with (when it is, the frozen reader did read the final answer, and the plan was simply
+> wrong). (ii) The answer's last closed code block is not a plan block and yet holds at least one
+> parenthesised action (for example action lines with comments, or a planner's listing with times
+> and costs). Shape (ii) is counted whatever the frozen reader took, so the count can include a block
+> the frozen reader happened to read; it errs on the side of counting. On simulate: the frozen
+> grader read no trace from the answer at all (its reason is `format_parse_fail`; a trace that was
+> read and is wrong does not count), the layout is "neither", and the answer, a closing code fence
+> aside, ends with a closing brace or bracket. (...) The count is reported per model, task and cell."
 
 `unread_final` (CPF:848), on the text after the leaked-prefix strip: wrong under
-both readings and not stopped at the cap (CPF:866); one final closing fence line
-(a line that is exactly three backticks) is left out (`_closing_fence_aside`,
-CPF:843). Solve: `block_plan` is None and the last line matches the re-grade's
-tolerant action pattern (`e2e_regrade._TOLERANT_ACTION_RE`); the run is the
-longest sequence of consecutive non-empty lines at the end that each match the
-pattern (CPF:874-878); the run and the frozen reader's plan are each normalised
-as `block_plan` normalises action lines, i.e. the text from the first "(" to the
-first ")", white space collapsed, lower case (`_norm_action`, CPF:835); the
-answer counts when the two differ, and when the frozen reader took no plan
-(CPF:879). Simulate: the frozen reason is `format_parse_fail` (no trace read; a
-trace read and found wrong does not count), layout "neither", and the remaining
-text ends with `}` or `]` (CPF:881). The frozen plan, its reason and the cap come
-from `grade_rows` (CPF:1046).
-Counted per model, task and cell (CPF:1476) and for the rerun's rows (CPF:1434).
-T:test_unread_units (a plain wrong plan as bare lines: not counted; reasoning plus
-a trailing plan: counted; cut at the cap on each task: not counted; a fenced
-comment plus action line after a reasoning action line: counted; the same block
-with nothing above: not counted; normalisation; a closing fence aside on
-simulate; a fenced wrong trace the frozen grader read: not counted), T:test_base
-(hand counts per cell and for the rerun rows; Gemma simulate O d07 v11 is such a
-read fenced trace and is not counted).
+both readings and not stopped at the cap (CPF:871). Solve, both shapes need
+`block_plan` to be None. Shape (ii) (CPF:878-880): the closed fenced blocks are
+found with `e2e_regrade._FENCED_BLOCK_RE`, the regex `block_plan` uses, and the
+LAST one must contain a parenthesised action, searched with
+`rq1_layout_regrade._ACTION`; counted whatever the frozen reader took. Shape (i):
+one final closing fence line (a line that is exactly three backticks) is left out
+(`_closing_fence_aside`, CPF:843); the last line matches the re-grade's tolerant
+action pattern (`e2e_regrade._TOLERANT_ACTION_RE`); the run is the longest
+sequence of consecutive non-empty lines at the end that each match it
+(CPF:883-887); the run and the frozen reader's plan are each normalised as
+`block_plan` normalises action lines, i.e. the text from the first "(" to the
+first ")", white space collapsed, lower case (`_norm_action`, CPF:835); the answer
+counts when the two differ, and when the frozen reader took no plan (CPF:888).
+Simulate: the frozen reason is `format_parse_fail` (no trace read; a trace read
+and found wrong does not count), layout "neither", and the remaining text ends
+with `}` or `]` (CPF:890). The frozen plan, its reason and the cap come from
+`grade_rows` (CPF:1055). Counted per model, task and cell (CPF:1485) and for the
+rerun's rows (CPF:1443).
+T:test_unread_units (shape (i): a plain wrong plan as bare lines, not counted;
+reasoning plus a trailing plan, counted; normalisation. Shape (ii): a block of
+`;`-commented actions, a planner listing, a comment plus action line, counted; a
+block of prose only, not counted; a valid plan block that is wrong, not counted;
+only the last closed block is read. Cut at the cap, not counted, on each task.
+Simulate: a closing fence aside, counted; a fenced wrong trace the grader read,
+not counted), T:test_base (hand counts per cell, including Qwen3.5-9B solve A
+v12: comment, `;` block and planner block counted, prose block and JSON plan
+blocks not; and for the rerun rows).
 
 ## NOT IMPLEMENTED
 
