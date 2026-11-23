@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-23 (the JSON constraint pilot, PR #145, for Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-23 (PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -61,7 +61,7 @@ checked mechanically, not as content.
 
 **Open paper items**
 
-**The JSON constraint pilot (2026-11-23, PR #145, for Omer's read).** The October probe
+**The JSON constraint pilot (2026-11-23, PR #145, merged the same day).** The October probe
 that ran the same 480 unaided trials of Qwen3.5-9B with and without a constraint that
 takes effect is now graded with the frozen delivered grader
 (`tools/reanalysis/json_constraint_pilot.py`; `NUMBERS.md`, "JSON constraint pilot").
@@ -88,7 +88,7 @@ layout most unaided solve answers of the rerun use. Scoping counts put unaided s
 figures and are not to be quoted (`paper_notes_discussions.md`, 2026-11-23). The abstract
 and RQ1 quote the frozen figure. A reviewed post hoc re-grade of both arms needs no run
 and is the plan's first step.
-**The re-grade is done (Omer: yes, 2026-11-23; PR #146, for his read).**
+**The re-grade is done (Omer: yes, 2026-11-23; PR #146, merged the same day).**
 `tools/reanalysis/rq1_layout_regrade.py`; `NUMBERS.md`, "RQ1 solve and simulate —
 layout-tolerant re-grade of both arms". Same reader on the unaided arm and on both tool
 arms, new plans validated with the readout's validator release, frozen column equal to

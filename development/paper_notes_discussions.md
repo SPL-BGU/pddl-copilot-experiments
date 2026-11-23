@@ -314,3 +314,17 @@
   The paragraph says the second reading may still understate the unaided rate and
   gives one sentence on simulate (no contrast moves by more than 3.0 points). Overleaf
   was checked before the edit: its copy equals `main` (no co-author edits).
+- **PRs #145 and #146 merged (Omer: "merge all", 2026-11-23).** Both Overleaf sync runs
+  passed and Overleaf's `main.tex` equals `main`. The new paper text has not had his read.
+- **Decided (Omer), same day: run the control** of `control_prompt_fix_plan.md` (an
+  exception to "No new runs"). The plan is still on branch
+  `claude/plan-prompt-fix-control-186fe9`, not on `main`; its remaining questions
+  (cells, wording, margin) are open.
+- **Raised by Omer, not decided:** he does not want the paper to mention the JSON
+  mistake, because reviewers will weigh it above the rest of the work. The session's
+  position: the paper cannot leave it out while it reports cells run under that prompt,
+  and it must note the departure from the registration; it can be made small. If the
+  control runs and its registration says beforehand that the corrected-prompt cell is
+  the unaided baseline the paper reports on solve and simulate, the abstract and the
+  body quote one baseline with no second range, and the earlier cells go to the
+  appendix with a short note. To be settled before the control's registration is frozen.
