@@ -1324,7 +1324,8 @@ tests in `tests/test_rq1_metrics.py`). How to read the block:
   that arm never took effect, in the main sweep or in the rerun (13,446 of the rerun's
   13,680 unaided answers do not begin with `{`; `reference/weakness_consolidated.md`, the
   Q3 note). So an unaided failure can be a failure of format as well as of content, and
-  what a working constraint would have produced is unmeasured. *Corrected 2026-11-22: this
+  what a working constraint would have produced is unmeasured on the full corpus (a
+  one-model pilot exists: "JSON constraint pilot" below, added 2026-11-23). *Corrected 2026-11-22: this
   bullet first said the unaided answers were sampled under the constraint, which is the
   frozen readout's false sentence.*
 - **Simulate:** six problems are left out because the run's plan was not the cached plan
@@ -2058,6 +2059,117 @@ The same two shares with those trials left out of the base. "Left out" = tool-ri
 
 Rows the readers judged right that the line reader does not read, by the readers' category: WRONG_WRAPPER 56; ABRIDGED 4; NUMERIC_OMITTED 2.
 <!-- END GENERATED: RQ3-SIMULATE-REGRADE -->
+
+## JSON constraint pilot — unaided answers under a constraint that takes effect (added 2026-11-23; post hoc pilot; in tex, Limitations)
+
+What does the unaided arm produce when the JSON-schema constraint really binds? The D1d
+probe of 2026-10-27 ran the same 480 unaided trials of Qwen3.5-9B twice in one window
+(thinking off, the first problem of each domain, three wordings): once as the rerun sent
+them, once with the schema in the request field that binds on vLLM 0.20.2
+(`structured_outputs`). `tools/reanalysis/json_constraint_pilot.py` (rerun:
+`python -m tools.reanalysis.json_constraint_pilot --numbers`) pairs the two cells on the
+trial key and grades every row with the frozen delivered grader. Data:
+`results/d1-smokes/slurm_vllm_Qwen3_5_9B_off_no-tools{,-jsonbound}_d1d-probe` (laptop
+only, gitignored; harness branch `harness/d1a-new-families`). How to read the block:
+
+- **What it shows.** The constraint takes effect (478 of 480 answers begin with `{`,
+  against 0 of 480) and it does not raise the unaided score. Solve falls from 25.0% to
+  5.0% (-20.0 points [-31.7, -10.0]; 12 trials lost, none gained). validate_plan falls from
+  83.3% to 57.5% (-25.8 [-39.2, -13.3]), all of it on valid plans (75.0% to 25.0%; broken
+  plans 91.7% to 90.0%). On validate_domain, validate_problem and simulate the interval of
+  the difference includes zero (+6.7, -5.0, +3.3).
+- **What goes with the falls (described, not shown to be the cause).** The schema puts
+  the verdict before the reason, and the plan with no field for reasoning, so a
+  constrained answer commits before it can write anything else; thinking is off. Solve
+  answers are about half as long (2,159 against 4,078 tokens on average). On the
+  validation tasks the system prompt still asks for a closing `VERDICT:` line, so in the
+  constrained cell the prompt asks for one format and the decoder forces another.
+- **The verdict-field column is post hoc.** 14 constrained validate_plan answers stop at
+  the output cap inside their reason, so the frozen grader finds no verdict although one
+  is written at the start. Reading that field changes validate_plan by one trial (57.5%
+  to 58.3%) and leaves the valid-plan figure at 25.0%. It moves validate_problem from
+  -5.0 to 0.0 and validate_domain from +6.7 to +9.2 [+2.5, +16.7]. Quote it only beside
+  the frozen figure.
+- **The prompt-only cell behaves like the rerun.** On the same trial keys the rerun's
+  frozen grade is within 3 points of it on four tasks and 6.7 points above it on solve
+  (31.7% against 25.0%, 60 trials; intervals overlap). Separate jobs weeks apart.
+- **Do NOT quote** "a working constraint would not have helped" as a general result (one
+  model, 60 to 120 trials per task, first problems only); "the constraint lowers unaided
+  performance" for Gemma-26B or Qwen3.6-35B (never run with it); the schema order as the
+  proven cause of the validate_plan fall; these figures as a correction to any unaided
+  cell of the main sweep or of the rerun (a constrained cell is a different condition, and
+  it is never pooled with or swapped for Part C); the run-time grades of
+  `reference/d1_smokes_20261027.md` (solve 0.10 / 0.05, simulate 0.05 / 0.12) beside
+  these, since those come from the strict run-time grader.
+- **Limits.** One model; 20 problems; three wordings; one run of each cell; not
+  registered; intervals not adjusted for the five tasks. Two constrained validate_plan
+  answers escaped the constraint (both begin "VERDICT: VALID" and stop at the output cap).
+  One constrained answer was cut by storage at 65,536 characters; it also stopped at the
+  output cap and is graded on what is stored. 62 solve plans were validated live on the
+  laptop.
+
+<!-- BEGIN GENERATED: JSON-CONSTRAINT-PILOT (do not edit by hand; rerun the generator) -->
+*Generated by `tools/reanalysis/json_constraint_pilot.py`. Post hoc pilot, descriptive. Qwen3.5-9B, unaided, thinking off, the first problem of each domain, three wordings; the D1d probe of 2026-10-27, both cells run in one window (jobs 23630577 and 23630578). "Prompt only" = the request as the rerun sent it (the JSON schema field is dropped by the server). "Constraint" = the same request with the schema sent in the field that binds. The two cells are paired on the trial key (480 trials) and every row is graded by the frozen delivered grader. "Difference" = constraint minus prompt only, in points. Intervals are 95% domain-cluster bootstrap, not adjusted for the five tasks. "Verdict field read" is post hoc: a validation answer in which the frozen grader finds no verdict is read from its leading `"verdict"` field when it has one (a constrained answer that stops at the output cap inside its reason). "Rerun, same trials" = the frozen grade of the delivered rerun's unaided cell on the same trial keys. One model, 20 problems, nothing registered. Answers cut by storage (all stopped at the output cap; graded on the stored 65,536 characters): prompt only 0, constraint 1. Solve plans validated live for this table: 62.*
+
+#### JSON constraint pilot: delivered right, prompt only against a constraint that takes effect
+
+| task | trials | answers that begin with `{` (prompt only / constraint) | delivered right, prompt only | delivered right, constraint | difference (points) | trials lost / gained | rerun, same trials |
+|---|---|---|---|---|---|---|---|
+| solve | 60 | 0 / 60 | 25.0 [13.3, 38.3] | 5.0 [0.0, 15.0] | -20.0 [-31.7, -10.0] | 12 / 0 | 31.7 [20.0, 43.3] (n=60) |
+| validate_domain | 120 | 0 / 120 | 50.8 [45.0, 58.3] | 57.5 [49.2, 66.7] | +6.7 [-0.8, +14.2] | 8 / 16 | 53.3 [49.2, 59.2] (n=120) |
+| validate_problem | 120 | 0 / 120 | 56.7 [48.3, 65.0] | 51.7 [41.7, 61.7] | -5.0 [-13.3, +2.5] | 15 / 9 | 55.0 [46.7, 64.2] (n=120) |
+| validate_plan | 120 | 0 / 118 | 83.3 [75.8, 90.0] | 57.5 [46.7, 68.3] | -25.8 [-39.2, -13.3] | 36 / 5 | 85.8 [77.5, 93.3] (n=120) |
+| validate_plan, valid plans | 60 | 0 / 59 | 75.0 [58.3, 90.0] | 25.0 [8.3, 43.3] | -50.0 [-68.3, -30.0] | 31 / 1 | 76.7 [60.0, 91.7] (n=60) |
+| validate_plan, broken plans | 60 | 0 / 59 | 91.7 [85.0, 96.7] | 90.0 [78.3, 98.3] | -1.7 [-15.0, +10.0] | 5 / 4 | 95.0 [86.7, 100.0] (n=60) |
+| simulate | 60 | 0 / 60 | 8.3 [1.7, 16.7] | 11.7 [3.3, 21.7] | +3.3 [-5.0, +11.7] | 3 / 5 | 10.0 [1.7, 20.0] (n=60) |
+
+#### JSON constraint pilot: why answers fail, and their length
+
+| task | cell | trials | stopped at the output cap | mean answer tokens | frozen grade reasons |
+|---|---|---|---|---|---|
+| solve | prompt only | 60 | 16 | 4078 | plan_invalid 35; plan_valid 15; no_plan_extracted 10 |
+| solve | constraint | 60 | 15 | 2159 | plan_invalid 42; no_plan_extracted 15; plan_valid 3 |
+| validate_domain | prompt only | 120 | 13 | 1668 | verdict_stated_ok 61; verdict_stated_wrong 46; no_verdict_stated 13 |
+| validate_domain | constraint | 120 | 8 | 640 | verdict_stated_ok 69; verdict_stated_wrong 44; no_verdict_stated 7 |
+| validate_problem | prompt only | 120 | 7 | 961 | verdict_stated_ok 68; verdict_stated_wrong 47; no_verdict_stated 5 |
+| validate_problem | constraint | 120 | 8 | 567 | verdict_stated_ok 62; verdict_stated_wrong 50; no_verdict_stated 8 |
+| validate_plan | prompt only | 120 | 1 | 1421 | verdict_stated_ok 100; verdict_stated_wrong 19; no_verdict_stated 1 |
+| validate_plan | constraint | 120 | 18 | 1270 | verdict_stated_ok 69; verdict_stated_wrong 37; no_verdict_stated 14 |
+| validate_plan, valid plans | prompt only | 60 | 1 | 1695 | verdict_stated_ok 45; verdict_stated_wrong 14; no_verdict_stated 1 |
+| validate_plan, valid plans | constraint | 60 | 15 | 1865 | verdict_stated_wrong 32; verdict_stated_ok 15; no_verdict_stated 13 |
+| validate_plan, broken plans | prompt only | 60 | 0 | 1146 | verdict_stated_ok 55; verdict_stated_wrong 5 |
+| validate_plan, broken plans | constraint | 60 | 3 | 676 | verdict_stated_ok 54; verdict_stated_wrong 5; no_verdict_stated 1 |
+| simulate | prompt only | 60 | 21 | 3064 | trajectory_mismatch 35; format_parse_fail 20; trajectory_ok 5 |
+| simulate | constraint | 60 | 13 | 3108 | trajectory_mismatch 40; format_parse_fail 13; trajectory_ok 7 |
+
+#### JSON constraint pilot: validation tasks with the verdict field read (post hoc)
+
+| task | trials | prompt only | constraint, frozen grade | constraint, verdict field read | difference with the verdict field read (points) |
+|---|---|---|---|---|---|
+| validate_domain | 120 | 50.8 [45.0, 58.3] | 57.5 [49.2, 66.7] | 60.0 [53.3, 68.3] | +9.2 [+2.5, +16.7] |
+| validate_problem | 120 | 56.7 [48.3, 65.0] | 51.7 [41.7, 61.7] | 56.7 [47.5, 65.8] | +0.0 [-6.7, +6.7] |
+| validate_plan | 120 | 83.3 [75.8, 90.0] | 57.5 [46.7, 68.3] | 58.3 [48.3, 68.3] | -25.0 [-37.5, -12.5] |
+| validate_plan, valid plans | 60 | 75.0 [58.3, 90.0] | 25.0 [8.3, 43.3] | 25.0 [8.3, 43.3] | -50.0 [-68.3, -30.0] |
+| validate_plan, broken plans | 60 | 91.7 [85.0, 96.7] | 90.0 [78.3, 98.3] | 91.7 [80.0, 100.0] | +0.0 [-13.3, +10.0] |
+
+#### JSON constraint pilot: how each solve and simulate trial moved (prompt only -> constraint)
+
+| task | frozen grade reason, prompt only -> constraint | trials |
+|---|---|---|
+| solve | plan_invalid -> plan_invalid | 24 |
+| solve | plan_valid -> plan_invalid | 12 |
+| solve | plan_invalid -> no_plan_extracted | 11 |
+| solve | no_plan_extracted -> plan_invalid | 6 |
+| solve | no_plan_extracted -> no_plan_extracted | 4 |
+| solve | plan_valid -> plan_valid | 3 |
+| simulate | trajectory_mismatch -> trajectory_mismatch | 29 |
+| simulate | format_parse_fail -> format_parse_fail | 12 |
+| simulate | format_parse_fail -> trajectory_mismatch | 8 |
+| simulate | trajectory_mismatch -> trajectory_ok | 5 |
+| simulate | trajectory_ok -> trajectory_mismatch | 3 |
+| simulate | trajectory_ok -> trajectory_ok | 2 |
+| simulate | trajectory_mismatch -> format_parse_fail | 1 |
+<!-- END GENERATED: JSON-CONSTRAINT-PILOT -->
 
 ## nt-ster H4 — steering falsification control (CLOSED 2026-08-29; IN TEX 2026-09-12/13, `paper/aaai27` `6027d68` + `7c0502a`, pushed + Overleaf `2ab9bb5`)
 
