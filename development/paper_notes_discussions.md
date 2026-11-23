@@ -304,3 +304,13 @@
   "21 to 29%" sentences quote the frozen grade for the open models. The session's view:
   the frozen figure stays the record and the second reading is stated beside it, as was
   done for the RQ3 "70 to 91% lost" figure. Nothing in the paper is changed.
+- **Decided (Omer), same day: add the second reading to the paper.** Done in PR #146.
+  The frozen range stays in every sentence and "22 to 48%" stands beside it (abstract,
+  introduction, discussion, related work, conclusion). The range is over the five
+  models: the Claude rates are unchanged (0 of 200 unaided Claude solve answers hold a
+  plan in a code block), so the low end is Haiku's 22.0%. RQ1 has a new paragraph and
+  Table rq1-regrade with rows pasted from the generator; Limitations points to it. The
+  paper's words: "registered" for the frozen grade, "second reading" for the other.
+  The paragraph says the second reading may still understate the unaided rate and
+  gives one sentence on simulate (no contrast moves by more than 3.0 points). Overleaf
+  was checked before the edit: its copy equals `main` (no co-author edits).

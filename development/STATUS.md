@@ -98,9 +98,13 @@ frozen 21.3 / 24.3 / 25.3% (Gemma-26B / Qwen3.5-9B / Qwen3.6-35B), layout-tolera
 solve: +71.0 / +64.3 / +51.7 frozen, +44.3 / +53.7 / +30.3 layout-tolerant, every
 interval above zero. On simulate no contrast moves by more than 3 points. The frozen
 figures stay the record; the others are post hoc and are quoted only beside them.
-**Not done, Omer's decision:** the paper still quotes unaided solve as "21 to 29%" in six
-places (abstract, introduction, RQ1, discussion, related work, conclusion) with no
-second reading beside it. The control run of the plan is still a proposal.
+**In the paper too (Omer: yes, 2026-11-23; same PR, for his read):** RQ1 has a paragraph
+and a table (rq1-regrade) on the second grading of solve; the frozen "21 to 29%" keeps
+its place in the abstract, introduction, discussion, related work and conclusion with
+"22 to 48%" beside it (five models; the Claude rates do not change, since none of their
+unaided answers has the layout); Limitations points to the table. All of this text was
+written by the session and has not had his read. The control run of the plan is still a
+proposal.
 
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,
