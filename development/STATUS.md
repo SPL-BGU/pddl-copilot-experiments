@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-23 (the corrected-prompt control: harness merged, cell B reworded, registration written and its analysis frozen at `825dab63…`, nothing run; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-23 (the corrected-prompt control: harness merged, cell B reworded, registration written, its analysis frozen at `825dab63…`, the smoke passed, the full run not started; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -153,11 +153,16 @@ Where the control stands, in its order of work:
    Holm-adjusted p-values beside every contrast; a count of "unread final answers" per
    cell, which halts the readout if it passes 5% of cell B's answers for a model and
    task.
-3. **Smoke** (three models, three cells, full-run SLURM profile, `--partial 1`, run tag
-   `control-promptfix-smoke`; the seven checks of the registration's section 7, run
-   with `--smoke-check`): needs Omer's cluster go-ahead. The cluster checkout must
-   first be pulled to `9109179`. Serve logs stay on the cluster, so the vLLM version is
-   read there or the logs are copied.
+3. **Smoke: passed (2026-11-23, job 24432950, Omer's go-ahead).** Nine cells, 120 rows
+   each, all seven registered checks PASS: every row read by the frozen loader, no
+   exception or infrastructure-failure row, non-empty answers, the registered system
+   text sent in every cell, the same user messages in the three cells of a model,
+   vLLM 0.20.2. Five tasks were preempted and requeued (one cell four times); they
+   resumed in place and left no bad row, only extra audit lines, which the rule allows
+   and counts. The cluster is on `main` at `9109179`; its tools repo was left at
+   `5e4f9c0` with validator 0.1.5, as for Part C (the preflight script was not run for
+   that reason). Synced to `results/control-promptfix-smoke/`. No smoke rate was read.
+   Record: section 10 of the registration.
 4. **Full run**: only after the smoke passes; needs its own go-ahead, **by 2026-11-30
    for the paper, by 2026-11-25 if the abstract of 2026-12-07 is to quote the new
    baseline.**

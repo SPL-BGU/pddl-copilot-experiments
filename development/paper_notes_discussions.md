@@ -425,3 +425,11 @@
   in one sentence that the reading was added after the rerun's data were seen and
   before the control's; how the Claude rates stand beside these figures is to be
   settled then.
+- **Smoke passed (2026-11-23, job 24432950; Omer's go-ahead).** Nine cells, 120 rows
+  each, all seven registered checks PASS, vLLM 0.20.2. Five tasks were preempted and
+  requeued and resumed in place with no bad row. The cluster's tools repo was kept at
+  `5e4f9c0` (validator 0.1.5), as for Part C, so the preflight script was not run. No
+  smoke rate was read. **Preemption is active on the cluster**, so the full run's cells
+  (1.2 to 3.1 hours each) will likely be stopped and resumed too; the design resumes in
+  place and the registration allows it. The full run waits for Omer's separate
+  go-ahead.

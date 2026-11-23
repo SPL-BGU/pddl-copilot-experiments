@@ -498,7 +498,7 @@ started with the package hash below.
 | gate 5, independent review | a second agent that did not write the code, 2026-11-23: no code path giving a wrong number; 1 design finding (cell B's layout, fixed by the wording change of section 2.1 and the unread-final-answer count of section 8), 5 should-fix (all fixed), 7 notes (5 fixed, 2 declined: binding `--i-have-frozen` to this record, and a storage-cut case that cannot occur). A verification pass by the same reviewer confirmed the fixes and found 2 more items (one more unread shape; a stale count in this document), both fixed. The last change after that pass (shape (ii) of section 8) was checked by the fixture and the dry run, not by a third review |
 | dry run on existing data | each control cell filled with the Part C rows of its model: C1, C2 and C3 exactly 0 with interval [0, 0], k = 20, 300 pairs; C4 equal to the filed E2 under the frozen grade and to the filed re-grade under the second reading; every cell equal to the filed re-grade; the validator route returned the stored verdict for 712 plans before any new one. The cell B tripwire fired once, as expected on old data (Qwen3.6-35B simulate, 21 of 300), and was released by its id |
 | open at the freeze, settled the same day | section 6 rule 5 (which figure of cell B the text quotes) was Omer's to choose and was open when the code was frozen. **Settled 2026-11-23, before anything was submitted: the second reading** (section 6, rule 5). No code depends on it and the package hash is unchanged |
-| serving version | *to be filled in from the smoke* |
+| serving version | vLLM **0.20.2** in the serve log of all nine smoke cells (2026-11-23); the full run's logs are checked again by the analysis |
 | submit command (smoke and full run) | *to be filled in, verbatim* |
 | job ids and dates | *to be filled in* |
 | GPU class, memory, requests at a time (from the job log) | *to be filled in* |
@@ -561,7 +561,43 @@ Job **24432950**, array tasks 0 to 8 (three models by three system texts), one
 `rtx_6000` per task, `--mem=48G`, `--time=12:00:00` (the full-run profile; only
 `--partial 1` and the run tag differ from the full run's command).
 
-*Result: to be filled in.*
+**Result, 2026-11-23: the smoke passes.** All nine array tasks ended COMPLETED with exit
+code 0 (`sacct -j 24432950`), between 14:46 and 18:34. The registered check
+(`--smoke-check`, code at package hash `825dab63…`, on the folders synced to
+`results/control-promptfix-smoke/`) printed PASS for all seven items:
+
+| item | result |
+|---|---|
+| 1 | every job COMPLETED; every cell folder holds its 120 rows |
+| 2 | the frozen loader reads every row; no exception row, no infrastructure-failure row, no row cut by storage, no half-written line |
+| 3 | at least 95% of the stored answers are non-empty in every cell |
+| 4 | every audit line carries the registered sha256 and text of its cell and task; O not swapped, A and B swapped; no tools; the cell's model; every trial covered |
+| 5 | the same set of user messages in the three cells of each model |
+| 6 | `client_settings.json` of each cell names that cell's system text |
+| 7 | every serve log shows vLLM 0.20.2 and no other version |
+
+No success rate, failure-reason count or answer text of the smoke was read.
+
+**Preemption.** Five tasks were cancelled "due to preemption" at 14:06 and requeued by
+SLURM under the same job ids; the Qwen3.5-9B cell A was stopped four times in all
+(`Restarts=4`). Each resumed in its own folder. What that left:
+
+- Audit lines against rows: Qwen3.5-9B O 132 / 120, A 144 / 120, B 132 / 120; one line
+  per row in the six Gemma-26B and Qwen3.6-35B cells. The extra lines are requests sent
+  while the server was being stopped. By the counting rule of item 5 (lines above the
+  smallest count of the three cells, text by text) the check reports 1, 13 and 1.
+- No row was written for a stopped request (the job log shows them as `[infra-skip]`),
+  and no line was left half-written.
+- A requeued task keeps its job id and its serve log is written again, so only the log
+  of the last start exists for those five cells. Every start used the same shared
+  `~/vllm.sif` (the job log says so at each start).
+
+**Apparatus, read from the job logs:** GPU `NVIDIA RTX 6000 Ada Generation` (49,140 MiB)
+in every task read, including the two that ran on nodes named `ise-cpu256-*`; `--mem=48G`;
+`Concurrency: 4`; one model per task and card. Task job ids: Qwen3.5-9B 24432953 (O),
+24432954 (A), 24432955 (B); Gemma-26B 24433486, 24433504, 24433505; Qwen3.6-35B 24433565,
+24433625, 24432950. Run time of a complete start: 21 to 27 minutes for Gemma-26B and
+Qwen3.6-35B, 45 to 52 minutes for Qwen3.5-9B.
 
 ---
 
