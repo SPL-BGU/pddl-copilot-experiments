@@ -72,6 +72,8 @@ if [ -n "${CELLS_LIST:-}" ]; then
             tools_all_minimal)      _CTAG="tools-all" ;;
             tools_all_neutral)      _CTAG="tools-all-neutral" ;;
             no-tools-jsonbound)     _CTAG="notools-jsonbound" ;;
+            no-tools-syspointer-off) _CTAG="notools-syspointer-off" ;;
+            no-tools-sysformat)     _CTAG="notools-sysformat" ;;
             @smoke@)                _CTAG="smoke"; _TTAG="default" ;;
             *)                      _CTAG="$CELL_COND" ;;
         esac
@@ -127,6 +129,11 @@ unset PDDL_JSON_CONSTRAINT PDDL_TOOL_CALL_ID_STYLE
 # cell (EFFORT_ENV below), PDDL_STORE_REASONING only when the wrapper exported
 # STORE_REASONING=1 (--store-reasoning).
 unset PDDL_REASONING_EFFORT PDDL_STORE_REASONING
+# Same for the control-prompt cells: PDDL_NO_TOOLS_SYSTEM is set per
+# no-tools-syspointer-off / no-tools-sysformat cond (COND_ENV below),
+# PDDL_SYSTEM_AUDIT_LOG per cell only when the wrapper exported SYSTEM_AUDIT=1
+# (--no-tools-system).
+unset PDDL_NO_TOOLS_SYSTEM PDDL_SYSTEM_AUDIT_LOG
 RUN_ENV=()
 if [ "${STORE_REASONING:-0}" = "1" ]; then
     RUN_ENV=(PDDL_STORE_REASONING=1)
@@ -357,6 +364,7 @@ for MODEL in $MODELS; do
     echo "Server:      $LLM_BASE_URL"
     echo "Concurrency: $CONCURRENCY"
     [ "${STORE_REASONING:-0}" = "1" ] && echo "Reasoning:   stored in the row's thinking field (PDDL_STORE_REASONING=1)"
+    [ "${SYSTEM_AUDIT:-0}" = "1" ] && echo "System text: audited per cell (OUT_DIR/system_prompt_audit.jsonl)"
 
     ### Smoke fast-path — skip the inner THINK × CONDITIONS loop. The
     ### --smoke flag tells run_experiment.py to iterate think×cond
@@ -462,6 +470,17 @@ for MODEL in $MODELS; do
                     # Carried by $PDDL_JSON_CONSTRAINT (read by VLLMClient), set
                     # on this run_experiment.py call only (COND_ENV below).
                     COND_ARGS=(--conditions no-tools) ;;
+                no-tools-syspointer-off)
+                    COND_ENV=(PDDL_NO_TOOLS_SYSTEM=no-pointer)
+                    # submit_with_rtx.sh --no-tools-system (control run,
+                    # development/control_prompt_fix_plan.md): the client swaps
+                    # the solve/simulate system text, and only that text. The
+                    # cond token gives these cells their own OUT_DIR.
+                    COND_ARGS=(--conditions no-tools) ;;
+                no-tools-sysformat)
+                    COND_ENV=(PDDL_NO_TOOLS_SYSTEM=format-stated)
+                    # As above, with the answer format stated in plain words.
+                    COND_ARGS=(--conditions no-tools) ;;
                 tools_all_minimal)
                     COND_ARGS=(--conditions tools --tool-filter all --prompt-style minimal) ;;
                 tools_all_neutral)
@@ -490,7 +509,22 @@ for MODEL in $MODELS; do
             # is hashed into the frozen delivered-rerun package, so it is not
             # edited). Written only for effort and stored-reasoning cells, so
             # every other cell's OUT_DIR is unchanged.
-            if [ -n "$EFFORT" ] || [ "${STORE_REASONING:-0}" = "1" ]; then
+            # SYSTEM_AUDIT=1 (--no-tools-system): every cell of the job logs
+            # the system text it sent (VLLMClient, $PDDL_SYSTEM_AUDIT_LOG) and
+            # records its system-text setting here; no other cell gets either.
+            SETTINGS_EXTRA=()
+            if [ "${SYSTEM_AUDIT:-0}" = "1" ]; then
+                mkdir -p "$OUT_DIR"
+                COND_ENV+=(PDDL_SYSTEM_AUDIT_LOG="$OUT_DIR/system_prompt_audit.jsonl")
+                _SYS_MODE="registered"
+                for _kv in "${COND_ENV[@]}"; do
+                    case "$_kv" in PDDL_NO_TOOLS_SYSTEM=*) _SYS_MODE="${_kv#*=}" ;; esac
+                done
+                SETTINGS_EXTRA=(no_tools_system="$_SYS_MODE"
+                    system_audit_log="$OUT_DIR/system_prompt_audit.jsonl")
+                unset _SYS_MODE _kv
+            fi
+            if [ -n "$EFFORT" ] || [ "${STORE_REASONING:-0}" = "1" ] || [ "${SYSTEM_AUDIT:-0}" = "1" ]; then
                 mkdir -p "$OUT_DIR"
                 python3 cluster-experimenting/reasoning_settings.py write-settings \
                     "$OUT_DIR/client_settings.json" \
@@ -504,6 +538,7 @@ for MODEL in $MODELS; do
                     hf_model="$HF_MODEL" \
                     hf_revision="${HF_REVISION:-}" \
                     slurm_job_id="${SLURM_JOB_ID:-}" \
+                    "${SETTINGS_EXTRA[@]}" \
                     || echo "Warning: could not write $OUT_DIR/client_settings.json"
             fi
 
