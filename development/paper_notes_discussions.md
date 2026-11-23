@@ -328,3 +328,14 @@
   the unaided baseline the paper reports on solve and simulate, the abstract and the
   body quote one baseline with no second range, and the earlier cells go to the
   appendix with a short note. To be settled before the control's registration is frozen.
+- **Decided (Omer), same day: a short note, in place of no mention.** The control's
+  registration states beforehand that the corrected-prompt cell (cell B, format stated)
+  is the unaided baseline the paper reports on solve and simulate. Once its readout is
+  in: the abstract and the body quote that one baseline; the "22 to 48%" qualifiers and
+  the second-grading paragraph of RQ1 leave the body; Part C and the earlier cells go
+  to the appendix as the registered record with a two-sentence note (run with a system
+  message that referred to a schema the server did not deliver, then run again); the
+  long Limitations paragraph shrinks to a pointer to that note. Until the readout
+  exists the paper stays as merged today, because the bare "21 to 29%" is known to be
+  too low. The kickoff prompt for the run was given to Omer in chat (cells O, A and B,
+  three models, 5-point margin, validation tasks left out; his to change).

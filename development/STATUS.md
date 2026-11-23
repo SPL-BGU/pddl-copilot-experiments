@@ -103,8 +103,16 @@ and a table (rq1-regrade) on the second grading of solve; the frozen "21 to 29%"
 its place in the abstract, introduction, discussion, related work and conclusion with
 "22 to 48%" beside it (five models; the Claude rates do not change, since none of their
 unaided answers has the layout); Limitations points to the table. All of this text was
-written by the session and has not had his read. The control run of the plan is still a
-proposal.
+written by the session and has not had his read.
+**The control run is decided (Omer, 2026-11-23), not started.** Plan:
+`development/control_prompt_fix_plan.md` at `3c0b483` on branch
+`claude/plan-prompt-fix-control-186fe9` (not on `main`; the run's session brings it in).
+Its registration must say beforehand that the corrected-prompt cell is the unaided
+baseline the paper reports on solve and simulate; the JSON mistake then shrinks to a
+short note in Methods and the appendix (decided the same day; `paper_notes_discussions.md`).
+No paper change before the control's readout. Go-ahead dates: 2026-11-30 for the paper,
+2026-11-25 if the abstract is to quote the new baseline. "No run is planned" below now
+has this one exception.
 
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,
