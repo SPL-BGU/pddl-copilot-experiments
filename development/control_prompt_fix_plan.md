@@ -1,9 +1,10 @@
 # Control run: does the flawed no-tools system prompt hold the unaided baseline down?
 
-*Written 2026-11-23. **Status: proposal, not approved. It goes against the "No new runs"
-line of `roadmap.md` (Omer and his advisors, 2026-11-22).** Nothing here is planned work
-until Omer answers section 9. Nothing was run on a model and the cluster was not
-contacted to write this.*
+*Written 2026-11-23 as a proposal. **Status: decided the same day (Omer): run it, as an
+exception to the "No new runs" line of `roadmap.md`.** His answers are in section 9. The
+re-grade of stored answers (step 0) is done and filed. The run has not started; every
+cluster action still needs its own go-ahead. Sections 0 to 8 are kept as written, with
+dated notes where a decision or a finished step changed them.*
 
 **In short.** Checking the facts for this plan turned up something that needs no run:
 the frozen grader does not read an unaided solve plan when the model writes it as a
@@ -12,7 +13,8 @@ for. A first count says the unaided solve baseline about doubles when that block
 read (section 0). So the recommendation has two parts, in this order:
 
 1. **A re-grade of the answers we already have** (no run, allowed under the current
-   decision, about one day). It measures the layout part of the problem.
+   decision, about one day). It measures the layout part of the problem. **Done
+   2026-11-23, PR #146** (note at the end of section 0).
 2. **The control run** (3 models, solve and simulate, 3 prompt cells, 5,400 trials,
    about 19 GPU-hours). It measures what a re-grade cannot: whether the wrong
    description changed what the models wrote, and not only how it was laid out.
@@ -70,6 +72,18 @@ no stored verdict were validated on the laptop with pddl-pyvalidator 0.1.6; the 
 readout used 0.1.5, which is stricter about capital letters (ISS-027). Appendix A gives
 the rule and the files. **Do not quote these figures.** They say a proper re-grade is
 worth doing, and that it should come before the run.
+
+**Update, 2026-11-23: these scoping counts are replaced by a filed re-grade.**
+`tools/reanalysis/rq1_layout_regrade.py` (PR #146, merged) keeps every frozen grade and
+adds the layout-tolerant reading beside it, with the same reader on the unaided arm and
+on both tool arms. It is filed in `NUMBERS.md`, "RQ1 solve and simulate, layout-tolerant
+re-grade of both arms": unaided solve 21.3 / 24.3 / 25.3% frozen against 48.0 / 38.3 /
+48.0% layout-tolerant (Gemma-26B / Qwen3.5-9B / Qwen3.6-35B). The counts in the table
+above (48.7 / 40.0 / 51.7%) are that script's "case folded" column, because the scoping
+pass validated with pyvalidator 0.1.6. Quote the filed figures, and only beside the
+frozen ones. Two parts of that script carry over to the control (section 6): its
+`block_plan` reader, and its in-process validator route on pddl-pyvalidator 0.1.5, the
+readout's release.
 
 **What this means for the question.** The abstract and RQ1 quote unaided solve at
 21 to 29%. For the open models that figure is the frozen grade. Part of the distance
@@ -271,8 +285,10 @@ the 20 domains, with the resample count and seed fixed in the prereg.
 grader misses the commonest layout under the old prompt. A prompt that changes the
 layout therefore changes the frozen grade even if the content is the same. So each
 contrast is also reported under a layout-tolerant reader, fixed in the prereg before
-any data: on solve the plan in the last code block when it is a JSON list or a
-`{"plan": [...]}` object, on simulate the RQ3 line reader. The frozen grade answers
+any data: on solve the plan in the last code block when that block holds a plan
+(`block_plan` of `tools/reanalysis/rq1_layout_regrade.py`, the reader of the filed
+re-grade, with new plans validated in process on pddl-pyvalidator 0.1.5), on simulate
+the RQ3 line reader. The frozen grade answers
 "did the baseline, as the paper measures it, move". The tolerant reading answers "did
 the content move". Both are reported; neither replaces the other.
 
@@ -288,9 +304,19 @@ A contrast can meet the criterion and show a difference at once (a small, real s
 With 20 domains the interval for A minus O may be wider than a 5-point margin allows,
 and then the honest reading is "unresolved", not "unchanged".
 
+**The reporting rule (Omer, 2026-11-23; it replaces the sentence struck below and goes
+into the registration before any data is read).** Cell B is the no-tools baseline the
+paper reports on solve and simulate. Cell O is the anchor for the paired contrasts and
+for the drift check against Part C. Part C stays in the appendix as the registered
+record, with a short note on why it was run again. Both the frozen grade and the
+layout-tolerant reading are registered for every contrast. The control is still a new
+condition: its rows are never pooled with Part C or with the main sweep. The five
+readings below say what the contrasts mean; where they speak of quoting the control
+"beside Part C", read them with this rule.
+
 **What each outcome would mean for the paper.** Written now, so the result cannot
-choose its own reading. In every case Part C stays in the paper as the registered
-baseline, and the control is one short paragraph and one appendix table beside it.
+choose its own reading. ~~In every case Part C stays in the paper as the registered
+baseline, and the control is one short paragraph and one appendix table beside it.~~
 
 1. **Baseline unchanged (criterion met on both tasks, A and B, by the frozen grade).**
    The Limitations sentence "what a corrected prompt would have produced is unmeasured"
@@ -320,6 +346,14 @@ not comparable with Part C's.
 ---
 
 ## 6. What has to be built
+
+**Step 0 is done (2026-11-23, PR #146, merged).** The script is
+`tools/reanalysis/rq1_layout_regrade.py`; its figures are in `NUMBERS.md`, "RQ1 solve
+and simulate, layout-tolerant re-grade of both arms"; a second agent reviewed the code
+and read answers in full. The control's second reading reuses its `block_plan` reader
+and its in-process validator route (pddl-pyvalidator 0.1.5, the readout's release; the
+script halts on another release and first checks that the route returns the stored
+verdict of every plan the frozen grade used). The step as it was proposed:
 
 **Step 0. The re-grade of stored answers (no run).** A script in `tools/reanalysis/`
 that keeps every frozen grade and adds the layout-tolerant reading beside it, for the
@@ -351,6 +385,13 @@ An alternative that also leaves the hashed files alone is a small wrapper entry 
 that swaps the dictionary entry in memory and then calls `run_experiment.main()`. The
 client route is recommended because it reuses a pattern that is already reviewed and
 already wired into the sbatch.
+
+**Order changed (Omer, 2026-11-23): the registration and the freeze come before the
+smoke.** The work order is: 1 the harness change; 2 the registration and the
+`/freeze-protocol` gate, with the hash recorded before the full run's data is read; 3
+the smoke; 4 the full run, only after the smoke passes and the freeze is recorded; 5
+sync, the frozen analysis, a readout and a `NUMBERS.md` entry. The two paragraphs below
+keep their old numbers.
 
 **Step 2. The smoke.** The full-run SLURM profile (same GPU, memory and `--time`), a
 few trials per cell and model. It must check: answers are non-empty in every cell; the
@@ -419,7 +460,8 @@ Step 0 does not depend on any of this. It can be finished this week.
   together. The tolerant reader has to be defined with this in mind, in the prereg.
 - **Validator version.** The frozen readout graded plans with pddl-pyvalidator 0.1.5;
   the laptop's plugin now has 0.1.6. The prereg must name one version for all three
-  cells and for the drift check.
+  cells and for the drift check. *(2026-11-23: it is 0.1.5, through the in-process
+  route of the filed re-grade.)*
 - **The Claude runs are not covered.** They asked for the format differently: on solve
   through the provider's structured-output setting with a schema, and on simulate
   through one added sentence that states the outer wrapper
@@ -447,40 +489,49 @@ question then stays open and is named as a limit.
    is allowed under the current decision and section 0 says it will move the unaided
    solve baseline a great deal.
 
-> ANSWER:
+> ANSWER: yes (2026-11-23). Done the same day: PR #146, `tools/reanalysis/rq1_layout_regrade.py`.
 
 2. **The control run.** Run it, as an exception to "No new runs"? Recommended: yes, if
    the go-ahead comes by 2026-11-30; otherwise leave it for after submission.
 
-> ANSWER:
+> ANSWER: yes, run it (2026-11-23), as an exception to "No new runs". Go-ahead dates stand: 2026-11-30 for the paper, 2026-11-25 if the abstract is to quote the new baseline.
 
 3. **One corrected cell or two.** O + A + B (recommended, 5,400 trials, about 19
    GPU-hours), or O + B only (3,600 trials, about 13 GPU-hours)?
 
-> ANSWER:
+> ANSWER: O + A + B. 5,400 trials.
 
 4. **The prompt wording** of cells A and B in section 2. Accept, or edit? In particular:
    B on solve asks for lines and not for JSON.
 
-> ANSWER:
+> ANSWER: as written in section 2.
 
 5. **The margin M** for "criterion met" (the rerun used 5 points).
 
-> ANSWER:
+> ANSWER: 5 points.
 
 6. **Models.** All three headline models (recommended), or fewer?
 
-> ANSWER:
+> ANSWER: all three: Qwen3.5-9B, Gemma-26B, Qwen3.6-35B. Thinking off.
 
 7. **Validation tasks.** Left out (recommended; their prompts never held the pointer),
    or add validate_plan as a check that a cell with no prompt change does not move?
 
-> ANSWER:
+> ANSWER: left out. Solve and simulate only.
 
 8. **Cluster go-ahead.** One for the smoke and one for the full run, each asked for
    when its turn comes. Nothing touches the cluster before that.
 
-> ANSWER:
+> ANSWER: one explicit go-ahead before every SSH or SLURM action, the smoke and the full run separately.
+
+9. **How the paper reports the control** (added 2026-11-23, after the plan was written).
+
+> ANSWER: cell B is the no-tools baseline the paper reports on solve and simulate. Cell
+> O is the anchor for the paired contrasts and for the drift check against Part C. Part
+> C stays in the appendix as the registered record, with a short note on why it was run
+> again. Both the frozen grade and the layout-tolerant reading are registered for every
+> contrast. This rule is written into the registration before any data is read. No
+> paper edit before Omer has read the readout.
 
 ---
 

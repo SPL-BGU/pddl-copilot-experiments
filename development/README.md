@@ -30,7 +30,7 @@ Four files answer almost every question:
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
 | `thesis_literature_review.md` | the literature review, first full draft (2026-11-22), with a reading list, a "to verify" list and questions for Omer. Waits for his read |
-| `control_prompt_fix_plan.md` | **proposal, not approved** (2026-11-23): a small control run for the flawed no-tools system prompt on solve and simulate, and a no-run re-grade to do first. Goes against the no-new-runs line of `roadmap.md`; waits for Omer's answers in its section 9 |
+| `control_prompt_fix_plan.md` | **decided, run not started** (Omer, 2026-11-23): a control run for the flawed no-tools system prompt on solve and simulate (cells O, A and B, three models, 5,400 trials), the one exception to the no-new-runs line of `roadmap.md`. His answers are in its section 9; the no-run re-grade it asked for first is done (PR #146) |
 | `draft_C5_E1a.md` | the hit list of retired wording and figures in the tex, from before the rewrite. **Only its search terms (§1.4) are still used**, for the pass over the paper's Supporting Analyses section (`STATUS.md`, next step 6); its line numbers and its two RQ framings are stale |
 | `draft_advisor_correa_comparison.md` (+ two `.docx`) | Omer's outline for the advisor discussion of 2026-11-22; not committed |
 

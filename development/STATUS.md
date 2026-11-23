@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-23 (PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-23 (the corrected-prompt control: decisions logged, harness change built and in a PR, nothing run; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -105,14 +105,49 @@ its place in the abstract, introduction, discussion, related work and conclusion
 unaided answers has the layout); Limitations points to the table. All of this text was
 written by the session and has not had his read.
 **The control run is decided (Omer, 2026-11-23), not started.** Plan:
-`development/control_prompt_fix_plan.md` at `3c0b483` on branch
-`claude/plan-prompt-fix-control-186fe9` (not on `main`; the run's session brings it in).
-Its registration must say beforehand that the corrected-prompt cell is the unaided
-baseline the paper reports on solve and simulate; the JSON mistake then shrinks to a
-short note in Methods and the appendix (decided the same day; `paper_notes_discussions.md`).
-No paper change before the control's readout. Go-ahead dates: 2026-11-30 for the paper,
-2026-11-25 if the abstract is to quote the new baseline. "No run is planned" below now
-has this one exception.
+`development/control_prompt_fix_plan.md` (brought in with the harness PR; his answers
+are in its section 9). Three cells per model: O (today's system message, run again in
+the same window), A (the schema reference removed), B (the answer format stated).
+Qwen3.5-9B, Gemma-26B, Qwen3.6-35B, thinking off, solve and simulate, 5,400 trials,
+margin 5 points. **Reporting rule, to be written into the registration before any data
+is read:** cell B is the no-tools baseline the paper reports on solve and simulate;
+cell O is the anchor for the paired contrasts and for the drift check against Part C;
+Part C stays in the appendix as the registered record with a short note on why it was
+run again; the frozen grade and the layout-tolerant reading are both registered for
+every contrast. The control is a new condition and is never pooled with Part C or the
+main sweep. The JSON mistake then shrinks to a short note in Methods and the appendix
+(`paper_notes_discussions.md`). No paper change before Omer has read the control's
+readout. "No run is planned" below has this one exception.
+
+Where the control stands, in its order of work:
+
+1. **Harness change: built, PR open for Omer's merge** (branch
+   `harness/control-prompt-cells`). Opt-in and additive: the texts of cells A and B are
+   in `pddl_eval/control_prompts.py`; the client swaps the system message only when
+   `$PDDL_NO_TOOLS_SYSTEM` is set, and refuses any message that is not the registered
+   solve or simulate text; `submit_with_rtx.sh --no-tools-system "registered
+   no-pointer format-stated"` gives one cell per text, each with its own results
+   folder; every cell writes `system_prompt_audit.jsonl`, the record of the system
+   text it sent. No file of the frozen hash changed (the hash still ends `822aace9`);
+   with the flag left out the request and the submission are as before. All 37 test
+   files pass. Nothing has touched the cluster.
+2. **Registration** (`development/reference/control_prompt_fix_prereg.md`) and the
+   `/freeze-protocol` gate: not started. The hash is recorded before the full run's
+   data is read.
+3. **Smoke** (three models, three cells, full-run SLURM profile; checks non-empty
+   answers and the exact system text of each cell): needs Omer's cluster go-ahead.
+4. **Full run**: only after the smoke passes and the freeze is recorded; needs its own
+   go-ahead, **by 2026-11-30 for the paper, by 2026-11-25 if the abstract of 2026-12-07
+   is to quote the new baseline.**
+5. Sync, the frozen analysis, a readout and a `NUMBERS.md` entry. Then stop: the paper
+   change is a separate step.
+
+**Known before the smoke:** `status.sh` lists the cells A and B under "unknown" (it
+knows only the standard cell names, as with the `jsonbound` cells); `sync.sh` brings
+all three folders. A swap that refuses a message is stored as an exception row and is
+not retried, so "no exception rows" is the smoke's check for it. The main checkout was
+switched to `main` and pulled by something outside this work at 10:30 on 2026-11-23,
+so the branch lives in the worktree `.claude/worktrees/control-prompt-cells`.
 
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,
