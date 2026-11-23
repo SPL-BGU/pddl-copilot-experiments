@@ -223,6 +223,8 @@
   or be pooled with Part C, and in the probe it lowers the baseline on two tasks. In the rerun's
   unaided answers the validation tasks have no format failures at all, and solve is
   already reported under the delivered grader, which reads a plan in any layout.
+  *(The last clause is wrong; see "The grader does not read the commonest solve layout"
+  below.)*
 - **Decided (Omer):** build the pilot. Done in PR #145: the probe graded with the frozen
   delivered grader (`tools/reanalysis/json_constraint_pilot.py`), `NUMBERS.md` ("JSON
   constraint pilot"), a table and a paragraph in the Technical Appendix, and the
@@ -257,3 +259,22 @@
   of its figures (one model; the figures stay in the Technical Appendix). The appendix
   paragraph also says that the pilot cannot separate the prompt's reference to a schema
   from the constraint.
+- **The grader does not read the commonest solve layout (found by the plan draft, checked
+  by the main session with its own script, same day).** The frozen delivered grader reads
+  a JSON plan only when the whole answer is the JSON object
+  (`tools/delivered_rerun/grade.py`, `solve_plan`). Most unaided solve answers of the
+  rerun reason first and end with the plan as JSON in a code block (198 to 259 of 300 per
+  model), the layout the flawed system prompt asks for. For those the grader finds no
+  plan or grades action-shaped lines picked from the reasoning text. Scoping count, Part
+  C, n = 300 per model: frozen 21.3 / 24.3 / 25.3% (Gemma / 9B / 35B, equal to the
+  readout); with the plan of the last code block read, 48.7 / 40.0 / 51.7%; frozen wrong
+  and block right 83 / 50 / 80, the reverse 1 / 3 / 1. Both counts validated about 300
+  uncached plans with the laptop's validator (pyvalidator 0.1.6; the readout used 0.1.5),
+  so the two counts are not independent on that point.
+- **Standing of these figures: scoping counts. Not in `NUMBERS.md`, not to be quoted in
+  the paper.** The tool arms were not read the same way, so the RQ1 contrast under this
+  reading is unknown. A filed figure needs a reviewed post hoc script that keeps every
+  frozen grade and adds the reading beside it, for both arms.
+- **What it touches, for Omer:** the abstract and RQ1 quote unaided solve at 21 to 29%.
+  For the open models that is the frozen grade. The earlier statement in this entry and
+  in chat that the format loss on solve was already neutralised is withdrawn.

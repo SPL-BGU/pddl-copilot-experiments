@@ -77,9 +77,17 @@ has not ruled on the rerun.
 points the model to a schema it never received (`pddl_eval/prompts.py`), so the flaw is
 inside the data of those two tasks and the paper's text cannot repair it; the validation
 tasks are untouched. Whether it lowered the baseline is not measured (the pilot tests the
-constraint, not the prompt). A plan for a small corrected-prompt control is being drafted
-in a separate worktree (`development/control_prompt_fix_plan.md`); it is a proposal that
-goes against "No run is planned" below until Omer rules.
+constraint, not the prompt). A plan for a small corrected-prompt control is drafted
+(`development/control_prompt_fix_plan.md`, commit `3c0b483` on branch
+`claude/plan-prompt-fix-control-186fe9`, not pushed, not on `main`); it is a proposal that
+goes against "No run is planned" below until Omer answers its section 9.
+**Found while drafting it, checked by a second count:** the frozen delivered grader does
+not read an unaided solve plan written as JSON in a code block after the reasoning, the
+layout most unaided solve answers of the rerun use. Scoping counts put unaided solve at
+40 to 52% with that block read, against the frozen 21.3 to 25.3%. These are not filed
+figures and are not to be quoted (`paper_notes_discussions.md`, 2026-11-23). The abstract
+and RQ1 quote the frozen figure. A reviewed post hoc re-grade of both arms needs no run
+and is the plan's first step; Omer has not ruled on it.
 
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,
