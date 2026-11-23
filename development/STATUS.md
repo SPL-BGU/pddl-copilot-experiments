@@ -88,7 +88,7 @@ layout most unaided solve answers of the rerun use. Scoping counts put unaided s
 figures and are not to be quoted (`paper_notes_discussions.md`, 2026-11-23). The abstract
 and RQ1 quote the frozen figure. A reviewed post hoc re-grade of both arms needs no run
 and is the plan's first step.
-**The re-grade is done (Omer: yes, 2026-11-23; PR-PLACEHOLDER, for his read).**
+**The re-grade is done (Omer: yes, 2026-11-23; PR #146, for his read).**
 `tools/reanalysis/rq1_layout_regrade.py`; `NUMBERS.md`, "RQ1 solve and simulate —
 layout-tolerant re-grade of both arms". Same reader on the unaided arm and on both tool
 arms, new plans validated with the readout's validator release, frozen column equal to

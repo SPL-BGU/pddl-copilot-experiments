@@ -279,7 +279,7 @@
   For the open models that is the frozen grade. The earlier statement in this entry and
   in chat that the format loss on solve was already neutralised is withdrawn.
 - **Decided (Omer), same day: do the re-grade of the stored answers (no run).** Done in
-  PR-PLACEHOLDER: `tools/reanalysis/rq1_layout_regrade.py`, with `NUMBERS.md` ("RQ1 solve
+  PR #146: `tools/reanalysis/rq1_layout_regrade.py`, with `NUMBERS.md` ("RQ1 solve
   and simulate — layout-tolerant re-grade of both arms"). It replaces the scoping counts
   above. The rule: on solve, the plan in the last code block of the answer, when that
   block holds a plan, replaces the frozen reading in both directions; on simulate, the RQ3
