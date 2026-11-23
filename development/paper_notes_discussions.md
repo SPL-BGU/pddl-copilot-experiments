@@ -339,3 +339,41 @@
   exists the paper stays as merged today, because the bare "21 to 29%" is known to be
   too low. The kickoff prompt for the run was given to Omer in chat (cells O, A and B,
   three models, 5-point margin, validation tasks left out; his to change).
+
+## 2026-11-23 (later) — The corrected-prompt control: decisions, harness change built
+
+- **Decided (Omer):** run the control of `control_prompt_fix_plan.md`, as an exception
+  to "No new runs". His answers are written into the plan's section 9.
+- **Cells:** O (today's system message, run again in the same window), A (the schema
+  reference removed), B (the answer format stated), wording as in the plan's section 2.
+  Qwen3.5-9B, Gemma-26B and Qwen3.6-35B, thinking off, solve and simulate only. 5,400
+  trials. Margin for "criterion met": 5 points.
+- **Reporting rule (Omer), to be written into the registration before any data is
+  read:** cell B is the no-tools baseline the paper reports on solve and simulate. Cell
+  O is the anchor for the paired contrasts and for the drift check against Part C.
+  Part C stays in the appendix as the registered record, with a short note on why it
+  was run again. Both the frozen grade and the layout-tolerant reading are registered
+  for every contrast.
+- **Never pooled.** The control is a new condition. Its rows are not pooled with Part C
+  or with the main sweep.
+- **Order of work (Omer):** harness change; registration and the freeze gate; smoke;
+  full run; sync, frozen analysis, readout and a `NUMBERS.md` entry. The registration
+  now comes before the smoke (the plan had it after). One explicit go-ahead before
+  every SSH or SLURM action, the smoke and the full run separately.
+- **No paper edit in this task.** When the readout exists it is reported and the work
+  stops; the paper change is a separate step after Omer reads it.
+- **Dates:** go-ahead for the full run by 2026-11-30 for the paper of 2026-12-14; by
+  2026-11-25 if the abstract of 2026-12-07 is to quote the new baseline.
+- **The second reading reuses the filed re-grade:** the `block_plan` reader of
+  `tools/reanalysis/rq1_layout_regrade.py` and its in-process validator route on
+  pddl-pyvalidator 0.1.5, the readout's release. The plan's section 0 and step 0 now
+  say that step 0 is done (PR #146).
+- **Harness change built (branch `harness/control-prompt-cells`, PR for Omer's merge).**
+  The system message is swapped in the client, only when `$PDDL_NO_TOOLS_SYSTEM` is
+  set, and only when the message is exactly the registered solve or simulate text;
+  anything else is refused. No file of the frozen hash changed; the package hash still
+  ends `822aace9`. Each cell records the system text it sent in
+  `system_prompt_audit.jsonl`, which is what the smoke will check. sha256 of the six
+  texts (solve / simulate): O `dd835ea2…` / `dfd6bead…`, A `1cf4b9b6…` / `c99db112…`,
+  B `15673b12…` / `79cb3435…`; the full digests are in `pddl_eval/control_prompts.py`.
+  Nothing was run on a model and the cluster was not contacted.

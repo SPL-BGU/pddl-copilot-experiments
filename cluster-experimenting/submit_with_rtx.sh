@@ -82,6 +82,18 @@
 #   comma-separated, one quoted argument). Default (flag omitted): all 5. An
 #   empty list or an unknown task name is an error; repeats are dropped.
 #
+# --no-tools-system "<list>": the no-tools system text of solve and simulate
+#   (control run, development/control_prompt_fix_plan.md). One quoted
+#   argument, space- or comma-separated: registered, no-pointer,
+#   format-stated. Each value is its own cell on the cond axis: registered ->
+#   no-tools (today's request), no-pointer -> no-tools-syspointer-off,
+#   format-stated -> no-tools-sysformat ($PDDL_NO_TOOLS_SYSTEM; see
+#   pddl_eval/vllm_client.py). Every cell of the job also writes
+#   OUT_DIR/system_prompt_audit.jsonl. Requires --no-tools, --run-tag and
+#   --tasks within "solve simulate"; exclusive with --json-constraint
+#   structured_outputs, --include-no-tools-steered, --decoupled-budget and
+#   --continue-partial. Flag omitted: nothing changes.
+#
 # --include-no-tools-steered: enables the sweep-5 control arm by emitting
 #   v14/v15/v16 in no-tools cells (the harness otherwise skips them — see
 #   runner.py:_emit_job emit-skip gate). Pairs with the `nt-ster` column
@@ -199,6 +211,8 @@ REASONING_EFFORT_GIVEN=0
 STORE_REASONING_FLAG=0
 TASKS_OVERRIDE=""
 TASKS_GIVEN=0
+NO_TOOLS_SYSTEM_LIST=""
+NO_TOOLS_SYSTEM_GIVEN=0
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -235,6 +249,7 @@ while [[ $# -gt 0 ]]; do
         --reasoning-effort) REASONING_EFFORT_GIVEN=1; REASONING_EFFORT_LIST="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         --store-reasoning) STORE_REASONING_FLAG=1; shift ;;
         --tasks) TASKS_GIVEN=1; TASKS_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
+        --no-tools-system) NO_TOOLS_SYSTEM_GIVEN=1; NO_TOOLS_SYSTEM_LIST="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -510,6 +525,74 @@ if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
     fi
 fi
 
+# --no-tools-system "<list>": see the header. Each value becomes a cond token
+# (below), so every system text gets its own OUT_DIR. The client swap fails on
+# any task but solve and simulate, so --tasks must name only those two. The
+# run tag keeps these cells out of every earlier no-tools OUT_DIR, including
+# the `registered` cell, whose token is the plain no-tools one.
+SYSPROMPT_COND=()
+if [ "$NO_TOOLS_SYSTEM_GIVEN" -eq 1 ]; then
+    read -ra _sys <<< "${NO_TOOLS_SYSTEM_LIST//,/ }"
+    if [ "${#_sys[@]}" -eq 0 ]; then
+        echo "Error: --no-tools-system expects at least one of registered, no-pointer, format-stated" >&2
+        exit 1
+    fi
+    for _s in "${_sys[@]}"; do
+        case "$_s" in
+            registered) _tok="no-tools" ;;
+            no-pointer) _tok="no-tools-syspointer-off" ;;
+            format-stated) _tok="no-tools-sysformat" ;;
+            *)
+                echo "Error: --no-tools-system: unknown value '$_s' (expected registered, no-pointer or format-stated)" >&2
+                exit 1 ;;
+        esac
+        case " ${SYSPROMPT_COND[*]} " in
+            *" $_tok "*) ;;
+            *) SYSPROMPT_COND+=("$_tok") ;;
+        esac
+    done
+    unset _sys _s _tok
+    if [ "$NO_TOOLS" -ne 1 ]; then
+        echo "Error: --no-tools-system requires --no-tools (it changes the no-tools system prompt only)" >&2
+        exit 1
+    fi
+    if [ -z "$RUN_TAG" ]; then
+        echo "Error: --no-tools-system requires --run-tag (these cells must not share an OUT_DIR with an earlier no-tools corpus)" >&2
+        exit 1
+    fi
+    if [ -z "$TASKS_EXPORT" ]; then
+        echo "Error: --no-tools-system requires --tasks with solve and/or simulate (the swap fails on every other task)" >&2
+        exit 1
+    fi
+    for _t in ${TASKS_EXPORT//^/ }; do
+        case "$_t" in
+            solve|simulate) ;;
+            *)
+                echo "Error: --no-tools-system: --tasks may name only solve and simulate (got '$_t'; the swap fails on every other task)" >&2
+                exit 1 ;;
+        esac
+    done
+    unset _t
+    if [ "$JSON_CONSTRAINT" = "structured_outputs" ]; then
+        echo "Error: --no-tools-system cannot be combined with --json-constraint structured_outputs (both rename the no-tools cell)" >&2
+        exit 1
+    fi
+    if [ "$INCLUDE_NO_TOOLS_STEERED" -eq 1 ]; then
+        echo "Error: --no-tools-system cannot be combined with --include-no-tools-steered (the control runs v11-v13 only)" >&2
+        exit 1
+    fi
+    if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
+        echo "Error: --no-tools-system cannot be combined with --decoupled-budget" >&2
+        exit 1
+    fi
+    if [ -n "$CONTINUE_PARTIAL" ]; then
+        echo "Error: --no-tools-system cannot be combined with --continue-partial (seeded rows were written under another system text)" >&2
+        exit 1
+    fi
+else
+    unset SYSTEM_AUDIT
+fi
+
 # --smoke / --smoke-shuffle: pin the default model pack (5 models in
 # PDDL_DEFAULT_MODELS) and full think × cond matrix; run_experiment.py
 # auto-overrides --num-variants and skips the inner THINK × CONDITIONS
@@ -644,6 +727,12 @@ if [ "$JSON_CONSTRAINT" = "structured_outputs" ]; then
     done
 fi
 
+# --no-tools-system: the system texts are the cond axis. It requires
+# --no-tools (validated above), so EFF_COND is exactly ("no-tools") here.
+if [ "${#SYSPROMPT_COND[@]}" -gt 0 ]; then
+    EFF_COND=("${SYSPROMPT_COND[@]}")
+fi
+
 # Build cells (model × think × cond). The legacy no-tools/think=on gate was
 # lifted 2026-05-12 to complete the ablation dimension (4 missing cells per
 # `--all` sweep, one per model). Default `--all` now expands to 4×6 = 24
@@ -763,6 +852,11 @@ fi
 # needs no export of its own: it travels inside CELLS_LIST as the cond token.
 if [ -n "$TASKS_EXPORT" ]; then
     EXPORT_LIST="${EXPORT_LIST},TASKS=${TASKS_EXPORT}"
+fi
+# --no-tools-system: the system text travels inside CELLS_LIST as the cond
+# token; SYSTEM_AUDIT=1 turns on the audit log for every cell of the job.
+if [ "${#SYSPROMPT_COND[@]}" -gt 0 ]; then
+    EXPORT_LIST="${EXPORT_LIST},SYSTEM_AUDIT=1"
 fi
 # Decoupled-budget bundle (consumed by run_condition_vllm_rtx.sbatch). Each is
 # threaded explicitly — same convention as RUN_TAG/DOMAINS_DIR — rather than
@@ -901,6 +995,9 @@ if [ "$STORE_REASONING_FLAG" -eq 1 ]; then
 fi
 if [ -n "$TASKS_EXPORT" ]; then
     echo "  tasks:       ${TASKS_EXPORT//^/ } (subset; default is all 5)" >&2
+fi
+if [ "${#SYSPROMPT_COND[@]}" -gt 0 ]; then
+    echo "  system:      ${SYSPROMPT_COND[*]} (no-tools system text per cell; separate OUT_DIR; audit log OUT_DIR/system_prompt_audit.jsonl)" >&2
 fi
 if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
     echo "  decoupled:   ON (think=${NUM_PREDICT_THINK:-default} / answer=${NUM_PREDICT_ANSWER:-per-task}; reasoning-parser=${REASONING_PARSER_OVERRIDE:-per-model})" >&2

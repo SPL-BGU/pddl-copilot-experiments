@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -316,6 +317,154 @@ def test_reasoning_effort(r: TestResults) -> None:
             .count("SUPPORTS_REASONING_EFFORT=1\n") == 1)
 
 
+def test_no_tools_system(r: TestResults) -> None:
+    """--no-tools-system (control-prompt cells, 2026-11-23)."""
+    base_args = ("Qwen3.5:9B", "--no-tools", "--think-modes", "off",
+                 "--tasks", "solve simulate", "--run-tag", "sysprompt")
+    rc, err = _dry(*base_args, "--no-tools-system",
+                   "registered no-pointer format-stated")
+    r.check_eq("3-value submit exits 0", rc, 0)
+    r.check_eq(
+        "3-value --export list",
+        _export(err),
+        "ALL,CELLS_LIST=Qwen3.5:9B|off|no-tools"
+        "^Qwen3.5:9B|off|no-tools-syspointer-off"
+        "^Qwen3.5:9B|off|no-tools-sysformat,"
+        "RUN_TAG=sysprompt,TASKS=solve^simulate,SYSTEM_AUDIT=1",
+    )
+    r.check("3-value submit is a 3-cell array", "--array=0-2" in err, err)
+    r.check("3-value submit prints the system line", "system:" in err, err)
+    # three models -> nine cells
+    rc9, err9 = _dry("gemma4:26b-a4b", "Qwen3.5:9B", "qwen3.6:35b", "--no-tools",
+                     "--think-modes", "off", "--tasks", "solve,simulate",
+                     "--run-tag", "sysprompt", "--no-tools-system",
+                     "registered,no-pointer,format-stated")
+    r.check("3 models x 3 texts = 9 cells",
+            rc9 == 0 and "--array=0-8" in err9
+            and _export(err9).count("|off|") == 9, err9)
+    # comma list, repeats dropped, order kept
+    rc2, err2 = _dry(*base_args, "--no-tools-system", "format-stated,no-pointer,format-stated")
+    r.check_eq("repeats dropped", (rc2, _export(err2)),
+               (0, "ALL,CELLS_LIST=Qwen3.5:9B|off|no-tools-sysformat"
+                   "^Qwen3.5:9B|off|no-tools-syspointer-off,"
+                   "RUN_TAG=sysprompt,TASKS=solve^simulate,SYSTEM_AUDIT=1"))
+    # registered alone: the plain no-tools token, still audited
+    rc3, err3 = _dry(*base_args, "--no-tools-system", "registered")
+    r.check_eq("registered-only --export list", (rc3, _export(err3)),
+               (0, "ALL,CELLS_LIST=Qwen3.5:9B|off|no-tools,"
+                   "RUN_TAG=sysprompt,TASKS=solve^simulate,SYSTEM_AUDIT=1"))
+    # flag omitted: the same submission as before the flag existed
+    plain = _dry(*base_args)
+    r.check_eq("flag omitted --export list", (plain[0], _export(plain[1])),
+               (0, "ALL,CELLS_LIST=Qwen3.5:9B|off|no-tools,"
+                   "RUN_TAG=sysprompt,TASKS=solve^simulate"))
+    r.check("flag omitted prints no system line", "system:" not in plain[1])
+    # an inherited SYSTEM_AUDIT never reaches the job without the flag
+    env = {**os.environ, "SYSTEM_AUDIT": "1"}
+    p = subprocess.run(["bash", str(WRAPPER), *base_args, "--dry-run"],
+                       capture_output=True, text=True, env=env)
+    r.check("inherited SYSTEM_AUDIT not exported",
+            "SYSTEM_AUDIT" not in _export(p.stderr), p.stderr)
+    r.check("wrapper unsets an inherited SYSTEM_AUDIT",
+            "\n    unset SYSTEM_AUDIT\n" in WRAPPER.read_text())
+    s = "--no-tools-system"
+    seed = tempfile.TemporaryDirectory()
+    (Path(seed.name) / "trials.jsonl").write_text("")
+    seed_dir = seed.name
+    for args, why in [
+        (("Qwen3.5:9B", "--think-modes", "off", "--tasks", "solve",
+          "--run-tag", "t", s, "no-pointer"), "without --no-tools"),
+        (("Qwen3.5:9B", "--tools-only", "--tasks", "solve",
+          "--run-tag", "t", s, "no-pointer"), "with --tools-only"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", s, "no-pointer"),
+         "without --run-tag"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          s, "no-pointers"), "unknown value"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          s, ""), "empty value"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          s, " , "), "separator-only value"),
+        (("Qwen3.5:9B", "--no-tools", "--run-tag", "t", s, "no-pointer"),
+         "without --tasks"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve validate_plan",
+          "--run-tag", "t", s, "no-pointer"), "tasks outside solve/simulate"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "validate_domain",
+          "--run-tag", "t", s, "registered"), "registered with a validation task"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          "--json-constraint", "structured_outputs", s, "no-pointer"),
+         "with --json-constraint structured_outputs"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          "--include-no-tools-steered", s, "no-pointer"),
+         "with --include-no-tools-steered"),
+        (("Qwen3.5:9B", "--no-tools", "--think-modes", "on", "--tasks", "solve",
+          "--run-tag", "t", "--decoupled-budget", s, "no-pointer"),
+         "with --decoupled-budget"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          "--continue-partial", seed_dir, s, "no-pointer"),
+         "with --continue-partial"),
+        (("--smoke", s, "no-pointer"), "with --smoke"),
+    ]:
+        rc_bad, err_bad = _dry(*args)
+        r.check(f"--no-tools-system rejected: {why}",
+                rc_bad != 0 and "Error:" in err_bad and "DRY:" not in err_bad,
+                f"rc={rc_bad} {err_bad!r}")
+    seed.cleanup()
+    # trailing flag with no value
+    p = subprocess.run(["bash", str(WRAPPER), *base_args, "--dry-run",
+                        "--no-tools-system"], capture_output=True, text=True)
+    r.check("trailing --no-tools-system with no value rejected",
+            p.returncode != 0 and "at least one of" in p.stderr, p.stderr)
+
+    text = SBATCH.read_text()
+    r.check("sbatch has a no-tools-syspointer-off branch setting no-pointer",
+            re.search(r"no-tools-syspointer-off\)\s*\n\s*"
+                      r"COND_ENV=\(PDDL_NO_TOOLS_SYSTEM=no-pointer\)\s*\n"
+                      r"(?:\s*#[^\n]*\n)*\s*COND_ARGS=\(--conditions no-tools\) ;;",
+                      text) is not None)
+    r.check("sbatch has a no-tools-sysformat branch setting format-stated",
+            re.search(r"no-tools-sysformat\)\s*\n\s*"
+                      r"COND_ENV=\(PDDL_NO_TOOLS_SYSTEM=format-stated\)\s*\n"
+                      r"(?:\s*#[^\n]*\n)*\s*COND_ARGS=\(--conditions no-tools\) ;;",
+                      text) is not None)
+    r.check("sbatch drops inherited control-prompt settings",
+            "\nunset PDDL_NO_TOOLS_SYSTEM PDDL_SYSTEM_AUDIT_LOG\n" in text)
+    r.check("sbatch names the new cells in the job-name case",
+            'no-tools-syspointer-off) _CTAG="notools-syspointer-off" ;;' in text
+            and 'no-tools-sysformat)     _CTAG="notools-sysformat" ;;' in text)
+    block = re.search(r'if \[ "\$\{SYSTEM_AUDIT:-0\}" = "1" \]; then\s*\n'
+                      r'(?:\s*#[^\n]*\n)*'
+                      r'\s*(if \[ -s "\$OUT_DIR/trials.jsonl" \] && '
+                      r'\[ ! -e "\$OUT_DIR/system_prompt_audit.jsonl" \]); then\s*\n'
+                      r'\s*echo "Error:[^\n]*\n'
+                      r'\s*OVERALL_RC=1\s*\n\s*continue\s*\n\s*fi\s*\n'
+                      r'\s*mkdir -p "\$OUT_DIR"\s*\n'
+                      r'\s*COND_ENV\+=\(PDDL_SYSTEM_AUDIT_LOG="\$OUT_DIR/'
+                      r'system_prompt_audit.jsonl"\)', text)
+    r.check("sbatch sets the audit log only under SYSTEM_AUDIT=1, after the folder guard",
+            block is not None)
+    # The guard itself, run on three folder states: rows of an earlier corpus
+    # (refused), a resubmitted control cell (allowed), a fresh folder (allowed).
+    if block is not None:
+        with tempfile.TemporaryDirectory() as td:
+            for name, files, refused in (
+                    ("earlier", {"trials.jsonl": "{}\n"}, True),
+                    ("resubmit", {"trials.jsonl": "{}\n", "system_prompt_audit.jsonl": "{}\n"}, False),
+                    ("empty-trials", {"trials.jsonl": ""}, False),
+                    ("fresh", {}, False)):
+                d = Path(td) / name
+                d.mkdir()
+                for fn, body in files.items():
+                    (d / fn).write_text(body)
+                rc = subprocess.run(["bash", "-c", f'{block.group(1)}; then exit 7; fi'],
+                                    env={**os.environ, "OUT_DIR": str(d)}).returncode
+                r.check_eq(f"folder guard: {name}", rc == 7, refused)
+    r.check("the audit log is set after OUT_DIR is computed",
+            text.index('OUT_DIR="${EXPT_ROOT}/results/slurm_vllm_')
+            < text.index("COND_ENV+=(PDDL_SYSTEM_AUDIT_LOG="))
+    r.check_eq("sbatch parses (bash -n)",
+               subprocess.run(["bash", "-n", str(SBATCH)]).returncode, 0)
+
+
 def main() -> None:
     r = TestResults("test_submit_wrapper")
     test_defaults_unchanged(r)
@@ -325,6 +474,7 @@ def main() -> None:
     test_json_constraint(r)
     test_max_model_len(r)
     test_reasoning_effort(r)
+    test_no_tools_system(r)
     r.report_and_exit()
 
 

@@ -29,7 +29,8 @@ What was decided:
 - **Three research questions** (§2). They replace RQ1 to RQ6 and the scorecard in the
   tex.
 - **No new runs.** The questions are answered from data we already own (Omer,
-  2026-11-22).
+  2026-11-22). *One exception (Omer, 2026-11-23): the corrected-prompt control for the
+  no-tools arm on solve and simulate, `control_prompt_fix_plan.md`.*
 
 ## 2. The research questions and their metrics
 

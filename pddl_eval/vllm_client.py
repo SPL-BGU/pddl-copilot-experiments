@@ -39,6 +39,11 @@ Knobs translated:
     and include_stop_str_in_output. See chat_without_tools_decoupled.
   * $PDDL_REASONING_EFFORT    → top-level reasoning_effort (opt-in, unset by
     default; see VLLMClient.__init__). gpt-oss only.
+  * $PDDL_NO_TOOLS_SYSTEM     → replaces the registered no-tools system text
+    of solve/simulate (opt-in, unset by default; see VLLMClient.__init__ and
+    pddl_eval/control_prompts.py). The control-prompt cells only.
+  * $PDDL_SYSTEM_AUDIT_LOG    → appends one JSON line per chat() call naming
+    the system/user text sent (opt-in; never changes the request).
 
 Reasoning trace (checked against vLLM v0.20.2, 2026-11-09): the server puts
 the trace in `message.reasoning`. It has no `reasoning_content` field
@@ -69,6 +74,7 @@ preserving the existing chat.py classifier for `done_reason="length"`
 truncation.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -76,6 +82,8 @@ import sys
 import time
 
 from openai import AsyncOpenAI, BadRequestError
+
+from .control_prompts import NO_TOOLS_SYSTEM_MODES, swap_system
 
 
 _DEFAULT_BASE_URL = "http://localhost:8000"
@@ -193,7 +201,8 @@ class VLLMClient:
                  json_constraint: str | None = None,
                  tool_call_id_style: str | None = None,
                  reasoning_effort: str | None = None,
-                 store_reasoning: bool | None = None):
+                 store_reasoning: bool | None = None,
+                 no_tools_system: str | None = None):
         # Which request field carries a format=<schema dict>. "guided_json"
         # is what every corpus before 2026-10-27 sent; vLLM 0.20.2 has no
         # such field and drops unknown fields with only a DEBUG log
@@ -252,6 +261,26 @@ class VLLMClient:
         self._store_reasoning = bool(store_reasoning)
         if self._store_reasoning:
             print("VLLMClient: storing message.reasoning as thinking", file=sys.stderr)
+        # Control-prompt cells (development/control_prompt_fix_plan.md): swap
+        # the registered no-tools system text of solve/simulate for the
+        # `no-pointer` or `format-stated` text (pddl_eval/control_prompts.py).
+        # From $PDDL_NO_TOOLS_SYSTEM when the argument is None; unset or empty
+        # sends today's request. The sbatch sets it only for the
+        # no-tools-syspointer-off and no-tools-sysformat conds.
+        if no_tools_system is None:
+            no_tools_system = os.environ.get("PDDL_NO_TOOLS_SYSTEM") or None
+        if no_tools_system is not None and no_tools_system not in NO_TOOLS_SYSTEM_MODES:
+            raise ValueError(f"no_tools_system must be one of "
+                             f"{NO_TOOLS_SYSTEM_MODES} (got {no_tools_system!r})")
+        self._no_tools_system = no_tools_system
+        if no_tools_system is not None:
+            print(f"VLLMClient: no-tools system text {no_tools_system}", file=sys.stderr)
+        # $PDDL_SYSTEM_AUDIT_LOG=<path>: append one JSON line per chat() call
+        # with the sha256 of the system and user text sent (and the full
+        # system text the first time each one is seen). Separate from the
+        # swap, so the registered cell can be audited too. Unset: no file.
+        self._audit_path = os.environ.get("PDDL_SYSTEM_AUDIT_LOG") or None
+        self._audit_seen: set[str] = set()
         base_url = (base_url or _DEFAULT_BASE_URL).rstrip("/")
         if not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
@@ -271,7 +300,16 @@ class VLLMClient:
         stop: list[str] | None = None,
         vllm_extra: dict | None = None,
     ) -> dict:
+        # The swap never touches a tool arm, and any message list it does not
+        # know raises before a request is sent (fails closed).
+        if self._no_tools_system is not None:
+            if tools is not None:
+                raise ValueError(f"no-tools system swap ({self._no_tools_system}) "
+                                 f"is active but tools were passed")
+            messages, _ = swap_system(messages, self._no_tools_system)
         oa_messages = _to_openai_messages(messages, self._tool_call_id_style)
+        if self._audit_path is not None:
+            self._write_audit(model, oa_messages, tools)
 
         kwargs: dict = {
             "model": model,
@@ -403,6 +441,37 @@ class VLLMClient:
         return _synthesize_overflow_response(
             measured_prompt or reported_prompt, wall_ns
         )
+
+    def _write_audit(self, model: str, oa_messages: list, tools: list | None) -> None:
+        """Append the $PDDL_SYSTEM_AUDIT_LOG line for one chat() call. Reads
+        the outgoing messages only; a write failure raises."""
+        def first(role: str):
+            return next((m.get("content") for m in oa_messages
+                         if m.get("role") == role), None)
+
+        def sha(text) -> str | None:
+            if text is None:
+                return None
+            if not isinstance(text, str):
+                text = json.dumps(text, sort_keys=True)
+            return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+        system_text = first("system")
+        system_sha = sha(system_text)
+        line = {
+            "mode": self._no_tools_system or "registered",
+            "swapped": self._no_tools_system is not None,
+            "system_sha256": system_sha,
+            "user_sha256": sha(first("user")),
+            "model": model,
+            "has_tools": bool(tools),
+        }
+        if system_sha is not None and system_sha not in self._audit_seen:
+            line["system_text"] = system_text
+        with open(self._audit_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(line, ensure_ascii=False) + "\n")
+        if system_sha is not None:
+            self._audit_seen.add(system_sha)
 
     async def aclose(self) -> None:
         await self._client.close()

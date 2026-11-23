@@ -446,7 +446,8 @@ def test_unknown_json_constraint_is_rejected():
 # ---------------------------------------------------------------------------
 
 _ENV_KEYS = ("PDDL_REASONING_EFFORT", "PDDL_STORE_REASONING",
-             "PDDL_JSON_CONSTRAINT", "PDDL_TOOL_CALL_ID_STYLE")
+             "PDDL_JSON_CONSTRAINT", "PDDL_TOOL_CALL_ID_STYLE",
+             "PDDL_NO_TOOLS_SYSTEM", "PDDL_SYSTEM_AUDIT_LOG")
 
 
 class _Env:
@@ -672,6 +673,236 @@ def test_stored_trace_reaches_the_harness_thinking_value():
             client, "m", [{"role": "user", "content": "x"}], mcp,
             num_predict=64, num_ctx=16384, think=None))
     assert out[-1] == ""
+
+
+# ---------------------------------------------------------------------------
+# Control-prompt cells (development/control_prompt_fix_plan.md, 2026-11-23):
+# $PDDL_NO_TOOLS_SYSTEM swaps the no-tools system text of solve/simulate, and
+# $PDDL_SYSTEM_AUDIT_LOG logs what was sent. The messages come from the
+# runner's real builder and go through the real chat_without_tools path
+# (think off, format=TASK_SCHEMAS[task]), as evaluate_one sends them.
+# ---------------------------------------------------------------------------
+
+from pddl_eval.prompts import WITHOUT_TOOLS_SYSTEM_BY_TASK  # noqa: E402
+from pddl_eval.runner import DEFAULT_NUM_PREDICT, build_messages  # noqa: E402
+from pddl_eval.schemas import TASK_SCHEMAS  # noqa: E402
+
+# Typed here, apart from pddl_eval/control_prompts.py, so a typo in either fails.
+_CELL_TEXT = {
+    "no-pointer": {
+        "solve": "You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning.",
+        "simulate": "You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; give the per-step state with boolean predicates and numeric fluents.",
+    },
+    "format-stated": {
+        "solve": "You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning; end your response with the plan alone, one parenthesised PDDL action per line.",
+        "simulate": 'You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; end your response with a single JSON object of the form {"trajectory": [ ...steps... ]}, where each step has the keys step, action and state (state.boolean and state.numeric).',
+    },
+}
+_DOMAIN = "(define (domain d) (:predicates (p)))"
+_PROBLEM = "(define (problem q) (:domain d) (:init) (:goal (p)))"
+_GT = {"plan": ["(a x)", "(b y)"]}
+
+
+def _capture_client(**client_kwargs):
+    fake = _CaptureCompletions()
+    client = VLLMClient(base_url="http://test", **client_kwargs)
+    client._client = SimpleNamespace(chat=SimpleNamespace(completions=fake))
+    return client, fake
+
+
+def _no_tools_request(task: str, pv: int, **client_kwargs):
+    """(create() kwargs, input messages) of one no-tools think-off trial."""
+    from pddl_eval.chat import chat_without_tools
+    msgs = build_messages(task, _DOMAIN, _PROBLEM, pv, False, _GT)
+    client, fake = _capture_client(**client_kwargs)
+    asyncio.run(chat_without_tools(
+        client, "m", msgs, num_predict=DEFAULT_NUM_PREDICT[task],
+        num_ctx=16384, think=False, format=TASK_SCHEMAS.get(task)))
+    assert len(fake.calls) == 1
+    return fake.calls[0], msgs
+
+
+def test_control_default_request_unchanged():
+    """No variable set: the request is the one every no-tools corpus sent."""
+    for task in ("solve", "simulate"):
+        for pv in (11, 12, 13):
+            with _Env():
+                sent, msgs = _no_tools_request(task, pv)
+            user = msgs[1]["content"]
+            assert msgs[0] == {"role": "system",
+                               "content": WITHOUT_TOOLS_SYSTEM_BY_TASK[task]}
+            assert sent == {
+                "model": "m",
+                "messages": [
+                    {"role": "system", "content": WITHOUT_TOOLS_SYSTEM_BY_TASK[task]},
+                    {"role": "user", "content": user}],
+                "stream": False,
+                "temperature": 0.0,
+                "max_tokens": DEFAULT_NUM_PREDICT[task],
+                "extra_body": {"chat_template_kwargs": {"enable_thinking": False},
+                               "guided_json": TASK_SCHEMAS[task]},
+            }, (task, pv)
+            # An empty variable is the default too.
+            with _Env(PDDL_NO_TOOLS_SYSTEM=""):
+                assert _no_tools_request(task, pv)[0] == sent
+
+
+def test_control_cells_swap_only_the_system_text():
+    for task in ("solve", "simulate"):
+        for pv in (11, 12, 13):
+            with _Env():
+                base, _ = _no_tools_request(task, pv)
+            for mode in ("no-pointer", "format-stated"):
+                with _Env(PDDL_NO_TOOLS_SYSTEM=mode):
+                    sent, msgs = _no_tools_request(task, pv)
+                # the input message list the runner built is not changed
+                assert msgs[0]["content"] == WITHOUT_TOOLS_SYSTEM_BY_TASK[task]
+                assert sent["messages"][0] == {"role": "system",
+                                               "content": _CELL_TEXT[mode][task]}
+                # the user message is byte-identical to cell O's
+                assert sent["messages"][1] == base["messages"][1]
+                assert sent["messages"][1]["content"].encode() == \
+                    base["messages"][1]["content"].encode()
+                # nothing else moved, guided_json included
+                assert {k: v for k, v in sent.items() if k != "messages"} == \
+                    {k: v for k, v in base.items() if k != "messages"}, (task, pv, mode)
+                assert sent["extra_body"]["guided_json"] == TASK_SCHEMAS[task]
+                assert len(sent["messages"]) == 2
+            # an explicit argument works the same as the variable
+            with _Env():
+                arg, _ = _no_tools_request(task, pv, no_tools_system="no-pointer")
+            assert arg["messages"][0]["content"] == _CELL_TEXT["no-pointer"][task]
+
+
+def test_control_swap_fails_closed():
+    from pddl_eval.prompts import (WITH_TOOLS_SYSTEM, WITH_TOOLS_SYSTEM_BY_TASK,
+                                   WITHOUT_TOOLS_SYSTEM)
+    user = {"role": "user", "content": "x"}
+    cases = [
+        ("validation task", [{"role": "system",
+                              "content": WITHOUT_TOOLS_SYSTEM_BY_TASK["validate_plan"]}, user], None),
+        ("with-tools text", [{"role": "system",
+                              "content": WITH_TOOLS_SYSTEM_BY_TASK["solve"]}, user], None),
+        ("legacy flat no-tools text", [{"role": "system", "content": WITHOUT_TOOLS_SYSTEM}, user], None),
+        ("legacy flat with-tools text", [{"role": "system", "content": WITH_TOOLS_SYSTEM}, user], None),
+        ("no system message", [user], None),
+        ("system not first", [user, {"role": "system",
+                                     "content": WITHOUT_TOOLS_SYSTEM_BY_TASK["solve"]}], None),
+        ("tools passed", [{"role": "system",
+                           "content": WITHOUT_TOOLS_SYSTEM_BY_TASK["solve"]}, user], [_TOOL]),
+        ("empty tools list passed", [{"role": "system",
+                                      "content": WITHOUT_TOOLS_SYSTEM_BY_TASK["solve"]}, user], []),
+    ]
+    for mode in ("no-pointer", "format-stated"):
+        for label, msgs, tools in cases:
+            with _Env(PDDL_NO_TOOLS_SYSTEM=mode):
+                client, fake = _capture_client()
+                try:
+                    asyncio.run(client.chat(model="m", messages=msgs, tools=tools,
+                                            options={"num_predict": 8}))
+                    raise AssertionError(f"expected ValueError: {label}")
+                except ValueError:
+                    pass
+            assert fake.calls == [], label   # no request sent
+    # unknown mode: error at construction
+    for bad in ("registered", "nopointer", "format", "B", "1"):
+        with _Env(PDDL_NO_TOOLS_SYSTEM=bad):
+            try:
+                VLLMClient(base_url="http://test")
+                raise AssertionError(f"expected ValueError for {bad!r}")
+            except ValueError:
+                pass
+        try:
+            VLLMClient(base_url="http://test", no_tools_system=bad)
+            raise AssertionError(f"expected ValueError for argument {bad!r}")
+        except ValueError:
+            pass
+
+
+def test_control_tool_arm_untouched_without_mode():
+    """No mode: a tool-arm request with tools is sent as before."""
+    with _Env():
+        client, fake = _capture_client()
+        asyncio.run(client.chat(model="m", messages=[{"role": "user", "content": "x"}],
+                                tools=[_TOOL], options={"num_predict": 8}))
+    assert fake.calls[0]["tools"] == [_TOOL]
+
+
+def _audit_lines(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+def test_system_audit_log():
+    import hashlib
+    import tempfile
+
+    def h(s: str) -> str:
+        return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        # unset: no file is touched
+        log = Path(tmp) / "audit.jsonl"
+        with _Env():
+            base, msgs = _no_tools_request("solve", 11)
+        assert not log.exists() and list(Path(tmp).iterdir()) == []
+        user = msgs[1]["content"]
+
+        # registered cell: one line per call, system_text on first sight only
+        with _Env(PDDL_SYSTEM_AUDIT_LOG=str(log)):
+            from pddl_eval.chat import chat_without_tools
+            client, fake = _capture_client()
+            for task in ("solve", "solve", "simulate"):
+                m = build_messages(task, _DOMAIN, _PROBLEM, 11, False, _GT)
+                asyncio.run(chat_without_tools(
+                    client, "m", m, num_predict=DEFAULT_NUM_PREDICT[task],
+                    num_ctx=16384, think=False, format=TASK_SCHEMAS.get(task)))
+        # the request is the same with and without the audit
+        assert fake.calls[0] == base
+        lines = _audit_lines(log)
+        assert len(lines) == 3
+        o_solve = WITHOUT_TOOLS_SYSTEM_BY_TASK["solve"]
+        o_sim = WITHOUT_TOOLS_SYSTEM_BY_TASK["simulate"]
+        assert lines[0] == {"mode": "registered", "swapped": False,
+                            "system_sha256": h(o_solve), "user_sha256": h(user),
+                            "model": "m", "has_tools": False, "system_text": o_solve}
+        assert "system_text" not in lines[1]
+        assert lines[1]["system_sha256"] == h(o_solve)
+        assert lines[2]["system_text"] == o_sim and lines[2]["system_sha256"] == h(o_sim)
+
+        # swapped cell: the text actually sent is logged
+        log2 = Path(tmp) / "audit2.jsonl"
+        for mode in ("no-pointer", "format-stated"):
+            with _Env(PDDL_NO_TOOLS_SYSTEM=mode):
+                plain, _ = _no_tools_request("simulate", 12)
+            with _Env(PDDL_NO_TOOLS_SYSTEM=mode, PDDL_SYSTEM_AUDIT_LOG=str(log2)):
+                audited, m2 = _no_tools_request("simulate", 12)
+            assert audited == plain
+            last = _audit_lines(log2)[-1]
+            text = _CELL_TEXT[mode]["simulate"]
+            assert last == {"mode": mode, "swapped": True,
+                            "system_sha256": h(text),
+                            "user_sha256": h(m2[1]["content"]),
+                            "model": "m", "has_tools": False, "system_text": text}
+
+        # a tool-arm call (no mode) is logged with has_tools and no user text
+        log3 = Path(tmp) / "audit3.jsonl"
+        with _Env(PDDL_SYSTEM_AUDIT_LOG=str(log3)):
+            client, _ = _capture_client()
+            asyncio.run(client.chat(model="m", messages=[{"role": "user", "content": "x"}],
+                                    tools=[_TOOL], options={"num_predict": 8}))
+        (only,) = _audit_lines(log3)
+        assert only["system_sha256"] is None and "system_text" not in only
+        assert only["has_tools"] is True and only["user_sha256"] == h("x")
+
+        # a failed write raises
+        with _Env(PDDL_SYSTEM_AUDIT_LOG=str(Path(tmp) / "missing-dir" / "a.jsonl")):
+            client, fake = _capture_client()
+            try:
+                asyncio.run(client.chat(model="m", messages=[{"role": "user", "content": "x"}],
+                                        options={"num_predict": 8}))
+                raise AssertionError("expected OSError")
+            except OSError:
+                pass
 
 
 if __name__ == "__main__":
