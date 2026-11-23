@@ -253,3 +253,7 @@
   plan to be drafted in a separate worktree (`development/control_prompt_fix_plan.md`,
   branch of that worktree; a proposal until he rules).
 
+- **Decided (Omer), same day:** Limitations points to the pilot's table and quotes none
+  of its figures (one model; the figures stay in the Technical Appendix). The appendix
+  paragraph also says that the pilot cannot separate the prompt's reference to a schema
+  from the constraint.
