@@ -2093,7 +2093,15 @@ only, gitignored; harness branch `harness/d1a-new-families`). How to read the bl
 - **The prompt-only cell behaves like the rerun.** On the same trial keys the rerun's
   frozen grade is within 3 points of it on four tasks and 6.7 points above it on solve
   (31.7% against 25.0%, 60 trials; intervals overlap). Separate jobs weeks apart.
-- **Do NOT quote** "a working constraint would not have helped" as a general result (one
+- **The pilot does not test the prompt.** On solve and simulate the unaided system
+  prompt points to "the JSON schema provided by the format constraint" in both cells; the
+  model receives that schema in the constrained cell only. So the pilot cannot separate
+  the pointer from the constraint, and what the pointer did to the unaided solve and
+  simulate answers of the main sweep and of the rerun is unmeasured. The validation
+  prompts never mention a schema.
+- **Do NOT quote** the pilot as evidence that the missing schema did not hold the unaided
+  scores down;
+  "a working constraint would not have helped" as a general result (one
   model, 60 to 120 trials per task, the first problem of each domain only); "the constraint lowers unaided
   performance" for Gemma-26B or Qwen3.6-35B (never run with it); the schema order as the
   proven cause of the validate_plan fall; these figures as a correction to any unaided

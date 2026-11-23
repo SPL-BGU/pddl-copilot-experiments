@@ -2994,7 +2994,11 @@ for reasoning, so a constrained answer states its result first, and with thinkin
 it has no other place to reason. Constrained \emph{solve} answers are about half as
 long ($2{,}159$ against $4{,}078$ tokens on average). We report these two facts beside
 the falls and did not test them as their cause. On the validation tasks the prompt of
-the constrained run still asks for a closing verdict line. Between $7$ and $14$
+the constrained run still asks for a closing verdict line. On \emph{solve} and
+\emph{simulate} the system message of both runs refers to a schema, which the model
+receives in the constrained run alone. The pilot therefore cannot separate the effect
+of that reference from the effect of the constraint, and what the reference did to the
+unaided answers of the main sweep and of the rerun remains unmeasured. Between $7$ and $14$
 constrained answers per validation task stop at the output cap inside the justification
 and so carry no verdict that the grader reads. When the verdict is read from the
 opening field of such an answer, the difference on \emph{validate\_domain} becomes
