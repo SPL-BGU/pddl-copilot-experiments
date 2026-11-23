@@ -1,0 +1,813 @@
+{
+ "model": "Qwen3.5-9B",
+ "trials": 480,
+ "cells": [
+  {
+   "task": "solve",
+   "label": "all",
+   "n": 60,
+   "domains": 20,
+   "prompt only": {
+    "n": 60,
+    "right": 15,
+    "delivered": {
+     "est": 25.0,
+     "lo": 13.333333333333334,
+     "hi": 38.333333333333336,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 25.0,
+     "lo": 13.333333333333334,
+     "hi": 38.333333333333336,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 16,
+    "mean_completion_tokens": 4078.3,
+    "reasons": {
+     "plan_invalid": 35,
+     "plan_valid": 15,
+     "no_plan_extracted": 10
+    }
+   },
+   "constraint": {
+    "n": 60,
+    "right": 3,
+    "delivered": {
+     "est": 5.0,
+     "lo": 0.0,
+     "hi": 15.0,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 5.0,
+     "lo": 0.0,
+     "hi": 15.0,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 60,
+    "at_output_cap": 15,
+    "mean_completion_tokens": 2159.116666666667,
+    "reasons": {
+     "plan_invalid": 42,
+     "no_plan_extracted": 15,
+     "plan_valid": 3
+    }
+   },
+   "difference": {
+    "est": -20.0,
+    "lo": -31.666666666666664,
+    "hi": -10.0,
+    "k": 20,
+    "n": 60,
+    "lost": 12,
+    "gained": 0
+   },
+   "difference_verdict_field": {
+    "est": -20.0,
+    "lo": -31.666666666666664,
+    "hi": -10.0,
+    "k": 20,
+    "n": 60,
+    "lost": 12,
+    "gained": 0
+   },
+   "transitions": {
+    "plan_invalid -> plan_invalid": 24,
+    "plan_valid -> plan_invalid": 12,
+    "plan_invalid -> no_plan_extracted": 11,
+    "no_plan_extracted -> plan_invalid": 6,
+    "no_plan_extracted -> no_plan_extracted": 4,
+    "plan_valid -> plan_valid": 3
+   },
+   "rerun_same_trials": {
+    "n": 60,
+    "right": 19,
+    "delivered": {
+     "est": 31.666666666666664,
+     "lo": 20.0,
+     "hi": 43.333333333333336,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 31.666666666666664,
+     "lo": 20.0,
+     "hi": 43.333333333333336,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 14,
+    "mean_completion_tokens": 3975.45,
+    "reasons": {
+     "plan_invalid": 28,
+     "plan_valid": 19,
+     "no_plan_extracted": 13
+    }
+   },
+   "storage_cut": {
+    "prompt only": 0,
+    "constraint": 0
+   }
+  },
+  {
+   "task": "validate_domain",
+   "label": "all",
+   "n": 120,
+   "domains": 20,
+   "prompt only": {
+    "n": 120,
+    "right": 61,
+    "delivered": {
+     "est": 50.83333333333333,
+     "lo": 45.0,
+     "hi": 58.333333333333336,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 50.83333333333333,
+     "lo": 45.0,
+     "hi": 58.333333333333336,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 0,
+    "at_output_cap": 13,
+    "mean_completion_tokens": 1667.9,
+    "reasons": {
+     "verdict_stated_ok": 61,
+     "verdict_stated_wrong": 46,
+     "no_verdict_stated": 13
+    }
+   },
+   "constraint": {
+    "n": 120,
+    "right": 69,
+    "delivered": {
+     "est": 57.49999999999999,
+     "lo": 49.166666666666664,
+     "hi": 66.66666666666666,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 60.0,
+     "lo": 53.333333333333336,
+     "hi": 68.33333333333333,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 120,
+    "at_output_cap": 8,
+    "mean_completion_tokens": 640.4,
+    "reasons": {
+     "verdict_stated_ok": 69,
+     "verdict_stated_wrong": 44,
+     "no_verdict_stated": 7
+    }
+   },
+   "difference": {
+    "est": 6.666666666666667,
+    "lo": -0.8333333333333334,
+    "hi": 14.166666666666666,
+    "k": 20,
+    "n": 120,
+    "lost": 8,
+    "gained": 16
+   },
+   "difference_verdict_field": {
+    "est": 9.166666666666666,
+    "lo": 2.5,
+    "hi": 16.666666666666664,
+    "k": 20,
+    "n": 120,
+    "lost": 6,
+    "gained": 17
+   },
+   "transitions": {
+    "verdict_stated_ok -> verdict_stated_ok": 53,
+    "verdict_stated_wrong -> verdict_stated_wrong": 31,
+    "verdict_stated_wrong -> verdict_stated_ok": 11,
+    "no_verdict_stated -> verdict_stated_wrong": 7,
+    "verdict_stated_ok -> verdict_stated_wrong": 6,
+    "no_verdict_stated -> verdict_stated_ok": 5,
+    "verdict_stated_wrong -> no_verdict_stated": 4,
+    "verdict_stated_ok -> no_verdict_stated": 2,
+    "no_verdict_stated -> no_verdict_stated": 1
+   },
+   "rerun_same_trials": {
+    "n": 120,
+    "right": 64,
+    "delivered": {
+     "est": 53.333333333333336,
+     "lo": 49.166666666666664,
+     "hi": 59.166666666666664,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 53.333333333333336,
+     "lo": 49.166666666666664,
+     "hi": 59.166666666666664,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 0,
+    "at_output_cap": 5,
+    "mean_completion_tokens": 1433.875,
+    "reasons": {
+     "verdict_stated_ok": 64,
+     "verdict_stated_wrong": 51,
+     "no_verdict_stated": 5
+    }
+   },
+   "storage_cut": {
+    "prompt only": 0,
+    "constraint": 0
+   }
+  },
+  {
+   "task": "validate_problem",
+   "label": "all",
+   "n": 120,
+   "domains": 20,
+   "prompt only": {
+    "n": 120,
+    "right": 68,
+    "delivered": {
+     "est": 56.666666666666664,
+     "lo": 48.333333333333336,
+     "hi": 65.0,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 56.666666666666664,
+     "lo": 48.333333333333336,
+     "hi": 65.0,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 0,
+    "at_output_cap": 7,
+    "mean_completion_tokens": 961.0666666666667,
+    "reasons": {
+     "verdict_stated_ok": 68,
+     "verdict_stated_wrong": 47,
+     "no_verdict_stated": 5
+    }
+   },
+   "constraint": {
+    "n": 120,
+    "right": 62,
+    "delivered": {
+     "est": 51.66666666666667,
+     "lo": 41.66666666666667,
+     "hi": 61.66666666666667,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 56.666666666666664,
+     "lo": 47.5,
+     "hi": 65.83333333333333,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 120,
+    "at_output_cap": 8,
+    "mean_completion_tokens": 566.6583333333333,
+    "reasons": {
+     "verdict_stated_ok": 62,
+     "verdict_stated_wrong": 50,
+     "no_verdict_stated": 8
+    }
+   },
+   "difference": {
+    "est": -5.0,
+    "lo": -13.333333333333334,
+    "hi": 2.5,
+    "k": 20,
+    "n": 120,
+    "lost": 15,
+    "gained": 9
+   },
+   "difference_verdict_field": {
+    "est": 0.0,
+    "lo": -6.666666666666667,
+    "hi": 6.666666666666667,
+    "k": 20,
+    "n": 120,
+    "lost": 11,
+    "gained": 11
+   },
+   "transitions": {
+    "verdict_stated_ok -> verdict_stated_ok": 53,
+    "verdict_stated_wrong -> verdict_stated_wrong": 39,
+    "verdict_stated_ok -> verdict_stated_wrong": 10,
+    "verdict_stated_wrong -> verdict_stated_ok": 6,
+    "verdict_stated_ok -> no_verdict_stated": 5,
+    "no_verdict_stated -> verdict_stated_ok": 3,
+    "verdict_stated_wrong -> no_verdict_stated": 2,
+    "no_verdict_stated -> no_verdict_stated": 1,
+    "no_verdict_stated -> verdict_stated_wrong": 1
+   },
+   "rerun_same_trials": {
+    "n": 120,
+    "right": 66,
+    "delivered": {
+     "est": 55.00000000000001,
+     "lo": 46.666666666666664,
+     "hi": 64.16666666666667,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 55.00000000000001,
+     "lo": 46.666666666666664,
+     "hi": 64.16666666666667,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 0,
+    "at_output_cap": 6,
+    "mean_completion_tokens": 1032.0583333333334,
+    "reasons": {
+     "verdict_stated_ok": 66,
+     "verdict_stated_wrong": 48,
+     "no_verdict_stated": 6
+    }
+   },
+   "storage_cut": {
+    "prompt only": 0,
+    "constraint": 0
+   }
+  },
+  {
+   "task": "validate_plan",
+   "label": "all",
+   "n": 120,
+   "domains": 20,
+   "prompt only": {
+    "n": 120,
+    "right": 100,
+    "delivered": {
+     "est": 83.33333333333334,
+     "lo": 75.83333333333333,
+     "hi": 90.0,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 83.33333333333334,
+     "lo": 75.83333333333333,
+     "hi": 90.0,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 0,
+    "at_output_cap": 1,
+    "mean_completion_tokens": 1420.8083333333334,
+    "reasons": {
+     "verdict_stated_ok": 100,
+     "verdict_stated_wrong": 19,
+     "no_verdict_stated": 1
+    }
+   },
+   "constraint": {
+    "n": 120,
+    "right": 69,
+    "delivered": {
+     "est": 57.49999999999999,
+     "lo": 46.666666666666664,
+     "hi": 68.33333333333333,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 58.333333333333336,
+     "lo": 48.333333333333336,
+     "hi": 68.33333333333333,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 118,
+    "at_output_cap": 18,
+    "mean_completion_tokens": 1270.3,
+    "reasons": {
+     "verdict_stated_ok": 69,
+     "verdict_stated_wrong": 37,
+     "no_verdict_stated": 14
+    }
+   },
+   "difference": {
+    "est": -25.833333333333336,
+    "lo": -39.166666666666664,
+    "hi": -13.333333333333334,
+    "k": 20,
+    "n": 120,
+    "lost": 36,
+    "gained": 5
+   },
+   "difference_verdict_field": {
+    "est": -25.0,
+    "lo": -37.5,
+    "hi": -12.5,
+    "k": 20,
+    "n": 120,
+    "lost": 35,
+    "gained": 5
+   },
+   "transitions": {
+    "verdict_stated_ok -> verdict_stated_ok": 64,
+    "verdict_stated_ok -> verdict_stated_wrong": 25,
+    "verdict_stated_ok -> no_verdict_stated": 11,
+    "verdict_stated_wrong -> verdict_stated_wrong": 11,
+    "verdict_stated_wrong -> verdict_stated_ok": 5,
+    "verdict_stated_wrong -> no_verdict_stated": 3,
+    "no_verdict_stated -> verdict_stated_wrong": 1
+   },
+   "rerun_same_trials": {
+    "n": 120,
+    "right": 103,
+    "delivered": {
+     "est": 85.83333333333333,
+     "lo": 77.5,
+     "hi": 93.33333333333333,
+     "k": 20,
+     "n": 120
+    },
+    "delivered_verdict_field": {
+     "est": 85.83333333333333,
+     "lo": 77.5,
+     "hi": 93.33333333333333,
+     "k": 20,
+     "n": 120
+    },
+    "starts_json": 0,
+    "at_output_cap": 0,
+    "mean_completion_tokens": 1522.7083333333333,
+    "reasons": {
+     "verdict_stated_ok": 103,
+     "verdict_stated_wrong": 17
+    }
+   },
+   "storage_cut": {
+    "prompt only": 0,
+    "constraint": 1
+   }
+  },
+  {
+   "task": "validate_plan",
+   "label": "valid plans",
+   "n": 60,
+   "domains": 20,
+   "prompt only": {
+    "n": 60,
+    "right": 45,
+    "delivered": {
+     "est": 75.0,
+     "lo": 58.333333333333336,
+     "hi": 90.0,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 75.0,
+     "lo": 58.333333333333336,
+     "hi": 90.0,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 1,
+    "mean_completion_tokens": 1695.2833333333333,
+    "reasons": {
+     "verdict_stated_ok": 45,
+     "verdict_stated_wrong": 14,
+     "no_verdict_stated": 1
+    }
+   },
+   "constraint": {
+    "n": 60,
+    "right": 15,
+    "delivered": {
+     "est": 25.0,
+     "lo": 8.333333333333332,
+     "hi": 43.333333333333336,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 25.0,
+     "lo": 8.333333333333332,
+     "hi": 43.333333333333336,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 59,
+    "at_output_cap": 15,
+    "mean_completion_tokens": 1864.8833333333334,
+    "reasons": {
+     "verdict_stated_wrong": 32,
+     "verdict_stated_ok": 15,
+     "no_verdict_stated": 13
+    }
+   },
+   "difference": {
+    "est": -50.0,
+    "lo": -68.33333333333333,
+    "hi": -30.0,
+    "k": 20,
+    "n": 60,
+    "lost": 31,
+    "gained": 1
+   },
+   "difference_verdict_field": {
+    "est": -50.0,
+    "lo": -68.33333333333333,
+    "hi": -30.0,
+    "k": 20,
+    "n": 60,
+    "lost": 31,
+    "gained": 1
+   },
+   "transitions": {
+    "verdict_stated_ok -> verdict_stated_wrong": 21,
+    "verdict_stated_ok -> verdict_stated_ok": 14,
+    "verdict_stated_ok -> no_verdict_stated": 10,
+    "verdict_stated_wrong -> verdict_stated_wrong": 10,
+    "verdict_stated_wrong -> no_verdict_stated": 3,
+    "no_verdict_stated -> verdict_stated_wrong": 1,
+    "verdict_stated_wrong -> verdict_stated_ok": 1
+   },
+   "rerun_same_trials": {
+    "n": 60,
+    "right": 46,
+    "delivered": {
+     "est": 76.66666666666667,
+     "lo": 60.0,
+     "hi": 91.66666666666666,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 76.66666666666667,
+     "lo": 60.0,
+     "hi": 91.66666666666666,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 0,
+    "mean_completion_tokens": 1798.65,
+    "reasons": {
+     "verdict_stated_ok": 46,
+     "verdict_stated_wrong": 14
+    }
+   },
+   "storage_cut": {
+    "prompt only": 0,
+    "constraint": 1
+   }
+  },
+  {
+   "task": "validate_plan",
+   "label": "broken plans",
+   "n": 60,
+   "domains": 20,
+   "prompt only": {
+    "n": 60,
+    "right": 55,
+    "delivered": {
+     "est": 91.66666666666666,
+     "lo": 85.0,
+     "hi": 96.66666666666667,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 91.66666666666666,
+     "lo": 85.0,
+     "hi": 96.66666666666667,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 0,
+    "mean_completion_tokens": 1146.3333333333333,
+    "reasons": {
+     "verdict_stated_ok": 55,
+     "verdict_stated_wrong": 5
+    }
+   },
+   "constraint": {
+    "n": 60,
+    "right": 54,
+    "delivered": {
+     "est": 90.0,
+     "lo": 78.33333333333333,
+     "hi": 98.33333333333333,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 91.66666666666666,
+     "lo": 80.0,
+     "hi": 100.0,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 59,
+    "at_output_cap": 3,
+    "mean_completion_tokens": 675.7166666666667,
+    "reasons": {
+     "verdict_stated_ok": 54,
+     "verdict_stated_wrong": 5,
+     "no_verdict_stated": 1
+    }
+   },
+   "difference": {
+    "est": -1.6666666666666667,
+    "lo": -15.0,
+    "hi": 10.0,
+    "k": 20,
+    "n": 60,
+    "lost": 5,
+    "gained": 4
+   },
+   "difference_verdict_field": {
+    "est": 0.0,
+    "lo": -13.333333333333334,
+    "hi": 10.0,
+    "k": 20,
+    "n": 60,
+    "lost": 4,
+    "gained": 4
+   },
+   "transitions": {
+    "verdict_stated_ok -> verdict_stated_ok": 50,
+    "verdict_stated_ok -> verdict_stated_wrong": 4,
+    "verdict_stated_wrong -> verdict_stated_ok": 4,
+    "verdict_stated_ok -> no_verdict_stated": 1,
+    "verdict_stated_wrong -> verdict_stated_wrong": 1
+   },
+   "rerun_same_trials": {
+    "n": 60,
+    "right": 57,
+    "delivered": {
+     "est": 95.0,
+     "lo": 86.66666666666667,
+     "hi": 100.0,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 95.0,
+     "lo": 86.66666666666667,
+     "hi": 100.0,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 0,
+    "mean_completion_tokens": 1246.7666666666667,
+    "reasons": {
+     "verdict_stated_ok": 57,
+     "verdict_stated_wrong": 3
+    }
+   },
+   "storage_cut": {
+    "prompt only": 0,
+    "constraint": 0
+   }
+  },
+  {
+   "task": "simulate",
+   "label": "all",
+   "n": 60,
+   "domains": 20,
+   "prompt only": {
+    "n": 60,
+    "right": 5,
+    "delivered": {
+     "est": 8.333333333333332,
+     "lo": 1.6666666666666667,
+     "hi": 16.666666666666664,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 8.333333333333332,
+     "lo": 1.6666666666666667,
+     "hi": 16.666666666666664,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 21,
+    "mean_completion_tokens": 3064.383333333333,
+    "reasons": {
+     "trajectory_mismatch": 35,
+     "format_parse_fail": 20,
+     "trajectory_ok": 5
+    }
+   },
+   "constraint": {
+    "n": 60,
+    "right": 7,
+    "delivered": {
+     "est": 11.666666666666666,
+     "lo": 3.3333333333333335,
+     "hi": 21.666666666666668,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 11.666666666666666,
+     "lo": 3.3333333333333335,
+     "hi": 21.666666666666668,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 60,
+    "at_output_cap": 13,
+    "mean_completion_tokens": 3107.5833333333335,
+    "reasons": {
+     "trajectory_mismatch": 40,
+     "format_parse_fail": 13,
+     "trajectory_ok": 7
+    }
+   },
+   "difference": {
+    "est": 3.3333333333333335,
+    "lo": -5.0,
+    "hi": 11.666666666666666,
+    "k": 20,
+    "n": 60,
+    "lost": 3,
+    "gained": 5
+   },
+   "difference_verdict_field": {
+    "est": 3.3333333333333335,
+    "lo": -5.0,
+    "hi": 11.666666666666666,
+    "k": 20,
+    "n": 60,
+    "lost": 3,
+    "gained": 5
+   },
+   "transitions": {
+    "trajectory_mismatch -> trajectory_mismatch": 29,
+    "format_parse_fail -> format_parse_fail": 12,
+    "format_parse_fail -> trajectory_mismatch": 8,
+    "trajectory_mismatch -> trajectory_ok": 5,
+    "trajectory_ok -> trajectory_mismatch": 3,
+    "trajectory_ok -> trajectory_ok": 2,
+    "trajectory_mismatch -> format_parse_fail": 1
+   },
+   "rerun_same_trials": {
+    "n": 60,
+    "right": 6,
+    "delivered": {
+     "est": 10.0,
+     "lo": 1.6666666666666667,
+     "hi": 20.0,
+     "k": 20,
+     "n": 60
+    },
+    "delivered_verdict_field": {
+     "est": 10.0,
+     "lo": 1.6666666666666667,
+     "hi": 20.0,
+     "k": 20,
+     "n": 60
+    },
+    "starts_json": 0,
+    "at_output_cap": 20,
+    "mean_completion_tokens": 3058.2166666666667,
+    "reasons": {
+     "trajectory_mismatch": 34,
+     "format_parse_fail": 20,
+     "trajectory_ok": 6
+    }
+   },
+   "storage_cut": {
+    "prompt only": 0,
+    "constraint": 0
+   }
+  }
+ ],
+ "storage_cut": {
+  "prompt only": 0,
+  "constraint": 1
+ },
+ "live_validated": 62
+}

@@ -209,3 +209,72 @@
 - **Decided (Omer):** keep the harness attachment and the anonymity sweep open until the
   submission is near; the comment switch in the tex stays on; the arXiv number in the
   appendix prompt stays as it is.
+
+## 2026-11-23 — The JSON constraint: what the synced data holds; pilot built
+
+- **Omer's question:** the cluster trials are all on the laptop now; is there anything in
+  them to replace the JSON mistake (the format constraint on the unaided arm that never
+  took effect), and should the arm be rerun?
+- **What the data holds.** One run has a constraint that takes effect: the D1d probe of
+  2026-10-27 (Qwen3.5-9B, 480 unaided trials, run with and without it). Nothing else.
+- **Session's recommendation (not a decision): no rerun.** The unaided data is a valid
+  measurement of "format asked in the prompt"; the error was in how it was described,
+  and the paper already says so. A constrained arm is a new condition that cannot replace
+  or be pooled with Part C, and in the probe it lowers the baseline on two tasks. In the rerun's
+  unaided answers the validation tasks have no format failures at all, and solve is
+  already reported under the delivered grader, which reads a plan in any layout.
+  *(The last clause is wrong; see "The grader does not read the commonest solve layout"
+  below.)*
+- **Decided (Omer):** build the pilot. Done in PR #145: the probe graded with the frozen
+  delivered grader (`tools/reanalysis/json_constraint_pilot.py`), `NUMBERS.md` ("JSON
+  constraint pilot"), a table and a paragraph in the Technical Appendix, and the
+  Limitations sentence.
+- **Bottom line of the pilot.** Solve 25.0% to 5.0% (-20.0 points [-31.7, -10.0]);
+  validate_plan 83.3% to 57.5% (-25.8 [-39.2, -13.3]), all on valid plans; the other three
+  tasks within their intervals. The first tally given in chat used the strict run-time
+  grade (solve 10.0% to 5.0%, simulate +6.7); the frozen delivered grade replaces it.
+- **Left open:** unaided simulate in the rerun has 12 to 29% format failures by the run-time grade and no
+  layout-tolerant reading yet (the RQ3 line reader covers the tool arms only).
+- **Corrected the same day, on Omer's challenge** (is a wrong description not misleading,
+  and how did it not misguide the models?). "The error was only in how it was described"
+  is too strong. There are two wrong descriptions. The one to the reader is fixed by the
+  paper's text. The one to the model is inside the data: on solve and simulate the
+  no-tools system prompt says "conform to the JSON schema provided by the format
+  constraint", a schema the model never received, and the simulate user prompt shows one
+  example step without the outer `{"trajectory": [...]}` wrapper
+  (`pddl_eval/prompts.py`, `WITHOUT_TOOLS_SYSTEM_BY_TASK`). The three validation tasks are
+  untouched: their prompts ask for a `VERDICT:` line and never mention a schema.
+- **What is and is not shown.** It cannot be shown that the pointer did not hold the
+  unaided solve and simulate scores down. The pilot bounds it for one model on simulate
+  only (shape forced: +3.3 points [-5.0, +11.7]); the constraint itself is a different
+  condition, so the pilot does not test the prompt. Gemma and the 35B are unmeasured.
+- **Session's recommendation (not a decision):** the run that would answer it is a small
+  control, not the constrained rerun: unaided solve and simulate with a corrected system
+  prompt and no constraint, three headline models, beside Part C and never in its place.
+  It goes against the no-new-runs line of `roadmap.md` (2026-11-22). Omer asked for the
+  plan to be drafted in a separate worktree (`development/control_prompt_fix_plan.md`,
+  branch of that worktree; a proposal until he rules).
+
+- **Decided (Omer), same day:** Limitations points to the pilot's table and quotes none
+  of its figures (one model; the figures stay in the Technical Appendix). The appendix
+  paragraph also says that the pilot cannot separate the prompt's reference to a schema
+  from the constraint.
+- **The grader does not read the commonest solve layout (found by the plan draft, checked
+  by the main session with its own script, same day).** The frozen delivered grader reads
+  a JSON plan only when the whole answer is the JSON object
+  (`tools/delivered_rerun/grade.py`, `solve_plan`). Most unaided solve answers of the
+  rerun reason first and end with the plan as JSON in a code block (198 to 259 of 300 per
+  model), the layout the flawed system prompt asks for. For those the grader finds no
+  plan or grades action-shaped lines picked from the reasoning text. Scoping count, Part
+  C, n = 300 per model: frozen 21.3 / 24.3 / 25.3% (Gemma / 9B / 35B, equal to the
+  readout); with the plan of the last code block read, 48.7 / 40.0 / 51.7%; frozen wrong
+  and block right 83 / 50 / 80, the reverse 1 / 3 / 1. Both counts validated about 300
+  uncached plans with the laptop's validator (pyvalidator 0.1.6; the readout used 0.1.5),
+  so the two counts are not independent on that point.
+- **Standing of these figures: scoping counts. Not in `NUMBERS.md`, not to be quoted in
+  the paper.** The tool arms were not read the same way, so the RQ1 contrast under this
+  reading is unknown. A filed figure needs a reviewed post hoc script that keeps every
+  frozen grade and adds the reading beside it, for both arms.
+- **What it touches, for Omer:** the abstract and RQ1 quote unaided solve at 21 to 29%.
+  For the open models that is the frozen grade. The earlier statement in this entry and
+  in chat that the format loss on solve was already neutralised is withdrawn.

@@ -67,6 +67,7 @@ run_test test_iss028_iss029.py
 run_test test_rq1_metrics.py
 run_test test_rq23_metrics.py
 run_test test_rq3_simulate_regrade.py
+run_test test_json_constraint_pilot.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"

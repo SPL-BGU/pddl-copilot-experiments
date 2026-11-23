@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-22, late night (PRs #141, #142 and #143 merged and on Overleaf). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-23 (the JSON constraint pilot, PR #145, for Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -61,6 +61,34 @@ checked mechanically, not as content.
 
 **Open paper items**
 
+**The JSON constraint pilot (2026-11-23, PR #145, for Omer's read).** The October probe
+that ran the same 480 unaided trials of Qwen3.5-9B with and without a constraint that
+takes effect is now graded with the frozen delivered grader
+(`tools/reanalysis/json_constraint_pilot.py`; `NUMBERS.md`, "JSON constraint pilot").
+The constraint does not raise the unaided score: solve 25.0% to 5.0%, validate_plan
+83.3% to 57.5% (valid plans only), the other three tasks within their intervals. The
+paper has a table and a paragraph in the Technical Appendix, and Limitations cites the
+pilot where it said the working constraint was unmeasured. One model, 60 to 120
+trials per task, not registered. **Session's recommendation, not a decision:** no
+rerun of the unaided arm under the constraint (it would be a new condition that cannot
+replace Part C, and in the pilot it lowers the baseline on two tasks). Omer asked for the pilot; he
+has not ruled on the rerun.
+**Open, raised by Omer the same day:** the no-tools system prompt on solve and simulate
+points the model to a schema it never received (`pddl_eval/prompts.py`), so the flaw is
+inside the data of those two tasks and the paper's text cannot repair it; the validation
+tasks are untouched. Whether it lowered the baseline is not measured (the pilot tests the
+constraint, not the prompt). A plan for a small corrected-prompt control is drafted
+(`development/control_prompt_fix_plan.md`, commit `3c0b483` on branch
+`claude/plan-prompt-fix-control-186fe9`, not pushed, not on `main`); it is a proposal that
+goes against "No run is planned" below until Omer answers its section 9.
+**Found while drafting it, checked by a second count:** the frozen delivered grader does
+not read an unaided solve plan written as JSON in a code block after the reasoning, the
+layout most unaided solve answers of the rerun use. Scoping counts put unaided solve at
+40 to 52% with that block read, against the frozen 21.3 to 25.3%. These are not filed
+figures and are not to be quoted (`paper_notes_discussions.md`, 2026-11-23). The abstract
+and RQ1 quote the frozen figure. A reviewed post hoc re-grade of both arms needs no run
+and is the plan's first step; Omer has not ruled on it.
+
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,
    post hoc, with a reader that also accepts one JSON object per line: 66 to 80% lost
@@ -117,9 +145,10 @@ flags listed in PR #140's body.
   fixed, by Omer's decision. The 2027 demo call is not published.
 - **Data lines, all final:** main sweep (`sweep5v2-live`, `sweep6-live`), delivered
   rerun (`delivered-rerun`, frozen readout `reference/delivered_rerun_readout.md`),
-  Claude runs, PlanBench, the steering control. Built and never run on any model: new
-  model families, larger context windows, the binding JSON constraint, harder test items,
-  the 120 larger IPC 2023 problems. No run is planned.
+  Claude runs, PlanBench, the steering control. Built and never run beyond smoke scale:
+  new model families, larger context windows, the binding JSON constraint (its October
+  smoke on one model is the JSON constraint pilot), harder test items, the 120 larger
+  IPC 2023 problems. No run is planned.
 
 ## Rules that bind every step
 
@@ -133,7 +162,8 @@ flags listed in PR #140's body.
   rows in the tex are pasted from the generators and never edited by hand.
 - **The JSON-schema constraint meant for the unaided arm never took effect**, in the main
   sweep or the rerun. Never write that unaided answers were sampled under it (the frozen
-  readout's E2 caveat says so and is false).
+  readout's E2 caveat says so and is false). The pilot's constrained cell is a separate
+  condition: never pooled with, or set in place of, an unaided cell of either study.
 - The 35B calling rate differs between the main sweep and the rerun: quote both.
 - Paper edits: a short branch off `main`, a PR, Omer merges; `sync_overleaf.sh pull`
   first. A merged PR that touches the synced paper files pushes to Overleaf by itself.
