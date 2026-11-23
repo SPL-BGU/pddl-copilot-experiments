@@ -487,7 +487,7 @@ started with the package hash below.
 
 | item | value |
 |---|---|
-| harness commit | `main` at `9109179c19d01196b1e3ac03ee0e43fb984e9c58` (merge of PR #148; PR #147 merged before it at `1cfb097`). The cluster checkout must be at this commit for the smoke and the full run; *its `git rev-parse HEAD` is to be recorded here before the smoke* |
+| harness commit | `main` at `9109179c19d01196b1e3ac03ee0e43fb984e9c58` (merge of PR #148; PR #147 merged before it at `1cfb097`). The cluster checkout must be at this commit for the smoke and the full run. **Cluster, 2026-11-23 before the smoke: `main` at `9109179c19d01196b1e3ac03ee0e43fb984e9c58`** (it had been on `harness/d1a-new-families` at `f1421b5`). The cluster's tools repo `pddl-copilot` was left as it was for Part C, at `5e4f9c0` with pddl-pyvalidator 0.1.5; the preflight script was not run, because it pulls that repo and upgrades its packages. Its other steps were done by hand (checkout, commit check, GPU capacity) |
 | tools repo `pddl-copilot` on the laptop (validator route) | `e428f17fd0b211f502955b11177687d544b68277`; validator server file sha256 `bada05b55444600fa9c623cdae2ca38f40e22559b67d6c97b375edfcbf9ddf8a` (equal to the filed re-grade's); pddl-pyvalidator 0.1.5 |
 | analysis branch and commit | `analysis/control-prompt-fix-prereg` at `3b355c3c28f2ec54853311ca6f224fa8a6de28c4` |
 | package hash (`--i-have-frozen`) | **`825dab6313ef2d18c33bed8d584d596e29b35f92eff6c41f0325045602bf0d79`** (the analysis script and the 30 repo files it imports, among them the whole frozen package of the rerun, whose own hash is still `822aace9…`) |
@@ -547,7 +547,21 @@ package hash is a declared deviation in section 11, followed by a new freeze.
 
 ## 10. Smoke record
 
-*To be filled in.*
+**Submitted 2026-11-23** (Omer's go-ahead for the smoke, the same day), from
+`~/pddl-copilot-experiments` on the login node, after a dry run of the same command:
+
+```
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+  --no-tools --think-modes off --tasks "solve simulate" \
+  --no-tools-system "registered no-pointer format-stated" \
+  --run-tag control-promptfix-smoke --partial 1 --gpu-type rtx_6000 --time 12:00:00
+```
+
+Job **24432950**, array tasks 0 to 8 (three models by three system texts), one
+`rtx_6000` per task, `--mem=48G`, `--time=12:00:00` (the full-run profile; only
+`--partial 1` and the run tag differ from the full run's command).
+
+*Result: to be filled in.*
 
 ---
 
