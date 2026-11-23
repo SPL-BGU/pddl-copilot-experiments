@@ -209,3 +209,28 @@
 - **Decided (Omer):** keep the harness attachment and the anonymity sweep open until the
   submission is near; the comment switch in the tex stays on; the arXiv number in the
   appendix prompt stays as it is.
+
+## 2026-11-23 — The JSON constraint: what the synced data holds; pilot built
+
+- **Omer's question:** the cluster trials are all on the laptop now; is there anything in
+  them to replace the JSON mistake (the format constraint on the unaided arm that never
+  took effect), and should the arm be rerun?
+- **What the data holds.** One run has a constraint that takes effect: the D1d probe of
+  2026-10-27 (Qwen3.5-9B, 480 unaided trials, run with and without it). Nothing else.
+- **Session's recommendation (not a decision): no rerun.** The unaided data is a valid
+  measurement of "format asked in the prompt"; the error was in how it was described,
+  and the paper already says so. A constrained arm is a new condition that cannot replace
+  or be pooled with Part C, and in the probe it lowers the baseline on two tasks. In the rerun's
+  unaided answers the validation tasks have no format failures at all, and solve is
+  already reported under the delivered grader, which reads a plan in any layout.
+- **Decided (Omer):** build the pilot. Done in one PR: the probe graded with the frozen
+  delivered grader (`tools/reanalysis/json_constraint_pilot.py`), `NUMBERS.md` ("JSON
+  constraint pilot"), a table and a paragraph in the Technical Appendix, and the
+  Limitations sentence.
+- **Bottom line of the pilot.** Solve 25.0% to 5.0% (-20.0 points [-31.7, -10.0]);
+  validate_plan 83.3% to 57.5% (-25.8 [-39.2, -13.3]), all on valid plans; the other three
+  tasks within their intervals. The first tally given in chat used the strict run-time
+  grade (solve 10.0% to 5.0%, simulate +6.7); the frozen delivered grade replaces it.
+- **Left open:** unaided simulate in the rerun has 12 to 29% format failures by the run-time grade and no
+  layout-tolerant reading yet (the RQ3 line reader covers the tool arms only).
+
