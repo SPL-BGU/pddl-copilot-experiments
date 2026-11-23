@@ -8,7 +8,11 @@ model (development/control_prompt_fix_plan.md, section 2):
 
   * registered     today's text, nothing swapped
   * no-pointer     the schema reference removed
-  * format-stated  the answer format stated in plain words
+  * format-stated  the answer format stated in plain words (the final
+                   answer in a fenced code block, which both the frozen
+                   simulate reader and the layout-tolerant solve reader
+                   read; changed 2026-11-23 before any trial, after the
+                   freeze review of the analysis)
 
 `pddl_eval/vllm_client.py` applies the swap when $PDDL_NO_TOOLS_SYSTEM names
 a mode. This module is not in the frozen delivered-rerun hash, and neither
@@ -44,15 +48,16 @@ NO_TOOLS_SYSTEM_CONTROL: dict[str, dict[str, str]] = {
             "You are a PDDL planning assistant. PDDL planning tools are not "
             "available in this evaluation. Analyze the domain and problem and "
             "produce a plan using your own reasoning; end your response with "
-            "the plan alone, one parenthesised PDDL action per line."
+            "the plan alone in a fenced code block, one parenthesised PDDL "
+            "action per line."
         ),
         "simulate": (
             "You are a PDDL simulation assistant. PDDL simulation tools are not "
             "available in this evaluation. Trace the state transitions using "
-            "your own reasoning; end your response with a single JSON object "
-            'of the form {"trajectory": [ ...steps... ]}, where each step has '
-            "the keys step, action and state (state.boolean and "
-            "state.numeric)."
+            "your own reasoning; end your response with a fenced code block "
+            "that holds a single JSON object of the form "
+            '{"trajectory": [ ...steps... ]}, where each step has the keys '
+            "step, action and state (state.boolean and state.numeric)."
         ),
     },
 }
@@ -70,8 +75,8 @@ SYSTEM_TEXT_SHA256: dict[str, dict[str, str]] = {
         "simulate": "c99db1124156372ea0e0a88b41779c4b9aa62167821a99272fa886f8b1774553",
     },
     "format-stated": {
-        "solve": "15673b12344cb57ee47fa5c365fb271b4b4df2c745b90e3df77642314680960b",
-        "simulate": "79cb34355be9d069f7f0da01eb503941199352c87c2cb7eef21ebc675b4f7955",
+        "solve": "3dbc1baf9e2670b024a7fec73b2fe7031c5fa5a5c13b711a12b18debf0ad0588",
+        "simulate": "7ccf5d9deccd98e72590f3649113929ea099ba855a72db1c571e91b6d1d47cf9",
     },
 }
 
