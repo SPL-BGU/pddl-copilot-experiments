@@ -440,3 +440,28 @@
   During the run only job states and row counts are read. A requeued task writes its
   serve log again from the start, so the earlier starts' logs are lost; the watcher
   notes each serve log's vLLM version line at every check to keep them on record.
+
+## 2026-11-24 — The corrected-prompt control: run complete, analysed, readout written
+
+- **Run complete** (job 24445482): nine cells, 600 rows each, no exception row; six
+  starts preempted and resumed in place; vLLM 0.20.2.
+- **Frozen analysis run once, with the registered hash.** It halted on one tripwire
+  (Gemma-26B, cell B, simulate: 52 unread final answers). Audit: all 52 are the fenced
+  JSON block the text asks for; 47 have unbalanced brackets and 5 use a nested form
+  for numeric values. A model syntax slip, counted wrong by both readings. Audit only:
+  25 of the 47 equal the answer key once the bracket is mended. Released with that
+  note.
+- **Bottom line (second reading, cell B beside the tool arm of Part A):** solve: tools
+  ahead for Qwen3.5-9B (+49.3 [+36.0, +63.0]) and Gemma-26B (+38.3 [+23.7, +53.7]);
+  Qwen3.6-35B +9.3 [+0.0, +19.7], no difference shown. Simulate: no model shows tools
+  ahead (+7.7, -7.3, -4.0, all intervals cross zero). Cell B, second reading: solve
+  42.7 / 54.0 / 69.0; simulate 12.7 / 27.3 / 33.3.
+- **What the wrong reference did:** it lowered the frozen grade on solve by 15 to 28
+  points in all three models, mostly through layout for Gemma-26B and Qwen3.6-35B; for
+  Qwen3.5-9B it also cost 12.7 points on simulate under both readings.
+- **Open, Omer's decisions:** the figure for Gemma-26B on simulate (rule: cell B, 27.3;
+  cell O under the second reading is 36.3, because the format-stated text moved Gemma
+  to a single JSON object that it often writes with a bracket slip); how RQ1 words
+  solve for Qwen3.6-35B. No paper edit made.
+- Readout: `reference/control_prompt_fix_readout.md`; tables: `NUMBERS.md`.
+

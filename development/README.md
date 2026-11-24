@@ -30,7 +30,7 @@ Four files answer almost every question:
 | `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
 | `thesis_literature_review.md` | the literature review, first full draft (2026-11-22), with a reading list, a "to verify" list and questions for Omer. Waits for his read |
-| `control_prompt_fix_plan.md` | **decided, run not started** (Omer, 2026-11-23): a control run for the flawed no-tools system prompt on solve and simulate (cells O, A and B, three models, 5,400 trials), the one exception to the no-new-runs line of `roadmap.md`. His answers are in its section 9; the no-run re-grade it asked for first is done (PR #146) |
+| `control_prompt_fix_plan.md` | **run complete and analysed 2026-11-24, waiting for Omer's read of `reference/control_prompt_fix_readout.md`** (decided by Omer, 2026-11-23): a control run for the flawed no-tools system prompt on solve and simulate (cells O, A and B, three models, 5,400 trials), the one exception to the no-new-runs line of `roadmap.md`. His answers are in its section 9; the no-run re-grade it asked for first is done (PR #146) |
 | `draft_C5_E1a.md` | the hit list of retired wording and figures in the tex, from before the rewrite. **Only its search terms (§1.4) are still used**, for the pass over the paper's Supporting Analyses section (`STATUS.md`, next step 6); its line numbers and its two RQ framings are stale |
 | `draft_advisor_correa_comparison.md` (+ two `.docx`) | Omer's outline for the advisor discussion of 2026-11-22; not committed |
 
@@ -71,7 +71,7 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
 
 **Study 2: the delivered rerun (pre-registered)**
 
-- `control_prompt_fix_prereg.md` (the corrected-prompt control: registration and freeze record, 2026-11-23) · `control_prompt_fix_traceability.md` (its clause-to-code map) ·
+- `control_prompt_fix_prereg.md` (the corrected-prompt control: registration and freeze record, 2026-11-23) · `control_prompt_fix_traceability.md` (its clause-to-code map) · `control_prompt_fix_readout.md` (its readout, 2026-11-24) · `control_prompt_fix_t4_audit/` (the audit of the tripwire that fired) ·
 - `delivered_rerun_prereg.md` (design of record and freeze record) ·
   `delivered_rerun_traceability.md` (prereg clause to code, freeze gate 3) ·
   `delivered_rerun_readout.md` / `.json` (frozen output; its E2 caveat about a JSON

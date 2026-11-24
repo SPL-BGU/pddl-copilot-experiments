@@ -500,8 +500,8 @@ started with the package hash below.
 | open at the freeze, settled the same day | section 6 rule 5 (which figure of cell B the text quotes) was Omer's to choose and was open when the code was frozen. **Settled 2026-11-23, before anything was submitted: the second reading** (section 6, rule 5). No code depends on it and the package hash is unchanged |
 | serving version | vLLM **0.20.2** in the serve log of all nine smoke cells (2026-11-23); the full run's logs are checked again by the analysis |
 | submit command (smoke and full run) | Smoke: in section 10. Full run, from `~/pddl-copilot-experiments` on the login node, after a dry run of the same command: `bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b --no-tools --think-modes off --tasks "solve simulate" --no-tools-system "registered no-pointer format-stated" --run-tag control-promptfix --gpu-type rtx_6000 --time 12:00:00` (the smoke's command without `--partial 1`, with the run tag `control-promptfix`) |
-| job ids and dates | Smoke: job 24432950, 2026-11-23 (section 10). Full run: job **24445482**, submitted 2026-11-23 19:40 IST on Omer's go-ahead of the same day, one array of nine tasks (0 to 8), cluster checkout at `9109179`, tools repo at `5e4f9c0`, no folder of this run tag existed before. `--time=12:00:00` read back from the queue. Task job ids and end dates: *to be filled in when the run ends* |
-| GPU class, memory, requests at a time (from the job log) | Smoke: `NVIDIA RTX 6000 Ada Generation`, `--mem=48G`, `Concurrency: 4` (section 10). Full run: requested `rtx_6000:1` and `--mem=48G` per task; the job-log reading is *to be filled in when the run ends* |
+| job ids and dates | Smoke: job 24432950, 2026-11-23 (section 10). Full run: job **24445482**, submitted 2026-11-23 19:40 IST on Omer's go-ahead of the same day, one array of nine tasks (0 to 8), cluster checkout at `9109179`, tools repo at `5e4f9c0`, no folder of this run tag existed before. `--time=12:00:00` read back from the queue. Task job ids: Qwen3.5-9B 24445483 (O), 24445484 (A), 24445485 (B); Gemma-26B 24445486 (O), 24445487 (A), 24446980 (B); Qwen3.6-35B 24446997 (O), 24447221 (A), 24445482 (B). All nine COMPLETED with exit code 0; first start 2026-11-23 19:40, last end 2026-11-24 06:12. Six starts were stopped by preemption and resumed in place (cell A of Qwen3.5-9B twice, cells O and A of Qwen3.6-35B twice each). Analysis run 2026-11-24; readout `control_prompt_fix_readout.md` |
+| GPU class, memory, requests at a time (from the job log) | Smoke: `NVIDIA RTX 6000 Ada Generation`, `--mem=48G`, `Concurrency: 4` (section 10). Full run: requested `rtx_6000:1` and `--mem=48G` per task; job logs of all nine tasks: `NVIDIA RTX 6000 Ada Generation` (49,140 MiB), 49,152 MB memory, `Concurrency: 4`. Serve logs: vLLM 0.20.2 in the final log of all nine cells and in the logs of five of the six stopped starts, read before the next start overwrote them; the sixth (job 24445484, a four-minute start on 2026-11-24 01:50) holds no version line |
 
 **sha256 of the frozen files** (at `3b355c3`). Any later edit to one of the files of the
 package hash is a declared deviation in section 11, followed by a new freeze.
@@ -603,4 +603,16 @@ Qwen3.6-35B, 45 to 52 minutes for Qwen3.5-9B.
 
 ## 11. Deviations
 
-*None at registration time.*
+None from the registered analysis (2026-11-24).
+
+**A record that could not be kept as written (section 7, item 7, last sentence).** A
+task that is requeued keeps its job id, and its serve log has the same file name, so
+each new start overwrites the log of the one before. The log of an earlier start can
+only be read in the minutes between the stop and the next start. For the full run the
+watcher read it at every check: five of six stopped starts show vLLM 0.20.2 and the
+sixth has no version line (its server did not finish starting). For the smoke only the
+last start's log exists. Every start used the same `~/vllm.sif`, as each job log says.
+
+**A tripwire fired and was audited (section 8), which is the registered path and not a
+deviation:** cell B of Gemma-26B on simulate, 52 unread final answers of 300. The audit
+is in `control_prompt_fix_t4_audit/` and in the readout, section 6.
