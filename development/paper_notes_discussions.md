@@ -464,4 +464,7 @@
   to a single JSON object that it often writes with a bracket slip); how RQ1 words
   solve for Qwen3.6-35B. No paper edit made.
 - Readout: `reference/control_prompt_fix_readout.md`; tables: `NUMBERS.md`.
-
+- **Decided (Omer, 2026-11-24): Gemma-26B on simulate keeps cell B (27.3)**, as the
+  registered rule says; cell O (36.3) is not quoted as the baseline. The paper states
+  the JSON bracket slip in one sentence. Still open: the wording of RQ1 on solve for
+  Qwen3.6-35B. No paper edit yet.

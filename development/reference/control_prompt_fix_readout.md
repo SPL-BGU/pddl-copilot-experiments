@@ -153,7 +153,9 @@ Qwen3.6-35B and 10 or fewer for Qwen3.5-9B in cell B.
 
 ## 7. Open, for Omer
 
-1. **Gemma-26B on simulate.** The registered rule quotes cell B (27.3). Cell O under the
+1. **Gemma-26B on simulate. DECIDED (Omer, 2026-11-24): keep cell B (27.3)**, as the
+   registered rule says, with the JSON slip stated in one sentence. The rest of this
+   item is the background. The registered rule quotes cell B (27.3). Cell O under the
    second reading is 36.3. The rule stands unless Omer changes it; changing it now
    would be a choice made after the data were seen and would have to be said so.
 2. **Qwen3.6-35B on solve.** With the corrected baseline the tool advantage is +9.3

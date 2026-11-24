@@ -173,10 +173,10 @@ Where the control stands, in its order of work:
    unbalanced brackets). Bottom line under the second reading, cell B beside the tool
    arm: tools ahead on solve for Qwen3.5-9B (+49.3) and Gemma-26B (+38.3), not shown for
    Qwen3.6-35B (+9.3 [+0.0, +19.7]); on simulate no model shows tools ahead.
-6. **Waiting for Omer's read of the readout.** No paper change before it. Open for him:
-   which figure stands for Gemma-26B on simulate (the rule says cell B, 27.3; cell O
-   under the second reading is 36.3), and how RQ1 states solve now that the 35B's gap
-   is not shown.
+6. **Waiting for Omer's read of the readout.** No paper change before it. **Decided (Omer,
+   2026-11-24): Gemma-26B on simulate keeps cell B (27.3)**, the registered rule, with
+   the JSON slip stated in one sentence. Still open for him: how RQ1 states solve now
+   that the 35B's gap is not shown.
 
 **Known before the smoke:** `status.sh` lists the cells A and B under "unknown" (it
 knows only the standard cell names, as with the `jsonbound` cells); `sync.sh` brings
