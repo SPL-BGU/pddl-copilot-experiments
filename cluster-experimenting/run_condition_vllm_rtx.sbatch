@@ -526,6 +526,8 @@ for MODEL in $MODELS; do
                 mkdir -p "$OUT_DIR"
                 COND_ENV+=(PDDL_SYSTEM_AUDIT_LOG="$OUT_DIR/system_prompt_audit.jsonl")
                 _SYS_MODE="registered"
+                # A with-tools cell (--with-tools-cell) has no no-tools text.
+                case "$COND" in tools_*) _SYS_MODE="not-applicable-with-tools" ;; esac
                 for _kv in "${COND_ENV[@]}"; do
                     case "$_kv" in PDDL_NO_TOOLS_SYSTEM=*) _SYS_MODE="${_kv#*=}" ;; esac
                 done
