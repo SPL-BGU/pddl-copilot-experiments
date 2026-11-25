@@ -195,6 +195,13 @@ Where the control stands, in its order of work:
    29%. Sentences that said the tools make Gemma worse on simulate now say the tools
    bring no gain there (under the quoted reading the difference is -7.3 [-17.0, +2.7]).
 
+**Next, decided 2026-11-25 (Omer): a fresh unified run**, to be the primary
+open-weight dataset (full storage, corrected system message, one serving version; he
+expects 5 to 7 days). A second exception to "No new runs". Not designed, not registered,
+not submitted; each step needs his word. ICAPS main track allows 8 pages of main content
+(the draft has about 28), so an 8-page version is to be cut; its structure is under
+discussion. See `paper_notes_discussions.md`, 2026-11-25 (later).
+
 **Known before the smoke:** `status.sh` lists the cells A and B under "unknown" (it
 knows only the standard cell names, as with the `jsonbound` cells); `sync.sh` brings
 all three folders. A swap that refuses a message is stored as an exception row and is

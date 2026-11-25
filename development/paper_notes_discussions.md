@@ -527,3 +527,29 @@
   later. The paper text added here has passed an independent check of its numbers but
   not his line-by-line read.
 
+## 2026-11-25 (later) — A fresh unified run approved; ICAPS main-track length; an outside review
+
+- **Decided (Omer, 2026-11-25): a fresh unified run is approved** ("I approve the fresh
+  unified run. It might take 5-7 days total"). One clean run of the open models with full
+  answer storage, the corrected system message and one serving version, to become the
+  primary open-weight dataset. This is a second exception to the "No new runs" line of
+  `roadmap.md` (the first was the corrected-prompt control). **Not designed, not
+  registered, not submitted:** its scope (models, tasks, arms, wordings, thinking), the
+  registration and freeze, and every cluster action still need Omer's word, each
+  separately.
+- **Why:** an outside review of the merged draft (a model review Omer pasted) argued
+  that the number of separate corpora, and the comparison of a tool arm with a baseline
+  run seven weeks later, would cost the paper its credibility with reviewers. The facts
+  it cites were checked against the tex and are right; its list of table typos (Owen,
+  mismatched brackets, a dotted Delta) is not in the source and comes from its reading
+  of the PDF.
+- **ICAPS 2027 main track (checked 2026-11-25, call for papers):** 8 pages of main
+  content plus references; rejected without review if other content reaches page 9;
+  supplementary PDF allowed, anonymised, not in the proceedings. The merged draft has
+  about 28 pages of main content. Omer raised the cut himself; an 8-page version is a
+  new piece of work and replaces the "no word cap" way of writing for the submission.
+  The long version stays as the thesis text.
+- **Open (Omer):** the scope of the unified run; whether and how the Claude runs are
+  redone (the session's suggestion is in chat); the 8-page structure (a blueprint from
+  the same outside review, with the session's accept / revise / push-back in chat).
+
