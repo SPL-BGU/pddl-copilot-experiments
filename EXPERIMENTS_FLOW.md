@@ -1,36 +1,41 @@
 # Experiments Flow
 
-Methodology reference for the PDDL Copilot experiment suite.
-Reproduces and extends the evaluation from Benyamin et al., 2025 (arXiv:2509.12987).
+Reference for the test setup of the PDDL Copilot evaluation: the tasks, the
+conditions, the prompts, the tool contract, how a trial is graded and what a
+run writes to disk. It extends the evaluation of Benyamin et al., 2025
+(arXiv:2509.12987).
+
+**Which data the paper uses, and what is left to do:** `development/STATUS.md`.
+This file does not restate it. Frozen figures: `development/NUMBERS.md`.
+Registered designs and their analyses: `development/reference/`.
 
 > **Single-task only.** The multi-task chain phase was archived 2026-05-05 and
-> its code deleted 2026-05-25. See `development/CHANGELOG.md` for the rationale.
+> its code deleted 2026-05-25. See `development/CHANGELOG.md`.
 
 ---
 
 ## 1. High-Level Pipeline
 
-The harness is `run_experiment.py`. On the cluster it runs one model × one think-mode × one
-condition (with-tools or no-tools) per invocation. The only active
-driver path is the BGU cluster — primary entrypoint
-`cluster-experimenting/submit_full_sweep.sh` (per-cell wrapper:
-`submit_with_rtx.sh`). See `cluster-experimenting/README.md`. Each array
-task self-deploys a vLLM server, then loops `THINK_MODES × CONDITIONS` for
-the assigned cell. The Ollama backend was retired 2026-05-18, code removed 2026-05-23
-(single inference client: VLLMClient; see CHANGELOG).
+The harness is `run_experiment.py`. One invocation runs one model, one think
+mode and one condition (with-tools or no-tools). Runs are made on the BGU
+cluster through `cluster-experimenting/submit_with_rtx.sh`
+(`cluster-experimenting/README.md`). Each SLURM array task starts its own vLLM
+server and runs one cell against it. The single inference client is
+`pddl_eval.vllm_client.VLLMClient` (the Ollama backend was retired 2026-05-18
+and its code removed 2026-05-23).
 
 ```
 run_experiment.py
   |
   1. Load PDDL domains from domains/{classical,numeric}/
-  2. Connect to MCP servers (pddl-solver, pddl-validator — the two required plugins)
+  2. Connect to MCP servers (pddl-solver, pddl-validator: the two required plugins)
   3. Generate ground truth (oracle solves every problem)
-  4. Single-task evaluation (with-tools & without-tools)
+  4. Single-task evaluation (with-tools or without-tools)
   5. Save results to output directory
 ```
 
-Each `(model, think, condition, tool_filter, prompt_style)` produces its
-own output directory:
+Each `(model, think, condition, tool_filter, prompt_style)` has its own output
+directory:
 ```
 results/slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/           # cluster
 results/{full,partial}/<git-sha>_<timestamp>/                    # bare CLI (--output-dir auto)
@@ -40,62 +45,42 @@ results/smoke/{fixed,shuffle}_<git-sha>_<timestamp>/             # --smoke
     summary_{ts}.json
 ```
 
-Pre-archive sweeps still have `chain_{ts}.json` on disk; the analyzer
-ignores it.
-
 ---
 
 ## 2. Experimental Dimensions
 
-The experiment crosses five independent variables:
-
-| Dimension | Values | Controls |
-|-----------|--------|----------|
-| **Model** | `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` (vLLM `rtx_6000:1`). Roster history in `cluster-experimenting/README.md` "Models in the default sweep". | Model capacity & family |
-| **Condition** | with-tools, without-tools | Whether MCP tools are available |
-| **Tool filter** | all | Which tools the model sees (single active value) |
-| **Prompt style** | minimal | System prompt detail level (single active value) |
-| **Think mode** | on, off, default | `on`/`off` toggles the `think` kwarg (forwarded as vLLM `chat_template_kwargs.enable_thinking`) for models that support it (Qwen3.x, qwen3.6). `default` omits the kwarg — used for `gemma4:*` historically; the rtx path now passes `on/off` to all models and lets the runtime ignore unsupported values. `--think off` tests whether token starvation from thinking causes solve failures, or raw model incapacity. |
-
-The cluster's model set differs from the paper's `qwen3:0.6b`/`qwen3:4b`
-because the original BGU model inventory (2026-04-20) did not host those
-tags, and the active roster has since drifted further as the backend
-migrated to vLLM (2026-05-18). The five-model set above spans the same
-parameter range (≤1B → 35B) and covers two families (Qwen, Gemma). The
-2026-04-29 roster refresh attempted to keep the family-diversity slot
-non-Qwen by swapping `gpt-oss:20b` → NVIDIA `nemotron-3-nano:30b` (hybrid
-Mamba+MoE+Attn), but smoke 17274424 (2026-04-30) showed Hermes XML
-tool-call parse failures persisting on the same 4 cells across the
-4096→6144 num_predict bump — confirming the failure mode as
-content-dependent, not budget-dependent — so nemotron was dropped.
-See §11 for the full deviations table.
+| Dimension | Values | Notes |
+|-----------|--------|-------|
+| **Model** | Any tag in `vllm_lookup` (`cluster-experimenting/lib/defaults.sh`). The May sweep ran `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`. The October rerun, the control and the matched run use the last three of these. | Served by vLLM on one `rtx_6000` GPU per cell |
+| **Condition** | with-tools, without-tools | Whether MCP tools are offered |
+| **Tool filter** | all | Every tool is offered every turn (single value) |
+| **Prompt style** | `minimal`, `neutral` | With-tools system prompt (§2.3) |
+| **Prompt variant** | v11 to v13 (plain), v14 to v16 (steered) | User-prompt wording (§3) |
+| **Think mode** | on, off, default | `on`/`off` set vLLM `chat_template_kwargs.enable_thinking`. `default` omits the setting. The May sweep ran on and off; every later open-model run is thinking off |
 
 ### 2.1 Condition: with-tools vs without-tools
 
-- **with-tools**: The model has MCP tool descriptions injected into the OpenAI `tools` parameter on the vLLM chat-completions request. It can call tools in a loop (up to 10 iterations). The per-task system prompt tells it to use the available tool (§2.3).
-- **without-tools**: No tools available. The model must answer from its parametric knowledge. The per-task system prompt says PDDL tools are not available and asks for the answer in a fixed output shape.
+- **with-tools**: the MCP tool descriptions are passed in the OpenAI `tools` parameter of the chat-completions request. The model can call tools in a loop (up to 10 iterations). The per-task system prompt tells it to use the available tool (§2.3).
+- **without-tools**: no tools are offered. The model answers from its own knowledge. The per-task system prompt says PDDL tools are not available and asks for an answer format (§4.2).
 
 ### 2.2 Tool Filter
 
-Controls which MCP tools the model sees during with-tools evaluations.
+`all` is the only value: every tool of both MCP servers is offered on every turn.
 
-- **all**: Every tool from all connected MCP servers is exposed every turn. This is the only active value.
+### 2.3 Prompts and where they live
 
-### 2.3 Prompt Style
+All prompt text is in `pddl_eval/prompts.py`; the design is in
+`development/reference/sweep_prompt_bank_design.md`.
 
-`minimal` is the only active value. What it selects depends on the prompt variant
-(`runner.py:evaluate_one` dispatches on it):
-
-- **Active variants (v11–v16, sweep-5):** a three-sentence per-task policy stub from
-  `WITH_TOOLS_SYSTEM_BY_TASK` / `WITHOUT_TOOLS_SYSTEM_BY_TASK` in `pddl_eval/prompts.py`.
-  The with-tools `solve` stub, for example:
+- **User prompts.** Three plain wordings per task (v11, v12, v13) and three steered ones (v14, v15, v16). A steered wording is the plain text with one sentence added that tells the model to use the tool. No-tools cells run v11 to v13 only, unless `--include-no-tools-steered` is given.
+- **With-tools system prompt, `minimal` style.** A three-sentence per-task text from `WITH_TOOLS_SYSTEM_BY_TASK`. For `solve`:
   > *"You are a PDDL planning assistant. LLMs cannot reliably generate correct plans from training alone (arXiv:2509.12987). Use the available planner tool to produce the plan."*
 
-  Tool signatures and argument descriptions are not in the system prompt; they travel in
-  the `tools` parameter. Design rationale: §12.7.
-- **Legacy variants (v0–v10, replay only):** the flat `WITH_TOOLS_SYSTEM` constant, kept
-  byte-stable so old runs can be replayed (§12.8):
-  > *"You are a PDDL planning assistant with access to planning tools. Your ONLY way to get information or solve problems is by calling the provided tools ONE AT A TIME -- never guess or create plan details yourself."*
+  Tool signatures and argument descriptions are not in the system prompt. They travel in the `tools` parameter.
+- **With-tools system prompt, `neutral` style** (`--prompt-style neutral`). Only the role sentence, with no instruction to use the tool. The cell is then named `tools_all_neutral`.
+- **No-tools system prompt.** A three-sentence per-task text from `WITHOUT_TOOLS_SYSTEM_BY_TASK`. On the three validation tasks it asks for a last line `VERDICT: VALID` or `VERDICT: INVALID`. **On solve and simulate it tells the model to "conform to the JSON schema provided by the format constraint", and no schema ever reaches the model** (§4.2). This is the registered message of the May sweep and of the October rerun.
+- **Corrected no-tools system prompts** (`pddl_eval/control_prompts.py`), for solve and simulate only. `no-pointer` removes the schema sentence. `format-stated` states the answer format in plain words and asks for the final answer in a fenced code block. The client swaps the message when `$PDDL_NO_TOOLS_SYSTEM` names one of the two (`submit_with_rtx.sh --no-tools-system`). Every cell of such a job logs the system text it sent to `system_prompt_audit.jsonl`.
+- **Legacy variants (v0 to v10).** The flat `WITH_TOOLS_SYSTEM` / `WITHOUT_TOOLS_SYSTEM` constants and the old user prompts are kept unchanged in `prompts.py` so an old run can be replayed. `runner.py:evaluate_one` routes `prompt_variant < 11` to them.
 
 ---
 
@@ -109,9 +94,9 @@ Five tasks, each testing a different stage of the PDDL planning pipeline:
 | **validate_domain** | Judge whether a domain has valid PDDL syntax | `validate_domain` oracle (since marketplace 1.4.0; previously the polymorphic `validate_pddl_syntax`) |
 | **validate_problem** | Judge whether a problem has valid syntax given its domain | `validate_problem` oracle |
 | **validate_plan** | Verify a given plan is correct | `validate_plan` oracle |
-| **simulate** | Produce a state-transition trajectory for a plan | `get_state_transition` oracle. With-tools and no-PDDL-tools both grade by canonical-form deep-equality of the produced trajectory against the oracle's (PR-4, 2026-04-29). |
+| **simulate** | Produce a state-transition trajectory for a plan | `get_state_transition` oracle. Both conditions are graded by comparing the produced trajectory, in a canonical form, with the oracle's. |
 
-Each task uses 3 paraphrases per arm for robustness. Sweep-5 (current) active set is `v11/v12/v13` (neutral, imperative/declarative/interrogative) plus `v14/v15/v16` (steered — neutral text with one appended tool-directive sentence). See `development/reference/sweep_prompt_bank_design.md` for the full prompt bank, hypothesis pre-registration, and per-task rationale.
+Each task has three plain wordings (`v11/v12/v13`: imperative, declarative, interrogative) and three steered ones (`v14/v15/v16`: the plain text plus one sentence that tells the model to use the tool). The full prompt bank is in `development/reference/sweep_prompt_bank_design.md`.
 
 ---
 
@@ -131,64 +116,54 @@ The with-tools condition reports two separate metrics:
    - `validate_*`: tool result verdict matches ground truth (VALID/INVALID). The "wrong argument-shape" failure mode that existed under the polymorphic predecessor is now structurally unreachable — each tool's JSON schema enforces its required arguments. The residual error modes are three-way split: `FR_TOOL_NOT_SELECTED` (no validator-family call at all), `FR_WRONG_TOOL` (model called a validator-family tool but not the task-matching one — e.g. `validate_problem` on a `validate_plan` task), and `FR_VERDICT_MISMATCH` (right tool, wrong verdict). This decomposition is sharper than the pre-1.4.0 grader could achieve, which collapsed wrong-shape calls into `FR_VERDICT_MISMATCH`.
    - `simulate`: tool's `trajectory` equals the oracle's `gt["trace"].trajectory`. The plugin's `valid` field is a PDDL-syntactic signal, not a simulation-correctness signal — a partial trajectory with `valid=false` would pass a naive non-error check. Oracle and model calls go through the same bridged `get_state_transition(verbose=False)` with identical `(domain, problem, plan)` inputs, so a matching trajectory is deterministic. Mismatch → `FR_RESULT_MISMATCH`.
 
-A model can have high tool_selected but low success (knows *what* to call but can't construct valid arguments). This gap quantifies "tool-use competence" vs "tool awareness."
+A model can call the right tool and still fail, for example with arguments the tool rejects. The two metrics keep these cases apart.
 
-### 4.2 No-PDDL-Tools (formerly "without-tools")
+Both metrics are scored live from the tool result (the *tool-verified* layer). Whether the final answer the model hands back is correct is a separate, offline grade (the *delivered* layer, §14).
 
-PR-4 (2026-04-29) reframes this condition. The model still has
-`format=<json_schema>` constraint enforcement available (forwarded as
-vLLM `guided_json`); what's removed is the PDDL-specific MCP tooling
-(planning, validation, simulation).
-The user-facing label is **no-PDDL-tools**. The internal field name
-(`with_tools: bool`) and JSON `condition: "no-tools"` value are unchanged
-for back-compat with the 2026-04 result corpus and downstream notebooks.
+### 4.2 Without tools
 
-The sweep covers all 5 tasks (`simulate` re-enabled in PR-4 alongside
-the format-constrained grader). Per-task grading:
+The JSON value of this condition is `condition: "no-tools"` and the internal
+field is `with_tools: false`. All five tasks are run.
 
-- `solve` — Sampler constrained to `SolveResponse = {plan: list[str]}`.
-  Extracted plan goes through pyvalidator; `valid == true` → success.
-  Free-text plan extractor (`extract_plan_lines`) remains as a fallback
-  if JSON parse fails.
-- `validate_*` — Sampler constrained to
-  `ValidateResponse = {verdict: Literal["VALID", "INVALID"], reason: str}`.
-  `verdict` is compared to ground truth; `reason` is recorded but
-  ungraded. Free-text `VERDICT: VALID|INVALID` extractor falls back when
-  JSON parse fails. With 1:1 balanced positives + negatives (`§6
-  Domains`), a constant-VALID prior scores ~50%, so the grader is
-  discriminative on both paths.
-- `simulate` — Sampler constrained to
-  `SimulateResponse = {trajectory: list[StateStep]}` where each step
-  carries `{step: int, action: str, state: {boolean: list[str], numeric:
-  dict[str, float]}}`. The model's trajectory and the oracle's
-  `gt["trace"].trajectory` are both passed through
-  `_normalize_trajectory` (see `pddl_eval/scoring.py`) which collapses
-  the oracle's `boolean_fluents: dict[str, bool]` shape and the model's
-  `state.boolean: list[str]` shape to the same canonical
-  `{step, action, boolean, numeric}` form (sorted, lower-cased,
-  whitespace-normalised). Equality of the two canonical lists →
-  `FR_OK`; non-parseable JSON → `FR_FORMAT_PARSE_FAIL`; parses but
-  trajectory differs → `FR_RESULT_MISMATCH`. No free-text fallback for
-  simulate — the pre-PR-4 keyword grader was non-discriminative
-  (ISS-002).
+**The JSON-schema constraint never took effect.** The harness sends a per-task
+JSON schema (`pddl_eval/schemas.py`) with every no-tools request, in the
+request field `guided_json`. vLLM 0.20.2 ignores that field, and the constraint
+took effect in no corpus (`development/STATUS.md`, "Rules that bind every
+step"). So no unaided answer was sampled under a schema: the model saw only
+the prompt. A constraint that does take effect
+exists as a separate condition (`submit_with_rtx.sh --json-constraint
+structured_outputs`, cell name `no-tools-jsonbound`). It was used only for the
+JSON constraint pilot and is never pooled with, or set in place of, a no-tools
+cell.
 
-`FR_FORMAT_PARSE_FAIL` (new PR-4 failure tag) fires only when both the
-JSON path and the free-text fallback (where applicable) fail to produce
-a usable artefact. It is included in `_TRUNCATION_OVERRIDE_REASONS`, so
-a cap-cut mid-JSON is re-tagged as `FR_TRUNCATED_NO_ANSWER` rather than
-masquerading as a sampling-degeneracy failure.
+Per-task grading at run time (`pddl_eval/scoring.py`):
 
-**Re-baselining note.** Pre-PR-4 no-tools `validate_*` and `solve`
-results were graded via free-text-only paths and are not directly
-comparable to post-PR-4 no-PDDL-tools results: the format constraint
-both narrows the response space (potentially raising accuracy on
-structurally-honest models) and may degrade tiny-model output if the
-constraint conflicts with the model's natural shape. Flag any plot that
-mixes pre- and post-PR-4 no-tools rows. The with-tools branch is
-unchanged structurally; with-tools `simulate` switched to the shared
-`_normalize_trajectory` in PR-4 but the equality semantics are
-identical (both sides round-trip through the same plugin and produce
-byte-equal trajectory dicts on identical inputs).
+- `solve`: the answer is first read as JSON `{"plan": [...]}`. If that fails,
+  the free-text plan extractor (`extract_plan_lines`) is used. The plan goes
+  through the validator; `valid == true` is success.
+- `validate_*`: the answer is first read as JSON
+  `{"verdict": "VALID" | "INVALID", "reason": ...}`. If that fails, the last
+  `VERDICT: VALID|INVALID` line is used. The verdict is compared with ground
+  truth. Positives and negatives are balanced 1:1 on `validate_problem` and
+  `validate_plan` (§6), so always answering VALID scores about 50%.
+- `simulate`: the whole answer must parse as JSON: the wrapper
+  `{"trajectory": [...]}`, a bare list of steps, or a single step object
+  (`_coerce_simulate_trajectory`), each step with
+  `{step, action, state: {boolean: [...], numeric: {...}}}`. Whether the answer
+  used the exact wrapper is recorded separately as `format_compliant`. The model's
+  trajectory and the oracle's are both passed through `_normalize_trajectory`,
+  which brings the two shapes to one canonical form (sorted, lower-cased,
+  whitespace-normalised). Equal lists give `FR_OK`; JSON that does not parse
+  gives `FR_FORMAT_PARSE_FAIL`; a different trajectory gives
+  `FR_RESULT_MISMATCH`. There is no free-text fallback for simulate.
+
+`FR_FORMAT_PARSE_FAIL` fires only when neither the JSON path nor the fallback
+(where there is one) yields an answer. An answer cut off by the output cap is
+tagged `FR_TRUNCATED_NO_ANSWER` instead.
+
+The run-time grade is what `summary_*.json` holds. The paper's unaided figures
+for the October rerun, the control and the matched run come from the offline
+graders named in their registrations (§14), which read the stored full answer.
 
 ---
 
@@ -196,63 +171,28 @@ byte-equal trajectory dicts on identical inputs).
 
 | Parameter | Value | Notes |
 |-----------|-------|-------|
-| Temperature | 0.0 | Deterministic sampling |
-| Max tool loops | 10 | Per single evaluation |
-| Prompt variants | 6 | Per task: v11–v13 neutral, v14–v16 steered (§3). `--num-variants` default 6 |
+| Temperature | 0.0 | |
+| Max tool loops | 10 | Per trial |
+| Prompt variants | 6 | Per task: v11 to v13 plain, v14 to v16 steered (§3). `--num-variants` default 6 |
 | Random seed | 42 | For `--smoke-shuffle` cell assignment |
+| Context window | 16384 tokens | `--num-ctx`; `--num-ctx-thinking` (no-tools cells with thinking on) is held equal to it |
+| Output cap | solve 8192, validate_* 6144, simulate 6144 tokens | `DEFAULT_NUM_PREDICT` in `pddl_eval/runner.py`; `--num-predict N` overrides all tasks |
+| Concurrency | 4 requests | `--concurrency` |
 
-### Single-task gating
+The context window was 8192 until 2026-04-29 and the non-solve output caps were
+lower before that date; `development/CHANGELOG.md` has the history. A larger
+window (`submit_with_rtx.sh --max-model-len`) is a separate condition with its
+own run tag.
 
-The single-task phase grades every cell of the (`condition` × `think`)
-matrix:
-
-- `--num-ctx` (default 16384, raised from 8192 on 2026-04-29) is the
-  single-task context window for tools cells and for `think=off`
-  no-tools cells. Bumped after qwen3.6:27b / nemotron-3-nano:30b smokes
-  showed `think_overflow` at 12288 on `validate_problem`/`validate_plan`
-  (6/12 and 10/20 fail rates in both tools and no-tools cells; every
-  miss was `FR_THINK_OVERFLOW`). nemotron was dropped from the active
-  roster on 2026-04-30 but the ctx evidence still applies via qwen3.6:27b.
-  16384 leaves ~10K of think+output headroom on top of typical PDDL prompts.
-- `--num-ctx-thinking` (default 16384, raised from 12288 on 2026-04-29)
-  is used ONLY when `think != off` AND `condition=no-tools`. **Held
-  equal to `--num-ctx`** by default — the "tools save tokens" headline
-  comparison requires identical ctx budgets across the tools and
-  no-tools branches; otherwise the no-tools cell could appear better or
-  worse simply because it had more (or less) room to think. The
-  parameter is kept as a separate constant so future asymmetric
-  experiments can override one without touching the other.
-  Implementation note: `async_main` splits a `(--conditions=both,
-  think!=off)` invocation into two sequential `run_single_task_experiment`
-  calls (one per condition), keeping `num_ctx` constant within each call.
-  Without the split, mid-call `num_ctx` flips deadlocked the retired
-  Ollama backend under concurrency (smoke job 17244356, 2026-04-28); the
-  per-call invariant is preserved for corpus comparability under vLLM.
-- **Per-task `num_predict` caps** (`pddl_eval/runner.py`
-  `DEFAULT_NUM_PREDICT`): `solve=8192`, `validate_*=6144`,
-  `simulate=6144`. Non-solve caps were raised 1024/1536 → 4096 on
-  2026-04-29, then **4096 → 6144 the same day** (commit `464d0f6`, PR #26),
-  after the cluster-26042026 sweep showed truncation rates
-  (`done_reason == "length"`) of 40.9% on `validate_plan`, 37.1% on
-  `simulate`, 32.7% on `validate_problem`, and 17.4% on
-  `validate_domain` at the old caps — thinking-mode reasoning and
-  tool-call XML/harmony emissions were being cut mid-stream, biasing
-  accuracy and producing the bulk of `ollama_parse_error` records (the
-  Hermes/harmony XML parser fails on truncated `<function><parameter>`
-  tags). Override per-run with `--num-predict N` (applies uniformly to
-  all tasks).
-
-The PR-2 abort gate that previously exited early for
-`--conditions=no-tools|both` under `--think on/default` was lifted
-2026-04-28 — thinking content is now captured separately
-(`TaskResult.thinking`) so it does not contaminate the graded
-response. See CHANGELOG 2026-04-28 (PR-2).
+`--decoupled-budget` (no-tools, `--think on` only) splits a trial into a
+reasoning call and an answer call with separate token budgets. It writes a
+separate corpus; never pool it with a shared-budget run.
 
 ---
 
 ## 6. Domains
 
-20 domains × 5 valid problems × (1 valid + 1 invalid) domain × (5 valid + 5 invalid) plans per problem = **1240 fixture files** (PR-3, 2026-04-29). Per-domain layout:
+20 domains × 5 valid problems × (1 valid + 1 invalid) domain × (5 valid + 5 invalid) plans per problem = **1240 fixture files** . Per-domain layout:
 
 ```
 domains/<type>/<domain>/
@@ -289,7 +229,7 @@ Domain set:
 | numeric | sailing | paper | boolean |
 | numeric | zenotravel-numeric | PR-3 (matteocarde/patty IPC-2023; p02-p05 hand-authored) | numeric |
 
-The 10 paper domains came from the paper dataset snapshot at `.local/pddl_mcp_dataset/` (Benyamin et al., 2025, Aug 2025). The 10 PR-3 domains were sourced from public benchmark suites and validated end-to-end by the build pipeline. Substitution rationale and per-domain caveats live in `development/archive/plans-executed/FRAMEWORK_EXTENSION_PLAN.md` § "PR-3 drift from spec" (deleted 2026-10-10; `git show 1fee730:<path>`, see `development/MOVES.md`).
+The 10 "paper" domains come from the dataset of the earlier version (Benyamin et al., 2025). The 10 "PR-3" domains were taken from public benchmark suites and checked end to end by the build pipeline. Provenance per domain is in `domains/README.md`.
 
 **Negative fixtures.** Each domain ships:
 - `domain_neg.pddl` — joins `validate_domain` (negative arm) only
@@ -322,9 +262,9 @@ These oracle results become the ground truth for scoring model responses.
 
 ## 8. MCP Tool API Contract
 
-**Marketplace compatibility:** sweep-5 requires marketplace 1.4.0+ (per-task
-`validate_domain` / `validate_problem` / `validate_plan` tools). Sweep-3/4
-used the polymorphic predecessor `validate_pddl_syntax`; see CHANGELOG
+**Marketplace compatibility:** the harness requires marketplace 1.4.0+ (per-task
+`validate_domain` / `validate_problem` / `validate_plan` tools). Runs before
+2026-05-23 used the single predecessor tool `validate_pddl_syntax`; see CHANGELOG
 2026-05-23.
 
 Two version schemes appear in this repo's docs. "Marketplace 1.4.0" is the `metadata.version` field of `.claude-plugin/marketplace.json` in pddl-copilot (1.4.0 = commit `2850bc4`, 2026-05-23, the validator split). "v2.0.0" is a git tag of the same repo (2026-04-10, the move from Docker to pure pip); at that tag the marketplace field read 1.2.0. Each plugin also carries its own version. When a doc says "marketplace X", it means the first scheme.
@@ -453,42 +393,30 @@ Raw per-evaluation results. Each entry is one (model, task, domain, problem, pla
 
 ## 10. Running Experiments
 
-### Cluster (the supported path for paper sweeps)
-
-Run from `~/pddl-copilot-experiments` on the cluster login node; output paths are
-relative to that directory.
+Run from `~/pddl-copilot-experiments` on the cluster login node.
 
 ```bash
-# Full roster: three submissions, each with the walltime that fits its models
-bash cluster-experimenting/submit_full_sweep.sh
-
-# Baseline-only no-tools sweep
-bash cluster-experimenting/submit_full_sweep.sh --no-tools
-
-# One model (e.g. iterating on its behaviour), or preview without submitting
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --dry-run
+# One model, or a preview without submitting
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B --think-modes off
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B --think-modes off --dry-run
 ```
 
-How it works: `submit_with_rtx.sh` builds one cell per (model, think mode, condition)
-and submits them as a single SLURM job array of
-`cluster-experimenting/run_condition_vllm_rtx.sbatch`. Each array task starts its own
-vLLM server on one GPU, runs `run_experiment.py` against it for that one cell, and
-writes to `results/slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/`. A resubmitted cell
-resumes from its `trials.jsonl`. `submit_full_sweep.sh` calls the wrapper three times
-(the three small Qwen3.5 models together, `qwen3.6:35b`, `gemma4:26b-a4b`) because the
-two large models need a longer `--time`.
+`submit_with_rtx.sh` builds one cell per (model, think mode, condition) and
+submits them as one SLURM job array of
+`cluster-experimenting/run_condition_vllm_rtx.sbatch`. Each array task starts
+its own vLLM server on one GPU, runs `run_experiment.py` for that cell, and
+writes to `results/slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/`. A
+resubmitted cell resumes from its `trials.jsonl`. Only tags listed in
+`vllm_lookup` (`cluster-experimenting/lib/defaults.sh`) are accepted.
 
-Only tags listed in `vllm_lookup` (`cluster-experimenting/lib/defaults.sh`) are
-accepted; any other tag is rejected at submit time.
-
-See `cluster-experimenting/README.md` for full submission flow,
-`.claude/skills/cluster-ops/SKILL.md` for status/preflight/postmortem
-helpers.
+How each run of the paper was submitted (run tags, tasks, system messages) is
+in `cluster-experimenting/README.md` and in the run's registration.
+`submit_full_sweep.sh` is how the May sweep was submitted. Status, sync and
+postmortem helpers: `.claude/skills/cluster-ops/SKILL.md`.
 
 ### Direct CLI
 
-Needs a reachable vLLM server (CUDA); laptop runs of the roster are not supported.
+Needs a reachable vLLM server (CUDA). Laptop runs are not supported.
 
 ```bash
 python3 run_experiment.py \
@@ -498,88 +426,30 @@ python3 run_experiment.py \
     --output-dir results/my_run/
 ```
 
-### Monitoring
-
-```bash
-squeue --me                 # All my running/pending jobs
-```
-
-Per-cell progress, sync and postmortem: the `cluster-ops` skill scripts
-(`.claude/skills/cluster-ops/SKILL.md`) and the "Monitoring" section of
-`cluster-experimenting/README.md`.
-
 ---
 
-## 11. Differences from the Original Paper
+## 11. Differences from the 2025 version (mechanics)
 
-| Aspect | Paper (Benyamin et al., 2025) | This Framework |
-|--------|-------------------------------|----------------|
-| Success metric (with-tools) | Tool selection only | Tool selection AND end-to-end result validation |
-| Tool filter | All tools exposed | All tools exposed (paper-aligned) |
-| Prompt style | Single prompt | `minimal` only (paper-aligned) |
-| Models | Qwen3, GPT-OSS (various sizes) | `Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b` on vLLM `rtx_6000:1`. Roster history in `cluster-experimenting/README.md`. |
-| Domains | 10 IPC benchmarks | 20 domains: the paper's 10 (barman, blocksworld, depots, rovers, satellite, counters, depot, farmland, pogo_stick, sailing), copied from its published dataset, plus 10 added in PR-3 (§6) |
+| Aspect | Benyamin et al., 2025 | This harness |
+|--------|-----------------------|--------------|
+| Success with tools | Tool selection only | Tool selection, and whether the tool result is correct (§4.1); the delivered answer is graded offline (§14) |
+| Tool filter | All tools offered | All tools offered |
+| Models | Qwen3, GPT-OSS (various sizes) | Qwen3.5, Qwen3.6 and Gemma 4 models served by vLLM (§2) |
+| Domains | 10 IPC benchmarks | 20 domains: those 10 plus 10 added later (§6) |
 | MCP integration | Claude Desktop plugins | Direct MCP stdio connections |
-| Validator tool schema | pyvalidator-native shape (`details`, verbose `report` on every validator tool) | Plugin defaults unchanged (`verbose=True` returns full fidelity). The experiment bridge hides a `verbose` flag and pins it to `False`, projecting the response to `{valid, status, report}` for the three `validate_*` tools and `{valid, steps, trajectory}` for `get_state_transition`. |
-| Simulate success criterion | Non-error tool result | Canonical-form trajectory deep-equality against oracle `gt["trace"]` on both with-tools and no-PDDL-tools paths via `_normalize_trajectory` (PR-4, 2026-04-29) — bridges oracle (`boolean_fluents: dict[str, bool]`) and model (`state.boolean: list[str]`) shapes to a sorted/lower-cased canonical form. A partial trajectory with `valid=false` is scored `FR_RESULT_MISMATCH`, not silent success. |
-| No-tools task set | All 5 tasks scored | All 5 tasks scored under PR-4 (2026-04-29) with format-constrained sampling — `simulate` re-enabled alongside the shared `_normalize_trajectory` grader, replacing the keyword-check that ISS-002 originally dropped. The user-facing label changed to **no-PDDL-tools** to reflect that format constraint is still available; only PDDL-specific MCP tools (planner/validator/simulator) are removed. Internal `with_tools: bool` and JSON `condition: "no-tools"` field unchanged for back-compat. |
-| No-tools grader | Free-text regex extractors (`extract_plan_lines`, `extract_verdict`, simulate keyword check) | Per-task Pydantic schema (`pddl_eval/schemas.py`) enforced via `format=<json_schema>` → vLLM `guided_json` (PR-4, 2026-04-29). Free-text extractors retained as fallback for `solve` / `validate_*` when JSON parse fails; `simulate` has no fallback (parse failure → `FR_FORMAT_PARSE_FAIL`). Pre-PR-4 no-tools rows are NOT directly comparable to post-PR-4 no-PDDL-tools rows — the constraint narrows the response space and may regress tiny models that conflict with the schema; the new `FR_FORMAT_PARSE_FAIL` tag quantifies that rate per cell. |
-| No-tools matrix | Crossed with all think modes + chains | Crossed with all think modes, single-task only. The earlier gate to `--think off` was lifted (harness 2026-04-28, §5; cluster wrapper 2026-05-12). The chain phase was archived 2026-05-05 and its code deleted 2026-05-25 (see CHANGELOG). |
-
-The key methodological addition is the separation of **tool selection** from **end-to-end success**, which reveals cases where models know which tool to use but fail to construct valid arguments.
+| Validator tool output | Full pyvalidator shape | The plugin default is unchanged. The experiment bridge pins `verbose=False`, so the model sees `{valid, status, report}` from the three `validate_*` tools and `{valid, steps, trajectory}` from `get_state_transition` (§8) |
+| Simulate success | Non-error tool result | The trajectory must equal the oracle's after normalization, in both conditions |
+| No-tools grading | Free-text extractors | JSON read first, free-text fallback for `solve` and `validate_*`, JSON only for `simulate` (§4.2). The JSON-schema constraint never took effect |
+| Scope | Single tasks and chains | Single tasks only |
 
 ---
 
-## 12. Methodology Disclosures (sweep-5)
+## 12. Notes on the prompt and tool design
 
-Disclosures required for reviewer-defense of the sweep-5 three-arm matrix + control. Full design rationale and literature anchors live in `development/reference/sweep_prompt_bank_design.md`; this section is the abridged reference for the paper.
-
-### 12.1 Three-arm matrix and the control arm
-
-The headline sweep-5 design is a three-arm matrix over `(model × task × think × paraphrase)`:
-
-| Arm | Condition | Variants | Measures |
-|---|---|---|---|
-| Neutral no-tools | `no-tools` | v11/v12/v13 | Floor — model's unaided capability under a format-constrained prompt. |
-| Neutral with-tools | `with-tools` | v11/v12/v13 | BFCL **relevance detection** — does the model spontaneously call the right tool when its existence is known but not steered? |
-| Steered with-tools | `with-tools` | v14/v15/v16 | BFCL **function selection** — with explicit steering, does the model select the right tool? Parameter filling is schema-enforced under marketplace 1.4.0, so this isolates selection. |
-
-A fourth arm — **`(no-tools, v14/v15/v16)`, the sweep-5 control** — runs as a separate cluster submit gated by `--include-no-tools-steered`. It tests hypothesis H4 (the steered directive alone does not move the no-tools floor); reported in §Results as a control, not as a primary outcome.
-
-### 12.2 BFCL divergence
-
-BFCL (Berkeley Function-Calling Leaderboard) benchmarks function-calling correctness in isolation and does not include a no-tools baseline. We include one because our research question is tool *utility* for symbolic reasoning (the PDDL Copilot paper's headline claim), not function-calling correctness alone. The no-tools arm is therefore additive to BFCL's design, not a divergence from it.
-
-### 12.3 Fusion novelty
-
-Our three-arm matrix combines two prior methodologies: PDDL Copilot's `(tools | no-tools)` split and BFCL's within-tools decomposition (relevance / selection / parameter-filling). Neither source endorses the exact 3-arm shape we use. We acknowledge this is a novel combination, motivated by the need to attribute the headline tool-utility claim cleanly while still measuring tool-selection behavior.
-
-### 12.4 Paraphrase-axis asymmetry
-
-The paraphrase axis (3 per task) varies only the neutral task-framing clause. The steered directive is held byte-identical across the three paraphrases per task (v14, v15, v16 differ only in the neutral-paraphrase prefix). This isolates steering variance from paraphrase variance; varying both would dilute the H2 measurement. The neutral arm's paraphrase axis remains a linguistic-robustness probe for H1.
-
-### 12.5 VERDICT trailer rationale (post-vLLM-only justification)
-
-The VERDICT trailer in `validate_*` no-tools prompts (v11–v13) is an empirical safety belt against `FR_FORMAT_PARSE_FAIL` events on hybrid-architecture models (Qwen3.5/3.6 Mamba hybrid). Sweep-4 dropped the trailer from `validate_*` v5/v6/v7 and observed a regression in `FR_FORMAT_PARSE_FAIL` rates even under vLLM `guided_json` enforcement; sweep-5 restores it. The trailer adds ~6 tokens per trial and serves as a cross-architecture fallback that the `extract_verdict` regex (`pddl_eval/scoring.py`) can anchor on when JSON parsing fails.
-
-### 12.6 Marketplace 1.4.0 effects on FR taxonomy
-
-Marketplace 1.4.0 (pddl-copilot @ 2850bc4) split the polymorphic `validate_pddl_syntax` into three task-aligned tools whose JSON schemas enforce required arguments. As a result:
-- The previous `FR_VERDICT_MISMATCH` masquerade (model calls validator without `plan`, tool returns the consistency verdict instead of plan verdict) is structurally unreachable.
-- `FR_WRONG_TOOL` is introduced as a distinct failure mode (model called a non-matching validator tool, e.g., `validate_problem` when task = `validate_plan`).
-- The `validate_plan` steered directive simplifies to one sentence — the polymorphism warning the sweep-4 redesign needed no longer applies.
-
-Sweep-3 / sweep-4 / sweep-4.1 used the polymorphic predecessor and remain comparable only as historical pin-locked snapshots in `results/` and `checkpoints/`. Re-running their trials against the marketplace 1.4.0 pin would fail (the legacy tool no longer exists).
-
-The `tool_selected` metric definition also tightened with the split. Pre-1.4.0, a `validate_*` trial with a `validate_pddl_syntax` call was `tool_selected=True` regardless of which task it served (the polymorphic tool was the only validator). Post-1.4.0, `tool_selected=True` requires the task-matching tool name (e.g. `validate_plan` for a `validate_plan` task); a wrong-tool call now records `FR_WRONG_TOOL` with `tool_selected=False`. Direct cross-sweep panels of `tool_selected_rate` are therefore on different denominators by construction — when comparing sweep-3/4 baselines to sweep-5, treat the legacy rate as the union `tool_selected + FR_WRONG_TOOL` (a "validator-family invoked" rate) rather than plotting the raw column.
-
-### 12.7 System-prompt design (Option C — thin per-task policy stubs)
-
-Sweep-5 system prompts are 3-sentence policy stubs per task (`WITH_TOOLS_SYSTEM_BY_TASK` / `WITHOUT_TOOLS_SYSTEM_BY_TASK` in `pddl_eval/prompts.py`). Tool signatures, argument descriptions, and status enumerations are NOT in the system prompt — those live in `tools=[]` per Anthropic's documented contract, and marketplace 1.4.0 raised the per-tool description bar at that source. The `WITHOUT` per-task dict is a structural mirror of `WITH` (same role-framing first sentence, same sentence count); this preserves the H1 attribution to tool availability rather than instruction-surface differential.
-
-### 12.8 v0–v10 byte-stability
-
-The legacy `WITH_TOOLS_SYSTEM` / `WITHOUT_TOOLS_SYSTEM` flat constants and v0–v10 prompt strings are preserved byte-stable in `pddl_eval/prompts.py`. `runner.py:evaluate_one` uses a variant-gated dispatch: cells with `prompt_variant < 11` route to the legacy constants; `prompt_variant >= 11` route to the sweep-5 per-task dicts. This keeps any v0–v10 replay byte-identical to its original run.
+- **Verdict line.** The no-tools `validate_*` prompts ask for a last line `VERDICT: VALID|INVALID`. The grader falls back to it when the answer is not JSON.
+- **Paraphrases.** The three wordings of a task differ only in the task sentence. The steering sentence is the same in v14, v15 and v16 of a task.
+- **Per-task validator tools.** Marketplace 1.4.0 (pddl-copilot `2850bc4`) split the old `validate_pddl_syntax` into `validate_domain`, `validate_problem` and `validate_plan`, each with required arguments in its schema. `tool_selected` therefore needs the tool whose name matches the task; a call to another validator tool is `FR_WRONG_TOOL`. Runs made before that split used the old tool and cannot be rerun against the current plugins.
+- **No-tools steered cells.** `--include-no-tools-steered` also runs v14 to v16 without tools. This is the steering control (`development/reference/ntster_h4_prereg.md`).
 
 ---
 
@@ -592,11 +462,16 @@ A second, parallel evaluation arm that runs the PlanBench benchmark, alongside (
 
 > **Backend note (2026-06-02).** The arm originally self-deployed Ollama (it landed the same day Ollama was retired harness-wide). The run-path was migrated to self-deployed vLLM — the same GPU class + serve config as the 5-task arm, for corpus identity. See CHANGELOG 2026-06-02. The `engine.py` Ollama branch is retained for archaeology only.
 
-### 13.1 Why a second arm
+### 13.1 What it measures
 
-The 5-task matrix grades (solve / validate_* / simulate) against our own domain corpus with `MCPPlanner`-bridged ground truth. PlanBench grades a complementary axis: NL-prompted plan generation on canonical IPC domains, against PlanBench's own VAL/PR2-based scorer. Reporting both lets the paper compare to PlanBench's published baselines (gpt-4_chat etc.) without recomputing them — we read their committed `results/<config>/<engine>/` JSONs directly.
+The 5-task matrix grades our own domain corpus against ground truth from the
+MCP tools. PlanBench grades plan generation from natural-language prompts on
+its own domains, with its own VAL-based scorer. Its published baseline results
+are read from the files it ships.
 
-PlanBench's `INTEGRATION.md` is explicit: `send_query` is single-turn from the framework's perspective. A multi-turn MCP-tool-using agent inside the call is a **distinct method** (LLM-Modulo, per INTEGRATION §3 "Note on tools"), not the vanilla leaderboard. v1 does the vanilla path only.
+PlanBench's `INTEGRATION.md` treats `send_query` as a single turn. An agent
+that calls MCP tools inside that call is a distinct method and is not the
+vanilla leaderboard setting. The vanilla arm does the single-turn path only.
 
 ### 13.2 Scope
 
@@ -646,7 +521,6 @@ PlanBench's pre-shipped `prompts/<config>/task_*.json` files are deterministic (
 
 - `pddl_eval/` — zero touches. Existing 5-task `results/<run-dir>/single_task_*.json` schemas, scoring, and Wilson CIs are byte-comparable across the 2026-05-18 commit.
 - MCP plugin contract (`MCPPlanner._PINNED_VERBOSE_FALSE`, schema-strip behaviour) — unchanged. PlanBench engine doesn't talk to MCP in v1.
-- The chain phase stays archived (see the note at the top of this file and §11). PlanBench's per-task design is single-turn from PlanBench's perspective regardless of internal multi-turn agentic logic, so the with-tools arm does not re-introduce chain-style multi-task contamination.
 
 ### 13.8 With-tools arm — closed
 
@@ -657,45 +531,42 @@ prereg and the results doc named at the top of §13 instead.
 
 ---
 
-## 14. Layers added after sweep-5
+## 14. The delivered layer and the other runners
 
-Short pointers. None of these changes how `run_experiment.py` scores a trial.
+None of this changes how `run_experiment.py` scores a trial.
 
-**Two success layers.** The harness scores a with-tools trial from the tool result (§4.1).
-The paper calls that the *tool-verified* layer. The *delivered* layer asks a different
-question: is the final answer the model handed back to the user correct? It is computed
-offline by `tools/e2e_regrade.py` from the stored `response`, against the cached ground
-truth in `results/derived/gt_cache.json`, and aggregated by
-`.claude/skills/analyzer/scripts/e2e_overlay.py`. It is an overlay: `trials.jsonl` is never
-rewritten. Decisions D1–D9 and the phase results:
-`development/reference/tool_call_vs_final_output_grading.md`.
+**Two success layers.** The harness scores a with-tools trial from the tool
+result (§4.1): the *tool-verified* layer. The *delivered* layer asks whether
+the final answer the model handed back to the user is correct. It is always
+computed offline from the stored `response`; `trials.jsonl` is never rewritten.
 
-**Censoring rule.** A stored response that sits at the storage cap with no gradable
-answer in the visible part is *censored*: the answer may have been cut off by storage, so
-the trial is neither a success nor a failure. A cell with censored trials is reported as
-bounds (the low end counts them as failures, the high end as successes), never as a
-point. This matters mostly for corpora written before 2026-06-25, which stored 500
-characters (§9). Which cells are bounds, and their frozen values: `development/NUMBERS.md`.
+| Corpus | Delivered grader |
+|---|---|
+| October rerun (`results/delivered-rerun`) | the frozen package `tools/delivered_rerun/` (registration `development/reference/delivered_rerun_prereg.md`) |
+| Corrected-prompt control (`results/control-promptfix`) | `tools/reanalysis/control_prompt_fix.py` (registration `development/reference/control_prompt_fix_prereg.md`) |
+| May sweep and the Claude runs | the overlay `tools/e2e_regrade.py`, aggregated by `.claude/skills/analyzer/scripts/e2e_overlay.py`; decisions in `development/reference/tool_call_vs_final_output_grading.md` |
 
-**Frontier runner.** Claude API models do not go through `run_experiment.py`. With-tools
-runs use `tools/frontier_runner.py`; no-tools runs use the batch builder
-`tools/claude_api_batch.py`. Both build prompts through the same
-`pddl_eval.runner.build_messages`, so a frontier trial sees the same bytes as an
-open-weight trial. Several of these files are frozen by hash (see `development/MOVES.md`).
+Ground truth for the offline graders is the cache `results/derived/gt_cache.json`.
 
-**Decoupled budget.** `--decoupled-budget` (no-tools, `--think on` only) splits a trial
-into a reasoning call and an answer call with separate token budgets, so a long
-reasoning trace cannot starve the answer. It writes a separate corpus with its own run
-tag; never pool it with a shared-budget run. Decoupled rows carry a non-null
-`think_truncated` (§9).
+**Storage cap and censoring.** A corpus written before 2026-06-25 stored only
+the first 500 characters of an answer; from 2026-06-25 to 2026-10-02 the cap was
+16384; since then it is 65536 (§9). A stored answer that sits at the cap with no
+gradable answer in the visible part is *censored*: it may have been cut by
+storage, so it is neither a success nor a failure. A cell with censored trials
+is reported as bounds, never as a point. This is why the May sweep has no
+delivered rate for its tool arms.
 
-**Anonymized corpus (sweep-6).** The contamination probe reruns the matrix on domains
-whose names and symbols were renamed (`tools/anon_*.py`), under run tag `sweep6`. Design:
-`development/reference/contamination_probe_plan.md`.
+**Frontier runner.** Claude API models do not go through `run_experiment.py`.
+With-tools runs use `tools/frontier_runner.py`; no-tools runs use the batch
+builder `tools/claude_api_batch.py`. Both build prompts through
+`pddl_eval.runner.build_messages`, so a frontier trial gets the same prompt
+text as an open-model trial. Several of these files are frozen by hash
+(`development/MOVES.md`).
 
-**Canonical corpora.** Numbers are checked against `results/sweep5v2-live` (original
-domains) and the anonymized sweep-6 corpus only (`results/sweep6-live`, the default of
-`tools/e2e_regrade.py`; `CLAUDE.md` writes it as `*_sweep6`, after the run tag).
-Any other sweep folder is a sync mirror and gives wrong numbers (the old mirrors were moved
-out of the repo on 2026-10-10, `development/MOVES.md`). Check
-`development/NUMBERS.md` before quoting any figure.
+**Renamed domains.** `domains-anon/` holds the 20 domains with names and
+symbols renamed (`tools/anon_*.py`), used for the contamination check under
+run tag `sweep6`. Design: `development/reference/contamination_probe_plan.md`.
+
+**Corpora are never pooled.** Each run has its own folder and run tag. Check
+`development/NUMBERS.md` before quoting any figure, and
+`development/STATUS.md` for which corpus the paper uses for what.
