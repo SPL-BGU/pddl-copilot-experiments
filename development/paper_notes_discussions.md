@@ -583,4 +583,12 @@
   before the run, so the question does not arise there); "within 4.0 points" is quoted
   with the registered criterion (met in three of six); the original grader does not
   give the same direction for Gemma on simulate.
+- **How the work is split from here (Omer, 2026-11-25).** The session outlines the
+  paper (sections, figures and tables in place, what each section must establish) and
+  analyses; Omer writes the text himself, long, and shortens it later. No aiming at
+  eight pages. The next session runs on Fable 5.2 at medium effort as orchestrator, with
+  cluster work handed to an Opus agent at medium effort. The repository is to be cleaned
+  of everything misleading, stale or irrelevant, and the paper sections that will not
+  survive are to be removed. Language: as a colleague would say it, science before
+  machinery. Handoff: `development/next_session_prompt.md`.
 
