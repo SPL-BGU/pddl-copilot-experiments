@@ -319,7 +319,8 @@ Fixed here, before any data:
      row cut by storage; no half-written line;
   3. in every N cell at least 95% of the stored answers are non-empty; in every tools
      cell at least 95% of the answers of trials whose final turn was not refused or
-     clipped for a full context window are non-empty. A final turn is refused or clipped
+     clipped for a full context window are non-empty, and each task has at least one
+     such trial. A final turn is refused or clipped
      by the two rules of the rerun's category "refused or clipped final request"
      (`REFUSED_OR_CLIPPED_FINAL` in `tools/delivered_rerun/e4.py`): the row's `no_room`
      is set, or its last turn ran with a clipped allowance
