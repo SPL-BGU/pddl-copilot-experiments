@@ -644,3 +644,10 @@
 - **Correction to the entry above:** `CLAUDE.md` was edited afterwards by the main
   session, in the same PR (#153), on Omer's approval of the clean-up list: venue, who
   writes what, and the lead data.
+- **Correction (2026-11-25), Sonnet 5.5 and thinking.** The entry above says Sonnet 5.5
+  cannot run without thinking. The API reference says otherwise in practice: the plain
+  "off" setting is refused, but its lowest setting (`between_tools`, at effort `high` or
+  lower) does no thinking before the answer and returns only the short notes the model
+  writes between tool calls. So the no-tools arm runs without thinking, and the tool arm
+  has notes between calls. This is close to the open models' setting and is what the run
+  will use; the paper states it. Not yet checked on a live request.

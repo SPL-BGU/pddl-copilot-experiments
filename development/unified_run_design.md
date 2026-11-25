@@ -59,7 +59,7 @@ Options:
 - **Option 4: add an Opus** (5 or 5.5). The strongest model, at 2 to 2.5 times the
   Sonnet price; Opus 5.5 cannot run with thinking off.
 
-> ANSWER: **Haiku 5.5 and Sonnet 5.5 (Omer, 2026-11-25: "sonet 5.5 and haiku 5.5. no reason for sonnet 5").** Haiku 5.5 runs with thinking off, like the open models. Sonnet 5.5 cannot run with thinking off; it runs at its closest setting and the paper labels it as a model that thinks. The session had recommended Sonnet 5 for the matching setting and raised the difference before he chose.
+> ANSWER: **Haiku 5.5 and Sonnet 5.5 (Omer, 2026-11-25: "sonet 5.5 and haiku 5.5. no reason for sonnet 5").** Haiku 5.5 runs with thinking off, like the open models. Sonnet 5.5 does not accept the plain "off" setting; its lowest setting (`between_tools`, effort `high` or lower) does no thinking before the answer and only returns the short notes the model writes between tool calls. So in the no-tools arm it does not think, and in the tool arm it writes notes between calls. The paper states this setting. (Corrected the same day against the API reference: the session had first told Omer that Sonnet 5.5 would have to run with thinking on.)
 
 ### B2. Design of the frontier run
 
