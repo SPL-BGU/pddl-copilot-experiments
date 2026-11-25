@@ -1,16 +1,18 @@
 # Pre-registration: the matched run (tools against no tools on solve and simulate, one job)
 
-**DRAFT, written 2026-11-25, before any trial of this run exists. Not frozen.** Decision
+**Written 2026-11-25, before any trial of this run exists. The analysis was frozen the
+same day (section 9).** Decision
 to run: Omer, 2026-11-25 (`development/datasets_breakdown.md`, option 1;
 `paper_notes_discussions.md`, 2026-11-25). It reuses the registration of the
 corrected-prompt control (`control_prompt_fix_prereg.md`) and its analysis wherever it
 can, and says where it differs.
 
-**Choices that are Omer's and still open** are marked **[Omer, A5]** to **[Omer, A10]**
-after the questions of `development/unified_run_design.md`, and **[Omer, ISS-029]** (the
-simulate answer key, section 3). Each is written here as the
-session recommended. They stand unless he changes them before the freeze. Nothing is
-frozen and nothing is submitted until he has answered them.
+**Choices that were Omer's** are marked **[Omer, A5]** to **[Omer, A10]** after the
+questions of `development/unified_run_design.md`, and **[Omer, ISS-029]** (the simulate
+answer key, section 3). Each was written here as the session recommended. **Omer
+accepted all of them on 2026-11-25 ("Yes, accept all"), before the freeze and before
+any trial.** Nothing in sections 1 to 8 changes from here on without an entry in
+section 11.
 
 **Disclosure of prior data contact.** No row of this run exists. The author has read
 the data of the two runs this one replaces as the source of RQ1 on solve and simulate:
@@ -398,14 +400,69 @@ counted 52 of 300 and audited them; there the tripwire fires above 90 of 300.
 
 ## 9. Freeze record
 
-*Not frozen. To be filled in: harness commit, tools repo commit, analysis commit,
-package hash, the five gates, the dry run on existing data, the submit command, job ids
-and dates, GPU class and memory from the job log, sha256 of the frozen files.*
+**FROZEN 2026-11-25.** No row of this run existed at freeze time, and nothing had been
+submitted to the cluster. The analysis does not read a row of the full run unless it is
+started with the package hash below.
 
-Candidate package hash after the independent review:
-`1f3d0f84c755820fb73eac810f3aebfc55dca69de663c2467fa430946fd4155d`
-(`python -m tools.reanalysis.matched_run --print-package-hash`, 2026-11-25). It is not
-a freeze. Any later edit changes it.
+| item | value |
+|---|---|
+| analysis branch and commit | `analysis/matched-run-prereg`; the code is unchanged since commit `41f9059` (PR #152) |
+| package hash (`--i-have-frozen`) | **`1f3d0f84c755820fb73eac810f3aebfc55dca69de663c2467fa430946fd4155d`** (37 files: the analysis script and the repo files it imports, among them the frozen packages of the rerun and the control, whose own hashes are still `822aace9…` and `825dab63…`) |
+| gate 1, typed loader | every row through the rerun's frozen `schema.parse_row` |
+| gate 2, constants as raised checks | yes; the package refuses `python -O` |
+| gate 3, traceability map | `development/reference/matched_run_traceability.md`; nothing left unimplemented |
+| gate 4, synthetic fixture | `tests/test_matched_run.py`, 586 checks with literal expected values |
+| gate 5, independent review | a second agent that did not write the code, 2026-11-25, two passes: no code path giving a wrong number; 7 should-fix items and the notes of the first pass fixed and verified in the second; one wording point of the second pass fixed in this document (smoke item 3). Five planted cases recomputed by hand by the reviewer |
+| tools repo `pddl-copilot` on the laptop (validator route) | `e428f17fd0b211f502955b11177687d544b68277`; pddl-pyvalidator 0.1.5; validator server file equal to the filed re-grade's |
+| harness commit | **open**: `main` at the merge of PR #151 (the flag `--with-tools-cell`). Recorded here before the smoke; the cluster checkout must be at that commit |
+| cluster tools repo | to be read on the cluster before the smoke and before the full run (must be `5e4f9c0`) |
+| submit command, job ids, dates, GPU class and memory | filled in at the smoke and the full run |
+
+sha256 of the frozen files. Any later edit to one of them is a declared deviation in
+section 11, followed by a new freeze.
+
+| file | sha256 |
+|---|---|
+| `pddl_eval/__init__.py` | `0164c8d1cca872a3be65dd2461d627b95cdae8dc4b23ef4a6c6871b632c1e3db` |
+| `pddl_eval/chat.py` | `f195e0889bc0003c6faf2050bbdec28d525ace5cc9ecacf7c1be3a2b28426907` |
+| `pddl_eval/control_prompts.py` | `9e6380e08fb9704db5edac82efe216ff4ec518abcaf1d94874e266c0e06adff4` |
+| `pddl_eval/domains.py` | `6f2a7f98c7327b535fa3d489f31555969b94fc03b735fb2735f2c96527aa7a94` |
+| `pddl_eval/prompts.py` | `f12c19e9026bea463cdb5cf0b1e9ece96104e419a1bf51f9f1b0bf5dddd32e92` |
+| `pddl_eval/resume.py` | `f4abc5d4843204f42e7099f7eedfcc4ff3e3763d7b2848db4dfae0a154ba72c9` |
+| `pddl_eval/runner.py` | `95213c61e343447d76f16be7bb1dcb0cfa3798d0febf14a440a352a11bd6f1cb` |
+| `pddl_eval/schemas.py` | `335b62a6d2907eace6694f899e1d54f87764e85e8deb6c65aaba7c20b45528ef` |
+| `pddl_eval/scoring.py` | `13444404ed07f5fe06216248b742d8d286da7caad631ccab6b374837ed237299` |
+| `pddl_eval/summary.py` | `6b3475163cee2b35f7ce816d00b1886b6c788b1d2caa6c083ff0b518e4eebb36` |
+| `run_experiment.py` | `38f0b5d4fb1dba014efbfadaa101444f8a1b183d12fd92ed6a45d92e4addad29` |
+| `tools/__init__.py` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `tools/_run_manifest.py` | `08db2b20be699c818e47e15e589639d4294a40be1a6707b5a1e8c5acf2152c45` |
+| `tools/delivered_rerun/__init__.py` | `1450beb6fe7ba5d573676ca1825a4cba39b4d73cb82159d903e436e6e8675917` |
+| `tools/delivered_rerun/analysis.py` | `ec915da3da9eda78870e7cc26cb5bcf0d145cfb21dd7d7f846c2ec00a530de8b` |
+| `tools/delivered_rerun/constants.py` | `879daf12ce176a71f7d7c2137b73c21a7844ff562dde9b07da4d67b60bc9a1b9` |
+| `tools/delivered_rerun/e4.py` | `2ad776ee4b648971d0459c613db85d34326d8c3c6ec330ee75f5c71893a2c25b` |
+| `tools/delivered_rerun/grade.py` | `1588646c021ce23126d11b716bad9c24f794e72894b0e73f261dc206b32b617e` |
+| `tools/delivered_rerun/readout.py` | `ffddae5576d396d1bd69e2baee8958892a91f96856f9fae035c0be3bc5c78590` |
+| `tools/delivered_rerun/run.py` | `8410090db908cfb01622cbfd4d7f97204b82139c434d03e92da03fbd5e68f940` |
+| `tools/delivered_rerun/schema.py` | `5e33d6bd16ebcdf6b7298002d5929d07b7601f32b586c93933a176688e9aa66e` |
+| `tools/delivered_rerun/stats.py` | `f37950779694741c106b0a8d20e6d4afe9d10573a658edd7e3efdd8c726d87a0` |
+| `tools/delivered_rerun/tripwires.py` | `f53193a5f2b40ec9bae3cbe64df4b44691f2dca54cb494eb60fb79d640145ae4` |
+| `tools/e2e_regrade.py` | `45dcf74a23b5d2b1d79028fd1733a9ba7884ba7f62f84c7ffa4febd100c4b11a` |
+| `tools/gt_cache_gate.py` | `1181781e674f212c7d62c4fcdb6d50eb7ee9e650887d8e2bd95937609d8f3897` |
+| `tools/reanalysis/bc_common.py` | `f9c2c8032dc5df8a6deda3ac1e8193b4d343c2cdde6f2e213c6e2c22440dcb67` |
+| `tools/reanalysis/control_prompt_fix.py` | `ce2369c83d0c0d3b46aaf46fa28b8fc05430a40585a44da79281326af101bc53` |
+| `tools/reanalysis/gen_common.py` | `97a28322bfcc2990b5564c59a968d28af874142a50536ec53995a3c21458bcd4` |
+| `tools/reanalysis/iss027_common.py` | `33e0b4a34c11fb71456efb05228e4b86b15b691353e538910725f2199d4af4b5` |
+| `tools/reanalysis/matched_run.py` | `e493caa4f6dfc02431082ebeedb752452bfdebfb84737fe7ee0371430d076054` |
+| `tools/reanalysis/rq1_control_metrics.py` | `21a946331ff0a76ecbd85e253b0083e5d428e5214c89ad4e40276e2cdb3440f7` |
+| `tools/reanalysis/rq1_figures.py` | `a4a51eaf3695b0f0ef4e5717efee5e59155d61f3ddb6c5373dc672f6df125817` |
+| `tools/reanalysis/rq1_layout_regrade.py` | `557c603618017946d0109cb01b9de6868f4db5a5fcf4c04a50c68fb6ebf3cd79` |
+| `tools/reanalysis/rq1_metrics.py` | `b2fc5edcbed5095dba4865e7deaacc81a946626f661b668b895bfd0e98e175fe` |
+| `tools/reanalysis/rq1_tex.py` | `85ecd0b9e51468f27ecf12594eda9b110015569966ac90982cae7385c3c52264` |
+| `tools/reanalysis/rq23_metrics.py` | `b9b2d6c9773c12bf7d8fde02e264c7027df14339e528873e5a75649a125f4123` |
+| `tools/reanalysis/rq3_context_pilot.py` | `af92e8dc190c1c92ac6023fa1e3a31024b28ad1ddc917d74ab66ca54fef2b549` |
+| `development/reference/matched_run_traceability.md` (outside the package hash) | `0b17cfe1eb6361a049a6bb731b929df231182940094fd99325d2790437818ce4` |
+| `tests/test_matched_run.py` (outside the package hash) | `ffddfac7ddb5d0a1cf8cb250d9889167a3e568d186af99c433b15d3af67b69e6` |
+| `tests/fixtures/matched_run/build_fixture.py` (outside the package hash) | `43dea783e57b3546ddf2a992de5e332d3807b258186493643e234b5a5edb41cd` |
 
 Input files outside the package hash. The analysis checks their sha256 and halts on any
 other:
