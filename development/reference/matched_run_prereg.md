@@ -414,7 +414,7 @@ started with the package hash below.
 | gate 4, synthetic fixture | `tests/test_matched_run.py`, 586 checks with literal expected values |
 | gate 5, independent review | a second agent that did not write the code, 2026-11-25, two passes: no code path giving a wrong number; 7 should-fix items and the notes of the first pass fixed and verified in the second; one wording point of the second pass fixed in this document (smoke item 3). Five planted cases recomputed by hand by the reviewer |
 | tools repo `pddl-copilot` on the laptop (validator route) | `e428f17fd0b211f502955b11177687d544b68277`; pddl-pyvalidator 0.1.5; validator server file equal to the filed re-grade's |
-| harness commit | **open**: `main` at the merge of PR #151 (the flag `--with-tools-cell`). Recorded here before the smoke; the cluster checkout must be at that commit |
+| harness commit | `main` at `3044981bf5bfb1d624a55533e4e4765bac493dbf` (merge of PR #151, the flag `--with-tools-cell`; Omer merged it on 2026-11-25). The cluster checkout must be at this commit for the smoke and the full run |
 | cluster tools repo | to be read on the cluster before the smoke and before the full run (must be `5e4f9c0`) |
 | submit command, job ids, dates, GPU class and memory | filled in at the smoke and the full run |
 
@@ -493,7 +493,7 @@ filled by the rows of Part A (`--dry-run-existing`). No row of this run existed.
 - The dry run was repeated after the review edits, with the same three results.
 
 Planned submit command (the flag `--with-tools-cell` is on branch
-`harness/matched-run-cells`, commit `2522786`, not merged; a local dry run gives one
+`harness/matched-run-cells`, commit `2522786`, merged as `3044981`; a local dry run gives one
 array of six tasks, `rtx_6000:1`, `--mem=48G`):
 
 ```
