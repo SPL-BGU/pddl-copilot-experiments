@@ -1,5 +1,5 @@
 """Shared loader for the 2026-10 breakdown + cost re-analysis (weaknesses
-C11 / C12 / C16 / C21; findings in development/reference/reanalysis_breakdowns_cost.md).
+C11 / C12 / C16 / C21; findings in development/reanalysis_breakdowns_cost.md).
 
 Named `bc_*` to stay separate from the statistics re-analysis that shares this
 directory (`common.py`, weakness C9). Nothing here imports from, or writes to,
