@@ -2317,7 +2317,7 @@ the block:
 | Qwen3.6-35B | simulate | tools, steered | 21 | format_parse_fail 21 |
 <!-- END GENERATED: RQ1-LAYOUT-REGRADE -->
 
-## Corrected-prompt control — the no-tools arm on solve and simulate under three system texts (added 2026-11-24; registered, `reference/control_prompt_fix_prereg.md`; NOT in tex)
+## Corrected-prompt control — the no-tools arm on solve and simulate under three system texts (added 2026-11-24; registered, `reference/control_prompt_fix_prereg.md`; in tex on branch `paper/control-baseline`: abstract, Introduction, RQ1 "A control with a corrected system message" and Table rq1-control, Discussion, Limitations, Conclusion, Technical Appendix Tables control-cells and control-contrasts; not merged)
 
 Provenance: `tools/reanalysis/control_prompt_fix.py` at package hash `825dab63…`, on
 `results/control-promptfix/` (job 24445482, 2026-11-23 to 2026-11-24). Readout:

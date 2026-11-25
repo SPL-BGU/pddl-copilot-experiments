@@ -471,3 +471,20 @@
 - **Decided (Omer, 2026-11-25): RQ1 on solve gives all three figures** (tools minus
   cell B, second reading: +49.3 [+36.0, +63.0], +38.3 [+23.7, +53.7], +9.3 [+0.0,
   +19.7]) and says the third is not shown. Not "two of three". No paper edit yet.
+- **Paper edit drafted (2026-11-25, branch `paper/control-baseline`, PR for Omer's read;
+  Omer: "Yes, start it").** Headline sentences (abstract, Introduction, Discussion,
+  Conclusion): 21 to 29% is named as the registered grade; the open models reach 43 to
+  69% in the control; tools ahead by 49, 38 and 9 points, the last with an interval that
+  reaches zero. RQ1: one paragraph and Table rq1-control (cell B beside the plain tool
+  arm, second reading), with the sentence on when the reading was adopted, the Gemma
+  JSON slip, and the cross-run caveat. Limitations: "unmeasured" replaced by the
+  measured statement and what was not rerun. Appendix: the control's record, the cells
+  table, the contrasts table, the two new system messages.
+- **Session's choice, for Omer to confirm:** the Claude unaided rates are not set beside
+  the control's rates (different request on solve, one wording, 100 trials); one
+  sentence says so.
+- **Open (Omer):** whether the detailed RQ1 solve and simulate tables, the plan-length
+  table and the two by-length figures are rebuilt with cell B as the no-tools rows and
+  Part C moved to the appendix, as the reporting rule's point 3 reads. The draft keeps
+  them on Part C as the registered record and adds the control beside them.
+

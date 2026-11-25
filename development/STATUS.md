@@ -177,7 +177,18 @@ Where the control stands, in its order of work:
    2026-11-24): Gemma-26B on simulate keeps cell B (27.3)**, the registered rule, with
    the JSON slip stated in one sentence. **Decided (Omer, 2026-11-25): RQ1 gives all three
    solve figures** with their intervals and says the 35B's gap is not shown. Both
-   reporting choices are settled; the paper edit itself has not been started.
+   reporting choices are settled.
+7. **Paper edit: drafted on branch `paper/control-baseline`, in a PR for Omer's read
+   (2026-11-25), not merged, not on Overleaf.** Overleaf was pulled first (no change).
+   What changed: the abstract, the Introduction, the Discussion and the Conclusion now
+   give 21 to 29% as the registered grade and 43 to 69% for the open models in the
+   control, with the three solve gaps; RQ1 has a new paragraph and Table rq1-control;
+   the Limitations sentence "unmeasured" is replaced; the appendix has the control's
+   record, two tables and the two new system messages. **Not done, Omer's call:** the
+   detailed RQ1 tables and the two by-length figures still show the rerun's unaided
+   arm (Part C) as their no-tools rows. The reporting rule says Part C goes to the
+   appendix; rebuilding those tables and figures on cell B needs new generator code
+   and is a larger change.
 
 **Known before the smoke:** `status.sh` lists the cells A and B under "unknown" (it
 knows only the standard cell names, as with the `jsonbound` cells); `sync.sh` brings
