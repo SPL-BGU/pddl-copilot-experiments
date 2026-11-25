@@ -641,3 +641,6 @@
   had recommended Sonnet 5 for the matching setting and said what the choice costs
   before he chose. Neither model accepts a temperature setting. The run is not designed
   or registered yet.
+- **Correction to the entry above:** `CLAUDE.md` was edited afterwards by the main
+  session, in the same PR (#153), on Omer's approval of the clean-up list: venue, who
+  writes what, and the lead data.
