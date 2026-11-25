@@ -686,6 +686,26 @@ def audit_matched(root: Path, folders: dict, serve_logs: Path | None,
 
 
 # ------------------------------------------------------------------ smoke check
+def window_full(r: S.Row) -> bool:
+    """Section 7 item 3: the final turn of a trial was refused or clipped for a full
+    context window. The two rules of the rerun's category REFUSED_OR_CLIPPED_FINAL
+    (`tools/delivered_rerun/e4.py`, `classify`): the row's `no_room` (a turn was never
+    generated because the prompt filled the window), or a final turn that ran out of a
+    clipped allowance (`tokens.ctx_clip_last_turn_max_tokens` set and `done_reason`
+    "length"). `classify` itself takes only tool-verified rows that are graded wrong, so
+    its two conditions are written out here on the typed row."""
+    return r.no_room or (r.tokens.ctx_clip_last_turn_max_tokens is not None
+                         and r.done_reason == "length")
+
+
+def nonempty_enough(folder: str, rows) -> bool:
+    """Section 7 item 3. N cell: at least 95% of the stored answers are non-empty. Tools
+    cell: the same among the trials whose final turn was not `window_full`."""
+    base = [r for r in rows if not (folder == "T" and window_full(r))]
+    nonempty = sum(bool(strip_leaked_channel_prefix(r.response).strip()) for r in base)
+    return nonempty >= SMOKE_NONEMPTY * len(base)
+
+
 def smoke_check(root: Path, serve_logs: Path | None, version_note: str | None,
                 repo_note: str | None, out=print) -> int:
     """Section 7, the smoke: the seven checks and nothing else. Prints no success rate,
@@ -712,10 +732,11 @@ def smoke_check(root: Path, serve_logs: Path | None, version_note: str | None,
                 fails[2].append(f"{spec.name}: exception or infrastructure-failure rows")
             if f.torn_lines:
                 fails[2].append(f"{spec.name}: a torn line the loader cannot read")
-            nonempty = sum(bool(strip_leaked_channel_prefix(r.response).strip()) for r in f.rows)
-            if nonempty < SMOKE_NONEMPTY * len(f.rows):
+            if not nonempty_enough(fo, f.rows):
                 fails[3].append(f"{spec.name}: fewer than {100 * SMOKE_NONEMPTY:.0f}% of the "
-                                f"stored answers are non-empty")
+                                f"stored answers are non-empty"
+                                + (" among the trials whose final turn was not refused or "
+                                   "clipped for a full window" if fo == "T" else ""))
             loaded[(m, fo)] = f
     for m in MODEL_ORDER:
         users = {}
@@ -761,16 +782,17 @@ def smoke_check(root: Path, serve_logs: Path | None, version_note: str | None,
                 f"{SMOKE.tools_folder} in each tools folder)",
              2: "the frozen loader reads every row; no exception or infrastructure-failure "
                 "row; no row cut by storage; no half-written line",
-             3: f"in every cell at least {100 * SMOKE_NONEMPTY:.0f}% of the stored answers "
-                f"are non-empty",
+             3: f"in every N cell at least {100 * SMOKE_NONEMPTY:.0f}% of the stored answers "
+                f"are non-empty; in every tools cell the same among the trials whose final "
+                f"turn was not refused or clipped for a full context window",
              4: "audit log: in the N cells the registered sha256 and text, swapped; in the "
                 "tools cells one system text per task, the with-tools text of Part A, not "
                 "swapped; the cell's model; at least one line and one different user text "
                 "per row of each task",
              5: "the N and tools cells of a model hold the same problems; every user message "
                 "of the N cell is also sent in the tools cell",
-             6: "every request of a tools cell carried tools and no request of an N cell "
-                "did; client_settings.json names the cell's condition",
+             6: "every request of a tools cell is logged with tools present, and no request "
+                "of an N cell is; client_settings.json names the cell's condition",
              7: f"the serve log of the last job that wrote each cell (the job its "
                 f"client_settings.json names) shows vLLM {VLLM_VERSION} and no other version"}
     out(f"Smoke check (prereg section 7): {root}, run tag {SMOKE_TAG}, "
@@ -1104,12 +1126,13 @@ def rq2_cells(arms: dict, track: dict) -> list[dict]:
 
 
 def rq3_cells(arms: dict, frozen: dict, trials: dict, gt_cache: dict) -> list[dict]:
-    """Section 6 rule 3, tool right and final answer wrong, as `rq23_metrics.rq3_rerun`
-    defines it: among the trials whose stored harness grade is right (the tool returned
-    the right result), the share whose delivered final answer is wrong under the frozen
-    delivered grade, with the categories of the frozen `analysis.e4_cell`. (`rq3_rerun`
-    itself loops over the rerun's five tasks and checks the rerun's readout, so it cannot
-    be called on this run.) The count under the registered grade is given beside it."""
+    """Section 6 rule 3, tool right and final answer wrong: among the trials whose stored
+    harness grade is right (the tool returned the right result, the definition of
+    `rq23_metrics.rq3_rerun`), the share whose final answer is wrong under this run's
+    registered grade. Beside it the frozen-grade version, which is that function's own
+    measure, with the categories of the frozen `analysis.e4_cell`. (`rq3_rerun` itself
+    loops over the rerun's five tasks and checks the rerun's readout, so it cannot be
+    called on this run.)"""
     out = []
     for m in MODEL_ORDER:
         rows = list(arms[m]["P"]) + list(arms[m]["S"])
@@ -1119,17 +1142,18 @@ def rq3_cells(arms: dict, frozen: dict, trials: dict, gt_cache: dict) -> list[di
                 g = A.e4_cell(rows, grades, gt_cache, m, task, arm_name)
                 tv = [r for r in rows if r.task == task and r.arm == arm_name
                       and r.success is True]
-                lost = [grades[(r.cell, r.trial_key)].ok is False for r in tv]
-                _check((len(tv), sum(lost)) == (g.n_tool_correct, g.n_gap),
+                doms = [r.domain for r in tv]
+                lost_frozen = [grades[(r.cell, r.trial_key)].ok is False for r in tv]
+                _check((len(tv), sum(lost_frozen)) == (g.n_tool_correct, g.n_gap),
                        f"tool right, answer wrong {m}/{task}/{arm}: counts equal e4_cell")
+                lost = [trials[(m, arm, task)][r.trial_key].registered is False for r in tv]
                 out.append({
                     "model": m, "task": task, "arm": arm,
                     "n_trials": sum(r.task == task and r.arm == arm_name for r in rows),
-                    "n_tool_right": g.n_tool_correct, "n_lost": g.n_gap,
-                    "n_lost_registered": sum(
-                        not trials[(m, arm, task)][r.trial_key].registered for r in tv),
-                    "lost": R1.boot(lost, [r.domain for r in tv]),
-                    "why": {k: v for k, v in g.categories.items() if v}})
+                    "n_tool_right": len(tv), "n_lost": sum(lost),
+                    "lost": R1.boot(lost, doms),
+                    "n_lost_frozen": g.n_gap, "lost_frozen": R1.boot(lost_frozen, doms),
+                    "why_frozen": {k: v for k, v in g.categories.items() if v}})
     return out
 
 
@@ -1300,9 +1324,11 @@ def analyse(design: Design, arms: dict, er: Earlier, verdict: M.Verdicts, mode: 
             if n_unread > limit:
                 fired[f"T5:{m}:{t}"] = (f"arm N of {m}, {t}: {n_unread} unread final answers "
                                         f"of {design.per_task_arm} (more than {limit:g})")
-        if not any(x.invoked for a in ("P", "S") for t in TASKS
-                   for x in trials[(m, a, t)].values()):
-            fired[f"T4:{m}"] = f"the tools cell of {m}: no trial called a tool"
+        for arm in ("P", "S"):
+            for t in TASKS:
+                if not any(x.invoked for x in trials[(m, arm, t)].values()):
+                    fired[f"T4:{m}:{arm}:{t}"] = (f"tools arm {arm} of {m}, {t}: no trial "
+                                                  f"called a tool")
     unaudited = {i: v for i, v in fired.items() if i not in audit_notes}
     if unaudited and halt_on_tripwires:
         raise Halt("readout tripwire(s) fired (section 8); audit before any readout "
@@ -1344,7 +1370,7 @@ def secondary_tables(trials: dict) -> list[dict]:
             "layout": dict(sorted(Counter(x.layout for x in vals).items())),
             "at_output_cap": sum(x.at_cap for x in vals),
             "empty_window_full": sum(x.no_room for x in vals),
-            "mean_answer_tokens": sum(x.completion for x in vals) / len(vals),
+            "mean_output_tokens": sum(x.completion for x in vals) / len(vals),
             "exception_rows": sum(x.is_exception for x in vals),
             "read": sum(x.read for x in vals),
             "failure_reasons": dict(sorted(Counter(
@@ -1448,18 +1474,18 @@ def render(res: dict) -> str:
     L += ["#### Matched run: secondary, descriptive (section 8)", "",
           f"Right answers by wording under the registered grade; the layout of the answer; "
           f"answers that stopped at the output cap; answers left empty because the prompt and "
-          f"the tool output filled the window; mean answer tokens (in a tools arm, the sum "
-          f"over the turns of the tool loop); the rerun's failure reason of each trial that "
+          f"the tool output filled the window; mean output tokens (in a tools arm, summed "
+          f"over the turns of a trial; the rows hold no per-turn count); the rerun's failure reason of each trial that "
           f"is wrong under the registered grade. {common}.", "",
           md_table(["model", "task", "arm", "right by wording", "layout",
-                    "stopped at the output cap", "empty, window full", "mean answer tokens",
+                    "stopped at the output cap", "empty, window full", "mean output tokens",
                     "exception rows", "unread final answers", "trials with a tool call",
                     "frozen reason of each wrong trial"],
                    [[model_name(s["model"]), s["task"], s["arm"],
                      "; ".join(f"v{v} {d['registered']}/{s['per_wording_n'][v]}"
                                for v, d in s["by_wording"].items()),
                      "; ".join(f"{k} {v}" for k, v in s["layout"].items()), s["at_output_cap"],
-                     s["empty_window_full"], f"{s['mean_answer_tokens']:.0f}",
+                     s["empty_window_full"], f"{s['mean_output_tokens']:.0f}",
                      s["exception_rows"], s["unread_final_answers"], s["called_a_tool"],
                      "; ".join(f"{k} {v}" for k, v in s["failure_reasons"].items()) or "–"]
                     for s in res["secondary"]]), ""]
@@ -1474,14 +1500,15 @@ def render(res: dict) -> str:
                     for c in res["tool_choice"]]), ""]
     L += ["#### Matched run: tool right and final answer wrong (section 6 rule 3, supplement)",
           "",
-          f"Among the trials whose tool returned the right result, the trials whose delivered "
-          f"final answer is wrong under the rerun's frozen grade (the definition of "
-          f"`rq23_metrics.py`), and the same count under the registered grade. {common}.", "",
-          md_table(["model", "task", "arm", "trials", "tool right", "answer wrong (frozen grade)",
-                    "share [95% interval]", "answer wrong (registered grade)", "why"],
+          f"Among the trials whose tool returned the right result, the trials whose final "
+          f"answer is wrong under the registered grade. Beside it the same under the rerun's "
+          f"frozen grade (the measure of `rq23_metrics.py`) with its categories. {common}.", "",
+          md_table(["model", "task", "arm", "trials", "tool right",
+                    "answer wrong (registered grade)", "share [95% interval]",
+                    "answer wrong (frozen grade)", "why (frozen grade)"],
                    [[model_name(c["model"]), c["task"], c["arm"], c["n_trials"],
-                     c["n_tool_right"], c["n_lost"], R1.cell(c["lost"]), c["n_lost_registered"],
-                     "; ".join(f"{k} {v}" for k, v in c["why"].items()) or "–"]
+                     c["n_tool_right"], c["n_lost"], R1.cell(c["lost"]), c["n_lost_frozen"],
+                     "; ".join(f"{k} {v}" for k, v in c["why_frozen"].items()) or "–"]
                     for c in res["tool_right_answer_wrong"]]), ""]
     b = res["breakdowns"]
     L += ["#### Matched run: solved by reference plan length (section 6 rule 4, descriptive)",

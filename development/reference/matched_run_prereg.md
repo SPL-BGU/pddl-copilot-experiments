@@ -61,6 +61,14 @@ So each model has two cell folders, and the run has six.
 of the control's registration). The registered and reference-removed texts are not run
 again.
 
+The with-tools system text of arms P and S is fixed by its sha256 (utf-8) as well:
+
+- solve: `9b179ca12c2cd2220b46c5478bc637f6dd47356a2f81a4795d3541ecdf6dbb2c`
+- simulate: `ebf8e7fe9d55ab56b9d2d4ba02be4f2b7770fe1b9fdd4d77bba790a68a0d0ac6`
+
+Both are derived from `pddl_eval/prompts.py` (the text Part A sent). They are the same
+for plain and steered wordings: the steering sentence is in the user message.
+
 Known in advance from the control: under this message Gemma-26B writes its simulate
 answer as one JSON object and breaks the brackets in about one answer in six (52 of 300).
 This is behaviour of the model under the stated format and is reported as it comes. No
@@ -102,6 +110,20 @@ How each setting is assured follows the control (its section 2.3): the analysis 
 what the synced files hold; what leaves no trace in a cell's files is read from the
 submit output and the job logs and recorded in sections 9 and 10.
 
+These settings leave no trace in a cell's files. Each is recorded by hand in sections 9
+and 10, from the submit output and the job logs:
+
+- the commit of the cluster's tools repo. It is read on the cluster before the smoke and
+  before the full run, and recorded in section 10 and in section 9. The analysis refuses
+  to run without a note that says how it was read;
+- four requests at a time;
+- the GPU class and the memory;
+- the `guided_json` field of the no-tools request, and that no arm has a decoder
+  constraint;
+- the harness commit;
+- that the six cells are one array job;
+- that every job completed.
+
 ### 2.4 One job, one window
 
 All six cells are submitted in **one array job**, so that the three arms of a model run
@@ -135,7 +157,10 @@ arms. A trial is right when the final answer, as the model wrote it, is right:
 - **Validator and capitals [A9].** pddl-pyvalidator **0.1.5**, the release of every
   earlier readout, in process, through the route of the control. Release 0.1.5 rejects
   a valid plan that writes a declared name with a capital letter. So the plan is sent
-  to the validator in lower case, in every arm. The analysis halts on any other
+  to the validator in lower case, in every arm. Every plan is lower-cased, not only a
+  plan in which a capital is seen. The analysis counts the trials where this differs
+  from the control's case-folded column (which lowers a plan only when it holds a
+  capital). The analysis halts on any other
   release, on a verdict that is not a plain true or false, and when the route does not
   return the stored verdict for the rerun's plans (the control's check).
 
@@ -191,7 +216,8 @@ seed 20261002. Rates carry the same interval.
 every contrast the analysis reports an exact sign-flip p-value over the 20 domains,
 Holm-adjusted across the six contrasts of the same name. A difference whose interval
 excludes 0 and whose adjusted p-value is 0.05 or more carries the words "(not after
-Holm)". The number of contrasts (18, and 18 continuity checks) is stated with every
+Holm)". This applies to K1 to K3 as well, with a family of six per name. The number of
+contrasts (18, and 18 continuity checks) is stated with every
 table.
 
 ---
@@ -203,7 +229,8 @@ Per model and task. No reading pools models or tasks.
 **Q1. Do the tools help on this task? (M1, and M2 beside it.)** The label of M1 is the
 answer the paper gives for "tools offered". The label of M2 is given beside it for
 "tools offered and named". Where the two differ, both are stated, and M3 says what
-naming the tool added.
+naming the tool added. Two labels differ when they still differ once the words "(not
+after Holm)" are removed.
 
 **Q2. Continuity. (K1 to K3.)** Where a check meets the criterion, the supplement says
 this run reproduces the earlier one for that model, task and arm. Where it does not,
@@ -236,11 +263,13 @@ Fixed here, before any data:
    measures (which tool was called; tool right and final answer wrong) are computed on
    this run's tool rows with the definitions of `tools/reanalysis/rq23_metrics.py` and
    reported in the supplement as a second sample on two tasks. They do not replace the
-   rerun's figures.
+   rerun's figures. In "final answer wrong", right and wrong mean this run's registered
+   grade (section 3). The version under the rerun's frozen grade is printed beside it.
 4. **The breakdowns the draft already shows** (solved by reference plan length; simulate
    by trace length; the lenient simulate score) are computed on this run with the bins
-   and definitions of `tools/reanalysis/rq1_control_metrics.py`, unchanged, and are
-   descriptive.
+   and definitions of `tools/reanalysis/rq1_control_metrics.py`. A trial counts as right
+   under this run's registered grade. They are descriptive. Tables only: the figures and
+   the LaTeX rows of that script are not part of this registration.
 5. **No paper text is part of this registration.** The readout goes to Omer.
 
 ---
@@ -258,17 +287,30 @@ Fixed here, before any data:
   1. every job completes and every cell folder holds its rows;
   2. the frozen loader reads every row; no exception or infrastructure-failure row; no
      row cut by storage; no half-written line;
-  3. in every cell, at least 95% of the stored answers are non-empty;
-  4. the system text sent: in the N cells the audit log gives the registered sha256 for
-     every trial; in the tools cells the same audit log (one line per request, so several
-     per trial) gives one system text per task, the with-tools text of Part A, marked
-     not swapped and with tools, for every trial;
-  5. the N and tools cells of a model hold the same problems; the user messages of v11
-     to v13 are the same in N and in the tools cell;
-  6. every tools cell offered the tools (the tool list is recorded and non-empty), and
-     no N cell did;
+  3. in every N cell at least 95% of the stored answers are non-empty; in every tools
+     cell at least 95% of the answers of trials whose final turn was not refused or
+     clipped for a full context window are non-empty. A final turn is refused or clipped
+     by the two rules of the rerun's category "refused or clipped final request"
+     (`REFUSED_OR_CLIPPED_FINAL` in `tools/delivered_rerun/e4.py`): the row's `no_room`
+     is set, or its last turn ran with a clipped allowance
+     (`tokens.ctx_clip_last_turn_max_tokens`) and stopped at it (`done_reason`
+     "length"). In Part A the smoke subset has 26 to 30% empty answers in a tools cell,
+     nearly all of them such rows on simulate, so a plain 95% rule would fail on every
+     tools cell;
+  4. the system text sent. The audit log has one line per request and no trial key, so
+     the check is: every audit line of a cell carries the registered system sha256 of
+     its task (N: the format-stated text, marked swapped; tools: the with-tools text of
+     section 2.1, marked not swapped); and, per task, the log has at least as many lines
+     as the cell has rows and exactly as many different first-user texts as rows (an N
+     cell has three wordings per task, a tools cell six);
+  5. the N and tools cells of a model hold the same problems; the set of user-text
+     sha256 of v11 to v13 is the same in the N cell and in the tools cell (every user
+     text of the N cell is also in the tools cell, and the tools cell holds as many
+     other texts as the N cell has texts: the steered wordings);
+  6. every request of a tools cell is logged with tools present, and no request of an N
+     cell is;
   7. the serve log shows vLLM 0.20.2 and no other version; the cluster's tools repo is
-     at `5e4f9c0`.
+     at `5e4f9c0` (read on the cluster and recorded by hand, section 2.3).
   The check prints these items and no success rate, no failure-reason count, no tool-call
   count and no answer text.
 - **The same checks are preconditions of the analysis** on the full run, together with
@@ -295,15 +337,19 @@ Fixed here, before any data:
 
 Per model, task and arm, with counts: right answers by wording; the layout of the
 answer (the control's categories); answers that stopped at the output cap and answers
-left empty because the prompt and tool output filled the window; mean answer tokens;
-the rerun's failure reason for each wrong trial; the frozen-grade and
+left empty because the prompt and tool output filled the window; mean output tokens (in
+a tools arm, summed over the turns of a trial; the rows hold no per-turn count); the
+rerun's failure reason for each trial that is wrong under the registered grade; the
+frozen-grade and
 not-lower-cased columns of section 3; the Holm-adjusted p-values; the measures of
 section 6, rules 3 and 4.
 
 **Tripwires that halt the readout until audited:** a count of right answers that is the
-same in all cells of a task; an arm in which the grader reads no answer at all on a
-task; an arm whose rate differs by more than 20 points from its continuity partner
-(K1 to K3); a tools cell in which no trial called a tool; and, **for arm N**, more than
+same in all cells of a task; an arm in which no answer at all is read on a task (no
+trial of the arm on that task has an answer read by the rerun's grader, a plan block, or
+a trace written one object per line); an arm whose rate differs by more than 20 points
+from its continuity partner (K1 to K3); a tools arm (model, task, P or S) in which no
+trial called a tool; and, **for arm N**, more than
 5% unread final answers (the control's definition) for a model and task. One case is
 known in advance and has its own threshold: Gemma-26B on simulate, where the control
 counted 52 of 300 and audited them; there the tripwire fires above 90 of 300.
@@ -315,6 +361,21 @@ counted 52 of 300 and audited them; there the tripwire fires above 90 of 300.
 *Not frozen. To be filled in: harness commit, tools repo commit, analysis commit,
 package hash, the five gates, the dry run on existing data, the submit command, job ids
 and dates, GPU class and memory from the job log, sha256 of the frozen files.*
+
+Candidate package hash before review:
+`8b2ce3528de71ef4322bce1cf9e37f732a903ae35b1fa0bc6a27604d383e89b4`
+(`python -m tools.reanalysis.matched_run --print-package-hash`, 2026-11-25). It is not
+a freeze. Any edit after the review changes it.
+
+Dry run on existing data, 2026-11-25. **Old data. Not results of this run.** The
+analysis was run with arm N filled by the rows of the control's cell B and arms P and S
+filled by the rows of Part A (`--dry-run-existing`). No row of this run existed.
+
+- K1 to K3 are exactly zero in all 54 entries (18 checks under three grades): estimate
+  0, interval [0, 0], 20 domains, 300 pairs, none unpaired.
+- M1 without the lower-casing equals the control's filed C4 under the second reading in
+  all six cases (estimate, interval and p-values).
+- The lower-casing changed no trial in any cell.
 
 Planned submit command (the flag `--with-tools-cell` is on branch
 `harness/matched-run-cells`, commit `2522786`, not merged; a local dry run gives one

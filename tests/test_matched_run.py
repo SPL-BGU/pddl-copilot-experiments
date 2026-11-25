@@ -475,19 +475,23 @@ def test_base(r):
                                                       task="simulate", arm="steered")["counts"],
                {"none": 4, "right_only": 56, "right_plus": 0, "other_only": 0})
     r.check_eq("tool choice: 12 cells", len(res["tool_choice"]), 12)
-    # Section 6 rule 3, tool right and final answer wrong. Gemma solve P: the tool was
-    # right in all 60; the frozen grader misses the 20 capital-letter block plans, the
-    # registered grade reads them. Gemma simulate S: 4 wrong traces after a right tool.
+    # Section 6 rule 3, tool right and final answer wrong. "Wrong" is the registered
+    # grade; the frozen-grade version is beside it. Gemma solve P: the tool was right in
+    # all 60; the registered grade reads the 20 capital-letter block plans (0 wrong), the
+    # frozen grader misses them (20 wrong, 33.3%, the same in every domain). Gemma
+    # simulate S: 4 wrong traces after a right tool under both.
     g = by(res, "tool_right_answer_wrong", model=GM, task="solve", arm="P")
     r.check_eq("tool right, answer wrong: Gemma solve P",
-               (g["n_trials"], g["n_tool_right"], g["n_lost"], g["n_lost_registered"], g["why"]),
-               (60, 60, 20, 0, {"WRONG_WRAPPER": 20}))
-    r.check("its share is 33.3 with a point interval", close(g["lost"]["est"], 100 / 3)
-            and close(g["lost"]["lo"], 100 / 3), g["lost"])
+               (g["n_trials"], g["n_tool_right"], g["n_lost"], g["n_lost_frozen"],
+                g["why_frozen"]), (60, 60, 0, 20, {"WRONG_WRAPPER": 20}))
+    r.check("registered share 0, frozen share 33.3 with a point interval",
+            close(g["lost"]["est"], 0.0) and close(g["lost_frozen"]["est"], 100 / 3)
+            and close(g["lost_frozen"]["lo"], 100 / 3), (g["lost"], g["lost_frozen"]))
     g = by(res, "tool_right_answer_wrong", model=GM, task="simulate", arm="S")
     r.check_eq("tool right, answer wrong: Gemma simulate S",
-               (g["n_tool_right"], g["n_lost"], g["n_lost_registered"], g["why"]),
+               (g["n_tool_right"], g["n_lost"], g["n_lost_frozen"], g["why_frozen"]),
                (60, 4, 4, {"WRONG_FACTS": 4}))
+    r.check("its registered share is 4 of 60", close(g["lost"]["est"], 400 / 60), g["lost"])
     g = by(res, "tool_right_answer_wrong", model=Q9, task="simulate", arm="S")
     r.check_eq("no tool call is not 'tool right'", (g["n_tool_right"], g["n_lost"]), (56, 0))
     # Section 6 rule 4. Reference plans: 2 actions in d01..d10 (bin 1-5), 7 in d11..d20
@@ -521,7 +525,8 @@ def test_base(r):
     for title in ("delivered right per arm", "contrasts M1 to M3, registered grade",
                   "registered readings (section 5, Q1)", "continuity checks K1 to K3",
                   "which tool was called", "tool right and final answer wrong",
-                  "solved by reference plan length", "simulate by trace length", "corpus"):
+                  "solved by reference plan length", "simulate by trace length", "corpus",
+                  "mean output tokens", "answer wrong (registered grade)"):
         r.check(f"markdown has: {title}", title in md)
     r.check("markdown states the number of contrasts with the tables",
             md.count("18 contrasts and 18 continuity checks") >= 8)
@@ -931,24 +936,26 @@ def test_tripwires(r):
                 err[-600:])
     finally:
         shutil.rmtree(root.parent)
-    # T4: a tools cell in which no trial called a tool. The answers stay, so no grade and
-    # no other tripwire moves.
+    # T4: a tools arm (model, task, P or S) in which no trial called a tool. The base
+    # fixture has an arm with no call on one wording of three (Qwen3.6-35B solve P, v13),
+    # which does not fire. Here the other two wordings lose their calls too. The answers
+    # stay, so no grade and no other tripwire moves; arm S and simulate keep their calls.
     root = copy_fixture()
     try:
         def no_call(o):
             res = o["result"]
-            res.update(tool_calls=[], success=False, tool_selected=False,
-                       failure_reason="tool_not_selected")
+            if res["task"] == "solve" and res["prompt_variant"] in (11, 12, 13):
+                res.update(tool_calls=[], success=False, tool_selected=False,
+                           failure_reason="tool_not_selected")
             return o
         _all_rows(mdir(root, Q35, "T"), no_call)
         code, err, _, _ = run_fixture(root)
-        r.check("T4 fires for a tools cell with no tool call",
-                code == 2 and "T4:qwen3_6_35b: the tools cell of qwen3_6_35b: no trial called a "
-                "tool" in err and "T4:Qwen3_5_9B" not in err and "T3" not in err, err[-500:])
+        r.check("T4 fires for the one tools arm and task with no tool call",
+                code == 2 and "T4:qwen3_6_35b:P:solve: tools arm P of qwen3_6_35b, solve: no "
+                "trial called a tool" in err and err.count("T4:") == 1 and "T3" not in err,
+                err[-500:])
     finally:
         shutil.rmtree(root.parent)
-    # One call in the whole folder is enough to keep T4 quiet (the base fixture has an
-    # arm and wording with none: Qwen3.6-35B solve v13).
     # T5: a fourth unread final answer in Qwen3.6-35B solve N (4 of 60 > 5%).
     root = copy_fixture()
     try:
@@ -1309,9 +1316,51 @@ def test_smoke(r):
         empty("N", 6)(root)
         code, out = smoke_run(root, ["--serve-logs", str(root / "serve_logs")])
         r.check("smoke: exactly 95% non-empty passes", code == 0, out[-400:])
-        # 240 rows: 228 is 95%; 13 empty answers leave 227.
+        # 240 rows, none with a full window: 228 is 95%; 13 empty answers leave 227.
         case("tools cell: fewer than 95% non-empty answers", empty("T", 13), 3,
-             "fewer than 95% of the stored answers are non-empty")
+             "fewer than 95% of the stored answers are non-empty among the trials whose "
+             "final turn was not refused or clipped for a full window")
+
+        # The same 13 empty answers, and 60 more, as trials whose final turn was refused
+        # because the prompt and the tool output filled the window: they leave the base
+        # (240 - 73 = 167 trials, all non-empty), so the item passes. A plain 95% rule
+        # would fail here (167 of 240 = 70%).
+        def window_full(n, clipped=False):
+            def mut(root):
+                def fn(recs):
+                    for o in recs[:n]:
+                        res = o["result"]
+                        res.update(response="", done_reason="length", truncated=True)
+                        if clipped:
+                            res["tokens"].update(ctx_clipped_turns=1,
+                                                 ctx_clip_last_turn_max_tokens=100,
+                                                 ctx_clip_last_turn_prompt_tokens=16_000)
+                        else:
+                            res["tokens"].update(ctx_no_room_turns=1)
+                    return recs
+                edit_jsonl(sdir(root, GM, "T") / "trials.jsonl", fn)
+            return mut
+        for label, mut in (("refused", window_full(73)), ("clipped", window_full(73, True))):
+            root = base / f"full_{label}"
+            shutil.copytree(base / "clean", root)
+            mut(root)
+            code, out = smoke_run(root, ["--serve-logs", str(root / "serve_logs")])
+            r.check(f"smoke: empty answers of {label} final turns do not count in a tools cell",
+                    code == 0 and "item 3: PASS" in out, out[-500:])
+        # An N cell has no such exemption: the same rows in an N cell are plain empty answers.
+        spec = M.matched_spec(M.SMOKE, GM, "T", BF.SMOKE_TAG)
+        d = BF.make_row(GM, "simulate", "d01", 11, "trace", True)
+        d.update(response="", done_reason="length", truncated=True)
+        d["tokens"].update(ctx_no_room_turns=1)
+        row = S.parse_row({"key": BF.key_of(d), "result": d}, spec, "t")
+        r.check_eq("window_full: a refused turn; the rule per folder",
+                   (M.window_full(row), M.nonempty_enough("T", [row]),
+                    M.nonempty_enough("N", [row])), (True, True, False))
+        d2 = BF.make_row(GM, "simulate", "d01", 11, "trace", True)
+        d2.update(response="", done_reason="stop")
+        r.check_eq("window_full: an empty answer that stopped by itself is not window-full",
+                   M.window_full(S.parse_row({"key": BF.key_of(d2), "result": d2}, spec, "t")),
+                   False)
         case("audit: another system text in a tools cell",
              lambda root: edit_jsonl(sdir(root, Q9, "T") / "system_prompt_audit.jsonl",
                                      _set_line(4, system_sha256="0" * 64)),
