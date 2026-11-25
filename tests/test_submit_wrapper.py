@@ -465,6 +465,98 @@ def test_no_tools_system(r: TestResults) -> None:
                subprocess.run(["bash", "-n", str(SBATCH)]).returncode, 0)
 
 
+def test_with_tools_cell(r: TestResults) -> None:
+    """--with-tools-cell (matched run, 2026-11-25): the no-tools control cell
+    and the ordinary with-tools cell in one array job."""
+    models = ("Qwen3.5:9B", "gemma4:26b-a4b", "qwen3.6:35b")
+    common = ("--no-tools", "--think-modes", "off", "--tasks", "solve simulate",
+              "--no-tools-system", "format-stated", "--run-tag", "matched-run",
+              "--gpu-type", "rtx_6000")
+    rc, err = _dry(*models, *common, "--with-tools-cell", "--time", "20:00:00")
+    r.check_eq("matched-run submit exits 0", rc, 0)
+    r.check_eq(
+        "matched-run --export list",
+        _export(err),
+        "ALL,CELLS_LIST=Qwen3.5:9B|off|no-tools-sysformat"
+        "^Qwen3.5:9B|off|tools_all_minimal"
+        "^gemma4:26b-a4b|off|no-tools-sysformat"
+        "^gemma4:26b-a4b|off|tools_all_minimal"
+        "^qwen3.6:35b|off|no-tools-sysformat"
+        "^qwen3.6:35b|off|tools_all_minimal,"
+        "RUN_TAG=matched-run,TASKS=solve^simulate,SYSTEM_AUDIT=1",
+    )
+    r.check("matched-run submit is a 6-cell array", "--array=0-5" in err, err)
+    r.check("explicit --time applies to the one sbatch (all cells)",
+            err.count("--time=20:00:00") == 2 and "--time=12:00:00" not in err
+            and "--time=72:00:00" not in err, err)
+    r.check("matched-run submit prints the with-tools line", "with-tools:" in err, err)
+    r.check("gpu and mem", "--gpus=rtx_6000:1" in err and "--mem=48G" in err, err)
+    # no --time: the with-tools default, never the 12h no-tools one
+    rc_t, err_t = _dry(*models, *common, "--with-tools-cell")
+    r.check("no --time -> 72h with-tools budget",
+            rc_t == 0 and "--time=72:00:00" in err_t and "--time=12:00:00" not in err_t,
+            err_t)
+    # flag omitted: the control submission exactly as before the flag existed
+    rc_p, err_p = _dry(*models, *common)
+    r.check_eq(
+        "flag omitted --export list", (rc_p, _export(err_p)),
+        (0, "ALL,CELLS_LIST=Qwen3.5:9B|off|no-tools-sysformat"
+            "^gemma4:26b-a4b|off|no-tools-sysformat"
+            "^qwen3.6:35b|off|no-tools-sysformat,"
+            "RUN_TAG=matched-run,TASKS=solve^simulate,SYSTEM_AUDIT=1"))
+    r.check("flag omitted: 3 cells, 12h, no with-tools line",
+            "--array=0-2" in err_p and "--time=12:00:00" in err_p
+            and "with-tools:" not in err_p, err_p)
+    # the with-tools cell token is the one a --tools-only submit emits
+    rc_o, err_o = _dry("Qwen3.5:9B", "--tools-only", "--think-modes", "off",
+                       "--tasks", "solve simulate", "--run-tag", "matched-run")
+    r.check_eq("--tools-only emits the same cond token", (rc_o, _export(err_o)),
+               (0, "ALL,CELLS_LIST=Qwen3.5:9B|off|tools_all_minimal,"
+                   "RUN_TAG=matched-run,TASKS=solve^simulate"))
+    # refused without --no-tools-system, and the control's checks still hold
+    w = "--with-tools-cell"
+    for args, why in [
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t", w),
+         "without --no-tools-system"),
+        (("Qwen3.5:9B", "--tools-only", "--tasks", "solve", "--run-tag", "t", w),
+         "with --tools-only alone"),
+        (("Qwen3.5:9B", w), "bare"),
+        (("--all", w), "with --all"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve",
+          "--no-tools-system", "format-stated", w), "without --run-tag"),
+        (("Qwen3.5:9B", "--no-tools", "--run-tag", "t",
+          "--no-tools-system", "format-stated", w), "without --tasks"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve validate_plan",
+          "--run-tag", "t", "--no-tools-system", "format-stated", w),
+         "tasks outside solve/simulate"),
+        (("Qwen3.5:9B", "--tasks", "solve", "--run-tag", "t",
+          "--no-tools-system", "format-stated", w), "without --no-tools"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          "--include-no-tools-steered", "--no-tools-system", "format-stated", w),
+         "with --include-no-tools-steered"),
+        (("Qwen3.5:9B", "--no-tools", "--tasks", "solve", "--run-tag", "t",
+          "--prompt-style", "neutral", "--no-tools-system", "format-stated", w),
+         "with --prompt-style neutral"),
+    ]:
+        rc_bad, err_bad = _dry(*args)
+        r.check(f"--with-tools-cell rejected: {why}",
+                rc_bad != 0 and "Error:" in err_bad and "DRY:" not in err_bad,
+                f"rc={rc_bad} {err_bad!r}")
+
+    # sbatch: the with-tools branch sets no environment of its own, so the
+    # only COND_ENV entry of a with-tools cell is the audit log path.
+    text = SBATCH.read_text()
+    r.check("sbatch with-tools branch sets no COND_ENV",
+            re.search(r"\n\s*tools_all_minimal\)\s*\n\s*COND_ARGS=\(--conditions tools "
+                      r"--tool-filter all --prompt-style minimal\) ;;", text) is not None)
+    r.check("COND_ENV is reset per cell before the cond case",
+            text.index("            COND_ENV=()\n")
+            < text.index("                no-tools-sysformat)\n"))
+    r.check("client_settings of a with-tools cell does not say 'registered'",
+            'case "$COND" in tools_*) _SYS_MODE="not-applicable-with-tools" ;; esac'
+            in text)
+
+
 def main() -> None:
     r = TestResults("test_submit_wrapper")
     test_defaults_unchanged(r)
@@ -475,6 +567,7 @@ def main() -> None:
     test_max_model_len(r)
     test_reasoning_effort(r)
     test_no_tools_system(r)
+    test_with_tools_cell(r)
     r.report_and_exit()
 
 

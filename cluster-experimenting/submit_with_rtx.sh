@@ -94,6 +94,16 @@
 #   structured_outputs, --include-no-tools-steered, --decoupled-budget and
 #   --continue-partial. Flag omitted: nothing changes.
 #
+# --with-tools-cell: only with --no-tools-system. Adds the ordinary with-tools
+#   cell (tools_all_minimal, v11-v16) after the no-tools cells of each model,
+#   so the no-tools and with-tools arms of a matched run are collected in one
+#   array job under one run tag. The cell runs exactly as a
+#   `--tools-only --tasks ... --run-tag ...` cell does (no PDDL_NO_TOOLS_SYSTEM;
+#   same request), and, like every cell of a --no-tools-system job, it writes
+#   OUT_DIR/system_prompt_audit.jsonl and client_settings.json. Without --time
+#   the per-cell budget is the with-tools default (72h), not the no-tools 12h.
+#   Flag omitted: nothing changes.
+#
 # --include-no-tools-steered: enables the sweep-5 control arm by emitting
 #   v14/v15/v16 in no-tools cells (the harness otherwise skips them — see
 #   runner.py:_emit_job emit-skip gate). Pairs with the `nt-ster` column
@@ -213,6 +223,7 @@ TASKS_OVERRIDE=""
 TASKS_GIVEN=0
 NO_TOOLS_SYSTEM_LIST=""
 NO_TOOLS_SYSTEM_GIVEN=0
+WITH_TOOLS_CELL=0
 MODELS=()
 
 while [[ $# -gt 0 ]]; do
@@ -250,6 +261,7 @@ while [[ $# -gt 0 ]]; do
         --store-reasoning) STORE_REASONING_FLAG=1; shift ;;
         --tasks) TASKS_GIVEN=1; TASKS_OVERRIDE="${2-}"; shift; [ $# -gt 0 ] && shift ;;
         --no-tools-system) NO_TOOLS_SYSTEM_GIVEN=1; NO_TOOLS_SYSTEM_LIST="${2-}"; shift; [ $# -gt 0 ] && shift ;;
+        --with-tools-cell) WITH_TOOLS_CELL=1; shift ;;
         -h|--help)
             sed -n '1,100p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)
@@ -593,6 +605,14 @@ else
     unset SYSTEM_AUDIT
 fi
 
+# --with-tools-cell: see the header. It only extends a --no-tools-system job,
+# so every check above (run tag, tasks within solve/simulate, exclusive flags)
+# already holds when it is accepted.
+if [ "$WITH_TOOLS_CELL" -eq 1 ] && [ "$NO_TOOLS_SYSTEM_GIVEN" -ne 1 ]; then
+    echo "Error: --with-tools-cell requires --no-tools-system (it adds the with-tools cell to a control-prompt job; for a with-tools-only run use --tools-only)" >&2
+    exit 1
+fi
+
 # --smoke / --smoke-shuffle: pin the default model pack (5 models in
 # PDDL_DEFAULT_MODELS) and full think × cond matrix; run_experiment.py
 # auto-overrides --num-variants and skips the inner THINK × CONDITIONS
@@ -731,6 +751,10 @@ fi
 # --no-tools (validated above), so EFF_COND is exactly ("no-tools") here.
 if [ "${#SYSPROMPT_COND[@]}" -gt 0 ]; then
     EFF_COND=("${SYSPROMPT_COND[@]}")
+    # --with-tools-cell: the ordinary with-tools cell, after the no-tools ones.
+    if [ "$WITH_TOOLS_CELL" -eq 1 ]; then
+        EFF_COND+=("tools_all_minimal")
+    fi
 fi
 
 # Build cells (model × think × cond). The legacy no-tools/think=on gate was
@@ -774,7 +798,7 @@ else
     # generous fallbacks just prevent silent TIMEOUTs on ad-hoc
     # invocations of heavy models without --time. Production sweeps via
     # submit_full_sweep.sh always pass --time explicitly.
-    if [ "$NO_TOOLS" -eq 1 ]; then
+    if [ "$NO_TOOLS" -eq 1 ] && [ "$WITH_TOOLS_CELL" -ne 1 ]; then
         TIME_ARG=(--time=12:00:00)
     else
         TIME_ARG=(--time=72:00:00)
@@ -998,6 +1022,9 @@ if [ -n "$TASKS_EXPORT" ]; then
 fi
 if [ "${#SYSPROMPT_COND[@]}" -gt 0 ]; then
     echo "  system:      ${SYSPROMPT_COND[*]} (no-tools system text per cell; separate OUT_DIR; audit log OUT_DIR/system_prompt_audit.jsonl)" >&2
+fi
+if [ "$WITH_TOOLS_CELL" -eq 1 ]; then
+    echo "  with-tools:  tools_all_minimal cell added per model (--with-tools-cell; runs as a --tools-only cell, v11-v16; audited too)" >&2
 fi
 if [ "$DECOUPLED_BUDGET" -eq 1 ]; then
     echo "  decoupled:   ON (think=${NUM_PREDICT_THINK:-default} / answer=${NUM_PREDICT_ANSWER:-per-task}; reasoning-parser=${REASONING_PARSER_OVERRIDE:-per-model})" >&2

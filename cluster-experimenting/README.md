@@ -176,6 +176,30 @@ Pass either `rtx_pro_6000` or `rtx_6000`; everything else errors.
 Conflicts with `--think-modes` (any value other than `off|default`) are
 rejected.
 
+### `--with-tools-cell` (matched run: no-tools control + with-tools in one job)
+
+`--no-tools-system "<list>"` (see the header of `submit_with_rtx.sh`) emits
+only no-tools cells. Adding `--with-tools-cell` appends the ordinary
+`tools_all_minimal` cell after the no-tools cells of each model, so both arms
+run in one array job under one run tag:
+
+```bash
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+    --no-tools --think-modes off --tasks "solve simulate" \
+    --no-tools-system "format-stated" --with-tools-cell \
+    --run-tag matched-run --gpu-type rtx_6000 --time HH:MM:SS
+# 6 cells: per model, off|no-tools-sysformat and off|tools_all_minimal
+```
+
+The with-tools cell runs exactly as a `--tools-only` cell with the same
+`--tasks` and `--run-tag` (v11-v16, minimal style, no
+`PDDL_NO_TOOLS_SYSTEM`). Like every cell of a `--no-tools-system` job it also
+writes `OUT_DIR/system_prompt_audit.jsonl` (one line per request, so several
+per trial in a tool loop) and `OUT_DIR/client_settings.json`, and it refuses
+a folder that holds trials but no audit log. The flag is refused without
+`--no-tools-system`. Without `--time` the per-cell budget is the with-tools
+default (72h); an explicit `--time` applies to all cells.
+
 ### Resuming a TIMEOUT'd cell
 
 Each cell writes `results/slurm_vllm_<model>_<think>_<cond>/trials.jsonl`
