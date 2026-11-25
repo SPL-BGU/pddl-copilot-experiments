@@ -1,6 +1,11 @@
-"""Regenerate the paper's Supporting-Analyses figures as vector PDFs.
+"""Regenerate the figures of the supplement material, and the funnel figure the
+PlanBench section of the paper uses, as vector PDFs.
 
-What each corpus supports (paper, table "What each corpus stored"):
+The text these figures belong to moved from main.tex to supplement_source.tex on
+2026-11-25 (all but funnel.pdf, which main.tex still includes).
+
+What each corpus supports (table "What each corpus stored", now in
+supplement_source.tex):
 
   * Open-weight main sweep (results/sweep5v2-live). The final answer was stored
     only up to 500 characters, so the sweep gives NO delivered rate for its tool
@@ -17,8 +22,11 @@ What each corpus supports (paper, table "What each corpus stored"):
     censoring bound <low, high>: solid bar to `low`, hatched extension to
     `high`, never a point.
 
-The delivered comparison for the open-weight models comes from the rerun and has
-its own figures (tools/reanalysis/rq1_figures.py -> rq1_*.pdf).
+The delivered comparison for the open-weight models has its own figures, drawn
+by tools/reanalysis: rq1_figures.py -> rq1_validate_plan_errors.pdf (and the
+rerun's by-length figures rq1_*_by_length.pdf, kept for the supplement), and
+rq1_control_metrics.py -> rq1c_*_by_length.pdf, the two by-length figures
+main.tex includes.
 
 Outputs (vector PDF, into this directory):
   funnel.pdf                  top row: frontier and PlanBench cascades

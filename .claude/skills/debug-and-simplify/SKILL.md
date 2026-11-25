@@ -33,7 +33,7 @@ Systematically check each layer, stopping when the root cause is found:
 3. Do individual MCP tool calls succeed? Test with inline PDDL content
 4. Are tool responses in the expected format?
    - Standalone calls default to verbose: `validate_domain`, `validate_problem` and `validate_plan` return `{valid, status, report, details}` (there is no `validate_pddl_syntax` tool any more); `get_state_transition` returns `{valid, report, steps, trajectory, details}`.
-   - Through `MCPPlanner` the bridge projects validator + `get_state_transition` responses (see EXPERIMENTS_FLOW.md §8 for the contract).
+   - Through `MCPPlanner` the bridge projects validator + `get_state_transition` responses (see the tool contract in EXPERIMENTS_FLOW.md).
    - If captured `tool_calls[*].result` strings still carry `details`, the bridge isn't stripping `verbose` — check `_PINNED_VERBOSE_FALSE` and the `inputSchema` mutation in `MCPPlanner.connect()`.
 
 **Layer 3 — Experiment execution:**

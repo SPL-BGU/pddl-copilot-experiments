@@ -1,7 +1,7 @@
 """Shared helpers for the transcript re-analysis scripts (q1_/q2_/q3_*.py).
 
 Read-only over results. Nothing here grades a trial for the paper; the scripts
-describe what the stored text shows. See development/reanalysis_transcripts.md.
+describe what the stored text shows. See development/reference/reanalysis_transcripts.md.
 (Named transcripts_common so it cannot collide with the other re-analysis
 scripts' common.py in this directory.)
 """

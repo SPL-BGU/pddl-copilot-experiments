@@ -9,7 +9,7 @@ Two groups:
   * the context-overflow retry — the 400 body's prompt count is only a lower
     bound, so the old clip never converged and 1,987 sweep5v2 tool-arm trials
     had their final turn recorded as an empty "length" answer (2026-10-02,
-    development/reanalysis_transcripts.md §3.3).
+    development/reference/reanalysis_transcripts.md §3.3).
 
 Runs under pytest and as a plain script (tests/verify.sh).
 """

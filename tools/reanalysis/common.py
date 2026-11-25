@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Shared loading + clustered-inference helpers for the 2026-10 statistics
-re-analysis (development/reanalysis_statistics.md, weakness C9).
+re-analysis (development/reference/reanalysis_statistics.md, weakness C9).
 
 Read-only over results. Self-contained on purpose: it imports nothing from the
 hash-pinned prereg scripts (tools/ntster_*.py) so it can never perturb them, but

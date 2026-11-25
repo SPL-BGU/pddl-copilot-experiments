@@ -5,7 +5,8 @@ Run this on the laptop, from the main checkout, where the 2026-09-12 frontier
 files live. It only READS results/. It writes zips under checkpoints/ (or under
 --out), and only when you pass --write.
 
-What it builds (decision 16 of development/handoff_20261109.md):
+What it builds (decided 2026-11-09; that handoff doc is deleted, see
+development/MOVES.md):
 
   checkpoints/e2e-overlay/haiku-frontier_overlay.zip    the Haiku overlay, 09-12 files
   checkpoints/e2e-overlay/sonnet-frontier_overlay.zip   the Sonnet overlay, 09-12 files

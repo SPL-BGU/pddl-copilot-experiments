@@ -1,11 +1,11 @@
-"""Live deck config for in-flight sweep-5v2 (CANONICAL corpus, v11-v16 active prompts).
+"""Deck config for sweep-5v2, the May main sweep on the public domains (v11-v16 prompts).
 
-Consumed by .claude/skills/analyzer/scripts/build_deck.py. Source root is
-the synthetic `results/sweep5v2-live/` produced by:
-
-    python3 .claude/skills/analyzer/scripts/filter_variants.py \\
-        --src sweep56-cluster-<YYYYMMDD> --dst sweep5v2-live \\
-        --model-glob 'slurm_vllm_*_sweep5v2' --arm both --min-out 100
+The sweep closed in June 2026. Consumed by
+.claude/skills/analyzer/scripts/build_deck.py. Source root is
+`results/sweep5v2-live/`, the frozen corpus (restore it from the zips in this
+folder in a fresh checkout). It was first built with filter_variants.py from a
+dated cluster sync. Do not rebuild it from a sync folder: a sync folder is a
+mirror and gives wrong numbers.
 
 sweep-5v2 = the CANONICAL (regular, non-anonymised) half of the contamination
 probe. no-tools cells are REUSED from sweep-5 (each complete at 4560 trials,
@@ -14,11 +14,8 @@ pddl-copilot MCP server (validator arg-error fixes, main 5e4f9c0). Pair this
 deck against the sweep-6 (anon corpus, domains-anon/) deck — the canonical-vs-anon
 delta on the matched cells is the contamination signal.
 
-The min-out is intentionally permissive (100, not the canonical 4560/9120) so
-partial cells appear in the deck while the sweep is still running. Cells below
-100 v11-v16 trials are omitted; bars will be missing for those.
-
-Rebuild after a fresh sync by re-running the filter + this build.
+The deck shows run-time grades. Per-cell numbers are never copied from a deck
+into the paper (development/NUMBERS.md).
 """
 
 RESULTS = "results/sweep5v2-live"

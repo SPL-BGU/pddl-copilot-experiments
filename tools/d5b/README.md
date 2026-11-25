@@ -1,7 +1,9 @@
 # D5b ground truth: IPC 2023 size ladder, Fast Downward, VAL
 
-Plan row D5b (`development/weakness_action_plan.md`), handoff 2026-11-09 item 9.
-No model runs. This folder builds the planner ground truth that must exist
+Ground truth for a future-work item of the paper: running the models on larger
+problems. It was step D5b of the earlier plan, kept as a record at
+`development/reference/weakness_action_plan.md`. The figures are in
+`development/NUMBERS.md`, "D5b ground truth". No model runs, and none is planned. This folder builds the planner ground truth that must exist
 before any model sees these problems: fresh problems from the IPC 2023
 learning-track generators, a syntax check of every domain and problem, Fast
 Downward at 120 s and 1800 s with the pddl-solver plugin's three strategies,
@@ -11,8 +13,7 @@ pddl-pyvalidator is compared with it).
 ## What is committed and what is not
 
 The source repo (`github.com/ipc2023-learning/benchmarks`) has no licence file,
-so its files are not committed here (provisional on Omer's answer to handoff §6
-decision 4). Committed:
+so its files are not committed here. Committed:
 
 - `ladder.py`: the pinned commit (`19d6a8ad4b354328154a2cc1f1a95f7c09fa9db6`),
   the tier parameters, the seeds and the generator command builder.
@@ -21,7 +22,10 @@ decision 4). Committed:
 - the scripts and `requirements.txt` (the scratch venv).
 
 Not committed (gitignored `external/`): the clone, the generated PDDL, the
-plans, and the run records `external/d5b-work/runs/fd_{120,1800}s.jsonl`.
+plans, and the run records `runs/fd_{120,1800}s.jsonl`. The scripts default to the
+work folder `external/d5b-work`. On Omer's laptop the work folder (problems,
+plans, runs) is at `results/d5b-ground-truth/`, also gitignored; pass
+`--work results/d5b-ground-truth` there.
 
 ## The ladder
 

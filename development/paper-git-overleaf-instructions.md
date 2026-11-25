@@ -1,6 +1,6 @@
 # Paper ↔ Git ↔ Overleaf — working instructions
 
-How to work on **code and the journal paper concurrently from this one repo** and keep
+How to work on **code and the paper concurrently from this one repo** and keep
 the **Overleaf** project in sync without losing anyone's edits. Tooling:
 `development/sync_overleaf.sh` (a clone-bridge) + `development/make_overleaf_zip.sh`.
 
@@ -125,4 +125,14 @@ only the real project files, so the Overleaf file tree stays clean.
 array in `sync_overleaf.sh`). Repo-only docs and `authorkit27/` are intentionally
 excluded. `paper/` compiles standalone (`cd paper && latexmk -pdf main`).
 `make_overleaf_zip.sh` is only for *creating* a fresh Overleaf project; ongoing sync is
-the bridge. No live sync on Overleaf's free tier (git is premium-only).
+the bridge.
+
+Two things to know about what does not sync:
+
+- **The bridge copies files and never deletes one.** A figure removed from
+  `paper/figures/` stays on Overleaf until someone removes it there by hand (in the
+  bridge clone or on the website). A later `pull` copies it back into `paper/figures/`.
+- **`paper/supplement_source.tex` does not reach Overleaf.** It is not in the `FILES`
+  array and not in the path filter of `.github/workflows/overleaf-sync.yml`. It is raw
+  material for the supplement and lives in the repo only.
+ No live sync on Overleaf's free tier (git is premium-only).
