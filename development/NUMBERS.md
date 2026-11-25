@@ -2317,7 +2317,7 @@ the block:
 | Qwen3.6-35B | simulate | tools, steered | 21 | format_parse_fail 21 |
 <!-- END GENERATED: RQ1-LAYOUT-REGRADE -->
 
-## Corrected-prompt control — the no-tools arm on solve and simulate under three system texts (added 2026-11-24; registered, `reference/control_prompt_fix_prereg.md`; in tex on branch `paper/control-baseline`: abstract, Introduction, RQ1 "The unaided baseline on solve and simulate", "The tools against the corrected baseline" and Table rq1-control, Discussion, Limitations, Conclusion, Technical Appendix Tables control-cells and control-contrasts; not merged)
+## Corrected-prompt control — the no-tools arm on solve and simulate under three system texts (added 2026-11-24; registered, `reference/control_prompt_fix_prereg.md`; in tex (PR #150, merged 2026-11-25, on Overleaf): abstract, Introduction, RQ1 "The unaided baseline on solve and simulate", "The tools against the corrected baseline" and Table rq1-control, Discussion, Limitations, Conclusion, Technical Appendix Tables control-cells and control-contrasts)
 
 Provenance: `tools/reanalysis/control_prompt_fix.py` at package hash `825dab63…`, on
 `results/control-promptfix/` (job 24445482, 2026-11-23 to 2026-11-24). Readout:
@@ -2615,7 +2615,7 @@ Rows per cell folder as read by the frozen loader. n = 300 trials per model, tas
 | slurm_vllm_qwen3_6_35b_off_no-tools-sysformat_control-promptfix | 600 | 0 | 0 | 0 |
 <!-- END GENERATED: CONTROL-PROMPT-FIX -->
 
-## RQ1 solve and simulate on the control baseline — tables rq1-solve, rq1-simulate, rq1-planlen and the two by-length figures (added 2026-11-25; descriptive; in tex on branch `paper/control-baseline`)
+## RQ1 solve and simulate on the control baseline — tables rq1-solve, rq1-simulate, rq1-planlen and the two by-length figures (added 2026-11-25; descriptive; in tex, PR #150, merged 2026-11-25)
 
 Provenance: `tools/reanalysis/rq1_control_metrics.py` (not part of a frozen package; it
 imports the frozen functions and checks its counts against

@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-24 (the corrected-prompt control: harness merged, cell B reworded, registration written, its analysis frozen at `825dab63…`, the smoke passed, the full run complete and analysed on 2026-11-24, readout written, waiting for Omer's read; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-24 (the corrected-prompt control: harness merged, cell B reworded, registration written, its analysis frozen at `825dab63…`, the smoke passed, the full run complete and analysed on 2026-11-24, readout written, readout written, paper edit merged and on Overleaf on 2026-11-25 (PRs #149, #150); before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -178,8 +178,9 @@ Where the control stands, in its order of work:
    the JSON slip stated in one sentence. **Decided (Omer, 2026-11-25): RQ1 gives all three
    solve figures** with their intervals and says the 35B's gap is not shown. Both
    reporting choices are settled.
-7. **Paper edit: drafted on branch `paper/control-baseline`, in a PR for Omer's read
-   (2026-11-25), not merged, not on Overleaf.** Overleaf was pulled first (no change).
+7. **Paper edit: merged and on Overleaf (2026-11-25, PRs #149 and #150, merge commit
+   `314239c`; Omer: "Merge ill refine later").** The Overleaf sync Action ran green. Omer
+   will refine the wording later; the text has not had his line-by-line read. Overleaf was pulled first (no change).
    What changed: the abstract, the Introduction, the Discussion and the Conclusion now
    give 21 to 29% as the registered grade and 43 to 69% for the open models in the
    control, with the three solve gaps; RQ1 has a new paragraph and Table rq1-control;

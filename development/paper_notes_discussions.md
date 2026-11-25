@@ -521,4 +521,9 @@
   without naming the second reading; the Introduction and RQ1 say when that reading was
   adopted. This is a known, accepted departure from the letter of the registration's
   section 6, rule 5 ("where it first quotes the figure").
+- **Merged (Omer, 2026-11-25: "Merge ill refine later").** PR #149 (the control's
+  registration, analysis, readout) and PR #150 (the paper on the corrected baseline) are
+  on `main` at `314239c`; the Overleaf sync ran green. Omer will refine the wording
+  later. The paper text added here has passed an independent check of its numbers but
+  not his line-by-line read.
 
