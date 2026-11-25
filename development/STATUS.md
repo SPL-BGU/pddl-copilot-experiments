@@ -28,7 +28,7 @@ his advisors. The paper is also Omer's thesis.
 | RQ2, RQ3 | the October rerun, tool arms (`results/delivered-rerun`) | final |
 | RQ1 on validate_domain, validate_problem, validate_plan | the October rerun, tool arms against its own no-tools arm | final |
 | RQ1 on solve and simulate | **the matched run** (below) | smoke submitted |
-| Frontier rows | a new Claude run (below) | models being confirmed |
+| Frontier rows | a new Claude run (below) | Haiku 5.5 and Sonnet 5.5; not designed yet |
 | PlanBench | its own registered study | final, left as it is |
 
 Supplement material, in full, with one pointer sentence in the body: the May sweep
@@ -58,7 +58,7 @@ run approved earlier that day.
 
 A new Claude run is decided in outline (`unified_run_design.md`): the same design as the
 open models, the plain wordings, two arms, no steered arm, the Batch API. PlanBench is
-left as it is. **The exact models are being confirmed with Omer.** The old runs (Haiku
+left as it is. **Models (Omer, 2026-11-25): Haiku 5.5 with thinking off and Sonnet 5.5, which cannot run with thinking off and is labelled so.** The run is not designed or registered yet. The old runs (Haiku
 4.5, Sonnet 4.6) go to the supplement.
 
 ## The paper file

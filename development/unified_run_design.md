@@ -59,7 +59,7 @@ Options:
 - **Option 4: add an Opus** (5 or 5.5). The strongest model, at 2 to 2.5 times the
   Sonnet price; Opus 5.5 cannot run with thinking off.
 
-> ANSWER: **being confirmed with Omer (2026-11-25).** He leans towards the newer 5 and 5.5 models. Nothing is run before the models are fixed.
+> ANSWER: **Haiku 5.5 and Sonnet 5.5 (Omer, 2026-11-25: "sonet 5.5 and haiku 5.5. no reason for sonnet 5").** Haiku 5.5 runs with thinking off, like the open models. Sonnet 5.5 cannot run with thinking off; it runs at its closest setting and the paper labels it as a model that thinks. The session had recommended Sonnet 5 for the matching setting and raised the difference before he chose.
 
 ### B2. Design of the frontier run
 

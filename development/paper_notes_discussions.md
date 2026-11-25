@@ -635,3 +635,9 @@
   Reproducibility Checklist (after the call is checked); backup zips for the control and
   the pilots; worktrees and merged branches. `CLAUDE.md` was not edited by the agent
   that did this work; its venue and data-rule lines are still the ones of 2026-11-22.
+- **Decided (Omer, 2026-11-25): the Claude models are Haiku 5.5 and Sonnet 5.5** ("no
+  reason for sonnet 5"). Haiku 5.5 runs with thinking off. Sonnet 5.5 cannot; it runs at
+  its closest setting and is labelled in the paper as a model that thinks. The session
+  had recommended Sonnet 5 for the matching setting and said what the choice costs
+  before he chose. Neither model accepts a temperature setting. The run is not designed
+  or registered yet.
