@@ -613,6 +613,11 @@ watcher read it at every check: five of six stopped starts show vLLM 0.20.2 and 
 sixth has no version line (its server did not finish starting). For the smoke only the
 last start's log exists. Every start used the same `~/vllm.sif`, as each job log says.
 
+**Section 6, rule 5, in the paper (Omer, 2026-11-25).** The rule asks the paper to say,
+where it first quotes the figure, that the second reading was added after the rerun's
+data were seen. The abstract quotes the figure first and does not say it; the
+Introduction and RQ1 do. Omer chose to keep the abstract as it is.
+
 **A tripwire fired and was audited (section 8), which is the registered path and not a
 deviation:** cell B of Gemma-26B on simulate, 52 unread final answers of 300. The audit
 is in `control_prompt_fix_t4_audit/` and in the readout, section 6.

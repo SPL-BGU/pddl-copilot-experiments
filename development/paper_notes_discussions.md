@@ -517,4 +517,8 @@
 - **Left for Omer:** the abstract quotes 43 to 69% without saying it is the second
   reading; the registration asks for that where the figure is first quoted. The
   Introduction now says it. Adding it to the abstract is his call.
+- **Decided (Omer, 2026-11-25): the abstract stays as it is.** It quotes 43 to 69%
+  without naming the second reading; the Introduction and RQ1 say when that reading was
+  adopted. This is a known, accepted departure from the letter of the registration's
+  section 6, rule 5 ("where it first quotes the figure").
 
