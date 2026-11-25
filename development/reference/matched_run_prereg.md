@@ -509,7 +509,29 @@ of the two long tasks, so 24 hours is asked for.
 
 ## 10. Smoke record
 
-*Empty.*
+**Submitted 2026-11-25 22:17 IST** (Omer's go-ahead for the smoke, the same day), from
+`~/pddl-copilot-experiments` on the login node, after a dry run of the same command:
+
+```
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+  --no-tools --think-modes off --tasks "solve simulate" \
+  --no-tools-system "format-stated" --with-tools-cell \
+  --run-tag matched-run-smoke --partial 1 --gpu-type rtx_6000 --time 24:00:00
+```
+
+Job **24499771**, array tasks 0 to 5, one `rtx_6000` per task, `--mem=48G`,
+`TimeLimit=1-00:00:00` read back from the queue (the full-run profile; only `--partial 1`
+and the run tag differ from the full run's command). Array index to cell: 0 Qwen3.5-9B
+N, 1 Qwen3.5-9B tools, 2 Gemma-26B N, 3 Gemma-26B tools, 4 Qwen3.6-35B N, 5 Qwen3.6-35B
+tools.
+
+Read on the cluster before submitting: experiments checkout on `main` at
+`3044981bf5bfb1d624a55533e4e4765bac493dbf` (fast-forwarded from `9109179`); tools repo
+`pddl-copilot` at `5e4f9c0bfbea0fdfe802edb08eaa2aa9d2095d38`, clean, with
+pddl-pyvalidator 0.1.5, left as it was (the preflight script was not run, because it
+pulls that repo and upgrades its packages); no folder of this run tag existed.
+
+*Result: to be filled in.*
 
 ## 11. Deviations
 
