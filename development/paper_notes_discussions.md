@@ -487,4 +487,21 @@
   table and the two by-length figures are rebuilt with cell B as the no-tools rows and
   Part C moved to the appendix, as the reporting rule's point 3 reads. The draft keeps
   them on Part C as the registered record and adds the control beside them.
+- **Detailed RQ1 tables and figures rebuilt on the control baseline (Omer, 2026-11-25:
+  "Yes, rebuild them").** New generator `tools/reanalysis/rq1_control_metrics.py`: the
+  no-tools rows of the three open models are cell B, every open-model row is under the
+  second reading, Claude rows are as filed. Its counts are checked against the frozen
+  analysis output before anything is written. The rerun's rows under the registered
+  grade and the post hoc re-grade table are now in the Technical Appendix.
+- **What the rebuilt tables say.** Solve: unaided 42.7 / 54.0 / 69.0; with tools 78.3 to
+  95.3. On plans over 40 actions the unaided open models solve 22.2 to 38.9% and the
+  plain tool arm 36.1 to 58.3%. Simulate (94 problems): exact traces unaided 13.5 /
+  29.1 / 35.5 against 21.6 / 21.3 / 31.2 with the plain tool arm; every interval
+  overlaps. The lenient score of the unaided arm is far above the strict one for
+  Gemma-26B and Qwen3.6-35B (54.0 and 54.6 against 35.1 and 40.4): many unaided
+  answers are right as far as they go and are cut off.
+- **Wording changes that follow, for Omer's read:** "with tools 77 to 95%" is now 78 to
+  95% (second reading); "the tools make one model worse on simulate" is now "the tools
+  show no gain on simulate for any open model"; the abstract gives the open models'
+  43 to 69% and the frontier models' 22 to 29% in two separate sentences.
 

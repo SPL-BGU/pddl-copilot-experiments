@@ -184,11 +184,15 @@ Where the control stands, in its order of work:
    give 21 to 29% as the registered grade and 43 to 69% for the open models in the
    control, with the three solve gaps; RQ1 has a new paragraph and Table rq1-control;
    the Limitations sentence "unmeasured" is replaced; the appendix has the control's
-   record, two tables and the two new system messages. **Not done, Omer's call:** the
-   detailed RQ1 tables and the two by-length figures still show the rerun's unaided
-   arm (Part C) as their no-tools rows. The reporting rule says Part C goes to the
-   appendix; rebuilding those tables and figures on cell B needs new generator code
-   and is a larger change.
+   record, two tables and the two new system messages. **Rebuilt on Omer's word (2026-11-25):** Tables rq1-solve,
+   rq1-simulate and rq1-planlen and the two by-length figures now use the
+   format-stated cell as the no-tools rows of the open models, with every open-model
+   row under the second reading (`tools/reanalysis/rq1_control_metrics.py`; Claude
+   rows unchanged). The rerun's rows under the registered grade and Table rq1-regrade
+   moved to the Technical Appendix as the registered record. Headline sentences now
+   read: with tools 78 to 95%; open models unaided 43 to 69%; frontier models 22 to
+   29%. Sentences that said the tools make Gemma worse on simulate now say the tools
+   bring no gain there (under the quoted reading the difference is -7.3 [-17.0, +2.7]).
 
 **Known before the smoke:** `status.sh` lists the cells A and B under "unknown" (it
 knows only the standard cell names, as with the `jsonbound` cells); `sync.sh` brings
