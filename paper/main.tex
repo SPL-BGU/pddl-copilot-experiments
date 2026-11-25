@@ -89,9 +89,11 @@ a model on planning-related tasks, whether the model chooses the right tool, and
 whether it uses what the tool returns. We evaluate five open-weight and two frontier models on five
 PDDL tasks, with and without a suite of seven planning tools, and a deterministic
 oracle grades the final answer each model delivers. The tools help on most measures.
-With them the models deliver a valid plan in $77$--$95\%$ of trials, against
-$21$--$29\%$ without ($22$--$48\%$ when a plan given in a code block is also read),
-and verdict errors on plans fall for four of the five models measured. The benefit shrinks as problems grow, and state traces degrade with length
+With them the models deliver a valid plan in $78$--$95\%$ of trials. Unaided, the
+three open-weight models solve $43$--$69\%$ of the problems under a corrected system
+message, and the tools are ahead by $49$, $38$ and $9$ points, the last with an
+interval that reaches zero. The two frontier models solve $22$--$29\%$ unaided and
+$95\%$ with the tools. Verdict errors on plans fall for four of the five models measured. The benefit shrinks as problems grow, and state traces degrade with length
 in every model. Models usually choose the right tool, but one calls the plan validator
 in only $20\%$ of trials until a single sentence tells it to, and on plan generation
 models often add calls they do not need. The tool's output is often lost when the
@@ -152,14 +154,19 @@ trials with answers stored in full supports every comparison that needs the comp
 answer. We organize the study around three research questions.
 
 \emph{RQ1: do PDDL tools help an LLM do planning-related tasks?} On most measures they
-do, and less as problems grow. Without tools the models solve $21$--$29\%$ of the
-planning problems, and with the tools they deliver a valid plan in $77$--$95\%$ of the
-trials. A second reading of the unaided answers, which also takes a plan given in a
-code block, puts the first range at $22$--$48\%$ and leaves the tools ahead for every
-model. Verdict errors on plans fall with the tools for both Qwen models and both
+do, and less as problems grow. With the tools the models deliver a valid plan in $78$--$95\%$ of
+the trials. Without them the three open-weight models solve $43$--$69\%$ of the
+planning problems and the two frontier models $22$--$29\%$. The open-weight baseline
+comes from a control. The unaided system message of the original runs referred to a
+schema that the models never received, so we ran that arm again with a message that
+states the answer format, and we read both arms with a second reading of the answers
+that we adopted after the first run and before the control. Against this baseline the tools are ahead by $49$ and $38$
+points for two models, and for the third the difference is $9$ points with an interval
+that reaches zero. Verdict errors on plans fall with the tools for both Qwen models and both
 Claude models, and stay where they were for the one model that seldom calls the
 validator. State traces are the hard case. Their accuracy falls with the length of the
-trace in every model, and for one model the tools make them worse. A plan delivered
+trace in every model, and on this task the tools show no gain for any open-weight
+model. A plan delivered
 with tools is almost always the planner's plan, so its length is the planner's.
 
 \emph{RQ2: does the LLM choose the right tool?} When a model calls a tool on a
@@ -366,10 +373,11 @@ calling tools was its only way to solve a task, and a tool-arm trial counted as 
 only if the model had called the correct tool and its final answer was right. Calling and
 delivery were therefore folded into one number. The present paper grades $273{,}600$
 open-weight trials over two corpora, with confidence intervals and an anonymized-domain
-control, and adds a pre-registered study. It confirms the main direction. Tools raise the
-rate of correct delivered plans by $51.7$ to $71.0$ points for the three open models of
-the pre-registered study, and frontier models go from $22$--$29\%$ unaided to $95\%$ with
-the planner. Unaided simulation is again
+control, and adds a pre-registered study. It confirms the main direction. Against an unaided
+baseline with a corrected system message, tools raise the rate of correct delivered
+plans by $49.3$ and $38.3$ points for two of the three open models of the pre-registered
+study and by $9.3$ points, with an interval that reaches zero, for the third. Frontier
+models go from $22$--$29\%$ unaided to $95\%$ with the planner. Unaided simulation is again
 close to zero ($0$ of $3{,}000$ answers in the exact format under the shared output
 budget), but with the budget and format relaxed, models from 4B up get $22$ to $40\%$ of
 trajectories right. The paper changes the reading in two places. First, a model may skip a
@@ -379,8 +387,8 @@ asked it to. In the pre-registered study, having the tool available did not lowe
 delivered accuracy ($89.2\%$ against $88.3\%$ unaided; difference $+0.9$ points, 95\% CI
 $[-1.2, 2.9]$). Second, a correct tool result does not always reach the final answer. In
 the same study, on \emph{simulate}, the trajectory returned by the tool left the model no
-room to answer in $42.7$ to $53.0\%$ of tool-arm trials, and Gemma-MoE-26B's delivered
-score with tools fell $15.7$ points below its unaided score (95\% CI $[-24.7, -6.7]$).
+room to answer in $42.7$ to $53.0\%$ of tool-arm trials, and for no open model does the
+tool arm show a gain over the unaided arm on that task.
 
 \section{Methodology}
 The main study crosses five PDDL tasks, five open-weight models, two reasoning
@@ -646,8 +654,8 @@ reasoning parsers are byte-identical between the two releases. Re-running one
 affected cell (Qwen3.5-0.8B, \emph{think}=off, 9{,}120 trials) on 0.20.2
 reproduced its 0.22.0 results within run-to-run noise: pooled $+0.4$\,pp, 95\% CI
 $[-0.9,\,+1.7]$, with no task--arm cell CI-disjoint.}
-The main sweep ran between 24 May and 2 June 2026, and the rerun between 3 and 9 October
-2026. The Claude models were queried on 25 June and 12 July 2026 for the unaided runs and
+The main sweep ran between 24 May and 2 June 2026, the rerun between 3 and 9 October
+2026, and the corrected-prompt control of RQ1 on 23 and 24 November 2026. The Claude models were queried on 25 June and 12 July 2026 for the unaided runs and
 the runs with tools, between 1 and 6 August 2026 for PlanBench, and on 12 September 2026
 for the output-budget probe.
 Decoding is deterministic
@@ -937,7 +945,9 @@ answers that were already graded, and none of them is a registered endpoint. Int
 are 95\% percentile bootstrap intervals that resample whole domains. In the
 open-weight runs the answer format of the no-tools arm was requested in the prompt
 alone, so an unaided failure can be a failure of format as well as of content
-(Limitations). The Claude runs requested the \emph{solve} plan through the provider's
+(Limitations). On \emph{solve} and \emph{simulate} the unaided rows of the open-weight
+models come from a control that ran this arm again under a corrected system message,
+described below. The Claude runs requested the \emph{solve} plan through the provider's
 structured-output parameter (Technical Appendix, Prompts).
 
 \begin{table*}[t]
@@ -1005,6 +1015,38 @@ rates drop to $2.8\%$ and $2.9\%$. At the frontier, Sonnet makes no verdict erro
 the tool in $1{,}000$ trials, and Haiku's false-positive rate falls from $10.8\%$ to
 $0.4\%$.
 
+% Every number in this paragraph is generated: tools/reanalysis/control_prompt_fix.py
+% (development/NUMBERS.md, block "Corrected-prompt control"). Do not edit a number by hand.
+\paragraph{The unaided baseline on \emph{solve} and \emph{simulate}.} In the rerun
+the unaided system message of these two tasks asks for a JSON answer by referring to a
+schema that the model never received (Limitations), while the user message asks for
+parenthesised actions. Most unaided \emph{solve} answers then reason first and give
+the plan as JSON in a code block ($198$ to $260$ of the $300$ answers of a model). The
+registered grader reads a plan as JSON only when the whole answer is the JSON object,
+and otherwise collects every line that has the shape of an action, so for such an
+answer it reads no plan or grades the steps of the reasoning together with the plan.
+We took two steps. First, we defined a second reading of the answers: on \emph{solve}
+the plan in the last code block decides whenever that block holds a plan, and on
+\emph{simulate} a trace written as one JSON object per line also counts. Second, we
+ran the unaided arm again for the three open-weight models on these two tasks, in a
+pre-registered control with three system messages: the registered one, the same
+message without the reference to the schema, and a message that states the answer
+format in plain words and asks for the final answer in a code block (Technical
+Appendix, Prompts). Each cell holds the $300$ trials per task of the rerun, and all
+nine cells ran as the tasks of one job. The registration names the format-stated cell as
+the unaided baseline and the second reading as the reading quoted for both arms. We
+adopted that reading after the answers of the rerun had been seen and before any
+answer of the control existed. The tables and figures of \emph{solve} and
+\emph{simulate} below follow this rule for the open-weight models. The rerun's own
+unaided arm and the registered grade of every cell are the registered record, and the
+Technical Appendix gives them (Tables~\ref{tab:rq1-rerun-solve}
+to~\ref{tab:control-contrasts}). The tool arms were not run again, so every difference
+between a tool arm and this baseline crosses two runs seven weeks apart. The Claude
+runs were not part of the control. On \emph{solve} they received the schema that their
+message refers to, through the provider's structured-output parameter, and their
+unaided rates come from one wording and $100$ trials, so a difference between their
+unaided rates and those of the open-weight models is not a comparison of the models.
+
 \begin{table*}[t]
 \centering
 \footnotesize
@@ -1014,18 +1056,18 @@ $0.4\%$.
 \textbf{Model} & \textbf{Arm} & \textbf{Exact trace (\%)} & \textbf{States, strict (\%)} &
 \textbf{States, lenient (\%)} & \textbf{No trace} & $\boldsymbol{\rho}$ \\
 \midrule
-% rows generated by tools/reanalysis/rq1_tex.py (rq1_simulate.tex)
-Qwen3.5-9B & no-tools & $9.9$ {\scriptsize$[4.2,\,16.7]$} & $18.5$ {\scriptsize$[10.9,\,27.1]$} & $21.7$ {\scriptsize$[14.1,\,30.0]$} & $94$ / $282$ & $-0.52$ \\
- & +tool (plain) & $18.4$ {\scriptsize$[8.9,\,29.1]$} & $24.3$ {\scriptsize$[14.6,\,34.9]$} & $24.7$ {\scriptsize$[14.9,\,35.3]$} & $166$ / $282$ & $-0.55$ \\
- & +tool (steered) & $17.4$ {\scriptsize$[8.9,\,27.4]$} & $22.1$ {\scriptsize$[13.4,\,32.4]$} & $22.4$ {\scriptsize$[13.5,\,32.8]$} & $188$ / $282$ & $-0.58$ \\
+% rows generated by tools/reanalysis/rq1_control_metrics.py (tex/rq1c_simulate.tex)
+Qwen3.5-9B & no-tools & $13.5$ {\scriptsize$[6.3,\,21.7]$} & $16.9$ {\scriptsize$[9.1,\,25.8]$} & $21.2$ {\scriptsize$[13.3,\,30.0]$} & $118$ / $282$ & $-0.29$ \\
+ & +tool (plain) & $21.6$ {\scriptsize$[11.3,\,33.0]$} & $31.6$ {\scriptsize$[20.1,\,44.0]$} & $31.9$ {\scriptsize$[20.2,\,44.4]$} & $131$ / $282$ & $-0.68$ \\
+ & +tool (steered) & $18.1$ {\scriptsize$[9.6,\,28.1]$} & $23.0$ {\scriptsize$[14.2,\,33.3]$} & $23.2$ {\scriptsize$[14.3,\,33.5]$} & $183$ / $282$ & $-0.58$ \\
 \addlinespace
-Gemma-MoE-26B & no-tools & $25.5$ {\scriptsize$[14.9,\,36.5]$} & $32.5$ {\scriptsize$[22.0,\,42.9]$} & $36.9$ {\scriptsize$[25.7,\,48.0]$} & $143$ / $282$ & $-0.26$ \\
- & +tool (plain) & $8.9$ {\scriptsize$[4.6,\,14.2]$} & $11.0$ {\scriptsize$[6.6,\,16.1]$} & $12.2$ {\scriptsize$[7.6,\,17.2]$} & $238$ / $282$ & $-0.34$ \\
- & +tool (steered) & $8.9$ {\scriptsize$[4.6,\,13.7]$} & $11.4$ {\scriptsize$[6.6,\,16.7]$} & $12.6$ {\scriptsize$[7.9,\,17.8]$} & $238$ / $282$ & $-0.38$ \\
+Gemma-MoE-26B & no-tools & $29.1$ {\scriptsize$[16.7,\,42.1]$} & $35.1$ {\scriptsize$[22.3,\,48.8]$} & $54.0$ {\scriptsize$[40.0,\,68.1]$} & $135$ / $282$ & $-0.35$ \\
+ & +tool (plain) & $21.3$ {\scriptsize$[12.5,\,30.9]$} & $26.7$ {\scriptsize$[17.2,\,36.5]$} & $27.0$ {\scriptsize$[17.5,\,37.0]$} & $168$ / $282$ & $-0.54$ \\
+ & +tool (steered) & $19.9$ {\scriptsize$[10.0,\,31.2]$} & $26.2$ {\scriptsize$[15.7,\,37.5]$} & $26.5$ {\scriptsize$[16.0,\,37.7]$} & $170$ / $282$ & $-0.57$ \\
 \addlinespace
-Qwen3.6-35B & no-tools & $18.8$ {\scriptsize$[11.2,\,27.3]$} & $24.9$ {\scriptsize$[17.3,\,33.2]$} & $29.5$ {\scriptsize$[21.7,\,37.8]$} & $102$ / $282$ & $-0.23$ \\
- & +tool (plain) & $30.1$ {\scriptsize$[18.1,\,43.7]$} & $36.7$ {\scriptsize$[24.5,\,50.0]$} & $38.5$ {\scriptsize$[26.3,\,51.4]$} & $152$ / $282$ & $-0.73$ \\
- & +tool (steered) & $27.3$ {\scriptsize$[16.5,\,39.4]$} & $33.0$ {\scriptsize$[21.4,\,45.4]$} & $34.1$ {\scriptsize$[22.8,\,46.3]$} & $168$ / $282$ & $-0.70$ \\
+Qwen3.6-35B & no-tools & $35.5$ {\scriptsize$[22.0,\,50.5]$} & $40.4$ {\scriptsize$[26.6,\,55.3]$} & $54.6$ {\scriptsize$[41.7,\,68.2]$} & $124$ / $282$ & $-0.62$ \\
+ & +tool (plain) & $31.2$ {\scriptsize$[18.9,\,44.8]$} & $39.0$ {\scriptsize$[26.7,\,51.8]$} & $39.5$ {\scriptsize$[27.2,\,52.4]$} & $143$ / $282$ & $-0.72$ \\
+ & +tool (steered) & $34.8$ {\scriptsize$[22.0,\,48.6]$} & $43.2$ {\scriptsize$[29.9,\,56.7]$} & $43.4$ {\scriptsize$[30.1,\,56.8]$} & $135$ / $282$ & $-0.75$ \\
 \addlinespace
 Claude Haiku~4.5 & no-tools & $40.4$ {\scriptsize$[24.2,\,57.8]$}$^{\ddagger26}$ & $46.9$ {\scriptsize$[29.5,\,63.8]$} & $62.2$ {\scriptsize$[46.4,\,77.4]$} & $34$ / $94$ & $-0.48$ \\
  & +tool (plain) & $54.3$ {\scriptsize$[41.1,\,67.7]$}$^{\ddagger10}$ & $60.9$ {\scriptsize$[47.8,\,73.5]$} & $72.4$ {\scriptsize$[60.9,\,83.3]$} & $31$ / $94$ & $-0.65$ \\
@@ -1035,7 +1077,9 @@ Claude Sonnet~4.6 & no-tools & $35.1$ {\scriptsize$[20.2,\,51.1]$}$^{\ddagger15}
 \bottomrule
 \end{tabular}
 \caption{RQ1, \emph{simulate} (delivered final answers, \emph{think}=off, $94$
-problems). \emph{Exact trace}: every state equals the oracle's, which is our grader.
+problems). For the open-weight models the no-tools row is the format-stated cell of the
+control and every row is read by the second reading; the Claude rows are as graded
+(see text). \emph{Exact trace}: every state equals the oracle's.
 \emph{States, strict}: mean share of the oracle's states that the answer
 reproduces at the same position. \emph{Lenient}: the same, also reading the complete
 leading steps of an answer that was cut off mid-trace. \emph{No trace} counts
@@ -1049,10 +1093,10 @@ stored. Brackets are 95\% domain-cluster bootstrap intervals.}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/rq1_simulate_by_length.pdf}
+\includegraphics[width=\textwidth]{figures/rq1c_simulate_by_length.pdf}
 \caption{RQ1, share of states right on \emph{simulate} against the length of the
 trace, strict score (top) and lenient score (bottom); see
-Table~\ref{tab:rq1-simulate} for the definitions. Grey dashed: no-tools. Blue: tools
+Table~\ref{tab:rq1-simulate} for the definitions and the rows. Grey dashed: no-tools. Blue: tools
 offered, plain prompt. Orange: tools offered, steered prompt. Whiskers are 95\%
 domain-cluster bootstrap intervals; bins hold between $10$ and $81$ trials.}
 \label{fig:rq1-simulate}
@@ -1066,22 +1110,34 @@ is the set of true predicates together with the numeric values. Many answers are
 off before the trace ends. They are then unreadable as JSON, and they score zero on
 both measures. A third, lenient score also reads the complete leading steps of such an
 answer. It is more forgiving than our grader, and we report it only beside the strict
-score. The six problems whose prompt plan is not the answer key's plan are left out
+score. For the open-weight models the state scores also read a trace written as one
+object per line, as the second reading does. The six problems whose prompt plan is not the answer key's plan are left out
 here, which leaves $94$.
 
 State accuracy falls with trace length in every model and arm
-(Figure~\ref{fig:rq1-simulate}; $\rho$ between $-0.23$ and $-0.73$ across the thirteen
-cells of Table~\ref{tab:rq1-simulate}). Beyond $40$ actions, ten of the thirteen cells
-contain no exact trace, and the best cell reaches $10\%$. Averaged over lengths, the
-tools raise the share of exact traces for both Qwen models and both Claude models, for
-example from $18.8\%$ to $30.1\%$ for Qwen3.6-35B and from $35.1\%$ to $51.1\%$ for
-Sonnet, with overlapping intervals in each case. For Gemma-MoE-26B the tools lower it,
-from $25.5\%$ to $8.9\%$. The tool arms fail mostly by delivering no readable trace
-($238$ of Gemma's $282$ plain-arm answers), a loss that RQ3 examines. The lenient
-score changes one reading. Sonnet's unaided strict score is $36.7\%$ and its lenient
-score is $77.7\%$, above the $59.8\%$ of its tool arm: most of its unaided failures are
-traces that are right as far as they go and end early. Both Claude figures are lower
-bounds where storage cut the answer.
+(Figure~\ref{fig:rq1-simulate}; $\rho$ between $-0.29$ and $-0.75$ across the thirteen
+cells of Table~\ref{tab:rq1-simulate}). Beyond $40$ actions, eleven of the thirteen
+cells contain no exact trace, and the best cell reaches $10\%$. Averaged over lengths,
+the share of exact traces is higher with the tools for Qwen3.5-9B ($13.5\%$ unaided,
+$21.6\%$ with the plain tool arm) and for both Claude models ($35.1\%$ and $51.1\%$ for
+Sonnet). It is lower with the tools for Gemma-MoE-26B ($29.1\%$ and $21.3\%$) and for
+Qwen3.6-35B ($35.5\%$ and $31.2\%$). The intervals overlap in every one of these five
+comparisons, and over all $300$ trials of a cell the paired difference includes zero
+for each open-weight model (Table~\ref{tab:rq1-control}). Both arms often deliver no
+readable trace: between $118$ and $135$ of the $282$ unaided answers of an open-weight
+model, and between $131$ and $168$ of the answers of its plain tool arm, a loss that
+RQ3 examines. The lenient score changes the reading of the unaided arm. For
+Gemma-MoE-26B and Qwen3.6-35B it is $54.0\%$ and $54.6\%$, against strict scores of
+$35.1\%$ and $40.4\%$, and Sonnet's unaided strict score is $36.7\%$ against a lenient
+score of $77.7\%$: many unaided failures are traces that are right as far as they go
+and end early. Both Claude figures are lower bounds where storage cut the answer. For
+Gemma-MoE-26B the format-stated message changes how the answers fail on this task.
+Asked for a single JSON object, the model wrote one with unbalanced brackets in $47$ of its $300$
+answers, and neither reading accepts such an answer. Under the registered message it
+mostly wrote one object per line and reached $36.3\%$ over the $300$ trials by the
+second reading, against $27.3\%$ with the format stated; the interval of that
+difference includes zero. We keep the format-stated cell as its baseline, as
+registered.
 
 \begin{table*}[t]
 \centering
@@ -1093,18 +1149,18 @@ bounds where storage cut the answer.
 \textbf{Model} & \textbf{Arm} & \textbf{Solved (\%)} & \textbf{plan length} &
 \textbf{object count} & \textbf{planner runtime} \\
 \midrule
-% rows generated by tools/reanalysis/rq1_tex.py (rq1_solve.tex)
-Qwen3.5-9B & no-tools & $24.3$ {\scriptsize$[16.3,\,32.3]$} & $-0.29$ & $-0.47$ & $-0.02$ \\
- & +tool (plain) & $88.7$ {\scriptsize$[82.0,\,94.7]$} & $-0.56$ & $-0.08$ & $-0.29$ \\
- & +tool (steered) & $89.0$ {\scriptsize$[82.7,\,94.3]$} & $-0.53$ & $-0.07$ & $-0.21$ \\
+% rows generated by tools/reanalysis/rq1_control_metrics.py (tex/rq1c_solve.tex)
+Qwen3.5-9B & no-tools & $42.7$ {\scriptsize$[31.7,\,53.7]$} & $-0.50$ & $-0.40$ & $-0.10$ \\
+ & +tool (plain) & $92.0$ {\scriptsize$[85.3,\,97.7]$} & $-0.49$ & $+0.15$ & $-0.32$ \\
+ & +tool (steered) & $90.7$ {\scriptsize$[84.3,\,96.3]$} & $-0.49$ & $+0.07$ & $-0.28$ \\
 \addlinespace
-Gemma-MoE-26B & no-tools & $21.3$ {\scriptsize$[13.0,\,30.3]$} & $-0.32$ & $-0.39$ & $-0.11$ \\
+Gemma-MoE-26B & no-tools & $54.0$ {\scriptsize$[38.3,\,69.7]$} & $-0.43$ & $-0.55$ & $-0.00$ \\
  & +tool (plain) & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $-0.44$ & $-0.40$ & $-0.46$ \\
  & +tool (steered) & $95.3$ {\scriptsize$[91.3,\,98.7]$} & $-0.40$ & $-0.13$ & $-0.33$ \\
 \addlinespace
-Qwen3.6-35B & no-tools & $25.3$ {\scriptsize$[16.3,\,35.7]$} & $-0.34$ & $-0.42$ & $+0.03$ \\
- & +tool (plain) & $77.0$ {\scriptsize$[69.7,\,83.7]$} & $-0.34$ & $-0.30$ & $-0.09$ \\
- & +tool (steered) & $87.3$ {\scriptsize$[81.7,\,92.3]$} & $-0.51$ & $-0.07$ & $-0.30$ \\
+Qwen3.6-35B & no-tools & $69.0$ {\scriptsize$[55.0,\,81.3]$} & $-0.45$ & $-0.33$ & $+0.03$ \\
+ & +tool (plain) & $78.3$ {\scriptsize$[71.3,\,84.7]$} & $-0.35$ & $-0.27$ & $-0.07$ \\
+ & +tool (steered) & $87.7$ {\scriptsize$[82.0,\,92.7]$} & $-0.52$ & $-0.08$ & $-0.33$ \\
 \addlinespace
 Claude Haiku~4.5 & no-tools & $22.0$ {\scriptsize$[9.0,\,37.0]$} & $-0.33$ & $-0.24$ & $-0.32$ \\
  & +tool (plain) & $95.0$ {\scriptsize$[90.0,\,99.0]$} & $+0.03$ & $-0.02$ & $-0.12$ \\
@@ -1114,7 +1170,9 @@ Claude Sonnet~4.6 & no-tools & $29.0$ {\scriptsize$[17.0,\,42.0]$} & $-0.54$ & $
 \bottomrule
 \end{tabular}
 \caption{RQ1, \emph{solve} (delivered final answers, \emph{think}=off, $100$
-problems). \emph{Solved}: the delivered plan is valid. The three right-hand columns
+problems). For the open-weight models the no-tools row is the format-stated cell of the
+control and every row is read by the second reading; the Claude rows are as graded
+(see text). \emph{Solved}: the delivered plan is valid. The three right-hand columns
 are Spearman correlations, over the $100$ problems, between a problem's share of
 solved trials and three measures of its hardness: the length of the reference plan,
 the number of objects, and the planner's own runtime on it. Brackets are 95\%
@@ -1124,9 +1182,9 @@ domain-cluster bootstrap intervals.}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/rq1_solve_by_length.pdf}
-\caption{RQ1, share of problems solved against the length of the reference plan.
-Grey dashed: no-tools. Blue: tools offered, plain prompt. Orange: tools offered,
+\includegraphics[width=\textwidth]{figures/rq1c_solve_by_length.pdf}
+\caption{RQ1, share of problems solved against the length of the reference plan (rows
+as in Table~\ref{tab:rq1-solve}). Grey dashed: no-tools. Blue: tools offered, plain prompt. Orange: tools offered,
 steered prompt. Whiskers are 95\% domain-cluster bootstrap intervals; open-weight bins
 hold between $36$ and $81$ trials and Claude bins between $12$ and $27$.}
 \label{fig:rq1-solve}
@@ -1136,14 +1194,16 @@ hold between $36$ and $81$ trials and Claude bins between $12$ and $27$.}
 reference plan, with the number of objects as a second view. The planner's own
 runtime, which the solver returns with every plan, separates these problems poorly: it
 ranges from $0.15$\,s to $22.3$\,s, and two thirds of the problems take under
-$0.32$\,s. Without tools the five models solve between $21.3\%$ and $29.0\%$ of the
-problems, and success falls with plan length in each of them ($\rho$ from $-0.29$ to
-$-0.54$; Table~\ref{tab:rq1-solve}, Figure~\ref{fig:rq1-solve}). Sonnet solves
+$0.32$\,s. Without tools the three open-weight models solve $42.7\%$, $54.0\%$ and $69.0\%$
+of the problems and the two Claude models $22.0\%$ and $29.0\%$, and success falls with
+plan length in each of the five ($\rho$ from $-0.33$ to $-0.54$;
+Table~\ref{tab:rq1-solve}, Figure~\ref{fig:rq1-solve}). Sonnet solves
 $61.9\%$ of the problems whose reference plan has at most five actions and none of
-those with more than $40$. With the tools the models deliver a valid plan in $77.0\%$
+those with more than $40$. With the tools the models deliver a valid plan in $78.3\%$
 to $95.3\%$ of the trials. For the open-weight models this share still falls on the
 longest plans, to between $36.1\%$ and $58.3\%$ under the plain prompt, while both
-Claude models stay at $83.3\%$. The planner solves every problem of this corpus when
+Claude models stay at $83.3\%$. On those longest plans the unaided open-weight models
+solve between $22.2\%$ and $38.9\%$. The planner solves every problem of this corpus when
 it is called, so the drop on long plans arises largely after the tool has answered
 (RQ3). For the same reason the corpus says nothing about problems that the planner
 itself cannot solve.
@@ -1151,53 +1211,52 @@ itself cannot solve.
 \begin{table*}[t]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lrrrrrr@{}}
+\begin{tabular}{@{}llrrr@{}}
 \toprule
-& \multicolumn{2}{c}{\textbf{No-tools (\%)}} &
-\multicolumn{2}{c}{\textbf{+tool, plain (\%)}} &
-\multicolumn{2}{c}{\textbf{Difference (points)}} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(l){6-7}
-\textbf{Model} & \textbf{Registered} & \textbf{Second reading} & \textbf{Registered} &
-\textbf{Second reading} & \textbf{Registered} & \textbf{Second reading} \\
+\textbf{Model} & \textbf{Task} & \textbf{No-tools, format stated (\%)} &
+\textbf{+tool, plain (\%)} & \textbf{Difference (points)} \\
 \midrule
-% rows generated by tools/reanalysis/rq1_layout_regrade.py (rq1_layout_regrade.tex)
-Qwen3.5-9B & $24.3$ {\scriptsize$[16.3,\,32.3]$} & $38.3$ {\scriptsize$[26.3,\,50.3]$} & $88.7$ {\scriptsize$[82.0,\,94.7]$} & $92.0$ {\scriptsize$[85.3,\,97.7]$} & $+64.3$ {\scriptsize$[+54.0,\,+74.7]$} & $+53.7$ {\scriptsize$[+39.0,\,+68.7]$} \\
-Gemma-MoE-26B & $21.3$ {\scriptsize$[13.0,\,30.3]$} & $48.0$ {\scriptsize$[32.3,\,63.3]$} & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $+71.0$ {\scriptsize$[+62.0,\,+79.7]$} & $+44.3$ {\scriptsize$[+30.0,\,+58.7]$} \\
-Qwen3.6-35B & $25.3$ {\scriptsize$[16.3,\,35.7]$} & $48.0$ {\scriptsize$[36.3,\,60.0]$} & $77.0$ {\scriptsize$[69.7,\,83.7]$} & $78.3$ {\scriptsize$[71.3,\,84.7]$} & $+51.7$ {\scriptsize$[+42.3,\,+60.0]$} & $+30.3$ {\scriptsize$[+19.3,\,+41.3]$} \\
+% rows generated by tools/reanalysis/control_prompt_fix_tex.py (control_prompt_fix_main.tex)
+Qwen3.5-9B & \emph{solve} & $42.7$ {\scriptsize$[31.7,\,53.7]$} & $92.0$ {\scriptsize$[85.3,\,97.7]$} & $+49.3$ {\scriptsize$[+36.0,\,+63.0]$} \\
+ & \emph{simulate} & $12.7$ {\scriptsize$[6.0,\,20.7]$} & $20.3$ {\scriptsize$[10.3,\,31.3]$} & $+7.7$ {\scriptsize$[-0.7,\,+17.0]$} \\
+\addlinespace
+Gemma-MoE-26B & \emph{solve} & $54.0$ {\scriptsize$[38.3,\,69.7]$} & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $+38.3$ {\scriptsize$[+23.7,\,+53.7]$} \\
+ & \emph{simulate} & $27.3$ {\scriptsize$[15.3,\,40.0]$} & $20.0$ {\scriptsize$[11.3,\,29.7]$} & $-7.3$ {\scriptsize$[-17.0,\,+2.7]$} \\
+\addlinespace
+Qwen3.6-35B & \emph{solve} & $69.0$ {\scriptsize$[55.0,\,81.3]$} & $78.3$ {\scriptsize$[71.3,\,84.7]$} & $+9.3$ {\scriptsize$[+0.0,\,+19.7]$} \\
+ & \emph{simulate} & $33.3$ {\scriptsize$[20.0,\,47.7]$} & $29.3$ {\scriptsize$[17.3,\,42.3]$} & $-4.0$ {\scriptsize$[-11.7,\,+4.3]$} \\
 \bottomrule
 \end{tabular}
-\caption{RQ1, \emph{solve} in the rerun, graded a second time (post hoc; \emph{think}=off,
-$300$ trials per cell). \emph{Registered}: the delivered rate of
-Table~\ref{tab:rq1-solve}. \emph{Second reading}: when the last code block of an answer
-holds a plan, that plan is graded in place of the registered reading, whichever way the
-grade moves. The same reader is applied to both arms. \emph{Difference}: the plain tool
-arm minus the no-tools arm over the paired trials. Brackets are 95\% domain-cluster
-bootstrap intervals.}
-\label{tab:rq1-regrade}
+\caption{RQ1, the unaided baseline under a corrected system message (pre-registered
+control; \emph{think}=off, $300$ trials per cell). \emph{No-tools, format stated}: the
+unaided arm run again with a system message that states the answer format.
+\emph{+tool, plain}: the plain tool arm of the rerun. Both arms are read by the second
+reading. \emph{Difference}: the tool arm minus the unaided arm over the paired trials;
+the two arms come from different runs. The registered grade of every cell is in
+Table~\ref{tab:control-cells}. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq1-control}
 \end{table*}
 
-\paragraph{The unaided plans, graded a second time.} The registered grader reads a
-plan as JSON only when the whole answer is the JSON object. Otherwise it collects every
-line of the answer that has the shape of an action. The unaided system message asks
-for a JSON answer by referring to a schema that the model never received (Limitations),
-while the user message asks for parenthesised actions. Most unaided \emph{solve}
-answers of the open-weight models reason first and then give the plan as JSON in a code
-block ($198$ to $260$ of the $300$ answers of a model). For such an answer the grader
-can read no plan, or grade the steps listed during the reasoning together with the
-plan. We therefore graded \emph{solve} a second time in both arms, taking the plan
-from the last code block of the answer whenever that block holds a plan
-(Table~\ref{tab:rq1-regrade}). This analysis is post hoc and the registered figures of
-Table~\ref{tab:rq1-solve} stay the record. The unaided rate rises from
-$21.3$--$25.3\%$ to $38.3$--$48.0\%$. The rate with the tools changes by at most
-$3.3$ points. The difference between the plain tool arm and the unaided arm falls
-from $51.7$--$71.0$ points to $30.3$--$53.7$ points, and its interval stays above zero
-for every model. No unaided answer of the two Claude models has this layout, so their
-rates are unchanged, and over the five models the unaided range becomes
-$22.0$--$48.0\%$. The second reading still misses a final plan that is written as a
-list in running text below earlier steps, so it may understate the unaided rate. On
-\emph{simulate}, reading the unaided and tool-arm answers with the line reader of RQ3
-moves the difference between the two arms by at most $3.0$ points for any model.
+% Every number in this paragraph is generated: tools/reanalysis/control_prompt_fix.py
+% (development/NUMBERS.md, block "Corrected-prompt control"). Do not edit a number by hand.
+\paragraph{The tools against the corrected baseline.} Table~\ref{tab:rq1-control}
+pairs the plain tool arm with the format-stated cell trial by trial, over all $300$
+trials of a model and task. On \emph{solve} the tools are ahead by $49.3$ points for
+Qwen3.5-9B and by $38.3$ points for Gemma-MoE-26B. For Qwen3.6-35B the difference is
+$+9.3$ points $[+0.0,\,+19.7]$, so the control does not show the tools ahead on
+\emph{solve} for that model. On \emph{simulate} the interval of the difference
+includes zero for all three models. In the control, the cell with the registered
+message is within $4.0$ points of the rerun's unaided rate on both tasks for every
+model. The registered criterion for an unchanged setup, an interval within $5$ points,
+is met in three of the six cases. It is unresolved for Gemma-MoE-26B on \emph{solve}
+and for Qwen3.6-35B on both tasks, where the interval reaches past $5$ points, and by
+the registered rule the differences of those three cases are read across a setup that
+moved. Removing the reference
+to the schema raises the registered grade on \emph{solve} by $14.7$ to $28.3$ points.
+Under the second reading the change is $+7.0$, $-6.0$ and $+7.7$ points, so most of
+that rise is layout: with the reference the models gave the plan as JSON, which the
+registered grader did not read. On \emph{simulate} the reference cost Qwen3.5-9B
+$12.7$ points under both readings.
 
 \begin{table*}[t]
 \centering
@@ -1209,18 +1268,18 @@ moves the difference between the two arms by at most $3.0$ points for any model.
 \textbf{Mean ref.} & \textbf{Median ratio} & \textbf{$<$ / $=$ / $>$ ref.} &
 \textbf{Max ratio} & \textbf{$=$ tool's} \\
 \midrule
-% rows generated by tools/reanalysis/rq1_tex.py (rq1_planlen.tex)
-Qwen3.5-9B & no-tools & $73$ / $300$ & $11.3$ & $13.7$ & $1.00$ & $20$ / $40$ / $13$ & $2.0$ & -- \\
- & +tool (plain) & $266$ / $300$ & $14.9$ & $14.9$ & $1.00$ & $6$ / $252$ / $8$ & $1.1$ & $262$ / $266$ \\
- & +tool (steered) & $267$ / $300$ & $15.4$ & $15.4$ & $1.00$ & $6$ / $253$ / $8$ & $1.1$ & $263$ / $267$ \\
+% rows generated by tools/reanalysis/rq1_control_metrics.py (tex/rq1c_planlen.tex)
+Qwen3.5-9B & no-tools & $128$ / $300$ & $9.8$ & $12.4$ & $1.00$ & $29$ / $79$ / $20$ & $1.7$ & -- \\
+ & +tool (plain) & $276$ / $300$ & $15.5$ & $15.6$ & $1.00$ & $8$ / $260$ / $8$ & $1.1$ & $272$ / $276$ \\
+ & +tool (steered) & $272$ / $300$ & $15.6$ & $15.6$ & $1.00$ & $6$ / $258$ / $8$ & $1.1$ & $268$ / $272$ \\
 \addlinespace
-Gemma-MoE-26B & no-tools & $64$ / $300$ & $9.7$ & $13.0$ & $1.00$ & $15$ / $45$ / $4$ & $1.7$ & -- \\
+Gemma-MoE-26B & no-tools & $162$ / $300$ & $10.5$ & $14.2$ & $1.00$ & $50$ / $97$ / $15$ & $2.0$ & -- \\
  & +tool (plain) & $277$ / $300$ & $16.9$ & $16.8$ & $1.00$ & $5$ / $259$ / $13$ & $1.2$ & $269$ / $277$ \\
  & +tool (steered) & $286$ / $300$ & $17.4$ & $17.3$ & $1.00$ & $4$ / $270$ / $12$ & $1.1$ & $280$ / $286$ \\
 \addlinespace
-Qwen3.6-35B & no-tools & $76$ / $300$ & $11.8$ & $11.1$ & $1.00$ & $15$ / $44$ / $17$ & $3.2$ & -- \\
- & +tool (plain) & $231$ / $300$ & $15.3$ & $15.4$ & $1.00$ & $10$ / $214$ / $7$ & $1.3$ & $213$ / $214$ \\
- & +tool (steered) & $262$ / $300$ & $15.3$ & $15.2$ & $1.00$ & $4$ / $248$ / $10$ & $8.7$ & $257$ / $262$ \\
+Qwen3.6-35B & no-tools & $207$ / $300$ & $13.1$ & $14.1$ & $1.00$ & $58$ / $109$ / $40$ & $5.2$ & -- \\
+ & +tool (plain) & $235$ / $300$ & $15.2$ & $15.4$ & $1.00$ & $11$ / $217$ / $7$ & $1.3$ & $215$ / $216$ \\
+ & +tool (steered) & $263$ / $300$ & $15.3$ & $15.2$ & $1.00$ & $4$ / $249$ / $10$ & $8.7$ & $258$ / $263$ \\
 \addlinespace
 Claude Haiku~4.5 & no-tools & $22$ / $100$ & $8.5$ & $8.4$ & $1.00$ & $6$ / $10$ / $6$ & $2.0$ & -- \\
  & +tool (plain) & $95$ / $100$ & $19.7$ & $19.7$ & $1.00$ & $1$ / $91$ / $3$ & $8.7$ & $93$ / $95$ \\
@@ -1229,7 +1288,8 @@ Claude Sonnet~4.6 & no-tools & $29$ / $100$ & $6.6$ & $7.0$ & $1.00$ & $7$ / $21
  & +tool (plain) & $95$ / $100$ & $23.6$ & $18.9$ & $1.00$ & $4$ / $85$ / $6$ & $61.4$ & $94$ / $95$ \\
 \bottomrule
 \end{tabular}
-\caption{RQ1, length of the valid delivered plans on \emph{solve} (\emph{think}=off).
+\caption{RQ1, length of the valid delivered plans on \emph{solve} (\emph{think}=off;
+rows as in Table~\ref{tab:rq1-solve}).
 \emph{Valid plans}: trials with a valid delivered plan, out of the cell's trials.
 \emph{Mean len.} and \emph{Mean ref.}: mean number of actions of the delivered plan and of
 the reference plan on the same trials. \emph{Ratio}: delivered length over reference length. \emph{$<$ / $=$ / $>$ ref.}: valid plans
@@ -1245,7 +1305,7 @@ actions with the reference plan for the same problem (Table~\ref{tab:rq1-planlen
 Valid unaided plans are about as long as the reference. The median ratio is $1.00$ for
 all five models, and each model has some plans that are shorter and some that are
 longer. With the tools, the delivered plan has the length of the plan that the planner
-returned in nearly every trial, for example in $262$ of $266$ for Qwen3.5-9B under the
+returned in nearly every trial, for example in $272$ of $276$ for Qwen3.5-9B under the
 plain prompt, so the quality of a plan delivered with tools is the planner's. That
 plan is occasionally much longer than the reference. In the largest case Sonnet
 delivered a valid $307$-action plan for a parking problem whose reference plan has $5$
@@ -1441,7 +1501,7 @@ traces could not be assigned by a fixed rule. A later reading of the plans whose
 content differs, over both prompts, found that $17$ of the $38$ repeat the tool's plan
 exactly and then list the goal facts, which our extractor reads as extra steps, and
 that $5$ change an action. That reading is post hoc. The loss of traces also explains
-the one case in RQ1 where the tools make a model worse: Gemma-MoE-26B calls the
+why the tools bring Gemma-MoE-26B no gain on \emph{simulate} in RQ1: it calls the
 state-transition tool in $99.7\%$ of its plain-prompt trials and then loses $90.8\%$ of
 the correct results it gets back.
 
@@ -1591,13 +1651,16 @@ share of with-tools trials in which a tool response held a correct result
 (Methodology). Tool calls and their results were stored in full. The final answer
 was stored only up to $500$ characters, so the main sweep gives no delivered rate
 for its tool arms and we report none. The delivered comparison for the open-weight
-models comes from the pre-registered rerun and is reported under RQ1 and RQ3.
+models comes from the pre-registered rerun, with the unaided baseline of \emph{solve}
+and \emph{simulate} taken from its control, and is reported under RQ1 and RQ3.
 
 The unaided rate of the main sweep also comes from a different grader than the
-delivered rates of RQ1. On the same unaided \emph{solve} answers of the rerun, the
-run-time grader gives $9.7$--$10.7\%$ and the delivered grader $21.3$--$25.3\%$.
-Unaided figures in this section should therefore be compared with one another, and
-not with the unaided figures of RQ1.
+delivered rates of the rerun. On the same unaided \emph{solve} answers of the rerun,
+the run-time grader gives $9.7$--$10.7\%$ and the delivered grader $21.3$--$25.3\%$.
+The unaided \emph{solve} and \emph{simulate} figures of RQ1 come from a later control
+with a corrected system message and are higher still. Unaided figures in this section
+should therefore be compared with one another, and not with the unaided figures of
+RQ1.
 
 The frontier runs stored answers up to $16{,}384$ characters, so their delivered
 rates are exact on four tasks. On \emph{simulate} some stored answers end before
@@ -1645,7 +1708,7 @@ Wilson 95\% intervals print as $[a,\,b]$ and censoring bounds as \cbnd{a}{b}. A
 bound is never narrowed by assuming that ungraded trials succeeded. A difference
 between a delivered rate and a tool-verified rate is computed only within one
 corpus. The delivered comparison for the open-weight models uses the
-pre-registered rerun (RQ1 and RQ3), which is not part of this table.}
+pre-registered rerun and its control (RQ1 and RQ3), which are not part of this table.}
 \label{tab:howtoread}
 \end{table*}
 
@@ -1726,7 +1789,8 @@ at the $6{,}144$-token cap, and $3\%$ answers that parse and are wrong
 (Figure~\ref{fig:failtax}). Most answers therefore fail on format or budget before
 their content is tested. With the full answers and the delivered grader of the
 rerun, the same three models produce $9.9$--$25.5\%$ exact traces unaided
-(Table~\ref{tab:rq1-simulate}).
+(Table~\ref{tab:rq1-rerun-simulate}). RQ1 reports their unaided traces under a
+corrected system message and a second reading (Table~\ref{tab:rq1-simulate}).
 
 A budget-decoupled control separates content from budget. It gives the reasoning
 trace and the answer separate decode allowances, through a two-call continuation
@@ -1941,7 +2005,7 @@ difference in calling and not a controlled size effect (Limitations).
 \subsection{Plan Length and Object Count}
 Both analyses in this subsection set the tool-verified rate of the tool arm
 against the unaided rate, bin by bin. RQ1 reports the delivered rates against
-plan length and trace length from the rerun. A difference can only be seen to
+plan length and trace length from the rerun and its control. A difference can only be seen to
 change where the no-tools baseline has room to move, which makes
 \emph{validate\_plan} the informative case. As the reference plan lengthens,
 unaided accuracy falls ($94\%$, $91\%$ and $62\%$ over the short, medium and long
@@ -2437,15 +2501,16 @@ about \$$46$ including the calibration runs, or roughly \$$0.017$ per trial.
 result. What a user receives depends on two further steps that the guarantee does not
 cover: the model has to call the tool, and the tool's result has to reach the final
 answer. RQ2 and RQ3 measure these two steps, and RQ1 measures their combined effect.
-When both steps hold, the benefit is large: the models deliver a valid plan in
-$77$--$95\%$ of the trials with the tools, against $21$--$29\%$ without
-($22$--$48\%$ under the second reading of RQ1). If the model
+When both steps hold, the benefit can be large. With the tools the models deliver a
+valid plan in $78$--$95\%$ of the trials. The open-weight models solve $43$--$69\%$
+unaided in the control of RQ1, and the tools are clearly ahead for two of those three
+models and for both frontier models. If the model
 does not call the tool, the tools change little. Gemma-MoE-26B calls the plan
 validator in $20.0\%$ of the plain-prompt trials, and its verdict errors with the tools
 offered are close to its unaided ones. If the result does not reach the answer, the
-tools can make the answer worse. The same model calls the state-transition tool in $99.7\%$ of its trials, loses
-$90.8\%$ of the correct traces it gets back, and ends with fewer exact traces than it
-produces unaided.
+tools bring no gain. The same model calls the state-transition tool in $99.7\%$ of its trials, loses
+$90.8\%$ of the correct traces it gets back, and ends with no more exact traces than
+it produces unaided.
 
 \paragraph{Choosing the tool.} On the validation tasks and on \emph{simulate} the
 models rarely pick a wrong tool. The open issue there is whether they call at all, and
@@ -2477,9 +2542,9 @@ explain the finding.
 For the two Claude models, the output-budget probe raised the output allowance
 on \emph{simulate} (Supporting Analyses).
 
-\paragraph{Unaided planning.} Our unaided models solve $21$--$29\%$ of a set of small
-problems by the registered grade and $22$--$48\%$ by the second reading of RQ1, with
-thinking off and a prompt without solved examples. \citet{correa2025frontier}
+\paragraph{Unaided planning.} Our unaided open-weight models solve $43$--$69\%$ of a set of
+small problems in the control of RQ1, and the frontier models $22$--$29\%$ under a
+different request, with thinking off and a prompt without solved examples. \citet{correa2025frontier}
 report that frontier reasoning models, prompted with two solved examples, rival strong
 planners on larger and freshly generated tasks. The two studies differ in models,
 reasoning mode, prompt and problems, so our unaided figures describe the models and
@@ -2580,8 +2645,14 @@ those two tasks were obtained under a prompt-level format instruction alone. Wha
 working constraint would have produced is measured only in a pilot on one model, which
 the Technical Appendix reports (Table~\ref{tab:json-pilot}). For the other models it is
 unmeasured. On \emph{solve}, the share of unaided answers whose plan the registered
-grader did not read is measured in RQ1 (Table~\ref{tab:rq1-regrade}). What the models
-would have written under a system message without that reference is unmeasured.
+grader did not read is measured in the Technical Appendix
+(Table~\ref{tab:rq1-regrade}). What the three
+open-weight models of the rerun write under a system message without that reference,
+and under one that states the answer format, is measured in a pre-registered control
+(RQ1, Table~\ref{tab:rq1-control}; Technical Appendix), and that control supplies
+the unaided baseline that RQ1 reports on these two tasks. The main sweep, the two
+smaller models and the \emph{think}=on cells were not run again, so their unaided
+\emph{solve} and \emph{simulate} figures were obtained with the reference in place.
 
 The largest constraint that we imposed on ourselves is storage. The main sweep
 stored final answers as $500$-character snapshots, a decision made before the
@@ -2630,9 +2701,10 @@ executions without a language model.
 
 \section{Conclusion}
 We asked three questions about giving a language model sound PDDL tools. The tools
-help on most of what we measured. Valid plans rise from $21$--$29\%$ of the trials
-($22$--$48\%$ under a second reading of the unaided answers) to $77$--$95\%$, and
-verdict errors on plans fall for four of five models. The benefit
+help on most of what we measured. With the tools the models deliver a valid plan in $78$--$95\%$ of the trials. The
+open-weight models solve $43$--$69\%$ unaided under a corrected system message, and
+the tools stay ahead for two of the three. Verdict
+errors on plans fall for four of five models. The benefit
 shrinks as problems grow, and state traces degrade with length with or without the
 tools. The models usually choose the right tool. One model, however, seldom calls the
 plan validator until a sentence tells it to, and on plan generation the models add
@@ -3053,8 +3125,8 @@ the falls and did not test them as their cause. On the validation tasks the prom
 the constrained run still asks for a closing verdict line. On \emph{solve} and
 \emph{simulate} the system message of both runs refers to a schema, which the model
 receives in the constrained run alone. The pilot therefore cannot separate the effect
-of that reference from the effect of the constraint, and what the reference did to the
-unaided answers of the main sweep and of the rerun remains unmeasured. Between $7$ and $14$
+of that reference from the effect of the constraint. The control reported below
+measures what the reference did to the unaided answers of the rerun's three models. Between $7$ and $14$
 constrained answers per validation task stop at the output cap inside the justification
 and so carry no verdict that the grader reads. When the verdict is read from the
 opening field of such an answer, the difference on \emph{validate\_domain} becomes
@@ -3093,6 +3165,257 @@ indented rows split \emph{validate\_plan} by whether the plan under test is vali
 pilot was not registered. Brackets are 95\% domain-cluster bootstrap intervals, not
 adjusted for the five tasks.}
 \label{tab:json-pilot}
+\end{table*}
+
+\paragraph{The rerun's unaided arm on \emph{solve} and \emph{simulate}: the registered record.}
+RQ1 reports \emph{solve} and \emph{simulate} for the open-weight models with the
+format-stated cell of the control as the unaided baseline and under the second reading.
+The registered record of these two tasks is the rerun itself, graded by its registered
+delivered grader, with the unaided arm as it was run under the registered system
+message. Tables~\ref{tab:rq1-rerun-solve}, \ref{tab:rq1-rerun-simulate}
+and~\ref{tab:rq1-rerun-planlen} give it, with the measures of
+Tables~\ref{tab:rq1-solve}, \ref{tab:rq1-simulate} and~\ref{tab:rq1-planlen}. The arm
+was run again because its system message referred to a schema that never reached the
+model (Limitations). Table~\ref{tab:rq1-regrade} applies the second reading to the
+rerun's own answers on \emph{solve}, a post hoc analysis made before the control was
+run. There the unaided rate rises from $21.3$--$25.3\%$ to $38.3$--$48.0\%$, the rate
+with the tools changes by at most $3.3$ points, and the difference between the plain
+tool arm and the unaided arm falls from $51.7$--$71.0$ points to $30.3$--$53.7$ points.
+No unaided answer of the two Claude models has the layout that the second reading
+adds, so their rates are the same under both. The second reading still misses a final
+plan that is written as a list in running text below earlier steps. On
+\emph{simulate}, reading the rerun's unaided and tool-arm answers with the line reader
+moves the difference between the two arms by at most $3.0$ points for any model.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+& & & \multicolumn{3}{c}{\textbf{Spearman $\boldsymbol{\rho}$ of success with}} \\
+\cmidrule(l){4-6}
+\textbf{Model} & \textbf{Arm} & \textbf{Solved (\%)} & \textbf{plan length} &
+\textbf{object count} & \textbf{planner runtime} \\
+\midrule
+% rows generated by tools/reanalysis/rq1_tex.py (open-weight rows of rq1_{solve,simulate,planlen}.tex)
+Qwen3.5-9B & no-tools & $24.3$ {\scriptsize$[16.3,\,32.3]$} & $-0.29$ & $-0.47$ & $-0.02$ \\
+ & +tool (plain) & $88.7$ {\scriptsize$[82.0,\,94.7]$} & $-0.56$ & $-0.08$ & $-0.29$ \\
+ & +tool (steered) & $89.0$ {\scriptsize$[82.7,\,94.3]$} & $-0.53$ & $-0.07$ & $-0.21$ \\
+\addlinespace
+Gemma-MoE-26B & no-tools & $21.3$ {\scriptsize$[13.0,\,30.3]$} & $-0.32$ & $-0.39$ & $-0.11$ \\
+ & +tool (plain) & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $-0.44$ & $-0.40$ & $-0.46$ \\
+ & +tool (steered) & $95.3$ {\scriptsize$[91.3,\,98.7]$} & $-0.40$ & $-0.13$ & $-0.33$ \\
+\addlinespace
+Qwen3.6-35B & no-tools & $25.3$ {\scriptsize$[16.3,\,35.7]$} & $-0.34$ & $-0.42$ & $+0.03$ \\
+ & +tool (plain) & $77.0$ {\scriptsize$[69.7,\,83.7]$} & $-0.34$ & $-0.30$ & $-0.09$ \\
+ & +tool (steered) & $87.3$ {\scriptsize$[81.7,\,92.3]$} & $-0.51$ & $-0.07$ & $-0.30$ \\
+\bottomrule
+\end{tabular}
+\caption{The rerun on \emph{solve}, registered grade (\emph{think}=off, $100$ problems, $300$ trials per row). The no-tools row is the rerun's unaided arm under the registered system message. Columns as in Table~\ref{tab:rq1-solve}. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq1-rerun-solve}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Arm} & \textbf{Exact trace (\%)} & \textbf{States, strict (\%)} &
+\textbf{States, lenient (\%)} & \textbf{No trace} & $\boldsymbol{\rho}$ \\
+\midrule
+% rows generated by tools/reanalysis/rq1_tex.py (open-weight rows of rq1_{solve,simulate,planlen}.tex)
+Qwen3.5-9B & no-tools & $9.9$ {\scriptsize$[4.2,\,16.7]$} & $18.5$ {\scriptsize$[10.9,\,27.1]$} & $21.7$ {\scriptsize$[14.1,\,30.0]$} & $94$ / $282$ & $-0.52$ \\
+ & +tool (plain) & $18.4$ {\scriptsize$[8.9,\,29.1]$} & $24.3$ {\scriptsize$[14.6,\,34.9]$} & $24.7$ {\scriptsize$[14.9,\,35.3]$} & $166$ / $282$ & $-0.55$ \\
+ & +tool (steered) & $17.4$ {\scriptsize$[8.9,\,27.4]$} & $22.1$ {\scriptsize$[13.4,\,32.4]$} & $22.4$ {\scriptsize$[13.5,\,32.8]$} & $188$ / $282$ & $-0.58$ \\
+\addlinespace
+Gemma-MoE-26B & no-tools & $25.5$ {\scriptsize$[14.9,\,36.5]$} & $32.5$ {\scriptsize$[22.0,\,42.9]$} & $36.9$ {\scriptsize$[25.7,\,48.0]$} & $143$ / $282$ & $-0.26$ \\
+ & +tool (plain) & $8.9$ {\scriptsize$[4.6,\,14.2]$} & $11.0$ {\scriptsize$[6.6,\,16.1]$} & $12.2$ {\scriptsize$[7.6,\,17.2]$} & $238$ / $282$ & $-0.34$ \\
+ & +tool (steered) & $8.9$ {\scriptsize$[4.6,\,13.7]$} & $11.4$ {\scriptsize$[6.6,\,16.7]$} & $12.6$ {\scriptsize$[7.9,\,17.8]$} & $238$ / $282$ & $-0.38$ \\
+\addlinespace
+Qwen3.6-35B & no-tools & $18.8$ {\scriptsize$[11.2,\,27.3]$} & $24.9$ {\scriptsize$[17.3,\,33.2]$} & $29.5$ {\scriptsize$[21.7,\,37.8]$} & $102$ / $282$ & $-0.23$ \\
+ & +tool (plain) & $30.1$ {\scriptsize$[18.1,\,43.7]$} & $36.7$ {\scriptsize$[24.5,\,50.0]$} & $38.5$ {\scriptsize$[26.3,\,51.4]$} & $152$ / $282$ & $-0.73$ \\
+ & +tool (steered) & $27.3$ {\scriptsize$[16.5,\,39.4]$} & $33.0$ {\scriptsize$[21.4,\,45.4]$} & $34.1$ {\scriptsize$[22.8,\,46.3]$} & $168$ / $282$ & $-0.70$ \\
+\bottomrule
+\end{tabular}
+\caption{The rerun on \emph{simulate}, registered grade (\emph{think}=off, $94$ problems). The no-tools row is the rerun's unaided arm under the registered system message. Columns as in Table~\ref{tab:rq1-simulate}. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:rq1-rerun-simulate}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Arm} & \textbf{Valid plans} & \textbf{Mean len.} &
+\textbf{Mean ref.} & \textbf{Median ratio} & \textbf{$<$ / $=$ / $>$ ref.} &
+\textbf{Max ratio} & \textbf{$=$ tool's} \\
+\midrule
+% rows generated by tools/reanalysis/rq1_tex.py (open-weight rows of rq1_{solve,simulate,planlen}.tex)
+Qwen3.5-9B & no-tools & $73$ / $300$ & $11.3$ & $13.7$ & $1.00$ & $20$ / $40$ / $13$ & $2.0$ & -- \\
+ & +tool (plain) & $266$ / $300$ & $14.9$ & $14.9$ & $1.00$ & $6$ / $252$ / $8$ & $1.1$ & $262$ / $266$ \\
+ & +tool (steered) & $267$ / $300$ & $15.4$ & $15.4$ & $1.00$ & $6$ / $253$ / $8$ & $1.1$ & $263$ / $267$ \\
+\addlinespace
+Gemma-MoE-26B & no-tools & $64$ / $300$ & $9.7$ & $13.0$ & $1.00$ & $15$ / $45$ / $4$ & $1.7$ & -- \\
+ & +tool (plain) & $277$ / $300$ & $16.9$ & $16.8$ & $1.00$ & $5$ / $259$ / $13$ & $1.2$ & $269$ / $277$ \\
+ & +tool (steered) & $286$ / $300$ & $17.4$ & $17.3$ & $1.00$ & $4$ / $270$ / $12$ & $1.1$ & $280$ / $286$ \\
+\addlinespace
+Qwen3.6-35B & no-tools & $76$ / $300$ & $11.8$ & $11.1$ & $1.00$ & $15$ / $44$ / $17$ & $3.2$ & -- \\
+ & +tool (plain) & $231$ / $300$ & $15.3$ & $15.4$ & $1.00$ & $10$ / $214$ / $7$ & $1.3$ & $213$ / $214$ \\
+ & +tool (steered) & $262$ / $300$ & $15.3$ & $15.2$ & $1.00$ & $4$ / $248$ / $10$ & $8.7$ & $257$ / $262$ \\
+\bottomrule
+\end{tabular}
+\caption{The rerun on \emph{solve}, length of the valid delivered plans under the registered grade (\emph{think}=off). Columns as in Table~\ref{tab:rq1-planlen}.}
+\label{tab:rq1-rerun-planlen}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+& \multicolumn{2}{c}{\textbf{No-tools (\%)}} &
+\multicolumn{2}{c}{\textbf{+tool, plain (\%)}} &
+\multicolumn{2}{c}{\textbf{Difference (points)}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(l){6-7}
+\textbf{Model} & \textbf{Registered} & \textbf{Second reading} & \textbf{Registered} &
+\textbf{Second reading} & \textbf{Registered} & \textbf{Second reading} \\
+\midrule
+% rows generated by tools/reanalysis/rq1_layout_regrade.py (rq1_layout_regrade.tex)
+Qwen3.5-9B & $24.3$ {\scriptsize$[16.3,\,32.3]$} & $38.3$ {\scriptsize$[26.3,\,50.3]$} & $88.7$ {\scriptsize$[82.0,\,94.7]$} & $92.0$ {\scriptsize$[85.3,\,97.7]$} & $+64.3$ {\scriptsize$[+54.0,\,+74.7]$} & $+53.7$ {\scriptsize$[+39.0,\,+68.7]$} \\
+Gemma-MoE-26B & $21.3$ {\scriptsize$[13.0,\,30.3]$} & $48.0$ {\scriptsize$[32.3,\,63.3]$} & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $92.3$ {\scriptsize$[87.3,\,97.0]$} & $+71.0$ {\scriptsize$[+62.0,\,+79.7]$} & $+44.3$ {\scriptsize$[+30.0,\,+58.7]$} \\
+Qwen3.6-35B & $25.3$ {\scriptsize$[16.3,\,35.7]$} & $48.0$ {\scriptsize$[36.3,\,60.0]$} & $77.0$ {\scriptsize$[69.7,\,83.7]$} & $78.3$ {\scriptsize$[71.3,\,84.7]$} & $+51.7$ {\scriptsize$[+42.3,\,+60.0]$} & $+30.3$ {\scriptsize$[+19.3,\,+41.3]$} \\
+\bottomrule
+\end{tabular}
+\caption{RQ1, \emph{solve} in the rerun, graded a second time (post hoc; \emph{think}=off,
+$300$ trials per cell). \emph{Registered}: the delivered rate of
+Table~\ref{tab:rq1-rerun-solve}. \emph{Second reading}: when the last code block of an answer
+holds a plan, that plan is graded in place of the registered reading, whichever way the
+grade moves. The same reader is applied to both arms. \emph{Difference}: the plain tool
+arm minus the no-tools arm over the paired trials. Brackets are 95\% domain-cluster
+bootstrap intervals.}
+\label{tab:rq1-regrade}
+\end{table*}
+
+% Every number in this paragraph and its two tables is generated:
+% tools/reanalysis/control_prompt_fix.py (development/NUMBERS.md, block "Corrected-prompt
+% control"); rows by tools/reanalysis/control_prompt_fix_tex.py.
+\paragraph{The corrected-prompt control.}
+The unaided \emph{solve} and \emph{simulate} system messages of the open-weight runs
+refer to a schema that never reached the model (Limitations). The rerun's unaided arm
+stays the registered record of those two tasks (Tables~\ref{tab:rq1-rerun-solve}
+to~\ref{tab:rq1-rerun-planlen}); the control was run to measure the unaided baseline without
+that fault. It covers the three $\geq$9B open-weight models with thinking off and no
+tools, on the fixtures, wordings, budgets and serving version of the rerun's unaided
+arm. Each model answered the same $300$ trials per task under three system messages
+(Prompts): the registered one, the same message with the reference removed, and one
+that states the answer format. That gives $5{,}400$ trials. The design, the measures,
+the contrasts and the rule that names the format-stated cell as the reported baseline
+were registered, and the analysis code was frozen, before any trial ran. No trial
+raised an exception and no answer was cut by storage. The serving cluster stopped and
+restarted three of the nine cells, twice each, and they resumed from the trials already
+written.
+
+Table~\ref{tab:control-cells} gives the rate of every cell under the registered grade
+and under the second reading, and Table~\ref{tab:control-contrasts} the paired
+contrasts. The registered grade is the delivered grader of the rerun. Under it the
+plain tool arm is ahead on \emph{solve} for all three models, by $+55.7$, $+54.7$ and
+$+10.7$ points; the last of these does not survive a Holm adjustment over the six
+contrasts of its kind. On \emph{simulate} the unaided arm of Gemma-MoE-26B is ahead of
+its tool arm by $19.0$ points $[9.0,\,29.7]$. The registered message was run again as a
+check on the setup. Its cell differs from the rerun's unaided arm by between $-1.7$ and
+$+4.0$ points under either reading. The registered criterion, an interval within $5$
+points, is met in three of the six cases and unresolved in the other three, where the
+interval reaches past $5$ points. The tool arm was not run again, so the
+contrast with the tools crosses two runs seven weeks apart.
+
+One registered check stopped the analysis until it was audited. In the format-stated
+cell of Gemma-MoE-26B on \emph{simulate}, $52$ of the $300$ answers end with a final
+answer that neither reading accepts. All $52$ give the single JSON object in a code
+block that the message asks for. In $47$ the brackets do not balance, and in $5$ the
+numeric values are written in a nested form that the grader's trace format does not
+have. Both readings count these answers as wrong, and the tool arm is read by the same
+parser.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{@{}lllrr@{}}
+\toprule
+\textbf{Model} & \textbf{Task} & \textbf{System message} &
+\textbf{Registered grade (\%)} & \textbf{Second reading (\%)} \\
+\midrule
+% rows generated by tools/reanalysis/control_prompt_fix_tex.py (control_prompt_fix_cells.tex)
+Qwen3.5-9B & \emph{solve} & registered text & $24.3$ {\scriptsize$[16.0,\,33.0]$} & $39.3$ {\scriptsize$[28.0,\,51.0]$} \\
+ &  & reference removed & $39.0$ {\scriptsize$[27.3,\,50.7]$} & $46.3$ {\scriptsize$[35.3,\,57.0]$} \\
+ &  & format stated & $33.0$ {\scriptsize$[23.0,\,43.0]$} & $42.7$ {\scriptsize$[31.7,\,53.7]$} \\
+ & \emph{simulate} & registered text & $7.7$ {\scriptsize$[3.0,\,13.0]$} & $7.7$ {\scriptsize$[3.0,\,13.0]$} \\
+ &  & reference removed & $20.3$ {\scriptsize$[11.3,\,30.3]$} & $20.3$ {\scriptsize$[11.3,\,30.3]$} \\
+ &  & format stated & $12.7$ {\scriptsize$[6.0,\,20.7]$} & $12.7$ {\scriptsize$[6.0,\,20.7]$} \\
+\addlinespace
+Gemma-MoE-26B & \emph{solve} & registered text & $22.7$ {\scriptsize$[13.7,\,32.3]$} & $52.0$ {\scriptsize$[37.0,\,66.7]$} \\
+ &  & reference removed & $46.0$ {\scriptsize$[31.7,\,60.7]$} & $46.0$ {\scriptsize$[31.7,\,60.7]$} \\
+ &  & format stated & $37.7$ {\scriptsize$[26.0,\,49.7]$} & $54.0$ {\scriptsize$[38.3,\,69.7]$} \\
+ & \emph{simulate} & registered text & $24.3$ {\scriptsize$[14.0,\,35.0]$} & $36.3$ {\scriptsize$[21.3,\,51.7]$} \\
+ &  & reference removed & $18.0$ {\scriptsize$[10.3,\,26.0]$} & $35.7$ {\scriptsize$[21.0,\,51.0]$} \\
+ &  & format stated & $27.3$ {\scriptsize$[15.3,\,40.0]$} & $27.3$ {\scriptsize$[15.3,\,40.0]$} \\
+\addlinespace
+Qwen3.6-35B & \emph{solve} & registered text & $29.3$ {\scriptsize$[19.7,\,39.7]$} & $51.3$ {\scriptsize$[38.0,\,64.7]$} \\
+ &  & reference removed & $57.7$ {\scriptsize$[45.3,\,69.0]$} & $59.0$ {\scriptsize$[46.3,\,70.7]$} \\
+ &  & format stated & $66.3$ {\scriptsize$[53.0,\,78.3]$} & $69.0$ {\scriptsize$[55.0,\,81.3]$} \\
+ & \emph{simulate} & registered text & $19.3$ {\scriptsize$[10.7,\,28.7]$} & $22.7$ {\scriptsize$[13.3,\,33.7]$} \\
+ &  & reference removed & $23.7$ {\scriptsize$[12.7,\,35.3]$} & $26.7$ {\scriptsize$[14.3,\,39.7]$} \\
+ &  & format stated & $33.3$ {\scriptsize$[20.0,\,47.7]$} & $33.3$ {\scriptsize$[20.0,\,47.7]$} \\
+\bottomrule
+\end{tabular}
+\caption{The corrected-prompt control: share of unaided answers that are right, by
+system message (\emph{think}=off, $300$ trials per cell). \emph{Registered text}: the
+unaided message of the main sweep and the rerun. \emph{Reference removed}: the same
+message without its reference to a schema. \emph{Format stated}: the answer format
+given in plain words. Brackets are 95\% domain-cluster bootstrap intervals.}
+\label{tab:control-cells}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\begin{tabular}{@{}lllrr@{}}
+\toprule
+\textbf{Contrast} & \textbf{Model} & \textbf{Task} &
+\textbf{Registered grade (points)} & \textbf{Second reading (points)} \\
+\midrule
+% rows generated by tools/reanalysis/control_prompt_fix_tex.py (control_prompt_fix_contrasts.tex)
+reference removed minus registered & Qwen3.5-9B & \emph{solve} & $+14.7$ {\scriptsize$[+10.3,\,+19.3]$} & $+7.0$ {\scriptsize$[+0.7,\,+14.7]$} \\
+ &  & \emph{simulate} & $+12.7$ {\scriptsize$[+7.0,\,+18.7]$} & $+12.7$ {\scriptsize$[+7.0,\,+18.7]$} \\
+ & Gemma-MoE-26B & \emph{solve} & $+23.3$ {\scriptsize$[+12.7,\,+34.3]$} & $-6.0$ {\scriptsize$[-12.0,\,+0.3]$} \\
+ &  & \emph{simulate} & $-6.3$ {\scriptsize$[-11.7,\,-1.7]$} & $-0.7$ {\scriptsize$[-3.7,\,+2.7]$} \\
+ & Qwen3.6-35B & \emph{solve} & $+28.3$ {\scriptsize$[+20.0,\,+37.0]$} & $+7.7$ {\scriptsize$[+0.0,\,+16.0]$} \\
+ &  & \emph{simulate} & $+4.3$ {\scriptsize$[-2.0,\,+10.7]$} & $+4.0$ {\scriptsize$[-3.0,\,+11.3]$} \\
+\addlinespace
+format stated minus registered & Qwen3.5-9B & \emph{solve} & $+8.7$ {\scriptsize$[+3.7,\,+13.3]$} & $+3.3$ {\scriptsize$[-4.0,\,+11.3]$} \\
+ &  & \emph{simulate} & $+5.0$ {\scriptsize$[+1.0,\,+9.0]$} & $+5.0$ {\scriptsize$[+1.0,\,+9.0]$} \\
+ & Gemma-MoE-26B & \emph{solve} & $+15.0$ {\scriptsize$[+6.7,\,+23.7]$} & $+2.0$ {\scriptsize$[-3.3,\,+7.3]$} \\
+ &  & \emph{simulate} & $+3.0$ {\scriptsize$[-4.7,\,+11.3]$} & $-9.0$ {\scriptsize$[-19.0,\,+1.3]$} \\
+ & Qwen3.6-35B & \emph{solve} & $+37.0$ {\scriptsize$[+26.7,\,+48.0]$} & $+17.7$ {\scriptsize$[+7.0,\,+30.3]$} \\
+ &  & \emph{simulate} & $+14.0$ {\scriptsize$[+6.0,\,+22.3]$} & $+10.7$ {\scriptsize$[+3.7,\,+18.0]$} \\
+\addlinespace
++tool (plain) minus format stated & Qwen3.5-9B & \emph{solve} & $+55.7$ {\scriptsize$[+44.0,\,+67.3]$} & $+49.3$ {\scriptsize$[+36.0,\,+63.0]$} \\
+ &  & \emph{simulate} & $+4.7$ {\scriptsize$[-4.0,\,+14.0]$} & $+7.7$ {\scriptsize$[-0.7,\,+17.0]$} \\
+ & Gemma-MoE-26B & \emph{solve} & $+54.7$ {\scriptsize$[+43.7,\,+66.3]$} & $+38.3$ {\scriptsize$[+23.7,\,+53.7]$} \\
+ &  & \emph{simulate} & $-19.0$ {\scriptsize$[-29.7,\,-9.0]$} & $-7.3$ {\scriptsize$[-17.0,\,+2.7]$} \\
+ & Qwen3.6-35B & \emph{solve} & $+10.7$ {\scriptsize$[+1.7,\,+20.7]$} & $+9.3$ {\scriptsize$[+0.0,\,+19.7]$} \\
+ &  & \emph{simulate} & $-5.0$ {\scriptsize$[-12.7,\,+3.3]$} & $-4.0$ {\scriptsize$[-11.7,\,+4.3]$} \\
+\bottomrule
+\end{tabular}
+\caption{The corrected-prompt control: paired contrasts over the $300$ trials of a
+model and task. The first two blocks compare cells of the control with each other. The
+third sets the plain tool arm of the rerun against the format-stated cell and crosses
+two runs. Brackets are 95\% domain-cluster bootstrap intervals, not adjusted for the
+number of contrasts.}
+\label{tab:control-contrasts}
 \end{table*}
 
 \paragraph{Canonical trajectory normalization (\emph{simulate}).}
@@ -3153,7 +3476,8 @@ rerun and in the frontier runs. The rerun adds the neutral form, which keeps onl
 first sentence.
 The unaided \emph{solve} and \emph{simulate} system messages refer to a format
 constraint. That constraint was requested from the server but did not take effect
-(Limitations). The frontier unaided runs differ from this in two details. For
+(Limitations). The control of RQ1 sends the four messages marked \emph{control} below
+in their place. The frontier unaided runs differ from this in two details. For
 \emph{solve} the plan was requested through the provider's structured-output parameter
 with a schema holding a list of action strings. For \emph{simulate} one sentence was
 appended to the user message:
@@ -3357,6 +3681,10 @@ Use the get_state_transition tool with the domain, problem, and plan as argument
 \begin{lstlisting}[numbers=none]
 --- solve, unaided arm ---
 You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning; conform to the JSON schema provided by the format constraint.
+--- solve, unaided arm, control (reference removed) ---
+You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning.
+--- solve, unaided arm, control (format stated) ---
+You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning; end your response with the plan alone in a fenced code block, one parenthesised PDDL action per line.
 --- solve, tool arms (default) ---
 You are a PDDL planning assistant. LLMs cannot reliably generate correct plans from training alone (arXiv:2509.12987). Use the available planner tool to produce the plan.
 --- solve, tool arms (neutral style, rerun) ---
@@ -3385,6 +3713,10 @@ You are a PDDL validation assistant.
 
 --- simulate, unaided arm ---
 You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; conform to the JSON schema provided by the format constraint (per-step state with boolean predicates and numeric fluents).
+--- simulate, unaided arm, control (reference removed) ---
+You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; give the per-step state with boolean predicates and numeric fluents.
+--- simulate, unaided arm, control (format stated) ---
+You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; end your response with a fenced code block that holds a single JSON object of the form {"trajectory": [ ...steps... ]}, where each step has the keys step, action and state (state.boolean and state.numeric).
 --- simulate, tool arms (default) ---
 You are a PDDL simulation assistant. LLMs cannot reliably trace state transitions through a plan from training alone. Use the available simulation tool to compute the trajectory.
 --- simulate, tool arms (neutral style, rerun) ---

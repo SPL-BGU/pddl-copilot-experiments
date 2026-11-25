@@ -471,3 +471,54 @@
 - **Decided (Omer, 2026-11-25): RQ1 on solve gives all three figures** (tools minus
   cell B, second reading: +49.3 [+36.0, +63.0], +38.3 [+23.7, +53.7], +9.3 [+0.0,
   +19.7]) and says the third is not shown. Not "two of three". No paper edit yet.
+- **Paper edit drafted (2026-11-25, branch `paper/control-baseline`, PR for Omer's read;
+  Omer: "Yes, start it").** Headline sentences (abstract, Introduction, Discussion,
+  Conclusion): 21 to 29% is named as the registered grade; the open models reach 43 to
+  69% in the control; tools ahead by 49, 38 and 9 points, the last with an interval that
+  reaches zero. RQ1: one paragraph and Table rq1-control (cell B beside the plain tool
+  arm, second reading), with the sentence on when the reading was adopted, the Gemma
+  JSON slip, and the cross-run caveat. Limitations: "unmeasured" replaced by the
+  measured statement and what was not rerun. Appendix: the control's record, the cells
+  table, the contrasts table, the two new system messages.
+- **Session's choice, for Omer to confirm:** the Claude unaided rates are not set beside
+  the control's rates (different request on solve, one wording, 100 trials); one
+  sentence says so.
+- **Open (Omer):** whether the detailed RQ1 solve and simulate tables, the plan-length
+  table and the two by-length figures are rebuilt with cell B as the no-tools rows and
+  Part C moved to the appendix, as the reporting rule's point 3 reads. The draft keeps
+  them on Part C as the registered record and adds the control beside them.
+- **Detailed RQ1 tables and figures rebuilt on the control baseline (Omer, 2026-11-25:
+  "Yes, rebuild them").** New generator `tools/reanalysis/rq1_control_metrics.py`: the
+  no-tools rows of the three open models are cell B, every open-model row is under the
+  second reading, Claude rows are as filed. Its counts are checked against the frozen
+  analysis output before anything is written. The rerun's rows under the registered
+  grade and the post hoc re-grade table are now in the Technical Appendix.
+- **What the rebuilt tables say.** Solve: unaided 42.7 / 54.0 / 69.0; with tools 78.3 to
+  95.3. On plans over 40 actions the unaided open models solve 22.2 to 38.9% and the
+  plain tool arm 36.1 to 58.3%. Simulate (94 problems): exact traces unaided 13.5 /
+  29.1 / 35.5 against 21.6 / 21.3 / 31.2 with the plain tool arm; every interval
+  overlaps. The lenient score of the unaided arm is far above the strict one for
+  Gemma-26B and Qwen3.6-35B (54.0 and 54.6 against 35.1 and 40.4): many unaided
+  answers are right as far as they go and are cut off.
+- **Wording changes that follow, for Omer's read:** "with tools 77 to 95%" is now 78 to
+  95% (second reading); "the tools make one model worse on simulate" is now "the tools
+  show no gain on simulate for any open model"; the abstract gives the open models'
+  43 to 69% and the frontier models' 22 to 29% in two separate sentences.
+- **Independent check of the paper edit (2026-11-25, a reviewer that did not write the
+  text).** About 95 figures in the prose and 138 table rows recomputed from the
+  generated outputs: no numeric mismatch; the prompt listing equals the code character
+  for character. Fixed after it: four stale passages outside RQ1 (the preliminary-study
+  paragraph still gave the rerun's +51.7 to +71.0 and Gemma's -15.7 on simulate; two
+  notes in the Supporting Analyses; the re-grade caption's table reference); the
+  sentence on the setup now names the registered label (criterion met in three of six
+  cases, the other three read "across a setup that moved"); "has a cost of its own" for
+  Gemma softened, since the registered contrast does not show a cost; wording slips
+  (one array job of nine tasks; four control messages).
+- **Left for Omer:** the abstract quotes 43 to 69% without saying it is the second
+  reading; the registration asks for that where the figure is first quoted. The
+  Introduction now says it. Adding it to the abstract is his call.
+- **Decided (Omer, 2026-11-25): the abstract stays as it is.** It quotes 43 to 69%
+  without naming the second reading; the Introduction and RQ1 say when that reading was
+  adopted. This is a known, accepted departure from the letter of the registration's
+  section 6, rule 5 ("where it first quotes the figure").
+
