@@ -158,7 +158,9 @@ Qwen3.6-35B and 10 or fewer for Qwen3.5-9B in cell B.
    item is the background. The registered rule quotes cell B (27.3). Cell O under the
    second reading is 36.3. The rule stands unless Omer changes it; changing it now
    would be a choice made after the data were seen and would have to be said so.
-2. **Qwen3.6-35B on solve.** With the corrected baseline the tool advantage is +9.3
+2. **Qwen3.6-35B on solve. DECIDED (Omer, 2026-11-25): RQ1 gives all three figures**
+   (+49.3, +38.3 and +9.3 with their intervals) and says the third is not shown. The
+   rest of this item is the background. With the corrected baseline the tool advantage is +9.3
    [+0.0, +19.7], not shown. RQ1's solve claim would need to say two of three models,
    or give the three figures.
 3. **How the paper states the reading**: one sentence that the second reading was added

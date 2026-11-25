@@ -468,3 +468,6 @@
   registered rule says; cell O (36.3) is not quoted as the baseline. The paper states
   the JSON bracket slip in one sentence. Still open: the wording of RQ1 on solve for
   Qwen3.6-35B. No paper edit yet.
+- **Decided (Omer, 2026-11-25): RQ1 on solve gives all three figures** (tools minus
+  cell B, second reading: +49.3 [+36.0, +63.0], +38.3 [+23.7, +53.7], +9.3 [+0.0,
+  +19.7]) and says the third is not shown. Not "two of three". No paper edit yet.
