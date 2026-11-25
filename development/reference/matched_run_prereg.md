@@ -7,7 +7,8 @@ corrected-prompt control (`control_prompt_fix_prereg.md`) and its analysis where
 can, and says where it differs.
 
 **Choices that are Omer's and still open** are marked **[Omer, A5]** to **[Omer, A10]**
-after the questions of `development/unified_run_design.md`. Each is written here as the
+after the questions of `development/unified_run_design.md`, and **[Omer, ISS-029]** (the
+simulate answer key, section 3). Each is written here as the
 session recommended. They stand unless he changes them before the freeze. Nothing is
 frozen and nothing is submitted until he has answered them.
 
@@ -16,7 +17,10 @@ the data of the two runs this one replaces as the source of RQ1 on solve and sim
 the tool arms of the delivered rerun (Part A, 2026-10-03 to 2026-10-09) and the
 corrected-prompt control (2026-11-23 to 2026-11-24), including the rates of the control's
 readout. The readings of section 5 were written with those figures known. They were
-written before any answer of this run existed.
+written before any answer of this run existed. On that old data the registered grade of
+section 3 moves the simulate rates of the tool arms a long way from the rerun's frozen
+grade: for Gemma-26B with plain wordings, 60 of 300 right under the registered grade
+against 25 of 300 under the frozen grade. This was known when the grade was fixed.
 
 **Status of this document.** Sections 1 to 8 are the registration. Section 9 is the
 freeze record and section 10 the smoke record, filled in as the steps happen. Section 11
@@ -98,8 +102,16 @@ answer is repaired.
   characters.
 - vLLM 0.20.2 from the shared `~/vllm.sif`. GPU class `rtx_6000`, one model alone on its
   card, `--mem=48G`.
-- The user prompts v11 to v16 and the with-tools system text, byte for byte as in
-  Part A. The no-tools request still carries the `guided_json` field, which the server
+- The with-tools system text, byte for byte as in Part A (section 2.1). The user
+  prompts v11 to v16 are assured in four ways. The prompt templates and the code that
+  fills them are files of the package hash. The trial keys equal Part A's. The texts of
+  v11 to v13 are the same in the N cell and the tools cell of a model (section 7, item
+  5). And the user texts of the N cell are compared by sha256 with those of the
+  control's cell B, which has an audit log. The count of texts that differ is reported
+  beside K1 and does not halt. A difference would mean that a prompt moved between the
+  two runs; on simulate that is the plan placed in the prompt (section 3). Part A has
+  no audit log, so its user texts cannot be compared directly.
+- The no-tools request still carries the `guided_json` field, which the server
   drops, as in the control. No decoder constraint in any arm.
 - The harness: `main` at the commit recorded in section 9. The only change since the
   control is in the submit script (the with-tools cell may join the same array job as
@@ -154,6 +166,16 @@ arms. A trial is right when the final answer, as the model wrote it, is right:
 - **simulate.** The trace the rerun's grader reads must equal the answer key; a trace
   written one JSON object per line also counts when it equals the answer key exactly
   (`line_reader_exact`, imported unchanged).
+- **The simulate answer key [Omer, ISS-029].** The key is the cached reference trace,
+  as in every earlier readout. Known in advance: on 6 of the 100 problems (barman p01
+  to p05, gripper p03) the plan placed in the prompt can differ from the plan of the
+  cached key. A correct simulation of the prompt's plan is then graded wrong. This
+  touches 18 of the 300 simulate trials of an arm, the same trials in all three arms.
+  Recommended, and written here: keep the cached key, so that the grade equals
+  October's. One descriptive count is registered per model and arm: the simulate trials
+  on those six problems, and how many of them are right.
+- **Exception rows.** A trial on which the harness raised is wrong under the registered
+  grade, whatever answer it stored, as under the rerun's grader.
 - **Validator and capitals [A9].** pddl-pyvalidator **0.1.5**, the release of every
   earlier readout, in process, through the route of the control. Release 0.1.5 rejects
   a valid plan that writes a declared name with a capital letter. So the plan is sent
@@ -165,7 +187,8 @@ arms. A trial is right when the final answer, as the model wrote it, is right:
   return the stored verdict for the rerun's plans (the control's check).
 
 **Reported beside it, descriptive, for the supplement only:** the rerun's frozen grade,
-and the registered grade without the lower-casing. They let a reader connect this run's
+and the registered grade without the lower-casing (the control's second reading as
+filed, which still reads the stored answer of an exception row). They let a reader connect this run's
 table to the earlier ones. No reading of section 5 uses them.
 
 **What the grade does not do.** It does not repair a broken JSON answer, read a plan
@@ -210,7 +233,9 @@ seed 20261002. Rates carry the same interval.
 - M3: **naming the tool helps** / **hurts** / **no difference shown**, by the same rule.
 - K1 to K3, with the margin of 5 points of the control: **criterion met** when the whole
   interval lies inside [−5, +5]; **a difference is shown** when it excludes 0;
-  **unresolved** when neither. The margin is a threshold chosen in advance.
+  **unresolved** when neither. The margin is a threshold chosen in advance. A check can
+  be "criterion met" and "a difference is shown" at once (a small difference that is
+  inside the margin); both labels are then given.
 
 **Multiplicity.** As in the control: readings use the unadjusted 95% interval; beside
 every contrast the analysis reports an exact sign-flip p-value over the 20 domains,
@@ -233,8 +258,10 @@ naming the tool added. Two labels differ when they still differ once the words "
 after Holm)" are removed.
 
 **Q2. Continuity. (K1 to K3.)** Where a check meets the criterion, the supplement says
-this run reproduces the earlier one for that model, task and arm. Where it does not,
-the supplement says so and gives the estimate. Either way the body quotes this run.
+this run reproduces the earlier one for that model, task and arm within the margin, and
+gives the estimate. This holds too when the check also carries "a difference is shown".
+Where the criterion is not met, the supplement says so and gives the estimate. Either
+way the body quotes this run.
 
 **Readings that would be wrong, named in advance.** "The unaided model is as good as
 the tools" from an M1 interval that includes 0: that is "no difference shown". "The
@@ -269,7 +296,10 @@ Fixed here, before any data:
    by trace length; the lenient simulate score) are computed on this run with the bins
    and definitions of `tools/reanalysis/rq1_control_metrics.py`. A trial counts as right
    under this run's registered grade. They are descriptive. Tables only: the figures and
-   the LaTeX rows of that script are not part of this registration.
+   the LaTeX rows of that script are not part of this registration. The problems left
+   out of the by-length simulate tables are chosen by the rule of that script from this
+   run's rows (the plan most tool rows passed to the simulate tool is not the reference
+   plan), and the list is printed.
 5. **No paper text is part of this registration.** The readout goes to Omer.
 
 ---
@@ -313,9 +343,12 @@ Fixed here, before any data:
      at `5e4f9c0` (read on the cluster and recorded by hand, section 2.3).
   The check prints these items and no success rate, no failure-reason count, no tool-call
   count and no answer text.
-- **The same checks are preconditions of the analysis** on the full run, together with
-  the apparatus checks of the control (window, caps, temperature, thinking, model,
-  storage rule).
+- **Items 4 to 7 are preconditions of the analysis** on the full run, together with the
+  apparatus checks of the control (window, caps, temperature, thinking, model, storage
+  rule). Every summary file must also name the two tasks of this run and no output cap
+  of its own, so that the caps are the harness's 8,192 and 6,144. Items 1 and 2 are
+  replaced on the full run by the completeness rule, the VOID rule and the storage rule
+  below. Item 3 is for the smoke only.
 - **During the run.** Monitoring reads row counts and job states only.
 - **Stop rules.** A cell folder is VOID if more than 1% of its rows are exception or
   infrastructure-failure rows (the rerun's definition). When a cell is VOID, **both
@@ -326,7 +359,8 @@ Fixed here, before any data:
   per task, 200 per wording. A short cell is resumed, not analysed. The trial keys of
   each arm must equal those of the rerun for that model and task; a difference halts
   the analysis. The unpaired count is therefore zero, and it is printed.
-- **Exception rows at or under 1%** stay in the denominator and are graded as they are.
+- **Exception rows at or under 1%** stay in the denominator and are wrong under every
+  grade the readings use (section 3).
   **Rows cut by storage, duplicate keys, half-written lines:** the control's rules.
 - **The analysis does not read a row of the full run** unless it is started with the
   package hash of section 9.
@@ -336,16 +370,21 @@ Fixed here, before any data:
 ## 8. Secondary, descriptive (not gates, not readings)
 
 Per model, task and arm, with counts: right answers by wording; the layout of the
-answer (the control's categories); answers that stopped at the output cap and answers
-left empty because the prompt and tool output filled the window; mean output tokens (in
+answer (the control's categories); answers that stopped at the output cap (the answer
+ended at the cap and its final turn was not refused or clipped); trials whose final turn
+was refused or clipped because the prompt and the tool output filled the window (the
+rule of section 7, item 3), counted on their own; mean output tokens (in
 a tools arm, summed over the turns of a trial; the rows hold no per-turn count); the
 rerun's failure reason for each trial that is wrong under the registered grade; the
 frozen-grade and
-not-lower-cased columns of section 3; the Holm-adjusted p-values; the measures of
-section 6, rules 3 and 4.
+not-lower-cased columns of section 3, and beside them the count of trials where the
+registered grade differs from the control's case-folded column; the count of section 3
+for the six simulate problems; the Holm-adjusted p-values; the measures of section 6,
+rules 3 and 4. In the table "tool right and final answer wrong", a trial that the rerun's
+rules cannot classify is counted as "not classified" and the count is printed.
 
-**Tripwires that halt the readout until audited:** a count of right answers that is the
-same in all cells of a task; an arm in which no answer at all is read on a task (no
+**Tripwires that halt the readout until audited**, all on the registered grade: the same
+count of right answers in all nine model-by-arm cells of a task; an arm in which no answer at all is read on a task (no
 trial of the arm on that task has an answer read by the rerun's grader, a plan block, or
 a trace written one object per line); an arm whose rate differs by more than 20 points
 from its continuity partner (K1 to K3); a tools arm (model, task, P or S) in which no
@@ -362,10 +401,25 @@ counted 52 of 300 and audited them; there the tripwire fires above 90 of 300.
 package hash, the five gates, the dry run on existing data, the submit command, job ids
 and dates, GPU class and memory from the job log, sha256 of the frozen files.*
 
-Candidate package hash before review:
-`8b2ce3528de71ef4322bce1cf9e37f732a903ae35b1fa0bc6a27604d383e89b4`
+Candidate package hash after the independent review:
+`1f3d0f84c755820fb73eac810f3aebfc55dca69de663c2467fa430946fd4155d`
 (`python -m tools.reanalysis.matched_run --print-package-hash`, 2026-11-25). It is not
-a freeze. Any edit after the review changes it.
+a freeze. Any later edit changes it.
+
+Input files outside the package hash. The analysis checks their sha256 and halts on any
+other:
+
+| file | sha256 |
+|---|---|
+| `tools/reanalysis/out/rq1_layout_regrade.json` | `eb56a2e4c1fa38e5a04c3357e9776732871f506906d8d1bb8124a9d4f8164017` |
+| `tools/reanalysis/out/control_prompt_fix.json` | `f50452ad5a3d03e8070cd391e8ff1f44c0fcd0aa91176322cedf1335abe4fc3d` |
+| `development/reference/delivered_rerun_readout.json` | `81bd59ffd153dafe20e9d9d7422785fff05d8dba894e9f8a331b919a7334c674` |
+| `results/delivered-rerun-secondary/plan_verdicts.json` | `3c945faeafbdd36ec921d97bb554ef6ef6e9c53225f61e943056571284c6afb0` |
+
+Recorded, not checked by the analysis: `pddl_eval/vllm_client.py`, sha256
+`66a58c6adf2dc52d12936fa0d7a37c9e74907b0a755ea315730b324515caf5e9`. It writes the audit
+log; the shape of its lines is what the audit checks of section 7 read. If this file
+changes before the run, those checks are read against it again.
 
 Dry run on existing data, 2026-11-25. **Old data. Not results of this run.** The
 analysis was run with arm N filled by the rows of the control's cell B and arms P and S
@@ -376,6 +430,9 @@ filled by the rows of Part A (`--dry-run-existing`). No row of this run existed.
 - M1 without the lower-casing equals the control's filed C4 under the second reading in
   all six cases (estimate, interval and p-values).
 - The lower-casing changed no trial in any cell.
+- On the six problems of section 3 [Omer, ISS-029] every arm had 18 trials and none was
+  right.
+- The dry run was repeated after the review edits, with the same three results.
 
 Planned submit command (the flag `--with-tools-cell` is on branch
 `harness/matched-run-cells`, commit `2522786`, not merged; a local dry run gives one

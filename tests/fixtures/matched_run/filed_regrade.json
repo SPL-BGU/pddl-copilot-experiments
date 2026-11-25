@@ -104,8 +104,8 @@
    "task": "solve",
    "arm": "steered",
    "n": 60,
-   "frozen_k": 60,
-   "tolerant_k": 60,
+   "frozen_k": 40,
+   "tolerant_k": 40,
    "folded_k": 60
   }
  ]

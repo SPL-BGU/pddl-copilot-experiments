@@ -213,10 +213,34 @@
     "(stop r)"
    ],
    "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  },
+  "p02": {
+   "plan": [
+    "(go l1 l2)",
+    "(go l2 l3)",
+    "(go l3 l4)",
+    "(go l4 l5)",
+    "(go l5 l6)",
+    "(go l6 l7)",
+    "(stop r)"
+   ],
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
   }
  },
  "d20": {
   "p01": {
+   "plan": [
+    "(go l1 l2)",
+    "(go l2 l3)",
+    "(go l3 l4)",
+    "(go l4 l5)",
+    "(go l5 l6)",
+    "(go l6 l7)",
+    "(stop r)"
+   ],
+   "trace": "{\"valid\": true, \"trajectory\": [{\"step\": 0, \"action\": null, \"boolean_fluents\": {\"at(r,l1)\": true}, \"numeric_fluents\": {}}, {\"step\": 1, \"action\": \"(go l1 l2)\", \"boolean_fluents\": {\"at(r,l2)\": true}, \"numeric_fluents\": {}}]}"
+  },
+  "p02": {
    "plan": [
     "(go l1 l2)",
     "(go l2 l3)",

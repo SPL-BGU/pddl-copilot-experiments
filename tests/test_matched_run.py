@@ -4,8 +4,11 @@ Run standalone: `python3 tests/test_matched_run.py`
 Or: `python3 -m pytest tests/test_matched_run.py`
 
 The synthetic fixture (tests/fixtures/matched_run/, built by its build_fixture.py) has
-the smoke layout: 20 domains d01..d20, one problem, so 60 trials per model, task and arm,
-3 per domain. Every expected number below is hand-computed from the plants of
+60 trials per model, task and arm, 3 per domain, over 20 domains d01..d20. d01 to d18 have
+one problem on three wordings; d19 and d20 have two problems (d19: p01 v11, p02 v11, p01
+v12; d20: p02 v12, p01 v13, p02 v13), so every wording still has 20 rows per task and a
+pairing key without the problem would collide. A plant "on v12 everywhere" means the
+second of the three trials of every domain. Every expected number below is hand-computed from the plants of
 build_fixture.py; the derivation is in the comment next to it.
 
 Bootstrap arithmetic used below (frozen `cluster_bootstrap`: 20 domains drawn with
@@ -128,7 +131,11 @@ def bdir(root: Path, model: str) -> Path:
 
 
 def edit_jsonl(path: Path, fn) -> None:
-    recs = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
+    """Rewrite a JSON-lines file. A half-written line (the fixture plants one) is dropped."""
+    recs = []
+    for ln in path.read_text().splitlines():
+        with contextlib.suppress(json.JSONDecodeError):
+            recs.append(json.loads(ln))
     path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in fn(recs)))
 
 
@@ -151,7 +158,8 @@ def set_answer(path: Path, model: str, task: str, dom: str, v: int, kind: str,
     """Replace one row of a trials file with a builder row of another answer kind."""
     def fn(recs):
         i = find(recs, task, dom, v)
-        row = BF.make_row(model, task, dom, v, kind, with_tools, tool)
+        row = BF.make_row(model, task, dom, v, kind, with_tools, tool,
+                          recs[i]["result"]["problem_name"])
         recs[i] = {"key": BF.key_of(row), "result": row}
         return recs
     edit_jsonl(path / "trials.jsonl", fn)
@@ -197,14 +205,17 @@ def test_planted_answers(r):
              ((plan, True), (wrong, False), (caps, False), (tried, False))}
     gt = json.loads((FIXTURE / "gt_cache.json").read_text())
     calls = []
+    r.check_eq("caps_json: the frozen reader takes the capitals, there is no block",
+               (G.solve_plan(BF.ANSWERS["caps_json"]), RG.block_plan(BF.ANSWERS["caps_json"])),
+               ((caps, "json"), None))
 
     def route(d, p, pl):
         calls.append(pl)
         return table[(d, p, pl)]
 
-    def three(kind, task="solve", with_tools=False):
+    def three(kind, task="solve", with_tools=False, tool="right"):
         verdict = CPF.Verdicts(route)
-        row = BF.make_row(Q9, task, "d01", 11, kind, with_tools)
+        row = BF.make_row(Q9, task, "d01", 11, kind, with_tools, tool)
         spec = M.matched_spec(M.SMOKE, Q9, "T" if with_tools else "N", BF.RUN_TAG)
         parsed = S.parse_row({"key": BF.key_of(row), "result": row}, spec, "t")
         pairs = CPF.frozen_grades([parsed], verdict, gt)
@@ -222,6 +233,18 @@ def test_planted_answers(r):
     r.check("caps_block: the validator was sent the lower-case plan", plan in calls, calls)
     r.check_eq("caps_block in a tools row: the same rule in every arm",
                three("caps_block", with_tools=True), (True, False, False))
+    # The same with no code block: the plan the frozen reader took, in capitals.
+    r.check_eq("caps_json: a frozen-reader plan is lower-cased too", three("caps_json"),
+               (True, False, False))
+    # Exception rows are wrong under the registered grade whatever their stored answer.
+    # A scoring-exception row keeps its answer; the descriptive second reading (the
+    # control's frozen behaviour) still reads it.
+    r.check_eq("scoring exception with a right plan in a block: registered wrong",
+               three("json_block", tool="scoring"), (False, False, True))
+    r.check_eq("scoring exception with a right per-line trace: registered wrong",
+               three("per_line", "simulate", tool="scoring"), (False, False, True))
+    r.check_eq("client exception: wrong under every grade", three("exception"),
+               (False, False, False))
     # Right action lines, then a wrong JSON plan in the last block: the block decides.
     r.check_eq("right_to_wrong: the last block decides", three("right_to_wrong"),
                (False, True, False))
@@ -252,9 +275,11 @@ def test_planted_answers(r):
 # (registered, frozen, second) right of 60, per (model, task, cell).
 ALL = (60, 60, 60)
 RATES = {
-    # A. Qwen3.5-9B solve: N wrong on v12 in all 20 domains (d05 v12 is the exception
-    # row, wrong like the row it replaces): 40. Cell B of the control: the same.
-    (Q9, "solve", "N"): (40, 40, 40), (Q9, "solve", "P"): ALL, (Q9, "solve", "S"): ALL,
+    # A. Qwen3.5-9B solve: N wrong on the second trial of all 20 domains: 40. d05 v12 is
+    # a scoring-exception row whose stored answer is a right plan in a block: wrong under
+    # the registered and the frozen grade; the descriptive second reading reads it (41).
+    # Cell B of the control: 40 under all three.
+    (Q9, "solve", "N"): (40, 40, 41), (Q9, "solve", "P"): ALL, (Q9, "solve", "S"): ALL,
     (Q9, "solve", "cell B of the control"): (40, 40, 40),
     (Q9, "solve", "Part A, plain"): ALL, (Q9, "solve", "Part A, steered"): ALL,
     # B. Qwen3.5-9B simulate: N wrong on v11 in d01..d04, S wrong on v14 in d01..d04: 56.
@@ -270,10 +295,13 @@ RATES = {
     (GM, "simulate", "N"): ALL, (GM, "simulate", "P"): ALL, (GM, "simulate", "S"): (56, 56, 56),
     (GM, "simulate", "cell B of the control"): ALL, (GM, "simulate", "Part A, plain"): ALL,
     (GM, "simulate", "Part A, steered"): (56, 56, 56),
-    # E. Qwen3.6-35B solve: N wrong on d01, three wordings: 57.
-    (Q35, "solve", "N"): (57, 57, 57), (Q35, "solve", "P"): ALL, (Q35, "solve", "S"): ALL,
+    # E. Qwen3.6-35B solve: N wrong on d01, three wordings: 57. S and Part A steered
+    # answer the third trial of every domain with a bare JSON plan in capitals: right
+    # only in lower case (registered 60; frozen and not-lower-cased 40).
+    (Q35, "solve", "N"): (57, 57, 57), (Q35, "solve", "P"): ALL,
+    (Q35, "solve", "S"): (60, 40, 40),
     (Q35, "solve", "cell B of the control"): ALL, (Q35, "solve", "Part A, plain"): ALL,
-    (Q35, "solve", "Part A, steered"): ALL,
+    (Q35, "solve", "Part A, steered"): (60, 40, 40),
     # F. Qwen3.6-35B simulate: N right one object per line on v11 in d01..d04 (frozen 56);
     # Part A plain wrong on d07 v12: 59.
     (Q35, "simulate", "N"): (60, 56, 60), (Q35, "simulate", "P"): ALL,
@@ -342,7 +370,10 @@ DESCRIPTIVE = {
     # Frozen: Qwen3.6-35B simulate N misses the four per-line traces.
     ("M1", "frozen", Q35, "simulate"): UP4, ("M2", "frozen", Q35, "simulate"): UP4,
     ("M3", "frozen", Q35, "simulate"): ZERO,
-    ("M1", "second", Q9, "solve"): S20, ("M1", "frozen", Q9, "solve"): S20,
+    ("M1", "frozen", Q9, "solve"): S20,
+    # Qwen3.6-35B solve: S loses the bare capital-letter plans under both descriptive
+    # grades (one trial in every domain); P is all right.
+    ("M3", "second", Q35, "solve"): F20, ("M3", "frozen", Q35, "solve"): F20,
 }
 
 
@@ -360,8 +391,12 @@ def test_base(r):
         r.check_eq(f"rate {m}/{t}/{cell}", (e["n"],) + got, (60,) + want)
         r.check_eq(f"rate {m}/{t}/{cell} k", e["registered"]["k"], 20)
     r.check_eq("36 rate rows (18 of this run, 18 earlier)", len(res["rates"]), 36)
-    r.check("the registered grade equals the control's case-folded column everywhere",
-            all(e["registered_differs_from_case_folded"] == 0 for e in res["rates"]))
+    # The counter: the registered grade against the control's case-folded column. They
+    # differ on the one scoring-exception row (case folded reads its answer).
+    r.check_eq("trials where the registered grade differs from the case-folded column",
+               {(e["model"], e["task"], e["cell"]): e["registered_differs_from_case_folded"]
+                for e in res["rates"] if e["registered_differs_from_case_folded"]},
+               {(Q9, "solve", "N"): 1})
     # Rate interval where every domain is the same: Qwen3.5-9B solve N (2 of 3 everywhere).
     e = by(res, "rates", model=Q9, task="solve", cell="N")["registered"]
     r.check("rate interval equals the estimate (every domain 2/3)",
@@ -418,13 +453,38 @@ def test_base(r):
     r.check("Q2 not met gives the estimate", q["Q2"]["K1"]["sentence"].startswith(
         "this run does not meet the criterion against cell B of the control for arm N (a "
         "difference is shown (not after Holm), -6.7 [-13.3, -1.7])"), q["Q2"]["K1"]["sentence"])
-    r.check("Q2 met says the run reproduces the earlier one",
-            by(res, "readings", model=GM, task="solve")["Q2"]["K2"]["sentence"].startswith(
-                "this run reproduces Part A, plain for arm P (criterion met"))
-    # Corpus: one exception row kept (Qwen3.5-9B N, 1 of 120 <= 1%).
-    ex = {c["cell"]: c["exception_rows"] for c in res["corpus"]}
-    r.check_eq("exception rows kept and counted", {k: v for k, v in ex.items() if v},
+    r.check("Q2 met says the run reproduces the earlier one within the margin, with the "
+            "estimate",
+            by(res, "readings", model=Q35, task="simulate")["Q2"]["K2"]["sentence"].startswith(
+                "this run reproduces Part A, plain for arm P within the margin (criterion met, "
+                "+1.7 [+0.0, +5.0])"))
+    # Corpus: one exception row kept (Qwen3.5-9B N, 1 of 120 <= 1%); one answer cut by
+    # storage at the output cap accepted (Qwen3.5-9B tools); one half-written line
+    # counted and skipped (Gemma tools).
+    def corpus(field):
+        return {c["cell"]: c[field] for c in res["corpus"] if c[field]}
+    r.check_eq("exception rows kept and counted", corpus("exception_rows"),
                {BF.folder(Q9, "N", BF.RUN_TAG): 1})
+    r.check_eq("storage-cut rows accepted and counted (a tools cell)",
+               corpus("storage_cut_accepted"), {BF.folder(Q9, "T", BF.RUN_TAG): 1})
+    r.check_eq("torn lines counted (a tools cell)", corpus("torn_lines"),
+               {BF.folder(GM, "T", BF.RUN_TAG): 1})
+    # Section 2.3: the user texts of N against the control's cell B. One text of the
+    # control differs (Qwen3.6-35B simulate d07 v12): reported, not a halt.
+    r.check_eq("user texts of N against the control's cell B",
+               {(u["model"], u["task"]): (u["shared"], u["only_this_run"], u["only_control"])
+                for u in res["audit"]["user_texts_vs_control"]},
+               {**{(m, t): (60, 0, 0) for m in (Q9, GM, Q35) for t in ("solve", "simulate")},
+                (Q35, "simulate"): (59, 1, 1)})
+    # Section 3: the simulate trials on the problems whose prompt plan can differ from
+    # the cached key (design.json: d02/p01, three trials; d20/p02, two; d20/p01 is not
+    # listed). Wrong among them: Qwen3.5-9B N (d02 v11) and S (d02 v14), Gemma S (d02 v16).
+    kp = res["key_plan_differs"]
+    r.check_eq("key-plan problems listed", kp["problems"], ["d02/p01", "d20/p02"])
+    r.check_eq("key-plan trials and right, per model and arm",
+               {(c["model"], c["arm"]): (c["trials"], c["right"]) for c in kp["cells"]},
+               {**{(m, a): (5, 5) for m in (Q9, GM, Q35) for a in ("N", "P", "S")},
+                (Q9, "N"): (5, 4), (Q9, "S"): (5, 4), (GM, "S"): (5, 4)})
     r.check_eq("corpus rows", sorted({c["rows"] for c in res["corpus"]}), [120, 240])
     # Audit: several lines per trial in a tools cell; one re-sent request in an N cell.
     users = res["audit"]["users"]
@@ -445,14 +505,30 @@ def test_base(r):
     s = by(res, "secondary", model=Q9, task="solve", arm="N")
     r.check_eq("failure reasons of the wrong trials (19 wrong plans and the exception row)",
                s["failure_reasons"], {"exception": 1, "plan_invalid": 19})
+    # The wrong trial of a domain is its second one: (p01, v12) in d01..d18, (p02, v11)
+    # in d19, (p01, v13) in d20. So v11 has 19 right of 20, v12 2 of 20, v13 19 of 20.
     r.check_eq("right by wording, Qwen3.5-9B solve N",
                {v: d["registered"] for v, d in s["by_wording"].items()},
-               {"11": 20, "12": 0, "13": 20})
+               {"11": 19, "12": 2, "13": 19})
+    r.check_eq("20 trials per wording", s["per_wording_n"], {"11": 20, "12": 20, "13": 20})
     r.check_eq("exception row counted in its arm", s["exception_rows"], 1)
     s = by(res, "secondary", model=Q9, task="simulate", arm="S")
     r.check_eq("steered arm lists the steered wordings", sorted(s["by_wording"]),
                ["14", "15", "16"])
     r.check_eq("trials with a tool call, Qwen3.5-9B simulate S", s["called_a_tool"], 56)
+    # Stopped at the output cap = the answer ended at the cap and the final turn was not
+    # refused or clipped. Qwen3.5-9B simulate S: the storage-cut answer (1), no window-full
+    # trial. Gemma simulate S: d04 ended at the cap with room (1); d01 and d02 were
+    # refused and d03 clipped (3 window-full, not counted as stopped at the cap).
+    r.check_eq("Qwen3.5-9B simulate S: at the cap, window full",
+               (s["at_output_cap"], s["window_full"]), (1, 0))
+    s = by(res, "secondary", model=GM, task="simulate", arm="S")
+    r.check_eq("Gemma simulate S: at the cap, window full",
+               (s["at_output_cap"], s["window_full"]), (1, 3))
+    r.check_eq("Gemma simulate S: frozen reasons of the four wrong trials",
+               s["failure_reasons"], {"no_room": 2, "trajectory_mismatch": 2})
+    r.check_eq("no other arm has a trial at the cap or with a full window",
+               sum(x["at_output_cap"] + x["window_full"] for x in res["secondary"]), 5)
     r.check_eq("trials with a tool call, Qwen3.6-35B solve P",
                by(res, "secondary", model=Q35, task="solve", arm="P")["called_a_tool"], 40)
     r.check_eq("no tool call in any N arm",
@@ -488,9 +564,18 @@ def test_base(r):
             close(g["lost"]["est"], 0.0) and close(g["lost_frozen"]["est"], 100 / 3)
             and close(g["lost_frozen"]["lo"], 100 / 3), (g["lost"], g["lost_frozen"]))
     g = by(res, "tool_right_answer_wrong", model=GM, task="simulate", arm="S")
-    r.check_eq("tool right, answer wrong: Gemma simulate S",
+    r.check_eq("tool right, answer wrong: Gemma simulate S (3 refused or clipped, 1 wrong)",
                (g["n_tool_right"], g["n_lost"], g["n_lost_frozen"], g["why_frozen"]),
-               (60, 4, 4, {"WRONG_FACTS": 4}))
+               (60, 4, 4, {"REFUSED_OR_CLIPPED_FINAL": 3, "WRONG_FACTS": 1}))
+    # Qwen3.6-35B solve S: the bare capital-letter plan repeats the tool's plan; the
+    # frozen grade calls it invalid (20), the registered grade reads it (0).
+    g = by(res, "tool_right_answer_wrong", model=Q35, task="solve", arm="S")
+    r.check_eq("tool right, answer wrong: Qwen3.6-35B solve S",
+               (g["n_tool_right"], g["n_lost"], g["n_lost_frozen"], g["why_frozen"]),
+               (60, 0, 20, {"TOOL_INPUT_ERROR": 20}))
+    r.check_eq("every frozen-wrong trial was classified",
+               sum(c["not_classified"] for c in res["tool_right_answer_wrong"]), 0)
+    g = by(res, "tool_right_answer_wrong", model=GM, task="simulate", arm="S")
     r.check("its registered share is 4 of 60", close(g["lost"]["est"], 400 / 60), g["lost"])
     g = by(res, "tool_right_answer_wrong", model=Q9, task="simulate", arm="S")
     r.check_eq("no tool call is not 'tool right'", (g["n_tool_right"], g["n_lost"]), (56, 0))
@@ -526,7 +611,12 @@ def test_base(r):
                   "registered readings (section 5, Q1)", "continuity checks K1 to K3",
                   "which tool was called", "tool right and final answer wrong",
                   "solved by reference plan length", "simulate by trace length", "corpus",
-                  "mean output tokens", "answer wrong (registered grade)"):
+                  "mean output tokens", "answer wrong (registered grade)",
+                  "Holm-adjusted p | unpaired | earlier run",
+                  "final turn refused or clipped (window full)",
+                  "problems whose prompt plan can differ from the cached key",
+                  "not classified by the rerun's rules", "only in the control",
+                  "differs from the control's case-folded column"):
         r.check(f"markdown has: {title}", title in md)
     r.check("markdown states the number of contrasts with the tables",
             md.count("18 contrasts and 18 continuity checks") >= 8)
@@ -760,6 +850,18 @@ def test_refusals(r):
     expect_halt(r, "apparatus: a tools answer stopped at the cap with fewer tokens in all",
                 _tokens(GM, "T", "simulate", "d03", 12, done="length", completion=6000),
                 "stopped at the cap after 6000 tokens in all")
+    # The summary names this run's two tasks and no output cap of its own (N and tools).
+    expect_halt(r, "apparatus: a tools summary with its own output cap",
+                _meta(Q35, "T", num_predict=4096), "num_predict=4096")
+    expect_halt(r, "apparatus: an N summary with its own output cap",
+                _meta(Q35, "N", num_predict=4096), "num_predict=4096")
+    expect_halt(r, "apparatus: a tools summary of five tasks",
+                _meta(GM, "T", tasks=["solve", "validate_domain", "validate_problem",
+                                      "validate_plan", "simulate"]), "meta tasks=")
+    expect_halt(r, "apparatus: an N summary of one task", _meta(GM, "N", tasks=["solve"]),
+                "meta tasks=['solve']")
+    expect_halt(r, "the control's cell B has no audit log to compare the user texts with",
+                _rm("control/*/system_prompt_audit.jsonl"), "no system_prompt_audit.jsonl")
     # Earlier runs.
     expect_halt(r, "the route disagrees with a stored verdict", _route_disagrees,
                 "route disagrees with the stored verdict")
@@ -823,6 +925,67 @@ def test_refusals(r):
         shutil.rmtree(root.parent)
 
 
+def test_units(r):
+    """Small rules on their own: the pairing key, the input files, the classifier."""
+    # A pairing key without the problem: d19 holds p01 and p02 on v11, so the keys of an
+    # arm collide and the analysis halts.
+    real = M.canon
+    M.canon = lambda key: (key[0], key[1], "", key[3], real(key)[4])
+    try:
+        code, err, _, written = run_fixture(FIXTURE)
+        r.check("a pairing key without the problem is caught",
+                code == 2 and "pairing keys are unique within an arm" in err and written == [],
+                err[-300:])
+    finally:
+        M.canon = real
+    # The four input files outside the package hash.
+    tmp = Path(tempfile.mkdtemp(prefix="mr_in_"))
+    try:
+        import argparse
+        files = {k: tmp / f"{k}.json" for k in M.INPUT_SHA256}
+        for f in files.values():
+            f.write_text("{}\n")
+        try:
+            M.check_inputs(argparse.Namespace(**files))
+            r.check("an input file with another sha256 is refused", False)
+        except M.Halt as e:
+            r.check("an input file with another sha256 is refused",
+                    "is not the recorded" in str(e) and "section 9" in str(e), str(e))
+        files["regrade_json"] = tmp / "absent.json"
+        try:
+            M.check_inputs(argparse.Namespace(**files))
+            r.check("a missing input file is refused", False)
+        except M.Halt as e:
+            r.check("a missing input file is refused", "cannot be read" in str(e), str(e))
+    finally:
+        shutil.rmtree(tmp)
+    import hashlib
+    for name, rel in (("regrade_json", "tools/reanalysis/out/rq1_layout_regrade.json"),
+                      ("control_json", "tools/reanalysis/out/control_prompt_fix.json"),
+                      ("readout_json", "development/reference/delivered_rerun_readout.json")):
+        r.check_eq(f"recorded sha256 of {rel}", M.INPUT_SHA256[name],
+                   hashlib.sha256((REPO_ROOT / rel).read_bytes()).hexdigest())
+    # A row the rerun's classifier refuses is counted, and the tables still come out.
+    real_classify = M.E4.classify
+    seen = []
+
+    def refuse_one(row, dlv, gt):
+        if row.task == "simulate" and row.domain == "d04" and not seen:
+            seen.append(row.trial_key)
+            raise S.SchemaError("planted: not classifiable")
+        return real_classify(row, dlv, gt)
+    M.E4.classify = refuse_one
+    try:
+        code, err, res, _ = run_fixture(FIXTURE)
+        g = by(res, "tool_right_answer_wrong", model=GM, task="simulate", arm="S") if res else {}
+        r.check("a refused classification is counted as not classified and does not halt",
+                code == 0 and (g["n_lost"], g["n_lost_frozen"], g["not_classified"],
+                               g["why_frozen"]) == (4, 4, 1, {"REFUSED_OR_CLIPPED_FINAL": 3}),
+                (err[-300:], g))
+    finally:
+        M.E4.classify = real_classify
+
+
 def test_cap_units(r):
     """`check_tool_row_caps` on single rows (solve cap 8192, simulate 6144)."""
     spec = M.matched_spec(M.SMOKE, Q9, "T", BF.RUN_TAG)
@@ -873,7 +1036,7 @@ def _rebuild(model, with_tools, pick):
         if kind is None:
             return o
         row = BF.make_row(model, res["task"], res["domain_name"], res["prompt_variant"], kind,
-                          with_tools)
+                          with_tools, "right", res["problem_name"])
         return {"key": BF.key_of(row), "result": row}
     return fn
 
@@ -1157,6 +1320,8 @@ def test_constants(r):
         "SMOKE_NONEMPTY": 0.90, "VOID_FRAC": 0.05, "TRIPWIRE_POINTS": 10.0, "UNREAD_FRAC": 0.10,
         "UNREAD_KNOWN": ("gemma4_26b-a4b", "solve"), "UNREAD_KNOWN_COUNT": 52,
         "UNREAD_KNOWN_OF": 600, "UNREAD_KNOWN_CONTROL": 90,
+        "KEY_PLAN_DIFFERS": M.KEY_PLAN_DIFFERS[:5], "KEY_PLAN_DIFFERS_TRIALS": 6,
+        "INPUT_SHA256": {**M.INPUT_SHA256, "control_json": "0" * 64},
     }
     for name, value in flips.items():
         old = getattr(M, name)
@@ -1347,15 +1512,32 @@ def test_smoke(r):
             code, out = smoke_run(root, ["--serve-logs", str(root / "serve_logs")])
             r.check(f"smoke: empty answers of {label} final turns do not count in a tools cell",
                     code == 0 and "item 3: PASS" in out, out[-500:])
+        # The item cannot pass on nothing: every simulate trial of a tools cell refused
+        # for a full window leaves no simulate trial to look at.
+        def all_simulate_full(root):
+            def fn(recs):
+                for o in recs:
+                    res = o["result"]
+                    if res["task"] == "simulate":
+                        res.update(response="", done_reason="length", truncated=True)
+                        res["tokens"].update(ctx_no_room_turns=1)
+                return recs
+            edit_jsonl(sdir(root, GM, "T") / "trials.jsonl", fn)
+        case("tools cell: no simulate trial with room", all_simulate_full, 3,
+             "or a task has no such trial")
         # An N cell has no such exemption: the same rows in an N cell are plain empty answers.
         spec = M.matched_spec(M.SMOKE, GM, "T", BF.SMOKE_TAG)
         d = BF.make_row(GM, "simulate", "d01", 11, "trace", True)
         d.update(response="", done_reason="length", truncated=True)
         d["tokens"].update(ctx_no_room_turns=1)
         row = S.parse_row({"key": BF.key_of(d), "result": d}, spec, "t")
+        ok_rows = [S.parse_row({"key": BF.key_of(x), "result": x}, spec, "t") for x in (
+            BF.make_row(GM, "solve", "d01", 11, "right", True),
+            BF.make_row(GM, "simulate", "d02", 11, "trace", True))]
         r.check_eq("window_full: a refused turn; the rule per folder",
-                   (M.window_full(row), M.nonempty_enough("T", [row]),
-                    M.nonempty_enough("N", [row])), (True, True, False))
+                   (M.window_full(row), M.nonempty_enough("T", [row] + ok_rows),
+                    M.nonempty_enough("T", [row]), M.nonempty_enough("N", [row])),
+                   (True, True, False, False))
         d2 = BF.make_row(GM, "simulate", "d01", 11, "trace", True)
         d2.update(response="", done_reason="stop")
         r.check_eq("window_full: an empty answer that stopped by itself is not window-full",
@@ -1420,6 +1602,7 @@ def main():
     test_planted_answers(r)
     test_base(r)
     test_refusals(r)
+    test_units(r)
     test_cap_units(r)
     test_tripwires(r)
     test_r2(r)

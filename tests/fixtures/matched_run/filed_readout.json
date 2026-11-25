@@ -82,7 +82,7 @@
    "model": "qwen3_6_35b",
    "task": "solve",
    "arm": "steered",
-   "delivered_k": 60,
+   "delivered_k": 40,
    "n": 60
   }
  ]

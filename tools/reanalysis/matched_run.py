@@ -63,8 +63,8 @@ from pathlib import Path
 from pddl_eval.prompts import WITH_TOOLS_SYSTEM_BY_TASK
 from pddl_eval.runner import DEFAULT_NUM_PREDICT, build_messages
 from pddl_eval.scoring import strip_leaked_channel_prefix
-from tools.delivered_rerun import analysis as A
 from tools.delivered_rerun import constants as C
+from tools.delivered_rerun import e4 as E4
 from tools.delivered_rerun import grade as G
 from tools.delivered_rerun import run as RUN
 from tools.delivered_rerun import schema as S
@@ -137,9 +137,24 @@ RUN_TAG = "matched-run"
 SMOKE_TAG = "matched-run-smoke"
 R2_TAG = "matched-run-r2"
 RERUN_PACKAGE = "822aace9ef8a6493592b5b08d73091094fd2602fc0180d1482af83db1ee45cc9"
+# prereg section 9: the four input files outside the package hash, by sha256. Keys are
+# the command-line arguments that name them.
+INPUT_SHA256 = {
+    "regrade_json": "eb56a2e4c1fa38e5a04c3357e9776732871f506906d8d1bb8124a9d4f8164017",
+    "control_json": "f50452ad5a3d03e8070cd391e8ff1f44c0fcd0aa91176322cedf1335abe4fc3d",
+    "readout_json": "81bd59ffd153dafe20e9d9d7422785fff05d8dba894e9f8a331b919a7334c674",
+    "plan_verdicts": "3c945faeafbdd36ec921d97bb554ef6ef6e9c53225f61e943056571284c6afb0",
+}
 CONTROL_PACKAGE = "825dab6313ef2d18c33bed8d584d596e29b35f92eff6c41f0325045602bf0d79"
 # section 3: the grade.
 PYVALIDATOR = "0.1.5"
+# The simulate answer key is the cached reference trace. On these six problems the plan
+# placed in the prompt can differ from the plan of the cached key (ISS-029): 18 of the
+# 300 simulate trials of an arm. A descriptive count is printed for them.
+KEY_PLAN_DIFFERS: tuple[tuple[str, str], ...] = (
+    ("barman", "p01"), ("barman", "p02"), ("barman", "p03"), ("barman", "p04"),
+    ("barman", "p05"), ("gripper", "p03"))
+KEY_PLAN_DIFFERS_TRIALS = 18
 GRADES: tuple[str, ...] = ("registered", "frozen", "second")
 REGISTERED_GRADE = "registered"
 DESCRIPTIVE_GRADES: tuple[str, ...] = ("frozen", "second")
@@ -265,6 +280,17 @@ def check_constants() -> None:
     _check(g["CONTROL_PACKAGE"].startswith("825dab63") and g["CONTROL_PACKAGE"] == RC.FROZEN,
            "the control's frozen package 825dab63")
     _check(g["PYVALIDATOR"] == "0.1.5" == C27.PYVAL_EXPECTED, "pddl-pyvalidator 0.1.5")
+    _check(g["KEY_PLAN_DIFFERS"] == (("barman", "p01"), ("barman", "p02"), ("barman", "p03"),
+                                     ("barman", "p04"), ("barman", "p05"), ("gripper", "p03")),
+           "the six problems whose prompt plan can differ from the cached key")
+    _check(g["KEY_PLAN_DIFFERS_TRIALS"] == 18 == len(g["KEY_PLAN_DIFFERS"]) * 3,
+           "18 of 300 simulate trials per arm")
+    _check(g["INPUT_SHA256"] == {
+        "regrade_json": "eb56a2e4c1fa38e5a04c3357e9776732871f506906d8d1bb8124a9d4f8164017",
+        "control_json": "f50452ad5a3d03e8070cd391e8ff1f44c0fcd0aa91176322cedf1335abe4fc3d",
+        "readout_json": "81bd59ffd153dafe20e9d9d7422785fff05d8dba894e9f8a331b919a7334c674",
+        "plan_verdicts": "3c945faeafbdd36ec921d97bb554ef6ef6e9c53225f61e943056571284c6afb0"},
+        "sha256 of the four input files outside the package hash")
     _check(g["GRADES"] == ("registered", "frozen", "second"), "one grade and two descriptive")
     _check(g["REGISTERED_GRADE"] == "registered"
            and g["DESCRIPTIVE_GRADES"] == ("frozen", "second"), "which grade is registered")
@@ -647,6 +673,48 @@ def check_apparatus_tools(cell_dir: Path, f: M.Folder, settings: dict) -> dict:
     return {"summaries": len(summaries)}
 
 
+def check_summary_run(cell_dir: Path) -> None:
+    """Section 2.3, for an N and for a tools cell: every summary file names the two tasks
+    of this run and no output cap of its own (`num_predict` null), so the caps are the
+    harness's defaults, which `check_constants` ties to 8,192 and 6,144. (The control's
+    `check_apparatus` does not read these two fields.)"""
+    for p in sorted(cell_dir.glob("summary_*.json")):
+        try:
+            meta = json.loads(p.read_text()).get("meta")
+        except (ValueError, AttributeError) as e:
+            raise Halt(f"{cell_dir.name}/{p.name}: not a summary object") from e
+        if not isinstance(meta, dict) or "num_predict" not in meta or "tasks" not in meta:
+            raise Halt(f"{cell_dir.name}/{p.name}: meta has no num_predict or no tasks")
+        if meta["num_predict"] is not None:
+            raise Halt(f"{cell_dir.name}/{p.name}: meta num_predict={meta['num_predict']!r}, "
+                       f"registered: none (the harness's caps)")
+        if meta["tasks"] != list(TASKS):
+            raise Halt(f"{cell_dir.name}/{p.name}: meta tasks={meta['tasks']!r}, registered "
+                       f"{list(TASKS)!r}")
+
+
+def compare_user_texts(n_dir: Path, control_dir: Path, model: str) -> list[dict]:
+    """Section 2.3: the user texts of the N cell against those of the control's cell B,
+    by sha256, per task (both cells send the same system text, so a line's task is read
+    from its system sha256). Reported beside K1; a difference does not halt. It would
+    mean a user prompt moved between the two runs, which for simulate is the plan placed
+    in the prompt."""
+    by_sha = {N_SYSTEM_SHA256[t]: t for t in TASKS}
+    sets = []
+    for d in (n_dir, control_dir):
+        per = {t: set() for t in TASKS}
+        for i, o in enumerate(M.audit_lines(d / "system_prompt_audit.jsonl", d.name), 1):
+            sha, user = o.get("system_sha256"), o.get("user_sha256")
+            if sha not in by_sha or not isinstance(user, str) or not M._HEX64.match(user):
+                raise AuditFailed(f"{d.name}: audit line {i} is not a line of the "
+                                  f"format-stated text with a user sha256")
+            per[by_sha[sha]].add(user)
+        sets.append(per)
+    return [{"model": model, "task": t, "shared": len(sets[0][t] & sets[1][t]),
+             "only_this_run": len(sets[0][t] - sets[1][t]),
+             "only_control": len(sets[1][t] - sets[0][t])} for t in TASKS]
+
+
 def need_notes(serve_logs: Path | None, version_note: str | None, repo_note: str | None) -> None:
     """Item 7 has two halves; each needs evidence or a note that it was checked by hand."""
     if serve_logs is None and not (version_note and version_note.strip()):
@@ -677,6 +745,7 @@ def audit_matched(root: Path, folders: dict, serve_logs: Path | None,
                 users[fo] = check_audit_tools(d, m, f.rows)
                 s = check_settings_tools(d, m)
                 out["apparatus"][f.spec.name] = check_apparatus_tools(d, f, s)
+            check_summary_run(d)
             out["settings"][f.spec.name] = {"slurm_job_id": s.get("slurm_job_id")}
             if serve_logs is not None:
                 out["serve_logs"][f.spec.name] = M.check_serve_log(serve_logs, d, m, s)
@@ -700,8 +769,11 @@ def window_full(r: S.Row) -> bool:
 
 def nonempty_enough(folder: str, rows) -> bool:
     """Section 7 item 3. N cell: at least 95% of the stored answers are non-empty. Tools
-    cell: the same among the trials whose final turn was not `window_full`."""
+    cell: the same among the trials whose final turn was not `window_full`; the item
+    cannot pass on nothing, so each task needs at least one such trial."""
     base = [r for r in rows if not (folder == "T" and window_full(r))]
+    if folder == "T" and not all(any(r.task == t for r in base) for t in TASKS):
+        return False
     nonempty = sum(bool(strip_leaked_channel_prefix(r.response).strip()) for r in base)
     return nonempty >= SMOKE_NONEMPTY * len(base)
 
@@ -736,7 +808,8 @@ def smoke_check(root: Path, serve_logs: Path | None, version_note: str | None,
                 fails[3].append(f"{spec.name}: fewer than {100 * SMOKE_NONEMPTY:.0f}% of the "
                                 f"stored answers are non-empty"
                                 + (" among the trials whose final turn was not refused or "
-                                   "clipped for a full window" if fo == "T" else ""))
+                                   "clipped for a full window, or a task has no such trial"
+                                   if fo == "T" else ""))
             loaded[(m, fo)] = f
     for m in MODEL_ORDER:
         users = {}
@@ -784,7 +857,8 @@ def smoke_check(root: Path, serve_logs: Path | None, version_note: str | None,
                 "row; no row cut by storage; no half-written line",
              3: f"in every N cell at least {100 * SMOKE_NONEMPTY:.0f}% of the stored answers "
                 f"are non-empty; in every tools cell the same among the trials whose final "
-                f"turn was not refused or clipped for a full context window",
+                f"turn was not refused or clipped for a full context window, with at least "
+                f"one such trial per task",
              4: "audit log: in the N cells the registered sha256 and text, swapped; in the "
                 "tools cells one system text per task, the with-tools text of Part A, not "
                 "swapped; the cell's model; at least one line and one different user text "
@@ -853,12 +927,27 @@ def _split(rows, grade_of) -> dict:
     return out
 
 
+def check_inputs(args) -> None:
+    """Section 9: the four input files outside the package hash are the recorded ones."""
+    for name, want in INPUT_SHA256.items():
+        path = getattr(args, name)
+        try:
+            got = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        except OSError as e:
+            raise Halt(f"input file --{name.replace('_', '-')} {path}: cannot be read "
+                       f"({type(e).__name__})") from e
+        if got != want:
+            raise Halt(f"input file --{name.replace('_', '-')} {path}: sha256 {got[:12]}... "
+                       f"is not the recorded {want[:12]}... (prereg section 9)")
+
+
 def load_earlier_live(args) -> Earlier:
     """Part A (and Part C, for the route check) through `rq1_metrics.load_rerun_cells`
     (the frozen package, the pinned ground truth, grades that reproduce the filed
     readout or halt), and the rows of the control's cell B through the control's reader."""
     if M.package_sha256() != CONTROL_PACKAGE:
         raise Halt("the control's frozen package changed (its hash is not 825dab63...)")
+    check_inputs(args)
     cells, grades, gt_cache = R1.load_rerun_cells(args)
 
     def g(r):
@@ -986,8 +1075,8 @@ class Trial:
     folded: bool            # the control's case-folded column (must reproduce the filed counts)
     reason: str             # the frozen grader's reason
     layout: str
-    at_cap: bool
-    no_room: bool
+    at_cap: bool            # stopped at the output cap: "length" and not window_full
+    window_full: bool       # the final turn was refused or clipped for a full window
     completion: int
     is_exception: bool
     read: bool              # a reader of the registered grade found an answer to grade
@@ -1002,8 +1091,11 @@ def grade_trials(pairs, verdict: M.Verdicts, gt_cache: dict) -> dict:
     closed code block when that block holds a plan (`block_plan`), otherwise the plan the
     frozen grader reads; it is sent to the validator in lower case, always. Simulate: the
     frozen grade, or a trace written one JSON object per line that equals the answer key
-    (`line_reader_exact`, through the control's `second_reading`). The descriptive
-    columns `frozen`, `second` and `folded` are the control's `grade_rows`, unchanged."""
+    (`line_reader_exact`, through the control's `second_reading`). An exception row (the
+    harness raised on the trial) is wrong, whatever its stored answer, as under the
+    rerun's grader. The descriptive columns `frozen`, `second` and `folded` are the
+    control's `grade_rows`, unchanged: `second` and `folded` still read the stored answer
+    of an exception row, which is the control's frozen behaviour."""
     pairs = list(pairs)
     graded = M.grade_rows(pairs, verdict, gt_cache)
     out = {}
@@ -1017,11 +1109,15 @@ def grade_trials(pairs, verdict: M.Verdicts, gt_cache: dict) -> dict:
         else:
             registered = x.second
             read = x.readable or PILOT.line_reader_steps(r.response) is not None
+        if r.is_exception:
+            registered = False
         _check(isinstance(registered, bool), f"registered grade of {r.trial_key} is a bool")
+        full = window_full(r)
         out[r.trial_key] = Trial(
             key=r.trial_key, domain=r.domain, variant=r.variant, registered=registered,
             frozen=x.frozen, second=x.second, folded=x.folded, reason=x.reason,
-            layout=x.layout, at_cap=x.at_cap, no_room=r.no_room, completion=x.completion,
+            layout=x.layout, at_cap=x.at_cap and not full, window_full=full,
+            completion=x.completion,
             is_exception=x.is_exception, read=read, unread=x.unread, invoked=r.invoked)
     return out
 
@@ -1075,7 +1171,8 @@ def q2_reading(name: str, c: dict, run_dates: str) -> dict:
     arm = CONTINUITY[name][1]
     earlier = EARLIER_WORDS[CONTINUITY[name][0]]
     if met:
-        s = f"this run reproduces {earlier} for arm {arm} ({c['label']}, {M.ci_text(c)})"
+        s = (f"this run reproduces {earlier} for arm {arm} within the margin "
+             f"({c['label']}, {M.ci_text(c)})")
     else:
         s = (f"this run does not meet the criterion against {earlier} for arm {arm} "
              f"({c['label']}, {M.ci_text(c)})")
@@ -1130,30 +1227,43 @@ def rq3_cells(arms: dict, frozen: dict, trials: dict, gt_cache: dict) -> list[di
     harness grade is right (the tool returned the right result, the definition of
     `rq23_metrics.rq3_rerun`), the share whose final answer is wrong under this run's
     registered grade. Beside it the frozen-grade version, which is that function's own
-    measure, with the categories of the frozen `analysis.e4_cell`. (`rq3_rerun` itself
-    loops over the rerun's five tasks and checks the rerun's readout, so it cannot be
-    called on this run.)"""
+    measure, with the categories of the frozen `e4.classify` (the loop of the frozen
+    `analysis.e4_cell`, written out so that a row the classifier refuses is counted as
+    "not classified" and does not halt the registered tables). (`rq3_rerun` itself loops
+    over the rerun's five tasks and checks the rerun's readout, so it cannot be called on
+    this run.)"""
     out = []
     for m in MODEL_ORDER:
         rows = list(arms[m]["P"]) + list(arms[m]["S"])
         grades = {(r.cell, r.trial_key): frozen[(m, ARM_FOLDER["P"])][r.trial_key] for r in rows}
         for task in TASKS:
             for arm_name, arm in (("plain", "P"), ("steered", "S")):
-                g = A.e4_cell(rows, grades, gt_cache, m, task, arm_name)
                 tv = [r for r in rows if r.task == task and r.arm == arm_name
                       and r.success is True]
                 doms = [r.domain for r in tv]
-                lost_frozen = [grades[(r.cell, r.trial_key)].ok is False for r in tv]
-                _check((len(tv), sum(lost_frozen)) == (g.n_tool_correct, g.n_gap),
-                       f"tool right, answer wrong {m}/{task}/{arm}: counts equal e4_cell")
+                lost_frozen = [M.ok_of(grades[(r.cell, r.trial_key)]) is False for r in tv]
+                why: Counter = Counter()
+                not_classified = 0
+                for r, gone in zip(tv, lost_frozen):
+                    if not gone:
+                        continue
+                    try:
+                        cat, _sub = E4.classify(r, grades[(r.cell, r.trial_key)], gt_cache)
+                    except S.SchemaError:
+                        not_classified += 1
+                        continue
+                    _check(cat in E4.CATS, f"a category of the rerun ({cat!r})")
+                    why[cat] += 1
                 lost = [trials[(m, arm, task)][r.trial_key].registered is False for r in tv]
                 out.append({
                     "model": m, "task": task, "arm": arm,
                     "n_trials": sum(r.task == task and r.arm == arm_name for r in rows),
                     "n_tool_right": len(tv), "n_lost": sum(lost),
                     "lost": R1.boot(lost, doms),
-                    "n_lost_frozen": g.n_gap, "lost_frozen": R1.boot(lost_frozen, doms),
-                    "why_frozen": {k: v for k, v in g.categories.items() if v}})
+                    "n_lost_frozen": sum(lost_frozen),
+                    "lost_frozen": R1.boot(lost_frozen, doms),
+                    "why_frozen": {c: why[c] for c in E4.CATS if why[c]},
+                    "not_classified": not_classified})
     return out
 
 
@@ -1203,7 +1313,7 @@ def breakdowns(arms: dict, frozen: dict, trials: dict, gt_cache: dict,
 # ------------------------------------------------------------------ analysis
 def analyse(design: Design, arms: dict, er: Earlier, verdict: M.Verdicts, mode: str,
             run_dates: str, audit: dict, audit_notes: dict, corpus: list,
-            domains_dir: Path, halt_on_tripwires: bool = True) -> dict:
+            domains_dir: Path, plan_differs: tuple, halt_on_tripwires: bool = True) -> dict:
     k = design.k_domains
     gt = er.gt_cache
     # The earlier runs: frozen grades reproduce the filed readout; keys equal the rerun's.
@@ -1338,6 +1448,18 @@ def analyse(design: Design, arms: dict, er: Earlier, verdict: M.Verdicts, mode: 
         raise Halt(f"audit notes for tripwires that did not fire: {sorted(extra)}")
 
     secondary = secondary_tables(trials)
+    # Section 3, descriptive: the simulate trials on the problems whose prompt plan can
+    # differ from the plan of the cached key, and how many of them are right.
+    differs = {tuple(x) for x in plan_differs}
+    key_plan = []
+    for m in MODEL_ORDER:
+        for arm in ARMS:
+            hit = [x for q, x in trials[(m, arm, "simulate")].items() if (q[1], q[2]) in differs]
+            if design is REGISTERED:
+                _check(len(hit) == KEY_PLAN_DIFFERS_TRIALS,
+                       f"{m}/{arm}: 18 simulate trials on the six problems")
+            key_plan.append({"model": m, "arm": arm, "trials": len(hit),
+                             "right": sum(x.registered for x in hit)})
     track = tracks_of(domains_dir, live=mode != "fixture")
     return {
         "mode": mode, "package_sha256": package_sha256(), "design": dataclasses.asdict(design),
@@ -1347,6 +1469,8 @@ def analyse(design: Design, arms: dict, er: Earlier, verdict: M.Verdicts, mode: 
         "n_contrasts": N_CONTRASTS, "n_continuity": N_CONTINUITY,
         "rates": rates, "contrasts": contrasts, "continuity": continuity, "readings": readings,
         "secondary": secondary,
+        "key_plan_differs": {"problems": sorted(f"{d}/{p}" for d, p in differs),
+                             "cells": key_plan},
         "tool_choice": rq2_cells(arms, track),
         "tool_right_answer_wrong": rq3_cells(arms, frozen, trials, gt),
         "breakdowns": breakdowns(arms, frozen, trials, gt, domains_dir),
@@ -1369,7 +1493,7 @@ def secondary_tables(trials: dict) -> list[dict]:
             "per_wording_n": {str(v): sum(x.variant == v for x in vals) for v in ws},
             "layout": dict(sorted(Counter(x.layout for x in vals).items())),
             "at_output_cap": sum(x.at_cap for x in vals),
-            "empty_window_full": sum(x.no_room for x in vals),
+            "window_full": sum(x.window_full for x in vals),
             "mean_output_tokens": sum(x.completion for x in vals) / len(vals),
             "exception_rows": sum(x.is_exception for x in vals),
             "read": sum(x.read for x in vals),
@@ -1422,10 +1546,23 @@ def render(res: dict) -> str:
           f"grade; the registered grade without the lower-casing). No reading uses the "
           f"descriptive grades. {common}.", "",
           md_table(["model", "task", "arm", "trials", "registered grade",
-                    "frozen grade (descriptive)", "not lower-cased (descriptive)"],
+                    "frozen grade (descriptive)", "not lower-cased (descriptive)",
+                    "trials where the registered grade differs from the control's "
+                    "case-folded column"],
                    [[model_name(r["model"]), r["task"], ARM_WORDS[r["cell"]], r["n"],
-                     cell_rate(r["registered"]), cell_rate(r["frozen"]), cell_rate(r["second"])]
+                     cell_rate(r["registered"]), cell_rate(r["frozen"]), cell_rate(r["second"]),
+                     r["registered_differs_from_case_folded"]]
                     for r in res["rates"] if r["this_run"]]), ""]
+    kp = res["key_plan_differs"]
+    L += ["#### Matched run: simulate trials on the problems whose prompt plan can differ "
+          "from the cached key (descriptive)", "",
+          f"The answer key is the cached reference trace, as in every earlier readout. On "
+          f"these problems the plan placed in the prompt can differ from the plan of the "
+          f"cached key, so a correct simulation of the prompt's plan is graded wrong there: "
+          f"{', '.join(kp['problems'])}. {common}.", "",
+          md_table(["model", "arm", "trials on those problems", "right (registered grade)"],
+                   [[model_name(c["model"]), c["arm"], c["trials"], c["right"]]
+                    for c in kp["cells"]]), ""]
     L += ["#### Matched run: contrasts M1 to M3, registered grade", "",
           f"Points, paired on the trial (task, domain, problem, plan label, wording); a "
           f"steered wording is paired with its plain wording (v14 with v11, v15 with v12, v16 "
@@ -1447,11 +1584,19 @@ def render(res: dict) -> str:
           f"5 points, endpoints included. Dates: this run {res['run_dates']}; the control "
           f"{res['control_dates']}; Part A {res['part_a_dates']}. {common}.", "",
           md_table(["check", "model", "task", "pairs", "difference [95% interval]", "reading",
-                    "sign-flip p", "Holm-adjusted p", "earlier run"],
+                    "sign-flip p", "Holm-adjusted p", "unpaired", "earlier run"],
                    [[f"{c['name']} ({CONTRAST_WORDS[c['name']]})", model_name(c["model"]),
                      c["task"], c["n_pairs"], M.ci_text(c), c["label"], f"{c['p']:.3g}",
-                     f"{c['p_holm']:.3g}", EARLIER_DATES[c["name"]]]
+                     f"{c['p_holm']:.3g}", c["unpaired"], EARLIER_DATES[c["name"]]]
                     for c in res["continuity"] if c["grade"] == REGISTERED_GRADE]), "",
+          "Beside K1: the user texts of the N cell against those of the control's cell B, by "
+          "sha256 (a difference does not halt; on simulate it would mean the plan placed in "
+          "the prompt moved between the two runs).", "",
+          md_table(["model", "task", "user texts in both", "only in this run",
+                    "only in the control"],
+                   [[model_name(u["model"]), u["task"], u["shared"], u["only_this_run"],
+                     u["only_control"]] for u in res["audit"].get("user_texts_vs_control", [])]
+                   or [["–", "–", "not compared in this mode", "–", "–"]]), "",
           md_table(["model", "task", "check", "reading (section 5, Q2)"],
                    [[model_name(e["model"]), e["task"], name, e["Q2"][name]["sentence"]]
                     for e in res["readings"] for name in CONTINUITY]), ""]
@@ -1467,25 +1612,30 @@ def render(res: dict) -> str:
           f"frozen grades reproduce the filed readouts (checked before any contrast). "
           f"{common}.", "",
           md_table(["model", "task", "rows", "trials", "registered grade",
-                    "frozen grade (descriptive)", "not lower-cased (descriptive)"],
+                    "frozen grade (descriptive)", "not lower-cased (descriptive)",
+                    "trials where the registered grade differs from the control's "
+                    "case-folded column"],
                    [[model_name(r["model"]), r["task"], r["cell"], r["n"],
-                     cell_rate(r["registered"]), cell_rate(r["frozen"]), cell_rate(r["second"])]
+                     cell_rate(r["registered"]), cell_rate(r["frozen"]), cell_rate(r["second"]),
+                     r["registered_differs_from_case_folded"]]
                     for r in res["rates"] if not r["this_run"]]), ""]
     L += ["#### Matched run: secondary, descriptive (section 8)", "",
           f"Right answers by wording under the registered grade; the layout of the answer; "
-          f"answers that stopped at the output cap; answers left empty because the prompt and "
-          f"the tool output filled the window; mean output tokens (in a tools arm, summed "
+          f"answers that stopped at the output cap (the answer ended at the cap and its final "
+          f"turn was not refused or clipped); trials whose final turn was refused or clipped "
+          f"because the prompt and the tool output filled the window; mean output tokens (in a tools arm, summed "
           f"over the turns of a trial; the rows hold no per-turn count); the rerun's failure reason of each trial that "
           f"is wrong under the registered grade. {common}.", "",
           md_table(["model", "task", "arm", "right by wording", "layout",
-                    "stopped at the output cap", "empty, window full", "mean output tokens",
+                    "stopped at the output cap", "final turn refused or clipped (window full)",
+                    "mean output tokens",
                     "exception rows", "unread final answers", "trials with a tool call",
                     "frozen reason of each wrong trial"],
                    [[model_name(s["model"]), s["task"], s["arm"],
                      "; ".join(f"v{v} {d['registered']}/{s['per_wording_n'][v]}"
                                for v, d in s["by_wording"].items()),
                      "; ".join(f"{k} {v}" for k, v in s["layout"].items()), s["at_output_cap"],
-                     s["empty_window_full"], f"{s['mean_output_tokens']:.0f}",
+                     s["window_full"], f"{s['mean_output_tokens']:.0f}",
                      s["exception_rows"], s["unread_final_answers"], s["called_a_tool"],
                      "; ".join(f"{k} {v}" for k, v in s["failure_reasons"].items()) or "–"]
                     for s in res["secondary"]]), ""]
@@ -1505,10 +1655,12 @@ def render(res: dict) -> str:
           f"frozen grade (the measure of `rq23_metrics.py`) with its categories. {common}.", "",
           md_table(["model", "task", "arm", "trials", "tool right",
                     "answer wrong (registered grade)", "share [95% interval]",
-                    "answer wrong (frozen grade)", "why (frozen grade)"],
+                    "answer wrong (frozen grade)", "why (frozen grade)",
+                    "not classified by the rerun's rules"],
                    [[model_name(c["model"]), c["task"], c["arm"], c["n_trials"],
                      c["n_tool_right"], c["n_lost"], R1.cell(c["lost"]), c["n_lost_frozen"],
-                     "; ".join(f"{k} {v}" for k, v in c["why_frozen"].items()) or "–"]
+                     "; ".join(f"{k} {v}" for k, v in c["why_frozen"].items()) or "–",
+                     c["not_classified"]]
                     for c in res["tool_right_answer_wrong"]]), ""]
     b = res["breakdowns"]
     L += ["#### Matched run: solved by reference plan length (section 6 rule 4, descriptive)",
@@ -1519,8 +1671,9 @@ def render(res: dict) -> str:
           "#### Matched run: simulate by trace length and the lenient score (section 6 rule 4, "
           "descriptive)", "",
           f"Registered grade for the exact trace; per-state scores as "
-          f"`rq1_control_metrics.py` computes them. Problems left out because the plan the "
-          f"tool rows passed differs from the reference: "
+          f"`rq1_control_metrics.py` computes them. Problems left out, chosen by the rule "
+          f"of that script from this run's rows (the plan most tool rows passed to the "
+          f"simulate tool is not the reference plan): "
           f"{', '.join(b['simulate_left_out']) or 'none'}. {common}.", "",
           md_table(["model", "arm", "bin", "trials", "exact trace", "states, strict",
                     "states, lenient"],
@@ -1645,6 +1798,12 @@ def main(argv: list[str] | None = None) -> int:
                                   None if args.version_checked_by_hand else root / "serve_logs",
                                   args.version_checked_by_hand, args.tools_repo_checked_by_hand)
             er = load_earlier_fixture(root, design, domains)
+            audit["user_texts_vs_control"] = [
+                u for m in MODEL_ORDER for u in compare_user_texts(
+                    matched_root / folders[m]["N"].spec.name,
+                    root / "control" / er.control_b[m].spec.name, m)]
+            plan_differs = tuple(tuple(x) for x in json.loads(
+                (root / "design.json").read_text())["key_plan_differs"])
             verdict = M.Verdicts(M.table_route(RUN.fixture_verdicts(root / "route")))
             env = {"validator": "fixture table"}
             mode, run_dates, domains_dir = "fixture", args.run_dates.strip(), root / "domains"
@@ -1671,6 +1830,7 @@ def main(argv: list[str] | None = None) -> int:
                 b = er.control_b[m]
                 d = control_root / b.spec.name
                 apparatus[b.spec.name] = M.check_apparatus(d, b, M.read_settings(d))
+                check_summary_run(d)
                 arms[m] = {"N": b.rows}
                 for arm, name in (("P", "plain"), ("S", "steered")):
                     arms[m][arm] = tuple(r for t in TASKS
@@ -1685,6 +1845,7 @@ def main(argv: list[str] | None = None) -> int:
             run_dates = "none: existing data"
             domains_dir, tags, r2_found = args.domains_dir, {}, {}
             corpus = corpus_table(folders_seen)
+            plan_differs = KEY_PLAN_DIFFERS
             halt_on_tripwires = False
             stem = "matched_run_dryrun"
         else:
@@ -1706,11 +1867,17 @@ def main(argv: list[str] | None = None) -> int:
                                   args.version_checked_by_hand, args.tools_repo_checked_by_hand)
             env = validator_env(args)
             er = load_earlier_live(args)
+            control_root = args.control_root or args.results / M.RUN_TAG
+            audit["user_texts_vs_control"] = [
+                u for m in MODEL_ORDER for u in compare_user_texts(
+                    matched_root / folders[m]["N"].spec.name,
+                    control_root / er.control_b[m].spec.name, m)]
+            plan_differs = KEY_PLAN_DIFFERS
             verdict = M.Verdicts(M.live_route(args.marketplace, args.domains_dir))
             mode, run_dates, domains_dir = "live", args.run_dates.strip(), args.domains_dir
             arms, corpus = arm_rows(folders), corpus_table(folders)
         res = analyse(design, arms, er, verdict, mode, run_dates, audit, notes, corpus,
-                      domains_dir, halt_on_tripwires)
+                      domains_dir, plan_differs, halt_on_tripwires)
         res["environment"] = env
         res["run_tags"] = tags
         res["first_run_void"] = r2_found

@@ -22,6 +22,16 @@
   "d20"
  ],
  "k_domains": 20,
+ "key_plan_differs": [
+  [
+   "d02",
+   "p01"
+  ],
+  [
+   "d20",
+   "p02"
+  ]
+ ],
  "n_folder": 120,
  "per_task_arm": 60,
  "per_task_wording": 20,
