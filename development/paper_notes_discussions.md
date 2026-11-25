@@ -504,4 +504,17 @@
   95% (second reading); "the tools make one model worse on simulate" is now "the tools
   show no gain on simulate for any open model"; the abstract gives the open models'
   43 to 69% and the frontier models' 22 to 29% in two separate sentences.
+- **Independent check of the paper edit (2026-11-25, a reviewer that did not write the
+  text).** About 95 figures in the prose and 138 table rows recomputed from the
+  generated outputs: no numeric mismatch; the prompt listing equals the code character
+  for character. Fixed after it: four stale passages outside RQ1 (the preliminary-study
+  paragraph still gave the rerun's +51.7 to +71.0 and Gemma's -15.7 on simulate; two
+  notes in the Supporting Analyses; the re-grade caption's table reference); the
+  sentence on the setup now names the registered label (criterion met in three of six
+  cases, the other three read "across a setup that moved"); "has a cost of its own" for
+  Gemma softened, since the registered contrast does not show a cost; wording slips
+  (one array job of nine tasks; four control messages).
+- **Left for Omer:** the abstract quotes 43 to 69% without saying it is the second
+  reading; the registration asks for that where the figure is first quoted. The
+  Introduction now says it. Adding it to the abstract is his call.
 

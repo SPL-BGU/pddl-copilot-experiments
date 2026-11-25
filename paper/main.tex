@@ -159,7 +159,8 @@ the trials. Without them the three open-weight models solve $43$--$69\%$ of the
 planning problems and the two frontier models $22$--$29\%$. The open-weight baseline
 comes from a control. The unaided system message of the original runs referred to a
 schema that the models never received, so we ran that arm again with a message that
-states the answer format. Against this baseline the tools are ahead by $49$ and $38$
+states the answer format, and we read both arms with a second reading of the answers
+that we adopted after the first run and before the control. Against this baseline the tools are ahead by $49$ and $38$
 points for two models, and for the third the difference is $9$ points with an interval
 that reaches zero. Verdict errors on plans fall with the tools for both Qwen models and both
 Claude models, and stay where they were for the one model that seldom calls the
@@ -372,10 +373,11 @@ calling tools was its only way to solve a task, and a tool-arm trial counted as 
 only if the model had called the correct tool and its final answer was right. Calling and
 delivery were therefore folded into one number. The present paper grades $273{,}600$
 open-weight trials over two corpora, with confidence intervals and an anonymized-domain
-control, and adds a pre-registered study. It confirms the main direction. Tools raise the
-rate of correct delivered plans by $51.7$ to $71.0$ points for the three open models of
-the pre-registered study, and frontier models go from $22$--$29\%$ unaided to $95\%$ with
-the planner. Unaided simulation is again
+control, and adds a pre-registered study. It confirms the main direction. Against an unaided
+baseline with a corrected system message, tools raise the rate of correct delivered
+plans by $49.3$ and $38.3$ points for two of the three open models of the pre-registered
+study and by $9.3$ points, with an interval that reaches zero, for the third. Frontier
+models go from $22$--$29\%$ unaided to $95\%$ with the planner. Unaided simulation is again
 close to zero ($0$ of $3{,}000$ answers in the exact format under the shared output
 budget), but with the budget and format relaxed, models from 4B up get $22$ to $40\%$ of
 trajectories right. The paper changes the reading in two places. First, a model may skip a
@@ -385,8 +387,8 @@ asked it to. In the pre-registered study, having the tool available did not lowe
 delivered accuracy ($89.2\%$ against $88.3\%$ unaided; difference $+0.9$ points, 95\% CI
 $[-1.2, 2.9]$). Second, a correct tool result does not always reach the final answer. In
 the same study, on \emph{simulate}, the trajectory returned by the tool left the model no
-room to answer in $42.7$ to $53.0\%$ of tool-arm trials, and Gemma-MoE-26B's delivered
-score with tools fell $15.7$ points below its unaided score (95\% CI $[-24.7, -6.7]$).
+room to answer in $42.7$ to $53.0\%$ of tool-arm trials, and for no open model does the
+tool arm show a gain over the unaided arm on that task.
 
 \section{Methodology}
 The main study crosses five PDDL tasks, five open-weight models, two reasoning
@@ -1030,8 +1032,8 @@ ran the unaided arm again for the three open-weight models on these two tasks, i
 pre-registered control with three system messages: the registered one, the same
 message without the reference to the schema, and a message that states the answer
 format in plain words and asks for the final answer in a code block (Technical
-Appendix, Prompts). Each cell holds the $300$ trials per task of the rerun, and the
-three cells of a model ran in one job. The registration names the format-stated cell as
+Appendix, Prompts). Each cell holds the $300$ trials per task of the rerun, and all
+nine cells ran as the tasks of one job. The registration names the format-stated cell as
 the unaided baseline and the second reading as the reading quoted for both arms. We
 adopted that reading after the answers of the rerun had been seen and before any
 answer of the control existed. The tables and figures of \emph{solve} and
@@ -1042,8 +1044,8 @@ to~\ref{tab:control-contrasts}). The tool arms were not run again, so every diff
 between a tool arm and this baseline crosses two runs seven weeks apart. The Claude
 runs were not part of the control. On \emph{solve} they received the schema that their
 message refers to, through the provider's structured-output parameter, and their
-unaided rates come from one wording and $100$ trials, so we do not set them beside the
-unaided rates of the open-weight models.
+unaided rates come from one wording and $100$ trials, so a difference between their
+unaided rates and those of the open-weight models is not a comparison of the models.
 
 \begin{table*}[t]
 \centering
@@ -1129,12 +1131,13 @@ Gemma-MoE-26B and Qwen3.6-35B it is $54.0\%$ and $54.6\%$, against strict scores
 $35.1\%$ and $40.4\%$, and Sonnet's unaided strict score is $36.7\%$ against a lenient
 score of $77.7\%$: many unaided failures are traces that are right as far as they go
 and end early. Both Claude figures are lower bounds where storage cut the answer. For
-Gemma-MoE-26B the format-stated message has a cost of its own on this task. Asked for a
-single JSON object, the model wrote one with unbalanced brackets in $47$ of its $300$
+Gemma-MoE-26B the format-stated message changes how the answers fail on this task.
+Asked for a single JSON object, the model wrote one with unbalanced brackets in $47$ of its $300$
 answers, and neither reading accepts such an answer. Under the registered message it
 mostly wrote one object per line and reached $36.3\%$ over the $300$ trials by the
-second reading, against $27.3\%$ with the format stated. We keep the format-stated
-cell as its baseline, as registered.
+second reading, against $27.3\%$ with the format stated; the interval of that
+difference includes zero. We keep the format-stated cell as its baseline, as
+registered.
 
 \begin{table*}[t]
 \centering
@@ -1244,7 +1247,11 @@ $+9.3$ points $[+0.0,\,+19.7]$, so the control does not show the tools ahead on
 \emph{solve} for that model. On \emph{simulate} the interval of the difference
 includes zero for all three models. In the control, the cell with the registered
 message is within $4.0$ points of the rerun's unaided rate on both tasks for every
-model, so the setup did not move by much between the two runs. Removing the reference
+model. The registered criterion for an unchanged setup, an interval within $5$ points,
+is met in three of the six cases. It is unresolved for Gemma-MoE-26B on \emph{solve}
+and for Qwen3.6-35B on both tasks, where the interval reaches past $5$ points, and by
+the registered rule the differences of those three cases are read across a setup that
+moved. Removing the reference
 to the schema raises the registered grade on \emph{solve} by $14.7$ to $28.3$ points.
 Under the second reading the change is $+7.0$, $-6.0$ and $+7.7$ points, so most of
 that rise is layout: with the reference the models gave the plan as JSON, which the
@@ -1644,13 +1651,16 @@ share of with-tools trials in which a tool response held a correct result
 (Methodology). Tool calls and their results were stored in full. The final answer
 was stored only up to $500$ characters, so the main sweep gives no delivered rate
 for its tool arms and we report none. The delivered comparison for the open-weight
-models comes from the pre-registered rerun and is reported under RQ1 and RQ3.
+models comes from the pre-registered rerun, with the unaided baseline of \emph{solve}
+and \emph{simulate} taken from its control, and is reported under RQ1 and RQ3.
 
 The unaided rate of the main sweep also comes from a different grader than the
-delivered rates of RQ1. On the same unaided \emph{solve} answers of the rerun, the
-run-time grader gives $9.7$--$10.7\%$ and the delivered grader $21.3$--$25.3\%$.
-Unaided figures in this section should therefore be compared with one another, and
-not with the unaided figures of RQ1.
+delivered rates of the rerun. On the same unaided \emph{solve} answers of the rerun,
+the run-time grader gives $9.7$--$10.7\%$ and the delivered grader $21.3$--$25.3\%$.
+The unaided \emph{solve} and \emph{simulate} figures of RQ1 come from a later control
+with a corrected system message and are higher still. Unaided figures in this section
+should therefore be compared with one another, and not with the unaided figures of
+RQ1.
 
 The frontier runs stored answers up to $16{,}384$ characters, so their delivered
 rates are exact on four tasks. On \emph{simulate} some stored answers end before
@@ -1698,7 +1708,7 @@ Wilson 95\% intervals print as $[a,\,b]$ and censoring bounds as \cbnd{a}{b}. A
 bound is never narrowed by assuming that ungraded trials succeeded. A difference
 between a delivered rate and a tool-verified rate is computed only within one
 corpus. The delivered comparison for the open-weight models uses the
-pre-registered rerun (RQ1 and RQ3), which is not part of this table.}
+pre-registered rerun and its control (RQ1 and RQ3), which are not part of this table.}
 \label{tab:howtoread}
 \end{table*}
 
@@ -1779,8 +1789,8 @@ at the $6{,}144$-token cap, and $3\%$ answers that parse and are wrong
 (Figure~\ref{fig:failtax}). Most answers therefore fail on format or budget before
 their content is tested. With the full answers and the delivered grader of the
 rerun, the same three models produce $9.9$--$25.5\%$ exact traces unaided
-(Table~\ref{tab:rq1-rerun-simulate}), and $13.5$--$35.5\%$ in the control of RQ1
-(Table~\ref{tab:rq1-simulate}).
+(Table~\ref{tab:rq1-rerun-simulate}). RQ1 reports their unaided traces under a
+corrected system message and a second reading (Table~\ref{tab:rq1-simulate}).
 
 A budget-decoupled control separates content from budget. It gives the reasoning
 trace and the answer separate decode allowances, through a two-call continuation
@@ -1995,7 +2005,7 @@ difference in calling and not a controlled size effect (Limitations).
 \subsection{Plan Length and Object Count}
 Both analyses in this subsection set the tool-verified rate of the tool arm
 against the unaided rate, bin by bin. RQ1 reports the delivered rates against
-plan length and trace length from the rerun. A difference can only be seen to
+plan length and trace length from the rerun and its control. A difference can only be seen to
 change where the no-tools baseline has room to move, which makes
 \emph{validate\_plan} the informative case. As the reference plan lengthens,
 unaided accuracy falls ($94\%$, $91\%$ and $62\%$ over the short, medium and long
@@ -3282,7 +3292,7 @@ Qwen3.6-35B & $25.3$ {\scriptsize$[16.3,\,35.7]$} & $48.0$ {\scriptsize$[36.3,\,
 \end{tabular}
 \caption{RQ1, \emph{solve} in the rerun, graded a second time (post hoc; \emph{think}=off,
 $300$ trials per cell). \emph{Registered}: the delivered rate of
-Table~\ref{tab:rq1-solve}. \emph{Second reading}: when the last code block of an answer
+Table~\ref{tab:rq1-rerun-solve}. \emph{Second reading}: when the last code block of an answer
 holds a plan, that plan is graded in place of the registered reading, whichever way the
 grade moves. The same reader is applied to both arms. \emph{Difference}: the plain tool
 arm minus the no-tools arm over the paired trials. Brackets are 95\% domain-cluster
@@ -3306,7 +3316,7 @@ that states the answer format. That gives $5{,}400$ trials. The design, the meas
 the contrasts and the rule that names the format-stated cell as the reported baseline
 were registered, and the analysis code was frozen, before any trial ran. No trial
 raised an exception and no answer was cut by storage. The serving cluster stopped and
-restarted three of the nine jobs, twice each, and they resumed from the trials already
+restarted three of the nine cells, twice each, and they resumed from the trials already
 written.
 
 Table~\ref{tab:control-cells} gives the rate of every cell under the registered grade
@@ -3319,7 +3329,7 @@ its tool arm by $19.0$ points $[9.0,\,29.7]$. The registered message was run aga
 check on the setup. Its cell differs from the rerun's unaided arm by between $-1.7$ and
 $+4.0$ points under either reading. The registered criterion, an interval within $5$
 points, is met in three of the six cases and unresolved in the other three, where the
-interval is wider than the margin allows. The tool arm was not run again, so the
+interval reaches past $5$ points. The tool arm was not run again, so the
 contrast with the tools crosses two runs seven weeks apart.
 
 One registered check stopped the analysis until it was audited. In the format-stated
@@ -3466,7 +3476,7 @@ rerun and in the frontier runs. The rerun adds the neutral form, which keeps onl
 first sentence.
 The unaided \emph{solve} and \emph{simulate} system messages refer to a format
 constraint. That constraint was requested from the server but did not take effect
-(Limitations). The control of RQ1 sends the two messages marked \emph{control} below
+(Limitations). The control of RQ1 sends the four messages marked \emph{control} below
 in their place. The frontier unaided runs differ from this in two details. For
 \emph{solve} the plan was requested through the provider's structured-output parameter
 with a schema holding a list of action strings. For \emph{simulate} one sentence was
