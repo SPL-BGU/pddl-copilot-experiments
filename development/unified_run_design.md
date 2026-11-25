@@ -216,14 +216,11 @@ adds 4,560 trials per model.
 
 > ANSWER:
 
-### B4. Cost ceiling
+### B4. Cost
 
-I have not estimated the cost yet. I will compute it from the token counts of the old
-runs and the prices above, per option of B1, before any call is made, and bring it to
-you.
-
-**Recommendation:** use the Batch API (half price; results within a day) and set a
-ceiling in dollars here.
+**Settled (Omer, 2026-11-25): no cost estimate is needed; the cost is fine.** The Batch
+API is still the recommended route (half price; results within a day), unless you want
+the results faster.
 
 > ANSWER:
 
@@ -259,7 +256,7 @@ by 2026-11-28; run from 2026-11-28 to about 2026-12-04; analysis and the 8-page 
 after that. The abstract of 2026-12-07 would be written when the open-weight numbers
 are in or nearly in.
 
-**Recommendation:** start the frontier run in parallel as soon as B1 to B4 are
+**Recommendation:** start the frontier run in parallel as soon as B1 to B3 are
 answered, since it does not use the cluster.
 
 > ANSWER:
