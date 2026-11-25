@@ -568,4 +568,19 @@
   plain, tools steered; solve and simulate; three models) in place of the 41,040-trial
   unified run. Omer's choice is open; his approval of the full run stands until he
   changes it.
+- **Decided (Omer, 2026-11-25): option 1, the small matched run, replaces the full
+  unified run.** 5,400 trials: three models, solve and simulate, no tools (format
+  stated), tools plain and tools steered, all in one job. An outside review Omer
+  consulted reached the same view that a full rerun can be avoided. Omer's aim: clean
+  data in the body and fewer apologies. Agreed line: the body leads with clean results;
+  the earlier runs, the fault and the registered deviations go to the supplement in
+  full with one pointer sentence, and are never left out. **Omer accepted that the four
+  items left in the body are constraints and observed behaviour, not defects:** small
+  problems the planner always solves; the simulate tool's notation and the context
+  limit; quantization; the Claude models' different conditions.
+- **Points held against the outside review's wording advice:** the sentence on when the
+  second reading was adopted is not dropped (in the new run the reader is registered
+  before the run, so the question does not arise there); "within 4.0 points" is quoted
+  with the registered criterion (met in three of six); the original grader does not
+  give the same direction for Gemma on simulate.
 

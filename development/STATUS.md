@@ -195,14 +195,16 @@ Where the control stands, in its order of work:
    29%. Sentences that said the tools make Gemma worse on simulate now say the tools
    bring no gain there (under the quoted reading the difference is -7.3 [-17.0, +2.7]).
 
-**Next, decided 2026-11-25 (Omer): a fresh unified run**, to be the primary
-open-weight dataset (full storage, corrected system message, one serving version; he
-expects 5 to 7 days). A second exception to "No new runs". Not designed, not registered,
-not submitted; each step needs his word. **Design form, open for his answers:**
-`unified_run_design.md` (18 questions with recommendations; section B covers the Claude
-models, where he suggested using the newer 5 and 5.5 models). ICAPS main track allows 8 pages of main content
-(the draft has about 28), so an 8-page version is to be cut; its structure is under
-discussion. See `paper_notes_discussions.md`, 2026-11-25 (later).
+**Next, decided 2026-11-25 (Omer): a small matched run on solve and simulate**
+(`datasets_breakdown.md`, option 1). Three models, thinking off, three arms run together
+(no tools with the format-stated message, tools plain, tools steered), 300 trials per
+model, task and arm: 5,400 trials. It replaces the full unified run he had approved
+earlier that day. Reason: RQ2, RQ3 and RQ1 on the validation tasks are already clean
+inside the October rerun; only RQ1 on solve and simulate crossed two runs. Not
+registered, not submitted; each cluster step needs his word. The paper's body then
+leads with clean data; the earlier runs and their faults go to the supplement in full,
+with one pointer sentence. The Claude models (section B of `unified_run_design.md`) and
+the 8-page structure are still open. ICAPS main track: 8 pages of main content.
 
 **Known before the smoke:** `status.sh` lists the cells A and B under "unknown" (it
 knows only the standard cell names, as with the `jsonbound` cells); `sync.sh` brings

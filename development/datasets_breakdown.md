@@ -1,6 +1,6 @@
 # Datasets we own: what each can support cleanly
 
-**Written 2026-11-25 for Omer's decision on the clean runs.** The question: which
+**Written 2026-11-25 for Omer's decision on the clean runs. DECIDED the same day: option 1 (section 7).** The question: which
 figures and analyses can be built cleanly from data we already have, and what is the
 smallest new run that closes the rest. Row counts were read from `results/` today.
 Where I did not re-check a detail I say so.
@@ -182,7 +182,7 @@ of two models is 18,240 calls and needs no cluster time.
 
 ## 7. Decision
 
-> ANSWER (option 0, 1 or 3):
+> ANSWER (option 0, 1 or 3): **Option 1 (Omer, 2026-11-25).** The small matched run of 5,400 trials replaces the full unified run he approved earlier the same day. He also accepted that the four items that stay in the body (small solvable problems, the simulate tool's notation and the context limit, quantization, the Claude models' different conditions) are constraints and observed behaviour, not defects.
 
 If the answer is option 1, the open-weight part of `unified_run_design.md` shrinks to
 questions A5 to A10, and A1 to A4 are fixed by this document.
