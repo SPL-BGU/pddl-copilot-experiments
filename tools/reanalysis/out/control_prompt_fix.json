@@ -1,0 +1,3307 @@
+{
+ "audit": {
+  "apparatus": {
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-sysformat_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-syspointer-off_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_Qwen3_5_9B_off_no-tools_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-sysformat_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-syspointer-off_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_qwen3_6_35b_off_no-tools-sysformat_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_qwen3_6_35b_off_no-tools-syspointer-off_control-promptfix": {
+    "summaries": 1
+   },
+   "slurm_vllm_qwen3_6_35b_off_no-tools_control-promptfix": {
+    "summaries": 1
+   }
+  },
+  "extra_user_lines": {
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-sysformat_control-promptfix": 0,
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-syspointer-off_control-promptfix": 12,
+   "slurm_vllm_Qwen3_5_9B_off_no-tools_control-promptfix": 0,
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-sysformat_control-promptfix": 0,
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-syspointer-off_control-promptfix": 0,
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools_control-promptfix": 0,
+   "slurm_vllm_qwen3_6_35b_off_no-tools-sysformat_control-promptfix": 0,
+   "slurm_vllm_qwen3_6_35b_off_no-tools-syspointer-off_control-promptfix": 12,
+   "slurm_vllm_qwen3_6_35b_off_no-tools_control-promptfix": 12
+  },
+  "serve_logs": {
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-sysformat_control-promptfix": "24445485-vllm-Qwen3_5_9B.log",
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-syspointer-off_control-promptfix": "24445484-vllm-Qwen3_5_9B.log",
+   "slurm_vllm_Qwen3_5_9B_off_no-tools_control-promptfix": "24445483-vllm-Qwen3_5_9B.log",
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-sysformat_control-promptfix": "24446980-vllm-gemma4_26b-a4b.log",
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-syspointer-off_control-promptfix": "24445487-vllm-gemma4_26b-a4b.log",
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools_control-promptfix": "24445486-vllm-gemma4_26b-a4b.log",
+   "slurm_vllm_qwen3_6_35b_off_no-tools-sysformat_control-promptfix": "24445482-vllm-qwen3_6_35b.log",
+   "slurm_vllm_qwen3_6_35b_off_no-tools-syspointer-off_control-promptfix": "24447221-vllm-qwen3_6_35b.log",
+   "slurm_vllm_qwen3_6_35b_off_no-tools_control-promptfix": "24446997-vllm-qwen3_6_35b.log"
+  },
+  "settings": {
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-sysformat_control-promptfix": {
+    "slurm_job_id": "24445485"
+   },
+   "slurm_vllm_Qwen3_5_9B_off_no-tools-syspointer-off_control-promptfix": {
+    "slurm_job_id": "24445484"
+   },
+   "slurm_vllm_Qwen3_5_9B_off_no-tools_control-promptfix": {
+    "slurm_job_id": "24445483"
+   },
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-sysformat_control-promptfix": {
+    "slurm_job_id": "24446980"
+   },
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools-syspointer-off_control-promptfix": {
+    "slurm_job_id": "24445487"
+   },
+   "slurm_vllm_gemma4_26b-a4b_off_no-tools_control-promptfix": {
+    "slurm_job_id": "24445486"
+   },
+   "slurm_vllm_qwen3_6_35b_off_no-tools-sysformat_control-promptfix": {
+    "slurm_job_id": "24445482"
+   },
+   "slurm_vllm_qwen3_6_35b_off_no-tools-syspointer-off_control-promptfix": {
+    "slurm_job_id": "24447221"
+   },
+   "slurm_vllm_qwen3_6_35b_off_no-tools_control-promptfix": {
+    "slurm_job_id": "24446997"
+   }
+  },
+  "version_note": null
+ },
+ "contrasts": [
+  {
+   "est": 14.666666666666666,
+   "gained": 64,
+   "hi": 19.333333333333332,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 10.333333333333334,
+   "lost": 20,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 1.52587890625e-05,
+   "p_holm": 7.62939453125e-05,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 12.666666666666668,
+   "gained": 43,
+   "hi": 18.666666666666668,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 7.000000000000001,
+   "lost": 5,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.000244140625,
+   "p_holm": 0.0009765625,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 23.333333333333332,
+   "gained": 83,
+   "hi": 34.333333333333336,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 12.666666666666668,
+   "lost": 13,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.0008087158203125,
+   "p_holm": 0.0024261474609375,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -6.333333333333334,
+   "gained": 8,
+   "hi": -1.6666666666666667,
+   "k": 20,
+   "label": "a difference is shown (not after Holm)",
+   "level": 0.95,
+   "lo": -11.666666666666666,
+   "lost": 27,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.041015625,
+   "p_holm": 0.08203125,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 28.333333333333332,
+   "gained": 101,
+   "hi": 37.0,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 20.0,
+   "lost": 16,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 3.814697265625e-06,
+   "p_holm": 2.288818359375e-05,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 4.333333333333334,
+   "gained": 37,
+   "hi": 10.666666666666668,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -2.0,
+   "lost": 24,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.248046875,
+   "p_holm": 0.248046875,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 7.000000000000001,
+   "gained": 52,
+   "hi": 14.666666666666666,
+   "k": 20,
+   "label": "a difference is shown (not after Holm)",
+   "level": 0.95,
+   "lo": 0.6666666666666667,
+   "lost": 31,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.0810546875,
+   "p_holm": 0.4052734375,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 12.666666666666668,
+   "gained": 43,
+   "hi": 18.666666666666668,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 7.000000000000001,
+   "lost": 5,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.000244140625,
+   "p_holm": 0.00146484375,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": -6.0,
+   "gained": 21,
+   "hi": 0.33333333333333337,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -12.0,
+   "lost": 39,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.09222412109375,
+   "p_holm": 0.4052734375,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -0.6666666666666667,
+   "gained": 15,
+   "hi": 2.666666666666667,
+   "k": 20,
+   "label": "criterion met",
+   "level": 0.95,
+   "lo": -3.6666666666666665,
+   "lost": 17,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.8359375,
+   "p_holm": 0.8359375,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 7.666666666666666,
+   "gained": 52,
+   "hi": 16.0,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": 0.0,
+   "lost": 29,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.1074981689453125,
+   "p_holm": 0.4052734375,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 4.0,
+   "gained": 39,
+   "hi": 11.333333333333332,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -3.0,
+   "lost": 27,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C1",
+   "p": 0.359375,
+   "p_holm": 0.71875,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 8.666666666666668,
+   "gained": 59,
+   "hi": 13.333333333333334,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 3.6666666666666665,
+   "lost": 33,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.0052490234375,
+   "p_holm": 0.0159454345703125,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 5.0,
+   "gained": 25,
+   "hi": 9.0,
+   "k": 20,
+   "label": "a difference is shown (not after Holm)",
+   "level": 0.95,
+   "lo": 1.0,
+   "lost": 10,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.044921875,
+   "p_holm": 0.08984375,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 15.0,
+   "gained": 68,
+   "hi": 23.67499999999988,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 6.666666666666667,
+   "lost": 23,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.0031890869140625,
+   "p_holm": 0.0159454345703125,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 3.0,
+   "gained": 39,
+   "hi": 11.333333333333332,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -4.666666666666667,
+   "lost": 30,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.55126953125,
+   "p_holm": 0.55126953125,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 37.0,
+   "gained": 122,
+   "hi": 48.0,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 26.666666666666668,
+   "lost": 11,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 7.62939453125e-06,
+   "p_holm": 4.57763671875e-05,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 14.000000000000002,
+   "gained": 54,
+   "hi": 22.333333333333332,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 6.0,
+   "lost": 12,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.00341796875,
+   "p_holm": 0.0159454345703125,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 3.3333333333333335,
+   "gained": 45,
+   "hi": 11.333333333333332,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -4.0,
+   "lost": 35,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.472198486328125,
+   "p_holm": 0.94439697265625,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 5.0,
+   "gained": 25,
+   "hi": 9.0,
+   "k": 20,
+   "label": "a difference is shown (not after Holm)",
+   "level": 0.95,
+   "lo": 1.0,
+   "lost": 10,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.044921875,
+   "p_holm": 0.1796875,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 2.0,
+   "gained": 33,
+   "hi": 7.333333333333333,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -3.3333333333333335,
+   "lost": 27,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.552032470703125,
+   "p_holm": 0.94439697265625,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -9.0,
+   "gained": 22,
+   "hi": 1.3333333333333335,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -19.0,
+   "lost": 49,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.1287841796875,
+   "p_holm": 0.3863525390625,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 17.666666666666668,
+   "gained": 75,
+   "hi": 30.333333333333336,
+   "k": 20,
+   "label": "a difference is shown",
+   "level": 0.95,
+   "lo": 7.000000000000001,
+   "lost": 22,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.0025634765625,
+   "p_holm": 0.015380859375,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 10.666666666666668,
+   "gained": 47,
+   "hi": 18.0,
+   "k": 20,
+   "label": "a difference is shown (not after Holm)",
+   "level": 0.95,
+   "lo": 3.6666666666666665,
+   "lost": 15,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C2",
+   "p": 0.0123291015625,
+   "p_holm": 0.0616455078125,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 0.0,
+   "gained": 29,
+   "hi": 3.6666666666666665,
+   "k": 20,
+   "label": "criterion met",
+   "level": 0.95,
+   "lo": -3.6666666666666665,
+   "lost": 29,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 1.0,
+   "p_holm": 1.0,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -1.6666666666666667,
+   "gained": 1,
+   "hi": 0.0,
+   "k": 20,
+   "label": "criterion met",
+   "level": 0.95,
+   "lo": -3.6666666666666665,
+   "lost": 6,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.25,
+   "p_holm": 1.0,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 1.3333333333333335,
+   "gained": 26,
+   "hi": 7.666666666666666,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -4.666666666666667,
+   "lost": 22,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.7578125,
+   "p_holm": 1.0,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 0.33333333333333337,
+   "gained": 8,
+   "hi": 2.666666666666667,
+   "k": 20,
+   "label": "criterion met",
+   "level": 0.95,
+   "lo": -2.0,
+   "lost": 7,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 1.0,
+   "p_holm": 1.0,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 4.0,
+   "gained": 38,
+   "hi": 8.333333333333332,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": 0.0,
+   "lost": 26,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.12109375,
+   "p_holm": 0.7265625,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 1.6666666666666667,
+   "gained": 19,
+   "hi": 6.333333333333334,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -3.3333333333333335,
+   "lost": 14,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.615234375,
+   "p_holm": 1.0,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 1.0,
+   "gained": 27,
+   "hi": 3.6666666666666665,
+   "k": 20,
+   "label": "criterion met",
+   "level": 0.95,
+   "lo": -1.6666666666666667,
+   "lost": 24,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.63671875,
+   "p_holm": 1.0,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -1.6666666666666667,
+   "gained": 1,
+   "hi": 0.0,
+   "k": 20,
+   "label": "criterion met",
+   "level": 0.95,
+   "lo": -3.6666666666666665,
+   "lost": 6,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.25,
+   "p_holm": 1.0,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 4.0,
+   "gained": 29,
+   "hi": 8.0,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": 0.0,
+   "lost": 17,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.09716796875,
+   "p_holm": 0.5830078125,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 0.0,
+   "gained": 10,
+   "hi": 2.666666666666667,
+   "k": 20,
+   "label": "criterion met",
+   "level": 0.95,
+   "lo": -3.0,
+   "lost": 10,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 1.0,
+   "p_holm": 1.0,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 3.3333333333333335,
+   "gained": 32,
+   "hi": 8.0,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -1.3333333333333335,
+   "lost": 22,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.238250732421875,
+   "p_holm": 1.0,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 1.3333333333333335,
+   "gained": 20,
+   "hi": 6.0,
+   "k": 20,
+   "label": "unresolved",
+   "level": 0.95,
+   "lo": -3.3333333333333335,
+   "lost": 16,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C3",
+   "p": 0.693359375,
+   "p_holm": 1.0,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 55.666666666666664,
+   "gained": 170,
+   "hi": 67.33333333333333,
+   "k": 20,
+   "label": "tools ahead",
+   "level": 0.95,
+   "lo": 44.0,
+   "lost": 3,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 1.9073486328125e-06,
+   "p_holm": 1.1444091796875e-05,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 4.666666666666667,
+   "gained": 33,
+   "hi": 14.000000000000002,
+   "k": 20,
+   "label": "no difference shown",
+   "level": 0.95,
+   "lo": -4.0,
+   "lost": 19,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.379150390625,
+   "p_holm": 0.5556640625,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 54.666666666666664,
+   "gained": 169,
+   "hi": 66.33333333333333,
+   "k": 20,
+   "label": "tools ahead; across a setup that moved",
+   "level": 0.95,
+   "lo": 43.666666666666664,
+   "lost": 5,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 1.9073486328125e-06,
+   "p_holm": 1.1444091796875e-05,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -19.0,
+   "gained": 9,
+   "hi": -9.0,
+   "k": 20,
+   "label": "no tools ahead",
+   "level": 0.95,
+   "lo": -29.666666666666668,
+   "lost": 66,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.0029296875,
+   "p_holm": 0.01171875,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 10.666666666666668,
+   "gained": 57,
+   "hi": 20.666666666666668,
+   "k": 20,
+   "label": "tools ahead (not after Holm); across a setup that moved",
+   "level": 0.95,
+   "lo": 1.6666666666666667,
+   "lost": 25,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.0523681640625,
+   "p_holm": 0.1571044921875,
+   "reading": "frozen",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -5.0,
+   "gained": 17,
+   "hi": 3.3333333333333335,
+   "k": 20,
+   "label": "no difference shown; across a setup that moved",
+   "level": 0.95,
+   "lo": -12.666666666666668,
+   "lost": 32,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.27783203125,
+   "p_holm": 0.5556640625,
+   "reading": "frozen",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 49.333333333333336,
+   "gained": 153,
+   "hi": 63.0,
+   "k": 20,
+   "label": "tools ahead",
+   "level": 0.95,
+   "lo": 36.0,
+   "lost": 5,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 3.814697265625e-06,
+   "p_holm": 2.288818359375e-05,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": 7.666666666666666,
+   "gained": 42,
+   "hi": 17.0,
+   "k": 20,
+   "label": "no difference shown",
+   "level": 0.95,
+   "lo": -0.6749999999999262,
+   "lost": 19,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.135986328125,
+   "p_holm": 0.4163360595703125,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 38.333333333333336,
+   "gained": 123,
+   "hi": 53.666666666666664,
+   "k": 20,
+   "label": "tools ahead; across a setup that moved",
+   "level": 0.95,
+   "lo": 23.666666666666668,
+   "lost": 8,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 6.866455078125e-05,
+   "p_holm": 0.00034332275390625,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -7.333333333333333,
+   "gained": 25,
+   "hi": 2.666666666666667,
+   "k": 20,
+   "label": "no difference shown",
+   "level": 0.95,
+   "lo": -17.0,
+   "lost": 47,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.19403076171875,
+   "p_holm": 0.4163360595703125,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  },
+  {
+   "est": 9.333333333333334,
+   "gained": 52,
+   "hi": 19.666666666666664,
+   "k": 20,
+   "label": "no difference shown; across a setup that moved",
+   "level": 0.95,
+   "lo": 0.0,
+   "lost": 24,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.10408401489257812,
+   "p_holm": 0.4163360595703125,
+   "reading": "second",
+   "task": "solve",
+   "unpaired": 0
+  },
+  {
+   "est": -4.0,
+   "gained": 19,
+   "hi": 4.333333333333334,
+   "k": 20,
+   "label": "no difference shown; across a setup that moved",
+   "level": 0.95,
+   "lo": -11.666666666666666,
+   "lost": 31,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "n_pairs": 300,
+   "name": "C4",
+   "p": 0.3984375,
+   "p_holm": 0.4163360595703125,
+   "reading": "second",
+   "task": "simulate",
+   "unpaired": 0
+  }
+ ],
+ "control_dates": "2026-11-23 to 2026-11-24 (job 24445482)",
+ "corpus": [
+  {
+   "cell": "slurm_vllm_Qwen3_5_9B_off_no-tools_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_Qwen3_5_9B_off_no-tools-syspointer-off_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_Qwen3_5_9B_off_no-tools-sysformat_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_no-tools_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_no-tools-syspointer-off_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_gemma4_26b-a4b_off_no-tools-sysformat_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_qwen3_6_35b_off_no-tools_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_qwen3_6_35b_off_no-tools-syspointer-off_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  },
+  {
+   "cell": "slurm_vllm_qwen3_6_35b_off_no-tools-sysformat_control-promptfix",
+   "exception_rows": 0,
+   "infra_rows": 0,
+   "rows": 600,
+   "storage_cut_accepted": 0,
+   "torn_lines": 0
+  }
+ ],
+ "design": {
+  "k_domains": 20,
+  "name": "registered",
+  "per_folder": 600,
+  "per_task_cell": 300,
+  "per_task_wording": 100,
+  "per_wording": 200
+ },
+ "environment": {
+  "marketplace_head": "e428f17fd0b211f502955b11177687d544b68277",
+  "mcp": "1.26.0",
+  "pyval": "0.1.5",
+  "unified_planning": "1.3.0",
+  "validator_server_last_commit": "5e4f9c0bfbea0fdfe802edb08eaa2aa9d2095d38",
+  "validator_server_modified": false,
+  "validator_server_sha256": "bada05b55444600fa9c623cdae2ca38f40e22559b67d6c97b375edfcbf9ddf8a"
+ },
+ "first_run_void": {},
+ "mode": "live",
+ "package_sha256": "825dab6313ef2d18c33bed8d584d596e29b35f92eff6c41f0325045602bf0d79",
+ "part_a_dates": "2026-10-03 to 2026-10-09",
+ "rates": [
+  {
+   "cell": "O",
+   "folded": {
+    "est": 43.0,
+    "hi": 54.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 31.666666666666664,
+    "n": 300,
+    "right": 129
+   },
+   "frozen": {
+    "est": 24.333333333333336,
+    "hi": 33.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 16.0,
+    "n": 300,
+    "right": 73
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 39.33333333333333,
+    "hi": 51.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 28.000000000000004,
+    "n": 300,
+    "right": 118
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "A",
+   "folded": {
+    "est": 46.33333333333333,
+    "hi": 56.99999999999999,
+    "k": 20,
+    "level": 0.95,
+    "lo": 35.333333333333336,
+    "n": 300,
+    "right": 139
+   },
+   "frozen": {
+    "est": 39.0,
+    "hi": 50.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 27.333333333333332,
+    "n": 300,
+    "right": 117
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 46.33333333333333,
+    "hi": 56.99999999999999,
+    "k": 20,
+    "level": 0.95,
+    "lo": 35.333333333333336,
+    "n": 300,
+    "right": 139
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "B",
+   "folded": {
+    "est": 42.66666666666667,
+    "hi": 53.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 31.666666666666664,
+    "n": 300,
+    "right": 128
+   },
+   "frozen": {
+    "est": 33.0,
+    "hi": 43.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 23.0,
+    "n": 300,
+    "right": 99
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 42.66666666666667,
+    "hi": 53.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 31.666666666666664,
+    "n": 300,
+    "right": 128
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "Part C",
+   "folded": {
+    "est": 40.0,
+    "hi": 51.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 28.666666666666668,
+    "n": 300,
+    "right": 120
+   },
+   "frozen": {
+    "est": 24.333333333333336,
+    "hi": 32.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 16.333333333333332,
+    "n": 300,
+    "right": 73
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 38.333333333333336,
+    "hi": 50.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 26.333333333333332,
+    "n": 300,
+    "right": 115
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "Part A",
+   "folded": {
+    "est": 92.0,
+    "hi": 97.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 85.33333333333334,
+    "n": 300,
+    "right": 276
+   },
+   "frozen": {
+    "est": 88.66666666666667,
+    "hi": 94.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 82.0,
+    "n": 300,
+    "right": 266
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 92.0,
+    "hi": 97.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 85.33333333333334,
+    "n": 300,
+    "right": 276
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "O",
+   "folded": {
+    "est": 7.666666666666666,
+    "hi": 13.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 3.0,
+    "n": 300,
+    "right": 23
+   },
+   "frozen": {
+    "est": 7.666666666666666,
+    "hi": 13.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 3.0,
+    "n": 300,
+    "right": 23
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 7.666666666666666,
+    "hi": 13.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 3.0,
+    "n": 300,
+    "right": 23
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "A",
+   "folded": {
+    "est": 20.333333333333332,
+    "hi": 30.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 11.333333333333332,
+    "n": 300,
+    "right": 61
+   },
+   "frozen": {
+    "est": 20.333333333333332,
+    "hi": 30.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 11.333333333333332,
+    "n": 300,
+    "right": 61
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 20.333333333333332,
+    "hi": 30.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 11.333333333333332,
+    "n": 300,
+    "right": 61
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "B",
+   "folded": {
+    "est": 12.666666666666668,
+    "hi": 20.666666666666668,
+    "k": 20,
+    "level": 0.95,
+    "lo": 6.0,
+    "n": 300,
+    "right": 38
+   },
+   "frozen": {
+    "est": 12.666666666666668,
+    "hi": 20.666666666666668,
+    "k": 20,
+    "level": 0.95,
+    "lo": 6.0,
+    "n": 300,
+    "right": 38
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 12.666666666666668,
+    "hi": 20.666666666666668,
+    "k": 20,
+    "level": 0.95,
+    "lo": 6.0,
+    "n": 300,
+    "right": 38
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "Part C",
+   "folded": {
+    "est": 9.333333333333334,
+    "hi": 16.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.0,
+    "n": 300,
+    "right": 28
+   },
+   "frozen": {
+    "est": 9.333333333333334,
+    "hi": 16.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.0,
+    "n": 300,
+    "right": 28
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 9.333333333333334,
+    "hi": 16.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.0,
+    "n": 300,
+    "right": 28
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "Part A",
+   "folded": {
+    "est": 20.333333333333332,
+    "hi": 31.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 10.333333333333334,
+    "n": 300,
+    "right": 61
+   },
+   "frozen": {
+    "est": 17.333333333333336,
+    "hi": 27.666666666666668,
+    "k": 20,
+    "level": 0.95,
+    "lo": 8.0,
+    "n": 300,
+    "right": 52
+   },
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "second": {
+    "est": 20.333333333333332,
+    "hi": 31.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 10.333333333333334,
+    "n": 300,
+    "right": 61
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "O",
+   "folded": {
+    "est": 54.0,
+    "hi": 67.66666666666666,
+    "k": 20,
+    "level": 0.95,
+    "lo": 40.0,
+    "n": 300,
+    "right": 162
+   },
+   "frozen": {
+    "est": 22.666666666666664,
+    "hi": 32.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 13.666666666666666,
+    "n": 300,
+    "right": 68
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 52.0,
+    "hi": 66.66666666666666,
+    "k": 20,
+    "level": 0.95,
+    "lo": 37.0,
+    "n": 300,
+    "right": 156
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "A",
+   "folded": {
+    "est": 46.0,
+    "hi": 60.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 31.666666666666664,
+    "n": 300,
+    "right": 138
+   },
+   "frozen": {
+    "est": 46.0,
+    "hi": 60.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 31.666666666666664,
+    "n": 300,
+    "right": 138
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 46.0,
+    "hi": 60.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 31.666666666666664,
+    "n": 300,
+    "right": 138
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "B",
+   "folded": {
+    "est": 54.0,
+    "hi": 69.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 38.333333333333336,
+    "n": 300,
+    "right": 162
+   },
+   "frozen": {
+    "est": 37.666666666666664,
+    "hi": 49.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 26.0,
+    "n": 300,
+    "right": 113
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 54.0,
+    "hi": 69.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 38.333333333333336,
+    "n": 300,
+    "right": 162
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "Part C",
+   "folded": {
+    "est": 48.66666666666667,
+    "hi": 63.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 33.33333333333333,
+    "n": 300,
+    "right": 146
+   },
+   "frozen": {
+    "est": 21.333333333333336,
+    "hi": 30.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 13.0,
+    "n": 300,
+    "right": 64
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 48.0,
+    "hi": 63.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 32.33333333333333,
+    "n": 300,
+    "right": 144
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "Part A",
+   "folded": {
+    "est": 92.33333333333333,
+    "hi": 97.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 87.33333333333333,
+    "n": 300,
+    "right": 277
+   },
+   "frozen": {
+    "est": 92.33333333333333,
+    "hi": 97.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 87.33333333333333,
+    "n": 300,
+    "right": 277
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 92.33333333333333,
+    "hi": 97.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 87.33333333333333,
+    "n": 300,
+    "right": 277
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "O",
+   "folded": {
+    "est": 36.333333333333336,
+    "hi": 51.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 21.333333333333336,
+    "n": 300,
+    "right": 109
+   },
+   "frozen": {
+    "est": 24.333333333333336,
+    "hi": 35.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 14.000000000000002,
+    "n": 300,
+    "right": 73
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 36.333333333333336,
+    "hi": 51.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 21.333333333333336,
+    "n": 300,
+    "right": 109
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "A",
+   "folded": {
+    "est": 35.66666666666667,
+    "hi": 51.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 21.0,
+    "n": 300,
+    "right": 107
+   },
+   "frozen": {
+    "est": 18.0,
+    "hi": 26.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 10.333333333333334,
+    "n": 300,
+    "right": 54
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 35.66666666666667,
+    "hi": 51.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 21.0,
+    "n": 300,
+    "right": 107
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "B",
+   "folded": {
+    "est": 27.333333333333332,
+    "hi": 40.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 15.333333333333332,
+    "n": 300,
+    "right": 82
+   },
+   "frozen": {
+    "est": 27.333333333333332,
+    "hi": 40.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 15.333333333333332,
+    "n": 300,
+    "right": 82
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 27.333333333333332,
+    "hi": 40.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 15.333333333333332,
+    "n": 300,
+    "right": 82
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "Part C",
+   "folded": {
+    "est": 36.333333333333336,
+    "hi": 52.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 21.333333333333336,
+    "n": 300,
+    "right": 109
+   },
+   "frozen": {
+    "est": 24.0,
+    "hi": 34.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 13.666666666666666,
+    "n": 300,
+    "right": 72
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 36.333333333333336,
+    "hi": 52.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 21.333333333333336,
+    "n": 300,
+    "right": 109
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "Part A",
+   "folded": {
+    "est": 20.0,
+    "hi": 29.666666666666668,
+    "k": 20,
+    "level": 0.95,
+    "lo": 11.333333333333332,
+    "n": 300,
+    "right": 60
+   },
+   "frozen": {
+    "est": 8.333333333333332,
+    "hi": 13.333333333333334,
+    "k": 20,
+    "level": 0.95,
+    "lo": 4.0,
+    "n": 300,
+    "right": 25
+   },
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "second": {
+    "est": 20.0,
+    "hi": 29.666666666666668,
+    "k": 20,
+    "level": 0.95,
+    "lo": 11.333333333333332,
+    "n": 300,
+    "right": 60
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "O",
+   "folded": {
+    "est": 54.666666666666664,
+    "hi": 66.66666666666666,
+    "k": 20,
+    "level": 0.95,
+    "lo": 42.333333333333336,
+    "n": 300,
+    "right": 164
+   },
+   "frozen": {
+    "est": 29.333333333333332,
+    "hi": 39.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 19.666666666666664,
+    "n": 300,
+    "right": 88
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 51.33333333333333,
+    "hi": 64.66666666666666,
+    "k": 20,
+    "level": 0.95,
+    "lo": 38.0,
+    "n": 300,
+    "right": 154
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "A",
+   "folded": {
+    "est": 59.0,
+    "hi": 70.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 46.33333333333333,
+    "n": 300,
+    "right": 177
+   },
+   "frozen": {
+    "est": 57.666666666666664,
+    "hi": 69.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 45.33333333333333,
+    "n": 300,
+    "right": 173
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 59.0,
+    "hi": 70.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 46.33333333333333,
+    "n": 300,
+    "right": 177
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "B",
+   "folded": {
+    "est": 69.0,
+    "hi": 81.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 55.00000000000001,
+    "n": 300,
+    "right": 207
+   },
+   "frozen": {
+    "est": 66.33333333333333,
+    "hi": 78.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 53.0,
+    "n": 300,
+    "right": 199
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 69.0,
+    "hi": 81.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 55.00000000000001,
+    "n": 300,
+    "right": 207
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "Part C",
+   "folded": {
+    "est": 51.66666666666667,
+    "hi": 62.33333333333333,
+    "k": 20,
+    "level": 0.95,
+    "lo": 41.0,
+    "n": 300,
+    "right": 155
+   },
+   "frozen": {
+    "est": 25.333333333333336,
+    "hi": 35.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 16.333333333333332,
+    "n": 300,
+    "right": 76
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 48.0,
+    "hi": 60.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 36.333333333333336,
+    "n": 300,
+    "right": 144
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "Part A",
+   "folded": {
+    "est": 78.33333333333333,
+    "hi": 84.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 71.33333333333334,
+    "n": 300,
+    "right": 235
+   },
+   "frozen": {
+    "est": 77.0,
+    "hi": 83.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 69.66666666666667,
+    "n": 300,
+    "right": 231
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 78.33333333333333,
+    "hi": 84.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 71.33333333333334,
+    "n": 300,
+    "right": 235
+   },
+   "task": "solve"
+  },
+  {
+   "cell": "O",
+   "folded": {
+    "est": 22.666666666666664,
+    "hi": 33.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 13.333333333333334,
+    "n": 300,
+    "right": 68
+   },
+   "frozen": {
+    "est": 19.333333333333332,
+    "hi": 28.67499999999988,
+    "k": 20,
+    "level": 0.95,
+    "lo": 10.666666666666668,
+    "n": 300,
+    "right": 58
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 22.666666666666664,
+    "hi": 33.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 13.333333333333334,
+    "n": 300,
+    "right": 68
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "A",
+   "folded": {
+    "est": 26.666666666666668,
+    "hi": 39.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 14.333333333333334,
+    "n": 300,
+    "right": 80
+   },
+   "frozen": {
+    "est": 23.666666666666668,
+    "hi": 35.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 12.666666666666668,
+    "n": 300,
+    "right": 71
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 26.666666666666668,
+    "hi": 39.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 14.333333333333334,
+    "n": 300,
+    "right": 80
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "B",
+   "folded": {
+    "est": 33.33333333333333,
+    "hi": 47.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 20.0,
+    "n": 300,
+    "right": 100
+   },
+   "frozen": {
+    "est": 33.33333333333333,
+    "hi": 47.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 20.0,
+    "n": 300,
+    "right": 100
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 33.33333333333333,
+    "hi": 47.66666666666667,
+    "k": 20,
+    "level": 0.95,
+    "lo": 20.0,
+    "n": 300,
+    "right": 100
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "Part C",
+   "folded": {
+    "est": 21.333333333333336,
+    "hi": 32.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 12.333333333333334,
+    "n": 300,
+    "right": 64
+   },
+   "frozen": {
+    "est": 17.666666666666668,
+    "hi": 25.666666666666664,
+    "k": 20,
+    "level": 0.95,
+    "lo": 10.333333333333334,
+    "n": 300,
+    "right": 53
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 21.333333333333336,
+    "hi": 32.0,
+    "k": 20,
+    "level": 0.95,
+    "lo": 12.333333333333334,
+    "n": 300,
+    "right": 64
+   },
+   "task": "simulate"
+  },
+  {
+   "cell": "Part A",
+   "folded": {
+    "est": 29.333333333333332,
+    "hi": 42.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 17.333333333333336,
+    "n": 300,
+    "right": 88
+   },
+   "frozen": {
+    "est": 28.333333333333332,
+    "hi": 41.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 16.333333333333332,
+    "n": 300,
+    "right": 85
+   },
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "second": {
+    "est": 29.333333333333332,
+    "hi": 42.333333333333336,
+    "k": 20,
+    "level": 0.95,
+    "lo": 17.333333333333336,
+    "n": 300,
+    "right": 88
+   },
+   "task": "simulate"
+  }
+ ],
+ "readings": [
+  {
+   "R1": {
+    "cases": [
+     "b"
+    ],
+    "holm_notes": [
+     "second reading: a difference is shown (not after Holm)"
+    ],
+    "labels": {
+     "frozen": "a difference is shown (+14.7 [+10.3, +19.3])",
+     "second": "a difference is shown (not after Holm) (+7.0 [+0.7, +14.7])"
+    },
+    "sentences": [
+     "the wrong reference lowered the unaided baseline (frozen +14.7 [+10.3, +19.3], second reading +7.0 [+0.7, +14.7])"
+    ]
+   },
+   "R2": {
+    "cases": [
+     "c"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "a difference is shown (+8.7 [+3.7, +13.3])",
+     "second": "unresolved (+3.3 [-4.0, +11.3])"
+    },
+    "sentences": [
+     "stating the answer format raises the frozen grade through layout: the answers come in a layout the grader reads; what the models wrote did not change by more than the second reading shows"
+    ]
+   },
+   "R3": {
+    "levels_beside_part_c": true,
+    "moved": false,
+    "sentence": "the setup is taken to reproduce Part C there"
+   },
+   "R4": {
+    "across_a_setup_that_moved": false,
+    "holm_notes": [],
+    "sentence": "frozen grade: tools ahead (+55.7 [+44.0, +67.3]); second reading: tools ahead (+49.3 [+36.0, +63.0]); Part A: 2026-10-03 to 2026-10-09; the control: 2026-11-23 to 2026-11-24 (job 24445482)"
+   },
+   "model": "Qwen3_5_9B",
+   "rule5": {
+    "b_frozen": 33.0,
+    "b_second": 42.66666666666667,
+    "gap": -9.666666666666671,
+    "quote_both": true
+   },
+   "task": "solve"
+  },
+  {
+   "R1": {
+    "cases": [
+     "b"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "a difference is shown (+12.7 [+7.0, +18.7])",
+     "second": "a difference is shown (+12.7 [+7.0, +18.7])"
+    },
+    "sentences": [
+     "the wrong reference lowered the unaided baseline (frozen +12.7 [+7.0, +18.7], second reading +12.7 [+7.0, +18.7])"
+    ]
+   },
+   "R2": {
+    "cases": [
+     "b"
+    ],
+    "holm_notes": [
+     "frozen reading: a difference is shown (not after Holm)",
+     "second reading: a difference is shown (not after Holm)"
+    ],
+    "labels": {
+     "frozen": "a difference is shown (not after Holm) (+5.0 [+1.0, +9.0])",
+     "second": "a difference is shown (not after Holm) (+5.0 [+1.0, +9.0])"
+    },
+    "sentences": [
+     "stating the answer format raises the unaided baseline, and not through layout alone (frozen +5.0 [+1.0, +9.0], second reading +5.0 [+1.0, +9.0])"
+    ]
+   },
+   "R3": {
+    "levels_beside_part_c": true,
+    "moved": false,
+    "sentence": "the setup is taken to reproduce Part C there"
+   },
+   "R4": {
+    "across_a_setup_that_moved": false,
+    "holm_notes": [],
+    "sentence": "frozen grade: no difference shown (+4.7 [-4.0, +14.0]); second reading: no difference shown (+7.7 [-0.7, +17.0]); Part A: 2026-10-03 to 2026-10-09; the control: 2026-11-23 to 2026-11-24 (job 24445482)"
+   },
+   "model": "Qwen3_5_9B",
+   "rule5": {
+    "b_frozen": 12.666666666666668,
+    "b_second": 12.666666666666668,
+    "gap": 0.0,
+    "quote_both": false
+   },
+   "task": "simulate"
+  },
+  {
+   "R1": {
+    "cases": [
+     "c"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "a difference is shown (+23.3 [+12.7, +34.3])",
+     "second": "unresolved (-6.0 [-12.0, +0.3])"
+    },
+    "sentences": [
+     "the wrong reference changed how the answers were laid out, and the grader did not read that layout; what the models wrote did not change by more than the second reading shows"
+    ]
+   },
+   "R2": {
+    "cases": [
+     "c"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "a difference is shown (+15.0 [+6.7, +23.7])",
+     "second": "unresolved (+2.0 [-3.3, +7.3])"
+    },
+    "sentences": [
+     "stating the answer format raises the frozen grade through layout: the answers come in a layout the grader reads; what the models wrote did not change by more than the second reading shows"
+    ]
+   },
+   "R3": {
+    "levels_beside_part_c": false,
+    "moved": true,
+    "sentence": "the setup moved between Part C and the control for this model and task (frozen +1.3 [-4.7, +7.7]); the levels of the control are not set beside the levels of Part C here"
+   },
+   "R4": {
+    "across_a_setup_that_moved": true,
+    "holm_notes": [],
+    "sentence": "frozen grade: tools ahead; across a setup that moved (+54.7 [+43.7, +66.3]); second reading: tools ahead; across a setup that moved (+38.3 [+23.7, +53.7]); Part A: 2026-10-03 to 2026-10-09; the control: 2026-11-23 to 2026-11-24 (job 24445482)"
+   },
+   "model": "gemma4_26b-a4b",
+   "rule5": {
+    "b_frozen": 37.666666666666664,
+    "b_second": 54.0,
+    "gap": -16.333333333333336,
+    "quote_both": true
+   },
+   "task": "solve"
+  },
+  {
+   "R1": {
+    "cases": [
+     "d"
+    ],
+    "holm_notes": [
+     "frozen reading: a difference is shown (not after Holm)"
+    ],
+    "labels": {
+     "frozen": "a difference is shown (not after Holm) (-6.3 [-11.7, -1.7])",
+     "second": "criterion met (-0.7 [-3.7, +2.7])"
+    },
+    "sentences": [
+     "a fall, reported as it is: the reference, wrong as it was, did not cost the model anything on that task"
+    ]
+   },
+   "R2": {
+    "cases": [
+     "e"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "unresolved (+3.0 [-4.7, +11.3])",
+     "second": "unresolved (-9.0 [-19.0, +1.3])"
+    },
+    "sentences": [
+     "unresolved (frozen +3.0 [-4.7, +11.3], second reading -9.0 [-19.0, +1.3])"
+    ]
+   },
+   "R3": {
+    "levels_beside_part_c": true,
+    "moved": false,
+    "sentence": "the setup is taken to reproduce Part C there"
+   },
+   "R4": {
+    "across_a_setup_that_moved": false,
+    "holm_notes": [],
+    "sentence": "frozen grade: no tools ahead (-19.0 [-29.7, -9.0]); second reading: no difference shown (-7.3 [-17.0, +2.7]); Part A: 2026-10-03 to 2026-10-09; the control: 2026-11-23 to 2026-11-24 (job 24445482)"
+   },
+   "model": "gemma4_26b-a4b",
+   "rule5": {
+    "b_frozen": 27.333333333333332,
+    "b_second": 27.333333333333332,
+    "gap": 0.0,
+    "quote_both": false
+   },
+   "task": "simulate"
+  },
+  {
+   "R1": {
+    "cases": [
+     "c"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "a difference is shown (+28.3 [+20.0, +37.0])",
+     "second": "unresolved (+7.7 [+0.0, +16.0])"
+    },
+    "sentences": [
+     "the wrong reference changed how the answers were laid out, and the grader did not read that layout; what the models wrote did not change by more than the second reading shows"
+    ]
+   },
+   "R2": {
+    "cases": [
+     "b"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "a difference is shown (+37.0 [+26.7, +48.0])",
+     "second": "a difference is shown (+17.7 [+7.0, +30.3])"
+    },
+    "sentences": [
+     "stating the answer format raises the unaided baseline, and not through layout alone (frozen +37.0 [+26.7, +48.0], second reading +17.7 [+7.0, +30.3])"
+    ]
+   },
+   "R3": {
+    "levels_beside_part_c": false,
+    "moved": true,
+    "sentence": "the setup moved between Part C and the control for this model and task (frozen +4.0 [+0.0, +8.3]); the levels of the control are not set beside the levels of Part C here"
+   },
+   "R4": {
+    "across_a_setup_that_moved": true,
+    "holm_notes": [
+     "frozen reading: tools ahead (not after Holm); across a setup that moved"
+    ],
+    "sentence": "frozen grade: tools ahead (not after Holm); across a setup that moved (+10.7 [+1.7, +20.7]); second reading: no difference shown; across a setup that moved (+9.3 [+0.0, +19.7]); Part A: 2026-10-03 to 2026-10-09; the control: 2026-11-23 to 2026-11-24 (job 24445482)"
+   },
+   "model": "qwen3_6_35b",
+   "rule5": {
+    "b_frozen": 66.33333333333333,
+    "b_second": 69.0,
+    "gap": -2.6666666666666714,
+    "quote_both": false
+   },
+   "task": "solve"
+  },
+  {
+   "R1": {
+    "cases": [
+     "e"
+    ],
+    "holm_notes": [],
+    "labels": {
+     "frozen": "unresolved (+4.3 [-2.0, +10.7])",
+     "second": "unresolved (+4.0 [-3.0, +11.3])"
+    },
+    "sentences": [
+     "unresolved (frozen +4.3 [-2.0, +10.7], second reading +4.0 [-3.0, +11.3])"
+    ]
+   },
+   "R2": {
+    "cases": [
+     "b"
+    ],
+    "holm_notes": [
+     "second reading: a difference is shown (not after Holm)"
+    ],
+    "labels": {
+     "frozen": "a difference is shown (+14.0 [+6.0, +22.3])",
+     "second": "a difference is shown (not after Holm) (+10.7 [+3.7, +18.0])"
+    },
+    "sentences": [
+     "stating the answer format raises the unaided baseline, and not through layout alone (frozen +14.0 [+6.0, +22.3], second reading +10.7 [+3.7, +18.0])"
+    ]
+   },
+   "R3": {
+    "levels_beside_part_c": false,
+    "moved": true,
+    "sentence": "the setup moved between Part C and the control for this model and task (frozen +1.7 [-3.3, +6.3]); the levels of the control are not set beside the levels of Part C here"
+   },
+   "R4": {
+    "across_a_setup_that_moved": true,
+    "holm_notes": [],
+    "sentence": "frozen grade: no difference shown; across a setup that moved (-5.0 [-12.7, +3.3]); second reading: no difference shown; across a setup that moved (-4.0 [-11.7, +4.3]); Part A: 2026-10-03 to 2026-10-09; the control: 2026-11-23 to 2026-11-24 (job 24445482)"
+   },
+   "model": "qwen3_6_35b",
+   "rule5": {
+    "b_frozen": 33.33333333333333,
+    "b_second": 33.33333333333333,
+    "gap": 0.0,
+    "quote_both": false
+   },
+   "task": "simulate"
+  }
+ ],
+ "rerun": "delivered rerun at /Users/omereliyahu/personal/pddl-copilot-experiments/results/delivered-rerun",
+ "route_checked_plans": 712,
+ "run_tags": {
+  "Qwen3_5_9B": "control-promptfix",
+  "gemma4_26b-a4b": "control-promptfix",
+  "qwen3_6_35b": "control-promptfix"
+ },
+ "secondary": [
+  {
+   "at_output_cap": 67,
+   "by_wording": {
+    "11": {
+     "frozen": 25,
+     "second": 42
+    },
+    "12": {
+     "frozen": 28,
+     "second": 41
+    },
+    "13": {
+     "frozen": 20,
+     "second": 35
+    }
+   },
+   "cell": "O",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 63,
+    "plan_invalid": 164
+   },
+   "folded_k": 129,
+   "layout": {
+    "JSON plan in the last block": 196,
+    "action lines in the last block": 25,
+    "no plan block": 79
+   },
+   "mean_answer_tokens": 3790.4466666666667,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 237,
+   "task": "solve",
+   "unread_final_answers": 2
+  },
+  {
+   "at_output_cap": 108,
+   "by_wording": {
+    "11": {
+     "frozen": 11,
+     "second": 11
+    },
+    "12": {
+     "frozen": 5,
+     "second": 5
+    },
+    "13": {
+     "frozen": 7,
+     "second": 7
+    }
+   },
+   "cell": "O",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 107,
+    "trajectory_mismatch": 170
+   },
+   "folded_k": 23,
+   "layout": {
+    "neither": 213,
+    "one JSON object": 68,
+    "one object per line": 19
+   },
+   "mean_answer_tokens": 3170.016666666667,
+   "model": "Qwen3_5_9B",
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 193,
+   "task": "simulate",
+   "unread_final_answers": 1
+  },
+  {
+   "at_output_cap": 64,
+   "by_wording": {
+    "11": {
+     "frozen": 33,
+     "second": 44
+    },
+    "12": {
+     "frozen": 43,
+     "second": 48
+    },
+    "13": {
+     "frozen": 41,
+     "second": 47
+    }
+   },
+   "cell": "A",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 13,
+    "plan_invalid": 170
+   },
+   "folded_k": 139,
+   "layout": {
+    "action lines in the last block": 178,
+    "no plan block": 122
+   },
+   "mean_answer_tokens": 3927.78,
+   "model": "Qwen3_5_9B",
+   "moves_from_O": {
+    "no_plan_extracted -> no_plan_extracted": 2,
+    "no_plan_extracted -> plan_invalid": 29,
+    "no_plan_extracted -> plan_valid": 32,
+    "plan_invalid -> no_plan_extracted": 11,
+    "plan_invalid -> plan_invalid": 121,
+    "plan_invalid -> plan_valid": 32,
+    "plan_valid -> plan_invalid": 20,
+    "plan_valid -> plan_valid": 53
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 287,
+   "task": "solve",
+   "unread_final_answers": 4
+  },
+  {
+   "at_output_cap": 114,
+   "by_wording": {
+    "11": {
+     "frozen": 18,
+     "second": 18
+    },
+    "12": {
+     "frozen": 20,
+     "second": 20
+    },
+    "13": {
+     "frozen": 23,
+     "second": 23
+    }
+   },
+   "cell": "A",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 88,
+    "trajectory_mismatch": 151
+   },
+   "folded_k": 61,
+   "layout": {
+    "neither": 279,
+    "one JSON object": 6,
+    "one object per line": 15
+   },
+   "mean_answer_tokens": 3957.99,
+   "model": "Qwen3_5_9B",
+   "moves_from_O": {
+    "format_parse_fail -> format_parse_fail": 69,
+    "format_parse_fail -> trajectory_mismatch": 36,
+    "format_parse_fail -> trajectory_ok": 2,
+    "trajectory_mismatch -> format_parse_fail": 17,
+    "trajectory_mismatch -> trajectory_mismatch": 112,
+    "trajectory_mismatch -> trajectory_ok": 41,
+    "trajectory_ok -> format_parse_fail": 2,
+    "trajectory_ok -> trajectory_mismatch": 3,
+    "trajectory_ok -> trajectory_ok": 18
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 212,
+   "task": "simulate",
+   "unread_final_answers": 6
+  },
+  {
+   "at_output_cap": 74,
+   "by_wording": {
+    "11": {
+     "frozen": 34,
+     "second": 44
+    },
+    "12": {
+     "frozen": 29,
+     "second": 41
+    },
+    "13": {
+     "frozen": 36,
+     "second": 43
+    }
+   },
+   "cell": "B",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 12,
+    "plan_invalid": 189
+   },
+   "folded_k": 128,
+   "layout": {
+    "action lines in the last block": 230,
+    "no plan block": 70
+   },
+   "mean_answer_tokens": 3961.0333333333333,
+   "model": "Qwen3_5_9B",
+   "moves_from_O": {
+    "no_plan_extracted -> no_plan_extracted": 3,
+    "no_plan_extracted -> plan_invalid": 30,
+    "no_plan_extracted -> plan_valid": 30,
+    "plan_invalid -> no_plan_extracted": 8,
+    "plan_invalid -> plan_invalid": 127,
+    "plan_invalid -> plan_valid": 29,
+    "plan_valid -> no_plan_extracted": 1,
+    "plan_valid -> plan_invalid": 32,
+    "plan_valid -> plan_valid": 40
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 288,
+   "task": "solve",
+   "unread_final_answers": 3
+  },
+  {
+   "at_output_cap": 146,
+   "by_wording": {
+    "11": {
+     "frozen": 19,
+     "second": 19
+    },
+    "12": {
+     "frozen": 2,
+     "second": 2
+    },
+    "13": {
+     "frozen": 17,
+     "second": 17
+    }
+   },
+   "cell": "B",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 150,
+    "trajectory_mismatch": 112
+   },
+   "folded_k": 38,
+   "layout": {
+    "neither": 276,
+    "one object per line": 24
+   },
+   "mean_answer_tokens": 4508.676666666666,
+   "model": "Qwen3_5_9B",
+   "moves_from_O": {
+    "format_parse_fail -> format_parse_fail": 99,
+    "format_parse_fail -> trajectory_mismatch": 6,
+    "format_parse_fail -> trajectory_ok": 2,
+    "trajectory_mismatch -> format_parse_fail": 48,
+    "trajectory_mismatch -> trajectory_mismatch": 99,
+    "trajectory_mismatch -> trajectory_ok": 23,
+    "trajectory_ok -> format_parse_fail": 3,
+    "trajectory_ok -> trajectory_mismatch": 7,
+    "trajectory_ok -> trajectory_ok": 13
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 150,
+   "task": "simulate",
+   "unread_final_answers": 10
+  },
+  {
+   "at_output_cap": 41,
+   "by_wording": {
+    "11": {
+     "frozen": 26,
+     "second": 59
+    },
+    "12": {
+     "frozen": 27,
+     "second": 52
+    },
+    "13": {
+     "frozen": 15,
+     "second": 45
+    }
+   },
+   "cell": "O",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 79,
+    "plan_invalid": 153
+   },
+   "folded_k": 162,
+   "layout": {
+    "JSON plan in the last block": 264,
+    "no plan block": 36
+   },
+   "mean_answer_tokens": 2498.1,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 221,
+   "task": "solve",
+   "unread_final_answers": 2
+  },
+  {
+   "at_output_cap": 87,
+   "by_wording": {
+    "11": {
+     "frozen": 36,
+     "second": 36
+    },
+    "12": {
+     "frozen": 0,
+     "second": 36
+    },
+    "13": {
+     "frozen": 37,
+     "second": 37
+    }
+   },
+   "cell": "O",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 158,
+    "trajectory_mismatch": 69
+   },
+   "folded_k": 109,
+   "layout": {
+    "neither": 89,
+    "one object per line": 211
+   },
+   "mean_answer_tokens": 3379.03,
+   "model": "gemma4_26b-a4b",
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 142,
+   "task": "simulate",
+   "unread_final_answers": 2
+  },
+  {
+   "at_output_cap": 42,
+   "by_wording": {
+    "11": {
+     "frozen": 42,
+     "second": 42
+    },
+    "12": {
+     "frozen": 48,
+     "second": 48
+    },
+    "13": {
+     "frozen": 48,
+     "second": 48
+    }
+   },
+   "cell": "A",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 5,
+    "plan_invalid": 157
+   },
+   "folded_k": 138,
+   "layout": {
+    "action lines in the last block": 2,
+    "no plan block": 298
+   },
+   "mean_answer_tokens": 2573.5233333333335,
+   "model": "gemma4_26b-a4b",
+   "moves_from_O": {
+    "no_plan_extracted -> no_plan_extracted": 3,
+    "no_plan_extracted -> plan_invalid": 34,
+    "no_plan_extracted -> plan_valid": 42,
+    "plan_invalid -> no_plan_extracted": 2,
+    "plan_invalid -> plan_invalid": 110,
+    "plan_invalid -> plan_valid": 41,
+    "plan_valid -> plan_invalid": 13,
+    "plan_valid -> plan_valid": 55
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 295,
+   "task": "solve",
+   "unread_final_answers": 67
+  },
+  {
+   "at_output_cap": 82,
+   "by_wording": {
+    "11": {
+     "frozen": 41,
+     "second": 41
+    },
+    "12": {
+     "frozen": 0,
+     "second": 37
+    },
+    "13": {
+     "frozen": 13,
+     "second": 29
+    }
+   },
+   "cell": "A",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 203,
+    "trajectory_mismatch": 43
+   },
+   "folded_k": 107,
+   "layout": {
+    "neither": 70,
+    "one object per line": 230
+   },
+   "mean_answer_tokens": 3239.33,
+   "model": "gemma4_26b-a4b",
+   "moves_from_O": {
+    "format_parse_fail -> format_parse_fail": 156,
+    "format_parse_fail -> trajectory_mismatch": 1,
+    "format_parse_fail -> trajectory_ok": 1,
+    "trajectory_mismatch -> format_parse_fail": 23,
+    "trajectory_mismatch -> trajectory_mismatch": 39,
+    "trajectory_mismatch -> trajectory_ok": 7,
+    "trajectory_ok -> format_parse_fail": 24,
+    "trajectory_ok -> trajectory_mismatch": 3,
+    "trajectory_ok -> trajectory_ok": 46
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 97,
+   "task": "simulate",
+   "unread_final_answers": 4
+  },
+  {
+   "at_output_cap": 53,
+   "by_wording": {
+    "11": {
+     "frozen": 30,
+     "second": 49
+    },
+    "12": {
+     "frozen": 43,
+     "second": 57
+    },
+    "13": {
+     "frozen": 40,
+     "second": 56
+    }
+   },
+   "cell": "B",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 19,
+    "plan_invalid": 168
+   },
+   "folded_k": 162,
+   "layout": {
+    "action lines in the last block": 264,
+    "no plan block": 36
+   },
+   "mean_answer_tokens": 2973.983333333333,
+   "model": "gemma4_26b-a4b",
+   "moves_from_O": {
+    "no_plan_extracted -> no_plan_extracted": 5,
+    "no_plan_extracted -> plan_invalid": 47,
+    "no_plan_extracted -> plan_valid": 27,
+    "plan_invalid -> no_plan_extracted": 12,
+    "plan_invalid -> plan_invalid": 100,
+    "plan_invalid -> plan_valid": 41,
+    "plan_valid -> no_plan_extracted": 2,
+    "plan_valid -> plan_invalid": 21,
+    "plan_valid -> plan_valid": 45
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 281,
+   "task": "solve",
+   "unread_final_answers": 0
+  },
+  {
+   "at_output_cap": 96,
+   "by_wording": {
+    "11": {
+     "frozen": 25,
+     "second": 25
+    },
+    "12": {
+     "frozen": 30,
+     "second": 30
+    },
+    "13": {
+     "frozen": 27,
+     "second": 27
+    }
+   },
+   "cell": "B",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 147,
+    "trajectory_mismatch": 71
+   },
+   "folded_k": 82,
+   "layout": {
+    "neither": 294,
+    "one object per line": 6
+   },
+   "mean_answer_tokens": 3823.6566666666668,
+   "model": "gemma4_26b-a4b",
+   "moves_from_O": {
+    "format_parse_fail -> format_parse_fail": 104,
+    "format_parse_fail -> trajectory_mismatch": 23,
+    "format_parse_fail -> trajectory_ok": 31,
+    "trajectory_mismatch -> format_parse_fail": 19,
+    "trajectory_mismatch -> trajectory_mismatch": 42,
+    "trajectory_mismatch -> trajectory_ok": 8,
+    "trajectory_ok -> format_parse_fail": 24,
+    "trajectory_ok -> trajectory_mismatch": 6,
+    "trajectory_ok -> trajectory_ok": 43
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 153,
+   "task": "simulate",
+   "unread_final_answers": 52
+  },
+  {
+   "at_output_cap": 35,
+   "by_wording": {
+    "11": {
+     "frozen": 23,
+     "second": 49
+    },
+    "12": {
+     "frozen": 46,
+     "second": 62
+    },
+    "13": {
+     "frozen": 19,
+     "second": 43
+    }
+   },
+   "cell": "O",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 88,
+    "plan_invalid": 124
+   },
+   "folded_k": 164,
+   "layout": {
+    "JSON plan in the last block": 198,
+    "action lines in the last block": 19,
+    "no plan block": 83
+   },
+   "mean_answer_tokens": 3331.2033333333334,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 212,
+   "task": "solve",
+   "unread_final_answers": 9
+  },
+  {
+   "at_output_cap": 72,
+   "by_wording": {
+    "11": {
+     "frozen": 28,
+     "second": 28
+    },
+    "12": {
+     "frozen": 11,
+     "second": 20
+    },
+    "13": {
+     "frozen": 19,
+     "second": 20
+    }
+   },
+   "cell": "O",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 125,
+    "trajectory_mismatch": 117
+   },
+   "folded_k": 68,
+   "layout": {
+    "neither": 139,
+    "one JSON object": 126,
+    "one object per line": 35
+   },
+   "mean_answer_tokens": 2855.483333333333,
+   "model": "qwen3_6_35b",
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 175,
+   "task": "simulate",
+   "unread_final_answers": 29
+  },
+  {
+   "at_output_cap": 30,
+   "by_wording": {
+    "11": {
+     "frozen": 61,
+     "second": 61
+    },
+    "12": {
+     "frozen": 55,
+     "second": 59
+    },
+    "13": {
+     "frozen": 57,
+     "second": 57
+    }
+   },
+   "cell": "A",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 5,
+    "plan_invalid": 122
+   },
+   "folded_k": 177,
+   "layout": {
+    "action lines in the last block": 171,
+    "no plan block": 129
+   },
+   "mean_answer_tokens": 3628.81,
+   "model": "qwen3_6_35b",
+   "moves_from_O": {
+    "no_plan_extracted -> no_plan_extracted": 1,
+    "no_plan_extracted -> plan_invalid": 32,
+    "no_plan_extracted -> plan_valid": 55,
+    "plan_invalid -> no_plan_extracted": 4,
+    "plan_invalid -> plan_invalid": 74,
+    "plan_invalid -> plan_valid": 46,
+    "plan_valid -> plan_invalid": 16,
+    "plan_valid -> plan_valid": 72
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 295,
+   "task": "solve",
+   "unread_final_answers": 32
+  },
+  {
+   "at_output_cap": 101,
+   "by_wording": {
+    "11": {
+     "frozen": 21,
+     "second": 21
+    },
+    "12": {
+     "frozen": 23,
+     "second": 27
+    },
+    "13": {
+     "frozen": 27,
+     "second": 32
+    }
+   },
+   "cell": "A",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 129,
+    "trajectory_mismatch": 100
+   },
+   "folded_k": 80,
+   "layout": {
+    "neither": 231,
+    "one JSON object": 2,
+    "one object per line": 67
+   },
+   "mean_answer_tokens": 3939.846666666667,
+   "model": "qwen3_6_35b",
+   "moves_from_O": {
+    "format_parse_fail -> format_parse_fail": 65,
+    "format_parse_fail -> trajectory_mismatch": 42,
+    "format_parse_fail -> trajectory_ok": 18,
+    "trajectory_mismatch -> format_parse_fail": 50,
+    "trajectory_mismatch -> trajectory_mismatch": 48,
+    "trajectory_mismatch -> trajectory_ok": 19,
+    "trajectory_ok -> format_parse_fail": 14,
+    "trajectory_ok -> trajectory_mismatch": 10,
+    "trajectory_ok -> trajectory_ok": 34
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 171,
+   "task": "simulate",
+   "unread_final_answers": 23
+  },
+  {
+   "at_output_cap": 32,
+   "by_wording": {
+    "11": {
+     "frozen": 71,
+     "second": 73
+    },
+    "12": {
+     "frozen": 61,
+     "second": 66
+    },
+    "13": {
+     "frozen": 67,
+     "second": 68
+    }
+   },
+   "cell": "B",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "no_plan_extracted": 7,
+    "plan_invalid": 94
+   },
+   "folded_k": 207,
+   "layout": {
+    "action lines in the last block": 269,
+    "no plan block": 31
+   },
+   "mean_answer_tokens": 3703.9466666666667,
+   "model": "qwen3_6_35b",
+   "moves_from_O": {
+    "no_plan_extracted -> no_plan_extracted": 1,
+    "no_plan_extracted -> plan_invalid": 26,
+    "no_plan_extracted -> plan_valid": 61,
+    "plan_invalid -> no_plan_extracted": 6,
+    "plan_invalid -> plan_invalid": 57,
+    "plan_invalid -> plan_valid": 61,
+    "plan_valid -> plan_invalid": 11,
+    "plan_valid -> plan_valid": 77
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 293,
+   "task": "solve",
+   "unread_final_answers": 0
+  },
+  {
+   "at_output_cap": 141,
+   "by_wording": {
+    "11": {
+     "frozen": 33,
+     "second": 33
+    },
+    "12": {
+     "frozen": 33,
+     "second": 33
+    },
+    "13": {
+     "frozen": 34,
+     "second": 34
+    }
+   },
+   "cell": "B",
+   "exception_rows": 0,
+   "failure_reasons": {
+    "format_parse_fail": 141,
+    "trajectory_mismatch": 59
+   },
+   "folded_k": 100,
+   "layout": {
+    "neither": 296,
+    "one object per line": 4
+   },
+   "mean_answer_tokens": 4522.456666666667,
+   "model": "qwen3_6_35b",
+   "moves_from_O": {
+    "format_parse_fail -> format_parse_fail": 78,
+    "format_parse_fail -> trajectory_mismatch": 23,
+    "format_parse_fail -> trajectory_ok": 24,
+    "trajectory_mismatch -> format_parse_fail": 54,
+    "trajectory_mismatch -> trajectory_mismatch": 33,
+    "trajectory_mismatch -> trajectory_ok": 30,
+    "trajectory_ok -> format_parse_fail": 9,
+    "trajectory_ok -> trajectory_mismatch": 3,
+    "trajectory_ok -> trajectory_ok": 46
+   },
+   "n": 300,
+   "per_wording_n": {
+    "11": 100,
+    "12": 100,
+    "13": 100
+   },
+   "readable": 159,
+   "task": "simulate",
+   "unread_final_answers": 0
+  }
+ ],
+ "shared_keys": {
+  "Qwen3_5_9B": 600,
+  "gemma4_26b-a4b": 600,
+  "qwen3_6_35b": 600
+ },
+ "tripwires_audited": {
+  "T4:gemma4_26b-a4b:B:simulate": {
+   "fired": "cell B of gemma4_26b-a4b, simulate: 52 unread final answers of 300 (more than 5%)",
+   "note": "Audited 2026-11-24 by reading the shape of all 52 answers (scripts in development/reference/control_prompt_fix_t4_audit/). Every one of the 52 follows the layout cell B asks for: reasoning, then one fenced json block that ends the answer. None is a final answer left in a place the readers do not look; both readers look in that block. 47 of the 52 blocks are not valid JSON as the model wrote them: the brackets do not balance (36 lack one closing brace, usually at the end of the last step; 11 have one or more closing braces too many). The other 5 are valid JSON, all in the sailing domain, and give each numeric fluent as a nested object ({\"x\": {\"b0\": 4}}) where the grader's trace form has one flat key per fluent; the frozen normaliser does not accept that form. So the count does not show a reader that skips a final answer; it shows a model that, asked for one JSON object, writes it with a syntax slip. The frozen grade and the second reading both count these answers as wrong, and the tool arm is graded by the same parser. Descriptive, audit only, not a registered reading and not to be quoted as a rate: when the bracket slips are mended at the point where the JSON parser stops, 25 of the 47 traces equal the oracle, 13 differ from it, 8 still do not parse and 1 is not a trace the grader accepts. Cell B's simulate rate for Gemma is therefore lower by up to about 8 points (25 of 300) for a syntax slip and not for the content of the trace. Released so that the readout can be written; the readout states this next to Gemma's cell B simulate figures. Whether the paper says anything about it is Omer's decision."
+  }
+ },
+ "unread_rerun": [
+  {
+   "model": "Qwen3_5_9B",
+   "part": "Part C",
+   "task": "solve",
+   "unread": 2
+  },
+  {
+   "model": "Qwen3_5_9B",
+   "part": "Part A",
+   "task": "solve",
+   "unread": 0
+  },
+  {
+   "model": "Qwen3_5_9B",
+   "part": "Part C",
+   "task": "simulate",
+   "unread": 1
+  },
+  {
+   "model": "Qwen3_5_9B",
+   "part": "Part A",
+   "task": "simulate",
+   "unread": 0
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "part": "Part C",
+   "task": "solve",
+   "unread": 1
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "part": "Part A",
+   "task": "solve",
+   "unread": 1
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "part": "Part C",
+   "task": "simulate",
+   "unread": 1
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "part": "Part A",
+   "task": "simulate",
+   "unread": 10
+  },
+  {
+   "model": "qwen3_6_35b",
+   "part": "Part C",
+   "task": "solve",
+   "unread": 11
+  },
+  {
+   "model": "qwen3_6_35b",
+   "part": "Part A",
+   "task": "solve",
+   "unread": 0
+  },
+  {
+   "model": "qwen3_6_35b",
+   "part": "Part C",
+   "task": "simulate",
+   "unread": 21
+  },
+  {
+   "model": "qwen3_6_35b",
+   "part": "Part A",
+   "task": "simulate",
+   "unread": 0
+  }
+ ],
+ "validated_plans": 2826
+}

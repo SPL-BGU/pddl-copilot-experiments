@@ -1,0 +1,112 @@
+{
+ "cells": [
+  {
+   "tag": "Qwen3_5_9B",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 60,
+   "frozen_k": 56,
+   "tolerant_k": 56,
+   "folded_k": 56
+  },
+  {
+   "tag": "Qwen3_5_9B",
+   "task": "simulate",
+   "arm": "unaided",
+   "n": 60,
+   "frozen_k": 55,
+   "tolerant_k": 55,
+   "folded_k": 55
+  },
+  {
+   "tag": "Qwen3_5_9B",
+   "task": "solve",
+   "arm": "plain",
+   "n": 60,
+   "frozen_k": 58,
+   "tolerant_k": 57,
+   "folded_k": 58
+  },
+  {
+   "tag": "Qwen3_5_9B",
+   "task": "solve",
+   "arm": "unaided",
+   "n": 60,
+   "frozen_k": 58,
+   "tolerant_k": 57,
+   "folded_k": 58
+  },
+  {
+   "tag": "gemma4_26b-a4b",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 60,
+   "frozen_k": 60,
+   "tolerant_k": 60,
+   "folded_k": 60
+  },
+  {
+   "tag": "gemma4_26b-a4b",
+   "task": "simulate",
+   "arm": "unaided",
+   "n": 60,
+   "frozen_k": 40,
+   "tolerant_k": 40,
+   "folded_k": 40
+  },
+  {
+   "tag": "gemma4_26b-a4b",
+   "task": "solve",
+   "arm": "plain",
+   "n": 60,
+   "frozen_k": 60,
+   "tolerant_k": 60,
+   "folded_k": 60
+  },
+  {
+   "tag": "gemma4_26b-a4b",
+   "task": "solve",
+   "arm": "unaided",
+   "n": 60,
+   "frozen_k": 40,
+   "tolerant_k": 60,
+   "folded_k": 60
+  },
+  {
+   "tag": "qwen3_6_35b",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 60,
+   "frozen_k": 60,
+   "tolerant_k": 60,
+   "folded_k": 60
+  },
+  {
+   "tag": "qwen3_6_35b",
+   "task": "simulate",
+   "arm": "unaided",
+   "n": 60,
+   "frozen_k": 56,
+   "tolerant_k": 60,
+   "folded_k": 60
+  },
+  {
+   "tag": "qwen3_6_35b",
+   "task": "solve",
+   "arm": "plain",
+   "n": 60,
+   "frozen_k": 40,
+   "tolerant_k": 40,
+   "folded_k": 40
+  },
+  {
+   "tag": "qwen3_6_35b",
+   "task": "solve",
+   "arm": "unaided",
+   "n": 60,
+   "frozen_k": 60,
+   "tolerant_k": 60,
+   "folded_k": 60
+  }
+ ]
+}

@@ -377,3 +377,97 @@
   texts (solve / simulate): O `dd835ea2…` / `dfd6bead…`, A `1cf4b9b6…` / `c99db112…`,
   B `15673b12…` / `79cb3435…`; the full digests are in `pddl_eval/control_prompts.py`.
   Nothing was run on a model and the cluster was not contacted.
+
+## 2026-11-23 (evening) — The control: harness merged, cell B reworded, analysis frozen
+
+- **PR #147 merged (Omer: "consider it as my approval").** An independent review of the
+  diff found no blocker. One gap fixed first: the registered cell keeps the plain
+  `no-tools` folder token, so a control cell now refuses a folder that holds trials but
+  no audit log.
+- **Found by the freeze review of the analysis: cell B's first wording could go unread.**
+  "End your response with the plan alone, one action per line" invites reasoning that
+  lists steps and then a plan with no code block. The frozen solve reader collects every
+  action-shaped line, so it grades reasoning and plan together; the second reading only
+  reads code blocks. On simulate neither reader reads an object given after prose
+  without a code block (checked on 25 stored Part C traces that are right as a
+  whole-JSON answer: 25 of 25 still read when fenced after prose, 0 of 25 unfenced).
+- **Decided (Omer): change cell B to ask for the final answer in a fenced code block.**
+  PR #148, merged on his word. The first wording was never run. New sha256: solve
+  `3dbc1baf…`, simulate `7ccf5d9d…` (full digests in the registration).
+- **Registration written and the analysis frozen** before any row of the control
+  exists: `reference/control_prompt_fix_prereg.md`, package hash `825dab63…` at
+  `3b355c3`. Gates: typed loader, constants as raised checks, clause map, synthetic
+  fixture (441 checks), independent review with a verification pass.
+- **Registered beyond the plan (session's additions, told to Omer in chat):** a fourth
+  contrast, tools (plain wording, Part A of the rerun) minus cell B, because the paper's
+  RQ1 comparison will use the reported baseline and crosses two runs; Holm-adjusted
+  sign-flip p-values beside every contrast, with the readings on the unadjusted 95%
+  interval as in the rerun; a count of unread final answers per cell, with a tripwire
+  on cell B at 5%.
+- **Known in advance and written into the registration:** on solve the frozen grade can
+  stay low in every cell for the grader's own reason, so the second reading is the one
+  that follows the answer the model gave.
+- **Open, Omer's decision (to be fixed before the full run is submitted):** which
+  figure of cell B the text quotes. Written as the frozen grade, with both figures
+  where they differ by more than 5 points. The session's recommendation: the second
+  reading on solve and simulate, for the unaided arm and for the tool arm in the same
+  comparison, with the frozen grade in the appendix. It gives one baseline and leans
+  toward the unaided arm; it changes the reading RQ1 quotes on these two tasks.
+- **Nothing was run on a model and the cluster was not contacted.**
+- **Decided (Omer), same evening: the paper quotes the second reading for cell B**, on
+  solve and simulate, and quotes the tool arm in the same comparison under the second
+  reading too. The frozen grade stays in the appendix table as the registered record.
+  Written into the registration (section 6, rule 5) after the code was frozen and
+  before any trial; the package hash `825dab63…` is unchanged. What it means for the
+  paper step, not done now: RQ1's solve and simulate figures for the open models change
+  reading (the tool arms move by 0.0 to 3.3 points on solve; Gemma's simulate levels
+  rise by 10 to 12 points in every arm, its contrast does not move); the paper must say
+  in one sentence that the reading was added after the rerun's data were seen and
+  before the control's; how the Claude rates stand beside these figures is to be
+  settled then.
+- **Smoke passed (2026-11-23, job 24432950; Omer's go-ahead).** Nine cells, 120 rows
+  each, all seven registered checks PASS, vLLM 0.20.2. Five tasks were preempted and
+  requeued and resumed in place with no bad row. The cluster's tools repo was kept at
+  `5e4f9c0` (validator 0.1.5), as for Part C, so the preflight script was not run. No
+  smoke rate was read. **Preemption is active on the cluster**, so the full run's cells
+  (1.2 to 3.1 hours each) will likely be stopped and resumed too; the design resumes in
+  place and the registration allows it. The full run waits for Omer's separate
+  go-ahead.
+- **Full run submitted (2026-11-23 19:40 IST, job 24445482; Omer: "Yes, submit it").**
+  The smoke's command without `--partial 1`, run tag `control-promptfix`, nine cells in
+  one array so O, A and B share a window; `--time=12:00:00` read back from the queue.
+  Cluster at `9109179`, tools repo at `5e4f9c0`; the preflight script was not run.
+  During the run only job states and row counts are read. A requeued task writes its
+  serve log again from the start, so the earlier starts' logs are lost; the watcher
+  notes each serve log's vLLM version line at every check to keep them on record.
+
+## 2026-11-24 — The corrected-prompt control: run complete, analysed, readout written
+
+- **Run complete** (job 24445482): nine cells, 600 rows each, no exception row; six
+  starts preempted and resumed in place; vLLM 0.20.2.
+- **Frozen analysis run once, with the registered hash.** It halted on one tripwire
+  (Gemma-26B, cell B, simulate: 52 unread final answers). Audit: all 52 are the fenced
+  JSON block the text asks for; 47 have unbalanced brackets and 5 use a nested form
+  for numeric values. A model syntax slip, counted wrong by both readings. Audit only:
+  25 of the 47 equal the answer key once the bracket is mended. Released with that
+  note.
+- **Bottom line (second reading, cell B beside the tool arm of Part A):** solve: tools
+  ahead for Qwen3.5-9B (+49.3 [+36.0, +63.0]) and Gemma-26B (+38.3 [+23.7, +53.7]);
+  Qwen3.6-35B +9.3 [+0.0, +19.7], no difference shown. Simulate: no model shows tools
+  ahead (+7.7, -7.3, -4.0, all intervals cross zero). Cell B, second reading: solve
+  42.7 / 54.0 / 69.0; simulate 12.7 / 27.3 / 33.3.
+- **What the wrong reference did:** it lowered the frozen grade on solve by 15 to 28
+  points in all three models, mostly through layout for Gemma-26B and Qwen3.6-35B; for
+  Qwen3.5-9B it also cost 12.7 points on simulate under both readings.
+- **Open, Omer's decisions:** the figure for Gemma-26B on simulate (rule: cell B, 27.3;
+  cell O under the second reading is 36.3, because the format-stated text moved Gemma
+  to a single JSON object that it often writes with a bracket slip); how RQ1 words
+  solve for Qwen3.6-35B. No paper edit made.
+- Readout: `reference/control_prompt_fix_readout.md`; tables: `NUMBERS.md`.
+- **Decided (Omer, 2026-11-24): Gemma-26B on simulate keeps cell B (27.3)**, as the
+  registered rule says; cell O (36.3) is not quoted as the baseline. The paper states
+  the JSON bracket slip in one sentence. Still open: the wording of RQ1 on solve for
+  Qwen3.6-35B. No paper edit yet.
+- **Decided (Omer, 2026-11-25): RQ1 on solve gives all three figures** (tools minus
+  cell B, second reading: +49.3 [+36.0, +63.0], +38.3 [+23.7, +53.7], +9.3 [+0.0,
+  +19.7]) and says the third is not shown. Not "two of three". No paper edit yet.

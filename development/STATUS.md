@@ -1,6 +1,6 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-23 (the corrected-prompt control: decisions logged, harness change built and in a PR, nothing run; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-24 (the corrected-prompt control: harness merged, cell B reworded, registration written, its analysis frozen at `825dab63…`, the smoke passed, the full run complete and analysed on 2026-11-24, readout written, waiting for Omer's read; before it, PRs #145 and #146 merged and on Overleaf: the JSON constraint pilot, and the second grading of unaided solve with its paper text; the new paper text has not had Omer's read; before it, PRs #141, #142 and #143 merged and on Overleaf on 2026-11-22). Earlier refreshes are in git history and in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -121,33 +121,71 @@ readout. "No run is planned" below has this one exception.
 
 Where the control stands, in its order of work:
 
-1. **Harness change: built, PR #147 open for Omer's merge** (branch
-   `harness/control-prompt-cells`). Opt-in and additive: the texts of cells A and B are
-   in `pddl_eval/control_prompts.py`; the client swaps the system message only when
-   `$PDDL_NO_TOOLS_SYSTEM` is set, and refuses any message that is not the registered
-   solve or simulate text; `submit_with_rtx.sh --no-tools-system "registered
+1. **Harness change: merged** (PR #147 at `1cfb097`, then PR #148 at `9109179`;
+   2026-11-23, Omer's approval for each). Opt-in and additive: the texts of cells A and
+   B are in `pddl_eval/control_prompts.py`; the client swaps the system message only
+   when `$PDDL_NO_TOOLS_SYSTEM` is set, and refuses any message that is not the
+   registered solve or simulate text; `submit_with_rtx.sh --no-tools-system "registered
    no-pointer format-stated"` gives one cell per text, each with its own results
-   folder; every cell writes `system_prompt_audit.jsonl`, the record of the system
-   text it sent. No file of the frozen hash changed (the hash still ends `822aace9`);
-   with the flag left out the request and the submission are as before. All 37 test
-   files pass. Nothing has touched the cluster.
-2. **Registration** (`development/reference/control_prompt_fix_prereg.md`) and the
-   `/freeze-protocol` gate: not started. The hash is recorded before the full run's
-   data is read.
-3. **Smoke** (three models, three cells, full-run SLURM profile; checks non-empty
-   answers and the exact system text of each cell): needs Omer's cluster go-ahead.
-4. **Full run**: only after the smoke passes and the freeze is recorded; needs its own
-   go-ahead, **by 2026-11-30 for the paper, by 2026-11-25 if the abstract of 2026-12-07
-   is to quote the new baseline.**
-5. Sync, the frozen analysis, a readout and a `NUMBERS.md` entry. Then stop: the paper
-   change is a separate step.
+   folder; every cell writes `system_prompt_audit.jsonl`, the record of the system text
+   it sent; a control cell refuses a folder that holds older trials. No file of the
+   rerun's frozen hash changed (still `822aace9`). An independent review of the diff
+   found no blocker.
+   **Cell B's wording changed before any trial (Omer, PR #148):** it now asks for the
+   final answer in a fenced code block. The freeze review showed that neither
+   registered reader reads an unfenced final answer after prose.
+2. **Registration and freeze: done, in a PR for Omer's read.**
+   `development/reference/control_prompt_fix_prereg.md`; analysis
+   `tools/reanalysis/control_prompt_fix.py`; package hash **`825dab63…`**, frozen at
+   `3b355c3` on branch `analysis/control-prompt-fix-prereg`, before any row of the
+   control exists. All five freeze gates passed (441 fixture checks; an independent
+   review and its verification pass). A dry run on the existing Part C rows gave zero
+   for the within-run contrasts and reproduced the filed figures.
+   **Which figure of cell B the paper quotes (Omer, 2026-11-23): the second reading**,
+   on solve and simulate, for the unaided arm and for the tool arm in the same
+   comparison; the frozen grade stays in the appendix table as the registered record
+   (section 6, rule 5). Decided after the code was frozen and before any trial; no code
+   depends on it and the hash is unchanged. For the paper step later: this changes the
+   reading RQ1 quotes on these two tasks, and the levels quoted for Gemma on simulate
+   (10 to 12 points higher in every arm under the second reading).
+   Registered beyond the plan, for Omer to know: a fourth contrast (tools, plain
+   wording, minus cell B; it crosses two runs and is labelled by the drift check);
+   Holm-adjusted p-values beside every contrast; a count of "unread final answers" per
+   cell, which halts the readout if it passes 5% of cell B's answers for a model and
+   task.
+3. **Smoke: passed (2026-11-23, job 24432950, Omer's go-ahead).** Nine cells, 120 rows
+   each, all seven registered checks PASS: every row read by the frozen loader, no
+   exception or infrastructure-failure row, non-empty answers, the registered system
+   text sent in every cell, the same user messages in the three cells of a model,
+   vLLM 0.20.2. Five tasks were preempted and requeued (one cell four times); they
+   resumed in place and left no bad row, only extra audit lines, which the rule allows
+   and counts. The cluster is on `main` at `9109179`; its tools repo was left at
+   `5e4f9c0` with validator 0.1.5, as for Part C (the preflight script was not run for
+   that reason). Synced to `results/control-promptfix-smoke/`. No smoke rate was read.
+   Record: section 10 of the registration.
+4. **Full run: complete** (job 24445482, 2026-11-23 19:40 to 2026-11-24 06:12, Omer's
+   go-ahead). Nine cells, 600 rows each, no exception row. Six starts were preempted
+   and resumed in place. Synced to `results/control-promptfix/`.
+5. **Frozen analysis: run (2026-11-24).** Readout:
+   `reference/control_prompt_fix_readout.md`; tables in `NUMBERS.md`, section
+   "Corrected-prompt control". One tripwire fired and was audited (Gemma-26B, cell B,
+   simulate: 52 fenced JSON answers that neither reader reads, 47 of them with
+   unbalanced brackets). Bottom line under the second reading, cell B beside the tool
+   arm: tools ahead on solve for Qwen3.5-9B (+49.3) and Gemma-26B (+38.3), not shown for
+   Qwen3.6-35B (+9.3 [+0.0, +19.7]); on simulate no model shows tools ahead.
+6. **Waiting for Omer's read of the readout.** No paper change before it. **Decided (Omer,
+   2026-11-24): Gemma-26B on simulate keeps cell B (27.3)**, the registered rule, with
+   the JSON slip stated in one sentence. **Decided (Omer, 2026-11-25): RQ1 gives all three
+   solve figures** with their intervals and says the 35B's gap is not shown. Both
+   reporting choices are settled; the paper edit itself has not been started.
 
 **Known before the smoke:** `status.sh` lists the cells A and B under "unknown" (it
 knows only the standard cell names, as with the `jsonbound` cells); `sync.sh` brings
 all three folders. A swap that refuses a message is stored as an exception row and is
-not retried, so "no exception rows" is the smoke's check for it. The main checkout was
-switched to `main` and pulled by something outside this work at 10:30 on 2026-11-23,
-so the branch lives in the worktree `.claude/worktrees/control-prompt-cells`.
+not retried; the analysis voids a cell above 1% of such rows. Do not use `--shard` for
+the control. The main checkout was switched to `main` and pulled by something outside
+this work at 10:30 on 2026-11-23, so the branch lives in the worktree
+`.claude/worktrees/control-prompt-cells`.
 
 0. **The "70 to 91% lost" figure now carries its qualifier** (PR #143, merged
    2026-11-22). RQ3 simulate on the full rerun was graded a second time,

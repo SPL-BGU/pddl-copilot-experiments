@@ -160,6 +160,18 @@ prompts requires.
 - A: `You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; give the per-step state with boolean predicates and numeric fluents.`
 - B: `You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; end your response with a single JSON object of the form {"trajectory": [ ...steps... ]}, where each step has the keys step, action and state (state.boolean and state.numeric).`
 
+**Changed 2026-11-23, before any trial (Omer): cell B asks for a fenced code block.**
+The independent review of the analysis showed that neither registered reader reads a
+final answer given without a code block after prose (on solve the frozen grader mixes
+it with action-shaped lines of the reasoning; on simulate it reads only a whole-answer
+object or a fenced one). Cell B as run:
+
+- solve B: `You are a PDDL planning assistant. PDDL planning tools are not available in this evaluation. Analyze the domain and problem and produce a plan using your own reasoning; end your response with the plan alone in a fenced code block, one parenthesised PDDL action per line.`
+- simulate B: `You are a PDDL simulation assistant. PDDL simulation tools are not available in this evaluation. Trace the state transitions using your own reasoning; end your response with a fenced code block that holds a single JSON object of the form {"trajectory": [ ...steps... ]}, where each step has the keys step, action and state (state.boolean and state.numeric).`
+
+The B lines above are the first wording and were never run. The registration
+(`reference/control_prompt_fix_prereg.md`) holds the sha256 of the texts as run.
+
 Notes on the choices, each open to Omer's edit before the prereg is frozen:
 
 - **B on solve asks for lines, not JSON.** The three user wordings ask for parenthesised
