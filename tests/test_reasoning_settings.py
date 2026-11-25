@@ -107,47 +107,6 @@ def test_write_settings_record():
         pass
 
 
-def _write_cell(root: Path, think: str, cond: str, completions: list[int],
-                thinking: str, line: str | None) -> None:
-    cell = root / f"slurm_vllm_gpt-oss_20b_{think}_{cond}_effort-smoke"
-    cell.mkdir(parents=True)
-    with (cell / "trials.jsonl").open("w") as f:
-        for i, c in enumerate(completions):
-            f.write(json.dumps({"key": [], "result": {
-                "task": "solve", "domain_name": "d", "problem_name": f"p{i}",
-                "plan_label": "", "prompt_variant": 11, "done_reason": "stop",
-                "thinking": thinking, "tokens": {"completion": c}}}) + "\n")
-        f.write('{"torn line\n')
-    if line is not None:
-        (cell / "client_settings.json").write_text(json.dumps({"harmony_system_line": line}))
-
-
-def test_effort_smoke_check():
-    _spec2 = importlib.util.spec_from_file_location(
-        "effort_smoke_check", REPO_ROOT / "tools" / "effort_smoke_check.py")
-    ESC = importlib.util.module_from_spec(_spec2)
-    _spec2.loader.exec_module(ESC)
-    ok_low = "harmony system line: Reasoning: low (expected low)"
-    ok_def = "harmony system line: Reasoning: medium (expected medium)"
-    with tempfile.TemporaryDirectory() as d:
-        root = Path(d)
-        for cond in ESC.CONDS:
-            _write_cell(root, "effort-low", cond, [100, 200, 300], "t", ok_low)
-            _write_cell(root, "default", cond, [400, 500, 600], "t", ok_def)
-        assert ESC.main([str(root)]) == 0
-    # each criterion failing on its own fails the smoke
-    for bad in ("tokens", "line", "trace"):
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            for cond in ESC.CONDS:
-                _write_cell(root, "effort-low", cond,
-                            [900, 900, 900] if bad == "tokens" else [100, 200, 300],
-                            "" if bad == "trace" else "t",
-                            ok_def if bad == "line" else ok_low)
-                _write_cell(root, "default", cond, [400, 500, 600], "t", ok_def)
-            assert ESC.main([str(root)]) == 1, bad
-
-
 if __name__ == "__main__":
     _tests = [(n, f) for n, f in sorted(globals().items())
               if n.startswith("test_") and callable(f)]

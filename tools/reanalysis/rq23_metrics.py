@@ -4,7 +4,7 @@ the tool's output properly?
 
     python -m tools.reanalysis.rq23_metrics [--numbers]
 
-Post hoc and descriptive (development/roadmap.md, milestone M4). Read-only over
+Post hoc and descriptive (development/reference/roadmap.md, milestone M4). Read-only over
 results/. Nothing here is a registered endpoint.
 
 RQ2 (tool choice). Every with-tools trial offered all seven tools. Each trial

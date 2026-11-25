@@ -261,7 +261,7 @@ class VLLMClient:
         self._store_reasoning = bool(store_reasoning)
         if self._store_reasoning:
             print("VLLMClient: storing message.reasoning as thinking", file=sys.stderr)
-        # Control-prompt cells (development/control_prompt_fix_plan.md): swap
+        # Control-prompt cells (development/reference/control_prompt_fix_plan.md): swap
         # the registered no-tools system text of solve/simulate for the
         # `no-pointer` or `format-stated` text (pddl_eval/control_prompts.py).
         # From $PDDL_NO_TOOLS_SYSTEM when the argument is None; unset or empty
