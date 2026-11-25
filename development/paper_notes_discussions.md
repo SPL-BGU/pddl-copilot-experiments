@@ -592,3 +592,46 @@
   survive are to be removed. Language: as a colleague would say it, science before
   machinery. Handoff: `development/next_session_prompt.md`.
 
+
+## 2026-11-25 (night) — The repository clean-up, carried out
+
+- **Approved (Omer, 2026-11-25: "clean up approved").** The list was
+  `development/cleanup_list.md` (deleted in the same change; `MOVES.md` records it). It
+  goes in as one pull request.
+- **Deleted**, each with a `MOVES.md` row and the commit where it last existed
+  (`3044981`): the hit list `draft_C5_E1a.md`, the handoff prompt, the advisor outline
+  on Corrêa et al. and its two Word files, five scripts of dropped or finished work,
+  `submit_with_resume.sh`, the local smoke agent, five June PNGs, and the three
+  `domains-hard*` fixture trees with their build scripts and test. The record of those
+  fixtures stays in `reference/d1b_harder_items.md`.
+- **Moved to `reference/`:** `control_prompt_fix_plan.md`, `datasets_breakdown.md`,
+  `roadmap.md`. The plan is now `STATUS.md` and `paper_outline.md`.
+- **Rewritten to the current line:** `STATUS.md` (short), the top-level `README.md`,
+  `EXPERIMENTS_FLOW.md` (cut to a reference of the test setup), the cluster README, five
+  skills, `paper/README.md`. Every statement that the unaided answers were sampled under
+  a JSON schema is corrected in these documents. The same statement remains in comments
+  of files under a pinned hash; those are not touched.
+- **`unified_run_design.md` is cut to the Claude run.** Omer's answers of 2026-11-25:
+  the same design as the open models (B2), no steered arm (B3), the Batch API (B4),
+  PlanBench left as it is (B5). The models (B1) are being confirmed. The questions A5 to
+  A10 were accepted as recommended and live in the matched run's registration.
+- **The paper.** The Supporting Analyses section, the Methods and appendix parts that
+  served it, the repair history of the Results with its appendix record, and thinking-on
+  in RQ2 moved word for word to `paper/supplement_source.tex`, which is not compiled and
+  does not sync to Overleaf. No sentence that stays was rewritten. Thirty sentences that
+  point at moved parts carry a `% TODO(Omer)` comment, and five table references that
+  would have been undefined now read "the supplement". The funnel figure stays with the
+  PlanBench section. `main.tex` compiles with no undefined reference: 27 pages, down
+  from 44.
+- **Left in the body on purpose, each marked:** the sentence that the four RQ1 measures
+  were defined after the data were collected; the caption sentences that say the
+  no-tools rows are the control's format-stated cell under the second reading (they
+  describe the rows as they are until the matched run replaces them).
+- **`NUMBERS.md`:** seven marks added and no line rewritten: six headers that said "in
+  no tex yet", and the September abstract block, marked as replaced.
+- **Deferred:** the extension models and the gpt-oss effort flags in
+  `cluster-experimenting/` and the script header comments (after the matched run is
+  submitted); `tools/d5a_pilot.py` (after the Claude models are fixed); the
+  Reproducibility Checklist (after the call is checked); backup zips for the control and
+  the pilots; worktrees and merged branches. `CLAUDE.md` was not edited by the agent
+  that did this work; its venue and data-rule lines are still the ones of 2026-11-22.

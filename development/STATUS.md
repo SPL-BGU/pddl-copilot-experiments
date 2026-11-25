@@ -34,50 +34,43 @@ his advisors. The paper is also Omer's thesis.
 
 Supplement material, in full, with one pointer sentence in the body: the May sweep
 (`sweep5v2-live`, `sweep6-live`), the corrected-prompt control, the pilots, the old
-Claude runs, the prompt fault and the registered deviations. Nothing is pooled across
-these corpora.
-
-Four things stay in the body as constraints and observed behaviour: the problems are
-small and the planner always solves them; the simulate tool answers in a different
-notation and the context fills up; two of the three models are quantized; the Claude
-models run under different conditions.
+Claude runs, the prompt fault and the registered deviations. Four things stay in the
+body as constraints and observed behaviour: the problems are small and the planner
+always solves them; the simulate tool answers in a different notation and the context
+fills up; two of the three models are quantized; the Claude models run under different
+conditions.
 
 ## The matched run
 
 Three models (Qwen3.5-9B, Gemma-26B, Qwen3.6-35B), thinking off, solve and simulate,
-three arms collected in one job: no tools with the format-stated system message, tools
-with the plain wordings, tools with the steered wordings. 300 trials per model, task
-and arm: 5,400 trials. Decided by Omer on 2026-11-25 (`reference/datasets_breakdown.md`,
-option 1). It replaces the full unified run approved earlier that day.
+three arms in one job: no tools with the format-stated system message, tools plain,
+tools steered. 300 trials per model, task and arm: 5,400 trials. Decided by Omer on
+2026-11-25 (`reference/datasets_breakdown.md`, option 1), in place of the full unified
+run approved earlier that day.
 
 - **Registered and frozen 2026-11-25:** `reference/matched_run_prereg.md`, package hash
-  `1f3d0f84…`, in PR #152 (not merged yet).
-- **Harness flag merged:** PR #151 (`--with-tools-cell`), `main` at `3044981`.
+  `1f3d0f84…`, in PR #152 (not merged yet). Harness flag merged: PR #151, `main` at
+  `3044981`.
 - **Smoke submitted** 2026-11-25 22:17 IST, job 24499771. Result pending.
+  `status.sh --matched` lists its folders.
 - **The full run needs Omer's separate go-ahead.**
-- `status.sh --matched` lists its six folders with the right totals.
 
 ## The frontier models
 
-A new Claude run is decided in outline (`unified_run_design.md`, section B): the same
-design as the open models, the plain wordings, two arms (no tools, tools), no steered
-arm, the Batch API. PlanBench is left as it is. **The exact models are being confirmed
-with Omer.** The old runs (Haiku 4.5, Sonnet 4.6) go to the supplement.
+A new Claude run is decided in outline (`unified_run_design.md`): the same design as the
+open models, the plain wordings, two arms, no steered arm, the Batch API. PlanBench is
+left as it is. **The exact models are being confirmed with Omer.** The old runs (Haiku
+4.5, Sonnet 4.6) go to the supplement.
 
 ## The paper file
 
-`paper/main.tex` on `main` is the long draft of 2026-11-25 with the parts that will not
-be in the body moved out, word for word, to `paper/supplement_source.tex`: the
-Supporting Analyses section, the Methods and appendix parts that served it, the repair
-history in the Results and its appendix record, and thinking-on in RQ2. That file is raw
-material for the supplement and is not compiled. Sentences in `main.tex` that still point
-at the moved parts carry a `% TODO(Omer)` comment.
-
-RQ1's solve and simulate tables and figures still show the control baseline. The
-matched run replaces them.
-
-Generators: `tools/reanalysis/rq1_tex.py`, `rq23_tex.py`, `rq1_control_metrics.py`,
-`rq1_figures.py`; the full list is in `paper/README.md`.
+`paper/main.tex` is the long draft of 2026-11-25 without the parts that will not be in
+the body. Those moved, word for word, to `paper/supplement_source.tex` (raw material for
+the supplement, not compiled, not on Overleaf): the Supporting Analyses, the Methods and
+appendix parts that served them, the repair history of the Results with its appendix
+record, and thinking-on in RQ2. Sentences in `main.tex` that still point at moved parts
+carry a `% TODO(Omer)` comment. RQ1's solve and simulate tables and figures still show
+the control baseline; the matched run replaces them. Generators: `paper/README.md`.
 
 ## Next steps
 
@@ -92,26 +85,21 @@ Generators: `tools/reanalysis/rq1_tex.py`, `rq23_tex.py`, `rq1_control_metrics.p
 5. Read `thesis_literature_review.md`: its four questions and its nine "to verify"
    papers.
 6. Laptop, when convenient:
-   `python3 tools/checkpoints/refresh_frontier_overlays.py --write --force`. Until it
-   runs, `checkpoints/e2e-overlay/derived_reports.zip` holds the July table (456 rows),
-   not the 460-row one.
+   `python3 tools/checkpoints/refresh_frontier_overlays.py --write --force` (until then
+   `checkpoints/e2e-overlay/derived_reports.zip` holds the July table, 456 rows).
 
 **For the session**
 
 1. The matched run: smoke readout, then the run and its frozen analysis, each cluster
-   step on Omer's word.
+   step on Omer's word. Then the RQ1 tables and figures for solve and simulate.
 2. The Claude run, once the models are confirmed.
-3. Tables and figures for RQ1 on solve and simulate from the matched run.
-4. After the matched run is submitted: remove the four extension models and the gpt-oss
-   effort flags from `cluster-experimenting/`, and correct the script header comments
-   (deferred so the files in use are not touched).
-5. Check whether ICAPS 2027 asks for the Reproducibility Checklist; remove it if not.
-6. Backup zips under `checkpoints/` for `results/control-promptfix` and the pilots,
-   which exist only on the laptop and the cluster.
+3. After the matched run is submitted: remove the four extension models and the gpt-oss
+   effort flags from `cluster-experimenting/`, and correct the script header comments.
+4. Check whether ICAPS 2027 asks for the Reproducibility Checklist; remove it if not.
+5. Backup zips under `checkpoints/` for `results/control-promptfix` and the pilots.
 
-**Before submission:** the comment switch in `main.tex` is still on; the final PDF's
-metadata is checked; anything attached is an anonymous copy (PR #134 is on hold for
-this).
+**Before submission:** turn off the comment switch in `main.tex`; check the final PDF's
+metadata; anything attached is an anonymous copy (PR #134 is on hold for this).
 
 ## Rules that bind every step
 
@@ -171,8 +159,6 @@ Open:
 
 ## Hygiene (Omer's to run)
 
-Agent worktrees under `.claude/worktrees/` and merged branches (`git worktree list`,
-`git worktree remove <path>`, `git branch -d`); `.DS_Store` files;
-`checkpoints/rq-sweep5v2/`; the old Overleaf zip in `paper/`;
-`results/derived/meeting_2026-11-01/`; two old stashes from `paper/aaai27`. Figure files
+Agent worktrees and merged branches; `.DS_Store` files; `checkpoints/rq-sweep5v2/`; the
+old Overleaf zip; `results/derived/meeting_2026-11-01/`; two old stashes. Figure files
 deleted from `paper/figures/` stay on Overleaf until removed there by hand.
