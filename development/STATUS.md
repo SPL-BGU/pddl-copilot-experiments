@@ -198,7 +198,9 @@ Where the control stands, in its order of work:
 **Next, decided 2026-11-25 (Omer): a fresh unified run**, to be the primary
 open-weight dataset (full storage, corrected system message, one serving version; he
 expects 5 to 7 days). A second exception to "No new runs". Not designed, not registered,
-not submitted; each step needs his word. ICAPS main track allows 8 pages of main content
+not submitted; each step needs his word. **Design form, open for his answers:**
+`unified_run_design.md` (18 questions with recommendations; section B covers the Claude
+models, where he suggested using the newer 5 and 5.5 models). ICAPS main track allows 8 pages of main content
 (the draft has about 28), so an 8-page version is to be cut; its structure is under
 discussion. See `paper_notes_discussions.md`, 2026-11-25 (later).
 

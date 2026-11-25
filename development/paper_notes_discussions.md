@@ -552,4 +552,12 @@
 - **Open (Omer):** the scope of the unified run; whether and how the Claude runs are
   redone (the session's suggestion is in chat); the 8-page structure (a blueprint from
   the same outside review, with the session's accept / revise / push-back in chat).
+- **Unified run: design form written (2026-11-25), `development/unified_run_design.md`,
+  open for Omer's answers.** Omer on the frontier models: use the opportunity to run the
+  newer and cheaper Claude 5 and 5.5 models. Two facts found while writing the form and
+  put in it: the new models do not accept a temperature setting, and Sonnet 5.5 and
+  Opus 5.5 cannot run with thinking off (Haiku 5.5 and Sonnet 5 can). The session's
+  recommendation there is Haiku 5.5 and Sonnet 5 with thinking off. Omer said he noted
+  the session's replies to the outside review and to its 8-page structure; the rest
+  follows after this form.
 
