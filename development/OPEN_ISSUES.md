@@ -12,13 +12,13 @@ in place under their severity heading; they are history, not work.
 | open | one-line |
 |---|---|
 | ISS-005 | `FR_TOOL_ERROR` overloaded — P3 optional polish; the sub-patterns are already grep-discoverable in `TaskResult.error` |
-| ISS-013 | paper-diff audit vs arXiv:2509.12987 (our own earlier version) — closes with the cover-letter delta, `STATUS.md` N3 |
+| ISS-013 | paper-diff audit vs arXiv:2509.12987 (our own earlier version) — closes with the paper's own paragraph on the preliminary study ("Relation to the Preliminary Study"); `STATUS.md` no longer has an item N3 |
 | ISS-019 | tool-error message extraction is name-unscoped — latent, never observed |
 | ISS-020 | `validate_domain` neg-arm pairing 5:1 vs 5:5 — **frozen by corpus identity**: fixing it changes the trial set, so it waits for a fresh sweep |
 | ISS-025 | `planbench/apply_patches.py main()` can't run end-to-end on the hand-edited external tree |
 | ISS-027 | pyval does not case-fold plan names: hits frontier and Qwen unaided solve, and the open-model simulate and validate_plan tool arms (Gemma simulate tool-verified 91.7 → 95.0 if fixed) (added 2026-11-09) |
-| ISS-028 | solve answers that copy the tool's plan and then list the goal facts are graded as wrong plans: 17 of the rerun's 38 "wrong facts" solve rows (added 2026-11-09; post hoc split done, `iss028_goal_trailers.py`; the extractor rule waits for D1f) |
-| ISS-029 | simulate: for 6 of 100 problems the run's plan differs from the cached plan the grader uses; 1 Part C row graded wrong (added 2026-11-09; post hoc check done on the pinned cache, `iss029_simulate_plan.py`; the plan source waits for D1f) |
+| ISS-028 | solve answers that copy the tool's plan and then list the goal facts are graded as wrong plans: 17 of the rerun's 38 "wrong facts" solve rows (added 2026-11-09; post hoc split done, `iss028_goal_trailers.py`; the extractor rule was to be fixed in the D1f prereg, which was dropped on 2026-11-22; the matched run registers its reader before the run, `reference/matched_run_prereg.md`) |
+| ISS-029 | simulate: for 6 of 100 problems the run's plan differs from the cached plan the grader uses; 1 Part C row graded wrong (added 2026-11-09; post hoc check done on the pinned cache, `iss029_simulate_plan.py`; the plan source was to be fixed in the D1f prereg, which was dropped on 2026-11-22; open for any later run) |
 | ISS-030 | the reasoning trace was never stored: `thinking` is empty in every think-on row (client read `reasoning_content`, vLLM 0.20.2 sends `reasoning`) (added 2026-11-09) |
 
 | no work owed (stays listed) | why |

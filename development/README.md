@@ -17,31 +17,26 @@ Four files answer almost every question:
 
 | start here | for |
 |---|---|
-| **`STATUS.md`** | what is left to do. Single stable entry point, **edited in place**; never write a dated successor |
-| **`roadmap.md`** | the plan the work follows since 2026-11-22: the goal (complete the paper), the three research questions and their metrics, which data answers each, milestones M1 to M5 and their state, and the decisions already answered |
+| **`STATUS.md`** | where the work stands and what is left. Single stable entry point, **edited in place**; never write a dated successor |
+| **`paper_outline.md`** | the outline of the ICAPS 2027 paper: what each section has to establish, which numbers carry it, where the figures and tables sit, and the open choices for Omer |
 | **`NUMBERS.md`** | the frozen value of every headline figure and the stale readings it replaces. **Check before quoting anything** |
-| **`MOVES.md`** | old path to new path (the reorganisations of 2026-08-29 and 2026-09-18) and every file deleted on 2026-10-10. Resolves the old paths cited in the append-only logs and in hash-pinned scripts |
+| **`MOVES.md`** | old path to new path, and every deleted file with the commit where it last existed. Resolves the old paths cited in the append-only logs and in hash-pinned scripts |
 
 ## Root: live
 
 | doc | what it is |
 |---|---|
-| `STATUS.md` · `roadmap.md` · `NUMBERS.md` · `MOVES.md` | the four above |
-| `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | append-only logs. `OPEN_ISSUES.md` has a scannable index at its head |
+| `STATUS.md` · `paper_outline.md` · `NUMBERS.md` · `MOVES.md` | the four above |
+| `CHANGELOG.md` · `OPEN_ISSUES.md` · `paper_notes_discussions.md` | logs. `CHANGELOG.md` and `paper_notes_discussions.md` are append-only; `OPEN_ISSUES.md` is closed in place and has a scannable index at its head |
 | `paper-git-overleaf-instructions.md` · `sync_overleaf.sh` · `make_overleaf_zip.sh` | the paper ↔ git ↔ Overleaf bridge. **Read the instructions before any sync** |
+| `unified_run_design.md` | what is left of the design form of 2026-11-25: section B, the new Claude run, with Omer's answers. The models are being confirmed |
 | `thesis_literature_review.md` | the literature review, first full draft (2026-11-22), with a reading list, a "to verify" list and questions for Omer. Waits for his read |
-| `next_session_prompt.md` | **live handoff** (2026-11-25): the prompt for the next session, in Omer's order: the matched run, the repository clean-up, the paper outline |
-| `datasets_breakdown.md` | **decided 2026-11-25, option 1**: every corpus we own, its fault, and which research question it already supports cleanly; three options from no new run to the full unified run |
-| `unified_run_design.md` | **open, waiting for Omer's answers** (2026-11-25): the design form of the fresh unified run he approved, 18 questions with recommendations, open models and Claude models |
-| `control_prompt_fix_plan.md` | **run complete and analysed 2026-11-24, waiting for Omer's read of `reference/control_prompt_fix_readout.md`** (decided by Omer, 2026-11-23): a control run for the flawed no-tools system prompt on solve and simulate (cells O, A and B, three models, 5,400 trials), the one exception to the no-new-runs line of `roadmap.md`. His answers are in its section 9; the no-run re-grade it asked for first is done (PR #146) |
-| `draft_C5_E1a.md` | the hit list of retired wording and figures in the tex, from before the rewrite. **Only its search terms (§1.4) are still used**, for the pass over the paper's Supporting Analyses section (`STATUS.md`, next step 6); its line numbers and its two RQ framings are stale |
-| `draft_advisor_correa_comparison.md` (+ two `.docx`) | Omer's outline for the advisor discussion of 2026-11-22; not committed |
 
 ## `reference/`: stable, never a status
 
 Files here are not rewritten after they move in. Several were written before 2026-09-18
 and say "edit on `paper/aaai27`" or name other old paths. Read that as history: the
-paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
+paper is edited on a short branch off `main` (`STATUS.md`, "Rules that bind every step").
 
 **Drafts whose text is now in the paper** (kept for the checks behind them)
 
@@ -52,7 +47,8 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
   the prompts appendix, with their grounding. Its answer list for Omer is overtaken by his
   read of the merged paper.
 - `draft_D5_cost_and_correa.md`: the verified facts about Corrêa, Pereira and Seipp (Part 1).
-  Its cost notes belong to runs that are no longer planned.
+  Its cost notes were written for the Claude runs planned in early November 2026. They
+  are not the cost of the new Claude run.
 - `draft_release_licence_models.md`: the licence research behind PR #134 (on hold).
 
 **The weakness review and what came out of it**
@@ -64,17 +60,31 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
   the extension, the two-study outline, where each weakness ends). **Replaced by
   `roadmap.md`.** Kept because its step labels (B1, C3, D5b and so on) are cited
   everywhere; never read it as a to-do list.
+- `roadmap.md`: the plan of 2026-11-22 to 2026-11-25 (the three research questions and
+  their metrics, milestones M1 to M5, the RQ1 metric definitions in its §6). Its lines
+  "no track fixed", "no word cap" and "no new runs" are history. **Replaced by
+  `STATUS.md` and `paper_outline.md`.** Pinned scripts cite it by its old path.
 - `reanalysis_statistics.md` · `reanalysis_planbench.md` · `reanalysis_breakdowns_cost.md`
   · `reanalysis_transcripts.md`: the four re-analyses of 2026-10-02 (scripts in
   `tools/reanalysis/`). The PlanBench figures and the statistics figures (the Study 1
-  block, plan step C2) are in `NUMBERS.md`; the breakdowns and cost figures enter it in
-  plan step C3a.
+  block) and the breakdowns are in `NUMBERS.md`.
 - `val_crosscheck.md` (C1, the VAL check of the answer key) · `d1_smokes_20261027.md`
   (the D1 smokes: new families, context room, the JSON constraint).
+- `d1b_harder_items.md`: the record of the new item kinds built on 2026-11-09 and never
+  run. The fixture trees and their build scripts were deleted on 2026-11-25
+  (`MOVES.md`); this file says what they were and how to rebuild them.
 
-**Study 2: the delivered rerun (pre-registered)**
+**The registered runs after the May sweep: the October rerun, the control, the matched run**
 
-- `control_prompt_fix_prereg.md` (the corrected-prompt control: registration and freeze record, 2026-11-23) · `control_prompt_fix_traceability.md` (its clause-to-code map) · `control_prompt_fix_readout.md` (its readout, 2026-11-24) · `control_prompt_fix_t4_audit/` (the audit of the tripwire that fired) ·
+- The matched run (RQ1 on solve and simulate): `matched_run_prereg.md`, its registration
+  and freeze record, arrives with PR #152. `datasets_breakdown.md` is the record of why
+  the run exists: every corpus we own, its fault, which question it supports cleanly,
+  and Omer's choice of the small matched run (2026-11-25).
+- The corrected-prompt control: `control_prompt_fix_plan.md` (the plan of 2026-11-23,
+  with Omer's answers in its section 9) · `control_prompt_fix_prereg.md` (registration
+  and freeze record) · `control_prompt_fix_traceability.md` (its clause-to-code map) ·
+  `control_prompt_fix_readout.md` (its readout, 2026-11-24) ·
+  `control_prompt_fix_t4_audit/` (the audit of the tripwire that fired)
 - `delivered_rerun_prereg.md` (design of record and freeze record) ·
   `delivered_rerun_traceability.md` (prereg clause to code, freeze gate 3) ·
   `delivered_rerun_readout.md` / `.json` (frozen output; its E2 caveat about a JSON
@@ -108,10 +118,12 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
 ## House rules
 
 - **Status goes in `STATUS.md`, edited in place.** Never a new dated status file.
-- **Numbers go in `NUMBERS.md`** before they go in prose. Verify against
-  `results/sweep5v2-live` + `*_sweep6` only (and the rerun's own tree for Study 2);
-  any other sweep folder is a sync mirror and gives wrong numbers (the old ones
-  were moved out of the repo on 2026-10-10, `MOVES.md`).
+- **Numbers go in `NUMBERS.md`** before they go in prose. Verify each figure against
+  the corpus it belongs to: `results/delivered-rerun` (the October rerun),
+  `results/control-promptfix` (the control), the matched run's folder, and for the May
+  sweep `results/sweep5v2-live` + `*_sweep6` only. Any other sweep folder is a sync
+  mirror and gives wrong numbers (the old ones were moved out of the repo on
+  2026-10-10, `MOVES.md`). The corpora are never pooled.
 - New **framework/methodology** change → `CHANGELOG.md`; new gap → `OPEN_ISSUES.md`
   as `ISS-###`. See the `development-log` skill.
 - A doc that stops being needed is **deleted** (`git rm`), and its last commit goes in
@@ -119,3 +131,5 @@ paper is edited on a short branch off `main` (`STATUS.md`, "How work is done").
   to `reference/`. Nothing stays at the root with a "superseded" banner.
 - Append-only logs (`CHANGELOG.md`, `paper_notes_discussions.md`) are never rewritten
   and may cite old or deleted paths; `MOVES.md` resolves them.
+- Paper material that leaves the body goes to `paper/supplement_source.tex`, word for
+  word. It is not compiled and does not sync to Overleaf.
