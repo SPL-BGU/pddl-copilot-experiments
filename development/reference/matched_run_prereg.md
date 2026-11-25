@@ -531,7 +531,35 @@ Read on the cluster before submitting: experiments checkout on `main` at
 pddl-pyvalidator 0.1.5, left as it was (the preflight script was not run, because it
 pulls that repo and upgrades its packages); no folder of this run tag existed.
 
-*Result: to be filled in.*
+**Result, 2026-11-25: the smoke passes.** All six array tasks ended COMPLETED with exit
+code 0 (`sacct -j 24499771`), between 22:17 and 23:34 IST, with no restart and no
+preemption. The registered check (`--smoke-check`, code at package hash `1f3d0f84…`, on
+the folders synced to `results/matched-run-smoke/`) printed PASS for all seven items:
+
+| item | result |
+|---|---|
+| 1 | every job COMPLETED; 120 rows in each N folder, 240 in each tools folder |
+| 2 | the frozen loader reads every row; no exception row, no infrastructure-failure row, no row cut by storage, no half-written line |
+| 3 | at least 95% non-empty answers in every N cell; in every tools cell the same among the trials with room, with at least one such trial per task |
+| 4 | N cells: the registered system text in every audit line, marked swapped. Tools cells: one system text per task, the with-tools text of Part A, not swapped. This is the first real audit log of a tools cell; it has one line per request (582 to 691 lines for 240 trials), as read from the code before the run |
+| 5 | the N and tools cells of a model hold the same problems; every user message of the N cell is also sent in the tools cell; no re-sent request |
+| 6 | every request of a tools cell is logged with tools present, and no request of an N cell is |
+| 7 | every serve log shows vLLM 0.20.2 and no other version; tools repo at `5e4f9c0`, read by hand before submission |
+
+**Apparatus, read from the job logs:** GPU `NVIDIA RTX 6000 Ada Generation` (49,140 MiB)
+in all six tasks; 49,152 MB memory; `Concurrency: 4`; context 16,384; tasks solve and
+simulate only; one model per task and card. Task job ids: Qwen3.5-9B 24499774 (N),
+24499775 (tools); Gemma-26B 24499776 (N), 24499777 (tools); Qwen3.6-35B 24499778 (N),
+24499771 (tools). Run time of a cell: 23 to 77 minutes. The N cells also start the tool
+servers, as every cell of the harness does; no N request carried a tool (item 6).
+
+**What was seen of the smoke's outcomes.** No success rate, failure-reason count or
+tool-call count of the smoke was computed or read by the session. While copying the job
+logs, the agent that did the sync saw a few per-trial result lines on its screen (two or
+three per cell). It did not count or report them, and the session has not seen them.
+This is recorded here because the rule of section 7 is that nothing but the seven items
+is read.
+
 
 ## 11. Deviations
 
