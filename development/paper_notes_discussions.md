@@ -560,4 +560,12 @@
   recommendation there is Haiku 5.5 and Sonnet 5 with thinking off. Omer said he noted
   the session's replies to the outside review and to its 8-page structure; the rest
   follows after this form.
+- **Datasets breakdown written (2026-11-25), `development/datasets_breakdown.md`**, on
+  Omer's request, to see whether a full rerun can be avoided. Finding: RQ2, RQ3 and RQ1
+  on the three validation tasks are already clean inside the October rerun. The one
+  comparison that crosses two runs is RQ1 on solve and simulate. The session's
+  recommendation: a small matched run of 5,400 trials (format-stated no-tools, tools
+  plain, tools steered; solve and simulate; three models) in place of the 41,040-trial
+  unified run. Omer's choice is open; his approval of the full run stands until he
+  changes it.
 
