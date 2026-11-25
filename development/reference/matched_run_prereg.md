@@ -260,9 +260,9 @@ Fixed here, before any data:
      row cut by storage; no half-written line;
   3. in every cell, at least 95% of the stored answers are non-empty;
   4. the system text sent: in the N cells the audit log gives the registered sha256 for
-     every trial; in the tools cells the record the harness keeps of the system text
-     (named in section 9 once the submit-script change is merged) is the with-tools
-     text of Part A;
+     every trial; in the tools cells the same audit log (one line per request, so several
+     per trial) gives one system text per task, the with-tools text of Part A, marked
+     not swapped and with tools, for every trial;
   5. the N and tools cells of a model hold the same problems; the user messages of v11
      to v13 are the same in N and in the tools cell;
   6. every tools cell offered the tools (the tool list is recorded and non-empty), and
@@ -316,13 +316,14 @@ counted 52 of 300 and audited them; there the tripwire fires above 90 of 300.
 package hash, the five gates, the dry run on existing data, the submit command, job ids
 and dates, GPU class and memory from the job log, sha256 of the frozen files.*
 
-Planned submit command (to be confirmed by a dry run once the submit-script change is
-merged):
+Planned submit command (the flag `--with-tools-cell` is on branch
+`harness/matched-run-cells`, commit `2522786`, not merged; a local dry run gives one
+array of six tasks, `rtx_6000:1`, `--mem=48G`):
 
 ```
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
   --no-tools --think-modes off --tasks "solve simulate" \
-  --no-tools-system "format-stated" <the new with-tools-cell flag> \
+  --no-tools-system "format-stated" --with-tools-cell \
   --run-tag matched-run --gpu-type rtx_6000 --time 24:00:00
 ```
 
