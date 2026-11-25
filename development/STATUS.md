@@ -1,8 +1,7 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-25 (rewritten short with the repository clean-up).
-Earlier refreshes are in git history; the step-by-step record of the control, the
-re-grades and the paper merges is in `paper_notes_discussions.md`.*
+*Content last refreshed: 2026-11-25 (rewritten short with the repository clean-up). The
+step-by-step record of earlier work is in `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
 > place.** Do not write a new dated successor doc. Before quoting any figure, check
@@ -103,12 +102,11 @@ metadata; anything attached is an anonymous copy (PR #134 is on hold for this).
 
 ## Rules that bind every step
 
-- The corpora are never pooled: the May sweep, the October rerun, the control, the
-  matched run, the pilots. A figure from one never stands in for a cell of another. Open
-  models and Claude are never pooled.
-- Any comparison that needs the full final answer uses a run that stored it (the
-  rerun, the control, the matched run, the Claude runs), never the May sweep
-  (500-character answers).
+- The corpora are never pooled (the May sweep, the October rerun, the control, the
+  matched run, the pilots), and a figure from one never stands in for a cell of another.
+  Open models and Claude are never pooled.
+- A comparison that needs the full final answer uses a run that stored it, never the May
+  sweep (500-character answers).
 - Frozen corpora are never re-graded in place. A corrected figure goes beside the frozen
   one, marked post hoc. New analyses of old data are exploratory and are said to be so.
 - `NUMBERS.md` before prose; `/verify-claims` on every paper edit with a number. Table
@@ -119,30 +117,27 @@ metadata; anything attached is an anonymous copy (PR #134 is on hold for this).
   separate condition.
 - The 35B calling rate differs between the May sweep and the rerun: quote both.
 - Paper edits: a short branch off `main`, a PR, Omer merges; `sync_overleaf.sh pull`
-  first. A merged PR that touches the synced paper files pushes to Overleaf by itself.
-  The sync never deletes a file on Overleaf.
+  first. A merged PR that touches the synced files pushes to Overleaf by itself.
 - Ping Omer before any SSH or SLURM action. Itemize any dollar spend before making it.
 
 ## Pinned commits and the frozen check
 
-- **Rerun:** harness tag `delivered-rerun-harness` (`4b2fe6e`); analysis tag
+- **Rerun:** harness tag `delivered-rerun-harness` (`4b2fe6e`), analysis tag
   `delivered-rerun-analysis-frozen` (`d558946`).
-  `python -m tools.delivered_rerun.run --print-package-hash` must end with
-  `822aace9ef8a…`.
+  `python -m tools.delivered_rerun.run --print-package-hash` must end `822aace9ef8a…`.
 - **Control:** `python -m tools.reanalysis.control_prompt_fix --print-package-hash` must
   give `825dab63…` (`reference/control_prompt_fix_prereg.md`, section 9).
-- **Matched run:** package hash `1f3d0f84…` (`reference/matched_run_prereg.md`, in
-  PR #152).
-- **Steering control:** the sha256 of each of `tools/ntster_{h4,factorial,f_gate,common}.py`
-  must appear in `reference/ntster_h4_prereg.md`.
-- **Budget probe:** the sha256 of `tools/budget_probe_analysis.py` must appear in
+- **Matched run:** package hash `1f3d0f84…` (`reference/matched_run_prereg.md`, PR #152).
+- **Steering control and budget probe:** the sha256 of each of
+  `tools/ntster_{h4,factorial,f_gate,common}.py` must appear in
+  `reference/ntster_h4_prereg.md`, and that of `tools/budget_probe_analysis.py` in
   `reference/frontier_budget_probe_prereg.md`.
 - Files under these hashes keep old statements and old paths in their comments.
   `MOVES.md` resolves the paths. Never repair them.
 - `tests/test_delivered_rerun_analysis.py` fails 1 of 428 inside the main checkout
   because the venv sits inside the repo; not a code fault. In a fresh checkout the
-  corpora come from the checkpoint zips (`checkpoints/delivered-rerun/README.md`,
-  "Restore"); `results/derived/gt_cache.json` exists only on the laptop.
+  corpora come from the checkpoint zips (`checkpoints/delivered-rerun/README.md`);
+  `results/derived/gt_cache.json` exists only on the laptop.
 
 ## Pull requests
 
