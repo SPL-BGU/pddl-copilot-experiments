@@ -678,3 +678,21 @@
   that run locally, hosted at full precision, so that quantization is measured; to be
   checked then, since hosts often quantize too. Keys for those providers are not set in
   his shell. Nothing is designed or built.
+- **The Claude run (2026-11-26).** Omer: "launch the claude run", with the session's
+  three recommendations in front of him. The runner (`tools/frontier55/`, branch
+  `frontier/claude-55-run`) was reviewed by a second agent in two passes before any paid
+  request. Pilot, 07:00 to 07:15 UTC: 640 trials, all checks passed, 11.43 dollars.
+  Both models ran without thinking in both arms; Sonnet 5.5 wrote no note between tool
+  calls in 160 tool trials. The full run (18,240 trials) started about 07:20 UTC with
+  enforced limits of 60 dollars (Haiku 5.5) and 430 dollars (Sonnet 5.5). Registration:
+  `reference/frontier55_prereg.md` on that branch. No answer is read before the analysis
+  is written and frozen.
+- **Decided (Omer, 2026-11-26): go on with the GPT and hosted Qwen models**, after he had
+  first said to only note them. **The Qwen anchor is the same 35B weights at full
+  precision** (his choice between that and Alibaba's flagship). Checked on the
+  providers' pages the same day: the GPT model he named exists as `gpt-6.2-sol`; its
+  reasoning cannot be turned off (lowest setting "low"), temperature is not to be sent,
+  and its output cap counts hidden reasoning. `Qwen/Qwen3.6-35B-A3B` is served at bf16,
+  as stated by the host, by Novita; most other hosts quantize it. Open: his word on
+  `gpt-6.2-sol` at reasoning "low"; API keys for OpenAI and for the Qwen host, which
+  are not set in his shell. Nothing paid can run before the keys exist.
