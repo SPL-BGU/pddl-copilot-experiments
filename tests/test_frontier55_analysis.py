@@ -2148,7 +2148,9 @@ def test_traceability(r):
     r.check("every test of this file is cited",
             here - {"test_traceability"} <= tests | {"test_fixture_is_builder_output"},
             sorted(here - tests))
-    for words in ("Freeze candidate. Not frozen.", "Open points for the owner", "Not implemented"):
+    # The map was a freeze candidate until 2026-11-26; since the freeze it names the hash.
+    for words in ("Frozen 2026-11-26", F.package_sha256(), "Open points for the owner",
+                  "Not implemented"):
         r.check(f"the map says: {words}", words in doc)
     r.check_eq("the map lists every open point of the code",
                len(re.findall(r"^\d+\. \*\*", (REPO_ROOT / "development" / "reference"
