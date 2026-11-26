@@ -845,4 +845,16 @@
 - **Found after the freeze:** one test checked that the clause map still said "not
   frozen" and failed from the freeze commit on. It was updated after the analysis had
   run; the test file is not under the package hash (registration, section 10).
+- **Decided (Omer, 2026-11-26): "Yes, build it".** The paper gets a subsection
+  "Frontier Models" with Table claude on the new run, and the rows of the earlier
+  Claude runs (Haiku 4.5, Sonnet 4.6) leave every body table and figure for the
+  supplement source (PR #156). No paragraph was edited; 27 paragraphs that quote the
+  earlier runs are marked for Omer. The table's last column gives the share without an
+  interval, for width; the intervals are in `NUMBERS.md`.
+- **Asked by Omer (2026-11-26): an analysis of token consumption**, as possible
+  material for a section or the Discussion, in the light of models getting better at
+  formal planning tasks unaided. In work by a separate agent on branch
+  `analysis/token-consumption`: descriptive and post hoc, total tokens and cost per
+  right answer reported together, no ranking of the Claude models against the open
+  ones on tokens (different tokenizers).
 

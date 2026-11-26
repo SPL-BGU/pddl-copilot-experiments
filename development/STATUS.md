@@ -117,12 +117,17 @@ Separate corpora, never pooled with or ranked against the open models. The old r
   prose, which the grade does not accept (a post hoc description).
   **These are not the old runs' models:** the merged draft's "22 to 29% unaided solve"
   is Haiku 4.5 and Sonnet 4.6 and does not describe this run.
-  **Next, after Omer's read:** the Claude section's table; the Claude rows out of the
-  RQ1 tables and figures; `paper_outline.md` section 7. Still to add to the
-  registration: the cluster's tool library versions beside the laptop's.
-- **Where the Claude rows go (Omer, 2026-11-26): their own section only.** They leave
-  the RQ1 tables and the by-length figures (which still show Haiku 4.5 and Sonnet 4.6,
-  correctly labelled) when the new section's table is built on the new run.
+  **In the paper (Omer, 2026-11-26: "Yes, build it"), PR #156, open:** a subsection
+  "Frontier Models" at the end of the Results holding Table claude (ten rows, read
+  from the frozen output by `tools/reanalysis/frontier55_tex.py`) and no text yet. The
+  rows of the earlier Claude runs left the six body tables that carried them and the
+  three figures with Claude panels; they are in `paper/supplement_source.tex` word for
+  word. Open-model rows are byte-identical. 27 paragraphs that quote the earlier Claude
+  runs carry a `% TODO(Omer)` comment (listed in the PR). PlanBench and its funnel
+  figure are unchanged (Haiku 4.5). `paper_outline.md` section 7 carries the new
+  numbers. Still to add to the registration: the cluster's tool library versions.
+- **Where the Claude rows go (Omer, 2026-11-26): their own section only.** Done in
+  PR #156.
 - **`gpt-6.2-sol` and hosted `Qwen/Qwen3.6-35B-A3B` (Omer, 2026-11-26).** The Qwen run
   is the same weights as the local 35B at full precision (host: Novita), as an anchor
   that measures the cost of the local 4-bit quantization. Runners, their tests (366
@@ -150,9 +155,10 @@ baseline's numbers until Omer rewrites them. Generators: `paper/README.md`.
 
 1. Merge PR #154 (the RQ1 tables and figures on the matched run), or say what to
    change. Its body lists the sentences that quote superseded numbers.
-2. Read the Claude run's readout (`reference/frontier55_readout.md`, PR #155) and merge
-   the PR, or say what to change. Say whether a second, descriptive reading of Haiku's
-   prose traces on simulate is wanted (the readout's section 5).
+2. Merge PR #156 (it sits on top of #154 and holds #155, so merging it alone brings
+   all three in), or merge #154, #155 and #156 in that order. Say whether a second,
+   descriptive reading of Haiku's prose traces on simulate is wanted
+   (`reference/frontier55_readout.md`, section 5).
 3. For the GPT and hosted Qwen runs: set `OPENAI_API_KEY` and `NOVITA_API_KEY` in the
    shell (not set on 2026-11-26); say yes or no to GPT at reasoning "low" (it cannot be
    turned off); answer the draft's open questions (GPT's output cap counts its hidden
@@ -172,8 +178,9 @@ baseline's numbers until Omer rewrites them. Generators: `paper/README.md`.
 **For the session**
 
 1. The matched run: done; PR #154 carries the tables and figures.
-2. The Claude run: done; PR #155. After Omer's read: its table in the paper, and the
-   Claude rows out of the RQ1 tables and figures.
+2. The Claude run: done; PR #155, and its table in the paper in PR #156.
+   A token-consumption analysis asked for by Omer on 2026-11-26 is in work on branch
+   `analysis/token-consumption` (descriptive; no paper file).
 3. The GPT and hosted Qwen runs: review the runners, itemize the cost, pilot, run,
    once the keys exist. Before any paid request the itemized cost goes to Omer; stop
    and ask if an estimate passes 500 dollars.
@@ -246,7 +253,8 @@ Closed without merging (state checked 2026-11-26):
 
 Open: **#154**, the RQ1 solve and simulate tables and figures rebuilt on the matched
 run (2026-11-26); **#155**, the Claude run (runner, registration, frozen analysis,
-readout; no paper file).
+readout; no paper file); **#156**, the Claude table in a subsection of its own and the
+earlier Claude rows out of the body (on top of #154, holds #155).
 
 ## Hygiene (Omer's to run)
 
