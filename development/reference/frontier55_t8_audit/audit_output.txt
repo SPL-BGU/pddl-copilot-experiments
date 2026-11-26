@@ -1,0 +1,10 @@
+claude-haiku-5-5_no-tools: turns 4560; turns whose usage has output_tokens_details.thinking_tokens 4560; of them above zero 0; sum 0; notes 0
+claude-haiku-5-5_tools: turns 9154; turns whose usage has output_tokens_details.thinking_tokens 9154; of them above zero 0; sum 0; notes 0
+claude-sonnet-5-5_no-tools: turns 4560; turns whose usage has output_tokens_details.thinking_tokens 4560; of them above zero 0; sum 0; notes 0
+claude-sonnet-5-5_tools: turns 9167; turns whose usage has output_tokens_details.thinking_tokens 9167; of them above zero 0; sum 0; notes 6
+    {'turn': 2, 'of_turns': 3, 'note_chars': 158, 'thinking_tokens_reported': 0, 'output_tokens_of_turn': 1965}
+    {'turn': 2, 'of_turns': 4, 'note_chars': 122, 'thinking_tokens_reported': 0, 'output_tokens_of_turn': 1448}
+    {'turn': 2, 'of_turns': 3, 'note_chars': 212, 'thinking_tokens_reported': 0, 'output_tokens_of_turn': 387}
+    {'turn': 2, 'of_turns': 3, 'note_chars': 196, 'thinking_tokens_reported': 0, 'output_tokens_of_turn': 2424}
+    {'turn': 2, 'of_turns': 3, 'note_chars': 191, 'thinking_tokens_reported': 0, 'output_tokens_of_turn': 1051}
+    {'turn': 2, 'of_turns': 3, 'note_chars': 170, 'thinking_tokens_reported': 0, 'output_tokens_of_turn': 358}
