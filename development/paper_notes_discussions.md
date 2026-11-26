@@ -815,3 +815,34 @@
   appear only in the table of the Claude section, under the names Haiku 5.5 and Sonnet
   5.5; the old rows go to the supplement.
 
+## 2026-11-26 (later) — The Claude run is complete and read out
+
+- **The run ended 2026-11-26 12:14 UTC:** four folders of 4,560 rows, every request on
+  one UTC day, one batch per model with every item succeeded, no refusal and no error
+  row; 20.25 dollars (Haiku 5.5) and 294.49 (Sonnet 5.5). Omer sent the console download
+  of Sonnet's batch while the tool arm was still running; it was not opened or used, the
+  runner fetched the batch itself.
+- **The frozen analysis halted on one tripwire, which was audited before any reading:**
+  six notes between tool calls in Sonnet's tool arm, with the provider's thinking-token
+  count at zero on every turn. Reported as not separable. Then the analysis ran, and
+  once more unchanged (byte-identical). PR #155.
+- **What it says.** Haiku 5.5: tools ahead on solve (+21.3 [+7.7, +36.3]), domain
+  validation (+17.5 [+7.8, +29.4]) and problem validation (+8.8 [+4.2, +14.0]); no
+  difference shown on plan validation; on simulate the unaided arm is ahead (-20.3
+  [-30.7, -11.0]). Sonnet 5.5 is right unaided in 94 to 99.7% of trials on four tasks,
+  so only problem validation shows a gain (+3.8 [+2.2, +5.7]); simulate -8.7 [-17.0,
+  +0.0]. The right tool is called (Sonnet 91.3 to 100% exactly right). Traces are lost
+  between a right tool result and the answer in 78.0% (Haiku) and 53.0% (Sonnet) of
+  trials, with a window of about a million tokens.
+- **For the paper's story:** the draft's frontier sentences rest on Haiku 4.5 and
+  Sonnet 4.6 (unaided solve 22 to 29%). The new models solve 73.7 and 94.0% unaided.
+  These are different models under different conditions, so the change is not a
+  measured effect; the sentences have to be rewritten on this run. The simulate result
+  now holds for five models, and for the two with no window limit.
+- **Post hoc, not registered:** with tools, 204 of Haiku's 300 simulate answers are the
+  trace written as prose, which the grade does not accept. Open for Omer: whether a
+  second, descriptive reading of those answers is wanted.
+- **Found after the freeze:** one test checked that the clause map still said "not
+  frozen" and failed from the freeze commit on. It was updated after the analysis had
+  run; the test file is not under the package hash (registration, section 10).
+

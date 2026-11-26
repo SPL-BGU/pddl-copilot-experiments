@@ -30,7 +30,7 @@ his advisors. The paper is also Omer's thesis.
 | RQ2, RQ3 | the October rerun, tool arms (`results/delivered-rerun`) | final |
 | RQ1 on validate_domain, validate_problem, validate_plan | the October rerun, tool arms against its own no-tools arm | final |
 | RQ1 on solve and simulate | **the matched run** (below) | complete and analysed 2026-11-26; readout with Omer |
-| Frontier rows | a new Claude run (below) | Haiku 5.5 and Sonnet 5.5; being collected, analysis not frozen |
+| Frontier rows | a new Claude run (below) | Haiku 5.5 and Sonnet 5.5; complete and analysed 2026-11-26; readout with Omer (PR #155) |
 | PlanBench | its own registered study | final, left as it is |
 
 Supplement material, in full, with one pointer sentence in the body: the May sweep
@@ -98,17 +98,28 @@ Separate corpora, never pooled with or ranked against the open models. The old r
   `--marketplace-path external/pddl-copilot-5e4f9c0` and `--max-usd`); they resume and
   never resend a batch; a leftover `.lock` is removed by hand. Both arms of a model are
   meant to fall on one UTC day (registration, section 6).
-  **The analysis is frozen (2026-11-26):** `tools/reanalysis/frontier55.py`, package
-  hash `0cbb69b7…`, branch `analysis/frontier55` at `621f07c` (pushed; the run's branch
-  with `main` merged in), freeze record in section 10 of the registration. Five gates
-  passed, with an independent review in three passes; Omer accepted the open points.
-  No row of the run was read before the freeze. **Next:** when both Sonnet folders are
-  complete, read Sonnet's batch counts (if any item expired, ask Omer first), run the
-  frozen analysis once, write the readout and the `NUMBERS.md` entry, then one PR for
-  the branch. Still to add to the registration: the API version header from the
-  sidecars, and the cluster's tool library versions beside the laptop's. Do not edit
-  `tools/frontier55/*.py` or touch the worktree `frontier55` while the run is
-  unfinished.
+  **Complete and analysed (2026-11-26), PR #155, open.** All four folders hold 4,560
+  rows; every request on 2026-11-26 UTC; no refusal, no error row; spend 20.25 dollars
+  (Haiku) and 294.49 (Sonnet). The analysis (`tools/reanalysis/frontier55.py`) was
+  frozen at package hash `0cbb69b7…` before any row was read (freeze commit `621f07c`;
+  five gates, an independent review in three passes; Omer accepted the open points).
+  One tripwire fired and was audited (six notes between tool calls in Sonnet's tool
+  arm; the provider counts zero thinking tokens for them). **Readout:**
+  `reference/frontier55_readout.md` on that branch; tables in `NUMBERS.md`, "Claude
+  run".
+  **Bottom line, tools minus no tools.** Haiku 5.5: tools ahead on solve (+21.3 [+7.7,
+  +36.3]; 73.7 to 95.0%), validate_domain (+17.5) and validate_problem (+8.8); no
+  difference shown on validate_plan; on simulate the unaided arm is ahead (-20.3
+  [-30.7, -11.0]). Sonnet 5.5: unaided 94 to 99.7% on four tasks; tools ahead only on
+  validate_problem (+3.8 [+2.2, +5.7]); simulate -8.7 [-17.0, +0.0], no difference
+  shown. Tool right and answer wrong: nothing on verdicts, 3.0 to 5.1% on plans, 53.0
+  to 78.0% on traces. With tools, 204 of Haiku's 300 simulate answers are the trace in
+  prose, which the grade does not accept (a post hoc description).
+  **These are not the old runs' models:** the merged draft's "22 to 29% unaided solve"
+  is Haiku 4.5 and Sonnet 4.6 and does not describe this run.
+  **Next, after Omer's read:** the Claude section's table; the Claude rows out of the
+  RQ1 tables and figures; `paper_outline.md` section 7. Still to add to the
+  registration: the cluster's tool library versions beside the laptop's.
 - **Where the Claude rows go (Omer, 2026-11-26): their own section only.** They leave
   the RQ1 tables and the by-length figures (which still show Haiku 4.5 and Sonnet 4.6,
   correctly labelled) when the new section's table is built on the new run.
@@ -139,8 +150,9 @@ baseline's numbers until Omer rewrites them. Generators: `paper/README.md`.
 
 1. Merge PR #154 (the RQ1 tables and figures on the matched run), or say what to
    change. Its body lists the sentences that quote superseded numbers.
-2. Answer the open points of the Claude analysis before its freeze (listed in chat on
-   2026-11-26 and marked `# OPEN:` in `tools/reanalysis/frontier55.py`).
+2. Read the Claude run's readout (`reference/frontier55_readout.md`, PR #155) and merge
+   the PR, or say what to change. Say whether a second, descriptive reading of Haiku's
+   prose traces on simulate is wanted (the readout's section 5).
 3. For the GPT and hosted Qwen runs: set `OPENAI_API_KEY` and `NOVITA_API_KEY` in the
    shell (not set on 2026-11-26); say yes or no to GPT at reasoning "low" (it cannot be
    turned off); answer the draft's open questions (GPT's output cap counts its hidden
@@ -160,7 +172,8 @@ baseline's numbers until Omer rewrites them. Generators: `paper/README.md`.
 **For the session**
 
 1. The matched run: done; PR #154 carries the tables and figures.
-2. The Claude run: let it finish; review, fix and freeze its analysis; then read it.
+2. The Claude run: done; PR #155. After Omer's read: its table in the paper, and the
+   Claude rows out of the RQ1 tables and figures.
 3. The GPT and hosted Qwen runs: review the runners, itemize the cost, pilot, run,
    once the keys exist. Before any paid request the itemized cost goes to Omer; stop
    and ask if an estimate passes 500 dollars.
@@ -232,7 +245,8 @@ Closed without merging (state checked 2026-11-26):
   Technologies as owner (confirm its exact legal name), Omer as author, lab SPL-BGU.
 
 Open: **#154**, the RQ1 solve and simulate tables and figures rebuilt on the matched
-run (2026-11-26).
+run (2026-11-26); **#155**, the Claude run (runner, registration, frozen analysis,
+readout; no paper file).
 
 ## Hygiene (Omer's to run)
 
