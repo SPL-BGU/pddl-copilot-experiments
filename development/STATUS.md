@@ -195,6 +195,12 @@ Where the control stands, in its order of work:
    29%. Sentences that said the tools make Gemma worse on simulate now say the tools
    bring no gain there (under the quoted reading the difference is -7.3 [-17.0, +2.7]).
 
+**The matched run is registered and frozen (2026-11-25, PR #152):** registration
+`reference/matched_run_prereg.md`, package hash `1f3d0f84…`, Omer's answers to A5 to A10
+and the simulate key recorded there. Waiting: PR #151 merged (the submit flag), then the
+smoke, then the full run, each on his word. Open for him: `cleanup_list.md`,
+`paper_outline.md`, the Claude models.
+
 **Next, decided 2026-11-25 (Omer): a small matched run on solve and simulate**
 (`datasets_breakdown.md`, option 1). Three models, thinking off, three arms run together
 (no tools with the format-stated message, tools plain, tools steered), 300 trials per
