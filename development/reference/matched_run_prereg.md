@@ -416,7 +416,8 @@ started with the package hash below.
 | tools repo `pddl-copilot` on the laptop (validator route) | `e428f17fd0b211f502955b11177687d544b68277`; pddl-pyvalidator 0.1.5; validator server file equal to the filed re-grade's |
 | harness commit | `main` at `3044981bf5bfb1d624a55533e4e4765bac493dbf` (merge of PR #151, the flag `--with-tools-cell`; Omer merged it on 2026-11-25). The cluster checkout must be at this commit for the smoke and the full run |
 | cluster tools repo | to be read on the cluster before the smoke and before the full run (must be `5e4f9c0`) |
-| submit command, job ids, dates, GPU class and memory | filled in at the smoke and the full run |
+| submit command (full run) | from `~/pddl-copilot-experiments` on the login node, after a dry run of the same command: `bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b --no-tools --think-modes off --tasks "solve simulate" --no-tools-system "format-stated" --with-tools-cell --run-tag matched-run --gpu-type rtx_6000 --time 24:00:00` (the smoke's command without `--partial 1`, with the run tag `matched-run`) |
+| job ids and dates (full run) | Job **24502726**, submitted 2026-11-26 07:09 IST on Omer's go-ahead ("Yes, run it"), one array of six tasks (0 to 5: Qwen3.5-9B N, tools; Gemma-26B N, tools; Qwen3.6-35B N, tools). `TimeLimit=1-00:00:00` read back. Read on the cluster before submitting: experiments checkout at `3044981`, no tracked change; tools repo at `5e4f9c0`, clean, pddl-pyvalidator 0.1.5; no folder of this run tag existed; no other job of his in the queue. Task job ids, end times, restarts, GPU class and memory from the job logs: to be filled in when the run ends |
 
 sha256 of the frozen files. Any later edit to one of them is a declared deviation in
 section 11, followed by a new freeze.
