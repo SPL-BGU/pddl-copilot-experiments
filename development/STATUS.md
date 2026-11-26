@@ -98,20 +98,20 @@ Separate corpora, never pooled with or ranked against the open models. The old r
   `--marketplace-path external/pddl-copilot-5e4f9c0` and `--max-usd`); they resume and
   never resend a batch; a leftover `.lock` is removed by hand. Both arms of a model are
   meant to fall on one UTC day (registration, section 6).
-  **Its answers are not read until the Claude analysis is frozen.** That analysis is
-  written as a freeze candidate (2026-11-26): `tools/reanalysis/frontier55.py` in the
-  worktree `.claude/worktrees/frontier55-analysis`, branch `analysis/frontier55` (the
-  run's branch with `main` merged in), commit `6f30ffe`, not pushed. Built from a
-  synthetic fixture only (846 checks pass); no row of the run was read. **Not frozen.**
-  An independent review (gate 5, 2026-11-26) found no wrong number in the grade, the
-  denominators or the statistics, one blocker (the rule on failed batch items of the
-  registration's section 6 had no code) and smaller fixes; the fixes are being made.
-  Seven points the registration leaves open are marked `# OPEN:` in the script and
-  wait for Omer's answer. Then: the reviewer's verification pass, the freeze record
-  (registration, section 10), the reading, and one PR for the branch.
-  Do not edit `tools/frontier55/*.py` or touch the worktree `frontier55` while the run
-  is unfinished: the run's manifest pins the runner's hashes. Still to add to the
-  registration: the cluster's tool library versions beside the laptop's.
+  **The analysis is frozen (2026-11-26):** `tools/reanalysis/frontier55.py`, package
+  hash `0cbb69b7…`, branch `analysis/frontier55` at `621f07c` (pushed; the run's branch
+  with `main` merged in), freeze record in section 10 of the registration. Five gates
+  passed, with an independent review in three passes; Omer accepted the open points.
+  No row of the run was read before the freeze. **Next:** when both Sonnet folders are
+  complete, read Sonnet's batch counts (if any item expired, ask Omer first), run the
+  frozen analysis once, write the readout and the `NUMBERS.md` entry, then one PR for
+  the branch. Still to add to the registration: the API version header from the
+  sidecars, and the cluster's tool library versions beside the laptop's. Do not edit
+  `tools/frontier55/*.py` or touch the worktree `frontier55` while the run is
+  unfinished.
+- **Where the Claude rows go (Omer, 2026-11-26): their own section only.** They leave
+  the RQ1 tables and the by-length figures (which still show Haiku 4.5 and Sonnet 4.6,
+  correctly labelled) when the new section's table is built on the new run.
 - **`gpt-6.2-sol` and hosted `Qwen/Qwen3.6-35B-A3B` (Omer, 2026-11-26).** The Qwen run
   is the same weights as the local 35B at full precision (host: Novita), as an anchor
   that measures the cost of the local 4-bit quantization. Runners, their tests (366

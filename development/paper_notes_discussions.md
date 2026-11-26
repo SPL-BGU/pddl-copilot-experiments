@@ -802,4 +802,16 @@
   (a trial where the grading step failed) the reviewer's reading was implemented:
   wrong under the grade, classed for tool choice by its stored calls, and counted
   toward the error threshold only where the open models' rule counts it.
+- **Omer accepted the open points of the Claude analysis ("Ok, all seven", 2026-11-26),
+  and the analysis was frozen** the same day at package hash `0cbb69b7…` (branch
+  `analysis/frontier55`, commit `621f07c`, pushed; registration, section 10), with no
+  row of the run read. An eighth point (what "the first batch expired as a whole"
+  means) is kept as implemented; it is checked against Sonnet's batch counts before
+  the analysis runs.
+- **Raised by Omer (2026-11-26):** the figures name Haiku and Sonnet by their earlier
+  versions. They do so correctly today: those rows are still the old runs (Haiku 4.5,
+  Sonnet 4.6). **Decided (Omer, 2026-11-26): "Own section only".** When the new run's
+  readout is in, the Claude rows leave the RQ1 tables and the by-length figures and
+  appear only in the table of the Claude section, under the names Haiku 5.5 and Sonnet
+  5.5; the old rows go to the supplement.
 
