@@ -783,6 +783,11 @@ tick in every row: the tool arms always use more tokens per trial.}
 \label{fig:tokens}
 \end{figure*}
 
+% NOTE (2026-11-26, text below unchanged): the statement in this subsection that a right plan
+% costs fewer tokens with tools on solve (about 0.3 to 0.4 times) counts a trial as a success
+% when the tool returned a right plan, on the May sweep. On the answer the model delivers, in the
+% matched run, a right plan with tools costs 2.2 to 4.7 times the unaided tokens
+% (development/token_consumption/README.md). Do not carry the old figure into the supplement as it stands.
 \subsection{What the Tool Costs}
 The tool is not free (Figure~\ref{fig:tokens}). Per trial it raises total token
 use (input~$+$~output, summed over turns) by $\approx$4--6$\times$ on the

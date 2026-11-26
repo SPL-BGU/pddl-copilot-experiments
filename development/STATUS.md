@@ -185,9 +185,9 @@ baseline's numbers until Omer rewrites them. Generators: `paper/README.md`.
    `paper/main.tex` as an optional, temporary section "Token Consumption" just before
    the Technical Appendix (after the references): Table tokens and three figures, no
    text, marked `% TODO(Omer)` to write or remove. Nothing else in the paper refers to
-   it. Still open: dated marks on the two older cost claims it contradicts (the
-   supplement source's "What the Tool Costs"; `NUMBERS.md` S2-C solve and simulate
-   rows), and its three sources verified before any citation.
+   it; Omer confirmed its place. The two older cost claims it contradicts carry dated
+   marks (`NUMBERS.md` S2-C; the supplement source's "What the Tool Costs"). Still
+   open: its three sources verified before any citation.
 3. The GPT and hosted Qwen runs: review the runners, itemize the cost, pilot, run,
    once the keys exist. Before any paid request the itemized cost goes to Omer; stop
    and ask if an estimate passes 500 dollars.

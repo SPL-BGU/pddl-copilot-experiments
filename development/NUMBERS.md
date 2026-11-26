@@ -1135,6 +1135,8 @@ Rows per domain and arm: solve 15, validate_domain 18, validate_problem 30, vali
 
 #### S2-C. Cost-of-pass multiplier by price ratio, split by track (delivered score)
 
+> **Mark added 2026-11-26 (nothing above or below is rewritten):** the **solve and simulate** rows of this block divide by the October rerun's no-tools arm, whose system message was faulty on those two tasks, so they understate what the tools cost there (for example Qwen3.5-9B on solve: 1.37 here, 2.17 on the matched run). For those two tasks use `tools/reanalysis/out/token_consumption.md` (descriptive, post hoc; `development/token_consumption/README.md`). The validation-task rows reproduce exactly and stand.
+
 Cost-of-pass = (input + r × output tokens, summed over all turns) / delivered successes; multiplier = tool arm ÷ unaided Part C (same run, same grader, same fixtures); below 1 the tool arm is cheaper per delivered success. r = output:input price ratio. Domain-cluster bootstrap 95%, the same domain draw for both arms (seed 20261002, 10,000 draws); draws where an arm has no success are dropped and counted. Track *all* reproduces `secondary.json` at 1, 3, 4 and 5:1; 2:1 and the track split are new here. Tokens per trial in the last columns.
 
 **tools, plain ÷ unaided**

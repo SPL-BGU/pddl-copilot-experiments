@@ -898,4 +898,9 @@
   `tools/reanalysis/token_consumption_tex.py`) and three figures, factual captions and
   no body text. No other paragraph or caption changed, and no other part of the paper
   cites it, so it can be removed in one cut. The branch now sits on top of PR #156.
+- **Decided (Omer, 2026-11-26): the optional token section stays where it is**, after
+  the references and before the Technical Appendix.
+- **Dated marks added** on the two older cost claims the token analysis contradicts: a
+  mark on `NUMBERS.md` S2-C (its solve and simulate rows) and a comment above "What the
+  Tool Costs" in `paper/supplement_source.tex`. Neither text was rewritten.
 
