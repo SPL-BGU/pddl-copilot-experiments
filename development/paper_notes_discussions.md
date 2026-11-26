@@ -753,3 +753,31 @@
 - **PRs #144 and #134 are closed on GitHub**, not open as `STATUS.md` said.
 - **The handoff file of 2026-11-26 is deleted**; its tasks are in `STATUS.md`
   (`MOVES.md`).
+
+## 2026-11-26 (afternoon) — The matched run is complete and read out; the Claude analysis is a freeze candidate
+
+- **The matched run ended 2026-11-26 12:34 IST** (job 24502726): six cells, 5,400 rows,
+  every task on its first start, no preemption. Omer's go-ahead for the check and the
+  copy: "Yes, check and copy". An Opus cluster agent copied the folders and logs with no
+  results file or job log opened; it reported no outcome on its screen.
+- **The frozen analysis was run once** with the package hash `1f3d0f84…`, and once more
+  unchanged to write `NUMBERS.md` (byte-identical). No tripwire fired. Readout:
+  `reference/matched_run_readout.md`.
+- **What it says for RQ1, tools (plain) minus no tools, inside one run.** Solve: tools
+  ahead for all three models: +50.3 [+37.3, +63.3] (Qwen3.5-9B), +36.0 [+23.0, +49.7]
+  (Gemma-26B), +11.0 [+2.3, +19.7] (Qwen3.6-35B; adjusted p = 0.105, so "not after
+  Holm"; with the tool named +21.7 [+11.0, +33.7]). Simulate: no model has tools ahead;
+  for Gemma-26B the unaided arm is ahead (-14.0 [-25.3, -3.7], not after Holm).
+- **One sentence of the merged draft changes:** the 35B's solve gap was "not shown"
+  across two runs (+9.3 [+0.0, +19.7]); inside one run its interval is above zero. The
+  rest keeps its direction and its size to within a few points.
+- **Continuity (supplement):** the tool arms reproduce the October rerun within the
+  5-point margin in 9 of 12 checks, the other 3 unresolved, largest estimate 2.7 points.
+  The no-tools arm against the control: 2 of 6 met, 3 unresolved, one difference shown
+  (Gemma-26B simulate, +4.3 [+1.0, +8.0], not after Holm).
+- **Nothing goes near the paper before Omer has read the readout.**
+- **The Claude analysis is written as a freeze candidate** (branch `analysis/frontier55`,
+  commit `6f30ffe`, local): 846 fixture checks pass, no row of the run read. Seven
+  points the registration leaves open are for Omer; an independent review is running.
+  Not frozen.
+

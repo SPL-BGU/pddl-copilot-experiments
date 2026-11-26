@@ -1,7 +1,8 @@
 # STATUS — what is actually left
 
-*Content last refreshed: 2026-11-26, 10:15 UTC (three runs out, none read; the handoff of
-2026-11-26 is carried here). The step-by-step record of earlier work is in
+*Content last refreshed: 2026-11-26, afternoon (the matched run is complete, analysed and
+read out; the Claude run is being collected and its analysis is under review before the
+freeze). The step-by-step record of earlier work is in
 `paper_notes_discussions.md`.*
 
 > **This is the single, stable entry point for project status, and it is edited in
@@ -28,7 +29,7 @@ his advisors. The paper is also Omer's thesis.
 |---|---|---|
 | RQ2, RQ3 | the October rerun, tool arms (`results/delivered-rerun`) | final |
 | RQ1 on validate_domain, validate_problem, validate_plan | the October rerun, tool arms against its own no-tools arm | final |
-| RQ1 on solve and simulate | **the matched run** (below) | running on the cluster |
+| RQ1 on solve and simulate | **the matched run** (below) | complete and analysed 2026-11-26; readout with Omer |
 | Frontier rows | a new Claude run (below) | Haiku 5.5 and Sonnet 5.5; being collected, analysis not frozen |
 | PlanBench | its own registered study | final, left as it is |
 
@@ -52,26 +53,25 @@ run approved earlier that day.
   `1f3d0f84…`, on `main` (PR #152). Harness flag merged: PR #151, `main` at
   `3044981`.
 - **Smoke passed** 2026-11-25 (job 24499771), all seven registered checks.
-- **Full run submitted** 2026-11-26 07:09 IST on Omer's word, job **24502726**, six
-  cells. At 09:48 IST three cells were complete (Gemma-26B both, Qwen3.6-35B no tools)
-  and three running; no failure. Those three complete cells are on the laptop in
-  `results/matched-run/` (600, 1,200 and 600 rows). Only job states and row counts are
-  read while it runs.
+- **Full run:** job **24502726**, 2026-11-26 07:09 to 12:34 IST, on Omer's word. Six
+  cells, 5,400 rows, every task COMPLETED on its first start, no preemption. Copied to
+  `results/matched-run/` on his go-ahead, with no results file or log opened.
 - **Deviation 1 (registration, section 11):** on Omer's request Gemma-26B's two cells
-  were read on 2026-11-26 while three cells were still running, with a separate script
-  that calls the frozen functions unchanged. Nothing of the two Qwen models was read.
-  Those early figures are not filed, not quoted, and are replaced by the registered
-  analysis. No further early look is wanted.
-- **Next, in this order,** when all six cells are COMPLETED (expected about 13:00 IST
-  on 2026-11-26; each cluster step needs Omer's word):
-  1. an Opus cluster agent at medium effort copies the remaining folders, the serve
-     logs and the job logs to `results/matched-run/`, with filters that cannot show a
-     trial outcome;
-  2. the frozen analysis is run with `--i-have-frozen` and the registered hash; a
-     tripwire that fires is audited as the registration says before reading on;
-  3. the readout (`reference/matched_run_readout.md`), the `NUMBERS.md` entry, and
-     sections 9 and 11 of the registration (job ids, dates, restarts);
-  4. the readout goes to Omer before anything goes near the paper.
+  were read on 2026-11-26 while three cells were still running. The registered analysis
+  on the complete run is the record.
+- **Frozen analysis: run 2026-11-26**, once, with the registered hash (and once more,
+  byte-identical, to write `NUMBERS.md`). No tripwire fired, no cell VOID.
+  **Readout: `reference/matched_run_readout.md`**; tables in `NUMBERS.md`, section
+  "Matched run"; run record in section 9 of the registration.
+- **Bottom line, registered grade, tools (plain) minus no tools, same run.** Solve: tools
+  ahead for all three models, +50.3 [+37.3, +63.3] (Qwen3.5-9B), +36.0 [+23.0, +49.7]
+  (Gemma-26B), +11.0 [+2.3, +19.7] (Qwen3.6-35B, not after the Holm adjustment; +21.7
+  with the tool named). Simulate: no model has tools ahead; for Gemma-26B the unaided
+  arm is ahead, -14.0 [-25.3, -3.7], not after Holm. Unaided solve 41.3 to 68.3%; with
+  tools 79.3 to 94.0% (plain), 90.0 to 94.7% (steered).
+- **Waiting for Omer's read of the readout.** Nothing goes near the paper before it.
+  Then: the RQ1 tables and the two by-length figures for solve and simulate rebuilt on
+  this run, and the numbers of `paper_outline.md` 4.3 and 4.4 replaced.
 
 ## The frontier models
 
@@ -94,10 +94,13 @@ Separate corpora, never pooled with or ranked against the open models. The old r
   never resend a batch; a leftover `.lock` is removed by hand. Both arms of a model are
   meant to fall on one UTC day (registration, section 6).
   **Its answers are not read until the Claude analysis is frozen.** That analysis is
-  being written (started 2026-11-26) in the worktree
-  `.claude/worktrees/frontier55-analysis`, branch `analysis/frontier55` (the run's
-  branch with `main` merged in), from synthetic fixtures only. Then: the five freeze
-  gates with an independent review, the freeze, the reading, and one PR for the branch.
+  written as a freeze candidate (2026-11-26): `tools/reanalysis/frontier55.py` in the
+  worktree `.claude/worktrees/frontier55-analysis`, branch `analysis/frontier55` (the
+  run's branch with `main` merged in), commit `6f30ffe`, not pushed. Built from a
+  synthetic fixture only (846 checks pass); no row of the run was read. **Not frozen.**
+  An independent review (gate 5) is running. Seven points the registration leaves open
+  are marked `# OPEN:` in the script and go to Omer before the freeze. Then: fixes,
+  the freeze record (registration, section 10), the reading, and one PR for the branch.
   Do not edit `tools/frontier55/*.py` or touch the worktree `frontier55` while the run
   is unfinished: the run's manifest pins the runner's hashes. Still to add to the
   registration: the cluster's tool library versions beside the laptop's.
@@ -125,9 +128,10 @@ the control baseline; the matched run replaces them. Generators: `paper/README.m
 
 **For Omer**
 
-1. Give or hold the go-ahead for each cluster step of the matched run (check the job,
-   then copy the last three cells).
-2. Read the matched run's readout when it is written.
+1. Read the matched run's readout (`reference/matched_run_readout.md`); say whether
+   the RQ1 tables and figures are rebuilt on it.
+2. Answer the open points of the Claude analysis before its freeze (listed in chat on
+   2026-11-26 and marked `# OPEN:` in `tools/reanalysis/frontier55.py`).
 3. For the GPT and hosted Qwen runs: set `OPENAI_API_KEY` and `NOVITA_API_KEY` in the
    shell (not set on 2026-11-26); say yes or no to GPT at reasoning "low" (it cannot be
    turned off); answer the draft's open questions (GPT's output cap counts its hidden
@@ -146,13 +150,13 @@ the control baseline; the matched run replaces them. Generators: `paper/README.m
 
 **For the session**
 
-1. The matched run: when job 24502726 is complete, sync, frozen analysis, readout.
-   Then the RQ1 tables and figures for solve and simulate.
-2. The Claude run: let it finish; write, review and freeze its analysis; then read it.
+1. The matched run: after Omer's read, the RQ1 tables and figures for solve and
+   simulate.
+2. The Claude run: let it finish; review, fix and freeze its analysis; then read it.
 3. The GPT and hosted Qwen runs: review the runners, itemize the cost, pilot, run,
    once the keys exist. Before any paid request the itemized cost goes to Omer; stop
    and ask if an estimate passes 500 dollars.
-4. When the matched run is complete on the cluster: remove the four extension models
+4. Now that the matched run is complete: remove the four extension models
    and the gpt-oss effort flags from `cluster-experimenting/`, and correct the script
    header comments.
 5. Remove the Reproducibility Checklist from `paper/main.tex`, in the next paper PR.
