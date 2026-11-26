@@ -33,8 +33,14 @@ What to do, in this order, when all six cells are COMPLETED:
 Rule that holds until then: while the run is unfinished only job states and row counts
 are read (registration, section 7). I asked on 2026-11-26 to look at the finished cells
 early; the session held that back because it would be a registered deviation and the
-frozen analysis refuses an incomplete run anyway. If I still want the early look, say
-what it costs once more and then do it as a declared deviation in section 11.
+frozen analysis refuses an incomplete run anyway. I then asked for Gemma-26B's results anyway. That
+early look was done on 2026-11-26 and is recorded as deviation 1 in section 11 of the
+registration. It read Gemma-26B only (nothing of the two Qwen models), with a separate
+script that calls the frozen functions unchanged; all setup checks on the two Gemma
+cells passed. Its figures are in the previous session's chat and in the scratchpad
+(`gemma_early/gemma_early.json`, which a reboot can clear). They are early figures:
+not filed in `NUMBERS.md`, not quoted, and replaced by the registered analysis. No
+further early look is wanted.
 
 **2. The Claude run (Haiku 5.5 and Sonnet 5.5).** 18,240 trials, started 2026-11-26
 about 07:20 UTC from the worktree `.claude/worktrees/frontier55` (branch
