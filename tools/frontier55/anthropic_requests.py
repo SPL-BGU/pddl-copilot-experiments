@@ -229,3 +229,60 @@ def registered_request_settings(model: str, max_tokens: int, with_tools: bool,
     return {"model": model, "max_tokens": max_tokens, "thinking": dict(s["thinking"]),
             "output_config": {"effort": s["effort"]}, "param_keys": sorted(keys),
             "has_tools": with_tools, "n_messages": n_messages}
+
+
+# ------------------------------------------------------------------ prices and usage
+# $ per million tokens (input, output), list price, as registered (section 9). `long`
+# applies to a request whose prompt is above `long_over` tokens.
+PRICES: dict[str, dict[str, Any]] = {
+    "claude-haiku-5-5": {"base": (0.10, 0.50), "long": (0.50, 2.50), "long_over": 100_000},
+    "claude-sonnet-5-5": {"base": (2.00, 10.00), "long": None, "long_over": None},
+}
+BATCH_FACTOR = 0.5          # the Batch API's price against the list price
+CACHE_WRITE_FACTOR = 1.25   # against the input rate; the run asks for no caching
+CACHE_READ_FACTOR = 0.10
+
+
+def usage_usd(model: str, usage: dict | None, *, batch: bool) -> float:
+    """The price of one response from its usage block."""
+    u = usage or {}
+    inp = int(u.get("input_tokens") or 0)
+    cw = int(u.get("cache_creation_input_tokens") or 0)
+    cr = int(u.get("cache_read_input_tokens") or 0)
+    out = int(u.get("output_tokens") or 0)
+    p = PRICES[model]
+    rate_in, rate_out = p["base"]
+    if p["long"] and inp + cw + cr > p["long_over"]:
+        rate_in, rate_out = p["long"]
+    usd = (inp * rate_in + cw * rate_in * CACHE_WRITE_FACTOR
+           + cr * rate_in * CACHE_READ_FACTOR + out * rate_out) / 1e6
+    return usd * (BATCH_FACTOR if batch else 1.0)
+
+
+def _sum_keys(obj, words: tuple[str, ...]) -> int:
+    total = 0
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(v, (dict, list)):
+                total += _sum_keys(v, words)
+            elif isinstance(v, int) and not isinstance(v, bool) and any(w in k for w in words):
+                total += v
+    elif isinstance(obj, list):
+        for v in obj:
+            total += _sum_keys(v, words)
+    return total
+
+
+def thinking_tokens_of(usage: dict | None) -> int:
+    """Every count in a usage block whose field name says thinking or reasoning."""
+    return _sum_keys(usage or {}, ("thinking", "reasoning"))
+
+
+def cache_tokens_of(usage: dict | None) -> int:
+    return _sum_keys(usage or {}, ("cache",))
+
+
+def canonical(block: dict) -> str:
+    """One JSON text per value, so two blocks can be compared byte for byte."""
+    import json
+    return json.dumps(block, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

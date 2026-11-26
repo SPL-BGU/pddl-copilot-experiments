@@ -4,9 +4,15 @@
 Registration: development/reference/frontier55_prereg.md.
 
     python -m tools.frontier55.runner dry-run  [--pilot] [--marketplace-path P]
-    python -m tools.frontier55.runner batch-submit --model M --out ROOT [--pilot]
-    python -m tools.frontier55.runner batch-fetch  --model M --out ROOT --marketplace-path P [--wait]
-    python -m tools.frontier55.runner live         --model M --out ROOT --marketplace-path P [--pilot]
+    python -m tools.frontier55.runner tools-selfcheck --marketplace-path P
+    python -m tools.frontier55.runner batch-submit  --model M --out ROOT --max-usd X [--pilot]
+    python -m tools.frontier55.runner batch-fetch   --model M --out ROOT --max-usd X --marketplace-path P [--wait]
+    python -m tools.frontier55.runner batch-recover --model M --out ROOT [--drop]
+    python -m tools.frontier55.runner live          --model M --out ROOT --max-usd X --marketplace-path P [--pilot]
+    python -m tools.frontier55.runner pilot-check   --out ROOT
+
+dry-run, tools-selfcheck and pilot-check make no call to the provider. batch-recover
+lists the account's batches. The other three are paid and need --max-usd.
 
 Two arms per model, 4,560 trials each (five tasks, wordings v11 to v13):
   no tools   one Message Batches request per trial (`batch-submit`, `batch-fetch`)
@@ -18,7 +24,10 @@ holding
   trials.jsonl       one row per trial, in the harness's row shape
   trial_meta.jsonl   one line per trial: model id returned, API version sent, times,
                      request ids, raw stop reason, usage and content blocks of every turn
-  attempts.jsonl     every failed attempt that left a trial undone (it is run again)
+  attempts.jsonl     every failed try and every abandoned trial (it is run again)
+  spend.jsonl        the usage and price of every response; the model's running total
+                     is in ROOT/spend_<model>.json
+  run_provenance.jsonl  per start: the repo commit and the digests of the runner's files
   run_manifest.json  the settings; a resume under other settings is refused
 and, in the batch arm, batches.json, batch_requests_<n>.jsonl, custom_id_map.json and
 batch_results_<n>.jsonl (the raw results, so grading again costs nothing).
@@ -34,6 +43,8 @@ import asyncio
 import copy
 import hashlib
 import json
+import os
+import re
 import subprocess
 import sys
 import time
@@ -101,6 +112,20 @@ GT_CACHE_SHA256 = "77d4184ed872dd4bd7a22747c2e716eb74b86edc94420e47c92daf1684d04
 MARKETPLACE_COMMIT = "5e4f9c0"
 PYVALIDATOR = "0.1.5"
 INFRA_ABORT = 7            # consecutive undone trials before the live arm stops
+API_BASE_URL = "https://api.anthropic.com"
+CLIENT_TIMEOUT_S = 600.0   # per request
+CLIENT_MAX_RETRIES = 1     # the SDK's own retries of a live request
+TURN_ATTEMPTS = 2          # the runner's tries of one turn, the conversation kept
+RUNNER_FILES = ("tools/frontier55/anthropic_requests.py", "tools/frontier55/runner.py",
+                "tools/frontier55/cost.py")
+REGISTRATION = "development/reference/frontier55_prereg.md"
+# Section 9's pilot estimate per model and arm, $ (low, high), printed beside the spend.
+PILOT_ESTIMATE_USD = {
+    ("claude-haiku-5-5", "no-tools"): (0.05, 0.06),
+    ("claude-haiku-5-5", "tools"): (0.46, 0.66),
+    ("claude-sonnet-5-5", "no-tools"): (1.04, 1.04),
+    ("claude-sonnet-5-5", "tools"): (11.26, 11.26),
+}
 THINK_TAG, TOOL_FILTER, PROMPT_STYLE = "off", "all", "minimal"
 
 # sha256 (utf-8) of every system text the run sends. The no-tools texts of solve and
@@ -145,9 +170,14 @@ class ApparatusError(Halt):
     """A request or a row is not what the registration says: a fault of this code."""
 
 
+class SpendStop(Halt):
+    """The model's spend passed --max-usd."""
+
+
 class InfraError(Exception):
     """A trial could not be completed for a reason outside the model (rate limit,
     server error, connection). The trial stays undone and is run again."""
+    turns: list = []
 
 
 def check_constants() -> None:
@@ -200,6 +230,109 @@ def read_jsonl(path: Path) -> tuple[list[dict], int]:
 
 def cell_dir(root: Path, model: str, arm: str) -> Path:
     return Path(root) / f"{model}_{arm}"
+
+
+def repair_jsonl(path: Path) -> int:
+    """Cut a half-written last line (a file that does not end in a newline) back to the
+    last complete line. Returns 1 when something was cut."""
+    path = Path(path)
+    if not path.exists():
+        return 0
+    data = path.read_bytes()
+    if not data or data.endswith(b"\n"):
+        return 0
+    keep = data.rfind(b"\n") + 1
+    with path.open("r+b") as fh:
+        fh.truncate(keep)
+    return 1
+
+
+def repair_cell(out_dir: Path) -> dict[str, int]:
+    """Repair every .jsonl of a folder on start; what was cut is counted and logged."""
+    out_dir = Path(out_dir)
+    cut = {}
+    if not out_dir.is_dir():
+        return cut
+    for f in sorted(out_dir.glob("*.jsonl")):
+        if repair_jsonl(f):
+            cut[f.name] = 1
+    if cut:
+        with (out_dir / "repairs.log").open("a") as fh:
+            fh.write(f"{utc_now()} cut a half-written last line of: {sorted(cut)}\n")
+        print(f"[{RUN}] {out_dir}: cut a half-written last line of {sorted(cut)}")
+    return cut
+
+
+class RunLock:
+    """One paid command at a time per folder. A lock left by a killed run is removed by
+    hand, after checking that no run is alive."""
+
+    def __init__(self, out_dir: Path):
+        self.path = Path(out_dir) / ".lock"
+
+    def __enter__(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            raise Halt(f"{self.path} exists ({self.path.read_text().strip()}): another run "
+                       "is using this folder. If none is alive, remove the file.") from None
+        with os.fdopen(fd, "w") as fh:
+            fh.write(f"pid {os.getpid()} since {utc_now()}\n")
+        return self
+
+    def __exit__(self, *exc):
+        self.path.unlink(missing_ok=True)
+        return False
+
+
+class Spend:
+    """The running spend of one model, over both of its folders. Every response adds its
+    usage at the registered prices; `check` halts once the total is above `max_usd`."""
+
+    def __init__(self, root: Path, model: str, max_usd: float | None):
+        self.root, self.model, self.max_usd = Path(root), model, max_usd
+        self.total = 0.0
+        for arm in ARMS:
+            for line in read_jsonl(cell_dir(self.root, model, arm) / "spend.jsonl")[0]:
+                self.total += float(line["usd"])
+
+    def add(self, out_dir: Path, usage: dict | None, *, batch: bool, what: str,
+            key: list | None = None) -> float:
+        usd = AR.usage_usd(self.model, usage, batch=batch)
+        self.total += usd
+        append_jsonl(Path(out_dir) / "spend.jsonl", {
+            "at_utc": utc_now(), "model": self.model, "what": what, "key": key,
+            "batch": batch, "usage": usage, "usd": usd, "total_usd_after": self.total})
+        self.root.mkdir(parents=True, exist_ok=True)
+        (self.root / f"spend_{self.model}.json").write_text(json.dumps({
+            "model": self.model, "total_usd": round(self.total, 6), "max_usd": self.max_usd,
+            "updated_at_utc": utc_now()}, indent=2) + "\n")
+        return usd
+
+    def check(self) -> None:
+        if self.max_usd is not None and self.total > self.max_usd:
+            raise SpendStop(f"{self.model}: spend {self.total:.2f} dollars is above "
+                            f"--max-usd {self.max_usd:.2f}")
+
+
+def file_hashes(paths=RUNNER_FILES) -> dict[str, str]:
+    return {p: RM.file_sha256(REPO_ROOT / p) for p in paths}
+
+
+def log_provenance(out_dir: Path) -> dict:
+    """Appended on every start: this repo's commit and the files the run is made of."""
+    def git(*a):
+        p = subprocess.run(["git", "-C", str(REPO_ROOT), *a], capture_output=True, text=True)
+        return p.stdout.strip() if p.returncode == 0 else None
+    reg = REPO_ROOT / REGISTRATION
+    rec = {"at_utc": utc_now(), "repo_commit": git("rev-parse", "HEAD"),
+           "repo_dirty": bool(git("status", "--porcelain", "--", *RUNNER_FILES, REGISTRATION)),
+           "runner_sha256": file_hashes(),
+           "registration_sha256": RM.file_sha256(reg) if reg.exists() else None,
+           "sdk_version": sdk_version(), "base_url": API_BASE_URL}
+    append_jsonl(Path(out_dir) / "run_provenance.jsonl", rec)
+    return rec
 
 
 # ------------------------------------------------------------------ ground truth and grid
@@ -408,10 +541,37 @@ def message_dict(message) -> dict:
     return d
 
 
-async def call_messages(client, params: dict, turn: int) -> dict:
-    """One live request. Returns the sidecar record of the response. Raises InfraError for
-    a failure outside the model, Halt for a request the API rejects, and passes the
-    'prompt is too long' rejection up as the BadRequestError it is."""
+def _thinking(blocks) -> list[dict]:
+    return [b for b in (blocks or []) if isinstance(b, dict) and b.get("type") == "thinking"]
+
+
+def passed_back(prev_blocks: list[dict] | None, body: dict) -> tuple[int, int]:
+    """(thinking blocks the previous response held, how many of them are in the last
+    assistant message of the request body, byte-equal as JSON)."""
+    prev = _thinking(prev_blocks)
+    sent: list[str] = []
+    msgs = body.get("messages") or []
+    for m in reversed(msgs):
+        if m.get("role") == "assistant":
+            content = m.get("content")
+            sent = [AR.canonical(b) for b in _thinking(content if isinstance(content, list)
+                                                       else [])]
+            break
+    n = 0
+    for b in prev:
+        c = AR.canonical(b)
+        if c in sent:
+            sent.remove(c)
+            n += 1
+    return len(prev), n
+
+
+async def call_messages(client, params: dict, turn: int,
+                        prev_blocks: list[dict] | None = None) -> dict:
+    """One live request. Returns the sidecar record of the request and its response, both
+    read from the wire: the bytes that were sent and the JSON that came back. Raises
+    InfraError for a failure outside the model, Halt for a request the API rejects, and
+    passes the over-length rejection up as the BadRequestError it is."""
     import anthropic
     AR.check_params(params)
     requested = utc_now()
@@ -431,12 +591,31 @@ async def call_messages(client, params: dict, turn: int) -> dict:
             raise InfraError(f"{type(exc).__name__}: {exc}") from exc
         raise ApparatusError(f"the API rejected the request: {exc}") from exc
     received = utc_now()
-    msg = message_dict(raw.parse())
-    return turn_record(
+    http = raw.http_response
+    try:
+        msg = json.loads(http.content)          # what came back, before any parsing
+    except (ValueError, httpx_errors()):
+        msg = message_dict(raw.parse())
+    try:
+        body = json.loads(http.request.content)  # the bytes that were sent
+    except (ValueError, httpx_errors()):
+        raise ApparatusError("cannot read back the request that was sent") from None
+    rec = turn_record(
         turn, msg, requested_at=requested, received_at=received,
         request_id=raw.headers.get("request-id"),
-        version_sent=raw.http_response.request.headers.get("anthropic-version"),
-        request=AR.request_settings(params))
+        version_sent=http.request.headers.get("anthropic-version"),
+        request=AR.request_settings(body))
+    rec["request_body_sha256"] = hashlib.sha256(http.request.content).hexdigest()
+    rec["request_host"] = http.request.url.host
+    seen, back = passed_back(prev_blocks, body)
+    rec["thinking_blocks_in_previous_response"] = seen
+    rec["thinking_blocks_passed_back"] = back
+    return rec
+
+
+def httpx_errors():
+    import httpx
+    return (httpx.RequestNotRead, httpx.ResponseNotRead)
 
 
 def _sum_tokens(turns: list[dict]) -> tuple[int, int]:
@@ -471,8 +650,14 @@ def outcome_of(turns: list[dict], tool_calls: list[dict], tool_results: list[dic
             "overflow_error": overflow_error}
 
 
-async def run_tools_trial(client, mcp, model: str, job: tuple, tools: list[dict]) -> dict:
-    """One trial of the tool arm: at most MAX_TOOL_LOOPS round trips."""
+async def run_tools_trial(client, mcp, model: str, job: tuple, tools: list[dict], *,
+                          on_response=None, on_infra=None) -> dict:
+    """One trial of the tool arm: at most MAX_TOOL_LOOPS round trips.
+
+    `on_response(record)` is called after every response (the spend ledger).
+    `on_infra(turn, attempt, error)` is called for every failed try of a turn. A turn is
+    tried TURN_ATTEMPTS times with the conversation kept as it is; after that the trial
+    is abandoned with InfraError, whose `.turns` holds the turns that are discarded."""
     params = first_request(model, job, True, tools)
     messages = list(params["messages"])
     turns: list[dict] = []
@@ -487,19 +672,34 @@ async def run_tools_trial(client, mcp, model: str, job: tuple, tools: list[dict]
 
     import anthropic
     for i in range(MAX_TOOL_LOOPS):
-        # How many `thinking` blocks the last response held, and how many of them this
-        # request carries back unchanged (the plumbing check compares the two numbers).
-        prev = [b for b in turns[-1]["content"] if b.get("type") == "thinking"] if turns else []
-        sent_back = messages[-2]["content"] if turns else []
-        try:
-            rec = await call_messages(client, dict(params, messages=messages), i + 1)
-        except anthropic.BadRequestError as exc:
-            # The conversation no longer fits the model's window: an outcome of the
-            # trial, recorded with what the tools returned so far.
-            return done(OVERFLOW, str(exc)[:500])
-        rec["thinking_blocks_in_previous_response"] = len(prev)
-        rec["thinking_blocks_passed_back"] = sum(1 for b in prev if b in sent_back)
+        prev = turns[-1]["content"] if turns else None
+        rec, last = None, None
+        for attempt in range(1, TURN_ATTEMPTS + 1):
+            try:
+                rec = await call_messages(client, dict(params, messages=messages), i + 1, prev)
+                break
+            except anthropic.BadRequestError as exc:
+                if i == 0:
+                    # The first request holds only the task's own prompt. If that does
+                    # not fit, the setup is wrong; it is not an outcome of the model.
+                    raise ApparatusError("the first request of a trial was rejected as "
+                                         f"too long: {exc}") from exc
+                # The conversation no longer fits the model's window: an outcome of the
+                # trial, recorded with what the tools returned so far.
+                return done(OVERFLOW, str(exc)[:500])
+            except InfraError as exc:
+                last = exc
+                if on_infra:
+                    on_infra(i + 1, attempt, str(exc))
+        if rec is None:
+            err = InfraError(str(last))
+            err.turns = turns
+            raise err
         turns.append(rec)
+        if on_response:
+            on_response(rec)
+        if rec["stop_reason"] == AR.STOP_WINDOW and i == 0:
+            raise ApparatusError("the first request of a trial stopped for the window")
         if rec["stop_reason"] != AR.STOP_TOOL_USE:
             return done()
         blocks = rec["content"]
@@ -679,7 +879,10 @@ def build_run_manifest(model: str, arm: str, *, pilot: bool, sdk_version: str,
                "tools_pyvalidator": marketplace["pyvalidator"]
                if (marketplace and with_tools) else None,
                "tools_env": marketplace.get("freeze") if (marketplace and with_tools) else None,
-               "tools_sha256": tools_digest})
+               "tools_sha256": tools_digest,
+               "base_url": API_BASE_URL, "client_timeout_s": CLIENT_TIMEOUT_S,
+               "client_max_retries": CLIENT_MAX_RETRIES, "turn_attempts": TURN_ATTEMPTS,
+               "runner_sha256": file_hashes()})
 
 
 def done_keys(out_dir: Path) -> set[tuple]:
@@ -719,9 +922,21 @@ def write_counts(out_dir: Path, n_grid: int) -> dict:
     return counts
 
 
-def make_client(max_retries: int):
+def make_client():
+    """The live client: the provider's own address, said explicitly; one SDK retry; a
+    600-second limit per request."""
     import anthropic
-    return anthropic.AsyncAnthropic(max_retries=max_retries)
+    env = os.environ.get("ANTHROPIC_BASE_URL")
+    if env and env.rstrip("/") != API_BASE_URL:
+        raise Halt(f"ANTHROPIC_BASE_URL is set to {env!r}; this run talks to "
+                   f"{API_BASE_URL} only. Unset it.")
+    return anthropic.AsyncAnthropic(base_url=API_BASE_URL, max_retries=CLIENT_MAX_RETRIES,
+                                    timeout=CLIENT_TIMEOUT_S)
+
+
+def cell_model_ids(out_dir: Path) -> set[str]:
+    return {i for m in read_jsonl(Path(out_dir) / "trial_meta.jsonl")[0]
+            for i in m.get("model_ids_returned", [])}
 
 
 def sdk_version() -> str:
@@ -731,46 +946,75 @@ def sdk_version() -> str:
 
 # ------------------------------------------------------------------ the tool arm, live
 async def run_live_cell(client, mcp, model: str, jobs: list[tuple], out_dir: Path, *,
-                        concurrency: int = 4, attempts: int = 3, limit: int | None = None) -> dict:
+                        concurrency: int = 4, limit: int | None = None,
+                        spend: Spend | None = None) -> dict:
     """Run the trials of `jobs` that have no row yet. Returns the counts."""
+    repair_cell(out_dir)
     tools = AR.tool_definitions(mcp.tools)
     done = done_keys(out_dir)
     todo = [j for j in jobs if tuple(trial_key(model, j, True)) not in done]
     if limit:
         todo = todo[:limit]
     print(f"[{RUN}] {model} tools: {len(done)} rows on disk, {len(todo)} to run")
+    if spend:
+        spend.check()
     sem = asyncio.Semaphore(max(1, concurrency))
-    state = {"consecutive_undone": 0, "stop": None}
+    state = {"consecutive_undone": 0, "stop": None, "ids": cell_model_ids(out_dir)}
     ver = sdk_version()
+
+    def stop(exc):
+        state["stop"] = state["stop"] or exc
 
     async def one(job):
         key = trial_key(model, job, True)
         async with sem:
             if state["stop"]:
                 return
-            for attempt in range(1, attempts + 1):
-                try:
-                    outcome = await run_tools_trial(client, mcp, model, job, tools)
-                except InfraError as exc:
-                    log_attempt(out_dir, key, "infra", str(exc), attempt=attempt)
-                    continue
-                except Halt as exc:
-                    state["stop"] = state["stop"] or exc
-                    return
-                try:
-                    row = await make_row(model, job, True, outcome, mcp)
-                except Halt as exc:
-                    state["stop"] = state["stop"] or exc
-                    return
-                meta = make_meta(model, job, True, outcome, row, transport="live",
-                                 sdk_version=ver, extra={"attempt": attempt})
-                write_trial(out_dir, row, meta)
-                state["consecutive_undone"] = 0
+
+            def on_response(rec):
+                if spend:
+                    spend.add(out_dir, rec["usage"], batch=False, what="live_turn", key=key)
+                    spend.check()
+
+            def on_infra(turn, attempt, err):
+                log_attempt(out_dir, key, "infra", err, turn=turn, attempt=attempt)
+
+            try:
+                outcome = await run_tools_trial(client, mcp, model, job, tools,
+                                                on_response=on_response, on_infra=on_infra)
+            except InfraError as exc:
+                # The trial is abandoned and will start again from its first turn. What
+                # its completed turns cost is already in the spend ledger; it is written
+                # here as well, so the discarded usage can be read per trial.
+                log_attempt(out_dir, key, "trial_abandoned", str(exc),
+                            discarded_turns=len(exc.turns),
+                            discarded_usage=[t["usage"] for t in exc.turns])
+                state["consecutive_undone"] += 1
+                if state["consecutive_undone"] >= INFRA_ABORT:
+                    stop(Halt(f"{INFRA_ABORT} trials in a row could not be completed"))
                 return
-            state["consecutive_undone"] += 1
-            if state["consecutive_undone"] >= INFRA_ABORT:
-                state["stop"] = state["stop"] or Halt(
-                    f"{INFRA_ABORT} trials in a row could not be completed")
+            except Halt as exc:
+                stop(exc)
+                return
+            ids = {t["model"] for t in outcome["turns"] if t.get("model")}
+            if len(ids | state["ids"]) > 1:
+                log_attempt(out_dir, key, "model_id_changed",
+                            f"returned {sorted(ids)}; the folder holds {sorted(state['ids'])}")
+                stop(Halt(f"the model id the provider returns changed within {out_dir.name}: "
+                          f"{sorted(ids | state['ids'])}. No row was written for this trial."))
+                return
+            try:
+                row = await make_row(model, job, True, outcome, mcp)
+            except Halt as exc:
+                stop(exc)
+                return
+            if state["stop"]:
+                return
+            state["ids"] |= ids
+            meta = make_meta(model, job, True, outcome, row, transport="live",
+                             sdk_version=ver)
+            write_trial(out_dir, row, meta)
+            state["consecutive_undone"] = 0
 
     await asyncio.gather(*(one(j) for j in todo))
     counts = write_counts(out_dir, len(jobs))
@@ -805,17 +1049,27 @@ def batch_requests(model: str, jobs: list[tuple]) -> tuple[list[dict], dict]:
     return reqs, id_map
 
 
-async def batch_submit(client, model: str, jobs: list[tuple], out_dir: Path) -> dict:
+async def batch_submit(client, model: str, jobs: list[tuple], out_dir: Path,
+                       spend: Spend | None = None) -> dict:
     """Send one batch holding every trial that has no row yet. Refuses while an earlier
-    batch of this folder has not been fetched: that one is polled again, never re-sent."""
+    batch of this folder has not been fetched: that one is polled again, never re-sent.
+
+    The send is tried once (no SDK retry). If it fails in a way that leaves it unknown
+    whether the batch exists, the entry stays without an id and `batch-recover` finds
+    the id. If the API plainly refuses the send (a 4xx), no batch exists and the entry
+    is removed."""
+    import anthropic
     out_dir = Path(out_dir)
+    repair_cell(out_dir)
+    if spend:
+        spend.check()
     batches = read_batches(out_dir)
     open_ = [b for b in batches if not b.get("fetched")]
     if open_:
         raise Halt(f"{out_dir}: batch {open_[0].get('batch_id') or '(id not recorded)'} is "
                    "not fetched yet; run batch-fetch. Nothing was sent. If no id was "
-                   "recorded, the send was interrupted: find the batch in the console "
-                   "before sending again.")
+                   "recorded, the send was interrupted: run batch-recover before sending "
+                   "again.")
     done = done_keys(out_dir)
     todo = [j for j in jobs if tuple(trial_key(model, j, False)) not in done]
     if not todo:
@@ -838,19 +1092,81 @@ async def batch_submit(client, model: str, jobs: list[tuple], out_dir: Path) -> 
     entry = {"n": n, "batch_id": None, "n_requests": len(reqs), "fetched": False,
              "send_started_at_utc": utc_now()}
     write_batches(out_dir, batches + [entry])           # before the send
-    raw = await client.messages.batches.with_raw_response.create(requests=reqs)
+    try:
+        raw = await client.with_options(max_retries=0).messages.batches \
+            .with_raw_response.create(requests=reqs)
+    except anthropic.APIStatusError as exc:
+        if 400 <= exc.status_code < 500 and exc.status_code not in (408, 409):
+            write_batches(out_dir, batches)             # no batch exists
+            if exc.status_code == 429:
+                raise Halt(f"the send was refused (rate limit); no batch exists: {exc}") from exc
+            raise ApparatusError(f"the API refused the batch; no batch exists: {exc}") from exc
+        entry["send_error"] = f"{type(exc).__name__}: {exc}"[:500]
+        write_batches(out_dir, batches + [entry])
+        raise Halt(f"the send failed and it is not known whether the batch exists "
+                   f"({entry['send_error']}). Run batch-recover.") from exc
+    except Exception as exc:
+        entry["send_error"] = f"{type(exc).__name__}: {exc}"[:500]
+        write_batches(out_dir, batches + [entry])
+        raise Halt(f"the send failed and it is not known whether the batch exists "
+                   f"({entry['send_error']}). Run batch-recover.") from exc
     batch = raw.parse()
     entry.update(batch_id=batch.id, submitted_at_utc=utc_now(),
                  request_id=raw.headers.get("request-id"),
                  anthropic_version_sent=raw.http_response.request.headers.get(
                      "anthropic-version"),
+                 request_host=raw.http_response.request.url.host,
                  sdk_version=sdk_version())
     write_batches(out_dir, batches + [entry])
     print(f"[{RUN}] {model} no-tools: batch {batch.id} sent, {len(reqs)} requests")
     return entry
 
 
-async def batch_poll(client, out_dir: Path, *, wait: bool, interval: float = 120.0) -> dict | None:
+async def batch_recover(client, out_dir: Path, *, drop: bool = False,
+                        window_s: float = 3600.0, max_listed: int = 500) -> dict:
+    """Find the id of a batch whose send was interrupted: list the account's batches and
+    take the one created at or after the send started (within `window_s`) that holds
+    the same number of requests. With exactly one match its id is written. With none,
+    `drop` removes the entry so that the batch can be sent again."""
+    out_dir = Path(out_dir)
+    batches = read_batches(out_dir)
+    open_ = [b for b in batches if not b.get("fetched") and not b.get("batch_id")]
+    if not open_:
+        raise Halt(f"{out_dir}: no interrupted send to recover")
+    entry = open_[0]
+    started = datetime.strptime(entry["send_started_at_utc"],
+                                "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+    found, listed = [], 0
+    async for b in client.messages.batches.list(limit=100):
+        listed += 1
+        rc = b.request_counts
+        n = rc.processing + rc.succeeded + rc.errored + rc.canceled + rc.expired
+        age = (b.created_at - started).total_seconds()
+        if n == entry["n_requests"] and -120.0 <= age <= window_s:
+            found.append({"batch_id": b.id, "created_at": b.created_at.isoformat(),
+                          "requests": n, "status": b.processing_status})
+        if listed >= max_listed or age < -window_s:
+            break
+    report = {"send_started_at_utc": entry["send_started_at_utc"],
+              "n_requests": entry["n_requests"], "listed": listed, "matches": found}
+    if len(found) == 1:
+        entry.update(batch_id=found[0]["batch_id"], recovered_at_utc=utc_now(),
+                     submitted_at_utc=found[0]["created_at"], sdk_version=sdk_version())
+        write_batches(out_dir, batches)
+        report["action"] = "id written"
+    elif not found and drop:
+        write_batches(out_dir, [b for b in batches if b is not entry])
+        report["action"] = "no batch found; the entry was removed, the batch can be sent"
+    elif not found:
+        report["action"] = ("no batch found; nothing changed (pass --drop to remove the "
+                            "entry once you are sure no batch exists)")
+    else:
+        report["action"] = "more than one match; nothing changed, write the id by hand"
+    return report
+
+
+async def batch_poll(client, out_dir: Path, *, wait: bool, interval: float = 120.0,
+                     spend: Spend | None = None, model: str | None = None) -> dict | None:
     """Fetch the raw results of the open batch once it has ended. Returns the batch entry,
     or None when it has not ended (and `wait` is off)."""
     out_dir = Path(out_dir)
@@ -861,8 +1177,7 @@ async def batch_poll(client, out_dir: Path, *, wait: bool, interval: float = 120
     entry = open_[0]
     if not entry.get("batch_id"):
         raise Halt(f"{out_dir}: a send was started at {entry['send_started_at_utc']} and no "
-                   "batch id was recorded. Find the batch in the console, write its id into "
-                   "batches.json, then fetch.")
+                   "batch id was recorded. Run batch-recover, then fetch.")
     raw_path = out_dir / f"batch_results_{entry['n']}.jsonl"
     if not raw_path.exists():
         while True:
@@ -889,6 +1204,13 @@ async def batch_poll(client, out_dir: Path, *, wait: bool, interval: float = 120
             request_counts=b.request_counts.model_dump(mode="json"),
             results_fetched_at_utc=utc_now())
         write_batches(out_dir, batches)
+    if spend and not entry.get("spend_recorded"):
+        for res in read_jsonl(raw_path)[0]:
+            if res["result"]["type"] == "succeeded":
+                spend.add(out_dir, res["result"]["message"].get("usage"), batch=True,
+                          what="batch_result", key=[res["custom_id"]])
+        entry["spend_recorded"] = True
+        write_batches(out_dir, batches)
     return entry
 
 
@@ -900,12 +1222,19 @@ async def batch_grade(model: str, jobs: list[tuple], out_dir: Path, mcp, entry: 
     out_dir = Path(out_dir)
     by_cid = {custom_id(trial_key(model, j, False)): j for j in jobs}
     done = done_keys(out_dir)
+    repair_cell(out_dir)
     rejected: list[str] = []
     sent = {q["custom_id"]: q["params"]
             for q in read_jsonl(out_dir / f"batch_requests_{entry['n']}.jsonl")[0]}
     raw, torn = read_jsonl(out_dir / f"batch_results_{entry['n']}.jsonl")
     if torn:
         raise ApparatusError(f"{out_dir}: {torn} unreadable raw result line(s)")
+    ids = {r_["result"]["message"].get("model") for r_ in raw
+           if r_["result"]["type"] == "succeeded"} - {None}
+    if len(ids | cell_model_ids(out_dir)) > 1:
+        raise Halt(f"the model id the provider returns changed within {out_dir.name}: "
+                   f"{sorted(ids | cell_model_ids(out_dir))}. No row of this batch was "
+                   "written; its raw results are kept.")
     for res in raw:
         cid = res["custom_id"]
         job = by_cid.get(cid)
@@ -1008,10 +1337,80 @@ def print_dry_run(rep: dict) -> None:
         print("  tools: not loaded (pass --marketplace-path to load and digest them)")
 
 
+# ------------------------------------------------------------------ tools self-check
+RIGHT_TOOL = {"validate_domain": "validate_domain", "validate_problem": "validate_problem",
+              "validate_plan": "validate_plan", "simulate": "get_state_transition"}
+
+
+def right_tool_call(job: tuple, domains: dict) -> tuple[str, dict]:
+    """The task's right tool and its arguments for one fixture, as the harness calls it
+    when it builds ground truth."""
+    from pddl_eval.domains import _build_plan_str
+    task = job[J_TASK]
+    if task == "solve":
+        kind = domains[job[J_DNAME]].get("type")
+        return ("numeric_planner" if kind == "numeric" else "classic_planner",
+                {"domain": job[J_DPDDL], "problem": job[J_PPDDL]})
+    if task == "validate_domain":
+        return "validate_domain", {"domain": job[J_DPDDL]}
+    args = {"domain": job[J_DPDDL], "problem": job[J_PPDDL]}
+    if task in ("validate_plan", "simulate"):
+        args["plan"] = _build_plan_str(job[J_GT])
+    return RIGHT_TOOL[task], args
+
+
+async def tools_selfcheck(mcp, domains: dict, ground_truth: dict) -> dict:
+    """Free and local: on every fixture of the full grid (one wording), call the task's
+    right tool and grade its result with the harness's own with-tools rule against the
+    ground truth and the fixture labels. No model is involved."""
+    jobs = [j for j in build_grid(MODELS[0], "tools", domains, ground_truth)
+            if j[J_PV] == WORDINGS[0]]
+    per_task: dict[str, dict] = {t: {"fixtures": 0, "agree": 0} for t in TASKS}
+    disagreements, same_plan = [], 0
+    for j in jobs:
+        task = j[J_TASK]
+        name, args = right_tool_call(j, domains)
+        try:
+            result = await mcp.call_tool(name, args)
+        except Exception as exc:
+            result = f"Tool error: {exc}"
+        try:
+            _sel, ok, reason = await check_success(
+                task, "", [{"name": name, "arguments": args, "result": result}], j[J_GT], mcp,
+                j[J_DPDDL], j[J_PPDDL], with_tools=True)
+        except Exception as exc:
+            ok, reason = False, f"scoring error: {exc}"
+        per_task[task]["fixtures"] += 1
+        per_task[task]["agree"] += int(bool(ok))
+        if task == "solve":
+            parsed = _safe_json_loads(result)
+            if isinstance(parsed, dict) and parsed.get("plan") == j[J_GT].get("plan"):
+                same_plan += 1
+        if not ok:
+            disagreements.append({"task": task, "domain": j[J_DNAME], "problem": j[J_PNAME],
+                                  "plan_label": j[J_PLAN], "tool": name, "reason": reason,
+                                  "result_head": str(result)[:300]})
+    return {"fixtures": len(jobs), "per_task": per_task,
+            "agree": sum(v["agree"] for v in per_task.values()),
+            "solve_plans_equal_to_the_cached_plan": same_plan,
+            "disagreements": disagreements}
+
+
 # ------------------------------------------------------------------ pilot check
+_NUMBER_RE = re.compile(r"\d[\d,]{3,}")
+
+
+def tool_result_is_error(result) -> bool:
+    """A tool result that is the harness's error text or parses to an error object."""
+    if isinstance(result, str) and result.startswith("Tool error:"):
+        return True
+    parsed = _safe_json_loads(result)
+    return isinstance(parsed, dict) and bool(parsed.get("error"))
+
+
 def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> dict:
     """The plumbing check of one folder (registration, section 6). It reads no grade, no
-    verdict and no answer text: only counts, shapes, settings and ids."""
+    verdict and no answer text: only counts, shapes, settings, ids and token counts."""
     out_dir = Path(out_dir)
     with_tools = arm == "tools"
     rows, torn = read_jsonl(out_dir / "trials.jsonl")
@@ -1031,10 +1430,11 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
     countable = [r for r in rows if tuple(r["key"]) in meta_by_key
                  and meta_by_key[tuple(r["key"])]["outcome"] in (ANSWER, LOOP_EXHAUSTED)]
     non_empty = sum(1 for r in countable if r["result"]["response"].strip())
-    want = {"thinking": AR.MODEL_SETTINGS[model]["thinking"],
-            "effort": AR.MODEL_SETTINGS[model]["effort"]}
-    # From the sidecar: the settings of every request that was sent.
+    # From the sidecar: every request that was sent and every response that came back.
     n_requests = bad_requests = sampling = think_back = think_seen = 0
+    think_tokens = think_blocks = cache_tokens = in_tok = out_tok = 0
+    usd = 0.0
+    hosts = set()
     for m in mine:
         cap = OUTPUT_CAP[m["key"][1]]
         for t in m["turns"]:
@@ -1047,12 +1447,26 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
                 sampling += 1
             think_seen += t.get("thinking_blocks_in_previous_response", 0)
             think_back += t.get("thinking_blocks_passed_back", 0)
+            think_tokens += AR.thinking_tokens_of(t.get("usage"))
+            think_blocks += len(_thinking(t.get("content")))
+            cache_tokens += AR.cache_tokens_of(t.get("usage"))
+            in_tok += AR.input_tokens_of(t.get("usage"))
+            out_tok += AR.output_tokens_of(t.get("usage"))
+            usd += AR.usage_usd(model, t.get("usage"), batch=not with_tools)
+            if t.get("request_host"):
+                hosts.add(t["request_host"])
     ids = sorted({i for m in mine for i in m["model_ids_returned"]})
-    ids_ok = all(i.startswith(model) for i in ids)
-    settings_ok = all(m["settings"]["thinking"] == want["thinking"]
-                      and m["settings"]["effort"] == want["effort"]
-                      and m["settings"]["max_tokens"] == OUTPUT_CAP[m["key"][1]]
-                      and m["model_requested"] == model for m in mine)
+    ids_ok = all(i.startswith(model) for i in ids) and len(ids) <= 1
+    # Per tool name: calls, calls flagged as errors, results that are an error.
+    per_tool: dict[str, dict] = {}
+    for r in rows:
+        m = meta_by_key.get(tuple(r["key"]))
+        flags = [x["is_error"] for x in (m["tool_results"] if m else [])]
+        for i, tc in enumerate(r["result"]["tool_calls"]):
+            d = per_tool.setdefault(tc["name"], {"calls": 0, "is_error": 0, "error_results": 0})
+            d["calls"] += 1
+            d["is_error"] += int(i < len(flags) and bool(flags[i]))
+            d["error_results"] += int(tool_result_is_error(tc["result"]))
     stored_requests_ok = None
     if not with_tools:
         stored_requests_ok = True
@@ -1062,7 +1476,10 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
                     AR.check_params(req["params"])
                 except ValueError:
                     stored_requests_ok = False
+    spend_lines, _ = read_jsonl(out_dir / "spend.jsonl")
     manifest = RM.read_manifest(out_dir) or {}
+    thinks = model == "claude-sonnet-5-5" and with_tools     # the one cell that may think
+    est = PILOT_ESTIMATE_USD.get((model, arm))
     rep = {
         "folder": str(out_dir), "model": model, "arm": arm,
         "rows": len(rows), "rows_expected": n_expected,
@@ -1072,22 +1489,30 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
         "rows_the_frozen_loader_refuses": refused_by_loader,
         "rows_cut_by_storage": cut,
         "non_empty_answers": non_empty, "answers_counted": len(countable),
-        "settings_as_registered": settings_ok,
         "requests_in_sidecar": n_requests,
         "requests_whose_settings_differ_from_the_registered": bad_requests,
         "requests_with_a_sampling_field": sampling,
-        "model_ids_start_with_the_requested_id": ids_ok,
-        "thinking_blocks_returned_before_a_next_request": think_seen,
-        "thinking_blocks_passed_back_unchanged": think_back,
         "stored_batch_requests_as_registered": stored_requests_ok,
         "api_version_sent": sorted({v for m in mine for v in m["anthropic_version_sent"]}),
+        "request_hosts": sorted(hosts),
         "sdk_versions": sorted({str(m["sdk_version"]) for m in mine}),
-        "model_ids_returned": sorted({i for m in mine for i in m["model_ids_returned"]}),
+        "model_ids_returned": ids,
+        "model_ids_start_with_the_requested_id_and_do_not_change": ids_ok,
         "endings": dict(Counter(outcome_label(m) for m in mine)),
         "failed_attempts_logged": len(attempts),
-        "trials_with_a_note_between_tool_calls": sum(
-            1 for m in mine if any(b.get("type") == "thinking"
-                                   for t in m["turns"] for b in t["content"])),
+        "thinking_tokens": think_tokens,
+        "thinking_blocks_returned": think_blocks,
+        "thinking_expected_to_be_zero": not thinks,
+        "thinking_blocks_returned_before_a_next_request": think_seen,
+        "thinking_blocks_in_the_next_request_body_byte_equal": think_back,
+        "cache_tokens": cache_tokens,
+        "input_tokens": in_tok, "output_tokens": out_tok,
+        "implied_usd_of_the_rows": round(usd, 4),
+        "spend_ledger_usd": round(sum(float(x["usd"]) for x in spend_lines), 4),
+        "section_9_estimate_usd": list(est) if est else None,
+        "tool_calls_by_tool": per_tool,
+        "limit_numbers_in_over_length_errors": sorted({
+            n for m in mine for n in _NUMBER_RE.findall(m.get("overflow_error") or "")}),
         "manifest_tools_commit": manifest.get("tools_commit"),
         "manifest_tools_sha256": manifest.get("tools_sha256"),
     }
@@ -1095,9 +1520,11 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
     rep["passes"] = bool(
         len(rows) == n_expected and rep["duplicate_keys"] == 0
         and rep["rows_without_sidecar_line"] == 0 and torn == 0 and refused_by_loader == 0
-        and cut == 0 and share >= 0.95 and settings_ok and stored_requests_ok is not False
+        and cut == 0 and share >= 0.95 and stored_requests_ok is not False
         and len(rep["api_version_sent"]) == 1 and bad_requests == 0 and sampling == 0
-        and ids_ok and think_seen == think_back)
+        and ids_ok and think_seen == think_back and cache_tokens == 0
+        and (thinks or (think_tokens == 0 and think_blocks == 0))
+        and hosts <= {"api.anthropic.com"})
     return rep
 
 
@@ -1125,50 +1552,80 @@ def _prepare(args, arm: str, need_marketplace: bool):
 
 async def _cmd_live(args) -> None:
     market, gt_path, gt, jobs, out = _prepare(args, "tools", True)
-    mcp = await connect_mcp(args.marketplace_path)
-    client = make_client(args.max_retries)
-    try:
-        tools = AR.tool_definitions(mcp.tools)
-        RM.ensure_manifest(out, build_run_manifest(
-            args.model, "tools", pilot=args.pilot, sdk_version=sdk_version(), gt_cache=gt_path,
-            ground_truth=gt, marketplace=market, tools_digest=tools_sha256(tools)))
-        counts = await run_live_cell(client, mcp, args.model, jobs, out,
-                                     concurrency=args.concurrency, attempts=args.attempts,
-                                     limit=args.limit)
-        print(json.dumps(counts, indent=2))
-    finally:
-        await mcp.close()
-        await client.close()
+    client = make_client()
+    with RunLock(out):
+        repair_cell(out)
+        spend = Spend(Path(args.out), args.model, args.max_usd)
+        spend.check()
+        mcp = await connect_mcp(args.marketplace_path)
+        try:
+            tools = AR.tool_definitions(mcp.tools)
+            RM.ensure_manifest(out, build_run_manifest(
+                args.model, "tools", pilot=args.pilot, sdk_version=sdk_version(),
+                gt_cache=gt_path, ground_truth=gt, marketplace=market,
+                tools_digest=tools_sha256(tools)))
+            log_provenance(out)
+            counts = await run_live_cell(client, mcp, args.model, jobs, out,
+                                         concurrency=args.concurrency, limit=args.limit,
+                                         spend=spend)
+            print(json.dumps(counts, indent=2))
+        finally:
+            print(f"[{RUN}] {args.model}: spend so far {spend.total:.2f} dollars "
+                  f"(--max-usd {args.max_usd:.2f})")
+            await mcp.close()
+            await client.close()
 
 
 async def _cmd_batch_submit(args) -> None:
     _market, gt_path, gt, jobs, out = _prepare(args, "no-tools", False)
-    RM.ensure_manifest(out, build_run_manifest(
-        args.model, "no-tools", pilot=args.pilot, sdk_version=sdk_version(), gt_cache=gt_path,
-        ground_truth=gt, marketplace=None, tools_digest=None))
-    client = make_client(args.max_retries)
-    try:
-        await batch_submit(client, args.model, jobs, out)
-    finally:
-        await client.close()
+    client = make_client()
+    with RunLock(out):
+        repair_cell(out)
+        spend = Spend(Path(args.out), args.model, args.max_usd)
+        RM.ensure_manifest(out, build_run_manifest(
+            args.model, "no-tools", pilot=args.pilot, sdk_version=sdk_version(),
+            gt_cache=gt_path, ground_truth=gt, marketplace=None, tools_digest=None))
+        log_provenance(out)
+        try:
+            await batch_submit(client, args.model, jobs, out, spend)
+        finally:
+            await client.close()
 
 
 async def _cmd_batch_fetch(args) -> None:
     market, _gt_path, _gt, jobs, out = _prepare(args, "no-tools", True)
-    client = make_client(args.max_retries)
-    try:
-        entry = await batch_poll(client, out, wait=args.wait, interval=args.interval)
-    finally:
-        await client.close()
-    if entry is None:
-        print(f"[{RUN}] no batch to grade yet")
-        return
-    mcp = await connect_mcp(args.marketplace_path)     # solve plans go to the validator
-    try:
-        print(json.dumps(await batch_grade(args.model, jobs, out, mcp, entry, market),
-                         indent=2))
-    finally:
-        await mcp.close()
+    client = make_client()
+    with RunLock(out):
+        repair_cell(out)
+        spend = Spend(Path(args.out), args.model, args.max_usd)
+        try:
+            entry = await batch_poll(client, out, wait=args.wait, interval=args.interval,
+                                     spend=spend, model=args.model)
+        finally:
+            await client.close()
+        if entry is None:
+            print(f"[{RUN}] no batch to grade yet")
+            return
+        mcp = await connect_mcp(args.marketplace_path)   # solve plans go to the validator
+        try:
+            print(json.dumps(await batch_grade(args.model, jobs, out, mcp, entry, market),
+                             indent=2))
+        finally:
+            await mcp.close()
+        print(f"[{RUN}] {args.model}: spend so far {spend.total:.2f} dollars "
+              f"(--max-usd {args.max_usd:.2f})")
+        spend.check()
+
+
+async def _cmd_batch_recover(args) -> None:
+    check_constants()
+    out = cell_dir(Path(args.out), args.model, "no-tools")
+    client = make_client()
+    with RunLock(out):
+        try:
+            print(json.dumps(await batch_recover(client, out, drop=args.drop), indent=2))
+        finally:
+            await client.close()
 
 
 async def _cmd_dry_run(args) -> None:
@@ -1186,29 +1643,59 @@ async def _cmd_dry_run(args) -> None:
     print_dry_run(dry_run(args.models, domains, gt, pilot=args.pilot, tools=tools))
 
 
+async def _cmd_tools_selfcheck(args) -> int:
+    check_constants()
+    market = check_marketplace(args.marketplace_path)
+    gt = load_gt_cache(find_gt_cache(args.gt_cache))
+    domains = load_domains(REPO_ROOT / "domains")
+    mcp = await connect_mcp(args.marketplace_path)
+    try:
+        rep = await tools_selfcheck(mcp, domains, gt)
+    finally:
+        await mcp.close()
+    rep["tools_commit"], rep["pyvalidator"] = market["commit"], market["pyvalidator"]
+    rep["at_utc"] = utc_now()
+    if args.report:
+        Path(args.report).write_text(json.dumps(rep, indent=2) + "\n")
+    print(json.dumps({k: v for k, v in rep.items() if k != "disagreements"}, indent=2))
+    for d in rep["disagreements"]:
+        print("  DISAGREES:", json.dumps(d))
+    return 0 if not rep["disagreements"] else 3
+
+
 def main(argv: list[str] | None = None) -> int:
+    """Exit codes: 0 done; 2 a halt, a refusal or a failed pilot check; 3 the tools
+    self-check found a disagreement."""
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    def common(sp, model=True):
-        if model:
+    def common(sp, paid=True):
+        if paid:
             sp.add_argument("--model", required=True, choices=list(MODELS))
             sp.add_argument("--out", required=True,
                             help="root folder, e.g. results/frontier55 or "
                                  "results/frontier55-pilot")
-            sp.add_argument("--max-retries", type=int, default=4,
-                            help="the SDK's own retries per request")
+            sp.add_argument("--max-usd", required=True, type=float,
+                            help="the model's spend, over both arms, at which this run "
+                                 "stops (dollars; no default)")
         sp.add_argument("--pilot", action="store_true",
                         help="the pilot's short list, wording v11 (160 trials per model "
                              "and arm)")
         sp.add_argument("--gt-cache", default=None,
                         help=f"default {GT_CACHE_REL}; must match the pinned sha256")
 
-    d = sub.add_parser("dry-run", help="build every request, print counts and digests")
-    common(d, model=False)
+    d = sub.add_parser("dry-run", help="build every request, print counts and digests; "
+                                       "no client, no call")
+    common(d, paid=False)
     d.add_argument("--models", nargs="+", default=list(MODELS), choices=list(MODELS))
     d.add_argument("--marketplace-path", default=None)
+
+    sc = sub.add_parser("tools-selfcheck", help="local and free: the right tool on every "
+                                                "fixture, against the ground truth")
+    sc.add_argument("--marketplace-path", required=True)
+    sc.add_argument("--gt-cache", default=None)
+    sc.add_argument("--report", default=None, help="write the full report (JSON) here")
 
     s = sub.add_parser("batch-submit", help="no-tools arm: send one batch")
     common(s)
@@ -1217,14 +1704,17 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--marketplace-path", required=True)
     f.add_argument("--wait", action="store_true", help="poll until the batch has ended")
     f.add_argument("--interval", type=float, default=120.0)
+    rc = sub.add_parser("batch-recover", help="find the id of a batch whose send was "
+                                              "interrupted (lists the account's batches)")
+    rc.add_argument("--model", required=True, choices=list(MODELS))
+    rc.add_argument("--out", required=True)
+    rc.add_argument("--drop", action="store_true",
+                    help="when no batch is found, remove the entry so it can be sent again")
 
     lv = sub.add_parser("live", help="tool arm: live calls with a tool loop")
     common(lv)
     lv.add_argument("--marketplace-path", required=True)
     lv.add_argument("--concurrency", type=int, default=4)
-    lv.add_argument("--attempts", type=int, default=3,
-                    help="tries per trial in one invocation when the failure is outside "
-                         "the model")
     lv.add_argument("--limit", type=int, default=None)
 
     pc = sub.add_parser("pilot-check", help="the plumbing check of the pilot's folders "
@@ -1237,13 +1727,13 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(reps, indent=2))
         return 0 if all(x["passes"] for x in reps) else 2
     cmd = {"dry-run": _cmd_dry_run, "batch-submit": _cmd_batch_submit,
-           "batch-fetch": _cmd_batch_fetch, "live": _cmd_live}[args.cmd]
+           "batch-fetch": _cmd_batch_fetch, "batch-recover": _cmd_batch_recover,
+           "live": _cmd_live, "tools-selfcheck": _cmd_tools_selfcheck}[args.cmd]
     try:
-        asyncio.run(cmd(args))
+        return asyncio.run(cmd(args)) or 0
     except (Halt, RM.ManifestError) as exc:
         print(f"[{RUN}] HALT: {exc}", file=sys.stderr)
         return 2
-    return 0
 
 
 if __name__ == "__main__":

@@ -40,13 +40,8 @@ WORDINGS_FULL = 3
 PILOT_PROBLEM = "p01"
 OLD_WORDING = 11
 
-# $ per million tokens (input, output), list price. `long` applies to Haiku 5.5 above
-# `long_over` prompt tokens. To be checked against the price list on the day.
-PRICES = {
-    "claude-haiku-5-5": {"base": (0.10, 0.50), "long": (0.50, 2.50), "long_over": 100_000},
-    "claude-sonnet-5-5": {"base": (2.00, 10.00), "long": None, "long_over": None},
-}
-BATCH_FACTOR = 0.5
+from tools.frontier55.anthropic_requests import BATCH_FACTOR, PRICES  # noqa: E402
+
 # (low, high) token factor against the old model of the same tier.
 TOKEN_FACTOR = {"claude-haiku-5-5": (1.0, 1.3), "claude-sonnet-5-5": (1.3, 1.3)}
 OLD_CORPORA = {  # new model -> (old no-tools folder, old tool folder, old model name)

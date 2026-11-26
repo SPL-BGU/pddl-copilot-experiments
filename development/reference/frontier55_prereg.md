@@ -20,7 +20,9 @@ session's log; Omer confirms it when he reads this draft.
 **Cost.** Omer said on 2026-11-25 that no cost estimate is needed
 (`unified_run_design.md`, B4). The session still posts the itemized estimate of section
 9 before the first paid request, and **stops and asks if the estimate for the whole run
-is above 500 dollars**. The estimate today is 351 to 358 dollars.
+is above 500 dollars**. The estimate today is 351 to 358 dollars. The stop that the code
+enforces is `--max-usd`, a spend limit per model that every paid command must be given
+(section 7).
 
 **The grade** (section 4) follows from the decision of 2026-11-25 that this run has the
 same design as the open models. It is written here for Omer to read before the freeze.
@@ -141,6 +143,9 @@ setting, the effort level and, in the tool arm, the tool list. Nothing else.
   model decide), no fallback model. **A fallback would have another model answer the
   trial, so it is never set.**
 - The runner refuses to send a request that holds any other field.
+- The client talks to `https://api.anthropic.com`, given explicitly and recorded in the
+  manifest. The runner refuses to start when the environment sets another address
+  (`ANTHROPIC_BASE_URL`). A live request has a 600-second limit and one retry by the SDK.
 
 **The tools** are the open models' suite, run on the laptop as local servers:
 `pddl-copilot` at commit `5e4f9c0`, with pddl-pyvalidator **0.1.5**. The tool names,
@@ -207,8 +212,25 @@ tool arm is paid at the list price.
   `ctx_no_room_turns: 1` in its token record. The rerun's loader then reads it as a
   "no room" row, as for the open models.
 - A refusal by the model (section 3.6).
+- **If the first request of a trial is rejected as too long, the run of that folder
+  stops.** The first request holds only the task's own prompt, so this is a setup
+  error and not an outcome.
 - A "pause" stop cannot happen without the provider's own server tools. If it does, the
   trial is an error row and is counted.
+
+**How an over-length row here differs from one of the open models**, written down so
+that the analysis treats them alike on purpose. Both have an empty answer, a stop for
+length, `ctx_no_room_turns: 1`, and the tool calls made so far. The differences:
+
+- *Turn count.* For an open model the turn that had no room is counted in
+  `tokens.turns` (the harness records an empty turn). Here a request that the provider
+  rejects produced no response, so it is not counted; when the provider instead answers
+  with the stop reason `model_context_window_exceeded`, that response is counted.
+- *Error text.* The open rows carry no error text. These rows carry
+  `api: prompt is too long` in `error`, and the provider's full message in the sidecar.
+- *Clipping.* An open model's request can also be clipped (answered with a smaller
+  output allowance). That does not exist here: a request either fits or is rejected.
+- *Where it can happen.* Here only after a tool result, never on the first request.
 
 ### 2.6 What is stored
 
@@ -230,9 +252,21 @@ Per model and arm, one folder: `<model>_no-tools` and `<model>_tools`, under
   full usage block of every turn; the effort and thinking settings; the number of turns;
   and the raw content of every turn, so that the notes and the full answers can be read
   again at no cost.
-- **`attempts.jsonl`:** every attempt that failed for a reason outside the model and
-  left the trial undone.
-- **`run_manifest.json`:** the settings. A resume under other settings is refused.
+- **`attempts.jsonl`:** every try that failed for a reason outside the model, with its
+  turn, and every trial that was abandoned, with the usage of its discarded turns.
+- **`spend.jsonl`** and, in the run's root folder, **`spend_<model>.json`:** the usage and
+  the price of every response, and the model's running total (section 7).
+- **`run_manifest.json`:** the settings, the provider's address, and the sha256 of the
+  runner's three files. A resume under other settings, or with a changed runner, is
+  refused.
+- **`run_provenance.jsonl`:** one line per start: this repo's commit, whether the
+  runner's files or this registration had uncommitted changes, and the sha256 of the
+  runner's files and of this registration. The commit and the registration's digest are
+  kept here and not in the manifest, because the manifest refuses a resume on any
+  difference and this document gains its records (sections 10 and 11) during the run.
+- A lock file per folder lets one paid command run in a folder at a time. On start, a
+  half-written last line of any of these files is cut back to the last complete line;
+  the cut is counted and logged (`repairs.log`).
 
 Stop reasons are written in the harness's words: an ordinary end is `stop`, the output
 cap is `length`, an exhausted loop is `tool_calls`. The provider's own word is in the
@@ -276,7 +310,15 @@ The paper states each of these beside the Claude rows.
    times as many tokens for the same text as Sonnet 4.6, so the cap is tighter for it.
    For Haiku 5.5 the ratio is not known. On simulate the cap is expected to cut many
    traces in both arms: with the same cap, 89 of 300 unaided and 30 of 100 tool answers
-   of Sonnet 4.6 stopped at it.
+   of Sonnet 4.6 stopped at it. **Sonnet's notes between tool calls count against the
+   cap of the request they are written in.** A long note leaves less room for the tool
+   call or the answer in that request.
+   **A label the open rows never carry.** If Sonnet's final turn reaches the cap holding
+   a note and no answer text, the harness's rule labels the row `think_overflow`
+   (stopped for length, thinking present, answer empty). No row of the open models
+   carries that label, because their stored thinking is always empty. The analysis maps
+   it to "stopped at the cap with no answer", the label the same event gets for the
+   open models.
 5. **Hosted models.** The weights behind a model name can change without notice. Each
    trial records the model ID the provider returned and its time. Both arms of a model
    are queried on the same UTC day (section 6).
@@ -286,6 +328,10 @@ The paper states each of these beside the Claude rows.
    trial is never run again and never sent to another model. **Rule for the analysis:**
    a refusal is wrong under the grade, stays in the denominator, is kept out of the VOID
    rule of section 7, and is counted and reported per model, arm and task.
+   **Error rows and RQ2, RQ3.** An error row (a refusal, a pause, an unknown stop) holds
+   no tool calls and no tokens; those are in the sidecar. Such a trial is left out of
+   the four tool-choice classes of RQ2 and out of RQ3's "tool right" set, and is counted
+   beside them, per model and task. "No room" rows are treated as for the open models.
 7. **The tools run on another machine.** The same tool commit and validator release as
    the open models, but on the laptop, with the planners and libraries installed from
    the same requirement ranges on another day. The installed versions and the tool
@@ -371,14 +417,27 @@ the dates.
 Every spend needs Omer's go-ahead, with the cost table of section 9 in front of him. The
 pilot and the full run are asked for separately.
 
-**Order.** The checkout of section 2.3 is made → dry run (no call) → the itemized
-estimate is posted → pilot **[Omer, 3]** → plumbing check → full run. The analysis is
+**Order.** The checkout of section 2.3 is made → dry run (no call) → **tools self-check**
+(no call) → the itemized estimate is posted → pilot **[Omer, 3]** → plumbing check →
+full run. The analysis is
 written and frozen (section 10) after the plumbing check; the full run may be collected
 meanwhile, and none of its rows is read before the freeze → frozen analysis → readout
 and a `NUMBERS.md` entry.
 
 **Dry run.** `python -m tools.frontier55.runner dry-run --marketplace-path <checkout>`
-builds every request and prints the counts and digests. It makes no call.
+builds every request and prints the counts and digests. It builds no client and makes no
+call.
+
+**Tools self-check, before the pilot, local and free.**
+`python -m tools.frontier55.runner tools-selfcheck --marketplace-path <checkout>` calls,
+through the checkout, the right tool of every task on every fixture of the full run: the
+planner on the 100 problems, the simulate tool on the 100 cached plans, and the three
+validators on every valid and broken domain, problem and plan (1,520 fixtures). Each
+result is graded by the harness's own with-tools rule against the ground-truth cache and
+the fixture labels. No model is involved. **Any disagreement is resolved before the
+pilot.** Result of 2026-11-26 on the scratch checkout of section 2.3: 1,520 of 1,520
+agree (solve 100, validate_domain 120, validate_problem 200, validate_plan 1,000,
+simulate 100), and the planner returned the cached plan on all 100 problems.
 
 **Pilot.** Wording v11, both arms, both models. Per domain, on its first problem:
 
@@ -408,9 +467,21 @@ nothing else:
    that was asked for;
 6. the counts of each kind of ending (answer, loop exhausted, refused for length,
    refusal, pause, unknown, cut by storage) and of failed attempts;
-7. in the tool arm of Sonnet 5.5: the number of notes between tool calls that came back
-   before a next request, and the number that went back unchanged in that next request.
-   The two numbers must be equal. Numbers only; no note is printed.
+7. notes between tool calls. For every request after the first of a trial, the runner
+   reads back the bytes it sent and counts the `thinking` blocks of the previous
+   response that are in the request body, byte-equal as JSON. The check prints the
+   number of such blocks returned and the number found in the next request body. The
+   two must be equal. Numbers only; no note is printed;
+8. thinking where none may be: the thinking token counts of the usage blocks and the
+   number of `thinking` blocks must be zero in both arms of Haiku 5.5 and in the
+   no-tools arm of Sonnet 5.5; for the tool arm of Sonnet 5.5 they are reported;
+9. cache token counts are zero in every folder; every request went to
+   `api.anthropic.com`; the model ID returned does not change within a folder;
+10. total input and output tokens and the dollars they imply at the registered prices,
+    per model and arm, beside the estimate of section 9 and the spend ledger;
+11. per tool name: the number of calls, the number flagged as errors, and the number of
+    results that are an error object or start with `Tool error:`;
+12. any limit number found in the text of an over-length error.
 
 `python -m tools.frontier55.runner pilot-check --out results/frontier55-pilot` prints
 these items. It prints no rate of right answers, no verdict, no tool-call count per task
@@ -423,21 +494,36 @@ is started. The two models may run on different days.
   sent and every tool trial was requested on one UTC date. The sidecar holds the times.
 - **If the batch does not end that day:** its results are still used. A batch is
   processed by the provider at a time of its choosing after it is sent; the date sent
-  and the date ended are both reported, and the paper states the span. If the batch
-  expires, or more than 1% of its trials come back failed, the no-tools arm of that
-  model is sent again on a later day **together with a fresh tool arm**, in new folders,
-  and the first attempt is kept and reported. This is declared here and is not a
-  deviation.
+  and the date ended are both reported, and the paper states the span. Failed items and
+  an expired batch follow the order given under "Failed batch items" below. A rerun of
+  both arms is declared here and is not a deviation.
 - **If the tool arm does not finish that day** (a rate limit, an outage): it is resumed
   as soon as possible. The trials requested on a later date are counted and reported.
   If more than 5% of a model's tool trials fall on a later date, both arms of that
   model are run again together, as above.
 
-**Resume.** A tool trial with a row is never run again. A trial that failed for a reason
-outside the model (rate limit, server error, connection) has no row; it is tried again,
-and every failed attempt is logged. A batch that was sent is polled again, never sent
-twice: its ID is stored when it is sent. Batch items that come back failed or expired
-are sent again in a second batch, on the same day when possible.
+**Resume.** A tool trial with a row is never run again. When a request fails for a
+reason outside the model (rate limit, server error, connection), the same turn is tried
+once more with the conversation as it stands; the earlier turns are not asked again. If
+that fails too, the trial is abandoned without a row and starts again from its first
+turn on the next start. The usage of its discarded turns is written to `attempts.jsonl`
+and is counted in the spend. Every failed try is logged.
+
+**The batch is sent once.** The send is not retried. If it fails so that it is not known
+whether the batch exists, the folder keeps a "send started" entry without an ID and
+nothing more is sent from it; `batch-recover` lists the account's batches and finds the
+ID by creation time and request count. If the provider plainly refuses the send, no
+batch exists and the entry is removed. A batch that was sent is polled again, never
+sent twice.
+
+**Failed batch items, in this order.** (1) Items that come back failed, canceled or
+expired are sent again once, in a second batch, the same day. (2) If after that more
+than 1% of the arm's trials are still without a row, or if the first batch expired as a
+whole, both arms of that model are run again together in new folders, and the first
+attempt is kept and reported.
+
+**A model ID that changes within a folder** stops that folder. No row is written for
+the trial that showed the new ID, and the change is reported.
 
 **During the run.** Monitoring reads row counts and the counts of endings only.
 
@@ -461,8 +547,16 @@ the same trials in both arms of a model. A short folder is resumed, not analysed
 - **The storage rule:** any row cut by storage is reported and graded from the sidecar.
 - **Spend:** the itemized estimate is posted before the first paid request. If the
   estimate for the whole run is above 500 dollars, nothing is sent and Omer is asked.
-  If the spend of a model passes its "bound" in section 9, the run of that model stops
-  and Omer is asked.
+  **The enforced stop is `--max-usd`.** Every paid command must be given it; there is
+  no default. The runner adds up the usage of every response at the registered prices
+  (section 9; cache tokens are priced too if they ever appear), the responses of
+  abandoned tries and the batch results included, over both arms of the model, and
+  writes the running total to the run folder. When the model's total passes `--max-usd`
+  the folder stops and Omer is asked. The value per model is set by the session at each
+  start and recorded in section 10. The "bound" column of section 9 is a ceiling of the
+  estimate, not a stop.
+- **The first request of a trial rejected as too long**, or **a model ID that changes
+  within a folder**, stops that folder (sections 2.5 and 6).
 - Any other stop is a deviation (section 12).
 
 ---
@@ -577,7 +671,8 @@ full output cap, and it is the per-model stop of section 7.
 
 Empty. To be filled when the analysis is written and frozen: the analysis script and its
 package hash, the five gates, the runner's commit, the sha256 of the runner's files, the
-tool checkout and its tool-list digest, the SDK version and the API version header.
+tool checkout and its tool-list digest, the SDK version and the API version header, and
+the `--max-usd` value given per model at each start.
 
 ## 11. Pilot record
 

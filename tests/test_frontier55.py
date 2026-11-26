@@ -75,11 +75,13 @@ def mcp_ok() -> FakeMCP:
 
 
 def msg(content: list[dict], stop: str, model: str = SONNET, in_tok: int = 100,
-        out_tok: int = 20, **more) -> dict:
+        out_tok: int = 20, think_tok: int | None = None, **more) -> dict:
+    usage = {"input_tokens": in_tok, "output_tokens": out_tok}
+    if think_tok is not None:
+        usage["output_tokens_details"] = {"thinking_tokens": think_tok}
     return {"id": "msg_x", "type": "message", "role": "assistant", "model": model,
             "content": content, "stop_reason": stop, "stop_sequence": None,
-            "usage": {"input_tokens": in_tok, "output_tokens": out_tok,
-                      "output_tokens_details": {"thinking_tokens": 3}}, **more}
+            "usage": usage, **more}
 
 
 THINK = {"type": "thinking", "thinking": "Calling the planner.", "signature": "SIG==",
@@ -130,7 +132,7 @@ def has_tool_result(body: dict) -> bool:
 def one_tool_then_answer(req, body, n):
     if has_tool_result(body):
         return msg([TEXT_PLAN], "end_turn", in_tok=400, out_tok=30)
-    return msg([THINK, tool_use()], "tool_use")
+    return msg([THINK, tool_use()], "tool_use", think_tok=3)
 
 
 def loader_row(row: dict, with_tools: bool):
@@ -541,23 +543,36 @@ async def test_live_resume(r: TestResults) -> None:
         r.check_eq("plumbing check", {k: rep[k] for k in (
             "rows", "duplicate_keys", "rows_without_sidecar_line", "half_written_lines",
             "rows_the_frozen_loader_refuses", "rows_cut_by_storage", "non_empty_answers",
-            "answers_counted", "settings_as_registered", "api_version_sent",
-            "model_ids_returned", "endings", "trials_with_a_note_between_tool_calls",
+            "answers_counted", "api_version_sent", "request_hosts",
+            "model_ids_returned", "endings",
             "requests_in_sidecar", "requests_whose_settings_differ_from_the_registered",
-            "requests_with_a_sampling_field", "model_ids_start_with_the_requested_id",
+            "requests_with_a_sampling_field",
+            "model_ids_start_with_the_requested_id_and_do_not_change",
             "thinking_blocks_returned_before_a_next_request",
-            "thinking_blocks_passed_back_unchanged", "passes")},
+            "thinking_blocks_in_the_next_request_body_byte_equal",
+            "thinking_tokens", "thinking_blocks_returned", "thinking_expected_to_be_zero",
+            "cache_tokens", "input_tokens", "output_tokens", "implied_usd_of_the_rows",
+            "section_9_estimate_usd", "tool_calls_by_tool",
+            "limit_numbers_in_over_length_errors", "passes")},
             {"rows": 3, "duplicate_keys": 0, "rows_without_sidecar_line": 0,
              "half_written_lines": 0, "rows_the_frozen_loader_refuses": 0,
              "rows_cut_by_storage": 0, "non_empty_answers": 3, "answers_counted": 3,
-             "settings_as_registered": True, "api_version_sent": ["2023-06-01"],
+             "api_version_sent": ["2023-06-01"], "request_hosts": ["api.anthropic.com"],
              "model_ids_returned": [SONNET], "endings": {"answer": 3},
-             "trials_with_a_note_between_tool_calls": 3, "requests_in_sidecar": 6,
+             "requests_in_sidecar": 6,
              "requests_whose_settings_differ_from_the_registered": 0,
              "requests_with_a_sampling_field": 0,
-             "model_ids_start_with_the_requested_id": True,
+             "model_ids_start_with_the_requested_id_and_do_not_change": True,
              "thinking_blocks_returned_before_a_next_request": 3,
-             "thinking_blocks_passed_back_unchanged": 3, "passes": True})
+             "thinking_blocks_in_the_next_request_body_byte_equal": 3,
+             "thinking_tokens": 9, "thinking_blocks_returned": 3,
+             "thinking_expected_to_be_zero": False, "cache_tokens": 0,
+             "input_tokens": 1500, "output_tokens": 150,
+             "implied_usd_of_the_rows": round((1500 * 2.0 + 150 * 10.0) / 1e6, 4),
+             "section_9_estimate_usd": [11.26, 11.26],
+             "tool_calls_by_tool": {"classic_planner": {"calls": 3, "is_error": 0,
+                                                        "error_results": 0}},
+             "limit_numbers_in_over_length_errors": [], "passes": True})
         # the check fails on a setting that differs, a sampling field, another model's
         # id, or a note that did not go back
         good = (out / "trial_meta.jsonl").read_text()
@@ -567,7 +582,12 @@ async def test_live_resume(r: TestResults) -> None:
                 ("a sampling field", lambda m: m["turns"][0]["request"].update(temperature=0)),
                 ("another model id", lambda m: m.update(model_ids_returned=["claude-opus-5"])),
                 ("a note not passed back", lambda m: m["turns"][1]
-                 .update(thinking_blocks_passed_back=0))):
+                 .update(thinking_blocks_passed_back=0)),
+                ("cache tokens", lambda m: m["turns"][0]["usage"]
+                 .update(cache_read_input_tokens=5)),
+                ("another host", lambda m: m["turns"][0].update(request_host="example.org")),
+                ("a second model id", lambda m: m.update(
+                    model_ids_returned=[SONNET, SONNET + "-20270101"]))):
             lines = [json.loads(x) for x in good.splitlines()]
             edit(lines[0])
             (out / "trial_meta.jsonl").write_text("".join(json.dumps(x) + "\n" for x in lines))
@@ -582,7 +602,8 @@ async def test_live_resume(r: TestResults) -> None:
                    R.pilot_check_cell(out, SONNET, "tools", 160)["passes"], False)
         await c.close()
 
-        # a failure outside the model: logged, tried again, the row says which attempt
+        # a failure outside the model on the first turn: logged, the same turn is tried
+        # again, the trial completes
         out2 = Path(td) / "second"
         out2.mkdir()
         state = {"failed": False}
@@ -594,22 +615,23 @@ async def test_live_resume(r: TestResults) -> None:
             return one_tool_then_answer(req, body, n)
         wire = Wire(flaky)
         c = wire.client()
-        counts = await R.run_live_cell(c, mcp, SONNET, jobs[:1], out2, concurrency=1, attempts=2)
+        counts = await R.run_live_cell(c, mcp, SONNET, jobs[:1], out2, concurrency=1)
         att, _ = R.read_jsonl(out2 / "attempts.jsonl")
-        metas, _ = R.read_jsonl(out2 / "trial_meta.jsonl")
-        r.check_eq("failed attempt logged", [(a["what"], a["attempt"]) for a in att],
-                   [("infra", 1)])
-        r.check_eq("then completed on attempt 2", (counts["rows"], metas[0]["attempt"]), (1, 2))
+        r.check_eq("failed try logged", [(a["what"], a["turn"], a["attempt"]) for a in att],
+                   [("infra", 1, 1)])
+        r.check_eq("then completed", (counts["rows"], wire.n), (1, 3))
         await c.close()
 
-        # every attempt fails: no row, the trial stays undone
+        # every try fails: no row, the trial stays undone
         out3 = Path(td) / "third"
         out3.mkdir()
         wire = Wire(lambda q, b, n: api_error(500, "api_error", "down"))
         c = wire.client()
-        counts = await R.run_live_cell(c, mcp, SONNET, jobs[:1], out3, attempts=2)
-        r.check_eq("undone trial", (counts["rows"], counts["undone"],
-                                    counts["failed_attempts_logged"]), (0, 1, 2))
+        counts = await R.run_live_cell(c, mcp, SONNET, jobs[:1], out3)
+        att, _ = R.read_jsonl(out3 / "attempts.jsonl")
+        r.check_eq("undone trial", (counts["rows"], counts["undone"], wire.n,
+                                    [a["what"] for a in att]),
+                   (0, 1, 2, ["infra", "infra", "trial_abandoned"]))
         r.check("no row file content", not (out3 / "trials.jsonl").exists())
         await c.close()
 
@@ -727,7 +749,7 @@ async def test_batch(r: TestResults) -> None:
                            "thinking"]})
         rep = R.pilot_check_cell(out, HAIKU, "no-tools", 2)
         r.check_eq("batch plumbing check", (rep["passes"], rep["requests_in_sidecar"],
-                                            rep["model_ids_start_with_the_requested_id"],
+                                            rep["model_ids_start_with_the_requested_id_and_do_not_change"],
                                             rep["stored_batch_requests_as_registered"],
                                             rep["endings"]),
                    (True, 2, True, True, {"answer": 1, "refusal": 1}))
@@ -976,6 +998,540 @@ def test_cost(r: TestResults) -> None:
     r.check("render", "both models" in COST.render({"x": full}))
 
 
+def live_mcp() -> FakeMCP:
+    mcp = mcp_ok()
+    mcp.tools = [{"type": "function", "function": {
+        "name": "classic_planner", "description": "Plan.",
+        "parameters": TOOLS[0]["input_schema"]}}]
+    return mcp
+
+
+async def test_money_paths(r: TestResults) -> None:
+    # prices
+    r.check_eq("sonnet live price", AR.usage_usd(SONNET, {"input_tokens": 1_000_000,
+                                                          "output_tokens": 100_000}, batch=False),
+               2.0 + 1.0)
+    r.check_eq("sonnet batch price", AR.usage_usd(SONNET, {"input_tokens": 1_000_000,
+                                                           "output_tokens": 100_000}, batch=True),
+               1.5)
+    r.check_eq("haiku base", round(AR.usage_usd(HAIKU, {"input_tokens": 100_000,
+                                                        "output_tokens": 1000}, batch=False), 6),
+               round((100_000 * 0.10 + 1000 * 0.50) / 1e6, 6))
+    r.check_eq("haiku above 100,000 prompt tokens",
+               round(AR.usage_usd(HAIKU, {"input_tokens": 100_001, "output_tokens": 1000},
+                                  batch=False), 6),
+               round((100_001 * 0.50 + 1000 * 2.50) / 1e6, 6))
+    r.check_eq("cache tokens are priced",
+               round(AR.usage_usd(SONNET, {"input_tokens": 0, "output_tokens": 0,
+                                           "cache_creation_input_tokens": 1_000_000,
+                                           "cache_read_input_tokens": 1_000_000}, batch=False), 6),
+               round(2.0 * 1.25 + 2.0 * 0.10, 6))
+    r.check_eq("thinking and cache token scans",
+               (AR.thinking_tokens_of({"output_tokens": 9, "output_tokens_details": {
+                   "thinking_tokens": 4, "reasoning_tokens": 1}}),
+                AR.cache_tokens_of({"cache_read_input_tokens": 2,
+                                    "cache_creation_input_tokens": 3, "input_tokens": 7})),
+               (5, 5))
+
+    jobs = [job("solve"), job("validate_domain"), job("validate_problem")]
+    mcp = live_mcp()
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td) / "frontier55-pilot"
+        out = R.cell_dir(root, SONNET, "tools")
+        out.mkdir(parents=True)
+        # the ledger: every response adds its usage; the total is written to the run folder
+        wire = Wire(one_tool_then_answer)
+        c = wire.client()
+        spend = R.Spend(root, SONNET, 1.0)
+        await R.run_live_cell(c, mcp, SONNET, jobs[:1], out, spend=spend)
+        one_trial = (100 * 2.0 + 20 * 10.0 + 400 * 2.0 + 30 * 10.0) / 1e6
+        ledger, _ = R.read_jsonl(out / "spend.jsonl")
+        total = json.loads((root / f"spend_{SONNET}.json").read_text())
+        r.check_eq("ledger: one line per response", [x["what"] for x in ledger],
+                   ["live_turn", "live_turn"])
+        r.check_eq("ledger total", (round(spend.total, 8), total["total_usd"], total["max_usd"]),
+                   (round(one_trial, 8), round(one_trial, 6), 1.0))
+        r.check_eq("a new ledger object reads the total back",
+                   round(R.Spend(root, SONNET, 1.0).total, 8), round(one_trial, 8))
+        # the stop: the cell halts once the model's total is above --max-usd
+        spend = R.Spend(root, SONNET, one_trial * 1.2)
+        before = wire.n
+        try:
+            await R.run_live_cell(c, mcp, SONNET, jobs, out, concurrency=1, spend=spend)
+            r.check("spend stop halts the cell", False, "no halt")
+        except R.SpendStop:
+            r.check("spend stop halts the cell", True)
+        r.check_eq("spend stop: one more response was paid for, then nothing",
+                   (wire.n - before, len(R.read_jsonl(out / "trials.jsonl")[0])), (1, 1))
+        try:
+            await R.run_live_cell(c, mcp, SONNET, jobs, out, spend=spend)
+            r.check("over the stop: nothing is sent at all", False, "ran")
+        except R.SpendStop:
+            r.check("over the stop: nothing is sent at all", wire.n - before == 1)
+        await c.close()
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td) / "frontier55-pilot"
+        out = R.cell_dir(root, SONNET, "tools")
+        out.mkdir(parents=True)
+        # a failure in the middle of a trial: the SAME conversation goes on from the
+        # failed turn; turn 1 is not asked again
+        state = {"fail": 1}
+
+        def flaky_turn2(req, body, n):
+            if has_tool_result(body) and state["fail"] > 0:
+                state["fail"] -= 1
+                return api_error(529, "overloaded_error", "busy")
+            return one_tool_then_answer(req, body, n)
+        wire = Wire(flaky_turn2)
+        c = wire.client()
+        spend = R.Spend(root, SONNET, 5.0)
+        counts = await R.run_live_cell(c, mcp, SONNET, jobs[:1], out, spend=spend)
+        att, _ = R.read_jsonl(out / "attempts.jsonl")
+        r.check_eq("mid-trial failure: three requests, turn 1 asked once", wire.n, 3)
+        r.check_eq("the failed turn is sent again unchanged", wire.bodies[1], wire.bodies[2])
+        r.check_eq("the try is logged with its turn", [(a["what"], a["turn"], a["attempt"])
+                                                       for a in att], [("infra", 2, 1)])
+        metas, _ = R.read_jsonl(out / "trial_meta.jsonl")
+        r.check_eq("the trial completed with two turns", (counts["rows"], metas[0]["n_turns"]),
+                   (1, 2))
+        # both tries of turn 2 fail: the trial is abandoned, the paid turn is recorded
+        state["fail"] = 2
+        before = wire.n
+        counts = await R.run_live_cell(c, mcp, SONNET, jobs[:2], out, spend=spend)
+        att, _ = R.read_jsonl(out / "attempts.jsonl")
+        ab = [a for a in att if a["what"] == "trial_abandoned"]
+        r.check_eq("abandoned after two tries of the turn", (wire.n - before, counts["rows"],
+                                                             counts["undone"], len(ab)),
+                   (3, 1, 1, 1))
+        r.check_eq("the discarded turn's usage is written down",
+                   (ab[0]["discarded_turns"], ab[0]["discarded_usage"]),
+                   (1, [{"input_tokens": 100, "output_tokens": 20,
+                         "output_tokens_details": {"thinking_tokens": 3}}]))
+        ledger, _ = R.read_jsonl(out / "spend.jsonl")
+        r.check_eq("and it is in the spend ledger (3 paid responses so far)", len(ledger), 3)
+        # the next run starts that trial again from its first turn
+        before = wire.n
+        counts = await R.run_live_cell(c, mcp, SONNET, jobs[:2], out, spend=spend)
+        r.check_eq("restart from turn 1", (wire.n - before, counts["rows"],
+                                           wire.bodies[before]["messages"].__len__()), (2, 2, 1))
+        await c.close()
+
+        # seven trials in a row that cannot be completed stop the arm
+        out7 = Path(td) / "seven"
+        out7.mkdir()
+        many = [job("solve", pv=pv) for pv in (11, 12, 13)] + \
+               [job("validate_domain", pv=pv) for pv in (11, 12, 13)] + \
+               [job("validate_problem", pv=pv) for pv in (11, 12, 13)]
+        wire = Wire(lambda q, b, n: api_error(503, "api_error", "down"))
+        c = wire.client()
+        try:
+            await R.run_live_cell(c, mcp, SONNET, many, out7, concurrency=1)
+            r.check("seven in a row stop the arm", False, "no halt")
+        except R.Halt as exc:
+            r.check("seven in a row stop the arm", "7 trials in a row" in str(exc), str(exc))
+        r.check_eq("seven trials, two tries each, then nothing", wire.n, 14)
+        await c.close()
+
+        # the first request of a trial is rejected as too long: a setup error, the cell halts
+        out8 = Path(td) / "first"
+        out8.mkdir()
+        wire = Wire(lambda q, b, n: api_error(400, "invalid_request_error",
+                                              "prompt is too long: 2000000 > 1000000"))
+        c = wire.client()
+        try:
+            await R.run_live_cell(c, mcp, SONNET, jobs, out8, concurrency=1)
+            r.check("over-length first request halts the cell", False, "no halt")
+        except R.ApparatusError as exc:
+            r.check("over-length first request halts the cell",
+                    wire.n == 1 and not (out8 / "trials.jsonl").exists(), str(exc))
+        await c.close()
+
+        # the model id the provider returns changes within a folder: halt, no row
+        out9 = Path(td) / "ids"
+        out9.mkdir()
+
+        def two_ids(req, body, n):
+            model = SONNET if n <= 2 else SONNET + "-20270101"
+            m = one_tool_then_answer(req, body, n)
+            return dict(m, model=model)
+        wire = Wire(two_ids)
+        c = wire.client()
+        try:
+            await R.run_live_cell(c, mcp, SONNET, jobs, out9, concurrency=1)
+            r.check("a changed model id halts the cell", False, "no halt")
+        except R.Halt as exc:
+            r.check("a changed model id halts the cell", "changed" in str(exc), str(exc))
+        att, _ = R.read_jsonl(out9 / "attempts.jsonl")
+        r.check_eq("changed id: one row kept, the new one not written, logged",
+                   (len(R.read_jsonl(out9 / "trials.jsonl")[0]), [a["what"] for a in att]),
+                   (1, ["model_id_changed"]))
+        await c.close()
+
+    # the live client
+    saved = {k: os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL")}
+    try:
+        os.environ["ANTHROPIC_API_KEY"] = "not-a-key"
+        os.environ.pop("ANTHROPIC_BASE_URL", None)
+        c = R.make_client()
+        r.check_eq("client: one SDK retry, 600 s, the provider's address",
+                   (c.max_retries, float(c.timeout), str(c.base_url).rstrip("/")),
+                   (1, 600.0, "https://api.anthropic.com"))
+        await c.close()
+        os.environ["ANTHROPIC_BASE_URL"] = "https://api.anthropic.com/"
+        await R.make_client().close()
+        r.check("the provider's own address in the environment is accepted", True)
+        os.environ["ANTHROPIC_BASE_URL"] = "http://localhost:8000"
+        try:
+            R.make_client()
+            r.check("another base URL in the environment is refused", False, "accepted")
+        except R.Halt:
+            r.check("another base URL in the environment is refused", True)
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    r.check_eq("turn tries", (R.TURN_ATTEMPTS, R.CLIENT_MAX_RETRIES, R.CLIENT_TIMEOUT_S),
+               (2, 1, 600.0))
+
+
+async def test_batch_send_and_recover(r: TestResults) -> None:
+    jobs = [job(t, HAIKU, with_tools=False) for t in ("solve", "validate_domain", "simulate")]
+    cids = [R.custom_id(R.trial_key(HAIKU, j, False)) for j in jobs]
+
+    def listing(*batches):
+        return {"data": list(batches), "has_more": False,
+                "first_id": batches[0]["id"] if batches else None,
+                "last_id": batches[-1]["id"] if batches else None}
+
+    for label, reply, exc_type, entry_left, posts in (
+            ("connection lost", lambda q, b, n: (_ for _ in ()).throw(
+                httpx.ConnectError("reset")), R.Halt, True, 1),
+            ("500", lambda q, b, n: api_error(500, "api_error", "boom"), R.Halt, True, 1),
+            ("400", lambda q, b, n: api_error(400, "invalid_request_error", "bad"),
+             R.ApparatusError, False, 1),
+            ("429", lambda q, b, n: api_error(429, "rate_limit_error", "slow"), R.Halt,
+             False, 1)):
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td)
+            wire = Wire(reply)
+            c = wire.client(max_retries=3)       # the send itself must not retry
+            try:
+                await R.batch_submit(c, HAIKU, jobs, out)
+                r.check(f"send fails ({label})", False, "no error")
+            except exc_type as exc:
+                r.check(f"send fails ({label}): {exc_type.__name__}",
+                        type(exc) is exc_type, type(exc).__name__)
+            left = R.read_batches(out)
+            r.check_eq(f"send fails ({label}): tried once, entry kept={entry_left}",
+                       (wire.n, len(left), bool(left and left[0].get("send_error")),
+                        bool(left and left[0]["batch_id"])), (posts, int(entry_left),
+                                                              entry_left, False))
+            await c.close()
+
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        wire = Wire(lambda q, b, n: api_error(500, "api_error", "boom"))
+        c = wire.client()
+        try:
+            await R.batch_submit(c, HAIKU, jobs, out)
+        except R.Halt:
+            pass
+        await c.close()
+        started = R.read_batches(out)[0]["send_started_at_utc"]
+        try:
+            await R.batch_submit(Wire(lambda q, b, n: dict(BATCH)).client(), HAIKU, jobs, out)
+            r.check("no second send while the first is unresolved", False, "sent")
+        except R.Halt as exc:
+            r.check("no second send while the first is unresolved", "batch-recover" in str(exc))
+        try:
+            await R.batch_poll(Wire(lambda q, b, n: dict(BATCH)).client(), out, wait=False)
+            r.check("fetch asks for recover", False, "polled")
+        except R.Halt as exc:
+            r.check("fetch asks for recover", "batch-recover" in str(exc))
+        mine = dict(BATCH, id="msgbatch_mine", created_at=started.replace("Z", "+00:00"))
+        other = dict(BATCH, id="msgbatch_other", created_at=started.replace("Z", "+00:00"),
+                     request_counts=dict(BATCH["request_counts"], processing=77))
+        old = dict(BATCH, id="msgbatch_old", created_at="2026-01-01T00:00:00+00:00")
+
+        # nothing matches: nothing changes, unless --drop
+        wire = Wire(lambda q, b, n: listing(other, old))
+        c = wire.client()
+        rep = await R.batch_recover(c, out)
+        r.check_eq("recover: no match, nothing changed",
+                   (rep["matches"], len(R.read_batches(out)), wire.paths),
+                   ([], 1, ["GET /v1/messages/batches"]))
+        # two match: nothing changes
+        rep = await R.batch_recover(Wire(lambda q, b, n: listing(
+            mine, dict(mine, id="msgbatch_twin"))).client(), out)
+        r.check_eq("recover: two matches, nothing changed",
+                   (len(rep["matches"]), R.read_batches(out)[0]["batch_id"]), (2, None))
+        # one matches by time and request count: its id is written
+        rep = await R.batch_recover(Wire(lambda q, b, n: listing(other, mine, old)).client(), out)
+        r.check_eq("recover: the id is written",
+                   (rep["action"], R.read_batches(out)[0]["batch_id"],
+                    [m["batch_id"] for m in rep["matches"]]),
+                   ("id written", "msgbatch_mine", ["msgbatch_mine"]))
+        try:
+            await R.batch_recover(c, out)
+            r.check("recover: nothing left to recover", False, "ran")
+        except R.Halt:
+            r.check("recover: nothing left to recover", True)
+        await c.close()
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td)
+        try:
+            await R.batch_submit(Wire(lambda q, b, n: api_error(500, "api_error", "x")).client(),
+                                 HAIKU, jobs, out)
+        except R.Halt:
+            pass
+        rep = await R.batch_recover(Wire(lambda q, b, n: listing()).client(), out, drop=True)
+        r.check_eq("recover --drop removes the entry when no batch exists",
+                   (R.read_batches(out), "removed" in rep["action"]), ([], True))
+
+    # the size limits
+    saved = R.BATCH_MAX_REQUESTS
+    R.BATCH_MAX_REQUESTS = 2
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            wire = Wire(lambda q, b, n: dict(BATCH))
+            try:
+                await R.batch_submit(wire.client(), HAIKU, jobs, Path(td))
+                r.check("a batch over the limit is not sent", False, "sent")
+            except R.ApparatusError:
+                r.check("a batch over the limit is not sent",
+                        wire.n == 0 and R.read_batches(Path(td)) == [])
+    finally:
+        R.BATCH_MAX_REQUESTS = saved
+
+    # canceled and expired items, batch spend, a changed model id
+    def raw_line(cid, result):
+        return json.dumps({"custom_id": cid, "result": result}) + "\n"
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td) / "frontier55-pilot"
+        out = R.cell_dir(root, HAIKU, "no-tools")
+        out.mkdir(parents=True)
+        ok = msg([{"type": "text", "text": "VERDICT: VALID"}], "end_turn", HAIKU,
+                 in_tok=1_000_000, out_tok=100_000)
+        (out / "batch_requests_1.jsonl").write_text("".join(
+            json.dumps(q) + "\n" for q in R.batch_requests(HAIKU, jobs)[0]))
+        (out / "batch_results_1.jsonl").write_text(
+            raw_line(cids[1], {"type": "succeeded", "message": ok})
+            + raw_line(cids[0], {"type": "canceled"})
+            + raw_line(cids[2], {"type": "expired"}))
+        R.write_batches(out, [{"n": 1, "batch_id": "msgbatch_1", "fetched": False,
+                               "n_requests": 3}])
+        spend = R.Spend(root, HAIKU, 100.0)
+        entry = await R.batch_poll(None, out, wait=False, spend=spend)
+        r.check_eq("batch spend: half price, the higher Haiku rate above 100,000 tokens",
+                   round(spend.total, 6), round((1_000_000 * 0.50 + 100_000 * 2.50) / 1e6 / 2, 6))
+        await R.batch_poll(None, out, wait=False, spend=spend)
+        r.check_eq("batch spend is recorded once", len(R.read_jsonl(out / "spend.jsonl")[0]), 1)
+        counts = await R.batch_grade(HAIKU, jobs, out, mcp_ok(), entry)
+        att, _ = R.read_jsonl(out / "attempts.jsonl")
+        r.check_eq("canceled and expired items are logged and left undone",
+                   (counts["rows"], counts["undone"], sorted(a["what"] for a in att)),
+                   (1, 2, ["batch_canceled", "batch_expired"]))
+        # a second batch that answers as another model: no row of it is written
+        (out / "batch_requests_2.jsonl").write_text((out / "batch_requests_1.jsonl").read_text())
+        (out / "batch_results_2.jsonl").write_text(raw_line(cids[0], {
+            "type": "succeeded", "message": dict(ok, model=HAIKU + "-20270101")}))
+        try:
+            await R.batch_grade(HAIKU, jobs, out, mcp_ok(), {"n": 2, "batch_id": "msgbatch_2"})
+            r.check("a changed model id halts the batch arm", False, "graded")
+        except R.Halt as exc:
+            r.check("a changed model id halts the batch arm",
+                    "changed" in str(exc) and len(R.read_jsonl(out / "trials.jsonl")[0]) == 1)
+
+
+async def test_more_checks(r: TestResults) -> None:
+    # the note check reads the request body: byte-equal JSON or it does not count
+    body = {"messages": [{"role": "user", "content": "u"},
+                         {"role": "assistant", "content": [THINK, tool_use()]},
+                         {"role": "user", "content": []}]}
+    r.check_eq("note passed back", R.passed_back([THINK, tool_use()], body), (1, 1))
+    changed = dict(THINK, signature="OTHER")
+    r.check_eq("a changed signature does not count",
+               R.passed_back([changed, tool_use()], body), (1, 0))
+    r.check_eq("a dropped note does not count", R.passed_back(
+        [THINK], {"messages": [{"role": "user", "content": "u"},
+                               {"role": "assistant", "content": [tool_use()]},
+                               {"role": "user", "content": []}]}), (1, 0))
+    r.check_eq("first request", R.passed_back(None, {"messages": [
+        {"role": "user", "content": "u"}]}), (0, 0))
+    r.check_eq("tool results that are errors",
+               [R.tool_result_is_error(x) for x in (
+                   "Tool error: boom", '{"error": true, "message": "x"}', PLANNER_OK,
+                   '{"valid": false}', "plain text")], [True, True, False, False, False])
+
+    # several text blocks in the final turn are one answer; a note between them is not text
+    wire = Wire(lambda q, b, n: msg([{"type": "text", "text": "A\n"}, THINK,
+                                     {"type": "text", "text": "```\n(pick-up b)\n```"}],
+                                    "end_turn") if has_tool_result(b)
+                else msg([tool_use()], "tool_use"))
+    outcome, row, meta = await trial(wire)
+    r.check_eq("multi-block final text", (row["result"]["response"], row["result"]["thinking"]),
+               ("A\n```\n(pick-up b)\n```", THINK["thinking"]))
+
+    # the harness grader raises: a scoring-error row, as the harness writes it
+    saved = R.check_success
+
+    async def boom(*a, **k):
+        raise RuntimeError("grader broke")
+    R.check_success = boom
+    try:
+        wire = Wire(one_tool_then_answer)
+        outcome, row, meta = await trial(wire)
+    finally:
+        R.check_success = saved
+    res = row["result"]
+    r.check_eq("scoring exception row", (res["success"], res["tool_selected"],
+                                         res["failure_reason"], res["error"],
+                                         res["response"], res["tokens"]["turns"]),
+               (False, None, "exception", "scoring error: grader broke", TEXT_PLAN["text"], 2))
+    r.check("the frozen loader reads it as a scoring error", loader_row(row, True).scoring_error)
+
+    # pilot check: thinking where none may be, and limit numbers in over-length errors
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td) / "h"
+        out.mkdir()
+        wire = Wire(lambda q, b, n: api_error(400, "invalid_request_error",
+                                              "prompt is too long: 1,200,000 tokens > 1000000")
+                    if has_tool_result(b) else msg([tool_use()], "tool_use", HAIKU, think_tok=2))
+        c = wire.client()
+        await R.run_live_cell(c, live_mcp(), HAIKU, [job("solve", HAIKU)], out)
+        rep = R.pilot_check_cell(out, HAIKU, "tools", 1)
+        r.check_eq("pilot check: Haiku must not think; limit numbers are listed",
+                   (rep["thinking_tokens"], rep["thinking_expected_to_be_zero"], rep["passes"],
+                    rep["limit_numbers_in_over_length_errors"], rep["endings"]),
+                   (2, True, False, ["1,200,000", "1000000"], {"overflow": 1}))
+        await c.close()
+
+    # lock and repair
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td) / "cell"
+        with R.RunLock(out):
+            try:
+                with R.RunLock(out):
+                    r.check("a second run in the same folder is refused", False, "entered")
+            except R.Halt:
+                r.check("a second run in the same folder is refused", True)
+        r.check("the lock is released", not (out / ".lock").exists())
+        with R.RunLock(out):
+            pass
+        good = json.dumps({"key": ["a"], "result": {}}) + "\n"
+        (out / "trials.jsonl").write_text(good + '{"key": ["b"], "resu')
+        (out / "trial_meta.jsonl").write_text(good)
+        r.check_eq("half-written last line is cut and counted", R.repair_cell(out),
+                   {"trials.jsonl": 1})
+        r.check_eq("the complete lines stay", (out / "trials.jsonl").read_text(), good)
+        r.check("the repair is logged", "trials.jsonl" in (out / "repairs.log").read_text())
+        r.check_eq("nothing to repair the second time", R.repair_cell(out), {})
+        (out / "x.jsonl").write_text("no newline at all")
+        R.repair_cell(out)
+        r.check_eq("a file that is one half-written line becomes empty",
+                   (out / "x.jsonl").read_text(), "")
+
+    # the tools self-check, on a small list
+    saved = R.build_grid
+    small = [job("solve"), job("validate_domain"), job("validate_problem"),
+             job("validate_plan")]
+    R.build_grid = lambda *a, **k: small
+    try:
+        doms = {"blocksworld": {"type": "classical"}}
+        rep = await R.tools_selfcheck(mcp_ok(), doms, {})
+        r.check_eq("self-check: all agree", (rep["fixtures"], rep["agree"], rep["disagreements"],
+                                             rep["solve_plans_equal_to_the_cached_plan"]),
+                   (4, 4, [], 1))
+        wrong = FakeMCP(lambda name, args: json.dumps({"valid": False, "status": "INVALID"})
+                        if name == "validate_domain" else mcp_ok()._handler(name, args))
+        rep = await R.tools_selfcheck(wrong, doms, {})
+        r.check_eq("self-check: a wrong verdict is listed",
+                   (rep["agree"], [(d["task"], d["tool"]) for d in rep["disagreements"]]),
+                   (3, [("validate_domain", "validate_domain")]))
+    finally:
+        R.build_grid = saved
+    r.check_eq("right tool per task", [R.right_tool_call(job(t), {"blocksworld": {
+        "type": "numeric" if t == "solve" else "classical"}})[0] for t in R.TASKS],
+        ["numeric_planner", "validate_domain", "validate_problem", "validate_plan",
+         "get_state_transition"])
+    r.check_eq("manifest records the address and the runner's files",
+               (R.build_run_manifest(SONNET, "no-tools", pilot=True, sdk_version="x",
+                                     gt_cache=Path("x"), ground_truth={}, marketplace=None,
+                                     tools_digest=None)["base_url"],
+                sorted(R.file_hashes())),
+               ("https://api.anthropic.com", sorted(R.RUNNER_FILES)))
+    with tempfile.TemporaryDirectory() as td:
+        rec = R.log_provenance(Path(td))
+        r.check("provenance: commit and file digests on every start",
+                bool(rec["repo_commit"]) and set(rec["runner_sha256"]) == set(R.RUNNER_FILES)
+                and len(R.read_jsonl(Path(td) / "run_provenance.jsonl")[0]) == 1)
+
+    # dry-run builds no client
+    path = gt_cache_path()
+    if path is None:
+        print("  SKIPPED dry-run-without-client: the ground-truth cache is not here")
+    else:
+        import argparse
+        import contextlib
+        import io
+        saved = R.make_client
+
+        def no_client(*a, **k):
+            raise AssertionError("dry-run built a client")
+        R.make_client = no_client
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                await R._cmd_dry_run(argparse.Namespace(
+                    gt_cache=str(path), marketplace_path=None, models=list(R.MODELS),
+                    pilot=True))
+            r.check("dry-run builds no client and prints the counts",
+                    "total trials: 640" in buf.getvalue())
+        finally:
+            R.make_client = saved
+
+
+def test_cli(r: TestResults) -> None:
+    def run(*args, env=None):
+        e = {k: v for k, v in os.environ.items() if not k.startswith("ANTHROPIC_")}
+        e.update(env or {})
+        p = subprocess.run([sys.executable, "-m", "tools.frontier55.runner", *args],
+                           cwd=str(REPO_ROOT), capture_output=True, text=True, env=e)
+        return p.returncode, p.stdout + p.stderr
+    with tempfile.TemporaryDirectory() as td:
+        code, out = run("live", "--model", HAIKU, "--out", td + "/frontier55-pilot",
+                        "--marketplace-path", td, "--pilot")
+        r.check("a paid command without --max-usd is refused by the parser",
+                code == 2 and "--max-usd" in out, out[-200:])
+        code, out = run("batch-submit", "--model", HAIKU, "--out", td + "/frontier55",
+                        "--pilot", "--max-usd", "1")
+        r.check("a pilot outside a pilot folder: exit 2", code == 2 and "HALT" in out, out[-200:])
+        code, out = run("live", "--model", HAIKU, "--out", td + "/frontier55-pilot", "--pilot",
+                        "--max-usd", "1", "--marketplace-path", td)
+        r.check("a folder that is no tools checkout: exit 2",
+                code == 2 and "plugins" in out, out[-200:])
+        code, out = run("pilot-check", "--out", td + "/frontier55-pilot")
+        r.check("pilot-check on empty folders: exit 2", code == 2 and '"passes": false' in out,
+                out[-200:])
+        code, out = run("batch-recover", "--model", HAIKU, "--out", td + "/frontier55-pilot",
+                        env={"ANTHROPIC_BASE_URL": "http://localhost:1"})
+        r.check("another base URL: exit 2 before any call",
+                code == 2 and "ANTHROPIC_BASE_URL" in out, out[-200:])
+        path = gt_cache_path()
+        if path is None:
+            print("  SKIPPED CLI dry-run: the ground-truth cache is not here")
+        else:
+            code, out = run("dry-run", "--pilot", "--gt-cache", str(path),
+                            env={"ANTHROPIC_BASE_URL": "http://localhost:1"})
+            r.check("dry-run: exit 0, with no key and a foreign base URL in the environment",
+                    code == 0 and "total trials: 640" in out, out[-200:])
+            code, out = run("dry-run", "--gt-cache", td + "/missing.json")
+            r.check("dry-run without the cache: exit 2", code == 2, out[-200:])
+
+
 async def amain() -> TestResults:
     r = TestResults("frontier55 runner")
     test_request_shapes(r)
@@ -988,6 +1544,10 @@ async def amain() -> TestResults:
     test_manifest_and_cache(r)
     test_grid(r)
     test_cost(r)
+    await test_money_paths(r)
+    await test_batch_send_and_recover(r)
+    await test_more_checks(r)
+    test_cli(r)
     return r
 
 
