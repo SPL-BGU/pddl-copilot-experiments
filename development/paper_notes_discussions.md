@@ -731,3 +731,25 @@
   now writes the prose; its one idea, whether the model should restate the tool's output
   at all, is kept as a future-work item in `paper_outline.md`) and #134 (release files,
   on hold while the submission is anonymous).
+
+## 2026-11-26 (later) — Pick-up from the handoff; the ICAPS call and the checklist
+
+- **State at 10:02 UTC, read without opening any outcome.** Matched run: three of six
+  cells on the laptop (600, 1,200 and 600 rows); the cluster was not contacted. Claude
+  run: both runners alive, tool arms at 3,099 (Haiku 5.5) and 2,108 (Sonnet 5.5) of
+  4,560 rows.
+- **The Claude analysis is being written** in a new worktree
+  (`.claude/worktrees/frontier55-analysis`, branch `analysis/frontier55`: the run's
+  branch with `main` merged in), from synthetic fixtures only, so that the running
+  job's worktree is not touched. It stops before the freeze; points the registration
+  leaves open go to Omer first.
+- **ICAPS 2027 call, read 2026-11-26** (`icaps27.icaps-conference.org/calls/cfp`): the
+  AAAI reproducibility checklist is not required, so it leaves `paper/main.tex` in the
+  next paper PR. The call has its own Reproducibility section asking for hardware,
+  benchmarks and software versions in the main paper; added to `paper_outline.md`,
+  3.3. Supplementary material is optional, anonymised, at most 100 MB, and reviewers
+  need not read it; the main paper must stand alone. The call gives the author
+  response period as 2027-02-04 to 02-08.
+- **PRs #144 and #134 are closed on GitHub**, not open as `STATUS.md` said.
+- **The handoff file of 2026-11-26 is deleted**; its tasks are in `STATUS.md`
+  (`MOVES.md`).

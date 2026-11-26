@@ -90,6 +90,11 @@ here, as facts about the setup, each once.
   sentence listing what differs (provider-side sampling, no fixed temperature on the
   new models, thinking setting), and that their rows are never pooled with or ranked
   against the open models.
+- **Asked for by the call** (ICAPS 2027, Reproducibility section, read 2026-11-26):
+  hardware, benchmarks and software versions stated in the main paper. One or two
+  sentences here: the GPU class, the serving software and its version, the tool suite's
+  commit and the validator release, the model identifiers. The AAAI Reproducibility
+  Checklist is not required and leaves `main.tex`.
 
 ### 3.4 The three arms
 - No tools; tools offered with the plain wordings; tools offered with one added sentence

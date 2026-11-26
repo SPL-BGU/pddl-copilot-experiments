@@ -27,6 +27,7 @@ git checkout 3044981 -- <old path>
 |---|---|
 | `development/draft_C5_E1a.md` | its only remaining use was a pass over the paper's Supporting Analyses section, which left the body |
 | `development/next_session_prompt.md` | the handoff of 2026-11-25; its tasks are tracked in `STATUS.md` |
+| `development/next_session_prompt.md` (the later one, of 2026-11-26) | the handoff of 2026-11-26, written after this clean-up; last present at commit `e3e4d43`; its tasks are tracked in `STATUS.md` |
 | `development/cleanup_list.md` | the approved list this change carries out; its content is this section and the `paper_notes_discussions.md` entry of 2026-11-25 |
 | `development/draft_advisor_correa_comparison.md`, `development/draft_advisor_correa_comparison.docx`, `development/draft_advisor_correa_comparison_v2.docx` | Omer's outline for the advisor meeting of 2026-11-22, which is over. Its §4.1 and §4.3 said the rerun's unaided answers had a JSON constraint; that constraint never took effect. The verified Corrêa facts are in `reference/draft_D5_cost_and_correa.md` |
 | `tools/extension_copy_reused.py`, `tests/test_extension_copy_reused.py` | built for the extension that was dropped on 2026-11-22; never run |
