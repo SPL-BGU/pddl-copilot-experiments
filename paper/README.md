@@ -31,6 +31,10 @@ This directory holds the paper.
   verdict-error figure without the earlier Claude rows), and
   `rq1_figures.py` for figures. `paper/figures/make_paper_figures.py` draws the funnel
   figure and the figures of the supplement material.
+- **Optional section "Token Consumption"** (before the Technical Appendix, temporary, by
+  Omer's decision of 2026-11-26): Table tokens from `token_consumption_tex.py` (reads
+  `out/token_consumption.json` of `token_consumption.py`) and three figures copied from
+  `development/token_consumption/`.
 - **What is left to do** is in `development/STATUS.md`. **Which value of a figure to quote**
   is in `development/NUMBERS.md`. Check both before a number goes into the text.
 

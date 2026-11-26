@@ -51,6 +51,7 @@ import argparse
 import gzip
 import json
 import math
+import os
 import pickle
 import sys
 from collections import Counter, defaultdict
@@ -1881,6 +1882,8 @@ def main(argv=None) -> int:
         json.dumps(finite(res), indent=1, default=list, allow_nan=False) + "\n")
     (args.out / "token_consumption.md").write_text(md)
     print(f"wrote {args.out}/token_consumption.{{json,md}}")
+    # PDFs without a creation date, so a second run writes the same bytes
+    os.environ.setdefault("SOURCE_DATE_EPOCH", "0")
     figures(res, args.figs)
     figures_ext(res, args.figs)
     if check_hashes() != hashes:

@@ -1,11 +1,14 @@
 """Arithmetic of tools/reanalysis/token_consumption.py on hand-made rows (no data read)."""
 import math
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 
-from tools.reanalysis import token_consumption as T
-from tools.reanalysis.gen_common import multiplier_boot
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.reanalysis import token_consumption as T  # noqa: E402
+from tools.reanalysis.gen_common import multiplier_boot  # noqa: E402
 
 
 def test_cost_per_right_and_price_weight():
@@ -157,3 +160,7 @@ def test_list_price_dollars():
     h = "claude-haiku-5-5"
     assert T.list_usd(h, 150_000, 0) == pytest.approx(150_000 * 0.50 / 1e6)
     assert T.list_usd(h, 50_000, 0) == pytest.approx(50_000 * 0.10 / 1e6)
+
+
+if __name__ == "__main__":
+    raise SystemExit(pytest.main([__file__, "-q"]))

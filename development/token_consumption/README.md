@@ -279,6 +279,12 @@ figures are never mixed in one column.
 
 ## What this could add to the paper (outline only)
 
+**Since 2026-11-26 the material sits in an optional section before the appendix of
+`paper/main.tex` (Table tokens and three figures: coverage on solve, the solve
+multiplier against the cache price, where the simulate tokens go), by Omer's decision.
+It has no body text yet and is not in the outline.** The items below remain the
+candidates for the text.
+
 - **RQ1, solve, one sentence.** Numbers: tokens per right plan, tools (plain) over no
   tools, 2.2 / 3.1 / 4.7 (Qwen3.5-9B / Gemma-26B / Qwen3.6-35B), with intervals [1.30,
   3.38], [2.10, 4.40], [3.66, 5.87]; at a 5:1 output price 0.78 / 1.21 / 1.95. Source:
