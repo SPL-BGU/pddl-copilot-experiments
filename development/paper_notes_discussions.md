@@ -671,3 +671,10 @@
   recommends and open for him: the no-tools arm by Batch and the tool arm by live calls
   on the same day; each model's default effort, sent explicitly; a small paid pilot
   first.
+- **Noted, not in work (Omer, 2026-11-26):** he wants to add one GPT model (his words:
+  "gpt sol 6.2"; the exact model id is not checked) and one hosted Qwen model as an
+  anchor to the open roster. He said to note it and not to develop it until he says so.
+  The session's suggestion for the anchor, for when it is taken up: the same weights
+  that run locally, hosted at full precision, so that quantization is measured; to be
+  checked then, since hosts often quantize too. Keys for those providers are not set in
+  his shell. Nothing is designed or built.
