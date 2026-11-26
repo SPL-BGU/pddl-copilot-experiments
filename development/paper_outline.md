@@ -236,8 +236,8 @@ conditions that are stated as different.
 29%; with tools 83% even on the longest plans; no verdict error for Sonnet with the tool
 in 1,000 trials; right tool in every trial of four tasks; traces lost at least 34 to
 38%.
-**Placement (decision 12.2):** either rows in each RQ table under a rule, or one short
-section with one table after RQ3.
+**Placement (decided, 12.2):** one short section with one table after RQ3. No Claude
+row in the RQ1 tables or the by-length figures.
 
 ---
 
@@ -313,7 +313,10 @@ open models, no structured-output parameter, both arms on the same day.
 ### 12.2 Where the frontier results sit
 Lean: their own short section (7) with one table. Inside the RQ tables they invite a
 ranking against the open models that the conditions do not support.
-> ANSWER: **Deferred (Omer, 2026-11-26).** For now the Claude results stay in their own small section; perhaps with Haiku's result brought out, if the new run shows one worth it.
+> ANSWER: **Own section only (Omer, 2026-11-26).** The Claude rows leave the RQ1 tables
+> and the by-length figures and appear only in the table of section 7, built on the
+> Haiku 5.5 and Sonnet 5.5 run. Done together with that section's table, once the
+> run's readout is in. The old rows (Haiku 4.5, Sonnet 4.6) go to the supplement.
 
 ### 12.3 Which trace-loss figure RQ3 quotes
 The October run registered one grader (69.9 to 91.2% lost). The matched run registers a
