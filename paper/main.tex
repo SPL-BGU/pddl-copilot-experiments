@@ -83,6 +83,7 @@
 \maketitle
 
 \begin{abstract}
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 Planners and validators are correct by construction, and language models can now
 call them as tools. We ask three questions about that access: whether the tools help
 a model on planning-related tasks, whether the model chooses the right tool, and
@@ -140,6 +141,7 @@ called. A third measures tool-use competence without a planning oracle
 sound planning tools that it is free to call: whether its answers improve, which tool
 it calls, and whether the tool's result reaches its final answer.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 We evaluate five PDDL tasks (\emph{solve}, \emph{validate\_domain},
 \emph{validate\_problem}, \emph{validate\_plan}, \emph{simulate}) on five open-weight
 models from the Qwen and Gemma families and on two frontier models, Claude Haiku~4.5
@@ -154,6 +156,7 @@ the first $500$ characters of each answer, so a pre-registered rerun of $47{,}04
 trials with answers stored in full supports every comparison that needs the complete
 answer. We organize the study around three research questions.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \emph{RQ1: do PDDL tools help an LLM do planning-related tasks?} On most measures they
 do, and less as problems grow. With the tools the models deliver a valid plan in $78$--$95\%$ of
 the trials. Without them the three open-weight models solve $43$--$69\%$ of the
@@ -178,6 +181,7 @@ the trials under the plain prompt and in $93\%$ once a single sentence tells it 
 \emph{solve} the models call the fitting planner and then add calls, so only
 $22$--$39\%$ of the open-weight trials under the plain prompt call it alone.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \emph{RQ3: does the LLM use the tool's output?} Verdicts almost always reach the
 answer. Plans are lost in $5$--$13\%$ of the trials in which the planner returned a
 valid one. State traces are lost in $70$--$91\%$ of such trials by the open-weight
@@ -364,6 +368,7 @@ with a control that keeps the same prompt and removes only the tools.
 
 \subsection{Relation to the Preliminary Study}
 \label{sec:prelim}
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \citet{benyamin2025copilot} introduced the Planning Copilot, which exposes planners, a
 plan validator and a plan simulator to an LLM over MCP. They tested three open-weight
 models (Qwen3 at 0.6B and 4B, and GPT-OSS-20B) with and without these tools on the five
@@ -451,6 +456,7 @@ verbatim per-task prompts that expose these tools, together with the one-sentenc
 steering directive, appear in Listing~\ref{lst:prompts}.
 
 \subsection{Tasks, Oracle, and Fixtures}
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 Each model is given five PDDL tasks, and each task has one relevant tool: \emph{solve}
 (find a plan reaching the goal), \emph{validate\_domain} and
 \emph{validate\_problem} (judge whether a domain or problem file is well formed),
@@ -560,6 +566,7 @@ arm, \emph{validate\_plan} has 1{,}803 distinct prompts in 3{,}000 trials and
 \emph{validate\_domain} has 120 in 360. The plan in a \emph{simulate} prompt is the
 planner's plan, and for all but six problems its trajectory is the answer key.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Prompts.} Each trial sends one system message and one user message. The
 user message states the task in one of three wordings and then pastes in full the
 PDDL the task needs. That is the domain file, the problem file except on
@@ -623,6 +630,7 @@ set. The prompt wordings for each task are in the Technical Appendix (Prompts).}
 \end{table*}
 
 \subsection{Models and Serving}
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 We evaluate five open-weight instruction-tuned models spanning over an order of
 magnitude in scale (0.8B--35B) and two families: Qwen3.5-0.8B, Qwen3.5-4B, Qwen3.5-9B,
 a Gemma mixture-of-experts model ($\approx$26B total / $\approx$4B active
@@ -682,6 +690,7 @@ as standard function definitions. The system prompts are short per-task
 statements of policy, and all argument schemas are carried by the tool
 definitions.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 The two frontier models, Claude Haiku~4.5 and Claude Sonnet~4.6, are queried
 through their provider's interface at temperature~0, with the same tools and the
 same loop of at most ten tool calls. The Prompts paragraph above says which
@@ -799,6 +808,7 @@ rate. Failures are typed (tool not selected, wrong tool, verdict mismatch,
 unparseable output, trajectory mismatch), and responses cut at the output cap are
 tagged as truncations and are not counted as content failures.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Storage and what it permits.} Tool calls and their results are stored
 in full in every corpus, so calling rates and tool-verified rates are exact
 everywhere. The final message is not always stored in full. The main sweep kept
@@ -848,6 +858,7 @@ answer was still wrong.
 % Every number in this subsection is generated: tools/reanalysis/rq1_metrics.py
 % (development/NUMBERS.md, block "RQ1 metrics"); table rows by tools/reanalysis/rq1_tex.py,
 % figures by tools/reanalysis/rq1_figures.py. Do not edit a number here by hand.
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Data.} All four measures need the model's complete final answer. The main
 sweep stored only the first $500$ characters of each answer, so this subsection uses
 the two corpora that kept answers in full. The first is a pre-registered rerun of the
@@ -880,7 +891,8 @@ structured-output parameter (Technical Appendix, Prompts).
 \textbf{Model} & \textbf{Arm} & \textbf{False negatives (\%)} & \textbf{False positives (\%)} &
 \textbf{No verdict} & \textbf{Verdict right (\%)} \\
 \midrule
-% rows generated by tools/reanalysis/rq1_tex.py (rq1_verdicts.tex)
+% rows generated by tools/reanalysis/rq1_tex.py (rq1_verdicts.tex); Claude rows left out by
+% tools/reanalysis/open_weight_tex.py (rq1_verdicts_open.tex)
 Qwen3.5-9B & no-tools & $25.7$ {\scriptsize$[15.4,\,36.6]$} & $11.1$ {\scriptsize$[7.3,\,15.1]$} & $54$ / $3000$ & $79.8$ {\scriptsize$[74.0,\,85.5]$} \\
  & +tool (plain) & $5.7$ {\scriptsize$[1.9,\,10.5]$} & $1.7$ {\scriptsize$[0.0,\,5.1]$} & $68$ / $3000$ & $94.0$ {\scriptsize$[89.4,\,97.6]$} \\
  & +tool (steered) & $4.1$ {\scriptsize$[1.1,\,7.6]$} & $1.9$ {\scriptsize$[0.0,\,5.5]$} & $33$ / $3000$ & $95.9$ {\scriptsize$[92.1,\,98.8]$} \\
@@ -892,35 +904,31 @@ Gemma-MoE-26B & no-tools & $13.7$ {\scriptsize$[8.1,\,19.9]$} & $9.0$ {\scriptsi
 Qwen3.6-35B & no-tools & $8.5$ {\scriptsize$[3.8,\,13.6]$} & $7.8$ {\scriptsize$[5.3,\,10.3]$} & $43$ / $3000$ & $90.4$ {\scriptsize$[87.3,\,93.3]$} \\
  & +tool (plain) & $0.9$ {\scriptsize$[0.1,\,2.1]$} & $2.2$ {\scriptsize$[1.0,\,3.5]$} & $18$ / $3000$ & $97.8$ {\scriptsize$[96.7,\,98.9]$} \\
  & +tool (steered) & $0.7$ {\scriptsize$[0.0,\,1.7]$} & $0.9$ {\scriptsize$[0.2,\,1.9]$} & $17$ / $3000$ & $98.6$ {\scriptsize$[97.8,\,99.4]$} \\
-\addlinespace
-Claude Haiku~4.5 & no-tools & $6.2$ {\scriptsize$[2.6,\,10.2]$} & $10.8$ {\scriptsize$[6.0,\,16.4]$} & $0$ / $1000$ & $91.5$ {\scriptsize$[87.9,\,94.7]$} \\
- & +tool (plain) & $2.0$ {\scriptsize$[0.0,\,5.0]$} & $0.4$ {\scriptsize$[0.0,\,1.0]$} & $0$ / $1000$ & $98.8$ {\scriptsize$[97.3,\,99.9]$} \\
-\addlinespace
-Claude Sonnet~4.6 & no-tools & $1.6$ {\scriptsize$[0.0,\,4.0]$} & $4.2$ {\scriptsize$[1.6,\,7.2]$} & $0$ / $1000$ & $97.1$ {\scriptsize$[95.5,\,98.5]$} \\
- & +tool (plain) & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0$ / $1000$ & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
 \bottomrule
 \end{tabular}
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ1, plan verdicts on \emph{validate\_plan} (delivered final answers,
 \emph{think}=off). Each problem contributes five valid and five broken plans. False
 negatives are valid plans the model rejected, as a share of the valid plans; false
 positives are broken plans it accepted, as a share of the broken plans. \emph{No
 verdict} counts final answers that state no readable verdict, out of all trials of the
-cell; they enter neither error rate. Open-weight rows are the pre-registered rerun and
-Claude rows are the frontier runs (wording v11); the two are never pooled. Brackets
+cell; they enter neither error rate. The rows are the pre-registered rerun. Brackets
 are 95\% domain-cluster bootstrap intervals.}
 \label{tab:rq1-verdicts}
 \end{table*}
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.86\textwidth]{figures/rq1_validate_plan_errors.pdf}
+\includegraphics[width=0.86\textwidth]{figures/rq1_validate_plan_errors_open.pdf}
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ1, verdict errors on \emph{validate\_plan} by model and arm
 (Table~\ref{tab:rq1-verdicts}). Grey: no-tools. Blue: tools offered, plain prompt.
-Orange: tools offered, steered prompt (not run for Claude). Whiskers are 95\%
+Orange: tools offered, steered prompt. Whiskers are 95\%
 domain-cluster bootstrap intervals.}
 \label{fig:rq1-verdicts}
 \end{figure*}
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Plan verdicts: false positives and false negatives.} Each problem
 contributes five valid and five broken plans, so the two kinds of error can be read
 separately (Table~\ref{tab:rq1-verdicts}, Figure~\ref{fig:rq1-verdicts}). Without
@@ -946,7 +954,7 @@ $0.4\%$.
 \textbf{Model} & \textbf{Arm} & \textbf{Exact trace (\%)} & \textbf{States, strict (\%)} &
 \textbf{States, lenient (\%)} & \textbf{No trace} & $\boldsymbol{\rho}$ \\
 \midrule
-% rows generated by tools/reanalysis/rq1_matched_metrics.py (tex/rq1m_simulate.tex)
+% rows generated by tools/reanalysis/rq1_matched_metrics.py --open-only (tex/rq1m_simulate.tex)
 Qwen3.5-9B & no-tools & $13.5$ {\scriptsize$[5.7,\,22.8]$} & $17.0$ {\scriptsize$[9.2,\,26.1]$} & $20.9$ {\scriptsize$[13.1,\,29.8]$} & $106$ / $282$ & $-0.26$ \\
  & +tool (plain) & $20.9$ {\scriptsize$[11.0,\,31.9]$} & $31.0$ {\scriptsize$[19.9,\,42.9]$} & $31.2$ {\scriptsize$[20.1,\,43.3]$} & $129$ / $282$ & $-0.66$ \\
  & +tool (steered) & $17.0$ {\scriptsize$[8.5,\,27.2]$} & $21.7$ {\scriptsize$[13.0,\,32.0]$} & $21.9$ {\scriptsize$[13.1,\,32.3]$} & $184$ / $282$ & $-0.57$ \\
@@ -958,38 +966,31 @@ Gemma-MoE-26B & no-tools & $33.7$ {\scriptsize$[20.2,\,47.9]$} & $40.1$ {\script
 Qwen3.6-35B & no-tools & $37.6$ {\scriptsize$[23.9,\,52.0]$} & $43.7$ {\scriptsize$[29.5,\,58.6]$} & $56.7$ {\scriptsize$[43.7,\,70.0]$} & $127$ / $282$ & $-0.63$ \\
  & +tool (plain) & $32.3$ {\scriptsize$[20.4,\,45.7]$} & $38.9$ {\scriptsize$[26.5,\,51.9]$} & $39.7$ {\scriptsize$[27.2,\,52.5]$} & $148$ / $282$ & $-0.72$ \\
  & +tool (steered) & $34.4$ {\scriptsize$[21.9,\,48.0]$} & $42.1$ {\scriptsize$[29.5,\,55.0]$} & $42.3$ {\scriptsize$[29.6,\,55.2]$} & $135$ / $282$ & $-0.74$ \\
-\addlinespace
-Claude Haiku~4.5 & no-tools & $40.4$ {\scriptsize$[24.2,\,57.8]$}$^{\ddagger26}$ & $46.9$ {\scriptsize$[29.5,\,63.8]$} & $62.2$ {\scriptsize$[46.4,\,77.4]$} & $34$ / $94$ & $-0.48$ \\
- & +tool (plain) & $54.3$ {\scriptsize$[41.1,\,67.7]$}$^{\ddagger10}$ & $60.9$ {\scriptsize$[47.8,\,73.5]$} & $72.4$ {\scriptsize$[60.9,\,83.3]$} & $31$ / $94$ & $-0.65$ \\
-\addlinespace
-Claude Sonnet~4.6 & no-tools & $35.1$ {\scriptsize$[20.2,\,51.1]$}$^{\ddagger15}$ & $36.7$ {\scriptsize$[22.0,\,52.9]$} & $77.7$ {\scriptsize$[64.9,\,88.6]$} & $57$ / $94$ & $-0.58$ \\
- & +tool (plain) & $51.1$ {\scriptsize$[37.9,\,64.5]$}$^{\ddagger9}$ & $58.5$ {\scriptsize$[48.3,\,69.6]$} & $59.8$ {\scriptsize$[49.3,\,71.1]$} & $23$ / $94$ & $-0.52$ \\
 \bottomrule
 \end{tabular}
 % TODO(Omer): caption clause on the data source reworded 2026-11-26 for the matched run; your wording
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ1, \emph{simulate} (delivered final answers, \emph{think}=off, $94$
 problems). For the open-weight models the three arms were collected together in one run
-and are graded by one grade fixed before that run; the Claude rows are as graded
-(see text). \emph{Exact trace}: every state equals the oracle's.
+and are graded by one grade fixed before that run. \emph{Exact trace}: every state equals the oracle's.
 \emph{States, strict}: mean share of the oracle's states that the answer
 reproduces at the same position. \emph{Lenient}: the same, also reading the complete
 leading steps of an answer that was cut off mid-trace. \emph{No trace} counts
 answers from which the grader reads no trace, out of the cell's trials. $\rho$ is the
 Spearman correlation between the strict state share and the number of actions in the
-trace. $\ddagger n$: $n$ Claude answers were cut at the storage limit, so their exact
-grade is unknown; they count as not exact here and their states are scored on what was
-stored. Brackets are 95\% domain-cluster bootstrap intervals.}
+trace. Brackets are 95\% domain-cluster bootstrap intervals.}
 \label{tab:rq1-simulate}
 \end{table*}
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/rq1m_simulate_by_length.pdf}
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ1, share of states right on \emph{simulate} against the length of the
 trace, strict score (top) and lenient score (bottom); see
 Table~\ref{tab:rq1-simulate} for the definitions and the rows. Grey dashed: no-tools. Blue: tools
 offered, plain prompt. Orange: tools offered, steered prompt. Whiskers are 95\%
-domain-cluster bootstrap intervals; bins hold between $10$ and $81$ trials.}
+domain-cluster bootstrap intervals; bins hold between $30$ and $81$ trials.}
 \label{fig:rq1-simulate}
 \end{figure*}
 
@@ -1007,6 +1008,7 @@ object per line, as the second reading does. The six problems whose prompt plan 
 here, which leaves $94$.
 
 % TODO(Omer): numbers in this paragraph predate the matched run; see Tables~rq1-matched, rq1-solve, rq1-simulate, rq1-planlen
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 State accuracy falls with trace length in every model and arm
 (Figure~\ref{fig:rq1-simulate}; $\rho$ between $-0.29$ and $-0.75$ across the thirteen
 cells of Table~\ref{tab:rq1-simulate}). Beyond $40$ actions, eleven of the thirteen
@@ -1072,7 +1074,7 @@ more.}
 \textbf{Model} & \textbf{Arm} & \textbf{Solved (\%)} & \textbf{plan length} &
 \textbf{object count} & \textbf{planner runtime} \\
 \midrule
-% rows generated by tools/reanalysis/rq1_matched_metrics.py (tex/rq1m_solve.tex)
+% rows generated by tools/reanalysis/rq1_matched_metrics.py --open-only (tex/rq1m_solve.tex)
 Qwen3.5-9B & no-tools & $41.3$ {\scriptsize$[31.0,\,51.7]$} & $-0.44$ & $-0.41$ & $-0.09$ \\
  & +tool (plain) & $91.7$ {\scriptsize$[85.0,\,97.3]$} & $-0.49$ & $+0.10$ & $-0.29$ \\
  & +tool (steered) & $90.3$ {\scriptsize$[83.0,\,96.7]$} & $-0.44$ & $+0.11$ & $-0.21$ \\
@@ -1084,19 +1086,13 @@ Gemma-MoE-26B & no-tools & $58.0$ {\scriptsize$[44.3,\,71.3]$} & $-0.44$ & $-0.4
 Qwen3.6-35B & no-tools & $68.3$ {\scriptsize$[55.3,\,80.7]$} & $-0.49$ & $-0.37$ & $-0.15$ \\
  & +tool (plain) & $79.3$ {\scriptsize$[70.7,\,87.3]$} & $-0.48$ & $-0.22$ & $-0.11$ \\
  & +tool (steered) & $90.0$ {\scriptsize$[85.0,\,94.7]$} & $-0.45$ & $-0.11$ & $-0.32$ \\
-\addlinespace
-Claude Haiku~4.5 & no-tools & $22.0$ {\scriptsize$[9.0,\,37.0]$} & $-0.33$ & $-0.24$ & $-0.32$ \\
- & +tool (plain) & $95.0$ {\scriptsize$[90.0,\,99.0]$} & $+0.03$ & $-0.02$ & $-0.12$ \\
-\addlinespace
-Claude Sonnet~4.6 & no-tools & $29.0$ {\scriptsize$[17.0,\,42.0]$} & $-0.54$ & $-0.42$ & $-0.32$ \\
- & +tool (plain) & $95.0$ {\scriptsize$[91.0,\,98.0]$} & $-0.25$ & $-0.01$ & $-0.17$ \\
 \bottomrule
 \end{tabular}
 % TODO(Omer): caption clause on the data source reworded 2026-11-26 for the matched run; your wording
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ1, \emph{solve} (delivered final answers, \emph{think}=off, $100$
 problems). For the open-weight models the three arms were collected together in one run
-and are graded by one grade fixed before that run; the Claude rows are as graded
-(see text). \emph{Solved}: the delivered plan is valid. The three right-hand columns
+and are graded by one grade fixed before that run. \emph{Solved}: the delivered plan is valid. The three right-hand columns
 are Spearman correlations, over the $100$ problems, between a problem's share of
 solved trials and three measures of its hardness: the length of the reference plan,
 the number of objects, and the planner's own runtime on it. Brackets are 95\%
@@ -1107,14 +1103,16 @@ domain-cluster bootstrap intervals.}
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{figures/rq1m_solve_by_length.pdf}
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ1, share of problems solved against the length of the reference plan (rows
 as in Table~\ref{tab:rq1-solve}). Grey dashed: no-tools. Blue: tools offered, plain prompt. Orange: tools offered,
-steered prompt. Whiskers are 95\% domain-cluster bootstrap intervals; open-weight bins
-hold between $36$ and $81$ trials and Claude bins between $12$ and $27$.}
+steered prompt. Whiskers are 95\% domain-cluster bootstrap intervals; bins
+hold between $36$ and $81$ trials.}
 \label{fig:rq1-solve}
 \end{figure*}
 
 % TODO(Omer): numbers in this paragraph predate the matched run; see Tables~rq1-matched, rq1-solve, rq1-simulate, rq1-planlen
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Problems solved against hardness.} We measure hardness by the length of the
 reference plan, with the number of objects as a second view. The planner's own
 runtime, which the solver returns with every plan, separates these problems poorly: it
@@ -1143,7 +1141,7 @@ itself cannot solve.
 \textbf{Mean ref.} & \textbf{Median ratio} & \textbf{$<$ / $=$ / $>$ ref.} &
 \textbf{Max ratio} & \textbf{$=$ tool's} \\
 \midrule
-% rows generated by tools/reanalysis/rq1_matched_metrics.py (tex/rq1m_planlen.tex)
+% rows generated by tools/reanalysis/rq1_matched_metrics.py --open-only (tex/rq1m_planlen.tex)
 Qwen3.5-9B & no-tools & $124$ / $300$ & $10.2$ & $12.8$ & $1.00$ & $35$ / $68$ / $21$ & $2.3$ & -- \\
  & +tool (plain) & $275$ / $300$ & $15.5$ & $15.5$ & $1.00$ & $7$ / $260$ / $8$ & $1.1$ & $272$ / $275$ \\
  & +tool (steered) & $271$ / $300$ & $15.9$ & $15.9$ & $1.00$ & $8$ / $256$ / $7$ & $1.1$ & $267$ / $271$ \\
@@ -1155,12 +1153,6 @@ Gemma-MoE-26B & no-tools & $174$ / $300$ & $11.2$ & $14.1$ & $1.00$ & $51$ / $94
 Qwen3.6-35B & no-tools & $205$ / $300$ & $13.6$ & $15.1$ & $1.00$ & $56$ / $110$ / $39$ & $2.1$ & -- \\
  & +tool (plain) & $238$ / $300$ & $15.3$ & $15.2$ & $1.00$ & $13$ / $217$ / $8$ & $1.7$ & $216$ / $220$ \\
  & +tool (steered) & $270$ / $300$ & $16.0$ & $16.0$ & $1.00$ & $5$ / $258$ / $7$ & $1.1$ & $265$ / $270$ \\
-\addlinespace
-Claude Haiku~4.5 & no-tools & $22$ / $100$ & $8.5$ & $8.4$ & $1.00$ & $6$ / $10$ / $6$ & $2.0$ & -- \\
- & +tool (plain) & $95$ / $100$ & $19.7$ & $19.7$ & $1.00$ & $1$ / $91$ / $3$ & $8.7$ & $93$ / $95$ \\
-\addlinespace
-Claude Sonnet~4.6 & no-tools & $29$ / $100$ & $6.6$ & $7.0$ & $1.00$ & $7$ / $21$ / $1$ & $1.5$ & -- \\
- & +tool (plain) & $95$ / $100$ & $23.6$ & $18.9$ & $1.00$ & $4$ / $85$ / $6$ & $61.4$ & $94$ / $95$ \\
 \bottomrule
 \end{tabular}
 \caption{RQ1, length of the valid delivered plans on \emph{solve} (\emph{think}=off;
@@ -1176,6 +1168,7 @@ it finds, so it is a common baseline and is not a shortest plan.}
 \end{table*}
 
 % TODO(Omer): numbers in this paragraph predate the matched run; see Tables~rq1-matched, rq1-solve, rq1-simulate, rq1-planlen
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Plan length.} Among the valid delivered plans we compare the number of
 actions with the reference plan for the same problem (Table~\ref{tab:rq1-planlen}).
 Valid unaided plans are about as long as the reference. The median ratio is $1.00$ for
@@ -1191,6 +1184,7 @@ actions, after it called the numeric planner on this classical domain.
 \label{sec:rq2}
 % Every number in this subsection is generated: tools/reanalysis/rq23_metrics.py
 % (development/NUMBERS.md, block "RQ2 metrics"); table rows by tools/reanalysis/rq23_tex.py.
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 Every with-tools trial offers all seven tools. We sort each trial by the set of tools
 it called: no tool; only the right tool; the right tool and at least one other; other
 tools only. The right tool is the task's validator on the three validation tasks, the
@@ -1212,7 +1206,8 @@ of RQ1, the classification was defined after the data were collected.
 \textbf{\emph{validate\_problem}} & \textbf{\emph{validate\_plan}} & \textbf{\emph{solve}} &
 \textbf{\emph{simulate}} \\
 \midrule
-% rows generated by tools/reanalysis/rq23_tex.py (rq2_choice.tex)
+% rows generated by tools/reanalysis/rq23_tex.py (rq2_choice.tex); Claude rows left out by
+% tools/reanalysis/open_weight_tex.py (rq2_choice_open.tex)
 \multicolumn{7}{@{}l}{\emph{Exactly the right tool and no other (\%)}} \\
 Qwen3.5-9B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.3$ {\scriptsize$[98.3,\,100.0]$} & $95.4$ {\scriptsize$[91.0,\,98.9]$} & $39.0$ {\scriptsize$[22.3,\,56.7]$} & $68.3$ {\scriptsize$[58.7,\,76.7]$} \\
  & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.5$ {\scriptsize$[98.5,\,100.0]$} & $47.7$ {\scriptsize$[29.0,\,66.7]$} & $87.7$ {\scriptsize$[76.0,\,96.7]$} \\
@@ -1220,8 +1215,6 @@ Gemma-MoE-26B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $91.8$ {\script
  & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $95.0$ {\scriptsize$[92.5,\,97.3]$} & $93.1$ {\scriptsize$[82.9,\,99.9]$} & $44.0$ {\scriptsize$[30.7,\,57.3]$} & $93.0$ {\scriptsize$[87.0,\,98.0]$} \\
 Qwen3.6-35B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $97.2$ {\scriptsize$[95.8,\,98.5]$} & $82.7$ {\scriptsize$[71.6,\,91.9]$} & $22.3$ {\scriptsize$[15.0,\,30.0]$} & $95.3$ {\scriptsize$[91.0,\,98.7]$} \\
  & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.7$ {\scriptsize$[99.2,\,100.0]$} & $43.0$ {\scriptsize$[31.0,\,55.7]$} & $97.7$ {\scriptsize$[95.3,\,99.7]$} \\
-Claude Haiku~4.5 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.0$ {\scriptsize$[97.5,\,100.0]$} & $99.9$ {\scriptsize$[99.7,\,100.0]$} & $1.0$ {\scriptsize$[0.0,\,3.0]$} & $98.0$ {\scriptsize$[95.0,\,100.0]$} \\
-Claude Sonnet~4.6 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.4$ {\scriptsize$[98.9,\,99.8]$} & $65.0$ {\scriptsize$[49.0,\,80.0]$} & $99.0$ {\scriptsize$[97.0,\,100.0]$} \\
 \addlinespace
 \multicolumn{7}{@{}l}{\emph{The right tool was called (\%)}} \\
 Qwen3.5-9B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $97.8$ {\scriptsize$[94.5,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $80.7$ {\scriptsize$[76.0,\,85.3]$} \\
@@ -1230,8 +1223,6 @@ Gemma-MoE-26B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scrip
  & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $93.1$ {\scriptsize$[82.9,\,99.9]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
 Qwen3.6-35B & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $99.3$ {\scriptsize$[98.7,\,99.8]$} & $83.1$ {\scriptsize$[71.8,\,92.4]$} & $82.7$ {\scriptsize$[75.7,\,89.3]$} & $99.7$ {\scriptsize$[99.0,\,100.0]$} \\
  & steered & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $98.3$ {\scriptsize$[96.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
-Claude Haiku~4.5 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $95.0$ {\scriptsize$[85.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
-Claude Sonnet~4.6 & plain & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $95.0$ {\scriptsize$[85.0,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} \\
 \addlinespace
 \multicolumn{7}{@{}l}{\emph{Another tool was called (\%)}} \\
 Qwen3.5-9B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.7$ {\scriptsize$[0.0,\,1.7]$} & $2.5$ {\scriptsize$[0.2,\,6.2]$} & $61.0$ {\scriptsize$[43.3,\,77.7]$} & $13.0$ {\scriptsize$[5.7,\,22.3]$} \\
@@ -1240,20 +1231,19 @@ Gemma-MoE-26B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $8.2$ {\scriptsize$[5
  & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $5.0$ {\scriptsize$[2.7,\,7.5]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $56.0$ {\scriptsize$[42.7,\,69.3]$} & $7.0$ {\scriptsize$[2.0,\,13.0]$} \\
 Qwen3.6-35B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $2.2$ {\scriptsize$[0.8,\,3.5]$} & $0.4$ {\scriptsize$[0.0,\,0.9]$} & $65.3$ {\scriptsize$[58.3,\,72.7]$} & $4.3$ {\scriptsize$[1.0,\,8.7]$} \\
  & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.3$ {\scriptsize$[0.0,\,0.8]$} & $56.7$ {\scriptsize$[44.0,\,68.3]$} & $2.3$ {\scriptsize$[0.3,\,4.7]$} \\
-Claude Haiku~4.5 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $1.0$ {\scriptsize$[0.0,\,2.5]$} & $0.1$ {\scriptsize$[0.0,\,0.3]$} & $99.0$ {\scriptsize$[97.0,\,100.0]$} & $2.0$ {\scriptsize$[0.0,\,5.0]$} \\
-Claude Sonnet~4.6 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.6$ {\scriptsize$[0.2,\,1.1]$} & $35.0$ {\scriptsize$[20.0,\,51.0]$} & $1.0$ {\scriptsize$[0.0,\,3.0]$} \\
 \bottomrule
 \end{tabular}
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ2, tool choice with all seven tools offered (\emph{think}=off). Shares of
 the cell's trials. The first panel counts trials that called only the right tool; the
 second, trials that called the right tool, alone or with others; the third, trials
 that called some other tool, with or without the right one. On \emph{solve} the right
-tool is the planner that fits the domain. Open-weight rows are the pre-registered
-rerun and Claude rows are the frontier runs (plain prompt, wording v11); the two are
-never pooled. Brackets are 95\% domain-cluster bootstrap intervals.}
+tool is the planner that fits the domain. The rows are the pre-registered
+rerun. Brackets are 95\% domain-cluster bootstrap intervals.}
 \label{tab:rq2-choice}
 \end{table*}
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Validation tasks and \emph{simulate}.} On these four tasks a model that
 calls a tool almost always calls the right one and nothing else: the share of trials
 with another tool is at most $13.0\%$ in any open-weight cell and at most $2.0\%$ for
@@ -1268,6 +1258,7 @@ interval $[3.6,\,10.7]$). The registered reading is that the sentence suppresses
 most of the low rate remains without it. Both Claude
 models call the right tool in every trial of these four tasks.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{\emph{Solve}.} On \emph{solve} the models call more than they need. The
 fitting planner is called in every plain-prompt trial by Gemma-MoE-26B and Qwen3.5-9B
 and in $82.7\%$ by Qwen3.6-35B, yet only $22.3\%$ to $39.0\%$ of the trials call it and
@@ -1284,6 +1275,7 @@ Table~\ref{tab:rq1-planlen} arise.
 % Every number in this subsection is generated: tools/reanalysis/rq23_metrics.py
 % (development/NUMBERS.md, block "RQ3 metrics"); the rerun cells are the frozen readout's
 % E4 cells. Table rows by tools/reanalysis/rq23_tex.py.
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 For this question we take the trials in which the right tool returned the right
 result, and ask how often the delivered final answer is still wrong
 (Table~\ref{tab:rq3-lost}). This needs the complete final answer, so it uses the rerun
@@ -1300,28 +1292,26 @@ that were fixed before the data were read.
 \textbf{\emph{validate\_problem}} & \textbf{\emph{validate\_plan}} & \textbf{\emph{solve}} &
 \textbf{\emph{simulate}} \\
 \midrule
-% rows generated by tools/reanalysis/rq23_tex.py (rq3_lost.tex)
+% rows generated by tools/reanalysis/rq23_tex.py (rq3_lost.tex); Claude rows left out by
+% tools/reanalysis/open_weight_tex.py (rq3_lost_open.tex)
 Qwen3.5-9B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.7$ {\scriptsize$[0.1,\,1.7]$} & $11.3$ {\scriptsize$[5.3,\,18.0]$} & $74.5$ {\scriptsize$[60.4,\,87.7]$} \\
  & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.4$ {\scriptsize$[0.0,\,0.9]$} & $0.2$ {\scriptsize$[0.0,\,0.7]$} & $11.0$ {\scriptsize$[5.7,\,17.3]$} & $81.2$ {\scriptsize$[70.5,\,90.4]$} \\
 Gemma-MoE-26B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $6.4$ {\scriptsize$[2.1,\,11.2]$} & $90.8$ {\scriptsize$[85.4,\,95.5]$} \\
  & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.3$ {\scriptsize$[0.0,\,0.8]$} & $0.1$ {\scriptsize$[0.0,\,0.3]$} & $4.7$ {\scriptsize$[1.3,\,8.7]$} & $91.2$ {\scriptsize$[86.0,\,95.8]$} \\
 Qwen3.6-35B & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $1.7$ {\scriptsize$[0.5,\,3.1]$} & $0.7$ {\scriptsize$[0.0,\,1.4]$} & $13.4$ {\scriptsize$[7.6,\,19.8]$} & $69.9$ {\scriptsize$[56.5,\,82.4]$} \\
  & steered & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.5$ {\scriptsize$[0.1,\,1.1]$} & $12.1$ {\scriptsize$[6.8,\,17.8]$} & $73.2$ {\scriptsize$[61.3,\,84.2]$} \\
-Claude Haiku~4.5 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.1$ {\scriptsize$[0.0,\,0.3]$} & $5.0$ {\scriptsize$[1.0,\,10.0]$} & $34.0$ {\scriptsize$[21.6,\,46.5]$}$^{\ddagger12}$ \\
-Claude Sonnet~4.6 & plain & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $0.0$ {\scriptsize$[0.0,\,0.0]$} & $5.0$ {\scriptsize$[2.0,\,9.0]$} & $38.4$ {\scriptsize$[26.3,\,51.0]$}$^{\ddagger13}$ \\
 \bottomrule
 \end{tabular}
+% TODO(Omer): caption clause on the Claude rows removed 2026-11-26; your wording
 \caption{RQ3, share of correct tool results that do not reach the final answer (\%,
 \emph{think}=off). The base of each cell is its trials in which the right tool
 returned the right result; the cell is the share of those whose delivered final answer
-is wrong. Open-weight rows are the pre-registered rerun and Claude rows are the
-frontier runs (wording v11); the two are never pooled. $\ddagger n$: $n$ further Claude
-answers were cut at the storage limit and have an unknown grade; they count as not
-lost here, so the true share lies between the value shown and that value with those
-$n$ added. Brackets are 95\% domain-cluster bootstrap intervals.}
+is wrong. The rows are the pre-registered rerun. Brackets are 95\% domain-cluster
+bootstrap intervals.}
 \label{tab:rq3-lost}
 \end{table*}
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 Verdicts reach the answer. Over the three validation tasks the open-weight models
 lose $76$ of $20{,}086$ correct tool results, at most $1.7\%$ in any cell, and Claude
 loses $1$ of $2{,}610$. Plans are lost more often: between $4.7\%$ and $13.4\%$ of the
@@ -1396,6 +1386,58 @@ copy of it, and the models make errors in it even on traces of five states. The 
 that RQ3 reports for \emph{simulate} should be read with both properties in mind. The pilot is
 small ($114$ to $120$ trials per cell), its three window sizes were run as separate
 jobs weeks apart, and the intervals of the three sizes overlap in every cell.
+
+\subsection{Frontier Models}
+% TODO(Omer): section text to write; numbers in development/reference/frontier55_readout.md
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+& & \multicolumn{2}{c}{\textbf{Delivered right (\%)}} & \textbf{Paired difference} &
+\textbf{Exactly the} & \multicolumn{2}{c}{\textbf{Tool right,}} \\
+\cmidrule(lr){3-4}
+\textbf{Model} & \textbf{Task} & \textbf{no-tools} & \textbf{+tool} &
+\textbf{+tool $-$ no-tools} & \textbf{right tool (\%)} &
+\multicolumn{2}{c}{\textbf{answer wrong (\%)}} \\
+\midrule
+% rows generated by tools/reanalysis/frontier55_tex.py (tex/frontier55_main.tex)
+% No row carries a dagger in this output. If one does after a new output, add the
+% dagger sentence of Table rq1-matched to the caption (Holm across the five tasks of a model).
+Claude Haiku~5.5 & \emph{solve} & $73.7$ {\scriptsize$[60.0,\,85.7]$} & $95.0$ {\scriptsize$[89.0,\,99.3]$} & $+21.3$ {\scriptsize$[+7.7,\,+36.3]$} & $86.3$ {\scriptsize$[80.0,\,92.3]$} & $15$ / $294$ & $5.1$ \\
+ & \emph{validate\_domain} & $82.5$ {\scriptsize$[70.6,\,92.2]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $+17.5$ {\scriptsize$[+7.8,\,+29.4]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $0$ / $360$ & $0.0$ \\
+ & \emph{validate\_problem} & $88.3$ {\scriptsize$[83.5,\,92.7]$} & $97.2$ {\scriptsize$[95.5,\,98.7]$} & $+8.8$ {\scriptsize$[+4.2,\,+14.0]$} & $64.2$ {\scriptsize$[57.7,\,70.2]$} & $5$ / $588$ & $0.9$ \\
+ & \emph{validate\_plan} & $94.3$ {\scriptsize$[91.3,\,96.9]$} & $95.1$ {\scriptsize$[91.8,\,98.0]$} & $+0.8$ {\scriptsize$[-1.6,\,+3.0]$} & $86.1$ {\scriptsize$[81.8,\,89.9]$} & $0$ / $2815$ & $0.0$ \\
+ & \emph{simulate} & $41.3$ {\scriptsize$[26.0,\,57.3]$} & $21.0$ {\scriptsize$[11.7,\,32.0]$} & $-20.3$ {\scriptsize$[-30.7,\,-11.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $223$ / $286$ & $78.0$ \\
+\addlinespace
+Claude Sonnet~5.5 & \emph{solve} & $94.0$ {\scriptsize$[87.3,\,99.3]$} & $97.0$ {\scriptsize$[94.7,\,99.0]$} & $+3.0$ {\scriptsize$[-3.0,\,+10.7]$} & $91.3$ {\scriptsize$[84.7,\,96.7]$} & $9$ / $299$ & $3.0$ \\
+ & \emph{validate\_domain} & $99.7$ {\scriptsize$[99.2,\,100.0]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $+0.3$ {\scriptsize$[+0.0,\,+0.8]$} & $100.0$ {\scriptsize$[100.0,\,100.0]$} & $0$ / $360$ & $0.0$ \\
+ & \emph{validate\_problem} & $95.7$ {\scriptsize$[94.0,\,97.3]$} & $99.5$ {\scriptsize$[98.5,\,100.0]$} & $+3.8$ {\scriptsize$[+2.2,\,+5.7]$} & $95.3$ {\scriptsize$[93.5,\,97.2]$} & $0$ / $597$ & $0.0$ \\
+ & \emph{validate\_plan} & $99.0$ {\scriptsize$[97.9,\,99.8]$} & $99.4$ {\scriptsize$[98.5,\,100.0]$} & $+0.4$ {\scriptsize$[-0.5,\,+1.6]$} & $98.8$ {\scriptsize$[98.0,\,99.4]$} & $0$ / $2983$ & $0.0$ \\
+ & \emph{simulate} & $55.0$ {\scriptsize$[41.7,\,68.3]$} & $46.3$ {\scriptsize$[33.0,\,60.0]$} & $-8.7$ {\scriptsize$[-17.0,\,+0.0]$} & $99.0$ {\scriptsize$[97.3,\,100.0]$} & $157$ / $296$ & $53.0$ \\
+\bottomrule
+\end{tabular}
+\caption{Claude Haiku~5.5 and Claude Sonnet~5.5 on the five tasks (delivered final
+answers). Each model was run in two arms, without tools and with the seven tools offered
+under the three plain wordings, on the same $4{,}560$ trials in each arm: $300$ on
+\emph{solve}, $360$ on \emph{validate\_domain}, $600$ on \emph{validate\_problem},
+$3{,}000$ on \emph{validate\_plan} and $300$ on \emph{simulate}. \emph{Delivered right}:
+share of an arm's trials whose final answer is right. \emph{Paired difference}: tools
+minus no tools, paired on the trial, in points. \emph{Exactly the right tool}: share of
+the tool-arm trials that called the task's tool and no other; on \emph{solve} it is the
+planner that fits the domain. \emph{Tool right, answer wrong}: the tool-arm trials whose
+final answer is wrong, out of those in which a tool call returned the right result, and
+that share in percent. Brackets are 95\% domain-cluster bootstrap intervals. These rows were
+collected under conditions that differ from those of the open-weight models: the
+temperature is the provider's default, the context window holds about one million
+tokens, the output cap is counted in the provider's tokens, the weights are hosted, the
+no-tools arm was sent as a batch and the tool arm as live requests, and the tools ran on
+another machine. Haiku~5.5 ran with thinking off and Sonnet~5.5 at its lowest thinking
+setting. The rows are not ranked against the open-weight models.}
+\label{tab:claude}
+\end{table*}
 
 \section{External Validity on PlanBench}
 \label{sec:planbench}
@@ -1673,6 +1715,7 @@ comparison and \$$2.61$ for the instruction-only arm. The whole PlanBench arm ca
 about \$$46$ including the calibration runs, or roughly \$$0.017$ per trial.
 
 \section{Discussion}
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{What the three answers say together.} A sound tool guarantees its own
 result. What a user receives depends on two further steps that the guarantee does not
 cover: the model has to call the tool, and the tool's result has to reach the final
@@ -1701,6 +1744,7 @@ than the reference. With thinking on, two of the three larger open-weight models
 the right tool less often, so reasoning mode and tool calling are not independent
 settings.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Using the output.} A verdict is a single word and almost always survives.
 A plan or a state trace has to be restated in the answer, and the loss grows with the
 length of what must be restated. In the open-weight runs the largest registered cause
@@ -1720,6 +1764,7 @@ For the two Claude models, the output-budget probe raised the output allowance
 % TODO(Omer): points at material moved to the supplement (paper/supplement_source.tex)
 on \emph{simulate} (Supporting Analyses).
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 \paragraph{Unaided planning.} Our unaided open-weight models solve $43$--$69\%$ of a set of
 % TODO(Omer): points at material moved to the supplement (paper/supplement_source.tex)
 small problems in the control of RQ1, and the frontier models $22$--$29\%$ under a
@@ -1740,6 +1785,7 @@ in the context window for that restatement, and in our pilot room alone did not 
 it.
 
 \section{Limitations}
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 Several constraints bound these conclusions. The measures of RQ1 and the
 classification of RQ2 were defined after the data were collected, so they are
 exploratory. Only the loss categories of RQ3 on the rerun were registered. The
@@ -1767,6 +1813,7 @@ truncation confound for a parsing one. Decoding is deterministic (temperature~0)
 each trial is a single sample and our intervals measure uncertainty over the test
 instances, not decoding variance. Robustness to higher temperatures is untested.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 The roster is five open-weight models from two families, so the results describe
 these models and are not a ranking. The unaided results extend in part to a strong
 proprietary model. Claude Sonnet~4.6 also fails most \emph{solve} problems unaided
@@ -1840,6 +1887,7 @@ the unaided baseline that RQ1 reports on these two tasks. The main sweep, the tw
 smaller models and the \emph{think}=on cells were not run again, so their unaided
 \emph{solve} and \emph{simulate} figures were obtained with the reference in place.
 
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 The largest constraint that we imposed on ourselves is storage. The main sweep
 stored final answers as $500$-character snapshots, a decision made before the
 delivered answer was fixed as the primary outcome. Its tool arms therefore give no
@@ -1887,6 +1935,7 @@ delivers could then be compared with the domain that the algorithm learns from t
 executions without a language model.
 
 \section{Conclusion}
+% TODO(Omer): quotes the earlier Claude runs (Haiku 4.5, Sonnet 4.6), now in the supplement; the new run is in Table~claude
 We asked three questions about giving a language model sound PDDL tools. The tools
 help on most of what we measured. With the tools the models deliver a valid plan in $78$--$95\%$ of the trials. The
 % TODO(Omer): points at material moved to the supplement (paper/supplement_source.tex)
