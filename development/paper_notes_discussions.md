@@ -651,3 +651,23 @@
   writes between tool calls. So the no-tools arm runs without thinking, and the tool arm
   has notes between calls. This is close to the open models' setting and is what the run
   will use; the paper states it. Not yet checked on a live request.
+
+## 2026-11-26 — The matched run is running; outline choices; the Claude run
+
+- **The matched run's smoke passed (2026-11-25, job 24499771)** on all seven registered
+  checks, and **the full run was submitted on Omer's word ("Yes, run it") as job
+  24502726, 2026-11-26 07:09 IST.** The record is in `reference/matched_run_prereg.md`,
+  sections 9 and 10 (PR #152).
+- **Decided (Omer, 2026-11-26), outline choices.** The Claude results stay in their own
+  small section for now, with the placement decision deferred; Haiku's result may be
+  brought out. RQ3 quotes the registered trace-loss range in the table and the other
+  reading in one clause. PlanBench stays in the body. The delivered rates on
+  validate_domain and validate_problem are not computed now.
+- **Omer's aim for this stage:** have every run submitted, open models and Claude, so
+  that the waiting happens in parallel. He raised adding models of other providers
+  (ChatGPT, Gemini, hosted Qwen); the session's view is in chat, and nothing is decided.
+- **The Claude run, in work:** the runner and the registration draft are being written
+  (no paid request before Omer has seen an itemized cost). Written in as the session
+  recommends and open for him: the no-tools arm by Batch and the tool arm by live calls
+  on the same day; each model's default effort, sent explicitly; a small paid pilot
+  first.
