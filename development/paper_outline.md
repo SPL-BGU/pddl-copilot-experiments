@@ -264,6 +264,9 @@ one tool suite.
 
 **Has to establish:** the three answers in three sentences; two directions (larger
 problems where the planner can fail; tools whose output is shaped for the model).
+A third direction worth a sentence (from the closed PR #144): whether the model should
+restate the tool's output at all, or the tool's result should go straight into the
+answer while the model only chooses the tool and checks the result.
 
 ---
 

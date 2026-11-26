@@ -27,7 +27,7 @@ his advisors. The paper is also Omer's thesis.
 |---|---|---|
 | RQ2, RQ3 | the October rerun, tool arms (`results/delivered-rerun`) | final |
 | RQ1 on validate_domain, validate_problem, validate_plan | the October rerun, tool arms against its own no-tools arm | final |
-| RQ1 on solve and simulate | **the matched run** (below) | smoke submitted |
+| RQ1 on solve and simulate | **the matched run** (below) | running on the cluster |
 | Frontier rows | a new Claude run (below) | Haiku 5.5 and Sonnet 5.5; not designed yet |
 | PlanBench | its own registered study | final, left as it is |
 
@@ -48,18 +48,40 @@ tools steered. 300 trials per model, task and arm: 5,400 trials. Decided by Omer
 run approved earlier that day.
 
 - **Registered and frozen 2026-11-25:** `reference/matched_run_prereg.md`, package hash
-  `1f3d0f84…`, in PR #152 (not merged yet). Harness flag merged: PR #151, `main` at
+  `1f3d0f84…`, on `main` (PR #152). Harness flag merged: PR #151, `main` at
   `3044981`.
-- **Smoke submitted** 2026-11-25 22:17 IST, job 24499771. Result pending.
-  `status.sh --matched` lists its folders.
-- **The full run needs Omer's separate go-ahead.**
+- **Smoke passed** 2026-11-25 (job 24499771), all seven registered checks.
+- **Full run submitted** 2026-11-26 07:09 IST on Omer's word, job **24502726**, six
+  cells. At 09:48 IST three cells were complete (Gemma-26B both, Qwen3.6-35B no tools)
+  and three running; no failure. Only job states and row counts are read while it runs.
+- **Next:** when all six cells are complete, sync them (with filters that show no
+  trial outcome), run the frozen analysis with the registered hash, write the readout
+  and the `NUMBERS.md` entry, and fill sections 9 and 11 of the registration. No
+  result of a part of the run is read before that (registration, section 7).
 
 ## The frontier models
 
-A new Claude run is decided in outline (`unified_run_design.md`): the same design as the
-open models, the plain wordings, two arms, no steered arm, the Batch API. PlanBench is
-left as it is. **Models (Omer, 2026-11-25): Haiku 5.5 with thinking off, and Sonnet 5.5 at its lowest setting (no thinking before the answer; short notes between tool calls).** The run is not designed or registered yet. The old runs (Haiku
-4.5, Sonnet 4.6) go to the supplement.
+Separate corpora, never pooled with or ranked against the open models. The old runs
+(Haiku 4.5, Sonnet 4.6) go to the supplement. PlanBench is left as it is.
+
+- **Claude Haiku 5.5 and Sonnet 5.5 (Omer, 2026-11-25 and 2026-11-26).** Five tasks,
+  wordings v11 to v13, two arms (no tools by Batch, tools by live calls the same day),
+  18,240 trials. Haiku runs with thinking off; Sonnet at its lowest setting, which
+  returned no thinking in the pilot. Registration:
+  `reference/frontier55_prereg.md` on branch `frontier/claude-55-run` (not on `main`
+  yet); runner `tools/frontier55/`. Pilot passed 2026-11-26 (640 trials, 11.43
+  dollars). **Full run started 2026-11-26 about 07:20 UTC** from the worktree
+  `.claude/worktrees/frontier55`, into `results/frontier55/`, with enforced limits of
+  60 and 430 dollars. **Its answers are not read until the Claude analysis is written
+  and frozen; that analysis does not exist yet.** Do not edit `tools/frontier55/*.py`
+  while the run is unfinished: the run's manifest pins their hashes.
+- **`gpt-6.2-sol` and hosted `Qwen/Qwen3.6-35B-A3B` (Omer, 2026-11-26).** The Qwen run
+  is the same weights as the local 35B at full precision (host: Novita), as an anchor
+  that measures the cost of the local 4-bit quantization. Runners and a registration
+  draft are being written on branch `frontier/gpt-qwen-run` (worktree
+  `.claude/worktrees/hosted-models`), with no paid request. Open for Omer: GPT at
+  reasoning "low" (it cannot be turned off); API keys `OPENAI_API_KEY` and
+  `NOVITA_API_KEY`, which are not set in his shell.
 
 ## The paper file
 
@@ -89,10 +111,12 @@ the control baseline; the matched run replaces them. Generators: `paper/README.m
 
 **For the session**
 
-1. The matched run: smoke readout, then the run and its frozen analysis, each cluster
-   step on Omer's word. Then the RQ1 tables and figures for solve and simulate.
-2. The Claude run, once the models are confirmed.
-3. After the matched run is submitted: remove the four extension models and the gpt-oss
+1. The matched run: when job 24502726 is complete, sync, frozen analysis, readout.
+   Then the RQ1 tables and figures for solve and simulate.
+2. The Claude run: let it finish; write, review and freeze its analysis; then read it.
+3. The GPT and hosted Qwen runs: review the runners, itemize the cost, pilot, run,
+   once the keys exist.
+4. Now that the matched run is submitted: remove the four extension models and the gpt-oss
    effort flags from `cluster-experimenting/`, and correct the script header comments.
 4. Check whether ICAPS 2027 asks for the Reproducibility Checklist; remove it if not.
 5. Backup zips under `checkpoints/` for `results/control-promptfix` and the pilots.

@@ -593,6 +593,34 @@
   machinery. Handoff: `development/next_session_prompt.md`.
 
 
+## 2026-11-25 (evening) — The matched run: registered and frozen
+
+- **Decided (Omer, 2026-11-25: "Yes, accept all"): the matched run's open settings**, as
+  the session recommended. A5: the no-tools message is the control's format-stated one.
+  A6: the simulate tool stays as it is. A7: 16K context. A8: one grade fixed before the
+  run (plan in the last code block on solve; a one-object-per-line trace also read on
+  simulate), the same in every arm. A9: validator 0.1.5 with plans sent in lower case.
+  A10: other settings as in October. ISS-029: the simulate answer key stays the cached
+  trace; on six problems (barman p01 to p05, gripper p03) the prompt's plan can differ
+  from the key's, 18 of 300 trials per arm, and the count is reported.
+- **Registered and frozen the same day, before any trial.** Registration
+  `reference/matched_run_prereg.md`; analysis `tools/reanalysis/matched_run.py`; package
+  hash `1f3d0f84…`; PR #152. Five freeze gates passed; the independent review found no
+  blocker in two passes.
+- **Reporting rule fixed in the registration:** the body of the paper reports this run
+  for RQ1 on solve and simulate whatever it shows; the October figures and the control's
+  figures on these two tasks go to the supplement with a continuity table; RQ2 and RQ3
+  stay on the October tool arms.
+- **Known before the run, from old data:** the registered grade moves the tool arms on
+  simulate well above October's grader (Gemma, plain wording: 60 of 300 against 25 of
+  300). Lower-casing changed no trial on the old data.
+- **Not done:** PR #151 (the submit flag for one job) is open; the harness commit is
+  recorded in the registration when it is merged. No cluster step has been taken; the
+  smoke and the full run each need Omer's word.
+- **Also written for Omer the same day, open:** `cleanup_list.md` (nothing removed yet),
+  `paper_outline.md` (four open choices), section B of `unified_run_design.md` (Claude
+  models).
+
 ## 2026-11-25 (night) — The repository clean-up, carried out
 
 - **Approved (Omer, 2026-11-25: "clean up approved").** The list was
@@ -696,3 +724,10 @@
   as stated by the host, by Novita; most other hosts quantize it. Open: his word on
   `gpt-6.2-sol` at reasoning "low"; API keys for OpenAI and for the Qwen host, which
   are not set in his shell. Nothing paid can run before the keys exist.
+- **Merged (Omer, 2026-11-26: "can we merge the open prs? i aint gonna review those").**
+  PR #152 (the matched run's registration and frozen analysis) is on `main` at
+  `a5682cd`, and PR #153 (the repository clean-up) after it. Not merged: #144 (Future
+  Work wording from 2026-11-22; it edits files this clean-up moved or rewrote, and Omer
+  now writes the prose; its one idea, whether the model should restate the tool's output
+  at all, is kept as a future-work item in `paper_outline.md`) and #134 (release files,
+  on hold while the submission is anonymous).

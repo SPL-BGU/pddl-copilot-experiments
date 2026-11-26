@@ -1,0 +1,32 @@
+{
+ "single_task": {},
+ "meta": {
+  "host": "http://localhost:11500",
+  "conditions": "tools",
+  "models": [
+   "cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit"
+  ],
+  "tasks": [
+   "solve",
+   "simulate"
+  ],
+  "num_variants": 6,
+  "prompt_variants_active": [
+   11,
+   12,
+   13,
+   14,
+   15,
+   16
+  ],
+  "include_no_tools_steered": false,
+  "temperature": 0.0,
+  "num_ctx": 16384,
+  "num_ctx_thinking": 16384,
+  "num_predict": null,
+  "think": "off",
+  "resumed_count": 0,
+  "tool_filter": "all",
+  "prompt_style": "minimal"
+ }
+}

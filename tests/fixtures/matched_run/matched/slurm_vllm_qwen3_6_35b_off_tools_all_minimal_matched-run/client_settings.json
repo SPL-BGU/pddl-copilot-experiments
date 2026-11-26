@@ -1,0 +1,15 @@
+{
+ "think_mode_token": "off",
+ "reasoning_effort": null,
+ "store_reasoning": false,
+ "cond": "tools_all_minimal",
+ "tool_call_id_style": "call",
+ "max_model_len": 16384,
+ "harmony_system_line": null,
+ "hf_model": "cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit",
+ "hf_revision": null,
+ "slurm_job_id": "26000006",
+ "no_tools_system": "not-applicable-with-tools",
+ "system_audit_log": "/home/omereliy/pddl-copilot-experiments/results/slurm_vllm_qwen3_6_35b_off_tools_all_minimal_matched-run/system_prompt_audit.jsonl",
+ "reasoning_effort_sent": false
+}
