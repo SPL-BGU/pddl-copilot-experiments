@@ -564,4 +564,22 @@ is read.
 
 ## 11. Deviations
 
-*None yet.*
+**1. One model's results were read while the run was unfinished (2026-11-26, about 10:25
+cluster time).** Section 7 says that during the run only row counts and job states are
+read. Omer asked to see the results of the cells that had finished, to check that the
+run behaves as expected. The session said twice what that costs and recommended
+waiting; he first chose to wait and then asked for Gemma-26B's results. At that moment
+the two Gemma-26B cells and the Qwen3.6-35B no-tools cell were complete, and the three
+other cells were running (Qwen3.5-9B both, Qwen3.6-35B tools).
+
+- **What was read:** for Gemma-26B only, the rate of each arm on solve and simulate
+  under the registered grade, and M1, M2 and M3 with their intervals. Computed by a
+  separate script that calls the frozen functions without changing them, because the
+  frozen analysis refuses an unfinished run. Holm-adjusted values were not computed
+  (they need all six contrasts of a name).
+- **What was not read:** any row of Qwen3.5-9B or Qwen3.6-35B.
+- **What it could have changed, and did not:** the analysis was frozen before the run
+  and its package hash is unchanged; the three running cells were left alone, with no
+  cancellation, resubmission or change of any setting after the look.
+- **The record is the registered analysis,** run once on the complete corpus with the
+  package hash. The early figures are not filed in `NUMBERS.md` and are not quoted.
