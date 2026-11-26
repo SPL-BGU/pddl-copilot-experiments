@@ -731,3 +731,53 @@
   now writes the prose; its one idea, whether the model should restate the tool's output
   at all, is kept as a future-work item in `paper_outline.md`) and #134 (release files,
   on hold while the submission is anonymous).
+
+## 2026-11-26 (later) — Pick-up from the handoff; the ICAPS call and the checklist
+
+- **State at 10:02 UTC, read without opening any outcome.** Matched run: three of six
+  cells on the laptop (600, 1,200 and 600 rows); the cluster was not contacted. Claude
+  run: both runners alive, tool arms at 3,099 (Haiku 5.5) and 2,108 (Sonnet 5.5) of
+  4,560 rows.
+- **The Claude analysis is being written** in a new worktree
+  (`.claude/worktrees/frontier55-analysis`, branch `analysis/frontier55`: the run's
+  branch with `main` merged in), from synthetic fixtures only, so that the running
+  job's worktree is not touched. It stops before the freeze; points the registration
+  leaves open go to Omer first.
+- **ICAPS 2027 call, read 2026-11-26** (`icaps27.icaps-conference.org/calls/cfp`): the
+  AAAI reproducibility checklist is not required, so it leaves `paper/main.tex` in the
+  next paper PR. The call has its own Reproducibility section asking for hardware,
+  benchmarks and software versions in the main paper; added to `paper_outline.md`,
+  3.3. Supplementary material is optional, anonymised, at most 100 MB, and reviewers
+  need not read it; the main paper must stand alone. The call gives the author
+  response period as 2027-02-04 to 02-08.
+- **PRs #144 and #134 are closed on GitHub**, not open as `STATUS.md` said.
+- **The handoff file of 2026-11-26 is deleted**; its tasks are in `STATUS.md`
+  (`MOVES.md`).
+
+## 2026-11-26 (afternoon) — The matched run is complete and read out; the Claude analysis is a freeze candidate
+
+- **The matched run ended 2026-11-26 12:34 IST** (job 24502726): six cells, 5,400 rows,
+  every task on its first start, no preemption. Omer's go-ahead for the check and the
+  copy: "Yes, check and copy". An Opus cluster agent copied the folders and logs with no
+  results file or job log opened; it reported no outcome on its screen.
+- **The frozen analysis was run once** with the package hash `1f3d0f84…`, and once more
+  unchanged to write `NUMBERS.md` (byte-identical). No tripwire fired. Readout:
+  `reference/matched_run_readout.md`.
+- **What it says for RQ1, tools (plain) minus no tools, inside one run.** Solve: tools
+  ahead for all three models: +50.3 [+37.3, +63.3] (Qwen3.5-9B), +36.0 [+23.0, +49.7]
+  (Gemma-26B), +11.0 [+2.3, +19.7] (Qwen3.6-35B; adjusted p = 0.105, so "not after
+  Holm"; with the tool named +21.7 [+11.0, +33.7]). Simulate: no model has tools ahead;
+  for Gemma-26B the unaided arm is ahead (-14.0 [-25.3, -3.7], not after Holm).
+- **One sentence of the merged draft changes:** the 35B's solve gap was "not shown"
+  across two runs (+9.3 [+0.0, +19.7]); inside one run its interval is above zero. The
+  rest keeps its direction and its size to within a few points.
+- **Continuity (supplement):** the tool arms reproduce the October rerun within the
+  5-point margin in 9 of 12 checks, the other 3 unresolved, largest estimate 2.7 points.
+  The no-tools arm against the control: 2 of 6 met, 3 unresolved, one difference shown
+  (Gemma-26B simulate, +4.3 [+1.0, +8.0], not after Holm).
+- **Nothing goes near the paper before Omer has read the readout.**
+- **The Claude analysis is written as a freeze candidate** (branch `analysis/frontier55`,
+  commit `6f30ffe`, local): 846 fixture checks pass, no row of the run read. Seven
+  points the registration leaves open are for Omer; an independent review is running.
+  Not frozen.
+

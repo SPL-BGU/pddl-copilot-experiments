@@ -3,8 +3,9 @@
 **Written 2026-11-25 for Omer. Outline only: no prose is drafted here and nothing is
 fitted to a page count.** For each section: what it has to establish, which numbers
 carry it, and which figures and tables sit there. Numbers are the ones in the merged
-draft and `NUMBERS.md`; those marked **(matched run)** will be replaced by the new run
-and are shown only so the shape of the claim is visible. Open choices are collected in
+draft and `NUMBERS.md`. Those marked **(matched run)** are from the matched run of
+2026-11-26 (`reference/matched_run_readout.md`; `NUMBERS.md`, "Matched run"), filled in
+on 2026-11-26. Open choices are collected in
 section 12 with `> ANSWER:` lines.
 
 The line the paper follows: clean results first; the earlier runs, the prompt fault and
@@ -26,8 +27,8 @@ points there.
 - One finding per question, as the contribution list.
 
 **Numbers that carry it** (one per question)
-- RQ1: with tools the models deliver a valid plan in 78 to 95% of trials, against 43 to
-  69% unaided **(matched run)**; on plan verdicts both error rates fall for the two Qwen
+- RQ1: with tools the models deliver a valid plan in 79 to 95% of trials, against 41 to
+  68% unaided **(matched run)**; on plan verdicts both error rates fall for the two Qwen
   models (for Qwen3.5-9B, wrongly rejected valid plans −20.1 points, wrongly accepted
   broken plans −9.3).
 - RQ2: when a model calls, it calls the right tool; whether it calls is the variable.
@@ -90,6 +91,11 @@ here, as facts about the setup, each once.
   sentence listing what differs (provider-side sampling, no fixed temperature on the
   new models, thinking setting), and that their rows are never pooled with or ranked
   against the open models.
+- **Asked for by the call** (ICAPS 2027, Reproducibility section, read 2026-11-26):
+  hardware, benchmarks and software versions stated in the main paper. One or two
+  sentences here: the GPU class, the serving software and its version, the tool suite's
+  commit and the validator release, the model identifiers. The AAAI Reproducibility
+  Checklist is not required and leaves `main.tex`.
 
 ### 3.4 The three arms
 - No tools; tools offered with the plain wordings; tools offered with one added sentence
@@ -132,11 +138,16 @@ data are clean (October run, both arms).
 ### 4.3 Solve
 **Has to establish:** how much the tools add to the share of problems solved, per model,
 and how that depends on problem size.
-**Numbers (matched run):** the three arms' rates and the three paired differences
-(tools minus no tools; steered minus no tools; steered minus plain). Shape from the
-earlier runs: unaided 42.7 / 54.0 / 69.0%; with tools 78.3 to 95.3%; gaps +49.3, +38.3
-and +9.3 [+0.0, +19.7], the last not shown as a gain. On reference plans over 40
-actions: unaided 22.2 to 38.9%, with tools 36.1 to 58.3%.
+**Numbers (matched run):** unaided 41.3 / 58.0 / 68.3% (Qwen3.5-9B / Gemma-26B /
+Qwen3.6-35B); tools with the plain wording 91.7 / 94.0 / 79.3%; with the tool named
+90.3 / 94.7 / 90.0%. Tools (plain) minus no tools: +50.3 [+37.3, +63.3], +36.0 [+23.0,
++49.7], +11.0 [+2.3, +19.7]. The last has an interval above zero and does not survive
+the Holm adjustment (adjusted p = 0.105); with the tool named it is +21.7 [+11.0,
++33.7] and does. Naming the tool adds +10.7 [+4.0, +17.7] for Qwen3.6-35B (not after
+Holm) and nothing for the other two: its plain arm makes no call in 36 of 300 trials
+(forward pointer to RQ2). By size: on reference plans over 40 actions, unaided 19.4 /
+36.1 / 41.7%, with tools (plain) 44.4 / 61.1 / 38.9%; the two smaller models stay at
+93% or more with tools up to 40 actions.
 **Table:** solve, three arms by three models, with the paired differences (replaces
 `tab:rq1-solve` and `tab:rq1-control`). **Figure:** solved against reference plan
 length (`fig:rq1-solve`, redrawn on the matched run).
@@ -147,14 +158,20 @@ supplement.
 ### 4.4 Simulate
 **Has to establish:** on the task whose tool output is long, the tools do not raise the
 share of correct answers, and both arms degrade with trace length.
-**Numbers (matched run):** the three arms' rates and paired differences. Shape from the
-earlier runs: exact traces unaided 13.5 / 29.1 / 35.5% against 21.6 / 21.3 / 31.2% with
-tools; every interval includes zero; beyond 40 actions almost no exact trace in any
-arm.
+**Numbers (matched run):** exact traces unaided 12.7 / 31.7 / 35.3%; tools with the
+plain wording 19.7 / 17.7 / 30.3%; with the tool named 16.0 / 16.0 / 32.3%. Tools
+(plain) minus no tools: +7.0 [-1.3, +15.7], -14.0 [-25.3, -3.7], -5.0 [-13.3, +3.3]. No
+model has tools ahead. For Gemma-26B the unaided arm is ahead, with an interval below
+zero that does not survive the Holm adjustment (adjusted p = 0.105). Beyond 40 actions
+no arm of any model delivers one exact trace. With tools, 142 to 168 of 300 final turns
+per cell had no room left in the window (forward pointer to RQ3); unaided, 97 to 145 of
+300 answers stop at the output cap.
 **Table:** simulate, three arms by three models (replaces `tab:rq1-simulate`).
 **Figure:** share of states right against trace length (`fig:rq1-simulate`, redrawn).
 The state-by-state and lenient scores: keep the strict score in the body, the lenient
-one as a sentence (many unaided answers are right as far as they go and end early).
+one as a sentence (many unaided answers are right as far as they go and end early:
+unaided lenient 56.7% against strict 40.1% for Gemma-26B and 56.7% against 43.7% for
+Qwen3.6-35B, on 94 problems; with tools the two scores are within one point).
 
 ---
 
@@ -315,8 +332,10 @@ items.
 
 ## 13. Analysis still to do for this outline
 
-1. The matched run (registration: `reference/matched_run_prereg.md`).
+1. The matched run: done 2026-11-26 (`reference/matched_run_readout.md`).
 2. (Not now: Omer, 2026-11-26.) Delivered rates on validate_domain and validate_problem, tools against no tools,
    from the October run (4.2).
 3. The frontier run, once 12.1 is answered.
-4. Figures redrawn on the matched run (solve by plan length, simulate by trace length).
+4. Tables and figures rebuilt on the matched run (solve by plan length, simulate by
+   trace length, plan length, and a table of the three arms with their paired
+   differences): in work on branch `paper/rq1-matched-run`, 2026-11-26.
