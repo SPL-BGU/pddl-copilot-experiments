@@ -1,10 +1,11 @@
 # Traceability map: the Claude-run registration to the analysis code (freeze gate 3)
 
-**Freeze candidate. Not frozen.** No hash of this code is recorded as frozen, and section
-10 of the registration is not filled. The independent review (gate 5) has been run once on
-commit `6f30ffe` and verified on `6fe8442`; its nine points and the three of the
-verification pass are applied here. The owner's open choices are listed at the end under
-**Open points**.
+**Frozen 2026-11-26** at package hash `0cbb69b7f810d039734b0aba15096bda91a6f97c6c334dfd2a0ec8ed59cbb497`
+(registration, section 10). The independent review (gate 5) ran on commit `6f30ffe`, was
+verified on `6fe8442` and checked again on `2905790`; every item it raised is applied
+here. The owner's open choices are listed at the end under **Open points**: Omer accepted
+points 1 to 7 as implemented on 2026-11-26; point 8 is kept as implemented (registration,
+section 10).
 
 Spec: `development/reference/frontier55_prereg.md`, sections 2.1 to 2.3 (constants), 2.5,
 2.6, 3, 4, 5, 6, 7 and 8.

@@ -671,10 +671,31 @@ full output cap, and it is the per-model stop of section 7.
 
 ## 10. Freeze record
 
-Empty. To be filled when the analysis is written and frozen: the analysis script and its
-package hash, the five gates, the runner's commit, the sha256 of the runner's files, the
-tool checkout and its tool-list digest, the SDK version and the API version header, and
-the `--max-usd` value given per model at each start.
+**FROZEN 2026-11-26, about 11:35 UTC.** At that moment Haiku 5.5 was complete in both
+arms (4,560 rows each) and Sonnet 5.5's tool arm held 3,924 of 4,560 rows; its batch had
+not been fetched. **No row, sidecar answer or outcome of the full run had been read** by
+the session or by any agent. What was read before the freeze, as section 6 allows: row
+counts; the counts of endings of Haiku's batch (one batch, 4,560 succeeded, none
+expired, errored or canceled); the run manifests and the start records (settings,
+commits, digests). The analysis refuses to read a row unless it is started with the
+package hash below.
+
+| item | value |
+|---|---|
+| analysis | `tools/reanalysis/frontier55.py`, branch `analysis/frontier55` (the run's branch with `main` merged in), freeze commit: the commit that adds this record |
+| package hash (`--i-have-frozen`) | **`0cbb69b7f810d039734b0aba15096bda91a6f97c6c334dfd2a0ec8ed59cbb497`** (38 files: the analysis script and the 37 files of the matched run's package, whose own hash is still `1f3d0f84…`; the rerun's `822aace9…` and the control's `825dab63…` are unchanged). The runner's files are not in it |
+| gate 1, typed load | rows through the rerun's frozen loader with the model-name swap of section 2.6; sidecar, manifest and batch records through typed readers that halt on a missing key or an unknown value |
+| gate 2, constants as checks | models, arms, 4,560 rows per folder and the per-task counts, the same trials in both arms, 20 domains for RQ1, 10,000 resamples, seed 20261002, the ground-truth sha256, validator 0.1.5, the ten system-text digests, the output caps, the storage cap |
+| gate 3, clause map | `frontier55_traceability.md`; nothing of sections 2.5 to 8 is left without code or a named reason |
+| gate 4, fixture | `tests/fixtures/frontier55/` (four folders of 300 rows with planted traps and hand-computed values); `tests/test_frontier55_analysis.py`, 1,007 checks in 13 tests, all pass |
+| gate 5, independent review | an agent that did not write the code, 2026-11-26, in three passes. First pass on `6f30ffe`: no wrong number in the grade, the denominators or the statistics (three contrasts recomputed independently from the fixture rows matched exactly); one blocker (section 6, "Failed batch items" (2), had no code) and two should-fix items (halt per model; scoring-error rows), six notes. Verification pass on `6fe8442`: no blocker; two should-fix items (a rerun guard; per-model blocking for a request dated before the batch send) and one reading for the owner (point 8 below). Last check on `2905790`: no blocker; the hand case of the share interval recomputed independently. Every item was applied |
+| the owner's open points | eight readings the registration leaves open, listed in the clause map. Omer accepted points 1 to 7 as implemented on 2026-11-26 ("Ok, all seven"). Point 8 ("the first batch expired as a whole" read as every item expired) was shown to him the same day and is kept as implemented; it cannot change Haiku's readout (no item of its batch expired), and Sonnet's batch counts are read before the analysis is run: if any item expired, Omer is asked before the run |
+| runner | commit `65083c559e0cb69ca678e45fa069fcfd77332ee1` (branch `frontier/claude-55-run`), not edited since. sha256: `runner.py` `9b3e4cec…1f652`, `anthropic_requests.py` `5c4b7665…190dd`, `cost.py` `5118ea98…02b97`, as in every folder's manifest |
+| starts | one per folder, all from that commit with no uncommitted change, 2026-11-26 07:16:02 to 07:16:15 UTC; registration sha256 at the start `1a724398…5fc54` (this document before this record) |
+| settings, from the manifests | `api.anthropic.com`; SDK 0.109.2 (pinned); Haiku 5.5 effort medium, thinking disabled; Sonnet 5.5 effort high, thinking between tools; temperature not sent; output caps 8,192 (solve) and 6,144 (the other four tasks); up to 10 tool turns; answers stored up to 65,536 characters; ground-truth cache `77d4184e…04c7e` |
+| tool checkout | `external/pddl-copilot-5e4f9c0` (a clone of `pddl-copilot` at `5e4f9c0`, pddl-pyvalidator 0.1.5); tool-list sha256 `dd145078…14400` |
+| API version header | recorded per request in each folder's sidecar; read at the readout, and entered here then. The pilot sent one value |
+| `--max-usd` | 60 (Haiku 5.5) and 430 (Sonnet 5.5) at the one start of each model |
 
 ## 11. Pilot record
 
