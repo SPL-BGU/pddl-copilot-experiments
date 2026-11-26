@@ -179,8 +179,12 @@ baseline's numbers until Omer rewrites them. Generators: `paper/README.md`.
 
 1. The matched run: done; PR #154 carries the tables and figures.
 2. The Claude run: done; PR #155, and its table in the paper in PR #156.
-   A token-consumption analysis asked for by Omer on 2026-11-26 is in work on branch
-   `analysis/token-consumption` (descriptive; no paper file).
+   The token-consumption analysis Omer asked for on 2026-11-26 is done: PR #157
+   (branch `analysis/token-consumption`; report in `development/token_consumption/README.md`;
+   descriptive and post hoc; no paper file). It still needs: Omer's choice of what
+   enters the outline, dated marks on the two older cost claims it contradicts (the
+   supplement source's "What the Tool Costs"; `NUMBERS.md` S2-C solve and simulate
+   rows), and its three sources verified before any citation.
 3. The GPT and hosted Qwen runs: review the runners, itemize the cost, pilot, run,
    once the keys exist. Before any paid request the itemized cost goes to Omer; stop
    and ask if an estimate passes 500 dollars.
@@ -254,7 +258,8 @@ Closed without merging (state checked 2026-11-26):
 Open: **#154**, the RQ1 solve and simulate tables and figures rebuilt on the matched
 run (2026-11-26); **#155**, the Claude run (runner, registration, frozen analysis,
 readout; no paper file); **#156**, the Claude table in a subsection of its own and the
-earlier Claude rows out of the body (on top of #154, holds #155).
+earlier Claude rows out of the body (on top of #154, holds #155). **#157**, the token-consumption
+analysis (holds #155; no paper file).
 
 ## Hygiene (Omer's to run)
 

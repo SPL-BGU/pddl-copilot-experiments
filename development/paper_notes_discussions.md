@@ -858,3 +858,37 @@
   right answer reported together, no ranking of the Claude models against the open
   ones on tokens (different tokenizers).
 
+## 2026-11-26 (night) — Token consumption: the analysis, a second metric, and caching
+
+- **The analysis is done (PR #157), descriptive and post hoc.** A tool trial uses 2.6 to
+  6.4 times the tokens of an unaided trial for the open models and 7.6 to 10.3 for the
+  Claude models, about 90% of it input. Per right answer on solve: 2.2 / 3.1 / 4.7
+  (Qwen3.5-9B / Gemma-26B / Qwen3.6-35B) and 5.9 / 7.8 (Haiku 5.5 / Sonnet 5.5).
+- **How to read that ordering (the session's note):** the per-trial overhead is about
+  flat within each group (4.8 to 5.4; 7.6 to 8.0). What shrinks with a stronger unaided
+  model is the number of extra right answers the overhead buys. Five models at one
+  time, not a trend over time.
+- **Asked by Omer: a metric that shows tokens against the success rate.** Chosen:
+  coverage at a token budget (share of trials right within B tokens, the budget applied
+  after the fact), with the break-even budget where the tools arm passes the unaided
+  one. Solve: about 20,000 tokens for Qwen3.5-9B, Gemma-26B and Haiku 5.5; about 39,000
+  for Qwen3.6-35B; about 41,000 for Sonnet 5.5 (never in 18% of draws). Simulate: no
+  break-even for four of five models.
+- **Asked by Omer: how to treat prompt caching so the arms compare fairly.** No figure
+  carries a cache discount (Claude: caching not enabled, zero cached tokens reported;
+  open models: every prompt token counted). Practice adopted, after Yang et al.,
+  arXiv:2611.22238: uncached input, cacheable input and output reported apart; only a
+  trial's own reuse counted; every conclusion stated over a cache price from 1 (as
+  measured) to 0. Result: the ordering holds at every price; a right plan with tools
+  costs no more than an unaided one only for Qwen3.5-9B and only near price 0;
+  simulate barely moves. Claude dollars are given as billed, at list price for both
+  arms, and as an estimate with the provider's cache prices (not billed).
+- **Two older cost claims are contradicted and still unmarked:** the supplement
+  source's "a right plan is cheaper with tools" (0.3 to 0.4 times; it counted the
+  tool's result, on the May sweep) and the solve and simulate rows of `NUMBERS.md`
+  S2-C (they divide by the October no-tools arm with the faulty message).
+- **Sources to verify before citing:** Erol et al., arXiv:2504.13359 (cost of a correct
+  answer); Kapoor et al., arXiv:2407.01502 (cost-controlled agent evaluation); Yang et
+  al., arXiv:2611.22238 (cost accounting under prefix caching). The cache prices used
+  for the estimate are from the API reference dated 2026-11-03.
+
