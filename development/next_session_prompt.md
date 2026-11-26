@@ -60,11 +60,16 @@ dollars, plus 11.43 for the pilot. Registration:
   Then open a PR for the branch.
 
 **3. GPT and hosted Qwen.** I chose `gpt-6.2-sol` and, as an anchor to our own roster,
-the same weights as the local Qwen3.6-35B hosted at full precision (Novita). Runners and
-a registration draft were being written by an agent on branch `frontier/gpt-qwen-run`
-(worktree `.claude/worktrees/hosted-models`), with no paid request; check what is
-committed there and finish or redo it. Then: an independent review as for the Claude
-runner, an itemized cost in chat, a pilot, the full run. Needed from me first: API keys
+the same weights as the local Qwen3.6-35B hosted at full precision (Novita). The runners, their
+tests (366 checks) and a registration draft are written and committed on branch
+`frontier/gpt-qwen-run` (worktree `.claude/worktrees/hosted-models`, commits `102458f`
+and `33cc879`; `development/reference/hosted_gpt_qwen_prereg.md`), with no request ever
+sent to either provider. Estimated cost: GPT 261 to 453 dollars (ceiling 927), Qwen
+about 56 (ceiling 158). Still to do: an independent review as for the Claude runner,
+my answers to the draft's open questions (GPT's output cap counts its hidden reasoning,
+so keep 8,192 and 6,144 or raise them; prompt caching off for GPT; which OpenAI tier,
+since the lowest paid tier has a 500-dollar monthly cap; what to do if the Qwen host
+refuses temperature 0), then the itemized cost in chat, a pilot, the full run. Needed from me first: API keys
 in my shell as `OPENAI_API_KEY` and `NOVITA_API_KEY` (not set on 2026-11-26), and my
 word on GPT at reasoning "low" (it cannot be turned off).
 
