@@ -22,8 +22,13 @@ This directory holds the paper.
   this material carry a `% TODO(Omer)` comment.
 - **Tables and figures are generated.** Table rows are pasted from generators and never
   edited by hand. In `tools/reanalysis/`: `rq1_tex.py`, `rq23_tex.py`,
+  `rq1_matched_metrics.py --open-only` (the RQ1 solve, simulate and plan-length tables,
+  Table rq1-matched and the two by-length figures, on the matched run),
   `rq1_control_metrics.py`, `control_prompt_fix_tex.py`, `rq3_context_pilot.py`,
-  `rq3_simulate_regrade.py`, `rq1_layout_regrade.py`, `json_constraint_pilot.py`, and
+  `rq3_simulate_regrade.py`, `rq1_layout_regrade.py`, `json_constraint_pilot.py`,
+  `frontier55_tex.py` (Table claude, the new Claude run, from `out/frontier55.json`),
+  `open_weight_tex.py` (the verdict, tool-choice and lost-result tables and the
+  verdict-error figure without the earlier Claude rows), and
   `rq1_figures.py` for figures. `paper/figures/make_paper_figures.py` draws the funnel
   figure and the figures of the supplement material.
 - **What is left to do** is in `development/STATUS.md`. **Which value of a figure to quote**

@@ -1,0 +1,66 @@
+{
+  "backend": "anthropic-batch",
+  "base_url": "https://api.anthropic.com",
+  "client_max_retries": 1,
+  "client_timeout_s": 600.0,
+  "conditions": "no-tools",
+  "corpus": "canonical",
+  "created_at": "2026-11-26T06:59:00+0000",
+  "domains_dir": "domains",
+  "effort": "medium",
+  "ground_truth": "cached",
+  "ground_truth_sha256": "6e2343ade12c47e57da038191593c4e01747fa29f178ecfcc65f6b533c73fe37",
+  "gt_cache_path": "gt_cache.json",
+  "gt_cache_sha256": "6a07f9bff5dfb3234aa6ec0b84a7b8f6b6426cdedf4bde9f5f4fffe3df9e6946",
+  "keys_files": null,
+  "limit": null,
+  "manifest_version": 1,
+  "max_iterations": 1,
+  "model": "claude-haiku-5-5",
+  "num_predict": null,
+  "output_caps": {
+    "simulate": 6144,
+    "solve": 8192,
+    "validate_domain": 6144,
+    "validate_plan": 6144,
+    "validate_problem": 6144
+  },
+  "pilot": false,
+  "prompt_variants": [
+    11,
+    12,
+    13
+  ],
+  "run": "frontier55",
+  "runner_sha256": {
+    "tools/frontier55/anthropic_requests.py": "9b0007710c84cec3b219f83471d2a227c707a93267524ac7ca60fadab9dc63a0",
+    "tools/frontier55/cost.py": "9f82f7b375f4aa1bd7d50abe0f760c4ca5a8f0208aa68555489c39dd7c7aeeaa",
+    "tools/frontier55/runner.py": "527aa9f431539da8e151d5434d1d5e611d973f601d8e970790882624554146b0"
+  },
+  "sdk_version": "0.109.2",
+  "sdk_version_pinned": "0.109.2",
+  "snapshot_len": 65536,
+  "stream": false,
+  "system_sha256": {
+    "simulate": "7ccf5d9deccd98e72590f3649113929ea099ba855a72db1c571e91b6d1d47cf9",
+    "solve": "3dbc1baf9e2670b024a7fec73b2fe7031c5fa5a5c13b711a12b18debf0ad0588",
+    "validate_domain": "ab1ffd2abc5e6deab5f37668366b09be3e78d9060646e1aac8ec944fd64d0c36",
+    "validate_plan": "dcbd1189e28a7f5ace9bcdba92236e6945bd71c9b8b9feed349ceeec09c5c538",
+    "validate_problem": "f8bea04b4d9e1aac588db14775254f8ef1f77465d1b1f7ec3705441488b9f201"
+  },
+  "tasks": [
+    "simulate",
+    "solve",
+    "validate_domain",
+    "validate_plan",
+    "validate_problem"
+  ],
+  "temperature": "not sent (provider default)",
+  "think": "disabled",
+  "tools_commit": null,
+  "tools_env": null,
+  "tools_pyvalidator": null,
+  "tools_sha256": null,
+  "turn_attempts": 2,
+  "with_tools": false
+}
