@@ -133,6 +133,18 @@ def one_tool_then_answer(req, body, n):
     return msg([THINK, tool_use()], "tool_use")
 
 
+def loader_row(row: dict, with_tools: bool):
+    """The row as the rerun's frozen loader reads it (model name swapped)."""
+    import copy
+    from tools.delivered_rerun import constants as RC
+    obj = copy.deepcopy(row)
+    obj["result"]["model"] = obj["key"][0] = RC.MODEL_IDS["Qwen3_5_9B"]
+    spec = RS.CellSpec(name="x", layer=RS.RERUN, model_tag="Qwen3_5_9B", with_tools=with_tools,
+                       prompt_style="minimal", tasks=R.TASKS, variants=R.WORDINGS, n_rows=0,
+                       per_variant=0, per_task_variant={}, k_domains=0)
+    return RS.parse_row(obj, spec, "x")
+
+
 def api_error(status: int, kind: str, message: str):
     return status, {"type": "error", "error": {"type": kind, "message": message}}
 
@@ -260,6 +272,14 @@ async def test_tool_loop(r: TestResults) -> None:
                 "output_tokens_details": {"thinking_tokens": 3}})
     r.check_eq("meta stop reasons", [t["stop_reason"] for t in meta["turns"]],
                ["tool_use", "end_turn"])
+    r.check_eq("meta: settings of each request sent", [t["request"] for t in meta["turns"]], [
+        {"model": SONNET, "max_tokens": 8192, "thinking": {"type": "between_tools"},
+         "output_config": {"effort": "high"}, "has_tools": True, "n_messages": n,
+         "param_keys": ["max_tokens", "messages", "model", "output_config", "system",
+                        "thinking", "tools"]} for n in (1, 3)])
+    r.check_eq("meta: the note of turn 1 went back in request 2",
+               [(t["thinking_blocks_in_previous_response"], t["thinking_blocks_passed_back"])
+                for t in meta["turns"]], [(0, 0), (1, 1)])
     r.check("meta times", all(t["requested_at_utc"] and t["received_at_utc"]
                               for t in meta["turns"]))
     r.check_eq("meta tool results", meta["tool_results"], [
@@ -357,6 +377,45 @@ async def test_endings(r: TestResults) -> None:
                             res["response"], len(res["tool_calls"]), res["tokens"]["turns"],
                             res["error"]),
                (R.OVERFLOW, "length", True, "", 1, 1, "api: prompt is too long"))
+    r.check_eq("overflow row says a turn had no room", res["tokens"].get("ctx_no_room_turns"), 1)
+    r.check_eq("overflow token keys", set(res["tokens"]), {
+        "prompt", "completion", "turns", "total_duration_ns", "eval_duration_ns",
+        "ctx_no_room_turns"})
+    r.check("the frozen loader reads it as a no-room row", loader_row(row, True).no_room)
+    # the same outcome when the API reports it as a stop reason
+    wire = Wire(lambda q, b, n: msg([], "model_context_window_exceeded") if has_tool_result(b)
+                else msg([tool_use()], "tool_use"))
+    o2, row2, meta2 = await trial(wire)
+    res2 = row2["result"]
+    r.check_eq("window stop reason", (o2["kind"], res2["done_reason"], res2["response"],
+                                      res2["tokens"].get("ctx_no_room_turns"),
+                                      res2["tokens"]["turns"], meta2["stop_reason"],
+                                      loader_row(row2, True).no_room),
+               (R.OVERFLOW, "length", "", 1, 2, "model_context_window_exceeded", True))
+    # an ordinary answer carries no such key and is not a no-room row
+    wire = Wire(one_tool_then_answer)
+    _o, row3, _m = await trial(wire)
+    r.check("ordinary row: no ctx key, not no-room",
+            "ctx_no_room_turns" not in row3["result"]["tokens"]
+            and not loader_row(row3, True).no_room)
+    # other wordings of the same rejection are the same outcome
+    for text in ("prompt is too long: 1200000 tokens > 1000000 maximum",
+                 "input length and `max_tokens` exceed context limit: 990000 + 8192 > 1000000",
+                 "This request would exceed the model's context window",
+                 "The conversation is too long for the context window.",
+                 "Prompt too large: exceeds the maximum context length"):
+        wire = Wire(lambda q, b, n, text=text: api_error(400, "invalid_request_error", text)
+                    if has_tool_result(b) else msg([tool_use()], "tool_use"))
+        o4, _row, _meta = await trial(wire)
+        r.check_eq(f"over-length wording: {text[:40]}", o4["kind"], R.OVERFLOW)
+    for text, status, want in (("thinking.type: unknown value", 400, False),
+                               ("max_tokens: 9000000 is too large", 400, False),
+                               ("temperature is not supported", 400, False),
+                               ("prompt is too long", 429, False),
+                               ("prompt is too long", 400, True)):
+        class E(Exception):
+            status_code = status
+        r.check_eq(f"matcher: {status} {text[:30]}", AR.is_overflow_error(E(text)), want)
     r.check("overflow error kept in sidecar", "prompt is too long" in meta["overflow_error"])
     r.check_eq("overflow keeps the harness grade of the tool call",
                (res["success"], res["tool_selected"]), (True, True))
@@ -484,17 +543,43 @@ async def test_live_resume(r: TestResults) -> None:
             "rows_the_frozen_loader_refuses", "rows_cut_by_storage", "non_empty_answers",
             "answers_counted", "settings_as_registered", "api_version_sent",
             "model_ids_returned", "endings", "trials_with_a_note_between_tool_calls",
-            "passes")},
+            "requests_in_sidecar", "requests_whose_settings_differ_from_the_registered",
+            "requests_with_a_sampling_field", "model_ids_start_with_the_requested_id",
+            "thinking_blocks_returned_before_a_next_request",
+            "thinking_blocks_passed_back_unchanged", "passes")},
             {"rows": 3, "duplicate_keys": 0, "rows_without_sidecar_line": 0,
              "half_written_lines": 0, "rows_the_frozen_loader_refuses": 0,
              "rows_cut_by_storage": 0, "non_empty_answers": 3, "answers_counted": 3,
              "settings_as_registered": True, "api_version_sent": ["2023-06-01"],
              "model_ids_returned": [SONNET], "endings": {"answer": 3},
-             "trials_with_a_note_between_tool_calls": 3, "passes": True})
+             "trials_with_a_note_between_tool_calls": 3, "requests_in_sidecar": 6,
+             "requests_whose_settings_differ_from_the_registered": 0,
+             "requests_with_a_sampling_field": 0,
+             "model_ids_start_with_the_requested_id": True,
+             "thinking_blocks_returned_before_a_next_request": 3,
+             "thinking_blocks_passed_back_unchanged": 3, "passes": True})
+        # the check fails on a setting that differs, a sampling field, another model's
+        # id, or a note that did not go back
+        good = (out / "trial_meta.jsonl").read_text()
+        for label, edit in (
+                ("another effort", lambda m: m["turns"][0]["request"]["output_config"]
+                 .update(effort="low")),
+                ("a sampling field", lambda m: m["turns"][0]["request"].update(temperature=0)),
+                ("another model id", lambda m: m.update(model_ids_returned=["claude-opus-5"])),
+                ("a note not passed back", lambda m: m["turns"][1]
+                 .update(thinking_blocks_passed_back=0))):
+            lines = [json.loads(x) for x in good.splitlines()]
+            edit(lines[0])
+            (out / "trial_meta.jsonl").write_text("".join(json.dumps(x) + "\n" for x in lines))
+            r.check_eq(f"plumbing check fails on {label}",
+                       R.pilot_check_cell(out, SONNET, "tools", 3)["passes"], False)
+        (out / "trial_meta.jsonl").write_text(good)
+        r.check("plumbing check: a dated model id passes",
+                "claude-sonnet-5-5-20261001".startswith(SONNET))
         r.check("plumbing check prints no outcome field",
                 not ({"success", "failure_reason", "tool_selected", "response"} & set(rep)))
         r.check_eq("a short folder fails the check",
-                   R.pilot_check_cell(out, SONNET, "tools", 280)["passes"], False)
+                   R.pilot_check_cell(out, SONNET, "tools", 160)["passes"], False)
         await c.close()
 
         # a failure outside the model: logged, tried again, the row says which attempt
@@ -635,6 +720,17 @@ async def test_batch(r: TestResults) -> None:
                                      m["turns"][0]["usage"]["input_tokens"]),
                    ("batch", "msgbatch_1", [HAIKU + "-20261001"], ["2023-06-01"],
                     "2026-12-01T11:00:00+00:00", 900))
+        r.check_eq("batch sidecar: settings of the request sent", m["turns"][0]["request"], {
+            "model": HAIKU, "max_tokens": 6144, "thinking": {"type": "disabled"},
+            "output_config": {"effort": "medium"}, "has_tools": False, "n_messages": 1,
+            "param_keys": ["max_tokens", "messages", "model", "output_config", "system",
+                           "thinking"]})
+        rep = R.pilot_check_cell(out, HAIKU, "no-tools", 2)
+        r.check_eq("batch plumbing check", (rep["passes"], rep["requests_in_sidecar"],
+                                            rep["model_ids_start_with_the_requested_id"],
+                                            rep["stored_batch_requests_as_registered"],
+                                            rep["endings"]),
+                   (True, 2, True, True, {"answer": 1, "refusal": 1}))
         row = next(x for x in rows if x["result"]["task"] == "validate_domain")["result"]
         r.check_eq("batch row", (row["model"], row["tokens"]["prompt"], row["tokens"]["turns"],
                                  row["done_reason"], row["duration_s"]),
@@ -705,6 +801,8 @@ def test_marketplace(r: TestResults) -> None:
             got = R.check_marketplace(repo)
             r.check_eq("the registered checkout is accepted",
                        (got["commit"], got["pyvalidator"]), (head, "0.1.5"))
+            r.check_eq("installed packages listed per plugin environment",
+                       got["freeze"], {"pddl-validator": ["0.1.5"]})
             (repo / "plugins" / "pddl-validator" / "server.py").write_text("x = 2\n")
             refused("an edited plugin file is refused", repo)
         finally:
@@ -715,8 +813,12 @@ def test_manifest_and_cache(r: TestResults) -> None:
     with tempfile.TemporaryDirectory() as td:
         out = Path(td) / "cell"
         kw = dict(sdk_version="0.109.2", gt_cache=Path("x"), ground_truth={"a": 1},
-                  marketplace={"commit": "5e4f9c0abc"}, tools_digest="d")
+                  marketplace={"commit": "5e4f9c0abc", "pyvalidator": "0.1.5",
+                               "freeze": {"pddl-validator": ["pddl-pyvalidator==0.1.5"]}},
+                  tools_digest="d")
         m = R.build_run_manifest(SONNET, "tools", pilot=False, **kw)
+        r.check_eq("manifest lists the tool environments", m["tools_env"],
+                   {"pddl-validator": ["pddl-pyvalidator==0.1.5"]})
         r.check_eq("manifest fields", (m["backend"], m["think"], m["effort"], m["temperature"],
                                        m["max_iterations"], m["snapshot_len"],
                                        m["prompt_variants"], m["tools_commit"], m["pilot"]),
@@ -729,6 +831,9 @@ def test_manifest_and_cache(r: TestResults) -> None:
                 ("model", R.build_run_manifest(HAIKU, "tools", pilot=False, **kw)),
                 ("tools digest", R.build_run_manifest(SONNET, "tools", pilot=False,
                                                       **{**kw, "tools_digest": "e"})),
+                ("package list", R.build_run_manifest(SONNET, "tools", pilot=False, **{
+                    **kw, "marketplace": {"commit": "5e4f9c0abc", "pyvalidator": "0.1.5",
+                                          "freeze": {"pddl-validator": ["x==2"]}}})),
                 ("SDK", R.build_run_manifest(SONNET, "tools", pilot=False,
                                              **{**kw, "sdk_version": "2.0.0"}))):
             try:
@@ -792,11 +897,11 @@ def test_grid(r: TestResults) -> None:
                     "validate_plan": 3000, "simulate": 300})
     r.check_eq("tools digest reported", rep["tools_sha256"], R.tools_sha256(TOOLS))
     pil = R.dry_run(R.MODELS, domains, gt, pilot=True, tools=None)
-    r.check_eq("pilot: 280 x 2 arms x 2 models", pil["total_trials"], 1_120)
+    r.check_eq("pilot: 160 x 2 arms x 2 models", pil["total_trials"], 640)
     for c in pil["cells"]:
         r.check_eq(f"pilot per task {c['model']} {c['arm']}", c["per_task"],
-                   {"solve": 20, "validate_domain": 20, "validate_problem": 20,
-                    "validate_plan": 200, "simulate": 20})
+                   {"solve": 20, "validate_domain": 40, "validate_problem": 40,
+                    "validate_plan": 40, "simulate": 20})
     nt = R.build_grid(SONNET, "no-tools", domains, gt)
     wt = R.build_grid(SONNET, "tools", domains, gt)
     r.check_eq("wordings", ({j[R.J_PV] for j in nt}, {j[R.J_PV] for j in wt}),
@@ -814,9 +919,25 @@ def test_grid(r: TestResults) -> None:
     r.check_eq("custom ids unique over both batches", len(set(ids)), 9_120)
     pj = R.build_grid(HAIKU, "tools", domains, gt, pilot=True)
     first = R.first_problems(domains)
-    r.check("pilot trials: first problem, wording v11",
-            all(j[R.J_PV] == 11 and j[R.J_PNAME] == first[j[R.J_DNAME]] for j in pj))
-    r.check_eq("pilot covers 20 domains", len({j[R.J_DNAME] for j in pj}), 20)
+    r.check_eq("first problems", set(first.values()), {"p01"})
+    r.check("pilot: wording v11 only", all(j[R.J_PV] == 11 for j in pj))
+    from collections import Counter
+    per_domain = Counter((j[R.J_DNAME], j[R.J_TASK], j[R.J_PNAME], j[R.J_PLAN]) for j in pj)
+    want_one = {("solve", "p01", ""), ("simulate", "p01", ""), ("validate_problem", "p01", ""),
+                ("validate_problem", "n01", ""), ("validate_domain", "p01", ""),
+                ("validate_domain", "domain_neg", ""), ("validate_plan", "p01", "v1"),
+                ("validate_plan", "p01", "b1")}
+    r.check("pilot: the same eight trials in each of the 20 domains",
+            all({k[1:] for k in per_domain if k[0] == d} == want_one for d in domains)
+            and set(per_domain.values()) == {1} and len(domains) == 20)
+    full_keys = {tuple(R.trial_key(HAIKU, j, True)) for j in R.build_grid(HAIKU, "tools",
+                                                                         domains, gt)}
+    r.check("pilot trials are trials of the full list (the same prompts)",
+            {tuple(R.trial_key(HAIKU, j, True)) for j in pj} <= full_keys)
+    pn = R.build_grid(HAIKU, "no-tools", domains, gt, pilot=True)
+    r.check_eq("pilot: both arms hold the same trials",
+               {strip(R.trial_key(HAIKU, j, False)) for j in pn},
+               {strip(R.trial_key(HAIKU, j, True)) for j in pj})
     sim = next(j for j in nt if j[R.J_TASK] == "simulate")
     p = R.first_request(SONNET, sim, False, None)
     r.check("the plan in the simulate prompt is the cached plan",
@@ -840,6 +961,14 @@ def test_cost(r: TestResults) -> None:
     rows = {"no-tools": [{"task": "solve", "problem": "p01", "in": 1000, "out": 100, "turns": 1},
                          {"task": "solve", "problem": "p02", "in": 1000, "out": 100, "turns": 1}],
             "tools": []}
+    pick = lambda t, p, lab="": COST.in_pilot({"task": t, "problem": p, "plan_label": lab})  # noqa: E731
+    r.check_eq("pilot list of the estimate",
+               [pick("solve", "p01"), pick("solve", "p02"), pick("validate_problem", "n01"),
+                pick("validate_problem", "n02"), pick("validate_domain", "domain_neg"),
+                pick("validate_domain", "p02"), pick("validate_plan", "p01", "v1"),
+                pick("validate_plan", "p01", "b1"), pick("validate_plan", "p01", "v2"),
+                pick("validate_plan", "p02", "v1")],
+               [True, False, True, False, True, False, True, True, False, False])
     full = COST.estimate(rows, SONNET, pilot=False)
     pil = COST.estimate(rows, SONNET, pilot=True)
     r.check_eq("full run triples the v11 rows; the pilot keeps p01",

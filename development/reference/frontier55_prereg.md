@@ -6,16 +6,24 @@ been sent to the provider.** Decision to run, and the outline of the design: Ome
 tested without any network call (`tools/frontier55/`, `tests/test_frontier55.py`). The
 analysis is not written yet (section 4).
 
-**Choices that are Omer's and still open** are marked **[Omer, 1]** to **[Omer, 3]**.
-Each is written here as the session recommends. Nothing is sent before he answers them
-and has seen the cost table of section 9.
+**Choices that were Omer's** are marked **[Omer, 1]** to **[Omer, 3]**. Each was put to
+him as the session's recommendation. **Accepted on 2026-11-26:** with the three choices
+in front of him he answered "launch the claude run". This is recorded here from the
+session's log; Omer confirms it when he reads this draft.
 
 - **[Omer, 1]** The no-tools arm goes through the Batch API. The tool arm goes through
   live calls, started the same day (section 2.4).
 - **[Omer, 2]** Effort: each model's own default, sent explicitly. Haiku 5.5 "medium",
   Sonnet 5.5 "high" (section 2.3).
-- **[Omer, 3]** The grade: the matched run's registered grade on solve and simulate, the
-  rerun's frozen grade on the three validation tasks (section 4).
+- **[Omer, 3]** A pilot first (section 6).
+
+**Cost.** Omer said on 2026-11-25 that no cost estimate is needed
+(`unified_run_design.md`, B4). The session still posts the itemized estimate of section
+9 before the first paid request, and **stops and asks if the estimate for the whole run
+is above 500 dollars**. The estimate today is 351 to 358 dollars.
+
+**The grade** (section 4) follows from the decision of 2026-11-25 that this run has the
+same design as the open models. It is written here for Omer to read before the freeze.
 
 **Disclosure of prior data contact.** No row of this run exists. The author has read the
 old Claude runs (Haiku 4.5 and Sonnet 4.6, June to September 2026): their rows, their
@@ -72,6 +80,10 @@ The two arms of a model hold the same trials. The trial list comes from the harn
 enumerator (`pddl_eval.runner.build_jobs`), and the runner halts if the counts differ
 from the ones above.
 
+**The pilot is its own short list** (section 6). It is not a share of the full run
+drawn by a rule, it is never pooled with the full run, and the full run asks every one
+of its trials again.
+
 ### 2.2 Messages
 
 The system and user messages are built by the harness (`build_messages`), word for word
@@ -105,8 +117,9 @@ control's and the matched run's registrations give.
 **Plans in the prompts** (validate_plan and simulate) come from the pinned ground-truth
 cache, `results/derived/gt_cache.json`, sha256 `77d4184e…c7e`. The runner halts on any
 other file. Ground truth is never computed at run time. So the plan a simulate prompt
-shows is the plan the answer key belongs to, on all 100 problems (the open models' runs
-differ here on six problems, ISS-029).
+shows is the plan the answer key belongs to, on all 100 problems. **This differs from
+the matched run and the rerun**, where on six problems (barman p01 to p05, gripper p03)
+the plan in the prompt could differ from the plan of the key (ISS-029).
 
 ### 2.3 Request settings
 
@@ -153,10 +166,21 @@ sha256 of the tool list built there is
 `dd14507890d38a8a3c581971a699037b39a3a0bd9374d5801072fb58b9b14400`. The run records this
 digest in its manifest and refuses to resume under another.
 
+**The tool code is the open models' commit. Its dependencies were resolved on another
+machine.** The planners and libraries are installed from the requirement ranges of that
+commit, on the laptop, on the day the checkout is made. The manifest of the tool arm
+records the installed packages of every plugin environment of the checkout
+(`name==version`, the same content as `pip freeze`) and the tool-list digest. When the
+cluster is reachable, its installed versions are read and set beside these. This is a
+record, not a gate.
+
 ### 2.4 Two routes to the provider **[Omer, 1]**
 
 - **No tools:** one request per trial, all 4,560 of a model in one batch (Message
-  Batches API, half price).
+  Batches API, half price). From the API reference: a batch holds up to 100,000
+  requests or 256 MB; most batches complete within an hour, and a batch has at most 24
+  hours; results are kept for 29 days. The runner checks the two size limits before it
+  sends, and stores the raw results on disk as soon as the batch ends.
 - **Tools:** live calls. The runner sends a request, runs the tools the model asks for,
   sends the results back, and repeats, at most 10 times. Four trials run at a time.
 
@@ -175,9 +199,13 @@ tool arm is paid at the list price.
 - A tool that raises gives the harness's text `Tool error: …`, marked as an error.
 - The conversation ends at the first response that does not ask for a tool.
 - After 10 round trips still asking for a tool: **loop exhausted**, the answer is empty.
-- The provider refuses the request because the conversation no longer fits its window:
-  recorded as an outcome of the trial (empty answer, stopped for length), with the tool
-  calls made so far. Not a crash.
+- The provider refuses the request because the conversation no longer fits its window
+  (an error that says the prompt or the context is too long, or the stop reason
+  `model_context_window_exceeded`): recorded as an outcome of the trial, with the tool
+  calls made so far. Not a crash. The row is written as the harness writes it for an
+  open model whose window is full: empty answer, stopped for length, and
+  `ctx_no_room_turns: 1` in its token record. The rerun's loader then reads it as a
+  "no room" row, as for the open models.
 - A refusal by the model (section 3.6).
 - A "pause" stop cannot happen without the provider's own server tools. If it does, the
   trial is an error row and is counted.
@@ -189,8 +217,10 @@ Per model and arm, one folder: `<model>_no-tools` and `<model>_tools`, under
 
 - **`trials.jsonl`:** one row per trial in the harness's row shape, so that the rerun's
   loader and graders read it. The answer is stored in full. An answer longer than 65,536
-  characters is flagged and counted as "cut by storage", never cut silently, and its
-  full text is kept in the sidecar. At these output caps that length is not expected.
+  characters is flagged (`response_truncated_by_storage` true, the first 65,536
+  characters in the row), counted as "cut by storage", and its full text is kept in the
+  sidecar. It is graded from that full text. At 8,192 output tokens this is not
+  expected: it would need 8 characters per token.
   Every row is passed through the rerun's frozen loader before it is written. The
   loader knows only the three open models' names, so the check swaps the model name for
   one of them and applies every other rule unchanged.
@@ -207,6 +237,13 @@ Per model and arm, one folder: `<model>_no-tools` and `<model>_tools`, under
 Stop reasons are written in the harness's words: an ordinary end is `stop`, the output
 cap is `length`, an exhausted loop is `tool_calls`. The provider's own word is in the
 sidecar.
+
+**Token counts in a row.** `tokens.prompt` is every input token of the trial, summed
+over its turns (uncached, cache-written and cache-read; no caching is asked for, so the
+last two are expected to be zero). `tokens.completion` is every output token, summed
+over the turns, the notes between tool calls included. `tokens.turns` is the number of
+requests. The two duration fields hold the trial's wall time in the tool arm and 0 in
+the batched arm. The per-turn usage as the provider returned it is in the sidecar.
 
 ### 2.7 A new corpus
 
@@ -246,15 +283,18 @@ The paper states each of these beside the Claude rows.
 6. **Refusals.** The provider can end a response with a refusal. Such a trial is a wrong
    trial, stored as an error row with `stop_reason=refusal`, its details in the sidecar.
    A refusal in the middle of a tool conversation ends the trial the same way. A refused
-   trial is never run again and never sent to another model.
+   trial is never run again and never sent to another model. **Rule for the analysis:**
+   a refusal is wrong under the grade, stays in the denominator, is kept out of the VOID
+   rule of section 7, and is counted and reported per model, arm and task.
 7. **The tools run on another machine.** The same tool commit and validator release as
-   the open models, but on the laptop, with the planners installed from the same
-   requirement ranges on another day. The tool list's digest is recorded.
+   the open models, but on the laptop, with the planners and libraries installed from
+   the same requirement ranges on another day. The installed versions and the tool
+   list's digest are recorded (section 2.3).
 8. **Route.** The no-tools arm is batched and the tool arm is live (section 2.4).
 
 ---
 
-## 4. The grade **[Omer, 3]**
+## 4. The grade
 
 A trial is right when the final answer, as the model wrote it, is right. The tool's
 output is never used in place of the final answer.
@@ -281,10 +321,12 @@ wrong under the grade above.
 **The analysis is not written.** It will be a new script that reads these rows through
 the rerun's loader (with the model-name swap of section 2.6) and applies the graders
 above unchanged. It is written and frozen, with the five gates of the freeze protocol,
-**after the pilot's plumbing check and before the full run**. The pilot's check reads no
-outcome (section 6), so the grade and the analysis are fixed before any answer of the
-full run exists. The runner also stores the harness's own online grade in each row, as
-the open models' rows do. No reading uses it.
+after the pilot's plumbing check. The pilot's check reads no outcome (section 6).
+
+**No row of the full run is read before the analysis is frozen. The run may be collected
+before that.** Until the freeze, only the row counts and the counts of endings of the
+full run are looked at (section 6, "During the run"). The runner also stores the
+harness's own online grade in each row, as the open models' rows do. No reading uses it.
 
 ---
 
@@ -329,33 +371,46 @@ the dates.
 Every spend needs Omer's go-ahead, with the cost table of section 9 in front of him. The
 pilot and the full run are asked for separately.
 
-**Order.** Omer answers [Omer, 1] to [Omer, 3] → the checkout of section 2.3 is made →
-dry run (no call) → pilot → plumbing check → the analysis is written and frozen (section
-10) → full run → frozen analysis → readout and a `NUMBERS.md` entry.
+**Order.** The checkout of section 2.3 is made → dry run (no call) → the itemized
+estimate is posted → pilot **[Omer, 3]** → plumbing check → full run. The analysis is
+written and frozen (section 10) after the plumbing check; the full run may be collected
+meanwhile, and none of its rows is read before the freeze → frozen analysis → readout
+and a `NUMBERS.md` entry.
 
 **Dry run.** `python -m tools.frontier55.runner dry-run --marketplace-path <checkout>`
 builds every request and prints the counts and digests. It makes no call.
 
-**Pilot.** The first problem of every domain, wording v11, both arms, both models:
-**280 trials per model and arm** (solve 20, validate_domain 20, validate_problem 20,
-validate_plan 200, simulate 20), **1,120 trials** in all. Never pooled. The checks
-allowed on the pilot's output, and nothing else:
+**Pilot.** Wording v11, both arms, both models. Per domain, on its first problem:
 
-1. every folder holds its 280 rows, and each row has its sidecar line;
+| task | trials per domain | which |
+|---|---|---|
+| solve | 1 | the first problem |
+| simulate | 1 | the first problem |
+| validate_problem | 2 | the first (valid) problem, and the first broken problem of the domain |
+| validate_domain | 2 | the valid domain, and the broken domain (every domain has one) |
+| validate_plan | 2 | the first valid plan and the first broken plan of the first problem |
+
+**160 trials per model and arm** (solve 20, simulate 20, validate_problem 40,
+validate_domain 40, validate_plan 40), **640 trials** in all. Never pooled, and not a
+share of the full run drawn by a rule. The checks allowed on the pilot's output, and
+nothing else:
+
+1. every folder holds its 160 rows, and each row has its sidecar line;
 2. the rerun's frozen loader reads every row (with the model-name swap); no row cut by
    storage; no half-written line;
 3. at least 95% of the stored answers are non-empty in each folder, counted without the
    error rows and the trials the provider refused for length;
-4. the settings: per folder, the thinking setting, the effort and the output caps
-   recorded with every trial equal section 2.3; one API version header was sent; and no
-   stored batch request holds a field outside section 2.3 (the live requests are not
-   stored; the runner checks each one before it is sent);
-5. the model IDs the provider returned, listed per folder;
+4. the settings, read from the sidecar, which keeps every field of every request that
+   was sent except the texts and the tool list: per model, the thinking setting, the
+   effort and the output cap equal section 2.3 on every request; no request holds a
+   sampling field or any field outside section 2.3; one API version header was sent;
+5. the model IDs the provider returned, listed per folder; each must start with the ID
+   that was asked for;
 6. the counts of each kind of ending (answer, loop exhausted, refused for length,
    refusal, pause, unknown, cut by storage) and of failed attempts;
-7. in the tool arm of Sonnet 5.5, in how many trials a note between tool calls came
-   back. (That a note goes back unchanged is tested without the network; on the real
-   API it shows as trials that complete their second request.)
+7. in the tool arm of Sonnet 5.5: the number of notes between tool calls that came back
+   before a next request, and the number that went back unchanged in that next request.
+   The two numbers must be equal. Numbers only; no note is printed.
 
 `python -m tools.frontier55.runner pilot-check --out results/frontier55-pilot` prints
 these items. It prints no rate of right answers, no verdict, no tool-call count per task
@@ -399,11 +454,15 @@ the same trials in both arms of a model. A short folder is resumed, not analysed
   resumed later.
 - **A folder is VOID** when more than 1% of its rows are error rows that are not
   refusals (unknown stop, pause). Both arms of that model are then run again together,
-  in new folders. Refusals are outcomes and do not count toward this rule; their number
-  is reported.
+  in new folders. Refusals are outcomes and do not count toward this rule; they are
+  reported per model, arm and task. The rerun's own rule would count a refusal row as
+  an exception; the analysis of this run must separate the two by the row's error text
+  (`stop_reason=refusal`).
 - **The storage rule:** any row cut by storage is reported and graded from the sidecar.
-- **Spend:** if the spend of a model passes the "bound" column of section 9, the run of
-  that model stops and Omer is asked.
+- **Spend:** the itemized estimate is posted before the first paid request. If the
+  estimate for the whole run is above 500 dollars, nothing is sent and Omer is asked.
+  If the spend of a model passes its "bound" in section 9, the run of that model stops
+  and Omer is asked.
 - Any other stop is a deviation (section 12).
 
 ---
@@ -446,33 +505,36 @@ How to read it:
 - A Haiku trial whose summed input passes 100,000 tokens is priced at the higher rate as
   a whole, which overstates it.
 
-**Pilot (first problem of every domain, wording v11)**
+**Pilot (160 trials per model and arm, wording v11)**
 
 | model | arm | task | trials | requests | input, MTok | output, MTok | trials at Haiku's higher rate | estimate, $ | bound, $ |
 |---|---|---|---|---|---|---|---|---|---|
 | Haiku 5.5 | no tools | solve | 20 | 20 | 0.03 to 0.04 | 0.01 | 0 | 0.00 to 0.01 | 0.04 |
-| Haiku 5.5 | no tools | validate_domain | 20 | 20 | 0.02 | 0.01 | 0 | 0.00 | 0.03 |
-| Haiku 5.5 | no tools | validate_problem | 20 | 20 | 0.03 | 0.01 to 0.02 | 0 | 0.00 to 0.01 | 0.03 |
-| Haiku 5.5 | no tools | validate_plan | 200 | 200 | 0.30 to 0.39 | 0.21 to 0.27 | 0 | 0.07 to 0.09 | 0.33 |
+| Haiku 5.5 | no tools | validate_domain | 40 | 40 | 0.03 to 0.04 | 0.02 | 0 | 0.01 | 0.06 |
+| Haiku 5.5 | no tools | validate_problem | 40 | 40 | 0.05 to 0.06 | 0.02 to 0.03 | 0 | 0.01 | 0.06 |
+| Haiku 5.5 | no tools | validate_plan | 40 | 40 | 0.06 to 0.07 | 0.04 to 0.05 | 0 | 0.01 to 0.02 | 0.07 |
 | Haiku 5.5 | no tools | simulate | 20 | 20 | 0.03 to 0.04 | 0.07 to 0.08 | 0 | 0.02 | 0.03 |
 | Haiku 5.5 | tools | solve | 20 | 93 | 0.81 to 1.06 | 0.10 to 0.13 | 1 | 0.13 to 0.24 | 0.61 |
-| Haiku 5.5 | tools | validate_domain | 20 | 40 | 0.22 to 0.29 | 0.02 | 0 | 0.03 to 0.04 | 0.15 |
-| Haiku 5.5 | tools | validate_problem | 20 | 40 | 0.24 to 0.32 | 0.03 | 0 | 0.04 to 0.05 | 0.15 |
-| Haiku 5.5 | tools | validate_plan | 200 | 402 | 2.81 to 3.65 | 0.33 to 0.43 | 0 | 0.45 to 0.58 | 1.60 |
+| Haiku 5.5 | tools | validate_domain | 40 | 80 | 0.45 to 0.58 | 0.04 to 0.05 | 0 | 0.06 to 0.08 | 0.30 |
+| Haiku 5.5 | tools | validate_problem | 40 | 80 | 0.49 to 0.63 | 0.05 to 0.07 | 0 | 0.07 to 0.10 | 0.31 |
+| Haiku 5.5 | tools | validate_plan | 40 | 80 | 0.54 to 0.71 | 0.06 to 0.08 | 0 | 0.09 to 0.11 | 0.32 |
 | Haiku 5.5 | tools | simulate | 20 | 41 | 0.55 to 0.71 | 0.09 to 0.12 | 0 | 0.10 to 0.13 | 0.20 |
 | Sonnet 5.5 | no tools | solve | 20 | 20 | 0.04 | 0.01 | 0 | 0.10 | 0.86 |
-| Sonnet 5.5 | no tools | validate_domain | 20 | 20 | 0.02 | 0.01 | 0 | 0.06 | 0.64 |
-| Sonnet 5.5 | no tools | validate_problem | 20 | 20 | 0.03 | 0.00 | 0 | 0.05 | 0.65 |
-| Sonnet 5.5 | no tools | validate_plan | 200 | 200 | 0.39 | 0.21 | 0 | 1.44 | 6.53 |
+| Sonnet 5.5 | no tools | validate_domain | 40 | 40 | 0.04 | 0.02 | 0 | 0.13 | 1.27 |
+| Sonnet 5.5 | no tools | validate_problem | 40 | 40 | 0.06 | 0.01 | 0 | 0.10 | 1.29 |
+| Sonnet 5.5 | no tools | validate_plan | 40 | 40 | 0.07 | 0.04 | 0 | 0.27 | 1.30 |
 | Sonnet 5.5 | no tools | simulate | 20 | 20 | 0.04 | 0.08 | 0 | 0.44 | 0.66 |
 | Sonnet 5.5 | tools | solve | 20 | 46 | 0.39 | 0.05 | 0 | 1.28 | 4.54 |
-| Sonnet 5.5 | tools | validate_domain | 20 | 40 | 0.29 | 0.03 | 0 | 0.86 | 3.03 |
-| Sonnet 5.5 | tools | validate_problem | 20 | 40 | 0.32 | 0.04 | 0 | 1.01 | 3.09 |
-| Sonnet 5.5 | tools | validate_plan | 200 | 401 | 3.62 | 0.44 | 0 | 11.61 | 31.87 |
+| Sonnet 5.5 | tools | validate_domain | 40 | 80 | 0.57 | 0.06 | 0 | 1.72 | 6.06 |
+| Sonnet 5.5 | tools | validate_problem | 40 | 80 | 0.63 | 0.07 | 0 | 1.98 | 6.17 |
+| Sonnet 5.5 | tools | validate_plan | 40 | 80 | 0.70 | 0.08 | 0 | 2.24 | 6.32 |
 | Sonnet 5.5 | tools | simulate | 20 | 40 | 1.33 | 0.14 | 0 | 4.03 | 5.11 |
-| **Haiku 5.5, total** | | | **560** | **896** | | | | **0.85 to 1.17** | **3.18** |
-| **Sonnet 5.5, total** | | | **560** | **847** | | | | **20.88** | **56.97** |
-| **both models** | | | **1,120** | **1,743** | | | | **21.73 to 22.05** | **60.15** |
+| **Haiku 5.5, total** | | | **320** | **534** | | | | **0.51 to 0.73** | **2.01** |
+| **Sonnet 5.5, total** | | | **320** | **486** | | | | **12.30** | **33.58** |
+| **both models** | | | **640** | **1,020** | | | | **12.80 to 13.02** | **35.59** |
+
+Every pilot trial has an old row of wording v11 behind it, for both old models: the
+trial counts above are the pilot's own (320 per model).
 
 **Full run (three wordings)**
 
@@ -505,6 +567,9 @@ How to read it:
 What stands out: Sonnet's tool arm is about $302 of the estimate, and $178 of that is
 validate_plan (3,000 trials, each sending the domain, the problem and the plan twice).
 Batching the tool arm would halve that part and give up the same-day rule ([Omer, 1]).
+The whole-run estimate, 351 to 358 dollars, is under the 500-dollar line of section 7.
+The bound is above it; the bound is what the run would cost if every request wrote its
+full output cap, and it is the per-model stop of section 7.
 
 ---
 

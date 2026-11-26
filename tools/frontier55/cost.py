@@ -72,6 +72,7 @@ def old_rows(path: Path) -> list[dict]:
             continue
         t = r.get("tokens") or {}
         out.append({"task": r["task"], "problem": r["problem_name"],
+                    "plan_label": r.get("plan_label") or "",
                     "in": int(t.get("prompt", 0)) + int(t.get("cache_write", 0))
                     + int(t.get("cache_read", 0)),
                     "out": int(t.get("completion", 0)), "turns": max(1, int(t.get("turns", 1)))})
@@ -102,7 +103,7 @@ def estimate(rows_by_arm: dict[str, list[dict]], model: str, *, pilot: bool) -> 
     for arm in ARMS:
         by_task = defaultdict(list)
         for r in rows_by_arm[arm]:
-            if pilot and r["problem"] != PILOT_PROBLEM:
+            if pilot and not in_pilot(r):
                 continue
             by_task[r["task"]].append(r)
         for task in TASKS:
@@ -121,6 +122,19 @@ def estimate(rows_by_arm: dict[str, list[dict]], model: str, *, pilot: bool) -> 
                 "usd_hi": sum(x["usd"] for x in hi) * copies,
                 "usd_bound": sum(x["usd_bound"] for x in hi) * copies})
     return lines
+
+
+def in_pilot(r: dict) -> bool:
+    """The pilot's list, as tools.frontier55.runner.in_pilot (first problem p01, first
+    broken problem n01, the broken domain, plans v1 and b1)."""
+    task, prob = r["task"], r["problem"]
+    if task in ("solve", "simulate"):
+        return prob == PILOT_PROBLEM
+    if task == "validate_problem":
+        return prob in (PILOT_PROBLEM, "n01")
+    if task == "validate_domain":
+        return prob in (PILOT_PROBLEM, "domain_neg")
+    return prob == PILOT_PROBLEM and r.get("plan_label", "") in ("v1", "b1")
 
 
 def load_old(results: Path, model: str) -> dict[str, list[dict]]:
@@ -163,11 +177,11 @@ def render(all_lines: dict[str, list[dict]]) -> str:
 
 
 def build(results: Path) -> dict[str, list[dict]]:
-    res = {"Pilot (first problem of every domain, wording v11)": [],
+    res = {"Pilot (160 trials per model and arm, wording v11)": [],
            "Full run (three wordings)": []}
     for model in PRICES:
         rows = load_old(results, model)
-        res["Pilot (first problem of every domain, wording v11)"] += estimate(
+        res["Pilot (160 trials per model and arm, wording v11)"] += estimate(
             rows, model, pilot=True)
         res["Full run (three wordings)"] += estimate(rows, model, pilot=False)
     return res

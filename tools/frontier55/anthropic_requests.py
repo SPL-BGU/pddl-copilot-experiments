@@ -17,6 +17,7 @@ What it never holds (section 2.3 of the registration):
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # Per model: the thinking setting and the effort level. The effort is each
@@ -61,8 +62,15 @@ DONE_REASON_OF_STOP = {
     STOP_TOOL_USE: "tool_calls",
 }
 
-# The API's 400 body when the prompt does not fit the model's window.
-OVERFLOW_MARKER = "prompt is too long"
+# The API's 400 when the conversation does not fit the model's window. The wording is
+# matched loosely: the prompt, the input or the context being too long or too large, or
+# anything exceeding the context window or length.
+OVERFLOW_RE = re.compile(
+    r"(prompt|context|conversation)[^.\n]{0,80}(too long|too large|exceed)"
+    r"|exceed[^.\n]{0,80}context"
+    r"|context (window|length)",
+    re.IGNORECASE)
+SAMPLING_KEYS = frozenset({"temperature", "top_p", "top_k"})
 
 
 def tool_definitions(mcp_tools: list[dict]) -> list[dict]:
@@ -196,4 +204,28 @@ def output_tokens_of(usage: dict | None) -> int:
 
 
 def is_overflow_error(exc: Exception) -> bool:
-    return OVERFLOW_MARKER in str(exc)
+    """True for a 400 whose message says the prompt or context is too long."""
+    status = getattr(exc, "status_code", 400)
+    return status == 400 and OVERFLOW_RE.search(str(exc)) is not None
+
+
+def request_settings(params: dict) -> dict:
+    """What the sidecar keeps of a request: every field except the texts and the tool
+    list, and the list of field names."""
+    rec = {k: v for k, v in params.items() if k not in ("system", "messages", "tools")}
+    rec["param_keys"] = sorted(params)
+    rec["has_tools"] = "tools" in params
+    rec["n_messages"] = len(params.get("messages") or [])
+    return rec
+
+
+def registered_request_settings(model: str, max_tokens: int, with_tools: bool,
+                                n_messages: int) -> dict:
+    """What `request_settings` must return for a registered request."""
+    s = MODEL_SETTINGS[model]
+    keys = ["max_tokens", "messages", "model", "output_config", "system", "thinking"]
+    if with_tools:
+        keys.append("tools")
+    return {"model": model, "max_tokens": max_tokens, "thinking": dict(s["thinking"]),
+            "output_config": {"effort": s["effort"]}, "param_keys": sorted(keys),
+            "has_tools": with_tools, "n_messages": n_messages}

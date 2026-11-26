@@ -81,10 +81,18 @@ ARMS: tuple[str, ...] = ("no-tools", "tools")
 PER_TASK_PER_ARM = {"solve": 300, "validate_domain": 360, "validate_problem": 600,
                     "validate_plan": 3000, "simulate": 300}
 N_PER_ARM = 4560
-PILOT_PER_TASK_PER_ARM = {"solve": 20, "validate_domain": 20, "validate_problem": 20,
-                          "validate_plan": 200, "simulate": 20}
-PILOT_PER_ARM = 280
+# The pilot is its own short list, not a share of the full run: per domain, the first
+# problem on solve and simulate; the valid first problem and the first broken problem on
+# validate_problem; the valid domain and the broken domain on validate_domain; the first
+# valid and the first broken plan of the first problem on validate_plan. Wording v11.
+PILOT_PER_TASK_PER_ARM = {"solve": 20, "validate_domain": 40, "validate_problem": 40,
+                          "validate_plan": 40, "simulate": 20}
+PILOT_PER_ARM = 160
 PILOT_WORDING = 11
+PILOT_PLAN_LABELS = ("v1", "b1")
+BROKEN_DOMAIN = "domain_neg"
+BATCH_MAX_REQUESTS = 100_000          # the provider's limits per batch
+BATCH_MAX_BYTES = 256 * 1024 * 1024
 OUTPUT_CAP = {"solve": 8192, "validate_domain": 6144, "validate_problem": 6144,
               "validate_plan": 6144, "simulate": 6144}
 STORAGE_CAP = 65_536
@@ -151,7 +159,7 @@ def check_constants() -> None:
     need(all(DEFAULT_NUM_PREDICT[t] == OUTPUT_CAP[t] for t in TASKS), "output caps")
     need(tuple(ACTIVE_PROMPT_VARIANTS[:3]) == WORDINGS == tuple(RC.PLAIN), "plain wordings")
     need(sum(PER_TASK_PER_ARM.values()) == N_PER_ARM, "4,560 per arm")
-    need(sum(PILOT_PER_TASK_PER_ARM.values()) == PILOT_PER_ARM, "pilot 280 per arm")
+    need(sum(PILOT_PER_TASK_PER_ARM.values()) == PILOT_PER_ARM == 160, "pilot 160 per arm")
     need(SYSTEM_SHA256["no-tools"]["solve"] == CP.SYSTEM_TEXT_SHA256["format-stated"]["solve"]
          and SYSTEM_SHA256["no-tools"]["simulate"]
          == CP.SYSTEM_TEXT_SHA256["format-stated"]["simulate"], "format-stated digests")
@@ -217,6 +225,20 @@ def first_problems(domains: dict) -> dict[str, str]:
     return {d: sorted(p for p in info["problems"])[0] for d, info in domains.items()}
 
 
+def in_pilot(job: tuple, first: dict[str, str], first_broken: dict[str, str | None]) -> bool:
+    """The pilot's list (see PILOT_PER_TASK_PER_ARM)."""
+    task, dname, pname = job[J_TASK], job[J_DNAME], job[J_PNAME]
+    if job[J_PV] != PILOT_WORDING:
+        return False
+    if task in ("solve", "simulate"):
+        return pname == first[dname]
+    if task == "validate_problem":
+        return pname in (first[dname], first_broken[dname])
+    if task == "validate_domain":
+        return pname in (first[dname], BROKEN_DOMAIN)
+    return pname == first[dname] and job[J_PLAN] in PILOT_PLAN_LABELS
+
+
 def build_grid(model: str, arm: str, domains: dict, ground_truth: dict,
                pilot: bool = False) -> list[tuple]:
     """The trials of one model and arm, in a fixed order, counts checked."""
@@ -230,7 +252,11 @@ def build_grid(model: str, arm: str, domains: dict, ground_truth: dict,
     want, total = PER_TASK_PER_ARM, N_PER_ARM
     if pilot:
         first = first_problems(domains)
-        jobs = [j for j in jobs if j[J_PV] == PILOT_WORDING and j[J_PNAME] == first[j[J_DNAME]]]
+        broken = {d: min((j[J_PNAME] for j in jobs if j[J_DNAME] == d
+                          and j[J_TASK] == "validate_problem" and j[J_PNAME] != first[d]
+                          and not j[J_PNAME].startswith("p")), default=None)
+                  for d in domains}
+        jobs = [j for j in jobs if in_pilot(j, first, broken)]
         want, total = PILOT_PER_TASK_PER_ARM, PILOT_PER_ARM
     got = Counter(j[J_TASK] for j in jobs)
     if dict(got) != want or len(jobs) != total:
@@ -290,6 +316,24 @@ def _git(path: Path, *args: str) -> str:
     return p.stdout
 
 
+def plugin_freeze(marketplace: Path) -> dict[str, list[str]]:
+    """Per plugin that has an environment: its installed packages, `name==version`,
+    sorted. Read through the environment's own Python, so it needs no pip there."""
+    code = ("import importlib.metadata as m; print('\\n'.join(sorted({f\"{d.metadata['Name']}"
+            "=={d.version}\" for d in m.distributions() if d.metadata['Name']})))")
+    out = {}
+    for plugin in sorted((Path(marketplace) / "plugins").iterdir()):
+        py = plugin / ".venv" / "bin" / "python3"
+        if not py.exists():
+            continue
+        p = subprocess.run([str(py), "-c", code], capture_output=True, text=True)
+        if p.returncode != 0:
+            raise MarketplaceRefused(f"cannot list the packages of {plugin.name}: "
+                                     f"{p.stderr.strip()[-300:]}")
+        out[plugin.name] = [ln for ln in p.stdout.splitlines() if ln.strip()]
+    return out
+
+
 def pyvalidator_version(marketplace: Path) -> str:
     py = Path(marketplace) / "plugins" / "pddl-validator" / ".venv" / "bin" / "python3"
     if not py.exists():
@@ -322,7 +366,8 @@ def check_marketplace(path: str | Path) -> dict:
     if pyval != PYVALIDATOR:
         raise MarketplaceRefused(
             f"validator release is {pyval}; the registered release is {PYVALIDATOR}")
-    return {"path": str(path), "commit": head, "pyvalidator": pyval}
+    return {"path": str(path), "commit": head, "pyvalidator": pyval,
+            "freeze": plugin_freeze(path)}
 
 
 async def connect_mcp(marketplace: str | Path) -> MCPPlanner:
@@ -334,10 +379,13 @@ async def connect_mcp(marketplace: str | Path) -> MCPPlanner:
 
 # ------------------------------------------------------------------ one response
 def turn_record(turn: int, message: dict, *, requested_at: str | None, received_at: str | None,
-                request_id: str | None, version_sent: str | None) -> dict:
-    """What the sidecar keeps of one response."""
+                request_id: str | None, version_sent: str | None,
+                request: dict | None = None) -> dict:
+    """What the sidecar keeps of one request and its response. `request` is the request's
+    settings (`AR.request_settings`): every field but the texts and the tool list."""
     return {
         "turn": turn,
+        "request": request,
         "requested_at_utc": requested_at,
         "received_at_utc": received_at,
         "request_id": request_id,
@@ -387,7 +435,8 @@ async def call_messages(client, params: dict, turn: int) -> dict:
     return turn_record(
         turn, msg, requested_at=requested, received_at=received,
         request_id=raw.headers.get("request-id"),
-        version_sent=raw.http_response.request.headers.get("anthropic-version"))
+        version_sent=raw.http_response.request.headers.get("anthropic-version"),
+        request=AR.request_settings(params))
 
 
 def _sum_tokens(turns: list[dict]) -> tuple[int, int]:
@@ -438,12 +487,18 @@ async def run_tools_trial(client, mcp, model: str, job: tuple, tools: list[dict]
 
     import anthropic
     for i in range(MAX_TOOL_LOOPS):
+        # How many `thinking` blocks the last response held, and how many of them this
+        # request carries back unchanged (the plumbing check compares the two numbers).
+        prev = [b for b in turns[-1]["content"] if b.get("type") == "thinking"] if turns else []
+        sent_back = messages[-2]["content"] if turns else []
         try:
             rec = await call_messages(client, dict(params, messages=messages), i + 1)
         except anthropic.BadRequestError as exc:
             # The conversation no longer fits the model's window: an outcome of the
             # trial, recorded with what the tools returned so far.
             return done(OVERFLOW, str(exc)[:500])
+        rec["thinking_blocks_in_previous_response"] = len(prev)
+        rec["thinking_blocks_passed_back"] = sum(1 for b in prev if b in sent_back)
         turns.append(rec)
         if rec["stop_reason"] != AR.STOP_TOOL_USE:
             return done()
@@ -532,13 +587,18 @@ async def make_row(model: str, job: tuple, with_tools: bool, outcome: dict, mcp)
         if kind == OVERFLOW and not error:
             error = "api: prompt is too long"
         wall = int(outcome["wall_ns"])
+        tokens = {"prompt": outcome["in_tok"], "completion": outcome["out_tok"],
+                  "turns": len(outcome["turns"]), "total_duration_ns": wall,
+                  "eval_duration_ns": wall}
+        if kind == OVERFLOW:
+            # As the harness writes for an open model whose window is full: one turn was
+            # never generated. The frozen loader's `no_room` is then true for this row.
+            tokens["ctx_no_room_turns"] = 1
         r = TaskResult(**base, success=success, tool_selected=tool_selected,
                        format_compliant=fmt, response=text[:STORAGE_CAP],
                        response_truncated_by_storage=len(text) > STORAGE_CAP,
                        thinking=thinking[:THINKING_SNAPSHOT_LEN], tool_calls=tool_calls,
-                       tokens={"prompt": outcome["in_tok"], "completion": outcome["out_tok"],
-                               "turns": len(outcome["turns"]), "total_duration_ns": wall,
-                               "eval_duration_ns": wall},
+                       tokens=tokens,
                        error=error, failure_reason=failure_reason, truncated=truncated,
                        done_reason=done_reason)
     obj = {"key": trial_key(model, job, with_tools), "result": asdict(r)}
@@ -616,6 +676,9 @@ def build_run_manifest(model: str, arm: str, *, pilot: bool, sdk_version: str,
                "sdk_version_pinned": sdk_version, "output_caps": OUTPUT_CAP,
                "system_sha256": SYSTEM_SHA256[arm],
                "tools_commit": marketplace["commit"] if (marketplace and with_tools) else None,
+               "tools_pyvalidator": marketplace["pyvalidator"]
+               if (marketplace and with_tools) else None,
+               "tools_env": marketplace.get("freeze") if (marketplace and with_tools) else None,
                "tools_sha256": tools_digest})
 
 
@@ -760,8 +823,12 @@ async def batch_submit(client, model: str, jobs: list[tuple], out_dir: Path) -> 
         return {}
     reqs, id_map = batch_requests(model, todo)
     n = len(batches) + 1
-    (out_dir / f"batch_requests_{n}.jsonl").write_text(
-        "".join(json.dumps(r) + "\n" for r in reqs))
+    body = "".join(json.dumps(r) + "\n" for r in reqs)
+    if len(reqs) > BATCH_MAX_REQUESTS or len(body.encode("utf-8")) > BATCH_MAX_BYTES:
+        raise ApparatusError(f"the batch would hold {len(reqs)} requests and "
+                             f"{len(body.encode('utf-8'))} bytes; the limits are "
+                             f"{BATCH_MAX_REQUESTS} and {BATCH_MAX_BYTES}")
+    (out_dir / f"batch_requests_{n}.jsonl").write_text(body)
     all_map = {}
     map_path = out_dir / "custom_id_map.json"
     if map_path.exists():
@@ -825,7 +892,8 @@ async def batch_poll(client, out_dir: Path, *, wait: bool, interval: float = 120
     return entry
 
 
-async def batch_grade(model: str, jobs: list[tuple], out_dir: Path, mcp, entry: dict) -> dict:
+async def batch_grade(model: str, jobs: list[tuple], out_dir: Path, mcp, entry: dict,
+                      marketplace: dict | None = None) -> dict:
     """Rows and sidecar lines from the stored raw results of one batch. A result that is
     not `succeeded` leaves its trial undone and is logged; the next batch-submit sends it
     again."""
@@ -833,6 +901,8 @@ async def batch_grade(model: str, jobs: list[tuple], out_dir: Path, mcp, entry: 
     by_cid = {custom_id(trial_key(model, j, False)): j for j in jobs}
     done = done_keys(out_dir)
     rejected: list[str] = []
+    sent = {q["custom_id"]: q["params"]
+            for q in read_jsonl(out_dir / f"batch_requests_{entry['n']}.jsonl")[0]}
     raw, torn = read_jsonl(out_dir / f"batch_results_{entry['n']}.jsonl")
     if torn:
         raise ApparatusError(f"{out_dir}: {torn} unreadable raw result line(s)")
@@ -854,7 +924,8 @@ async def batch_grade(model: str, jobs: list[tuple], out_dir: Path, mcp, entry: 
             continue
         rec = turn_record(1, result["message"], requested_at=entry.get("submitted_at_utc"),
                           received_at=entry.get("ended_at"), request_id=None,
-                          version_sent=entry.get("anthropic_version_sent"))
+                          version_sent=entry.get("anthropic_version_sent"),
+                          request=AR.request_settings(sent[cid]) if cid in sent else None)
         outcome = outcome_of([rec], [], [])
         row = await make_row(model, job, False, outcome, mcp)
         meta = make_meta(model, job, False, outcome, row, transport="batch",
@@ -868,6 +939,9 @@ async def batch_grade(model: str, jobs: list[tuple], out_dir: Path, mcp, entry: 
         if b["n"] == entry["n"]:
             b["fetched"] = True
             b["graded_at_utc"] = utc_now()
+            if marketplace:
+                b["graded_with_tools_commit"] = marketplace["commit"]
+                b["graded_with_pyvalidator"] = marketplace["pyvalidator"]
     write_batches(out_dir, batches)
     counts = write_counts(out_dir, len(jobs))
     if rejected:
@@ -959,6 +1033,22 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
     non_empty = sum(1 for r in countable if r["result"]["response"].strip())
     want = {"thinking": AR.MODEL_SETTINGS[model]["thinking"],
             "effort": AR.MODEL_SETTINGS[model]["effort"]}
+    # From the sidecar: the settings of every request that was sent.
+    n_requests = bad_requests = sampling = think_back = think_seen = 0
+    for m in mine:
+        cap = OUTPUT_CAP[m["key"][1]]
+        for t in m["turns"]:
+            req = t.get("request")
+            n_requests += 1
+            if req is None or req != AR.registered_request_settings(
+                    model, cap, with_tools, req.get("n_messages", -1)):
+                bad_requests += 1
+            if req and (set(req) | set(req.get("param_keys", []))) & AR.SAMPLING_KEYS:
+                sampling += 1
+            think_seen += t.get("thinking_blocks_in_previous_response", 0)
+            think_back += t.get("thinking_blocks_passed_back", 0)
+    ids = sorted({i for m in mine for i in m["model_ids_returned"]})
+    ids_ok = all(i.startswith(model) for i in ids)
     settings_ok = all(m["settings"]["thinking"] == want["thinking"]
                       and m["settings"]["effort"] == want["effort"]
                       and m["settings"]["max_tokens"] == OUTPUT_CAP[m["key"][1]]
@@ -983,6 +1073,12 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
         "rows_cut_by_storage": cut,
         "non_empty_answers": non_empty, "answers_counted": len(countable),
         "settings_as_registered": settings_ok,
+        "requests_in_sidecar": n_requests,
+        "requests_whose_settings_differ_from_the_registered": bad_requests,
+        "requests_with_a_sampling_field": sampling,
+        "model_ids_start_with_the_requested_id": ids_ok,
+        "thinking_blocks_returned_before_a_next_request": think_seen,
+        "thinking_blocks_passed_back_unchanged": think_back,
         "stored_batch_requests_as_registered": stored_requests_ok,
         "api_version_sent": sorted({v for m in mine for v in m["anthropic_version_sent"]}),
         "sdk_versions": sorted({str(m["sdk_version"]) for m in mine}),
@@ -1000,7 +1096,8 @@ def pilot_check_cell(out_dir: Path, model: str, arm: str, n_expected: int) -> di
         len(rows) == n_expected and rep["duplicate_keys"] == 0
         and rep["rows_without_sidecar_line"] == 0 and torn == 0 and refused_by_loader == 0
         and cut == 0 and share >= 0.95 and settings_ok and stored_requests_ok is not False
-        and len(rep["api_version_sent"]) == 1)
+        and len(rep["api_version_sent"]) == 1 and bad_requests == 0 and sampling == 0
+        and ids_ok and think_seen == think_back)
     return rep
 
 
@@ -1057,7 +1154,7 @@ async def _cmd_batch_submit(args) -> None:
 
 
 async def _cmd_batch_fetch(args) -> None:
-    _market, _gt_path, _gt, jobs, out = _prepare(args, "no-tools", True)
+    market, _gt_path, _gt, jobs, out = _prepare(args, "no-tools", True)
     client = make_client(args.max_retries)
     try:
         entry = await batch_poll(client, out, wait=args.wait, interval=args.interval)
@@ -1068,7 +1165,8 @@ async def _cmd_batch_fetch(args) -> None:
         return
     mcp = await connect_mcp(args.marketplace_path)     # solve plans go to the validator
     try:
-        print(json.dumps(await batch_grade(args.model, jobs, out, mcp, entry), indent=2))
+        print(json.dumps(await batch_grade(args.model, jobs, out, mcp, entry, market),
+                         indent=2))
     finally:
         await mcp.close()
 
@@ -1102,8 +1200,8 @@ def main(argv: list[str] | None = None) -> int:
             sp.add_argument("--max-retries", type=int, default=4,
                             help="the SDK's own retries per request")
         sp.add_argument("--pilot", action="store_true",
-                        help="first problem of every domain, wording v11 (280 trials per "
-                             "model and arm)")
+                        help="the pilot's short list, wording v11 (160 trials per model "
+                             "and arm)")
         sp.add_argument("--gt-cache", default=None,
                         help=f"default {GT_CACHE_REL}; must match the pinned sha256")
 
