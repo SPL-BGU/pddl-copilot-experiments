@@ -503,10 +503,11 @@ def test_base(r):
                (by(res, "tool_choice", model=SONNET, task="validate_domain")["error_rows_by_kind"],
                 by(res, "tool_choice", model=SONNET, task="simulate")["error_rows_by_kind"]),
                ({"pause": 1, "unknown stop": 1}, {}))
-    r.check("every share is over the 20 domains",
+    r.check("in the base fixture every share reaches the 20 domains, and no k is printed",
             all(c[f]["k"] == 20 and c[f]["k_registered"] == 20 and c[f]["lo"] is not None
                 for c in res["tool_choice"] for f in ("exactly_right", "right_called"))
-            and all(c["answer_wrong"]["k"] == 20 for c in res["tool_right_answer_wrong"]))
+            and all(c["answer_wrong"]["k"] == 20 for c in res["tool_right_answer_wrong"])
+            and "(k = " not in res["_md"])
     # RQ3.
     r.check_eq("10 tool-right rows", len(res["tool_right_answer_wrong"]), 10)
     for (m, t), (right, wrong, left) in TOOL_RIGHT.items():
@@ -1311,8 +1312,9 @@ def test_refusals(r):
             for t in x["turns"]:
                 t["requested_at_utc"] = t["requested_at_utc"].replace("2026-11-27", "2026-11-26")
         on_meta(root, SONNET, T, "validate_plan", "d09", 0, meta)
-    halts(r, "a tool request dated before the batch was sent halts with its own message", early,
-          "1 tool trial(s) hold a request dated before 2026-11-27, the date the batch was sent")
+    blocks(r, "a tool request dated before the batch was sent", early, SONNET,
+           "a tool request dated before the batch was sent (section 6)",
+           "1 tool trial(s) hold a request dated before 2026-11-27, the date the batch was sent")
 
     def late_15(root):
         ks = [key_of(SONNET, T, "validate_plan", d, 0) for d in BF.DOMAINS[:12]]
@@ -1380,13 +1382,50 @@ def test_refusals(r):
 def test_reruns(r):
     """Sections 6 and 7: both arms of a model run again together, in new folders. The new
     folders are read for that model; the first attempt is kept and only counted."""
+    gt_text = (FIXTURE / "gt_cache.json").read_text()
+
+    def build_rerun(dst: Path, day="2026-11-30", next_day="2026-12-01", new_ids=True):
+        """Sonnet's planted trials collected again: three days after the first attempt
+        (27 and 28 November), with batch ids and request ids of their own."""
+        with BF.rerun(SONNET, day, next_day, new_ids=new_ids):
+            BF.write_model(dst, SONNET, json.loads(gt_text), BF.sha(gt_text))
+
     root = copy_fixture()
     try:
         r2 = root.parent / "frontier55-r2"
-        for arm in (N, T):                      # the rerun: the fixture's own Sonnet folders
-            shutil.copytree(cdir(root, SONNET, arm), r2 / f"{SONNET}_{arm}")
-            shutil.copytree(cdir(root, SONNET, arm), cdir(root, SONNET, arm).with_name(
-                f"{SONNET}_{arm}_r2"))
+        build_rerun(r2)
+        build_rerun(root.parent / "tmp")
+        for arm in (N, T):
+            (root.parent / "tmp" / f"{SONNET}_{arm}").rename(
+                cdir(root, SONNET, arm).with_name(f"{SONNET}_{arm}_r2"))
+        # A rerun must be a new collection. A copy of the first attempt, the first
+        # attempt's request ids under new batch ids, and a collection that is not later
+        # than the first attempt are each refused, with the overlap named.
+        copy = root.parent / "copy"
+        for arm in (N, T):
+            shutil.copytree(cdir(root, SONNET, arm), copy / f"{SONNET}_{arm}")
+        same_requests, same_days = root.parent / "same_requests", root.parent / "same_days"
+        build_rerun(same_requests, new_ids=False)
+        build_rerun(same_days, day="2026-11-27", next_day="2026-11-28")
+        for label, where, needle in (
+                ("a copy of the first attempt", copy,
+                 "the rerun folders of claude-sonnet-5-5 hold batch id(s) of its first attempt "
+                 "(msgbatch_fixture_sonnet, msgbatch_fixture_sonnet_2, msgbatch_fixture_sonnet_3)"),
+                ("the first attempt's request ids", same_requests,
+                 "hold 586 request id(s) of its first attempt (first: req_1)"),
+                ("a collection on the first attempt's days", same_days,
+                 "holds a request at 2026-11-27T07:00:01+00:00, not later than the last "
+                 "request of its first attempt (2026-11-28T09:")):
+            code, err, _res, written = run_fixture(root, ["--rerun-root", f"{SONNET}={where}"])
+            r.check(f"rerun guard: {label} is refused",
+                    code == 2 and needle in err and written == [], err[-400:])
+        b, q, latest = F.first_attempt_requests(root / "frontier55", SONNET)
+        # Sonnet's first attempt: three batches; 586 live requests; the last request is the
+        # second request of validate_problem d03 on the next day.
+        r.check_eq("what is read of a first attempt: batch ids, request ids, the last request",
+                   (sorted(b), len(q), latest.date().isoformat()),
+                   (["msgbatch_fixture_sonnet", "msgbatch_fixture_sonnet_2",
+                     "msgbatch_fixture_sonnet_3"], 586, "2026-11-28"))
         # The first attempt of Sonnet is VOID (a fourth error row that is not a refusal).
         replant(root, SONNET, T, "validate_plan", "d09", 0, ("", "pause"))
         code, err, res, _ = run_fixture(root)
@@ -1432,7 +1471,9 @@ def test_reruns(r):
                     and "The first attempt is kept and only counted" in res["_md"]
                     and f"{SONNET}_{T}: 300 rows" in res["_md"])
         # The rules apply to the folders that are read: a VOID rerun is not analysed either.
-        row, meta = BF.make_trial(SONNET, T, "validate_plan", "d09", 0, BF.Clock(SONNET), ("", "pause"))
+        with BF.rerun(SONNET, "2026-11-30", "2026-12-01"):
+            row, meta = BF.make_trial(SONNET, T, "validate_plan", "d09", 0, BF.Clock(SONNET),
+                                      ("", "pause"))
         d = r2 / f"{SONNET}_{T}"
         write_lines(d / "trials.jsonl", [row if x["key"] == row["key"] else x
                                          for x in read_lines(d / "trials.jsonl")])
@@ -1603,38 +1644,52 @@ def test_tripwires(r):
           "T9:claude-sonnet-5-5: claude-sonnet-5-5: the two arms were answered by different "
           "model ids (no-tools: claude-sonnet-5-5-20261120, tools: claude-sonnet-5-5-20261201)")
 
-    # A share whose trials do not reach the 20 domains gets no interval. With no tool call
-    # on the three validate_domain trials of d10, Haiku's tool-right set holds 19 domains.
+    # A share is over the domains its trials reach, as for the open models, and k is
+    # printed when it is under 20. With no tool call on the three validate_domain trials
+    # of d10 and a wrong verdict after a right tool result on d11's first trial, Haiku's
+    # tool-right set holds 57 trials in 19 domains, one of them wrong. The interval: one
+    # domain with one wrong trial, the others none, three trials each, so a draw is X/57
+    # with X ~ Bin(19, 1/19). P(X = 0) = 0.358, so the 2.5% quantile is 0; P(X <= 2) =
+    # 0.925 and P(X <= 3) = 0.985, so the 97.5% quantile is X = 3: [0, 3/57].
     root = copy_fixture()
     try:
         for slot in range(3):
             replant(root, HAIKU, T, "validate_domain", "d10", slot, ("ok", "none"))
+        replant(root, HAIKU, T, "validate_domain", "d11", 0, ("wrong", "right"))
         code, err, res, _ = run_fixture(root)
         ok = code == 0
         if ok:
             c = by(res, "tool_right_answer_wrong", model=HAIKU, task="validate_domain")
             q = by(res, "tool_choice", model=HAIKU, task="validate_domain")
-            ok = ((c["n_tool_right"], c["n_answer_wrong"], c["answer_wrong"]["k"],
-                   c["answer_wrong"]["lo"], c["answer_wrong"]["hi"], c["answer_wrong"]["est"])
-                  == (57, 0, 19, None, None, 0.0)
+            w = c["answer_wrong"]
+            ok = ((c["n_tool_right"], c["n_answer_wrong"], w["k"], w["n"], w["k_registered"])
+                  == (57, 1, 19, 57, 20)
+                  and close(w["est"], 100 / 57) and close(w["lo"], 0.0) and close(w["hi"], 300 / 57)
                   and (q["counts"]["none"], q["exactly_right"]["k"]) == (3, 20)
-                  and q["exactly_right"]["lo"] is not None
-                  and "0.0 (no interval: the trials reach 19 of 20 domains)" in res["_md"])
-        r.check("a share over 19 domains has no interval; one over 20 has", ok, err)
+                  and "| 57 | 1 | 1.8 [0.0, 5.3] (k = 19 domains) |" in res["_md"]
+                  and res["_md"].count("(k = ") == 1)
+        r.check("a share over 19 domains: the interval over those 19, k printed", ok, err)
     finally:
         shutil.rmtree(root.parent)
-    # The helper itself.
+    # The helper itself: the frozen `rq1_metrics.boot`, k the number of domains present.
     doms20 = [f"d{i:02d}" for i in range(1, 21)]
-    full = F.share([True] + [False] * 19, doms20, 20, "unit")
+    full = F.share([True] + [False] * 19, doms20, 20)
     b = ST.cluster_bootstrap([1.0] + [0.0] * 19, doms20, 0.95, 20)
     r.check("share over 20 domains: the frozen bootstrap",
             close(full["est"], 5.0) and close(full["lo"], b.lo) and close(full["hi"], b.hi)
-            and (full["k"], full["n"]) == (20, 20))
-    part = F.share([True, False], ["d01", "d02"], 20, "unit")
-    r.check_eq("share over 2 domains: no interval",
-               (part["est"], part["lo"], part["hi"], part["k"], part["n"]), (50.0, None, None, 2, 2))
-    r.check_eq("share of nothing", (F.share([], [], 20, "unit")["est"], F.share_cell(F.share([], [], 20, "u"))),
-               (None, "–"))
+            and (full["k"], full["n"]) == (20, 20) and "(k =" not in F.share_cell(full))
+    # Two domains of one trial each, one right: a draw is 0, 1/2 or 1 with probability
+    # 1/4, 1/2, 1/4, so the interval is [0, 100].
+    part = F.share([True, False], ["d01", "d02"], 20)
+    r.check_eq("share over 2 domains: the interval over those 2, k printed",
+               (part["est"], part["lo"], part["hi"], part["k"], part["n"], F.share_cell(part)),
+               (50.0, 0.0, 100.0, 2, 2, "50.0 [0.0, 100.0] (k = 2 domains)"))
+    r.check_eq("share of nothing: the frozen helper gives none",
+               (F.share([], [], 20)["est"], F.share_cell(F.share([], [], 20))), (None, "–"))
+    from tools.reanalysis import rq1_metrics as R1
+    r.check_eq("the share is the open models' helper",
+               {k: v for k, v in part.items() if k != "k_registered"},
+               R1.boot([True, False], ["d01", "d02"]))
 
 
 # ------------------------------------------------------------------ the runner's own shapes

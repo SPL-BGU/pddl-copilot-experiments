@@ -36,6 +36,7 @@ below; the hand-computed consequences are in the test file.
 """
 from __future__ import annotations
 
+import contextlib
 import functools
 import hashlib
 import importlib.util
@@ -106,6 +107,40 @@ BATCH_OF = {(SONNET, "validate_problem", "d10", 0): 2, (SONNET, "validate_proble
 
 def batch_id(model: str, n: int) -> str:
     return BATCH_ID[model] if n == 1 else f"{BATCH_ID[model]}_{n}"
+
+
+REQ_PREFIX = {HAIKU: "req", SONNET: "req"}      # request ids of the live requests
+
+
+@contextlib.contextmanager
+def rerun(model: str, day: str, next_day: str, tag: str = "r2", new_ids: bool = True):
+    """Inside the block the builder writes the folders of a RERUN of `model`: the same
+    planted trials collected again on `day`, with batch ids and request ids of their own
+    (`new_ids` off keeps the first attempt's request ids). Used by the tests only; the
+    committed fixture holds first attempts."""
+    saved = (DAY[model], NEXT_DAY[model], BATCH_ID[model], BATCHES[model], REQ_PREFIX[model])
+    old_day, old_next = DAY[model], NEXT_DAY[model]
+    BATCHES[model] = tuple(
+        b[:5] + (b[5].replace(old_next, "@next").replace(old_day, day).replace("@next", next_day),)
+        for b in BATCHES[model])
+    DAY[model], NEXT_DAY[model] = day, next_day
+    BATCH_ID[model] = f"{BATCH_ID[model]}_{tag}"
+    if new_ids:
+        REQ_PREFIX[model] = f"req_{tag}"
+    try:
+        yield
+    finally:
+        DAY[model], NEXT_DAY[model], BATCH_ID[model], BATCHES[model], REQ_PREFIX[model] = saved
+
+
+def write_model(run_root: Path, model: str, gt: dict, gt_file_sha: str) -> None:
+    """The two folders of one model under `run_root`: rows, sidecar, manifest, batches."""
+    for arm in ARMS:
+        write_folder(run_root, model, arm)
+        (run_root / f"{model}_{arm}" / "run_manifest.json").write_text(
+            json.dumps(manifest(model, arm, gt, gt_file_sha), indent=2, sort_keys=True) + "\n")
+    (run_root / f"{model}_{N}" / "batches.json").write_text(
+        json.dumps(batches_json(model), indent=2) + "\n")
 TOOLS_COMMIT = "5e4f9c0" + "0" * 33     # a full commit id that starts with the registered one
 TOOLS_SHA256 = "dd14507890d38a8a3c581971a699037b39a3a0bd9374d5801072fb58b9b14400"
 
@@ -345,7 +380,7 @@ def make_trial(model, arm, task, dom, slot, clock, spec=None):
         if arm == T:
             is_later = later == "all" or (later == "second" and n >= 2)
             rec["requested_at_utc"], rec["received_at_utc"] = clock.next(is_later)
-            rec["request_id"] = f"req_{clock.n}"
+            rec["request_id"] = f"{REQ_PREFIX[model]}_{clock.n}"
             rec.update(request_body_sha256=sha(f"{key}{n}"), request_host="api.anthropic.com",
                        thinking_blocks_in_previous_response=seen,
                        thinking_blocks_passed_back=seen)
@@ -590,12 +625,7 @@ def build(out: Path) -> None:
     (out / "route").mkdir(exist_ok=True)
     (out / "route" / "plan_verdicts.json").write_text(json.dumps(route, indent=1) + "\n")
     for m in MODELS:
-        for arm in ARMS:
-            write_folder(out / RUN, m, arm)
-            (out / RUN / f"{m}_{arm}" / "run_manifest.json").write_text(
-                json.dumps(manifest(m, arm, gt, sha(gt_text)), indent=2, sort_keys=True) + "\n")
-        (out / RUN / f"{m}_{N}" / "batches.json").write_text(
-            json.dumps(batches_json(m), indent=2) + "\n")
+        write_model(out / RUN, m, gt, sha(gt_text))
 
 
 if __name__ == "__main__":

@@ -36,11 +36,11 @@ Order (live and fixture): registered constants -> the frozen-hash gate -> pinned
 and the validator environment -> the four folders through the typed loaders (run manifest,
 sidecar, rows, row against sidecar, completeness, duplicate keys, storage cuts, the batch
 record) -> the same trials in both arms (live: the harness's own trial list) -> validator
-route check -> per model, the three rules that send both arms back to be run again (VOID,
-failed batch items, the later-date share) -> grades -> RQ1 rates and contrasts -> verdict
-errors -> RQ2 and RQ3 -> descriptive counts -> tripwires -> JSON and markdown. A fault
-exits 2 and writes nothing. A model that one of the three rules sends back is printed as
-"not analysed: <rule>" and is in no table; the other model's readout goes on. A model
+route check -> per model, the rules that send both arms back to be run again (VOID, failed
+batch items, a tool request dated before the batch, the later-date share) -> grades -> RQ1
+-> verdict errors -> RQ2 and RQ3 -> descriptive counts -> tripwires -> JSON and markdown.
+A fault exits 2 and writes nothing. A model that one of those rules sends back is printed
+as "not analysed: <rule>" and is in no table; the other model's readout goes on. A model
 whose two arms were run again in new folders is read from them (--rerun-root MODEL=PATH,
 --rerun-suffix MODEL=SUFFIX); its first attempt is counted and not graded.
 
@@ -493,6 +493,7 @@ class Meta:
     answer_chars: int
     full_answer: str | None
     tool_results: tuple[tuple[str, bool], ...]    # (tool name, flagged as an error)
+    request_ids: tuple = ()       # one per turn; None for a batched request
 
 
 def _need(d: dict, k: str, where: str):
@@ -697,7 +698,8 @@ def parse_meta(obj, model: str, arm: str, where: str) -> Meta:
                 overflow_error=_typed(obj, "overflow_error", str, where),
                 storage_cut=_typed(obj, "storage_cut", bool, where), answer_chars=answer_chars,
                 full_answer=_typed(obj, "full_answer_if_cut", str, where, none_ok=True),
-                tool_results=tuple(results))
+                tool_results=tuple(results),
+                request_ids=tuple(x for x in request_ids if x is not None))
     check_conversation(meta, arm, where)
     return meta
 
@@ -1116,6 +1118,10 @@ def failed_batch_rule(model: str, cell: Cell) -> dict:
             raise Halt(f"{cell.spec.name}: {rows[b.batch_id]} rows of batch {b.batch_id}, which "
                        f"reports {b.counts['succeeded']} succeeded requests")
     first = cell.batches[0]
+    # OPEN: "the first batch expired as a whole". Implemented: every request of the first
+    # batch expired (item (1) of the same rule sends expired items again once, so single
+    # expired items are the ordinary retry case). The other reading: any expired item
+    # means the batch ran into its 24-hour limit, and that already sends the model back.
     late = sum(rows[b.batch_id] for b in cell.batches if b.n >= 3)
     limit = BATCH_RETRY_FRAC * len(cell.rows)
     out = {"model": model, "folder": cell.spec.name,
@@ -1139,8 +1145,8 @@ def failed_batch_rule(model: str, cell: Cell) -> dict:
 
 
 def model_rules(model: str, cells: dict) -> dict:
-    """The three rules that send both arms of a model back to be run again (VOID, failed
-    batch items, the later-date share). Raises NotAnalysed on the first that holds."""
+    """The rules that send both arms of a model back to be run again (VOID, failed batch
+    items, a tool request dated before the batch, the later-date share): NotAnalysed."""
     void_rule(model, cells)
     batches = failed_batch_rule(model, cells["no-tools"])
     return {"batches": batches, "same_day": same_day(model, cells)}
@@ -1207,6 +1213,62 @@ def parse_reruns(roots: list[str], suffixes: list[str], root: Path) -> dict:
             raise Halt(f"the rerun of {model} names a pilot folder; the pilot is never analysed")
         out[model] = (at, suffix)
     return out
+
+
+def first_attempt_requests(root: Path, model: str) -> tuple[set, set, datetime | None]:
+    """(batch ids, request ids, the latest request time) of a first attempt, from the
+    sidecar lines of its folders. Three fields of a line are read and nothing else."""
+    batch_ids, request_ids, latest = set(), set(), None
+    for arm in ARMS:
+        path = root / folder_name(model, arm) / "trial_meta.jsonl"
+        if not path.is_file():
+            continue
+        with path.open() as fh:
+            for lineno, line in enumerate(fh, 1):
+                if not line.strip():
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                w = f"{path.parent.name}/trial_meta.jsonl:{lineno}"
+                if not isinstance(obj, dict):
+                    raise SidecarError(f"{w}: not an object")
+                if _need(obj, "batch_id", w) is not None:
+                    batch_ids.add(_typed(obj, "batch_id", str, w))
+                ids, turns = _need(obj, "request_ids", w), _need(obj, "turns", w)
+                if not isinstance(ids, list) or not isinstance(turns, list):
+                    raise SidecarError(f"{w}: request_ids and turns must be lists")
+                request_ids.update(x for x in ids if x is not None)
+                for t in turns:
+                    if not isinstance(t, dict):
+                        raise SidecarError(f"{w}: a turn is not an object")
+                    at = parse_time(_need(t, "requested_at_utc", w), w)
+                    latest = at if latest is None or at > latest else latest
+    return batch_ids, request_ids, latest
+
+
+def check_rerun(model: str, cells: dict, root: Path) -> None:
+    """A rerun is a new collection, not a copy of the first attempt: its batch ids and
+    its request ids are not the first attempt's, and its earliest request is later than
+    the first attempt's latest. `cells` is {arm: Cell} of the rerun's folders."""
+    first_batches, first_requests, latest = first_attempt_requests(root, model)
+    metas = [m for c in cells.values() for m in c.meta.values()]
+    batches = {m.batch_id for m in metas if m.batch_id is not None} & first_batches
+    if batches:
+        raise Halt(f"the rerun folders of {model} hold batch id(s) of its first attempt "
+                   f"({', '.join(sorted(batches)[:3])}): a copy of the first attempt is not a "
+                   f"rerun")
+    requests = {x for m in metas for x in m.request_ids} & first_requests
+    if requests:
+        raise Halt(f"the rerun folders of {model} hold {len(requests)} request id(s) of its "
+                   f"first attempt (first: {sorted(requests)[0]}): a copy of the first attempt "
+                   f"is not a rerun")
+    earliest = min(t.requested for m in metas for t in m.turns)
+    if latest is not None and earliest <= latest:
+        raise Halt(f"the rerun of {model} holds a request at {earliest.isoformat()}, not "
+                   f"later than the last request of its first attempt "
+                   f"({latest.isoformat()}): the two overlap in time")
 
 
 def first_attempt(root: Path, model: str) -> list[dict]:
@@ -1299,10 +1361,12 @@ def same_day(model: str, cells: dict) -> dict:
     early = [m for m in t.meta.values() if any(x.requested.date() < ref for x in m.turns)]
     if early:
         # The registration has the batch sent first and the tool arm started after it. A
-        # tool request dated before the batch was sent is another fault, not a late trial.
-        raise Halt(f"{model}: {len(early)} tool trial(s) hold a request dated before "
-                   f"{ref.isoformat()}, the date the batch was sent (section 6 has the batch "
-                   f"sent first); this is not the later-date case and is not analysed as one")
+        # tool request dated before the batch was sent is another fault than a late trial;
+        # the two arms of this model were not collected as registered.
+        raise NotAnalysed(model, "a tool request dated before the batch was sent (section 6)",
+                          f"{len(early)} tool trial(s) hold a request dated before "
+                          f"{ref.isoformat()}, the date the batch was sent; section 6 has the "
+                          f"batch sent first. This is not the later-date case")
     later = [m for m in t.meta.values() if any(x.requested.date() > ref for x in m.turns)]
     share = len(later) / len(t.meta)
     batches = {}
@@ -1527,29 +1591,20 @@ def models_of(trials: dict) -> list[str]:
     return [m for m in MODELS if (m, "tools") in trials]
 
 
-def share(values: list, doms: list, k: int, what: str) -> dict:
-    """A share of a subset of trials (RQ2, RQ3), in points. Its 95% interval is the frozen
-    domain-cluster bootstrap over the registered k domains, asserted. A subset that does
-    not reach every domain gets its share and no interval: an interval over fewer
-    clusters is never computed."""
-    n, present = len(values), len(set(doms))
-    out = {"est": None, "lo": None, "hi": None, "k": present, "n": n, "k_registered": k}
-    if n and present == k:
-        b = M.boot([float(v) for v in values], list(doms), k, what)
-        _check(b.k == k and b.n == n, f"{what}: {k} domains")
-        out.update(est=b.est, lo=b.lo, hi=b.hi)
-    elif n:
-        out["est"] = 100 * sum(bool(v) for v in values) / n
-    return out
+def share(values: list, doms: list, k_registered: int) -> dict:
+    """A share of a subset of trials (RQ2, RQ3), in points, with its 95% interval: the
+    open models' practice, `rq1_metrics.boot` as `rq23_metrics` and the matched run's
+    `rq3_cells` call it. The domain-cluster bootstrap runs over the domains the subset
+    holds; `k` is that number and is printed beside the cell whenever it is under the
+    registered 20. An empty subset has no share and no interval (the frozen helper)."""
+    return {**R1.boot(values, doms), "k_registered": k_registered}
 
 
 def share_cell(b: dict) -> str:
     if b["est"] is None:
         return "–"
-    if b["lo"] is None:
-        return (f"{b['est']:.1f} (no interval: the trials reach {b['k']} of "
-                f"{b['k_registered']} domains)")
-    return f"{b['est']:.1f} [{b['lo']:.1f}, {b['hi']:.1f}]"
+    k = f" (k = {b['k']} domains)" if b["k"] < b["k_registered"] else ""
+    return f"{b['est']:.1f} [{b['lo']:.1f}, {b['hi']:.1f}]{k}"
 
 
 def rq1(design: Design, trials: dict) -> tuple[list[dict], list[dict]]:
@@ -1646,10 +1701,9 @@ def rq2(design: Design, cells: dict, track: dict) -> list[dict]:
                 "counts": {c: n[c] for c in RQ2_CLASSES},
                 "error_rows_left_out": sum(left_out.values()),
                 "error_rows_by_kind": {x: left_out[x] for x in NAMED_ERROR_KINDS if left_out[x]},
-                "exactly_right": share([c["cls"] == "right_only" for c in classed], doms, k,
-                                       f"exactly the right tool {m}/{t}"),
+                "exactly_right": share([c["cls"] == "right_only" for c in classed], doms, k),
                 "right_called": share([c["cls"] in ("right_only", "right_plus")
-                                       for c in classed], doms, k, f"the right tool {m}/{t}"),
+                                       for c in classed], doms, k),
                 "other_planner": sum(c["other_planner"] for c in classed),
                 "plan_check_only": sum(c["plan_check_only"] for c in classed)})
     return out
@@ -1675,8 +1729,7 @@ def rq3(design: Design, trials: dict) -> list[dict]:
             out.append({
                 "model": m, "task": t, "n_trials": len(vals), "n_tool_right": len(tv),
                 "n_answer_wrong": sum(lost),
-                "answer_wrong": share(lost, [x.domain for x in tv], design.k_domains,
-                                      f"tool right, answer wrong {m}/{t}"),
+                "answer_wrong": share(lost, [x.domain for x in tv], design.k_domains),
                 "why": dict(sorted(Counter(x.ending if x.ending != E_ANSWER else x.reason
                                            for x in tv if x.registered is False).items())),
                 "error_rows_left_out": sum(x.error_kind in NAMED_ERROR_KINDS for x in vals)})
@@ -1956,7 +2009,9 @@ def render(res: dict) -> str:
     L += ["#### Claude run: RQ2, which tool was called (tool arm)", "",
           f"The classes of `tools/reanalysis/rq23_metrics.py`. A refusal, a pause and an "
           f"unknown stop hold no tool calls; such a row is left out of the classes and counted "
-          f"beside them. {common}.", "",
+          f"beside them. The interval of a share is over the domains its trials reach, as for "
+          f"the open models; k is printed where it is under "
+          f"{res['design']['k_domains']}. {common}.", "",
           md_table(["model", "task", "trials", "no call", "right only", "right + other",
                     "other only", "error rows left out",
                     "exactly the right tool, share of the classed trials [95% interval]",
@@ -1973,7 +2028,9 @@ def render(res: dict) -> str:
           f"wrong under the registered grade. A refusal, a pause and an unknown stop are left "
           f"out of the set and counted beside it. \"Tool right\" is the run-time check of the "
           f"open models' definition, which credits a trial when any call returned the right "
-          f"result, including a call to a tool other than the task's own. {common}.", "",
+          f"result, including a call to a tool other than the task's own. The interval of a "
+          f"share is over the domains its trials reach, as for the open models; k is printed "
+          f"where it is under {res['design']['k_domains']}. {common}.", "",
           md_table(["model", "task", "trials", "tool right", "answer wrong",
                     "share [95% interval]", "how the wrong answers ended",
                     "error rows left out"],
@@ -2179,6 +2236,8 @@ def main(argv: list[str] | None = None) -> int:
             verdict = M.Verdicts(M.live_route(args.marketplace, args.domains_dir))
             checked = check_route_table(verdict, stored)
             mode, track = "live", MR.tracks_of(args.domains_dir, live=True)
+        for m in reruns:
+            check_rerun(m, cells[m], run_root)
         rerun_records = [{"model": m, "root": str(at), "suffix": suffix,
                           "folders": [cells[m][arm].path for arm in ARMS],
                           "first_attempt": first_attempt(run_root, m)}
