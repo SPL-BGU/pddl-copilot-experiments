@@ -3,7 +3,7 @@
 Run standalone: `python3 tests/test_partial_subset.py`
 Or via the shell wrapper: `bash tests/verify.sh`
 
-Pure-Python tests: no MCP, no Ollama, no fixture I/O.
+Pure-Python tests: no MCP, no model server, no fixture I/O.
 """
 
 import sys

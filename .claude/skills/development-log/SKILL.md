@@ -7,7 +7,7 @@ argument-hint: [what was changed OR what issue was found OR "review"]
 
 ## Why this skill exists
 
-The harness is a ~4-file research codebase whose correctness depends on methodology consistency across runs. Edits to `run_experiment.py` and to the sibling `../pddl-copilot` plugins can silently shift tool output shapes, scorer behaviour, or reproducibility guarantees. `development/CHANGELOG.md` and `development/OPEN_ISSUES.md` exist so that trail is explicit and future runs can be compared to past ones on solid ground. Keep them accurate and the paper comparisons stay defensible; let them rot and every reviewer conversation restarts from zero.
+The harness (`run_experiment.py` plus the `pddl_eval/` package) is a small research codebase whose correctness depends on methodology consistency across runs. Edits to `run_experiment.py` and to the sibling `../pddl-copilot` plugins can silently shift tool output shapes, scorer behaviour, or reproducibility guarantees. `development/CHANGELOG.md` and `development/OPEN_ISSUES.md` exist so that trail is explicit and future runs can be compared to past ones on solid ground. Keep them accurate and the paper comparisons stay defensible; let them rot and every reviewer conversation restarts from zero.
 
 ## When the user's ask is recording a change
 
@@ -62,7 +62,7 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 2. Scan the newest result dirs for new summary JSONs: bare local runs land in `results/{full,smoke,partial}/<sha>_<timestamp>/`, cluster cells in `results/<synced-root>/slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/`. Any new harness failure modes, truncation clusters, or schema changes worth an `ISS-###`? (A model failing to use a tool is a finding to report, not an issue to open.)
 3. Propose a short list of draft entries (changelog additions + new issues) and ask the user which to land. Do not edit the files until the user confirms.
 
-## Per-line workstream docs (the `development/` folder layout)
+## The `development/` folder layout
 
 `development/README.md` is the map. **Two tiers, where the path carries the status:**
 
@@ -74,7 +74,7 @@ Prefer "move" for tactical issues, "strike-through" for issues whose existence i
 There is no archive. A doc that is no longer needed is **deleted** with `git rm`, and its last commit goes in `development/MOVES.md` (recover with `git show <commit>:<path>`).
 
 - **Status lives in `development/STATUS.md`, edited in place.** Never write a new dated status doc — that is what once produced a four-deep supersession chain of status files.
-- `STATUS.md` names the live plan doc the work follows. A plan doc is deleted when its last step is done (recorded in `MOVES.md`).
+- `STATUS.md` says what is left and names the docs the work follows (today the paper outline, `development/paper_outline.md`, and the registration of the run in progress under `reference/`). A plan doc is deleted when its last step is done (recorded in `MOVES.md`), or moved to `reference/` if it is still a source.
 - **Before any figure enters prose, check `development/NUMBERS.md`** — the frozen value of each headline number plus the stale readings it replaces.
 - `CHANGELOG.md` and `OPEN_ISSUES.md` remain the **framework** source of truth. `OPEN_ISSUES.md` carries a scannable open/closed index at its head — update it when you add or close an `ISS-###`.
 - When a line closes, its docs are either deleted (recorded in `MOVES.md`) or, if they are still a source for numbers, code or decisions, moved to `reference/` — do not leave banner-marked files at the root.
@@ -93,7 +93,7 @@ There is no archive. A doc that is no longer needed is **deleted** with `git rm`
 ## Anti-patterns (push back if the user requests them)
 
 - A new `docs/` directory duplicating `development/`. One source of truth.
-- Per-*change* standalone `.md` files at the `development/` **root**. Framework changes go in `CHANGELOG.md` (the index); per-*line* docs live in a line folder (see "Per-line workstream docs").
+- Per-*change* standalone `.md` files at the `development/` **root**. Framework changes go in `CHANGELOG.md` (the index). A doc for a line of work sits at the root while the line is open and goes to `reference/` or is deleted when it closes (see "The `development/` folder layout").
 - A **new dated status doc** (`remaining_work_<date>.md`, `next_steps_*.md`). Edit `STATUS.md` in place instead.
 - Leaving a superseded doc at the `development/` root with a "SUPERSEDED" banner. Delete it (record it in `MOVES.md`) or move it to `reference/`; the path is the status.
 - Logging routine refactors or typo fixes. Only entries that change behaviour, schema, methodology, or reproducibility belong here.

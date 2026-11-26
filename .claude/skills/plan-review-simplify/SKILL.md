@@ -13,9 +13,9 @@ For the task described in $ARGUMENTS:
 Read all relevant existing code using Grep and Glob. Identify reusable patterns and existing state so the plan doesn't reinvent them.
 
 Reference surface, in the order you typically need them:
-- `run_experiment.py` + `pddl_eval/` — experiment logic, MCPPlanner / vLLM chat loop / scoring. Bridge contract: EXPERIMENTS_FLOW.md §8.
+- `run_experiment.py` + `pddl_eval/` — experiment logic, MCPPlanner / vLLM chat loop / scoring. Bridge contract: the tool-contract section of EXPERIMENTS_FLOW.md.
 - `cluster-experimenting/` — execution orchestration (sbatch + submit wrappers)
-- `EXPERIMENTS_FLOW.md` — methodology, success criteria, MCP tool contract (§8), result schema (§9), paper-diff (§11)
+- `EXPERIMENTS_FLOW.md` — reference of the test setup: tasks and success criteria, MCP tool contract, result schema
 - `development/CHANGELOG.md` — dated record of framework + sibling-MCP changes; check here first to avoid re-solving something that's already landed
 - `development/OPEN_ISSUES.md` — known methodology gaps (`ISS-###`) with severity and fix sketches; many "should we fix X?" questions already have a written answer here
 - `domains/` — PDDL benchmark structure; `results/` — output format
@@ -45,8 +45,8 @@ Before presenting the plan, review it for simplification and correctness:
 **Experiment integrity:**
 - Does the change preserve compatibility with existing results in `results/`?
 - Are evaluation metrics and success criteria unchanged (or intentionally updated)?
-- Does the MCP client interface remain consistent with EXPERIMENTS_FLOW.md §8?
-- Is the change documented in `EXPERIMENTS_FLOW.md` if it affects methodology, and queued for `development/CHANGELOG.md`?
+- Does the MCP client interface remain consistent with the tool contract in EXPERIMENTS_FLOW.md?
+- Is the change documented in `EXPERIMENTS_FLOW.md` if it affects the test setup, and queued for `development/CHANGELOG.md`?
 - Does it close or partially address any open `ISS-###`?
 
 **Correctness:**

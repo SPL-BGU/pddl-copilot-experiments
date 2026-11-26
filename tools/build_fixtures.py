@@ -1,7 +1,8 @@
 """Fixture generator for PR-3.
 
-Produces the flat-layout per-domain fixture set described in
-FRAMEWORK_EXTENSION_PLAN.md §3.3:
+Produces the flat-layout per-domain fixture set (designed in
+FRAMEWORK_EXTENSION_PLAN.md §3.3, a plan doc deleted on 2026-10-10; see
+development/MOVES.md. `domains/README.md` describes the layout today):
 
     domain.pddl                  - 1 valid domain
     domain_neg.pddl              - 1 invalid domain

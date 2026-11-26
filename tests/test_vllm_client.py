@@ -9,7 +9,7 @@ Two groups:
   * the context-overflow retry — the 400 body's prompt count is only a lower
     bound, so the old clip never converged and 1,987 sweep5v2 tool-arm trials
     had their final turn recorded as an empty "length" answer (2026-10-02,
-    development/reanalysis_transcripts.md §3.3).
+    development/reference/reanalysis_transcripts.md §3.3).
 
 Runs under pytest and as a plain script (tests/verify.sh).
 """
@@ -676,7 +676,7 @@ def test_stored_trace_reaches_the_harness_thinking_value():
 
 
 # ---------------------------------------------------------------------------
-# Control-prompt cells (development/control_prompt_fix_plan.md, 2026-11-23):
+# Control-prompt cells (development/reference/control_prompt_fix_plan.md, 2026-11-23):
 # $PDDL_NO_TOOLS_SYSTEM swaps the no-tools system text of solve/simulate, and
 # $PDDL_SYSTEM_AUDIT_LOG logs what was sent. The messages come from the
 # runner's real builder and go through the real chat_without_tools path

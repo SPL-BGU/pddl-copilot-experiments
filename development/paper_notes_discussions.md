@@ -620,3 +620,114 @@
 - **Also written for Omer the same day, open:** `cleanup_list.md` (nothing removed yet),
   `paper_outline.md` (four open choices), section B of `unified_run_design.md` (Claude
   models).
+
+## 2026-11-25 (night) — The repository clean-up, carried out
+
+- **Approved (Omer, 2026-11-25: "clean up approved").** The list was
+  `development/cleanup_list.md` (deleted in the same change; `MOVES.md` records it). It
+  goes in as one pull request.
+- **Deleted**, each with a `MOVES.md` row and the commit where it last existed
+  (`3044981`): the hit list `draft_C5_E1a.md`, the handoff prompt, the advisor outline
+  on Corrêa et al. and its two Word files, five scripts of dropped or finished work,
+  `submit_with_resume.sh`, the local smoke agent, five June PNGs, and the three
+  `domains-hard*` fixture trees with their build scripts and test. The record of those
+  fixtures stays in `reference/d1b_harder_items.md`.
+- **Moved to `reference/`:** `control_prompt_fix_plan.md`, `datasets_breakdown.md`,
+  `roadmap.md`. The plan is now `STATUS.md` and `paper_outline.md`.
+- **Rewritten to the current line:** `STATUS.md` (short), the top-level `README.md`,
+  `EXPERIMENTS_FLOW.md` (cut to a reference of the test setup), the cluster README, five
+  skills, `paper/README.md`. Every statement that the unaided answers were sampled under
+  a JSON schema is corrected in these documents. The same statement remains in comments
+  of files under a pinned hash; those are not touched.
+- **`unified_run_design.md` is cut to the Claude run.** Omer's answers of 2026-11-25:
+  the same design as the open models (B2), no steered arm (B3), the Batch API (B4),
+  PlanBench left as it is (B5). The models (B1) are being confirmed. The questions A5 to
+  A10 were accepted as recommended and live in the matched run's registration.
+- **The paper.** The Supporting Analyses section, the Methods and appendix parts that
+  served it, the repair history of the Results with its appendix record, and thinking-on
+  in RQ2 moved word for word to `paper/supplement_source.tex`, which is not compiled and
+  does not sync to Overleaf. No sentence that stays was rewritten. Thirty sentences that
+  point at moved parts carry a `% TODO(Omer)` comment, and five table references that
+  would have been undefined now read "the supplement". The funnel figure stays with the
+  PlanBench section. `main.tex` compiles with no undefined reference: 27 pages, down
+  from 44.
+- **Left in the body on purpose, each marked:** the sentence that the four RQ1 measures
+  were defined after the data were collected; the caption sentences that say the
+  no-tools rows are the control's format-stated cell under the second reading (they
+  describe the rows as they are until the matched run replaces them).
+- **`NUMBERS.md`:** seven marks added and no line rewritten: six headers that said "in
+  no tex yet", and the September abstract block, marked as replaced.
+- **Deferred:** the extension models and the gpt-oss effort flags in
+  `cluster-experimenting/` and the script header comments (after the matched run is
+  submitted); `tools/d5a_pilot.py` (after the Claude models are fixed); the
+  Reproducibility Checklist (after the call is checked); backup zips for the control and
+  the pilots; worktrees and merged branches. `CLAUDE.md` was not edited by the agent
+  that did this work; its venue and data-rule lines are still the ones of 2026-11-22.
+- **Decided (Omer, 2026-11-25): the Claude models are Haiku 5.5 and Sonnet 5.5** ("no
+  reason for sonnet 5"). Haiku 5.5 runs with thinking off. Sonnet 5.5 cannot; it runs at
+  its closest setting and is labelled in the paper as a model that thinks. The session
+  had recommended Sonnet 5 for the matching setting and said what the choice costs
+  before he chose. Neither model accepts a temperature setting. The run is not designed
+  or registered yet.
+- **Correction to the entry above:** `CLAUDE.md` was edited afterwards by the main
+  session, in the same PR (#153), on Omer's approval of the clean-up list: venue, who
+  writes what, and the lead data.
+- **Correction (2026-11-25), Sonnet 5.5 and thinking.** The entry above says Sonnet 5.5
+  cannot run without thinking. The API reference says otherwise in practice: the plain
+  "off" setting is refused, but its lowest setting (`between_tools`, at effort `high` or
+  lower) does no thinking before the answer and returns only the short notes the model
+  writes between tool calls. So the no-tools arm runs without thinking, and the tool arm
+  has notes between calls. This is close to the open models' setting and is what the run
+  will use; the paper states it. Not yet checked on a live request.
+
+## 2026-11-26 — The matched run is running; outline choices; the Claude run
+
+- **The matched run's smoke passed (2026-11-25, job 24499771)** on all seven registered
+  checks, and **the full run was submitted on Omer's word ("Yes, run it") as job
+  24502726, 2026-11-26 07:09 IST.** The record is in `reference/matched_run_prereg.md`,
+  sections 9 and 10 (PR #152).
+- **Decided (Omer, 2026-11-26), outline choices.** The Claude results stay in their own
+  small section for now, with the placement decision deferred; Haiku's result may be
+  brought out. RQ3 quotes the registered trace-loss range in the table and the other
+  reading in one clause. PlanBench stays in the body. The delivered rates on
+  validate_domain and validate_problem are not computed now.
+- **Omer's aim for this stage:** have every run submitted, open models and Claude, so
+  that the waiting happens in parallel. He raised adding models of other providers
+  (ChatGPT, Gemini, hosted Qwen); the session's view is in chat, and nothing is decided.
+- **The Claude run, in work:** the runner and the registration draft are being written
+  (no paid request before Omer has seen an itemized cost). Written in as the session
+  recommends and open for him: the no-tools arm by Batch and the tool arm by live calls
+  on the same day; each model's default effort, sent explicitly; a small paid pilot
+  first.
+- **Noted, not in work (Omer, 2026-11-26):** he wants to add one GPT model (his words:
+  "gpt sol 6.2"; the exact model id is not checked) and one hosted Qwen model as an
+  anchor to the open roster. He said to note it and not to develop it until he says so.
+  The session's suggestion for the anchor, for when it is taken up: the same weights
+  that run locally, hosted at full precision, so that quantization is measured; to be
+  checked then, since hosts often quantize too. Keys for those providers are not set in
+  his shell. Nothing is designed or built.
+- **The Claude run (2026-11-26).** Omer: "launch the claude run", with the session's
+  three recommendations in front of him. The runner (`tools/frontier55/`, branch
+  `frontier/claude-55-run`) was reviewed by a second agent in two passes before any paid
+  request. Pilot, 07:00 to 07:15 UTC: 640 trials, all checks passed, 11.43 dollars.
+  Both models ran without thinking in both arms; Sonnet 5.5 wrote no note between tool
+  calls in 160 tool trials. The full run (18,240 trials) started about 07:20 UTC with
+  enforced limits of 60 dollars (Haiku 5.5) and 430 dollars (Sonnet 5.5). Registration:
+  `reference/frontier55_prereg.md` on that branch. No answer is read before the analysis
+  is written and frozen.
+- **Decided (Omer, 2026-11-26): go on with the GPT and hosted Qwen models**, after he had
+  first said to only note them. **The Qwen anchor is the same 35B weights at full
+  precision** (his choice between that and Alibaba's flagship). Checked on the
+  providers' pages the same day: the GPT model he named exists as `gpt-6.2-sol`; its
+  reasoning cannot be turned off (lowest setting "low"), temperature is not to be sent,
+  and its output cap counts hidden reasoning. `Qwen/Qwen3.6-35B-A3B` is served at bf16,
+  as stated by the host, by Novita; most other hosts quantize it. Open: his word on
+  `gpt-6.2-sol` at reasoning "low"; API keys for OpenAI and for the Qwen host, which
+  are not set in his shell. Nothing paid can run before the keys exist.
+- **Merged (Omer, 2026-11-26: "can we merge the open prs? i aint gonna review those").**
+  PR #152 (the matched run's registration and frozen analysis) is on `main` at
+  `a5682cd`, and PR #153 (the repository clean-up) after it. Not merged: #144 (Future
+  Work wording from 2026-11-22; it edits files this clean-up moved or rewrote, and Omer
+  now writes the prose; its one idea, whether the model should restate the tool's output
+  at all, is kept as a future-work item in `paper_outline.md`) and #134 (release files,
+  on hold while the submission is anonymous).

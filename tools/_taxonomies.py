@@ -4,7 +4,8 @@ Each mutator takes a string and returns a (possibly equal) string. None
 of these guarantee the result is invalid — `tools/build_fixtures.py`
 validates each output via MCP and discards mutations the validator
 accepts. The taxonomy mirrors `domains/README.md` (post-PR-3) and
-FRAMEWORK_EXTENSION_PLAN.md §3.3.4 / §3.3.5.
+FRAMEWORK_EXTENSION_PLAN.md §3.3.4 / §3.3.5 (deleted on 2026-10-10; see
+development/MOVES.md).
 
 Domain-agnostic: all mutators operate on PDDL text without parsing the
 type system or action signatures. This loses some of the spec's nuance

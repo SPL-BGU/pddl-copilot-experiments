@@ -42,7 +42,7 @@ The same goes for the June with-tools probe.
   `*-budget64k` rows of the frontier budget probe (CHANGELOG 2026-09-12: "The probe rows
   appear as their own `*-budget64k` run-tagged block"). It exists only on Omer's laptop
   until the refresh below is run.
-- The handoff of 2026-11-09 (decision 16) records that a rebuild without the sweep7 and
+- A check of 2026-11-09 (recorded in a handoff doc that is now deleted, `development/MOVES.md`) found that a rebuild without the sweep7 and
   probe overlays gives 442 rows, not 460. That is why both are kept.
 
 How the 07-17 table was checked (2026-11-09): the `*_overlay.zip` files here were

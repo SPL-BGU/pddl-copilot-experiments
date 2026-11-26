@@ -20,14 +20,14 @@ The harness is a research evaluation framework (`run_experiment.py` + the `pddl_
 - New dependencies beyond what `requirements.txt` already provides
 - Changes to evaluation metrics, success criteria, prompt templates, or system prompts without explicit methodology justification
 - Over-parameterization (CLI flags for things with one correct value per the paper)
-- MCP client patterns that diverge from `MCPPlanner` without reason. The `verbose=False` bridge (see EXPERIMENTS_FLOW.md §8) is the approved way to slim validator tool responses — reject proposals that replace it with caps, helpers, or per-tool flags.
+- MCP client patterns that diverge from `MCPPlanner` without reason. The `verbose=False` bridge (see the tool contract in EXPERIMENTS_FLOW.md) is the approved way to slim validator tool responses — reject proposals that replace it with caps, helpers, or per-tool flags.
 - Reinventing caps that already exist as `DEFAULT_*` constants / `PDDL_*` env vars
 
 ## File classification
 
 **CORE** (review carefully):
-- `run_experiment.py`, `pddl_eval/{chat,runner,scoring,summary,domains,prompts,resume,schemas,vllm_client}.py`
-- `EXPERIMENTS_FLOW.md` — methodology; changes here imply methodology changes
+- `run_experiment.py`, `pddl_eval/{chat,runner,scoring,summary,domains,prompts,control_prompts,resume,schemas,vllm_client}.py`
+- `EXPERIMENTS_FLOW.md` — reference of the test setup (tasks, tool contract, output format); a change here implies a change of the setup
 - `cluster-experimenting/` — sbatch + submit scripts
 - `development/CHANGELOG.md`, `development/OPEN_ISSUES.md`
 
@@ -39,10 +39,10 @@ The harness is a research evaluation framework (`run_experiment.py` + the `pddl_
 When reviewing a plan or diff:
 1. **Simplest solution?** Is the new code the minimum needed? If a new file is proposed, would the logic fit in `run_experiment.py` or an existing module?
 2. **Result compat.** Will existing JSON files in `results/` still load and parse? `TaskResult` fields and `save_results()` output shape are load-bearing.
-3. **Methodology integrity.** Do success criteria still match EXPERIMENTS_FLOW.md §4.1-§4.2? Is `generate_ground_truth()` called before model evaluation? Are temperature, seed, num_variants defaults preserved? Do output JSON fields still match §9?
-4. **MCP contract.** Do tool calls still match §8, including the bridge stripping `verbose` from validator tool `inputSchema` and injecting `verbose=False`?
+3. **Methodology integrity.** Do success criteria still match the task and grading sections of EXPERIMENTS_FLOW.md and the registration of the run in question (`development/reference/*_prereg.md`)? Is `generate_ground_truth()` called before model evaluation? Are temperature, seed, num_variants defaults preserved? Do output JSON fields still match the output-format section of EXPERIMENTS_FLOW.md?
+4. **MCP contract.** Do tool calls still match the tool contract in EXPERIMENTS_FLOW.md, including the bridge stripping `verbose` from validator tool `inputSchema` and injecting `verbose=False`?
 5. **Helper duplication.** Search `Grep` for existing helpers before approving new ones.
-6. **Prompt/system surface.** Flag any change to `PROMPT_TEMPLATES`, `WITH_TOOLS_SYSTEM`, `WITHOUT_TOOLS_SYSTEM`.
+6. **Prompt/system surface.** Flag any change to `PROMPT_TEMPLATES`, `WITH_TOOLS_SYSTEM`, `WITHOUT_TOOLS_SYSTEM`, or to the registered no-tools system messages in `pddl_eval/control_prompts.py` (switched by `$PDDL_NO_TOOLS_SYSTEM`; used by the corrected-prompt control and the matched run).
 7. **Documentation trail.** Is there a matching CHANGELOG entry queued? Does the change advance or invalidate any `ISS-###` in OPEN_ISSUES?
 8. **Pinned harness.** Does the change touch code a pinned run depends on (the tags under "Pinned commits" in `development/STATUS.md`)? Runs on a pinned harness allow additive changes only (new model entries, new test items, new prompt styles); anything that changes existing behaviour is `[METHODOLOGY]`.
 

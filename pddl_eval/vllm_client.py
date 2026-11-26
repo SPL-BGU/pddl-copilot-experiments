@@ -126,7 +126,7 @@ _CTX_OVERFLOW_RE = re.compile(
 #     validate-style, read as a "+33 template drift"; safety raised to 128
 #     and a second retry added. +33 is exactly safety(32) + 1: the server
 #     was re-deriving N from the clipped max_tokens we had just sent.
-#   * 2026-10-02 (development/reanalysis_transcripts.md §3.3): with
+#   * 2026-10-02 (development/reference/reanalysis_transcripts.md §3.3): with
 #     new_max = max_ctx − N − 128, each retry lowered max_tokens by only
 #     129, so the two retries covered prompts within 258 tokens of the
 #     limit and nothing else. In the sweep5v2 headline tool arms 1,987
@@ -261,7 +261,7 @@ class VLLMClient:
         self._store_reasoning = bool(store_reasoning)
         if self._store_reasoning:
             print("VLLMClient: storing message.reasoning as thinking", file=sys.stderr)
-        # Control-prompt cells (development/control_prompt_fix_plan.md): swap
+        # Control-prompt cells (development/reference/control_prompt_fix_plan.md): swap
         # the registered no-tools system text of solve/simulate for the
         # `no-pointer` or `format-stated` text (pddl_eval/control_prompts.py).
         # From $PDDL_NO_TOOLS_SYSTEM when the argument is None; unset or empty

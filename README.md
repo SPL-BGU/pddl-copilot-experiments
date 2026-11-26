@@ -10,24 +10,41 @@ Tests vLLM-served LLMs **with** and **without** MCP planning tools on 5 PDDL tas
 | `validate_plan` | Verify a given plan is correct |
 | `simulate` | Produce a state-transition trace |
 
+## What the paper asks, and which data answer it
+
+The paper (`paper/`, ICAPS 2027 main track) asks three questions:
+
+1. **RQ1.** Do the PDDL tools help the model on planning tasks?
+2. **RQ2.** Does the model pick the right tool?
+3. **RQ3.** Does the model use what the tool returns?
+
+| Data | Folder | Used for |
+|---|---|---|
+| October rerun (three open models, thinking off, full answers stored) | `results/delivered-rerun` | RQ2, RQ3, and RQ1 on the three validation tasks |
+| Matched run (same three models, no tools and tools in one job) | its own run tag; see `development/STATUS.md` | RQ1 on solve and simulate |
+| May sweep (five models, thinking on and off, answers cut at 500 characters) | `results/sweep5v2-live`, `results/sweep6-live` | supplement |
+| Corrected-prompt control, the pilots, the earlier Claude runs, PlanBench | see `development/reference/datasets_breakdown.md` | supplement |
+
+These corpora are never pooled. The JSON-schema constraint that was meant for the
+no-tools arm never took effect in any of them (`EXPERIMENTS_FLOW.md` §4.2).
+
 ## Quick navigation
 
-- Cluster submission (supported reproduction path)? See `cluster-experimenting/README.md`.
-- Methodology details? See `EXPERIMENTS_FLOW.md`.
-- Analyzing results? See `.claude/skills/analyzer/SKILL.md`.
-- Recent changes / open issues? See `development/CHANGELOG.md`, `development/OPEN_ISSUES.md`.
-- What work is left? See `development/STATUS.md` (the single status file; `development/README.md` maps the rest).
+- What work is left? See `development/STATUS.md` (the single status file) and `development/paper_outline.md` (the paper's outline). `development/README.md` maps the rest.
 - Quoting a result? Check `development/NUMBERS.md` first. It holds the frozen value of every headline figure.
-- Which results are canonical? `results/sweep5v2-live` plus the anonymized sweep-6 corpus (`results/sweep6-live`; `CLAUDE.md` writes it as `*_sweep6`, after the run tag). Any other sweep folder (a sync mirror) gives wrong numbers; the old mirrors were moved out of the repo on 2026-10-10 (`development/MOVES.md`).
-- Two success layers exist: *tool-verified* (scored live by the harness) and *delivered* (the final answer re-graded offline by `tools/e2e_regrade.py`). See "How It Works" below and `EXPERIMENTS_FLOW.md` §14.
+- How the test setup works (tasks, prompts, tool contract, output files)? See `EXPERIMENTS_FLOW.md`.
+- Cluster submission? See `cluster-experimenting/README.md`.
+- Analyzing results? See `.claude/skills/analyzer/SKILL.md`.
+- Recent changes and open issues? See `development/CHANGELOG.md`, `development/OPEN_ISSUES.md`.
+- Main-sweep numbers are checked against `results/sweep5v2-live` and `results/sweep6-live` only (`CLAUDE.md` writes the second as `*_sweep6`, after the run tag). Any other sweep folder is a sync mirror and gives wrong numbers; the old mirrors were moved out of the repo on 2026-10-10 (`development/MOVES.md`).
+- Two success layers exist: *tool-verified* (scored live by the harness from the tool result) and *delivered* (the final answer the model handed back, graded offline). See "How It Works" below and `EXPERIMENTS_FLOW.md` §14.
 - Frontier (Claude API) runs use `tools/frontier_runner.py` and `tools/claude_api_batch.py`, not `run_experiment.py`.
 - PlanBench arm? See `planbench/README.md`; its numbers are in `development/reference/planbench_wt_results_20260803.md`.
-- The paper (`paper/`) targets ICAPS 2027 (decided 2026-11-22). The plan the work follows is `development/roadmap.md`.
 
 ## Prerequisites
 
 - **Python 3.10+**
-- **Java 17+** (OpenJDK) — required by the `numeric_planner` tool (ENHSP runs on the JVM)
+- **Java 17+** (OpenJDK): required by the `numeric_planner` tool (ENHSP runs on the JVM)
 - **vLLM** OpenAI-compatible server (`/v1/chat/completions`) running locally or on the cluster, serving one of the verified models in `cluster-experimenting/lib/defaults.sh:vllm_lookup`
 - **pddl-copilot marketplace** cloned locally:
   ```bash
@@ -40,12 +57,11 @@ Tests vLLM-served LLMs **with** and **without** MCP planning tools on 5 PDDL tas
 pip3 install -r requirements.txt
 ```
 
-The supported reproduction path is the BGU CIS SLURM cluster
-(`cluster-experimenting/submit_full_sweep.sh`), which dispatches the full
-roster as SLURM job arrays and self-deploys per-job vLLM servers on
-`rtx_6000:1` (48 GB) or `rtx_pro_6000:1` (96 GB) nodes. Local laptop runs
-are not supported — vLLM requires CUDA and the active roster does not fit
-in consumer-GPU VRAM.
+Runs go through the BGU CIS SLURM cluster
+(`cluster-experimenting/submit_with_rtx.sh`). It submits SLURM job arrays,
+and each array task starts its own vLLM server on an `rtx_6000:1` (48 GB) or
+`rtx_pro_6000:1` (96 GB) node. Laptop runs are not supported: vLLM needs CUDA
+and the models do not fit in consumer-GPU memory.
 
 ## Running (CLI)
 
@@ -91,16 +107,16 @@ python3 run_experiment.py --models Qwen3.5:0.8B
 | `--temperature` | 0.0 | LLM sampling temperature |
 | `--seed` | 42 | Random seed for `--smoke-shuffle` cell assignment |
 | `--tool-filter` | `all` | `all` exposes every MCP tool (only active value). |
-| `--prompt-style` | `minimal` | Only active value. |
+| `--prompt-style` | `minimal` | With-tools system prompt. `minimal` is the per-task prompt that tells the model to use the tool. `neutral` keeps only the role sentence (used by the October rerun's Gemma neutral cell). |
 | `--conditions` | `both` | Which conditions to run: `tools`, `no-tools`, or `both`. |
 | `--num-predict` | per-task | Override max output tokens (solve=8192, validate_*=6144, simulate=6144). |
-| `--num-ctx` | 16384 | Context window tokens for single-task tools cells. |
-| `--num-ctx-thinking` | 16384 | Context tokens for single-task no-tools cells when `think!=off`. **Held equal to `--num-ctx`** so the "tools save tokens" headline isn't confounded by ctx asymmetry. |
+| `--num-ctx` | 16384 | Context window tokens. |
+| `--num-ctx-thinking` | 16384 | Context tokens for no-tools cells when `think!=off`. Held equal to `--num-ctx` so both conditions get the same window. |
 | `--think` | `default` | Override thinking mode: `on`, `off`, or `default` (ablation only) |
 | `--decoupled-budget` | off | No-tools, `--think on` only. Splits each trial into two calls so reasoning and answer get separate token budgets. Produces a separate corpus; never pool it with a shared-budget run. |
 | `--num-predict-think` | 8192 | Reasoning budget under `--decoupled-budget` |
 | `--num-predict-answer` | per-task cap | Answer budget under `--decoupled-budget` |
-| `--concurrency` | 4 | Max concurrent requests in single-task sweep. Pair with vLLM `--max-num-seqs ≥ concurrency`. |
+| `--concurrency` | 4 | Max concurrent requests. Pair with vLLM `--max-num-seqs ≥ concurrency`. |
 | `--smoke` | off | Smoke slice: blocksworld `p01`, one variant, all 5 tasks, both conditions, think on and off |
 | `--smoke-shuffle` | off | Like `--smoke`, but a random (domain, problem) per (model, task) cell, chosen with `--seed` |
 | `--shard` | none | `i/N`: run only shard i of N. The hash leaves out the condition, so paired trials stay together. |
@@ -108,27 +124,52 @@ python3 run_experiment.py --models Qwen3.5:0.8B
 | `--partial` | `0` | If `K>0`, cap each domain to first-K positive + first-K negative fixtures. Fast feedback slice; resume-key shape unchanged so trials transfer to a follow-up full run. |
 | `--continue-partial` | unset | Path to a prior run's `trials.jsonl` (or its parent dir). Seeds `--output-dir/trials.jsonl` before resume kicks in, so a follow-up full sweep inherits the partial's progress. Requires identical meta-dimensions; mismatched cells silently re-run. |
 
+Two environment variables change what the client sends. They are set by the
+cluster wrapper, and only for the runs that register them:
+
+- `$PDDL_NO_TOOLS_SYSTEM` (`no-pointer` or `format-stated`) replaces the no-tools
+  system message on solve and simulate with a text from
+  `pddl_eval/control_prompts.py`. Unset, the registered message is sent.
+- `$PDDL_JSON_CONSTRAINT=structured_outputs` makes the no-tools JSON schema
+  take effect (the JSON constraint pilot only). Unset, the schema is sent as
+  `guided_json`, which vLLM 0.20.2 ignores.
+
 ## Running (Cluster)
 
-Paper-grade sweeps run on the BGU CIS SLURM cluster. See
-`cluster-experimenting/README.md` for the full submission flow,
-`.claude/skills/cluster-ops/SKILL.md` for monitoring helpers (status /
-sync / preflight / postmortem), and `.claude/skills/analyzer/SKILL.md`
-for results analysis (aggregate / plot / table / drift detection).
+All runs for the paper were made on the BGU CIS SLURM cluster. See
+`cluster-experimenting/README.md` for the submission flow,
+`.claude/skills/cluster-ops/SKILL.md` for monitoring helpers (status, sync,
+preflight, postmortem), and `.claude/skills/analyzer/SKILL.md` for the
+main-sweep analysis scripts.
 
-The active 5-model roster (post 2026-05-18 unification on vLLM) is
-`Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`
-— set in `cluster-experimenting/lib/defaults.sh`.
+`submit_with_rtx.sh` is the one submit script. The October rerun, the control
+and the matched run each used it with a run tag of their own:
 
 ```bash
-# Full roster — primary entrypoint, dispatches the per-cell SLURM array
-bash cluster-experimenting/submit_full_sweep.sh
+# Tools arm of three models, thinking off, under its own run tag
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+    --tools-only --think-modes off --run-tag <tag>
 
-# Baseline-only no-tools sweep
-bash cluster-experimenting/submit_full_sweep.sh --no-tools
+# No-tools cells on solve and simulate with a chosen system message, plus the
+# with-tools cell in the same job (the matched run's layout)
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+    --no-tools --think-modes off --tasks "solve simulate" \
+    --no-tools-system "format-stated" --with-tools-cell --run-tag <tag>
+```
 
-# Per-cell wrapper (e.g. when iterating on one model's behaviour)
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B
+`--run-tag` gives the cells their own results folders. `--tasks` limits the
+tasks. `--no-tools-system` picks the no-tools system message on solve and
+simulate. `--with-tools-cell` adds the with-tools cell to such a job. The exact
+command of each registered run is in its registration under
+`development/reference/`.
+
+`submit_full_sweep.sh` is how the May sweep was submitted: the five models
+(`Qwen3.5:0.8B`, `Qwen3.5:4B`, `Qwen3.5:9B`, `qwen3.6:35b`, `gemma4:26b-a4b`,
+set in `cluster-experimenting/lib/defaults.sh`), thinking on and off, both
+conditions.
+
+```bash
+bash cluster-experimenting/submit_full_sweep.sh --dry-run   # preview the May sweep's layout
 ```
 
 ## Output
@@ -139,17 +180,15 @@ Cluster jobs write one directory per (model, think mode, condition) cell:
 
 A bare CLI run (no `--output-dir`) is auto-named into a bucket (since 2026-05-04):
 
-- `results/full/<git-sha>_<timestamp>/` — full runs
-- `results/partial/<git-sha>_<timestamp>/` — fast feedback slice (`--partial K>0`)
-- `results/smoke/{fixed,shuffle}_<git-sha>_<timestamp>/` — smoke runs (`--smoke`, `--smoke-shuffle`)
+- `results/full/<git-sha>_<timestamp>/`: full runs
+- `results/partial/<git-sha>_<timestamp>/`: fast feedback slice (`--partial K>0`)
+- `results/smoke/{fixed,shuffle}_<git-sha>_<timestamp>/`: smoke runs (`--smoke`, `--smoke-shuffle`)
 
 Per-run files:
 
-- `single_task_<timestamp>.json` — per-instance results with success, timing, tool calls
-- `summary_<timestamp>.json` — aggregated metrics with Wilson 95% confidence intervals
-- `trials.jsonl` — append-only progress log used for resume and `--continue-partial`
-
-Pre-bucket runs (flat `results/<tag>_<ts>_…/` directories) and legacy `chain_<timestamp>.json` files from pre-2026-05-05 sweeps are untouched and ignored by the analyzer.
+- `single_task_<timestamp>.json`: per-instance results with success, timing, tool calls
+- `summary_<timestamp>.json`: aggregated metrics with Wilson 95% confidence intervals
+- `trials.jsonl`: append-only progress log used for resume and `--continue-partial`
 
 ## Domain Structure
 
@@ -174,12 +213,12 @@ This repo ships 20 domains: 10 classical and 10 numeric. Ten of them (5 + 5) are
    - With tools: `tool_selected` (did the model call the correct tool?) and `success` (was the tool's result correct against ground truth?).
    - Without tools: `success` (does the model's own answer match ground truth?).
 
-   Both are scored live from the tool result, which the paper calls the *tool-verified* layer. A second, offline pass (`tools/e2e_regrade.py`) grades the final answer the model actually delivered to the user, the *delivered* layer. The two can differ; see `EXPERIMENTS_FLOW.md` §14.
+   Both are scored live from the tool result, which the paper calls the *tool-verified* layer. The *delivered* layer grades the final answer the model handed back to the user, offline. For the October rerun this is the frozen package `tools/delivered_rerun/`; for the control it is `tools/reanalysis/control_prompt_fix.py`. `tools/e2e_regrade.py` is the overlay used for the May sweep and the Claude runs. The two layers can differ; see `EXPERIMENTS_FLOW.md` §14.
 
 ## Earlier version
 
-This repository is the more-robust successor to our earlier, arXiv-only version of this
-work; a new paper is in progress (see `paper/`). Until it appears, cite the earlier version:
+This repository is the successor to our earlier, arXiv-only version of this
+work. A new paper is in progress (see `paper/`). Until it appears, cite the earlier version:
 
 ```bibtex
 @misc{benyamin2025pddlcopilot,

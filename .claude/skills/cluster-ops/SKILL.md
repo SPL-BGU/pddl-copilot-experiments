@@ -20,6 +20,7 @@ Cluster & repo conventions that matter here:
 - **Remote repo root**: `~/pddl-copilot-experiments` on the login node.
 - **Job submission**:
   - `cluster-experimenting/submit_with_rtx.sh <model> [<model>...]` is the only submit path. GPU sbatch self-deploys a vLLM OpenAI server via Apptainer on a single dedicated GPU (default `rtx_6000:1` 48 GB; `--gpu-type rtx_pro_6000` is the opt-in 96 GB escape hatch). Each array task is one (model, think, cond) cell with weights resident throughout. `--all` expands to the roster in `cluster-experimenting/lib/defaults.sh` (`PDDL_DEFAULT_MODELS`) × think × cond; a model enters that roster only after `submit_with_rtx.sh --smoke <model>` shows its tool calls being extracted. The `--no-tools` flag pins the run to the discriminative no-tools matrix (`CONDITIONS=no-tools`, `THINK_MODES={on,off}`, `--time=12:00:00`). A with-tools cell defaults to `--time=72:00:00`; an explicit `--time` always wins. Note: the header comment of `submit_with_rtx.sh` still calls `rtx_pro_6000` the default. The code (`GPU_TYPE="${GPU_TYPE:-rtx_6000}"`) is what runs, and it is what this skill documents.
+  - Runs after the main sweep use more flags of the same script: `--run-tag`, `--tasks`, `--tools-only`, `--prompt-style neutral` (the October rerun), `--no-tools-system "<texts>"` (the corrected-prompt control: one no-tools cell per system message, for example `no-tools-sysformat`) and `--with-tools-cell` (the matched run: adds the ordinary with-tools cell to a `--no-tools-system` job). The exact command of a registered run is in its registration under `development/reference/`; submit that command and nothing else.
   - vLLM is the only backend. The `cis-ollama.*` host name is legacy branding.
 - **Log file**: `cluster-experimenting/logs/pddl_rtx_<model>-<jobid>.out`. Older logs may use `pddl_<model>_<think>-<jobid>.out` or `pddl_<model>_<cond>-<jobid>.out`.
 - **Results dir**: `results/slurm_vllm_<model>_<think>_<cond>_<RUN_TAG>/`. Always pass `--run-tag`: `status.sh` tracks only tagged folders, and a tag keeps two runs from pooling. Older corpora have bare `results/slurm_vllm_<model>_<think>_<cond>/` names. Cell-keyed, no jobid suffix.
@@ -65,9 +66,10 @@ One SSH call gathers `squeue` plus per-cell trial counts (computed cluster-side,
 | (none) | `sweep6` | 5 models × 6 columns, Done X/30 |
 | `--decoupled` | `decoupled-thinkon` | split-budget no-tools think=on board: 4 Qwens (gemma has no `<think>`) × one column (`on/nt-neut`) |
 | `--iss024d` | `iss024d-e2e` | with-tools board: 5 models × one column (`on/tl-neut`). Those cells hold the full v11-16 bank; the board tracks the neutral half only |
+| `--matched` | `matched-run` | the matched run on solve and simulate: 3 models × `off/nt-neut`, `off/tl-neut`, `off/tl-ster`, 600 rows per column. The no-tools folder (`..._off_no-tools-sysformat_<tag>`) holds 600 rows and the with-tools folder (`..._off_tools_all_minimal_<tag>`) 1,200. For the smoke pass `RUN_TAG=matched-run-smoke --matched`: 120 per column (120 and 240 per folder) |
 | `--ntster` | `ntster-h4` | no-tools steered-control board: 3 models (`Qwen3.5:9B`, `gemma4:26b-a4b`, `qwen3.6:35b`) × `off/nt-neut`, `off/nt-ster`, `on/nt-neut`, `on/nt-ster`. **The only profile with an `nt-ster` column.** gemma's think=on slot shows `n/a` and is left out of the roll-up |
 
-A new run with a different cell layout needs its own profile (or `RUN_TAG=` plus the default board, if the layout matches).
+A new run with a different cell layout needs its own profile (or `RUN_TAG=` plus the default board, if the layout matches). The corrected-prompt control (`control-promptfix`) has no profile: under the default board its three no-tools folders show as unmatched.
 
 The variant filters can be overridden with the `ACTIVE_VARIANTS_RE` (default `1[1-6]`) and `STEERED_VARIANTS_RE` (default `1[4-6]`) env vars.
 
@@ -120,7 +122,7 @@ Caveats: neither rank nor SLURM's earliest-slot estimate is a real ETA. Rank cou
 
 ```bash
 bash .claude/skills/cluster-ops/scripts/sync.sh results/<run-tag>-sync-<YYYYMMDD>   # → explicit dir (preferred: name it after the run)
-bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/sweep5-cluster-YYYYMMDD/ (the script's default name)
+bash .claude/skills/cluster-ops/scripts/sync.sh                          # → results/cluster-sync-YYYYMMDD/ (the script's default name)
 ```
 
 The script pulls **every** `results/slurm_vllm_*` folder on the cluster, old runs included. To pull one run, rsync its `*_<run-tag>` folders by name instead.
@@ -202,11 +204,11 @@ After a sweep is submitted, periodically verify it's not regressing vs a baselin
 
 ### "Submit the sweep"
 
-Whether a run is planned, and on which harness commit, is in `development/STATUS.md` and the plan it names. A run under a prereg submits exactly the cells and settings its prereg lists, from the pinned harness commit. `submit_full_sweep.sh` is the pack for the main sweep's layout: three `submit_with_rtx.sh` calls (small models at `--time 12:00:00`, the heavy ones at `48:00:00`). Per-cell trial count is asymmetric: no-tools = 4560 (v11-13), `tools_all_minimal` = 9120 (v11-16, the with-tools cell emits both the neutral and the steered variants in one run). Pass `--run-tag <tag>` so the dirs get a suffix `status.sh` can track.
+Whether a run is planned, and on which harness commit, is in `development/STATUS.md` and the registration it names. A run under a prereg submits exactly the cells and settings its prereg lists, from the pinned harness commit. `submit_full_sweep.sh` is the pack for the main sweep's layout: three `submit_with_rtx.sh` calls (small models at `--time 12:00:00`, the heavy ones at `48:00:00`). Per-cell trial count is asymmetric: no-tools = 4560 (v11-13), `tools_all_minimal` = 9120 (v11-16, the with-tools cell emits both the neutral and the steered variants in one run). Pass `--run-tag <tag>` so the dirs get a suffix `status.sh` can track.
 
 0. Get Omer's go-ahead (see Safety), and check for existing runs before recommending a rerun.
 1. `bash .claude/skills/cluster-ops/scripts/preflight.sh` — pulls both repos, refreshes plugin venvs, surfaces GPU pool capacity for `rtx6000` and `rtx_pro_6000`. Halts on any failure.
-2. Dry-run, then submit. `submit_full_sweep.sh` dispatches the production pack:
+2. Dry-run, then submit. `submit_full_sweep.sh` dispatches the main sweep's pack (the May layout; a registered run uses the command in its registration instead):
    ```bash
    ssh omereliy@slurm.bgu.ac.il "cd ~/pddl-copilot-experiments && \
      bash cluster-experimenting/submit_full_sweep.sh --dry-run"
