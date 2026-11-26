@@ -1,5 +1,56 @@
 # MOVES.md — old path → new path, and deleted files
 
+## The clean-up of 2026-11-25
+
+Omer approved the clean-up list on 2026-11-25 (the list itself was
+`development/cleanup_list.md`, deleted in the same change). The repository now leads
+with the three research questions, the October rerun and the matched run. The files
+below were **last present at their old paths at commit `3044981`**; read or restore one
+with
+
+```
+git show 3044981:<old path>
+git checkout 3044981 -- <old path>
+```
+
+**Moved to `development/reference/`** (finished, still a source):
+
+| old path | new path | why |
+|---|---|---|
+| `development/control_prompt_fix_plan.md` | `development/reference/control_prompt_fix_plan.md` | the control is run, analysed and in the paper; its section 9 holds Omer's answers |
+| `development/datasets_breakdown.md` | `development/reference/datasets_breakdown.md` | decided 2026-11-25 (option 1); the record of why the matched run exists |
+| `development/roadmap.md` | `development/reference/roadmap.md` | the plan of 2026-11-22 ("no track fixed", "no new runs"). `STATUS.md` and `paper_outline.md` carry the plan now |
+
+**Deleted:**
+
+| old path | why |
+|---|---|
+| `development/draft_C5_E1a.md` | its only remaining use was a pass over the paper's Supporting Analyses section, which left the body |
+| `development/next_session_prompt.md` | the handoff of 2026-11-25; its tasks are tracked in `STATUS.md` |
+| `development/cleanup_list.md` | the approved list this change carries out; its content is this section and the `paper_notes_discussions.md` entry of 2026-11-25 |
+| `development/draft_advisor_correa_comparison.md`, `development/draft_advisor_correa_comparison.docx`, `development/draft_advisor_correa_comparison_v2.docx` | Omer's outline for the advisor meeting of 2026-11-22, which is over. Its §4.1 and §4.3 said the rerun's unaided answers had a JSON constraint; that constraint never took effect. The verified Corrêa facts are in `reference/draft_D5_cost_and_correa.md` |
+| `tools/extension_copy_reused.py`, `tests/test_extension_copy_reused.py` | built for the extension that was dropped on 2026-11-22; never run |
+| `tools/make_stage1_keys.py` | key generator for the June probe; pointed at a deleted handoff |
+| `tools/backfill_token_stats.py` | one-time May migration that edits `summary_*.json` in place, which the rules forbid for frozen corpora |
+| `tools/frontier_ab_compare.py`, `tools/e2e_d2b_compare.py` | decision support for choices settled in the summer |
+| `tools/effort_smoke_check.py` (and its test function in `tests/test_reasoning_settings.py`) | checker for the gpt-oss effort smoke, which was dropped. The rest of that test file stays: it covers `cluster-experimenting/reasoning_settings.py`, which every run still calls |
+| `cluster-experimenting/submit_with_resume.sh` | only forwarded to `submit_with_rtx.sh`, and submitted the dropped extension models too |
+| `.claude/agents/experiment-runner.md` | a local smoke agent; laptop runs are not supported |
+| `paper/figures/mechanism_validate_plan.png`, `solve.png`, `simulate.png`, `token_quadrant.png`, `visible_mode_succ.png` | June PNGs; the paper uses the PDFs |
+| `domains-hard/`, `domains-hard-vd-a/`, `domains-hard-vd-b/` (403 files), `tools/build_hard_fixtures.py`, `tools/_hard_items.py`, `tools/_enhsp_variants.py`, `tests/test_hard_items.py` | the new item kinds of plan step D1b: built, never run on a model, in none of the three questions. The record of what they were, their sha256 values and how to rebuild them stays in `reference/d1b_harder_items.md` |
+
+### These files deliberately keep the old paths (2026-11-25)
+
+Same rule as before: **do not repair them.**
+
+| file | stale path it cites | why it stays |
+|---|---|---|
+| `pddl_eval/control_prompts.py`, `tools/reanalysis/rq1_metrics.py` | `development/control_prompt_fix_plan.md`, `development/roadmap.md` | inside the frozen package `825dab63…` |
+| `development/reference/control_prompt_fix_prereg.md` | `development/control_prompt_fix_plan.md`, `roadmap.md` | a registration |
+| `cluster-experimenting/submit_with_rtx.sh`, `cluster-experimenting/run_condition_vllm_rtx.sbatch` | `development/control_prompt_fix_plan.md` | in use by the matched run on 2026-11-25; their comments are corrected after that run is submitted |
+| `development/reference/d1b_harder_items.md`, `reference/weakness_action_plan.md`, `reference/reanalysis_breakdowns_cost.md`, `reference/tool_call_vs_final_output_grading.md` | the deleted fixture trees and scripts | tier rule: a file in `reference/` is not rewritten |
+| `paper/supplement_source.tex` | labels and section names of `paper/main.tex` as it was at `3044981` | raw material moved out of the paper, kept word for word |
+
 ## The replan of 2026-11-22
 
 After Omer's advisor meeting (ICAPS 2027, three research questions, the thesis first)

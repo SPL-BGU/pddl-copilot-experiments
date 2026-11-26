@@ -1,0 +1,89 @@
+{
+ "package_sha256": "fixture",
+ "e1": [
+  {
+   "model": "Qwen3_5_9B",
+   "task": "simulate",
+   "arm": "plain",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "Qwen3_5_9B",
+   "task": "simulate",
+   "arm": "steered",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "Qwen3_5_9B",
+   "task": "solve",
+   "arm": "plain",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "Qwen3_5_9B",
+   "task": "solve",
+   "arm": "steered",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "task": "simulate",
+   "arm": "plain",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "task": "simulate",
+   "arm": "steered",
+   "delivered_k": 56,
+   "n": 60
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "task": "solve",
+   "arm": "plain",
+   "delivered_k": 40,
+   "n": 60
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "task": "solve",
+   "arm": "steered",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "qwen3_6_35b",
+   "task": "simulate",
+   "arm": "plain",
+   "delivered_k": 59,
+   "n": 60
+  },
+  {
+   "model": "qwen3_6_35b",
+   "task": "simulate",
+   "arm": "steered",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "qwen3_6_35b",
+   "task": "solve",
+   "arm": "plain",
+   "delivered_k": 60,
+   "n": 60
+  },
+  {
+   "model": "qwen3_6_35b",
+   "task": "solve",
+   "arm": "steered",
+   "delivered_k": 40,
+   "n": 60
+  }
+ ]
+}

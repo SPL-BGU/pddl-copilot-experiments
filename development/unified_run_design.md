@@ -1,149 +1,18 @@
-# The unified run: design form
+# The new Claude run: design form (section B of the form of 2026-11-25)
 
-**Status: OPEN, waiting for Omer's answers (written 2026-11-25).** Omer approved a fresh
-unified run on 2026-11-25. Nothing here is registered or submitted. Fill in each
-`> ANSWER:` line; a bare "ok" accepts the recommendation. Once the answers are in, this
-form becomes the registration (`reference/unified_run_prereg.md`), the analysis is
-written and frozen, a smoke runs, and then the run. Every cluster step still needs a
-separate go-ahead.
+**Status: answered except for the models (2026-11-25).** This file is what is left of
+the design form for a "unified run". The open-weight part of that form is closed:
 
-**Why the run.** The paper now rests on several corpora that cannot be pooled: the main
-sweep (answers cut at 500 characters), the rerun (missed its parity criterion), and the
-corrected-prompt control (run seven weeks after the tool arms it is compared with). One
-run with full answer storage, the corrected system message, one serving version and all
-arms of a model in one window removes the cross-run comparisons.
+- Omer chose the small matched run on 2026-11-25 (`reference/datasets_breakdown.md`,
+  option 1). The full run of the form's sections A1 to A4 and A11 is not run.
+- Its questions A5 to A10 (the no-tools system message, the simulate tool's output, the
+  context window, the grader fixed before the run, the validator's upper-case fault, the
+  fixed settings) were accepted as recommended on 2026-11-25. They live in the matched
+  run's registration, `reference/matched_run_prereg.md`.
+- The form as first written is in git history (`MOVES.md`, the clean-up of 2026-11-25).
 
-**What it costs in time.** The rerun had the same size as the recommended design below
-(41,040 trials) and took six days of wall time. Preemption is active on the cluster now.
-Dates: abstract 2026-12-07, paper 2026-12-14.
-
----
-
-## A. The open-weight run
-
-### A1. Models
-
-The three models of the rerun: Qwen3.5-9B, Gemma-MoE-26B, Qwen3.6-35B. The two smaller
-models (0.8B, 4B) appear only in the main sweep.
-
-**Recommendation:** the three models only. The small ones add about 27,000 trials and
-answer no research question.
-
-> ANSWER:
-
-### A2. Tasks
-
-All five: solve, validate_domain, validate_problem, validate_plan, simulate.
-
-**Recommendation:** all five. RQ2 and RQ3 need all of them, and delivered rates for
-validate_domain and validate_problem exist today only as tool-verified figures from the
-main sweep.
-
-> ANSWER:
-
-### A3. Arms
-
-1. No tools (plain wordings v11 to v13).
-2. Tools offered, plain wordings (v11 to v13).
-3. Tools offered, steered wordings (v14 to v16).
-
-Not included unless you say so: the neutral tool prompt (Gemma only in the rerun) and
-the no-tools steered control.
-
-**Recommendation:** the three arms above. Per model: 4,560 trials per arm, 13,680 in
-all; 41,040 for three models.
-
-> ANSWER:
-
-### A4. Thinking
-
-**Recommendation:** thinking off only, as in the rerun and the control. Thinking on
-doubles the run and brings back the shared-budget problem. The paper would keep the
-main sweep's thinking-on findings as a short pointer to the supplement.
-
-> ANSWER:
-
-### A5. The no-tools system message
-
-**Recommendation:** on solve and simulate, the format-stated messages of the control
-(cell B), word for word. On the three validation tasks, the messages as they are (they
-never had the schema reference). The registered and reference-removed messages are not
-run again; the control already measured them.
-
-Known cost, from the control: with the format-stated message Gemma writes a single JSON
-object on simulate and breaks the brackets in about 16% of answers.
-
-> ANSWER:
-
-### A6. The simulate tool's output format
-
-The reviewer's point: the tool returns every predicate, true and false, in a notation
-different from the one the answer must use, so the model has to convert a long output.
-
-- **Option 1 (recommended): keep the tool as it is.** The paper then says plainly that
-  the simulate loss is a conversion and context-budget bottleneck. No plugin change, and
-  the tool suite stays the one the paper describes.
-- **Option 2: change the tool** so its output matches the answer format. That is a
-  change in the sibling repo, a new tool suite, new verification, and it removes the
-  finding the paper currently reports. It also adds days before the run can start.
-- **Option 3: both**, as two tool arms on simulate only. Adds 1,800 trials per model
-  and the plugin work of option 2.
-
-> ANSWER:
-
-### A7. Context window
-
-**Recommendation:** 16,384 tokens, as everywhere else. The 32K smoke of May raised
-unaided parse failures, and a new window size is its own condition. The 64K pilot stays
-in the supplement as the evidence on context.
-
-> ANSWER:
-
-### A8. The grader, fixed before the run
-
-Today the paper carries two readings (the registered grader and the "second reading").
-A fresh run can register one reader up front.
-
-**Recommendation:** register the second reading as the single grader of the run (the
-plan in the last code block on solve; a trace as one object per line also read on
-simulate), applied the same way to every arm. The old registered grader is reported
-once in the supplement for continuity. One grader means one set of numbers.
-
-> ANSWER:
-
-### A9. The validator's upper-case fault
-
-`pyval` 0.1.5 rejects valid plans that write names in upper case. It lowers a few
-unaided solve grades.
-
-- **Option 1 (recommended): keep 0.1.5 and grade the case-folded plan** as the
-  registered grade. No validator change, labels stay the ones the fixtures were built
-  with, and the fault no longer touches a grade.
-- **Option 2:** upgrade the validator. The ground-truth labels would have to be
-  rebuilt and rechecked first.
-
-> ANSWER:
-
-### A10. Fixed settings (stated for the record)
-
-Same 20 domains and 100 problems, same fixtures and wordings, same output caps (8,192
-tokens on solve, 6,144 on simulate), temperature 0, answers stored up to 65,536
-characters, vLLM 0.20.2 from the pinned `~/vllm.sif`, four requests at a time, one
-`rtx_6000` per cell, all cells of a model submitted in one array job. The system
-message sent is logged per trial, as in the control.
-
-**Recommendation:** accept as listed.
-
-> ANSWER:
-
-### A11. What the old corpora become
-
-**Recommendation:** the unified run is the primary open-weight dataset for RQ1, RQ2 and
-RQ3. The main sweep is cited only for what it alone has (thinking on, the renamed
-domains, the small models). The rerun and the control move to the supplement as earlier
-records and are not quoted in the body. Nothing is pooled across them.
-
-> ANSWER:
+What remains is the frontier run. It is a separate corpus and is never pooled with the
+open models. It needs no cluster time.
 
 ---
 
@@ -190,7 +59,7 @@ Options:
 - **Option 4: add an Opus** (5 or 5.5). The strongest model, at 2 to 2.5 times the
   Sonnet price; Opus 5.5 cannot run with thinking off.
 
-> ANSWER:
+> ANSWER: **Haiku 5.5 and Sonnet 5.5 (Omer, 2026-11-25: "sonet 5.5 and haiku 5.5. no reason for sonnet 5").** Haiku 5.5 runs with thinking off, like the open models. Sonnet 5.5 does not accept the plain "off" setting; its lowest setting (`between_tools`, effort `high` or lower) does no thinking before the answer and only returns the short notes the model writes between tool calls. So in the no-tools arm it does not think, and in the tool arm it writes notes between calls. The paper states this setting. (Corrected the same day against the API reference: the session had first told Omer that Sonnet 5.5 would have to run with thinking on.)
 
 ### B2. Design of the frontier run
 
@@ -205,7 +74,7 @@ never pooled with them:
 - answers stored in full; both arms of a model queried on the same day;
 - the exact model ID, the API version and the query dates recorded per trial.
 
-> ANSWER:
+> ANSWER: **yes, as recommended (Omer, 2026-11-25).**
 
 ### B3. A steered tool arm for the frontier models
 
@@ -214,7 +83,7 @@ The old Claude runs have no steered arm.
 **Recommendation:** no. RQ2's steering result is about the open models; a steered arm
 adds 4,560 trials per model.
 
-> ANSWER:
+> ANSWER: **no steered arm (Omer, 2026-11-25).**
 
 ### B4. Cost
 
@@ -222,7 +91,7 @@ adds 4,560 trials per model.
 API is still the recommended route (half price; results within a day), unless you want
 the results faster.
 
-> ANSWER:
+> ANSWER: **the Batch API (Omer, 2026-11-25).** No cost estimate is needed.
 
 ### B5. PlanBench
 
@@ -232,39 +101,15 @@ PlanBench and the main study use different models.
 **Recommendation:** leave PlanBench as it is and say so in one sentence. It is a closed,
 registered study and redoing it is a separate project.
 
-> ANSWER:
+> ANSWER: **PlanBench is left as it is (Omer, 2026-11-25).**
 
 ---
 
-## C. Process
+---
 
-### C1. Registration and freeze
+## What happens next
 
-**Recommendation:** as for the control. A registration written from this form; the
-analysis code written and frozen (typed loader, constants as checks, clause map,
-fixture, independent review) before any trial exists; a smoke on the full-run SLURM
-profile; then the run. Primary outcome: the delivered final answer. Contrasts per model
-and task: tools (plain) minus no tools, and steered minus plain, paired on the trial,
-95% domain-cluster bootstrap.
-
-> ANSWER:
-
-### C2. Order and dates
-
-A possible order: answers to this form by 2026-11-26; registration, analysis and smoke
-by 2026-11-28; run from 2026-11-28 to about 2026-12-04; analysis and the 8-page text
-after that. The abstract of 2026-12-07 would be written when the open-weight numbers
-are in or nearly in.
-
-**Recommendation:** start the frontier run in parallel as soon as B1 to B3 are
-answered, since it does not use the cluster.
-
-> ANSWER:
-
-### C3. If the run is not finished in time
-
-**Recommendation:** decide now what happens if a model's cells are incomplete on
-2026-12-10: submit with the two complete models, or fall back to the merged draft's
-corpora. A short cell is never analysed.
-
-> ANSWER:
+Once the models are confirmed: the request design is written down and checked on a
+small pilot, both arms of a model are queried on the same day, and the exact model ID,
+the API version and the query dates are recorded per trial. Any dollar spend is itemized
+for Omer before it is made.

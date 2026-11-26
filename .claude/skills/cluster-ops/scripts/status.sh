@@ -55,12 +55,23 @@
 #   (default)     sweep-6 anon matrix: 5 models × 6 logical columns,
 #                 RUN_TAG defaults to `sweep6`.
 #   --decoupled   The in-flight split-budget no-tools think=on sweep
-#                 (development/archive/decoupled/decoupled_run_handoff.md, job 18426027).
+#                 (job 18426027; its handoff doc was deleted on 2026-10-10,
+#                 see development/MOVES.md).
 #                 Defaults RUN_TAG to `decoupled-thinkon` and trims the
 #                 board to the live grid: 4 Qwens (gemma excluded — no
 #                 <think>) × one column (on / nt-neut). All parsing /
 #                 Δ / ETA / queue logic is dimension-agnostic and reused.
 #                 An explicit RUN_TAG env still overrides the default.
+#   --matched     The matched run on solve and simulate
+#                 (development/reference/matched_run_prereg.md): 3 models,
+#                 think=off, two cell folders per model. The no-tools folder
+#                 (`..._off_no-tools-sysformat_<tag>`, wordings v11-13) holds
+#                 600 rows; the with-tools folder
+#                 (`..._off_tools_all_minimal_<tag>`, v11-16) holds 1,200,
+#                 shown as two columns of 600 (plain, steered). Defaults
+#                 RUN_TAG to `matched-run`. With a run tag that ends in
+#                 `-smoke` (RUN_TAG=matched-run-smoke) the totals are the
+#                 smoke's: 120 per column (120 and 240 per folder).
 #   --iss024d     The in-flight ISS-024(d) WITH-TOOLS resolver (jobs
 #                 19293221 Qwens + 19314599 gemma, added 2026-07-12;
 #                 development/reference/tool_call_vs_final_output_grading.md
@@ -136,6 +147,7 @@ while [[ $# -gt 0 ]]; do
         --decoupled)            profile="decoupled"; shift ;;
         --iss024d)              profile="iss024d"; shift ;;
         --ntster)               profile="ntster"; shift ;;
+        --matched)              profile="matched"; shift ;;
         -h|--help)
             _show_help 2 48
             cat <<'EOF'
@@ -164,6 +176,12 @@ while [[ $# -gt 0 ]]; do
                              file. gemma has no think=on leg by design,
                              so that slot renders n/a and is excluded
                              from the roll-up denominator.
+  --matched                  Track the matched run on solve and simulate
+                             (RUN_TAG defaults to `matched-run`): 3 models
+                             x off / nt-neut, tl-neut, tl-ster, 600 rows per
+                             column (the no-tools folder holds 600, the
+                             with-tools folder 1,200). For the smoke pass
+                             RUN_TAG=matched-run-smoke: 120 per column.
 EOF
             exit 0 ;;
         *)
@@ -192,6 +210,8 @@ elif [[ "$profile" == "iss024d" ]]; then
     RUN_TAG="${RUN_TAG_ENV:-iss024d-e2e}"
 elif [[ "$profile" == "ntster" ]]; then
     RUN_TAG="${RUN_TAG_ENV:-ntster-h4}"
+elif [[ "$profile" == "matched" ]]; then
+    RUN_TAG="${RUN_TAG_ENV:-matched-run}"
 else
     RUN_TAG="${RUN_TAG_ENV:-sweep6}"
 fi
@@ -331,7 +351,7 @@ SHORT_CELL = {"no-tools-neutral":  "nt-neut",
 # Kept distinct from "empty" so an intentionally-absent cell never renders as
 # a stalled or pending one — that misread is the whole reason this exists.
 EXCLUDED_CELLS = set()
-# --decoupled profile (development/archive/decoupled/decoupled_run_handoff.md, job 18426027):
+# --decoupled profile (job 18426027; handoff doc deleted 2026-10-10, see development/MOVES.md):
 # the split-budget no-tools think=on sweep fills exactly ONE logical column
 # (on / nt-neut) for the 4 Qwens — gemma is excluded (no <think>, so its
 # think=on truncation isn't a decoupling case). Trim ROSTER + CELLS to the
@@ -380,12 +400,32 @@ elif profile == "ntster":
     HDR_NOTE = ("denom 4560/arm (9120/cell file) · no-tools · neut=v11-13 "
                 "ster=v14-16 · off=plain 3 models, on=decoupled 9B+35b "
                 "(gemma n/a by design) · jobs 20392775+20392801")
+elif profile == "matched":
+    # The matched run on solve and simulate (development/reference/
+    # matched_run_prereg.md). Three models, think=off, two cell folders per
+    # model: the no-tools folder with the format-stated system message
+    # (`no-tools-sysformat`, v11-13) and the ordinary with-tools folder
+    # (`tools_all_minimal`, v11-16, split here into plain and steered).
+    ROSTER = ["Qwen3_5_9B", "gemma4_26b-a4b", "qwen3_6_35b"]
+    CELLS = [("off", "no-tools-neutral"),
+             ("off", "tools_all-neutral"), ("off", "tools_all-steered")]
+    MATCHED_SMOKE = run_tag.endswith("-smoke")
+    MATCHED_DENOM = 120 if MATCHED_SMOKE else 600
+    SWEEP_LABEL = "matched run (smoke)" if MATCHED_SMOKE else "matched run"
+    HDR_NOTE = (f"denom {MATCHED_DENOM}/col · solve + simulate · think=off · "
+                f"nt=no-tools-sysformat folder ({MATCHED_DENOM} rows) · "
+                f"tl=tools_all_minimal folder ({2 * MATCHED_DENOM} rows: "
+                "neut=v11-13, ster=v14-16)")
 COL_HEADERS = [f"{th} / {SHORT_CELL.get(c, c)}" for th, c in CELLS]
 # Uniform per-column denominator: each logical column covers 3 variants ×
 # 1520 trials/variant = 4560. 1520 trials/variant is the sweep-3-onward
 # corpus (CHANGELOG.md:714).
 DENOM = {"no-tools-neutral":4560, "no-tools-steered":4560,
          "tools_all-neutral":4560, "tools_all-steered":4560}
+# The matched run covers two tasks only: 2 tasks x 100 problems x 3 wordings
+# = 600 rows per column (120 in the smoke, which runs one problem per domain).
+if profile == "matched":
+    DENOM = {c: MATCHED_DENOM for c in DENOM}
 # Maps a logical (split) cond to the underlying dirname cond so queue/
 # running attribution from the sbatch layer fans back out to its logical
 # children. Both `tools_all-*` columns inherit queue state from the same
@@ -399,6 +439,10 @@ LOGICAL_TO_DIR_COND = {
 # Dir-level conds (the actual sbatch/dirname/jname strings). Queue and
 # manifest attribution uses this set; the rendered matrix uses the
 # logical (split) conds via the COND_SPLIT mapping in the counts loop.
+# In the matched run the no-tools cell carries the control's format-stated
+# system message, so its folder token is `no-tools-sysformat`.
+if profile == "matched":
+    LOGICAL_TO_DIR_COND["no-tools-neutral"] = "no-tools-sysformat"
 DIR_CONDS = set(LOGICAL_TO_DIR_COND.values())
 # Per-model --time pin in submit_full_sweep.sh (2026-05-19):
 #   pack3 (Qwen3.5:0.8B/4B/9B): 12h
@@ -422,6 +466,9 @@ if profile == "decoupled":
 # default) as over-budget when they have headroom.
 elif profile == "iss024d":
     TIME_LIMIT_H_BY_MODEL = {m: 72 for m in ROSTER}
+# The matched run is registered with --time 24:00:00 for every cell.
+elif profile == "matched":
+    TIME_LIMIT_H_BY_MODEL = {m: 24 for m in ROSTER}
 
 # Per-(model, think) wall override. The by-model table cannot express nt-ster,
 # whose two submits carry DIFFERENT walls: off-mode asked 5-00:00:00 and
@@ -446,6 +493,10 @@ if profile == "ntster":
 SHORT_COND = {"tools-pt":"tools_per-task_minimal","tools_pt":"tools_per-task_minimal",
               "tools-all":"tools_all_minimal","tools_all":"tools_all_minimal",
               "notools":"no-tools","no-tools":"no-tools"}
+if profile == "matched":
+    # Job-name tag of the format-stated no-tools cell (run_condition_vllm_rtx.sbatch).
+    SHORT_COND["notools-sysformat"] = "no-tools-sysformat"
+    SHORT_COND["no-tools-sysformat"] = "no-tools-sysformat"
 
 # ---- Parse the SSH payload into queue lines + count lines ----
 sections, cur = {}, None
@@ -508,6 +559,13 @@ if profile == "iss024d":
 # exactly why the H4 contrast has zero config drift between the arms.
 elif profile == "ntster":
     COND_SPLIT = {"no-tools": ("no-tools-neutral", "no-tools-steered")}
+# Matched run: the no-tools folder is `no-tools-sysformat` (v11-13 only);
+# the with-tools folder splits into plain and steered as in the default.
+elif profile == "matched":
+    COND_SPLIT = {
+        "no-tools-sysformat": ("no-tools-neutral",  None),
+        "tools_all_minimal":  ("tools_all-neutral", "tools_all-steered"),
+    }
 tag_suffix = "_" + run_tag if run_tag else ""
 counts, unknown, archived_canonical, archived_legacy = {}, [], [], []
 malformed = 0   # finding #10: count silently-dropped count_raw lines and warn at end.

@@ -1,0 +1,96 @@
+{
+ "package_sha256": "fixture",
+ "mode": "fixture",
+ "rates": [
+  {
+   "model": "Qwen3_5_9B",
+   "task": "simulate",
+   "cell": "B",
+   "n": 60,
+   "frozen": {
+    "right": 60
+   },
+   "second": {
+    "right": 60
+   },
+   "folded": {
+    "right": 60
+   }
+  },
+  {
+   "model": "Qwen3_5_9B",
+   "task": "solve",
+   "cell": "B",
+   "n": 60,
+   "frozen": {
+    "right": 40
+   },
+   "second": {
+    "right": 40
+   },
+   "folded": {
+    "right": 40
+   }
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "task": "simulate",
+   "cell": "B",
+   "n": 60,
+   "frozen": {
+    "right": 60
+   },
+   "second": {
+    "right": 60
+   },
+   "folded": {
+    "right": 60
+   }
+  },
+  {
+   "model": "gemma4_26b-a4b",
+   "task": "solve",
+   "cell": "B",
+   "n": 60,
+   "frozen": {
+    "right": 40
+   },
+   "second": {
+    "right": 60
+   },
+   "folded": {
+    "right": 60
+   }
+  },
+  {
+   "model": "qwen3_6_35b",
+   "task": "simulate",
+   "cell": "B",
+   "n": 60,
+   "frozen": {
+    "right": 56
+   },
+   "second": {
+    "right": 60
+   },
+   "folded": {
+    "right": 60
+   }
+  },
+  {
+   "model": "qwen3_6_35b",
+   "task": "solve",
+   "cell": "B",
+   "n": 60,
+   "frozen": {
+    "right": 60
+   },
+   "second": {
+    "right": 60
+   },
+   "folded": {
+    "right": 60
+   }
+  }
+ ]
+}

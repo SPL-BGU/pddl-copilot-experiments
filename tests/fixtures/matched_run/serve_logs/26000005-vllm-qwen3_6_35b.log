@@ -1,0 +1,2 @@
+INFO 11-27 12:00:00 [core.py:93] Initializing a V1 LLM engine (v0.20.2) with config: model='cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit', max_seq_len=16384
+INFO 11-27 12:01:00 [api_server.py:1] Starting vLLM server on http://0.0.0.0:11500

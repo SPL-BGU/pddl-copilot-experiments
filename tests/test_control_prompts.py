@@ -1,6 +1,6 @@
 """Tests for pddl_eval/control_prompts.py (control-prompt cells, 2026-11-23).
 
-The control run (development/control_prompt_fix_plan.md) swaps the no-tools
+The control run (development/reference/control_prompt_fix_plan.md) swaps the no-tools
 system text of solve and simulate. These checks pin the texts, their sha256
 digests, the fail-closed swap, and the frozen delivered-rerun package hash,
 which the change must leave alone. The client side is in test_vllm_client.py.

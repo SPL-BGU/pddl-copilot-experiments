@@ -1,66 +1,101 @@
 # Prompt for the next session
 
-*Written 2026-11-25. Paste the block below into a new session. Run it with Fable 5.2 at
-medium effort.*
+*Written 2026-11-26, about 08:15 UTC (10:15 cluster time). Paste the block below into a
+new session. Delete this file when its tasks are tracked in `STATUS.md`.*
 
 ---
 
 We are finishing the PDDL Copilot paper for ICAPS 2027 (abstract 7 December, paper 14
-December, main track, 8 pages of main content plus references, with a supplementary
-PDF). Read `CLAUDE.md`, `development/STATUS.md`, `development/datasets_breakdown.md`
-and the 2026-11-25 entries at the end of `development/paper_notes_discussions.md`
-before you do anything.
+December, main track, 8 pages plus references, with a supplementary PDF). Read
+`CLAUDE.md`, `development/STATUS.md`, `development/paper_outline.md` and the entries of
+2026-11-25 and 2026-11-26 at the end of `development/paper_notes_discussions.md` before
+you do anything. First run `git pull` in the main checkout: `main` was cleaned up on
+2026-11-26 (PRs #152 and #153) and the local checkout may be behind.
 
-**Where we stand.** The paper asks three questions: do the tools help, does the model
-pick the right tool, and does it use what the tool returns. Most of what we need is
-already clean in the October rerun: tool choice, the use of tool output, and the
-tools-versus-no-tools comparison on the three validation tasks. One comparison is not
-clean: tools against no tools on solve and simulate. The no-tools side was collected
-seven weeks after the tool side. I decided to close that with one small run, and to
-stop leading the paper with the May sweep.
+**Where we stand.** Three runs are out or about to be. Nothing of any of them has been
+read. No pull request is open.
 
-**What I want from you, in this order.**
+**1. The matched run (open models, cluster).** Job 24502726, submitted 2026-11-26 07:09
+cluster time, six cells, 5,400 trials. At 09:48 three cells were complete (Gemma-26B
+both, Qwen3.6-35B no tools) and three were running; it should end around 13:00.
+Registration and frozen analysis are on `main`: `development/reference/matched_run_prereg.md`,
+`tools/reanalysis/matched_run.py`, package hash `1f3d0f84…`. The three complete cells
+may already be copied to `results/matched-run/`.
+What to do, in this order, when all six cells are COMPLETED:
+- have an Opus cluster agent at medium effort copy the remaining folders, serve logs and
+  job logs to `results/matched-run/`, with filters that cannot show a trial outcome
+  (ask me before any cluster step; I may be disconnected);
+- run the frozen analysis with `--i-have-frozen` and the registered hash; if a tripwire
+  fires, audit it as the registration says before reading on;
+- write the readout (`development/reference/matched_run_readout.md`), the `NUMBERS.md`
+  entry, and fill sections 9 and 11 of the registration (job ids, dates, restarts);
+- bring me the readout before anything goes near the paper.
+Rule that holds until then: while the run is unfinished only job states and row counts
+are read (registration, section 7). I asked on 2026-11-26 to look at the finished cells
+early; the session held that back because it would be a registered deviation and the
+frozen analysis refuses an incomplete run anyway. I then asked for Gemma-26B's results anyway. That
+early look was done on 2026-11-26 and is recorded as deviation 1 in section 11 of the
+registration. It read Gemma-26B only (nothing of the two Qwen models), with a separate
+script that calls the frozen functions unchanged; all setup checks on the two Gemma
+cells passed. Its figures are in the previous session's chat and in the scratchpad
+(`gemma_early/gemma_early.json`, which a reboot can clear). They are early figures:
+not filed in `NUMBERS.md`, not quoted, and replaced by the registered analysis. No
+further early look is wanted.
 
-**1. The matched run.** Three models (Qwen3.5-9B, Gemma-26B, Qwen3.6-35B), thinking
-off, solve and simulate only, three arms collected together in one job: no tools with
-the format-stated system message, tools with the plain wordings, tools with the steered
-wordings. 300 trials per model, task and arm, 5,400 in all. Write the registration
-first, reusing the control's (`development/reference/control_prompt_fix_prereg.md`) and
-its analysis, with the answer reader fixed before the run so that nothing is decided
-after seeing data. Freeze the analysis, run a smoke, then the run. Ask me before every
-cluster step; I approve the smoke and the full run separately. You are the
-orchestrator: keep your own context for decisions and hand the cluster work to an Opus
-agent at medium effort, one clear task at a time. Open questions for me are in
-`development/unified_run_design.md` (A5 to A10 for this run, section B for the Claude
-models, where I lean towards the newer 5 and 5.5 models).
+**2. The Claude run (Haiku 5.5 and Sonnet 5.5).** 18,240 trials, started 2026-11-26
+about 07:20 UTC from the worktree `.claude/worktrees/frontier55` (branch
+`frontier/claude-55-run`, not on `main`), writing to `results/frontier55/`. The runner
+stops itself at 60 dollars (Haiku) and 430 dollars (Sonnet); expected total 255 to 305
+dollars, plus 11.43 for the pilot. Registration:
+`development/reference/frontier55_prereg.md` on that branch.
+- The run was started as background processes of the previous session and may have
+  died with it. Check with `pgrep -fl tools.frontier55.runner` and the row counts in
+  `results/frontier55/*/trials.jsonl` (4,560 per folder when done). If a model is not
+  finished and no process is alive, start the same three commands again for that model
+  (`batch-submit`, `live`, `batch-fetch --wait`, with the same `--out`, `--gt-cache`,
+  `--marketplace-path external/pddl-copilot-5e4f9c0` and `--max-usd`); they resume and
+  never resend a batch. A leftover `.lock` in a folder is removed by hand. Both arms of
+  a model are meant to fall on the same UTC day; if they do not, apply the rule of the
+  registration's section 6.
+- Do not edit `tools/frontier55/*.py` until the run is complete: the run's manifest pins
+  their hashes.
+- **Do not open the rows.** The analysis for this run is not written. Write it (same
+  grade as the matched run on solve and simulate, the October run's grade on the three
+  validation tasks, the rules of the registration for refusals and error rows), pass the
+  five freeze gates with an independent review, freeze it, and only then read the data.
+  Then open a PR for the branch.
 
-**2. Clean the repository.** Go through the documentation, the scripts and the
-explanations, and remove everything that is misleading, stale or no longer relevant to
-the paper we are now writing. Be thorough: I want someone opening this repo to find the
-current story and nothing that contradicts it. Follow the repo's rule (a doc that is no
-longer needed is deleted and `MOVES.md` records the commit where it last existed).
-Do not touch the registrations, the readouts, the frozen analysis packages or anything
-a pinned hash covers, and do not rewrite the append-only logs. In the paper itself,
-remove the sections that will certainly not survive into the 8-page version (the
-Supporting Analyses as a section, the repair history in the results). Show me the list
-before you delete, then do it in one PR.
+**3. GPT and hosted Qwen.** I chose `gpt-6.2-sol` and, as an anchor to our own roster,
+the same weights as the local Qwen3.6-35B hosted at full precision (Novita). The runners, their
+tests (366 checks) and a registration draft are written and committed on branch
+`frontier/gpt-qwen-run` (worktree `.claude/worktrees/hosted-models`, commits `102458f`
+and `33cc879`; `development/reference/hosted_gpt_qwen_prereg.md`), with no request ever
+sent to either provider. Estimated cost: GPT 261 to 453 dollars (ceiling 927), Qwen
+about 56 (ceiling 158). Still to do: an independent review as for the Claude runner,
+my answers to the draft's open questions (GPT's output cap counts its hidden reasoning,
+so keep 8,192 and 6,144 or raise them; prompt caching off for GPT; which OpenAI tier,
+since the lowest paid tier has a 500-dollar monthly cap; what to do if the Qwen host
+refuses temperature 0), then the itemized cost in chat, a pilot, the full run. Needed from me first: API keys
+in my shell as `OPENAI_API_KEY` and `NOVITA_API_KEY` (not set on 2026-11-26), and my
+word on GPT at reasoning "low" (it cannot be turned off).
 
-**3. The paper: outline only.** Lay out the sections for the ICAPS version, put the
-figures and tables where they belong, and stop. For each section give me a few lines on
-what it has to establish and which numbers carry it. Do not write the prose; I will
-write it myself, and more of it than fits. Do not aim at eight pages and do not trim
-for length. I will write long and shorten later. From here on your part of the paper is
-outlining and analysis.
+**4. After the runs.** Rebuild the RQ1 tables and figures for solve and simulate on the
+matched run. Remove the four extension models and the gpt-oss flags from
+`cluster-experimenting/` and fix the script headers (deferred from the clean-up). Read
+the cluster's tool library versions and set them beside the laptop's in the Claude
+registration. Back up `results/control-promptfix`, the pilots, `results/matched-run*`
+and `results/frontier55*` as checkpoint zips. Check whether ICAPS asks for the
+Reproducibility Checklist.
 
-**How I want the paper to read.** Clean results first. The earlier runs, the prompt
-fault and the registered deviations go into the supplement in full, with one sentence
-in the body that points there. Nothing is hidden, and nothing is apologised for twice.
-Four things stay in the body as constraints and observed behaviour, not as defects: the
-problems are small and the planner always solves them; the simulate tool answers in a
-different notation and the context fills up; two of the three models are quantized; the
-Claude models run under different conditions.
+**The paper.** Outline only: `development/paper_outline.md`. I write the prose myself.
+`paper/main.tex` carries about thirty `% TODO(Omer)` marks where a sentence points at
+material that moved to `paper/supplement_source.tex`. Decided on 2026-11-26: the Claude
+results stay in a small section of their own for now; RQ3 quotes the registered
+trace-loss range with the other reading in one clause; PlanBench stays in the body.
 
-**How I want you to talk to me.** Write the way a colleague would explain it across a
-table. When the language turns into harness and pipeline vocabulary, we end up
-discussing the machinery and lose the science. Lead with what a result means for the
-three questions, then the number, then the caveat if there is one.
+**How I want you to work.** You are the orchestrator: keep your own context for
+decisions and hand cluster work to an Opus agent at medium effort, one clear task at a
+time. Ask me before every cluster step. Before any paid request, show me the itemized
+cost; stop and ask if an estimate passes 500 dollars. Do not read an outcome before its
+analysis is frozen. Talk to me the way a colleague would across a table: what a result
+means for the three questions first, then the number, then the caveat.

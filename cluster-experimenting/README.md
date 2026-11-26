@@ -1,85 +1,112 @@
 # Cluster-experimenting (BGU CIS)
 
-SLURM sbatch scripts for running the `pddl-copilot-experiments` sweep on the
-BGU CIS cluster (login node: `slurm.bgu.ac.il`). The cluster was rebranded
-from "ISE-CS-DT" to "CIS" in the March 2026 user-guide refresh; hardware,
-partitions, and GRES names are unchanged.
+SLURM scripts for running `pddl-copilot-experiments` on the BGU CIS cluster
+(login node: `slurm.bgu.ac.il`). The cluster was renamed from "ISE-CS-DT" to
+"CIS" in March 2026; hardware, partitions and GRES names did not change.
 
-**Primary entrypoint: `submit_full_sweep.sh`.** Dispatches the 5-model
-roster as three independent sbatch submissions (one SLURM job array each),
-splitting by per-cell walltime:
+**One submit script: `submit_with_rtx.sh`.** It builds one cell per
+(model, think mode, condition) and submits the cells as one SLURM job array of
+`run_condition_vllm_rtx.sbatch`. Each array task gets its own GPU, starts its
+own vLLM server, and runs `run_experiment.py` for that one cell. No GPU is
+shared between cells.
 
-| Pack                                | GPU class         | Per-cell time |
-| ----------------------------------- | ----------------- | ------------- |
-| `Qwen3.5:0.8B` + `4B` + `9B`        | `rtx_6000:1`      | 12 h          |
-| `qwen3.6:35b`                       | `rtx_6000:1`      | 48 h          |
-| `gemma4:26b-a4b`                    | `rtx_6000:1`      | 48 h          |
+Which run is planned or in flight is in `development/STATUS.md`. Every cluster
+action needs Omer's go-ahead first.
 
-Each model contributes one cell per `(think_mode, condition)` combination
-under the 2 × 2 matrix (`think ∈ {on, off}` × `cond ∈ {no-tools,
-tools_all_minimal}`). Sweep-5 introduces an asymmetric per-cell denominator:
-no-tools cells emit v11/v12/v13 only (3 variants); with-tools cells emit
-v11/v12/v13 + v14/v15/v16 (6 variants). The control arm
-`(no-tools × v14/v15/v16)` lands in the same per-cell dir via
-`--include-no-tools-steered` on `run_experiment.py` — its trials are
-distinguished at row-level by `prompt_variant`. Every array task allocates
-its own dedicated GPU
-— no GPU sharing across cells; the small-Qwen pack and the 35B pack are
-separate sbatch submissions only because they need different walltimes,
-not because of GPU contention. Within each pack, cells fan out
-concurrently subject to rtx_6000 (or rtx_pro_6000) pool capacity. The
-single sbatch is `run_condition_vllm_rtx.sbatch`. `submit_full_sweep.sh`
-is a thin orchestrator over `submit_with_rtx.sh`, which is the
-lower-level wrapper.
+## The runs and how each was submitted
 
-Submission topology history (see `development/CHANGELOG.md` for full
-rationale): cis-ollama path retired 2026-04-27 (the `cis-ollama.*` hostname
-still exists and now serves managed vLLM); per-cell SLURM arrays
-landed 2026-04-30 (replacing the packed-job model); roster trimmed and
-Qwen3.5:4B/9B added 2026-05-17; full unification on vLLM `rtx_6000:1`
-2026-05-18; Ollama backend retired 2026-05-18, code removed 2026-05-23.
+| Run | Models | Cells | Run tag | Design of record |
+|---|---|---|---|---|
+| May sweep | five (`PDDL_DEFAULT_MODELS`) | think on and off, no-tools and tools, all five tasks | `sweep6` for the renamed domains | `submit_full_sweep.sh`; `development/CHANGELOG.md` |
+| October rerun | `Qwen3.5:9B`, `gemma4:26b-a4b`, `qwen3.6:35b` | think off; tools and no-tools, all five tasks; plus one Gemma cell with `--prompt-style neutral` on `validate_plan` | `delivered-rerun`, `delivered-rerun-neutral` | `development/reference/delivered_rerun_prereg.md` |
+| Corrected-prompt control | same three | think off, no-tools, solve and simulate, three system messages | `control-promptfix` | `development/reference/control_prompt_fix_prereg.md` |
+| Matched run | same three | think off, solve and simulate: no-tools with the format-stated message, plus the with-tools cell, in one job | see `development/STATUS.md` | its registration in `development/reference/` |
 
-## Quickstart
+The exact command of a registered run is in its registration. Do not rebuild
+it from this table.
 
-From the login node (`slurm.bgu.ac.il`):
+### Flags these runs use
+
+- `--run-tag <tag>`: suffix on every cell's results folder
+  (`results/slurm_vllm_<model>_<think>_<cond>_<tag>/`), so a run never writes
+  into another run's folder.
+- `--think-modes "off"`: without it the default is `on off`, two cells per model.
+- `--tools-only` / `--no-tools`: one side of the condition axis.
+- `--tasks "<list>"`: run only these tasks.
+- `--prompt-style neutral`: with-tools system prompt reduced to the role
+  sentence. Requires `--tools-only`. The cell is named `tools_all_neutral`.
+- `--no-tools-system "<list>"`: the no-tools system message on solve and
+  simulate. Values: `registered`, `no-pointer`, `format-stated`. Each value is
+  its own cell (`no-tools`, `no-tools-syspointer-off`, `no-tools-sysformat`).
+  Requires `--no-tools`, `--run-tag`, and `--tasks` within `solve simulate`.
+- `--with-tools-cell`: only with `--no-tools-system`. Adds the ordinary
+  `tools_all_minimal` cell after the no-tools cells of each model.
+- `--time HH:MM:SS`: per-cell wall time. It cannot be raised after submission
+  on this cluster, so set it at submit time and read it back from the queue.
+- `--dry-run`: print the sbatch command and submit nothing.
+
+The control was submitted as:
 
 ```bash
-# 1. Clone both repos under $HOME (siblings — the harness auto-locates the marketplace)
-cd ~
-git clone https://github.com/SPL-BGU/pddl-copilot-experiments.git
-git clone https://github.com/SPL-BGU/pddl-copilot.git
-
-# 2. Build conda env (pddl_copilot: py3.12 + openjdk17 + mcp + openai)
-#    and pre-populate the two plugin .venvs. One-time, ~5 min.
-bash ~/pddl-copilot-experiments/cluster-experimenting/setup_env.sh
-
-# 3. Preflight (refreshes repos + venvs, surfaces GPU pool capacity).
-bash .claude/skills/cluster-ops/scripts/preflight.sh
-
-# 4. Smoke-test: submit ONE small/cheap no-tools cell first to catch env
-#    issues before firing the rest. Finishes in ~15 min.
-cd ~/pddl-copilot-experiments
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B --no-tools
-
-# 5. If the smoke test finishes OK (exit 0, JSON written under results/),
-#    submit the full sweep — three independent SLURM job arrays (small
-#    Qwens, qwen3.6:35b, gemma4:26b-a4b) per the topology table above.
-#    Each array task is one (model, think, cond) cell on its own dedicated
-#    GPU and runs concurrently with siblings as the pool has capacity.
-bash cluster-experimenting/submit_full_sweep.sh
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+    --no-tools --think-modes off --tasks "solve simulate" \
+    --no-tools-system "registered no-pointer format-stated" \
+    --run-tag control-promptfix --gpu-type rtx_6000 --time 12:00:00
+# 9 cells: three models by three system messages
 ```
 
-Rerunning any step is safe: `git clone` can be replaced with `git -C <dir> pull`,
-`setup_env.sh` detects an existing conda env and reuses it, and
-`submit_with_rtx.sh` is idempotent. Resubmitting the same `(model, think,
-cond)` cell — e.g. after a TIMEOUT — lands in the same
-`results/slurm_<model>_<think>_<cond>/` dir and resumes from the
-previously-completed trials via the `trials.jsonl` mechanism in
-`run_experiment.py` (skip with `--no-resume`).
+The matched run has this layout:
+
+```bash
+bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
+    --no-tools --think-modes off --tasks "solve simulate" \
+    --no-tools-system "format-stated" --with-tools-cell \
+    --run-tag <tag> --gpu-type rtx_6000 --time HH:MM:SS
+# 6 cells: per model, off|no-tools-sysformat and off|tools_all_minimal
+```
+
+The with-tools cell runs exactly as a `--tools-only` cell with the same
+`--tasks` and `--run-tag` (v11 to v16, minimal style, no
+`PDDL_NO_TOOLS_SYSTEM`). Every cell of a `--no-tools-system` job writes
+`OUT_DIR/system_prompt_audit.jsonl` (one line per request, so several per trial
+in a tool loop) and `OUT_DIR/client_settings.json`, and refuses a folder that
+holds trials but no audit log.
+
+### Smoke before a run
+
+A smoke of a registered run is the run's own command with `--partial 1` and a
+run tag of its own (for example `control-promptfix-smoke`). It uses the same
+GPU class, memory and `--time` as the full run; only the number of trials
+differs. Check that the answers are non-empty, not only that the job finished.
+
+`--smoke` is a different thing: a one-cell parser check on blocksworld `p01`
+(next section). It cannot be combined with `--tasks` or `--no-tools-system`.
+
+### The May sweep
+
+`submit_full_sweep.sh` is how the May sweep was submitted. It calls
+`submit_with_rtx.sh` three times, because the two large models need a longer
+wall time:
+
+| Pack | GPU class | Per-cell time |
+|---|---|---|
+| `Qwen3.5:0.8B` + `Qwen3.5:4B` + `Qwen3.5:9B` | `rtx_6000:1` | 12 h |
+| `qwen3.6:35b` | `rtx_6000:1` | 48 h |
+| `gemma4:26b-a4b` | `rtx_6000:1` | 48 h |
+
+Each model has one cell per (think mode, condition): 20 cells for five models.
+No-tools cells run the plain wordings v11 to v13. With-tools cells run v11 to
+v13 and the steered v14 to v16. `--include-no-tools-steered` also runs v14 to
+v16 without tools (the steering control); those rows land in the same folder
+and differ by `prompt_variant`.
+
+```bash
+bash cluster-experimenting/submit_full_sweep.sh --dry-run   # preview, submits nothing
+```
 
 ## Prereqs
 
-1. **Cluster account** — request access via your SPL-BGU contact / IT.
+1. **Cluster account**: request access via your SPL-BGU contact / IT.
 2. **Both repos cloned under `$HOME` on the login node:**
    ```bash
    ssh <user>@slurm.bgu.ac.il
@@ -98,7 +125,7 @@ bash ~/pddl-copilot-experiments/cluster-experimenting/setup_env.sh
 
 This creates a conda env `pddl_copilot` with:
 - Python 3.12 + `mcp` + `openai` (from `requirements.txt`)
-- OpenJDK 17 (ENHSP needs a JVM — installed via conda-forge, no cluster module needed)
+- OpenJDK 17 (ENHSP needs a JVM: installed via conda-forge, no cluster module needed)
 - Pre-populated `.venv`s for `pddl-solver` and `pddl-validator` plugins
   (avoids per-job `pip install` cost and avoids N parallel jobs racing on the same venv)
 
@@ -107,359 +134,131 @@ Override defaults with env vars:
 ENV_NAME=my_env PYTHON_VERSION=3.11 bash cluster-experimenting/setup_env.sh
 ```
 
-## Submission
+## Submission details
 
-The full production sweep is one command — `submit_full_sweep.sh` — which
-fires the three backend/walltime-split sbatch submissions from the
-topology table above. `submit_with_rtx.sh` is the per-backend lower-level
-wrapper; use it directly for single-model pilots or one-off cells.
+Before a submission, run the preflight (it refreshes the repos and plugin
+venvs and shows GPU pool capacity):
+`bash .claude/skills/cluster-ops/scripts/preflight.sh`.
 
 ```bash
 cd ~/pddl-copilot-experiments
 
-# Full production sweep: 3 sbatch arrays (small Qwens × 12 cells,
-# 35B × 4 cells, gemma4:26b-a4b × 4 cells = 20 cells total — 5 models
-# × 2 think × 2 cond). Each array task runs on its own dedicated GPU;
-# fan-out concurrent.
-bash cluster-experimenting/submit_full_sweep.sh
-
-# Preview the full-sweep dispatch without submitting.
-bash cluster-experimenting/submit_full_sweep.sh --dry-run
-
-# Baseline-only no-tools sweep (5 cells total, one per model).
-bash cluster-experimenting/submit_full_sweep.sh --no-tools
-
-# Single-model invocation via the lower-level wrapper (default GPU
-# class is rtx_6000:1; --gpu-type rtx_pro_6000 is the opt-in escape).
+# One model. Without other flags: 4 cells (think on/off by no-tools/tools).
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B
 
-# Multi-model invocation (3 models × 4 = 12-cell array, each cell
-# on its own rtx_6000:1 — no GPU packing across cells).
+# Several models fan out as independent array tasks, one GPU each.
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:0.8B Qwen3.5:4B Qwen3.5:9B
 
 # Preview the sbatch command without submitting.
 bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B --dry-run
 ```
 
-All invocations build a CELLS list and submit as a job array (or a single
-sbatch when N=1). Multi-positional args are NOT packed into a single
-sequential job — they fan out as independent array tasks, one per cell,
-each with its own dedicated GPU allocation.
+Run manual submissions from `~/pddl-copilot-experiments`; output paths are
+relative to it.
 
 ### GPU class
 
-`submit_with_rtx.sh` defaults to `rtx_6000:1` (48 GB VRAM, `--mem=48G`)
-— used by the full active roster. AWQ quants for `qwen3.6:35b` fit at
-~83% VRAM and `gemma4:26b-a4b` at ~85% under
-`gpu-memory-utilization=0.85`; the FP16 Qwens (0.8B/4B/9B) sit well
-below.
+The default is `rtx_6000:1` (48 GB VRAM, `--mem=48G`). The AWQ builds of
+`qwen3.6:35b` and `gemma4:26b-a4b` fit under `gpu-memory-utilization=0.85`; the
+FP16 Qwen3.5 models sit well below. `--gpu-type rtx_pro_6000` selects the
+96 GB class (`--mem=80G`). Any other value is an error.
 
-`--gpu-type rtx_pro_6000` is the per-invocation escape hatch (96 GB
-VRAM, `--mem=80G`) — use when the rtx_6000 pool is queue-saturated.
-Pass either `rtx_pro_6000` or `rtx_6000`; everything else errors.
+### `--no-tools`
 
-### `--no-tools` shorthand
+- `CONDITIONS=no-tools`.
+- Think modes default to `on off` (two cells per model). Pass
+  `--think-modes "off"` for thinking off only.
+- All five tasks, unless `--tasks` is given.
+- Wall time: `--time=12:00:00` unless `--time` is given (72 h when
+  `--with-tools-cell` is set, since that job also holds a with-tools cell).
 
-`--no-tools` pins the run to the no-tools matrix:
-- `CONDITIONS=no-tools` (one tools-off pass)
-- `THINK_MODES=off` (think=on is a valid no-tools cell — the legacy
-  no-tools/think=on matrix gate was lifted 2026-05-12; pass
-  `--think-modes "on off"` to include it)
-- `TASKS=` runner default (all 5: solve, validate_domain, validate_problem,
-  validate_plan, simulate). PR-4 re-enabled no-tools `simulate` via JSON-
-  trajectory grading against the oracle (`SimulateResponse` schema in
-  `pddl_eval/schemas.py`); the prior 4-task gate was retired in this fix.
-  Negative fixtures (ISS-001) ride along the matching task automatically.
-- Per-task wall: `--time=08:00:00`. Each model is one array task — no
-  cross-model serialization, so adding models adds parallelism, not wall.
+The JSON schema that the harness sends with no-tools requests does not take
+effect under vLLM 0.20.2 (`EXPERIMENTS_FLOW.md` §4.2).
+`--json-constraint structured_outputs` makes it take effect; the cell is then
+named `no-tools-jsonbound`. That is a separate condition, used only for the
+JSON constraint pilot.
 
-Conflicts with `--think-modes` (any value other than `off|default`) are
-rejected.
+### Resuming a cell
 
-### `--with-tools-cell` (matched run: no-tools control + with-tools in one job)
+Each cell writes `trials.jsonl` as it goes. Resubmitting the same command after
+a TIMEOUT, a preemption or `scancel` lands in the same folder and resumes; only
+the trial that was in flight is run again. The resume key (`_trial_key` in
+`pddl_eval/runner.py`) holds the `model` field as the HF id from `vllm_lookup`
+(for example `Qwen/Qwen3.5-9B`).
 
-`--no-tools-system "<list>"` (see the header of `submit_with_rtx.sh`) emits
-only no-tools cells. Adding `--with-tools-cell` appends the ordinary
-`tools_all_minimal` cell after the no-tools cells of each model, so both arms
-run in one array job under one run tag:
+## Models
 
-```bash
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B gemma4:26b-a4b qwen3.6:35b \
-    --no-tools --think-modes off --tasks "solve simulate" \
-    --no-tools-system "format-stated" --with-tools-cell \
-    --run-tag matched-run --gpu-type rtx_6000 --time HH:MM:SS
-# 6 cells: per model, off|no-tools-sysformat and off|tools_all_minimal
-```
+The wrapper rejects any model that is not in `PDDL_VLLM_VERIFIED_MODELS`
+(`lib/defaults.sh`). `vllm_lookup()` in the same file maps each tag to its HF
+id and parser flags.
 
-The with-tools cell runs exactly as a `--tools-only` cell with the same
-`--tasks` and `--run-tag` (v11-v16, minimal style, no
-`PDDL_NO_TOOLS_SYSTEM`). Like every cell of a `--no-tools-system` job it also
-writes `OUT_DIR/system_prompt_audit.jsonl` (one line per request, so several
-per trial in a tool loop) and `OUT_DIR/client_settings.json`, and it refuses
-a folder that holds trials but no audit log. The flag is refused without
-`--no-tools-system`. Without `--time` the per-cell budget is the with-tools
-default (72h); an explicit `--time` applies to all cells.
+| Tag | HF id | Build | `TOOL_CALL_PARSER` | Notes |
+|---|---|---|---|---|
+| `Qwen3.5:0.8B` | `Qwen/Qwen3.5-0.8B` | FP16 (~1.6 GB) | `qwen3_xml` | May sweep only |
+| `Qwen3.5:4B` | `Qwen/Qwen3.5-4B` | FP16 (~9 GB) | `qwen3_xml` | May sweep only |
+| `Qwen3.5:9B` | `Qwen/Qwen3.5-9B` | FP16 (~18 GB) | `qwen3_xml` | |
+| `qwen3.6:35b` | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit` | AWQ 4-bit MoE (~17 GB) | `qwen3_xml` | |
+| `gemma4:26b-a4b` | `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit` | AWQ 4-bit MoE (~16 GB) | `gemma4` | No reasoning parser. Needs `MAX_NUM_BATCHED_TOKENS=4096` (set by `vllm_lookup`) |
 
-### Resuming a TIMEOUT'd cell
+Four more tags are in the verified list (`gemma4:26b-a4b-bf16`, `gpt-oss:20b`,
+`ministral3:14b`, `llama3.1:8b`). They were smoke-tested only
+(`development/reference/d1_smokes_20261027.md`) and are not part of any run.
 
-Each cell writes `results/slurm_vllm_<model>_<think>_<cond>/trials.jsonl`
-as it goes. Resubmitting `submit_with_rtx.sh <model> ...` for the same
-cell after a TIMEOUT or `scancel` lands in the same dir and resumes from
-`trials.jsonl` — only the in-flight trial is re-run. To start fresh, pass
-`--no-resume` to `run_experiment.py` (the wrapper doesn't currently pipe
-this through, so add the flag in the `python3 run_experiment.py …` line of
-`run_condition_vllm_rtx.sbatch` for that submission). Cell-keyed dir
-naming (no `$SLURM_JOBID` suffix) was added 2026-05-01 specifically so
-resubmissions land in the same dir; pre-2026-05-01 dirs still aggregate
-fine but each carries its own jobid.
+A wrong `--tool-call-parser` gives no startup error. Every tool call is
+silently dropped and tool selection reads 0%. `lib/defaults.sh` is the one
+place that sets the parser per model. Roster history is in
+`development/CHANGELOG.md`.
 
-### Models in the default sweep
-
-The paper's `qwen3:0.6b` / `qwen3:4b` weren't a fit for the cluster's
-original model inventory, so this cluster run is a paper-variant, not a
-1:1 reproduction. The five active models, with their GPU class:
-
-| Model            | GPU class         | Notes |
-| ---------------- | ----------------- | ----- |
-| `Qwen3.5:0.8B`   | `rtx_6000:1`      | FP16, ~1.6 GB weights |
-| `Qwen3.5:4B`     | `rtx_6000:1`      | FP16, ~9 GB weights |
-| `Qwen3.5:9B`     | `rtx_6000:1`      | FP16, ~18 GB weights |
-| `qwen3.6:35b`    | `rtx_6000:1`      | AWQ-4bit MoE (~17 GB), A3B |
-| `gemma4:26b-a4b` | `rtx_6000:1`      | AWQ-4bit MoE (~16 GB), A4B. Multimodal-aware; needs `MAX_NUM_BATCHED_TOKENS=4096`. |
-
-Roster history: 2026-04-29 refresh updated `Qwen3.5:27b/35b` to their
-`qwen3.6` successors (dense 27B / 35B-A3B MoE, both Apache-2.0, released
-2026-04-{16,22}) and replaced `gpt-oss:20b` with NVIDIA
-`nemotron-3-nano:30b` (hybrid Mamba+MoE+Attn) for non-Qwen/Gemma
-diversity. 2026-04-30 dropped `nemotron-3-nano:30b` after smoke 17274424
-confirmed deterministic Hermes XML parse failures on the same 4 cells
-pre- and post-num_predict bump (4096→6144), establishing the failure as
-content-dependent rather than budget-dependent. `gpt-oss:120b` was
-previously substituted out by `Qwen3.5:35b` (2026-04-27) and is now
-superseded by `qwen3.6:35b` in the large-model size band. 2026-05-17
-dropped `qwen3.6:27b` (slowest cell in the sweep, ~19h tools×on) and
-added `Qwen3.5:4B` + `Qwen3.5:9B` to fill the 0.8B → 35B-A3B param gap
-with a dense, fast mid-band — same `qwen3_xml` parser family as the
-rest of the Qwen3.5/3.6 lineup. 2026-05-18 moved the four Qwens to vLLM
-in the production sweep (initially with `gemma4:31b` retained on
-Ollama), then same-day retired the backend split by replacing
-`gemma4:31b` dense Ollama with `gemma4:26b-a4b` MoE on vLLM (smoke
-17638752 verified the gemma4 parser path + the multimodal-tower
-`MAX_NUM_BATCHED_TOKENS=4096` requirement). Full roster now
-single-backend on vLLM `rtx_6000:1`. The roster no longer carries a
-non-Qwen/Gemma slot pending a viable replacement.
-
-The legacy Ollama rtx path (`run_condition_rtx.sbatch`) was deleted
-when the Ollama backend was retired (2026-05-23); archived
-`slurm_gemma4_31b_*` corpora remain readable on disk for drift
-comparison but cannot be re-run from this tree.
-
-## Production vLLM sweep
-
-Reuses the per-cell SLURM job array, matrix gate, Nice
-auto-prioritization, and cell-keyed OUT_DIR shape; the single sbatch is
-`run_condition_vllm_rtx.sbatch`.
-
-### Scope (2026-05-18, backend unified)
-
-Five-model vLLM scope: `Qwen3.5:0.8B` + `Qwen3.5:4B` + `Qwen3.5:9B` +
-`qwen3.6:35b` + `gemma4:26b-a4b`. Qwen lineup shares `qwen3_xml`/`qwen3`
-parsers (0.8B and 35B parser-verified on smokes 17468314 / 17494176;
-4B/9B parser inherited from the shared family — dedicated smoke still
-owed). `gemma4:26b-a4b` uses the `gemma4` tool-call parser with no
-reasoning parser (Gemma has no `<think>` tokens) — verified on smoke
-17638752 (2026-05-18) with `MAX_NUM_BATCHED_TOKENS=4096` (the model's
-multimodal vision tower auto-loads and its per-MM-item budget exceeds
-vLLM's default 2048-token batch ceiling). Prior 27B slot was retired
-2026-05-17; the gemma4:31b dense Ollama slot was retired 2026-05-18.
-The five vLLM cells each run on their own dedicated `rtx_6000:1`
-allocation — `submit_full_sweep.sh` packs the three smaller Qwens
-(0.8B/4B/9B) into one sbatch job array, 35B into a second sbatch, and
-gemma4:26b-a4b into a third (separate walltimes), but within each array
-every cell is one SLURM task with its own GPU; vLLM does not
-cross-share a GPU between cells.
-
-### Submit recipes
+### Parser smoke
 
 ```bash
-# Full production sweep — three sbatch arrays per the topology table
-# (small/mid Qwens packed, qwen3.6:35b solo, gemma4:26b-a4b solo).
-# See submit_full_sweep.sh for the exact per-pack walltime assignment.
-bash cluster-experimenting/submit_full_sweep.sh
-
-# Preview without submitting.
-bash cluster-experimenting/submit_full_sweep.sh --dry-run
-
-# One-cell pilot.
-bash cluster-experimenting/submit_with_rtx.sh Qwen3.5:9B --think-modes off
-```
-
-The wrapper rejects any model not in `PDDL_VLLM_VERIFIED_MODELS` before
-SLURM pulls the slot. To add a model: verify its parser via
-`submit_with_rtx.sh --smoke <model>` (one-cell smoke that exercises the
-prod sbatch with `run_experiment.py --smoke`), then extend the array
-constant in `lib/defaults.sh` AND the `vllm_lookup()` case in the same
-file.
-
-`submit_with_resume.sh` was the orchestrator for the historical
-backend-split layout; post 2026-05-18 backend unification it functionally
-just forwards to the vLLM submission.
-
-### OUT_DIR namespace
-
-Cells write to `results/slurm_vllm_<canonical_tag>_<think>_<cond>/`
-(prefix `slurm_vllm_` retained from the era when it disambiguated vLLM
-trials from the parallel Ollama corpora). The resume key in
-`pddl_eval/runner.py:424` includes the `model` field as the HF id from
-`vllm_lookup` (e.g. `Qwen/Qwen3.5-9B`).
-
-### Resource profile
-
-| Field | Default | rtx_pro_6000 (opt-in) |
-|---|---|---|
-| `--gpus` | `rtx_6000:1` (smoke-verified) | `rtx_pro_6000:1` |
-| `--mem` | `48G` | `80G` |
-| `--time` | see Resource profile table below | — |
-| Concurrency | 4 (smoke-verified) | 4 |
-| VRAM peak (27B AWQ, smoke) | 83% (40808/49140 MiB) | — |
-| VRAM peak (35B AWQ MoE, smoke) | 84% (41328/49140 MiB) | — |
-
-`--gpu-type rtx_pro_6000` escape hatch routes to the 96 GB class +
-`--mem=80G` if rtx_6000 is queue-saturated.
-
-### Serving-environment probe (paper reproducibility)
-
-`bash cluster-experimenting/probe_serving_env.sh` (login node, read-only) prints the
-served vLLM version (from the preserved serve logs), the GPU models the jobs saw, the
-image's vLLM / PyTorch / CUDA-runtime versions (from `~/vllm.sif`), and the NVIDIA
-driver + OS of one node per GPU class (one short `srun` each). It feeds the "computing
-infrastructure" sentence in `paper/main.tex`; save its output under
-`development/reference/` when it is used.
-
-## vLLM smoke probes (parser verification)
-
-Post 2026-05-18 backend unification, vLLM is the production inference
-backend (`run_condition_vllm_rtx.sbatch`). Parser verification is a
-one-cell smoke exercised through the prod sbatch via
-`submit_with_rtx.sh --smoke <model>` — the smoke fastpath added
-2026-05-19 (commit `4f50a5b`) routes the `@smoke@` sentinel into
-`run_experiment.py --smoke`. The dedicated
-`run_smoke_vllm_vs_ollama.sbatch` was retired in commit `06f2b4b`
-(2026-05-19); see `development/CHANGELOG.md` for the parser-verification
-history.
-
-### Per-model parser table (verified 2026-05-10 unless noted)
-
-vLLM's `--tool-call-parser` regex must match the model's emit format. A
-mismatch silently drops every tools-trial extraction → 0% tool-selection
-with no startup error (we hit this on the original 27B AWQ probe). The
-sbatch knob is `TOOL_CALL_PARSER` (env-overridable; default `qwen3_xml`).
-
-| Tag              | HF id                                      | Quant                | TOOL_CALL_PARSER | GPU class               | Status                       |
-| ---------------- | ------------------------------------------ | -------------------- | ---------------- | ----------------------- | ---------------------------- |
-| `Qwen3.5:0.8B`   | `Qwen/Qwen3.5-0.8B`                        | FP16 (~1.6 GB)       | `qwen3_xml`      | rtx_6000:1              | **Verified** (job 17468314)  |
-| `Qwen3.5:4B`     | `Qwen/Qwen3.5-4B`                          | FP16 (~9 GB)         | `qwen3_xml`      | rtx_6000:1              | Production-running 2026-05-18 (dedicated smoke still owed) |
-| `Qwen3.5:9B`     | `Qwen/Qwen3.5-9B`                          | FP16 (~18 GB)        | `qwen3_xml`      | rtx_6000:1              | Production-running 2026-05-18 (dedicated smoke still owed) |
-| `qwen3.6:35b`    | `cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit`        | AWQ-4bit MoE (~17 GB)| `qwen3_xml`      | rtx_6000:1              | **Verified** (job 17494176)  |
-| `gemma4:26b-a4b` | `cyankiwi/gemma-4-26B-A4B-it-AWQ-4bit`     | AWQ-4bit MoE A4B (~16 GB) | `gemma4`         | rtx_6000:1              | **Verified** (smoke 17638752, 2026-05-18). MM-aware → requires `MAX_NUM_BATCHED_TOKENS=4096` (exported by `vllm_lookup`). Replaced `gemma4:31b` dense Ollama. |
-
-Retired 2026-05-17: `qwen3.6:27b` / `cyankiwi/Qwen3.6-27B-AWQ-INT4` —
-slowest cell in the sweep (~19h tools×on on rtx_6000); replaced by
-`Qwen3.5:4B` + `Qwen3.5:9B` in the param-ladder mid-band.
-
-For vanilla Qwen3 sizes (e.g. `Qwen/Qwen3-0.6B`), use `TOOL_CALL_PARSER=hermes`
-— vanilla Qwen3 emits Hermes JSON inside `<tool_call>`, not Llama-XML.
-
-### Submit recipe
-
-The smoke fastpath in `run_condition_vllm_rtx.sbatch` (2026-05-19,
-commit `4f50a5b`) consumes the `@smoke@` sentinel and runs
-`run_experiment.py --smoke` with the verified parser flags from
-`vllm_lookup`. Use the wrapper rather than calling
-`run_condition_vllm_rtx.sbatch` directly — it picks the right GPU,
-mem, and time budget per model.
-
-```bash
-# One-cell smoke for any verified model.
 bash cluster-experimenting/submit_with_rtx.sh --smoke Qwen3.5:9B
-bash cluster-experimenting/submit_with_rtx.sh --smoke Qwen3.5:4B
-bash cluster-experimenting/submit_with_rtx.sh --smoke gemma4:26b-a4b
-
-# Override walltime if the default smoke window is wrong for a slow model
-# (feedback_smoke_full_run_resources: smoke gets full-run resources).
 bash cluster-experimenting/submit_with_rtx.sh --smoke --time 24:00:00 qwen3.6:35b
 ```
 
-To add a NEW vLLM model: extend `PDDL_VLLM_VERIFIED_MODELS` AND the
-`vllm_lookup()` case in `lib/defaults.sh`, then run the smoke recipe
-above; the wrapper will refuse the tag until both edits are in place.
+`--smoke` submits one cell per model that runs `run_experiment.py --smoke`
+(blocksworld `p01`, one wording, all five tasks, both conditions, think on and
+off) through the same sbatch. Default wall time 3 h.
 
-### Operational caveats
+### The vLLM image
 
-- **Stale `~/vllm.sif`.** The sbatch caches the apptainer SIF in `$HOME/vllm.sif`
-  after first build. If `vllm-serve` rejects `--tool-call-parser <name>` at
-  startup with "unknown tool-call-parser", the cached SIF predates that
-  parser's addition: `rm ~/vllm.sif` and resubmit; the next run rebuilds
-  from `docker://vllm/vllm-openai:latest`.
-- **`max_tokens > max_model_len` HTTP 400.** vLLM rejects any request where
-  `max_tokens > max_model_len` (harness per-task defaults are `solve=8192`,
-  `validate_*=6144`, `simulate=6144`). When using `MAX_MODEL_LEN < 8192`,
-  set `NUM_PREDICT=4096` (or any value safely below `MAX_MODEL_LEN`).
-- **`ENFORCE_EAGER=1` on tight VRAM.** Skips CUDA graph capture+profiling
-  (~1.5 GiB headroom) at ~10–15% throughput cost. Recipe: 27B AWQ on
-  rtx_3090 24 GB → `MAX_MODEL_LEN=7168 GPU_MEM_UTIL=0.85 ENFORCE_EAGER=1
-  NUM_PREDICT=4096`.
+The sbatch serves from the image `docker://vllm/vllm-openai:v0.20.2`, cached as
+`$HOME/vllm.sif`. **Never delete `~/vllm.sif`.** It is shared by every job and
+pinned to vLLM 0.20.2, the version every registered run names. A rebuild is
+done by a CPU SLURM job, with Omer's go-ahead, and the version line in the
+serve log (`Initializing a V1 LLM engine (v0.20.2)`) is checked afterwards.
+
+`bash cluster-experimenting/probe_serving_env.sh` (login node, read-only)
+prints the served vLLM version from the serve logs, the GPU models the jobs
+saw, the image's vLLM, PyTorch and CUDA versions, and the driver and OS of one
+node per GPU class. Its 2026-09-13 output is
+`development/reference/serving_env_20260913.md`.
+
+### Operational notes
+
+- **`max_tokens > max_model_len` gives HTTP 400.** The per-task output caps are
+  `solve=8192`, `validate_*=6144`, `simulate=6144`, under a 16384-token window.
+- **A larger window** (`--max-model-len N`) is a separate condition and needs a
+  run tag.
 
 ## Conditions and think modes
 
-### Conditions (2 active) — looped inside every job
-- `no-tools`                    — baseline, no MCP tools exposed
-- `tools_all_minimal`           — tools on, filter=all, prompt=minimal
+- `no-tools`: no MCP tools offered.
+- `tools_all_minimal`: all tools offered, `minimal` system prompt.
+- `tools_all_neutral`: all tools offered, `neutral` system prompt.
+- `no-tools-syspointer-off`, `no-tools-sysformat`: no-tools with a corrected
+  system message on solve and simulate.
+- `no-tools-jsonbound`: no-tools with a JSON constraint that takes effect.
 
-Sweep-5 (active 2026-05-23) adds the prompt-variant axis as a within-cell
-loop: with-tools cells emit v11/v12/v13 (neutral) + v14/v15/v16 (steered);
-no-tools cells emit v11/v12/v13 only. The 4th-arm control
-`(no-tools × v14-v16)` runs via `run_experiment.py --include-no-tools-steered`
-and lands in the same per-cell dir, distinguished at row-level by
-`prompt_variant`. See `development/reference/sweep_prompt_bank_design.md` for the
-full matrix + arm mapping. Retired axes: `tools_per-task_minimal` (sweep-5
-retirement 2026-05-19), `tools_*_guided` (earlier).
+Think modes:
 
-Each condition invokes `run_experiment.py` once, writing to its own output
-subdir. Conditions inside a job are independent: a late-stage condition
-failure doesn't lose earlier-condition results.
+- `on`: `chat_template_kwargs.enable_thinking=True`.
+- `off`: `enable_thinking=False`.
+- `default`: the setting is omitted and the model's own default applies.
 
-### Think modes
-- `on`       — passes `think=True` (forwarded as vLLM `chat_template_kwargs.enable_thinking=True`).
-- `off`      — passes `think=False` (fast path, no reasoning tokens).
-- `default`  — omits the `think` kwarg so the model's native setting applies.
-   Use this for models without a thinking switch (e.g. `gemma4*` historically;
-   the rtx path now passes `on/off` to all models and lets the runtime ignore
-   unsupported values).
-- `effort-low` / `effort-medium` / `effort-high`: gpt-oss only, from
-   `submit_with_rtx.sh --reasoning-effort "<levels>"`. Runs like `default`
-   (no `think` kwarg) and sends the top-level request field
-   `reasoning_effort=<level>`, which vLLM 0.20.2 writes onto the Harmony system
-   line (`Reasoning: low`). gpt-oss always reasons, so these cells are
-   "low effort", never "thinking off". A `default` gpt-oss cell sends no field
-   and gets Harmony's own default, `medium`. Before each gpt-oss cell the job
-   log prints the served line (`harmony system line: Reasoning: ...`, from
-   `reasoning_settings.py system-line`), and an effort cell whose line does not
-   show its level is skipped. Effort and stored-reasoning cells also get
-   `OUT_DIR/client_settings.json`, the request settings the summary cannot hold.
-
-`--store-reasoning` (requires `--run-tag`) keeps the reasoning trace in each
-row's `thinking` field. vLLM 0.20.2 returns the trace as `message.reasoning`,
-and the client's default read (`reasoning_content`) misses it, so `thinking` is
-empty in every corpus so far; see `pddl_eval/vllm_client.py`. Two effects to
-know before analysing such cells: the stored trace is cut at 4,096 characters
-(`THINKING_SNAPSHOT_LEN`, frozen), and an empty cut-off answer is labelled
-`think_overflow` where it used to be `truncated_no_answer`, so truncation
-counts must take both labels (`development/CHANGELOG.md`, 2026-11-09 entry,
-item 3).
-
-The paper reports "better of with- and without-thinking"; running both
-explicitly lets us reproduce that protocol systematically.
+The reasoning trace is not stored by default: vLLM 0.20.2 returns it as
+`message.reasoning` and the client reads `reasoning_content`, so `thinking` is
+empty in every corpus so far (`pddl_eval/vllm_client.py`; ISS-030).
 
 ## Resource profile (`run_condition_vllm_rtx.sbatch`)
 
@@ -469,9 +268,9 @@ Per-array-task allocation. Each task = one (model, think, cond) cell.
 |---|---|---|
 | `--partition` | `main` | rtx_6000 (and the rtx_pro_6000 opt-in) GRES are accessible from `main`. Mar-26 guide §High-Priority: never use a non-`main` partition without QoS rights. |
 | `--gpus` | `rtx_6000:1` (default) or `rtx_pro_6000:1` (opt-in) | One dedicated GPU per array task; the cell's single model stays resident throughout |
-| `--array` | `0-(N-1)` when N > 1 (no `%N` cap by default) | Fan-out unlimited — SLURM runs as many tasks as the pool has capacity for. Override with `%N` post-submit (`scontrol update JobId=<master> ArrayTaskThrottle=N`) if politeness is desired |
-| `--time` | `06:00:00` (tools cells) / `05:00:00` (no-tools cells) / `03:00:00` (smoke); heavy MoE cells override to 48h via `submit_full_sweep.sh` | Per-cell budget; vLLM ~4× faster than the retired Ollama backend (smoke 2026-05-10) |
-| `--mem` | `48G` (rtx_6000 default) / `80G` (rtx_pro_6000 opt-in) | IT cap 2026-04-27. With one model per task, peak host RAM is ~24 GB (qwen3.6:35b weight cache) — comfortably under either cap |
+| `--array` | `0-(N-1)` when N > 1 (no `%N` cap by default) | Fan-out unlimited: SLURM runs as many tasks as the pool has capacity for. Override with `%N` post-submit (`scontrol update JobId=<master> ArrayTaskThrottle=N`) if politeness is desired |
+| `--time` | `72:00:00` (jobs with a tools cell) / `12:00:00` (`--no-tools`) / `03:00:00` (`--smoke`), unless `--time` is given | Per-cell budget. Cannot be raised after submission |
+| `--mem` | `48G` (rtx_6000 default) / `80G` (rtx_pro_6000 opt-in) | IT cap 2026-04-27. With one model per task, peak host RAM is ~24 GB (qwen3.6:35b weight cache): comfortably under either cap |
 | `--tmp` | `50G` | Mar-26 guide §"SSD Drive". Reserves space on `/scratch/$USER/$JOBID`; covers vllm.sif (~5 GB) + one HF snapshot (~24 GB peak). The sbatch falls back to `/tmp/rtx-$JOBID` if `/scratch` isn't writable on the allocated node |
 | `--cpus-per-task` | not set (cluster default `cpus-per-gpu`) | IT request 2026-04-27; explicit `12` was depriving other users |
 | Concurrency | `4` | Pairs with vLLM `--max-num-seqs ≥ 4`; isolated per-task server so no cross-cell contention |
@@ -499,10 +298,10 @@ sacct -j <master> --format=JobName,MaxRSS,State,Elapsed,Start,ExitCode  # all ar
 ```
 
 The `cluster-ops` skill bundles operations helpers (status / sync /
-preflight / postmortem) that wrap the SSH calls — see
+preflight / postmortem) that wrap the SSH calls: see
 `.claude/skills/cluster-ops/SKILL.md`. After syncing results, the
 `analyzer` skill provides aggregation, plotting, master-table, and
-drift-check recipes — see `.claude/skills/analyzer/SKILL.md`.
+drift-check recipes: see `.claude/skills/analyzer/SKILL.md`.
 
 ### Throttle a running array post-submission
 
@@ -526,23 +325,16 @@ Higher Nice → lower priority. Default 0. Resets to 0 if you bump it back.
 
 | Path | What |
 |---|---|
-| `results/slurm_<model>_<think>_<cond>/` | `run_experiment.py` JSON outputs for one cell (per-instance results, `summary_*.json`, `trials.jsonl`). Cell-keyed (no jobid suffix) post 2026-05-01 so resubmissions of the same cell land in the same dir and resume from the prior `trials.jsonl`; aggregators read either shape. Multiple resubmissions accumulate timestamped `single_task_*.json` / `summary_*.json` files; the latest summary wins on aggregation. `meta.host` reflects the latest run's compute node. `results/` is gitignored. |
-| `cluster-experimenting/logs/pddl_rtx_<model>-<task_jid>.out` | rtx self-deploy log for one cell. The log filename keeps `<task_jid>` because `%x-%J.out` is resolved by SLURM at job-start, so each (re)submission gets its own log file. Directory is gitignored. |
+| `results/slurm_vllm_<model>_<think>_<cond>[_<run-tag>]/` | The output of one cell: `trials.jsonl`, `single_task_*.json`, `summary_*.json`. The folder name has no job id, so a resubmitted cell resumes in place. Several submissions leave several timestamped summaries. `results/` is gitignored. |
+| `cluster-experimenting/logs/pddl_rtx_<model>-<task_jid>.out` | The job log of one array task. Each (re)submission gets its own file. Gitignored. |
+| `cluster-experimenting/logs/<jobid>.cells.tsv` | For an array job: which array index is which cell. |
 
 ## Fetching results locally
 
-From your laptop:
-```bash
-# One cell's output (cell-keyed, no jobid suffix post 2026-05-01)
-scp -r <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_qwen3_6_27b_off_tools_all_minimal \
-       ~/personal/pddl-copilot-experiments/results/
-
-# Everything from a run
-rsync -av <user>@slurm.bgu.ac.il:~/pddl-copilot-experiments/results/slurm_* \
-         ~/personal/pddl-copilot-experiments/results/
-```
-
-Analyze synced results ad-hoc against `results/**/{single_task,summary}_*.json` — the canonical schema for those files is `save_results` in `pddl_eval/summary.py`. Recent analyses live in the contributor's `.local/reports/` (not committed).
+Use `.claude/skills/cluster-ops/scripts/sync.sh` (see the `cluster-ops` skill).
+The schema of the result files is `save_results` in `pddl_eval/summary.py` and
+`EXPERIMENTS_FLOW.md` §9. Analyses are in `tools/reanalysis/` and
+`tools/delivered_rerun/`; frozen figures in `development/NUMBERS.md`.
 
 ## Cancelling jobs
 
@@ -561,7 +353,7 @@ have been written. Wait for it to clear naturally (verified 2026-04-29 on
 smoke job 17263071, where a CG-state cancel lost the qwen3.6:35b warmup and
 gemma cells).
 
-**Do NOT use `scancel --name=pddl_*`** — verified 2026-04-25 on SLURM 25.11.4:
+**Do NOT use `scancel --name=pddl_*`**: verified 2026-04-25 on SLURM 25.11.4:
 `--name` is exact-string match (comma-separated literal names), not a glob, so
 the cancel is a silent no-op. Filter by name prefix with squeue → awk → xargs:
 
@@ -571,26 +363,19 @@ squeue --me -h -o '%i %j' | awk '$2 ~ /^pddl_rtx_/ {print $1}' | xargs --no-run-
 
 ## Troubleshooting
 
-**VRAM blowup after warmup (`exit 3`).** The runtime guard fired because
-VRAM > 85% post-warmup. Check `run_condition_vllm_rtx.sbatch` —
-`gpu-memory-utilization=0.85` and `num_ctx=16384` are sized for the
-active roster on rtx_6000 48 GB. If a sweep trips the guard, post-mortem
-`sacct/MaxRSS` to right-size; lowering `--num-ctx` or `--concurrency` is
-the fastest mitigation. Per-task num_ctx rationale: see `EXPERIMENTS_FLOW.md` §5.
+**VRAM guard after warmup (`exit 3`).** VRAM was above 85% after warmup.
+`gpu-memory-utilization=0.85` and the 16384-token window are sized for these
+models on a 48 GB `rtx_6000`. Read `sacct` and the job log before changing
+anything.
 
-**`apptainer: command not found`.** Apptainer module not loaded on the
-compute node. The sbatch assumes the cluster default has it on the PATH;
-if not, add `module load apptainer` to the sbatch.
+**`apptainer: command not found`.** The sbatch assumes apptainer is on the
+PATH of the compute node. If not, add `module load apptainer` to the sbatch.
 
-**Stale `~/vllm.sif`.** See the "Operational caveats" subsection above.
+**`java: command not found` or `UnsupportedClassVersionError`.** The conda env
+is not active, or `openjdk=17` was not installed. Rerun `setup_env.sh`.
 
-**`java: command not found` or `UnsupportedClassVersionError`.** The conda
-env isn't active, or `openjdk=17` wasn't installed. Rerun `setup_env.sh`.
+**Plugin `.venv` missing on the first job.** `setup_env.sh` did not run, or ran
+under a different `$HOME`. Rerun it on the login node as the same user.
 
-**Plugin `.venv` missing on first job.** `setup_env.sh` didn't run, or ran
-from a different `$HOME`. Rerun it on the login node with the same user.
-
-**First run on a given conda env is slow.** First `run_experiment.py`
-invocation does MCP handshakes and vLLM server cold-starts per model.
-Subsequent jobs on the same env reuse the cached plugin `.venv`s and the
-cached `$HOME/vllm.sif`.
+**Stuck progress or 0% tool selection.** Check the tool-call parser first
+(`lib/defaults.sh`).

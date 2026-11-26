@@ -3,7 +3,7 @@
 
     python3 tools/reanalysis/c4_select_transcripts.py \\
         --results /Users/omereliyahu/personal/pddl-copilot-experiments/results \\
-        --out development/draft_C4_transcripts.md
+        --out tools/reanalysis/out/c4_transcripts.md
 
 Read-only over results. Descriptive: not a gate, not frozen, adds no reading
 to the prereg. Rows are loaded by the frozen loader (`tools.delivered_rerun.run
@@ -33,7 +33,12 @@ domain files and the ground-truth cache. For simulate the run built the
 prompt from a plan computed live at run start, which is not always the
 cache's plan (side finding 2 in the output).
 
-Output: one markdown file (default development/draft_C4_transcripts.md).
+Output: one markdown file (default tools/reanalysis/out/c4_transcripts.md).
+The first output, development/draft_C4_transcripts.md, was not used in the paper
+and was deleted on 2026-11-22 (development/MOVES.md). The default no longer
+writes into development/, so a bare run cannot bring that file back. The text
+the script prints still names the earlier plan's step C4; that plan is a record
+at development/reference/weakness_action_plan.md.
 """
 from __future__ import annotations
 
@@ -975,7 +980,7 @@ def main(argv: list[str] | None = None) -> int:
                     default=REPO / "development/reference/delivered_rerun_readout.json")
     ap.add_argument("--nocall-readings", type=Path, default=REPO / (
         "development/reference/delivered_rerun_secondary/hand_reads/nocall_readings.json"))
-    ap.add_argument("--out", type=Path, default=REPO / "development/draft_C4_transcripts.md")
+    ap.add_argument("--out", type=Path, default=REPO / "tools/reanalysis/out/c4_transcripts.md")
     args = ap.parse_args(argv)
     try:
         from pddl_eval.domains import load_domains

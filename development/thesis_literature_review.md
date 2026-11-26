@@ -4,7 +4,7 @@
 thesis doc or in `paper/` yet.*
 
 **What this file is.** A thesis-style review of the work behind the three research
-questions of `roadmap.md` §2. Sections 1 to 7 are the prose. Section 8 is the reading
+questions of `reference/roadmap.md` §2. Sections 1 to 7 are the prose. Section 8 is the reading
 list, one line per paper. Section 9 lists papers that are wanted but not checked yet.
 Section 10 has questions for Omer.
 

@@ -264,6 +264,9 @@ one tool suite.
 
 **Has to establish:** the three answers in three sentences; two directions (larger
 problems where the planner can fail; tools whose output is shaped for the model).
+A third direction worth a sentence (from the closed PR #144): whether the model should
+restate the tool's output at all, or the tool's result should go straight into the
+answer while the model only chooses the tool and checks the result.
 
 ---
 
@@ -288,12 +291,12 @@ problems where the planner can fail; tools whose output is shaped for the model)
 ### 12.1 Which frontier models (section B of `unified_run_design.md`)
 Lean: Haiku 5.5 and Sonnet 5, both with thinking off, same tasks and wordings as the
 open models, no structured-output parameter, both arms on the same day.
-> ANSWER:
+> ANSWER: **Haiku 5.5 and Sonnet 5.5 (Omer, 2026-11-25).** Haiku with thinking off; Sonnet at its lowest setting (no thinking before the answer, short notes between tool calls).
 
 ### 12.2 Where the frontier results sit
 Lean: their own short section (7) with one table. Inside the RQ tables they invite a
 ranking against the open models that the conditions do not support.
-> ANSWER:
+> ANSWER: **Deferred (Omer, 2026-11-26).** For now the Claude results stay in their own small section; perhaps with Haiku's result brought out, if the new run shows one worth it.
 
 ### 12.3 Which trace-loss figure RQ3 quotes
 The October run registered one grader (69.9 to 91.2% lost). The matched run registers a
@@ -301,19 +304,19 @@ reader that also accepts one object per line; under that reader the October figu
 65.9 to 80.5%, computed after the fact. Lean: quote the registered range in the table
 and give the other in one clause, so RQ1 and RQ3 are not read with two rulers without
 saying so.
-> ANSWER:
+> ANSWER: **ok (Omer, 2026-11-26):** the registered range in the table, the other in one clause.
 
 ### 12.4 PlanBench in the body or the supplement
 Lean: body, one paragraph and one table. It is the only evidence outside our own test
 items.
-> ANSWER:
+> ANSWER: **yes, in the body (Omer, 2026-11-26).**
 
 ---
 
 ## 13. Analysis still to do for this outline
 
 1. The matched run (registration: `reference/matched_run_prereg.md`).
-2. Delivered rates on validate_domain and validate_problem, tools against no tools,
+2. (Not now: Omer, 2026-11-26.) Delivered rates on validate_domain and validate_problem, tools against no tools,
    from the October run (4.2).
 3. The frontier run, once 12.1 is answered.
 4. Figures redrawn on the matched run (solve by plan length, simulate by trace length).

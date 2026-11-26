@@ -8,11 +8,11 @@
 # `smoke/probe_*/` artefacts. Pre-vLLM legacy `slurm_<model>_<think>_<cond>/`
 # dirs on the cluster are intentionally skipped so the local results/ tree
 # stays scoped to the in-flight sweep. Each invocation lands in its own
-# dated subdir under results/ (default `sweep5-cluster-YYYYMMDD`) so
+# dated subdir under results/ (default `cluster-sync-YYYYMMDD`) so
 # checkpoints don't pollute the top level.
 #
 # Usage:
-#   bash sync.sh                          # → results/sweep5-cluster-YYYYMMDD/
+#   bash sync.sh                          # → results/cluster-sync-YYYYMMDD/
 #   bash sync.sh results/my-run           # → explicit path
 #
 # Env overrides:
@@ -26,7 +26,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 REMOTE_RESULTS="${REMOTE_RESULTS:-~/pddl-copilot-experiments/results}"
 
-DEST="${1:-$REPO_ROOT/results/sweep5-cluster-$(date +%Y%m%d)}"
+DEST="${1:-$REPO_ROOT/results/cluster-sync-$(date +%Y%m%d)}"
 
 # Refuse to dump slurm_* dirs flat into results/ — every sync must land in a
 # named subdir so different sweeps stay separable. The default already does

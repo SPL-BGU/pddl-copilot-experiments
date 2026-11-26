@@ -888,6 +888,8 @@ runs in the gitignored `external/d5b-work/runs/`; rows printed by `python -m too
 
 ## Delivered rerun — readout (FROZEN 2026-10-09; in no tex yet)
 
+> **Mark added 2026-11-25 (clean-up; nothing above or below is rewritten):** the header's "in no tex yet" is out of date. The paper has drawn on this readout since PR #139 (merged 2026-11-22): the RQ3 rows restate its loss cells.
+
 Provenance: `reference/delivered_rerun_readout.md` / `.json` (frozen code `d558946`, package `822aace…`; summary and sha256s in `reference/delivered_rerun_prereg.md` §8c). Data: `results/delivered-rerun/` (seven cells, cluster run tag `delivered-rerun` / `delivered-rerun-neutral`). **Parity failed at job level, so every figure below is a separate-apparatus replication**: it never replaces a canonical-cell figure and is never pooled with one.
 
 | figure | **quote this** | do NOT quote |
@@ -920,6 +922,8 @@ The frozen rows above stay the record. These lines are post hoc and descriptive;
 <!-- /gen:iss029 -->
 
 ## Delivered rerun — descriptive secondary analyses (prereg §6, §8b 13; 2026-10-09; in no tex yet)
+
+> **Mark added 2026-11-25 (clean-up; nothing above or below is rewritten):** the header's "in no tex yet" is out of date. The paper has drawn on these analyses since PR #139 (merged 2026-11-22).
 
 Provenance: `reference/delivered_rerun_secondary/secondary.md` / `.json`, from `tools/delivered_rerun_secondary.py` on the frozen package (`822aace…`; its grades reproduce the readout's E1 and E4 counts exactly). Hand reads and rules: `reference/delivered_rerun_secondary/hand_reads/`. **Descriptive, not registered readings**; same separate-apparatus caveat as the block above.
 
@@ -1304,6 +1308,8 @@ Solve WRONG_FACTS in S2-E: most of these rows are a correct plan followed by the
 
 ## RQ1 metrics — the advisors' four metrics (added 2026-11-22; post hoc, exploratory; in no tex yet)
 
+> **Mark added 2026-11-25 (clean-up; nothing above or below is rewritten):** the header's "in no tex yet" is out of date. These figures entered `paper/main.tex` with PR #139 (merged 2026-11-22). Since PR #150 (2026-11-25) the open models' solve and simulate rows in the body come from the block "RQ1 solve and simulate on the control baseline" below, and the matched run will replace those.
+
 The metrics set at the advisor meeting of 2026-11-22 (`roadmap.md` §2), computed on data
 already on disk by `tools/reanalysis/rq1_metrics.py` (rerun: `python -m tools.reanalysis.rq1_metrics --numbers`;
 tests in `tests/test_rq1_metrics.py`). How to read the block:
@@ -1583,6 +1589,8 @@ Claude rows read: Claude Sonnet 4.6 / no tools: 1520 rows, 19 with an unknown de
 
 ## RQ2 metrics — tool choice (added 2026-11-22; post hoc, exploratory; in no tex yet)
 
+> **Mark added 2026-11-25 (clean-up; nothing above or below is rewritten):** the header's "in no tex yet" is out of date. These figures have been in `paper/main.tex` since PR #139 (merged 2026-11-22).
+
 The advisors' RQ2 metrics (`roadmap.md` §2), from the stored tool calls, by
 `tools/reanalysis/rq23_metrics.py` (rerun: `python -m tools.reanalysis.rq23_metrics --numbers`;
 tests in `tests/test_rq23_metrics.py`). How to read the block:
@@ -1836,6 +1844,8 @@ Solve, counts behind the shares (trials; the right tool is the planner that fits
 
 ## RQ3 metrics — use of the tool's output (added 2026-11-22; post hoc, exploratory; in no tex yet)
 
+> **Mark added 2026-11-25 (clean-up; nothing above or below is rewritten):** the header's "in no tex yet" is out of date. These figures have been in `paper/main.tex` since PR #139 (merged 2026-11-22).
+
 The advisors' RQ3 metric: of the trials where the tool returned the right result, the
 share whose delivered final answer is wrong. Same script as RQ2. How to read the block:
 
@@ -1960,6 +1970,8 @@ compares them with the same trials of the 16K rerun. How to read the block:
 <!-- END GENERATED: RQ3-CONTEXT-PILOT -->
 
 ## RQ3 simulate — layout-tolerant re-grade (post hoc) (added 2026-11-22; exploratory; in no tex yet)
+
+> **Mark added 2026-11-25 (clean-up; nothing above or below is rewritten):** the header's "in no tex yet" is out of date. The table and its paragraph entered `paper/main.tex` with PR #143 (merged 2026-11-22). On 2026-11-25 they moved, word for word, to `paper/supplement_source.tex`.
 
 How much of the simulate loss of RQ3 is the layout of the answer, on the full delivered
 rerun (16K window, all 100 problems)? `tools/reanalysis/rq3_simulate_regrade.py` (rerun:
@@ -2905,6 +2917,8 @@ were generated programmatically from the frozen report in
 | roster-gap with-tools think=off steering (tl-ster − tl-neut, mechanism layer, canonical) | 0.8B **+0.0** pooled · 4B **+6.9** pooled / **+9.6** vplan · 9B **+2.5** · gemma +47.4 / **+72.0** vplan · 35b +14.8 | prereg §9.1 dev 1; `archive/ntster/ntster_h4_partial_readout_20260822.md` §3 (deleted 2026-10-10, `git show 1fee730:<path>`); **recomputed 2026-09-12** from `results/sweep5v2-live/*_off_tools_all_minimal` — matches | — |
 
 ## Abstract — the four figures + the scale clause (verified 2026-09-18 for `paper/aaai27` `b27ef23` + `b045f07`)
+
+> **Mark added 2026-11-25 (clean-up; nothing above or below is rewritten):** REPLACED. This block describes the abstract of September 2026 (four figures, the two-gate framing). The abstract was rewritten around the three research questions on 2026-11-22 (PR #139) and again on 2026-11-25 (PR #150), and Omer now writes it himself. The rule "nothing else may be added to the abstract without a row here" no longer holds. The rows stay as the record of how each figure was derived.
 
 The abstract quotes exactly four numbers, one per role of the two-gate abstraction
 (`reference/title_abstract_candidates.md` §5). Each was re-derived this session; nothing else
