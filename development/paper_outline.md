@@ -232,12 +232,35 @@ To the supplement: the pilot table (`tab:rq3-pilot`), the second grading
 
 **Has to establish:** whether the three answers hold for much stronger models, under
 conditions that are stated as different.
-**Numbers:** from the run decided in 12.1. Shape from the old runs: unaided solve 22 to
-29%; with tools 83% even on the longest plans; no verdict error for Sonnet with the tool
-in 1,000 trials; right tool in every trial of four tasks; traces lost at least 34 to
-38%.
-**Placement (decision 12.2):** either rows in each RQ table under a rule, or one short
-section with one table after RQ3.
+**Numbers** (the registered Claude run, Haiku 5.5 and Sonnet 5.5; readout
+`reference/frontier55_readout.md`; frozen values in `NUMBERS.md`, block "Claude run")
+- Size: 4,560 trials per arm and model, three plain wordings, all on 2026-11-26.
+- Solve, right per arm (no tools, tools): Haiku 73.7%, 95.0%; Sonnet 94.0%, 97.0%.
+- Simulate, right per arm (no tools, tools): Haiku 41.3%, 21.0%; Sonnet 55.0%, 46.3%.
+- Tools minus no tools, Haiku (points, 95% interval): solve +21.3 [+7.7, +36.3];
+  validate_domain +17.5 [+7.8, +29.4]; validate_problem +8.8 [+4.2, +14.0];
+  validate_plan +0.8 [-1.6, +3.0]; simulate -20.3 [-30.7, -11.0].
+- Tools minus no tools, Sonnet: solve +3.0 [-3.0, +10.7]; validate_domain +0.3
+  [+0.0, +0.8]; validate_problem +3.8 [+2.2, +5.7]; validate_plan +0.4 [-0.5, +1.6];
+  simulate -8.7 [-17.0, +0.0].
+- Registered readings: tools ahead on Haiku solve, validate_domain, validate_problem
+  and on Sonnet validate_problem; no tools ahead on Haiku simulate; no difference shown
+  on the other five. The five differences shown all hold after Holm.
+- Exactly the right tool: Haiku 64.2 to 100% (lowest on validate_problem); Sonnet 91.3
+  to 100%.
+- Tool right and answer wrong, traces: Haiku 78.0% [66.0, 88.0] (223 of 286); Sonnet
+  53.0% [39.0, 66.7] (157 of 296).
+- Tool right and answer wrong, plans: Haiku 5.1% (15 of 294); Sonnet 3.0% (9 of 299).
+  Verdicts: Haiku 5 of 3,763; Sonnet 0 of 3,940.
+- Caveat (post hoc): with tools, 204 of Haiku's 300 simulate answers are prose the
+  grade does not accept.
+- The old runs (Haiku 4.5, Sonnet 4.6) are an earlier record in the supplement source;
+  their figures are not compared with these.
+
+**Table:** `tab:claude` (two models by five tasks: right per arm, the paired
+difference, exactly the right tool, tool right and answer wrong).
+**Placement (decided, 12.2):** one short section with one table after RQ3. No Claude
+row in the RQ1 tables or the by-length figures.
 
 ---
 
@@ -313,7 +336,10 @@ open models, no structured-output parameter, both arms on the same day.
 ### 12.2 Where the frontier results sit
 Lean: their own short section (7) with one table. Inside the RQ tables they invite a
 ranking against the open models that the conditions do not support.
-> ANSWER: **Deferred (Omer, 2026-11-26).** For now the Claude results stay in their own small section; perhaps with Haiku's result brought out, if the new run shows one worth it.
+> ANSWER: **Own section only (Omer, 2026-11-26).** The Claude rows leave the RQ1 tables
+> and the by-length figures and appear only in the table of section 7, built on the
+> Haiku 5.5 and Sonnet 5.5 run. Done together with that section's table, once the
+> run's readout is in. The old rows (Haiku 4.5, Sonnet 4.6) go to the supplement.
 
 ### 12.3 Which trace-loss figure RQ3 quotes
 The October run registered one grader (69.9 to 91.2% lost). The matched run registers a

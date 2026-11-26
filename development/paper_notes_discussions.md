@@ -781,3 +781,126 @@
   points the registration leaves open are for Omer; an independent review is running.
   Not frozen.
 
+## 2026-11-26 (evening) — RQ1 tables and figures rebuilt on the matched run; review of the Claude analysis
+
+- **Decided (Omer, 2026-11-26): "Yes, rebuild".** The RQ1 solve, simulate and
+  plan-length tables and the two by-length figures are rebuilt on the matched run, with
+  a new table of the three arms and their paired differences (PR #154). Overleaf was
+  pulled first (no co-author change). No paragraph was edited; the PR's body lists
+  every sentence that quotes a superseded number, with the old and the new value.
+- **What a reader of the new tables should know:** Table rq1-matched uses all 300
+  trials of a cell and the simulate table 94 problems (282 trials), so one cell reads
+  12.7 in one and 13.5 in the other. The planner-runtime column uses this run's planner
+  calls for the open rows and the October run's for the Claude rows.
+- **Review of the Claude analysis (gate 5), by an agent that did not write it:** no
+  wrong number in the grade, the denominators or the statistics; three contrasts
+  recomputed independently from the fixture rows matched exactly. One blocker: the
+  registration's rule on failed batch items (section 6) had no code. Other fixes: halt
+  per model, a tripwire for two arms answered by different model versions, the same-day
+  rule counting later dates only. The fixes are in work. Not frozen.
+- **Open for Omer, before the freeze:** the seven points listed in chat. On the first
+  (a trial where the grading step failed) the reviewer's reading was implemented:
+  wrong under the grade, classed for tool choice by its stored calls, and counted
+  toward the error threshold only where the open models' rule counts it.
+- **Omer accepted the open points of the Claude analysis ("Ok, all seven", 2026-11-26),
+  and the analysis was frozen** the same day at package hash `0cbb69b7…` (branch
+  `analysis/frontier55`, commit `621f07c`, pushed; registration, section 10), with no
+  row of the run read. An eighth point (what "the first batch expired as a whole"
+  means) is kept as implemented; it is checked against Sonnet's batch counts before
+  the analysis runs.
+- **Raised by Omer (2026-11-26):** the figures name Haiku and Sonnet by their earlier
+  versions. They do so correctly today: those rows are still the old runs (Haiku 4.5,
+  Sonnet 4.6). **Decided (Omer, 2026-11-26): "Own section only".** When the new run's
+  readout is in, the Claude rows leave the RQ1 tables and the by-length figures and
+  appear only in the table of the Claude section, under the names Haiku 5.5 and Sonnet
+  5.5; the old rows go to the supplement.
+
+## 2026-11-26 (later) — The Claude run is complete and read out
+
+- **The run ended 2026-11-26 12:14 UTC:** four folders of 4,560 rows, every request on
+  one UTC day, one batch per model with every item succeeded, no refusal and no error
+  row; 20.25 dollars (Haiku 5.5) and 294.49 (Sonnet 5.5). Omer sent the console download
+  of Sonnet's batch while the tool arm was still running; it was not opened or used, the
+  runner fetched the batch itself.
+- **The frozen analysis halted on one tripwire, which was audited before any reading:**
+  six notes between tool calls in Sonnet's tool arm, with the provider's thinking-token
+  count at zero on every turn. Reported as not separable. Then the analysis ran, and
+  once more unchanged (byte-identical). PR #155.
+- **What it says.** Haiku 5.5: tools ahead on solve (+21.3 [+7.7, +36.3]), domain
+  validation (+17.5 [+7.8, +29.4]) and problem validation (+8.8 [+4.2, +14.0]); no
+  difference shown on plan validation; on simulate the unaided arm is ahead (-20.3
+  [-30.7, -11.0]). Sonnet 5.5 is right unaided in 94 to 99.7% of trials on four tasks,
+  so only problem validation shows a gain (+3.8 [+2.2, +5.7]); simulate -8.7 [-17.0,
+  +0.0]. The right tool is called (Sonnet 91.3 to 100% exactly right). Traces are lost
+  between a right tool result and the answer in 78.0% (Haiku) and 53.0% (Sonnet) of
+  trials, with a window of about a million tokens.
+- **For the paper's story:** the draft's frontier sentences rest on Haiku 4.5 and
+  Sonnet 4.6 (unaided solve 22 to 29%). The new models solve 73.7 and 94.0% unaided.
+  These are different models under different conditions, so the change is not a
+  measured effect; the sentences have to be rewritten on this run. The simulate result
+  now holds for five models, and for the two with no window limit.
+- **Post hoc, not registered:** with tools, 204 of Haiku's 300 simulate answers are the
+  trace written as prose, which the grade does not accept. Open for Omer: whether a
+  second, descriptive reading of those answers is wanted.
+- **Found after the freeze:** one test checked that the clause map still said "not
+  frozen" and failed from the freeze commit on. It was updated after the analysis had
+  run; the test file is not under the package hash (registration, section 10).
+- **Decided (Omer, 2026-11-26): "Yes, build it".** The paper gets a subsection
+  "Frontier Models" with Table claude on the new run, and the rows of the earlier
+  Claude runs (Haiku 4.5, Sonnet 4.6) leave every body table and figure for the
+  supplement source (PR #156). No paragraph was edited; 27 paragraphs that quote the
+  earlier runs are marked for Omer. The table's last column gives the share without an
+  interval, for width; the intervals are in `NUMBERS.md`.
+- **Asked by Omer (2026-11-26): an analysis of token consumption**, as possible
+  material for a section or the Discussion, in the light of models getting better at
+  formal planning tasks unaided. In work by a separate agent on branch
+  `analysis/token-consumption`: descriptive and post hoc, total tokens and cost per
+  right answer reported together, no ranking of the Claude models against the open
+  ones on tokens (different tokenizers).
+
+## 2026-11-26 (night) — Token consumption: the analysis, a second metric, and caching
+
+- **The analysis is done (PR #157), descriptive and post hoc.** A tool trial uses 2.6 to
+  6.4 times the tokens of an unaided trial for the open models and 7.6 to 10.3 for the
+  Claude models, about 90% of it input. Per right answer on solve: 2.2 / 3.1 / 4.7
+  (Qwen3.5-9B / Gemma-26B / Qwen3.6-35B) and 5.9 / 7.8 (Haiku 5.5 / Sonnet 5.5).
+- **How to read that ordering (the session's note):** the per-trial overhead is about
+  flat within each group (4.8 to 5.4; 7.6 to 8.0). What shrinks with a stronger unaided
+  model is the number of extra right answers the overhead buys. Five models at one
+  time, not a trend over time.
+- **Asked by Omer: a metric that shows tokens against the success rate.** Chosen:
+  coverage at a token budget (share of trials right within B tokens, the budget applied
+  after the fact), with the break-even budget where the tools arm passes the unaided
+  one. Solve: about 20,000 tokens for Qwen3.5-9B, Gemma-26B and Haiku 5.5; about 39,000
+  for Qwen3.6-35B; about 41,000 for Sonnet 5.5 (never in 18% of draws). Simulate: no
+  break-even for four of five models.
+- **Asked by Omer: how to treat prompt caching so the arms compare fairly.** No figure
+  carries a cache discount (Claude: caching not enabled, zero cached tokens reported;
+  open models: every prompt token counted). Practice adopted, after Yang et al.,
+  arXiv:2611.22238: uncached input, cacheable input and output reported apart; only a
+  trial's own reuse counted; every conclusion stated over a cache price from 1 (as
+  measured) to 0. Result: the ordering holds at every price; a right plan with tools
+  costs no more than an unaided one only for Qwen3.5-9B and only near price 0;
+  simulate barely moves. Claude dollars are given as billed, at list price for both
+  arms, and as an estimate with the provider's cache prices (not billed).
+- **Two older cost claims are contradicted and still unmarked:** the supplement
+  source's "a right plan is cheaper with tools" (0.3 to 0.4 times; it counted the
+  tool's result, on the May sweep) and the solve and simulate rows of `NUMBERS.md`
+  S2-C (they divide by the October no-tools arm with the faulty message).
+- **Sources to verify before citing:** Erol et al., arXiv:2504.13359 (cost of a correct
+  answer); Kapoor et al., arXiv:2407.01502 (cost-controlled agent evaluation); Yang et
+  al., arXiv:2611.22238 (cost accounting under prefix caching). The cache prices used
+  for the estimate are from the API reference dated 2026-11-03.
+- **Decided (Omer, 2026-11-26): the token material is not added to the outline;** it is
+  placed for now as an optional section before the appendix. Done on the branch of PR
+  #157: `\section{Token Consumption}` immediately before the Technical Appendix (which
+  puts it after the references), with Table tokens (25 rows, generated by
+  `tools/reanalysis/token_consumption_tex.py`) and three figures, factual captions and
+  no body text. No other paragraph or caption changed, and no other part of the paper
+  cites it, so it can be removed in one cut. The branch now sits on top of PR #156.
+- **Decided (Omer, 2026-11-26): the optional token section stays where it is**, after
+  the references and before the Technical Appendix.
+- **Dated marks added** on the two older cost claims the token analysis contradicts: a
+  mark on `NUMBERS.md` S2-C (its solve and simulate rows) and a comment above "What the
+  Tool Costs" in `paper/supplement_source.tex`. Neither text was rewritten.
+
