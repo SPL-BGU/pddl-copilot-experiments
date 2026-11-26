@@ -2,7 +2,7 @@
 """RQ1 solve and simulate tables and figures on the matched run.
 
     python -m tools.reanalysis.rq1_matched_metrics --marketplace ../pddl-copilot
-        [--results DIR] [--serve-logs DIR] [--figs DIR] [--numbers]
+        [--results DIR] [--serve-logs DIR] [--figs DIR] [--numbers] [--open-only]
 
 The reporting rule of `development/reference/matched_run_prereg.md` (section 6) makes
 the matched run what the paper reports for RQ1 on solve and simulate, for the three
@@ -48,6 +48,14 @@ Writes `out/rq1_matched_metrics.{json,md}`, the table rows in `out/tex/rq1m_*.te
 recomputation) and the two by-length figures in `out/figs/` under the names `rq1m_*`.
 With --numbers the markdown is spliced into development/NUMBERS.md (tag
 RQ1-MATCHED-METRICS).
+
+With --open-only the Claude rows are left out of everything written: the json, the
+markdown, the three `rq1m_` row files and the two figures, which then have three panels.
+The Claude rows are not loaded and their check is not run; every check on the
+open-weight rows runs as before, and those rows come out as without the option. The
+paper has used this form since 2026-11-26, when the rows of the earlier Claude runs
+(Haiku 4.5, Sonnet 4.6) left the body tables for `paper/supplement_source.tex` and the
+new Claude run got a table of its own (`frontier55_tex.py`).
 """
 from __future__ import annotations
 
@@ -254,23 +262,73 @@ def contrast_rows(filed: dict) -> str:
     return "\n".join(out) + "\n"
 
 
-def write_tex(res: dict, filed: dict, tex: Path) -> None:
+def model_rows(cells: list[dict], fmt, open_only: bool = False) -> str:
+    """`rq1_tex.rows`. With `open_only`, over the open-weight models alone: the model
+    list of `rq1_tex` is replaced for this one call, so no rule is left behind for a
+    model that has no row."""
+    if not open_only:
+        return TEX.rows(cells, fmt)
+    models = TEX.MODELS
+    TEX.MODELS = tuple(m for m in models if m[0] not in CLAUDE)
+    try:
+        return TEX.rows(cells, fmt)
+    finally:
+        TEX.MODELS = models
+
+
+def write_tex(res: dict, filed: dict, tex: Path, open_only: bool = False) -> None:
     tex.mkdir(parents=True, exist_ok=True)
-    (tex / "rq1m_simulate.tex").write_text(TEX.rows(res["m2"]["overall"], lambda c: [
+    (tex / "rq1m_simulate.tex").write_text(model_rows(res["m2"]["overall"], lambda c: [
         TEX.ci(c["exact"]) + ("" if c["exact_known"] == c["n"]
                               else f"$^{{\\ddagger{c['n'] - c['exact_known']}}}$"),
         TEX.ci(c["states"]), TEX.ci(c["states_salvaged"]), f"${c['no_trace']}$ / ${c['n']}$",
-        TEX.rho(c["rho_states"])]))
-    (tex / "rq1m_solve.tex").write_text(TEX.rows(res["m3"]["corr"], lambda c: [
+        TEX.rho(c["rho_states"])], open_only))
+    (tex / "rq1m_solve.tex").write_text(model_rows(res["m3"]["corr"], lambda c: [
         TEX.ci(c["solved"]), TEX.rho(c["rho_len"]), TEX.rho(c["rho_obj"]),
-        TEX.rho(c["rho_time"])]))
-    (tex / "rq1m_planlen.tex").write_text(TEX.rows(res["m4"]["cells"], lambda c: [
+        TEX.rho(c["rho_time"])], open_only))
+    (tex / "rq1m_planlen.tex").write_text(model_rows(res["m4"]["cells"], lambda c: [
         f"${c['n_valid']}$ / ${c['n_trials']}$", f"${c['mean_len']:.1f}$",
         f"${c['mean_ref_len']:.1f}$", f"${c['median_ratio']:.2f}$",
         f"${c['shorter']}$ / ${c['equal']}$ / ${c['longer']}$", f"${c['max_ratio']:.1f}$",
         (f"${c['same_len_as_tool_plan']}$ / ${c['with_tool_plan']}$"
-         if c["with_tool_plan"] else "--")]))
+         if c["with_tool_plan"] else "--")], open_only))
     (tex / "rq1m_contrasts.tex").write_text(contrast_rows(filed))
+
+
+# ------------------------------------------------------------------ figures
+OPEN = tuple(model_name(m) for m in MR.MODEL_ORDER)
+
+
+def fig_open(res: dict, out: Path) -> None:
+    """The two by-length figures with the three open-weight panels only, under the
+    `rq1m_` names. The panels are drawn by `rq1_figures.line_panels`, which fills the
+    axes it is given in the order of its model list; that list starts with the three
+    open-weight models, so three axes take exactly those."""
+    if tuple(FIG.MODELS[:len(OPEN)]) != OPEN:
+        raise Halt("rq1_figures no longer lists the open-weight models first")
+    plt, n = FIG.plt, len(OPEN)
+    fig, axes = plt.subplots(2, n, figsize=(8.6, 5.2), sharey=True, sharex=True)
+    for row, (field, label) in enumerate((("states", "states right, strict (%)"),
+                                          ("states_salvaged", "states right, lenient (%)"))):
+        FIG.line_panels(axes[row], res["m2"]["cells"], field)
+        axes[row][0].set_ylabel(label)
+    for ax, m in zip(axes[0], OPEN):
+        ax.set_title(m)
+    for ax in axes[1]:
+        ax.set_xlabel("trace length (actions)")
+    FIG.legend(fig)
+    fig.subplots_adjust(top=0.88, hspace=0.12, wspace=0.08)
+    FIG.save(fig, out, "rq1m_simulate_by_length")
+
+    fig, axes = plt.subplots(1, n, figsize=(8.6, 3.0), sharey=True)
+    FIG.line_panels(axes, res["m3"]["by_length"], "solved")
+    for ax, m in zip(axes, OPEN):
+        ax.set_title(m)
+        ax.set_xlabel("reference plan length (actions)")
+    axes[0].set_ylabel("problems solved (%)")
+    FIG.legend(fig)
+    fig.subplots_adjust(top=0.80, wspace=0.08)
+    FIG.save(fig, out, "rq1m_solve_by_length")
 
 
 # ------------------------------------------------------------------ the matched run
@@ -327,10 +385,11 @@ def problem_facts(rows: list[dict], gt_cache: dict, domains_dir: Path) -> dict:
     return facts
 
 
-def measures(rows: list[dict], claude: list[dict], gt_cache: dict, facts: dict,
-             facts_claude: dict) -> dict:
+def measures(rows: list[dict], claude: list[dict] | None, gt_cache: dict, facts: dict,
+             facts_claude: dict | None) -> dict:
     """m2, m3 and m4 of the open-weight rows (line trace as one more candidate on
-    simulate) joined with those of the Claude rows, scored as `rq1_metrics` scores them."""
+    simulate) joined with those of the Claude rows, scored as `rq1_metrics` scores them.
+    With `claude` None the open-weight rows stand alone."""
     frozen_best = R1.best_state_score
     R1.best_state_score = RC.best_state_score_second
     try:
@@ -340,6 +399,10 @@ def measures(rows: list[dict], claude: list[dict], gt_cache: dict, facts: dict,
     m3, m4 = R1.metric3(rows, facts), R1.metric4(rows, facts)
     open_only = {"m2": {k: list(v) for k, v in m2.items()},
                  "m3": {"by_length": list(m3["by_length"]), "corr": list(m3["corr"])}}
+    if claude is None:
+        m3 = {"corr": m3["corr"], "by_length": m3["by_length"], "hardness": m3["hardness"],
+              "by_time_open_weight": m3["by_time"], "by_objects_open_weight": m3["by_objects"]}
+        return {"m2": m2, "m3": m3, "m4": {"cells": m4["cells"]}, "open_only": open_only}
     m2c = R1.metric2(claude, gt_cache, facts_claude)
     if (m2c["skipped_problems"], m2c["undetermined_problems"]) != (
             m2["skipped_problems"], m2["undetermined_problems"]):
@@ -357,16 +420,25 @@ def measures(rows: list[dict], claude: list[dict], gt_cache: dict, facts: dict,
 # ------------------------------------------------------------------ markdown
 def render(res: dict) -> str:
     h = res["m3"]["hardness"]
+    open_only = res.get("open_only", False)
+    claude_rows = ("the Claude rows are left out (`--open-only`): the earlier Claude runs "
+                   "are in `paper/supplement_source.tex` and in `out/rq1_control_metrics.md`, "
+                   "the new Claude run in the block \"Claude run\""
+                   if open_only else "Claude rows as filed")
+    claude_check = ("" if open_only else
+                    f"; {res['claude_cells_checked']} Claude cells against "
+                    "`out/rq1_control_metrics.json`")
+    claude_time = ("" if open_only else
+                   " Of the Claude rows: the planner calls of the rerun, as filed.")
     L = ["*Generated by `tools/reanalysis/rq1_matched_metrics.py`. RQ1 solve and simulate "
          "on the matched run: for the three open-weight models the no-tools, plain and "
          "steered rows are arms N, P and S of that run, right under its registered grade "
-         f"(package hash `{res['matched_package_sha256'][:12]}...`); Claude rows as filed. "
+         f"(package hash `{res['matched_package_sha256'][:12]}...`); {claude_rows}. "
          "Descriptive. Intervals are 95% domain-cluster bootstrap. Checked before writing: "
          f"the right count and the 300 trials of all {len(res['count_check'])} cells against "
          f"`out/matched_run.json`; {res['breakdown_cells_checked']} by-length and overall "
          "cells against its breakdowns and the two tables of `out/matched_run.md`, to the "
-         f"printed decimal; {res['claude_cells_checked']} Claude cells against "
-         "`out/rq1_control_metrics.json`.*", "",
+         f"printed decimal{claude_check}.*", "",
          "#### Count check: right answers per cell, registered grade", "",
          md_table(["model", "task", "arm", "right here", "trials here", "right, filed",
                    "trials, filed"],
@@ -376,8 +448,8 @@ def render(res: dict) -> str:
          f"Planner runtime of the open-weight rows: the median `solve_time` of the planner "
          f"calls of the matched run on the problem ({h['problems_timed']} problems timed, "
          f"{R1.f2(h['time_min_s'])} s to {R1.f2(h['time_max_s'])} s; thirds cut at "
-         f"{R1.f2(h['time_cuts_s'][0])} s and {R1.f2(h['time_cuts_s'][1])} s). Of the Claude "
-         f"rows: the planner calls of the rerun, as filed.", "",
+         f"{R1.f2(h['time_cuts_s'][0])} s and {R1.f2(h['time_cuts_s'][1])} s).{claude_time}",
+         "",
          "| model | arm | solved | rho plan length | rho objects | rho planner time |",
          "|---|---|---|---|---|---|"]
     for c in res["m3"]["corr"]:
@@ -427,6 +499,9 @@ def main(argv=None) -> int:
                     help="serve logs of the matched run (default: <matched root>/serve-logs)")
     ap.add_argument("--regrade-json", type=Path, default=HERE / "out" / "rq1_layout_regrade.json")
     ap.add_argument("--figs", type=Path, default=HERE / "out" / "figs")
+    ap.add_argument("--open-only", action="store_true",
+                    help="leave the Claude rows out of the json, the markdown, the row "
+                         "files and the figures (three panels)")
     args = ap.parse_args(argv)
     R1.fill_data_args(args)
     args.matched_root = args.matched_root or args.results / MR.RUN_TAG
@@ -435,14 +510,17 @@ def main(argv=None) -> int:
         raise Halt("the matched run's frozen package changed")
     filed = read_filed(args.out / "matched_run.json")
     filed_md = (args.out / "matched_run.md").read_text()
-    filed_control = json.loads((args.out / "rq1_control_metrics.json").read_text())
 
-    # The rerun through its frozen package, the Claude rows and the problem facts they
-    # are scored with: as rq1_control_metrics.main builds them.
+    # The rerun through its frozen package (the ground-truth cache comes with it), the
+    # Claude rows and the problem facts they are scored with: as
+    # rq1_control_metrics.main builds them. With --open-only no Claude row is loaded.
     rerun_rows, gt_cache = R1.load_rerun(args)
-    frontier, notes = R1.load_frontier(args)
-    facts_claude = problem_facts(rerun_rows, gt_cache, args.domains_dir)
-    claude = [r for r in frontier if r["task"] in TASKS]
+    claude = facts_claude = notes = None
+    if not args.open_only:
+        filed_control = json.loads((args.out / "rq1_control_metrics.json").read_text())
+        frontier, notes = R1.load_frontier(args)
+        facts_claude = problem_facts(rerun_rows, gt_cache, args.domains_dir)
+        claude = [r for r in frontier if r["task"] in TASKS]
 
     rows = matched_records(args, filed, gt_cache)
     counts = check_counts(rows, filed)
@@ -451,11 +529,12 @@ def main(argv=None) -> int:
     res = measures(rows, claude, gt_cache, facts, facts_claude)
     open_only = res.pop("open_only")
     n_breakdown = check_breakdowns(open_only["m2"], open_only["m3"], filed, filed_md)
-    n_claude = check_claude(res, filed_control)
+    n_claude = 0 if args.open_only else check_claude(res, filed_control)
     res = {"matched_package_sha256": FROZEN, "frontier_notes": notes,
+           "open_only": args.open_only,
            "reading": "registered grade of the matched run; the no-tools, plain and steered "
-                      "rows of the open-weight models are its arms N, P and S; Claude rows "
-                      "as filed",
+                      "rows of the open-weight models are its arms N, P and S; "
+                      + ("Claude rows left out" if args.open_only else "Claude rows as filed"),
            "count_check": counts, "breakdown_cells_checked": n_breakdown,
            "claude_cells_checked": n_claude, "problems": len(facts), **res}
 
@@ -463,17 +542,22 @@ def main(argv=None) -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "rq1_matched_metrics.json").write_text(json.dumps(res, indent=1) + "\n")
     (args.out / "rq1_matched_metrics.md").write_text(md)
-    write_tex(res, filed, args.out / "tex")
+    write_tex(res, filed, args.out / "tex", args.open_only)
 
-    # Figures: the functions of rq1_figures, written under the rq1m_ names.
-    save = FIG.save
-    FIG.save = lambda fig, out, name: save(fig, out, name.replace("rq1_", "rq1m_"))
-    try:
-        FIG.fig_simulate(res, args.figs)
-        FIG.fig_solve(res, args.figs)
-    finally:
-        FIG.save = save
-    print(f"checked {len(counts)} cells, {n_breakdown} breakdown cells, {n_claude} Claude cells")
+    # Figures: the functions of rq1_figures, written under the rq1m_ names. With
+    # --open-only, three panels drawn here from the same panel function.
+    if args.open_only:
+        fig_open(res, args.figs)
+    else:
+        save = FIG.save
+        FIG.save = lambda fig, out, name: save(fig, out, name.replace("rq1_", "rq1m_"))
+        try:
+            FIG.fig_simulate(res, args.figs)
+            FIG.fig_solve(res, args.figs)
+        finally:
+            FIG.save = save
+    print(f"checked {len(counts)} cells, {n_breakdown} breakdown cells, "
+          + ("Claude rows left out" if args.open_only else f"{n_claude} Claude cells"))
     print(f"wrote {args.out}/rq1_matched_metrics.{{json,md}} and {args.out}/tex/rq1m_*.tex")
     if args.numbers:
         changed = write_numbers(REPO / "development" / "NUMBERS.md", TAG, md)
