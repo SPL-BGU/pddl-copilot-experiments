@@ -1,0 +1,8363 @@
+{
+ "cells": [
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "arm": "none",
+   "n": 300,
+   "right": 124,
+   "rate": 41.333333333333336,
+   "inp": {
+    "est": 1182.1033333333332,
+    "lo": 995.9923333333334,
+    "hi": 1380.7758333333334,
+    "dropped": 0
+   },
+   "inp_median": 1112.0,
+   "out": {
+    "est": 4029.213333333333,
+    "lo": 3186.16675,
+    "hi": 4878.426083333332,
+    "dropped": 0
+   },
+   "out_median": 2810.0,
+   "total": {
+    "est": 5211.316666666667,
+    "lo": 4245.137833333333,
+    "hi": 6179.493583333333,
+    "dropped": 0
+   },
+   "total_median": 3876.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 12608.024193548386,
+    "lo": 8409.829192872117,
+    "hi": 19473.922834158413,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 51600.41129032258,
+    "lo": 33707.425249760054,
+    "hi": 80792.97162651253,
+    "dropped": 0
+   },
+   "wrong_token_share": 71.65981725667538,
+   "at_cap": 79,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 1476.8966666666668,
+    "wrong_window_full": 0.0,
+    "wrong_other": 3734.42
+   },
+   "total_processed": {
+    "est": 5211.316666666667,
+    "lo": 4245.137833333333,
+    "hi": 6179.493583333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "arm": "plain",
+   "n": 300,
+   "right": 275,
+   "rate": 91.66666666666667,
+   "inp": {
+    "est": 22033.203333333335,
+    "lo": 17894.369499999997,
+    "hi": 26268.131,
+    "dropped": 0
+   },
+   "inp_median": 21903.5,
+   "out": {
+    "est": 2995.766666666667,
+    "lo": 2324.1754166666665,
+    "hi": 3653.511,
+    "dropped": 0
+   },
+   "out_median": 2571.0,
+   "total": {
+    "est": 25028.97,
+    "lo": 20269.416416666667,
+    "hi": 29879.42208333333,
+    "dropped": 0
+   },
+   "total_median": 24309.5,
+   "turns": {
+    "est": 3.2133333333333334,
+    "lo": 2.8066666666666666,
+    "hi": 3.6133333333333333,
+    "dropped": 0
+   },
+   "turns_median": 3.0,
+   "cpr": {
+    "est": 27304.33090909091,
+    "lo": 21128.7509368905,
+    "hi": 34261.194661277965,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 40376.76727272727,
+    "lo": 30959.098831566418,
+    "hi": 50940.38005192443,
+    "dropped": 0
+   },
+   "wrong_token_share": 17.03703082201678,
+   "at_cap": 1,
+   "window_full": 21,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 20764.77666666667,
+    "wrong_window_full": 3896.556666666667,
+    "wrong_other": 367.63666666666666
+   },
+   "total_processed": {
+    "est": 24045.93,
+    "lo": 19667.745333333332,
+    "hi": 28471.623249999997,
+    "dropped": 0
+   },
+   "refused_requests": 18,
+   "window_full_tokens_mean": 55665.09523809524,
+   "window_full_token_share": 15.568186252437343,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 67.24780978284139,
+    "lo": 63.67476717863133,
+    "hi": 72.0197183460444,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 22.50621355742854,
+    "lo": 19.555965158488394,
+    "hi": 24.81193428760617,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 10.245976659730081,
+    "lo": 7.856788109080378,
+    "hi": 12.276932195264044,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "arm": "steered",
+   "n": 300,
+   "right": 271,
+   "rate": 90.33333333333333,
+   "inp": {
+    "est": 20224.256666666668,
+    "lo": 16294.99975,
+    "hi": 24537.457249999996,
+    "dropped": 0
+   },
+   "inp_median": 17555.0,
+   "out": {
+    "est": 2731.0433333333335,
+    "lo": 2102.5528333333336,
+    "hi": 3370.2144166666662,
+    "dropped": 0
+   },
+   "out_median": 2334.0,
+   "total": {
+    "est": 22955.3,
+    "lo": 18413.020833333332,
+    "hi": 27838.530166666667,
+    "dropped": 0
+   },
+   "total_median": 19653.5,
+   "turns": {
+    "est": 3.0433333333333334,
+    "lo": 2.64325,
+    "hi": 3.4633333333333334,
+    "dropped": 0
+   },
+   "turns_median": 3.0,
+   "cpr": {
+    "est": 25411.771217712176,
+    "lo": 19388.500308546194,
+    "hi": 32688.660091406247,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 37504.9520295203,
+    "lo": 28298.727835875678,
+    "hi": 48632.97703717268,
+    "dropped": 0
+   },
+   "wrong_token_share": 18.26175218794788,
+   "at_cap": 0,
+   "window_full": 19,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 18763.26,
+    "wrong_window_full": 3537.24,
+    "wrong_other": 654.8
+   },
+   "total_processed": {
+    "est": 22026.873333333333,
+    "lo": 18005.956916666666,
+    "hi": 26318.731083333332,
+    "dropped": 0
+   },
+   "refused_requests": 17,
+   "window_full_tokens_mean": 55851.15789473684,
+   "window_full_token_share": 15.40925189389814,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 69.33837040899897,
+    "lo": 64.9926244409965,
+    "hi": 74.80391750669125,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 21.31596792620098,
+    "lo": 18.085538803199274,
+    "hi": 23.833007520826445,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 9.345661664800053,
+    "lo": 6.690042101919867,
+    "hi": 11.646946390606193,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "solve",
+   "arm": "none",
+   "n": 300,
+   "right": 174,
+   "rate": 58.0,
+   "inp": {
+    "est": 1226.7,
+    "lo": 1030.4645,
+    "hi": 1435.9785,
+    "dropped": 0
+   },
+   "inp_median": 1201.0,
+   "out": {
+    "est": 2908.9566666666665,
+    "lo": 2195.23375,
+    "hi": 3655.8831666666665,
+    "dropped": 0
+   },
+   "out_median": 1648.0,
+   "total": {
+    "est": 4135.656666666667,
+    "lo": 3307.708083333333,
+    "hi": 5004.959916666667,
+    "dropped": 0
+   },
+   "total_median": 2870.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 7130.442528735633,
+    "lo": 4779.602668465316,
+    "hi": 11012.91143437638,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 27192.212643678162,
+    "lo": 17620.04902712264,
+    "hi": 42766.04476205944,
+    "dropped": 0
+   },
+   "wrong_token_share": 62.453362908107295,
+   "at_cap": 52,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 1552.8,
+    "wrong_window_full": 0.0,
+    "wrong_other": 2582.8566666666666
+   },
+   "total_processed": {
+    "est": 4135.656666666667,
+    "lo": 3307.708083333333,
+    "hi": 5004.959916666667,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "solve",
+   "arm": "plain",
+   "n": 300,
+   "right": 282,
+   "rate": 94.0,
+   "inp": {
+    "est": 18124.163333333334,
+    "lo": 15290.794666666667,
+    "hi": 21146.696416666666,
+    "dropped": 0
+   },
+   "inp_median": 15867.5,
+   "out": {
+    "est": 2577.2733333333335,
+    "lo": 2040.9120833333334,
+    "hi": 3128.3630833333327,
+    "dropped": 0
+   },
+   "out_median": 2182.0,
+   "total": {
+    "est": 20701.43666666667,
+    "lo": 17401.200666666668,
+    "hi": 24197.483666666663,
+    "dropped": 0
+   },
+   "total_median": 17990.0,
+   "turns": {
+    "est": 2.9633333333333334,
+    "lo": 2.7333333333333334,
+    "hi": 3.22,
+    "dropped": 0
+   },
+   "turns_median": 3.0,
+   "cpr": {
+    "est": 22022.804964539006,
+    "lo": 17918.685544203625,
+    "hi": 26677.5327954793,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 32989.925531914894,
+    "lo": 26512.933413441668,
+    "hi": 40229.95512030278,
+    "dropped": 0
+   },
+   "wrong_token_share": 19.021997024039074,
+   "at_cap": 0,
+   "window_full": 15,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 16763.61,
+    "wrong_window_full": 3526.2566666666667,
+    "wrong_other": 411.57
+   },
+   "total_processed": {
+    "est": 20209.916666666668,
+    "lo": 17076.929916666668,
+    "hi": 23544.950999999997,
+    "dropped": 0
+   },
+   "refused_requests": 9,
+   "window_full_tokens_mean": 70525.13333333333,
+   "window_full_token_share": 17.033874138525974,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 66.60090424403958,
+    "lo": 62.06111493568249,
+    "hi": 71.98299949251948,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 23.478675185472305,
+    "lo": 20.06712751073438,
+    "hi": 26.98095165371517,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 9.92042057048811,
+    "lo": 6.963187724416385,
+    "hi": 13.353997068292724,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "solve",
+   "arm": "steered",
+   "n": 300,
+   "right": 284,
+   "rate": 94.66666666666667,
+   "inp": {
+    "est": 14730.49,
+    "lo": 12676.089666666667,
+    "hi": 16968.015583333334,
+    "dropped": 0
+   },
+   "inp_median": 12896.0,
+   "out": {
+    "est": 2101.15,
+    "lo": 1689.1929166666666,
+    "hi": 2513.2825000000003,
+    "dropped": 0
+   },
+   "out_median": 1861.5,
+   "total": {
+    "est": 16831.64,
+    "lo": 14411.12825,
+    "hi": 19420.147,
+    "dropped": 0
+   },
+   "total_median": 15024.0,
+   "turns": {
+    "est": 2.5966666666666667,
+    "lo": 2.4066666666666667,
+    "hi": 2.8066666666666666,
+    "dropped": 0
+   },
+   "turns_median": 3.0,
+   "cpr": {
+    "est": 17779.901408450703,
+    "lo": 14866.464261424651,
+    "hi": 21104.53312819693,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 26658.0,
+    "lo": 21987.014674329504,
+    "hi": 31829.291123188406,
+    "dropped": 0
+   },
+   "wrong_token_share": 12.785919850947382,
+   "at_cap": 0,
+   "window_full": 9,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 14679.56,
+    "wrong_window_full": 1792.4433333333334,
+    "wrong_other": 359.63666666666666
+   },
+   "total_processed": {
+    "est": 16394.733333333334,
+    "lo": 14149.599416666668,
+    "hi": 18857.56875,
+    "dropped": 0
+   },
+   "refused_requests": 8,
+   "window_full_tokens_mean": 59748.11111111111,
+   "window_full_token_share": 10.649249469055501,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 71.45584883236516,
+    "lo": 66.8293580122573,
+    "hi": 76.52601233761023,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 19.488336664352744,
+    "lo": 16.719283692499435,
+    "hi": 22.24309189916592,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 9.055814503282098,
+    "lo": 6.215570480628912,
+    "hi": 12.101326434471508,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "arm": "none",
+   "n": 300,
+   "right": 205,
+   "rate": 68.33333333333333,
+   "inp": {
+    "est": 1182.1033333333332,
+    "lo": 995.9923333333334,
+    "hi": 1380.7758333333334,
+    "dropped": 0
+   },
+   "inp_median": 1112.0,
+   "out": {
+    "est": 3593.483333333333,
+    "lo": 2944.7695,
+    "hi": 4285.325333333333,
+    "dropped": 0
+   },
+   "out_median": 2909.5,
+   "total": {
+    "est": 4775.586666666667,
+    "lo": 4008.46,
+    "hi": 5588.315583333333,
+    "dropped": 0
+   },
+   "total_median": 3895.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 6988.663414634147,
+    "lo": 5051.377031864248,
+    "hi": 9974.12725903614,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 28023.68780487805,
+    "lo": 20065.53012967302,
+    "hi": 40500.469885620914,
+    "dropped": 0
+   },
+   "wrong_token_share": 45.12883582889641,
+   "at_cap": 32,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 2620.42,
+    "wrong_window_full": 0.0,
+    "wrong_other": 2155.1666666666665
+   },
+   "total_processed": {
+    "est": 4775.586666666667,
+    "lo": 4008.46,
+    "hi": 5588.315583333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "arm": "plain",
+   "n": 300,
+   "right": 238,
+   "rate": 79.33333333333333,
+   "inp": {
+    "est": 21595.31333333333,
+    "lo": 18587.074083333333,
+    "hi": 24680.27608333333,
+    "dropped": 0
+   },
+   "inp_median": 18151.0,
+   "out": {
+    "est": 4349.8533333333335,
+    "lo": 3599.209,
+    "hi": 5097.507416666667,
+    "dropped": 0
+   },
+   "out_median": 4026.0,
+   "total": {
+    "est": 25945.166666666668,
+    "lo": 22434.127083333333,
+    "hi": 29414.00375,
+    "dropped": 0
+   },
+   "total_median": 21356.5,
+   "turns": {
+    "est": 2.86,
+    "lo": 2.62,
+    "hi": 3.1366666666666667,
+    "dropped": 0
+   },
+   "turns_median": 3.0,
+   "cpr": {
+    "est": 32703.991596638654,
+    "lo": 26528.217837159147,
+    "hi": 40024.617734674335,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 54636.02521008404,
+    "lo": 43705.353710478186,
+    "hi": 67657.22981686046,
+    "dropped": 0
+   },
+   "wrong_token_share": 25.82312697933462,
+   "at_cap": 14,
+   "window_full": 28,
+   "exceptions": 0,
+   "no_call": 36,
+   "tokens_by_outcome_per_trial": {
+    "right": 19245.31333333333,
+    "wrong_window_full": 5121.2,
+    "wrong_other": 1578.6533333333334
+   },
+   "total_processed": {
+    "est": 24743.673333333332,
+    "lo": 21528.870499999997,
+    "hi": 28058.8,
+    "dropped": 0
+   },
+   "refused_requests": 22,
+   "window_full_tokens_mean": 54870.0,
+   "window_full_token_share": 19.73855117523495,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 61.15603169453125,
+    "lo": 58.41366166734923,
+    "hi": 64.51696926949793,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 27.29537536589749,
+    "lo": 24.70417706692372,
+    "hi": 29.797487775522107,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 11.548592939571268,
+    "lo": 9.401739351447208,
+    "hi": 13.740090171708701,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "arm": "steered",
+   "n": 300,
+   "right": 270,
+   "rate": 90.0,
+   "inp": {
+    "est": 22509.283333333333,
+    "lo": 18471.27225,
+    "hi": 26689.939916666666,
+    "dropped": 0
+   },
+   "inp_median": 18508.5,
+   "out": {
+    "est": 3626.6366666666668,
+    "lo": 2865.026,
+    "hi": 4381.503916666667,
+    "dropped": 0
+   },
+   "out_median": 3268.5,
+   "total": {
+    "est": 26135.92,
+    "lo": 21428.724666666665,
+    "hi": 30987.616166666667,
+    "dropped": 0
+   },
+   "total_median": 21914.0,
+   "turns": {
+    "est": 3.1,
+    "lo": 2.756666666666667,
+    "hi": 3.4834166666666655,
+    "dropped": 0
+   },
+   "turns_median": 3.0,
+   "cpr": {
+    "est": 29039.911111111112,
+    "lo": 22993.937790378277,
+    "hi": 35782.695980898876,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 45158.2962962963,
+    "lo": 35490.87981818181,
+    "hi": 55653.21901201356,
+    "dropped": 0
+   },
+   "wrong_token_share": 19.332359450136057,
+   "at_cap": 3,
+   "window_full": 24,
+   "exceptions": 0,
+   "no_call": 3,
+   "tokens_by_outcome_per_trial": {
+    "right": 21083.23,
+    "wrong_window_full": 4562.483333333334,
+    "wrong_other": 490.20666666666665
+   },
+   "total_processed": {
+    "est": 24989.04,
+    "lo": 20635.057333333334,
+    "hi": 29460.79941666667,
+    "dropped": 0
+   },
+   "refused_requests": 21,
+   "window_full_tokens_mean": 62795.416666666664,
+   "window_full_token_share": 19.2211842297242,
+   "window_full_right": 2,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 64.25667335773315,
+    "lo": 61.475600354808776,
+    "hi": 68.19037038560693,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 25.954332130876427,
+    "lo": 22.91977416058582,
+    "hi": 28.347167789988443,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 9.788994511390428,
+    "lo": 7.823026386547998,
+    "hi": 11.554017561319034,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "solve",
+   "arm": "none",
+   "n": 300,
+   "right": 221,
+   "rate": 73.66666666666667,
+   "inp": {
+    "est": 1627.1966666666667,
+    "lo": 1353.4214166666668,
+    "hi": 1926.3451666666665,
+    "dropped": 0
+   },
+   "inp_median": 1515.5,
+   "out": {
+    "est": 984.7866666666666,
+    "lo": 796.9749166666667,
+    "hi": 1179.8501666666666,
+    "dropped": 0
+   },
+   "out_median": 843.0,
+   "total": {
+    "est": 2611.983333333333,
+    "lo": 2186.8003333333336,
+    "hi": 3072.9624166666667,
+    "dropped": 0
+   },
+   "total_median": 2458.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 3545.6787330316743,
+    "lo": 2608.042974249941,
+    "hi": 5027.507552836972,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 8892.93665158371,
+    "lo": 6412.277825962638,
+    "hi": 12759.734775975101,
+    "dropped": 0
+   },
+   "wrong_token_share": 38.1835004051838,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 1614.6366666666668,
+    "wrong_window_full": 0.0,
+    "wrong_other": 997.3466666666667
+   },
+   "total_processed": {
+    "est": 2611.983333333333,
+    "lo": 2186.8003333333336,
+    "hi": 3072.9624166666667,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.0003275565,
+    "lo": 0.0002700436375,
+    "hi": 0.0003878832916666667,
+    "dropped": 0
+   },
+   "usd_total": 0.09826695,
+   "usd_per_right": {
+    "est": 0.00044464683257918554,
+    "lo": 0.0003206138912981319,
+    "hi": 0.000637986738798755,
+    "dropped": 0
+   },
+   "last_out": 984.7866666666666
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "solve",
+   "arm": "tools",
+   "n": 300,
+   "right": 285,
+   "rate": 95.0,
+   "inp": {
+    "est": 17613.62,
+    "lo": 15969.95475,
+    "hi": 19437.399583333332,
+    "dropped": 0
+   },
+   "inp_median": 15365.0,
+   "out": {
+    "est": 2207.213333333333,
+    "lo": 1812.1200833333335,
+    "hi": 2643.11825,
+    "dropped": 0
+   },
+   "out_median": 1786.0,
+   "total": {
+    "est": 19820.833333333332,
+    "lo": 17817.90975,
+    "hi": 21996.793749999997,
+    "dropped": 0
+   },
+   "total_median": 17182.5,
+   "turns": {
+    "est": 2.1233333333333335,
+    "lo": 2.046666666666667,
+    "hi": 2.2133333333333334,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 20864.035087719298,
+    "lo": 18404.806596705308,
+    "hi": 23756.703403829393,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 30157.5649122807,
+    "lo": 26032.297538092793,
+    "hi": 34682.14882598784,
+    "dropped": 0
+   },
+   "wrong_token_share": 8.807786420012613,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 2,
+   "tokens_by_outcome_per_trial": {
+    "right": 18075.056666666667,
+    "wrong_window_full": 0.0,
+    "wrong_other": 1745.7766666666666
+   },
+   "total_processed": {
+    "est": 19820.833333333332,
+    "lo": 17817.90975,
+    "hi": 21996.793749999997,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 83.0756728789047,
+    "lo": 78.87416800810078,
+    "hi": 86.89130068658156,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 11.984854145068796,
+    "lo": 9.954844416148868,
+    "hi": 13.968190173759202,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 4.939472976026507,
+    "lo": 2.7876693895454348,
+    "hi": 7.9787566351551,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.002864968666666667,
+    "lo": 0.0025141314833333336,
+    "hi": 0.0032422792083333335,
+    "dropped": 0
+   },
+   "usd_total": 0.8594906,
+   "usd_per_right": {
+    "est": 0.0030157564912280705,
+    "lo": 0.0026032297538092788,
+    "hi": 0.003468214882598784,
+    "dropped": 0
+   },
+   "last_out": 430.96666666666664
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "solve",
+   "arm": "none",
+   "n": 300,
+   "right": 282,
+   "rate": 94.0,
+   "inp": {
+    "est": 1627.1966666666667,
+    "lo": 1353.4214166666668,
+    "hi": 1926.3451666666665,
+    "dropped": 0
+   },
+   "inp_median": 1515.5,
+   "out": {
+    "est": 744.86,
+    "lo": 569.9008333333333,
+    "hi": 942.1512499999999,
+    "dropped": 0
+   },
+   "out_median": 527.5,
+   "total": {
+    "est": 2372.056666666667,
+    "lo": 1956.4701666666667,
+    "hi": 2824.008666666666,
+    "dropped": 0
+   },
+   "total_median": 2073.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2523.4645390070923,
+    "lo": 1991.0961639280813,
+    "hi": 3205.797717601123,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 5693.081560283688,
+    "lo": 4346.818464609924,
+    "hi": 7449.130306235259,
+    "dropped": 0
+   },
+   "wrong_token_share": 11.768971230310687,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 2092.89,
+    "wrong_window_full": 0.0,
+    "wrong_other": 279.1666666666667
+   },
+   "total_processed": {
+    "est": 2372.056666666667,
+    "lo": 1956.4701666666667,
+    "hi": 2824.008666666666,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.005351496666666666,
+    "lo": 0.0042717338333333335,
+    "hi": 0.006557438499999999,
+    "dropped": 0
+   },
+   "usd_total": 1.605449,
+   "usd_per_right": {
+    "est": 0.0056930815602836875,
+    "lo": 0.004346818464609924,
+    "hi": 0.00744913030623526,
+    "dropped": 0
+   },
+   "last_out": 744.86
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "solve",
+   "arm": "tools",
+   "n": 300,
+   "right": 291,
+   "rate": 97.0,
+   "inp": {
+    "est": 16995.253333333334,
+    "lo": 15513.17425,
+    "hi": 18632.928999999996,
+    "dropped": 0
+   },
+   "inp_median": 15278.5,
+   "out": {
+    "est": 2037.73,
+    "lo": 1634.12625,
+    "hi": 2497.3489999999993,
+    "dropped": 0
+   },
+   "out_median": 1705.0,
+   "total": {
+    "est": 19032.983333333334,
+    "lo": 17172.414,
+    "hi": 21084.99208333333,
+    "dropped": 0
+   },
+   "total_median": 16947.0,
+   "turns": {
+    "est": 2.0866666666666664,
+    "lo": 2.0366666666666666,
+    "hi": 2.1466666666666665,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 19621.6323024055,
+    "lo": 17613.511011827704,
+    "hi": 21807.087786962682,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 28024.64261168385,
+    "lo": 24397.84122276029,
+    "hi": 32052.304670734273,
+    "dropped": 0
+   },
+   "wrong_token_share": 3.45300570325724,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 1,
+   "tokens_by_outcome_per_trial": {
+    "right": 18375.773333333334,
+    "wrong_window_full": 0.0,
+    "wrong_other": 657.21
+   },
+   "total_processed": {
+    "est": 19032.983333333334,
+    "lo": 17172.414,
+    "hi": 21084.99208333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 84.74405402606531,
+    "lo": 81.49933335132056,
+    "hi": 88.13427908493817,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 10.525958620603086,
+    "lo": 8.806020773702848,
+    "hi": 12.238950235856104,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 4.729987353331597,
+    "lo": 2.7339177645696138,
+    "hi": 6.899839761071828,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.05436780666666667,
+    "lo": 0.04744479433333333,
+    "hi": 0.06209521583333332,
+    "dropped": 0
+   },
+   "usd_total": 16.310342,
+   "usd_per_right": {
+    "est": 0.056049285223367704,
+    "lo": 0.048795682445520586,
+    "hi": 0.06410460934146853,
+    "dropped": 0
+   },
+   "last_out": 412.21
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_domain",
+   "arm": "none",
+   "n": 360,
+   "right": 94,
+   "rate": 26.11111111111111,
+   "inp": {
+    "est": 794.3083333333333,
+    "lo": 656.0577083333333,
+    "hi": 951.6249999999999,
+    "dropped": 0
+   },
+   "inp_median": 741.5,
+   "out": {
+    "est": 1610.375,
+    "lo": 1181.3630555555555,
+    "hi": 2087.969097222222,
+    "dropped": 0
+   },
+   "out_median": 742.0,
+   "total": {
+    "est": 2404.6833333333334,
+    "lo": 1936.1599305555555,
+    "hi": 2933.785902777777,
+    "dropped": 0
+   },
+   "total_median": 1614.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 9209.425531914894,
+    "lo": 5774.220164331897,
+    "hi": 14322.08689995966,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 33879.0,
+    "lo": 20608.96544117647,
+    "hi": 53722.31999007935,
+    "dropped": 0
+   },
+   "wrong_token_share": 80.77316717608925,
+   "at_cap": 35,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 360,
+   "tokens_by_outcome_per_trial": {
+    "right": 462.34444444444443,
+    "wrong_window_full": 0.0,
+    "wrong_other": 1942.338888888889
+   },
+   "total_processed": {
+    "est": 2404.6833333333334,
+    "lo": 1936.1599305555555,
+    "hi": 2933.785902777777,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_domain",
+   "arm": "plain",
+   "n": 360,
+   "right": 360,
+   "rate": 100.0,
+   "inp": {
+    "est": 9244.597222222223,
+    "lo": 8818.552708333333,
+    "hi": 9721.246388888889,
+    "dropped": 0
+   },
+   "inp_median": 9074.5,
+   "out": {
+    "est": 731.3055555555555,
+    "lo": 591.4565972222223,
+    "hi": 889.56125,
+    "dropped": 0
+   },
+   "out_median": 676.0,
+   "total": {
+    "est": 9975.902777777777,
+    "lo": 9409.746388888889,
+    "hi": 10610.93472222222,
+    "dropped": 0
+   },
+   "total_median": 9751.5,
+   "turns": {
+    "est": 2.0,
+    "lo": 2.0,
+    "hi": 2.0,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 9975.902777777777,
+    "lo": 9409.746388888889,
+    "hi": 10610.93472222222,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 12901.125,
+    "lo": 11775.476805555556,
+    "hi": 14167.638611111111,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.0,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 9975.902777777777,
+    "wrong_window_full": 0.0,
+    "wrong_other": 0.0
+   },
+   "total_processed": {
+    "est": 9975.902777777777,
+    "lo": 9409.746388888889,
+    "hi": 10610.93472222222,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 90.848919263654,
+    "lo": 89.60376660567374,
+    "hi": 92.10632243045988,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 7.8369398816959475,
+    "lo": 6.65847006259566,
+    "hi": 9.077604868893234,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.3141408546500575,
+    "lo": 0.9404130457718546,
+    "hi": 1.7169435987080524,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_domain",
+   "arm": "steered",
+   "n": 360,
+   "right": 360,
+   "rate": 100.0,
+   "inp": {
+    "est": 9271.252777777778,
+    "lo": 8844.080902777778,
+    "hi": 9749.265694444444,
+    "dropped": 0
+   },
+   "inp_median": 9098.5,
+   "out": {
+    "est": 732.1027777777778,
+    "lo": 592.4143055555556,
+    "hi": 890.985208333333,
+    "dropped": 0
+   },
+   "out_median": 676.0,
+   "total": {
+    "est": 10003.355555555556,
+    "lo": 9436.115416666667,
+    "hi": 10638.983888888888,
+    "dropped": 0
+   },
+   "total_median": 9775.5,
+   "turns": {
+    "est": 2.0,
+    "lo": 2.0,
+    "hi": 2.0,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 10003.355555555556,
+    "lo": 9436.115416666667,
+    "hi": 10638.983888888888,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 12931.766666666666,
+    "lo": 11807.096041666668,
+    "hi": 14204.359375,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.0,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 10003.355555555556,
+    "wrong_window_full": 0.0,
+    "wrong_other": 0.0
+   },
+   "total_processed": {
+    "est": 10003.355555555556,
+    "lo": 9436.115416666667,
+    "hi": 10638.983888888888,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 90.58772172405084,
+    "lo": 89.3457863619591,
+    "hi": 91.84736726964329,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 8.064800863446019,
+    "lo": 6.887460238522996,
+    "hi": 9.303210641123966,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.3474774125031452,
+    "lo": 0.9701717969132548,
+    "hi": 1.7544741890565354,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_domain",
+   "arm": "none",
+   "n": 360,
+   "right": 286,
+   "rate": 79.44444444444444,
+   "inp": {
+    "est": 819.475,
+    "lo": 672.8658333333334,
+    "hi": 982.8577083333332,
+    "dropped": 0
+   },
+   "inp_median": 744.5,
+   "out": {
+    "est": 597.4055555555556,
+    "lo": 525.5916666666667,
+    "hi": 678.9873611111111,
+    "dropped": 0
+   },
+   "out_median": 533.5,
+   "total": {
+    "est": 1416.8805555555555,
+    "lo": 1226.6025000000002,
+    "hi": 1632.751736111111,
+    "dropped": 0
+   },
+   "total_median": 1336.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 1783.486013986014,
+    "lo": 1435.1461042396475,
+    "hi": 2268.820103733319,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 4791.402097902098,
+    "lo": 3932.2871400316453,
+    "hi": 5976.632968188105,
+    "dropped": 0
+   },
+   "wrong_token_share": 22.566788935788125,
+   "at_cap": 1,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 360,
+   "tokens_by_outcome_per_trial": {
+    "right": 1097.1361111111112,
+    "wrong_window_full": 0.0,
+    "wrong_other": 319.74444444444447
+   },
+   "total_processed": {
+    "est": 1416.8805555555555,
+    "lo": 1226.6025000000002,
+    "hi": 1632.751736111111,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_domain",
+   "arm": "plain",
+   "n": 360,
+   "right": 354,
+   "rate": 98.33333333333333,
+   "inp": {
+    "est": 8221.275,
+    "lo": 7781.160902777779,
+    "hi": 8712.978611111112,
+    "dropped": 0
+   },
+   "inp_median": 8034.0,
+   "out": {
+    "est": 802.7805555555556,
+    "lo": 658.838611111111,
+    "hi": 964.753611111111,
+    "dropped": 0
+   },
+   "out_median": 780.0,
+   "total": {
+    "est": 9024.055555555555,
+    "lo": 8441.40861111111,
+    "hi": 9676.384236111111,
+    "dropped": 0
+   },
+   "total_median": 8813.0,
+   "turns": {
+    "est": 2.0166666666666666,
+    "lo": 2.0027777777777778,
+    "hi": 2.033333333333333,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 9177.005649717514,
+    "lo": 8541.493505586592,
+    "hi": 9869.535548925916,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 12442.553672316384,
+    "lo": 11219.608439949014,
+    "hi": 13788.124596428166,
+    "dropped": 0
+   },
+   "wrong_token_share": 1.68983519358751,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 8871.56388888889,
+    "wrong_window_full": 0.0,
+    "wrong_other": 152.49166666666667
+   },
+   "total_processed": {
+    "est": 9024.055555555555,
+    "lo": 8441.40861111111,
+    "hi": 9676.384236111111,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 89.439323922114,
+    "lo": 88.05101852990293,
+    "hi": 90.86776734945569,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 9.001709081024,
+    "lo": 7.6377172514737595,
+    "hi": 10.393062561900175,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.558966996862001,
+    "lo": 1.1121767756327603,
+    "hi": 2.0339133121061312,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_domain",
+   "arm": "steered",
+   "n": 360,
+   "right": 356,
+   "rate": 98.88888888888889,
+   "inp": {
+    "est": 8226.041666666666,
+    "lo": 7776.155555555556,
+    "hi": 8726.457569444445,
+    "dropped": 0
+   },
+   "inp_median": 8044.5,
+   "out": {
+    "est": 797.275,
+    "lo": 649.3469444444444,
+    "hi": 963.0088194444444,
+    "dropped": 0
+   },
+   "out_median": 770.0,
+   "total": {
+    "est": 9023.316666666668,
+    "lo": 8426.636944444444,
+    "hi": 9687.929722222221,
+    "dropped": 0
+   },
+   "total_median": 8829.0,
+   "turns": {
+    "est": 2.011111111111111,
+    "lo": 2.0,
+    "hi": 2.025,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 9124.702247191011,
+    "lo": 8492.047031829492,
+    "hi": 9815.109380321477,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 12349.634831460675,
+    "lo": 11115.340223463687,
+    "hi": 13706.604802259886,
+    "dropped": 0
+   },
+   "wrong_token_share": 1.161527819593313,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 8918.508333333333,
+    "wrong_window_full": 0.0,
+    "wrong_other": 104.80833333333334
+   },
+   "total_processed": {
+    "est": 9023.316666666668,
+    "lo": 8426.636944444444,
+    "hi": 9687.929722222221,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 89.1595964712338,
+    "lo": 87.76021614425532,
+    "hi": 90.60963853491604,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 9.249953341664613,
+    "lo": 7.863042952639985,
+    "hi": 10.650701508631718,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.5904501871015873,
+    "lo": 1.139617823989944,
+    "hi": 2.0717191902379386,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_domain",
+   "arm": "none",
+   "n": 360,
+   "right": 275,
+   "rate": 76.38888888888889,
+   "inp": {
+    "est": 794.3083333333333,
+    "lo": 656.0577083333333,
+    "hi": 951.6249999999999,
+    "dropped": 0
+   },
+   "inp_median": 741.5,
+   "out": {
+    "est": 1285.2555555555555,
+    "lo": 1161.7902083333333,
+    "hi": 1408.3302083333333,
+    "dropped": 0
+   },
+   "out_median": 1046.5,
+   "total": {
+    "est": 2079.563888888889,
+    "lo": 1852.883125,
+    "hi": 2321.3389583333333,
+    "dropped": 0
+   },
+   "total_median": 1850.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2722.338181818182,
+    "lo": 2303.005692276911,
+    "hi": 3253.658371803977,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 9452.403636363637,
+    "lo": 7968.572270962135,
+    "hi": 11443.342366803277,
+    "dropped": 0
+   },
+   "wrong_token_share": 27.651363867691277,
+   "at_cap": 3,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 360,
+   "tokens_by_outcome_per_trial": {
+    "right": 1504.536111111111,
+    "wrong_window_full": 0.0,
+    "wrong_other": 575.0277777777778
+   },
+   "total_processed": {
+    "est": 2079.563888888889,
+    "lo": 1852.883125,
+    "hi": 2321.3389583333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_domain",
+   "arm": "plain",
+   "n": 360,
+   "right": 355,
+   "rate": 98.61111111111111,
+   "inp": {
+    "est": 9242.716666666667,
+    "lo": 8818.19888888889,
+    "hi": 9717.261041666667,
+    "dropped": 0
+   },
+   "inp_median": 9074.0,
+   "out": {
+    "est": 726.8694444444444,
+    "lo": 589.8122916666666,
+    "hi": 882.9977777777779,
+    "dropped": 0
+   },
+   "out_median": 702.0,
+   "total": {
+    "est": 9969.586111111112,
+    "lo": 9408.749166666666,
+    "hi": 10600.752361111112,
+    "dropped": 0
+   },
+   "total_median": 9798.5,
+   "turns": {
+    "est": 2.0,
+    "lo": 2.0,
+    "hi": 2.0,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 10110.002816901408,
+    "lo": 9433.684502282575,
+    "hi": 10905.920053195943,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 13058.430985915493,
+    "lo": 11803.484987233054,
+    "hi": 14522.047206443336,
+    "dropped": 0
+   },
+   "wrong_token_share": 1.7049075089766068,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 9799.613888888889,
+    "wrong_window_full": 0.0,
+    "wrong_other": 169.97222222222223
+   },
+   "total_processed": {
+    "est": 9969.586111111112,
+    "lo": 9408.749166666666,
+    "hi": 10600.752361111112,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 90.95395834197377,
+    "lo": 89.71632475626497,
+    "hi": 92.20542941516878,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 7.728005195969703,
+    "lo": 6.566550393651785,
+    "hi": 8.961158827596504,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.318036462056528,
+    "lo": 0.9431797842484364,
+    "hi": 1.7274504673630018,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_domain",
+   "arm": "steered",
+   "n": 360,
+   "right": 358,
+   "rate": 99.44444444444444,
+   "inp": {
+    "est": 9271.527777777777,
+    "lo": 8844.057083333335,
+    "hi": 9749.59326388889,
+    "dropped": 0
+   },
+   "inp_median": 9098.5,
+   "out": {
+    "est": 732.6777777777778,
+    "lo": 593.614375,
+    "hi": 890.706875,
+    "dropped": 0
+   },
+   "out_median": 702.0,
+   "total": {
+    "est": 10004.205555555556,
+    "lo": 9438.463055555556,
+    "hi": 10640.227569444445,
+    "dropped": 0
+   },
+   "total_median": 9805.5,
+   "turns": {
+    "est": 2.0,
+    "lo": 2.0,
+    "hi": 2.0,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 10060.09497206704,
+    "lo": 9447.053263888889,
+    "hi": 10762.734538238172,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 13007.17877094972,
+    "lo": 11823.207083333333,
+    "hi": 14361.425278558052,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.6899320674582967,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 9935.183333333332,
+    "wrong_window_full": 0.0,
+    "wrong_other": 69.02222222222223
+   },
+   "total_processed": {
+    "est": 10004.205555555556,
+    "lo": 9438.463055555556,
+    "hi": 10640.227569444445,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 90.67132050033706,
+    "lo": 89.42281175037157,
+    "hi": 91.9374078480637,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 7.9914510333791995,
+    "lo": 6.8118269155964,
+    "hi": 9.231511757555571,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.337228466283746,
+    "lo": 0.9638142272504002,
+    "hi": 1.7414696833905599,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_domain",
+   "arm": "none",
+   "n": 360,
+   "right": 297,
+   "rate": 82.5,
+   "inp": {
+    "est": 1107.7833333333333,
+    "lo": 904.156875,
+    "hi": 1336.8339583333332,
+    "dropped": 0
+   },
+   "inp_median": 991.0,
+   "out": {
+    "est": 602.5666666666667,
+    "lo": 571.4625694444444,
+    "hi": 633.1755555555555,
+    "dropped": 0
+   },
+   "out_median": 609.0,
+   "total": {
+    "est": 1710.35,
+    "lo": 1495.8409027777777,
+    "hi": 1943.682361111111,
+    "dropped": 0
+   },
+   "total_median": 1646.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2073.151515151515,
+    "lo": 1719.5206055045871,
+    "hi": 2523.5708226841807,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 4994.686868686868,
+    "lo": 4295.206628804427,
+    "hi": 6009.238869644414,
+    "dropped": 0
+   },
+   "wrong_token_share": 17.808083465697404,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 360,
+   "tokens_by_outcome_per_trial": {
+    "right": 1405.7694444444444,
+    "wrong_window_full": 0.0,
+    "wrong_other": 304.5805555555556
+   },
+   "total_processed": {
+    "est": 1710.35,
+    "lo": 1495.8409027777777,
+    "hi": 1943.682361111111,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.00020603083333333333,
+    "lo": 0.0001913908229166667,
+    "hi": 0.0002202987777777778,
+    "dropped": 0
+   },
+   "usd_total": 0.0741711,
+   "usd_per_right": {
+    "est": 0.00024973434343434345,
+    "lo": 0.00021476033144022133,
+    "hi": 0.00030046194348222065,
+    "dropped": 0
+   },
+   "last_out": 602.5666666666667
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_domain",
+   "arm": "tools",
+   "n": 360,
+   "right": 360,
+   "rate": 100.0,
+   "inp": {
+    "est": 13987.458333333334,
+    "lo": 13331.568402777779,
+    "hi": 14710.559444444443,
+    "dropped": 0
+   },
+   "inp_median": 13539.0,
+   "out": {
+    "est": 1198.9333333333334,
+    "lo": 988.17375,
+    "hi": 1436.0363888888887,
+    "dropped": 0
+   },
+   "out_median": 1082.5,
+   "total": {
+    "est": 15186.391666666666,
+    "lo": 14321.363611111112,
+    "hi": 16144.38875,
+    "dropped": 0
+   },
+   "total_median": 14665.0,
+   "turns": {
+    "est": 2.0083333333333333,
+    "lo": 2.0,
+    "hi": 2.0166666666666666,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 15186.391666666666,
+    "lo": 14321.363611111112,
+    "hi": 16144.38875,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 19982.125,
+    "lo": 18270.516319444443,
+    "hi": 21881.279791666668,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.0,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 15186.391666666666,
+    "wrong_window_full": 0.0,
+    "wrong_other": 0.0
+   },
+   "total_processed": {
+    "est": 15186.391666666666,
+    "lo": 14321.363611111112,
+    "hi": 16144.38875,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 91.39278540200199,
+    "lo": 90.09017152549082,
+    "hi": 92.71214987590713,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 7.379209748415495,
+    "lo": 6.181455390525981,
+    "hi": 8.613967107899668,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.2280048495825129,
+    "lo": 0.8765621933679194,
+    "hi": 1.6111518214168306,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.0019982125,
+    "lo": 0.0018270516319444441,
+    "hi": 0.0021881279791666672,
+    "dropped": 0
+   },
+   "usd_total": 0.7193565000000001,
+   "usd_per_right": {
+    "est": 0.0019982125,
+    "lo": 0.0018270516319444441,
+    "hi": 0.0021881279791666672,
+    "dropped": 0
+   },
+   "last_out": 177.44166666666666
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_domain",
+   "arm": "none",
+   "n": 360,
+   "right": 359,
+   "rate": 99.72222222222223,
+   "inp": {
+    "est": 1107.7833333333333,
+    "lo": 904.156875,
+    "hi": 1336.8339583333332,
+    "dropped": 0
+   },
+   "inp_median": 991.0,
+   "out": {
+    "est": 637.0555555555555,
+    "lo": 606.0582638888889,
+    "hi": 668.6870138888889,
+    "dropped": 0
+   },
+   "out_median": 633.0,
+   "total": {
+    "est": 1744.838888888889,
+    "lo": 1519.840763888889,
+    "hi": 1997.8597916666668,
+    "dropped": 0
+   },
+   "total_median": 1630.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 1749.699164345404,
+    "lo": 1520.6722916666668,
+    "hi": 2006.3335654596096,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 4305.019498607242,
+    "lo": 3969.2164579453756,
+    "hi": 4670.362933194317,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.4233119262841841,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 360,
+   "tokens_by_outcome_per_trial": {
+    "right": 1737.4527777777778,
+    "wrong_window_full": 0.0,
+    "wrong_other": 7.386111111111111
+   },
+   "total_processed": {
+    "est": 1744.838888888889,
+    "lo": 1519.840763888889,
+    "hi": 1997.8597916666668,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.0042930611111111116,
+    "lo": 0.003963426805555556,
+    "hi": 0.004650300069444444,
+    "dropped": 0
+   },
+   "usd_total": 1.545502,
+   "usd_per_right": {
+    "est": 0.0043050194986072425,
+    "lo": 0.0039692164579453754,
+    "hi": 0.004670362933194317,
+    "dropped": 0
+   },
+   "last_out": 637.0555555555555
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_domain",
+   "arm": "tools",
+   "n": 360,
+   "right": 360,
+   "rate": 100.0,
+   "inp": {
+    "est": 13897.7,
+    "lo": 13280.588680555556,
+    "hi": 14586.565416666666,
+    "dropped": 0
+   },
+   "inp_median": 13538.0,
+   "out": {
+    "est": 1120.3666666666666,
+    "lo": 923.1074305555557,
+    "hi": 1345.1144444444442,
+    "dropped": 0
+   },
+   "out_median": 1033.5,
+   "total": {
+    "est": 15018.066666666668,
+    "lo": 14204.982430555556,
+    "hi": 15928.12013888889,
+    "dropped": 0
+   },
+   "total_median": 14666.5,
+   "turns": {
+    "est": 2.0,
+    "lo": 2.0,
+    "hi": 2.0,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 15018.066666666668,
+    "lo": 14204.982430555556,
+    "hi": 15928.12013888889,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 19499.533333333333,
+    "lo": 17897.614999999998,
+    "hi": 21311.522152777776,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.0,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 15018.066666666668,
+    "wrong_window_full": 0.0,
+    "wrong_other": 0.0
+   },
+   "total_processed": {
+    "est": 15018.066666666668,
+    "lo": 14204.982430555556,
+    "hi": 15928.12013888889,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 91.58038140603601,
+    "lo": 90.3734082950747,
+    "hi": 92.82228494631173,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 7.228794053052743,
+    "lo": 6.08885764140042,
+    "hi": 8.429332122656195,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.190824540911246,
+    "lo": 0.8408304202328356,
+    "hi": 1.573973125877747,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.038999066666666665,
+    "lo": 0.035795230000000004,
+    "hi": 0.04262304430555555,
+    "dropped": 0
+   },
+   "usd_total": 14.039664,
+   "usd_per_right": {
+    "est": 0.038999066666666665,
+    "lo": 0.035795230000000004,
+    "hi": 0.04262304430555555,
+    "dropped": 0
+   },
+   "last_out": 115.73055555555555
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_problem",
+   "arm": "none",
+   "n": 600,
+   "right": 395,
+   "rate": 65.83333333333333,
+   "inp": {
+    "est": 1147.6983333333333,
+    "lo": 975.6640833333333,
+    "hi": 1329.9750833333333,
+    "dropped": 0
+   },
+   "inp_median": 1103.5,
+   "out": {
+    "est": 941.215,
+    "lo": 763.3804166666666,
+    "hi": 1143.6614166666666,
+    "dropped": 0
+   },
+   "out_median": 517.0,
+   "total": {
+    "est": 2088.9133333333334,
+    "lo": 1863.3794166666667,
+    "hi": 2322.0889166666666,
+    "dropped": 0
+   },
+   "total_median": 1727.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 3173.032911392405,
+    "lo": 2669.6057597644763,
+    "hi": 3773.0668262495083,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 8891.807594936708,
+    "lo": 7265.115212334934,
+    "hi": 10996.887654678085,
+    "dropped": 0
+   },
+   "wrong_token_share": 43.50571429483272,
+   "at_cap": 23,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 600,
+   "tokens_by_outcome_per_trial": {
+    "right": 1180.1166666666666,
+    "wrong_window_full": 0.0,
+    "wrong_other": 908.7966666666666
+   },
+   "total_processed": {
+    "est": 2088.9133333333334,
+    "lo": 1863.3794166666667,
+    "hi": 2322.0889166666666,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_problem",
+   "arm": "plain",
+   "n": 600,
+   "right": 569,
+   "rate": 94.83333333333333,
+   "inp": {
+    "est": 11856.041666666666,
+    "lo": 10352.08275,
+    "hi": 13737.180083333335,
+    "dropped": 0
+   },
+   "inp_median": 10291.5,
+   "out": {
+    "est": 1349.2916666666667,
+    "lo": 1004.548375,
+    "hi": 1789.1222083333332,
+    "dropped": 0
+   },
+   "out_median": 1059.0,
+   "total": {
+    "est": 13205.333333333334,
+    "lo": 11362.894083333334,
+    "hi": 15539.836458333331,
+    "dropped": 0
+   },
+   "total_median": 11353.5,
+   "turns": {
+    "est": 2.2016666666666667,
+    "lo": 2.0566666666666666,
+    "hi": 2.3833333333333333,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 13924.780316344464,
+    "lo": 11904.677545299188,
+    "hi": 16526.67945142259,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 19615.99297012302,
+    "lo": 16143.418127768315,
+    "hi": 24094.281471943363,
+    "dropped": 0
+   },
+   "wrong_token_share": 5.678854503231018,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 12455.421666666667,
+    "wrong_window_full": 0.0,
+    "wrong_other": 749.9116666666666
+   },
+   "total_processed": {
+    "est": 13205.333333333334,
+    "lo": 11362.894083333334,
+    "hi": 15539.836458333331,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 85.23768121035337,
+    "lo": 81.62586510915355,
+    "hi": 88.68381443709411,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 13.808644443884825,
+    "lo": 10.429447861874184,
+    "hi": 17.35980299292366,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 0.9536743457618038,
+    "lo": 0.8376901928990401,
+    "hi": 1.0673390704543775,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_problem",
+   "arm": "steered",
+   "n": 600,
+   "right": 544,
+   "rate": 90.66666666666667,
+   "inp": {
+    "est": 11848.176666666666,
+    "lo": 10525.179291666667,
+    "hi": 13434.945416666667,
+    "dropped": 0
+   },
+   "inp_median": 10436.0,
+   "out": {
+    "est": 1419.7033333333334,
+    "lo": 1058.1325833333335,
+    "hi": 1856.6798333333334,
+    "dropped": 0
+   },
+   "out_median": 1099.0,
+   "total": {
+    "est": 13267.88,
+    "lo": 11590.468416666667,
+    "hi": 15275.66375,
+    "dropped": 0
+   },
+   "total_median": 11534.0,
+   "turns": {
+    "est": 2.1933333333333334,
+    "lo": 2.0733333333333333,
+    "hi": 2.3383333333333334,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 14633.691176470587,
+    "lo": 12369.117255892255,
+    "hi": 17506.010316190943,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 20897.08823529412,
+    "lo": 16933.168061870612,
+    "hi": 25925.85359728466,
+    "dropped": 0
+   },
+   "wrong_token_share": 10.204556668686582,
+   "at_cap": 2,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 11913.951666666666,
+    "wrong_window_full": 0.0,
+    "wrong_other": 1353.9283333333333
+   },
+   "total_processed": {
+    "est": 13267.88,
+    "lo": 11590.468416666667,
+    "hi": 15275.66375,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 84.71553850901954,
+    "lo": 81.62827229089105,
+    "hi": 87.77409006101837,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 14.305740615316862,
+    "lo": 11.289249786755832,
+    "hi": 17.360215721657962,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 0.9787208756636079,
+    "lo": 0.8766500874101071,
+    "hi": 1.0865212991631044,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_problem",
+   "arm": "none",
+   "n": 600,
+   "right": 457,
+   "rate": 76.16666666666667,
+   "inp": {
+    "est": 1183.5633333333333,
+    "lo": 1002.5250833333333,
+    "hi": 1377.4144583333332,
+    "dropped": 0
+   },
+   "inp_median": 1172.5,
+   "out": {
+    "est": 680.4433333333334,
+    "lo": 572.0004583333333,
+    "hi": 834.1270416666666,
+    "dropped": 0
+   },
+   "out_median": 579.0,
+   "total": {
+    "est": 1864.0066666666667,
+    "lo": 1600.7939999999999,
+    "hi": 2173.4114166666664,
+    "dropped": 0
+   },
+   "total_median": 1778.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2447.27352297593,
+    "lo": 2008.3110907343314,
+    "hi": 3007.55866715007,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 6020.71772428884,
+    "lo": 4889.02676253558,
+    "hi": 7601.947229773993,
+    "dropped": 0
+   },
+   "wrong_token_share": 29.171748312774273,
+   "at_cap": 9,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 600,
+   "tokens_by_outcome_per_trial": {
+    "right": 1320.2433333333333,
+    "wrong_window_full": 0.0,
+    "wrong_other": 543.7633333333333
+   },
+   "total_processed": {
+    "est": 1864.0066666666667,
+    "lo": 1600.7939999999999,
+    "hi": 2173.4114166666664,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_problem",
+   "arm": "plain",
+   "n": 600,
+   "right": 597,
+   "rate": 99.5,
+   "inp": {
+    "est": 9767.976666666667,
+    "lo": 9146.333833333332,
+    "hi": 10438.645250000001,
+    "dropped": 0
+   },
+   "inp_median": 9159.0,
+   "out": {
+    "est": 1218.0616666666667,
+    "lo": 1024.6879583333332,
+    "hi": 1427.8032083333333,
+    "dropped": 0
+   },
+   "out_median": 1104.0,
+   "total": {
+    "est": 10986.038333333334,
+    "lo": 10176.519,
+    "hi": 11865.545333333332,
+    "dropped": 0
+   },
+   "total_median": 10300.0,
+   "turns": {
+    "est": 2.095,
+    "lo": 2.06,
+    "hi": 2.1333333333333333,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 11041.244556113903,
+    "lo": 10215.137432188956,
+    "hi": 11933.958451341292,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 15937.97487437186,
+    "lo": 14345.065529232137,
+    "hi": 17670.377964656054,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.5060665635762239,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 10930.441666666668,
+    "wrong_window_full": 0.0,
+    "wrong_other": 55.596666666666664
+   },
+   "total_processed": {
+    "est": 10986.038333333334,
+    "lo": 10176.519,
+    "hi": 11865.545333333332,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 86.00663801749458,
+    "lo": 84.57227305484527,
+    "hi": 87.46288351772657,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 12.955598339060815,
+    "lo": 11.441994767225976,
+    "hi": 14.461253455931894,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.0377636434446047,
+    "lo": 0.9228296227408395,
+    "hi": 1.160234992027591,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_problem",
+   "arm": "steered",
+   "n": 600,
+   "right": 598,
+   "rate": 99.66666666666667,
+   "inp": {
+    "est": 9607.166666666666,
+    "lo": 9088.748875,
+    "hi": 10133.313208333333,
+    "dropped": 0
+   },
+   "inp_median": 9174.5,
+   "out": {
+    "est": 1183.6416666666667,
+    "lo": 1003.5358749999999,
+    "hi": 1372.5137083333334,
+    "dropped": 0
+   },
+   "out_median": 1116.5,
+   "total": {
+    "est": 10790.808333333332,
+    "lo": 10100.953208333332,
+    "hi": 11504.881625,
+    "dropped": 0
+   },
+   "total_median": 10309.0,
+   "turns": {
+    "est": 2.0683333333333334,
+    "lo": 2.04,
+    "hi": 2.1,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 10826.897993311037,
+    "lo": 10134.727033484098,
+    "hi": 11536.533872275595,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 15577.299331103679,
+    "lo": 14175.467587981084,
+    "hi": 17038.662622696815,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.5745939638442286,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 10728.805,
+    "wrong_window_full": 0.0,
+    "wrong_other": 62.00333333333333
+   },
+   "total_processed": {
+    "est": 10790.808333333332,
+    "lo": 10100.953208333332,
+    "hi": 11504.881625,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 86.2133303263189,
+    "lo": 85.11919252449981,
+    "hi": 87.37754843561864,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 12.75561978101962,
+    "lo": 11.5006102108678,
+    "hi": 13.939221240687745,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.0310498926614864,
+    "lo": 0.9091116358400079,
+    "hi": 1.1562493926018145,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_problem",
+   "arm": "none",
+   "n": 600,
+   "right": 448,
+   "rate": 74.66666666666667,
+   "inp": {
+    "est": 1147.6983333333333,
+    "lo": 975.6640833333333,
+    "hi": 1329.9750833333333,
+    "dropped": 0
+   },
+   "inp_median": 1103.5,
+   "out": {
+    "est": 991.1833333333333,
+    "lo": 862.5636666666667,
+    "hi": 1131.1242083333332,
+    "dropped": 0
+   },
+   "out_median": 732.0,
+   "total": {
+    "est": 2138.8816666666667,
+    "lo": 1881.4,
+    "hi": 2405.3154166666664,
+    "dropped": 0
+   },
+   "total_median": 1970.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2864.573660714286,
+    "lo": 2466.97590634726,
+    "hi": 3347.436273059104,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 8174.484375,
+    "lo": 7053.324218465225,
+    "hi": 9608.864807760454,
+    "dropped": 0
+   },
+   "wrong_token_share": 28.339420366873966,
+   "at_cap": 1,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 600,
+   "tokens_by_outcome_per_trial": {
+    "right": 1532.735,
+    "wrong_window_full": 0.0,
+    "wrong_other": 606.1466666666666
+   },
+   "total_processed": {
+    "est": 2138.8816666666667,
+    "lo": 1881.4,
+    "hi": 2405.3154166666664,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_problem",
+   "arm": "plain",
+   "n": 600,
+   "right": 577,
+   "rate": 96.16666666666667,
+   "inp": {
+    "est": 10689.225,
+    "lo": 10046.992583333333,
+    "hi": 11383.56,
+    "dropped": 0
+   },
+   "inp_median": 10172.5,
+   "out": {
+    "est": 1385.8033333333333,
+    "lo": 1142.9434999999999,
+    "hi": 1638.6584166666667,
+    "dropped": 0
+   },
+   "out_median": 1119.0,
+   "total": {
+    "est": 12075.028333333334,
+    "lo": 11207.172291666668,
+    "hi": 13005.369875,
+    "dropped": 0
+   },
+   "total_median": 11304.0,
+   "turns": {
+    "est": 2.0416666666666665,
+    "lo": 2.0183333333333335,
+    "hi": 2.0683333333333334,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 12556.355285961872,
+    "lo": 11546.326488065515,
+    "hi": 13669.648127674258,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 18320.528596187174,
+    "lo": 16281.021879297174,
+    "hi": 20523.8214485337,
+    "dropped": 0
+   },
+   "wrong_token_share": 5.217420469820844,
+   "at_cap": 9,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 4,
+   "tokens_by_outcome_per_trial": {
+    "right": 11445.023333333333,
+    "wrong_window_full": 0.0,
+    "wrong_other": 630.005
+   },
+   "total_processed": {
+    "est": 12075.028333333334,
+    "lo": 11207.172291666668,
+    "hi": 13005.369875,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 87.09374783173398,
+    "lo": 85.55511404204557,
+    "hi": 88.70413555461377,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 11.970045351367745,
+    "lo": 10.382283592973632,
+    "hi": 13.504198390647588,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 0.9362068168982742,
+    "lo": 0.8238696937518055,
+    "hi": 1.0757519816160341,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_problem",
+   "arm": "steered",
+   "n": 600,
+   "right": 584,
+   "rate": 97.33333333333333,
+   "inp": {
+    "est": 10344.033333333333,
+    "lo": 9835.426458333333,
+    "hi": 10887.585791666666,
+    "dropped": 0
+   },
+   "inp_median": 10139.5,
+   "out": {
+    "est": 1098.62,
+    "lo": 926.993375,
+    "hi": 1281.934083333333,
+    "dropped": 0
+   },
+   "out_median": 1036.0,
+   "total": {
+    "est": 11442.653333333334,
+    "lo": 10758.630791666666,
+    "hi": 12170.410916666668,
+    "dropped": 0
+   },
+   "total_median": 11177.0,
+   "turns": {
+    "est": 2.006666666666667,
+    "lo": 2.0,
+    "hi": 2.02,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 11756.150684931506,
+    "lo": 11004.508567565223,
+    "hi": 12583.067477206583,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 16271.027397260274,
+    "lo": 14811.18966950888,
+    "hi": 17860.475722757325,
+    "dropped": 0
+   },
+   "wrong_token_share": 2.7610437672381347,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 11126.716666666667,
+    "wrong_window_full": 0.0,
+    "wrong_other": 315.93666666666667
+   },
+   "total_processed": {
+    "est": 11442.653333333334,
+    "lo": 10758.630791666666,
+    "hi": 12170.410916666668,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 88.39646688429079,
+    "lo": 87.30362472856434,
+    "hi": 89.53446277639829,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 10.82787248288197,
+    "lo": 9.633740858636305,
+    "hi": 11.973952685639519,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 0.7756606328272476,
+    "lo": 0.718039202952859,
+    "hi": 0.8350020812243156,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_problem",
+   "arm": "none",
+   "n": 600,
+   "right": 530,
+   "rate": 88.33333333333333,
+   "inp": {
+    "est": 1585.695,
+    "lo": 1331.5405,
+    "hi": 1862.4065,
+    "dropped": 0
+   },
+   "inp_median": 1500.0,
+   "out": {
+    "est": 614.6666666666666,
+    "lo": 585.1750416666666,
+    "hi": 646.0036249999999,
+    "dropped": 0
+   },
+   "out_median": 613.5,
+   "total": {
+    "est": 2200.3616666666667,
+    "lo": 1930.7531666666666,
+    "hi": 2492.5651666666663,
+    "dropped": 0
+   },
+   "total_median": 2180.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2490.9754716981133,
+    "lo": 2118.5771916863673,
+    "hi": 2900.6567765258324,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 5274.3716981132075,
+    "lo": 4704.497422447403,
+    "hi": 5913.572167052552,
+    "dropped": 0
+   },
+   "wrong_token_share": 12.83614739092134,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 600,
+   "tokens_by_outcome_per_trial": {
+    "right": 1917.92,
+    "wrong_window_full": 0.0,
+    "wrong_other": 282.44166666666666
+   },
+   "total_processed": {
+    "est": 2200.3616666666667,
+    "lo": 1930.7531666666666,
+    "hi": 2492.5651666666663,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.00023295141666666668,
+    "lo": 0.00021511235416666667,
+    "hi": 0.00025162710208333336,
+    "dropped": 0
+   },
+   "usd_total": 0.13977085,
+   "usd_per_right": {
+    "est": 0.0002637185849056604,
+    "lo": 0.00023522487112237006,
+    "hi": 0.0002956786083526276,
+    "dropped": 0
+   },
+   "last_out": 614.6666666666666
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_problem",
+   "arm": "tools",
+   "n": 600,
+   "right": 583,
+   "rate": 97.16666666666667,
+   "inp": {
+    "est": 17177.743333333332,
+    "lo": 15748.857750000001,
+    "hi": 18861.629666666668,
+    "dropped": 0
+   },
+   "inp_median": 15416.5,
+   "out": {
+    "est": 2168.6266666666666,
+    "lo": 1774.80225,
+    "hi": 2613.403458333333,
+    "dropped": 0
+   },
+   "out_median": 1727.0,
+   "total": {
+    "est": 19346.37,
+    "lo": 17531.227625,
+    "hi": 21465.191333333336,
+    "dropped": 0
+   },
+   "total_median": 17180.5,
+   "turns": {
+    "est": 2.131666666666667,
+    "lo": 2.075,
+    "hi": 2.1966666666666668,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 19910.500857632935,
+    "lo": 17932.58401707745,
+    "hi": 22219.01379566968,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 28837.951972555747,
+    "lo": 25258.221717171717,
+    "hi": 33058.07465397924,
+    "dropped": 0
+   },
+   "wrong_token_share": 3.9820217780734404,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 18575.993333333332,
+    "wrong_window_full": 0.0,
+    "wrong_other": 770.3766666666667
+   },
+   "total_processed": {
+    "est": 19346.37,
+    "lo": 17531.227625,
+    "hi": 21465.191333333336,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 85.16307827007932,
+    "lo": 82.69101845271518,
+    "hi": 87.70131163485206,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 13.46114924292539,
+    "lo": 10.969590878428155,
+    "hi": 15.937440818224928,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 1.3757724869952843,
+    "lo": 1.1916154601018372,
+    "hi": 1.5918737581871825,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.0028020876666666667,
+    "lo": 0.0024634569125,
+    "hi": 0.003191376175,
+    "dropped": 0
+   },
+   "usd_total": 1.6812526,
+   "usd_per_right": {
+    "est": 0.002883795197255575,
+    "lo": 0.0025258221717171713,
+    "hi": 0.003305807465397924,
+    "dropped": 0
+   },
+   "last_out": 231.89
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_problem",
+   "arm": "none",
+   "n": 600,
+   "right": 574,
+   "rate": 95.66666666666667,
+   "inp": {
+    "est": 1585.695,
+    "lo": 1331.5405,
+    "hi": 1862.4065,
+    "dropped": 0
+   },
+   "inp_median": 1500.0,
+   "out": {
+    "est": 400.92,
+    "lo": 375.35770833333333,
+    "hi": 427.38420833333333,
+    "dropped": 0
+   },
+   "out_median": 392.0,
+   "total": {
+    "est": 1986.615,
+    "lo": 1711.3343750000001,
+    "hi": 2285.777666666667,
+    "dropped": 0
+   },
+   "total_median": 1878.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2076.6010452961673,
+    "lo": 1774.0814766839378,
+    "hi": 2410.0721816838172,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 3752.9216027874563,
+    "lo": 3344.8282322303926,
+    "hi": 4192.054804991399,
+    "dropped": 0
+   },
+   "wrong_token_share": 4.896771644229003,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 600,
+   "tokens_by_outcome_per_trial": {
+    "right": 1889.335,
+    "wrong_window_full": 0.0,
+    "wrong_other": 97.28
+   },
+   "total_processed": {
+    "est": 1986.615,
+    "lo": 1711.3343750000001,
+    "hi": 2285.777666666667,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.0035902950000000003,
+    "lo": 0.003225952166666667,
+    "hi": 0.003979848375,
+    "dropped": 0
+   },
+   "usd_total": 2.154177,
+   "usd_per_right": {
+    "est": 0.003752921602787457,
+    "lo": 0.0033448282322303927,
+    "hi": 0.004192054804991399,
+    "dropped": 0
+   },
+   "last_out": 400.92
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_problem",
+   "arm": "tools",
+   "n": 600,
+   "right": 597,
+   "rate": 99.5,
+   "inp": {
+    "est": 15355.635,
+    "lo": 14577.767541666668,
+    "hi": 16217.626208333333,
+    "dropped": 0
+   },
+   "inp_median": 15001.5,
+   "out": {
+    "est": 1595.355,
+    "lo": 1345.3222083333335,
+    "hi": 1872.7749166666667,
+    "dropped": 0
+   },
+   "out_median": 1458.0,
+   "total": {
+    "est": 16950.99,
+    "lo": 15930.454833333333,
+    "hi": 18081.898125,
+    "dropped": 0
+   },
+   "total_median": 16512.0,
+   "turns": {
+    "est": 2.006666666666667,
+    "lo": 2.0,
+    "hi": 2.015,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 17036.170854271357,
+    "lo": 15977.33364384422,
+    "hi": 18207.9172979798,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 23449.658291457286,
+    "lo": 21384.018446817423,
+    "hi": 25726.533123953097,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.5007868763614003,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 16866.101666666666,
+    "wrong_window_full": 0.0,
+    "wrong_other": 84.88833333333334
+   },
+   "total_processed": {
+    "est": 16950.99,
+    "lo": 15930.454833333333,
+    "hi": 18081.898125,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 89.46734103365529,
+    "lo": 88.23976624187259,
+    "hi": 90.6863766486034,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 9.738292598558553,
+    "lo": 8.504730219706538,
+    "hi": 10.985057711775951,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 0.794366367786158,
+    "lo": 0.7317617300805421,
+    "hi": 0.8579074430376756,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.04666482000000001,
+    "lo": 0.042645677416666666,
+    "hi": 0.05113307666666667,
+    "dropped": 0
+   },
+   "usd_total": 27.998892,
+   "usd_per_right": {
+    "est": 0.04689931658291458,
+    "lo": 0.04276803689363484,
+    "hi": 0.051453066247906194,
+    "dropped": 0
+   },
+   "last_out": 110.405
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_plan",
+   "arm": "none",
+   "n": 3000,
+   "right": 2394,
+   "rate": 79.8,
+   "inp": {
+    "est": 1353.5883333333334,
+    "lo": 1128.8769333333335,
+    "hi": 1589.9098333333334,
+    "dropped": 0
+   },
+   "inp_median": 1251.0,
+   "out": {
+    "est": 1787.3516666666667,
+    "lo": 1520.415575,
+    "hi": 2084.5252833333334,
+    "dropped": 0
+   },
+   "out_median": 1419.0,
+   "total": {
+    "est": 3140.94,
+    "lo": 2693.159675,
+    "hi": 3623.513383333333,
+    "dropped": 0
+   },
+   "total_median": 2739.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 3936.0150375939847,
+    "lo": 3228.0002569122476,
+    "hi": 4793.289797316025,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 12895.17126148705,
+    "lo": 10544.07490784351,
+    "hi": 15736.904990436866,
+    "dropped": 0
+   },
+   "wrong_token_share": 25.15182291500846,
+   "at_cap": 56,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 3000,
+   "tokens_by_outcome_per_trial": {
+    "right": 2350.9363333333336,
+    "wrong_window_full": 0.0,
+    "wrong_other": 790.0036666666666
+   },
+   "total_processed": {
+    "est": 3140.94,
+    "lo": 2693.159675,
+    "hi": 3623.513383333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_plan",
+   "arm": "plain",
+   "n": 3000,
+   "right": 2821,
+   "rate": 94.03333333333333,
+   "inp": {
+    "est": 13087.521666666667,
+    "lo": 11555.731941666667,
+    "hi": 15044.697433333333,
+    "dropped": 0
+   },
+   "inp_median": 11446.0,
+   "out": {
+    "est": 1606.065,
+    "lo": 1265.2288916666666,
+    "hi": 1986.8535749999996,
+    "dropped": 0
+   },
+   "out_median": 1205.0,
+   "total": {
+    "est": 14693.586666666666,
+    "lo": 12845.232708333333,
+    "hi": 17002.623558333333,
+    "dropped": 0
+   },
+   "total_median": 12568.0,
+   "turns": {
+    "est": 2.131666666666667,
+    "lo": 1.9926583333333332,
+    "hi": 2.35335,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 15625.934065934065,
+    "lo": 13366.239581130954,
+    "hi": 18481.174438097085,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 22457.830556540233,
+    "lo": 18664.34422117765,
+    "hi": 27124.937757144355,
+    "dropped": 0
+   },
+   "wrong_token_share": 10.952111533467209,
+   "at_cap": 8,
+   "window_full": 60,
+   "exceptions": 0,
+   "no_call": 63,
+   "tokens_by_outcome_per_trial": {
+    "right": 13084.328666666666,
+    "wrong_window_full": 974.0303333333334,
+    "wrong_other": 635.2276666666667
+   },
+   "total_processed": {
+    "est": 14376.829333333333,
+    "lo": 12633.7293,
+    "hi": 16619.80534166667,
+    "dropped": 0
+   },
+   "refused_requests": 58,
+   "window_full_tokens_mean": 48701.51666666667,
+   "window_full_token_share": 6.628948774930378,
+   "window_full_right": 0,
+   "refused_prompt_2req": [
+    16384.0,
+    16384.0,
+    16384.0,
+    2
+   ],
+   "share_first": {
+    "est": 77.35930650480935,
+    "lo": 73.75669151559939,
+    "hi": 81.24286969718368,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 15.297999553801459,
+    "lo": 11.864012982638979,
+    "hi": 18.88216988502202,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 7.3426939413891885,
+    "lo": 5.903717009475515,
+    "hi": 8.796273805462578,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_plan",
+   "arm": "steered",
+   "n": 3000,
+   "right": 2878,
+   "rate": 95.93333333333334,
+   "inp": {
+    "est": 12656.259666666667,
+    "lo": 11491.675233333333,
+    "hi": 14056.3032,
+    "dropped": 0
+   },
+   "inp_median": 11641.5,
+   "out": {
+    "est": 1471.9096666666667,
+    "lo": 1185.3510833333332,
+    "hi": 1786.1544583333332,
+    "dropped": 0
+   },
+   "out_median": 1207.0,
+   "total": {
+    "est": 14128.169333333333,
+    "lo": 12687.044558333333,
+    "hi": 15808.172583333331,
+    "dropped": 0
+   },
+   "total_median": 12705.0,
+   "turns": {
+    "est": 2.102333333333333,
+    "lo": 2.01,
+    "hi": 2.2663333333333333,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 14727.0701876303,
+    "lo": 13027.208497116138,
+    "hi": 16776.34102346957,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 20864.289089645587,
+    "lo": 17911.98547338168,
+    "hi": 24342.24049904969,
+    "dropped": 0
+   },
+   "wrong_token_share": 6.768893011569227,
+   "at_cap": 8,
+   "window_full": 24,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 13171.848666666667,
+    "wrong_window_full": 362.64733333333334,
+    "wrong_other": 593.6733333333333
+   },
+   "total_processed": {
+    "est": 13997.097333333333,
+    "lo": 12586.282408333333,
+    "hi": 15675.534108333333,
+    "dropped": 0
+   },
+   "refused_requests": 24,
+   "window_full_tokens_mean": 45330.916666666664,
+   "window_full_token_share": 2.56683880817963,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 78.85269368288087,
+    "lo": 76.19222075750542,
+    "hi": 81.71596822428467,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 13.841891154446818,
+    "lo": 11.450194215228478,
+    "hi": 16.40171838962266,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 7.305415162672314,
+    "lo": 5.829826860298478,
+    "hi": 8.777231634449953,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_plan",
+   "arm": "none",
+   "n": 3000,
+   "right": 2649,
+   "rate": 88.3,
+   "inp": {
+    "est": 1405.4796666666666,
+    "lo": 1170.4623666666666,
+    "hi": 1657.3916666666664,
+    "dropped": 0
+   },
+   "inp_median": 1318.5,
+   "out": {
+    "est": 1134.396,
+    "lo": 1002.92725,
+    "hi": 1279.06665,
+    "dropped": 0
+   },
+   "out_median": 1008.0,
+   "total": {
+    "est": 2539.875666666667,
+    "lo": 2197.466408333333,
+    "hi": 2901.512925,
+    "dropped": 0
+   },
+   "total_median": 2366.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2876.416383540959,
+    "lo": 2424.796182636057,
+    "hi": 3391.5108558515017,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 8015.2431106077765,
+    "lo": 6888.155901633492,
+    "hi": 9327.237917649245,
+    "dropped": 0
+   },
+   "wrong_token_share": 14.82253658873328,
+   "at_cap": 11,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 3000,
+   "tokens_by_outcome_per_trial": {
+    "right": 2163.4016666666666,
+    "wrong_window_full": 0.0,
+    "wrong_other": 376.474
+   },
+   "total_processed": {
+    "est": 2539.875666666667,
+    "lo": 2197.466408333333,
+    "hi": 2901.512925,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_plan",
+   "arm": "plain",
+   "n": 3000,
+   "right": 2675,
+   "rate": 89.16666666666667,
+   "inp": {
+    "est": 5283.665,
+    "lo": 4845.819133333333,
+    "hi": 5761.28155,
+    "dropped": 0
+   },
+   "inp_median": 4436.0,
+   "out": {
+    "est": 1234.378,
+    "lo": 1092.0615416666667,
+    "hi": 1382.0886749999997,
+    "dropped": 0
+   },
+   "out_median": 1078.0,
+   "total": {
+    "est": 6518.043,
+    "lo": 6108.75265,
+    "hi": 6947.499733333333,
+    "dropped": 0
+   },
+   "total_median": 5798.0,
+   "turns": {
+    "est": 1.2013333333333334,
+    "lo": 1.0859916666666667,
+    "hi": 1.3326666666666667,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 7309.95476635514,
+    "lo": 6800.1017478609765,
+    "hi": 7889.551109320089,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 12847.351401869159,
+    "lo": 11748.596000850599,
+    "hi": 14182.872226515134,
+    "dropped": 0
+   },
+   "wrong_token_share": 10.92566690134856,
+   "at_cap": 23,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 2400,
+   "tokens_by_outcome_per_trial": {
+    "right": 5805.903333333334,
+    "wrong_window_full": 0.0,
+    "wrong_other": 712.1396666666667
+   },
+   "total_processed": {
+    "est": 6518.043,
+    "lo": 6108.75265,
+    "hi": 6947.499733333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 94.23047575246854,
+    "lo": 91.59323368136464,
+    "hi": 96.894041475218,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 3.262294655487316,
+    "lo": 1.8079147125601658,
+    "hi": 4.652010529710444,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 2.507229592044149,
+    "lo": 1.2483807207255497,
+    "hi": 3.882515137031717,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_plan",
+   "arm": "steered",
+   "n": 3000,
+   "right": 2899,
+   "rate": 96.63333333333334,
+   "inp": {
+    "est": 10288.046333333334,
+    "lo": 9422.577291666666,
+    "hi": 11222.744575,
+    "dropped": 0
+   },
+   "inp_median": 9831.0,
+   "out": {
+    "est": 1433.6623333333334,
+    "lo": 1232.9538083333334,
+    "hi": 1640.8729250000001,
+    "dropped": 0
+   },
+   "out_median": 1307.0,
+   "total": {
+    "est": 11721.708666666667,
+    "lo": 10703.822366666667,
+    "hi": 12820.203,
+    "dropped": 0
+   },
+   "total_median": 11178.5,
+   "turns": {
+    "est": 1.9413333333333334,
+    "lo": 1.838,
+    "hi": 2.011,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 12130.088306312522,
+    "lo": 11095.09898742815,
+    "hi": 13245.671481137799,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 18064.530527768195,
+    "lo": 16186.719405817621,
+    "hi": 20067.337469224978,
+    "dropped": 0
+   },
+   "wrong_token_share": 3.1558567428423263,
+   "at_cap": 11,
+   "window_full": 4,
+   "exceptions": 0,
+   "no_call": 208,
+   "tokens_by_outcome_per_trial": {
+    "right": 11351.788333333334,
+    "wrong_window_full": 84.097,
+    "wrong_other": 285.8233333333333
+   },
+   "total_processed": {
+    "est": 11721.708666666667,
+    "lo": 10703.822366666667,
+    "hi": 12820.203,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": 63072.75,
+   "window_full_token_share": 0.7174465975182344,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 79.58294576109834,
+    "lo": 76.78050169879168,
+    "hi": 82.5176751152281,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 12.385253480390137,
+    "lo": 10.863576899784363,
+    "hi": 13.8334921695063,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 8.031800758511524,
+    "lo": 6.322796353571275,
+    "hi": 9.644092042351064,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_plan",
+   "arm": "none",
+   "n": 3000,
+   "right": 2713,
+   "rate": 90.43333333333334,
+   "inp": {
+    "est": 1353.5883333333334,
+    "lo": 1128.8769333333335,
+    "hi": 1589.9098333333334,
+    "dropped": 0
+   },
+   "inp_median": 1251.0,
+   "out": {
+    "est": 2019.369,
+    "lo": 1684.00235,
+    "hi": 2386.5208833333327,
+    "dropped": 0
+   },
+   "out_median": 1735.5,
+   "total": {
+    "est": 3372.9573333333333,
+    "lo": 2843.538275,
+    "hi": 3941.5705999999996,
+    "dropped": 0
+   },
+   "total_median": 2989.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 3729.772207887947,
+    "lo": 3090.275392357476,
+    "hi": 4450.240971515854,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 12661.739771470697,
+    "lo": 10449.205270258435,
+    "hi": 15222.874687617084,
+    "dropped": 0
+   },
+   "wrong_token_share": 13.325111731821492,
+   "at_cap": 43,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 3000,
+   "tokens_by_outcome_per_trial": {
+    "right": 2923.507,
+    "wrong_window_full": 0.0,
+    "wrong_other": 449.45033333333333
+   },
+   "total_processed": {
+    "est": 3372.9573333333333,
+    "lo": 2843.538275,
+    "hi": 3941.5705999999996,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_plan",
+   "arm": "plain",
+   "n": 3000,
+   "right": 2935,
+   "rate": 97.83333333333333,
+   "inp": {
+    "est": 11534.230333333333,
+    "lo": 10068.667683333333,
+    "hi": 13021.610858333333,
+    "dropped": 0
+   },
+   "inp_median": 11068.0,
+   "out": {
+    "est": 1584.787,
+    "lo": 1313.7999333333332,
+    "hi": 1875.5886166666667,
+    "dropped": 0
+   },
+   "out_median": 1327.0,
+   "total": {
+    "est": 13119.017333333333,
+    "lo": 11421.750625,
+    "hi": 14870.512625,
+    "dropped": 0
+   },
+   "total_median": 12412.5,
+   "turns": {
+    "est": 1.904,
+    "lo": 1.7769916666666665,
+    "hi": 2.021333333333333,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 13409.557751277684,
+    "lo": 11744.367914525308,
+    "hi": 15127.137431764966,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 19889.09574105622,
+    "lo": 17232.72691994863,
+    "hi": 22702.502600380983,
+    "dropped": 0
+   },
+   "wrong_token_share": 2.276377305901875,
+   "at_cap": 2,
+   "window_full": 4,
+   "exceptions": 0,
+   "no_call": 506,
+   "tokens_by_outcome_per_trial": {
+    "right": 12820.379,
+    "wrong_window_full": 80.57333333333334,
+    "wrong_other": 218.065
+   },
+   "total_processed": {
+    "est": 13102.633333333333,
+    "lo": 11419.1942,
+    "hi": 14839.386633333332,
+    "dropped": 0
+   },
+   "refused_requests": 3,
+   "window_full_tokens_mean": 60430.0,
+   "window_full_token_share": 0.6141720167455632,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 79.33262473719168,
+    "lo": 76.68231320695647,
+    "hi": 82.47033244794792,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 12.995626496982094,
+    "lo": 10.832019866620879,
+    "hi": 14.957462900702538,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 7.6717487658262264,
+    "lo": 6.021403895113627,
+    "hi": 9.207815593368585,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_plan",
+   "arm": "steered",
+   "n": 3000,
+   "right": 2959,
+   "rate": 98.63333333333334,
+   "inp": {
+    "est": 12279.401666666667,
+    "lo": 11277.100575,
+    "hi": 13339.758083333332,
+    "dropped": 0
+   },
+   "inp_median": 11293.0,
+   "out": {
+    "est": 1391.041,
+    "lo": 1139.6358750000002,
+    "hi": 1668.6673250000001,
+    "dropped": 0
+   },
+   "out_median": 1203.0,
+   "total": {
+    "est": 13670.442666666666,
+    "lo": 12418.052058333333,
+    "hi": 15001.846833333333,
+    "dropped": 0
+   },
+   "total_median": 12477.0,
+   "turns": {
+    "est": 2.050333333333333,
+    "lo": 2.018,
+    "hi": 2.0886666666666667,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 13859.860763771545,
+    "lo": 12620.061821254332,
+    "hi": 15177.023840114993,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 19501.122000675903,
+    "lo": 17264.552705419734,
+    "hi": 21901.277933137433,
+    "dropped": 0
+   },
+   "wrong_token_share": 1.6109451515444708,
+   "at_cap": 1,
+   "window_full": 3,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 13450.219333333333,
+    "wrong_window_full": 38.755,
+    "wrong_other": 181.46833333333333
+   },
+   "total_processed": {
+    "est": 13659.52,
+    "lo": 12407.122558333333,
+    "hi": 14996.904666666667,
+    "dropped": 0
+   },
+   "refused_requests": 2,
+   "window_full_tokens_mean": 38755.0,
+   "window_full_token_share": 0.28349484318088897,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 79.60538250981556,
+    "lo": 77.26284358475638,
+    "hi": 82.29205524280044,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 12.791794422614169,
+    "lo": 11.17513836067344,
+    "hi": 14.344406193113514,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 7.602823067570276,
+    "lo": 6.049385187863788,
+    "hi": 9.096552772846564,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_plan",
+   "arm": "none",
+   "n": 3000,
+   "right": 2828,
+   "rate": 94.26666666666667,
+   "inp": {
+    "est": 1899.0053333333333,
+    "lo": 1561.1451833333333,
+    "hi": 2265.911608333333,
+    "dropped": 0
+   },
+   "inp_median": 1705.0,
+   "out": {
+    "est": 945.1646666666667,
+    "lo": 803.1874916666667,
+    "hi": 1104.9516583333334,
+    "dropped": 0
+   },
+   "out_median": 835.5,
+   "total": {
+    "est": 2844.17,
+    "lo": 2389.0746083333333,
+    "hi": 3345.671158333333,
+    "dropped": 0
+   },
+   "total_median": 2588.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 3017.1534653465346,
+    "lo": 2505.4405213471377,
+    "hi": 3611.466212282903,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 7027.753182461103,
+    "lo": 5906.343988706334,
+    "hi": 8327.465062613166,
+    "dropped": 0
+   },
+   "wrong_token_share": 7.722604485667172,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 3000,
+   "tokens_by_outcome_per_trial": {
+    "right": 2624.526,
+    "wrong_window_full": 0.0,
+    "wrong_other": 219.644
+   },
+   "total_processed": {
+    "est": 2844.17,
+    "lo": 2389.0746083333333,
+    "hi": 3345.671158333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.0003312414333333333,
+    "lo": 0.0002815274725,
+    "hi": 0.00038626943541666665,
+    "dropped": 0
+   },
+   "usd_total": 0.9937243,
+   "usd_per_right": {
+    "est": 0.0003513876591230551,
+    "lo": 0.0002953171994353167,
+    "hi": 0.00041637325313065825,
+    "dropped": 0
+   },
+   "last_out": 945.1646666666667
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_plan",
+   "arm": "tools",
+   "n": 3000,
+   "right": 2853,
+   "rate": 95.1,
+   "inp": {
+    "est": 20247.980666666666,
+    "lo": 17752.05205833333,
+    "hi": 23597.007025,
+    "dropped": 0
+   },
+   "inp_median": 16496.0,
+   "out": {
+    "est": 2295.4193333333333,
+    "lo": 1919.0054333333333,
+    "hi": 2725.7502166666663,
+    "dropped": 0
+   },
+   "out_median": 1917.0,
+   "total": {
+    "est": 22543.4,
+    "lo": 19771.72430833333,
+    "hi": 26156.595633333327,
+    "dropped": 0
+   },
+   "total_median": 18195.5,
+   "turns": {
+    "est": 1.9706666666666666,
+    "lo": 1.9406666666666668,
+    "hi": 1.9946666666666666,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 23704.942166140903,
+    "lo": 20493.230700253214,
+    "hi": 27737.151754351344,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 33359.70276901507,
+    "lo": 28612.42118316603,
+    "hi": 38927.836270231775,
+    "dropped": 0
+   },
+   "wrong_token_share": 4.555294823910028,
+   "at_cap": 79,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 116,
+   "tokens_by_outcome_per_trial": {
+    "right": 21516.481666666667,
+    "wrong_window_full": 0.0,
+    "wrong_other": 1026.9183333333333
+   },
+   "total_processed": {
+    "est": 22543.4,
+    "lo": 19771.72430833333,
+    "hi": 26156.595633333327,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 69.41543899143062,
+    "lo": 60.86194506697277,
+    "hi": 77.03438754099635,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 9.536425871076988,
+    "lo": 8.526108108218324,
+    "hi": 10.638325457617775,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 21.048135137492395,
+    "lo": 13.03178493871543,
+    "hi": 30.27534317021029,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.0034504842666666664,
+    "lo": 0.0028188254341666667,
+    "hi": 0.004281775624166667,
+    "dropped": 0
+   },
+   "usd_total": 10.3514528,
+   "usd_per_right": {
+    "est": 0.003628269470732562,
+    "lo": 0.0029273690601505664,
+    "hi": 0.004540394135370577,
+    "dropped": 0
+   },
+   "last_out": 382.442
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_plan",
+   "arm": "none",
+   "n": 3000,
+   "right": 2971,
+   "rate": 99.03333333333333,
+   "inp": {
+    "est": 1899.0053333333333,
+    "lo": 1561.1451833333333,
+    "hi": 2265.911608333333,
+    "dropped": 0
+   },
+   "inp_median": 1705.0,
+   "out": {
+    "est": 634.0256666666667,
+    "lo": 524.5464916666667,
+    "hi": 755.3840749999999,
+    "dropped": 0
+   },
+   "out_median": 542.0,
+   "total": {
+    "est": 2533.031,
+    "lo": 2107.2750250000004,
+    "hi": 3004.0121166666668,
+    "dropped": 0
+   },
+   "total_median": 2295.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 2557.7559744193873,
+    "lo": 2131.7182681374666,
+    "hi": 3022.102428037043,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 5118.613598115113,
+    "lo": 4291.821289274986,
+    "hi": 6034.825491266375,
+    "dropped": 0
+   },
+   "wrong_token_share": 1.0144368545035571,
+   "at_cap": 0,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 3000,
+   "tokens_by_outcome_per_trial": {
+    "right": 2507.335,
+    "wrong_window_full": 0.0,
+    "wrong_other": 25.696
+   },
+   "total_processed": {
+    "est": 2533.031,
+    "lo": 2107.2750250000004,
+    "hi": 3004.0121166666668,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.005069133666666666,
+    "lo": 0.004236357366666666,
+    "hi": 0.005989385608333332,
+    "dropped": 0
+   },
+   "usd_total": 15.207401,
+   "usd_per_right": {
+    "est": 0.005118613598115112,
+    "lo": 0.004291821289274987,
+    "hi": 0.006034825491266374,
+    "dropped": 0
+   },
+   "last_out": 634.0256666666667
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_plan",
+   "arm": "tools",
+   "n": 3000,
+   "right": 2983,
+   "rate": 99.43333333333334,
+   "inp": {
+    "est": 17807.379666666668,
+    "lo": 16443.605075,
+    "hi": 19224.764283333334,
+    "dropped": 0
+   },
+   "inp_median": 16383.5,
+   "out": {
+    "est": 1916.5676666666666,
+    "lo": 1593.4046083333333,
+    "hi": 2276.7022166666666,
+    "dropped": 0
+   },
+   "out_median": 1682.5,
+   "total": {
+    "est": 19723.947333333334,
+    "lo": 18056.424866666664,
+    "hi": 21497.252741666667,
+    "dropped": 0
+   },
+   "total_median": 17940.5,
+   "turns": {
+    "est": 2.005,
+    "lo": 1.9983333333333333,
+    "hi": 2.013,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 19836.35333556822,
+    "lo": 18147.955831903302,
+    "hi": 21639.751201048246,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 27546.313778075764,
+    "lo": 24601.153626425777,
+    "hi": 30767.938729523554,
+    "dropped": 0
+   },
+   "wrong_token_share": 0.4893594490433473,
+   "at_cap": 5,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 5,
+   "tokens_by_outcome_per_trial": {
+    "right": 19627.426333333333,
+    "wrong_window_full": 0.0,
+    "wrong_other": 96.521
+   },
+   "total_processed": {
+    "est": 19723.947333333334,
+    "lo": 18056.424866666664,
+    "hi": 21497.252741666667,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 80.53734800847266,
+    "lo": 77.59937827666499,
+    "hi": 83.58594229773307,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 9.985712103365985,
+    "lo": 8.83544461299571,
+    "hi": 11.175896462925037,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 9.476939888161349,
+    "lo": 6.9194300109110465,
+    "hi": 12.18466764177957,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.054780436,
+    "lo": 0.04894637233333334,
+    "hi": 0.06111685913333333,
+    "dropped": 0
+   },
+   "usd_total": 164.341308,
+   "usd_per_right": {
+    "est": 0.055092627556151526,
+    "lo": 0.04920230725285155,
+    "hi": 0.061535877459047095,
+    "dropped": 0
+   },
+   "last_out": 147.40366666666668
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "arm": "none",
+   "n": 300,
+   "right": 38,
+   "rate": 12.666666666666666,
+   "inp": {
+    "est": 1456.66,
+    "lo": 1231.4092500000002,
+    "hi": 1693.8199999999997,
+    "dropped": 0
+   },
+   "inp_median": 1349.0,
+   "out": {
+    "est": 4513.616666666667,
+    "lo": 3873.677833333333,
+    "hi": 5126.758416666666,
+    "dropped": 0
+   },
+   "out_median": 6020.0,
+   "total": {
+    "est": 5970.276666666667,
+    "lo": 5138.381833333334,
+    "hi": 6763.317416666667,
+    "dropped": 0
+   },
+   "total_median": 7266.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 47133.76315789474,
+    "lo": 24840.445,
+    "hi": 122267.90174632349,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 189669.02631578947,
+    "lo": 99572.01477037888,
+    "hi": 491771.6413602939,
+    "dropped": 0
+   },
+   "wrong_token_share": 91.83415843933531,
+   "at_cap": 145,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 487.5233333333333,
+    "wrong_window_full": 0.0,
+    "wrong_other": 5482.753333333333
+   },
+   "total_processed": {
+    "est": 5970.276666666667,
+    "lo": 5138.381833333334,
+    "hi": 6763.317416666667,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 300,
+   "right": 59,
+   "rate": 19.666666666666668,
+   "inp": {
+    "est": 19936.903333333332,
+    "lo": 16193.041416666667,
+    "hi": 24371.417666666668,
+    "dropped": 0
+   },
+   "inp_median": 18168.0,
+   "out": {
+    "est": 2800.2433333333333,
+    "lo": 2171.2622499999998,
+    "hi": 3486.3802499999997,
+    "dropped": 0
+   },
+   "out_median": 1878.0,
+   "total": {
+    "est": 22737.146666666667,
+    "lo": 18477.2565,
+    "hi": 27719.71658333333,
+    "dropped": 0
+   },
+   "total_median": 21434.5,
+   "turns": {
+    "est": 2.283333333333333,
+    "lo": 1.94,
+    "hi": 2.6934166666666655,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 115612.61016949153,
+    "lo": 65245.7328416149,
+    "hi": 253622.37187499992,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 172566.71186440677,
+    "lo": 96992.23391683519,
+    "hi": 382557.78732517484,
+    "dropped": 0
+   },
+   "wrong_token_share": 87.96371986869065,
+   "at_cap": 11,
+   "window_full": 142,
+   "exceptions": 0,
+   "no_call": 56,
+   "tokens_by_outcome_per_trial": {
+    "right": 2736.7066666666665,
+    "wrong_window_full": 15170.686666666666,
+    "wrong_other": 4829.753333333333
+   },
+   "total_processed": {
+    "est": 15746.64,
+    "lo": 12135.541916666667,
+    "hi": 19982.48358333333,
+    "dropped": 0
+   },
+   "refused_requests": 128,
+   "window_full_tokens_mean": 32050.74647887324,
+   "window_full_token_share": 66.72203372337543,
+   "window_full_right": 0,
+   "refused_prompt_2req": [
+    16384.0,
+    16384.0,
+    16384.0,
+    93
+   ],
+   "share_first": {
+    "est": 55.93371153761592,
+    "lo": 53.938329479820446,
+    "hi": 58.286096630642255,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 13.474109622051094,
+    "lo": 7.157092178840369,
+    "hi": 18.652262145173133,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 30.592178840332977,
+    "lo": 25.87558729142445,
+    "hi": 36.24063842521134,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "arm": "steered",
+   "n": 300,
+   "right": 48,
+   "rate": 16.0,
+   "inp": {
+    "est": 23443.05,
+    "lo": 19026.657166666668,
+    "hi": 29011.90508333333,
+    "dropped": 0
+   },
+   "inp_median": 20987.0,
+   "out": {
+    "est": 2642.36,
+    "lo": 2032.0924166666666,
+    "hi": 3330.415833333333,
+    "dropped": 0
+   },
+   "out_median": 1868.0,
+   "total": {
+    "est": 26085.41,
+    "lo": 21148.748916666667,
+    "hi": 32271.050249999997,
+    "dropped": 0
+   },
+   "total_median": 22192.5,
+   "turns": {
+    "est": 2.58,
+    "lo": 2.1366666666666667,
+    "hi": 3.14,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 163033.8125,
+    "lo": 88190.76783105024,
+    "hi": 378445.63667582406,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 229092.8125,
+    "lo": 124359.06137387388,
+    "hi": 533455.3442222222,
+    "dropped": 0
+   },
+   "wrong_token_share": 89.97191661290098,
+   "at_cap": 0,
+   "window_full": 168,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 2615.866666666667,
+    "wrong_window_full": 17496.69,
+    "wrong_other": 5972.8533333333335
+   },
+   "total_processed": {
+    "est": 17456.503333333334,
+    "lo": 13136.816416666667,
+    "hi": 22825.89933333333,
+    "dropped": 0
+   },
+   "refused_requests": 158,
+   "window_full_tokens_mean": 31244.089285714286,
+   "window_full_token_share": 67.07462140713909,
+   "window_full_right": 0,
+   "refused_prompt_2req": [
+    16384.0,
+    16384.0,
+    16384.0,
+    120
+   ],
+   "share_first": {
+    "est": 53.63883965610277,
+    "lo": 51.724686050466836,
+    "hi": 55.86852416478048,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 12.890372340376729,
+    "lo": 7.000970111577495,
+    "hi": 17.7308543154876,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 33.47078800352051,
+    "lo": 28.666285648750335,
+    "hi": 39.48203636978386,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "arm": "none",
+   "n": 300,
+   "right": 95,
+   "rate": 31.666666666666668,
+   "inp": {
+    "est": 1516.9666666666667,
+    "lo": 1280.5966666666666,
+    "hi": 1767.3449166666664,
+    "dropped": 0
+   },
+   "inp_median": 1428.5,
+   "out": {
+    "est": 3870.6766666666667,
+    "lo": 3219.3717500000002,
+    "hi": 4526.82725,
+    "dropped": 0
+   },
+   "out_median": 3869.5,
+   "total": {
+    "est": 5387.643333333333,
+    "lo": 4527.0734999999995,
+    "hi": 6271.844249999999,
+    "dropped": 0
+   },
+   "total_median": 5018.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 17013.610526315788,
+    "lo": 10607.180895598483,
+    "hi": 32033.851224137932,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 65906.36842105263,
+    "lo": 40700.67415613746,
+    "hi": 124312.32958743842,
+    "dropped": 0
+   },
+   "wrong_token_share": 77.44592100565924,
+   "at_cap": 97,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 1215.1333333333334,
+    "wrong_window_full": 0.0,
+    "wrong_other": 4172.51
+   },
+   "total_processed": {
+    "est": 5387.643333333333,
+    "lo": 4527.0734999999995,
+    "hi": 6271.844249999999,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 300,
+   "right": 53,
+   "rate": 17.666666666666668,
+   "inp": {
+    "est": 19214.403333333332,
+    "lo": 17029.061916666666,
+    "hi": 21656.088083333332,
+    "dropped": 0
+   },
+   "inp_median": 20074.0,
+   "out": {
+    "est": 2325.133333333333,
+    "lo": 1884.29,
+    "hi": 2814.7545,
+    "dropped": 0
+   },
+   "out_median": 1833.0,
+   "total": {
+    "est": 21539.536666666667,
+    "lo": 18977.92875,
+    "hi": 24355.26758333333,
+    "dropped": 0
+   },
+   "total_median": 21527.5,
+   "turns": {
+    "est": 2.24,
+    "lo": 2.0566666666666666,
+    "hi": 2.466666666666667,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 121921.90566037736,
+    "lo": 74790.00224358974,
+    "hi": 236818.11060344815,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 174566.43396226416,
+    "lo": 107699.02016711833,
+    "hi": 338455.96507936507,
+    "dropped": 0
+   },
+   "wrong_token_share": 87.59762860884813,
+   "at_cap": 4,
+   "window_full": 163,
+   "exceptions": 0,
+   "no_call": 1,
+   "tokens_by_outcome_per_trial": {
+    "right": 2671.4133333333334,
+    "wrong_window_full": 13300.826666666666,
+    "wrong_other": 5567.296666666667
+   },
+   "total_processed": {
+    "est": 13948.283333333333,
+    "lo": 11254.326,
+    "hi": 17122.024166666666,
+    "dropped": 0
+   },
+   "refused_requests": 139,
+   "window_full_tokens_mean": 24480.0490797546,
+   "window_full_token_share": 61.750755703349235,
+   "window_full_right": 0,
+   "refused_prompt_2req": [
+    16384.0,
+    16383.0,
+    16384.0,
+    135
+   ],
+   "share_first": {
+    "est": 50.67254235147557,
+    "lo": 48.488420635482726,
+    "hi": 52.99373352359452,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 9.964262692806772,
+    "lo": 5.489666882583141,
+    "hi": 14.78223927440478,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 39.363194955717674,
+    "lo": 33.4903551254032,
+    "hi": 45.13044391089818,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "arm": "steered",
+   "n": 300,
+   "right": 48,
+   "rate": 16.0,
+   "inp": {
+    "est": 19933.203333333335,
+    "lo": 17307.749333333333,
+    "hi": 22888.73591666667,
+    "dropped": 0
+   },
+   "inp_median": 20089.0,
+   "out": {
+    "est": 2367.2766666666666,
+    "lo": 1892.3307499999999,
+    "hi": 2923.2851666666666,
+    "dropped": 0
+   },
+   "out_median": 1854.5,
+   "total": {
+    "est": 22300.48,
+    "lo": 19306.178083333332,
+    "hi": 25724.686333333335,
+    "dropped": 0
+   },
+   "total_median": 21495.0,
+   "turns": {
+    "est": 2.2933333333333334,
+    "lo": 2.066666666666667,
+    "hi": 2.566666666666667,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 139378.0,
+    "lo": 78855.50734797296,
+    "hi": 310865.7669836956,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 198559.91666666666,
+    "lo": 112542.18966216217,
+    "hi": 441205.55138888885,
+    "dropped": 0
+   },
+   "wrong_token_share": 89.8441049998326,
+   "at_cap": 0,
+   "window_full": 166,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 2264.8133333333335,
+    "wrong_window_full": 14362.313333333334,
+    "wrong_other": 5673.3533333333335
+   },
+   "total_processed": {
+    "est": 14763.84,
+    "lo": 11617.0425,
+    "hi": 18591.38025,
+    "dropped": 0
+   },
+   "refused_requests": 138,
+   "window_full_tokens_mean": 25955.98795180723,
+   "window_full_token_share": 64.4036062601941,
+   "window_full_right": 0,
+   "refused_prompt_2req": [
+    16384.0,
+    16383.0,
+    16384.0,
+    133
+   ],
+   "share_first": {
+    "est": 50.33875638988281,
+    "lo": 48.3497646040526,
+    "hi": 52.51322986963831,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 11.539569291578038,
+    "lo": 5.90896853993915,
+    "hi": 17.207966782825416,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 38.12167431853914,
+    "lo": 31.73049760360303,
+    "hi": 44.36842997674152,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "arm": "none",
+   "n": 300,
+   "right": 106,
+   "rate": 35.333333333333336,
+   "inp": {
+    "est": 1456.66,
+    "lo": 1231.4092500000002,
+    "hi": 1693.8199999999997,
+    "dropped": 0
+   },
+   "inp_median": 1349.0,
+   "out": {
+    "est": 4540.71,
+    "lo": 3956.6503333333335,
+    "hi": 5104.696833333333,
+    "dropped": 0
+   },
+   "out_median": 5790.5,
+   "total": {
+    "est": 5997.37,
+    "lo": 5220.146166666667,
+    "hi": 6765.1911666666665,
+    "dropped": 0
+   },
+   "total_median": 7208.0,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 16973.688679245282,
+    "lo": 10642.26763560084,
+    "hi": 30662.194236509757,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 68377.95283018867,
+    "lo": 43010.5071409396,
+    "hi": 123223.8292307692,
+    "dropped": 0
+   },
+   "wrong_token_share": 77.57294725299033,
+   "at_cap": 142,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 1345.0333333333333,
+    "wrong_window_full": 0.0,
+    "wrong_other": 4652.336666666667
+   },
+   "total_processed": {
+    "est": 5997.37,
+    "lo": 5220.146166666667,
+    "hi": 6765.1911666666665,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 300,
+   "right": 91,
+   "rate": 30.333333333333332,
+   "inp": {
+    "est": 19644.14,
+    "lo": 17101.872833333335,
+    "hi": 23327.294749999997,
+    "dropped": 0
+   },
+   "inp_median": 20622.0,
+   "out": {
+    "est": 2188.93,
+    "lo": 1807.0665833333333,
+    "hi": 2646.037166666667,
+    "dropped": 0
+   },
+   "out_median": 1878.5,
+   "total": {
+    "est": 21833.07,
+    "lo": 19009.89325,
+    "hi": 25903.333583333333,
+    "dropped": 0
+   },
+   "total_median": 21766.5,
+   "turns": {
+    "est": 2.16,
+    "lo": 2.013333333333333,
+    "hi": 2.42,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 71977.15384615384,
+    "lo": 45647.3918460876,
+    "hi": 129555.95330188677,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 100842.16483516483,
+    "lo": 64143.05518588362,
+    "hi": 180538.16422413793,
+    "dropped": 0
+   },
+   "wrong_token_share": 78.23596651013042,
+   "at_cap": 0,
+   "window_full": 166,
+   "exceptions": 0,
+   "no_call": 1,
+   "tokens_by_outcome_per_trial": {
+    "right": 4751.756666666667,
+    "wrong_window_full": 14668.59,
+    "wrong_other": 2412.7233333333334
+   },
+   "total_processed": {
+    "est": 13804.91,
+    "lo": 11456.086833333333,
+    "hi": 17050.139916666663,
+    "dropped": 0
+   },
+   "refused_requests": 147,
+   "window_full_tokens_mean": 26509.5,
+   "window_full_token_share": 67.18519200460585,
+   "window_full_right": 0,
+   "refused_prompt_2req": [
+    16384.0,
+    16384.0,
+    16384.0,
+    140
+   ],
+   "share_first": {
+    "est": 53.4735719320537,
+    "lo": 51.024046487068695,
+    "hi": 56.340162024954154,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 9.037664241597053,
+    "lo": 4.198725877128342,
+    "hi": 16.091996406812395,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 37.48876382634925,
+    "lo": 31.291038032916383,
+    "hi": 42.990440242971644,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "arm": "steered",
+   "n": 300,
+   "right": 97,
+   "rate": 32.333333333333336,
+   "inp": {
+    "est": 19681.456666666665,
+    "lo": 17268.10375,
+    "hi": 22807.070083333332,
+    "dropped": 0
+   },
+   "inp_median": 20640.0,
+   "out": {
+    "est": 2089.1133333333332,
+    "lo": 1711.9227500000002,
+    "hi": 2513.519416666667,
+    "dropped": 0
+   },
+   "out_median": 1779.5,
+   "total": {
+    "est": 21770.57,
+    "lo": 19058.638583333333,
+    "hi": 25234.555166666665,
+    "dropped": 0
+   },
+   "total_median": 21843.5,
+   "turns": {
+    "est": 2.16,
+    "lo": 2.0033333333333334,
+    "hi": 2.39,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 67331.65979381443,
+    "lo": 43608.011623376624,
+    "hi": 118285.49166666665,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 93176.36082474227,
+    "lo": 60631.74118176047,
+    "hi": 163214.51294642856,
+    "dropped": 0
+   },
+   "wrong_token_share": 75.94512530754439,
+   "at_cap": 0,
+   "window_full": 168,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 5236.883333333333,
+    "wrong_window_full": 14600.0,
+    "wrong_other": 1933.6866666666667
+   },
+   "total_processed": {
+    "est": 13578.57,
+    "lo": 11498.848666666667,
+    "hi": 15995.823166666663,
+    "dropped": 0
+   },
+   "refused_requests": 150,
+   "window_full_tokens_mean": 26071.428571428572,
+   "window_full_token_share": 67.06301213059649,
+   "window_full_right": 0,
+   "refused_prompt_2req": [
+    16384.0,
+    16384.0,
+    16384.0,
+    140
+   ],
+   "share_first": {
+    "est": 53.690758322935785,
+    "lo": 51.414205157020156,
+    "hi": 56.29579637003468,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 7.469361932701937,
+    "lo": 4.16393253409553,
+    "hi": 11.961473844210891,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 38.83987974436227,
+    "lo": 34.73368559538144,
+    "hi": 42.84507808864384,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "simulate",
+   "arm": "none",
+   "n": 300,
+   "right": 124,
+   "rate": 41.333333333333336,
+   "inp": {
+    "est": 2046.01,
+    "lo": 1706.327,
+    "hi": 2413.60025,
+    "dropped": 0
+   },
+   "inp_median": 1844.0,
+   "out": {
+    "est": 3727.6433333333334,
+    "lo": 3096.72925,
+    "hi": 4360.186083333333,
+    "dropped": 0
+   },
+   "out_median": 3411.5,
+   "total": {
+    "est": 5773.653333333334,
+    "lo": 4849.846333333333,
+    "hi": 6718.02225,
+    "dropped": 0
+   },
+   "total_median": 5438.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 13968.516129032258,
+    "lo": 8700.355360979802,
+    "hi": 25067.80092105263,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 50042.48387096774,
+    "lo": 31073.104587215323,
+    "hi": 89504.05770432879,
+    "dropped": 0
+   },
+   "wrong_token_share": 72.42525818430387,
+   "at_cap": 86,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 1592.07,
+    "wrong_window_full": 0.0,
+    "wrong_other": 4181.583333333333
+   },
+   "total_processed": {
+    "est": 5773.653333333334,
+    "lo": 4849.846333333333,
+    "hi": 6718.02225,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.0010342113333333333,
+    "lo": 0.0008623959666666667,
+    "hi": 0.0012074712541666663,
+    "dropped": 0
+   },
+   "usd_total": 0.3102634,
+   "usd_per_right": {
+    "est": 0.0025021241935483875,
+    "lo": 0.001553655229360766,
+    "hi": 0.00447520288521644,
+    "dropped": 0
+   },
+   "last_out": 3727.6433333333334
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "simulate",
+   "arm": "tools",
+   "n": 300,
+   "right": 63,
+   "rate": 21.0,
+   "inp": {
+    "est": 54342.636666666665,
+    "lo": 38524.62783333333,
+    "hi": 71434.42624999999,
+    "dropped": 0
+   },
+   "inp_median": 28511.0,
+   "out": {
+    "est": 3977.2733333333335,
+    "lo": 3289.5179166666667,
+    "hi": 4723.214499999999,
+    "dropped": 0
+   },
+   "out_median": 3222.0,
+   "total": {
+    "est": 58319.91,
+    "lo": 41935.17441666667,
+    "hi": 76046.48908333333,
+    "dropped": 0
+   },
+   "total_median": 31430.0,
+   "turns": {
+    "est": 2.01,
+    "lo": 2.0,
+    "hi": 2.026666666666667,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 277713.85714285716,
+    "lo": 143017.24373022353,
+    "hi": 612779.6927723174,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 353471.44444444444,
+    "lo": 186202.99672677866,
+    "hi": 767372.3432788039,
+    "dropped": 0
+   },
+   "wrong_token_share": 91.15079224230627,
+   "at_cap": 18,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 5160.85,
+    "wrong_window_full": 0.0,
+    "wrong_other": 53159.06
+   },
+   "total_processed": {
+    "est": 58319.91,
+    "lo": 41935.17441666667,
+    "hi": 76046.48908333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 26.89882977706087,
+    "lo": 21.119939666023143,
+    "hi": 36.7313911930913,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 3.3757287325832737,
+    "lo": 2.810257025232425,
+    "hi": 4.186344790050574,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 69.72544149035585,
+    "lo": 59.14234612141985,
+    "hi": 75.99302173618872,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.016734671000000003,
+    "lo": 0.008807847750000002,
+    "hi": 0.025470980749999997,
+    "dropped": 0
+   },
+   "usd_total": 5.0204013,
+   "usd_per_right": {
+    "est": 0.07968890952380953,
+    "lo": 0.032118878631465515,
+    "hi": 0.19724549360937502,
+    "dropped": 0
+   },
+   "last_out": 2156.4333333333334
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "simulate",
+   "arm": "none",
+   "n": 300,
+   "right": 165,
+   "rate": 55.0,
+   "inp": {
+    "est": 2046.01,
+    "lo": 1706.327,
+    "hi": 2413.60025,
+    "dropped": 0
+   },
+   "inp_median": 1844.0,
+   "out": {
+    "est": 3598.133333333333,
+    "lo": 2907.8655,
+    "hi": 4287.383083333333,
+    "dropped": 0
+   },
+   "out_median": 3191.5,
+   "total": {
+    "est": 5644.143333333333,
+    "lo": 4671.565333333333,
+    "hi": 6648.959666666667,
+    "dropped": 0
+   },
+   "total_median": 4950.5,
+   "turns": {
+    "est": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "dropped": 0
+   },
+   "turns_median": 1.0,
+   "cpr": {
+    "est": 10262.078787878789,
+    "lo": 6951.603285211268,
+    "hi": 15630.0181640625,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 36430.32121212121,
+    "lo": 24461.531927479908,
+    "hi": 55549.00963650793,
+    "dropped": 0
+   },
+   "wrong_token_share": 60.39930476606134,
+   "at_cap": 85,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 300,
+   "tokens_by_outcome_per_trial": {
+    "right": 2235.12,
+    "wrong_window_full": 0.0,
+    "wrong_other": 3409.0233333333335
+   },
+   "total_processed": {
+    "est": 5644.143333333333,
+    "lo": 4671.565333333333,
+    "hi": 6648.959666666667,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "usd": {
+    "est": 0.020036676666666666,
+    "lo": 0.016312422833333333,
+    "hi": 0.023787605999999992,
+    "dropped": 0
+   },
+   "usd_total": 6.011003,
+   "usd_per_right": {
+    "est": 0.03643032121212121,
+    "lo": 0.024461531927479907,
+    "hi": 0.05554900963650794,
+    "dropped": 0
+   },
+   "last_out": 3598.133333333333
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "simulate",
+   "arm": "tools",
+   "n": 300,
+   "right": 139,
+   "rate": 46.333333333333336,
+   "inp": {
+    "est": 54066.95,
+    "lo": 38444.03258333333,
+    "hi": 70942.89899999999,
+    "dropped": 0
+   },
+   "inp_median": 28529.0,
+   "out": {
+    "est": 4278.966666666666,
+    "lo": 3528.1864166666664,
+    "hi": 5100.180666666666,
+    "dropped": 0
+   },
+   "out_median": 3699.0,
+   "total": {
+    "est": 58345.916666666664,
+    "lo": 42055.02458333333,
+    "hi": 75932.09133333333,
+    "dropped": 0
+   },
+   "total_median": 31868.5,
+   "turns": {
+    "est": 2.006666666666667,
+    "lo": 2.0,
+    "hi": 2.0166666666666666,
+    "dropped": 0
+   },
+   "turns_median": 2.0,
+   "cpr": {
+    "est": 125926.43884892086,
+    "lo": 73762.94864429049,
+    "hi": 217336.51428089305,
+    "dropped": 0
+   },
+   "cpr5": {
+    "est": 162867.1582733813,
+    "lo": 98149.92212912088,
+    "hi": 276455.3982142857,
+    "dropped": 0
+   },
+   "wrong_token_share": 78.26063806236084,
+   "at_cap": 23,
+   "window_full": 0,
+   "exceptions": 0,
+   "no_call": 0,
+   "tokens_by_outcome_per_trial": {
+    "right": 12684.03,
+    "wrong_window_full": 0.0,
+    "wrong_other": 45661.886666666665
+   },
+   "total_processed": {
+    "est": 58345.916666666664,
+    "lo": 42055.02458333333,
+    "hi": 75932.09133333333,
+    "dropped": 0
+   },
+   "refused_requests": 0,
+   "window_full_tokens_mean": null,
+   "window_full_token_share": 0.0,
+   "window_full_right": 0,
+   "refused_prompt_2req": null,
+   "share_first": {
+    "est": 26.993742634517638,
+    "lo": 21.213635145397966,
+    "hi": 36.775235436728835,
+    "dropped": 0
+   },
+   "share_own": {
+    "est": 3.2896313428690416,
+    "lo": 2.7483837141810707,
+    "hi": 4.064614917293081,
+    "dropped": 0
+   },
+   "share_tool": {
+    "est": 69.71662602261333,
+    "lo": 59.20430899482777,
+    "hi": 75.91512850874166,
+    "dropped": 0
+   },
+   "negative_added": 0,
+   "unsplit": 0,
+   "usd": {
+    "est": 0.15092356666666668,
+    "lo": 0.112929435,
+    "hi": 0.19249417716666664,
+    "dropped": 0
+   },
+   "usd_total": 45.27707,
+   "usd_per_right": {
+    "est": 0.3257343165467626,
+    "lo": 0.19629984425824176,
+    "hi": 0.5529107964285714,
+    "dropped": 0
+   },
+   "last_out": 2509.1033333333335
+  }
+ ],
+ "contrasts": [
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "arm": "plain",
+   "n": 300,
+   "right_tools": 275,
+   "right_none": 124,
+   "mult": {
+    "est": 2.1656312273784124,
+    "lo": 1.2974367501837545,
+    "hi": 3.3846134008932602,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 0.7824892527610482,
+    "lo": 0.4684818427610121,
+    "hi": 1.238113367778518,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 2.0805737071623556,
+    "lo": 1.2629887472792454,
+    "hi": 3.224941417047363,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.802811189750511,
+    "lo": 3.7523228637295905,
+    "hi": 6.1559726200839275,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 19817.653333333332,
+    "lo": 15119.923666666667,
+    "hi": 24658.45708333333
+   },
+   "gain_pp": {
+    "est": 50.333333333333336,
+    "lo": 37.333333333333336,
+    "hi": 63.333333333333336
+   },
+   "gain_per_1k": {
+    "est": 2.539823080297432,
+    "lo": 1.625648674430268,
+    "hi": 3.898069909654083,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.743511553950978,
+    "lo": 0.5666265781225969,
+    "hi": 0.9705491937212268,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "solve",
+   "arm": "steered",
+   "n": 300,
+   "right_tools": 271,
+   "right_none": 124,
+   "mult": {
+    "est": 2.0155236718783867,
+    "lo": 1.2020578299051756,
+    "hi": 3.1814430836132086,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 0.7268343622011822,
+    "lo": 0.43076109219898134,
+    "hi": 1.1626411605234472,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 1.9340058557631623,
+    "lo": 1.1721878466578142,
+    "hi": 3.0131368019193836,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.404894476443893,
+    "lo": 3.402688396599463,
+    "hi": 5.719746046792076,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 17743.983333333334,
+    "lo": 13252.910916666668,
+    "hi": 22676.74325
+   },
+   "gain_pp": {
+    "est": 49.0,
+    "lo": 36.0,
+    "hi": 61.666666666666664
+   },
+   "gain_per_1k": {
+    "est": 2.7614994378376143,
+    "lo": 1.7182175400941808,
+    "hi": 4.348775097599338,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.6778105568994444,
+    "lo": 0.5112741736392558,
+    "hi": 0.8946082698462849,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "solve",
+   "arm": "plain",
+   "n": 300,
+   "right_tools": 282,
+   "right_none": 174,
+   "mult": {
+    "est": 3.0885607556315415,
+    "lo": 2.1014099067030774,
+    "hi": 4.40046180555409,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.2132122517651989,
+    "lo": 0.8238089954258896,
+    "hi": 1.7527865287535396,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.0152281938846346,
+    "lo": 2.057822413349651,
+    "hi": 4.289270157617737,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 5.0055984660235335,
+    "lo": 4.258637602160075,
+    "hi": 5.983789793614634,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 16565.78,
+    "lo": 13749.64525,
+    "hi": 19652.680499999995
+   },
+   "gain_pp": {
+    "est": 36.0,
+    "lo": 23.0,
+    "hi": 49.666666666666664
+   },
+   "gain_per_1k": {
+    "est": 2.1731545390558127,
+    "lo": 1.3261337170720868,
+    "hi": 3.1930456642675993,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.8859785925538022,
+    "lo": 0.7275608694514456,
+    "hi": 1.0997547433958272,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "solve",
+   "arm": "steered",
+   "n": 300,
+   "right_tools": 284,
+   "right_none": 174,
+   "mult": {
+    "est": 2.4935200496740317,
+    "lo": 1.633318391817845,
+    "hi": 3.630429110797244,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 0.9803542046879969,
+    "lo": 0.6378480799605483,
+    "hi": 1.4549252994670054,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 2.4287945961133817,
+    "lo": 1.5920001356591413,
+    "hi": 3.5343737138992317,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.069883299467961,
+    "lo": 3.3670198961417666,
+    "hi": 4.983199975846313,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 12695.983333333334,
+    "lo": 10557.602166666667,
+    "hi": 15096.934166666666
+   },
+   "gain_pp": {
+    "est": 36.666666666666664,
+    "lo": 23.333333333333332,
+    "hi": 51.0
+   },
+   "gain_per_1k": {
+    "est": 2.8880525205478373,
+    "lo": 1.7171156013193292,
+    "hi": 4.384824866393263,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.722303643803563,
+    "lo": 0.5803847839910895,
+    "hi": 0.9233102780928896,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "arm": "plain",
+   "n": 300,
+   "right_tools": 238,
+   "right_none": 205,
+   "mult": {
+    "est": 4.679577432239337,
+    "lo": 3.658159414827206,
+    "hi": 5.873726678801496,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.9496372351312596,
+    "lo": 1.5547085217417003,
+    "hi": 2.406702116149826,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.462871131605846,
+    "lo": 3.450859112886046,
+    "hi": 5.646017026517632,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 5.432875262794938,
+    "lo": 4.698824920930571,
+    "hi": 6.373856525825773,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 21169.58,
+    "lo": 18071.5165,
+    "hi": 24407.784083333332
+   },
+   "gain_pp": {
+    "est": 11.0,
+    "lo": 2.3333333333333335,
+    "hi": 19.666666666666668
+   },
+   "gain_per_1k": {
+    "est": 0.5196135209106653,
+    "lo": 0.10681581656332789,
+    "hi": 0.9169962443283942,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.210483792420539,
+    "lo": 1.0890835746616438,
+    "hi": 1.360682202606283,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "solve",
+   "arm": "steered",
+   "n": 300,
+   "right_tools": 270,
+   "right_none": 205,
+   "mult": {
+    "est": 4.155288270186545,
+    "lo": 3.1901119980332675,
+    "hi": 5.295119168692053,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.6114330351780344,
+    "lo": 1.2390155300618415,
+    "hi": 2.0545458804713173,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.972948524299981,
+    "lo": 3.0621914363972658,
+    "hi": 5.046453650563436,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 5.472818697318863,
+    "lo": 4.747977486426712,
+    "hi": 6.465629155806935,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 21360.333333333332,
+    "lo": 17156.928416666666,
+    "hi": 25839.8265
+   },
+   "gain_pp": {
+    "est": 21.666666666666668,
+    "lo": 11.0,
+    "hi": 33.666666666666664
+   },
+   "gain_per_1k": {
+    "est": 1.014341224387884,
+    "lo": 0.5473647607964652,
+    "hi": 1.5089461603898735,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.0092259599552895,
+    "lo": 0.8591041866773055,
+    "hi": 1.1841255146786598,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "solve",
+   "arm": "tools",
+   "n": 300,
+   "right_tools": 285,
+   "right_none": 221,
+   "mult": {
+    "est": 5.884355763354749,
+    "lo": 4.279978029812319,
+    "hi": 7.857469692168555,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 3.391181798974139,
+    "lo": 2.4939105671880517,
+    "hi": 4.479899254793576,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 5.884355763354749,
+    "lo": 4.279978029812319,
+    "hi": 7.857469692168555,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 7.5884225907516,
+    "lo": 6.764329647016058,
+    "hi": 8.674607150045041,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 17208.85,
+    "lo": 15519.57275,
+    "hi": 19121.999249999997
+   },
+   "gain_pp": {
+    "est": 21.333333333333332,
+    "lo": 7.666666666666667,
+    "hi": 36.333333333333336
+   },
+   "gain_per_1k": {
+    "est": 1.2396722229163095,
+    "lo": 0.44161511070955073,
+    "hi": 2.1013485101535876,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 6.782363597948278,
+    "lo": 4.987821134376104,
+    "hi": 8.959798509587154,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 8.746486992829228,
+    "lo": 7.889827071358901,
+    "hi": 9.856624624073152,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 2.2413111469150677,
+    "lo": 1.995718599311234,
+    "hi": 2.5075443010025347,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "solve",
+   "arm": "tools",
+   "n": 300,
+   "right_tools": 291,
+   "right_none": 282,
+   "mult": {
+    "est": 7.775671898336254,
+    "lo": 6.573244686476285,
+    "hi": 9.137419934067223,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 4.922578802873741,
+    "lo": 4.153961175503886,
+    "hi": 5.826939044515975,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 7.775671898336254,
+    "lo": 6.573244686476285,
+    "hi": 9.137419934067223,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 8.023831639772519,
+    "lo": 7.271843122633754,
+    "hi": 8.970064525136946,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 16660.926666666666,
+    "lo": 15134.67875,
+    "hi": 18338.836916666667
+   },
+   "gain_pp": {
+    "est": 3.0,
+    "lo": -3.0,
+    "hi": 10.666666666666666
+   },
+   "gain_per_1k": {
+    "est": 0.1800620133574003,
+    "lo": -0.1931920381533749,
+    "hi": 0.6025756939324115,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 9.845157605747485,
+    "lo": 8.307922351007775,
+    "hi": 11.65387808903195,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 10.159364763377724,
+    "lo": 9.131423032744692,
+    "hi": 11.490970125730055,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 2.735722149128695,
+    "lo": 2.3814980900817377,
+    "hi": 3.1848931293662672,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_domain",
+   "arm": "plain",
+   "n": 360,
+   "right_tools": 360,
+   "right_none": 94,
+   "mult": {
+    "est": 1.0832274763726235,
+    "lo": 0.7118152609926335,
+    "hi": 1.6802958665066432,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 0.38080005313025767,
+    "lo": 0.24542439170603722,
+    "hi": 0.6171537642811786,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 1.0832274763726235,
+    "lo": 0.7118152609926335,
+    "hi": 1.6802958665066432,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.148530760576006,
+    "lo": 3.4696962119160957,
+    "hi": 5.064352814696983,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 7571.219444444445,
+    "lo": 6983.2837500000005,
+    "hi": 8180.386249999999
+   },
+   "gain_pp": {
+    "est": 73.88888888888889,
+    "lo": 63.333333333333336,
+    "hi": 81.67361111111101
+   },
+   "gain_per_1k": {
+    "est": 9.759179407104169,
+    "lo": 8.207010706290266,
+    "hi": 11.100023372836192,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.4541212795501393,
+    "lo": 0.33505895914949185,
+    "hi": 0.64157205206522,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_domain",
+   "arm": "steered",
+   "n": 360,
+   "right_tools": 360,
+   "right_none": 94,
+   "mult": {
+    "est": 1.0862084199377398,
+    "lo": 0.7135115883734667,
+    "hi": 1.6847864634252359,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 0.3817044973779234,
+    "lo": 0.2459679652007264,
+    "hi": 0.6188132161740572,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 1.0862084199377398,
+    "lo": 0.7135115883734667,
+    "hi": 1.6847864634252359,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.159947140187088,
+    "lo": 3.4773743510991735,
+    "hi": 5.0794007499019855,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 7598.672222222222,
+    "lo": 7006.618472222222,
+    "hi": 8210.43097222222
+   },
+   "gain_pp": {
+    "est": 73.88888888888889,
+    "lo": 63.333333333333336,
+    "hi": 81.67361111111101
+   },
+   "gain_per_1k": {
+    "est": 9.723921065156851,
+    "lo": 8.174970184250272,
+    "hi": 11.063234810812403,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.4546163333247087,
+    "lo": 0.33416399640845373,
+    "hi": 0.6442210072464233,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_domain",
+   "arm": "plain",
+   "n": 360,
+   "right_tools": 354,
+   "right_none": 286,
+   "mult": {
+    "est": 5.145543939089998,
+    "lo": 4.223466448156943,
+    "hi": 6.095285804942381,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.5968502367531046,
+    "lo": 2.144785396668787,
+    "hi": 3.0720522159720756,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 5.145543939089998,
+    "lo": 4.223466448156943,
+    "hi": 6.095285804942381,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 6.3689599805519554,
+    "lo": 5.877122997448896,
+    "hi": 6.944267968676066,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 7607.175,
+    "lo": 7195.512847222222,
+    "hi": 8067.9747916666665
+   },
+   "gain_pp": {
+    "est": 18.88888888888889,
+    "lo": 7.5,
+    "hi": 31.666666666666668
+   },
+   "gain_per_1k": {
+    "est": 2.4830359350072646,
+    "lo": 1.0097530434794015,
+    "hi": 4.126907935330498,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.3437781890210447,
+    "lo": 1.1302174094162103,
+    "hi": 1.5854771694318277,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_domain",
+   "arm": "steered",
+   "n": 360,
+   "right_tools": 356,
+   "right_none": 286,
+   "mult": {
+    "est": 5.116217439125131,
+    "lo": 4.1930840182309375,
+    "hi": 6.056791715635258,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.5774574078990216,
+    "lo": 2.1293859779049966,
+    "hi": 3.0424000439074934,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 5.116217439125131,
+    "lo": 4.1930840182309375,
+    "hi": 6.056791715635258,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 6.368438490659253,
+    "lo": 5.878090009386948,
+    "hi": 6.9402030278754605,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 7606.436111111111,
+    "lo": 7180.855069444445,
+    "hi": 8075.506180555555
+   },
+   "gain_pp": {
+    "est": 19.444444444444443,
+    "lo": 8.333333333333334,
+    "hi": 31.944444444444443
+   },
+   "gain_per_1k": {
+    "est": 2.556314699868569,
+    "lo": 1.0928274099141169,
+    "hi": 4.196897986013205,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.3345624133986775,
+    "lo": 1.113916039406377,
+    "hi": 1.5819190574992168,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_domain",
+   "arm": "plain",
+   "n": 360,
+   "right_tools": 355,
+   "right_none": 275,
+   "mult": {
+    "est": 3.713720390957889,
+    "lo": 3.1238389070742953,
+    "hi": 4.298657554923029,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.3814931617688624,
+    "lo": 1.1192534685671396,
+    "hi": 1.6517574506527226,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.713720390957889,
+    "lo": 3.1238389070742953,
+    "hi": 4.298657554923029,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.794075413782003,
+    "lo": 4.5088066259277095,
+    "hi": 5.14193342677961,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 7890.022222222222,
+    "lo": 7498.2311805555555,
+    "hi": 8315.294375
+   },
+   "gain_pp": {
+    "est": 22.22222222222222,
+    "lo": 12.777777777777779,
+    "hi": 32.22222222222222
+   },
+   "gain_per_1k": {
+    "est": 2.81649678496892,
+    "lo": 1.5662258994114873,
+    "hi": 4.197849677094289,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.565544681991476,
+    "lo": 0.4635815621938004,
+    "hi": 0.6701473448680182,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_domain",
+   "arm": "steered",
+   "n": 360,
+   "right_tools": 358,
+   "right_none": 275,
+   "mult": {
+    "est": 3.6953876778630614,
+    "lo": 3.1115332405358567,
+    "hi": 4.274596098048768,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.3760710260944393,
+    "lo": 1.1167015925055748,
+    "hi": 1.6397293408959013,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.6953876778630614,
+    "lo": 3.1115332405358567,
+    "hi": 4.274596098048768,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.8107228679090035,
+    "lo": 4.527035490466371,
+    "hi": 5.158625345490015,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 7924.641666666666,
+    "lo": 7527.929236111111,
+    "hi": 8352.776249999999
+   },
+   "gain_pp": {
+    "est": 23.055555555555557,
+    "lo": 13.88888888888889,
+    "hi": 32.77777777777778
+   },
+   "gain_per_1k": {
+    "est": 2.9093499145247015,
+    "lo": 1.725357164649685,
+    "hi": 4.247127829829689,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.5700638869917786,
+    "lo": 0.46669470217917597,
+    "hi": 0.6756418034487452,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_domain",
+   "arm": "tools",
+   "n": 360,
+   "right_tools": 360,
+   "right_none": 297,
+   "mult": {
+    "est": 7.3252685853772626,
+    "lo": 6.185654549434618,
+    "hi": 8.467667745307896,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 4.000676223623487,
+    "lo": 3.336608428823347,
+    "hi": 4.6029957040697855,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 7.3252685853772626,
+    "lo": 6.185654549434618,
+    "hi": 8.467667745307896,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 8.879113436820923,
+    "lo": 8.29816811622464,
+    "hi": 9.590537550507745,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 13476.041666666666,
+    "lo": 12826.765694444444,
+    "hi": 14203.779999999999
+   },
+   "gain_pp": {
+    "est": 17.5,
+    "lo": 7.777777777777778,
+    "hi": 29.444444444444443
+   },
+   "gain_per_1k": {
+    "est": 1.2986009121125455,
+    "lo": 0.5680932915324468,
+    "hi": 2.183072316912925,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 8.001352447246973,
+    "lo": 6.673216857646693,
+    "hi": 9.205991408139571,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 9.698609026966027,
+    "lo": 9.285537169317985,
+    "hi": 10.17002218907633,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.989710682082204,
+    "lo": 1.6592848890622158,
+    "hi": 2.3863329935508917,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_domain",
+   "arm": "tools",
+   "n": 360,
+   "right_tools": 360,
+   "right_none": 359,
+   "mult": {
+    "est": 8.583227890084302,
+    "lo": 7.927055790011245,
+    "hi": 9.3476704679352,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 4.529487808276318,
+    "lo": 4.398003093256214,
+    "hi": 4.650630994375999,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 8.583227890084302,
+    "lo": 7.927055790011245,
+    "hi": 9.3476704679352,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 8.607136602870051,
+    "lo": 7.963338916393633,
+    "hi": 9.356598100073937,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 13273.227777777778,
+    "lo": 12681.647430555555,
+    "hi": 13933.442291666666
+   },
+   "gain_pp": {
+    "est": 0.2777777777777778,
+    "lo": 0.0,
+    "hi": 0.8333333333333334
+   },
+   "gain_per_1k": {
+    "est": 0.02092767354168646,
+    "lo": 0.0,
+    "hi": 0.06320559566808899,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 9.058975616552637,
+    "lo": 8.796006186512427,
+    "hi": 9.301261988751998,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 9.084209531919077,
+    "lo": 8.810104150521157,
+    "hi": 9.33488467210388,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.7586639923258045,
+    "lo": 1.4879433028108624,
+    "hi": 2.0421558893328258,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_problem",
+   "arm": "plain",
+   "n": 600,
+   "right_tools": 569,
+   "right_none": 395,
+   "mult": {
+    "est": 4.388476484548636,
+    "lo": 3.581666903616003,
+    "hi": 5.265888755612829,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.206074834693119,
+    "lo": 1.6505713019744812,
+    "hi": 2.8609981921265004,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.388476484548636,
+    "lo": 3.581666903616003,
+    "hi": 5.265888755612829,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 6.321628151159933,
+    "lo": 5.517946689376929,
+    "hi": 7.185155110676337,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 11116.42,
+    "lo": 9370.216625000001,
+    "hi": 13306.462333333333
+   },
+   "gain_pp": {
+    "est": 29.0,
+    "lo": 22.833333333333332,
+    "hi": 35.833333333333336
+   },
+   "gain_per_1k": {
+    "est": 2.608753537559754,
+    "lo": 1.9148022309843284,
+    "hi": 3.4788132156557783,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.433563709318983,
+    "lo": 0.9836681145134878,
+    "hi": 2.0456381094231393,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_problem",
+   "arm": "steered",
+   "n": 600,
+   "right_tools": 544,
+   "right_none": 395,
+   "mult": {
+    "est": 4.611893915102495,
+    "lo": 3.812570434173073,
+    "hi": 5.513878228644909,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.3501507440617155,
+    "lo": 1.7864538642307897,
+    "hi": 2.9919794053832423,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.611893915102495,
+    "lo": 3.812570434173073,
+    "hi": 5.513878228644909,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 6.351570353963943,
+    "lo": 5.7019221547468915,
+    "hi": 7.054233719615595,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 11178.966666666667,
+    "lo": 9644.462875,
+    "hi": 13039.379375
+   },
+   "gain_pp": {
+    "est": 24.833333333333332,
+    "lo": 15.833333333333334,
+    "hi": 33.666666666666664
+   },
+   "gain_per_1k": {
+    "est": 2.221433704367428,
+    "lo": 1.348940157417015,
+    "hi": 3.178493380639751,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.5083730426452333,
+    "lo": 1.0673373770756145,
+    "hi": 2.102038908852324,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_problem",
+   "arm": "plain",
+   "n": 600,
+   "right_tools": 597,
+   "right_none": 457,
+   "mult": {
+    "est": 4.51165121203434,
+    "lo": 3.8987788458930277,
+    "hi": 5.168347543240343,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.647188525393695,
+    "lo": 2.234527608711892,
+    "hi": 3.088886555585491,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.51165121203434,
+    "lo": 3.8987788458930277,
+    "hi": 5.168347543240343,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 5.893776309812912,
+    "lo": 5.400936926663599,
+    "hi": 6.428698822010904,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 9122.031666666666,
+    "lo": 8542.534416666667,
+    "hi": 9730.645916666666
+   },
+   "gain_pp": {
+    "est": 23.333333333333332,
+    "lo": 17.5,
+    "hi": 29.0
+   },
+   "gain_per_1k": {
+    "est": 2.557909705421983,
+    "lo": 1.9527271757094966,
+    "hi": 3.124974053029315,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.7901000818094086,
+    "lo": 1.538746899769285,
+    "hi": 2.102616600418535,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_problem",
+   "arm": "steered",
+   "n": 600,
+   "right_tools": 598,
+   "right_none": 457,
+   "mult": {
+    "est": 4.424065349322019,
+    "lo": 3.782790609168109,
+    "hi": 5.121694574250305,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.587282786612231,
+    "lo": 2.167876111201993,
+    "hi": 3.040204892481065,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.424065349322019,
+    "lo": 3.782790609168109,
+    "hi": 5.121694574250305,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 5.789039559944349,
+    "lo": 5.241678836808442,
+    "hi": 6.362998619529933,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 8926.801666666666,
+    "lo": 8467.679124999999,
+    "hi": 9388.418749999999
+   },
+   "gain_pp": {
+    "est": 23.5,
+    "lo": 17.666666666666668,
+    "hi": 29.166666666666668
+   },
+   "gain_per_1k": {
+    "est": 2.6325218009212334,
+    "lo": 1.9975148298985872,
+    "hi": 3.2287124517820627,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.7395154139703037,
+    "lo": 1.4884646850227155,
+    "hi": 2.046718735799369,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_problem",
+   "arm": "plain",
+   "n": 600,
+   "right_tools": 577,
+   "right_none": 448,
+   "mult": {
+    "est": 4.383324282480111,
+    "lo": 3.9267395523822293,
+    "hi": 4.833809569250186,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.2411846124774293,
+    "lo": 1.9554900948533722,
+    "hi": 2.5451345954652065,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.383324282480111,
+    "lo": 3.9267395523822293,
+    "hi": 4.833809569250186,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 5.645486854890679,
+    "lo": 5.230529151795261,
+    "hi": 6.098494205393852,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 9936.146666666667,
+    "lo": 9269.446,
+    "hi": 10661.459458333335
+   },
+   "gain_pp": {
+    "est": 21.5,
+    "lo": 17.166666666666668,
+    "hi": 26.0
+   },
+   "gain_per_1k": {
+    "est": 2.1638166908432646,
+    "lo": 1.7265156412268137,
+    "hi": 2.648151747375184,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.3981301810966689,
+    "lo": 1.1493349852106096,
+    "hi": 1.6732984842157994,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_problem",
+   "arm": "steered",
+   "n": 600,
+   "right_tools": 584,
+   "right_none": 448,
+   "mult": {
+    "est": 4.103979187604515,
+    "lo": 3.6660110061495357,
+    "hi": 4.547428906108373,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.9904652881864826,
+    "lo": 1.75580910902203,
+    "hi": 2.2388308912869186,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.103979187604515,
+    "lo": 3.6660110061495357,
+    "hi": 4.547428906108373,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 5.349830012413029,
+    "lo": 4.97893720345967,
+    "hi": 5.773030070410469,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 9303.771666666667,
+    "lo": 8842.499083333332,
+    "hi": 9812.975375
+   },
+   "gain_pp": {
+    "est": 22.666666666666668,
+    "lo": 18.0,
+    "hi": 27.5
+   },
+   "gain_per_1k": {
+    "est": 2.436287935555885,
+    "lo": 1.9345761355348896,
+    "hi": 2.9631619142209504,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.1083923256713355,
+    "lo": 0.9454885669919804,
+    "hi": 1.3033266228771148,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_problem",
+   "arm": "tools",
+   "n": 600,
+   "right_tools": 583,
+   "right_none": 530,
+   "mult": {
+    "est": 7.993053758999812,
+    "lo": 7.3247552503569215,
+    "hi": 8.694114952917479,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 5.467561564322799,
+    "lo": 4.971689898461879,
+    "hi": 5.951785229574827,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 7.993053758999812,
+    "lo": 7.3247552503569215,
+    "hi": 8.694114952917479,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 8.792359134899794,
+    "lo": 8.340776578020375,
+    "hi": 9.301866591662838,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 17146.008333333335,
+    "lo": 15566.125166666667,
+    "hi": 19006.942916666663
+   },
+   "gain_pp": {
+    "est": 8.833333333333334,
+    "lo": 4.166666666666667,
+    "hi": 14.0
+   },
+   "gain_per_1k": {
+    "est": 0.5151830771107561,
+    "lo": 0.25105031702439207,
+    "hi": 0.8113840623306906,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 10.935123128645598,
+    "lo": 9.943379796923757,
+    "hi": 11.903570459149654,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 12.028635441510158,
+    "lo": 11.13615547728312,
+    "hi": 12.942913347620042,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 3.5281344902386116,
+    "lo": 2.937177901807008,
+    "hi": 4.192204966137615,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_problem",
+   "arm": "tools",
+   "n": 600,
+   "right_tools": 597,
+   "right_none": 574,
+   "mult": {
+    "est": 8.203872810745715,
+    "lo": 7.547578980120164,
+    "hi": 9.011716180492346,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 6.248374139774254,
+    "lo": 6.0745718443444225,
+    "hi": 6.4427049799245575,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 8.203872810745715,
+    "lo": 7.547578980120164,
+    "hi": 9.011716180492346,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 8.532599421629254,
+    "lo": 7.901675822081323,
+    "hi": 9.320564141056504,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 14964.375,
+    "lo": 14219.674333333332,
+    "hi": 15801.687083333332
+   },
+   "gain_pp": {
+    "est": 3.8333333333333335,
+    "lo": 2.1666666666666665,
+    "hi": 5.666666666666667
+   },
+   "gain_per_1k": {
+    "est": 0.25616394492475186,
+    "lo": 0.14360832744736604,
+    "hi": 0.3730233466070657,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 12.496748279548507,
+    "lo": 12.149143688688847,
+    "hi": 12.885409959849111,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 12.997489064269093,
+    "lo": 12.665667231883303,
+    "hi": 13.338091858828895,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 3.9792352589045197,
+    "lo": 3.5239517189229006,
+    "hi": 4.446442814711794,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_plan",
+   "arm": "plain",
+   "n": 3000,
+   "right_tools": 2821,
+   "right_none": 2394,
+   "mult": {
+    "est": 3.969988406214504,
+    "lo": 3.2927066015616195,
+    "hi": 4.987002276569579,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.7415690029347026,
+    "lo": 1.4142520014146027,
+    "hi": 2.2365454678436834,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.884405289617824,
+    "lo": 3.2440518995274883,
+    "hi": 4.863414285314791,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.67808575352177,
+    "lo": 4.061705932490729,
+    "hi": 5.625237178022179,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 11552.646666666667,
+    "lo": 9895.918441666667,
+    "hi": 13756.634991666666
+   },
+   "gain_pp": {
+    "est": 14.233333333333333,
+    "lo": 8.7,
+    "hi": 20.2
+   },
+   "gain_per_1k": {
+    "est": 1.2320409118372297,
+    "lo": 0.7111002352398987,
+    "hi": 1.816733263276401,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.8985724689508033,
+    "lo": 0.7124688069406124,
+    "hi": 1.159287400056737,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.5-9B",
+   "task": "validate_plan",
+   "arm": "steered",
+   "n": 3000,
+   "right_tools": 2878,
+   "right_none": 2394,
+   "mult": {
+    "est": 3.741619390924048,
+    "lo": 3.1178396862722373,
+    "hi": 4.592188431581484,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.6179923993688432,
+    "lo": 1.325785259073893,
+    "hi": 2.0373547386270627,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.706907070789965,
+    "lo": 3.110426962930013,
+    "hi": 4.531128446593064,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.4980704290223095,
+    "lo": 3.9729600031862566,
+    "hi": 5.249785649882915,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 10987.229333333333,
+    "lo": 9760.219116666667,
+    "hi": 12581.644508333333
+   },
+   "gain_pp": {
+    "est": 16.133333333333333,
+    "lo": 10.533333333333333,
+    "hi": 22.366666666666667
+   },
+   "gain_per_1k": {
+    "est": 1.4683714013675513,
+    "lo": 0.9076611154622779,
+    "hi": 2.0929991992102073,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.8235143056160371,
+    "lo": 0.6631850100351653,
+    "hi": 1.0367612931418901,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_plan",
+   "arm": "plain",
+   "n": 3000,
+   "right_tools": 2675,
+   "right_none": 2649,
+   "mult": {
+    "est": 2.541340957513375,
+    "lo": 2.213863466613081,
+    "hi": 2.979342086374946,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.6028648444694493,
+    "lo": 1.485460822606016,
+    "hi": 1.7433256690020622,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 2.541340957513375,
+    "lo": 2.213863466613081,
+    "hi": 2.979342086374946,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 2.5662842813696787,
+    "lo": 2.2164470562677074,
+    "hi": 3.0351745415366613,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 3978.1673333333333,
+    "lo": 3444.0771416666666,
+    "hi": 4584.3497333333335
+   },
+   "gain_pp": {
+    "est": 0.8666666666666667,
+    "lo": -1.2,
+    "hi": 2.933333333333333
+   },
+   "gain_per_1k": {
+    "est": 0.21785575971247062,
+    "lo": -0.3203279937659011,
+    "hi": 0.695124402496784,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.0881367705809963,
+    "lo": 1.0292660952934494,
+    "hi": 1.1449882447992914,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Gemma-26B",
+   "task": "validate_plan",
+   "arm": "steered",
+   "n": 3000,
+   "right_tools": 2899,
+   "right_none": 2649,
+   "mult": {
+    "est": 4.217083582099474,
+    "lo": 3.731552504209833,
+    "hi": 4.71781195208057,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.253772003978355,
+    "lo": 2.046739299759464,
+    "hi": 2.4870534100149277,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.217083582099474,
+    "lo": 3.731552504209833,
+    "hi": 4.71781195208057,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.615071840130757,
+    "lo": 4.119176762422543,
+    "hi": 5.0985636726298775,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 9181.833,
+    "lo": 8310.414175,
+    "hi": 10085.373883333332
+   },
+   "gain_pp": {
+    "est": 8.333333333333334,
+    "lo": 5.8,
+    "hi": 11.033333333333333
+   },
+   "gain_per_1k": {
+    "est": 0.907589294352591,
+    "lo": 0.6437878387750103,
+    "hi": 1.1800568795246984,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.2638111676463364,
+    "lo": 1.1387040612727743,
+    "hi": 1.3997748887472676,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_plan",
+   "arm": "plain",
+   "n": 3000,
+   "right_tools": 2935,
+   "right_none": 2713,
+   "mult": {
+    "est": 3.595275261829219,
+    "lo": 3.216653363792239,
+    "hi": 4.023311556556333,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.570802756969475,
+    "lo": 1.3777214476309352,
+    "hi": 1.790782968516267,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.590785215936823,
+    "lo": 3.212822777134686,
+    "hi": 4.022690640347905,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 3.8894702887831767,
+    "lo": 3.5586734654349987,
+    "hi": 4.269265669118222,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 9746.06,
+    "lo": 8473.679733333334,
+    "hi": 11073.740541666666
+   },
+   "gain_pp": {
+    "est": 7.4,
+    "lo": 4.433333333333334,
+    "hi": 10.633333333333333
+   },
+   "gain_per_1k": {
+    "est": 0.7592811864486777,
+    "lo": 0.47018157180774955,
+    "hi": 1.0631147864912236,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.7847931705399063,
+    "lo": 0.6758075768533913,
+    "hi": 0.9106377570035875,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "rerun",
+   "model": "Qwen3.6-35B",
+   "task": "validate_plan",
+   "arm": "steered",
+   "n": 3000,
+   "right_tools": 2959,
+   "right_none": 2713,
+   "mult": {
+    "est": 3.716007303196661,
+    "lo": 3.3072146692816777,
+    "hi": 4.1834368172660366,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.5401613326958143,
+    "lo": 1.3530395364815053,
+    "hi": 1.7497390804156374,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 3.7130382179890042,
+    "lo": 3.3048186404566944,
+    "hi": 4.177250908841702,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.052954519041253,
+    "lo": 3.6964332180587096,
+    "hi": 4.475255763342562,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 10297.485333333334,
+    "lo": 9456.73105,
+    "hi": 11183.4748
+   },
+   "gain_pp": {
+    "est": 8.2,
+    "lo": 5.133333333333334,
+    "hi": 11.433333333333334
+   },
+   "gain_per_1k": {
+    "est": 0.796310918108939,
+    "lo": 0.5090726514209643,
+    "hi": 1.0982338910583016,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.688849338580517,
+    "lo": 0.5967184036409322,
+    "hi": 0.7884920278727175,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "validate_plan",
+   "arm": "tools",
+   "n": 3000,
+   "right_tools": 2853,
+   "right_none": 2828,
+   "mult": {
+    "est": 7.856724040856263,
+    "lo": 6.996507559887047,
+    "hi": 8.84572472583783,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 4.746851789312922,
+    "lo": 4.396340074233306,
+    "hi": 5.148888469213056,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 7.856724040856263,
+    "lo": 6.996507559887047,
+    "hi": 8.84572472583783,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 7.926178814909095,
+    "lo": 6.989352050275065,
+    "hi": 8.988867763677751,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 19699.23,
+    "lo": 17268.13169166667,
+    "hi": 22980.994975
+   },
+   "gain_pp": {
+    "est": 0.8333333333333334,
+    "lo": -1.6333333333333333,
+    "hi": 2.966666666666667
+   },
+   "gain_per_1k": {
+    "est": 0.04230283789434071,
+    "lo": -0.08321729153058813,
+    "hi": 0.14633803746577956,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 10.325546092846563,
+    "lo": 9.023602832896287,
+    "hi": 11.847018238201862,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 10.416825672875262,
+    "lo": 9.06021075453498,
+    "hi": 12.031546167842578,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 2.4285919843244246,
+    "lo": 2.1882834389162418,
+    "hi": 2.6755380029903604,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "validate_plan",
+   "arm": "tools",
+   "n": 3000,
+   "right_tools": 2983,
+   "right_none": 2971,
+   "mult": {
+    "est": 7.7553736689330135,
+    "lo": 7.126627539021112,
+    "hi": 8.552112230465116,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 5.381596647228747,
+    "lo": 5.0151802881860394,
+    "hi": 5.834251501376357,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 7.7553736689330135,
+    "lo": 7.126627539021112,
+    "hi": 8.552112230465116,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 7.7866979651387345,
+    "lo": 7.137361439325756,
+    "hi": 8.60420160969001,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 17190.916333333334,
+    "lo": 15934.616633333333,
+    "hi": 18496.904333333332
+   },
+   "gain_pp": {
+    "est": 0.4,
+    "lo": -0.5333333333333333,
+    "hi": 1.5666666666666667
+   },
+   "gain_per_1k": {
+    "est": 0.023268102307286355,
+    "lo": -0.029929942223881026,
+    "hi": 0.0924818700675011,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 10.763193294457494,
+    "lo": 10.030360576372077,
+    "hi": 11.668503002752715,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 10.806666306754192,
+    "lo": 10.05459112381699,
+    "hi": 11.740742733916944,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 3.0228550158589793,
+    "lo": 2.690977869253038,
+    "hi": 3.386869509029645,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 300,
+   "right_tools": 59,
+   "right_none": 38,
+   "mult": {
+    "est": 2.452861864269092,
+    "lo": 1.1139677311274863,
+    "hi": 4.572615752320867,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 0.909830746835236,
+    "lo": 0.416137164872228,
+    "hi": 1.669409301046598,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 1.6987326207909221,
+    "lo": 0.7427308513289149,
+    "hi": 3.2031373463527246,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 3.808390789259906,
+    "lo": 3.177135275244675,
+    "hi": 4.557278867679138,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 16766.87,
+    "lo": 12843.847166666666,
+    "hi": 21442.70925
+   },
+   "gain_pp": {
+    "est": 7.0,
+    "lo": -1.3333333333333333,
+    "hi": 15.666666666666666
+   },
+   "gain_per_1k": {
+    "est": 0.41748996682147593,
+    "lo": -0.06495825788513584,
+    "hi": 1.1114611464975213,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.6203990148328945,
+    "lo": 0.5017497917310243,
+    "hi": 0.7458207136758592,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.5-9B",
+   "task": "simulate",
+   "arm": "steered",
+   "n": 300,
+   "right_tools": 48,
+   "right_none": 38,
+   "mult": {
+    "est": 3.4589602352319795,
+    "lo": 1.6529227211470379,
+    "hi": 6.700626277451076,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.207855689197096,
+    "lo": 0.5804765201413374,
+    "hi": 2.33242772477139,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 2.3147556766864885,
+    "lo": 1.0611033915604213,
+    "hi": 4.605095126423119,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.36921292871408,
+    "lo": 3.583108837692389,
+    "hi": 5.385720288726525,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 20115.133333333335,
+    "lo": 15431.693416666667,
+    "hi": 26038.597749999997
+   },
+   "gain_pp": {
+    "est": 3.3333333333333335,
+    "lo": -4.0,
+    "hi": 10.333333333333334
+   },
+   "gain_per_1k": {
+    "est": 0.165712713810829,
+    "lo": -0.1744734371444203,
+    "hi": 0.6058295125357793,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.5854196745403722,
+    "lo": 0.45976651051009687,
+    "hi": 0.7263262932504966,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 300,
+   "right_tools": 53,
+   "right_none": 95,
+   "mult": {
+    "est": 7.166139454749758,
+    "lo": 4.643691338038806,
+    "hi": 11.357067860994395,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 2.6487035797059937,
+    "lo": 1.7302725525247182,
+    "hi": 4.15498053003041,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 4.640552165437874,
+    "lo": 2.8818120536247673,
+    "hi": 7.5712670683316645,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 3.9979514852814435,
+    "lo": 3.5711574489974685,
+    "hi": 4.526615204108688,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 16151.893333333333,
+    "lo": 14157.109,
+    "hi": 18538.346999999998
+   },
+   "gain_pp": {
+    "est": -14.0,
+    "lo": -25.333333333333332,
+    "hi": -3.6666666666666665
+   },
+   "gain_per_1k": {
+    "est": -0.866771449704142,
+    "lo": -1.5773157156619275,
+    "hi": -0.21962390710693339,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.6007046140941765,
+    "lo": 0.49492596075972045,
+    "hi": 0.7277552680600381,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Gemma-26B",
+   "task": "simulate",
+   "arm": "steered",
+   "n": 300,
+   "right_tools": 48,
+   "right_none": 95,
+   "mult": {
+    "est": 8.19214709214233,
+    "lo": 4.897823608804461,
+    "hi": 15.470121910616218,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 3.0127576655132495,
+    "lo": 1.798131462248976,
+    "hi": 5.661395506867217,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 5.423540162581909,
+    "lo": 3.066265966666231,
+    "hi": 10.514282002667253,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 4.1391901097140185,
+    "lo": 3.6473109976432663,
+    "hi": 4.760786319553173,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 16912.836666666666,
+    "lo": 14414.252083333333,
+    "hi": 19958.908666666666
+   },
+   "gain_pp": {
+    "est": -15.666666666666666,
+    "lo": -28.0,
+    "hi": -4.333333333333333
+   },
+   "gain_per_1k": {
+    "est": -0.9263180964517878,
+    "lo": -1.6269024198803836,
+    "hi": -0.275644520855178,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.6115924605775218,
+    "lo": 0.4966692746709821,
+    "hi": 0.7514823093549615,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "arm": "plain",
+   "n": 300,
+   "right_tools": 91,
+   "right_none": 106,
+   "mult": {
+    "est": 4.240513373746775,
+    "lo": 3.108140797709416,
+    "hi": 5.830178671775798,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.474776015678599,
+    "lo": 1.1003079042690445,
+    "hi": 1.990548524068855,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 2.6812493835438893,
+    "lo": 1.8758005064983598,
+    "hi": 3.762273309483263,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 3.6404407265184573,
+    "lo": 3.2678034132080525,
+    "hi": 4.185794376591288,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 15835.7,
+    "lo": 13609.599,
+    "hi": 19434.068916666663
+   },
+   "gain_pp": {
+    "est": -5.0,
+    "lo": -13.333333333333334,
+    "hi": 3.3333333333333335
+   },
+   "gain_per_1k": {
+    "est": -0.31574227852257875,
+    "lo": -0.8775541209835231,
+    "hi": 0.20788931958039777,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.4820677823512182,
+    "lo": 0.41310929240470573,
+    "hi": 0.5603838446295074,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "matched",
+   "model": "Qwen3.6-35B",
+   "task": "simulate",
+   "arm": "steered",
+   "n": 300,
+   "right_tools": 97,
+   "right_none": 106,
+   "mult": {
+    "est": 3.966825424113308,
+    "lo": 2.987030881934032,
+    "hi": 5.350444326989913,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 1.3626667217741735,
+    "lo": 1.0447443383205912,
+    "hi": 1.8010337466599085,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 2.474157392254877,
+    "lo": 1.7939483359806296,
+    "hi": 3.3573580026947387,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 3.630019491877273,
+    "lo": 3.3043649525915826,
+    "hi": 4.051736119961919,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 15773.2,
+    "lo": 13624.900666666666,
+    "hi": 18767.326500000003
+   },
+   "gain_pp": {
+    "est": -3.0,
+    "lo": -11.333333333333334,
+    "hi": 4.666666666666667
+   },
+   "gain_per_1k": {
+    "est": -0.1901960287069206,
+    "lo": -0.7382108064081547,
+    "hi": 0.2912841619368322,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 0.4600851702340236,
+    "lo": 0.3931234698765223,
+    "hi": 0.5290967227894233,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Haiku 5.5",
+   "task": "simulate",
+   "arm": "tools",
+   "n": 300,
+   "right_tools": 63,
+   "right_none": 124,
+   "mult": {
+    "est": 19.881414359085344,
+    "lo": 13.353551192057946,
+    "hi": 30.524227418133727,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 7.063427254247699,
+    "lo": 4.875751908430745,
+    "hi": 10.639807847283514,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 19.881414359085344,
+    "lo": 13.353551192057946,
+    "hi": 30.524227418133727,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 10.10104116630949,
+    "lo": 8.086740173297283,
+    "hi": 12.171696556563408,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 52546.25666666667,
+    "lo": 36871.508,
+    "hi": 69568.49699999999
+   },
+   "gain_pp": {
+    "est": -20.333333333333332,
+    "lo": -30.666666666666668,
+    "hi": -11.0
+   },
+   "gain_per_1k": {
+    "est": -0.3869606442628295,
+    "lo": -0.7032654481493118,
+    "hi": -0.1910465878750346,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 31.848502855806966,
+    "lo": 16.97279281495885,
+    "hi": 54.12275920123799,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 16.181094192869672,
+    "lo": 9.50616779263856,
+    "hi": 22.811940407540966,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.0669672438260813,
+    "lo": 0.9603591565857953,
+    "hi": 1.1784423946304703,
+    "dropped": 0
+   }
+  },
+  {
+   "corpus": "claude",
+   "model": "Claude Sonnet 5.5",
+   "task": "simulate",
+   "arm": "tools",
+   "n": 300,
+   "right_tools": 139,
+   "right_none": 165,
+   "mult": {
+    "est": 12.271045803863911,
+    "lo": 9.680039119568693,
+    "hi": 15.158050050849475,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult5": {
+    "est": 4.4706484284083565,
+    "lo": 3.6657842214794276,
+    "hi": 5.40381135304076,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "mult_processed": {
+    "est": 12.271045803863911,
+    "lo": 9.680039119568693,
+    "hi": 15.158050050849475,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "token_ratio": {
+    "est": 10.337426465073236,
+    "lo": 8.3801575649648,
+    "hi": 12.449129660856334,
+    "dropped": 0
+   },
+   "extra_tokens": {
+    "est": 52701.77333333333,
+    "lo": 37184.4685,
+    "hi": 69633.206
+   },
+   "gain_pp": {
+    "est": -8.666666666666666,
+    "lo": -17.0,
+    "hi": 0.0
+   },
+   "gain_per_1k": {
+    "est": -0.16444734433983627,
+    "lo": -0.375898395567963,
+    "hi": 0.0,
+    "dropped": 0
+   },
+   "mult_usd": {
+    "est": 8.941296856816713,
+    "lo": 7.3315684429588535,
+    "hi": 10.80762270608152,
+    "draws_with_zero_successes": 0,
+    "k": 20
+   },
+   "usd_ratio": {
+    "est": 7.532365230894079,
+    "lo": 6.310445943364543,
+    "hi": 8.904501982765083,
+    "dropped": 0
+   },
+   "output_ratio": {
+    "est": 1.1892184836581932,
+    "lo": 1.085142632463459,
+    "hi": 1.3011104999421326,
+    "dropped": 0
+   }
+  }
+ ],
+ "domains": [
+  "barman",
+  "block-grouping",
+  "blocksworld",
+  "counters",
+  "delivery",
+  "depot",
+  "depots",
+  "drone",
+  "farmland",
+  "gardening",
+  "gripper",
+  "miconic",
+  "parking",
+  "pogo_stick",
+  "rovers",
+  "sailing",
+  "satellite",
+  "tpp",
+  "zenotravel",
+  "zenotravel-numeric"
+ ],
+ "hashes": {
+  "frontier55": "0cbb69b7f810d039734b0aba15096bda91a6f97c6c334dfd2a0ec8ed59cbb497",
+  "matched_run": "1f3d0f84c755820fb73eac810f3aebfc55dca69de663c2467fa430946fd4155d",
+  "delivered_rerun": "822aace9ef8a6493592b5b08d73091094fd2602fc0180d1482af83db1ee45cc9",
+  "control": "825dab6313ef2d18c33bed8d584d596e29b35f92eff6c41f0325045602bf0d79"
+ },
+ "first_prompt": {
+  "offsets": {
+   "Qwen3.5-9B|solve|plain": {
+    "offset": 3415,
+    "source": "borrowed: same tokenizer family, task and arm"
+   },
+   "Qwen3.5-9B|solve|steered": {
+    "offset": 3427,
+    "source": "borrowed: same tokenizer family, task and arm"
+   },
+   "Qwen3.5-9B|validate_domain|plain": {
+    "offset": 3405,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Qwen3.5-9B|validate_domain|steered": {
+    "offset": 3405,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Qwen3.5-9B|validate_problem|plain": {
+    "offset": 3410,
+    "source": "borrowed: same tokenizer family, task and arm"
+   },
+   "Qwen3.5-9B|validate_problem|steered": {
+    "offset": 3405,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Qwen3.5-9B|validate_plan|plain": {
+    "offset": 3409,
+    "source": "measured on 63 one-request trials"
+   },
+   "Qwen3.5-9B|validate_plan|steered": {
+    "offset": 3409,
+    "source": "borrowed: same model and task, other arm"
+   },
+   "Qwen3.5-9B|simulate|plain": {
+    "offset": 3387,
+    "source": "measured on 56 one-request trials"
+   },
+   "Qwen3.5-9B|simulate|steered": {
+    "offset": 3405,
+    "source": "measured on 120 of 120 two-request trials whose second request was refused (values [3405])"
+   },
+   "Gemma-26B|solve|plain": {
+    "offset": 2828,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Gemma-26B|solve|steered": {
+    "offset": 2828,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Gemma-26B|validate_domain|plain": {
+    "offset": 2828,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Gemma-26B|validate_domain|steered": {
+    "offset": 2828,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Gemma-26B|validate_problem|plain": {
+    "offset": 2828,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Gemma-26B|validate_problem|steered": {
+    "offset": 2828,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Gemma-26B|validate_plan|plain": {
+    "offset": 2831,
+    "source": "measured on 2400 one-request trials"
+   },
+   "Gemma-26B|validate_plan|steered": {
+    "offset": 2848,
+    "source": "measured on 208 one-request trials"
+   },
+   "Gemma-26B|simulate|plain": {
+    "offset": 2805,
+    "source": "measured on 1 one-request trials"
+   },
+   "Gemma-26B|simulate|steered": {
+    "offset": 2825,
+    "source": "measured on 125 of 133 two-request trials whose second request was refused (values [2824, 2825])"
+   },
+   "Qwen3.6-35B|solve|plain": {
+    "offset": 3415,
+    "source": "measured on 36 one-request trials"
+   },
+   "Qwen3.6-35B|solve|steered": {
+    "offset": 3427,
+    "source": "measured on 3 one-request trials"
+   },
+   "Qwen3.6-35B|validate_domain|plain": {
+    "offset": 3409,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Qwen3.6-35B|validate_domain|steered": {
+    "offset": 3409,
+    "source": "borrowed: median of the same model's measured cells"
+   },
+   "Qwen3.6-35B|validate_problem|plain": {
+    "offset": 3410,
+    "source": "measured on 4 one-request trials"
+   },
+   "Qwen3.6-35B|validate_problem|steered": {
+    "offset": 3410,
+    "source": "borrowed: same model and task, other arm"
+   },
+   "Qwen3.6-35B|validate_plan|plain": {
+    "offset": 3409,
+    "source": "measured on 506 one-request trials"
+   },
+   "Qwen3.6-35B|validate_plan|steered": {
+    "offset": 3409,
+    "source": "borrowed: same model and task, other arm"
+   },
+   "Qwen3.6-35B|simulate|plain": {
+    "offset": 3387,
+    "source": "measured on 1 one-request trials"
+   },
+   "Qwen3.6-35B|simulate|steered": {
+    "offset": 3405,
+    "source": "measured on 140 of 140 two-request trials whose second request was refused (values [3405])"
+   }
+  },
+  "spread": {
+   "Qwen3.5-9B": [
+    3387,
+    3409
+   ],
+   "Gemma-26B": [
+    2805,
+    2848
+   ],
+   "Qwen3.6-35B": [
+    3387,
+    3427
+   ]
+  },
+  "both_sources": {
+   "Qwen3.5-9B|simulate|plain": [
+    3387,
+    {
+     "3387": 93
+    }
+   ],
+   "Gemma-26B|simulate|plain": [
+    2805,
+    {
+     "2805": 127,
+     "2804": 8
+    }
+   ],
+   "Qwen3.6-35B|simulate|plain": [
+    3387,
+    {
+     "3387": 140
+    }
+   ],
+   "Qwen3.5-9B|validate_plan|plain": [
+    3409,
+    {
+     "3409": 2
+    }
+   ]
+  }
+ },
+ "recount": [
+  {
+   "cell": "matched run, Gemma-26B, simulate, tools plain",
+   "source": "trials.jsonl",
+   "raw": [
+    300,
+    5764321,
+    697540,
+    672
+   ],
+   "analysis": [
+    300,
+    5764321,
+    697540,
+    672
+   ]
+  },
+  {
+   "cell": "Claude run, Haiku 5.5, simulate, tools",
+   "source": "spend.jsonl",
+   "raw": [
+    300,
+    16302791,
+    1193182,
+    603,
+    5.020401
+   ],
+   "analysis": [
+    300,
+    16302791,
+    1193182,
+    603,
+    5.020401
+   ]
+  },
+  {
+   "cell": "Claude run, dollars per model",
+   "totals": {
+    "Claude Haiku 5.5": {
+     "spend_file": 20.24815,
+     "analysis": 20.2481504
+    },
+    "Claude Sonnet 5.5": {
+     "spend_file": 294.490808,
+     "analysis": 294.490808
+    }
+   }
+  }
+ ]
+}
