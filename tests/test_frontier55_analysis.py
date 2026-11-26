@@ -200,6 +200,44 @@ def halts(r, label: str, mutate, needle: str, extra: list[str] | None = None) ->
         shutil.rmtree(root.parent)
 
 
+def blocks(r, label: str, mutate, model: str, rule: str, detail: str,
+           extra: list[str] | None = None) -> None:
+    """A mutated copy of the fixture where a registered rule sends one model back: that
+    model is "not analysed" and in no table; the other model's readout is the base one."""
+    other = SONNET if model == HAIKU else HAIKU
+    root = copy_fixture()
+    try:
+        mutate(root)
+        code, err, res, _written = run_fixture(root, extra)
+        ok = code == 0
+        if not ok:
+            r.check(label, False, f"code={code} err={err[-400:]}")
+            return
+        na = res["not_analysed"]
+        r.check_eq(f"{label}: the model is not analysed, the other is",
+                   (res["models"], [(b["model"], b["rule"]) for b in na]),
+                   ([other], [(model, rule)]))
+        r.check(f"{label}: the reason is printed", detail in na[0]["detail"]
+                and f"**{model}: not analysed: {rule}.**" in res["_md"], na[0]["detail"])
+        tables = ("rates", "contrasts", "verdict_errors", "tool_choice",
+                  "tool_right_answer_wrong", "descriptive", "refusals", "storage_cut_rows",
+                  "same_day", "failed_batch_items", "corpus", "apparatus")
+        r.check(f"{label}: the model is in no table",
+                all(e["model"] == other for tab in tables for e in res[tab])
+                and not any(ln.startswith(f"| {model}") for ln in res["_md"].splitlines()))
+        r.check_eq(f"{label}: five contrasts, ten rates, for the other model",
+                   (res["n_contrasts"], len(res["contrasts"]), len(res["rates"])), (5, 5, 10))
+        for (m, t), (est, lo, hi, p, ph, lab, gained, lost) in CONTRASTS.items():
+            if m == other:
+                c = by(res, "contrasts", model=m, task=t)
+                r.check(f"{label}: {other}/{t} is the base contrast",
+                        close(c["est"], est) and close(c["lo"], lo) and close(c["hi"], hi)
+                        and close(c["p_holm"], ph) and c["label"] == lab,
+                        (c["est"], c["p_holm"], c["label"]))
+    finally:
+        shutil.rmtree(root.parent)
+
+
 def load_fixture_cells(root: Path = FIXTURE) -> dict:
     gt = json.loads((root / "gt_cache.json").read_text())
     return F.load_run(root / "frontier55", F.fixture_design(root), gt,
@@ -308,19 +346,22 @@ def test_planted_answers(r):
 #   Sonnet solve: 60 and 60 (right only under the registered grade on the first slot).
 #     validate_domain: tools wrong on the three trials of d02: 57. validate_plan: no tools
 #     wrong on the third slot of every domain: 40. simulate: tools wrong on d05..d08: 56.
+#     validate_problem: tools wrong on d09's first slot (loop exhausted and the harness's
+#     grader raised): 59.
 RIGHT = {
     (HAIKU, "solve"): (40, 60), (HAIKU, "validate_domain"): (57, 60),
     (HAIKU, "validate_problem"): (56, 60), (HAIKU, "validate_plan"): (60, 56),
     (HAIKU, "simulate"): (0, 60),
     (SONNET, "solve"): (60, 60), (SONNET, "validate_domain"): (60, 57),
-    (SONNET, "validate_problem"): (60, 60), (SONNET, "validate_plan"): (40, 60),
+    (SONNET, "validate_problem"): (60, 59), (SONNET, "validate_plan"): (40, 60),
     (SONNET, "simulate"): (60, 56),
 }
 # Rate intervals by the number right (see the docstring): 60 -> [100, 100]; 0 -> [0, 0];
 # 40 (2 of 3 in every domain) -> [66.667, 66.667]; 57 (one domain 0 of 3) -> [85, 100];
-# 56 (four domains 2 of 3) -> [86.667, 98.333].
+# 56 (four domains 2 of 3) -> [86.667, 98.333]; 59 (one domain 2 of 3: the wrong answers
+# are X/60 with X ~ Bin(20, 1/20), 97.5% quantile 3) -> [95, 100].
 RATE_CI = {60: (100.0, 100.0), 0: (0.0, 0.0), 40: (200 / 3, 200 / 3), 57: (85.0, 100.0),
-           56: (100 - 800 / 60, 100 - 100 / 60)}
+           56: (100 - 800 / 60, 100 - 100 / 60), 59: (95.0, 100.0)}
 # Contrasts, tools minus no tools: (estimate, lo, hi, p, Holm-adjusted p, label, no tools
 # wrong and tools right, no tools right and tools wrong).
 #   Holm, Haiku (five tasks): p sorted = simulate P20, solve P20, validate_plan 0.125,
@@ -328,6 +369,8 @@ RATE_CI = {60: (100.0, 100.0), 0: (0.0, 0.0), 40: (200 / 3, 200 / 3), 57: (85.0,
 #   max(0.375, 2*0.125), max(0.375, 1.0).
 #   Holm, Sonnet: validate_plan P20, simulate 0.125, then three of 1.0 -> 5*P20,
 #   4*0.125 = 0.5, 1.0, 1.0, 1.0.
+#   Sonnet validate_problem: one domain with sum -1: -1.667 [3 * -1 / 60, 0] = [-5.0, 0];
+#   one non-zero domain sum, so the sign-flip p is 2/2 = 1.0.
 CONTRASTS = {
     (HAIKU, "solve"): (100 / 3, 100 / 3, 100 / 3, P20, 5 * P20, AHEAD, 20, 0),
     (HAIKU, "validate_domain"): (5.0, 0.0, 15.0, 1.0, 1.0, NDS, 3, 0),
@@ -336,7 +379,7 @@ CONTRASTS = {
     (HAIKU, "simulate"): (100.0, 100.0, 100.0, P20, 5 * P20, AHEAD, 60, 0),
     (SONNET, "solve"): (0.0, 0.0, 0.0, 1.0, 1.0, NDS, 0, 0),
     (SONNET, "validate_domain"): (-5.0, -15.0, 0.0, 1.0, 1.0, NDS, 0, 3),
-    (SONNET, "validate_problem"): (0.0, 0.0, 0.0, 1.0, 1.0, NDS, 0, 0),
+    (SONNET, "validate_problem"): (-100 / 60, -5.0, 0.0, 1.0, 1.0, NDS, 0, 1),
     (SONNET, "validate_plan"): (100 / 3, 100 / 3, 100 / 3, P20, 5 * P20, AHEAD, 20, 0),
     (SONNET, "simulate"): (-400 / 60, -800 / 60, -100 / 60, 0.125, 0.5, BEHIND + NAH, 0, 4),
 }
@@ -349,6 +392,8 @@ CONTRASTS = {
 #     tool call and called invalid, tool right and called invalid, tool right and no verdict.
 #   Sonnet tools validate_domain, d02: p01@11 (valid) a pause; domain_neg@12 (broken) an
 #     unknown stop; p01@13 (valid) called invalid.
+#   Sonnet tools validate_problem, d09: p01@11 (valid) loop exhausted, no verdict (the
+#     harness labels the row loop_exhausted, so it is not an error row).
 #   Sonnet no tools validate_plan, wrong on the third slot: d01..d18 v2@13 (valid) and d19
 #     v1@12 (valid) called invalid: 19; d20 b1@13 (broken) called valid: 1.
 VERDICT_ERRORS = {
@@ -356,6 +401,7 @@ VERDICT_ERRORS = {
     (HAIKU, "validate_problem", N): (21, 0, 4, 4, 39, 0, 0, 0),
     (HAIKU, "validate_plan", T): (39, 2, 2, 0, 21, 0, 0, 0),
     (SONNET, "validate_domain", T): (39, 1, 1, 1, 21, 0, 1, 1),
+    (SONNET, "validate_problem", T): (21, 0, 1, 0, 39, 0, 0, 0),
     (SONNET, "validate_plan", N): (39, 19, 0, 0, 21, 1, 0, 0),
 }
 VALID_INVALID = {"validate_domain": (39, 21), "validate_problem": (21, 39),
@@ -366,28 +412,33 @@ VALID_INVALID = {"validate_domain": (39, 21), "validate_problem": (21, 39),
 #     d01..d10, the other planner on d11..d20 (10 other only). validate_plan: d01 other
 #     only (ten calls of another tool), d02 no call, d03 right + other.
 #   Sonnet solve: no call on the third slot (20). validate_domain: two error rows left
-#     out. simulate: one error row left out (the scoring error), d06 other only.
+#     out (a pause, an unknown stop). validate_problem: d09 other only (ten calls of
+#     another tool; the harness's grader raised, and the row is classed by its stored
+#     calls). simulate: the scoring-error row d05 is classed by its stored call (right
+#     only); d06 other only.
 TOOL_CHOICE = {
     (HAIKU, "solve"): (60, 0, 50, 0, 10, 0, 10), (HAIKU, "validate_domain"): (60, 0, 60, 0, 0, 0, 0),
     (HAIKU, "validate_problem"): (60, 0, 60, 0, 0, 0, 0),
     (HAIKU, "validate_plan"): (60, 1, 57, 1, 1, 0, 0), (HAIKU, "simulate"): (60, 0, 60, 0, 0, 0, 0),
     (SONNET, "solve"): (60, 20, 40, 0, 0, 0, 0), (SONNET, "validate_domain"): (58, 0, 58, 0, 0, 2, 0),
-    (SONNET, "validate_problem"): (60, 0, 60, 0, 0, 0, 0),
-    (SONNET, "validate_plan"): (60, 0, 60, 0, 0, 0, 0), (SONNET, "simulate"): (59, 0, 58, 0, 1, 1, 0),
+    (SONNET, "validate_problem"): (60, 0, 59, 0, 1, 0, 0),
+    (SONNET, "validate_plan"): (60, 0, 60, 0, 0, 0, 0), (SONNET, "simulate"): (60, 0, 59, 0, 1, 0, 0),
 }
 # RQ3, the tool arm: (tool right, answer wrong, error rows left out).
 #   Haiku validate_plan: tool right on all but d01 (another tool) and d02 (no call): 58;
 #     answer wrong on d03 and d04: 2. Sonnet solve: 40 trials called the planner.
 #     validate_domain: 58 (two error rows left out), d02's third trial wrong: 1.
-#     simulate: 59 rows that are not error rows, less d06 (another tool): 58; the two
-#     no-room trials d07 and d08 are wrong: 2.
+#     validate_problem: all but d09's first trial: 59. simulate: 60 less d05 (the
+#     harness's grader raised, so its stored grade is wrong) and d06 (another tool): 58;
+#     the two no-room trials d07 and d08 are wrong: 2. Only a refusal, a pause and an
+#     unknown stop are "left out".
 TOOL_RIGHT = {
     (HAIKU, "solve"): (60, 0, 0), (HAIKU, "validate_domain"): (60, 0, 0),
     (HAIKU, "validate_problem"): (60, 0, 0), (HAIKU, "validate_plan"): (58, 2, 0),
     (HAIKU, "simulate"): (60, 0, 0),
     (SONNET, "solve"): (40, 0, 0), (SONNET, "validate_domain"): (58, 1, 2),
-    (SONNET, "validate_problem"): (60, 0, 0), (SONNET, "validate_plan"): (60, 0, 0),
-    (SONNET, "simulate"): (58, 2, 1),
+    (SONNET, "validate_problem"): (59, 0, 0), (SONNET, "validate_plan"): (60, 0, 0),
+    (SONNET, "simulate"): (58, 2, 0),
 }
 
 
@@ -451,7 +502,11 @@ def test_base(r):
     r.check_eq("error rows left out, by kind",
                (by(res, "tool_choice", model=SONNET, task="validate_domain")["error_rows_by_kind"],
                 by(res, "tool_choice", model=SONNET, task="simulate")["error_rows_by_kind"]),
-               ({"pause": 1, "unknown stop": 1}, {"scoring error": 1}))
+               ({"pause": 1, "unknown stop": 1}, {}))
+    r.check("every share is over the 20 domains",
+            all(c[f]["k"] == 20 and c[f]["k_registered"] == 20 and c[f]["lo"] is not None
+                for c in res["tool_choice"] for f in ("exactly_right", "right_called"))
+            and all(c["answer_wrong"]["k"] == 20 for c in res["tool_right_answer_wrong"]))
     # RQ3.
     r.check_eq("10 tool-right rows", len(res["tool_right_answer_wrong"]), 10)
     for (m, t), (right, wrong, left) in TOOL_RIGHT.items():
@@ -564,6 +619,14 @@ def _descriptive_checks(r, res):
     r.check_eq("Sonnet tools solve: notes between tool calls",
                (e["thinking_tokens_total"], e["thinking_blocks"], e["trials_with_a_note"],
                 e["trials_with_a_tool_call"]), (120, 40, 40, 40))
+    e = d(SONNET, T, "validate_problem")
+    # 59 trials of two requests and d09's ten round trips.
+    r.check_eq("Sonnet tools validate_problem: a loop-exhausted row on which the harness's "
+               "grader raised is a loop-exhausted row, not an error row",
+               (e["loop_exhausted"], e["scoring_error_rows"], e["other_error_rows"],
+                e["endings"]["other error row"], e["turns_histogram"], e["wrong_by_reason"]),
+               (1, 1, {"pause": 0, "unknown stop": 0, "scoring error": 0}, 0,
+                {"2": 59, "10": 1}, {"empty_stop": 1}))
     e = d(SONNET, T, "validate_domain")
     r.check_eq("Sonnet tools validate_domain: a pause and an unknown stop",
                (e["refusals"], e["other_error_rows"], e["endings"]["other error row"],
@@ -599,7 +662,10 @@ def _corpus_checks(r, res):
                (5, 0, False, 3.0))
     r.check_eq("Sonnet tools: three error rows that are not refusals (exactly 1%), not VOID",
                (st["refusals"], st["error_rows_not_refusals"], st["void"], st["error_rows_by_kind"]),
-               (0, 3, False, {"refusal": 0, "pause": 1, "unknown stop": 1, "scoring error": 1}))
+               (0, 3, False, {"pause": 1, "unknown stop": 1, "scoring error": 1}))
+    r.check("folders are printed with where they were read from",
+            all(c["path"].endswith(f"frontier55/{c['folder']}") for c in res["corpus"]))
+    r.check_eq("both models analysed, no rerun", (res["not_analysed"], res["reruns"]), ([], []))
     r.check_eq("half-written lines counted and skipped",
                (ht["torn_lines"], sn["sidecar_torn_lines"], hn["torn_lines"], st["sidecar_torn_lines"]),
                (1, 1, 0, 0))
@@ -609,20 +675,40 @@ def _corpus_checks(r, res):
     r.check_eq("cut by storage per folder", [c["cut_by_storage"] for c in res["corpus"]], [0, 1, 0, 0])
     # The same-day rule.
     h, s = (by(res, "same_day", model=m) for m in (HAIKU, SONNET))
-    r.check_eq("Haiku: one UTC date", (h["same_day"], h["tool_trials_on_another_date"],
+    r.check_eq("Haiku: one UTC date", (h["same_day"], h["tool_trials_on_a_later_date"],
                                        h["batch_sent_dates"], h["batch_ended_dates"]),
                (True, 0, {"2026-11-26": 300}, {"2026-11-26": 300}))
     # Sonnet: d01 and d02 of validate_problem requested the next day; d03's second request
-    # the next day (its first is on the batch's date). The batch ended the next day.
-    r.check_eq("Sonnet: three tool trials on another date, the batch ended the next day",
-               (s["same_day"], s["tool_trials_on_another_date"], s["tool_trials"],
+    # the next day (its first is on the batch's date). The first batch ended the next day;
+    # the retry batch and the third batch were sent and ended on the day of the first.
+    r.check_eq("Sonnet: three tool trials on a later date, the first batch ended the next day",
+               (s["same_day"], s["tool_trials_on_a_later_date"], s["tool_trials"],
                 s["tool_trial_first_request_dates"], s["batch_sent_dates"], s["batch_ended_dates"],
-                s["reference_date"], s["no_tools_trials_sent_on_another_date"]),
+                s["reference_date"], s["no_tools_trials_sent_on_a_later_date"]),
                (False, 3, 300, {"2026-11-27": 298, "2026-11-28": 2}, {"2026-11-27": 300},
-                {"2026-11-28": 300}, "2026-11-27", 0))
-    r.check("Sonnet: share on another date", close(s["share_on_another_date"], 0.01))
-    r.check_eq("batches", s["batches"], [{"batch_id": "msgbatch_fixture_sonnet", "trials": 300,
-                                          "sent": ["2026-11-27"], "ended": ["2026-11-28"]}])
+                {"2026-11-27": 5, "2026-11-28": 295}, "2026-11-27", 0))
+    r.check("Sonnet: share on a later date", close(s["share_on_a_later_date"], 0.01))
+    r.check_eq("batches", s["batches"], [
+        {"batch_id": "msgbatch_fixture_sonnet", "trials": 295, "sent": ["2026-11-27"],
+         "ended": ["2026-11-28"]},
+        {"batch_id": "msgbatch_fixture_sonnet_2", "trials": 2, "sent": ["2026-11-27"],
+         "ended": ["2026-11-27"]},
+        {"batch_id": "msgbatch_fixture_sonnet_3", "trials": 3, "sent": ["2026-11-27"],
+         "ended": ["2026-11-27"]}])
+    # Failed batch items (section 6). Sonnet: five items of the first batch failed, the
+    # retry batch answered two, a third batch the last three: 3 of 300 rows, exactly 1%.
+    fh, fs = (by(res, "failed_batch_items", model=m) for m in (HAIKU, SONNET))
+    r.check_eq("Haiku: one batch", (fh["rows_from_a_third_or_later_batch"], fh["limit"],
+                                    fh["first_batch_expired_as_a_whole"],
+                                    [(b["n"], b["requests"], b["rows"]) for b in fh["batches"]]),
+               (0, 3.0, False, [(1, 300, 300)]))
+    r.check_eq("Sonnet: three rows from a third batch, exactly 1%, analysed",
+               (fs["rows_from_a_third_or_later_batch"], fs["limit"],
+                fs["first_batch_expired_as_a_whole"],
+                [(b["n"], b["requests"], b["request_counts"]["succeeded"],
+                  b["request_counts"]["errored"], b["request_counts"]["expired"], b["rows"])
+                 for b in fs["batches"]]),
+               (3, 3.0, False, [(1, 300, 295, 3, 2, 295), (2, 5, 2, 3, 0, 2), (3, 3, 3, 0, 0, 3)]))
     # Apparatus.
     app = {a["folder"]: a for a in res["apparatus"]}
     r.check_eq("model ids returned", {k: v["model_ids_returned"] for k, v in app.items()},
@@ -630,12 +716,12 @@ def _corpus_checks(r, res):
                 f"{SONNET}_{N}": ["claude-sonnet-5-5-20261120"],
                 f"{SONNET}_{T}": ["claude-sonnet-5-5-20261120"]})
     a = app[f"{SONNET}_{T}"]
-    # Requests of Sonnet's tool arm: solve 100, validate_domain 119, validate_problem 120,
+    # Requests of Sonnet's tool arm: solve 100, validate_domain 119, validate_problem 128,
     # validate_plan 120, simulate 119. On the next day: two trials of two requests and one
     # second request.
     r.check_eq("Sonnet tools: requests and their dates",
                (a["requests"], a["request_dates_utc"]),
-               (578, {"2026-11-27": 573, "2026-11-28": 5}))
+               (586, {"2026-11-27": 581, "2026-11-28": 5}))
     r.check_eq("Sonnet tools: notes passed back, host, version, cache tokens",
                (a["notes_returned_before_a_next_request"], a["notes_passed_back_unchanged"],
                 a["hosts"], a["api_versions_sent"], a["sdk_versions"], a["cache_tokens"],
@@ -669,10 +755,17 @@ def _corpus_checks(r, res):
                 for e in res[tab]))
     r.check_eq("the wrong readings named in advance", len(res["wrong_readings_named_in_advance"]), 4)
     md = res["_md"]
+    r.check("markdown: the per-folder error counts are labelled as bookkeeping",
+            md.count("(bookkeeping for the VOID rule)") == 2
+            and "the reported counts are the ones per model, arm and task" in md)
+    r.check("markdown: what \"tool right\" credits",
+            "\"Tool right\" is the run-time check of the open models' definition, which credits a "
+            "trial when any call returned the right result, including a call to a tool other "
+            "than the task's own." in md)
     for title in ("RQ1, right answers per arm", "RQ1, tools minus no tools", "verdict errors",
                   "RQ2, which tool was called", "RQ3, tool right and final answer wrong",
                   "how the trials ended", "turns and tokens per trial", "rows cut by storage",
-                  "the same-day rule", "corpus and apparatus"):
+                  "the same-day rule", "failed batch items", "corpus and apparatus"):
         r.check(f"markdown section: {title}", f"#### Claude run: {title}" in md)
     r.check("markdown: the Holm words appear", "tools ahead (not after Holm)" in md
             and "no tools ahead (not after Holm)" in md and "no difference shown" in md)
@@ -710,6 +803,18 @@ def test_traps(r):
     r.check_eq("scoring-error row: its stored answer is the right trace, and it is wrong",
                (g.ok, t.registered, t.error_kind, t.ending, t.scoring_error),
                (True, False, "scoring error", "other error row", True))
+    # A loop-exhausted trial on which the harness's grader raised: the harness labels it
+    # loop_exhausted, the rerun's `is_exception` does not hold, so it is wrong, is not an
+    # error row for VOID, and keeps its own ending.
+    t = trial(SONNET, T, "validate_problem", "d09", 0)
+    rw = row(SONNET, T, "validate_problem", "d09", 0)
+    r.check_eq("scoring-error row labelled loop_exhausted",
+               (rw.is_exception, rw.scoring_error, rw.tool_selected, t.registered, t.error_kind,
+                t.ending, t.tool_right, F.counts_toward_void(rw, t.error_kind)),
+               (False, True, None, False, "scoring error", "loop exhausted", False, False))
+    rw5 = row(SONNET, T, "simulate", "d05", 0)
+    r.check_eq("scoring-error row labelled exception counts toward VOID",
+               (rw5.is_exception, F.counts_toward_void(rw5, "scoring error")), (True, True))
     r.check_eq("three error rows that are not refusals of 300: exactly 1%, not VOID",
                (F.void_rows(cells[SONNET][T]), F.is_void(cells[SONNET][T])), (3, False))
     # think_overflow maps to "stopped at the cap with no answer".
@@ -824,10 +929,12 @@ def test_refusals(r):
           "the tools folder)")
 
     # VOID: a fourth error row that is not a refusal in Sonnet's tool arm (4 of 300).
-    halts(r, "VOID above 1% error rows that are not refusals",
-          lambda root: replant(root, SONNET, T, "validate_plan", "d09", 0, ("", "pause")),
-          "VOID (section 7): claude-sonnet-5-5_tools has 4 error rows that are not refusals of "
-          "300 (more than 1%). Both arms of claude-sonnet-5-5 are run again together")
+    # Sonnet is not analysed; Haiku's readout goes on with its base numbers.
+    def void_sonnet(root):
+        replant(root, SONNET, T, "validate_plan", "d09", 0, ("", "pause"))
+    blocks(r, "VOID above 1% error rows that are not refusals", void_sonnet, SONNET,
+           "VOID (section 7)", "claude-sonnet-5-5_tools has 4 error rows that are not refusals of "
+           "300 (more than 1%). Both arms are run again together")
 
     def unknown_stop(root, m, dom):
         """A no-tools trial that ended with a stop reason the runner does not know."""
@@ -849,10 +956,99 @@ def test_refusals(r):
                 replant(root, m, T, "validate_plan", dom, 0, ("", "pause"))
                 unknown_stop(root, m, dom)
     halts(r, "all four folders VOID is a fault to trace", all_void, "every folder is VOID")
-    halts(r, "VOID in the no-tools arm (4 unknown stops of 300)",
-          lambda root: [unknown_stop(root, HAIKU, d) for d in ("d09", "d10", "d11", "d12")],
-          "claude-haiku-5-5_no-tools has 4 error rows that are not refusals of 300 (more than "
-          "1%). Both arms of claude-haiku-5-5 are run again together")
+    blocks(r, "VOID in the no-tools arm (4 unknown stops of 300)",
+           lambda root: [unknown_stop(root, HAIKU, d) for d in ("d09", "d10", "d11", "d12")],
+           HAIKU, "VOID (section 7)", "claude-haiku-5-5_no-tools has 4 error rows that are not "
+           "refusals of 300 (more than 1%)")
+
+    # A loop-exhausted trial on which the harness's grader raised does not count toward
+    # VOID: a fourth row of that kind beside the three error rows leaves Sonnet analysed.
+    root = copy_fixture()
+    try:
+        replant(root, SONNET, T, "validate_plan", "d09", 0, ("", "scoring_loop"))
+        code, err, res, _ = run_fixture(root)
+        ok = code == 0 and res["models"] == [HAIKU, SONNET]
+        if ok:
+            c = next(x for x in res["corpus"] if x["folder"] == f"{SONNET}_{T}")
+            ok = (c["error_rows_not_refusals"], c["void"]) == (3, False)
+        r.check("a scoring error the harness labelled loop_exhausted is not counted toward VOID",
+                ok, err)
+    finally:
+        shutil.rmtree(root.parent)
+
+    # Both models sent back for different reasons: nothing to analyse.
+    def both(root):
+        void_sonnet(root)
+        for d in ("d09", "d10", "d11", "d12"):
+            unknown_stop(root, HAIKU, d)
+    halts(r, "no model left to analyse", both, "no model can be analysed")
+
+    # Section 6, failed batch items. A fourth row from the third batch (4 of 300, more
+    # than 1%): the model is run again, so it is not analysed.
+    def batch_counts(root, model, fn):
+        path = cdir(root, model, N) / "batches.json"
+        b = json.loads(path.read_text())
+        fn(b)
+        path.write_text(json.dumps(b))
+
+    def fourth_late_row(root):
+        def meta(x):
+            x["batch_id"] = "msgbatch_fixture_sonnet_3"
+        on_meta(root, SONNET, N, "validate_problem", "d12", 0, meta)
+
+        def counts(b):
+            b[0]["request_counts"].update(succeeded=294, errored=4)
+            b[1].update(n_requests=6)
+            b[1]["request_counts"].update(errored=4)
+            b[2].update(n_requests=4)
+            b[2]["request_counts"].update(succeeded=4)
+        batch_counts(root, SONNET, counts)
+    blocks(r, "more than 1% of the rows from a third batch", fourth_late_row, SONNET,
+           "failed batch items (section 6)", "4 of the 300 rows of claude-sonnet-5-5_no-tools "
+           "come from a third or later batch")
+
+    # The first batch expired as a whole; a second batch answered every trial.
+    def expired_whole(root):
+        def go(ms):
+            for x in ms:
+                x["batch_id"] = "msgbatch_fixture_haiku_2"
+            return ms
+        edit(root, HAIKU, N, metas=go)
+
+        def counts(b):
+            b[0]["request_counts"].update(succeeded=0, expired=300)
+            second = json.loads(json.dumps(b[0]))
+            second.update(n=2, batch_id="msgbatch_fixture_haiku_2")
+            second["request_counts"].update(succeeded=300, expired=0)
+            b.append(second)
+        batch_counts(root, HAIKU, counts)
+    blocks(r, "the first batch expired as a whole", expired_whole, HAIKU,
+           "failed batch items (section 6)", "the first batch of claude-haiku-5-5_no-tools "
+           "(msgbatch_fixture_haiku, 300 requests) expired as a whole")
+
+    halts(r, "batches: a folder without its batch record is refused",
+          lambda root: (cdir(root, HAIKU, N) / "batches.json").unlink(),
+          "no readable batch record")
+    halts(r, "batches: a batch that was not fetched is refused",
+          lambda root: batch_counts(root, HAIKU, lambda b: b[0].update(fetched=False)),
+          "a batch whose results were not fetched")
+    halts(r, "batches: a missing count is refused",
+          lambda root: batch_counts(root, HAIKU, lambda b: b[0]["request_counts"].pop("expired")),
+          "missing key(s) ['expired']")
+    halts(r, "batches: counts that do not add up are refused",
+          lambda root: batch_counts(root, HAIKU, lambda b: b[0].update(n_requests=301)),
+          "request counts")
+    halts(r, "batches: more rows than succeeded requests are refused",
+          lambda root: batch_counts(root, SONNET, lambda b: (
+              b[2]["request_counts"].update(succeeded=2, errored=1),)),
+          "3 rows of batch msgbatch_fixture_sonnet_3, which reports 2 succeeded requests")
+
+    def unlisted(root):
+        on_meta(root, HAIKU, N, "solve", "d09", 0, lambda x: x.update(batch_id="msgbatch_other"))
+    halts(r, "batches: rows of a batch the record does not list are refused", unlisted,
+          "that batches.json does not list")
+    halts(r, "batches: entries not numbered in order are refused",
+          lambda root: batch_counts(root, SONNET, lambda b: b[1].update(n=3)), "numbered 3")
 
     # The run manifest: the settings the folder was collected under.
     def manifest_case(label, fn, needle, where=(SONNET, T)):
@@ -1094,7 +1290,7 @@ def test_refusals(r):
     halts(r, "a model id that changes within a folder is refused",
           lambda root: on_meta(root, *S_, other_id), "changes within the folder")
 
-    # Section 6: more than 5% of the tool trials on another date (16 of 300; 3 are planted).
+    # Section 6: more than 5% of the tool trials on a later date (16 of 300; 3 are planted).
     def late(root):
         ks = [key_of(SONNET, T, "validate_plan", d, 0) for d in BF.DOMAINS[:13]]
 
@@ -1105,8 +1301,18 @@ def test_refusals(r):
                         t["requested_at_utc"] = t["requested_at_utc"].replace("2026-11-27", "2026-11-28")
             return ms
         edit(root, SONNET, T, metas=go)
-    halts(r, "more than 5% of the tool trials on another date is refused", late,
-          "16 of 300 tool trials were requested on a date other than 2026-11-27")
+    blocks(r, "more than 5% of the tool trials on a later date", late, SONNET,
+           "the later-date share (section 6)",
+           "16 of 300 tool trials were requested on a date later than 2026-11-27")
+
+    # A tool request dated before the batch was sent is another fault: its own halt.
+    def early(root):
+        def meta(x):
+            for t in x["turns"]:
+                t["requested_at_utc"] = t["requested_at_utc"].replace("2026-11-27", "2026-11-26")
+        on_meta(root, SONNET, T, "validate_plan", "d09", 0, meta)
+    halts(r, "a tool request dated before the batch was sent halts with its own message", early,
+          "1 tool trial(s) hold a request dated before 2026-11-27, the date the batch was sent")
 
     def late_15(root):
         ks = [key_of(SONNET, T, "validate_plan", d, 0) for d in BF.DOMAINS[:12]]
@@ -1122,8 +1328,8 @@ def test_refusals(r):
     try:
         late_15(root)
         code, err, res, _ = run_fixture(root)
-        r.check("exactly 5% of the tool trials on another date is analysed and reported",
-                code == 0 and by(res, "same_day", model=SONNET)["tool_trials_on_another_date"] == 15,
+        r.check("exactly 5% of the tool trials on a later date is analysed and reported",
+                code == 0 and by(res, "same_day", model=SONNET)["tool_trials_on_a_later_date"] == 15,
                 err)
     finally:
         shutil.rmtree(root.parent)
@@ -1170,14 +1376,117 @@ def test_refusals(r):
           "the validator route disagrees with the stored verdict")
 
 
+# ------------------------------------------------------------------ a registered rerun in new folders
+def test_reruns(r):
+    """Sections 6 and 7: both arms of a model run again together, in new folders. The new
+    folders are read for that model; the first attempt is kept and only counted."""
+    root = copy_fixture()
+    try:
+        r2 = root.parent / "frontier55-r2"
+        for arm in (N, T):                      # the rerun: the fixture's own Sonnet folders
+            shutil.copytree(cdir(root, SONNET, arm), r2 / f"{SONNET}_{arm}")
+            shutil.copytree(cdir(root, SONNET, arm), cdir(root, SONNET, arm).with_name(
+                f"{SONNET}_{arm}_r2"))
+        # The first attempt of Sonnet is VOID (a fourth error row that is not a refusal).
+        replant(root, SONNET, T, "validate_plan", "d09", 0, ("", "pause"))
+        code, err, res, _ = run_fixture(root)
+        r.check("without the rerun named, Sonnet is not analysed",
+                code == 0 and res["models"] == [HAIKU], err)
+        for label, extra, where in (
+                ("another root", ["--rerun-root", f"{SONNET}={r2}"], r2),
+                ("a folder suffix", ["--rerun-suffix", f"{SONNET}=_r2"], root / "frontier55"),
+                ("another root and a suffix",
+                 ["--rerun-root", f"{SONNET}={root / 'frontier55'}", "--rerun-suffix",
+                  f"{SONNET}=_r2"], root / "frontier55")):
+            suffix = "" if where == r2 else "_r2"
+            code, err, res, _ = run_fixture(root, extra)
+            r.check(f"rerun under {label}: both models analysed",
+                    code == 0 and res["models"] == [HAIKU, SONNET] and res["not_analysed"] == [],
+                    err)
+            if code != 0:
+                continue
+            for (m, t), (est, lo, hi, p, ph, lab, gained, lost) in CONTRASTS.items():
+                c = by(res, "contrasts", model=m, task=t)
+                r.check(f"rerun under {label}: {m}/{t} is the base contrast",
+                        close(c["est"], est) and close(c["lo"], lo) and close(c["hi"], hi)
+                        and close(c["p_holm"], ph) and (c["label"], c["gained"], c["lost"])
+                        == (lab, gained, lost))
+            x = res["reruns"]
+            want_first = [
+                {"folder": f"{SONNET}_{N}", "found": True, "rows": 300, "half_written_lines": 0,
+                 "rows_per_task": {t: 60 for t in sorted(TASKS)}, "sidecar_lines": 301},
+                {"folder": f"{SONNET}_{T}", "found": True, "rows": 300, "half_written_lines": 0,
+                 "rows_per_task": {t: 60 for t in sorted(TASKS)}, "sidecar_lines": 300}]
+            r.check_eq(f"rerun under {label}: the first attempt is counted, not graded",
+                       (len(x), x[0]["model"], x[0]["suffix"], x[0]["first_attempt"]),
+                       (1, SONNET, suffix, want_first))
+            r.check_eq(f"rerun under {label}: the folders read",
+                       x[0]["folders"], [str(where / f"{SONNET}_{arm}{suffix}") for arm in (N, T)])
+            paths = {c["folder"]: c["path"] for c in res["corpus"]}
+            r.check_eq(f"rerun under {label}: printed where each folder was read from", paths, {
+                f"{HAIKU}_{N}": str(cdir(root, HAIKU, N)), f"{HAIKU}_{T}": str(cdir(root, HAIKU, T)),
+                f"{SONNET}_{N}{suffix}": str(where / f"{SONNET}_{N}{suffix}"),
+                f"{SONNET}_{T}{suffix}": str(where / f"{SONNET}_{T}{suffix}")})
+            r.check(f"rerun under {label}: said in the readout",
+                    f"**{SONNET}: read from the folders of its rerun**" in res["_md"]
+                    and "The first attempt is kept and only counted" in res["_md"]
+                    and f"{SONNET}_{T}: 300 rows" in res["_md"])
+        # The rules apply to the folders that are read: a VOID rerun is not analysed either.
+        row, meta = BF.make_trial(SONNET, T, "validate_plan", "d09", 0, BF.Clock(SONNET), ("", "pause"))
+        d = r2 / f"{SONNET}_{T}"
+        write_lines(d / "trials.jsonl", [row if x["key"] == row["key"] else x
+                                         for x in read_lines(d / "trials.jsonl")])
+        write_lines(d / "trial_meta.jsonl", [meta if x["key"] == meta["key"] else x
+                                             for x in read_lines(d / "trial_meta.jsonl")])
+        code, err, res, _ = run_fixture(root, ["--rerun-root", f"{SONNET}={r2}"])
+        r.check("a rerun that is VOID itself is not analysed",
+                code == 0 and res["models"] == [HAIKU]
+                and "frontier55-r2" not in json.dumps(res["corpus"])
+                and res["not_analysed"][0]["rule"] == "VOID (section 7)", err)
+        # A first attempt whose folder is gone is reported as not found.
+        shutil.rmtree(cdir(root, SONNET, N))
+        shutil.rmtree(d)
+        shutil.copytree(cdir(root, SONNET, T).with_name(f"{SONNET}_{T}_r2"), d)
+        code, err, res, _ = run_fixture(root, ["--rerun-root", f"{SONNET}={r2}"])
+        r.check("a first attempt that is not there is reported as not found",
+                code == 0 and res["reruns"][0]["first_attempt"][0]
+                == {"folder": f"{SONNET}_{N}", "found": False, "rows": 0, "half_written_lines": 0,
+                    "rows_per_task": {}, "sidecar_lines": 0}
+                and f"{SONNET}_{N}: not found" in res["_md"], err)
+        # Refusals of the command line.
+        for label, extra, needle in (
+                ("an unknown model", ["--rerun-root", f"claude-opus-5={r2}"], "expected MODEL=VALUE"),
+                ("no value", ["--rerun-suffix", f"{SONNET}="], "expected MODEL=VALUE"),
+                ("the first attempt's own folders",
+                 ["--rerun-root", f"{SONNET}={root / 'frontier55'}"],
+                 "names the folders of its first attempt"),
+                ("given twice", ["--rerun-root", f"{SONNET}={r2}", "--rerun-root", f"{SONNET}={r2}"],
+                 "given twice"),
+                ("a pilot folder", ["--rerun-root", f"{SONNET}={root.parent / 'frontier55-pilot'}"],
+                 "names a pilot folder"),
+                ("a rerun that is not there", ["--rerun-root", f"{HAIKU}={root.parent / 'nowhere'}"],
+                 "folder not found")):
+            code, err, _res, written = run_fixture(root, extra)
+            r.check(f"rerun: {label} is refused", code == 2 and needle in err and written == [],
+                    err[-300:])
+    finally:
+        shutil.rmtree(root.parent)
+    # The counting of a first attempt opens no grade and tolerates a half-written line.
+    first = F.first_attempt(FIXTURE / "frontier55", HAIKU)
+    r.check_eq("first attempt counted",
+               [(f["folder"], f["rows"], f["half_written_lines"], f["sidecar_lines"]) for f in first],
+               [(f"{HAIKU}_{N}", 300, 0, 300), (f"{HAIKU}_{T}", 300, 1, 301)])
+
+
 # ------------------------------------------------------------------ tripwires
 def test_tripwires(r):
-    # T1, a constant column: with Haiku's refusals on validate_problem answered right, the
-    # four folders all have 60 of 60 on that task.
+    # T1, a constant column: with Haiku's refusals on validate_problem answered right and
+    # Sonnet's loop-exhausted trial answered right, the four folders all have 60 of 60.
     root = copy_fixture()
     try:
         for dom in BF.DOMAINS[:4]:
             replant(root, HAIKU, N, "validate_problem", dom, 0, ("ok", "plain"))
+        replant(root, SONNET, T, "validate_problem", "d09", 0, ("ok", "right"))
         code, err, _res, written = run_fixture(root)
         r.check("T1 halts and writes nothing",
                 code == 2 and "T1:validate_problem" in err and "the same in all four folders "
@@ -1237,7 +1546,8 @@ def test_tripwires(r):
         return {**base, **kw}
     rates = [{"model": m, "task": t, "arm": a, "right": 30 + i} for i, (m, a) in enumerate(
         (m, a) for m in (HAIKU, SONNET) for a in (N, T)) for t in TASKS]
-    app = [{"model": SONNET, "arm": T, "folder": "f", "responses_over_the_output_cap": 0}]
+    app = [{"model": SONNET, "arm": T, "folder": "f", "responses_over_the_output_cap": 0,
+            "model_ids_returned": ["claude-sonnet-5-5-a"]}]
 
     def fired(d=None, ra=None, ap=None):
         return set(F.tripwires(design, ra or rates, [d or desc()], ap or app))
@@ -1262,6 +1572,69 @@ def test_tripwires(r):
     same = [{**e, "right": 60} for e in rates]
     r.check_eq("T1: the same count in all four folders, on every task", fired(ra=same),
                {f"T1:{t}" for t in TASKS})
+    one = [{**e, "right": 60} for e in rates if e["model"] == SONNET]
+    r.check_eq("T1 is not evaluated when one model is not analysed",
+               set(F.tripwires(design, one, [desc()], app)), set())
+    msg = F.tripwires(design, rates, [desc(thinking_tokens_total=0)], app)[f"T8:{SONNET}:{T}"]
+    r.check("T8 says what the audit must establish",
+            "2 notes between tool calls were returned and no usage block reports a "
+            "thinking-token count" in msg and "does not report thinking tokens separately" in msg
+            and "that the notes are present" in msg and "no usage field of any turn counts them "
+            "apart" in msg and "inside the output tokens" in msg and "\"not separable\"" in msg)
+    # T9: each arm of a model returned one model id, and the two differ.
+    other = {"model": SONNET, "arm": N, "folder": "g", "responses_over_the_output_cap": 0,
+             "model_ids_returned": ["claude-sonnet-5-5-b"]}
+    r.check_eq("T9: the two arms were answered by different model ids",
+               fired(desc(), ap=app + [other]), {f"T9:{SONNET}"})
+    r.check_eq("T9 does not fire when the ids are the same",
+               fired(desc(), ap=app + [{**other, "model_ids_returned": ["claude-sonnet-5-5-a"]}]),
+               set())
+
+    # T9 on the fixture: Sonnet's tool arm answered by another id than its no-tools arm.
+    def other_id_in_one_arm(root):
+        def go(ms):
+            for x in ms:
+                x["model_ids_returned"] = ["claude-sonnet-5-5-20261201"]
+                for t in x["turns"]:
+                    t["model"] = "claude-sonnet-5-5-20261201"
+            return ms
+        edit(root, SONNET, T, metas=go)
+    halts(r, "T9: different model ids in the two arms of a model halts", other_id_in_one_arm,
+          "T9:claude-sonnet-5-5: claude-sonnet-5-5: the two arms were answered by different "
+          "model ids (no-tools: claude-sonnet-5-5-20261120, tools: claude-sonnet-5-5-20261201)")
+
+    # A share whose trials do not reach the 20 domains gets no interval. With no tool call
+    # on the three validate_domain trials of d10, Haiku's tool-right set holds 19 domains.
+    root = copy_fixture()
+    try:
+        for slot in range(3):
+            replant(root, HAIKU, T, "validate_domain", "d10", slot, ("ok", "none"))
+        code, err, res, _ = run_fixture(root)
+        ok = code == 0
+        if ok:
+            c = by(res, "tool_right_answer_wrong", model=HAIKU, task="validate_domain")
+            q = by(res, "tool_choice", model=HAIKU, task="validate_domain")
+            ok = ((c["n_tool_right"], c["n_answer_wrong"], c["answer_wrong"]["k"],
+                   c["answer_wrong"]["lo"], c["answer_wrong"]["hi"], c["answer_wrong"]["est"])
+                  == (57, 0, 19, None, None, 0.0)
+                  and (q["counts"]["none"], q["exactly_right"]["k"]) == (3, 20)
+                  and q["exactly_right"]["lo"] is not None
+                  and "0.0 (no interval: the trials reach 19 of 20 domains)" in res["_md"])
+        r.check("a share over 19 domains has no interval; one over 20 has", ok, err)
+    finally:
+        shutil.rmtree(root.parent)
+    # The helper itself.
+    doms20 = [f"d{i:02d}" for i in range(1, 21)]
+    full = F.share([True] + [False] * 19, doms20, 20, "unit")
+    b = ST.cluster_bootstrap([1.0] + [0.0] * 19, doms20, 0.95, 20)
+    r.check("share over 20 domains: the frozen bootstrap",
+            close(full["est"], 5.0) and close(full["lo"], b.lo) and close(full["hi"], b.hi)
+            and (full["k"], full["n"]) == (20, 20))
+    part = F.share([True, False], ["d01", "d02"], 20, "unit")
+    r.check_eq("share over 2 domains: no interval",
+               (part["est"], part["lo"], part["hi"], part["k"], part["n"]), (50.0, None, None, 2, 2))
+    r.check_eq("share of nothing", (F.share([], [], 20, "unit")["est"], F.share_cell(F.share([], [], 20, "u"))),
+               (None, "–"))
 
 
 # ------------------------------------------------------------------ the runner's own shapes
@@ -1335,6 +1708,65 @@ def test_runner_shapes(r):
                     except CPF.Halt as e:
                         ok = pilot and "pilot=True" in str(e)
                     r.check(f"runner's manifest {model} {arm} pilot={pilot}", ok)
+    finally:
+        shutil.rmtree(tmp)
+
+    # The batch record the runner keeps is the one `read_batches` reads: a batch of three
+    # requests sent, ended and graded by the runner's own functions on a mock transport.
+    async def runner_batch(out: Path):
+        jobs = [TR.job(t, HAIKU, with_tools=False) for t in ("solve", "validate_domain", "simulate")]
+        cids = [R.custom_id(R.trial_key(HAIKU, j, False)) for j in jobs]
+        results = "".join(json.dumps(x) + "\n" for x in (
+            {"custom_id": cids[1], "result": {"type": "succeeded", "message": TR.msg(
+                [{"type": "text", "text": "fine\nVERDICT: VALID"}], "end_turn", HAIKU)}},
+            {"custom_id": cids[0], "result": {"type": "errored", "error": {
+                "type": "error", "error": {"type": "api_error", "message": "internal"}}}},
+            {"custom_id": cids[2], "result": {"type": "succeeded", "message": TR.msg(
+                [], "refusal", HAIKU)}}))
+
+        def reply(req, body, n):
+            path = req.url.path
+            if req.method == "POST" and path == "/v1/messages/batches":
+                return dict(TR.BATCH)
+            if req.method == "GET" and path.endswith("/results"):
+                return TR.httpx.Response(200, content=results.encode(),
+                                         headers={"content-type": "application/x-jsonl"})
+            if req.method == "GET":
+                return dict(TR.BATCH, processing_status="ended", ended_at="2026-12-01T11:00:00Z",
+                            request_counts={"processing": 0, "succeeded": 2, "errored": 1,
+                                            "canceled": 0, "expired": 0},
+                            results_url="https://api.anthropic.com/v1/messages/batches/"
+                                        "msgbatch_1/results")
+            return 404, {}
+        c = TR.Wire(reply).client()
+        try:
+            await R.batch_submit(c, HAIKU, jobs, out)
+            entry = await R.batch_poll(c, out, wait=False)
+            await R.batch_grade(HAIKU, jobs, out, TR.mcp_ok(), entry)
+        finally:
+            await c.close()
+
+    tmp = Path(tempfile.mkdtemp(prefix="f55_batch_"))
+    try:
+        asyncio.run(runner_batch(tmp))
+        got = F.read_batches(tmp, "x")
+        r.check_eq("the runner's batches.json",
+                   [(b.n, b.batch_id, b.n_requests, b.counts) for b in got],
+                   [(1, "msgbatch_1", 3, {"processing": 0, "succeeded": 2, "errored": 1,
+                                         "canceled": 0, "expired": 0})])
+        metas = {}
+        for i, x in enumerate(read_lines(tmp / "trial_meta.jsonl")):
+            m = F.parse_meta(x, HAIKU, N, f"batch line {i}")
+            metas[m.key] = m
+        r.check_eq("the rows of the runner's batch carry its id",
+                   sorted((m.batch_id, m.outcome) for m in metas.values()),
+                   [("msgbatch_1", "answer"), ("msgbatch_1", "refusal")])
+        r.check_eq("the fixture's batches.json has the runner's keys",
+                   set(json.loads((cdir(FIXTURE, HAIKU, N) / "batches.json").read_text())[0])
+                   - {"request_id", "request_host", "spend_recorded", "graded_with_tools_commit",
+                      "graded_with_pyvalidator"},
+                   set(json.loads((tmp / "batches.json").read_text())[0])
+                   - {"request_id", "request_host"})
     finally:
         shutil.rmtree(tmp)
 
@@ -1696,6 +2128,8 @@ def test_constants(r):
         "LEVEL": 0.90, "B_BOOT": 1_000, "SEED": 1, "HOLM_FAMILY": 10, "HOLM_ALPHA": 0.10,
         "LABELS": ("tools ahead", "no tools ahead"), "NOT_AFTER_HOLM": " (not significant)",
         "RQ2_CLASSES": ("none", "right_only", "other_only"), "LATER_FRAC": 0.10, "VOID_FRAC": 0.05,
+        "BATCH_RETRY_FRAC": 0.05, "BATCH_COUNT_KEYS": ("succeeded", "expired"),
+        "NAMED_ERROR_KINDS": ("refusal", "pause", "unknown stop", "scoring error"),
         "UNREAD_FRAC": 0.10, "REFUSAL_TRIPWIRE_FRAC": 0.5,
         "OUTCOMES": ("answer",), "ERROR_OUTCOMES": ("refusal",),
         "VOID_KINDS": ("refusal", "pause", "unknown stop", "scoring error"),
@@ -1753,6 +2187,7 @@ def main():
     test_base(r)
     test_traps(r)
     test_refusals(r)
+    test_reruns(r)
     test_tripwires(r)
     test_runner_shapes(r)
     test_units(r)

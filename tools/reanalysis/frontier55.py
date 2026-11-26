@@ -33,12 +33,16 @@ Modes:
                          injected validator verdicts, no results/ and no validator).
 
 Order (live and fixture): registered constants -> the frozen-hash gate -> pinned inputs
-and the validator environment -> the four folders through the typed loaders (sidecar,
-rows, row against sidecar, completeness, duplicate keys, storage cuts) -> VOID -> the same
-trials in both arms (live: the harness's own trial list) -> the same-day rule -> validator
-route check -> grades -> RQ1 rates and contrasts -> verdict errors -> RQ2 and RQ3 ->
-descriptive counts -> tripwires -> JSON and markdown. Any failure exits 2 and writes
-nothing.
+and the validator environment -> the four folders through the typed loaders (run manifest,
+sidecar, rows, row against sidecar, completeness, duplicate keys, storage cuts, the batch
+record) -> the same trials in both arms (live: the harness's own trial list) -> validator
+route check -> per model, the three rules that send both arms back to be run again (VOID,
+failed batch items, the later-date share) -> grades -> RQ1 rates and contrasts -> verdict
+errors -> RQ2 and RQ3 -> descriptive counts -> tripwires -> JSON and markdown. A fault
+exits 2 and writes nothing. A model that one of the three rules sends back is printed as
+"not analysed: <rule>" and is in no table; the other model's readout goes on. A model
+whose two arms were run again in new folders is read from them (--rerun-root MODEL=PATH,
+--rerun-suffix MODEL=SUFFIX); its first attempt is counted and not graded.
 
 Nothing is pooled over models or tasks, and no number of an open model is read into the
 output or compared with these rows.
@@ -97,6 +101,15 @@ _check = M._check            # raises RegisteredCheckFailed; `python -O` cannot 
 
 class SidecarError(S.SchemaError):
     """A sidecar line does not have the shape the runner writes."""
+
+
+class NotAnalysed(Exception):
+    """A registered rule says both arms of one model are run again together. That model is
+    not analysed and appears in no table; the readout of the other model goes on."""
+
+    def __init__(self, model: str, rule: str, detail: str):
+        super().__init__(f"{model}: not analysed: {rule}: {detail}")
+        self.model, self.rule, self.detail = model, rule, detail
 
 
 # ------------------------------------------------------------------ registered constants
@@ -161,8 +174,10 @@ HOLM_ALPHA = 0.05
 LABELS: tuple[str, ...] = ("tools ahead", "no tools ahead", "no difference shown")
 NOT_AFTER_HOLM = " (not after Holm)"
 RQ2_CLASSES: tuple[str, ...] = ("none", "right_only", "right_plus", "other_only")
-# section 6: the same-day rule. section 7: VOID.
+# section 6: the same-day rule and the failed batch items. section 7: VOID.
 LATER_FRAC = 0.05
+BATCH_RETRY_FRAC = 0.01
+BATCH_COUNT_KEYS: tuple[str, ...] = ("processing", "succeeded", "errored", "canceled", "expired")
 VOID_FRAC = 0.01
 # readout-time tripwires (freeze protocol; not registration clauses).
 UNREAD_FRAC = 0.05
@@ -199,7 +214,11 @@ TOOL_ERROR_PREFIX = "Tool error:"
 # Error rows (section 3 item 6, section 7), by the row's error text.
 REFUSAL, PAUSE, UNKNOWN_STOP, SCORING_ERROR = "refusal", "pause", "unknown stop", "scoring error"
 ERROR_KINDS: tuple[str, ...] = (REFUSAL, PAUSE, UNKNOWN_STOP, SCORING_ERROR)
-VOID_KINDS: tuple[str, ...] = (PAUSE, UNKNOWN_STOP, SCORING_ERROR)     # error rows, not refusals
+# The error rows section 3 item 6 names: they hold no tool calls and no tokens.
+NAMED_ERROR_KINDS: tuple[str, ...] = (REFUSAL, PAUSE, UNKNOWN_STOP)
+# Kinds that can count toward VOID (never a refusal). A scoring-error row counts only where
+# the rerun's `is_exception` holds: `counts_toward_void`.
+VOID_KINDS: tuple[str, ...] = (PAUSE, UNKNOWN_STOP, SCORING_ERROR)
 OUTCOME_OF_KIND = {REFUSAL: "refusal", PAUSE: "pause_turn", UNKNOWN_STOP: "unknown_stop"}
 THINK_OVERFLOW = "think_overflow"     # section 3 item 4: a label the open rows never carry
 # How a trial ended (section 5, descriptive). `E_CAP_EMPTY` is the label of section 3
@@ -349,6 +368,9 @@ def check_constants() -> None:
     _check(g["RQ2_CLASSES"] == ("none", "right_only", "right_plus", "other_only") == R23.CLASSES,
            "the four tool-choice classes of rq23_metrics")
     _check(g["LATER_FRAC"] == 0.05, "later-date rule: more than 5%")
+    _check(g["BATCH_RETRY_FRAC"] == 0.01, "failed batch items: more than 1% after the retry batch")
+    _check(g["BATCH_COUNT_KEYS"] == ("processing", "succeeded", "errored", "canceled", "expired"),
+           "the request counts of a batch")
     _check(g["VOID_FRAC"] == 0.01 == C.EXCEPTION_VOID_FRAC, "VOID above 1%")
     _check(C.EXCEPTION_REASONS == frozenset({"exception", "ollama_parse_error"}),
            "exception reasons of the rerun")
@@ -362,6 +384,9 @@ def check_constants() -> None:
            and g["VOID_KINDS"] == ("pause", "unknown stop", "scoring error")
            and g["REFUSAL"] == "refusal" and g["REFUSAL"] not in g["VOID_KINDS"],
            "error rows; a refusal does not count toward VOID")
+    _check(g["NAMED_ERROR_KINDS"] == ("refusal", "pause", "unknown stop")
+           and set(g["NAMED_ERROR_KINDS"]) == set(g["OUTCOME_OF_KIND"]),
+           "the error rows of section 3 item 6: a refusal, a pause, an unknown stop")
     _check(g["THINK_OVERFLOW"] == "think_overflow" and "think_overflow" in S.FAILURE_REASONS,
            "the harness's think_overflow label")
     _check(g["E_CAP_EMPTY"] == "stopped at the cap with no answer" and len(set(ENDINGS)) == 8,
@@ -762,6 +787,51 @@ class Cell:
     torn_lines: int
     sidecar: dict                   # lines, torn, superseded
     manifest: dict                  # what `check_manifest` returns
+    path: str                       # where the folder was read from
+    batches: tuple                  # no-tools folder: its batches, in the order they were sent
+
+
+@dataclass(frozen=True)
+class Batch:
+    n: int                          # 1 for the first batch of the folder, 2 for the retry, ...
+    batch_id: str
+    n_requests: int
+    counts: dict                    # the provider's request counts when the batch ended
+
+
+def read_batches(cell_dir: Path, name: str) -> tuple[Batch, ...]:
+    """The batches of a no-tools folder, from the `batches.json` the runner keeps: one
+    entry per batch in the order sent, with the number of requests and, once the batch has
+    ended and its results are stored, the provider's request counts. Halts on a missing
+    key, on a batch that was not fetched, and on entries that are not numbered 1, 2, ..."""
+    path = cell_dir / "batches.json"
+    try:
+        raw = json.loads(path.read_text())
+    except (OSError, ValueError) as e:
+        raise Halt(f"{path}: no readable batch record ({type(e).__name__})") from e
+    if not isinstance(raw, list) or not raw:
+        raise Halt(f"{path}: the batch record lists no batch")
+    out = []
+    for i, e in enumerate(raw, 1):
+        w = f"{name}/batches.json entry {i}"
+        if not isinstance(e, dict):
+            raise SidecarError(f"{w}: not an object")
+        if _typed(e, "n", int, w) != i:
+            raise SidecarError(f"{w}: numbered {e['n']}")
+        if _typed(e, "fetched", bool, w) is not True:
+            raise Halt(f"{w}: a batch whose results were not fetched; the folder is not complete")
+        counts = _need(e, "request_counts", w)
+        _exact(counts, frozenset(BATCH_COUNT_KEYS), f"{w} request_counts")
+        counts = {k: _typed(counts, k, int, w) for k in BATCH_COUNT_KEYS}
+        n_requests = _typed(e, "n_requests", int, w)
+        if sum(counts.values()) != n_requests or counts["processing"] != 0:
+            raise SidecarError(f"{w}: request counts {counts} of an ended batch of "
+                               f"{n_requests} requests")
+        out.append(Batch(n=i, batch_id=_typed(e, "batch_id", str, w), n_requests=n_requests,
+                         counts=counts))
+    if len({b.batch_id for b in out}) != len(out):
+        raise SidecarError(f"{name}/batches.json: a batch id twice")
+    return tuple(out)
 
 
 def check_manifest(cell_dir: Path, model: str, arm: str, gt_cache: dict) -> dict:
@@ -834,9 +904,12 @@ def error_kind(r: S.Row, where: str) -> str | None:
         # OPEN: the harness's online grader raised on this trial (error "scoring error:
         # ..."); the answer and the tool calls are stored. The registration lists a
         # refusal, a pause and an unknown stop as error rows and is silent on this one.
-        # Implemented: an error row like the others (wrong under the grade; counted toward
-        # VOID; left out of RQ2 and RQ3 and counted beside). The other option is to grade
-        # its stored answer and to class its stored tool calls.
+        # Implemented, the reading that follows the open models' rules: wrong under the
+        # grade; counted toward VOID only where the rerun's `is_exception` holds (so not a
+        # row the harness labelled `loop_exhausted`); classed in RQ2 by its stored tool
+        # calls like any other row; never in RQ3's "tool right" set, because its stored
+        # grade is wrong. The other reading: an error row like the three named ones
+        # (counted toward VOID whatever its label; left out of RQ2 and counted beside).
         return SCORING_ERROR
     if not r.is_exception:
         return None
@@ -929,7 +1002,8 @@ def load_row(obj, by_key: dict, spec: S.CellSpec, model: str,
 
 
 def read_cell(root: Path, design: Design, model: str, arm: str, gt_cache: dict,
-              gt_cache_sha256: str, domains: frozenset | None = None) -> Cell:
+              gt_cache_sha256: str, domains: frozenset | None = None,
+              suffix: str = "") -> Cell:
     """One folder: its run manifest, the sidecar through `parse_meta`, every row through the frozen
     `schema.parse_row` (model name swapped, section 2.6), each row against its sidecar
     line, the frozen completeness check and the per-task counts of section 2.1.
@@ -940,6 +1014,7 @@ def read_cell(root: Path, design: Design, model: str, arm: str, gt_cache: dict,
     half-written line is counted and skipped, as the frozen `load_cell` does; completeness
     then proves every key is present intact."""
     spec = cell_spec(design, model, arm)
+    spec = dataclasses.replace(spec, name=spec.name + suffix)
     cell_dir = root / spec.name
     if not cell_dir.is_dir():
         raise S.IncompleteCell(f"folder not found: {cell_dir}")
@@ -994,48 +1069,179 @@ def read_cell(root: Path, design: Design, model: str, arm: str, gt_cache: dict,
                    f"folder: {sorted(ids)} (section 6)")
     return Cell(model=model, arm=arm, spec=spec, rows=tuple(rows), meta=meta, kinds=kinds,
                 storage_cut=tuple(cut_keys), torn_lines=torn, sidecar=counts,
-                manifest=manifest)
+                manifest=manifest, path=str(cell_dir),
+                batches=read_batches(cell_dir, spec.name) if arm == "no-tools" else ())
+
+
+def counts_toward_void(r: S.Row, kind: str | None) -> bool:
+    """Section 7: an error row that is not a refusal. A pause and an unknown stop always;
+    a trial on which the harness's grader raised only where the rerun's `is_exception`
+    holds (the open models' rule; see the OPEN note in `error_kind`)."""
+    return kind in (PAUSE, UNKNOWN_STOP) or (kind == SCORING_ERROR and r.is_exception)
 
 
 def void_rows(cell: Cell) -> int:
     """Section 7: error rows that are not refusals."""
-    return sum(k in VOID_KINDS for k in cell.kinds.values())
+    return sum(counts_toward_void(r, cell.kinds[r.trial_key]) for r in cell.rows)
 
 
 def is_void(cell: Cell) -> bool:
     return void_rows(cell) > VOID_FRAC * len(cell.rows)
 
 
-def check_void(cells: dict) -> None:
+def void_rule(model: str, cells: dict) -> None:
     """Section 7: a folder is VOID above 1% error rows that are not refusals; both arms of
-    that model are then run again together, not analysed. All four folders VOID is a
-    guard firing everywhere: a fault to trace, not a result."""
-    void = [c for m in MODELS for c in cells[m].values() if is_void(c)]
-    if not void:
-        return
-    lines = [f"{c.spec.name} has {void_rows(c)} error rows that are not refusals of "
-             f"{len(c.rows)} (more than {100 * VOID_FRAC:.0f}%)" for c in void]
-    if len(void) == len(MODELS) * len(ARMS):
+    that model are then run again together, not analysed."""
+    void = [c for c in cells.values() if is_void(c)]
+    if void:
+        raise NotAnalysed(model, "VOID (section 7)", "; ".join(
+            f"{c.spec.name} has {void_rows(c)} error rows that are not refusals of "
+            f"{len(c.rows)} (more than {100 * VOID_FRAC:.0f}%)" for c in void)
+            + ". Both arms are run again together, in new folders")
+
+
+def failed_batch_rule(model: str, cell: Cell) -> dict:
+    """Section 6, failed batch items: (1) items that come back failed, canceled or expired
+    are sent again once, in a second batch; (2) if after that more than 1% of the arm's
+    trials are still without a row, or if the first batch expired as a whole, both arms of
+    the model are run again. A folder is complete when it is read, so the trials that had
+    no row after the second batch are the rows that came from a third or later batch."""
+    by_id = {b.batch_id: b for b in cell.batches}
+    rows = Counter(m.batch_id for m in cell.meta.values())
+    unknown = sorted(set(rows) - set(by_id))
+    if unknown:
+        raise Halt(f"{cell.spec.name}: rows of batch(es) {unknown} that batches.json does not list")
+    for b in cell.batches:
+        if rows[b.batch_id] > b.counts["succeeded"]:
+            raise Halt(f"{cell.spec.name}: {rows[b.batch_id]} rows of batch {b.batch_id}, which "
+                       f"reports {b.counts['succeeded']} succeeded requests")
+    first = cell.batches[0]
+    late = sum(rows[b.batch_id] for b in cell.batches if b.n >= 3)
+    limit = BATCH_RETRY_FRAC * len(cell.rows)
+    out = {"model": model, "folder": cell.spec.name,
+           "batches": [{"n": b.n, "batch_id": b.batch_id, "requests": b.n_requests,
+                        "request_counts": b.counts, "rows": rows[b.batch_id]}
+                       for b in cell.batches],
+           "rows_from_a_third_or_later_batch": late, "limit": limit,
+           "first_batch_expired_as_a_whole": first.counts["expired"] == first.n_requests}
+    if out["first_batch_expired_as_a_whole"]:
+        raise NotAnalysed(model, "failed batch items (section 6)",
+                          f"the first batch of {cell.spec.name} ({first.batch_id}, "
+                          f"{first.n_requests} requests) expired as a whole. Both arms are run "
+                          f"again together, in new folders")
+    if late > limit:
+        raise NotAnalysed(model, "failed batch items (section 6)",
+                          f"{late} of the {len(cell.rows)} rows of {cell.spec.name} come from a "
+                          f"third or later batch, so more than {100 * BATCH_RETRY_FRAC:.0f}% of "
+                          f"the arm's trials were without a row after the one retry batch. Both "
+                          f"arms are run again together, in new folders")
+    return out
+
+
+def model_rules(model: str, cells: dict) -> dict:
+    """The three rules that send both arms of a model back to be run again (VOID, failed
+    batch items, the later-date share). Raises NotAnalysed on the first that holds."""
+    void_rule(model, cells)
+    batches = failed_batch_rule(model, cells["no-tools"])
+    return {"batches": batches, "same_day": same_day(model, cells)}
+
+
+def screen(cells: dict) -> tuple[dict, dict, list[dict]]:
+    """(the models that are analysed, their rule records, the models that are not).
+    A model a rule sends back is left out of every table; the other model's readout goes
+    on. All folders VOID is a guard firing everywhere: a fault to trace, not a result."""
+    every = [c for m in cells for c in cells[m].values()]
+    if len(every) == len(MODELS) * len(ARMS) and all(is_void(c) for c in every):
         raise Halt("every folder is VOID (section 7). A guard that fires everywhere is a "
-                   "fault to trace before any rerun or readout:\n  " + "\n  ".join(lines))
-    models = sorted({c.model for c in void})
-    raise Halt("VOID (section 7): " + "; ".join(lines) + f". Both arms of "
-               f"{' and of '.join(models)} are run again together, in new folders, not analysed")
+                   "fault to trace before any rerun or readout:\n  " + "\n  ".join(
+                       f"{c.spec.name} has {void_rows(c)} error rows that are not refusals of "
+                       f"{len(c.rows)}" for c in every))
+    kept, rules, blocked = {}, {}, []
+    for m in cells:
+        try:
+            rules[m] = model_rules(m, cells[m])
+            kept[m] = cells[m]
+        except NotAnalysed as e:
+            blocked.append({"model": e.model, "rule": e.rule, "detail": e.detail})
+    if not kept:
+        raise Halt("no model can be analysed:\n  " + "\n  ".join(
+            f"{b['model']}: not analysed: {b['rule']}: {b['detail']}" for b in blocked))
+    return kept, rules, blocked
 
 
 def load_run(root: Path, design: Design, gt_cache: dict, gt_cache_sha256: str,
-             domains: frozenset | None = None) -> dict:
+             domains: frozenset | None = None, reruns: dict | None = None) -> dict:
     """{model: {arm: Cell}} for the four folders. `gt_cache_sha256` is the sha256 of the
-    ground-truth file the analysis reads; every folder's manifest must name the same."""
-    cells = {m: {arm: read_cell(root, design, m, arm, gt_cache, gt_cache_sha256, domains)
-                 for arm in ARMS} for m in MODELS}
-    check_void(cells)
+    ground-truth file the analysis reads; every folder's manifest must name the same.
+    `reruns` gives, for a model whose two arms were run again in new folders, the root and
+    the folder suffix of those folders; they are read in place of the first attempt's."""
+    cells = {}
+    for m in MODELS:
+        at, suffix = (reruns or {}).get(m, (root, ""))
+        cells[m] = {arm: read_cell(at, design, m, arm, gt_cache, gt_cache_sha256, domains,
+                                   suffix) for arm in ARMS}
     return cells
+
+
+def parse_reruns(roots: list[str], suffixes: list[str], root: Path) -> dict:
+    """{model: (root, folder suffix)} from --rerun-root MODEL=PATH and --rerun-suffix
+    MODEL=SUFFIX: the new folders of a model whose two arms were run again (sections 6
+    and 7). A rerun must name other folders than the first attempt's."""
+    given: dict = {}
+    for what, items in (("root", roots), ("suffix", suffixes)):
+        for item in items:
+            model, sep, value = item.partition("=")
+            if not sep or model not in MODELS or not value:
+                raise Halt(f"--rerun-{what} {item!r}: expected MODEL=VALUE with MODEL one of "
+                           f"{list(MODELS)}")
+            if what in given.setdefault(model, {}):
+                raise Halt(f"--rerun-{what} given twice for {model}")
+            given[model][what] = value
+    out = {}
+    for model, g in given.items():
+        at = Path(g["root"]) if "root" in g else root
+        suffix = g["suffix"] if "suffix" in g else ""
+        if at.resolve() == root.resolve() and not suffix:
+            raise Halt(f"the rerun of {model} names the folders of its first attempt")
+        if "pilot" in at.resolve().name or "pilot" in suffix:
+            raise Halt(f"the rerun of {model} names a pilot folder; the pilot is never analysed")
+        out[model] = (at, suffix)
+    return out
+
+
+def first_attempt(root: Path, model: str) -> list[dict]:
+    """Section 6: "the first attempt is kept and reported". The folders a rerun replaces
+    are counted (rows, rows per task, sidecar lines) and nothing in them is graded."""
+    out = []
+    for arm in ARMS:
+        d = root / folder_name(model, arm)
+        rec = {"folder": d.name, "found": d.is_dir(), "rows": 0, "half_written_lines": 0,
+               "rows_per_task": {}, "sidecar_lines": 0}
+        if rec["found"] and (d / "trials.jsonl").is_file():
+            per_task: Counter = Counter()
+            with (d / "trials.jsonl").open() as fh:
+                for lineno, line in enumerate(fh, 1):
+                    if not line.strip():
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except json.JSONDecodeError:
+                        rec["half_written_lines"] += 1
+                        continue
+                    _model, key, _cut = _raw(obj, f"{d.name}/trials.jsonl:{lineno}")
+                    per_task[str(key[1])] += 1
+            rec["rows"] = sum(per_task.values())
+            rec["rows_per_task"] = dict(sorted(per_task.items()))
+        if rec["found"] and (d / "trial_meta.jsonl").is_file():
+            with (d / "trial_meta.jsonl").open() as fh:
+                rec["sidecar_lines"] = sum(1 for line in fh if line.strip())
+        out.append(rec)
+    return out
 
 
 def check_same_trials(cells: dict) -> None:
     """Sections 2.1 and 6: the two arms of a model hold the same trials."""
-    for m in MODELS:
+    for m in cells:
         n = {r.trial_key for r in cells[m]["no-tools"].rows}
         t = {r.trial_key for r in cells[m]["tools"].rows}
         if n != t:
@@ -1064,11 +1270,11 @@ def registered_grid(domains_dir: Path, gt_cache: dict) -> frozenset:
 
 
 def check_grid(cells: dict, grid: frozenset) -> None:
-    for m in MODELS:
+    for m in cells:
         for arm in ARMS:
             keys = {r.trial_key for r in cells[m][arm].rows}
             if keys != grid:
-                raise Halt(f"{folder_name(m, arm)}: its trials are not the registered list "
+                raise Halt(f"{cells[m][arm].spec.name}: its trials are not the registered list "
                            f"({len(keys - grid)} not in the list, {len(grid - keys)} missing)")
 
 
@@ -1080,18 +1286,25 @@ def _dates(times) -> dict[str, int]:
 def same_day(model: str, cells: dict) -> dict:
     """Section 6, the same-day rule: both arms of a model count as the same day when the
     batch was sent and every tool trial was requested on one UTC date. Reported: the date
-    the batch was sent and the date it ended, and the tool trials requested on another
-    date. More than 5% of them halts: both arms are then run again together."""
-    # OPEN: what "a tool trial requested on a later date" counts. Implemented: the
-    # reference date is the earliest date a batch of the no-tools folder was sent, and a
-    # tool trial counts when ANY of its requests has another UTC date (the larger count).
-    # The other option is to date a trial by its first request only. Above 5% the
-    # analysis halts; the other option is to report and go on.
-    n, t = cells[model]["no-tools"], cells[model]["tools"]
+    the batch was sent and the date it ended, and the tool trials requested on a later
+    date. More than 5% of them: both arms of the model are run again together, so the
+    model is not analysed. `cells` is {arm: Cell} of one model."""
+    # OPEN: how a tool trial is dated. Implemented: the reference date is the earliest date
+    # a batch of the no-tools folder was sent, and a tool trial counts as "on a later date"
+    # when ANY of its requests has a later UTC date (the larger count). The other option
+    # is to date a trial by its first request only.
+    n, t = cells["no-tools"], cells["tools"]
     sent = [m.turns[0].requested for m in n.meta.values()]
     ref = min(x.date() for x in sent)
-    off = [m for m in t.meta.values() if any(x.requested.date() != ref for x in m.turns)]
-    share = len(off) / len(t.meta)
+    early = [m for m in t.meta.values() if any(x.requested.date() < ref for x in m.turns)]
+    if early:
+        # The registration has the batch sent first and the tool arm started after it. A
+        # tool request dated before the batch was sent is another fault, not a late trial.
+        raise Halt(f"{model}: {len(early)} tool trial(s) hold a request dated before "
+                   f"{ref.isoformat()}, the date the batch was sent (section 6 has the batch "
+                   f"sent first); this is not the later-date case and is not analysed as one")
+    later = [m for m in t.meta.values() if any(x.requested.date() > ref for x in m.turns)]
+    share = len(later) / len(t.meta)
     batches = {}
     for m in n.meta.values():
         b = batches.setdefault(m.batch_id, {"trials": 0, "sent": set(), "ended": set()})
@@ -1107,17 +1320,17 @@ def same_day(model: str, cells: dict) -> dict:
             for m in n.meta.values()).items())),
         "batches": [{"batch_id": b, "trials": v["trials"], "sent": sorted(v["sent"]),
                      "ended": sorted(v["ended"])} for b, v in sorted(batches.items())],
-        "no_tools_trials_sent_on_another_date": sum(x.date() != ref for x in sent),
+        "no_tools_trials_sent_on_a_later_date": sum(x.date() > ref for x in sent),
         "tool_trial_first_request_dates": _dates(m.turns[0].requested for m in t.meta.values()),
-        "tool_trials": len(t.meta), "tool_trials_on_another_date": len(off),
-        "share_on_another_date": share,
-        "same_day": len({x.date() for x in sent}) == 1 and not off,
+        "tool_trials": len(t.meta), "tool_trials_on_a_later_date": len(later),
+        "share_on_a_later_date": share,
+        "same_day": len({x.date() for x in sent}) == 1 and not later,
     }
     if share > LATER_FRAC:
-        raise Halt(f"{model}: {len(off)} of {len(t.meta)} tool trials were requested on a date "
-                   f"other than {ref.isoformat()}, the date the batch was sent (more than "
-                   f"{100 * LATER_FRAC:.0f}%); both arms of this model are run again together "
-                   f"(section 6), not analysed")
+        raise NotAnalysed(model, "the later-date share (section 6)",
+                          f"{len(later)} of {len(t.meta)} tool trials were requested on a date "
+                          f"later than {ref.isoformat()}, the date the batch was sent (more "
+                          f"than {100 * LATER_FRAC:.0f}%). Both arms are run again together")
     return out
 
 
@@ -1131,7 +1344,7 @@ def apparatus(cell: Cell) -> dict:
         raise Halt(f"{cell.spec.name}: {seen} notes between tool calls were returned and "
                    f"{back} were found unchanged in the next request (section 2.5)")
     return {
-        "folder": cell.spec.name, "model": cell.model, "arm": cell.arm,
+        "folder": cell.spec.name, "path": cell.path, "model": cell.model, "arm": cell.arm,
         "manifest": cell.manifest, "requests": len(turns),
         "model_ids_returned": sorted({i for m in metas for i in m.model_ids}),
         "request_dates_utc": _dates(t.requested for t in turns),
@@ -1163,7 +1376,7 @@ class Trial:
     read: bool                  # a reader of the registered grade found an answer to grade
     unread: bool                # an answer that ended on its own and no reader read
     invoked: bool               # the trial called a tool
-    tool_right: bool            # tool arm, not an error row: the stored harness grade is right
+    tool_right: bool            # tool arm, not a named error row: the stored harness grade is right
     storage_cut: bool
     think_overflow: bool        # the harness's label on the row
     scoring_error: bool
@@ -1173,10 +1386,10 @@ def ending_of(r: S.Row, kind: str | None) -> str:
     """How a trial ended. A row the harness labelled `think_overflow` (stopped for
     length, a note present, no answer text) falls under "stopped at the cap with no
     answer" by this rule, the label the same event gets for the open models (section 3
-    item 4); `grade_cell` checks it."""
+    item 4); `grade_cell` checks it. "Other error row" is a row that counts toward VOID."""
     if kind == REFUSAL:
         return E_REFUSAL
-    if kind is not None:
+    if counts_toward_void(r, kind):
         return E_ERROR
     if r.no_room:
         return E_NO_ROOM
@@ -1208,7 +1421,7 @@ def grade_cell(cell: Cell, verdict: M.Verdicts, gt_cache: dict) -> dict:
             x = matched[r.trial_key]
             registered, reason, read, unread = x.registered, x.reason, x.read, x.unread
             stated = truth = None
-            if kind is None:
+            if ending not in (E_REFUSAL, E_ERROR):
                 _check(x.at_cap is (ending in (E_CAP, E_CAP_EMPTY))
                        and x.window_full is r.no_room,
                        f"{r.trial_key}: the ending agrees with the matched run's")
@@ -1238,7 +1451,8 @@ def grade_cell(cell: Cell, verdict: M.Verdicts, gt_cache: dict) -> dict:
             key=r.trial_key, task=r.task, domain=r.domain, variant=r.variant,
             registered=registered, reason=reason, stated=stated, truth=truth, ending=ending,
             error_kind=kind, read=read, unread=unread, invoked=r.invoked,
-            tool_right=cell.arm == "tools" and kind is None and r.success is True,
+            tool_right=(cell.arm == "tools" and kind not in NAMED_ERROR_KINDS
+                        and r.success is True),
             storage_cut=r.trial_key in cut, think_overflow=think_overflow,
             scoring_error=r.scoring_error)
     return out
@@ -1308,13 +1522,44 @@ def stored_verdicts(path: Path) -> dict:
 
 
 # ------------------------------------------------------------------ measures (section 5)
+def models_of(trials: dict) -> list[str]:
+    """The models that are analysed, in the registered order."""
+    return [m for m in MODELS if (m, "tools") in trials]
+
+
+def share(values: list, doms: list, k: int, what: str) -> dict:
+    """A share of a subset of trials (RQ2, RQ3), in points. Its 95% interval is the frozen
+    domain-cluster bootstrap over the registered k domains, asserted. A subset that does
+    not reach every domain gets its share and no interval: an interval over fewer
+    clusters is never computed."""
+    n, present = len(values), len(set(doms))
+    out = {"est": None, "lo": None, "hi": None, "k": present, "n": n, "k_registered": k}
+    if n and present == k:
+        b = M.boot([float(v) for v in values], list(doms), k, what)
+        _check(b.k == k and b.n == n, f"{what}: {k} domains")
+        out.update(est=b.est, lo=b.lo, hi=b.hi)
+    elif n:
+        out["est"] = 100 * sum(bool(v) for v in values) / n
+    return out
+
+
+def share_cell(b: dict) -> str:
+    if b["est"] is None:
+        return "–"
+    if b["lo"] is None:
+        return (f"{b['est']:.1f} (no interval: the trials reach {b['k']} of "
+                f"{b['k_registered']} domains)")
+    return f"{b['est']:.1f} [{b['lo']:.1f}, {b['hi']:.1f}]"
+
+
 def rq1(design: Design, trials: dict) -> tuple[list[dict], list[dict]]:
     """Section 5, RQ1: the rate right in each arm, and tools minus no tools paired on the
     trial, per model and task; 95% domain-cluster intervals; exact sign-flip p over the
     domains, Holm-adjusted across the five tasks of a model; the three labels."""
     k = design.k_domains
     rates, contrasts = [], []
-    for m in MODELS:
+    models = models_of(trials)
+    for m in models:
         fam = []
         for t in TASKS:
             for arm in ARMS:
@@ -1333,8 +1578,10 @@ def rq1(design: Design, trials: dict) -> tuple[list[dict], list[dict]]:
             _check(e["label"].replace(NOT_AFTER_HOLM, "") in LABELS,
                    f"{m}/{e['task']}: one of the three labels")
         contrasts += fam
-    _check(len(contrasts) == N_CONTRASTS and len(rates) == N_CONTRASTS * len(ARMS),
-           "10 contrasts, 20 rates")
+    _check(len(contrasts) == len(TASKS) * len(models)
+           and len(rates) == len(contrasts) * len(ARMS), "five contrasts and ten rates per model")
+    if len(models) == len(MODELS):
+        _check(len(contrasts) == N_CONTRASTS, "10 contrasts")
     return rates, contrasts
 
 
@@ -1342,7 +1589,7 @@ def verdict_errors(trials: dict) -> list[dict]:
     """Section 5: on the three validation tasks, in each arm, valid inputs called invalid
     and invalid inputs called valid, with counts (`rq1_metrics.confusion`)."""
     out = []
-    for m in MODELS:
+    for m in models_of(trials):
         for t in RERUN_GRADE_TASKS:
             for arm in ARMS:
                 vals = list(trials[(m, arm)][t].values())
@@ -1352,31 +1599,33 @@ def verdict_errors(trials: dict) -> list[dict]:
                     "model": m, "task": t, "arm": arm, "n": len(vals),
                     "valid_inputs": c["n_valid"], "valid_called_invalid": c["fn"],
                     "valid_no_verdict": c["valid_none"],
-                    "valid_error_rows": sum(x.truth is True and x.error_kind is not None
+                    "valid_error_rows": sum(x.truth is True and x.ending in (E_REFUSAL, E_ERROR)
                                             for x in vals),
                     "invalid_inputs": c["n_broken"], "invalid_called_valid": c["fp"],
                     "invalid_no_verdict": c["broken_none"],
-                    "invalid_error_rows": sum(x.truth is False and x.error_kind is not None
-                                              for x in vals)})
+                    "invalid_error_rows": sum(
+                        x.truth is False and x.ending in (E_REFUSAL, E_ERROR) for x in vals)})
     return out
 
 
-def rq2(cells: dict, track: dict) -> list[dict]:
+def rq2(design: Design, cells: dict, track: dict) -> list[dict]:
     """Section 5, RQ2: tool choice in the tool arm, the four classes of
-    `rq23_metrics.classify`, with counts. An error row holds no tool calls: it is left out
-    of the classes and counted beside them (section 3 item 6). The self-check of
-    `rq23_metrics.rq2_rows`: the harness rule on the stored calls equals the stored
-    `tool_selected`."""
+    `rq23_metrics.classify`, with counts. The error rows section 3 item 6 names (a
+    refusal, a pause, an unknown stop) hold no tool calls: they are left out of the
+    classes and counted beside them. Every other row is classed by its stored tool calls.
+    The self-check of `rq23_metrics.rq2_rows`: the harness rule on the stored calls equals
+    the stored `tool_selected`, where the row stores one (a row on which the harness's
+    grader raised stores none, as in the matched run's `rq2_cells`)."""
     out = []
-    for m in MODELS:
+    for m in cells:
         cell = cells[m]["tools"]
         for t in TASKS:
             rows = [r for r in cell.rows if r.task == t]
             left_out = Counter(cell.kinds[r.trial_key] for r in rows
-                               if cell.kinds[r.trial_key] is not None)
+                               if cell.kinds[r.trial_key] in NAMED_ERROR_KINDS)
             classed = []
             for r in rows:
-                if cell.kinds[r.trial_key] is not None:
+                if cell.kinds[r.trial_key] in NAMED_ERROR_KINDS:
                     continue
                 try:
                     c = R23.row2(RUN_NAME, m, C.THINK, "plain", r.task, r.domain,
@@ -1384,39 +1633,41 @@ def rq2(cells: dict, track: dict) -> list[dict]:
                 except ValueError as e:
                     raise Halt(f"tool choice: {r.domain} has no track ({e})") from e
                 _check(c["cls"] in RQ2_CLASSES, f"a class of rq23_metrics ({c['cls']!r})")
-                if not isinstance(r.tool_selected, bool) \
-                        or r.tool_selected is not c["harness_called"]:
+                if r.tool_selected is not None and r.tool_selected is not c["harness_called"]:
                     raise Halt(f"{cell.spec.name} {r.trial_key}: the harness rule on the stored "
                                f"calls differs from the stored tool_selected")
                 classed.append(c)
             n = Counter(c["cls"] for c in classed)
             doms = [c["domain"] for c in classed]
+            k = design.k_domains
             _check(len(classed) + sum(left_out.values()) == len(rows), f"{m}/{t}: every trial")
             out.append({
                 "model": m, "task": t, "n_trials": len(rows), "n_classed": len(classed),
                 "counts": {c: n[c] for c in RQ2_CLASSES},
                 "error_rows_left_out": sum(left_out.values()),
-                "error_rows_by_kind": {k: left_out[k] for k in ERROR_KINDS if left_out[k]},
-                "exactly_right": R1.boot([c["cls"] == "right_only" for c in classed], doms),
-                "right_called": R1.boot([c["cls"] in ("right_only", "right_plus")
-                                         for c in classed], doms),
+                "error_rows_by_kind": {x: left_out[x] for x in NAMED_ERROR_KINDS if left_out[x]},
+                "exactly_right": share([c["cls"] == "right_only" for c in classed], doms, k,
+                                       f"exactly the right tool {m}/{t}"),
+                "right_called": share([c["cls"] in ("right_only", "right_plus")
+                                       for c in classed], doms, k, f"the right tool {m}/{t}"),
                 "other_planner": sum(c["other_planner"] for c in classed),
                 "plan_check_only": sum(c["plan_check_only"] for c in classed)})
     return out
 
 
-def rq3(trials: dict) -> list[dict]:
+def rq3(design: Design, trials: dict) -> list[dict]:
     """Section 5, RQ3: of the trials where the right tool returned the right result, the
     share whose final answer is wrong under the registered grade. "Tool right" is the
     definition of `rq23_metrics.rq3_rerun`: the stored harness grade of a with-tools row
-    is right. An error row is left out of the "tool right" set and counted beside it."""
+    is right. The error rows section 3 item 6 names are left out of the "tool right" set
+    and counted beside it."""
     # OPEN: section 4 says no reading uses the harness's online grade, and section 4 also
     # gives RQ3 the definitions of rq23_metrics.py, whose "tool right" IS that stored
     # grade on a with-tools row. Implemented: the stored grade (`success is True`), for
     # RQ3's denominator only. The other option is to work out "tool right" again from
     # the stored tool results.
     out = []
-    for m in MODELS:
+    for m in models_of(trials):
         for t in TASKS:
             vals = list(trials[(m, "tools")][t].values())
             tv = [x for x in vals if x.tool_right]
@@ -1424,10 +1675,11 @@ def rq3(trials: dict) -> list[dict]:
             out.append({
                 "model": m, "task": t, "n_trials": len(vals), "n_tool_right": len(tv),
                 "n_answer_wrong": sum(lost),
-                "answer_wrong": R1.boot(lost, [x.domain for x in tv]),
+                "answer_wrong": share(lost, [x.domain for x in tv], design.k_domains,
+                                      f"tool right, answer wrong {m}/{t}"),
                 "why": dict(sorted(Counter(x.ending if x.ending != E_ANSWER else x.reason
                                            for x in tv if x.registered is False).items())),
-                "error_rows_left_out": sum(x.error_kind is not None for x in vals)})
+                "error_rows_left_out": sum(x.error_kind in NAMED_ERROR_KINDS for x in vals)})
         _check(all(x.tool_right is False for t in TASKS
                    for x in trials[(m, "no-tools")][t].values()),
                f"{m}: no no-tools row is in the tool-right set")
@@ -1437,14 +1689,14 @@ def rq3(trials: dict) -> list[dict]:
 def descriptive(cells: dict, trials: dict) -> list[dict]:
     """Section 5, descriptive, with counts, per model, arm and task."""
     out = []
-    for m in MODELS:
+    for m in cells:
         for arm in ARMS:
             cell = cells[m][arm]
             for t in TASKS:
                 vals = list(trials[(m, arm)][t].values())
                 metas = [cell.meta[x.key] for x in vals]
                 ends = Counter(x.ending for x in vals)
-                kinds = Counter(x.error_kind for x in vals if x.error_kind is not None)
+                kinds = Counter(x.error_kind for x in vals if x.ending in (E_REFUSAL, E_ERROR))
                 turns = [len(mm.turns) for mm in metas]
                 tin = [sum(u.input_tokens for u in mm.turns) for mm in metas]
                 tout = [sum(u.output_tokens for u in mm.turns) for mm in metas]
@@ -1495,7 +1747,7 @@ def refusal_table(desc: list[dict]) -> list[dict]:
 def storage_table(cells: dict, trials: dict) -> list[dict]:
     """Sections 4 and 7, the storage rule: every row cut by storage, reported."""
     out = []
-    for m in MODELS:
+    for m in cells:
         for arm in ARMS:
             cell = cells[m][arm]
             for key in cell.storage_cut:
@@ -1512,17 +1764,21 @@ def storage_table(cells: dict, trials: dict) -> list[dict]:
 def tripwires(design: Design, rates: list, desc: list, cells_app: list) -> dict:
     """Readout-time tripwires (freeze protocol): degenerate outputs halt the readout
     until each is audited and the audit is written down."""
-    # OPEN: the registration names no tripwire; these eight are this analysis's own, in
+    # OPEN: the registration names no tripwire; these nine are this analysis's own, in
     # the spirit of the matched run's. Implemented: T1 the same count of right answers in
-    # all four folders on a task; T2 a cell where the grader reads no answer; T3 a tool-arm
-    # cell where no trial called a tool; T4 more than 5% of a cell's final answers that no
-    # reader read (both arms, all five tasks); T5 more than 10% refusals in a cell; T6
-    # thinking where the registration has none; T7 a response over its output cap; T8
-    # notes with no thinking-token count. The options are other thresholds or fewer wires.
+    # all four folders on a task (not evaluated when one model is not analysed: two arms
+    # of one model with the same count is no sign of a fault); T2 a cell where the grader
+    # reads no answer; T3 a tool-arm cell where no trial called a tool; T4 more than 5% of a
+    # cell's final answers
+    # that no reader read (both arms, all five tasks); T5 more than 10% refusals in a cell;
+    # T6 thinking where the registration has none; T7 a response over its output cap; T8
+    # notes with no thinking-token count; T9 the two arms of a model answered by different
+    # model ids. The options are other thresholds or fewer wires.
     fired = {}
     by_rate = {(e["model"], e["task"], e["arm"]): e for e in rates}
-    for t in TASKS:
-        ks = {by_rate[(m, t, arm)]["right"] for m in MODELS for arm in ARMS}
+    models = [m for m in MODELS if any(e["model"] == m for e in rates)]
+    for t in TASKS if len(models) == len(MODELS) else ():
+        ks = {by_rate[(m, t, arm)]["right"] for m in models for arm in ARMS}
         if len(ks) == 1:
             fired[f"T1:{t}"] = (f"the count of right answers on {t} is the same in all four "
                                 f"folders ({ks.pop()} of {design.per_task[t]})")
@@ -1539,7 +1795,7 @@ def tripwires(design: Design, rates: list, desc: list, cells_app: list) -> dict:
         if d["refusals"] > REFUSAL_TRIPWIRE_FRAC * n:
             fired[f"T5:{m}:{arm}:{t}"] = (f"{m} {arm}, {t}: {d['refusals']} refusals of {n} "
                                           f"(more than {REFUSAL_TRIPWIRE_FRAC * n:g})")
-    for m in MODELS:
+    for m in models:
         for arm in ARMS:
             ds = [d for d in desc if (d["model"], d["arm"]) == (m, arm)]
             tokens = sum(d["thinking_tokens_total"] for d in ds)
@@ -1548,9 +1804,20 @@ def tripwires(design: Design, rates: list, desc: list, cells_app: list) -> dict:
                 fired[f"T6:{m}:{arm}"] = (f"{m} {arm}: {blocks} thinking blocks and {tokens} "
                                           f"thinking tokens where the registration has none")
             if (m, arm) in MAY_THINK and blocks and not tokens:
-                fired[f"T8:{m}:{arm}"] = (f"{m} {arm}: {blocks} notes between tool calls and no "
-                                          f"thinking token in any usage block; the token count "
-                                          f"of section 5 cannot be given")
+                fired[f"T8:{m}:{arm}"] = (
+                    f"{m} {arm}: {blocks} notes between tool calls were returned and no usage "
+                    f"block reports a thinking-token count. If the provider does not report "
+                    f"thinking tokens separately, this fires by design. The audit must "
+                    f"establish three things from the sidecar: that the notes are present, "
+                    f"that no usage field of any turn counts them apart, and so that the "
+                    f"notes' tokens are inside the output tokens. The count of section 5 is "
+                    f"then reported as \"not separable\", with the number of notes")
+        ids = {a["arm"]: a["model_ids_returned"] for a in cells_app if a["model"] == m}
+        if len(ids) == len(ARMS) and all(len(v) == 1 for v in ids.values()) \
+                and len({v[0] for v in ids.values()}) > 1:
+            fired[f"T9:{m}"] = (f"{m}: the two arms were answered by different model ids ("
+                                + ", ".join(f"{arm}: {ids[arm][0]}" for arm in ARMS)
+                                + "); the contrast of this model would compare two models")
     for a in cells_app:
         if a["responses_over_the_output_cap"]:
             fired[f"T7:{a['model']}:{a['arm']}"] = (
@@ -1561,12 +1828,17 @@ def tripwires(design: Design, rates: list, desc: list, cells_app: list) -> dict:
 
 # ------------------------------------------------------------------ analysis
 def analyse(design: Design, cells: dict, verdict: M.Verdicts, gt_cache: dict, mode: str,
-            route_checked: int, track: dict, audit_notes: dict) -> dict:
+            route_checked: int, track: dict, audit_notes: dict,
+            reruns: list[dict] | None = None) -> dict:
+    """`cells` is every model's folders as loaded. The same-trials check runs on all of
+    them; then `screen` leaves out a model that a registered rule sends back to be run
+    again, and the measures are computed for the models that remain."""
     check_same_trials(cells)
-    days = [same_day(m, cells) for m in MODELS]
-    app = [apparatus(cells[m][arm]) for m in MODELS for arm in ARMS]
+    cells, rules, blocked = screen(cells)
+    models = list(cells)
+    app = [apparatus(cells[m][arm]) for m in models for arm in ARMS]
     trials: dict = {}
-    for m in MODELS:
+    for m in models:
         for arm in ARMS:
             graded = grade_cell(cells[m][arm], verdict, gt_cache)
             trials[(m, arm)] = {t: {q: x for q, x in graded.items() if x.task == t}
@@ -1584,27 +1856,34 @@ def analyse(design: Design, cells: dict, verdict: M.Verdicts, gt_cache: dict, mo
     extra = set(audit_notes) - set(fired)
     if extra:
         raise Halt(f"audit notes for tripwires that did not fire: {sorted(extra)}")
-    corpus = [{"folder": c.spec.name, "model": c.model, "arm": c.arm, "rows": len(c.rows),
-               "torn_lines": c.torn_lines, "sidecar_lines": c.sidecar["lines"],
-               "sidecar_torn_lines": c.sidecar["torn"],
-               "sidecar_lines_of_abandoned_tries": c.sidecar["superseded"],
-               "refusals": sum(k == REFUSAL for k in c.kinds.values()),
-               "error_rows_not_refusals": void_rows(c),
-               "error_rows_by_kind": {k: sum(v == k for v in c.kinds.values())
-                                      for k in ERROR_KINDS},
-               "void_above": VOID_FRAC * len(c.rows), "void": is_void(c),
-               "cut_by_storage": len(c.storage_cut)}
-              for m in MODELS for c in cells[m].values()]
+    corpus = []
+    for m in models:
+        for c in cells[m].values():
+            void_kinds = Counter(c.kinds[r.trial_key] for r in c.rows
+                                 if counts_toward_void(r, c.kinds[r.trial_key]))
+            corpus.append({
+                "folder": c.spec.name, "path": c.path, "model": c.model, "arm": c.arm,
+                "rows": len(c.rows), "torn_lines": c.torn_lines,
+                "sidecar_lines": c.sidecar["lines"], "sidecar_torn_lines": c.sidecar["torn"],
+                "sidecar_lines_of_abandoned_tries": c.sidecar["superseded"],
+                "refusals": sum(k == REFUSAL for k in c.kinds.values()),
+                "error_rows_not_refusals": void_rows(c),
+                "error_rows_by_kind": {k: void_kinds[k] for k in VOID_KINDS},
+                "void_above": VOID_FRAC * len(c.rows), "void": is_void(c),
+                "cut_by_storage": len(c.storage_cut)})
     return {
         "mode": mode, "package_sha256": package_sha256(), "registration": REGISTRATION,
-        "design": dataclasses.asdict(design), "models": list(MODELS), "arms": list(ARMS),
-        "tasks": list(TASKS), "n_contrasts": N_CONTRASTS,
-        "corpus": corpus, "apparatus": app, "same_day": days,
+        "design": dataclasses.asdict(design), "models": models, "arms": list(ARMS),
+        "tasks": list(TASKS), "n_contrasts": len(contrasts),
+        "not_analysed": blocked, "reruns": reruns or [],
+        "corpus": corpus, "apparatus": app,
+        "same_day": [rules[m]["same_day"] for m in models],
+        "failed_batch_items": [rules[m]["batches"] for m in models],
         "route_checked_plans": route_checked, "validated_plans": len(verdict.cache),
         "rates": rates, "contrasts": contrasts,
         "verdict_errors": verdict_errors(trials),
-        "tool_choice": rq2(cells, track),
-        "tool_right_answer_wrong": rq3(trials),
+        "tool_choice": rq2(design, cells, track),
+        "tool_right_answer_wrong": rq3(design, trials),
         "descriptive": desc, "refusals": refusal_table(desc),
         "storage_cut_rows": storage_table(cells, trials),
         "wrong_readings_named_in_advance": list(WRONG_READINGS),
@@ -1635,6 +1914,16 @@ def render(res: dict) -> str:
          f"(section 3 of the registration) are stated wherever these rows are shown. Solve "
          f"plans of the stored table checked on the validator route before any new plan: "
          f"{res['route_checked_plans']}; plans validated in all: {res['validated_plans']}.*", ""]
+    for b in res["not_analysed"]:
+        L += [f"**{b['model']}: not analysed: {b['rule']}.** {b['detail']}. This model is in "
+              f"no table below.", ""]
+    for x in res["reruns"]:
+        L += [f"**{x['model']}: read from the folders of its rerun** ({', '.join(x['folders'])})"
+              f". The first attempt is kept and only counted: " + "; ".join(
+                  f"{f['folder']}: " + (f"{f['rows']} rows ({counts(f['rows_per_task'])}), "
+                                        f"{f['sidecar_lines']} sidecar lines"
+                                        if f["found"] else "not found")
+                  for f in x["first_attempt"]) + ".", ""]
     if res["tripwires_audited"]:
         L += ["**Tripwires that fired and were audited:** " + "; ".join(
             f"{i}: {v['fired']} (audit: {v['note']})"
@@ -1665,8 +1954,9 @@ def render(res: dict) -> str:
                      v["invalid_inputs"], v["invalid_called_valid"], v["invalid_no_verdict"],
                      v["invalid_error_rows"]] for v in res["verdict_errors"]]), ""]
     L += ["#### Claude run: RQ2, which tool was called (tool arm)", "",
-          f"The classes of `tools/reanalysis/rq23_metrics.py`. An error row holds no tool "
-          f"calls; it is left out of the classes and counted beside them. {common}.", "",
+          f"The classes of `tools/reanalysis/rq23_metrics.py`. A refusal, a pause and an "
+          f"unknown stop hold no tool calls; such a row is left out of the classes and counted "
+          f"beside them. {common}.", "",
           md_table(["model", "task", "trials", "no call", "right only", "right + other",
                     "other only", "error rows left out",
                     "exactly the right tool, share of the classed trials [95% interval]",
@@ -1675,18 +1965,20 @@ def render(res: dict) -> str:
                      c["counts"]["right_only"], c["counts"]["right_plus"],
                      c["counts"]["other_only"],
                      f"{c['error_rows_left_out']} ({counts(c['error_rows_by_kind'])})",
-                     R1.cell(c["exactly_right"]), c["other_planner"], c["plan_check_only"]]
+                     share_cell(c["exactly_right"]), c["other_planner"], c["plan_check_only"]]
                     for c in res["tool_choice"]]), ""]
     L += ["#### Claude run: RQ3, tool right and final answer wrong (tool arm)", "",
           f"Of the trials where the right tool returned the right result (the stored harness "
           f"grade of the tool row, as for the open models), the trials whose final answer is "
-          f"wrong under the registered grade. An error row is left out of the set and counted "
-          f"beside it. {common}.", "",
+          f"wrong under the registered grade. A refusal, a pause and an unknown stop are left "
+          f"out of the set and counted beside it. \"Tool right\" is the run-time check of the "
+          f"open models' definition, which credits a trial when any call returned the right "
+          f"result, including a call to a tool other than the task's own. {common}.", "",
           md_table(["model", "task", "trials", "tool right", "answer wrong",
                     "share [95% interval]", "how the wrong answers ended",
                     "error rows left out"],
                    [[c["model"], c["task"], c["n_trials"], c["n_tool_right"],
-                     c["n_answer_wrong"], R1.cell(c["answer_wrong"]), counts(c["why"]),
+                     c["n_answer_wrong"], share_cell(c["answer_wrong"]), counts(c["why"]),
                      c["error_rows_left_out"]] for c in res["tool_right_answer_wrong"]]), ""]
     L += ["#### Claude run: how the trials ended (descriptive)", "",
           f"A final turn that reached the output cap holding a note and no answer text is "
@@ -1731,20 +2023,37 @@ def render(res: dict) -> str:
           "Both arms of a model count as the same day when the batch was sent and every tool "
           "trial was requested on one UTC date.", "",
           md_table(["model", "batch sent (UTC date: trials)", "batch ended (UTC date: trials)",
-                    "tool trials", "tool trials requested on another date", "share",
+                    "tool trials", "tool trials requested on a later date", "share",
                     "same day"],
                    [[s["model"], counts(s["batch_sent_dates"]), counts(s["batch_ended_dates"]),
-                     s["tool_trials"], s["tool_trials_on_another_date"],
-                     f"{100 * s['share_on_another_date']:.1f}%",
+                     s["tool_trials"], s["tool_trials_on_a_later_date"],
+                     f"{100 * s['share_on_a_later_date']:.1f}%",
                      "yes" if s["same_day"] else "no"] for s in res["same_day"]]), ""]
+    L += ["#### Claude run: failed batch items (section 6)", "",
+          "The batches of each no-tools folder in the order sent. Items that failed are sent "
+          "again once, in a second batch; a model is run again when more than 1% of the arm's "
+          "rows come from a third or later batch, or when the first batch expired as a whole.",
+          "",
+          md_table(["model", "batch", "requests", "succeeded", "errored", "canceled", "expired",
+                    "rows in the folder"],
+                   [[f["model"], f"{b['n']} ({b['batch_id']})", b["requests"],
+                     b["request_counts"]["succeeded"], b["request_counts"]["errored"],
+                     b["request_counts"]["canceled"], b["request_counts"]["expired"], b["rows"]]
+                    for f in res["failed_batch_items"] for b in f["batches"]]), "",
+          md_table(["model", "rows from a third or later batch", "run again above"],
+                   [[f["model"], f["rows_from_a_third_or_later_batch"], f"{f['limit']:g}"]
+                    for f in res["failed_batch_items"]]), ""]
     L += ["#### Claude run: corpus and apparatus", "",
           "Rows per folder as read by the rerun's frozen loader, and what the sidecar shows of "
           "how each folder was collected. A folder is VOID above 1% error rows that are not "
-          "refusals.", "",
-          md_table(["folder", "rows", "refusals", "error rows that are not refusals",
+          "refusals. The two per-folder counts of refusals and of error rows are bookkeeping "
+          "for the VOID rule; the reported counts are the ones per model, arm and task in the "
+          "table of how the trials ended.", "",
+          md_table(["folder", "read from", "rows", "refusals (bookkeeping for the VOID rule)",
+                    "error rows that are not refusals (bookkeeping for the VOID rule)",
                     "VOID above", "cut by storage", "half-written lines (rows, sidecar)",
                     "sidecar lines of abandoned tries"],
-                   [[c["folder"], c["rows"], c["refusals"],
+                   [[c["folder"], c["path"], c["rows"], c["refusals"],
                      f"{c['error_rows_not_refusals']} ({counts(c['error_rows_by_kind'])})",
                      f"{c['void_above']:g}", c["cut_by_storage"],
                      f"{c['torn_lines']}, {c['sidecar_torn_lines']}",
@@ -1784,6 +2093,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fixture", type=Path, help="synthetic fixture root (tests only)")
     ap.add_argument("--root", type=Path, default=REPO / "results" / RUN_NAME,
                     help="the folder that holds the four <model>_<arm> folders")
+    ap.add_argument("--rerun-root", action="append", default=[], metavar="MODEL=PATH",
+                    help="a model whose two arms were run again in new folders (sections 6 "
+                         "and 7): the folder that holds its two new <model>_<arm> folders")
+    ap.add_argument("--rerun-suffix", action="append", default=[], metavar="MODEL=SUFFIX",
+                    help="the same, when the new folders are <model>_<arm><SUFFIX>")
     ap.add_argument("--gt-cache", type=Path, default=REPO / "results" / "derived" / "gt_cache.json")
     ap.add_argument("--plan-verdicts", type=Path,
                     default=REPO / "results" / "delivered-rerun-secondary" / "plan_verdicts.json",
@@ -1825,8 +2139,11 @@ def main(argv: list[str] | None = None) -> int:
             design = fixture_design(root)
             domains = M.fixture_domains(root)
             gt_cache = json.loads((root / "gt_cache.json").read_text())
-            cells = load_run(root / RUN_NAME, design, gt_cache,
-                             file_sha256(root / "gt_cache.json", "ground-truth cache"), domains)
+            run_root = root / RUN_NAME
+            reruns = parse_reruns(args.rerun_root, args.rerun_suffix, run_root)
+            cells = load_run(run_root, design, gt_cache,
+                             file_sha256(root / "gt_cache.json", "ground-truth cache"), domains,
+                             reruns)
             verdict = M.Verdicts(M.table_route(RUN.fixture_verdicts(root / "route")))
             checked = check_route_table(verdict, RUN.fixture_verdicts(root))
             env = {"validator": "fixture table"}
@@ -1847,6 +2164,8 @@ def main(argv: list[str] | None = None) -> int:
                     raise Halt(f"--numbers: {numbers} has no one pair of {NUMBERS_TAG} markers")
             design = REGISTERED
             check_design(design, registered=True)
+            run_root = args.root
+            reruns = parse_reruns(args.rerun_root, args.rerun_suffix, run_root)
             gt_cache = load_gt_cache(args.gt_cache)
             try:
                 RUN.check_domains(args.domains_dir)
@@ -1855,12 +2174,17 @@ def main(argv: list[str] | None = None) -> int:
             stored = stored_verdicts(args.plan_verdicts)
             env = validator_env(args)
             grid = registered_grid(args.domains_dir, gt_cache)
-            cells = load_run(args.root, design, gt_cache, GT_CACHE_SHA256)
+            cells = load_run(run_root, design, gt_cache, GT_CACHE_SHA256, None, reruns)
             check_grid(cells, grid)
             verdict = M.Verdicts(M.live_route(args.marketplace, args.domains_dir))
             checked = check_route_table(verdict, stored)
             mode, track = "live", MR.tracks_of(args.domains_dir, live=True)
-        res = analyse(design, cells, verdict, gt_cache, mode, checked, track, notes)
+        rerun_records = [{"model": m, "root": str(at), "suffix": suffix,
+                          "folders": [cells[m][arm].path for arm in ARMS],
+                          "first_attempt": first_attempt(run_root, m)}
+                         for m, (at, suffix) in sorted(reruns.items())]
+        res = analyse(design, cells, verdict, gt_cache, mode, checked, track, notes,
+                      rerun_records)
         res["environment"] = env
         try:
             md = render(res)
@@ -1871,6 +2195,8 @@ def main(argv: list[str] | None = None) -> int:
     except (Halt, R1.Halt, RUN.Halt, S.SchemaError, C.RegisteredCheckFailed) as e:
         print(f"HALT: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
+    for b in res["not_analysed"]:
+        print(f"{b['model']}: not analysed: {b['rule']}: {b['detail']}")
     print(f"wrote {args.out}/{STEM}.{{json,md}}")
     if args.numbers:
         changed = write_numbers(numbers, NUMBERS_TAG, md)

@@ -7,7 +7,8 @@ Writes (default: this directory) SYNTHETIC_FIXTURE, design.json, gt_cache.json,
 plan_verdicts.json (the stored verdicts the validator route is checked against),
 route/plan_verdicts.json (the injected validator route), domains/<track>/<domain>/ (the
 tracks RQ2 needs) and frontier55/<model>_<arm>/{trials.jsonl, trial_meta.jsonl,
-run_manifest.json} for the two models and the two arms.
+run_manifest.json} for the two models and the two arms, with batches.json in the two
+no-tools folders.
 
 Everything is synthetic: 20 invented domains d01..d20 (d01 to d10 classical, d11 to d20
 numeric), one plan and one trace for all of them. No row of any real corpus is read or
@@ -86,8 +87,25 @@ NOTE_TOK, OVERFLOW_NOTE_TOK = 3, 7  # thinking tokens of a note
 # day, and three tool trials were requested on the next day (LATER below).
 DAY = {HAIKU: "2026-11-26", SONNET: "2026-11-27"}
 NEXT_DAY = {HAIKU: "2026-11-27", SONNET: "2026-11-28"}
-BATCH_ENDED = {HAIKU: "2026-11-26T07:40:00+00:00", SONNET: "2026-11-28T01:00:00+00:00"}
 BATCH_ID = {HAIKU: "msgbatch_fixture_haiku", SONNET: "msgbatch_fixture_sonnet"}
+# The batches of a no-tools folder, in the order sent: (requests, succeeded, errored,
+# expired, hour sent on the model's day, time ended). Haiku: one batch. Sonnet: five items
+# of the first batch failed; the retry batch answered two of them; a third batch answered
+# the last three (3 of 300 rows: exactly 1%, the most the registration allows).
+BATCHES = {
+    HAIKU: ((300, 300, 0, 0, 7, "2026-11-26T07:40:00+00:00"),),
+    SONNET: ((300, 295, 3, 2, 7, "2026-11-28T01:00:00+00:00"),
+             (5, 2, 3, 0, 9, "2026-11-27T10:00:00+00:00"),
+             (3, 3, 0, 0, 11, "2026-11-27T12:00:00+00:00")),
+}
+# Which no-tools trials of Sonnet got their row from the second and from the third batch.
+BATCH_OF = {(SONNET, "validate_problem", "d10", 0): 2, (SONNET, "validate_problem", "d10", 1): 2,
+            (SONNET, "validate_problem", "d11", 0): 3, (SONNET, "validate_problem", "d11", 1): 3,
+            (SONNET, "validate_problem", "d11", 2): 3}
+
+
+def batch_id(model: str, n: int) -> str:
+    return BATCH_ID[model] if n == 1 else f"{BATCH_ID[model]}_{n}"
 TOOLS_COMMIT = "5e4f9c0" + "0" * 33     # a full commit id that starts with the registered one
 TOOLS_SHA256 = "dd14507890d38a8a3c581971a699037b39a3a0bd9374d5801072fb58b9b14400"
 
@@ -181,7 +199,9 @@ def right_tool(task: str, dom: str) -> str:
 # request as too long), "noroomstop" (the same, reported as a stop reason),
 # "think_overflow" (another tool, then a final turn that reached the cap holding a note
 # and no answer), "pause" and "unknown" (error rows that are not refusals), "scoring"
-# (the harness's grader raised; the answer is stored), "cut" (longer than storage).
+# (the harness's grader raised; the answer is stored), "scoring_loop" (ten round trips of
+# another tool and the harness's grader raised: the harness labels it loop_exhausted, not
+# an exception), "cut" (longer than storage).
 def _all(spec, slot, domains=DOMAINS):
     return {(d, slot): spec for d in domains}
 
@@ -217,6 +237,9 @@ PLANTS = {
     # verdict after a right tool result).
     (SONNET, T, "validate_domain"): {("d02", 0): ("", "pause"), ("d02", 1): ("", "unknown"),
                                      ("d02", 2): ("wrong", "right")},
+    # G2. Sonnet validate_problem: tools wrong on d09's first slot, a loop-exhausted trial
+    # on which the harness's grader also raised.
+    (SONNET, T, "validate_problem"): {("d09", 0): ("", "scoring_loop")},
     # H. Sonnet validate_plan: no tools wrong on the third slot of every domain.
     (SONNET, N, "validate_plan"): _all(("wrong", "plain"), 2),
     # I. Sonnet simulate: no tools writes the right trace one object per line on d01..d04.
@@ -305,6 +328,8 @@ def make_trial(model, arm, task, dom, slot, clock, spec=None):
     key = [model, task, dom, prob, label, v, arm == T, "off", "all", "minimal"]
     text = answer(kind, task, prob, label)
     later = LATER.get((model, task, dom, slot)) if arm == T else None
+    batch_n = BATCH_OF.get((model, task, dom, slot), 1)
+    batch = BATCHES[model][batch_n - 1]
     turns, calls, flags = [], [], []
 
     def turn(stop, content, out=OUT_TOK, think=None, seen=0):
@@ -325,8 +350,8 @@ def make_trial(model, arm, task, dom, slot, clock, spec=None):
                        thinking_blocks_in_previous_response=seen,
                        thinking_blocks_passed_back=seen)
         else:
-            rec["requested_at_utc"] = f"{DAY[model]}T07:00:01.000000Z"
-            rec["received_at_utc"] = BATCH_ENDED[model]
+            rec["requested_at_utc"] = f"{DAY[model]}T{batch[4]:02d}:00:01.000000Z"
+            rec["received_at_utc"] = batch[5]
         turns.append(rec)
 
     def call(names, note=False, raises=False):
@@ -387,11 +412,13 @@ def make_trial(model, arm, task, dom, slot, clock, spec=None):
         if how == "scoring":
             stored.update(success=False, tool_selected=None, failure_reason="exception",
                           error="scoring error: boom")
-    elif how == "loop":
+    elif how in ("loop", "scoring_loop"):
         for _ in range(10):
             call([other])
         outcome = "loop_exhausted"
         stored.update(failure_reason="loop_exhausted", done_reason="tool_calls")
+        if how == "scoring_loop":
+            stored.update(tool_selected=None, error="scoring error: boom")
     elif how == "noroom400":
         call([right])
         outcome = "overflow"
@@ -445,7 +472,7 @@ def make_trial(model, arm, task, dom, slot, clock, spec=None):
         "sdk_version": SDK,
         "settings": {"thinking": SETTINGS[model]["thinking"], "effort": SETTINGS[model]["effort"],
                      "max_tokens": CAP[task], "system_sha256": system_sha(arm, task)},
-        "batch_id": BATCH_ID[model] if arm == N else None,
+        "batch_id": batch_id(model, batch_n) if arm == N else None,
         "request_ids": [t["request_id"] for t in turns], "n_turns": len(turns),
         "outcome": outcome, "stop_reason": turns[-1]["stop_reason"], "stop_details": None,
         "overflow_error": overflow_error, "storage_cut": len(full) > STORAGE_CAP,
@@ -454,9 +481,30 @@ def make_trial(model, arm, task, dom, slot, clock, spec=None):
         "tool_results": flags, "turns": turns,
         "written_at_utc": f"{DAY[model]}T23:00:00.000000Z"}
     if arm == N:
-        meta["batch_created_at"] = f"{DAY[model]}T07:00:00+00:00"
-        meta["batch_ended_at"] = BATCH_ENDED[model]
+        meta["batch_created_at"] = f"{DAY[model]}T{batch[4]:02d}:00:00+00:00"
+        meta["batch_ended_at"] = batch[5]
     return {"key": key, "result": result}, meta
+
+
+def batches_json(model) -> list[dict]:
+    """batches.json of a no-tools folder: the fields the runner's batch_submit, batch_poll
+    and batch_grade write."""
+    out = []
+    for n, (requests, ok, errored, expired, hour, ended) in enumerate(BATCHES[model], 1):
+        sent = f"{DAY[model]}T{hour:02d}:00:01.000000Z"
+        out.append({
+            "n": n, "batch_id": batch_id(model, n), "n_requests": requests, "fetched": True,
+            "send_started_at_utc": f"{DAY[model]}T{hour:02d}:00:00.000000Z",
+            "submitted_at_utc": sent, "request_id": f"req_batch_{n}",
+            "anthropic_version_sent": API_VERSION, "request_host": "api.anthropic.com",
+            "sdk_version": SDK, "created_at": f"{DAY[model]}T{hour:02d}:00:00+00:00",
+            "ended_at": ended,
+            "request_counts": {"processing": 0, "succeeded": ok, "errored": errored,
+                               "canceled": 0, "expired": expired},
+            "results_fetched_at_utc": ended.replace("+00:00", ".000000Z"),
+            "spend_recorded": True, "graded_at_utc": ended.replace("+00:00", ".000000Z"),
+            "graded_with_tools_commit": TOOLS_COMMIT, "graded_with_pyvalidator": "0.1.5"})
+    return out
 
 
 def folder_trials(model, arm, plants=True):
@@ -546,6 +594,8 @@ def build(out: Path) -> None:
             write_folder(out / RUN, m, arm)
             (out / RUN / f"{m}_{arm}" / "run_manifest.json").write_text(
                 json.dumps(manifest(m, arm, gt, sha(gt_text)), indent=2, sort_keys=True) + "\n")
+        (out / RUN / f"{m}_{N}" / "batches.json").write_text(
+            json.dumps(batches_json(m), indent=2) + "\n")
 
 
 if __name__ == "__main__":
