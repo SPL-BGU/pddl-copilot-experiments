@@ -28,6 +28,16 @@ a full window and no answer.
    point in time, under two sets of conditions; this is an ordering across models, not a
    trend over time. It roughly holds on validate_problem (4.4 to 8.2) and breaks on
    validate_plan and simulate.
+   **How to read the ordering (added by the session after checking the tables).** The
+   cost per right answer is two things multiplied: how many times more tokens a tool
+   trial uses, and the unaided rate divided by the rate with tools. On solve the first
+   is nearly the same for the three open models (4.8, 5.0 and 5.4 times, table 2, last
+   column) and for the two Claude models (7.6 and 8.0). So the tools do not get dearer
+   to run as the model gets better. What changes is the second part: a model that is
+   already right alone has fewer wrong answers left for the tool to turn around, so the
+   same token overhead buys fewer extra right answers. As the unaided rate approaches
+   the rate with tools, the cost per right answer has to approach the per-trial ratio;
+   that part of Figure C is arithmetic, not a discovery.
    *Figure C, table 2.*
 
 2. **What an extra token buys falls as the unaided rate rises (RQ1).** Points of right
@@ -155,6 +165,9 @@ figures. Filled markers are open models, hollow markers Claude.
 - **"The tools' premium grows as language models improve."** These are five models at
   one point in time, under two sets of conditions. That is an ordering across models, not
   a time series.
+- **"The tools become more expensive to run for stronger models."** The per-trial token
+  overhead is about flat within each group of models (finding 1). What shrinks is the
+  number of extra right answers that overhead buys.
 - **Any ranking of Claude against the open models** by tokens, dollars or multiplier.
   Different tokenizers, temperature, window, output cap counting and hosting; Claude's
   short unaided answers by themselves make its ratios larger.
