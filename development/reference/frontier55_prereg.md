@@ -694,7 +694,11 @@ package hash below.
 | starts | one per folder, all from that commit with no uncommitted change, 2026-11-26 07:16:02 to 07:16:15 UTC; registration sha256 at the start `1a724398…5fc54` (this document before this record) |
 | settings, from the manifests | `api.anthropic.com`; SDK 0.109.2 (pinned); Haiku 5.5 effort medium, thinking disabled; Sonnet 5.5 effort high, thinking between tools; temperature not sent; output caps 8,192 (solve) and 6,144 (the other four tasks); up to 10 tool turns; answers stored up to 65,536 characters; ground-truth cache `77d4184e…04c7e` |
 | tool checkout | `external/pddl-copilot-5e4f9c0` (a clone of `pddl-copilot` at `5e4f9c0`, pddl-pyvalidator 0.1.5); tool-list sha256 `dd145078…14400` |
-| API version header | recorded per request in each folder's sidecar; read at the readout, and entered here then. The pilot sent one value |
+| API version header | `2023-06-01` on every request of all four folders (read from the sidecars by the analysis, 2026-11-26) |
+| the run, as it ended | all four folders complete at 4,560 rows on 2026-11-26 (Haiku 5.5 about 11:00 UTC, Sonnet 5.5 12:14 UTC); one start per folder; one batch per model, 4,560 of 4,560 items succeeded and none expired, so point 8 did not arise; every request on 2026-11-26 UTC; no refusal, no error row, no abandoned try; spend 20.25 dollars (Haiku 5.5) and 294.49 (Sonnet 5.5), under the limits |
+| analysis run | 2026-11-26, after the freeze commit `621f07c`, with the package hash above. The first start halted on tripwire T8 (six notes between tool calls in Sonnet's tool arm with a thinking-token count of zero); the audit is filed in `frontier55_t8_audit/` and embedded in the output. The analysis then ran, and once more unchanged to write `NUMBERS.md` (byte-identical output). No cell VOID, no model left out. Readout: `frontier55_readout.md` |
+| the console download | on 2026-11-26 Omer sent the batch results of Sonnet's no-tools arm as downloaded from the provider's console. The file was not opened or used; the runner fetched the same batch (`msgbatch_01VKEaEPUmdUHb5swNcH2Cx5`) itself |
+| still to add | the cluster's tool library versions beside the laptop's (section 3, item 7) |
 | `--max-usd` | 60 (Haiku 5.5) and 430 (Sonnet 5.5) at the one start of each model |
 
 ## 11. Pilot record
