@@ -1,7 +1,9 @@
-# Pre-registration DRAFT: the Claude run (Haiku 5.5 and Sonnet 5.5, tools against no tools, five tasks)
+# Pre-registration: the Claude run (Haiku 5.5 and Sonnet 5.5, tools against no tools, five tasks)
 
-**DRAFT, written 2026-11-26. Not frozen. No trial of this run exists and no request has
-been sent to the provider.** Decision to run, and the outline of the design: Omer,
+**Written 2026-11-26, before any request was sent to the provider. Sections 1 to 9 are
+fixed as of the pilot's pass (section 11), before the first request of the full run.
+The analysis is not written yet; it is written and frozen before any row of the full
+run is read (sections 4 and 6).** Decision to run, and the outline of the design: Omer,
 2026-11-25 (`development/unified_run_design.md`, section B). The runner is written and
 tested without any network call (`tools/frontier55/`, `tests/test_frontier55.py`). The
 analysis is not written yet (section 4).
@@ -676,7 +678,36 @@ the `--max-usd` value given per model at each start.
 
 ## 11. Pilot record
 
-Empty.
+**2026-11-26, 07:00 to 07:15 UTC: the pilot passes.** Runner at commit `3dafccc` (branch
+`frontier/claude-55-run`), reviewed by a second agent in two passes before any paid
+request. Tool checkout: a clone of `pddl-copilot` at `5e4f9c0` with pddl-pyvalidator
+0.1.5 (`external/pddl-copilot-5e4f9c0`), tool-list sha256 `dd145078…`. Folder:
+`results/frontier55-pilot/`. Never pooled.
+
+- **Before any paid request:** 346 of 346 runner tests; the local tool check agreed with
+  the stored reference on 1,520 of 1,520 items.
+- **Rows:** 160 in each of the four folders (two models by two arms), 640 in all; every
+  answer non-empty; no failed attempt; no refusal, pause or unknown stop.
+- **Settings:** no request differed from the registered settings; the returned model
+  ids were `claude-haiku-5-5` and `claude-sonnet-5-5` throughout; live requests went to
+  `api.anthropic.com` only.
+- **Thinking:** zero thinking tokens and zero thinking blocks in all four folders. In
+  particular Sonnet 5.5 returned no note between tool calls in any of its 160 tool
+  trials, so the pass-back of such notes was not exercised on a real response. The
+  runner still checks it on every trial of the full run.
+- **Cache tokens:** zero. **Over-length errors:** none.
+- **Tool errors:** none flagged by the tool layer; a tool returned an error object in 3
+  of 178 Haiku calls and 0 of 164 Sonnet calls.
+- **Spend:** Haiku 5.5 0.79 dollars (estimate 0.51 to 0.73); Sonnet 5.5 10.64 dollars
+  (estimate 12.30). Batches: `msgbatch_01SUrbfj1mPAXFo5emZpgzx6`,
+  `msgbatch_014ArGjkxfnx6HynxfnauFoi`.
+- **First contact confirmed:** Haiku 5.5 accepts thinking off at effort medium, with and
+  without tools; Sonnet 5.5 accepts its lowest thinking setting with and without tools.
+- No success rate, grade or answer text of the pilot was read. The check prints counts
+  of how answers ended and nothing else about outcomes.
+
+**Limits given for the full run:** `--max-usd 60` for Haiku 5.5 and `--max-usd 430` for
+Sonnet 5.5 (pilot-scaled estimates: about 25 to 35 and about 290 dollars).
 
 ## 12. Deviations
 
