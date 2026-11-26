@@ -667,6 +667,24 @@ def mult(b):
     return f"{b['est']:.2f} [{b['lo']:.2f}, {b['hi']:.2f}]" + (f" ({z} draws dropped)" if z else "")
 
 
+def finite(x):
+    """JSON has no infinity or NaN: an infinite budget or break-even is written as the
+    string "none", a NaN as null."""
+    if isinstance(x, float):
+        return "none" if math.isinf(x) else (None if math.isnan(x) else x)
+    if isinstance(x, dict):
+        return {k: finite(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [finite(v) for v in x]
+    if isinstance(x, np.floating):
+        return finite(float(x))
+    if isinstance(x, np.integer):
+        return int(x)
+    if isinstance(x, np.bool_):
+        return bool(x)
+    return x
+
+
 def md_table(h, rows):
     from tools.reanalysis.gen_common import md_table as T
     return T(h, rows)
@@ -965,6 +983,848 @@ def figures(res: dict, out: Path) -> None:
     FIG.save(fig, out, "tok_simulate_where_tokens_go")
 
 
+# ================================================================== Part A: coverage at a token budget
+# Budget-aware reading, applied AFTER the fact: a trial counts as solved at budget B when
+# it is right and its total tokens (summed over its requests) are at most B. No model was
+# run under a budget; the curve says how many trials would have finished right within B
+# had nothing else changed. Over budget counts as not solved.
+BUDGETS = (2_000, 5_000, 10_000, 20_000, 50_000, math.inf)
+BUDGETS_PW = (5_000, 10_000, 20_000, 50_000, 100_000, math.inf)     # input + 5 x output
+GRID = tuple(int(round(x)) for x in np.logspace(2, 6, 81))           # 100 to 1,000,000
+
+
+def coverage(totals: list[float], right: list[bool], budget: float) -> float:
+    """Share (%) of trials that are right AND used at most `budget` tokens."""
+    n = len(totals)
+    if n == 0:
+        return math.nan
+    return 100 * sum(1 for t, ok in zip(totals, right) if ok and t <= budget) / n
+
+
+def break_even(tot_t: list[float], ok_t: list[bool], tot_n: list[float], ok_n: list[bool],
+               w_t=None, w_n=None) -> float:
+    """Smallest budget from which the tools arm's coverage is at or above the no-tools
+    arm's at every larger budget (both arms over the same trials, so counts compare).
+    0.0 when that holds at every budget; inf when it fails at no limit. Optional weights
+    (cluster multiplicities of a bootstrap draw) per trial."""
+    w_t = [1] * len(tot_t) if w_t is None else w_t
+    w_n = [1] * len(tot_n) if w_n is None else w_n
+    ev = sorted([(t, w) for t, ok, w in zip(tot_t, ok_t, w_t) if ok]
+                + [(t, -w) for t, ok, w in zip(tot_n, ok_n, w_n) if ok])
+    pos, d, last_neg, i = [], 0, None, 0
+    while i < len(ev):
+        x = ev[i][0]
+        while i < len(ev) and ev[i][0] == x:
+            d += ev[i][1]
+            i += 1
+        pos.append(x)
+        if d < 0:
+            last_neg = len(pos) - 1
+    if last_neg is None:
+        return 0.0
+    if last_neg == len(pos) - 1:
+        return math.inf
+    return float(pos[last_neg + 1])
+
+
+def break_even_boot(tot_t, ok_t, dom_t, tot_n, ok_n, dom_n, doms, dr) -> dict:
+    """`break_even` with its domain-cluster bootstrap (the same draws as every interval
+    here). Vectorised: an event per right trial (+ tools, - no tools) weighted by the
+    multiplicity of its domain in the draw."""
+    est = break_even(tot_t, ok_t, tot_n, ok_n)
+    idx = {d: i for i, d in enumerate(doms)}
+    ev = sorted([(t, 1, idx[d]) for t, ok, d in zip(tot_t, ok_t, dom_t) if ok]
+                + [(t, -1, idx[d]) for t, ok, d in zip(tot_n, ok_n, dom_n) if ok])
+    if not ev:
+        return {"est": est, "lo": est, "hi": est, "share_none": float(est == math.inf)}
+    x = np.array([e[0] for e in ev], float)
+    s = np.array([e[1] for e in ev], float)
+    dm = np.array([e[2] for e in ev])
+    ux = np.unique(x)
+    ends = np.searchsorted(x, ux, side="right") - 1          # last event at each position
+    k = len(doms)
+    vals = np.empty(len(dr))
+    for a in range(0, len(dr), 1000):
+        chunk = dr[a:a + 1000]
+        w = np.stack([np.bincount(row, minlength=k) for row in chunk]).astype(float)
+        dsum = np.cumsum(s[None, :] * w[:, dm], axis=1)[:, ends]
+        neg = dsum < 0
+        anyneg = neg.any(1)
+        lastneg = neg.shape[1] - 1 - np.argmax(neg[:, ::-1], axis=1)
+        v = np.where(lastneg + 1 < len(ux), ux[np.minimum(lastneg + 1, len(ux) - 1)], np.inf)
+        vals[a:a + len(chunk)] = np.where(anyneg, v, 0.0)
+    lo, hi = np.quantile(vals, [0.025, 0.975], method="inverted_cdf")
+    return {"est": est, "lo": float(lo), "hi": float(hi),
+            "share_none": float(np.mean(np.isinf(vals)))}
+
+
+def coverage_part(recs: list[dict], res: dict) -> dict:
+    """Coverage curves, paired differences at budgets and break-even budgets, raw and
+    price-weighted, per corpus, model, task and arm (never pooled)."""
+    doms = res["domains"]
+    dr = draws(len(doms))
+    by = defaultdict(list)
+    for r in recs:
+        by[(r["corpus"], r["model"], r["task"], r["arm"])].append(r)
+    curves, pairs = [], []
+    for (corpus, model, task, arm), rs in sorted(by.items(), key=lambda kv: order_key(kv[0])):
+        rs = sorted(rs, key=lambda r: r["key"])
+        for unit, f in (("raw", lambda r: tok(r)), ("5:1", lambda r: tok(r, PRICE_RATIO))):
+            tots = [f(r) for r in rs]
+            oks = [r["right"] for r in rs]
+            curves.append({"corpus": corpus, "model": model, "task": task, "arm": arm,
+                           "unit": unit, "n": len(rs),
+                           "right_totals": (sorted(t for t, ok in zip(tots, oks) if ok)
+                                            if unit == "raw" else None),
+                           "grid": {str(b): coverage(tots, oks, b) for b in GRID},
+                           "no_limit": coverage(tots, oks, math.inf)})
+        if arm == "none":
+            continue
+        rn = sorted(by[(corpus, model, task, "none")], key=lambda r: r["key"])
+        if [r["key"] for r in rn] != [r["key"] for r in rs]:
+            raise Halt(f"unpaired trials in {corpus}/{model}/{task}/{arm}")
+        n = domain_sums(rs, doms, lambda r: 1)
+        for unit, f, budgets in (("raw", lambda r: tok(r), BUDGETS),
+                                 ("5:1", lambda r: tok(r, PRICE_RATIO), BUDGETS_PW)):
+            at = {}
+            for b in budgets:
+                st = domain_sums(rs, doms, lambda r: 100 * (r["right"] and f(r) <= b))
+                sn = domain_sums(rn, doms, lambda r: 100 * (r["right"] and f(r) <= b))
+                at["no limit" if b == math.inf else str(b)] = diff_boot(st, sn, n, dr)
+            be = break_even_boot([f(r) for r in rs], [r["right"] for r in rs],
+                                 [r["domain"] for r in rs], [f(r) for r in rn],
+                                 [r["right"] for r in rn], [r["domain"] for r in rn], doms, dr)
+            pairs.append({"corpus": corpus, "model": model, "task": task, "arm": arm,
+                          "unit": unit, "diff_at_budget": at, "break_even": be})
+    return {"curves": curves, "pairs": pairs}
+
+
+def check_no_limit(cov: dict, filed: Path) -> dict:
+    """Coverage at no limit equals the filed right counts of the 38 matched-run and Claude
+    cells, and the paired difference at no limit equals the filed contrast (estimate and
+    interval, which come from the same draw)."""
+    from tools.reanalysis.gen_common import model_name
+    mr = json.loads((filed / "matched_run.json").read_text())
+    fr = json.loads((filed / "frontier55.json").read_text())
+    arm_rec = {"N": "none", "P": "plain", "S": "steered"}
+    want = {("matched", model_name(r["model"]), r["task"], arm_rec[r["cell"]]):
+            (r["registered"]["right"], r["registered"]["n"]) for r in mr["rates"] if r["this_run"]}
+    want.update({("claude", CLAUDE_TAG[r["model"]], r["task"],
+                  "none" if r["arm"] == "no-tools" else "tools"): (r["right"], r["n"])
+                 for r in fr["rates"]})
+    got = {(c["corpus"], c["model"], c["task"], c["arm"]): c for c in cov["curves"] if c["unit"] == "raw"}
+    bad = [k for k, (k_right, n) in want.items()
+           if abs(got[k]["no_limit"] - 100 * k_right / n) > 1e-9 or got[k]["n"] != n]
+    cw = {("matched", model_name(c["model"]), c["task"], {"M1": "plain", "M2": "steered"}[c["name"]]): c
+          for c in mr["contrasts"] if c["grade"] == "registered" and c["name"] in ("M1", "M2")}
+    cw.update({("claude", CLAUDE_TAG[c["model"]], c["task"], "tools"): c for c in fr["contrasts"]})
+    pg = {(p["corpus"], p["model"], p["task"], p["arm"]): p["diff_at_budget"]["no limit"]
+          for p in cov["pairs"] if p["unit"] == "raw"}
+    bad_c = [k for k, c in cw.items()
+             if max(abs(pg[k]["est"] - c["est"]), abs(pg[k]["lo"] - c["lo"]), abs(pg[k]["hi"] - c["hi"])) > 1e-9]
+    if bad or bad_c:
+        raise Halt(f"no-limit coverage differs from the filed outputs: cells {bad}, contrasts {bad_c}")
+    return {"cells_checked": len(want), "contrasts_checked": len(cw)}
+
+
+# ================================================================== Part B: prompt caching
+# Cost under a cache price, in the form of Yang et al. (arXiv:2611.22238):
+#     cost(c, p) = U + c * C + p * O
+# U uncached input, C cached input, O output; c and p are prices relative to an uncached
+# input token. Only a trial's own cache hits count (scenario 1): request t >= 2 reuses the
+# previous request's whole prompt. c = 1 is what was measured (no discount in any run).
+CACHE_PRICES = (1.0, 0.5, 0.25, 0.1, 0.05, 0.0)
+# Anthropic prompt-caching prices, from the provider's price documentation as cached on
+# 2026-11-03 (given by the session; recheck before quoting): cache read = READ x the
+# input price, cache write (five-minute lifetime) = WRITE x the input price; a prefix
+# shorter than MIN_CACHEABLE tokens is not cached.
+CACHE_PRICE_DATE = "2026-11-03"
+CACHE_READ = {"claude-haiku-5-5": 0.10, "claude-sonnet-5-5": 0.05}
+CACHE_WRITE = 1.25
+MIN_CACHEABLE = 512
+
+
+def cache_cost(u: float, c_tok: float, o: float, c: float, p: float = 1.0) -> float:
+    return u + c * c_tok + p * o
+
+
+def cached_split_exact(turn_in: list[int]) -> tuple[int, int, int]:
+    """(U, C, exceptions) of a trial with per-request input counts: C = sum of P_(t-1)
+    over t >= 2, U = the rest. `exceptions` counts requests whose prompt is shorter than
+    the previous one (the prefix assumption would fail there)."""
+    c_tok = sum(turn_in[:-1])
+    exc = sum(1 for a, b in zip(turn_in, turn_in[1:]) if b < a)
+    return sum(turn_in) - c_tok, c_tok, exc
+
+
+def cached_bounds(s: float, n: int, p1: float) -> tuple[float, float]:
+    """Bounds on C = S - P_n when only the summed input S, the number of requests n and
+    the first prompt P_1 are known and prompts only grow: (n-1) P_1 <= C <= S (n-1) / n."""
+    if n <= 1:
+        return 0.0, 0.0
+    if n == 2:
+        return float(p1), float(p1)
+    return float((n - 1) * p1), float(s * (n - 1) / n)
+
+
+def cached_estimate(s: float, n: int, p1: float, calls: list[tuple[int, int]]) -> float:
+    """Point estimate of C inside the bounds: the growth of the prompt after request j is
+    taken proportional to the characters of the calls made in request j (call i placed in
+    request min(i, n-1)), scaled so that the n prompts add up to S."""
+    lo, hi = cached_bounds(s, n, p1)
+    if n <= 2:
+        return lo
+    w = [0.0] * n
+    for i, (a, r) in enumerate(calls, 1):
+        w[min(i, n - 1)] += a + r
+    denom = sum((n - j) * w[j] for j in range(1, n))
+    added = s - n * p1
+    if denom <= 0 or added <= 0:
+        return min(max((n - 1) * p1, lo), hi)
+    lam = added / denom
+    p_n = p1 + lam * sum(w[1:n])
+    return min(max(s - p_n, lo), hi)
+
+
+def attach_cache_split(recs: list[dict]) -> Counter:
+    """U, C (low, estimate, high) on every trial, with and without a refused final request.
+    A refused request is stored as WINDOW input tokens that never ran: with it, C = S -
+    16,384 exactly (its own prompt is the stored 16,384); without it, the request is
+    dropped (S' = S - 16,384, n' = n - 1) and C is bounded as for any trial."""
+    cases = Counter()
+    for r in recs:
+        s, n = r["inp"], r["turns"]
+        if r["arm"] == "none" or n <= 1 or r.get("unsplit"):
+            for v in ("", "_nr"):
+                r["C_lo" + v] = r["C_est" + v] = r["C_hi" + v] = 0.0
+            r["n_C_exc"] = 0
+            if r["arm"] != "none":
+                cases["Claude, one request (C = 0)" if r["corpus"] == "claude"
+                      else "open, one request (C = 0)"] += 1
+            continue
+        if r["corpus"] == "claude":
+            _u, c_tok, exc = cached_split_exact(r["turn_in"])
+            r["C_lo"] = r["C_est"] = r["C_hi"] = r["C_lo_nr"] = r["C_est_nr"] = r["C_hi_nr"] = float(c_tok)
+            r["n_C_exc"] = exc
+            cases["Claude, two or more requests (exact)"] += 1
+            continue
+        p1 = r["first"]
+        r["n_C_exc"] = 0
+        if r["no_room"]:
+            exact = float(s - WINDOW)
+            r["C_lo"] = r["C_est"] = r["C_hi"] = exact
+            s2, n2 = s - WINDOW, n - 1
+            lo, hi = cached_bounds(s2, n2, p1)
+            r["C_lo_nr"], r["C_hi_nr"] = lo, hi
+            r["C_est_nr"] = cached_estimate(s2, n2, p1, r["calls"])
+            cases["open, refused final request (C exact with it; " +
+                  ("exact" if n2 <= 2 else "bounded") + " without it)"] += 1
+            continue
+        lo, hi = cached_bounds(s, n, p1)
+        r["C_lo"], r["C_hi"] = lo, hi
+        r["C_est"] = cached_estimate(s, n, p1, r["calls"])
+        r["C_lo_nr"], r["C_est_nr"], r["C_hi_nr"] = r["C_lo"], r["C_est"], r["C_hi"]
+        cases["open, two requests (C = P_1, exact up to the offset)" if n == 2 else
+              "open, three or more requests (bounded)"] += 1
+    return cases
+
+
+def trial_cost(r: dict, c: float, p: float, which: str = "est", refused: bool = True) -> float:
+    """cost(c, p) of one trial; `which` picks the low, estimated or high C. With the
+    refused request taken out, its 16,384 stored input tokens leave U and C."""
+    v = "" if refused else "_nr"
+    s = r["inp"] - (0 if refused or not r["no_room"] else WINDOW)
+    c_tok = r[f"C_{which}{v}"]
+    return cache_cost(s - c_tok, c_tok, r["out"], c, p)
+
+
+def static_prefix(recs: list[dict], fp: dict) -> list[dict]:
+    """Scenario 2's input: the tool arm's extra static prefix (system text and the seven
+    tool descriptions, less the no-tools system text) = first-request input of the tool
+    arm minus the input of the no-tools arm, same trial. Open models: the offsets measured
+    above. Claude: measured on every trial."""
+    out = []
+    for (m, t, a), v in fp["offsets"].items():
+        # one value in every measured cell (the offset check halts otherwise); a borrowed
+        # cell takes a value of the same model, within the span reported in section 8
+        out.append({"model": m, "task": t, "arm": a, "mean": v["offset"], "min": v["offset"],
+                    "max": v["offset"], "n": v["source"], "constant": True})
+    none = {(r["model"], r["key"]): r["inp"] for r in recs if r["corpus"] == "claude" and r["arm"] == "none"}
+    by = defaultdict(list)
+    for r in recs:
+        if r["corpus"] == "claude" and r["arm"] == "tools":
+            by[(r["model"], r["task"])].append(r["turn_in"][0] - none[(r["model"], r["key"])])
+    for (m, t), d in sorted(by.items()):
+        c = Counter(d)
+        out.append({"model": m, "task": t, "arm": "tools", "mean": float(np.mean(d)),
+                    "min": min(d), "max": max(d), "n": f"{len(d)} trials, {len(c)} distinct values",
+                    "constant": max(d) - min(d) <= 0.02 * np.mean(d), "mode": c.most_common(1)[0][0]})
+    return out
+
+
+def caching_part(recs: list[dict], res: dict, fp: dict) -> dict:
+    doms = res["domains"]
+    dr = draws(len(doms))
+    from tools.reanalysis.gen_common import multiplier_boot
+    cases = attach_cache_split(recs)
+    sp = static_prefix(recs, fp)
+    kmap = {(x["model"], x["task"], x["arm"]): x for x in sp}
+    by = defaultdict(list)
+    for r in recs:
+        by[(r["corpus"], r["model"], r["task"], r["arm"])].append(r)
+    cmap = {(x["corpus"], x["model"], x["task"], x["arm"]): x for x in res["contrasts"]}
+    rows, thresholds, mism = [], [], []
+    for (corpus, model, task, arm), rt in sorted(by.items(), key=lambda kv: order_key(kv[0])):
+        if arm == "none":
+            continue
+        rn = by[(corpus, model, task, "none")]
+        st = domain_sums(rt, doms, lambda r: r["right"])
+        sn = domain_sums(rn, doms, lambda r: r["right"])
+        kt, kn = int(st.sum()), int(sn.sum())
+        ntr = len(rt)
+        kst = kmap.get((model, task, arm))
+        for p in (1.0, PRICE_RATIO):
+            cn_tot = sum(trial_cost(r, 1.0, p) for r in rn)
+            for refused in (True, False):
+                if not refused and not any(r["no_room"] for r in rt):
+                    continue
+                for c in CACHE_PRICES:
+                    est = {}
+                    for which in ("lo", "est", "hi"):
+                        tot = sum(trial_cost(r, c, p, which, refused) for r in rt)
+                        est[which] = multiplier(tot, kt, cn_tot, kn)
+                    ct = domain_sums(rt, doms, lambda r: trial_cost(r, c, p, "est", refused))
+                    cn = domain_sums(rn, doms, lambda r: trial_cost(r, 1.0, p))
+                    mb = multiplier_boot(ct, st, cn, sn, seed=SEED, b=B_BOOT)
+                    row = {"corpus": corpus, "model": model, "task": task, "arm": arm, "p": p,
+                           "c": c, "refused_request": "kept" if refused else "taken out",
+                           "scenario": "own hits", "mult": mb,
+                           # a larger C lowers the cost when c < 1: the high C gives the low multiplier
+                           "mult_range": [est["hi"], est["lo"]],
+                           "per_trial_tools": sum(trial_cost(r, c, p, "est", refused) for r in rt) / ntr,
+                           "per_trial_none": cn_tot / ntr,
+                           "per_right_tools": cost_per_right(sum(trial_cost(r, c, p, "est", refused) for r in rt), kt),
+                           "per_right_none": cost_per_right(cn_tot, kn)}
+                    rows.append(row)
+                    if c == 1.0 and refused:
+                        old = cmap[(corpus, model, task, arm)]["mult" if p == 1.0 else "mult5"]
+                        if old is None or mb is None or any(abs(old[k] - mb[k]) > 1e-9 for k in ("est", "lo", "hi")):
+                            mism.append((corpus, model, task, arm, p))
+                    if refused and kst is not None and kst["constant"]:
+                        k = kst["mean"] if corpus != "claude" else kst["mode"]
+                        tot2 = sum(trial_cost(r, c, p, "est", refused) - (1 - c) * (k if r["turns"] >= 1 and not r.get("unsplit") else 0)
+                                   for r in rt)
+                        ct2 = domain_sums(rt, doms, lambda r: trial_cost(r, c, p, "est", refused)
+                                          - (1 - c) * (k if not r.get("unsplit") else 0))
+                        rows.append({**row, "scenario": "own hits + static prefix across trials",
+                                     "mult": multiplier_boot(ct2, st, cn, sn, seed=SEED, b=B_BOOT),
+                                     "mult_range": None, "per_trial_tools": tot2 / ntr,
+                                     "per_right_tools": cost_per_right(tot2, kt)})
+                # the cache price at which the multiplier reaches 1 (cost is linear in c)
+                if refused:
+                    th = {}
+                    for which in ("lo", "est", "hi"):
+                        a_ = sum(trial_cost(r, 0.0, p, which) for r in rt)
+                        b_ = sum(trial_cost(r, 1.0, p, which) for r in rt) - a_
+                        target = kt * cn_tot / kn if kn else math.nan
+                        th[which] = (None if b_ <= 0 or not kn else (target - a_) / b_)
+                    thresholds.append({"corpus": corpus, "model": model, "task": task, "arm": arm,
+                                       "p": p, "c_star": th, "kt": kt, "kn": kn})
+    if mism:
+        raise Halt(f"c = 1 does not reproduce the multipliers of table 2: {mism}")
+    exc = sum(r.get("n_C_exc", 0) for r in recs)
+    return {"cases": dict(cases), "prefix_exceptions_claude": exc, "static_prefix": sp,
+            "rows": rows, "thresholds": thresholds,
+            "constants": {"date": CACHE_PRICE_DATE, "read": CACHE_READ, "write": CACHE_WRITE,
+                          "min_cacheable": MIN_CACHEABLE}}
+
+
+def list_usd(m: str, inp: float, out: float, cache_w: float = 0.0, cache_r: float = 0.0) -> float:
+    """Dollars of one request at the registered list price (no Batch discount); cache
+    writes and reads at CACHE_WRITE and CACHE_READ times the input price. Haiku 5.5's
+    higher rate applies to a request whose whole prompt is over its threshold."""
+    from tools.frontier55.anthropic_requests import PRICES
+    p = PRICES[m]
+    rin, rout = p["base"]
+    if p["long"] and inp + cache_w + cache_r > p["long_over"]:
+        rin, rout = p["long"]
+    return (inp * rin + cache_w * rin * CACHE_WRITE + cache_r * rin * CACHE_READ[m]
+            + out * rout) / 1e6
+
+
+def list_trial_usd(m: str, turn_in: list[int], turn_out: list[int]) -> float:
+    """A trial at list price, request by request, no caching."""
+    return sum(list_usd(m, pt, ot) for pt, ot in zip(turn_in, turn_out))
+
+
+def cached_trial_usd(m: str, turn_in: list[int], turn_out: list[int]) -> float:
+    """A trial at list price with prompt caching: the previous request's prompt is read
+    from the cache (if at least MIN_CACHEABLE tokens), the rest of the prompt is new and
+    written once."""
+    tot, prev = 0.0, 0
+    for pt, ot in zip(turn_in, turn_out):
+        read = prev if prev >= MIN_CACHEABLE else 0
+        tot += list_usd(m, 0, ot, cache_w=pt - read, cache_r=read)
+        prev = pt
+    return tot
+
+
+def claude_dollars(recs: list[dict], res: dict) -> list[dict]:
+    """Three columns, never merged: (a) billed (no-tools arm at the Batch half price);
+    (b) both arms at list price; (c) estimated, list price with prompt caching as the
+    provider prices it (every new prompt token written once at CACHE_WRITE, read on each
+    later request of the same trial at CACHE_READ; prefixes under MIN_CACHEABLE not
+    cached). (c) is estimated; not billed; caching was not enabled in the run."""
+    from tools.reanalysis.gen_common import multiplier_boot
+    tag = {v: k for k, v in CLAUDE_TAG.items()}
+    doms = res["domains"]
+
+    def list_trial(m, r):
+        return list_trial_usd(m, r["turn_in"], r["turn_out"])
+
+    def cached_usd(m, r):
+        return cached_trial_usd(m, r["turn_in"], r["turn_out"])
+
+    out = []
+    by = defaultdict(list)
+    for r in recs:
+        if r["corpus"] == "claude":
+            by[(r["model"], r["task"], r["arm"])].append(r)
+    for model in CLAUDE_MODELS:
+        m = tag[model]
+        for task in TASKS:
+            rt, rn = by[(model, task, "tools")], by[(model, task, "none")]
+            st = domain_sums(rt, doms, lambda r: r["right"])
+            sn = domain_sums(rn, doms, lambda r: r["right"])
+            cols = {
+                "billed": (lambda r: r["usd"], lambda r: r["usd"]),
+                "list price, both arms": (lambda r: list_trial(m, r), lambda r: list_trial(m, r)),
+                "estimated with caching (not billed)": (lambda r: cached_usd(m, r),
+                                                        lambda r: list_trial(m, r)),
+            }
+            row = {"model": model, "task": task}
+            for name, (ft, fn) in cols.items():
+                tt, tn = sum(ft(r) for r in rt), sum(fn(r) for r in rn)
+                row[name] = {"tools_per_trial": tt / len(rt), "none_per_trial": tn / len(rn),
+                             "tools_per_right": cost_per_right(tt, int(st.sum())),
+                             "none_per_right": cost_per_right(tn, int(sn.sum())),
+                             "mult": multiplier_boot(domain_sums(rt, doms, ft), st,
+                                                     domain_sums(rn, doms, fn), sn,
+                                                     seed=SEED, b=B_BOOT),
+                             "tools_total": tt, "none_total": tn}
+            out.append(row)
+    billed = sum(r["billed"]["tools_total"] + r["billed"]["none_total"] for r in out)
+    spent = sum(r["usd"] for r in recs if r["corpus"] == "claude")
+    tools_list = sum(r["list price, both arms"]["tools_total"] for r in out)
+    tools_billed = sum(r["billed"]["tools_total"] for r in out)
+    if abs(billed - spent) > 1e-6 or abs(tools_list - tools_billed) > 1e-6:
+        raise Halt("the billed or list-price column does not add up to the run's dollars")
+    return out
+
+
+# ================================================================== verdicts across the cache price
+def _corpus_of(model, task):
+    if model in CLAUDE_MODELS:
+        return "claude"
+    return "matched" if task in ("solve", "simulate") else "rerun"
+
+
+def _tool_arm(model):
+    return "tools" if model in CLAUDE_MODELS else "plain"
+
+
+def verdicts(cache: dict, res: dict, dollars: list[dict]) -> list[dict]:
+    """For findings 1 to 3 and 6 and the Claude dollar ratios: the value at each cache
+    price c (own hits, refused requests kept, estimated C) and whether the finding holds."""
+    rows = {(x["corpus"], x["model"], x["task"], x["arm"], x["p"], x["c"]): x for x in cache["rows"]
+            if x["scenario"] == "own hits" and x["refused_request"] == "kept"}
+    cells = {(c["corpus"], c["model"], c["task"], c["arm"]): c for c in res["cells"]}
+
+    def m(model, task, p, c, arm=None):
+        x = rows[(_corpus_of(model, task), model, task, arm or _tool_arm(model), p, c)]
+        return x["mult"]["est"] if x["mult"] else None
+
+    out = []
+    for task in ("solve", "validate_domain"):
+        for p in (1.0, PRICE_RATIO):
+            vals, ok = [], []
+            for c in CACHE_PRICES:
+                o = [m(x, task, p, c) for x in OPEN_MODELS]
+                cl = [m(x, task, p, c) for x in CLAUDE_MODELS]
+                order_open = sorted(OPEN_MODELS, key=lambda x: cells[(_corpus_of(x, task), x, task, "none")]["rate"])
+                oo = [m(x, task, p, c) for x in order_open]
+                holds = all(a < b for a, b in zip(oo, oo[1:])) and cl[0] < cl[1]
+                vals.append(" < ".join(f"{v:.2f}" for v in oo) + "; Claude " + " < ".join(f"{v:.2f}" for v in cl))
+                ok.append(holds)
+            out.append({"finding": f"1: {task} multiplier rises with the unaided rate "
+                                   f"(open models by unaided rate; Haiku, Sonnet), {'raw' if p == 1 else '5:1'}",
+                        "values": vals, "holds": ok})
+    # finding 2: points gained per 1,000 extra cost units, solve
+    for p in (1.0, PRICE_RATIO):
+        vals, ok = [], []
+        for c in CACHE_PRICES:
+            g = {}
+            for x in OPEN_MODELS + CLAUDE_MODELS:
+                r_ = rows[(_corpus_of(x, "solve"), x, "solve", _tool_arm(x), p, c)]
+                cn = cells[(_corpus_of(x, "solve"), x, "solve", "none")]
+                ct = cells[(_corpus_of(x, "solve"), x, "solve", _tool_arm(x))]
+                extra = r_["per_trial_tools"] - r_["per_trial_none"]
+                g[x] = gain_per_1k(ct["right"], cn["right"], extra * ct["n"], 0, ct["n"])
+            seq = [g[x] for x in OPEN_MODELS]
+            holds = all(a is not None and b is not None and a > b for a, b in zip(seq, seq[1:])) \
+                and g[CLAUDE_MODELS[0]] > g[CLAUDE_MODELS[1]]
+            vals.append(" > ".join("–" if v is None else f"{v:.2f}" for v in seq) + "; Claude "
+                        + " > ".join(f"{g[x]:.2f}" for x in CLAUDE_MODELS))
+            ok.append(holds)
+        out.append({"finding": f"2: solve, points per 1,000 extra {'tokens' if p == 1 else 'weighted tokens'} "
+                               f"falls with the unaided rate (Qwen3.5-9B > Gemma-26B > Qwen3.6-35B; Haiku > Sonnet)",
+                    "values": vals, "holds": ok})
+    # finding 3 and its raw counterpart: which open tool cells cost no more per right answer
+    for p in (1.0, PRICE_RATIO):
+        vals = []
+        for c in CACHE_PRICES:
+            below = [f"{x['model'].split('-')[0]} {x['task'].replace('validate_', 'v.')} {x['arm'][0]}"
+                     for k, x in rows.items() if k[4] == p and k[5] == c and x["corpus"] != "claude"
+                     and x["mult"] and x["mult"]["est"] <= 1]
+            vals.append(f"{len(below)} of 30" + (f": {', '.join(sorted(below))}" if below else ""))
+        out.append({"finding": f"3: open tool cells (5 tasks x 3 models x 2 arms) whose multiplier is at "
+                               f"most 1, {'raw' if p == 1 else '5:1'}", "values": vals, "holds": None})
+    for p in (1.0, PRICE_RATIO):
+        vals = []
+        for c in CACHE_PRICES:
+            cl = [x["mult"]["est"] for k, x in rows.items() if k[4] == p and k[5] == c
+                  and x["corpus"] == "claude" and x["mult"]]
+            vals.append(f"{sum(v <= 1 for v in cl)} of 10 (min {min(cl):.2f})")
+        out.append({"finding": f"3 (Claude): tool cells whose multiplier is at most 1, {'raw' if p == 1 else '5:1'}",
+                    "values": vals, "holds": None})
+    # finding 6: tokens per trial, tools over no tools
+    vals, ok = [], []
+    for c in CACHE_PRICES:
+        o = [x["per_trial_tools"] / x["per_trial_none"] for k, x in rows.items()
+             if k[4] == 1.0 and k[5] == c and x["corpus"] != "claude"]
+        cl = [x["per_trial_tools"] / x["per_trial_none"] for k, x in rows.items()
+              if k[4] == 1.0 and k[5] == c and x["corpus"] == "claude"]
+        vals.append(f"open {min(o):.1f} to {max(o):.1f}; Claude {min(cl):.1f} to {max(cl):.1f}")
+        ok.append(min(o) > 1 and min(cl) > 1)
+    out.append({"finding": "6: a tool trial costs more than an unaided one (ratio per trial, raw)",
+                "values": vals, "holds": ok})
+    # the Claude dollar ratios, three columns (they do not depend on c)
+    for col in ("billed", "list price, both arms", "estimated with caching (not billed)"):
+        v = [d[col]["mult"]["est"] for d in dollars]
+        out.append({"finding": f"Claude dollars per right answer, tools / no tools, {col}",
+                    "values": [f"{min(v):.1f} to {max(v):.1f}"], "holds": [min(v) > 1]})
+    return out
+
+
+# ================================================================== markdown, Parts A and B
+def render_ext(res: dict) -> str:
+    cov, cache, dol, ver = res["coverage"], res["caching"], res["claude_dollars"], res["verdicts"]
+    L = ["## 9. A second metric: coverage at a token budget", "",
+         "Coverage at budget B = share of a cell's trials that are right AND used at most B "
+         "tokens (input + output, summed over the requests). The budget is applied after the "
+         "fact: no model was run under a budget, so the curve says how many trials would have "
+         "finished right within B if nothing else changed. Over budget counts as not solved. "
+         f"Checked: at no limit it equals the filed right counts of {res['no_limit_check']['cells_checked']} "
+         f"cells, and the paired difference equals the {res['no_limit_check']['contrasts_checked']} filed "
+         "contrasts (estimate and interval).", "",
+         "### 9.1 Paired difference at a budget, tools minus no tools, points", ""]
+    for unit, budgets in (("raw", BUDGETS), ("5:1", BUDGETS_PW)):
+        names = ["no limit" if b == math.inf else str(b) for b in budgets]
+        rows = []
+        for p in cov["pairs"]:
+            if p["unit"] != unit:
+                continue
+            rows.append([CORPUS_WORDS[p["corpus"]], p["model"], p["task"], ARM_WORDS[p["arm"]]]
+                        + [ci(p["diff_at_budget"][b], "{:+.1f}") for b in names])
+        L += [f"Unit: {'tokens' if unit == 'raw' else 'input + 5 x output'}.", "",
+              md_table(["corpus", "model", "task", "tool arm"]
+                       + [("no limit" if b == "no limit" else f"B = {int(b):,}") for b in names], rows), ""]
+    L += ["### 9.2 Break-even budget", "",
+          "The smallest budget from which the tools arm's coverage is at or above the "
+          "no-tools arm's at every larger budget. 0 = at every budget; none = the tools arm "
+          "is behind at no limit. Interval over the domain draws (none = the upper end is "
+          "never reached in at least 2.5% of draws); share of draws with none.", ""]
+    rows = []
+    for p in cov["pairs"]:
+        be = p["break_even"]
+        f = lambda v: "none" if v == math.inf else f"{v:,.0f}"
+        rows.append([CORPUS_WORDS[p["corpus"]], p["model"], p["task"], ARM_WORDS[p["arm"]], p["unit"],
+                     f"{f(be['est'])} [{f(be['lo'])}, {f(be['hi'])}]", f"{100 * be['share_none']:.1f}"])
+    L += [md_table(["corpus", "model", "task", "tool arm", "unit", "break-even budget",
+                    "draws with none %"], rows), ""]
+    L += ["### 9.3 Coverage on a grid of budgets (raw tokens)", "",
+          "Share right within B, %. The full curve at every observed trial total is in the "
+          "JSON (`right_totals`).", ""]
+    gsel = [1_000, 2_000, 5_000, 10_000, 20_000, 50_000, 100_000]
+    rows = []
+    for c in cov["curves"]:
+        if c["unit"] != "raw":
+            continue
+        rows.append([CORPUS_WORDS[c["corpus"]], c["model"], c["task"], ARM_WORDS[c["arm"]]]
+                    + [f"{coverage_from_sorted(c['right_totals'], c['n'], b):.1f}" for b in gsel]
+                    + [f"{c['no_limit']:.1f}"])
+    L += [md_table(["corpus", "model", "task", "arm"] + [f"{b:,}" for b in gsel] + ["no limit"], rows), ""]
+
+    L += ["## 10. Tools against no tools under prompt caching", "",
+          "cost(c, p) = U + c x C + p x O (Yang et al., arXiv:2611.22238): U uncached input, C "
+          "cached input, O output, c and p the prices of a cached and an output token "
+          "relative to an uncached input token. No run had a caching discount: every figure "
+          "before this section is c = 1. Scenario 1 (own hits): request t >= 2 of a trial "
+          "reads the previous request's whole prompt from the cache; a no-tools trial is one "
+          "request, C = 0. Everything here is computed, not billed.", "",
+          "**How C was obtained.** " + "; ".join(f"{k}: {v}" for k, v in cache["cases"].items())
+          + f". Claude requests whose prompt was shorter than the previous one: "
+            f"{cache['prefix_exceptions_claude']}. Open models with three or more requests: "
+            "(n-1) P_1 <= C <= S (n-1)/n, point value by characters. A refused final request "
+            "(stored as 16,384 input tokens that never ran) is kept in the main rows (then C = "
+            "S - 16,384 exactly) and taken out in the rows so marked.", "",
+          "### 10.1 Multiplier, tokens per right answer, tools / no tools, by cache price", "",
+          "Estimate [95% interval] at the estimated C; for the open models the range of the "
+          "point estimate from the high to the low C in brackets after it. Scenario 1, refused "
+          "requests kept.", ""]
+    for p in (1.0, PRICE_RATIO):
+        rows = []
+        sel = [x for x in cache["rows"] if x["p"] == p and x["scenario"] == "own hits"
+               and x["refused_request"] == "kept"]
+        keys = []
+        for x in sel:
+            k = (x["corpus"], x["model"], x["task"], x["arm"])
+            if k not in keys:
+                keys.append(k)
+        for k in keys:
+            row = [CORPUS_WORDS[k[0]], k[1], k[2], ARM_WORDS[k[3]]]
+            for c in CACHE_PRICES:
+                x = next(y for y in sel if (y["corpus"], y["model"], y["task"], y["arm"]) == k and y["c"] == c)
+                cell = mult(x["mult"])
+                lo, hi = x["mult_range"]
+                if k[0] != "claude" and lo is not None and abs(hi - lo) > 0.005:
+                    cell += f" ({lo:.2f} to {hi:.2f})"
+                row.append(cell)
+            rows.append(row)
+        L += [f"Unit: {'p = 1 (raw)' if p == 1 else 'p = 5 (output weighted 5:1)'}.", "",
+              md_table(["corpus", "model", "task", "tool arm"] + [f"c = {c:g}" for c in CACHE_PRICES], rows), ""]
+    L += ["### 10.2 Cost per trial and per right answer, solve and simulate, by cache price", "",
+          "Raw (p = 1), estimated C, refused requests kept. Tools arm / no-tools arm.", ""]
+    rows = []
+    for x in cache["rows"]:
+        if x["p"] != 1.0 or x["scenario"] != "own hits" or x["refused_request"] != "kept" \
+                or x["task"] not in ("solve", "simulate"):
+            continue
+        rows.append([CORPUS_WORDS[x["corpus"]], x["model"], x["task"], ARM_WORDS[x["arm"]], f"{x['c']:g}",
+                     f"{x['per_trial_tools']:,.0f} / {x['per_trial_none']:,.0f}",
+                     f"{f0(x['per_right_tools'])} / {f0(x['per_right_none'])}"])
+    L += [md_table(["corpus", "model", "task", "tool arm", "c", "per trial", "per right answer"], rows), ""]
+    L += ["### 10.3 The cache price at which a right answer with tools costs no more than an unaided one", "",
+          "c* solves multiplier(c) = 1 (the cost is linear in c). Above 1: the tools arm is "
+          "already no dearer at c = 1. Below 0: not reached even at c = 0. For the open models "
+          "the range from the high C to the low C after the estimate.", ""]
+    rows = []
+    for t in cache["thresholds"]:
+        cs = t["c_star"]
+        f = lambda v: "–" if v is None else f"{v:.2f}"
+        rng = "" if t["corpus"] == "claude" else f" ({f(cs['hi'])} to {f(cs['lo'])})"
+        rows.append([CORPUS_WORDS[t["corpus"]], t["model"], t["task"], ARM_WORDS[t["arm"]],
+                     "1" if t["p"] == 1 else "5", f(cs["est"]) + rng])
+    L += [md_table(["corpus", "model", "task", "tool arm", "p", "c*"], rows), ""]
+    L += ["### 10.4 Refused requests taken out (open models, cells that have one)", "",
+          "The same multiplier with each refused final request removed (its 16,384 stored "
+          "input tokens leave U and C).", ""]
+    rows = []
+    for x in cache["rows"]:
+        if x["refused_request"] != "taken out" or x["c"] not in (1.0, 0.1, 0.0):
+            continue
+        rows.append([CORPUS_WORDS[x["corpus"]], x["model"], x["task"], ARM_WORDS[x["arm"]],
+                     "1" if x["p"] == 1 else "5", f"{x['c']:g}", mult(x["mult"])])
+    L += [md_table(["corpus", "model", "task", "tool arm", "p", "c", "multiplier"], rows), ""]
+    L += ["### 10.5 Scenario 2, labelled apart: the static prefix also cached across trials", "",
+          "The tool arm's extra static prefix (its system text and the seven tool "
+          "descriptions, less the no-tools system text) = first-request input of the tool arm "
+          "minus the input of the no-tools arm, same trial. In this scenario it is also read "
+          "from the cache on the first request of every trial. This depends on traffic "
+          "(requests within the cache lifetime, a minimum cacheable length), not on the trial. "
+          "The no-tools arm's own system text, also static, is not credited (its size cannot be "
+          "measured from the rows), so this scenario leans slightly toward the tools.", ""]
+    rows = []
+    for s in cache["static_prefix"]:
+        rows.append([s["model"], s["task"], s["arm"], f"{s['mean']:,.1f}", f"{s['min']:,} to {s['max']:,}",
+                     s["n"], "yes" if s["constant"] else "no"])
+    L += [md_table(["model", "task", "arm", "extra static prefix, mean", "min to max", "measured on",
+                    "near-constant"], rows), ""]
+    rows = []
+    for x in cache["rows"]:
+        if x["scenario"] == "own hits" or x["c"] not in (1.0, 0.1, 0.0) or x["task"] not in ("solve", "simulate"):
+            continue
+        rows.append([CORPUS_WORDS[x["corpus"]], x["model"], x["task"], ARM_WORDS[x["arm"]],
+                     "1" if x["p"] == 1 else "5", f"{x['c']:g}", mult(x["mult"])])
+    L += ["Multiplier under scenario 2, solve and simulate (all tasks in the JSON):", "",
+          md_table(["corpus", "model", "task", "tool arm", "p", "c", "multiplier"], rows), ""]
+    k = cache["constants"]
+    L += ["### 10.6 The Claude run in dollars: three columns, never merged", "",
+          "(a) billed: as spent, the no-tools arm at the Batch half price. (b) list price, both "
+          "arms: the like-for-like comparison of the arms (the batch route is how one arm was "
+          "sent, not a property of the arm). (c) estimated; not billed; caching was not enabled "
+          f"in the run: list price with prompt caching as priced on {k['date']} (cache read "
+          f"{k['read']['claude-haiku-5-5']} x input for Haiku 5.5, {k['read']['claude-sonnet-5-5']} x "
+          f"for Sonnet 5.5; write {k['write']} x; minimum cacheable prefix {k['min_cacheable']} "
+          "tokens); every new prompt token of a tool trial written once and read on each later "
+          "request of the trial; the no-tools arm at list price.", ""]
+    rows = []
+    for d in dol:
+        row = [d["model"], d["task"]]
+        for col in ("billed", "list price, both arms", "estimated with caching (not billed)"):
+            x = d[col]
+            row.append(f"{x['tools_per_right']:.4f} / {x['none_per_right']:.4f} = {mult(x['mult'])}")
+        rows.append(row)
+    L += [md_table(["model", "task", "(a) billed: $ per right, tools / none = ratio",
+                    "(b) list price, both arms", "(c) estimated with caching, not billed"], rows), ""]
+    L += ["### 10.7 Verdict table: what holds across the cache price", "",
+          "Scenario 1, estimated C, refused requests kept. Values at each c; 'holds' where the "
+          "finding's statement is true at that c.", ""]
+    rows = []
+    for v in ver:
+        if len(v["values"]) == 1:
+            rows.append([v["finding"]] + [v["values"][0]] + [""] * (len(CACHE_PRICES) - 1)
+                        + ["holds" if v["holds"][0] else "fails"])
+            continue
+        cells_ = [val + ("" if v["holds"] is None else (" (holds)" if h else " (fails)"))
+                  for val, h in zip(v["values"], v["holds"] or [None] * len(v["values"]))]
+        summ = ("–" if v["holds"] is None else
+                "holds at every c" if all(v["holds"]) else
+                "fails at c = " + ", ".join(f"{c:g}" for c, h in zip(CACHE_PRICES, v["holds"]) if not h))
+        rows.append([v["finding"]] + cells_ + [summ])
+    L += [md_table(["finding"] + [f"c = {c:g}" for c in CACHE_PRICES] + ["across c"], rows), ""]
+    return "\n".join(L) + "\n"
+
+
+def coverage_from_sorted(right_totals: list[float], n: int, budget: float) -> float:
+    """Coverage (%) from the sorted totals of the right trials of a cell of n trials."""
+    import bisect
+    return 100 * bisect.bisect_right(right_totals, budget) / n
+
+
+# ================================================================== figures, Parts A and B
+def figures_ext(res: dict, out: Path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from tools.reanalysis import rq1_figures as FIG
+    INK = FIG.INK
+    col = {a: FIG.ARMS[a][1] for a in FIG.ARMS}
+    ls = {"none": (0, (4, 2)), "plain": "-", "steered": "-", "tools": "-"}
+    curves = {(c["corpus"], c["model"], c["task"], c["arm"]): c for c in res["coverage"]["curves"]
+              if c["unit"] == "raw"}
+    models = OPEN_MODELS + CLAUDE_MODELS
+    short = {"Qwen3.5-9B": "Qwen3.5-9B", "Gemma-26B": "Gemma-26B", "Qwen3.6-35B": "Qwen3.6-35B",
+             "Claude Haiku 5.5": "Haiku 5.5", "Claude Sonnet 5.5": "Sonnet 5.5"}
+
+    def step(ax, c, color, style):
+        xs = [100.0] + [x for x in c["right_totals"] for _ in (0, 1)] + [1e6]
+        ys, k = [0.0], 0
+        for _x in c["right_totals"]:
+            ys.append(100 * k / c["n"])
+            k += 1
+            ys.append(100 * k / c["n"])
+        ys.append(100 * k / c["n"])
+        ax.plot(xs, ys, color=color, ls=style, lw=1.4)
+
+    for task, xlim in (("solve", (500, 200_000)), ("simulate", (500, 200_000))):
+        fig, axes = plt.subplots(2, 3, figsize=(3.4, 3.0), sharex=True, sharey=True)
+        flat = axes.ravel()
+        for ax, m in zip(flat, models):
+            cp = _corpus_of(m, task)
+            for a in ("none", "plain", "steered", "tools"):
+                if (cp, m, task, a) in curves:
+                    step(ax, curves[(cp, m, task, a)], col[a], ls[a])
+            ax.set_xscale("log")
+            ax.set_xlim(*xlim)
+            ax.set_ylim(0, 100)
+            ax.set_xticks([1e3, 1e4, 1e5])
+            ax.set_xticklabels(["1K", "10K", "100K"], fontsize=6.5)
+            ax.tick_params(axis="y", labelsize=6.5)
+            ax.grid(zorder=0, lw=0.5)
+            lab = short[m] + ("\n(Claude run)" if m in CLAUDE_MODELS else "")
+            ax.set_title(lab, fontsize=6.5, pad=2, fontweight="normal",
+                         style="italic" if m in CLAUDE_MODELS else "normal")
+        leg = flat[5]
+        leg.axis("off")
+        h = [plt.Line2D([], [], color=col[a], ls=ls[a], lw=1.4, label=lab)
+             for a, lab in (("none", "no tools"), ("plain", "tools, plain"), ("steered", "tools, steered"))]
+        leg.legend(handles=h, loc="center", fontsize=6.5, frameon=False)
+        fig.supxlabel(f"{task}: token budget per trial (input + output)", fontsize=7)
+        fig.supylabel("right within the budget (%)", fontsize=7)
+        fig.subplots_adjust(wspace=0.08, hspace=0.32)
+        FIG.save(fig, out, f"tok_coverage_{task}")
+
+    # cost-accuracy plane, solve and simulate
+    cells = {(c["corpus"], c["model"], c["task"], c["arm"]): c for c in res["cells"]}
+    mshape = {"Qwen3.5-9B": "o", "Gemma-26B": "s", "Qwen3.6-35B": "D",
+              "Claude Haiku 5.5": "^", "Claude Sonnet 5.5": "v"}
+    fig, axes = plt.subplots(1, 2, figsize=(3.4, 2.2), sharey=True)
+    for ax, task in zip(axes, ("solve", "simulate")):
+        for m in models:
+            cp = _corpus_of(m, task)
+            arms = [a for a in ("none", "plain", "steered", "tools") if (cp, m, task, a) in cells]
+            xs = [cells[(cp, m, task, a)]["total"]["est"] for a in arms]
+            ys = [cells[(cp, m, task, a)]["rate"] for a in arms]
+            ax.plot(xs, ys, color="#9AA3AE", lw=0.7, ls=":" if m in CLAUDE_MODELS else "-", zorder=2)
+            for a, x, y in zip(arms, xs, ys):
+                ax.plot(x, y, marker=mshape[m], ms=4, color=col[a],
+                        mfc="white" if m in CLAUDE_MODELS else col[a], mew=0.9, ls="", zorder=3)
+        ax.set_xscale("log")
+        ax.set_xlim(1500, 100_000)
+        ax.set_xticks([2e3, 1e4, 5e4])
+        ax.set_xticklabels(["2K", "10K", "50K"], fontsize=6.5)
+        ax.set_ylim(0, 100)
+        ax.tick_params(axis="y", labelsize=6.5)
+        ax.grid(zorder=0, lw=0.5)
+        ax.set_xlabel(f"{task}: tokens per trial", fontsize=7)
+    axes[0].set_ylabel("right (%)", fontsize=7)
+    h = [plt.Line2D([], [], color="#7F8A96", marker=mshape[m], ls="", ms=4,
+                    mfc="white" if m in CLAUDE_MODELS else "#7F8A96", label=short[m]) for m in models]
+    h += [plt.Line2D([], [], color=col[a], marker="s", ls="", ms=4, label=lab)
+          for a, lab in (("none", "no tools"), ("plain", "tools, plain"), ("steered", "tools, steered"))]
+    axes[0].legend(handles=h, loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=4, fontsize=5.8,
+                   handletextpad=0.2, columnspacing=0.6)
+    fig.subplots_adjust(wspace=0.08)
+    FIG.save(fig, out, "tok_cost_accuracy")
+
+    # solve multiplier against the cache price
+    rows = [x for x in res["caching"]["rows"] if x["task"] == "solve" and x["scenario"] == "own hits"
+            and x["refused_request"] == "kept"]
+    fig, axes = plt.subplots(1, 2, figsize=(3.4, 2.4), sharey=True)
+    for ax, p in zip(axes, (1.0, PRICE_RATIO)):
+        for m in models:
+            arm = _tool_arm(m)
+            pts = sorted([x for x in rows if x["model"] == m and x["arm"] == arm and x["p"] == p],
+                         key=lambda x: -x["c"])
+            cs = [x["c"] for x in pts]
+            est = [x["mult"]["est"] for x in pts]
+            claude = m in CLAUDE_MODELS
+            if not claude:
+                ax.fill_between(cs, [x["mult_range"][0] for x in pts], [x["mult_range"][1] for x in pts],
+                                color=col["plain"], alpha=0.15, lw=0)
+            ax.plot(cs, est, color=col["plain"], ls=(0, (3, 2)) if claude else "-", lw=1.1,
+                    marker=mshape[m], ms=3.5, mfc="white" if claude else col["plain"], mew=0.8)
+        ax.axhline(1, color=INK, lw=0.8)
+        ax.set_xlim(1.03, -0.03)
+        ax.set_xticks([1, 0.5, 0.25, 0])
+        ax.set_xticklabels(["1", "0.5", "0.25", "0"], fontsize=6.5)
+        ax.set_yscale("log")
+        ax.set_ylim(0.2, 12)
+        ax.set_yticks([0.25, 0.5, 1, 2, 4, 8])
+        ax.set_yticklabels(["0.25", "0.5", "1", "2", "4", "8"], fontsize=6.5)
+        ax.grid(zorder=0, lw=0.5)
+        ax.set_xlabel(f"cache price c ({'output = input' if p == 1 else 'output 5:1'})", fontsize=6.8)
+    axes[0].set_ylabel("solve: tokens per right answer,\ntools / no tools", fontsize=7)
+    h = [plt.Line2D([], [], color=col["plain"], marker=mshape[m], ms=3.5, lw=1.1,
+                    ls=(0, (3, 2)) if m in CLAUDE_MODELS else "-",
+                    mfc="white" if m in CLAUDE_MODELS else col["plain"], label=short[m]) for m in models]
+    axes[0].legend(handles=h, loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=3, fontsize=6,
+                   handletextpad=0.3, columnspacing=0.7)
+    fig.subplots_adjust(wspace=0.08)
+    FIG.save(fig, out, "tok_cache_price_solve")
+
+
 # ================================================================== main
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -1003,6 +1863,12 @@ def main(argv=None) -> int:
         fp_md = {"offsets": fp["offsets"], "spread": fp["spread"],
                  "both_sources": fp["both_sources"]}
         md = render({**res, "first_prompt": fp_md})
+        res["coverage"] = coverage_part(recs, res)
+        res["no_limit_check"] = check_no_limit(res["coverage"], args.filed)
+        res["caching"] = caching_part(recs, res, fp)
+        res["claude_dollars"] = claude_dollars(recs, res)
+        res["verdicts"] = verdicts(res["caching"], res, res["claude_dollars"])
+        md += "\n" + render_ext(res)
     except Halt as e:
         print(f"HALT: {e}", file=sys.stderr)
         return 2
@@ -1011,10 +1877,12 @@ def main(argv=None) -> int:
             print(f"HALT: the recount differs for {x['cell']}", file=sys.stderr)
             return 2
     args.out.mkdir(parents=True, exist_ok=True)
-    (args.out / "token_consumption.json").write_text(json.dumps(res, indent=1, default=list) + "\n")
+    (args.out / "token_consumption.json").write_text(
+        json.dumps(finite(res), indent=1, default=list, allow_nan=False) + "\n")
     (args.out / "token_consumption.md").write_text(md)
     print(f"wrote {args.out}/token_consumption.{{json,md}}")
     figures(res, args.figs)
+    figures_ext(res, args.figs)
     if check_hashes() != hashes:
         print("HALT: a frozen package hash changed during the run", file=sys.stderr)
         return 2

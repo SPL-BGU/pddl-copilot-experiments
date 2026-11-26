@@ -3,8 +3,10 @@
 *2026-11-26. For Omer. Descriptive and post hoc: no registration covers any of this, and
 nothing here is a test. All numbers come from one script,
 `tools/reanalysis/token_consumption.py`, which writes the full tables to
-`tools/reanalysis/out/token_consumption.md` (and `.json`) and the four figures in this
-folder. Section numbers like "table 2" below point at that file.*
+`tools/reanalysis/out/token_consumption.md` (and `.json`) and the eight figures in this
+folder. Section numbers like "table 2" below point at that file. Extended the same day
+with a second metric (coverage at a token budget) and the comparison under prompt
+caching, at Omer's request.*
 
 ## In one paragraph
 
@@ -109,7 +111,7 @@ The whole run cost 20.25 and 294.49 dollars; Sonnet's validate_plan tool arm alo
 
 ## The figures
 
-All four are 3.4 inches wide (single column), PDF and PNG. Blue = the tools arm with
+All eight are 3.4 inches wide (single column), PDF and PNG. Blue = the tools arm with
 the plain wording (the only tools arm of the Claude run); grey and orange as in the RQ1
 figures. Filled markers are open models, hollow markers Claude.
 
@@ -127,6 +129,153 @@ figures. Filled markers are open models, hollow markers Claude.
 - **D, `tok_simulate_where_tokens_go`**: simulate, open models, tokens per trial split by
   how the trial ended (right; wrong; window full). Point: the window-full trials take two
   thirds of the tools arms' tokens and return nothing.
+- **E, `tok_coverage_solve`** and **F, `tok_coverage_simulate`**: share right within a
+  token budget, one panel per model (the Claude panels marked as the Claude run). Point:
+  on solve the unaided curve rises first and the tool curve passes it later and higher;
+  on simulate it mostly never passes it.
+- **G, `tok_cost_accuracy`**: the cost-accuracy plane, solve and simulate; mean tokens per
+  trial against share right, the arms of one model joined. Point: on solve the tools move
+  every model up and to the right; on simulate mostly down and to the right.
+- **H, `tok_cache_price_solve`**: the solve multiplier against the cache price c, from 1
+  (what was measured) to 0, raw and at 5:1; band = the range from the bounds on the
+  cached share (open models). Point: caching lowers the premium but at equal prices does
+  not take it below 1 for any model except Qwen3.5-9B at c = 0.
+
+## A second metric: coverage at a token budget
+
+**What it is.** For a budget B, the share of a cell's trials that are right and used at
+most B tokens (input plus output, over all requests of the trial). Drawn over B, it is
+the coverage-over-time plot planning readers know, with tokens in place of seconds: the
+plateau is the arm's success rate, and how early the curve rises is its cost. A wrong
+trial never counts; a trial over budget counts as not solved.
+
+**The one assumption.** The budget is applied after the fact. No model was run under a
+budget, so the curve says how many trials would have finished right within B if nothing
+else had changed (a model that knew its budget might behave differently).
+
+**Main readings** (tables 9.1 to 9.3, figures E to G).
+- **Solve: the unaided arm wins at small budgets, the tools arm at large ones, for every
+  model.** At 5,000 tokens the tools arm is behind by 34 to 53 points for the open models
+  (73 and 93 for Haiku and Sonnet), because almost no tool trial fits in 5,000 tokens. The
+  curves cross at the **break-even budget**: about 20,000 tokens for Qwen3.5-9B (20,046
+  [11,318, 28,827]), 19,000 for Gemma-26B (18,913 [16,465, 22,301]), 39,000 for
+  Qwen3.6-35B (38,769 [33,668, 48,938]), 20,000 for Haiku 5.5 (19,876 [17,977, 25,000])
+  and 41,000 for Sonnet 5.5 (41,195 [25,244, none]; in 18% of the domain draws the tools
+  arm never catches up). The steering sentence lowers it (Qwen3.6-35B 32,365).
+- **Simulate: for most models there is no break-even budget.** Gemma-26B, Qwen3.6-35B and
+  both Claude models are behind at every budget, so the break-even is "none" (in 75 to
+  100% of draws). Only Qwen3.5-9B's tools arm passes its unaided arm, at about 16,000 to
+  18,000 tokens, and not in 5 to 17% of draws.
+- **The three validation tasks:** the open models' break-even sits at 9,000 to 21,000
+  tokens; Claude's at 17,000 to 24,000 on domain and problem validation and at 50,000 to
+  108,000 (upper end none) on plan validation, where the tools add under one point.
+- **At no limit the paired difference equals the registered contrast** (checked on all
+  22 filed contrasts, estimate and interval), so the metric adds the cost dimension
+  without changing any RQ1 number.
+
+**Caveats.** After-the-fact budget, as above. Tokens of different tokenizers are
+different units, so a break-even budget of one model is not comparable with another's;
+compare the shape of the curves, not the budgets, across models. The price-weighted
+version (input + 5 x output) is in the tables only: there the break-even budgets move up
+(solve: 25,000, 28,000, 62,000; Haiku 31,000, Sonnet 56,000).
+
+## Tools against no tools under prompt caching
+
+**Why it matters.** A tool conversation sends its whole history again with every
+request; an unaided answer is one request. Prompt caching would make the re-sent part
+cheap for the tools arm and change nothing for the unaided arm. None of our runs had a
+caching discount (the Claude run did not ask for it and the provider reported zero cache
+tokens on every request; the open models' server counts every prompt token), so every
+figure above is a "no cache" figure.
+
+**What was done** (tables 10.1 to 10.7, figure H). Following Yang et al.: each trial's
+input is split into uncached input U and cached input C, and cost(c, p) = U + c x C + p x
+O, with c the price of a cached token and p that of an output token, both relative to an
+uncached input token. Only a trial's own cache hits count (scenario 1): request 2 onward
+reads the previous request's whole prompt from the cache. The comparison is given for c =
+1 (what was measured), 0.5, 0.25, 0.1, 0.05 and 0 (only new tokens count, the floor of
+any cached cost), with p = 1 and p = 5. Everything in this section is computed, not
+billed.
+
+**How the split was obtained.** Claude: exact, from the per-request counts (no request
+had a shorter prompt than the one before it). Open models (27,360 tool trials), from the
+stored sums: one request, C = 0 (3,278 trials); two requests, C = the first prompt (20,899 trials, exact
+up to the first-prompt offset); three or more requests, bounded between (n-1) times the
+first prompt and (n-1)/n of the summed input, with a point value by characters (2,141
+trials); a refused final request, C exact with it kept (1,042 trials). The bounds matter
+most at c = 0: there the open solve multiplier can move by up to 0.77 between them
+(Qwen3.6-35B, 2.16 to 2.93) and simulate by up to 0.48; at 5:1 by at most 0.19. The
+ordering of finding 1 holds at both bounds. Whether a cell is at or below 1
+depends on the bound in six places: Qwen3.5-9B solve at c = 0.1 and below (0.85 to 1.26
+across its two arms) and Gemma-26B solve at 5:1 and c = 0.5 (0.98 to 1.05). So "at c
+near 0, Qwen3.5-9B" is the most the data support.
+
+**Main readings.**
+- **Caching lowers the tools' premium but does not reverse the findings.** Solve, raw,
+  plain wording, from c = 1 to c = 0.1: Qwen3.5-9B 2.17 to 1.12, Gemma-26B 3.09 to 1.68,
+  Qwen3.6-35B 4.68 to 2.71, Haiku 5.5 5.88 to 3.66, Sonnet 5.5 7.78 to 4.90. The order
+  of finding 1 holds at every c, and so does the order of finding 2.
+- **At which cache price a right answer with tools costs no more tokens than an unaided
+  one** (table 10.3): at equal prices, only Qwen3.5-9B, and only at c = 0 on solve (c* =
+  0.00, range 0.10 to -0.22) and below c = 0.82 on domain validation. With output at 5:1,
+  also Gemma-26B on solve below c = 0.48 (0.36 to 0.55; already at c = 1 with the tool
+  named) and Qwen3.6-35B on domain validation below c = 0.15. No Claude cell reaches 1 at
+  any c: Haiku 5.5's lowest solve multiplier is 3.41 at c = 0.
+- **Simulate barely changes** (Gemma-26B 7.17 to 5.29 at c = 0.1; Haiku 5.5 19.9 to
+  17.6), because most of a simulate tool trial is the tool's long answer read once in the
+  final request: it is new, not cached, at any c.
+- **A tool trial still costs more than an unaided one at every c** (finding 6): open 2.6
+  to 6.4 times at c = 1, 2.1 to 3.8 at c = 0; Claude 7.6 to 10.3 and 4.4 to 9.0.
+- **Scenario 2, labelled apart: the static prefix also cached across trials.** The tool
+  arm's extra static prefix (its system text and the seven tool descriptions, less the
+  no-tools system text) is constant: one value per model, task and arm wherever it could
+  be measured (Qwen 3,387 to 3,427 tokens; Gemma-26B 2,805 to 2,848; Claude 5,229 to
+  5,260 on every one of the 9,120 tool trials). If that prefix is also read from the cache
+  on every trial's first request, at c = 0.1 the solve multiplier becomes 0.85 for
+  Qwen3.5-9B, 1.30 for Gemma-26B, 2.15 for Qwen3.6-35B, 2.25 for Haiku 5.5 and 2.97 for
+  Sonnet 5.5. This depends on traffic (requests within the cache lifetime), not on the
+  trial, and it does not credit the no-tools arm's own static system text, so it leans
+  slightly toward the tools.
+- **Refused requests taken out** (table 10.4): the simulate multiplier at c = 0.1 is 1.21
+  (Qwen3.5-9B), 3.43 (Gemma-26B) and 2.03 (Qwen3.6-35B), against 1.66, 5.29 and 3.11 with
+  them kept.
+
+**The Claude run in dollars, three columns** (table 10.6). Dollars per right answer,
+tools over no tools, solve and simulate:
+
+| model | task | (a) billed | (b) list price, both arms | (c) estimated with caching; not billed |
+|---|---|---|---|---|
+| Haiku 5.5 | solve | 6.78 [4.99, 8.96] | 3.39 [2.49, 4.48] | 2.78 [2.08, 3.60] |
+| Haiku 5.5 | simulate | 31.85 [16.97, 54.12] | 15.92 [8.49, 27.06] | 18.03 [9.22, 31.20] |
+| Sonnet 5.5 | solve | 9.85 [8.31, 11.65] | 4.92 [4.15, 5.83] | 3.99 [3.40, 4.69] |
+| Sonnet 5.5 | simulate | 8.94 [7.33, 10.81] | 4.47 [3.67, 5.40] | 4.75 [3.77, 5.85] |
+
+(a) is what was spent: the no-tools arm went through the Batch API at half price. (b) is
+the like-for-like comparison of the arms: how one arm was sent is not a property of the
+arm. (c) is estimated, not billed (caching was not enabled in the run): cache reads at
+0.1 times the input price for Haiku 5.5 and 0.05 for Sonnet 5.5, writes at 1.25 times,
+minimum cacheable prefix 512 tokens, prices as cached on 2026-11-03 (one constants block
+in the script, to recheck). On simulate (c) is above (b): the tool's long answer is
+written to the cache at 1.25 times and never read again, because the trial ends on the
+next request.
+
+**The verdict table** (table 10.7 has the values at every c):
+
+| finding | from c = 1 to c = 0 |
+|---|---|
+| 1. solve and validate_domain multiplier ordered by the unaided rate (open; Claude), raw and 5:1 | holds at every c |
+| 2. points per 1,000 extra tokens fall with the unaided rate, solve, raw and 5:1 | holds at every c |
+| 3. open cells with multiplier at most 1, raw | 0 of 30 at c = 1; 2 (Qwen3.5-9B domain validation) from c = 0.5; 3 at c = 0 (plus Qwen3.5-9B solve, steered) |
+| 3. open cells with multiplier at most 1, 5:1 | 6 of 30 at c = 1 and 0.5; 8 at c = 0.25 (adds Gemma-26B solve plain, Qwen3.5-9B simulate steered); 10 from c = 0.1 (adds Qwen3.6-35B domain validation, both arms) |
+| 3. Claude cells with multiplier at most 1 | none at any c, raw or 5:1 |
+| 6. a tool trial costs more than an unaided trial | holds at every c (smallest ratio 2.1 at c = 0) |
+| Claude dollars per right answer, tools / no tools | above 1 in all three columns (billed 6.8 to 31.8; list 3.4 to 15.9; cached estimate 2.8 to 18.0) |
+
+**Caveats.** The cache prices are assumptions, not measurements: the comparison is given
+over a range so that a reader can find the price that applies. The open models have no
+price; c there stands for whatever a cache saves. Scenario 1 counts only hits inside a
+trial; scenario 2 is labelled apart because it depends on traffic. Estimated and billed
+figures are never mixed in one column.
 
 ## What this could add to the paper (outline only)
 
@@ -152,7 +301,23 @@ figures. Filled markers are open models, hollow markers Claude.
   mostly re-sent prompt and copied PDDL (finding 5), so an interface that passes files by
   reference and returns compact output would cut most of it; none of this was tested.
 - **Conclusion, one clause** at most, on the trend, with "among the models we tested".
-- **Supplement.** Tables 1 to 7 and the definitions below. This would replace the
+- **Methods, two sentences.** How a token is counted: input and output summed over all
+  requests of a trial; every request re-sends the conversation, so a tool result is
+  counted again on each later request; a request refused for a full window is stored as
+  16,384 input tokens. And: no caching discount is in any figure (the Claude run did not
+  request caching and the provider reported zero cache tokens; the open models' server
+  counts every prompt token).
+- **Wherever cost is discussed, one sentence with a range.** Under prompt caching inside
+  a trial, from c = 1 to c = 0.1, the solve premium falls from 2.2 / 3.1 / 4.7 to 1.1 /
+  1.7 / 2.7 (open) and from 5.9 / 7.8 to 3.7 / 4.9 (Claude), and its order across models
+  holds at every cache price. At equal prices a right plan with tools costs no more
+  tokens than an unaided one only for Qwen3.5-9B and only at c near 0; with output
+  weighted 5:1, for Qwen3.5-9B at every c and for Gemma-26B below c = 0.48.
+- **RQ1, if the coverage view is wanted.** Figure E for solve, one sentence: the unaided
+  arm is ahead at small budgets, the tools arm beyond about 20,000 tokens (Qwen3.5-9B,
+  Gemma-26B) and 39,000 (Qwen3.6-35B); on simulate there is no such budget for two of the
+  three open models.
+- **Supplement.** Tables 1 to 10 and the definitions below. This would replace the
   current "What the Tool Costs" subsection of `paper/supplement_source.tex`, several of
   whose statements no longer hold (next section).
 
@@ -189,6 +354,16 @@ figures. Filled markers are open models, hollow markers Claude.
   message was faulty on those two tasks; the matched run's figures replace them (for
   example Qwen3.5-9B solve 1.37 there, 2.17 here).
 - **The old Claude runs and the new ones as one experiment** (side table below).
+- **An estimated cached cost quoted as if it were billed.** Column (c) and every c < 1 is
+  a computation; caching was not enabled in any run.
+- **A cached tools arm against an uncached unaided arm without saying so.** Scenario 1
+  gives the unaided arm nothing to cache, which is right for one request, but the
+  sentence must say that only the tools arm is discounted and why. Scenario 2 also gives
+  the unaided arm's own static system text no credit.
+- **The billed dollar ratio as the cost ratio of the arms.** The no-tools arm was billed
+  at the Batch half price; the like-for-like ratio is column (b), half of (a).
+- **A break-even budget compared across models** as if tokens were one unit, or the
+  coverage curve read as what a model would do under a budget (no model ran under one).
 
 ## Side table: the old Claude runs (a different experiment)
 
@@ -204,6 +379,18 @@ reading; the rows sit side by side only so that nobody reads the old figure as t
 | old (sweep5v2 conditions) | Haiku 4.5 | 6.1 (48.5K against 8.0K) |
 | new (this analysis) | Sonnet 5.5 | 7.8 (19.6K against 2.5K) |
 | new (this analysis) | Haiku 5.5 | 5.9 (20.9K against 3.5K) |
+
+## Sources (to verify before citing in the paper)
+
+- Erol, El, Suzgun, Yuksekgonul and Zou, "Cost-of-Pass: An Economic Framework for
+  Evaluating Language Models", arXiv:2504.13359. The expected cost of one correct answer;
+  the cost per right answer here is its token form. *To verify before citing.*
+- Kapoor, Stroebl, Siegel, Nadgir and Narayanan, "AI Agents That Matter",
+  arXiv:2407.01502. Cost-controlled evaluation and the accuracy-cost frontier (figure G).
+  *To verify before citing.*
+- Yang et al., "Context Has a Price: Adding and Removing Context for LLM Coding Agents
+  under Prefix Caching", arXiv:2611.22238. The cost form U + c C + p O, own cache hits
+  only, c = 1 and c = 0.1. *To verify before citing* (read by the session, not by me).
 
 ## Definitions: how a token is counted
 
@@ -267,7 +454,18 @@ Established from the code that writes the fields, not from documentation.
 - The rerun's validation-task multipliers reproduce `NUMBERS.md` section S2-C, which used
   the same arms (for example Gemma-26B validate_domain 5.15 [4.22, 6.10], Qwen3.6-35B
   validate_plan 3.60 [3.22, 4.02]).
-- `tests/test_token_consumption.py` checks the arithmetic on hand-made rows.
+- Coverage at no limit equals the filed right counts of all 38 matched-run and Claude
+  cells, and the paired difference at no limit equals all 22 filed contrasts, estimate
+  and interval (the script halts otherwise).
+- c = 1 reproduces every multiplier of table 2, raw and at 5:1, estimate and interval
+  (the script halts otherwise). The list-price column of the Claude tool arms equals the
+  billed column (same price, no Batch), and the billed column adds up to the run's
+  dollars.
+- The output is byte-identical on a second run.
+- `tests/test_token_consumption.py` checks the arithmetic on hand-made rows (15 tests:
+  cost per right answer, the multiplier, the input split, coverage at a budget, the
+  break-even budget, the cached split and its bounds, the cost under c, the list-price
+  and cached dollars).
 
 ## What could not be determined
 
@@ -276,7 +474,12 @@ Established from the code that writes the fields, not from documentation.
   model's own tool calls is therefore estimated, and the final reply's length with tools
   is not separable from the earlier turns for the open models.
 - The true size of a refused request's prompt (only a lower bound is stored).
-- What prefix caching saved on the open models' re-sent prompts (not logged).
+- What prefix caching saved on the open models' re-sent prompts (not logged); the
+  caching section is a computation over assumed prices, not a measurement.
+- The exact cached share of an open-model trial with three or more requests (bounded and
+  estimated; 2,141 of 27,360 open tool trials).
+- The size of the no-tools arm's own static system text in tokens (needed to make
+  scenario 2 fully even-handed).
 - A cost in money for the open models (no list price); the 5:1 weighting is an
   illustration.
 - The thinking-on token counts of the May sweep were not used (they belong to a
