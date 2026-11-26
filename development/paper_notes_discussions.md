@@ -781,3 +781,25 @@
   points the registration leaves open are for Omer; an independent review is running.
   Not frozen.
 
+## 2026-11-26 (evening) — RQ1 tables and figures rebuilt on the matched run; review of the Claude analysis
+
+- **Decided (Omer, 2026-11-26): "Yes, rebuild".** The RQ1 solve, simulate and
+  plan-length tables and the two by-length figures are rebuilt on the matched run, with
+  a new table of the three arms and their paired differences (PR #154). Overleaf was
+  pulled first (no co-author change). No paragraph was edited; the PR's body lists
+  every sentence that quotes a superseded number, with the old and the new value.
+- **What a reader of the new tables should know:** Table rq1-matched uses all 300
+  trials of a cell and the simulate table 94 problems (282 trials), so one cell reads
+  12.7 in one and 13.5 in the other. The planner-runtime column uses this run's planner
+  calls for the open rows and the October run's for the Claude rows.
+- **Review of the Claude analysis (gate 5), by an agent that did not write it:** no
+  wrong number in the grade, the denominators or the statistics; three contrasts
+  recomputed independently from the fixture rows matched exactly. One blocker: the
+  registration's rule on failed batch items (section 6) had no code. Other fixes: halt
+  per model, a tripwire for two arms answered by different model versions, the same-day
+  rule counting later dates only. The fixes are in work. Not frozen.
+- **Open for Omer, before the freeze:** the seven points listed in chat. On the first
+  (a trial where the grading step failed) the reviewer's reading was implemented:
+  wrong under the grade, classed for tool choice by its stored calls, and counted
+  toward the error threshold only where the open models' rule counts it.
+

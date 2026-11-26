@@ -69,9 +69,14 @@ run approved earlier that day.
   with the tool named). Simulate: no model has tools ahead; for Gemma-26B the unaided
   arm is ahead, -14.0 [-25.3, -3.7], not after Holm. Unaided solve 41.3 to 68.3%; with
   tools 79.3 to 94.0% (plain), 90.0 to 94.7% (steered).
-- **Waiting for Omer's read of the readout.** Nothing goes near the paper before it.
-  Then: the RQ1 tables and the two by-length figures for solve and simulate rebuilt on
-  this run, and the numbers of `paper_outline.md` 4.3 and 4.4 replaced.
+- **Tables and figures rebuilt (Omer, 2026-11-26: "Yes, rebuild"), PR #154, open.**
+  Tables rq1-simulate, rq1-solve and rq1-planlen and the two by-length figures now take
+  their open-model rows from this run (`tools/reanalysis/rq1_matched_metrics.py`, which
+  halts unless its counts equal the frozen analysis output; `NUMBERS.md`, block
+  "RQ1-MATCHED-METRICS"). New Table rq1-matched: the three arms with their paired
+  differences. Claude rows unchanged. No paragraph was edited: the sentences whose
+  numbers no longer match the tables carry `% TODO(Omer)` and are listed, old and new,
+  in the PR's body. `paper_outline.md` 4.3 and 4.4 carry this run's numbers.
 
 ## The frontier models
 
@@ -98,9 +103,12 @@ Separate corpora, never pooled with or ranked against the open models. The old r
   worktree `.claude/worktrees/frontier55-analysis`, branch `analysis/frontier55` (the
   run's branch with `main` merged in), commit `6f30ffe`, not pushed. Built from a
   synthetic fixture only (846 checks pass); no row of the run was read. **Not frozen.**
-  An independent review (gate 5) is running. Seven points the registration leaves open
-  are marked `# OPEN:` in the script and go to Omer before the freeze. Then: fixes,
-  the freeze record (registration, section 10), the reading, and one PR for the branch.
+  An independent review (gate 5, 2026-11-26) found no wrong number in the grade, the
+  denominators or the statistics, one blocker (the rule on failed batch items of the
+  registration's section 6 had no code) and smaller fixes; the fixes are being made.
+  Seven points the registration leaves open are marked `# OPEN:` in the script and
+  wait for Omer's answer. Then: the reviewer's verification pass, the freeze record
+  (registration, section 10), the reading, and one PR for the branch.
   Do not edit `tools/frontier55/*.py` or touch the worktree `frontier55` while the run
   is unfinished: the run's manifest pins the runner's hashes. Still to add to the
   registration: the cluster's tool library versions beside the laptop's.
@@ -121,15 +129,16 @@ the body. Those moved, word for word, to `paper/supplement_source.tex` (raw mate
 the supplement, not compiled, not on Overleaf): the Supporting Analyses, the Methods and
 appendix parts that served them, the repair history of the Results with its appendix
 record, and thinking-on in RQ2. Sentences in `main.tex` that still point at moved parts
-carry a `% TODO(Omer)` comment. RQ1's solve and simulate tables and figures still show
-the control baseline; the matched run replaces them. Generators: `paper/README.md`.
+carry a `% TODO(Omer)` comment. RQ1's solve and simulate tables and figures are rebuilt
+on the matched run in PR #154 (open); the paragraphs around them still quote the control
+baseline's numbers until Omer rewrites them. Generators: `paper/README.md`.
 
 ## Next steps
 
 **For Omer**
 
-1. Read the matched run's readout (`reference/matched_run_readout.md`); say whether
-   the RQ1 tables and figures are rebuilt on it.
+1. Merge PR #154 (the RQ1 tables and figures on the matched run), or say what to
+   change. Its body lists the sentences that quote superseded numbers.
 2. Answer the open points of the Claude analysis before its freeze (listed in chat on
    2026-11-26 and marked `# OPEN:` in `tools/reanalysis/frontier55.py`).
 3. For the GPT and hosted Qwen runs: set `OPENAI_API_KEY` and `NOVITA_API_KEY` in the
@@ -150,8 +159,7 @@ the control baseline; the matched run replaces them. Generators: `paper/README.m
 
 **For the session**
 
-1. The matched run: after Omer's read, the RQ1 tables and figures for solve and
-   simulate.
+1. The matched run: done; PR #154 carries the tables and figures.
 2. The Claude run: let it finish; review, fix and freeze its analysis; then read it.
 3. The GPT and hosted Qwen runs: review the runners, itemize the cost, pilot, run,
    once the keys exist. Before any paid request the itemized cost goes to Omer; stop
@@ -223,7 +231,8 @@ Closed without merging (state checked 2026-11-26):
   under anonymous review. Release terms are decided: code MIT, data CC BY 4.0, BGN
   Technologies as owner (confirm its exact legal name), Omer as author, lab SPL-BGU.
 
-No pull request is open.
+Open: **#154**, the RQ1 solve and simulate tables and figures rebuilt on the matched
+run (2026-11-26).
 
 ## Hygiene (Omer's to run)
 
