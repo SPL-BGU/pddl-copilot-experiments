@@ -73,6 +73,8 @@ run_test test_control_prompt_fix.py
 run_test test_matched_run.py
 run_test test_rq1_matched_metrics.py
 run_test test_frontier55_analysis.py
+run_test test_frontier55_tex.py
+run_test test_open_weight_tex.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"
