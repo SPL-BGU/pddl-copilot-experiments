@@ -50,6 +50,7 @@ run_test test_claude_api_batch.py
 run_test test_claude_api_tools_probe.py
 run_test test_budget_probe_analysis.py
 run_test test_frontier_runner.py
+run_test test_frontier55.py
 run_test test_d5a_pilot.py
 run_test test_control_prompts.py
 run_test test_vllm_client.py
@@ -71,6 +72,7 @@ run_test test_rq1_layout_regrade.py
 run_test test_control_prompt_fix.py
 run_test test_matched_run.py
 run_test test_rq1_matched_metrics.py
+run_test test_frontier55_analysis.py
 
 if [ "$FAILURES" -gt 0 ]; then
     echo -e "${RED}$FAILURES test file(s) failed${NC}"

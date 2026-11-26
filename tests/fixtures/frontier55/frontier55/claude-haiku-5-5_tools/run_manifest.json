@@ -1,0 +1,70 @@
+{
+  "backend": "anthropic-live",
+  "base_url": "https://api.anthropic.com",
+  "client_max_retries": 1,
+  "client_timeout_s": 600.0,
+  "conditions": "tools",
+  "corpus": "canonical",
+  "created_at": "2026-11-26T06:59:00+0000",
+  "domains_dir": "domains",
+  "effort": "medium",
+  "ground_truth": "cached",
+  "ground_truth_sha256": "6e2343ade12c47e57da038191593c4e01747fa29f178ecfcc65f6b533c73fe37",
+  "gt_cache_path": "gt_cache.json",
+  "gt_cache_sha256": "6a07f9bff5dfb3234aa6ec0b84a7b8f6b6426cdedf4bde9f5f4fffe3df9e6946",
+  "keys_files": null,
+  "limit": null,
+  "manifest_version": 1,
+  "max_iterations": 10,
+  "model": "claude-haiku-5-5",
+  "num_predict": null,
+  "output_caps": {
+    "simulate": 6144,
+    "solve": 8192,
+    "validate_domain": 6144,
+    "validate_plan": 6144,
+    "validate_problem": 6144
+  },
+  "pilot": false,
+  "prompt_variants": [
+    11,
+    12,
+    13
+  ],
+  "run": "frontier55",
+  "runner_sha256": {
+    "tools/frontier55/anthropic_requests.py": "9b0007710c84cec3b219f83471d2a227c707a93267524ac7ca60fadab9dc63a0",
+    "tools/frontier55/cost.py": "9f82f7b375f4aa1bd7d50abe0f760c4ca5a8f0208aa68555489c39dd7c7aeeaa",
+    "tools/frontier55/runner.py": "527aa9f431539da8e151d5434d1d5e611d973f601d8e970790882624554146b0"
+  },
+  "sdk_version": "0.109.2",
+  "sdk_version_pinned": "0.109.2",
+  "snapshot_len": 65536,
+  "stream": false,
+  "system_sha256": {
+    "simulate": "ebf8e7fe9d55ab56b9d2d4ba02be4f2b7770fe1b9fdd4d77bba790a68a0d0ac6",
+    "solve": "9b179ca12c2cd2220b46c5478bc637f6dd47356a2f81a4795d3541ecdf6dbb2c",
+    "validate_domain": "2351f7b2257621ca0155af5206a4304ba7bef79caf974712ac2563101dda839d",
+    "validate_plan": "dae2e397c4fc933163608debcab8a6004c170db9f1242ea53b1953909a616f0f",
+    "validate_problem": "fa18dc28613de2ae12a75efca36bd2aaeb3950fd6f6b6cf7d176295a6a88c54e"
+  },
+  "tasks": [
+    "simulate",
+    "solve",
+    "validate_domain",
+    "validate_plan",
+    "validate_problem"
+  ],
+  "temperature": "not sent (provider default)",
+  "think": "disabled",
+  "tools_commit": "5e4f9c0000000000000000000000000000000000",
+  "tools_env": {
+    "pddl-validator": [
+      "pddl-pyvalidator==0.1.5"
+    ]
+  },
+  "tools_pyvalidator": "0.1.5",
+  "tools_sha256": "dd14507890d38a8a3c581971a699037b39a3a0bd9374d5801072fb58b9b14400",
+  "turn_attempts": 2,
+  "with_tools": true
+}
